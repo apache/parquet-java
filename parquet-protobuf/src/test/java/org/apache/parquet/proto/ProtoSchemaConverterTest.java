@@ -23,7 +23,6 @@ import com.google.protobuf.Message;
 import com.google.protobuf.Struct;
 import com.google.protobuf.Value;
 import org.junit.Test;
-import org.apache.parquet.proto.TestUtils;
 import org.apache.parquet.proto.test.TestProto3;
 import org.apache.parquet.proto.test.TestProtobuf;
 import org.apache.parquet.proto.test.Trees;
@@ -40,12 +39,12 @@ public class ProtoSchemaConverterTest {
   /**
    * Converts given pbClass to parquet schema and compares it with expected parquet schema.
    */
-  private static void testConversion(Class<? extends Message> pbClass, String parquetSchemaString, boolean parquetSpecsCompliant) {
-    testConversion(pbClass, parquetSchemaString, new ProtoSchemaConverter(parquetSpecsCompliant));
+  private static void testConversion(Class<? extends Message> pbClass, String parquetSchemaString, boolean parquetSpecsCompliant, boolean unwrapWrappers) {
+    testConversion(pbClass, parquetSchemaString, new ProtoSchemaConverter(parquetSpecsCompliant, 5, unwrapWrappers));
   }
 
   private static void testConversion(Class<? extends Message> pbClass, String parquetSchemaString) {
-    testConversion(pbClass, parquetSchemaString, true);
+    testConversion(pbClass, parquetSchemaString, true, false);
   }
 
   private static void testConversion(Class<? extends Message> pbClass, String parquetSchemaString, ProtoSchemaConverter converter) {
@@ -54,6 +53,9 @@ public class ProtoSchemaConverterTest {
     assertEquals(expectedMT.toString(), schema.toString());
   }
 
+  private void testConversion(Class<? extends Message> pbClass, String parquetSchemaString, boolean parquetSpecsCompliant) throws Exception {
+    testConversion(pbClass, parquetSchemaString, parquetSpecsCompliant, false);
+  }
 
   /**
    * Tests that all protocol buffer datatypes are converted to correct parquet datatypes.
@@ -206,7 +208,7 @@ public class ProtoSchemaConverterTest {
         "  repeated int32 repeatedInt = 1;",
         "}");
 
-    testConversion(TestProtobuf.RepeatedIntMessage.class, expectedSchema, false);
+    testConversion(TestProtobuf.RepeatedIntMessage.class, expectedSchema, false, false);
   }
 
   @Test
@@ -231,7 +233,7 @@ public class ProtoSchemaConverterTest {
         "  repeated int32 repeatedInt = 1;",
         "}");
 
-    testConversion(TestProto3.RepeatedIntMessage.class, expectedSchema, false);
+    testConversion(TestProto3.RepeatedIntMessage.class, expectedSchema, false, false);
   }
 
   @Test
@@ -263,7 +265,7 @@ public class ProtoSchemaConverterTest {
         "  }",
         "}");
 
-    testConversion(TestProtobuf.RepeatedInnerMessage.class, expectedSchema, false);
+    testConversion(TestProtobuf.RepeatedInnerMessage.class, expectedSchema, false, false);
   }
 
   @Test
@@ -295,7 +297,7 @@ public class ProtoSchemaConverterTest {
         "  }",
         "}");
 
-    testConversion(TestProto3.RepeatedInnerMessage.class, expectedSchema, false);
+    testConversion(TestProto3.RepeatedInnerMessage.class, expectedSchema, false, false);
   }
 
   @Test
@@ -323,7 +325,7 @@ public class ProtoSchemaConverterTest {
         "  }",
         "}");
 
-    testConversion(TestProtobuf.MapIntMessage.class, expectedSchema, false);
+    testConversion(TestProtobuf.MapIntMessage.class, expectedSchema, false, false);
   }
 
   @Test
@@ -351,7 +353,61 @@ public class ProtoSchemaConverterTest {
         "  }",
         "}");
 
-    testConversion(TestProto3.MapIntMessage.class, expectedSchema, false);
+    testConversion(TestProto3.MapIntMessage.class, expectedSchema, false, false);
+  }
+
+  @Test
+  public void testProto3ConvertDateTimeMessageWrapped() throws Exception {
+    String expectedSchema =
+      "message TestProto3.DateTimeMessage {\n" +
+        "  optional group timestamp = 1 {\n" +
+        "    optional int64 seconds = 1;\n" +
+        "    optional int32 nanos = 2;\n" +
+        "  }\n" +
+        "  optional group date = 2 {\n" +
+        "    optional int32 year = 1;\n" +
+        "    optional int32 month = 2;\n" +
+        "    optional int32 day = 3;\n" +
+        "  }\n" +
+        "  optional group time = 3 {\n" +
+        "    optional int32 hours = 1;\n" +
+        "    optional int32 minutes = 2;\n" +
+        "    optional int32 seconds = 3;\n" +
+        "    optional int32 nanos = 4;\n" +
+        "  }\n" +
+        "}";
+
+    testConversion(TestProto3.DateTimeMessage.class, expectedSchema, false, false);
+  }
+
+  @Test
+  public void testProto3ConvertDateTimeMessageUnwrapped() throws Exception {
+    String expectedSchema =
+      "message TestProto3.DateTimeMessage {\n" +
+        "  optional int64 timestamp (TIMESTAMP(NANOS,true)) = 1;\n" +
+        "  optional int32 date (DATE) = 2;\n" +
+        "  optional int64 time (TIME(NANOS,true)) = 3;\n" +
+        "}";
+
+    testConversion(TestProto3.DateTimeMessage.class, expectedSchema, false, true);
+  }
+
+  @Test
+  public void testProto3ConvertWrappedMessageUnwrapped() throws Exception {
+    String expectedSchema =
+      "message TestProto3.WrappedMessage {\n" +
+        "  optional double wrappedDouble = 1;\n" +
+        "  optional float wrappedFloat = 2;\n" +
+        "  optional int64 wrappedInt64 = 3;\n" +
+        "  optional int64 wrappedUInt64 = 4;\n" +
+        "  optional int32 wrappedInt32 = 5;\n" +
+        "  optional int64 wrappedUInt32 = 6;\n" +
+        "  optional boolean wrappedBool = 7;\n" +
+        "  optional binary wrappedString (UTF8) = 8;\n" +
+        "  optional binary wrappedBytes = 9;\n" +
+        "}";
+
+    testConversion(TestProto3.WrappedMessage.class, expectedSchema, false, true);
   }
 
   @Test
@@ -379,8 +435,8 @@ public class ProtoSchemaConverterTest {
         "    optional binary right = 3;",
         "  }",
         "}");
-    testConversion(Trees.BinaryTree.class, expectedSchema, new ProtoSchemaConverter(true, 1));
-    testConversion(Trees.BinaryTree.class, TestUtils.readResource("BinaryTree.par"), new ProtoSchemaConverter(true, PAR_RECURSION_DEPTH));
+    testConversion(Trees.BinaryTree.class, expectedSchema, new ProtoSchemaConverter(true, 1, false));
+    testConversion(Trees.BinaryTree.class, TestUtils.readResource("BinaryTree.par"), new ProtoSchemaConverter(true, PAR_RECURSION_DEPTH, false));
 
   }
 
@@ -404,8 +460,8 @@ public class ProtoSchemaConverterTest {
         "    }",
         "  }",
         "}");
-    testConversion(Trees.WideTree.class, expectedSchema, new ProtoSchemaConverter(true, 1));
-    testConversion(Trees.WideTree.class, TestUtils.readResource("WideTree.par"), new ProtoSchemaConverter(true, PAR_RECURSION_DEPTH));
+    testConversion(Trees.WideTree.class, expectedSchema, new ProtoSchemaConverter(true, 1, false));
+    testConversion(Trees.WideTree.class, TestUtils.readResource("WideTree.par"), new ProtoSchemaConverter(true, PAR_RECURSION_DEPTH, false));
 
   }
 
@@ -455,8 +511,8 @@ public class ProtoSchemaConverterTest {
         "    }",
         "  }",
         "}");
-    testConversion(Value.class, expectedSchema, new ProtoSchemaConverter(true, 1));
-    testConversion(Value.class, TestUtils.readResource("Value.par"), new ProtoSchemaConverter(true, PAR_RECURSION_DEPTH));
+    testConversion(Value.class, expectedSchema, new ProtoSchemaConverter(true, 1, false));
+    testConversion(Value.class, TestUtils.readResource("Value.par"), new ProtoSchemaConverter(true, PAR_RECURSION_DEPTH, false));
   }
 
   @Test
@@ -510,8 +566,8 @@ public class ProtoSchemaConverterTest {
         "    }",
         "  }",
         "}");
-    testConversion(Struct.class, expectedSchema, new ProtoSchemaConverter(true, 1));
-    testConversion(Struct.class, TestUtils.readResource("Struct.par"), new ProtoSchemaConverter(true, PAR_RECURSION_DEPTH));
+    testConversion(Struct.class, expectedSchema, new ProtoSchemaConverter(true, 1, false));
+    testConversion(Struct.class, TestUtils.readResource("Struct.par"), new ProtoSchemaConverter(true, PAR_RECURSION_DEPTH, false));
   }
 
   @Test
@@ -521,16 +577,16 @@ public class ProtoSchemaConverterTest {
     long expectedBinaryTreeSize = 4;
     long expectedStructSize = 7;
     for (int i = 0; i < 10; ++i) {
-      MessageType deepSchema = new ProtoSchemaConverter(true, i).convert(Trees.WideTree.class);
+      MessageType deepSchema = new ProtoSchemaConverter(true, i, false).convert(Trees.WideTree.class);
       // 3, 5, 7, 9, 11, 13, 15, 17, 19, 21
       assertEquals(2 * i + 3, deepSchema.getPaths().size());
 
-      deepSchema = new ProtoSchemaConverter(true, i).convert(Trees.BinaryTree.class);
+      deepSchema = new ProtoSchemaConverter(true, i, false).convert(Trees.BinaryTree.class);
       // 4, 10, 22, 46, 94, 190, 382, 766, 1534, 3070
       assertEquals(expectedBinaryTreeSize, deepSchema.getPaths().size());
       expectedBinaryTreeSize = 2 * expectedBinaryTreeSize + 2;
 
-      deepSchema = new ProtoSchemaConverter(true, i).convert(Struct.class);
+      deepSchema = new ProtoSchemaConverter(true, i, false).convert(Struct.class);
       // 7, 18, 40, 84, 172, 348, 700, 1404, 2812, 5628
       assertEquals(expectedStructSize, deepSchema.getPaths().size());
       expectedStructSize = 2 * expectedStructSize + 4;

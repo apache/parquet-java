@@ -18,10 +18,21 @@
  */
 package org.apache.parquet.proto;
 
+import com.google.protobuf.BoolValue;
 import com.google.protobuf.ByteString;
+import com.google.protobuf.BytesValue;
 import com.google.protobuf.DescriptorProtos;
 import com.google.protobuf.Descriptors;
+import com.google.protobuf.Descriptors.Descriptor;
+import com.google.protobuf.DoubleValue;
+import com.google.protobuf.FloatValue;
+import com.google.protobuf.Int32Value;
+import com.google.protobuf.Int64Value;
 import com.google.protobuf.Message;
+import com.google.protobuf.StringValue;
+import com.google.protobuf.UInt32Value;
+import com.google.protobuf.UInt64Value;
+import com.google.protobuf.util.Timestamps;
 import com.twitter.elephantbird.util.Protobufs;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.column.Dictionary;
@@ -42,6 +53,8 @@ import org.apache.parquet.schema.PrimitiveType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -233,6 +246,21 @@ class ProtoMessageConverter extends GroupConverter {
       public Optional<Converter> visit(LogicalTypeAnnotation.MapLogicalTypeAnnotation mapLogicalType) {
         return of(new MapConverter(parentBuilder, fieldDescriptor, parquetType));
       }
+
+      @Override
+      public Optional<Converter> visit(LogicalTypeAnnotation.TimestampLogicalTypeAnnotation timestampLogicalType) {
+        return of(new ProtoTimestampConverter(parent, timestampLogicalType));
+      }
+
+      @Override
+      public Optional<Converter> visit(LogicalTypeAnnotation.DateLogicalTypeAnnotation dateLogicalType) {
+        return of(new ProtoDateConverter(parent));
+      }
+
+      @Override
+      public Optional<Converter> visit(LogicalTypeAnnotation.TimeLogicalTypeAnnotation timeLogicalType) {
+        return of(new ProtoTimeConverter(parent, timeLogicalType));
+      }
     }).orElseGet(() -> newScalarConverter(parent, parentBuilder, fieldDescriptor, parquetType));
   }
 
@@ -250,6 +278,37 @@ class ProtoMessageConverter extends GroupConverter {
       case INT: return new ProtoIntConverter(pvc);
       case LONG: return new ProtoLongConverter(pvc);
       case MESSAGE: {
+        if (parquetType.isPrimitive()) {
+          // if source is a Primitive type yet target is MESSAGE, it's probably a wrapped message
+          Descriptor messageType = fieldDescriptor.getMessageType();
+          if (messageType.equals(DoubleValue.getDescriptor())) {
+            return new ProtoDoubleValueConverter(pvc);
+          }
+          if (messageType.equals(FloatValue.getDescriptor())) {
+            return new ProtoFloatValueConverter(pvc);
+          }
+          if (messageType.equals(Int64Value.getDescriptor())) {
+            return new ProtoInt64ValueConverter(pvc);
+          }
+          if (messageType.equals(UInt64Value.getDescriptor())) {
+            return new ProtoUInt64ValueConverter(pvc);
+          }
+          if (messageType.equals(Int32Value.getDescriptor())) {
+            return new ProtoInt32ValueConverter(pvc);
+          }
+          if (messageType.equals(UInt32Value.getDescriptor())) {
+            return new ProtoUInt32ValueConverter(pvc);
+          }
+          if (messageType.equals(BoolValue.getDescriptor())) {
+            return new ProtoBoolValueConverter(pvc);
+          }
+          if (messageType.equals(StringValue.getDescriptor())) {
+            return new ProtoStringValueConverter(pvc);
+          }
+          if (messageType.equals(BytesValue.getDescriptor())) {
+            return new ProtoBytesValueConverter(pvc);
+          }
+        }
         Message.Builder subBuilder = parentBuilder.newBuilderForField(fieldDescriptor);
         return new ProtoMessageConverter(conf, pvc, subBuilder, parquetType.asGroupType(), extraMetadata);
       }
@@ -295,7 +354,7 @@ class ProtoMessageConverter extends GroupConverter {
      * Fills lookup structure for translating between parquet enum values and Protocol buffer enum values.
      * */
     private Map<Binary, Descriptors.EnumValueDescriptor> makeLookupStructure(Descriptors.EnumDescriptor enumType) {
-      Map<Binary, Descriptors.EnumValueDescriptor> lookupStructure = new HashMap<Binary, Descriptors.EnumValueDescriptor>();
+      Map<Binary, Descriptors.EnumValueDescriptor> lookupStructure = new HashMap<>();
 
       if (extraMetadata.containsKey(METADATA_ENUM_PREFIX + enumType.getFullName())) {
         String enumNameNumberPairs = extraMetadata.get(METADATA_ENUM_PREFIX + enumType.getFullName());
@@ -366,7 +425,7 @@ class ProtoMessageConverter extends GroupConverter {
     }
 
     @Override
-    final public void addBinary(Binary binaryValue) {
+    public void addBinary(Binary binaryValue) {
       Descriptors.EnumValueDescriptor protoValue = translateEnumValue(binaryValue);
       parent.add(protoValue);
     }
@@ -392,7 +451,7 @@ class ProtoMessageConverter extends GroupConverter {
 
   }
 
-  final class ProtoBinaryConverter extends PrimitiveConverter {
+  static final class ProtoBinaryConverter extends PrimitiveConverter {
 
     final ParentValueContainer parent;
 
@@ -408,7 +467,7 @@ class ProtoMessageConverter extends GroupConverter {
   }
 
 
-  final class ProtoBooleanConverter extends PrimitiveConverter {
+  static final class ProtoBooleanConverter extends PrimitiveConverter {
 
     final ParentValueContainer parent;
 
@@ -417,13 +476,13 @@ class ProtoMessageConverter extends GroupConverter {
     }
 
     @Override
-    final public void addBoolean(boolean value) {
+    public void addBoolean(boolean value) {
       parent.add(value);
     }
 
   }
 
-  final class ProtoDoubleConverter extends PrimitiveConverter {
+  static final class ProtoDoubleConverter extends PrimitiveConverter {
 
     final ParentValueContainer parent;
 
@@ -437,7 +496,7 @@ class ProtoMessageConverter extends GroupConverter {
     }
   }
 
-  final class ProtoFloatConverter extends PrimitiveConverter {
+  static final class ProtoFloatConverter extends PrimitiveConverter {
 
     final ParentValueContainer parent;
 
@@ -451,7 +510,7 @@ class ProtoMessageConverter extends GroupConverter {
     }
   }
 
-  final class ProtoIntConverter extends PrimitiveConverter {
+  static final class ProtoIntConverter extends PrimitiveConverter {
 
     final ParentValueContainer parent;
 
@@ -465,7 +524,7 @@ class ProtoMessageConverter extends GroupConverter {
     }
   }
 
-  final class ProtoLongConverter extends PrimitiveConverter {
+  static final class ProtoLongConverter extends PrimitiveConverter {
 
     final ParentValueContainer parent;
 
@@ -479,7 +538,7 @@ class ProtoMessageConverter extends GroupConverter {
     }
   }
 
-  final class ProtoStringConverter extends PrimitiveConverter {
+  static final class ProtoStringConverter extends PrimitiveConverter {
 
     final ParentValueContainer parent;
 
@@ -493,6 +552,218 @@ class ProtoMessageConverter extends GroupConverter {
       parent.add(str);
     }
 
+  }
+
+  static final class ProtoTimestampConverter extends PrimitiveConverter {
+
+    final ParentValueContainer parent;
+    final LogicalTypeAnnotation.TimestampLogicalTypeAnnotation logicalTypeAnnotation;
+
+    public ProtoTimestampConverter(ParentValueContainer parent, LogicalTypeAnnotation.TimestampLogicalTypeAnnotation logicalTypeAnnotation) {
+      this.parent = parent;
+      this.logicalTypeAnnotation = logicalTypeAnnotation;
+    }
+
+    @Override
+    public void addLong(long value) {
+      switch (logicalTypeAnnotation.getUnit()) {
+        case MICROS:
+          parent.add(Timestamps.fromMicros(value));
+          break;
+        case MILLIS:
+          parent.add(Timestamps.fromMillis(value));
+          break;
+        case NANOS:
+          parent.add(Timestamps.fromNanos(value));
+          break;
+      }
+    }
+  }
+
+  static final class ProtoDateConverter extends PrimitiveConverter {
+
+    final ParentValueContainer parent;
+
+    public ProtoDateConverter(ParentValueContainer parent) {
+      this.parent = parent;
+    }
+
+    @Override
+    public void addInt(int value) {
+      LocalDate localDate = LocalDate.ofEpochDay(value);
+      com.google.type.Date date = com.google.type.Date.newBuilder()
+        .setYear(localDate.getYear())
+        .setMonth(localDate.getMonthValue())
+        .setDay(localDate.getDayOfMonth())
+        .build();
+      parent.add(date);
+    }
+  }
+
+  static final class ProtoTimeConverter extends PrimitiveConverter {
+
+    final ParentValueContainer parent;
+    final LogicalTypeAnnotation.TimeLogicalTypeAnnotation logicalTypeAnnotation;
+
+    public ProtoTimeConverter(ParentValueContainer parent, LogicalTypeAnnotation.TimeLogicalTypeAnnotation logicalTypeAnnotation) {
+      this.parent = parent;
+      this.logicalTypeAnnotation = logicalTypeAnnotation;
+    }
+
+    @Override
+    public void addLong(long value) {
+      LocalTime localTime;
+      switch (logicalTypeAnnotation.getUnit()) {
+        case MILLIS:
+          localTime = LocalTime.ofNanoOfDay(value * 1_000_000);
+          break;
+        case MICROS:
+          localTime = LocalTime.ofNanoOfDay(value * 1_000);
+          break;
+        case NANOS:
+          localTime = LocalTime.ofNanoOfDay(value);
+          break;
+        default:
+          throw new IllegalArgumentException("Unrecognized TimeUnit: " + logicalTypeAnnotation.getUnit());
+      }
+      com.google.type.TimeOfDay timeOfDay = com.google.type.TimeOfDay.newBuilder()
+        .setHours(localTime.getHour())
+        .setMinutes(localTime.getMinute())
+        .setSeconds(localTime.getSecond())
+        .setNanos(localTime.getNano())
+        .build();
+      parent.add(timeOfDay);
+    }
+  }
+
+  static final class ProtoDoubleValueConverter extends PrimitiveConverter {
+
+    final ParentValueContainer parent;
+
+    public ProtoDoubleValueConverter(ParentValueContainer parent) {
+      this.parent = parent;
+    }
+
+    @Override
+    public void addDouble(double value) {
+      parent.add(DoubleValue.of(value));
+    }
+  }
+
+  static final class ProtoFloatValueConverter extends PrimitiveConverter {
+
+    final ParentValueContainer parent;
+
+    public ProtoFloatValueConverter(ParentValueContainer parent) {
+      this.parent = parent;
+    }
+
+    @Override
+    public void addFloat(float value) {
+      parent.add(FloatValue.of(value));
+    }
+  }
+
+  static final class ProtoInt64ValueConverter extends PrimitiveConverter {
+
+    final ParentValueContainer parent;
+
+    public ProtoInt64ValueConverter(ParentValueContainer parent) {
+      this.parent = parent;
+    }
+
+    @Override
+    public void addLong(long value) {
+      parent.add(Int64Value.of(value));
+    }
+  }
+
+  static final class ProtoUInt64ValueConverter extends PrimitiveConverter {
+
+    final ParentValueContainer parent;
+
+    public ProtoUInt64ValueConverter(ParentValueContainer parent) {
+      this.parent = parent;
+    }
+
+    @Override
+    public void addLong(long value) {
+      parent.add(UInt64Value.of(value));
+    }
+  }
+
+  static final class ProtoInt32ValueConverter extends PrimitiveConverter {
+
+    final ParentValueContainer parent;
+
+    public ProtoInt32ValueConverter(ParentValueContainer parent) {
+      this.parent = parent;
+    }
+
+    @Override
+    public void addInt(int value) {
+      parent.add(Int32Value.of(value));
+    }
+  }
+
+  static final class ProtoUInt32ValueConverter extends PrimitiveConverter {
+
+    final ParentValueContainer parent;
+
+    public ProtoUInt32ValueConverter(ParentValueContainer parent) {
+      this.parent = parent;
+    }
+
+    @Override
+    public void addLong(long value) {
+      parent.add(UInt32Value.of(Math.toIntExact(value)));
+    }
+  }
+
+  static final class ProtoBoolValueConverter extends PrimitiveConverter {
+
+    final ParentValueContainer parent;
+
+    public ProtoBoolValueConverter(ParentValueContainer parent) {
+      this.parent = parent;
+    }
+
+    @Override
+    public void addBoolean(boolean value) {
+      parent.add(BoolValue.of(value));
+    }
+
+  }
+
+  static final class ProtoStringValueConverter extends PrimitiveConverter {
+
+    final ParentValueContainer parent;
+
+    public ProtoStringValueConverter(ParentValueContainer parent) {
+      this.parent = parent;
+    }
+
+    @Override
+    public void addBinary(Binary binary) {
+      String str = binary.toStringUsingUTF8();
+      parent.add(StringValue.of(str));
+    }
+
+  }
+
+  static final class ProtoBytesValueConverter extends PrimitiveConverter {
+
+    final ParentValueContainer parent;
+
+    public ProtoBytesValueConverter(ParentValueContainer parent) {
+      this.parent = parent;
+    }
+
+    @Override
+    public void addBinary(Binary binary) {
+      ByteString byteString = ByteString.copyFrom(binary.toByteBuffer());
+      parent.add(BytesValue.of(byteString));
+    }
   }
 
   /**
