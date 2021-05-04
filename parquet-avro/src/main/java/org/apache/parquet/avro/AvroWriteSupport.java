@@ -67,6 +67,9 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
   public static final String WRITE_PARQUET_UUID = "parquet.avro.write-parquet-uuid";
   static final boolean WRITE_PARQUET_UUID_DEFAULT = false;
 
+  // Support writing Parquet INT96 from a 12-byte Avro fixed.
+  public static final String WRITE_FIXED_AS_INT96 = "parquet.avro.writeFixedAsInt96";
+
   private static final String MAP_REPEATED_NAME = "key_value";
   private static final String MAP_KEY_NAME = "key";
   private static final String MAP_VALUE_NAME = "value";
