@@ -24,12 +24,13 @@ import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.crypto.ParquetCryptoRuntimeException;
-import org.codehaus.jackson.JsonNode;
-import org.codehaus.jackson.map.ObjectMapper;
-import org.codehaus.jackson.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -75,7 +76,7 @@ public class HadoopFSKeyMaterialStore implements FileKeyMaterialStore {
   private void loadKeyMaterialMap() {
     try (FSDataInputStream keyMaterialStream = hadoopFileSystem.open(keyMaterialFile)) {
       JsonNode keyMaterialJson = objectMapper.readTree(keyMaterialStream);
-      keyMaterialMap = objectMapper.readValue(keyMaterialJson,
+      keyMaterialMap = objectMapper.readValue(keyMaterialJson.traverse(),
         new TypeReference<Map<String, String>>() { });
     } catch (FileNotFoundException e) {
       throw new ParquetCryptoRuntimeException("External key material not found at " + keyMaterialFile, e);
@@ -87,7 +88,7 @@ public class HadoopFSKeyMaterialStore implements FileKeyMaterialStore {
   @Override
   public void saveMaterial() throws ParquetCryptoRuntimeException {
     try (FSDataOutputStream keyMaterialStream = hadoopFileSystem.create(keyMaterialFile)) {
-      objectMapper.writeValue(keyMaterialStream, keyMaterialMap);
+      objectMapper.writeValue((OutputStream) keyMaterialStream, keyMaterialMap);
     } catch (IOException e) {
       throw new ParquetCryptoRuntimeException("Failed to save key material in " + keyMaterialFile, e);
     }
