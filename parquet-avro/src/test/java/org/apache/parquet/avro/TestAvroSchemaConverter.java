@@ -44,6 +44,7 @@ import static org.apache.parquet.avro.AvroTestUtil.field;
 import static org.apache.parquet.avro.AvroTestUtil.optionalField;
 import static org.apache.parquet.avro.AvroTestUtil.primitive;
 import static org.apache.parquet.avro.AvroTestUtil.record;
+import static org.apache.parquet.avro.AvroWriteSupport.WRITE_FIXED_AS_INT96;
 import static org.apache.parquet.schema.OriginalType.DATE;
 import static org.apache.parquet.schema.OriginalType.TIMESTAMP_MICROS;
 import static org.apache.parquet.schema.OriginalType.TIMESTAMP_MILLIS;
@@ -822,6 +823,37 @@ public class TestAvroSchemaConverter {
         "message myrecord {\n" +
             "  required fixed_len_byte_array(16) uuid (UUID);\n" +
             "}\n");
+  }
+
+  @Test
+  public void testAvroFixed12AsParquetInt96Type() throws Exception {
+    Schema schema = new Schema.Parser().parse(
+        Resources.getResource("fixedToInt96.avsc").openStream());
+
+    Configuration conf = new Configuration();
+    conf.setStrings(WRITE_FIXED_AS_INT96, "int96", "mynestedrecord.int96inrecord", "mynestedrecord.myarrayofoptional",
+        "mynestedrecord.mymap");
+    testAvroToParquetConversion(conf, schema, "message org.apache.parquet.avro.fixedToInt96 {\n"
+        + "  required int96 int96;\n"
+        + "  required fixed_len_byte_array(12) notanint96;\n"
+        + "  required group mynestedrecord {\n"
+        + "    required int96 int96inrecord;\n"
+        + "    required group myarrayofoptional (LIST) {\n"
+        + "      repeated int96 array;\n"
+        + "    }\n"
+        + "    required group mymap (MAP) {\n"
+        + "      repeated group key_value (MAP_KEY_VALUE) {\n"
+        + "        required binary key (STRING);\n"
+        + "        required int96 value;\n"
+        + "      }\n"
+        + "    }\n"
+        + "  }\n"
+        + "  required fixed_len_byte_array(1) onebytefixed;\n"
+        + "}");
+
+    conf.setStrings(WRITE_FIXED_AS_INT96, "onebytefixed");
+    assertThrows("Exception should be thrown for fixed types to be converted to INT96 where the size is not 12 bytes",
+        IllegalArgumentException.class, () -> new AvroSchemaConverter(conf).convert(schema));
   }
 
   public static Schema optional(Schema original) {
