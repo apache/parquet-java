@@ -226,7 +226,7 @@
               <rules>
                 <bannedDependencies>
                   <excludes>
-                    <exclude>org.slf4j:slf4j-log4j12</exclude>
+                    <exclude>org.slf4j:slf4j-log4j12:*:*:compile</exclude>
                   </excludes>
                 </bannedDependencies>
               </rules>
