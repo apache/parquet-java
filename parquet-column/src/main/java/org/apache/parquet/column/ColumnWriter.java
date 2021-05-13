@@ -18,7 +18,6 @@
  */
 package org.apache.parquet.column;
 
-import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.io.api.Binary;
 
 /**

@@ -62,7 +62,7 @@ final class GlobParser {
 
     // the outer parse method needs to parse the pattern into a
     // GlobNodeSequence, though it may end up being a singleton sequence
-    List<GlobNode> children = new ArrayList<GlobNode>();
+    List<GlobNode> children = new ArrayList<>();
 
     int unmatchedBraces = 0; // count of unmatched braces
     int firstBrace = 0; // open brace of current group being processsed
@@ -145,7 +145,7 @@ final class GlobParser {
 
     // this inner parse method needs to parse the pattern into a
     // OneOf, though it may end up being a singleton OneOf
-    List<GlobNode> children = new ArrayList<GlobNode>();
+    List<GlobNode> children = new ArrayList<>();
 
     int unmatchedBraces = 0; // count of unmatched braces
     int anchor = 0; // first un-parsed character position

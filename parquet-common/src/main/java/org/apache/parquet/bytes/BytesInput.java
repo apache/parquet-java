@@ -280,6 +280,7 @@ abstract public class BytesInput {
       out.write(this.toByteArray());
     }
 
+    @Override
     public byte[] toByteArray() throws IOException {
       LOG.debug("read all {} bytes", byteCount);
       byte[] buf = new byte[byteCount];
@@ -341,6 +342,7 @@ abstract public class BytesInput {
       BytesUtils.writeIntLittleEndian(out, intValue);
     }
 
+    @Override
     public ByteBuffer toByteBuffer() throws IOException {
       return ByteBuffer.allocate(4).putInt(0, intValue);
     }
@@ -365,6 +367,7 @@ abstract public class BytesInput {
       BytesUtils.writeUnsignedVarInt(intValue, out);
     }
 
+    @Override
     public ByteBuffer toByteBuffer() throws IOException {
       ByteBuffer ret = ByteBuffer.allocate((int) size());
       BytesUtils.writeUnsignedVarInt(intValue, ret);
@@ -409,6 +412,7 @@ abstract public class BytesInput {
       return 0;
     }
 
+    @Override
     public ByteBuffer toByteBuffer() throws IOException {
       return ByteBuffer.allocate(0);
     }
@@ -472,6 +476,7 @@ abstract public class BytesInput {
       out.write(in, offset, length);
     }
 
+    @Override
     public ByteBuffer toByteBuffer() throws IOException {
       return java.nio.ByteBuffer.wrap(in, offset, length);
     }

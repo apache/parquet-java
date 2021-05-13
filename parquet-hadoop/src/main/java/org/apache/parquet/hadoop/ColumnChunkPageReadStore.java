@@ -82,7 +82,7 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
         BlockCipher.Decryptor blockDecryptor, byte[] fileAAD, 
         int rowGroupOrdinal, int columnOrdinal) {
       this.decompressor = decompressor;
-      this.compressedPages = new ArrayDeque<DataPage>(compressedPages);
+      this.compressedPages = new ArrayDeque<>(compressedPages);
       this.compressedDictionaryPage = compressedDictionaryPage;
       long count = 0;
       for (DataPage p : compressedPages) {
@@ -246,7 +246,7 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
     }
   }
 
-  private final Map<ColumnDescriptor, ColumnChunkPageReader> readers = new HashMap<ColumnDescriptor, ColumnChunkPageReader>();
+  private final Map<ColumnDescriptor, ColumnChunkPageReader> readers = new HashMap<>();
   private final long rowCount;
   private final RowRanges rowRanges;
 

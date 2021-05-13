@@ -102,6 +102,7 @@ public interface BloomFilter {
    * @param object
    * @return true if the given object represents a Bloom filter equivalent to this Bloom filter, false otherwise.
    */
+  @Override
   boolean equals(Object object);
 
   /**

@@ -28,7 +28,7 @@ import org.apache.parquet.schema.Type;
 
 public class ColumnChunkProperties {
 
-  private static Canonicalizer<ColumnChunkProperties> properties = new Canonicalizer<ColumnChunkProperties>();
+  private static Canonicalizer<ColumnChunkProperties> properties = new Canonicalizer<>();
 
   /**
    * @param path the path of this column in the write schema

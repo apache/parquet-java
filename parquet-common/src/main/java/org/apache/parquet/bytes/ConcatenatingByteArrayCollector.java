@@ -26,7 +26,7 @@ import java.util.List;
 import static java.lang.String.format;
 
 public class ConcatenatingByteArrayCollector extends BytesInput {
-  private final List<byte[]> slabs = new ArrayList<byte[]>();
+  private final List<byte[]> slabs = new ArrayList<>();
   private long size = 0;
 
   public void collect(BytesInput bytesInput) throws IOException {

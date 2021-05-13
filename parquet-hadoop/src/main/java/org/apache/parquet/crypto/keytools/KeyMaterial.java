@@ -140,7 +140,7 @@ public class KeyMaterial {
 
   static String createSerialized(boolean isFooterKey, String kmsInstanceID, String kmsInstanceURL, String masterKeyID, 
       boolean isDoubleWrapped, String kekID, String encodedWrappedKEK, String encodedWrappedDEK, boolean isInternalStorage) {
-    Map<String, Object> keyMaterialMap = new HashMap<String, Object>(10);
+    Map<String, Object> keyMaterialMap = new HashMap<>(10);
     // 1. Write "key material type"
     keyMaterialMap.put(KEY_MATERIAL_TYPE_FIELD, KEY_MATERIAL_TYPE1);
     if (isInternalStorage) {

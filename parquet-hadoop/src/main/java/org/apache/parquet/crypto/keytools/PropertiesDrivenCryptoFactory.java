@@ -157,7 +157,7 @@ public class PropertiesDrivenCryptoFactory implements EncryptionPropertiesFactor
     if (stringIsEmpty(columnKeys)) {
       throw new ParquetCryptoRuntimeException("No column keys configured in " + COLUMN_KEYS_PROPERTY_NAME);
     }
-    Map<ColumnPath, ColumnEncryptionProperties> encryptedColumns = new HashMap<ColumnPath, ColumnEncryptionProperties>();
+    Map<ColumnPath, ColumnEncryptionProperties> encryptedColumns = new HashMap<>();
     String keyToColumns[] = columnKeys.split(";");
     for (int i = 0; i < keyToColumns.length; ++i) {
       final String curKeyToColumns = keyToColumns[i].trim();

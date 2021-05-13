@@ -33,7 +33,7 @@ public class HadoopOutputFile implements OutputFile {
   // for hadoop 1 to present. copying it avoids loading DFSConfigKeys.
   private static final int DFS_BUFFER_SIZE_DEFAULT = 4096;
 
-  private static final Set<String> BLOCK_FS_SCHEMES = new HashSet<String>();
+  private static final Set<String> BLOCK_FS_SCHEMES = new HashSet<>();
   static {
     BLOCK_FS_SCHEMES.add("hdfs");
     BLOCK_FS_SCHEMES.add("webhdfs");

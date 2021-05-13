@@ -26,7 +26,7 @@ import org.apache.parquet.column.Encoding;
 
 public class EncodingList implements Iterable<Encoding> {
 
-  private static Canonicalizer<EncodingList> encodingLists = new Canonicalizer<EncodingList>();
+  private static Canonicalizer<EncodingList> encodingLists = new Canonicalizer<>();
 
   public static EncodingList getEncodingList(List<Encoding> encodings) {
     return encodingLists.canonicalize(new EncodingList(encodings));

@@ -347,7 +347,7 @@ public class ParquetReader<T> implements Closeable {
           for (FileStatus fileStatus : fs.listStatus(path, HiddenFileFilter.INSTANCE)) {
             files.add(HadoopInputFile.fromStatus(fileStatus, conf));
           }
-          return new ParquetReader<T>(files, options, getReadSupport());
+          return new ParquetReader<>(files, options, getReadSupport());
         }
 
       } else {

@@ -44,8 +44,8 @@ public class CodecFactory implements CompressionCodecFactory {
   protected static final Map<String, CompressionCodec> CODEC_BY_NAME = Collections
       .synchronizedMap(new HashMap<String, CompressionCodec>());
 
-  private final Map<CompressionCodecName, BytesCompressor> compressors = new HashMap<CompressionCodecName, BytesCompressor>();
-  private final Map<CompressionCodecName, BytesDecompressor> decompressors = new HashMap<CompressionCodecName, BytesDecompressor>();
+  private final Map<CompressionCodecName, BytesCompressor> compressors = new HashMap<>();
+  private final Map<CompressionCodecName, BytesDecompressor> decompressors = new HashMap<>();
 
   protected final Configuration configuration;
   protected final int pageSize;
@@ -122,6 +122,7 @@ public class CodecFactory implements CompressionCodecFactory {
       output.put(decompressed);
     }
 
+    @Override
     public void release() {
       if (decompressor != null) {
         CodecPool.returnDecompressor(decompressor);
@@ -178,6 +179,7 @@ public class CodecFactory implements CompressionCodecFactory {
       }
     }
 
+    @Override
     public CompressionCodecName getCodecName() {
       return codecName;
     }
@@ -261,8 +263,11 @@ public class CodecFactory implements CompressionCodecFactory {
    */
   @Deprecated
   public static abstract class BytesCompressor implements CompressionCodecFactory.BytesInputCompressor {
+    @Override
     public abstract BytesInput compress(BytesInput bytes) throws IOException;
+    @Override
     public abstract CompressionCodecName getCodecName();
+    @Override
     public abstract void release();
   }
 
@@ -271,8 +276,11 @@ public class CodecFactory implements CompressionCodecFactory {
    */
   @Deprecated
   public static abstract class BytesDecompressor implements CompressionCodecFactory.BytesInputDecompressor {
+    @Override
     public abstract BytesInput decompress(BytesInput bytes, int uncompressedSize) throws IOException;
+    @Override
     public abstract void decompress(ByteBuffer input, int compressedSize, ByteBuffer output, int uncompressedSize) throws IOException;
+    @Override
     public abstract void release();
   }
 }

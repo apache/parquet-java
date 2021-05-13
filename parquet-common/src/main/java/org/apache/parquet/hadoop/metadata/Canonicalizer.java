@@ -29,7 +29,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class Canonicalizer<T> {
 
-  private ConcurrentHashMap<T, T> canonicals = new ConcurrentHashMap<T, T>();
+  private ConcurrentHashMap<T, T> canonicals = new ConcurrentHashMap<>();
 
   /**
    * @param value the value to canonicalize

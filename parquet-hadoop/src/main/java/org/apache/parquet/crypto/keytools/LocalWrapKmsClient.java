@@ -79,7 +79,7 @@ public abstract class LocalWrapKmsClient implements KmsClient {
     }
 
     private static String createSerialized(String encryptedEncodedKey) {
-      Map<String, String> keyWrapMap = new HashMap<String, String>(2);
+      Map<String, String> keyWrapMap = new HashMap<>(2);
       keyWrapMap.put(LOCAL_WRAP_KEY_VERSION_FIELD, LOCAL_WRAP_NO_KEY_VERSION);
       keyWrapMap.put(LOCAL_WRAP_ENCRYPTED_KEY_FIELD, encryptedEncodedKey);
       try {

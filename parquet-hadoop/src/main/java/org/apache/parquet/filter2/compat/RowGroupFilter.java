@@ -34,8 +34,6 @@ import org.apache.parquet.filter2.statisticslevel.StatisticsFilter;
 import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.schema.MessageType;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Given a {@link Filter} applies it to a list of BlockMetaData (row groups)
@@ -94,7 +92,7 @@ public class RowGroupFilter implements Visitor<List<BlockMetaData>> {
     // check that the schema of the filter matches the schema of the file
     SchemaCompatibilityValidator.validate(filterPredicate, schema);
 
-    List<BlockMetaData> filteredBlocks = new ArrayList<BlockMetaData>();
+    List<BlockMetaData> filteredBlocks = new ArrayList<>();
 
     for (BlockMetaData block : blocks) {
       boolean drop = false;

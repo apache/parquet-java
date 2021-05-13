@@ -19,7 +19,6 @@
 package org.apache.parquet.column.values.plain;
 
 import java.io.IOException;
-import java.nio.charset.Charset;
 
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.BytesInput;
@@ -37,8 +36,6 @@ import org.slf4j.LoggerFactory;
  */
 public class PlainValuesWriter extends ValuesWriter {
   private static final Logger LOG = LoggerFactory.getLogger(PlainValuesWriter.class);
-
-  public static final Charset CHARSET = Charset.forName("UTF-8");
 
   private CapacityByteArrayOutputStream arrayOut;
   private LittleEndianDataOutputStream out;

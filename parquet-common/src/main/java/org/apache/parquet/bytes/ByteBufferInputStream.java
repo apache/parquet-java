@@ -130,30 +130,37 @@ public class ByteBufferInputStream extends InputStream {
     return ByteBufferInputStream.wrap(remainingBuffers());
   }
 
+  @Override
   public int read() throws IOException {
     return delegate.read();
   }
 
+  @Override
   public int read(byte[] b, int off, int len) throws IOException {
     return delegate.read(b, off, len);
   }
 
+  @Override
   public long skip(long n) {
     return delegate.skip(n);
   }
 
+  @Override
   public int available() {
     return delegate.available();
   }
 
+  @Override
   public void mark(int readlimit) {
     delegate.mark(readlimit);
   }
 
+  @Override
   public void reset() throws IOException {
     delegate.reset();
   }
 
+  @Override
   public boolean markSupported() {
     return delegate.markSupported();
   }

@@ -20,7 +20,6 @@
 package org.apache.parquet.crypto;
 
 import org.apache.parquet.format.BlockCipher;
-import org.apache.parquet.format.EncryptionAlgorithm;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,7 +53,7 @@ public class InternalFileDecryptor {
     footerKey = fileDecryptionProperties.getFooterKey();
     keyRetriever = fileDecryptionProperties.getKeyRetriever();
     aadPrefixInProperties = fileDecryptionProperties.getAADPrefix();
-    columnMap = new HashMap<ColumnPath, InternalColumnDecryptionSetup>();
+    columnMap = new HashMap<>();
     this.aadPrefixVerifier = fileDecryptionProperties.getAADPrefixVerifier();
     this.plaintextFile = false;
   }

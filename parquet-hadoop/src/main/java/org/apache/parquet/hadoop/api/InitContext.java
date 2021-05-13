@@ -61,7 +61,7 @@ public class InitContext {
   @Deprecated
   public Map<String, String> getMergedKeyValueMetaData() {
     if (mergedKeyValueMetadata == null) {
-      Map<String, String> mergedKeyValues = new HashMap<String, String>();
+      Map<String, String> mergedKeyValues = new HashMap<>();
       for (Entry<String, Set<String>> entry : keyValueMetadata.entrySet()) {
         if (entry.getValue().size() > 1) {
           throw new RuntimeException("could not merge metadata: key " + entry.getKey() + " has conflicting values: " + entry.getValue());

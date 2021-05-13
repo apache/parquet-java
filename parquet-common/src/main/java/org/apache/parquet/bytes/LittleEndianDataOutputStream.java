@@ -19,8 +19,6 @@
 package org.apache.parquet.bytes;
 
 import org.apache.parquet.IOExceptionUtils;
-import org.apache.parquet.ParquetRuntimeException;
-
 import java.io.IOException;
 import java.io.OutputStream;
 
@@ -56,6 +54,7 @@ public class LittleEndianDataOutputStream extends OutputStream {
    * @exception  IOException  if an I/O error occurs.
    * @see        java.io.FilterOutputStream#out
    */
+  @Override
   public void write(int b) throws IOException {
     out.write(b);
   }
@@ -72,6 +71,7 @@ public class LittleEndianDataOutputStream extends OutputStream {
    * @exception  IOException  if an I/O error occurs.
    * @see        java.io.FilterOutputStream#out
    */
+  @Override
   public void write(byte b[], int off, int len) throws IOException {
     out.write(b, off, len);
   }
@@ -87,6 +87,7 @@ public class LittleEndianDataOutputStream extends OutputStream {
    * @see        java.io.FilterOutputStream#out
    * @see        java.io.OutputStream#flush()
    */
+  @Override
   public void flush() throws IOException {
     out.flush();
   }
@@ -210,6 +211,7 @@ public class LittleEndianDataOutputStream extends OutputStream {
     writeLong(Double.doubleToLongBits(v));
   }
 
+  @Override
   public void close() {
     IOExceptionUtils.closeQuietly(out);
   }

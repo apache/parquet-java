@@ -76,7 +76,7 @@ public class Consumers {
     }
 
     public DelegatingFieldConsumer onField(TFieldIdEnum e, TypedConsumer typedConsumer) {
-      Map<Short, TypedConsumer> newContexts = new HashMap<Short, TypedConsumer>(contexts);
+      Map<Short, TypedConsumer> newContexts = new HashMap<>(contexts);
       newContexts.put(e.getThriftFieldId(), typedConsumer);
       return new DelegatingFieldConsumer(defaultFieldEventConsumer, newContexts);
     }
@@ -122,7 +122,7 @@ public class Consumers {
       @Override
       public void consumeList(TProtocol protocol,
           EventBasedThriftReader reader, TList tList) throws TException {
-        co.list = new ArrayList<T>();
+        co.list = new ArrayList<>();
         super.consumeList(protocol, reader, tList);
         consumer.consume(co.list);
       }
@@ -139,7 +139,7 @@ public class Consumers {
   }
 
   public static <T extends TBase<T,? extends TFieldIdEnum>> StructConsumer struct(final Class<T> c, final Consumer<T> consumer) {
-    return new TBaseStructConsumer<T>(c, consumer);
+    return new TBaseStructConsumer<>(c, consumer);
   }
 }
 

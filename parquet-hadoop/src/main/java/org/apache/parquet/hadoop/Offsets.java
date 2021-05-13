@@ -21,7 +21,6 @@ package org.apache.parquet.hadoop;
 
 import java.io.IOException;
 
-import org.apache.parquet.format.PageHeader;
 import org.apache.parquet.format.Util;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.io.SeekableInputStream;

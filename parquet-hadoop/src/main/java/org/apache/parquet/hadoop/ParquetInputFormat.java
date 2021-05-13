@@ -279,7 +279,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
       TaskAttemptContext taskAttemptContext) throws IOException, InterruptedException {
     Configuration conf = ContextUtil.getConfiguration(taskAttemptContext);
     ReadSupport<T> readSupport = getReadSupport(conf);
-    return new ParquetRecordReader<T>(readSupport, getFilter(conf));
+    return new ParquetRecordReader<>(readSupport, getFilter(conf));
   }
 
   /**
@@ -332,7 +332,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
   @Override
   public List<InputSplit> getSplits(JobContext jobContext) throws IOException {
     Configuration configuration = ContextUtil.getConfiguration(jobContext);
-    List<InputSplit> splits = new ArrayList<InputSplit>();
+    List<InputSplit> splits = new ArrayList<>();
 
     if (isTaskSideMetaData(configuration)) {
       // Although not required by the API, some clients may depend on always
@@ -388,7 +388,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
 
   private static List<FileStatus> getAllFileRecursively(
       List<FileStatus> files, Configuration conf) throws IOException {
-    List<FileStatus> result = new ArrayList<FileStatus>();
+    List<FileStatus> result = new ArrayList<>();
     for (FileStatus file : files) {
       if (file.isDir()) {
         Path p = file.getPath();
@@ -427,14 +427,14 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
     Configuration config = ContextUtil.getConfiguration(jobContext);
     // Use LinkedHashMap to preserve the insertion order and ultimately to return the list of
     // footers in the same order as the list of file statuses returned from listStatus()
-    Map<FileStatusWrapper, Footer> footersMap = new LinkedHashMap<FileStatusWrapper, Footer>();
-    Set<FileStatus> missingStatuses = new HashSet<FileStatus>();
+    Map<FileStatusWrapper, Footer> footersMap = new LinkedHashMap<>();
+    Set<FileStatus> missingStatuses = new HashSet<>();
     Map<Path, FileStatusWrapper> missingStatusesMap =
-            new HashMap<Path, FileStatusWrapper>(missingStatuses.size());
+            new HashMap<>(missingStatuses.size());
 
     if (footersCache == null) {
       footersCache =
-              new LruCache<FileStatusWrapper, FootersCacheValue>(Math.max(statuses.size(), MIN_FOOTER_CACHE_SIZE));
+              new LruCache<>(Math.max(statuses.size(), MIN_FOOTER_CACHE_SIZE));
     }
     for (FileStatus status : statuses) {
       FileStatusWrapper statusWrapper = new FileStatusWrapper(status);
@@ -467,7 +467,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
       }
     }
 
-    List<Footer> footers = new ArrayList<Footer>(statuses.size());
+    List<Footer> footers = new ArrayList<>(statuses.size());
     for (Entry<FileStatusWrapper, Footer> footerEntry : footersMap.entrySet()) {
       Footer footer = footerEntry.getValue();
 
@@ -645,7 +645,7 @@ class ClientSideMetadataSplitStrategy {
   }
 
   static class SplitInfo {
-    List<BlockMetaData> rowGroups = new ArrayList<BlockMetaData>();
+    List<BlockMetaData> rowGroups = new ArrayList<>();
     BlockLocation hdfsBlock;
     long compressedByteSize = 0L;
 
@@ -707,7 +707,7 @@ class ClientSideMetadataSplitStrategy {
   List<ParquetInputSplit> getSplits(Configuration configuration, List<Footer> footers,
       long maxSplitSize, long minSplitSize, ReadContext readContext)
       throws IOException {
-    List<ParquetInputSplit> splits = new ArrayList<ParquetInputSplit>();
+    List<ParquetInputSplit> splits = new ArrayList<>();
     Filter filter = ParquetInputFormat.getFilter(configuration);
 
     long rowGroupsDropped = 0;
@@ -777,7 +777,7 @@ class ClientSideMetadataSplitStrategy {
         generateSplitInfo(rowGroupBlocks, hdfsBlocksArray, minSplitSize, maxSplitSize);
 
     //generate splits from rowGroups of each split
-    List<ParquetInputSplit> resultSplits = new ArrayList<ParquetInputSplit>();
+    List<ParquetInputSplit> resultSplits = new ArrayList<>();
     for (SplitInfo splitInfo : splitRowGroups) {
       ParquetInputSplit split = splitInfo.getParquetInputSplit(fileStatus, requestedSchema, readSupportMetadata);
       resultSplits.add(split);
@@ -799,7 +799,7 @@ class ClientSideMetadataSplitStrategy {
     SplitInfo currentSplit = new SplitInfo(hdfsBlocks.getCurrentBlock());
 
     //assign rowGroups to splits
-    splitRowGroups = new ArrayList<SplitInfo>();
+    splitRowGroups = new ArrayList<>();
     checkSorted(rowGroupBlocks);//assert row groups are sorted
     for (BlockMetaData rowGroupMetadata : rowGroupBlocks) {
       if ((hdfsBlocks.checkBelongingToANewHDFSBlock(rowGroupMetadata)

@@ -32,7 +32,6 @@ import java.nio.ByteOrder;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
-import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 import javax.naming.OperationNotSupportedException;

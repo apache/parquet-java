@@ -28,7 +28,7 @@ import java.util.List;
  */
 public class BlockMetaData {
 
-  private List<ColumnChunkMetaData> columns = new ArrayList<ColumnChunkMetaData>();
+  private List<ColumnChunkMetaData> columns = new ArrayList<>();
   private long rowCount;
   private long totalByteSize;
   private String path;

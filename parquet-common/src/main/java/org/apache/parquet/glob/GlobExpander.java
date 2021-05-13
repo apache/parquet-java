@@ -78,7 +78,7 @@ public final class GlobExpander {
       // in the case of OneOf, we just need to take all of
       // the possible values the OneOf represents and
       // union them together
-      List<String> results = new ArrayList<String>();
+      List<String> results = new ArrayList<>();
       for (GlobNode n : oneOf.getChildren()) {
         results.addAll(n.accept(this));
       }
@@ -92,7 +92,7 @@ public final class GlobExpander {
       // possibilities, then do a cross product of
       // all the children, in order.
 
-      List<String> results = new ArrayList<String>();
+      List<String> results = new ArrayList<>();
       for (GlobNode n : seq.getChildren()) {
         results = crossOrTakeNonEmpty(results, n.accept(this));
       }
@@ -106,18 +106,14 @@ public final class GlobExpander {
      */
     public static List<String> crossOrTakeNonEmpty(List<String> list1, List<String> list2) {
       if (list1.isEmpty()) {
-        ArrayList<String> result = new ArrayList<String>(list2.size());
-        result.addAll(list2);
-        return result;
+        return new ArrayList<>(list2);
       }
 
       if (list2.isEmpty()) {
-        ArrayList<String> result = new ArrayList<String>(list1.size());
-        result.addAll(list1);
-        return result;
+        return new ArrayList<>(list1);
       }
 
-      List<String> result = new ArrayList<String>(list1.size() * list2.size());
+      List<String> result = new ArrayList<>(list1.size() * list2.size());
       for (String s1 : list1) {
         for (String s2 : list2) {
           result.add(s1 + s2);

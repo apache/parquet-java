@@ -44,6 +44,7 @@ public class ParquetOutputCommitter extends FileOutputCommitter {
     this.outputPath = outputPath;
   }
 
+  @Override
   public void commitJob(JobContext jobContext) throws IOException {
     super.commitJob(jobContext);
     Configuration configuration = ContextUtil.getConfiguration(jobContext);

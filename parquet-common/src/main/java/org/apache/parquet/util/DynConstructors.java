@@ -102,7 +102,7 @@ public class DynConstructors {
     private final Class<?> baseClass;
     private ClassLoader loader = Thread.currentThread().getContextClassLoader();
     private Ctor ctor = null;
-    private Map<String, Throwable> problems = new HashMap<String, Throwable>();
+    private Map<String, Throwable> problems = new HashMap<>();
 
     public Builder(Class<?> baseClass) {
       this.baseClass = baseClass;
@@ -149,7 +149,7 @@ public class DynConstructors {
       }
 
       try {
-        ctor = new Ctor<T>(targetClass.getConstructor(types), targetClass);
+        ctor = new Ctor<>(targetClass.getConstructor(types), targetClass);
       } catch (NoSuchMethodException e) {
         // not the right implementation
         problems.put(methodName(targetClass, types), e);
@@ -188,7 +188,7 @@ public class DynConstructors {
       try {
         Constructor<T> hidden = targetClass.getDeclaredConstructor(types);
         AccessController.doPrivileged(new MakeAccessible(hidden));
-        ctor = new Ctor<T>(hidden, targetClass);
+        ctor = new Ctor<>(hidden, targetClass);
       } catch (NoSuchMethodException | SecurityException e) {
         // unusable or not the right implementation
         problems.put(methodName(targetClass, types), e);

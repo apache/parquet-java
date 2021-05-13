@@ -123,7 +123,7 @@ public final class Strings {
    * @return a list of wildcard paths, one for each expanded result
    */
   public static List<WildcardPath> expandGlobToWildCardPaths(String globPattern, char delim) {
-    List<WildcardPath> ret = new ArrayList<WildcardPath>();
+    List<WildcardPath> ret = new ArrayList<>();
     for (String expandedGlob : Strings.expandGlob(globPattern)) {
       ret.add(new WildcardPath(globPattern, expandedGlob, delim));
     }

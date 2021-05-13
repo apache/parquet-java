@@ -101,7 +101,7 @@ public class KeyMetadata {
 
   // For external material only. For internal material, create serialized KeyMaterial directly
   static String createSerializedForExternalMaterial(String keyReference) {
-    Map<String, Object> keyMetadataMap = new HashMap<String, Object>(3);
+    Map<String, Object> keyMetadataMap = new HashMap<>(3);
     // 1. Write "key material type"
     keyMetadataMap.put(KeyMaterial.KEY_MATERIAL_TYPE_FIELD, KeyMaterial.KEY_MATERIAL_TYPE1);
     // 2. Write internal storage as false

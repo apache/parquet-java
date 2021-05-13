@@ -56,7 +56,7 @@ class ColumnConfigParser {
 
   public <T> ColumnConfigParser withColumnConfig(String rootKey, Function<String, T> function,
       BiConsumer<String, T> consumer) {
-    helpers.add(new ConfigHelper<T>(rootKey + '#', function, consumer));
+    helpers.add(new ConfigHelper<>(rootKey + '#', function, consumer));
     return this;
   }
 

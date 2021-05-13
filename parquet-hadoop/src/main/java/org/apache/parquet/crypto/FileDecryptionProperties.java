@@ -117,7 +117,7 @@ public class FileDecryptionProperties {
         throw new IllegalStateException("Column properties already set");
       }
       // Copy the map to make column properties immutable
-      this.columnPropertyMap = new HashMap<ColumnPath, ColumnDecryptionProperties>(columnProperties);
+      this.columnPropertyMap = new HashMap<>(columnProperties);
 
       return this;
     }
