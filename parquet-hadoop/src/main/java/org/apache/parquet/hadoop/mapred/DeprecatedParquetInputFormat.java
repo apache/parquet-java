@@ -39,12 +39,12 @@ import org.apache.parquet.hadoop.ParquetRecordReader;
 
 public class DeprecatedParquetInputFormat<V> extends org.apache.hadoop.mapred.FileInputFormat<Void, Container<V>> {
 
-  protected ParquetInputFormat<V> realInputFormat = new ParquetInputFormat<V>();
+  protected ParquetInputFormat<V> realInputFormat = new ParquetInputFormat<>();
 
   @Override
   public RecordReader<Void, Container<V>> getRecordReader(InputSplit split, JobConf job,
                   Reporter reporter) throws IOException {
-    return new RecordReaderWrapper<V>(split, job, reporter);
+    return new RecordReaderWrapper<>(split, job, reporter);
   }
 
   @Override
@@ -86,7 +86,7 @@ public class DeprecatedParquetInputFormat<V> extends org.apache.hadoop.mapred.Fi
       splitLen = oldSplit.getLength();
 
       try {
-        realReader = new ParquetRecordReader<V>(
+        realReader = new ParquetRecordReader<>(
             ParquetInputFormat.<V>getReadSupportInstance(oldJobConf),
             ParquetInputFormat.getFilter(oldJobConf));
 
@@ -100,7 +100,7 @@ public class DeprecatedParquetInputFormat<V> extends org.apache.hadoop.mapred.Fi
         }
 
         // read once to gain access to key and value objects
-        valueContainer = new Container<V>();
+        valueContainer = new Container<>();
         if (realReader.nextKeyValue()) {
           firstRecord = true;
           valueContainer.set(realReader.getCurrentValue());

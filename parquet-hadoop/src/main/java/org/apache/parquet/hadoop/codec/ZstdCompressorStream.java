@@ -42,18 +42,22 @@ public class ZstdCompressorStream extends CompressionOutputStream {
     zstdOutputStream.setWorkers(workers);
   }
 
+  @Override
   public void write(byte[] b, int off, int len) throws IOException {
     zstdOutputStream.write(b, off, len);
   }
 
+  @Override
   public void write(int b) throws IOException {
     zstdOutputStream.write(b);
   }
 
+  @Override
   public void finish() throws IOException {
      //no-opt, doesn't apply to ZSTD
   }
 
+  @Override
   public void resetState() throws IOException {
     // no-opt, doesn't apply to ZSTD
   }

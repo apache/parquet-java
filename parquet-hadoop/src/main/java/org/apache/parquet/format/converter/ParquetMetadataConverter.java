@@ -58,58 +58,7 @@ import org.apache.parquet.crypto.ModuleCipherFactory.ModuleType;
 import org.apache.parquet.crypto.ParquetCryptoRuntimeException;
 import org.apache.parquet.crypto.TagVerificationException;
 import org.apache.parquet.format.BlockCipher;
-import org.apache.parquet.format.BloomFilterAlgorithm;
-import org.apache.parquet.format.BloomFilterCompression;
-import org.apache.parquet.format.BloomFilterHash;
-import org.apache.parquet.format.BloomFilterHeader;
-import org.apache.parquet.format.BsonType;
-import org.apache.parquet.format.CompressionCodec;
-import org.apache.parquet.format.DateType;
-import org.apache.parquet.format.DecimalType;
-import org.apache.parquet.format.EnumType;
-import org.apache.parquet.format.IntType;
-import org.apache.parquet.format.JsonType;
-import org.apache.parquet.format.ListType;
-import org.apache.parquet.format.LogicalType;
-import org.apache.parquet.format.MapType;
-import org.apache.parquet.format.MicroSeconds;
-import org.apache.parquet.format.MilliSeconds;
-import org.apache.parquet.format.NanoSeconds;
-import org.apache.parquet.format.NullType;
-import org.apache.parquet.format.PageEncodingStats;
-import org.apache.parquet.format.SplitBlockAlgorithm;
-import org.apache.parquet.format.StringType;
-import org.apache.parquet.format.TimeType;
-import org.apache.parquet.format.TimeUnit;
-import org.apache.parquet.format.TimestampType;
-import org.apache.parquet.format.Uncompressed;
-import org.apache.parquet.format.XxHash;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
-import org.apache.parquet.format.BoundaryOrder;
-import org.apache.parquet.format.ColumnChunk;
-import org.apache.parquet.format.ColumnCryptoMetaData;
-import org.apache.parquet.format.ColumnIndex;
-import org.apache.parquet.format.ColumnMetaData;
-import org.apache.parquet.format.ColumnOrder;
-import org.apache.parquet.format.ConvertedType;
-import org.apache.parquet.format.DataPageHeader;
-import org.apache.parquet.format.DataPageHeaderV2;
-import org.apache.parquet.format.DictionaryPageHeader;
-import org.apache.parquet.format.Encoding;
-import org.apache.parquet.format.EncryptionWithColumnKey;
-import org.apache.parquet.format.FieldRepetitionType;
-import org.apache.parquet.format.FileMetaData;
-import org.apache.parquet.format.KeyValue;
-import org.apache.parquet.format.OffsetIndex;
-import org.apache.parquet.format.PageHeader;
-import org.apache.parquet.format.PageLocation;
-import org.apache.parquet.format.PageType;
-import org.apache.parquet.format.RowGroup;
-import org.apache.parquet.format.SchemaElement;
-import org.apache.parquet.format.Statistics;
-import org.apache.parquet.format.Type;
-import org.apache.parquet.format.TypeDefinedOrder;
-import org.apache.parquet.format.UUIDType;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
@@ -190,7 +139,7 @@ public class ParquetMetadataConverter {
   // an unsynchronized collection in Collections.unmodifiable*(), and making sure to not
   // keep any references to the original collection.
   private static final ConcurrentHashMap<Set<org.apache.parquet.column.Encoding>, Set<org.apache.parquet.column.Encoding>>
-      cachedEncodingSets = new ConcurrentHashMap<Set<org.apache.parquet.column.Encoding>, Set<org.apache.parquet.column.Encoding>>();
+      cachedEncodingSets = new ConcurrentHashMap<>();
 
   public FileMetaData toParquetMetadata(int currentVersion, ParquetMetadata parquetMetadata) {
     return toParquetMetadata(currentVersion, parquetMetadata, null);
@@ -593,7 +542,7 @@ public class ParquetMetadataConverter {
 
   // Visible for testing
   Set<org.apache.parquet.column.Encoding> fromFormatEncodings(List<Encoding> encodings) {
-    Set<org.apache.parquet.column.Encoding> converted = new HashSet<org.apache.parquet.column.Encoding>();
+    Set<org.apache.parquet.column.Encoding> converted = new HashSet<>();
 
     for (Encoding encoding : encodings) {
       converted.add(getEncoding(encoding));
@@ -1141,7 +1090,7 @@ public class ParquetMetadataConverter {
   }
 
   public static MetadataFilter offsets(long... offsets) {
-    Set<Long> set = new HashSet<Long>();
+    Set<Long> set = new HashSet<>();
     for (long offset : offsets) {
       set.add(offset);
     }
@@ -1397,7 +1346,7 @@ public class ParquetMetadataConverter {
   public ParquetMetadata fromParquetMetadata(FileMetaData parquetMetadata,
       InternalFileDecryptor fileDecryptor, boolean encryptedFooter) throws IOException {
     MessageType messageType = fromParquetSchema(parquetMetadata.getSchema(), parquetMetadata.getColumn_orders());
-    List<BlockMetaData> blocks = new ArrayList<BlockMetaData>();
+    List<BlockMetaData> blocks = new ArrayList<>();
     List<RowGroup> row_groups = parquetMetadata.getRow_groups();
 
     if (row_groups != null) {
@@ -1482,7 +1431,7 @@ public class ParquetMetadataConverter {
         blocks.add(blockMetaData);
       }
     }
-    Map<String, String> keyValueMetaData = new HashMap<String, String>();
+    Map<String, String> keyValueMetaData = new HashMap<>();
     List<KeyValue> key_value_metadata = parquetMetadata.getKey_value_metadata();
     if (key_value_metadata != null) {
       for (KeyValue keyValue : key_value_metadata) {

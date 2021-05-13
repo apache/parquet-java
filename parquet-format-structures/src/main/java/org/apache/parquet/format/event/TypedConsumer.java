@@ -79,6 +79,7 @@ abstract public class TypedConsumer {
 
   abstract public static class I64Consumer extends TypedConsumer {
     protected I64Consumer() { super(I64); }
+    @Override
     final void read(TProtocol protocol, EventBasedThriftReader reader) throws TException {
       this.consume(protocol.readI64());
     }

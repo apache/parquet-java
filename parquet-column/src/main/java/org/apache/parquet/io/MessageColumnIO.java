@@ -40,7 +40,6 @@ import org.apache.parquet.filter2.compat.FilterCompat.Visitor;
 import org.apache.parquet.filter2.predicate.FilterPredicate;
 import org.apache.parquet.filter2.recordlevel.FilteringRecordMaterializer;
 import org.apache.parquet.filter2.recordlevel.IncrementallyUpdatedFilterPredicate;
-import org.apache.parquet.filter2.recordlevel.IncrementallyUpdatedFilterPredicateBuilder;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.RecordConsumer;
 import org.apache.parquet.io.api.RecordMaterializer;

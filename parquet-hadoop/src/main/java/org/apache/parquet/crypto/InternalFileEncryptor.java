@@ -20,12 +20,9 @@
 package org.apache.parquet.crypto;
 
 import org.apache.parquet.format.BlockCipher;
-import org.apache.parquet.format.FileCryptoMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.apache.parquet.format.EncryptionAlgorithm;
-
 import java.util.HashMap;
 import java.util.Map;
 
@@ -54,7 +51,7 @@ public class InternalFileEncryptor {
     encryptFooter =  fileEncryptionProperties.encryptedFooter();
     footerKeyMetadata = fileEncryptionProperties.getFooterKeyMetadata();
     fileAAD = fileEncryptionProperties.getFileAAD();
-    columnMap = new HashMap<ColumnPath, InternalColumnEncryptionSetup>();
+    columnMap = new HashMap<>();
     fileCryptoMetaDataCreated = false;
   }
 

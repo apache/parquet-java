@@ -22,9 +22,6 @@ package org.apache.parquet.crypto;
 import java.util.Arrays;
 
 import org.apache.parquet.format.BlockCipher;
-import org.apache.parquet.format.ColumnCryptoMetaData;
-import org.apache.parquet.format.EncryptionWithColumnKey;
-import org.apache.parquet.format.EncryptionWithFooterKey;
 
 public class InternalColumnEncryptionSetup {
 

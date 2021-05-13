@@ -244,7 +244,7 @@ public final class SemanticVersion implements Comparable<SemanticVersion> {
     private static final Pattern DOT = Pattern.compile("\\.");
 
     private final String original;
-    private final List<NumberOrString> identifiers = new ArrayList<NumberOrString>();
+    private final List<NumberOrString> identifiers = new ArrayList<>();
 
     public Prerelease(String original) {
       this.original = original;

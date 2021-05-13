@@ -20,7 +20,6 @@ package org.apache.parquet.filter;
 
 import java.util.Objects;
 
-import org.apache.parquet.Preconditions;
 import org.apache.parquet.column.ColumnReader;
 
 /**

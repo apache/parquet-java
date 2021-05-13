@@ -71,7 +71,7 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
     return pred.accept(new StatisticsFilter(columns));
   }
 
-  private final Map<ColumnPath, ColumnChunkMetaData> columns = new HashMap<ColumnPath, ColumnChunkMetaData>();
+  private final Map<ColumnPath, ColumnChunkMetaData> columns = new HashMap<>();
 
   private StatisticsFilter(List<ColumnChunkMetaData> columnsList) {
     for (ColumnChunkMetaData chunk : columnsList) {
@@ -393,7 +393,7 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
     }
 
     org.apache.parquet.filter2.predicate.Statistics<T> udpStats =
-      new org.apache.parquet.filter2.predicate.Statistics<T>(stats.genericGetMin(), stats.genericGetMax(),
+      new org.apache.parquet.filter2.predicate.Statistics<>(stats.genericGetMin(), stats.genericGetMax(),
         stats.comparator());
 
     if (inverted) {

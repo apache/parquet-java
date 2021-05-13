@@ -19,7 +19,6 @@
 package org.apache.parquet.hadoop.metadata;
 
 
-import org.apache.parquet.format.CompressionCodec;
 import org.apache.parquet.hadoop.codec.CompressionCodecNotSupportedException;
 import java.util.Locale;
 

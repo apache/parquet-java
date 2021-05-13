@@ -24,7 +24,6 @@ import java.security.SecureRandom;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.apache.parquet.format.EncryptionAlgorithm;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 
 import static org.apache.parquet.crypto.AesCipher.AAD_FILE_UNIQUE_LENGTH;
@@ -224,7 +223,7 @@ public class FileEncryptionProperties {
         throw new IllegalStateException("Column properties already set");
       }
       // Copy the map to make column properties immutable
-      this.columnPropertyMap = new HashMap<ColumnPath, ColumnEncryptionProperties>(encryptedColumns);
+      this.columnPropertyMap = new HashMap<>(encryptedColumns);
 
       return this;
     }

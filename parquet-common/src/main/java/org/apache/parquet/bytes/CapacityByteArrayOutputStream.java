@@ -58,7 +58,7 @@ public class CapacityByteArrayOutputStream extends OutputStream {
 
   private int initialSlabSize;
   private final int maxCapacityHint;
-  private final List<ByteBuffer> slabs = new ArrayList<ByteBuffer>();
+  private final List<ByteBuffer> slabs = new ArrayList<>();
 
   private ByteBuffer currentSlab;
   private int currentSlabIndex;

@@ -44,7 +44,6 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 
 import org.apache.parquet.Preconditions;
-import org.apache.parquet.Version;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.column.ColumnDescriptor;
@@ -122,7 +121,7 @@ public class ParquetFileWriter {
   private final int columnIndexTruncateLength;
 
   // file data
-  private List<BlockMetaData> blocks = new ArrayList<BlockMetaData>();
+  private List<BlockMetaData> blocks = new ArrayList<>();
 
   // The column/offset indexes per blocks per column chunks
   private final List<List<ColumnIndex>> columnIndexes = new ArrayList<>();
@@ -175,30 +174,37 @@ public class ParquetFileWriter {
    */
   private enum STATE {
     NOT_STARTED {
+      @Override
       STATE start() {
         return STARTED;
       }
     },
     STARTED {
+      @Override
       STATE startBlock() {
         return BLOCK;
       }
+      @Override
       STATE end() {
         return ENDED;
       }
     },
     BLOCK  {
+      @Override
       STATE startColumn() {
         return COLUMN;
       }
+      @Override
       STATE endBlock() {
         return STARTED;
       }
     },
     COLUMN {
+      @Override
       STATE endColumn() {
         return BLOCK;
-      };
+      }
+      @Override
       STATE write() {
         return this;
       }
@@ -431,7 +437,7 @@ public class ParquetFileWriter {
                           CompressionCodecName compressionCodecName) throws IOException {
     state = state.startColumn();
     encodingStatsBuilder.clear();
-    currentEncodings = new HashSet<Encoding>();
+    currentEncodings = new HashSet<>();
     currentChunkPath = ColumnPath.get(descriptor.getPath());
     currentChunkType = descriptor.getPrimitiveType();
     currentChunkCodec = compressionCodecName;
@@ -938,13 +944,13 @@ public class ParquetFileWriter {
     startBlock(rowGroup.getRowCount());
 
     Map<String, ColumnChunkMetaData> columnsToCopy =
-        new HashMap<String, ColumnChunkMetaData>();
+        new HashMap<>();
     for (ColumnChunkMetaData chunk : rowGroup.getColumns()) {
       columnsToCopy.put(chunk.getPath().toDotString(), chunk);
     }
 
     List<ColumnChunkMetaData> columnsInOrder =
-        new ArrayList<ColumnChunkMetaData>();
+        new ArrayList<>();
 
     for (ColumnDescriptor descriptor : schema.getColumns()) {
       String path = ColumnPath.get(descriptor.getPath()).toDotString();
@@ -1318,7 +1324,7 @@ public class ParquetFileWriter {
     Preconditions.checkArgument(!files.isEmpty(), "Cannot merge an empty list of metadata");
 
     GlobalMetaData globalMetaData = null;
-    List<BlockMetaData> blocks = new ArrayList<BlockMetaData>();
+    List<BlockMetaData> blocks = new ArrayList<>();
 
     for (Path p : files) {
       ParquetMetadata pmd = ParquetFileReader.readFooter(conf, p, ParquetMetadataConverter.NO_FILTER);
@@ -1429,7 +1435,7 @@ public class ParquetFileWriter {
   static ParquetMetadata mergeFooters(Path root, List<Footer> footers, KeyValueMetadataMergeStrategy keyValueMergeStrategy) {
     String rootPath = root.toUri().getPath();
     GlobalMetaData fileMetaData = null;
-    List<BlockMetaData> blocks = new ArrayList<BlockMetaData>();
+    List<BlockMetaData> blocks = new ArrayList<>();
     for (Footer footer : footers) {
         String footerPath = footer.getFile().toUri().getPath();
       if (!footerPath.startsWith(rootPath)) {
@@ -1495,8 +1501,8 @@ public class ParquetFileWriter {
       GlobalMetaData mergedMetadata,
       boolean strict) {
     MessageType schema = null;
-    Map<String, Set<String>> newKeyValues = new HashMap<String, Set<String>>();
-    Set<String> createdBy = new HashSet<String>();
+    Map<String, Set<String>> newKeyValues = new HashMap<>();
+    Set<String> createdBy = new HashSet<>();
     if (mergedMetadata != null) {
       schema = mergedMetadata.getSchema();
       newKeyValues.putAll(mergedMetadata.getKeyValueMetaData());
@@ -1509,7 +1515,7 @@ public class ParquetFileWriter {
     for (Entry<String, String> entry : toMerge.getKeyValueMetaData().entrySet()) {
       Set<String> values = newKeyValues.get(entry.getKey());
       if (values == null) {
-        values = new LinkedHashSet<String>();
+        values = new LinkedHashSet<>();
         newKeyValues.put(entry.getKey(), values);
       }
       values.add(entry.getValue());
@@ -1603,7 +1609,7 @@ public class ParquetFileWriter {
       if (isPaddingNeeded(remaining)) {
         LOG.debug("Adding {} bytes of padding (row group size={}B, block size={}B)", remaining, rowGroupSize, dfsBlockSize);
         for (; remaining > 0; remaining -= zeros.length) {
-          out.write(zeros, 0, (int) Math.min((long) zeros.length, remaining));
+          out.write(zeros, 0, (int) Math.min(zeros.length, remaining));
         }
       }
     }

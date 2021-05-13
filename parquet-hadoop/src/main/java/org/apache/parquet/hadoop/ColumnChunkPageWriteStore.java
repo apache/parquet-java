@@ -78,9 +78,9 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
     private int pageCount;
 
     // repetition and definition level encodings are used only for v1 pages and don't change
-    private Set<Encoding> rlEncodings = new HashSet<Encoding>();
-    private Set<Encoding> dlEncodings = new HashSet<Encoding>();
-    private List<Encoding> dataEncodings = new ArrayList<Encoding>();
+    private Set<Encoding> rlEncodings = new HashSet<>();
+    private Set<Encoding> dlEncodings = new HashSet<>();
+    private List<Encoding> dataEncodings = new ArrayList<>();
 
     private BloomFilter bloomFilter;
     private ColumnIndexBuilder columnIndexBuilder;
@@ -347,7 +347,7 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
         LOG.debug(
             String.format(
                 "written %,dB for %s: %,d values, %,dB raw, %,dB comp, %d pages, encodings: %s",
-                buf.size(), path, totalValueCount, uncompressedLength, compressedLength, pageCount, new HashSet<Encoding>(dataEncodings))
+                buf.size(), path, totalValueCount, uncompressedLength, compressedLength, pageCount, new HashSet<>(dataEncodings))
                 + (dictionaryPage != null ? String.format(
                 ", dic { %,d entries, %,dB raw, %,dB comp}",
                 dictionaryPage.getDictionarySize(), dictionaryPage.getUncompressedSize(), dictionaryPage.getDictionarySize())
@@ -393,7 +393,7 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
     }
   }
 
-  private final Map<ColumnDescriptor, ColumnChunkPageWriter> writers = new HashMap<ColumnDescriptor, ColumnChunkPageWriter>();
+  private final Map<ColumnDescriptor, ColumnChunkPageWriter> writers = new HashMap<>();
   private final MessageType schema;
 
   public ColumnChunkPageWriteStore(BytesCompressor compressor, MessageType schema, ByteBufferAllocator allocator,

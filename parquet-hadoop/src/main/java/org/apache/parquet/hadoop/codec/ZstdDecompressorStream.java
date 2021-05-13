@@ -39,14 +39,17 @@ public class ZstdDecompressorStream extends CompressionInputStream {
     zstdInputStream = new ZstdInputStream(stream, pool);
   }
 
+  @Override
   public int read(byte[] b, int off, int len) throws IOException {
     return zstdInputStream.read(b, off, len);
   }
 
+  @Override
   public int read() throws IOException {
     return zstdInputStream.read();
   }
 
+  @Override
   public void resetState() throws IOException {
     // no-opt, doesn't apply to ZSTD
   }

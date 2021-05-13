@@ -35,7 +35,6 @@ import org.apache.parquet.crypto.InternalColumnDecryptionSetup;
 import org.apache.parquet.crypto.InternalFileDecryptor;
 import org.apache.parquet.crypto.ModuleCipherFactory.ModuleType;
 import org.apache.parquet.crypto.ParquetCryptoRuntimeException;
-import org.apache.parquet.format.ColumnMetaData;
 import org.apache.parquet.format.converter.ParquetMetadataConverter;
 import org.apache.parquet.internal.hadoop.metadata.IndexReference;
 import org.apache.parquet.schema.PrimitiveType;
@@ -438,6 +437,7 @@ class IntColumnChunkMetaData extends ColumnChunkMetaData {
   /**
    * @return start of the column data offset
    */
+  @Override
   public long getFirstDataPageOffset() {
     return intToPositiveLong(firstDataPage);
   }
@@ -445,6 +445,7 @@ class IntColumnChunkMetaData extends ColumnChunkMetaData {
   /**
    * @return the location of the dictionary page if any
    */
+  @Override
   public long getDictionaryPageOffset() {
     return intToPositiveLong(dictionaryPageOffset);
   }
@@ -452,6 +453,7 @@ class IntColumnChunkMetaData extends ColumnChunkMetaData {
   /**
    * @return count of values in this block of the column
    */
+  @Override
   public long getValueCount() {
     return intToPositiveLong(valueCount);
   }
@@ -459,6 +461,7 @@ class IntColumnChunkMetaData extends ColumnChunkMetaData {
   /**
    * @return the totalUncompressedSize
    */
+  @Override
   public long getTotalUncompressedSize() {
     return intToPositiveLong(totalUncompressedSize);
   }
@@ -466,6 +469,7 @@ class IntColumnChunkMetaData extends ColumnChunkMetaData {
   /**
    * @return the totalSize
    */
+  @Override
   public long getTotalSize() {
     return intToPositiveLong(totalSize);
   }
@@ -473,6 +477,7 @@ class IntColumnChunkMetaData extends ColumnChunkMetaData {
   /**
    * @return the stats for this column
    */
+  @Override
   public Statistics getStatistics() {
    return statistics;
   }
@@ -523,6 +528,7 @@ class LongColumnChunkMetaData extends ColumnChunkMetaData {
   /**
    * @return start of the column data offset
    */
+  @Override
   public long getFirstDataPageOffset() {
     return firstDataPageOffset;
   }
@@ -530,6 +536,7 @@ class LongColumnChunkMetaData extends ColumnChunkMetaData {
   /**
    * @return the location of the dictionary page if any
    */
+  @Override
   public long getDictionaryPageOffset() {
     return dictionaryPageOffset;
   }
@@ -537,6 +544,7 @@ class LongColumnChunkMetaData extends ColumnChunkMetaData {
   /**
    * @return count of values in this block of the column
    */
+  @Override
   public long getValueCount() {
     return valueCount;
   }
@@ -544,6 +552,7 @@ class LongColumnChunkMetaData extends ColumnChunkMetaData {
   /**
    * @return the totalUncompressedSize
    */
+  @Override
   public long getTotalUncompressedSize() {
     return totalUncompressedSize;
   }
@@ -551,6 +560,7 @@ class LongColumnChunkMetaData extends ColumnChunkMetaData {
   /**
    * @return the totalSize
    */
+  @Override
   public long getTotalSize() {
     return totalSize;
   }
@@ -558,6 +568,7 @@ class LongColumnChunkMetaData extends ColumnChunkMetaData {
   /**
    * @return the stats for this column
    */
+  @Override
   public Statistics getStatistics() {
    return statistics;
   }

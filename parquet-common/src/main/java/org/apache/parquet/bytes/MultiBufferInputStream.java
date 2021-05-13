@@ -59,6 +59,7 @@ class MultiBufferInputStream extends ByteBufferInputStream {
   /**
    * Returns the position in the stream.
    */
+  @Override
   public long position() {
     return position;
   }
@@ -160,6 +161,7 @@ class MultiBufferInputStream extends ByteBufferInputStream {
     return slice;
   }
 
+  @Override
   public List<ByteBuffer> sliceBuffers(long len) throws EOFException {
     if (len <= 0) {
       return Collections.emptyList();

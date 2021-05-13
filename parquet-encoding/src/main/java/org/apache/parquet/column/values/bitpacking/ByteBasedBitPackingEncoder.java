@@ -47,7 +47,7 @@ public class ByteBasedBitPackingEncoder {
   private int inputSize;
   private byte[] packed;
   private int packedPosition;
-  private final List<BytesInput> slabs = new ArrayList<BytesInput>();
+  private final List<BytesInput> slabs = new ArrayList<>();
   private int totalValues;
 
   /**

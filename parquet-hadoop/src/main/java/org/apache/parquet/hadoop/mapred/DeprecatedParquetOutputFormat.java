@@ -69,7 +69,7 @@ public class DeprecatedParquetOutputFormat<V> extends org.apache.hadoop.mapred.F
     return new Path(getWorkOutputPath(conf), file);
   }
 
-  protected ParquetOutputFormat<V> realOutputFormat = new ParquetOutputFormat<V>();
+  protected ParquetOutputFormat<V> realOutputFormat = new ParquetOutputFormat<>();
 
   @Override
   public RecordWriter<Void, V> getRecordWriter(FileSystem fs,

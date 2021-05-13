@@ -49,8 +49,8 @@ public class MemoryManager {
   private final long totalMemoryPool;
   private final long minMemoryAllocation;
   private final Map<InternalParquetRecordWriter, Long> writerList = new
-      HashMap<InternalParquetRecordWriter, Long>();
-  private final Map<String, Runnable> callBacks = new HashMap<String, Runnable>();
+      HashMap<>();
+  private final Map<String, Runnable> callBacks = new HashMap<>();
   private double scale = 1.0;
 
   public MemoryManager(float ratio, long minAllocation) {

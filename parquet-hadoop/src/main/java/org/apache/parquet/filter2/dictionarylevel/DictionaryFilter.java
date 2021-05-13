@@ -58,7 +58,7 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
     return pred.accept(new DictionaryFilter(columns, dictionaries));
   }
 
-  private final Map<ColumnPath, ColumnChunkMetaData> columns = new HashMap<ColumnPath, ColumnChunkMetaData>();
+  private final Map<ColumnPath, ColumnChunkMetaData> columns = new HashMap<>();
   private final DictionaryPageReadStore dictionaries;
 
   private DictionaryFilter(List<ColumnChunkMetaData> columnsList, DictionaryPageReadStore dictionaries) {
@@ -434,7 +434,7 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
     }
 
     // without EncodingStats, fall back to testing the encoding list
-    Set<Encoding> encodings = new HashSet<Encoding>(meta.getEncodings());
+    Set<Encoding> encodings = new HashSet<>(meta.getEncodings());
     if (encodings.remove(Encoding.PLAIN_DICTIONARY)) {
       // if remove returned true, PLAIN_DICTIONARY was present, which means at
       // least one page was dictionary encoded and 1.0 encodings are used

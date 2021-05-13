@@ -29,8 +29,9 @@ public class StrictKeyValueMetadataMergeStrategy implements KeyValueMetadataMerg
   /**
    * @param keyValueMetaData the merged app specific metadata
    */
+  @Override
   public Map<String, String> merge(Map<String, Set<String>> keyValueMetaData) {
-    Map<String, String> mergedKeyValues = new HashMap<String, String>();
+    Map<String, String> mergedKeyValues = new HashMap<>();
     for (Map.Entry<String, Set<String>> entry : keyValueMetaData.entrySet()) {
       if (entry.getValue().size() > 1) {
         throw new RuntimeException("could not merge metadata: key " + entry.getKey() + " has conflicting values: " + entry.getValue());

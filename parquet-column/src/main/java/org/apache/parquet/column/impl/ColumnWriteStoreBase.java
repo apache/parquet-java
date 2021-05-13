@@ -240,7 +240,7 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
       long rowsToFillPage =
           usedMem == 0 ?
               props.getMaxRowCountForPageSizeCheck()
-              : (long) rows / usedMem * remainingMem;
+              : rows / usedMem * remainingMem;
       if (rowsToFillPage < minRecordToWait) {
         minRecordToWait = rowsToFillPage;
       }

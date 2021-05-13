@@ -37,8 +37,8 @@ public final class Operators {
     private final Class<T> columnType;
 
     protected Column(ColumnPath columnPath, Class<T> columnType) {
-      this.columnPath = Objects.requireNonNull(columnPath, "columnPath cannot be null");;
-      this.columnType = Objects.requireNonNull(columnType, "columnType cannot be null");;
+      this.columnPath = Objects.requireNonNull(columnPath, "columnPath cannot be null");
+      this.columnType = Objects.requireNonNull(columnType, "columnType cannot be null");
     }
 
     public Class<T> getColumnType() {

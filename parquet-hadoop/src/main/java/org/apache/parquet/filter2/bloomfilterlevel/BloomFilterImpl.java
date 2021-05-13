@@ -40,7 +40,7 @@ public class BloomFilterImpl implements FilterPredicate.Visitor<Boolean>{
   private static final boolean BLOCK_MIGHT_MATCH = false;
   private static final boolean BLOCK_CANNOT_MATCH = true;
 
-  private final Map<ColumnPath, ColumnChunkMetaData> columns = new HashMap<ColumnPath, ColumnChunkMetaData>();
+  private final Map<ColumnPath, ColumnChunkMetaData> columns = new HashMap<>();
 
   public static boolean canDrop(FilterPredicate pred, List<ColumnChunkMetaData> columns, BloomFilterReader bloomFilterReader) {
     checkNotNull(pred, "pred");

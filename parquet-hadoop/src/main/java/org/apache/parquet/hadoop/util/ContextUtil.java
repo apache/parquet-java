@@ -37,7 +37,6 @@ import org.apache.hadoop.mapreduce.RecordWriter;
 import org.apache.hadoop.mapreduce.StatusReporter;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.TaskAttemptID;
-import org.apache.hadoop.mapreduce.TaskInputOutputContext;
 
 /*
  * This is based on ContextFactory.java from hadoop-2.0.x sources.
@@ -65,7 +64,7 @@ public class ContextUtil {
   private static final Method GET_CONFIGURATION_METHOD;
   private static final Method INCREMENT_COUNTER_METHOD;
 
-  private static final Map<Class, Method> COUNTER_METHODS_BY_CLASS = new HashMap<Class, Method>();
+  private static final Map<Class, Method> COUNTER_METHODS_BY_CLASS = new HashMap<>();
 
   static {
     boolean v21 = true;

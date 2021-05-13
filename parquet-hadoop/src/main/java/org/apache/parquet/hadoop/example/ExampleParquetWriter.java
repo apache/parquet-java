@@ -84,7 +84,7 @@ public class ExampleParquetWriter extends ParquetWriter<Group> {
 
   public static class Builder extends ParquetWriter.Builder<Group, Builder> {
     private MessageType type = null;
-    private Map<String, String> extraMetaData = new HashMap<String, String>();
+    private Map<String, String> extraMetaData = new HashMap<>();
 
     private Builder(Path file) {
       super(file);

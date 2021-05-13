@@ -83,12 +83,6 @@ import org.apache.parquet.crypto.ParquetCryptoRuntimeException;
 import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.filter2.compat.RowGroupFilter;
 import org.apache.parquet.format.BlockCipher;
-import org.apache.parquet.format.BloomFilterHeader;
-import org.apache.parquet.format.DataPageHeader;
-import org.apache.parquet.format.DataPageHeaderV2;
-import org.apache.parquet.format.DictionaryPageHeader;
-import org.apache.parquet.format.FileCryptoMetaData;
-import org.apache.parquet.format.PageHeader;
 import org.apache.parquet.format.Util;
 import org.apache.parquet.format.converter.ParquetMetadataConverter;
 import org.apache.parquet.format.converter.ParquetMetadataConverter.MetadataFilter;
@@ -165,27 +159,27 @@ public class ParquetFileReader implements Closeable {
       final boolean skipRowGroups) throws IOException {
 
     // figure out list of all parents to part files
-    Set<Path> parents = new HashSet<Path>();
+    Set<Path> parents = new HashSet<>();
     for (FileStatus part : partFiles) {
       parents.add(part.getPath().getParent());
     }
 
     // read corresponding summary files if they exist
-    List<Callable<Map<Path, Footer>>> summaries = new ArrayList<Callable<Map<Path, Footer>>>();
+    List<Callable<Map<Path, Footer>>> summaries = new ArrayList<>();
     for (final Path path : parents) {
       summaries.add(() -> {
         ParquetMetadata mergedMetadata = readSummaryMetadata(configuration, path, skipRowGroups);
         if (mergedMetadata != null) {
           final List<Footer> footers;
           if (skipRowGroups) {
-            footers = new ArrayList<Footer>();
+            footers = new ArrayList<>();
             for (FileStatus f : partFiles) {
               footers.add(new Footer(f.getPath(), mergedMetadata));
             }
           } else {
             footers = footersFromSummaryFile(path, mergedMetadata);
           }
-          Map<Path, Footer> map = new HashMap<Path, Footer>();
+          Map<Path, Footer> map = new HashMap<>();
           for (Footer footer : footers) {
             // the folder may have been moved
             footer = new Footer(new Path(path, footer.getFile().getName()), footer.getParquetMetadata());
@@ -198,7 +192,7 @@ public class ParquetFileReader implements Closeable {
       });
     }
 
-    Map<Path, Footer> cache = new HashMap<Path, Footer>();
+    Map<Path, Footer> cache = new HashMap<>();
     try {
       List<Map<Path, Footer>> footersFromSummaries = runAllInParallel(configuration.getInt(PARQUET_READ_PARALLELISM, 5), summaries);
       for (Map<Path, Footer> footers : footersFromSummaries) {
@@ -209,8 +203,8 @@ public class ParquetFileReader implements Closeable {
     }
 
     // keep only footers for files actually requested and read file footer if not found in summaries
-    List<Footer> result = new ArrayList<Footer>(partFiles.size());
-    List<FileStatus> toRead = new ArrayList<FileStatus>();
+    List<Footer> result = new ArrayList<>(partFiles.size());
+    List<FileStatus> toRead = new ArrayList<>();
     for (FileStatus part : partFiles) {
       Footer f = cache.get(part.getPath());
       if (f != null) {
@@ -233,11 +227,11 @@ public class ParquetFileReader implements Closeable {
     LOG.info("Initiating action with parallelism: {}", parallelism);
     ExecutorService threadPool = Executors.newFixedThreadPool(parallelism);
     try {
-      List<Future<T>> futures = new ArrayList<Future<T>>();
+      List<Future<T>> futures = new ArrayList<>();
       for (Callable<T> callable : toRun) {
         futures.add(threadPool.submit(callable));
       }
-      List<T> result = new ArrayList<T>(toRun.size());
+      List<T> result = new ArrayList<>(toRun.size());
       for (Future<T> future : futures) {
         try {
           result.add(future.get());
@@ -276,7 +270,7 @@ public class ParquetFileReader implements Closeable {
    */
   @Deprecated
   public static List<Footer> readAllFootersInParallel(final Configuration configuration, List<FileStatus> partFiles, final boolean skipRowGroups) throws IOException {
-    List<Callable<Footer>> footers = new ArrayList<Callable<Footer>>();
+    List<Callable<Footer>> footers = new ArrayList<>();
     for (final FileStatus currentFile : partFiles) {
       footers.add(() -> {
         try {
@@ -379,7 +373,7 @@ public class ParquetFileReader implements Closeable {
     if (fileStatus.isDir()) {
       FileSystem fs = fileStatus.getPath().getFileSystem(conf);
       FileStatus[] list = fs.listStatus(fileStatus.getPath(), HiddenFileFilter.INSTANCE);
-      List<FileStatus> result = new ArrayList<FileStatus>();
+      List<FileStatus> result = new ArrayList<>();
       for (FileStatus sub : list) {
         result.addAll(listFiles(conf, sub));
       }
@@ -433,7 +427,7 @@ public class ParquetFileReader implements Closeable {
       }
       current.getBlocks().add(block);
     }
-    List<Footer> result = new ArrayList<Footer>();
+    List<Footer> result = new ArrayList<>();
     for (Entry<Path, ParquetMetadata> entry : footers.entrySet()) {
       result.add(new Footer(entry.getKey(), entry.getValue()));
     }
@@ -931,7 +925,7 @@ public class ParquetFileReader implements Closeable {
     }
     ColumnChunkPageReadStore rowGroup = new ColumnChunkPageReadStore(block.getRowCount());
     // prepare the list of consecutive parts to read them in one scan
-    List<ConsecutivePartList> allParts = new ArrayList<ConsecutivePartList>();
+    List<ConsecutivePartList> allParts = new ArrayList<>();
     ConsecutivePartList currentParts = null;
     for (ColumnChunkMetaData mc : block.getColumns()) {
       ColumnPath pathKey = mc.getPath();
@@ -1465,7 +1459,7 @@ public class ParquetFileReader implements Closeable {
     private void verifyCrc(int referenceCrc, byte[] bytes, String exceptionMsg) {
       crc.reset();
       crc.update(bytes);
-      if (crc.getValue() != ((long) referenceCrc & 0xffffffffL)) {
+      if (crc.getValue() != (referenceCrc & 0xffffffffL)) {
         throw new ParquetDecodingException(exceptionMsg);
       }
     }
@@ -1637,6 +1631,7 @@ public class ParquetFileReader implements Closeable {
       this.f = f;
     }
 
+    @Override
     protected PageHeader readPageHeader() throws IOException {
       PageHeader pageHeader;
       stream.mark(8192); // headers should not be larger than 8k
@@ -1655,6 +1650,7 @@ public class ParquetFileReader implements Closeable {
       return pageHeader;
     }
 
+    @Override
     public BytesInput readAsBytesInput(int size) throws IOException {
       int available = stream.available();
       if (size > available) {

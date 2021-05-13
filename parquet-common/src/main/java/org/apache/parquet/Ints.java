@@ -34,6 +34,7 @@ public final class Ints {
    * @throws IllegalArgumentException if value can't be casted to an int
    * @deprecated replaced by {@link java.lang.Math#toIntExact(long)}
    */
+  @Deprecated
   public static int checkedCast(long value) {
     int valueI = (int) value;
     if (valueI != value) {

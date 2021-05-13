@@ -218,6 +218,7 @@ public class ParquetInputSplit extends FileSplit implements Writable {
    * @return the offsets of the row group selected if this has been determined on the client side
    * @deprecated will be removed in 2.0.0.
    */
+  @Deprecated
   public long[] getRowGroupOffsets() {
     return rowGroupOffsets;
   }

@@ -19,14 +19,6 @@
 
 package org.apache.parquet.format;
 
-import static org.apache.parquet.format.FileMetaData._Fields.CREATED_BY;
-import static org.apache.parquet.format.FileMetaData._Fields.ENCRYPTION_ALGORITHM;
-import static org.apache.parquet.format.FileMetaData._Fields.FOOTER_SIGNING_KEY_METADATA;
-import static org.apache.parquet.format.FileMetaData._Fields.KEY_VALUE_METADATA;
-import static org.apache.parquet.format.FileMetaData._Fields.NUM_ROWS;
-import static org.apache.parquet.format.FileMetaData._Fields.ROW_GROUPS;
-import static org.apache.parquet.format.FileMetaData._Fields.SCHEMA;
-import static org.apache.parquet.format.FileMetaData._Fields.VERSION;
 import static org.apache.parquet.format.event.Consumers.fieldConsumer;
 import static org.apache.parquet.format.event.Consumers.listElementsOf;
 import static org.apache.parquet.format.event.Consumers.listOf;

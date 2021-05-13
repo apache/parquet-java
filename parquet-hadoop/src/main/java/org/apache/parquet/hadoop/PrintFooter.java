@@ -32,7 +32,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -82,7 +81,7 @@ public class PrintFooter {
         System.out.println("listing files in " + fileStatus.getPath());
         statuses = Arrays.asList(fs.listStatus(fileStatus.getPath(), HiddenFileFilter.INSTANCE));
       } else {
-        statuses = new ArrayList<FileStatus>();
+        statuses = new ArrayList<>();
         statuses.add(fileStatus);
       }
       System.out.println("opening " + statuses.size() + " files");
@@ -90,7 +89,7 @@ public class PrintFooter {
       ExecutorService threadPool = Executors.newFixedThreadPool(5);
       try {
         long t0 = System.currentTimeMillis();
-        Deque<Future<ParquetMetadata>> footers = new LinkedBlockingDeque<Future<ParquetMetadata>>();
+        Deque<Future<ParquetMetadata>> footers = new LinkedBlockingDeque<>();
         for (final FileStatus currentFile : statuses) {
           footers.add(threadPool.submit(() -> {
             try {
@@ -200,7 +199,7 @@ public class PrintFooter {
     return ((float)previousSize/1000) + unit[count];
   }
 
-  private static Map<ColumnDescriptor, ColStats> stats = new LinkedHashMap<ColumnDescriptor, ColStats>();
+  private static Map<ColumnDescriptor, ColStats> stats = new LinkedHashMap<>();
   private static int blockCount = 0;
   private static long recordCount = 0;
 
@@ -229,7 +228,7 @@ public class PrintFooter {
     Stats valueCountStats = new Stats();
     Stats allStats = new Stats();
     Stats uncStats = new Stats();
-    Set<Encoding> encodings = new TreeSet<Encoding>();
+    Set<Encoding> encodings = new TreeSet<>();
     Statistics colValuesStats = null;
     int blocks = 0;
 

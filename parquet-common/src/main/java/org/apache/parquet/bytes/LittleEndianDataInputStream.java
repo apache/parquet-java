@@ -119,6 +119,7 @@ public final class LittleEndianDataInputStream extends InputStream {
    * @throws IOException if there is an exception while reading
    * @see java.io.InputStream#read()
    */
+  @Override
   public int read() throws IOException {
     return in.read();
   }
@@ -127,6 +128,7 @@ public final class LittleEndianDataInputStream extends InputStream {
    * @return the hash code of the wrapped input stream
    * @see java.lang.Object#hashCode()
    */
+  @Override
   public int hashCode() {
     return in.hashCode();
   }
@@ -137,6 +139,7 @@ public final class LittleEndianDataInputStream extends InputStream {
    * @throws IOException if there was an exception while reading
    * @see java.io.InputStream#read(byte[])
    */
+  @Override
   public int read(byte[] b) throws IOException {
     return in.read(b);
   }
@@ -146,6 +149,7 @@ public final class LittleEndianDataInputStream extends InputStream {
    * @return true if this is equal to the object
    * @see java.lang.Object#equals(java.lang.Object)
    */
+  @Override
   public boolean equals(Object obj) {
     return in.equals(obj);
   }
@@ -158,6 +162,7 @@ public final class LittleEndianDataInputStream extends InputStream {
    * @throws IOException if there was an exception while reading
    * @see java.io.InputStream#read(byte[], int, int)
    */
+  @Override
   public int read(byte[] b, int off, int len) throws IOException {
     return in.read(b, off, len);
   }
@@ -168,6 +173,7 @@ public final class LittleEndianDataInputStream extends InputStream {
    * @throws IOException if there was an exception while reading
    * @see java.io.InputStream#skip(long)
    */
+  @Override
   public long skip(long n) throws IOException {
     return in.skip(n);
   }
@@ -177,6 +183,7 @@ public final class LittleEndianDataInputStream extends InputStream {
    * @throws IOException if there was an exception while getting the number of available bytes
    * @see java.io.InputStream#available()
    */
+  @Override
   public int available() throws IOException {
     return in.available();
   }
@@ -185,6 +192,7 @@ public final class LittleEndianDataInputStream extends InputStream {
    * @throws IOException if there was an exception while closing the underlying stream
    * @see java.io.InputStream#close()
    */
+  @Override
   public void close() throws IOException {
     in.close();
   }
@@ -193,6 +201,7 @@ public final class LittleEndianDataInputStream extends InputStream {
    * @param readlimit the number of bytes the mark will be valid for
    * @see java.io.InputStream#mark(int)
    */
+  @Override
   public void mark(int readlimit) {
     in.mark(readlimit);
   }
@@ -201,6 +210,7 @@ public final class LittleEndianDataInputStream extends InputStream {
    * @throws IOException if there is an exception while resetting the underlying stream
    * @see java.io.InputStream#reset()
    */
+  @Override
   public void reset() throws IOException {
     in.reset();
   }
@@ -209,6 +219,7 @@ public final class LittleEndianDataInputStream extends InputStream {
    * @return true if mark is supported
    * @see java.io.InputStream#markSupported()
    */
+  @Override
   public boolean markSupported() {
     return in.markSupported();
   }

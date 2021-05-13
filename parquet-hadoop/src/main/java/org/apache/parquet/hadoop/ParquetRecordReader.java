@@ -76,7 +76,7 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
    * @param filter for filtering individual records
    */
   public ParquetRecordReader(ReadSupport<T> readSupport, Filter filter) {
-    internalReader = new InternalParquetRecordReader<T>(readSupport, filter);
+    internalReader = new InternalParquetRecordReader<>(readSupport, filter);
   }
 
   /**
@@ -186,7 +186,7 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
     // splitting files?
     if (conf.getBoolean(ParquetInputFormat.SPLIT_FILES, true)) {
       // this is okay if not using DELTA_BYTE_ARRAY with the bug
-      Set<Encoding> encodings = new HashSet<Encoding>();
+      Set<Encoding> encodings = new HashSet<>();
       for (ColumnChunkMetaData column : block.getColumns()) {
         encodings.addAll(column.getEncodings());
       }

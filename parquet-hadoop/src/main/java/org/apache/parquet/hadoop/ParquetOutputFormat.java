@@ -496,7 +496,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
           "be reset by the new value: " + maxLoad);
     }
 
-    return new ParquetRecordWriter<T>(
+    return new ParquetRecordWriter<>(
         w,
         writeSupport,
         fileWriteContext.getSchema(),

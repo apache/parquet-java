@@ -28,10 +28,12 @@ public class HeapByteBufferAllocator implements ByteBufferAllocator{
     super();
   }
 
+  @Override
   public ByteBuffer allocate(final int size) {
     return ByteBuffer.allocate(size);
   }
 
+  @Override
   public void release(ByteBuffer b) {
     return;
   }

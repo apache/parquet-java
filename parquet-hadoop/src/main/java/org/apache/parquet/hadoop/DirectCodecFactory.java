@@ -139,6 +139,7 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
     }
   }
 
+  @Override
   public void close() {
     release();
   }
@@ -212,7 +213,7 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
         throws IOException {
       output.clear();
       try {
-        DECOMPRESS_METHOD.invoke(decompressor, (ByteBuffer) input.limit(compressedSize), (ByteBuffer) output.limit(uncompressedSize));
+        DECOMPRESS_METHOD.invoke(decompressor, input.limit(compressedSize), output.limit(uncompressedSize));
       } catch (IllegalAccessException | InvocationTargetException e) {
         throw new DirectCodecPool.ParquetCompressionCodecException(e);
       }
@@ -364,6 +365,7 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
         try {
           boolean supportDirectDecompressor = codec.getClass() == DIRECT_DECOMPRESSION_CODEC_CLASS;
           compressorPool = new GenericObjectPool(new BasePoolableObjectFactory() {
+            @Override
             public Object makeObject() throws Exception {
               return codec.createCompressor();
             }
@@ -380,6 +382,7 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
           }
 
           decompressorPool = new GenericObjectPool(new BasePoolableObjectFactory() {
+            @Override
             public Object makeObject() throws Exception {
               return codec.createDecompressor();
             }
@@ -398,6 +401,7 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
           if (supportDirectDecompressor) {
             directDecompressorPool = new GenericObjectPool(
                 new BasePoolableObjectFactory() {
+                  @Override
                   public Object makeObject() throws Exception {
                     return CREATE_DIRECT_DECOMPRESSOR_METHOD.invoke(DIRECT_DECOMPRESSION_CODEC_CLASS);
                   }
