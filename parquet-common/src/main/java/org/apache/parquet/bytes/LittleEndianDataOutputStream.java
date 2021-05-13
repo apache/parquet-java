@@ -207,8 +207,12 @@ public class LittleEndianDataOutputStream extends OutputStream {
     writeLong(Double.doubleToLongBits(v));
   }
 
-  public void close() throws IOException {
-    out.close();
+  public void close() {
+    try {
+      out.close();
+    } catch (IOException e) {
+      // swallow exception
+    }
   }
 
 }
