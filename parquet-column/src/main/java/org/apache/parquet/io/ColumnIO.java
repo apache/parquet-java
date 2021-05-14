@@ -71,11 +71,11 @@ abstract public class ColumnIO {
     return name;
   }
 
-  int getRepetitionLevel() {
+  public int getRepetitionLevel() {
     return repetitionLevel;
   }
 
-  int getDefinitionLevel() {
+  public int getDefinitionLevel() {
     return definitionLevel;
   }
 
