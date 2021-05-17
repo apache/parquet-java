@@ -71,10 +71,16 @@ abstract public class ColumnIO {
     return name;
   }
 
+  /**
+   * Returns the maximum repetition level for this column
+   */
   public int getRepetitionLevel() {
     return repetitionLevel;
   }
 
+  /**
+   * Returns the maximum definition level for this column
+   */
   public int getDefinitionLevel() {
     return definitionLevel;
   }
