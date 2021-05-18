@@ -1464,7 +1464,7 @@ public class ParquetFileReader implements Closeable {
      */
     private void verifyCrc(int referenceCrc, byte[] bytes, String exceptionMsg) {
       crc.reset();
-      crc.update(bytes, 0, bytes.length);
+      crc.update(bytes);
       if (crc.getValue() != ((long) referenceCrc & 0xffffffffL)) {
         throw new ParquetDecodingException(exceptionMsg);
       }
