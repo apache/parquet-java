@@ -466,12 +466,10 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     int maxPaddingSize = getMaxPaddingSize(conf);
     boolean validating = getValidation(conf);
 
-    if (LOG.isInfoEnabled()) {
-      LOG.info("Parquet block size to {}", blockSize);
-      LOG.info("Validation is {}", (validating ? "on" : "off"));
-      LOG.info("Maximum row group padding size is {} bytes", maxPaddingSize);
-      LOG.info("Parquet properties are:\n{}", props);
-    }
+    LOG.info(
+        "ParquetRecordWriter [block size: {}b, row group padding size: {}b, validating: {}]",
+        blockSize, maxPaddingSize, validating);
+    LOG.debug("Parquet properties are:\n{}", props);
 
     WriteContext fileWriteContext = writeSupport.init(conf);
     
