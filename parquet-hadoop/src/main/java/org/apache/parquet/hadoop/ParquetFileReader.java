@@ -1763,8 +1763,8 @@ public class ParquetFileReader implements Closeable {
     public void readAll(SeekableInputStream f, ChunkListBuilder builder) throws IOException {
       f.seek(offset);
 
-      int fullAllocations = (int)(length / options.getMaxAllocationSize());
-      int lastAllocationSize = (int)(length % options.getMaxAllocationSize());
+      int fullAllocations = Math.toIntExact(length / options.getMaxAllocationSize());
+      int lastAllocationSize = Math.toIntExact(length % options.getMaxAllocationSize());
 
       int numAllocations = fullAllocations + (lastAllocationSize > 0 ? 1 : 0);
       List<ByteBuffer> buffers = new ArrayList<>(numAllocations);
