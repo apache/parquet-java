@@ -173,7 +173,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
       BytesInput bytes = concat(BytesInput.from(bytesHeader), rleEncodedBytes);
       // remember size of dictionary when we last wrote a page
       lastUsedDictionarySize = getDictionarySize();
-      lastUsedDictionaryByteSize = (int) dictionaryByteSize;
+      lastUsedDictionaryByteSize = Math.toIntExact(dictionaryByteSize);
       return bytes;
     } catch (IOException e) {
       throw new ParquetEncodingException("could not encode the values", e);
