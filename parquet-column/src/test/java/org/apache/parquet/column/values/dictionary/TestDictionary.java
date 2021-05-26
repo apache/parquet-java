@@ -53,6 +53,7 @@ import org.apache.parquet.column.values.plain.PlainValuesReader;
 import org.apache.parquet.column.values.plain.PlainValuesWriter;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
+import org.mockito.Mockito;
 
 public class TestDictionary {
 
@@ -169,6 +170,20 @@ public class TestDictionary {
     //simulate cutting the page
     cw.reset();
     assertEquals(0, cw.getBufferedSize());
+  }
+
+  @Test
+  public void testBinaryDictionaryIntegerOverflow() {
+    Binary mock = Mockito.mock(Binary.class);
+    Mockito.when(mock.length()).thenReturn(Integer.MAX_VALUE - 1);
+    // make the writer happy
+    Mockito.when(mock.copy()).thenReturn(Binary.fromString(" world"));
+
+    final ValuesWriter cw = newPlainBinaryDictionaryValuesWriter(100, 100);
+    cw.writeBytes(Binary.fromString("hello"));
+    cw.writeBytes(mock);
+
+    assertEquals(PLAIN, cw.getEncoding());
   }
 
   @Test
