@@ -269,7 +269,7 @@ public class ParquetWriter<T> implements Closeable {
       ParquetFileWriter.Mode mode,
       WriteSupport<T> writeSupport,
       CompressionCodecName compressionCodecName,
-      int rowGroupSize,
+      long rowGroupSize,
       boolean validating,
       Configuration conf,
       int maxPaddingSize,
@@ -355,7 +355,7 @@ public class ParquetWriter<T> implements Closeable {
     private Configuration conf = new Configuration();
     private ParquetFileWriter.Mode mode;
     private CompressionCodecName codecName = DEFAULT_COMPRESSION_CODEC_NAME;
-    private int rowGroupSize = DEFAULT_BLOCK_SIZE;
+    private long rowGroupSize = DEFAULT_BLOCK_SIZE;
     private int maxPaddingSize = MAX_PADDING_SIZE_DEFAULT;
     private boolean enableValidation = DEFAULT_IS_VALIDATING_ENABLED;
     private ParquetProperties.Builder encodingPropsBuilder =
@@ -432,8 +432,20 @@ public class ParquetWriter<T> implements Closeable {
      *
      * @param rowGroupSize an integer size in bytes
      * @return this builder for method chaining.
+     * @deprecated Use {@link #withRowGroupSize(long)} instead
      */
+    @Deprecated
     public SELF withRowGroupSize(int rowGroupSize) {
+      return withRowGroupSize((long) rowGroupSize);
+    }
+
+    /**
+     * Set the Parquet format row group size used by the constructed writer.
+     *
+     * @param rowGroupSize an integer size in bytes
+     * @return this builder for method chaining.
+     */
+    public SELF withRowGroupSize(long rowGroupSize) {
       this.rowGroupSize = rowGroupSize;
       return self();
     }

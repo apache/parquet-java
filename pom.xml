@@ -109,7 +109,6 @@
     <commons-text.version>1.8</commons-text.version>
 
     <!-- properties for the profiles -->
-    <surefire.argLine>-Xmx512m</surefire.argLine>
     <surefire.logLevel>INFO</surefire.logLevel>
   </properties>
 
@@ -558,7 +557,7 @@
       <id>ci-test</id>
       <properties>
         <surefire.logLevel>WARN</surefire.logLevel>
-        <surefire.argLine>-Xmx512m -XX:MaxJavaStackTraceDepth=10</surefire.argLine>
+        <surefire.argLine>-XX:MaxJavaStackTraceDepth=10</surefire.argLine>
       </properties>
     </profile>
 
