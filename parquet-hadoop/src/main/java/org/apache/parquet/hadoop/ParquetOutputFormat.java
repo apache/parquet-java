@@ -73,7 +73,7 @@ import org.slf4j.LoggerFactory;
  * parquet.dictionary.page.size=1048576 # in bytes, default = 1 * 1024 * 1024
  *
  * # The compression algorithm used to compress pages
- * parquet.compression=UNCOMPRESSED # one of: UNCOMPRESSED, SNAPPY, GZIP, LZO. Default: UNCOMPRESSED. Supersedes mapred.output.compress*
+ * parquet.compression=UNCOMPRESSED # one of: UNCOMPRESSED, SNAPPY, GZIP, LZO, ZSTD. Default: UNCOMPRESSED. Supersedes mapred.output.compress*
  *
  * # The write support class to convert the records written to the OutputFormat into the events accepted by the record consumer
  * # Usually provided by a specific ParquetOutputFormat subclass
@@ -466,12 +466,10 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     int maxPaddingSize = getMaxPaddingSize(conf);
     boolean validating = getValidation(conf);
 
-    if (LOG.isInfoEnabled()) {
-      LOG.info("Parquet block size to {}", blockSize);
-      LOG.info("Validation is {}", (validating ? "on" : "off"));
-      LOG.info("Maximum row group padding size is {} bytes", maxPaddingSize);
-      LOG.info("Parquet properties are:\n{}", props);
-    }
+    LOG.info(
+        "ParquetRecordWriter [block size: {}b, row group padding size: {}b, validating: {}]",
+        blockSize, maxPaddingSize, validating);
+    LOG.debug("Parquet properties are:\n{}", props);
 
     WriteContext fileWriteContext = writeSupport.init(conf);
     

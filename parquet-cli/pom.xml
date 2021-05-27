@@ -114,8 +114,8 @@
               <goal>shade</goal>
             </goals>
             <configuration>
-							<shadedArtifactAttached>true</shadedArtifactAttached>
-							<shadedClassifierName>runtime</shadedClassifierName>
+              <shadedArtifactAttached>true</shadedArtifactAttached>
+              <shadedClassifierName>runtime</shadedClassifierName>
               <minimizeJar>false</minimizeJar>
               <filters>
                 <filter>
@@ -139,9 +139,8 @@
               </artifactSet>
               <relocations>
                 <relocation>
-									<!-- relocate Avro in the runtime jar to avoid conflicts with
-                       on-cluster Avro versions.
-											 -->
+                   <!-- relocate Avro in the runtime jar to avoid conflicts with
+                       on-cluster Avro versions. -->
                   <pattern>org.apache.avro</pattern>
                   <shadedPattern>${shade.prefix}.org.apache.avro</shadedPattern>
                 </relocation>

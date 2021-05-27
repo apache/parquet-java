@@ -23,7 +23,9 @@ import java.io.IOException;
 
 /**
  * Utilities for managing I/O resources.
+ * @deprecated
  */
+@Deprecated
 public class IOExceptionUtils {
 
 	/**

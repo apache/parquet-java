@@ -26,7 +26,12 @@ import org.apache.parquet.io.api.RecordMaterializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-// TODO(julien): this class appears to be unused -- can it be nuked? - todd
+/**
+ * Base record reader class.
+ *
+ * @deprecated
+ */
+@Deprecated
 public abstract class BaseRecordReader<T> extends RecordReader<T> {
   private static final Logger LOG = LoggerFactory.getLogger(BaseRecordReader.class);
 

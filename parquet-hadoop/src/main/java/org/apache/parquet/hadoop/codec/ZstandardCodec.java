@@ -47,7 +47,7 @@ import java.io.OutputStream;
 public class ZstandardCodec implements Configurable, CompressionCodec {
 
   public final static String PARQUET_COMPRESS_ZSTD_BUFFERPOOL_ENABLED = "parquet.compression.codec.zstd.bufferPool.enabled";
-  public final static boolean DEFAULT_PARQUET_COMPRESS_ZSTD_BUFFERPOOL_ENABLED = false;
+  public final static boolean DEFAULT_PARQUET_COMPRESS_ZSTD_BUFFERPOOL_ENABLED = true;
   public final static String PARQUET_COMPRESS_ZSTD_LEVEL = "parquet.compression.codec.zstd.level";
   public final static int DEFAULT_PARQUET_COMPRESS_ZSTD_LEVEL = 3;
   public final static String PARQUET_COMPRESS_ZSTD_WORKERS = "parquet.compression.codec.zstd.workers";
