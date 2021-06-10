@@ -45,10 +45,7 @@ import org.apache.parquet.hadoop.example.GroupWriteSupport;
 import org.apache.parquet.hadoop.util.HadoopOutputFile;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.MessageType;
-import org.junit.Assume;
-import org.junit.BeforeClass;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.*;
 import org.junit.rules.TemporaryFolder;
 
 /**
@@ -73,7 +70,7 @@ public class TestLargeColumnChunk {
   private static Binary VALUE_NOT_IN_DATA;
   private static Path file;
 
-  @Rule
+  @ClassRule
   public static TemporaryFolder folder = new TemporaryFolder();
 
   @BeforeClass
