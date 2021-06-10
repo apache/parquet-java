@@ -23,7 +23,6 @@ import static org.apache.parquet.filter2.predicate.FilterApi.binaryColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.eq;
 import static org.apache.parquet.hadoop.ParquetFileWriter.Mode.OVERWRITE;
 import static org.apache.parquet.hadoop.metadata.CompressionCodecName.UNCOMPRESSED;
-import static org.apache.parquet.schema.LogicalTypeAnnotation.stringType;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
 import static org.apache.parquet.schema.Types.buildMessage;
@@ -46,6 +45,7 @@ import org.apache.parquet.hadoop.example.GroupWriteSupport;
 import org.apache.parquet.hadoop.util.HadoopOutputFile;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.MessageType;
+import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
@@ -53,9 +53,8 @@ import org.junit.rules.TemporaryFolder;
 
 /**
  * This test is to test parquet-mr working with potential int overflows (when the sizes are greater than
- * Integer.MAX_VALUE).
- *
- * TODO: Check if CI environment can handle the memory consumption and time of this test.
+ * Integer.MAX_VALUE). The test requires ~3GB memory so it is likely to fail in the CI environment. Because of that the
+ * OOM errors are caught and the test is skipped to ensure it'll not break our regular testing.
  */
 public class TestLargeColumnChunk {
   private static final MessageType SCHEMA = buildMessage().addFields(
@@ -75,12 +74,11 @@ public class TestLargeColumnChunk {
   private static Path file;
 
   @Rule
-  public TemporaryFolder folder = new TemporaryFolder();
+  public static TemporaryFolder folder = new TemporaryFolder();
 
   @BeforeClass
   public static void createFile() throws IOException {
-//  TODO:  file = new Path(folder.newFile().getAbsolutePath());
-    file = new Path("/tmp/test.parquet");
+    file = new Path(folder.newFile().getAbsolutePath());
 
     GroupFactory factory = new SimpleGroupFactory(SCHEMA);
     Random random = new Random(RANDOM_SEED);
@@ -104,6 +102,8 @@ public class TestLargeColumnChunk {
           VALUE_IN_DATA = data;
         }
       }
+    } catch (OutOfMemoryError e) {
+      Assume.assumeNoException("This test is skipped due to not enough memory", e);
     }
     VALUE_NOT_IN_DATA = nextBinary(random);
   }
@@ -124,6 +124,8 @@ public class TestLargeColumnChunk {
         assertEquals(nextBinary(random), group.getBinary(DATA_INDEX, 0));
       }
       assertNull("No more record should be read", reader.read());
+    } catch (OutOfMemoryError e) {
+      Assume.assumeNoException("This test is skipped due to not enough memory", e);
     }
   }
 
@@ -136,11 +138,15 @@ public class TestLargeColumnChunk {
       assertEquals(ID_OF_FILTERED_DATA, group.getLong(ID_INDEX, 0));
       assertEquals(VALUE_IN_DATA, group.getBinary(DATA_INDEX, 0));
       assertNull("No more record should be read", reader.read());
+    } catch (OutOfMemoryError e) {
+      Assume.assumeNoException("This test is skipped due to not enough memory", e);
     }
     try (ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), file)
         .withFilter(FilterCompat.get(eq(binaryColumn("data"), VALUE_NOT_IN_DATA)))
         .build()) {
       assertNull("No record should be read", reader.read());
+    } catch (OutOfMemoryError e) {
+      Assume.assumeNoException("This test is skipped due to not enough memory", e);
     }
   }
 }
