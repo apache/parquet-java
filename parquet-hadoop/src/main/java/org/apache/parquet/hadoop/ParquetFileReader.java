@@ -916,7 +916,7 @@ public class ParquetFileReader implements Closeable {
           currentParts = new ConsecutivePartList(startingPos);
           allParts.add(currentParts);
         }
-        currentParts.addChunk(new ChunkDescriptor(columnDescriptor, mc, startingPos, (int)mc.getTotalSize()));
+        currentParts.addChunk(new ChunkDescriptor(columnDescriptor, mc, startingPos, mc.getTotalSize()));
       }
     }
     // actually read all the chunks
@@ -994,7 +994,7 @@ public class ParquetFileReader implements Closeable {
             allParts.add(currentParts);
           }
           ChunkDescriptor chunkDescriptor = new ChunkDescriptor(columnDescriptor, mc, startingPos,
-              (int) range.getLength());
+              range.getLength());
           currentParts.addChunk(chunkDescriptor);
           builder.setOffsetIndex(chunkDescriptor, filteredOffsetIndex);
         }
@@ -1613,7 +1613,7 @@ public class ParquetFileReader implements Closeable {
     private final ColumnDescriptor col;
     private final ColumnChunkMetaData metadata;
     private final long fileOffset;
-    private final int size;
+    private final long size;
 
     /**
      * @param col column this chunk is part of
@@ -1625,7 +1625,7 @@ public class ParquetFileReader implements Closeable {
         ColumnDescriptor col,
         ColumnChunkMetaData metadata,
         long fileOffset,
-        int size) {
+        long size) {
       super();
       this.col = col;
       this.metadata = metadata;
@@ -1657,8 +1657,8 @@ public class ParquetFileReader implements Closeable {
   private class ConsecutivePartList {
 
     private final long offset;
-    private int length;
-    private final List<ChunkDescriptor> chunks = new ArrayList<ChunkDescriptor>();
+    private long length;
+    private final List<ChunkDescriptor> chunks = new ArrayList<>();
 
     /**
      * @param offset where the first chunk starts
@@ -1686,8 +1686,8 @@ public class ParquetFileReader implements Closeable {
       List<Chunk> result = new ArrayList<Chunk>(chunks.size());
       f.seek(offset);
 
-      int fullAllocations = length / options.getMaxAllocationSize();
-      int lastAllocationSize = length % options.getMaxAllocationSize();
+      int fullAllocations = Math.toIntExact(length / options.getMaxAllocationSize());
+      int lastAllocationSize = Math.toIntExact(length % options.getMaxAllocationSize());
 
       int numAllocations = fullAllocations + (lastAllocationSize > 0 ? 1 : 0);
       List<ByteBuffer> buffers = new ArrayList<>(numAllocations);
