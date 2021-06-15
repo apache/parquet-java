@@ -93,29 +93,30 @@ public class TestReadWriteEncodingStats {
     writeData(writer);
     writer.close();
 
-    ParquetFileReader reader = ParquetFileReader.open(CONF, path);
-    assertEquals("Should have one row group", 1, reader.getRowGroups().size());
-    BlockMetaData rowGroup = reader.getRowGroups().get(0);
+    try (ParquetFileReader reader = ParquetFileReader.open(CONF, path)) {
+      assertEquals("Should have one row group", 1, reader.getRowGroups().size());
+      BlockMetaData rowGroup = reader.getRowGroups().get(0);
 
-    ColumnChunkMetaData dictColumn = rowGroup.getColumns().get(0);
-    EncodingStats dictStats = dictColumn.getEncodingStats();
-    assertNotNull("Dict column should have non-null encoding stats", dictStats);
-    assertTrue("Dict column should have a dict page", dictStats.hasDictionaryPages());
-    assertTrue("Dict column should have dict-encoded pages", dictStats.hasDictionaryEncodedPages());
-    assertFalse("Dict column should not have non-dict pages", dictStats.hasNonDictionaryEncodedPages());
+      ColumnChunkMetaData dictColumn = rowGroup.getColumns().get(0);
+      EncodingStats dictStats = dictColumn.getEncodingStats();
+      assertNotNull("Dict column should have non-null encoding stats", dictStats);
+      assertTrue("Dict column should have a dict page", dictStats.hasDictionaryPages());
+      assertTrue("Dict column should have dict-encoded pages", dictStats.hasDictionaryEncodedPages());
+      assertFalse("Dict column should not have non-dict pages", dictStats.hasNonDictionaryEncodedPages());
 
-    ColumnChunkMetaData plainColumn = rowGroup.getColumns().get(1);
-    EncodingStats plainStats = plainColumn.getEncodingStats();
-    assertNotNull("Plain column should have non-null encoding stats", plainStats);
-    assertFalse("Plain column should not have a dict page", plainStats.hasDictionaryPages());
-    assertFalse("Plain column should not have dict-encoded pages", plainStats.hasDictionaryEncodedPages());
-    assertTrue("Plain column should have non-dict pages", plainStats.hasNonDictionaryEncodedPages());
+      ColumnChunkMetaData plainColumn = rowGroup.getColumns().get(1);
+      EncodingStats plainStats = plainColumn.getEncodingStats();
+      assertNotNull("Plain column should have non-null encoding stats", plainStats);
+      assertFalse("Plain column should not have a dict page", plainStats.hasDictionaryPages());
+      assertFalse("Plain column should not have dict-encoded pages", plainStats.hasDictionaryEncodedPages());
+      assertTrue("Plain column should have non-dict pages", plainStats.hasNonDictionaryEncodedPages());
 
-    ColumnChunkMetaData fallbackColumn = rowGroup.getColumns().get(2);
-    EncodingStats fallbackStats = fallbackColumn.getEncodingStats();
-    assertNotNull("Fallback column should have non-null encoding stats", fallbackStats);
-    assertTrue("Fallback column should have a dict page", fallbackStats.hasDictionaryPages());
-    assertTrue("Fallback column should have dict-encoded pages", fallbackStats.hasDictionaryEncodedPages());
-    assertTrue("Fallback column should have non-dict pages", fallbackStats.hasNonDictionaryEncodedPages());
+      ColumnChunkMetaData fallbackColumn = rowGroup.getColumns().get(2);
+      EncodingStats fallbackStats = fallbackColumn.getEncodingStats();
+      assertNotNull("Fallback column should have non-null encoding stats", fallbackStats);
+      assertTrue("Fallback column should have a dict page", fallbackStats.hasDictionaryPages());
+      assertTrue("Fallback column should have dict-encoded pages", fallbackStats.hasDictionaryEncodedPages());
+      assertTrue("Fallback column should have non-dict pages", fallbackStats.hasNonDictionaryEncodedPages());
+    }
   }
 }
