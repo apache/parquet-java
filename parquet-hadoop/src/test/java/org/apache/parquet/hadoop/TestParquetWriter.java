@@ -269,14 +269,15 @@ public class TestParquetWriter {
       }
     }
 
-    ParquetFileReader reader = ParquetFileReader.open(HadoopInputFile.fromPath(path, new Configuration()));
-    BlockMetaData blockMetaData = reader.getFooter().getBlocks().get(0);
-    BloomFilter bloomFilter = reader.getBloomFilterDataReader(blockMetaData)
-      .readBloomFilter(blockMetaData.getColumns().get(0));
+    try (ParquetFileReader reader = ParquetFileReader.open(HadoopInputFile.fromPath(path, new Configuration()))) {
+      BlockMetaData blockMetaData = reader.getFooter().getBlocks().get(0);
+      BloomFilter bloomFilter = reader.getBloomFilterDataReader(blockMetaData)
+        .readBloomFilter(blockMetaData.getColumns().get(0));
 
-    for (String name: testNames) {
-      assertTrue(bloomFilter.findHash(
-        LongHashFunction.xx(0).hashBytes(Binary.fromString(name).toByteBuffer())));
+      for (String name : testNames) {
+        assertTrue(bloomFilter.findHash(
+          LongHashFunction.xx(0).hashBytes(Binary.fromString(name).toByteBuffer())));
+      }
     }
   }
 }

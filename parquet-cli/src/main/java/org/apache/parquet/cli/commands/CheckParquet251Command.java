@@ -108,10 +108,8 @@ public class CheckParquet251Command extends BaseCommand {
           }));
 
       // now check to see if the data is actually corrupt
-      ParquetFileReader reader = new ParquetFileReader(getConf(),
-          fakeMeta, path, footer.getBlocks(), columns);
-
-      try {
+      try (ParquetFileReader reader = new ParquetFileReader(getConf(),
+        fakeMeta, path, footer.getBlocks(), columns)) {
         PageStatsValidator validator = new PageStatsValidator();
         for (PageReadStore pages = reader.readNextRowGroup(); pages != null;
              pages = reader.readNextRowGroup()) {

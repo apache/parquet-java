@@ -204,35 +204,37 @@ public class TestParquetFileWriter {
     assertEquals(expectedEncoding,rowGroup.getColumns().get(0).getEncodings());
 
     { // read first block of col #1
-      ParquetFileReader r = new ParquetFileReader(configuration, readFooter.getFileMetaData(), path,
-          Arrays.asList(rowGroup), Arrays.asList(SCHEMA.getColumnDescription(PATH1)));
-      PageReadStore pages = r.readNextRowGroup();
-      assertEquals(3, pages.getRowCount());
-      validateContains(SCHEMA, pages, PATH1, 2, BytesInput.from(BYTES1));
-      validateContains(SCHEMA, pages, PATH1, 3, BytesInput.from(BYTES1));
-      assertNull(r.readNextRowGroup());
+      try (ParquetFileReader r = new ParquetFileReader(configuration, readFooter.getFileMetaData(), path,
+          Arrays.asList(rowGroup), Arrays.asList(SCHEMA.getColumnDescription(PATH1)))) {
+        PageReadStore pages = r.readNextRowGroup();
+        assertEquals(3, pages.getRowCount());
+        validateContains(SCHEMA, pages, PATH1, 2, BytesInput.from(BYTES1));
+        validateContains(SCHEMA, pages, PATH1, 3, BytesInput.from(BYTES1));
+        assertNull(r.readNextRowGroup());
+      }
     }
 
     { // read all blocks of col #1 and #2
 
-      ParquetFileReader r = new ParquetFileReader(configuration, readFooter.getFileMetaData(), path,
-          readFooter.getBlocks(), Arrays.asList(SCHEMA.getColumnDescription(PATH1), SCHEMA.getColumnDescription(PATH2)));
+      try (ParquetFileReader r = new ParquetFileReader(configuration, readFooter.getFileMetaData(), path,
+          readFooter.getBlocks(), Arrays.asList(SCHEMA.getColumnDescription(PATH1), SCHEMA.getColumnDescription(PATH2)))) {
 
-      PageReadStore pages = r.readNextRowGroup();
-      assertEquals(3, pages.getRowCount());
-      validateContains(SCHEMA, pages, PATH1, 2, BytesInput.from(BYTES1));
-      validateContains(SCHEMA, pages, PATH1, 3, BytesInput.from(BYTES1));
-      validateContains(SCHEMA, pages, PATH2, 2, BytesInput.from(BYTES2));
-      validateContains(SCHEMA, pages, PATH2, 3, BytesInput.from(BYTES2));
-      validateContains(SCHEMA, pages, PATH2, 1, BytesInput.from(BYTES2));
+        PageReadStore pages = r.readNextRowGroup();
+        assertEquals(3, pages.getRowCount());
+        validateContains(SCHEMA, pages, PATH1, 2, BytesInput.from(BYTES1));
+        validateContains(SCHEMA, pages, PATH1, 3, BytesInput.from(BYTES1));
+        validateContains(SCHEMA, pages, PATH2, 2, BytesInput.from(BYTES2));
+        validateContains(SCHEMA, pages, PATH2, 3, BytesInput.from(BYTES2));
+        validateContains(SCHEMA, pages, PATH2, 1, BytesInput.from(BYTES2));
 
-      pages = r.readNextRowGroup();
-      assertEquals(4, pages.getRowCount());
+        pages = r.readNextRowGroup();
+        assertEquals(4, pages.getRowCount());
 
-      validateContains(SCHEMA, pages, PATH1, 7, BytesInput.from(BYTES3));
-      validateContains(SCHEMA, pages, PATH2, 8, BytesInput.from(BYTES4));
+        validateContains(SCHEMA, pages, PATH1, 7, BytesInput.from(BYTES3));
+        validateContains(SCHEMA, pages, PATH2, 8, BytesInput.from(BYTES4));
 
-      assertNull(r.readNextRowGroup());
+        assertNull(r.readNextRowGroup());
+      }
     }
     PrintFooter.main(new String[] {path.toString()});
   }
@@ -281,12 +283,14 @@ public class TestParquetFileWriter {
     w.endBlock();
     w.end(new HashMap<>());
     ParquetMetadata readFooter = ParquetFileReader.readFooter(configuration, path);
-    ParquetFileReader r = new ParquetFileReader(configuration, readFooter.getFileMetaData(), path,
-      Arrays.asList(readFooter.getBlocks().get(0)), Arrays.asList(schema.getColumnDescription(colPath)));
-    BloomFilterReader bloomFilterReader = r.getBloomFilterDataReader(readFooter.getBlocks().get(0));
-    BloomFilter bloomFilter = bloomFilterReader.readBloomFilter(readFooter.getBlocks().get(0).getColumns().get(0));
-    assertTrue(bloomFilter.findHash(blockSplitBloomFilter.hash(Binary.fromString("hello"))));
-    assertTrue(bloomFilter.findHash(blockSplitBloomFilter.hash(Binary.fromString("world"))));
+
+    try (ParquetFileReader r = new ParquetFileReader(configuration, readFooter.getFileMetaData(), path,
+      Arrays.asList(readFooter.getBlocks().get(0)), Arrays.asList(schema.getColumnDescription(colPath)))) {
+      BloomFilterReader bloomFilterReader = r.getBloomFilterDataReader(readFooter.getBlocks().get(0));
+      BloomFilter bloomFilter = bloomFilterReader.readBloomFilter(readFooter.getBlocks().get(0).getColumns().get(0));
+      assertTrue(bloomFilter.findHash(blockSplitBloomFilter.hash(Binary.fromString("hello"))));
+      assertTrue(bloomFilter.findHash(blockSplitBloomFilter.hash(Binary.fromString("world"))));
+    }
   }
 
   @Test
@@ -340,16 +344,16 @@ public class TestParquetFileWriter {
     expectedEncoding.add(PLAIN);
     assertEquals(expectedEncoding, readFooter.getBlocks().get(0).getColumns().get(0).getEncodings());
 
-    ParquetFileReader reader = new ParquetFileReader(configuration, readFooter.getFileMetaData(), path,
-      readFooter.getBlocks(), Arrays.asList(SCHEMA.getColumnDescription(PATH1), SCHEMA.getColumnDescription(PATH2)));
-
-    PageReadStore pages = reader.readNextRowGroup();
-    assertEquals(14, pages.getRowCount());
-    validateV2Page(SCHEMA, pages, PATH1, 3, 4, 1, repLevels.toByteArray(), defLevels.toByteArray(), data.toByteArray(), 12);
-    validateV2Page(SCHEMA, pages, PATH1, 3, 3, 0, repLevels.toByteArray(), defLevels.toByteArray(),data.toByteArray(), 12);
-    validateV2Page(SCHEMA, pages, PATH2, 3, 5, 2, repLevels.toByteArray(), defLevels.toByteArray(), data2.toByteArray(), 12);
-    validateV2Page(SCHEMA, pages, PATH2, 2, 2, 0, repLevels.toByteArray(), defLevels.toByteArray(), data2.toByteArray(), 12);
-    assertNull(reader.readNextRowGroup());
+    try (ParquetFileReader reader = new ParquetFileReader(configuration, readFooter.getFileMetaData(), path,
+      readFooter.getBlocks(), Arrays.asList(SCHEMA.getColumnDescription(PATH1), SCHEMA.getColumnDescription(PATH2)))) {
+      PageReadStore pages = reader.readNextRowGroup();
+      assertEquals(14, pages.getRowCount());
+      validateV2Page(SCHEMA, pages, PATH1, 3, 4, 1, repLevels.toByteArray(), defLevels.toByteArray(), data.toByteArray(), 12);
+      validateV2Page(SCHEMA, pages, PATH1, 3, 3, 0, repLevels.toByteArray(), defLevels.toByteArray(), data.toByteArray(), 12);
+      validateV2Page(SCHEMA, pages, PATH2, 3, 5, 2, repLevels.toByteArray(), defLevels.toByteArray(), data2.toByteArray(), 12);
+      validateV2Page(SCHEMA, pages, PATH2, 2, 2, 0, repLevels.toByteArray(), defLevels.toByteArray(), data2.toByteArray(), 12);
+      assertNull(reader.readNextRowGroup());
+    }
   }
 
   @Test
@@ -426,35 +430,37 @@ public class TestParquetFileWriter {
         120, readFooter.getBlocks().get(1).getStartingPos());
 
     { // read first block of col #1
-      ParquetFileReader r = new ParquetFileReader(conf, readFooter.getFileMetaData(), path,
-          Arrays.asList(readFooter.getBlocks().get(0)), Arrays.asList(SCHEMA.getColumnDescription(PATH1)));
-      PageReadStore pages = r.readNextRowGroup();
-      assertEquals(3, pages.getRowCount());
-      validateContains(SCHEMA, pages, PATH1, 2, BytesInput.from(BYTES1));
-      validateContains(SCHEMA, pages, PATH1, 3, BytesInput.from(BYTES1));
-      assertNull(r.readNextRowGroup());
+      try (ParquetFileReader r = new ParquetFileReader(conf, readFooter.getFileMetaData(), path,
+          Arrays.asList(readFooter.getBlocks().get(0)), Arrays.asList(SCHEMA.getColumnDescription(PATH1)))) {
+        PageReadStore pages = r.readNextRowGroup();
+        assertEquals(3, pages.getRowCount());
+        validateContains(SCHEMA, pages, PATH1, 2, BytesInput.from(BYTES1));
+        validateContains(SCHEMA, pages, PATH1, 3, BytesInput.from(BYTES1));
+        assertNull(r.readNextRowGroup());
+      }
     }
 
     { // read all blocks of col #1 and #2
 
-      ParquetFileReader r = new ParquetFileReader(conf, readFooter.getFileMetaData(), path,
-          readFooter.getBlocks(), Arrays.asList(SCHEMA.getColumnDescription(PATH1), SCHEMA.getColumnDescription(PATH2)));
+      try (ParquetFileReader r = new ParquetFileReader(conf, readFooter.getFileMetaData(), path,
+          readFooter.getBlocks(), Arrays.asList(SCHEMA.getColumnDescription(PATH1), SCHEMA.getColumnDescription(PATH2)))) {
 
-      PageReadStore pages = r.readNextRowGroup();
-      assertEquals(3, pages.getRowCount());
-      validateContains(SCHEMA, pages, PATH1, 2, BytesInput.from(BYTES1));
-      validateContains(SCHEMA, pages, PATH1, 3, BytesInput.from(BYTES1));
-      validateContains(SCHEMA, pages, PATH2, 2, BytesInput.from(BYTES2));
-      validateContains(SCHEMA, pages, PATH2, 3, BytesInput.from(BYTES2));
-      validateContains(SCHEMA, pages, PATH2, 1, BytesInput.from(BYTES2));
+        PageReadStore pages = r.readNextRowGroup();
+        assertEquals(3, pages.getRowCount());
+        validateContains(SCHEMA, pages, PATH1, 2, BytesInput.from(BYTES1));
+        validateContains(SCHEMA, pages, PATH1, 3, BytesInput.from(BYTES1));
+        validateContains(SCHEMA, pages, PATH2, 2, BytesInput.from(BYTES2));
+        validateContains(SCHEMA, pages, PATH2, 3, BytesInput.from(BYTES2));
+        validateContains(SCHEMA, pages, PATH2, 1, BytesInput.from(BYTES2));
 
-      pages = r.readNextRowGroup();
-      assertEquals(4, pages.getRowCount());
+        pages = r.readNextRowGroup();
+        assertEquals(4, pages.getRowCount());
 
-      validateContains(SCHEMA, pages, PATH1, 7, BytesInput.from(BYTES3));
-      validateContains(SCHEMA, pages, PATH2, 8, BytesInput.from(BYTES4));
+        validateContains(SCHEMA, pages, PATH1, 7, BytesInput.from(BYTES3));
+        validateContains(SCHEMA, pages, PATH2, 8, BytesInput.from(BYTES4));
 
-      assertNull(r.readNextRowGroup());
+        assertNull(r.readNextRowGroup());
+      }
     }
     PrintFooter.main(new String[] {path.toString()});
   }
@@ -533,35 +539,36 @@ public class TestParquetFileWriter {
         109, readFooter.getBlocks().get(1).getStartingPos());
 
     { // read first block of col #1
-      ParquetFileReader r = new ParquetFileReader(conf, readFooter.getFileMetaData(), path,
-          Arrays.asList(readFooter.getBlocks().get(0)), Arrays.asList(SCHEMA.getColumnDescription(PATH1)));
-      PageReadStore pages = r.readNextRowGroup();
-      assertEquals(3, pages.getRowCount());
-      validateContains(SCHEMA, pages, PATH1, 2, BytesInput.from(BYTES1));
-      validateContains(SCHEMA, pages, PATH1, 3, BytesInput.from(BYTES1));
-      assertNull(r.readNextRowGroup());
+      try (ParquetFileReader r = new ParquetFileReader(conf, readFooter.getFileMetaData(), path,
+          Arrays.asList(readFooter.getBlocks().get(0)), Arrays.asList(SCHEMA.getColumnDescription(PATH1)))) {
+        PageReadStore pages = r.readNextRowGroup();
+        assertEquals(3, pages.getRowCount());
+        validateContains(SCHEMA, pages, PATH1, 2, BytesInput.from(BYTES1));
+        validateContains(SCHEMA, pages, PATH1, 3, BytesInput.from(BYTES1));
+        assertNull(r.readNextRowGroup());
+      }
     }
 
     { // read all blocks of col #1 and #2
 
-      ParquetFileReader r = new ParquetFileReader(conf, readFooter.getFileMetaData(), path,
-          readFooter.getBlocks(), Arrays.asList(SCHEMA.getColumnDescription(PATH1), SCHEMA.getColumnDescription(PATH2)));
+      try (ParquetFileReader r = new ParquetFileReader(conf, readFooter.getFileMetaData(), path,
+          readFooter.getBlocks(), Arrays.asList(SCHEMA.getColumnDescription(PATH1), SCHEMA.getColumnDescription(PATH2)))) {
+        PageReadStore pages = r.readNextRowGroup();
+        assertEquals(3, pages.getRowCount());
+        validateContains(SCHEMA, pages, PATH1, 2, BytesInput.from(BYTES1));
+        validateContains(SCHEMA, pages, PATH1, 3, BytesInput.from(BYTES1));
+        validateContains(SCHEMA, pages, PATH2, 2, BytesInput.from(BYTES2));
+        validateContains(SCHEMA, pages, PATH2, 3, BytesInput.from(BYTES2));
+        validateContains(SCHEMA, pages, PATH2, 1, BytesInput.from(BYTES2));
 
-      PageReadStore pages = r.readNextRowGroup();
-      assertEquals(3, pages.getRowCount());
-      validateContains(SCHEMA, pages, PATH1, 2, BytesInput.from(BYTES1));
-      validateContains(SCHEMA, pages, PATH1, 3, BytesInput.from(BYTES1));
-      validateContains(SCHEMA, pages, PATH2, 2, BytesInput.from(BYTES2));
-      validateContains(SCHEMA, pages, PATH2, 3, BytesInput.from(BYTES2));
-      validateContains(SCHEMA, pages, PATH2, 1, BytesInput.from(BYTES2));
+        pages = r.readNextRowGroup();
+        assertEquals(4, pages.getRowCount());
 
-      pages = r.readNextRowGroup();
-      assertEquals(4, pages.getRowCount());
+        validateContains(SCHEMA, pages, PATH1, 7, BytesInput.from(BYTES3));
+        validateContains(SCHEMA, pages, PATH2, 8, BytesInput.from(BYTES4));
 
-      validateContains(SCHEMA, pages, PATH1, 7, BytesInput.from(BYTES3));
-      validateContains(SCHEMA, pages, PATH2, 8, BytesInput.from(BYTES4));
-
-      assertNull(r.readNextRowGroup());
+        assertNull(r.readNextRowGroup());
+      }
     }
     PrintFooter.main(new String[] {path.toString()});
   }
