@@ -887,7 +887,9 @@ public class ParquetFileWriter {
    */
   @Deprecated
   public void appendFile(Configuration conf, Path file) throws IOException {
-    ParquetFileReader.open(conf, file).appendTo(this);
+    try (ParquetFileReader reader = ParquetFileReader.open(conf, file)) {
+      reader.appendTo(this);
+    }
   }
 
   public void appendFile(InputFile file) throws IOException {

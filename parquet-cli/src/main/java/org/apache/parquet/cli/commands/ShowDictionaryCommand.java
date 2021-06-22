@@ -64,56 +64,57 @@ public class ShowDictionaryCommand extends BaseCommand {
 
     String source = targets.get(0);
 
-    ParquetFileReader reader = ParquetFileReader.open(getConf(), qualifiedPath(source));
-    MessageType schema = reader.getFileMetaData().getSchema();
-    ColumnDescriptor descriptor = Util.descriptor(column, schema);
-    PrimitiveType type = Util.primitive(column, schema);
-    Preconditions.checkNotNull(type);
+    try (ParquetFileReader reader = ParquetFileReader.open(getConf(), qualifiedPath(source))) {
+      MessageType schema = reader.getFileMetaData().getSchema();
+      ColumnDescriptor descriptor = Util.descriptor(column, schema);
+      PrimitiveType type = Util.primitive(column, schema);
+      Preconditions.checkNotNull(type);
 
-    DictionaryPageReadStore dictionaryReader;
-    int rowGroup = 0;
-    while ((dictionaryReader = reader.getNextDictionaryReader()) != null) {
-      DictionaryPage page = dictionaryReader.readDictionaryPage(descriptor);
+      DictionaryPageReadStore dictionaryReader;
+      int rowGroup = 0;
+      while ((dictionaryReader = reader.getNextDictionaryReader()) != null) {
+        DictionaryPage page = dictionaryReader.readDictionaryPage(descriptor);
 
-      Dictionary dict = page.getEncoding().initDictionary(descriptor, page);
+        Dictionary dict = page.getEncoding().initDictionary(descriptor, page);
 
-      console.info("\nRow group {} dictionary for \"{}\":", rowGroup, column, page.getCompressedSize());
-      for (int i = 0; i <= dict.getMaxId(); i += 1) {
-        switch(type.getPrimitiveTypeName()) {
-          case BINARY:
-            if (type.getLogicalTypeAnnotation() instanceof LogicalTypeAnnotation.StringLogicalTypeAnnotation) {
+        console.info("\nRow group {} dictionary for \"{}\":", rowGroup, column, page.getCompressedSize());
+        for (int i = 0; i <= dict.getMaxId(); i += 1) {
+          switch(type.getPrimitiveTypeName()) {
+            case BINARY:
+              if (type.getLogicalTypeAnnotation() instanceof LogicalTypeAnnotation.StringLogicalTypeAnnotation) {
+                console.info("{}: {}", String.format("%6d", i),
+                    Util.humanReadable(dict.decodeToBinary(i).toStringUsingUTF8(), 70));
+              } else {
+                console.info("{}: {}", String.format("%6d", i),
+                    Util.humanReadable(dict.decodeToBinary(i).getBytesUnsafe(), 70));
+              }
+              break;
+            case INT32:
               console.info("{}: {}", String.format("%6d", i),
-                  Util.humanReadable(dict.decodeToBinary(i).toStringUsingUTF8(), 70));
-            } else {
+                dict.decodeToInt(i));
+              break;
+            case INT64:
               console.info("{}: {}", String.format("%6d", i),
-                  Util.humanReadable(dict.decodeToBinary(i).getBytesUnsafe(), 70));
-            }
-            break;
-          case INT32:
-            console.info("{}: {}", String.format("%6d", i),
-              dict.decodeToInt(i));
-            break;
-          case INT64:
-            console.info("{}: {}", String.format("%6d", i),
-                dict.decodeToLong(i));
-            break;
-          case FLOAT:
-            console.info("{}: {}", String.format("%6d", i),
-                dict.decodeToFloat(i));
-            break;
-          case DOUBLE:
-            console.info("{}: {}", String.format("%6d", i),
-                dict.decodeToDouble(i));
-            break;
-          default:
-            throw new IllegalArgumentException(
-                "Unknown dictionary type: " + type.getPrimitiveTypeName());
+                  dict.decodeToLong(i));
+              break;
+            case FLOAT:
+              console.info("{}: {}", String.format("%6d", i),
+                  dict.decodeToFloat(i));
+              break;
+            case DOUBLE:
+              console.info("{}: {}", String.format("%6d", i),
+                  dict.decodeToDouble(i));
+              break;
+            default:
+              throw new IllegalArgumentException(
+                  "Unknown dictionary type: " + type.getPrimitiveTypeName());
+          }
         }
+
+        reader.skipNextRowGroup();
+
+        rowGroup += 1;
       }
-
-      reader.skipNextRowGroup();
-
-      rowGroup += 1;
     }
 
     console.info("");
