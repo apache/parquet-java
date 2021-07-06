@@ -31,8 +31,8 @@ public class ParquetMemoryManagerRuntimeException
 
   private static final long serialVersionUID = 1L;
 
-  public ParquetMemoryManagerRuntimeException(String format) {
-    super(format);
+  public ParquetMemoryManagerRuntimeException(String message) {
+    super(message);
   }
 
 }
