@@ -37,7 +37,7 @@ import org.apache.parquet.internal.column.columnindex.OffsetIndex;
  * @see ColumnIndexFilter#calculateRowRanges(Filter, ColumnIndexStore, Set, long)
  */
 public class RowRanges {
-  private static class Range {
+  public static class Range {
 
     // Returns the union of the two ranges or null if there are elements between them.
     private static Range union(Range left, Range right) {
@@ -63,8 +63,8 @@ public class RowRanges {
       return null;
     }
 
-    final long from;
-    final long to;
+    public final long from;
+    public final long to;
 
     // Creates a range of [from, to] (from and to are inclusive; empty ranges are not valid)
     Range(long from, long to) {
@@ -297,6 +297,10 @@ public class RowRanges {
   public boolean isOverlapping(long from, long to) {
     return Collections.binarySearch(ranges, new Range(from, to),
         (r1, r2) -> r1.isBefore(r2) ? -1 : r1.isAfter(r2) ? 1 : 0) >= 0;
+  }
+
+  public List<Range> getRanges() {
+    return ranges;
   }
 
   @Override
