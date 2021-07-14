@@ -37,6 +37,7 @@ import org.apache.parquet.internal.column.columnindex.OffsetIndex;
  * @see ColumnIndexFilter#calculateRowRanges(Filter, ColumnIndexStore, Set, long)
  */
 public class RowRanges {
+  // Make it public because some uppler layer application need to access it
   public static class Range {
 
     // Returns the union of the two ranges or null if there are elements between them.
