@@ -25,7 +25,7 @@ import java.util.List;
 
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.internal.column.columnindex.OffsetIndex;
-import org.apache.parquet.internal.filter2.columnindex.RowRanges;
+import org.apache.parquet.filter2.columnindex.RowRanges;
 
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntList;
@@ -69,7 +69,7 @@ class ColumnIndexFilterUtils {
       this.offsetIndex = offsetIndex;
       this.indexMap = indexMap;
     }
-    
+
     @Override
     public int getPageOrdinal(int pageIndex) {
       return indexMap[pageIndex];

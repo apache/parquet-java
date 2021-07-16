@@ -41,7 +41,7 @@ import org.apache.parquet.crypto.AesCipher;
 import org.apache.parquet.crypto.ModuleCipherFactory.ModuleType;
 import org.apache.parquet.format.BlockCipher;
 import org.apache.parquet.internal.column.columnindex.OffsetIndex;
-import org.apache.parquet.internal.filter2.columnindex.RowRanges;
+import org.apache.parquet.filter2.columnindex.RowRanges;
 import org.apache.parquet.io.ParquetDecodingException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -72,14 +72,14 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
     private final OffsetIndex offsetIndex;
     private final long rowCount;
     private int pageIndex = 0;
-    
+
     private final BlockCipher.Decryptor blockDecryptor;
     private final byte[] dataPageAAD;
     private final byte[] dictionaryPageAAD;
 
     ColumnChunkPageReader(BytesInputDecompressor decompressor, List<DataPage> compressedPages,
         DictionaryPage compressedDictionaryPage, OffsetIndex offsetIndex, long rowCount,
-        BlockCipher.Decryptor blockDecryptor, byte[] fileAAD, 
+        BlockCipher.Decryptor blockDecryptor, byte[] fileAAD,
         int rowGroupOrdinal, int columnOrdinal) {
       this.decompressor = decompressor;
       this.compressedPages = new ArrayDeque<DataPage>(compressedPages);
@@ -91,9 +91,9 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
       this.valueCount = count;
       this.offsetIndex = offsetIndex;
       this.rowCount = rowCount;
-      
+
       this.blockDecryptor = blockDecryptor;
- 
+
       if (null != blockDecryptor) {
         dataPageAAD = AesCipher.createModuleAAD(fileAAD, ModuleType.DataPage, rowGroupOrdinal, columnOrdinal, 0);
         dictionaryPageAAD = AesCipher.createModuleAAD(fileAAD, ModuleType.DictionaryPage, rowGroupOrdinal, columnOrdinal, -1);
@@ -102,12 +102,12 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
         dictionaryPageAAD = null;
       }
     }
-    
+
     private int getPageOrdinal(int currentPageIndex) {
       if (null == offsetIndex) {
         return currentPageIndex;
       }
-      
+
       return offsetIndex.getPageOrdinal(currentPageIndex);
     }
 
@@ -123,11 +123,11 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
         return null;
       }
       final int currentPageIndex = pageIndex++;
-      
+
       if (null != blockDecryptor) {
         AesCipher.quickUpdatePageAAD(dataPageAAD, getPageOrdinal(currentPageIndex));
       }
-      
+
       return compressedPage.accept(new DataPage.Visitor<DataPage>() {
         @Override
         public DataPage visit(DataPageV1 dataPageV1) {
@@ -137,7 +137,7 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
               bytes = BytesInput.from(blockDecryptor.decrypt(bytes.toByteArray(), dataPageAAD));
             }
             BytesInput decompressed = decompressor.decompress(bytes, dataPageV1.getUncompressedSize());
-            
+
             final DataPageV1 decompressedPage;
             if (offsetIndex == null) {
               decompressedPage = new DataPageV1(
@@ -176,7 +176,7 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
             return dataPageV2;
           }
           BytesInput pageBytes = dataPageV2.getData();
-          
+
           if (null != blockDecryptor) {
             try {
               pageBytes = BytesInput.from(blockDecryptor.decrypt(pageBytes.toByteArray(), dataPageAAD));
@@ -195,7 +195,7 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
               throw new ParquetDecodingException("could not decompress page", e);
             }
           }
-          
+
           if (offsetIndex == null) {
             return DataPageV2.uncompressed(
                 dataPageV2.getRowCount(),
@@ -218,7 +218,7 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
                 pageBytes,
                 dataPageV2.getStatistics());
           }
-        } 
+        }
       });
     }
 
