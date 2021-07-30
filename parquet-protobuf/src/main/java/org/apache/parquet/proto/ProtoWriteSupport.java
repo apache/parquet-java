@@ -135,7 +135,7 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
 
     Map<String, String> extraMetaData = new HashMap<>();
     extraMetaData.put(ProtoReadSupport.PB_CLASS, protoMessage.getName());
-    extraMetaData.put(ProtoReadSupport.PB_DESCRIPTOR, serializeDescriptor(protoMessage));
+    extraMetaData.put(ProtoReadSupport.PB_DESCRIPTOR, messageDescriptor.toProto().toString());
     extraMetaData.put(PB_SPECS_COMPLIANT_WRITE, String.valueOf(writeSpecsCompliant));
     return new WriteContext(rootSchema, extraMetaData);
   }
@@ -563,10 +563,4 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
     throw new InvalidRecordException(exceptionMsg);
   }
 
-  /** Returns message descriptor as JSON String*/
-  private String serializeDescriptor(Class<? extends Message> protoClass) {
-    Descriptor descriptor = Protobufs.getMessageDescriptor(protoClass);
-    DescriptorProtos.DescriptorProto asProto = descriptor.toProto();
-    return TextFormat.printToString(asProto);
-  }
 }

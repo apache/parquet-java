@@ -97,6 +97,9 @@ Thrift integration is provided by the [parquet-thrift](https://github.com/apache
 ### Avro
 Avro conversion is implemented via the [parquet-avro](https://github.com/apache/parquet-mr/tree/master/parquet-avro) sub-project.
 
+### Protobuf
+Protobuf conversion is implemented via the [parquet-protobuf](https://github.com/apache/parquet-mr/tree/master/parquet-protobuf) sub-project.
+
 ### Create your own objects
 * The ParquetOutputFormat can be provided a WriteSupport to write your own objects to an event based RecordConsumer.
 * the ParquetInputFormat can be provided a ReadSupport to materialize your own objects by implementing a RecordMaterializer
