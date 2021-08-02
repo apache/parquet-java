@@ -16,10 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.parquet.filter2.columnindex;
+package org.apache.parquet.internal.filter2.columnindex;
 
-import static org.apache.parquet.filter2.columnindex.RowRanges.intersection;
-import static org.apache.parquet.filter2.columnindex.RowRanges.union;
+import static org.apache.parquet.internal.filter2.columnindex.RowRanges.intersection;
+import static org.apache.parquet.internal.filter2.columnindex.RowRanges.union;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -28,7 +28,6 @@ import static org.junit.Assert.assertTrue;
 import java.util.Arrays;
 import java.util.PrimitiveIterator;
 
-import org.apache.parquet.filter2.columnindex.RowRanges;
 import org.apache.parquet.internal.column.columnindex.OffsetIndexBuilder;
 import org.junit.Test;
 

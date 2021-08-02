@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.parquet.filter2.columnindex;
+package org.apache.parquet.internal.filter2.columnindex;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -28,8 +28,6 @@ import java.util.Set;
 
 import org.apache.parquet.filter2.compat.FilterCompat.Filter;
 import org.apache.parquet.internal.column.columnindex.OffsetIndex;
-import org.apache.parquet.internal.filter2.columnindex.ColumnIndexFilter;
-import org.apache.parquet.internal.filter2.columnindex.ColumnIndexStore;
 
 /**
  * Class representing row ranges in a row-group. These row ranges are calculated as a result of the column index based
@@ -94,7 +92,7 @@ public class RowRanges {
     }
   }
 
-  public static final RowRanges EMPTY = new RowRanges(Collections.emptyList());
+  static final RowRanges EMPTY = new RowRanges(Collections.emptyList());
 
   private final List<Range> ranges;
 
@@ -117,7 +115,7 @@ public class RowRanges {
    * @param rowCount a single row count
    * @return an immutable RowRanges
    */
-  public static RowRanges createSingle(long rowCount) {
+  static RowRanges createSingle(long rowCount) {
     return new RowRanges(new Range(0L, rowCount - 1L));
   }
 
@@ -139,7 +137,7 @@ public class RowRanges {
    * @param offsetIndex offsetIndex
    * @return a mutable RowRanges
    */
-  public static RowRanges create(long rowCount, PrimitiveIterator.OfInt pageIndexes, OffsetIndex offsetIndex) {
+  static RowRanges create(long rowCount, PrimitiveIterator.OfInt pageIndexes, OffsetIndex offsetIndex) {
     RowRanges ranges = new RowRanges();
     while (pageIndexes.hasNext()) {
       int pageIndex = pageIndexes.nextInt();
@@ -159,7 +157,7 @@ public class RowRanges {
    *
    * The result RowRanges object will contain all the row indexes that were contained in one of the specified objects.
    */
-  public static RowRanges union(RowRanges left, RowRanges right) {
+  static RowRanges union(RowRanges left, RowRanges right) {
     RowRanges result = new RowRanges();
     Iterator<Range> it1 = left.ranges.iterator();
     Iterator<Range> it2 = right.ranges.iterator();
@@ -198,7 +196,7 @@ public class RowRanges {
    *
    * The result RowRanges object will contain all the row indexes there were contained in both of the specified objects
    */
-  public static RowRanges intersection(RowRanges left, RowRanges right) {
+  static RowRanges intersection(RowRanges left, RowRanges right) {
     RowRanges result = new RowRanges();
 
     int rightIndex = 0;

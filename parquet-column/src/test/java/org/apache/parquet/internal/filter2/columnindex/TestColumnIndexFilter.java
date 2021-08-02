@@ -56,7 +56,6 @@ import java.util.Set;
 import java.util.stream.LongStream;
 
 import org.apache.parquet.bytes.BytesUtils;
-import org.apache.parquet.filter2.columnindex.RowRanges;
 import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.filter2.predicate.Statistics;
 import org.apache.parquet.filter2.predicate.UserDefinedPredicate;
