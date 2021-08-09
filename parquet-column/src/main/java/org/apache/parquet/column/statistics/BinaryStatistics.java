@@ -54,9 +54,13 @@ public class BinaryStatistics extends Statistics<Binary> {
   @Override
   public void updateStats(Binary value) {
     if (!this.hasNonNullValue()) {
-      initializeStats(value, value);
-    } else {
-      updateStats(value, value);
+      min = value.copy();
+      max = value.copy();
+      this.markAsNotEmpty();
+    } else if (comparator().compare(min, value) > 0) {
+      min = value.copy();
+    } else if (comparator().compare(max, value) < 0) {
+      max = value.copy();
     }
   }
 
