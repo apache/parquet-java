@@ -65,7 +65,7 @@ public class RowRanges {
     }
 
     public final long from;
-    public long to;
+    public final long to;
 
     // Creates a range of [from, to] (from and to are inclusive; empty ranges are not valid)
     Range(long from, long to) {
@@ -301,7 +301,7 @@ public class RowRanges {
   }
 
   public List<Range> getRanges() {
-    return ranges;
+    return  Collections.unmodifiableList(ranges);
   }
 
   @Override
