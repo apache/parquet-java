@@ -451,7 +451,7 @@ public final class Operators {
       return visitor.visit(this);
     }
   }
-   
+       
   public static final class UserDefinedByClass<T extends Comparable<T>, U extends UserDefinedPredicate<T>> extends UserDefined<T, U> {
     private final Class<U> udpClass;
     private final String toString;
