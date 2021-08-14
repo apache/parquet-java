@@ -478,6 +478,7 @@
                 change to fix a integer overflow issue.
                 TODO: remove this after Parquet 1.13 release -->
               <exclude>org.apache.parquet.column.values.dictionary.DictionaryValuesWriter#dictionaryByteSize</exclude>
+              <exclude>org.apache.parquet.filter2.predicate.FilterPredicate</exclude>
             </excludes>
           </parameter>
         </configuration>

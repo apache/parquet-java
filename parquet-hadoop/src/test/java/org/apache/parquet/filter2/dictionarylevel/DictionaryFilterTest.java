@@ -465,6 +465,122 @@ public class DictionaryFilterTest {
   }
 
   @Test
+  public void testInBinary() throws Exception {
+    BinaryColumn b = binaryColumn("binary_field");
+
+    Set<Binary> set1 = new HashSet<>();
+    set1.add(Binary.fromString("F"));
+    set1.add(Binary.fromString("C"));
+    set1.add(Binary.fromString("h"));
+    set1.add(Binary.fromString("E"));
+    FilterPredicate predIn1 = in(b, set1);
+    FilterPredicate predNotIn1 = notIn(b, set1);
+    assertFalse("Should not drop block", canDrop(predIn1, ccmd, dictionaries));
+    assertFalse("Should not drop block", canDrop(predNotIn1, ccmd, dictionaries));
+
+    Set<Binary> set2 = new HashSet<>();
+    for (int  i = 0; i < 26; i++) {
+      set2.add(Binary.fromString(Character.toString((char) (i + 97))));
+    }
+    set2.add(Binary.fromString("A"));
+    FilterPredicate predIn2 = in(b, set2);
+    FilterPredicate predNotIn2 = notIn(b, set2);
+    assertFalse("Should not drop block", canDrop(predIn2, ccmd, dictionaries));
+    assertTrue("Should not drop block", canDrop(predNotIn2, ccmd, dictionaries));
+
+    Set<Binary> set3 = new HashSet<>();
+    set3.add(Binary.fromString("F"));
+    set3.add(Binary.fromString("C"));
+    set3.add(Binary.fromString("A"));
+    set3.add(Binary.fromString("E"));
+    FilterPredicate predIn3 = in(b, set3);
+    FilterPredicate predNotIn3 = notIn(b, set3);
+    assertTrue("Should drop block", canDrop(predIn3, ccmd, dictionaries));
+    assertFalse("Should not drop block", canDrop(predNotIn3, ccmd, dictionaries));
+
+    Set<Binary> set4 = new HashSet<>();
+    set4.add(null);
+    FilterPredicate predIn4 = in(b, set4);
+    FilterPredicate predNotIn4 = notIn(b, set4);
+    assertFalse("Should not drop block for null", canDrop(predIn4, ccmd, dictionaries));
+    assertFalse("Should not drop block for null", canDrop(predNotIn4, ccmd, dictionaries));
+  }
+
+  @Test
+  public void testInFixed() throws Exception {
+    BinaryColumn b = binaryColumn("fixed_field");
+
+    // Only V2 supports dictionary encoding for FIXED_LEN_BYTE_ARRAY values
+    if (version == PARQUET_2_0) {
+      Set<Binary> set1 = new HashSet<>();
+      set1.add(toBinary("-2", 17));
+      set1.add(toBinary("-22", 17));
+      set1.add(toBinary("12345", 17));
+      FilterPredicate predIn1 = in(b, set1);
+      FilterPredicate predNotIn1 = notIn(b, set1);
+      assertTrue("Should drop block for in (-2, -22, 12345)",
+        canDrop(predIn1, ccmd, dictionaries));
+      assertFalse("Should not drop block for notIn (-2, -22, 12345)",
+        canDrop(predNotIn1, ccmd, dictionaries));
+
+      Set<Binary> set2 = new HashSet<>();
+      set2.add(toBinary("-1", 17));
+      set2.add(toBinary("0", 17));
+      set2.add(toBinary("12345", 17));
+      assertFalse("Should not drop block for in (-1, 0, 12345)",
+        canDrop(in(b, set2), ccmd, dictionaries));
+      assertFalse("Should not drop block for in (-1, 0, 12345)",
+        canDrop(notIn(b, set2), ccmd, dictionaries));
+    }
+
+    Set<Binary> set3 = new HashSet<>();
+    set3.add(null);
+    FilterPredicate predIn3 = in(b, set3);
+    FilterPredicate predNotIn3 = notIn(b, set3);
+    assertFalse("Should not drop block for null",
+      canDrop(predIn3, ccmd, dictionaries));
+    assertFalse("Should not drop block for null",
+      canDrop(predNotIn3, ccmd, dictionaries));
+  }
+
+  @Test
+  public void testInInt96() throws Exception {
+    // INT96 ordering is undefined => no filtering shall be done
+    BinaryColumn b = binaryColumn("int96_field");
+
+    Set<Binary> set1 = new HashSet<>();
+    set1.add(toBinary("-2", 12));
+    set1.add(toBinary("-0", 12));
+    set1.add(toBinary("12345", 12));
+    FilterPredicate predIn1 = in(b, set1);
+    FilterPredicate predNotIn1 = notIn(b, set1);
+    assertFalse("Should not drop block for in (-2, -0, 12345)",
+      canDrop(predIn1, ccmd, dictionaries));
+    assertFalse("Should not drop block for notIn (-2, -0, 12345)",
+      canDrop(predNotIn1, ccmd, dictionaries));
+
+    Set<Binary> set2 = new HashSet<>();
+    set2.add(toBinary("-2", 17));
+    set2.add(toBinary("12345", 17));
+    set2.add(toBinary("-789", 17));
+    FilterPredicate predIn2 = in(b, set2);
+    FilterPredicate predNotIn2 = notIn(b, set2);
+    assertFalse("Should not drop block for in (-2, 12345, -789)",
+      canDrop(predIn2, ccmd, dictionaries));
+    assertFalse("Should not drop block for notIn (-2, 12345, -789)",
+      canDrop(predNotIn2, ccmd, dictionaries));
+
+    Set<Binary> set3 = new HashSet<>();
+    set3.add(null);
+    FilterPredicate predIn3 = in(b, set3);
+    FilterPredicate predNotIn3 = notIn(b, set3);
+    assertFalse("Should not drop block for null",
+      canDrop(predIn3, ccmd, dictionaries));
+    assertFalse("Should not drop block for null",
+      canDrop(predNotIn3, ccmd, dictionaries));
+  }
+
+  @Test
   public void testAnd() throws Exception {
     BinaryColumn col = binaryColumn("binary_field");
 

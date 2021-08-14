@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.Formatter;
 import java.util.List;
 import java.util.PrimitiveIterator;
+import java.util.function.IntConsumer;
 import java.util.function.IntPredicate;
 
 import org.apache.parquet.column.statistics.Statistics;
@@ -32,12 +33,15 @@ import org.apache.parquet.filter2.predicate.Operators.And;
 import org.apache.parquet.filter2.predicate.Operators.Eq;
 import org.apache.parquet.filter2.predicate.Operators.Gt;
 import org.apache.parquet.filter2.predicate.Operators.GtEq;
+import org.apache.parquet.filter2.predicate.Operators.In;
 import org.apache.parquet.filter2.predicate.Operators.LogicalNotUserDefined;
 import org.apache.parquet.filter2.predicate.Operators.Lt;
 import org.apache.parquet.filter2.predicate.Operators.LtEq;
 import org.apache.parquet.filter2.predicate.Operators.Not;
 import org.apache.parquet.filter2.predicate.Operators.NotEq;
+import org.apache.parquet.filter2.predicate.Operators.NotIn;
 import org.apache.parquet.filter2.predicate.Operators.Or;
+import org.apache.parquet.filter2.predicate.Operators.SetColumnFilterPredicate;
 import org.apache.parquet.filter2.predicate.Operators.UserDefined;
 import org.apache.parquet.filter2.predicate.UserDefinedPredicate;
 import org.apache.parquet.io.api.Binary;
@@ -285,6 +289,27 @@ public abstract class ColumnIndexBuilder {
           .forEachRemaining((int index) -> matchingIndexes.add(index));
       return IndexIterator.filter(getPageCount(),
           pageIndex -> nullCounts[pageIndex] > 0 || matchingIndexes.contains(pageIndex));
+    }
+
+    @Override
+    public <T extends Comparable<T>> PrimitiveIterator.OfInt visit(In<T> in) {
+      IntSet indexes = getMatchingIndexes(in);
+      return IndexIterator.filter(getPageCount(), indexes::contains);
+    }
+
+    @Override
+    public <T extends Comparable<T>> PrimitiveIterator.OfInt visit(NotIn<T> notIn) {
+      IntSet indexes = getMatchingIndexes(notIn);
+      return IndexIterator.filter(getPageCount(), pageIndex -> !indexes.contains(pageIndex));
+    }
+
+    private <T extends Comparable<T>> IntSet getMatchingIndexes(SetColumnFilterPredicate<T> in) {
+      IntSet matchingIndexes = new IntOpenHashSet();
+      for (T value : in.getValues()) {
+        Eq<T> eq = new Eq<>(in.getColumn(), value);
+        visit(eq).forEachRemaining((IntConsumer) matchingIndexes::add);
+      }
+      return matchingIndexes;
     }
 
     @Override

@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -21,6 +21,7 @@ package org.apache.parquet.filter2.statisticslevel;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.junit.Test;
 
@@ -37,6 +38,7 @@ import org.apache.parquet.filter2.predicate.Statistics;
 import org.apache.parquet.filter2.predicate.UserDefinedPredicate;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
+import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Types;
 
@@ -51,11 +53,13 @@ import static org.apache.parquet.filter2.predicate.FilterApi.doubleColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.eq;
 import static org.apache.parquet.filter2.predicate.FilterApi.gt;
 import static org.apache.parquet.filter2.predicate.FilterApi.gtEq;
+import static org.apache.parquet.filter2.predicate.FilterApi.in;
 import static org.apache.parquet.filter2.predicate.FilterApi.intColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.lt;
 import static org.apache.parquet.filter2.predicate.FilterApi.ltEq;
 import static org.apache.parquet.filter2.predicate.FilterApi.not;
 import static org.apache.parquet.filter2.predicate.FilterApi.notEq;
+import static org.apache.parquet.filter2.predicate.FilterApi.notIn;
 import static org.apache.parquet.filter2.predicate.FilterApi.or;
 import static org.apache.parquet.filter2.predicate.FilterApi.userDefined;
 import static org.apache.parquet.filter2.statisticslevel.StatisticsFilter.canDrop;
@@ -276,6 +280,93 @@ public class TestStatisticsFilter {
 
     assertFalse(canDrop(gtEq(intColumn, 1), missingMinMaxColumnMetas));
     assertFalse(canDrop(gtEq(doubleColumn, 0.1), missingMinMaxColumnMetas));
+  }
+
+  @Test
+  public void testInNotIn() {
+    Set<Integer> values1 = new HashSet<>();
+    values1.add(10);
+    values1.add(12);
+    values1.add(15);
+    values1.add(17);
+    values1.add(19);
+    assertFalse(canDrop(in(intColumn, values1), columnMetas));
+    assertFalse(canDrop(notIn(intColumn, values1), columnMetas));
+
+    Set<Integer> values2 = new HashSet<>();
+    values2.add(109);
+    values2.add(2);
+    values2.add(5);
+    values2.add(117);
+    values2.add(101);
+    assertTrue((canDrop(in(intColumn, values2), columnMetas)));
+    assertFalse((canDrop(notIn(intColumn, values2), columnMetas)));
+
+    Set<Integer> values3 = new HashSet<>();
+    values3.add(1);
+    values3.add(2);
+    values3.add(5);
+    values3.add(7);
+    values3.add(10);
+    assertFalse(canDrop(in(intColumn, values3), columnMetas));
+    assertFalse(canDrop(notIn(intColumn, values3), columnMetas));
+
+    Set<Integer> values4 = new HashSet<>();
+    values4.add(50);
+    values4.add(60);
+    assertFalse((canDrop(in(intColumn, values4), missingMinMaxColumnMetas)));
+    assertFalse((canDrop(notIn(intColumn, values4), missingMinMaxColumnMetas)));
+
+    Set<Double> values5 = new HashSet<>();
+    values5.add(1.0);
+    values5.add(2.0);
+    values5.add(95.0);
+    values5.add(107.0);
+    values5.add(99.0);
+    assertFalse((canDrop(in(doubleColumn, values5), columnMetas)));
+    assertFalse((canDrop(notIn(doubleColumn, values5), columnMetas)));
+
+    Set<Binary> values6 = new HashSet<>();
+    values6.add(Binary.fromString("test1"));
+    values6.add(Binary.fromString("test2"));
+    assertTrue((canDrop(in(missingColumn, values6), columnMetas)));
+    assertFalse((canDrop(notIn(missingColumn, values6), columnMetas)));
+
+    Set<Integer> values7 = new HashSet<>();
+    values7.add(null);
+    assertFalse((canDrop(in(intColumn, values7), nullColumnMetas)));
+    assertFalse((canDrop(notIn(intColumn, values7), nullColumnMetas)));
+
+    Set<Binary> values8 = new HashSet<>();
+    values8.add(null);
+    assertFalse((canDrop(in(missingColumn, values8), columnMetas)));
+    assertFalse((canDrop(notIn(missingColumn, values8), columnMetas)));
+
+    IntStatistics statsNoNulls = new IntStatistics();
+    statsNoNulls.setMinMax(10, 100);
+    statsNoNulls.setNumNulls(0);
+
+    IntStatistics statsSomeNulls = new IntStatistics();
+    statsSomeNulls.setMinMax(10, 100);
+    statsSomeNulls.setNumNulls(3);
+
+    Set<Integer> values9 = new HashSet<>();
+    values9.add(null);
+    assertTrue(canDrop(in(intColumn, values9), Arrays.asList(
+      getIntColumnMeta(statsNoNulls, 177L),
+      getDoubleColumnMeta(doubleStats, 177L))));
+
+    assertFalse(canDrop(notIn(intColumn, values9), Arrays.asList(
+      getIntColumnMeta(statsNoNulls, 177L),
+      getDoubleColumnMeta(doubleStats, 177L))));
+
+    assertFalse(canDrop(in(intColumn, values9), Arrays.asList(
+      getIntColumnMeta(statsSomeNulls, 177L),
+      getDoubleColumnMeta(doubleStats, 177L))));
+
+    assertFalse(canDrop(notIn(intColumn, values9), Arrays.asList(
+      getIntColumnMeta(statsSomeNulls, 177L),
+      getDoubleColumnMeta(doubleStats, 177L))));
   }
 
   @Test

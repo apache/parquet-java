@@ -113,7 +113,7 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
     for (int i = 0; i <= dict.getMaxId(); i++) {
       dictSet.add((T) dictValueProvider.apply(i));
     }
-    
+
     return dictSet;
   }
 
@@ -361,6 +361,108 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
       LOG.warn("Failed to process dictionary for filter evaluation.", e);
     }
 
+    return BLOCK_MIGHT_MATCH;
+  }
+
+  @Override
+  public <T extends Comparable<T>> Boolean visit(In<T> in) {
+    Set<T> values = in.getValues();
+
+    if (values.contains(null)) {
+      // the dictionary contains only non-null values so isn't helpful. this
+      // could check the column stats, but the StatisticsFilter is responsible
+      return BLOCK_MIGHT_MATCH;
+    }
+
+    Column<T> filterColumn = in.getColumn();
+    ColumnChunkMetaData meta = getColumnChunk(filterColumn.getColumnPath());
+
+    if (meta == null) {
+      // the column isn't in this file so all values are null, but the value
+      // must be non-null because of the above check.
+      return BLOCK_CANNOT_MATCH;
+    }
+
+    // if the chunk has non-dictionary pages, don't bother decoding the
+    // dictionary because the row group can't be eliminated.
+    if (hasNonDictionaryPages(meta)) {
+      return BLOCK_MIGHT_MATCH;
+    }
+
+    try {
+      Set<T> dictSet = expandDictionary(meta);
+      if (dictSet != null) {
+        return drop(dictSet, values);
+      }
+    } catch (IOException e) {
+      LOG.warn("Failed to process dictionary for filter evaluation.", e);
+    }
+    return BLOCK_MIGHT_MATCH; // cannot drop the row group based on this dictionary
+  }
+
+  private <T extends Comparable<T>> Boolean drop(Set<T> dictSet, Set<T> values) {
+    // we need to find out the smaller set to iterate through
+    Set<T> smallerSet;
+    Set<T> biggerSet;
+
+    if (values.size() < dictSet.size()) {
+      smallerSet = values;
+      biggerSet = dictSet;
+    } else {
+      smallerSet = dictSet;
+      biggerSet = values;
+    }
+
+    for (T e : smallerSet) {
+      if (biggerSet.contains(e)) {
+        // value sets intersect so rows match
+        return BLOCK_MIGHT_MATCH;
+      }
+    }
+    return BLOCK_CANNOT_MATCH;
+  }
+
+  @Override
+  public <T extends Comparable<T>> Boolean visit(NotIn<T> notIn) {
+    Set<T> values = notIn.getValues();
+
+    Column<T> filterColumn = notIn.getColumn();
+    ColumnChunkMetaData meta = getColumnChunk(filterColumn.getColumnPath());
+
+    if (values.size() == 1 && values.contains(null) && meta == null) {
+      // the predicate value is null and all rows have a null value, so the
+      // predicate is always false (null != null)
+      return BLOCK_CANNOT_MATCH;
+    }
+
+    if (values.contains(null)) {
+      // the dictionary contains only non-null values so isn't helpful. this
+      // could check the column stats, but the StatisticsFilter is responsible
+      return BLOCK_MIGHT_MATCH;
+    }
+
+    if (meta == null) {
+      // the column isn't in this file so all values are null, but the value
+      // must be non-null because of the above check.
+      return BLOCK_MIGHT_MATCH;
+    }
+
+    // if the chunk has non-dictionary pages, don't bother decoding the
+    // dictionary because the row group can't be eliminated.
+    if (hasNonDictionaryPages(meta)) {
+      return BLOCK_MIGHT_MATCH;
+    }
+
+    try {
+      Set<T> dictSet = expandDictionary(meta);
+      if (dictSet != null) {
+        if (dictSet.size() > values.size()) return BLOCK_MIGHT_MATCH;
+        // ROWS_CANNOT_MATCH if no values in the dictionary that are not also in the set
+        return values.containsAll(dictSet) ? BLOCK_CANNOT_MATCH : BLOCK_MIGHT_MATCH;
+      }
+    } catch (IOException e) {
+      LOG.warn("Failed to process dictionary for filter evaluation.", e);
+    }
     return BLOCK_MIGHT_MATCH;
   }
 

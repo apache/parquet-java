@@ -27,6 +27,7 @@ import org.apache.parquet.filter2.compat.FilterCompat.FilterPredicateCompat;
 import org.apache.parquet.filter2.compat.FilterCompat.NoOpFilter;
 import org.apache.parquet.filter2.compat.FilterCompat.UnboundRecordFilterCompat;
 import org.apache.parquet.filter2.predicate.FilterPredicate.Visitor;
+import org.apache.parquet.filter2.predicate.Operators;
 import org.apache.parquet.filter2.predicate.Operators.And;
 import org.apache.parquet.filter2.predicate.Operators.Column;
 import org.apache.parquet.filter2.predicate.Operators.Eq;
@@ -144,6 +145,18 @@ public class ColumnIndexFilter implements Visitor<RowRanges> {
   @Override
   public <T extends Comparable<T>> RowRanges visit(GtEq<T> gtEq) {
     return applyPredicate(gtEq.getColumn(), ci -> ci.visit(gtEq), RowRanges.EMPTY);
+  }
+
+  @Override
+  public <T extends Comparable<T>> RowRanges visit(Operators.In<T> in) {
+    boolean isNull = in.getValues().contains(null);
+    return applyPredicate(in.getColumn(), ci -> ci.visit(in), isNull ? allRows() : RowRanges.EMPTY);
+  }
+
+  @Override
+  public <T extends Comparable<T>> RowRanges visit(Operators.NotIn<T> notIn) {
+    boolean isNull = notIn.getValues().contains(null);
+    return applyPredicate(notIn.getColumn(), ci -> ci.visit(notIn), isNull ? RowRanges.EMPTY : allRows());
   }
 
   @Override

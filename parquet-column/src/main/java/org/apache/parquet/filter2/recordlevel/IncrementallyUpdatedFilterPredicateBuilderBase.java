@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -20,16 +20,22 @@ package org.apache.parquet.filter2.recordlevel;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.filter2.predicate.FilterPredicate;
 import org.apache.parquet.filter2.predicate.FilterPredicate.Visitor;
 import org.apache.parquet.filter2.predicate.Operators.And;
+import org.apache.parquet.filter2.predicate.Operators.Eq;
+import org.apache.parquet.filter2.predicate.Operators.In;
 import org.apache.parquet.filter2.predicate.Operators.Not;
+import org.apache.parquet.filter2.predicate.Operators.NotIn;
 import org.apache.parquet.filter2.predicate.Operators.Or;
+import org.apache.parquet.filter2.predicate.Operators.SetColumnFilterPredicate;
 import org.apache.parquet.filter2.recordlevel.IncrementallyUpdatedFilterPredicate.ValueInspector;
 import org.apache.parquet.io.PrimitiveColumnIO;
 import org.apache.parquet.schema.PrimitiveComparator;
@@ -95,6 +101,28 @@ public abstract class IncrementallyUpdatedFilterPredicateBuilderBase implements 
   @SuppressWarnings("unchecked")
   protected final <T> PrimitiveComparator<T> getComparator(ColumnPath path) {
     return (PrimitiveComparator<T>) comparatorsByColumn.get(path);
+  }
+
+  @Override
+  public <T extends Comparable<T>> IncrementallyUpdatedFilterPredicate visit(In<T> in) {
+    Set<ValueInspector> predicates = constructPredicates(in);
+    return new IncrementallyUpdatedFilterPredicate.In(predicates);
+  }
+
+  @Override
+  public <T extends Comparable<T>> IncrementallyUpdatedFilterPredicate visit(NotIn<T> notIn) {
+    Set<ValueInspector> predicates = constructPredicates(notIn);
+    return new IncrementallyUpdatedFilterPredicate.NotIn(predicates);
+  }
+
+  private <T extends Comparable<T>> Set<ValueInspector> constructPredicates(SetColumnFilterPredicate<T> in) {
+    Set<ValueInspector> predicates = new HashSet<>();
+    for (T value : in.getValues()) {
+      Eq<T> eq = new Eq<>(in.getColumn(), value);
+      IncrementallyUpdatedFilterPredicate incremental = eq.accept(this);
+      predicates.add((ValueInspector) incremental);
+    }
+    return predicates;
   }
 
   @Override

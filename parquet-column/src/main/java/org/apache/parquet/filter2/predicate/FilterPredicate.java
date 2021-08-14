@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -22,11 +22,13 @@ import org.apache.parquet.filter2.predicate.Operators.And;
 import org.apache.parquet.filter2.predicate.Operators.Eq;
 import org.apache.parquet.filter2.predicate.Operators.Gt;
 import org.apache.parquet.filter2.predicate.Operators.GtEq;
+import org.apache.parquet.filter2.predicate.Operators.In;
 import org.apache.parquet.filter2.predicate.Operators.LogicalNotUserDefined;
 import org.apache.parquet.filter2.predicate.Operators.Lt;
 import org.apache.parquet.filter2.predicate.Operators.LtEq;
 import org.apache.parquet.filter2.predicate.Operators.Not;
 import org.apache.parquet.filter2.predicate.Operators.NotEq;
+import org.apache.parquet.filter2.predicate.Operators.NotIn;
 import org.apache.parquet.filter2.predicate.Operators.Or;
 import org.apache.parquet.filter2.predicate.Operators.UserDefined;
 
@@ -66,6 +68,8 @@ public interface FilterPredicate {
     <T extends Comparable<T>> R visit(LtEq<T> ltEq);
     <T extends Comparable<T>> R visit(Gt<T> gt);
     <T extends Comparable<T>> R visit(GtEq<T> gtEq);
+    <T extends Comparable<T>> R visit(In<T> in);
+    <T extends Comparable<T>> R visit(NotIn<T> notIn);
     R visit(And and);
     R visit(Or or);
     R visit(Not not);
