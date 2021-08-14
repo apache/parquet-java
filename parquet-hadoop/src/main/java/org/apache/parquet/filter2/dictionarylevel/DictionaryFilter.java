@@ -113,7 +113,7 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
     for (int i = 0; i <= dict.getMaxId(); i++) {
       dictSet.add((T) dictValueProvider.apply(i));
     }
-
+    
     return dictSet;
   }
 
