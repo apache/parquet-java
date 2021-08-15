@@ -112,7 +112,7 @@ abstract public class ColumnChunkMetaData {
       long valueCount,
       long totalSize,
       long totalUncompressedSize) {
-    
+
     return get(path, Types.optional(type).named("fake_type"), codec, encodingStats, encodings, statistics,
         firstDataPage, dictionaryPageOffset, valueCount, totalSize, totalUncompressedSize);
   }
@@ -157,14 +157,14 @@ abstract public class ColumnChunkMetaData {
           totalUncompressedSize);
     }
   }
-  
+
   // In sensitive columns, the ColumnMetaData structure is encrypted (with column-specific keys), making the fields like Statistics invisible.
   // Decryption is not performed pro-actively, due to performance and authorization reasons.
   // This method creates an a shell ColumnChunkMetaData object that keeps the encrypted metadata and the decryption tools.
   // These tools will activated later - when/if the column is projected.
-  public static ColumnChunkMetaData getWithEncryptedMetadata(ParquetMetadataConverter parquetMetadataConverter, ColumnPath path, 
+  public static ColumnChunkMetaData getWithEncryptedMetadata(ParquetMetadataConverter parquetMetadataConverter, ColumnPath path,
       PrimitiveType type, byte[] encryptedMetadata, byte[] columnKeyMetadata,
-      InternalFileDecryptor fileDecryptor, int rowGroupOrdinal, int columnOrdinal, 
+      InternalFileDecryptor fileDecryptor, int rowGroupOrdinal, int columnOrdinal,
       String createdBy) {
     return new EncryptedColumnChunkMetaData(parquetMetadataConverter, path, type, encryptedMetadata, columnKeyMetadata,
         fileDecryptor, rowGroupOrdinal, columnOrdinal, createdBy);
@@ -359,8 +359,8 @@ abstract public class ColumnChunkMetaData {
     decryptIfNeeded();
     return "ColumnMetaData{" + properties.toString() + ", " + getFirstDataPageOffset() + "}";
   }
-  
-  public boolean hasDictionaryPage() { 
+
+  public boolean hasDictionaryPage() {
     EncodingStats stats = getEncodingStats();
     if (stats != null) {
       // ensure there is a dictionary page and that it is used to encode data pages
@@ -369,6 +369,14 @@ abstract public class ColumnChunkMetaData {
 
     Set<Encoding> encodings = getEncodings();
     return (encodings.contains(PLAIN_DICTIONARY) || encodings.contains(RLE_DICTIONARY));
+  }
+
+  /**
+   * @return whether or not this column is encrypted
+   */
+  @Private
+  public boolean isEncrypted() {
+    return this instanceof EncryptedColumnChunkMetaData;
   }
 }
 
@@ -567,7 +575,7 @@ class EncryptedColumnChunkMetaData extends ColumnChunkMetaData {
   private final ParquetMetadataConverter parquetMetadataConverter;
   private final byte[] encryptedMetadata;
   private final byte[] columnKeyMetadata;
-  private final InternalFileDecryptor fileDecryptor; 
+  private final InternalFileDecryptor fileDecryptor;
 
   private final int columnOrdinal;
   private final PrimitiveType primitiveType;
@@ -577,7 +585,7 @@ class EncryptedColumnChunkMetaData extends ColumnChunkMetaData {
   private boolean decrypted;
   private ColumnChunkMetaData shadowColumnChunkMetaData;
 
-  EncryptedColumnChunkMetaData(ParquetMetadataConverter parquetMetadataConverter, ColumnPath path, PrimitiveType type, 
+  EncryptedColumnChunkMetaData(ParquetMetadataConverter parquetMetadataConverter, ColumnPath path, PrimitiveType type,
       byte[] encryptedMetadata, byte[] columnKeyMetadata,
       InternalFileDecryptor fileDecryptor, int rowGroupOrdinal, int columnOrdinal, String createdBy) {
     super((EncodingStats) null, (ColumnChunkProperties) null);
@@ -603,12 +611,12 @@ class EncryptedColumnChunkMetaData extends ColumnChunkMetaData {
     }
 
     // Decrypt the ColumnMetaData
-    InternalColumnDecryptionSetup columnDecryptionSetup = fileDecryptor.setColumnCryptoMetadata(path, true, false, 
+    InternalColumnDecryptionSetup columnDecryptionSetup = fileDecryptor.setColumnCryptoMetadata(path, true, false,
         columnKeyMetadata, columnOrdinal);
-    
+
     ColumnMetaData metaData;
     ByteArrayInputStream tempInputStream = new ByteArrayInputStream(encryptedMetadata);
-    byte[] columnMetaDataAAD = AesCipher.createModuleAAD(fileDecryptor.getFileAAD(), ModuleType.ColumnMetaData, 
+    byte[] columnMetaDataAAD = AesCipher.createModuleAAD(fileDecryptor.getFileAAD(), ModuleType.ColumnMetaData,
         rowGroupOrdinal, columnOrdinal, -1);
     try {
       metaData = readColumnMetaData(tempInputStream, columnDecryptionSetup.getMetaDataDecryptor(), columnMetaDataAAD);

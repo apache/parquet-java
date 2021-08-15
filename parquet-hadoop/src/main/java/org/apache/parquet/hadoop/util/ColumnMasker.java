@@ -34,7 +34,7 @@ import org.apache.parquet.hadoop.ParquetFileWriter;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
-import org.apache.parquet.hadoop.util.CompressionConverter.TransParquetFileReader;
+import org.apache.parquet.hadoop.util.TransParquetFileReader;
 import org.apache.parquet.internal.column.columnindex.ColumnIndex;
 import org.apache.parquet.internal.column.columnindex.OffsetIndex;
 import org.apache.parquet.io.api.Converter;
@@ -123,7 +123,7 @@ public class ColumnMasker {
       .build();
     CodecFactory codecFactory = new CodecFactory(new Configuration(), props.getPageSizeThreshold());
     CodecFactory.BytesCompressor compressor =	codecFactory.getCompressor(chunk.getCodec());
-    
+
     // Create new schema that only has the current column
     MessageType newSchema = newSchema(schema, descriptor);
     ColumnChunkPageWriteStore cPageStore = new ColumnChunkPageWriteStore(compressor, newSchema, props.getAllocator(), props.getColumnIndexTruncateLength());
@@ -154,7 +154,7 @@ public class ColumnMasker {
     cStore.close();
     cWriter.close();
   }
-  
+
   private MessageType newSchema(MessageType schema, ColumnDescriptor descriptor) {
     String[] path = descriptor.getPath();
     Type type = schema.getType(path);

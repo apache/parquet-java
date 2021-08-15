@@ -394,7 +394,7 @@ public class ParquetFileWriter {
     out.write(magic);
   }
 
-  InternalFileEncryptor getEncryptor() {
+  public InternalFileEncryptor getEncryptor() {
     return fileEncryptor;
   }
 
@@ -599,6 +599,31 @@ public class ParquetFileWriter {
       Encoding rlEncoding,
       Encoding dlEncoding,
       Encoding valuesEncoding) throws IOException {
+    writeDataPage(valueCount, uncompressedPageSize, bytes, statistics, rlEncoding, dlEncoding, valuesEncoding, null, null);
+  }
+
+  /**
+   * writes a single page
+   * @param valueCount count of values
+   * @param uncompressedPageSize the size of the data once uncompressed
+   * @param bytes the compressed data for the page without header
+   * @param statistics statistics for the page
+   * @param rlEncoding encoding of the repetition level
+   * @param dlEncoding encoding of the definition level
+   * @param valuesEncoding encoding of values
+   * @param blockEncryptor encryptor for block data
+   * @param AAD AAD
+   * @throws IOException if there is an error while writing
+   */
+  public void writeDataPage(
+    int valueCount, int uncompressedPageSize,
+    BytesInput bytes,
+    Statistics statistics,
+    Encoding rlEncoding,
+    Encoding dlEncoding,
+    Encoding valuesEncoding,
+    BlockCipher.Encryptor blockEncryptor,
+    byte[] AAD) throws IOException {
     state = state.write();
     long beforeHeader = out.getPos();
     if (currentChunkFirstDataPage < 0) {
@@ -616,7 +641,9 @@ public class ParquetFileWriter {
         dlEncoding,
         valuesEncoding,
         (int) crc.getValue(),
-        out);
+        out,
+        blockEncryptor,
+        AAD);
     } else {
       metadataConverter.writeDataPageV1Header(
         uncompressedPageSize, compressedPageSize,
@@ -624,7 +651,9 @@ public class ParquetFileWriter {
         rlEncoding,
         dlEncoding,
         valuesEncoding,
-        out);
+        out,
+        blockEncryptor,
+        AAD);
     }
     long headerSize = out.getPos() - beforeHeader;
     this.uncompressedLength += uncompressedPageSize + headerSize;
@@ -1125,7 +1154,7 @@ public class ParquetFileWriter {
         BlockCipher.Encryptor columnIndexEncryptor = null;
         byte[] columnIndexAAD = null;
         if (null != fileEncryptor) {
-          InternalColumnEncryptionSetup columnEncryptionSetup = fileEncryptor.getColumnSetup(column.getPath(), false, cIndex);
+          InternalColumnEncryptionSetup columnEncryptionSetup = fileEncryptor.getColumnSetup(column.getPath(), true, cIndex);
           if (columnEncryptionSetup.isEncrypted()) {
             columnIndexEncryptor = columnEncryptionSetup.getMetaDataEncryptor();
             columnIndexAAD = AesCipher.createModuleAAD(fileEncryptor.getFileAAD(), ModuleType.ColumnIndex,
