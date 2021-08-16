@@ -237,10 +237,11 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
       } else {
         rowCountForNextRowCountCheck = min(rowCountForNextRowCountCheck, writer.getRowsWrittenSoFar() + pageRowCountLimit);
       }
+      //estimate remaining row count by previous input for next row count check
       long rowsToFillPage =
           usedMem == 0 ?
               props.getMaxRowCountForPageSizeCheck()
-              : (long) rows / usedMem * remainingMem;
+              : rows * remainingMem / usedMem;
       if (rowsToFillPage < minRecordToWait) {
         minRecordToWait = rowsToFillPage;
       }
