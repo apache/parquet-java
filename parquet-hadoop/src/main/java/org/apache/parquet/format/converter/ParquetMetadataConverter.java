@@ -1228,13 +1228,7 @@ public class ParquetMetadataConverter {
     List<RowGroup> newRowGroups = new ArrayList<RowGroup>();
     for (RowGroup rowGroup : rowGroups) {
       long totalSize = 0;
-      long startIndex;
-
-      if (rowGroup.isSetFile_offset()) {
-        startIndex = rowGroup.getFile_offset();
-      } else {
-        startIndex = getOffset(rowGroup.getColumns().get(0));
-      }
+      long startIndex = getOffset(rowGroup);
 
       if (rowGroup.isSetTotal_compressed_size()) {
         totalSize = rowGroup.getTotal_compressed_size();
@@ -1259,12 +1253,7 @@ public class ParquetMetadataConverter {
     List<RowGroup> rowGroups = metaData.getRow_groups();
     List<RowGroup> newRowGroups = new ArrayList<RowGroup>();
     for (RowGroup rowGroup : rowGroups) {
-      long startIndex;
-      if (rowGroup.isSetFile_offset()) {
-        startIndex = rowGroup.getFile_offset();
-      } else {
-        startIndex = getOffset(rowGroup.getColumns().get(0));
-      }
+      long startIndex = getOffset(rowGroup);
 
       if (filter.contains(startIndex)) {
         newRowGroups.add(rowGroup);
@@ -1275,9 +1264,6 @@ public class ParquetMetadataConverter {
   }
 
   static long getOffset(RowGroup rowGroup) {
-    if (rowGroup.isSetFile_offset()) {
-      return rowGroup.getFile_offset();
-    }
     return getOffset(rowGroup.getColumns().get(0));
   }
 

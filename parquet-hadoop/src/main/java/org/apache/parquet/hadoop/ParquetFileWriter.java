@@ -852,6 +852,7 @@ public class ParquetFileWriter {
     this.currentBlock.setTotalByteSize(currentBlock.getTotalByteSize() + uncompressedLength);
     this.uncompressedLength = 0;
     this.compressedLength = 0;
+    this.currentChunkDictionaryPageOffset = 0;
     columnIndexBuilder = null;
     offsetIndexBuilder = null;
   }

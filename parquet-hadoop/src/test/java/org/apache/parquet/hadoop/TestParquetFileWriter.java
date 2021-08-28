@@ -23,6 +23,10 @@ import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.ArrayWritable;
+import org.apache.hadoop.mapreduce.RecordReader;
+import org.apache.hadoop.mapreduce.TaskAttemptContext;
+import org.apache.hadoop.mapreduce.TaskAttemptID;
 import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.Version;
 import org.apache.parquet.bytes.BytesUtils;
@@ -30,6 +34,8 @@ import org.apache.parquet.column.page.DataPageV2;
 import org.apache.parquet.column.values.bloomfilter.BlockSplitBloomFilter;
 import org.apache.parquet.column.values.bloomfilter.BloomFilter;
 import org.apache.parquet.hadoop.ParquetOutputFormat.JobSummaryLevel;
+import org.apache.parquet.hadoop.example.GroupReadSupport;
+import org.apache.parquet.hadoop.util.ContextUtil;
 import org.apache.parquet.io.ParquetEncodingException;
 import org.junit.Assume;
 import org.junit.Rule;
@@ -67,6 +73,7 @@ import java.util.concurrent.Callable;
 
 import static org.apache.parquet.CorruptStatistics.shouldIgnoreStatistics;
 import static org.apache.parquet.hadoop.ParquetFileWriter.Mode.OVERWRITE;
+import static org.apache.parquet.hadoop.ParquetInputFormat.READ_SUPPORT_CLASS;
 import static org.junit.Assert.*;
 import static org.apache.parquet.column.Encoding.BIT_PACKED;
 import static org.apache.parquet.column.Encoding.PLAIN;
@@ -75,6 +82,7 @@ import static org.apache.parquet.format.converter.ParquetMetadataConverter.MAX_S
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static org.apache.parquet.schema.Type.Repetition.*;
 import static org.apache.parquet.hadoop.TestUtils.enforceEmptyDir;
+import static org.junit.Assert.assertEquals;
 
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroup;
@@ -191,6 +199,7 @@ public class TestParquetFileWriter {
     assertEquals(c2Ends - c2Starts, rowGroup.getColumns().get(1).getTotalSize());
     assertEquals(c2Ends - c1Starts, rowGroup.getTotalByteSize());
 
+
     assertEquals(c1Starts, rowGroup.getColumns().get(0).getStartingPos());
     assertEquals(0, rowGroup.getColumns().get(0).getDictionaryPageOffset());
     assertEquals(c1p1Starts, rowGroup.getColumns().get(0).getFirstDataPageOffset());
@@ -237,6 +246,82 @@ public class TestParquetFileWriter {
       }
     }
     PrintFooter.main(new String[] {path.toString()});
+  }
+
+  @Test
+  public void testWriteReadWithRecordReader() throws Exception {
+    File testFile = temp.newFile();
+    testFile.delete();
+
+    Path path = new Path(testFile.toURI());
+    Configuration configuration = new Configuration();
+
+    ParquetFileWriter w = new ParquetFileWriter(configuration, SCHEMA, path);
+    w.start();
+    w.startBlock(3);
+    w.startColumn(C1, 5, CODEC);
+    w.writeDataPage(2, 4, BytesInput.from(BYTES1), EMPTY_STATS, BIT_PACKED, BIT_PACKED, PLAIN);
+    w.writeDataPage(3, 4, BytesInput.from(BYTES1), EMPTY_STATS, BIT_PACKED, BIT_PACKED, PLAIN);
+    w.endColumn();
+    w.startColumn(C2, 6, CODEC);
+    long c2Starts = w.getPos();
+    w.writeDictionaryPage(new DictionaryPage(BytesInput.from(BYTES2), 4, RLE_DICTIONARY));
+    long c2p1Starts = w.getPos();
+    w.writeDataPage(2, 4, BytesInput.from(BYTES2), EMPTY_STATS, BIT_PACKED, BIT_PACKED, PLAIN);
+    w.writeDataPage(3, 4, BytesInput.from(BYTES2), EMPTY_STATS, BIT_PACKED, BIT_PACKED, PLAIN);
+    w.writeDataPage(1, 4, BytesInput.from(BYTES2), EMPTY_STATS, BIT_PACKED, BIT_PACKED, PLAIN);
+    w.endColumn();
+    long c2Ends = w.getPos();
+    w.endBlock();
+    w.startBlock(4);
+    w.startColumn(C1, 7, CODEC);
+    long c1Bock2Starts = w.getPos();
+    long c1p1Bock2Starts = w.getPos();
+    w.writeDataPage(7, 4, BytesInput.from(BYTES3), EMPTY_STATS, BIT_PACKED, BIT_PACKED, PLAIN);
+    w.endColumn();
+    long c1Block2Ends = w.getPos();
+    w.startColumn(C2, 8, CODEC);
+    w.writeDataPage(8, 4, BytesInput.from(BYTES4), EMPTY_STATS, BIT_PACKED, BIT_PACKED, PLAIN);
+    w.endColumn();
+    w.endBlock();
+    w.end(new HashMap<String, String>());
+
+    ParquetMetadata readFooter = ParquetFileReader.readFooter(configuration, path);
+    assertEquals("footer: "+ readFooter, 2, readFooter.getBlocks().size());
+    BlockMetaData rowGroup = readFooter.getBlocks().get(0);
+    assertEquals(c2Ends - c2Starts, rowGroup.getColumns().get(1).getTotalSize());
+
+
+    assertEquals(0, rowGroup.getColumns().get(0).getDictionaryPageOffset());
+    assertEquals(c2Starts, rowGroup.getColumns().get(1).getStartingPos());
+    assertEquals(c2Starts, rowGroup.getColumns().get(1).getDictionaryPageOffset());
+    assertEquals(c2p1Starts, rowGroup.getColumns().get(1).getFirstDataPageOffset());
+
+    BlockMetaData rowGroup2 = readFooter.getBlocks().get(1);
+    assertEquals(0, rowGroup2.getColumns().get(0).getDictionaryPageOffset());
+    assertEquals(c1Bock2Starts, rowGroup2.getColumns().get(0).getStartingPos());
+    assertEquals(c1p1Bock2Starts, rowGroup2.getColumns().get(0).getFirstDataPageOffset());
+    assertEquals(c1Block2Ends - c1Bock2Starts, rowGroup2.getColumns().get(0).getTotalSize());
+
+    HashSet<Encoding> expectedEncoding=new HashSet<Encoding>();
+    expectedEncoding.add(PLAIN);
+    expectedEncoding.add(BIT_PACKED);
+    assertEquals(expectedEncoding,rowGroup.getColumns().get(0).getEncodings());
+
+    ParquetInputSplit split = new ParquetInputSplit(path, 0, w.getPos(),null,
+      readFooter.getBlocks(), SCHEMA.toString(),
+      readFooter.getFileMetaData().getSchema().toString(),
+      readFooter.getFileMetaData().getKeyValueMetaData(),
+      null);
+    ParquetInputFormat input = new ParquetInputFormat();
+    configuration.set(READ_SUPPORT_CLASS, GroupReadSupport.class.getName());
+    TaskAttemptID taskAttemptID = TaskAttemptID.forName("attempt_0_1_m_1_1");
+    TaskAttemptContext taskContext = ContextUtil.newTaskAttemptContext(configuration, taskAttemptID);
+    RecordReader<Void, ArrayWritable> reader = input.createRecordReader(split, taskContext);
+    assertTrue(reader instanceof ParquetRecordReader);
+    //RowGroup.file_offset is checked here
+    reader.initialize(split, taskContext);
+    reader.close();
   }
 
   @Test
