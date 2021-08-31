@@ -201,9 +201,18 @@ public class ParquetMetadataConverter {
     List<BlockMetaData> blocks = parquetMetadata.getBlocks();
     List<RowGroup> rowGroups = new ArrayList<RowGroup>();
     long numRows = 0;
+    long preBlockStartPos = 0;
+    long preBlockCompressedSize = 0;
     for (BlockMetaData block : blocks) {
       numRows += block.getRowCount();
+      long blockStartPos = block.getStartingPos();
+      if (preBlockStartPos != 0) {
+        assert blockStartPos == preBlockStartPos + preBlockCompressedSize;
+      }
+      preBlockStartPos = blockStartPos;
+      preBlockCompressedSize = block.getCompressedSize();
       addRowGroup(parquetMetadata, rowGroups, block, fileEncryptor);
+
     }
     FileMetaData fileMetaData = new FileMetaData(
         currentVersion,
