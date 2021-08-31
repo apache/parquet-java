@@ -1226,9 +1226,28 @@ public class ParquetMetadataConverter {
   static FileMetaData filterFileMetaDataByMidpoint(FileMetaData metaData, RangeMetadataFilter filter) {
     List<RowGroup> rowGroups = metaData.getRow_groups();
     List<RowGroup> newRowGroups = new ArrayList<RowGroup>();
+    long preStartIndex = 0;
+    long preCompressedSize = 0;
     for (RowGroup rowGroup : rowGroups) {
       long totalSize = 0;
-      long startIndex = getOffset(rowGroup);
+      long startIndex;
+      if (rowGroup.isSetFile_offset()) {
+        assert rowGroup.isSetTotal_compressed_size();
+
+        if (preStartIndex == 0) {
+          //the first block always holds the truth
+          startIndex = rowGroup.getFile_offset();
+        } else {
+          //calculate offset for other blocks
+          startIndex = preStartIndex + preCompressedSize;
+        }
+
+        preStartIndex = startIndex;
+        preCompressedSize = rowGroup.getTotal_compressed_size();
+
+      } else {
+        startIndex = getOffset(rowGroup.getColumns().get(0));
+      }
 
       if (rowGroup.isSetTotal_compressed_size()) {
         totalSize = rowGroup.getTotal_compressed_size();
@@ -1252,8 +1271,27 @@ public class ParquetMetadataConverter {
   static FileMetaData filterFileMetaDataByStart(FileMetaData metaData, OffsetMetadataFilter filter) {
     List<RowGroup> rowGroups = metaData.getRow_groups();
     List<RowGroup> newRowGroups = new ArrayList<RowGroup>();
+    long preStartIndex = 0;
+    long preCompressedSize = 0;
     for (RowGroup rowGroup : rowGroups) {
-      long startIndex = getOffset(rowGroup);
+      long startIndex;
+      if (rowGroup.isSetFile_offset()) {
+        assert rowGroup.isSetTotal_compressed_size();
+
+        if (preStartIndex == 0) {
+          //the first block always holds the truth
+          startIndex = rowGroup.getFile_offset();
+        } else {
+          //calculate offset for other blocks
+          startIndex = preStartIndex + preCompressedSize;
+        }
+
+        preStartIndex = startIndex;
+        preCompressedSize = rowGroup.getTotal_compressed_size();
+
+      } else {
+        startIndex = getOffset(rowGroup.getColumns().get(0));
+      }
 
       if (filter.contains(startIndex)) {
         newRowGroups.add(rowGroup);
@@ -1264,6 +1302,9 @@ public class ParquetMetadataConverter {
   }
 
   static long getOffset(RowGroup rowGroup) {
+    if (rowGroup.isSetFile_offset()) {
+      return rowGroup.getFile_offset();
+    }
     return getOffset(rowGroup.getColumns().get(0));
   }
 
