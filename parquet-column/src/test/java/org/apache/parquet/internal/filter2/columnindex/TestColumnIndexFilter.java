@@ -370,7 +370,7 @@ public class TestColumnIndexFilter {
       7, 8, 9, 10, 11, 12, 13);
     set1.add(1);
     assertRows(calculateRowRanges(FilterCompat.get(in(intColumn("column1"), set1)), STORE, paths, TOTAL_ROW_COUNT),
-      0, 7, 8, 9, 10, 11, 12, 13);
+      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13);
     assertRows(calculateRowRanges(FilterCompat.get(notIn(intColumn("column1"), set1)), STORE, paths, TOTAL_ROW_COUNT),
       1, 2, 3, 4, 5, 6, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29);
 
@@ -378,7 +378,7 @@ public class TestColumnIndexFilter {
     set2.add(fromString("Zulu"));
     set2.add(fromString("Alfa"));
     assertRows(calculateRowRanges(FilterCompat.get(in(binaryColumn("column2"), set2)), STORE, paths, TOTAL_ROW_COUNT),
-      0, 29);
+      0, 1, 2, 3, 4, 5, 6, 7, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29);
     assertRows(calculateRowRanges(FilterCompat.get(notIn(binaryColumn("column2"), set2)), STORE, paths, TOTAL_ROW_COUNT),
       1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28);
 
@@ -390,12 +390,12 @@ public class TestColumnIndexFilter {
       6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 23, 24, 25, 26, 27, 28, 29);
     set3.add(9.98);
     assertRows(calculateRowRanges(FilterCompat.get(in(doubleColumn("column3"), set3)), STORE, paths, TOTAL_ROW_COUNT),
-      0, 1, 2, 3, 4, 5, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22);
+      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25);
     assertRows(calculateRowRanges(FilterCompat.get(notIn(doubleColumn("column3"), set3)), STORE, paths, TOTAL_ROW_COUNT),
       6, 7, 8, 9, 23, 24, 25, 26, 27, 28, 29);
     set3.add(null);
     assertRows(calculateRowRanges(FilterCompat.get(in(doubleColumn("column3"), set3)), STORE, paths, TOTAL_ROW_COUNT),
-      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 26, 27, 28, 29);
+      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29);
     assertRows(calculateRowRanges(FilterCompat.get(notIn(doubleColumn("column3"), set3)), STORE, paths, TOTAL_ROW_COUNT),
       23, 24, 25);
 
@@ -410,6 +410,7 @@ public class TestColumnIndexFilter {
     Set<Integer> set5 = new HashSet<>();
     set5.add(7);
     set5.add(20);
+    System.out.println(in(intColumn("column5"), set5).toString());
     assertRows(calculateRowRanges(FilterCompat.get(in(intColumn("column5"), set5)), STORE, paths, TOTAL_ROW_COUNT),
       new long[0]);
     assertRows(calculateRowRanges(FilterCompat.get(notIn(intColumn("column5"), set5)), STORE, paths, TOTAL_ROW_COUNT),

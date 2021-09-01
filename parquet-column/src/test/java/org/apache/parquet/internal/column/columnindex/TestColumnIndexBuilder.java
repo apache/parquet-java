@@ -857,7 +857,7 @@ public class TestColumnIndexBuilder {
     set2.add(0.0);
     set2.add(3.5);
     set2.add(-346.0);
-    assertCorrectFiltering(columnIndex, in(col, set2), 1, 5, 7);
+    assertCorrectFiltering(columnIndex, in(col, set2), 1, 2, 5, 7);
     assertCorrectFiltering(columnIndex, notIn(col, set2), 0, 2, 3, 4, 6, 8);
     set2.add(null);
     assertCorrectFiltering(columnIndex, in(col, set2), 0, 1, 2, 3, 4, 5, 6, 7, 8);

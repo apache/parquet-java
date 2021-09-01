@@ -21,10 +21,7 @@ package org.apache.parquet.internal.column.columnindex;
 import static java.util.Objects.requireNonNull;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Formatter;
-import java.util.List;
-import java.util.PrimitiveIterator;
+import java.util.*;
 import java.util.function.IntConsumer;
 import java.util.function.IntPredicate;
 
@@ -293,8 +290,48 @@ public abstract class ColumnIndexBuilder {
 
     @Override
     public <T extends Comparable<T>> PrimitiveIterator.OfInt visit(In<T> in) {
-      IntSet indexes = getMatchingIndexes(in);
-      return IndexIterator.filter(getPageCount(), indexes::contains);
+      Set<T> values = in.getValues();
+      TreeSet<T> myTreeSet = new TreeSet<>();
+      IntSet matchingIndexes1 = new IntOpenHashSet();  // for null
+      Iterator<T> it = values.iterator();
+      while(it.hasNext()) {
+        T value = it.next();
+        if (value != null) {
+          myTreeSet.add(value);
+        } else {
+          if (nullCounts == null) {
+            // Searching for nulls so if we don't have null related statistics we have to return all pages
+            return IndexIterator.all(getPageCount());
+          } else {
+            for (int i = 0; i < nullCounts.length; i++) {
+              if (nullCounts[i] > 0) {
+                matchingIndexes1.add(i);
+              }
+            }
+          }
+        }
+      }
+
+      IntSet matchingIndexes2 = new IntOpenHashSet();
+      IntSet matchingIndexes3 = new IntOpenHashSet();
+
+      T min = myTreeSet.first();
+      T max = myTreeSet.last();
+
+      // We don't want to iterate through each of the values in the IN set to compare,
+      // because the size of the IN set might be very large. Instead, we want to only
+      // compare the max and min value of the IN set to see if the page might contain the
+      // values in the IN set.
+      // If the values in a page are <= the max value in the IN set,
+      // and >= the min value in the IN set, then the page might contain
+      // the values in the IN set.
+      getBoundaryOrder().ltEq(createValueComparator(max))
+        .forEachRemaining((int index) -> matchingIndexes2.add(index));
+      getBoundaryOrder().gtEq(createValueComparator(min))
+        .forEachRemaining((int index) -> matchingIndexes3.add(index));
+      matchingIndexes2.retainAll(matchingIndexes3);
+      matchingIndexes2.addAll(matchingIndexes1);  // add the matching null pages
+      return IndexIterator.filter(getPageCount(), pageIndex -> matchingIndexes2.contains(pageIndex));
     }
 
     @Override
