@@ -206,8 +206,13 @@ public class ParquetMetadataConverter {
     for (BlockMetaData block : blocks) {
       numRows += block.getRowCount();
       long blockStartPos = block.getStartingPos();
+      // first block
+      if (blockStartPos == 4) {
+        preBlockStartPos = 0;
+        preBlockCompressedSize = 0;
+      }
       if (preBlockStartPos != 0) {
-        assert blockStartPos == preBlockStartPos + preBlockCompressedSize;
+        assert blockStartPos >= preBlockStartPos + preBlockCompressedSize;
       }
       preBlockStartPos = blockStartPos;
       preBlockCompressedSize = block.getCompressedSize();
@@ -1243,14 +1248,9 @@ public class ParquetMetadataConverter {
       if (rowGroup.isSetFile_offset()) {
         assert rowGroup.isSetTotal_compressed_size();
 
-        if (preStartIndex == 0) {
-          //the first block always holds the truth
-          startIndex = rowGroup.getFile_offset();
-        } else {
-          //calculate offset for other blocks
-          startIndex = preStartIndex + preCompressedSize;
-        }
-
+        //the file_offset of first block always holds the truth, while other blocks don't :
+        //see PARQUET-2078 for details
+        startIndex = tryUseFileOffset(rowGroup, preStartIndex, preCompressedSize);
         preStartIndex = startIndex;
         preCompressedSize = rowGroup.getTotal_compressed_size();
 
@@ -1276,6 +1276,24 @@ public class ParquetMetadataConverter {
     return metaData;
   }
 
+  private static long tryUseFileOffset(RowGroup rowGroup, long preStartIndex, long preCompressedSize) {
+    long startIndex = 0;
+    startIndex = rowGroup.getFile_offset();
+    // skip checking the first rowGroup
+    // (in case of summary file, there are multiple first groups from different footers)
+    if (preStartIndex != 0 && preStartIndex <= startIndex) {
+
+      //calculate start index for other blocks
+      long minStartIndex = preStartIndex + preCompressedSize;
+      if (startIndex < minStartIndex) {
+        // a bad offset detected, try first column's offset
+        // can not use minStartIndex in case of padding
+        startIndex = getOffset(rowGroup.getColumns().get(0));
+      }
+    }
+    return startIndex;
+  }
+
   // Visible for testing
   static FileMetaData filterFileMetaDataByStart(FileMetaData metaData, OffsetMetadataFilter filter) {
     List<RowGroup> rowGroups = metaData.getRow_groups();
@@ -1287,14 +1305,9 @@ public class ParquetMetadataConverter {
       if (rowGroup.isSetFile_offset()) {
         assert rowGroup.isSetTotal_compressed_size();
 
-        if (preStartIndex == 0) {
-          //the first block always holds the truth
-          startIndex = rowGroup.getFile_offset();
-        } else {
-          //calculate offset for other blocks
-          startIndex = preStartIndex + preCompressedSize;
-        }
-
+        //the file_offset of first block always holds the truth, while other blocks don't :
+        //see PARQUET-2078 for details
+        startIndex = tryUseFileOffset(rowGroup, preStartIndex, preCompressedSize);
         preStartIndex = startIndex;
         preCompressedSize = rowGroup.getTotal_compressed_size();
 
