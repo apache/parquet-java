@@ -119,6 +119,7 @@ import org.apache.parquet.internal.column.columnindex.BinaryTruncator;
 import org.apache.parquet.internal.column.columnindex.ColumnIndexBuilder;
 import org.apache.parquet.internal.column.columnindex.OffsetIndexBuilder;
 import org.apache.parquet.internal.hadoop.metadata.IndexReference;
+import org.apache.parquet.io.InvalidFileOffsetException;
 import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.ColumnOrder.ColumnOrderName;
@@ -1245,17 +1246,23 @@ public class ParquetMetadataConverter {
     for (RowGroup rowGroup : rowGroups) {
       long totalSize = 0;
       long startIndex;
-      if (rowGroup.isSetFile_offset()) {
+      ColumnChunk columnChunk = rowGroup.getColumns().get(0);
+      if (columnChunk.isSetMeta_data()) {
+        startIndex = getOffset(columnChunk);
+      } else {
+        assert rowGroup.isSetFile_offset();
         assert rowGroup.isSetTotal_compressed_size();
 
         //the file_offset of first block always holds the truth, while other blocks don't :
         //see PARQUET-2078 for details
-        startIndex = tryUseFileOffset(rowGroup, preStartIndex, preCompressedSize);
+        startIndex = rowGroup.getFile_offset();
+        if (corruptedFileOffset(startIndex, preStartIndex, preCompressedSize)) {
+          // use minStartIndex(imprecise in case of padding, but good enough for filtering)
+          startIndex = preStartIndex + preCompressedSize;
+        }
         preStartIndex = startIndex;
         preCompressedSize = rowGroup.getTotal_compressed_size();
 
-      } else {
-        startIndex = getOffset(rowGroup.getColumns().get(0));
       }
 
       if (rowGroup.isSetTotal_compressed_size()) {
@@ -1276,22 +1283,20 @@ public class ParquetMetadataConverter {
     return metaData;
   }
 
-  private static long tryUseFileOffset(RowGroup rowGroup, long preStartIndex, long preCompressedSize) {
-    long startIndex = 0;
-    startIndex = rowGroup.getFile_offset();
+  private static boolean corruptedFileOffset(long startIndex, long preStartIndex, long preCompressedSize) {
+    boolean corrupted = false;
     // skip checking the first rowGroup
     // (in case of summary file, there are multiple first groups from different footers)
     if (preStartIndex != 0 && preStartIndex <= startIndex) {
-
       //calculate start index for other blocks
       long minStartIndex = preStartIndex + preCompressedSize;
       if (startIndex < minStartIndex) {
         // a bad offset detected, try first column's offset
         // can not use minStartIndex in case of padding
-        startIndex = getOffset(rowGroup.getColumns().get(0));
+        corrupted = true;
       }
     }
-    return startIndex;
+    return corrupted;
   }
 
   // Visible for testing
@@ -1302,17 +1307,23 @@ public class ParquetMetadataConverter {
     long preCompressedSize = 0;
     for (RowGroup rowGroup : rowGroups) {
       long startIndex;
-      if (rowGroup.isSetFile_offset()) {
+      ColumnChunk columnChunk = rowGroup.getColumns().get(0);
+      if (columnChunk.isSetMeta_data()) {
+        startIndex = getOffset(columnChunk);
+      } else {
+        assert rowGroup.isSetFile_offset();
         assert rowGroup.isSetTotal_compressed_size();
 
         //the file_offset of first block always holds the truth, while other blocks don't :
         //see PARQUET-2078 for details
-        startIndex = tryUseFileOffset(rowGroup, preStartIndex, preCompressedSize);
+        startIndex = rowGroup.getFile_offset();
+        if (corruptedFileOffset(startIndex, preStartIndex, preCompressedSize)) {
+          throw new InvalidFileOffsetException("corrupted RowGroup.file_offset found, " +
+            "please use file range instead of block offset for split.");
+        }
         preStartIndex = startIndex;
         preCompressedSize = rowGroup.getTotal_compressed_size();
 
-      } else {
-        startIndex = getOffset(rowGroup.getColumns().get(0));
       }
 
       if (filter.contains(startIndex)) {
