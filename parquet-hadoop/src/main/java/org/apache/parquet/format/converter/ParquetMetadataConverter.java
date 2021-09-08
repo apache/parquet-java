@@ -217,7 +217,6 @@ public class ParquetMetadataConverter {
       preBlockStartPos = blockStartPos;
       preBlockCompressedSize = block.getCompressedSize();
       addRowGroup(parquetMetadata, rowGroups, block, fileEncryptor);
-
     }
     FileMetaData fileMetaData = new FileMetaData(
         currentVersion,
@@ -1265,7 +1264,6 @@ public class ParquetMetadataConverter {
         }
         preStartIndex = startIndex;
         preCompressedSize = rowGroup.getTotal_compressed_size();
-
       }
 
       if (rowGroup.isSetTotal_compressed_size()) {
@@ -1330,7 +1328,6 @@ public class ParquetMetadataConverter {
         }
         preStartIndex = startIndex;
         preCompressedSize = rowGroup.getTotal_compressed_size();
-
       }
 
       if (filter.contains(startIndex)) {

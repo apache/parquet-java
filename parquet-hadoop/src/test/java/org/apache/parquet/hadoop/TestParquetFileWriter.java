@@ -199,7 +199,6 @@ public class TestParquetFileWriter {
     assertEquals(c2Ends - c2Starts, rowGroup.getColumns().get(1).getTotalSize());
     assertEquals(c2Ends - c1Starts, rowGroup.getTotalByteSize());
 
-
     assertEquals(c1Starts, rowGroup.getColumns().get(0).getStartingPos());
     assertEquals(0, rowGroup.getColumns().get(0).getDictionaryPageOffset());
     assertEquals(c1p1Starts, rowGroup.getColumns().get(0).getFirstDataPageOffset());
@@ -290,7 +289,6 @@ public class TestParquetFileWriter {
     assertEquals("footer: "+ readFooter, 2, readFooter.getBlocks().size());
     BlockMetaData rowGroup = readFooter.getBlocks().get(0);
     assertEquals(c2Ends - c2Starts, rowGroup.getColumns().get(1).getTotalSize());
-
 
     assertEquals(0, rowGroup.getColumns().get(0).getDictionaryPageOffset());
     assertEquals(c2Starts, rowGroup.getColumns().get(1).getStartingPos());
