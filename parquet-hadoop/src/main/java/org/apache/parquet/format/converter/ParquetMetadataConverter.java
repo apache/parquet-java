@@ -45,6 +45,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.CorruptStatistics;
 import org.apache.parquet.ParquetReadOptions;
+import org.apache.parquet.Preconditions;
 import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.statistics.BinaryStatistics;
@@ -212,7 +213,8 @@ public class ParquetMetadataConverter {
         preBlockCompressedSize = 0;
       }
       if (preBlockStartPos != 0) {
-        assert blockStartPos >= preBlockStartPos + preBlockCompressedSize;
+        Preconditions.checkState(blockStartPos >= preBlockStartPos + preBlockCompressedSize,
+          "Invalid block starting position:" + blockStartPos);
       }
       preBlockStartPos = blockStartPos;
       preBlockCompressedSize = block.getCompressedSize();
@@ -1286,11 +1288,7 @@ public class ParquetMetadataConverter {
 
   private static boolean invalidFileOffset(long startIndex, long preStartIndex, long preCompressedSize) {
     boolean invalid = false;
-    // (in case of summary file, there are multiple first groups from different footers)
-    if (preStartIndex > startIndex) {
-      preStartIndex = 0;
-      preCompressedSize = 0;
-    }
+    assert preStartIndex <= startIndex;
     // checking the first rowGroup
     if (preStartIndex == 0 && startIndex != 4) {
       invalid = true;
