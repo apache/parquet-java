@@ -1286,17 +1286,25 @@ public class ParquetMetadataConverter {
 
   private static boolean invalidFileOffset(long startIndex, long preStartIndex, long preCompressedSize) {
     boolean invalid = false;
-    // skip checking the first rowGroup
     // (in case of summary file, there are multiple first groups from different footers)
-    if (preStartIndex != 0 && preStartIndex <= startIndex) {
-      //calculate start index for other blocks
-      long minStartIndex = preStartIndex + preCompressedSize;
-      if (startIndex < minStartIndex) {
-        // a bad offset detected, try first column's offset
-        // can not use minStartIndex in case of padding
-        invalid = true;
-      }
+    if (preStartIndex > startIndex) {
+      preStartIndex = 0;
+      preCompressedSize = 0;
     }
+    // checking the first rowGroup
+    if (preStartIndex == 0 && startIndex != 4) {
+      invalid = true;
+      return invalid;
+    }
+
+    //calculate start index for other blocks
+    long minStartIndex = preStartIndex + preCompressedSize;
+    if (startIndex < minStartIndex) {
+      // a bad offset detected, try first column's offset
+      // can not use minStartIndex in case of padding
+      invalid = true;
+    }
+
     return invalid;
   }
 
