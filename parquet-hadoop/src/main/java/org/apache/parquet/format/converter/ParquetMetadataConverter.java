@@ -1261,8 +1261,13 @@ public class ParquetMetadataConverter {
         //see PARQUET-2078 for details
         startIndex = rowGroup.getFile_offset();
         if (invalidFileOffset(startIndex, preStartIndex, preCompressedSize)) {
-          // use minStartIndex(imprecise in case of padding, but good enough for filtering)
-          startIndex = preStartIndex + preCompressedSize;
+          //first row group's offset is always 4
+          if (preStartIndex == 0) {
+            startIndex = 4;
+          } else {
+            // use minStartIndex(imprecise in case of padding, but good enough for filtering)
+            startIndex = preStartIndex + preCompressedSize;
+          }
         }
         preStartIndex = startIndex;
         preCompressedSize = rowGroup.getTotal_compressed_size();
@@ -1329,8 +1334,13 @@ public class ParquetMetadataConverter {
         //see PARQUET-2078 for details
         startIndex = rowGroup.getFile_offset();
         if (invalidFileOffset(startIndex, preStartIndex, preCompressedSize)) {
-          throw new InvalidFileOffsetException("corrupted RowGroup.file_offset found, " +
-            "please use file range instead of block offset for split.");
+          //first row group's offset is always 4
+          if (preStartIndex == 0) {
+            startIndex = 4;
+          } else {
+            throw new InvalidFileOffsetException("corrupted RowGroup.file_offset found, " +
+              "please use file range instead of block offset for split.");
+          }
         }
         preStartIndex = startIndex;
         preCompressedSize = rowGroup.getTotal_compressed_size();
