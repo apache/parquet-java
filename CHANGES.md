@@ -19,6 +19,25 @@
 
 # Parquet #
 
+### Version 1.12.1 ###
+
+Release Notes - Parquet - Version 1.12.1
+
+#### Bug
+
+*   [PARQUET-1633](https://issues.apache.org/jira/browse/PARQUET-1633) - Fix integer overflow
+*   [PARQUET-2022](https://issues.apache.org/jira/browse/PARQUET-2022) - ZstdDecompressorStream should close zstdInputStream
+*   [PARQUET-2027](https://issues.apache.org/jira/browse/PARQUET-2027) - Fix calculating directory offset for merge
+*   [PARQUET-2052](https://issues.apache.org/jira/browse/PARQUET-2052) - Integer overflow when writing huge binary using dictionary encoding
+*   [PARQUET-2054](https://issues.apache.org/jira/browse/PARQUET-2054) - fix TCP leaking when calling ParquetFileWriter.appendFile
+*   [PARQUET-2072](https://issues.apache.org/jira/browse/PARQUET-2072) - Do Not Determine Both Min/Max for Binary Stats
+*   [PARQUET-2073](https://issues.apache.org/jira/browse/PARQUET-2073) - Fix estimate remaining row count in ColumnWriteStoreBase.
+*   [PARQUET-2078](https://issues.apache.org/jira/browse/PARQUET-2078) - Failed to read parquet file after writing with the same parquet version
+
+#### Improvement
+
+*   [PARQUET-2064](https://issues.apache.org/jira/browse/PARQUET-2064) - Make Range public accessible in RowRanges
+
 ### Version 1.12.0 ###
 
 Release Notes - Parquet - Version 1.12.0
@@ -739,7 +758,7 @@ Release Notes - Parquet - Version 1.10.0
 * ISSUE [346](https://github.com/Parquet/parquet-mr/pull/346): stop using strings and b64 for compressed input splits
 * ISSUE [345](https://github.com/Parquet/parquet-mr/pull/345): set cascading version to 2.5.3
 * ISSUE [342](https://github.com/Parquet/parquet-mr/pull/342): compress kv pairs in ParquetInputSplits
- 
+
 ### Version 1.4.0 ###
 * ISSUE [333](https://github.com/Parquet/parquet-mr/pull/333): Compress schemas in split
 * ISSUE [329](https://github.com/Parquet/parquet-mr/pull/329): fix filesystem resolution
@@ -879,37 +898,37 @@ Release Notes - Parquet - Version 1.10.0
 * ISSUE 159: Counter for mapred
 * ISSUE 156: Fix site
 * ISSUE 153: Fix projection required field
-    
+
 ### Version 1.1.1 ###
 * ISSUE 150: add thrift validation on read
 
 ### Version 1.1.0 ###
-* ISSUE 149: changing default block size to 128mb  
-* ISSUE 146: Fix and add unit tests for Hive nested types  
-* ISSUE 145: add getStatistics method to parquetloader  
-* ISSUE 144: Map key fields should allow other types than strings  
-* ISSUE 143: Fix empty encoding col metadata  
-* ISSUE 142: Fix total size row group  
-* ISSUE 141: add parquet counters for benchmark  
-* ISSUE 140: Implemented partial schema for GroupReadSupport  
-* ISSUE 138: fix bug of wrong column metadata size  
-* ISSUE 137: ParquetMetadataConverter bug  
-* ISSUE 133: Update plugin versions for maven aether migration - fixes #125  
-* ISSUE 130: Schema validation should not validate the root element's name  
-* ISSUE 127: Adding dictionary encoding for non string types.. #99  
-* ISSUE 125: Unable to build  
-* ISSUE 124: Fix Short and Byte types in Hive SerDe.  
-* ISSUE 123: Fix Snappy compressor in parquet-hadoop.  
-* ISSUE 120: Fix RLE bug with partial literal groups at end of stream.  
-* ISSUE 118: Refactor column reader  
-* ISSUE 115: Map key fields should allow other types than strings  
-* ISSUE 103: Map key fields should allow other types than strings  
-* ISSUE 99: Dictionary encoding for non string types (float  double  int  long  boolean)  
-* ISSUE 47: Add tests for parquet-scrooge and parquet-cascading 
+* ISSUE 149: changing default block size to 128mb
+* ISSUE 146: Fix and add unit tests for Hive nested types
+* ISSUE 145: add getStatistics method to parquetloader
+* ISSUE 144: Map key fields should allow other types than strings
+* ISSUE 143: Fix empty encoding col metadata
+* ISSUE 142: Fix total size row group
+* ISSUE 141: add parquet counters for benchmark
+* ISSUE 140: Implemented partial schema for GroupReadSupport
+* ISSUE 138: fix bug of wrong column metadata size
+* ISSUE 137: ParquetMetadataConverter bug
+* ISSUE 133: Update plugin versions for maven aether migration - fixes #125
+* ISSUE 130: Schema validation should not validate the root element's name
+* ISSUE 127: Adding dictionary encoding for non string types.. #99
+* ISSUE 125: Unable to build
+* ISSUE 124: Fix Short and Byte types in Hive SerDe.
+* ISSUE 123: Fix Snappy compressor in parquet-hadoop.
+* ISSUE 120: Fix RLE bug with partial literal groups at end of stream.
+* ISSUE 118: Refactor column reader
+* ISSUE 115: Map key fields should allow other types than strings
+* ISSUE 103: Map key fields should allow other types than strings
+* ISSUE 99: Dictionary encoding for non string types (float  double  int  long  boolean)
+* ISSUE 47: Add tests for parquet-scrooge and parquet-cascading
 
 ### Version 1.0.1 ###
-* ISSUE 126: Unit tests for parquet cascading  
-* ISSUE 121: fix wrong RecordConverter for ParquetTBaseScheme  
-* ISSUE 119: fix compatibility with thrift  remove unused dependency 
+* ISSUE 126: Unit tests for parquet cascading
+* ISSUE 121: fix wrong RecordConverter for ParquetTBaseScheme
+* ISSUE 119: fix compatibility with thrift  remove unused dependency
 
 ### Version 1.0.0 ###
