@@ -87,11 +87,6 @@
     </dependency>
     <dependency>
       <groupId>${jackson.groupId}</groupId>
-      <artifactId>jackson-core</artifactId>
-      <version>${jackson.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>${jackson.groupId}</groupId>
       <artifactId>jackson-databind</artifactId>
       <version>${jackson-databind.version}</version>
     </dependency>
@@ -163,6 +158,16 @@
       <groupId>org.apache.yetus</groupId>
       <artifactId>audience-annotations</artifactId>
       <version>${yetus.audience-annotations.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.codehaus.jackson</groupId>
+      <artifactId>jackson-core-asl</artifactId>
+      <version>1.9.13</version>
+    </dependency>
+    <dependency>
+      <groupId>org.codehaus.jackson</groupId>
+      <artifactId>jackson-mapper-asl</artifactId>
+      <version>1.9.13</version>
     </dependency>
   </dependencies>
 

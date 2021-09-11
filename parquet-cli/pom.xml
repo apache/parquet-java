@@ -101,11 +101,6 @@
       <version>${jackson.version}</version>
     </dependency>
     <dependency>
-      <groupId>${jackson.groupId}</groupId>
-      <artifactId>jackson-annotations</artifactId>
-      <version>${jackson.version}</version>
-    </dependency>
-    <dependency>
       <groupId>com.beust</groupId>
       <artifactId>jcommander</artifactId>
       <version>${jcommander.version}</version>
