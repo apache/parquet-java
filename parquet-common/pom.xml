@@ -61,6 +61,12 @@
       <version>${slf4j.version}</version>
       <scope>test</scope>
     </dependency>
+
+    <dependency>
+      <groupId>org.apache.yetus</groupId>
+      <artifactId>audience-annotations</artifactId>
+      <version>0.12.0</version>
+    </dependency>
   </dependencies>
 
   <build>
