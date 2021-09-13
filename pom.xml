@@ -123,6 +123,8 @@
     <module>parquet-arrow</module>
     <module>parquet-avro</module>
     <module>parquet-benchmarks</module>
+    <module>parquet-cascading-deprecated</module>
+    <module>parquet-cascading3-deprecated</module>
     <module>parquet-cli</module>
     <module>parquet-column</module>
     <module>parquet-common</module>
@@ -135,8 +137,10 @@
     <module>parquet-pig-bundle</module>
     <module>parquet-protobuf</module>
     <module>parquet-scala</module>
+    <module>parquet-scrooge-deprecated</module>
     <module>parquet-thrift</module>
     <module>parquet-hadoop-bundle</module>
+    <module>parquet-tools-deprecated</module>
   </modules>
 
   <dependencies>
