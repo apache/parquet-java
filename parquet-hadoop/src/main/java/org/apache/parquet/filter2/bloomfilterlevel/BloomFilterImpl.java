@@ -138,18 +138,14 @@ public class BloomFilterImpl implements FilterPredicate.Visitor<Boolean>{
       return BLOCK_CANNOT_MATCH;
     }
 
-    try {
-      BloomFilter bloomFilter = bloomFilterReader.readBloomFilter(meta);
-      if (bloomFilter != null) {
-        for (T value : values) {
-          if (bloomFilter.findHash(bloomFilter.hash(value))) {
-            return BLOCK_MIGHT_MATCH;
-          }
+    BloomFilter bloomFilter = bloomFilterReader.readBloomFilter(meta);
+    if (bloomFilter != null) {
+      for (T value : values) {
+        if (bloomFilter.findHash(bloomFilter.hash(value))) {
+          return BLOCK_MIGHT_MATCH;
         }
-        return BLOCK_CANNOT_MATCH;
       }
-    } catch (RuntimeException e) {
-      LOG.warn(e.getMessage());
+      return BLOCK_CANNOT_MATCH;
     }
     return BLOCK_MIGHT_MATCH;
   }

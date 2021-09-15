@@ -410,7 +410,6 @@ public class TestColumnIndexFilter {
     Set<Integer> set5 = new HashSet<>();
     set5.add(7);
     set5.add(20);
-    System.out.println(in(intColumn("column5"), set5).toString());
     assertRows(calculateRowRanges(FilterCompat.get(in(intColumn("column5"), set5)), STORE, paths, TOTAL_ROW_COUNT),
       new long[0]);
     assertRows(calculateRowRanges(FilterCompat.get(notIn(intColumn("column5"), set5)), STORE, paths, TOTAL_ROW_COUNT),

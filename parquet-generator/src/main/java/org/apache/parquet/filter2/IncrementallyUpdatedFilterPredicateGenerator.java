@@ -73,7 +73,7 @@ public class IncrementallyUpdatedFilterPredicateGenerator {
         "import org.apache.parquet.filter2.predicate.Operators.Eq;\n" +
         "import org.apache.parquet.filter2.predicate.Operators.Gt;\n" +
         "import org.apache.parquet.filter2.predicate.Operators.GtEq;\n" +
-      "import org.apache.parquet.filter2.predicate.Operators.In;\n" +
+        "import org.apache.parquet.filter2.predicate.Operators.In;\n" +
         "import org.apache.parquet.filter2.predicate.Operators.LogicalNotUserDefined;\n" +
         "import org.apache.parquet.filter2.predicate.Operators.Lt;\n" +
         "import org.apache.parquet.filter2.predicate.Operators.LtEq;\n" +
