@@ -250,7 +250,7 @@ public final class Operators {
     }
   }
 
-  /*
+  /**
    * Base class for {@link In} and {@link NotIn}. {@link In} is used to filter data based on a list of values.
    * {@link NotIn} is used to filter data that are not in the list of values.
    */
