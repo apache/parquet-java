@@ -24,6 +24,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.crypto.FileDecryptionProperties;
+import org.apache.parquet.crypto.ParquetCipher;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.ParquetReader;
@@ -69,7 +70,7 @@ public class ColumnEncryptorTest {
   public void testFlatColumn() throws IOException {
     String[] encryptColumns = {"DocId"};
     columnEncryptor.encryptColumns(inputFile, outputFile, Arrays.asList(encryptColumns),
-      EncDecProperties.getFileEncryptionProperties(encryptColumns, ColumnEncryptor.EncryptMode.AES_GCM_CTR));
+      EncDecProperties.getFileEncryptionProperties(encryptColumns, ParquetCipher.AES_GCM_CTR_V1));
 
     verifyResultDecryptionWithValidKey();
   }
@@ -78,7 +79,7 @@ public class ColumnEncryptorTest {
   public void testNestedColumn() throws IOException {
     String[] encryptColumns = {"Links.Forward"};
     columnEncryptor.encryptColumns(inputFile, outputFile, Arrays.asList(encryptColumns),
-      EncDecProperties.getFileEncryptionProperties(encryptColumns, ColumnEncryptor.EncryptMode.AES_GCM_CTR));
+      EncDecProperties.getFileEncryptionProperties(encryptColumns, ParquetCipher.AES_GCM_CTR_V1));
     verifyResultDecryptionWithValidKey();
   }
 
@@ -86,7 +87,7 @@ public class ColumnEncryptorTest {
   public void testNoEncryption() throws IOException {
     String[] encryptColumns = {};
     columnEncryptor.encryptColumns(inputFile, outputFile, Arrays.asList(encryptColumns),
-      EncDecProperties.getFileEncryptionProperties(encryptColumns, ColumnEncryptor.EncryptMode.AES_GCM_CTR));
+      EncDecProperties.getFileEncryptionProperties(encryptColumns, ParquetCipher.AES_GCM_CTR_V1));
     verifyResultDecryptionWithValidKey();
   }
 
@@ -94,7 +95,7 @@ public class ColumnEncryptorTest {
   public void testEncryptAllColumns() throws IOException {
     String[] encryptColumns = {"DocId", "Name", "Gender", "Links.Forward", "Links.Backward"};
     columnEncryptor.encryptColumns(inputFile, outputFile, Arrays.asList(encryptColumns),
-      EncDecProperties.getFileEncryptionProperties(encryptColumns, ColumnEncryptor.EncryptMode.AES_GCM_CTR));
+      EncDecProperties.getFileEncryptionProperties(encryptColumns, ParquetCipher.AES_GCM_CTR_V1));
     verifyResultDecryptionWithValidKey();
   }
 
@@ -102,7 +103,7 @@ public class ColumnEncryptorTest {
   public void testEncryptSomeColumns() throws IOException {
     String[] encryptColumns = {"DocId", "Name", "Links.Forward"};
     columnEncryptor.encryptColumns(inputFile, outputFile, Arrays.asList(encryptColumns),
-      EncDecProperties.getFileEncryptionProperties(encryptColumns, ColumnEncryptor.EncryptMode.AES_GCM_CTR));
+      EncDecProperties.getFileEncryptionProperties(encryptColumns, ParquetCipher.AES_GCM_CTR_V1));
 
     ParquetMetadata metaData = getParquetMetadata(EncDecProperties.getFileDecryptionProperties());
     assertTrue(metaData.getBlocks().size() > 0);

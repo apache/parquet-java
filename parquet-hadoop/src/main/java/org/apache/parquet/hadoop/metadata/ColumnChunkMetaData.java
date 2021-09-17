@@ -376,7 +376,7 @@ abstract public class ColumnChunkMetaData {
    */
   @Private
   public boolean isEncrypted() {
-    return this instanceof EncryptedColumnChunkMetaData;
+    return false;
   }
 }
 
@@ -671,5 +671,13 @@ class EncryptedColumnChunkMetaData extends ColumnChunkMetaData {
   public Statistics getStatistics() {
     decryptIfNeeded();
     return shadowColumnChunkMetaData.getStatistics();
+  }
+
+  /**
+   * @return whether or not this column is encrypted
+   */
+  @Override
+  public boolean isEncrypted() {
+    return true;
   }
 }

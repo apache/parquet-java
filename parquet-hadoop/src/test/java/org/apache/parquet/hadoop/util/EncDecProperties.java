@@ -69,7 +69,7 @@ public class EncDecProperties {
     return FileDecryptionProperties.builder().withPlaintextFilesAllowed().withoutFooterSignatureVerification().withKeyRetriever(keyRetriever).build();
   }
 
-  public static FileEncryptionProperties getFileEncryptionProperties(String[] encrCols, ColumnEncryptor.EncryptMode mode) {
+  public static FileEncryptionProperties getFileEncryptionProperties(String[] encrCols, ParquetCipher cipher) {
     if (encrCols.length == 0) {
       return null;
     }
@@ -87,7 +87,7 @@ public class EncDecProperties {
     FileEncryptionProperties.Builder encryptionPropertiesBuilder =
       FileEncryptionProperties.builder(FOOTER_KEY)
         .withFooterKeyMetadata(FOOTER_KEY_METADATA)
-        .withAlgorithm(ParquetCipher.valueOf(mode.getMode()))
+        .withAlgorithm(cipher)
         .withEncryptedColumns(columnPropertyMap)
         .withPlaintextFooter();
 

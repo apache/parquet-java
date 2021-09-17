@@ -39,6 +39,7 @@ import org.apache.parquet.format.PageHeader;
 import org.apache.parquet.format.converter.ParquetMetadataConverter;
 import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.ParquetFileWriter;
+import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
@@ -63,6 +64,14 @@ import static org.apache.parquet.format.converter.ParquetMetadataConverter.NO_FI
 import static org.apache.parquet.hadoop.ParquetWriter.DEFAULT_BLOCK_SIZE;
 import static org.apache.parquet.hadoop.ParquetWriter.MAX_PADDING_SIZE_DEFAULT;
 
+/**
+ * This class is for fast rewriting existing file with column encryption
+ *
+ * For columns to be encrypted, all the pages of those columns are read, but decompression/decoding,
+ * it is encrypted immediately and write back.
+ *
+ * For columns not to be encrypted, the whole column chunk will be appended directly to writer.
+ */
 public class ColumnEncryptor {
   private static final Logger LOG = LoggerFactory.getLogger(ColumnEncryptor.class);
 
@@ -127,19 +136,22 @@ public class ColumnEncryptor {
     }
   }
 
-  private final int pageBufferSize = ParquetProperties.DEFAULT_PAGE_SIZE * 2;
+  private final int PAGE_BUFFER_SIZE = ParquetProperties.DEFAULT_PAGE_SIZE * 2;
   private byte[] pageBuffer;
   private Configuration conf;
 
   public ColumnEncryptor(Configuration conf) {
-    this.pageBuffer = new byte[pageBufferSize];
+    this.pageBuffer = new byte[PAGE_BUFFER_SIZE];
     this.conf = conf;
   }
 
   /**
-   *
+   * Given the input file, encrypt the columns specified by paths, and output the file.
+   * The encryption settings can be specified in the parameter of fileEncryptionProperties
    * @param inputFile Input file
    * @param outputFile Output file
+   * @param paths columns to be encrypted
+   * @param fileEncryptionProperties FileEncryptionProperties of the file
    * @throws IOException
    */
   public void encryptColumns(String inputFile, String outputFile, List<String> paths, FileEncryptionProperties fileEncryptionProperties) throws IOException {
@@ -167,7 +179,7 @@ public class ColumnEncryptor {
     }
   }
 
-  public void processBlocks(TransParquetFileReader reader, ParquetFileWriter writer, ParquetMetadata meta,
+  private void processBlocks(TransParquetFileReader reader, ParquetFileWriter writer, ParquetMetadata meta,
                             MessageType schema, List<String> paths) throws IOException {
     Set<ColumnPath> nullifyColumns = convertToColumnPaths(paths);
     int blockId = 0;
@@ -288,7 +300,7 @@ public class ColumnEncryptor {
 
   public byte[] readBlock(int length, TransParquetFileReader reader) throws IOException {
     byte[] data;
-    if (length > pageBufferSize) {
+    if (length > PAGE_BUFFER_SIZE) {
       data = new byte[length];
     } else {
       data = pageBuffer;
@@ -323,29 +335,5 @@ public class ColumnEncryptor {
       prunePaths.add(ColumnPath.fromDotString(col));
     }
     return prunePaths;
-  }
-
-  public enum EncryptMode {
-    AES_GCM_CTR("AES_GCM_CTR_V1"),
-    AES_GCM("AES_GCM_V1");
-
-    private String mode;
-
-    EncryptMode(String text) {
-      this.mode = text;
-    }
-
-    public String getMode() {
-      return this.mode;
-    }
-
-    public static EncryptMode fromString(String mode) {
-      for (EncryptMode b : EncryptMode.values()) {
-        if (b.mode.equalsIgnoreCase(mode)) {
-          return b;
-        }
-      }
-      return null;
-    }
   }
 }
