@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -50,6 +50,7 @@ import static org.apache.parquet.filter2.predicate.FilterApi.doubleColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.longColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.eq;
 import static org.apache.parquet.filter2.predicate.FilterApi.gt;
+import static org.apache.parquet.filter2.predicate.FilterApi.in;
 import static org.apache.parquet.filter2.predicate.FilterApi.not;
 import static org.apache.parquet.filter2.predicate.FilterApi.notEq;
 import static org.apache.parquet.filter2.predicate.FilterApi.or;
@@ -147,6 +148,33 @@ public class TestRecordLevelFilters {
   }
 
   @Test
+  public void testInFilter() throws Exception {
+    BinaryColumn name = binaryColumn("name");
+
+    HashSet<Binary> nameSet = new HashSet<>();
+    nameSet.add(Binary.fromString("thing2"));
+    nameSet.add(Binary.fromString("thing1"));
+    for (int i = 100; i < 200; i++) {
+      nameSet.add(Binary.fromString("p" + i));
+    }
+    FilterPredicate pred = in(name, nameSet);
+    List<Group> found = PhoneBookWriter.readFile(phonebookFile, FilterCompat.get(pred));
+
+    List<String> expectedNames = new ArrayList<>();
+    expectedNames.add("thing1");
+    expectedNames.add("thing2");
+    for (int i = 100; i < 200; i++) {
+      expectedNames.add("p" + i);
+    }
+
+    assertEquals(expectedNames.get(0), ((Group)(found.get(0))).getString("name", 0));
+    assertEquals(expectedNames.get(1), ((Group)(found.get(1))).getString("name", 0));
+    for (int i = 2; i < 102; i++) {
+      assertEquals(expectedNames.get(i), ((Group)(found.get(i))).getString("name", 0));
+    }
+  }
+
+  @Test
   public void testNameNotNull() throws Exception {
     BinaryColumn name = binaryColumn("name");
 
@@ -182,7 +210,7 @@ public class TestRecordLevelFilters {
       return false;
     }
   }
-  
+
   public static class SetInFilter extends UserDefinedPredicate<Long> implements Serializable {
 
     private HashSet<Long> hSet;
@@ -226,16 +254,16 @@ public class TestRecordLevelFilters {
       }
     });
   }
-  
+
   @Test
   public void testUserDefinedByInstance() throws Exception {
     LongColumn name = longColumn("id");
 
     final HashSet<Long> h = new HashSet<Long>();
-    h.add(20L); 
+    h.add(20L);
     h.add(27L);
     h.add(28L);
-    
+
     FilterPredicate pred = userDefined(name, new SetInFilter(h));
 
     List<Group> found = PhoneBookWriter.readFile(phonebookFile, FilterCompat.get(pred));

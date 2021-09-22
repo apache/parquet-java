@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -299,8 +299,8 @@ public class TestStatisticsFilter {
     values2.add(5);
     values2.add(117);
     values2.add(101);
-    assertTrue((canDrop(in(intColumn, values2), columnMetas)));
-    assertFalse((canDrop(notIn(intColumn, values2), columnMetas)));
+    assertFalse(canDrop(in(intColumn, values2), columnMetas));
+    assertFalse(canDrop(notIn(intColumn, values2), columnMetas));
 
     Set<Integer> values3 = new HashSet<>();
     values3.add(1);
@@ -314,8 +314,8 @@ public class TestStatisticsFilter {
     Set<Integer> values4 = new HashSet<>();
     values4.add(50);
     values4.add(60);
-    assertFalse((canDrop(in(intColumn, values4), missingMinMaxColumnMetas)));
-    assertFalse((canDrop(notIn(intColumn, values4), missingMinMaxColumnMetas)));
+    assertFalse(canDrop(in(intColumn, values4), missingMinMaxColumnMetas));
+    assertFalse(canDrop(notIn(intColumn, values4), missingMinMaxColumnMetas));
 
     Set<Double> values5 = new HashSet<>();
     values5.add(1.0);
@@ -323,24 +323,24 @@ public class TestStatisticsFilter {
     values5.add(95.0);
     values5.add(107.0);
     values5.add(99.0);
-    assertFalse((canDrop(in(doubleColumn, values5), columnMetas)));
-    assertFalse((canDrop(notIn(doubleColumn, values5), columnMetas)));
+    assertFalse(canDrop(in(doubleColumn, values5), columnMetas));
+    assertFalse(canDrop(notIn(doubleColumn, values5), columnMetas));
 
     Set<Binary> values6 = new HashSet<>();
     values6.add(Binary.fromString("test1"));
     values6.add(Binary.fromString("test2"));
-    assertTrue((canDrop(in(missingColumn, values6), columnMetas)));
-    assertFalse((canDrop(notIn(missingColumn, values6), columnMetas)));
+    assertTrue(canDrop(in(missingColumn, values6), columnMetas));
+    assertFalse(canDrop(notIn(missingColumn, values6), columnMetas));
 
     Set<Integer> values7 = new HashSet<>();
     values7.add(null);
-    assertFalse((canDrop(in(intColumn, values7), nullColumnMetas)));
-    assertFalse((canDrop(notIn(intColumn, values7), nullColumnMetas)));
+    assertFalse(canDrop(in(intColumn, values7), nullColumnMetas));
+    assertFalse(canDrop(notIn(intColumn, values7), nullColumnMetas));
 
     Set<Binary> values8 = new HashSet<>();
     values8.add(null);
-    assertFalse((canDrop(in(missingColumn, values8), columnMetas)));
-    assertFalse((canDrop(notIn(missingColumn, values8), columnMetas)));
+    assertFalse(canDrop(in(missingColumn, values8), columnMetas));
+    assertFalse(canDrop(notIn(missingColumn, values8), columnMetas));
 
     IntStatistics statsNoNulls = new IntStatistics();
     statsNoNulls.setMinMax(10, 100);

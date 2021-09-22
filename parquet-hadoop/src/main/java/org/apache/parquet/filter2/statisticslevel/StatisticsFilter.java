@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -186,26 +186,36 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
       return BLOCK_MIGHT_MATCH;
     }
 
-    // drop if all the element in value < min || all the element in value > max
-    return allElementCanBeDropped(stats, values, meta);
-  }
-
-  private <T extends Comparable<T>> Boolean allElementCanBeDropped(Statistics<T> stats, Set<T> values, ColumnChunkMetaData meta) {
-    for (T value : values) {
-      if (value != null) {
-        if (stats.compareMinToValue(value) <= 0 && stats.compareMaxToValue(value) >= 0)
-          return false;
+    if (stats.isNumNullsSet()) {
+      if (stats.getNumNulls() == 0) {
+        if (values.contains(null) && values.size() == 1) return BLOCK_CANNOT_MATCH;
       } else {
-        // numNulls is not set. We don't know anything about the nulls in this chunk
-        if (!stats.isNumNullsSet()) {
-          return false;
-        }
-        if (hasNulls(meta)) {
-          return false;
-        }
+        if (values.contains(null)) return BLOCK_MIGHT_MATCH;
       }
     }
-    return true;
+
+    // drop if all the element in value < min || all the element in value > max
+    if (stats.compareMinToValue(getMaxOrMin(true, values)) <= 0 &&
+      stats.compareMaxToValue(getMaxOrMin(false, values)) >= 0) {
+      return BLOCK_MIGHT_MATCH;
+    }
+    else {
+      return BLOCK_CANNOT_MATCH;
+    }
+  }
+
+  private <T extends Comparable<T>> T getMaxOrMin(boolean isMax, Set<T> values) {
+    T res = null;
+    for (T element : values) {
+      if (res == null) {
+        res = element;
+      } else if (isMax && res != null && element != null && res.compareTo(element) < 0) {
+        res = element;
+      } else if (!isMax && res != null && element != null && res.compareTo(element) > 0) {
+        res = element;
+      }
+    }
+    return res;
   }
 
   @Override

@@ -291,32 +291,29 @@ public abstract class ColumnIndexBuilder {
     @Override
     public <T extends Comparable<T>> PrimitiveIterator.OfInt visit(In<T> in) {
       Set<T> values = in.getValues();
-      TreeSet<T> myTreeSet = new TreeSet<>();
-      IntSet matchingIndexes1 = new IntOpenHashSet();  // for null
+      IntSet matchingIndexesForNull = new IntOpenHashSet();  // for null
       Iterator<T> it = values.iterator();
       while(it.hasNext()) {
         T value = it.next();
-        if (value != null) {
-          myTreeSet.add(value);
-        } else {
+        if (value == null) {
           if (nullCounts == null) {
             // Searching for nulls so if we don't have null related statistics we have to return all pages
             return IndexIterator.all(getPageCount());
           } else {
             for (int i = 0; i < nullCounts.length; i++) {
               if (nullCounts[i] > 0) {
-                matchingIndexes1.add(i);
+                matchingIndexesForNull.add(i);
               }
             }
           }
         }
       }
 
-      IntSet matchingIndexes2 = new IntOpenHashSet();
-      IntSet matchingIndexes3 = new IntOpenHashSet();
+      IntSet matchingIndexesLessThanMax = new IntOpenHashSet();
+      IntSet matchingIndexesLargerThanMin = new IntOpenHashSet();
 
-      T min = myTreeSet.first();
-      T max = myTreeSet.last();
+      T min = getMaxOrMin(false, values);
+      T max = getMaxOrMin(true, values);
 
       // We don't want to iterate through each of the values in the IN set to compare,
       // because the size of the IN set might be very large. Instead, we want to only
@@ -326,12 +323,27 @@ public abstract class ColumnIndexBuilder {
       // and >= the min value in the IN set, then the page might contain
       // the values in the IN set.
       getBoundaryOrder().ltEq(createValueComparator(max))
-        .forEachRemaining((int index) -> matchingIndexes2.add(index));
+        .forEachRemaining((int index) -> matchingIndexesLessThanMax.add(index));
       getBoundaryOrder().gtEq(createValueComparator(min))
-        .forEachRemaining((int index) -> matchingIndexes3.add(index));
-      matchingIndexes2.retainAll(matchingIndexes3);
-      matchingIndexes2.addAll(matchingIndexes1);  // add the matching null pages
-      return IndexIterator.filter(getPageCount(), pageIndex -> matchingIndexes2.contains(pageIndex));
+        .forEachRemaining((int index) -> matchingIndexesLargerThanMin.add(index));
+      matchingIndexesLessThanMax.retainAll(matchingIndexesLargerThanMin);
+      IntSet matchingIndex = matchingIndexesLessThanMax;
+      matchingIndex.addAll(matchingIndexesForNull);  // add the matching null pages
+      return IndexIterator.filter(getPageCount(), pageIndex -> matchingIndex.contains(pageIndex));
+    }
+
+    private <T extends Comparable<T>> T getMaxOrMin(boolean isMax, Set<T> values) {
+      T res = null;
+      for (T element : values) {
+        if (res == null) {
+          res = element;
+        } else if (isMax && res != null && element != null && res.compareTo(element) < 0) {
+          res = element;
+        } else if (!isMax && res != null && element != null && res.compareTo(element) > 0) {
+          res = element;
+        }
+      }
+      return res;
     }
 
     @Override
