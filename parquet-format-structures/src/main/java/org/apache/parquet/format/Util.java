@@ -27,6 +27,7 @@ import static org.apache.parquet.format.FileMetaData._Fields.NUM_ROWS;
 import static org.apache.parquet.format.FileMetaData._Fields.ROW_GROUPS;
 import static org.apache.parquet.format.FileMetaData._Fields.SCHEMA;
 import static org.apache.parquet.format.FileMetaData._Fields.VERSION;
+import static org.apache.parquet.format.MetadataValidator.validate;
 import static org.apache.parquet.format.event.Consumers.fieldConsumer;
 import static org.apache.parquet.format.event.Consumers.listElementsOf;
 import static org.apache.parquet.format.event.Consumers.listOf;
@@ -130,7 +131,7 @@ public class Util {
 
   public static PageHeader readPageHeader(InputStream from, 
       BlockCipher.Decryptor decryptor, byte[] AAD) throws IOException {
-    return read(from, new PageHeader(), decryptor, AAD);
+    return validate(read(from, new PageHeader(), decryptor, AAD));
   }
 
   public static void writeFileMetaData(org.apache.parquet.format.FileMetaData fileMetadata, 
