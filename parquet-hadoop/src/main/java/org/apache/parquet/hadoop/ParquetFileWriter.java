@@ -563,7 +563,7 @@ public class ParquetFileWriter {
     // We are unable to build indexes without rowCount so skip them for this column
     offsetIndexBuilder = OffsetIndexBuilder.getNoOpBuilder();
     columnIndexBuilder = ColumnIndexBuilder.getNoOpBuilder();
-    innerWriteDataPage(valueCount, uncompressedPageSize, bytes, statistics, rlEncoding, dlEncoding, valuesEncoding);
+    innerWriteDataPage(valueCount, uncompressedPageSize, bytes, statistics, rlEncoding, dlEncoding, valuesEncoding, null, null);
   }
 
   /**
@@ -579,16 +579,42 @@ public class ParquetFileWriter {
    * @throws IOException if any I/O error occurs during writing the file
    */
   public void writeDataPage(
+    int valueCount, int uncompressedPageSize,
+    BytesInput bytes,
+    Statistics statistics,
+    long rowCount,
+    Encoding rlEncoding,
+    Encoding dlEncoding,
+    Encoding valuesEncoding) throws IOException {
+    writeDataPage(valueCount, uncompressedPageSize, bytes, statistics, rowCount, rlEncoding, dlEncoding, valuesEncoding, null, null);
+  }
+
+  /**
+   * Writes a single page
+   * @param valueCount count of values
+   * @param uncompressedPageSize the size of the data once uncompressed
+   * @param bytes the compressed data for the page without header
+   * @param statistics the statistics of the page
+   * @param rowCount the number of rows in the page
+   * @param rlEncoding encoding of the repetition level
+   * @param dlEncoding encoding of the definition level
+   * @param valuesEncoding encoding of values
+   * @param metadataBlockEncryptor encryptor for block data
+   * @param pageHeaderAAD pageHeader AAD
+   * @throws IOException if any I/O error occurs during writing the file
+   */
+  public void writeDataPage(
       int valueCount, int uncompressedPageSize,
       BytesInput bytes,
       Statistics statistics,
       long rowCount,
       Encoding rlEncoding,
       Encoding dlEncoding,
-      Encoding valuesEncoding) throws IOException {
+      Encoding valuesEncoding,
+      BlockCipher.Encryptor metadataBlockEncryptor,
+      byte[] pageHeaderAAD) throws IOException {
     long beforeHeader = out.getPos();
-    innerWriteDataPage(valueCount, uncompressedPageSize, bytes, statistics, rlEncoding, dlEncoding, valuesEncoding);
-
+    innerWriteDataPage(valueCount, uncompressedPageSize, bytes, statistics, rlEncoding, dlEncoding, valuesEncoding, metadataBlockEncryptor, pageHeaderAAD);
     offsetIndexBuilder.add((int) (out.getPos() - beforeHeader), rowCount);
   }
 
@@ -598,8 +624,10 @@ public class ParquetFileWriter {
       Statistics statistics,
       Encoding rlEncoding,
       Encoding dlEncoding,
-      Encoding valuesEncoding) throws IOException {
-    writeDataPage(valueCount, uncompressedPageSize, bytes, statistics, rlEncoding, dlEncoding, valuesEncoding, null, null);
+      Encoding valuesEncoding,
+      BlockCipher.Encryptor metadataBlockEncryptor,
+      byte[] pageHeaderAAD) throws IOException {
+    writeDataPage(valueCount, uncompressedPageSize, bytes, statistics, rlEncoding, dlEncoding, valuesEncoding, metadataBlockEncryptor, pageHeaderAAD);
   }
 
   /**
@@ -611,8 +639,8 @@ public class ParquetFileWriter {
    * @param rlEncoding encoding of the repetition level
    * @param dlEncoding encoding of the definition level
    * @param valuesEncoding encoding of values
-   * @param blockEncryptor encryptor for block data
-   * @param AAD AAD
+   * @param metadataBlockEncryptor encryptor for block data
+   * @param pageHeaderAAD pageHeader AAD
    * @throws IOException if there is an error while writing
    */
   public void writeDataPage(
@@ -622,8 +650,8 @@ public class ParquetFileWriter {
     Encoding rlEncoding,
     Encoding dlEncoding,
     Encoding valuesEncoding,
-    BlockCipher.Encryptor blockEncryptor,
-    byte[] AAD) throws IOException {
+    BlockCipher.Encryptor metadataBlockEncryptor,
+    byte[] pageHeaderAAD) throws IOException {
     state = state.write();
     long beforeHeader = out.getPos();
     if (currentChunkFirstDataPage < 0) {
@@ -642,8 +670,8 @@ public class ParquetFileWriter {
         valuesEncoding,
         (int) crc.getValue(),
         out,
-        blockEncryptor,
-        AAD);
+        metadataBlockEncryptor,
+        pageHeaderAAD);
     } else {
       metadataConverter.writeDataPageV1Header(
         uncompressedPageSize, compressedPageSize,
@@ -652,8 +680,8 @@ public class ParquetFileWriter {
         dlEncoding,
         valuesEncoding,
         out,
-        blockEncryptor,
-        AAD);
+        metadataBlockEncryptor,
+        pageHeaderAAD);
     }
     long headerSize = out.getPos() - beforeHeader;
     this.uncompressedLength += uncompressedPageSize + headerSize;
@@ -1062,6 +1090,12 @@ public class ParquetFileWriter {
     long start = chunk.getStartingPos();
     long length = chunk.getTotalSize();
     long newChunkStart = out.getPos();
+
+    if (newChunkStart != start) {
+      offsetIndex = OffsetIndexBuilder.getBuilder()
+        .fromOffsetIndex(offsetIndex)
+        .build(newChunkStart - start);
+    }
 
     copy(from, out, start, length);
 

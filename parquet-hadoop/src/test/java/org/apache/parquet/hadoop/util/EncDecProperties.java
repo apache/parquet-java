@@ -59,17 +59,10 @@ public class EncDecProperties {
     DecryptionKeyRetrieverMock keyRetriever = new DecryptionKeyRetrieverMock();
     keyRetriever.putKey("footkey", FOOTER_KEY);
     keyRetriever.putKey("col", COL_KEY);
-    return FileDecryptionProperties.builder().withPlaintextFilesAllowed().withoutFooterSignatureVerification().withKeyRetriever(keyRetriever).build();
+    return FileDecryptionProperties.builder().withPlaintextFilesAllowed().withKeyRetriever(keyRetriever).build();
   }
 
-  public static FileDecryptionProperties getFileDecryptionPropertiesNonExistKey() throws IOException {
-    DecryptionKeyRetrieverMock keyRetriever = new DecryptionKeyRetrieverMock();
-    keyRetriever.putKey("footkey", FOOTER_KEY);
-    keyRetriever.putKey("col_non_exist", COL_KEY);
-    return FileDecryptionProperties.builder().withPlaintextFilesAllowed().withoutFooterSignatureVerification().withKeyRetriever(keyRetriever).build();
-  }
-
-  public static FileEncryptionProperties getFileEncryptionProperties(String[] encrCols, ParquetCipher cipher) {
+  public static FileEncryptionProperties getFileEncryptionProperties(String[] encrCols, ParquetCipher cipher, Boolean encryptFooter) {
     if (encrCols.length == 0) {
       return null;
     }
@@ -88,8 +81,11 @@ public class EncDecProperties {
       FileEncryptionProperties.builder(FOOTER_KEY)
         .withFooterKeyMetadata(FOOTER_KEY_METADATA)
         .withAlgorithm(cipher)
-        .withEncryptedColumns(columnPropertyMap)
-        .withPlaintextFooter();
+        .withEncryptedColumns(columnPropertyMap);
+
+    if(!encryptFooter) {
+      encryptionPropertiesBuilder.withPlaintextFooter();
+    }
 
     return encryptionPropertiesBuilder.build();
   }

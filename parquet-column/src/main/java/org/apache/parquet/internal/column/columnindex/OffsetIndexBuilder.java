@@ -65,7 +65,7 @@ public class OffsetIndexBuilder {
     public long getFirstRowIndex(int pageIndex) {
       return firstRowIndexes[pageIndex];
     }
-    
+
     @Override
     public int getPageOrdinal(int pageIndex) {
       return pageIndex;
@@ -151,22 +151,36 @@ public class OffsetIndexBuilder {
     return build(0);
   }
 
+  public OffsetIndexBuilder fromOffsetIndex(OffsetIndex offsetIndex) {
+    assert offsetIndex instanceof OffsetIndexImpl;
+    OffsetIndexImpl offsetIndexImpl = (OffsetIndexImpl) offsetIndex;
+    this.offsets.addAll(new LongArrayList(offsetIndexImpl.offsets));
+    this.compressedPageSizes.addAll(new IntArrayList(offsetIndexImpl.compressedPageSizes));
+    this.firstRowIndexes.addAll(new LongArrayList(offsetIndexImpl.firstRowIndexes));
+    this.previousOffset = 0;
+    this.previousPageSize = 0;
+    this.previousRowIndex = 0;
+    this.previousRowCount  = 0;
+
+    return this;
+  }
+
   /**
    * Builds the offset index. Used by the writers to building up {@link OffsetIndex} objects to be
    * written to the Parquet file.
    *
-   * @param firstPageOffset
+   * @param shift
    *          the actual offset in the file to be used to translate all the collected offsets
    * @return the newly created offset index or {@code null} if the {@link OffsetIndex} object would be empty
    */
-  public OffsetIndex build(long firstPageOffset) {
+  public OffsetIndex build(long shift) {
     if (compressedPageSizes.isEmpty()) {
       return null;
     }
     long[] offsets = this.offsets.toLongArray();
-    if (firstPageOffset != 0) {
+    if (shift != 0) {
       for (int i = 0, n = offsets.length; i < n; ++i) {
-        offsets[i] += firstPageOffset;
+        offsets[i] += shift;
       }
     }
     OffsetIndexImpl offsetIndex = new OffsetIndexImpl();
