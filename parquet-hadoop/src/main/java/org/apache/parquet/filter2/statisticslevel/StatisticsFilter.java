@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -43,6 +43,7 @@ import org.apache.parquet.filter2.predicate.Operators.Or;
 import org.apache.parquet.filter2.predicate.Operators.UserDefined;
 import org.apache.parquet.filter2.predicate.UserDefinedPredicate;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
+import org.apache.parquet.column.MinMax;
 
 /**
  * Applies a {@link org.apache.parquet.filter2.predicate.FilterPredicate} to statistics about a group of
@@ -194,28 +195,17 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
       }
     }
 
+    MinMax<T> minMax = new MinMax(meta.getPrimitiveType().comparator(), values.iterator());
+    T min = minMax.getMin();
+    T max = minMax.getMax();
+
     // drop if all the element in value < min || all the element in value > max
-    if (stats.compareMinToValue(getMaxOrMin(true, values)) <= 0 &&
-      stats.compareMaxToValue(getMaxOrMin(false, values)) >= 0) {
+    if (stats.compareMinToValue(max) <= 0 &&
+      stats.compareMaxToValue(min) >= 0) {
       return BLOCK_MIGHT_MATCH;
-    }
-    else {
+    } else {
       return BLOCK_CANNOT_MATCH;
     }
-  }
-
-  private <T extends Comparable<T>> T getMaxOrMin(boolean isMax, Set<T> values) {
-    T res = null;
-    for (T element : values) {
-      if (res == null) {
-        res = element;
-      } else if (isMax && res != null && element != null && res.compareTo(element) < 0) {
-        res = element;
-      } else if (!isMax && res != null && element != null && res.compareTo(element) > 0) {
-        res = element;
-      }
-    }
-    return res;
   }
 
   @Override

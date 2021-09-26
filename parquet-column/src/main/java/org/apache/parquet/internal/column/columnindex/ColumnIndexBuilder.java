@@ -21,10 +21,16 @@ package org.apache.parquet.internal.column.columnindex;
 import static java.util.Objects.requireNonNull;
 
 import java.nio.ByteBuffer;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Formatter;
+import java.util.Iterator;
+import java.util.List;
+import java.util.PrimitiveIterator;
+import java.util.Set;
 import java.util.function.IntConsumer;
 import java.util.function.IntPredicate;
 
+import org.apache.parquet.column.MinMax;
 import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.filter2.predicate.Operators.And;
 import org.apache.parquet.filter2.predicate.Operators.Eq;
@@ -305,45 +311,35 @@ public abstract class ColumnIndexBuilder {
                 matchingIndexesForNull.add(i);
               }
             }
+            if (values.size() == 1) {
+              return IndexIterator.filter(getPageCount(), pageIndex -> matchingIndexesForNull.contains(pageIndex));
+            }
           }
         }
       }
 
       IntSet matchingIndexesLessThanMax = new IntOpenHashSet();
-      IntSet matchingIndexesLargerThanMin = new IntOpenHashSet();
+      IntSet matchingIndexesGreaterThanMin = new IntOpenHashSet();
 
-      T min = getMaxOrMin(false, values);
-      T max = getMaxOrMin(true, values);
+      MinMax<T> minMax = new MinMax(comparator, values.iterator());
+      T min = minMax.getMin();
+      T max = minMax.getMax();
 
       // We don't want to iterate through each of the values in the IN set to compare,
       // because the size of the IN set might be very large. Instead, we want to only
       // compare the max and min value of the IN set to see if the page might contain the
       // values in the IN set.
-      // If the values in a page are <= the max value in the IN set,
+      // If there might be values in a page that are <= the max value in the IN set,
       // and >= the min value in the IN set, then the page might contain
       // the values in the IN set.
       getBoundaryOrder().ltEq(createValueComparator(max))
         .forEachRemaining((int index) -> matchingIndexesLessThanMax.add(index));
       getBoundaryOrder().gtEq(createValueComparator(min))
-        .forEachRemaining((int index) -> matchingIndexesLargerThanMin.add(index));
-      matchingIndexesLessThanMax.retainAll(matchingIndexesLargerThanMin);
+        .forEachRemaining((int index) -> matchingIndexesGreaterThanMin.add(index));
+      matchingIndexesLessThanMax.retainAll(matchingIndexesGreaterThanMin);
       IntSet matchingIndex = matchingIndexesLessThanMax;
       matchingIndex.addAll(matchingIndexesForNull);  // add the matching null pages
       return IndexIterator.filter(getPageCount(), pageIndex -> matchingIndex.contains(pageIndex));
-    }
-
-    private <T extends Comparable<T>> T getMaxOrMin(boolean isMax, Set<T> values) {
-      T res = null;
-      for (T element : values) {
-        if (res == null) {
-          res = element;
-        } else if (isMax && res != null && element != null && res.compareTo(element) < 0) {
-          res = element;
-        } else if (!isMax && res != null && element != null && res.compareTo(element) > 0) {
-          res = element;
-        }
-      }
-      return res;
     }
 
     @Override

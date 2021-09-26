@@ -25,6 +25,7 @@ import static org.apache.parquet.filter2.predicate.FilterApi.binaryColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.doubleColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.eq;
 import static org.apache.parquet.filter2.predicate.FilterApi.gtEq;
+import static org.apache.parquet.filter2.predicate.FilterApi.in;
 import static org.apache.parquet.filter2.predicate.FilterApi.longColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.lt;
 import static org.apache.parquet.filter2.predicate.FilterApi.ltEq;
@@ -53,10 +54,12 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -377,12 +380,48 @@ public class TestColumnIndexFiltering {
     assertCorrectFiltering(
         record -> record.getId() == 1234,
         eq(longColumn("id"), 1234l));
+
+    Set<Long> idSet = new HashSet<>();
+    idSet.add(1234l);
+    idSet.add(5678l);
+    idSet.add(1357l);
+    idSet.add(111l);
+    idSet.add(6666l);
+    idSet.add(2l);
+    idSet.add(2468l);
+
+    assertCorrectFiltering(
+      record -> (record.getId() == 1234 || record.getId() == 5678 || record.getId() == 1357 ||
+        record.getId() == 111 || record.getId() == 6666 || record.getId() == 2 || record.getId() == 2468),
+      in(longColumn("id"), idSet)
+    );
+
     assertCorrectFiltering(
         record -> "miller".equals(record.getName()),
         eq(binaryColumn("name"), Binary.fromString("miller")));
+
+    Set<Binary> nameSet = new HashSet<>();
+    nameSet.add(Binary.fromString("anderson"));
+    nameSet.add(Binary.fromString("miller"));
+    nameSet.add(Binary.fromString("thomas"));
+    nameSet.add(Binary.fromString("williams"));
+
+    assertCorrectFiltering(
+      record -> ("anderson".equals(record.getName()) || "miller".equals(record.getName()) ||
+        "thomas".equals(record.getName()) || "williams".equals(record.getName())),
+      in(binaryColumn("name"), nameSet)
+    );
+
     assertCorrectFiltering(
         record -> record.getName() == null,
         eq(binaryColumn("name"), null));
+
+    Set<Binary> nullSet = new HashSet<>();
+    nullSet.add(null);
+
+    assertCorrectFiltering(
+      record -> record.getName() == null,
+      in(binaryColumn("name"), nullSet));
   }
 
   @Test
