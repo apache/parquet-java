@@ -19,33 +19,31 @@
 
 package org.apache.parquet.format;
 
-import java.io.IOException;
-import java.util.function.Predicate;
-
 /**
  * Utility class to validate different types of Parquet metadata (e.g. footer, page headers etc.).
  */
 public class MetadataValidator {
 
   /**
-   * A specific IOException thrown when invalid values are found in the Parquet file metadata (including the footer,
-   * page header etc.).
+   * A specific RuntimeException thrown when invalid values are found in the Parquet file metadata (including the
+   * footer, page header etc.).
    */
-  public static class InvalidParquetMetadataException extends IOException {
-    private <T> InvalidParquetMetadataException(String metaName, T value) {
-      super("Metadata " + metaName + " is invalid: " + value);
+  public static class InvalidParquetMetadataException extends RuntimeException {
+    private <T> InvalidParquetMetadataException(String message) {
+      super(message);
     }
   }
 
-  static PageHeader validate(PageHeader pageHeader) throws InvalidParquetMetadataException {
-    validateValue(size -> size >= 0, pageHeader.getCompressed_page_size(), "pageHeader.compressed_page_size");
+  static PageHeader validate(PageHeader pageHeader) {
+    int compressed_page_size = pageHeader.getCompressed_page_size();
+    validateValue(compressed_page_size >= 0,
+        String.format("Compressed page size must not be negative but was: %s", compressed_page_size));
     return pageHeader;
   }
 
-  private static <T> void validateValue(Predicate<? super T> validator, T value, String metaName)
-      throws InvalidParquetMetadataException {
-    if (!validator.test(value)) {
-      throw new InvalidParquetMetadataException(metaName, value);
+  private static <T> void validateValue(boolean valid, String message) {
+    if (!valid) {
+      throw new InvalidParquetMetadataException(message);
     }
   }
 

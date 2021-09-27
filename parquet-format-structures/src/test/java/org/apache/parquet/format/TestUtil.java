@@ -92,7 +92,7 @@ public class TestUtil {
       fail("Expected exception but did not thrown");
     } catch (InvalidParquetMetadataException e) {
       assertTrue("Exception message does not contain the expected parts",
-          e.getMessage().contains("pageHeader.compressed_page_size"));
+          e.getMessage().contains("Compressed page size"));
     }
   }
 
