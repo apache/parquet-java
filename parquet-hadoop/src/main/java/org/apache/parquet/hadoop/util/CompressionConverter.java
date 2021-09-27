@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.hadoop.util;
 
+import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.ParquetProperties;
@@ -30,7 +31,9 @@ import org.apache.parquet.format.DataPageHeader;
 import org.apache.parquet.format.DataPageHeaderV2;
 import org.apache.parquet.format.DictionaryPageHeader;
 import org.apache.parquet.format.PageHeader;
+import org.apache.parquet.format.Util;
 import org.apache.parquet.format.converter.ParquetMetadataConverter;
+import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.ParquetFileWriter;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
@@ -39,7 +42,12 @@ import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.internal.column.columnindex.ColumnIndex;
 import org.apache.parquet.internal.column.columnindex.OffsetIndex;
+import org.apache.parquet.io.InputFile;
 import org.apache.parquet.io.ParquetEncodingException;
+import org.apache.parquet.io.SeekableInputStream;
+import org.apache.parquet.io.api.Converter;
+import org.apache.parquet.io.api.GroupConverter;
+import org.apache.parquet.io.api.PrimitiveConverter;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
 import org.slf4j.Logger;
@@ -227,5 +235,42 @@ public class CompressionConverter {
       throw new ParquetEncodingException("size is bigger than " + Integer.MAX_VALUE + " bytes: " + size);
     }
     return (int)size;
+  }
+
+  private static final class DummyGroupConverter extends GroupConverter {
+    @Override public void start() {}
+    @Override public void end() {}
+    @Override public Converter getConverter(int fieldIndex) { return new DummyConverter(); }
+  }
+
+  private static final class DummyConverter extends PrimitiveConverter {
+    @Override public GroupConverter asGroupConverter() { return new DummyGroupConverter(); }
+  }
+
+  public static final class TransParquetFileReader extends ParquetFileReader {
+
+    public TransParquetFileReader(InputFile file, ParquetReadOptions options) throws IOException {
+      super(file, options);
+    }
+
+    public void setStreamPosition(long newPos) throws IOException {
+      f.seek(newPos);
+    }
+
+    public void blockRead(byte[] data, int start, int len) throws IOException {
+      f.readFully(data, start, len);
+    }
+
+    public PageHeader readPageHeader() throws IOException {
+      return Util.readPageHeader(f);
+    }
+
+    public long getPos() throws IOException {
+      return f.getPos();
+    }
+
+    public SeekableInputStream getStream() {
+      return f;
+    }
   }
 }

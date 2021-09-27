@@ -42,9 +42,9 @@ import org.apache.parquet.hadoop.ParquetFileWriter;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
+import org.apache.parquet.hadoop.util.CompressionConverter.TransParquetFileReader;
 import org.apache.parquet.internal.column.columnindex.ColumnIndex;
 import org.apache.parquet.internal.column.columnindex.OffsetIndex;
-import org.apache.parquet.io.ParquetEncodingException;
 import org.apache.parquet.schema.MessageType;
 
 import java.io.IOException;
@@ -228,7 +228,7 @@ public class ColumnEncryptor {
           readValues += headerV1.getNum_values();
           if (offsetIndex != null) {
             long rowCount = 1 + offsetIndex.getLastRowIndex(pageOrdinal, totalChunkValues) - offsetIndex.getFirstRowIndex(pageOrdinal);
-            writer.writeDataPage(toIntWithCheck(headerV1.getNum_values()),
+            writer.writeDataPage(Math.toIntExact(headerV1.getNum_values()),
               pageHeader.getUncompressed_page_size(),
               BytesInput.from(pageLoad),
               converter.fromParquetStatistics(createdBy, headerV1.getStatistics(), chunk.getPrimitiveType()),
@@ -239,7 +239,7 @@ public class ColumnEncryptor {
               encryptorRunTime.getMetaDataEncryptor(),
               encryptorRunTime.getDataPageHeaderAAD());
           } else {
-            writer.writeDataPage(toIntWithCheck(headerV1.getNum_values()),
+            writer.writeDataPage(Math.toIntExact(headerV1.getNum_values()),
               pageHeader.getUncompressed_page_size(),
               BytesInput.from(pageLoad),
               converter.fromParquetStatistics(createdBy, headerV1.getStatistics(), chunk.getPrimitiveType()),
@@ -295,13 +295,6 @@ public class ColumnEncryptor {
     byte[] data = new byte[length];
     reader.blockRead(data, 0, length);
     return BytesInput.from(data, 0, length);
-  }
-
-  private int toIntWithCheck(long size) {
-    if ((int)size != size) {
-      throw new ParquetEncodingException("size is bigger than " + Integer.MAX_VALUE + " bytes: " + size);
-    }
-    return (int)size;
   }
 
   public static Set<ColumnPath> convertToColumnPaths(List<String> cols) {
