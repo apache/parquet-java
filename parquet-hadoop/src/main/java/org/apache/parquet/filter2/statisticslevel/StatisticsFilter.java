@@ -195,7 +195,7 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
       }
     }
 
-    MinMax<T> minMax = new MinMax(meta.getPrimitiveType().comparator(), values.iterator());
+    MinMax<T> minMax = new MinMax(meta.getPrimitiveType().comparator(), values);
     T min = minMax.getMin();
     T max = minMax.getMax();
 

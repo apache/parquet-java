@@ -321,7 +321,7 @@ public abstract class ColumnIndexBuilder {
       IntSet matchingIndexesLessThanMax = new IntOpenHashSet();
       IntSet matchingIndexesGreaterThanMin = new IntOpenHashSet();
 
-      MinMax<T> minMax = new MinMax(comparator, values.iterator());
+      MinMax<T> minMax = new MinMax(comparator, values);
       T min = minMax.getMin();
       T max = minMax.getMax();
 
