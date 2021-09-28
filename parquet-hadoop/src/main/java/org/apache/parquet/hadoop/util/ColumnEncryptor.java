@@ -153,8 +153,8 @@ public class ColumnEncryptor {
   }
 
   private void processBlocks(TransParquetFileReader reader, ParquetFileWriter writer, ParquetMetadata meta,
-                            MessageType schema, List<String> paths) throws IOException {
-    Set<ColumnPath> encryptColumns = convertToColumnPaths(paths);
+                            MessageType schema, List<String> encryptPaths) throws IOException {
+    Set<ColumnPath> encryptColumnsPath = convertToColumnPaths(encryptPaths);
     int blockId = 0;
     PageReadStore store = reader.readNextRowGroup();
 
@@ -168,7 +168,7 @@ public class ColumnEncryptor {
       for (int i = 0; i < columnsInOrder.size(); i += 1) {
         ColumnChunkMetaData chunk = columnsInOrder.get(i);
         ColumnDescriptor descriptor = descriptorsMap.get(chunk.getPath());
-        processChunk(descriptor, chunk, reader, writer, encryptColumns, blockId, i, meta.getFileMetaData().getCreatedBy());
+        processChunk(descriptor, chunk, reader, writer, encryptColumnsPath, blockId, i, meta.getFileMetaData().getCreatedBy());
       }
 
       writer.endBlock();
