@@ -27,7 +27,7 @@ public final class MinMax<T> {
   private T min = null;
   private T max = null;
 
-  public MinMax(PrimitiveComparator comparator, Iterable<T> iterable) {
+  public MinMax(PrimitiveComparator<T> comparator, Iterable<T> iterable) {
     getMinAndMax(comparator, iterable);
   }
 
@@ -39,21 +39,17 @@ public final class MinMax<T> {
     return max;
   }
 
-  private void getMinAndMax(PrimitiveComparator comparator, Iterable<T> iterable) {
+  private void getMinAndMax(PrimitiveComparator<T> comparator, Iterable<T> iterable) {
     iterable.forEach(element -> {
       if (max == null) {
         max = element;
-      } else if (element != null) {
-        if (comparator.compare(max, element) < 0) {
+      } else if (element != null && comparator.compare(max, element) < 0) {
           max = element;
-        }
       }
       if (min == null) {
         min = element;
-      } else if (element != null) {
-        if (comparator.compare(min, element) > 0) {
+      } else if (element != null && comparator.compare(min, element) > 0) {
           min = element;
-        }
       }
     });
   }
