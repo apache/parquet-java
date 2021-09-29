@@ -30,8 +30,8 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
-import org.apache.parquet.format.Util.DefaultFileMetaDataConsumer;
 import org.junit.Test;
+import org.apache.parquet.format.Util.DefaultFileMetaDataConsumer;
 
 public class TestUtil {
 

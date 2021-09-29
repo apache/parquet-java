@@ -24,7 +24,7 @@ package org.apache.parquet.format;
  * page header etc.).
  */
 public class InvalidParquetMetadataException extends RuntimeException {
-  <T> InvalidParquetMetadataException(String message) {
+  InvalidParquetMetadataException(String message) {
     super(message);
   }
 }
