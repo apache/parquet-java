@@ -37,6 +37,8 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import java.io.File;
 import java.io.IOException;
+import java.util.HashSet;
+import java.util.Set;
 
 import static org.apache.parquet.filter2.predicate.FilterApi.and;
 import static org.apache.parquet.filter2.predicate.FilterApi.binaryColumn;
@@ -44,10 +46,12 @@ import static org.apache.parquet.filter2.predicate.FilterApi.doubleColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.eq;
 import static org.apache.parquet.filter2.predicate.FilterApi.gt;
 import static org.apache.parquet.filter2.predicate.FilterApi.gtEq;
+import static org.apache.parquet.filter2.predicate.FilterApi.in;
 import static org.apache.parquet.filter2.predicate.FilterApi.longColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.lt;
 import static org.apache.parquet.filter2.predicate.FilterApi.ltEq;
 import static org.apache.parquet.filter2.predicate.FilterApi.notEq;
+import static org.apache.parquet.filter2.predicate.FilterApi.notIn;
 import static org.apache.parquet.filter2.predicate.FilterApi.or;
 import static org.apache.parquet.io.api.Binary.fromString;
 import static org.apache.parquet.schema.OriginalType.UTF8;
@@ -98,6 +102,12 @@ public class TestFiltersWithMissingColumns {
   @Test
   public void testSimpleMissingColumnFilter() throws Exception {
     assertEquals(0, countFilteredRecords(path, lt(longColumn("missing"), 500L)));
+    Set<Long> values = new HashSet<>();
+    values.add(1L);
+    values.add(2L);
+    values.add(5L);
+    assertEquals(0, countFilteredRecords(path, in(longColumn("missing"), values)));
+    assertEquals(1000, countFilteredRecords(path, notIn(longColumn("missing"), values)));
   }
 
   @Test

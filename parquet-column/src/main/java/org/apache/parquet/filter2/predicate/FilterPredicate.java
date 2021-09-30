@@ -22,11 +22,13 @@ import org.apache.parquet.filter2.predicate.Operators.And;
 import org.apache.parquet.filter2.predicate.Operators.Eq;
 import org.apache.parquet.filter2.predicate.Operators.Gt;
 import org.apache.parquet.filter2.predicate.Operators.GtEq;
+import org.apache.parquet.filter2.predicate.Operators.In;
 import org.apache.parquet.filter2.predicate.Operators.LogicalNotUserDefined;
 import org.apache.parquet.filter2.predicate.Operators.Lt;
 import org.apache.parquet.filter2.predicate.Operators.LtEq;
 import org.apache.parquet.filter2.predicate.Operators.Not;
 import org.apache.parquet.filter2.predicate.Operators.NotEq;
+import org.apache.parquet.filter2.predicate.Operators.NotIn;
 import org.apache.parquet.filter2.predicate.Operators.Or;
 import org.apache.parquet.filter2.predicate.Operators.UserDefined;
 
@@ -66,6 +68,12 @@ public interface FilterPredicate {
     <T extends Comparable<T>> R visit(LtEq<T> ltEq);
     <T extends Comparable<T>> R visit(Gt<T> gt);
     <T extends Comparable<T>> R visit(GtEq<T> gtEq);
+    default <T extends Comparable<T>> R visit(In<T> in) {
+      throw new UnsupportedOperationException("visit in is not supported.");
+    }
+    default <T extends Comparable<T>> R visit(NotIn<T> notIn) {
+      throw new UnsupportedOperationException("visit NotIn is not supported.");
+    }
     R visit(And and);
     R visit(Or or);
     R visit(Not not);

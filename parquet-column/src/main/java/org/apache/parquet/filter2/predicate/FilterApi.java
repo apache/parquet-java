@@ -19,6 +19,7 @@
 package org.apache.parquet.filter2.predicate;
 
 import java.io.Serializable;
+import java.util.Set;
 
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.filter2.predicate.Operators.And;
@@ -30,12 +31,14 @@ import org.apache.parquet.filter2.predicate.Operators.Eq;
 import org.apache.parquet.filter2.predicate.Operators.FloatColumn;
 import org.apache.parquet.filter2.predicate.Operators.Gt;
 import org.apache.parquet.filter2.predicate.Operators.GtEq;
+import org.apache.parquet.filter2.predicate.Operators.In;
 import org.apache.parquet.filter2.predicate.Operators.IntColumn;
 import org.apache.parquet.filter2.predicate.Operators.LongColumn;
 import org.apache.parquet.filter2.predicate.Operators.Lt;
 import org.apache.parquet.filter2.predicate.Operators.LtEq;
 import org.apache.parquet.filter2.predicate.Operators.Not;
 import org.apache.parquet.filter2.predicate.Operators.NotEq;
+import org.apache.parquet.filter2.predicate.Operators.NotIn;
 import org.apache.parquet.filter2.predicate.Operators.Or;
 import org.apache.parquet.filter2.predicate.Operators.SupportsEqNotEq;
 import org.apache.parquet.filter2.predicate.Operators.SupportsLtGt;
@@ -202,6 +205,56 @@ public final class FilterApi {
    */
   public static <T extends Comparable<T>, C extends Column<T> & SupportsLtGt> GtEq<T> gtEq(C column, T value) {
     return new GtEq<>(column, value);
+  }
+
+  /**
+   * Keeps records if their value is in the provided values.
+   * The provided values set could not be null, but could contains a null value.
+   * <p>
+   * For example:
+   * <pre>
+   *   {@code
+   *   Set<Integer> set = new HashSet<>();
+   *   set.add(9);
+   *   set.add(null);
+   *   set.add(50);
+   *   in(column, set);}
+   * </pre>
+   * will keep all records whose values are 9, null, or 50.
+   *
+   * @param column a column reference created by FilterApi
+   * @param values a set of values that match the column's type
+   * @param <T> the Java type of values in the column
+   * @param <C> the column type that corresponds to values of type T
+   * @return an in predicate for the given column and value
+   */
+  public static <T extends Comparable<T>, C extends Column<T> & SupportsEqNotEq> In<T> in(C column, Set<T> values) {
+    return new In<>(column, values);
+  }
+
+  /**
+   * Keeps records if their value is not in the provided values.
+   * The provided values set could not be null, but could contains a null value.
+   * <p>
+   * For example:
+   * <pre>
+   *   {@code
+   *   Set<Integer> set = new HashSet<>();
+   *   set.add(9);
+   *   set.add(null);
+   *   set.add(50);
+   *   notIn(column, set);}
+   * </pre>
+   * will keep all records whose values are not 9, null, and 50.
+   *
+   * @param column a column reference created by FilterApi
+   * @param values a set of values that match the column's type
+   * @param <T> the Java type of values in the column
+   * @param <C> the column type that corresponds to values of type T
+   * @return an notIn predicate for the given column and value
+   */
+  public static <T extends Comparable<T>, C extends Column<T> & SupportsEqNotEq> NotIn<T> notIn(C column, Set<T> values) {
+    return new NotIn<>(column, values);
   }
 
   /**

@@ -48,10 +48,12 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -311,6 +313,30 @@ public class TestBloomFiltering {
     assertCorrectFiltering(
       record -> "miller".equals(record.getName()),
       eq(binaryColumn("name"), Binary.fromString("miller")));
+
+    Set<Binary> values1 = new HashSet<>();
+    values1.add(Binary.fromString("miller"));
+    values1.add(Binary.fromString("anderson"));
+
+    assertCorrectFiltering(
+      record -> "miller".equals(record.getName()) || "anderson".equals(record.getName()),
+      in(binaryColumn("name"), values1));
+
+    Set<Binary> values2 = new HashSet<>();
+    values2.add(Binary.fromString("miller"));
+    values2.add(Binary.fromString("alien"));
+
+    assertCorrectFiltering(
+      record -> "miller".equals(record.getName()),
+      in(binaryColumn("name"), values2));
+
+    Set<Binary> values3 = new HashSet<>();
+    values3.add(Binary.fromString("alien"));
+    values3.add(Binary.fromString("predator"));
+
+    assertCorrectFiltering(
+      record -> "dummy".equals(record.getName()),
+      in(binaryColumn("name"), values3));
   }
 
   @Test

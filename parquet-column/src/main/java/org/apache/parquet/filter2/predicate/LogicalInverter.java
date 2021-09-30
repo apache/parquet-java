@@ -23,11 +23,13 @@ import org.apache.parquet.filter2.predicate.Operators.And;
 import org.apache.parquet.filter2.predicate.Operators.Eq;
 import org.apache.parquet.filter2.predicate.Operators.Gt;
 import org.apache.parquet.filter2.predicate.Operators.GtEq;
+import org.apache.parquet.filter2.predicate.Operators.In;
 import org.apache.parquet.filter2.predicate.Operators.LogicalNotUserDefined;
 import org.apache.parquet.filter2.predicate.Operators.Lt;
 import org.apache.parquet.filter2.predicate.Operators.LtEq;
 import org.apache.parquet.filter2.predicate.Operators.Not;
 import org.apache.parquet.filter2.predicate.Operators.NotEq;
+import org.apache.parquet.filter2.predicate.Operators.NotIn;
 import org.apache.parquet.filter2.predicate.Operators.Or;
 import org.apache.parquet.filter2.predicate.Operators.UserDefined;
 
@@ -79,6 +81,16 @@ public final class LogicalInverter implements Visitor<FilterPredicate> {
   @Override
   public <T extends Comparable<T>> FilterPredicate visit(GtEq<T> gtEq) {
     return new Lt<>(gtEq.getColumn(), gtEq.getValue());
+  }
+
+  @Override
+  public <T extends Comparable<T>> FilterPredicate visit(In<T> in) {
+    return new NotIn<>(in.getColumn(), in.getValues());
+  }
+
+  @Override
+  public <T extends Comparable<T>> FilterPredicate visit(NotIn<T> notIn) {
+    return new In<>(notIn.getColumn(), notIn.getValues());
   }
 
   @Override

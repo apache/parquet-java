@@ -50,6 +50,7 @@ import static org.apache.parquet.filter2.predicate.FilterApi.doubleColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.longColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.eq;
 import static org.apache.parquet.filter2.predicate.FilterApi.gt;
+import static org.apache.parquet.filter2.predicate.FilterApi.in;
 import static org.apache.parquet.filter2.predicate.FilterApi.not;
 import static org.apache.parquet.filter2.predicate.FilterApi.notEq;
 import static org.apache.parquet.filter2.predicate.FilterApi.or;
@@ -147,6 +148,39 @@ public class TestRecordLevelFilters {
   }
 
   @Test
+  public void testInFilter() throws Exception {
+    BinaryColumn name = binaryColumn("name");
+
+    HashSet<Binary> nameSet = new HashSet<>();
+    nameSet.add(Binary.fromString("thing2"));
+    nameSet.add(Binary.fromString("thing1"));
+    for (int i = 100; i < 200; i++) {
+      nameSet.add(Binary.fromString("p" + i));
+    }
+    FilterPredicate pred = in(name, nameSet);
+    List<Group> found = PhoneBookWriter.readFile(phonebookFile, FilterCompat.get(pred));
+
+    List<String> expectedNames = new ArrayList<>();
+    expectedNames.add("thing1");
+    expectedNames.add("thing2");
+    for (int i = 100; i < 200; i++) {
+      expectedNames.add("p" + i);
+    }
+    expectedNames.add("dummy1");
+    expectedNames.add("dummy2");
+    expectedNames.add("dummy3");
+
+    // validate that all the values returned by the reader fulfills the filter and there are no values left out,
+    // i.e. "thing1", "thing2" and from "p100" to "p199" and nothing else.
+    assertEquals(expectedNames.get(0), ((Group)(found.get(0))).getString("name", 0));
+    assertEquals(expectedNames.get(1), ((Group)(found.get(1))).getString("name", 0));
+    for (int i = 2; i < 102; i++) {
+      assertEquals(expectedNames.get(i), ((Group)(found.get(i))).getString("name", 0));
+    }
+    assert(found.size() == 102);
+  }
+
+  @Test
   public void testNameNotNull() throws Exception {
     BinaryColumn name = binaryColumn("name");
 
@@ -232,7 +266,7 @@ public class TestRecordLevelFilters {
     LongColumn name = longColumn("id");
 
     final HashSet<Long> h = new HashSet<Long>();
-    h.add(20L); 
+    h.add(20L);
     h.add(27L);
     h.add(28L);
     
