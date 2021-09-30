@@ -19,6 +19,14 @@
 
 # Parquet #
 
+### Version 1.11.2 ###
+
+Release Notes - Parquet - Version 1.11.2
+
+#### Bug
+
+*   [PARQUET-2094](https://issues.apache.org/jira/browse/PARQUET-2094) - Handle negative values in page headers
+
 ### Version 1.11.1 ###
 
 Release Notes - Parquet - Version 1.11.1
