@@ -75,7 +75,7 @@ public class Util {
   }
 
   public static PageHeader readPageHeader(InputStream from) throws IOException {
-    return read(from, new PageHeader());
+    return MetadataValidator.validate(read(from, new PageHeader()));
   }
 
   public static void writeFileMetaData(org.apache.parquet.format.FileMetaData fileMetadata, OutputStream to) throws IOException {
