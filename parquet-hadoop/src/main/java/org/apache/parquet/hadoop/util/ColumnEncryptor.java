@@ -26,7 +26,6 @@ import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.page.PageReadStore;
-import org.apache.parquet.column.values.bloomfilter.BloomFilter;
 import org.apache.parquet.crypto.AesCipher;
 import org.apache.parquet.crypto.FileEncryptionProperties;
 import org.apache.parquet.crypto.InternalColumnEncryptionSetup;
@@ -43,7 +42,6 @@ import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.hadoop.util.CompressionConverter.TransParquetFileReader;
-import org.apache.parquet.internal.column.columnindex.ColumnIndex;
 import org.apache.parquet.internal.column.columnindex.OffsetIndex;
 import org.apache.parquet.schema.MessageType;
 
@@ -193,11 +191,11 @@ public class ColumnEncryptor {
                             Set<ColumnPath> encryptPaths, int blockId, int columnId, String createdBy) throws IOException {
     reader.setStreamPosition(chunk.getStartingPos());
     writer.startColumn(descriptor, chunk.getValueCount(), chunk.getCodec());
-    encryptPages(reader, chunk, writer, createdBy, blockId, columnId, encryptPaths.contains(chunk.getPath()));
+    processPages(reader, chunk, writer, createdBy, blockId, columnId, encryptPaths.contains(chunk.getPath()));
     writer.endColumn();
   }
 
-  private void encryptPages(TransParquetFileReader reader, ColumnChunkMetaData chunk, ParquetFileWriter writer,
+  private void processPages(TransParquetFileReader reader, ColumnChunkMetaData chunk, ParquetFileWriter writer,
                             String createdBy, int blockId, int columnId, boolean encrypt) throws IOException {
     int pageOrdinal = 0;
     EncryptorRunTime encryptorRunTime = new EncryptorRunTime(writer.getEncryptor(), chunk, blockId, columnId);
@@ -217,7 +215,7 @@ public class ColumnEncryptor {
           }
           //No quickUpdatePageAAD needed for dictionary page
           DictionaryPageHeader dictPageHeader = pageHeader.dictionary_page_header;
-          pageLoad = encryptPayload(reader, pageHeader.getCompressed_page_size(), encryptorRunTime.getDataEncryptor(), encryptorRunTime.getDictPageAAD(), encrypt);
+          pageLoad = processPayload(reader, pageHeader.getCompressed_page_size(), encryptorRunTime.getDataEncryptor(), encryptorRunTime.getDictPageAAD(), encrypt);
           writer.writeDictionaryPage(new DictionaryPage(BytesInput.from(pageLoad),
                                         pageHeader.getUncompressed_page_size(),
                                         dictPageHeader.getNum_values(),
@@ -230,7 +228,7 @@ public class ColumnEncryptor {
             AesCipher.quickUpdatePageAAD(encryptorRunTime.getDataPageAAD(), pageOrdinal);
           }
           DataPageHeader headerV1 = pageHeader.data_page_header;
-          pageLoad = encryptPayload(reader, pageHeader.getCompressed_page_size(), encryptorRunTime.getDataEncryptor(), encryptorRunTime.getDataPageAAD(), encrypt);
+          pageLoad = processPayload(reader, pageHeader.getCompressed_page_size(), encryptorRunTime.getDataEncryptor(), encryptorRunTime.getDataPageAAD(), encrypt);
           readValues += headerV1.getNum_values();
           if (offsetIndex != null) {
             long rowCount = 1 + offsetIndex.getLastRowIndex(pageOrdinal, totalChunkValues) - offsetIndex.getFirstRowIndex(pageOrdinal);
@@ -269,7 +267,7 @@ public class ColumnEncryptor {
           BytesInput dlLevels = readBlockAllocate(dlLength, reader);
           int payLoadLength = pageHeader.getCompressed_page_size() - rlLength - dlLength;
           int rawDataLength = pageHeader.getUncompressed_page_size() - rlLength - dlLength;
-          pageLoad = encryptPayload(reader, payLoadLength, encryptorRunTime.getDataEncryptor(), encryptorRunTime.getDataPageAAD(), encrypt);
+          pageLoad = processPayload(reader, payLoadLength, encryptorRunTime.getDataEncryptor(), encryptorRunTime.getDataPageAAD(), encrypt);
           readValues += headerV2.getNum_values();
           writer.writeDataPageV2(headerV2.getNum_rows(),
             headerV2.getNum_nulls(),
@@ -288,7 +286,7 @@ public class ColumnEncryptor {
     }
   }
 
-  private byte[] encryptPayload(TransParquetFileReader reader, int payloadLength, BlockCipher.Encryptor dataEncryptor,
+  private byte[] processPayload(TransParquetFileReader reader, int payloadLength, BlockCipher.Encryptor dataEncryptor,
                                 byte[] AAD, boolean encrypt) throws IOException {
     byte[] data = readBlock(payloadLength, reader);
     if (!encrypt) {
