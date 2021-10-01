@@ -104,6 +104,10 @@ public class ColumnEncryptor {
       }
     }
 
+    public static EncryptorRunTime createEmptyRunTime() throws IOException {
+      return new EncryptorRunTime(null, null, -1, -1);
+    }
+
     public BlockCipher.Encryptor getDataEncryptor() {
       return this.dataEncryptor;
     }
@@ -177,6 +181,11 @@ public class ColumnEncryptor {
 
       for (int i = 0; i < columnsInOrder.size(); i += 1) {
         ColumnChunkMetaData chunk = columnsInOrder.get(i);
+        // If a column is encrypted, we simply throw exception.
+        // Later we can add a feature to trans-encrypt it with different keys
+        if (chunk.isEncrypted()) {
+          throw new IOException("Column " + chunk.getPath().toDotString() + " is already encrypted");
+        }
         ColumnDescriptor descriptor = descriptorsMap.get(chunk.getPath());
         processChunk(descriptor, chunk, reader, writer, encryptColumnsPath, blockId, i, meta.getFileMetaData().getCreatedBy());
       }
@@ -198,7 +207,7 @@ public class ColumnEncryptor {
   private void processPages(TransParquetFileReader reader, ColumnChunkMetaData chunk, ParquetFileWriter writer,
                             String createdBy, int blockId, int columnId, boolean encrypt) throws IOException {
     int pageOrdinal = 0;
-    EncryptorRunTime encryptorRunTime = new EncryptorRunTime(writer.getEncryptor(), chunk, blockId, columnId);
+    EncryptorRunTime encryptorRunTime = createEncryptorRunTime(writer.getEncryptor(), chunk, blockId, columnId, encrypt);
     DictionaryPage dictionaryPage = null;
     long readValues = 0;
     ParquetMetadataConverter converter = new ParquetMetadataConverter();
@@ -313,5 +322,14 @@ public class ColumnEncryptor {
       prunePaths.add(ColumnPath.fromDotString(col));
     }
     return prunePaths;
+  }
+
+ private EncryptorRunTime createEncryptorRunTime(InternalFileEncryptor fileEncryptor, ColumnChunkMetaData chunk,
+                                                   int blockId, int columnId, boolean encrypt) throws IOException {
+    if (!encrypt) {
+      return EncryptorRunTime.createEmptyRunTime();
+    }
+
+    return new EncryptorRunTime(fileEncryptor, chunk, blockId, columnId);
   }
 }
