@@ -170,7 +170,7 @@ public class OffsetIndexBuilder {
    * written to the Parquet file.
    *
    * @param shift
-   *          the actual offset in the file to be used to translate all the collected offsets
+   *          how much to be shifted away 
    * @return the newly created offset index or {@code null} if the {@link OffsetIndex} object would be empty
    */
   public OffsetIndex build(long shift) {

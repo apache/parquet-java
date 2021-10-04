@@ -120,8 +120,8 @@ public class Util {
   }
 
   public static void writePageHeader(PageHeader pageHeader, OutputStream to, 
-      BlockCipher.Encryptor encryptor, byte[] pageHeaderAAD) throws IOException {
-    write(pageHeader, to, encryptor, pageHeaderAAD);
+      BlockCipher.Encryptor encryptor, byte[] AAD) throws IOException {
+    write(pageHeader, to, encryptor, AAD);
   }
 
   public static PageHeader readPageHeader(InputStream from) throws IOException {
@@ -129,8 +129,8 @@ public class Util {
   }
 
   public static PageHeader readPageHeader(InputStream from, 
-      BlockCipher.Decryptor decryptor, byte[] pageHeaderAAD) throws IOException {
-    return read(from, new PageHeader(), decryptor, pageHeaderAAD);
+      BlockCipher.Decryptor decryptor, byte[] AAD) throws IOException {
+    return read(from, new PageHeader(), decryptor, AAD);
   }
 
   public static void writeFileMetaData(org.apache.parquet.format.FileMetaData fileMetadata, 
