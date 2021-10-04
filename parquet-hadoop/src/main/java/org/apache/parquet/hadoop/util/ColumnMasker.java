@@ -123,7 +123,7 @@ public class ColumnMasker {
       .build();
     CodecFactory codecFactory = new CodecFactory(new Configuration(), props.getPageSizeThreshold());
     CodecFactory.BytesCompressor compressor =	codecFactory.getCompressor(chunk.getCodec());
-    
+
     // Create new schema that only has the current column
     MessageType newSchema = newSchema(schema, descriptor);
     ColumnChunkPageWriteStore cPageStore = new ColumnChunkPageWriteStore(compressor, newSchema, props.getAllocator(), props.getColumnIndexTruncateLength());
@@ -154,7 +154,7 @@ public class ColumnMasker {
     cStore.close();
     cWriter.close();
   }
-  
+
   private MessageType newSchema(MessageType schema, ColumnDescriptor descriptor) {
     String[] path = descriptor.getPath();
     Type type = schema.getType(path);

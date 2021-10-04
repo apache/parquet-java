@@ -523,7 +523,7 @@ public class ParquetFileReader implements Closeable {
     }
   }
 
-  private static final ParquetMetadata readFooter(InputFile file, ParquetReadOptions options, SeekableInputStream f) throws IOException {
+  public static final ParquetMetadata readFooter(InputFile file, ParquetReadOptions options, SeekableInputStream f) throws IOException {
     ParquetMetadataConverter converter = new ParquetMetadataConverter(options);
     return readFooter(file, options, f, converter);
   }

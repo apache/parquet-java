@@ -86,7 +86,16 @@ public class ColumnEncryptionProperties {
     return builder(path, true);
   }
 
-  static Builder builder(ColumnPath path, boolean encrypt) {
+  /**
+   * Builder for encrypted columns.
+   * To make sure column path is not misspelled or misplaced,
+   * file writer will verify this column is in file schema.
+   *
+   * @param path Column path
+   * @param encrypt whether or not this column to be encrypted
+   * @return Builder
+   */
+  public static Builder builder(ColumnPath path, boolean encrypt) {
     return new Builder(path, encrypt);
   }
 
