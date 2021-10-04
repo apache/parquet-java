@@ -97,15 +97,18 @@ public class ColumnEncryptor {
         this.metaDataEncryptor = colEncrSetup.getMetaDataEncryptor();
 
         this.fileAAD = fileEncryptor.getFileAAD();
-        this.dataPageHeaderAAD = AesCipher.createModuleAAD(fileAAD, ModuleType.DataPageHeader, blockId, columnId, 0);
-        this.dataPageAAD = AesCipher.createModuleAAD(fileAAD, ModuleType.DataPage, blockId, columnId, 0);
-        this.dictPageHeaderAAD = AesCipher.createModuleAAD(fileAAD, ModuleType.DictionaryPageHeader, blockId, columnId, 0);
-        this.dictPageAAD = AesCipher.createModuleAAD(fileAAD, ModuleType.DictionaryPage, blockId, columnId, 0);
+        this.dataPageHeaderAAD = createAAD(colEncrSetup, ModuleType.DataPageHeader, blockId, columnId);
+        this.dataPageAAD = createAAD(colEncrSetup, ModuleType.DataPage, blockId, columnId);
+        this.dictPageHeaderAAD = createAAD(colEncrSetup, ModuleType.DictionaryPageHeader, blockId, columnId);
+        this.dictPageAAD = createAAD(colEncrSetup, ModuleType.DictionaryPage, blockId, columnId);
       }
     }
 
-    public static EncryptorRunTime createEmptyRunTime() throws IOException {
-      return new EncryptorRunTime(null, null, -1, -1);
+    private byte[] createAAD(InternalColumnEncryptionSetup colEncrSetup, ModuleType moduleType, int blockId, int columnId) {
+      if (colEncrSetup != null && colEncrSetup.isEncrypted()) {
+        return AesCipher.createModuleAAD(fileAAD, moduleType, blockId, columnId, 0);
+      }
+      return null;
     }
 
     public BlockCipher.Encryptor getDataEncryptor() {
@@ -207,7 +210,7 @@ public class ColumnEncryptor {
   private void processPages(TransParquetFileReader reader, ColumnChunkMetaData chunk, ParquetFileWriter writer,
                             String createdBy, int blockId, int columnId, boolean encrypt) throws IOException {
     int pageOrdinal = 0;
-    EncryptorRunTime encryptorRunTime = createEncryptorRunTime(writer.getEncryptor(), chunk, blockId, columnId, encrypt);
+    EncryptorRunTime encryptorRunTime = new EncryptorRunTime(writer.getEncryptor(), chunk, blockId, columnId);
     DictionaryPage dictionaryPage = null;
     long readValues = 0;
     ParquetMetadataConverter converter = new ParquetMetadataConverter();
@@ -322,14 +325,5 @@ public class ColumnEncryptor {
       prunePaths.add(ColumnPath.fromDotString(col));
     }
     return prunePaths;
-  }
-
- private EncryptorRunTime createEncryptorRunTime(InternalFileEncryptor fileEncryptor, ColumnChunkMetaData chunk,
-                                                   int blockId, int columnId, boolean encrypt) throws IOException {
-    if (!encrypt) {
-      return EncryptorRunTime.createEmptyRunTime();
-    }
-
-    return new EncryptorRunTime(fileEncryptor, chunk, blockId, columnId);
   }
 }

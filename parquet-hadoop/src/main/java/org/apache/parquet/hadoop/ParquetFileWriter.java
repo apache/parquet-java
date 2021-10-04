@@ -1188,7 +1188,7 @@ public class ParquetFileWriter {
         BlockCipher.Encryptor columnIndexEncryptor = null;
         byte[] columnIndexAAD = null;
         if (null != fileEncryptor) {
-          InternalColumnEncryptionSetup columnEncryptionSetup = fileEncryptor.getColumnSetup(column.getPath(), true, cIndex);
+          InternalColumnEncryptionSetup columnEncryptionSetup = fileEncryptor.getColumnSetup(column.getPath(), false, cIndex);
           if (columnEncryptionSetup.isEncrypted()) {
             columnIndexEncryptor = columnEncryptionSetup.getMetaDataEncryptor();
             columnIndexAAD = AesCipher.createModuleAAD(fileEncryptor.getFileAAD(), ModuleType.ColumnIndex,

@@ -503,7 +503,7 @@ public class ParquetMetadataConverter {
       ColumnPath path = columnMetaData.getPath();
       if (null != fileEncryptor) {
         columnOrdinal++;
-        columnSetup = fileEncryptor.getColumnSetup(path, true, columnOrdinal);
+        columnSetup = fileEncryptor.getColumnSetup(path, false, columnOrdinal);
         writeCryptoMetadata = columnSetup.isEncrypted();
         encryptMetaData = fileEncryptor.encryptColumnMetaData(columnSetup);
       }

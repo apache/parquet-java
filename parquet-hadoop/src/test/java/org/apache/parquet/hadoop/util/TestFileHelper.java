@@ -26,6 +26,7 @@ import org.apache.parquet.example.data.simple.SimpleGroup;
 import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.example.ExampleParquetWriter;
 import org.apache.parquet.hadoop.example.GroupWriteSupport;
+import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.MessageType;
@@ -33,6 +34,8 @@ import org.apache.parquet.schema.PrimitiveType;
 
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ThreadLocalRandom;
@@ -101,6 +104,16 @@ public class TestFileHelper {
     } catch (IOException e) {
       throw new AssertionError("Unable to create temporary file", e);
     }
+  }
+
+  public static List<ColumnPath> getPaths() {
+    List<ColumnPath> paths = new ArrayList<>();
+    paths.add(ColumnPath.fromDotString("DocId"));
+    paths.add(ColumnPath.fromDotString("Name"));
+    paths.add(ColumnPath.fromDotString("Gender"));
+    paths.add(ColumnPath.fromDotString("Links.Backward"));
+    paths.add(ColumnPath.fromDotString("Links.Forward"));
+    return paths;
   }
 
   public static class TestDocs {

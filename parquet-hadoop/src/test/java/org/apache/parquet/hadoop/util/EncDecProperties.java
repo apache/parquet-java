@@ -27,9 +27,11 @@ import org.apache.parquet.hadoop.metadata.ColumnPath;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.HashMap;
-import java.util.List;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 public class EncDecProperties {
 
@@ -66,14 +68,19 @@ public class EncDecProperties {
     if (encrCols.length == 0) {
       return null;
     }
-
     Map<ColumnPath, ColumnEncryptionProperties> columnPropertyMap = new HashMap<>();
-    for (String encrCol : encrCols) {
-      ColumnPath columnPath = ColumnPath.fromDotString(encrCol);
-      ColumnEncryptionProperties colEncProp = ColumnEncryptionProperties.builder(columnPath)
-        .withKey(COL_KEY)
-        .withKeyMetaData(COL_KEY_METADATA)
-        .build();
+    Set<String> paths = new HashSet<>(Arrays.asList(encrCols));
+
+    for (ColumnPath columnPath : TestFileHelper.getPaths()) {
+      ColumnEncryptionProperties colEncProp;
+      if (paths.contains(columnPath.toDotString())) {
+        colEncProp = ColumnEncryptionProperties.builder(columnPath, true)
+          .withKey(COL_KEY)
+          .withKeyMetaData(COL_KEY_METADATA)
+          .build();
+      }  else {
+        colEncProp = ColumnEncryptionProperties.builder(columnPath, false).build();
+      }
       columnPropertyMap.put(columnPath, colEncProp);
     }
 
