@@ -57,6 +57,10 @@ public class PropertiesDrivenCryptoFactory implements EncryptionPropertiesFactor
    */
   public static final String FOOTER_KEY_PROPERTY_NAME = "parquet.encryption.footer.key";
   /**
+   * Master key ID for uniform encryption (same key for all columns and footer).
+   */
+  public static final String UNIFORM_KEY_PROPERTY_NAME = "parquet.encryption.uniform.key";
+  /**
    * Parquet encryption algorithm. Can be "AES_GCM_V1" (default), or "AES_GCM_CTR_V1".
    */
   public static final String ENCRYPTION_ALGORITHM_PROPERTY_NAME = "parquet.encryption.algorithm";
@@ -77,15 +81,39 @@ public class PropertiesDrivenCryptoFactory implements EncryptionPropertiesFactor
 
     String footerKeyId = fileHadoopConfig.getTrimmed(FOOTER_KEY_PROPERTY_NAME);
     String columnKeysStr = fileHadoopConfig.getTrimmed(COLUMN_KEYS_PROPERTY_NAME);
+    String uniformKeyId = fileHadoopConfig.getTrimmed(UNIFORM_KEY_PROPERTY_NAME);
+
+    boolean emptyFooterKeyId = stringIsEmpty(footerKeyId);
+    boolean emptyColumnKeyIds = stringIsEmpty(columnKeysStr);
+    boolean emptyUniformKeyId = stringIsEmpty(uniformKeyId);
 
     // File shouldn't be encrypted
-    if (stringIsEmpty(footerKeyId) && stringIsEmpty(columnKeysStr)) {
+    if (emptyFooterKeyId && emptyColumnKeyIds && emptyUniformKeyId) {
       LOG.debug("Unencrypted file: {}", tempFilePath);
       return null;
     }
 
-    if (stringIsEmpty(footerKeyId)) {
-      throw new ParquetCryptoRuntimeException("Undefined footer key");
+    if (emptyUniformKeyId) {
+      // Non-uniform encryption.Must have both footer and column key ids
+      if (emptyFooterKeyId) {
+        throw new ParquetCryptoRuntimeException("No footer key configured in " + FOOTER_KEY_PROPERTY_NAME);
+      }
+      if (emptyColumnKeyIds) {
+        throw new ParquetCryptoRuntimeException("No column keys configured in " + COLUMN_KEYS_PROPERTY_NAME);
+      }
+    } else {
+      // Uniform encryption. Can't have configuration of footer and column key ids
+      if (!emptyFooterKeyId) {
+        throw new ParquetCryptoRuntimeException("Uniform encryption. Cant have footer key configured in " +
+          FOOTER_KEY_PROPERTY_NAME);
+      }
+      if (!emptyColumnKeyIds) {
+        throw new ParquetCryptoRuntimeException("Uniform encryption. Cant have column keys configured in " +
+          COLUMN_KEYS_PROPERTY_NAME);
+      }
+
+      // Now assign footer key id to uniform key id
+      footerKeyId = uniformKeyId;
     }
 
     FileKeyMaterialStore keyMaterialStore = null;
@@ -126,14 +154,17 @@ public class PropertiesDrivenCryptoFactory implements EncryptionPropertiesFactor
     RANDOM.nextBytes(footerKeyBytes);
     byte[] footerKeyMetadata = keyWrapper.getEncryptionKeyMetadata(footerKeyBytes, footerKeyId, true);
 
-    Map<ColumnPath, ColumnEncryptionProperties> encryptedColumns = getColumnEncryptionProperties(dekLength, columnKeysStr, keyWrapper);
-
     boolean plaintextFooter = fileHadoopConfig.getBoolean(PLAINTEXT_FOOTER_PROPERTY_NAME, PLAINTEXT_FOOTER_DEFAULT);
 
     FileEncryptionProperties.Builder propertiesBuilder = FileEncryptionProperties.builder(footerKeyBytes)
         .withFooterKeyMetadata(footerKeyMetadata)
-        .withAlgorithm(cipher)
-        .withEncryptedColumns(encryptedColumns);
+        .withAlgorithm(cipher);
+
+    if (emptyUniformKeyId) {
+      Map<ColumnPath, ColumnEncryptionProperties> encryptedColumns =
+        getColumnEncryptionProperties(dekLength, columnKeysStr, keyWrapper);
+      propertiesBuilder = propertiesBuilder.withEncryptedColumns(encryptedColumns);
+    }
 
     if (plaintextFooter) {
       propertiesBuilder = propertiesBuilder.withPlaintextFooter();
@@ -144,9 +175,9 @@ public class PropertiesDrivenCryptoFactory implements EncryptionPropertiesFactor
     }
 
     if (LOG.isDebugEnabled()) {
-      LOG.debug("File encryption properties for {} - algo: {}; footer key id: {}; plaintext footer: {}; "
-          + "internal key material: {}; encrypted columns: {}",
-          tempFilePath, cipher, footerKeyId, plaintextFooter, keyMaterialInternalStorage, columnKeysStr);
+      LOG.debug("File encryption properties for {} - algo: {}; footer key id: {}; uniform key id: {}; " + "" +
+          "plaintext footer: {}; internal key material: {}; encrypted columns: {}",
+          tempFilePath, cipher, footerKeyId, uniformKeyId, plaintextFooter, keyMaterialInternalStorage, columnKeysStr);
     }
 
     return propertiesBuilder.build();
@@ -154,9 +185,6 @@ public class PropertiesDrivenCryptoFactory implements EncryptionPropertiesFactor
 
   private Map<ColumnPath, ColumnEncryptionProperties> getColumnEncryptionProperties(int dekLength, String columnKeys,
       FileKeyWrapper keyWrapper) throws ParquetCryptoRuntimeException {
-    if (stringIsEmpty(columnKeys)) {
-      throw new ParquetCryptoRuntimeException("No column keys configured in " + COLUMN_KEYS_PROPERTY_NAME);
-    }
     Map<ColumnPath, ColumnEncryptionProperties> encryptedColumns = new HashMap<ColumnPath, ColumnEncryptionProperties>();
     String keyToColumns[] = columnKeys.split(";");
     for (int i = 0; i < keyToColumns.length; ++i) {
