@@ -30,9 +30,11 @@ import java.security.GeneralSecurityException;
 public class AesCtrEncryptor extends AesCipher implements BlockCipher.Encryptor{
 
   private final byte[] ctrIV;
+  private long operationCounter;
 
   AesCtrEncryptor(byte[] keyBytes) {
     super(AesMode.CTR, keyBytes);
+    operationCounter = 0;
 
     try {
       cipher = Cipher.getInstance(AesMode.CTR.getCipherName());
@@ -55,7 +57,11 @@ public class AesCtrEncryptor extends AesCipher implements BlockCipher.Encryptor{
     return encrypt(writeLength, plainText, localNonce, AAD);
   }
 
-  public byte[] encrypt(boolean writeLength, byte[] plainText, byte[] nonce, byte[] AAD) { 
+  public byte[] encrypt(boolean writeLength, byte[] plainText, byte[] nonce, byte[] AAD) {
+    if (operationCounter > CTR_RANDOM_IV_SAME_KEY_MAX_OPS) {
+      throw new ParquetCryptoRuntimeException("Exceeded limit of AES CTR encryption operations with same key and random IV");
+    }
+    operationCounter++;
 
     if (nonce.length != NONCE_LENGTH) {
       throw new ParquetCryptoRuntimeException("Wrong nonce length " + nonce.length);
