@@ -38,7 +38,7 @@ public class AesCipher {
   protected static final int CHUNK_LENGTH = 4 * 1024;
   protected static final int SIZE_LENGTH = ModuleCipherFactory.SIZE_LENGTH;
   // NIST SP 800-38D section 8.3 specifies limit on AES GCM encryption operations with same key and random IV/nonce
-  protected static final long GCM_RANDOM_IV_SAME_KEY_MAX_OPS = 2^32;
+  protected static final long GCM_RANDOM_IV_SAME_KEY_MAX_OPS = 1L << 32;
   // NIST SP 800-38A doesn't specify limit on AES CTR operations.
   // However, Parquet uses a random IV (with 12-byte random nonce). To avoid repetition due to "birthday problem",
   // setting a conservative limit equal to GCM's value for random IVs
