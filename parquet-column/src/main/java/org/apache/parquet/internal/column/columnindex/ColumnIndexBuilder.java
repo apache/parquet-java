@@ -167,7 +167,7 @@ public abstract class ColumnIndexBuilder {
     @Override
     public String toString() {
       try (Formatter formatter = new Formatter()) {
-        formatter.format("Boudary order: %s\n", boundaryOrder);
+        formatter.format("Boundary order: %s\n", boundaryOrder);
         String minMaxPart = "  %-" + MAX_VALUE_LENGTH_FOR_TOSTRING + "s  %-" + MAX_VALUE_LENGTH_FOR_TOSTRING + "s\n";
         formatter.format("%-10s  %20s" + minMaxPart, "", "null count", "min", "max");
         String format = "page-%-5d  %20s" + minMaxPart;
