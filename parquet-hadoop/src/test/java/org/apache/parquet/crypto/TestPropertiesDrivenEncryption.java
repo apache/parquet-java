@@ -149,8 +149,11 @@ public class TestPropertiesDrivenEncryption {
     encoder.encodeToString("1234567890123453".getBytes(StandardCharsets.UTF_8)),
     encoder.encodeToString("1234567890123454".getBytes(StandardCharsets.UTF_8)),
     encoder.encodeToString("1234567890123455".getBytes(StandardCharsets.UTF_8))};
+  private static final String UNIFORM_MASTER_KEY =
+    encoder.encodeToString("0123456789012346".getBytes(StandardCharsets.UTF_8));
   private static final String[] COLUMN_MASTER_KEY_IDS = { "kc1", "kc2", "kc3", "kc4", "kc5", "kc6"};
   private static final String FOOTER_MASTER_KEY_ID = "kf";
+  private static final String UNIFORM_MASTER_KEY_ID = "ku";
 
   private static final String KEY_LIST =  new StringBuilder()
     .append(COLUMN_MASTER_KEY_IDS[0]).append(": ").append(COLUMN_MASTER_KEYS[0]).append(", ")
@@ -159,6 +162,7 @@ public class TestPropertiesDrivenEncryption {
     .append(COLUMN_MASTER_KEY_IDS[3]).append(": ").append(COLUMN_MASTER_KEYS[3]).append(", ")
     .append(COLUMN_MASTER_KEY_IDS[4]).append(": ").append(COLUMN_MASTER_KEYS[4]).append(", ")
     .append(COLUMN_MASTER_KEY_IDS[5]).append(": ").append(COLUMN_MASTER_KEYS[5]).append(", ")
+    .append(UNIFORM_MASTER_KEY_ID).append(": ").append(UNIFORM_MASTER_KEY).append(", ")
     .append(FOOTER_MASTER_KEY_ID).append(": ").append(FOOTER_MASTER_KEY).toString();
 
   private static final String NEW_FOOTER_MASTER_KEY =
@@ -170,6 +174,8 @@ public class TestPropertiesDrivenEncryption {
     encoder.encodeToString("9234567890123453".getBytes(StandardCharsets.UTF_8)),
     encoder.encodeToString("9234567890123454".getBytes(StandardCharsets.UTF_8)),
     encoder.encodeToString("9234567890123455".getBytes(StandardCharsets.UTF_8))};
+  private static final String NEW_UNIFORM_MASTER_KEY =
+    encoder.encodeToString("9123456789012346".getBytes(StandardCharsets.UTF_8));
 
   private static final String NEW_KEY_LIST =  new StringBuilder()
     .append(COLUMN_MASTER_KEY_IDS[0]).append(": ").append(NEW_COLUMN_MASTER_KEYS[0]).append(", ")
@@ -178,6 +184,7 @@ public class TestPropertiesDrivenEncryption {
     .append(COLUMN_MASTER_KEY_IDS[3]).append(": ").append(NEW_COLUMN_MASTER_KEYS[3]).append(", ")
     .append(COLUMN_MASTER_KEY_IDS[4]).append(": ").append(NEW_COLUMN_MASTER_KEYS[4]).append(", ")
     .append(COLUMN_MASTER_KEY_IDS[5]).append(": ").append(NEW_COLUMN_MASTER_KEYS[5]).append(", ")
+    .append(UNIFORM_MASTER_KEY_ID).append(": ").append(NEW_UNIFORM_MASTER_KEY).append(", ")
     .append(FOOTER_MASTER_KEY_ID).append(": ").append(NEW_FOOTER_MASTER_KEY).toString();
 
   private static final String COLUMN_KEY_MAPPING = new StringBuilder()
@@ -201,35 +208,45 @@ public class TestPropertiesDrivenEncryption {
   public enum EncryptionConfiguration {
     ENCRYPT_COLUMNS_AND_FOOTER {
       /**
-       * Encrypt two columns and the footer, with different keys.
+       * Encrypt two columns and the footer, with different master keys.
        */
       public Configuration getHadoopConfiguration(TestPropertiesDrivenEncryption test) {
         Configuration conf = getCryptoProperties(test);
-        setEncryptionKeys(conf);
+        setColumnAndFooterKeys(conf);
+        return conf;
+      }
+    },
+    UNIFORM_ENCRYPTION {
+      /**
+       * Encrypt all columns and the footer, with same master key.
+       */
+      public Configuration getHadoopConfiguration(TestPropertiesDrivenEncryption test) {
+        Configuration conf = getCryptoProperties(test);
+        setUniformKey(conf);
         return conf;
       }
     },
     ENCRYPT_COLUMNS_PLAINTEXT_FOOTER {
       /**
-       * Encrypt two columns, with different keys.
+       * Encrypt two columns, with different master keys.
        * Don't encrypt footer.
        * (plaintext footer mode, readable by legacy readers)
        */
       public Configuration getHadoopConfiguration(TestPropertiesDrivenEncryption test) {
         Configuration conf = getCryptoProperties(test);
-        setEncryptionKeys(conf);
+        setColumnAndFooterKeys(conf);
         conf.setBoolean(PropertiesDrivenCryptoFactory.PLAINTEXT_FOOTER_PROPERTY_NAME, true);
         return conf;
       }
     },
     ENCRYPT_COLUMNS_AND_FOOTER_CTR {
       /**
-       * Encrypt two columns and the footer, with different keys.
+       * Encrypt two columns and the footer, with different master keys.
        * Use AES_GCM_CTR_V1 algorithm.
        */
       public Configuration getHadoopConfiguration(TestPropertiesDrivenEncryption test) {
         Configuration conf = getCryptoProperties(test);
-        setEncryptionKeys(conf);
+        setColumnAndFooterKeys(conf);
         conf.set(PropertiesDrivenCryptoFactory.ENCRYPTION_ALGORITHM_PROPERTY_NAME,
           ParquetCipher.AES_GCM_CTR_V1.toString());
         return conf;
@@ -292,11 +309,18 @@ public class TestPropertiesDrivenEncryption {
   }
 
   /**
-   * Set configuration properties to encrypt columns and the footer with different keys
+   * Set configuration properties to encrypt columns and the footer with different master keys
    */
-  private static void setEncryptionKeys(Configuration conf) {
+  private static void setColumnAndFooterKeys(Configuration conf) {
     conf.set(PropertiesDrivenCryptoFactory.COLUMN_KEYS_PROPERTY_NAME, COLUMN_KEY_MAPPING);
     conf.set(PropertiesDrivenCryptoFactory.FOOTER_KEY_PROPERTY_NAME, FOOTER_MASTER_KEY_ID);
+  }
+
+  /**
+   * Set uniform encryption configuration property
+   */
+  private static void setUniformKey(Configuration conf) {
+    conf.set(PropertiesDrivenCryptoFactory.UNIFORM_KEY_PROPERTY_NAME, UNIFORM_MASTER_KEY_ID);
   }
 
 

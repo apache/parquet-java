@@ -37,6 +37,12 @@ public class AesCipher {
   protected static final int GCM_TAG_LENGTH_BITS = 8 * GCM_TAG_LENGTH;
   protected static final int CHUNK_LENGTH = 4 * 1024;
   protected static final int SIZE_LENGTH = ModuleCipherFactory.SIZE_LENGTH;
+  // NIST SP 800-38D section 8.3 specifies limit on AES GCM encryption operations with same key and random IV/nonce
+  protected static final long GCM_RANDOM_IV_SAME_KEY_MAX_OPS = 1L << 32;
+  // NIST SP 800-38A doesn't specify limit on AES CTR operations.
+  // However, Parquet uses a random IV (with 12-byte random nonce). To avoid repetition due to "birthday problem",
+  // setting a conservative limit equal to GCM's value for random IVs
+  protected static final long CTR_RANDOM_IV_SAME_KEY_MAX_OPS = GCM_RANDOM_IV_SAME_KEY_MAX_OPS;
 
   protected SecretKeySpec aesKey;
   protected final SecureRandom randomGenerator;
@@ -65,14 +71,14 @@ public class AesCipher {
     localNonce = new byte[NONCE_LENGTH];
   }
 
-  public static byte[] createModuleAAD(byte[] fileAAD, ModuleType moduleType, 
+  public static byte[] createModuleAAD(byte[] fileAAD, ModuleType moduleType,
       int rowGroupOrdinal, int columnOrdinal, int pageOrdinal) {
-    
+
     byte[] typeOrdinalBytes = new byte[1];
     typeOrdinalBytes[0] = moduleType.getValue();
-    
+
     if (ModuleType.Footer == moduleType) {
-      return concatByteArrays(fileAAD, typeOrdinalBytes);      
+      return concatByteArrays(fileAAD, typeOrdinalBytes);
     }
 
     if (rowGroupOrdinal < 0) {
@@ -84,7 +90,7 @@ public class AesCipher {
           + "more than " + Short.MAX_VALUE + " row groups: " + rowGroupOrdinal);
     }
     byte[] rowGroupOrdinalBytes = shortToBytesLE(shortRGOrdinal);
-    
+
     if (columnOrdinal < 0) {
       throw new IllegalArgumentException("Wrong column ordinal: " + columnOrdinal);
     }
@@ -94,9 +100,9 @@ public class AesCipher {
           + "more than " + Short.MAX_VALUE + " columns: " + columnOrdinal);
     }
     byte[] columnOrdinalBytes = shortToBytesLE(shortColumOrdinal);
-    
+
     if (ModuleType.DataPage != moduleType && ModuleType.DataPageHeader != moduleType) {
-      return concatByteArrays(fileAAD, typeOrdinalBytes, rowGroupOrdinalBytes, columnOrdinalBytes); 
+      return concatByteArrays(fileAAD, typeOrdinalBytes, rowGroupOrdinalBytes, columnOrdinalBytes);
     }
 
     if (pageOrdinal < 0) {
@@ -108,7 +114,7 @@ public class AesCipher {
           + "more than " + Short.MAX_VALUE + " pages per chunk: " + pageOrdinal);
     }
     byte[] pageOrdinalBytes = shortToBytesLE(shortPageOrdinal);
-    
+
     return concatByteArrays(fileAAD, typeOrdinalBytes, rowGroupOrdinalBytes, columnOrdinalBytes, pageOrdinalBytes);
   }
 
@@ -127,7 +133,7 @@ public class AesCipher {
       throw new ParquetCryptoRuntimeException("Encrypted parquet files can't have "
           + "more than " + Short.MAX_VALUE + " pages per chunk: " + newPageOrdinal);
     }
-    
+
     byte[] pageOrdinalBytes = shortToBytesLE(shortPageOrdinal);
     System.arraycopy(pageOrdinalBytes, 0, pageAAD, pageAAD.length - 2, 2);
   }
