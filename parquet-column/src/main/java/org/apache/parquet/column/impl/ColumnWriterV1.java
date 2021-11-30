@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -56,11 +56,14 @@ final class ColumnWriterV1 implements ColumnWriter {
 
   private Statistics statistics;
 
+  private final boolean statisticsEnabled;
+
   public ColumnWriterV1(ColumnDescriptor path, PageWriter pageWriter,
                         ParquetProperties props) {
     this.path = path;
     this.pageWriter = pageWriter;
     this.props = props;
+    this.statisticsEnabled = props.isEnableStatistics();
 
     // initial check of memory usage. So that we have enough data to make an initial prediction
     this.valueCountForNextSizeCheck = props.getMinRowCountForPageSizeCheck();
@@ -77,7 +80,7 @@ final class ColumnWriterV1 implements ColumnWriter {
   }
 
   private void resetStatistics() {
-    this.statistics = Statistics.createStats(this.path.getPrimitiveType());
+    this.statistics = statisticsEnabled ? Statistics.createStats(this.path.getPrimitiveType()) : Statistics.createNoOpStats(this.path.getPrimitiveType());
   }
 
   /**
