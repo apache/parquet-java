@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -135,6 +135,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   public static final String WRITE_SUPPORT_CLASS  = "parquet.write.support.class";
   public static final String DICTIONARY_PAGE_SIZE = "parquet.dictionary.page.size";
   public static final String ENABLE_DICTIONARY    = "parquet.enable.dictionary";
+  public static final String ENABLE_STATISTICS    = "parquet.enabled.statistics";
   public static final String VALIDATION           = "parquet.validation";
   public static final String WRITER_VERSION       = "parquet.writer.version";
   public static final String MEMORY_POOL_RATIO    = "parquet.memory.pool.ratio";
@@ -204,8 +205,16 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     getConfiguration(job).setBoolean(ENABLE_DICTIONARY, enableDictionary);
   }
 
+  public static void setStatisticsEnabled(Job job, boolean statisticsEnabled) {
+    getConfiguration(job).setBoolean(ENABLE_STATISTICS, statisticsEnabled);
+  }
+
   public static boolean getEnableDictionary(JobContext jobContext) {
     return getEnableDictionary(getConfiguration(jobContext));
+  }
+
+  public static boolean getEnableStatistics(JobContext jobContext) {
+    return getEnableStatistics(getConfiguration(jobContext));
   }
 
   public static int getBlockSize(JobContext jobContext) {
@@ -239,6 +248,11 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   public static boolean getEnableDictionary(Configuration configuration) {
     return configuration.getBoolean(
         ENABLE_DICTIONARY, ParquetProperties.DEFAULT_IS_DICTIONARY_ENABLED);
+  }
+
+  public static boolean getEnableStatistics(Configuration configuration) {
+    return configuration.getBoolean(
+      ENABLE_STATISTICS, ParquetProperties.DEFAULT_STATISTICS_ENABLED);
   }
 
   public static int getMinRowCountForPageSizeCheck(Configuration configuration) {
@@ -366,6 +380,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
         .estimateRowCountForPageSizeCheck(getEstimatePageSizeCheck(conf))
         .withMinRowCountForPageSizeCheck(getMinRowCountForPageSizeCheck(conf))
         .withMaxRowCountForPageSizeCheck(getMaxRowCountForPageSizeCheck(conf))
+        .withEnableStatistics(getEnableStatistics(conf))
         .build();
 
     long blockSize = getLongBlockSize(conf);
@@ -377,6 +392,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
       LOG.info("Parquet page size to {}", props.getPageSizeThreshold());
       LOG.info("Parquet dictionary page size to {}", props.getDictionaryPageSizeThreshold());
       LOG.info("Dictionary is {}", (props.isEnableDictionary() ? "on" : "off"));
+      LOG.info("Statistics is {}", (props.isEnableStatistics() ? "on" : "off"));
       LOG.info("Validation is {}", (validating ? "on" : "off"));
       LOG.info("Writer version is: {}", props.getWriterVersion());
       LOG.info("Maximum row group padding size is {} bytes", maxPaddingSize);

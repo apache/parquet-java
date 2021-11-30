@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -47,6 +47,7 @@ public class ParquetProperties {
   public static final boolean DEFAULT_ESTIMATE_ROW_COUNT_FOR_PAGE_SIZE_CHECK = true;
   public static final int DEFAULT_MINIMUM_RECORD_COUNT_FOR_CHECK = 100;
   public static final int DEFAULT_MAXIMUM_RECORD_COUNT_FOR_CHECK = 10000;
+  public static final boolean DEFAULT_STATISTICS_ENABLED = true;
 
   public static final ValuesWriterFactory DEFAULT_VALUES_WRITER_FACTORY = new DefaultValuesWriterFactory();
 
@@ -83,10 +84,11 @@ public class ParquetProperties {
   private final boolean estimateNextSizeCheck;
   private final ByteBufferAllocator allocator;
   private final ValuesWriterFactory valuesWriterFactory;
+  private final boolean enableStatistics;
 
   private ParquetProperties(WriterVersion writerVersion, int pageSize, int dictPageSize, boolean enableDict, int minRowCountForPageSizeCheck,
                             int maxRowCountForPageSizeCheck, boolean estimateNextSizeCheck, ByteBufferAllocator allocator,
-                            ValuesWriterFactory writerFactory) {
+                            ValuesWriterFactory writerFactory, boolean enableStatistics) {
     this.pageSizeThreshold = pageSize;
     this.initialSlabSize = CapacityByteArrayOutputStream
       .initialSlabSizeHeuristic(MIN_SLAB_SIZE, pageSizeThreshold, 10);
@@ -99,6 +101,8 @@ public class ParquetProperties {
     this.allocator = allocator;
 
     this.valuesWriterFactory = writerFactory;
+
+    this.enableStatistics = enableStatistics;
   }
 
   public ValuesWriter newRepetitionLevelWriter(ColumnDescriptor path) {
@@ -155,6 +159,10 @@ public class ParquetProperties {
     return enableDictionary;
   }
 
+  public boolean isEnableStatistics() {
+    return enableStatistics;
+  }
+
   public ByteBufferAllocator getAllocator() {
     return allocator;
   }
@@ -205,6 +213,7 @@ public class ParquetProperties {
     private boolean estimateNextSizeCheck = DEFAULT_ESTIMATE_ROW_COUNT_FOR_PAGE_SIZE_CHECK;
     private ByteBufferAllocator allocator = new HeapByteBufferAllocator();
     private ValuesWriterFactory valuesWriterFactory = DEFAULT_VALUES_WRITER_FACTORY;
+    private boolean enableStatistics = DEFAULT_STATISTICS_ENABLED;
 
     private Builder() {
     }
@@ -217,6 +226,7 @@ public class ParquetProperties {
       this.maxRowCountForPageSizeCheck = toCopy.maxRowCountForPageSizeCheck;
       this.estimateNextSizeCheck = toCopy.estimateNextSizeCheck;
       this.allocator = toCopy.allocator;
+      this.enableStatistics = toCopy.enableStatistics;
     }
 
     /**
@@ -299,11 +309,16 @@ public class ParquetProperties {
       return this;
     }
 
+    public Builder withEnableStatistics(boolean enableStatistics) {
+      this.enableStatistics = enableStatistics;
+      return this;
+    }
+
     public ParquetProperties build() {
       ParquetProperties properties =
         new ParquetProperties(writerVersion, pageSize, dictPageSize,
           enableDict, minRowCountForPageSizeCheck, maxRowCountForPageSizeCheck,
-          estimateNextSizeCheck, allocator, valuesWriterFactory);
+          estimateNextSizeCheck, allocator, valuesWriterFactory, enableStatistics);
       // we pass a constructed but uninitialized factory to ParquetProperties above as currently
       // creation of ValuesWriters is invoked from within ParquetProperties. In the future
       // we'd like to decouple that and won't need to pass an object to properties and then pass the

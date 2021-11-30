@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -211,6 +211,20 @@ public abstract class Statistics<T extends Comparable<T>> {
       default:
         throw new UnknownColumnTypeException(primitive.getPrimitiveTypeName());
     }
+  }
+
+  /**
+   * Creates an empty {@code Statistics} instance for the specified type.
+   *
+   * This Statistics is NoOp and to be used when we do not want to generate
+   * statistics for a column.
+   *
+   * @param type
+   *          type of the column
+   * @return instance of a typed statistics class
+   */
+  public static Statistics<?> createNoOpStats(PrimitiveType type) {
+    return new NoOpStatistics(type);
   }
 
   /**
