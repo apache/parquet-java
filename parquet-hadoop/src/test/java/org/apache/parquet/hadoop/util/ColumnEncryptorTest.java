@@ -18,7 +18,6 @@
  */
 package org.apache.parquet.hadoop.util;
 
-import com.google.common.collect.ImmutableMap;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.HadoopReadOptions;
@@ -37,19 +36,27 @@ import org.apache.parquet.hadoop.example.GroupReadSupport;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.hadoop.util.CompressionConverter.TransParquetFileReader;
+import org.apache.parquet.schema.GroupType;
+import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.schema.PrimitiveType;
+
 import org.apache.parquet.internal.column.columnindex.OffsetIndex;
 import org.apache.parquet.io.InputFile;
 import org.apache.parquet.io.SeekableInputStream;
-import org.junit.Before;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
+import static org.apache.parquet.schema.Type.Repetition.OPTIONAL;
+import static org.apache.parquet.schema.Type.Repetition.REPEATED;
+import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -58,63 +65,63 @@ import static org.junit.Assert.assertTrue;
 public class ColumnEncryptorTest {
 
   private Configuration conf = new Configuration();
-  private Map<String, String> extraMeta = ImmutableMap.of("key1", "value1", "key2", "value2");
   private ColumnEncryptor columnEncryptor = null;
   private final int numRecord = 100000;
-  private String inputFile = null;
+  private EncryptionTestFile inputFile = null;
   private String outputFile = null;
-  private TestFileHelper.TestDocs testDocs = null;
 
   private void testSetup(String compression) throws IOException {
+    MessageType schema = createSchema();
     columnEncryptor = new ColumnEncryptor(conf);
-    testDocs = new TestFileHelper.TestDocs(numRecord);
-    inputFile = TestFileHelper.createParquetFile(conf, extraMeta, numRecord, "input", compression,
-      ParquetProperties.WriterVersion.PARQUET_1_0, ParquetProperties.DEFAULT_PAGE_SIZE, testDocs);
-    outputFile = TestFileHelper.createTempFile("test");
+    inputFile = new TestFileBuilder(conf, schema)
+      .withNumRecord(numRecord)
+      .withCodec(compression)
+      .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
+      .build();
+    outputFile = TestFileBuilder.createTempFile("test");
   }
 
   @Test
   public void testFlatColumn() throws IOException {
-    testSetup("GZIP");
     String[] encryptColumns = {"DocId"};
-    columnEncryptor.encryptColumns(inputFile, outputFile, Arrays.asList(encryptColumns),
+    testSetup("GZIP");
+    columnEncryptor.encryptColumns(inputFile.getFileName(), outputFile, Arrays.asList(encryptColumns),
       EncDecProperties.getFileEncryptionProperties(encryptColumns, ParquetCipher.AES_GCM_CTR_V1, false));
-
     verifyResultDecryptionWithValidKey();
   }
 
   @Test
   public void testNestedColumn() throws IOException {
-    testSetup("GZIP");
     String[] encryptColumns = {"Links.Forward"};
-    columnEncryptor.encryptColumns(inputFile, outputFile, Arrays.asList(encryptColumns),
+    testSetup("GZIP");
+    columnEncryptor.encryptColumns(inputFile.getFileName(), outputFile, Arrays.asList(encryptColumns),
       EncDecProperties.getFileEncryptionProperties(encryptColumns, ParquetCipher.AES_GCM_CTR_V1, false));
     verifyResultDecryptionWithValidKey();
   }
 
   @Test
   public void testNoEncryption() throws IOException {
-    testSetup("GZIP");
     String[] encryptColumns = {};
-    columnEncryptor.encryptColumns(inputFile, outputFile, Arrays.asList(encryptColumns),
+    testSetup("GZIP");
+    columnEncryptor.encryptColumns(inputFile.getFileName(), outputFile, Arrays.asList(encryptColumns),
       EncDecProperties.getFileEncryptionProperties(encryptColumns, ParquetCipher.AES_GCM_CTR_V1, false));
     verifyResultDecryptionWithValidKey();
   }
 
   @Test
   public void testEncryptAllColumns() throws IOException {
-    testSetup("GZIP");
     String[] encryptColumns = {"DocId", "Name", "Gender", "Links.Forward", "Links.Backward"};
-    columnEncryptor.encryptColumns(inputFile, outputFile, Arrays.asList(encryptColumns),
+    testSetup("GZIP");
+    columnEncryptor.encryptColumns(inputFile.getFileName(), outputFile, Arrays.asList(encryptColumns),
       EncDecProperties.getFileEncryptionProperties(encryptColumns, ParquetCipher.AES_GCM_CTR_V1, false));
     verifyResultDecryptionWithValidKey();
   }
 
   @Test
   public void testEncryptSomeColumns() throws IOException {
-    testSetup("GZIP");
     String[] encryptColumns = {"DocId", "Name", "Links.Forward"};
-    columnEncryptor.encryptColumns(inputFile, outputFile, Arrays.asList(encryptColumns),
+    testSetup("GZIP");
+    columnEncryptor.encryptColumns(inputFile.getFileName(), outputFile, Arrays.asList(encryptColumns),
       EncDecProperties.getFileEncryptionProperties(encryptColumns, ParquetCipher.AES_GCM_CTR_V1, false));
 
     ParquetMetadata metaData = getParquetMetadata(EncDecProperties.getFileDecryptionProperties());
@@ -132,9 +139,9 @@ public class ColumnEncryptorTest {
 
   @Test
   public void testFooterEncryption() throws IOException {
-    testSetup("GZIP");
     String[] encryptColumns = {"DocId"};
-    columnEncryptor.encryptColumns(inputFile, outputFile, Arrays.asList(encryptColumns),
+    testSetup("GZIP");
+    columnEncryptor.encryptColumns(inputFile.getFileName(), outputFile, Arrays.asList(encryptColumns),
       EncDecProperties.getFileEncryptionProperties(encryptColumns, ParquetCipher.AES_GCM_CTR_V1, true));
 
     verifyResultDecryptionWithValidKey();
@@ -142,9 +149,9 @@ public class ColumnEncryptorTest {
 
   @Test
   public void testAesGcm() throws IOException {
-    testSetup("GZIP");
     String[] encryptColumns = {"DocId"};
-    columnEncryptor.encryptColumns(inputFile, outputFile, Arrays.asList(encryptColumns),
+    testSetup("GZIP");
+    columnEncryptor.encryptColumns(inputFile.getFileName(), outputFile, Arrays.asList(encryptColumns),
       EncDecProperties.getFileEncryptionProperties(encryptColumns, ParquetCipher.AES_GCM_V1, true));
 
     verifyResultDecryptionWithValidKey();
@@ -152,9 +159,9 @@ public class ColumnEncryptorTest {
 
   @Test
   public void testColumnIndex() throws IOException {
-    testSetup("GZIP");
     String[] encryptColumns = {"Name"};
-    columnEncryptor.encryptColumns(inputFile, outputFile, Arrays.asList(encryptColumns),
+    testSetup("GZIP");
+    columnEncryptor.encryptColumns(inputFile.getFileName(), outputFile, Arrays.asList(encryptColumns),
       EncDecProperties.getFileEncryptionProperties(encryptColumns, ParquetCipher.AES_GCM_V1, false));
 
     verifyResultDecryptionWithValidKey();
@@ -163,27 +170,32 @@ public class ColumnEncryptorTest {
 
   @Test
   public void testDifferentCompression() throws IOException {
+    String[] encryptColumns = {"Links.Forward"};
     String[] compressions = {"GZIP", "ZSTD", "SNAPPY", "UNCOMPRESSED"};
     for (String compression : compressions)  {
       testSetup(compression);
+      columnEncryptor.encryptColumns(inputFile.getFileName(), outputFile, Arrays.asList(encryptColumns),
+        EncDecProperties.getFileEncryptionProperties(encryptColumns, ParquetCipher.AES_GCM_CTR_V1, false));
+      verifyResultDecryptionWithValidKey();
     }
-    String[] encryptColumns = {"Links.Forward"};
-    columnEncryptor.encryptColumns(inputFile, outputFile, Arrays.asList(encryptColumns),
-      EncDecProperties.getFileEncryptionProperties(encryptColumns, ParquetCipher.AES_GCM_CTR_V1, false));
-    verifyResultDecryptionWithValidKey();
-
   }
 
   private void verifyResultDecryptionWithValidKey() throws IOException  {
     ParquetReader<Group> reader = createReader(outputFile);
     for (int i = 0; i < numRecord; i++) {
       Group group = reader.read();
-      assertTrue(group.getLong("DocId", 0) == testDocs.docId[i]);
-      assertArrayEquals(group.getBinary("Name", 0).getBytes(), testDocs.name[i].getBytes());
-      assertArrayEquals(group.getBinary("Gender", 0).getBytes(), testDocs.gender[i].getBytes());
-      Group subGroup = group.getGroup("Links", 0);
-      assertArrayEquals(subGroup.getBinary("Forward", 0).getBytes(), testDocs.linkForward[i].getBytes());
-      assertArrayEquals(subGroup.getBinary("Backward", 0).getBytes(), testDocs.linkBackward[i].getBytes());
+      assertTrue(group.getLong("DocId", 0) ==
+        inputFile.getFileContent()[i].getLong("DocId", 0));
+      assertArrayEquals(group.getBinary("Name", 0).getBytes(),
+        inputFile.getFileContent()[i].getString("Name", 0).getBytes(StandardCharsets.UTF_8));
+      assertArrayEquals(group.getBinary("Gender", 0).getBytes(),
+        inputFile.getFileContent()[i].getString("Gender", 0).getBytes(StandardCharsets.UTF_8));
+      Group subGroupInRead = group.getGroup("Links", 0);
+      Group expectedSubGroup = inputFile.getFileContent()[i].getGroup("Links", 0);
+      assertArrayEquals(subGroupInRead.getBinary("Forward", 0).getBytes(),
+        expectedSubGroup.getBinary("Forward", 0).getBytes());
+      assertArrayEquals(subGroupInRead.getBinary("Backward", 0).getBytes(),
+        expectedSubGroup.getBinary("Backward", 0).getBytes());
     }
     reader.close();
   }
@@ -193,9 +205,9 @@ public class ColumnEncryptorTest {
       .withDecryption(EncDecProperties.getFileDecryptionProperties())
       .build();
 
-    try (TransParquetFileReader inReader = createFileReader(inputFile);
+    try (TransParquetFileReader inReader = createFileReader(inputFile.getFileName());
          TransParquetFileReader outReader = createFileReader(outputFile)) {
-      ParquetMetadata inMetaData = getMetadata(readOptions, inputFile, inReader);
+      ParquetMetadata inMetaData = getMetadata(readOptions, inputFile.getFileName(), inReader);
       ParquetMetadata outMetaData = getMetadata(readOptions, outputFile, outReader);
       compareOffsetIndexes(inReader, outReader, inMetaData, outMetaData);
     }
@@ -289,5 +301,15 @@ public class ColumnEncryptorTest {
       metaData  = ParquetFileReader.readFooter(file, readOptions, in);
     }
     return metaData;
+  }
+
+  private MessageType createSchema() {
+    return new MessageType("schema",
+        new PrimitiveType(OPTIONAL, INT64, "DocId"),
+        new PrimitiveType(REQUIRED, BINARY, "Name"),
+        new PrimitiveType(OPTIONAL, BINARY, "Gender"),
+        new GroupType(OPTIONAL, "Links",
+          new PrimitiveType(REPEATED, BINARY, "Backward"),
+          new PrimitiveType(REPEATED, BINARY, "Forward")));
   }
 }

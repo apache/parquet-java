@@ -64,24 +64,19 @@ public class EncDecProperties {
     return FileDecryptionProperties.builder().withPlaintextFilesAllowed().withKeyRetriever(keyRetriever).build();
   }
 
-  public static FileEncryptionProperties getFileEncryptionProperties(String[] encrCols, ParquetCipher cipher, Boolean encryptFooter) {
-    if (encrCols.length == 0) {
+  public static FileEncryptionProperties getFileEncryptionProperties(String[] encryptColumns, ParquetCipher cipher, Boolean encryptFooter) {
+    if (encryptColumns.length == 0) {
       return null;
     }
-    Map<ColumnPath, ColumnEncryptionProperties> columnPropertyMap = new HashMap<>();
-    Set<String> paths = new HashSet<>(Arrays.asList(encrCols));
 
-    for (ColumnPath columnPath : TestFileHelper.getPaths()) {
-      ColumnEncryptionProperties colEncProp;
-      if (paths.contains(columnPath.toDotString())) {
-        colEncProp = ColumnEncryptionProperties.builder(columnPath, true)
-          .withKey(COL_KEY)
-          .withKeyMetaData(COL_KEY_METADATA)
-          .build();
-      }  else {
-        colEncProp = ColumnEncryptionProperties.builder(columnPath, false).build();
-      }
-      columnPropertyMap.put(columnPath, colEncProp);
+    Map<ColumnPath, ColumnEncryptionProperties> columnPropertyMap = new HashMap<>();
+    for (String encryptColumn : encryptColumns) {
+      ColumnPath columnPath = ColumnPath.fromDotString(encryptColumn);
+      ColumnEncryptionProperties columnEncryptionProperties = ColumnEncryptionProperties.builder(columnPath)
+        .withKey(COL_KEY)
+        .withKeyMetaData(COL_KEY_METADATA)
+        .build();
+      columnPropertyMap.put(columnPath, columnEncryptionProperties);
     }
 
     FileEncryptionProperties.Builder encryptionPropertiesBuilder =
@@ -90,7 +85,7 @@ public class EncDecProperties {
         .withAlgorithm(cipher)
         .withEncryptedColumns(columnPropertyMap);
 
-    if(!encryptFooter) {
+    if (!encryptFooter) {
       encryptionPropertiesBuilder.withPlaintextFooter();
     }
 
