@@ -199,10 +199,6 @@ public abstract class PrimitiveComparator<T> implements Comparator<T>, Serializa
       return Binary.compareToLexicographic(b1, b2);
     }
 
-    private int unsignedCompare(byte b1, byte b2) {
-      return toUnsigned(b1) - toUnsigned(b2);
-    }
-
     @Override
     public String toString() {
       return "UNSIGNED_LEXICOGRAPHICAL_BINARY_COMPARATOR";
