@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -76,6 +76,12 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
   @Override
   @Deprecated
   abstract public int compareTo(Binary other);
+
+  public abstract int compareToLexicographic(Binary other);
+
+  public abstract int compareToLexicographic(byte[] other, int otherOffset, int otherLength);
+
+  public abstract int compareToLexicographic(ByteBuffer other, int otherOffset, int otherLength);
 
   abstract public ByteBuffer toByteBuffer();
 
@@ -189,6 +195,22 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
     @Override
     public int compareTo(Binary other) {
       return PrimitiveComparator.UNSIGNED_LEXICOGRAPHICAL_BINARY_COMPARATOR.compare(this, other);
+    }
+
+    @Override
+    public int compareToLexicographic(Binary other) {
+      // NOTE: We have to flip the sign, since we swap operands sides
+      return -other.compareToLexicographic(value, offset, length);
+    }
+
+    @Override
+    public int compareToLexicographic(byte[] other, int otherOffset, int otherLength) {
+      return Binary.compareToLexicographic(value, offset, length, other, otherOffset, otherLength);
+    }
+
+    @Override
+    public int compareToLexicographic(ByteBuffer other, int otherOffset, int otherLength) {
+      return Binary.compareToLexicographic(value, offset, length, other, otherOffset, otherLength);
     }
 
     @Override
@@ -328,7 +350,23 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
       return PrimitiveComparator.UNSIGNED_LEXICOGRAPHICAL_BINARY_COMPARATOR.compare(this, other);
     }
 
-   @Override
+    @Override
+    public int compareToLexicographic(Binary other) {
+      // NOTE: We have to flip the sign, since we swap operands sides
+      return -other.compareToLexicographic(value, 0, value.length);
+    }
+
+    @Override
+    public int compareToLexicographic(byte[] other, int otherOffset, int otherLength) {
+      return Binary.compareToLexicographic(this.value, 0, value.length, other, otherOffset, otherLength);
+    }
+
+    @Override
+    public int compareToLexicographic(ByteBuffer other, int otherOffset, int otherLength) {
+      return Binary.compareToLexicographic(this.value, 0, value.length, other, otherOffset, otherLength);
+    }
+
+    @Override
     public ByteBuffer toByteBuffer() {
       return ByteBuffer.wrap(value);
     }
@@ -476,6 +514,32 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
     }
 
     @Override
+    public int compareToLexicographic(Binary other) {
+      if (value.hasArray()) {
+        // NOTE: We have to flip the sign, since we swap operands sides
+        return -other.compareToLexicographic(value.array(), value.arrayOffset() + offset, length);
+      } else {
+        // NOTE: We have to flip the sign, since we swap operands sides
+        return -other.compareToLexicographic(value, offset, length);
+      }
+    }
+
+    @Override
+    public int compareToLexicographic(byte[] other, int otherOffset, int otherLength) {
+      if (value.hasArray()) {
+        return Binary.compareToLexicographic(value.array(), value.arrayOffset() + offset, length, other, otherOffset, otherLength);
+      } else {
+        // NOTE: We have to flip the sign, since we swap operands sides
+        return -Binary.compareToLexicographic(other, otherOffset, otherLength, value, offset, length);
+      }
+    }
+
+    @Override
+    public int compareToLexicographic(ByteBuffer other, int otherOffset, int otherLength) {
+      return Binary.compareToLexicographic(value, offset, length, other, otherOffset, otherLength);
+    }
+
+    @Override
     public ByteBuffer toByteBuffer() {
       ByteBuffer ret = value.duplicate();
       ret.position(offset);
@@ -612,5 +676,61 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
       }
     }
     return true;
+  }
+
+  // TODO java-doc
+  private static final int compareToLexicographic(byte[] array1, int offset1, int length1, byte[] array2, int offset2, int length2) {
+    if (array1 == null && array2 == null) return 0;
+    if (array1 == null || array2 == null) return array1 != null ? 1 : -1;
+
+    int minLen = Math.min(length1, length2);
+    for (int i = 0; i < minLen; i++) {
+      int res = unsignedCompare(array1[i + offset1], array2[i + offset2]);
+      if (res != 0) {
+        return res;
+      }
+    }
+
+    return length1 - length2;
+  }
+
+  // TODO java-doc
+  private static final int compareToLexicographic(byte[] array1, int offset1, int length1, ByteBuffer array2, int offset2, int length2) {
+    if (array1 == null && array2 == null) return 0;
+    if (array1 == null || array2 == null) return array1 != null ? 1 : -1;
+
+    int minLen = Math.min(length1, length2);
+    for (int i = 0; i < minLen; i++) {
+      int res = unsignedCompare(array1[i + offset1], array2.get(i + offset2));
+      if (res != 0) {
+        return res;
+      }
+    }
+
+    return length1 - length2;
+  }
+
+  // TODO java-doc
+  private static final int compareToLexicographic(ByteBuffer array1, int offset1, int length1, ByteBuffer array2, int offset2, int length2) {
+    if (array1 == null && array2 == null) return 0;
+    if (array1 == null || array2 == null) return array1 != null ? 1 : -1;
+
+    int minLen = Math.min(length1, length2);
+    for (int i = 0; i < minLen; i++) {
+      int res = unsignedCompare(array1.get(i + offset1), array2.get(i + offset2));
+      if (res != 0) {
+        return res;
+      }
+    }
+
+    return length1 - length2;
+  }
+
+  private static int unsignedCompare(byte b1, byte b2) {
+    return toUnsigned(b1) - toUnsigned(b2);
+  }
+
+  private static final int toUnsigned(byte b) {
+    return b & 0xFF;
   }
 }
