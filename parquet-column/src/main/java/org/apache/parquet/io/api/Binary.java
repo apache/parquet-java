@@ -77,11 +77,11 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
   @Deprecated
   abstract public int compareTo(Binary other);
 
-  public abstract int compareToLexicographic(Binary other);
+  abstract int compareToLexicographic(Binary other);
 
-  public abstract int compareToLexicographic(byte[] other, int otherOffset, int otherLength);
+  abstract int compareToLexicographic(byte[] other, int otherOffset, int otherLength);
 
-  public abstract int compareToLexicographic(ByteBuffer other, int otherOffset, int otherLength);
+  abstract int compareToLexicographic(ByteBuffer other, int otherOffset, int otherLength);
 
   abstract public ByteBuffer toByteBuffer();
 
@@ -604,6 +604,10 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
 
   public static Binary fromCharSequence(CharSequence value) {
     return new FromCharSequenceBinary(value);
+  }
+
+  public static int compareToLexicographic(Binary one, Binary other) {
+    return one.compareToLexicographic(other);
   }
 
   /**
