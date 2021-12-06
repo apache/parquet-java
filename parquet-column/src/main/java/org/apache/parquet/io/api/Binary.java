@@ -682,7 +682,6 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
     return true;
   }
 
-  // TODO java-doc
   private static final int compareToLexicographic(byte[] array1, int offset1, int length1, byte[] array2, int offset2, int length2) {
     if (array1 == null && array2 == null) return 0;
     if (array1 == null || array2 == null) return array1 != null ? 1 : -1;
@@ -698,7 +697,6 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
     return length1 - length2;
   }
 
-  // TODO java-doc
   private static final int compareToLexicographic(byte[] array1, int offset1, int length1, ByteBuffer array2, int offset2, int length2) {
     if (array1 == null && array2 == null) return 0;
     if (array1 == null || array2 == null) return array1 != null ? 1 : -1;
@@ -714,7 +712,6 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
     return length1 - length2;
   }
 
-  // TODO java-doc
   private static final int compareToLexicographic(ByteBuffer array1, int offset1, int length1, ByteBuffer array2, int offset2, int length2) {
     if (array1 == null && array2 == null) return 0;
     if (array1 == null || array2 == null) return array1 != null ? 1 : -1;
