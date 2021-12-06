@@ -196,7 +196,7 @@ public abstract class PrimitiveComparator<T> implements Comparator<T>, Serializa
   public static final PrimitiveComparator<Binary> UNSIGNED_LEXICOGRAPHICAL_BINARY_COMPARATOR = new BinaryComparator() {
     @Override
     int compareBinary(Binary b1, Binary b2) {
-      return Binary.compareToLexicographic(b1, b2);
+      return Binary.lexicographicCompare(b1, b2);
     }
 
     @Override
