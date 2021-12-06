@@ -198,18 +198,18 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
     }
 
     @Override
-    public int compareToLexicographic(Binary other) {
+    int compareToLexicographic(Binary other) {
       // NOTE: We have to flip the sign, since we swap operands sides
       return -other.compareToLexicographic(value, offset, length);
     }
 
     @Override
-    public int compareToLexicographic(byte[] other, int otherOffset, int otherLength) {
+    int compareToLexicographic(byte[] other, int otherOffset, int otherLength) {
       return Binary.compareToLexicographic(value, offset, length, other, otherOffset, otherLength);
     }
 
     @Override
-    public int compareToLexicographic(ByteBuffer other, int otherOffset, int otherLength) {
+    int compareToLexicographic(ByteBuffer other, int otherOffset, int otherLength) {
       return Binary.compareToLexicographic(value, offset, length, other, otherOffset, otherLength);
     }
 
@@ -351,18 +351,18 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
     }
 
     @Override
-    public int compareToLexicographic(Binary other) {
+    int compareToLexicographic(Binary other) {
       // NOTE: We have to flip the sign, since we swap operands sides
       return -other.compareToLexicographic(value, 0, value.length);
     }
 
     @Override
-    public int compareToLexicographic(byte[] other, int otherOffset, int otherLength) {
+    int compareToLexicographic(byte[] other, int otherOffset, int otherLength) {
       return Binary.compareToLexicographic(this.value, 0, value.length, other, otherOffset, otherLength);
     }
 
     @Override
-    public int compareToLexicographic(ByteBuffer other, int otherOffset, int otherLength) {
+    int compareToLexicographic(ByteBuffer other, int otherOffset, int otherLength) {
       return Binary.compareToLexicographic(this.value, 0, value.length, other, otherOffset, otherLength);
     }
 
@@ -514,7 +514,7 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
     }
 
     @Override
-    public int compareToLexicographic(Binary other) {
+    int compareToLexicographic(Binary other) {
       if (value.hasArray()) {
         // NOTE: We have to flip the sign, since we swap operands sides
         return -other.compareToLexicographic(value.array(), value.arrayOffset() + offset, length);
@@ -525,7 +525,7 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
     }
 
     @Override
-    public int compareToLexicographic(byte[] other, int otherOffset, int otherLength) {
+    int compareToLexicographic(byte[] other, int otherOffset, int otherLength) {
       if (value.hasArray()) {
         return Binary.compareToLexicographic(value.array(), value.arrayOffset() + offset, length, other, otherOffset, otherLength);
       } else {
@@ -535,7 +535,7 @@ abstract public class Binary implements Comparable<Binary>, Serializable {
     }
 
     @Override
-    public int compareToLexicographic(ByteBuffer other, int otherOffset, int otherLength) {
+    int compareToLexicographic(ByteBuffer other, int otherOffset, int otherLength) {
       return Binary.compareToLexicographic(value, offset, length, other, otherOffset, otherLength);
     }
 
