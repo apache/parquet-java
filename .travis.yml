@@ -18,6 +18,7 @@
 # TravisCI is being used as an alternative to GitHub Actions until
 # the latter provides support for ARM64 CPU architecture (PARQUET-1980)
 
+dist: focal
 distro: bionic
 arch: arm64
 language: java
