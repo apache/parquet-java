@@ -41,9 +41,9 @@ install:
   - sudo apt-get install -qq maven
   - java -version
   - mvn -version
-  - mvn install --batch-mode -DskipTests=true -Dmaven.javadoc.skip=true -Dsource.skip=true -Dorg.slf4j.simpleLogger.logFile=mvn-install.log
+  - travis_wait 60 mvn install --batch-mode -DskipTests=true -Dmaven.javadoc.skip=true -Dsource.skip=true -Dorg.slf4j.simpleLogger.logFile=mvn-install.log
   
-script: mvn verify --batch-mode javadoc:javadoc -P ci-test,$HADOOP_PROFILE -Dorg.slf4j.simpleLogger.logFile=mvn-verify.log
+script: travis_wait 60 mvn verify --batch-mode javadoc:javadoc -P ci-test,$HADOOP_PROFILE -Dorg.slf4j.simpleLogger.logFile=mvn-verify.log
 
 after_failure:
   - cat mvn-install.log
