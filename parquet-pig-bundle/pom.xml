@@ -21,7 +21,7 @@
     <groupId>org.apache.parquet</groupId>
     <artifactId>parquet</artifactId>
     <relativePath>../pom.xml</relativePath>
-    <version>1.12.2</version>
+    <version>1.12.2-kylin-r1</version>
   </parent>
 
   <modelVersion>4.0.0</modelVersion>
