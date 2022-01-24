@@ -190,7 +190,7 @@ public class MessageColumnIO extends GroupColumnIO {
 
       @Override
       public String toString() {
-        return "VistedIndex{" +
+        return "VisitedIndex{" +
             "visitedIndexes=" + visitedIndexes +
             '}';
       }
