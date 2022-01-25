@@ -186,32 +186,32 @@ public class MessageColumnIO extends GroupColumnIO {
     private int currentLevel = 0;
 
     private class FieldsMarker {
-      private BitSet vistedIndexes = new BitSet();
+      private BitSet visitedIndexes = new BitSet();
 
       @Override
       public String toString() {
-        return "VistedIndex{" +
-            "vistedIndexes=" + vistedIndexes +
+        return "VisitedIndex{" +
+            "visitedIndexes=" + visitedIndexes +
             '}';
       }
 
       public void reset(int fieldsCount) {
-        this.vistedIndexes.clear(0, fieldsCount);
+        this.visitedIndexes.clear(0, fieldsCount);
       }
 
       public void markWritten(int i) {
-        vistedIndexes.set(i);
+        visitedIndexes.set(i);
       }
 
       public boolean isWritten(int i) {
-        return vistedIndexes.get(i);
+        return visitedIndexes.get(i);
       }
     }
 
     //track at each level of depth, which fields are written, so nulls can be inserted for the unwritten fields
     private final FieldsMarker[] fieldsWritten;
     private final int[] r;
-    private final ColumnWriter[] columnWriter;
+    private final ColumnWriter[] columnWriters;
 
     /**
      * Maintain a map of groups and all the leaf nodes underneath it. It's used to optimize writing null for a group node.
@@ -248,12 +248,12 @@ public class MessageColumnIO extends GroupColumnIO {
     public MessageColumnIORecordConsumer(ColumnWriteStore columns) {
       this.columns = columns;
       int maxDepth = 0;
-      this.columnWriter = new ColumnWriter[MessageColumnIO.this.getLeaves().size()];
+      this.columnWriters = new ColumnWriter[MessageColumnIO.this.getLeaves().size()];
 
       for (PrimitiveColumnIO primitiveColumnIO : MessageColumnIO.this.getLeaves()) {
         ColumnWriter w = columns.getColumnWriter(primitiveColumnIO.getColumnDescriptor());
         maxDepth = Math.max(maxDepth, primitiveColumnIO.getFieldPath().length);
-        columnWriter[primitiveColumnIO.getId()] = w;
+        columnWriters[primitiveColumnIO.getId()] = w;
         buildGroupToLeafWriterMap(primitiveColumnIO, w);
       }
 
@@ -351,7 +351,7 @@ public class MessageColumnIO extends GroupColumnIO {
 
     private void writeNull(ColumnIO undefinedField, int r, int d) {
       if (undefinedField.getType().isPrimitive()) {
-        columnWriter[((PrimitiveColumnIO) undefinedField).getId()].writeNull(r, d);
+        columnWriters[((PrimitiveColumnIO) undefinedField).getId()].writeNull(r, d);
       } else {
         GroupColumnIO groupColumnIO = (GroupColumnIO) undefinedField;
         // only cache the repetition level, the definition level should always be the definition level of the parent node
@@ -436,7 +436,7 @@ public class MessageColumnIO extends GroupColumnIO {
     }
 
     private ColumnWriter getColumnWriter() {
-      return columnWriter[((PrimitiveColumnIO) currentColumnIO).getId()];
+      return columnWriters[((PrimitiveColumnIO) currentColumnIO).getId()];
     }
 
     @Override
