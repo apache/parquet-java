@@ -71,6 +71,13 @@
         <groupId>org.apache.thrift</groupId>
         <artifactId>thrift-maven-plugin</artifactId>
         <version>${thrift-maven-plugin.version}</version>
+        <dependencies>
+          <dependency>
+            <groupId>org.codehaus.plexus</groupId>
+            <artifactId>plexus</artifactId>
+            <version>${odehaus-plexus.version}</version>
+          </dependency>
+        </dependencies>
         <configuration>
           <thriftSourceRoot>${parquet.thrift.path}</thriftSourceRoot>
           <thriftExecutable>${format.thrift.executable}</thriftExecutable>
