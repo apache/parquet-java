@@ -75,7 +75,7 @@
           <dependency>
             <groupId>org.codehaus.plexus</groupId>
             <artifactId>plexus</artifactId>
-            <version>${odehaus-plexus.version}</version>
+            <version>${codehaus-plexus.version}</version>
           </dependency>
         </dependencies>
         <configuration>
