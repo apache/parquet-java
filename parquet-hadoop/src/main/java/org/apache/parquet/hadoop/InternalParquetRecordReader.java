@@ -181,7 +181,7 @@ class InternalParquetRecordReader<T> {
     this.columnCount = requestedSchema.getPaths().size();
     // Setting the projection schema before running any filtering (e.g. getting filtered record count)
     // because projection impacts filtering
-    reader.setRequestedSchema(requestedSchema);
+    this.requestedSchema = reader.setRequestedSchema(requestedSchema);
     this.recordConverter = readSupport.prepareForRead(conf, fileMetadata, fileSchema, readContext);
     this.strictTypeChecking = options.isEnabled(STRICT_TYPE_CHECKING, true);
     this.total = reader.getFilteredRecordCount();
@@ -204,7 +204,7 @@ class InternalParquetRecordReader<T> {
     this.columnCount = requestedSchema.getPaths().size();
     // Setting the projection schema before running any filtering (e.g. getting filtered record count)
     // because projection impacts filtering
-    reader.setRequestedSchema(requestedSchema);
+    this.requestedSchema = reader.setRequestedSchema(requestedSchema);
     this.recordConverter = readSupport.prepareForRead(
         configuration, fileMetadata, fileSchema, readContext);
     this.strictTypeChecking = configuration.getBoolean(STRICT_TYPE_CHECKING, true);

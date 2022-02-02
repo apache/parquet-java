@@ -111,8 +111,10 @@ import org.apache.parquet.internal.hadoop.metadata.IndexReference;
 import org.apache.parquet.io.InputFile;
 import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.io.SeekableInputStream;
+import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
+import org.apache.parquet.schema.Type;
 import org.apache.yetus.audience.InterfaceAudience.Private;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -878,11 +880,92 @@ public class ParquetFileReader implements Closeable {
     return blocks;
   }
 
-  public void setRequestedSchema(MessageType projection) {
+  private boolean uniqueId(GroupType schema, HashSet<Type.ID> ids) {
+    boolean unique = true;
+    List<Type> fields = schema.getFields();
+    for (Type field : fields) {
+      if (field instanceof PrimitiveType) {
+        Type.ID id = field.getId();
+        if (id != null) {
+          if (ids.contains(id)) {
+            return false;
+          }
+          ids.add(id);
+        }
+      }
+
+      if (field instanceof GroupType) {
+        Type.ID id = field.getId();
+        if (id != null) {
+          if (ids.contains(id)) {
+            return false;
+          }
+          ids.add(id);
+        }
+        if (unique) unique = uniqueId(field.asGroupType(), ids);
+      }
+    }
+    return unique;
+  }
+
+  public MessageType setRequestedSchema(MessageType projection) {
     paths.clear();
-    for (ColumnDescriptor col : projection.getColumns()) {
+    HashSet<Type.ID> ids = new HashSet<>();
+    boolean fileSchemaIdUnique = uniqueId(fileMetaData.getSchema(), ids);
+    ids = new HashSet<>();
+    boolean projectionSchemaIdUnique = uniqueId(projection, ids);
+    MessageType schema = null;
+    // if ids are unique, use id resolution
+    if (fileSchemaIdUnique && projectionSchemaIdUnique) {
+      schema = resetColumnNameBasedOnId(projection);
+    } else {
+      schema = projection;
+    }
+    for (ColumnDescriptor col : schema.getColumns()) {
       paths.put(ColumnPath.get(col.getPath()), col);
     }
+    return schema;
+  }
+
+  private MessageType resetColumnNameBasedOnId(MessageType schema) {
+    List<Type> fields = schema.getFields();
+    List<Type> resetFields = resetColumnNameInFields(fields);
+    return new MessageType(schema.getName(), resetFields);
+  }
+
+  private List<Type> resetColumnNameInFields(List<Type> fields) {
+    List<Type> resetFields = new ArrayList<>();
+    for (Type childField : fields) {
+      Type resetChildField = resetColumnNameInField(childField);
+      if (resetChildField != null) {
+        resetFields.add(resetChildField);
+      }
+    }
+    return resetFields;
+  }
+
+  private Type resetColumnNameInField(Type field) {
+    String fieldName = field.getName();
+    Type resetField = null;
+    if (field.isPrimitive()) {
+      Type.ID id = field.getId();
+      List<ColumnDescriptor> descriptors = fileMetaData.getSchema().getColumns();
+      for (ColumnDescriptor c : descriptors) {
+        Type.ID idInFileMetaData = c.getPrimitiveType().getId();
+        if (idInFileMetaData != null && id != null && idInFileMetaData.intValue() == id.intValue()) {
+          fieldName = c.getPrimitiveType().getName();
+        }
+      }
+      resetField = new PrimitiveType(field.getRepetition(), field.asPrimitiveType().getPrimitiveTypeName(), fieldName);
+    } else {
+      List<Type> childFields = ((GroupType) field).getFields();
+      List<Type> resetFields = resetColumnNameInFields(childFields);
+      if (resetFields.size() > 0) {
+        resetField = ((GroupType) field).withNewFields(resetFields);
+      }
+    }
+
+    return resetField;
   }
 
   public void appendTo(ParquetFileWriter writer) throws IOException {
