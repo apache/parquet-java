@@ -18,6 +18,8 @@
  */
 package org.apache.parquet.filter2.recordlevel;
 
+import static org.junit.Assert.assertEquals;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -315,7 +317,7 @@ public class PhoneBookWriter {
     }
   }
 
-  private static ParquetReader<Group> createReader(Path file, Filter filter) throws IOException {
+  public static ParquetReader<Group> createReader(Path file, Filter filter) throws IOException {
     Configuration conf = new Configuration();
     GroupWriteSupport.setSchema(schema, conf);
 
@@ -340,12 +342,21 @@ public class PhoneBookWriter {
     return users;
   }
 
-  public static List<User> readUsers(ParquetReader.Builder<Group> builder) throws IOException {
+  /**
+   * Returns a list of users from the underlying [[ParquetReader]] builder.
+   * If `validateRowIndexes` is set to true, this method will also validate the ROW_INDEXes for the
+   * rows read from ParquetReader - ROW_INDEX for a row should be same as underlying user id.
+   */
+  public static List<User> readUsers(ParquetReader.Builder<Group> builder, boolean validateRowIndexes) throws IOException {
     ParquetReader<Group> reader = builder.set(GroupWriteSupport.PARQUET_EXAMPLE_SCHEMA, schema.toString()).build();
 
     List<User> users = new ArrayList<>();
     for (Group group = reader.read(); group != null; group = reader.read()) {
-      users.add(userFromGroup(group));
+      User u = userFromGroup(group);
+      users.add(u);
+      if (validateRowIndexes) {
+        assertEquals(reader.getCurrentRowIndex(), u.id);
+      }
     }
     return users;
   }

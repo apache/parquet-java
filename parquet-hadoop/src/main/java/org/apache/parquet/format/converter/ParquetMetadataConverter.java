@@ -1400,6 +1400,31 @@ public class ParquetMetadataConverter {
     return readParquetMetadata(from, filter, null, false, 0);
   }
 
+  private Map<RowGroup, Long> generateRowGroupOffsets(FileMetaData metaData) {
+    Map<RowGroup, Long> rowGroupOrdinalToRowIdx = new HashMap<>();
+    List<RowGroup> rowGroups = metaData.getRow_groups();
+    if (rowGroups != null) {
+      long rowIdxSum = 0;
+      for (int i = 0; i < rowGroups.size(); i++) {
+        rowGroupOrdinalToRowIdx.put(rowGroups.get(i), rowIdxSum);
+        rowIdxSum += rowGroups.get(i).getNum_rows();
+      }
+    }
+    return rowGroupOrdinalToRowIdx;
+  }
+
+  /**
+   * A container for [[FileMetaData]] and [[RowGroup]] to ROW_INDEX offset map.
+   */
+  private class FileMetaDataAndRowGroupOffsetInfo {
+    FileMetaData fileMetadata;
+    Map<RowGroup, Long> rowGroupToRowIndexOffsetMap;
+    public FileMetaDataAndRowGroupOffsetInfo(FileMetaData fileMetadata, Map<RowGroup, Long> rowGroupToRowIndexOffsetMap) {
+      this.fileMetadata = fileMetadata;
+      this.rowGroupToRowIndexOffsetMap = rowGroupToRowIndexOffsetMap;
+    }
+  }
+
   public ParquetMetadata readParquetMetadata(final InputStream from, MetadataFilter filter,
       final InternalFileDecryptor fileDecryptor, final boolean encryptedFooter,
       final int combinedFooterLength) throws IOException {
@@ -1407,27 +1432,35 @@ public class ParquetMetadataConverter {
     final BlockCipher.Decryptor footerDecryptor = (encryptedFooter? fileDecryptor.fetchFooterDecryptor() : null);
     final byte[] encryptedFooterAAD = (encryptedFooter? AesCipher.createFooterAAD(fileDecryptor.getFileAAD()) : null);
 
-    FileMetaData fileMetaData = filter.accept(new MetadataFilterVisitor<FileMetaData, IOException>() {
+    FileMetaDataAndRowGroupOffsetInfo fileMetaDataAndRowGroupInfo = filter.accept(new MetadataFilterVisitor<FileMetaDataAndRowGroupOffsetInfo, IOException>() {
       @Override
-      public FileMetaData visit(NoFilter filter) throws IOException {
-        return readFileMetaData(from, footerDecryptor, encryptedFooterAAD);
+      public FileMetaDataAndRowGroupOffsetInfo visit(NoFilter filter) throws IOException {
+        FileMetaData fileMetadata = readFileMetaData(from, footerDecryptor, encryptedFooterAAD);
+        return new FileMetaDataAndRowGroupOffsetInfo(fileMetadata, generateRowGroupOffsets(fileMetadata));
       }
 
       @Override
-      public FileMetaData visit(SkipMetadataFilter filter) throws IOException {
-        return readFileMetaData(from, true, footerDecryptor, encryptedFooterAAD);
+      public FileMetaDataAndRowGroupOffsetInfo visit(SkipMetadataFilter filter) throws IOException {
+        FileMetaData fileMetadata = readFileMetaData(from, true, footerDecryptor, encryptedFooterAAD);
+        return new FileMetaDataAndRowGroupOffsetInfo(fileMetadata, generateRowGroupOffsets(fileMetadata));
       }
 
       @Override
-      public FileMetaData visit(OffsetMetadataFilter filter) throws IOException {
-        return filterFileMetaDataByStart(readFileMetaData(from, footerDecryptor, encryptedFooterAAD), filter);
+      public FileMetaDataAndRowGroupOffsetInfo visit(OffsetMetadataFilter filter) throws IOException {
+        FileMetaData fileMetadata = readFileMetaData(from, footerDecryptor, encryptedFooterAAD);
+        FileMetaData filteredFileMetadata = filterFileMetaDataByStart(fileMetadata, filter);
+        return new FileMetaDataAndRowGroupOffsetInfo(filteredFileMetadata, generateRowGroupOffsets(fileMetadata));
       }
 
       @Override
-      public FileMetaData visit(RangeMetadataFilter filter) throws IOException {
-        return filterFileMetaDataByMidpoint(readFileMetaData(from, footerDecryptor, encryptedFooterAAD), filter);
+      public FileMetaDataAndRowGroupOffsetInfo visit(RangeMetadataFilter filter) throws IOException {
+        FileMetaData fileMetadata = readFileMetaData(from, footerDecryptor, encryptedFooterAAD);
+        FileMetaData filteredFileMetadata = filterFileMetaDataByMidpoint(fileMetadata, filter);
+        return new FileMetaDataAndRowGroupOffsetInfo(filteredFileMetadata, generateRowGroupOffsets(fileMetadata));
       }
     });
+    FileMetaData fileMetaData = fileMetaDataAndRowGroupInfo.fileMetadata;
+    Map<RowGroup, Long> rowGroupToRowIndexOffsetMap = fileMetaDataAndRowGroupInfo.rowGroupToRowIndexOffsetMap;
     LOG.debug("{}", fileMetaData);
 
     if (!encryptedFooter && null != fileDecryptor) {
@@ -1447,7 +1480,7 @@ public class ParquetMetadataConverter {
       }
     }
 
-    ParquetMetadata parquetMetadata = fromParquetMetadata(fileMetaData, fileDecryptor, encryptedFooter);
+    ParquetMetadata parquetMetadata = fromParquetMetadata(fileMetaData, fileDecryptor, encryptedFooter, rowGroupToRowIndexOffsetMap);
     if (LOG.isDebugEnabled()) LOG.debug(ParquetMetadata.toPrettyJSON(parquetMetadata));
     return parquetMetadata;
   }
@@ -1476,6 +1509,13 @@ public class ParquetMetadataConverter {
 
   public ParquetMetadata fromParquetMetadata(FileMetaData parquetMetadata,
       InternalFileDecryptor fileDecryptor, boolean encryptedFooter) throws IOException {
+    return fromParquetMetadata(parquetMetadata, fileDecryptor, encryptedFooter, generateRowGroupOffsets(parquetMetadata));
+  }
+
+  public ParquetMetadata fromParquetMetadata(FileMetaData parquetMetadata,
+                                             InternalFileDecryptor fileDecryptor,
+                                             boolean encryptedFooter,
+                                             Map<RowGroup, Long> rowGroupToRowIndexOffsetMap) throws IOException {
     MessageType messageType = fromParquetSchema(parquetMetadata.getSchema(), parquetMetadata.getColumn_orders());
     List<BlockMetaData> blocks = new ArrayList<BlockMetaData>();
     List<RowGroup> row_groups = parquetMetadata.getRow_groups();
@@ -1485,6 +1525,7 @@ public class ParquetMetadataConverter {
         BlockMetaData blockMetaData = new BlockMetaData();
         blockMetaData.setRowCount(rowGroup.getNum_rows());
         blockMetaData.setTotalByteSize(rowGroup.getTotal_byte_size());
+        blockMetaData.setRowIndexOffset(rowGroupToRowIndexOffsetMap.get(rowGroup));
         // not set in legacy files
         if (rowGroup.isSetOrdinal()) {
           blockMetaData.setOrdinal(rowGroup.getOrdinal());

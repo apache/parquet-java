@@ -1,0 +1,173 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+package org.apache.parquet.hadoop;
+
+import static org.apache.parquet.filter2.predicate.FilterApi.in;
+import static org.apache.parquet.filter2.predicate.FilterApi.longColumn;
+import static org.apache.parquet.hadoop.ParquetFileWriter.Mode.OVERWRITE;
+import static org.junit.Assert.assertEquals;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.util.*;
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
+import org.apache.parquet.column.ParquetProperties;
+import org.apache.parquet.example.data.Group;
+import org.apache.parquet.filter2.compat.FilterCompat;
+import org.apache.parquet.filter2.recordlevel.PhoneBookWriter;
+import org.apache.parquet.hadoop.example.ExampleParquetWriter;
+import org.apache.parquet.hadoop.example.GroupReadSupport;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+
+@RunWith(Parameterized.class)
+public class TestParquetReader {
+
+  private static final Path FILE_V1 = createTempFile();
+  private static final Path FILE_V2 = createTempFile();
+  private static final List<PhoneBookWriter.User> DATA = Collections.unmodifiableList(makeUsers(10000));
+
+  private final Path file;
+
+  public TestParquetReader(Path file) {
+    this.file = file;
+  }
+
+  @Parameterized.Parameters
+  public static Collection<Object[]> data() {
+    Object[][] data = new Object[][] {
+      { FILE_V1 },
+      { FILE_V2 } };
+    return Arrays.asList(data);
+  }
+
+  @BeforeClass
+  public static void createFiles() throws IOException {
+    writePhoneBookToFile(FILE_V1, ParquetProperties.WriterVersion.PARQUET_1_0);
+    writePhoneBookToFile(FILE_V2, ParquetProperties.WriterVersion.PARQUET_2_0);
+  }
+
+  @AfterClass
+  public static void deleteFiles() throws IOException {
+    deleteFile(FILE_V1);
+    deleteFile(FILE_V2);
+  }
+
+  private static void deleteFile(Path file) throws IOException {
+    file.getFileSystem(new Configuration()).delete(file, false);
+  }
+
+  public static List<PhoneBookWriter.User> makeUsers(int rowCount) {
+    List<PhoneBookWriter.User> users = new ArrayList<>();
+    for (int i = 0; i < rowCount; i++) {
+      PhoneBookWriter.Location location = null;
+      if (i % 3 == 1) {
+        location = new PhoneBookWriter.Location((double)i, (double) i * 2);
+      }
+      if (i % 3 == 2) {
+        location = new PhoneBookWriter.Location((double)i, null);
+      }
+      // row index of each row in the file is same as the user id.
+      users.add(new PhoneBookWriter.User(i, "p" + i, Arrays.asList(new PhoneBookWriter.PhoneNumber(i, "cell")), location));
+    }
+    return users;
+  }
+
+  private static Path createTempFile() {
+    try {
+      return new Path(Files.createTempFile("test-ci_", ".parquet").toAbsolutePath().toString());
+    } catch (IOException e) {
+      throw new AssertionError("Unable to create temporary file", e);
+    }
+  }
+
+  private static void writePhoneBookToFile(Path file, ParquetProperties.WriterVersion parquetVersion) throws IOException {
+    int pageSize = DATA.size() / 10;     // Ensure that several pages will be created
+    int rowGroupSize = pageSize * 6 * 5; // Ensure that there are more row-groups created
+
+    PhoneBookWriter.write(ExampleParquetWriter.builder(file)
+        .withWriteMode(OVERWRITE)
+        .withRowGroupSize(rowGroupSize)
+        .withPageSize(pageSize)
+        .withWriterVersion(parquetVersion),
+      DATA);
+  }
+
+  private List<PhoneBookWriter.User> readUsers(FilterCompat.Filter filter, boolean useOtherFiltering, boolean useColumnIndexFilter)
+    throws IOException {
+    return PhoneBookWriter.readUsers(ParquetReader.builder(new GroupReadSupport(), file)
+      .withFilter(filter)
+      .useDictionaryFilter(useOtherFiltering)
+      .useStatsFilter(useOtherFiltering)
+      .useRecordFilter(useOtherFiltering)
+      .useColumnIndexFilter(useColumnIndexFilter), true);
+  }
+
+  @Test
+  public void testCurrentRowIndex() throws Exception {
+    ParquetReader<Group> reader = PhoneBookWriter.createReader(file, FilterCompat.NOOP);
+    // Fetch row index without processing any row.
+    TestUtils.assertThrows("row index can be fetched only after processing a row",
+      RowIndexFetchedWithoutProcessingRowException.class, reader::getCurrentRowIndex);
+    reader.read();
+    assertEquals(reader.getCurrentRowIndex(), 0);
+    // calling the same API again and again should return same result.
+    assertEquals(reader.getCurrentRowIndex(), 0);
+
+    reader.read();
+    assertEquals(reader.getCurrentRowIndex(), 1);
+    assertEquals(reader.getCurrentRowIndex(), 1);
+    long expectedCurrentRowIndex = 2L;
+    while(reader.read() != null) {
+      assertEquals(reader.getCurrentRowIndex(), expectedCurrentRowIndex);
+      expectedCurrentRowIndex++;
+    }
+    // reader.read() returned null and so reader doesn't have any more rows.
+    TestUtils.assertThrows("row index can be fetched only after processing a row",
+      RowIndexFetchedWithoutProcessingRowException.class, reader::getCurrentRowIndex);
+  }
+
+  @Test
+  public void testSimpleFiltering() throws Exception {
+    Set<Long> idSet = new HashSet<>();
+    idSet.add(1234l);
+    idSet.add(5678l);
+    // The readUsers also validates the rowIndex for each returned row.
+    List<PhoneBookWriter.User> filteredUsers1 = readUsers(FilterCompat.get(in(longColumn("id"), idSet)), true, true);
+    assertEquals(filteredUsers1.size(), 2L);
+    List<PhoneBookWriter.User> filteredUsers2 = readUsers(FilterCompat.get(in(longColumn("id"), idSet)), true, false);
+    assertEquals(filteredUsers2.size(), 2L);
+    List<PhoneBookWriter.User> filteredUsers3 = readUsers(FilterCompat.get(in(longColumn("id"), idSet)), false, false);
+    assertEquals(filteredUsers3.size(), 10000L);
+  }
+
+  @Test
+  public void testNoFiltering() throws Exception {
+    assertEquals(DATA, readUsers(FilterCompat.NOOP, false, false));
+    assertEquals(DATA, readUsers(FilterCompat.NOOP, true, false));
+    assertEquals(DATA, readUsers(FilterCompat.NOOP, false, true));
+    assertEquals(DATA, readUsers(FilterCompat.NOOP, true, true));
+  }
+}
+

@@ -44,6 +44,14 @@ public interface PageReadStore {
   long getRowCount();
 
   /**
+   *
+   * @return the row index offset of this row group.
+   */
+  default Optional<Long> getRowIndexOffset() {
+    return Optional.empty();
+  }
+
+  /**
    * Returns the indexes of the rows to be read/built if the related data is available. All the rows which index is not
    * returned shall be skipped.
    *

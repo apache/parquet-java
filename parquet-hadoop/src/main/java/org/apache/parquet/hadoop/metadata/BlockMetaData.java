@@ -33,6 +33,7 @@ public class BlockMetaData {
   private long totalByteSize;
   private String path;
   private int ordinal;
+  private long rowIndexOffset;
 
   public BlockMetaData() {
   }
@@ -63,6 +64,19 @@ public class BlockMetaData {
    */
   public void setRowCount(long rowCount) {
     this.rowCount = rowCount;
+  }
+
+  /**
+   * @return the rowIndexOffset
+   */
+  public long getRowIndexOffset() { return rowIndexOffset; }
+
+  /**
+   * @param rowIndexOffset the rowIndexOffset to set
+   */
+
+  public void setRowIndexOffset(long rowIndexOffset) {
+    this.rowIndexOffset = rowIndexOffset;
   }
 
   /**

@@ -207,6 +207,13 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
     return internalReader.nextKeyValue();
   }
 
+  /**
+   * Returns the ROW_INDEX of the current row.
+   */
+  public long getCurrentRowIndex() throws IOException {
+    return internalReader.getCurrentRowIndex();
+  }
+
   private ParquetInputSplit toParquetSplit(InputSplit split) throws IOException {
     if (split instanceof ParquetInputSplit) {
       return (ParquetInputSplit) split;

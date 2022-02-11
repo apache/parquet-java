@@ -22,8 +22,10 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
+import java.util.Optional;
+import java.util.PrimitiveIterator;
 import java.util.Set;
+import java.util.stream.LongStream;
 
 import org.apache.hadoop.conf.Configuration;
 
@@ -69,6 +71,8 @@ class InternalParquetRecordReader<T> {
   private long current = 0;
   private int currentBlock = -1;
   private ParquetFileReader reader;
+  private long currentRowIndex = -1L;
+  private PrimitiveIterator.OfLong rowIndexWithinFileIterator;
   private org.apache.parquet.io.RecordReader<T> recordReader;
   private boolean strictTypeChecking;
 
@@ -127,6 +131,7 @@ class InternalParquetRecordReader<T> {
       if (pages == null) {
         throw new IOException("expecting more rows but reached last block. Read " + current + " out of " + total);
       }
+      resetRowIndexIterator(pages);
       long timeSpentReading = System.currentTimeMillis() - t0;
       totalTimeSpentReadingBytes += timeSpentReading;
       BenchmarkCounter.incrementTime(timeSpentReading);
@@ -227,6 +232,9 @@ class InternalParquetRecordReader<T> {
 
         try {
           currentValue = recordReader.read();
+          if (rowIndexWithinFileIterator != null) {
+            currentRowIndex = rowIndexWithinFileIterator.next();
+          }
         } catch (RecordMaterializationException e) {
           // this might throw, but it's fatal if it does.
           unmaterializableRecordCounter.incErrors(e);
@@ -265,4 +273,51 @@ class InternalParquetRecordReader<T> {
     return Collections.unmodifiableMap(setMultiMap);
   }
 
+  /**
+   * Returns the ROW_INDEX of the current row.
+   */
+  public long getCurrentRowIndex() {
+    if (current == 0L) {
+      throw new RowIndexFetchedWithoutProcessingRowException("row index can be fetched only after processing a row");
+    }
+    if (rowIndexWithinFileIterator == null) {
+      throw new RowIndexNotSupportedException("underlying page read store implementation" +
+        " doesn't support row index generation");
+    }
+    return currentRowIndex;
+  }
+
+  /**
+   * Resets the row index iterator based on the current processed row group.
+   */
+  private void resetRowIndexIterator(PageReadStore pages) {
+    Optional<Long> rowIndexOffsetForCurrentRowGroup = pages.getRowIndexOffset();
+    currentRowIndex = -1L;
+    if (rowIndexOffsetForCurrentRowGroup.isPresent()) {
+      final PrimitiveIterator.OfLong rowIndexWithinRowGroupIterator;
+      if (pages.getRowIndexes().isPresent()) {
+        rowIndexWithinRowGroupIterator = pages.getRowIndexes().get();
+      } else {
+        // If `pages.getRowIndexes()` is empty, this means column indexing has not triggered.
+        // So start generating row indexes for each row - starting from 0.
+        rowIndexWithinRowGroupIterator = LongStream.range(0, pages.getRowCount()).iterator();
+      }
+      // Adjust the row group offset in the `rowIndexWithinRowGroupIterator` iterator.
+      this.rowIndexWithinFileIterator = new PrimitiveIterator.OfLong() {
+        public long nextLong() {
+          return rowIndexOffsetForCurrentRowGroup.get() + rowIndexWithinRowGroupIterator.nextLong();
+        }
+
+        public boolean hasNext() {
+          return rowIndexWithinRowGroupIterator.hasNext();
+        }
+
+        public Long next() {
+          return rowIndexOffsetForCurrentRowGroup.get() + rowIndexWithinRowGroupIterator.next();
+        }
+      };
+    } else {
+      this.rowIndexWithinFileIterator = null;
+    }
+  }
 }
