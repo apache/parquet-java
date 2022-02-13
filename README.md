@@ -66,10 +66,8 @@ Parquet is a very active project, and new features are being added quickly. Here
 * Type-specific encoding
 * Hive integration (deprecated)
 * Pig integration
-* Cascading integration
 * Crunch integration
 * Apache Arrow integration
-* Apache Scrooge integration
 * Impala integration (non-nested)
 * Java Map/Reduce API
 * Native Avro support
@@ -92,7 +90,7 @@ Note that to use an Input or Output format, you need to implement a WriteSupport
 We've implemented this for 2 popular data formats to provide a clean migration path as well:
 
 ### Thrift
-Thrift integration is provided by the [parquet-thrift](https://github.com/apache/parquet-mr/tree/master/parquet-thrift) sub-project. If you are using Thrift through Scala, you may be using Twitter's [Scrooge](https://github.com/twitter/scrooge). If that's the case, not to worry -- we took care of the Scrooge/Apache Thrift glue for you in the [parquet-scrooge](https://github.com/apache/parquet-mr/tree/master/parquet-scrooge) sub-project.
+Thrift integration is provided by the [parquet-thrift](https://github.com/apache/parquet-mr/tree/master/parquet-thrift) sub-project.
 
 ### Avro
 Avro conversion is implemented via the [parquet-avro](https://github.com/apache/parquet-mr/tree/master/parquet-avro) sub-project.
