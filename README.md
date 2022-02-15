@@ -66,8 +66,10 @@ Parquet is a very active project, and new features are being added quickly. Here
 * Type-specific encoding
 * Hive integration (deprecated)
 * Pig integration
+* Cascading integration (deprecated)
 * Crunch integration
 * Apache Arrow integration
+* Scrooge integration (deprecated)
 * Impala integration (non-nested)
 * Java Map/Reduce API
 * Native Avro support
