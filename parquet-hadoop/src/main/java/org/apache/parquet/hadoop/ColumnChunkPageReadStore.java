@@ -251,7 +251,15 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
   private final long rowIndexOffset;
   private final RowRanges rowRanges;
 
-  public ColumnChunkPageReadStore(long rowCount, long rowIndexOffset) {
+  public ColumnChunkPageReadStore(long rowCount) {
+    this(rowCount, -1);
+  }
+
+  ColumnChunkPageReadStore(RowRanges rowRanges) {
+    this(rowRanges, -1);
+  }
+
+  ColumnChunkPageReadStore(long rowCount, long rowIndexOffset) {
     this.rowCount = rowCount;
     this.rowIndexOffset = rowIndexOffset;
     rowRanges = null;
@@ -270,7 +278,7 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
 
   @Override
   public Optional<Long> getRowIndexOffset() {
-    return Optional.of(rowIndexOffset);
+    return rowIndexOffset < 0 ? Optional.empty() : Optional.of(rowIndexOffset);
   }
 
   @Override

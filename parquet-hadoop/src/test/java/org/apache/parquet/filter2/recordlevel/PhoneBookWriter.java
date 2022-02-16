@@ -342,6 +342,10 @@ public class PhoneBookWriter {
     return users;
   }
 
+  public static List<User> readUsers(ParquetReader.Builder<Group> builder) throws IOException {
+    return readUsers(builder, false);
+  }
+
   /**
    * Returns a list of users from the underlying [[ParquetReader]] builder.
    * If `validateRowIndexes` is set to true, this method will also validate the ROW_INDEXes for the

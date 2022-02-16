@@ -1417,8 +1417,8 @@ public class ParquetMetadataConverter {
    * A container for [[FileMetaData]] and [[RowGroup]] to ROW_INDEX offset map.
    */
   private class FileMetaDataAndRowGroupOffsetInfo {
-    FileMetaData fileMetadata;
-    Map<RowGroup, Long> rowGroupToRowIndexOffsetMap;
+    final FileMetaData fileMetadata;
+    final Map<RowGroup, Long> rowGroupToRowIndexOffsetMap;
     public FileMetaDataAndRowGroupOffsetInfo(FileMetaData fileMetadata, Map<RowGroup, Long> rowGroupToRowIndexOffsetMap) {
       this.fileMetadata = fileMetadata;
       this.rowGroupToRowIndexOffsetMap = rowGroupToRowIndexOffsetMap;
