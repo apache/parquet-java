@@ -24,6 +24,7 @@ import static org.apache.parquet.hadoop.ParquetFileWriter.Mode.OVERWRITE;
 import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.util.*;
 
@@ -46,9 +47,18 @@ public class TestParquetReader {
 
   private static final Path FILE_V1 = createTempFile();
   private static final Path FILE_V2 = createTempFile();
-  private static final List<PhoneBookWriter.User> DATA = Collections.unmodifiableList(makeUsers(10000));
+  private static final Path STATIC_FILE_WITHOUT_COL_INDEXES = createPathFromCP("/test-file-with-no-column-indexes-1.parquet");
+  private static final List<PhoneBookWriter.User> DATA = Collections.unmodifiableList(makeUsers(1000));
 
   private final Path file;
+
+  private static Path createPathFromCP(String path) {
+    try {
+      return new Path(TestParquetReader.class.getResource(path).toURI());
+    } catch (URISyntaxException e) {
+      throw new RuntimeException(e);
+    }
+  }
 
   public TestParquetReader(Path file) {
     this.file = file;
@@ -58,7 +68,8 @@ public class TestParquetReader {
   public static Collection<Object[]> data() {
     Object[][] data = new Object[][] {
       { FILE_V1 },
-      { FILE_V2 } };
+      { FILE_V2 },
+      { STATIC_FILE_WITHOUT_COL_INDEXES } };
     return Arrays.asList(data);
   }
 
@@ -151,15 +162,15 @@ public class TestParquetReader {
   @Test
   public void testSimpleFiltering() throws Exception {
     Set<Long> idSet = new HashSet<>();
-    idSet.add(1234l);
-    idSet.add(5678l);
+    idSet.add(123l);
+    idSet.add(567l);
     // The readUsers also validates the rowIndex for each returned row.
     List<PhoneBookWriter.User> filteredUsers1 = readUsers(FilterCompat.get(in(longColumn("id"), idSet)), true, true);
     assertEquals(filteredUsers1.size(), 2L);
     List<PhoneBookWriter.User> filteredUsers2 = readUsers(FilterCompat.get(in(longColumn("id"), idSet)), true, false);
     assertEquals(filteredUsers2.size(), 2L);
     List<PhoneBookWriter.User> filteredUsers3 = readUsers(FilterCompat.get(in(longColumn("id"), idSet)), false, false);
-    assertEquals(filteredUsers3.size(), 10000L);
+    assertEquals(filteredUsers3.size(), 1000L);
   }
 
   @Test
@@ -170,4 +181,3 @@ public class TestParquetReader {
     assertEquals(DATA, readUsers(FilterCompat.NOOP, true, true));
   }
 }
-
