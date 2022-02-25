@@ -141,11 +141,11 @@ public class ParquetReader<T> implements Closeable {
   }
 
   /**
-   * Returns the ROW_INDEX of the last read row.
+   * Returns the row index of the last read row. If no row has been processed, returns -1.
    */
   public long getCurrentRowIndex() {
     if (reader == null) {
-      throw new RowIndexFetchedWithoutProcessingRowException("row index can be fetched only after processing a row");
+      return -1;
     }
     return reader.getCurrentRowIndex();
   }

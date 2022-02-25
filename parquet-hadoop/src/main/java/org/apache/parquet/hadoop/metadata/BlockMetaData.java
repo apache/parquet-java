@@ -33,7 +33,7 @@ public class BlockMetaData {
   private long totalByteSize;
   private String path;
   private int ordinal;
-  private long rowIndexOffset;
+  private long rowIndexOffset = -1;
 
   public BlockMetaData() {
   }
@@ -67,14 +67,13 @@ public class BlockMetaData {
   }
 
   /**
-   * @return the rowIndexOffset
+   * @return -1 if the rowIndexOffset for the {@link BlockMetaData} is unavailable else returns the actual rowIndexOffset
    */
   public long getRowIndexOffset() { return rowIndexOffset; }
 
   /**
    * @param rowIndexOffset the rowIndexOffset to set
    */
-
   public void setRowIndexOffset(long rowIndexOffset) {
     this.rowIndexOffset = rowIndexOffset;
   }
@@ -119,7 +118,11 @@ public class BlockMetaData {
   
   @Override
   public String toString() {
-    return "BlockMetaData{" + rowCount + ", " + totalByteSize + " " + columns + "}";
+    String rowIndexOffsetStr = "";
+    if (rowIndexOffset != -1) {
+      rowIndexOffsetStr = ", rowIndexOffset = " + rowIndexOffset;
+    }
+    return "BlockMetaData{" + rowCount + ", " + totalByteSize + rowIndexOffsetStr + " " + columns + "}";
   }
 
   /**

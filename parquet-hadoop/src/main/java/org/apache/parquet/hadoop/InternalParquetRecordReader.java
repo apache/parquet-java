@@ -71,7 +71,7 @@ class InternalParquetRecordReader<T> {
   private long current = 0;
   private int currentBlock = -1;
   private ParquetFileReader reader;
-  private long currentRowIdx = -1L;
+  private long currentRowIdx = -1;
   private PrimitiveIterator.OfLong rowIdxInFileItr;
   private org.apache.parquet.io.RecordReader<T> recordReader;
   private boolean strictTypeChecking;
@@ -232,8 +232,10 @@ class InternalParquetRecordReader<T> {
 
         try {
           currentValue = recordReader.read();
-          if (rowIdxInFileItr != null) {
+          if (rowIdxInFileItr != null && rowIdxInFileItr.hasNext()) {
             currentRowIdx = rowIdxInFileItr.next();
+          } else {
+            currentRowIdx = -1;
           }
         } catch (RecordMaterializationException e) {
           // this might throw, but it's fatal if it does.
@@ -274,15 +276,12 @@ class InternalParquetRecordReader<T> {
   }
 
   /**
-   * Returns the ROW_INDEX of the current row.
+   * Returns the row index of the current row. If no row has been processed or if the
+   * row index information is unavailable from the underlying @{@link PageReadStore}, returns -1.
    */
   public long getCurrentRowIndex() {
-    if (current == 0L) {
-      throw new RowIndexFetchedWithoutProcessingRowException("row index can be fetched only after processing a row");
-    }
-    if (rowIdxInFileItr == null) {
-      throw new RowIndexNotSupportedException("underlying page read store implementation" +
-        " doesn't support row index generation");
+    if (current == 0L || rowIdxInFileItr == null) {
+      return -1;
     }
     return currentRowIdx;
   }
@@ -292,14 +291,12 @@ class InternalParquetRecordReader<T> {
    */
   private void resetRowIndexIterator(PageReadStore pages) {
     Optional<Long> rowGroupRowIdxOffset = pages.getRowIndexOffset();
-    currentRowIdx = -1L;
+    currentRowIdx = -1;
     if (rowGroupRowIdxOffset.isPresent()) {
       final PrimitiveIterator.OfLong rowIdxInRowGroupItr;
       if (pages.getRowIndexes().isPresent()) {
         rowIdxInRowGroupItr = pages.getRowIndexes().get();
       } else {
-        // If `pages.getRowIndexes()` is empty, this means column indexing has not triggered.
-        // So start generating row indexes for each row - starting from 0.
         rowIdxInRowGroupItr = LongStream.range(0, pages.getRowCount()).iterator();
       }
       // Adjust the row group offset in the `rowIndexWithinRowGroupIterator` iterator.

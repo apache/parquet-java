@@ -1509,7 +1509,7 @@ public class ParquetMetadataConverter {
 
   public ParquetMetadata fromParquetMetadata(FileMetaData parquetMetadata,
       InternalFileDecryptor fileDecryptor, boolean encryptedFooter) throws IOException {
-    return fromParquetMetadata(parquetMetadata, fileDecryptor, encryptedFooter, generateRowGroupOffsets(parquetMetadata));
+    return fromParquetMetadata(parquetMetadata, fileDecryptor, encryptedFooter, new HashMap<RowGroup, Long>());
   }
 
   public ParquetMetadata fromParquetMetadata(FileMetaData parquetMetadata,
@@ -1525,7 +1525,9 @@ public class ParquetMetadataConverter {
         BlockMetaData blockMetaData = new BlockMetaData();
         blockMetaData.setRowCount(rowGroup.getNum_rows());
         blockMetaData.setTotalByteSize(rowGroup.getTotal_byte_size());
-        blockMetaData.setRowIndexOffset(rowGroupToRowIndexOffsetMap.get(rowGroup));
+        if (rowGroupToRowIndexOffsetMap.containsKey(rowGroup)) {
+          blockMetaData.setRowIndexOffset(rowGroupToRowIndexOffsetMap.get(rowGroup));
+        }
         // not set in legacy files
         if (rowGroup.isSetOrdinal()) {
           blockMetaData.setOrdinal(rowGroup.getOrdinal());

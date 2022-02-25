@@ -139,8 +139,7 @@ public class TestParquetReader {
   public void testCurrentRowIndex() throws Exception {
     ParquetReader<Group> reader = PhoneBookWriter.createReader(file, FilterCompat.NOOP);
     // Fetch row index without processing any row.
-    TestUtils.assertThrows("row index can be fetched only after processing a row",
-      RowIndexFetchedWithoutProcessingRowException.class, reader::getCurrentRowIndex);
+    assertEquals(reader.getCurrentRowIndex(), -1);
     reader.read();
     assertEquals(reader.getCurrentRowIndex(), 0);
     // calling the same API again and again should return same result.
@@ -155,8 +154,7 @@ public class TestParquetReader {
       expectedCurrentRowIndex++;
     }
     // reader.read() returned null and so reader doesn't have any more rows.
-    TestUtils.assertThrows("row index can be fetched only after processing a row",
-      RowIndexFetchedWithoutProcessingRowException.class, reader::getCurrentRowIndex);
+    assertEquals(reader.getCurrentRowIndex(), -1);
   }
 
   @Test
