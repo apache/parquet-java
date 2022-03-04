@@ -77,8 +77,6 @@
     <japicmp.version>0.14.2</japicmp.version>
     <shade.prefix>shaded.parquet</shade.prefix>
     <hadoop.version>2.10.1</hadoop.version>
-    <cascading.version>2.7.1</cascading.version>
-    <cascading3.version>3.1.2</cascading3.version>
     <parquet.format.version>2.9.0</parquet.format.version>
     <previous.version>1.12.0</previous.version>
     <thrift.executable>thrift</thrift.executable>
@@ -461,7 +459,6 @@
             <exclude>**/*.parquet</exclude>
             <exclude>**/*.avro</exclude>
             <exclude>**/*.json</exclude>
-            <exclude>**/names.txt</exclude> <!-- parquet-cascading test data -->
             <exclude>**/*.avsc</exclude>
             <exclude>**/*.iml</exclude>
             <exclude>**/*.log</exclude>
