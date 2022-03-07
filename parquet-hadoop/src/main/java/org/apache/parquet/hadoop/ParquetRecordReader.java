@@ -208,7 +208,7 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
   }
 
   /**
-   * Returns the ROW_INDEX of the current row.
+   * @return the row index of the current row. If no row has been processed, returns -1.
    */
   public long getCurrentRowIndex() throws IOException {
     return internalReader.getCurrentRowIndex();
