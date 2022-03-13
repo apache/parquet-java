@@ -291,30 +291,31 @@ class InternalParquetRecordReader<T> {
    */
   private void resetRowIndexIterator(PageReadStore pages) {
     Optional<Long> rowGroupRowIdxOffset = pages.getRowIndexOffset();
-    currentRowIdx = -1;
-    if (rowGroupRowIdxOffset.isPresent()) {
-      final PrimitiveIterator.OfLong rowIdxInRowGroupItr;
-      if (pages.getRowIndexes().isPresent()) {
-        rowIdxInRowGroupItr = pages.getRowIndexes().get();
-      } else {
-        rowIdxInRowGroupItr = LongStream.range(0, pages.getRowCount()).iterator();
-      }
-      // Adjust the row group offset in the `rowIndexWithinRowGroupIterator` iterator.
-      this.rowIdxInFileItr = new PrimitiveIterator.OfLong() {
-        public long nextLong() {
-          return rowGroupRowIdxOffset.get() + rowIdxInRowGroupItr.nextLong();
-        }
-
-        public boolean hasNext() {
-          return rowIdxInRowGroupItr.hasNext();
-        }
-
-        public Long next() {
-          return rowGroupRowIdxOffset.get() + rowIdxInRowGroupItr.next();
-        }
-      };
-    } else {
+    if (rowGroupRowIdxOffset.isEmpty()) {
       this.rowIdxInFileItr = null;
+      return;
     }
+
+    currentRowIdx = -1;
+    final PrimitiveIterator.OfLong rowIdxInRowGroupItr;
+    if (pages.getRowIndexes().isPresent()) {
+      rowIdxInRowGroupItr = pages.getRowIndexes().get();
+    } else {
+      rowIdxInRowGroupItr = LongStream.range(0, pages.getRowCount()).iterator();
+    }
+    // Adjust the row group offset in the `rowIndexWithinRowGroupIterator` iterator.
+    this.rowIdxInFileItr = new PrimitiveIterator.OfLong() {
+      public long nextLong() {
+        return rowGroupRowIdxOffset.get() + rowIdxInRowGroupItr.nextLong();
+      }
+
+      public boolean hasNext() {
+        return rowIdxInRowGroupItr.hasNext();
+      }
+
+      public Long next() {
+        return rowGroupRowIdxOffset.get() + rowIdxInRowGroupItr.next();
+      }
+    };
   }
 }
