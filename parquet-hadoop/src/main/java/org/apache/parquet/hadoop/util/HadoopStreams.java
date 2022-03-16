@@ -22,11 +22,12 @@ package org.apache.parquet.hadoop.util;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.parquet.io.ParquetDecodingException;
-import org.apache.parquet.io.SeekableInputStream;
 import org.apache.parquet.io.PositionOutputStream;
+import org.apache.parquet.io.SeekableInputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.InputStream;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Objects;
@@ -51,7 +52,7 @@ public class HadoopStreams {
   public static SeekableInputStream wrap(FSDataInputStream stream) {
     Objects.requireNonNull(stream, "Cannot wrap a null input stream");
     if (byteBufferReadableClass != null && h2SeekableConstructor != null &&
-        byteBufferReadableClass.isInstance(stream.getWrappedStream())) {
+        isWrappedStreamByteBufferReadable(stream)) {
       try {
         return h2SeekableConstructor.newInstance(stream);
       } catch (InstantiationException | IllegalAccessException e) {
@@ -64,6 +65,19 @@ public class HadoopStreams {
     } else {
       return new H1SeekableInputStream(stream);
     }
+  }
+
+  private static boolean isWrappedStreamByteBufferReadable(FSDataInputStream stream) {
+    InputStream wrapped = stream.getWrappedStream();
+    if (wrapped == stream) {
+      throw new ParquetDecodingException("Illegal FSDataInputStream as wrapped itself");
+    }
+    if (wrapped instanceof FSDataInputStream) {
+      LOG.debug("Checking on wrapped stream {} of {} whether is ByteBufferReadable", wrapped, stream);
+      return isWrappedStreamByteBufferReadable(((FSDataInputStream) wrapped));
+    }
+    //noinspection ConstantConditions
+    return byteBufferReadableClass.isInstance(wrapped);
   }
 
   private static Class<?> getReadableClass() {
