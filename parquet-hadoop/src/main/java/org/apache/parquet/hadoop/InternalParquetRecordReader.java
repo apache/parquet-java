@@ -291,7 +291,7 @@ class InternalParquetRecordReader<T> {
    */
   private void resetRowIndexIterator(PageReadStore pages) {
     Optional<Long> rowGroupRowIdxOffset = pages.getRowIndexOffset();
-    if (rowGroupRowIdxOffset.isEmpty()) {
+    if (!rowGroupRowIdxOffset.isPresent()) {
       this.rowIdxInFileItr = null;
       return;
     }
