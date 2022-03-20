@@ -200,7 +200,7 @@ public class TestBloomFiltering {
       .useStatsFilter(useOtherFiltering)
       .useRecordFilter(useOtherFiltering)
       .useBloomFilter(useBloomFilter)
-      .useColumnIndexFilter(useOtherFiltering));
+      .useColumnIndexFilter(useOtherFiltering), true);
   }
 
   // Assumes that both lists are in the same order

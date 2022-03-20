@@ -248,21 +248,37 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
 
   private final Map<ColumnDescriptor, ColumnChunkPageReader> readers = new HashMap<ColumnDescriptor, ColumnChunkPageReader>();
   private final long rowCount;
+  private final long rowIndexOffset;
   private final RowRanges rowRanges;
 
   public ColumnChunkPageReadStore(long rowCount) {
-    this.rowCount = rowCount;
-    rowRanges = null;
+    this(rowCount, -1);
   }
 
   ColumnChunkPageReadStore(RowRanges rowRanges) {
+    this(rowRanges, -1);
+  }
+
+  ColumnChunkPageReadStore(long rowCount, long rowIndexOffset) {
+    this.rowCount = rowCount;
+    this.rowIndexOffset = rowIndexOffset;
+    rowRanges = null;
+  }
+
+  ColumnChunkPageReadStore(RowRanges rowRanges, long rowIndexOffset) {
     this.rowRanges = rowRanges;
+    this.rowIndexOffset = rowIndexOffset;
     rowCount = rowRanges.rowCount();
   }
 
   @Override
   public long getRowCount() {
     return rowCount;
+  }
+
+  @Override
+  public Optional<Long> getRowIndexOffset() {
+    return rowIndexOffset < 0 ? Optional.empty() : Optional.of(rowIndexOffset);
   }
 
   @Override

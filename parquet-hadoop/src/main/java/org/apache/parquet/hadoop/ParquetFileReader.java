@@ -929,7 +929,7 @@ public class ParquetFileReader implements Closeable {
     if (block.getRowCount() == 0) {
       throw new RuntimeException("Illegal row group of 0 rows");
     }
-    ColumnChunkPageReadStore rowGroup = new ColumnChunkPageReadStore(block.getRowCount());
+    ColumnChunkPageReadStore rowGroup = new ColumnChunkPageReadStore(block.getRowCount(), block.getRowIndexOffset());
     // prepare the list of consecutive parts to read them in one scan
     List<ConsecutivePartList> allParts = new ArrayList<ConsecutivePartList>();
     ConsecutivePartList currentParts = null;
@@ -1044,7 +1044,7 @@ public class ParquetFileReader implements Closeable {
   }
 
   private ColumnChunkPageReadStore internalReadFilteredRowGroup(BlockMetaData block, RowRanges rowRanges, ColumnIndexStore ciStore) throws IOException {
-    ColumnChunkPageReadStore rowGroup = new ColumnChunkPageReadStore(rowRanges);
+    ColumnChunkPageReadStore rowGroup = new ColumnChunkPageReadStore(rowRanges, block.getRowIndexOffset());
     // prepare the list of consecutive parts to read them in one scan
     ChunkListBuilder builder = new ChunkListBuilder(block.getRowCount());
     List<ConsecutivePartList> allParts = new ArrayList<>();

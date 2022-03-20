@@ -140,6 +140,16 @@ public class ParquetReader<T> implements Closeable {
     }
   }
 
+  /**
+   * @return the row index of the last read row. If no row has been processed, returns -1.
+   */
+  public long getCurrentRowIndex() {
+    if (reader == null) {
+      return -1;
+    }
+    return reader.getCurrentRowIndex();
+  }
+
   private void initReader() throws IOException {
     if (reader != null) {
       reader.close();

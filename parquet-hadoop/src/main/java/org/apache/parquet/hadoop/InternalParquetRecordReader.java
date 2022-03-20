@@ -22,8 +22,10 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
+import java.util.Optional;
+import java.util.PrimitiveIterator;
 import java.util.Set;
+import java.util.stream.LongStream;
 
 import org.apache.hadoop.conf.Configuration;
 
@@ -69,6 +71,8 @@ class InternalParquetRecordReader<T> {
   private long current = 0;
   private int currentBlock = -1;
   private ParquetFileReader reader;
+  private long currentRowIdx = -1;
+  private PrimitiveIterator.OfLong rowIdxInFileItr;
   private org.apache.parquet.io.RecordReader<T> recordReader;
   private boolean strictTypeChecking;
 
@@ -127,6 +131,7 @@ class InternalParquetRecordReader<T> {
       if (pages == null) {
         throw new IOException("expecting more rows but reached last block. Read " + current + " out of " + total);
       }
+      resetRowIndexIterator(pages);
       long timeSpentReading = System.currentTimeMillis() - t0;
       totalTimeSpentReadingBytes += timeSpentReading;
       BenchmarkCounter.incrementTime(timeSpentReading);
@@ -227,6 +232,11 @@ class InternalParquetRecordReader<T> {
 
         try {
           currentValue = recordReader.read();
+          if (rowIdxInFileItr != null && rowIdxInFileItr.hasNext()) {
+            currentRowIdx = rowIdxInFileItr.next();
+          } else {
+            currentRowIdx = -1;
+          }
         } catch (RecordMaterializationException e) {
           // this might throw, but it's fatal if it does.
           unmaterializableRecordCounter.incErrors(e);
@@ -265,4 +275,47 @@ class InternalParquetRecordReader<T> {
     return Collections.unmodifiableMap(setMultiMap);
   }
 
+  /**
+   * Returns the row index of the current row. If no row has been processed or if the
+   * row index information is unavailable from the underlying @{@link PageReadStore}, returns -1.
+   */
+  public long getCurrentRowIndex() {
+    if (current == 0L || rowIdxInFileItr == null) {
+      return -1;
+    }
+    return currentRowIdx;
+  }
+
+  /**
+   * Resets the row index iterator based on the current processed row group.
+   */
+  private void resetRowIndexIterator(PageReadStore pages) {
+    Optional<Long> rowGroupRowIdxOffset = pages.getRowIndexOffset();
+    if (!rowGroupRowIdxOffset.isPresent()) {
+      this.rowIdxInFileItr = null;
+      return;
+    }
+
+    currentRowIdx = -1;
+    final PrimitiveIterator.OfLong rowIdxInRowGroupItr;
+    if (pages.getRowIndexes().isPresent()) {
+      rowIdxInRowGroupItr = pages.getRowIndexes().get();
+    } else {
+      rowIdxInRowGroupItr = LongStream.range(0, pages.getRowCount()).iterator();
+    }
+    // Adjust the row group offset in the `rowIndexWithinRowGroupIterator` iterator.
+    this.rowIdxInFileItr = new PrimitiveIterator.OfLong() {
+      public long nextLong() {
+        return rowGroupRowIdxOffset.get() + rowIdxInRowGroupItr.nextLong();
+      }
+
+      public boolean hasNext() {
+        return rowIdxInRowGroupItr.hasNext();
+      }
+
+      public Long next() {
+        return rowGroupRowIdxOffset.get() + rowIdxInRowGroupItr.next();
+      }
+    };
+  }
 }

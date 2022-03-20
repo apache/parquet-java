@@ -248,7 +248,7 @@ public class TestColumnIndexFiltering {
         .useDictionaryFilter(useOtherFiltering)
         .useStatsFilter(useOtherFiltering)
         .useRecordFilter(useOtherFiltering)
-        .useColumnIndexFilter(useColumnIndexFilter));
+        .useColumnIndexFilter(useColumnIndexFilter), true);
   }
 
   private List<User> readUsersWithProjection(Filter filter, MessageType schema, boolean useOtherFiltering,
@@ -261,7 +261,7 @@ public class TestColumnIndexFiltering {
         .useStatsFilter(useOtherFiltering)
         .useRecordFilter(useOtherFiltering)
         .useColumnIndexFilter(useColumnIndexFilter)
-        .set(ReadSupport.PARQUET_READ_SCHEMA, schema.toString()));
+        .set(ReadSupport.PARQUET_READ_SCHEMA, schema.toString()), true);
   }
 
   private FileDecryptionProperties getFileDecryptionProperties() {
