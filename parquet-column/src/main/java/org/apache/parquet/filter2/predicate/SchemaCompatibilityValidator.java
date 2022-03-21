@@ -174,8 +174,8 @@ public class SchemaCompatibilityValidator implements FilterPredicate.Visitor<Voi
 
   private <T extends Comparable<T>> void validateColumn(Column<T> column) {
     ColumnPath path = column.getColumnPath();
-    HashSet<Type.ID> ids = new HashSet<>();
     if (path == null) {
+      HashSet<Type.ID> ids = new HashSet<>();
       Type.ID id = column.getColumnId();
       List<ColumnDescriptor> columnDescriptors = new ArrayList<>(columnsAccordingToSchema.values());
       for (ColumnDescriptor columnDescriptor : columnDescriptors) {

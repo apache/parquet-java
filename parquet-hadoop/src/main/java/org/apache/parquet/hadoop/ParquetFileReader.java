@@ -908,15 +908,20 @@ public class ParquetFileReader implements Closeable {
     return unique;
   }
 
-  public MessageType setRequestedSchema(MessageType projection) {
+  public MessageType setRequestedSchema(MessageType projection, boolean useColumnId) {
     paths.clear();
-    HashSet<Type.ID> ids = new HashSet<>();
-    boolean fileSchemaIdUnique = uniqueId(fileMetaData.getSchema(), ids);
-    ids = new HashSet<>();
-    boolean projectionSchemaIdUnique = uniqueId(projection, ids);
     MessageType schema = null;
-    // if ids are unique, use id resolution
-    if (fileSchemaIdUnique && projectionSchemaIdUnique) {
+    if (useColumnId) {
+      HashSet<Type.ID> ids = new HashSet<>();
+      boolean fileSchemaIdUnique = uniqueId(fileMetaData.getSchema(), ids);
+      if (!fileSchemaIdUnique) {
+        throw new RuntimeException("can't use column id resolution because there are duplicate column ids.");
+      }
+      ids = new HashSet<>();
+      boolean projectionSchemaIdUnique = uniqueId(projection, ids);
+      if (!projectionSchemaIdUnique) {
+        throw new RuntimeException("can't use column id resolution because there are duplicate column ids.");
+      }
       schema = resetColumnNameBasedOnId(projection);
     } else {
       schema = projection;

@@ -490,8 +490,8 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     WriteContext fileWriteContext = writeSupport.init(conf);
 
     MessageType schema = fileWriteContext.getSchema();
-    HashSet<Type.ID> ids = new HashSet<>();
     if (props.getColumnIdResolution()) {
+      HashSet<Type.ID> ids = new HashSet<>();
       checkDuplicateId(schema, ids);
     }
 
