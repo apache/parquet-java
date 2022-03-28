@@ -19,6 +19,8 @@
 
 package org.apache.parquet.bytes;
 
+import org.apache.parquet.ShouldNeverHappenException;
+
 import java.io.EOFException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -48,6 +50,8 @@ class MultiBufferInputStream extends ByteBufferInputStream {
     long totalLen = 0;
     for (ByteBuffer buffer : buffers) {
       totalLen += buffer.remaining();
+      // Make sure all of the buffers are in little endian mode
+      buffer.order(java.nio.ByteOrder.LITTLE_ENDIAN);
     }
     this.length = totalLen;
 
@@ -87,6 +91,14 @@ class MultiBufferInputStream extends ByteBufferInputStream {
     }
 
     return bytesSkipped;
+  }
+
+  @Override
+  public void skipFully(long n) throws IOException {
+    if (current == null || n > length) {
+      throw new EOFException();
+    }
+    skip(n);
   }
 
   @Override
@@ -193,6 +205,10 @@ class MultiBufferInputStream extends ByteBufferInputStream {
     return buffers;
   }
 
+  public ByteBufferInputStream sliceStream(long length) throws EOFException {
+    return ByteBufferInputStream.wrap(sliceBuffers(length));
+  }
+
   @Override
   public List<ByteBuffer> remainingBuffers() {
     if (position >= length) {
@@ -203,9 +219,20 @@ class MultiBufferInputStream extends ByteBufferInputStream {
       return sliceBuffers(length - position);
     } catch (EOFException e) {
       throw new RuntimeException(
-          "[Parquet bug] Stream is bad: incorrect bytes remaining " +
-              (length - position));
+        "[Parquet bug] Stream is bad: incorrect bytes remaining " +
+          (length - position));
     }
+  }
+
+  public ByteBufferInputStream remainingStream() {
+    return ByteBufferInputStream.wrap(remainingBuffers());
+  }
+
+  @Override
+  public ByteBufferInputStream duplicate() {
+    // Nothing ever uses this, and it's complicated to make a duplicate that doesn't cause side effects
+    // for the original. If this is ever necessary, we can go through the effort of adding this at that time.
+    throw new UnsupportedOperationException();
   }
 
   @Override
@@ -238,8 +265,30 @@ class MultiBufferInputStream extends ByteBufferInputStream {
   }
 
   @Override
-  public int read(byte[] bytes) {
-    return read(bytes, 0, bytes.length);
+  public void readFully(byte[] bytes, int off, int len) throws IOException {
+    if (len <= 0) {
+      if (len < 0) {
+        throw new IndexOutOfBoundsException("Read length must be greater than 0: " + len);
+      }
+      return;
+    }
+
+    if (current == null || len > length) {
+      throw new EOFException();
+    }
+
+    int bytesRead = 0;
+    while (bytesRead < len) {
+      if (current.remaining() > 0) {
+        int bytesToRead = Math.min(len - bytesRead, current.remaining());
+        current.get(bytes, off + bytesRead, bytesToRead);
+        bytesRead += bytesToRead;
+        this.position += bytesToRead;
+      } else if (!nextBuffer()) {
+        // there are no more buffers
+        throw new ShouldNeverHappenException();
+      }
+    }
   }
 
   @Override
@@ -248,13 +297,17 @@ class MultiBufferInputStream extends ByteBufferInputStream {
       throw new EOFException();
     }
 
+    this.position++;
     while (true) {
-      if (current.remaining() > 0) {
-        this.position += 1;
-        return current.get() & 0xFF; // as unsigned
-      } else if (!nextBuffer()) {
-        // there are no more buffers
-        throw new EOFException();
+      try {
+        return current.get() & 255;
+      } catch (Exception e) {
+        // It has been measured to be faster to rely on ByteBuffer throwing BufferUnderflowException to determine
+        // when we're run out of bytes in the current buffer.
+        if (!nextBuffer()) {
+          // there are no more buffers
+          throw new EOFException();
+        }
       }
     }
   }
@@ -377,6 +430,119 @@ class MultiBufferInputStream extends ByteBufferInputStream {
         first.remove();
       }
       second.remove();
+    }
+  }
+
+  @Override
+  public byte readByte() throws IOException {
+    return (byte)readUnsignedByte();
+  }
+
+  @Override
+  public int readUnsignedByte() throws IOException {
+    if (current == null) {
+      throw new EOFException();
+    }
+
+    this.position++;
+    while (true) {
+      try {
+        return current.get() & 255;
+      } catch (Exception e) {
+        if (!nextBuffer()) {
+          // there are no more buffers
+          throw new EOFException();
+        }
+      }
+    }
+  }
+
+  /**
+   * When reading a short will cross a buffer boundary, read one byte at a time.
+   * @return a short value
+   * @throws IOException
+   */
+  private int getShortSlow() throws IOException {
+    int c0 = readUnsignedByte();
+    int c1 = readUnsignedByte();
+    return ((c0 << 0) | (c1 << 8));
+  }
+
+  public short readShort() throws IOException {
+    if (current == null) {
+      throw new EOFException();
+    }
+    if (current.remaining() >= 2) {
+      // If the whole short can be read from the current buffer, use intrinsics
+      this.position += 2;
+      return current.getShort();
+    } else {
+      // Otherwise get the short one byte at a time
+      return (short)getShortSlow();
+    }
+  }
+
+  public int readUnsignedShort() throws IOException {
+    return readShort() & 65535;
+  }
+
+  /**
+   * When reading an int will cross a buffer boundary, read one byte at a time.
+   * @return an int value
+   * @throws IOException
+   */
+  private int getIntSlow() throws IOException {
+    int c0 = readUnsignedByte();
+    int c1 = readUnsignedByte();
+    int c2 = readUnsignedByte();
+    int c3 = readUnsignedByte();
+    return ((c0 << 0) | (c1 << 8)) | ((c2 << 16) | (c3 << 24));
+  }
+
+  @Override
+  public int readInt() throws IOException {
+    if (current == null) {
+      throw new EOFException();
+    }
+    if (current.remaining() >= 4) {
+      // If the whole short can be read from the current buffer, use intrinsics
+      this.position += 4;
+      return current.getInt();
+    } else {
+      // Otherwise get the int one byte at a time
+      return getIntSlow();
+    }
+  }
+
+  /**
+   * When reading a long will cross a buffer boundary, read one byte at a time.
+   * @return a long value
+   * @throws IOException
+   */
+  private long getLongSlow() throws IOException {
+    long ch0 = readUnsignedByte() << 0;
+    long ch1 = readUnsignedByte() << 8;
+    long ch2 = readUnsignedByte() << 16;
+    long ch3 = readUnsignedByte() << 24;
+    long ch4 = readUnsignedByte() << 32;
+    long ch5 = readUnsignedByte() << 40;
+    long ch6 = readUnsignedByte() << 48;
+    long ch7 = readUnsignedByte() << 56;
+    return ((ch0 | ch1) | (ch2 | ch3)) | ((ch4 | ch5) | (ch6 | ch7));
+  }
+
+  @Override
+  public long readLong() throws IOException {
+    if (current == null) {
+      throw new EOFException();
+    }
+    if (current.remaining() >= 8) {
+      // If the whole short can be read from the current buffer, use intrinsics
+      this.position += 8;
+      return current.getLong();
+    } else {
+      // Otherwise get the long one byte at a time
+      return getLongSlow();
     }
   }
 }

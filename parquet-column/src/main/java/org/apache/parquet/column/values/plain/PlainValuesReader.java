@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -33,12 +33,17 @@ import org.slf4j.LoggerFactory;
 abstract public class PlainValuesReader extends ValuesReader {
   private static final Logger LOG = LoggerFactory.getLogger(PlainValuesReader.class);
 
+  // LittleEndianDataInputStream functionality is merged into ByteBufferInputStream
+  @Deprecated
   protected LittleEndianDataInputStream in;
+
+  protected ByteBufferInputStream in2;
 
   @Override
   public void initFromPage(int valueCount, ByteBufferInputStream stream) throws IOException {
     LOG.debug("init from page at offset {} for length {}", stream.position(), stream.available());
-    this.in = new LittleEndianDataInputStream(stream.remainingStream());
+    // No need for "remainingStream()" since the caller is done with the stream
+    this.in2 = stream;
   }
 
   @Override
@@ -47,10 +52,7 @@ abstract public class PlainValuesReader extends ValuesReader {
   }
 
   void skipBytesFully(int n) throws IOException {
-    int skipped = 0;
-    while (skipped < n) {
-      skipped += in.skipBytes(n - skipped);
-    }
+    in2.skipFully(n);
   }
 
   public static class DoublePlainValuesReader extends PlainValuesReader {
@@ -67,7 +69,7 @@ abstract public class PlainValuesReader extends ValuesReader {
     @Override
     public double readDouble() {
       try {
-        return in.readDouble();
+        return in2.readDouble();
       } catch (IOException e) {
         throw new ParquetDecodingException("could not read double", e);
       }
@@ -88,7 +90,7 @@ abstract public class PlainValuesReader extends ValuesReader {
     @Override
     public float readFloat() {
       try {
-        return in.readFloat();
+        return in2.readFloat();
       } catch (IOException e) {
         throw new ParquetDecodingException("could not read float", e);
       }
@@ -100,7 +102,7 @@ abstract public class PlainValuesReader extends ValuesReader {
     @Override
     public void skip(int n) {
       try {
-        in.skipBytes(n * 4);
+        skipBytesFully(n * 4);
       } catch (IOException e) {
         throw new ParquetDecodingException("could not skip " + n + " ints", e);
       }
@@ -109,7 +111,7 @@ abstract public class PlainValuesReader extends ValuesReader {
     @Override
     public int readInteger() {
       try {
-        return in.readInt();
+        return in2.readInt();
       } catch (IOException e) {
         throw new ParquetDecodingException("could not read int", e);
       }
@@ -121,7 +123,7 @@ abstract public class PlainValuesReader extends ValuesReader {
     @Override
     public void skip(int n) {
       try {
-        in.skipBytes(n * 8);
+        skipBytesFully(n * 8);
       } catch (IOException e) {
         throw new ParquetDecodingException("could not skip " + n + " longs", e);
       }
@@ -130,7 +132,7 @@ abstract public class PlainValuesReader extends ValuesReader {
     @Override
     public long readLong() {
       try {
-        return in.readLong();
+        return in2.readLong();
       } catch (IOException e) {
         throw new ParquetDecodingException("could not read long", e);
       }

@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -20,6 +20,7 @@ package org.apache.parquet.column.values.bitpacking;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 
 import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.bytes.BytesUtils;
@@ -38,31 +39,37 @@ public class ByteBitPackingValuesReader extends ValuesReader {
   private final int[] decoded = new int[VALUES_AT_A_TIME];
   private int decodedPosition = VALUES_AT_A_TIME - 1;
   private ByteBufferInputStream in;
+  byte[] tempEncode;
 
   public ByteBitPackingValuesReader(int bound, Packer packer) {
     this.bitWidth = BytesUtils.getWidthFromMaxInt(bound);
     this.packer = packer.newBytePacker(bitWidth);
+    // Keep reusing this buffer to eliminate object creation in the critical path
+    tempEncode = new byte[bitWidth];
+  }
+
+  private void readMore() {
+    try {
+      // This eliminates the use of slice(), which is slow because of object creation in the critical path.
+      int avail = in.available();
+      if (avail < bitWidth) {
+        in.read(tempEncode, 0, avail);
+        Arrays.fill(tempEncode, avail, bitWidth, (byte)0);
+      } else {
+        in.read(tempEncode, 0, bitWidth);
+      }
+      packer.unpack8Values(tempEncode, 0, decoded, 0);
+    } catch (IOException e) {
+      throw new ParquetDecodingException("Failed to read packed values", e);
+    }
+    decodedPosition = 0;
   }
 
   @Override
   public int readInteger() {
     ++ decodedPosition;
     if (decodedPosition == decoded.length) {
-      try {
-        if (in.available() < bitWidth) {
-          // unpack8Values needs at least bitWidth bytes to read from,
-          // We have to fill in 0 byte at the end of encoded bytes.
-          byte[] tempEncode = new byte[bitWidth];
-          in.read(tempEncode, 0, in.available());
-          packer.unpack8Values(tempEncode, 0, decoded, 0);
-        } else {
-          ByteBuffer encoded = in.slice(bitWidth);
-          packer.unpack8Values(encoded, encoded.position(), decoded, 0);
-        }
-      } catch (IOException e) {
-        throw new ParquetDecodingException("Failed to read packed values", e);
-      }
-      decodedPosition = 0;
+      readMore();
     }
     return decoded[decodedPosition];
   }
