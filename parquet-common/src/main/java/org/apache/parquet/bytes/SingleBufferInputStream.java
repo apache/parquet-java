@@ -59,6 +59,8 @@ class SingleBufferInputStream extends ByteBufferInputStream {
   SingleBufferInputStream(byte[] inBuf, int start, int length) {
     this.buffer = ByteBuffer.wrap(inBuf, start, length);
     this.buffer.order(java.nio.ByteOrder.LITTLE_ENDIAN);
+    // This seems to be consistent with HeapByteBuffer.wrap(), which leaves
+    // the internal "offset" at zero and sets the starting position at start.
     this.startPosition = 0;
   }
 
@@ -298,7 +300,7 @@ class SingleBufferInputStream extends ByteBufferInputStream {
   }
 
   @Override
-  public final long readLong() throws IOException {
+  public long readLong() throws IOException {
     try {
       return buffer.getLong();
     } catch (Exception e) {

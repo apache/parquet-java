@@ -50,8 +50,6 @@ class MultiBufferInputStream extends ByteBufferInputStream {
     long totalLen = 0;
     for (ByteBuffer buffer : buffers) {
       totalLen += buffer.remaining();
-      // Make sure all of the buffers are in little endian mode
-      buffer.order(java.nio.ByteOrder.LITTLE_ENDIAN);
     }
     this.length = totalLen;
 
@@ -366,6 +364,8 @@ class MultiBufferInputStream extends ByteBufferInputStream {
     }
 
     this.current = iterator.next().duplicate();
+    // Have to put the buffer in little endian mode, because it defaults to big endian
+    this.current.order(java.nio.ByteOrder.LITTLE_ENDIAN);
 
     if (mark >= 0) {
       if (position < markLimit) {
@@ -465,7 +465,7 @@ class MultiBufferInputStream extends ByteBufferInputStream {
   private int getShortSlow() throws IOException {
     int c0 = readUnsignedByte();
     int c1 = readUnsignedByte();
-    return ((c0 << 0) | (c1 << 8));
+    return ((c0 << 0) + (c1 << 8));
   }
 
   public short readShort() throws IOException {
@@ -483,7 +483,7 @@ class MultiBufferInputStream extends ByteBufferInputStream {
   }
 
   public int readUnsignedShort() throws IOException {
-    return readShort() & 65535;
+    return readShort() & 0xffff;
   }
 
   /**
@@ -496,7 +496,7 @@ class MultiBufferInputStream extends ByteBufferInputStream {
     int c1 = readUnsignedByte();
     int c2 = readUnsignedByte();
     int c3 = readUnsignedByte();
-    return ((c0 << 0) | (c1 << 8)) | ((c2 << 16) | (c3 << 24));
+    return ((c0 << 0) + (c1 << 8)) + ((c2 << 16) + (c3 << 24));
   }
 
   @Override
@@ -505,7 +505,7 @@ class MultiBufferInputStream extends ByteBufferInputStream {
       throw new EOFException();
     }
     if (current.remaining() >= 4) {
-      // If the whole short can be read from the current buffer, use intrinsics
+      // If the whole int can be read from the current buffer, use intrinsics
       this.position += 4;
       return current.getInt();
     } else {
@@ -520,15 +520,15 @@ class MultiBufferInputStream extends ByteBufferInputStream {
    * @throws IOException
    */
   private long getLongSlow() throws IOException {
-    long ch0 = readUnsignedByte() << 0;
-    long ch1 = readUnsignedByte() << 8;
-    long ch2 = readUnsignedByte() << 16;
-    long ch3 = readUnsignedByte() << 24;
-    long ch4 = readUnsignedByte() << 32;
-    long ch5 = readUnsignedByte() << 40;
-    long ch6 = readUnsignedByte() << 48;
-    long ch7 = readUnsignedByte() << 56;
-    return ((ch0 | ch1) | (ch2 | ch3)) | ((ch4 | ch5) | (ch6 | ch7));
+    long ch0 = (long)readUnsignedByte() << 0;
+    long ch1 = (long)readUnsignedByte() << 8;
+    long ch2 = (long)readUnsignedByte() << 16;
+    long ch3 = (long)readUnsignedByte() << 24;
+    long ch4 = (long)readUnsignedByte() << 32;
+    long ch5 = (long)readUnsignedByte() << 40;
+    long ch6 = (long)readUnsignedByte() << 48;
+    long ch7 = (long)readUnsignedByte() << 56;
+    return ((ch0 + ch1) + (ch2 + ch3)) + ((ch4 + ch5) + (ch6 + ch7));
   }
 
   @Override

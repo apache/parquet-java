@@ -97,7 +97,14 @@ public class ByteBufferInputStream extends InputStream {
    */
   @Deprecated
   public ByteBufferInputStream(ByteBuffer buffer, int offset, int count) {
-    delegate = wrap(buffer, offset, count);
+    // This is necessary to pass "TestDeprecatedBufferInputStream"...
+    ByteBuffer temp = buffer.duplicate();
+    temp.position(offset);
+    ByteBuffer byteBuf = temp.slice();
+    byteBuf.limit(count);
+    delegate = wrap(byteBuf);
+    // ... but it would probably be faster to do this:
+//    delegate = wrap(buffer, offset, count);
   }
 
   public ByteBufferInputStream(byte[] inBuf) {
