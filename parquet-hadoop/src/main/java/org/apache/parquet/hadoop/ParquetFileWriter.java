@@ -303,13 +303,31 @@ public class ParquetFileWriter {
       int statisticsTruncateLength, boolean pageWriteChecksumEnabled)
           throws IOException{
     this(file, schema, mode, rowGroupSize, maxPaddingSize, columnIndexTruncateLength,
-      statisticsTruncateLength, pageWriteChecksumEnabled, null);
+      statisticsTruncateLength, pageWriteChecksumEnabled, null, null);
   }
 
   public ParquetFileWriter(OutputFile file, MessageType schema, Mode mode,
                            long rowGroupSize, int maxPaddingSize, int columnIndexTruncateLength,
                            int statisticsTruncateLength, boolean pageWriteChecksumEnabled,
                            FileEncryptionProperties encryptionProperties)
+    throws IOException {
+    this(file, schema, mode, rowGroupSize, maxPaddingSize, columnIndexTruncateLength,
+      statisticsTruncateLength, pageWriteChecksumEnabled, encryptionProperties, null);
+  }
+
+  public ParquetFileWriter(OutputFile file, MessageType schema, Mode mode,
+                           long rowGroupSize, int maxPaddingSize, int columnIndexTruncateLength,
+                           int statisticsTruncateLength, boolean pageWriteChecksumEnabled,
+                           InternalFileEncryptor encryptor)
+    throws IOException {
+    this(file, schema, mode, rowGroupSize, maxPaddingSize, columnIndexTruncateLength,
+      statisticsTruncateLength, pageWriteChecksumEnabled, null, encryptor);
+  }
+
+  private ParquetFileWriter(OutputFile file, MessageType schema, Mode mode,
+                           long rowGroupSize, int maxPaddingSize, int columnIndexTruncateLength,
+                           int statisticsTruncateLength, boolean pageWriteChecksumEnabled,
+                           FileEncryptionProperties encryptionProperties, InternalFileEncryptor encryptor)
     throws IOException {
     TypeUtil.checkValidWriteSchema(schema);
 
@@ -336,20 +354,30 @@ public class ParquetFileWriter {
 
     this.metadataConverter = new ParquetMetadataConverter(statisticsTruncateLength);
 
-    if (null == encryptionProperties) {
+    if (null == encryptionProperties && null == encryptor) {
       this.fileEncryptor = null;
-    } else {
-      // Verify that every encrypted column is in file schema
-      Map<ColumnPath, ColumnEncryptionProperties> columnEncryptionProperties = encryptionProperties.getEncryptedColumns();
-      if (null != columnEncryptionProperties) { // if null, every column in file schema will be encrypted with footer key
-        for (Map.Entry<ColumnPath, ColumnEncryptionProperties> entry : columnEncryptionProperties.entrySet()) {
-          String[] path = entry.getKey().toArray();
-          if(!schema.containsPath(path)) {
-            throw new ParquetCryptoRuntimeException("Encrypted column " + Arrays.toString(path) + " not in file schema");
-          }
+      return;
+    }
+
+    if (null == encryptionProperties) {
+      encryptionProperties = encryptor.getEncryptionProperties();
+    }
+
+    // Verify that every encrypted column is in file schema
+    Map<ColumnPath, ColumnEncryptionProperties> columnEncryptionProperties = encryptionProperties.getEncryptedColumns();
+    if (null != columnEncryptionProperties) { // if null, every column in file schema will be encrypted with footer key
+      for (Map.Entry<ColumnPath, ColumnEncryptionProperties> entry : columnEncryptionProperties.entrySet()) {
+        String[] path = entry.getKey().toArray();
+        if (!schema.containsPath(path)) {
+          throw new ParquetCryptoRuntimeException("Encrypted column " + Arrays.toString(path) + " not in file schema");
         }
       }
+    }
+
+    if (null == encryptor) {
       this.fileEncryptor = new InternalFileEncryptor(encryptionProperties);
+    } else {
+      this.fileEncryptor = encryptor;
     }
   }
 
