@@ -866,6 +866,20 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
     } else if (elementSchema != null &&
         elementSchema.getType() == Schema.Type.RECORD) {
       Schema schemaFromRepeated = CONVERTER.convert(repeatedType.asGroupType());
+
+      // Fix for PARQUET-2069
+      // ParquetMR breaks compatibility with itself by including a JSON 
+      // representation of a schema that names a record "list", when
+      // it should be named "array" to match with the rest of the metadata.
+      // Inserting this code allows Avro to detect that the "array" and "list"
+      // types are compatible. Since this alias is being added to something
+      // that is the result of parsing JSON, we can't add the alias at the
+      // time of construction. Therefore we have to do it here where the the data
+      // structures have been unwrapped to the point where we have the 
+      // incompatible structure and can add the necessary alias.
+      if (elementSchema.getName().equals("list")) elementSchema.addAlias("array", "");
+      if (elementSchema.getName().equals("array")) elementSchema.addAlias("list", "");
+
       if (checkReaderWriterCompatibility(elementSchema, schemaFromRepeated)
           .getType() == COMPATIBLE) {
         return true;
