@@ -25,7 +25,7 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * This ByteBufferInputStream does not consume the ByteBuffer being passed in,
+ * This ByteBufferInputStream does not consume the ByteBuffer being passed in, 
  * but will create a slice of the current buffer.
  */
 class SingleBufferInputStream extends ByteBufferInputStream {
