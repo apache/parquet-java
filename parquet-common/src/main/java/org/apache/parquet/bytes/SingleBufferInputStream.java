@@ -83,7 +83,7 @@ class SingleBufferInputStream extends ByteBufferInputStream {
   @Override
   public int read() throws IOException {
     try {
-      return buffer.get() & 255;
+      return buffer.get() & 0xFF;
     } catch (BufferUnderflowException e) {
       throw new EOFException();
     }
@@ -261,7 +261,7 @@ class SingleBufferInputStream extends ByteBufferInputStream {
   @Override
   public int readUnsignedByte() throws IOException {
     try {
-      return buffer.get() & 255;
+      return buffer.get() & 0xFF;
     } catch (BufferUnderflowException e) {
       throw new EOFException();
     }
