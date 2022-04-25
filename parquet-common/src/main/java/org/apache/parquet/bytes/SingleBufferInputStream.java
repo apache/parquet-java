@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.bytes;
 
+import java.nio.BufferUnderflowException;
 import java.io.EOFException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -38,6 +39,34 @@ class SingleBufferInputStream extends ByteBufferInputStream {
     // duplicate the buffer because its state will be modified
     this.buffer = buffer.duplicate();
     this.startPosition = buffer.position();
+    this.buffer.order(java.nio.ByteOrder.LITTLE_ENDIAN);
+  }
+
+  SingleBufferInputStream(ByteBuffer buffer, int start, int length) {
+    // duplicate the buffer because its state will be modified
+    this.buffer = buffer.duplicate();
+    this.startPosition = start;
+    this.buffer.position(start);
+    this.buffer.limit(start + length);
+    this.buffer.order(java.nio.ByteOrder.LITTLE_ENDIAN);
+  }
+
+  SingleBufferInputStream(byte[] inBuf) {
+    this.buffer = ByteBuffer.wrap(inBuf);
+    this.buffer.order(java.nio.ByteOrder.LITTLE_ENDIAN);
+    this.startPosition = 0;
+  }
+
+  SingleBufferInputStream(byte[] inBuf, int start, int length) {
+    this.buffer = ByteBuffer.wrap(inBuf, start, length);
+    this.buffer.order(java.nio.ByteOrder.LITTLE_ENDIAN);
+    // This seems to be consistent with HeapByteBuffer.wrap(), which leaves
+    // the internal "offset" at zero and sets the starting position at start.
+    this.startPosition = 0;
+  }
+
+  SingleBufferInputStream(List<ByteBuffer> inBufs) {
+    throw new UnsupportedOperationException();
   }
 
   @Override
@@ -46,12 +75,19 @@ class SingleBufferInputStream extends ByteBufferInputStream {
     return buffer.position() - startPosition;
   }
 
+  /*
+  Note: For all read methods, if we read off the end of the ByteBuffer, BufferUnderflowException is thrown, which
+  we catch and turn into an EOFException. This is measured to be faster than explicitly checking if the ByteBuffer
+  has any remaining bytes.
+   */
+
   @Override
   public int read() throws IOException {
-    if (!buffer.hasRemaining()) {
-    	throw new EOFException();
+    try {
+      return buffer.get() & 0xFF;
+    } catch (BufferUnderflowException e) {
+      throw new EOFException(e.getMessage());
     }
-    return buffer.get() & 0xFF; // as unsigned
   }
 
   @Override
@@ -70,9 +106,22 @@ class SingleBufferInputStream extends ByteBufferInputStream {
 
     return bytesToRead;
   }
-  
+
+  @Override
+  public void readFully(byte[] bytes, int offset, int length) throws IOException {
+    try {
+      buffer.get(bytes, offset, length);
+    } catch (BufferUnderflowException|IndexOutOfBoundsException e) {
+      throw new EOFException(e.getMessage());
+    }
+  }
+
   @Override
   public long skip(long n) {
+    if (n < 0) {
+      throw new IllegalArgumentException();
+    }
+    
     if (n == 0) {
       return 0;
     }
@@ -86,6 +135,21 @@ class SingleBufferInputStream extends ByteBufferInputStream {
     buffer.position(buffer.position() + bytesToSkip);
 
     return bytesToSkip;
+  }
+
+  @Override
+  public void skipFully(long n) throws IOException {
+    if (n < 0 || n > Integer.MAX_VALUE) {
+      throw new IllegalArgumentException();
+    }
+    
+    try {
+      buffer.position(buffer.position() + (int)n);
+    } catch (IllegalArgumentException e) {
+      // Be sure to leave buffer in EOF state
+      buffer.position(buffer.limit());
+      throw new EOFException(e.getMessage());
+    }
   }
 
   @Override
@@ -151,6 +215,28 @@ class SingleBufferInputStream extends ByteBufferInputStream {
   }
 
   @Override
+  public ByteBufferInputStream remainingStream() {
+    // Constructor makes duplicate, so we don't have to explicitly make a duplicate here
+    ByteBufferInputStream remaining = new SingleBufferInputStream(buffer);
+    buffer.position(buffer.limit());
+    return remaining;
+  }
+
+  @Override
+  public ByteBufferInputStream sliceStream(long length) throws EOFException {
+    if (length > buffer.remaining()) throw new EOFException();
+
+    ByteBufferInputStream remaining = new SingleBufferInputStream(buffer, buffer.position(), (int)length);
+    buffer.position(buffer.position() + (int)length);
+    return remaining;
+  }
+
+  @Override
+  public ByteBufferInputStream duplicate() {
+    return new SingleBufferInputStream(buffer);
+  }
+
+  @Override
   public void mark(int readlimit) {
     this.mark = buffer.position();
   }
@@ -173,5 +259,64 @@ class SingleBufferInputStream extends ByteBufferInputStream {
   @Override
   public int available() {
     return buffer.remaining();
+  }
+
+  @Override
+  public byte readByte() throws IOException {
+    try {
+      return buffer.get();
+    } catch (BufferUnderflowException e) {
+      throw new EOFException(e.getMessage());
+    }
+  }
+
+  @Override
+  public int readUnsignedByte() throws IOException {
+    try {
+      return buffer.get() & 0xFF;
+    } catch (BufferUnderflowException e) {
+      throw new EOFException(e.getMessage());
+    }
+  }
+
+  @Override
+  public short readShort() throws IOException {
+    try {
+      return buffer.getShort();
+    } catch (BufferUnderflowException e) {
+      throw new EOFException(e.getMessage());
+    }
+  }
+
+  @Override
+  public int readUnsignedShort() throws IOException {
+    try {
+      return buffer.getShort() & 0xFFFF;
+    } catch (BufferUnderflowException e) {
+      throw new EOFException(e.getMessage());
+    }
+  }
+
+  /*
+  Note: Unlike LittleEndianDataInputStream, which this replaces, using getInt and getLong on the ByteBuffer
+  can take advantage of intrinsics, which makes this faster. This has been confirmed by benchmarking.
+  */
+
+  @Override
+  public int readInt() throws IOException {
+    try {
+      return buffer.getInt();
+    } catch (BufferUnderflowException e) {
+      throw new EOFException(e.getMessage());
+    }
+  }
+
+  @Override
+  public long readLong() throws IOException {
+    try {
+      return buffer.getLong();
+    } catch (BufferUnderflowException e) {
+      throw new EOFException(e.getMessage());
+    }
   }
 }
