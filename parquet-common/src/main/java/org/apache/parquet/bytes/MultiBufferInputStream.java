@@ -96,6 +96,7 @@ class MultiBufferInputStream extends ByteBufferInputStream {
     if (current == null || n > length) {
       throw new EOFException();
     }
+    
     skip(n);
   }
 
@@ -239,6 +240,7 @@ class MultiBufferInputStream extends ByteBufferInputStream {
       if (len < 0) {
         throw new IndexOutOfBoundsException("Read length must be greater than 0: " + len);
       }
+      
       return 0;
     }
 
@@ -268,6 +270,7 @@ class MultiBufferInputStream extends ByteBufferInputStream {
       if (len < 0) {
         throw new IndexOutOfBoundsException("Read length must be greater than 0: " + len);
       }
+      
       return;
     }
 
@@ -325,6 +328,7 @@ class MultiBufferInputStream extends ByteBufferInputStream {
     if (mark >= 0) {
       discardMark();
     }
+    
     this.mark = position;
     this.markLimit = mark + readlimit + 1;
     if (current != null) {
@@ -472,6 +476,7 @@ class MultiBufferInputStream extends ByteBufferInputStream {
     if (current == null) {
       throw new EOFException();
     }
+    
     if (current.remaining() >= 2) {
       // If the whole short can be read from the current buffer, use intrinsics
       this.position += 2;
@@ -504,6 +509,7 @@ class MultiBufferInputStream extends ByteBufferInputStream {
     if (current == null) {
       throw new EOFException();
     }
+    
     if (current.remaining() >= 4) {
       // If the whole int can be read from the current buffer, use intrinsics
       this.position += 4;
@@ -536,6 +542,7 @@ class MultiBufferInputStream extends ByteBufferInputStream {
     if (current == null) {
       throw new EOFException();
     }
+    
     if (current.remaining() >= 8) {
       // If the whole short can be read from the current buffer, use intrinsics
       this.position += 8;
