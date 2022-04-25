@@ -29,6 +29,7 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.nio.BufferUnderflowException;
 
 class MultiBufferInputStream extends ByteBufferInputStream {
   private static final ByteBuffer EMPTY = ByteBuffer.allocate(0);
@@ -301,8 +302,8 @@ class MultiBufferInputStream extends ByteBufferInputStream {
     this.position += 1;
     while (true) {
       try {
-        return current.get() & 255;
-      } catch (Exception e) {
+        return current.get() & 0xFF;
+      } catch (BufferUnderflowException e) {
         // It has been measured to be faster to rely on ByteBuffer throwing BufferUnderflowException to determine
         // when we're run out of bytes in the current buffer.
         if (!nextBuffer()) {
@@ -451,8 +452,8 @@ class MultiBufferInputStream extends ByteBufferInputStream {
     this.position += 1;
     while (true) {
       try {
-        return current.get() & 255;
-      } catch (Exception e) {
+        return current.get() & 0xFF;
+      } catch (BufferUnderflowException e) {
         if (!nextBuffer()) {
           // there are no more buffers
           throw new EOFException();
