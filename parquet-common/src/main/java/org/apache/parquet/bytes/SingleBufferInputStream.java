@@ -85,7 +85,7 @@ class SingleBufferInputStream extends ByteBufferInputStream {
     try {
       return buffer.get() & 0xFF;
     } catch (BufferUnderflowException e) {
-      throw new EOFException();
+      throw new EOFException(e);
     }
   }
 
@@ -111,12 +111,16 @@ class SingleBufferInputStream extends ByteBufferInputStream {
     try {
       buffer.get(bytes, offset, length);
     } catch (BufferUnderflowException|IndexOutOfBoundsException e) {
-      throw new EOFException();
+      throw new EOFException(e);
     }
   }
 
   @Override
   public long skip(long n) {
+    if (n < 0) {
+      throw new IllegalArgumentException();
+    }
+    
     if (n == 0) {
       return 0;
     }
@@ -134,10 +138,14 @@ class SingleBufferInputStream extends ByteBufferInputStream {
 
   @Override
   public void skipFully(long n) throws IOException {
+    if (n < 0 || n > Integer.MAX_VALUE) {
+      throw new IllegalArgumentException();
+    }
+    
     try {
       buffer.position(buffer.position() + (int)n);
     } catch (IllegalArgumentException e) {
-      throw new EOFException();
+      throw new EOFException(e);
     }
   }
 
@@ -254,7 +262,7 @@ class SingleBufferInputStream extends ByteBufferInputStream {
     try {
       return buffer.get();
     } catch (BufferUnderflowException e) {
-      throw new EOFException();
+      throw new EOFException(e);
     }
   }
 
@@ -263,7 +271,7 @@ class SingleBufferInputStream extends ByteBufferInputStream {
     try {
       return buffer.get() & 0xFF;
     } catch (BufferUnderflowException e) {
-      throw new EOFException();
+      throw new EOFException(e);
     }
   }
 
@@ -272,7 +280,7 @@ class SingleBufferInputStream extends ByteBufferInputStream {
     try {
       return buffer.getShort();
     } catch (BufferUnderflowException e) {
-      throw new EOFException();
+      throw new EOFException(e);
     }
   }
 
@@ -281,7 +289,7 @@ class SingleBufferInputStream extends ByteBufferInputStream {
     try {
       return buffer.getShort() & 65535;
     } catch (BufferUnderflowException e) {
-      throw new EOFException();
+      throw new EOFException(e);
     }
   }
 
@@ -295,7 +303,7 @@ class SingleBufferInputStream extends ByteBufferInputStream {
     try {
       return buffer.getInt();
     } catch (BufferUnderflowException e) {
-      throw new EOFException();
+      throw new EOFException(e);
     }
   }
 
@@ -304,7 +312,7 @@ class SingleBufferInputStream extends ByteBufferInputStream {
     try {
       return buffer.getLong();
     } catch (BufferUnderflowException e) {
-      throw new EOFException();
+      throw new EOFException(e);
     }
   }
 }
