@@ -295,7 +295,7 @@ class MultiBufferInputStream extends ByteBufferInputStream {
       throw new EOFException();
     }
 
-    this.position++;
+    this.position += 1;
     while (true) {
       try {
         return current.get() & 255;
@@ -444,7 +444,7 @@ class MultiBufferInputStream extends ByteBufferInputStream {
       throw new EOFException();
     }
 
-    this.position++;
+    this.position += 1;
     while (true) {
       try {
         return current.get() & 255;
