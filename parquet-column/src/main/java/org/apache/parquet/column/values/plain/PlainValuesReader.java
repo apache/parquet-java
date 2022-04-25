@@ -33,17 +33,13 @@ import org.slf4j.LoggerFactory;
 abstract public class PlainValuesReader extends ValuesReader {
   private static final Logger LOG = LoggerFactory.getLogger(PlainValuesReader.class);
 
-  // LittleEndianDataInputStream functionality is merged into ByteBufferInputStream
-  @Deprecated
-  protected LittleEndianDataInputStream in;
-
-  protected ByteBufferInputStream in2;
+  protected ByteBufferInputStream in;
 
   @Override
   public void initFromPage(int valueCount, ByteBufferInputStream stream) throws IOException {
     LOG.debug("init from page at offset {} for length {}", stream.position(), stream.available());
     // No need for "remainingStream()" since the caller is done with the stream
-    this.in2 = stream;
+    this.in = stream;
   }
 
   @Override
@@ -52,7 +48,7 @@ abstract public class PlainValuesReader extends ValuesReader {
   }
 
   void skipBytesFully(int n) throws IOException {
-    in2.skipFully(n);
+    in.skipFully(n);
   }
 
   public static class DoublePlainValuesReader extends PlainValuesReader {
@@ -69,7 +65,7 @@ abstract public class PlainValuesReader extends ValuesReader {
     @Override
     public double readDouble() {
       try {
-        return in2.readDouble();
+        return in.readDouble();
       } catch (IOException e) {
         throw new ParquetDecodingException("could not read double", e);
       }
@@ -90,7 +86,7 @@ abstract public class PlainValuesReader extends ValuesReader {
     @Override
     public float readFloat() {
       try {
-        return in2.readFloat();
+        return in.readFloat();
       } catch (IOException e) {
         throw new ParquetDecodingException("could not read float", e);
       }
@@ -111,7 +107,7 @@ abstract public class PlainValuesReader extends ValuesReader {
     @Override
     public int readInteger() {
       try {
-        return in2.readInt();
+        return in.readInt();
       } catch (IOException e) {
         throw new ParquetDecodingException("could not read int", e);
       }
@@ -132,7 +128,7 @@ abstract public class PlainValuesReader extends ValuesReader {
     @Override
     public long readLong() {
       try {
-        return in2.readLong();
+        return in.readLong();
       } catch (IOException e) {
         throw new ParquetDecodingException("could not read long", e);
       }
