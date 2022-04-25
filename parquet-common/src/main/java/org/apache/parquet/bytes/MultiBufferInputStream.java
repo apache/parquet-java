@@ -217,8 +217,8 @@ class MultiBufferInputStream extends ByteBufferInputStream {
       return sliceBuffers(length - position);
     } catch (EOFException e) {
       throw new RuntimeException(
-        "[Parquet bug] Stream is bad: incorrect bytes remaining " +
-          (length - position));
+          "[Parquet bug] Stream is bad: incorrect bytes remaining " +
+              (length - position));
     }
   }
 
