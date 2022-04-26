@@ -31,7 +31,7 @@ public class ShowBloomFilterCommandTest extends ParquetFileTest {
   public void testShowBloomFilterCommand() throws IOException {
     File file = parquetFile();
     ShowBloomFilterCommand command = new ShowBloomFilterCommand(createLogger());
-    command.files = Arrays.asList(file.getAbsolutePath());
+    command.file = file.getAbsolutePath();
     command.columnPath = INT32_FIELD;
     command.testValues = Arrays.asList(new String[] {"1"});
     command.setConf(new Configuration());

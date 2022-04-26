@@ -49,7 +49,7 @@ public class ShowBloomFilterCommand extends BaseCommand {
   }
 
   @Parameter(description = "<parquet path>")
-  List<String> files;
+  String file;
 
   @Parameter(
     names = { "-c", "--column" },
@@ -66,12 +66,10 @@ public class ShowBloomFilterCommand extends BaseCommand {
   @Override
   @SuppressWarnings("unchecked")
   public int run() throws IOException {
-    Preconditions.checkArgument(files != null && files.size() >= 1,
+    Preconditions.checkArgument(file != null,
       "A Parquet file is required.");
-    Preconditions.checkArgument(files.size() == 1,
-      "Cannot process multiple Parquet files.");
 
-    InputFile in = HadoopInputFile.fromPath(qualifiedPath(files.get(0)), getConf());
+    InputFile in = HadoopInputFile.fromPath(qualifiedPath(file), getConf());
 
     try (ParquetFileReader reader = ParquetFileReader.open(in)) {
       MessageType schema = reader.getFileMetaData().getSchema();
