@@ -54,6 +54,17 @@ public abstract class TestByteBufferInputStreams {
   }
 
   @Test
+  public void testSkip0() throws Exception {
+    ByteBufferInputStream stream = newStream();
+
+    long bytesRead = stream.skip(100);
+    Assert.assertTrue("Should skip to end of stream", bytesRead < 100);
+
+    Assert.assertEquals("Should skip 0 bytes at end of stream",
+      0, stream.skip(0));
+  }
+
+  @Test
   public void testReadAll() throws Exception {
     byte[] bytes = new byte[35];
 
@@ -76,6 +87,31 @@ public abstract class TestByteBufferInputStreams {
 
     Assert.assertEquals("Should have no more remaining content",
         0, stream.available());
+
+    checkOriginalData();
+  }
+
+  @Test
+  public void testReadFully() throws Exception {
+    byte[] bytes = new byte[35];
+
+    ByteBufferInputStream stream = newStream();
+
+    stream.readFully(bytes);
+
+    for (int i = 0; i < bytes.length; i += 1) {
+      Assert.assertEquals("Byte i should be i", i, bytes[i]);
+      Assert.assertEquals("Should advance position", 35, stream.position());
+    }
+
+    Assert.assertEquals("Should have no more remaining content",
+      0, stream.available());
+
+    Assert.assertEquals("Should return -1 at end of stream",
+      -1, stream.read(bytes));
+
+    Assert.assertEquals("Should have no more remaining content",
+      0, stream.available());
 
     checkOriginalData();
   }
@@ -177,6 +213,82 @@ public abstract class TestByteBufferInputStreams {
 
     assertThrows("Should throw EOFException at end of stream",
         EOFException.class, (Callable<Integer>) stream::read);
+
+    checkOriginalData();
+  }
+
+  @Test
+  public void testReadShort() throws Exception {
+    final ByteBufferInputStream stream = newStream();
+    int length = stream.available();
+    int length2 = length & -2; // Only read a whole multiple of 2 bytes
+    int residual = length & 1;
+
+    for (int i = 0; i < length2; i += 2) {
+      Assert.assertEquals("Position should increment", i, stream.position());
+      short buffer_value = stream.readShort();
+      short expected_value = (short)(i + ((i+1)<<8));
+      Assert.assertEquals(expected_value, buffer_value);
+    }
+
+    // Read the rest of the bytes
+    for (int i = 0; i < residual; i += 1) {
+      stream.read();
+    }
+
+    assertThrows("Should throw EOFException at end of stream",
+      EOFException.class, (Callable<Integer>) stream::read);
+
+    checkOriginalData();
+  }
+
+  @Test
+  public void testReadInt() throws Exception {
+    final ByteBufferInputStream stream = newStream();
+    int length = stream.available();
+    int length2 = length & -4; // Only read a whole multiple of 4 bytes
+    int residual = length & 3;
+
+    for (int i = 0; i < length2; i += 4) {
+      Assert.assertEquals("Position should increment", i, stream.position());
+      int buffer_value = stream.readInt();
+      int expected_value = i + ((i+1)<<8) + ((i+2)<<16) + ((i+3)<<24);
+      Assert.assertEquals(expected_value, buffer_value);
+    }
+
+    // Read the rest of the bytes
+    for (int i = 0; i < residual; i += 1) {
+      stream.read();
+    }
+
+    assertThrows("Should throw EOFException at end of stream",
+      EOFException.class, (Callable<Integer>) stream::read);
+
+    checkOriginalData();
+  }
+
+  @Test
+  public void testReadLong() throws Exception {
+    final ByteBufferInputStream stream = newStream();
+    int length = stream.available();
+    int length2 = length & -8; // Only read a whole multiple of 8 bytes
+    int residual = length & 7;
+
+    for (long i = 0; i < length2; i += 8) {
+      Assert.assertEquals("Position should increment", i, stream.position());
+      long buffer_value = stream.readLong();
+      long expected_value = i + ((i+1)<<8) + ((i+2)<<16) + ((i+3)<<24) +
+        ((i+4)<<32) + ((i+5)<<40) + ((i+6)<<48) + ((i+7)<<56);
+      Assert.assertEquals(expected_value, buffer_value);
+    }
+
+    // Read the rest of the bytes
+    for (int i = 0; i < residual; i += 1) {
+      stream.read();
+    }
+
+    assertThrows("Should throw EOFException at end of stream",
+      EOFException.class, (Callable<Integer>) stream::read);
 
     checkOriginalData();
   }
