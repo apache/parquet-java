@@ -76,11 +76,10 @@ class SingleBufferInputStream extends ByteBufferInputStream {
   }
 
   /*
-  Note: For all read methods, if we read off the end of the ByteBuffer, BufferUnderflowException is thrown, which
+  For all read methods, if we read off the end of the ByteBuffer, BufferUnderflowException is thrown, which
   we catch and turn into an EOFException. This is measured to be faster than explicitly checking if the ByteBuffer
   has any remaining bytes.
    */
-
   @Override
   public int read() throws IOException {
     try {
@@ -298,10 +297,8 @@ class SingleBufferInputStream extends ByteBufferInputStream {
   }
 
   /*
-  Note: Unlike LittleEndianDataInputStream, which this replaces, using getInt and getLong on the ByteBuffer
-  can take advantage of intrinsics, which makes this faster. This has been confirmed by benchmarking.
+  Use ByteBuffer.getInt(), which takes advantage of platform intrinsics
   */
-
   @Override
   public int readInt() throws IOException {
     try {
@@ -311,6 +308,9 @@ class SingleBufferInputStream extends ByteBufferInputStream {
     }
   }
 
+  /*
+  Use ByteBuffer.getLonmg(), which takes advantage of platform intrinsics
+  */
   @Override
   public long readLong() throws IOException {
     try {
