@@ -120,7 +120,6 @@ public class ByteBufferInputStream extends InputStream {
 
   public ByteBufferInputStream sliceStream(long length) throws EOFException {
     return delegate.sliceStream(length);
-    //return ByteBufferInputStream.wrap(sliceBuffers(length));
   }
 
   public List<ByteBuffer> remainingBuffers() {
