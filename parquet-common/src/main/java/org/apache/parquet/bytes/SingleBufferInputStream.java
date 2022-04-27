@@ -231,11 +231,6 @@ class SingleBufferInputStream extends ByteBufferInputStream {
   }
 
   @Override
-  public ByteBufferInputStream duplicate() {
-    return new SingleBufferInputStream(buffer);
-  }
-
-  @Override
   public void mark(int readlimit) {
     this.mark = buffer.position();
   }
