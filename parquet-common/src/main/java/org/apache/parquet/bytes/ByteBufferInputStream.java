@@ -28,16 +28,6 @@ import java.util.List;
 
 import org.apache.parquet.ShouldNeverHappenException;
 
-/*
-Changes implemented:
-All of the functionality of LittleEndianDataInputStream has been merged into ByteBufferInputStream and its child
-classes. This has resulted in measurable performance improvements for the following reasons:
-- Elimination of at least one layer of abstraction / method call overhead
-- Enabling support for intrinsics for readInt, readLong, etc.
-- Eliminate the need for the JIT to make inferences that may or may not inline methods from BytesUtils and
-  the InputStream.read() that is called by BytesUtils.
- */
-
 public class ByteBufferInputStream extends InputStream {
 
   // Used to maintain the deprecated behavior of instantiating ByteBufferInputStream directly
@@ -57,10 +47,6 @@ public class ByteBufferInputStream extends InputStream {
     } else {
       return new MultiBufferInputStream(buffers);
     }
-  }
-
-  public static ByteBufferInputStream wrap(ByteBuffer buffer, int offset, int count) {
-    return new SingleBufferInputStream(buffer, offset, count);
   }
 
   public static ByteBufferInputStream wrap(byte[] buf) {
