@@ -49,15 +49,6 @@ public class ByteBufferInputStream extends InputStream {
     }
   }
 
-  public static ByteBufferInputStream wrap(byte[] buf) {
-    return new SingleBufferInputStream(buf);
-  }
-
-  public static ByteBufferInputStream wrap(byte[] buf, int start, int length) {
-    return new SingleBufferInputStream(buf, start, length);
-  }
-
-
   ByteBufferInputStream() {
     delegate = null;
   }
@@ -83,26 +74,11 @@ public class ByteBufferInputStream extends InputStream {
    */
   @Deprecated
   public ByteBufferInputStream(ByteBuffer buffer, int offset, int count) {
-    // This is necessary to pass "TestDeprecatedBufferInputStream"...
     ByteBuffer temp = buffer.duplicate();
     temp.position(offset);
     ByteBuffer byteBuf = temp.slice();
     byteBuf.limit(count);
     delegate = wrap(byteBuf);
-    // ... but it would probably be faster to do this:
-//    delegate = wrap(buffer, offset, count);
-  }
-
-  public ByteBufferInputStream(byte[] inBuf) {
-    delegate = wrap(inBuf);
-  }
-
-  public ByteBufferInputStream(byte[] inBuf, int start, int length) {
-    delegate = wrap(inBuf, start, length);
-  }
-
-  public ByteBufferInputStream(List<ByteBuffer> inBufs) {
-    delegate = wrap(inBufs);
   }
 
   /**
