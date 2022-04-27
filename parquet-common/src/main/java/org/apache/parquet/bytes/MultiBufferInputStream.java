@@ -233,7 +233,6 @@ class MultiBufferInputStream extends ByteBufferInputStream {
       if (len < 0) {
         throw new IndexOutOfBoundsException("Read length must be greater than 0: " + len);
       }
-      
       return 0;
     }
 
