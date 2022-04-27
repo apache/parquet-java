@@ -98,10 +98,6 @@ public class ByteBufferInputStream extends InputStream {
     return delegate.position();
   }
 
-  public void position(int pos) {
-    throw new UnsupportedOperationException();
-  }
-
   public void skipFully(long n) throws IOException {
     delegate.skipFully(n);
   }
@@ -130,10 +126,6 @@ public class ByteBufferInputStream extends InputStream {
     return delegate.remainingStream();
   }
 
-  public ByteBufferInputStream duplicate() {
-    return delegate.duplicate();
-  }
-
   public int read() throws IOException {
     return delegate.read();
   }
@@ -158,16 +150,8 @@ public class ByteBufferInputStream extends InputStream {
     return delegate.skip(n);
   }
 
-  public int skipBytes(int n) {
-    return (int)skip(n);
-  }
-
   public int available() {
     return delegate.available();
-  }
-
-  public int remaining() {
-    return available();
   }
 
   public void mark(int readlimit) {
@@ -180,9 +164,6 @@ public class ByteBufferInputStream extends InputStream {
 
   public boolean markSupported() {
     return delegate.markSupported();
-  }
-
-  public void close() throws IOException {
   }
 
   public boolean readBoolean() throws IOException {
