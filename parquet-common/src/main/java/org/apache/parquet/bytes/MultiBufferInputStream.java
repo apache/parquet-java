@@ -20,7 +20,6 @@
 package org.apache.parquet.bytes;
 
 import org.apache.parquet.ShouldNeverHappenException;
-
 import java.io.EOFException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -229,13 +228,6 @@ class MultiBufferInputStream extends ByteBufferInputStream {
   }
 
   @Override
-  public ByteBufferInputStream duplicate() {
-    // Nothing ever uses this, and it's complicated to make a duplicate that doesn't cause side effects
-    // for the original. If this is ever necessary, we can go through the effort of adding this at that time.
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
   public int read(byte[] bytes, int off, int len) {
     if (len <= 0) {
       if (len < 0) {
@@ -329,7 +321,6 @@ class MultiBufferInputStream extends ByteBufferInputStream {
     if (mark >= 0) {
       discardMark();
     }
-    
     this.mark = position;
     this.markLimit = mark + readlimit + 1;
     if (current != null) {
