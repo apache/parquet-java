@@ -344,17 +344,7 @@ public abstract class ColumnIndexBuilder {
 
     @Override
     public <T extends Comparable<T>> PrimitiveIterator.OfInt visit(NotIn<T> notIn) {
-      IntSet indexes = getMatchingIndexes(notIn);
-      return IndexIterator.filter(getPageCount(), pageIndex -> !indexes.contains(pageIndex));
-    }
-
-    private <T extends Comparable<T>> IntSet getMatchingIndexes(SetColumnFilterPredicate<T> in) {
-      IntSet matchingIndexes = new IntOpenHashSet();
-      for (T value : in.getValues()) {
-        Eq<T> eq = new Eq<>(in.getColumn(), value);
-        visit(eq).forEachRemaining((IntConsumer) matchingIndexes::add);
-      }
-      return matchingIndexes;
+      return IndexIterator.all(getPageCount());
     }
 
     @Override
