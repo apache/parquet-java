@@ -18,6 +18,8 @@
  */
 package org.apache.parquet.proto;
 
+import com.google.protobuf.Descriptors;
+import com.google.protobuf.DynamicMessage;
 import com.google.protobuf.Message;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -76,6 +78,39 @@ public class ProtoWriteSupportTest {
     msg.setOne("oneValue");
 
     instance.write(msg.build());
+
+    InOrder inOrder = Mockito.inOrder(readConsumerMock);
+
+    inOrder.verify(readConsumerMock).startMessage();
+    inOrder.verify(readConsumerMock).startField("one", 0);
+    inOrder.verify(readConsumerMock).addBinary(Binary.fromString("oneValue"));
+    inOrder.verify(readConsumerMock).endField("one", 0);
+    inOrder.verify(readConsumerMock).startField("two", 1);
+    inOrder.verify(readConsumerMock).addBinary(Binary.fromString(""));
+    inOrder.verify(readConsumerMock).endField("two", 1);
+    inOrder.verify(readConsumerMock).startField("three", 2);
+    inOrder.verify(readConsumerMock).addBinary(Binary.fromString(""));
+    inOrder.verify(readConsumerMock).endField("three", 2);
+
+    inOrder.verify(readConsumerMock).endMessage();
+    Mockito.verifyNoMoreInteractions(readConsumerMock);
+  }
+
+  @Test
+  public void testProto3SimplestDynamicMessage() throws Exception {
+    RecordConsumer readConsumerMock =  Mockito.mock(RecordConsumer.class);
+    Descriptors.Descriptor descriptor = TestProto3.InnerMessage.getDescriptor();
+
+    ProtoWriteSupport instance = new ProtoWriteSupport(descriptor);
+    instance.init(new Configuration());
+    instance.prepareForWrite(readConsumerMock);
+
+    TestProto3.InnerMessage.Builder msg = TestProto3.InnerMessage.newBuilder();
+    msg.setOne("oneValue");
+
+    DynamicMessage dynamicMessage = DynamicMessage.newBuilder(msg.build()).build() ;
+
+    instance.write(dynamicMessage);
 
     InOrder inOrder = Mockito.inOrder(readConsumerMock);
 

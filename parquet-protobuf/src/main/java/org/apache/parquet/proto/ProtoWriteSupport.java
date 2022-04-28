@@ -58,6 +58,7 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
   private boolean writeSpecsCompliant = false;
   private RecordConsumer recordConsumer;
   private Class<? extends Message> protoMessage;
+  private Descriptor descriptor;
   private MessageWriter messageWriter;
   // Keep protobuf enum value with number in the metadata, so that in read time, a reader can read at least
   // the number back even with an outdated schema which might not contain all enum values.
@@ -68,6 +69,10 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
 
   public ProtoWriteSupport(Class<? extends Message> protobufClass) {
     this.protoMessage = protobufClass;
+  }
+
+  public ProtoWriteSupport(Descriptor descriptor) {
+    this.descriptor = descriptor;
   }
 
   @Override
@@ -115,27 +120,32 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
   public WriteContext init(Configuration configuration) {
 
     // if no protobuf descriptor was given in constructor, load descriptor from configuration (set with setProtobufClass)
-    if (protoMessage == null) {
-      Class<? extends Message> pbClass = configuration.getClass(PB_CLASS_WRITE, null, Message.class);
-      if (pbClass != null) {
-        protoMessage = pbClass;
-      } else {
-        String msg = "Protocol buffer class not specified.";
-        String hint = " Please use method ProtoParquetOutputFormat.setProtobufClass(...) or other similar method.";
-        throw new BadConfigurationException(msg + hint);
+    if (descriptor == null) {
+      if (protoMessage == null) {
+        Class<? extends Message> pbClass = configuration.getClass(PB_CLASS_WRITE, null, Message.class);
+        if (pbClass != null) {
+          protoMessage = pbClass;
+        } else {
+          String msg = "Protocol buffer class or descriptor not specified.";
+          String hint = " Please use method ProtoParquetOutputFormat.setProtobufClass(...) or other similar method.";
+          throw new BadConfigurationException(msg + hint);
+        }
       }
+      descriptor = Protobufs.getMessageDescriptor(protoMessage);
+    } else {
+      //Assume no specific Message extending class, so use DynamicMessage
+      protoMessage = DynamicMessage.class;
     }
 
     writeSpecsCompliant = configuration.getBoolean(PB_SPECS_COMPLIANT_WRITE, writeSpecsCompliant);
-    MessageType rootSchema = new ProtoSchemaConverter(writeSpecsCompliant).convert(protoMessage);
-    Descriptor messageDescriptor = Protobufs.getMessageDescriptor(protoMessage);
-    validatedMapping(messageDescriptor, rootSchema);
+    MessageType rootSchema = new ProtoSchemaConverter(writeSpecsCompliant).convert(descriptor);
+    validatedMapping(descriptor, rootSchema);
 
-    this.messageWriter = new MessageWriter(messageDescriptor, rootSchema);
+    this.messageWriter = new MessageWriter(descriptor, rootSchema);
 
     Map<String, String> extraMetaData = new HashMap<>();
     extraMetaData.put(ProtoReadSupport.PB_CLASS, protoMessage.getName());
-    extraMetaData.put(ProtoReadSupport.PB_DESCRIPTOR, messageDescriptor.toProto().toString());
+    extraMetaData.put(ProtoReadSupport.PB_DESCRIPTOR, descriptor.toProto().toString());
     extraMetaData.put(PB_SPECS_COMPLIANT_WRITE, String.valueOf(writeSpecsCompliant));
     return new WriteContext(rootSchema, extraMetaData);
   }
