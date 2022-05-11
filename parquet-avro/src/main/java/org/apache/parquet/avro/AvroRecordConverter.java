@@ -877,8 +877,12 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
       // time of construction. Therefore we have to do it here where the the data
       // structures have been unwrapped to the point where we have the 
       // incompatible structure and can add the necessary alias.
-      if (elementSchema.getName().equals("list")) elementSchema.addAlias("array", "");
-      if (elementSchema.getName().equals("array")) elementSchema.addAlias("list", "");
+      if (elementSchema.getName().equals("list")) {
+        elementSchema.addAlias("array", "");
+      }
+      if (elementSchema.getName().equals("array")) {
+        elementSchema.addAlias("list", "");
+      }
 
       if (checkReaderWriterCompatibility(elementSchema, schemaFromRepeated)
           .getType() == COMPATIBLE) {
