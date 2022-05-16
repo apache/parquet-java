@@ -52,8 +52,8 @@ public class CodecFactory implements CompressionCodecFactory {
   Normally, one would use ThreadLocal<> here, but the release() method needs to iterate over all codecs
   ever created, so we have to implement the per-thread management explicitly.
    */
-  private final Map<Thread, Map<CompressionCodecName, BytesCompressor>> all_compressors = new ConcurrentHashMap<>();
-  private final Map<Thread, Map<CompressionCodecName, BytesDecompressor>> all_decompressors = new ConcurrentHashMap<>();
+  private final Map<Thread, Map<CompressionCodecName, BytesCompressor>> allCompressors = new ConcurrentHashMap<>();
+  private final Map<Thread, Map<CompressionCodecName, BytesDecompressor>> allDecompressors = new ConcurrentHashMap<>();
 
   protected final Configuration configuration;
   protected final int pageSize;
@@ -198,10 +198,10 @@ public class CodecFactory implements CompressionCodecFactory {
   @Override
   public BytesCompressor getCompressor(CompressionCodecName codecName) {
     Thread me = Thread.currentThread();
-    Map<CompressionCodecName, BytesCompressor> compressors = all_compressors.get(me);
+    Map<CompressionCodecName, BytesCompressor> compressors = allCompressors.get(me);
     if (compressors == null) {
       compressors = new HashMap<CompressionCodecName, BytesCompressor>();
-      all_compressors.put(me, compressors);
+      allCompressors.put(me, compressors);
     }
 
     BytesCompressor comp = compressors.get(codecName);
@@ -218,10 +218,10 @@ public class CodecFactory implements CompressionCodecFactory {
   @Override
   public BytesDecompressor getDecompressor(CompressionCodecName codecName) {
     Thread me = Thread.currentThread();
-    Map<CompressionCodecName, BytesDecompressor> decompressors = all_decompressors.get(me);
+    Map<CompressionCodecName, BytesDecompressor> decompressors = allDecompressors.get(me);
     if (decompressors == null) {
       decompressors = new HashMap<CompressionCodecName, BytesDecompressor>();
-      all_decompressors.put(me, decompressors);
+      allDecompressors.put(me, decompressors);
     }
 
     BytesDecompressor decomp = decompressors.get(codecName);
@@ -284,25 +284,25 @@ public class CodecFactory implements CompressionCodecFactory {
    * - Wait until all worker threads are done
    * - Release the CodecFactory
    * Any other codec instances still active should be from a completely different instance of CodedFactory,
-   * which is safe since all_compressors and all_decompressors are not static.
+   * which is safe since allCompressors and allDecompressors are not static.
    */
   @Override
   public void release() {
-    for (Map<CompressionCodecName, BytesCompressor> compressors : all_compressors.values()) {
+    for (Map<CompressionCodecName, BytesCompressor> compressors : allCompressors.values()) {
       for (BytesCompressor compressor : compressors.values()) {
         compressor.release();
       }
       compressors.clear();
     }
-    all_compressors.clear();
+    allCompressors.clear();
 
-    for (Map<CompressionCodecName, BytesDecompressor> decompressors : all_decompressors.values()) {
+    for (Map<CompressionCodecName, BytesDecompressor> decompressors : allDecompressors.values()) {
       for (BytesDecompressor decompressor : decompressors.values()) {
         decompressor.release();
       }
       decompressors.clear();
     }
-    all_decompressors.clear();
+    allDecompressors.clear();
   }
 
   /**
