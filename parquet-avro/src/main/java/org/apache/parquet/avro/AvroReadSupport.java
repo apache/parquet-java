@@ -25,6 +25,7 @@ import org.apache.avro.generic.GenericData;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.util.ReflectionUtils;
 import org.apache.parquet.hadoop.api.ReadSupport;
+import org.apache.parquet.io.InvalidRecordException;
 import org.apache.parquet.io.api.RecordMaterializer;
 import org.apache.parquet.schema.MessageType;
 
@@ -136,10 +137,22 @@ public class AvroReadSupport<T> extends ReadSupport<T> {
 
     GenericData model = getDataModel(configuration);
     String compatEnabled = metadata.get(AvroReadSupport.AVRO_COMPATIBILITY);
-    if (compatEnabled != null && Boolean.valueOf(compatEnabled)) {
-      return newCompatMaterializer(parquetSchema, avroSchema, model);
+
+    try {
+      if (compatEnabled != null && Boolean.valueOf(compatEnabled)) {
+        return newCompatMaterializer(parquetSchema, avroSchema, model);
+      }
+      return new AvroRecordMaterializer<T>(parquetSchema, avroSchema, model);
+    } catch (InvalidRecordException | ClassCastException e) {
+      System.err.println("Warning, Avro schema doesn't match Parquet schema, falling back to conversion: " + e.toString());
+      // If the Avro schema is bad, fall back to reconstructing it from the Parquet schema
+      avroSchema = new AvroSchemaConverter(configuration).convert(parquetSchema);
+
+      if (compatEnabled != null && Boolean.valueOf(compatEnabled)) {
+        return newCompatMaterializer(parquetSchema, avroSchema, model);
+      }
+      return new AvroRecordMaterializer<T>(parquetSchema, avroSchema, model);
     }
-    return new AvroRecordMaterializer<T>(parquetSchema, avroSchema, model);
   }
 
   @SuppressWarnings("unchecked")
