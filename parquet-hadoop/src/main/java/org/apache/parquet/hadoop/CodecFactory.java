@@ -306,6 +306,29 @@ public class CodecFactory implements CompressionCodecFactory {
   }
 
   /**
+   * Counts the number of cached codec factories. This is used exclusively for testing to make sure that
+   * codecs are released when the factory is closed.
+   * @return Number of cached codecs
+   */
+  public int countCachedCodecs() {
+    int count = 0;
+
+    if (allCompressors != null) {
+      for (Map<CompressionCodecName, BytesCompressor> compressors : allCompressors.values()) {
+        count += compressors.size();
+      }
+    }
+
+    if (allDecompressors != null) {
+      for (Map<CompressionCodecName, BytesDecompressor> decompressors : allDecompressors.values()) {
+        count += decompressors.size();
+      }
+    }
+
+    return count;
+  }
+
+  /**
    * @deprecated will be removed in 2.0.0; use CompressionCodecFactory.BytesInputCompressor instead.
    */
   @Deprecated
