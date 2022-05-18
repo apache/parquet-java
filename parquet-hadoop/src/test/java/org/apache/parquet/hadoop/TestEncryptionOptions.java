@@ -468,6 +468,9 @@ public class TestEncryptionOptions {
       if (readOnlyEncrypted && (EncryptionConfiguration.NO_ENCRYPTION == encryptionConfiguration)) {
         continue;
       }
+      if (EncryptionConfiguration.UNIFORM_ENCRYPTION_PLAINTEXT_FOOTER == encryptionConfiguration) {
+        continue;
+      }
       String fileName = getFileName(encryptionConfiguration);
       Path file = new Path(rootPath, fileName);
       if (!fs.exists(file)) {
@@ -492,6 +495,9 @@ public class TestEncryptionOptions {
       EncryptionConfiguration[] encryptionConfigurations = EncryptionConfiguration.values();
       for (EncryptionConfiguration encryptionConfiguration : encryptionConfigurations) {
         if (readOnlyEncrypted && (EncryptionConfiguration.NO_ENCRYPTION == encryptionConfiguration)) {
+          continue;
+        }
+        if (EncryptionConfiguration.UNIFORM_ENCRYPTION_PLAINTEXT_FOOTER == encryptionConfiguration) {
           continue;
         }
         Path file = new Path(root, getFileName(encryptionConfiguration));
