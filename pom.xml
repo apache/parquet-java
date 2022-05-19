@@ -9,7 +9,7 @@
 
   <groupId>org.apache.parquet</groupId>
   <artifactId>parquet</artifactId>
-  <version>1.13.0-SNAPSHOT</version>
+  <version>1.12.3-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <name>Apache Parquet MR</name>
@@ -78,7 +78,7 @@
     <shade.prefix>shaded.parquet</shade.prefix>
     <hadoop.version>2.10.1</hadoop.version>
     <parquet.format.version>2.9.0</parquet.format.version>
-    <previous.version>1.12.0</previous.version>
+    <previous.version>1.12.2</previous.version>
     <thrift.executable>thrift</thrift.executable>
     <format.thrift.executable>${thrift.executable}</format.thrift.executable>
     <scala.version>2.12.8</scala.version>
