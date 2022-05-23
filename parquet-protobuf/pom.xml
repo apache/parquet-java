@@ -174,7 +174,7 @@
               <goal>run</goal>
             </goals>
             <configuration>
-              <protocArtifact>com.google.protobuf:protoc:${protobuf.version}</protocArtifact>
+              <protocArtifact>com.google.protobuf:protoc:${protobuf.version}:exe:${os.detected.classifier}</protocArtifact>
               <addSources>test</addSources>
               <addProtoSources>all</addProtoSources>
               <outputDirectory>${project.build.directory}/generated-test-sources/java</outputDirectory>
@@ -187,6 +187,44 @@
       </plugin>
 
     </plugins>
+    <extensions>
+      <!-- fills in os.detected.classifier and other properties from the OS system properties -->
+      <extension>
+        <groupId>kr.motd.maven</groupId>
+        <artifactId>os-maven-plugin</artifactId>
+        <version>1.7.0</version>
+      </extension>
+    </extensions>
   </build>
-
+  <profiles>
+    <!-- PARQUET-2150: Force use of x86 executable for all macOS systems,
+         including those with ARM64 architectures, for which native binaries
+         do not exist. -->
+    <profile>
+      <id>not-macos</id>
+      <activation>
+        <os>
+          <family>!Mac</family>
+        </os>
+      </activation>
+      <properties>
+        <build.platform>${os.name}-${os.arch}-${sun.arch.data.model}</build.platform>
+      </properties>
+    </profile>
+    <profile>
+      <id>macos</id>
+      <activation>
+        <os>
+          <family>Mac</family>
+        </os>
+      </activation>
+      <properties>
+        <build.platform>Mac_OS_X-${sun.arch.data.model}</build.platform>
+        <!-- To make protoc work on Apple Silicon via fallback -->
+        <!-- This overrides the value determined by the os-maven-plugin extension. -->
+        <!-- It will to force use of the x86 parquet binaries on all Mac platforms -->
+        <os.detected.classifier>osx-x86_64</os.detected.classifier>
+      </properties>
+    </profile>
+  </profiles>
 </project>
