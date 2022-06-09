@@ -717,7 +717,7 @@ public class ParquetFileReader implements Closeable {
     }
     try {
       this.blocks = filterRowGroups(blocks);
-    } catch (IOException e) {
+    } catch (Exception e) {
       // In case that filterRowGroups throws an exception in the constructor, the new stream
       // should be closed. Otherwise, there's no way to close this outside.
       f.close();
@@ -768,7 +768,7 @@ public class ParquetFileReader implements Closeable {
     this.footer = footer;
     try {
       this.blocks = filterRowGroups(footer.getBlocks());
-    } catch (IOException e) {
+    } catch (Exception e) {
       // In case that filterRowGroups throws an exception in the constructor, the new stream
       // should be closed. Otherwise, there's no way to close this outside.
       f.close();
@@ -803,7 +803,7 @@ public class ParquetFileReader implements Closeable {
 
     try {
       this.blocks = filterRowGroups(footer.getBlocks());
-    } catch (IOException e) {
+    } catch (Exception e) {
       // In case that filterRowGroups throws an exception in the constructor, the new stream
       // should be closed. Otherwise, there's no way to close this outside.
       f.close();
