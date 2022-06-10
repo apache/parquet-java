@@ -715,7 +715,14 @@ public class ParquetFileReader implements Closeable {
                                       .withDecryption(fileDecryptor.getDecryptionProperties())
                                       .build();
     }
-    this.blocks = filterRowGroups(blocks);
+    try {
+      this.blocks = filterRowGroups(blocks);
+    } catch (Exception e) {
+      // In case that filterRowGroups throws an exception in the constructor, the new stream
+      // should be closed. Otherwise, there's no way to close this outside.
+      f.close();
+      throw e;
+    }
     this.blockIndexStores = listWithNulls(this.blocks.size());
     this.blockRowRanges = listWithNulls(this.blocks.size());
     for (ColumnDescriptor col : columns) {
@@ -759,7 +766,14 @@ public class ParquetFileReader implements Closeable {
                                       .build();
     }
     this.footer = footer;
-    this.blocks = filterRowGroups(footer.getBlocks());
+    try {
+      this.blocks = filterRowGroups(footer.getBlocks());
+    } catch (Exception e) {
+      // In case that filterRowGroups throws an exception in the constructor, the new stream
+      // should be closed. Otherwise, there's no way to close this outside.
+      f.close();
+      throw e;
+    }
     this.blockIndexStores = listWithNulls(this.blocks.size());
     this.blockRowRanges = listWithNulls(this.blocks.size());
     for (ColumnDescriptor col : footer.getFileMetaData().getSchema().getColumns()) {
@@ -787,7 +801,14 @@ public class ParquetFileReader implements Closeable {
       this.fileDecryptor = null; // Plaintext file. No need in decryptor
     }
 
-    this.blocks = filterRowGroups(footer.getBlocks());
+    try {
+      this.blocks = filterRowGroups(footer.getBlocks());
+    } catch (Exception e) {
+      // In case that filterRowGroups throws an exception in the constructor, the new stream
+      // should be closed. Otherwise, there's no way to close this outside.
+      f.close();
+      throw e;
+    }
     this.blockIndexStores = listWithNulls(this.blocks.size());
     this.blockRowRanges = listWithNulls(this.blocks.size());
     for (ColumnDescriptor col : footer.getFileMetaData().getSchema().getColumns()) {
