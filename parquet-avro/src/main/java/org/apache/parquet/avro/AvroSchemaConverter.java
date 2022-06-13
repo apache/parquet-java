@@ -304,6 +304,7 @@ public class AvroSchemaConverter {
   }
 
   private Schema convertField(final Type parquetType, Map<String, Integer> names) {
+    Integer nameCount = names.merge(parquetType.getName(), 1, (oldValue, value) -> oldValue + 1);
     if (parquetType.isPrimitive()) {
       final PrimitiveType asPrimitive = parquetType.asPrimitiveType();
       final PrimitiveTypeName parquetPrimitiveTypeName =
@@ -345,7 +346,7 @@ public class AvroSchemaConverter {
                 return Schema.create(Schema.Type.STRING);
               } else {
                 int size = parquetType.asPrimitiveType().getTypeLength();
-                return Schema.createFixed(parquetType.getName(), null, null, size);
+                return Schema.createFixed(parquetType.getName(), null, nameCount > 1 ? parquetType.getName() + nameCount : null, size);
               }
             }
             @Override
