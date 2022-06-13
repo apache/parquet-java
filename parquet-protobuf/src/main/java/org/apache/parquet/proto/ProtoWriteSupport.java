@@ -119,6 +119,8 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
   @Override
   public WriteContext init(Configuration configuration) {
 
+    Map<String, String> extraMetaData = new HashMap<>();
+
     // if no protobuf descriptor was given in constructor, load descriptor from configuration (set with setProtobufClass)
     if (descriptor == null) {
       if (protoMessage == null) {
@@ -132,9 +134,7 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
         }
       }
       descriptor = Protobufs.getMessageDescriptor(protoMessage);
-    } else {
-      //Assume no specific Message extending class, so use DynamicMessage
-      protoMessage = DynamicMessage.class;
+      extraMetaData.put(ProtoReadSupport.PB_CLASS, protoMessage.getName());
     }
 
     writeSpecsCompliant = configuration.getBoolean(PB_SPECS_COMPLIANT_WRITE, writeSpecsCompliant);
@@ -143,8 +143,6 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
 
     this.messageWriter = new MessageWriter(descriptor, rootSchema);
 
-    Map<String, String> extraMetaData = new HashMap<>();
-    extraMetaData.put(ProtoReadSupport.PB_CLASS, protoMessage.getName());
     extraMetaData.put(ProtoReadSupport.PB_DESCRIPTOR, descriptor.toProto().toString());
     extraMetaData.put(PB_SPECS_COMPLIANT_WRITE, String.valueOf(writeSpecsCompliant));
     return new WriteContext(rootSchema, extraMetaData);
