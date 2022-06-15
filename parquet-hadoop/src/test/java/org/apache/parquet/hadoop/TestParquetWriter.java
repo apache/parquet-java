@@ -290,10 +290,11 @@ public class TestParquetWriter {
   public void testParquetFileWithBloomFilterWithFpp() throws IOException {
     int totalCount = 100000;
     double[] testFpp = {0.005, 0.01, 0.05, 0.10, 0.15, 0.20, 0.25};
+    int randomStrLen = 12;
 
     Set<String> distinctStrings = new HashSet<>();
     while (distinctStrings.size() < totalCount) {
-      String str = RandomStringUtils.randomAlphabetic(12);
+      String str = RandomStringUtils.randomAlphabetic(randomStrLen);
       distinctStrings.add(str);
     }
 
@@ -331,7 +332,7 @@ public class TestParquetWriter {
         // The exist counts the number of times FindHash returns true.
         int exist = 0;
         while (distinctStrings.size() < totalCount) {
-          String str = RandomStringUtils.randomAlphabetic(10);
+          String str = RandomStringUtils.randomAlphabetic(randomStrLen - 2);
           if (distinctStrings.add(str) &&
             bloomFilter.findHash(LongHashFunction.xx(0).hashBytes(Binary.fromString(str).toByteBuffer()))) {
             exist++;
