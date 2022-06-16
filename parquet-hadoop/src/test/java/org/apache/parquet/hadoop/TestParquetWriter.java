@@ -339,7 +339,7 @@ public class TestParquetWriter {
           }
         }
         // The exist should be less than totalCount * fpp. Add 10% here for error space.
-        assertTrue(exist < totalCount * (testFpp[i] * 1.1));
+        assertTrue(exist < totalCount * (testFpp[i] * 1.1) && exist > 0);
       }
     }
   }
