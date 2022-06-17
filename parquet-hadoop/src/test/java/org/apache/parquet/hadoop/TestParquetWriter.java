@@ -289,7 +289,7 @@ public class TestParquetWriter {
   @Test
   public void testParquetFileWithBloomFilterWithFpp() throws IOException {
     int totalCount = 100000;
-    double[] testFpp = {0.005, 0.01, 0.05, 0.10, 0.15, 0.20, 0.25};
+    double[] testFpp = {0.01, 0.05, 0.10, 0.15, 0.20, 0.25};
     int randomStrLen = 12;
 
     Set<String> distinctStrings = new HashSet<>();
