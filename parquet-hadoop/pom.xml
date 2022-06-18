@@ -164,6 +164,12 @@
       <artifactId>audience-annotations</artifactId>
       <version>${yetus.audience-annotations.version}</version>
     </dependency>
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-lang3</artifactId>
+      <version>3.9</version>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
   <build>

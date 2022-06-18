@@ -603,6 +603,11 @@ public class ParquetWriter<T> implements Closeable {
       return self();
     }
 
+    public SELF withBloomFilterFPP(String columnPath, double fpp) {
+      encodingPropsBuilder.withBloomFilterFPP(columnPath, fpp);
+      return self();
+    }
+
     /**
      * Sets the bloom filter enabled/disabled
      *

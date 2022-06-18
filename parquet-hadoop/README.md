@@ -223,6 +223,19 @@ conf.set("parquet.bloom.filter.expected.ndv#column.path", 200)
 
 ---
 
+**Property:** `parquet.bloom.filter.fpp`  
+**Description:** The maximum expected false positive probability for the bloom filter in a column. Combined with `ndv`, `fpp` is
+used to compute the optimal size of the bloom filter.
+Note that if this property is not set, the default value 0.01 is used.  
+**Example:**
+```java
+// The bloom filter will be enabled for 'column.path' with expected number of distinct values equals to 200 and maximum expected false positive probability sets to 0.02
+conf.set("parquet.bloom.filter.expected.ndv#column.path", 200)
+conf.set("parquet.bloom.filter.fpp#column.path", 0.02)
+```
+
+---
+
 **Property:** `parquet.bloom.filter.max.bytes`  
 **Description:** The maximum number of bytes for a bloom filter bitset.  
 **Default value:** `1048576` (1MB)
