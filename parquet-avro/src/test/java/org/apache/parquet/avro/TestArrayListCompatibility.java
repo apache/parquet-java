@@ -36,12 +36,7 @@ public class TestArrayListCompatibility {
     ParquetReader<Object> parquetReader =
       AvroParquetReader.builder(testPath).withConf(conf).build();
     GenericData.Record firstRecord;
-    try {
-      firstRecord = (GenericData.Record) parquetReader.read();
-    } catch (Exception x) {
-      x.printStackTrace();
-      throw x;
-    }
+    firstRecord = (GenericData.Record) parquetReader.read();
     if (firstRecord == null) {
       throw new IOException("Can't process empty Parquet file");
     }
