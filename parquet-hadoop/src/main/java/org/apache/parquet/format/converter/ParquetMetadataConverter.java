@@ -1450,15 +1450,19 @@ public class ParquetMetadataConverter {
       @Override
       public FileMetaDataAndRowGroupOffsetInfo visit(OffsetMetadataFilter filter) throws IOException {
         FileMetaData fileMetadata = readFileMetaData(from, footerDecryptor, encryptedFooterAAD);
+        // We must generate the map *before* filtering because it modifies `fileMetadata`.
+        Map<RowGroup, Long> rowGroupToRowIndexOffsetMap = generateRowGroupOffsets(fileMetadata);
         FileMetaData filteredFileMetadata = filterFileMetaDataByStart(fileMetadata, filter);
-        return new FileMetaDataAndRowGroupOffsetInfo(filteredFileMetadata, generateRowGroupOffsets(fileMetadata));
+        return new FileMetaDataAndRowGroupOffsetInfo(filteredFileMetadata, rowGroupToRowIndexOffsetMap);
       }
 
       @Override
       public FileMetaDataAndRowGroupOffsetInfo visit(RangeMetadataFilter filter) throws IOException {
         FileMetaData fileMetadata = readFileMetaData(from, footerDecryptor, encryptedFooterAAD);
+        // We must generate the map *before* filtering because it modifies `fileMetadata`.
+        Map<RowGroup, Long> rowGroupToRowIndexOffsetMap = generateRowGroupOffsets(fileMetadata);
         FileMetaData filteredFileMetadata = filterFileMetaDataByMidpoint(fileMetadata, filter);
-        return new FileMetaDataAndRowGroupOffsetInfo(filteredFileMetadata, generateRowGroupOffsets(fileMetadata));
+        return new FileMetaDataAndRowGroupOffsetInfo(filteredFileMetadata, rowGroupToRowIndexOffsetMap);
       }
     });
     FileMetaData fileMetaData = fileMetaDataAndRowGroupInfo.fileMetadata;
