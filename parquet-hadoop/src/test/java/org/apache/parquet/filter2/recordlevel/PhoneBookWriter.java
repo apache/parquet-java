@@ -359,7 +359,7 @@ public class PhoneBookWriter {
       User u = userFromGroup(group);
       users.add(u);
       if (validateRowIndexes) {
-        assertEquals("validating row index", u.id, reader.getCurrentRowIndex());
+        assertEquals("Row index should be equal to User id", u.id, reader.getCurrentRowIndex());
       }
     }
     return users;
