@@ -41,7 +41,6 @@ import org.apache.parquet.thrift.ThriftSchemaConverter;
 import org.apache.parquet.thrift.projection.FieldProjectionFilter;
 import org.apache.parquet.thrift.projection.StrictFieldProjectionFilter;
 import org.apache.parquet.thrift.projection.ThriftProjectionException;
-import org.apache.parquet.thrift.projection.deprecated.DeprecatedFieldProjectionFilter;
 import org.apache.parquet.thrift.struct.ThriftType.StructType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,8 +49,7 @@ public class ThriftReadSupport<T> extends ReadSupport<T> {
   private static final Logger LOG = LoggerFactory.getLogger(ThriftReadSupport.class);
 
   /**
-   * Deprecated. Use {@link #STRICT_THRIFT_COLUMN_FILTER_KEY}
-   * Accepts a ";" delimited list of globs in the syntax implemented by {@link DeprecatedFieldProjectionFilter}
+   * Unsupported. Use {@link #STRICT_THRIFT_COLUMN_FILTER_KEY}
    */
   @Deprecated
   public static final String THRIFT_COLUMN_FILTER_KEY = "parquet.thrift.column.filter";
@@ -118,22 +116,12 @@ public class ThriftReadSupport<T> extends ReadSupport<T> {
       return null;
     }
 
-    if(!Strings.isNullOrEmpty(deprecated) && !Strings.isNullOrEmpty(strict)) {
-      throw new ThriftProjectionException(
-          "You cannot provide both "
-              + THRIFT_COLUMN_FILTER_KEY
-              + " and "
-              + STRICT_THRIFT_COLUMN_FILTER_KEY
-              +"! "
-              + THRIFT_COLUMN_FILTER_KEY
-              + " is deprecated."
-      );
-    }
-
     if (!Strings.isNullOrEmpty(deprecated)) {
-      LOG.warn("Using {} is deprecated. Please see the docs for {}!",
-          THRIFT_COLUMN_FILTER_KEY, STRICT_THRIFT_COLUMN_FILTER_KEY);
-      return new DeprecatedFieldProjectionFilter(deprecated);
+      throw new ThriftProjectionException(
+        "The option "
+          + THRIFT_COLUMN_FILTER_KEY
+          + " is no longer supported"
+      );
     }
 
     return StrictFieldProjectionFilter.fromSemicolonDelimitedString(strict);
@@ -165,8 +153,8 @@ public class ThriftReadSupport<T> extends ReadSupport<T> {
     if (partialSchemaString != null && projectionFilter != null) {
       throw new ThriftProjectionException(
           String.format("You cannot provide both a partial schema and field projection filter."
-                  + "Only one of (%s, %s, %s) should be set.",
-              PARQUET_READ_SCHEMA, STRICT_THRIFT_COLUMN_FILTER_KEY, THRIFT_COLUMN_FILTER_KEY));
+                  + "Only one of (%s, %s) should be set.",
+              PARQUET_READ_SCHEMA, STRICT_THRIFT_COLUMN_FILTER_KEY));
     }
 
     //set requestedProjections only when it's specified
