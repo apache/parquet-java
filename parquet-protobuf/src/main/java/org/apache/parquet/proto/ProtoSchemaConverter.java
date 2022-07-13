@@ -64,14 +64,18 @@ public class ProtoSchemaConverter {
     this.parquetSpecsCompliant = parquetSpecsCompliant;
   }
 
-  public MessageType convert(Class<? extends Message> protobufClass) {
-    LOG.debug("Converting protocol buffer class \"" + protobufClass + "\" to parquet schema.");
-    Descriptors.Descriptor descriptor = Protobufs.getMessageDescriptor(protobufClass);
+  public MessageType convert(Descriptors.Descriptor descriptor) {
     MessageType messageType =
         convertFields(Types.buildMessage(), descriptor.getFields())
         .named(descriptor.getFullName());
     LOG.debug("Converter info:\n " + descriptor.toProto() + " was converted to \n" + messageType);
     return messageType;
+  }
+
+  public MessageType convert(Class<? extends Message> protobufClass) {
+    LOG.debug("Converting protocol buffer class \"" + protobufClass + "\" to parquet schema.");
+    Descriptors.Descriptor descriptor = Protobufs.getMessageDescriptor(protobufClass);
+    return convert(descriptor);
   }
 
   /* Iterates over list of fields. **/
