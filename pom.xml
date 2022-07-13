@@ -519,6 +519,10 @@
                 change to fix a integer overflow issue.
                 TODO: remove this after Parquet 1.13 release -->
               <exclude>org.apache.parquet.column.values.dictionary.DictionaryValuesWriter#dictionaryByteSize</exclude>
+
+              <!-- PARQUET-2165 removed the deprecated classes.
+-->
+              <exclude>org.apache.parquet.thrift.projection.deprecated</exclude>
             </excludes>
           </parameter>
         </configuration>
