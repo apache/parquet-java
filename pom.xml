@@ -76,7 +76,7 @@
     <jackson-databind.version>2.13.2.2</jackson-databind.version>
     <japicmp.version>0.14.2</japicmp.version>
     <shade.prefix>shaded.parquet</shade.prefix>
-    <hadoop.version>2.10.1</hadoop.version>
+    <hadoop.version>3.2.0</hadoop.version>
     <parquet.format.version>2.9.0</parquet.format.version>
     <previous.version>1.12.0</previous.version>
     <thrift.executable>thrift</thrift.executable>
@@ -519,6 +519,8 @@
                 change to fix a integer overflow issue.
                 TODO: remove this after Parquet 1.13 release -->
               <exclude>org.apache.parquet.column.values.dictionary.DictionaryValuesWriter#dictionaryByteSize</exclude>
+              <!-- In PARQUET-2158 the return type of PathGlobPattern was changed to be compatible with Hadoop 3 -->
+              <exclude>org.apache.parquet.thrift.projection.deprecated.PathGlobPattern</exclude>
             </excludes>
           </parameter>
         </configuration>
