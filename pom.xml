@@ -76,7 +76,7 @@
     <jackson-databind.version>2.13.2.2</jackson-databind.version>
     <japicmp.version>0.14.2</japicmp.version>
     <shade.prefix>shaded.parquet</shade.prefix>
-    <hadoop.version>3.2.0</hadoop.version>
+    <hadoop.version>3.2.3</hadoop.version>
     <parquet.format.version>2.9.0</parquet.format.version>
     <previous.version>1.12.0</previous.version>
     <thrift.executable>thrift</thrift.executable>
