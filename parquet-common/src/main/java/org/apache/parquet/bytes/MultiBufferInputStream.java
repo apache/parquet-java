@@ -468,9 +468,9 @@ class MultiBufferInputStream extends ByteBufferInputStream {
       throw new EOFException();
     }
     
-    if (current.remaining() >= 2) {
+    if (current.remaining() >= Short.BYTES) {
       // If the whole short can be read from the current buffer, use intrinsics
-      this.position += 2;
+      this.position += Short.BYTES;
       return current.getShort();
     } else {
       // Otherwise get the short one byte at a time
@@ -501,9 +501,9 @@ class MultiBufferInputStream extends ByteBufferInputStream {
       throw new EOFException();
     }
     
-    if (current.remaining() >= 4) {
+    if (current.remaining() >= Integer.BYTES) {
       // If the whole int can be read from the current buffer, use intrinsics
-      this.position += 4;
+      this.position += Integer.BYTES;
       return current.getInt();
     } else {
       // Otherwise get the int one byte at a time
@@ -534,9 +534,9 @@ class MultiBufferInputStream extends ByteBufferInputStream {
       throw new EOFException();
     }
     
-    if (current.remaining() >= 8) {
+    if (current.remaining() >= Long.BYTES) {
       // If the whole short can be read from the current buffer, use intrinsics
-      this.position += 8;
+      this.position += Long.BYTES;
       return current.getLong();
     } else {
       // Otherwise get the long one byte at a time
