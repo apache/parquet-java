@@ -65,28 +65,15 @@ class SingleBufferInputStream extends ByteBufferInputStream {
     this.startPosition = 0;
   }
 
-  SingleBufferInputStream(List<ByteBuffer> inBufs) {
-    throw new UnsupportedOperationException();
-  }
-
   @Override
   public long position() {
     // position is relative to the start of the stream, not the buffer
     return buffer.position() - startPosition;
   }
 
-  /*
-  For all read methods, if we read off the end of the ByteBuffer, BufferUnderflowException is thrown, which
-  we catch and turn into an EOFException. This is measured to be faster than explicitly checking if the ByteBuffer
-  has any remaining bytes.
-   */
   @Override
   public int read() throws IOException {
-    try {
-      return buffer.get() & 0xFF;
-    } catch (BufferUnderflowException e) {
-      throw new EOFException(e.getMessage());
-    }
+    return readUnsignedByte();
   }
 
   @Override
@@ -110,7 +97,7 @@ class SingleBufferInputStream extends ByteBufferInputStream {
   public void readFully(byte[] bytes, int offset, int length) throws IOException {
     try {
       buffer.get(bytes, offset, length);
-    } catch (BufferUnderflowException|IndexOutOfBoundsException e) {
+    } catch (BufferUnderflowException | IndexOutOfBoundsException e) {
       throw new EOFException(e.getMessage());
     }
   }
@@ -118,7 +105,7 @@ class SingleBufferInputStream extends ByteBufferInputStream {
   @Override
   public long skip(long n) {
     if (n < 0) {
-      throw new IllegalArgumentException();
+      throw new IllegalArgumentException("Invalid input for skip: " + n);
     }
     
     if (n == 0) {
@@ -139,7 +126,7 @@ class SingleBufferInputStream extends ByteBufferInputStream {
   @Override
   public void skipFully(long n) throws IOException {
     if (n < 0 || n > Integer.MAX_VALUE) {
-      throw new IllegalArgumentException();
+      throw new IllegalArgumentException("Invalid input for skipFully: " + n);
     }
     
     try {
@@ -255,6 +242,11 @@ class SingleBufferInputStream extends ByteBufferInputStream {
     return buffer.remaining();
   }
 
+  /*
+  For all read methods, if we read off the end of the ByteBuffer, BufferUnderflowException is thrown, which
+  we catch and turn into an EOFException. This is measured to be faster than explicitly checking if the ByteBuffer
+  has any remaining bytes.
+   */
   @Override
   public byte readByte() throws IOException {
     try {
@@ -273,6 +265,9 @@ class SingleBufferInputStream extends ByteBufferInputStream {
     }
   }
 
+  /*
+  Use ByteBuffer.getShort(), which takes advantage of platform intrinsics
+  */
   @Override
   public short readShort() throws IOException {
     try {
@@ -304,7 +299,7 @@ class SingleBufferInputStream extends ByteBufferInputStream {
   }
 
   /*
-  Use ByteBuffer.getLonmg(), which takes advantage of platform intrinsics
+  Use ByteBuffer.getLong(), which takes advantage of platform intrinsics
   */
   @Override
   public long readLong() throws IOException {
