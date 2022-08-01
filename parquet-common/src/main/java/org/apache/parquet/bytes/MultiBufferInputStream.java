@@ -94,7 +94,7 @@ class MultiBufferInputStream extends ByteBufferInputStream {
   @Override
   public void skipFully(long n) throws IOException {
     if (current == null || n > length) {
-      throw new EOFException();
+      throw new EOFException("Not enough bytes to skip: " + length + " < " + n));
     }
     
     skip(n);
@@ -286,23 +286,7 @@ class MultiBufferInputStream extends ByteBufferInputStream {
 
   @Override
   public int read() throws IOException {
-    if (current == null) {
-      throw new EOFException();
-    }
-
-    this.position += 1;
-    while (true) {
-      try {
-        return current.get() & 0xFF;
-      } catch (BufferUnderflowException e) {
-        // It has been measured to be faster to rely on ByteBuffer throwing BufferUnderflowException to determine
-        // when we're run out of bytes in the current buffer.
-        if (!nextBuffer()) {
-          // there are no more buffers
-          throw new EOFException();
-        }
-      }
-    }
+    return (byte) readUnsignedByte();
   }
 
   @Override
@@ -430,7 +414,7 @@ class MultiBufferInputStream extends ByteBufferInputStream {
 
   @Override
   public byte readByte() throws IOException {
-    return (byte)readUnsignedByte();
+    return (byte) readUnsignedByte();
   }
 
   @Override
@@ -474,7 +458,7 @@ class MultiBufferInputStream extends ByteBufferInputStream {
       return current.getShort();
     } else {
       // Otherwise get the short one byte at a time
-      return (short)getShortSlow();
+      return (short) getShortSlow();
     }
   }
 
@@ -517,14 +501,14 @@ class MultiBufferInputStream extends ByteBufferInputStream {
    * @throws IOException
    */
   private long getLongSlow() throws IOException {
-    long ch0 = (long)readUnsignedByte() << 0;
-    long ch1 = (long)readUnsignedByte() << 8;
-    long ch2 = (long)readUnsignedByte() << 16;
-    long ch3 = (long)readUnsignedByte() << 24;
-    long ch4 = (long)readUnsignedByte() << 32;
-    long ch5 = (long)readUnsignedByte() << 40;
-    long ch6 = (long)readUnsignedByte() << 48;
-    long ch7 = (long)readUnsignedByte() << 56;
+    long ch0 = (long) readUnsignedByte() << 0;
+    long ch1 = (long) readUnsignedByte() << 8;
+    long ch2 = (long) readUnsignedByte() << 16;
+    long ch3 = (long) readUnsignedByte() << 24;
+    long ch4 = (long) readUnsignedByte() << 32;
+    long ch5 = (long) readUnsignedByte() << 40;
+    long ch6 = (long) readUnsignedByte() << 48;
+    long ch7 = (long) readUnsignedByte() << 56;
     return ((ch0 + ch1) + (ch2 + ch3)) + ((ch4 + ch5) + (ch6 + ch7));
   }
 
