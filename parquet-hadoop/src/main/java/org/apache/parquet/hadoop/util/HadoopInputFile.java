@@ -27,6 +27,8 @@ import org.apache.parquet.io.SeekableInputStream;
 import org.apache.parquet.io.InputFile;
 import java.io.IOException;
 
+import static org.apache.hadoop.util.functional.FutureIO.awaitFuture;
+
 public class HadoopInputFile implements InputFile {
 
   private final FileSystem fs;
@@ -54,7 +56,7 @@ public class HadoopInputFile implements InputFile {
   public Configuration getConfiguration() {
     return conf;
   }
-  
+
   public Path getPath() {
     return stat.getPath();
   }
@@ -66,7 +68,13 @@ public class HadoopInputFile implements InputFile {
 
   @Override
   public SeekableInputStream newStream() throws IOException {
-    return HadoopStreams.wrap(fs.open(stat.getPath()));
+    // specify random access always
+    return HadoopStreams.wrap(
+      awaitFuture(fs.openFile(stat.getPath())
+        .opt("fs.option.openfile.read.policy", "random")
+        .opt("fs.option.openfile.length", Long.toString(stat.getLen()))
+        .opt("fs.s3a.experimental.input.fadvise", "random")  // s3a only, 3.3.0+
+        .build()));
   }
 
   @Override
