@@ -37,6 +37,7 @@ import org.apache.hadoop.util.ReflectionUtils;
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.compression.CompressionCodecFactory;
+import org.apache.parquet.hadoop.codec.ZstandardCodec;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 
 public class CodecFactory implements CompressionCodecFactory {
@@ -109,7 +110,12 @@ public class CodecFactory implements CompressionCodecFactory {
           decompressor.reset();
         }
         InputStream is = codec.createInputStream(bytes.toInputStream(), decompressor);
-        decompressed = BytesInput.from(is, uncompressedSize);
+        if (codec instanceof ZstandardCodec) {
+          decompressed = BytesInput.copy(BytesInput.from(is, uncompressedSize));
+          is.close();
+        } else {
+          decompressed = BytesInput.from(is, uncompressedSize);
+        }
       } else {
         decompressed = bytes;
       }
