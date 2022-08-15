@@ -110,6 +110,11 @@ public class CodecFactory implements CompressionCodecFactory {
           decompressor.reset();
         }
         InputStream is = codec.createInputStream(bytes.toInputStream(), decompressor);
+
+        // We need to explicitly close the ZstdDecompressorStream here to release the resources it holds to avoid
+        // off-heap memory fragmentation issue, see https://issues.apache.org/jira/browse/PARQUET-2160.
+        // This change will load the decompressor stream into heap a little earlier, since the problem it solves
+        // only happens in the ZSTD codec, so this modification is only made for ZSTD streams.
         if (codec instanceof ZstandardCodec) {
           decompressed = BytesInput.copy(BytesInput.from(is, uncompressedSize));
           is.close();
