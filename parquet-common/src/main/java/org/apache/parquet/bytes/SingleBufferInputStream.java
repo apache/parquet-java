@@ -58,10 +58,12 @@ class SingleBufferInputStream extends ByteBufferInputStream {
   }
 
   SingleBufferInputStream(byte[] inBuf, int start, int length) {
-    this.buffer = ByteBuffer.wrap(inBuf, start, length);
+    // Without slice() here, TestByteBufferInputStreams.testSliceBuffersModification
+    // for TestSingleBufferInputStreamByteArrayConstructorOffsetLength
+    // has a failure because it dubiously assumes that the ByteBuffer's limits
+    // are the same as the backing array.
+    this.buffer = ByteBuffer.wrap(inBuf, start, length).slice();
     this.buffer.order(java.nio.ByteOrder.LITTLE_ENDIAN);
-    // This seems to be consistent with HeapByteBuffer.wrap(), which leaves
-    // the internal "offset" at zero and sets the starting position at start.
     this.startPosition = 0;
   }
 
@@ -166,10 +168,10 @@ class SingleBufferInputStream extends ByteBufferInputStream {
       throw new EOFException();
     }
 
-    // length is less than remaining, so it must fit in an int
     ByteBuffer copy = buffer.duplicate();
-    copy.limit(copy.position() + length);
-    buffer.position(buffer.position() + length);
+    int en = buffer.position() + length;
+    copy.limit(en);
+    buffer.position(en);
 
     return copy;
   }

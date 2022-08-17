@@ -94,7 +94,7 @@ class MultiBufferInputStream extends ByteBufferInputStream {
   @Override
   public void skipFully(long n) throws IOException {
     if (current == null || n > length) {
-      throw new EOFException("Not enough bytes to skip: " + length + " < " + n));
+      throw new EOFException("Not enough bytes to skip: " + length + " < " + n);
     }
     
     skip(n);
@@ -286,7 +286,7 @@ class MultiBufferInputStream extends ByteBufferInputStream {
 
   @Override
   public int read() throws IOException {
-    return (byte) readUnsignedByte();
+    return readUnsignedByte();
   }
 
   @Override
