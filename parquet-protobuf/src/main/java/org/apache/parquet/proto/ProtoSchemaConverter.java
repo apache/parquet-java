@@ -24,6 +24,7 @@ import com.google.protobuf.Descriptors.FieldDescriptor;
 import com.google.protobuf.Descriptors.FieldDescriptor.JavaType;
 import com.google.protobuf.Message;
 import com.twitter.elephantbird.util.Protobufs;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
@@ -49,6 +50,8 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.*;
 public class ProtoSchemaConverter {
 
   private static final Logger LOG = LoggerFactory.getLogger(ProtoSchemaConverter.class);
+  public static final String PB_MAX_RECURSION = "parquet.proto.maxRecursion";
+
   private final boolean parquetSpecsCompliant;
   // TODO: use proto custom options to override per field.
   private final int maxRecursion;
