@@ -1217,7 +1217,7 @@ public class ParquetFileWriter {
         BlockCipher.Encryptor columnIndexEncryptor = null;
         byte[] columnIndexAAD = null;
         if (null != fileEncryptor) {
-          InternalColumnEncryptionSetup columnEncryptionSetup = fileEncryptor.getColumnSetup(column.getPath(), false, cIndex);
+          InternalColumnEncryptionSetup columnEncryptionSetup = fileEncryptor.getColumnSetup(column.getPath(), true, cIndex);
           if (columnEncryptionSetup.isEncrypted()) {
             columnIndexEncryptor = columnEncryptionSetup.getMetaDataEncryptor();
             columnIndexAAD = AesCipher.createModuleAAD(fileEncryptor.getFileAAD(), ModuleType.ColumnIndex,
@@ -1257,7 +1257,7 @@ public class ParquetFileWriter {
         BlockCipher.Encryptor offsetIndexEncryptor = null;
         byte[] offsetIndexAAD = null;
         if (null != fileEncryptor) {
-          InternalColumnEncryptionSetup columnEncryptionSetup = fileEncryptor.getColumnSetup(column.getPath(), false, cIndex);
+          InternalColumnEncryptionSetup columnEncryptionSetup = fileEncryptor.getColumnSetup(column.getPath(), true, cIndex);
           if (columnEncryptionSetup.isEncrypted()) {
             offsetIndexEncryptor = columnEncryptionSetup.getMetaDataEncryptor();
             offsetIndexAAD = AesCipher.createModuleAAD(fileEncryptor.getFileAAD(), ModuleType.OffsetIndex,
@@ -1296,7 +1296,7 @@ public class ParquetFileWriter {
         byte[] bloomFilterHeaderAAD = null;
         byte[] bloomFilterBitsetAAD = null;
         if (null != fileEncryptor) {
-          InternalColumnEncryptionSetup columnEncryptionSetup = fileEncryptor.getColumnSetup(column.getPath(), false, cIndex);
+          InternalColumnEncryptionSetup columnEncryptionSetup = fileEncryptor.getColumnSetup(column.getPath(), true, cIndex);
           if (columnEncryptionSetup.isEncrypted()) {
             bloomFilterEncryptor = columnEncryptionSetup.getMetaDataEncryptor();
             int columnOrdinal = columnEncryptionSetup.getOrdinal();
