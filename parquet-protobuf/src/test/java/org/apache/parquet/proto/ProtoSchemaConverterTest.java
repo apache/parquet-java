@@ -342,4 +342,34 @@ public class ProtoSchemaConverterTest {
 
     testConversion(TestProto3.MapIntMessage.class, expectedSchema, false);
   }
+
+  @Test
+  public void testCircularDependencyCutoff() throws Exception {
+    String expectedSchema =
+      "message TestProtobuf.CircularDependency1 {\n" +
+        "  optional int32 identifier = 1;\n" +
+        "  optional group dependency2 = 2 {\n" +
+        "    optional binary name (STRING) = 1;\n" +
+        "    optional group dependency1 = 2 {\n" +
+        "      optional int32 identifier = 1;\n" +
+        "    }\n" +
+        "  }\n" +
+        "}";
+    testConversion(TestProtobuf.CircularDependency1.class, expectedSchema, false);
+  }
+
+  @Test
+  public void testProto3CircularDependencyCutoff() throws Exception {
+    String expectedSchema =
+      "message TestProto3.CircularDependency1 {\n" +
+        "  optional int32 identifier = 1;\n" +
+        "  optional group dependency2 = 2 {\n" +
+        "    optional binary name (STRING) = 1;\n" +
+        "    optional group dependency1 = 2 {\n" +
+        "      optional int32 identifier = 1;\n" +
+        "    }\n" +
+        "  }\n" +
+        "}";
+    testConversion(TestProto3.CircularDependency1.class, expectedSchema, false);
+  }
 }

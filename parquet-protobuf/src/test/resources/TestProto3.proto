@@ -156,3 +156,13 @@ message FirstCustomClassMessage {
 message SecondCustomClassMessage {
     string string = 11;
 }
+
+message CircularDependency1 {
+  int32 identifier = 1;
+  CircularDependency2 dependency2 = 2;
+}
+
+message CircularDependency2 {
+  string name = 1;
+  CircularDependency1 dependency1 = 2;
+}

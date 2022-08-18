@@ -33,6 +33,7 @@ import org.apache.parquet.schema.Types.GroupBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.apache.parquet.schema.LogicalTypeAnnotation.enumType;
@@ -66,7 +67,7 @@ public class ProtoSchemaConverter {
 
   public MessageType convert(Descriptors.Descriptor descriptor) {
     MessageType messageType =
-        convertFields(Types.buildMessage(), descriptor.getFields())
+        convertFields(Types.buildMessage(), descriptor.getFields(), new ArrayList<>())
         .named(descriptor.getFullName());
     LOG.debug("Converter info:\n " + descriptor.toProto() + " was converted to \n" + messageType);
     return messageType;
@@ -79,12 +80,20 @@ public class ProtoSchemaConverter {
   }
 
   /* Iterates over list of fields. **/
-  private <T> GroupBuilder<T> convertFields(GroupBuilder<T> groupBuilder, List<FieldDescriptor> fieldDescriptors) {
+  private <T> GroupBuilder<T> convertFields(GroupBuilder<T> groupBuilder, List<FieldDescriptor> fieldDescriptors, List<String> parentNames) {
     for (FieldDescriptor fieldDescriptor : fieldDescriptors) {
-      groupBuilder =
-          addField(fieldDescriptor, groupBuilder)
+      final String name = fieldDescriptor.getFullName();
+      final List<String> newParentNames = new ArrayList<>(parentNames);
+      newParentNames.add(name);
+      if (parentNames.contains(name)) {
+        // Circular dependency, skip
+        LOG.warn("Breaking circular dependency:{}{}", System.lineSeparator(),
+          String.join(System.lineSeparator(), newParentNames));
+      } else {
+        groupBuilder = addField(fieldDescriptor, groupBuilder, newParentNames)
           .id(fieldDescriptor.getNumber())
           .named(fieldDescriptor.getName());
+      }
     }
     return groupBuilder;
   }
@@ -99,9 +108,9 @@ public class ProtoSchemaConverter {
     }
   }
 
-  private <T> Builder<? extends Builder<?, GroupBuilder<T>>, GroupBuilder<T>> addField(FieldDescriptor descriptor, final GroupBuilder<T> builder) {
+  private <T> Builder<? extends Builder<?, GroupBuilder<T>>, GroupBuilder<T>> addField(FieldDescriptor descriptor, final GroupBuilder<T> builder, List<String> parentNames) {
     if (descriptor.getJavaType() == JavaType.MESSAGE) {
-      return addMessageField(descriptor, builder);
+      return addMessageField(descriptor, builder, parentNames);
     }
 
     ParquetType parquetType = getParquetType(descriptor);
@@ -124,35 +133,35 @@ public class ProtoSchemaConverter {
         .named("list");
   }
 
-  private <T> GroupBuilder<GroupBuilder<T>> addRepeatedMessage(FieldDescriptor descriptor, GroupBuilder<T> builder) {
+  private <T> GroupBuilder<GroupBuilder<T>> addRepeatedMessage(FieldDescriptor descriptor, GroupBuilder<T> builder, List<String> parentNames) {
     GroupBuilder<GroupBuilder<GroupBuilder<GroupBuilder<T>>>> result =
       builder
         .group(Type.Repetition.OPTIONAL).as(listType())
         .group(Type.Repetition.REPEATED)
         .group(Type.Repetition.OPTIONAL);
 
-    convertFields(result, descriptor.getMessageType().getFields());
+    convertFields(result, descriptor.getMessageType().getFields(), parentNames);
 
     return result.named("element").named("list");
   }
 
-  private <T> GroupBuilder<GroupBuilder<T>> addMessageField(FieldDescriptor descriptor, final GroupBuilder<T> builder) {
+  private <T> GroupBuilder<GroupBuilder<T>> addMessageField(FieldDescriptor descriptor, final GroupBuilder<T> builder, List<String> parentNames) {
     if (descriptor.isMapField() && parquetSpecsCompliant) {
       // the old schema style did not include the MAP wrapper around map groups
-      return addMapField(descriptor, builder);
+      return addMapField(descriptor, builder, parentNames);
     }
     if (descriptor.isRepeated() && parquetSpecsCompliant) {
       // the old schema style did not include the LIST wrapper around repeated messages
-      return addRepeatedMessage(descriptor, builder);
+      return addRepeatedMessage(descriptor, builder, parentNames);
     }
 
     // Plain message
     GroupBuilder<GroupBuilder<T>> group = builder.group(getRepetition(descriptor));
-    convertFields(group, descriptor.getMessageType().getFields());
+    convertFields(group, descriptor.getMessageType().getFields(), parentNames);
     return group;
   }
 
-  private <T> GroupBuilder<GroupBuilder<T>> addMapField(FieldDescriptor descriptor, final GroupBuilder<T> builder) {
+  private <T> GroupBuilder<GroupBuilder<T>> addMapField(FieldDescriptor descriptor, final GroupBuilder<T> builder, List<String> parentNames) {
     List<FieldDescriptor> fields = descriptor.getMessageType().getFields();
     if (fields.size() != 2) {
       throw new UnsupportedOperationException("Expected two fields for the map (key/value), but got: " + fields);
@@ -165,7 +174,7 @@ public class ProtoSchemaConverter {
       .group(Type.Repetition.REPEATED) // key_value wrapper
       .primitive(mapKeyParquetType.primitiveType, Type.Repetition.REQUIRED).as(mapKeyParquetType.logicalTypeAnnotation).named("key");
 
-    return addField(fields.get(1), group).named("value")
+    return addField(fields.get(1), group, parentNames).named("value")
       .named("key_value");
   }
 

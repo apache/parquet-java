@@ -141,7 +141,7 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
     MessageType rootSchema = new ProtoSchemaConverter(writeSpecsCompliant).convert(descriptor);
     validatedMapping(descriptor, rootSchema);
 
-    this.messageWriter = new MessageWriter(descriptor, rootSchema);
+    this.messageWriter = new MessageWriter(descriptor, rootSchema, new ArrayList<>());
 
     extraMetaData.put(ProtoReadSupport.PB_DESCRIPTOR, descriptor.toProto().toString());
     extraMetaData.put(PB_SPECS_COMPLIANT_WRITE, String.valueOf(writeSpecsCompliant));
@@ -212,35 +212,44 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
     final FieldWriter[] fieldWriters;
 
     @SuppressWarnings("unchecked")
-    MessageWriter(Descriptor descriptor, GroupType schema) {
+    MessageWriter(Descriptor descriptor, GroupType schema, List<String> parentNames) {
       List<FieldDescriptor> fields = descriptor.getFields();
       fieldWriters = (FieldWriter[]) Array.newInstance(FieldWriter.class, fields.size());
 
       for (FieldDescriptor fieldDescriptor: fields) {
-        String name = fieldDescriptor.getName();
-        Type type = schema.getType(name);
-        FieldWriter writer = createWriter(fieldDescriptor, type);
+        final String fullName = fieldDescriptor.getFullName();
+        final List<String> newParentNames = new ArrayList<>(parentNames);
+        newParentNames.add(fullName);
+        if (parentNames.contains(fullName)) {
+          // Circular dependency, skip
+          LOG.warn("Breaking circular dependency:{}{}", System.lineSeparator(),
+            String.join(System.lineSeparator(), newParentNames));
+        } else {
+          String name = fieldDescriptor.getName();
+          Type type = schema.getType(name);
+          FieldWriter writer = createWriter(fieldDescriptor, type, newParentNames);
 
-        if(writeSpecsCompliant && fieldDescriptor.isRepeated() && !fieldDescriptor.isMapField()) {
-          writer = new ArrayWriter(writer);
+          if(writeSpecsCompliant && fieldDescriptor.isRepeated() && !fieldDescriptor.isMapField()) {
+            writer = new ArrayWriter(writer);
+          }
+          else if (!writeSpecsCompliant && fieldDescriptor.isRepeated()) {
+            // the old schemas style used to write maps as repeated fields instead of wrapping them in a LIST
+            writer = new RepeatedWriter(writer);
+          }
+
+          writer.setFieldName(name);
+          writer.setIndex(schema.getFieldIndex(name));
+
+          fieldWriters[fieldDescriptor.getIndex()] = writer;
         }
-        else if (!writeSpecsCompliant && fieldDescriptor.isRepeated()) {
-          // the old schemas style used to write maps as repeated fields instead of wrapping them in a LIST
-          writer = new RepeatedWriter(writer);
-        }
-
-        writer.setFieldName(name);
-        writer.setIndex(schema.getFieldIndex(name));
-
-        fieldWriters[fieldDescriptor.getIndex()] = writer;
       }
     }
 
-    private FieldWriter createWriter(FieldDescriptor fieldDescriptor, Type type) {
+    private FieldWriter createWriter(FieldDescriptor fieldDescriptor, Type type, List<String> parentNames) {
 
       switch (fieldDescriptor.getJavaType()) {
         case STRING: return new StringWriter() ;
-        case MESSAGE: return createMessageWriter(fieldDescriptor, type);
+        case MESSAGE: return createMessageWriter(fieldDescriptor, type, parentNames);
         case INT: return new IntWriter();
         case LONG: return new LongWriter();
         case FLOAT: return new FloatWriter();
@@ -253,12 +262,12 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
       return unknownType(fieldDescriptor);//should not be executed, always throws exception.
     }
 
-    private FieldWriter createMessageWriter(FieldDescriptor fieldDescriptor, Type type) {
+    private FieldWriter createMessageWriter(FieldDescriptor fieldDescriptor, Type type, List<String> parentNames) {
       if (fieldDescriptor.isMapField() && writeSpecsCompliant) {
-        return createMapWriter(fieldDescriptor, type);
+        return createMapWriter(fieldDescriptor, type, parentNames);
       }
 
-      return new MessageWriter(fieldDescriptor.getMessageType(), getGroupType(type));
+      return new MessageWriter(fieldDescriptor.getMessageType(), getGroupType(type), parentNames);
     }
 
     private GroupType getGroupType(Type type) {
@@ -279,7 +288,7 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
       }).orElse(type.asGroupType());
     }
 
-    private MapWriter createMapWriter(FieldDescriptor fieldDescriptor, Type type) {
+    private MapWriter createMapWriter(FieldDescriptor fieldDescriptor, Type type, List<String> parentNames) {
       List<FieldDescriptor> fields = fieldDescriptor.getMessageType().getFields();
       if (fields.size() != 2) {
         throw new UnsupportedOperationException("Expected two fields for the map (key/value), but got: " + fields);
@@ -287,13 +296,13 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
 
       // KeyFieldWriter
       FieldDescriptor keyProtoField = fields.get(0);
-      FieldWriter keyWriter = createWriter(keyProtoField, type);
+      FieldWriter keyWriter = createWriter(keyProtoField, type, parentNames);
       keyWriter.setFieldName(keyProtoField.getName());
       keyWriter.setIndex(0);
 
       // ValueFieldWriter
       FieldDescriptor valueProtoField = fields.get(1);
-      FieldWriter valueWriter = createWriter(valueProtoField, type);
+      FieldWriter valueWriter = createWriter(valueProtoField, type, parentNames);
       valueWriter.setFieldName(valueProtoField.getName());
       valueWriter.setIndex(1);
 
