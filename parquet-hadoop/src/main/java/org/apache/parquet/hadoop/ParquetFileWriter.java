@@ -1193,7 +1193,7 @@ public class ParquetFileWriter {
     serializeBloomFilters(bloomFilters, blocks, out, fileEncryptor);
     LOG.debug("{}: end", out.getPos());
     this.footer = new ParquetMetadata(new FileMetaData(schema, extraMetaData, Version.FULL_VERSION), blocks);
-    serializeFooter(footer, out, fileEncryptor);
+    serializeFooter(footer, out, fileEncryptor, metadataConverter);
     out.close();
   }
 
@@ -1322,9 +1322,7 @@ public class ParquetFileWriter {
   }
 
   private static void serializeFooter(ParquetMetadata footer, PositionOutputStream out,
-      InternalFileEncryptor fileEncryptor) throws IOException {
-
-    ParquetMetadataConverter metadataConverter = new ParquetMetadataConverter();
+      InternalFileEncryptor fileEncryptor, ParquetMetadataConverter metadataConverter) throws IOException {
 
     // Unencrypted file
     if (null == fileEncryptor) {
@@ -1499,7 +1497,7 @@ public class ParquetFileWriter {
       throws IOException {
     PositionOutputStream metadata = HadoopStreams.wrap(fs.create(outputPath));
     metadata.write(MAGIC);
-    serializeFooter(metadataFooter, metadata, null);
+    serializeFooter(metadataFooter, metadata, null, new ParquetMetadataConverter());
     metadata.close();
   }
 

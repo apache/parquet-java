@@ -666,6 +666,17 @@ public class ParquetWriter<T> implements Closeable {
     }
 
     /**
+     * Sets the length which the min/max binary values in row groups are truncated to.
+     *
+     * @param length the length to truncate to
+     * @return this builder for method chaining
+     */
+    public SELF withStatisticsTruncateLength(int length) {
+      encodingPropsBuilder.withStatisticsTruncateLength(length);
+      return self();
+    }
+
+    /**
      * Set a property that will be available to the read path. For writers that use a Hadoop
      * configuration, this is the recommended way to add configuration values.
      *

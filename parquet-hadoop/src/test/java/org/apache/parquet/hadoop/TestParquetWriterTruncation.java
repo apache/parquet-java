@@ -20,6 +20,7 @@ package org.apache.parquet.hadoop;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
+import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.GroupFactory;
 import org.apache.parquet.example.data.simple.SimpleGroupFactory;
@@ -44,6 +45,7 @@ import java.util.stream.Collectors;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.stringType;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class TestParquetWriterTruncation {
 
@@ -78,6 +80,37 @@ public class TestParquetWriterTruncation {
       ColumnIndex index = reader.readColumnIndex(column);
       assertEquals(Collections.singletonList("1234567890"), asStrings(index.getMinValues()));
       assertEquals(Collections.singletonList("1234567891"), asStrings(index.getMaxValues()));
+    }
+  }
+
+  @Test
+  public void testTruncateStatistics() throws IOException {
+    MessageType schema = Types.buildMessage().
+      required(BINARY).as(stringType()).named("name").named("msg");
+
+    Configuration conf = new Configuration();
+    GroupWriteSupport.setSchema(schema, conf);
+
+    GroupFactory factory = new SimpleGroupFactory(schema);
+    File file = temp.newFile();
+    file.delete();
+    Path path = new Path(file.getAbsolutePath());
+    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(path)
+      .withPageRowCountLimit(10)
+      .withConf(conf)
+      .withDictionaryEncoding(false)
+      .withStatisticsTruncateLength(10)
+      .build()) {
+
+      writer.write(factory.newGroup().append("name", "1234567890abcdefghijklmnopqrstuvwxyz"));
+    }
+
+    try (ParquetFileReader reader = ParquetFileReader.open(HadoopInputFile.fromPath(path, new Configuration()))) {
+
+      ColumnChunkMetaData column = reader.getFooter().getBlocks().get(0).getColumns().get(0);
+      Statistics<?> statistics = column.getStatistics();
+      assertEquals("1234567890", new String(statistics.getMinBytes()));
+      assertEquals("1234567891", new String(statistics.getMaxBytes()));
     }
   }
 
