@@ -655,6 +655,17 @@ public class ParquetWriter<T> implements Closeable {
     }
 
     /**
+     * Sets the length to be used for truncating binary values in a binary column index.
+     *
+     * @param length the length to truncate to
+     * @return this builder for method chaining
+     */
+    public SELF withColumnIndexTruncateLength(int length) {
+      encodingPropsBuilder.withColumnIndexTruncateLength(length);
+      return self();
+    }
+
+    /**
      * Set a property that will be available to the read path. For writers that use a Hadoop
      * configuration, this is the recommended way to add configuration values.
      *
