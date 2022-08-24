@@ -20,6 +20,7 @@ package org.apache.parquet.hadoop;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
+import org.apache.parquet.Preconditions;
 import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.GroupFactory;
@@ -45,7 +46,6 @@ import java.util.stream.Collectors;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.stringType;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
 public class TestParquetWriterTruncation {
 
@@ -61,9 +61,7 @@ public class TestParquetWriterTruncation {
     GroupWriteSupport.setSchema(schema, conf);
 
     GroupFactory factory = new SimpleGroupFactory(schema);
-    File file = temp.newFile();
-    file.delete();
-    Path path = new Path(file.getAbsolutePath());
+    Path path = newTempPath();
     try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(path)
       .withPageRowCountLimit(10)
       .withConf(conf)
@@ -92,9 +90,7 @@ public class TestParquetWriterTruncation {
     GroupWriteSupport.setSchema(schema, conf);
 
     GroupFactory factory = new SimpleGroupFactory(schema);
-    File file = temp.newFile();
-    file.delete();
-    Path path = new Path(file.getAbsolutePath());
+    Path path = newTempPath();
     try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(path)
       .withPageRowCountLimit(10)
       .withConf(conf)
@@ -112,6 +108,12 @@ public class TestParquetWriterTruncation {
       assertEquals("1234567890", new String(statistics.getMinBytes()));
       assertEquals("1234567891", new String(statistics.getMaxBytes()));
     }
+  }
+
+  private Path newTempPath() throws IOException {
+    File file = temp.newFile();
+    Preconditions.checkArgument(file.delete(), "Could not remove temp file");
+    return new Path(file.getAbsolutePath());
   }
 
   private static List<String> asStrings(List<ByteBuffer> buffers) {
