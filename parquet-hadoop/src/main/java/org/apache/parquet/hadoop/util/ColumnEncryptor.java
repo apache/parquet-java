@@ -204,7 +204,7 @@ public class ColumnEncryptor {
     reader.setStreamPosition(chunk.getStartingPos());
     writer.startColumn(descriptor, chunk.getValueCount(), chunk.getCodec());
     processPages(reader, chunk, writer, createdBy, blockId, columnId, encryptPaths.contains(chunk.getPath()));
-    writer.endColumn();
+    writer.endColumn(chunk.getStatistics());
   }
 
   private void processPages(TransParquetFileReader reader, ColumnChunkMetaData chunk, ParquetFileWriter writer,
