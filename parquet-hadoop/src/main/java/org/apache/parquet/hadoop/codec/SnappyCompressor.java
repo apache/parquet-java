@@ -34,7 +34,7 @@ import org.apache.parquet.Preconditions;
 public class SnappyCompressor implements Compressor {
   // Double up to an 8 mb write buffer,  then switch to 1MB linear allocation
   private static final int DOUBLING_ALLOC_THRESH =  8 << 20;
-  private static final int LINEAR_ALLOC_STEP = 1 << 10;
+  private static final int LINEAR_ALLOC_STEP = 1 << 20;
 
   // Buffer for compressed output. This buffer grows as necessary.
   private ByteBuffer outputBuffer = ByteBuffer.allocateDirect(0);
