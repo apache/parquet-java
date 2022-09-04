@@ -32,6 +32,10 @@ import org.apache.parquet.Preconditions;
  * entire input in setInput and compresses it as one compressed block.
  */
 public class SnappyCompressor implements Compressor {
+  // Double up to an 8 mb write buffer,  then switch to 1MB linear allocation
+  private static final int DOUBLING_ALLOC_THRESH =  8 << 20;
+  private static final int LINEAR_ALLOC_STEP = 1 << 10;
+
   // Buffer for compressed output. This buffer grows as necessary.
   private ByteBuffer outputBuffer = ByteBuffer.allocateDirect(0);
 
@@ -96,19 +100,38 @@ public class SnappyCompressor implements Compressor {
         "Output buffer should be empty. Caller must call compress()");
 
     if (inputBuffer.capacity() - inputBuffer.position() < len) {
-      ByteBuffer tmp = ByteBuffer.allocateDirect(inputBuffer.position() + len);
-      inputBuffer.rewind();
-      tmp.put(inputBuffer);
-      ByteBuffer oldBuffer = inputBuffer;
-      inputBuffer = tmp;
-      CleanUtil.cleanDirectBuffer(oldBuffer);
-    } else {
-      inputBuffer.limit(inputBuffer.position() + len);
+      resizeInputBuffer(inputBuffer.position() + len);
     }
+
+    inputBuffer.limit(inputBuffer.position() + len);
 
     // Append the current bytes to the input buffer
     inputBuffer.put(buffer, off, len);
     bytesRead += len;
+  }
+
+  /**
+   * Resize the internal input buffer to ensure enough write space.
+   * @param requiredSizeBytes the minimum required capacity of the input buffer.
+   */
+  private void resizeInputBuffer(final int requiredSizeBytes) {
+    int newCapacity = inputBuffer.capacity() == 0 ? requiredSizeBytes : inputBuffer.capacity();
+    while(newCapacity < requiredSizeBytes && newCapacity < DOUBLING_ALLOC_THRESH) {
+      newCapacity *= 2;
+    }
+
+    if (newCapacity < requiredSizeBytes) {
+      final int delta = requiredSizeBytes - DOUBLING_ALLOC_THRESH;
+      final int steps = (delta + LINEAR_ALLOC_STEP - 1) / LINEAR_ALLOC_STEP;
+      newCapacity = DOUBLING_ALLOC_THRESH + steps * LINEAR_ALLOC_STEP;
+    }
+
+    final ByteBuffer tmp = ByteBuffer.allocateDirect(newCapacity);
+    inputBuffer.rewind();
+    tmp.put(inputBuffer);
+    final ByteBuffer oldBuffer = inputBuffer;
+    inputBuffer = tmp;
+    CleanUtil.cleanDirectBuffer(oldBuffer);
   }
 
   @Override
