@@ -138,7 +138,7 @@ public class ByteBufferInputStream extends InputStream {
     return read(b, 0, b.length);
   }
 
-  public void readFully(byte b[]) throws IOException {
+  public void readFully(byte[] b) throws IOException {
     readFully(b, 0, b.length);
   }
 
