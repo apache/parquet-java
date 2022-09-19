@@ -53,8 +53,4 @@ jobs:
         run: |
           EXTRA_JAVA_TEST_ARGS=$(mvn help:evaluate -Dexpression=extraJavaTestArgs -q -DforceStdout)
           export MAVEN_OPTS="$MAVEN_OPTS $EXTRA_JAVA_TEST_ARGS"
-          if [ "$JAVA_VERSION" = "17" ]; then
-              mvn verify --batch-mode -Pci-test
-          else
-              mvn verify --batch-mode javadoc:javadoc -Pci-test
-          fi
+          mvn verify --batch-mode javadoc:javadoc -Pci-test
