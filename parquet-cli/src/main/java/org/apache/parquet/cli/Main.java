@@ -34,6 +34,7 @@ import org.apache.parquet.cli.commands.ConvertCSVCommand;
 import org.apache.parquet.cli.commands.ConvertCommand;
 import org.apache.parquet.cli.commands.ParquetMetadataCommand;
 import org.apache.parquet.cli.commands.PruneColumnsCommand;
+import org.apache.parquet.cli.commands.ScanCommand;
 import org.apache.parquet.cli.commands.SchemaCommand;
 import org.apache.parquet.cli.commands.ShowBloomFilterCommand;
 import org.apache.parquet.cli.commands.ShowColumnIndexCommand;
@@ -101,6 +102,7 @@ public class Main extends Configured implements Tool {
     jc.addCommand("masking", new ColumnMaskingCommand(console));
     jc.addCommand("footer", new ShowFooterCommand(console));
     jc.addCommand("bloom-filter", new ShowBloomFilterCommand(console));
+    jc.addCommand("scan", new ScanCommand(console));
   }
 
   @Override
