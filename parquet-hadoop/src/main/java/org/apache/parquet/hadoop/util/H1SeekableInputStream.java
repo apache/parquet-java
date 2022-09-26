@@ -20,8 +20,12 @@
 package org.apache.parquet.hadoop.util;
 
 import org.apache.hadoop.fs.FSDataInputStream;
+import org.apache.hadoop.fs.FileRange;
 import org.apache.parquet.io.DelegatingSeekableInputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.List;
+import java.util.function.IntFunction;
 
 /**
  * SeekableInputStream implementation that implements read(ByteBuffer) for
@@ -56,4 +60,8 @@ class H1SeekableInputStream extends DelegatingSeekableInputStream {
     stream.readFully(bytes, start, len);
   }
 
+  @Override
+  public void readVectored(List<FileRange> ranges, IntFunction<ByteBuffer> allocate) throws IOException {
+    stream.readVectored(ranges, allocate);
+  }
 }

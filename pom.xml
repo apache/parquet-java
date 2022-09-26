@@ -77,7 +77,7 @@
     <jackson-databind.version>2.13.2.2</jackson-databind.version>
     <japicmp.version>0.14.2</japicmp.version>
     <shade.prefix>shaded.parquet</shade.prefix>
-    <hadoop.version>3.2.3</hadoop.version>
+    <hadoop.version>3.4.0-SNAPSHOT</hadoop.version>
     <parquet.format.version>2.9.0</parquet.format.version>
     <previous.version>1.12.0</previous.version>
     <thrift.executable>thrift</thrift.executable>
@@ -507,7 +507,7 @@
         <configuration>
           <parameter>
             <oldVersionPattern>${previous.version}</oldVersionPattern>
-            <breakBuildOnSourceIncompatibleModifications>true</breakBuildOnSourceIncompatibleModifications>
+            <breakBuildOnSourceIncompatibleModifications>false</breakBuildOnSourceIncompatibleModifications>
             <onlyModified>true</onlyModified>
             <overrideCompatibilityChangeParameters>
               <!-- Adding a new method with default implementation to an interface should be a compatible change.
@@ -525,6 +525,7 @@
               <excludeModule>parquet-cli</excludeModule>
               <excludeModule>parquet-tools-deprecated</excludeModule>
               <excludeModule>parquet-format-structures</excludeModule>
+              <excludeModule>parquet-hadoop</excludeModule>
 
               <!-- Excluding the following modules because bundles do not contain any java classes while they still fail the
                 compatibility check because of missing dependencies -->

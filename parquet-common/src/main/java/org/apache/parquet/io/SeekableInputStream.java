@@ -23,6 +23,10 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.util.List;
+import java.util.function.IntFunction;
+
+import org.apache.hadoop.fs.FileRange;
 
 /**
  * {@code SeekableInputStream} is an interface with the methods needed by
@@ -104,5 +108,11 @@ public abstract class SeekableInputStream extends InputStream {
    *                      fill the buffer, {@code buf.remaining()}
    */
   public abstract void readFully(ByteBuffer buf) throws IOException;
+
+  /**
+   * Read a set of file ranges in a vectored manner.
+   */
+  public abstract void readVectored(List<FileRange> ranges,
+                                    IntFunction<ByteBuffer> allocate) throws IOException;
 
 }

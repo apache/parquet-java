@@ -52,14 +52,18 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.zip.CRC32;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileRange;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.util.functional.FutureIO;
 import org.apache.parquet.HadoopReadOptions;
 import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.bytes.ByteBufferInputStream;
@@ -783,6 +787,7 @@ public class ParquetFileReader implements Closeable {
   }
 
   public ParquetFileReader(InputFile file, ParquetReadOptions options) throws IOException {
+    LOG.warn("New jar patched");
     this.converter = new ParquetMetadataConverter(options);
     this.file = file;
     this.f = file.newStream();
@@ -1029,6 +1034,7 @@ public class ParquetFileReader implements Closeable {
    * @throws IOException if an error occurs while reading
    */
   public PageReadStore readNextFilteredRowGroup() throws IOException {
+    LOG.warn("In readNextFilteredRowGroup");
     if (currentBlock == blocks.size()) {
       return null;
     }
@@ -1093,10 +1099,38 @@ public class ParquetFileReader implements Closeable {
         }
       }
     }
-    // actually read all the chunks
+    // Vectored IO up.
+
+    List<FileRange> ranges = new ArrayList<>();
     for (ConsecutivePartList consecutiveChunks : allParts) {
-      consecutiveChunks.readAll(f, builder);
+      ranges.add(FileRange.createFileRange(consecutiveChunks.offset, (int) consecutiveChunks.length));
     }
+    LOG.warn("Doing vectored IO for ranges {}", ranges);
+    f.readVectored(ranges, ByteBuffer::allocate);
+    int k = 0;
+    for (ConsecutivePartList consecutivePart :  allParts) {
+      ByteBuffer buffer = null;
+      try {
+        buffer = FutureIO.awaitFuture(ranges.get(k++).getData(), 300, TimeUnit.SECONDS);
+      } catch (TimeoutException e) {
+        LOG.error("Timeout while reading data through vectored IO api.");
+      }
+      ByteBufferInputStream stream = ByteBufferInputStream.wrap(buffer);
+      List<ChunkDescriptor> chunks = consecutivePart.chunks;
+      for (ChunkDescriptor descriptor : chunks) {
+        builder.add(descriptor, stream.sliceBuffers(descriptor.size), f);
+      }
+    }
+
+    // Vectored IO Down.
+    // actually read all the chunks
+//    for (ConsecutivePartList consecutiveChunks : allParts) {
+//      try {
+//        consecutiveChunks.readAllVectored(f, builder);
+//      } catch (ExecutionException | InterruptedException e ) {
+//        LOG.error("Exception during vectored read " + e);
+//      }
+//    }
     for (Chunk chunk : builder.build()) {
       readChunkPages(chunk, block, rowGroup);
     }
@@ -1807,6 +1841,44 @@ public class ParquetFileReader implements Closeable {
       BenchmarkCounter.incrementBytesRead(length);
       ByteBufferInputStream stream = ByteBufferInputStream.wrap(buffers);
       for (final ChunkDescriptor descriptor : chunks) {
+        builder.add(descriptor, stream.sliceBuffers(descriptor.size), f);
+      }
+    }
+
+    public void readAllVectored(SeekableInputStream f, ChunkListBuilder builder)
+      throws IOException, ExecutionException, InterruptedException {
+      LOG.warn("Reading through the vectored API.[readAllVectored]");
+      List<Chunk> result = new ArrayList<Chunk>(chunks.size());
+
+      int fullAllocations = (int) (length / options.getMaxAllocationSize());
+      int lastAllocationSize = (int) (length % options.getMaxAllocationSize());
+
+      int numAllocations = fullAllocations + (lastAllocationSize > 0 ? 1 : 0);
+      List<FileRange> fileRanges = new ArrayList<>(numAllocations);
+
+      long currentOffset = offset;
+      for (int i = 0; i < fullAllocations; i += 1) {
+        //buffers.add(options.getAllocator().allocate(options.getMaxAllocationSize()));
+        fileRanges.add(FileRange.createFileRange(currentOffset, options.getMaxAllocationSize()));
+        currentOffset = currentOffset + options.getMaxAllocationSize();
+      }
+
+      if (lastAllocationSize > 0) {
+        //buffers.add(options.getAllocator().allocate(lastAllocationSize));
+        fileRanges.add(FileRange.createFileRange(currentOffset, lastAllocationSize));
+      }
+      LOG.warn("Doing vectored IO for ranges {}", fileRanges);
+      f.readVectored(fileRanges, ByteBuffer::allocate);
+      List<ByteBuffer> buffers = new ArrayList<>();
+      for(int index = 0; index < fileRanges.size(); index ++){
+        buffers.add(fileRanges.get(index).getData().get());
+      }
+
+      // report in a counter the data we just scanned
+      BenchmarkCounter.incrementBytesRead(length);
+      ByteBufferInputStream stream = ByteBufferInputStream.wrap(buffers);
+      for (int i = 0; i < chunks.size(); i++) {
+        ChunkDescriptor descriptor = chunks.get(i);
         builder.add(descriptor, stream.sliceBuffers(descriptor.size), f);
       }
     }
