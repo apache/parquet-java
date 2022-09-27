@@ -48,7 +48,7 @@ abstract public class NonBlockedDecompressor implements Decompressor {
    */
   @Override
   public synchronized int decompress(byte[] buffer, int off, int len) throws IOException {
-    CodecUtil.validateBuffer(buffer, off, len);
+    SnappyUtil.validateBuffer(buffer, off, len);
     if (inputBuffer.position() == 0 && !outputBuffer.hasRemaining()) {
       return 0;
     }
@@ -97,7 +97,7 @@ abstract public class NonBlockedDecompressor implements Decompressor {
    */
   @Override
   public synchronized void setInput(byte[] buffer, int off, int len) {
-    CodecUtil.validateBuffer(buffer, off, len);
+    SnappyUtil.validateBuffer(buffer, off, len);
 
     if (inputBuffer.capacity() - inputBuffer.position() < len) {
       final ByteBuffer newBuffer = ByteBuffer.allocateDirect(inputBuffer.position() + len);

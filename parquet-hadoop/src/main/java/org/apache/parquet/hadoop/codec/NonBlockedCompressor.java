@@ -54,7 +54,7 @@ abstract public class NonBlockedCompressor implements Compressor {
    */
   @Override
   public synchronized int compress(byte[] buffer, int off, int len) throws IOException {
-    CodecUtil.validateBuffer(buffer, off, len);
+    SnappyUtil.validateBuffer(buffer, off, len);
 
     if (needsInput()) {
       // No buffered output bytes and no input to consume, need more input
@@ -89,7 +89,7 @@ abstract public class NonBlockedCompressor implements Compressor {
 
   @Override
   public synchronized void setInput(byte[] buffer, int off, int len) {
-    CodecUtil.validateBuffer(buffer, off, len);
+    SnappyUtil.validateBuffer(buffer, off, len);
 
     Preconditions.checkArgument(!outputBuffer.hasRemaining(),
       "Output buffer should be empty. Caller must call compress()");
