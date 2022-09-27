@@ -18,21 +18,16 @@
  */
 package org.apache.parquet.hadoop.codec;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
+import org.apache.parquet.Preconditions;
 
-import org.xerial.snappy.Snappy;
-
-public class SnappyDecompressor extends NonBlockedDecompressor {
-
-  @Override
-  protected int uncompress(ByteBuffer compressed, ByteBuffer uncompressed) throws IOException {
-    return Snappy.uncompress(compressed, uncompressed);
+/**
+ * Utilities for NonBlockedCompressor and NonBlockedDecompressor.
+ */
+public class CodecUtil {
+  public static void validateBuffer(byte[] buffer, int off, int len) {
+    Preconditions.checkNotNull(buffer, "buffer");
+    Preconditions.checkArgument(off >= 0 && len >= 0 && off <= buffer.length - len,
+      "Invalid buffer offset or length: buffer.length=%s off=%s len=%s",
+      buffer.length, off, len);
   }
-
-  @Override
-  protected int uncompressedLength(ByteBuffer compressed, int maxUncompressedLength) throws IOException {
-    return Snappy.uncompressedLength(compressed);
-  }
-
-} //class SnappyDecompressor
+}
