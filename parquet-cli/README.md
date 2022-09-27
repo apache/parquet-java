@@ -96,6 +96,22 @@ Usage: parquet [options] [command] [command options]
         Print the first N records from a file
     head
         Print the first N records from a file
+    column-index
+        Prints the column and offset indexes of a Parquet file
+    column-size
+        Print the column sizes of a parquet file
+    prune
+        Prune column(s) in a Parquet file and save it to a new file. The columns left are not changed.
+    trans-compression
+        Translate the compression from one to another (It doesn't support bloom filter feature yet).
+    masking
+        Replace columns with masked values and write to a new Parquet file
+    footer
+        Print the Parquet file footer in json format
+    bloom-filter
+        Check bloom filters for a Parquet column
+    scan
+        Scan all records from a file
 
   Examples:
 
