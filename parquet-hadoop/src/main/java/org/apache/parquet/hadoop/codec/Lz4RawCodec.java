@@ -33,8 +33,11 @@ import java.io.OutputStream;
 public class Lz4RawCodec implements Configurable, CompressionCodec {
 
   private Configuration conf;
+
   // Hadoop config for how big to make intermediate buffers.
-  private final String BUFFER_SIZE_CONFIG = "io.file.buffer.size";
+  public static final String BUFFER_SIZE_CONFIG = "io.file.buffer.size";
+
+  private static final int DEFAULT_BUFFER_SIZE_CONFIG = 4 * 1024;
 
   @Override
   public void setConf(Configuration conf) {
@@ -66,7 +69,7 @@ public class Lz4RawCodec implements Configurable, CompressionCodec {
   public CompressionInputStream createInputStream(InputStream stream,
                                                   Decompressor decompressor) throws IOException {
     return new NonBlockedDecompressorStream(stream, decompressor,
-      conf.getInt(BUFFER_SIZE_CONFIG, 4*1024));
+      conf.getInt(BUFFER_SIZE_CONFIG, DEFAULT_BUFFER_SIZE_CONFIG));
   }
 
   @Override
@@ -79,7 +82,7 @@ public class Lz4RawCodec implements Configurable, CompressionCodec {
   public CompressionOutputStream createOutputStream(OutputStream stream,
                                                     Compressor compressor) throws IOException {
     return new NonBlockedCompressorStream(stream, compressor,
-      conf.getInt(BUFFER_SIZE_CONFIG, 4*1024));
+      conf.getInt(BUFFER_SIZE_CONFIG, DEFAULT_BUFFER_SIZE_CONFIG));
   }
 
   @Override

@@ -153,6 +153,15 @@ abstract public class NonBlockedDecompressor implements Decompressor {
   }
 
   /**
+   * Get the uncompressed byte size of the given compressed input. This operation takes O(1) time.
+   *
+   * @param compressed            input data [pos() ... limit())
+   * @param maxUncompressedLength maximum length of the uncompressed data
+   * @return uncompressed byte length of the given input
+   */
+  abstract protected int uncompressedLength(ByteBuffer compressed, int maxUncompressedLength) throws IOException;
+
+  /**
    * Uncompress the content in the input buffer. The result is dumped to the
    * specified output buffer.
    *
@@ -162,13 +171,4 @@ abstract public class NonBlockedDecompressor implements Decompressor {
    */
   abstract protected int uncompress(ByteBuffer compressed, ByteBuffer uncompressed) throws IOException;
 
-  /**
-   * Get the uncompressed byte size of the given compressed input. This operation takes O(1) time.
-   *
-   * @param compressed input data [pos() ... limit())
-   * @param maxUncompressedLength maximum length of the uncompressed data
-   * @return uncompressed byte length of the given input
-   */
-  abstract protected int uncompressedLength(ByteBuffer compressed, int maxUncompressedLength) throws IOException;
-
-} //class NonBlockedDecompressor
+}

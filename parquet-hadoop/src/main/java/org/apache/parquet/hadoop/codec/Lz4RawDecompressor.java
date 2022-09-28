@@ -28,6 +28,13 @@ public class Lz4RawDecompressor extends NonBlockedDecompressor {
   private Lz4Decompressor decompressor = new Lz4Decompressor();
 
   @Override
+  protected int uncompressedLength(ByteBuffer compressed, int maxUncompressedLength) throws IOException {
+    // We cannot obtain the precise uncompressed length from the input data.
+    // Simply return the maxUncompressedLength.
+    return maxUncompressedLength;
+  }
+
+  @Override
   protected int uncompress(ByteBuffer compressed, ByteBuffer uncompressed) throws IOException {
     decompressor.decompress(compressed, uncompressed);
     int uncompressedSize = uncompressed.position();
@@ -36,11 +43,4 @@ public class Lz4RawDecompressor extends NonBlockedDecompressor {
     return uncompressedSize;
   }
 
-  @Override
-  protected int uncompressedLength(ByteBuffer compressed, int maxUncompressedLength) throws IOException {
-    // We cannot obtain the precise uncompressed length from the input data.
-    // Simply return the maxUncompressedLength.
-    return maxUncompressedLength;
-  }
-
-} //class Lz4RawDecompressor
+}
