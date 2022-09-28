@@ -377,13 +377,19 @@ ParquetInputFormat to materialize records. It should be a the descendant class o
 
 **Property:** `parquet.encryption.column.keys`  
 **Description:** List of columns to encrypt, with master key IDs (see HIVE-21848).Format: `<masterKeyID>:<colName>,<colName>;<masterKeyID>:<colName>...`  
-**Default value:** None. If neither `column.keys` nor `footer.key` are set, the file won't be encrypted by the PropertiesDrivenCryptoFactory. If one of the two properties is set, an exception will be thrown.
+**Default value:** None.
 
 ---
 
 **Property:** `parquet.encryption.footer.key`  
 **Description:** Master key ID for footer encryption/signing.  
-**Default value:** None. If neither `column.keys` nor `footer.key` are set, the file won't be encrypted by the PropertiesDrivenCryptoFactory. If one of the two properties is set, an exception will be thrown.
+**Default value:** None.
+
+---
+
+**Property:** `parquet.encryption.uniform.key`
+**Description:** Master key ID for uniform encryption of all columns and footer. If set, `column.keys` and `footer.key` parameters should not be used.
+**Default value:** None.
 
 ---
 
