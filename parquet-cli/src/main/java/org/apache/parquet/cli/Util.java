@@ -152,7 +152,7 @@ public class Util {
       case LZ4:
         return "4";
       case LZ4_RAW:
-        return "4";
+        return "F";
       case ZSTD:
         return "Z";
       default:

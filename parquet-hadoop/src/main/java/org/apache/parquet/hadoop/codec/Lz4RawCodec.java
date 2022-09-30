@@ -20,7 +20,11 @@ package org.apache.parquet.hadoop.codec;
 
 import org.apache.hadoop.conf.Configurable;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.io.compress.*;
+import org.apache.hadoop.io.compress.CompressionCodec;
+import org.apache.hadoop.io.compress.CompressionInputStream;
+import org.apache.hadoop.io.compress.CompressionOutputStream;
+import org.apache.hadoop.io.compress.Compressor;
+import org.apache.hadoop.io.compress.Decompressor;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -28,7 +32,13 @@ import java.io.OutputStream;
 
 /**
  * Lz4 raw compression codec for Parquet. This codec type has been introduced
- * into the parquet format since version 2.9.0.
+ * into the parquet format since version 2.9.0. It differs from the Lz4Codec
+ * shipped with Apache Hadoop by removing the light frame header which includes
+ * 4 byte for uncompressed length and 4 byte for compressed length. In the
+ * Apache Arrow implementation, these two Lz4 codecs are recognized as LZ4_RAW
+ * and LZ4_HADOOP to minimize the confusion at its best. Please check the link
+ * below for reference.
+ * https://github.com/apache/parquet-format/blob/master/Compression.md
  */
 public class Lz4RawCodec implements Configurable, CompressionCodec {
 

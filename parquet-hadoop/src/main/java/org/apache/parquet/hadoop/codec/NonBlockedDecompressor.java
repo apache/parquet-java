@@ -58,7 +58,7 @@ abstract public class NonBlockedDecompressor implements Decompressor {
       Preconditions.checkArgument(inputBuffer.position() == 0, "Invalid position of 0.");
       Preconditions.checkArgument(outputBuffer.position() == 0, "Invalid position of 0.");
       // There is compressed input, decompress it now.
-      int decompressedSize = uncompressedLength(inputBuffer, len);
+      int decompressedSize = maxUncompressedLength(inputBuffer, len);
       if (decompressedSize > outputBuffer.capacity()) {
         ByteBuffer oldBuffer = outputBuffer;
         outputBuffer = ByteBuffer.allocateDirect(decompressedSize);
@@ -153,13 +153,13 @@ abstract public class NonBlockedDecompressor implements Decompressor {
   }
 
   /**
-   * Get the uncompressed byte size of the given compressed input. This operation takes O(1) time.
+   * Get the maximum uncompressed byte size of the given compressed input. This operation takes O(1) time.
    *
    * @param compressed            input data [pos() ... limit())
    * @param maxUncompressedLength maximum length of the uncompressed data
    * @return uncompressed byte length of the given input
    */
-  abstract protected int uncompressedLength(ByteBuffer compressed, int maxUncompressedLength) throws IOException;
+  abstract protected int maxUncompressedLength(ByteBuffer compressed, int maxUncompressedLength) throws IOException;
 
   /**
    * Uncompress the content in the input buffer. The result is dumped to the

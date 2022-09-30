@@ -28,7 +28,7 @@ public class Lz4RawDecompressor extends NonBlockedDecompressor {
   private Lz4Decompressor decompressor = new Lz4Decompressor();
 
   @Override
-  protected int uncompressedLength(ByteBuffer compressed, int maxUncompressedLength) throws IOException {
+  protected int maxUncompressedLength(ByteBuffer compressed, int maxUncompressedLength) throws IOException {
     // We cannot obtain the precise uncompressed length from the input data.
     // Simply return the maxUncompressedLength.
     return maxUncompressedLength;

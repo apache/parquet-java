@@ -31,7 +31,7 @@ public class SnappyDecompressor extends NonBlockedDecompressor {
   }
 
   @Override
-  protected int uncompressedLength(ByteBuffer compressed, int maxUncompressedLength) throws IOException {
+  protected int maxUncompressedLength(ByteBuffer compressed, int maxUncompressedLength) throws IOException {
     return Snappy.uncompressedLength(compressed);
   }
 
