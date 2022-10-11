@@ -31,7 +31,7 @@ public class ScanCommandTest extends ParquetFileTest {
   public void testScanCommand() throws IOException {
     File file = parquetFile();
     ScanCommand command = new ScanCommand(createLogger());
-    command.sourceFiles = Arrays.asList(file.getAbsolutePath());
+    command.sourceFile = file.getAbsolutePath();
     command.setConf(new Configuration());
     Assert.assertEquals(0, command.run());
   }

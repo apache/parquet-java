@@ -36,7 +36,7 @@ import java.util.List;
 public class ScanCommand extends BaseCommand {
 
   @Parameter(description = "<file>")
-  List<String> sourceFiles;
+  String sourceFile;
 
   @Parameter(
     names = {"-c", "--column", "--columns"},
@@ -50,17 +50,14 @@ public class ScanCommand extends BaseCommand {
   @Override
   public int run() throws IOException {
     Preconditions.checkArgument(
-      sourceFiles != null && !sourceFiles.isEmpty(),
+      sourceFile != null && !sourceFile.isEmpty(),
       "Missing file name");
-    Preconditions.checkArgument(sourceFiles.size() == 1,
-      "Only one file can be given");
 
-    final String source = sourceFiles.get(0);
-    Schema schema = getAvroSchema(source);
+    Schema schema = getAvroSchema(sourceFile);
     Schema projection = Expressions.filterSchema(schema, columns);
 
     long startTime = System.currentTimeMillis();
-    Iterable<Object> reader = openDataFile(source, projection);
+    Iterable<Object> reader = openDataFile(sourceFile, projection);
     boolean threw = true;
     long count = 0;
     try {
@@ -77,7 +74,7 @@ public class ScanCommand extends BaseCommand {
     }
     long endTime = System.currentTimeMillis();
 
-    console.info("Scanned " + count + " records from " + source);
+    console.info("Scanned " + count + " records from " + sourceFile);
     console.info("Time: " + (endTime - startTime) / 1000.0 + " s");
     return 0;
   }
