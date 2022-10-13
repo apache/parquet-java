@@ -125,6 +125,16 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
   public static final String STATS_FILTERING_ENABLED = "parquet.filter.stats.enabled";
 
   /**
+   * Key to enable/disable vectored io while reading parquet files.
+   */
+  public static final String HADOOP_VECTORED_IO_ENABLED = "parquet.hadoop.vectored.io.enabled";
+
+  /**
+   * Default value of parquet.hadoop.vectored.io.enabled is false.
+   */
+  public static final boolean HADOOP_VECTORED_IO_DEFAULT = false;
+
+  /**
    * key to configure whether row group dictionary filtering is enabled
    */
   public static final String DICTIONARY_FILTERING_ENABLED = "parquet.filter.dictionary.enabled";

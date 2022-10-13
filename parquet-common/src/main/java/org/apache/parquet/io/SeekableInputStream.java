@@ -23,6 +23,8 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.util.List;
+import java.util.function.IntFunction;
 
 /**
  * {@code SeekableInputStream} is an interface with the methods needed by
@@ -104,5 +106,14 @@ public abstract class SeekableInputStream extends InputStream {
    *                      fill the buffer, {@code buf.remaining()}
    */
   public abstract void readFully(ByteBuffer buf) throws IOException;
+
+  /**
+   * Read a set of file ranges in a vectored manner.
+   */
+  public void readVectored(List<ParquetFileRange> ranges,
+                                    IntFunction<ByteBuffer> allocate) throws IOException {
+    throw new IOException(String.format("Vectored io is not supported for %s .",
+      this.getClass().getCanonicalName()));
+  }
 
 }

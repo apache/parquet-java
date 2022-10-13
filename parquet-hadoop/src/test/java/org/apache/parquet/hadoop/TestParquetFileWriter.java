@@ -89,10 +89,13 @@ import org.apache.parquet.example.data.simple.SimpleGroup;
 
 import org.apache.parquet.hadoop.example.GroupWriteSupport;
 import org.junit.rules.TemporaryFolder;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@RunWith(Parameterized.class)
 public class TestParquetFileWriter {
 
   private static final Logger LOG = LoggerFactory.getLogger(TestParquetFileWriter.class);
@@ -122,8 +125,27 @@ public class TestParquetFileWriter {
 
   private String writeSchema;
 
+  private final String readType;
+
   @Rule
   public final TemporaryFolder temp = new TemporaryFolder();
+
+  @Parameterized.Parameters(name = "Read type : {0}")
+  public static List<String> params() {
+    return Arrays.asList("vectored", "normal");
+  }
+
+
+  public TestParquetFileWriter(String readType) {
+    this.readType = readType;
+  }
+
+  private Configuration getTestConfiguration() {
+    Configuration conf = new Configuration();
+    conf.set(ParquetInputFormat.HADOOP_VECTORED_IO_ENABLED,
+      String.valueOf(readType.equals("vectored")));
+    return conf;
+  }
 
   @Test
   public void testWriteMode() throws Exception {
@@ -131,7 +153,7 @@ public class TestParquetFileWriter {
     MessageType schema = MessageTypeParser.parseMessageType(
         "message m { required group a {required binary b;} required group "
         + "c { required int64 d; }}");
-    Configuration conf = new Configuration();
+    Configuration conf = getTestConfiguration();
 
     ParquetFileWriter writer = null;
     boolean exceptionThrown = false;
@@ -160,7 +182,7 @@ public class TestParquetFileWriter {
     testFile.delete();
 
     Path path = new Path(testFile.toURI());
-    Configuration configuration = new Configuration();
+    Configuration configuration = getTestConfiguration();
 
    ParquetFileWriter w = new ParquetFileWriter(configuration, SCHEMA, path);
     w.start();
@@ -444,9 +466,10 @@ public class TestParquetFileWriter {
     File testFile = temp.newFile();
 
     Path path = new Path(testFile.toURI());
-    Configuration conf = new Configuration();
+    Configuration conf = getTestConfiguration();
     // Disable writing out checksums as hardcoded byte offsets in assertions below expect it
     conf.setBoolean(ParquetOutputFormat.PAGE_WRITE_CHECKSUM_ENABLED, false);
+
 
     // uses the test constructor
     ParquetFileWriter w = new ParquetFileWriter(conf, SCHEMA, path, 120, 60);
@@ -553,7 +576,7 @@ public class TestParquetFileWriter {
     File testFile = temp.newFile();
 
     Path path = new Path(testFile.toURI());
-    Configuration conf = new Configuration();
+    Configuration conf = getTestConfiguration();
     // Disable writing out checksums as hardcoded byte offsets in assertions below expect it
     conf.setBoolean(ParquetOutputFormat.PAGE_WRITE_CHECKSUM_ENABLED, false);
 
@@ -686,7 +709,7 @@ public class TestParquetFileWriter {
     testFile.delete();
 
     Path path = new Path(testFile.toURI());
-    Configuration configuration = new Configuration();
+    Configuration configuration = getTestConfiguration();
     configuration.setBoolean("parquet.strings.signed-min-max.enabled", true);
 
     MessageType schema = MessageTypeParser.parseMessageType("message m { required group a {required binary b (UTF8);} required group c { required int64 d; }}");
@@ -774,7 +797,7 @@ public class TestParquetFileWriter {
     File testDir = temp.newFolder();
 
     Path testDirPath = new Path(testDir.toURI());
-    Configuration configuration = new Configuration();
+    Configuration configuration = getTestConfiguration();
 
     final FileSystem fs = testDirPath.getFileSystem(configuration);
     enforceEmptyDir(configuration, testDirPath);
@@ -826,7 +849,7 @@ public class TestParquetFileWriter {
     Path path = new Path(testFile.toURI());
 
     MessageType schema = MessageTypeParser.parseMessageType(writeSchema);
-    Configuration configuration = new Configuration();
+    Configuration configuration = getTestConfiguration();
     configuration.setBoolean("parquet.strings.signed-min-max.enabled", true);
     GroupWriteSupport.setSchema(schema, configuration);
 
@@ -1000,7 +1023,7 @@ public class TestParquetFileWriter {
    */
   @Test
   public void testWriteMetadataFileWithRelativeOutputPath() throws IOException {
-    Configuration conf = new Configuration();
+    Configuration conf = getTestConfiguration();
     FileSystem fs = FileSystem.get(conf);
     Path relativeRoot = new Path("target/_test_relative");
     Path qualifiedRoot = fs.makeQualified(relativeRoot);
@@ -1026,7 +1049,7 @@ public class TestParquetFileWriter {
     testFile.delete();
 
     Path path = new Path(testFile.toURI());
-    Configuration configuration = new Configuration();
+    Configuration configuration = getTestConfiguration();
 
     ParquetFileWriter w = new ParquetFileWriter(configuration, SCHEMA, path);
     w.start();
