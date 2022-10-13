@@ -31,6 +31,8 @@ import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.format.converter.ParquetMetadataConverter.MetadataFilter;
 import org.apache.parquet.hadoop.ParquetMetricsCallback;
 
+import static org.apache.parquet.hadoop.ParquetInputFormat.HADOOP_VECTORED_IO_ENABLED;
+
 public class HadoopReadOptions extends ParquetReadOptions {
   private final Configuration conf;
 
@@ -43,6 +45,7 @@ public class HadoopReadOptions extends ParquetReadOptions {
       boolean usePageChecksumVerification,
       boolean useBloomFilter,
       boolean useOffHeapDecryptBuffer,
+      boolean useHadoopVectoredIO,
       FilterCompat.Filter recordFilter,
       MetadataFilter metadataFilter,
       CompressionCodecFactory codecFactory,
@@ -61,6 +64,7 @@ public class HadoopReadOptions extends ParquetReadOptions {
         usePageChecksumVerification,
         useBloomFilter,
         useOffHeapDecryptBuffer,
+        useHadoopVectoredIO,
         recordFilter,
         metadataFilter,
         codecFactory,

@@ -104,10 +104,13 @@ import org.junit.Assume;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@RunWith(Parameterized.class)
 public class TestParquetFileWriter {
 
   private static final Logger LOG = LoggerFactory.getLogger(TestParquetFileWriter.class);
@@ -141,6 +144,27 @@ public class TestParquetFileWriter {
   @Rule
   public final TemporaryFolder temp = new TemporaryFolder();
 
+  @Parameterized.Parameters(name = "vectored : {0}")
+  public static List<Boolean> params() {
+    return Arrays.asList(true, false);
+  }
+
+  /**
+   * Read type: true for vectored IO.
+   */
+  private final boolean readType;
+
+  public TestParquetFileWriter(boolean readType) {
+    this.readType = readType;
+  }
+
+  private Configuration getTestConfiguration() {
+    Configuration conf = new Configuration();
+    // set the vector IO option
+    conf.setBoolean(ParquetInputFormat.HADOOP_VECTORED_IO_ENABLED, readType);
+    return conf;
+  }
+
   @Test
   public void testWriteMode() throws Exception {
     File testFile = temp.newFile();
@@ -173,7 +197,7 @@ public class TestParquetFileWriter {
     testFile.delete();
 
     Path path = new Path(testFile.toURI());
-    Configuration configuration = new Configuration();
+    Configuration configuration = getTestConfiguration();
 
     ParquetFileWriter w = new ParquetFileWriter(configuration, SCHEMA, path);
     w.start();
@@ -525,9 +549,10 @@ public class TestParquetFileWriter {
     File testFile = temp.newFile();
 
     Path path = new Path(testFile.toURI());
-    Configuration conf = new Configuration();
+    Configuration conf = getTestConfiguration();
     // Disable writing out checksums as hardcoded byte offsets in assertions below expect it
     conf.setBoolean(ParquetOutputFormat.PAGE_WRITE_CHECKSUM_ENABLED, false);
+
 
     // uses the test constructor
     ParquetFileWriter w = new ParquetFileWriter(conf, SCHEMA, path, 120, 60);
@@ -649,7 +674,7 @@ public class TestParquetFileWriter {
     File testFile = temp.newFile();
 
     Path path = new Path(testFile.toURI());
-    Configuration conf = new Configuration();
+    Configuration conf = getTestConfiguration();
     // Disable writing out checksums as hardcoded byte offsets in assertions below expect it
     conf.setBoolean(ParquetOutputFormat.PAGE_WRITE_CHECKSUM_ENABLED, false);
 
@@ -798,7 +823,7 @@ public class TestParquetFileWriter {
     testFile.delete();
 
     Path path = new Path(testFile.toURI());
-    Configuration configuration = new Configuration();
+    Configuration configuration = getTestConfiguration();
     configuration.setBoolean("parquet.strings.signed-min-max.enabled", true);
 
     MessageType schema = MessageTypeParser.parseMessageType(
@@ -892,7 +917,7 @@ public class TestParquetFileWriter {
     File testDir = temp.newFolder();
 
     Path testDirPath = new Path(testDir.toURI());
-    Configuration configuration = new Configuration();
+    Configuration configuration = getTestConfiguration();
 
     final FileSystem fs = testDirPath.getFileSystem(configuration);
     enforceEmptyDir(configuration, testDirPath);
@@ -946,7 +971,7 @@ public class TestParquetFileWriter {
     Path path = new Path(testFile.toURI());
 
     MessageType schema = MessageTypeParser.parseMessageType(writeSchema);
-    Configuration configuration = new Configuration();
+    Configuration configuration = getTestConfiguration();
     configuration.setBoolean("parquet.strings.signed-min-max.enabled", true);
     GroupWriteSupport.setSchema(schema, configuration);
 
@@ -1142,7 +1167,7 @@ public class TestParquetFileWriter {
    */
   @Test
   public void testWriteMetadataFileWithRelativeOutputPath() throws IOException {
-    Configuration conf = new Configuration();
+    Configuration conf = getTestConfiguration();
     FileSystem fs = FileSystem.get(conf);
     Path relativeRoot = new Path("target/_test_relative");
     Path qualifiedRoot = fs.makeQualified(relativeRoot);
@@ -1168,7 +1193,7 @@ public class TestParquetFileWriter {
     testFile.delete();
 
     Path path = new Path(testFile.toURI());
-    Configuration configuration = new Configuration();
+    Configuration configuration = getTestConfiguration();
 
     ParquetFileWriter w = new ParquetFileWriter(configuration, SCHEMA, path);
     w.start();

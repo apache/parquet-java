@@ -22,12 +22,20 @@ package org.apache.parquet.hadoop.util;
 import java.io.EOFException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.List;
+import java.util.function.IntFunction;
+import org.apache.parquet.hadoop.util.vectorio.VectorIOBridge;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.parquet.io.DelegatingSeekableInputStream;
 
 /**
  * SeekableInputStream implementation for FSDataInputStream that implements
  * ByteBufferReadable in Hadoop 2.
+ * It implements {@link #readVectored(List, IntFunction)}) by
+ * handing off to VectorIOBridge which uses reflection to offer the API if it is
+ * found.
+ * The return value of {@link #readVectoredAvailable()} reflects the availability of the
+ * API.
  */
 class H2SeekableInputStream extends DelegatingSeekableInputStream {
 
@@ -80,6 +88,16 @@ class H2SeekableInputStream extends DelegatingSeekableInputStream {
     public int read(ByteBuffer buf) throws IOException {
       return stream.read(buf);
     }
+  }
+
+  @Override
+  public boolean readVectoredAvailable() {
+    return VectorIOBridge.bridgeAvailable();
+  }
+
+  @Override
+  public void readVectored(List<ParquetFileRange> ranges, IntFunction<ByteBuffer> allocate) throws IOException {
+    VectorIOBridge.readVectoredRanges(stream, ranges, allocate);
   }
 
   public static void readFully(Reader reader, ByteBuffer buf) throws IOException {

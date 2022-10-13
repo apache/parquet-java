@@ -53,6 +53,8 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 import java.util.zip.CRC32;
 import org.apache.hadoop.conf.Configuration;
@@ -61,6 +63,8 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.HadoopReadOptions;
 import org.apache.parquet.ParquetReadOptions;
+import org.apache.parquet.Preconditions;
+import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.column.ColumnDescriptor;
@@ -100,6 +104,7 @@ import org.apache.parquet.hadoop.metadata.FileMetaData;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.hadoop.util.counters.BenchmarkCounter;
+import org.apache.parquet.hadoop.util.vectorio.BindingUtils;
 import org.apache.parquet.internal.column.columnindex.ColumnIndex;
 import org.apache.parquet.internal.column.columnindex.OffsetIndex;
 import org.apache.parquet.internal.filter2.columnindex.ColumnIndexFilter;
@@ -108,6 +113,7 @@ import org.apache.parquet.internal.filter2.columnindex.RowRanges;
 import org.apache.parquet.internal.hadoop.metadata.IndexReference;
 import org.apache.parquet.io.InputFile;
 import org.apache.parquet.io.ParquetDecodingException;
+import org.apache.parquet.io.ParquetFileRange;
 import org.apache.parquet.io.SeekableInputStream;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
@@ -122,6 +128,8 @@ public class ParquetFileReader implements Closeable {
   private static final Logger LOG = LoggerFactory.getLogger(ParquetFileReader.class);
 
   public static String PARQUET_READ_PARALLELISM = "parquet.metadata.read.parallelism";
+
+  public static final long HADOOP_VECTORED_READ_TIMEOUT_SECONDS = 300;
 
   private final ParquetMetadataConverter converter;
 
@@ -1053,9 +1061,7 @@ public class ParquetFileReader implements Closeable {
     }
     // actually read all the chunks
     ChunkListBuilder builder = new ChunkListBuilder(block.getRowCount());
-    for (ConsecutivePartList consecutiveChunks : allParts) {
-      consecutiveChunks.readAll(f, builder);
-    }
+    readAllPartsVectoredOrNormal(allParts, builder);
     for (Chunk chunk : builder.build()) {
       readChunkPages(chunk, block, rowGroup);
     }
@@ -1130,6 +1136,69 @@ public class ParquetFileReader implements Closeable {
     }
 
     return internalReadFilteredRowGroup(block, rowRanges, getColumnIndexStore(blockIndex));
+  }
+
+  /**
+   * Read data in all parts via either vectored IO or serial IO.
+   * @param allParts all parts to be read.
+   * @param builder used to build chunk list to read the pages for the different columns.
+   * @throws IOException any IOE.
+   */
+  private void readAllPartsVectoredOrNormal(List<ConsecutivePartList> allParts, ChunkListBuilder builder)
+    throws IOException {
+    boolean isVectoredIO = options.useHadoopVectoredIO()
+      && f.readVectoredAvailable()
+      && partsLengthValidForVectoredIO(allParts);
+    if (isVectoredIO) {
+      readVectored(allParts, builder);
+    } else {
+      for (ConsecutivePartList consecutiveChunks : allParts) {
+        consecutiveChunks.readAll(f, builder);
+      }
+    }
+  }
+
+  /**
+   * Vectored IO doesn't support reading ranges of size greater than
+   * Integer.MAX_VALUE.
+   * @param allParts all parts to read.
+   * @return true or false.
+   */
+  private boolean partsLengthValidForVectoredIO(List<ConsecutivePartList> allParts) {
+    for (ConsecutivePartList consecutivePart :  allParts) {
+      if (consecutivePart.length >= Integer.MAX_VALUE) {
+        LOG.debug("Part length {} greater than Integer.MAX_VALUE thus disabling vectored IO", consecutivePart.length);
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /**
+   * Read all parts through vectored IO.
+   * @param allParts all parts to be read.
+   * @param builder used to build chunk list to read the pages for the different columns.
+   * @throws IOException any IOE.
+   */
+  private void readVectored(List<ConsecutivePartList> allParts,
+    ChunkListBuilder builder) throws IOException {
+
+    List<ParquetFileRange> ranges = new ArrayList<>(allParts.size());
+    for (ConsecutivePartList consecutiveChunks : allParts) {
+      Preconditions.checkArgument(consecutiveChunks.length < Integer.MAX_VALUE,
+        "Invalid length %s for vectored read operation. It must be less than max integer value.",
+        consecutiveChunks.length);
+      ranges.add(new ParquetFileRange(consecutiveChunks.offset, (int) consecutiveChunks.length));
+    }
+    LOG.debug("Doing vectored IO for ranges {}", ranges);
+    ByteBufferAllocator allocator = options.getAllocator();
+    //blocking or asynchronous vectored read.
+    f.readVectored(ranges, allocator::allocate);
+    int k = 0;
+    for (ConsecutivePartList consecutivePart :  allParts) {
+      ParquetFileRange currRange = ranges.get(k++);
+      consecutivePart.readFromVectoredRange(currRange, builder);
+    }
   }
 
   /**
@@ -1209,10 +1278,7 @@ public class ParquetFileReader implements Closeable {
         }
       }
     }
-    // actually read all the chunks
-    for (ConsecutivePartList consecutiveChunks : allParts) {
-      consecutiveChunks.readAll(f, builder);
-    }
+    readAllPartsVectoredOrNormal(allParts, builder);
     for (Chunk chunk : builder.build()) {
       readChunkPages(chunk, block, rowGroup);
     }
@@ -2023,6 +2089,32 @@ public class ParquetFileReader implements Closeable {
         metricsCallback.setDuration(ParquetFileReaderMetrics.ReadTime.name(), totalFileReadTimeNs);
         metricsCallback.setValueLong(ParquetFileReaderMetrics.ReadSize.name(), length);
         metricsCallback.setValueDouble(ParquetFileReaderMetrics.ReadThroughput.name(), throughput);
+      }
+    }
+
+    /**
+     * Populate data in a parquet file range from vectored range.
+     * @param currRange range to populated.
+     * @param builder used to build chunk list to read the pages for the different columns.
+     * @throws IOException if there is an error while reading from the stream.
+     */
+    public void readFromVectoredRange(ParquetFileRange currRange,
+                                      ChunkListBuilder builder) throws IOException {
+      ByteBuffer buffer;
+      try {
+        LOG.debug("Waiting for vectored read to finish for range {} ", currRange);
+        buffer = BindingUtils.awaitFuture(currRange.getDataReadFuture(),
+          HADOOP_VECTORED_READ_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+        // report in a counter the data we just scanned
+        BenchmarkCounter.incrementBytesRead(currRange.getLength());
+      } catch (TimeoutException e) {
+        String error = String.format("Timeout while fetching result for %s", currRange);
+        LOG.error(error, e);
+        throw new IOException(error, e);
+      }
+      ByteBufferInputStream stream = ByteBufferInputStream.wrap(buffer);
+      for (ChunkDescriptor descriptor : chunks) {
+        builder.add(descriptor, stream.sliceBuffers(descriptor.size), f);
       }
     }
 
