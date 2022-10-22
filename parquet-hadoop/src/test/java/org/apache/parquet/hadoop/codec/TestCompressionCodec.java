@@ -19,9 +19,12 @@
 package org.apache.parquet.hadoop.codec;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.io.compress.CompressionCodec;
 import org.apache.hadoop.io.compress.CompressionOutputStream;
+import org.apache.hadoop.io.compress.Compressor;
+import org.apache.hadoop.io.compress.Decompressor;
 import org.apache.parquet.bytes.BytesInput;
-import org.apache.parquet.hadoop.codec.*;
+import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -33,12 +36,18 @@ import java.util.Random;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 
-public class TestLz4RawCodec {
+public class TestCompressionCodec {
+
   @Test
-  public void testBlock() throws IOException {
-    // Reuse the lz4 objects between test cases
-    Lz4RawCompressor compressor = new Lz4RawCompressor();
-    Lz4RawDecompressor decompressor = new Lz4RawDecompressor();
+  public void testLz4RawBlock() throws IOException {
+    testBlock(CompressionCodecName.LZ4_RAW);
+  }
+
+  private void testBlock(CompressionCodecName codecName) throws IOException {
+    // Reuse the codec objects between test cases
+    CompressionCodec codec = getCodec(codecName, 4 * 1024);
+    Compressor compressor = codec.createCompressor();
+    Decompressor decompressor = codec.createDecompressor();
 
     testBlockCompression(compressor, decompressor, "");
     testBlockCompression(compressor, decompressor, "FooBar");
@@ -49,8 +58,8 @@ public class TestLz4RawCodec {
     testBlockCompression(compressor, decompressor, "FooBar");
   }
 
-  // Test lz4 raw compression in the block fashion
-  private void testBlockCompression(Lz4RawCompressor compressor, Lz4RawDecompressor decompressor,
+  // Test compression in the block fashion
+  private void testBlockCompression(Compressor compressor, Decompressor decompressor,
                                     String data) throws IOException {
     compressor.reset();
     decompressor.reset();
@@ -81,27 +90,28 @@ public class TestLz4RawCodec {
     assertArrayEquals(uncompressedData, decompressedData);
   }
 
-  // Test lz4 raw compression in the streaming fashion
   @Test
-  public void testCodec() throws IOException {
-    Lz4RawCodec codec = new Lz4RawCodec();
-    Configuration conf = new Configuration();
+  public void testLz4RawCodec() throws IOException {
+    testCodec(CompressionCodecName.LZ4_RAW);
+  }
+
+  // Test compression in the streaming fashion
+  private void testCodec(CompressionCodecName codecName) throws IOException {
     int[] bufferSizes = {128, 1024, 4 * 1024, 16 * 1024, 128 * 1024, 1024 * 1024};
     int[] dataSizes = {0, 1, 10, 128, 1024, 2048, 1024 * 1024};
 
     for (int i = 0; i < bufferSizes.length; i++) {
-      conf.setInt(Lz4RawCodec.BUFFER_SIZE_CONFIG, bufferSizes[i]);
-      codec.setConf(conf);
+      CompressionCodec codec = getCodec(codecName, bufferSizes[i]);
       for (int j = 0; j < dataSizes.length; j++) {
         // do not repeat
-        testLz4RawCodec(codec, dataSizes[j], dataSizes[j]);
+        testCodec(codec, dataSizes[j], dataSizes[j]);
         // repeat by every 128 bytes
-        testLz4RawCodec(codec, dataSizes[j], 128);
+        testCodec(codec, dataSizes[j], 128);
       }
     }
   }
 
-  private void testLz4RawCodec(Lz4RawCodec codec, int dataSize, int repeatSize) throws IOException {
+  private void testCodec(CompressionCodec codec, int dataSize, int repeatSize) throws IOException {
     byte[] data = new byte[dataSize];
     if (repeatSize >= dataSize) {
       (new Random()).nextBytes(data);
@@ -117,7 +127,7 @@ public class TestLz4RawCodec {
     Assert.assertArrayEquals(data, decompressedData);
   }
 
-  private BytesInput compress(Lz4RawCodec codec, BytesInput bytes) throws IOException {
+  private BytesInput compress(CompressionCodec codec, BytesInput bytes) throws IOException {
     ByteArrayOutputStream compressedOutBuffer = new ByteArrayOutputStream((int) bytes.size());
     CompressionOutputStream cos = codec.createOutputStream(compressedOutBuffer);
     bytes.writeAllTo(cos);
@@ -125,10 +135,26 @@ public class TestLz4RawCodec {
     return BytesInput.from(compressedOutBuffer);
   }
 
-  private byte[] decompress(Lz4RawCodec codec, BytesInput bytes, int uncompressedSize) throws IOException {
+  private byte[] decompress(CompressionCodec codec, BytesInput bytes, int uncompressedSize) throws IOException {
     InputStream is = codec.createInputStream(bytes.toInputStream());
     byte[] decompressed = BytesInput.from(is, uncompressedSize).toByteArray();
     is.close();
     return decompressed;
   }
+
+  private CompressionCodec getCodec(CompressionCodecName codecName, int bufferSize) {
+    switch (codecName) {
+      case LZ4_RAW: {
+        Configuration conf = new Configuration();
+        conf.setInt(Lz4RawCodec.BUFFER_SIZE_CONFIG, bufferSize);
+        Lz4RawCodec codec = new Lz4RawCodec();
+        codec.setConf(conf);
+        return codec;
+      }
+      default:
+        // Not implemented yet
+        return null;
+    }
+  }
+
 }
