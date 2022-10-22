@@ -87,20 +87,31 @@ public class TestLz4RawCodec {
     Lz4RawCodec codec = new Lz4RawCodec();
     Configuration conf = new Configuration();
     int[] bufferSizes = {128, 1024, 4 * 1024, 16 * 1024, 128 * 1024, 1024 * 1024};
-    int[] dataSizes = {0, 1, 10, 1024, 1024 * 1024};
+    int[] dataSizes = {0, 1, 10, 128, 1024, 2048, 1024 * 1024};
 
     for (int i = 0; i < bufferSizes.length; i++) {
       conf.setInt(Lz4RawCodec.BUFFER_SIZE_CONFIG, bufferSizes[i]);
       codec.setConf(conf);
       for (int j = 0; j < dataSizes.length; j++) {
-        testLz4RawCodec(codec, dataSizes[j]);
+        // do not repeat
+        testLz4RawCodec(codec, dataSizes[j], dataSizes[j]);
+        // repeat by every 128 bytes
+        testLz4RawCodec(codec, dataSizes[j], 128);
       }
     }
   }
 
-  private void testLz4RawCodec(Lz4RawCodec codec, int dataSize) throws IOException {
+  private void testLz4RawCodec(Lz4RawCodec codec, int dataSize, int repeatSize) throws IOException {
     byte[] data = new byte[dataSize];
-    (new Random()).nextBytes(data);
+    if (repeatSize >= dataSize) {
+      (new Random()).nextBytes(data);
+    } else {
+      byte[] repeat = new byte[repeatSize];
+      (new Random()).nextBytes(repeat);
+      for (int offset = 0; offset < dataSize; offset += repeatSize) {
+        System.arraycopy(repeat, 0, data, offset, Math.min(repeatSize, dataSize - offset));
+      }
+    }
     BytesInput compressedData = compress(codec, BytesInput.from(data));
     byte[] decompressedData = decompress(codec, compressedData, data.length);
     Assert.assertArrayEquals(data, decompressedData);
