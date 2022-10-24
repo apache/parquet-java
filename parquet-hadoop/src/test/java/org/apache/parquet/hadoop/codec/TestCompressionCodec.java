@@ -43,6 +43,11 @@ public class TestCompressionCodec {
     testBlock(CompressionCodecName.LZ4_RAW);
   }
 
+  @Test
+  public void testSnappyBlock() throws IOException {
+    testBlock(CompressionCodecName.SNAPPY);
+  }
+
   private void testBlock(CompressionCodecName codecName) throws IOException {
     // Reuse the codec objects between test cases
     CompressionCodec codec = getCodec(codecName, 4 * 1024);
@@ -93,6 +98,11 @@ public class TestCompressionCodec {
   @Test
   public void testLz4RawCodec() throws IOException {
     testCodec(CompressionCodecName.LZ4_RAW);
+  }
+
+  @Test
+  public void testSnappyCodec() throws IOException {
+    testCodec(CompressionCodecName.SNAPPY);
   }
 
   // Test compression in the streaming fashion
@@ -148,6 +158,13 @@ public class TestCompressionCodec {
         Configuration conf = new Configuration();
         conf.setInt(Lz4RawCodec.BUFFER_SIZE_CONFIG, bufferSize);
         Lz4RawCodec codec = new Lz4RawCodec();
+        codec.setConf(conf);
+        return codec;
+      }
+      case SNAPPY: {
+        Configuration conf = new Configuration();
+        conf.setInt("io.file.buffer.size", bufferSize);
+        SnappyCodec codec = new SnappyCodec();
         codec.setConf(conf);
         return codec;
       }
