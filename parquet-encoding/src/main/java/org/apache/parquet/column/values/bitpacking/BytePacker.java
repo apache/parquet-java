@@ -79,10 +79,7 @@ public abstract class BytePacker {
    * @param output the output values
    * @param outPos where to write to in output
    */
-  @Deprecated
-  public void unpack8Values(final byte[] input, final int inPos, final int[] output, final int outPos) {
-    unpack8Values(ByteBuffer.wrap(input), inPos, output, outPos);
-  }
+  public abstract void unpack8Values(final byte[] input, final int inPos, final int[] output, final int outPos);
 
   /**
    * unpack bitWidth * 4 bytes from input at inPos into 32 values in output at outPos.
@@ -101,8 +98,5 @@ public abstract class BytePacker {
    * @param output the output values
    * @param outPos where to write to in output
    */
-  @Deprecated
-  public void unpack32Values(byte[] input, int inPos, int[] output, int outPos) {
-    unpack32Values(ByteBuffer.wrap(input), inPos, output, outPos);
-  }
+  public abstract void unpack32Values(byte[] input, int inPos, int[] output, int outPos);
 }
