@@ -20,8 +20,31 @@ name: Test
 on: [push, pull_request]
 
 jobs:
-  build:
+  build_thrift_compiler:
+    runs-on: ubuntu-latest
+    name: Build thrift compiler
+    env:
+      THRIFT_VERSION: 0.16.0
+    steps:
+      - name: Download thrift
+        run: curl -sLO https://archive.apache.org/dist/thrift/$THRIFT_VERSION/thrift-$THRIFT_VERSION.tar.gz
+      - uses: actions/cache@v3
+        id: cache-thrift
+        with:
+          path: /usr/local/bin/thrift
+          key: thrift-${{ hashFiles('thrift-*.tar.gz') }}
+      - uses: actions/checkout@master
+        if: ${{ steps.cache-thrift.outputs.cache-hit != 'true' }}
+      - name: Build thrift compiler
+        if: ${{ steps.cache-thrift.outputs.cache-hit != 'true' }}
+        run: bash dev/ci-before_install.sh
+      - uses: actions/upload-artifact@v3
+        with:
+          name: thrift-compiler
+          path: /usr/local/bin/thrift
 
+  build:
+    needs: build_thrift_compiler
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -29,18 +52,24 @@ jobs:
         java: [ '1.8', '11', '17' ]
         codes: [ 'uncompressed,brotli', 'gzip,snappy' ]
     name: Build Parquet with JDK ${{ matrix.java }} and ${{ matrix.codes }}
-
     steps:
+      - uses: actions/download-artifact@v3
+        with:
+          name: thrift-compiler
+      - name: Install thrift compiler
+        run: sudo install thrift /usr/local/bin
       - uses: actions/checkout@master
       - name: Set up JDK ${{ matrix.java }}
         uses: actions/setup-java@v1
         with:
           java-version: ${{ matrix.java }}
       - name: before_install
-        env:
-          CI_TARGET_BRANCH: $GITHUB_HEAD_REF
         run: |
-          bash dev/ci-before_install.sh
+          branch_specific_script="dev/ci-before_install-${GITHUB_HEAD_REF}.sh"
+          if [[ -e "$branch_specific_script" ]]
+          then
+            . "$branch_specific_script"
+          fi
       - name: install
         run: |
           EXTRA_JAVA_TEST_ARGS=$(mvn help:evaluate -Dexpression=extraJavaTestArgs -q -DforceStdout)
@@ -49,7 +78,6 @@ jobs:
       - name: verify
         env:
           TEST_CODECS: ${{ matrix.codes }}
-          JAVA_VERSION: ${{ matrix.java }}
         run: |
           EXTRA_JAVA_TEST_ARGS=$(mvn help:evaluate -Dexpression=extraJavaTestArgs -q -DforceStdout)
           export MAVEN_OPTS="$MAVEN_OPTS $EXTRA_JAVA_TEST_ARGS"
