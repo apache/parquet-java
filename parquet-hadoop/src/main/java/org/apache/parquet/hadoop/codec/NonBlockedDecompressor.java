@@ -100,7 +100,9 @@ abstract public class NonBlockedDecompressor implements Decompressor {
    */
   @Override
   public synchronized void setInput(byte[] buffer, int off, int len) {
-    // Reuse SnappyUtil
+    // SnappyUtil was dedicated to SnappyCodec in the past. Now it is used for both
+    // NonBlockedDecompressor and NonBlockedCompressor without renaming due to its
+    // dependency by some external downstream projects.
     SnappyUtil.validateBuffer(buffer, off, len);
 
     if (inputBuffer.capacity() - inputBuffer.position() < len) {

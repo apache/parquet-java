@@ -54,7 +54,9 @@ abstract public class NonBlockedCompressor implements Compressor {
    */
   @Override
   public synchronized int compress(byte[] buffer, int off, int len) throws IOException {
-    // Reuse SnappyUtil
+    // SnappyUtil was dedicated to SnappyCodec in the past. Now it is used for both
+    // NonBlockedDecompressor and NonBlockedCompressor without renaming due to its
+    // dependency by some external downstream projects.
     SnappyUtil.validateBuffer(buffer, off, len);
 
     if (needsInput()) {
@@ -90,7 +92,9 @@ abstract public class NonBlockedCompressor implements Compressor {
 
   @Override
   public synchronized void setInput(byte[] buffer, int off, int len) {
-    // Reuse SnappyUtil
+    // SnappyUtil was dedicated to SnappyCodec in the past. Now it is used for both
+    // NonBlockedDecompressor and NonBlockedCompressor without renaming due to its
+    // dependency by some external downstream projects.
     SnappyUtil.validateBuffer(buffer, off, len);
 
     Preconditions.checkArgument(!outputBuffer.hasRemaining(),
