@@ -31,6 +31,13 @@ public abstract class BytePacker {
 
   private final int bitWidth;
 
+  /**
+   * unpack the output int values at a time.
+   *
+   * For AVX512, the register is 512 bits, so output values at a time maybe different when different bitWidth.
+   */
+  protected int unpackCount;
+
   BytePacker(int bitWidth) {
     this.bitWidth = bitWidth;
   }
@@ -40,6 +47,10 @@ public abstract class BytePacker {
    */
   public final int getBitWidth() {
     return bitWidth;
+  }
+
+  public int getUnpackCount() {
+    throw new RuntimeException("The method must be implemented by subclass!");
   }
 
   /**
@@ -104,5 +115,17 @@ public abstract class BytePacker {
   @Deprecated
   public void unpack32Values(byte[] input, int inPos, int[] output, int outPos) {
     unpack32Values(ByteBuffer.wrap(input), inPos, output, outPos);
+  }
+
+  public void unpackValuesVector(final byte[] input, final int inPos, final int[] output, final int outPos) {
+
+  }
+
+  public void unpackValuesVector(final ByteBuffer input, final int inPos, final int[] output, final int outPos) {
+
+  }
+
+  public void packValuesVector(final int[] input, final int inPos, final byte[] output, final int outPos) {
+
   }
 }
