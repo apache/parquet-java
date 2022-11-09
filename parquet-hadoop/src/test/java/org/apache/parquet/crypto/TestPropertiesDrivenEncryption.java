@@ -21,6 +21,9 @@ package org.apache.parquet.crypto;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.parquet.bytes.ByteBufferAllocator;
+import org.apache.parquet.bytes.DirectByteBufferAllocator;
+import org.apache.parquet.bytes.HeapByteBufferAllocator;
 import org.apache.parquet.crypto.keytools.KeyToolkit;
 import org.apache.parquet.crypto.keytools.PropertiesDrivenCryptoFactory;
 import org.apache.parquet.crypto.keytools.mocks.InMemoryKMS;
@@ -62,6 +65,7 @@ import static org.apache.parquet.hadoop.ParquetFileWriter.EFMAGIC;
 import static org.apache.parquet.hadoop.ParquetFileWriter.EF_MAGIC_STR;
 import static org.apache.parquet.hadoop.ParquetFileWriter.MAGIC;
 import static org.apache.parquet.hadoop.ParquetFileWriter.Mode.OVERWRITE;
+import static org.apache.parquet.hadoop.ParquetInputFormat.OFF_HEAP_DECRYPT_BUFFER_ENABLED;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 
 /*
@@ -107,15 +111,17 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
  */
 @RunWith(Parameterized.class)
 public class TestPropertiesDrivenEncryption {
-  @Parameterized.Parameters(name = "Run {index}: isKeyMaterialInternalStorage={0} isDoubleWrapping={1} isWrapLocally={2}")
+  @Parameterized.Parameters(name = "Run {index}: isKeyMaterialInternalStorage={0} isDoubleWrapping={1} isWrapLocally={2} isDecryptionDirectMemory={3}")
   public static Collection<Object[]> data() {
     Collection<Object[]> list = new ArrayList<>(8);
     boolean[] flagValues = { false, true };
     for (boolean keyMaterialInternalStorage : flagValues) {
       for (boolean doubleWrapping : flagValues) {
         for (boolean wrapLocally : flagValues) {
-          Object[] vector = {keyMaterialInternalStorage, doubleWrapping, wrapLocally};
-          list.add(vector);
+          for (boolean isDecryptionDirectMemory : flagValues) {
+            Object[] vector = {keyMaterialInternalStorage, doubleWrapping, wrapLocally, isDecryptionDirectMemory};
+            list.add(vector);
+          }
         }
       }
     }
@@ -130,6 +136,9 @@ public class TestPropertiesDrivenEncryption {
 
   @Parameterized.Parameter(value = 2)
   public boolean isWrapLocally;
+
+  @Parameterized.Parameter(value = 3)
+  public boolean isDecryptionDirectMemory;
 
   private static final Logger LOG = LoggerFactory.getLogger(TestPropertiesDrivenEncryption.class);
 
@@ -196,13 +205,13 @@ public class TestPropertiesDrivenEncryption {
     .append(COLUMN_MASTER_KEY_IDS[5]).append(": ").append(SingleRow.FIXED_LENGTH_BINARY_FIELD_NAME)
     .toString();
 
-  private static final int NUM_THREADS = 4;
+  private static final int NUM_THREADS = 1;
   private static final int WAIT_FOR_WRITE_TO_END_SECONDS = 5;
   private static final int WAIT_FOR_READ_TO_END_SECONDS = 5;
 
   private static final boolean plaintextFilesAllowed = true;
 
-  private static final int ROW_COUNT = 10000;
+  private static final int ROW_COUNT = 100;
   private static final List<SingleRow> DATA = Collections.unmodifiableList(SingleRow.generateRandomData(ROW_COUNT));
 
   public enum EncryptionConfiguration {
@@ -295,6 +304,8 @@ public class TestPropertiesDrivenEncryption {
     conf.set(EncryptionPropertiesFactory.CRYPTO_FACTORY_CLASS_PROPERTY_NAME,
       PropertiesDrivenCryptoFactory.class.getName());
 
+    conf.set(OFF_HEAP_DECRYPT_BUFFER_ENABLED, String.valueOf(test.isDecryptionDirectMemory));
+
     if (test.isWrapLocally) {
       conf.set(KeyToolkit.KMS_CLIENT_CLASS_PROPERTY_NAME, LocalWrapInMemoryKMS.class.getName());
     } else {
@@ -376,7 +387,7 @@ public class TestPropertiesDrivenEncryption {
     MessageType schema = SingleRow.getSchema();
     SimpleGroupFactory f = new SimpleGroupFactory(schema);
 
-    int pageSize = data.size() / 10;     // Ensure that several pages will be created
+    int pageSize = data.size();     // Ensure that several pages will be created
     int rowGroupSize = pageSize * 6 * 5; // Ensure that there are more row-groups created
 
     Path file = new Path(root, getFileName(root, encryptionConfiguration, threadNumber));
@@ -543,8 +554,12 @@ public class TestPropertiesDrivenEncryption {
     }
 
     int rowNum = 0;
+    final ByteBufferAllocator allocator = this.isDecryptionDirectMemory ?
+      new DirectByteBufferAllocator() :
+      new HeapByteBufferAllocator();
     try (ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), file)
       .withConf(hadoopConfig)
+      .withAllocator(allocator)
       .withDecryption(fileDecryptionProperties)
       .build()) {
       for (Group group = reader.read(); group != null; group = reader.read()) {

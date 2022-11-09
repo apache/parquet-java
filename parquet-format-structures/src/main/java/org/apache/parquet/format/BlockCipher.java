@@ -21,11 +21,12 @@ package org.apache.parquet.format;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.ByteBuffer;
 
 public interface BlockCipher{
 
 
-  public interface Encryptor{
+  interface Encryptor{
     /**
      * Encrypts the plaintext.
      * 
@@ -36,11 +37,11 @@ public interface BlockCipher{
      * The ciphertext includes the nonce and (in case of GCM cipher) the tag, as detailed in the 
      * Parquet Modular Encryption specification.
      */
-    public byte[] encrypt(byte[] plaintext, byte[] AAD);
+    byte[] encrypt(byte[] plaintext, byte[] AAD);
   }
 
 
-  public interface Decryptor{  
+  interface Decryptor{
     /**
      * Decrypts the ciphertext. 
      * 
@@ -51,17 +52,26 @@ public interface BlockCipher{
      * @param AAD - Additional Authenticated Data for the decryption (ignored in case of CTR cipher)
      * @return plaintext - starts at offset 0 of the output value, and fills up the entire byte array.
      */
-    public byte[] decrypt(byte[] lengthAndCiphertext, byte[] AAD);
+    byte[] decrypt(byte[] lengthAndCiphertext, byte[] AAD);
 
     /**
+     * Convenience decryption method that reads the length and ciphertext from a ByteBuffer
+     *
+     * @param from ByteBuffer with length and ciphertext.
+     * @param AAD - Additional Authenticated Data for the decryption (ignored in case of CTR cipher)
+     * @return plaintext -  starts at offset 0 of the output, and fills up the entire byte array.
+     */
+    ByteBuffer decrypt(ByteBuffer from, byte[] AAD);
+
+  /**
      * Convenience decryption method that reads the length and ciphertext from the input stream.
-     * 
+     *
      * @param from Input stream with length and ciphertext.
      * @param AAD - Additional Authenticated Data for the decryption (ignored in case of CTR cipher)
      * @return plaintext -  starts at offset 0 of the output, and fills up the entire byte array.
      * @throws IOException - Stream I/O problems
      */
-    public byte[] decrypt(InputStream from, byte[] AAD) throws IOException;
+    byte[] decrypt(InputStream from, byte[] AAD) throws IOException;
   }
 }
 

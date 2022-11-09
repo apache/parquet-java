@@ -19,6 +19,7 @@
 package org.apache.parquet.hadoop;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.HashMap;
 import java.util.List;
@@ -27,6 +28,7 @@ import java.util.Optional;
 import java.util.PrimitiveIterator;
 import java.util.Queue;
 
+import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.page.DataPage;
@@ -71,6 +73,7 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
     // null means no page synchronization is required; firstRowIndex will not be returned by the pages
     private final OffsetIndex offsetIndex;
     private final long rowCount;
+    private final ParquetReadOptions options;
     private int pageIndex = 0;
     
     private final BlockCipher.Decryptor blockDecryptor;
@@ -80,7 +83,7 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
     ColumnChunkPageReader(BytesInputDecompressor decompressor, List<DataPage> compressedPages,
         DictionaryPage compressedDictionaryPage, OffsetIndex offsetIndex, long rowCount,
         BlockCipher.Decryptor blockDecryptor, byte[] fileAAD, 
-        int rowGroupOrdinal, int columnOrdinal) {
+        int rowGroupOrdinal, int columnOrdinal, ParquetReadOptions options) {
       this.decompressor = decompressor;
       this.compressedPages = new ArrayDeque<DataPage>(compressedPages);
       this.compressedDictionaryPage = compressedDictionaryPage;
@@ -91,9 +94,8 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
       this.valueCount = count;
       this.offsetIndex = offsetIndex;
       this.rowCount = rowCount;
-      
+      this.options = options;
       this.blockDecryptor = blockDecryptor;
- 
       if (null != blockDecryptor) {
         dataPageAAD = AesCipher.createModuleAAD(fileAAD, ModuleType.DataPage, rowGroupOrdinal, columnOrdinal, 0);
         dictionaryPageAAD = AesCipher.createModuleAAD(fileAAD, ModuleType.DictionaryPage, rowGroupOrdinal, columnOrdinal, -1);
@@ -133,11 +135,33 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
         public DataPage visit(DataPageV1 dataPageV1) {
           try {
             BytesInput bytes = dataPageV1.getBytes();
-            if (null != blockDecryptor) {
-              bytes = BytesInput.from(blockDecryptor.decrypt(bytes.toByteArray(), dataPageAAD));
+            ByteBuffer byteBuffer = bytes.toByteBuffer();
+            BytesInput decompressed;
+
+            if (byteBuffer.isDirect() && options.useOffHeapDecryptBuffer()) {
+              if (blockDecryptor != null) {
+                byteBuffer = blockDecryptor.decrypt(byteBuffer, dataPageAAD);
+              }
+              long compressedSize = byteBuffer.limit();
+
+              ByteBuffer decompressedBuffer =
+                  ByteBuffer.allocateDirect(dataPageV1.getUncompressedSize());
+              decompressor.decompress(byteBuffer, (int) compressedSize, decompressedBuffer,
+                  dataPageV1.getUncompressedSize());
+
+              // HACKY: sometimes we need to do `flip` because the position of output bytebuffer is
+              // not reset.
+              if (decompressedBuffer.position() != 0) {
+                decompressedBuffer.flip();
+              }
+              decompressed = BytesInput.from(decompressedBuffer);
+            } else { // use on-heap buffer
+              if (null != blockDecryptor) {
+                bytes = BytesInput.from(blockDecryptor.decrypt(bytes.toByteArray(), dataPageAAD));
+              }
+              decompressed = decompressor.decompress(bytes, dataPageV1.getUncompressedSize());
             }
-            BytesInput decompressed = decompressor.decompress(bytes, dataPageV1.getUncompressedSize());
-            
+
             final DataPageV1 decompressedPage;
             if (offsetIndex == null) {
               decompressedPage = new DataPageV1(
