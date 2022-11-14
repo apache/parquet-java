@@ -59,7 +59,7 @@ public interface BlockCipher{
      *
      * @param from ByteBuffer with length and ciphertext.
      * @param AAD - Additional Authenticated Data for the decryption (ignored in case of CTR cipher)
-     * @return plaintext -  starts at offset 0 of the output, and fills up the entire byte array.
+     * @return plaintext -  starts at offset 0 of the output, and fills up the entire byte buffer.
      */
     ByteBuffer decrypt(ByteBuffer from, byte[] AAD);
 

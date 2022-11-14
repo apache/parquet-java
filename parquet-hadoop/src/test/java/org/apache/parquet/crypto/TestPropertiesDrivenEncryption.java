@@ -205,7 +205,7 @@ public class TestPropertiesDrivenEncryption {
     .append(COLUMN_MASTER_KEY_IDS[5]).append(": ").append(SingleRow.FIXED_LENGTH_BINARY_FIELD_NAME)
     .toString();
 
-  private static final int NUM_THREADS = 1;
+  private static final int NUM_THREADS = 4;
   private static final int WAIT_FOR_WRITE_TO_END_SECONDS = 5;
   private static final int WAIT_FOR_READ_TO_END_SECONDS = 5;
 

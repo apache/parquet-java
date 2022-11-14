@@ -135,17 +135,20 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
         public DataPage visit(DataPageV1 dataPageV1) {
           try {
             BytesInput bytes = dataPageV1.getBytes();
-            ByteBuffer byteBuffer = bytes.toByteBuffer();
             BytesInput decompressed;
 
-            if (byteBuffer.isDirect() && options.useOffHeapDecryptBuffer()) {
+            if (options.getAllocator().isDirect() && options.useOffHeapDecryptBuffer()) {
+              ByteBuffer byteBuffer = bytes.toByteBuffer();
+              if (!byteBuffer.isDirect()) {
+                throw new ParquetDecodingException("Expected a direct buffer");
+              }
               if (blockDecryptor != null) {
                 byteBuffer = blockDecryptor.decrypt(byteBuffer, dataPageAAD);
               }
               long compressedSize = byteBuffer.limit();
 
               ByteBuffer decompressedBuffer =
-                  ByteBuffer.allocateDirect(dataPageV1.getUncompressedSize());
+                  options.getAllocator().allocate(dataPageV1.getUncompressedSize());
               decompressor.decompress(byteBuffer, (int) compressedSize, decompressedBuffer,
                   dataPageV1.getUncompressedSize());
 
