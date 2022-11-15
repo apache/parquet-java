@@ -19,8 +19,6 @@
 
 package org.apache.parquet;
 
-import org.apache.commons.lang3.JavaVersion;
-import org.apache.commons.lang3.SystemUtils;
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.HeapByteBufferAllocator;
 import org.apache.parquet.compression.CompressionCodecFactory;
@@ -47,8 +45,7 @@ public class ParquetReadOptions {
   private static final boolean PAGE_VERIFY_CHECKSUM_ENABLED_DEFAULT = false;
   private static final boolean BLOOM_FILTER_ENABLED_DEFAULT = true;
   // Default to true if JDK 17 or newer.
-  private static final boolean USE_OFF_HEAP_DECRYPT_BUFFER_DEFAULT =
-    SystemUtils.isJavaVersionAtLeast(JavaVersion.JAVA_17);
+  private static final boolean USE_OFF_HEAP_DECRYPT_BUFFER_DEFAULT = false;
 
   private final boolean useSignedStringMinMax;
   private final boolean useStatsFilter;
