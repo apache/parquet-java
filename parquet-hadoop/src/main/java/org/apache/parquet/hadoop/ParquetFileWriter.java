@@ -369,7 +369,13 @@ public class ParquetFileWriter {
       for (Map.Entry<ColumnPath, ColumnEncryptionProperties> entry : columnEncryptionProperties.entrySet()) {
         String[] path = entry.getKey().toArray();
         if (!schema.containsPath(path)) {
-          throw new ParquetCryptoRuntimeException("Encrypted column " + Arrays.toString(path) + " not in file schema");
+          StringBuilder columnList = new StringBuilder();
+          columnList.append("[");
+          for (String[] columnPath : schema.getPaths()) {
+            columnList.append(ColumnPath.get(columnPath).toDotString() + "], [");
+          }
+          throw new ParquetCryptoRuntimeException("Encrypted column [" + entry.getKey().toDotString() +
+            "] not in file schema column list: " + columnList.substring(0, columnList.length() - 3));
         }
       }
     }
