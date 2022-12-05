@@ -184,6 +184,10 @@ abstract public class NonBlockedCompressor implements Compressor {
     }
 
     final ByteBuffer tmp = ByteBuffer.allocateDirect(newCapacity);
+
+    // Set the limit to the current position before we copy to ensure that we don't copy
+    // extra bytes to the new buffer
+    inputBuffer.limit(inputBuffer.position());
     inputBuffer.rewind();
     tmp.put(inputBuffer);
     final ByteBuffer oldBuffer = inputBuffer;
