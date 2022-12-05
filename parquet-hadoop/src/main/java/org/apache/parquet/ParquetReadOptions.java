@@ -44,7 +44,6 @@ public class ParquetReadOptions {
   private static final int ALLOCATION_SIZE_DEFAULT = 8388608; // 8MB
   private static final boolean PAGE_VERIFY_CHECKSUM_ENABLED_DEFAULT = false;
   private static final boolean BLOOM_FILTER_ENABLED_DEFAULT = true;
-  // Default to true if JDK 17 or newer.
   private static final boolean USE_OFF_HEAP_DECRYPT_BUFFER_DEFAULT = false;
 
   private final boolean useSignedStringMinMax;
