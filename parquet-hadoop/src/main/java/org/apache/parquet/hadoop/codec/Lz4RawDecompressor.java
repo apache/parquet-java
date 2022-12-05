@@ -18,21 +18,29 @@
  */
 package org.apache.parquet.hadoop.codec;
 
+import io.airlift.compress.lz4.Lz4Decompressor;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-import org.xerial.snappy.Snappy;
+public class Lz4RawDecompressor extends NonBlockedDecompressor {
 
-public class SnappyDecompressor extends NonBlockedDecompressor {
-
-  @Override
-  protected int uncompress(ByteBuffer compressed, ByteBuffer uncompressed) throws IOException {
-    return Snappy.uncompress(compressed, uncompressed);
-  }
+  private Lz4Decompressor decompressor = new Lz4Decompressor();
 
   @Override
   protected int maxUncompressedLength(ByteBuffer compressed, int maxUncompressedLength) throws IOException {
-    return Snappy.uncompressedLength(compressed);
+    // We cannot obtain the precise uncompressed length from the input data.
+    // Simply return the maxUncompressedLength.
+    return maxUncompressedLength;
   }
 
-} //class SnappyDecompressor
+  @Override
+  protected int uncompress(ByteBuffer compressed, ByteBuffer uncompressed) throws IOException {
+    decompressor.decompress(compressed, uncompressed);
+    int uncompressedSize = uncompressed.position();
+    uncompressed.limit(uncompressedSize);
+    uncompressed.rewind();
+    return uncompressedSize;
+  }
+
+}

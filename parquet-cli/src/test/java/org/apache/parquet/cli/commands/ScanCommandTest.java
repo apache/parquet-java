@@ -16,23 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.parquet.hadoop.codec;
+package org.apache.parquet.cli.commands;
 
+import org.apache.hadoop.conf.Configuration;
+import org.junit.Assert;
+import org.junit.Test;
+
+import java.io.File;
 import java.io.IOException;
-import java.nio.ByteBuffer;
+import java.util.Arrays;
 
-import org.xerial.snappy.Snappy;
-
-public class SnappyDecompressor extends NonBlockedDecompressor {
-
-  @Override
-  protected int uncompress(ByteBuffer compressed, ByteBuffer uncompressed) throws IOException {
-    return Snappy.uncompress(compressed, uncompressed);
+public class ScanCommandTest extends ParquetFileTest {
+  @Test
+  public void testScanCommand() throws IOException {
+    File file = parquetFile();
+    ScanCommand command = new ScanCommand(createLogger());
+    command.sourceFile = file.getAbsolutePath();
+    command.setConf(new Configuration());
+    Assert.assertEquals(0, command.run());
   }
-
-  @Override
-  protected int maxUncompressedLength(ByteBuffer compressed, int maxUncompressedLength) throws IOException {
-    return Snappy.uncompressedLength(compressed);
-  }
-
-} //class SnappyDecompressor
+}

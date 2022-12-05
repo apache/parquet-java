@@ -73,8 +73,8 @@
     <jackson.groupId>com.fasterxml.jackson.core</jackson.groupId>
     <jackson.datatype.groupId>com.fasterxml.jackson.datatype</jackson.datatype.groupId>
     <jackson.package>com.fasterxml.jackson</jackson.package>
-    <jackson.version>2.13.2</jackson.version>
-    <jackson-databind.version>2.13.2.2</jackson-databind.version>
+    <jackson.version>2.13.4</jackson.version>
+    <jackson-databind.version>2.13.4.2</jackson-databind.version>
     <japicmp.version>0.14.2</japicmp.version>
     <shade.prefix>shaded.parquet</shade.prefix>
     <hadoop.version>3.2.3</hadoop.version>
@@ -82,7 +82,7 @@
     <previous.version>1.12.0</previous.version>
     <thrift.executable>thrift</thrift.executable>
     <format.thrift.executable>${thrift.executable}</format.thrift.executable>
-    <scala.version>2.12.8</scala.version>
+    <scala.version>2.12.17</scala.version>
     <!-- scala.binary.version is used for projects that fetch dependencies that are in scala -->
     <scala.binary.version>2.12</scala.binary.version>
     <scala.maven.test.skip>false</scala.maven.test.skip>
@@ -114,6 +114,23 @@
 
     <!-- Resource intesive tests are enabled by default but disabled in the CI envrionment -->
     <enableResourceIntensiveTests>true</enableResourceIntensiveTests>
+
+    <extraJavaTestArgs>
+      -XX:+IgnoreUnrecognizedVMOptions
+      --add-opens=java.base/java.lang=ALL-UNNAMED
+      --add-opens=java.base/java.lang.invoke=ALL-UNNAMED
+      --add-opens=java.base/java.lang.reflect=ALL-UNNAMED
+      --add-opens=java.base/java.io=ALL-UNNAMED
+      --add-opens=java.base/java.net=ALL-UNNAMED
+      --add-opens=java.base/java.nio=ALL-UNNAMED
+      --add-opens=java.base/java.util=ALL-UNNAMED
+      --add-opens=java.base/java.util.concurrent=ALL-UNNAMED
+      --add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED
+      --add-opens=java.base/sun.nio.ch=ALL-UNNAMED
+      --add-opens=java.base/sun.nio.cs=ALL-UNNAMED
+      --add-opens=java.base/sun.security.action=ALL-UNNAMED
+      --add-opens=java.base/sun.util.calendar=ALL-UNNAMED
+    </extraJavaTestArgs>
   </properties>
 
   <modules>
@@ -407,7 +424,7 @@
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
         <configuration>
-          <argLine>${surefire.argLine}</argLine>
+          <argLine>${surefire.argLine} ${extraJavaTestArgs}</argLine>
           <systemPropertyVariables>
             <!-- Configure Parquet logging during tests
                  See http://www.slf4j.org/api/org/slf4j/impl/SimpleLogger.html

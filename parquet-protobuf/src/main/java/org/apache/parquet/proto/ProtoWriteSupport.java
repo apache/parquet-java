@@ -52,7 +52,7 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
   // PARQUET-968 introduces changes to allow writing specs compliant schemas with parquet-protobuf.
   // In the past, collection were not written using the LIST and MAP wrappers and thus were not compliant
   // with the parquet specs. This flag, is set to true, allows to write using spec compliant schemas
-  // but is set to false by default to keep backward compatibility
+  // but is set to false by default to keep backward compatibility.
   public static final String PB_SPECS_COMPLIANT_WRITE = "parquet.proto.writeSpecsCompliant";
 
   private boolean writeSpecsCompliant = false;
@@ -105,7 +105,7 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
       messageWriter.writeTopLevelMessage(record);
     } catch (RuntimeException e) {
       Message m = (record instanceof Message.Builder) ? ((Message.Builder) record).build() : (Message) record;
-      LOG.error("Cannot write message " + e.getMessage() + " : " + m);
+      LOG.error("Cannot write message {}: {}", e.getMessage(), m);
       throw e;
     }
     recordConsumer.endMessage();
@@ -138,7 +138,7 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
     }
 
     writeSpecsCompliant = configuration.getBoolean(PB_SPECS_COMPLIANT_WRITE, writeSpecsCompliant);
-    MessageType rootSchema = new ProtoSchemaConverter(writeSpecsCompliant).convert(descriptor);
+    MessageType rootSchema = new ProtoSchemaConverter(configuration).convert(descriptor);
     validatedMapping(descriptor, rootSchema);
 
     this.messageWriter = new MessageWriter(descriptor, rootSchema);
@@ -160,7 +160,7 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
       StringBuilder nameNumberPairs = new StringBuilder();
       if (enumNameNumberMapping.getValue().isEmpty()) {
         // No enum is ever written to any column of this file, put an empty string as the value in the metadata
-        LOG.info("No enum is written for " + enumNameNumberMapping.getKey());
+        LOG.info("No enum is written for {}", enumNameNumberMapping.getKey());
       }
       int idx = 0;
       for (Map.Entry<String, Integer> nameNumberPair : enumNameNumberMapping.getValue().entrySet()) {
@@ -221,7 +221,7 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
         Type type = schema.getType(name);
         FieldWriter writer = createWriter(fieldDescriptor, type);
 
-        if(writeSpecsCompliant && fieldDescriptor.isRepeated() && !fieldDescriptor.isMapField()) {
+        if (writeSpecsCompliant && fieldDescriptor.isRepeated() && !fieldDescriptor.isMapField()) {
           writer = new ArrayWriter(writer);
         }
         else if (!writeSpecsCompliant && fieldDescriptor.isRepeated()) {
@@ -256,6 +256,11 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
     private FieldWriter createMessageWriter(FieldDescriptor fieldDescriptor, Type type) {
       if (fieldDescriptor.isMapField() && writeSpecsCompliant) {
         return createMapWriter(fieldDescriptor, type);
+      }
+
+      // This can happen now that recursive schemas get truncated to bytes.  Write the bytes.
+      if (type.isPrimitive() && type.asPrimitiveType().getPrimitiveTypeName() == PrimitiveType.PrimitiveTypeName.BINARY) {
+        return new BinaryWriter();
       }
 
       return new MessageWriter(fieldDescriptor.getMessageType(), getGroupType(type));
@@ -305,7 +310,7 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
       writeAllFields((MessageOrBuilder) value);
     }
 
-    /** Writes message as part of repeated field. It cannot start field*/
+    /** Writes message as part of repeated field. It cannot start field */
     @Override
     final void writeRawValue(Object value) {
       recordConsumer.startGroup();
@@ -313,7 +318,7 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
       recordConsumer.endGroup();
     }
 
-    /** Used for writing nonrepeated (optional, required) fields*/
+    /** Used for writing nonrepeated (optional, required) fields */
     @Override
     final void writeField(Object value) {
       recordConsumer.startField(fieldName, index);
@@ -326,7 +331,7 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
       Descriptors.FileDescriptor.Syntax syntax = messageDescriptor.getFile().getSyntax();
 
       if (Descriptors.FileDescriptor.Syntax.PROTO2.equals(syntax)) {
-        //returns changed fields with values. Map is ordered by id.
+        // Returns changed fields with values. Map is ordered by id.
         Map<FieldDescriptor, Object> changedPbFields = pb.getAllFields();
 
         for (Map.Entry<FieldDescriptor, Object> entry : changedPbFields.entrySet()) {
@@ -346,7 +351,7 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
         for (FieldDescriptor fieldDescriptor : fieldDescriptors) {
           FieldDescriptor.Type type = fieldDescriptor.getType();
 
-          //For a field in a oneOf that isn't set don't write anything
+          // For a field in a oneOf that isn't set don't write anything
           if (fieldDescriptor.getContainingOneof() != null && !pb.hasField(fieldDescriptor)) {
             continue;
           }
@@ -559,7 +564,14 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
   class BinaryWriter extends FieldWriter {
     @Override
     final void writeRawValue(Object value) {
-      ByteString byteString = (ByteString) value;
+      // Non-ByteString values can happen when recursions gets truncated.
+      ByteString byteString = value instanceof ByteString
+          ? (ByteString) value
+          // TODO: figure out a way to use MessageOrBuilder
+          : value instanceof Message
+          ? ((Message) value).toByteString()
+          // Worst-case, just dump as plain java string.
+          : ByteString.copyFromUtf8(value.toString());
       Binary binary = Binary.fromConstantByteArray(byteString.toByteArray());
       recordConsumer.addBinary(binary);
     }
