@@ -28,6 +28,7 @@ import org.apache.parquet.column.page.PageReadStore;
 import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.compression.CompressionCodecFactory;
 import org.apache.parquet.format.DataPageHeader;
+import org.apache.parquet.format.BlockCipher;
 import org.apache.parquet.format.DataPageHeaderV2;
 import org.apache.parquet.format.DictionaryPageHeader;
 import org.apache.parquet.format.PageHeader;
@@ -119,10 +120,11 @@ public class CompressionConverter {
           }
           DictionaryPageHeader dictPageHeader = pageHeader.dictionary_page_header;
           pageLoad = translatePageLoad(reader, true, compressor, decompressor, pageHeader.getCompressed_page_size(), pageHeader.getUncompressed_page_size());
-          writer.writeDictionaryPage(new DictionaryPage(BytesInput.from(pageLoad),
+          dictionaryPage = new DictionaryPage(BytesInput.from(pageLoad),
                                                    pageHeader.getUncompressed_page_size(),
                                                    dictPageHeader.getNum_values(),
-                                                   converter.getEncoding(dictPageHeader.getEncoding())));
+                                                   converter.getEncoding(dictPageHeader.getEncoding()));
+          writer.writeDictionaryPage(dictionaryPage);
           break;
         case DATA_PAGE:
           DataPageHeader headerV1 = pageHeader.data_page_header;
@@ -263,6 +265,10 @@ public class CompressionConverter {
 
     public PageHeader readPageHeader() throws IOException {
       return Util.readPageHeader(f);
+    }
+
+    public PageHeader readPageHeader(BlockCipher.Decryptor decryptor, byte[] AAD) throws IOException {
+      return Util.readPageHeader(f, decryptor, AAD);
     }
 
     public long getPos() throws IOException {
