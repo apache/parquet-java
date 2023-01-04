@@ -1,0 +1,369 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+message hive_schema {
+  optional group scheduled {
+    optional double dropoff_lat;
+    optional binary dropoff_airport_code (UTF8);
+    optional binary scheduled_pickup_end (UTF8);
+    optional binary pickup_hexagon (UTF8);
+    optional binary created_at (UTF8);
+    optional binary dropoff_hexagon_9 (UTF8);
+    optional binary schedule_uuid (UTF8);
+    optional binary scheduled_pickup_start (UTF8);
+    optional binary dropoff_hexagon (UTF8);
+    optional double dropoff_lng;
+    optional binary product_type_uuid (UTF8);
+    optional double pickup_lat;
+    optional binary pickup_hexagon_9 (UTF8);
+    optional binary pickup_airport_code (UTF8);
+    optional double pickup_lng;
+  }
+  optional binary clientuuid (UTF8);
+  optional group dxgy {
+    optional binary incentive_uuid (UTF8);
+    optional float spend;
+  }
+  optional group offer_expired {
+    optional int32 primary_count;
+    optional int32 secondary_count;
+    optional int32 count;
+    optional group count_key_list (LIST) {
+      repeated group bag {
+        optional binary array_element (UTF8);
+      }
+    }
+  }
+  optional binary product_uuid (UTF8);
+  optional group assigned {
+    optional binary supplyUUID (UTF8);
+    optional binary flowType (UTF8);
+    optional binary poolVehicleViewType (UTF8);
+    optional group disco_algorithm {
+      optional float driverCancelProb;
+      optional float driverAcceptProb;
+      optional float riderCancelProb;
+      optional float riderAcceptProb;
+      optional float mgv;
+    }
+    optional int32 secondary_count;
+    optional group supply_location {
+      optional binary geofence (UTF8);
+      optional binary hexagon (UTF8);
+      optional double lng;
+      optional double lat;
+      optional binary city (UTF8);
+      optional binary hexagon_9 (UTF8);
+    }
+    optional boolean isForwardDispatched;
+    optional double pickup_walking_distance;
+    optional int64 since_created;
+    optional binary workflowUUID (UTF8);
+    optional int32 primary_count;
+    optional binary fifo_dispatch_type (UTF8);
+    optional boolean isMatched;
+    optional int32 count;
+    optional binary eaterUUID (UTF8);
+    optional binary time (UTF8);
+    optional group supply_sharing {
+      optional binary chainUUID (UTF8);
+    }
+    optional binary fifo_queue_id (UTF8);
+    optional group count_key_list (LIST) {
+      repeated group bag {
+        optional binary array_element (UTF8);
+      }
+    }
+    optional boolean isHop;
+    optional boolean isPool;
+    optional int32 predicted_eta;
+    optional int32 job_board_count;
+  }
+  optional binary job_status (UTF8);
+  optional int64 eyeball_eta_seconds;
+  optional group net_inflow {
+    optional binary payoutCurrencyCode (UTF8);
+    optional float driverPayout;
+    optional binary paymentCurrencyCode (UTF8);
+    optional float riderPayment;
+  }
+  optional group calculated_fare {
+    optional float pickup_walking_meter;
+    optional boolean is_matched;
+    optional int32 capacity;
+    optional boolean is_pool;
+    optional float dropoff_walking_meter;
+    optional group upfront_fare {
+      optional boolean is_shadow;
+      optional double unmatched_knn_distance;
+      optional float destination_lat;
+      optional float estimated_distance;
+      optional float knn_duration_deviance;
+      optional float map_service_distance_deviance;
+      optional binary uuid (UTF8);
+      optional float matched_knn_fare;
+      optional float original_fare;
+      optional float fare;
+      optional float origin_lat;
+      optional float map_service_distance_adj;
+      optional boolean is_knn;
+      optional double unmatched_knn_duration;
+      optional float origin_lng;
+      optional float discounted_fare;
+      optional float knn_duration;
+      optional float ezpz_fare_estimate;
+      optional float unmatched_knn_fare;
+      optional binary estimation_method (UTF8);
+      optional float knn_distance;
+      optional float destination_lng;
+      optional float knn_distance_deviance;
+      optional float map_service_duration_deviance;
+      optional group rule_names (LIST) {
+        repeated group bag {
+          optional binary array_element (UTF8);
+        }
+      }
+      optional float estimated_duration;
+      optional float surge_multiplier;
+      optional float knn_fare;
+      optional float map_service_duration_adj;
+    }
+    optional float route_distance;
+    optional group client_breakdown {
+      optional group client_adjustment {
+        optional float value;
+        optional binary name (UTF8);
+      }
+      optional float total;
+    }
+    optional float billable_distance;
+    optional float total_fare;
+    optional float upfront_fare_adjustment;
+    optional group driver_breakdown {
+      optional float intermediary_incentive_guarantee_distance;
+      optional float intermediary_incentive_guarantee_fare_max_non_commissionable;
+      optional float intermediary_incentive_guarantee_fare_max;
+      optional float intermediary_incentive_etr_non_commissionable;
+      optional float driver_fare;
+      optional float intermediary_incentive_guarantee_surge;
+      optional binary intermediary_incentive_guarantee_surge_incentive_uuid (UTF8);
+    }
+    optional group breakdown_charges {
+      optional group client_adjustment {
+        optional float value;
+        optional binary name (UTF8);
+      }
+      optional binary currency (UTF8);
+      optional float distance_fare;
+      optional float total_not_rounded;
+      optional float time_fare;
+      optional float exchange_rate;
+      optional float surge_fare;
+      optional binary profile (UTF8);
+      optional float total;
+      optional float base_fare;
+    }
+    optional int64 product_uuid;
+    optional boolean honored;
+    optional float driver_fare;
+    optional boolean fraud;
+    optional binary products_uuid (UTF8);
+    optional float route_duration;
+    optional float billable_duration;
+    optional float surge_multiplier;
+    optional int32 max_total_capacity_used;
+  }
+  optional binary product_type_uuid (UTF8);
+  optional binary jobuuid (UTF8);
+  optional int32 global_swap_savings;
+  optional group offered {
+    optional int32 job_board_count;
+    optional int32 waiting_time;
+    optional int32 primary_count;
+    optional binary fifo_dispatch_type (UTF8);
+    optional int32 secondary_count;
+    optional int32 count;
+    optional binary fifo_queue_id (UTF8);
+    optional group best_candidate {
+      optional binary dispatch_type (UTF8);
+      optional binary supplyUUID (UTF8);
+      optional binary time (UTF8);
+      optional group supply_location {
+        optional binary geofence (UTF8);
+        optional binary hexagon (UTF8);
+        optional double lng;
+        optional double lat;
+        optional binary city (UTF8);
+        optional binary hexagon_9 (UTF8);
+      }
+      optional int64 waiting_time;
+    }
+    optional group count_key_list (LIST) {
+      repeated group bag {
+        optional binary array_element (UTF8);
+      }
+    }
+    optional binary latest_time (UTF8);
+    optional double offered_eta_seconds;
+    optional binary earliest_time (UTF8);
+  }
+  optional group unassigned {
+    optional int32 primary_count;
+    optional int32 secondary_count;
+    optional int32 count;
+    optional binary time (UTF8);
+    optional int32 quick_unassigned_count;
+    optional group count_key_list (LIST) {
+      repeated group bag {
+        optional binary array_element (UTF8);
+      }
+    }
+  }
+  optional binary created_pickup_location_city (UTF8);
+  optional group pickup_completed {
+    optional float pickup_speed;
+    optional binary fifo_dispatch_type (UTF8);
+    optional float pickup_location_error;
+    optional binary time (UTF8);
+    optional group supply_sharing {
+      optional binary chainUUID (UTF8);
+    }
+    optional binary fifo_queue_id (UTF8);
+    optional float pickup_location_deviation;
+    optional group supply_location {
+      optional binary geofence (UTF8);
+      optional binary hexagon (UTF8);
+      optional double lng;
+      optional double lat;
+      optional binary city (UTF8);
+      optional binary hexagon_9 (UTF8);
+    }
+  }
+  optional group pickup_arrived {
+    optional binary time (UTF8);
+    optional float arrival_speed;
+  }
+  optional group dxgy_pele {
+    optional int32 city_id;
+    optional binary offer_uuid (UTF8);
+    optional int64 job_created_at;
+    optional binary version (UTF8);
+    optional binary dice_incentive_uuid (UTF8);
+    optional binary trip_uuid (UTF8);
+    optional binary group_namespace (UTF8);
+    optional int64 vvid;
+    optional int64 created_at;
+    optional double cost;
+    optional binary driver_uuid (UTF8);
+  }
+  optional group maxeta {
+    optional float pickup_speed;
+  }
+  optional group job_cancellation_patterns {
+    optional group surge_multiplier {
+      optional double actual_pickup_location_surge_multiplier;
+      optional double requested_pickup_location_surge_multiplier;
+      optional double supply_location_surge_multiplier;
+    }
+    optional binary event_name (UTF8);
+    optional binary phone_call_started_by (UTF8);
+    optional group hex_surge {
+      optional double requested_pickup_location_hex_surge;
+      optional double actual_pickup_location_hex_surge;
+      optional double supply_location_hex_surge;
+    }
+    optional binary triggered_by (UTF8);
+  }
+  optional group canceled {
+    optional int64 since_created;
+    optional boolean isMatched;
+    optional binary time (UTF8);
+    optional int32 predicted_eta;
+    optional boolean isPool;
+    optional int32 current_eta;
+  }
+  optional binary index (UTF8);
+  optional group expired {
+    optional binary time (UTF8);
+  }
+  optional group ct {
+    optional int32 city_id;
+    optional binary offer_uuid (UTF8);
+    optional int64 job_created_at;
+    optional binary version (UTF8);
+    optional binary dice_incentive_uuid (UTF8);
+    optional binary trip_uuid (UTF8);
+    optional binary group_namespace (UTF8);
+    optional int64 vvid;
+    optional int64 created_at;
+    optional double cost;
+    optional binary driver_uuid (UTF8);
+  }
+  optional group completed {
+    optional binary note (UTF8);
+    optional int64 since_created;
+    optional boolean is_matched;
+    optional double dropoff_walking_meter;
+    optional binary time (UTF8);
+    optional int64 since_pickup_completed;
+    optional group supply_location {
+      optional binary geofence (UTF8);
+      optional binary hexagon (UTF8);
+      optional double lng;
+      optional double lat;
+      optional binary city (UTF8);
+      optional binary hexagon_9 (UTF8);
+    }
+    optional double surge_multiplier;
+    optional int64 since_assigned;
+    optional float dropoff_location_error;
+    optional binary feedbackTypeId (UTF8);
+    optional double pickup_walking_meter;
+  }
+  optional group subscription {
+    optional binary pass_uuid (UTF8);
+  }
+  optional group created {
+    optional binary marketplace (UTF8);
+    optional binary app_version (UTF8);
+    optional binary driver_preferences_region_geofence_id (UTF8);
+    optional binary time (UTF8);
+    optional binary request_app_type (UTF8);
+    optional binary payment_type (UTF8);
+    optional binary profileType (UTF8);
+    optional binary orgUUID (UTF8);
+    optional binary directed_dispatch_flow_type (UTF8);
+    optional float pickup_dropoff_vector_angle;
+    optional float surge_multiplier;
+    optional group pickup_location {
+      optional binary airport_fifo_queue (UTF8);
+      optional binary static_geofence (UTF8);
+      optional binary geofence (UTF8);
+      optional binary hexagon (UTF8);
+      optional double lng;
+      optional double lat;
+      optional binary city (UTF8);
+      optional binary hexagon_9 (UTF8);
+    }
+    optional binary app_platform (UTF8);
+  }
+  optional int32 trip_swap_new_job_savings;
+  optional int32 trip_swap_existing_job_savings;
+  optional binary vvid (UTF8);
+}

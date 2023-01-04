@@ -1,0 +1,484 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+message sortsol_record {
+  optional binary _hoodie_commit_time (UTF8);
+  optional binary _hoodie_commit_seqno (UTF8);
+  optional binary _hoodie_record_key (UTF8);
+  optional binary _hoodie_partition_path (UTF8);
+  optional binary _hoodie_file_name (UTF8);
+  required double ts;
+  required binary host (UTF8);
+  optional binary level (UTF8);
+  optional binary dc (UTF8);
+  optional int64 msg_offset;
+  optional binary uuid (UTF8);
+  optional int32 schema_id;
+  optional group msg {
+    optional binary StoreName (UTF8);
+    optional double Latitude;
+    optional double Longitude;
+    optional binary Address (UTF8);
+    optional binary AptOrSuite (UTF8);
+    optional binary City (UTF8);
+    optional binary Country (UTF8);
+    optional binary PostalCode (UTF8);
+    optional int64 RegionID;
+    optional binary Region (UTF8);
+    optional binary externalStoreId (UTF8);
+    optional binary ParentChainUUID (UTF8);
+    optional binary ParentChainName (UTF8);
+    optional binary TerritoryUUID (UTF8);
+    optional binary ContactUUID (UTF8);
+    optional binary ContactEmails (UTF8);
+    optional binary Tenancy (UTF8);
+    optional binary PickupInstructions (UTF8);
+    optional binary OrgUUID (UTF8);
+    optional group InternalTags (LIST) {
+      repeated group array {
+        optional binary Type (UTF8);
+        optional binary Name (UTF8);
+        optional binary UUID (UTF8);
+        optional binary LocalizedName (UTF8);
+      }
+    }
+    optional binary InternalNotes (UTF8);
+    optional binary Slug (UTF8);
+    optional group Endorsement {
+      optional binary AccountUUID (UTF8);
+      optional group IconColor {
+        optional double Alpha;
+        optional binary Color (UTF8);
+      }
+      optional group BackgroundColor {
+        optional double Alpha;
+        optional binary Color (UTF8);
+      }
+      optional group TextColor {
+        optional double Alpha;
+        optional binary Color (UTF8);
+      }
+      optional binary IconURL (UTF8);
+      optional binary Text (UTF8);
+      optional binary UUID (UTF8);
+    }
+    optional binary LargeHeroURL (UTF8);
+    optional binary LogoURL (UTF8);
+    optional group Categories (LIST) {
+      repeated group array {
+        optional binary Type (UTF8);
+        optional binary Name (UTF8);
+        optional binary UUID (UTF8);
+        optional binary LocalizedName (UTF8);
+      }
+    }
+    optional binary HeroURL (UTF8);
+    optional binary AccentColor (UTF8);
+    optional group Tags (LIST) {
+      repeated group array {
+        optional binary Type (UTF8);
+        optional binary Name (UTF8);
+        optional binary UUID (UTF8);
+        optional binary LocalizedName (UTF8);
+      }
+    }
+    optional boolean IsVisible;
+    optional group PreparationTimes (LIST) {
+      repeated group array {
+        optional double PreparationTimeMillis;
+        optional int64 PreparationTime;
+        optional int64 EndMinute;
+        optional int64 EndHour;
+        optional int64 EndDay;
+        optional int64 StartMinute;
+        optional int64 StartHour;
+        optional int64 StartDay;
+        optional binary UUID (UTF8);
+      }
+    }
+    optional binary PriceBucket (UTF8);
+    optional int64 AveragePrepTime;
+    optional double MaxDeliveryRadiusMiles;
+    optional double MarketplaceFee;
+    optional binary PaymentType (UTF8);
+    optional int64 PaymentTypeUpdatedAt;
+    optional binary ScheduledPaymentType (UTF8);
+    optional int64 ScheduledPaymentTypeUpdateAt;
+    optional binary EventUUID (UTF8);
+    optional binary UUID (UTF8);
+    optional int64 CreatedAt;
+    optional int64 UpdatedAt;
+    optional binary State (UTF8);
+    optional binary OnboardingStatus (UTF8);
+    optional double VatRatePercentage;
+    optional boolean AutoAccept;
+    optional boolean DisableDispatchBuffer;
+    optional binary PreviousPaymentType (UTF8);
+    optional binary Reference (UTF8);
+    optional binary ReferenceType (UTF8);
+    optional binary ContactEmailAddress (UTF8);
+    optional binary ContactName (UTF8);
+    optional binary ContactPhone (UTF8);
+    optional double DefaultMaxDeliveryRadiusMiles;
+    optional group AddressEntryInfo {
+      optional binary AddressEntryMode (UTF8);
+      optional binary OriginalReference (UTF8);
+      optional binary OriginalReferenceType (UTF8);
+    }
+    optional boolean DisableOrderInstructions;
+    optional binary TimeZone (UTF8);
+    optional int64 BusinessType;
+    optional boolean ProvidesHeatingDevice;
+    optional binary EstablishmentType (UTF8);
+    optional int64 OnboardingStatusUpdatedAt;
+    optional group HeroImageV2 {
+      optional group ImageItems (LIST) {
+        repeated group array {
+          optional int64 Height;
+          optional int64 Width;
+          optional binary URL (UTF8);
+        }
+      }
+    }
+    optional group NutritionalDisclaimer {
+      optional boolean Enabled;
+      optional group LocalizedTextsV2 (LIST) {
+        repeated group array {
+          optional binary Text (UTF8);
+          optional binary Locale (UTF8);
+        }
+      }
+      optional group LocalizedText {
+        optional binary Text (UTF8);
+        optional binary Locale (UTF8);
+      }
+    }
+    optional group AllergenDisclaimer {
+      optional boolean Enabled;
+      optional group LocalizedTextsV2 (LIST) {
+        repeated group array {
+          optional binary Text (UTF8);
+          optional binary Locale (UTF8);
+        }
+      }
+      optional group LocalizedText {
+        optional binary Text (UTF8);
+        optional binary Locale (UTF8);
+      }
+    }
+    optional group FreeShapeDeliveryZoneInfo {
+      optional binary HexClusterUUID (UTF8);
+      optional binary HexClusterName (UTF8);
+      optional group HexagonIDs (LIST) {
+        repeated binary array (UTF8);
+      }
+      optional group Geofence (LIST) {
+        repeated group array {
+          optional double Latitude;
+          optional double Longitude;
+        }
+      }
+      optional int64 HexClusterImportedAt;
+      optional boolean EnableCustomArea;
+      optional group MultipleGeofence (LIST) {
+        repeated group array {
+          optional binary PolygonName (UTF8);
+          optional group Geofence (LIST) {
+            repeated group array {
+              optional double Latitude;
+              optional double Longitude;
+            }
+          }
+          optional group HexagonIDs (LIST) {
+            repeated binary array (UTF8);
+          }
+          optional double DeliveryRadius;
+          optional binary DeliveryZoneType (UTF8);
+          optional binary GeofenceUUID (UTF8);
+        }
+      }
+      optional binary GeofenceUUID (UTF8);
+    }
+    optional group EnabledFulfillmentTypes (LIST) {
+      repeated binary array (UTF8);
+    }
+    optional int64 PickUpMarketplaceFee;
+    optional int64 DineInMarketplaceFee;
+    optional int64 ThirdPartyDeliveryMarketPlaceFee;
+    optional int64 ThirdPartyDeliveryBookingFee;
+    optional binary ThirdPartyDeliveryCurrencyCode (UTF8);
+    optional int64 LocationType;
+    optional double PickUpMarketplaceFeeInexact;
+    optional double DineInMarketplaceFeeInexact;
+    optional double ThirdPartyDeliveryMarketPlaceFeeInexact;
+    optional double ThirdPartyDeliveryBookingFeeInexact;
+    optional group FulfillmentZoneInfo {
+      optional group OrderedFulfillmentInfo (LIST) {
+        repeated group array {
+          optional binary DeliveryZoneInfoUUID (UTF8);
+          optional binary FulfillmentType (UTF8);
+          optional boolean Enabled;
+          optional boolean Unrestricted;
+        }
+      }
+      optional group DeliveryZoneInfoMap (MAP) {
+        repeated group map (MAP_KEY_VALUE) {
+          required binary key (UTF8);
+          optional group value {
+            optional binary UUID (UTF8);
+            optional double MaxDeliveryRadiusMiles;
+            optional group FreeShapeDeliveryZoneInfo {
+              optional binary HexClusterUUID (UTF8);
+              optional binary HexClusterName (UTF8);
+              optional group HexagonIDs (LIST) {
+                repeated binary array (UTF8);
+              }
+              optional group Geofence (LIST) {
+                repeated group array {
+                  optional double Latitude;
+                  optional double Longitude;
+                }
+              }
+              optional int64 HexClusterImportedAt;
+              optional boolean EnableCustomArea;
+              optional group MultipleGeofence (LIST) {
+                repeated group array {
+                  optional binary PolygonName (UTF8);
+                  optional group Geofence (LIST) {
+                    repeated group array {
+                      optional double Latitude;
+                      optional double Longitude;
+                    }
+                  }
+                  optional group HexagonIDs (LIST) {
+                    repeated binary array (UTF8);
+                  }
+                  optional double DeliveryRadius;
+                  optional binary DeliveryZoneType (UTF8);
+                  optional binary GeofenceUUID (UTF8);
+                }
+              }
+              optional binary GeofenceUUID (UTF8);
+            }
+          }
+        }
+      }
+      optional group DeliveryZoneInfoList (LIST) {
+        repeated group array {
+          optional binary UUID (UTF8);
+          optional double MaxDeliveryRadiusMiles;
+          optional group FreeShapeDeliveryZoneInfo {
+            optional binary HexClusterUUID (UTF8);
+            optional binary HexClusterName (UTF8);
+            optional group HexagonIDs (LIST) {
+              repeated binary array (UTF8);
+            }
+            optional group Geofence_ (LIST) {
+              repeated group array {
+                optional double Latitude;
+                optional double Longitude;
+              }
+            }
+            optional int64 HexClusterImportedAt;
+            optional boolean EnableCustomArea;
+            optional group MultipleGeofence (LIST) {
+              repeated group array {
+                optional binary PolygonName (UTF8);
+                optional group Geofence (LIST) {
+                  repeated group array {
+                    optional double Latitude;
+                    optional double Longitude;
+                  }
+                }
+                optional group HexagonIDs (LIST) {
+                  repeated binary array (UTF8);
+                }
+                optional double DeliveryRadius;
+                optional binary DeliveryZoneType (UTF8);
+                optional binary GeofenceUUID (UTF8);
+              }
+            }
+            optional binary GeofenceUUID (UTF8);
+          }
+        }
+      }
+    }
+    optional int64 TaxationMethod;
+    optional binary ItemTaxationMethod (UTF8);
+    optional int64 OrgType;
+    optional binary LocationTypeDescription (UTF8);
+    optional int64 ShareholdersCount;
+    optional group ShareholdersName (LIST) {
+      repeated binary array (UTF8);
+    }
+    optional boolean HasAuthorizedRepresentative;
+    optional binary AuthorizedRepresentativeName (UTF8);
+    optional binary OrganizationType (UTF8);
+    optional group EstablishmentTaxConfiguration {
+      optional boolean IsMarketplaceFacilitatorEnabled;
+      optional boolean ShouldCalculateTaxUsingTaxAttributes;
+      optional binary TaxCalculationEngine (UTF8);
+    }
+    optional int64 FirstVisibleTimestamp;
+    optional boolean isEligibleForFoodAllergenFriendlinessSelfCertification;
+    optional boolean allowsSingleUseItemOptOut;
+    optional binary hygieneStandardsRatingAgencyAssignedID (UTF8);
+    optional binary hygieneStandardsRating (UTF8);
+    optional boolean IsUberPlaceXPEnabled;
+    optional boolean IsMobileRDEnabled;
+    optional int64 serviceQualityInfoTopPercentile;
+    optional binary currencyCode (UTF8);
+    optional binary WebOrderURL (UTF8);
+    optional group MobileRD {
+      optional boolean HasUsedAtLeastOnce;
+      optional int64 FirstUsedAt;
+      optional int64 LastUsedAt;
+    }
+    optional group Geo (MAP) {
+      repeated group map (MAP_KEY_VALUE) {
+        required binary key (UTF8);
+        optional binary value (UTF8);
+      }
+    }
+    optional boolean exposeContactInformation;
+    optional group parkingData {
+      optional group parkingDataBlob {
+        optional boolean hardToPark;
+        optional double avgTimeToPark;
+        optional group parkingDataElems (LIST) {
+          repeated group array {
+            optional double latitude;
+            optional double longitude;
+          }
+        }
+      }
+    }
+    optional int64 DelayUntilMs;
+    optional int64 PreparationTimeDelayMs;
+    optional binary BusyLevel (UTF8);
+    optional int64 BasePreparationTimeMs;
+    optional binary PartnerCartAdjustmentConfigUUID (UTF8);
+    optional int64 CateringMarketplaceFee;
+    optional double CateringMarketplaceFeeInexact;
+    optional group SafetyChecklist {
+      optional group CheckedItems (LIST) {
+        repeated binary array (UTF8);
+      }
+    }
+    optional boolean OptoutAllMenuExperiments;
+    optional group OptoutMenuExperiments (LIST) {
+      repeated binary array (UTF8);
+    }
+    optional binary DisplayTitle (UTF8);
+    optional int64 DeliveryFlatMerchantCommissionFee;
+    optional double DeliveryFlatMerchantCommissionFeeInexact;
+    optional group ScheduledOrderInfo {
+      optional boolean OptedOut;
+    }
+    optional group DeliveryMarketplaceFeeForMembership {
+      optional int64 value;
+    }
+    optional group ThirdPartyDeliveryMarketplaceFeeForMembership {
+      optional int64 value;
+    }
+    optional group PickupMarketplaceFeeForMembership {
+      optional int64 value;
+    }
+    optional group GoogleFoodOrderingEnabledFulfillmentTypes (LIST) {
+      repeated binary array (UTF8);
+    }
+    optional boolean GoogleFoodOrderingIsBlocked;
+    optional boolean IsMarkupEnabled;
+    optional group MarkupPercentage {
+      optional int64 value;
+    }
+    optional group DeliveryPostmatesMarketplaceFee {
+      optional int64 value;
+    }
+    optional group PickupPostmatesMarketplaceFee {
+      optional int64 value;
+    }
+    optional boolean IsOptOutOfYelpFeedback;
+    optional group updatedFields (LIST) {
+      repeated binary array (UTF8);
+    }
+    optional boolean BentoIsBlocked;
+    optional int64 DeliveryPaymentProcessingFee;
+    optional int64 PickupPaymentProcessingFee;
+    optional int64 ThirdPartyDeliveryPaymentProcessingFee;
+    optional binary SourceOrigin (UTF8);
+    optional group SocialMedia (MAP) {
+      repeated group map (MAP_KEY_VALUE) {
+        required binary key (UTF8);
+        optional group value {
+          optional binary URL (UTF8);
+          optional binary Username (UTF8);
+          optional boolean IsBanned;
+        }
+      }
+    }
+    optional group DemandChannelVisibilityInfo {
+      optional boolean DisableMarketplace;
+    }
+    optional boolean IsLowConfidenceLocation;
+  }
+  optional binary Hadoop_Row_Key (UTF8);
+  optional int64 Hadoop_Ref_Key;
+  optional int32 Hadoop_Ref_Key_Version;
+  optional binary Hadoop_Data_Source (UTF8);
+  optional boolean Hadoop_isDeleted;
+  optional binary Hadoop_isDeleted_uname (UTF8);
+  optional boolean Hadoop_forceHardDelete;
+  optional boolean Hadoop_forceUpdate;
+  optional int64 Hadoop_timestamp;
+  optional binary Hadoop_datacenter (UTF8);
+  optional binary Hadoop_host (UTF8);
+  optional int32 Hadoop_schema_version;
+  optional int64 Hadoop_message_offset;
+  optional binary Hadoop_row_partition_datetime_str (UTF8);
+  optional binary Jaeger_context;
+  optional binary Hadoop_Error_Source_Data (UTF8);
+  optional binary Hadoop_Error_Exception (UTF8);
+  optional group Hadoop_Changelog_Columns (LIST) {
+    repeated group array {
+      optional binary name (UTF8);
+      optional int64 ref_key;
+      optional group Hadoop_Changelog_Fields (LIST) {
+        repeated binary array (UTF8);
+      }
+    }
+  }
+  optional binary Hadoop_Error_Reporter (UTF8);
+  optional int64 Hadoop_row_key_created_at;
+  optional int64 Hadoop_Shard;
+  optional group Encryption_Data {
+    optional boolean encryption;
+    optional binary encryption_key_hash;
+    optional binary message_ciphertext;
+    optional boolean signature;
+    optional binary message_signature;
+    optional binary metadata_signature;
+  }
+  optional group Hadoop_Jaeger_Context (MAP) {
+    repeated group map (MAP_KEY_VALUE) {
+      required binary key (UTF8);
+      required binary value (UTF8);
+    }
+  }
+}

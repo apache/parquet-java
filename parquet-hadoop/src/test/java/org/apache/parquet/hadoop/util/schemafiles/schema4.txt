@@ -1,0 +1,119 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+message sortsol_record {
+  optional binary _hoodie_commit_time (UTF8);
+  optional binary _hoodie_commit_seqno (UTF8);
+  optional binary _hoodie_record_key (UTF8);
+  optional binary _hoodie_partition_path (UTF8);
+  optional binary _hoodie_file_name (UTF8);
+  required double ts;
+  required binary host (UTF8);
+  optional binary level (UTF8);
+  optional binary dc (UTF8);
+  optional int64 msg_offset;
+  optional binary uuid (UTF8);
+  optional int32 schema_id;
+  optional group msg {
+    optional int64 at_rush_dropoff__from_rush_arrived_to_rush_dropoff;
+    optional int64 at_rush_arrived__from_rush_began_to_rush_arrived_at_dropoff;
+    optional int64 at_rush_began__from_prep_finished_to_rush_began;
+    optional int64 at_rush_began__from_rush_arrived_to_rush_began;
+    optional int64 at_rush_arrived__from_rush_accepted_to_rush_arrived_at_pickup;
+    optional int64 at_rush_accepted__from_rush_created_to_rush_accepted;
+    optional int64 at_rush_created__from_order_accepted_to_rush_created;
+    optional int64 at_prep_finished__from_order_accepted_to_prep_finished;
+    optional int64 at_order_accepted__prep_time_adjusted_by;
+    optional int64 at_order_accepted__adjusted_prep_time;
+    optional int64 at_order_accpeted__from_order_created_to_order_accepted;
+    optional int64 at_order_created__prep_time;
+    optional int64 workflowPredictedEtdMin;
+    optional int64 workflowPredictedEtdMax;
+    optional binary workflowUUID (UTF8);
+    optional int64 workflowPredictedAt;
+    optional int64 uetaTravelTime;
+    optional binary workflowStateChangeType (UTF8);
+    optional binary restaurantUUID (UTF8);
+    optional binary rs_geohash_level_5 (UTF8);
+    optional binary rs_geohash_level_6 (UTF8);
+    optional binary session_id (UTF8);
+    optional binary eaterUUID (UTF8);
+    optional int64 courier_eta_at_rush_job_created;
+    optional int64 courier_eta_at_rush_job_accepted;
+    optional int64 at_rush_accepted__courier_eta_duration;
+    optional int64 regionID;
+    optional binary orderJobUUID (UTF8);
+    optional binary rushJobUUID (UTF8);
+    optional int64 workflowPredictedEtdPostProcessMin;
+    optional int64 at_order_prep_updated__adjusted_prep_time;
+    optional int64 isEarlyPickup;
+    optional boolean isEarlyPickupV2;
+    optional boolean isBatched;
+    optional group dropoffLocation {
+      optional double longitude;
+      optional double latitude;
+    }
+    optional binary language (UTF8);
+    optional binary fulfillmentType (UTF8);
+    optional int64 globalDelaySec;
+  }
+  optional binary Hadoop_Row_Key (UTF8);
+  optional int64 Hadoop_Ref_Key;
+  optional int32 Hadoop_Ref_Key_Version;
+  optional binary Hadoop_Data_Source (UTF8);
+  optional boolean Hadoop_isDeleted;
+  optional binary Hadoop_isDeleted_uname (UTF8);
+  optional boolean Hadoop_forceHardDelete;
+  optional boolean Hadoop_forceUpdate;
+  optional int64 Hadoop_timestamp;
+  optional binary Hadoop_datacenter (UTF8);
+  optional binary Hadoop_host (UTF8);
+  optional int32 Hadoop_schema_version;
+  optional int64 Hadoop_message_offset;
+  optional binary Hadoop_row_partition_datetime_str (UTF8);
+  optional binary Jaeger_context;
+  optional binary Hadoop_Error_Source_Data (UTF8);
+  optional binary Hadoop_Error_Exception (UTF8);
+  optional group Hadoop_Changelog_Columns (LIST) {
+    repeated group array {
+      optional binary name (UTF8);
+      optional int64 ref_key;
+      optional group Hadoop_Changelog_Fields (LIST) {
+        repeated binary array (UTF8);
+      }
+    }
+  }
+  optional binary Hadoop_Error_Reporter (UTF8);
+  optional int64 Hadoop_row_key_created_at;
+  optional int64 Hadoop_Shard;
+  optional group Encryption_Data {
+    optional boolean encryption;
+    optional binary encryption_key_hash;
+    optional binary message_ciphertext;
+    optional boolean signature;
+    optional binary message_signature;
+    optional binary metadata_signature;
+  }
+  optional group Hadoop_Jaeger_Context (MAP) {
+    repeated group map (MAP_KEY_VALUE) {
+      required binary key (UTF8);
+      required binary value (UTF8);
+    }
+  }
+}

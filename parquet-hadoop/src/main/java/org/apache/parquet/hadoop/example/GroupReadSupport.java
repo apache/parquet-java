@@ -25,8 +25,10 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.convert.GroupRecordConverter;
 import org.apache.parquet.hadoop.api.ReadSupport;
+import org.apache.parquet.hadoop.util.DataMaskingUtil;
 import org.apache.parquet.io.api.RecordMaterializer;
 import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.schema.MessageTypeParser;
 
 public class GroupReadSupport extends ReadSupport<Group> {
 
@@ -35,8 +37,21 @@ public class GroupReadSupport extends ReadSupport<Group> {
       Configuration configuration, Map<String, String> keyValueMetaData,
       MessageType fileSchema) {
     String partialSchemaString = configuration.get(ReadSupport.PARQUET_READ_SCHEMA);
-    MessageType requestedProjection = getSchemaForRead(fileSchema, partialSchemaString);
-    return new ReadContext(requestedProjection);
+    String removeColumns = configuration.get(DataMaskingUtil.DATA_MASKING_COLUMNS);
+
+    if (removeColumns == null) {
+      MessageType requestedProjection = getSchemaForRead(fileSchema, partialSchemaString);
+      return new ReadContext(requestedProjection);
+    }
+
+    if (partialSchemaString == null) {
+      return new ReadContext(DataMaskingUtil.removeColumnsInSchema(fileSchema, removeColumns));
+    } else {
+      MessageType updatedSchema = DataMaskingUtil.removeColumnsInSchema(
+        MessageTypeParser.parseMessageType(partialSchemaString), removeColumns);
+      MessageType requestedProjection = getSchemaForRead(fileSchema, updatedSchema.toString());
+      return new ReadContext(requestedProjection);
+    }
   }
 
   @Override

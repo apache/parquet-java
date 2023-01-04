@@ -1,0 +1,197 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+message sortsol_record {
+  optional binary _hoodie_commit_time (UTF8);
+  optional binary _hoodie_commit_seqno (UTF8);
+  optional binary _hoodie_record_key (UTF8);
+  optional binary _hoodie_partition_path (UTF8);
+  optional binary _hoodie_file_name (UTF8);
+  required double ts;
+  required binary host (UTF8);
+  optional binary level (UTF8);
+  optional binary dc (UTF8);
+  optional int64 msg_offset;
+  optional binary uuid (UTF8);
+  optional int32 schema_id;
+  optional group msg {
+    optional binary jobUUID (UTF8);
+    optional binary requestUUID (UTF8);
+    optional binary graphUUID (UTF8);
+    optional group segmentTypeEnumMap (MAP) {
+      repeated group map (MAP_KEY_VALUE) {
+        required binary key (UTF8);
+        optional binary value (UTF8);
+      }
+    }
+    optional group statusEnumMap (MAP) {
+      repeated group map (MAP_KEY_VALUE) {
+        required binary key (UTF8);
+        optional binary value (UTF8);
+      }
+    }
+    optional group dispatchTypeEnumMap (MAP) {
+      repeated group map (MAP_KEY_VALUE) {
+        required binary key (UTF8);
+        optional binary value (UTF8);
+      }
+    }
+    optional group sourceEnumMap (MAP) {
+      repeated group map (MAP_KEY_VALUE) {
+        required binary key (UTF8);
+        optional binary value (UTF8);
+      }
+    }
+    optional group waypoints (LIST) {
+      repeated group array {
+        optional int64 id;
+        optional double headingAngle;
+        optional double longitude;
+        optional double latitude;
+        optional group walkingCost {
+          optional int64 source;
+          optional int64 distance;
+          optional int64 time;
+        }
+        optional binary hotspotUUID (UTF8);
+        optional binary uuid (UTF8);
+      }
+    }
+    optional group plans (LIST) {
+      repeated group array {
+        optional binary uuid (UTF8);
+        optional int64 status;
+        optional int64 dispatchType;
+        optional int64 adjustedETA;
+        optional int64 unadjustedETA;
+        optional double mgv;
+        optional binary supplyUUID (UTF8);
+        optional group jobs (LIST) {
+          repeated binary array (UTF8);
+        }
+        optional group waypoints (LIST) {
+          repeated int64 array;
+        }
+        optional group segments (LIST) {
+          repeated group array {
+            optional int64 haversineDistance;
+            optional int64 haversineTime;
+            optional int64 source;
+            optional int64 distance;
+            optional int64 time;
+            optional int64 origin;
+            optional int64 destination;
+            optional group segmentHotspotInfo {
+              optional int64 source;
+              optional int64 distance;
+              optional int64 time;
+            }
+            optional int64 segmentType;
+          }
+        }
+        optional int64 distance;
+        optional binary batchType (UTF8);
+      }
+    }
+    optional int64 requestTimestamp;
+    optional binary ctRequestUUID (UTF8);
+    optional group constraintDescriptions (LIST) {
+      repeated group array {
+        optional binary id (UTF8);
+        optional binary reason (UTF8);
+        optional binary description (UTF8);
+        optional binary type (UTF8);
+      }
+    }
+    optional group constraints (LIST) {
+      repeated group array {
+        optional binary id (UTF8);
+        optional double threshold;
+        optional double value;
+        optional group owners (LIST) {
+          repeated group array {
+            optional binary uuid (UTF8);
+            optional binary type (UTF8);
+          }
+        }
+        optional group metrics (LIST) {
+          repeated group array {
+            optional double value;
+            optional binary type (UTF8);
+            optional binary ownerUUID (UTF8);
+          }
+        }
+        optional binary status (UTF8);
+        optional binary type (UTF8);
+      }
+    }
+    optional binary flowType (UTF8);
+    optional binary tenancy (UTF8);
+    optional int64 vehicleViewID;
+    optional int64 cityID;
+    optional group jobWaypoints (LIST) {
+      repeated int64 array;
+    }
+    optional binary jobType (UTF8);
+    optional binary purpose (UTF8);
+  }
+  optional binary Hadoop_Row_Key (UTF8);
+  optional int64 Hadoop_Ref_Key;
+  optional int32 Hadoop_Ref_Key_Version;
+  optional binary Hadoop_Data_Source (UTF8);
+  optional boolean Hadoop_isDeleted;
+  optional binary Hadoop_isDeleted_uname (UTF8);
+  optional boolean Hadoop_forceHardDelete;
+  optional boolean Hadoop_forceUpdate;
+  optional int64 Hadoop_timestamp;
+  optional binary Hadoop_datacenter (UTF8);
+  optional binary Hadoop_host (UTF8);
+  optional int32 Hadoop_schema_version;
+  optional int64 Hadoop_message_offset;
+  optional binary Hadoop_row_partition_datetime_str (UTF8);
+  optional binary Jaeger_context;
+  optional binary Hadoop_Error_Source_Data (UTF8);
+  optional binary Hadoop_Error_Exception (UTF8);
+  optional group Hadoop_Changelog_Columns (LIST) {
+    repeated group array {
+      optional binary name (UTF8);
+      optional int64 ref_key;
+      optional group Hadoop_Changelog_Fields (LIST) {
+        repeated binary array (UTF8);
+      }
+    }
+  }
+  optional binary Hadoop_Error_Reporter (UTF8);
+  optional int64 Hadoop_row_key_created_at;
+  optional int64 Hadoop_Shard;
+  optional group Encryption_Data {
+    optional boolean encryption;
+    optional binary encryption_key_hash;
+    optional binary message_ciphertext;
+    optional boolean signature;
+    optional binary message_signature;
+    optional binary metadata_signature;
+  }
+  optional group Hadoop_Jaeger_Context (MAP) {
+    repeated group map (MAP_KEY_VALUE) {
+      required binary key (UTF8);
+      required binary value (UTF8);
+    }
+  }
+}

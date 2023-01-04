@@ -19,6 +19,7 @@
 package org.apache.parquet.hadoop.example;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.parquet.hadoop.util.DataMaskingUtil;
 import org.junit.Test;
 import org.apache.parquet.hadoop.api.ReadSupport;
 import org.apache.parquet.schema.MessageType;
@@ -37,6 +38,14 @@ public class GroupReadSupportTest {
   private String partialSchemaStr = "message example {\n" +
           "required int32 line;\n" +
           "}";
+
+  private String removedColumnsStr = "line";
+
+  private String expectedSchemaStr = "message example {\n" +
+    "optional binary content;\n" +
+    "}";
+
+  private String expectedEmptySchemaStr = "message example {}";
 
 
   @Test
@@ -61,5 +70,30 @@ public class GroupReadSupportTest {
 
     ReadSupport.ReadContext context = s.init(configuration, keyValueMetaData, fileSchema);
     assertEquals(context.getRequestedSchema(), partialSchema);
+  }
+
+  @Test
+  public void testInitWithoutSpecifyingRequestSchemaAndDataMaskColumns() {
+    GroupReadSupport s = new GroupReadSupport();
+    Configuration configuration = new Configuration();
+    Map<String, String> keyValueMetaData = new HashMap<String, String>();
+    MessageType fileSchema = MessageTypeParser.parseMessageType(fullSchemaStr);
+    configuration.set(DataMaskingUtil.DATA_MASKING_COLUMNS, removedColumnsStr);
+
+    ReadSupport.ReadContext context = s.init(configuration, keyValueMetaData, fileSchema);
+    assertEquals(context.getRequestedSchema(), MessageTypeParser.parseMessageType(expectedSchemaStr));
+  }
+
+  @Test
+  public void testInitWithPartialSchemaAndDataMaskColumns() {
+    GroupReadSupport s = new GroupReadSupport();
+    Configuration configuration = new Configuration();
+    Map<String, String> keyValueMetaData = new HashMap<String, String>();
+    MessageType fileSchema = MessageTypeParser.parseMessageType(fullSchemaStr);
+    configuration.set(ReadSupport.PARQUET_READ_SCHEMA, partialSchemaStr);
+    configuration.set(DataMaskingUtil.DATA_MASKING_COLUMNS, removedColumnsStr);
+
+    ReadSupport.ReadContext context = s.init(configuration, keyValueMetaData, fileSchema);
+    assertEquals(context.getRequestedSchema(), MessageTypeParser.parseMessageType(expectedEmptySchemaStr));
   }
 }
