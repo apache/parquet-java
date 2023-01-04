@@ -20,19 +20,21 @@ package org.apache.parquet.hadoop.rewrite;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
+import org.apache.parquet.Preconditions;
 import org.apache.parquet.crypto.FileEncryptionProperties;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 
 import java.util.List;
 import java.util.Map;
 
+// A set of options to create a ParquetRewriter.
 public class RewriteOptions {
 
   final Configuration conf;
   final Path inputFile;
   final Path outputFile;
   final List<String> pruneColumns;
-  final CompressionCodecName codecName;
+  final CompressionCodecName newCodecName;
   final Map<String, MaskMode> maskColumns;
   final List<String> encryptColumns;
   final FileEncryptionProperties fileEncryptionProperties;
@@ -41,7 +43,7 @@ public class RewriteOptions {
                          Path inputFile,
                          Path outputFile,
                          List<String> pruneColumns,
-                         CompressionCodecName codecName,
+                         CompressionCodecName newCodecName,
                          Map<String, MaskMode> maskColumns,
                          List<String> encryptColumns,
                          FileEncryptionProperties fileEncryptionProperties) {
@@ -49,7 +51,7 @@ public class RewriteOptions {
     this.inputFile = inputFile;
     this.outputFile = outputFile;
     this.pruneColumns = pruneColumns;
-    this.codecName = codecName;
+    this.newCodecName = newCodecName;
     this.maskColumns = maskColumns;
     this.encryptColumns = encryptColumns;
     this.fileEncryptionProperties = fileEncryptionProperties;
@@ -71,8 +73,8 @@ public class RewriteOptions {
     return pruneColumns;
   }
 
-  public CompressionCodecName getCodecName() {
-    return codecName;
+  public CompressionCodecName getNewCodecName() {
+    return newCodecName;
   }
 
   public Map<String, MaskMode> getMaskColumns() {
@@ -87,12 +89,13 @@ public class RewriteOptions {
     return fileEncryptionProperties;
   }
 
+  // Builder to create a RewriterOptions.
   public static class Builder {
     private Configuration conf;
     private Path inputFile;
     private Path outputFile;
     private List<String> pruneColumns;
-    private CompressionCodecName codecName;
+    private CompressionCodecName newCodecName;
     private Map<String, MaskMode> maskColumns;
     private List<String> encryptColumns;
     private FileEncryptionProperties fileEncryptionProperties;
@@ -108,8 +111,8 @@ public class RewriteOptions {
       return this;
     }
 
-    public Builder transform(CompressionCodecName codecName) {
-      this.codecName = codecName;
+    public Builder transform(CompressionCodecName newCodecName) {
+      this.newCodecName = newCodecName;
       return this;
     }
 
@@ -129,12 +132,43 @@ public class RewriteOptions {
     }
 
     public RewriteOptions build() {
-      // TODO: validate any conflict setting
+      Preconditions.checkArgument(inputFile != null, "Input file is required");
+      Preconditions.checkArgument(outputFile != null, "Output file is required");
+
+      if (pruneColumns != null) {
+        if (maskColumns != null) {
+          for (String pruneColumn : pruneColumns) {
+            Preconditions.checkArgument(!maskColumns.containsKey(pruneColumn),
+                    "Cannot prune and mask same column");
+          }
+        }
+
+        if (encryptColumns != null) {
+          for (String pruneColumn : pruneColumns) {
+            Preconditions.checkArgument(!encryptColumns.contains(pruneColumn),
+                    "Cannot prune and mask same column");
+          }
+        }
+      }
+
+      // TODO: support masking and encrypting same columns
+      if (maskColumns != null && encryptColumns != null) {
+        for (String encryptColumn : encryptColumns) {
+          Preconditions.checkArgument(!maskColumns.containsKey(encryptColumn),
+                  "Cannot encrypt and mask same column");
+        }
+      }
+
+      if (encryptColumns != null && !encryptColumns.isEmpty()) {
+        Preconditions.checkArgument(fileEncryptionProperties != null,
+                "FileEncryptionProperties is required when encrypting columns");
+      }
+
       return new RewriteOptions(conf,
               inputFile,
               outputFile,
               pruneColumns,
-              codecName,
+              newCodecName,
               maskColumns,
               encryptColumns,
               fileEncryptionProperties);

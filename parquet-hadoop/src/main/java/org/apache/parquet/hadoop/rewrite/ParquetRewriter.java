@@ -21,6 +21,7 @@ package org.apache.parquet.hadoop.rewrite;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.HadoopReadOptions;
+import org.apache.parquet.Preconditions;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.ColumnReader;
@@ -95,7 +96,7 @@ public class ParquetRewriter implements Closeable {
   private ParquetMetadata meta;
   private MessageType schema;
   private String createdBy;
-  private CompressionCodecName codecName = null;
+  private CompressionCodecName newCodecName = null;
   private List<String> pruneColumns = null;
   private Map<ColumnPath, MaskMode> maskColumns = null;
   private Set<ColumnPath> encryptColumns = null;
@@ -106,13 +107,13 @@ public class ParquetRewriter implements Closeable {
     Path outPath = options.getOutputFile();
     Configuration conf = options.getConf();
 
-    // TODO: set more member variables
-    codecName = options.getCodecName();
+    newCodecName = options.getNewCodecName();
     pruneColumns = options.getPruneColumns();
 
     // Get file metadata and full schema from the input file
     meta = ParquetFileReader.readFooter(conf, inPath, NO_FILTER);
     schema = meta.getFileMetaData().getSchema();
+    // TODO: find a better way to keep original createdBy info and add ParquetRewriter info to it.
     createdBy = meta.getFileMetaData().getCreatedBy();
 
     // Prune columns if specified
@@ -139,7 +140,6 @@ public class ParquetRewriter implements Closeable {
     if (options.getEncryptColumns() != null && options.getFileEncryptionProperties() != null) {
       this.encryptColumns = convertToColumnPaths(options.getEncryptColumns());
       this.encryptMode = true;
-      // TODO: make sure options.getFileEncryptionProperties() is set
     }
 
     reader = new TransParquetFileReader(
@@ -167,7 +167,7 @@ public class ParquetRewriter implements Closeable {
     this.meta = meta;
     this.schema = schema;
     this.createdBy = createdBy == null ? meta.getFileMetaData().getCreatedBy() : createdBy;
-    this.codecName = codecName;
+    this.newCodecName = codecName;
     if (maskColumns != null && maskMode != null) {
       this.maskColumns = new HashMap<>();
       for (String col : maskColumns) {
@@ -194,7 +194,7 @@ public class ParquetRewriter implements Closeable {
       BlockMetaData blockMetaData = meta.getBlocks().get(blockId);
       List<ColumnChunkMetaData> columnsInOrder = blockMetaData.getColumns();
 
-      for (int i = 0, columnId = 0; i < columnsInOrder.size(); i += 1) {
+      for (int i = 0, columnId = 0; i < columnsInOrder.size(); i++) {
         ColumnChunkMetaData chunk = columnsInOrder.get(i);
         ColumnDescriptor descriptor = descriptorsMap.get(chunk.getPath());
 
@@ -210,12 +210,14 @@ public class ParquetRewriter implements Closeable {
         }
 
         reader.setStreamPosition(chunk.getStartingPos());
-        CompressionCodecName newCodecName = codecName == null ? chunk.getCodec() : codecName;
-        EncryptorRunTime encryptorRunTime = null;
-        if (this.encryptMode) {
-          encryptorRunTime = new EncryptorRunTime(writer.getEncryptor(), chunk, blockId, columnId);
+        CompressionCodecName newCodecName = this.newCodecName == null ? chunk.getCodec() : this.newCodecName;
+        ColumnChunkEncryptorRunTime columnChunkEncryptorRunTime = null;
+        boolean encryptColumn = false;
+        if (encryptMode) {
+          columnChunkEncryptorRunTime =
+                  new ColumnChunkEncryptorRunTime(writer.getEncryptor(), chunk, blockId, columnId);
+          encryptColumn = encryptColumns != null && encryptColumns.contains(chunk.getPath());
         }
-        boolean encryptColumn = encryptColumns != null && encryptColumns.contains(chunk.getPath());
 
         if (maskColumns != null && maskColumns.containsKey(chunk.getPath())) {
           // Mask column and compress it again.
@@ -226,14 +228,22 @@ public class ParquetRewriter implements Closeable {
               throw new IOException(
                       "Required column [" + descriptor.getPrimitiveType().getName() + "] cannot be nullified");
             }
-            nullifyColumn(descriptor, chunk, crStore, writer, schema, newCodecName, encryptorRunTime, encryptColumn);
+            nullifyColumn(
+                    descriptor,
+                    chunk,
+                    crStore,
+                    writer,
+                    schema,
+                    newCodecName,
+                    columnChunkEncryptorRunTime,
+                    encryptColumn);
           } else {
             throw new UnsupportedOperationException("Only nullify is supported for now");
           }
-        } else if (encryptMode || codecName != null) {
+        } else if (encryptMode || this.newCodecName != null) {
           // Translate compression and/or encryption
           writer.startColumn(descriptor, crStore.getColumnReader(descriptor).getTotalValueCount(), newCodecName);
-          processChunk(chunk, newCodecName, encryptorRunTime, encryptColumn);
+          processChunk(chunk, newCodecName, columnChunkEncryptorRunTime, encryptColumn);
           writer.endColumn();
         } else {
           // Nothing changed, simply copy the binary data.
@@ -254,7 +264,7 @@ public class ParquetRewriter implements Closeable {
 
   private void processChunk(ColumnChunkMetaData chunk,
                             CompressionCodecName newCodecName,
-                            EncryptorRunTime encryptorRunTime,
+                            ColumnChunkEncryptorRunTime columnChunkEncryptorRunTime,
                             boolean encryptColumn) throws IOException {
     CompressionCodecFactory codecFactory = HadoopCodecs.newFactory(0);
     CompressionCodecFactory.BytesInputDecompressor decompressor = null;
@@ -272,13 +282,13 @@ public class ParquetRewriter implements Closeable {
     byte[] dataPageAAD = null;
     byte[] dictPageHeaderAAD = null;
     byte[] dataPageHeaderAAD = null;
-    if (encryptorRunTime != null) {
-      metaEncryptor = encryptorRunTime.getMetaDataEncryptor();
-      dataEncryptor = encryptorRunTime.getDataEncryptor();
-      dictPageAAD = encryptorRunTime.getDictPageAAD();
-      dataPageAAD = encryptorRunTime.getDataPageAAD();
-      dictPageHeaderAAD = encryptorRunTime.getDictPageHeaderAAD();
-      dataPageHeaderAAD = encryptorRunTime.getDataPageHeaderAAD();
+    if (columnChunkEncryptorRunTime != null) {
+      metaEncryptor = columnChunkEncryptorRunTime.getMetaDataEncryptor();
+      dataEncryptor = columnChunkEncryptorRunTime.getDataEncryptor();
+      dictPageAAD = columnChunkEncryptorRunTime.getDictPageAAD();
+      dataPageAAD = columnChunkEncryptorRunTime.getDataPageAAD();
+      dictPageHeaderAAD = columnChunkEncryptorRunTime.getDictPageHeaderAAD();
+      dataPageHeaderAAD = columnChunkEncryptorRunTime.getDataPageHeaderAAD();
     }
 
     ColumnIndex columnIndex = reader.readColumnIndex(chunk);
@@ -535,7 +545,7 @@ public class ParquetRewriter implements Closeable {
       }
     }
 
-    currentPath.remove(fieldName);
+    currentPath.remove(currentPath.size() - 1);
     return prunedField;
   }
 
@@ -553,10 +563,10 @@ public class ParquetRewriter implements Closeable {
                              ParquetFileWriter writer,
                              MessageType schema,
                              CompressionCodecName newCodecName,
-                             EncryptorRunTime encryptorRunTime,
+                             ColumnChunkEncryptorRunTime columnChunkEncryptorRunTime,
                              boolean encryptColumn) throws IOException {
-    // TODO: support encryption
-    if (encryptorRunTime != null) {
+    // TODO: support nullifying and encrypting same column.
+    if (columnChunkEncryptorRunTime != null) {
       throw new RuntimeException("Nullifying and encrypting column is not implemented yet");
     }
     long totalChunkValues = chunk.getValueCount();
@@ -657,7 +667,7 @@ public class ParquetRewriter implements Closeable {
     @Override public GroupConverter asGroupConverter() { return new DummyGroupConverter(); }
   }
 
-  private static class EncryptorRunTime {
+  private static class ColumnChunkEncryptorRunTime {
     private final InternalColumnEncryptionSetup colEncrSetup;
     private final BlockCipher.Encryptor dataEncryptor;
     private final BlockCipher.Encryptor metaDataEncryptor;
@@ -668,41 +678,33 @@ public class ParquetRewriter implements Closeable {
     private byte[] dictPageHeaderAAD;
     private byte[] dictPageAAD;
 
-    public EncryptorRunTime(InternalFileEncryptor fileEncryptor,
-                            ColumnChunkMetaData chunk,
-                            int blockId,
-                            int columnId) throws IOException  {
-      if (fileEncryptor == null) {
-        this.colEncrSetup = null;
-        this.dataEncryptor =  null;
-        this.metaDataEncryptor =  null;
+    public ColumnChunkEncryptorRunTime(InternalFileEncryptor fileEncryptor,
+                                       ColumnChunkMetaData chunk,
+                                       int blockId,
+                                       int columnId) throws IOException  {
+      Preconditions.checkArgument(fileEncryptor != null,
+              "FileEncryptor is required to create ColumnChunkEncryptorRunTime");
 
-        this.fileAAD =  null;
-        this.dataPageHeaderAAD =  null;
-        this.dataPageAAD =  null;
-        this.dictPageHeaderAAD =  null;
-        this.dictPageAAD =  null;
+      this.colEncrSetup = fileEncryptor.getColumnSetup(chunk.getPath(), true, columnId);
+      this.dataEncryptor = colEncrSetup.getDataEncryptor();
+      this.metaDataEncryptor = colEncrSetup.getMetaDataEncryptor();
+
+      this.fileAAD = fileEncryptor.getFileAAD();
+      if (colEncrSetup != null && colEncrSetup.isEncrypted()) {
+        this.dataPageHeaderAAD = createAAD(ModuleType.DataPageHeader, blockId, columnId);
+        this.dataPageAAD = createAAD(ModuleType.DataPage, blockId, columnId);
+        this.dictPageHeaderAAD = createAAD(ModuleType.DictionaryPageHeader, blockId, columnId);
+        this.dictPageAAD = createAAD(ModuleType.DictionaryPage, blockId, columnId);
       } else {
-        this.colEncrSetup = fileEncryptor.getColumnSetup(chunk.getPath(), true, columnId);
-        this.dataEncryptor = colEncrSetup.getDataEncryptor();
-        this.metaDataEncryptor = colEncrSetup.getMetaDataEncryptor();
-
-        this.fileAAD = fileEncryptor.getFileAAD();
-        this.dataPageHeaderAAD = createAAD(colEncrSetup, ModuleType.DataPageHeader, blockId, columnId);
-        this.dataPageAAD = createAAD(colEncrSetup, ModuleType.DataPage, blockId, columnId);
-        this.dictPageHeaderAAD = createAAD(colEncrSetup, ModuleType.DictionaryPageHeader, blockId, columnId);
-        this.dictPageAAD = createAAD(colEncrSetup, ModuleType.DictionaryPage, blockId, columnId);
+        this.dataPageHeaderAAD = null;
+        this.dataPageAAD = null;
+        this.dictPageHeaderAAD = null;
+        this.dictPageAAD = null;
       }
     }
 
-    private byte[] createAAD(InternalColumnEncryptionSetup colEncrSetup,
-                             ModuleType moduleType,
-                             int blockId,
-                             int columnId) {
-      if (colEncrSetup != null && colEncrSetup.isEncrypted()) {
-        return AesCipher.createModuleAAD(fileAAD, moduleType, blockId, columnId, 0);
-      }
-      return null;
+    private byte[] createAAD(ModuleType moduleType, int blockId, int columnId) {
+      return AesCipher.createModuleAAD(fileAAD, moduleType, blockId, columnId, 0);
     }
 
     public BlockCipher.Encryptor getDataEncryptor() {

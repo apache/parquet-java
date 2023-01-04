@@ -18,6 +18,8 @@
  */
 package org.apache.parquet.hadoop.rewrite;
 
+import org.apache.parquet.Preconditions;
+
 public enum MaskMode {
   NULLIFY("nullify"),
   HASH("hash"),
@@ -26,20 +28,11 @@ public enum MaskMode {
   private String mode;
 
   MaskMode(String text) {
+    Preconditions.checkArgument(text != null, "Text of mask mode is required");
     this.mode = text;
   }
 
   public String getMode() {
     return this.mode;
   }
-
-  public static MaskMode fromString(String mode) {
-    for (MaskMode b : MaskMode.values()) {
-      if (b.mode.equalsIgnoreCase(mode)) {
-        return b;
-      }
-    }
-    return null;
-  }
-
 }
