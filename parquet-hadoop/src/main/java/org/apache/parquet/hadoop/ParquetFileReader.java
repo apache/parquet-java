@@ -52,8 +52,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import java.util.zip.CRC32;
 
 import org.apache.hadoop.conf.Configuration;
@@ -927,7 +925,15 @@ public class ParquetFileReader implements Closeable {
    * @return the PageReadStore which can provide PageReaders for each column.
    */
   public PageReadStore readNextRowGroup() throws IOException {
-    ColumnChunkPageReadStore rowGroup = internalReadRowGroup(currentBlock);
+    ColumnChunkPageReadStore rowGroup = null;
+    try {
+      rowGroup = internalReadRowGroup(currentBlock);
+    } catch (ParquetEmptyBlockException e) {
+      LOG.warn("Read empty block at index {}", currentBlock);
+      advanceToNextBlock();
+      return readNextRowGroup();
+    }
+
     if (rowGroup == null) {
       return null;
     }
@@ -948,7 +954,7 @@ public class ParquetFileReader implements Closeable {
     }
     BlockMetaData block = blocks.get(blockIndex);
     if (block.getRowCount() == 0) {
-      throw new RuntimeException("Illegal row group of 0 rows");
+      throw new ParquetEmptyBlockException("Illegal row group of 0 rows");
     }
     ColumnChunkPageReadStore rowGroup = new ColumnChunkPageReadStore(block.getRowCount(), block.getRowIndexOffset());
     // prepare the list of consecutive parts to read them in one scan
@@ -1001,7 +1007,7 @@ public class ParquetFileReader implements Closeable {
 
     BlockMetaData block = blocks.get(blockIndex);
     if (block.getRowCount() == 0) {
-      throw new RuntimeException("Illegal row group of 0 rows");
+      throw new ParquetEmptyBlockException("Illegal row group of 0 rows");
     }
 
     RowRanges rowRanges = getRowRanges(blockIndex);
@@ -1038,7 +1044,9 @@ public class ParquetFileReader implements Closeable {
     }
     BlockMetaData block = blocks.get(currentBlock);
     if (block.getRowCount() == 0L) {
-      throw new RuntimeException("Illegal row group of 0 rows");
+      // Skip the empty block
+      advanceToNextBlock();
+      return readNextFilteredRowGroup();
     }
     RowRanges rowRanges = getRowRanges(currentBlock);
     long rowCount = rowRanges.rowCount();
