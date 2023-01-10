@@ -1044,6 +1044,7 @@ public class ParquetFileReader implements Closeable {
     }
     BlockMetaData block = blocks.get(currentBlock);
     if (block.getRowCount() == 0L) {
+      LOG.warn("Read empty block at index {}", currentBlock);
       // Skip the empty block
       advanceToNextBlock();
       return readNextFilteredRowGroup();
