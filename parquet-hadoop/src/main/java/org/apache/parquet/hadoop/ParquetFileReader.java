@@ -929,7 +929,7 @@ public class ParquetFileReader implements Closeable {
     try {
       rowGroup = internalReadRowGroup(currentBlock);
     } catch (ParquetEmptyBlockException e) {
-      LOG.warn("Read empty block at index {}", currentBlock);
+      LOG.warn("Read empty block at index {} from {}", currentBlock, getFile());
       advanceToNextBlock();
       return readNextRowGroup();
     }
@@ -1044,7 +1044,7 @@ public class ParquetFileReader implements Closeable {
     }
     BlockMetaData block = blocks.get(currentBlock);
     if (block.getRowCount() == 0L) {
-      LOG.warn("Read empty block at index {}", currentBlock);
+      LOG.warn("Read empty block at index {} from {}", currentBlock, getFile());
       // Skip the empty block
       advanceToNextBlock();
       return readNextFilteredRowGroup();
