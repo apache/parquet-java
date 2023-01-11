@@ -164,6 +164,11 @@ public class RewriteOptions {
                 "FileEncryptionProperties is required when encrypting columns");
       }
 
+      if (fileEncryptionProperties != null) {
+        Preconditions.checkArgument(encryptColumns != null && !encryptColumns.isEmpty(),
+                "Encrypt columns is required when FileEncryptionProperties is set");
+      }
+
       return new RewriteOptions(conf,
               inputFile,
               outputFile,
