@@ -27,20 +27,21 @@ import java.util.Objects;
 import org.apache.parquet.crypto.InternalFileDecryptor;
 import org.apache.parquet.schema.MessageType;
 
-
 /**
  * File level meta data (Schema, codec, ...)
  */
 public final class FileMetaData implements Serializable {
   private static final long serialVersionUID = 1L;
 
+  public enum EncryptionType {UNENCRYPTED, PLAINTEXT_FOOTER, ENCRYPTED_FOOTER}
+
   private final MessageType schema;
-
   private final Map<String, String> keyValueMetaData;
-
   private final String createdBy;
-  
   private final InternalFileDecryptor fileDecryptor;
+  private final EncryptionType encryptionType;
+
+
 
   /**
    * @param schema the schema for the file
@@ -50,16 +51,18 @@ public final class FileMetaData implements Serializable {
    * @throws NullPointerException if schema or keyValueMetaData is {@code null}
    */
   public FileMetaData(MessageType schema, Map<String, String> keyValueMetaData, String createdBy) {
-    this(schema, keyValueMetaData, createdBy, null);
+    this(schema, keyValueMetaData, createdBy, EncryptionType.UNENCRYPTED, null);
   }
   
-  public FileMetaData(MessageType schema, Map<String, String> keyValueMetaData, String createdBy, InternalFileDecryptor fileDecryptor) {
+  public FileMetaData(MessageType schema, Map<String, String> keyValueMetaData, String createdBy,
+                      EncryptionType encryptionType, InternalFileDecryptor fileDecryptor) {
     super();
     this.schema = Objects.requireNonNull(schema, "schema cannot be null");
     this.keyValueMetaData = unmodifiableMap(Objects
         .requireNonNull(keyValueMetaData, "keyValueMetaData cannot be null"));
     this.createdBy = createdBy;
     this.fileDecryptor = fileDecryptor;
+    this.encryptionType = encryptionType;
   }
 
   /**
@@ -71,7 +74,7 @@ public final class FileMetaData implements Serializable {
 
   @Override
   public String toString() {
-    return "FileMetaData{schema: "+schema+ ", metadata: " + keyValueMetaData + "}";
+    return "FileMetaData{schema: "+schema+ ", metadata: " + keyValueMetaData + ", encryption: " + encryptionType + "}";
   }
 
   /**
@@ -90,5 +93,9 @@ public final class FileMetaData implements Serializable {
 
   public InternalFileDecryptor getFileDecryptor() {
     return fileDecryptor;
+  }
+
+  public EncryptionType getEncryptionType() {
+    return encryptionType;
   }
 }
