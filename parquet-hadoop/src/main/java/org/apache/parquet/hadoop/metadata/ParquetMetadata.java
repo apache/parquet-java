@@ -67,7 +67,8 @@ public class ParquetMetadata {
     try {
       if (isPrettyPrint) {
         Object objectToPrint;
-        if (parquetMetaData.getFileMetaData().getEncryptionType() == FileMetaData.EncryptionType.UNENCRYPTED) {
+        if (parquetMetaData.getFileMetaData() == null ||
+            parquetMetaData.getFileMetaData().getEncryptionType() == FileMetaData.EncryptionType.UNENCRYPTED) {
           objectToPrint = parquetMetaData;
         } else {
           objectToPrint = parquetMetaData.getFileMetaData();
