@@ -146,7 +146,7 @@ public class RewriteOptions {
         if (encryptColumns != null) {
           for (String pruneColumn : pruneColumns) {
             Preconditions.checkArgument(!encryptColumns.contains(pruneColumn),
-                    "Cannot prune and mask same column");
+                    "Cannot prune and encrypt same column");
           }
         }
       }
