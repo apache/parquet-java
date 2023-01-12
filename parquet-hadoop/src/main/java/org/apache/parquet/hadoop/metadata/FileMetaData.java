@@ -53,7 +53,12 @@ public final class FileMetaData implements Serializable {
   public FileMetaData(MessageType schema, Map<String, String> keyValueMetaData, String createdBy) {
     this(schema, keyValueMetaData, createdBy, EncryptionType.UNENCRYPTED, null);
   }
-  
+
+  public FileMetaData(MessageType schema, Map<String, String> keyValueMetaData, String createdBy,
+                      InternalFileDecryptor fileDecryptor) {
+    this(schema, keyValueMetaData, createdBy, null, fileDecryptor);
+  }
+
   public FileMetaData(MessageType schema, Map<String, String> keyValueMetaData, String createdBy,
                       EncryptionType encryptionType, InternalFileDecryptor fileDecryptor) {
     super();
