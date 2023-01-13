@@ -88,7 +88,6 @@ public class AesCtrDecryptor extends AesCipher implements BlockCipher.Decryptor{
     return plainText;
   }
   public ByteBuffer decrypt(ByteBuffer ciphertext, byte[] AAD) {
-
     int cipherTextOffset = SIZE_LENGTH;
     int cipherTextLength = ciphertext.limit() - ciphertext.position() - SIZE_LENGTH;
 

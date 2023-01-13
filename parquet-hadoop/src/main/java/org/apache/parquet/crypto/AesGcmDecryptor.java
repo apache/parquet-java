@@ -80,7 +80,6 @@ public class AesGcmDecryptor extends AesCipher implements BlockCipher.Decryptor{
   }
 
   public ByteBuffer decrypt(ByteBuffer ciphertext, byte[] AAD) {
-
     int cipherTextOffset = SIZE_LENGTH;
     int cipherTextLength = ciphertext.limit() - ciphertext.position() - SIZE_LENGTH;
     int plainTextLength = cipherTextLength - GCM_TAG_LENGTH - NONCE_LENGTH;

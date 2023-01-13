@@ -24,6 +24,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.DirectByteBufferAllocator;
 import org.apache.parquet.bytes.HeapByteBufferAllocator;
+import org.apache.parquet.column.ParquetProperties.WriterVersion;
 import org.apache.parquet.crypto.keytools.KeyToolkit;
 import org.apache.parquet.crypto.keytools.PropertiesDrivenCryptoFactory;
 import org.apache.parquet.crypto.keytools.mocks.InMemoryKMS;
@@ -111,7 +112,7 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
  */
 @RunWith(Parameterized.class)
 public class TestPropertiesDrivenEncryption {
-  @Parameterized.Parameters(name = "Run {index}: isKeyMaterialInternalStorage={0} isDoubleWrapping={1} isWrapLocally={2} isDecryptionDirectMemory={3}")
+  @Parameterized.Parameters(name = "Run {index}: isKeyMaterialInternalStorage={0} isDoubleWrapping={1} isWrapLocally={2} isDecryptionDirectMemory={3} isV1={4}")
   public static Collection<Object[]> data() {
     Collection<Object[]> list = new ArrayList<>(8);
     boolean[] flagValues = { false, true };
@@ -119,8 +120,11 @@ public class TestPropertiesDrivenEncryption {
       for (boolean doubleWrapping : flagValues) {
         for (boolean wrapLocally : flagValues) {
           for (boolean isDecryptionDirectMemory : flagValues) {
-            Object[] vector = {keyMaterialInternalStorage, doubleWrapping, wrapLocally, isDecryptionDirectMemory};
-            list.add(vector);
+            for (boolean isV1 : flagValues) {
+              Object[] vector = {keyMaterialInternalStorage, doubleWrapping, wrapLocally,
+                  isDecryptionDirectMemory, isV1};
+              list.add(vector);
+            }
           }
         }
       }
@@ -139,6 +143,9 @@ public class TestPropertiesDrivenEncryption {
 
   @Parameterized.Parameter(value = 3)
   public boolean isDecryptionDirectMemory;
+  
+  @Parameterized.Parameter(value = 4)
+  public boolean isV1;
 
   private static final Logger LOG = LoggerFactory.getLogger(TestPropertiesDrivenEncryption.class);
 
@@ -211,7 +218,9 @@ public class TestPropertiesDrivenEncryption {
 
   private static final boolean plaintextFilesAllowed = true;
 
-  private static final int ROW_COUNT = 100;
+  // AesCtrDecryptor has a loop to update the cipher in chunks of  CHUNK_LENGTH (4K). Use a large 
+  // enough number of rows to ensure that the data generated is greater than the chunk length.
+  private static final int ROW_COUNT = 50000;
   private static final List<SingleRow> DATA = Collections.unmodifiableList(SingleRow.generateRandomData(ROW_COUNT));
 
   public enum EncryptionConfiguration {
@@ -387,7 +396,7 @@ public class TestPropertiesDrivenEncryption {
     MessageType schema = SingleRow.getSchema();
     SimpleGroupFactory f = new SimpleGroupFactory(schema);
 
-    int pageSize = data.size();     // Ensure that several pages will be created
+    int pageSize = data.size() / 10;     // Ensure that several pages will be created
     int rowGroupSize = pageSize * 6 * 5; // Ensure that there are more row-groups created
 
     Path file = new Path(root, getFileName(root, encryptionConfiguration, threadNumber));
@@ -406,6 +415,7 @@ public class TestPropertiesDrivenEncryption {
         encryptionConfiguration, null);
       return;
     }
+    WriterVersion writerVersion = this.isV1 ? WriterVersion.PARQUET_1_0 : WriterVersion.PARQUET_2_0; 
     try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(file)
       .withConf(conf)
       .withWriteMode(OVERWRITE)
@@ -413,6 +423,7 @@ public class TestPropertiesDrivenEncryption {
       .withPageSize(pageSize)
       .withRowGroupSize(rowGroupSize)
       .withEncryption(fileEncryptionProperties)
+      .withWriterVersion(writerVersion)  
       .build()) {
 
       for (SingleRow singleRow : data) {

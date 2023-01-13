@@ -199,28 +199,57 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
 
         @Override
         public DataPage visit(DataPageV2 dataPageV2) {
-          if (!dataPageV2.isCompressed() &&  offsetIndex == null && null == blockDecryptor) {
+          if (!dataPageV2.isCompressed() && offsetIndex == null && null == blockDecryptor) {
             return dataPageV2;
           }
           BytesInput pageBytes = dataPageV2.getData();
-          
-          if (null != blockDecryptor) {
-            try {
-              pageBytes = BytesInput.from(blockDecryptor.decrypt(pageBytes.toByteArray(), dataPageAAD));
-            } catch (IOException e) {
-              throw new ParquetDecodingException("could not convert page ByteInput to byte array", e);
+          try {
+            BytesInput decompressed;
+            long compressedSize;
+
+            if (options.getAllocator().isDirect() && options.useOffHeapDecryptBuffer()) {
+              ByteBuffer byteBuffer = pageBytes.toByteBuffer();
+              if (!byteBuffer.isDirect()) {
+                throw new ParquetDecodingException("Expected a direct buffer");
+              }
+              if (blockDecryptor != null) {
+                byteBuffer = blockDecryptor.decrypt(byteBuffer, dataPageAAD);
+              }
+              compressedSize = byteBuffer.limit();
+              if (dataPageV2.isCompressed()) {
+                int uncompressedSize = Math.toIntExact(
+                    dataPageV2.getUncompressedSize()
+                        - dataPageV2.getDefinitionLevels().size()
+                        - dataPageV2.getRepetitionLevels().size());
+                ByteBuffer decompressedBuffer =
+                    options.getAllocator().allocate(uncompressedSize);
+                decompressor.decompress(byteBuffer, (int) compressedSize, decompressedBuffer,
+                    uncompressedSize);
+
+                // HACKY: sometimes we need to do `flip` because the position of output bytebuffer is
+                // not reset.
+                if (decompressedBuffer.position() != 0) {
+                  decompressedBuffer.flip();
+                }
+                pageBytes = BytesInput.from(decompressedBuffer);
+              } else {
+                pageBytes = BytesInput.from(byteBuffer);
+              }
+            } else {
+              if (null != blockDecryptor) {
+                pageBytes = BytesInput.from(
+                    blockDecryptor.decrypt(pageBytes.toByteArray(), dataPageAAD));
+              }
+              if (dataPageV2.isCompressed()) {
+                int uncompressedSize = Math.toIntExact(
+                    dataPageV2.getUncompressedSize()
+                        - dataPageV2.getDefinitionLevels().size()
+                        - dataPageV2.getRepetitionLevels().size());
+                pageBytes = decompressor.decompress(pageBytes, uncompressedSize);
+              }
             }
-          }
-          if (dataPageV2.isCompressed()) {
-            int uncompressedSize = Math.toIntExact(
-                dataPageV2.getUncompressedSize()
-                    - dataPageV2.getDefinitionLevels().size()
-                    - dataPageV2.getRepetitionLevels().size());
-            try {
-              pageBytes = decompressor.decompress(pageBytes, uncompressedSize);
-            } catch (IOException e) {
-              throw new ParquetDecodingException("could not decompress page", e);
-            }
+          } catch (IOException e) {
+            throw new ParquetDecodingException("could not decompress page", e);
           }
           
           if (offsetIndex == null) {
