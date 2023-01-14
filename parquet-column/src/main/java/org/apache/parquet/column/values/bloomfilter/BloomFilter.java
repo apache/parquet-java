@@ -176,4 +176,10 @@ public interface BloomFilter {
    * @return compress algorithm that the bloom filter apply
    */
   Compression getCompression();
+
+  /**
+   * Combines this Bloom filter with another Bloom filter by performing a bitwise OR of the underlying data
+   * @param otherBloomFilter The Bloom filter to combine this Bloom filter with.
+   */
+  void putAll(BloomFilter otherBloomFilter) throws IOException;
 }

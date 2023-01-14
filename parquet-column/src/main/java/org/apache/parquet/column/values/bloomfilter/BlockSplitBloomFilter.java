@@ -22,6 +22,7 @@ package org.apache.parquet.column.values.bloomfilter;
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.io.api.Binary;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
@@ -393,5 +394,22 @@ public class BlockSplitBloomFilter implements BloomFilter {
   @Override
   public long hash(Binary value) {
     return hashFunction.hashBytes(value.getBytes());
+  }
+
+  @Override
+  public void putAll(BloomFilter otherBloomFilter) throws IOException {
+    Preconditions.checkArgument((otherBloomFilter.getAlgorithm() == getAlgorithm()),
+      "BloomFilter algorithm should be same");
+    Preconditions.checkArgument((otherBloomFilter.getHashStrategy() == getHashStrategy()),
+      "BloomFilter hashStrategy should be same");
+    Preconditions.checkArgument((otherBloomFilter.getBitsetSize() == getBitsetSize()),
+      "BloomFilter bitset size should be same");
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    otherBloomFilter.writeTo(outputStream);
+    byte[] otherBits = outputStream.toByteArray();
+    for (int i = 0; i < otherBits.length; i++) {
+      byte otherBit = otherBits[i];
+      bitset[i] |= otherBit;
+    }
   }
 }
