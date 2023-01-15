@@ -178,8 +178,11 @@ public interface BloomFilter {
   Compression getCompression();
 
   /**
-   * Combines this Bloom filter with another Bloom filter by performing a bitwise OR of the underlying data
+   * Combines this Bloom filter with another Bloom filter by performing a bitwise OR of the underlying bits
+   *
    * @param otherBloomFilter The Bloom filter to combine this Bloom filter with.
    */
-  void putAll(BloomFilter otherBloomFilter) throws IOException;
+  default void merge(BloomFilter otherBloomFilter) throws IOException {
+    throw new UnsupportedOperationException("Not supported merge operation.");
+  }
 }

@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.column.values.bloomfilter;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.HashSet;
@@ -179,6 +180,60 @@ public class TestBlockSplitBloomFilter {
     numBits = -8 * ndv / Math.log(1 - Math.pow(fpp, 1.0 / 8));
     bytes = (int)numBits / 8;
     assertTrue(bytes < 5 * 1024 * 1024);
+  }
+
+  @Test
+  public void testMergeBloomFilter() throws IOException {
+    Random random = new Random();
+    int numBytes = BlockSplitBloomFilter.optimalNumOfBits(1024 * 1024, 0.01) / 8;
+    BloomFilter otherBloomFilter = new BlockSplitBloomFilter(numBytes);
+    BloomFilter mergedBloomFilter = new BlockSplitBloomFilter(numBytes);
+
+    Set<String> originStrings = new HashSet<>();
+    Set<String> testStrings = new HashSet<>();
+    Set<Integer> testInts = new HashSet<>();
+    Set<Double> testDoubles = new HashSet<>();
+    Set<Float> testFloats = new HashSet<>();
+    for (int i = 0; i < 1024; i++) {
+
+      String originStrValue = RandomStringUtils.randomAlphabetic(1, 64);
+      originStrings.add(originStrValue);
+      mergedBloomFilter.insertHash(otherBloomFilter.hash(Binary.fromString(originStrValue)));
+
+      String testString = RandomStringUtils.randomAlphabetic(1, 64);
+      testStrings.add(testString);
+      otherBloomFilter.insertHash(otherBloomFilter.hash(Binary.fromString(testString)));
+
+      int testInt = random.nextInt();
+      testInts.add(testInt);
+      otherBloomFilter.insertHash(otherBloomFilter.hash(testInt));
+
+      double testDouble = random.nextDouble();
+      testDoubles.add(testDouble);
+      otherBloomFilter.insertHash(otherBloomFilter.hash(testDouble));
+
+      float testFloat = random.nextFloat();
+      testFloats.add(testFloat);
+      otherBloomFilter.insertHash(otherBloomFilter.hash(testFloat));
+    }
+    mergedBloomFilter.merge(otherBloomFilter);
+    for (String testString : originStrings) {
+      assertTrue(mergedBloomFilter.findHash(mergedBloomFilter.hash(Binary.fromString(testString))));
+    }
+
+    // The merged BloomFilter should have the values from the other BloomFilter
+    for (String testString : testStrings) {
+      assertTrue(mergedBloomFilter.findHash(mergedBloomFilter.hash(Binary.fromString(testString))));
+    }
+    for (int testInt : testInts) {
+      assertTrue(mergedBloomFilter.findHash(mergedBloomFilter.hash(testInt)));
+    }
+    for (Double testDouble : testDoubles) {
+      assertTrue(mergedBloomFilter.findHash(mergedBloomFilter.hash(testDouble)));
+    }
+    for (float testFloat : testFloats) {
+      assertTrue(mergedBloomFilter.findHash(mergedBloomFilter.hash(testFloat)));
+    }
   }
 
   /**
