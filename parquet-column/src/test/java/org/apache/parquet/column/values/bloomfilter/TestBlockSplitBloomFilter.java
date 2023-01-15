@@ -28,10 +28,12 @@ import java.util.Set;
 import net.openhft.hashing.LongHashFunction;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.parquet.io.api.Binary;
+import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -183,80 +185,40 @@ public class TestBlockSplitBloomFilter {
   }
 
   @Test
-  public void testMergeEmptyBloomFilter() throws IOException {
+  public void testMergeBloomFilter() throws IOException {
     int numBytes = BlockSplitBloomFilter.optimalNumOfBits(1024 * 5, 0.01) / 8;
     BloomFilter otherBloomFilter = new BlockSplitBloomFilter(numBytes);
     BloomFilter mergedBloomFilter = new BlockSplitBloomFilter(numBytes);
-    // The to be merged BloomFilter is empty in the beginning
-    for (int i = 0; i < 4; i++) {
-      testMergeBloomFilter(i, mergedBloomFilter, otherBloomFilter);
-    }
-    // These two BloomFilter should always be same because the merged BloomFilter was empty in the beginning
     for (int i = 0; i < 1024; i++) {
-      int type = new Random().nextInt(4);
-      Object v = generateRandomValue(type);
-      assertEquals(mergedBloomFilter.findHash(mergedBloomFilter.hash(v)),
-        otherBloomFilter.findHash(otherBloomFilter.hash(v)));
+      mergedBloomFilter.insertHash(mergedBloomFilter.hash(i));
+    }
+    for (int i = 1024; i < 2048; i++) {
+      otherBloomFilter.insertHash(otherBloomFilter.hash(i));
+      // To be merged BloomFilter don't have any value in otherBloomFilter
+      assertFalse(mergedBloomFilter.findHash(mergedBloomFilter.hash(i)));
+    }
+    mergedBloomFilter.merge(otherBloomFilter);
+    // After merging BloomFilter, merged BloomFilter should have all values in otherBloomFilter
+    for (int i = 0; i < 2048; i++) {
+      assertTrue(mergedBloomFilter.findHash(mergedBloomFilter.hash(i)));
+    }
+    for (int i = 2048; i < 3096; i++) {
+      assertFalse(otherBloomFilter.findHash(otherBloomFilter.hash(i)));
+      assertFalse(mergedBloomFilter.findHash(mergedBloomFilter.hash(i)));
     }
   }
 
   @Test
-  public void testMergeNonEmptyBloomFilter() throws IOException {
+  public void testMergeBloomFilterFailed() throws IOException {
     int numBytes = BlockSplitBloomFilter.optimalNumOfBits(1024 * 5, 0.01) / 8;
-    BloomFilter otherBloomFilter = new BlockSplitBloomFilter(numBytes);
     BloomFilter mergedBloomFilter = new BlockSplitBloomFilter(numBytes);
-    // The to be merged BloomFilter is non empty in the beginning
-    for (int i = 0; i < 1024; i++) {
-      int type = new Random().nextInt(4);
-      Object v = generateRandomValue(type);
-      mergedBloomFilter.insertHash(mergedBloomFilter.hash(v));
+    BloomFilter otherBloomFilter = new BlockSplitBloomFilter(numBytes * 1024);
+    try {
+      mergedBloomFilter.merge(otherBloomFilter);
+      Assert.fail();
+    } catch (IllegalArgumentException e) {
+      // expected, BloomFilters should have the same size of bitsets
     }
-    // Merged BloomFilter should have all values from the other BloomFilter
-    for (int i = 0; i < 4; i++) {
-      testMergeBloomFilter(i, mergedBloomFilter, otherBloomFilter);
-    }
-  }
-
-  private void testMergeBloomFilter(
-    int type, BloomFilter mergedBloomFilter, BloomFilter otherBloomFilter) throws IOException {
-    Set<Object> values = new HashSet<>();
-    for (int i = 0; i < 1024; i++) {
-      Object v = generateRandomValue(type);
-      values.add(v);
-      otherBloomFilter.insertHash(otherBloomFilter.hash(v));
-    }
-    mergedBloomFilter.merge(otherBloomFilter);
-    // merged BloomFilter should have all values from otherBloomFilter
-    for (Object value : values) {
-      assertTrue(mergedBloomFilter.findHash(mergedBloomFilter.hash(value)));
-    }
-  }
-
-  private Object generateRandomValue(int type) {
-    Random random = new Random();
-    Object v;
-    switch (type) {
-      case 0: {
-        v = Binary.fromString(RandomStringUtils.randomAlphabetic(1, 64));
-        break;
-      }
-      case 1: {
-        v = random.nextLong();
-        break;
-      }
-      case 2: {
-        v = random.nextFloat();
-        break;
-      }
-      case 3: {
-        v = random.nextInt();
-        break;
-      }
-      default: {
-        v = random.nextDouble();
-      }
-    }
-    return v;
   }
 
   /**

@@ -400,14 +400,14 @@ public class BlockSplitBloomFilter implements BloomFilter {
   public void merge(BloomFilter otherBloomFilter) throws IOException {
     Preconditions.checkArgument(otherBloomFilter != null, "Cannot merge a null BloomFilter");
     Preconditions.checkArgument((getAlgorithm() == otherBloomFilter.getAlgorithm()),
-      String.format("BloomFilters must have the same algorithm (%s != %s)",
-        getAlgorithm(), otherBloomFilter.getAlgorithm()));
+      "BloomFilters must have the same algorithm (%s != %s)",
+        getAlgorithm(), otherBloomFilter.getAlgorithm());
     Preconditions.checkArgument((getHashStrategy() == otherBloomFilter.getHashStrategy()),
-      String.format("BloomFilters must have the same hashStrategy (%s != %s)",
-        getHashStrategy(), otherBloomFilter.getHashStrategy()));
+      "BloomFilters must have the same hashStrategy (%s != %s)",
+        getHashStrategy(), otherBloomFilter.getHashStrategy());
     Preconditions.checkArgument((getBitsetSize() == otherBloomFilter.getBitsetSize()),
-      String.format("BloomFilters must have the same size of bitsets (%s != %s)",
-        getBitsetSize(), otherBloomFilter.getBitsetSize()));
+      "BloomFilters must have the same size of bitsets (%s != %s)",
+        getBitsetSize(), otherBloomFilter.getBitsetSize());
     ByteArrayOutputStream otherOutputStream = new ByteArrayOutputStream();
     otherBloomFilter.writeTo(otherOutputStream);
     byte[] otherBits = otherOutputStream.toByteArray();
