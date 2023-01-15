@@ -24,6 +24,7 @@ import org.apache.parquet.Preconditions;
 import org.apache.parquet.crypto.FileEncryptionProperties;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -31,7 +32,7 @@ import java.util.Map;
 public class RewriteOptions {
 
   final Configuration conf;
-  final Path inputFile;
+  final List<Path> inputFiles;
   final Path outputFile;
   final List<String> pruneColumns;
   final CompressionCodecName newCodecName;
@@ -40,7 +41,7 @@ public class RewriteOptions {
   final FileEncryptionProperties fileEncryptionProperties;
 
   private RewriteOptions(Configuration conf,
-                         Path inputFile,
+                         List<Path> inputFiles,
                          Path outputFile,
                          List<String> pruneColumns,
                          CompressionCodecName newCodecName,
@@ -48,7 +49,7 @@ public class RewriteOptions {
                          List<String> encryptColumns,
                          FileEncryptionProperties fileEncryptionProperties) {
     this.conf = conf;
-    this.inputFile = inputFile;
+    this.inputFiles = inputFiles;
     this.outputFile = outputFile;
     this.pruneColumns = pruneColumns;
     this.newCodecName = newCodecName;
@@ -61,8 +62,8 @@ public class RewriteOptions {
     return conf;
   }
 
-  public Path getInputFile() {
-    return inputFile;
+  public List<Path> getInputFiles() {
+    return inputFiles;
   }
 
   public Path getOutputFile() {
@@ -92,7 +93,7 @@ public class RewriteOptions {
   // Builder to create a RewriterOptions.
   public static class Builder {
     private Configuration conf;
-    private Path inputFile;
+    private List<Path> inputFiles;
     private Path outputFile;
     private List<String> pruneColumns;
     private CompressionCodecName newCodecName;
@@ -102,7 +103,7 @@ public class RewriteOptions {
 
     public Builder(Configuration conf, Path inputFile, Path outputFile) {
       this.conf = conf;
-      this.inputFile = inputFile;
+      this.inputFiles = Arrays.asList(inputFile);
       this.outputFile = outputFile;
     }
 
@@ -132,7 +133,7 @@ public class RewriteOptions {
     }
 
     public RewriteOptions build() {
-      Preconditions.checkArgument(inputFile != null, "Input file is required");
+      Preconditions.checkArgument(inputFiles != null && !inputFiles.isEmpty(), "Input file is required");
       Preconditions.checkArgument(outputFile != null, "Output file is required");
 
       if (pruneColumns != null) {
@@ -170,7 +171,7 @@ public class RewriteOptions {
       }
 
       return new RewriteOptions(conf,
-              inputFile,
+              inputFiles,
               outputFile,
               pruneColumns,
               newCodecName,

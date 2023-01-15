@@ -74,15 +74,15 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static org.apache.parquet.format.converter.ParquetMetadataConverter.NO_FILTER;
 import static org.apache.parquet.column.ParquetProperties.DEFAULT_COLUMN_INDEX_TRUNCATE_LENGTH;
 import static org.apache.parquet.column.ParquetProperties.DEFAULT_STATISTICS_TRUNCATE_LENGTH;
 import static org.apache.parquet.crypto.ModuleCipherFactory.ModuleType;
+import static org.apache.parquet.format.converter.ParquetMetadataConverter.NO_FILTER;
 import static org.apache.parquet.hadoop.ParquetWriter.DEFAULT_BLOCK_SIZE;
 import static org.apache.parquet.hadoop.ParquetWriter.MAX_PADDING_SIZE_DEFAULT;
 
@@ -95,7 +95,7 @@ public class ParquetRewriter implements Closeable {
   private ParquetFileWriter writer;
   private ParquetMetadata meta;
   private MessageType schema;
-  private String createdBy;
+  private String originalCreatedBy;
   private CompressionCodecName newCodecName = null;
   private List<String> pruneColumns = null;
   private Map<ColumnPath, MaskMode> maskColumns = null;
@@ -103,7 +103,8 @@ public class ParquetRewriter implements Closeable {
   private boolean encryptMode = false;
 
   public ParquetRewriter(RewriteOptions options) throws IOException {
-    Path inPath = options.getInputFile();
+    Preconditions.checkArgument(options.getInputFiles().size() == 1, "Only support one input file");
+    Path inPath = options.getInputFiles().get(0);
     Path outPath = options.getOutputFile();
     Configuration conf = options.getConf();
 
@@ -113,8 +114,7 @@ public class ParquetRewriter implements Closeable {
     // Get file metadata and full schema from the input file
     meta = ParquetFileReader.readFooter(conf, inPath, NO_FILTER);
     schema = meta.getFileMetaData().getSchema();
-    // TODO: find a better way to keep original createdBy info and add ParquetRewriter info to it.
-    createdBy = meta.getFileMetaData().getCreatedBy();
+    originalCreatedBy = meta.getFileMetaData().getCreatedBy();
 
     // Prune columns if specified
     if (pruneColumns != null && !pruneColumns.isEmpty()) {
@@ -158,7 +158,7 @@ public class ParquetRewriter implements Closeable {
                          ParquetFileWriter writer,
                          ParquetMetadata meta,
                          MessageType schema,
-                         String createdBy,
+                         String originalCreatedBy,
                          CompressionCodecName codecName,
                          List<String> maskColumns,
                          MaskMode maskMode) {
@@ -166,7 +166,7 @@ public class ParquetRewriter implements Closeable {
     this.writer = writer;
     this.meta = meta;
     this.schema = schema;
-    this.createdBy = createdBy == null ? meta.getFileMetaData().getCreatedBy() : createdBy;
+    this.originalCreatedBy = originalCreatedBy == null ? meta.getFileMetaData().getCreatedBy() : originalCreatedBy;
     this.newCodecName = codecName;
     if (maskColumns != null && maskMode != null) {
       this.maskColumns = new HashMap<>();
@@ -183,7 +183,7 @@ public class ParquetRewriter implements Closeable {
 
   public void processBlocks() throws IOException {
     PageReadStore store = reader.readNextRowGroup();
-    ColumnReadStoreImpl crStore = new ColumnReadStoreImpl(store, new DummyGroupConverter(), schema, createdBy);
+    ColumnReadStoreImpl crStore = new ColumnReadStoreImpl(store, new DummyGroupConverter(), schema, originalCreatedBy);
     Map<ColumnPath, ColumnDescriptor> descriptorsMap = schema.getColumns().stream().collect(
             Collectors.toMap(x -> ColumnPath.get(x.getPath()), x -> x));
 
@@ -322,9 +322,9 @@ public class ParquetRewriter implements Closeable {
                   dataEncryptor,
                   dictPageAAD);
           writer.writeDictionaryPage(new DictionaryPage(BytesInput.from(pageLoad),
-                  pageHeader.getUncompressed_page_size(),
-                  dictPageHeader.getNum_values(),
-                  converter.getEncoding(dictPageHeader.getEncoding())),
+                          pageHeader.getUncompressed_page_size(),
+                          dictPageHeader.getNum_values(),
+                          converter.getEncoding(dictPageHeader.getEncoding())),
                   metaEncryptor,
                   dictPageHeaderAAD);
           break;
@@ -344,7 +344,7 @@ public class ParquetRewriter implements Closeable {
                   dataEncryptor,
                   dataPageAAD);
           statistics = convertStatistics(
-                  createdBy, chunk.getPrimitiveType(), headerV1.getStatistics(), columnIndex, pageOrdinal, converter);
+                  originalCreatedBy, chunk.getPrimitiveType(), headerV1.getStatistics(), columnIndex, pageOrdinal, converter);
           readValues += headerV1.getNum_values();
           if (offsetIndex != null) {
             long rowCount = 1 + offsetIndex.getLastRowIndex(
@@ -395,7 +395,7 @@ public class ParquetRewriter implements Closeable {
                   dataEncryptor,
                   dataPageAAD);
           statistics = convertStatistics(
-                  createdBy, chunk.getPrimitiveType(), headerV2.getStatistics(), columnIndex, pageOrdinal, converter);
+                  originalCreatedBy, chunk.getPrimitiveType(), headerV2.getStatistics(), columnIndex, pageOrdinal, converter);
           readValues += headerV2.getNum_values();
           writer.writeDataPageV2(headerV2.getNum_rows(),
                   headerV2.getNum_nulls(),
@@ -491,10 +491,10 @@ public class ParquetRewriter implements Closeable {
   }
 
   private int toIntWithCheck(long size) {
-    if ((int)size != size) {
+    if ((int) size != size) {
       throw new ParquetEncodingException("size is bigger than " + Integer.MAX_VALUE + " bytes: " + size);
     }
-    return (int)size;
+    return (int) size;
   }
 
   // We have to rewrite getPaths because MessageType only get level 0 paths
@@ -658,20 +658,32 @@ public class ParquetRewriter implements Closeable {
   }
 
   private static final class DummyGroupConverter extends GroupConverter {
-    @Override public void start() {}
-    @Override public void end() {}
-    @Override public Converter getConverter(int fieldIndex) { return new DummyConverter(); }
+    @Override
+    public void start() {
+    }
+
+    @Override
+    public void end() {
+    }
+
+    @Override
+    public Converter getConverter(int fieldIndex) {
+      return new DummyConverter();
+    }
   }
 
   private static final class DummyConverter extends PrimitiveConverter {
-    @Override public GroupConverter asGroupConverter() { return new DummyGroupConverter(); }
+    @Override
+    public GroupConverter asGroupConverter() {
+      return new DummyGroupConverter();
+    }
   }
 
   private static class ColumnChunkEncryptorRunTime {
     private final InternalColumnEncryptionSetup colEncrSetup;
     private final BlockCipher.Encryptor dataEncryptor;
     private final BlockCipher.Encryptor metaDataEncryptor;
-    private final byte[] fileAAD ;
+    private final byte[] fileAAD;
 
     private byte[] dataPageHeaderAAD;
     private byte[] dataPageAAD;
@@ -681,7 +693,7 @@ public class ParquetRewriter implements Closeable {
     public ColumnChunkEncryptorRunTime(InternalFileEncryptor fileEncryptor,
                                        ColumnChunkMetaData chunk,
                                        int blockId,
-                                       int columnId) throws IOException  {
+                                       int columnId) throws IOException {
       Preconditions.checkArgument(fileEncryptor != null,
               "FileEncryptor is required to create ColumnChunkEncryptorRunTime");
 
