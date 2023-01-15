@@ -183,6 +183,6 @@ public interface BloomFilter {
    * @param otherBloomFilter The Bloom filter to combine this Bloom filter with.
    */
   default void merge(BloomFilter otherBloomFilter) throws IOException {
-    throw new UnsupportedOperationException("Not supported merge operation.");
+    throw new UnsupportedOperationException("Merge is not implemented.");
   }
 }

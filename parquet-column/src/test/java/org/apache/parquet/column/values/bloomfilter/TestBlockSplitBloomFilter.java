@@ -183,57 +183,80 @@ public class TestBlockSplitBloomFilter {
   }
 
   @Test
-  public void testMergeBloomFilter() throws IOException {
-    Random random = new Random();
-    int numBytes = BlockSplitBloomFilter.optimalNumOfBits(1024 * 1024, 0.01) / 8;
+  public void testMergeEmptyBloomFilter() throws IOException {
+    int numBytes = BlockSplitBloomFilter.optimalNumOfBits(1024 * 5, 0.01) / 8;
     BloomFilter otherBloomFilter = new BlockSplitBloomFilter(numBytes);
     BloomFilter mergedBloomFilter = new BlockSplitBloomFilter(numBytes);
-
-    Set<String> originStrings = new HashSet<>();
-    Set<String> testStrings = new HashSet<>();
-    Set<Integer> testInts = new HashSet<>();
-    Set<Double> testDoubles = new HashSet<>();
-    Set<Float> testFloats = new HashSet<>();
+    // The to be merged BloomFilter is empty in the beginning
+    for (int i = 0; i < 4; i++) {
+      testMergeBloomFilter(i, mergedBloomFilter, otherBloomFilter);
+    }
+    // These two BloomFilter should always be same because the merged BloomFilter was empty in the beginning
     for (int i = 0; i < 1024; i++) {
+      int type = new Random().nextInt(4);
+      Object v = generateRandomValue(type);
+      assertEquals(mergedBloomFilter.findHash(mergedBloomFilter.hash(v)),
+        otherBloomFilter.findHash(otherBloomFilter.hash(v)));
+    }
+  }
 
-      String originStrValue = RandomStringUtils.randomAlphabetic(1, 64);
-      originStrings.add(originStrValue);
-      mergedBloomFilter.insertHash(otherBloomFilter.hash(Binary.fromString(originStrValue)));
+  @Test
+  public void testMergeNonEmptyBloomFilter() throws IOException {
+    int numBytes = BlockSplitBloomFilter.optimalNumOfBits(1024 * 5, 0.01) / 8;
+    BloomFilter otherBloomFilter = new BlockSplitBloomFilter(numBytes);
+    BloomFilter mergedBloomFilter = new BlockSplitBloomFilter(numBytes);
+    // The to be merged BloomFilter is non empty in the beginning
+    for (int i = 0; i < 1024; i++) {
+      int type = new Random().nextInt(4);
+      Object v = generateRandomValue(type);
+      mergedBloomFilter.insertHash(mergedBloomFilter.hash(v));
+    }
+    // Merged BloomFilter should have all values from the other BloomFilter
+    for (int i = 0; i < 4; i++) {
+      testMergeBloomFilter(i, mergedBloomFilter, otherBloomFilter);
+    }
+  }
 
-      String testString = RandomStringUtils.randomAlphabetic(1, 64);
-      testStrings.add(testString);
-      otherBloomFilter.insertHash(otherBloomFilter.hash(Binary.fromString(testString)));
-
-      int testInt = random.nextInt();
-      testInts.add(testInt);
-      otherBloomFilter.insertHash(otherBloomFilter.hash(testInt));
-
-      double testDouble = random.nextDouble();
-      testDoubles.add(testDouble);
-      otherBloomFilter.insertHash(otherBloomFilter.hash(testDouble));
-
-      float testFloat = random.nextFloat();
-      testFloats.add(testFloat);
-      otherBloomFilter.insertHash(otherBloomFilter.hash(testFloat));
+  private void testMergeBloomFilter(
+    int type, BloomFilter mergedBloomFilter, BloomFilter otherBloomFilter) throws IOException {
+    Set<Object> values = new HashSet<>();
+    for (int i = 0; i < 1024; i++) {
+      Object v = generateRandomValue(type);
+      values.add(v);
+      otherBloomFilter.insertHash(otherBloomFilter.hash(v));
     }
     mergedBloomFilter.merge(otherBloomFilter);
-    for (String testString : originStrings) {
-      assertTrue(mergedBloomFilter.findHash(mergedBloomFilter.hash(Binary.fromString(testString))));
+    // merged BloomFilter should have all values from otherBloomFilter
+    for (Object value : values) {
+      assertTrue(mergedBloomFilter.findHash(mergedBloomFilter.hash(value)));
     }
+  }
 
-    // The merged BloomFilter should have the values from the other BloomFilter
-    for (String testString : testStrings) {
-      assertTrue(mergedBloomFilter.findHash(mergedBloomFilter.hash(Binary.fromString(testString))));
+  private Object generateRandomValue(int type) {
+    Random random = new Random();
+    Object v;
+    switch (type) {
+      case 0: {
+        v = Binary.fromString(RandomStringUtils.randomAlphabetic(1, 64));
+        break;
+      }
+      case 1: {
+        v = random.nextLong();
+        break;
+      }
+      case 2: {
+        v = random.nextFloat();
+        break;
+      }
+      case 3: {
+        v = random.nextInt();
+        break;
+      }
+      default: {
+        v = random.nextDouble();
+      }
     }
-    for (int testInt : testInts) {
-      assertTrue(mergedBloomFilter.findHash(mergedBloomFilter.hash(testInt)));
-    }
-    for (Double testDouble : testDoubles) {
-      assertTrue(mergedBloomFilter.findHash(mergedBloomFilter.hash(testDouble)));
-    }
-    for (float testFloat : testFloats) {
-      assertTrue(mergedBloomFilter.findHash(mergedBloomFilter.hash(testFloat)));
-    }
+    return v;
   }
 
   /**
