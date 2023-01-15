@@ -88,6 +88,8 @@ import static org.apache.parquet.hadoop.ParquetWriter.MAX_PADDING_SIZE_DEFAULT;
 
 public class ParquetRewriter implements Closeable {
 
+  // Key to store original writer version in the file key-value metadata
+  public static final String ORIGINAL_CREATED_BY_KEY = "original.created.by";
   private static final Logger LOG = LoggerFactory.getLogger(ParquetRewriter.class);
   private final int pageBufferSize = ParquetProperties.DEFAULT_PAGE_SIZE * 2;
   private final byte[] pageBuffer = new byte[pageBufferSize];
@@ -101,6 +103,7 @@ public class ParquetRewriter implements Closeable {
   private Map<ColumnPath, MaskMode> maskColumns = null;
   private Set<ColumnPath> encryptColumns = null;
   private boolean encryptMode = false;
+  private Map<String, String> extraMetaData = new HashMap<>();
 
   public ParquetRewriter(RewriteOptions options) throws IOException {
     Preconditions.checkArgument(options.getInputFiles().size() == 1, "Only support one input file");
@@ -115,6 +118,8 @@ public class ParquetRewriter implements Closeable {
     meta = ParquetFileReader.readFooter(conf, inPath, NO_FILTER);
     schema = meta.getFileMetaData().getSchema();
     originalCreatedBy = meta.getFileMetaData().getCreatedBy();
+    extraMetaData.putAll(meta.getFileMetaData().getKeyValueMetaData());
+    extraMetaData.put(ORIGINAL_CREATED_BY_KEY, originalCreatedBy);
 
     // Prune columns if specified
     if (pruneColumns != null && !pruneColumns.isEmpty()) {
@@ -166,8 +171,10 @@ public class ParquetRewriter implements Closeable {
     this.writer = writer;
     this.meta = meta;
     this.schema = schema;
-    this.originalCreatedBy = originalCreatedBy == null ? meta.getFileMetaData().getCreatedBy() : originalCreatedBy;
     this.newCodecName = codecName;
+    originalCreatedBy = originalCreatedBy == null ? meta.getFileMetaData().getCreatedBy() : originalCreatedBy;
+    extraMetaData.putAll(meta.getFileMetaData().getKeyValueMetaData());
+    extraMetaData.put(ORIGINAL_CREATED_BY_KEY, originalCreatedBy);
     if (maskColumns != null && maskMode != null) {
       this.maskColumns = new HashMap<>();
       for (String col : maskColumns) {
@@ -178,7 +185,7 @@ public class ParquetRewriter implements Closeable {
 
   @Override
   public void close() throws IOException {
-    writer.end(meta.getFileMetaData().getKeyValueMetaData());
+    writer.end(extraMetaData);
   }
 
   public void processBlocks() throws IOException {

@@ -38,6 +38,7 @@ import org.apache.parquet.hadoop.example.GroupReadSupport;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
+import org.apache.parquet.hadoop.metadata.FileMetaData;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.hadoop.util.CompressionConverter.TransParquetFileReader;
 import org.apache.parquet.hadoop.util.EncDecProperties;
@@ -72,6 +73,8 @@ import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 public class ParquetRewriterTest {
@@ -123,6 +126,9 @@ public class ParquetRewriterTest {
       put(2, 3);
       put(3, 4);
     }});
+
+    // Verify original.created.by is preserved
+    validateCreatedBy();
   }
 
   @Test
@@ -167,6 +173,9 @@ public class ParquetRewriterTest {
       put(1, 1);
       put(2, 3);
     }});
+
+    // Verify original.created.by is preserved
+    validateCreatedBy();
   }
 
   @Test
@@ -188,7 +197,7 @@ public class ParquetRewriterTest {
     // Encrypt
     String[] encryptColumns = {"DocId"};
     FileEncryptionProperties fileEncryptionProperties =
-      EncDecProperties.getFileEncryptionProperties(encryptColumns, ParquetCipher.AES_GCM_CTR_V1, false);
+            EncDecProperties.getFileEncryptionProperties(encryptColumns, ParquetCipher.AES_GCM_CTR_V1, false);
     builder.encrypt(Arrays.asList(encryptColumns)).encryptionProperties(fileEncryptionProperties);
 
     RewriteOptions options = builder.build();
@@ -215,7 +224,7 @@ public class ParquetRewriterTest {
 
     // Verify the data are not changed for the columns not pruned
     validateColumnData(outputFile,
-      inputFile.getFileContent(), new HashSet<>(pruneColumns), Collections.emptySet(), fileDecryptionProperties);
+            inputFile.getFileContent(), new HashSet<>(pruneColumns), Collections.emptySet(), fileDecryptionProperties);
 
     // Verify column encryption
     ParquetMetadata metaData = getFileMetaData(outputFile, fileDecryptionProperties);
@@ -229,26 +238,29 @@ public class ParquetRewriterTest {
         assertFalse(column.isEncrypted());
       }
     }
+
+    // Verify original.created.by is preserved
+    validateCreatedBy();
   }
 
   private void testSetup(String compression) throws IOException {
     MessageType schema = createSchema();
     inputFile = new TestFileBuilder(conf, schema)
-      .withNumRecord(numRecord)
-      .withCodec(compression)
-      .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
-      .build();
+            .withNumRecord(numRecord)
+            .withCodec(compression)
+            .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
+            .build();
     outputFile = TestFileBuilder.createTempFile("test");
   }
 
   private MessageType createSchema() {
     return new MessageType("schema",
-      new PrimitiveType(OPTIONAL, INT64, "DocId"),
-      new PrimitiveType(REQUIRED, BINARY, "Name"),
-      new PrimitiveType(OPTIONAL, BINARY, "Gender"),
-      new GroupType(OPTIONAL, "Links",
-        new PrimitiveType(REPEATED, BINARY, "Backward"),
-        new PrimitiveType(REPEATED, BINARY, "Forward")));
+            new PrimitiveType(OPTIONAL, INT64, "DocId"),
+            new PrimitiveType(REQUIRED, BINARY, "Name"),
+            new PrimitiveType(OPTIONAL, BINARY, "Gender"),
+            new GroupType(OPTIONAL, "Links",
+                    new PrimitiveType(REPEATED, BINARY, "Backward"),
+                    new PrimitiveType(REPEATED, BINARY, "Forward")));
   }
 
   private void validateColumnData(String file,
@@ -257,7 +269,7 @@ public class ParquetRewriterTest {
                                   Set<String> nullifiedPaths,
                                   FileDecryptionProperties fileDecryptionProperties) throws IOException {
     ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), new Path(file))
-      .withConf(conf).withDecryption(fileDecryptionProperties).build();
+            .withConf(conf).withDecryption(fileDecryptionProperties).build();
     for (int i = 0; i < numRecord; i++) {
       Group group = reader.read();
       if (!prunePaths.contains("DocId") && !nullifiedPaths.contains("DocId")) {
@@ -265,20 +277,20 @@ public class ParquetRewriterTest {
       }
       if (!prunePaths.contains("Name") && !nullifiedPaths.contains("Name")) {
         assertArrayEquals(group.getBinary("Name", 0).getBytes(),
-          fileContent[i].getBinary("Name", 0).getBytes());
+                fileContent[i].getBinary("Name", 0).getBytes());
       }
       if (!prunePaths.contains("Gender") && !nullifiedPaths.contains("Gender")) {
         assertArrayEquals(group.getBinary("Gender", 0).getBytes(),
-          fileContent[i].getBinary("Gender", 0).getBytes());
+                fileContent[i].getBinary("Gender", 0).getBytes());
       }
       Group subGroup = group.getGroup("Links", 0);
       if (!prunePaths.contains("Links.Backward") && !nullifiedPaths.contains("Links.Backward")) {
         assertArrayEquals(subGroup.getBinary("Backward", 0).getBytes(),
-          fileContent[i].getGroup("Links", 0).getBinary("Backward", 0).getBytes());
+                fileContent[i].getGroup("Links", 0).getBinary("Backward", 0).getBytes());
       }
       if (!prunePaths.contains("Links.Forward") && !nullifiedPaths.contains("Links.Forward")) {
         assertArrayEquals(subGroup.getBinary("Forward", 0).getBytes(),
-          fileContent[i].getGroup("Links", 0).getBinary("Forward", 0).getBytes());
+                fileContent[i].getGroup("Links", 0).getBinary("Forward", 0).getBytes());
       }
     }
     reader.close();
@@ -287,8 +299,8 @@ public class ParquetRewriterTest {
   private ParquetMetadata getFileMetaData(String file,
                                           FileDecryptionProperties fileDecryptionProperties) throws IOException {
     ParquetReadOptions readOptions = ParquetReadOptions.builder()
-      .withDecryption(fileDecryptionProperties)
-      .build();
+            .withDecryption(fileDecryptionProperties)
+            .build();
     ParquetMetadata pmd = null;
     InputFile inputFile = HadoopInputFile.fromPath(new Path(file), conf);
     try (SeekableInputStream in = inputFile.newStream()) {
@@ -321,9 +333,9 @@ public class ParquetRewriterTest {
     assertEquals(inMetaData.getBlocks().size(), outMetaData.getBlocks().size());
 
     try (TransParquetFileReader inReader = new TransParquetFileReader(
-      HadoopInputFile.fromPath(new Path(inputFile.getFileName()), conf), HadoopReadOptions.builder(conf).build());
+            HadoopInputFile.fromPath(new Path(inputFile.getFileName()), conf), HadoopReadOptions.builder(conf).build());
          TransParquetFileReader outReader = new TransParquetFileReader(
-           HadoopInputFile.fromPath(new Path(outputFile), conf), HadoopReadOptions.builder(conf).build())) {
+                 HadoopInputFile.fromPath(new Path(outputFile), conf), HadoopReadOptions.builder(conf).build())) {
 
       for (int i = 0; i < inMetaData.getBlocks().size(); i++) {
         BlockMetaData inBlockMetaData = inMetaData.getBlocks().get(i);
@@ -355,7 +367,7 @@ public class ParquetRewriterTest {
             for (int k = 0; k < inOffsetIndex.getPageCount(); k++) {
               assertEquals(inOffsetIndex.getFirstRowIndex(k), outOffsetIndex.getFirstRowIndex(k));
               assertEquals(inOffsetIndex.getLastRowIndex(k, inChunk.getValueCount()),
-                outOffsetIndex.getLastRowIndex(k, outChunk.getValueCount()));
+                      outOffsetIndex.getLastRowIndex(k, outChunk.getValueCount()));
               assertEquals(inOffsetIndex.getOffset(k), (long) inOffsets.get(k));
               assertEquals(outOffsetIndex.getOffset(k), (long) outOffsets.get(k));
             }
@@ -399,6 +411,18 @@ public class ParquetRewriterTest {
       }
     }
     return offsets;
+  }
+
+  private void validateCreatedBy() throws Exception {
+    FileMetaData inFMD = getFileMetaData(inputFile.getFileName(), null).getFileMetaData();
+    FileMetaData outFMD = getFileMetaData(outputFile, null).getFileMetaData();
+
+    assertEquals(inFMD.getCreatedBy(), outFMD.getCreatedBy());
+    assertNull(inFMD.getKeyValueMetaData().get(ParquetRewriter.ORIGINAL_CREATED_BY_KEY));
+
+    String originalCreatedBy = outFMD.getKeyValueMetaData().get(ParquetRewriter.ORIGINAL_CREATED_BY_KEY);
+    assertNotNull(originalCreatedBy);
+    assertEquals(inFMD.getCreatedBy(), originalCreatedBy);
   }
 
 }
