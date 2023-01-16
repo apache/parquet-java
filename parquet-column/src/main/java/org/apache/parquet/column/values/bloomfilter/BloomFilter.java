@@ -193,7 +193,7 @@ public interface BloomFilter {
   }
 
   /**
-   * Combines this Bloom filter with another Bloom filter by performing a bitwise OR of the underlying bits
+   * Merges this Bloom filter with another Bloom filter by performing a bitwise OR of the underlying bitsets
    *
    * @param otherBloomFilter The Bloom filter to merge this Bloom filter with.
    */
