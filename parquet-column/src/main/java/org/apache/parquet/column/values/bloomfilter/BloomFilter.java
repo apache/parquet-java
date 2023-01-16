@@ -187,7 +187,6 @@ public interface BloomFilter {
    * </ul>
    *
    * @param otherBloomFilter The Bloom filter to merge this Bloom filter with.
-   * @return
    */
   default boolean canMergeFrom(BloomFilter otherBloomFilter) {
     throw new UnsupportedOperationException("Merge API is not implemented.");
