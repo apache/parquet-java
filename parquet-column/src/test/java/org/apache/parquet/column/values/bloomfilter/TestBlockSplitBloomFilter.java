@@ -194,11 +194,11 @@ public class TestBlockSplitBloomFilter {
     }
     for (int i = 1024; i < 2048; i++) {
       otherBloomFilter.insertHash(otherBloomFilter.hash(i));
-      // To be merged BloomFilter don't have any value in otherBloomFilter
+      // Before merging BloomFilter, `mergedBloomFilter` doesn't have any value in `otherBloomFilter`
       assertFalse(mergedBloomFilter.findHash(mergedBloomFilter.hash(i)));
     }
     mergedBloomFilter.merge(otherBloomFilter);
-    // After merging BloomFilter, merged BloomFilter should have all values in otherBloomFilter
+    // After merging BloomFilter, `mergedBloomFilter` should have all values in `otherBloomFilter`
     for (int i = 0; i < 2048; i++) {
       assertTrue(mergedBloomFilter.findHash(mergedBloomFilter.hash(i)));
     }
