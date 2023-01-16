@@ -397,17 +397,23 @@ public class BlockSplitBloomFilter implements BloomFilter {
   }
 
   @Override
+  public boolean canMergeFrom(BloomFilter otherBloomFilter) {
+    return otherBloomFilter != null
+      && getBitsetSize() == otherBloomFilter.getBitsetSize()
+      && getAlgorithm() == otherBloomFilter.getAlgorithm()
+      && getHashStrategy() == otherBloomFilter.getHashStrategy();
+  }
+
+  @Override
   public void merge(BloomFilter otherBloomFilter) throws IOException {
-    Preconditions.checkArgument(otherBloomFilter != null, "Cannot merge a null BloomFilter");
-    Preconditions.checkArgument((getAlgorithm() == otherBloomFilter.getAlgorithm()),
-      "BloomFilters must have the same algorithm (%s != %s)",
-        getAlgorithm(), otherBloomFilter.getAlgorithm());
-    Preconditions.checkArgument((getHashStrategy() == otherBloomFilter.getHashStrategy()),
-      "BloomFilters must have the same hashStrategy (%s != %s)",
-        getHashStrategy(), otherBloomFilter.getHashStrategy());
-    Preconditions.checkArgument((getBitsetSize() == otherBloomFilter.getBitsetSize()),
-      "BloomFilters must have the same size of bitsets (%s != %s)",
-        getBitsetSize(), otherBloomFilter.getBitsetSize());
+    Preconditions.checkArgument(otherBloomFilter != null,
+      "The BloomFilter to merge shouldn't be null");
+    Preconditions.checkArgument(canMergeFrom(otherBloomFilter),
+      "BloomFilters must have the same size of bitset, hashStrategy and algorithm." +
+        "This BloomFilter's size of bitset is %s , hashStrategy is %s, algorithm is %s ," +
+        "but the other BloomFilter's size of bitset is %s , hashStrategy is %s, algorithm is %s.",
+      getBitsetSize(), getHashStrategy(), getAlgorithm(),
+      otherBloomFilter.getBitsetSize(), otherBloomFilter.getHashStrategy(), otherBloomFilter.getAlgorithm());
     ByteArrayOutputStream otherOutputStream = new ByteArrayOutputStream();
     otherBloomFilter.writeTo(otherOutputStream);
     byte[] otherBits = otherOutputStream.toByteArray();
