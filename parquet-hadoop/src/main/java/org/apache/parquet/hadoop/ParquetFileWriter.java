@@ -749,6 +749,24 @@ public class ParquetFileWriter {
   }
 
   /**
+   * writes a single page
+   * @param valueCount count of values
+   * @throws IOException if there is an error while writing
+   */
+  public void writeDataPageV2(int rowCount, int nullCount, int valueCount,
+                              BytesInput repetitionLevels,
+                              BytesInput definitionLevels,
+                              Encoding dataEncoding,
+                              BytesInput compressedData,
+                              int uncompressedDataSize,
+                              Statistics<?> statistics) throws IOException {
+    writeDataPageV2(rowCount, nullCount, valueCount, repetitionLevels,
+      definitionLevels, dataEncoding, compressedData,
+      uncompressedDataSize, statistics, null, null);
+  }
+
+
+  /**
    * Writes a single v2 data page
    * @param rowCount count of rows
    * @param nullCount count of nulls
@@ -767,7 +785,9 @@ public class ParquetFileWriter {
                               Encoding dataEncoding,
                               BytesInput compressedData,
                               int uncompressedDataSize,
-                              Statistics<?> statistics) throws IOException {
+                              Statistics<?> statistics,
+                              BlockCipher.Encryptor blockEncryptor,
+                              byte[] AAD) throws IOException {
     state = state.write();
     int rlByteLength = toIntWithCheck(repetitionLevels.size());
     int dlByteLength = toIntWithCheck(definitionLevels.size());
@@ -791,7 +811,9 @@ public class ParquetFileWriter {
       dataEncoding,
       rlByteLength,
       dlByteLength,
-      out);
+      out,
+      blockEncryptor,
+      AAD);
 
     long headersSize  = out.getPos() - beforeHeader;
     this.uncompressedLength += uncompressedSize + headersSize;
