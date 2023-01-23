@@ -33,7 +33,7 @@ public abstract class BytePacker {
 
   /**
    * unpack the output int values at a time.
-   *
+   * unpackCount is a multiple of 8
    * For AVX512, the register is 512 bits, so output values at a time maybe different when different bitWidth.
    */
   protected int unpackCount;
@@ -117,15 +117,25 @@ public abstract class BytePacker {
     unpack32Values(ByteBuffer.wrap(input), inPos, output, outPos);
   }
 
+  /**
+   * unpack bitWidth bytes from input at inPos into {unpackCount} values in output at outPos using Java Vector API.
+   * @param input the input bytes
+   * @param inPos where to read from in input
+   * @param output the output values
+   * @param outPos where to write to in output
+   */
   public void unpackValuesVector(final byte[] input, final int inPos, final int[] output, final int outPos) {
 
   }
 
+  /**
+   * unpack bitWidth bytes from input at inPos into {unpackCount} values in output at outPos using Java Vector API.
+   * @param input the input bytes
+   * @param inPos where to read from in input
+   * @param output the output values
+   * @param outPos where to write to in output
+   */
   public void unpackValuesVector(final ByteBuffer input, final int inPos, final int[] output, final int outPos) {
-
-  }
-
-  public void packValuesVector(final int[] input, final int inPos, final byte[] output, final int outPos) {
 
   }
 }

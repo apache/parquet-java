@@ -652,7 +652,7 @@
     <profile>
       <id>jdk9+</id>
       <activation>
-        <jdk>[1.9,16]</jdk>
+        <jdk>[1.9,)</jdk>
       </activation>
       <build>
         <plugins>
@@ -668,21 +668,42 @@
     </profile>
 
     <profile>
-      <id>jdk17</id>
-      <activation>
-        <jdk>17</jdk>
-      </activation>
+      <id>java17-target</id>
       <build>
         <plugins>
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-compiler-plugin</artifactId>
             <configuration>
-              <source>17</source>
-              <target>17</target>
+              <release>17</release>
               <compilerArgs combine.children="append">
                 <compilerArg>${extraJavaVectorTestArgs}</compilerArg>
               </compilerArgs>
+            </configuration>
+          </plugin>
+
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-surefire-plugin</artifactId>
+            <configuration>
+              <argLine>${surefire.argLine} ${extraJavaTestArgs} ${extraJavaVectorTestArgs}</argLine>
+              <systemPropertyVariables>
+                <!-- Configure Parquet logging during tests
+                     See http://www.slf4j.org/api/org/slf4j/impl/SimpleLogger.html
+                     -->
+                <org.slf4j.simpleLogger.defaultLogLevel>${surefire.logLevel}</org.slf4j.simpleLogger.defaultLogLevel>
+                <org.slf4j.simpleLogger.showDateTime>true</org.slf4j.simpleLogger.showDateTime>
+                <org.slf4j.simpleLogger.dateTimeFormat>YYYY-MM-dd HH:mm:ss</org.slf4j.simpleLogger.dateTimeFormat>
+                <org.slf4j.simpleLogger.showThreadName>false</org.slf4j.simpleLogger.showThreadName>
+                <org.slf4j.simpleLogger.showShortLogName>true</org.slf4j.simpleLogger.showShortLogName>
+
+                <!-- Configure log level for Hadoop -->
+                <hadoop.logLevel>${surefire.logLevel}</hadoop.logLevel>
+                <enableResourceIntensiveTests>${enableResourceIntensiveTests}</enableResourceIntensiveTests>
+              </systemPropertyVariables>
+              <excludes>
+                <exclude>**/benchmark/*.java</exclude>
+              </excludes>
             </configuration>
           </plugin>
 

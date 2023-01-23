@@ -19,37 +19,60 @@
 package org.apache.parquet.column.values.bitpacking;
 
 import org.apache.parquet.bytes.ByteBufferInputStream;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.EOFException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
- * This class is provided for big data applications(such as Spark)
+ * This is a utils class which is used for big data applications(such as Spark Flink)
  *
- * - For Intel CPU, Flags avx512_vbmi2 && avx512_vbmi2 can have better performance gains
+ * - For Intel CPU, Flags avx512vbmi && avx512_vbmi2 can have better performance gains
  */
-
 public class ParquetReadRouter {
+  private static final Logger LOG = LoggerFactory.getLogger(ParquetReadRouter.class);
+
+  private static volatile Boolean vector;
+
+  public static void read(int bitWidth, ByteBufferInputStream in, int currentCount, int[] currentBuffer) throws IOException {
+    if (supportVector()) {
+      readBatchVector(bitWidth, in, currentCount, currentBuffer);
+    } else {
+      readBatchVector(bitWidth, in, currentCount, currentBuffer);
+    }
+  }
+
   public static void readBatchVector(int bitWidth, ByteBufferInputStream in, int currentCount, int[] currentBuffer) throws IOException {
     BytePacker packer = Packer.LITTLE_ENDIAN.newBytePacker(bitWidth);
     BytePacker packerVector = Packer.LITTLE_ENDIAN.newBytePackerVector(bitWidth);
     int valueIndex = 0;
     int byteIndex = 0;
-    int outCountPerVector = packerVector.getUnpackCount();
+    int unpackCount = packerVector.getUnpackCount();
     int inputByteCountPerVector = packerVector.getUnpackCount() / 8 * bitWidth;
     int totalByteCount = currentCount * bitWidth / 8;
-    int totalByteCountVector = totalByteCount - inputByteCountPerVector * 2;
+
+    // register of avx512 are 512 bits, and can load up to 64 bytes
+    int totalByteCountVector = totalByteCount - 64;
     ByteBuffer buffer = in.slice(totalByteCount);
     if (buffer.hasArray()) {
-      for (; byteIndex < totalByteCountVector; byteIndex += inputByteCountPerVector, valueIndex += outCountPerVector) {
+      for (; byteIndex < totalByteCountVector; byteIndex += inputByteCountPerVector, valueIndex += unpackCount) {
         packerVector.unpackValuesVector(buffer.array(), buffer.arrayOffset() + buffer.position() + byteIndex, currentBuffer, valueIndex);
       }
+      // If the remaining bytes size <= 64, the remaining bytes are unpacked by packer
       for (; byteIndex < totalByteCount; byteIndex += bitWidth, valueIndex += 8) {
         packer.unpack8Values(buffer.array(), buffer.arrayOffset() + buffer.position() + byteIndex, currentBuffer, valueIndex);
       }
     } else {
-      for (; byteIndex < totalByteCountVector; byteIndex += inputByteCountPerVector, valueIndex += outCountPerVector) {
+      for (; byteIndex < totalByteCountVector; byteIndex += inputByteCountPerVector, valueIndex += unpackCount) {
         packerVector.unpackValuesVector(buffer, buffer.position() + byteIndex, currentBuffer, valueIndex);
       }
       for (; byteIndex < totalByteCount; byteIndex += bitWidth, valueIndex += 8) {
@@ -66,5 +89,45 @@ public class ParquetReadRouter {
       packer.unpack8Values(buffer, buffer.position(), currentBuffer, valueIndex);
       valueIndex += 8;
     }
+  }
+
+  public static Boolean supportVector() {
+    if (vector != null) {
+      return vector;
+    }
+    synchronized (ParquetReadRouter.class) {
+      if (vector == null) {
+        synchronized (ParquetReadRouter.class) {
+          vector = avx512Flag();
+        }
+      }
+    }
+    return vector;
+  }
+
+  private static boolean avx512Flag() {
+    try {
+      String os = System.getProperty("os.name");
+      if (os == null || !os.toLowerCase().startsWith("linux")) {
+        return false;
+      }
+      List<String> allLines = Files.readAllLines(Paths.get("/proc/cpuinfo"), StandardCharsets.UTF_8);
+      for (String line : allLines) {
+        if (line != null && line.startsWith("flags")) {
+          int index = line.indexOf(":");
+          if (index < 0) {
+            continue;
+          }
+          line = line.substring(index + 1);
+          Set<String> flagsSet = Arrays.stream(line.split(" ")).collect(Collectors.toSet());
+          if (flagsSet.contains("avx512vbmi") && flagsSet.contains("avx512_vbmi2")) {
+            return true;
+          }
+        }
+      }
+    } catch (Exception ex) {
+      LOG.warn("Not getting CPU info error");
+    }
+    return false;
   }
 }
