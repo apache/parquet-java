@@ -125,7 +125,7 @@ public class ParquetReadRouter {
         }
       }
     } catch (Exception ex) {
-      LOG.warn("Not getting CPU info error");
+      LOG.warn("Failed to gett CPU info");
     }
     return false;
   }
