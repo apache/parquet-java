@@ -122,7 +122,7 @@ public enum Packer {
   public abstract BytePacker newBytePacker(int width);
 
   public BytePacker newBytePackerVector(int width) {
-    throw new RuntimeException("This function must be implemented by subclasses!");
+    throw new RuntimeException("newBytePackerVector must be implemented by subclasses!");
   }
 
   /**
