@@ -46,7 +46,7 @@ public class ParquetReadRouter {
     if (supportVector()) {
       readBatchVector(bitWidth, in, currentCount, currentBuffer);
     } else {
-      readBatchVector(bitWidth, in, currentCount, currentBuffer);
+      readBatch(bitWidth, in, currentCount, currentBuffer);
     }
   }
 
