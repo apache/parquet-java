@@ -34,7 +34,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * This is a utils class which is used for big data applications(such as Spark Flink).
+ * Utility class for big data applications (such as Apache Spark and Apache Flink).
  * For Intel CPU, Flags containing avx512vbmi and avx512_vbmi2 can have better performance gains.
  */
 public class ParquetReadRouter {
