@@ -32,7 +32,7 @@ public abstract class BytePacker {
   private final int bitWidth;
 
   /**
-   * unpack the output int values at a time.
+   * Number of integer values to be unpacked at a time.
    * unpackCount is a multiple of 8
    * For AVX512, the register is 512 bits, so output values at a time maybe different when different bitWidth.
    */
