@@ -50,7 +50,7 @@ public class ParquetReadRouter {
 
   private static volatile Boolean vector;
 
-  // The is just a logical method, most call readBatchUsing512Vector or readBatch directly given that you should know your computer system
+  // Dispatches to use vector when available. Directly call readBatchUsing512Vector() if you are sure about it.
   public static void read(int bitWidth, ByteBufferInputStream in, int currentCount, int[] currentBuffer) throws IOException {
     if (support512Vector()) {
       readBatchUsing512Vector(bitWidth, in, currentCount, currentBuffer);
