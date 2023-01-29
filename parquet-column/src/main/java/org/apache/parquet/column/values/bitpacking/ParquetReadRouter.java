@@ -43,19 +43,25 @@ public class ParquetReadRouter {
   private static final int BITS_PER_BYTE = 8;
 
   // register of avx512 are 512 bits, and can load up to 64 bytes
-  private static final int BYTES_PER_512VECTOR = 64;
+  private static final int BYTES_PER_VECTOR_512 = 64;
 
   // values are bit packed 8 at a time, so reading bitWidth will always work
-  private static final int VALUES_PER_PACKED = 8;
+  private static final int NUM_VALUES_TO_PACK = 8;
 
-  private static volatile Boolean vector;
+  private static final VectorSupport vectorSupport;
+
+  static {
+    vectorSupport = getSupportVectorFromCPUFlags();
+  }
 
   // Dispatches to use vector when available. Directly call readBatchUsing512Vector() if you are sure about it.
   public static void read(int bitWidth, ByteBufferInputStream in, int currentCount, int[] currentBuffer) throws IOException {
-    if (support512Vector()) {
-      readBatchUsing512Vector(bitWidth, in, currentCount, currentBuffer);
-    } else {
-      readBatch(bitWidth, in, currentCount, currentBuffer);
+    switch (vectorSupport) {
+      case VECTOR_512:
+        readBatchUsing512Vector(bitWidth, in, currentCount, currentBuffer);
+        break;
+      default:
+        readBatch(bitWidth, in, currentCount, currentBuffer);
     }
   }
 
@@ -68,21 +74,21 @@ public class ParquetReadRouter {
     int unpackCount = packerVector.getUnpackCount();
     int inputByteCountPerVector = packerVector.getUnpackCount() / BITS_PER_BYTE * bitWidth;
     int totalByteCount = currentCount * bitWidth / BITS_PER_BYTE;
-    int totalByteCountVector = totalByteCount - BYTES_PER_512VECTOR;
+    int totalByteCountVector = totalByteCount - BYTES_PER_VECTOR_512;
     ByteBuffer buffer = in.slice(totalByteCount);
     if (buffer.hasArray()) {
       for (; byteIndex < totalByteCountVector; byteIndex += inputByteCountPerVector, valueIndex += unpackCount) {
         packerVector.unpackValuesUsingVector(buffer.array(), buffer.arrayOffset() + buffer.position() + byteIndex, currentBuffer, valueIndex);
       }
       // If the remaining bytes size <= {BYTES_PER_512VECTOR}, the remaining bytes are unpacked by packer
-      for (; byteIndex < totalByteCount; byteIndex += bitWidth, valueIndex += VALUES_PER_PACKED) {
+      for (; byteIndex < totalByteCount; byteIndex += bitWidth, valueIndex += NUM_VALUES_TO_PACK) {
         packer.unpack8Values(buffer.array(), buffer.arrayOffset() + buffer.position() + byteIndex, currentBuffer, valueIndex);
       }
     } else {
       for (; byteIndex < totalByteCountVector; byteIndex += inputByteCountPerVector, valueIndex += unpackCount) {
         packerVector.unpackValuesUsingVector(buffer, buffer.position() + byteIndex, currentBuffer, valueIndex);
       }
-      for (; byteIndex < totalByteCount; byteIndex += bitWidth, valueIndex += VALUES_PER_PACKED) {
+      for (; byteIndex < totalByteCount; byteIndex += bitWidth, valueIndex += NUM_VALUES_TO_PACK) {
         packer.unpack8Values(buffer, buffer.position() + byteIndex, currentBuffer, valueIndex);
       }
     }
@@ -95,29 +101,15 @@ public class ParquetReadRouter {
     while (valueIndex < currentCount) {
       ByteBuffer buffer = in.slice(bitWidth);
       packer.unpack8Values(buffer, buffer.position(), currentBuffer, valueIndex);
-      valueIndex += VALUES_PER_PACKED;
+      valueIndex += NUM_VALUES_TO_PACK;
     }
   }
 
-  public static Boolean support512Vector() {
-    if (vector != null) {
-      return vector;
-    }
-    synchronized (ParquetReadRouter.class) {
-      if (vector == null) {
-        synchronized (ParquetReadRouter.class) {
-          vector = contain512VectorCPUFlags();
-        }
-      }
-    }
-    return vector;
-  }
-
-  private static boolean contain512VectorCPUFlags() {
+  private static VectorSupport getSupportVectorFromCPUFlags() {
     try {
       String os = System.getProperty("os.name");
       if (os == null || !os.toLowerCase().startsWith("linux")) {
-        return false;
+        return VectorSupport.NONE;
       }
       List<String> allLines = Files.readAllLines(Paths.get("/proc/cpuinfo"), StandardCharsets.UTF_8);
       for (String line : allLines) {
@@ -129,13 +121,13 @@ public class ParquetReadRouter {
           line = line.substring(index + 1);
           Set<String> flagsSet = Arrays.stream(line.split(" ")).collect(Collectors.toSet());
           if (flagsSet.contains("avx512vbmi") && flagsSet.contains("avx512_vbmi2")) {
-            return true;
+            return VectorSupport.VECTOR_512;
           }
         }
       }
     } catch (Exception ex) {
       LOG.warn("Failed to get CPU info");
     }
-    return false;
+    return VectorSupport.NONE;
   }
 }

@@ -50,7 +50,7 @@ public abstract class BytePacker {
   }
 
   public int getUnpackCount() {
-    throw new RuntimeException("The method must be implemented by subclass!");
+    throw new RuntimeException("getUnpackCount must be implemented by subclass!");
   }
 
   /**
@@ -125,7 +125,7 @@ public abstract class BytePacker {
    * @param outPos where to write to in output
    */
   public void unpackValuesUsingVector(final byte[] input, final int inPos, final int[] output, final int outPos) {
-
+    throw new RuntimeException("unpackValuesUsingVector must be implemented by subclass!");
   }
 
   /**
@@ -136,6 +136,6 @@ public abstract class BytePacker {
    * @param outPos where to write to in output
    */
   public void unpackValuesUsingVector(final ByteBuffer input, final int inPos, final int[] output, final int outPos) {
-
+    throw new RuntimeException("unpackValuesUsingVector must be implemented by subclass!");
   }
 }

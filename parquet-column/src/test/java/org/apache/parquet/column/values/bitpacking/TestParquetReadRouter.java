@@ -28,27 +28,27 @@ import static org.junit.Assert.assertArrayEquals;
 
 public class TestParquetReadRouter {
 
-  /**
-   * The range of bitWidth is 1 ~ 32, change it directly if test other bitWidth.
-   */
-  private static final int bitWidth = 7;
+  private static final int minBitWidth = 1;
+  private static final int maxBitWidth = 32;
   private static final int outputValues = 1024;
-  private final byte[] input = new byte[outputValues * bitWidth / 8];
   private final int[] output = new int[outputValues];
   private final int[] outputBatch = new int[outputValues];
   private final int[] outputBatchVector = new int[outputValues];
 
   @Test
   public void testRead() throws IOException {
-    for (int i = 0; i < input.length; i++) {
-      input[i] = (byte) i;
-    }
-    ByteBufferInputStream inputStream = ByteBufferInputStream.wrap(ByteBuffer.wrap(input));
+    for (int bitWidth=minBitWidth; bitWidth <= maxBitWidth; bitWidth++) {
+      byte[] input = new byte[outputValues * bitWidth / 8];
+      for (int i = 0; i < input.length; i++) {
+        input[i] = (byte) i;
+      }
+      ByteBufferInputStream inputStream = ByteBufferInputStream.wrap(ByteBuffer.wrap(input));
 
-    ParquetReadRouter.read(bitWidth, inputStream, 0, output);
-    ParquetReadRouter.readBatch(bitWidth, inputStream, 0, outputBatch);
-    ParquetReadRouter.readBatchUsing512Vector(bitWidth, inputStream, 0, outputBatchVector);
-    assertArrayEquals(output, outputBatch);
-    assertArrayEquals(output, outputBatchVector);
+      ParquetReadRouter.read(bitWidth, inputStream, 0, output);
+      ParquetReadRouter.readBatch(bitWidth, inputStream, 0, outputBatch);
+      ParquetReadRouter.readBatchUsing512Vector(bitWidth, inputStream, 0, outputBatchVector);
+      assertArrayEquals(output, outputBatch);
+      assertArrayEquals(output, outputBatchVector);
+    }
   }
 }
