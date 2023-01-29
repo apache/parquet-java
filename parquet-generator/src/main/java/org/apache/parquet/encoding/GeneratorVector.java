@@ -18,13 +18,13 @@
  */
 package org.apache.parquet.encoding;
 
-import org.apache.parquet.encoding.vectorbitpacking.BitPackingGeneratorVector;
+import org.apache.parquet.encoding.vectorbitpacking.BitPackingGenerator512Vector;
 
 /**
  * main class for code generation hook in build for encodings vector generation
  */
 public class GeneratorVector {
   public static void main(String[] args) throws Exception {
-    BitPackingGeneratorVector.main(args);
+    BitPackingGenerator512Vector.main(args);
   }
 }

@@ -72,7 +72,7 @@ public class ByteBitPackingVectorBenchmarks {
     int totalByteCountVector = totalBytesCount - inputByteCountPerVector;
 
     for (; byteIndex < totalByteCountVector; byteIndex += inputByteCountPerVector, valueIndex += outCountPerVector) {
-      bytePackerVector.unpackValuesVector(input, byteIndex, outputVector, valueIndex);
+      bytePackerVector.unpackValuesUsingVector(input, byteIndex, outputVector, valueIndex);
     }
 
     // tail bytes processed

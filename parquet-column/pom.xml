@@ -191,7 +191,7 @@
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-failsafe-plugin</artifactId>
             <configuration>
-              <argLine>${extraJavaVectorTestArgs}</argLine>
+              <argLine>${extraJavaVectorArgs}</argLine>
             </configuration>
           </plugin>
 
@@ -199,7 +199,7 @@
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-surefire-plugin</artifactId>
             <configuration>
-              <argLine>${extraJavaVectorTestArgs}</argLine>
+              <argLine>${extraJavaVectorArgs}</argLine>
             </configuration>
           </plugin>
         </plugins>

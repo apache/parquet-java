@@ -64,14 +64,14 @@ public enum Packer {
 
     @Override
     public BytePacker newBytePackerVector(int width) {
-      if (leBytePackerVectorFactory == null) {
+      if (leBytePacker512VectorFactory == null) {
         synchronized (Packer.class) {
-          if (leBytePackerVectorFactory == null) {
-            leBytePackerVectorFactory = getBytePackerFactory("ByteBitPackingVectorLE");
+          if (leBytePacker512VectorFactory == null) {
+            leBytePacker512VectorFactory = getBytePackerFactory("ByteBitPacking512VectorLE");
           }
         }
       }
-      return leBytePackerVectorFactory.newBytePacker(width);
+      return leBytePacker512VectorFactory.newBytePacker(width);
     }
 
     @Override
@@ -105,7 +105,7 @@ public enum Packer {
   static IntPackerFactory leIntPackerFactory = getIntPackerFactory("LemireBitPackingLE");
   static BytePackerFactory beBytePackerFactory = getBytePackerFactory("ByteBitPackingBE");
   static BytePackerFactory leBytePackerFactory = getBytePackerFactory("ByteBitPackingLE");
-  static BytePackerFactory leBytePackerVectorFactory = null;
+  static BytePackerFactory leBytePacker512VectorFactory = null;
   static BytePackerForLongFactory beBytePackerForLongFactory = getBytePackerForLongFactory("ByteBitPackingForLongBE");
   static BytePackerForLongFactory leBytePackerForLongFactory = getBytePackerForLongFactory("ByteBitPackingForLongLE");
 

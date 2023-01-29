@@ -27,15 +27,15 @@ import java.util.List;
 
 import static org.junit.Assert.assertArrayEquals;
 
-public class TestByteBitPackingVectorLE {
+public class TestByteBitPacking512VectorLE {
 
   @Test
-  public void unpackValuesVector() {
+  public void unpackValuesUsingVector() {
     for(int i=1; i<=32; i++) {
-      unpackValuesVectorBitWidth(i);
+      unpackValuesUsingVectorBitWidth(i);
     }
   }
-  private void unpackValuesVectorBitWidth(int bitWidth) {
+  private void unpackValuesUsingVectorBitWidth(int bitWidth) {
     List<int[]> intInputs = getRangeData(bitWidth);
 
     for(int[] intInput : intInputs) {
@@ -52,10 +52,10 @@ public class TestByteBitPackingVectorLE {
       }
 
       unpack8Values(bitWidth, byteOutput, output1);
-      unpackValuesVectorArray(bitWidth, byteOutput, output2);
+      unpackValuesUsingVectorArray(bitWidth, byteOutput, output2);
 
       ByteBuffer byteBuffer = ByteBuffer.wrap(byteOutput);
-      unpackValuesVectorByteBuffer(bitWidth, byteBuffer, output3);
+      unpackValuesUsingVectorByteBuffer(bitWidth, byteBuffer, output3);
 
       assertArrayEquals(intInput, output1);
       assertArrayEquals(intInput, output2);
@@ -72,7 +72,7 @@ public class TestByteBitPackingVectorLE {
     }
   }
 
-  public void unpackValuesVectorArray(int bitWidth, byte[] input, int[] output) {
+  public void unpackValuesUsingVectorArray(int bitWidth, byte[] input, int[] output) {
     BytePacker bytePacker = Packer.LITTLE_ENDIAN.newBytePacker(bitWidth);
     BytePacker bytePackerVector = Packer.LITTLE_ENDIAN.newBytePackerVector(bitWidth);
 
@@ -84,14 +84,14 @@ public class TestByteBitPackingVectorLE {
     int totalByteCountVector = totalByteCount - inputByteCountPerVector;
 
     for (; byteIndex < totalByteCountVector; byteIndex += inputByteCountPerVector, valueIndex += outCountPerVector) {
-      bytePackerVector.unpackValuesVector(input, byteIndex, output, valueIndex);
+      bytePackerVector.unpackValuesUsingVector(input, byteIndex, output, valueIndex);
     }
     for (; byteIndex < totalByteCount; byteIndex += bitWidth, valueIndex += 8) {
       bytePacker.unpack8Values(input, byteIndex, output, valueIndex);
     }
   }
 
-  public void unpackValuesVectorByteBuffer(int bitWidth, ByteBuffer input, int[] output) {
+  public void unpackValuesUsingVectorByteBuffer(int bitWidth, ByteBuffer input, int[] output) {
     BytePacker bytePacker = Packer.LITTLE_ENDIAN.newBytePacker(bitWidth);
     BytePacker bytePackerVector = Packer.LITTLE_ENDIAN.newBytePackerVector(bitWidth);
 
@@ -103,7 +103,7 @@ public class TestByteBitPackingVectorLE {
     int totalByteCountVector = totalByteCount - inputByteCountPerVector;
 
     for (; byteIndex < totalByteCountVector; byteIndex += inputByteCountPerVector, valueIndex += outCountPerVector) {
-      bytePackerVector.unpackValuesVector(input, byteIndex, output, valueIndex);
+      bytePackerVector.unpackValuesUsingVector(input, byteIndex, output, valueIndex);
     }
     for (; byteIndex < totalByteCount; byteIndex += bitWidth, valueIndex += 8) {
       bytePacker.unpack8Values(input, byteIndex, output, valueIndex);

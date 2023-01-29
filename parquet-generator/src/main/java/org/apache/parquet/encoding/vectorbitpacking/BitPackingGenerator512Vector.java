@@ -18,15 +18,19 @@
  */
 package org.apache.parquet.encoding.vectorbitpacking;
 
-import java.io.*;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 
 /**
  * This class generates vector bit packers that pack the most significant bit first.
  * The result of the generation is checked in. To regenerate the code run this class and check in the result.
  */
-public class BitPackingGeneratorVector {
-  private static final String CLASS_NAME_PREFIX_FOR_INT = "ByteBitPackingVector";
-  private static final String CLASS_NAME_PREFIX_FOR_LONG = "ByteBitPackingVectorForLong";
+public class BitPackingGenerator512Vector {
+  private static final String CLASS_NAME_PREFIX_FOR_INT = "ByteBitPacking512Vector";
+  private static final String CLASS_NAME_PREFIX_FOR_LONG = "ByteBitPacking512VectorForLong";
 
   public static void main(String[] args) throws Exception {
     String basePath = args[0];
@@ -52,8 +56,8 @@ public class BitPackingGeneratorVector {
     if (!file.getParentFile().exists()) {
       file.getParentFile().mkdirs();
     }
-    ClassLoader classLoader = BitPackingGeneratorVector.class.getClassLoader();
-    try (InputStream inputStream = classLoader.getResourceAsStream("ByteBitPackingVectorLE");
+    ClassLoader classLoader = BitPackingGenerator512Vector.class.getClassLoader();
+    try (InputStream inputStream = classLoader.getResourceAsStream("ByteBitPacking512VectorLE");
          OutputStream output = new FileOutputStream(file, false)) {
       byte[] bytes = new byte[inputStream.available()];
       inputStream.read(bytes);

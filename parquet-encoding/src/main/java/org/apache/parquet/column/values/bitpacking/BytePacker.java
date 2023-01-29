@@ -124,7 +124,7 @@ public abstract class BytePacker {
    * @param output the output values
    * @param outPos where to write to in output
    */
-  public void unpackValuesVector(final byte[] input, final int inPos, final int[] output, final int outPos) {
+  public void unpackValuesUsingVector(final byte[] input, final int inPos, final int[] output, final int outPos) {
 
   }
 
@@ -135,7 +135,7 @@ public abstract class BytePacker {
    * @param output the output values
    * @param outPos where to write to in output
    */
-  public void unpackValuesVector(final ByteBuffer input, final int inPos, final int[] output, final int outPos) {
+  public void unpackValuesUsingVector(final ByteBuffer input, final int inPos, final int[] output, final int outPos) {
 
   }
 }

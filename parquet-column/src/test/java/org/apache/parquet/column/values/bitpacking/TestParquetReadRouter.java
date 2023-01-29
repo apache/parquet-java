@@ -47,7 +47,7 @@ public class TestParquetReadRouter {
 
     ParquetReadRouter.read(bitWidth, inputStream, 0, output);
     ParquetReadRouter.readBatch(bitWidth, inputStream, 0, outputBatch);
-    ParquetReadRouter.readBatchVector(bitWidth, inputStream, 0, outputBatchVector);
+    ParquetReadRouter.readBatchUsing512Vector(bitWidth, inputStream, 0, outputBatchVector);
     assertArrayEquals(output, outputBatch);
     assertArrayEquals(output, outputBatchVector);
   }

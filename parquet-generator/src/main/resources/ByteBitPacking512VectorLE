@@ -19,14 +19,22 @@
 
 package org.apache.parquet.column.values.bitpacking;
 
-import jdk.incubator.vector.*;
+import jdk.incubator.vector.ByteVector;
+import jdk.incubator.vector.IntVector;
+import jdk.incubator.vector.LongVector;
+import jdk.incubator.vector.ShortVector;
+import jdk.incubator.vector.Vector;
+import jdk.incubator.vector.VectorMask;
+import jdk.incubator.vector.VectorOperators;
+import jdk.incubator.vector.VectorShuffle;
+import jdk.incubator.vector.VectorSpecies;
 
 import java.nio.ByteBuffer;
 
 /**
  * This is an auto-generated source file and should not edit it directly.
  */
-public abstract class ByteBitPackingVectorLE {
+public abstract class ByteBitPacking512VectorLE {
   private static final BytePacker[] packers = new BytePacker[33];
 
   static {
@@ -100,13 +108,10 @@ public abstract class ByteBitPackingVectorLE {
     public final void unpack32Values(final ByteBuffer in, final int inPos, final int[] out, final int outPos) {
     }
 
-    public final void unpackValuesVector(final byte[] input, final int inPos, final int[] output, final int outPos) {
+    public final void unpackValuesUsingVector(final byte[] input, final int inPos, final int[] output, final int outPos) {
     }
 
-    public final void unpackValuesVector(final ByteBuffer input, final int inPos, final int[] output, final int outPos) {
-    }
-
-    public final void packValuesVector(final int[] input, final int inPos, final byte[] output, final int outPos) {
+    public final void unpackValuesUsingVector(final ByteBuffer input, final int inPos, final int[] output, final int outPos) {
     }
   }
 
@@ -162,7 +167,7 @@ public abstract class ByteBitPackingVectorLE {
       notSupport();
     }
 
-    public final void unpackValuesVector(final byte[] in, final int inPos, final int[] out, final int outPos) {
+    public final void unpackValuesUsingVector(final byte[] in, final int inPos, final int[] out, final int outPos) {
       ByteVector byteVector = ByteVector.fromArray(BYTE_SPECIES_64, in, inPos);
       ShortVector tempRes = byteVector.castShape(SHORT_SPECIES_512, 0)
         .reinterpretAsBytes()
@@ -174,7 +179,7 @@ public abstract class ByteBitPackingVectorLE {
       tempRes.castShape(INT_SPECIES_512, 1).reinterpretAsInts().intoArray(out, outPos + 16);
     }
 
-    public final void unpackValuesVector(final ByteBuffer in, final int inPos, final int[] out, final int outPos) {
+    public final void unpackValuesUsingVector(final ByteBuffer in, final int inPos, final int[] out, final int outPos) {
       ByteVector byteVector = ByteVector.fromByteBuffer(BYTE_SPECIES_64, in, inPos, in.order());
       ShortVector tempRes = byteVector.castShape(SHORT_SPECIES_512, 0)
         .reinterpretAsBytes()
@@ -184,10 +189,6 @@ public abstract class ByteBitPackingVectorLE {
         .lanewise(VectorOperators.AND, 1);
       tempRes.castShape(INT_SPECIES_512, 0).reinterpretAsInts().intoArray(out, outPos);
       tempRes.castShape(INT_SPECIES_512, 1).reinterpretAsInts().intoArray(out, outPos + 16);
-    }
-
-    public final void packValuesVector(final int[] input, final int inPos, final byte[] output, final int outPos) {
-      notSupport();
     }
   }
 
@@ -244,7 +245,7 @@ public abstract class ByteBitPackingVectorLE {
       notSupport();
     }
 
-    public final void unpackValuesVector(final byte[] in, final int inPos, final int[] out, final int outPos) {
+    public final void unpackValuesUsingVector(final byte[] in, final int inPos, final int[] out, final int outPos) {
       ByteVector byteVector = ByteVector.fromArray(BYTE_SPECIES, in, inPos);
       ShortVector tempRes = byteVector.castShape(LONG_SPECIES, 0)
         .reinterpretAsBytes()
@@ -257,7 +258,7 @@ public abstract class ByteBitPackingVectorLE {
       tempRes.castShape(INT_SPECIES, 1).reinterpretAsInts().intoArray(out, outPos + 16);
     }
 
-    public final void unpackValuesVector(final ByteBuffer in, final int inPos, final int[] out, final int outPos) {
+    public final void unpackValuesUsingVector(final ByteBuffer in, final int inPos, final int[] out, final int outPos) {
       ByteVector byteVector = ByteVector.fromByteBuffer(BYTE_SPECIES, in, inPos, in.order());
       ShortVector tempRes = byteVector.castShape(LONG_SPECIES, 0)
         .reinterpretAsBytes()
@@ -268,10 +269,6 @@ public abstract class ByteBitPackingVectorLE {
 
       tempRes.castShape(INT_SPECIES, 0).reinterpretAsInts().intoArray(out, outPos);
       tempRes.castShape(INT_SPECIES, 1).reinterpretAsInts().intoArray(out, outPos + 16);
-    }
-
-    public final void packValuesVector(final int[] input, final int inPos, final byte[] output, final int outPos) {
-      notSupport();
     }
   }
 
@@ -352,7 +349,7 @@ public abstract class ByteBitPackingVectorLE {
       notSupport();
     }
 
-    public final void unpackValuesVector(final byte[] in, final int inPos, final int[] out, final int outPos) {
+    public final void unpackValuesUsingVector(final byte[] in, final int inPos, final int[] out, final int outPos) {
       ByteVector byteVector = ByteVector.fromArray(B128, in, inPos, inp_mask)
         .castShape(S512, 0)
         .reinterpretAsBytes();
@@ -372,7 +369,7 @@ public abstract class ByteBitPackingVectorLE {
       tempRes1.castShape(I512, 1).reinterpretAsInts().intoArray(out, outPos + 16);
     }
 
-    public final void unpackValuesVector(final ByteBuffer in, final int inPos, final int[] out, final int outPos) {
+    public final void unpackValuesUsingVector(final ByteBuffer in, final int inPos, final int[] out, final int outPos) {
       ByteVector byteVector = ByteVector.fromByteBuffer(B128, in, inPos, in.order())
         .castShape(S512, 0)
         .reinterpretAsBytes();
@@ -390,10 +387,6 @@ public abstract class ByteBitPackingVectorLE {
 
       tempRes1.castShape(I512, 0).reinterpretAsInts().intoArray(out, outPos);
       tempRes1.castShape(I512, 1).reinterpretAsInts().intoArray(out, outPos + 16);
-    }
-
-    public final void packValuesVector(final int[] input, final int inPos, final byte[] output, final int outPos) {
-      notSupport();
     }
   }
 
@@ -446,7 +439,7 @@ public abstract class ByteBitPackingVectorLE {
       notSupport();
     }
 
-    public final void unpackValuesVector(final byte[] in, final int inPos, final int[] out, final int outPos) {
+    public final void unpackValuesUsingVector(final byte[] in, final int inPos, final int[] out, final int outPos) {
       ByteVector byteVector = ByteVector.fromArray(BSPECIES, in, inPos);
       ShortVector tempRes = byteVector.castShape(ISPECIES, 0).reinterpretAsBytes()
         .rearrange(perm_mask)
@@ -459,7 +452,7 @@ public abstract class ByteBitPackingVectorLE {
       tempRes.castShape(ISPECIES, 1).reinterpretAsInts().intoArray(out, outPos + 16);
     }
 
-    public final void unpackValuesVector(final ByteBuffer in, final int inPos, final int[] out, final int outPos) {
+    public final void unpackValuesUsingVector(final ByteBuffer in, final int inPos, final int[] out, final int outPos) {
       ByteVector byteVector = ByteVector.fromByteBuffer(BSPECIES, in, inPos, in.order());
       ShortVector tempRes = byteVector.castShape(ISPECIES, 0).reinterpretAsBytes()
         .rearrange(perm_mask)
@@ -470,10 +463,6 @@ public abstract class ByteBitPackingVectorLE {
         .lanewise(VectorOperators.AND, 15);
       tempRes.castShape(ISPECIES, 0).reinterpretAsInts().intoArray(out, outPos);
       tempRes.castShape(ISPECIES, 1).reinterpretAsInts().intoArray(out, outPos + 16);
-    }
-
-    public final void packValuesVector(final int[] input, final int inPos, final byte[] output, final int outPos) {
-      notSupport();
     }
   }
 
@@ -553,7 +542,7 @@ public abstract class ByteBitPackingVectorLE {
       notSupport();
     }
 
-    public final void unpackValuesVector(final byte[] in, final int inPos, final int[] out, final int outPos) {
+    public final void unpackValuesUsingVector(final byte[] in, final int inPos, final int[] out, final int outPos) {
       ByteVector byteVector = ByteVector.fromArray(B256, in, inPos, inp_mask)
         .castShape(S512, 0)
         .reinterpretAsBytes();
@@ -574,7 +563,7 @@ public abstract class ByteBitPackingVectorLE {
       tempRes1.castShape(I512, 1).reinterpretAsInts().intoArray(out, outPos + 16);
     }
 
-    public final void unpackValuesVector(final ByteBuffer in, final int inPos, final int[] out, final int outPos) {
+    public final void unpackValuesUsingVector(final ByteBuffer in, final int inPos, final int[] out, final int outPos) {
       ByteVector byteVector = ByteVector.fromByteBuffer(B256, in, inPos, in.order(), inp_mask)
         .castShape(S512, 0)
         .reinterpretAsBytes();
@@ -593,10 +582,6 @@ public abstract class ByteBitPackingVectorLE {
 
       tempRes1.castShape(I512, 0).reinterpretAsInts().intoArray(out, outPos);
       tempRes1.castShape(I512, 1).reinterpretAsInts().intoArray(out, outPos + 16);
-    }
-
-    public final void packValuesVector(final int[] input, final int inPos, final byte[] output, final int outPos) {
-      notSupport();
     }
   }
 
@@ -675,7 +660,7 @@ public abstract class ByteBitPackingVectorLE {
       notSupport();
     }
 
-    public final void unpackValuesVector(final byte[] in, final int inPos, final int[] out, final int outPos) {
+    public final void unpackValuesUsingVector(final byte[] in, final int inPos, final int[] out, final int outPos) {
       ByteVector byteVector = ByteVector.fromArray(B256, in, inPos, inp_mask)
         .castShape(S512, 0)
         .reinterpretAsBytes();
@@ -696,7 +681,7 @@ public abstract class ByteBitPackingVectorLE {
       tempRes1.castShape(I512, 1).reinterpretAsInts().intoArray(out, outPos + 16);
     }
 
-    public final void unpackValuesVector(final ByteBuffer in, final int inPos, final int[] out, final int outPos) {
+    public final void unpackValuesUsingVector(final ByteBuffer in, final int inPos, final int[] out, final int outPos) {
       ByteVector byteVector = ByteVector.fromByteBuffer(B256, in, inPos, in.order(), inp_mask)
         .castShape(S512, 0)
         .reinterpretAsBytes();
@@ -715,10 +700,6 @@ public abstract class ByteBitPackingVectorLE {
 
       tempRes1.castShape(I512, 0).reinterpretAsInts().intoArray(out, outPos);
       tempRes1.castShape(I512, 1).reinterpretAsInts().intoArray(out, outPos + 16);
-    }
-
-    public final void packValuesVector(final int[] input, final int inPos, final byte[] output, final int outPos) {
-      notSupport();
     }
   }
 
@@ -797,7 +778,7 @@ public abstract class ByteBitPackingVectorLE {
       notSupport();
     }
 
-    public final void unpackValuesVector(final byte[] in, final int inPos, final int[] out, final int outPos) {
+    public final void unpackValuesUsingVector(final byte[] in, final int inPos, final int[] out, final int outPos) {
       ByteVector byteVector = ByteVector.fromArray(B256, in, inPos, inp_mask)
         .castShape(S512, 0)
         .reinterpretAsBytes();
@@ -817,7 +798,7 @@ public abstract class ByteBitPackingVectorLE {
       tempRes1.castShape(I512, 1).reinterpretAsInts().intoArray(out, outPos + 16);
     }
 
-    public final void unpackValuesVector(final ByteBuffer in, final int inPos, final int[] out, final int outPos) {
+    public final void unpackValuesUsingVector(final ByteBuffer in, final int inPos, final int[] out, final int outPos) {
       ByteVector byteVector = ByteVector.fromByteBuffer(B256, in, inPos, in.order(), inp_mask)
         .castShape(S512, 0)
         .reinterpretAsBytes();
@@ -835,10 +816,6 @@ public abstract class ByteBitPackingVectorLE {
 
       tempRes1.castShape(I512, 0).reinterpretAsInts().intoArray(out, outPos);
       tempRes1.castShape(I512, 1).reinterpretAsInts().intoArray(out, outPos + 16);
-    }
-
-    public final void packValuesVector(final int[] input, final int inPos, final byte[] output, final int outPos) {
-      notSupport();
     }
   }
 
@@ -880,7 +857,7 @@ public abstract class ByteBitPackingVectorLE {
       notSupport();
     }
 
-    public final void unpackValuesVector(final byte[] in, final int inPos, final int[] out, final int outPos) {
+    public final void unpackValuesUsingVector(final byte[] in, final int inPos, final int[] out, final int outPos) {
       ByteVector byteVector = ByteVector.fromArray(B512, in, inPos);
 
       byteVector.castShape(ISPECIES, 0).lanewise(VectorOperators.AND, 255).reinterpretAsInts().intoArray(out, outPos);
@@ -889,16 +866,12 @@ public abstract class ByteBitPackingVectorLE {
       byteVector.castShape(ISPECIES, 3).lanewise(VectorOperators.AND, 255).reinterpretAsInts().intoArray(out, outPos + 48);
     }
 
-    public final void unpackValuesVector(final ByteBuffer in, final int inPos, final int[] out, final int outPos) {
+    public final void unpackValuesUsingVector(final ByteBuffer in, final int inPos, final int[] out, final int outPos) {
       ByteVector byteVector = ByteVector.fromByteBuffer(B512, in, inPos, in.order());
       byteVector.castShape(ISPECIES, 0).lanewise(VectorOperators.AND, 255).reinterpretAsInts().intoArray(out, outPos);
       byteVector.castShape(ISPECIES, 1).lanewise(VectorOperators.AND, 255).reinterpretAsInts().intoArray(out, outPos + 16);
       byteVector.castShape(ISPECIES, 2).lanewise(VectorOperators.AND, 255).reinterpretAsInts().intoArray(out, outPos + 32);
       byteVector.castShape(ISPECIES, 3).lanewise(VectorOperators.AND, 255).reinterpretAsInts().intoArray(out, outPos + 48);
-    }
-
-    public final void packValuesVector(final int[] input, final int inPos, final byte[] output, final int outPos) {
-      notSupport();
     }
   }
 
@@ -954,7 +927,7 @@ public abstract class ByteBitPackingVectorLE {
       notSupport();
     }
 
-    public final void unpackValuesVector(final byte[] in, final int inPos, final int[] out, final int outPos) {
+    public final void unpackValuesUsingVector(final byte[] in, final int inPos, final int[] out, final int outPos) {
       ByteVector byteVector = ByteVector.fromArray(B512, in, inPos, inp_mask);
       ShortVector tempRes1 = byteVector.rearrange(perm_mask0)
         .reinterpretAsShorts()
@@ -965,7 +938,7 @@ public abstract class ByteBitPackingVectorLE {
       tempRes1.castShape(I512, 1).reinterpretAsInts().intoArray(out, outPos + 16);
     }
 
-    public final void unpackValuesVector(final ByteBuffer in, final int inPos, final int[] out, final int outPos) {
+    public final void unpackValuesUsingVector(final ByteBuffer in, final int inPos, final int[] out, final int outPos) {
       ByteVector byteVector = ByteVector.fromByteBuffer(B512, in, inPos, in.order(), inp_mask);
       ShortVector tempRes1 = byteVector.rearrange(perm_mask0)
         .reinterpretAsShorts()
@@ -974,10 +947,6 @@ public abstract class ByteBitPackingVectorLE {
 
       tempRes1.castShape(I512, 0).reinterpretAsInts().intoArray(out, outPos);
       tempRes1.castShape(I512, 1).reinterpretAsInts().intoArray(out, outPos + 16);
-    }
-
-    public final void packValuesVector(final int[] input, final int inPos, final byte[] output, final int outPos) {
-      notSupport();
     }
   }
 
@@ -1036,7 +1005,7 @@ public abstract class ByteBitPackingVectorLE {
       notSupport();
     }
 
-    public final void unpackValuesVector(final byte[] in, final int inPos, final int[] out, final int outPos) {
+    public final void unpackValuesUsingVector(final byte[] in, final int inPos, final int[] out, final int outPos) {
       ByteVector byteVector = ByteVector.fromArray(B512, in, inPos);
       ShortVector tempRes1 = byteVector.rearrange(perm_mask0)
         .reinterpretAsShorts()
@@ -1046,7 +1015,7 @@ public abstract class ByteBitPackingVectorLE {
       tempRes1.castShape(I512, 1).reinterpretAsInts().intoArray(out, outPos + 16);
     }
 
-    public final void unpackValuesVector(final ByteBuffer in, final int inPos, final int[] out, final int outPos) {
+    public final void unpackValuesUsingVector(final ByteBuffer in, final int inPos, final int[] out, final int outPos) {
       ByteVector byteVector = ByteVector.fromByteBuffer(B512, in, inPos, in.order());
       ShortVector tempRes1 = byteVector.rearrange(perm_mask0)
         .reinterpretAsShorts()
@@ -1054,10 +1023,6 @@ public abstract class ByteBitPackingVectorLE {
         .lanewise(VectorOperators.AND, 1023);
       tempRes1.castShape(I512, 0).reinterpretAsInts().intoArray(out, outPos);
       tempRes1.castShape(I512, 1).reinterpretAsInts().intoArray(out, outPos + 16);
-    }
-
-    public final void packValuesVector(final int[] input, final int inPos, final byte[] output, final int outPos) {
-      notSupport();
     }
   }
 
@@ -1140,7 +1105,7 @@ public abstract class ByteBitPackingVectorLE {
       notSupport();
     }
 
-    public final void unpackValuesVector(final byte[] in, final int inPos, final int[] out, final int outPos) {
+    public final void unpackValuesUsingVector(final byte[] in, final int inPos, final int[] out, final int outPos) {
       ByteVector byteVector = ByteVector.fromArray(B512, in, inPos, inp_mask);
       ShortVector tempRes1 = byteVector.rearrange(perm_mask0)
         .reinterpretAsShorts()
@@ -1156,7 +1121,7 @@ public abstract class ByteBitPackingVectorLE {
       tempRes1.castShape(I512, 1).reinterpretAsInts().intoArray(out, outPos + 16);
     }
 
-    public final void unpackValuesVector(final ByteBuffer in, final int inPos, final int[] out, final int outPos) {
+    public final void unpackValuesUsingVector(final ByteBuffer in, final int inPos, final int[] out, final int outPos) {
       ByteVector byteVector = ByteVector.fromByteBuffer(B512, in, inPos, in.order(), inp_mask);
       ShortVector tempRes1 = byteVector.rearrange(perm_mask0)
         .reinterpretAsShorts()
@@ -1170,10 +1135,6 @@ public abstract class ByteBitPackingVectorLE {
 
       tempRes1.castShape(I512, 0).reinterpretAsInts().intoArray(out, outPos);
       tempRes1.castShape(I512, 1).reinterpretAsInts().intoArray(out, outPos + 16);
-    }
-
-    public final void packValuesVector(final int[] input, final int inPos, final byte[] output, final int outPos) {
-      notSupport();
     }
   }
 
@@ -1232,7 +1193,7 @@ public abstract class ByteBitPackingVectorLE {
       notSupport();
     }
 
-    public final void unpackValuesVector(final byte[] in, final int inPos, final int[] out, final int outPos) {
+    public final void unpackValuesUsingVector(final byte[] in, final int inPos, final int[] out, final int outPos) {
       ByteVector byteVector = ByteVector.fromArray(B512, in, inPos);
       ShortVector tempRes1 = byteVector.rearrange(perm_mask0)
         .reinterpretAsShorts()
@@ -1242,7 +1203,7 @@ public abstract class ByteBitPackingVectorLE {
       tempRes1.castShape(I512, 1).reinterpretAsInts().intoArray(out, outPos + 16);
     }
 
-    public final void unpackValuesVector(final ByteBuffer in, final int inPos, final int[] out, final int outPos) {
+    public final void unpackValuesUsingVector(final ByteBuffer in, final int inPos, final int[] out, final int outPos) {
       ByteVector byteVector = ByteVector.fromByteBuffer(B512, in, inPos, in.order());
       ShortVector tempRes1 = byteVector.rearrange(perm_mask0)
         .reinterpretAsShorts()
@@ -1250,10 +1211,6 @@ public abstract class ByteBitPackingVectorLE {
         .lanewise(VectorOperators.AND, 4095);
       tempRes1.castShape(I512, 0).reinterpretAsInts().intoArray(out, outPos);
       tempRes1.castShape(I512, 1).reinterpretAsInts().intoArray(out, outPos + 16);
-    }
-
-    public final void packValuesVector(final int[] input, final int inPos, final byte[] output, final int outPos) {
-      notSupport();
     }
   }
 
@@ -1334,7 +1291,7 @@ public abstract class ByteBitPackingVectorLE {
       notSupport();
     }
 
-    public final void unpackValuesVector(final byte[] in, final int inPos, final int[] out, final int outPos) {
+    public final void unpackValuesUsingVector(final byte[] in, final int inPos, final int[] out, final int outPos) {
       ByteVector byteVector = ByteVector.fromArray(B512, in, inPos, inp_mask);
       ShortVector tempRes1 = byteVector.rearrange(perm_mask0)
         .reinterpretAsShorts()
@@ -1350,7 +1307,7 @@ public abstract class ByteBitPackingVectorLE {
       tempRes1.castShape(I512, 1).reinterpretAsInts().intoArray(out, outPos + 16);
     }
 
-    public final void unpackValuesVector(final ByteBuffer in, final int inPos, final int[] out, final int outPos) {
+    public final void unpackValuesUsingVector(final ByteBuffer in, final int inPos, final int[] out, final int outPos) {
       ByteVector byteVector = ByteVector.fromByteBuffer(B512, in, inPos, in.order(), inp_mask);
       ShortVector tempRes1 = byteVector.rearrange(perm_mask0)
         .reinterpretAsShorts()
@@ -1364,10 +1321,6 @@ public abstract class ByteBitPackingVectorLE {
 
       tempRes1.castShape(I512, 0).reinterpretAsInts().intoArray(out, outPos);
       tempRes1.castShape(I512, 1).reinterpretAsInts().intoArray(out, outPos + 16);
-    }
-
-    public final void packValuesVector(final int[] input, final int inPos, final byte[] output, final int outPos) {
-      notSupport();
     }
   }
 
@@ -1455,7 +1408,7 @@ public abstract class ByteBitPackingVectorLE {
       notSupport();
     }
 
-    public final void unpackValuesVector(final byte[] in, final int inPos, final int[] out, final int outPos) {
+    public final void unpackValuesUsingVector(final byte[] in, final int inPos, final int[] out, final int outPos) {
       ByteVector byteVector = ByteVector.fromArray(B512, in, inPos, inp_mask);
       ShortVector tempRes1 = byteVector.rearrange(perm_mask0)
         .reinterpretAsShorts()
@@ -1473,7 +1426,7 @@ public abstract class ByteBitPackingVectorLE {
       tempRes1.castShape(I512, 1).reinterpretAsInts().intoArray(out, outPos + 16);
     }
 
-    public final void unpackValuesVector(final ByteBuffer in, final int inPos, final int[] out, final int outPos) {
+    public final void unpackValuesUsingVector(final ByteBuffer in, final int inPos, final int[] out, final int outPos) {
       ByteVector byteVector = ByteVector.fromByteBuffer(B512, in, inPos, in.order(), inp_mask);
       ShortVector tempRes1 = byteVector.rearrange(perm_mask0)
         .reinterpretAsShorts()
@@ -1489,10 +1442,6 @@ public abstract class ByteBitPackingVectorLE {
 
       tempRes1.castShape(I512, 0).reinterpretAsInts().intoArray(out, outPos);
       tempRes1.castShape(I512, 1).reinterpretAsInts().intoArray(out, outPos + 16);
-    }
-
-    public final void packValuesVector(final int[] input, final int inPos, final byte[] output, final int outPos) {
-      notSupport();
     }
   }
 
@@ -1575,7 +1524,7 @@ public abstract class ByteBitPackingVectorLE {
       notSupport();
     }
 
-    public final void unpackValuesVector(final byte[] in, final int inPos, final int[] out, final int outPos) {
+    public final void unpackValuesUsingVector(final byte[] in, final int inPos, final int[] out, final int outPos) {
       ByteVector byteVector = ByteVector.fromArray(B512, in, inPos, inp_mask);
       ShortVector tempRes1 = byteVector.rearrange(perm_mask0)
         .reinterpretAsShorts()
@@ -1590,7 +1539,7 @@ public abstract class ByteBitPackingVectorLE {
       tempRes1.castShape(I512, 1).reinterpretAsInts().intoArray(out, outPos + 16);
     }
 
-    public final void unpackValuesVector(final ByteBuffer in, final int inPos, final int[] out, final int outPos) {
+    public final void unpackValuesUsingVector(final ByteBuffer in, final int inPos, final int[] out, final int outPos) {
       ByteVector byteVector = ByteVector.fromByteBuffer(B512, in, inPos, in.order(), inp_mask);
       ShortVector tempRes1 = byteVector.rearrange(perm_mask0)
         .reinterpretAsShorts()
@@ -1603,10 +1552,6 @@ public abstract class ByteBitPackingVectorLE {
       tempRes1 = tempRes1.lanewise(VectorOperators.OR, tempRes2);
       tempRes1.castShape(I512, 0).reinterpretAsInts().intoArray(out, outPos);
       tempRes1.castShape(I512, 1).reinterpretAsInts().intoArray(out, outPos + 16);
-    }
-
-    public final void packValuesVector(final int[] input, final int inPos, final byte[] output, final int outPos) {
-      notSupport();
     }
   }
 
@@ -1649,22 +1594,18 @@ public abstract class ByteBitPackingVectorLE {
       notSupport();
     }
 
-    public final void unpackValuesVector(final byte[] in, final int inPos, final int[] out, final int outPos) {
+    public final void unpackValuesUsingVector(final byte[] in, final int inPos, final int[] out, final int outPos) {
       ByteVector byteVector = ByteVector.fromArray(B512, in, inPos, inp_mask);
       ShortVector shortVector = byteVector.reinterpretAsShorts();
       shortVector.castShape(I512, 0).lanewise(VectorOperators.AND, 65535).reinterpretAsInts().intoArray(out, outPos);
       shortVector.castShape(I512, 1).lanewise(VectorOperators.AND, 65535).reinterpretAsInts().intoArray(out, outPos + 16);
     }
 
-    public final void unpackValuesVector(final ByteBuffer in, final int inPos, final int[] out, final int outPos) {
+    public final void unpackValuesUsingVector(final ByteBuffer in, final int inPos, final int[] out, final int outPos) {
       ByteVector byteVector = ByteVector.fromByteBuffer(B512, in, inPos, in.order(), inp_mask);
       ShortVector shortVector = byteVector.reinterpretAsShorts();
       shortVector.castShape(I512, 0).lanewise(VectorOperators.AND, 65535).reinterpretAsInts().intoArray(out, outPos);
       shortVector.castShape(I512, 1).lanewise(VectorOperators.AND, 65535).reinterpretAsInts().intoArray(out, outPos + 16);
-    }
-
-    public final void packValuesVector(final int[] input, final int inPos, final byte[] output, final int outPos) {
-      notSupport();
     }
   }
 
@@ -1723,7 +1664,7 @@ public abstract class ByteBitPackingVectorLE {
       notSupport();
     }
 
-    public final void unpackValuesVector(final byte[] in, final int inPos, final int[] out, final int outPos) {
+    public final void unpackValuesUsingVector(final byte[] in, final int inPos, final int[] out, final int outPos) {
       ByteVector byteVector = ByteVector.fromArray(B512, in, inPos, inp_mask);
       IntVector tempRes1 = byteVector.rearrange(perm_mask0)
         .reinterpretAsInts()
@@ -1732,17 +1673,13 @@ public abstract class ByteBitPackingVectorLE {
       tempRes1.intoArray(out, outPos, out_mask);
     }
 
-    public final void unpackValuesVector(final ByteBuffer in, final int inPos, final int[] out, final int outPos) {
+    public final void unpackValuesUsingVector(final ByteBuffer in, final int inPos, final int[] out, final int outPos) {
       ByteVector byteVector = ByteVector.fromByteBuffer(B512, in, inPos, in.order(), inp_mask);
       IntVector tempRes1 = byteVector.rearrange(perm_mask0)
         .reinterpretAsInts()
         .lanewise(VectorOperators.ASHR, rshift_cnt)
         .lanewise(VectorOperators.AND, 131071);
       tempRes1.intoArray(out, outPos, out_mask);
-    }
-
-    public final void packValuesVector(final int[] input, final int inPos, final byte[] output, final int outPos) {
-      notSupport();
     }
   }
 
@@ -1813,7 +1750,7 @@ public abstract class ByteBitPackingVectorLE {
       notSupport();
     }
 
-    public final void unpackValuesVector(final byte[] in, final int inPos, final int[] out, final int outPos) {
+    public final void unpackValuesUsingVector(final byte[] in, final int inPos, final int[] out, final int outPos) {
       ByteVector byteVector = ByteVector.fromArray(B512, in, inPos, inp_mask);
       IntVector tempRes1 = byteVector.rearrange(perm_mask0)
         .reinterpretAsInts()
@@ -1822,17 +1759,13 @@ public abstract class ByteBitPackingVectorLE {
       tempRes1.intoArray(out, outPos, out_mask);
     }
 
-    public final void unpackValuesVector(final ByteBuffer in, final int inPos, final int[] out, final int outPos) {
+    public final void unpackValuesUsingVector(final ByteBuffer in, final int inPos, final int[] out, final int outPos) {
       ByteVector byteVector = ByteVector.fromByteBuffer(B512, in, inPos, in.order(), inp_mask);
       IntVector tempRes1 = byteVector.rearrange(perm_mask0)
         .reinterpretAsInts()
         .lanewise(VectorOperators.ASHR, rshift_cnt)
         .lanewise(VectorOperators.AND, 262143);
       tempRes1.intoArray(out, outPos, out_mask);
-    }
-
-    public final void packValuesVector(final int[] input, final int inPos, final byte[] output, final int outPos) {
-      notSupport();
     }
   }
 
@@ -1895,7 +1828,7 @@ public abstract class ByteBitPackingVectorLE {
       notSupport();
     }
 
-    public final void unpackValuesVector(final byte[] in, final int inPos, final int[] out, final int outPos) {
+    public final void unpackValuesUsingVector(final byte[] in, final int inPos, final int[] out, final int outPos) {
       ByteVector byteVector = ByteVector.fromArray(B512, in, inPos, inp_mask);
       IntVector tempRes1 = byteVector.rearrange(perm_mask0)
         .reinterpretAsInts()
@@ -1905,17 +1838,13 @@ public abstract class ByteBitPackingVectorLE {
 
     }
 
-    public final void unpackValuesVector(final ByteBuffer in, final int inPos, final int[] out, final int outPos) {
+    public final void unpackValuesUsingVector(final ByteBuffer in, final int inPos, final int[] out, final int outPos) {
       ByteVector byteVector = ByteVector.fromByteBuffer(B512, in, inPos, in.order(), inp_mask);
       IntVector tempRes1 = byteVector.rearrange(perm_mask0)
         .reinterpretAsInts()
         .lanewise(VectorOperators.ASHR, rshift_cnt)
         .lanewise(VectorOperators.AND, 524287);
       tempRes1.intoArray(out, outPos, out_mask);
-    }
-
-    public final void packValuesVector(final int[] input, final int inPos, final byte[] output, final int outPos) {
-      notSupport();
     }
   }
 
@@ -1979,7 +1908,7 @@ public abstract class ByteBitPackingVectorLE {
       notSupport();
     }
 
-    public final void unpackValuesVector(final byte[] in, final int inPos, final int[] out, final int outPos) {
+    public final void unpackValuesUsingVector(final byte[] in, final int inPos, final int[] out, final int outPos) {
       ByteVector byteVector = ByteVector.fromArray(B512, in, inPos, inp_mask);
       IntVector tempRes1 = byteVector.rearrange(perm_mask0)
         .reinterpretAsInts()
@@ -1989,7 +1918,7 @@ public abstract class ByteBitPackingVectorLE {
       tempRes1.intoArray(out, outPos, out_mask);
     }
 
-    public final void unpackValuesVector(final ByteBuffer in, final int inPos, final int[] out, final int outPos) {
+    public final void unpackValuesUsingVector(final ByteBuffer in, final int inPos, final int[] out, final int outPos) {
       ByteVector byteVector = ByteVector.fromByteBuffer(B512, in, inPos, in.order(), inp_mask);
       IntVector tempRes1 = byteVector.rearrange(perm_mask0)
         .reinterpretAsInts()
@@ -1997,10 +1926,6 @@ public abstract class ByteBitPackingVectorLE {
         .lanewise(VectorOperators.AND, 1048575);
 
       tempRes1.intoArray(out, outPos, out_mask);
-    }
-
-    public final void packValuesVector(final int[] input, final int inPos, final byte[] output, final int outPos) {
-      notSupport();
     }
   }
 
@@ -2065,7 +1990,7 @@ public abstract class ByteBitPackingVectorLE {
       notSupport();
     }
 
-    public final void unpackValuesVector(final byte[] in, final int inPos, final int[] out, final int outPos) {
+    public final void unpackValuesUsingVector(final byte[] in, final int inPos, final int[] out, final int outPos) {
       ByteVector byteVector = ByteVector.fromArray(B512, in, inPos, inp_mask);
       IntVector tempRes1 = byteVector.rearrange(perm_mask0)
         .reinterpretAsInts()
@@ -2075,7 +2000,7 @@ public abstract class ByteBitPackingVectorLE {
       tempRes1.intoArray(out, outPos, out_mask);
     }
 
-    public final void unpackValuesVector(final ByteBuffer in, final int inPos, final int[] out, final int outPos) {
+    public final void unpackValuesUsingVector(final ByteBuffer in, final int inPos, final int[] out, final int outPos) {
       ByteVector byteVector = ByteVector.fromByteBuffer(B512, in, inPos, in.order(), inp_mask);
       IntVector tempRes1 = byteVector.rearrange(perm_mask0)
         .reinterpretAsInts()
@@ -2083,10 +2008,6 @@ public abstract class ByteBitPackingVectorLE {
         .lanewise(VectorOperators.AND, 2097151);
 
       tempRes1.intoArray(out, outPos, out_mask);
-    }
-
-    public final void packValuesVector(final int[] input, final int inPos, final byte[] output, final int outPos) {
-      notSupport();
     }
   }
 
@@ -2150,7 +2071,7 @@ public abstract class ByteBitPackingVectorLE {
       notSupport();
     }
 
-    public final void unpackValuesVector(final byte[] in, final int inPos, final int[] out, final int outPos) {
+    public final void unpackValuesUsingVector(final byte[] in, final int inPos, final int[] out, final int outPos) {
       ByteVector byteVector = ByteVector.fromArray(B512, in, inPos, inp_mask);
       IntVector tempRes1 = byteVector.rearrange(perm_mask0)
         .reinterpretAsInts()
@@ -2160,7 +2081,7 @@ public abstract class ByteBitPackingVectorLE {
       tempRes1.intoArray(out, outPos, out_mask);
     }
 
-    public final void unpackValuesVector(final ByteBuffer in, final int inPos, final int[] out, final int outPos) {
+    public final void unpackValuesUsingVector(final ByteBuffer in, final int inPos, final int[] out, final int outPos) {
       ByteVector byteVector = ByteVector.fromByteBuffer(B512, in, inPos, in.order(), inp_mask);
       IntVector tempRes1 = byteVector.rearrange(perm_mask0)
         .reinterpretAsInts()
@@ -2168,10 +2089,6 @@ public abstract class ByteBitPackingVectorLE {
         .lanewise(VectorOperators.AND, 4194303);
 
       tempRes1.intoArray(out, outPos, out_mask);
-    }
-
-    public final void packValuesVector(final int[] input, final int inPos, final byte[] output, final int outPos) {
-      notSupport();
     }
   }
 
@@ -2235,7 +2152,7 @@ public abstract class ByteBitPackingVectorLE {
       notSupport();
     }
 
-    public final void unpackValuesVector(final byte[] in, final int inPos, final int[] out, final int outPos) {
+    public final void unpackValuesUsingVector(final byte[] in, final int inPos, final int[] out, final int outPos) {
       ByteVector byteVector = ByteVector.fromArray(B512, in, inPos, inp_mask);
       IntVector tempRes1 = byteVector.rearrange(perm_mask0)
         .reinterpretAsInts()
@@ -2245,7 +2162,7 @@ public abstract class ByteBitPackingVectorLE {
       tempRes1.intoArray(out, outPos, out_mask);
     }
 
-    public final void unpackValuesVector(final ByteBuffer in, final int inPos, final int[] out, final int outPos) {
+    public final void unpackValuesUsingVector(final ByteBuffer in, final int inPos, final int[] out, final int outPos) {
       ByteVector byteVector = ByteVector.fromByteBuffer(B512, in, inPos, in.order(), inp_mask);
       IntVector tempRes1 = byteVector.rearrange(perm_mask0)
         .reinterpretAsInts()
@@ -2253,10 +2170,6 @@ public abstract class ByteBitPackingVectorLE {
         .lanewise(VectorOperators.AND, 8388607);
 
       tempRes1.intoArray(out, outPos, out_mask);
-    }
-
-    public final void packValuesVector(final int[] input, final int inPos, final byte[] output, final int outPos) {
-      notSupport();
     }
   }
 
@@ -2311,7 +2224,7 @@ public abstract class ByteBitPackingVectorLE {
       notSupport();
     }
 
-    public final void unpackValuesVector(final byte[] in, final int inPos, final int[] out, final int outPos) {
+    public final void unpackValuesUsingVector(final byte[] in, final int inPos, final int[] out, final int outPos) {
       ByteVector byteVector = ByteVector.fromArray(B512, in, inPos, inp_mask);
       IntVector tempRes1 = byteVector.rearrange(perm_mask0)
         .reinterpretAsInts()
@@ -2319,16 +2232,12 @@ public abstract class ByteBitPackingVectorLE {
       tempRes1.intoArray(out, outPos, out_mask);
     }
 
-    public final void unpackValuesVector(final ByteBuffer in, final int inPos, final int[] out, final int outPos) {
+    public final void unpackValuesUsingVector(final ByteBuffer in, final int inPos, final int[] out, final int outPos) {
       ByteVector byteVector = ByteVector.fromByteBuffer(B512, in, inPos, in.order(), inp_mask);
       IntVector tempRes1 = byteVector.rearrange(perm_mask0)
         .reinterpretAsInts()
         .lanewise(VectorOperators.AND, 16777215);
       tempRes1.intoArray(out, outPos, out_mask);
-    }
-
-    public final void packValuesVector(final int[] input, final int inPos, final byte[] output, final int outPos) {
-      notSupport();
     }
   }
 
@@ -2394,7 +2303,7 @@ public abstract class ByteBitPackingVectorLE {
       notSupport();
     }
 
-    public final void unpackValuesVector(final byte[] in, final int inPos, final int[] out, final int outPos) {
+    public final void unpackValuesUsingVector(final byte[] in, final int inPos, final int[] out, final int outPos) {
       ByteVector byteVector = ByteVector.fromArray(B512, in, inPos, inp_mask);
       IntVector tempRes1 = byteVector.rearrange(perm_mask0)
         .reinterpretAsInts()
@@ -2405,7 +2314,7 @@ public abstract class ByteBitPackingVectorLE {
 
     }
 
-    public final void unpackValuesVector(final ByteBuffer in, final int inPos, final int[] out, final int outPos) {
+    public final void unpackValuesUsingVector(final ByteBuffer in, final int inPos, final int[] out, final int outPos) {
       ByteVector byteVector = ByteVector.fromByteBuffer(B512, in, inPos, in.order(), inp_mask);
       IntVector tempRes1 = byteVector.rearrange(perm_mask0)
         .reinterpretAsInts()
@@ -2413,10 +2322,6 @@ public abstract class ByteBitPackingVectorLE {
         .lanewise(VectorOperators.AND, 33554431);
 
       tempRes1.intoArray(out, outPos, out_mask);
-    }
-
-    public final void packValuesVector(final int[] input, final int inPos, final byte[] output, final int outPos) {
-      notSupport();
     }
   }
 
@@ -2481,7 +2386,7 @@ public abstract class ByteBitPackingVectorLE {
       notSupport();
     }
 
-    public final void unpackValuesVector(final byte[] in, final int inPos, final int[] out, final int outPos) {
+    public final void unpackValuesUsingVector(final byte[] in, final int inPos, final int[] out, final int outPos) {
       ByteVector byteVector = ByteVector.fromArray(B512, in, inPos, inp_mask);
       IntVector tempRes1 = byteVector.rearrange(perm_mask0)
         .reinterpretAsInts()
@@ -2492,7 +2397,7 @@ public abstract class ByteBitPackingVectorLE {
 
     }
 
-    public final void unpackValuesVector(final ByteBuffer in, final int inPos, final int[] out, final int outPos) {
+    public final void unpackValuesUsingVector(final ByteBuffer in, final int inPos, final int[] out, final int outPos) {
       ByteVector byteVector = ByteVector.fromByteBuffer(B512, in, inPos, in.order(), inp_mask);
       IntVector tempRes1 = byteVector.rearrange(perm_mask0)
         .reinterpretAsInts()
@@ -2500,10 +2405,6 @@ public abstract class ByteBitPackingVectorLE {
         .lanewise(VectorOperators.AND, 67108863);
 
       tempRes1.intoArray(out, outPos, out_mask);
-    }
-
-    public final void packValuesVector(final int[] input, final int inPos, final byte[] output, final int outPos) {
-      notSupport();
     }
   }
 
@@ -2603,7 +2504,7 @@ public abstract class ByteBitPackingVectorLE {
       notSupport();
     }
 
-    public final void unpackValuesVector(final byte[] in, final int inPos, final int[] out, final int outPos) {
+    public final void unpackValuesUsingVector(final byte[] in, final int inPos, final int[] out, final int outPos) {
       ByteVector byteVector = ByteVector.fromArray(B512, in, inPos, inp_mask);
       IntVector tempRes1 = byteVector.rearrange(perm_mask0)
         .reinterpretAsInts()
@@ -2620,7 +2521,7 @@ public abstract class ByteBitPackingVectorLE {
       tempRes1.intoArray(out, outPos, out_mask);
     }
 
-    public final void unpackValuesVector(final ByteBuffer in, final int inPos, final int[] out, final int outPos) {
+    public final void unpackValuesUsingVector(final ByteBuffer in, final int inPos, final int[] out, final int outPos) {
       ByteVector byteVector = ByteVector.fromByteBuffer(B512, in, inPos, in.order(), inp_mask);
       IntVector tempRes1 = byteVector.rearrange(perm_mask0)
         .reinterpretAsInts()
@@ -2635,10 +2536,6 @@ public abstract class ByteBitPackingVectorLE {
       tempRes1 = tempRes1.lanewise(VectorOperators.OR, tempRes2);
 
       tempRes1.intoArray(out, outPos, out_mask);
-    }
-
-    public final void packValuesVector(final int[] input, final int inPos, final byte[] output, final int outPos) {
-      notSupport();
     }
   }
 
@@ -2722,7 +2619,7 @@ public abstract class ByteBitPackingVectorLE {
       notSupport();
     }
 
-    public final void unpackValuesVector(final byte[] in, final int inPos, final int[] out, final int outPos) {
+    public final void unpackValuesUsingVector(final byte[] in, final int inPos, final int[] out, final int outPos) {
       ByteVector byteVector = ByteVector.fromArray(B512, in, inPos, inp_mask);
       IntVector tempRes1 = byteVector.rearrange(perm_mask0)
         .reinterpretAsInts()
@@ -2739,7 +2636,7 @@ public abstract class ByteBitPackingVectorLE {
       tempRes1.intoArray(out, outPos, out_mask);
     }
 
-    public final void unpackValuesVector(final ByteBuffer in, final int inPos, final int[] out, final int outPos) {
+    public final void unpackValuesUsingVector(final ByteBuffer in, final int inPos, final int[] out, final int outPos) {
       ByteVector byteVector = ByteVector.fromByteBuffer(B512, in, inPos, in.order(), inp_mask);
       IntVector tempRes1 = byteVector.rearrange(perm_mask0)
         .reinterpretAsInts()
@@ -2754,10 +2651,6 @@ public abstract class ByteBitPackingVectorLE {
       tempRes1 = tempRes1.lanewise(VectorOperators.OR, tempRes2);
 
       tempRes1.intoArray(out, outPos, out_mask);
-    }
-
-    public final void packValuesVector(final int[] input, final int inPos, final byte[] output, final int outPos) {
-      notSupport();
     }
   }
 
@@ -2841,7 +2734,7 @@ public abstract class ByteBitPackingVectorLE {
       notSupport();
     }
 
-    public final void unpackValuesVector(final byte[] in, final int inPos, final int[] out, final int outPos) {
+    public final void unpackValuesUsingVector(final byte[] in, final int inPos, final int[] out, final int outPos) {
       ByteVector byteVector = ByteVector.fromArray(B512, in, inPos, inp_mask);
       IntVector tempRes1 = byteVector.rearrange(perm_mask0)
         .reinterpretAsInts()
@@ -2859,7 +2752,7 @@ public abstract class ByteBitPackingVectorLE {
 
     }
 
-    public final void unpackValuesVector(final ByteBuffer in, final int inPos, final int[] out, final int outPos) {
+    public final void unpackValuesUsingVector(final ByteBuffer in, final int inPos, final int[] out, final int outPos) {
       ByteVector byteVector = ByteVector.fromByteBuffer(B512, in, inPos, in.order(), inp_mask);
       IntVector tempRes1 = byteVector.rearrange(perm_mask0)
         .reinterpretAsInts()
@@ -2874,10 +2767,6 @@ public abstract class ByteBitPackingVectorLE {
       tempRes1 = tempRes1.lanewise(VectorOperators.OR, tempRes2);
 
       tempRes1.intoArray(out, outPos, out_mask);
-    }
-
-    public final void packValuesVector(final int[] input, final int inPos, final byte[] output, final int outPos) {
-      notSupport();
     }
   }
 
@@ -2961,7 +2850,7 @@ public abstract class ByteBitPackingVectorLE {
       notSupport();
     }
 
-    public final void unpackValuesVector(final byte[] in, final int inPos, final int[] out, final int outPos) {
+    public final void unpackValuesUsingVector(final byte[] in, final int inPos, final int[] out, final int outPos) {
       ByteVector byteVector = ByteVector.fromArray(B512, in, inPos, inp_mask);
       IntVector tempRes1 = byteVector.rearrange(perm_mask0)
         .reinterpretAsInts()
@@ -2978,7 +2867,7 @@ public abstract class ByteBitPackingVectorLE {
       tempRes1.intoArray(out, outPos, out_mask);
     }
 
-    public final void unpackValuesVector(final ByteBuffer in, final int inPos, final int[] out, final int outPos) {
+    public final void unpackValuesUsingVector(final ByteBuffer in, final int inPos, final int[] out, final int outPos) {
       ByteVector byteVector = ByteVector.fromByteBuffer(B512, in, inPos, in.order(), inp_mask);
       IntVector tempRes1 = byteVector.rearrange(perm_mask0)
         .reinterpretAsInts()
@@ -2993,10 +2882,6 @@ public abstract class ByteBitPackingVectorLE {
       tempRes1 = tempRes1.lanewise(VectorOperators.OR, tempRes2);
 
       tempRes1.intoArray(out, outPos, out_mask);
-    }
-
-    public final void packValuesVector(final int[] input, final int inPos, final byte[] output, final int outPos) {
-      notSupport();
     }
   }
 
@@ -3082,7 +2967,7 @@ public abstract class ByteBitPackingVectorLE {
       notSupport();
     }
 
-    public final void unpackValuesVector(final byte[] in, final int inPos, final int[] out, final int outPos) {
+    public final void unpackValuesUsingVector(final byte[] in, final int inPos, final int[] out, final int outPos) {
       ByteVector byteVector = ByteVector.fromArray(B512, in, inPos, inp_mask);
       IntVector tempRes1 = byteVector.rearrange(perm_mask0)
         .reinterpretAsInts()
@@ -3100,7 +2985,7 @@ public abstract class ByteBitPackingVectorLE {
 
     }
 
-    public final void unpackValuesVector(final ByteBuffer in, final int inPos, final int[] out, final int outPos) {
+    public final void unpackValuesUsingVector(final ByteBuffer in, final int inPos, final int[] out, final int outPos) {
       ByteVector byteVector = ByteVector.fromByteBuffer(B512, in, inPos, in.order(), inp_mask);
       IntVector tempRes1 = byteVector.rearrange(perm_mask0)
         .reinterpretAsInts()
@@ -3115,10 +3000,6 @@ public abstract class ByteBitPackingVectorLE {
       tempRes1 = tempRes1.lanewise(VectorOperators.OR, tempRes2);
 
       tempRes1.intoArray(out, outPos, out_mask);
-    }
-
-    public final void packValuesVector(final int[] input, final int inPos, final byte[] output, final int outPos) {
-      notSupport();
     }
   }
 
@@ -3191,7 +3072,7 @@ public abstract class ByteBitPackingVectorLE {
       notSupport();
     }
 
-    public final void unpackValuesVector(final byte[] in, final int inPos, final int[] out, final int outPos) {
+    public final void unpackValuesUsingVector(final byte[] in, final int inPos, final int[] out, final int outPos) {
       ByteVector byteVector = ByteVector.fromArray(B512, in, inPos, inp_mask);
       IntVector tempRes1 = byteVector.rearrange(perm_mask0)
         .reinterpretAsInts();
@@ -3199,20 +3080,16 @@ public abstract class ByteBitPackingVectorLE {
       tempRes1.intoArray(out, outPos, out_mask);
     }
 
-    public final void unpackValuesVector(final ByteBuffer in, final int inPos, final int[] out, final int outPos) {
+    public final void unpackValuesUsingVector(final ByteBuffer in, final int inPos, final int[] out, final int outPos) {
       ByteVector byteVector = ByteVector.fromByteBuffer(B512, in, inPos, in.order(), inp_mask);
       IntVector tempRes1 = byteVector.rearrange(perm_mask0)
         .reinterpretAsInts();
 
       tempRes1.intoArray(out, outPos, out_mask);
     }
-
-    public final void packValuesVector(final int[] input, final int inPos, final byte[] output, final int outPos) {
-      notSupport();
-    }
   }
 
   private static void notSupport() {
-    throw new RuntimeException("vector api not support!");
+    throw new RuntimeException("ByteBitPacking512VectorLE doesn't support the function, please use ByteBitPackingLE!");
   }
 }
