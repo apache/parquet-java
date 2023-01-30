@@ -75,6 +75,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 public class ParquetRewriterTest {
@@ -243,6 +244,60 @@ public class ParquetRewriterTest {
     validateCreatedBy();
   }
 
+  @Test
+  public void testNullifyAndEncryptColumn() throws Exception {
+    testSetup("GZIP");
+
+    Map<String, MaskMode> maskColumns = new HashMap<>();
+    maskColumns.put("DocId", MaskMode.NULLIFY);
+
+    String[] encryptColumns = {"DocId"};
+    FileEncryptionProperties fileEncryptionProperties = EncDecProperties.getFileEncryptionProperties(
+            encryptColumns, ParquetCipher.AES_GCM_CTR_V1, false);
+
+    Path inputPath = new Path(inputFile.getFileName());
+    Path outputPath = new Path(outputFile);
+    RewriteOptions options = new RewriteOptions.Builder(conf, inputPath, outputPath).mask(maskColumns)
+            .encrypt(Arrays.asList(encryptColumns)).encryptionProperties(fileEncryptionProperties).build();
+
+    rewriter = new ParquetRewriter(options);
+    rewriter.processBlocks();
+    rewriter.close();
+
+    FileDecryptionProperties fileDecryptionProperties = EncDecProperties.getFileDecryptionProperties();
+
+    // Verify codec has not been changed
+    verifyCodec(outputFile, CompressionCodecName.GZIP, fileDecryptionProperties);
+
+    // Verify the data are not changed for non-encrypted and non-masked columns.
+    // Also make sure the masked column is nullified.
+    validateColumnData(outputFile,
+            inputFile.getFileContent(), Collections.emptySet(), maskColumns.keySet(), fileDecryptionProperties);
+
+    // Verify the page index
+    validatePageIndex(new HashMap<Integer, Integer>() {{
+      put(1, 1);
+      put(2, 2);
+      put(3, 3);
+      put(4, 4);
+    }});
+
+    // Verify the column is encrypted
+    ParquetMetadata metaData = getFileMetaData(outputFile, fileDecryptionProperties);
+    assertTrue(metaData.getBlocks().size() > 0);
+    Set<String> encryptedColumns = new HashSet<>(Arrays.asList(encryptColumns));
+    for (BlockMetaData blockMetaData : metaData.getBlocks()) {
+      List<ColumnChunkMetaData> columns = blockMetaData.getColumns();
+      for (ColumnChunkMetaData column : columns) {
+        if (encryptedColumns.contains(column.getPath().toDotString())) {
+          assertTrue(column.isEncrypted());
+        } else {
+          assertFalse(column.isEncrypted());
+        }
+      }
+    }
+  }
+
   private void testSetup(String compression) throws IOException {
     MessageType schema = createSchema();
     inputFile = new TestFileBuilder(conf, schema)
@@ -272,27 +327,42 @@ public class ParquetRewriterTest {
             .withConf(conf).withDecryption(fileDecryptionProperties).build();
     for (int i = 0; i < numRecord; i++) {
       Group group = reader.read();
-      if (!prunePaths.contains("DocId") && !nullifiedPaths.contains("DocId")) {
-        assertTrue(group.getLong("DocId", 0) == fileContent[i].getLong("DocId", 0));
+
+      if (!prunePaths.contains("DocId")) {
+        if (nullifiedPaths.contains("DocId")) {
+          assertThrows(RuntimeException.class, () -> group.getLong("DocId", 0));
+        } else {
+          assertEquals(group.getLong("DocId", 0), fileContent[i].getLong("DocId", 0));
+        }
       }
+
       if (!prunePaths.contains("Name") && !nullifiedPaths.contains("Name")) {
         assertArrayEquals(group.getBinary("Name", 0).getBytes(),
                 fileContent[i].getBinary("Name", 0).getBytes());
       }
+
       if (!prunePaths.contains("Gender") && !nullifiedPaths.contains("Gender")) {
         assertArrayEquals(group.getBinary("Gender", 0).getBytes(),
                 fileContent[i].getBinary("Gender", 0).getBytes());
       }
+
       Group subGroup = group.getGroup("Links", 0);
+
       if (!prunePaths.contains("Links.Backward") && !nullifiedPaths.contains("Links.Backward")) {
         assertArrayEquals(subGroup.getBinary("Backward", 0).getBytes(),
                 fileContent[i].getGroup("Links", 0).getBinary("Backward", 0).getBytes());
       }
-      if (!prunePaths.contains("Links.Forward") && !nullifiedPaths.contains("Links.Forward")) {
-        assertArrayEquals(subGroup.getBinary("Forward", 0).getBytes(),
-                fileContent[i].getGroup("Links", 0).getBinary("Forward", 0).getBytes());
+
+      if (!prunePaths.contains("Links.Forward")) {
+        if (nullifiedPaths.contains("Links.Forward")) {
+          assertThrows(RuntimeException.class, () -> subGroup.getBinary("Forward", 0));
+        } else {
+          assertArrayEquals(subGroup.getBinary("Forward", 0).getBytes(),
+                  fileContent[i].getGroup("Links", 0).getBinary("Forward", 0).getBytes());
+        }
       }
     }
+
     reader.close();
   }
 
