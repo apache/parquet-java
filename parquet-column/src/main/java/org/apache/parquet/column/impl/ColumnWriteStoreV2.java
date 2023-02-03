@@ -152,7 +152,7 @@ public class ColumnWriteStoreV2 implements ColumnWriteStore {
       long rowsToFillPage =
           usedMem == 0 ?
               props.getMaxRowCountForPageSizeCheck()
-              : (long)((float)rows) / usedMem * remainingMem;
+              : (long)((float)rows / usedMem * remainingMem);
       if (rowsToFillPage < minRecordToWait) {
         minRecordToWait = rowsToFillPage;
       }

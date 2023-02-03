@@ -104,11 +104,22 @@ final class ColumnWriterV1 implements ColumnWriter {
           valueCountForNextSizeCheck = props.getMinRowCountForPageSizeCheck();
         }
         writePage();
-      } else if (props.estimateNextSizeCheck()) {
-        // not reached the threshold, will check again midway
-        valueCountForNextSizeCheck = (int)(valueCount + ((float)valueCount * props.getPageSizeThreshold() / memSize)) / 2 + 1;
       } else {
-        valueCountForNextSizeCheck += props.getMinRowCountForPageSizeCheck();
+        if (props.estimateNextSizeCheck()) {
+          // not reached the threshold, will check again midway
+          valueCountForNextSizeCheck = Math.min(
+            (int)(valueCount + ((float)valueCount * props.getPageSizeThreshold() / memSize)) / 2 + 1,
+            valueCount + props.getMaxRowCountForPageSizeCheck());
+        } else {
+          valueCountForNextSizeCheck += props.getMinRowCountForPageSizeCheck();
+        }
+
+        // If valueCountForNextSizeCheck overflowed / close to overflow, likely
+        // valueCount is close to overflow too. Flush the data page and reset.
+        if (valueCountForNextSizeCheck == Integer.MAX_VALUE || valueCountForNextSizeCheck < 0) {
+          valueCountForNextSizeCheck = props.getMinRowCountForPageSizeCheck();
+          writePage();
+        }
       }
     }
   }
