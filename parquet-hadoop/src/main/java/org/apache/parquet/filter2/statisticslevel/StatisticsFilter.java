@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
@@ -69,13 +70,22 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
   private static final boolean BLOCK_MIGHT_MATCH = false;
   private static final boolean BLOCK_CANNOT_MATCH = true;
 
-  public static boolean canDrop(FilterPredicate pred, List<ColumnChunkMetaData> columns) {
+  public static boolean canDrop(FilterPredicate pred, List<ColumnChunkMetaData> columns, AtomicBoolean canExactlyDetermine) {
     Objects.requireNonNull(pred, "pred cannot be null");
     Objects.requireNonNull(columns, "columns cannot be null");
-    return pred.accept(new StatisticsFilter(columns));
+    StatisticsFilter statisticsFilter = new StatisticsFilter(columns);
+    Boolean canDropBlock = pred.accept(statisticsFilter);
+    canExactlyDetermine.set(statisticsFilter.canExactlyDetermine);
+    return canDropBlock;
+  }
+
+  public static boolean canDrop(FilterPredicate pred, List<ColumnChunkMetaData> columns){
+    return canDrop(pred, columns, new AtomicBoolean(false));
   }
 
   private final Map<ColumnPath, ColumnChunkMetaData> columns = new HashMap<ColumnPath, ColumnChunkMetaData>();
+  // Whether this filter can exactly determine the existence/nonexistence of the value.
+  private boolean canExactlyDetermine = false;
 
   private StatisticsFilter(List<ColumnChunkMetaData> columnsList) {
     for (ColumnChunkMetaData chunk : columnsList) {
@@ -144,6 +154,8 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
       return BLOCK_MIGHT_MATCH;
     }
 
+    markCanSkipOtherFilters(stats);
+
     // drop if value < min || value > max
     return stats.compareMinToValue(value) > 0 || stats.compareMaxToValue(value) < 0;
   }
@@ -194,6 +206,8 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
         if (values.contains(null)) return BLOCK_MIGHT_MATCH;
       }
     }
+
+    markCanSkipOtherFilters(stats);
 
     MinMax<T> minMax = new MinMax(meta.getPrimitiveType().comparator(), values);
     T min = minMax.getMin();
@@ -253,6 +267,8 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
       return BLOCK_MIGHT_MATCH;
     }
 
+    markCanSkipOtherFilters(stats);
+
     // drop if this is a column where min = max = value
     return stats.compareMinToValue(value) == 0 && stats.compareMaxToValue(value) == 0;
   }
@@ -286,6 +302,8 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
       // stats does not contain min/max values, we cannot drop any chunks
       return BLOCK_MIGHT_MATCH;
     }
+
+    markCanSkipOtherFilters(stats);
 
     T value = lt.getValue();
 
@@ -323,6 +341,8 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
       return BLOCK_MIGHT_MATCH;
     }
 
+    markCanSkipOtherFilters(stats);
+
     T value = ltEq.getValue();
 
     // drop if value < min
@@ -358,6 +378,8 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
       // stats does not contain min/max values, we cannot drop any chunks
       return BLOCK_MIGHT_MATCH;
     }
+
+    markCanSkipOtherFilters(stats);
 
     T value = gt.getValue();
 
@@ -395,6 +417,8 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
       return BLOCK_MIGHT_MATCH;
     }
 
+    markCanSkipOtherFilters(stats);
+
     T value = gtEq.getValue();
 
     // drop if value > max
@@ -423,6 +447,16 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
   public Boolean visit(Not not) {
     throw new IllegalArgumentException(
         "This predicate contains a not! Did you forget to run this predicate through LogicalInverseRewriter? " + not);
+  }
+
+  private <T extends Comparable<T>> void markCanSkipOtherFilters(Statistics<T> stats) {
+    if (stats == null
+      || stats.isEmpty()
+      || stats.genericGetMax() == null
+      || stats.genericGetMax() == null) {
+      return;
+    }
+    canExactlyDetermine = stats.comparator().compare(stats.genericGetMax(), stats.genericGetMin()) == 0;
   }
 
   private <T extends Comparable<T>, U extends UserDefinedPredicate<T>> Boolean visit(UserDefined<T, U> ud, boolean inverted) {

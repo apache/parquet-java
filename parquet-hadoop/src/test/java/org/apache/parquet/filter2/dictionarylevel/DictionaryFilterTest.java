@@ -67,6 +67,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.apache.parquet.column.ParquetProperties.WriterVersion.PARQUET_1_0;
 import static org.apache.parquet.column.ParquetProperties.WriterVersion.PARQUET_2_0;
@@ -790,6 +791,16 @@ public class DictionaryFilterTest {
       canDrop(LogicalInverseRewriter.rewrite(not(userDefined(fake, nullAccepting))), ccmd, dictionaries));
     assertFalse("Should not drop block for null rejecting udp",
       canDrop(LogicalInverseRewriter.rewrite(not(userDefined(fake, nullRejecting))), ccmd, dictionaries));
+  }
+
+  @Test
+  public void testCanSkipOtherFilters() {
+    AtomicBoolean canExactlyDetermine = new AtomicBoolean(false);
+    BinaryColumn b = binaryColumn("binary_field");
+    FilterPredicate pred = eq(b, Binary.fromString("c"));
+    assertFalse("Should not drop block for lower case letters",
+      canDrop(pred, ccmd, dictionaries, canExactlyDetermine));
+    assertTrue(canExactlyDetermine.get());
   }
 
 

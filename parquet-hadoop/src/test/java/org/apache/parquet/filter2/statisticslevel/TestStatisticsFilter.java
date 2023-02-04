@@ -22,6 +22,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.junit.Test;
 
@@ -558,4 +559,14 @@ public class TestStatisticsFilter {
     }
   }
 
+  @Test
+  public void testCanSkipOtherFilters() {
+    Integer originMin = intStats.genericGetMin();
+    Integer originMax = intStats.genericGetMax();
+    intStats.setMinMax(10, 10);
+    AtomicBoolean canExactlyDetermine = new AtomicBoolean(false);
+    assertTrue(canDrop(eq(intColumn, 100), columnMetas, canExactlyDetermine));
+    assertTrue(canExactlyDetermine.get());
+    intStats.setMinMax(originMin, originMax);
+  }
 }

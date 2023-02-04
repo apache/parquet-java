@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.parquet.filter2.bloomfilterlevel.BloomFilterImpl;
 import org.apache.parquet.filter2.compat.FilterCompat.Filter;
@@ -98,16 +99,19 @@ public class RowGroupFilter implements Visitor<List<BlockMetaData>> {
 
     for (BlockMetaData block : blocks) {
       boolean drop = false;
+      // Whether one filter can exactly determine the existence/nonexistence of the value.
+      // If true then we can skip the remaining filters to save time and space.
+      AtomicBoolean canExactlyDetermine = new AtomicBoolean(false);
 
       if(levels.contains(FilterLevel.STATISTICS)) {
-        drop = StatisticsFilter.canDrop(filterPredicate, block.getColumns());
+        drop = StatisticsFilter.canDrop(filterPredicate, block.getColumns(), canExactlyDetermine);
       }
 
-      if(!drop && levels.contains(FilterLevel.DICTIONARY)) {
-        drop = DictionaryFilter.canDrop(filterPredicate, block.getColumns(), reader.getDictionaryReader(block));
+      if(!drop && !canExactlyDetermine.get() && levels.contains(FilterLevel.DICTIONARY)) {
+        drop = DictionaryFilter.canDrop(filterPredicate, block.getColumns(), reader.getDictionaryReader(block), canExactlyDetermine);
       }
 
-      if (!drop && levels.contains(FilterLevel.BLOOMFILTER)) {
+      if (!drop && !canExactlyDetermine.get() && levels.contains(FilterLevel.BLOOMFILTER)) {
         drop = BloomFilterImpl.canDrop(filterPredicate, block.getColumns(), reader.getBloomFilterDataReader(block));
       }
 

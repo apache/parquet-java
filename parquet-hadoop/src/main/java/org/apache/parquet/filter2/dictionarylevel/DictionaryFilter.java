@@ -41,6 +41,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.IntFunction;
 
 /**
@@ -52,14 +53,24 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
   private static final boolean BLOCK_MIGHT_MATCH = false;
   private static final boolean BLOCK_CANNOT_MATCH = true;
 
-  public static boolean canDrop(FilterPredicate pred, List<ColumnChunkMetaData> columns, DictionaryPageReadStore dictionaries) {
+  public static boolean canDrop(FilterPredicate pred, List<ColumnChunkMetaData> columns,
+    DictionaryPageReadStore dictionaries, AtomicBoolean canExactlyDetermine) {
     Objects.requireNonNull(pred, "pred cannnot be null");
     Objects.requireNonNull(columns, "columns cannnot be null");
-    return pred.accept(new DictionaryFilter(columns, dictionaries));
+    DictionaryFilter dictionaryFilter = new DictionaryFilter(columns, dictionaries);
+    Boolean canDropBlock = pred.accept(dictionaryFilter);
+    canExactlyDetermine.set(dictionaryFilter.canExactlyDetermine);
+    return canDropBlock;
+  }
+
+  public static boolean canDrop(FilterPredicate pred, List<ColumnChunkMetaData> columns, DictionaryPageReadStore dictionaries) {
+    return canDrop(pred, columns, dictionaries, new AtomicBoolean(false));
   }
 
   private final Map<ColumnPath, ColumnChunkMetaData> columns = new HashMap<ColumnPath, ColumnChunkMetaData>();
   private final DictionaryPageReadStore dictionaries;
+  // Whether this filter can exactly determine the existence/nonexistence of the value.
+  private boolean canExactlyDetermine = false;
 
   private DictionaryFilter(List<ColumnChunkMetaData> columnsList, DictionaryPageReadStore dictionaries) {
     for (ColumnChunkMetaData chunk : columnsList) {
@@ -144,6 +155,9 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
 
     try {
       Set<T> dictSet = expandDictionary(meta);
+
+      markCanExactlyDetermine(dictSet);
+
       if (dictSet != null && !dictSet.contains(value)) {
         return BLOCK_CANNOT_MATCH;
       }
@@ -187,6 +201,9 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
 
     try {
       Set<T> dictSet = expandDictionary(meta);
+
+      markCanExactlyDetermine(dictSet);
+
       boolean mayContainNull = (meta.getStatistics() == null
           || !meta.getStatistics().isNumNullsSet()
           || meta.getStatistics().getNumNulls() > 0);
@@ -221,6 +238,9 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
 
     try {
       Set<T> dictSet = expandDictionary(meta);
+
+      markCanExactlyDetermine(dictSet);
+
       if (dictSet == null) {
         return BLOCK_MIGHT_MATCH;
       }
@@ -263,6 +283,9 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
 
     try {
       Set<T> dictSet = expandDictionary(meta);
+
+      markCanExactlyDetermine(dictSet);
+
       if (dictSet == null) {
         return BLOCK_MIGHT_MATCH;
       }
@@ -303,6 +326,9 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
 
     try {
       Set<T> dictSet = expandDictionary(meta);
+
+      markCanExactlyDetermine(dictSet);
+
       if (dictSet == null) {
         return BLOCK_MIGHT_MATCH;
       }
@@ -345,6 +371,9 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
 
     try {
       Set<T> dictSet = expandDictionary(meta);
+
+      markCanExactlyDetermine(dictSet);
+
       if (dictSet == null) {
         return BLOCK_MIGHT_MATCH;
       }
@@ -391,6 +420,9 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
 
     try {
       Set<T> dictSet = expandDictionary(meta);
+
+      markCanExactlyDetermine(dictSet);
+
       if (dictSet != null) {
         return drop(dictSet, values);
       }
@@ -455,6 +487,9 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
 
     try {
       Set<T> dictSet = expandDictionary(meta);
+
+      markCanExactlyDetermine(dictSet);
+
       if (dictSet != null) {
         if (dictSet.size() > values.size()) return BLOCK_MIGHT_MATCH;
         // ROWS_CANNOT_MATCH if no values in the dictionary that are not also in the set
@@ -558,5 +593,12 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
       // page encoding stats
       return true;
     }
+  }
+
+  private <T extends Comparable<T>> void markCanExactlyDetermine(Set<T> dictSet) {
+    if (dictSet == null) {
+      return;
+    }
+    canExactlyDetermine = true;
   }
 }
