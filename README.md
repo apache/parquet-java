@@ -83,6 +83,16 @@ Parquet is a very active project, and new features are being added quickly. Here
 * Column stats
 * Delta encoding
 * Index pages
+* Java Vector API support
+
+## Java Vector API support
+Parquet-MR has supported Java Vector API to speed up reading, to enable the function:
+* Java 17+, 64-bit
+* For Intel CPU, Flags containing avx512vbmi and avx512_vbmi2 can have better performance gains(ICE Lake or newer processor).
+* mvn clean package -P java17-target -P vector
+* Replace the parquet-encoding-{VERSION}.jar on the library path
+* Refer to class#ParquetReadRouter, function#readBatchUsing512Vector to integrate
+* For example, edit class#VectorizedRleValuesReader, function#readNextGroup when Spark integrating
 
 ## Map/Reduce integration
 
