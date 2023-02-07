@@ -18,20 +18,10 @@
  */
 package org.apache.parquet.filter2.dictionarylevel;
 
-import org.apache.parquet.column.ColumnDescriptor;
-import org.apache.parquet.column.Dictionary;
-import org.apache.parquet.column.Encoding;
-import org.apache.parquet.column.EncodingStats;
-import org.apache.parquet.column.page.DictionaryPage;
-import org.apache.parquet.column.page.DictionaryPageReadStore;
-import org.apache.parquet.filter2.predicate.FilterPredicate;
-import org.apache.parquet.filter2.predicate.Operators.*;
-import org.apache.parquet.filter2.predicate.UserDefinedPredicate;
-import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
-import org.apache.parquet.hadoop.metadata.ColumnPath;
-import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import static org.apache.parquet.filter2.compat.PredicateEvaluation.BLOCK_CANNOT_MATCH;
+import static org.apache.parquet.filter2.compat.PredicateEvaluation.BLOCK_MIGHT_MATCH;
+import static org.apache.parquet.filter2.compat.PredicateEvaluation.BLOCK_MUST_MATCH;
+import static org.apache.parquet.filter2.compat.PredicateEvaluation.checkPredicate;
 
 import java.io.IOException;
 import java.util.Comparator;
@@ -41,8 +31,37 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.IntFunction;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import org.apache.parquet.column.ColumnDescriptor;
+import org.apache.parquet.column.Dictionary;
+import org.apache.parquet.column.Encoding;
+import org.apache.parquet.column.EncodingStats;
+import org.apache.parquet.column.page.DictionaryPage;
+import org.apache.parquet.column.page.DictionaryPageReadStore;
+import org.apache.parquet.filter2.compat.PredicateEvaluation;
+import org.apache.parquet.filter2.predicate.FilterPredicate;
+import org.apache.parquet.filter2.predicate.Operators.And;
+import org.apache.parquet.filter2.predicate.Operators.Column;
+import org.apache.parquet.filter2.predicate.Operators.Eq;
+import org.apache.parquet.filter2.predicate.Operators.Gt;
+import org.apache.parquet.filter2.predicate.Operators.GtEq;
+import org.apache.parquet.filter2.predicate.Operators.In;
+import org.apache.parquet.filter2.predicate.Operators.LogicalNotUserDefined;
+import org.apache.parquet.filter2.predicate.Operators.Lt;
+import org.apache.parquet.filter2.predicate.Operators.LtEq;
+import org.apache.parquet.filter2.predicate.Operators.Not;
+import org.apache.parquet.filter2.predicate.Operators.NotEq;
+import org.apache.parquet.filter2.predicate.Operators.NotIn;
+import org.apache.parquet.filter2.predicate.Operators.Or;
+import org.apache.parquet.filter2.predicate.Operators.UserDefined;
+import org.apache.parquet.filter2.predicate.UserDefinedPredicate;
+import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
+import org.apache.parquet.hadoop.metadata.ColumnPath;
+import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 
 /**
  * Applies filters based on the contents of column dictionaries.
@@ -50,27 +69,22 @@ import java.util.function.IntFunction;
 public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
 
   private static final Logger LOG = LoggerFactory.getLogger(DictionaryFilter.class);
-  private static final boolean BLOCK_MIGHT_MATCH = false;
-  private static final boolean BLOCK_CANNOT_MATCH = true;
 
-  public static boolean canDrop(FilterPredicate pred, List<ColumnChunkMetaData> columns,
-    DictionaryPageReadStore dictionaries, AtomicBoolean canExactlyDetermine) {
+  public static Boolean evaluate(FilterPredicate pred, List<ColumnChunkMetaData> columns, DictionaryPageReadStore dictionaries) {
     Objects.requireNonNull(pred, "pred cannnot be null");
     Objects.requireNonNull(columns, "columns cannnot be null");
     DictionaryFilter dictionaryFilter = new DictionaryFilter(columns, dictionaries);
-    Boolean canDropBlock = pred.accept(dictionaryFilter);
-    canExactlyDetermine.set(dictionaryFilter.canExactlyDetermine);
-    return canDropBlock;
+    Boolean predicate = pred.accept(dictionaryFilter);
+    checkPredicate(predicate);
+    return predicate;
   }
 
   public static boolean canDrop(FilterPredicate pred, List<ColumnChunkMetaData> columns, DictionaryPageReadStore dictionaries) {
-    return canDrop(pred, columns, dictionaries, new AtomicBoolean(false));
+    return evaluate(pred, columns, dictionaries) == BLOCK_CANNOT_MATCH;
   }
 
   private final Map<ColumnPath, ColumnChunkMetaData> columns = new HashMap<ColumnPath, ColumnChunkMetaData>();
   private final DictionaryPageReadStore dictionaries;
-  // Whether this filter can exactly determine the existence/nonexistence of the value.
-  private boolean canExactlyDetermine = false;
 
   private DictionaryFilter(List<ColumnChunkMetaData> columnsList, DictionaryPageReadStore dictionaries) {
     for (ColumnChunkMetaData chunk : columnsList) {
@@ -124,7 +138,7 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
     for (int i = 0; i <= dict.getMaxId(); i++) {
       dictSet.add((T) dictValueProvider.apply(i));
     }
-    
+
     return dictSet;
   }
 
@@ -155,11 +169,11 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
 
     try {
       Set<T> dictSet = expandDictionary(meta);
-
-      markCanExactlyDetermine(dictSet);
-
       if (dictSet != null && !dictSet.contains(value)) {
         return BLOCK_CANNOT_MATCH;
+      }
+      if (dictSet != null && dictSet.contains(value)) {
+        return BLOCK_MUST_MATCH;
       }
     } catch (IOException e) {
       LOG.warn("Failed to process dictionary for filter evaluation.", e);
@@ -201,9 +215,6 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
 
     try {
       Set<T> dictSet = expandDictionary(meta);
-
-      markCanExactlyDetermine(dictSet);
-
       boolean mayContainNull = (meta.getStatistics() == null
           || !meta.getStatistics().isNumNullsSet()
           || meta.getStatistics().getNumNulls() > 0);
@@ -238,9 +249,6 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
 
     try {
       Set<T> dictSet = expandDictionary(meta);
-
-      markCanExactlyDetermine(dictSet);
-
       if (dictSet == null) {
         return BLOCK_MIGHT_MATCH;
       }
@@ -248,7 +256,7 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
       Comparator<T> comparator = meta.getPrimitiveType().comparator();
       for (T entry : dictSet) {
         if (comparator.compare(value, entry) > 0) {
-          return BLOCK_MIGHT_MATCH;
+          return BLOCK_MUST_MATCH;
         }
       }
 
@@ -283,9 +291,6 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
 
     try {
       Set<T> dictSet = expandDictionary(meta);
-
-      markCanExactlyDetermine(dictSet);
-
       if (dictSet == null) {
         return BLOCK_MIGHT_MATCH;
       }
@@ -293,7 +298,7 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
       Comparator<T> comparator = meta.getPrimitiveType().comparator();
       for (T entry : dictSet) {
         if (comparator.compare(value, entry) >= 0) {
-          return BLOCK_MIGHT_MATCH;
+          return BLOCK_MUST_MATCH;
         }
       }
 
@@ -326,9 +331,6 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
 
     try {
       Set<T> dictSet = expandDictionary(meta);
-
-      markCanExactlyDetermine(dictSet);
-
       if (dictSet == null) {
         return BLOCK_MIGHT_MATCH;
       }
@@ -336,7 +338,7 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
       Comparator<T> comparator = meta.getPrimitiveType().comparator();
       for (T entry : dictSet) {
         if (comparator.compare(value, entry) < 0) {
-          return BLOCK_MIGHT_MATCH;
+          return BLOCK_MUST_MATCH;
         }
       }
 
@@ -371,9 +373,6 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
 
     try {
       Set<T> dictSet = expandDictionary(meta);
-
-      markCanExactlyDetermine(dictSet);
-
       if (dictSet == null) {
         return BLOCK_MIGHT_MATCH;
       }
@@ -381,7 +380,7 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
       Comparator<T> comparator = meta.getPrimitiveType().comparator();
       for (T entry : dictSet) {
         if (comparator.compare(value, entry) <= 0) {
-          return BLOCK_MIGHT_MATCH;
+          return BLOCK_MUST_MATCH;
         }
       }
 
@@ -420,11 +419,8 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
 
     try {
       Set<T> dictSet = expandDictionary(meta);
-
-      markCanExactlyDetermine(dictSet);
-
       if (dictSet != null) {
-        return drop(dictSet, values);
+        return predicate(dictSet, values);
       }
     } catch (IOException e) {
       LOG.warn("Failed to process dictionary for filter evaluation.", e);
@@ -432,7 +428,7 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
     return BLOCK_MIGHT_MATCH; // cannot drop the row group based on this dictionary
   }
 
-  private <T extends Comparable<T>> Boolean drop(Set<T> dictSet, Set<T> values) {
+  private <T extends Comparable<T>> Boolean predicate(Set<T> dictSet, Set<T> values) {
     // we need to find out the smaller set to iterate through
     Set<T> smallerSet;
     Set<T> biggerSet;
@@ -448,7 +444,7 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
     for (T e : smallerSet) {
       if (biggerSet.contains(e)) {
         // value sets intersect so rows match
-        return BLOCK_MIGHT_MATCH;
+        return BLOCK_MUST_MATCH;
       }
     }
     return BLOCK_CANNOT_MATCH;
@@ -487,13 +483,10 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
 
     try {
       Set<T> dictSet = expandDictionary(meta);
-
-      markCanExactlyDetermine(dictSet);
-
       if (dictSet != null) {
-        if (dictSet.size() > values.size()) return BLOCK_MIGHT_MATCH;
+        if (dictSet.size() > values.size()) return BLOCK_MUST_MATCH;
         // ROWS_CANNOT_MATCH if no values in the dictionary that are not also in the set
-        return values.containsAll(dictSet) ? BLOCK_CANNOT_MATCH : BLOCK_MIGHT_MATCH;
+        return values.containsAll(dictSet) ? BLOCK_CANNOT_MATCH : BLOCK_MUST_MATCH;
       }
     } catch (IOException e) {
       LOG.warn("Failed to process dictionary for filter evaluation.", e);
@@ -503,12 +496,12 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
 
   @Override
   public Boolean visit(And and) {
-    return and.getLeft().accept(this) || and.getRight().accept(this);
+    return PredicateEvaluation.evaluateAnd(and, this);
   }
 
   @Override
   public Boolean visit(Or or) {
-    return or.getLeft().accept(this) && or.getRight().accept(this);
+    return PredicateEvaluation.evaluateOr(or, this);
   }
 
   @Override
@@ -525,9 +518,9 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
     // The column is missing, thus all null. Check if the predicate keeps null.
     if (meta == null) {
       if (inverted) {
-        return udp.acceptsNullValue();
+        return udp.acceptsNullValue() ? BLOCK_CANNOT_MATCH : BLOCK_MIGHT_MATCH;
       } else {
-        return !udp.acceptsNullValue();
+        return !udp.acceptsNullValue() ? BLOCK_CANNOT_MATCH : BLOCK_MIGHT_MATCH;
       }
     }
 
@@ -593,12 +586,5 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
       // page encoding stats
       return true;
     }
-  }
-
-  private <T extends Comparable<T>> void markCanExactlyDetermine(Set<T> dictSet) {
-    if (dictSet == null) {
-      return;
-    }
-    canExactlyDetermine = true;
   }
 }

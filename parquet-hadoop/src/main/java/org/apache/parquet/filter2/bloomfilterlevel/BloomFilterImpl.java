@@ -19,6 +19,11 @@
 
 package org.apache.parquet.filter2.bloomfilterlevel;
 
+import static org.apache.parquet.Preconditions.checkNotNull;
+import static org.apache.parquet.filter2.compat.PredicateEvaluation.BLOCK_CANNOT_MATCH;
+import static org.apache.parquet.filter2.compat.PredicateEvaluation.BLOCK_MIGHT_MATCH;
+import static org.apache.parquet.filter2.compat.PredicateEvaluation.checkPredicate;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -28,6 +33,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.parquet.column.values.bloomfilter.BloomFilter;
+import org.apache.parquet.filter2.compat.PredicateEvaluation;
 import org.apache.parquet.filter2.predicate.FilterPredicate;
 import org.apache.parquet.filter2.predicate.Operators;
 import org.apache.parquet.filter2.predicate.UserDefinedPredicate;
@@ -35,19 +41,21 @@ import org.apache.parquet.hadoop.BloomFilterReader;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 
-import static org.apache.parquet.Preconditions.checkNotNull;
-
 public class BloomFilterImpl implements FilterPredicate.Visitor<Boolean>{
   private static final Logger LOG = LoggerFactory.getLogger(BloomFilterImpl.class);
-  private static final boolean BLOCK_MIGHT_MATCH = false;
-  private static final boolean BLOCK_CANNOT_MATCH = true;
 
   private final Map<ColumnPath, ColumnChunkMetaData> columns = new HashMap<ColumnPath, ColumnChunkMetaData>();
 
-  public static boolean canDrop(FilterPredicate pred, List<ColumnChunkMetaData> columns, BloomFilterReader bloomFilterReader) {
+  public static Boolean evaluate(FilterPredicate pred, List<ColumnChunkMetaData> columns, BloomFilterReader bloomFilterReader) {
     checkNotNull(pred, "pred");
     checkNotNull(columns, "columns");
-    return pred.accept(new BloomFilterImpl(columns, bloomFilterReader));
+    Boolean predicate = pred.accept(new BloomFilterImpl(columns, bloomFilterReader));
+    checkPredicate(predicate);
+    return predicate;
+  }
+
+  public static boolean canDrop(FilterPredicate pred, List<ColumnChunkMetaData> columns, BloomFilterReader bloomFilterReader) {
+    return evaluate(pred, columns, bloomFilterReader) == BLOCK_CANNOT_MATCH;
   }
 
   private BloomFilterImpl(List<ColumnChunkMetaData> columnsList, BloomFilterReader bloomFilterReader) {
@@ -157,12 +165,12 @@ public class BloomFilterImpl implements FilterPredicate.Visitor<Boolean>{
 
   @Override
   public Boolean visit(Operators.And and) {
-    return and.getLeft().accept(this) || and.getRight().accept(this);
+    return PredicateEvaluation.evaluateAnd(and, this);
   }
 
   @Override
   public Boolean visit(Operators.Or or) {
-    return or.getLeft().accept(this) && or.getRight().accept(this);
+    return PredicateEvaluation.evaluateOr(or, this);
   }
 
   @Override

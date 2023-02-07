@@ -1,0 +1,76 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+package org.apache.parquet.filter2.compat;
+
+import org.apache.parquet.filter2.predicate.FilterPredicate;
+import org.apache.parquet.filter2.predicate.Operators;
+
+/**
+ * Used in Filters to mark whether the block data matches the condition.
+ * If we cannot decide whether the block matches, it will be always safe to return BLOCK_MIGHT_MATCH.
+ *
+ * We use Boolean Object here to distinguish the value type, please do not modify it.
+ */
+public class PredicateEvaluation {
+  /* The block might match, but we cannot decide yet, will check in the other filters. */
+  public static final Boolean BLOCK_MIGHT_MATCH = new Boolean(false);
+  /* The block can match for sure. */
+  public static final Boolean BLOCK_MUST_MATCH = new Boolean(false);
+  /* The block can't match for sure */
+  public static final Boolean BLOCK_CANNOT_MATCH = new Boolean(true);
+
+  public static Boolean evaluateAnd(Operators.And and, FilterPredicate.Visitor<Boolean> predicate) {
+    Boolean left = and.getLeft().accept(predicate);
+    Boolean right = and.getRight().accept(predicate);
+    if (left == BLOCK_CANNOT_MATCH || right == BLOCK_CANNOT_MATCH) {
+      return BLOCK_CANNOT_MATCH;
+    } else if (left == BLOCK_MUST_MATCH && right == BLOCK_MUST_MATCH) {
+      // if left and right operation must need the block, then we must take the block
+      return BLOCK_MUST_MATCH;
+    } else {
+      return BLOCK_MIGHT_MATCH;
+    }
+  }
+
+  public static Boolean evaluateOr(Operators.Or or, FilterPredicate.Visitor<Boolean> predicate) {
+    Boolean left = or.getLeft().accept(predicate);
+    Boolean right = or.getRight().accept(predicate);
+    if (left == BLOCK_CANNOT_MATCH && right == BLOCK_CANNOT_MATCH) {
+      return BLOCK_CANNOT_MATCH;
+    } else if (left == BLOCK_MUST_MATCH || right == BLOCK_MUST_MATCH) {
+      // if left or right operation must need the block, then we must take the block
+      return BLOCK_MUST_MATCH;
+    } else {
+      return BLOCK_MIGHT_MATCH;
+    }
+  }
+
+  public static Boolean isDeterminedPredicate(Boolean predicate) {
+    return predicate == BLOCK_MUST_MATCH || predicate == BLOCK_CANNOT_MATCH;
+  }
+
+  public static void checkPredicate(Boolean predicate) {
+    if (predicate != BLOCK_CANNOT_MATCH
+      && predicate != BLOCK_MIGHT_MATCH
+      && predicate != BLOCK_MUST_MATCH) {
+      throw new IllegalArgumentException("predicate should be BLOCK_CANNOT_MATCH, BLOCK_MIGHT_MATCH or BLOCK_MUST_MATCH");
+    }
+  }
+}

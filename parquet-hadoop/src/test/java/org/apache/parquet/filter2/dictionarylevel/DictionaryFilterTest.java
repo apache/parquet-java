@@ -67,15 +67,16 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.apache.parquet.column.ParquetProperties.WriterVersion.PARQUET_1_0;
 import static org.apache.parquet.column.ParquetProperties.WriterVersion.PARQUET_2_0;
+import static org.apache.parquet.filter2.compat.PredicateEvaluation.BLOCK_MUST_MATCH;
 import static org.apache.parquet.filter2.dictionarylevel.DictionaryFilter.canDrop;
 import static org.apache.parquet.filter2.predicate.FilterApi.*;
 import static org.apache.parquet.hadoop.metadata.CompressionCodecName.GZIP;
 import static org.apache.parquet.schema.MessageTypeParser.parseMessageType;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyZeroInteractions;
@@ -795,12 +796,9 @@ public class DictionaryFilterTest {
 
   @Test
   public void testCanSkipOtherFilters() {
-    AtomicBoolean canExactlyDetermine = new AtomicBoolean(false);
     BinaryColumn b = binaryColumn("binary_field");
     FilterPredicate pred = eq(b, Binary.fromString("c"));
-    assertFalse("Should not drop block for lower case letters",
-      canDrop(pred, ccmd, dictionaries, canExactlyDetermine));
-    assertTrue(canExactlyDetermine.get());
+    assertSame(BLOCK_MUST_MATCH, DictionaryFilter.evaluate(pred, ccmd, dictionaries));
   }
 
 
