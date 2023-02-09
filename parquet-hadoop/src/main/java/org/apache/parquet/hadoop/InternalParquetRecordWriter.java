@@ -43,8 +43,7 @@ import org.slf4j.LoggerFactory;
 class InternalParquetRecordWriter<T> {
   private static final Logger LOG = LoggerFactory.getLogger(InternalParquetRecordWriter.class);
 
-  private static final int MINIMUM_RECORD_COUNT_FOR_CHECK = 100;
-  private static final int MAXIMUM_RECORD_COUNT_FOR_CHECK = 10000;
+
 
   private final ParquetFileWriter parquetFileWriter;
   private final WriteSupport<T> writeSupport;
@@ -60,7 +59,7 @@ class InternalParquetRecordWriter<T> {
   private boolean closed;
 
   private long recordCount = 0;
-  private long recordCountForNextMemCheck = MINIMUM_RECORD_COUNT_FOR_CHECK;
+  private long recordCountForNextMemCheck;
   private long lastRowGroupEndPos = 0;
 
   private ColumnWriteStore columnStore;
@@ -94,6 +93,8 @@ class InternalParquetRecordWriter<T> {
     this.compressor = compressor;
     this.validating = validating;
     this.props = props;
+    this.recordCountForNextMemCheck = props.getMinRowCountForBlockSizeCheck();
+
     initStore();
   }
 
@@ -147,12 +148,12 @@ class InternalParquetRecordWriter<T> {
         LOG.info("mem size {} > {}: flushing {} records to disk.", memSize, nextRowGroupSize, recordCount);
         flushRowGroupToStore();
         initStore();
-        recordCountForNextMemCheck = min(max(MINIMUM_RECORD_COUNT_FOR_CHECK, recordCount / 2), MAXIMUM_RECORD_COUNT_FOR_CHECK);
+        recordCountForNextMemCheck = min(max(props.getMaxRowCountForBlockSizeCheck(), recordCount / 2), props.getMaxRowCountForBlockSizeCheck());
         this.lastRowGroupEndPos = parquetFileWriter.getPos();
       } else {
         recordCountForNextMemCheck = min(
-            max(MINIMUM_RECORD_COUNT_FOR_CHECK, (recordCount + (long)(nextRowGroupSize / ((float)recordSize))) / 2), // will check halfway
-            recordCount + MAXIMUM_RECORD_COUNT_FOR_CHECK // will not look more than max records ahead
+            max(props.getMinRowCountForBlockSizeCheck(), (recordCount + (long)(nextRowGroupSize / ((float)recordSize))) / 2), // will check halfway
+            recordCount + props.getMaxRowCountForBlockSizeCheck() // will not look more than max records ahead
             );
         LOG.debug("Checked mem at {} will check again at: {}", recordCount, recordCountForNextMemCheck);
       }
