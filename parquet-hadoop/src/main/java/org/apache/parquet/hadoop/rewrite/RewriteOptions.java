@@ -152,14 +152,6 @@ public class RewriteOptions {
         }
       }
 
-      // TODO: support masking and encrypting same columns
-      if (maskColumns != null && encryptColumns != null) {
-        for (String encryptColumn : encryptColumns) {
-          Preconditions.checkArgument(!maskColumns.containsKey(encryptColumn),
-                  "Cannot encrypt and mask same column");
-        }
-      }
-
       if (encryptColumns != null && !encryptColumns.isEmpty()) {
         Preconditions.checkArgument(fileEncryptionProperties != null,
                 "FileEncryptionProperties is required when encrypting columns");

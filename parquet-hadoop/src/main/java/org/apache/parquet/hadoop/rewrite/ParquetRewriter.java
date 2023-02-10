@@ -218,13 +218,7 @@ public class ParquetRewriter implements Closeable {
 
         reader.setStreamPosition(chunk.getStartingPos());
         CompressionCodecName newCodecName = this.newCodecName == null ? chunk.getCodec() : this.newCodecName;
-        ColumnChunkEncryptorRunTime columnChunkEncryptorRunTime = null;
-        boolean encryptColumn = false;
-        if (encryptMode) {
-          columnChunkEncryptorRunTime =
-                  new ColumnChunkEncryptorRunTime(writer.getEncryptor(), chunk, blockId, columnId);
-          encryptColumn = encryptColumns != null && encryptColumns.contains(chunk.getPath());
-        }
+        boolean encryptColumn = encryptMode && encryptColumns != null && encryptColumns.contains(chunk.getPath());
 
         if (maskColumns != null && maskColumns.containsKey(chunk.getPath())) {
           // Mask column and compress it again.
@@ -242,12 +236,19 @@ public class ParquetRewriter implements Closeable {
                     writer,
                     schema,
                     newCodecName,
-                    columnChunkEncryptorRunTime,
+                    blockId,
                     encryptColumn);
           } else {
             throw new UnsupportedOperationException("Only nullify is supported for now");
           }
         } else if (encryptMode || this.newCodecName != null) {
+          // Prepare encryption context
+          ColumnChunkEncryptorRunTime columnChunkEncryptorRunTime = null;
+          if (encryptMode) {
+            columnChunkEncryptorRunTime =
+                    new ColumnChunkEncryptorRunTime(writer.getEncryptor(), chunk, blockId, columnId);
+          }
+
           // Translate compression and/or encryption
           writer.startColumn(descriptor, crStore.getColumnReader(descriptor).getTotalValueCount(), newCodecName);
           processChunk(chunk, newCodecName, columnChunkEncryptorRunTime, encryptColumn);
@@ -570,12 +571,12 @@ public class ParquetRewriter implements Closeable {
                              ParquetFileWriter writer,
                              MessageType schema,
                              CompressionCodecName newCodecName,
-                             ColumnChunkEncryptorRunTime columnChunkEncryptorRunTime,
+                             int rowGroupOrdinal,
                              boolean encryptColumn) throws IOException {
-    // TODO: support nullifying and encrypting same column.
-    if (columnChunkEncryptorRunTime != null) {
-      throw new RuntimeException("Nullifying and encrypting column is not implemented yet");
+    if (encryptColumn) {
+      Preconditions.checkArgument(writer.getEncryptor() != null, "Missing encryptor");
     }
+
     long totalChunkValues = chunk.getValueCount();
     int dMax = descriptor.getMaxDefinitionLevel();
     ColumnReader cReader = crStore.getColumnReader(descriptor);
@@ -591,7 +592,8 @@ public class ParquetRewriter implements Closeable {
     // Create new schema that only has the current column
     MessageType newSchema = newSchema(schema, descriptor);
     ColumnChunkPageWriteStore cPageStore = new ColumnChunkPageWriteStore(
-            compressor, newSchema, props.getAllocator(), props.getColumnIndexTruncateLength());
+            compressor, newSchema, props.getAllocator(), props.getColumnIndexTruncateLength(),
+            props.getPageWriteChecksumEnabled(), writer.getEncryptor(), rowGroupOrdinal);
     ColumnWriteStore cStore = props.newColumnWriteStore(newSchema, cPageStore);
     ColumnWriter cWriter = cStore.getColumnWriter(descriptor);
 
