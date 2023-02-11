@@ -23,7 +23,7 @@ import org.apache.parquet.filter2.predicate.FilterPredicate;
 import org.apache.parquet.filter2.predicate.Operators;
 
 /**
- * Used in Filters to mark whether the block data matches the condition.
+ * Used in Filters to mark whether we should DROP the block if data matches the condition.
  * If we cannot decide whether the block matches, it will be always safe to return BLOCK_MIGHT_MATCH.
  *
  * We use Boolean Object here to distinguish the value type, please do not modify it.
@@ -38,11 +38,18 @@ public class PredicateEvaluation {
 
   public static Boolean evaluateAnd(Operators.And and, FilterPredicate.Visitor<Boolean> predicate) {
     Boolean left = and.getLeft().accept(predicate);
+    if (left == BLOCK_CANNOT_MATCH) {
+      // seems unintuitive to put an || not an && here but we can
+      // drop a chunk of records if we know that either the left or
+      // the right predicate agrees that no matter what we don't
+      // need this chunk.
+      return BLOCK_CANNOT_MATCH;
+    }
     Boolean right = and.getRight().accept(predicate);
-    if (left == BLOCK_CANNOT_MATCH || right == BLOCK_CANNOT_MATCH) {
+    if (right == BLOCK_CANNOT_MATCH) {
       return BLOCK_CANNOT_MATCH;
     } else if (left == BLOCK_MUST_MATCH && right == BLOCK_MUST_MATCH) {
-      // if left and right operation must need the block, then we must take the block
+      // if left and right operation all must needs the block, then we must take the block
       return BLOCK_MUST_MATCH;
     } else {
       return BLOCK_MIGHT_MATCH;
@@ -51,17 +58,28 @@ public class PredicateEvaluation {
 
   public static Boolean evaluateOr(Operators.Or or, FilterPredicate.Visitor<Boolean> predicate) {
     Boolean left = or.getLeft().accept(predicate);
-    Boolean right = or.getRight().accept(predicate);
-    if (left == BLOCK_CANNOT_MATCH && right == BLOCK_CANNOT_MATCH) {
-      return BLOCK_CANNOT_MATCH;
-    } else if (left == BLOCK_MUST_MATCH || right == BLOCK_MUST_MATCH) {
+    if (left == BLOCK_MUST_MATCH) {
       // if left or right operation must need the block, then we must take the block
       return BLOCK_MUST_MATCH;
+    }
+    Boolean right = or.getRight().accept(predicate);
+    if (right == BLOCK_MUST_MATCH) {
+      // if left or right operation must need the block, then we must take the block
+      return BLOCK_MUST_MATCH;
+    } else if (left == BLOCK_CANNOT_MATCH && right == BLOCK_CANNOT_MATCH) {
+      // seems unintuitive to put an && not an || here
+      // but we can only drop a chunk of records if we know that
+      // both the left and right predicates agree that no matter what
+      // we don't need this chunk.
+      return BLOCK_CANNOT_MATCH;
     } else {
       return BLOCK_MIGHT_MATCH;
     }
   }
 
+  /**
+   * Whether the block matches is determined, no further comparison is required
+   */
   public static Boolean isDeterminedPredicate(Boolean predicate) {
     return predicate == BLOCK_MUST_MATCH || predicate == BLOCK_CANNOT_MATCH;
   }

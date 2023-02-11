@@ -72,7 +72,7 @@ import org.apache.parquet.hadoop.metadata.ColumnPath;
 // TODO: (https://issues.apache.org/jira/browse/PARQUET-38)
 public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
 
-  public static Boolean evaluate(FilterPredicate pred, List<ColumnChunkMetaData> columns) {
+  public static Boolean predicate(FilterPredicate pred, List<ColumnChunkMetaData> columns) {
     Objects.requireNonNull(pred, "pred cannot be null");
     Objects.requireNonNull(columns, "columns cannot be null");
     StatisticsFilter statisticsFilter = new StatisticsFilter(columns);
@@ -82,7 +82,7 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
   }
 
   public static boolean canDrop(FilterPredicate pred, List<ColumnChunkMetaData> columns) {
-    return evaluate(pred, columns) == BLOCK_CANNOT_MATCH;
+    return predicate(pred, columns) == BLOCK_CANNOT_MATCH;
   }
 
   private final Map<ColumnPath, ColumnChunkMetaData> columns = new HashMap<ColumnPath, ColumnChunkMetaData>();
@@ -141,7 +141,7 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
       // we are looking for records where v eq(null)
       // so if there are no nulls in this chunk, we can drop it,
       // if there has nulls in this chunk, we must take it
-      return !hasNulls(meta) ? BLOCK_CANNOT_MATCH : BLOCK_MUST_MATCH;
+      return !hasNulls(meta) ? BLOCK_CANNOT_MATCH : BLOCK_MIGHT_MATCH;
     }
 
     if (isAllNulls(meta)) {

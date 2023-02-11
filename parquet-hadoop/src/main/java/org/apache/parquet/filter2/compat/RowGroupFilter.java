@@ -101,12 +101,9 @@ public class RowGroupFilter implements Visitor<List<BlockMetaData>> {
 
     for (BlockMetaData block : blocks) {
       Boolean predicate = BLOCK_MIGHT_MATCH;
-
       if (levels.contains(FilterLevel.STATISTICS)) {
-
-        predicate = StatisticsFilter.evaluate(filterPredicate, block.getColumns());
-
-        if(predicate == BLOCK_MUST_MATCH) {
+        predicate = StatisticsFilter.predicate(filterPredicate, block.getColumns());
+        if (predicate == BLOCK_MUST_MATCH) {
           filteredBlocks.add(block);
         }
         if(isDeterminedPredicate(predicate)) {
@@ -115,19 +112,17 @@ public class RowGroupFilter implements Visitor<List<BlockMetaData>> {
       }
 
       if (levels.contains(FilterLevel.DICTIONARY)) {
-
-        predicate = DictionaryFilter.evaluate(filterPredicate, block.getColumns(), reader.getDictionaryReader(block));
-
-        if(predicate == BLOCK_MUST_MATCH) {
+        predicate = DictionaryFilter.predicate(filterPredicate, block.getColumns(), reader.getDictionaryReader(block));
+        if (predicate == BLOCK_MUST_MATCH) {
           filteredBlocks.add(block);
         }
-        if(isDeterminedPredicate(predicate)) {
+        if (isDeterminedPredicate(predicate)) {
           continue;
         }
       }
 
       if (levels.contains(FilterLevel.BLOOMFILTER)) {
-        predicate = BloomFilterImpl.evaluate(filterPredicate, block.getColumns(), reader.getBloomFilterDataReader(block));
+        predicate = BloomFilterImpl.predicate(filterPredicate, block.getColumns(), reader.getBloomFilterDataReader(block));
       }
 
       if (predicate != BLOCK_CANNOT_MATCH) {

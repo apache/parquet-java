@@ -566,7 +566,7 @@ public class TestStatisticsFilter {
     Integer originMax = intStats.genericGetMax();
     intStats.setMinMax(10, 10);
     try {
-      assertSame(BLOCK_MUST_MATCH, StatisticsFilter.evaluate(eq(intColumn, 10), columnMetas));
+      assertSame(BLOCK_MUST_MATCH, StatisticsFilter.predicate(eq(intColumn, 10), columnMetas));
     } finally {
       intStats.setMinMax(originMin, originMax);
     }

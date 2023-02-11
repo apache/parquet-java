@@ -798,7 +798,7 @@ public class DictionaryFilterTest {
   public void testCanSkipOtherFilters() {
     BinaryColumn b = binaryColumn("binary_field");
     FilterPredicate pred = eq(b, Binary.fromString("c"));
-    assertSame(BLOCK_MUST_MATCH, DictionaryFilter.evaluate(pred, ccmd, dictionaries));
+    assertSame(BLOCK_MUST_MATCH, DictionaryFilter.predicate(pred, ccmd, dictionaries));
   }
 
 

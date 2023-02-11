@@ -70,7 +70,7 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
 
   private static final Logger LOG = LoggerFactory.getLogger(DictionaryFilter.class);
 
-  public static Boolean evaluate(FilterPredicate pred, List<ColumnChunkMetaData> columns, DictionaryPageReadStore dictionaries) {
+  public static Boolean predicate(FilterPredicate pred, List<ColumnChunkMetaData> columns, DictionaryPageReadStore dictionaries) {
     Objects.requireNonNull(pred, "pred cannnot be null");
     Objects.requireNonNull(columns, "columns cannnot be null");
     DictionaryFilter dictionaryFilter = new DictionaryFilter(columns, dictionaries);
@@ -80,7 +80,7 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
   }
 
   public static boolean canDrop(FilterPredicate pred, List<ColumnChunkMetaData> columns, DictionaryPageReadStore dictionaries) {
-    return evaluate(pred, columns, dictionaries) == BLOCK_CANNOT_MATCH;
+    return predicate(pred, columns, dictionaries) == BLOCK_CANNOT_MATCH;
   }
 
   private final Map<ColumnPath, ColumnChunkMetaData> columns = new HashMap<ColumnPath, ColumnChunkMetaData>();

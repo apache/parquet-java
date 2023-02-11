@@ -46,7 +46,7 @@ public class BloomFilterImpl implements FilterPredicate.Visitor<Boolean>{
 
   private final Map<ColumnPath, ColumnChunkMetaData> columns = new HashMap<ColumnPath, ColumnChunkMetaData>();
 
-  public static Boolean evaluate(FilterPredicate pred, List<ColumnChunkMetaData> columns, BloomFilterReader bloomFilterReader) {
+  public static Boolean predicate(FilterPredicate pred, List<ColumnChunkMetaData> columns, BloomFilterReader bloomFilterReader) {
     checkNotNull(pred, "pred");
     checkNotNull(columns, "columns");
     Boolean predicate = pred.accept(new BloomFilterImpl(columns, bloomFilterReader));
@@ -55,7 +55,7 @@ public class BloomFilterImpl implements FilterPredicate.Visitor<Boolean>{
   }
 
   public static boolean canDrop(FilterPredicate pred, List<ColumnChunkMetaData> columns, BloomFilterReader bloomFilterReader) {
-    return evaluate(pred, columns, bloomFilterReader) == BLOCK_CANNOT_MATCH;
+    return predicate(pred, columns, bloomFilterReader) == BLOCK_CANNOT_MATCH;
   }
 
   private BloomFilterImpl(List<ColumnChunkMetaData> columnsList, BloomFilterReader bloomFilterReader) {
