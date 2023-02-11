@@ -58,15 +58,19 @@ public abstract class ByteStreamSplitValuesReader extends ValuesReader {
   public void initFromPage(int valuesCount, ByteBufferInputStream stream) throws ParquetDecodingException, IOException {
     LOG.debug("init from page at offset {} for length {}", stream.position(), stream.available());
 
-    if (valuesCount * elementSizeInBytes > stream.available()) {
+    // ByteStreamSplitValuesWriter does not write number of encoded values to the stream. As the parquet
+    // specs state that no padding is allowed inside a data page, we can infer the number of values solely
+    // by dividing the number of bytes in the stream by the size of each element.
+    if (stream.available() % elementSizeInBytes != 0) {
       String errorMessage = String.format(
-              "Stream does not contain enough data for the given number of values. Num values: %d. Element size: %d Bytes available: %d",
-              valuesCount, elementSizeInBytes, stream.available());
+              "Invalid ByteStreamSplit stream, total length: %d bytes, element size: %d bytes.",
+              stream.available(), elementSizeInBytes);
       throw new ParquetDecodingException(errorMessage);
     }
+    this.valuesCount = stream.available() / elementSizeInBytes;
 
     // Allocate buffer for all of the byte stream data.
-    final int totalSizeInBytes = valuesCount * elementSizeInBytes;
+    final int totalSizeInBytes = stream.available();
     byteStreamData = new byte[totalSizeInBytes];
 
     // Eagerly read the data for each stream.
@@ -78,7 +82,6 @@ public abstract class ByteStreamSplitValuesReader extends ValuesReader {
     }
 
     indexInStream = 0;
-    this.valuesCount = valuesCount;
   }
 
   @Override
