@@ -104,68 +104,68 @@ public class TestRowGroupExactPredicate {
     existValues.add(Binary.fromString("miller"));
     existValues.add(Binary.fromString("anderson"));
 
-    assertFilter(eq(binaryColumn("name"), null));
-    assertFilter(eq(binaryColumn("name"), Binary.fromString("miller")));
-    assertFilter(eq(longColumn("id"), 1234L));
-    assertFilter(eq(binaryColumn("name"), Binary.fromString("noneExistName")));
-    assertFilter(eq(doubleColumn("location.lat"), 99.9));
+    assertCorrectFiltering(eq(binaryColumn("name"), null));
+    assertCorrectFiltering(eq(binaryColumn("name"), Binary.fromString("miller")));
+    assertCorrectFiltering(eq(longColumn("id"), 1234L));
+    assertCorrectFiltering(eq(binaryColumn("name"), Binary.fromString("noneExistName")));
+    assertCorrectFiltering(eq(doubleColumn("location.lat"), 99.9));
 
-    assertFilter(notEq(binaryColumn("name"), null));
-    assertFilter(notEq(binaryColumn("name"), Binary.fromString("miller")));
-    assertFilter(notEq(binaryColumn("name"), Binary.fromString("noneExistName")));
+    assertCorrectFiltering(notEq(binaryColumn("name"), null));
+    assertCorrectFiltering(notEq(binaryColumn("name"), Binary.fromString("miller")));
+    assertCorrectFiltering(notEq(binaryColumn("name"), Binary.fromString("noneExistName")));
 
-    assertFilter(in(binaryColumn("name"), existValues));
-    assertFilter(in(binaryColumn("name"), Sets.newHashSet(Binary.fromString("miller"),
+    assertCorrectFiltering(in(binaryColumn("name"), existValues));
+    assertCorrectFiltering(in(binaryColumn("name"), Sets.newHashSet(Binary.fromString("miller"),
       Binary.fromString("noneExistName"), null)));
 
-    assertFilter(notIn(binaryColumn("name"),
+    assertCorrectFiltering(notIn(binaryColumn("name"),
       Sets.newHashSet(Binary.fromString("miller"), Binary.fromString("anderson"))));
-    assertFilter(notIn(binaryColumn("name"),
+    assertCorrectFiltering(notIn(binaryColumn("name"),
       Sets.newHashSet(Binary.fromString("miller"), Binary.fromString("noneExistName"), null)));
 
-    assertFilter(lt(longColumn("id"), MAX_ID + 1L));
-    assertFilter(lt(longColumn("id"), MAX_ID));
-    assertFilter(lt(longColumn("id"), 1234L));
-    assertFilter(lt(longColumn("id"), MIN_ID));
-    assertFilter(lt(longColumn("id"), MIN_ID - 1L));
+    assertCorrectFiltering(lt(longColumn("id"), MAX_ID + 1L));
+    assertCorrectFiltering(lt(longColumn("id"), MAX_ID));
+    assertCorrectFiltering(lt(longColumn("id"), 1234L));
+    assertCorrectFiltering(lt(longColumn("id"), MIN_ID));
+    assertCorrectFiltering(lt(longColumn("id"), MIN_ID - 1L));
     // for dictionary exactly match less than `miller`
-    assertFilter(lt(binaryColumn("name"), Binary.fromString("ailler")));
-    assertFilter(lt(binaryColumn("name"), Binary.fromString("miller")));
+    assertCorrectFiltering(lt(binaryColumn("name"), Binary.fromString("ailler")));
+    assertCorrectFiltering(lt(binaryColumn("name"), Binary.fromString("miller")));
 
-    assertFilter(ltEq(longColumn("id"), MAX_ID + 1L));
-    assertFilter(ltEq(longColumn("id"), MAX_ID));
-    assertFilter(ltEq(longColumn("id"), 1234L));
-    assertFilter(ltEq(longColumn("id"), MIN_ID));
-    assertFilter(ltEq(longColumn("id"), MIN_ID - 1L));
+    assertCorrectFiltering(ltEq(longColumn("id"), MAX_ID + 1L));
+    assertCorrectFiltering(ltEq(longColumn("id"), MAX_ID));
+    assertCorrectFiltering(ltEq(longColumn("id"), 1234L));
+    assertCorrectFiltering(ltEq(longColumn("id"), MIN_ID));
+    assertCorrectFiltering(ltEq(longColumn("id"), MIN_ID - 1L));
 
-    assertFilter(gt(longColumn("id"), MAX_ID + 1L));
-    assertFilter(gt(longColumn("id"), MAX_ID));
-    assertFilter(gt(longColumn("id"), 1234L));
-    assertFilter(gt(longColumn("id"), MIN_ID));
-    assertFilter(gt(longColumn("id"), MIN_ID - 1L));
+    assertCorrectFiltering(gt(longColumn("id"), MAX_ID + 1L));
+    assertCorrectFiltering(gt(longColumn("id"), MAX_ID));
+    assertCorrectFiltering(gt(longColumn("id"), 1234L));
+    assertCorrectFiltering(gt(longColumn("id"), MIN_ID));
+    assertCorrectFiltering(gt(longColumn("id"), MIN_ID - 1L));
 
-    assertFilter(gtEq(longColumn("id"), MAX_ID + 1L));
-    assertFilter(gtEq(longColumn("id"), MAX_ID));
-    assertFilter(gtEq(longColumn("id"), 1234L));
-    assertFilter(gtEq(longColumn("id"), MIN_ID));
-    assertFilter(gtEq(longColumn("id"), MIN_ID - 1L));
+    assertCorrectFiltering(gtEq(longColumn("id"), MAX_ID + 1L));
+    assertCorrectFiltering(gtEq(longColumn("id"), MAX_ID));
+    assertCorrectFiltering(gtEq(longColumn("id"), 1234L));
+    assertCorrectFiltering(gtEq(longColumn("id"), MIN_ID));
+    assertCorrectFiltering(gtEq(longColumn("id"), MIN_ID - 1L));
 
-    assertFilter(and(eq(binaryColumn("name"), Binary.fromString("noneExistName")),
+    assertCorrectFiltering(and(eq(binaryColumn("name"), Binary.fromString("noneExistName")),
       lt(longColumn("id"), -99L)));
-    assertFilter(and(eq(binaryColumn("name"), Binary.fromString("miller")),
+    assertCorrectFiltering(and(eq(binaryColumn("name"), Binary.fromString("miller")),
       lt(longColumn("id"), 1234L)));
-    assertFilter(and(eq(binaryColumn("name"), Binary.fromString("noneExistName")),
+    assertCorrectFiltering(and(eq(binaryColumn("name"), Binary.fromString("noneExistName")),
       lt(longColumn("id"), 1234L)));
 
-    assertFilter(or(eq(binaryColumn("name"), Binary.fromString("noneExistName")),
+    assertCorrectFiltering(or(eq(binaryColumn("name"), Binary.fromString("noneExistName")),
       lt(longColumn("id"), -99L)));
-    assertFilter(or(eq(binaryColumn("name"), Binary.fromString("miller")),
+    assertCorrectFiltering(or(eq(binaryColumn("name"), Binary.fromString("miller")),
       lt(longColumn("id"), 1234L)));
-    assertFilter(or(eq(binaryColumn("name"), Binary.fromString("noneExistName")),
+    assertCorrectFiltering(or(eq(binaryColumn("name"), Binary.fromString("noneExistName")),
       lt(longColumn("id"), 1234L)));
   }
 
-  private void assertFilter(FilterPredicate filter) throws IOException {
+  private void assertCorrectFiltering(FilterPredicate filter) throws IOException {
     ParquetReadOptions readOptions = ParquetReadOptions.builder()
       .withRecordFilter(FilterCompat.get(filter)).build();
 
