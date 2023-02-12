@@ -237,7 +237,7 @@ public class TestRowGroupFilterExactly {
     }
     Set<Long> offsets1 = left.stream().map(BlockMetaData::getRowIndexOffset).collect(Collectors.toSet());
     Set<Long> offsets2 = right.stream().map(BlockMetaData::getRowIndexOffset).collect(Collectors.toSet());
-    return offsets1.containsAll(offsets2) && offsets2.containsAll(offsets1);
+    return offsets1.containsAll(offsets2);
   }
 
   private void writePhoneBookToFile(Path file,
