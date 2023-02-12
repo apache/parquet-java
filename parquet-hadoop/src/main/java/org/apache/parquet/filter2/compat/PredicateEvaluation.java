@@ -19,13 +19,16 @@
 
 package org.apache.parquet.filter2.compat;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
 import org.apache.parquet.filter2.predicate.FilterPredicate;
 import org.apache.parquet.filter2.predicate.Operators;
 
 /**
  * Used in Filters to mark whether we should DROP the block if data matches the condition.
  * If we cannot decide whether the block matches, it will be always safe to return BLOCK_MIGHT_MATCH.
- *
  * We use Boolean Object here to distinguish the value type, please do not modify it.
  */
 public class PredicateEvaluation {
@@ -77,11 +80,19 @@ public class PredicateEvaluation {
     }
   }
 
+  /* The predicates which can be verified exactly */
+  private static List<Boolean> EXACT_PREDICATES = new ArrayList<>(Arrays.asList(BLOCK_MUST_MATCH, BLOCK_CANNOT_MATCH));
+
   /**
-   * Whether the block matches is determined, no further comparison is required
+   * Whether the predicate can be verified exactly in one filter, then the other filters can be skipped for optimization
    */
-  public static Boolean isDeterminedPredicate(Boolean predicate) {
-    return predicate == BLOCK_MUST_MATCH || predicate == BLOCK_CANNOT_MATCH;
+  public static Boolean isExactPredicate(Boolean predicate) {
+    for (Boolean exactPredicate : EXACT_PREDICATES) {
+      if (exactPredicate == predicate) {
+        return true;
+      }
+    }
+    return false;
   }
 
   public static void checkPredicate(Boolean predicate) {
@@ -90,5 +101,11 @@ public class PredicateEvaluation {
       && predicate != BLOCK_MUST_MATCH) {
       throw new IllegalArgumentException("predicate should be BLOCK_CANNOT_MATCH, BLOCK_MIGHT_MATCH or BLOCK_MUST_MATCH");
     }
+  }
+
+
+  // Only for Unit Test
+  public static void setTestExactPredicate(List<Boolean> predicate) {
+    EXACT_PREDICATES = predicate;
   }
 }

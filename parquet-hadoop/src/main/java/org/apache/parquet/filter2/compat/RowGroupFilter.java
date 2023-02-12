@@ -21,7 +21,7 @@ package org.apache.parquet.filter2.compat;
 import static org.apache.parquet.filter2.compat.PredicateEvaluation.BLOCK_CANNOT_MATCH;
 import static org.apache.parquet.filter2.compat.PredicateEvaluation.BLOCK_MIGHT_MATCH;
 import static org.apache.parquet.filter2.compat.PredicateEvaluation.BLOCK_MUST_MATCH;
-import static org.apache.parquet.filter2.compat.PredicateEvaluation.isDeterminedPredicate;
+import static org.apache.parquet.filter2.compat.PredicateEvaluation.isExactPredicate;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -103,20 +103,20 @@ public class RowGroupFilter implements Visitor<List<BlockMetaData>> {
       Boolean predicate = BLOCK_MIGHT_MATCH;
       if (levels.contains(FilterLevel.STATISTICS)) {
         predicate = StatisticsFilter.predicate(filterPredicate, block.getColumns());
-        if (predicate == BLOCK_MUST_MATCH) {
-          filteredBlocks.add(block);
-        }
-        if(isDeterminedPredicate(predicate)) {
+        if(isExactPredicate(predicate)) {
+          if (predicate == BLOCK_MUST_MATCH) {
+            filteredBlocks.add(block);
+          }
           continue;
         }
       }
 
       if (levels.contains(FilterLevel.DICTIONARY)) {
         predicate = DictionaryFilter.predicate(filterPredicate, block.getColumns(), reader.getDictionaryReader(block));
-        if (predicate == BLOCK_MUST_MATCH) {
-          filteredBlocks.add(block);
-        }
-        if (isDeterminedPredicate(predicate)) {
+        if (isExactPredicate(predicate)) {
+          if (predicate == BLOCK_MUST_MATCH) {
+            filteredBlocks.add(block);
+          }
           continue;
         }
       }

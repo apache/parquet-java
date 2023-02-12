@@ -278,11 +278,12 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
       return BLOCK_MIGHT_MATCH;
     }
 
-    // we are looking for records where v notEq(someNonNull)
     if (stats.compareMinToValue(value) == 0 && stats.compareMaxToValue(value) == 0) {
+      // we are looking for records where v notEq(someNonNull)
       // drop if this is a column where min = max = value
       return BLOCK_CANNOT_MATCH;
     } else {
+      // we are looking for records where v notEq(someNonNull)
       // value != min or max, we must take it.
       return BLOCK_MUST_MATCH;
     }
@@ -320,11 +321,13 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
 
     T value = lt.getValue();
 
-    // we are looking for records where v < someValue
+
     if (stats.compareMinToValue(value) >= 0) {
+      // we are looking for records where v < someValue
       // drop if value <= min
       return BLOCK_CANNOT_MATCH;
     } else {
+      // we are looking for records where v < someValue
       // if value > min, we must take it
       return BLOCK_MUST_MATCH;
     }
@@ -362,11 +365,13 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
 
     T value = ltEq.getValue();
 
-    // we are looking for records where v <= someValue
+
     if (stats.compareMinToValue(value) > 0) {
+      // we are looking for records where v <= someValue
       // drop if value < min
       return BLOCK_CANNOT_MATCH;
     } else {
+      // we are looking for records where v <= someValue
       // if value >= min, we must take it
       return BLOCK_MUST_MATCH;
     }
