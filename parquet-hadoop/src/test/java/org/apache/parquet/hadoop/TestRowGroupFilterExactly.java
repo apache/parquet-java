@@ -21,6 +21,9 @@ package org.apache.parquet.hadoop;
 
 import static org.apache.parquet.filter2.compat.PredicateEvaluation.BLOCK_CANNOT_MATCH;
 import static org.apache.parquet.filter2.compat.PredicateEvaluation.BLOCK_MUST_MATCH;
+import static org.apache.parquet.filter2.compat.RowGroupFilter.FilterLevel.BLOOMFILTER;
+import static org.apache.parquet.filter2.compat.RowGroupFilter.FilterLevel.DICTIONARY;
+import static org.apache.parquet.filter2.compat.RowGroupFilter.FilterLevel.STATISTICS;
 import static org.apache.parquet.filter2.predicate.FilterApi.and;
 import static org.apache.parquet.filter2.predicate.FilterApi.binaryColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.doubleColumn;
@@ -60,6 +63,7 @@ import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.filter2.compat.PredicateEvaluation;
+import org.apache.parquet.filter2.compat.RowGroupFilter;
 import org.apache.parquet.filter2.predicate.FilterPredicate;
 import org.apache.parquet.filter2.recordlevel.PhoneBookWriter;
 import org.apache.parquet.hadoop.example.ExampleParquetWriter;
@@ -67,6 +71,7 @@ import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.io.api.Binary;
 
+import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 
 @RunWith(Parameterized.class)
@@ -164,6 +169,33 @@ public class TestRowGroupFilterExactly {
       lt(longColumn("id"), 1234L)));
     assertCorrectFiltering(or(eq(binaryColumn("name"), Binary.fromString("noneExistName")),
       lt(longColumn("id"), 1234L)));
+
+
+    ParquetFileReader reader = ParquetFileReader.open(HadoopInputFile.fromPath(FILE, new Configuration()));
+
+    for (int i = 0; i < 1000; i++) {
+      PhoneBookWriter.User user = DATA.get(i);
+      if (user.getName() == null) {
+        continue;
+      }
+      assertCorrectFiltering(eq(binaryColumn("name"), Binary.fromString(user.getName())), reader);
+      assertCorrectFiltering(notEq(binaryColumn("name"), Binary.fromString(user.getName())), reader);
+      assertCorrectFiltering(lt(binaryColumn("name"), Binary.fromString(user.getName())), reader);
+      assertCorrectFiltering(ltEq(binaryColumn("name"), Binary.fromString(user.getName())), reader);
+      assertCorrectFiltering(gt(binaryColumn("name"), Binary.fromString(user.getName())), reader);
+      assertCorrectFiltering(gtEq(binaryColumn("name"), Binary.fromString(user.getName())), reader);
+      assertCorrectFiltering(in(binaryColumn("name"), Sets.newHashSet(Binary.fromString(user.getName()))), reader);
+      assertCorrectFiltering(notIn(binaryColumn("name"), Sets.newHashSet(Binary.fromString(user.getName()))), reader);
+
+      assertCorrectFiltering(eq(longColumn("id"), user.getId()), reader);
+      assertCorrectFiltering(notEq(longColumn("id"), user.getId()), reader);
+      assertCorrectFiltering(lt(longColumn("id"), user.getId()), reader);
+      assertCorrectFiltering(ltEq(longColumn("id"), user.getId()), reader);
+      assertCorrectFiltering(gt(longColumn("id"), user.getId()), reader);
+      assertCorrectFiltering(gtEq(longColumn("id"), user.getId()), reader);
+      assertCorrectFiltering(in(longColumn("id"), Sets.newHashSet(user.getId())), reader);
+      assertCorrectFiltering(notIn(longColumn("id"), Sets.newHashSet(user.getId())), reader);
+    }
   }
 
   private void assertCorrectFiltering(FilterPredicate filter) throws IOException {
@@ -179,6 +211,21 @@ public class TestRowGroupFilterExactly {
     testEvaluation.setTestExactPredicate(new ArrayList<>(Arrays.asList(BLOCK_MUST_MATCH, BLOCK_CANNOT_MATCH)));
     List<BlockMetaData> rowGroups1 =
       ParquetFileReader.open(HadoopInputFile.fromPath(FILE, new Configuration()), readOptions).getRowGroups();
+
+    // the filtered rowGroups should be same
+    assertTrue(isEqualRowGroups(rowGroups1, rowGroups2));
+  }
+
+  private void assertCorrectFiltering(FilterPredicate filter, ParquetFileReader reader) {
+    List<BlockMetaData> originBlocks = reader.getRowGroups();
+    List<RowGroupFilter.FilterLevel> levels = Lists.newArrayList(STATISTICS, DICTIONARY, BLOOMFILTER);
+    // simulate the previous behavior, only skip other filters when predicate is BLOCK_CANNOT_MATCH
+    testEvaluation.setTestExactPredicate(Collections.singletonList(BLOCK_CANNOT_MATCH));
+    List<BlockMetaData> rowGroups1 = RowGroupFilter.filterRowGroups(levels, FilterCompat.get(filter), originBlocks, reader);
+
+    // when predicate is BLOCK_CANNOT_MATCH or BLOCK_MUST_MATCH, the other filters will be skipped for optimization
+    testEvaluation.setTestExactPredicate(new ArrayList<>(Arrays.asList(BLOCK_MUST_MATCH, BLOCK_CANNOT_MATCH)));
+    List<BlockMetaData> rowGroups2 = RowGroupFilter.filterRowGroups(levels, FilterCompat.get(filter), originBlocks, reader);
 
     // the filtered rowGroups should be same
     assertTrue(isEqualRowGroups(rowGroups1, rowGroups2));
