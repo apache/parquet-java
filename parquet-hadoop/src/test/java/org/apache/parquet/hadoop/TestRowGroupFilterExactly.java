@@ -70,13 +70,14 @@ import org.apache.parquet.io.api.Binary;
 import com.google.common.collect.Sets;
 
 @RunWith(Parameterized.class)
-public class TestRowGroupExactPredicate {
+public class TestRowGroupFilterExactly {
   private final Path FILE = createTempFile();
   private ParquetProperties.WriterVersion WRITER_VERSION;
   private final Random RANDOM = new Random(42);
   private final List<PhoneBookWriter.User> DATA = Collections.unmodifiableList(generateData(10000));
   private final long MAX_ID = DATA.size() - 1;
   private final long MIN_ID = 0;
+  private final TestPredicateEvaluation testEvaluation = new TestPredicateEvaluation();
 
   @Parameterized.Parameters(name = "Run parquet version {index} ")
   public static Collection<Object[]> params() {
@@ -85,7 +86,7 @@ public class TestRowGroupExactPredicate {
       new Object[]{ParquetProperties.WriterVersion.PARQUET_2_0});
   }
 
-  public TestRowGroupExactPredicate(ParquetProperties.WriterVersion WRITER_VERSION) throws IOException {
+  public TestRowGroupFilterExactly(ParquetProperties.WriterVersion WRITER_VERSION) throws IOException {
     this.WRITER_VERSION = WRITER_VERSION;
     deleteFile(FILE);
     writePhoneBookToFile(FILE, this.WRITER_VERSION);
@@ -94,7 +95,7 @@ public class TestRowGroupExactPredicate {
   @After
   public void deleteFiles() throws IOException {
     deleteFile(FILE);
-    PredicateEvaluation.setTestExactPredicate(new ArrayList<>(Arrays.asList(BLOCK_MUST_MATCH, BLOCK_CANNOT_MATCH)));
+    testEvaluation.setTestExactPredicate(new ArrayList<>(Arrays.asList(BLOCK_MUST_MATCH, BLOCK_CANNOT_MATCH)));
   }
 
   @Test
@@ -170,12 +171,12 @@ public class TestRowGroupExactPredicate {
       .withRecordFilter(FilterCompat.get(filter)).build();
 
     // simulate the previous behavior, only skip other filters when predicate is BLOCK_CANNOT_MATCH
-    PredicateEvaluation.setTestExactPredicate(new ArrayList<>(Collections.singletonList(BLOCK_CANNOT_MATCH)));
+    testEvaluation.setTestExactPredicate(Collections.singletonList(BLOCK_CANNOT_MATCH));
     List<BlockMetaData> rowGroups2 =
       ParquetFileReader.open(HadoopInputFile.fromPath(FILE, new Configuration()), readOptions).getRowGroups();
 
     // when predicate is BLOCK_CANNOT_MATCH or BLOCK_MUST_MATCH, the other filters will be skipped for optimization
-    PredicateEvaluation.setTestExactPredicate(new ArrayList<>(Arrays.asList(BLOCK_MUST_MATCH, BLOCK_CANNOT_MATCH)));
+    testEvaluation.setTestExactPredicate(new ArrayList<>(Arrays.asList(BLOCK_MUST_MATCH, BLOCK_CANNOT_MATCH)));
     List<BlockMetaData> rowGroups1 =
       ParquetFileReader.open(HadoopInputFile.fromPath(FILE, new Configuration()), readOptions).getRowGroups();
 
@@ -291,5 +292,12 @@ public class TestRowGroupExactPredicate {
     double lat = RANDOM.nextDouble() * 90.0 - (id < rowCount / 2 ? 90.0 : 0.0);
     double lon = RANDOM.nextDouble() * 90.0 - (id < rowCount / 4 || id >= 3 * rowCount / 4 ? 90.0 : 0.0);
     return new PhoneBookWriter.Location(RANDOM.nextDouble() < 0.01 ? null : lat, RANDOM.nextDouble() < 0.01 ? null : lon);
+  }
+
+  private class TestPredicateEvaluation extends PredicateEvaluation {
+    // Only for Unit Test
+    private void setTestExactPredicate(List<Boolean> predicate) {
+      EXACT_PREDICATES = predicate;
+    }
   }
 }

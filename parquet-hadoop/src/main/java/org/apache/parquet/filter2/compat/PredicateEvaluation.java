@@ -81,7 +81,7 @@ public class PredicateEvaluation {
   }
 
   /* The predicates which can be verified exactly */
-  private static List<Boolean> EXACT_PREDICATES = new ArrayList<>(Arrays.asList(BLOCK_MUST_MATCH, BLOCK_CANNOT_MATCH));
+  protected static List<Boolean> EXACT_PREDICATES = new ArrayList<>(Arrays.asList(BLOCK_MUST_MATCH, BLOCK_CANNOT_MATCH));
 
   /**
    * Whether the predicate can be verified exactly in one filter, then the other filters can be skipped for optimization
@@ -101,11 +101,5 @@ public class PredicateEvaluation {
       && predicate != BLOCK_MUST_MATCH) {
       throw new IllegalArgumentException("predicate should be BLOCK_CANNOT_MATCH, BLOCK_MIGHT_MATCH or BLOCK_MUST_MATCH");
     }
-  }
-
-
-  // Only for Unit Test
-  public static void setTestExactPredicate(List<Boolean> predicate) {
-    EXACT_PREDICATES = predicate;
   }
 }
