@@ -107,6 +107,12 @@ public class RewriteOptions {
       this.outputFile = outputFile;
     }
 
+    public Builder(Configuration conf, List<Path> inputFiles, Path outputFile) {
+      this.conf = conf;
+      this.inputFiles = inputFiles;
+      this.outputFile = outputFile;
+    }
+
     public Builder prune(List<String> columns) {
       this.pruneColumns = columns;
       return this;
@@ -129,6 +135,11 @@ public class RewriteOptions {
 
     public Builder encryptionProperties(FileEncryptionProperties fileEncryptionProperties) {
       this.fileEncryptionProperties = fileEncryptionProperties;
+      return this;
+    }
+
+    public Builder addInputFile(Path path) {
+      this.inputFiles.add(path);
       return this;
     }
 

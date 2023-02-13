@@ -45,7 +45,6 @@ import org.apache.parquet.format.PageHeader;
 import org.apache.parquet.format.converter.ParquetMetadataConverter;
 import org.apache.parquet.hadoop.CodecFactory;
 import org.apache.parquet.hadoop.ColumnChunkPageWriteStore;
-import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.ParquetFileWriter;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
@@ -63,6 +62,7 @@ import org.apache.parquet.io.api.Converter;
 import org.apache.parquet.io.api.GroupConverter;
 import org.apache.parquet.io.api.PrimitiveConverter;
 import org.apache.parquet.schema.GroupType;
+import org.apache.parquet.schema.InvalidSchemaException;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
@@ -74,15 +74,16 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.apache.parquet.column.ParquetProperties.DEFAULT_COLUMN_INDEX_TRUNCATE_LENGTH;
 import static org.apache.parquet.column.ParquetProperties.DEFAULT_STATISTICS_TRUNCATE_LENGTH;
 import static org.apache.parquet.crypto.ModuleCipherFactory.ModuleType;
-import static org.apache.parquet.format.converter.ParquetMetadataConverter.NO_FILTER;
 import static org.apache.parquet.hadoop.ParquetWriter.DEFAULT_BLOCK_SIZE;
 import static org.apache.parquet.hadoop.ParquetWriter.MAX_PADDING_SIZE_DEFAULT;
 
@@ -93,33 +94,37 @@ public class ParquetRewriter implements Closeable {
   private static final Logger LOG = LoggerFactory.getLogger(ParquetRewriter.class);
   private final int pageBufferSize = ParquetProperties.DEFAULT_PAGE_SIZE * 2;
   private final byte[] pageBuffer = new byte[pageBufferSize];
-  private TransParquetFileReader reader;
-  private ParquetFileWriter writer;
-  private ParquetMetadata meta;
-  private MessageType schema;
-  private String originalCreatedBy;
+  // Configurations for the new file
   private CompressionCodecName newCodecName = null;
   private List<String> pruneColumns = null;
   private Map<ColumnPath, MaskMode> maskColumns = null;
   private Set<ColumnPath> encryptColumns = null;
   private boolean encryptMode = false;
   private Map<String, String> extraMetaData = new HashMap<>();
+  // Writer to rewrite the input files
+  private ParquetFileWriter writer;
+  // Number of blocks written which is used to keep track of the actual row group ordinal
+  private int numBlocksRewritten = 0;
+  // Reader and relevant states of the in-processing input file
+  private Queue<TransParquetFileReader> inputFiles = new LinkedList<>();
+  // Schema of input files (should be the same) and to write to the output file
+  private MessageType schema = null;
+  // The reader for the current input file
+  private TransParquetFileReader reader = null;
+  // The metadata of current reader being processed
+  private ParquetMetadata meta = null;
+  // created_by information of current reader being processed
+  private String originalCreatedBy = "";
+  // Unique created_by information from all input files
+  private Set<String> allOriginalCreatedBys = new HashSet<>();
 
   public ParquetRewriter(RewriteOptions options) throws IOException {
-    Preconditions.checkArgument(options.getInputFiles().size() == 1, "Only support one input file");
-    Path inPath = options.getInputFiles().get(0);
-    Path outPath = options.getOutputFile();
     Configuration conf = options.getConf();
+    openInputFiles(options.getInputFiles(), conf);
+    initNextReader();
 
     newCodecName = options.getNewCodecName();
     pruneColumns = options.getPruneColumns();
-
-    // Get file metadata and full schema from the input file
-    meta = ParquetFileReader.readFooter(conf, inPath, NO_FILTER);
-    schema = meta.getFileMetaData().getSchema();
-    originalCreatedBy = meta.getFileMetaData().getCreatedBy();
-    extraMetaData.putAll(meta.getFileMetaData().getKeyValueMetaData());
-    extraMetaData.put(ORIGINAL_CREATED_BY_KEY, originalCreatedBy);
 
     // Prune columns if specified
     if (pruneColumns != null && !pruneColumns.isEmpty()) {
@@ -127,7 +132,7 @@ public class ParquetRewriter implements Closeable {
       getPaths(schema, paths, null);
       for (String col : pruneColumns) {
         if (!paths.contains(col)) {
-          LOG.warn("Input column name {} doesn't show up in the schema of file {}", col, inPath.getName());
+          LOG.warn("Input column name {} doesn't show up in the schema of file {}", col, reader.getFile());
         }
       }
 
@@ -147,9 +152,7 @@ public class ParquetRewriter implements Closeable {
       this.encryptMode = true;
     }
 
-    reader = new TransParquetFileReader(
-            HadoopInputFile.fromPath(inPath, conf), HadoopReadOptions.builder(conf).build());
-
+    Path outPath = options.getOutputFile();
     ParquetFileWriter.Mode writerMode = ParquetFileWriter.Mode.CREATE;
     writer = new ParquetFileWriter(HadoopOutputFile.fromPath(outPath, conf), schema, writerMode,
             DEFAULT_BLOCK_SIZE, MAX_PADDING_SIZE_DEFAULT, DEFAULT_COLUMN_INDEX_TRUNCATE_LENGTH,
@@ -183,12 +186,61 @@ public class ParquetRewriter implements Closeable {
     }
   }
 
+  // Open all input files to validate their schemas are compatible to merge
+  private void openInputFiles(List<Path> inputFiles, Configuration conf) {
+    Preconditions.checkArgument(inputFiles != null && !inputFiles.isEmpty(), "No input files");
+
+    for (Path inputFile : inputFiles) {
+      try {
+        TransParquetFileReader reader = new TransParquetFileReader(
+                HadoopInputFile.fromPath(inputFile, conf), HadoopReadOptions.builder(conf).build());
+        MessageType inputFileSchema = reader.getFooter().getFileMetaData().getSchema();
+        if (this.schema == null) {
+          this.schema = inputFileSchema;
+        } else {
+          // Now we enforce equality of schemas from input files for simplicity.
+          if (!this.schema.equals(inputFileSchema)) {
+            throw new InvalidSchemaException("Input files have different schemas");
+          }
+        }
+        this.allOriginalCreatedBys.add(reader.getFooter().getFileMetaData().getCreatedBy());
+        this.inputFiles.add(reader);
+      } catch (IOException e) {
+        throw new IllegalArgumentException("Failed to open input file: " + inputFile, e);
+      }
+    }
+
+    extraMetaData.put(ORIGINAL_CREATED_BY_KEY, String.join("\n", allOriginalCreatedBys));
+  }
+
+  // Routines to get reader of next input file.
+  // Returns true if there is a next file to read, false otherwise.
+  private void initNextReader() {
+    if (inputFiles.isEmpty()) {
+      reader = null;
+      meta = null;
+      originalCreatedBy = null;
+      return;
+    }
+    reader = inputFiles.poll();
+    meta = reader.getFooter();
+    originalCreatedBy = meta.getFileMetaData().getCreatedBy();
+    extraMetaData.putAll(meta.getFileMetaData().getKeyValueMetaData());
+  }
+
   @Override
   public void close() throws IOException {
     writer.end(extraMetaData);
   }
 
   public void processBlocks() throws IOException {
+    while (reader != null) {
+      processBlocksFromReader();
+      initNextReader();
+    }
+  }
+
+  private void processBlocksFromReader() throws IOException {
     PageReadStore store = reader.readNextRowGroup();
     ColumnReadStoreImpl crStore = new ColumnReadStoreImpl(store, new DummyGroupConverter(), schema, originalCreatedBy);
     Map<ColumnPath, ColumnDescriptor> descriptorsMap = schema.getColumns().stream().collect(
@@ -236,7 +288,6 @@ public class ParquetRewriter implements Closeable {
                     writer,
                     schema,
                     newCodecName,
-                    blockId,
                     encryptColumn);
           } else {
             throw new UnsupportedOperationException("Only nullify is supported for now");
@@ -246,7 +297,7 @@ public class ParquetRewriter implements Closeable {
           ColumnChunkEncryptorRunTime columnChunkEncryptorRunTime = null;
           if (encryptMode) {
             columnChunkEncryptorRunTime =
-                    new ColumnChunkEncryptorRunTime(writer.getEncryptor(), chunk, blockId, columnId);
+                    new ColumnChunkEncryptorRunTime(writer.getEncryptor(), chunk, numBlocksRewritten, columnId);
           }
 
           // Translate compression and/or encryption
@@ -267,6 +318,7 @@ public class ParquetRewriter implements Closeable {
       writer.endBlock();
       store = reader.readNextRowGroup();
       blockId++;
+      numBlocksRewritten++;
     }
   }
 
@@ -571,7 +623,6 @@ public class ParquetRewriter implements Closeable {
                              ParquetFileWriter writer,
                              MessageType schema,
                              CompressionCodecName newCodecName,
-                             int rowGroupOrdinal,
                              boolean encryptColumn) throws IOException {
     if (encryptColumn) {
       Preconditions.checkArgument(writer.getEncryptor() != null, "Missing encryptor");
@@ -593,7 +644,7 @@ public class ParquetRewriter implements Closeable {
     MessageType newSchema = newSchema(schema, descriptor);
     ColumnChunkPageWriteStore cPageStore = new ColumnChunkPageWriteStore(
             compressor, newSchema, props.getAllocator(), props.getColumnIndexTruncateLength(),
-            props.getPageWriteChecksumEnabled(), writer.getEncryptor(), rowGroupOrdinal);
+            props.getPageWriteChecksumEnabled(), writer.getEncryptor(), numBlocksRewritten);
     ColumnWriteStore cStore = props.newColumnWriteStore(newSchema, cPageStore);
     ColumnWriter cWriter = cStore.getColumnWriter(descriptor);
 
