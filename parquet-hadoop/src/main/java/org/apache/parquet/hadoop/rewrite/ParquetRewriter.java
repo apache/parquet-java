@@ -120,7 +120,11 @@ public class ParquetRewriter implements Closeable {
 
   public ParquetRewriter(RewriteOptions options) throws IOException {
     Configuration conf = options.getConf();
+    Path outPath = options.getOutputFile();
     openInputFiles(options.getInputFiles(), conf);
+    LOG.info("Start rewriting {} input files {} to {}", inputFiles.size(), outPath);
+
+    // Init reader of the first input file
     initNextReader();
 
     newCodecName = options.getNewCodecName();
@@ -152,7 +156,6 @@ public class ParquetRewriter implements Closeable {
       this.encryptMode = true;
     }
 
-    Path outPath = options.getOutputFile();
     ParquetFileWriter.Mode writerMode = ParquetFileWriter.Mode.CREATE;
     writer = new ParquetFileWriter(HadoopOutputFile.fromPath(outPath, conf), schema, writerMode,
             DEFAULT_BLOCK_SIZE, MAX_PADDING_SIZE_DEFAULT, DEFAULT_COLUMN_INDEX_TRUNCATE_LENGTH,
@@ -200,7 +203,9 @@ public class ParquetRewriter implements Closeable {
         } else {
           // Now we enforce equality of schemas from input files for simplicity.
           if (!this.schema.equals(inputFileSchema)) {
-            throw new InvalidSchemaException("Input files have different schemas");
+            LOG.error("Input files have different schemas, expect: {}, input: {}, current file: {}",
+                    this.schema, inputFileSchema, inputFile);
+            throw new InvalidSchemaException("Input files have different schemas, current file: " + inputFile);
           }
         }
         this.allOriginalCreatedBys.add(reader.getFooter().getFileMetaData().getCreatedBy());
@@ -213,19 +218,25 @@ public class ParquetRewriter implements Closeable {
     extraMetaData.put(ORIGINAL_CREATED_BY_KEY, String.join("\n", allOriginalCreatedBys));
   }
 
-  // Routines to get reader of next input file.
-  // Returns true if there is a next file to read, false otherwise.
+  // Routines to get reader of next input file and set up relevant states
   private void initNextReader() {
+    if (reader != null) {
+      LOG.info("Finish rewriting input file: {}", reader.getFile());
+    }
+
     if (inputFiles.isEmpty()) {
       reader = null;
       meta = null;
       originalCreatedBy = null;
       return;
     }
+
     reader = inputFiles.poll();
     meta = reader.getFooter();
     originalCreatedBy = meta.getFileMetaData().getCreatedBy();
     extraMetaData.putAll(meta.getFileMetaData().getKeyValueMetaData());
+
+    LOG.info("Rewriting input file: {}, remaining files: {}", reader.getFile(), inputFiles.size());
   }
 
   @Override

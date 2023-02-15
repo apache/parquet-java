@@ -679,15 +679,18 @@ public class ParquetRewriterTest {
       createdBySet.add(pmd.getFileMetaData().getCreatedBy());
       assertNull(pmd.getFileMetaData().getKeyValueMetaData().get(ParquetRewriter.ORIGINAL_CREATED_BY_KEY));
     }
+
+    // Verify created_by from input files have been deduplicated
     Object[] inputCreatedBys = createdBySet.toArray();
     assertEquals(1, inputCreatedBys.length);
-    String inputCreatedBy = (String) inputCreatedBys[0];
 
+    // Verify created_by has been set
     FileMetaData outFMD = getFileMetaData(outputFile, null).getFileMetaData();
+    String inputCreatedBy = (String) inputCreatedBys[0];
     assertEquals(inputCreatedBy, outFMD.getCreatedBy());
 
+    // Verify original.created.by has been set
     String originalCreatedBy = outFMD.getKeyValueMetaData().get(ParquetRewriter.ORIGINAL_CREATED_BY_KEY);
-    assertNotNull(originalCreatedBy);
     assertEquals(inputCreatedBy, originalCreatedBy);
   }
 
