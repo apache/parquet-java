@@ -31,6 +31,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.parquet.OutputStreamCloseException;
+import org.apache.parquet.ParquetByteArrayOutputOverflowException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -219,6 +220,11 @@ public class CapacityByteArrayOutputStream extends OutputStream {
       currentSlab.put(b, off, len);
       currentSlabIndex += len;
       bytesUsed += len;
+    }
+    if (bytesUsed < 0) {
+      throw new ParquetByteArrayOutputOverflowException(
+        "Cannot write byte data larger than Integer.MAX_VALUE bytes: " +
+          bytesUsed);
     }
   }
 
