@@ -160,7 +160,7 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
                           Encoding valuesEncoding) throws IOException {
       pageOrdinal++;
       long uncompressedSize = bytes.size();
-      if (uncompressedSize > Integer.MAX_VALUE) {
+      if (uncompressedSize > Integer.MAX_VALUE || uncompressedSize < 0) {
         throw new ParquetEncodingException(
             "Cannot write page larger than Integer.MAX_VALUE bytes: " +
                 uncompressedSize);
