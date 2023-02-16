@@ -18,7 +18,9 @@
  */
 package org.apache.parquet;
 
-
+/**
+ * Thrown when the ByteArrayOutputStream outputs overflow
+ */
 public class ParquetByteArrayOutputOverflowException extends ParquetRuntimeException {
   public ParquetByteArrayOutputOverflowException() {
   }
