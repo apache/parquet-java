@@ -79,9 +79,12 @@ public class TestRowGroupFilterExactly {
   private final Path FILE = createTempFile();
   private ParquetProperties.WriterVersion WRITER_VERSION;
   private final Random RANDOM = new Random(42);
+  private String MIN_NAME = "";
+  private String MAX_NAME = "";
+  private final long MIN_ID = 0;
   private final List<PhoneBookWriter.User> DATA = Collections.unmodifiableList(generateData(10000));
   private final long MAX_ID = DATA.size() - 1;
-  private final long MIN_ID = 0;
+  private String NON_EXIST_NAME = "meller";
   private final TestPredicateEvaluation testEvaluation = new TestPredicateEvaluation();
 
   @Parameterized.Parameters(name = "Run parquet version {index} ")
@@ -110,24 +113,57 @@ public class TestRowGroupFilterExactly {
     existValues.add(Binary.fromString("miller"));
     existValues.add(Binary.fromString("anderson"));
 
+    //     StatisticsFilter: left must match , right must match -> must match
+    assertCorrectFiltering(or(gtEq(binaryColumn("name"), Binary.fromString(MIN_NAME)),
+      gtEq(longColumn("id"), MIN_ID)));
+    //     StatisticsFilter: left must match, right might match -> must match
+    assertCorrectFiltering(or(gtEq(binaryColumn("name"), Binary.fromString(MIN_NAME)),
+      eq(longColumn("id"), 1234L)));
+    //     StatisticsFilter: left can't match, right must match -> must match
+    assertCorrectFiltering(or(gt(binaryColumn("name"), Binary.fromString(MAX_NAME)),
+      gtEq(longColumn("id"), MIN_ID)));
+    //     StatisticsFilter: left can't match, right can't match -> can't match
+    assertCorrectFiltering(or(gt(binaryColumn("name"), Binary.fromString(MAX_NAME)),
+      gt(longColumn("id"), MAX_ID)));
+    // StatisticsFilter: left might match (can't match in DictionaryFilter), right must match -> must match
+    assertCorrectFiltering(or(eq(binaryColumn("name"), Binary.fromString(NON_EXIST_NAME)),
+      gtEq(longColumn("id"), MIN_ID)));
+
+    // StatisticsFilter: left must match , right must match -> must match
+    assertCorrectFiltering(and(gtEq(binaryColumn("name"), Binary.fromString(MIN_NAME)),
+      gtEq(longColumn("id"), MIN_ID)));
+    // StatisticsFilter: left must match, right might match -> might match
+    assertCorrectFiltering(and(gtEq(binaryColumn("name"), Binary.fromString(MIN_NAME)),
+      eq(longColumn("id"), 1234L)));
+    // StatisticsFilter: left can't match, right must match -> can't match
+    assertCorrectFiltering(and(gt(binaryColumn("name"), Binary.fromString(MAX_NAME)),
+      gtEq(longColumn("id"), MIN_ID)));
+    // StatisticsFilter: left might match (can't match in DictionaryFilter), right must match ->
+    // might match in StatisticsFilter, can't match in DictionaryFilter
+    assertCorrectFiltering(and(eq(binaryColumn("name"), Binary.fromString(NON_EXIST_NAME)),
+      gtEq(longColumn("id"), MIN_ID)));
+    //     StatisticsFilter: left can't match, right can't match -> can't match
+    assertCorrectFiltering(or(gt(binaryColumn("name"), Binary.fromString(MAX_NAME)),
+      gt(longColumn("id"), MAX_ID)));
+
     assertCorrectFiltering(eq(binaryColumn("name"), null));
     assertCorrectFiltering(eq(binaryColumn("name"), Binary.fromString("miller")));
     assertCorrectFiltering(eq(longColumn("id"), 1234L));
-    assertCorrectFiltering(eq(binaryColumn("name"), Binary.fromString("noneExistName")));
+    assertCorrectFiltering(eq(binaryColumn("name"), Binary.fromString(NON_EXIST_NAME)));
     assertCorrectFiltering(eq(doubleColumn("location.lat"), 99.9));
 
     assertCorrectFiltering(notEq(binaryColumn("name"), null));
     assertCorrectFiltering(notEq(binaryColumn("name"), Binary.fromString("miller")));
-    assertCorrectFiltering(notEq(binaryColumn("name"), Binary.fromString("noneExistName")));
+    assertCorrectFiltering(notEq(binaryColumn("name"), Binary.fromString(NON_EXIST_NAME)));
 
     assertCorrectFiltering(in(binaryColumn("name"), existValues));
     assertCorrectFiltering(in(binaryColumn("name"), Sets.newHashSet(Binary.fromString("miller"),
-      Binary.fromString("noneExistName"), null)));
+      Binary.fromString(NON_EXIST_NAME), null)));
 
     assertCorrectFiltering(notIn(binaryColumn("name"),
       Sets.newHashSet(Binary.fromString("miller"), Binary.fromString("anderson"))));
     assertCorrectFiltering(notIn(binaryColumn("name"),
-      Sets.newHashSet(Binary.fromString("miller"), Binary.fromString("noneExistName"), null)));
+      Sets.newHashSet(Binary.fromString("miller"), Binary.fromString(NON_EXIST_NAME), null)));
 
     assertCorrectFiltering(lt(longColumn("id"), MAX_ID + 1L));
     assertCorrectFiltering(lt(longColumn("id"), MAX_ID));
@@ -135,7 +171,7 @@ public class TestRowGroupFilterExactly {
     assertCorrectFiltering(lt(longColumn("id"), MIN_ID));
     assertCorrectFiltering(lt(longColumn("id"), MIN_ID - 1L));
     // for dictionary exactly match less than `miller`
-    assertCorrectFiltering(lt(binaryColumn("name"), Binary.fromString("ailler")));
+    assertCorrectFiltering(lt(binaryColumn("name"), Binary.fromString(NON_EXIST_NAME)));
     assertCorrectFiltering(lt(binaryColumn("name"), Binary.fromString("miller")));
 
     assertCorrectFiltering(ltEq(longColumn("id"), MAX_ID + 1L));
@@ -156,23 +192,7 @@ public class TestRowGroupFilterExactly {
     assertCorrectFiltering(gtEq(longColumn("id"), MIN_ID));
     assertCorrectFiltering(gtEq(longColumn("id"), MIN_ID - 1L));
 
-    assertCorrectFiltering(and(eq(binaryColumn("name"), Binary.fromString("noneExistName")),
-      lt(longColumn("id"), -99L)));
-    assertCorrectFiltering(and(eq(binaryColumn("name"), Binary.fromString("miller")),
-      lt(longColumn("id"), 1234L)));
-    assertCorrectFiltering(and(eq(binaryColumn("name"), Binary.fromString("noneExistName")),
-      lt(longColumn("id"), 1234L)));
-
-    assertCorrectFiltering(or(eq(binaryColumn("name"), Binary.fromString("noneExistName")),
-      lt(longColumn("id"), -99L)));
-    assertCorrectFiltering(or(eq(binaryColumn("name"), Binary.fromString("miller")),
-      lt(longColumn("id"), 1234L)));
-    assertCorrectFiltering(or(eq(binaryColumn("name"), Binary.fromString("noneExistName")),
-      lt(longColumn("id"), 1234L)));
-
-
     ParquetFileReader reader = ParquetFileReader.open(HadoopInputFile.fromPath(FILE, new Configuration()));
-
     for (int i = 0; i < 1000; i++) {
       PhoneBookWriter.User user = DATA.get(i);
       if (user.getName() == null) {
@@ -281,7 +301,7 @@ public class TestRowGroupFilterExactly {
     List<String> list = new ArrayList<>();
 
     // Adding fix values for filtering
-    for (int i = 0; i < rowCount / 100; i++) {
+    for (int i = 0; i < rowCount / 1000; i++) {
       list.add("miller");
     }
     list.add("anderson");
@@ -290,7 +310,6 @@ public class TestRowGroupFilterExactly {
     list.add("williams");
     int nullCount = 5;
     // avoid adding this name
-    String noneExistName = "noneExistName";
     String alphabet = "aabcdeefghiijklmnoopqrstuuvwxyz";
     int maxLength = 8;
     for (int i = rowCount - list.size() - nullCount; i >= 0; ) {
@@ -299,7 +318,7 @@ public class TestRowGroupFilterExactly {
       for (int j = 0; j < l; ++j) {
         builder.append(alphabet.charAt(RANDOM.nextInt(alphabet.length())));
       }
-      if (builder.toString().equals(noneExistName)) {
+      if (builder.toString().equals(NON_EXIST_NAME)) {
         continue;
       } else {
         list.add(builder.toString());
@@ -307,6 +326,8 @@ public class TestRowGroupFilterExactly {
       }
     }
     list.sort((str1, str2) -> -str1.compareTo(str2));
+    MAX_NAME = list.get(0);
+    MIN_NAME = list.get(list.size() - 1);
     // Adding nulls to random places
     for (int i = 0; i < nullCount; ++i) {
       list.add(RANDOM.nextInt(list.size()), null);
