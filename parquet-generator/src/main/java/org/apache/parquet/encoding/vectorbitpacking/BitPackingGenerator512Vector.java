@@ -25,8 +25,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 
 /**
- * This class generates vector bit packers that pack the most significant bit first.
- * The result of the generation is checked in. To regenerate the code run this class and check in the result.
+ * This class provides bit manipulate class used to unpack specific bitWidth bytes to int values.
  */
 public class BitPackingGenerator512Vector {
   private static final String CLASS_NAME_PREFIX_FOR_INT = "ByteBitPacking512Vector";
