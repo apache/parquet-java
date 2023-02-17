@@ -206,6 +206,12 @@ public class CapacityByteArrayOutputStream extends OutputStream {
       throw new IndexOutOfBoundsException(
           String.format("Given byte array of size %d, with requested length(%d) and offset(%d)", b.length, len, off));
     }
+    int targetBytesUsed = bytesUsed + len;
+    if (targetBytesUsed < 0) {
+      throw new ParquetByteArrayOutputOverflowException(
+        "Cannot write byte data larger than Integer.MAX_VALUE bytes: " +
+          targetBytesUsed);
+    }
     if (len >= currentSlab.remaining()) {
       final int length1 = currentSlab.remaining();
       currentSlab.put(b, off, length1);
@@ -220,11 +226,6 @@ public class CapacityByteArrayOutputStream extends OutputStream {
       currentSlab.put(b, off, len);
       currentSlabIndex += len;
       bytesUsed += len;
-    }
-    if (bytesUsed < 0) {
-      throw new ParquetByteArrayOutputOverflowException(
-        "Cannot write byte data larger than Integer.MAX_VALUE bytes: " +
-          bytesUsed);
     }
   }
 
