@@ -31,7 +31,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.parquet.OutputStreamCloseException;
-import org.apache.parquet.ParquetByteArrayOutputOverflowException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -196,7 +195,7 @@ public class CapacityByteArrayOutputStream extends OutputStream {
     currentSlab.put(currentSlabIndex, (byte) b);
     currentSlabIndex += 1;
     currentSlab.position(currentSlabIndex);
-    bytesUsed += 1;
+    bytesUsed = Math.addExact(bytesUsed, 1);
   }
 
   @Override
@@ -206,26 +205,20 @@ public class CapacityByteArrayOutputStream extends OutputStream {
       throw new IndexOutOfBoundsException(
           String.format("Given byte array of size %d, with requested length(%d) and offset(%d)", b.length, len, off));
     }
-    int targetBytesUsed = bytesUsed + len;
-    if (targetBytesUsed < 0) {
-      throw new ParquetByteArrayOutputOverflowException(
-        "Cannot write byte data larger than Integer.MAX_VALUE bytes: " +
-          targetBytesUsed);
-    }
     if (len >= currentSlab.remaining()) {
       final int length1 = currentSlab.remaining();
       currentSlab.put(b, off, length1);
-      bytesUsed += length1;
+      bytesUsed = Math.addExact(bytesUsed, length1);
       currentSlabIndex += length1;
       final int length2 = len - length1;
       addSlab(length2);
       currentSlab.put(b, off + length1, length2);
       currentSlabIndex = length2;
-      bytesUsed += length2;
+      bytesUsed = Math.addExact(bytesUsed, length2);
     } else {
       currentSlab.put(b, off, len);
       currentSlabIndex += len;
-      bytesUsed += len;
+      bytesUsed = Math.addExact(bytesUsed, len);
     }
   }
 
