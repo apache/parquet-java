@@ -42,17 +42,15 @@ public class PredicateEvaluation {
   public static Boolean evaluateAnd(Operators.And and, FilterPredicate.Visitor<Boolean> predicate) {
     Boolean left = and.getLeft().accept(predicate);
     if (left == BLOCK_CANNOT_MATCH) {
-      // seems unintuitive to put an || not an && here but we can
-      // drop a chunk of records if we know that either the left or
-      // the right predicate agrees that no matter what we don't
-      // need this chunk.
+      // if either the left or the right predicate can't match, we can drop the block.
+      // therefore if the left can't match, we can short-circuit and drop the block.
       return BLOCK_CANNOT_MATCH;
     }
     Boolean right = and.getRight().accept(predicate);
     if (right == BLOCK_CANNOT_MATCH) {
       return BLOCK_CANNOT_MATCH;
     } else if (left == BLOCK_MUST_MATCH && right == BLOCK_MUST_MATCH) {
-      // if left and right operation all must needs the block, then we must take the block
+      // if left and right operation all must needs the block, we should take the block
       return BLOCK_MUST_MATCH;
     } else {
       return BLOCK_MIGHT_MATCH;
@@ -62,18 +60,15 @@ public class PredicateEvaluation {
   public static Boolean evaluateOr(Operators.Or or, FilterPredicate.Visitor<Boolean> predicate) {
     Boolean left = or.getLeft().accept(predicate);
     if (left == BLOCK_MUST_MATCH) {
-      // if left or right operation must need the block, then we must take the block
+      // if either the left or the right predicate must match, we should take the block.
+      // therefore if the left must match, we can short-circuit and take the block.
       return BLOCK_MUST_MATCH;
     }
     Boolean right = or.getRight().accept(predicate);
     if (right == BLOCK_MUST_MATCH) {
-      // if left or right operation must need the block, then we must take the block
       return BLOCK_MUST_MATCH;
     } else if (left == BLOCK_CANNOT_MATCH && right == BLOCK_CANNOT_MATCH) {
-      // seems unintuitive to put an && not an || here
-      // but we can only drop a chunk of records if we know that
-      // both the left and right predicates agree that no matter what
-      // we don't need this chunk.
+      // if left and right operation all can't match, we should drop the block
       return BLOCK_CANNOT_MATCH;
     } else {
       return BLOCK_MIGHT_MATCH;
