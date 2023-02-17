@@ -138,8 +138,8 @@ public class TestRowGroupFilterExactly {
     // StatisticsFilter: left can't match, right must match -> can't match
     assertCorrectFiltering(and(gt(binaryColumn("name"), Binary.fromString(MAX_NAME)),
       gtEq(longColumn("id"), MIN_ID)));
-    // StatisticsFilter: left might match (can't match in DictionaryFilter), right must match ->
-    // might match in StatisticsFilter, can't match in DictionaryFilter
+    // In StatisticsFilter left might match (but can't match in DictionaryFilter), right must match
+    // -> return might match in StatisticsFilter, return can't match in DictionaryFilter
     assertCorrectFiltering(and(eq(binaryColumn("name"), Binary.fromString(NON_EXIST_NAME)),
       gtEq(longColumn("id"), MIN_ID)));
     //     StatisticsFilter: left can't match, right can't match -> can't match
