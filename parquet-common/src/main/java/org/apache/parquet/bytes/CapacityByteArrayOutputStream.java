@@ -183,7 +183,7 @@ public class CapacityByteArrayOutputStream extends OutputStream {
 
     this.currentSlab = allocator.allocate(nextSlabSize);
     this.slabs.add(currentSlab);
-    this.bytesAllocated += nextSlabSize;
+    this.bytesAllocated = Math.addExact(this.bytesAllocated, nextSlabSize);
     this.currentSlabIndex = 0;
   }
 
