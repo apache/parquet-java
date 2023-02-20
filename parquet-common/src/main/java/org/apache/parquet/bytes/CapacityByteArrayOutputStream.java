@@ -164,6 +164,12 @@ public class CapacityByteArrayOutputStream extends OutputStream {
   private void addSlab(int minimumSize) {
     int nextSlabSize;
 
+    if (bytesUsed + minimumSize < 0) {
+      // This is interpreted as a request for a value greater than Integer.MAX_VALUE
+      // We throw OOM because that is what java.io.ByteArrayOutputStream also does
+      throw new OutOfMemoryError("Size of data exceeded 2GB");
+    }
+
     if (bytesUsed == 0) {
       nextSlabSize = initialSlabSize;
     } else if (bytesUsed > maxCapacityHint / 5) {
