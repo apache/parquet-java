@@ -28,7 +28,9 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
-// A set of options to create a ParquetRewriter.
+/**
+ * A set of options to create a ParquetRewriter.
+ */
 public class RewriteOptions {
 
   final Configuration conf;
@@ -101,37 +103,121 @@ public class RewriteOptions {
     private List<String> encryptColumns;
     private FileEncryptionProperties fileEncryptionProperties;
 
+    /**
+     * Create a builder to create a RewriterOptions.
+     *
+     * @param conf       configuration for reading from input files and writing to output file
+     * @param inputFile  input file path to read from
+     * @param outputFile output file path to rewrite to
+     */
     public Builder(Configuration conf, Path inputFile, Path outputFile) {
       this.conf = conf;
       this.inputFiles = Arrays.asList(inputFile);
       this.outputFile = outputFile;
     }
 
+    /**
+     * Create a builder to create a RewriterOptions.
+     * <p>
+     * Please note that if merging more than one file, the schema of all files must be the same.
+     * Otherwise, the rewrite will fail.
+     * <p>
+     * The rewrite will keep original row groups from all input files. This may not be optimal
+     * if row groups are very small and will not solve small file problems. Instead, it will
+     * make it worse to have a large file footer in the output file.
+     * TODO: support rewrite by record to break the original row groups into reasonable ones.
+     *
+     * @param conf       configuration for reading from input files and writing to output file
+     * @param inputFiles list of input file paths to read from
+     * @param outputFile output file path to rewrite to
+     */
+    public Builder(Configuration conf, List<Path> inputFiles, Path outputFile) {
+      this.conf = conf;
+      this.inputFiles = inputFiles;
+      this.outputFile = outputFile;
+    }
+
+    /**
+     * Set the columns to prune.
+     * <p>
+     * By default, all columns are kept.
+     *
+     * @param columns list of columns to prune
+     * @return self
+     */
     public Builder prune(List<String> columns) {
       this.pruneColumns = columns;
       return this;
     }
 
+    /**
+     * Set the compression codec to use for the output file.
+     * <p>
+     * By default, the codec is the same as the input file.
+     *
+     * @param newCodecName compression codec to use
+     * @return self
+     */
     public Builder transform(CompressionCodecName newCodecName) {
       this.newCodecName = newCodecName;
       return this;
     }
 
+    /**
+     * Set the columns to mask.
+     * <p>
+     * By default, no columns are masked.
+     *
+     * @param maskColumns map of columns to mask to the masking mode
+     * @return self
+     */
     public Builder mask(Map<String, MaskMode> maskColumns) {
       this.maskColumns = maskColumns;
       return this;
     }
 
+    /**
+     * Set the columns to encrypt.
+     * <p>
+     * By default, no columns are encrypted.
+     *
+     * @param encryptColumns list of columns to encrypt
+     * @return self
+     */
     public Builder encrypt(List<String> encryptColumns) {
       this.encryptColumns = encryptColumns;
       return this;
     }
 
+    /**
+     * Set the encryption properties to use for the output file.
+     * <p>
+     * This is required if encrypting columns are not empty.
+     *
+     * @param fileEncryptionProperties encryption properties to use
+     * @return self
+     */
     public Builder encryptionProperties(FileEncryptionProperties fileEncryptionProperties) {
       this.fileEncryptionProperties = fileEncryptionProperties;
       return this;
     }
 
+    /**
+     * Add an input file to read from.
+     *
+     * @param path input file path to read from
+     * @return self
+     */
+    public Builder addInputFile(Path path) {
+      this.inputFiles.add(path);
+      return this;
+    }
+
+    /**
+     * Build the RewriterOptions.
+     *
+     * @return a RewriterOptions
+     */
     public RewriteOptions build() {
       Preconditions.checkArgument(inputFiles != null && !inputFiles.isEmpty(), "Input file is required");
       Preconditions.checkArgument(outputFile != null, "Output file is required");
