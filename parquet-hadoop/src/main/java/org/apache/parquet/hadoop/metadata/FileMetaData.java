@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -23,7 +23,6 @@ import static java.util.Collections.unmodifiableMap;
 import java.io.Serializable;
 import java.util.Map;
 import java.util.Objects;
-
 import org.apache.parquet.crypto.InternalFileDecryptor;
 import org.apache.parquet.schema.MessageType;
 
@@ -41,9 +40,8 @@ public final class FileMetaData implements Serializable {
   private final InternalFileDecryptor fileDecryptor;
   private final EncryptionType encryptionType;
 
-
-
   /**
+   * FileMetaData for writers.
    * @param schema the schema for the file
    * @param keyValueMetaData the app specific metadata
    * @param createdBy the description of the library that created the file
@@ -51,14 +49,18 @@ public final class FileMetaData implements Serializable {
    * @throws NullPointerException if schema or keyValueMetaData is {@code null}
    */
   public FileMetaData(MessageType schema, Map<String, String> keyValueMetaData, String createdBy) {
-    this(schema, keyValueMetaData, createdBy, EncryptionType.UNENCRYPTED, null);
+    this(schema, keyValueMetaData, createdBy, null, null);
   }
 
+  @Deprecated
   public FileMetaData(MessageType schema, Map<String, String> keyValueMetaData, String createdBy,
                       InternalFileDecryptor fileDecryptor) {
     this(schema, keyValueMetaData, createdBy, null, fileDecryptor);
   }
 
+  /**
+   * FileMetaData for readers (decryptors).
+   */
   public FileMetaData(MessageType schema, Map<String, String> keyValueMetaData, String createdBy,
                       EncryptionType encryptionType, InternalFileDecryptor fileDecryptor) {
     super();
@@ -79,7 +81,7 @@ public final class FileMetaData implements Serializable {
 
   @Override
   public String toString() {
-    return "FileMetaData{schema: " + schema + ", metadata: " + keyValueMetaData + ", encryption: " + encryptionType + "}";
+    return "FileMetaData{schema: " + schema + ", metadata: " + keyValueMetaData + "}";
   }
 
   /**
