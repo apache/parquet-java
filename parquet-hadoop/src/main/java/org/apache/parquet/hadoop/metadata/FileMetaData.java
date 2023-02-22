@@ -79,7 +79,7 @@ public final class FileMetaData implements Serializable {
 
   @Override
   public String toString() {
-    return "FileMetaData{schema: "+schema+ ", metadata: " + keyValueMetaData + ", encryption: " + encryptionType + "}";
+    return "FileMetaData{schema: " + schema + ", metadata: " + keyValueMetaData + ", encryption: " + encryptionType + "}";
   }
 
   /**
