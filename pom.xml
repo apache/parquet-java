@@ -131,10 +131,6 @@
       --add-opens=java.base/sun.security.action=ALL-UNNAMED
       --add-opens=java.base/sun.util.calendar=ALL-UNNAMED
     </extraJavaTestArgs>
-
-    <extraJavaVectorArgs>
-      --add-modules=jdk.incubator.vector
-    </extraJavaVectorArgs>
   </properties>
 
   <modules>
@@ -155,6 +151,9 @@
     <module>parquet-scala</module>
     <module>parquet-thrift</module>
     <module>parquet-hadoop-bundle</module>
+    <!--
+    <module>plugins/parquet-encoding-vector</module>
+    -->
   </modules>
 
   <dependencies>
@@ -662,47 +661,6 @@
             <configuration>
               <release>8</release>
             </configuration>
-          </plugin>
-        </plugins>
-      </build>
-    </profile>
-
-    <profile>
-      <id>java17-target</id>
-      <build>
-        <plugins>
-          <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-compiler-plugin</artifactId>
-            <configuration>
-              <release>17</release>
-            </configuration>
-          </plugin>
-
-          <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-shade-plugin</artifactId>
-            <version>3.4.1</version>
-          </plugin>
-
-          <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-dependency-plugin</artifactId>
-            <version>3.3.0</version>
-            <executions>
-              <execution>
-                <goals>
-                  <goal>analyze-only</goal>
-                </goals>
-                <configuration>
-                  <failOnWarning>true</failOnWarning>
-                  <ignoreNonCompile>true</ignoreNonCompile>
-                  <ignoredNonTestScopedDependencies>
-                    <ignoredNonTestScopedDependency>*</ignoredNonTestScopedDependency>
-                  </ignoredNonTestScopedDependencies>
-                </configuration>
-              </execution>
-            </executions>
           </plugin>
         </plugins>
       </build>

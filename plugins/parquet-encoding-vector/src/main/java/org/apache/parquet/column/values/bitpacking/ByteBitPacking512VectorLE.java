@@ -32,7 +32,7 @@ import jdk.incubator.vector.VectorSpecies;
 import java.nio.ByteBuffer;
 
 /**
- * This is an auto-generated source file and should not edit it directly.
+ *
  */
 public abstract class ByteBitPacking512VectorLE {
   private static final BytePacker[] packers = new BytePacker[33];
@@ -1702,12 +1702,8 @@ public abstract class ByteBitPacking512VectorLE {
     private static VectorMask<Byte> inp_mask;
     private static VectorMask<Integer> out_mask;
     private static Vector<Integer> rshift_cnt;
-
-    private static final VectorSpecies<Byte> B256 = ByteVector.SPECIES_256;
     private static final VectorSpecies<Byte> B512 = ByteVector.SPECIES_512;
-    private static final VectorSpecies<Short> S512 = ShortVector.SPECIES_512;
     private static final VectorSpecies<Integer> I512 = IntVector.SPECIES_512;
-    private static final VectorSpecies<Long> L512 = LongVector.SPECIES_512;
 
     static {
       inp_mask = VectorMask.fromLong(B512, 0xfffffffffL);
@@ -1779,14 +1775,8 @@ public abstract class ByteBitPacking512VectorLE {
     private static VectorMask<Byte> inp_mask;
     private static VectorMask<Integer> out_mask;
     private static Vector<Integer> rshift_cnt;
-    private static Vector<Integer> and_vec;
-
-    private static final VectorSpecies<Byte> B256 = ByteVector.SPECIES_256;
     private static final VectorSpecies<Byte> B512 = ByteVector.SPECIES_512;
-    private static final VectorSpecies<Short> S512 = ShortVector.SPECIES_512;
     private static final VectorSpecies<Integer> I512 = IntVector.SPECIES_512;
-    private static final VectorSpecies<Long> L512 = LongVector.SPECIES_512;
-
     static {
       inp_mask = VectorMask.fromLong(B512, 0x3fffffffffL);
       perm_mask0 = VectorShuffle.fromArray(B512, perm_pos0_arr, 0);
@@ -1859,13 +1849,8 @@ public abstract class ByteBitPacking512VectorLE {
     private static VectorMask<Byte> inp_mask;
     private static VectorMask<Integer> out_mask;
     private static Vector<Integer> rshift_cnt;
-    private static Vector<Integer> and_vec;
-
-    private static final VectorSpecies<Byte> B256 = ByteVector.SPECIES_256;
     private static final VectorSpecies<Byte> B512 = ByteVector.SPECIES_512;
-    private static final VectorSpecies<Short> S512 = ShortVector.SPECIES_512;
     private static final VectorSpecies<Integer> I512 = IntVector.SPECIES_512;
-    private static final VectorSpecies<Long> L512 = LongVector.SPECIES_512;
 
     static {
       inp_mask = VectorMask.fromLong(B512, 0xffffffffffL);
@@ -1941,13 +1926,8 @@ public abstract class ByteBitPacking512VectorLE {
     private static VectorMask<Byte> inp_mask;
     private static VectorMask<Integer> out_mask;
     private static Vector<Integer> rshift_cnt;
-    private static Vector<Integer> and_vec;
-
-    private static final VectorSpecies<Byte> B256 = ByteVector.SPECIES_256;
     private static final VectorSpecies<Byte> B512 = ByteVector.SPECIES_512;
-    private static final VectorSpecies<Short> S512 = ShortVector.SPECIES_512;
     private static final VectorSpecies<Integer> I512 = IntVector.SPECIES_512;
-    private static final VectorSpecies<Long> L512 = LongVector.SPECIES_512;
 
     static {
       inp_mask = VectorMask.fromLong(B512, 0x3ffffffffffL);
@@ -2022,13 +2002,8 @@ public abstract class ByteBitPacking512VectorLE {
     private static VectorMask<Byte> inp_mask;
     private static VectorMask<Integer> out_mask;
     private static Vector<Integer> rshift_cnt;
-    private static Vector<Integer> and_vec;
-
-    private static final VectorSpecies<Byte> B256 = ByteVector.SPECIES_256;
     private static final VectorSpecies<Byte> B512 = ByteVector.SPECIES_512;
-    private static final VectorSpecies<Short> S512 = ShortVector.SPECIES_512;
     private static final VectorSpecies<Integer> I512 = IntVector.SPECIES_512;
-    private static final VectorSpecies<Long> L512 = LongVector.SPECIES_512;
 
     static {
       inp_mask = VectorMask.fromLong(B512, 0xfffffffffffL);
@@ -2103,13 +2078,8 @@ public abstract class ByteBitPacking512VectorLE {
     private static VectorMask<Byte> inp_mask;
     private static VectorMask<Integer> out_mask;
     private static Vector<Integer> rshift_cnt;
-    private static Vector<Integer> and_vec;
-
-    private static final VectorSpecies<Byte> B256 = ByteVector.SPECIES_256;
     private static final VectorSpecies<Byte> B512 = ByteVector.SPECIES_512;
-    private static final VectorSpecies<Short> S512 = ShortVector.SPECIES_512;
     private static final VectorSpecies<Integer> I512 = IntVector.SPECIES_512;
-    private static final VectorSpecies<Long> L512 = LongVector.SPECIES_512;
 
     static {
       inp_mask = VectorMask.fromLong(B512, 0x3fffffffffffL);
@@ -2252,13 +2222,8 @@ public abstract class ByteBitPacking512VectorLE {
     private static VectorMask<Byte> inp_mask;
     private static VectorMask<Integer> out_mask;
     private static Vector<Integer> rshift_cnt;
-    private static Vector<Integer> and_vec;
-
-    private static final VectorSpecies<Byte> B256 = ByteVector.SPECIES_256;
     private static final VectorSpecies<Byte> B512 = ByteVector.SPECIES_512;
-    private static final VectorSpecies<Short> S512 = ShortVector.SPECIES_512;
     private static final VectorSpecies<Integer> I512 = IntVector.SPECIES_512;
-    private static final VectorSpecies<Long> L512 = LongVector.SPECIES_512;
 
     static {
       inp_mask = VectorMask.fromLong(B512, 0x3ffffffffffffL);
@@ -2336,13 +2301,8 @@ public abstract class ByteBitPacking512VectorLE {
     private static VectorMask<Byte> inp_mask;
     private static VectorMask<Integer> out_mask;
     private static Vector<Integer> rshift_cnt;
-    private static Vector<Integer> and_vec;
-
-    private static final VectorSpecies<Byte> B256 = ByteVector.SPECIES_256;
     private static final VectorSpecies<Byte> B512 = ByteVector.SPECIES_512;
-    private static final VectorSpecies<Short> S512 = ShortVector.SPECIES_512;
     private static final VectorSpecies<Integer> I512 = IntVector.SPECIES_512;
-    private static final VectorSpecies<Long> L512 = LongVector.SPECIES_512;
 
     static {
       inp_mask = VectorMask.fromLong(B512, 0xfffffffffffffL);
@@ -2420,11 +2380,9 @@ public abstract class ByteBitPacking512VectorLE {
       47, 48, 49, 50, 50, 51, 52, 53
     };
 
-
     private static int[] and_val_arr = {
       134217727, 134217727, 67108863, 134217727, 134217727, 33554431, 134217727, 134217727, 134217727, 134217727, 67108863, 134217727, 134217727, 33554431, 134217727, 134217727
     };
-
 
     private static int[] rshift_cnt0_arr = {
       0, 3, 6, 1, 4, 7, 2, 5, 0, 3, 6, 1, 4, 7, 2, 5
@@ -2451,13 +2409,8 @@ public abstract class ByteBitPacking512VectorLE {
     private static Vector<Integer> rshift_cnt0;
     private static Vector<Integer> lshift_cnt0;
     private static Vector<Integer> and_vec;
-
-
-    private static final VectorSpecies<Byte> B256 = ByteVector.SPECIES_256;
     private static final VectorSpecies<Byte> B512 = ByteVector.SPECIES_512;
-    private static final VectorSpecies<Short> S512 = ShortVector.SPECIES_512;
     private static final VectorSpecies<Integer> I512 = IntVector.SPECIES_512;
-    private static final VectorSpecies<Long> L512 = LongVector.SPECIES_512;
 
     static {
       inp_mask = VectorMask.fromLong(B512, 0x3fffffffffffffL);
@@ -2510,7 +2463,6 @@ public abstract class ByteBitPacking512VectorLE {
         .reinterpretAsInts()
         .lanewise(VectorOperators.ASHR, rshift_cnt0)
         .lanewise(VectorOperators.AND, and_vec);
-      //.lanewise(VectorOperators.AND, 134217727);
 
       IntVector tempRes2 = byteVector.rearrange(perm_mask1).
         reinterpretAsInts()
@@ -2527,7 +2479,6 @@ public abstract class ByteBitPacking512VectorLE {
         .reinterpretAsInts()
         .lanewise(VectorOperators.ASHR, rshift_cnt0)
         .lanewise(VectorOperators.AND, and_vec);
-      //.lanewise(VectorOperators.AND, 134217727);
 
       IntVector tempRes2 = byteVector.rearrange(perm_mask1).
         reinterpretAsInts()
@@ -2567,12 +2518,8 @@ public abstract class ByteBitPacking512VectorLE {
     private static Vector<Integer> lshift_cnt0;
     private static Vector<Integer> and_vec;
 
-
-    private static final VectorSpecies<Byte> B256 = ByteVector.SPECIES_256;
     private static final VectorSpecies<Byte> B512 = ByteVector.SPECIES_512;
-    private static final VectorSpecies<Short> S512 = ShortVector.SPECIES_512;
     private static final VectorSpecies<Integer> I512 = IntVector.SPECIES_512;
-    private static final VectorSpecies<Long> L512 = LongVector.SPECIES_512;
 
     static {
       inp_mask = VectorMask.fromLong(B512, 0xffffffffffffffL);
@@ -2625,7 +2572,6 @@ public abstract class ByteBitPacking512VectorLE {
         .reinterpretAsInts()
         .lanewise(VectorOperators.ASHR, rshift_cnt0)
         .lanewise(VectorOperators.AND, and_vec);
-      //.lanewise(VectorOperators.AND, 134217727);
 
       IntVector tempRes2 = byteVector.rearrange(perm_mask1).
         reinterpretAsInts()
@@ -2642,7 +2588,6 @@ public abstract class ByteBitPacking512VectorLE {
         .reinterpretAsInts()
         .lanewise(VectorOperators.ASHR, rshift_cnt0)
         .lanewise(VectorOperators.AND, and_vec);
-      //.lanewise(VectorOperators.AND, 134217727);
 
       IntVector tempRes2 = byteVector.rearrange(perm_mask1).
         reinterpretAsInts()
@@ -2681,13 +2626,8 @@ public abstract class ByteBitPacking512VectorLE {
     private static Vector<Integer> rshift_cnt0;
     private static Vector<Integer> lshift_cnt0;
     private static Vector<Integer> and_vec;
-
-
-    private static final VectorSpecies<Byte> B256 = ByteVector.SPECIES_256;
     private static final VectorSpecies<Byte> B512 = ByteVector.SPECIES_512;
-    private static final VectorSpecies<Short> S512 = ShortVector.SPECIES_512;
     private static final VectorSpecies<Integer> I512 = IntVector.SPECIES_512;
-    private static final VectorSpecies<Long> L512 = LongVector.SPECIES_512;
 
     static {
       inp_mask = VectorMask.fromLong(B512, 0x3ffffffffffffffL);
@@ -2740,7 +2680,6 @@ public abstract class ByteBitPacking512VectorLE {
         .reinterpretAsInts()
         .lanewise(VectorOperators.ASHR, rshift_cnt0)
         .lanewise(VectorOperators.AND, and_vec);
-      //.lanewise(VectorOperators.AND, 134217727);
 
       IntVector tempRes2 = byteVector.rearrange(perm_mask1).
         reinterpretAsInts()
@@ -2758,7 +2697,6 @@ public abstract class ByteBitPacking512VectorLE {
         .reinterpretAsInts()
         .lanewise(VectorOperators.ASHR, rshift_cnt0)
         .lanewise(VectorOperators.AND, and_vec);
-      //.lanewise(VectorOperators.AND, 134217727);
 
       IntVector tempRes2 = byteVector.rearrange(perm_mask1).
         reinterpretAsInts()
@@ -2797,13 +2735,8 @@ public abstract class ByteBitPacking512VectorLE {
     private static Vector<Integer> rshift_cnt0;
     private static Vector<Integer> lshift_cnt0;
     private static Vector<Integer> and_vec;
-
-
-    private static final VectorSpecies<Byte> B256 = ByteVector.SPECIES_256;
     private static final VectorSpecies<Byte> B512 = ByteVector.SPECIES_512;
-    private static final VectorSpecies<Short> S512 = ShortVector.SPECIES_512;
     private static final VectorSpecies<Integer> I512 = IntVector.SPECIES_512;
-    private static final VectorSpecies<Long> L512 = LongVector.SPECIES_512;
 
     static {
       inp_mask = VectorMask.fromLong(B512, 0xfffffffffffffffL);
@@ -2856,7 +2789,6 @@ public abstract class ByteBitPacking512VectorLE {
         .reinterpretAsInts()
         .lanewise(VectorOperators.ASHR, rshift_cnt0)
         .lanewise(VectorOperators.AND, and_vec);
-      //.lanewise(VectorOperators.AND, 134217727);
 
       IntVector tempRes2 = byteVector.rearrange(perm_mask1).
         reinterpretAsInts()
@@ -2873,7 +2805,6 @@ public abstract class ByteBitPacking512VectorLE {
         .reinterpretAsInts()
         .lanewise(VectorOperators.ASHR, rshift_cnt0)
         .lanewise(VectorOperators.AND, and_vec);
-      //.lanewise(VectorOperators.AND, 134217727);
 
       IntVector tempRes2 = byteVector.rearrange(perm_mask1).
         reinterpretAsInts()
@@ -2913,13 +2844,8 @@ public abstract class ByteBitPacking512VectorLE {
     private static Vector<Integer> rshift_cnt0;
     private static Vector<Integer> lshift_cnt0;
     private static Vector<Integer> and_vec;
-
-
-    private static final VectorSpecies<Byte> B256 = ByteVector.SPECIES_256;
     private static final VectorSpecies<Byte> B512 = ByteVector.SPECIES_512;
-    private static final VectorSpecies<Short> S512 = ShortVector.SPECIES_512;
     private static final VectorSpecies<Integer> I512 = IntVector.SPECIES_512;
-    private static final VectorSpecies<Long> L512 = LongVector.SPECIES_512;
 
     static {
       inp_mask = VectorMask.fromLong(B512, 0x3fffffffffffffffL);
@@ -2973,7 +2899,6 @@ public abstract class ByteBitPacking512VectorLE {
         .reinterpretAsInts()
         .lanewise(VectorOperators.ASHR, rshift_cnt0)
         .lanewise(VectorOperators.AND, and_vec);
-      //.lanewise(VectorOperators.AND, 134217727);
 
       IntVector tempRes2 = byteVector.rearrange(perm_mask1).
         reinterpretAsInts()
@@ -2991,7 +2916,6 @@ public abstract class ByteBitPacking512VectorLE {
         .reinterpretAsInts()
         .lanewise(VectorOperators.ASHR, rshift_cnt0)
         .lanewise(VectorOperators.AND, and_vec);
-      //.lanewise(VectorOperators.AND, 134217727);
 
       IntVector tempRes2 = byteVector.rearrange(perm_mask1).
         reinterpretAsInts()
@@ -3015,20 +2939,11 @@ public abstract class ByteBitPacking512VectorLE {
       56, 57, 58, 59, 60, 61, 62, 63
     };
 
-
     private static VectorShuffle<Byte> perm_mask0;
-    private static VectorShuffle<Byte> perm_mask1;
     private static VectorMask<Byte> inp_mask;
     private static VectorMask<Integer> out_mask;
-    private static Vector<Integer> rshift_cnt0;
-    private static Vector<Integer> and_vec;
-
-
-    private static final VectorSpecies<Byte> B256 = ByteVector.SPECIES_256;
     private static final VectorSpecies<Byte> B512 = ByteVector.SPECIES_512;
-    private static final VectorSpecies<Short> S512 = ShortVector.SPECIES_512;
     private static final VectorSpecies<Integer> I512 = IntVector.SPECIES_512;
-    private static final VectorSpecies<Long> L512 = LongVector.SPECIES_512;
 
     static {
       inp_mask = VectorMask.fromLong(B512, 0xffffffffffffffffL);

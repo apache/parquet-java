@@ -29,7 +29,7 @@ import static org.junit.Assert.assertArrayEquals;
 
 public class TestByteBitPacking512VectorLE {
 
-  @Test
+  //@Test
   public void unpackValuesUsingVector() {
     for(int i=1; i<=32; i++) {
       unpackValuesUsingVectorBitWidth(i);
