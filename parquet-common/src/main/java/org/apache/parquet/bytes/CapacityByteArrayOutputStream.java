@@ -170,7 +170,7 @@ public class CapacityByteArrayOutputStream extends OutputStream {
     } catch (ArithmeticException e) {
       // This is interpreted as a request for a value greater than Integer.MAX_VALUE
       // We throw OOM because that is what java.io.ByteArrayOutputStream also does
-      throw new OutOfMemoryError("Size of data exceeded 2GB (" + e.getMessage() + ")");
+      throw new OutOfMemoryError("Size of data exceeded Integer.MAX_VALUE (" + e.getMessage() + ")");
     }
 
     if (bytesUsed == 0) {
