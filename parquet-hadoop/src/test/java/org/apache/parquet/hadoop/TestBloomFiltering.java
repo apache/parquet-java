@@ -157,7 +157,7 @@ public class TestBloomFiltering {
       names.add("miller");
       names.add("anderson");
       names.add("thomas");
-      names.add("williams");
+      names.add("chenLiang");
       names.add("len");
     }
     for (int i = 0; i < rowCount; ++i) {

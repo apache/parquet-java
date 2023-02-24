@@ -53,51 +53,24 @@ public class TestStoreBloomFilter {
   private static final Path FILE_V2 = createTempFile("v2");
   private static final List<PhoneBookWriter.User> DATA = Collections.unmodifiableList(generateDictionaryData(10000));
   private final Path file;
-  private final String pageVersion;
+  private final String version;
 
-  public TestStoreBloomFilter(Path file, String pageVersion) {
+  public TestStoreBloomFilter(Path file, String version) {
     this.file = file;
-    this.pageVersion = pageVersion;
+    this.version = version;
   }
 
   @Parameterized.Parameters(name = "Run {index}: parquet {1}")
   public static Collection<Object[]> params() {
     return Arrays.asList(
-      new Object[]{FILE_V1, "pageV1"},
-      new Object[]{FILE_V2, "pageV2"});
-  }
-
-  private static Path createTempFile(String version) {
-    try {
-      return new Path(Files.createTempFile("test-store-bloom-filter-" + version, ".parquet").toAbsolutePath().toString());
-    } catch (IOException e) {
-      throw new AssertionError("Unable to create temporary file", e);
-    }
-  }
-
-  private static void deleteFile(Path file) throws IOException {
-    file.getFileSystem(new Configuration()).delete(file, false);
+      new Object[]{FILE_V1, "v1"},
+      new Object[]{FILE_V2, "v2"});
   }
 
   @BeforeClass
   public static void createFiles() throws IOException {
     writePhoneBookToFile(FILE_V1, ParquetProperties.WriterVersion.PARQUET_1_0);
     writePhoneBookToFile(FILE_V2, ParquetProperties.WriterVersion.PARQUET_2_0);
-  }
-
-  private static void writePhoneBookToFile(Path file,
-    ParquetProperties.WriterVersion parquetVersion) throws IOException {
-    int pageSize = DATA.size() / 100;     // Ensure that several pages will be created
-    int rowGroupSize = pageSize * 4;    // Ensure that there are more row-groups created
-    PhoneBookWriter.write(ExampleParquetWriter.builder(file)
-        .withWriteMode(OVERWRITE)
-        .withRowGroupSize(rowGroupSize)
-        .withPageSize(pageSize)
-        .withBloomFilterNDV("location.lat", 10000L)
-        .withBloomFilterNDV("name", 10000L)
-        .withBloomFilterNDV("id", 10000L)
-        .withWriterVersion(parquetVersion),
-      DATA);
   }
 
   @AfterClass
@@ -121,12 +94,39 @@ public class TestStoreBloomFilter {
 
         // column `name` is fully encoded in dictionary, it won't generate `BloomFilter`
         ColumnChunkMetaData nameMeta = block.getColumns().get(1);
-        EncodingStats stats = nameMeta.getEncodingStats();
-        Assert.assertFalse(stats.hasNonDictionaryEncodedPages());
+        EncodingStats nameEncoding = nameMeta.getEncodingStats();
+        Assert.assertFalse(nameEncoding.hasNonDictionaryEncodedPages());
         Assert.assertNull(reader.readBloomFilter(nameMeta));
       } catch (IOException e) {
         e.printStackTrace();
       }
     });
+  }
+
+  private static Path createTempFile(String version) {
+    try {
+      return new Path(Files.createTempFile("test-store-bloom-filter-" + version, ".parquet")
+        .toAbsolutePath().toString());
+    } catch (IOException e) {
+      throw new AssertionError("Unable to create temporary file", e);
+    }
+  }
+
+  private static void deleteFile(Path file) throws IOException {
+    file.getFileSystem(new Configuration()).delete(file, false);
+  }
+
+  private static void writePhoneBookToFile(Path file,
+    ParquetProperties.WriterVersion parquetVersion) throws IOException {
+    int pageSize = DATA.size() / 100;     // Ensure that several pages will be created
+    int rowGroupSize = pageSize * 4;    // Ensure that there are more row-groups created
+    PhoneBookWriter.write(ExampleParquetWriter.builder(file)
+        .withWriteMode(OVERWRITE)
+        .withRowGroupSize(rowGroupSize)
+        .withPageSize(pageSize)
+        .withBloomFilterNDV("id", 10000L)
+        .withBloomFilterNDV("name", 10000L)
+        .withWriterVersion(parquetVersion),
+      DATA);
   }
 }

@@ -884,7 +884,7 @@ public class ParquetFileWriter {
       // write bloom filter if one of data pages is not dictionary encoded
       boolean isWriteBloomFilter = false;
       for (Encoding encoding : dataEncodings) {
-        // dictionary encoding: `PLAIN_DICTIONARY` is used in pageV1, `RLE_DICTIONARY` is used in pageV2
+        // dictionary encoding: `PLAIN_DICTIONARY` is used in parquet v1, `RLE_DICTIONARY` is used in parquet v2
         if (encoding != Encoding.PLAIN_DICTIONARY && encoding != Encoding.RLE_DICTIONARY) {
           isWriteBloomFilter = true;
           break;
