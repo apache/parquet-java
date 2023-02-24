@@ -19,7 +19,7 @@
 package org.apache.parquet.column.values.bitpacking;
 
 /**
- * Vector bits which has be supported
+ * Supported bit widths to use Vector API.
  */
 public enum VectorSupport {
   NONE,
