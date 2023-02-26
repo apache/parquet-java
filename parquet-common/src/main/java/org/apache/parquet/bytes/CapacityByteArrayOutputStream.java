@@ -150,7 +150,7 @@ public class CapacityByteArrayOutputStream extends OutputStream {
   public CapacityByteArrayOutputStream(int initialSlabSize, int maxCapacityHint, ByteBufferAllocator allocator) {
     checkArgument(initialSlabSize > 0, "initialSlabSize must be > 0");
     checkArgument(maxCapacityHint > 0, "maxCapacityHint must be > 0");
-    checkArgument(maxCapacityHint >= initialSlabSize, String.format("maxCapacityHint can't be less than initialSlabSize %d %d", initialSlabSize, maxCapacityHint));
+    checkArgument(maxCapacityHint >= initialSlabSize, "maxCapacityHint can't be less than initialSlabSize %s %s", initialSlabSize, maxCapacityHint);
     this.initialSlabSize = initialSlabSize;
     this.maxCapacityHint = maxCapacityHint;
     this.allocator = allocator;
@@ -300,7 +300,7 @@ public class CapacityByteArrayOutputStream extends OutputStream {
    * @param value the value to replace it with
    */
   public void setByte(long index, byte value) {
-    checkArgument(index < bytesUsed, "Index: " + index + " is >= the current size of: " + bytesUsed);
+    checkArgument(index < bytesUsed, "Index: %d is >= the current size of: %d", index, bytesUsed);
 
     long seen = 0;
     for (int i = 0; i < slabs.size(); i++) {
