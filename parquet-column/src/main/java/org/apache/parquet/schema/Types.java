@@ -437,7 +437,7 @@ public class Types {
     protected PrimitiveType build(String name) {
       if (PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY == primitiveType) {
         Preconditions.checkArgument(length > 0,
-            "Invalid FIXED_LEN_BYTE_ARRAY length: " + length);
+            "Invalid FIXED_LEN_BYTE_ARRAY length: %s", length);
       }
 
       DecimalMetadata meta = decimalMetadata();
@@ -612,9 +612,9 @@ public class Types {
           precision = decimalType.getPrecision();
         }
         Preconditions.checkArgument(precision > 0,
-            "Invalid DECIMAL precision: " + precision);
+            "Invalid DECIMAL precision: %s", precision);
         Preconditions.checkArgument(this.scale >= 0,
-            "Invalid DECIMAL scale: " + this.scale);
+            "Invalid DECIMAL scale: %s", this.scale);
         Preconditions.checkArgument(this.scale <= precision,
             "Invalid DECIMAL scale: cannot be greater than precision");
         meta = new DecimalMetadata(precision, scale);

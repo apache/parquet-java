@@ -520,7 +520,7 @@ public class ParquetProperties {
     }
 
     public Builder withPageRowCountLimit(int rowCount) {
-      Preconditions.checkArgument(rowCount > 0, "Invalid row count limit for pages: " + rowCount);
+      Preconditions.checkArgument(rowCount > 0, "Invalid row count limit for pages: %s", rowCount);
       pageRowCountLimit = rowCount;
       return this;
     }

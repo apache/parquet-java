@@ -88,8 +88,8 @@ public class DynMethods {
           "Cannot bind static method " + method.toGenericString());
       Preconditions.checkArgument(
           method.getDeclaringClass().isAssignableFrom(receiver.getClass()),
-          "Cannot bind " + method.toGenericString() + " to instance of " +
-              receiver.getClass());
+          "Cannot bind %s to instance of %s", method.toGenericString(), 
+          receiver.getClass());
 
       return new BoundMethod(this, receiver);
     }
