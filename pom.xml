@@ -151,9 +151,6 @@
     <module>parquet-scala</module>
     <module>parquet-thrift</module>
     <module>parquet-hadoop-bundle</module>
-    <!--
-    <module>plugins/parquet-encoding-vector</module>
-    -->
   </modules>
 
   <dependencies>

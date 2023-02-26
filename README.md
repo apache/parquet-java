@@ -86,13 +86,16 @@ Parquet is a very active project, and new features are being added quickly. Here
 * Java Vector API support
 
 ## Java Vector API support
-Parquet-MR has supported Java Vector API to speed up reading, to enable the function:
+Parquet-MR has supported Java Vector API to speed up reading, to enable this feature:
 * Java 17+, 64-bit
-* For Intel CPU, Flags containing avx512vbmi and avx512_vbmi2 can have better performance gains(ICE Lake or newer processor).
-* mvn clean package -P java17-target -P vector
-* Replace the parquet-encoding-{VERSION}.jar on the library path
-* Refer to class#ParquetReadRouter, function#readBatchUsing512Vector to integrate
-* For example, edit class#VectorizedRleValuesReader, function#readNextGroup when Spark integrating
+* Requiring the CPU to support instruction sets:
+  * avx512vbmi
+  * avx512_vbmi2
+* For Apache Spark to enable this feature:
+  * Build parquet and replace the parquet-encoding-{VERSION}.jar on the spark jars folder
+  * Build parquet-encoding-vector and copy parquet-encoding-vector-{VERSION}.jar to the spark jars folder
+  * Edit spark class#VectorizedRleValuesReader, function#readNextGroup refer to parquet class#ParquetReadRouter, function#readBatchUsing512Vector
+  * Build spark with maven and replace spark-sql_2.12-{VERSION}.jar on the spark jars folder
 
 ## Map/Reduce integration
 

@@ -32,7 +32,7 @@ import jdk.incubator.vector.VectorSpecies;
 import java.nio.ByteBuffer;
 
 /**
- *
+ * Wrapped class to pack and unpack with AVX512 on Little Endian architectures
  */
 public abstract class ByteBitPacking512VectorLE {
   private static final BytePacker[] packers = new BytePacker[33];
