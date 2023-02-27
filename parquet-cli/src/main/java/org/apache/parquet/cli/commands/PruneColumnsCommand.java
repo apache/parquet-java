@@ -52,7 +52,7 @@ public class PruneColumnsCommand extends BaseCommand {
 
   @Parameter(
     names = {"-c", "--columns"},
-    description = "<columns to be replaced with masked value>",
+    description = "<columns to be pruned>",
     required = true)
   List<String> cols;
 

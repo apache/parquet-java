@@ -117,6 +117,8 @@ Usage: parquet [options] [command] [command options]
         Check bloom filters for a Parquet column
     scan
         Scan all records from a file
+    rewrite
+        Rewrite one or more Parquet files to a new Parquet file
 
   Examples:
 
