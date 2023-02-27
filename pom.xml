@@ -662,5 +662,13 @@
         </plugins>
       </build>
     </profile>
+
+    <profile>
+      <id>plugins</id>
+      <modules>
+        <module>plugins/parquet-encoding-vector</module>
+        <module>plugins/parquet-plugins-benchmarks</module>
+      </modules>
+    </profile>
   </profiles>
 </project>
