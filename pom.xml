@@ -664,10 +664,10 @@
     </profile>
 
     <profile>
-      <id>plugins</id>
+      <id>vector-plugins</id>
       <modules>
-        <module>plugins/parquet-encoding-vector</module>
-        <module>plugins/parquet-plugins-benchmarks</module>
+        <module>parquet-plugins/parquet-encoding-vector</module>
+        <module>parquet-plugins/parquet-plugins-benchmarks</module>
       </modules>
     </profile>
   </profiles>

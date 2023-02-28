@@ -91,7 +91,7 @@ Parquet-MR has supported Java Vector API to speed up reading, to enable this fea
 * Requiring the CPU to support instruction sets:
   * avx512vbmi
   * avx512_vbmi2
-* To build the jars: `mvn clean package -P plugins`
+* To build the jars: `mvn clean package -P vector-plugins`
 * For Apache Spark to enable this feature:
   * Build parquet and replace the parquet-encoding-{VERSION}.jar on the spark jars folder
   * Build parquet-encoding-vector and copy parquet-encoding-vector-{VERSION}.jar to the spark jars folder
