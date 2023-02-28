@@ -83,9 +83,10 @@ Parquet is a very active project, and new features are being added quickly. Here
 * Column stats
 * Delta encoding
 * Index pages
-* Java Vector API support
+* Java Vector API support (experimental)
 
 ## Java Vector API support
+`The feature is experimental and is currently not part of the parquet distribution`.
 Parquet-MR has supported Java Vector API to speed up reading, to enable this feature:
 * Java 17+, 64-bit
 * Requiring the CPU to support instruction sets:
