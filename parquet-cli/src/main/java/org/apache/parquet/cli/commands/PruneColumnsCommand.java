@@ -30,6 +30,7 @@ import org.slf4j.Logger;
 import java.io.IOException;
 import java.util.List;
 
+@Deprecated
 @Parameters(commandDescription="Prune column(s) in a Parquet file and save it to a new file. " +
   "The columns left are not changed.")
 public class PruneColumnsCommand extends BaseCommand {

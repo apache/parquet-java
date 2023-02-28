@@ -41,6 +41,7 @@ import java.util.List;
 
 import static org.apache.parquet.format.converter.ParquetMetadataConverter.NO_FILTER;
 
+@Deprecated
 @Parameters(commandDescription="Translate the compression from one to another (It doesn't support bloom filter feature yet).")
 public class TransCompressionCommand extends BaseCommand {
 
@@ -61,7 +62,7 @@ public class TransCompressionCommand extends BaseCommand {
 
   @Parameter(
     names = {"-c", "--compression-codec"},
-    description = "<new compression codec")
+    description = "<new compression codec>")
   String codec;
 
   @Override
