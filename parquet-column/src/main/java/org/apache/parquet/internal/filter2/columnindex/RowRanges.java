@@ -197,7 +197,7 @@ public class RowRanges {
    * For example:
    * [113, 241] ∩ [221, 340] = [221, 241]
    * while
-   * [113, 230] ∩ [231, 340] = <EMPTY>
+   * [113, 230] ∩ [231, 340] = &lt;EMPTY&gt;
    * </pre>
    * @param left left RowRanges
    * @param right right RowRanges
