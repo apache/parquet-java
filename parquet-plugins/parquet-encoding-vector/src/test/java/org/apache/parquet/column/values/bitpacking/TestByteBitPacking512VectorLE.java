@@ -19,6 +19,8 @@
 package org.apache.parquet.column.values.bitpacking;
 
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
@@ -28,9 +30,14 @@ import java.util.List;
 import static org.junit.Assert.assertArrayEquals;
 
 public class TestByteBitPacking512VectorLE {
-
-  //@Test
+  private static final Logger LOG = LoggerFactory.getLogger(TestByteBitPacking512VectorLE.class);
+  @Test
   public void unpackValuesUsingVector() {
+    if (ParquetReadRouter.getSupportVectorFromCPUFlags() != VectorSupport.VECTOR_512) {
+      LOG.info("avx512vbmi and avx512_vbmi2 are not supported, skip this test.");
+      return;
+    }
+
     for(int i=1; i<=32; i++) {
       unpackValuesUsingVectorBitWidth(i);
     }

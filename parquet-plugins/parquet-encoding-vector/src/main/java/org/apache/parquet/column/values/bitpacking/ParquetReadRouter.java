@@ -105,7 +105,7 @@ public class ParquetReadRouter {
     }
   }
 
-  private static VectorSupport getSupportVectorFromCPUFlags() {
+  public static VectorSupport getSupportVectorFromCPUFlags() {
     try {
       String os = System.getProperty("os.name");
       if (os == null || !os.toLowerCase().startsWith("linux")) {

@@ -512,6 +512,7 @@
             <oldVersionPattern>${previous.version}</oldVersionPattern>
             <breakBuildOnSourceIncompatibleModifications>true</breakBuildOnSourceIncompatibleModifications>
             <onlyModified>true</onlyModified>
+            <ignoreMissingOldVersion>true</ignoreMissingOldVersion>
             <overrideCompatibilityChangeParameters>
               <!-- Adding a new method with default implementation to an interface should be a compatible change.
                 That's why they invented it. -->
