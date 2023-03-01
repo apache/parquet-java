@@ -105,6 +105,12 @@ Usage: parquet [options] [command] [command options]
         Prints the column and offset indexes of a Parquet file
     column-size
         Print the column sizes of a parquet file
+    prune
+        (Deprecated: will be removed in 2.0.0, use rewrite command instead) Prune column(s) in a Parquet file and save it to a new file. The columns left are not changed.
+    trans-compression
+        (Deprecated: will be removed in 2.0.0, use rewrite command instead) Translate the compression from one to another (It doesn't support bloom filter feature yet).
+    masking
+        (Deprecated: will be removed in 2.0.0, use rewrite command instead) Replace columns with masked values and write to a new Parquet file
     footer
         Print the Parquet file footer in json format
     bloom-filter

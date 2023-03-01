@@ -41,8 +41,8 @@ import java.util.List;
 
 import static org.apache.parquet.format.converter.ParquetMetadataConverter.NO_FILTER;
 
-@Deprecated
-@Parameters(commandDescription="Replace columns with masked values and write to a new Parquet file")
+@Parameters(commandDescription="(Deprecated: will be removed in 2.0.0, use rewrite command instead) " +
+        "Replace columns with masked values and write to a new Parquet file")
 public class ColumnMaskingCommand extends BaseCommand {
 
   private ColumnMasker masker;

@@ -41,8 +41,8 @@ import java.util.List;
 
 import static org.apache.parquet.format.converter.ParquetMetadataConverter.NO_FILTER;
 
-@Deprecated
-@Parameters(commandDescription="Translate the compression from one to another (It doesn't support bloom filter feature yet).")
+@Parameters(commandDescription="(Deprecated: will be removed in 2.0.0, use rewrite command instead) " +
+        "Translate the compression from one to another (It doesn't support bloom filter feature yet).")
 public class TransCompressionCommand extends BaseCommand {
 
   private CompressionConverter compressionConverter;

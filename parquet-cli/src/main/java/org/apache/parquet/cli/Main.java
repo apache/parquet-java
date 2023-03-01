@@ -98,6 +98,9 @@ public class Main extends Configured implements Tool {
     jc.addCommand("head", new CatCommand(console, 10));
     jc.addCommand("column-index", new ShowColumnIndexCommand(console));
     jc.addCommand("column-size", new ColumnSizeCommand(console));
+    jc.addCommand("prune", new PruneColumnsCommand(console));
+    jc.addCommand("trans-compression", new TransCompressionCommand(console));
+    jc.addCommand("masking", new ColumnMaskingCommand(console));
     jc.addCommand("footer", new ShowFooterCommand(console));
     jc.addCommand("bloom-filter", new ShowBloomFilterCommand(console));
     jc.addCommand("scan", new ScanCommand(console));
