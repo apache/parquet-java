@@ -68,7 +68,7 @@ public class RewriteCommand extends BaseCommand {
 
   @Parameter(
           names = {"-c", "--compression-codec"},
-          description = "<new compression codec",
+          description = "<new compression codec>",
           required = false)
   String codec;
 
