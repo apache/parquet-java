@@ -50,7 +50,7 @@ Below is more information about each committer (in alphabetical order). If this 
 | Wes McKinney           | wesm            | @wesm               |                |
 | Wesley Graham Peck     | wesleypeck      | @wesleypeck         |                |
 | Xinli Shang            | shangxinli      | @shangxinli         |                |
-
+| Gang Wu                | gangwu          | @wgtmac             |                |
 
 # Reviewing guidelines:
 Committers have the responsibility to give constructive and timely feedback on the pull requests.
