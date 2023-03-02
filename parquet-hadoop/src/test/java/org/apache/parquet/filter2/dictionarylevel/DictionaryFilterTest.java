@@ -68,6 +68,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.apache.parquet.column.ParquetProperties.WriterVersion.PARQUET_1_0;
 import static org.apache.parquet.column.ParquetProperties.WriterVersion.PARQUET_2_0;
@@ -333,8 +334,16 @@ public class DictionaryFilterTest {
           canDrop(eq(b, toBinary("-2", 17)), ccmd, dictionaries));
     }
 
+    AtomicBoolean hasDictionaryUsed = new AtomicBoolean(false);
     assertFalse("Should not drop block for -1",
-        canDrop(eq(b, toBinary("-1", 17)), ccmd, dictionaries));
+        canDrop(eq(b, toBinary("-1", 17)), ccmd, dictionaries, hasDictionaryUsed));
+
+    // Only V2 supports dictionary encoding for FIXED_LEN_BYTE_ARRAY values
+    if (version == PARQUET_2_0) {
+      assertTrue(hasDictionaryUsed.get());
+    } else {
+      assertFalse(hasDictionaryUsed.get());
+    }
 
     assertFalse("Should not drop block for null",
         canDrop(eq(b, null), ccmd, dictionaries));

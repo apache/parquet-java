@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.parquet.filter2.bloomfilterlevel.BloomFilterImpl;
 import org.apache.parquet.filter2.compat.FilterCompat.Filter;
@@ -34,8 +35,6 @@ import org.apache.parquet.filter2.statisticslevel.StatisticsFilter;
 import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.schema.MessageType;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Given a {@link Filter} applies it to a list of BlockMetaData (row groups)
@@ -103,11 +102,13 @@ public class RowGroupFilter implements Visitor<List<BlockMetaData>> {
         drop = StatisticsFilter.canDrop(filterPredicate, block.getColumns());
       }
 
-      if(!drop && levels.contains(FilterLevel.DICTIONARY)) {
-        drop = DictionaryFilter.canDrop(filterPredicate, block.getColumns(), reader.getDictionaryReader(block));
+      // used to mark whether the column has used a dictionary, if dictionary has been used, skip `BloomFilter` to save time.
+      AtomicBoolean hasDictionaryUsed = new AtomicBoolean(false);
+      if (!drop && levels.contains(FilterLevel.DICTIONARY)) {
+        drop = DictionaryFilter.canDrop(filterPredicate, block.getColumns(), reader.getDictionaryReader(block), hasDictionaryUsed);
       }
 
-      if (!drop && levels.contains(FilterLevel.BLOOMFILTER)) {
+      if (!drop && !hasDictionaryUsed.get() && levels.contains(FilterLevel.BLOOMFILTER)) {
         drop = BloomFilterImpl.canDrop(filterPredicate, block.getColumns(), reader.getBloomFilterDataReader(block));
       }
 

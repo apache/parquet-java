@@ -41,6 +41,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.IntFunction;
 
 /**
@@ -52,20 +53,27 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
   private static final boolean BLOCK_MIGHT_MATCH = false;
   private static final boolean BLOCK_CANNOT_MATCH = true;
 
-  public static boolean canDrop(FilterPredicate pred, List<ColumnChunkMetaData> columns, DictionaryPageReadStore dictionaries) {
+  public static boolean canDrop(FilterPredicate pred, List<ColumnChunkMetaData> columns, DictionaryPageReadStore dictionaries,
+    AtomicBoolean hasDictionaryUsed) {
     Objects.requireNonNull(pred, "pred cannnot be null");
     Objects.requireNonNull(columns, "columns cannnot be null");
-    return pred.accept(new DictionaryFilter(columns, dictionaries));
+    return pred.accept(new DictionaryFilter(columns, dictionaries, hasDictionaryUsed));
+  }
+
+  public static boolean canDrop(FilterPredicate pred, List<ColumnChunkMetaData> columns, DictionaryPageReadStore dictionaries) {
+    return canDrop(pred, columns, dictionaries, new AtomicBoolean(false));
   }
 
   private final Map<ColumnPath, ColumnChunkMetaData> columns = new HashMap<ColumnPath, ColumnChunkMetaData>();
   private final DictionaryPageReadStore dictionaries;
+  private AtomicBoolean hasDictionaryUsed;
 
-  private DictionaryFilter(List<ColumnChunkMetaData> columnsList, DictionaryPageReadStore dictionaries) {
+  private DictionaryFilter(List<ColumnChunkMetaData> columnsList, DictionaryPageReadStore dictionaries,
+    AtomicBoolean hasDictionaryUsed) {
     for (ColumnChunkMetaData chunk : columnsList) {
       columns.put(chunk.getPath(), chunk);
     }
-
+    this.hasDictionaryUsed = hasDictionaryUsed;
     this.dictionaries = dictionaries;
   }
 
@@ -113,7 +121,7 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
     for (int i = 0; i <= dict.getMaxId(); i++) {
       dictSet.add((T) dictValueProvider.apply(i));
     }
-    
+    hasDictionaryUsed.set(true);
     return dictSet;
   }
 
