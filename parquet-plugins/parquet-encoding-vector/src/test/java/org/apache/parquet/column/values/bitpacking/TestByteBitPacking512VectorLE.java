@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.column.values.bitpacking;
 
+import org.junit.Assume;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,11 +34,7 @@ public class TestByteBitPacking512VectorLE {
   private static final Logger LOG = LoggerFactory.getLogger(TestByteBitPacking512VectorLE.class);
   @Test
   public void unpackValuesUsingVector() {
-    if (ParquetReadRouter.getSupportVectorFromCPUFlags() != VectorSupport.VECTOR_512) {
-      LOG.info("avx512vbmi and avx512_vbmi2 are not supported, skip this test.");
-      return;
-    }
-
+    Assume.assumeTrue(ParquetReadRouter.getSupportVectorFromCPUFlags() == VectorSupport.VECTOR_512);
     for(int i=1; i<=32; i++) {
       unpackValuesUsingVectorBitWidth(i);
     }

@@ -19,6 +19,7 @@
 package org.apache.parquet.column.values.bitpacking;
 
 import org.apache.parquet.bytes.ByteBufferInputStream;
+import org.junit.Assume;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,10 +51,7 @@ public class TestParquetReadRouter {
       ParquetReadRouter.read(bitWidth, inputStream, 0, output);
       ParquetReadRouter.readBatch(bitWidth, inputStream, 0, outputBatch);
       assertArrayEquals(output, outputBatch);
-      if (ParquetReadRouter.getSupportVectorFromCPUFlags() != VectorSupport.VECTOR_512) {
-        LOG.info("avx512vbmi and avx512_vbmi2 are not supported, skip this test.");
-        return;
-      }
+      Assumptions.assumeTrue(ParquetReadRouter.getSupportVectorFromCPUFlags() == VectorSupport.VECTOR_512);
       ParquetReadRouter.readBatchUsing512Vector(bitWidth, inputStream, 0, outputBatchVector);
       assertArrayEquals(output, outputBatchVector);
     }

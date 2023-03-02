@@ -45,7 +45,7 @@ jobs:
         run: |
           EXTRA_JAVA_TEST_ARGS=$(mvn help:evaluate -Dexpression=extraJavaTestArgs -q -DforceStdout)
           export MAVEN_OPTS="$MAVEN_OPTS $EXTRA_JAVA_TEST_ARGS"
-          mvn install --batch-mode -Pvector-plugins -DskipTests=true -Dmaven.javadoc.skip=true -Dsource.skip=true -Djava.version=${{ matrix.java }} -pl parquet-encoding,parquet-plugins/parquet-encoding-vector,parquet-plugins/parquet-plugins-benchmarks
+          mvn install --batch-mode -Pvector-plugins -DskipTests=true -Dmaven.javadoc.skip=true -Dsource.skip=true -Djava.version=${{ matrix.java }} -pl parquet-plugins/parquet-encoding-vector,parquet-plugins/parquet-plugins-benchmarks -am
       - name: verify
         env:
           TEST_CODECS: ${{ matrix.codes }}
@@ -53,4 +53,4 @@ jobs:
         run: |
           EXTRA_JAVA_TEST_ARGS=$(mvn help:evaluate -Dexpression=extraJavaTestArgs -q -DforceStdout)
           export MAVEN_OPTS="$MAVEN_OPTS $EXTRA_JAVA_TEST_ARGS"
-          mvn verify --batch-mode javadoc:javadoc -Pci-test
+          mvn verify --batch-mode -Pvector-plugins javadoc:javadoc -Pci-test -pl parquet-plugins/parquet-encoding-vector,parquet-plugins/parquet-plugins-benchmarks -am
