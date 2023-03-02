@@ -51,7 +51,7 @@ public class TestParquetReadRouter {
       ParquetReadRouter.read(bitWidth, inputStream, 0, output);
       ParquetReadRouter.readBatch(bitWidth, inputStream, 0, outputBatch);
       assertArrayEquals(output, outputBatch);
-      Assumptions.assumeTrue(ParquetReadRouter.getSupportVectorFromCPUFlags() == VectorSupport.VECTOR_512);
+      Assume.assumeTrue(ParquetReadRouter.getSupportVectorFromCPUFlags() == VectorSupport.VECTOR_512);
       ParquetReadRouter.readBatchUsing512Vector(bitWidth, inputStream, 0, outputBatchVector);
       assertArrayEquals(output, outputBatchVector);
     }
