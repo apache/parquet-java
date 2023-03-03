@@ -19,9 +19,13 @@
 
 package org.apache.parquet.filter2.bloomfilterlevel;
 
+import static org.apache.parquet.Preconditions.checkNotNull;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,8 +37,6 @@ import org.apache.parquet.hadoop.BloomFilterReader;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 
-import static org.apache.parquet.Preconditions.checkNotNull;
-
 public class BloomFilterImpl implements FilterPredicate.Visitor<Boolean>{
   private static final Logger LOG = LoggerFactory.getLogger(BloomFilterImpl.class);
   private static final boolean BLOCK_MIGHT_MATCH = false;
@@ -42,10 +44,25 @@ public class BloomFilterImpl implements FilterPredicate.Visitor<Boolean>{
 
   private final Map<ColumnPath, ColumnChunkMetaData> columns = new HashMap<ColumnPath, ColumnChunkMetaData>();
 
+  public static boolean canDropWithInfo(FilterPredicate pred, List<ColumnChunkMetaData> columns,
+    BloomFilterReader bloomFilterReader, AtomicInteger bloomInfo) {
+    checkNotNull(pred, "pred");
+    checkNotNull(columns, "columns");
+    return pred.accept(new BloomFilterImpl(columns, bloomFilterReader, bloomInfo));
+  }
+
   public static boolean canDrop(FilterPredicate pred, List<ColumnChunkMetaData> columns, BloomFilterReader bloomFilterReader) {
     checkNotNull(pred, "pred");
     checkNotNull(columns, "columns");
     return pred.accept(new BloomFilterImpl(columns, bloomFilterReader));
+  }
+
+  private BloomFilterImpl(List<ColumnChunkMetaData> columnsList, BloomFilterReader bloomFilterReader, AtomicInteger bloomInfo) {
+    for (ColumnChunkMetaData chunk : columnsList) {
+      columns.put(chunk.getPath(), chunk);
+    }
+    this.bloomFilterReader = bloomFilterReader;
+    this.bloomInfo = bloomInfo;
   }
 
   private BloomFilterImpl(List<ColumnChunkMetaData> columnsList, BloomFilterReader bloomFilterReader) {
@@ -55,6 +72,8 @@ public class BloomFilterImpl implements FilterPredicate.Visitor<Boolean>{
 
     this.bloomFilterReader = bloomFilterReader;
   }
+
+  private AtomicInteger bloomInfo =  new AtomicInteger(0);
 
   private BloomFilterReader bloomFilterReader;
 
@@ -82,6 +101,10 @@ public class BloomFilterImpl implements FilterPredicate.Visitor<Boolean>{
 
     try {
       BloomFilter bloomFilter = bloomFilterReader.readBloomFilter(meta);
+      if (bloomFilter != null) {
+        // use bloom
+        bloomInfo.set(1);
+      }
       if (bloomFilter != null && !bloomFilter.findHash(bloomFilter.hash(value))) {
         return BLOCK_CANNOT_MATCH;
       }

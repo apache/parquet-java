@@ -9,7 +9,7 @@
 
   <groupId>org.apache.parquet</groupId>
   <artifactId>parquet</artifactId>
-  <version>1.12.2-kylin-r1</version>
+  <version>1.12.2-kylin-r3</version>
   <packaging>pom</packaging>
 
   <name>Apache Parquet MR</name>
@@ -155,16 +155,30 @@
       <scope>test</scope>
     </dependency>
   </dependencies>
+<!--  <distributionManagement>-->
+<!--    <repository>-->
+<!--      <id>${repository.id}</id>-->
+<!--      <url>${repository.url}</url>-->
+<!--      <name>${repository.name}</name>-->
+<!--      <layout>default</layout>-->
+<!--    </repository>-->
+<!--    <snapshotRepository>-->
+<!--      <id>${repository.id.snapshots}</id>-->
+<!--      <url>${repository.url.snapshots}</url>-->
+<!--      <name>${repository.name.snapshots}</name>-->
+<!--      <layout>default</layout>-->
+<!--    </snapshotRepository>-->
+<!--  </distributionManagement>-->
   <distributionManagement>
     <snapshotRepository>
-      <id>user-snapshots</id>
+      <id>open</id>
       <name>User Project SNAPSHOTS</name>
-      <url>http://repository.kyligence.io:8081/repository/maven-snapshots/</url>
+      <url>https://repository.kyligence.io/repository/maven-snapshots/</url>
     </snapshotRepository>
     <repository>
-      <id>user-releases</id>
+      <id>open</id>
       <name>User Project Release</name>
-      <url>http://repository.kyligence.io:8081/repository/maven-releases/</url>
+      <url>https://repository.kyligence.io/repository/maven-releases/</url>
     </repository>
   </distributionManagement>
   <reporting>
