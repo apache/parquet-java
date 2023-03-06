@@ -1038,7 +1038,7 @@ public class ParquetFileReader implements Closeable {
 
     BlockMetaData block = blocks.get(blockIndex);
     if (block.getRowCount() == 0L) {
-      throw new ParquetEmptyBlockException("Illegal row group of 0 rows");
+      return null;
     }
 
     long rowCount = rowRanges.rowCount();
