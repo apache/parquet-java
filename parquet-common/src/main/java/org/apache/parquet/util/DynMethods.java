@@ -85,7 +85,7 @@ public class DynMethods {
      */
     public BoundMethod bind(Object receiver) {
       Preconditions.checkState(!isStatic(),
-          "Cannot bind static method " + method.toGenericString());
+          "Cannot bind static method %s", method.toGenericString());
       Preconditions.checkArgument(
           method.getDeclaringClass().isAssignableFrom(receiver.getClass()),
           "Cannot bind %s to instance of %s", method.toGenericString(), 
