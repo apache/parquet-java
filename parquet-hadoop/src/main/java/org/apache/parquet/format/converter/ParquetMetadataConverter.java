@@ -217,7 +217,7 @@ public class ParquetMetadataConverter {
       }
       if (preBlockStartPos != 0) {
         Preconditions.checkState(blockStartPos >= preBlockStartPos + preBlockCompressedSize,
-          "Invalid block starting position:" + blockStartPos);
+          "Invalid block starting position: %s", blockStartPos);
       }
       preBlockStartPos = blockStartPos;
       preBlockCompressedSize = block.getCompressedSize();
