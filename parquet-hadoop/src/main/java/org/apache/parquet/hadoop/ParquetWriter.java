@@ -44,9 +44,9 @@ public class ParquetWriter<T> implements Closeable {
       ParquetProperties.DEFAULT_PAGE_SIZE;
   public static final CompressionCodecName DEFAULT_COMPRESSION_CODEC_NAME =
       CompressionCodecName.UNCOMPRESSED;
-  public static final boolean DEFAULT_IS_DICTIONARY_ENABLED =
-      ParquetProperties.DEFAULT_IS_DICTIONARY_ENABLED;
-  public static final boolean DEFAULT_IS_VALIDATING_ENABLED = false;
+  public static final boolean DEFAULT_DICTIONARY_ENABLED =
+      ParquetProperties.DEFAULT_DICTIONARY_ENABLED;
+  public static final boolean DEFAULT_VALIDATING_ENABLED = false;
   public static final WriterVersion DEFAULT_WRITER_VERSION =
       ParquetProperties.DEFAULT_WRITER_VERSION;
 
@@ -73,7 +73,7 @@ public class ParquetWriter<T> implements Closeable {
   @Deprecated
   public ParquetWriter(Path file, WriteSupport<T> writeSupport, CompressionCodecName compressionCodecName, int blockSize, int pageSize) throws IOException {
     this(file, writeSupport, compressionCodecName, blockSize, pageSize,
-        DEFAULT_IS_DICTIONARY_ENABLED, DEFAULT_IS_VALIDATING_ENABLED);
+      DEFAULT_DICTIONARY_ENABLED, DEFAULT_VALIDATING_ENABLED);
   }
 
   /**
@@ -258,8 +258,8 @@ public class ParquetWriter<T> implements Closeable {
         DEFAULT_BLOCK_SIZE,
         DEFAULT_PAGE_SIZE,
         DEFAULT_PAGE_SIZE,
-        DEFAULT_IS_DICTIONARY_ENABLED,
-        DEFAULT_IS_VALIDATING_ENABLED,
+      DEFAULT_DICTIONARY_ENABLED,
+      DEFAULT_VALIDATING_ENABLED,
         DEFAULT_WRITER_VERSION,
         conf);
   }
@@ -357,7 +357,7 @@ public class ParquetWriter<T> implements Closeable {
     private CompressionCodecName codecName = DEFAULT_COMPRESSION_CODEC_NAME;
     private long rowGroupSize = DEFAULT_BLOCK_SIZE;
     private int maxPaddingSize = MAX_PADDING_SIZE_DEFAULT;
-    private boolean enableValidation = DEFAULT_IS_VALIDATING_ENABLED;
+    private boolean enableValidation = DEFAULT_VALIDATING_ENABLED;
     private ParquetProperties.Builder encodingPropsBuilder =
         ParquetProperties.builder();
 
