@@ -48,7 +48,7 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
 
   /**
    *
-   * @param w the file to write to
+   * @param parquetFileWriter the file to write to
    * @param writeSupport the class to convert incoming records
    * @param schema the schema of the records
    * @param extraMetaData extra meta data to write in the footer of the file
@@ -62,7 +62,7 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
    */
   @Deprecated
   public ParquetRecordWriter(
-      ParquetFileWriter w,
+      ParquetFileWriter parquetFileWriter,
       WriteSupport<T> writeSupport,
       MessageType schema,
       Map<String, String> extraMetaData,
@@ -78,7 +78,7 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
         .withDictionaryEncoding(enableDictionary)
         .withWriterVersion(writerVersion)
         .build();
-    internalWriter = new InternalParquetRecordWriter<T>(w, writeSupport, schema,
+    internalWriter = new InternalParquetRecordWriter<T>(parquetFileWriter, writeSupport, schema,
         extraMetaData, blockSize, compressor, validating, props);
     this.memoryManager = null;
     this.codecFactory = null;
@@ -86,7 +86,7 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
 
   /**
    *
-   * @param w the file to write to
+   * @param parquetFileWriter the file to write to
    * @param writeSupport the class to convert incoming records
    * @param schema the schema of the records
    * @param extraMetaData extra meta data to write in the footer of the file
@@ -101,7 +101,7 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
    */
   @Deprecated
   public ParquetRecordWriter(
-      ParquetFileWriter w,
+      ParquetFileWriter parquetFileWriter,
       WriteSupport<T> writeSupport,
       MessageType schema,
       Map<String, String> extraMetaData,
@@ -118,7 +118,7 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
         .withDictionaryEncoding(enableDictionary)
         .withWriterVersion(writerVersion)
         .build();
-    internalWriter = new InternalParquetRecordWriter<T>(w, writeSupport, schema,
+    internalWriter = new InternalParquetRecordWriter<T>(parquetFileWriter, writeSupport, schema,
         extraMetaData, blockSize, compressor, validating, props);
     this.memoryManager = Objects.requireNonNull(memoryManager, "memoryManager cannot be null");
     memoryManager.addWriter(internalWriter, blockSize);
@@ -127,7 +127,7 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
 
   /**
    *
-   * @param w the file to write to
+   * @param parquetFileWriter the file to write to
    * @param writeSupport the class to convert incoming records
    * @param schema the schema of the records
    * @param extraMetaData extra meta data to write in the footer of the file
@@ -137,7 +137,7 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
    * @param props parquet encoding properties
    */
   ParquetRecordWriter(
-      ParquetFileWriter w,
+      ParquetFileWriter parquetFileWriter,
       WriteSupport<T> writeSupport,
       MessageType schema,
       Map<String, String> extraMetaData,
@@ -148,7 +148,7 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
       MemoryManager memoryManager,
       Configuration conf) {
     this.codecFactory = new CodecFactory(conf, props.getPageSizeThreshold());
-    internalWriter = new InternalParquetRecordWriter<T>(w, writeSupport, schema,
+    internalWriter = new InternalParquetRecordWriter<T>(parquetFileWriter, writeSupport, schema,
         extraMetaData, blockSize, codecFactory.getCompressor(codec), validating,
         props);
     this.memoryManager = Objects.requireNonNull(memoryManager, "memoryManager cannot be null");
