@@ -19,27 +19,15 @@
 
 package org.apache.parquet.hadoop;
 
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.Path;
-import org.apache.parquet.column.ParquetProperties;
-import org.apache.parquet.crypto.ColumnEncryptionProperties;
-import org.apache.parquet.crypto.DecryptionKeyRetrieverMock;
-import org.apache.parquet.crypto.FileDecryptionProperties;
-import org.apache.parquet.crypto.FileEncryptionProperties;
-import org.apache.parquet.filter2.compat.FilterCompat;
-import org.apache.parquet.filter2.predicate.FilterPredicate;
-import org.apache.parquet.filter2.recordlevel.PhoneBookWriter;
-import org.apache.parquet.hadoop.example.ExampleParquetWriter;
-import org.apache.parquet.hadoop.example.GroupReadSupport;
-import org.apache.parquet.hadoop.metadata.ColumnPath;
-import org.apache.parquet.io.api.Binary;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import static org.apache.parquet.filter2.predicate.FilterApi.binaryColumn;
+import static org.apache.parquet.filter2.predicate.FilterApi.doubleColumn;
+import static org.apache.parquet.filter2.predicate.FilterApi.eq;
+import static org.apache.parquet.filter2.predicate.FilterApi.in;
+import static org.apache.parquet.filter2.predicate.FilterApi.longColumn;
+import static org.apache.parquet.hadoop.ParquetFileWriter.Mode.OVERWRITE;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -58,9 +46,31 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static org.apache.parquet.filter2.predicate.FilterApi.*;
-import static org.apache.parquet.hadoop.ParquetFileWriter.Mode.OVERWRITE;
-import static org.junit.Assert.*;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import org.apache.parquet.ParquetReadOptions;
+import org.apache.parquet.column.ParquetProperties;
+import org.apache.parquet.crypto.ColumnEncryptionProperties;
+import org.apache.parquet.crypto.DecryptionKeyRetrieverMock;
+import org.apache.parquet.crypto.FileDecryptionProperties;
+import org.apache.parquet.crypto.FileEncryptionProperties;
+import org.apache.parquet.filter2.compat.FilterCompat;
+import org.apache.parquet.filter2.predicate.FilterPredicate;
+import org.apache.parquet.filter2.recordlevel.PhoneBookWriter;
+import org.apache.parquet.hadoop.example.ExampleParquetWriter;
+import org.apache.parquet.hadoop.example.GroupReadSupport;
+import org.apache.parquet.hadoop.metadata.ColumnPath;
+import org.apache.parquet.hadoop.util.HadoopInputFile;
+import org.apache.parquet.io.InputFile;
+import org.apache.parquet.io.api.Binary;
 
 @RunWith(Parameterized.class)
 public class TestBloomFiltering {
@@ -197,17 +207,7 @@ public class TestBloomFiltering {
 
   private List<PhoneBookWriter.User> readUsers(FilterPredicate filter, boolean useOtherFiltering,
                                                boolean useBloomFilter) throws IOException {
-    FileDecryptionProperties fileDecryptionProperties = null;
-    if (isEncrypted) {
-      DecryptionKeyRetrieverMock decryptionKeyRetrieverMock = new DecryptionKeyRetrieverMock()
-        .putKey(FOOTER_ENCRYPTION_KEY_ID, FOOTER_ENCRYPTION_KEY)
-        .putKey(COLUMN_ENCRYPTION_KEY1_ID, COLUMN_ENCRYPTION_KEY1)
-        .putKey(COLUMN_ENCRYPTION_KEY2_ID, COLUMN_ENCRYPTION_KEY2);
-
-      fileDecryptionProperties = FileDecryptionProperties.builder()
-        .withKeyRetriever(decryptionKeyRetrieverMock)
-        .build();
-    }
+    FileDecryptionProperties fileDecryptionProperties = getFileDecryptionProperties();
 
     return PhoneBookWriter.readUsers(ParquetReader.builder(new GroupReadSupport(), file)
       .withFilter(FilterCompat.get(filter))
@@ -217,6 +217,20 @@ public class TestBloomFiltering {
       .useRecordFilter(useOtherFiltering)
       .useBloomFilter(useBloomFilter)
       .useColumnIndexFilter(useOtherFiltering), true);
+  }
+
+  public FileDecryptionProperties getFileDecryptionProperties() {
+    if (!isEncrypted) {
+      return null;
+    }
+    DecryptionKeyRetrieverMock decryptionKeyRetrieverMock = new DecryptionKeyRetrieverMock()
+      .putKey(FOOTER_ENCRYPTION_KEY_ID, FOOTER_ENCRYPTION_KEY)
+      .putKey(COLUMN_ENCRYPTION_KEY1_ID, COLUMN_ENCRYPTION_KEY1)
+      .putKey(COLUMN_ENCRYPTION_KEY2_ID, COLUMN_ENCRYPTION_KEY2);
+
+    return FileDecryptionProperties.builder()
+      .withKeyRetriever(decryptionKeyRetrieverMock)
+      .build();
   }
 
   // Assumes that both lists are in the same order
@@ -280,35 +294,55 @@ public class TestBloomFiltering {
     return encryptionProperties;
   }
 
-  private static void writePhoneBookToFile(Path file,
-                                           ParquetProperties.WriterVersion parquetVersion,
-                                           FileEncryptionProperties encryptionProperties) throws IOException {
+  protected static void writePhoneBookToFile(Path file,
+    ParquetProperties.WriterVersion parquetVersion,
+    FileEncryptionProperties encryptionProperties,
+    boolean useDynamicBloomFilter) throws IOException {
     int pageSize = DATA.size() / 100;     // Ensure that several pages will be created
     int rowGroupSize = pageSize * 4;    // Ensure that there are more row-groups created
-    PhoneBookWriter.write(ExampleParquetWriter.builder(file)
-        .withWriteMode(OVERWRITE)
-        .withRowGroupSize(rowGroupSize)
-        .withPageSize(pageSize)
+    ExampleParquetWriter.Builder writeBuilder = ExampleParquetWriter.builder(file)
+      .withWriteMode(OVERWRITE)
+      .withRowGroupSize(rowGroupSize)
+      .withPageSize(pageSize)
+      .withEncryption(encryptionProperties)
+      .withWriterVersion(parquetVersion);
+    if (useDynamicBloomFilter) {
+      writeBuilder
+        .withBloomFilterEnabled("location.lat", true)
+        .withBloomFilterCandidateSize("location.lat", 10)
+        .withBloomFilterEnabled("name", true)
+        .withBloomFilterCandidateSize("name", 10)
+        .withBloomFilterEnabled("id", true)
+        .withBloomFilterCandidateSize("id", 10);
+    } else {
+      writeBuilder
         .withBloomFilterNDV("location.lat", 10000L)
         .withBloomFilterNDV("name", 10000L)
-        .withBloomFilterNDV("id", 10000L)
-        .withEncryption(encryptionProperties)
-        .withWriterVersion(parquetVersion),
-      DATA);
+        .withBloomFilterNDV("id", 10000L);
+    }
+    PhoneBookWriter.write(writeBuilder, DATA);
   }
 
   private static void deleteFile(Path file) throws IOException {
     file.getFileSystem(new Configuration()).delete(file, false);
   }
 
+  public Path getFile() {
+    return file;
+  }
+
   @BeforeClass
   public static void createFiles() throws IOException {
-    writePhoneBookToFile(FILE_V1, ParquetProperties.WriterVersion.PARQUET_1_0, null);
-    writePhoneBookToFile(FILE_V2, ParquetProperties.WriterVersion.PARQUET_2_0, null);
+    createFiles(false);
+  }
+
+  public static void createFiles(boolean useDynamicBloomFilter) throws IOException {
+    writePhoneBookToFile(FILE_V1, ParquetProperties.WriterVersion.PARQUET_1_0, null, useDynamicBloomFilter);
+    writePhoneBookToFile(FILE_V2, ParquetProperties.WriterVersion.PARQUET_2_0, null, useDynamicBloomFilter);
 
     FileEncryptionProperties encryptionProperties = getFileEncryptionProperties();
-    writePhoneBookToFile(FILE_V1_E, ParquetProperties.WriterVersion.PARQUET_1_0, encryptionProperties);
-    writePhoneBookToFile(FILE_V2_E, ParquetProperties.WriterVersion.PARQUET_2_0, encryptionProperties);
+    writePhoneBookToFile(FILE_V1_E, ParquetProperties.WriterVersion.PARQUET_1_0, encryptionProperties, useDynamicBloomFilter);
+    writePhoneBookToFile(FILE_V2_E, ParquetProperties.WriterVersion.PARQUET_2_0, encryptionProperties, useDynamicBloomFilter);
   }
 
   @AfterClass
@@ -363,5 +397,24 @@ public class TestBloomFiltering {
         return location != null && location.getLat() != null && location.getLat() == 99.9;
       },
       eq(doubleColumn("location.lat"), 99.9));
+  }
+
+  @Test
+  public void checkBloomFilterSize() throws IOException {
+    FileDecryptionProperties fileDecryptionProperties = getFileDecryptionProperties();
+    final ParquetReadOptions readOptions = ParquetReadOptions.builder().withDecryption(fileDecryptionProperties).build();
+    InputFile inputFile = HadoopInputFile.fromPath(getFile(), new Configuration());
+    try (ParquetFileReader fileReader = ParquetFileReader.open(inputFile, readOptions)) {
+      fileReader.getRowGroups().forEach(block -> {
+        BloomFilterReader bloomFilterReader = fileReader.getBloomFilterDataReader(block);
+        block.getColumns().stream()
+          .filter(column -> column.getBloomFilterOffset() > 0)
+          .forEach(column -> {
+            int bitsetSize = bloomFilterReader.readBloomFilter(column).getBitsetSize();
+            // when setting nvd to a fixed value 10000L, bitsetSize will always be 16384
+            assertEquals(16384, bitsetSize);
+          });
+      });
+    }
   }
 }

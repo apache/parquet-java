@@ -305,41 +305,53 @@ public class TestParquetWriter {
     GroupWriteSupport.setSchema(schema, conf);
 
     GroupFactory factory = new SimpleGroupFactory(schema);
-    for (int i = 0; i < testFpp.length; i++) {
-      File file = temp.newFile();
-      file.delete();
-      Path path = new Path(file.getAbsolutePath());
-      try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(path)
-        .withPageRowCountLimit(10)
-        .withConf(conf)
-        .withDictionaryEncoding(false)
-        .withBloomFilterEnabled("name", true)
-        .withBloomFilterNDV("name", totalCount)
-        .withBloomFilterFPP("name", testFpp[i])
-        .build()) {
-        java.util.Iterator<String> iterator = distinctStrings.iterator();
-        while (iterator.hasNext()) {
-          writer.write(factory.newGroup().append("name", iterator.next()));
-        }
-      }
-      distinctStrings.clear();
-
-      try (ParquetFileReader reader = ParquetFileReader.open(HadoopInputFile.fromPath(path, new Configuration()))) {
-        BlockMetaData blockMetaData = reader.getFooter().getBlocks().get(0);
-        BloomFilter bloomFilter = reader.getBloomFilterDataReader(blockMetaData)
-          .readBloomFilter(blockMetaData.getColumns().get(0));
-
-        // The exist counts the number of times FindHash returns true.
-        int exist = 0;
-        while (distinctStrings.size() < totalCount) {
-          String str = RandomStringUtils.randomAlphabetic(randomStrLen - 2);
-          if (distinctStrings.add(str) &&
-            bloomFilter.findHash(LongHashFunction.xx(0).hashBytes(Binary.fromString(str).toByteBuffer()))) {
-            exist++;
+    for (Boolean useDynamicBloomFilter : new Boolean[]{true, false}) {
+      for (int i = 0; i < testFpp.length; i++) {
+        File file = temp.newFile();
+        file.delete();
+        Path path = new Path(file.getAbsolutePath());
+        ExampleParquetWriter.Builder writeBuilder = ExampleParquetWriter.builder(path)
+          .withPageRowCountLimit(10)
+          .withConf(conf)
+          .withDictionaryEncoding(false)
+          .withBloomFilterEnabled("name", true)
+          .withBloomFilterFPP("name", testFpp[i]);
+        ParquetWriter<Group> writer = null;
+        try {
+          if (useDynamicBloomFilter) {
+            writer = writeBuilder
+              .withBloomFilterNDV("name", totalCount)
+              .build();
+          } else {
+            writer = writeBuilder.build();
+          }
+          java.util.Iterator<String> iterator = distinctStrings.iterator();
+          while (iterator.hasNext()) {
+            writer.write(factory.newGroup().append("name", iterator.next()));
+          }
+        } finally {
+          if (writer != null) {
+            writer.close();
           }
         }
-        // The exist should be less than totalCount * fpp. Add 10% here for error space.
-        assertTrue(exist < totalCount * (testFpp[i] * 1.1) && exist > 0);
+        distinctStrings.clear();
+        try (ParquetFileReader reader = ParquetFileReader.open(HadoopInputFile.fromPath(path, new Configuration()))) {
+          BlockMetaData blockMetaData = reader.getFooter().getBlocks().get(0);
+          BloomFilter bloomFilter = reader.getBloomFilterDataReader(blockMetaData)
+            .readBloomFilter(blockMetaData.getColumns().get(0));
+
+          // The exist counts the number of times FindHash returns true.
+          int exist = 0;
+          while (distinctStrings.size() < totalCount) {
+            String str = RandomStringUtils.randomAlphabetic(randomStrLen - 2);
+            if (distinctStrings.add(str) &&
+              bloomFilter.findHash(LongHashFunction.xx(0).hashBytes(Binary.fromString(str).toByteBuffer()))) {
+              exist++;
+            }
+          }
+          // The exist should be less than totalCount * fpp. Add 10% here for error space.
+          assertTrue(exist < totalCount * (testFpp[i] * 1.1) && exist > 0);
+        }
       }
     }
   }

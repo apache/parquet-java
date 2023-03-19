@@ -18,6 +18,11 @@
  */
 package org.apache.parquet.column.values.bloomfilter;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertTrue;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -25,17 +30,15 @@ import java.util.HashSet;
 import java.util.Random;
 import java.util.Set;
 
-import net.openhft.hashing.LongHashFunction;
 import org.apache.commons.lang3.RandomStringUtils;
-import org.apache.parquet.io.api.Binary;
 import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertTrue;
+
+import org.apache.parquet.io.api.Binary;
+
+import net.openhft.hashing.LongHashFunction;
 
 public class TestBlockSplitBloomFilter {
 
@@ -182,6 +185,38 @@ public class TestBlockSplitBloomFilter {
     numBits = -8 * ndv / Math.log(1 - Math.pow(fpp, 1.0 / 8));
     bytes = (int)numBits / 8;
     assertTrue(bytes < 5 * 1024 * 1024);
+  }
+
+  @Test
+  public void testDynamicBloomFilter() {
+    int maxBloomFilterSize = 1024 * 1024;
+    int candidateSize = 10;
+    DynamicBlockBloomFilter dynamicBloomFilter = new DynamicBlockBloomFilter(maxBloomFilterSize,
+      candidateSize, 0.01, null);
+
+    assertEquals(candidateSize, dynamicBloomFilter.getCandidates().size());
+
+    Set<String> existedValue = new HashSet<>();
+    while (existedValue.size() < 10000) {
+      String str = RandomStringUtils.randomAlphabetic(1, 64);
+      dynamicBloomFilter.insertHash(dynamicBloomFilter.hash(Binary.fromString(str)));
+      existedValue.add(str);
+    }
+    // removed some small bloom filter
+    assertEquals(7, dynamicBloomFilter.getCandidates().size());
+    BlockSplitBloomFilter optimalCandidate = dynamicBloomFilter.optimalCandidate().getBloomFilter();
+    for (String value : existedValue) {
+      assertTrue(optimalCandidate.findHash(optimalCandidate.hash(Binary.fromString(value))));
+    }
+
+    int maxCandidateNDV = dynamicBloomFilter.getCandidates().last().getExpectedNDV();
+    while (existedValue.size() < maxCandidateNDV + 1) {
+      String str = RandomStringUtils.randomAlphabetic(1, 64);
+      dynamicBloomFilter.insertHash(dynamicBloomFilter.hash(Binary.fromString(str)));
+      existedValue.add(str);
+    }
+    // the number of distinct value exceeds the maximum candidate's expected NDV, so only the maximum candidate is kept
+    assertEquals(1, dynamicBloomFilter.getCandidates().size());
   }
 
   @Test
