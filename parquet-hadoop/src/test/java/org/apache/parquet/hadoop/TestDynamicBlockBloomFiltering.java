@@ -67,9 +67,9 @@ public class TestDynamicBlockBloomFiltering extends TestBloomFiltering {
           .forEach(column -> {
             int bitsetSize = bloomFilterReader.readBloomFilter(column).getBitsetSize();
             // set 10 candidates:
-            // [bitSize=2048, expectedNVD=1500], [bitSize=4096, expectedNVD=3000], [bitSize=6500, expectedNVD=8192],
-            // [bitSize=16384, expectedNVD=1350], [bitSize=32768, expectedNVD=27000] ......
-            // number of distinct values is less than 100, so the bitSize should be less than 2048.
+            // [byteSize=2048, expectedNVD=1500], [byteSize=4096, expectedNVD=3000], [byteSize=6500, expectedNVD=8192],
+            // [byteSize=16384, expectedNVD=13500], [byteSize=32768, expectedNVD=27000] ......
+            // number of distinct values is less than 100, so the byteSize should be less than 2048.
             assertTrue(bitsetSize <= 2048);
           });
       });

@@ -47,7 +47,7 @@ public class DynamicBlockBloomFilter implements BloomFilter {
   private static final Logger LOG = LoggerFactory.getLogger(DynamicBlockBloomFilter.class);
 
   // multiple candidates, inserting data at the same time. If the distinct values are greater than the
-  // expected NDV of candidate, it will be removed. Finally we will choose the smallest candidate to write out.
+  // expected NDV of candidates, it will be removed. Finally we will choose the smallest candidate to write out.
   private final TreeSet<BloomFilterCandidate> candidates = new TreeSet<>();
 
   // the largest among candidates and used as an approximate deduplication counter
@@ -267,7 +267,9 @@ public class DynamicBlockBloomFilter implements BloomFilter {
   }
 
   protected class BloomFilterCandidate implements Comparable<BloomFilterCandidate> {
+    // the bloom filter candidate
     private BlockSplitBloomFilter bloomFilter;
+    // the expected NDV (number of distinct value) in the candidate
     private int expectedNDV;
 
     public BloomFilterCandidate(int expectedNDV, int candidateBytes,
