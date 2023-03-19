@@ -40,14 +40,14 @@ import org.apache.parquet.io.api.Binary;
  * the candidates at the same time.
  * The purpose of this is to finally generate a bloom filter with the optimal bit size according to the number
  * of real data distinct values. Use the largest bloom filter as an approximate deduplication counter, and then
- * remove bad bloom filter candidate during data insertion.
+ * remove incapable bloom filter candidate during data insertion.
  */
 public class DynamicBlockBloomFilter implements BloomFilter {
 
   private static final Logger LOG = LoggerFactory.getLogger(DynamicBlockBloomFilter.class);
 
-  // multiple candidates, inserting data at the same time. If the deduplication value is greater than the
-  // expected NDV of candidate, it will be removed and finally choose the smallest candidate to write out.
+  // multiple candidates, inserting data at the same time. If the distinct values are greater than the
+  // expected NDV of candidate, it will be removed. Finally we will choose the smallest candidate to write out.
   private final TreeSet<BloomFilterCandidate> candidates = new TreeSet<>();
 
   // the largest among candidates and used as an approximate deduplication counter
@@ -100,8 +100,8 @@ public class DynamicBlockBloomFilter implements BloomFilter {
 
   /**
    * Given the maximum acceptable bytes size of bloom filter, generate candidates according
-   * to the max expected distinct values. The size of the candidate bytes needs to be a
-   * square number of 2. Therefore, set the candidate size according to `maxBytes` of `1/2`, `1/4`, `1/8`, etc.
+   * to the bytes size. The bytes size of the candidate needs to be a
+   * power of 2. Therefore, set the candidate size according to `maxBytes` of `1/2`, `1/4`, `1/8`, etc.
    *
    * @param maxBytes      the maximum acceptable bit size
    * @param candidatesNum the number of candidates
@@ -141,11 +141,8 @@ public class DynamicBlockBloomFilter implements BloomFilter {
     }
     // make sure it is slightly smaller than what `numBytes` can support
     expectedNDV -= step;
-
-    // numBytes is too small, 256 Bytes -> 1 NDV
-    if (expectedNDV <= 0 && numBytes >= 32) {
-      expectedNDV = 1;
-    } else if (expectedNDV <= 0) {
+    // numBytes is too small
+    if (expectedNDV <= 0) {
       expectedNDV = 0;
     }
     return expectedNDV;
@@ -155,7 +152,7 @@ public class DynamicBlockBloomFilter implements BloomFilter {
    * BloomFilter bitsets size should be power of 2, see [[BlockSplitBloomFilter#initBitset]]
    *
    * @param numBytes the bytes size
-   * @return power of 2 less than or equal to numBytes
+   * @return the largest power of 2 less or equal to numBytes
    */
   private int calculateTwoPowerSize(int numBytes) {
     if (numBytes < minimumBytes) {
@@ -174,7 +171,7 @@ public class DynamicBlockBloomFilter implements BloomFilter {
    * Used at the end of the insertion, select the candidate of the smallest size.
    * At least one of the largest candidates will be kept when inserting data.
    *
-   * @return the smallest candidate
+   * @return the smallest and optimal candidate
    */
   protected BloomFilterCandidate optimalCandidate() {
     return candidates.stream()
