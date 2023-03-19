@@ -97,7 +97,7 @@ public class BlockSplitBloomFilter implements BloomFilter {
       maxBytes = LOWER_BOUND_BYTES;
     }
     int upperBound = Math.min(maxBytes, UPPER_BOUND_BYTES);
-    int byteSize = largestTwoPowerNumberInRange(LOWER_BOUND_BYTES, upperBound);
+    int byteSize = largestTwoPowerInRange(LOWER_BOUND_BYTES, upperBound);
     return new BlockSplitBloomFilter(byteSize);
   }
 
@@ -237,15 +237,13 @@ public class BlockSplitBloomFilter implements BloomFilter {
   /**
    * Calculate the largest power of 2 in the range [lowerBound,upperBound].
    */
-  public static int largestTwoPowerNumberInRange(int lowerBound, int upperBound) {
+  public static int largestTwoPowerInRange(int lowerBound, int upperBound) {
     int result = upperBound;
     // if `upperBound` is not power of 2, get the next largest power of two less than `upperBound`
     if ((result & (result - 1)) != 0) {
       result = Integer.highestOneBit(result);
     }
-    if (result < lowerBound) {
-      result = lowerBound;
-    }
+    result = Math.max(result, lowerBound);
     return result;
   }
 
