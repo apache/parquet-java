@@ -19,11 +19,6 @@
 package org.apache.parquet.hadoop;
 
 import static java.util.Arrays.asList;
-import static org.apache.parquet.schema.LogicalTypeAnnotation.stringType;
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
-import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 import static org.apache.parquet.column.Encoding.DELTA_BYTE_ARRAY;
 import static org.apache.parquet.column.Encoding.PLAIN;
 import static org.apache.parquet.column.Encoding.PLAIN_DICTIONARY;
@@ -34,7 +29,12 @@ import static org.apache.parquet.format.converter.ParquetMetadataConverter.NO_FI
 import static org.apache.parquet.hadoop.ParquetFileReader.readFooter;
 import static org.apache.parquet.hadoop.TestUtils.enforceEmptyDir;
 import static org.apache.parquet.hadoop.metadata.CompressionCodecName.UNCOMPRESSED;
+import static org.apache.parquet.schema.LogicalTypeAnnotation.stringType;
 import static org.apache.parquet.schema.MessageTypeParser.parseMessageType;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
+import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
@@ -44,38 +44,38 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
 
-import net.openhft.hashing.LongHashFunction;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
-import org.apache.parquet.column.ParquetProperties;
-import org.apache.parquet.column.values.bloomfilter.BlockSplitBloomFilter;
-import org.apache.parquet.column.values.bloomfilter.BloomFilter;
-import org.apache.parquet.example.data.GroupFactory;
-import org.apache.parquet.hadoop.example.ExampleParquetWriter;
-import org.apache.parquet.hadoop.util.HadoopInputFile;
-import org.apache.parquet.hadoop.util.HadoopOutputFile;
-import org.apache.parquet.schema.GroupType;
-import org.apache.parquet.schema.InvalidSchemaException;
-import org.apache.parquet.schema.Types;
 import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
 import org.apache.parquet.column.Encoding;
+import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
+import org.apache.parquet.column.values.bloomfilter.BloomFilter;
 import org.apache.parquet.example.data.Group;
+import org.apache.parquet.example.data.GroupFactory;
 import org.apache.parquet.example.data.simple.SimpleGroupFactory;
+import org.apache.parquet.hadoop.example.ExampleParquetWriter;
 import org.apache.parquet.hadoop.example.GroupReadSupport;
 import org.apache.parquet.hadoop.example.GroupWriteSupport;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
+import org.apache.parquet.hadoop.util.HadoopInputFile;
+import org.apache.parquet.hadoop.util.HadoopOutputFile;
 import org.apache.parquet.io.OutputFile;
 import org.apache.parquet.io.PositionOutputStream;
 import org.apache.parquet.io.api.Binary;
+import org.apache.parquet.schema.GroupType;
+import org.apache.parquet.schema.InvalidSchemaException;
 import org.apache.parquet.schema.MessageType;
-import org.junit.rules.TemporaryFolder;
+import org.apache.parquet.schema.Types;
+
+import net.openhft.hashing.LongHashFunction;
 
 public class TestParquetWriter {
 
@@ -342,6 +342,58 @@ public class TestParquetWriter {
         assertTrue(exist < totalCount * (testFpp[i] * 1.1) && exist > 0);
       }
     }
+  }
+
+  /**
+   * If `parquet.bloom.filter.max.bytes` is set, the bytes size of bloom filter should not
+   * be larger than this value and it will be the next largest power of 2 less than the max
+   * bytes size.
+   */
+  @Test
+  public void testBloomFilterMaxBytesSize() throws IOException {
+    Set<String> distinctStrings = new HashSet<>();
+    while (distinctStrings.size() < 1000) {
+      String str = RandomStringUtils.randomAlphabetic(10);
+      distinctStrings.add(str);
+    }
+    int maxBloomFilterBytes = 1024 * 1024 + 1;
+    MessageType schema = Types.buildMessage().
+      required(BINARY).as(stringType()).named("name").named("msg");
+    Configuration conf = new Configuration();
+    GroupWriteSupport.setSchema(schema, conf);
+    GroupFactory factory = new SimpleGroupFactory(schema);
+    File file = temp.newFile();
+    file.delete();
+    Path path = new Path(file.getAbsolutePath());
+    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(path)
+      .withConf(conf)
+      .withDictionaryEncoding(false)
+      .withBloomFilterEnabled("name", true)
+      .withMaxBloomFilterBytes(maxBloomFilterBytes)
+      .build()) {
+      java.util.Iterator<String> iterator = distinctStrings.iterator();
+      while (iterator.hasNext()) {
+        writer.write(factory.newGroup().append("name", iterator.next()));
+      }
+    }
+    try (ParquetFileReader reader = ParquetFileReader.open(HadoopInputFile.fromPath(path, new Configuration()))) {
+      BlockMetaData blockMetaData = reader.getFooter().getBlocks().get(0);
+      BloomFilter bloomFilter = reader.getBloomFilterDataReader(blockMetaData)
+        .readBloomFilter(blockMetaData.getColumns().get(0));
+      // `maxBloomFilterBytes` = 1024 * 1024 + 1 = 1048577, bloom filter bytes size should be
+      // the next largest power of 2 less than 1048577
+      assertEquals(bloomFilter.getBitsetSize(), 1024 * 1024);
+    }
+  }
+
+  static final int tableSizeFor(int cap) {
+    int n = cap - 1;
+    n |= n >>> 1;
+    n |= n >>> 2;
+    n |= n >>> 4;
+    n |= n >>> 8;
+    n |= n >>> 16;
+    return n + 1;
   }
 
   @Test
