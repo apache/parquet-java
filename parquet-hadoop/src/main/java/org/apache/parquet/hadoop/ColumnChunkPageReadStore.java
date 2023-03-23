@@ -251,9 +251,10 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
           } catch (IOException e) {
             throw new ParquetDecodingException("could not decompress page", e);
           }
-          
+
+          final DataPageV2 decompressedPage;
           if (offsetIndex == null) {
-            return DataPageV2.uncompressed(
+            decompressedPage = DataPageV2.uncompressed(
                 dataPageV2.getRowCount(),
                 dataPageV2.getNullCount(),
                 dataPageV2.getValueCount(),
@@ -263,7 +264,7 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
                 pageBytes,
                 dataPageV2.getStatistics());
           } else {
-            return DataPageV2.uncompressed(
+            decompressedPage = DataPageV2.uncompressed(
                 dataPageV2.getRowCount(),
                 dataPageV2.getNullCount(),
                 dataPageV2.getValueCount(),
@@ -274,6 +275,10 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
                 pageBytes,
                 dataPageV2.getStatistics());
           }
+          if (dataPageV2.getCrc().isPresent()) {
+            decompressedPage.setCrc(dataPageV2.getCrc().getAsInt());
+          }
+          return decompressedPage;
         } 
       });
     }
