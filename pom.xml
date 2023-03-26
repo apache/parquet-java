@@ -111,6 +111,7 @@
 
     <!-- properties for the profiles -->
     <surefire.logLevel>INFO</surefire.logLevel>
+    <surefire.argLine></surefire.argLine>
 
     <!-- Resource intesive tests are enabled by default but disabled in the CI envrionment -->
     <enableResourceIntensiveTests>true</enableResourceIntensiveTests>
