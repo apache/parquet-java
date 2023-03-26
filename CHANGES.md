@@ -19,6 +19,129 @@
 
 # Parquet #
 
+### Version 1.12.4 ###
+
+Release Notes - Parquet - Version 1.12.4
+
+#### New Feature
+
+*   [PARQUET-1020](https://issues.apache.org/jira/browse/PARQUET-1020) - Add support for Dynamic Messages in parquet-protobuf
+
+#### Task
+
+*   [PARQUET-2230](https://issues.apache.org/jira/browse/PARQUET-2230) - Add a new rewrite command powered by ParquetRewriter
+*   [PARQUET-2228](https://issues.apache.org/jira/browse/PARQUET-2228) - ParquetRewriter supports more than one input file
+*   [PARQUET-2229](https://issues.apache.org/jira/browse/PARQUET-2229) - ParquetRewriter supports masking and encrypting the same column
+*   [PARQUET-2227](https://issues.apache.org/jira/browse/PARQUET-2227) - Refactor different file rewriters to use single implementation
+
+#### Improvement
+
+*   [PARQUET-2258](https://issues.apache.org/jira/browse/PARQUET-2258) - Storing toString fields in FilterPredicate instances can lead to memory pressure
+*   [PARQUET-2252](https://issues.apache.org/jira/browse/PARQUET-2252) - Make some methods public to allow external projects to implement page skipping
+*   [PARQUET-2159](https://issues.apache.org/jira/browse/PARQUET-2159) - Vectorized BytePacker decoder using Java VectorAPI
+*   [PARQUET-2246](https://issues.apache.org/jira/browse/PARQUET-2246) - Add short circuit logic to column index filter
+*   [PARQUET-2226](https://issues.apache.org/jira/browse/PARQUET-2226) - Support merge Bloom Filters
+*   [PARQUET-2224](https://issues.apache.org/jira/browse/PARQUET-2224) - Publish SBOM artifacts
+*   [PARQUET-2208](https://issues.apache.org/jira/browse/PARQUET-2208) - Add details to nested column encryption config doc and exception text
+*   [PARQUET-2195](https://issues.apache.org/jira/browse/PARQUET-2195) - Add scan command to parquet-cli
+*   [PARQUET-2196](https://issues.apache.org/jira/browse/PARQUET-2196) - Support LZ4_RAW codec
+*   [PARQUET-2176](https://issues.apache.org/jira/browse/PARQUET-2176) - Column index/statistics truncation in ParquetWriter
+*   [PARQUET-2197](https://issues.apache.org/jira/browse/PARQUET-2197) - Document uniform encryption
+*   [PARQUET-2191](https://issues.apache.org/jira/browse/PARQUET-2191) - Upgrade Scala to 2.12.17
+*   [PARQUET-2169](https://issues.apache.org/jira/browse/PARQUET-2169) - Upgrade Avro to version 1.11.1
+*   [PARQUET-2155](https://issues.apache.org/jira/browse/PARQUET-2155) - Upgrade protobuf version to 3.17.3
+*   [PARQUET-2158](https://issues.apache.org/jira/browse/PARQUET-2158) - Upgrade Hadoop dependency to version 3.2.0
+*   [PARQUET-2138](https://issues.apache.org/jira/browse/PARQUET-2138) - Add ShowBloomFilterCommand to parquet-cli
+*   [PARQUET-2157](https://issues.apache.org/jira/browse/PARQUET-2157) - Add BloomFilter fpp config
+
+#### Bug
+
+*   [PARQUET-2202](https://issues.apache.org/jira/browse/PARQUET-2202) - Redundant String allocation on the hot path in CapacityByteArrayOutputStream.setByte
+*   [PARQUET-2164](https://issues.apache.org/jira/browse/PARQUET-2164) - CapacityByteArrayOutputStream overflow while writing causes negative row group sizes to be written
+*   [PARQUET-2103](https://issues.apache.org/jira/browse/PARQUET-2103) - Fix crypto exception in print toPrettyJSON
+*   [PARQUET-2251](https://issues.apache.org/jira/browse/PARQUET-2251) - Avoid generating Bloomfilter when all pages of a column are encoded by dictionary
+*   [PARQUET-2243](https://issues.apache.org/jira/browse/PARQUET-2243) - Support zstd-jni in DirectCodecFactory
+*   [PARQUET-2247](https://issues.apache.org/jira/browse/PARQUET-2247) - Fail-fast if CapacityByteArrayOutputStream write overflow
+*   [PARQUET-2241](https://issues.apache.org/jira/browse/PARQUET-2241) - Fix ByteStreamSplitValuesReader with nulls
+*   [PARQUET-2244](https://issues.apache.org/jira/browse/PARQUET-2244) - Fix notIn for columns with null values
+*   [PARQUET-2173](https://issues.apache.org/jira/browse/PARQUET-2173) - Fix parquet build against hadoop 3.3.3+
+*   [PARQUET-2219](https://issues.apache.org/jira/browse/PARQUET-2219) - ParquetFileReader skips empty row group
+*   [PARQUET-2198](https://issues.apache.org/jira/browse/PARQUET-2198) - Updating jackson data bind version to fix CVEs
+*   [PARQUET-2177](https://issues.apache.org/jira/browse/PARQUET-2177) - Fix parquet-cli not to fail showing descriptions
+*   [PARQUET-1711](https://issues.apache.org/jira/browse/PARQUET-1711) - Support recursive proto schemas by limiting recursion depth
+*   [PARQUET-2142](https://issues.apache.org/jira/browse/PARQUET-2142) - parquet-cli without hadoop throws java.lang.NoSuchMethodError on any parquet file access command
+*   [PARQUET-2160](https://issues.apache.org/jira/browse/PARQUET-2160) - Close decompression stream to free off-heap memory in time
+*   [PARQUET-2185](https://issues.apache.org/jira/browse/PARQUET-2185) - ParquetReader constructed using builder fails to read encrypted files
+*   [PARQUET-2167](https://issues.apache.org/jira/browse/PARQUET-2167) - CLI show footer command fails if Parquet file contains date fields
+*   [PARQUET-2134](https://issues.apache.org/jira/browse/PARQUET-2134) - Incorrect type checking in HadoopStreams.wrap
+*   [PARQUET-2161](https://issues.apache.org/jira/browse/PARQUET-2161) - Fix row index generation in combination with range filtering
+*   [PARQUET-2154](https://issues.apache.org/jira/browse/PARQUET-2154) - ParquetFileReader should close its input stream when filterRowGroups throw Exception in constructor
+
+#### Test
+
+*   [PARQUET-2192](https://issues.apache.org/jira/browse/PARQUET-2192) - Add Java 17 build test to GitHub action
+
+### Version 1.12.3 ###
+
+Release Notes - Parquet - Version 1.12.3
+
+#### New Feature
+
+*   [PARQUET-2117](https://issues.apache.org/jira/browse/PARQUET-2117) - Add rowPosition API in parquet record readers
+
+#### Task
+
+*   [PARQUET-2081](https://issues.apache.org/jira/browse/PARQUET-2081) - Encryption translation tool - Parquet-hadoop
+
+#### Improvement
+
+*   [PARQUET-2040](https://issues.apache.org/jira/browse/PARQUET-2040) - Uniform encryption
+*   [PARQUET-2076](https://issues.apache.org/jira/browse/PARQUET-2076) - Improve Travis CI build Performance
+*   [PARQUET-2105](https://issues.apache.org/jira/browse/PARQUET-2105) - Refactor the test code of creating the test file
+*   [PARQUET-2106](https://issues.apache.org/jira/browse/PARQUET-2106) - BinaryComparator should avoid doing ByteBuffer.wrap in the hot-path
+*   [PARQUET-2112](https://issues.apache.org/jira/browse/PARQUET-2112) - Fix typo in MessageColumnIO
+*   [PARQUET-2121](https://issues.apache.org/jira/browse/PARQUET-2121) - Remove descriptions for the removed modules
+*   [PARQUET-2127](https://issues.apache.org/jira/browse/PARQUET-2127) - Security risk in latest parquet-jackson-1.12.2.jar
+*   [PARQUET-2128](https://issues.apache.org/jira/browse/PARQUET-2128) - Bump Thrift to 0.16.0
+*   [PARQUET-2129](https://issues.apache.org/jira/browse/PARQUET-2129) - Add uncompressedSize to "meta" output
+*   [PARQUET-2136](https://issues.apache.org/jira/browse/PARQUET-2136) - File writer construction with encryptor
+
+#### Bug
+
+*   [PARQUET-2101](https://issues.apache.org/jira/browse/PARQUET-2101) - Fix wrong descriptions about the default block size
+*   [PARQUET-2102](https://issues.apache.org/jira/browse/PARQUET-2102) - Typo in ColumnIndexBase toString
+*   [PARQUET-2107](https://issues.apache.org/jira/browse/PARQUET-2107) - Travis failures
+*   [PARQUET-2120](https://issues.apache.org/jira/browse/PARQUET-2120) - parquet-cli dictionary command fails on pages without dictionary encoding
+*   [PARQUET-2144](https://issues.apache.org/jira/browse/PARQUET-2144) - Fix ColumnIndexBuilder for notIn predicate
+*   [PARQUET-2148](https://issues.apache.org/jira/browse/PARQUET-2148) - Enable uniform decryption with plaintext footer
+
+### Version 1.12.2 ###
+
+Release Notes - Parquet - Version 1.12.2
+
+#### Bug
+
+*   [PARQUET-2094](https://issues.apache.org/jira/browse/PARQUET-2094) - Handle negative values in page headers
+
+### Version 1.12.1 ###
+
+Release Notes - Parquet - Version 1.12.1
+
+#### Bug
+
+*   [PARQUET-1633](https://issues.apache.org/jira/browse/PARQUET-1633) - Fix integer overflow
+*   [PARQUET-2022](https://issues.apache.org/jira/browse/PARQUET-2022) - ZstdDecompressorStream should close zstdInputStream
+*   [PARQUET-2027](https://issues.apache.org/jira/browse/PARQUET-2027) - Fix calculating directory offset for merge
+*   [PARQUET-2052](https://issues.apache.org/jira/browse/PARQUET-2052) - Integer overflow when writing huge binary using dictionary encoding
+*   [PARQUET-2054](https://issues.apache.org/jira/browse/PARQUET-2054) - fix TCP leaking when calling ParquetFileWriter.appendFile
+*   [PARQUET-2072](https://issues.apache.org/jira/browse/PARQUET-2072) - Do Not Determine Both Min/Max for Binary Stats
+*   [PARQUET-2073](https://issues.apache.org/jira/browse/PARQUET-2073) - Fix estimate remaining row count in ColumnWriteStoreBase.
+*   [PARQUET-2078](https://issues.apache.org/jira/browse/PARQUET-2078) - Failed to read parquet file after writing with the same parquet version
+
+#### Improvement
+
+*   [PARQUET-2064](https://issues.apache.org/jira/browse/PARQUET-2064) - Make Range public accessible in RowRanges
+
 ### Version 1.12.0 ###
 
 Release Notes - Parquet - Version 1.12.0
