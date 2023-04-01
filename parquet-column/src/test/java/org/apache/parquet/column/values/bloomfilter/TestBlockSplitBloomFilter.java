@@ -209,7 +209,8 @@ public class TestBlockSplitBloomFilter {
       assertTrue(optimalCandidate.findHash(optimalCandidate.hash(Binary.fromString(value))));
     }
 
-    int maxCandidateNDV = dynamicBloomFilter.getCandidates().last().getExpectedNDV();
+    int maxCandidateNDV = dynamicBloomFilter.getCandidates().stream()
+      .max(DynamicBlockBloomFilter.BloomFilterCandidate::compareTo).get().getExpectedNDV();
     while (existedValue.size() < maxCandidateNDV + 1) {
       String str = RandomStringUtils.randomAlphabetic(1, 64);
       dynamicBloomFilter.insertHash(dynamicBloomFilter.hash(Binary.fromString(str)));

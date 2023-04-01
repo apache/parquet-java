@@ -24,9 +24,11 @@ import static org.apache.parquet.column.values.bloomfilter.BlockSplitBloomFilter
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
-import java.util.TreeSet;
+import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,7 +50,7 @@ public class DynamicBlockBloomFilter implements BloomFilter {
 
   // multiple candidates, inserting data at the same time. If the distinct values are greater than the
   // expected NDV of candidates, it will be removed. Finally we will choose the smallest candidate to write out.
-  private final TreeSet<BloomFilterCandidate> candidates = new TreeSet<>();
+  private final List<BloomFilterCandidate> candidates = new ArrayList<>();
 
   // the largest among candidates and used as an approximate deduplication counter
   private BloomFilterCandidate maxCandidate;
@@ -120,7 +122,12 @@ public class DynamicBlockBloomFilter implements BloomFilter {
       candidates.add(candidate);
       candidateByteSize = calculateTwoPowerSize(candidateByteSize / 2);
     }
-    maxCandidate = candidates.last();
+    Optional<BloomFilterCandidate> maxBloomFilter = candidates.stream().max(BloomFilterCandidate::compareTo);
+    if (maxBloomFilter.isPresent()) {
+      maxCandidate = maxBloomFilter.get();
+    } else {
+      throw new IllegalArgumentException("`maximumBytes` is too small to create one valid bloom filter");
+    }
   }
 
   /**
@@ -174,11 +181,10 @@ public class DynamicBlockBloomFilter implements BloomFilter {
    * @return the smallest and optimal candidate
    */
   protected BloomFilterCandidate optimalCandidate() {
-    return candidates.stream()
-      .min(BloomFilterCandidate::compareTo).get();
+    return candidates.stream().min(BloomFilterCandidate::compareTo).get();
   }
 
-  protected TreeSet<BloomFilterCandidate> getCandidates() {
+  protected List<BloomFilterCandidate> getCandidates() {
     return candidates;
   }
 
@@ -268,9 +274,9 @@ public class DynamicBlockBloomFilter implements BloomFilter {
 
   protected class BloomFilterCandidate implements Comparable<BloomFilterCandidate> {
     // the bloom filter candidate
-    private BlockSplitBloomFilter bloomFilter;
+    final private BlockSplitBloomFilter bloomFilter;
     // the expected NDV (number of distinct value) in the candidate
-    private int expectedNDV;
+    final private int expectedNDV;
 
     public BloomFilterCandidate(int expectedNDV, int candidateBytes,
       int minimumBytes, int maximumBytes, HashStrategy hashStrategy) {
@@ -282,16 +288,8 @@ public class DynamicBlockBloomFilter implements BloomFilter {
       return bloomFilter;
     }
 
-    public void setBloomFilter(BlockSplitBloomFilter bloomFilter) {
-      this.bloomFilter = bloomFilter;
-    }
-
     public int getExpectedNDV() {
       return expectedNDV;
-    }
-
-    public void setExpectedNDV(int expectedNDV) {
-      this.expectedNDV = expectedNDV;
     }
 
     @Override
