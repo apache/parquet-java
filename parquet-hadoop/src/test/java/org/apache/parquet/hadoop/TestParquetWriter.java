@@ -346,8 +346,7 @@ public class TestParquetWriter {
 
   /**
    * If `parquet.bloom.filter.max.bytes` is set, the bytes size of bloom filter should not
-   * be larger than this value and it will be the next largest power of 2 less than the max
-   * bytes size.
+   * be larger than this value
    */
   @Test
   public void testBloomFilterMaxBytesSize() throws IOException {
@@ -380,9 +379,7 @@ public class TestParquetWriter {
       BlockMetaData blockMetaData = reader.getFooter().getBlocks().get(0);
       BloomFilter bloomFilter = reader.getBloomFilterDataReader(blockMetaData)
         .readBloomFilter(blockMetaData.getColumns().get(0));
-      // `maxBloomFilterBytes` = 1024 * 1024 + 1 = 1048577, bloom filter bytes size should be
-      // the next largest power of 2 less than 1048577
-      assertEquals(bloomFilter.getBitsetSize(), 1024 * 1024);
+      assertEquals(bloomFilter.getBitsetSize(), maxBloomFilterBytes);
     }
   }
 

@@ -86,22 +86,6 @@ public class BlockSplitBloomFilter implements BloomFilter {
     0x705495c7, 0x2df1424b, 0x9efc4947, 0x5c6bfb31};
 
   /**
-   * Create a Bloom filter within the maximum bytes size. The bloom filter bytes size
-   * will be a largest power of 2 less than the maximum bytes size.
-   *
-   * @param maxBytes The max number of bytes for Bloom filter.
-   * @return
-   */
-  public static BlockSplitBloomFilter of(int maxBytes) {
-    if (maxBytes < LOWER_BOUND_BYTES) {
-      maxBytes = LOWER_BOUND_BYTES;
-    }
-    int upperBound = Math.min(maxBytes, UPPER_BOUND_BYTES);
-    int byteSize = largestTwoPowerInRange(LOWER_BOUND_BYTES, upperBound);
-    return new BlockSplitBloomFilter(byteSize);
-  }
-
-  /**
    * Constructor of block-based Bloom filter.
    *
    * @param numBytes The number of bytes for Bloom filter bitset. The range of num_bytes should be within
@@ -232,19 +216,6 @@ public class BlockSplitBloomFilter implements BloomFilter {
     }
     this.bitset = new byte[numBytes];
     this.intBuffer = ByteBuffer.wrap(bitset).order(ByteOrder.LITTLE_ENDIAN).asIntBuffer();
-  }
-
-  /**
-   * Calculate the largest power of 2 in the range [lowerBound,upperBound].
-   */
-  public static int largestTwoPowerInRange(int lowerBound, int upperBound) {
-    int result = upperBound;
-    // if `upperBound` is not power of 2, get the next largest power of two less than `upperBound`
-    if ((result & (result - 1)) != 0) {
-      result = Integer.highestOneBit(result);
-    }
-    result = Math.max(result, lowerBound);
-    return result;
   }
 
   @Override
