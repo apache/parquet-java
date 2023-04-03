@@ -19,6 +19,11 @@
 package org.apache.parquet.hadoop;
 
 import static java.util.Arrays.asList;
+import static org.apache.parquet.schema.LogicalTypeAnnotation.stringType;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
+import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.apache.parquet.column.Encoding.DELTA_BYTE_ARRAY;
 import static org.apache.parquet.column.Encoding.PLAIN;
 import static org.apache.parquet.column.Encoding.PLAIN_DICTIONARY;
@@ -29,12 +34,7 @@ import static org.apache.parquet.format.converter.ParquetMetadataConverter.NO_FI
 import static org.apache.parquet.hadoop.ParquetFileReader.readFooter;
 import static org.apache.parquet.hadoop.TestUtils.enforceEmptyDir;
 import static org.apache.parquet.hadoop.metadata.CompressionCodecName.UNCOMPRESSED;
-import static org.apache.parquet.schema.LogicalTypeAnnotation.stringType;
 import static org.apache.parquet.schema.MessageTypeParser.parseMessageType;
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
-import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
@@ -44,38 +44,38 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
 
+import net.openhft.hashing.LongHashFunction;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
+import org.apache.parquet.column.ParquetProperties;
+import org.apache.parquet.column.values.bloomfilter.BlockSplitBloomFilter;
+import org.apache.parquet.column.values.bloomfilter.BloomFilter;
+import org.apache.parquet.example.data.GroupFactory;
+import org.apache.parquet.hadoop.example.ExampleParquetWriter;
+import org.apache.parquet.hadoop.util.HadoopInputFile;
+import org.apache.parquet.hadoop.util.HadoopOutputFile;
+import org.apache.parquet.schema.GroupType;
+import org.apache.parquet.schema.InvalidSchemaException;
+import org.apache.parquet.schema.Types;
 import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
 
 import org.apache.parquet.column.Encoding;
-import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
-import org.apache.parquet.column.values.bloomfilter.BloomFilter;
 import org.apache.parquet.example.data.Group;
-import org.apache.parquet.example.data.GroupFactory;
 import org.apache.parquet.example.data.simple.SimpleGroupFactory;
-import org.apache.parquet.hadoop.example.ExampleParquetWriter;
 import org.apache.parquet.hadoop.example.GroupReadSupport;
 import org.apache.parquet.hadoop.example.GroupWriteSupport;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
-import org.apache.parquet.hadoop.util.HadoopInputFile;
-import org.apache.parquet.hadoop.util.HadoopOutputFile;
 import org.apache.parquet.io.OutputFile;
 import org.apache.parquet.io.PositionOutputStream;
 import org.apache.parquet.io.api.Binary;
-import org.apache.parquet.schema.GroupType;
-import org.apache.parquet.schema.InvalidSchemaException;
 import org.apache.parquet.schema.MessageType;
-import org.apache.parquet.schema.Types;
-
-import net.openhft.hashing.LongHashFunction;
+import org.junit.rules.TemporaryFolder;
 
 public class TestParquetWriter {
 
@@ -305,53 +305,41 @@ public class TestParquetWriter {
     GroupWriteSupport.setSchema(schema, conf);
 
     GroupFactory factory = new SimpleGroupFactory(schema);
-    for (Boolean useDynamicBloomFilter : new Boolean[]{true, false}) {
-      for (int i = 0; i < testFpp.length; i++) {
-        File file = temp.newFile();
-        file.delete();
-        Path path = new Path(file.getAbsolutePath());
-        ExampleParquetWriter.Builder writeBuilder = ExampleParquetWriter.builder(path)
-          .withPageRowCountLimit(10)
-          .withConf(conf)
-          .withDictionaryEncoding(false)
-          .withBloomFilterEnabled("name", true)
-          .withBloomFilterFPP("name", testFpp[i]);
-        ParquetWriter<Group> writer = null;
-        try {
-          if (useDynamicBloomFilter) {
-            writer = writeBuilder
-              .withBloomFilterNDV("name", totalCount)
-              .build();
-          } else {
-            writer = writeBuilder.build();
-          }
-          java.util.Iterator<String> iterator = distinctStrings.iterator();
-          while (iterator.hasNext()) {
-            writer.write(factory.newGroup().append("name", iterator.next()));
-          }
-        } finally {
-          if (writer != null) {
-            writer.close();
-          }
+    for (int i = 0; i < testFpp.length; i++) {
+      File file = temp.newFile();
+      file.delete();
+      Path path = new Path(file.getAbsolutePath());
+      try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(path)
+        .withPageRowCountLimit(10)
+        .withConf(conf)
+        .withDictionaryEncoding(false)
+        .withBloomFilterEnabled("name", true)
+        .withBloomFilterNDV("name", totalCount)
+        .withBloomFilterFPP("name", testFpp[i])
+        .build()) {
+        java.util.Iterator<String> iterator = distinctStrings.iterator();
+        while (iterator.hasNext()) {
+          writer.write(factory.newGroup().append("name", iterator.next()));
         }
-        distinctStrings.clear();
-        try (ParquetFileReader reader = ParquetFileReader.open(HadoopInputFile.fromPath(path, new Configuration()))) {
-          BlockMetaData blockMetaData = reader.getFooter().getBlocks().get(0);
-          BloomFilter bloomFilter = reader.getBloomFilterDataReader(blockMetaData)
-            .readBloomFilter(blockMetaData.getColumns().get(0));
+      }
+      distinctStrings.clear();
 
-          // The exist counts the number of times FindHash returns true.
-          int exist = 0;
-          while (distinctStrings.size() < totalCount) {
-            String str = RandomStringUtils.randomAlphabetic(randomStrLen - 2);
-            if (distinctStrings.add(str) &&
-              bloomFilter.findHash(LongHashFunction.xx(0).hashBytes(Binary.fromString(str).toByteBuffer()))) {
-              exist++;
-            }
+      try (ParquetFileReader reader = ParquetFileReader.open(HadoopInputFile.fromPath(path, new Configuration()))) {
+        BlockMetaData blockMetaData = reader.getFooter().getBlocks().get(0);
+        BloomFilter bloomFilter = reader.getBloomFilterDataReader(blockMetaData)
+          .readBloomFilter(blockMetaData.getColumns().get(0));
+
+        // The exist counts the number of times FindHash returns true.
+        int exist = 0;
+        while (distinctStrings.size() < totalCount) {
+          String str = RandomStringUtils.randomAlphabetic(randomStrLen - 2);
+          if (distinctStrings.add(str) &&
+            bloomFilter.findHash(LongHashFunction.xx(0).hashBytes(Binary.fromString(str).toByteBuffer()))) {
+            exist++;
           }
-          // The exist should be less than totalCount * fpp. Add 10% here for error space.
-          assertTrue(exist < totalCount * (testFpp[i] * 1.1) && exist > 0);
         }
+        // The exist should be less than totalCount * fpp. Add 10% here for error space.
+        assertTrue(exist < totalCount * (testFpp[i] * 1.1) && exist > 0);
       }
     }
   }
