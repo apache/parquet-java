@@ -73,7 +73,13 @@ class H2SeekableInputStream extends DelegatingSeekableInputStream {
 
   @Override
   public void readFully(ByteBuffer buf) throws IOException {
-    readFully(reader, buf);
+    // use ByteBufferPositionedReadable to read the entire buffer
+    // if the stream declares it supports it.
+    if (stream.hasCapability("in:preadbytebuffer")) {
+      stream.readFully(stream.getPos(), buf);
+    } else {
+      readFully(reader, buf);
+    }
   }
 
   private class H2Reader implements Reader {
