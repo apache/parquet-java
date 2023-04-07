@@ -20,7 +20,7 @@
 # This script gets invoked by the CI system in a "before install" step
 ################################################################################
 
-export THRIFT_VERSION=0.16.0
+THRIFT_VERSION="${THRIFT_VERSION:-0.16.0}"
 
 set -e
 date
@@ -30,15 +30,11 @@ sudo apt-get install -qq --no-install-recommends build-essential pv autoconf aut
    libevent-dev automake libtool flex bison pkg-config g++ libssl-dev xmlstarlet
 date
 pwd
-wget -qO- https://archive.apache.org/dist/thrift/$THRIFT_VERSION/thrift-$THRIFT_VERSION.tar.gz | tar zxf -
+if [ ! -f thrift-$THRIFT_VERSION.tar.gz ]; then
+  curl -sLO https://archive.apache.org/dist/thrift/$THRIFT_VERSION/thrift-$THRIFT_VERSION.tar.gz
+fi
+tar zxf thrift-$THRIFT_VERSION.tar.gz
 cd thrift-${THRIFT_VERSION}
 chmod +x ./configure
 ./configure --disable-libs
 sudo make install
-cd ..
-branch_specific_script="dev/ci-before_install-${CI_TARGET_BRANCH}.sh"
-if [[ -e "$branch_specific_script" ]]
-then
-  . "$branch_specific_script"
-fi
-date

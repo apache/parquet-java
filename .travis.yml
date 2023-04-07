@@ -34,6 +34,7 @@ cache:
 before_install:
   - lscpu
   - bash dev/ci-before_install.sh
+  - if [ -f "dev/ci-before_install-${CI_TARGET_BRANCH}.sh" ]; then . "dev/ci-before_install-${CI_TARGET_BRANCH}.sh"; fi
   - export JAVA_HOME="/usr/lib/jvm/adoptopenjdk-11-hotspot-arm64"    # for maven-javadoc-plugin
     
 install: 
