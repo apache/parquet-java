@@ -130,8 +130,8 @@ There is one dictionary page per column per row group when dictionary encoding i
 **Property:** `parquet.writer.version`  
 **Description:** The writer version. It can be either `PARQUET_1_0` or `PARQUET_2_0`.  
 `PARQUET_1_0` and `PARQUET_2_0` refer to DataPageHeaderV1 and DataPageHeaderV2.  
-The v1 pages store levels uncompressed while v1 pages compress levels with the data.  
-For more details, see the the [thrift definition](https://github.com/apache/parquet-format/blob/master/src/main/thrift/parquet.thrift).  
+The v2 pages store levels uncompressed while v1 pages compress levels with the data.  
+For more details, see the [thrift definition](https://github.com/apache/parquet-format/blob/master/src/main/thrift/parquet.thrift).  
 **Default value:** `PARQUET_1_0`  
 
 ---
