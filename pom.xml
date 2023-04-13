@@ -580,6 +580,9 @@
             <configuration>
               <failOnWarning>true</failOnWarning>
               <ignoreNonCompile>true</ignoreNonCompile>
+              <ignoredDependencies>
+                <ignoredDependency>javax.annotation:javax.annotation-api:jar:1.3.2</ignoredDependency>
+              </ignoredDependencies>
             </configuration>
           </execution>
         </executions>
