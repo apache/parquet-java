@@ -109,6 +109,7 @@
                     <exclude>**/*.java</exclude>
                     <exclude>META-INF/LICENSE.txt</exclude>
                     <exclude>META-INF/NOTICE.txt</exclude>
+                    <exclude>META-INF/MANIFEST.MF</exclude>
                   </excludes>
                 </filter>
               </filters>
@@ -155,6 +156,12 @@
       <groupId>org.apache.thrift</groupId>
       <artifactId>libthrift</artifactId>
       <version>${format.thrift.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-api</artifactId>
+      <version>${slf4j.version}</version>
+      <scope>test</scope>
     </dependency>
   </dependencies>
 
