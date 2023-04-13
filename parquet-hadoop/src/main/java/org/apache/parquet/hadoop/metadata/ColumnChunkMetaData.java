@@ -41,7 +41,6 @@ import org.apache.parquet.internal.hadoop.metadata.IndexReference;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Types;
-import org.apache.yetus.audience.InterfaceAudience.Private;
 
 /**
  * Column meta data for a block stored in the file footer and passed in the InputSplit
@@ -290,7 +289,6 @@ abstract public class ColumnChunkMetaData {
   /**
    * @return the reference to the column index
    */
-  @Private
   public IndexReference getColumnIndexReference() {
     decryptIfNeeded();
     return columnIndexReference;
@@ -300,7 +298,6 @@ abstract public class ColumnChunkMetaData {
    * @param indexReference
    *          the reference to the column index
    */
-  @Private
   public void setColumnIndexReference(IndexReference indexReference) {
     this.columnIndexReference = indexReference;
   }
@@ -308,7 +305,6 @@ abstract public class ColumnChunkMetaData {
   /**
    * @return the reference to the offset index
    */
-  @Private
   public IndexReference getOffsetIndexReference() {
     decryptIfNeeded();
     return offsetIndexReference;
@@ -318,7 +314,6 @@ abstract public class ColumnChunkMetaData {
    * @param offsetIndexReference
    *          the reference to the offset index
    */
-  @Private
   public void setOffsetIndexReference(IndexReference offsetIndexReference) {
     this.offsetIndexReference = offsetIndexReference;
   }
@@ -327,7 +322,6 @@ abstract public class ColumnChunkMetaData {
    * @param bloomFilterOffset
    *          the reference to the Bloom filter
    */
-  @Private
   public void setBloomFilterOffset(long bloomFilterOffset) {
     this.bloomFilterOffset = bloomFilterOffset;
   }
@@ -335,7 +329,6 @@ abstract public class ColumnChunkMetaData {
   /**
    * @return the offset to the Bloom filter or {@code -1} if there is no bloom filter for this column chunk
    */
-  @Private
   public long getBloomFilterOffset() {
     decryptIfNeeded();
     return bloomFilterOffset;
@@ -374,7 +367,6 @@ abstract public class ColumnChunkMetaData {
   /**
    * @return whether or not this column is encrypted
    */
-  @Private
   public boolean isEncrypted() {
     return false;
   }

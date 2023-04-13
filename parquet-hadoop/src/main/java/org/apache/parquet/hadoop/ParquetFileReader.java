@@ -112,7 +112,6 @@ import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.io.SeekableInputStream;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
-import org.apache.yetus.audience.InterfaceAudience.Private;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -1381,7 +1380,6 @@ public class ParquetFileReader implements Closeable {
    * @throws IOException
    *           if any I/O error occurs during reading the file
    */
-  @Private
   public ColumnIndex readColumnIndex(ColumnChunkMetaData column) throws IOException {
     IndexReference ref = column.getColumnIndexReference();
     if (ref == null) {
@@ -1410,7 +1408,6 @@ public class ParquetFileReader implements Closeable {
    * @throws IOException
    *           if any I/O error occurs during reading the file
    */
-  @Private
   public OffsetIndex readOffsetIndex(ColumnChunkMetaData column) throws IOException {
     IndexReference ref = column.getOffsetIndexReference();
     if (ref == null) {
