@@ -21,6 +21,7 @@ package org.apache.parquet.thrift;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TField;
@@ -624,6 +625,10 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
     }
 
     @Override
+    public void writeUuid(UUID uuid) throws TException {
+    }
+
+    @Override
     public void writeDouble(double v) throws TException {
     }
 
@@ -712,6 +717,11 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
     @Override
     public long readI64() throws TException {
       return 0;
+    }
+
+    @Override
+    public UUID readUuid() throws TException {
+      return null;
     }
 
     @Override

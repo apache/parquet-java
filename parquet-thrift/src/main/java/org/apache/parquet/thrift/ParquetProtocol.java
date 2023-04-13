@@ -20,6 +20,7 @@ package org.apache.parquet.thrift;
 
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
+import java.util.UUID;
 
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TField;
@@ -163,6 +164,11 @@ public abstract class ParquetProtocol extends TProtocol {
   }
 
   @Override
+  public void writeUuid(UUID uuid) throws TException {
+    throw exception();
+  }
+
+  @Override
   public void writeString(String str) throws TException {
     throw exception();
   }
@@ -261,6 +267,11 @@ public abstract class ParquetProtocol extends TProtocol {
 
   @Override
   public double readDouble() throws TException {
+    throw exception();
+  }
+
+  @Override
+  public UUID readUuid() throws TException {
     throw exception();
   }
 
