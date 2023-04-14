@@ -23,34 +23,35 @@ The official list of committers can be found here: [Apache Parquet Committers an
 
 Below is more information about each committer (in alphabetical order). If this information becomes out of date, please send a PR to update!
                                                                 
-| Name                   | Apache Id       | github id           | JIRA id        |
-|------------------------|-----------------|---------------------|----------------|
-| Alex Levenson          | alexlevenson    | @isnotinvain        | alexlevenson   |                            
-| Aniket Mokashi         | aniket486       | @aniket486          |                |
-| Brock Noland           | brock           | @brockn             |                |
-| Cheng Lian             | lian            | @liancheng          | liancheng      |
-| Chris Aniszczyk        | caniszczyk      | @caniszczyk         |                |
-| Chris Mattmann         | mattmann        | @chrismattmann      |                |
-| Daniel C. Weeks        | dweeks          | @danielcweeks       |                | 
-| Dmitriy Ryaboy         | dvryaboy        | @dvryaboy           |                |
-| Gang Wu                | gangwu          | @wgtmac             |                |
-| Jake Farrell           | jfarrell        |                     |                |
-| Jonathan Coveney       | jcoveney        | @jcoveney           |                |
-| Julien Le Dem          | julien          | @julienledem        | julienledem    |
-| Lukas Nalezenec        | lukas           | @lukasnalezenec     |                |
-| Marcel Kornacker       | marcel          | @mkornacker         |                |
-| Mickael Lacour         | mlacour         | @mickaellcr         |                |
-| Nong Li                | nong            | @nongli             |                |
-| Remy Pecqueur          | rpecqueur       | @Lordshinjo         |                |
-| Roman Shaposhnik       | rvs             | @rvs                |                |
-| Ryan Blue              | blue            | @rdblue             |                |
-| Sergio Pena            | spena           | @spena              | spena          |
-| Tianshuo Deng          | tianshuo        | @tsdeng             |                |
-| Todd Lipcon            | todd            | @toddlipcon         |                |
-| Tom White              | tomwhite        | @tomwhite           |                |
-| Wes McKinney           | wesm            | @wesm               |                |
-| Wesley Graham Peck     | wesleypeck      | @wesleypeck         |                |
-| Xinli Shang            | shangxinli      | @shangxinli         |                |
+| Name               | Apache Id    | github id       | JIRA id      |
+|--------------------|--------------|-----------------|--------------|
+| Alex Levenson      | alexlevenson | @isnotinvain    | alexlevenson |                            
+| Aniket Mokashi     | aniket486    | @aniket486      |              |
+| Brock Noland       | brock        | @brockn         |              |
+| Cheng Lian         | lian         | @liancheng      | liancheng    |
+| Chris Aniszczyk    | caniszczyk   | @caniszczyk     |              |
+| Chris Mattmann     | mattmann     | @chrismattmann  |              |
+| Daniel C. Weeks    | dweeks       | @danielcweeks   |              | 
+| Dmitriy Ryaboy     | dvryaboy     | @dvryaboy       |              |
+| Fokko Driesprong   | Fokko        | @Fokko          | fokko        |
+| Gang Wu            | gangwu       | @wgtmac         |              |
+| Jake Farrell       | jfarrell     |                 |              |
+| Jonathan Coveney   | jcoveney     | @jcoveney       |              |
+| Julien Le Dem      | julien       | @julienledem    | julienledem  |
+| Lukas Nalezenec    | lukas        | @lukasnalezenec |              |
+| Marcel Kornacker   | marcel       | @mkornacker     |              |
+| Mickael Lacour     | mlacour      | @mickaellcr     |              |
+| Nong Li            | nong         | @nongli         |              |
+| Remy Pecqueur      | rpecqueur    | @Lordshinjo     |              |
+| Roman Shaposhnik   | rvs          | @rvs            |              |
+| Ryan Blue          | blue         | @rdblue         |              |
+| Sergio Pena        | spena        | @spena          | spena        |
+| Tianshuo Deng      | tianshuo     | @tsdeng         |              |
+| Todd Lipcon        | todd         | @toddlipcon     |              |
+| Tom White          | tomwhite     | @tomwhite       |              |
+| Wes McKinney       | wesm         | @wesm           |              |
+| Wesley Graham Peck | wesleypeck   | @wesleypeck     |              |
+| Xinli Shang        | shangxinli   | @shangxinli     |              |
 
 
 # Reviewing guidelines:
