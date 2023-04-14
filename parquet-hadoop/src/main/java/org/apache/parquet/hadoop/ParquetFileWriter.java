@@ -1127,7 +1127,7 @@ public class ParquetFileWriter {
     long length = chunk.getTotalSize();
     long newChunkStart = out.getPos();
 
-    if (newChunkStart != start) {
+    if (offsetIndex != null && newChunkStart != start) {
       offsetIndex = OffsetIndexBuilder.getBuilder()
         .fromOffsetIndex(offsetIndex)
         .build(newChunkStart - start);
