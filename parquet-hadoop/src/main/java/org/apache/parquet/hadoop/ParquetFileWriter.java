@@ -369,7 +369,13 @@ public class ParquetFileWriter {
       for (Map.Entry<ColumnPath, ColumnEncryptionProperties> entry : columnEncryptionProperties.entrySet()) {
         String[] path = entry.getKey().toArray();
         if (!schema.containsPath(path)) {
-          throw new ParquetCryptoRuntimeException("Encrypted column " + Arrays.toString(path) + " not in file schema");
+          StringBuilder columnList = new StringBuilder();
+          columnList.append("[");
+          for (String[] columnPath : schema.getPaths()) {
+            columnList.append(ColumnPath.get(columnPath).toDotString() + "], [");
+          }
+          throw new ParquetCryptoRuntimeException("Encrypted column [" + entry.getKey().toDotString() +
+            "] not in file schema column list: " + columnList.substring(0, columnList.length() - 3));
         }
       }
     }
@@ -878,7 +884,8 @@ public class ParquetFileWriter {
       // write bloom filter if one of data pages is not dictionary encoded
       boolean isWriteBloomFilter = false;
       for (Encoding encoding : dataEncodings) {
-        if (encoding != Encoding.RLE_DICTIONARY) {
+        // dictionary encoding: `PLAIN_DICTIONARY` is used in parquet v1, `RLE_DICTIONARY` is used in parquet v2
+        if (encoding != Encoding.PLAIN_DICTIONARY && encoding != Encoding.RLE_DICTIONARY) {
           isWriteBloomFilter = true;
           break;
         }
@@ -1120,7 +1127,7 @@ public class ParquetFileWriter {
     long length = chunk.getTotalSize();
     long newChunkStart = out.getPos();
 
-    if (newChunkStart != start) {
+    if (offsetIndex != null && newChunkStart != start) {
       offsetIndex = OffsetIndexBuilder.getBuilder()
         .fromOffsetIndex(offsetIndex)
         .build(newChunkStart - start);
@@ -1465,7 +1472,7 @@ public class ParquetFileWriter {
   @Deprecated
   public static void writeMetadataFile(Configuration configuration, Path outputPath, List<Footer> footers, JobSummaryLevel level) throws IOException {
     Preconditions.checkArgument(level == JobSummaryLevel.ALL || level == JobSummaryLevel.COMMON_ONLY,
-        "Unsupported level: " + level);
+        "Unsupported level: %s", level);
 
     FileSystem fs = outputPath.getFileSystem(configuration);
     outputPath = outputPath.makeQualified(fs);

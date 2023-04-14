@@ -160,7 +160,7 @@ public class AvroParquetWriter<T> extends ParquetWriter<T> {
 
   public static class Builder<T> extends ParquetWriter.Builder<T, Builder<T>> {
     private Schema schema = null;
-    private GenericData model = SpecificData.get();
+    private GenericData model = null;
 
     private Builder(Path file) {
       super(file);

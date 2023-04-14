@@ -4,12 +4,12 @@
   <parent>
     <groupId>org.apache</groupId>
     <artifactId>apache</artifactId>
-    <version>23</version>
+    <version>29</version>
   </parent>
 
   <groupId>org.apache.parquet</groupId>
   <artifactId>parquet</artifactId>
-  <version>1.13.0-SNAPSHOT</version>
+  <version>1.14.0-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <name>Apache Parquet MR</name>
@@ -73,11 +73,11 @@
     <jackson.groupId>com.fasterxml.jackson.core</jackson.groupId>
     <jackson.datatype.groupId>com.fasterxml.jackson.datatype</jackson.datatype.groupId>
     <jackson.package>com.fasterxml.jackson</jackson.package>
-    <jackson.version>2.13.2</jackson.version>
-    <jackson-databind.version>2.13.2.2</jackson-databind.version>
+    <jackson.version>2.13.4</jackson.version>
+    <jackson-databind.version>2.13.4.2</jackson-databind.version>
     <japicmp.version>0.14.2</japicmp.version>
     <shade.prefix>shaded.parquet</shade.prefix>
-    <hadoop.version>3.2.3</hadoop.version>
+    <hadoop.version>3.3.5</hadoop.version>
     <parquet.format.version>2.9.0</parquet.format.version>
     <previous.version>1.12.0</previous.version>
     <thrift.executable>thrift</thrift.executable>
@@ -93,7 +93,7 @@
     <format.thrift.version>${thrift.version}</format.thrift.version>
     <fastutil.version>8.4.2</fastutil.version>
     <semver.api.version>0.9.33</semver.api.version>
-    <slf4j.version>1.7.22</slf4j.version>
+    <slf4j.version>1.7.33</slf4j.version>
     <avro.version>1.11.1</avro.version>
     <guava.version>27.0.1-jre</guava.version>
     <brotli-codec.version>0.1.1</brotli-codec.version>
@@ -110,6 +110,7 @@
     <jsr305.version>3.0.2</jsr305.version>
 
     <!-- properties for the profiles -->
+    <surefire.argLine> </surefire.argLine>
     <surefire.logLevel>INFO</surefire.logLevel>
 
     <!-- Resource intesive tests are enabled by default but disabled in the CI envrionment -->
@@ -177,7 +178,11 @@
         <exclusions>
           <exclusion>
             <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-log4j12</artifactId>
+            <artifactId>*</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>ch.qos.reload4j</groupId>
+            <artifactId>*</artifactId>
           </exclusion>
         </exclusions>
       </dependency>
@@ -188,7 +193,11 @@
         <exclusions>
           <exclusion>
             <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-log4j12</artifactId>
+            <artifactId>*</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>ch.qos.reload4j</groupId>
+            <artifactId>*</artifactId>
           </exclusion>
         </exclusions>
       </dependency>
@@ -199,7 +208,11 @@
         <exclusions>
           <exclusion>
             <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-log4j12</artifactId>
+            <artifactId>*</artifactId>
+          </exclusion>
+          <exclusion>
+            <groupId>ch.qos.reload4j</groupId>
+            <artifactId>*</artifactId>
           </exclusion>
         </exclusions>
       </dependency>
@@ -285,6 +298,7 @@
                 <bannedDependencies>
                   <excludes>
                     <exclude>org.slf4j:slf4j-log4j12:*:*:compile</exclude>
+                    <exclude>org.slf4j:slf4j-reload4j:*:*:compile</exclude>
                   </excludes>
                 </bannedDependencies>
               </rules>
@@ -410,6 +424,9 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-failsafe-plugin</artifactId>
+        <configuration>
+          <argLine>${extraJavaTestArgs}</argLine>
+        </configuration>
         <executions>
           <execution>
             <goals>
@@ -509,6 +526,7 @@
             <oldVersionPattern>${previous.version}</oldVersionPattern>
             <breakBuildOnSourceIncompatibleModifications>true</breakBuildOnSourceIncompatibleModifications>
             <onlyModified>true</onlyModified>
+            <ignoreMissingOldVersion>true</ignoreMissingOldVersion>
             <overrideCompatibilityChangeParameters>
               <!-- Adding a new method with default implementation to an interface should be a compatible change.
                 That's why they invented it. -->
@@ -563,6 +581,19 @@
               <failOnWarning>true</failOnWarning>
               <ignoreNonCompile>true</ignoreNonCompile>
             </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.cyclonedx</groupId>
+        <artifactId>cyclonedx-maven-plugin</artifactId>
+        <version>2.7.6</version>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals>
+              <goal>makeBom</goal>
+            </goals>
           </execution>
         </executions>
       </plugin>
@@ -658,6 +689,14 @@
           </plugin>
         </plugins>
       </build>
+    </profile>
+
+    <profile>
+      <id>vector-plugins</id>
+      <modules>
+        <module>parquet-plugins/parquet-encoding-vector</module>
+        <module>parquet-plugins/parquet-plugins-benchmarks</module>
+      </modules>
     </profile>
   </profiles>
 </project>

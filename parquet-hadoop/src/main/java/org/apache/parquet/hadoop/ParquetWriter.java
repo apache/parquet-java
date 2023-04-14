@@ -590,6 +590,17 @@ public class ParquetWriter<T> implements Closeable {
     }
 
     /**
+     * Set max Bloom filter bytes for related columns.
+     *
+     * @param maxBloomFilterBytes the max bytes of a Bloom filter bitset for a column.
+     * @return this builder for method chaining
+     */
+    public SELF withMaxBloomFilterBytes(int maxBloomFilterBytes) {
+      encodingPropsBuilder.withMaxBloomFilterBytes(maxBloomFilterBytes);
+      return self();
+    }
+
+    /**
      * Sets the NDV (number of distinct values) for the specified column.
      *
      * @param columnPath the path of the column (dot-string)

@@ -46,14 +46,13 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import java.util.zip.CRC32;
 
 import org.apache.hadoop.conf.Configuration;
@@ -927,7 +926,15 @@ public class ParquetFileReader implements Closeable {
    * @return the PageReadStore which can provide PageReaders for each column.
    */
   public PageReadStore readNextRowGroup() throws IOException {
-    ColumnChunkPageReadStore rowGroup = internalReadRowGroup(currentBlock);
+    ColumnChunkPageReadStore rowGroup = null;
+    try {
+      rowGroup = internalReadRowGroup(currentBlock);
+    } catch (ParquetEmptyBlockException e) {
+      LOG.warn("Read empty block at index {} from {}", currentBlock, getFile());
+      advanceToNextBlock();
+      return readNextRowGroup();
+    }
+
     if (rowGroup == null) {
       return null;
     }
@@ -948,7 +955,7 @@ public class ParquetFileReader implements Closeable {
     }
     BlockMetaData block = blocks.get(blockIndex);
     if (block.getRowCount() == 0) {
-      throw new RuntimeException("Illegal row group of 0 rows");
+      throw new ParquetEmptyBlockException("Illegal row group of 0 rows");
     }
     ColumnChunkPageReadStore rowGroup = new ColumnChunkPageReadStore(block.getRowCount(), block.getRowIndexOffset());
     // prepare the list of consecutive parts to read them in one scan
@@ -1001,10 +1008,39 @@ public class ParquetFileReader implements Closeable {
 
     BlockMetaData block = blocks.get(blockIndex);
     if (block.getRowCount() == 0) {
-      throw new RuntimeException("Illegal row group of 0 rows");
+      throw new ParquetEmptyBlockException("Illegal row group of 0 rows");
     }
 
     RowRanges rowRanges = getRowRanges(blockIndex);
+    return readFilteredRowGroup(blockIndex, rowRanges);
+  }
+
+  /**
+   * Reads all the columns requested from the specified row group. It may skip specific pages based on the
+   * {@code rowRanges} passed in. As the rows are not aligned among the pages of the different columns row
+   * synchronization might be required. See the documentation of the class SynchronizingColumnReader for details.
+   *
+   * @param blockIndex the index of the requested block
+   * @param rowRanges the row ranges to be read from the requested block
+   * @return the PageReadStore which can provide PageReaders for each column or null if there are no rows in this block
+   * @throws IOException if an error occurs while reading
+   * @throws IllegalArgumentException if the {@code blockIndex} is invalid or the {@code rowRanges} is null
+   */
+  public ColumnChunkPageReadStore readFilteredRowGroup(int blockIndex, RowRanges rowRanges) throws IOException {
+    if (blockIndex < 0 || blockIndex >= blocks.size()) {
+      throw new IllegalArgumentException(String.format("Invalid block index %s, the valid block index range are: " +
+        "[%s, %s]", blockIndex, 0, blocks.size() - 1));
+    }
+
+    if (Objects.isNull(rowRanges)) {
+      throw new IllegalArgumentException("RowRanges must not be null");
+    }
+
+    BlockMetaData block = blocks.get(blockIndex);
+    if (block.getRowCount() == 0L) {
+      return null;
+    }
+
     long rowCount = rowRanges.rowCount();
     if (rowCount == 0) {
       // There are no matching rows -> returning null
@@ -1038,7 +1074,10 @@ public class ParquetFileReader implements Closeable {
     }
     BlockMetaData block = blocks.get(currentBlock);
     if (block.getRowCount() == 0L) {
-      throw new RuntimeException("Illegal row group of 0 rows");
+      LOG.warn("Read empty block at index {} from {}", currentBlock, getFile());
+      // Skip the empty block
+      advanceToNextBlock();
+      return readNextFilteredRowGroup();
     }
     RowRanges rowRanges = getRowRanges(currentBlock);
     long rowCount = rowRanges.rowCount();
@@ -1121,7 +1160,7 @@ public class ParquetFileReader implements Closeable {
     }
   }
 
-  private ColumnIndexStore getColumnIndexStore(int blockIndex) {
+  public ColumnIndexStore getColumnIndexStore(int blockIndex) {
     ColumnIndexStore ciStore = blockIndexStores.get(blockIndex);
     if (ciStore == null) {
       ciStore = ColumnIndexStoreImpl.create(this, blocks.get(blockIndex), paths.keySet());
