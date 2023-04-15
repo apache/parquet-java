@@ -19,6 +19,7 @@
 package org.apache.parquet.hadoop;
 
 import static org.apache.parquet.column.ParquetProperties.DEFAULT_BLOOM_FILTER_ENABLED;
+import static org.apache.parquet.column.ParquetProperties.DEFAULT_DYNAMIC_BLOOM_FILTER_ENABLED;
 import static org.apache.parquet.hadoop.ParquetWriter.DEFAULT_BLOCK_SIZE;
 import static org.apache.parquet.hadoop.util.ContextUtil.getConfiguration;
 
@@ -228,6 +229,10 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
 
   public static boolean getBloomFilterEnabled(Configuration conf) {
     return conf.getBoolean(BLOOM_FILTER_ENABLED, DEFAULT_BLOOM_FILTER_ENABLED);
+  }
+
+  public static boolean getDynamicBloomFilterEnabled(Configuration conf) {
+    return conf.getBoolean(DYNAMIC_BLOOM_FILTER_ENABLED, DEFAULT_DYNAMIC_BLOOM_FILTER_ENABLED);
   }
 
   public static int getBlockSize(JobContext jobContext) {
@@ -455,6 +460,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
         .withStatisticsTruncateLength(getStatisticsTruncateLength(conf))
         .withMaxBloomFilterBytes(getBloomFilterMaxBytes(conf))
         .withBloomFilterEnabled(getBloomFilterEnabled(conf))
+        .withDynamicBloomFilterEnabled(getDynamicBloomFilterEnabled(conf))
         .withPageRowCountLimit(getPageRowCountLimit(conf))
         .withPageWriteChecksumEnabled(getPageWriteChecksumEnabled(conf));
     new ColumnConfigParser()
@@ -464,10 +470,6 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
         .withColumnConfig(BLOOM_FILTER_EXPECTED_NDV, key -> conf.getLong(key, -1L), propsBuilder::withBloomFilterNDV)
         .withColumnConfig(BLOOM_FILTER_FPP, key -> conf.getDouble(key, ParquetProperties.DEFAULT_BLOOM_FILTER_FPP),
             propsBuilder::withBloomFilterFPP)
-        .withColumnConfig(
-          DYNAMIC_BLOOM_FILTER_ENABLED,
-          key -> conf.getBoolean(key, ParquetProperties.DEFAULT_DYNAMIC_BLOOM_FILTER_ENABLED),
-          propsBuilder::withDynamicBloomFilterEnabled)
         .withColumnConfig(
           BLOOM_FILTER_CANDIDATE_SIZE,
           key -> conf.getInt(key, ParquetProperties.DEFAULT_BLOOM_FILTER_CANDIDATE_SIZE),

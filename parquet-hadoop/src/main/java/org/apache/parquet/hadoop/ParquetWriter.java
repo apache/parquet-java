@@ -623,11 +623,10 @@ public class ParquetWriter<T> implements Closeable {
      * When NDV (number of distinct values) for a specified column is not set, whether to use
      * `DynamicBloomFilter` to automatically adjust the BloomFilter size according to `parquet.bloom.filter.max.bytes`
      *
-     * @param columnPath the path of the column (dot-string)
      * @param enabled whether to write bloom filter for the column
      */
-    public SELF withDynamicBloomFilterEnabled(String columnPath, boolean enabled) {
-      encodingPropsBuilder.withDynamicBloomFilterEnabled(columnPath, enabled);
+    public SELF withDynamicBloomFilterEnabled(boolean enabled) {
+      encodingPropsBuilder.withDynamicBloomFilterEnabled(enabled);
       return self();
     }
 

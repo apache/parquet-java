@@ -308,6 +308,7 @@ public class TestBloomFiltering {
       .withWriterVersion(parquetVersion);
     if (useDynamicBloomFilter) {
       writeBuilder
+        .withDynamicBloomFilterEnabled(true)
         .withBloomFilterEnabled("location.lat", true)
         .withBloomFilterCandidateSize("location.lat", 10)
         .withBloomFilterEnabled("name", true)

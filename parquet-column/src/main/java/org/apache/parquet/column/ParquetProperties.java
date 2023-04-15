@@ -59,7 +59,7 @@ public class ParquetProperties {
   public static final int DEFAULT_MAX_BLOOM_FILTER_BYTES = 1024 * 1024;
   public static final boolean DEFAULT_BLOOM_FILTER_ENABLED = false;
   public static final double DEFAULT_BLOOM_FILTER_FPP = 0.01;
-  public static final boolean DEFAULT_DYNAMIC_BLOOM_FILTER_ENABLED = true;
+  public static final boolean DEFAULT_DYNAMIC_BLOOM_FILTER_ENABLED = false;
   public static final int DEFAULT_BLOOM_FILTER_CANDIDATE_SIZE = 5;
 
   public static final boolean DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED = true;
@@ -528,10 +528,9 @@ public class ParquetProperties {
      * `parquet.bloom.filter.max.bytes`.
      * If NDV (number of distinct values) for a specified column is set, it will be ignored
      *
-     * @param columnPath the path of the column (dot-string)
-     * @param enabled whether to write bloom filter for the column
+     * @param enabled whether to use dynamic bloom filter
      */
-    public Builder withDynamicBloomFilterEnabled(String columnPath, boolean enabled) {
+    public Builder withDynamicBloomFilterEnabled(boolean enabled) {
       this.dynamicBloomFilterEnabled.withDefaultValue(enabled);
       return this;
     }
