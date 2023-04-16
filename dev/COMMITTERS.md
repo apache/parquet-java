@@ -35,6 +35,7 @@ Below is more information about each committer (in alphabetical order). If this 
 | Dmitriy Ryaboy     | dvryaboy     | @dvryaboy       |              |
 | Fokko Driesprong   | Fokko        | @Fokko          | fokko        |
 | Gang Wu            | gangwu       | @wgtmac         |              |
+| Gidon Gershinsky   | gershinsky   | @ggershinsky    | gershinsky   |
 | Jake Farrell       | jfarrell     |                 |              |
 | Jonathan Coveney   | jcoveney     | @jcoveney       |              |
 | Julien Le Dem      | julien       | @julienledem    | julienledem  |
