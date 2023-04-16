@@ -73,7 +73,7 @@
     <jackson.groupId>com.fasterxml.jackson.core</jackson.groupId>
     <jackson.datatype.groupId>com.fasterxml.jackson.datatype</jackson.datatype.groupId>
     <jackson.package>com.fasterxml.jackson</jackson.package>
-    <jackson.version>2.13.4</jackson.version>
+    <jackson.version>2.14.2</jackson.version>
     <jackson-databind.version>2.13.4.2</jackson-databind.version>
     <japicmp.version>0.14.2</japicmp.version>
     <shade.prefix>shaded.parquet</shade.prefix>
