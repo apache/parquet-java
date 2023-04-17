@@ -171,7 +171,7 @@ public class ParquetReadOptions {
     protected FilterCompat.Filter recordFilter = null;
     protected ParquetMetadataConverter.MetadataFilter metadataFilter = NO_FILTER;
     // the page size parameter isn't used when only using the codec factory to get decompressors
-    protected CompressionCodecFactory codecFactory = HadoopCodecs.newFactory(0);
+    protected CompressionCodecFactory codecFactory = null;
     protected ByteBufferAllocator allocator = new HeapByteBufferAllocator();
     protected int maxAllocationSize = ALLOCATION_SIZE_DEFAULT;
     protected Map<String, String> properties = new HashMap<>();
@@ -314,6 +314,10 @@ public class ParquetReadOptions {
     }
 
     public ParquetReadOptions build() {
+      if (codecFactory == null) {
+        codecFactory = HadoopCodecs.newFactory(0);
+      }
+
       return new ParquetReadOptions(
         useSignedStringMinMax, useStatsFilter, useDictionaryFilter, useRecordFilter,
         useColumnIndexFilter, usePageChecksumVerification, useBloomFilter, recordFilter, metadataFilter,
