@@ -53,6 +53,8 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import java.util.zip.CRC32;
 
 import org.apache.hadoop.conf.Configuration;
@@ -99,7 +101,6 @@ import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.hadoop.metadata.FileMetaData;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
-import org.apache.parquet.hadoop.util.HiddenFileFilter;
 import org.apache.parquet.hadoop.util.counters.BenchmarkCounter;
 import org.apache.parquet.internal.column.columnindex.ColumnIndex;
 import org.apache.parquet.internal.column.columnindex.OffsetIndex;
@@ -374,17 +375,25 @@ public class ParquetFileReader implements Closeable {
     return readAllFootersInParallelUsingSummaryFiles(configuration, files, skipRowGroups);
   }
 
+  static boolean filterHiddenFiles(FileStatus file) {
+    final char c = file.getPath().getName().charAt(0);
+    return c != '.' && c != '_';
+  }
+
   private static List<FileStatus> listFiles(Configuration conf, FileStatus fileStatus) throws IOException {
     if (fileStatus.isDir()) {
       FileSystem fs = fileStatus.getPath().getFileSystem(conf);
-      FileStatus[] list = fs.listStatus(fileStatus.getPath(), HiddenFileFilter.INSTANCE);
-      List<FileStatus> result = new ArrayList<FileStatus>();
-      for (FileStatus sub : list) {
-        result.addAll(listFiles(conf, sub));
-      }
-      return result;
+      return Arrays.stream(fs.listStatus(fileStatus.getPath()))
+        .filter(ParquetFileReader::filterHiddenFiles)
+        .flatMap(sub -> {
+          try {
+            return listFiles(conf, sub).stream();
+          } catch (IOException e) {
+            throw new RuntimeException(e);
+          }
+        }).collect(Collectors.toList());
     } else {
-      return Arrays.asList(fileStatus);
+      return Collections.singletonList(fileStatus);
     }
   }
 
