@@ -551,12 +551,6 @@
             </excludeModules>
             <excludes>
               <exclude>${shade.prefix}</exclude>
-              <!-- In PARQUET-2052 this field is changed from int to long which is a minor API
-                change to fix a integer overflow issue.
-                TODO: remove this after Parquet 1.13 release -->
-              <exclude>org.apache.parquet.column.values.dictionary.DictionaryValuesWriter#dictionaryByteSize</exclude>
-              <!-- In PARQUET-2158 the return type of PathGlobPattern was changed to be compatible with Hadoop 3 -->
-              <exclude>org.apache.parquet.thrift.projection.deprecated.PathGlobPattern</exclude>
             </excludes>
           </parameter>
         </configuration>
