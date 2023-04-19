@@ -401,22 +401,6 @@ public class TestHadoop2ByteBufferReads {
   }
 
   @Test
-  public void testCreateStreamNoByteBufferReadable() {
-    final SeekableInputStream s = wrap(new FSDataInputStream(
-      new MockHadoopInputStream()));
-    Assert.assertTrue("Wrong wrapper: " + s,
-      s instanceof H1SeekableInputStream);
-  }
-
-  @Test
-  public void testDoubleWrapNoByteBufferReadable() {
-    final SeekableInputStream s = wrap(new FSDataInputStream(
-      new FSDataInputStream(new MockHadoopInputStream())));
-    Assert.assertTrue("Wrong wrapper: " + s,
-      s instanceof H1SeekableInputStream);
-  }
-
-  @Test
   public void testCreateStreamWithByteBufferReadable() {
     final SeekableInputStream s = wrap(new FSDataInputStream(
       new MockByteBufferInputStream()));

@@ -26,7 +26,9 @@ import java.io.IOException;
 /**
  * SeekableInputStream implementation that implements read(ByteBuffer) for
  * Hadoop 1 FSDataInputStream.
+ * @deprecated will be removed in 2.0.0.
  */
+@Deprecated
 class H1SeekableInputStream extends DelegatingSeekableInputStream {
 
   private final FSDataInputStream stream;
