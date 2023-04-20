@@ -15,7 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-name: Test
+name: CI Hadoop 3
 
 on: [push, pull_request]
 
