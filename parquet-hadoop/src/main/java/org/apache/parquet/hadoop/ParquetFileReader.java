@@ -60,6 +60,10 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.yetus.audience.InterfaceAudience.Private;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.apache.parquet.HadoopReadOptions;
 import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.bytes.ByteBufferInputStream;
@@ -81,8 +85,8 @@ import org.apache.parquet.crypto.InternalFileDecryptor;
 import org.apache.parquet.crypto.ModuleCipherFactory.ModuleType;
 import org.apache.parquet.crypto.ParquetCryptoRuntimeException;
 import org.apache.parquet.filter2.compat.FilterCompat;
-import org.apache.parquet.filter2.compat.RowGroupFilter;
 import org.apache.parquet.filter2.compat.QueryMetrics;
+import org.apache.parquet.filter2.compat.RowGroupFilter;
 import org.apache.parquet.format.BlockCipher;
 import org.apache.parquet.format.BloomFilterHeader;
 import org.apache.parquet.format.DataPageHeader;
@@ -114,9 +118,6 @@ import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.io.SeekableInputStream;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
-import org.apache.yetus.audience.InterfaceAudience.Private;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Internal implementation of the Parquet file reader as a block container
@@ -771,9 +772,11 @@ public class ParquetFileReader implements Closeable {
   }
 
   public ParquetFileReader(InputFile file, ParquetReadOptions options) throws IOException {
+    long start = System.currentTimeMillis();
     this.converter = new ParquetMetadataConverter(options);
     this.file = file;
     this.f = file.newStream();
+    long openStreamEndTime = System.currentTimeMillis();
     this.options = options;
     try {
       this.footer = readFooter(file, options, f, converter);
@@ -783,6 +786,7 @@ public class ParquetFileReader implements Closeable {
       f.close();
       throw e;
     }
+    long footerReadEndtime = System.currentTimeMillis();
     this.fileMetaData = footer.getFileMetaData();
     this.fileDecryptor = fileMetaData.getFileDecryptor(); // must be called before filterRowGroups!
     if (null != fileDecryptor && fileDecryptor.plaintextFile()) {
@@ -796,6 +800,12 @@ public class ParquetFileReader implements Closeable {
       paths.put(ColumnPath.get(col.getPath()), col);
     }
     this.crc = options.usePageChecksumVerification() ? new CRC32() : null;
+    long filterRowGroupEndTime = System.currentTimeMillis();
+    if ((filterRowGroupEndTime - start) > 50) {
+      LOG.info("open stream costs {} ms, read footer costs {} ms, filter rowGroups cost {} ms",
+        (openStreamEndTime - start), (footerReadEndtime - openStreamEndTime),
+        (filterRowGroupEndTime - footerReadEndtime));
+    }
   }
 
   private static <T> List<T> listWithNulls(int size) {

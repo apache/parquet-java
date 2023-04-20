@@ -9,7 +9,7 @@
 
   <groupId>org.apache.parquet</groupId>
   <artifactId>parquet</artifactId>
-  <version>1.12.2-kylin-r3</version>
+  <version>1.12.2-kylin-r4</version>
   <packaging>pom</packaging>
 
   <name>Apache Parquet MR</name>

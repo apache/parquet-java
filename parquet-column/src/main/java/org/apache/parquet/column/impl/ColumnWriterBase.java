@@ -31,11 +31,11 @@ import org.apache.parquet.column.values.ValuesWriter;
 import org.apache.parquet.column.values.bloomfilter.BlockSplitBloomFilter;
 import org.apache.parquet.column.values.bloomfilter.BloomFilter;
 import org.apache.parquet.column.values.bloomfilter.BloomFilterWriter;
+import org.apache.parquet.column.values.bloomfilter.DynamicBlockBloomFilter;
 import org.apache.parquet.io.ParquetEncodingException;
 import org.apache.parquet.io.api.Binary;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.apache.parquet.bytes.BytesInput;
 
 /**
  * Base implementation for {@link ColumnWriter} to be extended to specialize for V1 and V2 pages.
@@ -95,7 +95,13 @@ abstract class ColumnWriterBase implements ColumnWriter {
       int optimalNumOfBits = BlockSplitBloomFilter.optimalNumOfBits(ndv.getAsLong(), BlockSplitBloomFilter.DEFAULT_FPP);
       this.bloomFilter = new BlockSplitBloomFilter(optimalNumOfBits / 8, maxBloomFilterSize);
     } else {
-      this.bloomFilter = new BlockSplitBloomFilter(maxBloomFilterSize);
+      boolean useDynamicBloomFilter = props.getDynamicBloomFilterEnabled(path);
+      int candidateSize = props.getBloomFilterCandidateSize(path);
+      if(useDynamicBloomFilter) {
+        this.bloomFilter = new DynamicBlockBloomFilter(maxBloomFilterSize, candidateSize, BlockSplitBloomFilter.DEFAULT_FPP, path);
+      } else {
+        this.bloomFilter = new BlockSplitBloomFilter(maxBloomFilterSize);
+      }
     }
   }
 

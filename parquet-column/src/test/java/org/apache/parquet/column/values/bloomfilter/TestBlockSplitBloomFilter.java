@@ -145,6 +145,38 @@ public class TestBlockSplitBloomFilter {
   }
 
   @Test
+  public void testDynamicBloomFilter() {
+    int maxBloomFilterSize = 1024 * 1024;
+    int candidateSize = 10;
+    DynamicBlockBloomFilter dynamicBloomFilter = new DynamicBlockBloomFilter(maxBloomFilterSize,
+      candidateSize, 0.01, null);
+
+    assertEquals(candidateSize, dynamicBloomFilter.getCandidates().size());
+
+    Set<String> existedValue = new HashSet<>();
+    while (existedValue.size() < 10000) {
+      String str = RandomStringUtils.randomAlphabetic(1, 64);
+      dynamicBloomFilter.insertHash(dynamicBloomFilter.hash(Binary.fromString(str)));
+      existedValue.add(str);
+    }
+    // removed some small bloom filter
+    assertEquals(4, dynamicBloomFilter.getCandidates().size());
+    BlockSplitBloomFilter optimalCandidate = dynamicBloomFilter.optimalCandidate().getBloomFilter();
+    for (String value : existedValue) {
+      assertTrue(optimalCandidate.findHash(optimalCandidate.hash(Binary.fromString(value))));
+    }
+
+    int maxCandidateNDV = dynamicBloomFilter.getCandidates().last().getExpectedNDV();
+    while (existedValue.size() < maxCandidateNDV + 1) {
+      String str = RandomStringUtils.randomAlphabetic(1, 64);
+      dynamicBloomFilter.insertHash(dynamicBloomFilter.hash(Binary.fromString(str)));
+      existedValue.add(str);
+    }
+    // the number of distinct value exceeds the maximum candidate's expected NDV, so only the maximum candidate is kept
+    assertEquals(1, dynamicBloomFilter.getCandidates().size());
+  }
+
+  @Test
   public void testEquals() {
     final String[] words = {"hello", "parquet", "bloom", "filter"};
     BloomFilter bloomFilterOne = new BlockSplitBloomFilter(1024);
