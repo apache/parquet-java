@@ -1,0 +1,14 @@
+{
+    "type": "record",
+    "name": "LogicalTypesTest",
+    "namespace": "org.apache.parquet.avro",
+    "doc": "Record for testing logical types",
+    "fields": [
+        {
+          "name": "timestamp",
+          "type": {
+            "type": "long", "logicalType": "timestamp-millis"
+          }
+        }
+    ]
+}

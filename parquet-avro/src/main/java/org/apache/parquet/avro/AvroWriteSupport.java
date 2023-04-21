@@ -131,7 +131,7 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
     }
 
     if (model == null) {
-      this.model = getDataModel(configuration);
+      this.model = getDataModel(configuration, rootAvroSchema);
     }
 
     boolean writeOldListStructure = configuration.getBoolean(
@@ -400,9 +400,18 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
     return Binary.fromCharSequence(value.toString());
   }
 
-  private static GenericData getDataModel(Configuration conf) {
+  private static GenericData getDataModel(Configuration conf, Schema schema) {
+    if (conf.get(AVRO_DATA_SUPPLIER) == null) {
+      final GenericData modelForSchema = AvroRecordConverter.getModelForSchema(schema);
+
+      if (modelForSchema != null) {
+        return modelForSchema;
+      }
+    }
+
     Class<? extends AvroDataSupplier> suppClass = conf.getClass(
-        AVRO_DATA_SUPPLIER, SpecificDataSupplier.class, AvroDataSupplier.class);
+      AVRO_DATA_SUPPLIER, SpecificDataSupplier.class, AvroDataSupplier.class);
+
     return ReflectionUtils.newInstance(suppClass, conf).get();
   }
 

@@ -30,12 +30,15 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.LinkedHashMap;
+import java.util.Objects;
+
 import org.apache.avro.AvroTypeException;
 import org.apache.avro.Conversion;
 import org.apache.avro.LogicalType;
@@ -167,6 +170,46 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
       // use this.model because model may be null
       recordDefaults.put(field, this.model.getDefaultValue(field));
     }
+  }
+
+  /**
+   * Returns the specific data model for a given SpecificRecord schema by reflecting the underlying
+   * Avro class's `MODEL$` field, or Null if the class is not on the classpath or reflection fails.
+   */
+  static SpecificData getModelForSchema(Schema schema) {
+    final Class<?> clazz;
+
+    if (schema != null && (schema.getType() == Schema.Type.RECORD || schema.getType() == Schema.Type.UNION)) {
+      clazz = SpecificData.get().getClass(schema);
+    } else {
+      return null;
+    }
+
+    final SpecificData model;
+    try {
+      final Field modelField = clazz.getDeclaredField("MODEL$");
+      modelField.setAccessible(true);
+
+      model = (SpecificData) modelField.get(null);
+    } catch (Exception e) {
+      return null;
+    }
+
+    try {
+      final String avroVersion = Schema.Parser.class.getPackage().getImplementationVersion();
+      // Avro 1.8 doesn't include conversions in the MODEL$ field
+      if (avroVersion.startsWith("1.8.")) {
+        final Field conversionsField = clazz.getDeclaredField("conversions");
+        conversionsField.setAccessible(true);
+
+        final Conversion<?>[] conversions = (Conversion<?>[]) conversionsField.get(null);
+        Arrays.stream(conversions).filter(Objects::nonNull).forEach(model::addLogicalTypeConversion);
+      }
+    } catch (Exception e) {
+      return model;
+    }
+
+    return model;
   }
 
   // this was taken from Avro's ReflectData
