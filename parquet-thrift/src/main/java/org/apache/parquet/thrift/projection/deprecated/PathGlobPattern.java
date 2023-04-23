@@ -18,8 +18,6 @@
  */
 package org.apache.parquet.thrift.projection.deprecated;
 
-import org.apache.hadoop.fs.GlobPattern;
-
 import com.google.re2j.Pattern;
 import com.google.re2j.PatternSyntaxException;
 
@@ -43,16 +41,6 @@ public class PathGlobPattern {
    */
   public PathGlobPattern(String globPattern) {
     set(globPattern);
-  }
-
-  /**
-   * Compile glob pattern string
-   *
-   * @param globPattern the glob pattern
-   * @return the pattern object
-   */
-  public static Pattern compile(String globPattern) {
-    return new GlobPattern(globPattern).compiled();
   }
 
   private static void error(String message, String pattern, int pos) {

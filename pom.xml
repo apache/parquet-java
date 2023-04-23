@@ -59,13 +59,6 @@
     </repository>
   </repositories>
 
-  <developers>
-    <developer>
-      <name>Julien Le Dem</name>
-      <email>julien@twitter.com</email>
-    </developer>
-  </developers>
-
   <properties>
     <maven.compiler.source>1.8</maven.compiler.source>
     <maven.compiler.target>1.8</maven.compiler.target>
@@ -595,6 +588,13 @@
   </build>
 
   <profiles>
+    <profile>
+      <id>hadoop2</id>
+      <properties>
+        <hadoop.version>2.9.2</hadoop.version>
+      </properties>
+    </profile>
+
     <profile>
       <id>update-github-site</id>
       <reporting>
