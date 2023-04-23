@@ -95,7 +95,7 @@
     <semver.api.version>0.9.33</semver.api.version>
     <slf4j.version>1.7.33</slf4j.version>
     <avro.version>1.11.1</avro.version>
-    <guava.version>27.0.1-jre</guava.version>
+    <guava.version>31.1-jre</guava.version>
     <brotli-codec.version>0.1.1</brotli-codec.version>
     <mockito.version>1.10.19</mockito.version>
     <net.openhft.version>0.9</net.openhft.version>
