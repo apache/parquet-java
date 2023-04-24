@@ -410,8 +410,7 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
     }
 
     Class<? extends AvroDataSupplier> suppClass = conf.getClass(
-      AVRO_DATA_SUPPLIER, SpecificDataSupplier.class, AvroDataSupplier.class);
-
+        AVRO_DATA_SUPPLIER, SpecificDataSupplier.class, AvroDataSupplier.class);
     return ReflectionUtils.newInstance(suppClass, conf).get();
   }
 
