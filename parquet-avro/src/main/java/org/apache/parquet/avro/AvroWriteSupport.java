@@ -401,7 +401,7 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
   }
 
   private static GenericData getDataModel(Configuration conf, Schema schema) {
-    if (conf.get(AVRO_DATA_SUPPLIER) == null) {
+    if (conf.get(AVRO_DATA_SUPPLIER) == null && schema != null) {
       final GenericData modelForSchema = AvroRecordConverter.getModelForSchema(schema);
 
       if (modelForSchema != null) {

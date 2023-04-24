@@ -206,7 +206,7 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
         Arrays.stream(conversions).filter(Objects::nonNull).forEach(model::addLogicalTypeConversion);
       }
     } catch (Exception e) {
-      return model;
+      return null;
     }
 
     return model;

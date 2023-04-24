@@ -154,7 +154,7 @@ public class AvroReadSupport<T> extends ReadSupport<T> {
       return model;
     }
 
-    if (conf.get(AVRO_DATA_SUPPLIER) == null) {
+    if (conf.get(AVRO_DATA_SUPPLIER) == null && schema != null) {
       final GenericData modelForSchema = AvroRecordConverter.getModelForSchema(schema);
 
       if (modelForSchema != null) {
@@ -165,6 +165,6 @@ public class AvroReadSupport<T> extends ReadSupport<T> {
     Class<? extends AvroDataSupplier> suppClass = conf.getClass(
       AVRO_DATA_SUPPLIER, SpecificDataSupplier.class, AvroDataSupplier.class);
 
-      return ReflectionUtils.newInstance(suppClass, conf).get();
+    return ReflectionUtils.newInstance(suppClass, conf).get();
   }
 }
