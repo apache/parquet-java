@@ -544,6 +544,7 @@
             </excludeModules>
             <excludes>
               <exclude>${shade.prefix}</exclude>
+              <exclude>org.apache.parquet.thrift.projection.deprecated.PathGlobPattern</exclude>
             </excludes>
           </parameter>
         </configuration>
