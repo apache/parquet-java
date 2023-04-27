@@ -25,8 +25,10 @@ import org.apache.avro.generic.GenericData;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.util.ReflectionUtils;
 import org.apache.parquet.hadoop.api.ReadSupport;
+import org.apache.parquet.io.InvalidRecordException;
 import org.apache.parquet.io.api.RecordMaterializer;
 import org.apache.parquet.schema.MessageType;
+import org.apache.log4j.Logger;
 
 /**
  * Avro implementation of {@link ReadSupport} for avro generic, specific, and
@@ -36,6 +38,7 @@ import org.apache.parquet.schema.MessageType;
  * @param <T> the Java type of records created by this ReadSupport
  */
 public class AvroReadSupport<T> extends ReadSupport<T> {
+  static Logger log = Logger.getLogger(AvroReadSupport.class.getName());  
 
   public static String AVRO_REQUESTED_PROJECTION = "parquet.avro.projection";
   private static final String AVRO_READ_SCHEMA = "parquet.avro.read.schema";
@@ -136,10 +139,22 @@ public class AvroReadSupport<T> extends ReadSupport<T> {
 
     GenericData model = getDataModel(configuration);
     String compatEnabled = metadata.get(AvroReadSupport.AVRO_COMPATIBILITY);
-    if (compatEnabled != null && Boolean.valueOf(compatEnabled)) {
-      return newCompatMaterializer(parquetSchema, avroSchema, model);
+
+    try {
+      if (compatEnabled != null && Boolean.valueOf(compatEnabled)) {
+        return newCompatMaterializer(parquetSchema, avroSchema, model);
+      }
+      return new AvroRecordMaterializer<T>(parquetSchema, avroSchema, model);
+    } catch (InvalidRecordException | ClassCastException e) {
+      log.error("Warning, Avro schema doesn't match Parquet schema, falling back to conversion: ", e);
+      // If the Avro schema is bad, fall back to reconstructing it from the Parquet schema
+      avroSchema = new AvroSchemaConverter(configuration).convert(parquetSchema);
+
+      if (compatEnabled != null && Boolean.valueOf(compatEnabled)) {
+        return newCompatMaterializer(parquetSchema, avroSchema, model);
+      }
+      return new AvroRecordMaterializer<T>(parquetSchema, avroSchema, model);
     }
-    return new AvroRecordMaterializer<T>(parquetSchema, avroSchema, model);
   }
 
   @SuppressWarnings("unchecked")
