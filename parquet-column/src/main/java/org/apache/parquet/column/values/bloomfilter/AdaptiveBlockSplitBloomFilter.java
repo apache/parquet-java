@@ -61,6 +61,8 @@ public class AdaptiveBlockSplitBloomFilter implements BloomFilter {
   // indicates that the bloom filter candidate has been written out and new data should be no longer allowed to be inserted
   private boolean finalized = false;
 
+  // indicates the step size to find the NDV value corresponding to numBytes
+  private static final int NDV_STEP = 500;
   private int maximumBytes = UPPER_BOUND_BYTES;
   private int minimumBytes = LOWER_BOUND_BYTES;
   // the hash strategy used in this bloom filter.
@@ -133,13 +135,12 @@ public class AdaptiveBlockSplitBloomFilter implements BloomFilter {
   private int expectedNDV(int numBytes, double fpp) {
     int expectedNDV = 0;
     int optimalBytes = 0;
-    int step = 500;
     while (optimalBytes < numBytes) {
-      expectedNDV += step;
+      expectedNDV += NDV_STEP;
       optimalBytes = BlockSplitBloomFilter.optimalNumOfBits(expectedNDV, fpp) / 8;
     }
     // make sure it is slightly smaller than what `numBytes` can support
-    expectedNDV -= step;
+    expectedNDV -= NDV_STEP;
     // numBytes is too small
     if (expectedNDV <= 0) {
       expectedNDV = 0;
