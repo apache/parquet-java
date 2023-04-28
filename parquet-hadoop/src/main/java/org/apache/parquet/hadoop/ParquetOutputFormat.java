@@ -19,7 +19,7 @@
 package org.apache.parquet.hadoop;
 
 import static org.apache.parquet.column.ParquetProperties.DEFAULT_BLOOM_FILTER_ENABLED;
-import static org.apache.parquet.column.ParquetProperties.DEFAULT_DYNAMIC_BLOOM_FILTER_ENABLED;
+import static org.apache.parquet.column.ParquetProperties.DEFAULT_ADAPTIVE_BLOOM_FILTER_ENABLED;
 import static org.apache.parquet.hadoop.ParquetWriter.DEFAULT_BLOCK_SIZE;
 import static org.apache.parquet.hadoop.util.ContextUtil.getConfiguration;
 
@@ -153,7 +153,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   public static final String BLOOM_FILTER_EXPECTED_NDV = "parquet.bloom.filter.expected.ndv";
   public static final String BLOOM_FILTER_MAX_BYTES = "parquet.bloom.filter.max.bytes";
   public static final String BLOOM_FILTER_FPP = "parquet.bloom.filter.fpp";
-  public static final String DYNAMIC_BLOOM_FILTER_ENABLED = "parquet.bloom.filter.dynamic.enabled";
+  public static final String ADAPTIVE_BLOOM_FILTER_ENABLED = "parquet.bloom.filter.adaptive.enabled";
   public static final String BLOOM_FILTER_CANDIDATE_SIZE = "parquet.bloom.filter.candidate.size";
   public static final String PAGE_ROW_COUNT_LIMIT = "parquet.page.row.count.limit";
   public static final String PAGE_WRITE_CHECKSUM_ENABLED = "parquet.page.write-checksum.enabled";
@@ -231,8 +231,8 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     return conf.getBoolean(BLOOM_FILTER_ENABLED, DEFAULT_BLOOM_FILTER_ENABLED);
   }
 
-  public static boolean getDynamicBloomFilterEnabled(Configuration conf) {
-    return conf.getBoolean(DYNAMIC_BLOOM_FILTER_ENABLED, DEFAULT_DYNAMIC_BLOOM_FILTER_ENABLED);
+  public static boolean getAdaptiveBloomFilterEnabled(Configuration conf) {
+    return conf.getBoolean(ADAPTIVE_BLOOM_FILTER_ENABLED, DEFAULT_ADAPTIVE_BLOOM_FILTER_ENABLED);
   }
 
   public static int getBlockSize(JobContext jobContext) {
@@ -460,7 +460,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
         .withStatisticsTruncateLength(getStatisticsTruncateLength(conf))
         .withMaxBloomFilterBytes(getBloomFilterMaxBytes(conf))
         .withBloomFilterEnabled(getBloomFilterEnabled(conf))
-        .withDynamicBloomFilterEnabled(getDynamicBloomFilterEnabled(conf))
+        .withAdaptiveBloomFilterEnabled(getAdaptiveBloomFilterEnabled(conf))
         .withPageRowCountLimit(getPageRowCountLimit(conf))
         .withPageWriteChecksumEnabled(getPageWriteChecksumEnabled(conf));
     new ColumnConfigParser()

@@ -38,25 +38,25 @@ import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.io.api.Binary;
 
 /**
- * `DynamicBlockBloomFilter` contains multiple `BlockSplitBloomFilter` as candidates and inserts values in
+ * `AdaptiveBlockSplitBloomFilter` contains multiple `BlockSplitBloomFilter` as candidates and inserts values in
  * the candidates at the same time.
  * The purpose of this is to finally generate a bloom filter with the optimal bit size according to the number
  * of real data distinct values. Use the largest bloom filter as an approximate deduplication counter, and then
  * remove incapable bloom filter candidate during data insertion.
  */
-public class DynamicBlockBloomFilter implements BloomFilter {
+public class AdaptiveBlockSplitBloomFilter implements BloomFilter {
 
-  private static final Logger LOG = LoggerFactory.getLogger(DynamicBlockBloomFilter.class);
+  private static final Logger LOG = LoggerFactory.getLogger(AdaptiveBlockSplitBloomFilter.class);
 
   // multiple candidates, inserting data at the same time. If the distinct values are greater than the
   // expected NDV of candidates, it will be removed. Finally we will choose the smallest candidate to write out.
   private final List<BloomFilterCandidate> candidates = new ArrayList<>();
 
   // the largest among candidates and used as an approximate deduplication counter
-  private BloomFilterCandidate maxCandidate;
+  private BloomFilterCandidate largestCandidate;
 
   // the accumulator of the number of distinct values that have been inserted so far
-  private int distinctValueCounter = 0;
+  private long distinctValueCounter = 0;
 
   // indicates that the bloom filter candidate has been written out and new data should be no longer allowed to be inserted
   private boolean finalized = false;
@@ -68,27 +68,19 @@ public class DynamicBlockBloomFilter implements BloomFilter {
   // the column to build bloom filter
   private ColumnDescriptor column;
 
-  public DynamicBlockBloomFilter(int numBytes, int candidatesNum, double fpp, ColumnDescriptor column) {
-    this(numBytes, LOWER_BOUND_BYTES, UPPER_BOUND_BYTES, HashStrategy.XXH64, fpp, candidatesNum, column);
+  /**
+   * Given the maximum acceptable bytes size of bloom filter, generate candidates according it.
+   *
+   * @param maximumBytes  the maximum bit size of candidate
+   * @param numCandidates the number of candidates
+   * @param fpp           the false positive probability
+   */
+  public AdaptiveBlockSplitBloomFilter(int maximumBytes, int numCandidates, double fpp, ColumnDescriptor column) {
+    this(maximumBytes, HashStrategy.XXH64, fpp, numCandidates, column);
   }
 
-  public DynamicBlockBloomFilter(int numBytes, int maximumBytes, int candidatesNum, double fpp, ColumnDescriptor column) {
-    this(numBytes, LOWER_BOUND_BYTES, maximumBytes, HashStrategy.XXH64, fpp, candidatesNum, column);
-  }
-
-  public DynamicBlockBloomFilter(int numBytes, int minimumBytes, int maximumBytes, HashStrategy hashStrategy,
-    double fpp, int candidatesNum, ColumnDescriptor column) {
-    if (minimumBytes > maximumBytes) {
-      throw new IllegalArgumentException("the minimum bytes should be less or equal than maximum bytes");
-    }
-
-    if (minimumBytes > LOWER_BOUND_BYTES && minimumBytes < UPPER_BOUND_BYTES) {
-      this.minimumBytes = minimumBytes;
-    }
-
-    if (maximumBytes > LOWER_BOUND_BYTES && maximumBytes < UPPER_BOUND_BYTES) {
-      this.maximumBytes = maximumBytes;
-    }
+  public AdaptiveBlockSplitBloomFilter(int maximumBytes, HashStrategy hashStrategy, double fpp,
+    int numCandidates, ColumnDescriptor column) {
     this.column = column;
     switch (hashStrategy) {
       case XXH64:
@@ -97,21 +89,21 @@ public class DynamicBlockBloomFilter implements BloomFilter {
       default:
         throw new RuntimeException("Unsupported hash strategy");
     }
-    initCandidates(numBytes, candidatesNum, fpp);
+    initCandidates(maximumBytes, numCandidates, fpp);
   }
 
   /**
    * Given the maximum acceptable bytes size of bloom filter, generate candidates according
-   * to the bytes size. The bytes size of the candidate needs to be a
-   * power of 2. Therefore, set the candidate size according to `maxBytes` of `1/2`, `1/4`, `1/8`, etc.
+   * to the bytes size. Because the bytes size of the candidate need to be a
+   * power of 2, we setting the candidate size according to `maxBytes` of `1/2`, `1/4`, `1/8`, etc.
    *
-   * @param maxBytes      the maximum acceptable bit size
-   * @param candidatesNum the number of candidates
+   * @param maxBytes      the maximum bit size of candidate
+   * @param numCandidates the number of candidates
    * @param fpp           the false positive probability
    */
-  private void initCandidates(int maxBytes, int candidatesNum, double fpp) {
-    int candidateByteSize = calculateTwoPowerSize(maxBytes);
-    for (int i = 1; i <= candidatesNum; i++) {
+  private void initCandidates(int maxBytes, int numCandidates, double fpp) {
+    int candidateByteSize = calculateBoundedPowerOfTwo(maxBytes);
+    for (int i = 1; i <= numCandidates; i++) {
       int candidateExpectedNDV = expectedNDV(candidateByteSize, fpp);
       // `candidateByteSize` is too small, just drop it
       if (candidateExpectedNDV <= 0) {
@@ -120,11 +112,11 @@ public class DynamicBlockBloomFilter implements BloomFilter {
       BloomFilterCandidate candidate =
         new BloomFilterCandidate(candidateExpectedNDV, candidateByteSize, minimumBytes, maximumBytes, hashStrategy);
       candidates.add(candidate);
-      candidateByteSize = calculateTwoPowerSize(candidateByteSize / 2);
+      candidateByteSize = calculateBoundedPowerOfTwo(candidateByteSize / 2);
     }
     Optional<BloomFilterCandidate> maxBloomFilter = candidates.stream().max(BloomFilterCandidate::compareTo);
     if (maxBloomFilter.isPresent()) {
-      maxCandidate = maxBloomFilter.get();
+      largestCandidate = maxBloomFilter.get();
     } else {
       throw new IllegalArgumentException("`maximumBytes` is too small to create one valid bloom filter");
     }
@@ -161,7 +153,7 @@ public class DynamicBlockBloomFilter implements BloomFilter {
    * @param numBytes the bytes size
    * @return the largest power of 2 less or equal to numBytes
    */
-  private int calculateTwoPowerSize(int numBytes) {
+  private int calculateBoundedPowerOfTwo(int numBytes) {
     if (numBytes < minimumBytes) {
       numBytes = minimumBytes;
     }
@@ -208,12 +200,12 @@ public class DynamicBlockBloomFilter implements BloomFilter {
   @Override
   public void insertHash(long hash) {
     Preconditions.checkArgument(!finalized,
-      "Dynamic bloom filter insertion has been mark as finalized, no more data is allowed!");
-    if (!maxCandidate.bloomFilter.findHash(hash)) {
+      "AdaptiveBlockSplitBloomFilter insertion has been mark as finalized, no more data is allowed!");
+    if (!largestCandidate.bloomFilter.findHash(hash)) {
       distinctValueCounter++;
     }
     // distinct values exceed the expected size, remove the bad bloom filter (leave at least the max bloom filter candidate)
-    candidates.removeIf(candidate -> candidate.getExpectedNDV() < distinctValueCounter && candidate != maxCandidate);
+    candidates.removeIf(candidate -> candidate.getExpectedNDV() < distinctValueCounter && candidate != largestCandidate);
     candidates.forEach(candidate -> candidate.getBloomFilter().insertHash(hash));
   }
 
@@ -224,52 +216,52 @@ public class DynamicBlockBloomFilter implements BloomFilter {
 
   @Override
   public boolean findHash(long hash) {
-    return maxCandidate.bloomFilter.findHash(hash);
+    return largestCandidate.bloomFilter.findHash(hash);
   }
 
   @Override
   public long hash(Object value) {
-    return maxCandidate.bloomFilter.hash(value);
+    return largestCandidate.bloomFilter.hash(value);
   }
 
   @Override
   public HashStrategy getHashStrategy() {
-    return maxCandidate.bloomFilter.getHashStrategy();
+    return largestCandidate.bloomFilter.getHashStrategy();
   }
 
   @Override
   public Algorithm getAlgorithm() {
-    return maxCandidate.bloomFilter.getAlgorithm();
+    return largestCandidate.bloomFilter.getAlgorithm();
   }
 
   @Override
   public Compression getCompression() {
-    return maxCandidate.bloomFilter.getCompression();
+    return largestCandidate.bloomFilter.getCompression();
   }
 
   @Override
   public long hash(int value) {
-    return maxCandidate.bloomFilter.hash(value);
+    return largestCandidate.bloomFilter.hash(value);
   }
 
   @Override
   public long hash(long value) {
-    return maxCandidate.bloomFilter.hash(value);
+    return largestCandidate.bloomFilter.hash(value);
   }
 
   @Override
   public long hash(double value) {
-    return maxCandidate.bloomFilter.hash(value);
+    return largestCandidate.bloomFilter.hash(value);
   }
 
   @Override
   public long hash(float value) {
-    return maxCandidate.bloomFilter.hash(value);
+    return largestCandidate.bloomFilter.hash(value);
   }
 
   @Override
   public long hash(Binary value) {
-    return maxCandidate.bloomFilter.hash(value);
+    return largestCandidate.bloomFilter.hash(value);
   }
 
   protected class BloomFilterCandidate implements Comparable<BloomFilterCandidate> {

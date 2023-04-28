@@ -297,7 +297,7 @@ public class TestBloomFiltering {
   protected static void writePhoneBookToFile(Path file,
     ParquetProperties.WriterVersion parquetVersion,
     FileEncryptionProperties encryptionProperties,
-    boolean useDynamicBloomFilter) throws IOException {
+    boolean useAdaptiveBloomFilter) throws IOException {
     int pageSize = DATA.size() / 100;     // Ensure that several pages will be created
     int rowGroupSize = pageSize * 4;    // Ensure that there are more row-groups created
     ExampleParquetWriter.Builder writeBuilder = ExampleParquetWriter.builder(file)
@@ -306,9 +306,9 @@ public class TestBloomFiltering {
       .withPageSize(pageSize)
       .withEncryption(encryptionProperties)
       .withWriterVersion(parquetVersion);
-    if (useDynamicBloomFilter) {
+    if (useAdaptiveBloomFilter) {
       writeBuilder
-        .withDynamicBloomFilterEnabled(true)
+        .withAdaptiveBloomFilterEnabled(true)
         .withBloomFilterEnabled("location.lat", true)
         .withBloomFilterCandidateSize("location.lat", 10)
         .withBloomFilterEnabled("name", true)
@@ -337,13 +337,13 @@ public class TestBloomFiltering {
     createFiles(false);
   }
 
-  public static void createFiles(boolean useDynamicBloomFilter) throws IOException {
-    writePhoneBookToFile(FILE_V1, ParquetProperties.WriterVersion.PARQUET_1_0, null, useDynamicBloomFilter);
-    writePhoneBookToFile(FILE_V2, ParquetProperties.WriterVersion.PARQUET_2_0, null, useDynamicBloomFilter);
+  public static void createFiles(boolean useAdaptiveBloomFilter) throws IOException {
+    writePhoneBookToFile(FILE_V1, ParquetProperties.WriterVersion.PARQUET_1_0, null, useAdaptiveBloomFilter);
+    writePhoneBookToFile(FILE_V2, ParquetProperties.WriterVersion.PARQUET_2_0, null, useAdaptiveBloomFilter);
 
     FileEncryptionProperties encryptionProperties = getFileEncryptionProperties();
-    writePhoneBookToFile(FILE_V1_E, ParquetProperties.WriterVersion.PARQUET_1_0, encryptionProperties, useDynamicBloomFilter);
-    writePhoneBookToFile(FILE_V2_E, ParquetProperties.WriterVersion.PARQUET_2_0, encryptionProperties, useDynamicBloomFilter);
+    writePhoneBookToFile(FILE_V1_E, ParquetProperties.WriterVersion.PARQUET_1_0, encryptionProperties, useAdaptiveBloomFilter);
+    writePhoneBookToFile(FILE_V2_E, ParquetProperties.WriterVersion.PARQUET_2_0, encryptionProperties, useAdaptiveBloomFilter);
   }
 
   @AfterClass

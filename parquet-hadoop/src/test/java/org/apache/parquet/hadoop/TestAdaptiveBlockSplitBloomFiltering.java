@@ -33,14 +33,14 @@ import org.apache.parquet.crypto.FileDecryptionProperties;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.io.InputFile;
 
-public class TestDynamicBlockBloomFiltering extends TestBloomFiltering {
+public class TestAdaptiveBlockSplitBloomFiltering extends TestBloomFiltering {
 
   @BeforeClass
   public static void createFiles() throws IOException {
     createFiles(true);
   }
 
-  public TestDynamicBlockBloomFiltering(Path file, boolean isEncrypted) {
+  public TestAdaptiveBlockSplitBloomFiltering(Path file, boolean isEncrypted) {
     super(file, isEncrypted);
   }
 
