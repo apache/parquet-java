@@ -631,7 +631,7 @@ public class ParquetWriter<T> implements Closeable {
     }
 
     /**
-     * When `DynamicBloomFilter` is enabled, set how many bloom filter candidates to use.
+     * When `AdaptiveBloomFilter` is enabled, set how many bloom filter candidates to use.
      *
      * @param columnPath the path of the column (dot-string)
      * @param size the candidate size
