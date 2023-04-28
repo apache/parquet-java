@@ -998,6 +998,7 @@ public class ParquetFileReader implements Closeable {
 
         OffsetIndex filteredOffsetIndex = filterOffsetIndex(offsetIndex, rowRanges,
             block.getRowCount());
+        this.queryMetrics.logParquetPageFilter(offsetIndex.getPageCount(), filteredOffsetIndex.getPageCount());
         for (OffsetRange range : calculateOffsetRanges(filteredOffsetIndex, mc, offsetIndex.getOffset(0))) {
           BenchmarkCounter.incrementTotalBytes(range.getLength());
           long startingPos = range.getOffset();

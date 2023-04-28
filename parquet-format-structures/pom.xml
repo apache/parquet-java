@@ -24,7 +24,7 @@
     <groupId>org.apache.parquet</groupId>
     <artifactId>parquet</artifactId>
     <relativePath>../pom.xml</relativePath>
-    <version>1.12.2-kylin-r4</version>
+    <version>1.12.2-kylin-r5</version>
   </parent>
 
   <artifactId>parquet-format-structures</artifactId>

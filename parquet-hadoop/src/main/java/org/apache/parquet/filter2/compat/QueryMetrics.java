@@ -24,6 +24,9 @@ public class QueryMetrics {
   private long skipBloomBlocks = 0;
   private long skipBloomRows = 0;
   private long totalBloomBlocks = 0;
+  private long totalPagesCount = 0;
+  private long filteredPagesCount = 0;
+  private long afterFilterPagesCount = 0;
 
   public String getSkipBloomFilter() {
     return skipBloomFilter;
@@ -55,5 +58,35 @@ public class QueryMetrics {
 
   public void setTotalBloomBlocks(long totalBloomBlocks) {
     this.totalBloomBlocks = totalBloomBlocks;
+  }
+
+  public long getTotalPagesCount() {
+    return totalPagesCount;
+  }
+
+  public void setTotalPagesCount(long totalPagesCount) {
+    this.totalPagesCount = totalPagesCount;
+  }
+
+  public long getFilteredPagesCount() {
+    return filteredPagesCount;
+  }
+
+  public void setFilteredPagesCount(long filteredPagesCount) {
+    this.filteredPagesCount = filteredPagesCount;
+  }
+
+  public long getAfterFilterPagesCount() {
+    return afterFilterPagesCount;
+  }
+
+  public void setAfterFilterPagesCount(long afterFilterPagesCount) {
+    this.afterFilterPagesCount = afterFilterPagesCount;
+  }
+
+  public void logParquetPageFilter(long total, long afterFilter) {
+    totalPagesCount += total;
+    filteredPagesCount += (total - afterFilter);
+    afterFilterPagesCount += afterFilter;
   }
 }
