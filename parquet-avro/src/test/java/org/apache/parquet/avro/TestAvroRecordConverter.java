@@ -27,7 +27,7 @@ import org.apache.avro.specific.SpecificData;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.BDDMockito;
+import org.mockito.Mockito;
 import org.powermock.api.mockito.PowerMockito;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
@@ -83,7 +83,7 @@ public class TestAvroRecordConverter {
   // Test logical type support for older Avro versions
   @Test
   public void testGetModelAvro1_7() {
-    BDDMockito.given(AvroRecordConverter.getRuntimeAvroVersion()).willReturn("1.7.7");
+    Mockito.when(AvroRecordConverter.getRuntimeAvroVersion()).thenReturn("1.7.7");
 
     // Test that model is generated correctly
     final SpecificData model = AvroRecordConverter.getModelForSchema(Avro17GeneratedClass.SCHEMA$);
@@ -93,7 +93,7 @@ public class TestAvroRecordConverter {
 
   @Test
   public void testGetModelAvro1_8() {
-    BDDMockito.given(AvroRecordConverter.getRuntimeAvroVersion()).willReturn("1.8.2");
+    Mockito.when(AvroRecordConverter.getRuntimeAvroVersion()).thenReturn("1.8.2");
 
     // Test that model is generated correctly
     final SpecificData model = AvroRecordConverter.getModelForSchema(Avro18GeneratedClass.SCHEMA$);
@@ -103,7 +103,7 @@ public class TestAvroRecordConverter {
 
   @Test
   public void testGetModelAvro1_9() {
-    BDDMockito.given(AvroRecordConverter.getRuntimeAvroVersion()).willReturn("1.9.2");
+    Mockito.when(AvroRecordConverter.getRuntimeAvroVersion()).thenReturn("1.9.2");
 
     // Test that model is generated correctly
     final SpecificData model = AvroRecordConverter.getModelForSchema(Avro19GeneratedClass.SCHEMA$);
@@ -113,7 +113,7 @@ public class TestAvroRecordConverter {
 
   @Test
   public void testGetModelAvro1_10() {
-    BDDMockito.given(AvroRecordConverter.getRuntimeAvroVersion()).willReturn("1.10.2");
+    Mockito.when(AvroRecordConverter.getRuntimeAvroVersion()).thenReturn("1.10.2");
 
     // Test that model is generated correctly
     final SpecificData model = AvroRecordConverter.getModelForSchema(Avro110GeneratedClass.SCHEMA$);
