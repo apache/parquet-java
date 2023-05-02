@@ -51,6 +51,7 @@ import org.apache.avro.reflect.ReflectData;
 import org.apache.avro.reflect.Stringable;
 import org.apache.avro.specific.SpecificData;
 import org.apache.avro.util.ClassUtils;
+import org.apache.hadoop.classification.VisibleForTesting;
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.avro.AvroConverters.FieldStringConverter;
 import org.apache.parquet.avro.AvroConverters.FieldStringableConverter;
@@ -196,9 +197,9 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
     }
 
     try {
-      final String avroVersion = Schema.Parser.class.getPackage().getImplementationVersion();
-      // Avro 1.8 doesn't include conversions in the MODEL$ field
-      if (avroVersion.startsWith("1.8.")) {
+      final String avroVersion = getRuntimeAvroVersion();
+      // Avro 1.7 and 1.8 don't include conversions in the MODEL$ field
+      if (avroVersion != null && (avroVersion.startsWith("1.8.") || avroVersion.startsWith("1.7."))) {
         final Field conversionsField = clazz.getDeclaredField("conversions");
         conversionsField.setAccessible(true);
 
@@ -210,6 +211,11 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
     }
 
     return model;
+  }
+
+  @VisibleForTesting
+  static String getRuntimeAvroVersion() {
+    return Schema.Parser.class.getPackage().getImplementationVersion();
   }
 
   // this was taken from Avro's ReflectData
