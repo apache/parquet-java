@@ -18,8 +18,10 @@
  */
 package org.apache.parquet.avro;
 
+import com.google.common.collect.Lists;
 import org.apache.avro.Conversion;
 import org.apache.avro.Conversions;
+import org.apache.avro.Schema;
 import org.apache.avro.data.TimeConversions;
 import org.apache.avro.specific.SpecificData;
 import org.junit.Before;
@@ -33,7 +35,7 @@ import org.powermock.modules.junit4.PowerMockRunner;
 import java.math.BigDecimal;
 import java.time.Instant;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.*;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
 
 @RunWith(PowerMockRunner.class)
@@ -46,6 +48,37 @@ public class TestAvroRecordConverter {
     PowerMockito.mockStatic(AvroRecordConverter.class, CALLS_REAL_METHODS);
   }
 
+  @Test
+  public void testModelForSpecificRecordWithLogicalTypes() {
+    SpecificData model = AvroRecordConverter.getModelForSchema(LogicalTypesTest.SCHEMA$);
+
+    // Test that model is generated correctly
+    Conversion<?> conversion = model.getConversionByClass(Instant.class);
+    assertEquals(TimeConversions.TimestampMillisConversion.class, conversion.getClass());
+  }
+
+  @Test
+  public void testModelForSpecificRecordWithoutLogicalTypes() {
+    SpecificData model = AvroRecordConverter.getModelForSchema(Car.SCHEMA$);
+
+    assertTrue(model.getConversions().isEmpty());
+  }
+
+  @Test
+  public void testModelForGenericRecord() {
+    SpecificData model = AvroRecordConverter.getModelForSchema(
+      Schema.createRecord(
+        "someSchema",
+        "doc",
+        "some.namespace",
+        false,
+        Lists.newArrayList(new Schema.Field("strField", Schema.create(Schema.Type.STRING)))));
+
+    // There is no class "someSchema" on the classpath, so should return null
+    assertNull(model);
+  }
+
+  // Test logical type support for older Avro versions
   @Test
   public void testGetModelAvro1_7() {
     BDDMockito.given(AvroRecordConverter.getRuntimeAvroVersion()).willReturn("1.7.7");
@@ -84,15 +117,6 @@ public class TestAvroRecordConverter {
     final SpecificData model = AvroRecordConverter.getModelForSchema(Avro110GeneratedClass.SCHEMA$);
     Conversion<?> conversion = model.getConversionByClass(BigDecimal.class);
     assertEquals(Conversions.DecimalConversion.class, conversion.getClass());
-  }
-
-  @Test
-  public void testGetModelAvro1_11() {
-    SpecificData model = AvroRecordConverter.getModelForSchema(LogicalTypesTest.SCHEMA$);
-
-    // Test that model is generated correctly
-    Conversion<?> conversion = model.getConversionByClass(Instant.class);
-    assertEquals(TimeConversions.TimestampMillisConversion.class, conversion.getClass());
   }
 
   // Test Avro record class stubs, generated using different versions of the Avro compiler

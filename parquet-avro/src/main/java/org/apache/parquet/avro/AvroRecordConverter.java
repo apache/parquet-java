@@ -190,6 +190,11 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
       return null;
     }
 
+    // If clazz == null, the underlying Avro class for the schema is not on the classpath
+    if (clazz == null) {
+      return null;
+    }
+
     final SpecificData model;
     try {
       final Field modelField = clazz.getDeclaredField("MODEL$");
@@ -203,7 +208,7 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
       return null;
     } catch (IllegalAccessException e) {
       LOG.warn(String.format(
-        "The MODEL$ field on Avro class %s was inaccessible. Parquet will use default SpecificData model for " +
+        "Field `MODEL$` in class %s was inaccessible. Parquet will use default SpecificData model for " +
           "reading and writing.", clazz), e);
       return null;
     }
@@ -218,13 +223,13 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
         // Avro classes without logical types (denoted by the "conversions" field) can be returned as-is
         return model;
       }
-      conversionsField.setAccessible(true);
 
       final Conversion<?>[] conversions;
       try {
+        conversionsField.setAccessible(true);
         conversions = (Conversion<?>[]) conversionsField.get(null);
       } catch (IllegalAccessException e) {
-        LOG.warn(String.format("Field conversions in class %s was inaccessible. Parquet will use default " +
+        LOG.warn(String.format("Field `conversions` in class %s was inaccessible. Parquet will use default " +
           "SpecificData model for reading and writing.", clazz));
         return null;
       }
