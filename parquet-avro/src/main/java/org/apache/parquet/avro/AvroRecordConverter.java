@@ -61,6 +61,8 @@ import org.apache.parquet.io.api.GroupConverter;
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Type;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static org.apache.avro.SchemaCompatibility.SchemaCompatibilityType.COMPATIBLE;
 import static org.apache.avro.SchemaCompatibility.checkReaderWriterCompatibility;
@@ -76,6 +78,8 @@ import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
  * @param <T> a subclass of Avro's IndexedRecord
  */
 class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
+
+  private static final Logger LOG = LoggerFactory.getLogger(AvroRecordConverter.class);
 
   private static final String STRINGABLE_PROP = "avro.java.string";
   private static final String JAVA_CLASS_PROP = "java-class";
@@ -192,22 +196,40 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
       modelField.setAccessible(true);
 
       model = (SpecificData) modelField.get(null);
-    } catch (Exception e) {
+    } catch (NoSuchFieldException e) {
+      LOG.info(String.format(
+        "Generated Avro class %s did not contain a MODEL$ field. Parquet will use default SpecificData model for " +
+          "reading and writing.", clazz));
+      return null;
+    } catch (IllegalAccessException e) {
+      LOG.warn(String.format(
+        "The MODEL$ field on Avro class %s was inaccessible. Parquet will use default SpecificData model for " +
+          "reading and writing.", clazz), e);
       return null;
     }
 
-    try {
-      final String avroVersion = getRuntimeAvroVersion();
-      // Avro 1.7 and 1.8 don't include conversions in the MODEL$ field
-      if (avroVersion != null && (avroVersion.startsWith("1.8.") || avroVersion.startsWith("1.7."))) {
-        final Field conversionsField = clazz.getDeclaredField("conversions");
-        conversionsField.setAccessible(true);
-
-        final Conversion<?>[] conversions = (Conversion<?>[]) conversionsField.get(null);
-        Arrays.stream(conversions).filter(Objects::nonNull).forEach(model::addLogicalTypeConversion);
+    final String avroVersion = getRuntimeAvroVersion();
+    // Avro 1.7 and 1.8 don't include conversions in the MODEL$ field by default
+    if (avroVersion != null && (avroVersion.startsWith("1.8.") || avroVersion.startsWith("1.7."))) {
+      final Field conversionsField;
+      try {
+        conversionsField = clazz.getDeclaredField("conversions");
+      } catch (NoSuchFieldException e) {
+        // Avro classes without logical types (denoted by the "conversions" field) can be returned as-is
+        return model;
       }
-    } catch (Exception e) {
-      return null;
+      conversionsField.setAccessible(true);
+
+      final Conversion<?>[] conversions;
+      try {
+        conversions = (Conversion<?>[]) conversionsField.get(null);
+      } catch (IllegalAccessException e) {
+        LOG.warn(String.format("Field conversions in class %s was inaccessible. Parquet will use default " +
+          "SpecificData model for reading and writing.", clazz));
+        return null;
+      }
+
+      Arrays.stream(conversions).filter(Objects::nonNull).forEach(model::addLogicalTypeConversion);
     }
 
     return model;
