@@ -233,7 +233,11 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
         return null;
       }
 
-      Arrays.stream(conversions).filter(Objects::nonNull).forEach(model::addLogicalTypeConversion);
+      for (int i = 0; i < conversions.length; i++) {
+        if (conversions[i] != null) {
+          model.addLogicalTypeConversion(conversions[i]);
+        }
+      }
     }
 
     return model;
