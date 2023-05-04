@@ -51,7 +51,6 @@ import org.apache.avro.reflect.ReflectData;
 import org.apache.avro.reflect.Stringable;
 import org.apache.avro.specific.SpecificData;
 import org.apache.avro.util.ClassUtils;
-import org.apache.hadoop.classification.VisibleForTesting;
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.avro.AvroConverters.FieldStringConverter;
 import org.apache.parquet.avro.AvroConverters.FieldStringableConverter;
@@ -240,7 +239,6 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
     return model;
   }
 
-  @VisibleForTesting
   static String getRuntimeAvroVersion() {
     return Schema.Parser.class.getPackage().getImplementationVersion();
   }
