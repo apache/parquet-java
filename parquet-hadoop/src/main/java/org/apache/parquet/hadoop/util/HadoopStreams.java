@@ -56,7 +56,7 @@ public class HadoopStreams {
     Objects.requireNonNull(stream, "Cannot wrap a null input stream");
 
     // Try to check using hasCapabilities(str)
-    Boolean hasCapabilitiesResult = isWrappedStreamByteBufferReadableHasCapabilities(stream);
+    Boolean hasCapabilitiesResult = isWrappedStreamByteBufferReadable(stream);
 
     // If it is null, then fall back to the old method
     if (hasCapabilitiesResult != null) {
@@ -111,7 +111,7 @@ public class HadoopStreams {
    * @return true if it is safe to a H2SeekableInputStream to access
    * the data, null when it cannot be determined because of missing hasCapabilities
    */
-  private static Boolean isWrappedStreamByteBufferReadableHasCapabilities(FSDataInputStream stream) {
+  private static Boolean isWrappedStreamByteBufferReadable(FSDataInputStream stream) {
     if (hasCapabilitiesMethod.isNoop()) {
       // When the method is not available, just return a null
       return null;
@@ -128,7 +128,7 @@ public class HadoopStreams {
     InputStream wrapped = stream.getWrappedStream();
     if (wrapped instanceof FSDataInputStream) {
       LOG.debug("Checking on wrapped stream {} of {} whether is ByteBufferReadable", wrapped, stream);
-      return isWrappedStreamByteBufferReadableHasCapabilities(((FSDataInputStream) wrapped));
+      return isWrappedStreamByteBufferReadable(((FSDataInputStream) wrapped));
     }
     return wrapped instanceof ByteBufferReadable;
   }
