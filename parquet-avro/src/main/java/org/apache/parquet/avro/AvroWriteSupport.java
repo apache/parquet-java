@@ -43,6 +43,8 @@ import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Type;
 import org.apache.hadoop.util.ReflectionUtils;
 import org.apache.parquet.Preconditions;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Avro implementation of {@link WriteSupport} for generic, specific, and
@@ -50,6 +52,8 @@ import org.apache.parquet.Preconditions;
  * {@link AvroParquetOutputFormat} rather than using this class directly.
  */
 public class AvroWriteSupport<T> extends WriteSupport<T> {
+
+  private static final Logger LOG = LoggerFactory.getLogger(AvroWriteSupport.class);
 
   public static final String AVRO_DATA_SUPPLIER = "parquet.avro.write.data.supplier";
 
@@ -402,7 +406,15 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
 
   private static GenericData getDataModel(Configuration conf, Schema schema) {
     if (conf.get(AVRO_DATA_SUPPLIER) == null && schema != null) {
-      final GenericData modelForSchema = AvroRecordConverter.getModelForSchema(schema);
+      GenericData modelForSchema;
+      try {
+        modelForSchema = AvroRecordConverter.getModelForSchema(schema);
+      } catch (Exception e) {
+        LOG.warn(String.format("Failed to derive data model for Avro schema %s. Parquet will use default " +
+          "SpecificData model for writing to sink.", schema), e);
+        modelForSchema = null;
+      }
+
 
       if (modelForSchema != null) {
         return modelForSchema;
