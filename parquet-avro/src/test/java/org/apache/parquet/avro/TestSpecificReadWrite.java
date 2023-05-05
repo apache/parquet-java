@@ -30,14 +30,19 @@ import static org.apache.parquet.hadoop.ParquetWriter.DEFAULT_PAGE_SIZE;
 import com.google.common.collect.ImmutableList;
 import java.io.File;
 import java.io.IOException;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+
 import org.apache.avro.Schema;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.junit.Test;
+import org.apache.parquet.avro.LogicalTypesTest;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
@@ -235,6 +240,43 @@ public class TestSpecificReadWrite {
         assertEquals(5, car.getOpt());
       }
     }
+  }
+
+  @Test
+  public void testParsesSpecificDataModel() throws IOException {
+    // SpecificRecord contains a logical type and will fail to decode unless its SpecificData model is parsed
+    List<LogicalTypesTest> records = IntStream
+      .range(0, 25)
+      .mapToObj(i -> LogicalTypesTest.newBuilder().setTimestamp(Instant.now()).build())
+      .collect(Collectors.toList());
+
+    // Test that SpecificData model is parsed in AvroParquetWriter
+    File tmp = File.createTempFile(getClass().getSimpleName(), ".tmp");
+    tmp.deleteOnExit();
+    tmp.delete();
+    Path path = new Path(tmp.getPath());
+
+    try(
+      ParquetWriter<LogicalTypesTest> writer = AvroParquetWriter.<LogicalTypesTest>builder(path)
+        .withSchema(LogicalTypesTest.SCHEMA$)
+        .withConf(new Configuration(false))
+        .withCompressionCodec(CompressionCodecName.UNCOMPRESSED)
+        .build()
+    ) {
+      for (LogicalTypesTest record : records) {
+        writer.write(record);
+      }
+    }
+
+    // Test that SpecificData model is parsed in AvroParquetReader
+    final List<LogicalTypesTest> output = new ArrayList<>();
+    try (ParquetReader<org.apache.parquet.avro.LogicalTypesTest> reader = new AvroParquetReader<>(testConf, path)) {
+      for (LogicalTypesTest record = reader.read(); record != null; record = reader.read()) {
+        output.add(record);
+      }
+    }
+
+    assertEquals(records, output);
   }
 
   private Path writeCarsToParquetFile( int num, CompressionCodecName compression, boolean enableDictionary) throws IOException {
