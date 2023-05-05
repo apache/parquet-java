@@ -27,6 +27,8 @@ import org.apache.hadoop.util.ReflectionUtils;
 import org.apache.parquet.hadoop.api.ReadSupport;
 import org.apache.parquet.io.api.RecordMaterializer;
 import org.apache.parquet.schema.MessageType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Avro implementation of {@link ReadSupport} for avro generic, specific, and
@@ -36,6 +38,8 @@ import org.apache.parquet.schema.MessageType;
  * @param <T> the Java type of records created by this ReadSupport
  */
 public class AvroReadSupport<T> extends ReadSupport<T> {
+
+  private static final Logger LOG = LoggerFactory.getLogger(AvroReadSupport.class);
 
   public static String AVRO_REQUESTED_PROJECTION = "parquet.avro.projection";
   private static final String AVRO_READ_SCHEMA = "parquet.avro.read.schema";
@@ -134,7 +138,7 @@ public class AvroReadSupport<T> extends ReadSupport<T> {
       avroSchema = new AvroSchemaConverter(configuration).convert(parquetSchema);
     }
 
-    GenericData model = getDataModel(configuration);
+    GenericData model = getDataModel(configuration, avroSchema);
     String compatEnabled = metadata.get(AvroReadSupport.AVRO_COMPATIBILITY);
     if (compatEnabled != null && Boolean.valueOf(compatEnabled)) {
       return newCompatMaterializer(parquetSchema, avroSchema, model);
@@ -149,10 +153,26 @@ public class AvroReadSupport<T> extends ReadSupport<T> {
         parquetSchema, avroSchema, model);
   }
 
-  private GenericData getDataModel(Configuration conf) {
+  private GenericData getDataModel(Configuration conf, Schema schema) {
     if (model != null) {
       return model;
     }
+
+    if (conf.get(AVRO_DATA_SUPPLIER) == null && schema != null) {
+      GenericData modelForSchema;
+      try {
+        modelForSchema = AvroRecordConverter.getModelForSchema(schema);
+      } catch (Exception e) {
+        LOG.warn(String.format("Failed to derive data model for Avro schema %s. Parquet will use default " +
+          "SpecificData model for reading from source.", schema), e);
+        modelForSchema = null;
+      }
+
+      if (modelForSchema != null) {
+        return modelForSchema;
+      }
+    }
+
     Class<? extends AvroDataSupplier> suppClass = conf.getClass(
         AVRO_DATA_SUPPLIER, SpecificDataSupplier.class, AvroDataSupplier.class);
     return ReflectionUtils.newInstance(suppClass, conf).get();
