@@ -67,7 +67,7 @@ public class HadoopStreams {
       }
     }
 
-    return isWrappedStreamByteBufferReadableLegacy(stream);
+    return unwrapByteBufferReadableLegacy(stream);
   }
 
   /**
@@ -80,11 +80,11 @@ public class HadoopStreams {
    * @param stream stream to probe
    * @return A H2SeekableInputStream to access, or H1SeekableInputStream if the stream is not seekable
    */
-  private static SeekableInputStream isWrappedStreamByteBufferReadableLegacy(FSDataInputStream stream) {
+  private static SeekableInputStream unwrapByteBufferReadableLegacy(FSDataInputStream stream) {
     InputStream wrapped = stream.getWrappedStream();
     if (wrapped instanceof FSDataInputStream) {
       LOG.debug("Checking on wrapped stream {} of {} whether is ByteBufferReadable", wrapped, stream);
-      return isWrappedStreamByteBufferReadableLegacy(((FSDataInputStream) wrapped));
+      return unwrapByteBufferReadableLegacy(((FSDataInputStream) wrapped));
     }
     if (stream.getWrappedStream() instanceof ByteBufferReadable) {
       return new H2SeekableInputStream(stream);
@@ -117,9 +117,9 @@ public class HadoopStreams {
       return null;
     }
 
-    Boolean hasCapabilities = hasCapabilitiesMethod.invoke(stream, "in:readbytebuffer");
+    boolean isByteBufferReadable = hasCapabilitiesMethod.invoke(stream, "in:readbytebuffer");
 
-    if (hasCapabilities) {
+    if (isByteBufferReadable) {
       // stream is issuing the guarantee that it implements the
       // API. Holds for all implementations in hadoop-*
       // since Hadoop 3.3.0 (HDFS-14111).
