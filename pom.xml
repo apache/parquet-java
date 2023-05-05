@@ -593,7 +593,7 @@
     <profile>
       <id>hadoop2</id>
       <properties>
-        <hadoop.version>2.9.2</hadoop.version>
+        <hadoop.version>2.7.3</hadoop.version>
       </properties>
     </profile>
 
