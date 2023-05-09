@@ -310,11 +310,11 @@ public class TestBloomFiltering {
       writeBuilder
         .withAdaptiveBloomFilterEnabled(true)
         .withBloomFilterEnabled("location.lat", true)
-        .withBloomFilterCandidateSize("location.lat", 10)
+        .withBloomFilterCandidateNumber("location.lat", 10)
         .withBloomFilterEnabled("name", true)
-        .withBloomFilterCandidateSize("name", 10)
+        .withBloomFilterCandidateNumber("name", 10)
         .withBloomFilterEnabled("id", true)
-        .withBloomFilterCandidateSize("id", 10);
+        .withBloomFilterCandidateNumber("id", 10);
     } else {
       writeBuilder
         .withBloomFilterNDV("location.lat", 10000L)

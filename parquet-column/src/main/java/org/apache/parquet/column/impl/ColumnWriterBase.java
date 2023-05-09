@@ -98,8 +98,8 @@ abstract class ColumnWriterBase implements ColumnWriter {
       this.bloomFilter = new BlockSplitBloomFilter(optimalNumOfBits / 8, maxBloomFilterSize);
     } else {
       if(props.getAdaptiveBloomFilterEnabled(path)) {
-        int candidateSize = props.getBloomFilterCandidateSize(path);
-        this.bloomFilter = new AdaptiveBlockSplitBloomFilter(maxBloomFilterSize, candidateSize, fpp.getAsDouble(), path);
+        int numCandidates = props.getBloomFilterCandidatesCount(path);
+        this.bloomFilter = new AdaptiveBlockSplitBloomFilter(maxBloomFilterSize, numCandidates, fpp.getAsDouble(), path);
       } else {
         this.bloomFilter = new BlockSplitBloomFilter(maxBloomFilterSize, maxBloomFilterSize);
       }

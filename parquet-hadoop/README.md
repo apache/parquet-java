@@ -197,7 +197,7 @@ This property is the length to be used for truncating binary values if possible 
 
 **Property:** `parquet.bloom.filter.enabled`  
 **Description:** Whether to enable writing bloom filter.  
-If it is true, the bloom filter will be enable for all columns. If it is false, it will be disabled for all columns.  
+If it is true, the bloom filter will be enabled for all columns. If it is false, it will be disabled for all columns.  
 It is also possible to enable it for some columns by specifying the column name within the property followed by #.  
 **Default value:** `false`  
 **Example:**
@@ -208,6 +208,23 @@ conf.set("parquet.bloom.filter.enabled", true);
 conf.set("parquet.bloom.filter.enabled#column.path", false);
 // The bloom filter will be enabled for all columns except 'column.path'
 ```
+
+---
+
+**Property:** `parquet.bloom.filter.adaptive.enabled`  
+**Description:** Whether to enable writing adaptive bloom filter.  
+If it is true, the bloom filter will be generated with the optimal bit size 
+according to the number of real data distinct values. If it is false, it will not take effect.
+Note that the maximum bytes of the bloom filter will not exceed `parquet.bloom.filter.max.bytes` configuration.
+**Default value:** `false`
+
+---
+
+**Property:** `parquet.bloom.filter.candidates.number`  
+**Description:** The number of candidate bloom filters written at the same time.  
+When `parquet.bloom.filter.adaptive.enabled` is true, multiple candidate bloom filters will be written 
+at the same time, and a bloom filter with the optimal bit size will be selected when finally writing to the file.
+**Default value:** `5`
 
 ---
 

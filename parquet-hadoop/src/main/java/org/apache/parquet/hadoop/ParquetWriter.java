@@ -634,10 +634,10 @@ public class ParquetWriter<T> implements Closeable {
      * When `AdaptiveBloomFilter` is enabled, set how many bloom filter candidates to use.
      *
      * @param columnPath the path of the column (dot-string)
-     * @param size the candidate size
+     * @param number the number of candidate
      */
-    public SELF withBloomFilterCandidateSize(String columnPath, int size) {
-      encodingPropsBuilder.withBloomFilterCandidateSize(columnPath, size);
+    public SELF withBloomFilterCandidateNumber(String columnPath, int number) {
+      encodingPropsBuilder.withBloomFilterCandidatesNumber(columnPath, number);
       return self();
     }
 

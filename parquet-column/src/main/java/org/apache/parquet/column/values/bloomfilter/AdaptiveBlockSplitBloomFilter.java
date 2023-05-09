@@ -38,21 +38,20 @@ import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.io.api.Binary;
 
 /**
- * `AdaptiveBlockSplitBloomFilter` contains multiple `BlockSplitBloomFilter` as candidates and inserts values in
- * the candidates at the same time.
  * The purpose of this is to finally generate a bloom filter with the optimal bit size according to the number
- * of real data distinct values. Use the largest bloom filter as an approximate deduplication counter, and then
- * remove incapable bloom filter candidate during data insertion.
+ * of real data distinct values.
+ * `AdaptiveBlockSplitBloomFilter` contains multiple `BlockSplitBloomFilter` as candidates and inserts values in
+ * the candidates at the same time. Finally we will choose the smallest candidate to write out.
  */
 public class AdaptiveBlockSplitBloomFilter implements BloomFilter {
 
   private static final Logger LOG = LoggerFactory.getLogger(AdaptiveBlockSplitBloomFilter.class);
 
   // multiple candidates, inserting data at the same time. If the distinct values are greater than the
-  // expected NDV of candidates, it will be removed. Finally we will choose the smallest candidate to write out.
+  // expected NDV of one candidate, it will be removed. Finally we will choose the smallest candidate to write out.
   private final List<BloomFilterCandidate> candidates = new ArrayList<>();
 
-  // the largest among candidates and used as an approximate deduplication counter
+  // the largest among candidates and also used as an approximate deduplication counter
   private BloomFilterCandidate largestCandidate;
 
   // the accumulator of the number of distinct values that have been inserted so far
@@ -65,15 +64,16 @@ public class AdaptiveBlockSplitBloomFilter implements BloomFilter {
   private static final int NDV_STEP = 500;
   private int maximumBytes = UPPER_BOUND_BYTES;
   private int minimumBytes = LOWER_BOUND_BYTES;
+  private int minimumCandidateNdv = 16;
   // the hash strategy used in this bloom filter.
   private final HashStrategy hashStrategy;
   // the column to build bloom filter
   private ColumnDescriptor column;
 
   /**
-   * Given the maximum acceptable bytes size of bloom filter, generate candidates according it.
+   * Given the maximum acceptable bytes size of bloom filter.
    *
-   * @param maximumBytes  the maximum bit size of candidate
+   * @param maximumBytes  the maximum bytes size of candidate
    * @param numCandidates the number of candidates
    * @param fpp           the false positive probability
    */
@@ -95,17 +95,17 @@ public class AdaptiveBlockSplitBloomFilter implements BloomFilter {
   }
 
   /**
-   * Given the maximum acceptable bytes size of bloom filter, generate candidates according
-   * to the bytes size. Because the bytes size of the candidate need to be a
-   * power of 2, we setting the candidate size according to `maxBytes` of `1/2`, `1/4`, `1/8`, etc.
+   * This method will generate candidates according to the maximum acceptable bytes size of bloom filter.
+   * Because the bytes size of the candidate need to be a power of 2, here we set the candidate size to be
+   * a proportion of `maxBytes` like `1/2`, `1/4`, `1/8`, etc.
    *
-   * @param maxBytes      the maximum bit size of candidate
+   * @param maxBytes      the maximum bytes size of candidate
    * @param numCandidates the number of candidates
    * @param fpp           the false positive probability
    */
   private void initCandidates(int maxBytes, int numCandidates, double fpp) {
     int candidateByteSize = calculateBoundedPowerOfTwo(maxBytes);
-    for (int i = 1; i <= numCandidates; i++) {
+    for (int i = 0; i < numCandidates; i++) {
       int candidateExpectedNDV = expectedNDV(candidateByteSize, fpp);
       // `candidateByteSize` is too small, just drop it
       if (candidateExpectedNDV <= 0) {
@@ -116,12 +116,11 @@ public class AdaptiveBlockSplitBloomFilter implements BloomFilter {
       candidates.add(candidate);
       candidateByteSize = calculateBoundedPowerOfTwo(candidateByteSize / 2);
     }
-    Optional<BloomFilterCandidate> maxBloomFilter = candidates.stream().max(BloomFilterCandidate::compareTo);
-    if (maxBloomFilter.isPresent()) {
-      largestCandidate = maxBloomFilter.get();
-    } else {
-      throw new IllegalArgumentException("`maximumBytes` is too small to create one valid bloom filter");
+    if (candidates.isEmpty()) {
+      // `maxBytes` is too small, but at least one candidate will be generated, 32 bytes size and can accept 16 distinct values.
+      candidates.add(new BloomFilterCandidate(minimumCandidateNdv, minimumBytes, minimumBytes, maximumBytes, hashStrategy));
     }
+    largestCandidate = candidates.stream().max(BloomFilterCandidate::compareTo).get();
   }
 
   /**
@@ -149,7 +148,7 @@ public class AdaptiveBlockSplitBloomFilter implements BloomFilter {
   }
 
   /**
-   * BloomFilter bitsets size should be power of 2, see [[BlockSplitBloomFilter#initBitset]]
+   * BloomFilter bytes size should be power of 2, see [[BlockSplitBloomFilter#initBitset]]
    *
    * @param numBytes the bytes size
    * @return the largest power of 2 less or equal to numBytes
@@ -158,7 +157,7 @@ public class AdaptiveBlockSplitBloomFilter implements BloomFilter {
     if (numBytes < minimumBytes) {
       numBytes = minimumBytes;
     }
-    // if `numBytes` is not power of 2, get the next largest power of two less than `numBytes`
+    // if `numBytes` is not power of 2, get the largest power of two less than `numBytes`
     if ((numBytes & (numBytes - 1)) != 0) {
       numBytes = Integer.highestOneBit(numBytes);
     }
@@ -187,7 +186,8 @@ public class AdaptiveBlockSplitBloomFilter implements BloomFilter {
     BloomFilterCandidate optimalBloomFilter = optimalCandidate();
     optimalBloomFilter.bloomFilter.writeTo(out);
     String columnName = column != null && column.getPath() != null ? Arrays.toString(column.getPath()) : "unknown";
-    LOG.info("The number of distinct values in {} is approximately {}, the optimal bloom filter NDV is {}, byte size is {}.",
+    LOG.info("The number of distinct values in {} is approximately {}, the optimal bloom filter can accept {}"
+        + " distinct values, byte size is {}.",
       columnName, distinctValueCounter, optimalBloomFilter.getExpectedNDV(),
       optimalBloomFilter.bloomFilter.getBitsetSize());
   }

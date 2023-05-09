@@ -190,11 +190,11 @@ public class TestBlockSplitBloomFilter {
   @Test
   public void testAdaptiveBloomFilter() {
     int maxBloomFilterSize = 1024 * 1024;
-    int candidateSize = 10;
+    int candidateNumber = 10;
     AdaptiveBlockSplitBloomFilter adaptiveBloomFilter = new AdaptiveBlockSplitBloomFilter(maxBloomFilterSize,
-      candidateSize, 0.01, null);
+      candidateNumber, 0.01, null);
 
-    assertEquals(candidateSize, adaptiveBloomFilter.getCandidates().size());
+    assertEquals(candidateNumber, adaptiveBloomFilter.getCandidates().size());
 
     Set<String> existedValue = new HashSet<>();
     while (existedValue.size() < 10000) {
