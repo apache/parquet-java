@@ -108,7 +108,7 @@ public class ParquetProperties {
   private final int maxBloomFilterBytes;
   private final ColumnProperty<Boolean> bloomFilterEnabled;
   private final ColumnProperty<Boolean> adaptiveBloomFilterEnabled;
-  private final ColumnProperty<Integer> bloomFilterCandidatesNum;
+  private final ColumnProperty<Integer> numBloomFilterCandidates;
   private final int pageRowCountLimit;
   private final boolean pageWriteChecksumEnabled;
   private final boolean enableByteStreamSplit;
@@ -133,7 +133,7 @@ public class ParquetProperties {
     this.bloomFilterEnabled = builder.bloomFilterEnabled.build();
     this.maxBloomFilterBytes = builder.maxBloomFilterBytes;
     this.adaptiveBloomFilterEnabled = builder.adaptiveBloomFilterEnabled.build();
-    this.bloomFilterCandidatesNum = builder.bloomFilterCandidatesNum.build();
+    this.numBloomFilterCandidates = builder.numBloomFilterCandidates.build();
     this.pageRowCountLimit = builder.pageRowCountLimit;
     this.pageWriteChecksumEnabled = builder.pageWriteChecksumEnabled;
     this.enableByteStreamSplit = builder.enableByteStreamSplit;
@@ -286,7 +286,7 @@ public class ParquetProperties {
   }
 
   public int getBloomFilterCandidatesCount(ColumnDescriptor column) {
-    return bloomFilterCandidatesNum.getValue(column);
+    return numBloomFilterCandidates.getValue(column);
   }
 
   public static Builder builder() {
@@ -332,7 +332,7 @@ public class ParquetProperties {
     private final ColumnProperty.Builder<Double> bloomFilterFPPs;
     private int maxBloomFilterBytes = DEFAULT_MAX_BLOOM_FILTER_BYTES;
     private final ColumnProperty.Builder<Boolean> adaptiveBloomFilterEnabled;
-    private final ColumnProperty.Builder<Integer> bloomFilterCandidatesNum;
+    private final ColumnProperty.Builder<Integer> numBloomFilterCandidates;
     private final ColumnProperty.Builder<Boolean> bloomFilterEnabled;
     private int pageRowCountLimit = DEFAULT_PAGE_ROW_COUNT_LIMIT;
     private boolean pageWriteChecksumEnabled = DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED;
@@ -344,7 +344,7 @@ public class ParquetProperties {
       bloomFilterNDVs = ColumnProperty.<Long>builder().withDefaultValue(null);
       bloomFilterFPPs = ColumnProperty.<Double>builder().withDefaultValue(DEFAULT_BLOOM_FILTER_FPP);
       adaptiveBloomFilterEnabled = ColumnProperty.<Boolean>builder().withDefaultValue(DEFAULT_ADAPTIVE_BLOOM_FILTER_ENABLED);
-      bloomFilterCandidatesNum = ColumnProperty.<Integer>builder().withDefaultValue(DEFAULT_BLOOM_FILTER_CANDIDATES_NUMBER);
+      numBloomFilterCandidates = ColumnProperty.<Integer>builder().withDefaultValue(DEFAULT_BLOOM_FILTER_CANDIDATES_NUMBER);
     }
 
     private Builder(ParquetProperties toCopy) {
@@ -363,7 +363,7 @@ public class ParquetProperties {
       this.bloomFilterFPPs = ColumnProperty.<Double>builder(toCopy.bloomFilterFPPs);
       this.bloomFilterEnabled = ColumnProperty.<Boolean>builder(toCopy.bloomFilterEnabled);
       this.adaptiveBloomFilterEnabled = ColumnProperty.<Boolean>builder(toCopy.adaptiveBloomFilterEnabled);
-      this.bloomFilterCandidatesNum = ColumnProperty.<Integer>builder(toCopy.bloomFilterCandidatesNum);
+      this.numBloomFilterCandidates = ColumnProperty.<Integer>builder(toCopy.numBloomFilterCandidates);
       this.maxBloomFilterBytes = toCopy.maxBloomFilterBytes;
       this.enableByteStreamSplit = toCopy.enableByteStreamSplit;
     }
@@ -543,7 +543,7 @@ public class ParquetProperties {
      */
     public Builder withBloomFilterCandidatesNumber(String columnPath, int number) {
       Preconditions.checkArgument(number > 0, "Invalid candidates number for column \"%s\": %d", columnPath, number);
-      this.bloomFilterCandidatesNum.withDefaultValue(number);
+      this.numBloomFilterCandidates.withDefaultValue(number);
       return this;
     }
 

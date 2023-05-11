@@ -215,15 +215,16 @@ conf.set("parquet.bloom.filter.enabled#column.path", false);
 **Description:** Whether to enable writing adaptive bloom filter.  
 If it is true, the bloom filter will be generated with the optimal bit size 
 according to the number of real data distinct values. If it is false, it will not take effect.
-Note that the maximum bytes of the bloom filter will not exceed `parquet.bloom.filter.max.bytes` configuration.
+Note that the maximum bytes of the bloom filter will not exceed `parquet.bloom.filter.max.bytes` configuration (if it is 
+set too small, the generated bloom filter will not be efficient).
 **Default value:** `false`
 
 ---
 
 **Property:** `parquet.bloom.filter.candidates.number`  
 **Description:** The number of candidate bloom filters written at the same time.  
-When `parquet.bloom.filter.adaptive.enabled` is true, multiple candidate bloom filters will be written 
-at the same time, and a bloom filter with the optimal bit size will be selected when finally writing to the file.
+When `parquet.bloom.filter.adaptive.enabled` is true, multiple candidate bloom filters will be inserted 
+at the same time, finally a bloom filter with the optimal bit size will be selected and written to the file.
 **Default value:** `5`
 
 ---

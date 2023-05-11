@@ -28,7 +28,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,7 +40,8 @@ import org.apache.parquet.io.api.Binary;
  * The purpose of this is to finally generate a bloom filter with the optimal bit size according to the number
  * of real data distinct values.
  * `AdaptiveBlockSplitBloomFilter` contains multiple `BlockSplitBloomFilter` as candidates and inserts values in
- * the candidates at the same time. Finally we will choose the smallest candidate to write out.
+ * the candidates at the same time. Some candidates that are too small will be eliminated during the insertion process.
+ * Finally we will choose the most appropriate size candidate to write out.
  */
 public class AdaptiveBlockSplitBloomFilter implements BloomFilter {
 
@@ -54,8 +54,8 @@ public class AdaptiveBlockSplitBloomFilter implements BloomFilter {
   // the largest among candidates and also used as an approximate deduplication counter
   private BloomFilterCandidate largestCandidate;
 
-  // the accumulator of the number of distinct values that have been inserted so far
-  private long distinctValueCounter = 0;
+  // the accumulator of the number of distinct hash values that have been inserted so far
+  private long numDistinctHashValues = 0;
 
   // indicates that the bloom filter candidate has been written out and new data should be no longer allowed to be inserted
   private boolean finalized = false;
@@ -71,8 +71,6 @@ public class AdaptiveBlockSplitBloomFilter implements BloomFilter {
   private ColumnDescriptor column;
 
   /**
-   * Given the maximum acceptable bytes size of bloom filter.
-   *
    * @param maximumBytes  the maximum bytes size of candidate
    * @param numCandidates the number of candidates
    * @param fpp           the false positive probability
@@ -188,7 +186,7 @@ public class AdaptiveBlockSplitBloomFilter implements BloomFilter {
     String columnName = column != null && column.getPath() != null ? Arrays.toString(column.getPath()) : "unknown";
     LOG.info("The number of distinct values in {} is approximately {}, the optimal bloom filter can accept {}"
         + " distinct values, byte size is {}.",
-      columnName, distinctValueCounter, optimalBloomFilter.getExpectedNDV(),
+      columnName, numDistinctHashValues, optimalBloomFilter.getExpectedNDV(),
       optimalBloomFilter.bloomFilter.getBitsetSize());
   }
 
@@ -201,12 +199,12 @@ public class AdaptiveBlockSplitBloomFilter implements BloomFilter {
   @Override
   public void insertHash(long hash) {
     Preconditions.checkArgument(!finalized,
-      "AdaptiveBlockSplitBloomFilter insertion has been mark as finalized, no more data is allowed!");
+      "Insertion has been mark as finalized, no more data is allowed!");
     if (!largestCandidate.bloomFilter.findHash(hash)) {
-      distinctValueCounter++;
+      numDistinctHashValues++;
     }
     // distinct values exceed the expected size, remove the bad bloom filter (leave at least the max bloom filter candidate)
-    candidates.removeIf(candidate -> candidate.getExpectedNDV() < distinctValueCounter && candidate != largestCandidate);
+    candidates.removeIf(candidate -> candidate.getExpectedNDV() < numDistinctHashValues && candidate != largestCandidate);
     candidates.forEach(candidate -> candidate.getBloomFilter().insertHash(hash));
   }
 
@@ -268,7 +266,7 @@ public class AdaptiveBlockSplitBloomFilter implements BloomFilter {
   protected class BloomFilterCandidate implements Comparable<BloomFilterCandidate> {
     // the bloom filter candidate
     final private BlockSplitBloomFilter bloomFilter;
-    // the expected NDV (number of distinct value) in the candidate
+    // the max excepted number of distinct value in the candidate
     final private int expectedNDV;
 
     public BloomFilterCandidate(int expectedNDV, int candidateBytes,
