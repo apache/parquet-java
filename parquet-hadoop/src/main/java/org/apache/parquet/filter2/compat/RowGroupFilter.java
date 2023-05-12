@@ -18,6 +18,11 @@
  */
 package org.apache.parquet.filter2.compat;
 
+import static org.apache.parquet.filter2.compat.PredicateEvaluation.BLOCK_CANNOT_MATCH;
+import static org.apache.parquet.filter2.compat.PredicateEvaluation.BLOCK_MIGHT_MATCH;
+import static org.apache.parquet.filter2.compat.PredicateEvaluation.BLOCK_MUST_MATCH;
+import static org.apache.parquet.filter2.compat.PredicateEvaluation.isExactPredicate;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -34,8 +39,6 @@ import org.apache.parquet.filter2.statisticslevel.StatisticsFilter;
 import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.schema.MessageType;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Given a {@link Filter} applies it to a list of BlockMetaData (row groups)
@@ -97,21 +100,32 @@ public class RowGroupFilter implements Visitor<List<BlockMetaData>> {
     List<BlockMetaData> filteredBlocks = new ArrayList<BlockMetaData>();
 
     for (BlockMetaData block : blocks) {
-      boolean drop = false;
-
-      if(levels.contains(FilterLevel.STATISTICS)) {
-        drop = StatisticsFilter.canDrop(filterPredicate, block.getColumns());
+      Boolean predicate = BLOCK_MIGHT_MATCH;
+      if (levels.contains(FilterLevel.STATISTICS)) {
+        predicate = StatisticsFilter.predicate(filterPredicate, block.getColumns());
+        if(isExactPredicate(predicate)) {
+          if (predicate == BLOCK_MUST_MATCH) {
+            filteredBlocks.add(block);
+          }
+          continue;
+        }
       }
 
-      if(!drop && levels.contains(FilterLevel.DICTIONARY)) {
-        drop = DictionaryFilter.canDrop(filterPredicate, block.getColumns(), reader.getDictionaryReader(block));
+      if (levels.contains(FilterLevel.DICTIONARY)) {
+        predicate = DictionaryFilter.predicate(filterPredicate, block.getColumns(), reader.getDictionaryReader(block));
+        if (isExactPredicate(predicate)) {
+          if (predicate == BLOCK_MUST_MATCH) {
+            filteredBlocks.add(block);
+          }
+          continue;
+        }
       }
 
-      if (!drop && levels.contains(FilterLevel.BLOOMFILTER)) {
-        drop = BloomFilterImpl.canDrop(filterPredicate, block.getColumns(), reader.getBloomFilterDataReader(block));
+      if (levels.contains(FilterLevel.BLOOMFILTER)) {
+        predicate = BloomFilterImpl.predicate(filterPredicate, block.getColumns(), reader.getBloomFilterDataReader(block));
       }
 
-      if(!drop) {
+      if (predicate != BLOCK_CANNOT_MATCH) {
         filteredBlocks.add(block);
       }
     }

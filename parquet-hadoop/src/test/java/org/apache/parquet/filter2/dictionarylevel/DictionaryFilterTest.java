@@ -71,11 +71,13 @@ import java.util.UUID;
 
 import static org.apache.parquet.column.ParquetProperties.WriterVersion.PARQUET_1_0;
 import static org.apache.parquet.column.ParquetProperties.WriterVersion.PARQUET_2_0;
+import static org.apache.parquet.filter2.compat.PredicateEvaluation.BLOCK_MUST_MATCH;
 import static org.apache.parquet.filter2.dictionarylevel.DictionaryFilter.canDrop;
 import static org.apache.parquet.filter2.predicate.FilterApi.*;
 import static org.apache.parquet.hadoop.metadata.CompressionCodecName.GZIP;
 import static org.apache.parquet.schema.MessageTypeParser.parseMessageType;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyZeroInteractions;
@@ -802,6 +804,13 @@ public class DictionaryFilterTest {
       canDrop(LogicalInverseRewriter.rewrite(not(userDefined(fake, nullAccepting))), ccmd, dictionaries));
     assertFalse("Should not drop block for null rejecting udp",
       canDrop(LogicalInverseRewriter.rewrite(not(userDefined(fake, nullRejecting))), ccmd, dictionaries));
+  }
+
+  @Test
+  public void testCanSkipOtherFilters() {
+    BinaryColumn b = binaryColumn("binary_field");
+    FilterPredicate pred = eq(b, Binary.fromString("c"));
+    assertSame(BLOCK_MUST_MATCH, DictionaryFilter.predicate(pred, ccmd, dictionaries));
   }
 
 
