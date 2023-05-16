@@ -19,6 +19,20 @@
 
 # Parquet #
 
+### Version 1.13.1 ###
+
+Release Notes - Parquet - Version 1.13.1
+
+#### Improvement
+
+*   [PARQUET-2276](https://issues.apache.org/jira/browse/PARQUET-2276) - Bring back support for Hadoop 2.7.3
+*   [PARQUET-2297](https://issues.apache.org/jira/browse/PARQUET-2297) - Skip delta problem check
+*   [PARQUET-2292](https://issues.apache.org/jira/browse/PARQUET-2292) - Improve default SpecificRecord model selection for Avro `{Write,Read}`Support
+*   [PARQUET-2290](https://issues.apache.org/jira/browse/PARQUET-2290) - Add CI for Hadoop 2
+*   [PARQUET-2282](https://issues.apache.org/jira/browse/PARQUET-2282) - Don't initialize HadoopCodec
+*   [PARQUET-2283](https://issues.apache.org/jira/browse/PARQUET-2283) - Remove Hadoop HiddenFileFilter
+*   [PARQUET-2081](https://issues.apache.org/jira/browse/PARQUET-2081) - Fix support for rewriting files without ColumnIndexes
+
 ### Version 1.13.0 ###
 
 Release Notes - Parquet - Version 1.13.0
