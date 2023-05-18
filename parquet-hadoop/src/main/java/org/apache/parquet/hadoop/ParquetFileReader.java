@@ -663,12 +663,12 @@ public class ParquetFileReader implements Closeable {
 
   protected final SeekableInputStream f;
   private final InputFile file;
-  private final ParquetReadOptions options;
+  private ParquetReadOptions options;
   private final Map<ColumnPath, ColumnDescriptor> paths = new HashMap<>();
   private final FileMetaData fileMetaData; // may be null
-  private final List<BlockMetaData> blocks;
-  private final List<ColumnIndexStore> blockIndexStores;
-  private final List<RowRanges> blockRowRanges;
+  private List<BlockMetaData> blocks;
+  private List<ColumnIndexStore> blockIndexStores;
+  private List<RowRanges> blockRowRanges;
 
   // not final. in some cases, this may be lazily loaded for backward-compat.
   private ParquetMetadata footer;
@@ -754,17 +754,8 @@ public class ParquetFileReader implements Closeable {
     this.f = this.file.newStream();
     this.fileMetaData = footer.getFileMetaData();
     this.fileDecryptor = fileMetaData.getFileDecryptor();
-    if (null == fileDecryptor) {
-      this.options = HadoopReadOptions.builder(conf).build();
-    } else {
-      this.options = HadoopReadOptions.builder(conf)
-                                      .withDecryption(fileDecryptor.getDecryptionProperties())
-                                      .build();
-    }
     this.footer = footer;
-    this.blocks = filterRowGroups(footer.getBlocks());
-    this.blockIndexStores = listWithNulls(this.blocks.size());
-    this.blockRowRanges = listWithNulls(this.blocks.size());
+    resetBlocks(conf);
     for (ColumnDescriptor col : footer.getFileMetaData().getSchema().getColumns()) {
       paths.put(ColumnPath.get(col.getPath()), col);
     }
@@ -806,6 +797,19 @@ public class ParquetFileReader implements Closeable {
         (openStreamEndTime - start), (footerReadEndtime - openStreamEndTime),
         (filterRowGroupEndTime - footerReadEndtime));
     }
+  }
+
+  public void resetBlocks(Configuration conf) throws IOException {
+    if (null == fileDecryptor) {
+      this.options = HadoopReadOptions.builder(conf).build();
+    } else {
+      this.options = HadoopReadOptions.builder(conf)
+        .withDecryption(fileDecryptor.getDecryptionProperties())
+        .build();
+    }
+    this.blocks = filterRowGroups(footer.getBlocks());
+    this.blockIndexStores = listWithNulls(this.blocks.size());
+    this.blockRowRanges = listWithNulls(this.blocks.size());
   }
 
   private static <T> List<T> listWithNulls(int size) {
