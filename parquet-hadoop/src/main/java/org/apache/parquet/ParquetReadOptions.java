@@ -44,6 +44,7 @@ public class ParquetReadOptions {
   private static final int ALLOCATION_SIZE_DEFAULT = 8388608; // 8MB
   private static final boolean PAGE_VERIFY_CHECKSUM_ENABLED_DEFAULT = false;
   private static final boolean BLOOM_FILTER_ENABLED_DEFAULT = true;
+  private static final boolean USE_OFF_HEAP_DECRYPT_BUFFER_DEFAULT = false;
 
   private final boolean useSignedStringMinMax;
   private final boolean useStatsFilter;
@@ -52,6 +53,7 @@ public class ParquetReadOptions {
   private final boolean useColumnIndexFilter;
   private final boolean usePageChecksumVerification;
   private final boolean useBloomFilter;
+  private final boolean useOffHeapDecryptBuffer;
   private final FilterCompat.Filter recordFilter;
   private final ParquetMetadataConverter.MetadataFilter metadataFilter;
   private final CompressionCodecFactory codecFactory;
@@ -67,6 +69,7 @@ public class ParquetReadOptions {
                      boolean useColumnIndexFilter,
                      boolean usePageChecksumVerification,
                      boolean useBloomFilter,
+                     boolean useOffHeapDecryptBuffer,
                      FilterCompat.Filter recordFilter,
                      ParquetMetadataConverter.MetadataFilter metadataFilter,
                      CompressionCodecFactory codecFactory,
@@ -81,6 +84,7 @@ public class ParquetReadOptions {
     this.useColumnIndexFilter = useColumnIndexFilter;
     this.usePageChecksumVerification = usePageChecksumVerification;
     this.useBloomFilter = useBloomFilter;
+    this.useOffHeapDecryptBuffer = useOffHeapDecryptBuffer;
     this.recordFilter = recordFilter;
     this.metadataFilter = metadataFilter;
     this.codecFactory = codecFactory;
@@ -112,6 +116,10 @@ public class ParquetReadOptions {
 
   public boolean useBloomFilter() {
     return useBloomFilter;
+  }
+
+  public boolean useOffHeapDecryptBuffer() {
+    return useOffHeapDecryptBuffer;
   }
 
   public boolean usePageChecksumVerification() {
@@ -168,6 +176,7 @@ public class ParquetReadOptions {
     protected boolean useColumnIndexFilter = COLUMN_INDEX_FILTERING_ENABLED_DEFAULT;
     protected boolean usePageChecksumVerification = PAGE_VERIFY_CHECKSUM_ENABLED_DEFAULT;
     protected boolean useBloomFilter = BLOOM_FILTER_ENABLED_DEFAULT;
+    protected boolean useOffHeapDecryptBuffer = USE_OFF_HEAP_DECRYPT_BUFFER_DEFAULT;
     protected FilterCompat.Filter recordFilter = null;
     protected ParquetMetadataConverter.MetadataFilter metadataFilter = NO_FILTER;
     // the page size parameter isn't used when only using the codec factory to get decompressors
@@ -238,6 +247,15 @@ public class ParquetReadOptions {
 
     public Builder useBloomFilter() {
       this.useBloomFilter = true;
+      return this;
+    }
+
+    public Builder useOffHeapDecryptBuffer() {
+      return useOffHeapDecryptBuffer(true);
+    }
+
+    public Builder useOffHeapDecryptBuffer(boolean useOffHeapDecryptBuffer) {
+      this.useOffHeapDecryptBuffer = useOffHeapDecryptBuffer;
       return this;
     }
 
@@ -320,7 +338,7 @@ public class ParquetReadOptions {
 
       return new ParquetReadOptions(
         useSignedStringMinMax, useStatsFilter, useDictionaryFilter, useRecordFilter,
-        useColumnIndexFilter, usePageChecksumVerification, useBloomFilter, recordFilter, metadataFilter,
+        useColumnIndexFilter, usePageChecksumVerification, useBloomFilter, useOffHeapDecryptBuffer, recordFilter, metadataFilter,
         codecFactory, allocator, maxAllocationSize, properties, fileDecryptionProperties);
     }
   }

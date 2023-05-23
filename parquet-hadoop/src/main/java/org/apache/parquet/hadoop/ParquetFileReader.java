@@ -1663,7 +1663,7 @@ public class ParquetFileReader implements Closeable {
       }
       BytesInputDecompressor decompressor = options.getCodecFactory().getDecompressor(descriptor.metadata.getCodec());
       return new ColumnChunkPageReader(decompressor, pagesInChunk, dictionaryPage, offsetIndex,
-        rowCount, pageBlockDecryptor, aadPrefix, rowGroupOrdinal, columnOrdinal);
+        rowCount, pageBlockDecryptor, aadPrefix, rowGroupOrdinal, columnOrdinal, options);
     }
 
     private boolean hasMorePages(long valuesCountReadSoFar, int dataPageCountReadSoFar) {
