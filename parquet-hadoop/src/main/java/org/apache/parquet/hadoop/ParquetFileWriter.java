@@ -892,6 +892,8 @@ public class ParquetFileWriter {
       }
       if (isWriteBloomFilter) {
         currentBloomFilters.put(String.join(".", descriptor.getPath()), bloomFilter);
+      } else {
+        LOG.info("No need to write bloom filter because column {} data pages are all encoded as dictionary.", descriptor.getPath());
       }
     }
     LOG.debug("{}: write data pages", out.getPos());

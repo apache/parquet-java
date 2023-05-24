@@ -19,6 +19,7 @@
 package org.apache.parquet.hadoop;
 
 import static org.apache.parquet.column.ParquetProperties.DEFAULT_BLOOM_FILTER_ENABLED;
+import static org.apache.parquet.column.ParquetProperties.DEFAULT_ADAPTIVE_BLOOM_FILTER_ENABLED;
 import static org.apache.parquet.hadoop.ParquetWriter.DEFAULT_BLOCK_SIZE;
 import static org.apache.parquet.hadoop.util.ContextUtil.getConfiguration;
 
@@ -152,6 +153,8 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   public static final String BLOOM_FILTER_EXPECTED_NDV = "parquet.bloom.filter.expected.ndv";
   public static final String BLOOM_FILTER_MAX_BYTES = "parquet.bloom.filter.max.bytes";
   public static final String BLOOM_FILTER_FPP = "parquet.bloom.filter.fpp";
+  public static final String ADAPTIVE_BLOOM_FILTER_ENABLED = "parquet.bloom.filter.adaptive.enabled";
+  public static final String BLOOM_FILTER_CANDIDATES_NUMBER = "parquet.bloom.filter.candidates.number";
   public static final String PAGE_ROW_COUNT_LIMIT = "parquet.page.row.count.limit";
   public static final String PAGE_WRITE_CHECKSUM_ENABLED = "parquet.page.write-checksum.enabled";
 
@@ -226,6 +229,10 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
 
   public static boolean getBloomFilterEnabled(Configuration conf) {
     return conf.getBoolean(BLOOM_FILTER_ENABLED, DEFAULT_BLOOM_FILTER_ENABLED);
+  }
+
+  public static boolean getAdaptiveBloomFilterEnabled(Configuration conf) {
+    return conf.getBoolean(ADAPTIVE_BLOOM_FILTER_ENABLED, DEFAULT_ADAPTIVE_BLOOM_FILTER_ENABLED);
   }
 
   public static int getBlockSize(JobContext jobContext) {
@@ -453,6 +460,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
         .withStatisticsTruncateLength(getStatisticsTruncateLength(conf))
         .withMaxBloomFilterBytes(getBloomFilterMaxBytes(conf))
         .withBloomFilterEnabled(getBloomFilterEnabled(conf))
+        .withAdaptiveBloomFilterEnabled(getAdaptiveBloomFilterEnabled(conf))
         .withPageRowCountLimit(getPageRowCountLimit(conf))
         .withPageWriteChecksumEnabled(getPageWriteChecksumEnabled(conf));
     new ColumnConfigParser()
@@ -462,6 +470,10 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
         .withColumnConfig(BLOOM_FILTER_EXPECTED_NDV, key -> conf.getLong(key, -1L), propsBuilder::withBloomFilterNDV)
         .withColumnConfig(BLOOM_FILTER_FPP, key -> conf.getDouble(key, ParquetProperties.DEFAULT_BLOOM_FILTER_FPP),
             propsBuilder::withBloomFilterFPP)
+        .withColumnConfig(
+          BLOOM_FILTER_CANDIDATES_NUMBER,
+          key -> conf.getInt(key, ParquetProperties.DEFAULT_BLOOM_FILTER_CANDIDATES_NUMBER),
+          propsBuilder::withBloomFilterCandidatesNumber)
         .parseConfig(conf);
 
     ParquetProperties props = propsBuilder.build();
