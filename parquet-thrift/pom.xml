@@ -135,7 +135,7 @@
     <dependency>
       <groupId>joda-time</groupId>
       <artifactId>joda-time</artifactId>
-      <version>2.9.7</version>
+      <version>2.12.5</version>
       <scope>provided</scope>
     </dependency>
     <dependency> <!-- for pig runtime in tests -->
