@@ -168,15 +168,16 @@ public class TestUtils {
   }
 
   /**
-   * Read messages from given file into the expected proto class.
+   * Read messages from given file into the expected proto class with ignoreUnknown fields flag.
    * @param file
    * @param messageClass
    * @param <T>
+   * @param ignoreUnknownFields
    * @return List of protobuf messages for the given type.
    */
-  public static <T extends MessageOrBuilder> List<T> readMessages(Path file, Class<T> messageClass) throws IOException {
+  public static <T extends MessageOrBuilder> List<T> readMessages(Path file, Class<T> messageClass, boolean ignoreUnknownFields) throws IOException {
     InputFile inputFile = HadoopInputFile.fromPath(file, new Configuration());
-    ParquetReader.Builder readerBuilder = ProtoParquetReader.builder(inputFile);
+    ParquetReader.Builder readerBuilder = ProtoParquetReader.builder(inputFile, ignoreUnknownFields);
     if (messageClass != null) {
       readerBuilder.set(ProtoReadSupport.PB_CLASS, messageClass.getName()).build();
     }
@@ -193,6 +194,18 @@ public class TestUtils {
       }
       return result;
     }
+  }
+
+  /**
+   * Read messages from given file into the expected proto class.
+   * @param file
+   * @param messageClass
+   * @param <T>
+   * @return List of protobuf messages for the given type.
+   */
+  public static <T extends MessageOrBuilder> List<T> readMessages(Path file, Class<T> messageClass) throws IOException {
+    return readMessages(file, messageClass, false);
+
   }
 
   /**

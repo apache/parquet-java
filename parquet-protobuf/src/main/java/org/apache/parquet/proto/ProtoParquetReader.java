@@ -37,9 +37,15 @@ public class ProtoParquetReader<T extends MessageOrBuilder>
   public static <T> ParquetReader.Builder<T> builder(Path file) {
     return new ProtoParquetReader.Builder<T>(file);
   }
-
+  public static <T> ParquetReader.Builder<T> builder(Path file, boolean ignoreUnknownFields) {
+    return new ProtoParquetReader.Builder<T>(file).setIgnoreUnknownFields(ignoreUnknownFields);
+  }
   public static <T> ParquetReader.Builder<T> builder(InputFile file) {
     return new ProtoParquetReader.Builder<T>(file);
+  }
+
+  public static <T> ParquetReader.Builder<T> builder(InputFile file, boolean ignoreUnknownFields) {
+    return new ProtoParquetReader.Builder<T>(file).setIgnoreUnknownFields(ignoreUnknownFields);
   }
 
   /**
@@ -69,6 +75,13 @@ public class ProtoParquetReader<T extends MessageOrBuilder>
 
     protected Builder(InputFile file) {
       super(file);
+    }
+
+    private Builder setIgnoreUnknownFields(boolean ignoreUnknownFields) {
+      if(ignoreUnknownFields) {
+        this.set("IGNORE_UNKNOWN_FIELDS", "TRUE");
+      }
+      return this;
     }
 
     protected Builder(Path path) {

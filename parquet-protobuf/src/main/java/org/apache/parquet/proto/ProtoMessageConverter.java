@@ -18,9 +18,7 @@
  */
 package org.apache.parquet.proto;
 
-import com.google.protobuf.ByteString;
-import com.google.protobuf.Descriptors;
-import com.google.protobuf.Message;
+import com.google.protobuf.*;
 import com.twitter.elephantbird.util.Protobufs;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.column.Dictionary;
@@ -31,9 +29,7 @@ import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.Converter;
 import org.apache.parquet.io.api.GroupConverter;
 import org.apache.parquet.io.api.PrimitiveConverter;
-import org.apache.parquet.schema.GroupType;
-import org.apache.parquet.schema.IncompatibleSchemaModificationException;
-import org.apache.parquet.schema.LogicalTypeAnnotation;
+import org.apache.parquet.schema.*;
 import org.apache.parquet.schema.Type;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,6 +39,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.IntStream;
 
 import static com.google.protobuf.Descriptors.FieldDescriptor.JavaType;
 import static java.util.Optional.of;
@@ -57,6 +54,12 @@ import static org.apache.parquet.proto.ProtoConstants.METADATA_ENUM_PREFIX;
  */
 class ProtoMessageConverter extends GroupConverter {
   private static final Logger LOG = LoggerFactory.getLogger(ProtoMessageConverter.class);
+
+  private static final ParentValueContainer DUMMY_PVC = new ParentValueContainer() {
+    @Override
+    public void add(Object value) {
+    }
+  };
 
   protected final Configuration conf;
   protected final Converter[] converters;
@@ -86,29 +89,68 @@ class ProtoMessageConverter extends GroupConverter {
     this.conf = conf;
     this.parent = pvc;
     this.extraMetadata = extraMetadata;
-    int parquetFieldIndex = 1;
+    boolean ignoreUnknownFields = conf.getBoolean("IGNORE_UNKNOWN_FIELDS", false);
+
+    myBuilder = builder;
 
     if (pvc == null) {
       throw new IllegalStateException("Missing parent value container");
     }
 
-    myBuilder = builder;
+    if(builder == null && ignoreUnknownFields) {
+      IntStream.range(0, parquetSchema.getFieldCount())
+        .forEach(i-> converters[i] = dummyScalarConverter(DUMMY_PVC, parquetSchema.getType(i), conf, extraMetadata));
 
-    Descriptors.Descriptor protoDescriptor = builder.getDescriptorForType();
+    } else {
 
-    for (Type parquetField : parquetSchema.getFields()) {
-      Descriptors.FieldDescriptor protoField = protoDescriptor.findFieldByName(parquetField.getName());
+      int parquetFieldIndex = 0;
+      Descriptors.Descriptor protoDescriptor =  builder.getDescriptorForType();
 
-      if (protoField == null) {
-        String description = "Scheme mismatch \n\"" + parquetField + "\"" +
-                "\n proto descriptor:\n" + protoDescriptor.toProto();
-        throw new IncompatibleSchemaModificationException("Cant find \"" + parquetField.getName() + "\" " + description);
+      for (Type parquetField : parquetSchema.getFields()) {
+
+        Descriptors.FieldDescriptor protoField = protoDescriptor.findFieldByName(parquetField.getName());
+
+        validateProtoField(ignoreUnknownFields, protoDescriptor.toProto(), parquetField, protoField);
+
+        converters[parquetFieldIndex] = protoField != null ?
+            newMessageConverter(myBuilder, protoField, parquetField) :
+            dummyScalarConverter(DUMMY_PVC, parquetField, conf, extraMetadata);
+
+          parquetFieldIndex++;
+        }
+
+    }
+  }
+
+  private void validateProtoField(boolean ignoreUnknownFields, DescriptorProtos.DescriptorProto protoDescriptor, Type parquetField, Descriptors.FieldDescriptor protoField) {
+    if (protoField == null && !ignoreUnknownFields) {
+      String description = "Schema mismatch \n\"" + parquetField + "\"" +
+        "\n proto descriptor:\n" + protoDescriptor;
+      throw new IncompatibleSchemaModificationException("Cant find \"" + parquetField.getName() + "\" " + description);
+    }
+  }
+
+
+  private Converter dummyScalarConverter(ParentValueContainer pvc,
+                                         Type parquetField, Configuration conf,
+                                         Map<String, String> extraMetadata) {
+
+    if(parquetField.isPrimitive()) {
+      PrimitiveType primitiveType = parquetField.asPrimitiveType();
+      PrimitiveType.PrimitiveTypeName primitiveTypeName = primitiveType.getPrimitiveTypeName();
+      switch (primitiveTypeName) {
+        case BINARY: return new ProtoStringConverter(pvc);
+        case FLOAT: return new ProtoFloatConverter(pvc);
+        case DOUBLE: return new ProtoDoubleConverter(pvc);
+        case BOOLEAN: return new ProtoBooleanConverter(pvc);
+        case INT32: return new ProtoIntConverter(pvc);
+        case INT64: return new ProtoLongConverter(pvc);
+        default: break;
       }
 
-      converters[parquetFieldIndex - 1] = newMessageConverter(myBuilder, protoField, parquetField);
-
-      parquetFieldIndex++;
+      throw new UnsupportedOperationException(String.format("Cannot convert Parquet type: %s" , parquetField));
     }
+    return new ProtoMessageConverter(conf, pvc, (Message.Builder) null, parquetField.asGroupType(), extraMetadata);
   }
 
 
@@ -124,13 +166,15 @@ class ProtoMessageConverter extends GroupConverter {
 
   @Override
   public void end() {
-    parent.add(myBuilder.build());
-    myBuilder.clear();
+    if(myBuilder != null) {
+      parent.add(myBuilder.build());
+      myBuilder.clear();
+    }
   }
 
   protected Converter newMessageConverter(final Message.Builder parentBuilder, final Descriptors.FieldDescriptor fieldDescriptor, Type parquetType) {
 
-    boolean isRepeated = fieldDescriptor.isRepeated();
+    boolean isRepeated = fieldDescriptor==null ? false : fieldDescriptor.isRepeated();
 
     ParentValueContainer parent;
 
