@@ -122,7 +122,8 @@ public class ParquetRewriter implements Closeable {
     Configuration conf = options.getConf();
     Path outPath = options.getOutputFile();
     openInputFiles(options.getInputFiles(), conf);
-    LOG.info("Start rewriting {} input files {} to {}", inputFiles.size(), outPath);
+    LOG.info("Start rewriting {} input file(s) {} to {}",
+      inputFiles.size(), options.getInputFiles(), outPath);
 
     // Init reader of the first input file
     initNextReader();
