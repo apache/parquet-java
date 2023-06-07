@@ -126,7 +126,6 @@ class ProtoMessageConverter extends GroupConverter {
 
         parquetFieldIndex++;
       }
-
     }
   }
 
