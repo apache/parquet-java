@@ -91,6 +91,9 @@ class ProtoMessageConverter extends GroupConverter {
 
   // For usage in message arrays
   ProtoMessageConverter(Configuration conf, ParentValueContainer pvc, Message.Builder builder, GroupType parquetSchema, Map<String, String> extraMetadata) {
+    if (pvc == null) {
+      throw new IllegalStateException("Missing parent value container");
+    }
 
     int schemaSize = parquetSchema.getFieldCount();
     converters = new Converter[schemaSize];
@@ -100,10 +103,6 @@ class ProtoMessageConverter extends GroupConverter {
     boolean ignoreUnknownFields = conf.getBoolean(IGNORE_UNKNOWN_FIELDS, false);
 
     myBuilder = builder;
-
-    if (pvc == null) {
-      throw new IllegalStateException("Missing parent value container");
-    }
 
     if (builder == null && ignoreUnknownFields) {
       IntStream.range(0, parquetSchema.getFieldCount())
