@@ -116,13 +116,16 @@ class ProtoMessageConverter extends GroupConverter {
             newMessageConverter(myBuilder, protoField, parquetField) :
             dummyScalarConverter(DUMMY_PVC, parquetField, conf, extraMetadata);
 
-          parquetFieldIndex++;
-        }
+        parquetFieldIndex++;
+      }
 
     }
   }
 
-  private void validateProtoField(boolean ignoreUnknownFields, DescriptorProtos.DescriptorProto protoDescriptor, Type parquetField, Descriptors.FieldDescriptor protoField) {
+  private void validateProtoField(boolean ignoreUnknownFields,
+                                  DescriptorProtos.DescriptorProto protoDescriptor,
+                                  Type parquetField,
+                                  Descriptors.FieldDescriptor protoField) {
     if (protoField == null && !ignoreUnknownFields) {
       String description = "Schema mismatch \n\"" + parquetField + "\"" +
         "\n proto descriptor:\n" + protoDescriptor;
