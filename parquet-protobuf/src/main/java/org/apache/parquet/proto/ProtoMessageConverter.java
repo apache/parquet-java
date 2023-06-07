@@ -18,7 +18,10 @@
  */
 package org.apache.parquet.proto;
 
-import com.google.protobuf.*;
+import com.google.protobuf.ByteString;
+import com.google.protobuf.DescriptorProtos;
+import com.google.protobuf.Descriptors;
+import com.google.protobuf.Message;
 import com.twitter.elephantbird.util.Protobufs;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.column.Dictionary;
@@ -29,8 +32,12 @@ import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.Converter;
 import org.apache.parquet.io.api.GroupConverter;
 import org.apache.parquet.io.api.PrimitiveConverter;
-import org.apache.parquet.schema.*;
+
+import org.apache.parquet.schema.GroupType;
+import org.apache.parquet.schema.IncompatibleSchemaModificationException;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.Type;
+import org.apache.parquet.schema.PrimitiveType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,6 +51,7 @@ import java.util.stream.IntStream;
 import static com.google.protobuf.Descriptors.FieldDescriptor.JavaType;
 import static java.util.Optional.of;
 import static org.apache.parquet.proto.ProtoConstants.CONFIG_ACCEPT_UNKNOWN_ENUM;
+import static org.apache.parquet.proto.ProtoConstants.IGNORE_UNKNOWN_FIELDS;
 import static org.apache.parquet.proto.ProtoConstants.METADATA_ENUM_ITEM_SEPARATOR;
 import static org.apache.parquet.proto.ProtoConstants.METADATA_ENUM_KEY_VALUE_SEPARATOR;
 import static org.apache.parquet.proto.ProtoConstants.METADATA_ENUM_PREFIX;
@@ -89,7 +97,7 @@ class ProtoMessageConverter extends GroupConverter {
     this.conf = conf;
     this.parent = pvc;
     this.extraMetadata = extraMetadata;
-    boolean ignoreUnknownFields = conf.getBoolean("IGNORE_UNKNOWN_FIELDS", false);
+    boolean ignoreUnknownFields = conf.getBoolean(IGNORE_UNKNOWN_FIELDS, false);
 
     myBuilder = builder;
 
@@ -97,7 +105,7 @@ class ProtoMessageConverter extends GroupConverter {
       throw new IllegalStateException("Missing parent value container");
     }
 
-    if(builder == null && ignoreUnknownFields) {
+    if (builder == null && ignoreUnknownFields) {
       IntStream.range(0, parquetSchema.getFieldCount())
         .forEach(i-> converters[i] = dummyScalarConverter(DUMMY_PVC, parquetSchema.getType(i), conf, extraMetadata));
 
@@ -139,12 +147,14 @@ class ProtoMessageConverter extends GroupConverter {
       PrimitiveType primitiveType = parquetField.asPrimitiveType();
       PrimitiveType.PrimitiveTypeName primitiveTypeName = primitiveType.getPrimitiveTypeName();
       switch (primitiveTypeName) {
-        case BINARY: return new ProtoStringConverter(pvc);
+        case BINARY: return new ProtoBinaryConverter(pvc);
         case FLOAT: return new ProtoFloatConverter(pvc);
         case DOUBLE: return new ProtoDoubleConverter(pvc);
         case BOOLEAN: return new ProtoBooleanConverter(pvc);
         case INT32: return new ProtoIntConverter(pvc);
         case INT64: return new ProtoLongConverter(pvc);
+        case INT96: return new ProtoStringConverter(pvc);
+        case FIXED_LEN_BYTE_ARRAY: return new ProtoBinaryConverter(pvc);
         default: break;
       }
 
@@ -166,7 +176,7 @@ class ProtoMessageConverter extends GroupConverter {
 
   @Override
   public void end() {
-    if(myBuilder != null) {
+    if (myBuilder != null) {
       parent.add(myBuilder.build());
       myBuilder.clear();
     }
@@ -174,7 +184,7 @@ class ProtoMessageConverter extends GroupConverter {
 
   protected Converter newMessageConverter(final Message.Builder parentBuilder, final Descriptors.FieldDescriptor fieldDescriptor, Type parquetType) {
 
-    boolean isRepeated = fieldDescriptor==null ? false : fieldDescriptor.isRepeated();
+    boolean isRepeated = fieldDescriptor != null && fieldDescriptor.isRepeated();
 
     ParentValueContainer parent;
 
