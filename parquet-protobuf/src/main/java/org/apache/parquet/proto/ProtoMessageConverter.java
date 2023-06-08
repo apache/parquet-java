@@ -50,7 +50,7 @@ import java.util.stream.IntStream;
 import static com.google.protobuf.Descriptors.FieldDescriptor.JavaType;
 import static java.util.Optional.of;
 import static org.apache.parquet.proto.ProtoConstants.CONFIG_ACCEPT_UNKNOWN_ENUM;
-import static org.apache.parquet.proto.ProtoConstants.IGNORE_UNKNOWN_FIELDS;
+import static org.apache.parquet.proto.ProtoConstants.CONFIG_IGNORE_UNKNOWN_FIELDS;
 import static org.apache.parquet.proto.ProtoConstants.METADATA_ENUM_ITEM_SEPARATOR;
 import static org.apache.parquet.proto.ProtoConstants.METADATA_ENUM_KEY_VALUE_SEPARATOR;
 import static org.apache.parquet.proto.ProtoConstants.METADATA_ENUM_PREFIX;
@@ -99,7 +99,7 @@ class ProtoMessageConverter extends GroupConverter {
     this.conf = conf;
     this.parent = pvc;
     this.extraMetadata = extraMetadata;
-    boolean ignoreUnknownFields = conf.getBoolean(IGNORE_UNKNOWN_FIELDS, false);
+    boolean ignoreUnknownFields = conf.getBoolean(CONFIG_IGNORE_UNKNOWN_FIELDS, false);
 
     myBuilder = builder;
 
