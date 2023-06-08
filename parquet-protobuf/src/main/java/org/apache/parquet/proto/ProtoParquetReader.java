@@ -28,7 +28,7 @@ import org.apache.parquet.io.InputFile;
 
 import com.google.protobuf.MessageOrBuilder;
 
-import static org.apache.parquet.proto.ProtoConstants.IGNORE_UNKNOWN_FIELDS;
+import static org.apache.parquet.proto.ProtoConstants.CONFIG_IGNORE_UNKNOWN_FIELDS;
 
 /**
  * Read Protobuf records from a Parquet file.
@@ -83,7 +83,7 @@ public class ProtoParquetReader<T extends MessageOrBuilder>
 
     protected Builder setIgnoreUnknownFields(boolean ignoreUnknownFields) {
       if(ignoreUnknownFields) {
-        this.set(IGNORE_UNKNOWN_FIELDS, "TRUE");
+        this.set(CONFIG_IGNORE_UNKNOWN_FIELDS, "TRUE");
       }
       return this;
     }
