@@ -39,7 +39,7 @@
     <dependency>
       <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-format-structures</artifactId>
-      <version>1.13.1</version>
+      <version>${project.version}</version>
     </dependency>
 
     <dependency>

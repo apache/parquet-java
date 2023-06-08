@@ -82,7 +82,7 @@
     <pig.version>0.16.0</pig.version>
     <pig.classifier>h2</pig.classifier>
     <thrift-maven-plugin.version>0.10.0</thrift-maven-plugin.version>
-    <thrift.version>0.18.1</thrift.version>
+    <thrift.version>0.16.0</thrift.version>
     <format.thrift.version>${thrift.version}</format.thrift.version>
     <fastutil.version>8.5.12</fastutil.version>
     <semver.api.version>0.9.33</semver.api.version>
@@ -137,16 +137,16 @@
     <module>parquet-column</module>
     <module>parquet-common</module>
     <module>parquet-encoding</module>
-    <!--<module>parquet-format-structures</module>-->
+    <module>parquet-format-structures</module>
     <module>parquet-generator</module>
-    <!--<module>parquet-hadoop</module>-->
+    <module>parquet-hadoop</module>
     <module>parquet-jackson</module>
     <module>parquet-pig</module>
     <module>parquet-pig-bundle</module>
     <module>parquet-protobuf</module>
-    <!--<module>parquet-scala</module>-->
-    <!--<module>parquet-thrift</module>-->
-    <!--<module>parquet-hadoop-bundle</module>-->
+    <module>parquet-scala</module>
+    <module>parquet-thrift</module>
+    <module>parquet-hadoop-bundle</module>
   </modules>
 
   <dependencies>
@@ -410,7 +410,7 @@
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
         <configuration>
-          <!--<argLine>-XX:MaxPermSize=256m</argLine>-->
+          <argLine>-XX:MaxPermSize=256m</argLine>
           <source>${maven.compiler.source}</source>
           <target>${maven.compiler.target}</target>
         </configuration>
@@ -457,19 +457,19 @@
         </configuration>
       </plugin>
 
-      <!--<plugin>-->
-        <!--<groupId>org.codehaus.mojo</groupId>-->
-        <!--<artifactId>buildnumber-maven-plugin</artifactId>-->
-        <!--<version>3.1.0</version>-->
-        <!--<executions>-->
-          <!--<execution>-->
-            <!--<phase>validate</phase>-->
-            <!--<goals>-->
-              <!--<goal>create</goal>-->
-            <!--</goals>-->
-         <!--</execution>-->
-       <!--</executions>-->
-      <!--</plugin>-->
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>buildnumber-maven-plugin</artifactId>
+        <version>3.1.0</version>
+        <executions>
+          <execution>
+            <phase>validate</phase>
+            <goals>
+              <goal>create</goal>
+            </goals>
+         </execution>
+       </executions>
+      </plugin>
 
       <plugin>
         <groupId>org.apache.rat</groupId>

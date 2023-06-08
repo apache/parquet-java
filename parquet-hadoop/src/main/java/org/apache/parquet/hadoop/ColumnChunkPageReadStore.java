@@ -142,9 +142,9 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
               if (!byteBuffer.isDirect()) {
                 throw new ParquetDecodingException("Expected a direct buffer");
               }
-//              if (blockDecryptor != null) {
-//                byteBuffer = blockDecryptor.decrypt(byteBuffer, dataPageAAD);
-//              }
+              if (blockDecryptor != null) {
+                byteBuffer = blockDecryptor.decrypt(byteBuffer, dataPageAAD);
+              }
               long compressedSize = byteBuffer.limit();
 
               ByteBuffer decompressedBuffer =
@@ -212,9 +212,9 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
               if (!byteBuffer.isDirect()) {
                 throw new ParquetDecodingException("Expected a direct buffer");
               }
-//              if (blockDecryptor != null) {
-//                byteBuffer = blockDecryptor.decrypt(byteBuffer, dataPageAAD);
-//              }
+              if (blockDecryptor != null) {
+                byteBuffer = blockDecryptor.decrypt(byteBuffer, dataPageAAD);
+              }
               compressedSize = byteBuffer.limit();
               if (dataPageV2.isCompressed()) {
                 int uncompressedSize = Math.toIntExact(
