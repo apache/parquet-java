@@ -113,7 +113,6 @@ class ProtoMessageConverter extends GroupConverter {
       Descriptors.Descriptor protoDescriptor =  builder.getDescriptorForType();
 
       for (Type parquetField : parquetSchema.getFields()) {
-
         Descriptors.FieldDescriptor protoField = protoDescriptor.findFieldByName(parquetField.getName());
 
         validateProtoField(ignoreUnknownFields, protoDescriptor.toProto(), parquetField, protoField);
