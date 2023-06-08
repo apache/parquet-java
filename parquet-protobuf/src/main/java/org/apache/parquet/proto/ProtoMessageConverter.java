@@ -142,7 +142,7 @@ class ProtoMessageConverter extends GroupConverter {
                                          Type parquetField, Configuration conf,
                                          Map<String, String> extraMetadata) {
 
-    if(parquetField.isPrimitive()) {
+    if (parquetField.isPrimitive()) {
       PrimitiveType primitiveType = parquetField.asPrimitiveType();
       PrimitiveType.PrimitiveTypeName primitiveTypeName = primitiveType.getPrimitiveTypeName();
       switch (primitiveTypeName) {
