@@ -205,7 +205,6 @@ public class TestUtils {
    */
   public static <T extends MessageOrBuilder> List<T> readMessages(Path file, Class<T> messageClass) throws IOException {
     return readMessages(file, messageClass, false);
-
   }
 
   /**

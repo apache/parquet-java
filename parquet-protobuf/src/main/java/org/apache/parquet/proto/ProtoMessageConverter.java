@@ -32,7 +32,6 @@ import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.Converter;
 import org.apache.parquet.io.api.GroupConverter;
 import org.apache.parquet.io.api.PrimitiveConverter;
-
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.IncompatibleSchemaModificationException;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
@@ -91,7 +90,6 @@ class ProtoMessageConverter extends GroupConverter {
 
   // For usage in message arrays
   ProtoMessageConverter(Configuration conf, ParentValueContainer pvc, Message.Builder builder, GroupType parquetSchema, Map<String, String> extraMetadata) {
-
     if (pvc == null) {
       throw new IllegalStateException("Missing parent value container");
     }
@@ -101,8 +99,9 @@ class ProtoMessageConverter extends GroupConverter {
     this.conf = conf;
     this.parent = pvc;
     this.extraMetadata = extraMetadata;
-    myBuilder = builder;
     boolean ignoreUnknownFields = conf.getBoolean(IGNORE_UNKNOWN_FIELDS, false);
+
+    myBuilder = builder;
 
     if (builder == null && ignoreUnknownFields) {
       IntStream.range(0, parquetSchema.getFieldCount())
@@ -114,7 +113,6 @@ class ProtoMessageConverter extends GroupConverter {
       Descriptors.Descriptor protoDescriptor =  builder.getDescriptorForType();
 
       for (Type parquetField : parquetSchema.getFields()) {
-
         Descriptors.FieldDescriptor protoField = protoDescriptor.findFieldByName(parquetField.getName());
 
         validateProtoField(ignoreUnknownFields, protoDescriptor.toProto(), parquetField, protoField);
@@ -144,7 +142,7 @@ class ProtoMessageConverter extends GroupConverter {
                                          Type parquetField, Configuration conf,
                                          Map<String, String> extraMetadata) {
 
-    if(parquetField.isPrimitive()) {
+    if (parquetField.isPrimitive()) {
       PrimitiveType primitiveType = parquetField.asPrimitiveType();
       PrimitiveType.PrimitiveTypeName primitiveTypeName = primitiveType.getPrimitiveTypeName();
       switch (primitiveTypeName) {
