@@ -26,7 +26,7 @@ public final class ProtoConstants {
   public static final String METADATA_ENUM_PREFIX = "parquet.proto.enum.";
   public static final String METADATA_ENUM_KEY_VALUE_SEPARATOR = ":";
   public static final String METADATA_ENUM_ITEM_SEPARATOR = ",";
-  public static final String CONFIG_IGNORE_UNKNOWN_FIELDS = "parquet.proto.ignore.unknwon.fields";
+  public static final String CONFIG_IGNORE_UNKNOWN_FIELDS = "parquet.proto.ignore.unknown.fields";
   /**
    * Configuration flag to enable reader to accept enum label that's neither defined in its own proto schema nor conform
    * to the "UNKNOWN_ENUM_*" pattern with which we can get the enum number. The enum value will be treated as an unknown
