@@ -27,7 +27,7 @@ public final class ProtoConstants {
   public static final String METADATA_ENUM_KEY_VALUE_SEPARATOR = ":";
   public static final String METADATA_ENUM_ITEM_SEPARATOR = ",";
   /**
-   * Configuration flag to ignore the unknowns fields during conversion of Parquet to Proto
+   * Configuration flag to ignore the unknown fields during conversion of Parquet to Proto
    * if fields are missing in target schema instead of throwing an error.
    * Enabling it will avoid a job failure, but you should perhaps use an up-to-date schema instead.
    */
