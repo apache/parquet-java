@@ -840,7 +840,7 @@ public class TestReadWrite {
       List l1List = (List) nextRecord.get("l1");
       assertNotNull(l1List.get(0));
       List l2List = (List) ((GenericRecord) l1List.get(0)).get("l2");
-      assertEquals(str("hello"), l2List.get(0));
+      assertEquals(new Utf8("hello"), l2List.get(0));
     }
   }
 
