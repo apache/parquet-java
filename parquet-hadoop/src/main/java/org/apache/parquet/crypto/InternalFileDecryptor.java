@@ -214,7 +214,7 @@ public class InternalFileDecryptor {
   }
 
   public InternalColumnDecryptionSetup setColumnCryptoMetadata(ColumnPath path, boolean encrypted,
-      boolean encryptedWithFooterKey, byte[] keyMetadata, int columnOrdinal) {
+      boolean encryptedWithFooterKey, byte[] keyMetadata, int columnOrdinal, boolean nullMaskedColumn) {
 
     if (!fileCryptoMetaDataProcessed) {
       throw new ParquetCryptoRuntimeException("Haven't parsed the file crypto metadata yet");
@@ -256,14 +256,24 @@ public class InternalFileDecryptor {
           try {
             columnKeyBytes = keyRetriever.getKey(keyMetadata);
           } catch (KeyAccessDeniedException e) {
-            throw new KeyAccessDeniedException("Column " + path + ": key access denied", e);
+            if (nullMaskedColumn) {
+              columnKeyBytes = null;
+            } else {
+              throw new KeyAccessDeniedException("Column " + path + ": key access denied", e);
+            }
           }
         }
         if (null == columnKeyBytes) {
-          throw new ParquetCryptoRuntimeException("Column " + path + "is encrypted with NULL column key");
+          if (nullMaskedColumn) {
+            columnDecryptionSetup = new InternalColumnDecryptionSetup(path, true, false,
+              null, null, columnOrdinal, keyMetadata);
+          } else {
+            throw new ParquetCryptoRuntimeException("Column " + path + "is encrypted with NULL column key");
+          }
+        } else {
+          columnDecryptionSetup = new InternalColumnDecryptionSetup(path, true, false,
+            getDataModuleDecryptor(columnKeyBytes), getThriftModuleDecryptor(columnKeyBytes), columnOrdinal, keyMetadata);
         }
-        columnDecryptionSetup = new InternalColumnDecryptionSetup(path, true, false,
-              getDataModuleDecryptor(columnKeyBytes), getThriftModuleDecryptor(columnKeyBytes), columnOrdinal, keyMetadata);
 
         if (LOG.isDebugEnabled()) {
           LOG.debug("Column decryption (column key): {}", path);

@@ -21,6 +21,7 @@ package org.apache.parquet.column.mem;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import org.apache.parquet.column.ColumnDescriptor;
@@ -172,6 +173,24 @@ public class TestMemColumn {
       columnReader.consume();
       ++ i;
     }
+  }
+
+  @Test
+  public void testNullColumnReader() throws Exception {
+    MessageType mt = MessageTypeParser.parseMessageType("message msg { required group foo { required binary bar; } }");
+    String[] col = new String[]{"foo", "bar"};
+    MemPageStore memPageStore = new MemPageStore(10, true);
+
+    ColumnWriteStoreV1 memColumnsStore = newColumnWriteStoreImpl(memPageStore);
+    ColumnDescriptor path = mt.getColumnDescription(col);
+
+    ColumnWriter columnWriter = memColumnsStore.getColumnWriter(path);
+    columnWriter.write(Binary.fromString("42"), 0, 0);
+    memColumnsStore.flush();
+
+    ColumnReader columnReader = getColumnReader(memPageStore, path, mt);
+
+    assertNull(columnReader);
   }
 
   @Test

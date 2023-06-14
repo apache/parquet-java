@@ -35,6 +35,8 @@ import static org.apache.parquet.hadoop.ParquetInputFormat.COLUMN_INDEX_FILTERIN
 import static org.apache.parquet.hadoop.ParquetInputFormat.DICTIONARY_FILTERING_ENABLED;
 import static org.apache.parquet.hadoop.ParquetInputFormat.BLOOM_FILTERING_ENABLED;
 import static org.apache.parquet.hadoop.ParquetInputFormat.OFF_HEAP_DECRYPT_BUFFER_ENABLED;
+import static org.apache.parquet.hadoop.ParquetInputFormat.READ_MASKED_VALUE_ENABLED;
+import static org.apache.parquet.hadoop.ParquetInputFormat.MASKED_COLUMN_VISIBLE_ENABLED;
 import static org.apache.parquet.hadoop.ParquetInputFormat.getFilter;
 import static org.apache.parquet.hadoop.ParquetInputFormat.PAGE_VERIFY_CHECKSUM_ENABLED;
 import static org.apache.parquet.hadoop.ParquetInputFormat.RECORD_FILTERING_ENABLED;
@@ -54,6 +56,8 @@ public class HadoopReadOptions extends ParquetReadOptions {
                             boolean usePageChecksumVerification,
                             boolean useBloomFilter,
                             boolean useOffHeapDecryptBuffer,
+                            boolean readMaskedValue,
+                            boolean maskedColVisibble,
                             FilterCompat.Filter recordFilter,
                             MetadataFilter metadataFilter,
                             CompressionCodecFactory codecFactory,
@@ -64,8 +68,8 @@ public class HadoopReadOptions extends ParquetReadOptions {
                             FileDecryptionProperties fileDecryptionProperties) {
     super(
         useSignedStringMinMax, useStatsFilter, useDictionaryFilter, useRecordFilter, useColumnIndexFilter,
-        usePageChecksumVerification, useBloomFilter, useOffHeapDecryptBuffer, recordFilter, metadataFilter, codecFactory, allocator,
-        maxAllocationSize, properties, fileDecryptionProperties
+        usePageChecksumVerification, useBloomFilter, useOffHeapDecryptBuffer, readMaskedValue, maskedColVisibble,
+        recordFilter, metadataFilter, codecFactory, allocator, maxAllocationSize, properties, fileDecryptionProperties
     );
     this.conf = conf;
   }
@@ -118,6 +122,8 @@ public class HadoopReadOptions extends ParquetReadOptions {
       if (badRecordThresh != null) {
         set(BAD_RECORD_THRESHOLD_CONF_KEY, badRecordThresh);
       }
+      withReadMaskedValue(conf.getBoolean(READ_MASKED_VALUE_ENABLED, false));
+      withMaskedColumnVisible(conf.getBoolean(MASKED_COLUMN_VISIBLE_ENABLED, false));
     }
 
     @Override
@@ -128,8 +134,9 @@ public class HadoopReadOptions extends ParquetReadOptions {
       }
       return new HadoopReadOptions(
         useSignedStringMinMax, useStatsFilter, useDictionaryFilter, useRecordFilter,
-        useColumnIndexFilter, usePageChecksumVerification, useBloomFilter, useOffHeapDecryptBuffer, recordFilter, metadataFilter,
-        codecFactory, allocator, maxAllocationSize, properties, conf, fileDecryptionProperties);
+        useColumnIndexFilter, usePageChecksumVerification, useBloomFilter, useOffHeapDecryptBuffer,
+        readMaskedValue, maskedColVisible, recordFilter, metadataFilter, codecFactory,
+        allocator, maxAllocationSize, properties, conf, fileDecryptionProperties);
     }
   }
 

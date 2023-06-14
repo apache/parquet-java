@@ -37,6 +37,7 @@ import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.filter2.compat.FilterCompat.Filter;
 import org.apache.parquet.hadoop.api.InitContext;
 import org.apache.parquet.hadoop.api.ReadSupport;
+import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.hadoop.metadata.FileMetaData;
 import org.apache.parquet.hadoop.util.counters.BenchmarkCounter;
 import org.apache.parquet.io.ColumnIOFactory;
@@ -51,6 +52,9 @@ import org.slf4j.LoggerFactory;
 import static java.lang.String.format;
 import static org.apache.parquet.hadoop.ParquetInputFormat.RECORD_FILTERING_ENABLED;
 import static org.apache.parquet.hadoop.ParquetInputFormat.STRICT_TYPE_CHECKING;
+import static org.apache.parquet.hadoop.util.HiddenColumnSchemaUtil.HIDDEN_COLUMN;
+import static org.apache.parquet.hadoop.util.HiddenColumnSchemaUtil.extractHiddenColumns;
+import static org.apache.parquet.hadoop.util.HiddenColumnSchemaUtil.stringfyColumnPaths;
 
 class InternalParquetRecordReader<T> {
   private static final Logger LOG = LoggerFactory.getLogger(InternalParquetRecordReader.class);
@@ -178,8 +182,10 @@ class InternalParquetRecordReader<T> {
     // initialize a ReadContext for this file
     this.reader = reader;
     FileMetaData parquetFileMetadata = reader.getFooter().getFileMetaData();
+    Set<ColumnPath> hiddenColumns = extractHiddenColumns(reader.getFooter().getBlocks());
     this.fileSchema = parquetFileMetadata.getSchema();
     Map<String, String> fileMetadata = parquetFileMetadata.getKeyValueMetaData();
+    conf.set(HIDDEN_COLUMN, stringfyColumnPaths(hiddenColumns));
     ReadSupport.ReadContext readContext = readSupport.init(new InitContext(conf, toSetMultiMap(fileMetadata), fileSchema));
     this.columnIOFactory = new ColumnIOFactory(parquetFileMetadata.getCreatedBy());
     this.requestedSchema = readContext.getRequestedSchema();
@@ -192,6 +198,7 @@ class InternalParquetRecordReader<T> {
     this.total = reader.getFilteredRecordCount();
     this.unmaterializableRecordCounter = new UnmaterializableRecordCounter(options, total);
     this.filterRecords = options.useRecordFilter();
+    conf.unset(HIDDEN_COLUMN);
     LOG.info("RecordReader initialized will read a total of {} records.", total);
   }
 
@@ -200,8 +207,10 @@ class InternalParquetRecordReader<T> {
     // initialize a ReadContext for this file
     this.reader = reader;
     FileMetaData parquetFileMetadata = reader.getFooter().getFileMetaData();
+    Set<ColumnPath> hiddenColumns = extractHiddenColumns(reader.getFooter().getBlocks());
     this.fileSchema = parquetFileMetadata.getSchema();
     Map<String, String> fileMetadata = parquetFileMetadata.getKeyValueMetaData();
+    configuration.set(HIDDEN_COLUMN, stringfyColumnPaths(hiddenColumns));
     ReadSupport.ReadContext readContext = readSupport.init(new InitContext(
         configuration, toSetMultiMap(fileMetadata), fileSchema));
     this.columnIOFactory = new ColumnIOFactory(parquetFileMetadata.getCreatedBy());
@@ -216,6 +225,7 @@ class InternalParquetRecordReader<T> {
     this.total = reader.getFilteredRecordCount();
     this.unmaterializableRecordCounter = new UnmaterializableRecordCounter(configuration, total);
     this.filterRecords = configuration.getBoolean(RECORD_FILTERING_ENABLED, true);
+    configuration.unset(HIDDEN_COLUMN);
     LOG.info("RecordReader initialized will read a total of {} records.", total);
   }
 

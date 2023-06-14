@@ -45,6 +45,8 @@ public class ParquetReadOptions {
   private static final boolean PAGE_VERIFY_CHECKSUM_ENABLED_DEFAULT = false;
   private static final boolean BLOOM_FILTER_ENABLED_DEFAULT = true;
   private static final boolean USE_OFF_HEAP_DECRYPT_BUFFER_DEFAULT = false;
+  private static final boolean READ_MASKED_VALUE_DEFAULT = false;
+  private static final boolean IS_MASKED_COLUMN_VISIBLE_IN_SCHEMA_DEFAULT = false;
 
   private final boolean useSignedStringMinMax;
   private final boolean useStatsFilter;
@@ -54,6 +56,8 @@ public class ParquetReadOptions {
   private final boolean usePageChecksumVerification;
   private final boolean useBloomFilter;
   private final boolean useOffHeapDecryptBuffer;
+  private final boolean readMaskedValue;
+  private final boolean maskedColVisible;
   private final FilterCompat.Filter recordFilter;
   private final ParquetMetadataConverter.MetadataFilter metadataFilter;
   private final CompressionCodecFactory codecFactory;
@@ -70,6 +74,8 @@ public class ParquetReadOptions {
                      boolean usePageChecksumVerification,
                      boolean useBloomFilter,
                      boolean useOffHeapDecryptBuffer,
+                     boolean readMaskedValue,
+                     boolean maskedColVisible,
                      FilterCompat.Filter recordFilter,
                      ParquetMetadataConverter.MetadataFilter metadataFilter,
                      CompressionCodecFactory codecFactory,
@@ -85,6 +91,8 @@ public class ParquetReadOptions {
     this.usePageChecksumVerification = usePageChecksumVerification;
     this.useBloomFilter = useBloomFilter;
     this.useOffHeapDecryptBuffer = useOffHeapDecryptBuffer;
+    this.readMaskedValue = readMaskedValue;
+    this.maskedColVisible = maskedColVisible;
     this.recordFilter = recordFilter;
     this.metadataFilter = metadataFilter;
     this.codecFactory = codecFactory;
@@ -124,6 +132,14 @@ public class ParquetReadOptions {
 
   public boolean usePageChecksumVerification() {
     return usePageChecksumVerification;
+  }
+
+  public boolean readMaskedValue() {
+    return readMaskedValue;
+  }
+
+  public boolean maskedColVisibleInSchema() {
+    return maskedColVisible;
   }
 
   public FilterCompat.Filter getRecordFilter() {
@@ -177,6 +193,8 @@ public class ParquetReadOptions {
     protected boolean usePageChecksumVerification = PAGE_VERIFY_CHECKSUM_ENABLED_DEFAULT;
     protected boolean useBloomFilter = BLOOM_FILTER_ENABLED_DEFAULT;
     protected boolean useOffHeapDecryptBuffer = USE_OFF_HEAP_DECRYPT_BUFFER_DEFAULT;
+    protected boolean readMaskedValue = READ_MASKED_VALUE_DEFAULT;
+    protected boolean maskedColVisible = IS_MASKED_COLUMN_VISIBLE_IN_SCHEMA_DEFAULT;
     protected FilterCompat.Filter recordFilter = null;
     protected ParquetMetadataConverter.MetadataFilter metadataFilter = NO_FILTER;
     // the page size parameter isn't used when only using the codec factory to get decompressors
@@ -264,6 +282,16 @@ public class ParquetReadOptions {
       return this;
     }
 
+    public Builder withReadMaskedValue(boolean readMaskedValue) {
+      this.readMaskedValue = readMaskedValue;
+      return this;
+    }
+
+    public Builder withMaskedColumnVisible(boolean maskedColVisible) {
+      this.maskedColVisible = maskedColVisible;
+      return this;
+    }
+
     public Builder withRecordFilter(FilterCompat.Filter rowGroupFilter) {
       this.recordFilter = rowGroupFilter;
       return this;
@@ -318,6 +346,8 @@ public class ParquetReadOptions {
       useSignedStringMinMax(options.useSignedStringMinMax);
       useStatsFilter(options.useStatsFilter);
       useDictionaryFilter(options.useDictionaryFilter);
+      withReadMaskedValue(options.readMaskedValue);
+      withMaskedColumnVisible(options.maskedColVisible);
       useRecordFilter(options.useRecordFilter);
       withRecordFilter(options.recordFilter);
       withMetadataFilter(options.metadataFilter);
@@ -338,7 +368,8 @@ public class ParquetReadOptions {
 
       return new ParquetReadOptions(
         useSignedStringMinMax, useStatsFilter, useDictionaryFilter, useRecordFilter,
-        useColumnIndexFilter, usePageChecksumVerification, useBloomFilter, useOffHeapDecryptBuffer, recordFilter, metadataFilter,
+        useColumnIndexFilter, usePageChecksumVerification, useBloomFilter, useOffHeapDecryptBuffer,
+        readMaskedValue, maskedColVisible, recordFilter, metadataFilter,
         codecFactory, allocator, maxAllocationSize, properties, fileDecryptionProperties);
     }
   }

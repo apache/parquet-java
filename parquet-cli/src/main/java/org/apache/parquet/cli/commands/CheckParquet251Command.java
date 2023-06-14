@@ -160,6 +160,11 @@ public class CheckParquet251Command extends BaseCommand {
     public DataPage readPage() {
       return data;
     }
+
+    @Override
+    public boolean isNullMaskedColumn() {
+      return false;
+    }
   }
 
   private static <T extends Comparable<T>>
