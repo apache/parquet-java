@@ -24,7 +24,7 @@ import java.nio.ByteBuffer;
 import java.nio.file.Path;
 
 /**
- * {@code DiskInputFile} is an implementation needed by Parquet to read
+ * {@code LocalInputFile} is an implementation needed by Parquet to read
  * from local data files using {@link SeekableInputStream} instances.
  */
 public class LocalInputFile implements InputFile {
