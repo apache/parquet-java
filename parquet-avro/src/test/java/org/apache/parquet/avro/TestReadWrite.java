@@ -121,7 +121,7 @@ public class TestReadWrite {
   }
 
   @Test
-  public void testEmptyArrayDisk() throws Exception {
+  public void testEmptyArrayLocal() throws Exception {
     Schema schema = new Schema.Parser().parse(
       Resources.getResource("array.avsc").openStream());
 
@@ -182,7 +182,7 @@ public class TestReadWrite {
   }
 
   @Test
-  public void testEmptyMapDisk() throws Exception {
+  public void testEmptyMapLocal() throws Exception {
     Schema schema = new Schema.Parser().parse(
       Resources.getResource("map.avsc").openStream());
 
@@ -804,7 +804,7 @@ public class TestReadWrite {
   }
 
   @Test
-  public void testNestedListsDisk() throws Exception {
+  public void testNestedListsLocal() throws Exception {
     Schema schema = new Schema.Parser().parse(
       Resources.getResource("nested_array.avsc").openStream());
     java.nio.file.Path file = Paths.get(createTempFile().getPath());
