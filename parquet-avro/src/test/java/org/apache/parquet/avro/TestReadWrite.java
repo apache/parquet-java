@@ -55,8 +55,8 @@ import org.apache.hadoop.fs.Path;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.api.WriteSupport;
-import org.apache.parquet.io.DiskInputFile;
-import org.apache.parquet.io.DiskOutputFile;
+import org.apache.parquet.io.LocalInputFile;
+import org.apache.parquet.io.LocalOutputFile;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.RecordConsumer;
 import org.apache.parquet.schema.MessageTypeParser;
@@ -131,7 +131,7 @@ public class TestReadWrite {
     java.nio.file.Path file = Paths.get(createTempFile().getPath());
 
     try(ParquetWriter<GenericRecord> writer = AvroParquetWriter
-      .<GenericRecord>builder(new DiskOutputFile(file))
+      .<GenericRecord>builder(new LocalOutputFile(file))
       .withSchema(schema)
       .withConf(testConf)
       .build()) {
@@ -141,7 +141,7 @@ public class TestReadWrite {
     }
 
     try (ParquetReader<GenericRecord> reader = AvroParquetReader
-      .<GenericRecord>builder(new DiskInputFile(file))
+      .<GenericRecord>builder(new LocalInputFile(file))
       .withDataModel(GenericData.get())
       .withConf(testConf)
       .build()) {
@@ -190,7 +190,7 @@ public class TestReadWrite {
     ImmutableMap<String, Integer> emptyMap = new ImmutableMap.Builder<String, Integer>().build();
 
     try(ParquetWriter<GenericRecord> writer = AvroParquetWriter
-      .<GenericRecord>builder(new DiskOutputFile(file))
+      .<GenericRecord>builder(new LocalOutputFile(file))
       .withSchema(schema)
       .withConf(testConf)
       .build()) {
@@ -202,7 +202,7 @@ public class TestReadWrite {
     }
 
     try (ParquetReader<GenericRecord> reader = AvroParquetReader
-      .<GenericRecord>builder(new DiskInputFile(file))
+      .<GenericRecord>builder(new LocalInputFile(file))
       .withDataModel(GenericData.get())
       .withConf(testConf)
       .build()) {
@@ -810,7 +810,7 @@ public class TestReadWrite {
     java.nio.file.Path file = Paths.get(createTempFile().getPath());
 
     // Parquet writer
-    try (ParquetWriter parquetWriter = AvroParquetWriter.builder(new DiskOutputFile(file))
+    try (ParquetWriter parquetWriter = AvroParquetWriter.builder(new LocalOutputFile(file))
       .withSchema(schema)
       .withConf(testConf)
       .build()) {
@@ -828,7 +828,7 @@ public class TestReadWrite {
     }
 
     try (ParquetReader<GenericRecord> reader = AvroParquetReader
-      .<GenericRecord>builder(new DiskInputFile(file))
+      .<GenericRecord>builder(new LocalInputFile(file))
       .withDataModel(GenericData.get())
       .withConf(testConf)
       .build()) {

@@ -27,11 +27,11 @@ import java.nio.file.Path;
  * {@code DiskInputFile} is an implementation needed by Parquet to read
  * data files from disk using {@link SeekableInputStream} instances.
  */
-public class DiskInputFile implements InputFile {
+public class LocalInputFile implements InputFile {
 
   private final Path path;
 
-  public DiskInputFile(Path file) {
+  public LocalInputFile(Path file) {
     path = file;
   }
 
