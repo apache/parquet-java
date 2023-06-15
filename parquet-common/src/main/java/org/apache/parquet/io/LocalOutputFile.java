@@ -25,7 +25,7 @@ import java.nio.file.Path;
 
 /**
  * {@code DiskOutputFile} is an implementation needed by Parquet to write
- * data files to disk using {@link PositionOutputStream} instances.
+ * to local data files using {@link PositionOutputStream} instances.
  */
 public class LocalOutputFile implements OutputFile {
 
