@@ -24,7 +24,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 /**
- * {@code DiskOutputFile} is an implementation needed by Parquet to write
+ * {@code LocalOutputFile} is an implementation needed by Parquet to write
  * to local data files using {@link PositionOutputStream} instances.
  */
 public class LocalOutputFile implements OutputFile {
