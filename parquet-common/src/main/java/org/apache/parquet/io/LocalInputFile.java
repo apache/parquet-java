@@ -30,6 +30,7 @@ import java.nio.file.Path;
 public class LocalInputFile implements InputFile {
 
   private final Path path;
+  private long length = -1;
 
   public LocalInputFile(Path file) {
     path = file;
@@ -37,9 +38,11 @@ public class LocalInputFile implements InputFile {
 
   @Override
   public long getLength() throws IOException {
-    RandomAccessFile file = new RandomAccessFile(path.toFile(), "r");
-    long length = file.length();
-    file.close();
+    if (length == -1) {
+      try (RandomAccessFile file = new RandomAccessFile(path.toFile(), "r")) {
+        length = file.length();
+      }
+    }
     return length;
   }
 
@@ -48,7 +51,7 @@ public class LocalInputFile implements InputFile {
 
     return new SeekableInputStream() {
 
-      final RandomAccessFile randomAccessFile = new RandomAccessFile(path.toFile(), "r");
+      private final RandomAccessFile randomAccessFile = new RandomAccessFile(path.toFile(), "r");
 
       @Override
       public int read() throws IOException {

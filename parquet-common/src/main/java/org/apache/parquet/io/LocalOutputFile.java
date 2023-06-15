@@ -22,12 +22,56 @@ import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 
 /**
  * {@code LocalOutputFile} is an implementation needed by Parquet to write
  * to local data files using {@link PositionOutputStream} instances.
  */
 public class LocalOutputFile implements OutputFile {
+
+  private class LocalPositionOutputStream extends PositionOutputStream {
+    
+    private final BufferedOutputStream stream;
+    private long pos = 0;
+
+    public LocalPositionOutputStream(int buffer, StandardOpenOption... openOption) throws IOException {
+      stream = new BufferedOutputStream(Files.newOutputStream(path, openOption), buffer);
+    }
+
+    @Override
+    public long getPos() {
+      return pos;
+    }
+
+    @Override
+    public void write(int data) throws IOException {
+      pos++;
+      stream.write(data);
+    }
+
+    @Override
+    public void write(byte[] data) throws IOException {
+      pos += data.length;
+      stream.write(data);
+    }
+
+    @Override
+    public void write(byte[] data, int off, int len) throws IOException {
+      pos += len;
+      stream.write(data, off, len);
+    }
+
+    @Override
+    public void flush() throws IOException {
+      stream.flush();
+    }
+
+    @Override
+    public void close() throws IOException {
+      stream.close();
+    }
+  }
 
   private final Path path;
 
@@ -37,50 +81,13 @@ public class LocalOutputFile implements OutputFile {
 
   @Override
   public PositionOutputStream create(long buffer) throws IOException {
-    return new PositionOutputStream() {
-
-      private final BufferedOutputStream stream =
-        new BufferedOutputStream(Files.newOutputStream(path), (int) buffer);
-      private long pos = 0;
-
-      @Override
-      public long getPos() {
-        return pos;
-      }
-
-      @Override
-      public void write(int data) throws IOException {
-        pos++;
-        stream.write(data);
-      }
-
-      @Override
-      public void write(byte[] data) throws IOException {
-        pos += data.length;
-        stream.write(data);
-      }
-
-      @Override
-      public void write(byte[] data, int off, int len) throws IOException {
-        pos += len;
-        stream.write(data, off, len);
-      }
-
-      @Override
-      public void flush() throws IOException {
-        stream.flush();
-      }
-
-      @Override
-      public void close() throws IOException {
-        stream.close();
-      }
-    };
+    return new LocalPositionOutputStream((int) buffer, StandardOpenOption.CREATE_NEW);
   }
 
   @Override
   public PositionOutputStream createOrOverwrite(long buffer) throws IOException {
-    return create(buffer);
+    return new LocalPositionOutputStream((int) buffer, StandardOpenOption.CREATE,
+      StandardOpenOption.TRUNCATE_EXISTING);
   }
 
   @Override
