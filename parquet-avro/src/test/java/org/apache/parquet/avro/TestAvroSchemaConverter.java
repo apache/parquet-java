@@ -713,6 +713,31 @@ public class TestAvroSchemaConverter {
   }
 
   @Test
+  public void testLocalTimestampMillisType() throws Exception {
+    Schema date = LogicalTypes.localTimestampMillis().addToSchema(Schema.create(LONG));
+    Schema expected = Schema.createRecord("myrecord", null, null, false,
+        Arrays.asList(new Schema.Field("timestamp", date, null, null)));
+
+    testRoundTripConversion(expected,
+        "message myrecord {\n" +
+            "  required int64 timestamp (TIMESTAMP(MILLIS,false));\n" +
+            "}\n");
+
+    for (PrimitiveTypeName primitive : new PrimitiveTypeName[]
+        {INT32, INT96, FLOAT, DOUBLE, BOOLEAN, BINARY, FIXED_LEN_BYTE_ARRAY}) {
+      final PrimitiveType type;
+      if (primitive == FIXED_LEN_BYTE_ARRAY) {
+        type = new PrimitiveType(REQUIRED, primitive, 12, "test", TIMESTAMP_MILLIS);
+      } else {
+        type = new PrimitiveType(REQUIRED, primitive, "test", TIMESTAMP_MILLIS);
+      }
+
+      assertThrows("Should not allow TIMESTAMP_MILLIS with " + primitive,
+          IllegalArgumentException.class, () -> new AvroSchemaConverter().convert(message(type)));
+    }
+  }
+
+  @Test
   public void testTimestampMicrosType() throws Exception {
     Schema date = LogicalTypes.timestampMicros().addToSchema(Schema.create(LONG));
     Schema expected = Schema.createRecord("myrecord", null, null, false,
@@ -721,6 +746,31 @@ public class TestAvroSchemaConverter {
     testRoundTripConversion(expected,
         "message myrecord {\n" +
             "  required int64 timestamp (TIMESTAMP(MICROS,true));\n" +
+            "}\n");
+
+    for (PrimitiveTypeName primitive : new PrimitiveTypeName[]
+        {INT32, INT96, FLOAT, DOUBLE, BOOLEAN, BINARY, FIXED_LEN_BYTE_ARRAY}) {
+      final PrimitiveType type;
+      if (primitive == FIXED_LEN_BYTE_ARRAY) {
+        type = new PrimitiveType(REQUIRED, primitive, 12, "test", TIMESTAMP_MICROS);
+      } else {
+        type = new PrimitiveType(REQUIRED, primitive, "test", TIMESTAMP_MICROS);
+      }
+
+      assertThrows("Should not allow TIMESTAMP_MICROS with " + primitive,
+          IllegalArgumentException.class, () -> new AvroSchemaConverter().convert(message(type)));
+    }
+  }
+
+  @Test
+  public void testLocalTimestampMicrosType() throws Exception {
+    Schema date = LogicalTypes.localTimestampMicros().addToSchema(Schema.create(LONG));
+    Schema expected = Schema.createRecord("myrecord", null, null, false,
+        Arrays.asList(new Schema.Field("timestamp", date, null, null)));
+
+    testRoundTripConversion(expected,
+        "message myrecord {\n" +
+            "  required int64 timestamp (TIMESTAMP(MICROS,false));\n" +
             "}\n");
 
     for (PrimitiveTypeName primitive : new PrimitiveTypeName[]
