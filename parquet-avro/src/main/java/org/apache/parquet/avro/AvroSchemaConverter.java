@@ -456,8 +456,12 @@ public class AvroSchemaConverter {
       return timeType(true, MICROS);
     } else if (logicalType instanceof LogicalTypes.TimestampMillis) {
       return timestampType(true, MILLIS);
+    } else if (logicalType instanceof LogicalTypes.LocalTimestampMillis) {
+      return timestampType(false, MILLIS);
     } else if (logicalType instanceof LogicalTypes.TimestampMicros) {
       return timestampType(true, MICROS);
+    } else if (logicalType instanceof LogicalTypes.LocalTimestampMicros) {
+      return timestampType(false, MICROS);
     } else if (logicalType.getName().equals(LogicalTypes.uuid().getName()) && writeParquetUUID) {
       return uuidType();
     }
@@ -494,13 +498,25 @@ public class AvroSchemaConverter {
       @Override
       public Optional<LogicalType> visit(LogicalTypeAnnotation.TimestampLogicalTypeAnnotation timestampLogicalType) {
         LogicalTypeAnnotation.TimeUnit unit = timestampLogicalType.getUnit();
-        switch (unit) {
-          case MILLIS:
-            return of(LogicalTypes.timestampMillis());
-          case MICROS:
-            return of(LogicalTypes.timestampMicros());
+        boolean isAdjustedToUTC = timestampLogicalType.isAdjustedToUTC();
+
+        if (isAdjustedToUTC) {
+          switch (unit) {
+            case MILLIS:
+              return of(LogicalTypes.timestampMillis());
+            case MICROS:
+              return of(LogicalTypes.timestampMicros());
+          }
+          return empty(); 
+        } else {
+          switch (unit) {
+            case MILLIS:
+              return of(LogicalTypes.localTimestampMillis());
+            case MICROS:
+              return of(LogicalTypes.localTimestampMicros());
+          }
+          return empty(); 
         }
-        return empty();
       }
 
       @Override
