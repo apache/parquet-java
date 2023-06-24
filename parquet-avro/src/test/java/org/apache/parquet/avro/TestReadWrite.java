@@ -77,16 +77,19 @@ public class TestReadWrite {
   @Parameterized.Parameters
   public static Collection<Object[]> data() {
     Object[][] data = new Object[][] {
-        { false },  // use the new converters
-        { true } }; // use the old converters
+        { false, false }, // use the new converters
+        { true, false },  // use the old converters
+        { true, true } }; // use a local disk location
     return Arrays.asList(data);
   }
 
   private final boolean compat;
+  private final boolean local;
   private final Configuration testConf = new Configuration();
 
-  public TestReadWrite(boolean compat) {
+  public TestReadWrite(boolean compat, boolean local) {
     this.compat = compat;
+    this.local = local;
     this.testConf.setBoolean(AvroReadSupport.AVRO_COMPATIBILITY, compat);
     testConf.setBoolean("parquet.avro.add-list-element-records", false);
     testConf.setBoolean("parquet.avro.write-old-list-structure", false);
@@ -100,52 +103,15 @@ public class TestReadWrite {
     // Write a record with an empty array.
     List<Integer> emptyArray = new ArrayList<>();
 
-    Path file = new Path(createTempFile().getPath());
+    String file = createTempFile().getPath();
 
-    try(ParquetWriter<GenericRecord> writer = AvroParquetWriter
-      .<GenericRecord>builder(file)
-      .withSchema(schema)
-      .withConf(testConf)
-      .build()) {
+    try(ParquetWriter<GenericRecord> writer = writer(file, schema)) {
       GenericData.Record record = new GenericRecordBuilder(schema)
         .set("myarray", emptyArray).build();
       writer.write(record);
     }
 
-    try (AvroParquetReader<GenericRecord> reader = new AvroParquetReader<>(testConf, file)) {
-      GenericRecord nextRecord = reader.read();
-
-      assertNotNull(nextRecord);
-      assertEquals(emptyArray, nextRecord.get("myarray"));
-    }
-  }
-
-  @Test
-  public void testEmptyArrayLocal() throws Exception {
-    Schema schema = new Schema.Parser().parse(
-      Resources.getResource("array.avsc").openStream());
-
-    // Write a record with an empty array.
-    List<Integer> emptyArray = new ArrayList<>();
-
-    java.nio.file.Path file = Paths.get(createTempFile().getPath());
-
-    try(ParquetWriter<GenericRecord> writer = AvroParquetWriter
-      .<GenericRecord>builder(new LocalOutputFile(file))
-      .withSchema(schema)
-      .withConf(testConf)
-      .build()) {
-      GenericData.Record record = new GenericRecordBuilder(schema)
-        .set("myarray", emptyArray).build();
-      writer.write(record);
-    }
-
-    try (ParquetReader<GenericRecord> reader = AvroParquetReader
-      .<GenericRecord>builder(new LocalInputFile(file))
-      .withDataModel(GenericData.get())
-      .withConf(testConf)
-      .build()) {
-
+    try (ParquetReader<GenericRecord> reader = reader(file)) {
       GenericRecord nextRecord = reader.read();
 
       assertNotNull(nextRecord);
@@ -158,14 +124,10 @@ public class TestReadWrite {
     Schema schema = new Schema.Parser().parse(
       Resources.getResource("map.avsc").openStream());
 
-    Path file = new Path(createTempFile().getPath());
+    String file = createTempFile().getPath();
     ImmutableMap<String, Integer> emptyMap = new ImmutableMap.Builder<String, Integer>().build();
 
-    try(ParquetWriter<GenericRecord> writer = AvroParquetWriter
-      .<GenericRecord>builder(file)
-      .withSchema(schema)
-      .withConf(testConf)
-      .build()) {
+    try (ParquetWriter<GenericRecord> writer = writer(file, schema)) {
 
       // Write a record with an empty map.
       GenericData.Record record = new GenericRecordBuilder(schema)
@@ -173,40 +135,7 @@ public class TestReadWrite {
       writer.write(record);
     }
 
-    try(AvroParquetReader<GenericRecord> reader = new AvroParquetReader<GenericRecord>(testConf, file)) {
-      GenericRecord nextRecord = reader.read();
-
-      assertNotNull(nextRecord);
-      assertEquals(emptyMap, nextRecord.get("mymap"));
-    }
-  }
-
-  @Test
-  public void testEmptyMapLocal() throws Exception {
-    Schema schema = new Schema.Parser().parse(
-      Resources.getResource("map.avsc").openStream());
-
-    java.nio.file.Path file = Paths.get(createTempFile().getPath());
-    ImmutableMap<String, Integer> emptyMap = new ImmutableMap.Builder<String, Integer>().build();
-
-    try(ParquetWriter<GenericRecord> writer = AvroParquetWriter
-      .<GenericRecord>builder(new LocalOutputFile(file))
-      .withSchema(schema)
-      .withConf(testConf)
-      .build()) {
-
-      // Write a record with an empty map.
-      GenericData.Record record = new GenericRecordBuilder(schema)
-        .set("mymap", emptyMap).build();
-      writer.write(record);
-    }
-
-    try (ParquetReader<GenericRecord> reader = AvroParquetReader
-      .<GenericRecord>builder(new LocalInputFile(file))
-      .withDataModel(GenericData.get())
-      .withConf(testConf)
-      .build()) {
-
+    try(ParquetReader<GenericRecord> reader = reader(file)) {
       GenericRecord nextRecord = reader.read();
 
       assertNotNull(nextRecord);
@@ -773,12 +702,10 @@ public class TestReadWrite {
   public void testNestedLists() throws Exception {
     Schema schema = new Schema.Parser().parse(
       Resources.getResource("nested_array.avsc").openStream());
-    Path file = new Path(createTempFile().getPath());
+    String file = createTempFile().getPath();
 
     // Parquet writer
-    ParquetWriter parquetWriter = AvroParquetWriter.builder(file).withSchema(schema)
-      .withConf(testConf)
-      .build();
+    ParquetWriter parquetWriter = writer(file, schema);
 
     Schema innerRecordSchema = schema.getField("l1").schema().getTypes()
       .get(1).getElementType().getTypes().get(1);
@@ -792,7 +719,7 @@ public class TestReadWrite {
     parquetWriter.write(record);
     parquetWriter.close();
 
-    AvroParquetReader<GenericRecord> reader = new AvroParquetReader(testConf, file);
+    ParquetReader<GenericRecord> reader = reader(file);
     GenericRecord nextRecord = reader.read();
 
     assertNotNull(nextRecord);
@@ -801,47 +728,6 @@ public class TestReadWrite {
     assertNotNull(l1List.get(0));
     List l2List = (List) ((GenericRecord) l1List.get(0)).get("l2");
     assertEquals(str("hello"), l2List.get(0));
-  }
-
-  @Test
-  public void testNestedListsLocal() throws Exception {
-    Schema schema = new Schema.Parser().parse(
-      Resources.getResource("nested_array.avsc").openStream());
-    java.nio.file.Path file = Paths.get(createTempFile().getPath());
-
-    // Parquet writer
-    try (ParquetWriter parquetWriter = AvroParquetWriter.builder(new LocalOutputFile(file))
-      .withSchema(schema)
-      .withConf(testConf)
-      .build()) {
-
-      Schema innerRecordSchema = schema.getField("l1").schema().getTypes()
-        .get(1).getElementType().getTypes().get(1);
-
-      GenericRecord record = new GenericRecordBuilder(schema)
-        .set("l1", Collections.singletonList(
-          new GenericRecordBuilder(innerRecordSchema).set("l2", Collections.singletonList("hello")).build()
-        ))
-        .build();
-
-      parquetWriter.write(record);
-    }
-
-    try (ParquetReader<GenericRecord> reader = AvroParquetReader
-      .<GenericRecord>builder(new LocalInputFile(file))
-      .withDataModel(GenericData.get())
-      .withConf(testConf)
-      .build()) {
-
-      GenericRecord nextRecord = reader.read();
-
-      assertNotNull(nextRecord);
-      assertNotNull(nextRecord.get("l1"));
-      List l1List = (List) nextRecord.get("l1");
-      assertNotNull(l1List.get(0));
-      List l2List = (List) ((GenericRecord) l1List.get(0)).get("l2");
-      assertEquals(new Utf8("hello"), l2List.get(0));
-    }
   }
 
   /**
@@ -975,6 +861,34 @@ public class TestReadWrite {
     tmp.deleteOnExit();
     tmp.delete();
     return tmp;
+  }
+
+  private ParquetWriter<GenericRecord> writer(String file, Schema schema) throws IOException {
+    if (local) {
+      return AvroParquetWriter
+        .<GenericRecord>builder(new LocalOutputFile(Paths.get(file)))
+        .withSchema(schema)
+        .withConf(testConf)
+        .build();
+    } else {
+      return AvroParquetWriter
+        .<GenericRecord>builder(new Path(file))
+        .withSchema(schema)
+        .withConf(testConf)
+        .build();
+    }
+  }
+
+  private ParquetReader<GenericRecord> reader(String file) throws IOException {
+    if (local) {
+      return AvroParquetReader
+        .<GenericRecord>builder(new LocalInputFile(Paths.get(file)))
+        .withDataModel(GenericData.get())
+        .withConf(testConf)
+        .build();
+    } else {
+      return new AvroParquetReader(testConf, new Path(file));
+    }
   }
 
   /**
