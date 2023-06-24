@@ -51,7 +51,8 @@ public class TestLocalInputOutput {
   public void outputFileCreateFailsAsFileAlreadyExists() throws IOException {
     Path path = Paths.get(createTempFile().getPath());
     OutputFile write = new LocalOutputFile(path);
-    assertThrows(FileAlreadyExistsException.class, () -> write.create(512));
+    write.create(512).close();
+    assertThrows(FileAlreadyExistsException.class, () -> write.create(512).close());
   }
 
   @Test
