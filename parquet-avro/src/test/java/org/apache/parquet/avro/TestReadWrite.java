@@ -77,9 +77,9 @@ public class TestReadWrite {
   @Parameterized.Parameters
   public static Collection<Object[]> data() {
     Object[][] data = new Object[][] {
-        { false, false }, // use the new converters
-        { true, false },  // use the old converters
-        { true, true } }; // use a local disk location
+        { false, false },  // use the new converters
+        { true, false },   // use the old converters
+        { false, true } }; // use a local disk location
     return Arrays.asList(data);
   }
 
