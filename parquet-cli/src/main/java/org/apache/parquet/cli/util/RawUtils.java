@@ -41,13 +41,13 @@ public class RawUtils {
 
   private static final ObjectMapper MAPPER = createObjectMapper();
 
-  public static FileMetaData readFooter(SeekableInputStream is, long fileLen) throws IOException {
+  public static FileMetaData readFooter(SeekableInputStream inputStream, long fileLen) throws IOException {
     // Read footer length and magic string - with a single seek
     byte[] magic = new byte[MAGIC.length];
     long fileMetadataLengthIndex = fileLen - magic.length - 4;
-    is.seek(fileMetadataLengthIndex);
-    int fileMetadataLength = readIntLittleEndian(is);
-    is.readFully(magic);
+    inputStream.seek(fileMetadataLengthIndex);
+    int fileMetadataLength = readIntLittleEndian(inputStream);
+    inputStream.readFully(magic);
 
     if (Arrays.equals(EFMAGIC, magic)) {
       throw new RuntimeException("Parquet files with encrypted footers are not supported.");
@@ -58,12 +58,12 @@ public class RawUtils {
 
     long fileMetadataIndex = fileMetadataLengthIndex - fileMetadataLength;
     if (fileMetadataIndex < magic.length || fileMetadataIndex >= fileMetadataLengthIndex) {
-      throw new RuntimeException("Corrupted file: the footer index is not within the file: " + fileMetadataIndex);
+      throw new RuntimeException("Corrupted file: the footer index inputStream not within the file: " + fileMetadataIndex);
     }
-    is.seek(fileMetadataIndex);
+    inputStream.seek(fileMetadataIndex);
 
     ByteBuffer footerBytesBuffer = ByteBuffer.allocate(fileMetadataLength);
-    is.readFully(footerBytesBuffer);
+    inputStream.readFully(footerBytesBuffer);
     footerBytesBuffer.flip();
     InputStream footerBytesStream = ByteBufferInputStream.wrap(footerBytesBuffer);
     return Util.readFileMetaData(footerBytesStream);
