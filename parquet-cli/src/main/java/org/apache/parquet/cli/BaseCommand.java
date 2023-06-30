@@ -250,7 +250,14 @@ public abstract class BaseCommand implements Command, Configurable {
   public Configuration getConf() {
     // In case conf is null, we'll return an empty configuration
     // this can be on a local development machine
-    return null != conf ? conf : new Configuration();
+    return null != conf ? conf : createDefaultConf();
+  }
+
+  private Configuration createDefaultConf() {
+    Configuration conf = new Configuration();
+    // Support reading INT96 by default
+    conf.setBoolean(AvroReadSupport.READ_INT96_AS_FIXED, true);
+    return conf;
   }
 
   /**
