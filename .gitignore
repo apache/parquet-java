@@ -18,3 +18,6 @@ target/
 .cache
 *~
 mvn_install.log
+.vscode/*
+.DS_Store
+
