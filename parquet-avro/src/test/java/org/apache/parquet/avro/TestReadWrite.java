@@ -27,6 +27,7 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -54,6 +55,8 @@ import org.apache.hadoop.fs.Path;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.api.WriteSupport;
+import org.apache.parquet.io.LocalInputFile;
+import org.apache.parquet.io.LocalOutputFile;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.RecordConsumer;
 import org.apache.parquet.schema.MessageTypeParser;
@@ -74,16 +77,19 @@ public class TestReadWrite {
   @Parameterized.Parameters
   public static Collection<Object[]> data() {
     Object[][] data = new Object[][] {
-        { false },  // use the new converters
-        { true } }; // use the old converters
+        { false, false },  // use the new converters
+        { true, false },   // use the old converters
+        { false, true } }; // use a local disk location
     return Arrays.asList(data);
   }
 
   private final boolean compat;
+  private final boolean local;
   private final Configuration testConf = new Configuration();
 
-  public TestReadWrite(boolean compat) {
+  public TestReadWrite(boolean compat, boolean local) {
     this.compat = compat;
+    this.local = local;
     this.testConf.setBoolean(AvroReadSupport.AVRO_COMPATIBILITY, compat);
     testConf.setBoolean("parquet.avro.add-list-element-records", false);
     testConf.setBoolean("parquet.avro.write-old-list-structure", false);
@@ -92,24 +98,20 @@ public class TestReadWrite {
   @Test
   public void testEmptyArray() throws Exception {
     Schema schema = new Schema.Parser().parse(
-        Resources.getResource("array.avsc").openStream());
+      Resources.getResource("array.avsc").openStream());
 
     // Write a record with an empty array.
     List<Integer> emptyArray = new ArrayList<>();
 
-    Path file = new Path(createTempFile().getPath());
+    String file = createTempFile().getPath();
 
-    try(ParquetWriter<GenericRecord> writer = AvroParquetWriter
-        .<GenericRecord>builder(file)
-        .withSchema(schema)
-        .withConf(testConf)
-        .build()) {
+    try(ParquetWriter<GenericRecord> writer = writer(file, schema)) {
       GenericData.Record record = new GenericRecordBuilder(schema)
         .set("myarray", emptyArray).build();
       writer.write(record);
     }
 
-    try (AvroParquetReader<GenericRecord> reader = new AvroParquetReader<>(testConf, file)) {
+    try (ParquetReader<GenericRecord> reader = reader(file)) {
       GenericRecord nextRecord = reader.read();
 
       assertNotNull(nextRecord);
@@ -120,16 +122,12 @@ public class TestReadWrite {
   @Test
   public void testEmptyMap() throws Exception {
     Schema schema = new Schema.Parser().parse(
-        Resources.getResource("map.avsc").openStream());
+      Resources.getResource("map.avsc").openStream());
 
-    Path file = new Path(createTempFile().getPath());
+    String file = createTempFile().getPath();
     ImmutableMap<String, Integer> emptyMap = new ImmutableMap.Builder<String, Integer>().build();
 
-    try(ParquetWriter<GenericRecord> writer = AvroParquetWriter
-        .<GenericRecord>builder(file)
-        .withSchema(schema)
-        .withConf(testConf)
-        .build()) {
+    try (ParquetWriter<GenericRecord> writer = writer(file, schema)) {
 
       // Write a record with an empty map.
       GenericData.Record record = new GenericRecordBuilder(schema)
@@ -137,7 +135,7 @@ public class TestReadWrite {
       writer.write(record);
     }
 
-    try(AvroParquetReader<GenericRecord> reader = new AvroParquetReader<GenericRecord>(testConf, file)) {
+    try(ParquetReader<GenericRecord> reader = reader(file)) {
       GenericRecord nextRecord = reader.read();
 
       assertNotNull(nextRecord);
@@ -704,12 +702,10 @@ public class TestReadWrite {
   public void testNestedLists() throws Exception {
     Schema schema = new Schema.Parser().parse(
       Resources.getResource("nested_array.avsc").openStream());
-    Path file = new Path(createTempFile().getPath());
+    String file = createTempFile().getPath();
 
     // Parquet writer
-    ParquetWriter parquetWriter = AvroParquetWriter.builder(file).withSchema(schema)
-      .withConf(testConf)
-      .build();
+    ParquetWriter parquetWriter = writer(file, schema);
 
     Schema innerRecordSchema = schema.getField("l1").schema().getTypes()
       .get(1).getElementType().getTypes().get(1);
@@ -723,7 +719,7 @@ public class TestReadWrite {
     parquetWriter.write(record);
     parquetWriter.close();
 
-    AvroParquetReader<GenericRecord> reader = new AvroParquetReader(testConf, file);
+    ParquetReader<GenericRecord> reader = reader(file);
     GenericRecord nextRecord = reader.read();
 
     assertNotNull(nextRecord);
@@ -865,6 +861,34 @@ public class TestReadWrite {
     tmp.deleteOnExit();
     tmp.delete();
     return tmp;
+  }
+
+  private ParquetWriter<GenericRecord> writer(String file, Schema schema) throws IOException {
+    if (local) {
+      return AvroParquetWriter
+        .<GenericRecord>builder(new LocalOutputFile(Paths.get(file)))
+        .withSchema(schema)
+        .withConf(testConf)
+        .build();
+    } else {
+      return AvroParquetWriter
+        .<GenericRecord>builder(new Path(file))
+        .withSchema(schema)
+        .withConf(testConf)
+        .build();
+    }
+  }
+
+  private ParquetReader<GenericRecord> reader(String file) throws IOException {
+    if (local) {
+      return AvroParquetReader
+        .<GenericRecord>builder(new LocalInputFile(Paths.get(file)))
+        .withDataModel(GenericData.get())
+        .withConf(testConf)
+        .build();
+    } else {
+      return new AvroParquetReader(testConf, new Path(file));
+    }
   }
 
   /**
