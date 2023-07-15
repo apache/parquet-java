@@ -98,6 +98,7 @@ public class ShowDictionaryCommand extends BaseCommand {
     for (int i = 0; i <= dict.getMaxId(); i += 1) {
       switch(type.getPrimitiveTypeName()) {
         case BINARY:
+        case FIXED_LEN_BYTE_ARRAY:
           if (type.getLogicalTypeAnnotation() instanceof LogicalTypeAnnotation.StringLogicalTypeAnnotation) {
             console.info("{}: {}", String.format("%6d", i),
                     Util.humanReadable(dict.decodeToBinary(i).toStringUsingUTF8(), 70));
