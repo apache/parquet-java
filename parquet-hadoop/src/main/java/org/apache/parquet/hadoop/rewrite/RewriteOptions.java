@@ -22,6 +22,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.crypto.FileEncryptionProperties;
+import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 
 import java.util.Arrays;
@@ -41,6 +42,8 @@ public class RewriteOptions {
   final Map<String, MaskMode> maskColumns;
   final List<String> encryptColumns;
   final FileEncryptionProperties fileEncryptionProperties;
+  final boolean mergeRowGroups;
+  final long maxRowGroupSize;
 
   private RewriteOptions(Configuration conf,
                          List<Path> inputFiles,
@@ -49,7 +52,9 @@ public class RewriteOptions {
                          CompressionCodecName newCodecName,
                          Map<String, MaskMode> maskColumns,
                          List<String> encryptColumns,
-                         FileEncryptionProperties fileEncryptionProperties) {
+                         FileEncryptionProperties fileEncryptionProperties,
+                         boolean mergeRowGroups,
+                         long maxRowGroupSize) {
     this.conf = conf;
     this.inputFiles = inputFiles;
     this.outputFile = outputFile;
@@ -58,6 +63,8 @@ public class RewriteOptions {
     this.maskColumns = maskColumns;
     this.encryptColumns = encryptColumns;
     this.fileEncryptionProperties = fileEncryptionProperties;
+    this.mergeRowGroups = mergeRowGroups;
+    this.maxRowGroupSize = maxRowGroupSize;
   }
 
   public Configuration getConf() {
@@ -92,6 +99,14 @@ public class RewriteOptions {
     return fileEncryptionProperties;
   }
 
+  public boolean isMergeRowGroups() {
+    return mergeRowGroups;
+  }
+
+  public long getMaxRowGroupSize() {
+    return maxRowGroupSize;
+  }
+
   // Builder to create a RewriterOptions.
   public static class Builder {
     private Configuration conf;
@@ -102,6 +117,8 @@ public class RewriteOptions {
     private Map<String, MaskMode> maskColumns;
     private List<String> encryptColumns;
     private FileEncryptionProperties fileEncryptionProperties;
+    private boolean mergeRowGroups;
+    private long maxRowGroupSize = ParquetWriter.DEFAULT_BLOCK_SIZE;
 
     /**
      * Create a builder to create a RewriterOptions.
@@ -160,6 +177,27 @@ public class RewriteOptions {
      */
     public Builder transform(CompressionCodecName newCodecName) {
       this.newCodecName = newCodecName;
+      return this;
+    }
+
+    /**
+     * Enable merging of rowgroups
+     *
+     * @return self
+     */
+    public Builder enableRowGroupMerge() {
+      this.mergeRowGroups = true;
+      return this;
+    }
+
+    /**
+     * Sets the max size of the rowgroup
+     *
+     * @param maxRowGroupSize Max row group size
+     * @return self
+     */
+    public Builder maxRowGroupSize(long maxRowGroupSize) {
+      this.maxRowGroupSize = maxRowGroupSize;
       return this;
     }
 
@@ -255,7 +293,9 @@ public class RewriteOptions {
               newCodecName,
               maskColumns,
               encryptColumns,
-              fileEncryptionProperties);
+              fileEncryptionProperties,
+              mergeRowGroups,
+              maxRowGroupSize);
     }
   }
 

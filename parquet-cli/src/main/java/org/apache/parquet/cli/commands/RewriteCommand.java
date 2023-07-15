@@ -82,6 +82,18 @@ public class RewriteCommand extends BaseCommand {
           required = false)
   String codec;
 
+  @Parameter(
+    names = {"-m", "--merge-rowgroups"},
+    description = "<true/false>",
+    required = false)
+  boolean mergeRowGroups;
+
+  @Parameter(
+    names = {"-s", "--max-rowgroup-size"},
+    description = "<max size of the merged rowgroups>",
+    required = false)
+  long maxRowGroupSize;
+
   public RewriteCommand(Logger console) {
     super(console);
   }
@@ -118,6 +130,15 @@ public class RewriteCommand extends BaseCommand {
       builder.transform(codecName);
     }
 
+    if (mergeRowGroups) {
+      Preconditions.checkArgument(maxRowGroupSize > 0,
+        "If merge rowgroup is enabled, max rowgroups size should be specified");
+      Preconditions.checkArgument(null != codec,
+        "If merge rowgroup is enabled, new compression codec needs to be specified");
+      builder.enableRowGroupMerge();
+      builder.maxRowGroupSize(maxRowGroupSize);
+    }
+    
     RewriteOptions options = builder.build();
 
     // If RewriteOptions are successfully built and the overwrite option is specified, remove the output path
