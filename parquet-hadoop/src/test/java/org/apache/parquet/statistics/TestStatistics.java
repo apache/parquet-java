@@ -92,6 +92,11 @@ public class TestStatistics {
     public DataPage readPage() {
       return data;
     }
+
+    @Override
+    public boolean isNullMaskedColumn() {
+      return false;
+    }
   }
 
   private static <T extends Comparable<T>> Statistics<T> getStatisticsFromPageHeader(DataPage page) {

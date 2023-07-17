@@ -63,6 +63,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.TreeSet;
@@ -85,6 +86,7 @@ import org.apache.parquet.column.statistics.FloatStatistics;
 import org.apache.parquet.column.statistics.IntStatistics;
 import org.apache.parquet.column.statistics.LongStatistics;
 import org.apache.parquet.column.statistics.Statistics;
+import org.apache.parquet.crypto.InternalFileDecryptor;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroup;
 import org.apache.parquet.format.DecimalType;
@@ -1349,6 +1351,36 @@ public class TestParquetMetadataConverter {
     MessageType messageType = parquetMetadataConverter.fromParquetSchema(oldConvertedTypeSchemaElements, null);
 
     verifyMapMessageType(messageType, "map");
+  }
+
+  @Test
+  public void testMaskedColumnInvisible() throws IOException {
+    MessageType schema = parseMessageType("message test {"
+      + "  optional binary binary_col1;"
+      + "  optional double double_col2;"
+      + "}");
+    org.apache.parquet.hadoop.metadata.FileMetaData fileMetaData = new org.apache.parquet.hadoop.metadata.FileMetaData(
+      schema, new HashMap<String, String>(), null);
+    List<BlockMetaData> blocks = new ArrayList<BlockMetaData>();
+    BlockMetaData block = new BlockMetaData();
+    ColumnChunkMetaData column1 = ColumnChunkMetaData.get(ColumnPath.fromDotString("binary_col1"), PrimitiveTypeName.BINARY, CompressionCodecName.ZSTD, new HashSet<Encoding>(), 0, 0, 0, 0, 0);
+    block.addColumn(column1);
+    ColumnChunkMetaData column2 = ColumnChunkMetaData.get(ColumnPath.fromDotString("double_col2"), PrimitiveTypeName.DOUBLE, CompressionCodecName.GZIP, new HashSet<Encoding>(), 0, 0, 0, 0, 0);
+    block.addColumn(column2);
+    blocks.add(block);
+    ParquetMetadata metadata = new ParquetMetadata(fileMetaData, blocks);
+    ParquetMetadataConverter converter = new ParquetMetadataConverter();
+    FileMetaData formatMetadata = converter.toParquetMetadata(1, metadata);
+    MessageType resultSchema = converter.fromParquetMetadata(formatMetadata, null, false, new HashMap<>(), "", false, false).getFileMetaData().getSchema();
+    List<ColumnDescriptor> columns = resultSchema.getColumns();
+    assertEquals(2, columns.size());
+    assertEquals(ColumnPath.get(columns.get(0).getPath()), column1.getPath());
+    assertEquals(ColumnPath.get(columns.get(1).getPath()), column2.getPath());
+    resultSchema = converter.fromParquetMetadata(formatMetadata, null, false, new HashMap<>(), "", false, true).getFileMetaData().getSchema();
+    columns = resultSchema.getColumns();
+    assertEquals(2, columns.size());
+    assertEquals(ColumnPath.get(columns.get(0).getPath()), column1.getPath());
+    assertEquals(ColumnPath.get(columns.get(1).getPath()), column2.getPath());
   }
 
   private void verifyMapMessageType(final MessageType messageType, final String keyValueName) throws IOException {

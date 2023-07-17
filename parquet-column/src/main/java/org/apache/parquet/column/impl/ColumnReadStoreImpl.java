@@ -75,6 +75,9 @@ public class ColumnReadStoreImpl implements ColumnReadStore {
   public ColumnReader getColumnReader(ColumnDescriptor path) {
     PrimitiveConverter converter = getPrimitiveConverter(path);
     PageReader pageReader = pageReadStore.getPageReader(path);
+    if (pageReader.isNullMaskedColumn()) {
+      return null;
+    }
     Optional<PrimitiveIterator.OfLong> rowIndexes = pageReadStore.getRowIndexes();
     if (rowIndexes.isPresent()) {
       return new SynchronizingColumnReader(path, pageReader, converter, writerVersion, rowIndexes.get());

@@ -157,6 +157,16 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
   public static final String TASK_SIDE_METADATA = "parquet.task.side.metadata";
 
   /**
+   * Key to configure whether or not masked columns should be invisible in schema to user
+   */
+  public static final String MASKED_COLUMN_VISIBLE_ENABLED = "parquet.crypto.masked.column.visible.enabled";
+
+  /**
+   * Key to configure whether or not read the masked value
+   */
+  public static final String READ_MASKED_VALUE_ENABLED = "parquet.crypto.read.masked.value.enabled";
+
+  /**
    * key to turn off file splitting. See PARQUET-246.
    */
   public static final String SPLIT_FILES = "parquet.split.files";

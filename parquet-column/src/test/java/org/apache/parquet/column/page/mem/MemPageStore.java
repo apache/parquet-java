@@ -40,10 +40,16 @@ public class MemPageStore implements PageReadStore, PageWriteStore {
   private Map<ColumnDescriptor, MemPageWriter> pageWriters = new HashMap<>();
 
   private long rowCount;
+  private boolean isNull;
 
   public MemPageStore(long rowCount) {
+    this(rowCount, false);
+  }
+
+  public MemPageStore(long rowCount, boolean isNull) {
     super();
     this.rowCount = rowCount;
+    this.isNull = isNull;
   }
 
   @Override
@@ -64,7 +70,7 @@ public class MemPageStore implements PageReadStore, PageWriteStore {
     }
     List<DataPage> pages = new ArrayList<>(pageWriter.getPages());
     LOG.debug("initialize page reader with {} values and {} pages", pageWriter.getTotalValueCount(), pages.size());
-    return new MemPageReader(pageWriter.getTotalValueCount(), pages.iterator(), pageWriter.getDictionaryPage());
+    return new MemPageReader(pageWriter.getTotalValueCount(), pages.iterator(), pageWriter.getDictionaryPage(), isNull);
   }
 
   @Override

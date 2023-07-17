@@ -35,12 +35,18 @@ public class MemPageReader implements PageReader {
   private final long totalValueCount;
   private final Iterator<DataPage> pages;
   private final DictionaryPage dictionaryPage;
+  private boolean isNullMaskedColumn;
 
   public MemPageReader(long totalValueCount, Iterator<DataPage> pages, DictionaryPage dictionaryPage) {
+    this(totalValueCount, pages, dictionaryPage, false);
+  }
+
+  public MemPageReader(long totalValueCount, Iterator<DataPage> pages, DictionaryPage dictionaryPage, boolean isNull) {
     super();
     this.pages = Objects.requireNonNull(pages, "pages cannot be null");
     this.totalValueCount = totalValueCount;
     this.dictionaryPage = dictionaryPage;
+    this.isNullMaskedColumn = isNull;
   }
 
   @Override
@@ -64,4 +70,8 @@ public class MemPageReader implements PageReader {
     return dictionaryPage;
   }
 
+  @Override
+  public boolean isNullMaskedColumn() {
+    return isNullMaskedColumn;
+  }
 }
