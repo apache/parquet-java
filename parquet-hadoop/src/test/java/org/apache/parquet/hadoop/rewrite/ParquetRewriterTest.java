@@ -503,8 +503,8 @@ public class ParquetRewriterTest {
     }
     Path outputPath = new Path(outputFile);
     RewriteOptions.Builder builder = new RewriteOptions.Builder(conf, inputPaths, outputPath);
-    RewriteOptions options = builder.enableRowGroupMerge().transform(CompressionCodecName.SNAPPY)
-      .maxRowGroupSize(ParquetWriter.DEFAULT_BLOCK_SIZE).build();
+    RewriteOptions options = builder.mergeRowGroups(ParquetWriter.DEFAULT_BLOCK_SIZE)
+      .transform(CompressionCodecName.SNAPPY).build();
 
     rewriter = new ParquetRewriter(options);
     rewriter.processBlocks();

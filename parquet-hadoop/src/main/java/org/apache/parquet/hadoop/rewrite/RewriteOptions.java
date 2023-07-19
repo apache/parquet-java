@@ -181,23 +181,14 @@ public class RewriteOptions {
     }
 
     /**
-     * Enable merging of rowgroups
-     *
-     * @return self
-     */
-    public Builder enableRowGroupMerge() {
-      this.mergeRowGroups = true;
-      return this;
-    }
-
-    /**
-     * Sets the max size of the rowgroup
+     * Sets the max size of the rowgroup and enables rowgroup merging
      *
      * @param maxRowGroupSize Max row group size
      * @return self
      */
-    public Builder maxRowGroupSize(long maxRowGroupSize) {
+    public Builder mergeRowGroups(long maxRowGroupSize) {
       this.maxRowGroupSize = maxRowGroupSize;
+      this.mergeRowGroups = true;
       return this;
     }
 

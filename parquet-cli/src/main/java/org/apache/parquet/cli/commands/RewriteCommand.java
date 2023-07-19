@@ -84,13 +84,13 @@ public class RewriteCommand extends BaseCommand {
 
   @Parameter(
     names = {"-m", "--merge-rowgroups"},
-    description = "<true/false>",
+    description = "<merge multiple rowgroups into one>",
     required = false)
   boolean mergeRowGroups;
 
   @Parameter(
     names = {"-s", "--max-rowgroup-size"},
-    description = "<max size of the merged rowgroups>",
+    description = "<max size of the merged rowgroups. This should be used along with -m/--merge-rowgroups option>",
     required = false)
   long maxRowGroupSize;
 
@@ -135,8 +135,7 @@ public class RewriteCommand extends BaseCommand {
         "If merge rowgroup is enabled, max rowgroups size should be specified");
       Preconditions.checkArgument(null != codec,
         "If merge rowgroup is enabled, new compression codec needs to be specified");
-      builder.enableRowGroupMerge();
-      builder.maxRowGroupSize(maxRowGroupSize);
+      builder.mergeRowGroups(maxRowGroupSize);
     }
     
     RewriteOptions options = builder.build();

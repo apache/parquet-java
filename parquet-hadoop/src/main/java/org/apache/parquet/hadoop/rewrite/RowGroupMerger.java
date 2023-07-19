@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.parquet.hadoop;
+package org.apache.parquet.hadoop.rewrite;
 
 import static java.lang.String.format;
 import static org.apache.parquet.column.ValuesType.DEFINITION_LEVEL;
@@ -26,7 +26,11 @@ import static org.apache.parquet.column.ValuesType.VALUES;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
-import java.util.*;
+import java.util.List;
+import java.util.Collections;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.AbstractMap.SimpleEntry;
 import java.util.Map.Entry;
 import java.util.function.BiConsumer;
@@ -50,19 +54,20 @@ import org.apache.parquet.column.page.PageReader;
 import org.apache.parquet.column.values.ValuesReader;
 import org.apache.parquet.column.values.ValuesWriter;
 import org.apache.parquet.compression.CompressionCodecFactory;
+import org.apache.parquet.hadoop.CodecFactory;
+import org.apache.parquet.hadoop.ParquetFileReader;
+import org.apache.parquet.hadoop.ParquetFileWriter;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
-import org.apache.parquet.hadoop.util.CompressionConverter;
-import org.apache.parquet.io.InputFile;
 import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
 
-public class RowGroupMerger {
+class RowGroupMerger {
 
   private final MessageType schema;
-  private final CodecFactory.BytesInputCompressor compressor;
+  private final CompressionCodecFactory.BytesInputCompressor compressor;
   private final ParquetProperties parquetProperties;
 
   public RowGroupMerger(MessageType schema, CompressionCodecName compression, boolean useV2ValueWriter) {
@@ -88,7 +93,7 @@ public class RowGroupMerger {
    * @throws IOException if an IO error occurs
    */
   public void merge(List<ParquetFileReader> inputFiles, final long maxRowGroupSize,
-             ParquetFileWriter writer) throws IOException {
+                    ParquetFileWriter writer) throws IOException {
 
     SizeEstimator estimator = new SizeEstimator(compressor.getCodecName() != CompressionCodecName.UNCOMPRESSED);
     MutableMergedBlock mergedBlock = null;
