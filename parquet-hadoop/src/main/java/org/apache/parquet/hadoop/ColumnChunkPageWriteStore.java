@@ -255,15 +255,44 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
       if (null != headerBlockEncryptor) {
         AesCipher.quickUpdatePageAAD(dataPageHeaderAAD, pageOrdinal);
       }
-      parquetMetadataConverter.writeDataPageV2Header(
-          uncompressedSize, compressedSize,
-          valueCount, nullCount, rowCount,
+      if (pageWriteChecksumEnabled) {
+        crc.reset();
+        if (repetitionLevels.size() > 0) {
+          crc.update(repetitionLevels.toByteArray());
+        }
+        if (definitionLevels.size() > 0) {
+          crc.update(definitionLevels.toByteArray());
+        }
+        if (compressedData.size() > 0) {
+          crc.update(compressedData.toByteArray());
+        }
+        parquetMetadataConverter.writeDataPageV2Header(
+          uncompressedSize,
+          compressedSize,
+          valueCount,
+          nullCount,
+          rowCount,
+          dataEncoding,
+          rlByteLength,
+          dlByteLength,
+          (int) crc.getValue(),
+          tempOutputStream,
+          headerBlockEncryptor,
+          dataPageHeaderAAD);
+      } else {
+        parquetMetadataConverter.writeDataPageV2Header(
+          uncompressedSize,
+          compressedSize,
+          valueCount,
+          nullCount,
+          rowCount,
           dataEncoding,
           rlByteLength,
           dlByteLength,
           tempOutputStream,
           headerBlockEncryptor,
           dataPageHeaderAAD);
+      }
       this.uncompressedLength += uncompressedSize;
       this.compressedLength += compressedSize;
       this.totalValueCount += valueCount;
