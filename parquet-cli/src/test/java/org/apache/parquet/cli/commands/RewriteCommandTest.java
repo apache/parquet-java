@@ -19,11 +19,13 @@
 package org.apache.parquet.cli.commands;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileAlreadyExistsException;
 import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.Arrays;
 
 public class RewriteCommandTest extends ParquetFileTest {
@@ -35,6 +37,34 @@ public class RewriteCommandTest extends ParquetFileTest {
     File output = new File(getTempFolder(), "converted.parquet");
     command.output = output.getAbsolutePath();
     command.setConf(new Configuration());
+    Assert.assertEquals(0, command.run());
+    Assert.assertTrue(output.exists());
+  }
+
+  @Test(expected = FileAlreadyExistsException.class)
+  public void testRewriteCommandWithoutOverwrite() throws IOException {
+    File file = parquetFile();
+    RewriteCommand command = new RewriteCommand(createLogger());
+    command.inputs = Arrays.asList(file.getAbsolutePath());
+    File output = new File(getTempFolder(), "converted.parquet");
+    command.output = output.getAbsolutePath();
+    command.setConf(new Configuration());
+
+    Files.createFile(output.toPath());
+    command.run();
+  }
+
+  @Test
+  public void testRewriteCommandWithOverwrite() throws IOException {
+    File file = parquetFile();
+    RewriteCommand command = new RewriteCommand(createLogger());
+    command.inputs = Arrays.asList(file.getAbsolutePath());
+    File output = new File(getTempFolder(), "converted.parquet");
+    command.output = output.getAbsolutePath();
+    command.overwrite = true;
+    command.setConf(new Configuration());
+
+    Files.createFile(output.toPath());
     Assert.assertEquals(0, command.run());
     Assert.assertTrue(output.exists());
   }
