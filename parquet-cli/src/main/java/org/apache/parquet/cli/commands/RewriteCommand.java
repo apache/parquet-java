@@ -62,7 +62,7 @@ public class RewriteCommand extends BaseCommand {
 
   @Parameter(
           names = {"--prune-columns"},
-          description = "<columns to be replaced with masked value>",
+          description = "<columns to be removed>",
           required = false)
   List<String> pruneColumns;
 
