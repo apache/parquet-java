@@ -181,6 +181,7 @@ public class ConvertCSVCommand extends BaseCommand {
           .build()) {
         for (Record record : reader) {
           writer.write(record);
+          count++;
         }
       } catch (RuntimeException e) {
         throw new RuntimeException("Failed on record " + count, e);
