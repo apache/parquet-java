@@ -119,11 +119,6 @@ public class MemoryManager {
       }
     }
 
-    int maxColCount = 0;
-    for (InternalParquetRecordWriter<?> w : writerList.keySet()) {
-      maxColCount = Math.max(w.getSchema().getColumns().size(), maxColCount);
-    }
-
     for (Map.Entry<InternalParquetRecordWriter<?>, Long> entry : writerList
         .entrySet()) {
       long newSize = (long) Math.floor(entry.getValue() * scale);
