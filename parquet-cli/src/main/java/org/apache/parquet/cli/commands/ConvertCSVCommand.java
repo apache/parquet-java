@@ -24,6 +24,7 @@ import com.beust.jcommander.Parameters;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
+import org.apache.avro.SchemaNormalization;
 import org.apache.parquet.cli.BaseCommand;
 import org.apache.parquet.cli.csv.AvroCSVReader;
 import org.apache.parquet.cli.csv.CSVProperties;
@@ -120,7 +121,7 @@ public class ConvertCSVCommand extends BaseCommand {
   @Override
   @SuppressWarnings("unchecked")
   public int run() throws IOException {
-    Preconditions.checkArgument(targets != null && targets.size() == 1,
+    Preconditions.checkArgument(targets != null && !targets.isEmpty(),
         "CSV path is required.");
 
     if (header != null) {
@@ -138,9 +139,7 @@ public class ConvertCSVCommand extends BaseCommand {
         .charset(charsetName)
         .build();
 
-    String source = targets.get(0);
-
-    Schema csvSchema;
+    Schema csvSchema = null;
     if (avroSchemaFile != null) {
       csvSchema = Schemas.fromAvsc(open(avroSchemaFile));
     } else {
@@ -149,7 +148,7 @@ public class ConvertCSVCommand extends BaseCommand {
         required = ImmutableSet.copyOf(requiredFields);
       }
 
-      String filename = new File(source).getName();
+      String filename = new File(targets.get(0)).getName();
       String recordName;
       if (filename.contains(".")) {
         recordName = filename.substring(0, filename.indexOf("."));
@@ -157,34 +156,45 @@ public class ConvertCSVCommand extends BaseCommand {
         recordName = filename;
       }
 
-      csvSchema = AvroCSV.inferNullableSchema(
-          recordName, open(source), props, required);
+      // If the schema is not explicitly provided,
+      // ensure that all input files share the same one.
+      for (String target : targets) {
+        Schema schema = AvroCSV.inferNullableSchema(
+          recordName, open(target), props, required);
+        if (csvSchema == null) {
+          csvSchema = schema;
+        } else if (!SchemaNormalization.toParsingForm(csvSchema).equals(SchemaNormalization.toParsingForm(schema))) {
+          throw new IllegalArgumentException(target + " seems to have a different schema from others. " +
+            "Please specify the correct schema explicitly with the `--schema` option.");
+        }
+      }
     }
 
-    long count = 0;
-    try (AvroCSVReader<Record> reader = new AvroCSVReader<>(
-        open(source), props, csvSchema, Record.class, true)) {
-        CompressionCodecName codec = Codecs.parquetCodec(compressionCodecName);
-      try (ParquetWriter<Record> writer = AvroParquetWriter
-          .<Record>builder(qualifiedPath(outputPath))
-          .withWriterVersion(v2 ? PARQUET_2_0 : PARQUET_1_0)
-          .withWriteMode(overwrite ?
-              ParquetFileWriter.Mode.OVERWRITE : ParquetFileWriter.Mode.CREATE)
-          .withCompressionCodec(codec)
-          .withDictionaryEncoding(true)
-          .withDictionaryPageSize(dictionaryPageSize)
-          .withPageSize(pageSize)
-          .withRowGroupSize(rowGroupSize)
-          .withDataModel(GenericData.get())
-          .withConf(getConf())
-          .withSchema(csvSchema)
-          .build()) {
-        for (Record record : reader) {
-          writer.write(record);
-          count++;
+    try (ParquetWriter<Record> writer = AvroParquetWriter
+      .<Record>builder(qualifiedPath(outputPath))
+      .withWriterVersion(v2 ? PARQUET_2_0 : PARQUET_1_0)
+      .withWriteMode(overwrite ?
+        ParquetFileWriter.Mode.OVERWRITE : ParquetFileWriter.Mode.CREATE)
+      .withCompressionCodec(Codecs.parquetCodec(compressionCodecName))
+      .withDictionaryEncoding(true)
+      .withDictionaryPageSize(dictionaryPageSize)
+      .withPageSize(pageSize)
+      .withRowGroupSize(rowGroupSize)
+      .withDataModel(GenericData.get())
+      .withConf(getConf())
+      .withSchema(csvSchema)
+      .build()) {
+      for (String target : targets) {
+        long count = 0;
+        try (AvroCSVReader<Record> reader = new AvroCSVReader<>(
+          open(target), props, csvSchema, Record.class, true)) {
+          for (Record record : reader) {
+            writer.write(record);
+            count++;
+          }
+        } catch (RuntimeException e) {
+          throw new RuntimeException("Failed on record " + count + " in file " + target, e);
         }
-      } catch (RuntimeException e) {
-        throw new RuntimeException("Failed on record " + count, e);
       }
     }
 

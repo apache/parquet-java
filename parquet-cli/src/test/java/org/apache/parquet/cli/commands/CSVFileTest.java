@@ -30,11 +30,17 @@ public abstract class CSVFileTest extends FileTest {
   @Before
   public void setUp() throws IOException {
     createTestCSVFile();
+    createTestCSVFileWithDifferentSchema();
   }
 
   protected File csvFile() {
     File tmpDir = getTempFolder();
     return new File(tmpDir, getClass().getSimpleName() + ".csv");
+  }
+
+  protected File csvFileWithDifferentSchema() {
+    File tmpDir = getTempFolder();
+    return new File(tmpDir, getClass().getSimpleName() + "2.csv");
   }
 
   private void createTestCSVFile() throws IOException {
@@ -46,6 +52,18 @@ public abstract class CSVFileTest extends FileTest {
         Integer.MIN_VALUE, Long.MIN_VALUE, COLORS[0]));
       writer.write(String.format("%d,%d,\"%s\"\n",
         Integer.MAX_VALUE, Long.MAX_VALUE, COLORS[1]));
+    }
+  }
+
+  private void createTestCSVFileWithDifferentSchema() throws IOException {
+    File file = csvFileWithDifferentSchema();
+    try (BufferedWriter writer = new BufferedWriter(new FileWriter(file))) {
+      writer.write(String.format("%s,%s,%s\n",
+        FLOAT_FIELD, DOUBLE_FIELD, BINARY_FIELD));
+      writer.write(String.format("%f,%f,\"%s\"\n",
+        Float.MIN_VALUE, Double.MIN_VALUE, COLORS[0]));
+      writer.write(String.format("%f,%f,\"%s\"\n",
+        Float.MAX_VALUE, Double.MAX_VALUE, COLORS[1]));
     }
   }
 }
