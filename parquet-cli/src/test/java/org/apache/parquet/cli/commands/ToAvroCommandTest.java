@@ -90,6 +90,18 @@ public class ToAvroCommandTest extends AvroFileTest {
     Assert.assertTrue(avroFile.exists());
   }
 
+  @Test
+  public void testToAvroCommandWithBzip2Compression() throws IOException {
+    File avroFile = toAvro(parquetFile(), "bzip2");
+    Assert.assertTrue(avroFile.exists());
+  }
+
+  @Test
+  public void testToAvroCommandWithXzCompression() throws IOException {
+    File avroFile = toAvro(parquetFile(), "xz");
+    Assert.assertTrue(avroFile.exists());
+  }
+
   @Test(expected = IllegalArgumentException.class)
   public void testToAvroCommandWithInvalidCompression() throws IOException {
     toAvro(parquetFile(), "FOO");
