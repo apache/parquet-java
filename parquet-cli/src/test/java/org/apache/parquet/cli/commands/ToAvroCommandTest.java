@@ -73,6 +73,7 @@ public class ToAvroCommandTest extends AvroFileTest {
     assert (cmd.run() == 0);
   }
 
+  @Test
   public void testToAvroCommandWithGzipCompression() throws IOException {
     File avroFile = toAvro(parquetFile(), "GZIP");
     Assert.assertTrue(avroFile.exists());

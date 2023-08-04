@@ -380,6 +380,7 @@ public class DefaultValuesWriterFactoryTest {
       ByteStreamSplitValuesWriter.class);
   }
 
+  @Test
   public void testFloat_V1_WithByteStreamSplitAndDictionary() {
     doTestValueWriter(
       PrimitiveTypeName.FLOAT,
@@ -419,6 +420,7 @@ public class DefaultValuesWriterFactoryTest {
       PlainDoubleDictionaryValuesWriter.class, ByteStreamSplitValuesWriter.class);
   }
 
+  @Test
   public void testColumnWiseDictionaryWithFalseDefault() {
     ValuesWriterFactory factory = getDefaultFactory(WriterVersion.PARQUET_2_0, false,
         "binary_dict",
