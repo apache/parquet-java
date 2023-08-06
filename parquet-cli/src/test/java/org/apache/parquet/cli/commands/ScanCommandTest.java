@@ -31,8 +31,27 @@ public class ScanCommandTest extends ParquetFileTest {
   public void testScanCommand() throws IOException {
     File file = parquetFile();
     ScanCommand command = new ScanCommand(createLogger());
-    command.sourceFile = file.getAbsolutePath();
+    command.sourceFiles = Arrays.asList(file.getAbsolutePath());
     command.setConf(new Configuration());
     Assert.assertEquals(0, command.run());
+  }
+
+  @Test
+  public void testScanCommandWithMultipleSourceFiles() throws IOException {
+    File file = parquetFile();
+    ScanCommand command = new ScanCommand(createLogger());
+    command.sourceFiles = Arrays.asList(file.getAbsolutePath(), file.getAbsolutePath());
+    command.setConf(new Configuration());
+    Assert.assertEquals(0, command.run());
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void testScanCommandWithInvalidColumnName() throws IOException {
+    File file = parquetFile();
+    ScanCommand command = new ScanCommand(createLogger());
+    command.sourceFiles = Arrays.asList(file.getAbsolutePath());
+    command.columns = Arrays.asList("invalid_field");
+    command.setConf(new Configuration());
+    command.run();
   }
 }
