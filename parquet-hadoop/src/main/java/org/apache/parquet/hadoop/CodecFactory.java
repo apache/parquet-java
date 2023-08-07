@@ -173,10 +173,10 @@ public class CodecFactory implements CompressionCodecFactory {
           // null compressor for non-native gzip
           compressor.reset();
         }
-        CompressionOutputStream cos = codec.createOutputStream(compressedOutBuffer, compressor);
-        bytes.writeAllTo(cos);
-        cos.finish();
-        cos.close();
+        try (CompressionOutputStream cos = codec.createOutputStream(compressedOutBuffer, compressor)) {
+          bytes.writeAllTo(cos);
+          cos.finish();
+        }
         compressedBytes = BytesInput.from(compressedOutBuffer);
       }
       return compressedBytes;
@@ -234,11 +234,11 @@ public class CodecFactory implements CompressionCodecFactory {
     if (codecClassName == null) {
       return null;
     }
-    CompressionCodec codec = CODEC_BY_NAME.get(codecClassName);
+    String codecCacheKey = this.cacheKey(codecName);
+    CompressionCodec codec = CODEC_BY_NAME.get(codecCacheKey);
     if (codec != null) {
       return codec;
     }
-
     try {
       Class<?> codecClass;
       try {
@@ -248,11 +248,34 @@ public class CodecFactory implements CompressionCodecFactory {
         codecClass = configuration.getClassLoader().loadClass(codecClassName);
       }
       codec = (CompressionCodec) ReflectionUtils.newInstance(codecClass, configuration);
-      CODEC_BY_NAME.put(codecClassName, codec);
+      CODEC_BY_NAME.put(codecCacheKey, codec);
       return codec;
     } catch (ClassNotFoundException e) {
       throw new BadConfigurationException("Class " + codecClassName + " was not found", e);
     }
+  }
+
+  private String cacheKey(CompressionCodecName codecName) {
+    String level = null;
+    switch (codecName) {
+      case GZIP:
+        level = configuration.get("zlib.compress.level");
+        break;
+      case BROTLI:
+        level = configuration.get("compression.brotli.quality");
+        break;
+      case ZSTD:
+        level = configuration.get("parquet.compression.codec.zstd.level");
+        if (level == null) {
+          // keep "io.compression.codec.zstd.level" for backwards compatibility
+          level = configuration.get("io.compression.codec.zstd.level");
+        }
+        break;
+      default:
+        // compression level is not supported; ignore it
+    }
+    String codecClass = codecName.getHadoopCompressionCodecClassName();
+    return level == null ? codecClass : codecClass + ":" + level;
   }
 
   @Override
