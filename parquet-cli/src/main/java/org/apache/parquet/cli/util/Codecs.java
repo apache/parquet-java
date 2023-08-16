@@ -19,6 +19,7 @@
 
 package org.apache.parquet.cli.util;
 
+import org.apache.avro.AvroRuntimeException;
 import org.apache.avro.file.CodecFactory;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 
@@ -34,19 +35,24 @@ public class Codecs {
   }
 
   public static CodecFactory avroCodec(String codec) {
-    CompressionCodecName parquetCodec = parquetCodec(codec);
-    switch (parquetCodec) {
-      case UNCOMPRESSED:
-        return CodecFactory.nullCodec();
-      case SNAPPY:
-        return CodecFactory.snappyCodec();
-      case GZIP:
-        return CodecFactory.deflateCodec(9);
-      case ZSTD:
-        return CodecFactory.zstandardCodec(CodecFactory.DEFAULT_ZSTANDARD_LEVEL);
-      default:
-        throw new IllegalArgumentException(
-            "Codec incompatible with Avro: " + codec);
+    String avroCodec;
+    if (codec.equalsIgnoreCase(CompressionCodecName.GZIP.name())) {
+      avroCodec = "deflate";
+    } else if (codec.equalsIgnoreCase(CompressionCodecName.SNAPPY.name())) {
+      avroCodec = "snappy";
+    } else if (codec.equalsIgnoreCase(CompressionCodecName.UNCOMPRESSED.name())) {
+      avroCodec = "null";
+    } else if (codec.equalsIgnoreCase(CompressionCodecName.ZSTD.name())) {
+      avroCodec = "zstandard";
+    } else {
+      avroCodec = codec;
     }
+    CodecFactory factory;
+    try {
+      factory = CodecFactory.fromString(avroCodec);
+    } catch (AvroRuntimeException e) {
+      throw new IllegalArgumentException("Codec incompatible with Avro: " + codec, e);
+    }
+    return factory;
   }
 }
