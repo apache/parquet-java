@@ -380,6 +380,10 @@ abstract class ColumnWriterBase implements ColumnWriter {
     return this.rowsWrittenSoFar;
   }
 
+  int getValueCount() {
+    return this.valueCount;
+  }
+
   /**
    * Writes the current data to a new page in the page store
    */

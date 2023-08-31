@@ -106,6 +106,30 @@ public class TestMemColumn {
   }
 
   @Test
+  public void testMemColumnBinaryExceedIntMaxValue() throws Exception {
+    MessageType mt = MessageTypeParser.parseMessageType("message msg { required group v (LIST) { repeated group list { optional binary element; } } }");
+    String[] col = new String[]{"v", "list", "element"};
+    MemPageStore memPageStore = new MemPageStore(100);
+
+    ColumnWriteStoreV1 memColumnsStore = newColumnWriteStoreImpl(memPageStore);
+    ColumnDescriptor path = mt.getColumnDescription(col);
+    ColumnWriter columnWriter = memColumnsStore.getColumnWriter(path);
+
+    int numRows = 20000;
+    int numEntries = 110000;
+    for (int row=0; row < numRows; row++) {
+      columnWriter.writeNull(0, 1);
+      for (int i=1; i < numEntries; i++) columnWriter.writeNull( 1, 1);
+      memColumnsStore.endRecord();
+    }
+    memColumnsStore.flush();
+
+    ColumnReader columnReader = getColumnReader(memPageStore, path, mt);
+    assertEquals("parquet page value-count should fit on the signed-int range",
+      columnReader.getTotalValueCount(), (long) numRows * numEntries);
+  }
+
+  @Test
   public void testMemColumnSeveralPages() throws Exception {
     MessageType mt = MessageTypeParser.parseMessageType("message msg { required group foo { required int64 bar; } }");
     String[] col = new String[]{"foo", "bar"};
@@ -180,7 +204,6 @@ public class TestMemColumn {
         .requiredList().requiredElement(BINARY).named("binary_col")
         .requiredList().requiredElement(INT32).named("int32_col")
         .named("msg");
-    System.out.println(schema);
     MemPageStore memPageStore = new MemPageStore(123);
 
     // Using V2 pages so we have rowCount info
@@ -239,7 +262,6 @@ public class TestMemColumn {
   private ColumnWriteStoreV1 newColumnWriteStoreImpl(MemPageStore memPageStore) {
     return new ColumnWriteStoreV1(memPageStore,
         ParquetProperties.builder()
-            .withPageSize(2048)
             .withDictionaryEncoding(false)
             .build());
   }
