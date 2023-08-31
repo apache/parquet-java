@@ -254,6 +254,7 @@ public class ParquetRewriter implements Closeable {
 
   private void processBlocksFromReader() throws IOException {
     PageReadStore store = reader.readNextRowGroup();
+    ColumnReadStoreImpl crStore = new ColumnReadStoreImpl(store, new DummyGroupConverter(), schema, originalCreatedBy);
     Map<ColumnPath, ColumnDescriptor> descriptorsMap = schema.getColumns().stream().collect(
             Collectors.toMap(x -> ColumnPath.get(x.getPath()), x -> x));
 
@@ -292,8 +293,6 @@ public class ParquetRewriter implements Closeable {
               throw new IOException(
                       "Required column [" + descriptor.getPrimitiveType().getName() + "] cannot be nullified");
             }
-
-            ColumnReadStoreImpl crStore = new ColumnReadStoreImpl(store, new DummyGroupConverter(), schema, originalCreatedBy);
             nullifyColumn(
                     descriptor,
                     chunk,
@@ -313,7 +312,6 @@ public class ParquetRewriter implements Closeable {
                     new ColumnChunkEncryptorRunTime(writer.getEncryptor(), chunk, numBlocksRewritten, columnId);
           }
 
-          ColumnReadStoreImpl crStore = new ColumnReadStoreImpl(store, new DummyGroupConverter(), schema, originalCreatedBy);
           // Translate compression and/or encryption
           writer.startColumn(descriptor, crStore.getColumnReader(descriptor).getTotalValueCount(), newCodecName);
           processChunk(chunk, newCodecName, columnChunkEncryptorRunTime, encryptColumn);
@@ -331,6 +329,7 @@ public class ParquetRewriter implements Closeable {
 
       writer.endBlock();
       store = reader.readNextRowGroup();
+      crStore = new ColumnReadStoreImpl(store, new DummyGroupConverter(), schema, originalCreatedBy);
       blockId++;
       numBlocksRewritten++;
     }
