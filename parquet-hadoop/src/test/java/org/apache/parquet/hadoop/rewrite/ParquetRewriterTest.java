@@ -37,6 +37,7 @@ import org.apache.parquet.format.PageHeader;
 import org.apache.parquet.format.converter.ParquetMetadataConverter;
 import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.ParquetReader;
+import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.example.GroupReadSupport;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
@@ -135,6 +136,7 @@ public class ParquetRewriterTest {
 
     // Verify original.created.by is preserved
     validateCreatedBy();
+    validateRowGroupRowCount();
   }
 
   @Before
@@ -204,6 +206,7 @@ public class ParquetRewriterTest {
 
     // Verify original.created.by is preserved
     validateCreatedBy();
+    validateRowGroupRowCount();
   }
 
   @Test
@@ -285,6 +288,7 @@ public class ParquetRewriterTest {
 
     // Verify original.created.by is preserved
     validateCreatedBy();
+    validateRowGroupRowCount();
   }
 
   @Test
@@ -368,6 +372,7 @@ public class ParquetRewriterTest {
 
     // Verify original.created.by is preserved
     validateCreatedBy();
+    validateRowGroupRowCount();
   }
 
   private void testNullifyAndEncryptColumn(List<Path> inputPaths) throws Exception {
@@ -484,6 +489,7 @@ public class ParquetRewriterTest {
 
     // Verify original.created.by is preserved
     validateCreatedBy();
+    validateRowGroupRowCount();
   }
 
   @Test(expected = InvalidSchemaException.class)
@@ -523,14 +529,28 @@ public class ParquetRewriterTest {
     rewriter = new ParquetRewriter(options);
   }
 
+  @Test
+  public void testRewriteFileWithMultipleBlocks() throws Exception {
+    testSingleInputFileSetup("GZIP", 1024L);
+    List<Path> inputPaths = new ArrayList<Path>() {{
+      add(new Path(inputFiles.get(0).getFileName()));
+    }};
+    testPruneSingleColumnTranslateCodec(inputPaths);
+  }
+
   private void testSingleInputFileSetup(String compression) throws IOException {
+    testSingleInputFileSetup(compression, ParquetWriter.DEFAULT_BLOCK_SIZE);
+  }
+
+  private void testSingleInputFileSetup(String compression, long rowGroupSize) throws IOException {
     MessageType schema = createSchema();
     inputFiles = Lists.newArrayList();
     inputFiles.add(new TestFileBuilder(conf, schema)
-            .withNumRecord(numRecord)
-            .withCodec(compression)
-            .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
-            .build());
+      .withNumRecord(numRecord)
+      .withCodec(compression)
+      .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
+      .withRowGroupSize(rowGroupSize)
+      .build());
   }
 
   private void testMultipleInputFilesSetup() throws IOException {
@@ -767,6 +787,24 @@ public class ParquetRewriterTest {
     String inputCreatedBy = (String) inputCreatedBys[0];
     String originalCreatedBy = outFMD.getKeyValueMetaData().get(ParquetRewriter.ORIGINAL_CREATED_BY_KEY);
     assertEquals(inputCreatedBy, originalCreatedBy);
+  }
+
+  private void validateRowGroupRowCount() throws Exception {
+    List<Long> inputRowCounts = new ArrayList<>();
+    for (EncryptionTestFile inputFile : inputFiles) {
+      ParquetMetadata inputPmd = getFileMetaData(inputFile.getFileName(), null);
+      for (BlockMetaData blockMetaData: inputPmd.getBlocks()) {
+        inputRowCounts.add(blockMetaData.getRowCount());
+      }
+    }
+
+    List<Long> outputRowCounts = new ArrayList<>();
+    ParquetMetadata outPmd = getFileMetaData(outputFile, null);
+    for (BlockMetaData blockMetaData: outPmd.getBlocks()) {
+      outputRowCounts.add(blockMetaData.getRowCount());
+    }
+
+    assertEquals(inputRowCounts, outputRowCounts);
   }
 
 }
