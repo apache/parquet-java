@@ -51,6 +51,7 @@ public class TestFileBuilder
     private String[] encryptColumns = {};
     private ParquetCipher cipher = ParquetCipher.AES_GCM_V1;
     private Boolean footerEncryption = false;
+    private long rowGroupSize = ParquetWriter.DEFAULT_BLOCK_SIZE;
 
     public TestFileBuilder(Configuration conf, MessageType schema)
     {
@@ -107,6 +108,12 @@ public class TestFileBuilder
         return this;
     }
 
+    public TestFileBuilder withRowGroupSize(long rowGroupSize)
+    {
+        this.rowGroupSize = rowGroupSize;
+        return this;
+    }
+
     public EncryptionTestFile build()
             throws IOException
     {
@@ -119,6 +126,7 @@ public class TestFileBuilder
                 .withExtraMetaData(extraMeta)
                 .withValidation(true)
                 .withPageSize(pageSize)
+                .withRowGroupSize(rowGroupSize)
                 .withEncryption(encryptionProperties)
                 .withCompressionCodec(CompressionCodecName.valueOf(codec));
         try (ParquetWriter writer = builder.build()) {
