@@ -138,6 +138,11 @@
       <version>2.12.5</version>
       <scope>provided</scope>
     </dependency>
+    <dependency>
+      <groupId>javax.annotation</groupId>
+      <artifactId>javax.annotation-api</artifactId>
+      <version>${javax.annotation.version}</version>
+    </dependency>
     <dependency> <!-- for pig runtime in tests -->
       <groupId>org.antlr</groupId>
       <artifactId>antlr-runtime</artifactId>
