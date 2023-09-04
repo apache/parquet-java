@@ -329,6 +329,7 @@ public class ParquetRewriter implements Closeable {
 
       writer.endBlock();
       store = reader.readNextRowGroup();
+      crStore = new ColumnReadStoreImpl(store, new DummyGroupConverter(), schema, originalCreatedBy);
       blockId++;
       numBlocksRewritten++;
     }
