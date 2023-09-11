@@ -25,6 +25,7 @@ import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.compress.CodecPool;
@@ -45,8 +46,15 @@ public class CodecFactory implements CompressionCodecFactory {
   protected static final Map<String, CompressionCodec> CODEC_BY_NAME = Collections
       .synchronizedMap(new HashMap<String, CompressionCodec>());
 
-  private final Map<CompressionCodecName, BytesCompressor> compressors = new HashMap<CompressionCodecName, BytesCompressor>();
-  private final Map<CompressionCodecName, BytesDecompressor> decompressors = new HashMap<CompressionCodecName, BytesDecompressor>();
+  /*
+  See: https://issues.apache.org/jira/browse/PARQUET-2126
+  The old implementation stored a single global instance of each type of compressor and decompressor, which
+  broke thread safety. The solution here is to store one instance of each codec type per-thread.
+  Normally, one would use ThreadLocal<> here, but the release() method needs to iterate over all codecs
+  ever created, so we have to implement the per-thread management explicitly.
+   */
+  private final Map<Thread, Map<CompressionCodecName, BytesCompressor>> allCompressors = new ConcurrentHashMap<>();
+  private final Map<Thread, Map<CompressionCodecName, BytesDecompressor>> allDecompressors = new ConcurrentHashMap<>();
 
   protected final Configuration configuration;
   protected final int pageSize;
@@ -195,8 +203,18 @@ public class CodecFactory implements CompressionCodecFactory {
 
   }
 
+  /*
+  Modified for https://issues.apache.org/jira/browse/PARQUET-2126
+   */
   @Override
   public BytesCompressor getCompressor(CompressionCodecName codecName) {
+    Thread me = Thread.currentThread();
+    Map<CompressionCodecName, BytesCompressor> compressors = allCompressors.get(me);
+    if (compressors == null) {
+      compressors = new HashMap<CompressionCodecName, BytesCompressor>();
+      allCompressors.put(me, compressors);
+    }
+
     BytesCompressor comp = compressors.get(codecName);
     if (comp == null) {
       comp = createCompressor(codecName);
@@ -205,8 +223,18 @@ public class CodecFactory implements CompressionCodecFactory {
     return comp;
   }
 
+  /*
+  Modified for https://issues.apache.org/jira/browse/PARQUET-2126
+   */
   @Override
   public BytesDecompressor getDecompressor(CompressionCodecName codecName) {
+    Thread me = Thread.currentThread();
+    Map<CompressionCodecName, BytesDecompressor> decompressors = allDecompressors.get(me);
+    if (decompressors == null) {
+      decompressors = new HashMap<CompressionCodecName, BytesDecompressor>();
+      allDecompressors.put(me, decompressors);
+    }
+
     BytesDecompressor decomp = decompressors.get(codecName);
     if (decomp == null) {
       decomp = createDecompressor(codecName);
@@ -255,16 +283,60 @@ public class CodecFactory implements CompressionCodecFactory {
     }
   }
 
+  /**
+   * Modified for https://issues.apache.org/jira/browse/PARQUET-2126
+   * This releases all cached instances of all compressors and decompressors created by all threads that share
+   * this CodeFactory instance.
+   * Note: A problem might occur if release() were called while some codec instances were still in use, but it
+   * would not make sense to call close() or release() on a shared CodecFactory while some threads are still
+   * actively using it. The usage pattern should be:
+   * - Create CodecFactory
+   * - Spawn worker threads that share the CodecFactory
+   * - Wait until all worker threads are done
+   * - Release the CodecFactory
+   * Any other codec instances still active should be from a completely different instance of CodedFactory,
+   * which is safe since allCompressors and allDecompressors are not static.
+   */
   @Override
   public void release() {
-    for (BytesCompressor compressor : compressors.values()) {
-      compressor.release();
+    for (Map<CompressionCodecName, BytesCompressor> compressors : allCompressors.values()) {
+      for (BytesCompressor compressor : compressors.values()) {
+        compressor.release();
+      }
+      compressors.clear();
     }
-    compressors.clear();
-    for (BytesDecompressor decompressor : decompressors.values()) {
-      decompressor.release();
+    allCompressors.clear();
+
+    for (Map<CompressionCodecName, BytesDecompressor> decompressors : allDecompressors.values()) {
+      for (BytesDecompressor decompressor : decompressors.values()) {
+        decompressor.release();
+      }
+      decompressors.clear();
     }
-    decompressors.clear();
+    allDecompressors.clear();
+  }
+
+  /**
+   * Counts the number of cached codec factories. This is used exclusively for testing to make sure that
+   * codecs are released when the factory is closed.
+   * @return Number of cached codecs
+   */
+  public int countCachedCodecs() {
+    int count = 0;
+
+    if (allCompressors != null) {
+      for (Map<CompressionCodecName, BytesCompressor> compressors : allCompressors.values()) {
+        count += compressors.size();
+      }
+    }
+
+    if (allDecompressors != null) {
+      for (Map<CompressionCodecName, BytesDecompressor> decompressors : allDecompressors.values()) {
+        count += decompressors.size();
+      }
+    }
+
+    return count;
   }
 
   /**
