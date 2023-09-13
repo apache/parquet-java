@@ -239,6 +239,7 @@ public class CodecFactory implements CompressionCodecFactory {
     if (codec != null) {
       return codec;
     }
+
     try {
       Class<?> codecClass;
       try {
@@ -266,10 +267,6 @@ public class CodecFactory implements CompressionCodecFactory {
         break;
       case ZSTD:
         level = configuration.get("parquet.compression.codec.zstd.level");
-        if (level == null) {
-          // keep "io.compression.codec.zstd.level" for backwards compatibility
-          level = configuration.get("io.compression.codec.zstd.level");
-        }
         break;
       default:
         // compression level is not supported; ignore it
