@@ -33,6 +33,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.parquet.conf.ParquetConfiguration;
 import org.apache.pig.backend.executionengine.ExecException;
 import org.apache.pig.data.Tuple;
 import org.apache.pig.impl.logicalLayer.schema.Schema;
@@ -175,7 +176,7 @@ public class TestTupleRecordConsumer {
 
   private <T> TupleWriteSupport newTupleWriter(String pigSchemaString, RecordMaterializer<T> recordConsumer) throws ParserException {
     TupleWriteSupport tupleWriter = TupleWriteSupport.fromPigSchema(pigSchemaString);
-    tupleWriter.init(null);
+    tupleWriter.init((ParquetConfiguration) null);
     tupleWriter.prepareForWrite(
         new ConverterConsumer(recordConsumer.getRootConverter(), tupleWriter.getParquetSchema())
         );

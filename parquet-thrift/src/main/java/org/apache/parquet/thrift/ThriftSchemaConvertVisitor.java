@@ -24,6 +24,8 @@ import java.util.Objects;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.ShouldNeverHappenException;
+import org.apache.parquet.conf.HadoopParquetConfiguration;
+import org.apache.parquet.conf.ParquetConfiguration;
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
@@ -80,6 +82,11 @@ class ThriftSchemaConvertVisitor implements ThriftType.StateVisitor<ConvertedFie
 
   private ThriftSchemaConvertVisitor(FieldProjectionFilter fieldProjectionFilter, boolean doProjection,
                                      boolean keepOneOfEachUnion, Configuration configuration) {
+    this(fieldProjectionFilter, doProjection, keepOneOfEachUnion, new HadoopParquetConfiguration(configuration));
+  }
+
+  private ThriftSchemaConvertVisitor(FieldProjectionFilter fieldProjectionFilter, boolean doProjection,
+                                     boolean keepOneOfEachUnion, ParquetConfiguration configuration) {
     this.fieldProjectionFilter = Objects.requireNonNull(fieldProjectionFilter,
       "fieldProjectionFilter cannot be null");
     this.doProjection = doProjection;
@@ -105,6 +112,11 @@ class ThriftSchemaConvertVisitor implements ThriftType.StateVisitor<ConvertedFie
 
   public static MessageType convert(StructType struct, FieldProjectionFilter filter, boolean keepOneOfEachUnion,
                                     Configuration conf) {
+    return convert(struct, filter, keepOneOfEachUnion, new HadoopParquetConfiguration(conf));
+  }
+
+  public static MessageType convert(StructType struct, FieldProjectionFilter filter, boolean keepOneOfEachUnion,
+                                    ParquetConfiguration conf) {
     State state = new State(new FieldsPath(), REPEATED, "ParquetSchema");
 
     ConvertedField converted = struct.accept(

@@ -26,10 +26,13 @@ import org.apache.hadoop.fs.Path;
 
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
+import org.apache.parquet.conf.HadoopParquetConfiguration;
+import org.apache.parquet.conf.ParquetConfiguration;
 import org.apache.parquet.crypto.FileEncryptionProperties;
 import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
+import org.apache.parquet.hadoop.util.ConfigurationUtil;
 import org.apache.parquet.hadoop.util.HadoopOutputFile;
 import org.apache.parquet.io.OutputFile;
 import org.apache.parquet.schema.MessageType;
@@ -275,6 +278,30 @@ public class ParquetWriter<T> implements Closeable {
       int maxPaddingSize,
       ParquetProperties encodingProps,
       FileEncryptionProperties encryptionProperties) throws IOException {
+    this(
+      file,
+      mode,
+      writeSupport,
+      compressionCodecName,
+      rowGroupSize,
+      validating,
+      new HadoopParquetConfiguration(conf),
+      maxPaddingSize,
+      encodingProps,
+      encryptionProperties);
+  }
+
+  ParquetWriter(
+    OutputFile file,
+    ParquetFileWriter.Mode mode,
+    WriteSupport<T> writeSupport,
+    CompressionCodecName compressionCodecName,
+    long rowGroupSize,
+    boolean validating,
+    ParquetConfiguration conf,
+    int maxPaddingSize,
+    ParquetProperties encodingProps,
+    FileEncryptionProperties encryptionProperties) throws IOException {
 
     WriteSupport.WriteContext writeContext = writeSupport.init(conf);
     MessageType schema = writeContext.getSchema();
@@ -282,8 +309,9 @@ public class ParquetWriter<T> implements Closeable {
     // encryptionProperties could be built from the implementation of EncryptionPropertiesFactory when it is attached.
     if (encryptionProperties == null) {
       String path = file == null ? null : file.getPath();
-      encryptionProperties = ParquetOutputFormat.createEncryptionProperties(conf,
-          path == null ? null : new Path(path), writeContext);
+      Configuration hadoopConf = ConfigurationUtil.createHadoopConfiguration(conf);
+      encryptionProperties = ParquetOutputFormat.createEncryptionProperties(
+        hadoopConf, path == null ? null : new Path(path), writeContext);
     }
 
     ParquetFileWriter fileWriter = new ParquetFileWriter(
@@ -352,7 +380,7 @@ public class ParquetWriter<T> implements Closeable {
     private OutputFile file = null;
     private Path path = null;
     private FileEncryptionProperties encryptionProperties = null;
-    private Configuration conf = new Configuration();
+    private ParquetConfiguration conf = null;
     private ParquetFileWriter.Mode mode;
     private CompressionCodecName codecName = DEFAULT_COMPRESSION_CODEC_NAME;
     private long rowGroupSize = DEFAULT_BLOCK_SIZE;
@@ -381,12 +409,31 @@ public class ParquetWriter<T> implements Closeable {
     protected abstract WriteSupport<T> getWriteSupport(Configuration conf);
 
     /**
+     * @param conf a configuration
+     * @return an appropriate WriteSupport for the object model.
+     */
+    protected WriteSupport<T> getWriteSupport(ParquetConfiguration conf) {
+      throw new UnsupportedOperationException("Override getWriteSupport(ParquetConfiguration)");
+    }
+
+    /**
      * Set the {@link Configuration} used by the constructed writer.
      *
      * @param conf a {@code Configuration}
      * @return this builder for method chaining.
      */
     public SELF withConf(Configuration conf) {
+      this.conf = new HadoopParquetConfiguration(conf);
+      return self();
+    }
+
+    /**
+     * Set the {@link ParquetConfiguration} used by the constructed writer.
+     *
+     * @param conf a {@code ParquetConfiguration}
+     * @return this builder for method chaining.
+     */
+    public SELF withConf(ParquetConfiguration conf) {
       this.conf = conf;
       return self();
     }
@@ -718,6 +765,9 @@ public class ParquetWriter<T> implements Closeable {
      * @return this builder for method chaining.
      */
     public SELF config(String property, String value) {
+      if (conf == null) {
+        conf = new HadoopParquetConfiguration();
+      }
       conf.set(property, value);
       return self();
     }
@@ -729,12 +779,15 @@ public class ParquetWriter<T> implements Closeable {
      * @throws IOException if there is an error while creating the writer
      */
     public ParquetWriter<T> build() throws IOException {
+      if (conf == null) {
+        conf = new HadoopParquetConfiguration();
+      }
       if (file != null) {
         return new ParquetWriter<>(file,
             mode, getWriteSupport(conf), codecName, rowGroupSize, enableValidation, conf,
             maxPaddingSize, encodingPropsBuilder.build(), encryptionProperties);
       } else {
-        return new ParquetWriter<>(HadoopOutputFile.fromPath(path, conf),
+        return new ParquetWriter<>(HadoopOutputFile.fromPath(path, ConfigurationUtil.createHadoopConfiguration(conf)),
             mode, getWriteSupport(conf), codecName,
             rowGroupSize, enableValidation, conf, maxPaddingSize,
             encodingPropsBuilder.build(), encryptionProperties);

@@ -26,6 +26,8 @@ import java.util.Objects;
 
 import org.apache.hadoop.conf.Configuration;
 
+import org.apache.parquet.conf.HadoopParquetConfiguration;
+import org.apache.parquet.conf.ParquetConfiguration;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.GroupWriter;
 import org.apache.parquet.hadoop.api.WriteSupport;
@@ -41,6 +43,10 @@ public class GroupWriteSupport extends WriteSupport<Group> {
   }
 
   public static MessageType getSchema(Configuration configuration) {
+    return getSchema(new HadoopParquetConfiguration(configuration));
+  }
+
+  public static MessageType getSchema(ParquetConfiguration configuration) {
     return parseMessageType(Objects.requireNonNull(configuration.get(PARQUET_EXAMPLE_SCHEMA), PARQUET_EXAMPLE_SCHEMA));
   }
 
@@ -68,6 +74,11 @@ public class GroupWriteSupport extends WriteSupport<Group> {
 
   @Override
   public org.apache.parquet.hadoop.api.WriteSupport.WriteContext init(Configuration configuration) {
+    return init(new HadoopParquetConfiguration(configuration));
+  }
+
+  @Override
+  public org.apache.parquet.hadoop.api.WriteSupport.WriteContext init(ParquetConfiguration configuration) {
     // if present, prefer the schema passed to the constructor
     if (schema == null) {
       schema = getSchema(configuration);

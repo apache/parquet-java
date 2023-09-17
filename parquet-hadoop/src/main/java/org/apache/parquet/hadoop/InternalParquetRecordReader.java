@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.PrimitiveIterator;
 import java.util.Set;
@@ -32,6 +33,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.HadoopReadOptions;
 import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.column.page.PageReadStore;
+import org.apache.parquet.conf.ParquetConfiguration;
 import org.apache.parquet.filter.UnboundRecordFilter;
 import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.filter2.compat.FilterCompat.Filter;
@@ -167,12 +169,12 @@ class InternalParquetRecordReader<T> {
 
   public void initialize(ParquetFileReader reader, ParquetReadOptions options) {
     // copy custom configuration to the Configuration passed to the ReadSupport
-    Configuration conf = new Configuration();
-    if (options instanceof HadoopReadOptions) {
-      conf = ((HadoopReadOptions) options).getConf();
-    }
+    ParquetConfiguration conf = Objects.requireNonNull(options).getConfiguration();
     for (String property : options.getPropertyNames()) {
       conf.set(property, options.getProperty(property));
+    }
+    for (Map.Entry<String, String> property : new Configuration()) {
+      conf.set(property.getKey(), property.getValue());
     }
 
     // initialize a ReadContext for this file
@@ -261,7 +263,7 @@ class InternalParquetRecordReader<T> {
 
         LOG.debug("read value: {}", currentValue);
       } catch (RuntimeException e) {
-        throw new ParquetDecodingException(format("Can not read value at %d in block %d in file %s", current, currentBlock, reader.getPath()), e);
+        throw new ParquetDecodingException(format("Can not read value at %d in block %d in file %s", current, currentBlock, reader.getFile()), e);
       }
     }
     return true;

@@ -23,6 +23,8 @@ import com.google.protobuf.Descriptors.Descriptor;
 import com.google.protobuf.Descriptors.FieldDescriptor;
 import com.twitter.elephantbird.util.Protobufs;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.parquet.conf.HadoopParquetConfiguration;
+import org.apache.parquet.conf.ParquetConfiguration;
 import org.apache.parquet.hadoop.BadConfigurationException;
 import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.io.InvalidRecordException;
@@ -118,6 +120,11 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
 
   @Override
   public WriteContext init(Configuration configuration) {
+    return init(new HadoopParquetConfiguration(configuration));
+  }
+
+  @Override
+  public WriteContext init(ParquetConfiguration configuration) {
 
     Map<String, String> extraMetaData = new HashMap<>();
 

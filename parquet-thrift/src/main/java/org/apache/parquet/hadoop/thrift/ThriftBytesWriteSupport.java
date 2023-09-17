@@ -24,6 +24,8 @@ import java.lang.reflect.Method;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.BytesWritable;
+import org.apache.parquet.conf.HadoopParquetConfiguration;
+import org.apache.parquet.conf.ParquetConfiguration;
 import org.apache.thrift.TBase;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TBinaryProtocol;
@@ -57,6 +59,10 @@ public class ThriftBytesWriteSupport extends WriteSupport<BytesWritable> {
   }
 
   public static Class<TProtocolFactory> getTProtocolFactoryClass(Configuration conf) {
+    return getTProtocolFactoryClass(new HadoopParquetConfiguration(conf));
+  }
+
+  public static Class<TProtocolFactory> getTProtocolFactoryClass(ParquetConfiguration conf) {
     final String tProtocolClassName = conf.get(PARQUET_PROTOCOL_CLASS);
     if (tProtocolClassName == null) {
       throw new BadConfigurationException("the protocol class conf is missing in job conf at " + PARQUET_PROTOCOL_CLASS);
@@ -80,7 +86,7 @@ public class ThriftBytesWriteSupport extends WriteSupport<BytesWritable> {
   private StructType thriftStruct;
   private ParquetWriteProtocol parquetWriteProtocol;
   private final FieldIgnoredHandler errorHandler;
-  private Configuration configuration;
+  private ParquetConfiguration configuration;
 
   public ThriftBytesWriteSupport() {
     this.buffered = true;
@@ -106,6 +112,15 @@ public class ThriftBytesWriteSupport extends WriteSupport<BytesWritable> {
       Class<? extends TBase<?, ?>> thriftClass,
       boolean buffered,
       FieldIgnoredHandler errorHandler) {
+    this(new HadoopParquetConfiguration(configuration), protocolFactory, thriftClass, buffered, errorHandler);
+  }
+
+  public ThriftBytesWriteSupport(
+      ParquetConfiguration configuration,
+      TProtocolFactory protocolFactory,
+      Class<? extends TBase<?, ?>> thriftClass,
+      boolean buffered,
+      FieldIgnoredHandler errorHandler) {
     super();
     this.configuration = configuration;
     this.protocolFactory = protocolFactory;
@@ -124,6 +139,11 @@ public class ThriftBytesWriteSupport extends WriteSupport<BytesWritable> {
 
   @Override
   public WriteContext init(Configuration configuration) {
+    return init(new HadoopParquetConfiguration(configuration));
+  }
+
+  @Override
+  public WriteContext init(ParquetConfiguration configuration) {
     this.configuration = configuration;
     if (this.protocolFactory == null) {
       try {

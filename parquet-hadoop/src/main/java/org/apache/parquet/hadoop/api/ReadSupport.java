@@ -22,6 +22,7 @@ import java.util.Map;
 
 import org.apache.hadoop.conf.Configuration;
 
+import org.apache.parquet.conf.ParquetConfiguration;
 import org.apache.parquet.io.api.RecordMaterializer;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
@@ -78,11 +79,29 @@ abstract public class ReadSupport<T> {
   /**
    * called in {@link org.apache.hadoop.mapreduce.InputFormat#getSplits(org.apache.hadoop.mapreduce.JobContext)} in the front end
    *
+   * @param configuration    the configuration
+   * @param keyValueMetaData the app specific metadata from the file
+   * @param fileSchema       the schema of the file
+   * @return the readContext that defines how to read the file
+   *
+   * @deprecated override {@link ReadSupport#init(InitContext)} instead
+   */
+  @Deprecated
+  public ReadContext init(
+      ParquetConfiguration configuration,
+      Map<String, String> keyValueMetaData,
+      MessageType fileSchema) {
+    throw new UnsupportedOperationException("Override init(InitContext)");
+  }
+
+  /**
+   * called in {@link org.apache.hadoop.mapreduce.InputFormat#getSplits(org.apache.hadoop.mapreduce.JobContext)} in the front end
+   *
    * @param context the initialisation context
    * @return the readContext that defines how to read the file
    */
   public ReadContext init(InitContext context) {
-    return init(context.getConfiguration(), context.getMergedKeyValueMetaData(), context.getFileSchema());
+    return init(context.getConfig(), context.getMergedKeyValueMetaData(), context.getFileSchema());
   }
 
   /**
@@ -100,6 +119,24 @@ abstract public class ReadSupport<T> {
           Map<String, String> keyValueMetaData,
           MessageType fileSchema,
           ReadContext readContext);
+
+  /**
+   * called in {@link org.apache.hadoop.mapreduce.RecordReader#initialize(org.apache.hadoop.mapreduce.InputSplit, org.apache.hadoop.mapreduce.TaskAttemptContext)} in the back end
+   * the returned RecordMaterializer will materialize the records and add them to the destination
+   *
+   * @param configuration    the configuration
+   * @param keyValueMetaData the app specific metadata from the file
+   * @param fileSchema       the schema of the file
+   * @param readContext      returned by the init method
+   * @return the recordMaterializer that will materialize the records
+   */
+  public RecordMaterializer<T> prepareForRead(
+      ParquetConfiguration configuration,
+      Map<String, String> keyValueMetaData,
+      MessageType fileSchema,
+      ReadContext readContext) {
+    throw new UnsupportedOperationException("Override prepareForRead(ParquetConfiguration, Map<String, String>, MessageType, ReadContext)");
+  }
 
   /**
    * information to read the file

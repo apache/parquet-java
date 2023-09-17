@@ -25,6 +25,8 @@ import java.util.Set;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.mapred.JobConf;
+import org.apache.parquet.conf.HadoopParquetConfiguration;
+import org.apache.parquet.conf.ParquetConfiguration;
 import org.apache.thrift.TBase;
 import org.apache.thrift.protocol.TProtocol;
 
@@ -111,6 +113,10 @@ public class ThriftReadSupport<T> extends ReadSupport<T> {
   }
 
   public static FieldProjectionFilter getFieldProjectionFilter(Configuration conf) {
+    return getFieldProjectionFilter(new HadoopParquetConfiguration(conf));
+  }
+
+  public static FieldProjectionFilter getFieldProjectionFilter(ParquetConfiguration conf) {
     String deprecated = conf.get(THRIFT_COLUMN_FILTER_KEY);
     String strict = conf.get(STRICT_THRIFT_COLUMN_FILTER_KEY);
 
@@ -155,7 +161,7 @@ public class ThriftReadSupport<T> extends ReadSupport<T> {
 
   @Override
   public org.apache.parquet.hadoop.api.ReadSupport.ReadContext init(InitContext context) {
-    final Configuration configuration = context.getConfiguration();
+    final ParquetConfiguration configuration = context.getConfig();
     final MessageType fileMessageType = context.getFileSchema();
     MessageType requestedProjection = fileMessageType;
     String partialSchemaString = configuration.get(ReadSupport.PARQUET_READ_SCHEMA);
@@ -185,8 +191,13 @@ public class ThriftReadSupport<T> extends ReadSupport<T> {
     return new ReadContext(schemaForRead);
   }
 
-  @SuppressWarnings("unchecked")
   protected MessageType getProjectedSchema(Configuration configuration, FieldProjectionFilter
+      fieldProjectionFilter) {
+    return getProjectedSchema(new HadoopParquetConfiguration(configuration), fieldProjectionFilter);
+  }
+
+  @SuppressWarnings("unchecked")
+  protected MessageType getProjectedSchema(ParquetConfiguration configuration, FieldProjectionFilter
       fieldProjectionFilter) {
     return new ThriftSchemaConverter(configuration, fieldProjectionFilter)
         .convert((Class<TBase<?, ?>>)thriftClass);
@@ -200,8 +211,12 @@ public class ThriftReadSupport<T> extends ReadSupport<T> {
       .convert((Class<TBase<?, ?>>)thriftClass);
   }
 
-  @SuppressWarnings("unchecked")
   private void initThriftClassFromMultipleFiles(Map<String, Set<String>> fileMetadata, Configuration conf) throws ClassNotFoundException {
+    initThriftClassFromMultipleFiles(fileMetadata, new HadoopParquetConfiguration(conf));
+  }
+
+  @SuppressWarnings("unchecked")
+  private void initThriftClassFromMultipleFiles(Map<String, Set<String>> fileMetadata, ParquetConfiguration conf) throws ClassNotFoundException {
     if (thriftClass != null) {
       return;
     }
@@ -216,8 +231,12 @@ public class ThriftReadSupport<T> extends ReadSupport<T> {
     thriftClass = (Class<T>)Class.forName(className);
   }
 
-  @SuppressWarnings("unchecked")
   private void initThriftClass(ThriftMetaData metadata, Configuration conf) throws ClassNotFoundException {
+    initThriftClass(metadata, new HadoopParquetConfiguration(conf));
+  }
+
+  @SuppressWarnings("unchecked")
+  private void initThriftClass(ThriftMetaData metadata, ParquetConfiguration conf) throws ClassNotFoundException {
     if (thriftClass != null) {
       return;
     }
@@ -254,13 +273,48 @@ public class ThriftReadSupport<T> extends ReadSupport<T> {
         configuration);
   }
 
-  @SuppressWarnings("unchecked")
+  @Override
+  public RecordMaterializer<T> prepareForRead(ParquetConfiguration configuration,
+                                              Map<String, String> keyValueMetaData, MessageType fileSchema,
+                                              org.apache.parquet.hadoop.api.ReadSupport.ReadContext readContext) {
+    ThriftMetaData thriftMetaData = ThriftMetaData.fromExtraMetaData(keyValueMetaData);
+    try {
+      initThriftClass(thriftMetaData, configuration);
+    } catch (ClassNotFoundException e) {
+      throw new RuntimeException("Cannot find Thrift object class for metadata: " + thriftMetaData, e);
+    }
+
+    // if there was not metadata in the file, get it from requested class
+    if (thriftMetaData == null) {
+      thriftMetaData = ThriftMetaData.fromThriftClass(thriftClass);
+    }
+
+    String converterClassName = configuration.get(RECORD_CONVERTER_CLASS_KEY, RECORD_CONVERTER_DEFAULT);
+    return getRecordConverterInstance(converterClassName, thriftClass,
+      readContext.getRequestedSchema(), thriftMetaData.getDescriptor(),
+      configuration);
+  }
+
   private static <T> ThriftRecordConverter<T> getRecordConverterInstance(
       String converterClassName, Class<T> thriftClass,
       MessageType requestedSchema, StructType descriptor, Configuration conf) {
-    Class<ThriftRecordConverter<T>> converterClass;
+    return getRecordConverterInstance(converterClassName, thriftClass, requestedSchema, descriptor, conf, Configuration.class);
+  }
+
+  private static <T> ThriftRecordConverter<T> getRecordConverterInstance(
+      String converterClassName, Class<T> thriftClass,
+      MessageType requestedSchema, StructType descriptor, ParquetConfiguration conf) {
+    return getRecordConverterInstance(converterClassName, thriftClass, requestedSchema, descriptor, conf, ParquetConfiguration.class);
+  }
+
+  @SuppressWarnings("unchecked")
+  private static <T1, T2> ThriftRecordConverter<T1> getRecordConverterInstance(
+      String converterClassName, Class<T1> thriftClass,
+      MessageType requestedSchema, StructType descriptor, T2 conf, Class<T2> confClass) {
+
+    Class<ThriftRecordConverter<T1>> converterClass;
     try {
-      converterClass = (Class<ThriftRecordConverter<T>>) Class.forName(converterClassName);
+      converterClass = (Class<ThriftRecordConverter<T1>>) Class.forName(converterClassName);
     } catch (ClassNotFoundException e) {
       throw new RuntimeException("Cannot find Thrift converter class: " + converterClassName, e);
     }
@@ -268,15 +322,15 @@ public class ThriftReadSupport<T> extends ReadSupport<T> {
     try {
       // first try the new version that accepts a Configuration
       try {
-        Constructor<ThriftRecordConverter<T>> constructor =
-            converterClass.getConstructor(Class.class, MessageType.class, StructType.class, Configuration.class);
+        Constructor<ThriftRecordConverter<T1>> constructor =
+          converterClass.getConstructor(Class.class, MessageType.class, StructType.class, confClass);
         return constructor.newInstance(thriftClass, requestedSchema, descriptor, conf);
       } catch (IllegalAccessException | NoSuchMethodException e) {
         // try the other constructor pattern
       }
 
-      Constructor<ThriftRecordConverter<T>> constructor =
-          converterClass.getConstructor(Class.class, MessageType.class, StructType.class);
+      Constructor<ThriftRecordConverter<T1>> constructor =
+        converterClass.getConstructor(Class.class, MessageType.class, StructType.class);
       return constructor.newInstance(thriftClass, requestedSchema, descriptor);
     } catch (InstantiationException | InvocationTargetException e) {
       throw new RuntimeException("Failed to construct Thrift converter class: " + converterClassName, e);

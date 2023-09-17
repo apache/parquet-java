@@ -23,6 +23,7 @@ import java.util.Map;
 import java.util.logging.Level;
 
 import org.apache.parquet.column.ParquetProperties;
+import org.apache.parquet.conf.ParquetConfiguration;
 import org.apache.pig.backend.executionengine.ExecException;
 import org.apache.pig.data.DataBag;
 import org.apache.pig.data.NonSpillableDataBag;
@@ -130,8 +131,8 @@ public class TupleConsumerPerfTest {
     TupleReadSupport tupleReadSupport = new TupleReadSupport();
     Map<String, String> pigMetaData = pigMetaData(pigSchemaString);
     MessageType schema = new PigSchemaConverter().convert(Utils.getSchemaFromString(pigSchemaString));
-    ReadContext init = tupleReadSupport.init(null, pigMetaData, schema);
-    RecordMaterializer<Tuple> recordConsumer = tupleReadSupport.prepareForRead(null, pigMetaData, schema, init);
+    ReadContext init = tupleReadSupport.init((ParquetConfiguration) null, pigMetaData, schema);
+    RecordMaterializer<Tuple> recordConsumer = tupleReadSupport.prepareForRead((ParquetConfiguration) null, pigMetaData, schema, init);
     RecordReader<Tuple> recordReader = columnIO.getRecordReader(columns, recordConsumer);
     // TODO: put this back
 //  if (DEBUG) {
@@ -156,7 +157,7 @@ public class TupleConsumerPerfTest {
   private static void write(MemPageStore memPageStore, ColumnWriteStoreV1 columns, MessageType schema, String pigSchemaString) throws ExecException, ParserException {
     MessageColumnIO columnIO = newColumnFactory(pigSchemaString);
     TupleWriteSupport tupleWriter = TupleWriteSupport.fromPigSchema(pigSchemaString);
-    tupleWriter.init(null);
+    tupleWriter.init((ParquetConfiguration) null);
     tupleWriter.prepareForWrite(columnIO.getRecordWriter(columns));
     write(memPageStore, tupleWriter, 10000);
     write(memPageStore, tupleWriter, 10000);

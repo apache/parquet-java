@@ -19,6 +19,8 @@
 package org.apache.parquet.thrift.pig;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.parquet.conf.HadoopParquetConfiguration;
+import org.apache.parquet.conf.ParquetConfiguration;
 import org.apache.pig.data.Tuple;
 import org.apache.thrift.TBase;
 
@@ -51,9 +53,14 @@ public class TupleToThriftWriteSupport extends WriteSupport<Tuple> {
     return "thrift";
   }
 
-  @SuppressWarnings({"rawtypes", "unchecked"})
   @Override
   public WriteContext init(Configuration configuration) {
+    return init(new HadoopParquetConfiguration(configuration));
+  }
+
+  @SuppressWarnings({"rawtypes", "unchecked"})
+  @Override
+  public WriteContext init(ParquetConfiguration configuration) {
     try {
       Class<?> clazz = configuration.getClassByName(className).asSubclass(TBase.class);
       thriftWriteSupport = new ThriftWriteSupport(clazz);

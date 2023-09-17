@@ -316,7 +316,7 @@ public class TestEncryptionOptions {
     Path rootPath = new Path(temporaryFolder.getRoot().getPath());
     LOG.info("======== testWriteReadEncryptedParquetFiles {} ========", rootPath.toString());
     byte[] AADPrefix = AAD_PREFIX_STRING.getBytes(StandardCharsets.UTF_8);
-    // Write using various encryption configuraions
+    // Write using various encryption configurations
     testWriteEncryptedParquetFiles(rootPath, DATA);
     // Read using various decryption configurations.
     testReadEncryptedParquetFiles(rootPath, DATA);

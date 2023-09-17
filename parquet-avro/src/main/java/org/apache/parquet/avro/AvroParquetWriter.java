@@ -25,6 +25,8 @@ import org.apache.avro.specific.SpecificData;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
+import org.apache.parquet.conf.HadoopParquetConfiguration;
+import org.apache.parquet.conf.ParquetConfiguration;
 import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
@@ -154,6 +156,12 @@ public class AvroParquetWriter<T> extends ParquetWriter<T> {
   private static <T> WriteSupport<T> writeSupport(Configuration conf,
                                                   Schema avroSchema,
                                                   GenericData model) {
+    return writeSupport(new HadoopParquetConfiguration(conf), avroSchema, model);
+  }
+
+  private static <T> WriteSupport<T> writeSupport(ParquetConfiguration conf,
+                                                  Schema avroSchema,
+                                                  GenericData model) {
     return new AvroWriteSupport<T>(
         new AvroSchemaConverter(conf).convert(avroSchema), avroSchema, model);
   }
@@ -187,6 +195,11 @@ public class AvroParquetWriter<T> extends ParquetWriter<T> {
 
     @Override
     protected WriteSupport<T> getWriteSupport(Configuration conf) {
+      return AvroParquetWriter.writeSupport(conf, schema, model);
+    }
+
+    @Override
+    protected WriteSupport<T> getWriteSupport(ParquetConfiguration conf) {
       return AvroParquetWriter.writeSupport(conf, schema, model);
     }
   }

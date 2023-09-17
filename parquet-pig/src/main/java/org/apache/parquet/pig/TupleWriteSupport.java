@@ -26,6 +26,8 @@ import java.util.Map.Entry;
 import java.util.Set;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.parquet.conf.HadoopParquetConfiguration;
+import org.apache.parquet.conf.ParquetConfiguration;
 import org.apache.pig.backend.executionengine.ExecException;
 import org.apache.pig.data.DataBag;
 import org.apache.pig.data.DataByteArray;
@@ -82,6 +84,11 @@ public class TupleWriteSupport extends WriteSupport<Tuple> {
 
   @Override
   public WriteContext init(Configuration configuration) {
+    return init(new HadoopParquetConfiguration(configuration));
+  }
+
+  @Override
+  public WriteContext init(ParquetConfiguration configuration) {
     Map<String, String> extraMetaData = new HashMap<String, String>();
     new PigMetaData(rootPigSchema).addToMetaData(extraMetaData);
     return new WriteContext(rootSchema, extraMetaData);

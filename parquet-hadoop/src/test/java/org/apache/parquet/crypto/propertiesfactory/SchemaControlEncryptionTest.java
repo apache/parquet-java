@@ -22,6 +22,8 @@ package org.apache.parquet.crypto.propertiesfactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.column.ColumnDescriptor;
+import org.apache.parquet.conf.HadoopParquetConfiguration;
+import org.apache.parquet.conf.ParquetConfiguration;
 import org.apache.parquet.crypto.EncryptionPropertiesFactory;
 import org.apache.parquet.crypto.ParquetCipher;
 import org.apache.parquet.example.data.Group;
@@ -203,6 +205,11 @@ public class SchemaControlEncryptionTest {
 
     @Override
     public WriteContext init(Configuration conf) {
+      return init(new HadoopParquetConfiguration(conf));
+    }
+
+    @Override
+    public WriteContext init(ParquetConfiguration conf) {
       WriteContext writeContext = super.init(conf);
       MessageType schema = writeContext.getSchema();
       List<ColumnDescriptor> columns = schema.getColumns();
@@ -219,6 +226,10 @@ public class SchemaControlEncryptionTest {
     }
 
     private void setMetadata(ColumnDescriptor column, Configuration conf) {
+      setMetadata(column, new HadoopParquetConfiguration(conf));
+    }
+
+    private void setMetadata(ColumnDescriptor column, ParquetConfiguration conf) {
       String columnShortName = column.getPath()[column.getPath().length - 1];
       if (cryptoMetadata.containsKey(columnShortName) &&
         cryptoMetadata.get(columnShortName).get("columnKeyMetaData") != null) {
@@ -242,6 +253,11 @@ public class SchemaControlEncryptionTest {
 
     @Override
     protected WriteSupport<Group> getWriteSupport(Configuration conf) {
+      return getWriteSupport((ParquetConfiguration) null);
+    }
+
+    @Override
+    protected WriteSupport<Group> getWriteSupport(ParquetConfiguration conf) {
       return new CryptoGroupWriteSupport();
     }
   }

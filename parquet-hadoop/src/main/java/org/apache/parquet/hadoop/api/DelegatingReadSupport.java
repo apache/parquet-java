@@ -22,6 +22,7 @@ import java.util.Map;
 
 import org.apache.hadoop.conf.Configuration;
 
+import org.apache.parquet.conf.ParquetConfiguration;
 import org.apache.parquet.io.api.RecordMaterializer;
 import org.apache.parquet.schema.MessageType;
 
@@ -47,6 +48,15 @@ public class DelegatingReadSupport<T> extends ReadSupport<T> {
   @Override
   public RecordMaterializer<T> prepareForRead(
       Configuration configuration,
+      Map<String, String> keyValueMetaData,
+      MessageType fileSchema,
+      ReadSupport.ReadContext readContext) {
+    return delegate.prepareForRead(configuration, keyValueMetaData, fileSchema, readContext);
+  }
+
+  @Override
+  public RecordMaterializer<T> prepareForRead(
+      ParquetConfiguration configuration,
       Map<String, String> keyValueMetaData,
       MessageType fileSchema,
       ReadSupport.ReadContext readContext) {

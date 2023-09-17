@@ -23,6 +23,8 @@ import org.apache.avro.LogicalTypes;
 import org.apache.avro.Schema;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.parquet.conf.HadoopParquetConfiguration;
+import org.apache.parquet.conf.ParquetConfiguration;
 import org.apache.parquet.schema.ConversionPatterns;
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
@@ -102,6 +104,10 @@ public class AvroSchemaConverter {
   }
 
   public AvroSchemaConverter(Configuration conf) {
+    this(new HadoopParquetConfiguration(conf));
+  }
+
+  public AvroSchemaConverter(ParquetConfiguration conf) {
     this.assumeRepeatedIsListElement = conf.getBoolean(
         ADD_LIST_ELEMENT_RECORDS, ADD_LIST_ELEMENT_RECORDS_DEFAULT);
     this.writeOldListStructure = conf.getBoolean(

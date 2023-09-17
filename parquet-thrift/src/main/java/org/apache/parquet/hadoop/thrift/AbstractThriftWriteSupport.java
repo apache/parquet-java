@@ -18,6 +18,8 @@ package org.apache.parquet.hadoop.thrift;
 import java.util.Map;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.parquet.conf.HadoopParquetConfiguration;
+import org.apache.parquet.conf.ParquetConfiguration;
 import org.apache.thrift.TBase;
 
 import com.twitter.elephantbird.pig.util.ThriftToPig;
@@ -40,14 +42,22 @@ import org.slf4j.LoggerFactory;
 public abstract class AbstractThriftWriteSupport<T> extends WriteSupport<T> {
   public static final String PARQUET_THRIFT_CLASS = "parquet.thrift.class";
   private static final Logger LOG = LoggerFactory.getLogger(AbstractThriftWriteSupport.class);
-  private static Configuration conf;
+  private static ParquetConfiguration conf;
 
   public static void setGenericThriftClass(Configuration configuration, Class<?> thriftClass) {
+    setGenericThriftClass(new HadoopParquetConfiguration(configuration), thriftClass);
+  }
+
+  public static void setGenericThriftClass(ParquetConfiguration configuration, Class<?> thriftClass) {
     conf = configuration;
     configuration.set(PARQUET_THRIFT_CLASS, thriftClass.getName());
   }
 
   public static Class getGenericThriftClass(Configuration configuration) {
+    return getGenericThriftClass(new HadoopParquetConfiguration(configuration));
+  }
+
+  public static Class<?> getGenericThriftClass(ParquetConfiguration configuration) {
     final String thriftClassName = configuration.get(PARQUET_THRIFT_CLASS);
     if (thriftClassName == null) {
       throw new BadConfigurationException("the thrift class conf is missing in job conf at " + PARQUET_THRIFT_CLASS);
@@ -111,9 +121,14 @@ public abstract class AbstractThriftWriteSupport<T> extends WriteSupport<T> {
 
   @Override
   public WriteContext init(Configuration configuration) {
+    return init(new HadoopParquetConfiguration(configuration));
+  }
+
+  @Override
+  public WriteContext init(ParquetConfiguration configuration) {
     conf = configuration;
     if (writeContext == null) {
-      init(getGenericThriftClass(configuration));
+      init((Class<T>) getGenericThriftClass(configuration));
     }
     return writeContext;
   }

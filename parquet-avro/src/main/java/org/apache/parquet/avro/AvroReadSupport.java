@@ -24,7 +24,10 @@ import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.util.ReflectionUtils;
+import org.apache.parquet.conf.HadoopParquetConfiguration;
+import org.apache.parquet.conf.ParquetConfiguration;
 import org.apache.parquet.hadoop.api.ReadSupport;
+import org.apache.parquet.hadoop.util.ConfigurationUtil;
 import org.apache.parquet.io.api.RecordMaterializer;
 import org.apache.parquet.schema.MessageType;
 import org.slf4j.Logger;
@@ -95,6 +98,13 @@ public class AvroReadSupport<T> extends ReadSupport<T> {
   public ReadContext init(Configuration configuration,
                           Map<String, String> keyValueMetaData,
                           MessageType fileSchema) {
+    return init(new HadoopParquetConfiguration(configuration), keyValueMetaData, fileSchema);
+  }
+
+  @Override
+  public ReadContext init(ParquetConfiguration configuration,
+                          Map<String, String> keyValueMetaData,
+                          MessageType fileSchema) {
     MessageType projection = fileSchema;
     Map<String, String> metadata = new LinkedHashMap<String, String>();
 
@@ -120,6 +130,13 @@ public class AvroReadSupport<T> extends ReadSupport<T> {
   public RecordMaterializer<T> prepareForRead(
       Configuration configuration, Map<String, String> keyValueMetaData,
       MessageType fileSchema, ReadContext readContext) {
+    return prepareForRead(new HadoopParquetConfiguration(configuration), keyValueMetaData, fileSchema, readContext);
+  }
+
+  @Override
+  public RecordMaterializer<T> prepareForRead(
+    ParquetConfiguration configuration, Map<String, String> keyValueMetaData,
+    MessageType fileSchema, ReadContext readContext) {
     Map<String, String> metadata = readContext.getReadSupportMetadata();
     MessageType parquetSchema = readContext.getRequestedSchema();
     Schema avroSchema;
@@ -154,6 +171,10 @@ public class AvroReadSupport<T> extends ReadSupport<T> {
   }
 
   private GenericData getDataModel(Configuration conf, Schema schema) {
+    return getDataModel(new HadoopParquetConfiguration(conf), schema);
+  }
+
+  private GenericData getDataModel(ParquetConfiguration conf, Schema schema) {
     if (model != null) {
       return model;
     }
@@ -175,6 +196,6 @@ public class AvroReadSupport<T> extends ReadSupport<T> {
 
     Class<? extends AvroDataSupplier> suppClass = conf.getClass(
         AVRO_DATA_SUPPLIER, SpecificDataSupplier.class, AvroDataSupplier.class);
-    return ReflectionUtils.newInstance(suppClass, conf).get();
+    return ReflectionUtils.newInstance(suppClass, ConfigurationUtil.createHadoopConfiguration(conf)).get();
   }
 }
