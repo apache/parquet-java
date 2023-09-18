@@ -210,10 +210,10 @@ public class TestDirectCodecFactory {
   @Test
   public void cachingKeysZstd() {
     Configuration config_zstd_2 = new Configuration();
-    config_zstd_2.set("io.compression.codec.zstd.level", "2");
+    config_zstd_2.set("parquet.compression.codec.zstd.level", "2");
 
     Configuration config_zstd_5 = new Configuration();
-    config_zstd_5.set("io.compression.codec.zstd.level", "5");
+    config_zstd_5.set("parquet.compression.codec.zstd.level", "5");
 
     final CodecFactory codecFactory_2 = new PublicCodecFactory(config_zstd_2, pageSize);
     final CodecFactory codecFactory_5 = new PublicCodecFactory(config_zstd_5, pageSize);
