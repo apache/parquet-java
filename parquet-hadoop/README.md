@@ -175,6 +175,12 @@ If the frequency is low, the performance will be better.
 
 ---
 
+**Property:** `parquet.page.value.count.threshold`  
+**Description:** The value count threshold within a Parquet page used on each page check.
+**Default value:** `Integer.MAX_VALUE / 2`
+
+---
+
 **Property:** `parquet.page.size.check.estimate`  
 **Description:** If it is true, the column writer estimates the size of the next page.  
 It prevents issues with rows that vary significantly in size.  

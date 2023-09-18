@@ -53,6 +53,7 @@ public class ParquetProperties {
   public static final boolean DEFAULT_ESTIMATE_ROW_COUNT_FOR_PAGE_SIZE_CHECK = true;
   public static final int DEFAULT_MINIMUM_RECORD_COUNT_FOR_CHECK = 100;
   public static final int DEFAULT_MAXIMUM_RECORD_COUNT_FOR_CHECK = 10000;
+  public static final int DEFAULT_PAGE_VALUE_COUNT_THRESHOLD = Integer.MAX_VALUE / 2;
   public static final int DEFAULT_COLUMN_INDEX_TRUNCATE_LENGTH = 64;
   public static final int DEFAULT_STATISTICS_TRUNCATE_LENGTH = Integer.MAX_VALUE;
   public static final int DEFAULT_PAGE_ROW_COUNT_LIMIT = 20_000;
@@ -91,6 +92,7 @@ public class ParquetProperties {
 
   private final int initialSlabSize;
   private final int pageSizeThreshold;
+  private final int pageValueCountThreshold;
   private final int dictionaryPageSizeThreshold;
   private final WriterVersion writerVersion;
   private final ColumnProperty<Boolean> dictionaryEnabled;
@@ -115,6 +117,7 @@ public class ParquetProperties {
 
   private ParquetProperties(Builder builder) {
     this.pageSizeThreshold = builder.pageSize;
+    this.pageValueCountThreshold = builder.pageValueCountThreshold;
     this.initialSlabSize = CapacityByteArrayOutputStream
       .initialSlabSizeHeuristic(MIN_SLAB_SIZE, pageSizeThreshold, 10);
     this.dictionaryPageSizeThreshold = builder.dictPageSize;
@@ -175,6 +178,10 @@ public class ParquetProperties {
 
   public int getPageSizeThreshold() {
     return pageSizeThreshold;
+  }
+
+  public int getPageValueCountThreshold() {
+    return pageValueCountThreshold;
   }
 
   public int getInitialSlabSize() {
@@ -323,6 +330,7 @@ public class ParquetProperties {
     private WriterVersion writerVersion = DEFAULT_WRITER_VERSION;
     private int minRowCountForPageSizeCheck = DEFAULT_MINIMUM_RECORD_COUNT_FOR_CHECK;
     private int maxRowCountForPageSizeCheck = DEFAULT_MAXIMUM_RECORD_COUNT_FOR_CHECK;
+    private int pageValueCountThreshold = DEFAULT_PAGE_VALUE_COUNT_THRESHOLD;
     private boolean estimateNextSizeCheck = DEFAULT_ESTIMATE_ROW_COUNT_FOR_PAGE_SIZE_CHECK;
     private ByteBufferAllocator allocator = new HeapByteBufferAllocator();
     private ValuesWriterFactory valuesWriterFactory = DEFAULT_VALUES_WRITER_FACTORY;
@@ -444,6 +452,13 @@ public class ParquetProperties {
       Preconditions.checkArgument(max > 0,
           "Invalid row count for page size check (negative): %s", max);
       this.maxRowCountForPageSizeCheck = max;
+      return this;
+    }
+
+    public Builder withPageValueCountThreshold(int value) {
+      Preconditions.checkArgument(value > 0,
+          "Invalid page value count threshold (negative): %s", value);
+      this.pageValueCountThreshold = value;
       return this;
     }
 

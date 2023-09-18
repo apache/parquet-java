@@ -146,6 +146,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   public static final String MAX_PADDING_BYTES    = "parquet.writer.max-padding";
   public static final String MIN_ROW_COUNT_FOR_PAGE_SIZE_CHECK = "parquet.page.size.row.check.min";
   public static final String MAX_ROW_COUNT_FOR_PAGE_SIZE_CHECK = "parquet.page.size.row.check.max";
+  public static final String PAGE_VALUE_COUNT_THRESHOLD = "parquet.page.value.count.threshold";
   public static final String ESTIMATE_PAGE_SIZE_CHECK = "parquet.page.size.check.estimate";
   public static final String COLUMN_INDEX_TRUNCATE_LENGTH = "parquet.columnindex.truncate.length";
   public static final String STATISTICS_TRUNCATE_LENGTH = "parquet.statistics.truncate.length";
@@ -276,6 +277,11 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   public static int getMaxRowCountForPageSizeCheck(Configuration configuration) {
     return configuration.getInt(MAX_ROW_COUNT_FOR_PAGE_SIZE_CHECK,
         ParquetProperties.DEFAULT_MAXIMUM_RECORD_COUNT_FOR_CHECK);
+  }
+
+  public static int getValueCountThreshold(Configuration configuration) {
+    return configuration.getInt(PAGE_VALUE_COUNT_THRESHOLD,
+        ParquetProperties.DEFAULT_PAGE_VALUE_COUNT_THRESHOLD);
   }
 
   public static boolean getEstimatePageSizeCheck(Configuration configuration) {
@@ -456,6 +462,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
         .estimateRowCountForPageSizeCheck(getEstimatePageSizeCheck(conf))
         .withMinRowCountForPageSizeCheck(getMinRowCountForPageSizeCheck(conf))
         .withMaxRowCountForPageSizeCheck(getMaxRowCountForPageSizeCheck(conf))
+        .withPageValueCountThreshold(getValueCountThreshold(conf))
         .withColumnIndexTruncateLength(getColumnIndexTruncateLength(conf))
         .withStatisticsTruncateLength(getStatisticsTruncateLength(conf))
         .withMaxBloomFilterBytes(getBloomFilterMaxBytes(conf))
