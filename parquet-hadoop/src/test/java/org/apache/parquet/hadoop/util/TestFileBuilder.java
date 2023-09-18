@@ -52,6 +52,7 @@ public class TestFileBuilder
     private ParquetCipher cipher = ParquetCipher.AES_GCM_V1;
     private Boolean footerEncryption = false;
     private long rowGroupSize = ParquetWriter.DEFAULT_BLOCK_SIZE;
+    private String[] bloomFilterEnabled = {};
 
     public TestFileBuilder(Configuration conf, MessageType schema)
     {
@@ -114,6 +115,12 @@ public class TestFileBuilder
         return this;
     }
 
+    public TestFileBuilder withBloomFilterEnabled(String[] bloomFilterEnabled)
+    {
+        this.bloomFilterEnabled = bloomFilterEnabled;
+        return this;
+    }
+
     public EncryptionTestFile build()
             throws IOException
     {
@@ -129,6 +136,11 @@ public class TestFileBuilder
                 .withRowGroupSize(rowGroupSize)
                 .withEncryption(encryptionProperties)
                 .withCompressionCodec(CompressionCodecName.valueOf(codec));
+
+        for (String columnPath: bloomFilterEnabled) {
+          builder.withBloomFilterEnabled(columnPath, true);
+        }
+
         try (ParquetWriter writer = builder.build()) {
             for (int i = 0; i < fileContent.length; i++) {
                 writer.write(fileContent[i]);

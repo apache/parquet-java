@@ -26,6 +26,7 @@ import org.apache.parquet.HadoopReadOptions;
 import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.Version;
 import org.apache.parquet.column.ParquetProperties;
+import org.apache.parquet.column.values.bloomfilter.BloomFilter;
 import org.apache.parquet.crypto.FileDecryptionProperties;
 import org.apache.parquet.crypto.FileEncryptionProperties;
 import org.apache.parquet.crypto.ParquetCipher;
@@ -41,6 +42,7 @@ import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.example.GroupReadSupport;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
+import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.metadata.FileMetaData;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
@@ -137,6 +139,7 @@ public class ParquetRewriterTest {
     // Verify original.created.by is preserved
     validateCreatedBy();
     validateRowGroupRowCount();
+    validateBloomFilter();
   }
 
   @Before
@@ -538,11 +541,28 @@ public class ParquetRewriterTest {
     testPruneSingleColumnTranslateCodec(inputPaths);
   }
 
+  @Test
+  public void testRewriteFileWithBloomFilter() throws Exception {
+    testSingleInputFileSetupWithBloomFilter("GZIP", "DocId");
+    List<Path> inputPaths = new ArrayList<Path>() {{
+      add(new Path(inputFiles.get(0).getFileName()));
+    }};
+    testPruneSingleColumnTranslateCodec(inputPaths);
+  }
+
   private void testSingleInputFileSetup(String compression) throws IOException {
     testSingleInputFileSetup(compression, ParquetWriter.DEFAULT_BLOCK_SIZE);
   }
 
-  private void testSingleInputFileSetup(String compression, long rowGroupSize) throws IOException {
+  private void testSingleInputFileSetupWithBloomFilter(
+    String compression,
+    String... bloomFilterEnabledColumns) throws IOException {
+    testSingleInputFileSetup(compression, ParquetWriter.DEFAULT_BLOCK_SIZE, bloomFilterEnabledColumns);
+  }
+
+  private void testSingleInputFileSetup(String compression,
+                                        long rowGroupSize,
+                                        String... bloomFilterEnabledColumns) throws IOException {
     MessageType schema = createSchema();
     inputFiles = Lists.newArrayList();
     inputFiles.add(new TestFileBuilder(conf, schema)
@@ -550,6 +570,7 @@ public class ParquetRewriterTest {
       .withCodec(compression)
       .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
       .withRowGroupSize(rowGroupSize)
+      .withBloomFilterEnabled(bloomFilterEnabledColumns)
       .build());
   }
 
@@ -807,4 +828,35 @@ public class ParquetRewriterTest {
     assertEquals(inputRowCounts, outputRowCounts);
   }
 
+  private void validateBloomFilter() throws Exception {
+    Map<ColumnPath, BloomFilter> inputBloomFilters = new HashMap<>();
+    for (EncryptionTestFile inputFile : inputFiles) {
+      TransParquetFileReader reader = new TransParquetFileReader(HadoopInputFile.fromPath(
+        new Path(inputFile.getFileName()), conf), HadoopReadOptions.builder(conf).build());
+      ParquetMetadata metadata = reader.getFooter();
+      for (BlockMetaData blockMetaData: metadata.getBlocks()) {
+        for (ColumnChunkMetaData columnChunkMetaData : blockMetaData.getColumns()) {
+          BloomFilter bloomFilter = reader.readBloomFilter(columnChunkMetaData);
+          if (bloomFilter != null) {
+            inputBloomFilters.put(columnChunkMetaData.getPath(), bloomFilter);
+          }
+        }
+      }
+    }
+
+    Map<ColumnPath, BloomFilter> outputBloomFilters = new HashMap<>();
+    TransParquetFileReader reader = new TransParquetFileReader(HadoopInputFile.fromPath(
+      new Path(outputFile), conf), HadoopReadOptions.builder(conf).build());
+    ParquetMetadata metadata = reader.getFooter();
+    for (BlockMetaData blockMetaData: metadata.getBlocks()) {
+      for (ColumnChunkMetaData columnChunkMetaData : blockMetaData.getColumns()) {
+        BloomFilter bloomFilter = reader.readBloomFilter(columnChunkMetaData);
+        if (bloomFilter != null) {
+          outputBloomFilters.put(columnChunkMetaData.getPath(), bloomFilter);
+        }
+      }
+    }
+
+    assertEquals(inputBloomFilters, outputBloomFilters);
+  }
 }

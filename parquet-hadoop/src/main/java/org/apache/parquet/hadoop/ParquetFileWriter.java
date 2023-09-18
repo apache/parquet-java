@@ -739,12 +739,12 @@ public class ParquetFileWriter {
   }
 
   /**
-   * Add a Bloom filter that will be written out. This is only used in unit test.
+   * Add a Bloom filter that will be written out.
    *
    * @param column the column name
    * @param bloomFilter the bloom filter of column values
    */
-  void addBloomFilter(String column, BloomFilter bloomFilter)  {
+  public void addBloomFilter(String column, BloomFilter bloomFilter)  {
     currentBloomFilters.put(column , bloomFilter);
   }
 
