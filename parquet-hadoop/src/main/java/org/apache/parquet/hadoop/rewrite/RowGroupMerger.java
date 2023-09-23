@@ -51,6 +51,7 @@ import org.apache.parquet.column.page.DataPageV2;
 import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.page.PageReadStore;
 import org.apache.parquet.column.page.PageReader;
+import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.column.values.ValuesReader;
 import org.apache.parquet.column.values.ValuesWriter;
 import org.apache.parquet.compression.CompressionCodecFactory;
@@ -298,6 +299,7 @@ class RowGroupMerger {
       for (Entry<ColumnDescriptor, ColumnChunkMetaData> col : getColumnsInOrder(blockMeta, schema)) {
 
         MutableMergedColumn column = getOrCreateColumn(col.getKey());
+        column.statistics.mergeStatistics(col.getValue().getStatistics());
         PageReader columnReader = group.getPageReader(col.getKey());
 
         DictionaryPage dictPage = columnReader.readDictionaryPage();
@@ -392,7 +394,7 @@ class RowGroupMerger {
         }
 
         ReadOnlyMergedColumn column = new ReadOnlyMergedColumn(pages, dictPage, col.getKey(),
-          col.getValue().getValueCount(), compressor.getCodecName());
+          col.getValue().getValueCount(), compressor.getCodecName(), col.getValue().getStatistics());
 
         columns.add(column);
       }
@@ -406,14 +408,16 @@ class RowGroupMerger {
     private final ColumnDescriptor columnDesc;
     private final long valueCount;
     private final CompressionCodecName codecName;
+    private final Statistics statistics;
 
     private ReadOnlyMergedColumn(List<DataPage> pages, DictionaryPage dictionary, ColumnDescriptor columnDesc,
-                                 long valueCount, CompressionCodecName codecName) {
+                                 long valueCount, CompressionCodecName codecName, Statistics statistics) {
       this.pages = pages;
       this.dictionary = dictionary;
       this.columnDesc = columnDesc;
       this.valueCount = valueCount;
       this.codecName = codecName;
+      this.statistics = statistics;
     }
 
     @Override
@@ -433,6 +437,17 @@ class RowGroupMerger {
 
     @Override
     public void writeDataPagesTo(ParquetFileWriter writer) {
+      if(pages.isEmpty()) {
+        return;
+      }
+      Statistics destinationStatistics = (pages.get(0) instanceof  DataPageV1) ?
+        ((DataPageV1)pages.get(0)).getStatistics() :
+        ((DataPageV2)pages.get(0)).getStatistics();
+      // Has statistics been read into the pages?
+      if(destinationStatistics.getNumNulls() < 0) {
+        destinationStatistics.incrementNumNulls(); // Set this to 0
+        destinationStatistics.mergeStatistics(statistics);
+      }
       pages.forEach(page -> writePageTo(page, writer));
     }
 
@@ -451,6 +466,7 @@ class RowGroupMerger {
     private final ValuesWriter newValuesWriter;
     private final BiConsumer<ValuesReader, ValuesWriter> dataWriter;
     private final Consumer<Long> compressedSizeAccumulator;
+    private final Statistics statistics;
 
     private long valueCount;
 
@@ -459,6 +475,7 @@ class RowGroupMerger {
       this.compressedSizeAccumulator = compressedSizeAccumulator;
       this.newValuesWriter = parquetProperties.newValuesWriter(columnDesc);
       this.dataWriter = createWritingBridge(columnDesc.getPrimitiveType().getPrimitiveTypeName());
+      this.statistics =  Statistics.createStats(column.getPrimitiveType());
     }
 
     @Override
@@ -478,6 +495,17 @@ class RowGroupMerger {
 
     @Override
     public void writeDataPagesTo(ParquetFileWriter writer) {
+      if(pages.isEmpty()) {
+        return;
+      }
+      Statistics destinationStatistics = (pages.get(0) instanceof  DataPageV1) ?
+        ((DataPageV1)pages.get(0)).getStatistics() :
+        ((DataPageV2)pages.get(0)).getStatistics();
+      // Has statistics been read into the pages?
+      if(destinationStatistics.getNumNulls() < 0) {
+        destinationStatistics.incrementNumNulls(); // Set this to 0
+        destinationStatistics.mergeStatistics(statistics);
+      }
       pages.forEach(page -> writePageTo(page, writer));
     }
 
