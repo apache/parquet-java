@@ -547,8 +547,8 @@
             </excludeModules>
             <excludes>
               <exclude>${shade.prefix}</exclude>
-              <exclude>org.apache.parquet.hadoop.CodecFactory</exclude>
-              <exclude>org.apache.parquet.hadoop.ParquetReader</exclude>
+              <exclude>org.apache.parquet.hadoop.CodecFactory</exclude> <!-- change field type from Configuration to ParquetConfiguration -->
+              <exclude>org.apache.parquet.hadoop.ParquetReader</exclude> <!-- change field type from Configuration to ParquetConfiguration -->
               <exclude>org.apache.parquet.thrift.projection.deprecated.PathGlobPattern</exclude>
             </excludes>
           </parameter>
