@@ -348,6 +348,42 @@ public class TestPrimitiveStringifier {
   }
 
   @Test
+  public void testFloat16Stringifier() {
+    PrimitiveStringifier stringifier = PrimitiveStringifier.FLOAT16_STRINGIFIER;
+
+    // Zeroes, NaN and infinities
+    assertEquals("0.0", stringifier.stringify(toBinary(0x00, 0x00)));
+    assertEquals("-0.0", stringifier.stringify(toBinary(0x00, 0x80)));
+    assertEquals(Float.toString(Float.NaN), stringifier.stringify(toBinary(0x00, 0x7e)));
+    assertEquals(Float.toString(Float.POSITIVE_INFINITY), stringifier.stringify(toBinary(0x00, 0x7c)));
+    assertEquals(Float.toString(Float.NEGATIVE_INFINITY), stringifier.stringify(toBinary(0x00, 0xfc)));
+
+    // Known values
+    assertEquals("1.0009766", stringifier.stringify(toBinary(0x01, 0x3c)));
+    assertEquals("-2.0", stringifier.stringify(toBinary(0x00, 0xc0)));
+    assertEquals("6.1035156E-5", stringifier.stringify(toBinary(0x00, 0x04)));
+    assertEquals("65504.0", stringifier.stringify(toBinary(0xff, 0x7b)));
+    assertEquals("0.33325195", stringifier.stringify(toBinary(0x55, 0x35)));
+
+    // Subnormals
+    assertEquals("6.097555E-5", stringifier.stringify(toBinary(0xff, 0x03)));
+    assertEquals("5.9604645E-8", stringifier.stringify(toBinary(0x01, 0x00)));
+    assertEquals("-6.097555E-5", stringifier.stringify(toBinary(0xff, 0x83)));
+    assertEquals("-5.9604645E-8", stringifier.stringify(toBinary(0x01, 0x80)));
+
+    // Floats with absolute value above +/-65519 are rounded to +/-inf
+    // when using round-to-even
+    assertEquals("65504.0", stringifier.stringify(toBinary(0xff, 0x7b)));
+
+    // Check if numbers are rounded to nearest even when they
+    // cannot be accurately represented by Half
+    assertEquals("2048.0", stringifier.stringify(toBinary(0x00, 0x68)));
+    assertEquals("4096.0", stringifier.stringify(toBinary(0x00, 0x6c)));
+
+    checkThrowingUnsupportedException(stringifier, Integer.TYPE, Long.TYPE, Binary.class);
+  }
+
+  @Test
   public void testUUIDStringifier() {
     PrimitiveStringifier stringifier = PrimitiveStringifier.UUID_STRINGIFIER;
 

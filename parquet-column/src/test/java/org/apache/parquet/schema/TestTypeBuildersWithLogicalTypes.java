@@ -24,6 +24,7 @@ import static org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit.NANOS;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.bsonType;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.dateType;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.decimalType;
+import static org.apache.parquet.schema.LogicalTypeAnnotation.float16Type;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.intType;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.jsonType;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.stringType;
@@ -213,8 +214,18 @@ public class TestTypeBuildersWithLogicalTypes {
   }
 
   @Test
+  public void testFloat16Annotations() {
+    LogicalTypeAnnotation type = float16Type();
+    PrimitiveType expected = new PrimitiveType(REQUIRED, FIXED_LEN_BYTE_ARRAY, 2, "col", type, null);
+    PrimitiveType string =
+        Types.required(FIXED_LEN_BYTE_ARRAY).as(type).length(2).named("col");
+    Assert.assertEquals(expected, string);
+  }
+
+  @Test
   public void testBinaryAnnotationsRejectsNonBinary() {
-    LogicalTypeAnnotation[] types = new LogicalTypeAnnotation[] {stringType(), jsonType(), bsonType()};
+    LogicalTypeAnnotation[] types =
+        new LogicalTypeAnnotation[] {stringType(), jsonType(), bsonType(), float16Type()};
     for (final LogicalTypeAnnotation logicalType : types) {
       PrimitiveTypeName[] nonBinary = new PrimitiveTypeName[] {BOOLEAN, INT32, INT64, INT96, DOUBLE, FLOAT};
       for (final PrimitiveTypeName type : nonBinary) {
@@ -438,6 +449,28 @@ public class TestTypeBuildersWithLogicalTypes {
         "Should fail with invalid type",
         IllegalStateException.class,
         () -> Types.required(BINARY).as(uuidType()).named("uuid_field").toString());
+  }
+
+  @Test
+  public void testFloat16LogicalType() {
+    assertEquals(
+        "required fixed_len_byte_array(2) float16_field (FLOAT16)",
+        Types.required(FIXED_LEN_BYTE_ARRAY)
+            .length(2)
+            .as(float16Type())
+            .named("float16_field")
+            .toString());
+
+    assertThrows("Should fail with invalid length", IllegalStateException.class, () -> Types.required(
+            FIXED_LEN_BYTE_ARRAY)
+        .length(10)
+        .as(float16Type())
+        .named("float16_field")
+        .toString());
+    assertThrows("Should fail with invalid type", IllegalStateException.class, () -> Types.required(BINARY)
+        .as(float16Type())
+        .named("float16_field")
+        .toString());
   }
 
   /**

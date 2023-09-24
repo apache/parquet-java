@@ -83,6 +83,7 @@ import org.apache.parquet.format.EncryptionWithColumnKey;
 import org.apache.parquet.format.EnumType;
 import org.apache.parquet.format.FieldRepetitionType;
 import org.apache.parquet.format.FileMetaData;
+import org.apache.parquet.format.Float16Type;
 import org.apache.parquet.format.IntType;
 import org.apache.parquet.format.JsonType;
 import org.apache.parquet.format.KeyValue;
@@ -509,6 +510,11 @@ public class ParquetMetadataConverter {
     }
 
     @Override
+    public Optional<LogicalType> visit(LogicalTypeAnnotation.Float16LogicalTypeAnnotation float16LogicalType) {
+      return of(LogicalType.FLOAT16(new Float16Type()));
+    }
+
+    @Override
     public Optional<LogicalType> visit(LogicalTypeAnnotation.IntervalLogicalTypeAnnotation intervalLogicalType) {
       return of(LogicalType.UNKNOWN(new NullType()));
     }
@@ -876,7 +882,8 @@ public class ParquetMetadataConverter {
   private static final Set<Class> STRING_TYPES = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
       LogicalTypeAnnotation.StringLogicalTypeAnnotation.class,
       LogicalTypeAnnotation.EnumLogicalTypeAnnotation.class,
-      LogicalTypeAnnotation.JsonLogicalTypeAnnotation.class)));
+      LogicalTypeAnnotation.JsonLogicalTypeAnnotation.class,
+      LogicalTypeAnnotation.Float16LogicalTypeAnnotation.class)));
 
   /**
    * Returns whether to use signed order min and max with a type. It is safe to
@@ -971,6 +978,12 @@ public class ParquetMetadataConverter {
             public Optional<SortOrder> visit(
                 LogicalTypeAnnotation.StringLogicalTypeAnnotation stringLogicalType) {
               return of(SortOrder.UNSIGNED);
+            }
+
+            @Override
+            public Optional<SortOrder> visit(
+                LogicalTypeAnnotation.Float16LogicalTypeAnnotation float16LogicalType) {
+              return of(SortOrder.SIGNED);
             }
 
             @Override
@@ -1149,6 +1162,8 @@ public class ParquetMetadataConverter {
         return LogicalTypeAnnotation.timestampType(timestamp.isAdjustedToUTC, convertTimeUnit(timestamp.unit));
       case UUID:
         return LogicalTypeAnnotation.uuidType();
+      case FLOAT16:
+        return LogicalTypeAnnotation.float16Type();
       default:
         throw new RuntimeException("Unknown logical type " + type);
     }

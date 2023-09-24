@@ -21,6 +21,8 @@ package org.apache.parquet.column.statistics;
 import java.util.Arrays;
 import org.apache.parquet.column.UnknownColumnTypeException;
 import org.apache.parquet.io.api.Binary;
+import org.apache.parquet.schema.Float16;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.PrimitiveComparator;
 import org.apache.parquet.schema.PrimitiveStringifier;
 import org.apache.parquet.schema.PrimitiveType;
@@ -138,6 +140,44 @@ public abstract class Statistics<T extends Comparable<T>> {
     }
   }
 
+  // Builder for FLOAT16 type to handle special cases of min/max values like NaN, -0.0, and 0.0
+  private static class Float16Builder extends Builder {
+    private static final Binary POSITIVE_ZERO_LITTLE_ENDIAN = Binary.fromConstantByteArray(new byte[] {0x00, 0x00});
+    private static final Binary NEGATIVE_ZERO_LITTLE_ENDIAN =
+        Binary.fromConstantByteArray(new byte[] {0x00, (byte) 0x80});
+
+    public Float16Builder(PrimitiveType type) {
+      super(type);
+      assert type.getPrimitiveTypeName() == PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY;
+      assert type.getTypeLength() == 2;
+    }
+
+    @Override
+    public Statistics<?> build() {
+      BinaryStatistics stats = (BinaryStatistics) super.build();
+      if (stats.hasNonNullValue()) {
+        Binary bMin = stats.genericGetMin();
+        Binary bMax = stats.genericGetMax();
+        short min = bMin.get2BytesLittleEndian();
+        short max = bMax.get2BytesLittleEndian();
+        // Drop min/max values in case of NaN as the sorting order of values is undefined for this case
+        if (Float16.isNaN(min) || Float16.isNaN(max)) {
+          stats.setMinMax(POSITIVE_ZERO_LITTLE_ENDIAN, NEGATIVE_ZERO_LITTLE_ENDIAN);
+          ((Statistics<?>) stats).hasNonNullValue = false;
+        } else {
+          // Updating min to -0.0 and max to +0.0 to ensure that no 0.0 values would be skipped
+          if (min == (short) 0x0000) {
+            stats.setMinMax(NEGATIVE_ZERO_LITTLE_ENDIAN, bMax);
+          }
+          if (max == (short) 0x8000) {
+            stats.setMinMax(bMin, POSITIVE_ZERO_LITTLE_ENDIAN);
+          }
+        }
+      }
+      return stats;
+    }
+  }
+
   private final PrimitiveType type;
   private final PrimitiveComparator<T> comparator;
   private boolean hasNonNullValue;
@@ -224,6 +264,11 @@ public abstract class Statistics<T extends Comparable<T>> {
         return new FloatBuilder(type);
       case DOUBLE:
         return new DoubleBuilder(type);
+      case FIXED_LEN_BYTE_ARRAY:
+        LogicalTypeAnnotation logicalTypeAnnotation = type.getLogicalTypeAnnotation();
+        if (logicalTypeAnnotation instanceof LogicalTypeAnnotation.Float16LogicalTypeAnnotation) {
+          return new Float16Builder(type);
+        }
       default:
         return new Builder(type);
     }

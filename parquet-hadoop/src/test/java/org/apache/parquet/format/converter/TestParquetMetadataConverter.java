@@ -1021,6 +1021,27 @@ public class TestParquetMetadataConverter {
   }
 
   @Test
+  public void testFloat16Stats() {
+    Statistics stats = Statistics.createStats(
+        new PrimitiveType(Repetition.OPTIONAL, PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY, 2, "float16")
+            .withLogicalTypeAnnotation(LogicalTypeAnnotation.float16Type()));
+    stats.updateStats(toBinary(0xff, 0x03));
+    stats.updateStats(toBinary(0xff, 0x7b));
+    String expectedMinStr = "6.097555E-5";
+    String expectedMaxStr = "65504.0";
+    assertEquals(expectedMinStr, stats.minAsString());
+    assertEquals(expectedMaxStr, stats.maxAsString());
+  }
+
+  private Binary toBinary(int... bytes) {
+    byte[] array = new byte[bytes.length];
+    for (int i = 0; i < array.length; ++i) {
+      array[i] = (byte) bytes[i];
+    }
+    return Binary.fromConstantByteArray(array);
+  }
+
+  @Test
   public void testMissingValuesFromStats() {
     ParquetMetadataConverter converter = new ParquetMetadataConverter();
     PrimitiveType type = Types.required(PrimitiveTypeName.INT32).named("test_int32");
