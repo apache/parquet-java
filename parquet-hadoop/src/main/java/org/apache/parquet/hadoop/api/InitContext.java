@@ -90,7 +90,7 @@ public class InitContext {
     return ConfigurationUtil.createHadoopConfiguration(configuration);
   }
 
-  public ParquetConfiguration getConfig() {
+  public ParquetConfiguration getParquetConfiguration() {
     return configuration;
   }
 
