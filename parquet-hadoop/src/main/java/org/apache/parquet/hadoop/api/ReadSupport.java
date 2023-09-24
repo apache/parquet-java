@@ -101,7 +101,7 @@ abstract public class ReadSupport<T> {
    * @return the readContext that defines how to read the file
    */
   public ReadContext init(InitContext context) {
-    return init(context.getConfig(), context.getMergedKeyValueMetaData(), context.getFileSchema());
+    return init(context.getParquetConfiguration(), context.getMergedKeyValueMetaData(), context.getFileSchema());
   }
 
   /**

@@ -53,7 +53,7 @@ public abstract class AbstractThriftWriteSupport<T> extends WriteSupport<T> {
     configuration.set(PARQUET_THRIFT_CLASS, thriftClass.getName());
   }
 
-  public static Class getGenericThriftClass(Configuration configuration) {
+  public static Class<?> getGenericThriftClass(Configuration configuration) {
     return getGenericThriftClass(new HadoopParquetConfiguration(configuration));
   }
 

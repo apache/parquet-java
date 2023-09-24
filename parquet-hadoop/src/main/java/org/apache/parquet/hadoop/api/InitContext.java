@@ -90,6 +90,9 @@ public class InitContext {
     return ConfigurationUtil.createHadoopConfiguration(configuration);
   }
 
+  /**
+   * @return the Parquet configuration for this job
+   */
   public ParquetConfiguration getParquetConfiguration() {
     return configuration;
   }

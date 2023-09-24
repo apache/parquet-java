@@ -61,7 +61,7 @@ public class ProtoReadSupport<T extends Message> extends ReadSupport<T> {
 
   @Override
   public ReadContext init(InitContext context) {
-    String requestedProjectionString = context.getConfig().get(PB_REQUESTED_PROJECTION);
+    String requestedProjectionString = context.getParquetConfiguration().get(PB_REQUESTED_PROJECTION);
 
     if (requestedProjectionString != null && !requestedProjectionString.trim().isEmpty()) {
       MessageType requestedProjection = getSchemaForRead(context.getFileSchema(), requestedProjectionString);

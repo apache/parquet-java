@@ -172,9 +172,9 @@ public class TupleReadSupport extends ReadSupport<Tuple> {
 
   @Override
   public ReadContext init(InitContext initContext) {
-    Schema pigSchema = getPigSchema(initContext.getConfig());
-    RequiredFieldList requiredFields = getRequiredFields(initContext.getConfig());
-    boolean columnIndexAccess = initContext.getConfig().getBoolean(PARQUET_COLUMN_INDEX_ACCESS, false);
+    Schema pigSchema = getPigSchema(initContext.getParquetConfiguration());
+    RequiredFieldList requiredFields = getRequiredFields(initContext.getParquetConfiguration());
+    boolean columnIndexAccess = initContext.getParquetConfiguration().getBoolean(PARQUET_COLUMN_INDEX_ACCESS, false);
 
     if (pigSchema == null) {
       return new ReadContext(initContext.getFileSchema());
