@@ -173,9 +173,6 @@ class InternalParquetRecordReader<T> {
     for (String property : options.getPropertyNames()) {
       conf.set(property, options.getProperty(property));
     }
-    for (Map.Entry<String, String> property : new Configuration()) {
-      conf.set(property.getKey(), property.getValue());
-    }
 
     // initialize a ReadContext for this file
     this.reader = reader;
