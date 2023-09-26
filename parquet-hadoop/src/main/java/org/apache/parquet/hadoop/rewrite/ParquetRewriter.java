@@ -651,7 +651,7 @@ public class ParquetRewriter implements Closeable {
             .withWriterVersion(writerVersion)
             .build();
     CodecFactory codecFactory = new CodecFactory(new Configuration(), props.getPageSizeThreshold());
-    CodecFactory.BytesCompressor compressor = codecFactory.getCompressor(newCodecName);
+    CompressionCodecFactory.BytesInputCompressor compressor = codecFactory.getCompressor(newCodecName);
 
     // Create new schema that only has the current column
     MessageType newSchema = newSchema(schema, descriptor);

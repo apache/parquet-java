@@ -548,6 +548,9 @@
             <excludes>
               <exclude>${shade.prefix}</exclude>
               <exclude>org.apache.parquet.thrift.projection.deprecated.PathGlobPattern</exclude>
+              <!-- japicmp is overly aggressive on interface types in signatures, a type was changed to a supertype but this still triggers it -->
+              <exclude>org.apache.parquet.hadoop.ColumnChunkPageWriteStore</exclude>
+              <exclude>org.apache.parquet.hadoop.ParquetRecordWriter</exclude>
             </excludes>
           </parameter>
         </configuration>

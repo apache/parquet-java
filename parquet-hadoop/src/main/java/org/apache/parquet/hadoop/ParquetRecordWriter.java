@@ -28,7 +28,7 @@ import org.apache.hadoop.mapreduce.TaskAttemptContext;
 
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
-import org.apache.parquet.hadoop.CodecFactory.BytesCompressor;
+import org.apache.parquet.compression.CompressionCodecFactory.BytesInputCompressor;
 import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.schema.MessageType;
@@ -67,7 +67,7 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
       MessageType schema,
       Map<String, String> extraMetaData,
       int blockSize, int pageSize,
-      BytesCompressor compressor,
+      BytesInputCompressor compressor,
       int dictionaryPageSize,
       boolean enableDictionary,
       boolean validating,
@@ -101,17 +101,17 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
    */
   @Deprecated
   public ParquetRecordWriter(
-      ParquetFileWriter w,
-      WriteSupport<T> writeSupport,
-      MessageType schema,
-      Map<String, String> extraMetaData,
-      long blockSize, int pageSize,
-      BytesCompressor compressor,
-      int dictionaryPageSize,
-      boolean enableDictionary,
-      boolean validating,
-      WriterVersion writerVersion,
-      MemoryManager memoryManager) {
+    ParquetFileWriter w,
+    WriteSupport<T> writeSupport,
+    MessageType schema,
+    Map<String, String> extraMetaData,
+    long blockSize, int pageSize,
+    BytesInputCompressor compressor,
+    int dictionaryPageSize,
+    boolean enableDictionary,
+    boolean validating,
+    WriterVersion writerVersion,
+    MemoryManager memoryManager) {
     ParquetProperties props = ParquetProperties.builder()
         .withPageSize(pageSize)
         .withDictionaryPageSize(dictionaryPageSize)

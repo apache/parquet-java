@@ -43,6 +43,7 @@ import org.apache.parquet.column.page.Page;
 import org.apache.parquet.column.page.PageReadStore;
 import org.apache.parquet.column.page.PageWriter;
 import org.apache.parquet.column.statistics.Statistics;
+import org.apache.parquet.compression.CompressionCodecFactory.BytesInputCompressor;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.GroupFactory;
 import org.apache.parquet.example.data.simple.SimpleGroupFactory;
@@ -124,7 +125,7 @@ public class TestDataPageChecksums {
     writer.startBlock(numRecordsLargeFile);
 
     CodecFactory codecFactory = new CodecFactory(conf, PAGE_SIZE);
-    CodecFactory.BytesCompressor compressor = codecFactory.getCompressor(compression);
+    BytesInputCompressor compressor = codecFactory.getCompressor(compression);
 
     ColumnChunkPageWriteStore writeStore = new ColumnChunkPageWriteStore(
       compressor, schemaSimple, new HeapByteBufferAllocator(),
