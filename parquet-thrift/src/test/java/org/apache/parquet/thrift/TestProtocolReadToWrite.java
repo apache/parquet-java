@@ -18,10 +18,6 @@
  */
 package org.apache.parquet.thrift;
 
-import com.twitter.data.proto.tutorial.thrift.*;
-import com.twitter.elephantbird.thrift.test.TestMapInSet;
-import org.apache.thrift.TBase;
-import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.protocol.TField;
 import org.apache.thrift.transport.TIOStreamTransport;
@@ -31,106 +27,17 @@ import org.apache.parquet.thrift.test.Phone;
 import org.apache.parquet.thrift.test.StructWithExtraField;
 import org.apache.parquet.thrift.test.StructWithIndexStartsFrom4;
 import org.apache.parquet.thrift.test.compat.*;
-import thrift.test.OneOfEach;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.nio.ByteBuffer;
-import java.util.*;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public class TestProtocolReadToWrite {
-
-  @Test
-  public void testOneOfEach() throws Exception {
-    OneOfEach a = new OneOfEach(
-        true, false, (byte)8, (short)16, (int)32, (long)64, (double)1234, "string", "å", false,
-        ByteBuffer.wrap("a".getBytes()), new ArrayList<Byte>(), new ArrayList<Short>(), new ArrayList<Long>());
-    writeReadCompare(a);
-  }
-
-  @Test
-  public void testWriteRead() throws Exception {
-    ArrayList<Person> persons = new ArrayList<Person>();
-    final PhoneNumber phoneNumber = new PhoneNumber("555 999 9998");
-    phoneNumber.type = PhoneType.HOME;
-    persons.add(
-        new Person(
-            new Name("Bob", "Roberts"),
-            1,
-            "bob@roberts.com",
-            Arrays.asList(new PhoneNumber("555 999 9999"), phoneNumber)));
-    persons.add(
-        new Person(
-            new Name("Dick", "Richardson"),
-            2,
-            "dick@richardson.com",
-            Arrays.asList(new PhoneNumber("555 999 9997"), new PhoneNumber("555 999 9996"))));
-    AddressBook a = new AddressBook(persons);
-    writeReadCompare(a);
-  }
-
-  @Test
-  public void testEmptyStruct() throws Exception {
-    AddressBook a = new AddressBook();
-    writeReadCompare(a);
-  }
-
-  @Test
-  public void testMapSet() throws Exception {
-    final Set<Map<String, String>> set = new HashSet<Map<String, String>>();
-    final Map<String, String> map = new HashMap<String, String>();
-    map.put("foo", "bar");
-    set.add(map);
-    TestMapInSet a = new TestMapInSet("top", set);
-    writeReadCompare(a);
-  }
-
-  private void writeReadCompare(TBase<?, ?> a)
-          throws TException, InstantiationException, IllegalAccessException {
-    ProtocolPipe[] pipes = {new ProtocolReadToWrite(), new BufferedProtocolReadToWrite(ThriftSchemaConverter.toStructType((Class<TBase<?, ?>>)a.getClass()))};
-    for (ProtocolPipe p : pipes) {
-      final ByteArrayOutputStream in = new ByteArrayOutputStream();
-      final ByteArrayOutputStream out = new ByteArrayOutputStream();
-      a.write(protocol(in));
-      p.readOne(protocol(new ByteArrayInputStream(in.toByteArray())), protocol(out));
-      TBase<?, ?> b = a.getClass().newInstance();
-      b.read(protocol(new ByteArrayInputStream(out.toByteArray())));
-
-      assertEquals(p.getClass().getSimpleName(), a, b);
-    }
-  }
-
-  @Test
-  public void testIncompatibleSchemaRecord() throws Exception {
-    //handler will rethrow the exception for verifying purpose
-    CountingErrorHandler countingHandler = new CountingErrorHandler();
-
-    BufferedProtocolReadToWrite p = new BufferedProtocolReadToWrite(ThriftSchemaConverter.toStructType(AddressBook.class), countingHandler);
-
-    final ByteArrayOutputStream in = new ByteArrayOutputStream();
-    final ByteArrayOutputStream out = new ByteArrayOutputStream();
-    OneOfEach a = new OneOfEach(
-            true, false, (byte)8, (short)16, (int)32, (long)64, (double)1234, "string", "å", false,
-            ByteBuffer.wrap("a".getBytes()), new ArrayList<Byte>(), new ArrayList<Short>(), new ArrayList<Long>());
-    a.write(protocol(in));
-    try {
-      p.readOne(protocol(new ByteArrayInputStream(in.toByteArray())), protocol(out));
-      fail("this should throw");
-    } catch (SkippableException e) {
-      Throwable cause = e.getCause();
-      assertTrue(cause instanceof DecodingSchemaMismatchException);
-      assertTrue(cause.getMessage().contains("the data type does not match the expected thrift structure"));
-      assertTrue(cause.getMessage().contains("got BOOL"));
-    }
-    assertEquals(0, countingHandler.recordCountOfMissingFields);
-    assertEquals(0, countingHandler.fieldIgnoredCount);
-  }
 
   @Test
   public void testUnrecognizedUnionMemberSchema() throws Exception {

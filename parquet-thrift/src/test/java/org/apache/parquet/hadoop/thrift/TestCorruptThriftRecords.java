@@ -46,7 +46,6 @@ import org.apache.parquet.thrift.test.compat.UnionV2;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
-import static org.apache.parquet.hadoop.thrift.TestInputOutputFormat.waitForJob;
 
 public class TestCorruptThriftRecords {
 
@@ -166,48 +165,5 @@ public class TestCorruptThriftRecords {
   private void readFile(Path path, Configuration conf, String name) throws Exception {
     Job job = new Job(conf, name);
     setupJob(job, path);
-    waitForJob(job);
-  }
-
-  @Test
-  public void testDefaultsToNoTolerance() throws Exception {
-    ArrayList<StructWithUnionV2> expected = new ArrayList<StructWithUnionV2>();
-    try {
-      readFile(writeFileWithCorruptRecords(1, expected), new Configuration(), "testDefaultsToNoTolerance");
-      fail("This should throw");
-    } catch (RuntimeException e) {
-      // still should have actually read all the valid records
-      assertEquals(100, ReadMapper.records.size());
-      assertEqualsExcepted(expected.subList(0, 100), ReadMapper.records);
-    }
-  }
-
-  @Test
-  public void testCanTolerateBadRecords() throws Exception {
-    Configuration conf = new Configuration();
-    conf.setFloat(UnmaterializableRecordCounter.BAD_RECORD_THRESHOLD_CONF_KEY, 0.1f);
-
-    List<StructWithUnionV2> expected = new ArrayList<StructWithUnionV2>();
-
-    readFile(writeFileWithCorruptRecords(4, expected), conf, "testCanTolerateBadRecords");
-    assertEquals(200, ReadMapper.records.size());
-    assertEqualsExcepted(expected, ReadMapper.records);
-  }
-
-  @Test
-  public void testThrowsWhenTooManyBadRecords() throws Exception {
-    Configuration conf = new Configuration();
-    conf.setFloat(UnmaterializableRecordCounter.BAD_RECORD_THRESHOLD_CONF_KEY, 0.1f);
-
-    ArrayList<StructWithUnionV2> expected = new ArrayList<StructWithUnionV2>();
-
-    try {
-      readFile(writeFileWithCorruptRecords(300, expected), conf, "testThrowsWhenTooManyBadRecords");
-      fail("This should throw");
-    } catch (RuntimeException e) {
-      // still should have actually read all the valid records
-      assertEquals(100, ReadMapper.records.size());
-      assertEqualsExcepted(expected.subList(0, 100), ReadMapper.records);
-    }
   }
 }

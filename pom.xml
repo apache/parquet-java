@@ -76,6 +76,8 @@
     <thrift.executable>thrift</thrift.executable>
     <format.thrift.executable>${thrift.executable}</format.thrift.executable>
     <scala.version>2.12.17</scala.version>
+    <elephant-bird.version>4.17</elephant-bird.version>
+    <javax.annotation.version>1.3.2</javax.annotation.version>
     <!-- scala.binary.version is used for projects that fetch dependencies that are in scala -->
     <scala.binary.version>2.12</scala.binary.version>
     <scala.maven.test.skip>false</scala.maven.test.skip>

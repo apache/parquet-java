@@ -32,10 +32,6 @@
   <name>Apache Parquet Thrift</name>
   <url>https://parquet.apache.org</url>
 
-  <properties>
-    <elephant-bird.version>4.4</elephant-bird.version>
-  </properties>
-
   <dependencies>
     <dependency>
       <groupId>org.apache.parquet</groupId>
