@@ -146,7 +146,6 @@
     <module>parquet-pig-bundle</module>
     <module>parquet-protobuf</module>
     <module>parquet-scala</module>
-    <module>parquet-thrift</module>
     <module>parquet-hadoop-bundle</module>
   </modules>
 
