@@ -30,6 +30,7 @@ import org.apache.parquet.column.values.bloomfilter.BloomFilter;
 import org.apache.parquet.crypto.FileDecryptionProperties;
 import org.apache.parquet.crypto.FileEncryptionProperties;
 import org.apache.parquet.crypto.ParquetCipher;
+import org.apache.parquet.crypto.ParquetCryptoRuntimeException;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroup;
 import org.apache.parquet.format.DataPageHeader;
@@ -139,7 +140,6 @@ public class ParquetRewriterTest {
     // Verify original.created.by is preserved
     validateCreatedBy();
     validateRowGroupRowCount();
-    validateBloomFilter();
   }
 
   @Before
@@ -542,12 +542,58 @@ public class ParquetRewriterTest {
   }
 
   @Test
-  public void testRewriteFileWithBloomFilter() throws Exception {
+  public void testPruneSingleColumnTranslateCodecAndEnableBloomFilter() throws Exception {
     testSingleInputFileSetupWithBloomFilter("GZIP", "DocId");
     List<Path> inputPaths = new ArrayList<Path>() {{
       add(new Path(inputFiles.get(0).getFileName()));
     }};
     testPruneSingleColumnTranslateCodec(inputPaths);
+
+    // Verify bloom filters
+    Map<ColumnPath, List<BloomFilter>> inputBloomFilters = allInputBloomFilters(null);
+    Map<ColumnPath, List<BloomFilter>> outputBloomFilters = allOutputBloomFilters(null);
+    assertEquals(inputBloomFilters, outputBloomFilters);
+  }
+
+  @Test
+  public void testPruneNullifyTranslateCodecAndEnableBloomFilter() throws Exception {
+    testSingleInputFileSetupWithBloomFilter("GZIP", "DocId", "Links.Forward");
+    List<Path> inputPaths = new ArrayList<Path>() {{
+      add(new Path(inputFiles.get(0).getFileName()));
+    }};
+    testPruneNullifyTranslateCodec(inputPaths);
+
+    // Verify bloom filters
+    Map<ColumnPath, List<BloomFilter>> inputBloomFilters = allInputBloomFilters(null);
+    assertEquals(inputBloomFilters.size(), 2);
+    assertTrue(inputBloomFilters.containsKey(ColumnPath.fromDotString("Links.Forward")));
+    assertTrue(inputBloomFilters.containsKey(ColumnPath.fromDotString("DocId")));
+
+    Map<ColumnPath, List<BloomFilter>> outputBloomFilters = allOutputBloomFilters(null);
+    assertEquals(outputBloomFilters.size(), 1);
+    assertTrue(outputBloomFilters.containsKey(ColumnPath.fromDotString("DocId")));
+
+    inputBloomFilters.remove(ColumnPath.fromDotString("Links.Forward"));
+    assertEquals(inputBloomFilters, outputBloomFilters);
+  }
+
+  @Test
+  public void testPruneEncryptTranslateCodecAndEnableBloomFilter() throws Exception {
+    testSingleInputFileSetupWithBloomFilter("GZIP", "DocId", "Links.Forward");
+    List<Path> inputPaths = new ArrayList<Path>() {{
+      add(new Path(inputFiles.get(0).getFileName()));
+    }};
+    testPruneEncryptTranslateCodec(inputPaths);
+
+    // Verify bloom filters
+    Map<ColumnPath, List<BloomFilter>> inputBloomFilters = allInputBloomFilters(null);
+
+    // Cannot read without FileDecryptionProperties
+    assertThrows(ParquetCryptoRuntimeException.class, () -> allOutputBloomFilters(null));
+
+    FileDecryptionProperties fileDecryptionProperties = EncDecProperties.getFileDecryptionProperties();
+    Map<ColumnPath, List<BloomFilter>> outputBloomFilters = allOutputBloomFilters(fileDecryptionProperties);
+    assertEquals(inputBloomFilters, outputBloomFilters);
   }
 
   private void testSingleInputFileSetup(String compression) throws IOException {
@@ -828,35 +874,49 @@ public class ParquetRewriterTest {
     assertEquals(inputRowCounts, outputRowCounts);
   }
 
-  private void validateBloomFilter() throws Exception {
-    Map<ColumnPath, BloomFilter> inputBloomFilters = new HashMap<>();
+  private Map<ColumnPath, List<BloomFilter>> allInputBloomFilters(
+    FileDecryptionProperties fileDecryptionProperties) throws Exception {
+    Map<ColumnPath, List<BloomFilter>> inputBloomFilters = new HashMap<>();
     for (EncryptionTestFile inputFile : inputFiles) {
-      TransParquetFileReader reader = new TransParquetFileReader(HadoopInputFile.fromPath(
-        new Path(inputFile.getFileName()), conf), HadoopReadOptions.builder(conf).build());
+      Map<ColumnPath, List<BloomFilter>> bloomFilters =
+        allBloomFilters(inputFile.getFileName(), fileDecryptionProperties);
+      for (Map.Entry<ColumnPath, List<BloomFilter>> entry : bloomFilters.entrySet()) {
+        List<BloomFilter> bloomFilterList = inputBloomFilters.getOrDefault(entry.getKey(), new ArrayList<>());
+        bloomFilterList.addAll(entry.getValue());
+        inputBloomFilters.put(entry.getKey(), bloomFilterList);
+      }
+    }
+
+    return inputBloomFilters;
+  }
+
+  private Map<ColumnPath, List<BloomFilter>> allOutputBloomFilters(
+    FileDecryptionProperties fileDecryptionProperties) throws Exception {
+    return allBloomFilters(outputFile, fileDecryptionProperties);
+  }
+
+  private Map<ColumnPath, List<BloomFilter>> allBloomFilters(
+    String path, FileDecryptionProperties fileDecryptionProperties) throws Exception {
+    Map<ColumnPath, List<BloomFilter>> allBloomFilters = new HashMap<>();
+    ParquetReadOptions readOptions = ParquetReadOptions.builder()
+      .withDecryption(fileDecryptionProperties)
+      .build();
+    InputFile inputFile = HadoopInputFile.fromPath(new Path(path), conf);
+    try (TransParquetFileReader reader = new TransParquetFileReader(inputFile, readOptions)) {
       ParquetMetadata metadata = reader.getFooter();
       for (BlockMetaData blockMetaData: metadata.getBlocks()) {
         for (ColumnChunkMetaData columnChunkMetaData : blockMetaData.getColumns()) {
           BloomFilter bloomFilter = reader.readBloomFilter(columnChunkMetaData);
           if (bloomFilter != null) {
-            inputBloomFilters.put(columnChunkMetaData.getPath(), bloomFilter);
+            List<BloomFilter> bloomFilterList =
+              allBloomFilters.getOrDefault(columnChunkMetaData.getPath(), new ArrayList<>());
+            bloomFilterList.add(bloomFilter);
+            allBloomFilters.put(columnChunkMetaData.getPath(), bloomFilterList);
           }
         }
       }
     }
 
-    Map<ColumnPath, BloomFilter> outputBloomFilters = new HashMap<>();
-    TransParquetFileReader reader = new TransParquetFileReader(HadoopInputFile.fromPath(
-      new Path(outputFile), conf), HadoopReadOptions.builder(conf).build());
-    ParquetMetadata metadata = reader.getFooter();
-    for (BlockMetaData blockMetaData: metadata.getBlocks()) {
-      for (ColumnChunkMetaData columnChunkMetaData : blockMetaData.getColumns()) {
-        BloomFilter bloomFilter = reader.readBloomFilter(columnChunkMetaData);
-        if (bloomFilter != null) {
-          outputBloomFilters.put(columnChunkMetaData.getPath(), bloomFilter);
-        }
-      }
-    }
-
-    assertEquals(inputBloomFilters, outputBloomFilters);
+    return allBloomFilters;
   }
 }
