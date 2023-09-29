@@ -99,11 +99,7 @@ public class ByteBufferInputStream extends InputStream {
   }
 
   public void skipFully(long n) throws IOException {
-    long skipped = skip(n);
-    if (skipped < n) {
-      throw new EOFException(
-          "Not enough bytes to skip: " + skipped + " < " + n);
-    }
+    delegate.skipFully(n);
   }
 
   public int read(ByteBuffer out) {
@@ -119,7 +115,7 @@ public class ByteBufferInputStream extends InputStream {
   }
 
   public ByteBufferInputStream sliceStream(long length) throws EOFException {
-    return ByteBufferInputStream.wrap(sliceBuffers(length));
+    return delegate.sliceStream(length);
   }
 
   public List<ByteBuffer> remainingBuffers() {
@@ -127,7 +123,7 @@ public class ByteBufferInputStream extends InputStream {
   }
 
   public ByteBufferInputStream remainingStream() {
-    return ByteBufferInputStream.wrap(remainingBuffers());
+    return delegate.remainingStream();
   }
 
   public int read() throws IOException {
@@ -136,6 +132,18 @@ public class ByteBufferInputStream extends InputStream {
 
   public int read(byte[] b, int off, int len) throws IOException {
     return delegate.read(b, off, len);
+  }
+
+  public int read(byte[] b) throws IOException {
+    return read(b, 0, b.length);
+  }
+
+  public void readFully(byte[] b) throws IOException {
+    readFully(b, 0, b.length);
+  }
+
+  public void readFully(byte b[], int off, int len) throws IOException {
+    delegate.readFully(b, off, len);
   }
 
   public long skip(long n) {
@@ -157,4 +165,80 @@ public class ByteBufferInputStream extends InputStream {
   public boolean markSupported() {
     return delegate.markSupported();
   }
+
+  public boolean readBoolean() throws IOException {
+    return readByte() != 0;
+  }
+
+  public byte readByte() throws IOException {
+    return delegate.readByte();
+  }
+
+  public int readUnsignedByte() throws IOException {
+    return delegate.readUnsignedByte();
+  }
+
+  public short readShort() throws IOException {
+    return delegate.readShort();
+  }
+
+  public int readUnsignedShort() throws IOException {
+    return delegate.readUnsignedShort();
+  }
+
+  public int readInt() throws IOException {
+    return delegate.readInt();
+  }
+
+  public long readLong() throws IOException {
+    return delegate.readLong();
+  }
+
+  public float readFloat() throws IOException {
+    return Float.intBitsToFloat(readInt());
+  }
+
+  public double readDouble() throws IOException {
+    return Double.longBitsToDouble(readLong());
+  }
+
+  public int readIntLittleEndianOnThreeBytes() throws IOException {
+    int ch1 = readUnsignedByte();
+    int ch2 = readUnsignedByte();
+    int ch3 = readUnsignedByte();
+    return ((ch3 << 16) + (ch2 << 8) + (ch1 << 0));
+  }
+
+  public int readIntLittleEndianPaddedOnBitWidth(int bitWidth)
+    throws IOException {
+
+    int bytesWidth = BytesUtils.paddedByteCountFromBits(bitWidth);
+    switch (bytesWidth) {
+      case 0:
+        return 0;
+      case 1:
+        return readUnsignedByte();
+      case 2:
+        return readUnsignedShort();
+      case 3:
+        return readIntLittleEndianOnThreeBytes();
+      case 4:
+        return readInt();
+      default:
+        throw new IOException(
+          String.format("Encountered bitWidth (%d) that requires more than 4 bytes", bitWidth));
+    }
+  }
+
+  public int readUnsignedVarInt() throws IOException {
+    int value = 0;
+    int i = 0;
+    int b;
+    while (((b = readUnsignedByte()) & 0x80) != 0) {
+      value |= (b & 0x7F) << i;
+      i += 7;
+    }
+    return value | (b << i);
+  }
+
 }

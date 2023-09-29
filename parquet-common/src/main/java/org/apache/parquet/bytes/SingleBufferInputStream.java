@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.bytes;
 
+import java.nio.BufferUnderflowException;
 import java.io.EOFException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -38,6 +39,32 @@ class SingleBufferInputStream extends ByteBufferInputStream {
     // duplicate the buffer because its state will be modified
     this.buffer = buffer.duplicate();
     this.startPosition = buffer.position();
+    this.buffer.order(java.nio.ByteOrder.LITTLE_ENDIAN);
+  }
+
+  SingleBufferInputStream(ByteBuffer buffer, int start, int length) {
+    // duplicate the buffer because its state will be modified
+    this.buffer = buffer.duplicate();
+    this.startPosition = start;
+    this.buffer.position(start);
+    this.buffer.limit(start + length);
+    this.buffer.order(java.nio.ByteOrder.LITTLE_ENDIAN);
+  }
+
+  SingleBufferInputStream(byte[] inBuf) {
+    this.buffer = ByteBuffer.wrap(inBuf);
+    this.buffer.order(java.nio.ByteOrder.LITTLE_ENDIAN);
+    this.startPosition = 0;
+  }
+
+  SingleBufferInputStream(byte[] inBuf, int start, int length) {
+    // Without slice() here, TestByteBufferInputStreams.testSliceBuffersModification
+    // for TestSingleBufferInputStreamByteArrayConstructorOffsetLength
+    // has a failure because it dubiously assumes that the ByteBuffer's limits
+    // are the same as the backing array.
+    this.buffer = ByteBuffer.wrap(inBuf, start, length).slice();
+    this.buffer.order(java.nio.ByteOrder.LITTLE_ENDIAN);
+    this.startPosition = 0;
   }
 
   @Override
@@ -48,10 +75,7 @@ class SingleBufferInputStream extends ByteBufferInputStream {
 
   @Override
   public int read() throws IOException {
-    if (!buffer.hasRemaining()) {
-    	throw new EOFException();
-    }
-    return buffer.get() & 0xFF; // as unsigned
+    return readUnsignedByte();
   }
 
   @Override
@@ -70,9 +94,22 @@ class SingleBufferInputStream extends ByteBufferInputStream {
 
     return bytesToRead;
   }
-  
+
+  @Override
+  public void readFully(byte[] bytes, int offset, int length) throws IOException {
+    try {
+      buffer.get(bytes, offset, length);
+    } catch (BufferUnderflowException | IndexOutOfBoundsException e) {
+      throw new EOFException(e.getMessage());
+    }
+  }
+
   @Override
   public long skip(long n) {
+    if (n < 0) {
+      throw new IllegalArgumentException("Invalid input for skip: " + n);
+    }
+    
     if (n == 0) {
       return 0;
     }
@@ -86,6 +123,21 @@ class SingleBufferInputStream extends ByteBufferInputStream {
     buffer.position(buffer.position() + bytesToSkip);
 
     return bytesToSkip;
+  }
+
+  @Override
+  public void skipFully(long n) throws IOException {
+    if (n < 0 || n > Integer.MAX_VALUE) {
+      throw new IllegalArgumentException("Invalid input for skipFully: " + n);
+    }
+    
+    try {
+      buffer.position(buffer.position() + (int)n);
+    } catch (IllegalArgumentException e) {
+      // Be sure to leave buffer in EOF state
+      buffer.position(buffer.limit());
+      throw new EOFException(e.getMessage());
+    }
   }
 
   @Override
@@ -116,10 +168,10 @@ class SingleBufferInputStream extends ByteBufferInputStream {
       throw new EOFException();
     }
 
-    // length is less than remaining, so it must fit in an int
     ByteBuffer copy = buffer.duplicate();
-    copy.limit(copy.position() + length);
-    buffer.position(buffer.position() + length);
+    int en = buffer.position() + length;
+    copy.limit(en);
+    buffer.position(en);
 
     return copy;
   }
@@ -151,6 +203,23 @@ class SingleBufferInputStream extends ByteBufferInputStream {
   }
 
   @Override
+  public ByteBufferInputStream remainingStream() {
+    // Constructor makes duplicate, so we don't have to explicitly make a duplicate here
+    ByteBufferInputStream remaining = new SingleBufferInputStream(buffer);
+    buffer.position(buffer.limit());
+    return remaining;
+  }
+
+  @Override
+  public ByteBufferInputStream sliceStream(long length) throws EOFException {
+    if (length > buffer.remaining()) throw new EOFException();
+
+    ByteBufferInputStream remaining = new SingleBufferInputStream(buffer, buffer.position(), (int)length);
+    buffer.position(buffer.position() + (int)length);
+    return remaining;
+  }
+
+  @Override
   public void mark(int readlimit) {
     this.mark = buffer.position();
   }
@@ -173,5 +242,73 @@ class SingleBufferInputStream extends ByteBufferInputStream {
   @Override
   public int available() {
     return buffer.remaining();
+  }
+
+  /*
+  For all read methods, if we read off the end of the ByteBuffer, BufferUnderflowException is thrown, which
+  we catch and turn into an EOFException. This is measured to be faster than explicitly checking if the ByteBuffer
+  has any remaining bytes.
+   */
+  @Override
+  public byte readByte() throws IOException {
+    try {
+      return buffer.get();
+    } catch (BufferUnderflowException e) {
+      throw new EOFException(e.getMessage());
+    }
+  }
+
+  @Override
+  public int readUnsignedByte() throws IOException {
+    try {
+      return buffer.get() & 0xFF;
+    } catch (BufferUnderflowException e) {
+      throw new EOFException(e.getMessage());
+    }
+  }
+
+  /*
+  Use ByteBuffer.getShort(), which takes advantage of platform intrinsics
+  */
+  @Override
+  public short readShort() throws IOException {
+    try {
+      return buffer.getShort();
+    } catch (BufferUnderflowException e) {
+      throw new EOFException(e.getMessage());
+    }
+  }
+
+  @Override
+  public int readUnsignedShort() throws IOException {
+    try {
+      return buffer.getShort() & 0xFFFF;
+    } catch (BufferUnderflowException e) {
+      throw new EOFException(e.getMessage());
+    }
+  }
+
+  /*
+  Use ByteBuffer.getInt(), which takes advantage of platform intrinsics
+  */
+  @Override
+  public int readInt() throws IOException {
+    try {
+      return buffer.getInt();
+    } catch (BufferUnderflowException e) {
+      throw new EOFException(e.getMessage());
+    }
+  }
+
+  /*
+  Use ByteBuffer.getLong(), which takes advantage of platform intrinsics
+  */
+  @Override
+  public long readLong() throws IOException {
+    try {
+      return buffer.getLong();
+    } catch (BufferUnderflowException e) {
+      throw new EOFException(e.getMessage());
+    }
   }
 }
