@@ -61,7 +61,6 @@ public class CapacityByteArrayOutputStream extends OutputStream {
   private final List<ByteBuffer> slabs = new ArrayList<ByteBuffer>();
 
   private ByteBuffer currentSlab;
-  private int currentSlabIndex;
   private int bytesAllocated = 0;
   private int bytesUsed = 0;
   private ByteBufferAllocator allocator;
@@ -193,7 +192,6 @@ public class CapacityByteArrayOutputStream extends OutputStream {
     this.currentSlab = allocator.allocate(nextSlabSize);
     this.slabs.add(currentSlab);
     this.bytesAllocated = Math.addExact(this.bytesAllocated, nextSlabSize);
-    this.currentSlabIndex = 0;
   }
 
   @Override
@@ -201,10 +199,8 @@ public class CapacityByteArrayOutputStream extends OutputStream {
     if (!currentSlab.hasRemaining()) {
       addSlab(1);
     }
-    currentSlab.put(currentSlabIndex, (byte) b);
-    currentSlabIndex += 1;
-    currentSlab.position(currentSlabIndex);
-    bytesUsed = Math.addExact(bytesUsed, 1);
+    currentSlab.put((byte) b);
+    bytesUsed += 1;
   }
 
   @Override
@@ -214,21 +210,16 @@ public class CapacityByteArrayOutputStream extends OutputStream {
       throw new IndexOutOfBoundsException(
           String.format("Given byte array of size %d, with requested length(%d) and offset(%d)", b.length, len, off));
     }
-    if (len >= currentSlab.remaining()) {
+    if (len > currentSlab.remaining()) {
       final int length1 = currentSlab.remaining();
       currentSlab.put(b, off, length1);
-      bytesUsed = Math.addExact(bytesUsed, length1);
-      currentSlabIndex += length1;
       final int length2 = len - length1;
       addSlab(length2);
       currentSlab.put(b, off + length1, length2);
-      currentSlabIndex = length2;
-      bytesUsed = Math.addExact(bytesUsed, length2);
     } else {
       currentSlab.put(b, off, len);
-      currentSlabIndex += len;
-      bytesUsed = Math.addExact(bytesUsed, len);
     }
+    bytesUsed += len;
   }
 
   private void writeToOutput(OutputStream out, ByteBuffer buf, int len) throws IOException {
@@ -252,10 +243,9 @@ public class CapacityByteArrayOutputStream extends OutputStream {
    * @exception  IOException  if an I/O error occurs.
    */
   public void writeTo(OutputStream out) throws IOException {
-    for (int i = 0; i < slabs.size() - 1; i++) {
-      writeToOutput(out, slabs.get(i), slabs.get(i).position());
+    for (ByteBuffer slab : slabs) {
+      writeToOutput(out, slab, slab.position());
     }
-    writeToOutput(out, currentSlab, currentSlabIndex);
   }
 
   /**
@@ -290,7 +280,6 @@ public class CapacityByteArrayOutputStream extends OutputStream {
     this.bytesAllocated = 0;
     this.bytesUsed = 0;
     this.currentSlab = EMPTY_SLAB;
-    this.currentSlabIndex = 0;
   }
 
   /**
