@@ -50,6 +50,35 @@ public class TestCapacityByteArrayOutputStream {
   }
 
   @Test
+  public void testWriteArrayExpand() throws Throwable {
+    CapacityByteArrayOutputStream capacityByteArrayOutputStream = newCapacityBAOS(2);
+    assertEquals(0, capacityByteArrayOutputStream.getCapacity());
+
+    byte[] toWrite = {(byte) (1), (byte) (2), (byte) (3), (byte) (4)};
+    int toWriteOffset = 0;
+    int writeLength = 2;
+    // write 2 bytes array
+    capacityByteArrayOutputStream.write(toWrite, toWriteOffset, writeLength);
+    toWriteOffset += writeLength;
+    assertEquals(2, capacityByteArrayOutputStream.size());
+    assertEquals(2, capacityByteArrayOutputStream.getCapacity());
+
+    // write 1 byte array, expand capacity to 4
+    writeLength = 1;
+    capacityByteArrayOutputStream.write(toWrite, toWriteOffset, writeLength);
+    toWriteOffset += writeLength;
+    assertEquals(3, capacityByteArrayOutputStream.size());
+    assertEquals(4, capacityByteArrayOutputStream.getCapacity());
+
+    // write 1 byte array, not expand
+    capacityByteArrayOutputStream.write(toWrite, toWriteOffset, writeLength);
+    assertEquals(4, capacityByteArrayOutputStream.size());
+    assertEquals(4, capacityByteArrayOutputStream.getCapacity());
+    final byte[] byteArray = BytesInput.from(capacityByteArrayOutputStream).toByteArray();
+    assertArrayEquals(toWrite, byteArray);
+  }
+
+  @Test
   public void testWriteArrayAndInt() throws Throwable {
     CapacityByteArrayOutputStream capacityByteArrayOutputStream = newCapacityBAOS(10);
     for (int i = 0; i < 23; i++) {
