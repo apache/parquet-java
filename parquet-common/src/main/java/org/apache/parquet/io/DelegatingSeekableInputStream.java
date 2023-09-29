@@ -32,7 +32,7 @@ import java.nio.ByteBuffer;
  */
 public abstract class DelegatingSeekableInputStream extends SeekableInputStream {
 
-  private final int COPY_BUFFER_SIZE = 8192;
+  private static final int COPY_BUFFER_SIZE = 8192;
   private final byte[] temp = new byte[COPY_BUFFER_SIZE];
 
   private final InputStream stream;

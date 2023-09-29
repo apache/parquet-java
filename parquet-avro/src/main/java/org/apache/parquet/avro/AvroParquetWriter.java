@@ -84,7 +84,7 @@ public class AvroParquetWriter<T> extends ParquetWriter<T> {
                            int pageSize, boolean enableDictionary) throws IOException {
     super(file, AvroParquetWriter.<T>writeSupport(avroSchema, SpecificData.get()),
         compressionCodecName, blockSize, pageSize, enableDictionary,
-        DEFAULT_IS_VALIDATING_ENABLED);
+      DEFAULT_VALIDATING_ENABLED);
   }
 
   /** Create a new {@link AvroParquetWriter}. The default block size is 128 MB. The default
@@ -119,7 +119,7 @@ public class AvroParquetWriter<T> extends ParquetWriter<T> {
     this(file,
         AvroParquetWriter.<T>writeSupport(conf, avroSchema, SpecificData.get()),
         compressionCodecName, blockSize, pageSize,
-        enableDictionary, DEFAULT_IS_VALIDATING_ENABLED, DEFAULT_WRITER_VERSION,
+        enableDictionary, DEFAULT_VALIDATING_ENABLED, DEFAULT_WRITER_VERSION,
         conf);
   }
 

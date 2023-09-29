@@ -266,7 +266,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
 
   public static boolean getEnableDictionary(Configuration configuration) {
     return configuration.getBoolean(
-        ENABLE_DICTIONARY, ParquetProperties.DEFAULT_IS_DICTIONARY_ENABLED);
+        ENABLE_DICTIONARY, ParquetProperties.DEFAULT_DICTIONARY_ENABLED);
   }
 
   public static int getMinRowCountForPageSizeCheck(Configuration configuration) {
