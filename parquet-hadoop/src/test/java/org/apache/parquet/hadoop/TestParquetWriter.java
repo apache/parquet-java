@@ -288,12 +288,13 @@ public class TestParquetWriter {
 
   @Test
   public void testParquetFileWithBloomFilterWithFpp() throws IOException {
-    int totalCount = 100000;
+    int buildBloomFilterCount = 100000;
     double[] testFpp = {0.01, 0.05, 0.10, 0.15, 0.20, 0.25};
     int randomStrLen = 12;
+    int testBloomFilterCount = 200000;
 
     Set<String> distinctStrings = new HashSet<>();
-    while (distinctStrings.size() < totalCount) {
+    while (distinctStrings.size() < buildBloomFilterCount) {
       String str = RandomStringUtils.randomAlphabetic(randomStrLen);
       distinctStrings.add(str);
     }
@@ -314,7 +315,7 @@ public class TestParquetWriter {
         .withConf(conf)
         .withDictionaryEncoding(false)
         .withBloomFilterEnabled("name", true)
-        .withBloomFilterNDV("name", totalCount)
+        .withBloomFilterNDV("name", buildBloomFilterCount)
         .withBloomFilterFPP("name", testFpp[i])
         .build()) {
         java.util.Iterator<String> iterator = distinctStrings.iterator();
@@ -331,7 +332,7 @@ public class TestParquetWriter {
 
         // The exist counts the number of times FindHash returns true.
         int exist = 0;
-        while (distinctStrings.size() < totalCount) {
+        while (distinctStrings.size() < testBloomFilterCount) {
           String str = RandomStringUtils.randomAlphabetic(randomStrLen - 2);
           if (distinctStrings.add(str) &&
             bloomFilter.findHash(LongHashFunction.xx(0).hashBytes(Binary.fromString(str).toByteBuffer()))) {
@@ -339,7 +340,7 @@ public class TestParquetWriter {
           }
         }
         // The exist should be less than totalCount * fpp. Add 10% here for error space.
-        assertTrue(exist < totalCount * (testFpp[i] * 1.1) && exist > 0);
+        assertTrue(exist < testBloomFilterCount * (testFpp[i] * 1.1) && exist > 0);
       }
     }
   }
