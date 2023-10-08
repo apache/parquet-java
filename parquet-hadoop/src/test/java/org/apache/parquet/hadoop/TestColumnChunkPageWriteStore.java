@@ -48,6 +48,7 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.DirectByteBufferAllocator;
+import org.apache.parquet.compression.CompressionCodecFactory.BytesInputCompressor;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.InOrder;
@@ -282,7 +283,7 @@ public class TestColumnChunkPageWriteStore {
     }
   }
 
-  private CodecFactory.BytesCompressor compressor(CompressionCodecName codec) {
+  private BytesInputCompressor compressor(CompressionCodecName codec) {
     return new CodecFactory(conf, pageSize).getCompressor(codec);
   }
 }

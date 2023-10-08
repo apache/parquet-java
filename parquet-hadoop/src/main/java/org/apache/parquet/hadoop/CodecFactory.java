@@ -45,8 +45,8 @@ public class CodecFactory implements CompressionCodecFactory {
   protected static final Map<String, CompressionCodec> CODEC_BY_NAME = Collections
       .synchronizedMap(new HashMap<String, CompressionCodec>());
 
-  private final Map<CompressionCodecName, BytesCompressor> compressors = new HashMap<CompressionCodecName, BytesCompressor>();
-  private final Map<CompressionCodecName, BytesDecompressor> decompressors = new HashMap<CompressionCodecName, BytesDecompressor>();
+  private final Map<CompressionCodecName, BytesCompressor> compressors = new HashMap<>();
+  private final Map<CompressionCodecName, BytesDecompressor> decompressors = new HashMap<>();
 
   protected final Configuration configuration;
   protected final int pageSize;

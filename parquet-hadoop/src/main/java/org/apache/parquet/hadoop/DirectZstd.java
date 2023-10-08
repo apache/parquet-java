@@ -23,7 +23,6 @@ import com.github.luben.zstd.RecyclingBufferPool;
 import com.github.luben.zstd.Zstd;
 import com.github.luben.zstd.ZstdOutputStream;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.hadoop.codec.ZstdDecompressorStream;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
