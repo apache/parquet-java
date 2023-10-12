@@ -40,7 +40,7 @@ public abstract class BinaryTruncator {
   }
 
   private static class CharsetValidator {
-    private final CharBuffer dummyBuffer = CharBuffer.allocate(1024);
+    private final ThreadLocal<CharBuffer> dummyBuffer = ThreadLocal.withInitial(() -> CharBuffer.allocate(1024));
     private final CharsetDecoder decoder;
 
     CharsetValidator(Charset charset) {
@@ -50,11 +50,13 @@ public abstract class BinaryTruncator {
     }
 
     Validity checkValidity(ByteBuffer buffer) {
+      // TODO this is currently used for UTF-8 only, so validity check could be done without copying.
+      CharBuffer charBuffer = dummyBuffer.get();
       int pos = buffer.position();
       CoderResult result = CoderResult.OVERFLOW;
       while (result.isOverflow()) {
-        dummyBuffer.clear();
-        result = decoder.decode(buffer, dummyBuffer, true);
+        charBuffer.clear();
+        result = decoder.decode(buffer, charBuffer, true);
       }
       buffer.position(pos);
       if (result.isUnderflow()) {

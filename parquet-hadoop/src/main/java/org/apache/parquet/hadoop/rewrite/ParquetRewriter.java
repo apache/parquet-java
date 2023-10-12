@@ -366,6 +366,10 @@ public class ParquetRewriter implements Closeable {
 
     ColumnIndex columnIndex = reader.readColumnIndex(chunk);
     OffsetIndex offsetIndex = reader.readOffsetIndex(chunk);
+    BloomFilter bloomFilter = reader.readBloomFilter(chunk);
+    if (bloomFilter != null) {
+      writer.addBloomFilter(chunk.getPath().toDotString(), bloomFilter);
+    }
 
     reader.setStreamPosition(chunk.getStartingPos());
     DictionaryPage dictionaryPage = null;
@@ -651,7 +655,7 @@ public class ParquetRewriter implements Closeable {
             .withWriterVersion(writerVersion)
             .build();
     CodecFactory codecFactory = new CodecFactory(new Configuration(), props.getPageSizeThreshold());
-    CodecFactory.BytesCompressor compressor = codecFactory.getCompressor(newCodecName);
+    CompressionCodecFactory.BytesInputCompressor compressor = codecFactory.getCompressor(newCodecName);
 
     // Create new schema that only has the current column
     MessageType newSchema = newSchema(schema, descriptor);

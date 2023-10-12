@@ -38,12 +38,6 @@ public class ParquetMetadata {
 
   private static final ObjectMapper objectMapper = new ObjectMapper();
 
-  // Enable FAIL_ON_EMPTY_BEANS on objectmapper. Without this feature parquet-casdacing tests fail,
-  // because LogicalTypeAnnotation implementations are classes without any property.
-  static {
-    objectMapper.disable(SerializationFeature.FAIL_ON_EMPTY_BEANS);
-  }
-
   /**
    * @param parquetMetaData an instance of parquet metadata to convert
    * @return the json representation
@@ -62,9 +56,7 @@ public class ParquetMetadata {
   }
 
   private static String toJSON(ParquetMetadata parquetMetaData, boolean isPrettyPrint) {
-    StringWriter stringWriter = new StringWriter();
-
-    try {
+    try (StringWriter stringWriter = new StringWriter()) {
       if (isPrettyPrint) {
         Object objectToPrint;
         if (parquetMetaData.getFileMetaData() == null ||
@@ -77,10 +69,10 @@ public class ParquetMetadata {
       } else {
         objectMapper.writeValue(stringWriter, parquetMetaData);
       }
+      return stringWriter.toString();
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
-    return stringWriter.toString();
   }
 
   /**

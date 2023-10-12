@@ -28,7 +28,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -122,7 +121,7 @@ public class ParquetFileWriter {
   private final int columnIndexTruncateLength;
 
   // file data
-  private List<BlockMetaData> blocks = new ArrayList<BlockMetaData>();
+  private final List<BlockMetaData> blocks = new ArrayList<BlockMetaData>();
 
   // The column/offset indexes per blocks per column chunks
   private final List<List<ColumnIndex>> columnIndexes = new ArrayList<>();
@@ -148,11 +147,11 @@ public class ParquetFileWriter {
   private long currentRecordCount; // set in startBlock
 
   // column chunk data accumulated as pages are written
-  private EncodingStats.Builder encodingStatsBuilder;
+  private final EncodingStats.Builder encodingStatsBuilder;
   private Set<Encoding> currentEncodings;
   private long uncompressedLength;
   private long compressedLength;
-  private Statistics currentStatistics; // accumulated in writePage(s)
+  private Statistics<?> currentStatistics; // accumulated in writePage(s)
   private ColumnIndexBuilder columnIndexBuilder;
   private OffsetIndexBuilder offsetIndexBuilder;
 
@@ -168,7 +167,7 @@ public class ParquetFileWriter {
   private ParquetMetadata footer = null;
 
   private final CRC32 crc;
-  private boolean pageWriteChecksumEnabled;
+  private final boolean pageWriteChecksumEnabled;
 
   /**
    * Captures the order in which methods should be called
@@ -372,7 +371,7 @@ public class ParquetFileWriter {
           StringBuilder columnList = new StringBuilder();
           columnList.append("[");
           for (String[] columnPath : schema.getPaths()) {
-            columnList.append(ColumnPath.get(columnPath).toDotString() + "], [");
+            columnList.append(ColumnPath.get(columnPath).toDotString()).append("], [");
           }
           throw new ParquetCryptoRuntimeException("Encrypted column [" + entry.getKey().toDotString() +
             "] not in file schema column list: " + columnList.substring(0, columnList.length() - 3));
@@ -590,7 +589,7 @@ public class ParquetFileWriter {
   public void writeDataPage(
       int valueCount, int uncompressedPageSize,
       BytesInput bytes,
-      Statistics statistics,
+      Statistics<?> statistics,
       Encoding rlEncoding,
       Encoding dlEncoding,
       Encoding valuesEncoding) throws IOException {
@@ -615,7 +614,7 @@ public class ParquetFileWriter {
   public void writeDataPage(
     int valueCount, int uncompressedPageSize,
     BytesInput bytes,
-    Statistics statistics,
+    Statistics<?> statistics,
     long rowCount,
     Encoding rlEncoding,
     Encoding dlEncoding,
@@ -640,7 +639,7 @@ public class ParquetFileWriter {
   public void writeDataPage(
       int valueCount, int uncompressedPageSize,
       BytesInput bytes,
-      Statistics statistics,
+      Statistics<?> statistics,
       long rowCount,
       Encoding rlEncoding,
       Encoding dlEncoding,
@@ -655,7 +654,7 @@ public class ParquetFileWriter {
   private void innerWriteDataPage(
       int valueCount, int uncompressedPageSize,
       BytesInput bytes,
-      Statistics statistics,
+      Statistics<?> statistics,
       Encoding rlEncoding,
       Encoding dlEncoding,
       Encoding valuesEncoding,
@@ -680,7 +679,7 @@ public class ParquetFileWriter {
   public void writeDataPage(
     int valueCount, int uncompressedPageSize,
     BytesInput bytes,
-    Statistics statistics,
+    Statistics<?> statistics,
     Encoding rlEncoding,
     Encoding dlEncoding,
     Encoding valuesEncoding,
@@ -739,12 +738,12 @@ public class ParquetFileWriter {
   }
 
   /**
-   * Add a Bloom filter that will be written out. This is only used in unit test.
+   * Add a Bloom filter that will be written out.
    *
    * @param column the column name
    * @param bloomFilter the bloom filter of column values
    */
-  void addBloomFilter(String column, BloomFilter bloomFilter)  {
+  public void addBloomFilter(String column, BloomFilter bloomFilter)  {
     currentBloomFilters.put(column , bloomFilter);
   }
 
@@ -1608,12 +1607,8 @@ public class ParquetFileWriter {
       schema = mergeInto(toMerge.getSchema(), schema, strict);
     }
     for (Entry<String, String> entry : toMerge.getKeyValueMetaData().entrySet()) {
-      Set<String> values = newKeyValues.get(entry.getKey());
-      if (values == null) {
-        values = new LinkedHashSet<String>();
-        newKeyValues.put(entry.getKey(), values);
-      }
-      values.add(entry.getValue());
+        Set<String> values = newKeyValues.computeIfAbsent(entry.getKey(), k -> new LinkedHashSet<String>());
+        values.add(entry.getValue());
     }
     createdBy.add(toMerge.getCreatedBy());
     return new GlobalMetaData(

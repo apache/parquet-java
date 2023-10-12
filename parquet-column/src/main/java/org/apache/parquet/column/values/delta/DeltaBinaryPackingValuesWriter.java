@@ -73,7 +73,7 @@ public abstract class DeltaBinaryPackingValuesWriter extends ValuesWriter {
 
   /**
    * bytes buffer for a mini block, it is reused for each mini block.
-   * Therefore the size of biggest miniblock with bitwith of MAX_BITWITH is allocated
+   * Therefore the size of biggest miniblock with bitwidth of MAX_BITWIDTH is allocated
    */
   protected byte[] miniBlockByteBuffer;
 
@@ -97,7 +97,7 @@ public abstract class DeltaBinaryPackingValuesWriter extends ValuesWriter {
     try {
       BytesUtils.writeIntLittleEndianOnOneByte(baos, bitWidths[i]);
     } catch (IOException e) {
-      throw new ParquetEncodingException("can not write bitwith for miniblock", e);
+      throw new ParquetEncodingException("can not write bitwidth for miniblock", e);
     }
   }
 

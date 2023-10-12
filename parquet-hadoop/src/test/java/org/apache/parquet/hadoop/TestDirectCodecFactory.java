@@ -27,6 +27,8 @@ import org.apache.hadoop.io.compress.CompressionCodec;
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.DirectByteBufferAllocator;
 import org.apache.parquet.bytes.HeapByteBufferAllocator;
+import org.apache.parquet.compression.CompressionCodecFactory.BytesInputCompressor;
+import org.apache.parquet.compression.CompressionCodecFactory.BytesInputDecompressor;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -66,8 +68,8 @@ public class TestDirectCodecFactory {
       }
       rawBuf.flip();
 
-      final DirectCodecFactory.BytesCompressor c = codecFactory.getCompressor(codec);
-      final CodecFactory.BytesDecompressor d = codecFactory.getDecompressor(codec);
+      final BytesInputCompressor c = codecFactory.getCompressor(codec);
+      final BytesInputDecompressor d = codecFactory.getDecompressor(codec);
 
       final BytesInput compressed;
       if (useOnHeapCompression) {
