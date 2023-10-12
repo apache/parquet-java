@@ -366,6 +366,10 @@ public class ParquetRewriter implements Closeable {
 
     ColumnIndex columnIndex = reader.readColumnIndex(chunk);
     OffsetIndex offsetIndex = reader.readOffsetIndex(chunk);
+    BloomFilter bloomFilter = reader.readBloomFilter(chunk);
+    if (bloomFilter != null) {
+      writer.addBloomFilter(chunk.getPath().toDotString(), bloomFilter);
+    }
 
     reader.setStreamPosition(chunk.getStartingPos());
     DictionaryPage dictionaryPage = null;
