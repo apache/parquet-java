@@ -68,7 +68,7 @@
     <jackson.package>com.fasterxml.jackson</jackson.package>
     <jackson.version>2.15.2</jackson.version>
     <jackson-databind.version>2.15.2</jackson-databind.version>
-    <japicmp.version>0.14.2</japicmp.version>
+    <japicmp.version>0.16.0</japicmp.version>
     <shade.prefix>shaded.parquet</shade.prefix>
     <hadoop.version>3.3.5</hadoop.version>
     <parquet.format.version>2.9.0</parquet.format.version>
@@ -522,17 +522,10 @@
             <oldVersionPattern>${previous.version}</oldVersionPattern>
             <breakBuildOnSourceIncompatibleModifications>true</breakBuildOnSourceIncompatibleModifications>
             <onlyModified>true</onlyModified>
+            <ignoreMissingClassesByRegularExpressions>
+              <ignoreMissingClassesByRegularExpression>${shade.prefix}.*</ignoreMissingClassesByRegularExpression>
+            </ignoreMissingClassesByRegularExpressions>
             <ignoreMissingOldVersion>true</ignoreMissingOldVersion>
-            <overrideCompatibilityChangeParameters>
-              <!-- Adding a new method with default implementation to an interface should be a compatible change.
-                That's why they invented it. -->
-              <overrideCompatibilityChangeParameter>
-                <compatibilityChange>METHOD_NEW_DEFAULT</compatibilityChange>
-                <semanticVersionLevel>MINOR</semanticVersionLevel>
-                <binaryCompatible>true</binaryCompatible>
-                <sourceCompatible>true</sourceCompatible>
-              </overrideCompatibilityChangeParameter>
-            </overrideCompatibilityChangeParameters>
             <excludeModules>
               <!-- Excluding the following modules because they are not part of the parquet public API -->
               <excludeModule>parquet-benchmarks</excludeModule>
