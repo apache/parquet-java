@@ -64,6 +64,8 @@ import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -89,13 +91,25 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
+@RunWith(Parameterized.class)
 public class ParquetRewriterTest {
 
   private final int numRecord = 100000;
-  private Configuration conf = new Configuration();
+  private final Configuration conf = new Configuration();
+  private final ParquetProperties.WriterVersion writerVersion;
+
   private List<EncryptionTestFile> inputFiles = null;
   private String outputFile = null;
   private ParquetRewriter rewriter = null;
+
+  @Parameterized.Parameters(name = "WriterVersion = {0}")
+  public static Object[] parameters() {
+    return new Object[] {"v1", "v2"};
+  }
+
+  public ParquetRewriterTest(String writerVersion) {
+    this.writerVersion = ParquetProperties.WriterVersion.fromString(writerVersion);
+  }
 
   private void testPruneSingleColumnTranslateCodec(List<Path> inputPaths) throws Exception {
     Path outputPath = new Path(outputFile);
@@ -498,27 +512,29 @@ public class ParquetRewriterTest {
   @Test(expected = InvalidSchemaException.class)
   public void testMergeTwoFilesWithDifferentSchema() throws Exception {
     MessageType schema1 = new MessageType("schema",
-            new PrimitiveType(OPTIONAL, INT64, "DocId"),
-            new PrimitiveType(REQUIRED, BINARY, "Name"),
-            new PrimitiveType(OPTIONAL, BINARY, "Gender"),
-            new GroupType(OPTIONAL, "Links",
-                    new PrimitiveType(REPEATED, BINARY, "Backward"),
-                    new PrimitiveType(REPEATED, BINARY, "Forward")));
+      new PrimitiveType(OPTIONAL, INT64, "DocId"),
+      new PrimitiveType(REQUIRED, BINARY, "Name"),
+      new PrimitiveType(OPTIONAL, BINARY, "Gender"),
+      new GroupType(OPTIONAL, "Links",
+        new PrimitiveType(REPEATED, BINARY, "Backward"),
+        new PrimitiveType(REPEATED, BINARY, "Forward")));
     MessageType schema2 = new MessageType("schema",
-            new PrimitiveType(OPTIONAL, INT64, "DocId"),
-            new PrimitiveType(REQUIRED, BINARY, "Name"),
-            new PrimitiveType(OPTIONAL, BINARY, "Gender"));
+      new PrimitiveType(OPTIONAL, INT64, "DocId"),
+      new PrimitiveType(REQUIRED, BINARY, "Name"),
+      new PrimitiveType(OPTIONAL, BINARY, "Gender"));
     inputFiles = Lists.newArrayList();
     inputFiles.add(new TestFileBuilder(conf, schema1)
-            .withNumRecord(numRecord)
-            .withCodec("UNCOMPRESSED")
-            .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
-            .build());
+      .withNumRecord(numRecord)
+      .withCodec("UNCOMPRESSED")
+      .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
+      .withWriterVersion(writerVersion)
+      .build());
     inputFiles.add(new TestFileBuilder(conf, schema2)
-            .withNumRecord(numRecord)
-            .withCodec("UNCOMPRESSED")
-            .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
-            .build());
+      .withNumRecord(numRecord)
+      .withCodec("UNCOMPRESSED")
+      .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
+      .withWriterVersion(writerVersion)
+      .build());
 
     List<Path> inputPaths = new ArrayList<>();
     for (EncryptionTestFile inputFile : inputFiles) {
@@ -617,6 +633,7 @@ public class ParquetRewriterTest {
       .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
       .withRowGroupSize(rowGroupSize)
       .withBloomFilterEnabled(bloomFilterEnabledColumns)
+      .withWriterVersion(writerVersion)
       .build());
   }
 
@@ -624,26 +641,28 @@ public class ParquetRewriterTest {
     MessageType schema = createSchema();
     inputFiles = Lists.newArrayList();
     inputFiles.add(new TestFileBuilder(conf, schema)
-            .withNumRecord(numRecord)
-            .withCodec("GZIP")
-            .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
-            .build());
+      .withNumRecord(numRecord)
+      .withCodec("GZIP")
+      .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
+      .withWriterVersion(writerVersion)
+      .build());
     inputFiles.add(new TestFileBuilder(conf, schema)
-            .withNumRecord(numRecord)
-            .withCodec("UNCOMPRESSED")
-            .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
-            .build());
+      .withNumRecord(numRecord)
+      .withCodec("UNCOMPRESSED")
+      .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
+      .withWriterVersion(writerVersion)
+      .build());
 
   }
 
   private MessageType createSchema() {
     return new MessageType("schema",
-            new PrimitiveType(OPTIONAL, INT64, "DocId"),
-            new PrimitiveType(REQUIRED, BINARY, "Name"),
-            new PrimitiveType(OPTIONAL, BINARY, "Gender"),
-            new GroupType(OPTIONAL, "Links",
-                    new PrimitiveType(REPEATED, BINARY, "Backward"),
-                    new PrimitiveType(REPEATED, BINARY, "Forward")));
+      new PrimitiveType(OPTIONAL, INT64, "DocId"),
+      new PrimitiveType(REQUIRED, BINARY, "Name"),
+      new PrimitiveType(OPTIONAL, BINARY, "Gender"),
+      new GroupType(OPTIONAL, "Links",
+        new PrimitiveType(REPEATED, BINARY, "Backward"),
+        new PrimitiveType(REPEATED, BINARY, "Forward")));
   }
 
   private void validateColumnData(Set<String> prunePaths,
@@ -848,7 +867,6 @@ public class ParquetRewriterTest {
     final String createdBy = outFMD.getCreatedBy();
     assertNotNull(createdBy);
     assertEquals(createdBy, Version.FULL_VERSION);
-
 
     // Verify original.created.by has been set
     String inputCreatedBy = (String) inputCreatedBys[0];

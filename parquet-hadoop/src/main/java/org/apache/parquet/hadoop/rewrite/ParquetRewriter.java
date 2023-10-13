@@ -309,7 +309,7 @@ public class ParquetRewriter implements Closeable {
           ColumnChunkEncryptorRunTime columnChunkEncryptorRunTime = null;
           if (encryptMode) {
             columnChunkEncryptorRunTime =
-                    new ColumnChunkEncryptorRunTime(writer.getEncryptor(), chunk, numBlocksRewritten, columnId);
+               new ColumnChunkEncryptorRunTime(writer.getEncryptor(), chunk, numBlocksRewritten, columnId);
           }
 
           // Translate compression and/or encryption
@@ -374,7 +374,7 @@ public class ParquetRewriter implements Closeable {
     reader.setStreamPosition(chunk.getStartingPos());
     DictionaryPage dictionaryPage = null;
     long readValues = 0;
-    Statistics statistics = null;
+    Statistics<?> statistics = null;
     ParquetMetadataConverter converter = new ParquetMetadataConverter();
     int pageOrdinal = 0;
     long totalChunkValues = chunk.getValueCount();
@@ -385,7 +385,7 @@ public class ParquetRewriter implements Closeable {
       switch (pageHeader.type) {
         case DICTIONARY_PAGE:
           if (dictionaryPage != null) {
-            throw new IOException("has more than one dictionary page in column chunk");
+            throw new IOException("has more than one dictionary page in column chunk: " + chunk);
           }
           //No quickUpdatePageAAD needed for dictionary page
           DictionaryPageHeader dictPageHeader = pageHeader.dictionary_page_header;
@@ -398,12 +398,12 @@ public class ParquetRewriter implements Closeable {
                   encryptColumn,
                   dataEncryptor,
                   dictPageAAD);
-          writer.writeDictionaryPage(new DictionaryPage(BytesInput.from(pageLoad),
-                          pageHeader.getUncompressed_page_size(),
-                          dictPageHeader.getNum_values(),
-                          converter.getEncoding(dictPageHeader.getEncoding())),
-                  metaEncryptor,
-                  dictPageHeaderAAD);
+          dictionaryPage = new DictionaryPage(
+            BytesInput.from(pageLoad),
+            pageHeader.getUncompressed_page_size(),
+            dictPageHeader.getNum_values(),
+            converter.getEncoding(dictPageHeader.getEncoding()));
+          writer.writeDictionaryPage(dictionaryPage, metaEncryptor, dictPageHeaderAAD);
           break;
         case DATA_PAGE:
           if (encryptColumn) {
@@ -482,7 +482,9 @@ public class ParquetRewriter implements Closeable {
                   converter.getEncoding(headerV2.getEncoding()),
                   BytesInput.from(pageLoad),
                   rawDataLength,
-                  statistics);
+                  statistics,
+                  metaEncryptor,
+                  dataPageHeaderAAD);
           pageOrdinal++;
           break;
         default:
@@ -492,12 +494,12 @@ public class ParquetRewriter implements Closeable {
     }
   }
 
-  private Statistics convertStatistics(String createdBy,
-                                       PrimitiveType type,
-                                       org.apache.parquet.format.Statistics pageStatistics,
-                                       ColumnIndex columnIndex,
-                                       int pageIndex,
-                                       ParquetMetadataConverter converter) throws IOException {
+  private Statistics<?> convertStatistics(String createdBy,
+                                          PrimitiveType type,
+                                          org.apache.parquet.format.Statistics pageStatistics,
+                                          ColumnIndex columnIndex,
+                                          int pageIndex,
+                                          ParquetMetadataConverter converter) throws IOException {
     if (columnIndex != null) {
       if (columnIndex.getNullPages() == null) {
         throw new IOException("columnIndex has null variable 'nullPages' which indicates corrupted data for type: " +
