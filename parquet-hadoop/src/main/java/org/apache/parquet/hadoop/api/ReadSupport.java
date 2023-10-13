@@ -70,10 +70,10 @@ abstract public class ReadSupport<T> {
    */
   @Deprecated
   public ReadContext init(
-          Configuration configuration,
-          Map<String, String> keyValueMetaData,
-          MessageType fileSchema) {
-    throw new UnsupportedOperationException("Override init(InitContext)");
+      Configuration configuration,
+      Map<String, String> keyValueMetaData,
+      MessageType fileSchema) {
+    throw new UnsupportedOperationException("Override ReadSupport.init(InitContext)");
   }
 
   /**
@@ -91,7 +91,7 @@ abstract public class ReadSupport<T> {
       ParquetConfiguration configuration,
       Map<String, String> keyValueMetaData,
       MessageType fileSchema) {
-    throw new UnsupportedOperationException("Override init(InitContext)");
+    throw new UnsupportedOperationException("Override ReadSupport.init(InitContext)");
   }
 
   /**
@@ -135,7 +135,7 @@ abstract public class ReadSupport<T> {
       Map<String, String> keyValueMetaData,
       MessageType fileSchema,
       ReadContext readContext) {
-    throw new UnsupportedOperationException("Override prepareForRead(ParquetConfiguration, Map<String, String>, MessageType, ReadContext)");
+    throw new UnsupportedOperationException("Override ReadSupport.prepareForRead(ParquetConfiguration, Map<String, String>, MessageType, ReadContext)");
   }
 
   /**

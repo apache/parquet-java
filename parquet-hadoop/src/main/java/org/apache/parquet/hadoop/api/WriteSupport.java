@@ -112,7 +112,7 @@ abstract public class WriteSupport<T> {
    * @return the information needed to write the file
    */
   public WriteContext init(ParquetConfiguration configuration) {
-    throw new UnsupportedOperationException("Override init(ParquetConfiguration)");
+    throw new UnsupportedOperationException("Override WriteSupport#init(ParquetConfiguration)");
   }
 
   /**

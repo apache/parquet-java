@@ -412,10 +412,6 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
     return Binary.fromCharSequence(value.toString());
   }
 
-  private static GenericData getDataModel(Configuration conf, Schema schema) {
-    return getDataModel(new HadoopParquetConfiguration(conf), schema);
-  }
-
   private static GenericData getDataModel(ParquetConfiguration conf, Schema schema) {
     if (conf.get(AVRO_DATA_SUPPLIER) == null && schema != null) {
       GenericData modelForSchema;

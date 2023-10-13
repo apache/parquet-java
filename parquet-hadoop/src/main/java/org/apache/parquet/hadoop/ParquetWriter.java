@@ -293,16 +293,16 @@ public class ParquetWriter<T> implements Closeable {
   }
 
   ParquetWriter(
-    OutputFile file,
-    ParquetFileWriter.Mode mode,
-    WriteSupport<T> writeSupport,
-    CompressionCodecName compressionCodecName,
-    long rowGroupSize,
-    boolean validating,
-    ParquetConfiguration conf,
-    int maxPaddingSize,
-    ParquetProperties encodingProps,
-    FileEncryptionProperties encryptionProperties) throws IOException {
+      OutputFile file,
+      ParquetFileWriter.Mode mode,
+      WriteSupport<T> writeSupport,
+      CompressionCodecName compressionCodecName,
+      long rowGroupSize,
+      boolean validating,
+      ParquetConfiguration conf,
+      int maxPaddingSize,
+      ParquetProperties encodingProps,
+      FileEncryptionProperties encryptionProperties) throws IOException {
 
     WriteSupport.WriteContext writeContext = writeSupport.init(conf);
     MessageType schema = writeContext.getSchema();
@@ -414,7 +414,7 @@ public class ParquetWriter<T> implements Closeable {
      * @return an appropriate WriteSupport for the object model.
      */
     protected WriteSupport<T> getWriteSupport(ParquetConfiguration conf) {
-      throw new UnsupportedOperationException("Override getWriteSupport(ParquetConfiguration)");
+      throw new UnsupportedOperationException("Override ParquetWriter$Builder#getWriteSupport(ParquetConfiguration)");
     }
 
     /**

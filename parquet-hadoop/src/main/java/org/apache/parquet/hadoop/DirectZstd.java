@@ -143,10 +143,6 @@ class DirectZstd {
     }
   }
 
-  private static BufferPool getPool(Configuration conf) {
-    return getPool(new HadoopParquetConfiguration(conf));
-  }
-
   private static BufferPool getPool(ParquetConfiguration conf) {
     if (conf.getBoolean(PARQUET_COMPRESS_ZSTD_BUFFERPOOL_ENABLED, DEFAULT_PARQUET_COMPRESS_ZSTD_BUFFERPOOL_ENABLED)) {
       return RecyclingBufferPool.INSTANCE;

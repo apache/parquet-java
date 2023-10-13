@@ -19,7 +19,6 @@
 
 package org.apache.parquet;
 
-import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.HeapByteBufferAllocator;
 import org.apache.parquet.compression.CompressionCodecFactory;
@@ -208,7 +207,7 @@ public class ParquetReadOptions {
   }
 
   public static Builder builder() {
-    return new Builder(new HadoopParquetConfiguration());
+    return new Builder();
   }
 
   public static Builder builder(ParquetConfiguration conf) {
@@ -235,7 +234,7 @@ public class ParquetReadOptions {
     protected ParquetConfiguration conf;
 
     public Builder() {
-      conf = new HadoopParquetConfiguration();
+      this(new HadoopParquetConfiguration());
     }
 
     public Builder(ParquetConfiguration conf) {

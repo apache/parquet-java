@@ -170,10 +170,6 @@ public class AvroReadSupport<T> extends ReadSupport<T> {
         parquetSchema, avroSchema, model);
   }
 
-  private GenericData getDataModel(Configuration conf, Schema schema) {
-    return getDataModel(new HadoopParquetConfiguration(conf), schema);
-  }
-
   private GenericData getDataModel(ParquetConfiguration conf, Schema schema) {
     if (model != null) {
       return model;

@@ -30,7 +30,6 @@ import java.util.stream.LongStream;
 
 import org.apache.hadoop.conf.Configuration;
 
-import org.apache.parquet.HadoopReadOptions;
 import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.column.page.PageReadStore;
 import org.apache.parquet.conf.ParquetConfiguration;

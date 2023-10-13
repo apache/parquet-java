@@ -195,24 +195,6 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
     return ConfigurationUtil.getClassFromConfig(configuration, UNBOUND_RECORD_FILTER, UnboundRecordFilter.class);
   }
 
-  private static UnboundRecordFilter getUnboundRecordFilterInstance(Configuration configuration) {
-    Class<?> clazz = ConfigurationUtil.getClassFromConfig(configuration, UNBOUND_RECORD_FILTER, UnboundRecordFilter.class);
-    if (clazz == null) { return null; }
-
-    try {
-      UnboundRecordFilter unboundRecordFilter = (UnboundRecordFilter) clazz.newInstance();
-
-      if (unboundRecordFilter instanceof Configurable) {
-        ((Configurable)unboundRecordFilter).setConf(configuration);
-      }
-
-      return unboundRecordFilter;
-    } catch (InstantiationException | IllegalAccessException e) {
-      throw new BadConfigurationException(
-          "could not instantiate unbound record filter class", e);
-    }
-  }
-
   private static UnboundRecordFilter getUnboundRecordFilterInstance(ParquetConfiguration configuration) {
     Class<?> clazz = ConfigurationUtil.getClassFromConfig(configuration, UNBOUND_RECORD_FILTER, UnboundRecordFilter.class);
     if (clazz == null) {

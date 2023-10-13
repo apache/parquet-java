@@ -861,7 +861,6 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
   }
 
   /**
-   *
    * @param thriftReader the class responsible for instantiating the final object and read from the protocol
    * @param name the name of that type ( the thrift class simple name)
    * @param requestedParquetSchema the schema for the incoming columnar events
