@@ -123,9 +123,18 @@ public class ParquetFileReader implements Closeable {
 
   public static String PARQUET_READ_PARALLELISM = "parquet.metadata.read.parallelism";
 
+  private ParquetMetricsCallback metricsCallback;
+
   private final ParquetMetadataConverter converter;
 
   private final CRC32 crc;
+
+  /**
+   * set a callback to send back metrics info
+   */
+  public void initMetrics(ParquetMetricsCallback callback) {
+    this.metricsCallback = callback;
+  }
 
   /**
    * for files provided, check if there's a summary file.
@@ -1003,7 +1012,7 @@ public class ParquetFileReader implements Closeable {
     ColumnChunkPageReadStore rowGroup =
         new ColumnChunkPageReadStore(block.getRowCount(), block.getRowIndexOffset());
     // prepare the list of consecutive parts to read them in one scan
-    List<ConsecutivePartList> allParts = new ArrayList<ConsecutivePartList>();
+    List<ConsecutivePartList> allParts = new ArrayList<>();
     ConsecutivePartList currentParts = null;
     for (ColumnChunkMetaData mc : block.getColumns()) {
       ColumnPath pathKey = mc.getPath();
@@ -1777,7 +1786,8 @@ public class ParquetFileReader implements Closeable {
           aadPrefix,
           rowGroupOrdinal,
           columnOrdinal,
-          options);
+          options,
+          metricsCallback);
     }
 
     private boolean hasMorePages(long valuesCountReadSoFar, int dataPageCountReadSoFar) {
@@ -1961,16 +1971,35 @@ public class ParquetFileReader implements Closeable {
         buffers.add(options.getAllocator().allocate(lastAllocationSize));
       }
 
+      long readStart = System.nanoTime();
       for (ByteBuffer buffer : buffers) {
         f.readFully(buffer);
         buffer.flip();
       }
+      setReadMetrics(readStart);
 
       // report in a counter the data we just scanned
       BenchmarkCounter.incrementBytesRead(length);
       ByteBufferInputStream stream = ByteBufferInputStream.wrap(buffers);
       for (final ChunkDescriptor descriptor : chunks) {
         builder.add(descriptor, stream.sliceBuffers(descriptor.size), f);
+      }
+    }
+
+    private void setReadMetrics(long startNs) {
+      if (metricsCallback != null) {
+        long totalFileReadTimeNs = System.nanoTime() - startNs;
+        double sizeInMb = ((double) length) / (1024 * 1024);
+        double timeInSec = ((double) totalFileReadTimeNs) / 1000_0000_0000L;
+        double throughput = sizeInMb / timeInSec;
+        LOG.debug(
+            "Parquet: File Read stats:  Length: {} MB, Time: {} secs, throughput: {} MB/sec ",
+            sizeInMb,
+            timeInSec,
+            throughput);
+        metricsCallback.setValueLong(ParquetFileReaderMetrics.ReadTime.name(), totalFileReadTimeNs);
+        metricsCallback.setValueLong(ParquetFileReaderMetrics.ReadSize.name(), length);
+        metricsCallback.setValueDouble(ParquetFileReaderMetrics.ReadThroughput.name(), throughput);
       }
     }
 
