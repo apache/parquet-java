@@ -20,6 +20,8 @@ package org.apache.parquet.hadoop;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.HashSet;
+import java.util.Set;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -133,7 +135,7 @@ public class ParquetWriter<T> implements Closeable {
 
   /**
    * Create a new ParquetWriter.
-   *
+   * <p>
    * Directly instantiates a Hadoop {@link org.apache.hadoop.conf.Configuration} which reads
    * configuration from the classpath.
    *
@@ -342,7 +344,7 @@ public class ParquetWriter<T> implements Closeable {
 
   /**
    * An abstract builder class for ParquetWriter instances.
-   *
+   * <p>
    * Object models should extend this builder to provide writer configuration
    * options.
    *
@@ -359,8 +361,9 @@ public class ParquetWriter<T> implements Closeable {
     private long rowGroupSize = DEFAULT_BLOCK_SIZE;
     private int maxPaddingSize = MAX_PADDING_SIZE_DEFAULT;
     private boolean enableValidation = DEFAULT_IS_VALIDATING_ENABLED;
-    private ParquetProperties.Builder encodingPropsBuilder =
+    private final ParquetProperties.Builder encodingPropsBuilder =
         ParquetProperties.builder();
+    private final Set<String> setConfigurationProps = new HashSet<>(19);
 
     protected Builder(Path path) {
       this.path = path;
@@ -389,6 +392,55 @@ public class ParquetWriter<T> implements Closeable {
      */
     public SELF withConf(Configuration conf) {
       this.conf = conf;
+      if (!setConfigurationProps.contains(ParquetOutputFormat.PAGE_SIZE))
+        encodingPropsBuilder.withPageSize(ParquetOutputFormat.getPageSize(conf));
+      if (!setConfigurationProps.contains(ParquetOutputFormat.PAGE_ROW_COUNT_LIMIT))
+        encodingPropsBuilder.withPageRowCountLimit(ParquetOutputFormat.getPageRowCountLimit(conf));
+      if (!setConfigurationProps.contains(ParquetOutputFormat.DICTIONARY_PAGE_SIZE))
+        encodingPropsBuilder.withDictionaryPageSize(ParquetOutputFormat.getDictionaryPageSize(conf));
+      if (!setConfigurationProps.contains(ParquetOutputFormat.ENABLE_DICTIONARY))
+        encodingPropsBuilder.withDictionaryEncoding(ParquetOutputFormat.getEnableDictionary(conf));
+      if (!setConfigurationProps.contains(ParquetOutputFormat.WRITER_VERSION))
+        encodingPropsBuilder.withWriterVersion(ParquetOutputFormat.getWriterVersion(conf));
+      if (!setConfigurationProps.contains(ParquetOutputFormat.PAGE_WRITE_CHECKSUM_ENABLED))
+        encodingPropsBuilder.withPageWriteChecksumEnabled(ParquetOutputFormat.getPageWriteChecksumEnabled(conf));
+      if (!setConfigurationProps.contains(ParquetOutputFormat.BLOOM_FILTER_MAX_BYTES))
+        encodingPropsBuilder.withMaxBloomFilterBytes(ParquetOutputFormat.getBloomFilterMaxBytes(conf));
+      if (!setConfigurationProps.contains(ParquetOutputFormat.ADAPTIVE_BLOOM_FILTER_ENABLED))
+        encodingPropsBuilder.withAdaptiveBloomFilterEnabled(ParquetOutputFormat.getAdaptiveBloomFilterEnabled(conf));
+      if (!setConfigurationProps.contains(ParquetOutputFormat.BLOOM_FILTER_ENABLED))
+        encodingPropsBuilder.withBloomFilterEnabled(ParquetOutputFormat.getBloomFilterEnabled(conf));
+      if (!setConfigurationProps.contains(ParquetOutputFormat.MIN_ROW_COUNT_FOR_PAGE_SIZE_CHECK))
+        encodingPropsBuilder.withMinRowCountForPageSizeCheck(ParquetOutputFormat.getMinRowCountForPageSizeCheck(conf));
+      if (!setConfigurationProps.contains(ParquetOutputFormat.MAX_ROW_COUNT_FOR_PAGE_SIZE_CHECK))
+        encodingPropsBuilder.withMaxRowCountForPageSizeCheck(ParquetOutputFormat.getMaxRowCountForPageSizeCheck(conf));
+      if (!setConfigurationProps.contains(ParquetOutputFormat.COLUMN_INDEX_TRUNCATE_LENGTH))
+        encodingPropsBuilder.withColumnIndexTruncateLength(ParquetOutputFormat.getColumnIndexTruncateLength(conf));
+      if (!setConfigurationProps.contains(ParquetOutputFormat.STATISTICS_TRUNCATE_LENGTH))
+        encodingPropsBuilder.withStatisticsTruncateLength(ParquetOutputFormat.getStatisticsTruncateLength(conf));
+      if (!setConfigurationProps.contains(ParquetOutputFormat.MAX_PADDING_BYTES))
+        maxPaddingSize = ParquetOutputFormat.getMaxPaddingSize(conf);
+      if (!setConfigurationProps.contains(ParquetOutputFormat.COMPRESSION))
+        codecName = ParquetOutputFormat.getCompression(conf);
+      if (!setConfigurationProps.contains(ParquetOutputFormat.VALIDATION))
+        enableValidation = ParquetOutputFormat.getValidation(conf);
+      ColumnConfigParser cc = new ColumnConfigParser();
+      if (!setConfigurationProps.contains(ParquetOutputFormat.ENABLE_DICTIONARY))
+        cc.withColumnConfig(ParquetOutputFormat.ENABLE_DICTIONARY, key -> conf.getBoolean(key, ParquetOutputFormat.getEnableDictionary(conf)), encodingPropsBuilder::withDictionaryEncoding);
+      if (!setConfigurationProps.contains(ParquetOutputFormat.BLOOM_FILTER_ENABLED))
+        cc.withColumnConfig(ParquetOutputFormat.BLOOM_FILTER_ENABLED, key -> conf.getBoolean(key, ParquetOutputFormat.getBloomFilterEnabled(conf)),
+            encodingPropsBuilder::withBloomFilterEnabled);
+      if (!setConfigurationProps.contains(ParquetOutputFormat.BLOOM_FILTER_EXPECTED_NDV))
+        cc.withColumnConfig(ParquetOutputFormat.BLOOM_FILTER_EXPECTED_NDV, key -> conf.getLong(key, -1L), encodingPropsBuilder::withBloomFilterNDV);
+      if (!setConfigurationProps.contains(ParquetOutputFormat.BLOOM_FILTER_FPP))
+        cc.withColumnConfig(ParquetOutputFormat.BLOOM_FILTER_FPP, key -> conf.getDouble(key, ParquetProperties.DEFAULT_BLOOM_FILTER_FPP),
+            encodingPropsBuilder::withBloomFilterFPP);
+      if (!setConfigurationProps.contains(ParquetOutputFormat.BLOOM_FILTER_CANDIDATES_NUMBER))
+        cc.withColumnConfig(
+            ParquetOutputFormat.BLOOM_FILTER_CANDIDATES_NUMBER,
+            key -> conf.getInt(key, ParquetProperties.DEFAULT_BLOOM_FILTER_CANDIDATES_NUMBER),
+            encodingPropsBuilder::withBloomFilterCandidatesNumber);
+      cc.parseConfig(conf);
       return self();
     }
 
@@ -412,6 +464,7 @@ public class ParquetWriter<T> implements Closeable {
      * @return this builder for method chaining.
      */
     public SELF withCompressionCodec(CompressionCodecName codecName) {
+      setConfigurationProps.add(ParquetOutputFormat.COMPRESSION);
       this.codecName = codecName;
       return self();
     }
@@ -458,6 +511,7 @@ public class ParquetWriter<T> implements Closeable {
      * @return this builder for method chaining.
      */
     public SELF withPageSize(int pageSize) {
+      setConfigurationProps.add(ParquetOutputFormat.PAGE_SIZE);
       encodingPropsBuilder.withPageSize(pageSize);
       return self();
     }
@@ -469,6 +523,7 @@ public class ParquetWriter<T> implements Closeable {
      * @return this builder for method chaining
      */
     public SELF withPageRowCountLimit(int rowCount) {
+      setConfigurationProps.add(ParquetOutputFormat.PAGE_ROW_COUNT_LIMIT);
       encodingPropsBuilder.withPageRowCountLimit(rowCount);
       return self();
     }
@@ -481,6 +536,7 @@ public class ParquetWriter<T> implements Closeable {
      * @return this builder for method chaining.
      */
     public SELF withDictionaryPageSize(int dictionaryPageSize) {
+      setConfigurationProps.add(ParquetOutputFormat.DICTIONARY_PAGE_SIZE);
       encodingPropsBuilder.withDictionaryPageSize(dictionaryPageSize);
       return self();
     }
@@ -494,6 +550,7 @@ public class ParquetWriter<T> implements Closeable {
      * @return this builder for method chaining.
      */
     public SELF withMaxPaddingSize(int maxPaddingSize) {
+      setConfigurationProps.add(ParquetOutputFormat.MAX_PADDING_BYTES);
       this.maxPaddingSize = maxPaddingSize;
       return self();
     }
@@ -504,6 +561,7 @@ public class ParquetWriter<T> implements Closeable {
      * @return this builder for method chaining.
      */
     public SELF enableDictionaryEncoding() {
+      setConfigurationProps.add(ParquetOutputFormat.ENABLE_DICTIONARY);
       encodingPropsBuilder.withDictionaryEncoding(true);
       return self();
     }
@@ -515,6 +573,7 @@ public class ParquetWriter<T> implements Closeable {
      * @return this builder for method chaining.
      */
     public SELF withDictionaryEncoding(boolean enableDictionary) {
+      setConfigurationProps.add(ParquetOutputFormat.ENABLE_DICTIONARY);
       encodingPropsBuilder.withDictionaryEncoding(enableDictionary);
       return self();
     }
@@ -532,6 +591,7 @@ public class ParquetWriter<T> implements Closeable {
      * @return this builder for method chaining.
      */
     public SELF withDictionaryEncoding(String columnPath, boolean enableDictionary) {
+      setConfigurationProps.add(ParquetOutputFormat.ENABLE_DICTIONARY);
       encodingPropsBuilder.withDictionaryEncoding(columnPath, enableDictionary);
       return self();
     }
@@ -542,6 +602,7 @@ public class ParquetWriter<T> implements Closeable {
      * @return this builder for method chaining.
      */
     public SELF enableValidation() {
+      setConfigurationProps.add(ParquetOutputFormat.VALIDATION);
       this.enableValidation = true;
       return self();
     }
@@ -553,6 +614,7 @@ public class ParquetWriter<T> implements Closeable {
      * @return this builder for method chaining.
      */
     public SELF withValidation(boolean enableValidation) {
+      setConfigurationProps.add(ParquetOutputFormat.VALIDATION);
       this.enableValidation = enableValidation;
       return self();
     }
@@ -565,6 +627,7 @@ public class ParquetWriter<T> implements Closeable {
      * @return this builder for method chaining.
      */
     public SELF withWriterVersion(WriterVersion version) {
+      setConfigurationProps.add(ParquetOutputFormat.WRITER_VERSION);
       encodingPropsBuilder.withWriterVersion(version);
       return self();
     }
@@ -575,6 +638,7 @@ public class ParquetWriter<T> implements Closeable {
      * @return this builder for method chaining.
      */
     public SELF enablePageWriteChecksum() {
+      setConfigurationProps.add(ParquetOutputFormat.PAGE_WRITE_CHECKSUM_ENABLED);
       encodingPropsBuilder.withPageWriteChecksumEnabled(true);
       return self();
     }
@@ -586,6 +650,7 @@ public class ParquetWriter<T> implements Closeable {
      * @return this builder for method chaining.
      */
     public SELF withPageWriteChecksumEnabled(boolean enablePageWriteChecksum) {
+      setConfigurationProps.add(ParquetOutputFormat.PAGE_WRITE_CHECKSUM_ENABLED);
       encodingPropsBuilder.withPageWriteChecksumEnabled(enablePageWriteChecksum);
       return self();
     }
@@ -597,6 +662,7 @@ public class ParquetWriter<T> implements Closeable {
      * @return this builder for method chaining
      */
     public SELF withMaxBloomFilterBytes(int maxBloomFilterBytes) {
+      setConfigurationProps.add(ParquetOutputFormat.BLOOM_FILTER_MAX_BYTES);
       encodingPropsBuilder.withMaxBloomFilterBytes(maxBloomFilterBytes);
       return self();
     }
@@ -610,12 +676,14 @@ public class ParquetWriter<T> implements Closeable {
      * @return this builder for method chaining.
      */
     public SELF withBloomFilterNDV(String columnPath, long ndv) {
+      setConfigurationProps.add(ParquetOutputFormat.BLOOM_FILTER_EXPECTED_NDV);
       encodingPropsBuilder.withBloomFilterNDV(columnPath, ndv);
 
       return self();
     }
 
     public SELF withBloomFilterFPP(String columnPath, double fpp) {
+      setConfigurationProps.add(ParquetOutputFormat.BLOOM_FILTER_FPP);
       encodingPropsBuilder.withBloomFilterFPP(columnPath, fpp);
       return self();
     }
@@ -627,6 +695,7 @@ public class ParquetWriter<T> implements Closeable {
      * @param enabled whether to write bloom filter for the column
      */
     public SELF withAdaptiveBloomFilterEnabled(boolean enabled) {
+      setConfigurationProps.add(ParquetOutputFormat.ADAPTIVE_BLOOM_FILTER_ENABLED);
       encodingPropsBuilder.withAdaptiveBloomFilterEnabled(enabled);
       return self();
     }
@@ -638,6 +707,7 @@ public class ParquetWriter<T> implements Closeable {
      * @param number the number of candidate
      */
     public SELF withBloomFilterCandidateNumber(String columnPath, int number) {
+      setConfigurationProps.add(ParquetOutputFormat.BLOOM_FILTER_CANDIDATES_NUMBER);
       encodingPropsBuilder.withBloomFilterCandidatesNumber(columnPath, number);
       return self();
     }
@@ -649,6 +719,7 @@ public class ParquetWriter<T> implements Closeable {
      * @return this builder for method chaining
      */
     public SELF withBloomFilterEnabled(boolean enabled) {
+      setConfigurationProps.add(ParquetOutputFormat.BLOOM_FILTER_ENABLED);
       encodingPropsBuilder.withBloomFilterEnabled(enabled);
       return self();
     }
@@ -662,6 +733,7 @@ public class ParquetWriter<T> implements Closeable {
      * @return this builder for method chaining
      */
     public SELF withBloomFilterEnabled(String columnPath, boolean enabled) {
+      setConfigurationProps.add(ParquetOutputFormat.BLOOM_FILTER_ENABLED);
       encodingPropsBuilder.withBloomFilterEnabled(columnPath, enabled);
       return self();
     }
@@ -673,6 +745,7 @@ public class ParquetWriter<T> implements Closeable {
      * @return this builder for method chaining
      */
     public SELF withMinRowCountForPageSizeCheck(int min) {
+      setConfigurationProps.add(ParquetOutputFormat.MIN_ROW_COUNT_FOR_PAGE_SIZE_CHECK);
       encodingPropsBuilder.withMinRowCountForPageSizeCheck(min);
       return self();
     }
@@ -684,6 +757,7 @@ public class ParquetWriter<T> implements Closeable {
      * @return this builder for method chaining
      */
     public SELF withMaxRowCountForPageSizeCheck(int max) {
+      setConfigurationProps.add(ParquetOutputFormat.MAX_ROW_COUNT_FOR_PAGE_SIZE_CHECK);
       encodingPropsBuilder.withMaxRowCountForPageSizeCheck(max);
       return self();
     }
@@ -695,6 +769,7 @@ public class ParquetWriter<T> implements Closeable {
      * @return this builder for method chaining
      */
     public SELF withColumnIndexTruncateLength(int length) {
+      setConfigurationProps.add(ParquetOutputFormat.COLUMN_INDEX_TRUNCATE_LENGTH);
       encodingPropsBuilder.withColumnIndexTruncateLength(length);
       return self();
     }
@@ -706,6 +781,7 @@ public class ParquetWriter<T> implements Closeable {
      * @return this builder for method chaining
      */
     public SELF withStatisticsTruncateLength(int length) {
+      setConfigurationProps.add(ParquetOutputFormat.STATISTICS_TRUNCATE_LENGTH);
       encodingPropsBuilder.withStatisticsTruncateLength(length);
       return self();
     }

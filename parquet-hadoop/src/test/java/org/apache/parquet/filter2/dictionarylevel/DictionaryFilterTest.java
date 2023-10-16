@@ -44,6 +44,7 @@ import org.apache.parquet.filter2.predicate.Operators.LongColumn;
 import org.apache.parquet.filter2.predicate.Statistics;
 import org.apache.parquet.filter2.predicate.UserDefinedPredicate;
 import org.apache.parquet.hadoop.ParquetFileReader;
+import org.apache.parquet.hadoop.ParquetOutputFormat;
 import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.example.ExampleParquetWriter;
 import org.apache.parquet.hadoop.example.GroupWriteSupport;
@@ -86,7 +87,9 @@ public class DictionaryFilterTest {
   private static final int nElements = 1000;
   private static final Configuration conf = new Configuration();
   private static final Path FILE_V1 = new Path("target/test/TestDictionaryFilter/testParquetFileV1.parquet");
+  private static final Path FILE_V1_CONF = new Path("target/test/TestDictionaryFilter/testParquetFileV1Conf.parquet");
   private static final Path FILE_V2 = new Path("target/test/TestDictionaryFilter/testParquetFileV2.parquet");
+  private static final Path FILE_V2_CONF = new Path("target/test/TestDictionaryFilter/testParquetFileV2Conf.parquet");
   private static final MessageType schema = parseMessageType(
       "message test { "
           + "required binary binary_field; "
@@ -177,7 +180,9 @@ public class DictionaryFilterTest {
   public static void prepareFile() throws IOException {
     cleanup();
     prepareFile(PARQUET_1_0, FILE_V1);
+    prepareFileWithConf(PARQUET_1_0, FILE_V1_CONF);
     prepareFile(PARQUET_2_0, FILE_V2);
+    prepareFileWithConf(PARQUET_2_0, FILE_V2_CONF);
   }
 
   private static void prepareFile(WriterVersion version, Path file) throws IOException {
@@ -195,10 +200,28 @@ public class DictionaryFilterTest {
     writeData(f, writer);
   }
 
+  private static void prepareFileWithConf(WriterVersion version, Path file) throws IOException {
+    Configuration configuration = new Configuration();
+    configuration.setBoolean(ParquetOutputFormat.ENABLE_DICTIONARY, true);
+    configuration.setInt(ParquetOutputFormat.DICTIONARY_PAGE_SIZE, 2 * 1024);
+    configuration.setInt(ParquetOutputFormat.PAGE_SIZE, 1024);
+    configuration.set(ParquetOutputFormat.COMPRESSION, GZIP.name());
+    configuration.set(ParquetOutputFormat.WRITER_VERSION, version.name());
+    GroupWriteSupport.setSchema(schema, configuration);
+    SimpleGroupFactory f = new SimpleGroupFactory(schema);
+    ParquetWriter<Group> writer = ExampleParquetWriter.builder(file)
+      .withRowGroupSize(1024*1024)
+      .withConf(configuration)
+      .build();
+    writeData(f, writer);
+  }
+
   @AfterClass
   public static void cleanup() throws IOException {
     deleteFile(FILE_V1);
+    deleteFile(FILE_V1_CONF);
     deleteFile(FILE_V2);
+    deleteFile(FILE_V2_CONF);
   }
 
   private static void deleteFile(Path file) throws IOException {
@@ -209,24 +232,24 @@ public class DictionaryFilterTest {
   }
 
   @Parameters
-  public static Object[] params() {
-    return new Object[] {PARQUET_1_0, PARQUET_2_0};
+  public static Object[][] params() {
+    return new Object[][] {{PARQUET_1_0, true}, {PARQUET_2_0, true}, {PARQUET_1_0, false}, {PARQUET_2_0, false}};
   }
 
   List<ColumnChunkMetaData> ccmd;
   ParquetFileReader reader;
   DictionaryPageReadStore dictionaries;
   private Path file;
-  private WriterVersion version;
+  private final WriterVersion version;
 
-  public DictionaryFilterTest(WriterVersion version) {
+  public DictionaryFilterTest(WriterVersion version, boolean conf) {
     this.version = version;
     switch (version) {
     case PARQUET_1_0:
-      file = FILE_V1;
+      file = conf ? FILE_V1_CONF : FILE_V1;
       break;
     case PARQUET_2_0:
-      file = FILE_V2;
+      file = conf ? FILE_V2_CONF : FILE_V2;
       break;
     }
   }
