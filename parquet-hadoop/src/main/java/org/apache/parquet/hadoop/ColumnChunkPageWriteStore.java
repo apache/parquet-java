@@ -40,13 +40,13 @@ import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.column.values.bloomfilter.BloomFilter;
 import org.apache.parquet.column.values.bloomfilter.BloomFilterWriteStore;
 import org.apache.parquet.column.values.bloomfilter.BloomFilterWriter;
+import org.apache.parquet.compression.CompressionCodecFactory.BytesInputCompressor;
 import org.apache.parquet.crypto.AesCipher;
 import org.apache.parquet.crypto.InternalColumnEncryptionSetup;
 import org.apache.parquet.crypto.InternalFileEncryptor;
 import org.apache.parquet.crypto.ModuleCipherFactory.ModuleType;
 import org.apache.parquet.format.BlockCipher;
 import org.apache.parquet.format.converter.ParquetMetadataConverter;
-import org.apache.parquet.hadoop.CodecFactory.BytesCompressor;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.internal.column.columnindex.ColumnIndexBuilder;
 import org.apache.parquet.internal.column.columnindex.OffsetIndexBuilder;
@@ -64,7 +64,7 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
   private static final class ColumnChunkPageWriter implements PageWriter, BloomFilterWriter {
 
     private final ColumnDescriptor path;
-    private final BytesCompressor compressor;
+    private final BytesInputCompressor compressor;
 
     private final ByteArrayOutputStream tempOutputStream = new ByteArrayOutputStream();
     private final ConcatenatingByteArrayCollector buf;
@@ -99,7 +99,7 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
     private final byte[] fileAAD;
 
     private ColumnChunkPageWriter(ColumnDescriptor path,
-                                  BytesCompressor compressor,
+                                  BytesInputCompressor compressor,
                                   ByteBufferAllocator allocator,
                                   int columnIndexTruncateLength,
                                   boolean pageWriteChecksumEnabled,
@@ -253,15 +253,44 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
       if (null != headerBlockEncryptor) {
         AesCipher.quickUpdatePageAAD(dataPageHeaderAAD, pageOrdinal);
       }
-      parquetMetadataConverter.writeDataPageV2Header(
-          uncompressedSize, compressedSize,
-          valueCount, nullCount, rowCount,
+      if (pageWriteChecksumEnabled) {
+        crc.reset();
+        if (repetitionLevels.size() > 0) {
+          crc.update(repetitionLevels.toByteArray());
+        }
+        if (definitionLevels.size() > 0) {
+          crc.update(definitionLevels.toByteArray());
+        }
+        if (compressedData.size() > 0) {
+          crc.update(compressedData.toByteArray());
+        }
+        parquetMetadataConverter.writeDataPageV2Header(
+          uncompressedSize,
+          compressedSize,
+          valueCount,
+          nullCount,
+          rowCount,
+          dataEncoding,
+          rlByteLength,
+          dlByteLength,
+          (int) crc.getValue(),
+          tempOutputStream,
+          headerBlockEncryptor,
+          dataPageHeaderAAD);
+      } else {
+        parquetMetadataConverter.writeDataPageV2Header(
+          uncompressedSize,
+          compressedSize,
+          valueCount,
+          nullCount,
+          rowCount,
           dataEncoding,
           rlByteLength,
           dlByteLength,
           tempOutputStream,
           headerBlockEncryptor,
           dataPageHeaderAAD);
+      }
       this.uncompressedLength += uncompressedSize;
       this.compressedLength += compressedSize;
       this.totalValueCount += valueCount;
@@ -394,13 +423,13 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
   private final Map<ColumnDescriptor, ColumnChunkPageWriter> writers = new HashMap<ColumnDescriptor, ColumnChunkPageWriter>();
   private final MessageType schema;
 
-  public ColumnChunkPageWriteStore(BytesCompressor compressor, MessageType schema, ByteBufferAllocator allocator,
+  public ColumnChunkPageWriteStore(BytesInputCompressor compressor, MessageType schema, ByteBufferAllocator allocator,
                                    int columnIndexTruncateLength) {
     this(compressor, schema, allocator, columnIndexTruncateLength,
       ParquetProperties.DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED);
   }
 
-  public ColumnChunkPageWriteStore(BytesCompressor compressor, MessageType schema, ByteBufferAllocator allocator,
+  public ColumnChunkPageWriteStore(BytesInputCompressor compressor, MessageType schema, ByteBufferAllocator allocator,
       int columnIndexTruncateLength, boolean pageWriteChecksumEnabled) {
     this.schema = schema;
     for (ColumnDescriptor path : schema.getColumns()) {
@@ -409,8 +438,8 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
     }
   }
   
-  public ColumnChunkPageWriteStore(BytesCompressor compressor, MessageType schema, ByteBufferAllocator allocator,
-      int columnIndexTruncateLength, boolean pageWriteChecksumEnabled, InternalFileEncryptor fileEncryptor, int rowGroupOrdinal) {
+  public ColumnChunkPageWriteStore(BytesInputCompressor compressor, MessageType schema, ByteBufferAllocator allocator,
+                                   int columnIndexTruncateLength, boolean pageWriteChecksumEnabled, InternalFileEncryptor fileEncryptor, int rowGroupOrdinal) {
     this.schema = schema;
     if (null == fileEncryptor) {
       for (ColumnDescriptor path : schema.getColumns()) {

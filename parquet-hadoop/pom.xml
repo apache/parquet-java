@@ -98,14 +98,14 @@
     <dependency>
       <groupId>org.xerial.snappy</groupId>
       <artifactId>snappy-java</artifactId>
-      <version>1.1.8.3</version>
+      <version>1.1.10.4</version>
       <type>jar</type>
       <scope>compile</scope>
     </dependency>
     <dependency>
       <groupId>io.airlift</groupId>
       <artifactId>aircompressor</artifactId>
-      <version>0.21</version>
+      <version>0.25</version>
     </dependency>
     <dependency>
       <groupId>commons-pool</groupId>
@@ -144,7 +144,7 @@
     <dependency>
       <groupId>com.squareup.okhttp3</groupId>
       <artifactId>okhttp</artifactId>
-      <version>4.6.0</version>
+      <version>4.11.0</version>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -167,7 +167,7 @@
     <dependency>
       <groupId>org.apache.commons</groupId>
       <artifactId>commons-lang3</artifactId>
-      <version>3.9</version>
+      <version>${commons-lang3.version}</version>
       <scope>test</scope>
     </dependency>
   </dependencies>

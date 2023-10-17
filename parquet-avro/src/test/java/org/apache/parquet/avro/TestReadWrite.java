@@ -27,6 +27,9 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Paths;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -35,7 +38,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+
+import org.apache.avro.Conversion;
 import org.apache.avro.Conversions;
+import org.apache.avro.LogicalType;
 import org.apache.avro.LogicalTypes;
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder;
@@ -49,6 +55,8 @@ import org.apache.hadoop.fs.Path;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.api.WriteSupport;
+import org.apache.parquet.io.LocalInputFile;
+import org.apache.parquet.io.LocalOutputFile;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.RecordConsumer;
 import org.apache.parquet.schema.MessageTypeParser;
@@ -69,16 +77,19 @@ public class TestReadWrite {
   @Parameterized.Parameters
   public static Collection<Object[]> data() {
     Object[][] data = new Object[][] {
-        { false },  // use the new converters
-        { true } }; // use the old converters
+        { false, false },  // use the new converters
+        { true, false },   // use the old converters
+        { false, true } }; // use a local disk location
     return Arrays.asList(data);
   }
 
   private final boolean compat;
+  private final boolean local;
   private final Configuration testConf = new Configuration();
 
-  public TestReadWrite(boolean compat) {
+  public TestReadWrite(boolean compat, boolean local) {
     this.compat = compat;
+    this.local = local;
     this.testConf.setBoolean(AvroReadSupport.AVRO_COMPATIBILITY, compat);
     testConf.setBoolean("parquet.avro.add-list-element-records", false);
     testConf.setBoolean("parquet.avro.write-old-list-structure", false);
@@ -87,24 +98,20 @@ public class TestReadWrite {
   @Test
   public void testEmptyArray() throws Exception {
     Schema schema = new Schema.Parser().parse(
-        Resources.getResource("array.avsc").openStream());
+      Resources.getResource("array.avsc").openStream());
 
     // Write a record with an empty array.
     List<Integer> emptyArray = new ArrayList<>();
 
-    Path file = new Path(createTempFile().getPath());
+    String file = createTempFile().getPath();
 
-    try(ParquetWriter<GenericRecord> writer = AvroParquetWriter
-        .<GenericRecord>builder(file)
-        .withSchema(schema)
-        .withConf(testConf)
-        .build()) {
+    try(ParquetWriter<GenericRecord> writer = writer(file, schema)) {
       GenericData.Record record = new GenericRecordBuilder(schema)
         .set("myarray", emptyArray).build();
       writer.write(record);
     }
 
-    try (AvroParquetReader<GenericRecord> reader = new AvroParquetReader<>(testConf, file)) {
+    try (ParquetReader<GenericRecord> reader = reader(file)) {
       GenericRecord nextRecord = reader.read();
 
       assertNotNull(nextRecord);
@@ -115,16 +122,12 @@ public class TestReadWrite {
   @Test
   public void testEmptyMap() throws Exception {
     Schema schema = new Schema.Parser().parse(
-        Resources.getResource("map.avsc").openStream());
+      Resources.getResource("map.avsc").openStream());
 
-    Path file = new Path(createTempFile().getPath());
+    String file = createTempFile().getPath();
     ImmutableMap<String, Integer> emptyMap = new ImmutableMap.Builder<String, Integer>().build();
 
-    try(ParquetWriter<GenericRecord> writer = AvroParquetWriter
-        .<GenericRecord>builder(file)
-        .withSchema(schema)
-        .withConf(testConf)
-        .build()) {
+    try (ParquetWriter<GenericRecord> writer = writer(file, schema)) {
 
       // Write a record with an empty map.
       GenericData.Record record = new GenericRecordBuilder(schema)
@@ -132,7 +135,7 @@ public class TestReadWrite {
       writer.write(record);
     }
 
-    try(AvroParquetReader<GenericRecord> reader = new AvroParquetReader<GenericRecord>(testConf, file)) {
+    try(ParquetReader<GenericRecord> reader = reader(file)) {
       GenericRecord nextRecord = reader.read();
 
       assertNotNull(nextRecord);
@@ -699,12 +702,10 @@ public class TestReadWrite {
   public void testNestedLists() throws Exception {
     Schema schema = new Schema.Parser().parse(
       Resources.getResource("nested_array.avsc").openStream());
-    Path file = new Path(createTempFile().getPath());
+    String file = createTempFile().getPath();
 
     // Parquet writer
-    ParquetWriter parquetWriter = AvroParquetWriter.builder(file).withSchema(schema)
-      .withConf(testConf)
-      .build();
+    ParquetWriter parquetWriter = writer(file, schema);
 
     Schema innerRecordSchema = schema.getField("l1").schema().getTypes()
       .get(1).getElementType().getTypes().get(1);
@@ -718,7 +719,7 @@ public class TestReadWrite {
     parquetWriter.write(record);
     parquetWriter.close();
 
-    AvroParquetReader<GenericRecord> reader = new AvroParquetReader(testConf, file);
+    ParquetReader<GenericRecord> reader = reader(file);
     GenericRecord nextRecord = reader.read();
 
     assertNotNull(nextRecord);
@@ -775,11 +776,119 @@ public class TestReadWrite {
     }
   }
 
+  public static class CustomDataModel implements AvroDataSupplier {
+    @Override
+    public GenericData get() {
+      GenericData genericData = new GenericData();
+      genericData.addLogicalTypeConversion(new Conversion<LocalDate>() {
+        private final DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyyMMdd");
+
+        @Override
+        public Class<LocalDate> getConvertedType() {
+          return LocalDate.class;
+        }
+
+        @Override
+        public String getLogicalTypeName() {
+          return "date";
+        }
+
+        public LocalDate fromInt(Integer localDate, Schema schema, LogicalType type) {
+          return LocalDate.parse(String.valueOf(localDate), dateTimeFormatter);
+        }
+
+        public Integer toInt(LocalDate date, Schema schema, LogicalType type) {
+          return Integer.parseInt(dateTimeFormatter.format(date));
+        }
+      });
+      return genericData;
+    }
+  }
+  @Test
+  public void testParsesDataModelFromConf() throws Exception {
+    Schema datetimeSchema = Schema.createRecord("myrecord", null, null, false);
+    Schema date = LogicalTypes.date().addToSchema(
+      Schema.create(Schema.Type.INT));
+    datetimeSchema.setFields(Collections.singletonList(
+      new Schema.Field("date", date, null, null)));
+
+    File file = temp.newFile("datetime.parquet");
+    file.delete();
+    Path path = new Path(file.toString());
+    List<GenericRecord> expected = Lists.newArrayList();
+
+    Configuration conf = new Configuration();
+    AvroWriteSupport.setAvroDataSupplier(conf, CustomDataModel.class);
+
+    // .withDataModel is not set; AvroWriteSupport should parse it from the Configuration
+    try(ParquetWriter<GenericRecord> writer = AvroParquetWriter
+      .<GenericRecord>builder(path)
+      .withConf(conf)
+      .withSchema(datetimeSchema)
+      .build()) {
+
+      GenericRecordBuilder builder = new GenericRecordBuilder(datetimeSchema);
+      for (int i = 0; i < 100; i += 1) {
+        builder.set("date", LocalDate.now().minusDays(i));
+
+        GenericRecord rec = builder.build();
+        expected.add(rec);
+        writer.write(builder.build());
+      }
+    }
+    List<GenericRecord> records = Lists.newArrayList();
+
+    AvroReadSupport.setAvroDataSupplier(conf, CustomDataModel.class);
+
+    try(ParquetReader<GenericRecord> reader = AvroParquetReader
+      .<GenericRecord>builder(path)
+      .disableCompatibility()
+      .withConf(conf)
+      .build()) {
+      GenericRecord rec;
+      while ((rec = reader.read()) != null) {
+        records.add(rec);
+      }
+    }
+
+    Assert.assertTrue("date field should be a LocalDate instance",
+      records.get(0).get("date") instanceof LocalDate);
+    Assert.assertEquals("Content should match", expected, records);
+  }
+
   private File createTempFile() throws IOException {
     File tmp = File.createTempFile(getClass().getSimpleName(), ".tmp");
     tmp.deleteOnExit();
     tmp.delete();
     return tmp;
+  }
+
+  private ParquetWriter<GenericRecord> writer(String file, Schema schema) throws IOException {
+    if (local) {
+      return AvroParquetWriter
+        .<GenericRecord>builder(new LocalOutputFile(Paths.get(file)))
+        .withSchema(schema)
+        .withConf(testConf)
+        .build();
+    } else {
+      return AvroParquetWriter
+        .<GenericRecord>builder(new Path(file))
+        .withSchema(schema)
+        .withConf(testConf)
+        .build();
+    }
+  }
+
+  private ParquetReader<GenericRecord> reader(String file) throws IOException {
+    if (local) {
+      return AvroParquetReader
+        .<GenericRecord>builder(new LocalInputFile(Paths.get(file)))
+        .withDataModel(GenericData.get())
+        .withConf(testConf)
+        .build();
+    } else {
+      return new AvroParquetReader(testConf, new Path(file));
+    }
   }
 
   /**

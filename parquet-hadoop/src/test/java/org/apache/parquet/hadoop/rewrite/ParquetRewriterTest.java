@@ -19,14 +19,18 @@
 package org.apache.parquet.hadoop.rewrite;
 
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.HadoopReadOptions;
 import org.apache.parquet.ParquetReadOptions;
+import org.apache.parquet.Version;
 import org.apache.parquet.column.ParquetProperties;
+import org.apache.parquet.column.values.bloomfilter.BloomFilter;
 import org.apache.parquet.crypto.FileDecryptionProperties;
 import org.apache.parquet.crypto.FileEncryptionProperties;
 import org.apache.parquet.crypto.ParquetCipher;
+import org.apache.parquet.crypto.ParquetCryptoRuntimeException;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroup;
 import org.apache.parquet.format.DataPageHeader;
@@ -35,9 +39,11 @@ import org.apache.parquet.format.PageHeader;
 import org.apache.parquet.format.converter.ParquetMetadataConverter;
 import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.ParquetReader;
+import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.example.GroupReadSupport;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
+import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.metadata.FileMetaData;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
@@ -49,13 +55,17 @@ import org.apache.parquet.hadoop.util.TestFileBuilder;
 import org.apache.parquet.internal.column.columnindex.ColumnIndex;
 import org.apache.parquet.internal.column.columnindex.OffsetIndex;
 import org.apache.parquet.io.InputFile;
+import org.apache.parquet.io.InvalidRecordException;
 import org.apache.parquet.io.SeekableInputStream;
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.InvalidSchemaException;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
+import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -66,6 +76,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
@@ -80,13 +91,25 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
+@RunWith(Parameterized.class)
 public class ParquetRewriterTest {
 
   private final int numRecord = 100000;
-  private Configuration conf = new Configuration();
+  private final Configuration conf = new Configuration();
+  private final ParquetProperties.WriterVersion writerVersion;
+
   private List<EncryptionTestFile> inputFiles = null;
   private String outputFile = null;
   private ParquetRewriter rewriter = null;
+
+  @Parameterized.Parameters(name = "WriterVersion = {0}")
+  public static Object[] parameters() {
+    return new Object[] {"v1", "v2"};
+  }
+
+  public ParquetRewriterTest(String writerVersion) {
+    this.writerVersion = ParquetProperties.WriterVersion.fromString(writerVersion);
+  }
 
   private void testPruneSingleColumnTranslateCodec(List<Path> inputPaths) throws Exception {
     Path outputPath = new Path(outputFile);
@@ -130,6 +153,12 @@ public class ParquetRewriterTest {
 
     // Verify original.created.by is preserved
     validateCreatedBy();
+    validateRowGroupRowCount();
+  }
+
+  @Before
+  public void setUp() {
+    outputFile = TestFileBuilder.createTempFile("test");
   }
 
   @Test
@@ -194,6 +223,7 @@ public class ParquetRewriterTest {
 
     // Verify original.created.by is preserved
     validateCreatedBy();
+    validateRowGroupRowCount();
   }
 
   @Test
@@ -275,6 +305,7 @@ public class ParquetRewriterTest {
 
     // Verify original.created.by is preserved
     validateCreatedBy();
+    validateRowGroupRowCount();
   }
 
   @Test
@@ -294,6 +325,71 @@ public class ParquetRewriterTest {
       add(new Path(inputFiles.get(1).getFileName()));
     }};
     testPruneEncryptTranslateCodec(inputPaths);
+  }
+
+  @Test
+  public void testRewriteWithoutColumnIndexes() throws Exception {
+    List<Path> inputPaths = new ArrayList<Path>() {{
+      add(new Path(ParquetRewriterTest.class.getResource("/test-file-with-no-column-indexes-1.parquet").toURI()));
+    }};
+
+    inputFiles = inputPaths.stream().map(p -> new EncryptionTestFile(p.toString(), null)).collect(Collectors.toList());
+
+    Path outputPath = new Path(outputFile);
+    RewriteOptions.Builder builder = new RewriteOptions.Builder(conf, inputPaths, outputPath);
+
+    Map<String, MaskMode> maskCols = Maps.newHashMap();
+    maskCols.put("location.lat", MaskMode.NULLIFY);
+    maskCols.put("location.lon", MaskMode.NULLIFY);
+    maskCols.put("location", MaskMode.NULLIFY);
+
+    List<String> pruneCols = Lists.newArrayList("phoneNumbers");
+
+    RewriteOptions options = builder.mask(maskCols).prune(pruneCols).build();
+    rewriter = new ParquetRewriter(options);
+    rewriter.processBlocks();
+    rewriter.close();
+
+    // Verify the schema are not changed for the columns not pruned
+    ParquetMetadata pmd = ParquetFileReader.readFooter(conf, new Path(outputFile), ParquetMetadataConverter.NO_FILTER);
+    MessageType schema = pmd.getFileMetaData().getSchema();
+    List<Type> fields = schema.getFields();
+    assertEquals(fields.size(), 3);
+    assertEquals(fields.get(0).getName(), "id");
+    assertEquals(fields.get(1).getName(), "name");
+    assertEquals(fields.get(2).getName(), "location");
+    List<Type> subFields = fields.get(2).asGroupType().getFields();
+    assertEquals(subFields.size(), 2);
+    assertEquals(subFields.get(0).getName(), "lon");
+    assertEquals(subFields.get(1).getName(), "lat");
+
+    try(ParquetReader<Group> outReader = ParquetReader.builder(new GroupReadSupport(), new Path(outputFile)).withConf(conf).build();
+        ParquetReader<Group> inReader = ParquetReader.builder(new GroupReadSupport(), inputPaths.get(0)).withConf(conf).build();
+    ) {
+
+      for(Group inRead = inReader.read(), outRead = outReader.read();
+          inRead != null || outRead != null;
+          inRead = inReader.read(), outRead = outReader.read()) {
+        assertNotNull(inRead);
+        assertNotNull(outRead);
+
+        assertEquals(inRead.getLong("id", 0), outRead.getLong("id", 0));
+        assertEquals(inRead.getString("name", 0), outRead.getString("name", 0));
+
+        // location was nulled
+        Group finalOutRead = outRead;
+        assertThrows(RuntimeException.class, () -> finalOutRead.getGroup("location", 0).getDouble("lat", 0));
+        assertThrows(RuntimeException.class, () -> finalOutRead.getGroup("location", 0).getDouble("lon", 0));
+
+        // phonenumbers was pruned
+        assertThrows(InvalidRecordException.class, () -> finalOutRead.getGroup("phoneNumbers", 0));
+
+      }
+    }
+
+    // Verify original.created.by is preserved
+    validateCreatedBy();
+    validateRowGroupRowCount();
   }
 
   private void testNullifyAndEncryptColumn(List<Path> inputPaths) throws Exception {
@@ -410,33 +506,35 @@ public class ParquetRewriterTest {
 
     // Verify original.created.by is preserved
     validateCreatedBy();
+    validateRowGroupRowCount();
   }
 
   @Test(expected = InvalidSchemaException.class)
   public void testMergeTwoFilesWithDifferentSchema() throws Exception {
     MessageType schema1 = new MessageType("schema",
-            new PrimitiveType(OPTIONAL, INT64, "DocId"),
-            new PrimitiveType(REQUIRED, BINARY, "Name"),
-            new PrimitiveType(OPTIONAL, BINARY, "Gender"),
-            new GroupType(OPTIONAL, "Links",
-                    new PrimitiveType(REPEATED, BINARY, "Backward"),
-                    new PrimitiveType(REPEATED, BINARY, "Forward")));
+      new PrimitiveType(OPTIONAL, INT64, "DocId"),
+      new PrimitiveType(REQUIRED, BINARY, "Name"),
+      new PrimitiveType(OPTIONAL, BINARY, "Gender"),
+      new GroupType(OPTIONAL, "Links",
+        new PrimitiveType(REPEATED, BINARY, "Backward"),
+        new PrimitiveType(REPEATED, BINARY, "Forward")));
     MessageType schema2 = new MessageType("schema",
-            new PrimitiveType(OPTIONAL, INT64, "DocId"),
-            new PrimitiveType(REQUIRED, BINARY, "Name"),
-            new PrimitiveType(OPTIONAL, BINARY, "Gender"));
+      new PrimitiveType(OPTIONAL, INT64, "DocId"),
+      new PrimitiveType(REQUIRED, BINARY, "Name"),
+      new PrimitiveType(OPTIONAL, BINARY, "Gender"));
     inputFiles = Lists.newArrayList();
     inputFiles.add(new TestFileBuilder(conf, schema1)
-            .withNumRecord(numRecord)
-            .withCodec("UNCOMPRESSED")
-            .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
-            .build());
+      .withNumRecord(numRecord)
+      .withCodec("UNCOMPRESSED")
+      .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
+      .withWriterVersion(writerVersion)
+      .build());
     inputFiles.add(new TestFileBuilder(conf, schema2)
-            .withNumRecord(numRecord)
-            .withCodec("UNCOMPRESSED")
-            .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
-            .build());
-    outputFile = TestFileBuilder.createTempFile("test");
+      .withNumRecord(numRecord)
+      .withCodec("UNCOMPRESSED")
+      .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
+      .withWriterVersion(writerVersion)
+      .build());
 
     List<Path> inputPaths = new ArrayList<>();
     for (EncryptionTestFile inputFile : inputFiles) {
@@ -450,41 +548,121 @@ public class ParquetRewriterTest {
     rewriter = new ParquetRewriter(options);
   }
 
+  @Test
+  public void testRewriteFileWithMultipleBlocks() throws Exception {
+    testSingleInputFileSetup("GZIP", 1024L);
+    List<Path> inputPaths = new ArrayList<Path>() {{
+      add(new Path(inputFiles.get(0).getFileName()));
+    }};
+    testPruneSingleColumnTranslateCodec(inputPaths);
+  }
+
+  @Test
+  public void testPruneSingleColumnTranslateCodecAndEnableBloomFilter() throws Exception {
+    testSingleInputFileSetupWithBloomFilter("GZIP", "DocId");
+    List<Path> inputPaths = new ArrayList<Path>() {{
+      add(new Path(inputFiles.get(0).getFileName()));
+    }};
+    testPruneSingleColumnTranslateCodec(inputPaths);
+
+    // Verify bloom filters
+    Map<ColumnPath, List<BloomFilter>> inputBloomFilters = allInputBloomFilters(null);
+    Map<ColumnPath, List<BloomFilter>> outputBloomFilters = allOutputBloomFilters(null);
+    assertEquals(inputBloomFilters, outputBloomFilters);
+  }
+
+  @Test
+  public void testPruneNullifyTranslateCodecAndEnableBloomFilter() throws Exception {
+    testSingleInputFileSetupWithBloomFilter("GZIP", "DocId", "Links.Forward");
+    List<Path> inputPaths = new ArrayList<Path>() {{
+      add(new Path(inputFiles.get(0).getFileName()));
+    }};
+    testPruneNullifyTranslateCodec(inputPaths);
+
+    // Verify bloom filters
+    Map<ColumnPath, List<BloomFilter>> inputBloomFilters = allInputBloomFilters(null);
+    assertEquals(inputBloomFilters.size(), 2);
+    assertTrue(inputBloomFilters.containsKey(ColumnPath.fromDotString("Links.Forward")));
+    assertTrue(inputBloomFilters.containsKey(ColumnPath.fromDotString("DocId")));
+
+    Map<ColumnPath, List<BloomFilter>> outputBloomFilters = allOutputBloomFilters(null);
+    assertEquals(outputBloomFilters.size(), 1);
+    assertTrue(outputBloomFilters.containsKey(ColumnPath.fromDotString("DocId")));
+
+    inputBloomFilters.remove(ColumnPath.fromDotString("Links.Forward"));
+    assertEquals(inputBloomFilters, outputBloomFilters);
+  }
+
+  @Test
+  public void testPruneEncryptTranslateCodecAndEnableBloomFilter() throws Exception {
+    testSingleInputFileSetupWithBloomFilter("GZIP", "DocId", "Links.Forward");
+    List<Path> inputPaths = new ArrayList<Path>() {{
+      add(new Path(inputFiles.get(0).getFileName()));
+    }};
+    testPruneEncryptTranslateCodec(inputPaths);
+
+    // Verify bloom filters
+    Map<ColumnPath, List<BloomFilter>> inputBloomFilters = allInputBloomFilters(null);
+
+    // Cannot read without FileDecryptionProperties
+    assertThrows(ParquetCryptoRuntimeException.class, () -> allOutputBloomFilters(null));
+
+    FileDecryptionProperties fileDecryptionProperties = EncDecProperties.getFileDecryptionProperties();
+    Map<ColumnPath, List<BloomFilter>> outputBloomFilters = allOutputBloomFilters(fileDecryptionProperties);
+    assertEquals(inputBloomFilters, outputBloomFilters);
+  }
+
   private void testSingleInputFileSetup(String compression) throws IOException {
+    testSingleInputFileSetup(compression, ParquetWriter.DEFAULT_BLOCK_SIZE);
+  }
+
+  private void testSingleInputFileSetupWithBloomFilter(
+    String compression,
+    String... bloomFilterEnabledColumns) throws IOException {
+    testSingleInputFileSetup(compression, ParquetWriter.DEFAULT_BLOCK_SIZE, bloomFilterEnabledColumns);
+  }
+
+  private void testSingleInputFileSetup(String compression,
+                                        long rowGroupSize,
+                                        String... bloomFilterEnabledColumns) throws IOException {
     MessageType schema = createSchema();
     inputFiles = Lists.newArrayList();
     inputFiles.add(new TestFileBuilder(conf, schema)
-            .withNumRecord(numRecord)
-            .withCodec(compression)
-            .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
-            .build());
-    outputFile = TestFileBuilder.createTempFile("test");
+      .withNumRecord(numRecord)
+      .withCodec(compression)
+      .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
+      .withRowGroupSize(rowGroupSize)
+      .withBloomFilterEnabled(bloomFilterEnabledColumns)
+      .withWriterVersion(writerVersion)
+      .build());
   }
 
   private void testMultipleInputFilesSetup() throws IOException {
     MessageType schema = createSchema();
     inputFiles = Lists.newArrayList();
     inputFiles.add(new TestFileBuilder(conf, schema)
-            .withNumRecord(numRecord)
-            .withCodec("GZIP")
-            .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
-            .build());
+      .withNumRecord(numRecord)
+      .withCodec("GZIP")
+      .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
+      .withWriterVersion(writerVersion)
+      .build());
     inputFiles.add(new TestFileBuilder(conf, schema)
-            .withNumRecord(numRecord)
-            .withCodec("UNCOMPRESSED")
-            .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
-            .build());
-    outputFile = TestFileBuilder.createTempFile("test");
+      .withNumRecord(numRecord)
+      .withCodec("UNCOMPRESSED")
+      .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
+      .withWriterVersion(writerVersion)
+      .build());
+
   }
 
   private MessageType createSchema() {
     return new MessageType("schema",
-            new PrimitiveType(OPTIONAL, INT64, "DocId"),
-            new PrimitiveType(REQUIRED, BINARY, "Name"),
-            new PrimitiveType(OPTIONAL, BINARY, "Gender"),
-            new GroupType(OPTIONAL, "Links",
-                    new PrimitiveType(REPEATED, BINARY, "Backward"),
-                    new PrimitiveType(REPEATED, BINARY, "Forward")));
+      new PrimitiveType(OPTIONAL, INT64, "DocId"),
+      new PrimitiveType(REQUIRED, BINARY, "Name"),
+      new PrimitiveType(OPTIONAL, BINARY, "Gender"),
+      new GroupType(OPTIONAL, "Links",
+        new PrimitiveType(REPEATED, BINARY, "Backward"),
+        new PrimitiveType(REPEATED, BINARY, "Forward")));
   }
 
   private void validateColumnData(Set<String> prunePaths,
@@ -686,12 +864,77 @@ public class ParquetRewriterTest {
 
     // Verify created_by has been set
     FileMetaData outFMD = getFileMetaData(outputFile, null).getFileMetaData();
-    String inputCreatedBy = (String) inputCreatedBys[0];
-    assertEquals(inputCreatedBy, outFMD.getCreatedBy());
+    final String createdBy = outFMD.getCreatedBy();
+    assertNotNull(createdBy);
+    assertEquals(createdBy, Version.FULL_VERSION);
 
     // Verify original.created.by has been set
+    String inputCreatedBy = (String) inputCreatedBys[0];
     String originalCreatedBy = outFMD.getKeyValueMetaData().get(ParquetRewriter.ORIGINAL_CREATED_BY_KEY);
     assertEquals(inputCreatedBy, originalCreatedBy);
   }
 
+  private void validateRowGroupRowCount() throws Exception {
+    List<Long> inputRowCounts = new ArrayList<>();
+    for (EncryptionTestFile inputFile : inputFiles) {
+      ParquetMetadata inputPmd = getFileMetaData(inputFile.getFileName(), null);
+      for (BlockMetaData blockMetaData: inputPmd.getBlocks()) {
+        inputRowCounts.add(blockMetaData.getRowCount());
+      }
+    }
+
+    List<Long> outputRowCounts = new ArrayList<>();
+    ParquetMetadata outPmd = getFileMetaData(outputFile, null);
+    for (BlockMetaData blockMetaData: outPmd.getBlocks()) {
+      outputRowCounts.add(blockMetaData.getRowCount());
+    }
+
+    assertEquals(inputRowCounts, outputRowCounts);
+  }
+
+  private Map<ColumnPath, List<BloomFilter>> allInputBloomFilters(
+    FileDecryptionProperties fileDecryptionProperties) throws Exception {
+    Map<ColumnPath, List<BloomFilter>> inputBloomFilters = new HashMap<>();
+    for (EncryptionTestFile inputFile : inputFiles) {
+      Map<ColumnPath, List<BloomFilter>> bloomFilters =
+        allBloomFilters(inputFile.getFileName(), fileDecryptionProperties);
+      for (Map.Entry<ColumnPath, List<BloomFilter>> entry : bloomFilters.entrySet()) {
+        List<BloomFilter> bloomFilterList = inputBloomFilters.getOrDefault(entry.getKey(), new ArrayList<>());
+        bloomFilterList.addAll(entry.getValue());
+        inputBloomFilters.put(entry.getKey(), bloomFilterList);
+      }
+    }
+
+    return inputBloomFilters;
+  }
+
+  private Map<ColumnPath, List<BloomFilter>> allOutputBloomFilters(
+    FileDecryptionProperties fileDecryptionProperties) throws Exception {
+    return allBloomFilters(outputFile, fileDecryptionProperties);
+  }
+
+  private Map<ColumnPath, List<BloomFilter>> allBloomFilters(
+    String path, FileDecryptionProperties fileDecryptionProperties) throws Exception {
+    Map<ColumnPath, List<BloomFilter>> allBloomFilters = new HashMap<>();
+    ParquetReadOptions readOptions = ParquetReadOptions.builder()
+      .withDecryption(fileDecryptionProperties)
+      .build();
+    InputFile inputFile = HadoopInputFile.fromPath(new Path(path), conf);
+    try (TransParquetFileReader reader = new TransParquetFileReader(inputFile, readOptions)) {
+      ParquetMetadata metadata = reader.getFooter();
+      for (BlockMetaData blockMetaData: metadata.getBlocks()) {
+        for (ColumnChunkMetaData columnChunkMetaData : blockMetaData.getColumns()) {
+          BloomFilter bloomFilter = reader.readBloomFilter(columnChunkMetaData);
+          if (bloomFilter != null) {
+            List<BloomFilter> bloomFilterList =
+              allBloomFilters.getOrDefault(columnChunkMetaData.getPath(), new ArrayList<>());
+            bloomFilterList.add(bloomFilter);
+            allBloomFilters.put(columnChunkMetaData.getPath(), bloomFilterList);
+          }
+        }
+      }
+    }
+
+    return allBloomFilters;
+  }
 }

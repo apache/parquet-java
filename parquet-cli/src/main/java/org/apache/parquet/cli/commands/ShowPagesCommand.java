@@ -26,6 +26,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import org.apache.parquet.cli.BaseCommand;
 import org.apache.commons.text.TextStringBuilder;
+import org.apache.parquet.cli.rawpages.RawPagesReader;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.page.DataPage;
 import org.apache.parquet.column.page.DataPageV1;
@@ -36,6 +37,8 @@ import org.apache.parquet.column.page.PageReadStore;
 import org.apache.parquet.column.page.PageReader;
 import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
+import org.apache.parquet.hadoop.util.HadoopInputFile;
+import org.apache.parquet.io.SeekableInputStream;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
 import org.slf4j.Logger;
@@ -66,6 +69,11 @@ public class ShowPagesCommand extends BaseCommand {
       description = "List of columns")
   List<String> columns;
 
+  @Parameter(
+    names = {"-r", "--raw"},
+    description = "List the original Thrift page headers and file offsets")
+  boolean raw = false;
+
   @Override
   @SuppressWarnings("unchecked")
   public int run() throws IOException {
@@ -73,6 +81,15 @@ public class ShowPagesCommand extends BaseCommand {
         "A Parquet file is required.");
     Preconditions.checkArgument(targets.size() == 1,
         "Cannot process multiple Parquet files.");
+
+    // Even though the implementation is separated the functionality is logically related so placed in the same command.
+    if (raw) {
+      try (RawPagesReader reader = new RawPagesReader(
+        HadoopInputFile.fromPath(qualifiedPath(targets.get(0)), getConf()))) {
+        reader.listPages(console);
+      }
+      return 0;
+    }
 
     String source = targets.get(0);
     try (ParquetFileReader reader = ParquetFileReader.open(getConf(), qualifiedPath(source))) {

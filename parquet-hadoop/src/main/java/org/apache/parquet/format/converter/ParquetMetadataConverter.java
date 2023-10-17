@@ -1932,13 +1932,43 @@ public class ParquetMetadataConverter {
       int valueCount, int nullCount, int rowCount,
       org.apache.parquet.column.Encoding dataEncoding,
       int rlByteLength, int dlByteLength) {
-    // TODO: pageHeader.crc = ...;
     DataPageHeaderV2 dataPageHeaderV2 = new DataPageHeaderV2(
         valueCount, nullCount, rowCount,
         getEncoding(dataEncoding),
         dlByteLength, rlByteLength);
     PageHeader pageHeader = new PageHeader(PageType.DATA_PAGE_V2, uncompressedSize, compressedSize);
     pageHeader.setData_page_header_v2(dataPageHeaderV2);
+    return pageHeader;
+  }
+
+  public void writeDataPageV2Header(
+    int uncompressedSize, int compressedSize,
+    int valueCount, int nullCount, int rowCount,
+    org.apache.parquet.column.Encoding dataEncoding,
+    int rlByteLength, int dlByteLength, int crc,
+    OutputStream to, BlockCipher.Encryptor blockEncryptor,
+    byte[] pageHeaderAAD) throws IOException {
+    writePageHeader(
+      newDataPageV2Header(
+        uncompressedSize, compressedSize,
+        valueCount, nullCount, rowCount,
+        dataEncoding,
+        rlByteLength, dlByteLength, crc),
+      to, blockEncryptor, pageHeaderAAD);
+  }
+
+  private PageHeader newDataPageV2Header(
+    int uncompressedSize, int compressedSize,
+    int valueCount, int nullCount, int rowCount,
+    org.apache.parquet.column.Encoding dataEncoding,
+    int rlByteLength, int dlByteLength, int crc) {
+    DataPageHeaderV2 dataPageHeaderV2 = new DataPageHeaderV2(
+      valueCount, nullCount, rowCount,
+      getEncoding(dataEncoding),
+      dlByteLength, rlByteLength);
+    PageHeader pageHeader = new PageHeader(PageType.DATA_PAGE_V2, uncompressedSize, compressedSize);
+    pageHeader.setData_page_header_v2(dataPageHeaderV2);
+    pageHeader.setCrc(crc);
     return pageHeader;
   }
 

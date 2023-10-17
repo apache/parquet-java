@@ -53,6 +53,8 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import java.util.zip.CRC32;
 
 import org.apache.hadoop.conf.Configuration;
@@ -99,7 +101,6 @@ import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.hadoop.metadata.FileMetaData;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
-import org.apache.parquet.hadoop.util.HiddenFileFilter;
 import org.apache.parquet.hadoop.util.counters.BenchmarkCounter;
 import org.apache.parquet.internal.column.columnindex.ColumnIndex;
 import org.apache.parquet.internal.column.columnindex.OffsetIndex;
@@ -373,17 +374,25 @@ public class ParquetFileReader implements Closeable {
     return readAllFootersInParallelUsingSummaryFiles(configuration, files, skipRowGroups);
   }
 
+  static boolean filterHiddenFiles(FileStatus file) {
+    final char c = file.getPath().getName().charAt(0);
+    return c != '.' && c != '_';
+  }
+
   private static List<FileStatus> listFiles(Configuration conf, FileStatus fileStatus) throws IOException {
     if (fileStatus.isDir()) {
       FileSystem fs = fileStatus.getPath().getFileSystem(conf);
-      FileStatus[] list = fs.listStatus(fileStatus.getPath(), HiddenFileFilter.INSTANCE);
-      List<FileStatus> result = new ArrayList<FileStatus>();
-      for (FileStatus sub : list) {
-        result.addAll(listFiles(conf, sub));
-      }
-      return result;
+      return Arrays.stream(fs.listStatus(fileStatus.getPath()))
+        .filter(ParquetFileReader::filterHiddenFiles)
+        .flatMap(sub -> {
+          try {
+            return listFiles(conf, sub).stream();
+          } catch (IOException e) {
+            throw new RuntimeException(e);
+          }
+        }).collect(Collectors.toList());
     } else {
-      return Arrays.asList(fileStatus);
+      return Collections.singletonList(fileStatus);
     }
   }
 
@@ -1615,23 +1624,36 @@ public class ParquetFileReader implements Closeable {
             break;
           case DATA_PAGE_V2:
             DataPageHeaderV2 dataHeaderV2 = pageHeader.getData_page_header_v2();
-            int dataSize = compressedPageSize - dataHeaderV2.getRepetition_levels_byte_length() - dataHeaderV2.getDefinition_levels_byte_length();
-            pagesInChunk.add(
-                new DataPageV2(
-                    dataHeaderV2.getNum_rows(),
-                    dataHeaderV2.getNum_nulls(),
-                    dataHeaderV2.getNum_values(),
-                    this.readAsBytesInput(dataHeaderV2.getRepetition_levels_byte_length()),
-                    this.readAsBytesInput(dataHeaderV2.getDefinition_levels_byte_length()),
-                    converter.getEncoding(dataHeaderV2.getEncoding()),
-                    this.readAsBytesInput(dataSize),
-                    uncompressedPageSize,
-                    converter.fromParquetStatistics(
-                        getFileMetaData().getCreatedBy(),
-                        dataHeaderV2.getStatistics(),
-                        type),
-                    dataHeaderV2.isIs_compressed()
-                    ));
+            int dataSize = compressedPageSize - dataHeaderV2.getRepetition_levels_byte_length() -
+              dataHeaderV2.getDefinition_levels_byte_length();
+            final BytesInput repetitionLevels = this.readAsBytesInput(dataHeaderV2.getRepetition_levels_byte_length());
+            final BytesInput definitionLevels = this.readAsBytesInput(dataHeaderV2.getDefinition_levels_byte_length());
+            final BytesInput values = this.readAsBytesInput(dataSize);
+            if (options.usePageChecksumVerification() && pageHeader.isSetCrc()) {
+              pageBytes = BytesInput.concat(repetitionLevels, definitionLevels, values);
+              verifyCrc(pageHeader.getCrc(), pageBytes.toByteArray(),
+                "could not verify page integrity, CRC checksum verification failed");
+            }
+            DataPageV2 dataPageV2 = new DataPageV2(
+              dataHeaderV2.getNum_rows(),
+              dataHeaderV2.getNum_nulls(),
+              dataHeaderV2.getNum_values(),
+              repetitionLevels,
+              definitionLevels,
+              converter.getEncoding(dataHeaderV2.getEncoding()),
+              values,
+              uncompressedPageSize,
+              converter.fromParquetStatistics(
+                getFileMetaData().getCreatedBy(),
+                dataHeaderV2.getStatistics(),
+                type),
+              dataHeaderV2.isIs_compressed()
+            );
+            // Copy crc to new page, used for testing
+            if (pageHeader.isSetCrc()) {
+              dataPageV2.setCrc(pageHeader.getCrc());
+            }
+            pagesInChunk.add(dataPageV2);
             valuesCountReadSoFar += dataHeaderV2.getNum_values();
             ++dataPageCountReadSoFar;
             break;
@@ -1651,7 +1673,7 @@ public class ParquetFileReader implements Closeable {
       }
       BytesInputDecompressor decompressor = options.getCodecFactory().getDecompressor(descriptor.metadata.getCodec());
       return new ColumnChunkPageReader(decompressor, pagesInChunk, dictionaryPage, offsetIndex,
-        rowCount, pageBlockDecryptor, aadPrefix, rowGroupOrdinal, columnOrdinal);
+        rowCount, pageBlockDecryptor, aadPrefix, rowGroupOrdinal, columnOrdinal, options);
     }
 
     private boolean hasMorePages(long valuesCountReadSoFar, int dataPageCountReadSoFar) {

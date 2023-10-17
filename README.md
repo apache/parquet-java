@@ -157,29 +157,30 @@ The build runs in [GitHub Actions](https://github.com/apache/parquet-mr/actions)
 [![Build Status](https://github.com/apache/parquet-mr/workflows/Test/badge.svg)](https://github.com/apache/parquet-mr/actions)
 
 ## Add Parquet as a dependency in Maven
-The current release is version `1.12.0`
+
+The current release is version `1.13.0`
 
 ```xml
   <dependencies>
     <dependency>
       <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-common</artifactId>
-      <version>1.12.0</version>
+      <version>1.13.0</version>
     </dependency>
     <dependency>
       <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-encoding</artifactId>
-      <version>1.12.0</version>
+      <version>1.13.0</version>
     </dependency>
     <dependency>
       <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-column</artifactId>
-      <version>1.12.0</version>
+      <version>1.13.0</version>
     </dependency>
     <dependency>
       <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-hadoop</artifactId>
-      <version>1.12.0</version>
+      <version>1.13.0</version>
     </dependency>
   </dependencies>
 ```
@@ -222,10 +223,9 @@ We hold ourselves and the Parquet developer community to two codes of conduct:
 
 ## Discussions
 * Mailing list: [dev@parquet.apache.org](http://mail-archives.apache.org/mod_mbox/parquet-dev/)
-* Bug trackter: [jira](https://issues.apache.org/jira/browse/PARQUET)
+* Bug tracker: [jira](https://issues.apache.org/jira/browse/PARQUET)
 * Discussions also take place in github pull requests
 
 ## License
 
 Licensed under the Apache License, Version 2.0: http://www.apache.org/licenses/LICENSE-2.0
-See also:

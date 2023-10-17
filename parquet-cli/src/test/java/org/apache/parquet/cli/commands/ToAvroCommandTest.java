@@ -73,6 +73,7 @@ public class ToAvroCommandTest extends AvroFileTest {
     assert (cmd.run() == 0);
   }
 
+  @Test
   public void testToAvroCommandWithGzipCompression() throws IOException {
     File avroFile = toAvro(parquetFile(), "GZIP");
     Assert.assertTrue(avroFile.exists());
@@ -87,6 +88,18 @@ public class ToAvroCommandTest extends AvroFileTest {
   @Test
   public void testToAvroCommandWithZstdCompression() throws IOException {
     File avroFile = toAvro(parquetFile(), "ZSTD");
+    Assert.assertTrue(avroFile.exists());
+  }
+
+  @Test
+  public void testToAvroCommandWithBzip2Compression() throws IOException {
+    File avroFile = toAvro(parquetFile(), "bzip2");
+    Assert.assertTrue(avroFile.exists());
+  }
+
+  @Test
+  public void testToAvroCommandWithXzCompression() throws IOException {
+    File avroFile = toAvro(parquetFile(), "xz");
     Assert.assertTrue(avroFile.exists());
   }
 

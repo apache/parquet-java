@@ -26,6 +26,7 @@ import org.apache.hadoop.fs.Path;
 
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
+import org.apache.parquet.compression.CompressionCodecFactory;
 import org.apache.parquet.crypto.FileEncryptionProperties;
 import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
@@ -56,7 +57,7 @@ public class ParquetWriter<T> implements Closeable {
   public static final int MAX_PADDING_SIZE_DEFAULT = 8 * 1024 * 1024; // 8MB
 
   private final InternalParquetRecordWriter<T> writer;
-  private final CodecFactory codecFactory;
+  private final CompressionCodecFactory codecFactory;
 
   /**
    * Create a new ParquetWriter.
@@ -293,7 +294,7 @@ public class ParquetWriter<T> implements Closeable {
     fileWriter.start();
 
     this.codecFactory = new CodecFactory(conf, encodingProps.getPageSizeThreshold());
-    CodecFactory.BytesCompressor compressor =	codecFactory.getCompressor(compressionCodecName);
+    CompressionCodecFactory.BytesInputCompressor compressor = codecFactory.getCompressor(compressionCodecName);
     this.writer = new InternalParquetRecordWriter<T>(
         fileWriter,
         writeSupport,
@@ -616,6 +617,28 @@ public class ParquetWriter<T> implements Closeable {
 
     public SELF withBloomFilterFPP(String columnPath, double fpp) {
       encodingPropsBuilder.withBloomFilterFPP(columnPath, fpp);
+      return self();
+    }
+
+    /**
+     * When NDV (number of distinct values) for a specified column is not set, whether to use
+     * `AdaptiveBloomFilter` to automatically adjust the BloomFilter size according to `parquet.bloom.filter.max.bytes`
+     *
+     * @param enabled whether to write bloom filter for the column
+     */
+    public SELF withAdaptiveBloomFilterEnabled(boolean enabled) {
+      encodingPropsBuilder.withAdaptiveBloomFilterEnabled(enabled);
+      return self();
+    }
+
+    /**
+     * When `AdaptiveBloomFilter` is enabled, set how many bloom filter candidates to use.
+     *
+     * @param columnPath the path of the column (dot-string)
+     * @param number the number of candidate
+     */
+    public SELF withBloomFilterCandidateNumber(String columnPath, int number) {
+      encodingPropsBuilder.withBloomFilterCandidatesNumber(columnPath, number);
       return self();
     }
 

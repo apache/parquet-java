@@ -19,6 +19,7 @@
 
 package org.apache.parquet.crypto;
 
+import java.nio.ByteBuffer;
 import javax.crypto.Cipher;
 import javax.crypto.spec.IvParameterSpec;
 
@@ -80,6 +81,47 @@ public class AesCtrDecryptor extends AesCipher implements BlockCipher.Decryptor{
       } 
 
       cipher.doFinal(ciphertext, inputOffset, inputLength, plainText, outputOffset);
+    } catch (GeneralSecurityException e) {
+      throw new ParquetCryptoRuntimeException("Failed to decrypt", e);
+    }
+
+    return plainText;
+  }
+  public ByteBuffer decrypt(ByteBuffer ciphertext, byte[] AAD) {
+    int cipherTextOffset = SIZE_LENGTH;
+    int cipherTextLength = ciphertext.limit() - ciphertext.position() - SIZE_LENGTH;
+
+    int plainTextLength = cipherTextLength - NONCE_LENGTH;
+    if (plainTextLength < 1) {
+      throw new ParquetCryptoRuntimeException("Wrong input length " + plainTextLength);
+    }
+
+    // skip size
+    ciphertext.position(ciphertext.position() + cipherTextOffset);
+    // Get the nonce from ciphertext
+    ciphertext.get(ctrIV, 0, NONCE_LENGTH);
+
+    // Reuse the input buffer as the output buffer
+    ByteBuffer plainText = ciphertext.slice();
+    plainText.limit(plainTextLength);
+    int inputLength = cipherTextLength - NONCE_LENGTH;
+    int inputOffset = cipherTextOffset + NONCE_LENGTH;
+    try {
+      IvParameterSpec spec = new IvParameterSpec(ctrIV);
+      cipher.init(Cipher.DECRYPT_MODE, aesKey, spec);
+
+      // Breaking decryption into multiple updates, to trigger h/w acceleration in Java 9+
+      while (inputLength > CHUNK_LENGTH) {
+        ciphertext.position(inputOffset);
+        ciphertext.limit(inputOffset + CHUNK_LENGTH);
+        cipher.update(ciphertext, plainText);
+        inputOffset += CHUNK_LENGTH;
+        inputLength -= CHUNK_LENGTH;
+      }
+      ciphertext.position(inputOffset);
+      ciphertext.limit(inputOffset + inputLength);
+      cipher.doFinal(ciphertext, plainText);
+      plainText.flip();
     } catch (GeneralSecurityException e) {
       throw new ParquetCryptoRuntimeException("Failed to decrypt", e);
     }

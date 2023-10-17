@@ -38,4 +38,28 @@ public class ConvertCSVCommandTest extends CSVFileTest {
     Assert.assertEquals(0, command.run());
     Assert.assertTrue(output.exists());
   }
+
+  @Test
+  public void testConvertCSVCommandWithMultipleInput() throws IOException {
+    File file = csvFile();
+    ConvertCSVCommand command = new ConvertCSVCommand(createLogger());
+    command.targets = Arrays.asList(file.getAbsolutePath(), file.getAbsolutePath());
+    File output = new File(getTempFolder(), getClass().getSimpleName() + ".parquet");
+    command.outputPath = output.getAbsolutePath();
+    command.setConf(new Configuration());
+    Assert.assertEquals(0, command.run());
+    Assert.assertTrue(output.exists());
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void testConvertCSVCommandWithDifferentSchemas() throws IOException {
+    File file = csvFile();
+    File fileWithDifferentSchema = csvFileWithDifferentSchema();
+    ConvertCSVCommand command = new ConvertCSVCommand(createLogger());
+    command.targets = Arrays.asList(file.getAbsolutePath(), fileWithDifferentSchema.getAbsolutePath());
+    File output = new File(getTempFolder(), getClass().getSimpleName() + ".parquet");
+    command.outputPath = output.getAbsolutePath();
+    command.setConf(new Configuration());
+    command.run();
+  }
 }

@@ -19,6 +19,7 @@
 
 package org.apache.parquet.crypto;
 
+import java.nio.ByteBuffer;
 import javax.crypto.AEADBadTagException;
 import javax.crypto.Cipher;
 import javax.crypto.spec.GCMParameterSpec;
@@ -69,6 +70,37 @@ public class AesGcmDecryptor extends AesCipher implements BlockCipher.Decryptor{
       if (null != AAD) cipher.updateAAD(AAD);
 
       cipher.doFinal(ciphertext, inputOffset, inputLength, plainText, outputOffset);
+    }  catch (AEADBadTagException e) {
+      throw new TagVerificationException("GCM tag check failed", e);
+    } catch (GeneralSecurityException e) {
+      throw new ParquetCryptoRuntimeException("Failed to decrypt", e);
+    }
+
+    return plainText;
+  }
+
+  public ByteBuffer decrypt(ByteBuffer ciphertext, byte[] AAD) {
+    int cipherTextOffset = SIZE_LENGTH;
+    int cipherTextLength = ciphertext.limit() - ciphertext.position() - SIZE_LENGTH;
+    int plainTextLength = cipherTextLength - GCM_TAG_LENGTH - NONCE_LENGTH;
+    if (plainTextLength < 1) {
+      throw new ParquetCryptoRuntimeException("Wrong input length " + plainTextLength);
+    }
+
+    ciphertext.position(ciphertext.position() + cipherTextOffset);
+    // Get the nonce from ciphertext
+    ciphertext.get(localNonce);
+
+    // Reuse the input buffer as the output buffer
+    ByteBuffer plainText = ciphertext.slice();
+    plainText.limit(plainTextLength);
+    try {
+      GCMParameterSpec spec = new GCMParameterSpec(GCM_TAG_LENGTH_BITS, localNonce);
+      cipher.init(Cipher.DECRYPT_MODE, aesKey, spec);
+      if (null != AAD) cipher.updateAAD(AAD);
+
+      cipher.doFinal(ciphertext, plainText);
+      plainText.flip();
     }  catch (AEADBadTagException e) {
       throw new TagVerificationException("GCM tag check failed", e);
     } catch (GeneralSecurityException e) {

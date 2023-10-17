@@ -27,6 +27,12 @@ public final class ProtoConstants {
   public static final String METADATA_ENUM_KEY_VALUE_SEPARATOR = ":";
   public static final String METADATA_ENUM_ITEM_SEPARATOR = ",";
   /**
+   * Configuration flag to ignore the unknown fields during conversion of Parquet to Proto
+   * if fields are missing in target schema instead of throwing an error.
+   * Enabling it will avoid a job failure, but you should perhaps use an up-to-date schema instead.
+   */
+  public static final String CONFIG_IGNORE_UNKNOWN_FIELDS = "parquet.proto.ignore.unknown.fields";
+  /**
    * Configuration flag to enable reader to accept enum label that's neither defined in its own proto schema nor conform
    * to the "UNKNOWN_ENUM_*" pattern with which we can get the enum number. The enum value will be treated as an unknown
    * enum with number -1. <br>

@@ -29,7 +29,9 @@ import org.apache.parquet.cli.util.Expressions;
 import org.slf4j.Logger;
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.apache.parquet.cli.util.Expressions.select;
 
@@ -58,35 +60,38 @@ public class CatCommand extends BaseCommand {
     Preconditions.checkArgument(
         sourceFiles != null && !sourceFiles.isEmpty(),
         "Missing file name");
-    Preconditions.checkArgument(sourceFiles.size() == 1,
-        "Only one file can be given");
 
-    final String source = sourceFiles.get(0);
+    // Ensure all source files have the columns specified first
+    Map<String, Schema> schemas = new HashMap<>();
+    for (String source : sourceFiles) {
+      Schema schema = getAvroSchema(source);
+      schemas.put(source, Expressions.filterSchema(schema, columns));
+    }
 
-    Schema schema = getAvroSchema(source);
-    Schema projection = Expressions.filterSchema(schema, columns);
-
-    Iterable<Object> reader = openDataFile(source, projection);
-    boolean threw = true;
-    long count = 0;
-    try {
-      for (Object record : reader) {
-        if (numRecords > 0 && count >= numRecords) {
-          break;
+    for (String source : sourceFiles) {
+      Schema projection = schemas.get(source);
+      Iterable<Object> reader = openDataFile(source, projection);
+      boolean threw = true;
+      long count = 0;
+      try {
+        for (Object record : reader) {
+          if (numRecords > 0 && count >= numRecords) {
+            break;
+          }
+          if (columns == null || columns.size() != 1) {
+            console.info(String.valueOf(record));
+          } else {
+            console.info(String.valueOf(select(projection, record, columns.get(0))));
+          }
+          count += 1;
         }
-        if (columns == null || columns.size() != 1) {
-          console.info(String.valueOf(record));
-        } else {
-          console.info(String.valueOf(select(projection, record, columns.get(0))));
+        threw = false;
+      } catch (RuntimeException e) {
+        throw new RuntimeException("Failed on record " + count + " in file " + source, e);
+      } finally {
+        if (reader instanceof Closeable) {
+          Closeables.close((Closeable) reader, threw);
         }
-        count += 1;
-      }
-      threw = false;
-    } catch (RuntimeException e) {
-      throw new RuntimeException("Failed on record " + count, e);
-    } finally {
-      if (reader instanceof Closeable) {
-        Closeables.close((Closeable) reader, threw);
       }
     }
 

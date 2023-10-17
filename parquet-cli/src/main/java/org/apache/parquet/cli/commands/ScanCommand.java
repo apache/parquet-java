@@ -30,13 +30,15 @@ import org.slf4j.Logger;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Parameters(commandDescription = "Scan all records from a file")
 public class ScanCommand extends BaseCommand {
 
   @Parameter(description = "<file>")
-  String sourceFile;
+  List<String> sourceFiles;
 
   @Parameter(
     names = {"-c", "--column", "--columns"},
@@ -50,32 +52,44 @@ public class ScanCommand extends BaseCommand {
   @Override
   public int run() throws IOException {
     Preconditions.checkArgument(
-      sourceFile != null && !sourceFile.isEmpty(),
+      sourceFiles != null && !sourceFiles.isEmpty(),
       "Missing file name");
 
-    Schema schema = getAvroSchema(sourceFile);
-    Schema projection = Expressions.filterSchema(schema, columns);
+    // Ensure all source files have the columns specified first
+    Map<String, Schema> schemas = new HashMap<>();
+    for (String sourceFile : sourceFiles) {
+      Schema schema = getAvroSchema(sourceFile);
+      schemas.put(sourceFile, Expressions.filterSchema(schema, columns));
+    }
 
-    long startTime = System.currentTimeMillis();
-    Iterable<Object> reader = openDataFile(sourceFile, projection);
-    boolean threw = true;
-    long count = 0;
-    try {
-      for (Object record : reader) {
-        count += 1;
+    long totalStartTime = System.currentTimeMillis();
+    long totalCount = 0;
+    for (String sourceFile : sourceFiles) {
+      long startTime = System.currentTimeMillis();
+      Iterable<Object> reader = openDataFile(sourceFile, schemas.get(sourceFile));
+      boolean threw = true;
+      long count = 0;
+      try {
+        for (Object record : reader) {
+          count += 1;
+        }
+        threw = false;
+      } catch (RuntimeException e) {
+        throw new RuntimeException("Failed on record " + count + " in " + sourceFile, e);
+      } finally {
+        if (reader instanceof Closeable) {
+          Closeables.close((Closeable) reader, threw);
+        }
       }
-      threw = false;
-    } catch (RuntimeException e) {
-      throw new RuntimeException("Failed on record " + count, e);
-    } finally {
-      if (reader instanceof Closeable) {
-        Closeables.close((Closeable) reader, threw);
+      totalCount += count;
+      if (1 < sourceFiles.size()) {
+        long endTime = System.currentTimeMillis();
+        console.info("Scanned " + count + " records from " + sourceFile + " in " + (endTime - startTime) / 1000.0 + " s");
       }
     }
-    long endTime = System.currentTimeMillis();
-
-    console.info("Scanned " + count + " records from " + sourceFile);
-    console.info("Time: " + (endTime - startTime) / 1000.0 + " s");
+    long totalEndTime = System.currentTimeMillis();
+    console.info("Scanned " + totalCount + " records from " + sourceFiles.size() + " file(s)");
+    console.info("Time: " + (totalEndTime - totalStartTime) / 1000.0 + " s");
     return 0;
   }
 

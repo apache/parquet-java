@@ -32,6 +32,53 @@
   <name>Apache Parquet Command-line</name>
   <url>https://parquet.apache.org</url>
 
+  <properties>
+      <deps.scope>provided</deps.scope>
+  </properties>
+
+  <profiles>
+    <!-- Profile to build a standalone uber jar that can be used with "java -jar" without a Hadoop environment -->
+    <profile>
+      <id>local</id>
+      <properties>
+        <deps.scope>compile</deps.scope>
+      </properties>
+      <build>
+        <!-- Required to skip some checking plugins to work. The generated jar will not be part of the distribution anyway. -->
+        <plugins>
+          <plugin>
+            <artifactId>maven-enforcer-plugin</artifactId>
+            <executions>
+              <execution>
+                <id>enforce-banned-dependencies</id>
+                <goals>
+                  <goal>enforce</goal>
+                </goals>
+                <configuration>
+                  <skip>true</skip>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-dependency-plugin</artifactId>
+            <executions>
+              <execution>
+                <goals>
+                  <goal>analyze-only</goal>
+                </goals>
+                <configuration>
+                  <skip>true</skip>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
+
   <dependencies>
     <dependency>
       <groupId>org.apache.parquet</groupId>
@@ -62,6 +109,12 @@
       <groupId>org.apache.avro</groupId>
       <artifactId>avro</artifactId>
       <version>${avro.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.tukaani</groupId>
+      <artifactId>xz</artifactId>
+      <version>${tukaani.version}</version>
+      <scope>runtime</scope>
     </dependency>
     <dependency>
       <groupId>com.github.luben</groupId>
@@ -119,47 +172,47 @@
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-log4j12</artifactId>
       <version>${slf4j.version}</version>
-      <scope>provided</scope>
+      <scope>${deps.scope}</scope>
     </dependency>
     <dependency>
       <groupId>com.google.guava</groupId>
       <artifactId>guava</artifactId>
       <version>${guava.version}</version>
-      <scope>provided</scope>
+      <scope>${deps.scope}</scope>
     </dependency>
     <dependency>
       <groupId>org.apache.hadoop</groupId>
       <artifactId>hadoop-client</artifactId>
-      <scope>provided</scope>
+      <scope>${deps.scope}</scope>
     </dependency>
     <dependency>
       <groupId>org.apache.hadoop</groupId>
       <artifactId>hadoop-common</artifactId>
-      <scope>provided</scope>
+      <scope>${deps.scope}</scope>
     </dependency>
     <dependency>
       <groupId>com.google.code.findbugs</groupId>
       <artifactId>jsr305</artifactId>
       <version>${jsr305.version}</version>
-      <scope>provided</scope>
+      <scope>${deps.scope}</scope>
     </dependency>
     <dependency>
       <groupId>log4j</groupId>
       <artifactId>log4j</artifactId>
       <version>1.2.17</version>
-      <scope>provided</scope>
+      <scope>${deps.scope}</scope>
     </dependency>
     <dependency>
       <groupId>commons-io</groupId>
       <artifactId>commons-io</artifactId>
       <version>2.7</version>
-      <scope>provided</scope>
+      <scope>${deps.scope}</scope>
     </dependency>
     <dependency>
       <groupId>commons-logging</groupId>
       <artifactId>commons-logging</artifactId>
       <version>1.1.3</version>
-      <scope>provided</scope>
+      <scope>${deps.scope}</scope>
     </dependency>
   </dependencies>
 
@@ -168,6 +221,13 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-jar-plugin</artifactId>
+        <configuration>
+          <archive>
+            <manifest>
+              <mainClass>org.apache.parquet.cli.Main</mainClass>
+            </manifest>
+          </archive>
+        </configuration>
       </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
@@ -210,6 +270,10 @@
                   <shadedPattern>${shade.prefix}.org.apache.avro</shadedPattern>
                 </relocation>
               </relocations>
+              <transformers>
+                <!-- Needs to merge Hadoop's FileSystem plugin manifest -->
+                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+              </transformers>
             </configuration>
           </execution>
         </executions>

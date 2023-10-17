@@ -15,7 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-name: Test
+name: CI Hadoop 2
 
 on: [push, pull_request]
 
@@ -26,16 +26,16 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        java: [ '1.8', '11', '17' ]
         codes: [ 'uncompressed,brotli', 'gzip,snappy' ]
     name: Build Parquet with JDK ${{ matrix.java }} and ${{ matrix.codes }}
 
     steps:
       - uses: actions/checkout@master
-      - name: Set up JDK ${{ matrix.java }}
-        uses: actions/setup-java@v1
+      - name: Set up JDK8
+        uses: actions/setup-java@v3
         with:
-          java-version: ${{ matrix.java }}
+          java-version: 8
+          distribution: temurin
       - name: before_install
         env:
           CI_TARGET_BRANCH: $GITHUB_HEAD_REF
@@ -45,7 +45,7 @@ jobs:
         run: |
           EXTRA_JAVA_TEST_ARGS=$(mvn help:evaluate -Dexpression=extraJavaTestArgs -q -DforceStdout)
           export MAVEN_OPTS="$MAVEN_OPTS $EXTRA_JAVA_TEST_ARGS"
-          mvn install --batch-mode -DskipTests=true -Dmaven.javadoc.skip=true -Dsource.skip=true -Djava.version=${{ matrix.java }}
+          mvn install --batch-mode -P hadoop2 -DskipTests=true -Dmaven.javadoc.skip=true -Dsource.skip=true -Djava.version=1.8
       - name: verify
         env:
           TEST_CODECS: ${{ matrix.codes }}
@@ -53,4 +53,4 @@ jobs:
         run: |
           EXTRA_JAVA_TEST_ARGS=$(mvn help:evaluate -Dexpression=extraJavaTestArgs -q -DforceStdout)
           export MAVEN_OPTS="$MAVEN_OPTS $EXTRA_JAVA_TEST_ARGS"
-          mvn verify --batch-mode javadoc:javadoc -Pci-test
+          mvn verify --batch-mode -P hadoop2 javadoc:javadoc -Pci-test

@@ -29,8 +29,8 @@ import java.util.Objects;
 import org.apache.parquet.column.ColumnWriteStore;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.values.bloomfilter.BloomFilterWriteStore;
+import org.apache.parquet.compression.CompressionCodecFactory.BytesInputCompressor;
 import org.apache.parquet.crypto.InternalFileEncryptor;
-import org.apache.parquet.hadoop.CodecFactory.BytesCompressor;
 import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.hadoop.api.WriteSupport.FinalizedWriteContext;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
@@ -51,7 +51,7 @@ class InternalParquetRecordWriter<T> {
   private final long rowGroupSize;
   private long rowGroupSizeThreshold;
   private long nextRowGroupSize;
-  private final BytesCompressor compressor;
+  private final BytesInputCompressor compressor;
   private final boolean validating;
   private final ParquetProperties props;
 
@@ -83,7 +83,7 @@ class InternalParquetRecordWriter<T> {
       MessageType schema,
       Map<String, String> extraMetaData,
       long rowGroupSize,
-      BytesCompressor compressor,
+      BytesInputCompressor compressor,
       boolean validating,
       ParquetProperties props) {
     this.parquetFileWriter = parquetFileWriter;

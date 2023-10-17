@@ -22,6 +22,7 @@ import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.cli.BaseCommand;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
@@ -44,16 +45,25 @@ public class RewriteCommand extends BaseCommand {
           description = "<comma-separated text of input parquet file paths>",
           required = true)
   List<String> inputs;
+
   @Parameter(
           names = {"-o", "--output"},
           description = "<output parquet file path>",
           required = true)
   String output;
+
+  @Parameter(
+          names={"--overwrite"},
+          description="Overwrite the output file if it exists",
+          required = false)
+  boolean overwrite;
+
   @Parameter(
           names = {"--mask-mode"},
           description = "<mask mode: nullify>",
           required = false)
   String maskMode;
+
   @Parameter(
           names = {"--mask-columns"},
           description = "<columns to be replaced with masked value>",
@@ -62,7 +72,7 @@ public class RewriteCommand extends BaseCommand {
 
   @Parameter(
           names = {"--prune-columns"},
-          description = "<columns to be replaced with masked value>",
+          description = "<columns to be removed>",
           required = false)
   List<String> pruneColumns;
 
@@ -76,7 +86,7 @@ public class RewriteCommand extends BaseCommand {
     super(console);
   }
 
-  private RewriteOptions buildOptionsOrFail() {
+  private RewriteOptions buildOptionsOrFail() throws IOException {
     Preconditions.checkArgument(inputs != null && !inputs.isEmpty() && output != null,
             "Both input and output parquet file paths are required.");
 
@@ -108,7 +118,16 @@ public class RewriteCommand extends BaseCommand {
       builder.transform(codecName);
     }
 
-    return builder.build();
+    RewriteOptions options = builder.build();
+
+    // If RewriteOptions are successfully built and the overwrite option is specified, remove the output path
+    FileSystem outFS = outputPath.getFileSystem(getConf());
+    if (overwrite && outFS.exists(outputPath)) {
+      console.debug("Deleting output file {} (already exists)", outputPath);
+      outFS.delete(outputPath);
+    }
+
+    return options;
   }
 
   @Override

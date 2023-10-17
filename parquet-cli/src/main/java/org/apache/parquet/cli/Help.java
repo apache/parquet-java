@@ -18,6 +18,8 @@
  */
 package org.apache.parquet.cli;
 
+import com.beust.jcommander.DefaultUsageFormatter;
+import com.beust.jcommander.IUsageFormatter;
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParameterDescription;
@@ -33,11 +35,13 @@ public class Help implements Command {
 
   private final JCommander jc;
   private final Logger console;
+  private final IUsageFormatter formatter;
   private String programName;
 
   public Help(JCommander jc, Logger console) {
     this.jc = jc;
     this.console = console;
+    this.formatter = new DefaultUsageFormatter(jc);
   }
 
   public void setProgramName(String programName) {
@@ -67,7 +71,7 @@ public class Help implements Command {
             new Object[] { programName, cmd });
         }
         console.info("\n  Description:");
-        console.info("\n    {}", jc.getCommandDescription(cmd));
+        console.info("\n    {}", formatter.getCommandDescription(cmd));
         if (!commander.getParameters().isEmpty()) {
           console.info("\n  Command options:\n");
           for (ParameterDescription param : commander.getParameters()) {
@@ -112,7 +116,7 @@ public class Help implements Command {
     console.info("\n  Commands:\n");
     for (String command : jc.getCommands().keySet()) {
       console.info("    {}\n\t{}",
-          command, jc.getCommandDescription(command));
+          command, formatter.getCommandDescription(command));
     }
 
     jc.getCommands().keySet().stream().filter(s -> !s.equals("help")).findFirst().ifPresent(command -> {

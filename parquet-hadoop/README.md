@@ -175,6 +175,12 @@ If the frequency is low, the performance will be better.
 
 ---
 
+**Property:** `parquet.page.value.count.threshold`  
+**Description:** The value count threshold within a Parquet page used on each page check.
+**Default value:** `Integer.MAX_VALUE / 2`
+
+---
+
 **Property:** `parquet.page.size.check.estimate`  
 **Description:** If it is true, the column writer estimates the size of the next page.  
 It prevents issues with rows that vary significantly in size.  
@@ -197,7 +203,7 @@ This property is the length to be used for truncating binary values if possible 
 
 **Property:** `parquet.bloom.filter.enabled`  
 **Description:** Whether to enable writing bloom filter.  
-If it is true, the bloom filter will be enable for all columns. If it is false, it will be disabled for all columns.  
+If it is true, the bloom filter will be enabled for all columns. If it is false, it will be disabled for all columns.  
 It is also possible to enable it for some columns by specifying the column name within the property followed by #.  
 **Default value:** `false`  
 **Example:**
@@ -208,6 +214,24 @@ conf.set("parquet.bloom.filter.enabled", true);
 conf.set("parquet.bloom.filter.enabled#column.path", false);
 // The bloom filter will be enabled for all columns except 'column.path'
 ```
+
+---
+
+**Property:** `parquet.bloom.filter.adaptive.enabled`  
+**Description:** Whether to enable writing adaptive bloom filter.  
+If it is true, the bloom filter will be generated with the optimal bit size 
+according to the number of real data distinct values. If it is false, it will not take effect.
+Note that the maximum bytes of the bloom filter will not exceed `parquet.bloom.filter.max.bytes` configuration (if it is 
+set too small, the generated bloom filter will not be efficient).
+**Default value:** `false`
+
+---
+
+**Property:** `parquet.bloom.filter.candidates.number`  
+**Description:** The number of candidate bloom filters written at the same time.  
+When `parquet.bloom.filter.adaptive.enabled` is true, multiple candidate bloom filters will be inserted 
+at the same time, finally a bloom filter with the optimal bit size will be selected and written to the file.
+**Default value:** `5`
 
 ---
 
@@ -242,6 +266,14 @@ conf.set("parquet.bloom.filter.fpp#column.path", 0.02)
 
 ---
 
+
+**Property:** `parquet.decrypt.off-heap.buffer.enabled`  
+**Description:** Whether to use direct buffers to decrypt encrypted files. This should be set to 
+true if the reader is using a `DirectByteBufferAllocator`
+**Default value:** `false`
+
+
+---
 **Property:** `parquet.page.row.count.limit`  
 **Description:** The maximum number of rows per page.  
 **Default value:** `20000`
