@@ -612,13 +612,13 @@ public class ParquetFileWriter {
    * @throws IOException if any I/O error occurs during writing the file
    */
   public void writeDataPage(
-    int valueCount, int uncompressedPageSize,
-    BytesInput bytes,
-    Statistics<?> statistics,
-    long rowCount,
-    Encoding rlEncoding,
-    Encoding dlEncoding,
-    Encoding valuesEncoding) throws IOException {
+      int valueCount, int uncompressedPageSize,
+      BytesInput bytes,
+      Statistics<?> statistics,
+      long rowCount,
+      Encoding rlEncoding,
+      Encoding dlEncoding,
+      Encoding valuesEncoding) throws IOException {
     writeDataPage(valueCount, uncompressedPageSize, bytes, statistics, rowCount, rlEncoding, dlEncoding, valuesEncoding, null, null);
   }
 
@@ -985,6 +985,21 @@ public class ParquetFileWriter {
     this.columnIndexBuilder = columnIndexBuilder;
     this.offsetIndexBuilder = offsetIndexBuilder;
 
+    endColumn();
+  }
+
+  /**
+   * Overwrite the column total statistics. This special used when the column total statistics
+   * is known while all the page statistics are invalid, for example when rewriting the column.
+   *
+   * @param totalStatistics the column total statistics
+   * @throws IOException if there is an error while writing
+   */
+  public void endColumn(Statistics<?> totalStatistics) throws IOException {
+    Preconditions.checkArgument(totalStatistics != null, "Column total statistics can not be null");
+    currentStatistics = totalStatistics;
+    // Invalid the ColumnIndex
+    columnIndexBuilder = ColumnIndexBuilder.getNoOpBuilder();
     endColumn();
   }
 

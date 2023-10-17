@@ -36,6 +36,8 @@ import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.DOUBLE;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FLOAT;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
 
@@ -175,7 +177,13 @@ public class TestFileBuilder
             else if (primitiveType.getPrimitiveTypeName().equals(BINARY)) {
                 g.add(type.getName(), getString());
             }
-            // Only support 3 types now, more can be added later
+            else if (primitiveType.getPrimitiveTypeName().equals(FLOAT)) {
+                g.add(type.getName(), getFloat());
+            }
+            else if (primitiveType.getPrimitiveTypeName().equals(DOUBLE)) {
+                g.add(type.getName(), getDouble());
+            }
+            // Only support 5 types now, more can be added later
         }
         else {
             GroupType groupType = (GroupType) type;
@@ -204,6 +212,22 @@ public class TestFileBuilder
             sb.append(chars[ThreadLocalRandom.current().nextInt(10)]);
         }
         return sb.toString();
+    }
+
+    private static float getFloat()
+    {
+        if (ThreadLocalRandom.current().nextBoolean()) {
+            return Float.NaN;
+        }
+        return ThreadLocalRandom.current().nextFloat();
+    }
+
+    private static double getDouble()
+    {
+        if (ThreadLocalRandom.current().nextBoolean()) {
+            return Double.NaN;
+        }
+        return ThreadLocalRandom.current().nextDouble();
     }
 
     public static String createTempFile(String prefix)

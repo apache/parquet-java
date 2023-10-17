@@ -324,7 +324,7 @@ public class ParquetRewriter implements Closeable {
 
           // Translate compression and/or encryption
           writer.startColumn(descriptor, crStore.getColumnReader(descriptor).getTotalValueCount(), newCodecName);
-          processChunk(
+          boolean needOverwriteStatistics = processChunk(
                   chunk,
                   newCodecName,
                   columnChunkEncryptorRunTime,
@@ -332,7 +332,12 @@ public class ParquetRewriter implements Closeable {
                   indexCache.getBloomFilter(chunk),
                   indexCache.getColumnIndex(chunk),
                   indexCache.getOffsetIndex(chunk));
-          writer.endColumn();
+          if (needOverwriteStatistics) {
+            // All the page statistics are invalid, so we need to overwrite the column statistics
+            writer.endColumn(chunk.getStatistics());
+          } else {
+            writer.endColumn();
+          }
         } else {
           // Nothing changed, simply copy the binary data.
           BloomFilter bloomFilter = indexCache.getBloomFilter(chunk);
@@ -352,13 +357,18 @@ public class ParquetRewriter implements Closeable {
     }
   }
 
-  private void processChunk(ColumnChunkMetaData chunk,
-                            CompressionCodecName newCodecName,
-                            ColumnChunkEncryptorRunTime columnChunkEncryptorRunTime,
-                            boolean encryptColumn,
-                            BloomFilter bloomFilter,
-                            ColumnIndex columnIndex,
-                            OffsetIndex offsetIndex) throws IOException {
+  /**
+   * Rewrite a single column with the given new compression codec or new encryptor
+   *
+   * @return whether the column statistics should be overwritten
+   */
+  private boolean processChunk(ColumnChunkMetaData chunk,
+                               CompressionCodecName newCodecName,
+                               ColumnChunkEncryptorRunTime columnChunkEncryptorRunTime,
+                               boolean encryptColumn,
+                               BloomFilter bloomFilter,
+                               ColumnIndex columnIndex,
+                               OffsetIndex offsetIndex) throws IOException {
     CompressionCodecFactory codecFactory = HadoopCodecs.newFactory(0);
     CompressionCodecFactory.BytesInputDecompressor decompressor = null;
     CompressionCodecFactory.BytesInputCompressor compressor = null;
@@ -392,6 +402,7 @@ public class ParquetRewriter implements Closeable {
     DictionaryPage dictionaryPage = null;
     long readValues = 0;
     Statistics<?> statistics = null;
+    Statistics<?> emptyStatistics = Statistics.getBuilderForReading(chunk.getPrimitiveType()).build();
     ParquetMetadataConverter converter = new ParquetMetadataConverter();
     int pageOrdinal = 0;
     long totalChunkValues = chunk.getValueCount();
@@ -437,8 +448,20 @@ public class ParquetRewriter implements Closeable {
                   encryptColumn,
                   dataEncryptor,
                   dataPageAAD);
-          statistics = convertStatistics(
+          Statistics<?> v1PageStatistics = convertStatistics(
                   originalCreatedBy, chunk.getPrimitiveType(), headerV1.getStatistics(), columnIndex, pageOrdinal, converter);
+          if (v1PageStatistics == null) {
+            // Reach here means both the columnIndex and the page header statistics are null
+            if (statistics != null) {
+              // Mixed null page statistics and non-null page statistics is not allowed
+              throw new IOException("Detected mixed null page statistics and non-null page statistics");
+            }
+            // Pass an empty page statistics to writer and overwrite the column statistics in the end
+            v1PageStatistics = emptyStatistics;
+          } else {
+            statistics = v1PageStatistics;
+          }
+
           readValues += headerV1.getNum_values();
           if (offsetIndex != null) {
             long rowCount = 1 + offsetIndex.getLastRowIndex(
@@ -446,7 +469,7 @@ public class ParquetRewriter implements Closeable {
             writer.writeDataPage(toIntWithCheck(headerV1.getNum_values()),
                     pageHeader.getUncompressed_page_size(),
                     BytesInput.from(pageLoad),
-                    statistics,
+                    v1PageStatistics,
                     toIntWithCheck(rowCount),
                     converter.getEncoding(headerV1.getRepetition_level_encoding()),
                     converter.getEncoding(headerV1.getDefinition_level_encoding()),
@@ -457,7 +480,7 @@ public class ParquetRewriter implements Closeable {
             writer.writeDataPage(toIntWithCheck(headerV1.getNum_values()),
                     pageHeader.getUncompressed_page_size(),
                     BytesInput.from(pageLoad),
-                    statistics,
+                    v1PageStatistics,
                     converter.getEncoding(headerV1.getRepetition_level_encoding()),
                     converter.getEncoding(headerV1.getDefinition_level_encoding()),
                     converter.getEncoding(headerV1.getEncoding()),
@@ -488,8 +511,19 @@ public class ParquetRewriter implements Closeable {
                   encryptColumn,
                   dataEncryptor,
                   dataPageAAD);
-          statistics = convertStatistics(
+          Statistics<?> v2PageStatistics = convertStatistics(
                   originalCreatedBy, chunk.getPrimitiveType(), headerV2.getStatistics(), columnIndex, pageOrdinal, converter);
+          if (v2PageStatistics == null) {
+            // Reach here means both the columnIndex and the page header statistics are null
+            if (statistics != null) {
+              // Mixed null page statistics and non-null page statistics is not allowed
+              throw new IOException("Detected mixed null page statistics and non-null page statistics");
+            }
+            // Pass an empty page statistics to writer and overwrite the column statistics in the end
+            v2PageStatistics = emptyStatistics;
+          } else {
+            statistics = v2PageStatistics;
+          }
           readValues += headerV2.getNum_values();
           writer.writeDataPageV2(headerV2.getNum_rows(),
                   headerV2.getNum_nulls(),
@@ -499,7 +533,7 @@ public class ParquetRewriter implements Closeable {
                   converter.getEncoding(headerV2.getEncoding()),
                   BytesInput.from(pageLoad),
                   rawDataLength,
-                  statistics,
+                  v2PageStatistics,
                   metaEncryptor,
                   dataPageHeaderAAD);
           pageOrdinal++;
@@ -509,6 +543,8 @@ public class ParquetRewriter implements Closeable {
           break;
       }
     }
+
+    return statistics == null;
   }
 
   private Statistics<?> convertStatistics(String createdBy,

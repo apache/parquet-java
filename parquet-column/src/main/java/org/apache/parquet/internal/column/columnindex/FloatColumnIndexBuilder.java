@@ -84,7 +84,6 @@ class FloatColumnIndexBuilder extends ColumnIndexBuilder {
 
   private final FloatList minValues = new FloatArrayList();
   private final FloatList maxValues = new FloatArrayList();
-  private boolean invalid;
 
   private static float convert(ByteBuffer buffer) {
     return buffer.order(LITTLE_ENDIAN).getFloat(0);
