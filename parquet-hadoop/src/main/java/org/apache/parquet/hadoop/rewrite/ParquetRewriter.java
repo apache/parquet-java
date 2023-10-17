@@ -265,6 +265,10 @@ public class ParquetRewriter implements Closeable {
       BlockMetaData blockMetaData = meta.getBlocks().get(blockId);
       List<ColumnChunkMetaData> columnsInOrder = blockMetaData.getColumns();
 
+      List<ColumnIndex> columnIndexes = readAllColumnIndexes(reader, columnsInOrder, descriptorsMap);
+      List<OffsetIndex> offsetIndexes = readAllOffsetIndexes(reader, columnsInOrder, descriptorsMap);
+      List<BloomFilter> bloomFilters = readAllBloomFilters(reader, columnsInOrder, descriptorsMap);
+
       for (int i = 0, columnId = 0; i < columnsInOrder.size(); i++) {
         ColumnChunkMetaData chunk = columnsInOrder.get(i);
         ColumnDescriptor descriptor = descriptorsMap.get(chunk.getPath());
@@ -314,13 +318,20 @@ public class ParquetRewriter implements Closeable {
 
           // Translate compression and/or encryption
           writer.startColumn(descriptor, crStore.getColumnReader(descriptor).getTotalValueCount(), newCodecName);
-          processChunk(chunk, newCodecName, columnChunkEncryptorRunTime, encryptColumn);
+          processChunk(
+                  chunk,
+                  newCodecName,
+                  columnChunkEncryptorRunTime,
+                  encryptColumn,
+                  bloomFilters.get(i),
+                  columnIndexes.get(i),
+                  offsetIndexes.get(i));
           writer.endColumn();
         } else {
           // Nothing changed, simply copy the binary data.
-          BloomFilter bloomFilter = reader.readBloomFilter(chunk);
-          ColumnIndex columnIndex = reader.readColumnIndex(chunk);
-          OffsetIndex offsetIndex = reader.readOffsetIndex(chunk);
+          BloomFilter bloomFilter = bloomFilters.get(i);
+          ColumnIndex columnIndex = columnIndexes.get(i);
+          OffsetIndex offsetIndex = offsetIndexes.get(i);
           writer.appendColumnChunk(descriptor, reader.getStream(), chunk, bloomFilter, columnIndex, offsetIndex);
         }
 
@@ -338,7 +349,10 @@ public class ParquetRewriter implements Closeable {
   private void processChunk(ColumnChunkMetaData chunk,
                             CompressionCodecName newCodecName,
                             ColumnChunkEncryptorRunTime columnChunkEncryptorRunTime,
-                            boolean encryptColumn) throws IOException {
+                            boolean encryptColumn,
+                            BloomFilter bloomFilter,
+                            ColumnIndex columnIndex,
+                            OffsetIndex offsetIndex) throws IOException {
     CompressionCodecFactory codecFactory = HadoopCodecs.newFactory(0);
     CompressionCodecFactory.BytesInputDecompressor decompressor = null;
     CompressionCodecFactory.BytesInputCompressor compressor = null;
@@ -364,9 +378,6 @@ public class ParquetRewriter implements Closeable {
       dataPageHeaderAAD = columnChunkEncryptorRunTime.getDataPageHeaderAAD();
     }
 
-    ColumnIndex columnIndex = reader.readColumnIndex(chunk);
-    OffsetIndex offsetIndex = reader.readOffsetIndex(chunk);
-    BloomFilter bloomFilter = reader.readBloomFilter(chunk);
     if (bloomFilter != null) {
       writer.addBloomFilter(chunk.getPath().toDotString(), bloomFilter);
     }
@@ -735,6 +746,55 @@ public class ParquetRewriter implements Closeable {
 
     return null;
   }
+
+  private static List<ColumnIndex> readAllColumnIndexes(
+      TransParquetFileReader reader,
+      List<ColumnChunkMetaData> chunks,
+      Map<ColumnPath, ColumnDescriptor> descriptorsMap) throws IOException {
+    List<ColumnIndex> columnIndexList = new ArrayList<>(chunks.size());
+    for (ColumnChunkMetaData chunk : chunks) {
+      if (descriptorsMap.containsKey(chunk.getPath())) {
+        columnIndexList.add(reader.readColumnIndex(chunk));
+      } else {
+        columnIndexList.add(null);
+      }
+    }
+
+    return columnIndexList;
+  }
+
+  private static List<OffsetIndex> readAllOffsetIndexes(
+      TransParquetFileReader reader,
+      List<ColumnChunkMetaData> chunks,
+      Map<ColumnPath, ColumnDescriptor> descriptorsMap) throws IOException {
+    List<OffsetIndex> offsetIndexList = new ArrayList<>(chunks.size());
+    for (ColumnChunkMetaData chunk : chunks) {
+      if (descriptorsMap.containsKey(chunk.getPath())) {
+        offsetIndexList.add(reader.readOffsetIndex(chunk));
+      } else {
+        offsetIndexList.add(null);
+      }
+    }
+
+    return offsetIndexList;
+  }
+
+  private static List<BloomFilter> readAllBloomFilters(
+      TransParquetFileReader reader,
+      List<ColumnChunkMetaData> chunks,
+      Map<ColumnPath, ColumnDescriptor> descriptorsMap) throws IOException {
+    List<BloomFilter> bloomFilterList = new ArrayList<>(chunks.size());
+    for (ColumnChunkMetaData chunk : chunks) {
+      if (descriptorsMap.containsKey(chunk.getPath())) {
+        bloomFilterList.add(reader.readBloomFilter(chunk));
+      } else {
+        bloomFilterList.add(null);
+      }
+    }
+
+    return bloomFilterList;
+  }
+
 
   private static final class DummyGroupConverter extends GroupConverter {
     @Override
