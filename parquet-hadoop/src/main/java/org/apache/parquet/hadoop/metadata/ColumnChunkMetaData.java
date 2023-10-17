@@ -287,6 +287,8 @@ abstract public class ColumnChunkMetaData {
   abstract public Statistics getStatistics();
 
   /**
+   * Method should be considered private
+   *
    * @return the reference to the column index
    */
   public IndexReference getColumnIndexReference() {
@@ -295,14 +297,17 @@ abstract public class ColumnChunkMetaData {
   }
 
   /**
-   * @param indexReference
-   *          the reference to the column index
+   * Method should be considered private
+   *
+   * @param indexReference the reference to the column index
    */
   public void setColumnIndexReference(IndexReference indexReference) {
     this.columnIndexReference = indexReference;
   }
 
   /**
+   * Method should be considered private
+   *
    * @return the reference to the offset index
    */
   public IndexReference getOffsetIndexReference() {
@@ -311,22 +316,26 @@ abstract public class ColumnChunkMetaData {
   }
 
   /**
-   * @param offsetIndexReference
-   *          the reference to the offset index
+   * Method should be considered private
+   *
+   * @param offsetIndexReference the reference to the offset index
    */
   public void setOffsetIndexReference(IndexReference offsetIndexReference) {
     this.offsetIndexReference = offsetIndexReference;
   }
 
   /**
-   * @param bloomFilterOffset
-   *          the reference to the Bloom filter
+   * Method should be considered private
+   *
+   * @param bloomFilterOffset the reference to the Bloom filter
    */
   public void setBloomFilterOffset(long bloomFilterOffset) {
     this.bloomFilterOffset = bloomFilterOffset;
   }
 
   /**
+   * Method should be considered private
+   *
    * @return the offset to the Bloom filter or {@code -1} if there is no bloom filter for this column chunk
    */
   public long getBloomFilterOffset() {
@@ -365,6 +374,8 @@ abstract public class ColumnChunkMetaData {
   }
 
   /**
+   * Method should be considered private
+   * 
    * @return whether or not this column is encrypted
    */
   public boolean isEncrypted() {

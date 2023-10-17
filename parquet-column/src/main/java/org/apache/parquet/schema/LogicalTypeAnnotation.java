@@ -149,6 +149,8 @@ public abstract class LogicalTypeAnnotation {
    * Convert this logical type to old logical type representation in parquet-mr (if there's any).
    * Those logical type implementations, which don't have a corresponding mapping should return null.
    *
+   * API should be considered private
+   *
    * @return the OriginalType representation of the new logical type, or null if there's none
    */
   public abstract OriginalType toOriginalType();
@@ -184,6 +186,8 @@ public abstract class LogicalTypeAnnotation {
 
   /**
    * Helper method to convert the old representation of logical types (OriginalType) to new logical type.
+   *
+   * API should be considered private
    */
   public static LogicalTypeAnnotation fromOriginalType(OriginalType originalType, DecimalMetadata decimalMetadata) {
     if (originalType == null) {
@@ -299,6 +303,11 @@ public abstract class LogicalTypeAnnotation {
     private StringLogicalTypeAnnotation() {
     }
 
+    /**
+     * API Should be considered private
+     *
+     * @return the original type
+     */
     @Override
     public OriginalType toOriginalType() {
       return OriginalType.UTF8;
@@ -337,6 +346,11 @@ public abstract class LogicalTypeAnnotation {
     private MapLogicalTypeAnnotation() {
     }
 
+    /**
+     * API Should be considered private
+     *
+     * @return the original type
+     */
     @Override
     public OriginalType toOriginalType() {
       return OriginalType.MAP;
@@ -370,6 +384,11 @@ public abstract class LogicalTypeAnnotation {
     private ListLogicalTypeAnnotation() {
     }
 
+    /**
+     * API Should be considered private
+     *
+     * @return the original type
+     */
     @Override
     public OriginalType toOriginalType() {
       return OriginalType.LIST;
@@ -403,6 +422,11 @@ public abstract class LogicalTypeAnnotation {
     private EnumLogicalTypeAnnotation() {
     }
 
+    /**
+     * API Should be considered private
+     *
+     * @return the original type
+     */
     @Override
     public OriginalType toOriginalType() {
       return OriginalType.ENUM;
@@ -454,6 +478,11 @@ public abstract class LogicalTypeAnnotation {
       return scale;
     }
 
+    /**
+     * API Should be considered private
+     *
+     * @return the original type
+     */
     @Override
     public OriginalType toOriginalType() {
       return OriginalType.DECIMAL;
@@ -506,6 +535,11 @@ public abstract class LogicalTypeAnnotation {
     private DateLogicalTypeAnnotation() {
     }
 
+    /**
+     * API Should be considered private
+     *
+     * @return the original type
+     */
     @Override
     public OriginalType toOriginalType() {
       return OriginalType.DATE;
@@ -553,6 +587,11 @@ public abstract class LogicalTypeAnnotation {
       this.unit = unit;
     }
 
+    /**
+     * API Should be considered private
+     *
+     * @return the original type
+     */
     @Override
     public OriginalType toOriginalType() {
       switch (unit) {
@@ -631,6 +670,11 @@ public abstract class LogicalTypeAnnotation {
       this.unit = unit;
     }
 
+    /**
+     * API Should be considered private
+     *
+     * @return the original type
+     */
     @Override
     public OriginalType toOriginalType() {
       switch (unit) {
@@ -716,6 +760,11 @@ public abstract class LogicalTypeAnnotation {
       this.isSigned = isSigned;
     }
 
+    /**
+     * API Should be considered private
+     *
+     * @return the original type
+     */
     @Override
     public OriginalType toOriginalType() {
       switch (bitWidth) {
@@ -787,6 +836,11 @@ public abstract class LogicalTypeAnnotation {
     private JsonLogicalTypeAnnotation() {
     }
 
+    /**
+     * API Should be considered private
+     *
+     * @return the original type
+     */
     @Override
     public OriginalType toOriginalType() {
       return OriginalType.JSON;
@@ -825,6 +879,11 @@ public abstract class LogicalTypeAnnotation {
     private BsonLogicalTypeAnnotation() {
     }
 
+    /**
+     * API Should be considered private
+     *
+     * @return the original type
+     */
     @Override
     public OriginalType toOriginalType() {
       return OriginalType.BSON;
@@ -864,6 +923,11 @@ public abstract class LogicalTypeAnnotation {
     private UUIDLogicalTypeAnnotation() {
     }
 
+    /**
+     * API Should be considered private
+     *
+     * @return the original type
+     */
     @Override
     public OriginalType toOriginalType() {
       // No OriginalType for UUID
@@ -899,6 +963,11 @@ public abstract class LogicalTypeAnnotation {
     private IntervalLogicalTypeAnnotation() {
     }
 
+    /**
+     * API Should be considered private
+     *
+     * @return the original type
+     */
     @Override
     public OriginalType toOriginalType() {
       return OriginalType.INTERVAL;
@@ -949,6 +1018,11 @@ public abstract class LogicalTypeAnnotation {
     private MapKeyValueTypeAnnotation() {
     }
 
+    /**
+     * API Should be considered private
+     *
+     * @return the original type
+     */
     @Override
     public OriginalType toOriginalType() {
       return OriginalType.MAP_KEY_VALUE;
