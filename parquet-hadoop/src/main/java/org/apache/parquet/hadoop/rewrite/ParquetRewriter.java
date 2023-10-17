@@ -795,7 +795,6 @@ public class ParquetRewriter implements Closeable {
     return bloomFilterList;
   }
 
-
   private static final class DummyGroupConverter extends GroupConverter {
     @Override
     public void start() {
