@@ -89,7 +89,7 @@ public class TestParquetToThriftReadWriteAndProjection {
 
   @Test
   public void testPullingInRequiredStructWithFilter() throws Exception {
-    final String projectionFilterDesc = "persons/{id};persons/email";
+    final String projectionFilterDesc = "persons.{id};persons.email";
     TBase toWrite = new AddressBook(
             Arrays.asList(
                     new Person(
@@ -122,8 +122,7 @@ public class TestParquetToThriftReadWriteAndProjection {
 
   @Test
   public void testProjectOutOptionalFields() throws Exception {
-
-    final String projectionFilterDesc = "persons/name/*";
+    final String projectionFilterDesc = "persons.name.*";
 
     TBase toWrite = new AddressBook(
             Arrays.asList(
@@ -164,7 +163,7 @@ public class TestParquetToThriftReadWriteAndProjection {
 
   @Test
   public void testDropMapValuePrimitive() throws Exception {
-    String filter = "mavalue/key";
+    String filter = "mavalue.key";
 
     Map<String, String> mapValue = new HashMap<String, String>();
     mapValue.put("a", "1");
@@ -199,7 +198,7 @@ public class TestParquetToThriftReadWriteAndProjection {
 
   @Test
   public void testDropMapValueStruct() throws Exception {
-    String filter = "reqMap/key";
+    String filter = "reqMap.key";
 
     Map<String, StructV4WithExtracStructField> mapValue = new HashMap<String, StructV4WithExtracStructField>();
 
@@ -222,7 +221,7 @@ public class TestParquetToThriftReadWriteAndProjection {
 
   @Test
   public void testDropMapValueNestedPrim() throws Exception {
-    String filter = "reqMap/key";
+    String filter = "reqMap.key";
 
     Map<String, Map<String, String>> mapValue =
         new HashMap<String, Map<String, String>>();
@@ -261,10 +260,9 @@ public class TestParquetToThriftReadWriteAndProjection {
 
   @Test
   public void testDropMapValueNestedStruct() throws Exception {
-    String filter = "reqMap/key";
+    String filter = "reqMap.key";
 
-    Map<String, Map<String, StructV4WithExtracStructField>> mapValue =
-        new HashMap<String, Map<String, StructV4WithExtracStructField>>();
+    Map<String, Map<String, StructV4WithExtracStructField>> mapValue = new HashMap<>();
 
     Map<String, StructV4WithExtracStructField> innerValue1 = new HashMap<String, StructV4WithExtracStructField>();
     innerValue1.put("inner key (1, 1)", makeStructV4WithExtracStructField("inner (1, 1)"));
@@ -353,22 +351,21 @@ public class TestParquetToThriftReadWriteAndProjection {
     //create a test file
     final TProtocolFactory protocolFactory = new TCompactProtocol.Factory();
     final TaskAttemptID taskId = new TaskAttemptID("local", 0, true, 0, 0);
-    final ThriftToParquetFileWriter w = new ThriftToParquetFileWriter(parquetFile, ContextUtil.newTaskAttemptContext(conf, taskId), protocolFactory, thriftClass);
-    final ByteArrayOutputStream baos = new ByteArrayOutputStream();
-    final TProtocol protocol = protocolFactory.getProtocol(new TIOStreamTransport(baos));
+    try (ThriftToParquetFileWriter w = new ThriftToParquetFileWriter(parquetFile, ContextUtil.newTaskAttemptContext(conf, taskId), protocolFactory, thriftClass);
+         ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+      final TProtocol protocol = protocolFactory.getProtocol(new TIOStreamTransport(baos));
+      recordToWrite.write(protocol);
+      w.write(new BytesWritable(baos.toByteArray()));
+    }
 
-    recordToWrite.write(protocol);
-    w.write(new BytesWritable(baos.toByteArray()));
-    w.close();
+    T readValue = null;
 
-
-    final ParquetThriftInputFormat<T> parquetThriftInputFormat = new ParquetThriftInputFormat<T>();
-    final Job job = new Job(conf, "read");
+    final ParquetThriftInputFormat<T> parquetThriftInputFormat = new ParquetThriftInputFormat<>();
+    Job job = new Job(conf, "read");
     job.setInputFormatClass(ParquetThriftInputFormat.class);
     ParquetThriftInputFormat.setInputPaths(job, parquetFile);
     final JobID jobID = new JobID("local", 1);
     List<InputSplit> splits = parquetThriftInputFormat.getSplits(ContextUtil.newJobContext(ContextUtil.getConfiguration(job), jobID));
-    T readValue = null;
     for (InputSplit split : splits) {
       TaskAttemptContext taskAttemptContext = ContextUtil.newTaskAttemptContext(ContextUtil.getConfiguration(job), new TaskAttemptID(new TaskID(jobID, true, 1), 0));
       try (final RecordReader<Void, T> reader = parquetThriftInputFormat.createRecordReader(split, taskAttemptContext)) {

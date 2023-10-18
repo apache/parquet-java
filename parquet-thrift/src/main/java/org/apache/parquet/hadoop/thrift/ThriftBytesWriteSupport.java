@@ -49,7 +49,8 @@ import org.apache.parquet.thrift.ThriftSchemaConverter;
 import org.apache.parquet.thrift.struct.ThriftType.StructType;
 
 @Deprecated
-public class ThriftBytesWriteSupport extends WriteSupport<BytesWritable> {
+public class
+ThriftBytesWriteSupport extends WriteSupport<BytesWritable> {
   private static final Logger LOG = LoggerFactory.getLogger(ThriftBytesWriteSupport.class);
   private static final String PARQUET_PROTOCOL_CLASS = "parquet.protocol.class";
 
@@ -92,6 +93,10 @@ public class ThriftBytesWriteSupport extends WriteSupport<BytesWritable> {
    * @deprecated Use @link{ThriftBytesWriteSupport(Configuration configuration,
    * TProtocolFactory protocolFactory, {@literal Class<? extends TBase<?,?>>} thriftClass,
    * boolean buffered, FieldIgnoredHandler errorHandler)} instead
+   * @param protocolFactory The factory
+   * @param thriftClass The class
+   * @param buffered When buffered
+   * @param errorHandler Handler when fields are missing
    */
   @Deprecated
   public ThriftBytesWriteSupport(TProtocolFactory protocolFactory,
