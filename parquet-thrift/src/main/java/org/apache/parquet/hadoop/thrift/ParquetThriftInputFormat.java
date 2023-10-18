@@ -23,6 +23,7 @@ import org.apache.hadoop.mapred.JobConf;
 
 import org.apache.parquet.hadoop.ParquetInputFormat;
 
+@Deprecated
 public class ParquetThriftInputFormat<T> extends ParquetInputFormat<T> {
 
   @SuppressWarnings("unchecked")

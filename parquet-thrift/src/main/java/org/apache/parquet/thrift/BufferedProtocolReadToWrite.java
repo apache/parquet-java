@@ -52,6 +52,7 @@ import org.apache.parquet.thrift.struct.ThriftTypeID;
  * be notified through {@link FieldIgnoredHandler#handleFieldIgnored(org.apache.thrift.protocol.TField)}
  * and {@link FieldIgnoredHandler#handleRecordHasFieldIgnored()}
  */
+@Deprecated
 public class BufferedProtocolReadToWrite implements ProtocolPipe {
 
   private interface Action {

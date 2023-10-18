@@ -32,6 +32,7 @@ import org.apache.parquet.thrift.projection.FieldsPath;
  *
  * This interface is essentially a union of {keep, drop, sentinelUnion}
  */
+@Deprecated
 public interface ConvertedField {
 
   /**

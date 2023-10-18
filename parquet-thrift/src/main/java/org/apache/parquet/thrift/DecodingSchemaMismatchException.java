@@ -23,6 +23,7 @@ import org.apache.parquet.io.ParquetEncodingException;
 /**
  * Throw this exception when the schema used for decoding is not compatible with the schema in the data.
  */
+@Deprecated
 public class DecodingSchemaMismatchException extends ParquetEncodingException {
   public DecodingSchemaMismatchException(String s) {
     super(s);

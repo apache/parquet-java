@@ -34,6 +34,7 @@ import java.util.List;
 /**
  * Create a dummy events for all required fields according to thrift definition
  */
+@Deprecated
 class DefaultEventsVisitor implements ThriftType.StateVisitor<Void, Void> {
   List<ParquetProtocol> dummyEvents= new ArrayList<ParquetProtocol>();
   @Override

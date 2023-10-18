@@ -25,6 +25,7 @@ import org.apache.parquet.ParquetRuntimeException;
  * Thrown when an error happened reading a thrift record
  * Ignoring this exception will skip the bad record
  */
+@Deprecated
 public class SkippableException extends ParquetRuntimeException {
   private static final long serialVersionUID = 1L;
 

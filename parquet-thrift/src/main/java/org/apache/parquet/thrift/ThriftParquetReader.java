@@ -35,6 +35,7 @@ import org.apache.parquet.hadoop.thrift.ThriftReadSupport;
  * To read a parquet file into thrift objects
  * @param <T> the thrift type
  */
+@Deprecated
 public class ThriftParquetReader<T extends TBase<?,?>> extends ParquetReader<T> {
 
   /**

@@ -29,6 +29,7 @@ import org.slf4j.LoggerFactory;
 /**
  * Metadata for thrift stored in the file footer
  */
+@Deprecated
 public class ThriftMetaData {
   private static final Logger LOG = LoggerFactory.getLogger(ThriftMetaData.class);
 

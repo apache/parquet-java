@@ -36,6 +36,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 
+@Deprecated
 class ParquetReadProtocol extends ParquetProtocol {
   private static final Logger LOG = LoggerFactory.getLogger(ParquetReadProtocol.class);
 

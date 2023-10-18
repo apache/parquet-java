@@ -22,6 +22,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.apache.thrift.TFieldRequirementType;
 
+@Deprecated
 public class ThriftField {
   public static enum Requirement {
     REQUIRED(TFieldRequirementType.REQUIRED),

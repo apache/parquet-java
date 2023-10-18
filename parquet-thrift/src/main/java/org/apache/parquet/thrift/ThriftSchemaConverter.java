@@ -49,6 +49,7 @@ import static org.apache.parquet.schema.Type.Repetition.REPEATED;
  * Given a thrift class, this class converts it to parquet schema,
  * a {@link FieldProjectionFilter} can be specified for projection pushdown.
  */
+@Deprecated
 public class ThriftSchemaConverter {
   private final FieldProjectionFilter fieldProjectionFilter;
 

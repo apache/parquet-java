@@ -42,6 +42,7 @@ import org.apache.parquet.thrift.struct.ThriftType.StringType;
  * 3. Should not delete existing field
  * 4. Should not make requirement type more restrictive for a field in new thrift struct
  */
+@Deprecated
 public class CompatibilityChecker {
 
   public CompatibilityReport checkCompatibility(ThriftType.StructType oldStruct, ThriftType.StructType newStruct) {
@@ -51,6 +52,7 @@ public class CompatibilityChecker {
   }
 
 }
+@Deprecated
 
 class CompatibilityReport {
   boolean isCompatible = true;
@@ -93,6 +95,7 @@ class CompatibilityReport {
   }
 }
 
+@Deprecated
 class State {
   FieldsPath path;
   ThriftType oldType;
@@ -103,6 +106,7 @@ class State {
   }
 }
 
+@Deprecated
 class CompatibleCheckerVisitor implements ThriftType.StateVisitor<Void, State> {
 
   CompatibilityReport report = new CompatibilityReport();

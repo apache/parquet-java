@@ -26,6 +26,7 @@ import org.apache.parquet.thrift.projection.ThriftProjectionException;
  * A {@link FieldProjectionFilter} that keeps only the first primitive field
  * that it encounters.
  */
+@Deprecated
 class KeepOnlyFirstPrimitiveFilter implements FieldProjectionFilter {
   private boolean found = false;
 

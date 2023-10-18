@@ -35,6 +35,7 @@ import org.apache.parquet.thrift.struct.ThriftType.StructType;
 /**
  * The list of thrift types
  */
+@Deprecated
 public enum ThriftTypeID {
   STOP (TType.STOP),
   VOID (TType.VOID),

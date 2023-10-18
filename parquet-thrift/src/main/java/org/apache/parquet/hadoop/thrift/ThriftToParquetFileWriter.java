@@ -33,6 +33,7 @@ import org.apache.parquet.thrift.FieldIgnoredHandler;
 /**
  * To create a Parquet file from the Thrift binary of records
  */
+@Deprecated
 public class ThriftToParquetFileWriter implements Closeable {
 
   private final RecordWriter<Void, BytesWritable> recordWriter;

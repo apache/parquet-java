@@ -30,6 +30,7 @@ import org.apache.thrift.protocol.TType;
 /**
  * Class to read from one protocol and write to another one
  */
+@Deprecated
 public class ProtocolReadToWrite implements ProtocolPipe {
 
   /**

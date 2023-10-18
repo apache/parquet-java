@@ -24,6 +24,7 @@ import org.apache.parquet.thrift.ParquetProtocol;
 import org.apache.parquet.thrift.struct.ThriftField;
 import org.apache.parquet.thrift.struct.ThriftTypeID;
 
+@Deprecated
 public class ReadFieldBeginProtocol extends ParquetProtocol {
   private final ThriftField field;
   private final byte thriftType;

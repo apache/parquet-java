@@ -27,6 +27,7 @@ import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.thrift.struct.ThriftType.StructType;
 
+@Deprecated
 public class TBaseRecordConverter<T extends TBase<?,?>> extends ThriftRecordConverter<T> {
 
   /**

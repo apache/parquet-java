@@ -50,6 +50,7 @@ import org.apache.parquet.thrift.struct.ThriftType.StructType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@Deprecated
 public class ParquetWriteProtocol extends ParquetProtocol {
 
   public static final String WRITE_THREE_LEVEL_LISTS = "parquet.thrift.write-three-level-lists";

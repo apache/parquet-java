@@ -29,15 +29,13 @@ import org.slf4j.LoggerFactory;
 /**
  * Stricter Implementation of {@link FieldProjectionFilter}.
  *
- * See {@link org.apache.parquet.thrift.projection.deprecated.DeprecatedFieldProjectionFilter} for the previous
- * syntax that allows for more powerful glob patterns, but has less error reporting and less strict requirements.
- *
  * This filter requires that every *possible* expansion of glob expressions (like '{x,y,z}') must match at least one
  * column. Each expansion may match more than one if it contains wildcards ('*').
  *
  * Note that this class is stateful -- it keeps track of which expanded glob paths have matched a column, so that it can
  * throw when {@link #assertNoUnmatchedPatterns()} is called.
  */
+@Deprecated
 public class StrictFieldProjectionFilter implements FieldProjectionFilter {
   private static final Logger LOG = LoggerFactory.getLogger(FieldProjectionFilter.class);
   private static final String GLOB_SEPARATOR = ";";

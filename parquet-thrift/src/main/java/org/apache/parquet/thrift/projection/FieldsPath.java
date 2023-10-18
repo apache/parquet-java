@@ -26,6 +26,7 @@ import org.apache.parquet.thrift.struct.ThriftType;
 /**
  * Represents an immutable column path as a sequence of fields.
  */
+@Deprecated
 public class FieldsPath {
   private final ArrayList<ThriftField> fields;
 

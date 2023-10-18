@@ -33,6 +33,7 @@ import org.apache.thrift.protocol.TStruct;
 /**
  * Allows simple implementation of partial protocols
  */
+@Deprecated
 public abstract class ParquetProtocol extends TProtocol {
 
   private String name;

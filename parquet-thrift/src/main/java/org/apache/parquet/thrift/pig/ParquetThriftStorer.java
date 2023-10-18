@@ -37,6 +37,7 @@ import org.apache.parquet.io.ParquetEncodingException;
  * usage:
  * STORE 'foo' USING parquet.thrift.pig.ParquetThriftStorer('my.thrift.Class');
  */
+@Deprecated
 public class ParquetThriftStorer extends StoreFunc {
 
   private RecordWriter<Void, Tuple> recordWriter;

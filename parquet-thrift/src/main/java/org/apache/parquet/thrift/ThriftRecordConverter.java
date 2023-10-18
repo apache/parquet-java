@@ -63,6 +63,7 @@ import org.slf4j.LoggerFactory;
  *
  * @param <T> the Java type of records created by this converter
  */
+@Deprecated
 public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
 
   private static final Logger LOG = LoggerFactory.getLogger(ThriftRecordConverter.class);

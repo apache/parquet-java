@@ -38,6 +38,7 @@ import java.util.LinkedList;
  * The above command will succeed when the new schema is compatible with the old schema.
  * It will fail when they are not compatible. For compatibility rules: {@link CompatibilityChecker}
  */
+@Deprecated
 public class CompatibilityRunner {
   public static void main(String[] args) throws Exception {
     LinkedList<String> arguments = new LinkedList<String>(Arrays.asList(args));

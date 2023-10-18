@@ -29,6 +29,7 @@ import java.util.*;
 /**
  * fill in default value for required fields in TProtocols after projection is specified.
  */
+@Deprecated
 public class ProtocolEventsAmender {
   List<TProtocol> rootEvents;
   List<TProtocol> fixedEvents = new ArrayList<TProtocol>();

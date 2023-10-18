@@ -23,6 +23,7 @@ import org.apache.parquet.io.ParquetEncodingException;
 import org.apache.parquet.thrift.ThriftSchemaConverter;
 import org.apache.parquet.thrift.struct.ThriftType.StructType;
 
+@Deprecated
 public class TBaseWriteSupport<T extends TBase<?, ?>> extends AbstractThriftWriteSupport<T> {
 
   private static Configuration conf;

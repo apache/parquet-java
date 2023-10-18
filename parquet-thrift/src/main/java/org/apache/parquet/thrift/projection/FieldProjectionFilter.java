@@ -26,6 +26,7 @@ package org.apache.parquet.thrift.projection;
  * See {@link StrictFieldProjectionFilter} and
  * {@link org.apache.parquet.thrift.projection.deprecated.DeprecatedFieldProjectionFilter}
  */
+@Deprecated
 public interface FieldProjectionFilter {
 
   /**

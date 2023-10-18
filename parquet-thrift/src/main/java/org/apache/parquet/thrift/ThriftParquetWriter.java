@@ -33,6 +33,7 @@ import org.apache.parquet.hadoop.thrift.TBaseWriteSupport;
  *
  * @param <T> the type of the thrift class used to write data
  */
+@Deprecated
 public class ThriftParquetWriter<T extends TBase<?,?>> extends ParquetWriter<T> {
 
   public ThriftParquetWriter(Path file, Class<T> thriftClass, CompressionCodecName compressionCodecName) throws IOException {

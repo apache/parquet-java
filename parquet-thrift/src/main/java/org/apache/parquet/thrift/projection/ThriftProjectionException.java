@@ -24,6 +24,7 @@ import org.apache.parquet.ParquetRuntimeException;
  * thrown if the schema can not be projected/filtered
  */
 
+@Deprecated
 public class ThriftProjectionException extends ParquetRuntimeException {
   private static final long serialVersionUID = 1L;
 

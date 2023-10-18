@@ -48,6 +48,7 @@ import org.apache.parquet.thrift.FieldIgnoredHandler;
 import org.apache.parquet.thrift.ThriftSchemaConverter;
 import org.apache.parquet.thrift.struct.ThriftType.StructType;
 
+@Deprecated
 public class ThriftBytesWriteSupport extends WriteSupport<BytesWritable> {
   private static final Logger LOG = LoggerFactory.getLogger(ThriftBytesWriteSupport.class);
   private static final String PARQUET_PROTOCOL_CLASS = "parquet.protocol.class";

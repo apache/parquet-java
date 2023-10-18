@@ -65,6 +65,7 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
     @JsonSubTypes.Type(value=ThriftType.StringType.class, name="STRING"),
     @JsonSubTypes.Type(value=ThriftType.StructType.class, name="STRUCT")
 })
+@Deprecated
 public abstract class ThriftType {
   private LogicalTypeAnnotation logicalTypeAnnotation;
 

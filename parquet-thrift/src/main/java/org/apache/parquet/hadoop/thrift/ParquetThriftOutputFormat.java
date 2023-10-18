@@ -26,6 +26,7 @@ import org.apache.parquet.hadoop.util.ContextUtil;
 /**
  * @param <T> the thrift class use for serialization
  */
+@Deprecated
 public class ParquetThriftOutputFormat<T extends TBase<?,?>> extends ParquetOutputFormat<T> {
 
   public static void setThriftClass(Job job, Class<? extends TBase<?,?>> thriftClass) {

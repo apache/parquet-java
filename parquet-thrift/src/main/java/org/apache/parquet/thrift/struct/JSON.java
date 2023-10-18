@@ -24,6 +24,7 @@ import java.io.StringWriter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 
+@Deprecated
 class JSON {
 
   private static ObjectMapper om = new ObjectMapper();

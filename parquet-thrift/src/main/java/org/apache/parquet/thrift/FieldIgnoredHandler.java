@@ -23,6 +23,7 @@ import org.apache.thrift.protocol.TField;
 /**
  * Implements this class to handle when fields get ignored in {@link BufferedProtocolReadToWrite}
  */
+@Deprecated
 public abstract class FieldIgnoredHandler {
 
   /**

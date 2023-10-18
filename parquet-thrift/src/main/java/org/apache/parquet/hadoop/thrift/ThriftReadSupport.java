@@ -46,6 +46,7 @@ import org.apache.parquet.thrift.struct.ThriftType.StructType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@Deprecated
 public class ThriftReadSupport<T> extends ReadSupport<T> {
   private static final Logger LOG = LoggerFactory.getLogger(ThriftReadSupport.class);
 
