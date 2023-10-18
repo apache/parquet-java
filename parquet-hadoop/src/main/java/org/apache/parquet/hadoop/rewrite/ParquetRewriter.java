@@ -96,19 +96,19 @@ public class ParquetRewriter implements Closeable {
   private final byte[] pageBuffer = new byte[pageBufferSize];
   // Configurations for the new file
   private CompressionCodecName newCodecName = null;
-  private List<String> pruneColumns = null;
   private Map<ColumnPath, MaskMode> maskColumns = null;
   private Set<ColumnPath> encryptColumns = null;
   private boolean encryptMode = false;
-  private Map<String, String> extraMetaData = new HashMap<>();
+  private final Map<String, String> extraMetaData = new HashMap<>();
   // Writer to rewrite the input files
-  private ParquetFileWriter writer;
+  private final ParquetFileWriter writer;
   // Number of blocks written which is used to keep track of the actual row group ordinal
   private int numBlocksRewritten = 0;
   // Reader and relevant states of the in-processing input file
-  private Queue<TransParquetFileReader> inputFiles = new LinkedList<>();
+  private final Queue<TransParquetFileReader> inputFiles = new LinkedList<>();
   // Schema of input files (should be the same) and to write to the output file
   private MessageType schema = null;
+  private final Map<ColumnPath, ColumnDescriptor> descriptorsMap;
   // The reader for the current input file
   private TransParquetFileReader reader = null;
   // The metadata of current reader being processed
@@ -116,7 +116,9 @@ public class ParquetRewriter implements Closeable {
   // created_by information of current reader being processed
   private String originalCreatedBy = "";
   // Unique created_by information from all input files
-  private Set<String> allOriginalCreatedBys = new HashSet<>();
+  private final Set<String> allOriginalCreatedBys = new HashSet<>();
+  // Whether prefetch all block indexes
+  private final boolean prefetchBlockAllIndexes;
 
   public ParquetRewriter(RewriteOptions options) throws IOException {
     Configuration conf = options.getConf();
@@ -129,8 +131,7 @@ public class ParquetRewriter implements Closeable {
     initNextReader();
 
     newCodecName = options.getNewCodecName();
-    pruneColumns = options.getPruneColumns();
-
+    List<String> pruneColumns = options.getPruneColumns();
     // Prune columns if specified
     if (pruneColumns != null && !pruneColumns.isEmpty()) {
       List<String> paths = new ArrayList<>();
@@ -145,6 +146,9 @@ public class ParquetRewriter implements Closeable {
       schema = pruneColumnsInSchema(schema, prunePaths);
     }
 
+    this.descriptorsMap =
+      schema.getColumns().stream().collect(Collectors.toMap(x -> ColumnPath.get(x.getPath()), x -> x));
+
     if (options.getMaskColumns() != null) {
       this.maskColumns = new HashMap<>();
       for (Map.Entry<String, MaskMode> col : options.getMaskColumns().entrySet()) {
@@ -156,6 +160,8 @@ public class ParquetRewriter implements Closeable {
       this.encryptColumns = convertToColumnPaths(options.getEncryptColumns());
       this.encryptMode = true;
     }
+
+    this.prefetchBlockAllIndexes = options.prefetchBlockAllIndexes();
 
     ParquetFileWriter.Mode writerMode = ParquetFileWriter.Mode.CREATE;
     writer = new ParquetFileWriter(HadoopOutputFile.fromPath(outPath, conf), schema, writerMode,
@@ -178,6 +184,8 @@ public class ParquetRewriter implements Closeable {
     this.writer = writer;
     this.meta = meta;
     this.schema = schema;
+    this.descriptorsMap =
+      schema.getColumns().stream().collect(Collectors.toMap(x -> ColumnPath.get(x.getPath()), x -> x));
     this.newCodecName = codecName;
     originalCreatedBy = originalCreatedBy == null ? meta.getFileMetaData().getCreatedBy() : originalCreatedBy;
     extraMetaData.putAll(meta.getFileMetaData().getKeyValueMetaData());
@@ -188,6 +196,7 @@ public class ParquetRewriter implements Closeable {
         this.maskColumns.put(ColumnPath.fromDotString(col), maskMode);
       }
     }
+    this.prefetchBlockAllIndexes = false;
   }
 
   // Open all input files to validate their schemas are compatible to merge
@@ -247,28 +256,24 @@ public class ParquetRewriter implements Closeable {
 
   public void processBlocks() throws IOException {
     while (reader != null) {
-      processBlocksFromReader();
+      IndexCacher indexCacher = new IndexCacher(reader, descriptorsMap.keySet(), prefetchBlockAllIndexes);
+      processBlocksFromReader(indexCacher);
+      indexCacher.free();
       initNextReader();
     }
   }
 
-  private void processBlocksFromReader() throws IOException {
+  private void processBlocksFromReader(IndexCacher indexCacher) throws IOException {
     PageReadStore store = reader.readNextRowGroup();
     ColumnReadStoreImpl crStore = new ColumnReadStoreImpl(store, new DummyGroupConverter(), schema, originalCreatedBy);
-    Map<ColumnPath, ColumnDescriptor> descriptorsMap = schema.getColumns().stream().collect(
-            Collectors.toMap(x -> ColumnPath.get(x.getPath()), x -> x));
 
     int blockId = 0;
     while (store != null) {
       writer.startBlock(store.getRowCount());
 
       BlockMetaData blockMetaData = meta.getBlocks().get(blockId);
+      indexCacher.setCurrentBlockMetadata(blockMetaData);
       List<ColumnChunkMetaData> columnsInOrder = blockMetaData.getColumns();
-
-      List<ColumnIndex> columnIndexes = readAllColumnIndexes(reader, columnsInOrder, descriptorsMap);
-      List<OffsetIndex> offsetIndexes = readAllOffsetIndexes(reader, columnsInOrder, descriptorsMap);
-      List<BloomFilter> bloomFilters = readAllBloomFilters(reader, columnsInOrder, descriptorsMap);
-
       for (int i = 0, columnId = 0; i < columnsInOrder.size(); i++) {
         ColumnChunkMetaData chunk = columnsInOrder.get(i);
         ColumnDescriptor descriptor = descriptorsMap.get(chunk.getPath());
@@ -323,15 +328,15 @@ public class ParquetRewriter implements Closeable {
                   newCodecName,
                   columnChunkEncryptorRunTime,
                   encryptColumn,
-                  bloomFilters.get(i),
-                  columnIndexes.get(i),
-                  offsetIndexes.get(i));
+                  indexCacher.getBloomFilter(chunk),
+                  indexCacher.getColumnIndex(chunk),
+                  indexCacher.getOffsetIndex(chunk));
           writer.endColumn();
         } else {
           // Nothing changed, simply copy the binary data.
-          BloomFilter bloomFilter = bloomFilters.get(i);
-          ColumnIndex columnIndex = columnIndexes.get(i);
-          OffsetIndex offsetIndex = offsetIndexes.get(i);
+          BloomFilter bloomFilter = indexCacher.getBloomFilter(chunk);
+          ColumnIndex columnIndex = indexCacher.getColumnIndex(chunk);
+          OffsetIndex offsetIndex = indexCacher.getOffsetIndex(chunk);
           writer.appendColumnChunk(descriptor, reader.getStream(), chunk, bloomFilter, columnIndex, offsetIndex);
         }
 
@@ -745,54 +750,6 @@ public class ParquetRewriter implements Closeable {
     }
 
     return null;
-  }
-
-  private static List<ColumnIndex> readAllColumnIndexes(
-      TransParquetFileReader reader,
-      List<ColumnChunkMetaData> chunks,
-      Map<ColumnPath, ColumnDescriptor> descriptorsMap) throws IOException {
-    List<ColumnIndex> columnIndexList = new ArrayList<>(chunks.size());
-    for (ColumnChunkMetaData chunk : chunks) {
-      if (descriptorsMap.containsKey(chunk.getPath())) {
-        columnIndexList.add(reader.readColumnIndex(chunk));
-      } else {
-        columnIndexList.add(null);
-      }
-    }
-
-    return columnIndexList;
-  }
-
-  private static List<OffsetIndex> readAllOffsetIndexes(
-      TransParquetFileReader reader,
-      List<ColumnChunkMetaData> chunks,
-      Map<ColumnPath, ColumnDescriptor> descriptorsMap) throws IOException {
-    List<OffsetIndex> offsetIndexList = new ArrayList<>(chunks.size());
-    for (ColumnChunkMetaData chunk : chunks) {
-      if (descriptorsMap.containsKey(chunk.getPath())) {
-        offsetIndexList.add(reader.readOffsetIndex(chunk));
-      } else {
-        offsetIndexList.add(null);
-      }
-    }
-
-    return offsetIndexList;
-  }
-
-  private static List<BloomFilter> readAllBloomFilters(
-      TransParquetFileReader reader,
-      List<ColumnChunkMetaData> chunks,
-      Map<ColumnPath, ColumnDescriptor> descriptorsMap) throws IOException {
-    List<BloomFilter> bloomFilterList = new ArrayList<>(chunks.size());
-    for (ColumnChunkMetaData chunk : chunks) {
-      if (descriptorsMap.containsKey(chunk.getPath())) {
-        bloomFilterList.add(reader.readBloomFilter(chunk));
-      } else {
-        bloomFilterList.add(null);
-      }
-    }
-
-    return bloomFilterList;
   }
 
   private static final class DummyGroupConverter extends GroupConverter {

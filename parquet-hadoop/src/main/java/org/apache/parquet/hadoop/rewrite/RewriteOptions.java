@@ -33,14 +33,15 @@ import java.util.Map;
  */
 public class RewriteOptions {
 
-  final Configuration conf;
-  final List<Path> inputFiles;
-  final Path outputFile;
-  final List<String> pruneColumns;
-  final CompressionCodecName newCodecName;
-  final Map<String, MaskMode> maskColumns;
-  final List<String> encryptColumns;
-  final FileEncryptionProperties fileEncryptionProperties;
+  private final Configuration conf;
+  private final List<Path> inputFiles;
+  private final Path outputFile;
+  private final List<String> pruneColumns;
+  private final CompressionCodecName newCodecName;
+  private final Map<String, MaskMode> maskColumns;
+  private final List<String> encryptColumns;
+  private final FileEncryptionProperties fileEncryptionProperties;
+  private final boolean prefetchBlockAllIndexes;
 
   private RewriteOptions(Configuration conf,
                          List<Path> inputFiles,
@@ -49,7 +50,8 @@ public class RewriteOptions {
                          CompressionCodecName newCodecName,
                          Map<String, MaskMode> maskColumns,
                          List<String> encryptColumns,
-                         FileEncryptionProperties fileEncryptionProperties) {
+                         FileEncryptionProperties fileEncryptionProperties,
+                         boolean prefetchBlockAllIndexes) {
     this.conf = conf;
     this.inputFiles = inputFiles;
     this.outputFile = outputFile;
@@ -58,6 +60,7 @@ public class RewriteOptions {
     this.maskColumns = maskColumns;
     this.encryptColumns = encryptColumns;
     this.fileEncryptionProperties = fileEncryptionProperties;
+    this.prefetchBlockAllIndexes = prefetchBlockAllIndexes;
   }
 
   public Configuration getConf() {
@@ -92,16 +95,21 @@ public class RewriteOptions {
     return fileEncryptionProperties;
   }
 
+  public boolean prefetchBlockAllIndexes() {
+    return prefetchBlockAllIndexes;
+  }
+
   // Builder to create a RewriterOptions.
   public static class Builder {
-    private Configuration conf;
-    private List<Path> inputFiles;
-    private Path outputFile;
+    private final Configuration conf;
+    private final List<Path> inputFiles;
+    private final Path outputFile;
     private List<String> pruneColumns;
     private CompressionCodecName newCodecName;
     private Map<String, MaskMode> maskColumns;
     private List<String> encryptColumns;
     private FileEncryptionProperties fileEncryptionProperties;
+    private boolean prefetchBlockAllIndexes;
 
     /**
      * Create a builder to create a RewriterOptions.
@@ -214,6 +222,19 @@ public class RewriteOptions {
     }
 
     /**
+     * Whether enable prefetch block indexes into cache.
+     * <p>
+     * This could reduce the random seek while rewriting, disabled by default.
+     *
+     * @param prefetchBlockAllIndexes enable or not
+     * @return self
+     */
+    public Builder prefetchBlockAllIndex(boolean prefetchBlockAllIndexes) {
+      this.prefetchBlockAllIndexes = prefetchBlockAllIndexes;
+      return this;
+    }
+
+    /**
      * Build the RewriterOptions.
      *
      * @return a RewriterOptions
@@ -255,7 +276,8 @@ public class RewriteOptions {
               newCodecName,
               maskColumns,
               encryptColumns,
-              fileEncryptionProperties);
+              fileEncryptionProperties,
+              prefetchBlockAllIndexes);
     }
   }
 
