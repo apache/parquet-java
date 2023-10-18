@@ -544,6 +544,8 @@
               <!-- japicmp is overly aggressive on interface types in signatures, a type was changed to a supertype but this still triggers it -->
               <exclude>org.apache.parquet.hadoop.ColumnChunkPageWriteStore</exclude>
               <exclude>org.apache.parquet.hadoop.ParquetRecordWriter</exclude>
+              <exclude>org.apache.parquet.proto.ProtoParquetReader#builder(org.apache.hadoop.fs.Path,boolean)</exclude>
+              <exclude>org.apache.parquet.proto.ProtoParquetReader#builder(org.apache.parquet.io.InputFile,boolean)</exclude>
             </excludes>
           </parameter>
         </configuration>
