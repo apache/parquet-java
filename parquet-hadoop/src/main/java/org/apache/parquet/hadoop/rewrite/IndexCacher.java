@@ -39,7 +39,7 @@ class IndexCacher {
   private final Set<ColumnPath> columnPathSet;
   private final boolean prefetchBlockAllIndexes;
 
-  // Only used when cacheBlockIndexInOnce is true
+  // Only used when prefetchBlockAllIndexes is true
   private Map<ColumnPath, ColumnIndex> columnIndexCache;
   private Map<ColumnPath, OffsetIndex> offsetIndexCache;
   private Map<ColumnPath, BloomFilter> bloomIndexCache;
@@ -50,16 +50,7 @@ class IndexCacher {
       boolean prefetchBlockAllIndexes) {
     this.fileReader = fileReader;
     this.columnPathSet = columnPathSet;
-    this.prefetchBlockAllIndexes = prefetchBlockAllIndexes;
-    if (prefetchBlockAllIndexes) {
-      this.columnIndexCache = new HashMap<>();
-      this.offsetIndexCache = new HashMap<>();
-      this.bloomIndexCache = new HashMap<>();
-    } else {
-      this.columnIndexCache = null;
-      this.offsetIndexCache = null;
-      this.bloomIndexCache = null;
-    }
+    this.prefetchBlockAllIndexes = prefetchBlockAllIndexes;g
   }
 
   void setCurrentBlockMetadata(BlockMetaData blockMetaData) throws IOException {
