@@ -68,7 +68,7 @@
     <jackson.package>com.fasterxml.jackson</jackson.package>
     <jackson.version>2.15.2</jackson.version>
     <jackson-databind.version>2.15.2</jackson-databind.version>
-    <japicmp.version>0.16.0</japicmp.version>
+    <japicmp.version>0.18.1</japicmp.version>
     <shade.prefix>shaded.parquet</shade.prefix>
     <hadoop.version>3.3.5</hadoop.version>
     <parquet.format.version>2.9.0</parquet.format.version>
