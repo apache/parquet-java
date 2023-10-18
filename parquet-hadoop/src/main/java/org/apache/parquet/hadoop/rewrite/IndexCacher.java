@@ -73,7 +73,7 @@ class IndexCacher {
 
   ColumnIndex getColumnIndex(ColumnChunkMetaData chunk) throws IOException {
     if (prefetchBlockAllIndexes) {
-      return columnIndexCache.get(chunk.getPath());
+      return columnIndexCache.remove(chunk.getPath());
     }
 
     return fileReader.readColumnIndex(chunk);
@@ -81,7 +81,7 @@ class IndexCacher {
 
   OffsetIndex getOffsetIndex(ColumnChunkMetaData chunk) throws IOException {
     if (prefetchBlockAllIndexes) {
-      return offsetIndexCache.get(chunk.getPath());
+      return offsetIndexCache.remove(chunk.getPath());
     }
 
     return fileReader.readOffsetIndex(chunk);
@@ -89,7 +89,7 @@ class IndexCacher {
 
   BloomFilter getBloomFilter(ColumnChunkMetaData chunk) throws IOException {
     if (prefetchBlockAllIndexes) {
-      return bloomIndexCache.get(chunk.getPath());
+      return bloomIndexCache.remove(chunk.getPath());
     }
 
     return fileReader.readBloomFilter(chunk);
