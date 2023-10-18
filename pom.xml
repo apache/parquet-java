@@ -544,6 +544,17 @@
               <!-- japicmp is overly aggressive on interface types in signatures, a type was changed to a supertype but this still triggers it -->
               <exclude>org.apache.parquet.hadoop.ColumnChunkPageWriteStore</exclude>
               <exclude>org.apache.parquet.hadoop.ParquetRecordWriter</exclude>
+              <!-- Already deprecated classes/methods/constants -->
+              <exclude>org.apache.parquet.hadoop.thrift.ThriftReadSupport#setProjectionPushdown(org.apache.hadoop.mapred.JobConf,java.lang.String)</exclude>
+              <exclude>org.apache.parquet.hadoop.thrift.ThriftReadSupport#THRIFT_COLUMN_FILTER_KEY</exclude>
+              <exclude>org.apache.parquet.thrift.projection.deprecated.DeprecatedFieldProjectionFilter</exclude>
+              <!--
+              Got this from:
+                org.apache.parquet.thrift.projection.FieldProjectionFilter[org.apache.parquet.thrift.projection.FieldProjectionFilter]:INTERFACE_REMOVED
+
+              But it didn't change, only the @Deprecated annotation was added
+              -->
+              <exclude>org.apache.parquet.thrift.projection.FieldProjectionFilter</exclude>
             </excludes>
           </parameter>
         </configuration>
