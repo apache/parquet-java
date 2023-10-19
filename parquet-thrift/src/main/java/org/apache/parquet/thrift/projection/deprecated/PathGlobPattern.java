@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -18,10 +18,8 @@
  */
 package org.apache.parquet.thrift.projection.deprecated;
 
-import org.apache.hadoop.fs.GlobPattern;
-
-import java.util.regex.Pattern;
-import java.util.regex.PatternSyntaxException;
+import com.google.re2j.Pattern;
+import com.google.re2j.PatternSyntaxException;
 
 /**
  * Enhanced version of GlobPattern class that is defined in hadoop with extra capability of matching
@@ -45,18 +43,8 @@ public class PathGlobPattern {
     set(globPattern);
   }
 
-  /**
-   * Compile glob pattern string
-   *
-   * @param globPattern the glob pattern
-   * @return the pattern object
-   */
-  public static Pattern compile(String globPattern) {
-    return new GlobPattern(globPattern).compiled();
-  }
-
   private static void error(String message, String pattern, int pos) {
-    throw new PatternSyntaxException(message, pattern, pos);
+    throw new PatternSyntaxException(String.format("%1s at %2d", message, pos), pattern);
   }
 
   /**

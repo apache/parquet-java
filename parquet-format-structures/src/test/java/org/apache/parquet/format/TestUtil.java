@@ -23,13 +23,16 @@ import static junit.framework.Assert.assertEquals;
 import static junit.framework.Assert.assertNull;
 import static org.apache.parquet.format.Util.readFileMetaData;
 import static org.apache.parquet.format.Util.writeFileMetaData;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 
 import org.junit.Test;
-
 import org.apache.parquet.format.Util.DefaultFileMetaDataConsumer;
+
 public class TestUtil {
 
   @Test
@@ -75,6 +78,21 @@ public class TestUtil {
     assertEquals(md, md5);
     assertEquals(md4, md5);
     assertEquals(md, md6);
+  }
+
+  @Test
+  public void testInvalidPageHeader() throws IOException {
+    PageHeader ph = new PageHeader(PageType.DATA_PAGE, 100, -50);
+    ByteArrayOutputStream out = new ByteArrayOutputStream();
+    Util.writePageHeader(ph, out);
+
+    try {
+      Util.readPageHeader(in(out));
+      fail("Expected exception but did not thrown");
+    } catch (InvalidParquetMetadataException e) {
+      assertTrue("Exception message does not contain the expected parts",
+          e.getMessage().contains("Compressed page size"));
+    }
   }
 
   private ByteArrayInputStream in(ByteArrayOutputStream baos) {

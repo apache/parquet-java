@@ -18,6 +18,8 @@
  */
 package org.apache.parquet.proto;
 
+import com.google.common.base.Charsets;
+import com.google.common.io.Resources;
 import com.google.protobuf.Descriptors;
 import com.google.protobuf.Message;
 import com.google.protobuf.MessageOrBuilder;
@@ -166,15 +168,16 @@ public class TestUtils {
   }
 
   /**
-   * Read messages from given file into the expected proto class.
+   * Read messages from given file into the expected proto class with ignoreUnknown fields flag.
    * @param file
    * @param messageClass
    * @param <T>
+   * @param ignoreUnknownFields
    * @return List of protobuf messages for the given type.
    */
-  public static <T extends MessageOrBuilder> List<T> readMessages(Path file, Class<T> messageClass) throws IOException {
+  public static <T extends MessageOrBuilder> List<T> readMessages(Path file, Class<T> messageClass, boolean ignoreUnknownFields) throws IOException {
     InputFile inputFile = HadoopInputFile.fromPath(file, new Configuration());
-    ParquetReader.Builder readerBuilder = ProtoParquetReader.builder(inputFile);
+    ParquetReader.Builder readerBuilder = ProtoParquetReader.builder(inputFile, ignoreUnknownFields);
     if (messageClass != null) {
       readerBuilder.set(ProtoReadSupport.PB_CLASS, messageClass.getName()).build();
     }
@@ -191,6 +194,17 @@ public class TestUtils {
       }
       return result;
     }
+  }
+
+  /**
+   * Read messages from given file into the expected proto class.
+   * @param file
+   * @param messageClass
+   * @param <T>
+   * @return List of protobuf messages for the given type.
+   */
+  public static <T extends MessageOrBuilder> List<T> readMessages(Path file, Class<T> messageClass) throws IOException {
+    return readMessages(file, messageClass, false);
   }
 
   /**
@@ -212,4 +226,7 @@ public class TestUtils {
     return file;
   }
 
+  public static String readResource(final String filename) throws IOException {
+    return Resources.toString(Resources.getResource(filename), Charsets.UTF_8);
+  }
 }

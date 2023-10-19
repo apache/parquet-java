@@ -26,6 +26,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import org.apache.parquet.cli.BaseCommand;
 import org.apache.commons.text.TextStringBuilder;
+import org.apache.parquet.cli.rawpages.RawPagesReader;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.page.DataPage;
 import org.apache.parquet.column.page.DataPageV1;
@@ -36,6 +37,8 @@ import org.apache.parquet.column.page.PageReadStore;
 import org.apache.parquet.column.page.PageReader;
 import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
+import org.apache.parquet.hadoop.util.HadoopInputFile;
+import org.apache.parquet.io.SeekableInputStream;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
 import org.slf4j.Logger;
@@ -66,6 +69,11 @@ public class ShowPagesCommand extends BaseCommand {
       description = "List of columns")
   List<String> columns;
 
+  @Parameter(
+    names = {"-r", "--raw"},
+    description = "List the original Thrift page headers and file offsets")
+  boolean raw = false;
+
   @Override
   @SuppressWarnings("unchecked")
   public int run() throws IOException {
@@ -74,58 +82,67 @@ public class ShowPagesCommand extends BaseCommand {
     Preconditions.checkArgument(targets.size() == 1,
         "Cannot process multiple Parquet files.");
 
+    // Even though the implementation is separated the functionality is logically related so placed in the same command.
+    if (raw) {
+      try (RawPagesReader reader = new RawPagesReader(
+        HadoopInputFile.fromPath(qualifiedPath(targets.get(0)), getConf()))) {
+        reader.listPages(console);
+      }
+      return 0;
+    }
+
     String source = targets.get(0);
-    ParquetFileReader reader = ParquetFileReader.open(getConf(), qualifiedPath(source));
-
-    MessageType schema = reader.getFileMetaData().getSchema();
-    Map<ColumnDescriptor, PrimitiveType> columns = Maps.newLinkedHashMap();
-    if (this.columns == null || this.columns.isEmpty()) {
-      for (ColumnDescriptor descriptor : schema.getColumns()) {
-        columns.put(descriptor, primitive(schema, descriptor.getPath()));
-      }
-    } else {
-      for (String column : this.columns) {
-        columns.put(descriptor(column, schema), primitive(column, schema));
-      }
-    }
-
-    CompressionCodecName codec = reader.getRowGroups().get(0).getColumns().get(0).getCodec();
-    // accumulate formatted lines to print by column
-    Map<String, List<String>> formatted = Maps.newLinkedHashMap();
-    PageFormatter formatter = new PageFormatter();
-    PageReadStore pageStore;
-    int rowGroupNum = 0;
-    while ((pageStore = reader.readNextRowGroup()) != null) {
-      for (ColumnDescriptor descriptor : columns.keySet()) {
-        List<String> lines = formatted.get(columnName(descriptor));
-        if (lines == null) {
-          lines = Lists.newArrayList();
-          formatted.put(columnName(descriptor), lines);
+    try (ParquetFileReader reader = ParquetFileReader.open(getConf(), qualifiedPath(source))) {
+      MessageType schema = reader.getFileMetaData().getSchema();
+      Map<ColumnDescriptor, PrimitiveType> columns = Maps.newLinkedHashMap();
+      if (this.columns == null || this.columns.isEmpty()) {
+        for (ColumnDescriptor descriptor : schema.getColumns()) {
+          columns.put(descriptor, primitive(schema, descriptor.getPath()));
         }
-
-        formatter.setContext(rowGroupNum, columns.get(descriptor), codec);
-        PageReader pages = pageStore.getPageReader(descriptor);
-
-        DictionaryPage dict = pages.readDictionaryPage();
-        if (dict != null) {
-          lines.add(formatter.format(dict));
-        }
-        DataPage page;
-        while ((page = pages.readPage()) != null) {
-          lines.add(formatter.format(page));
+      } else {
+        for (String column : this.columns) {
+          columns.put(descriptor(column, schema), primitive(column, schema));
         }
       }
-      rowGroupNum += 1;
-    }
 
-    // TODO: Show total column size and overall size per value in the column summary line
-    for (String columnName : formatted.keySet()) {
-      console.info(String.format("\nColumn: %s\n%s", columnName, new TextStringBuilder(80).appendPadding(80, '-')));
-      console.info(formatter.getHeader());
-      for (String line : formatted.get(columnName)) {
-        console.info(line);
+      CompressionCodecName codec = reader.getRowGroups().get(0).getColumns().get(0).getCodec();
+      // accumulate formatted lines to print by column
+      Map<String, List<String>> formatted = Maps.newLinkedHashMap();
+      PageFormatter formatter = new PageFormatter();
+      PageReadStore pageStore;
+      int rowGroupNum = 0;
+      while ((pageStore = reader.readNextRowGroup()) != null) {
+        for (ColumnDescriptor descriptor : columns.keySet()) {
+          List<String> lines = formatted.get(columnName(descriptor));
+          if (lines == null) {
+            lines = Lists.newArrayList();
+            formatted.put(columnName(descriptor), lines);
+          }
+
+          formatter.setContext(rowGroupNum, columns.get(descriptor), codec);
+          PageReader pages = pageStore.getPageReader(descriptor);
+
+          DictionaryPage dict = pages.readDictionaryPage();
+          if (dict != null) {
+            lines.add(formatter.format(dict));
+          }
+          DataPage page;
+          while ((page = pages.readPage()) != null) {
+            lines.add(formatter.format(page));
+          }
+        }
+        rowGroupNum += 1;
       }
-      console.info("");
+
+      // TODO: Show total column size and overall size per value in the column summary line
+      for (String columnName : formatted.keySet()) {
+        console.info(String.format("\nColumn: %s\n%s", columnName, new TextStringBuilder(80).appendPadding(80, '-')));
+        console.info(formatter.getHeader());
+        for (String line : formatted.get(columnName)) {
+          console.info(line);
+        }
+        console.info("");
+      }
     }
 
     return 0;

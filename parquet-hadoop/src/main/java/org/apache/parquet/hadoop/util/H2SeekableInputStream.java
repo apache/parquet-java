@@ -21,6 +21,7 @@ package org.apache.parquet.hadoop.util;
 
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.parquet.io.DelegatingSeekableInputStream;
+
 import java.io.EOFException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -83,7 +84,7 @@ class H2SeekableInputStream extends DelegatingSeekableInputStream {
   }
 
   public static void readFully(Reader reader, ByteBuffer buf) throws IOException {
-    // unfortunately the Hadoop APIs seem to not have a 'readFully' equivalent for the byteBuffer read
+    // unfortunately the Hadoop 2 APIs do not have a 'readFully' equivalent for the byteBuffer read
     // calls. The read(ByteBuffer) call might read fewer than byteBuffer.hasRemaining() bytes. Thus we
     // have to loop to ensure we read them.
     while (buf.hasRemaining()) {

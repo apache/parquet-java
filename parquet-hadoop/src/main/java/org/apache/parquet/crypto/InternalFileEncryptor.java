@@ -84,13 +84,13 @@ public class InternalFileEncryptor {
     }
   }
 
-  public InternalColumnEncryptionSetup getColumnSetup(ColumnPath columnPath, 
+  public InternalColumnEncryptionSetup getColumnSetup(ColumnPath columnPath,
       boolean createIfNull, int ordinal) {
     InternalColumnEncryptionSetup internalColumnProperties = columnMap.get(columnPath);
 
     if (null != internalColumnProperties) {
       if (ordinal != internalColumnProperties.getOrdinal()) {
-        throw new ParquetCryptoRuntimeException("Column ordinal doesnt match " + columnPath + 
+        throw new ParquetCryptoRuntimeException("Column ordinal doesnt match " + columnPath +
             ": " + ordinal + ", "+internalColumnProperties.getOrdinal());
       }
       return internalColumnProperties;
@@ -113,7 +113,7 @@ public class InternalFileEncryptor {
             getDataModuleEncryptor(null), getThriftModuleEncryptor(null));
       } else {
         internalColumnProperties = new InternalColumnEncryptionSetup(columnProperties, ordinal,
-            getDataModuleEncryptor(columnProperties.getKeyBytes()), 
+            getDataModuleEncryptor(columnProperties.getKeyBytes()),
             getThriftModuleEncryptor(columnProperties.getKeyBytes()));
       }
     } else { // unencrypted column
@@ -179,6 +179,10 @@ public class InternalFileEncryptor {
     return (AesGcmEncryptor) ModuleCipherFactory.getEncryptor(AesMode.GCM, footerKey);
   }
 
+  public FileEncryptionProperties getEncryptionProperties() {
+    return fileEncryptionProperties;
+  }
+
   private void fileEncryptorLog() {
     String encryptedColumnList;
     Map<ColumnPath, ColumnEncryptionProperties> columnPropertyMap = fileEncryptionProperties.getEncryptedColumns();
@@ -190,7 +194,7 @@ public class InternalFileEncryptor {
     } else {
       encryptedColumnList = "Every column will be encrypted with footer key.";
     }
-    LOG.debug("File Encryptor. Algo: {}. Encrypted footer: {}.  Encrypted columns: {}", 
+    LOG.debug("File Encryptor. Algo: {}. Encrypted footer: {}.  Encrypted columns: {}",
         fileEncryptionProperties.getAlgorithm(), fileEncryptionProperties.encryptedFooter(), encryptedColumnList);
   }
 }

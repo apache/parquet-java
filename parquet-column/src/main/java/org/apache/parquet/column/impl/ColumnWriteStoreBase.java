@@ -231,16 +231,19 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
       long usedMem = writer.getCurrentPageBufferedSize();
       long rows = rowCount - writer.getRowsWrittenSoFar();
       long remainingMem = props.getPageSizeThreshold() - usedMem;
-      if (remainingMem <= thresholdTolerance || rows >= pageRowCountLimit) {
+      if (remainingMem <= thresholdTolerance ||
+          rows >= pageRowCountLimit ||
+          writer.getValueCount() >= props.getPageValueCountThreshold()) {
         writer.writePage();
         remainingMem = props.getPageSizeThreshold();
       } else {
         rowCountForNextRowCountCheck = min(rowCountForNextRowCountCheck, writer.getRowsWrittenSoFar() + pageRowCountLimit);
       }
+      //estimate remaining row count by previous input for next row count check
       long rowsToFillPage =
           usedMem == 0 ?
               props.getMaxRowCountForPageSizeCheck()
-              : (long) rows / usedMem * remainingMem;
+              : rows * remainingMem / usedMem;
       if (rowsToFillPage < minRecordToWait) {
         minRecordToWait = rowsToFillPage;
       }

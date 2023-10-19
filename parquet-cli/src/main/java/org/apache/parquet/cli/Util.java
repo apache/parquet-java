@@ -151,6 +151,8 @@ public class Util {
         return "B";
       case LZ4:
         return "4";
+      case LZ4_RAW:
+        return "F";
       case ZSTD:
         return "Z";
       default:
@@ -241,7 +243,7 @@ public class Util {
   public static ColumnDescriptor descriptor(String column, MessageType schema) {
     String[] path = Iterables.toArray(DOT.split(column), String.class);
     Preconditions.checkArgument(schema.containsPath(path),
-        "Schema doesn't have column: " + column);
+        "Schema doesn't have column: %s", column);
     return schema.getColumnDescription(path);
   }
 
@@ -263,7 +265,7 @@ public class Util {
   public static PrimitiveType primitive(String column, MessageType schema) {
     String[] path = Iterables.toArray(DOT.split(column), String.class);
     Preconditions.checkArgument(schema.containsPath(path),
-        "Schema doesn't have column: " + column);
+        "Schema doesn't have column: %s", column);
     return primitive(schema, path);
   }
 

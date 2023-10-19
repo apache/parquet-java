@@ -35,4 +35,33 @@ public class CatCommandTest extends ParquetFileTest {
     command.setConf(new Configuration());
     Assert.assertEquals(0, command.run());
   }
+
+  @Test
+  public void testCatCommandWithMultipleInput() throws IOException {
+    File file = parquetFile();
+    CatCommand command = new CatCommand(createLogger(), 0);
+    command.sourceFiles = Arrays.asList(file.getAbsolutePath(), file.getAbsolutePath());
+    command.setConf(new Configuration());
+    Assert.assertEquals(0, command.run());
+  }
+
+  @Test
+  public void testCatCommandWithSpecificColumns() throws IOException {
+    File file = parquetFile();
+    CatCommand command = new CatCommand(createLogger(), 0);
+    command.sourceFiles = Arrays.asList(file.getAbsolutePath());
+    command.columns = Arrays.asList(INT32_FIELD, INT64_FIELD);
+    command.setConf(new Configuration());
+    Assert.assertEquals(0, command.run());
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void testCatCommandWithInvalidColumn() throws IOException {
+    File file = parquetFile();
+    CatCommand command = new CatCommand(createLogger(), 0);
+    command.sourceFiles = Arrays.asList(file.getAbsolutePath());
+    command.columns = Arrays.asList("invalid_field");
+    command.setConf(new Configuration());
+    command.run();
+  }
 }

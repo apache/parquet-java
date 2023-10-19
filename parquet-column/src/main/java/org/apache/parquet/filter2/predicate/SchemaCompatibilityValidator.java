@@ -29,12 +29,15 @@ import org.apache.parquet.filter2.predicate.Operators.ColumnFilterPredicate;
 import org.apache.parquet.filter2.predicate.Operators.Eq;
 import org.apache.parquet.filter2.predicate.Operators.Gt;
 import org.apache.parquet.filter2.predicate.Operators.GtEq;
+import org.apache.parquet.filter2.predicate.Operators.In;
 import org.apache.parquet.filter2.predicate.Operators.LogicalNotUserDefined;
 import org.apache.parquet.filter2.predicate.Operators.Lt;
 import org.apache.parquet.filter2.predicate.Operators.LtEq;
 import org.apache.parquet.filter2.predicate.Operators.Not;
 import org.apache.parquet.filter2.predicate.Operators.NotEq;
+import org.apache.parquet.filter2.predicate.Operators.NotIn;
 import org.apache.parquet.filter2.predicate.Operators.Or;
+import org.apache.parquet.filter2.predicate.Operators.SetColumnFilterPredicate;
 import org.apache.parquet.filter2.predicate.Operators.UserDefined;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.schema.MessageType;
@@ -115,6 +118,18 @@ public class SchemaCompatibilityValidator implements FilterPredicate.Visitor<Voi
   }
 
   @Override
+  public <T extends Comparable<T>> Void visit(In<T> pred) {
+    validateColumnFilterPredicate(pred);
+    return null;
+  }
+
+  @Override
+  public <T extends Comparable<T>> Void visit(NotIn<T> pred) {
+    validateColumnFilterPredicate(pred);
+    return null;
+  }
+
+  @Override
   public Void visit(And and) {
     and.getLeft().accept(this);
     and.getRight().accept(this);
@@ -146,6 +161,10 @@ public class SchemaCompatibilityValidator implements FilterPredicate.Visitor<Voi
   }
 
   private <T extends Comparable<T>> void validateColumnFilterPredicate(ColumnFilterPredicate<T> pred) {
+    validateColumn(pred.getColumn());
+  }
+
+  private <T extends Comparable<T>> void validateColumnFilterPredicate(SetColumnFilterPredicate<T> pred) {
     validateColumn(pred.getColumn());
   }
 

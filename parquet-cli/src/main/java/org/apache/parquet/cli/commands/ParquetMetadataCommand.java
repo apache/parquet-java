@@ -123,12 +123,15 @@ public class ParquetMetadataCommand extends BaseCommand {
     long uncompressedSize = rowGroup.getTotalByteSize();
     String filePath = rowGroup.getPath();
 
-    console.info(String.format("\nRow group %d:  count: %d  %s records  start: %d  total: %s%s\n%s",
-        index, rowCount,
-        humanReadable(((float) compressedSize) / rowCount),
-        start, humanReadable(compressedSize),
-        filePath != null ? " path: " + filePath : "",
-        new TextStringBuilder(80).appendPadding(80, '-')));
+    console.info(String.format("\nRow group %d:  count: %d  %s records  start: %d  total(compressed): %s total(uncompressed):%s %s\n%s",
+      index,
+      rowCount,
+      humanReadable(((float) compressedSize) / rowCount),
+      start,
+      humanReadable(compressedSize),
+      humanReadable(uncompressedSize),
+      filePath != null ? "path: " + filePath : "",
+      new TextStringBuilder(80).appendPadding(80, '-')));
 
     int size = maxSize(Iterables.transform(rowGroup.getColumns(),
         new Function<ColumnChunkMetaData, String>() {

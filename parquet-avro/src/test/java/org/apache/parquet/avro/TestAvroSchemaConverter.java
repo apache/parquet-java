@@ -44,6 +44,7 @@ import static org.apache.parquet.avro.AvroTestUtil.field;
 import static org.apache.parquet.avro.AvroTestUtil.optionalField;
 import static org.apache.parquet.avro.AvroTestUtil.primitive;
 import static org.apache.parquet.avro.AvroTestUtil.record;
+import static org.apache.parquet.avro.AvroWriteSupport.WRITE_FIXED_AS_INT96;
 import static org.apache.parquet.schema.OriginalType.DATE;
 import static org.apache.parquet.schema.OriginalType.TIMESTAMP_MICROS;
 import static org.apache.parquet.schema.OriginalType.TIMESTAMP_MILLIS;
@@ -712,6 +713,31 @@ public class TestAvroSchemaConverter {
   }
 
   @Test
+  public void testLocalTimestampMillisType() throws Exception {
+    Schema date = LogicalTypes.localTimestampMillis().addToSchema(Schema.create(LONG));
+    Schema expected = Schema.createRecord("myrecord", null, null, false,
+        Arrays.asList(new Schema.Field("timestamp", date, null, null)));
+
+    testRoundTripConversion(expected,
+        "message myrecord {\n" +
+            "  required int64 timestamp (TIMESTAMP(MILLIS,false));\n" +
+            "}\n");
+
+    for (PrimitiveTypeName primitive : new PrimitiveTypeName[]
+        {INT32, INT96, FLOAT, DOUBLE, BOOLEAN, BINARY, FIXED_LEN_BYTE_ARRAY}) {
+      final PrimitiveType type;
+      if (primitive == FIXED_LEN_BYTE_ARRAY) {
+        type = new PrimitiveType(REQUIRED, primitive, 12, "test", TIMESTAMP_MILLIS);
+      } else {
+        type = new PrimitiveType(REQUIRED, primitive, "test", TIMESTAMP_MILLIS);
+      }
+
+      assertThrows("Should not allow TIMESTAMP_MILLIS with " + primitive,
+          IllegalArgumentException.class, () -> new AvroSchemaConverter().convert(message(type)));
+    }
+  }
+
+  @Test
   public void testTimestampMicrosType() throws Exception {
     Schema date = LogicalTypes.timestampMicros().addToSchema(Schema.create(LONG));
     Schema expected = Schema.createRecord("myrecord", null, null, false,
@@ -720,6 +746,31 @@ public class TestAvroSchemaConverter {
     testRoundTripConversion(expected,
         "message myrecord {\n" +
             "  required int64 timestamp (TIMESTAMP(MICROS,true));\n" +
+            "}\n");
+
+    for (PrimitiveTypeName primitive : new PrimitiveTypeName[]
+        {INT32, INT96, FLOAT, DOUBLE, BOOLEAN, BINARY, FIXED_LEN_BYTE_ARRAY}) {
+      final PrimitiveType type;
+      if (primitive == FIXED_LEN_BYTE_ARRAY) {
+        type = new PrimitiveType(REQUIRED, primitive, 12, "test", TIMESTAMP_MICROS);
+      } else {
+        type = new PrimitiveType(REQUIRED, primitive, "test", TIMESTAMP_MICROS);
+      }
+
+      assertThrows("Should not allow TIMESTAMP_MICROS with " + primitive,
+          IllegalArgumentException.class, () -> new AvroSchemaConverter().convert(message(type)));
+    }
+  }
+
+  @Test
+  public void testLocalTimestampMicrosType() throws Exception {
+    Schema date = LogicalTypes.localTimestampMicros().addToSchema(Schema.create(LONG));
+    Schema expected = Schema.createRecord("myrecord", null, null, false,
+        Arrays.asList(new Schema.Field("timestamp", date, null, null)));
+
+    testRoundTripConversion(expected,
+        "message myrecord {\n" +
+            "  required int64 timestamp (TIMESTAMP(MICROS,false));\n" +
             "}\n");
 
     for (PrimitiveTypeName primitive : new PrimitiveTypeName[]
@@ -822,6 +873,37 @@ public class TestAvroSchemaConverter {
         "message myrecord {\n" +
             "  required fixed_len_byte_array(16) uuid (UUID);\n" +
             "}\n");
+  }
+
+  @Test
+  public void testAvroFixed12AsParquetInt96Type() throws Exception {
+    Schema schema = new Schema.Parser().parse(
+        Resources.getResource("fixedToInt96.avsc").openStream());
+
+    Configuration conf = new Configuration();
+    conf.setStrings(WRITE_FIXED_AS_INT96, "int96", "mynestedrecord.int96inrecord", "mynestedrecord.myarrayofoptional",
+        "mynestedrecord.mymap");
+    testAvroToParquetConversion(conf, schema, "message org.apache.parquet.avro.fixedToInt96 {\n"
+        + "  required int96 int96;\n"
+        + "  required fixed_len_byte_array(12) notanint96;\n"
+        + "  required group mynestedrecord {\n"
+        + "    required int96 int96inrecord;\n"
+        + "    required group myarrayofoptional (LIST) {\n"
+        + "      repeated int96 array;\n"
+        + "    }\n"
+        + "    required group mymap (MAP) {\n"
+        + "      repeated group key_value (MAP_KEY_VALUE) {\n"
+        + "        required binary key (STRING);\n"
+        + "        required int96 value;\n"
+        + "      }\n"
+        + "    }\n"
+        + "  }\n"
+        + "  required fixed_len_byte_array(1) onebytefixed;\n"
+        + "}");
+
+    conf.setStrings(WRITE_FIXED_AS_INT96, "onebytefixed");
+    assertThrows("Exception should be thrown for fixed types to be converted to INT96 where the size is not 12 bytes",
+        IllegalArgumentException.class, () -> new AvroSchemaConverter(conf).convert(schema));
   }
 
   public static Schema optional(Schema original) {

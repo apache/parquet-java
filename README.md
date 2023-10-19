@@ -35,19 +35,19 @@ Parquet-MR uses Maven to build and depends on the thrift compiler (protoc is now
 To build and install the thrift compiler, run:
 
 ```
-wget -nv http://archive.apache.org/dist/thrift/0.14.1/thrift-0.14.1.tar.gz
-tar xzf thrift-0.14.1.tar.gz
-cd thrift-0.14.1
+wget -nv http://archive.apache.org/dist/thrift/0.16.0/thrift-0.16.0.tar.gz
+tar xzf thrift-0.16.0.tar.gz
+cd thrift-0.16.0
 chmod +x ./configure
 ./configure --disable-libs
 sudo make install
 ```
 
-If you're on OSX and use homebrew, you can instead install Thrift 0.14.1 with `brew` and ensure that it comes first in your `PATH`.
+If you're on OSX and use homebrew, you can instead install Thrift 0.16.0 with `brew` and ensure that it comes first in your `PATH`.
 
 ```
 brew install thrift
-export PATH="/usr/local/opt/thrift@0.14.1/bin:$PATH"
+export PATH="/usr/local/opt/thrift@0.16.0/bin:$PATH"
 ```
 
 ### Build Parquet with Maven
@@ -66,10 +66,10 @@ Parquet is a very active project, and new features are being added quickly. Here
 * Type-specific encoding
 * Hive integration (deprecated)
 * Pig integration
-* Cascading integration
+* Cascading integration (deprecated)
 * Crunch integration
 * Apache Arrow integration
-* Apache Scrooge integration
+* Scrooge integration (deprecated)
 * Impala integration (non-nested)
 * Java Map/Reduce API
 * Native Avro support
@@ -83,6 +83,21 @@ Parquet is a very active project, and new features are being added quickly. Here
 * Column stats
 * Delta encoding
 * Index pages
+* Java Vector API support (experimental)
+
+## Java Vector API support
+`The feature is experimental and is currently not part of the parquet distribution`.
+Parquet-MR has supported Java Vector API to speed up reading, to enable this feature:
+* Java 17+, 64-bit
+* Requiring the CPU to support instruction sets:
+  * avx512vbmi
+  * avx512_vbmi2
+* To build the jars: `mvn clean package -P vector-plugins`
+* For Apache Spark to enable this feature:
+  * Build parquet and replace the parquet-encoding-{VERSION}.jar on the spark jars folder
+  * Build parquet-encoding-vector and copy parquet-encoding-vector-{VERSION}.jar to the spark jars folder
+  * Edit spark class#VectorizedRleValuesReader, function#readNextGroup refer to parquet class#ParquetReadRouter, function#readBatchUsing512Vector
+  * Build spark with maven and replace spark-sql_2.12-{VERSION}.jar on the spark jars folder
 
 ## Map/Reduce integration
 
@@ -92,10 +107,13 @@ Note that to use an Input or Output format, you need to implement a WriteSupport
 We've implemented this for 2 popular data formats to provide a clean migration path as well:
 
 ### Thrift
-Thrift integration is provided by the [parquet-thrift](https://github.com/apache/parquet-mr/tree/master/parquet-thrift) sub-project. If you are using Thrift through Scala, you may be using Twitter's [Scrooge](https://github.com/twitter/scrooge). If that's the case, not to worry -- we took care of the Scrooge/Apache Thrift glue for you in the [parquet-scrooge](https://github.com/apache/parquet-mr/tree/master/parquet-scrooge) sub-project.
+Thrift integration is provided by the [parquet-thrift](https://github.com/apache/parquet-mr/tree/master/parquet-thrift) sub-project.
 
 ### Avro
 Avro conversion is implemented via the [parquet-avro](https://github.com/apache/parquet-mr/tree/master/parquet-avro) sub-project.
+
+### Protobuf
+Protobuf conversion is implemented via the [parquet-protobuf](https://github.com/apache/parquet-mr/tree/master/parquet-protobuf) sub-project.
 
 ### Create your own objects
 * The ParquetOutputFormat can be provided a WriteSupport to write your own objects to an event based RecordConsumer.
@@ -139,29 +157,30 @@ The build runs in [GitHub Actions](https://github.com/apache/parquet-mr/actions)
 [![Build Status](https://github.com/apache/parquet-mr/workflows/Test/badge.svg)](https://github.com/apache/parquet-mr/actions)
 
 ## Add Parquet as a dependency in Maven
-The current release is version `1.12.0`
+
+The current release is version `1.13.0`
 
 ```xml
   <dependencies>
     <dependency>
       <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-common</artifactId>
-      <version>1.12.0</version>
+      <version>1.13.0</version>
     </dependency>
     <dependency>
       <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-encoding</artifactId>
-      <version>1.12.0</version>
+      <version>1.13.0</version>
     </dependency>
     <dependency>
       <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-column</artifactId>
-      <version>1.12.0</version>
+      <version>1.13.0</version>
     </dependency>
     <dependency>
       <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-hadoop</artifactId>
-      <version>1.12.0</version>
+      <version>1.13.0</version>
     </dependency>
   </dependencies>
 ```
@@ -204,10 +223,9 @@ We hold ourselves and the Parquet developer community to two codes of conduct:
 
 ## Discussions
 * Mailing list: [dev@parquet.apache.org](http://mail-archives.apache.org/mod_mbox/parquet-dev/)
-* Bug trackter: [jira](https://issues.apache.org/jira/browse/PARQUET)
+* Bug tracker: [jira](https://issues.apache.org/jira/browse/PARQUET)
 * Discussions also take place in github pull requests
 
 ## License
 
 Licensed under the Apache License, Version 2.0: http://www.apache.org/licenses/LICENSE-2.0
-See also:

@@ -79,8 +79,8 @@ public class TestZstandardCodec {
     byte[] data = new byte[dataSize];
     (new Random()).nextBytes(data);
     BytesInput compressedData = compress(codec,  BytesInput.from(data));
-    BytesInput decompressedData = decompress(codec, compressedData, data.length);
-    Assert.assertArrayEquals(data, decompressedData.toByteArray());
+    byte[] decompressedData = decompress(codec, compressedData, data.length);
+    Assert.assertArrayEquals(data, decompressedData);
   }
 
   private BytesInput compress(ZstandardCodec codec, BytesInput bytes) throws IOException {
@@ -91,10 +91,9 @@ public class TestZstandardCodec {
     return BytesInput.from(compressedOutBuffer);
   }
 
-  private BytesInput decompress(ZstandardCodec codec, BytesInput bytes, int uncompressedSize) throws IOException {
-    BytesInput decompressed;
+  private byte[] decompress(ZstandardCodec codec, BytesInput bytes, int uncompressedSize) throws IOException {
     InputStream is = codec.createInputStream(bytes.toInputStream(), null);
-    decompressed = BytesInput.from(is, uncompressedSize);
+    byte[] decompressed = BytesInput.from(is, uncompressedSize).toByteArray();
     is.close();
     return decompressed;
   }

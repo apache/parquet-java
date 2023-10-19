@@ -13,9 +13,11 @@ target
 *.orig
 *.rej
 dependency-reduced-pom.xml
-parquet-scrooge/.cache
 .idea/*
 target/
 .cache
 *~
 mvn_install.log
+.vscode/*
+.DS_Store
+

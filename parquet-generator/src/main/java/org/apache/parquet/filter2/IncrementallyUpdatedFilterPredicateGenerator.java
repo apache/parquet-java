@@ -67,15 +67,18 @@ public class IncrementallyUpdatedFilterPredicateGenerator {
     add("package org.apache.parquet.filter2.recordlevel;\n" +
         "\n" +
         "import java.util.List;\n" +
+        "import java.util.Set;\n" +
         "\n" +
         "import org.apache.parquet.hadoop.metadata.ColumnPath;\n" +
         "import org.apache.parquet.filter2.predicate.Operators.Eq;\n" +
         "import org.apache.parquet.filter2.predicate.Operators.Gt;\n" +
         "import org.apache.parquet.filter2.predicate.Operators.GtEq;\n" +
+        "import org.apache.parquet.filter2.predicate.Operators.In;\n" +
         "import org.apache.parquet.filter2.predicate.Operators.LogicalNotUserDefined;\n" +
         "import org.apache.parquet.filter2.predicate.Operators.Lt;\n" +
         "import org.apache.parquet.filter2.predicate.Operators.LtEq;\n" +
         "import org.apache.parquet.filter2.predicate.Operators.NotEq;\n" +
+        "import org.apache.parquet.filter2.predicate.Operators.NotIn;\n" +
         "import org.apache.parquet.filter2.predicate.Operators.UserDefined;\n" +
         "import org.apache.parquet.filter2.predicate.UserDefinedPredicate;\n" +
         "import org.apache.parquet.filter2.recordlevel.IncrementallyUpdatedFilterPredicate.ValueInspector;\n" +
@@ -103,6 +106,18 @@ public class IncrementallyUpdatedFilterPredicateGenerator {
     addVisitBegin("NotEq");
     for (TypeInfo info : TYPES) {
       addEqNotEqCase(info, false);
+    }
+    addVisitEnd();
+
+    addVisitBegin("In");
+    for (TypeInfo info : TYPES) {
+      addInNotInCase(info, true);
+    }
+    addVisitEnd();
+
+    addVisitBegin("NotIn");
+    for (TypeInfo info : TYPES) {
+      addInNotInCase(info, false);
     }
     addVisitEnd();
 
@@ -232,6 +247,56 @@ public class IncrementallyUpdatedFilterPredicateGenerator {
         "      };\n" +
         "    }\n\n");
   }
+
+  private void addInNotInCase(TypeInfo info, boolean isEq) throws IOException {
+    add("    if (clazz.equals(" + info.className + ".class)) {\n" +
+      "      if (pred.getValues().contains(null)) {\n" +
+      "        valueInspector = new ValueInspector() {\n" +
+      "          @Override\n" +
+      "          public void updateNull() {\n" +
+      "            setResult(" + isEq + ");\n" +
+      "          }\n" +
+      "\n" +
+      "          @Override\n" +
+      "          public void update(" + info.primitiveName + " value) {\n" +
+      "            setResult(" + !isEq + ");\n" +
+      "          }\n" +
+      "        };\n" +
+      "      } else {\n" +
+      "        final Set<" + info.className + "> target = (Set<" + info.className + ">) pred.getValues();\n" +
+      "        final PrimitiveComparator<" + info.className + "> comparator = getComparator(columnPath);\n" +
+      "\n" +
+      "        valueInspector = new ValueInspector() {\n" +
+      "          @Override\n" +
+      "          public void updateNull() {\n" +
+      "            setResult(" + !isEq +");\n" +
+      "          }\n" +
+      "\n" +
+      "          @Override\n" +
+      "          public void update(" + info.primitiveName + " value) {\n" +
+      "            boolean set = false;\n");
+
+    add("            for (" + info.primitiveName + " i : target) {\n");
+
+    add("              if(" + compareEquality("value", "i", isEq) + ") {\n");
+
+    add("                 setResult(true);\n");
+
+    add("                 set = true;\n");
+
+    add("                 break;\n");
+
+    add("               }\n");
+
+    add("             }\n");
+    add("             if (!set) setResult(false);\n");
+    add("           }\n");
+
+    add("         };\n" +
+      "       }\n" +
+      "    }\n\n");
+  }
+
 
   private void addUdpBegin() throws IOException {
     add("    ColumnPath columnPath = pred.getColumn().getColumnPath();\n" +

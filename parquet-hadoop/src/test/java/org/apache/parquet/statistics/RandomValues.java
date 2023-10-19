@@ -33,7 +33,7 @@ import org.apache.parquet.io.api.Binary;
 public class RandomValues {
   private static final String ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890";
 
-  static abstract class RandomValueGenerator<T extends Comparable<T>> implements Supplier<T> {
+  public static abstract class RandomValueGenerator<T extends Comparable<T>> implements Supplier<T> {
     private final Random random;
 
     protected RandomValueGenerator(long seed) {
@@ -94,7 +94,7 @@ public class RandomValues {
     }
   }
 
-  static abstract class RandomBinaryBase<T extends Comparable<T>> extends RandomValueGenerator<T> {
+  public static abstract class RandomBinaryBase<T extends Comparable<T>> extends RandomValueGenerator<T> {
     protected final int bufferLength;
     protected final byte[] buffer;
 

@@ -19,6 +19,7 @@
 package org.apache.parquet.hadoop;
 
 import static org.apache.parquet.column.ParquetProperties.DEFAULT_BLOOM_FILTER_ENABLED;
+import static org.apache.parquet.column.ParquetProperties.DEFAULT_ADAPTIVE_BLOOM_FILTER_ENABLED;
 import static org.apache.parquet.hadoop.ParquetWriter.DEFAULT_BLOCK_SIZE;
 import static org.apache.parquet.hadoop.util.ContextUtil.getConfiguration;
 
@@ -73,7 +74,7 @@ import org.slf4j.LoggerFactory;
  * parquet.dictionary.page.size=1048576 # in bytes, default = 1 * 1024 * 1024
  *
  * # The compression algorithm used to compress pages
- * parquet.compression=UNCOMPRESSED # one of: UNCOMPRESSED, SNAPPY, GZIP, LZO. Default: UNCOMPRESSED. Supersedes mapred.output.compress*
+ * parquet.compression=UNCOMPRESSED # one of: UNCOMPRESSED, SNAPPY, GZIP, LZO, ZSTD. Default: UNCOMPRESSED. Supersedes mapred.output.compress*
  *
  * # The write support class to convert the records written to the OutputFormat into the events accepted by the record consumer
  * # Usually provided by a specific ParquetOutputFormat subclass
@@ -145,12 +146,16 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   public static final String MAX_PADDING_BYTES    = "parquet.writer.max-padding";
   public static final String MIN_ROW_COUNT_FOR_PAGE_SIZE_CHECK = "parquet.page.size.row.check.min";
   public static final String MAX_ROW_COUNT_FOR_PAGE_SIZE_CHECK = "parquet.page.size.row.check.max";
+  public static final String PAGE_VALUE_COUNT_THRESHOLD = "parquet.page.value.count.threshold";
   public static final String ESTIMATE_PAGE_SIZE_CHECK = "parquet.page.size.check.estimate";
   public static final String COLUMN_INDEX_TRUNCATE_LENGTH = "parquet.columnindex.truncate.length";
   public static final String STATISTICS_TRUNCATE_LENGTH = "parquet.statistics.truncate.length";
   public static final String BLOOM_FILTER_ENABLED = "parquet.bloom.filter.enabled";
   public static final String BLOOM_FILTER_EXPECTED_NDV = "parquet.bloom.filter.expected.ndv";
   public static final String BLOOM_FILTER_MAX_BYTES = "parquet.bloom.filter.max.bytes";
+  public static final String BLOOM_FILTER_FPP = "parquet.bloom.filter.fpp";
+  public static final String ADAPTIVE_BLOOM_FILTER_ENABLED = "parquet.bloom.filter.adaptive.enabled";
+  public static final String BLOOM_FILTER_CANDIDATES_NUMBER = "parquet.bloom.filter.candidates.number";
   public static final String PAGE_ROW_COUNT_LIMIT = "parquet.page.row.count.limit";
   public static final String PAGE_WRITE_CHECKSUM_ENABLED = "parquet.page.write-checksum.enabled";
 
@@ -226,6 +231,11 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   public static boolean getBloomFilterEnabled(Configuration conf) {
     return conf.getBoolean(BLOOM_FILTER_ENABLED, DEFAULT_BLOOM_FILTER_ENABLED);
   }
+
+  public static boolean getAdaptiveBloomFilterEnabled(Configuration conf) {
+    return conf.getBoolean(ADAPTIVE_BLOOM_FILTER_ENABLED, DEFAULT_ADAPTIVE_BLOOM_FILTER_ENABLED);
+  }
+
   public static int getBlockSize(JobContext jobContext) {
     return getBlockSize(getConfiguration(jobContext));
   }
@@ -267,6 +277,11 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   public static int getMaxRowCountForPageSizeCheck(Configuration configuration) {
     return configuration.getInt(MAX_ROW_COUNT_FOR_PAGE_SIZE_CHECK,
         ParquetProperties.DEFAULT_MAXIMUM_RECORD_COUNT_FOR_CHECK);
+  }
+
+  public static int getValueCountThreshold(Configuration configuration) {
+    return configuration.getInt(PAGE_VALUE_COUNT_THRESHOLD,
+        ParquetProperties.DEFAULT_PAGE_VALUE_COUNT_THRESHOLD);
   }
 
   public static boolean getEstimatePageSizeCheck(Configuration configuration) {
@@ -447,10 +462,12 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
         .estimateRowCountForPageSizeCheck(getEstimatePageSizeCheck(conf))
         .withMinRowCountForPageSizeCheck(getMinRowCountForPageSizeCheck(conf))
         .withMaxRowCountForPageSizeCheck(getMaxRowCountForPageSizeCheck(conf))
+        .withPageValueCountThreshold(getValueCountThreshold(conf))
         .withColumnIndexTruncateLength(getColumnIndexTruncateLength(conf))
         .withStatisticsTruncateLength(getStatisticsTruncateLength(conf))
         .withMaxBloomFilterBytes(getBloomFilterMaxBytes(conf))
         .withBloomFilterEnabled(getBloomFilterEnabled(conf))
+        .withAdaptiveBloomFilterEnabled(getAdaptiveBloomFilterEnabled(conf))
         .withPageRowCountLimit(getPageRowCountLimit(conf))
         .withPageWriteChecksumEnabled(getPageWriteChecksumEnabled(conf));
     new ColumnConfigParser()
@@ -458,6 +475,12 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
         .withColumnConfig(BLOOM_FILTER_ENABLED, key -> conf.getBoolean(key, false),
             propsBuilder::withBloomFilterEnabled)
         .withColumnConfig(BLOOM_FILTER_EXPECTED_NDV, key -> conf.getLong(key, -1L), propsBuilder::withBloomFilterNDV)
+        .withColumnConfig(BLOOM_FILTER_FPP, key -> conf.getDouble(key, ParquetProperties.DEFAULT_BLOOM_FILTER_FPP),
+            propsBuilder::withBloomFilterFPP)
+        .withColumnConfig(
+          BLOOM_FILTER_CANDIDATES_NUMBER,
+          key -> conf.getInt(key, ParquetProperties.DEFAULT_BLOOM_FILTER_CANDIDATES_NUMBER),
+          propsBuilder::withBloomFilterCandidatesNumber)
         .parseConfig(conf);
 
     ParquetProperties props = propsBuilder.build();
@@ -466,17 +489,15 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     int maxPaddingSize = getMaxPaddingSize(conf);
     boolean validating = getValidation(conf);
 
-    if (LOG.isInfoEnabled()) {
-      LOG.info("Parquet block size to {}", blockSize);
-      LOG.info("Validation is {}", (validating ? "on" : "off"));
-      LOG.info("Maximum row group padding size is {} bytes", maxPaddingSize);
-      LOG.info("Parquet properties are:\n{}", props);
-    }
+    LOG.info(
+        "ParquetRecordWriter [block size: {}b, row group padding size: {}b, validating: {}]",
+        blockSize, maxPaddingSize, validating);
+    LOG.debug("Parquet properties are:\n{}", props);
 
     WriteContext fileWriteContext = writeSupport.init(conf);
-    
+
     FileEncryptionProperties encryptionProperties = createEncryptionProperties(conf, file, fileWriteContext);
-    
+
     ParquetFileWriter w = new ParquetFileWriter(HadoopOutputFile.fromPath(file, conf),
         fileWriteContext.getSchema(), mode, blockSize, maxPaddingSize, props.getColumnIndexTruncateLength(),
         props.getStatisticsTruncateLength(), props.getPageWriteChecksumEnabled(), encryptionProperties);

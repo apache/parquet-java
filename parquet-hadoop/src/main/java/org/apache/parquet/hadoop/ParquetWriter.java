@@ -26,6 +26,7 @@ import org.apache.hadoop.fs.Path;
 
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
+import org.apache.parquet.compression.CompressionCodecFactory;
 import org.apache.parquet.crypto.FileEncryptionProperties;
 import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
@@ -56,7 +57,7 @@ public class ParquetWriter<T> implements Closeable {
   public static final int MAX_PADDING_SIZE_DEFAULT = 8 * 1024 * 1024; // 8MB
 
   private final InternalParquetRecordWriter<T> writer;
-  private final CodecFactory codecFactory;
+  private final CompressionCodecFactory codecFactory;
 
   /**
    * Create a new ParquetWriter.
@@ -237,8 +238,8 @@ public class ParquetWriter<T> implements Closeable {
   }
 
   /**
-   * Create a new ParquetWriter.  The default block size is 50 MB.The default
-   * page size is 1 MB.  Default compression is no compression. Dictionary encoding is disabled.
+   * Create a new ParquetWriter. The default block size is 128 MB. The default
+   * page size is 1 MB. Default compression is no compression. Dictionary encoding is disabled.
    *
    * @param file the file to create
    * @param writeSupport the implementation to write a record to a RecordConsumer
@@ -269,7 +270,7 @@ public class ParquetWriter<T> implements Closeable {
       ParquetFileWriter.Mode mode,
       WriteSupport<T> writeSupport,
       CompressionCodecName compressionCodecName,
-      int rowGroupSize,
+      long rowGroupSize,
       boolean validating,
       Configuration conf,
       int maxPaddingSize,
@@ -293,7 +294,7 @@ public class ParquetWriter<T> implements Closeable {
     fileWriter.start();
 
     this.codecFactory = new CodecFactory(conf, encodingProps.getPageSizeThreshold());
-    CodecFactory.BytesCompressor compressor =	codecFactory.getCompressor(compressionCodecName);
+    CompressionCodecFactory.BytesInputCompressor compressor = codecFactory.getCompressor(compressionCodecName);
     this.writer = new InternalParquetRecordWriter<T>(
         fileWriter,
         writeSupport,
@@ -355,7 +356,7 @@ public class ParquetWriter<T> implements Closeable {
     private Configuration conf = new Configuration();
     private ParquetFileWriter.Mode mode;
     private CompressionCodecName codecName = DEFAULT_COMPRESSION_CODEC_NAME;
-    private int rowGroupSize = DEFAULT_BLOCK_SIZE;
+    private long rowGroupSize = DEFAULT_BLOCK_SIZE;
     private int maxPaddingSize = MAX_PADDING_SIZE_DEFAULT;
     private boolean enableValidation = DEFAULT_IS_VALIDATING_ENABLED;
     private ParquetProperties.Builder encodingPropsBuilder =
@@ -432,8 +433,20 @@ public class ParquetWriter<T> implements Closeable {
      *
      * @param rowGroupSize an integer size in bytes
      * @return this builder for method chaining.
+     * @deprecated Use {@link #withRowGroupSize(long)} instead
      */
+    @Deprecated
     public SELF withRowGroupSize(int rowGroupSize) {
+      return withRowGroupSize((long) rowGroupSize);
+    }
+
+    /**
+     * Set the Parquet format row group size used by the constructed writer.
+     *
+     * @param rowGroupSize an integer size in bytes
+     * @return this builder for method chaining.
+     */
+    public SELF withRowGroupSize(long rowGroupSize) {
       this.rowGroupSize = rowGroupSize;
       return self();
     }
@@ -578,6 +591,17 @@ public class ParquetWriter<T> implements Closeable {
     }
 
     /**
+     * Set max Bloom filter bytes for related columns.
+     *
+     * @param maxBloomFilterBytes the max bytes of a Bloom filter bitset for a column.
+     * @return this builder for method chaining
+     */
+    public SELF withMaxBloomFilterBytes(int maxBloomFilterBytes) {
+      encodingPropsBuilder.withMaxBloomFilterBytes(maxBloomFilterBytes);
+      return self();
+    }
+
+    /**
      * Sets the NDV (number of distinct values) for the specified column.
      *
      * @param columnPath the path of the column (dot-string)
@@ -588,6 +612,33 @@ public class ParquetWriter<T> implements Closeable {
     public SELF withBloomFilterNDV(String columnPath, long ndv) {
       encodingPropsBuilder.withBloomFilterNDV(columnPath, ndv);
 
+      return self();
+    }
+
+    public SELF withBloomFilterFPP(String columnPath, double fpp) {
+      encodingPropsBuilder.withBloomFilterFPP(columnPath, fpp);
+      return self();
+    }
+
+    /**
+     * When NDV (number of distinct values) for a specified column is not set, whether to use
+     * `AdaptiveBloomFilter` to automatically adjust the BloomFilter size according to `parquet.bloom.filter.max.bytes`
+     *
+     * @param enabled whether to write bloom filter for the column
+     */
+    public SELF withAdaptiveBloomFilterEnabled(boolean enabled) {
+      encodingPropsBuilder.withAdaptiveBloomFilterEnabled(enabled);
+      return self();
+    }
+
+    /**
+     * When `AdaptiveBloomFilter` is enabled, set how many bloom filter candidates to use.
+     *
+     * @param columnPath the path of the column (dot-string)
+     * @param number the number of candidate
+     */
+    public SELF withBloomFilterCandidateNumber(String columnPath, int number) {
+      encodingPropsBuilder.withBloomFilterCandidatesNumber(columnPath, number);
       return self();
     }
 
@@ -612,6 +663,50 @@ public class ParquetWriter<T> implements Closeable {
      */
     public SELF withBloomFilterEnabled(String columnPath, boolean enabled) {
       encodingPropsBuilder.withBloomFilterEnabled(columnPath, enabled);
+      return self();
+    }
+
+    /**
+     * Sets the minimum number of rows to write before a page size check is done.
+     *
+     * @param min writes at least `min` rows before invoking a page size check
+     * @return this builder for method chaining
+     */
+    public SELF withMinRowCountForPageSizeCheck(int min) {
+      encodingPropsBuilder.withMinRowCountForPageSizeCheck(min);
+      return self();
+    }
+
+    /**
+     * Sets the maximum number of rows to write before a page size check is done.
+     *
+     * @param max makes a page size check after `max` rows have been written
+     * @return this builder for method chaining
+     */
+    public SELF withMaxRowCountForPageSizeCheck(int max) {
+      encodingPropsBuilder.withMaxRowCountForPageSizeCheck(max);
+      return self();
+    }
+
+    /**
+     * Sets the length to be used for truncating binary values in a binary column index.
+     *
+     * @param length the length to truncate to
+     * @return this builder for method chaining
+     */
+    public SELF withColumnIndexTruncateLength(int length) {
+      encodingPropsBuilder.withColumnIndexTruncateLength(length);
+      return self();
+    }
+
+    /**
+     * Sets the length which the min/max binary values in row groups are truncated to.
+     *
+     * @param length the length to truncate to
+     * @return this builder for method chaining
+     */
+    public SELF withStatisticsTruncateLength(int length) {
+      encodingPropsBuilder.withStatisticsTruncateLength(length);
       return self();
     }
 

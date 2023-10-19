@@ -30,12 +30,15 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.LinkedHashMap;
+import java.util.Objects;
+
 import org.apache.avro.AvroTypeException;
 import org.apache.avro.Conversion;
 import org.apache.avro.LogicalType;
@@ -57,6 +60,8 @@ import org.apache.parquet.io.api.GroupConverter;
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Type;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static org.apache.avro.SchemaCompatibility.SchemaCompatibilityType.COMPATIBLE;
 import static org.apache.avro.SchemaCompatibility.checkReaderWriterCompatibility;
@@ -72,6 +77,8 @@ import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
  * @param <T> a subclass of Avro's IndexedRecord
  */
 class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
+
+  private static final Logger LOG = LoggerFactory.getLogger(AvroRecordConverter.class);
 
   private static final String STRINGABLE_PROP = "avro.java.string";
   private static final String JAVA_CLASS_PROP = "java-class";
@@ -167,6 +174,77 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
       // use this.model because model may be null
       recordDefaults.put(field, this.model.getDefaultValue(field));
     }
+  }
+
+  /**
+   * Returns the specific data model for a given SpecificRecord schema by reflecting the underlying
+   * Avro class's `MODEL$` field, or Null if the class is not on the classpath or reflection fails.
+   */
+  static SpecificData getModelForSchema(Schema schema) {
+    final Class<?> clazz;
+
+    if (schema != null && (schema.getType() == Schema.Type.RECORD || schema.getType() == Schema.Type.UNION)) {
+      clazz = SpecificData.get().getClass(schema);
+    } else {
+      return null;
+    }
+
+    // If clazz == null, the underlying Avro class for the schema is not on the classpath
+    if (clazz == null) {
+      return null;
+    }
+
+    final SpecificData model;
+    try {
+      final Field modelField = clazz.getDeclaredField("MODEL$");
+      modelField.setAccessible(true);
+
+      model = (SpecificData) modelField.get(null);
+    } catch (NoSuchFieldException e) {
+      LOG.info(String.format(
+        "Generated Avro class %s did not contain a MODEL$ field. Parquet will use default SpecificData model for " +
+          "reading and writing.", clazz));
+      return null;
+    } catch (IllegalAccessException e) {
+      LOG.warn(String.format(
+        "Field `MODEL$` in class %s was inaccessible. Parquet will use default SpecificData model for " +
+          "reading and writing.", clazz), e);
+      return null;
+    }
+
+    final String avroVersion = getRuntimeAvroVersion();
+    // Avro 1.7 and 1.8 don't include conversions in the MODEL$ field by default
+    if (avroVersion != null && (avroVersion.startsWith("1.8.") || avroVersion.startsWith("1.7."))) {
+      final Field conversionsField;
+      try {
+        conversionsField = clazz.getDeclaredField("conversions");
+      } catch (NoSuchFieldException e) {
+        // Avro classes without logical types (denoted by the "conversions" field) can be returned as-is
+        return model;
+      }
+
+      final Conversion<?>[] conversions;
+      try {
+        conversionsField.setAccessible(true);
+        conversions = (Conversion<?>[]) conversionsField.get(null);
+      } catch (IllegalAccessException e) {
+        LOG.warn(String.format("Field `conversions` in class %s was inaccessible. Parquet will use default " +
+          "SpecificData model for reading and writing.", clazz));
+        return null;
+      }
+
+      for (int i = 0; i < conversions.length; i++) {
+        if (conversions[i] != null) {
+          model.addLogicalTypeConversion(conversions[i]);
+        }
+      }
+    }
+
+    return model;
+  }
+
+  static String getRuntimeAvroVersion() {
+    return Schema.Parser.class.getPackage().getImplementationVersion();
   }
 
   // this was taken from Avro's ReflectData
@@ -548,7 +626,7 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
       @Override
       public Converter getConverter(int fieldIndex) {
         Preconditions.checkArgument(
-            fieldIndex == 0, "Illegal field index: " + fieldIndex);
+            fieldIndex == 0, "Illegal field index: %s", fieldIndex);
         return elementConverter;
       }
 
@@ -592,7 +670,7 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
       this.avroSchema = avroSchema;
 
       Preconditions.checkArgument(arrayClass.isArray(),
-          "Cannot convert non-array: " + arrayClass.getName());
+          "Cannot convert non-array: %s", arrayClass.getName());
       this.elementClass = arrayClass.getComponentType();
 
       ParentValueContainer setter = createSetterAndContainer();
@@ -817,7 +895,7 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
       @Override
       public Converter getConverter(int fieldIndex) {
         Preconditions.checkArgument(
-            fieldIndex == 0, "Illegal field index: " + fieldIndex);
+            fieldIndex == 0, "Illegal field index: %s", fieldIndex);
         return elementConverter;
       }
 

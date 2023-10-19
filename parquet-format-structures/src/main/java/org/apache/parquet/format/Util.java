@@ -130,7 +130,7 @@ public class Util {
 
   public static PageHeader readPageHeader(InputStream from, 
       BlockCipher.Decryptor decryptor, byte[] AAD) throws IOException {
-    return read(from, new PageHeader(), decryptor, AAD);
+    return MetadataValidator.validate(read(from, new PageHeader(), decryptor, AAD));
   }
 
   public static void writeFileMetaData(org.apache.parquet.format.FileMetaData fileMetadata, 

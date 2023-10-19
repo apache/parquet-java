@@ -1,0 +1,25 @@
+{
+  "type": "record",
+  "name": "NullLists",
+  "namespace": "com.test",
+  "fields": [
+    {
+      "name": "KeyID",
+      "type": "string"
+    },
+    {
+      "name": "NullableList",
+      "type": [
+        "null",
+        {
+          "type": "array",
+          "items": [
+            "null",
+            "string"
+          ]
+        }
+      ],
+      "default": null
+    }
+  ]
+}

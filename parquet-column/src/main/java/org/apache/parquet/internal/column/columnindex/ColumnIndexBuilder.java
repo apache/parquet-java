@@ -23,21 +23,28 @@ import static java.util.Objects.requireNonNull;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Formatter;
+import java.util.Iterator;
 import java.util.List;
 import java.util.PrimitiveIterator;
+import java.util.Set;
+import java.util.function.IntConsumer;
 import java.util.function.IntPredicate;
 
+import org.apache.parquet.column.MinMax;
 import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.filter2.predicate.Operators.And;
 import org.apache.parquet.filter2.predicate.Operators.Eq;
 import org.apache.parquet.filter2.predicate.Operators.Gt;
 import org.apache.parquet.filter2.predicate.Operators.GtEq;
+import org.apache.parquet.filter2.predicate.Operators.In;
 import org.apache.parquet.filter2.predicate.Operators.LogicalNotUserDefined;
 import org.apache.parquet.filter2.predicate.Operators.Lt;
 import org.apache.parquet.filter2.predicate.Operators.LtEq;
 import org.apache.parquet.filter2.predicate.Operators.Not;
 import org.apache.parquet.filter2.predicate.Operators.NotEq;
+import org.apache.parquet.filter2.predicate.Operators.NotIn;
 import org.apache.parquet.filter2.predicate.Operators.Or;
+import org.apache.parquet.filter2.predicate.Operators.SetColumnFilterPredicate;
 import org.apache.parquet.filter2.predicate.Operators.UserDefined;
 import org.apache.parquet.filter2.predicate.UserDefinedPredicate;
 import org.apache.parquet.io.api.Binary;
@@ -160,7 +167,7 @@ public abstract class ColumnIndexBuilder {
     @Override
     public String toString() {
       try (Formatter formatter = new Formatter()) {
-        formatter.format("Boudary order: %s\n", boundaryOrder);
+        formatter.format("Boundary order: %s\n", boundaryOrder);
         String minMaxPart = "  %-" + MAX_VALUE_LENGTH_FOR_TOSTRING + "s  %-" + MAX_VALUE_LENGTH_FOR_TOSTRING + "s\n";
         formatter.format("%-10s  %20s" + minMaxPart, "", "null count", "min", "max");
         String format = "page-%-5d  %20s" + minMaxPart;
@@ -285,6 +292,59 @@ public abstract class ColumnIndexBuilder {
           .forEachRemaining((int index) -> matchingIndexes.add(index));
       return IndexIterator.filter(getPageCount(),
           pageIndex -> nullCounts[pageIndex] > 0 || matchingIndexes.contains(pageIndex));
+    }
+
+    @Override
+    public <T extends Comparable<T>> PrimitiveIterator.OfInt visit(In<T> in) {
+      Set<T> values = in.getValues();
+      IntSet matchingIndexesForNull = new IntOpenHashSet();  // for null
+      Iterator<T> it = values.iterator();
+      while(it.hasNext()) {
+        T value = it.next();
+        if (value == null) {
+          if (nullCounts == null) {
+            // Searching for nulls so if we don't have null related statistics we have to return all pages
+            return IndexIterator.all(getPageCount());
+          } else {
+            for (int i = 0; i < nullCounts.length; i++) {
+              if (nullCounts[i] > 0) {
+                matchingIndexesForNull.add(i);
+              }
+            }
+            if (values.size() == 1) {
+              return IndexIterator.filter(getPageCount(), pageIndex -> matchingIndexesForNull.contains(pageIndex));
+            }
+          }
+        }
+      }
+
+      IntSet matchingIndexesLessThanMax = new IntOpenHashSet();
+      IntSet matchingIndexesGreaterThanMin = new IntOpenHashSet();
+
+      MinMax<T> minMax = new MinMax(comparator, values);
+      T min = minMax.getMin();
+      T max = minMax.getMax();
+
+      // We don't want to iterate through each of the values in the IN set to compare,
+      // because the size of the IN set might be very large. Instead, we want to only
+      // compare the max and min value of the IN set to see if the page might contain the
+      // values in the IN set.
+      // If there might be values in a page that are <= the max value in the IN set,
+      // and >= the min value in the IN set, then the page might contain
+      // the values in the IN set.
+      getBoundaryOrder().ltEq(createValueComparator(max))
+        .forEachRemaining((int index) -> matchingIndexesLessThanMax.add(index));
+      getBoundaryOrder().gtEq(createValueComparator(min))
+        .forEachRemaining((int index) -> matchingIndexesGreaterThanMin.add(index));
+      matchingIndexesLessThanMax.retainAll(matchingIndexesGreaterThanMin);
+      IntSet matchingIndex = matchingIndexesLessThanMax;
+      matchingIndex.addAll(matchingIndexesForNull);  // add the matching null pages
+      return IndexIterator.filter(getPageCount(), pageIndex -> matchingIndex.contains(pageIndex));
+    }
+
+    @Override
+    public <T extends Comparable<T>> PrimitiveIterator.OfInt visit(NotIn<T> notIn) {
+      return IndexIterator.all(getPageCount());
     }
 
     @Override

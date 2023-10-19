@@ -67,8 +67,7 @@ public class ThriftReadSupport<T> extends ReadSupport<T> {
   /**
    * A {@link ThriftRecordConverter} builds an object by working with {@link TProtocol}. The default
    * implementation creates standard Apache Thrift {@link TBase} objects; to support alternatives, such
-   * as <a href="http://github.com/twitter/scrooge">Twiter's Scrooge</a>, a custom converter can be specified using this key
-   * (for example, ScroogeRecordConverter from parquet-scrooge).
+   * as <a href="http://github.com/twitter/scrooge">Twiter's Scrooge</a>, a custom converter can be specified using this key.
    */
   private static final String RECORD_CONVERTER_CLASS_KEY = "parquet.thrift.converter.class";
 
@@ -77,8 +76,7 @@ public class ThriftReadSupport<T> extends ReadSupport<T> {
   /**
    * A {@link ThriftRecordConverter} builds an object by working with {@link TProtocol}. The default
    * implementation creates standard Apache Thrift {@link TBase} objects; to support alternatives, such
-   * as <a href="http://github.com/twitter/scrooge">Twiter's Scrooge</a>, a custom converter can be specified
-   * (for example, ScroogeRecordConverter from parquet-scrooge).
+   * as <a href="http://github.com/twitter/scrooge">Twiter's Scrooge</a>, a custom converter can be specified.
    *
    * @param conf a mapred jobconf
    * @param klass a thrift class
@@ -93,8 +91,7 @@ public class ThriftReadSupport<T> extends ReadSupport<T> {
   /**
    * A {@link ThriftRecordConverter} builds an object by working with {@link TProtocol}. The default
    * implementation creates standard Apache Thrift {@link TBase} objects; to support alternatives, such
-   * as <a href="http://github.com/twitter/scrooge">Twiter's Scrooge</a>, a custom converter can be specified
-   * (for example, ScroogeRecordConverter from parquet-scrooge).
+   * as <a href="http://github.com/twitter/scrooge">Twiter's Scrooge</a>, a custom converter can be specified.
    *
    * @param conf a configuration
    * @param klass a thrift class

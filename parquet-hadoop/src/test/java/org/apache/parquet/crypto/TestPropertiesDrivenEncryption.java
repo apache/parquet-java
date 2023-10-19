@@ -21,6 +21,10 @@ package org.apache.parquet.crypto;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.parquet.bytes.ByteBufferAllocator;
+import org.apache.parquet.bytes.DirectByteBufferAllocator;
+import org.apache.parquet.bytes.HeapByteBufferAllocator;
+import org.apache.parquet.column.ParquetProperties.WriterVersion;
 import org.apache.parquet.crypto.keytools.KeyToolkit;
 import org.apache.parquet.crypto.keytools.PropertiesDrivenCryptoFactory;
 import org.apache.parquet.crypto.keytools.mocks.InMemoryKMS;
@@ -62,6 +66,7 @@ import static org.apache.parquet.hadoop.ParquetFileWriter.EFMAGIC;
 import static org.apache.parquet.hadoop.ParquetFileWriter.EF_MAGIC_STR;
 import static org.apache.parquet.hadoop.ParquetFileWriter.MAGIC;
 import static org.apache.parquet.hadoop.ParquetFileWriter.Mode.OVERWRITE;
+import static org.apache.parquet.hadoop.ParquetInputFormat.OFF_HEAP_DECRYPT_BUFFER_ENABLED;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 
 /*
@@ -107,15 +112,20 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
  */
 @RunWith(Parameterized.class)
 public class TestPropertiesDrivenEncryption {
-  @Parameterized.Parameters(name = "Run {index}: isKeyMaterialInternalStorage={0} isDoubleWrapping={1} isWrapLocally={2}")
+  @Parameterized.Parameters(name = "Run {index}: isKeyMaterialInternalStorage={0} isDoubleWrapping={1} isWrapLocally={2} isDecryptionDirectMemory={3} isV1={4}")
   public static Collection<Object[]> data() {
     Collection<Object[]> list = new ArrayList<>(8);
     boolean[] flagValues = { false, true };
     for (boolean keyMaterialInternalStorage : flagValues) {
       for (boolean doubleWrapping : flagValues) {
         for (boolean wrapLocally : flagValues) {
-          Object[] vector = {keyMaterialInternalStorage, doubleWrapping, wrapLocally};
-          list.add(vector);
+          for (boolean isDecryptionDirectMemory : flagValues) {
+            for (boolean isV1 : flagValues) {
+              Object[] vector = {keyMaterialInternalStorage, doubleWrapping, wrapLocally,
+                  isDecryptionDirectMemory, isV1};
+              list.add(vector);
+            }
+          }
         }
       }
     }
@@ -130,6 +140,12 @@ public class TestPropertiesDrivenEncryption {
 
   @Parameterized.Parameter(value = 2)
   public boolean isWrapLocally;
+
+  @Parameterized.Parameter(value = 3)
+  public boolean isDecryptionDirectMemory;
+  
+  @Parameterized.Parameter(value = 4)
+  public boolean isV1;
 
   private static final Logger LOG = LoggerFactory.getLogger(TestPropertiesDrivenEncryption.class);
 
@@ -149,8 +165,11 @@ public class TestPropertiesDrivenEncryption {
     encoder.encodeToString("1234567890123453".getBytes(StandardCharsets.UTF_8)),
     encoder.encodeToString("1234567890123454".getBytes(StandardCharsets.UTF_8)),
     encoder.encodeToString("1234567890123455".getBytes(StandardCharsets.UTF_8))};
+  private static final String UNIFORM_MASTER_KEY =
+    encoder.encodeToString("0123456789012346".getBytes(StandardCharsets.UTF_8));
   private static final String[] COLUMN_MASTER_KEY_IDS = { "kc1", "kc2", "kc3", "kc4", "kc5", "kc6"};
   private static final String FOOTER_MASTER_KEY_ID = "kf";
+  private static final String UNIFORM_MASTER_KEY_ID = "ku";
 
   private static final String KEY_LIST =  new StringBuilder()
     .append(COLUMN_MASTER_KEY_IDS[0]).append(": ").append(COLUMN_MASTER_KEYS[0]).append(", ")
@@ -159,6 +178,7 @@ public class TestPropertiesDrivenEncryption {
     .append(COLUMN_MASTER_KEY_IDS[3]).append(": ").append(COLUMN_MASTER_KEYS[3]).append(", ")
     .append(COLUMN_MASTER_KEY_IDS[4]).append(": ").append(COLUMN_MASTER_KEYS[4]).append(", ")
     .append(COLUMN_MASTER_KEY_IDS[5]).append(": ").append(COLUMN_MASTER_KEYS[5]).append(", ")
+    .append(UNIFORM_MASTER_KEY_ID).append(": ").append(UNIFORM_MASTER_KEY).append(", ")
     .append(FOOTER_MASTER_KEY_ID).append(": ").append(FOOTER_MASTER_KEY).toString();
 
   private static final String NEW_FOOTER_MASTER_KEY =
@@ -170,6 +190,8 @@ public class TestPropertiesDrivenEncryption {
     encoder.encodeToString("9234567890123453".getBytes(StandardCharsets.UTF_8)),
     encoder.encodeToString("9234567890123454".getBytes(StandardCharsets.UTF_8)),
     encoder.encodeToString("9234567890123455".getBytes(StandardCharsets.UTF_8))};
+  private static final String NEW_UNIFORM_MASTER_KEY =
+    encoder.encodeToString("9123456789012346".getBytes(StandardCharsets.UTF_8));
 
   private static final String NEW_KEY_LIST =  new StringBuilder()
     .append(COLUMN_MASTER_KEY_IDS[0]).append(": ").append(NEW_COLUMN_MASTER_KEYS[0]).append(", ")
@@ -178,6 +200,7 @@ public class TestPropertiesDrivenEncryption {
     .append(COLUMN_MASTER_KEY_IDS[3]).append(": ").append(NEW_COLUMN_MASTER_KEYS[3]).append(", ")
     .append(COLUMN_MASTER_KEY_IDS[4]).append(": ").append(NEW_COLUMN_MASTER_KEYS[4]).append(", ")
     .append(COLUMN_MASTER_KEY_IDS[5]).append(": ").append(NEW_COLUMN_MASTER_KEYS[5]).append(", ")
+    .append(UNIFORM_MASTER_KEY_ID).append(": ").append(NEW_UNIFORM_MASTER_KEY).append(", ")
     .append(FOOTER_MASTER_KEY_ID).append(": ").append(NEW_FOOTER_MASTER_KEY).toString();
 
   private static final String COLUMN_KEY_MAPPING = new StringBuilder()
@@ -195,41 +218,53 @@ public class TestPropertiesDrivenEncryption {
 
   private static final boolean plaintextFilesAllowed = true;
 
-  private static final int ROW_COUNT = 10000;
+  // AesCtrDecryptor has a loop to update the cipher in chunks of  CHUNK_LENGTH (4K). Use a large 
+  // enough number of rows to ensure that the data generated is greater than the chunk length.
+  private static final int ROW_COUNT = 50000;
   private static final List<SingleRow> DATA = Collections.unmodifiableList(SingleRow.generateRandomData(ROW_COUNT));
 
   public enum EncryptionConfiguration {
     ENCRYPT_COLUMNS_AND_FOOTER {
       /**
-       * Encrypt two columns and the footer, with different keys.
+       * Encrypt two columns and the footer, with different master keys.
        */
       public Configuration getHadoopConfiguration(TestPropertiesDrivenEncryption test) {
         Configuration conf = getCryptoProperties(test);
-        setEncryptionKeys(conf);
+        setColumnAndFooterKeys(conf);
+        return conf;
+      }
+    },
+    UNIFORM_ENCRYPTION {
+      /**
+       * Encrypt all columns and the footer, with same master key.
+       */
+      public Configuration getHadoopConfiguration(TestPropertiesDrivenEncryption test) {
+        Configuration conf = getCryptoProperties(test);
+        setUniformKey(conf);
         return conf;
       }
     },
     ENCRYPT_COLUMNS_PLAINTEXT_FOOTER {
       /**
-       * Encrypt two columns, with different keys.
+       * Encrypt two columns, with different master keys.
        * Don't encrypt footer.
        * (plaintext footer mode, readable by legacy readers)
        */
       public Configuration getHadoopConfiguration(TestPropertiesDrivenEncryption test) {
         Configuration conf = getCryptoProperties(test);
-        setEncryptionKeys(conf);
+        setColumnAndFooterKeys(conf);
         conf.setBoolean(PropertiesDrivenCryptoFactory.PLAINTEXT_FOOTER_PROPERTY_NAME, true);
         return conf;
       }
     },
     ENCRYPT_COLUMNS_AND_FOOTER_CTR {
       /**
-       * Encrypt two columns and the footer, with different keys.
+       * Encrypt two columns and the footer, with different master keys.
        * Use AES_GCM_CTR_V1 algorithm.
        */
       public Configuration getHadoopConfiguration(TestPropertiesDrivenEncryption test) {
         Configuration conf = getCryptoProperties(test);
-        setEncryptionKeys(conf);
+        setColumnAndFooterKeys(conf);
         conf.set(PropertiesDrivenCryptoFactory.ENCRYPTION_ALGORITHM_PROPERTY_NAME,
           ParquetCipher.AES_GCM_CTR_V1.toString());
         return conf;
@@ -278,6 +313,8 @@ public class TestPropertiesDrivenEncryption {
     conf.set(EncryptionPropertiesFactory.CRYPTO_FACTORY_CLASS_PROPERTY_NAME,
       PropertiesDrivenCryptoFactory.class.getName());
 
+    conf.set(OFF_HEAP_DECRYPT_BUFFER_ENABLED, String.valueOf(test.isDecryptionDirectMemory));
+
     if (test.isWrapLocally) {
       conf.set(KeyToolkit.KMS_CLIENT_CLASS_PROPERTY_NAME, LocalWrapInMemoryKMS.class.getName());
     } else {
@@ -292,11 +329,18 @@ public class TestPropertiesDrivenEncryption {
   }
 
   /**
-   * Set configuration properties to encrypt columns and the footer with different keys
+   * Set configuration properties to encrypt columns and the footer with different master keys
    */
-  private static void setEncryptionKeys(Configuration conf) {
+  private static void setColumnAndFooterKeys(Configuration conf) {
     conf.set(PropertiesDrivenCryptoFactory.COLUMN_KEYS_PROPERTY_NAME, COLUMN_KEY_MAPPING);
     conf.set(PropertiesDrivenCryptoFactory.FOOTER_KEY_PROPERTY_NAME, FOOTER_MASTER_KEY_ID);
+  }
+
+  /**
+   * Set uniform encryption configuration property
+   */
+  private static void setUniformKey(Configuration conf) {
+    conf.set(PropertiesDrivenCryptoFactory.UNIFORM_KEY_PROPERTY_NAME, UNIFORM_MASTER_KEY_ID);
   }
 
 
@@ -371,6 +415,7 @@ public class TestPropertiesDrivenEncryption {
         encryptionConfiguration, null);
       return;
     }
+    WriterVersion writerVersion = this.isV1 ? WriterVersion.PARQUET_1_0 : WriterVersion.PARQUET_2_0; 
     try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(file)
       .withConf(conf)
       .withWriteMode(OVERWRITE)
@@ -378,6 +423,7 @@ public class TestPropertiesDrivenEncryption {
       .withPageSize(pageSize)
       .withRowGroupSize(rowGroupSize)
       .withEncryption(fileEncryptionProperties)
+      .withWriterVersion(writerVersion)  
       .build()) {
 
       for (SingleRow singleRow : data) {
@@ -519,8 +565,12 @@ public class TestPropertiesDrivenEncryption {
     }
 
     int rowNum = 0;
+    final ByteBufferAllocator allocator = this.isDecryptionDirectMemory ?
+      new DirectByteBufferAllocator() :
+      new HeapByteBufferAllocator();
     try (ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), file)
       .withConf(hadoopConfig)
+      .withAllocator(allocator)
       .withDecryption(fileDecryptionProperties)
       .build()) {
       for (Group group = reader.read(); group != null; group = reader.read()) {

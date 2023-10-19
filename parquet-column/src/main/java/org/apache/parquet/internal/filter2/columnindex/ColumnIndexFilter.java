@@ -27,6 +27,7 @@ import org.apache.parquet.filter2.compat.FilterCompat.FilterPredicateCompat;
 import org.apache.parquet.filter2.compat.FilterCompat.NoOpFilter;
 import org.apache.parquet.filter2.compat.FilterCompat.UnboundRecordFilterCompat;
 import org.apache.parquet.filter2.predicate.FilterPredicate.Visitor;
+import org.apache.parquet.filter2.predicate.Operators;
 import org.apache.parquet.filter2.predicate.Operators.And;
 import org.apache.parquet.filter2.predicate.Operators.Column;
 import org.apache.parquet.filter2.predicate.Operators.Eq;
@@ -147,6 +148,18 @@ public class ColumnIndexFilter implements Visitor<RowRanges> {
   }
 
   @Override
+  public <T extends Comparable<T>> RowRanges visit(Operators.In<T> in) {
+    boolean isNull = in.getValues().contains(null);
+    return applyPredicate(in.getColumn(), ci -> ci.visit(in), isNull ? allRows() : RowRanges.EMPTY);
+  }
+
+  @Override
+  public <T extends Comparable<T>> RowRanges visit(Operators.NotIn<T> notIn) {
+    boolean isNull = notIn.getValues().contains(null);
+    return applyPredicate(notIn.getColumn(), ci -> ci.visit(notIn), isNull ? RowRanges.EMPTY : allRows());
+  }
+
+  @Override
   public <T extends Comparable<T>, U extends UserDefinedPredicate<T>> RowRanges visit(UserDefined<T, U> udp) {
     return applyPredicate(udp.getColumn(), ci -> ci.visit(udp),
         udp.getUserDefinedPredicate().acceptsNullValue() ? allRows() : RowRanges.EMPTY);
@@ -178,12 +191,22 @@ public class ColumnIndexFilter implements Visitor<RowRanges> {
 
   @Override
   public RowRanges visit(And and) {
-    return RowRanges.intersection(and.getLeft().accept(this), and.getRight().accept(this));
+    RowRanges leftResult = and.getLeft().accept(this);
+    if (leftResult.getRanges().size() == 0) {
+      return leftResult;
+    }
+
+    return RowRanges.intersection(leftResult, and.getRight().accept(this));
   }
 
   @Override
   public RowRanges visit(Or or) {
-    return RowRanges.union(or.getLeft().accept(this), or.getRight().accept(this));
+    RowRanges leftResult = or.getLeft().accept(this);
+    if (leftResult.getRanges().size() == 1 && leftResult.rowCount() == rowCount) {
+      return leftResult;
+    }
+
+    return RowRanges.union(leftResult, or.getRight().accept(this));
   }
 
   @Override

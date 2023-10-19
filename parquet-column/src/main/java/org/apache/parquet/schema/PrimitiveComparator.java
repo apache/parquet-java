@@ -183,10 +183,10 @@ public abstract class PrimitiveComparator<T> implements Comparator<T>, Serializa
   private static abstract class BinaryComparator extends PrimitiveComparator<Binary> {
     @Override
     int compareNotNulls(Binary o1, Binary o2) {
-      return compare(o1.toByteBuffer(), o2.toByteBuffer());
+      return compareBinary(o1, o2);
     }
 
-    abstract int compare(ByteBuffer b1, ByteBuffer b2);
+    abstract int compareBinary(Binary b1, Binary b2);
 
     final int toUnsigned(byte b) {
       return b & 0xFF;
@@ -195,25 +195,8 @@ public abstract class PrimitiveComparator<T> implements Comparator<T>, Serializa
 
   public static final PrimitiveComparator<Binary> UNSIGNED_LEXICOGRAPHICAL_BINARY_COMPARATOR = new BinaryComparator() {
     @Override
-    int compare(ByteBuffer b1, ByteBuffer b2) {
-      int l1 = b1.remaining();
-      int l2 = b2.remaining();
-      int p1 = b1.position();
-      int p2 = b2.position();
-      int minL = Math.min(l1, l2);
-
-      for (int i = 0; i < minL; ++i) {
-        int result = unsignedCompare(b1.get(p1 + i), b2.get(p2 + i));
-        if (result != 0) {
-          return result;
-        }
-      }
-
-      return l1 - l2;
-    }
-
-    private int unsignedCompare(byte b1, byte b2) {
-      return toUnsigned(b1) - toUnsigned(b2);
+    int compareBinary(Binary b1, Binary b2) {
+      return Binary.lexicographicCompare(b1, b2);
     }
 
     @Override
@@ -232,7 +215,11 @@ public abstract class PrimitiveComparator<T> implements Comparator<T>, Serializa
     private static final int POSITIVE_PADDING = 0;
 
     @Override
-    int compare(ByteBuffer b1, ByteBuffer b2) {
+    int compareBinary(Binary b1, Binary b2) {
+      return compare(b1.toByteBuffer(), b2.toByteBuffer());
+    }
+
+    private int compare(ByteBuffer b1, ByteBuffer b2) {
       int l1 = b1.remaining();
       int l2 = b2.remaining();
       int p1 = b1.position();

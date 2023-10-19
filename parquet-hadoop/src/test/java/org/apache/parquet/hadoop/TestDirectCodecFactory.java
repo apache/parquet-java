@@ -23,9 +23,12 @@ import java.util.Random;
 import java.util.Set;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.io.compress.CompressionCodec;
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.DirectByteBufferAllocator;
 import org.apache.parquet.bytes.HeapByteBufferAllocator;
+import org.apache.parquet.compression.CompressionCodecFactory.BytesInputCompressor;
+import org.apache.parquet.compression.CompressionCodecFactory.BytesInputDecompressor;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -35,7 +38,6 @@ import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import static org.apache.parquet.hadoop.metadata.CompressionCodecName.BROTLI;
 import static org.apache.parquet.hadoop.metadata.CompressionCodecName.LZ4;
 import static org.apache.parquet.hadoop.metadata.CompressionCodecName.LZO;
-import static org.apache.parquet.hadoop.metadata.CompressionCodecName.ZSTD;
 
 public class TestDirectCodecFactory {
 
@@ -66,8 +68,8 @@ public class TestDirectCodecFactory {
       }
       rawBuf.flip();
 
-      final DirectCodecFactory.BytesCompressor c = codecFactory.getCompressor(codec);
-      final CodecFactory.BytesDecompressor d = codecFactory.getDecompressor(codec);
+      final BytesInputCompressor c = codecFactory.getCompressor(codec);
+      final BytesInputDecompressor d = codecFactory.getDecompressor(codec);
 
       final BytesInput compressed;
       if (useOnHeapCompression) {
@@ -156,7 +158,6 @@ public class TestDirectCodecFactory {
     Set<CompressionCodecName> codecsToSkip = new HashSet<>();
     codecsToSkip.add(LZO); // not distributed because it is GPL
     codecsToSkip.add(LZ4); // not distributed in the default version of Hadoop
-    codecsToSkip.add(ZSTD); // not distributed in the default version of Hadoop
     final String arch = System.getProperty("os.arch");
     if ("aarch64".equals(arch)) {
       // PARQUET-1975 brotli-codec does not have natives for ARM64 architectures
@@ -175,6 +176,56 @@ public class TestDirectCodecFactory {
         }
       }
     }
+  }
+
+  static class PublicCodecFactory extends CodecFactory {
+    // To make getCodec public
+
+    public PublicCodecFactory(Configuration configuration, int pageSize) {
+      super(configuration, pageSize);
+    }
+
+    public org.apache.hadoop.io.compress.CompressionCodec getCodec(CompressionCodecName name) {
+      return super.getCodec(name);
+    }
+  }
+
+  @Test
+  public void cachingKeysGzip() {
+    Configuration config_zlib_2 = new Configuration();
+    config_zlib_2.set("zlib.compress.level", "2");
+
+    Configuration config_zlib_5 = new Configuration();
+    config_zlib_5.set("zlib.compress.level", "5");
+
+    final CodecFactory codecFactory_2 = new PublicCodecFactory(config_zlib_2, pageSize);
+    final CodecFactory codecFactory_5 = new PublicCodecFactory(config_zlib_5, pageSize);
+
+    CompressionCodec codec_2_1 = codecFactory_2.getCodec(CompressionCodecName.GZIP);
+    CompressionCodec codec_2_2 = codecFactory_2.getCodec(CompressionCodecName.GZIP);
+    CompressionCodec codec_5_1 = codecFactory_5.getCodec(CompressionCodecName.GZIP);
+
+    Assert.assertEquals(codec_2_1, codec_2_2);
+    Assert.assertNotEquals(codec_2_1, codec_5_1);
+  }
+
+  @Test
+  public void cachingKeysZstd() {
+    Configuration config_zstd_2 = new Configuration();
+    config_zstd_2.set("parquet.compression.codec.zstd.level", "2");
+
+    Configuration config_zstd_5 = new Configuration();
+    config_zstd_5.set("parquet.compression.codec.zstd.level", "5");
+
+    final CodecFactory codecFactory_2 = new PublicCodecFactory(config_zstd_2, pageSize);
+    final CodecFactory codecFactory_5 = new PublicCodecFactory(config_zstd_5, pageSize);
+
+    CompressionCodec codec_2_1 = codecFactory_2.getCodec(CompressionCodecName.ZSTD);
+    CompressionCodec codec_2_2 = codecFactory_2.getCodec(CompressionCodecName.ZSTD);
+    CompressionCodec codec_5_1 = codecFactory_5.getCodec(CompressionCodecName.ZSTD);
+
+    Assert.assertEquals(codec_2_1, codec_2_2);
+    Assert.assertNotEquals(codec_2_1, codec_5_1);
   }
 }
 

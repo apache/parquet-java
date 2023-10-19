@@ -47,7 +47,7 @@ abstract public class ColumnIO {
     this.name = type.getName();
   }
 
-  String[] getFieldPath() {
+  public String[] getFieldPath() {
     return fieldPath;
   }
 
@@ -71,11 +71,17 @@ abstract public class ColumnIO {
     return name;
   }
 
-  int getRepetitionLevel() {
+  /**
+   * Returns the maximum repetition level for this column
+   */
+  public int getRepetitionLevel() {
     return repetitionLevel;
   }
 
-  int getDefinitionLevel() {
+  /**
+   * Returns the maximum definition level for this column
+   */
+  public int getDefinitionLevel() {
     return definitionLevel;
   }
 

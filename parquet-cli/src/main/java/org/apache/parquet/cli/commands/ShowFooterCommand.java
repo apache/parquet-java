@@ -19,20 +19,15 @@
 
 package org.apache.parquet.cli.commands;
 
-import static org.apache.parquet.bytes.BytesUtils.readIntLittleEndian;
-import static org.apache.parquet.hadoop.ParquetFileWriter.EFMAGIC;
 import static org.apache.parquet.hadoop.ParquetFileWriter.MAGIC;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.List;
 
-import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.cli.BaseCommand;
+import org.apache.parquet.cli.util.RawUtils;
 import org.apache.parquet.format.CliUtils;
-import org.apache.parquet.format.Util;
 import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
@@ -46,7 +41,6 @@ import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
 
 @Parameters(commandDescription = "Print the Parquet file footer in json format")
 public class ShowFooterCommand extends BaseCommand {
@@ -74,19 +68,12 @@ public class ShowFooterCommand extends BaseCommand {
     String json;
     try (ParquetFileReader reader = ParquetFileReader.open(inputFile)) {
       ParquetMetadata footer = reader.getFooter();
-      ObjectMapper mapper = createObjectMapper();
+      ObjectMapper mapper = RawUtils.createObjectMapper();
       mapper.setVisibility(PropertyAccessor.ALL, Visibility.NONE);
       mapper.setVisibility(PropertyAccessor.FIELD, Visibility.ANY);
       json = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(footer);
     }
     return json;
-  }
-
-  private ObjectMapper createObjectMapper() {
-    ObjectMapper mapper = new ObjectMapper();
-    mapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
-    mapper.configure(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, true);
-    return mapper;
   }
 
   private String readRawFooter(InputFile file) throws IOException {
@@ -98,38 +85,8 @@ public class ShowFooterCommand extends BaseCommand {
     }
 
     try (SeekableInputStream f = file.newStream()) {
-      // Read footer length and magic string - with a single seek
-      byte[] magic = new byte[MAGIC.length];
-      long fileMetadataLengthIndex = fileLen - magic.length - FOOTER_LENGTH_SIZE;
-      f.seek(fileMetadataLengthIndex);
-      int fileMetadataLength = readIntLittleEndian(f);
-      f.readFully(magic);
-
-      if (Arrays.equals(EFMAGIC, magic)) {
-        throw new RuntimeException("Parquet files with encrypted footers are not supported.");
-      } else if (!Arrays.equals(MAGIC, magic)) {
-        throw new RuntimeException(
-            "Not a Parquet file (expected magic number at tail, but found " + Arrays.toString(magic) + ')');
-      }
-
-      long fileMetadataIndex = fileMetadataLengthIndex - fileMetadataLength;
-      if (fileMetadataIndex < magic.length || fileMetadataIndex >= fileMetadataLengthIndex) {
-        throw new RuntimeException("Corrupted file: the footer index is not within the file: " + fileMetadataIndex);
-      }
-      f.seek(fileMetadataIndex);
-
-      ByteBuffer footerBytesBuffer = ByteBuffer.allocate(fileMetadataLength);
-      f.readFully(footerBytesBuffer);
-      footerBytesBuffer.flip();
-      InputStream footerBytesStream = ByteBufferInputStream.wrap(footerBytesBuffer);
-      return prettify(CliUtils.toJson(Util.readFileMetaData(footerBytesStream)));
+      return RawUtils.prettifyJson(CliUtils.toJson(RawUtils.readFooter(f, fileLen)));
     }
-  }
-
-  private String prettify(String json) throws JsonProcessingException {
-    ObjectMapper mapper = createObjectMapper();
-    Object obj = mapper.readValue(json, Object.class);
-    return mapper.writerWithDefaultPrettyPrinter().writeValueAsString(obj);
   }
 
   @Override

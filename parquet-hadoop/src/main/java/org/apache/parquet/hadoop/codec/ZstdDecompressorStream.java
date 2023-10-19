@@ -50,4 +50,13 @@ public class ZstdDecompressorStream extends CompressionInputStream {
   public void resetState() throws IOException {
     // no-opt, doesn't apply to ZSTD
   }
+
+  @Override
+  public void close() throws IOException {
+    try {
+      zstdInputStream.close();
+    } finally {
+      super.close();
+    }
+  }
 }

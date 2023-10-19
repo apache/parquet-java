@@ -21,16 +21,41 @@ package org.apache.parquet.io;
 
 import java.io.IOException;
 
+/**
+ * {@code OutputFile} is an interface with the methods needed by Parquet to write
+ * data files using {@link PositionOutputStream} instances.
+ */
 public interface OutputFile {
 
+  /**
+   * Opens a new {@link PositionOutputStream} for the data file to create.
+   *
+   * @return a new {@link PositionOutputStream} to write the file
+   * @throws IOException if the stream cannot be opened
+   */
   PositionOutputStream create(long blockSizeHint) throws IOException;
 
+  /**
+   * Opens a new {@link PositionOutputStream} for the data file to create or overwrite.
+   *
+   * @return a new {@link PositionOutputStream} to write the file
+   * @throws IOException if the stream cannot be opened
+   */
   PositionOutputStream createOrOverwrite(long blockSizeHint) throws IOException;
 
+  /**
+   * @return a flag indicating if block size is supported.
+   */
   boolean supportsBlockSize();
 
+  /**
+   * @return the default block size.
+   */
   long defaultBlockSize();
 
+  /**
+   * @return the path of the file, as a {@link String}.
+   */
   default String getPath() {
     return null;
   }

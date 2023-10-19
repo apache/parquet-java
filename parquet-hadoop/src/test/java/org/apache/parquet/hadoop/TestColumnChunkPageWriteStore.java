@@ -46,7 +46,9 @@ import java.util.HashMap;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.parquet.column.ParquetProperties;
+import org.apache.parquet.bytes.ByteBufferAllocator;
+import org.apache.parquet.bytes.DirectByteBufferAllocator;
+import org.apache.parquet.compression.CompressionCodecFactory.BytesInputCompressor;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.InOrder;
@@ -132,9 +134,20 @@ public class TestColumnChunkPageWriteStore {
 
   @Test
   public void test() throws Exception {
+    test(conf, new HeapByteBufferAllocator());
+  }
+  @Test
+  public void testWithDirectBuffers() throws Exception {
+    Configuration config = new Configuration(conf);
+    // we want to test the path with direct buffers so we need to enable this config as well
+    // even though this file is not encrypted
+    config.set(ParquetInputFormat.OFF_HEAP_DECRYPT_BUFFER_ENABLED, "true");
+    test(config, new DirectByteBufferAllocator());
+  }
+  public void test(Configuration config, ByteBufferAllocator allocator) throws Exception {
     Path file = new Path("target/test/TestColumnChunkPageWriteStore/test.parquet");
     Path root = file.getParent();
-    FileSystem fs = file.getFileSystem(conf);
+    FileSystem fs = file.getFileSystem(config);
     if (fs.exists(root)) {
       fs.delete(root, true);
     }
@@ -159,7 +172,7 @@ public class TestColumnChunkPageWriteStore {
     long pageSize;
 
     {
-      OutputFileForTesting outputFile = new OutputFileForTesting(file, conf);
+      OutputFileForTesting outputFile = new OutputFileForTesting(file, config);
       ParquetFileWriter writer = new ParquetFileWriter(outputFile, schema, Mode.CREATE,
           ParquetWriter.DEFAULT_BLOCK_SIZE, ParquetWriter.MAX_PADDING_SIZE_DEFAULT);
       writer.start();
@@ -167,7 +180,7 @@ public class TestColumnChunkPageWriteStore {
       pageOffset = outputFile.out().getPos();
       {
         ColumnChunkPageWriteStore store = new ColumnChunkPageWriteStore(compressor(GZIP), schema,
-            new HeapByteBufferAllocator(), Integer.MAX_VALUE);
+            allocator, Integer.MAX_VALUE);
         PageWriter pageWriter = store.getPageWriter(col);
         pageWriter.writePageV2(
             rowCount, nullCount, valueCount,
@@ -184,7 +197,7 @@ public class TestColumnChunkPageWriteStore {
     {
       ParquetMetadata footer = ParquetFileReader.readFooter(conf, file, NO_FILTER);
       ParquetFileReader reader = new ParquetFileReader(
-          conf, footer.getFileMetaData(), file, footer.getBlocks(), schema.getColumns());
+          config, footer.getFileMetaData(), file, footer.getBlocks(), schema.getColumns());
       PageReadStore rowGroup = reader.readNextRowGroup();
       PageReader pageReader = rowGroup.getPageReader(col);
       DataPageV2 page = (DataPageV2)pageReader.readPage();
@@ -270,7 +283,7 @@ public class TestColumnChunkPageWriteStore {
     }
   }
 
-  private CodecFactory.BytesCompressor compressor(CompressionCodecName codec) {
+  private BytesInputCompressor compressor(CompressionCodecName codec) {
     return new CodecFactory(conf, pageSize).getCompressor(codec);
   }
 }

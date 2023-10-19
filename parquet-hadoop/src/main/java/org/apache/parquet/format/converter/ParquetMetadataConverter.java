@@ -21,10 +21,12 @@ package org.apache.parquet.format.converter;
 import static java.util.Optional.empty;
 
 import static java.util.Optional.of;
+import static org.apache.parquet.format.Util.readColumnMetaData;
 import static org.apache.parquet.format.Util.readFileMetaData;
 import static org.apache.parquet.format.Util.writeColumnMetaData;
 import static org.apache.parquet.format.Util.writePageHeader;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -45,6 +47,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.CorruptStatistics;
 import org.apache.parquet.ParquetReadOptions;
+import org.apache.parquet.Preconditions;
 import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.statistics.BinaryStatistics;
@@ -113,16 +116,17 @@ import org.apache.parquet.format.UUIDType;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
+import org.apache.parquet.hadoop.metadata.FileMetaData.EncryptionType;
 import org.apache.parquet.column.EncodingStats;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.internal.column.columnindex.BinaryTruncator;
 import org.apache.parquet.internal.column.columnindex.ColumnIndexBuilder;
 import org.apache.parquet.internal.column.columnindex.OffsetIndexBuilder;
 import org.apache.parquet.internal.hadoop.metadata.IndexReference;
+import org.apache.parquet.io.InvalidFileOffsetException;
 import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.ColumnOrder.ColumnOrderName;
-import org.apache.parquet.schema.LogicalTypeAnnotation.LogicalTypeAnnotationVisitor;
 import org.apache.parquet.schema.LogicalTypeAnnotation.UUIDLogicalTypeAnnotation;
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.MessageType;
@@ -201,8 +205,22 @@ public class ParquetMetadataConverter {
     List<BlockMetaData> blocks = parquetMetadata.getBlocks();
     List<RowGroup> rowGroups = new ArrayList<RowGroup>();
     long numRows = 0;
+    long preBlockStartPos = 0;
+    long preBlockCompressedSize = 0;
     for (BlockMetaData block : blocks) {
       numRows += block.getRowCount();
+      long blockStartPos = block.getStartingPos();
+      // first block
+      if (blockStartPos == 4) {
+        preBlockStartPos = 0;
+        preBlockCompressedSize = 0;
+      }
+      if (preBlockStartPos != 0) {
+        Preconditions.checkState(blockStartPos >= preBlockStartPos + preBlockCompressedSize,
+          "Invalid block starting position: %s", blockStartPos);
+      }
+      preBlockStartPos = blockStartPos;
+      preBlockCompressedSize = block.getCompressedSize();
       addRowGroup(parquetMetadata, rowGroups, block, fileEncryptor);
     }
     FileMetaData fileMetaData = new FileMetaData(
@@ -548,7 +566,7 @@ public class ParquetMetadataConverter {
                                                   columnMetaData.getPath(), e);
         }
         columnChunk.setEncrypted_column_metadata(tempOutStream.toByteArray());
-        // Keep redacted metadata version for old readers
+        // Keep redacted metadata version
         if (!fileEncryptor.isFooterEncrypted()) {
           ColumnMetaData metaDataRedacted  = metaData.deepCopy();
           if (metaDataRedacted.isSetStatistics()) metaDataRedacted.unsetStatistics();
@@ -1226,14 +1244,36 @@ public class ParquetMetadataConverter {
   static FileMetaData filterFileMetaDataByMidpoint(FileMetaData metaData, RangeMetadataFilter filter) {
     List<RowGroup> rowGroups = metaData.getRow_groups();
     List<RowGroup> newRowGroups = new ArrayList<RowGroup>();
+    long preStartIndex = 0;
+    long preCompressedSize = 0;
+    boolean firstColumnWithMetadata = true;
+    if (rowGroups != null && rowGroups.size() > 0) {
+      firstColumnWithMetadata = rowGroups.get(0).getColumns().get(0).isSetMeta_data();
+    }
     for (RowGroup rowGroup : rowGroups) {
       long totalSize = 0;
       long startIndex;
-
-      if (rowGroup.isSetFile_offset()) {
-        startIndex = rowGroup.getFile_offset();
+      ColumnChunk columnChunk = rowGroup.getColumns().get(0);
+      if (firstColumnWithMetadata) {
+        startIndex = getOffset(columnChunk);
       } else {
-        startIndex = getOffset(rowGroup.getColumns().get(0));
+        assert rowGroup.isSetFile_offset();
+        assert rowGroup.isSetTotal_compressed_size();
+
+        //the file_offset of first block always holds the truth, while other blocks don't :
+        //see PARQUET-2078 for details
+        startIndex = rowGroup.getFile_offset();
+        if (invalidFileOffset(startIndex, preStartIndex, preCompressedSize)) {
+          //first row group's offset is always 4
+          if (preStartIndex == 0) {
+            startIndex = 4;
+          } else {
+            // use minStartIndex(imprecise in case of padding, but good enough for filtering)
+            startIndex = preStartIndex + preCompressedSize;
+          }
+        }
+        preStartIndex = startIndex;
+        preCompressedSize = rowGroup.getTotal_compressed_size();
       }
 
       if (rowGroup.isSetTotal_compressed_size()) {
@@ -1254,16 +1294,59 @@ public class ParquetMetadataConverter {
     return metaData;
   }
 
+  private static boolean invalidFileOffset(long startIndex, long preStartIndex, long preCompressedSize) {
+    boolean invalid = false;
+    assert preStartIndex <= startIndex;
+    // checking the first rowGroup
+    if (preStartIndex == 0 && startIndex != 4) {
+      invalid = true;
+      return invalid;
+    }
+
+    //calculate start index for other blocks
+    long minStartIndex = preStartIndex + preCompressedSize;
+    if (startIndex < minStartIndex) {
+      // a bad offset detected, try first column's offset
+      // can not use minStartIndex in case of padding
+      invalid = true;
+    }
+
+    return invalid;
+  }
+
   // Visible for testing
   static FileMetaData filterFileMetaDataByStart(FileMetaData metaData, OffsetMetadataFilter filter) {
     List<RowGroup> rowGroups = metaData.getRow_groups();
     List<RowGroup> newRowGroups = new ArrayList<RowGroup>();
+    long preStartIndex = 0;
+    long preCompressedSize = 0;
+    boolean firstColumnWithMetadata = true;
+    if (rowGroups != null && rowGroups.size() > 0) {
+      firstColumnWithMetadata = rowGroups.get(0).getColumns().get(0).isSetMeta_data();
+    }
     for (RowGroup rowGroup : rowGroups) {
       long startIndex;
-      if (rowGroup.isSetFile_offset()) {
-        startIndex = rowGroup.getFile_offset();
+      ColumnChunk columnChunk = rowGroup.getColumns().get(0);
+      if (firstColumnWithMetadata) {
+        startIndex = getOffset(columnChunk);
       } else {
-        startIndex = getOffset(rowGroup.getColumns().get(0));
+        assert rowGroup.isSetFile_offset();
+        assert rowGroup.isSetTotal_compressed_size();
+
+        //the file_offset of first block always holds the truth, while other blocks don't :
+        //see PARQUET-2078 for details
+        startIndex = rowGroup.getFile_offset();
+        if (invalidFileOffset(startIndex, preStartIndex, preCompressedSize)) {
+          //first row group's offset is always 4
+          if (preStartIndex == 0) {
+            startIndex = 4;
+          } else {
+            throw new InvalidFileOffsetException("corrupted RowGroup.file_offset found, " +
+              "please use file range instead of block offset for split.");
+          }
+        }
+        preStartIndex = startIndex;
+        preCompressedSize = rowGroup.getTotal_compressed_size();
       }
 
       if (filter.contains(startIndex)) {
@@ -1320,6 +1403,31 @@ public class ParquetMetadataConverter {
     return readParquetMetadata(from, filter, null, false, 0);
   }
 
+  private Map<RowGroup, Long> generateRowGroupOffsets(FileMetaData metaData) {
+    Map<RowGroup, Long> rowGroupOrdinalToRowIdx = new HashMap<>();
+    List<RowGroup> rowGroups = metaData.getRow_groups();
+    if (rowGroups != null) {
+      long rowIdxSum = 0;
+      for (int i = 0; i < rowGroups.size(); i++) {
+        rowGroupOrdinalToRowIdx.put(rowGroups.get(i), rowIdxSum);
+        rowIdxSum += rowGroups.get(i).getNum_rows();
+      }
+    }
+    return rowGroupOrdinalToRowIdx;
+  }
+
+  /**
+   * A container for [[FileMetaData]] and [[RowGroup]] to ROW_INDEX offset map.
+   */
+  private class FileMetaDataAndRowGroupOffsetInfo {
+    final FileMetaData fileMetadata;
+    final Map<RowGroup, Long> rowGroupToRowIndexOffsetMap;
+    public FileMetaDataAndRowGroupOffsetInfo(FileMetaData fileMetadata, Map<RowGroup, Long> rowGroupToRowIndexOffsetMap) {
+      this.fileMetadata = fileMetadata;
+      this.rowGroupToRowIndexOffsetMap = rowGroupToRowIndexOffsetMap;
+    }
+  }
+
   public ParquetMetadata readParquetMetadata(final InputStream from, MetadataFilter filter,
       final InternalFileDecryptor fileDecryptor, final boolean encryptedFooter,
       final int combinedFooterLength) throws IOException {
@@ -1327,27 +1435,39 @@ public class ParquetMetadataConverter {
     final BlockCipher.Decryptor footerDecryptor = (encryptedFooter? fileDecryptor.fetchFooterDecryptor() : null);
     final byte[] encryptedFooterAAD = (encryptedFooter? AesCipher.createFooterAAD(fileDecryptor.getFileAAD()) : null);
 
-    FileMetaData fileMetaData = filter.accept(new MetadataFilterVisitor<FileMetaData, IOException>() {
+    FileMetaDataAndRowGroupOffsetInfo fileMetaDataAndRowGroupInfo = filter.accept(new MetadataFilterVisitor<FileMetaDataAndRowGroupOffsetInfo, IOException>() {
       @Override
-      public FileMetaData visit(NoFilter filter) throws IOException {
-        return readFileMetaData(from, footerDecryptor, encryptedFooterAAD);
+      public FileMetaDataAndRowGroupOffsetInfo visit(NoFilter filter) throws IOException {
+        FileMetaData fileMetadata = readFileMetaData(from, footerDecryptor, encryptedFooterAAD);
+        return new FileMetaDataAndRowGroupOffsetInfo(fileMetadata, generateRowGroupOffsets(fileMetadata));
       }
 
       @Override
-      public FileMetaData visit(SkipMetadataFilter filter) throws IOException {
-        return readFileMetaData(from, true, footerDecryptor, encryptedFooterAAD);
+      public FileMetaDataAndRowGroupOffsetInfo visit(SkipMetadataFilter filter) throws IOException {
+        FileMetaData fileMetadata = readFileMetaData(from, true, footerDecryptor, encryptedFooterAAD);
+        return new FileMetaDataAndRowGroupOffsetInfo(fileMetadata, generateRowGroupOffsets(fileMetadata));
       }
 
       @Override
-      public FileMetaData visit(OffsetMetadataFilter filter) throws IOException {
-        return filterFileMetaDataByStart(readFileMetaData(from, footerDecryptor, encryptedFooterAAD), filter);
+      public FileMetaDataAndRowGroupOffsetInfo visit(OffsetMetadataFilter filter) throws IOException {
+        FileMetaData fileMetadata = readFileMetaData(from, footerDecryptor, encryptedFooterAAD);
+        // We must generate the map *before* filtering because it modifies `fileMetadata`.
+        Map<RowGroup, Long> rowGroupToRowIndexOffsetMap = generateRowGroupOffsets(fileMetadata);
+        FileMetaData filteredFileMetadata = filterFileMetaDataByStart(fileMetadata, filter);
+        return new FileMetaDataAndRowGroupOffsetInfo(filteredFileMetadata, rowGroupToRowIndexOffsetMap);
       }
 
       @Override
-      public FileMetaData visit(RangeMetadataFilter filter) throws IOException {
-        return filterFileMetaDataByMidpoint(readFileMetaData(from, footerDecryptor, encryptedFooterAAD), filter);
+      public FileMetaDataAndRowGroupOffsetInfo visit(RangeMetadataFilter filter) throws IOException {
+        FileMetaData fileMetadata = readFileMetaData(from, footerDecryptor, encryptedFooterAAD);
+        // We must generate the map *before* filtering because it modifies `fileMetadata`.
+        Map<RowGroup, Long> rowGroupToRowIndexOffsetMap = generateRowGroupOffsets(fileMetadata);
+        FileMetaData filteredFileMetadata = filterFileMetaDataByMidpoint(fileMetadata, filter);
+        return new FileMetaDataAndRowGroupOffsetInfo(filteredFileMetadata, rowGroupToRowIndexOffsetMap);
       }
     });
+    FileMetaData fileMetaData = fileMetaDataAndRowGroupInfo.fileMetadata;
+    Map<RowGroup, Long> rowGroupToRowIndexOffsetMap = fileMetaDataAndRowGroupInfo.rowGroupToRowIndexOffsetMap;
     LOG.debug("{}", fileMetaData);
 
     if (!encryptedFooter && null != fileDecryptor) {
@@ -1367,7 +1487,7 @@ public class ParquetMetadataConverter {
       }
     }
 
-    ParquetMetadata parquetMetadata = fromParquetMetadata(fileMetaData, fileDecryptor, encryptedFooter);
+    ParquetMetadata parquetMetadata = fromParquetMetadata(fileMetaData, fileDecryptor, encryptedFooter, rowGroupToRowIndexOffsetMap);
     if (LOG.isDebugEnabled()) LOG.debug(ParquetMetadata.toPrettyJSON(parquetMetadata));
     return parquetMetadata;
   }
@@ -1396,6 +1516,13 @@ public class ParquetMetadataConverter {
 
   public ParquetMetadata fromParquetMetadata(FileMetaData parquetMetadata,
       InternalFileDecryptor fileDecryptor, boolean encryptedFooter) throws IOException {
+    return fromParquetMetadata(parquetMetadata, fileDecryptor, encryptedFooter, new HashMap<RowGroup, Long>());
+  }
+
+  public ParquetMetadata fromParquetMetadata(FileMetaData parquetMetadata,
+                                             InternalFileDecryptor fileDecryptor,
+                                             boolean encryptedFooter,
+                                             Map<RowGroup, Long> rowGroupToRowIndexOffsetMap) throws IOException {
     MessageType messageType = fromParquetSchema(parquetMetadata.getSchema(), parquetMetadata.getColumn_orders());
     List<BlockMetaData> blocks = new ArrayList<BlockMetaData>();
     List<RowGroup> row_groups = parquetMetadata.getRow_groups();
@@ -1405,6 +1532,9 @@ public class ParquetMetadataConverter {
         BlockMetaData blockMetaData = new BlockMetaData();
         blockMetaData.setRowCount(rowGroup.getNum_rows());
         blockMetaData.setTotalByteSize(rowGroup.getTotal_byte_size());
+        if (rowGroupToRowIndexOffsetMap.containsKey(rowGroup)) {
+          blockMetaData.setRowIndexOffset(rowGroupToRowIndexOffsetMap.get(rowGroup));
+        }
         // not set in legacy files
         if (rowGroup.isSetOrdinal()) {
           blockMetaData.setOrdinal(rowGroup.getOrdinal());
@@ -1422,7 +1552,7 @@ public class ParquetMetadataConverter {
           ColumnCryptoMetaData cryptoMetaData = columnChunk.getCrypto_metadata();
           ColumnChunkMetaData column = null;
           ColumnPath columnPath = null;
-          boolean encryptedMetadata = false;
+          boolean lazyMetadataDecryption = false;
 
           if (null == cryptoMetaData) { // Plaintext column
             columnPath = getPath(metaData);
@@ -1433,25 +1563,32 @@ public class ParquetMetadataConverter {
           } else {  // Encrypted column
             boolean encryptedWithFooterKey = cryptoMetaData.isSetENCRYPTION_WITH_FOOTER_KEY();
             if (encryptedWithFooterKey) { // Column encrypted with footer key
-              if (!encryptedFooter) {
-                throw new ParquetCryptoRuntimeException("Column encrypted with footer key in file with plaintext footer");
+              if (null == fileDecryptor) {
+                throw new ParquetCryptoRuntimeException("Column encrypted with footer key: No keys available");
               }
               if (null == metaData) {
                 throw new ParquetCryptoRuntimeException("ColumnMetaData not set in Encryption with Footer key");
               }
-              if (null == fileDecryptor) {
-                throw new ParquetCryptoRuntimeException("Column encrypted with footer key: No keys available");
-              }
               columnPath = getPath(metaData);
+              if (!encryptedFooter) { // Unencrypted footer. Decrypt full column metadata, using footer key
+                ByteArrayInputStream tempInputStream = new ByteArrayInputStream(columnChunk.getEncrypted_column_metadata());
+                byte[] columnMetaDataAAD = AesCipher.createModuleAAD(fileDecryptor.getFileAAD(), ModuleType.ColumnMetaData,
+                  rowGroup.getOrdinal(), columnOrdinal, -1);
+                try {
+                  metaData = readColumnMetaData(tempInputStream, fileDecryptor.fetchFooterDecryptor(), columnMetaDataAAD);
+                } catch (IOException e) {
+                  throw new ParquetCryptoRuntimeException(columnPath + ". Failed to decrypt column metadata", e);
+                }
+              }
               fileDecryptor.setColumnCryptoMetadata(columnPath, true, true, (byte[]) null, columnOrdinal);
             }  else { // Column encrypted with column key
               // setColumnCryptoMetadata triggers KMS interaction, hence delayed until this column is projected
-              encryptedMetadata = true;
+              lazyMetadataDecryption = true;
             }
           }
 
           String createdBy = parquetMetadata.getCreated_by();
-          if (!encryptedMetadata) { // unencrypted column, or encrypted with footer key
+          if (!lazyMetadataDecryption) { // full column metadata (with stats) is available
             column = buildColumnChunkMetaData(metaData, columnPath,
                 messageType.getType(columnPath.toArray()).asPrimitiveType(), createdBy);
             column.setRowGroupOrdinal(rowGroup.getOrdinal());
@@ -1489,8 +1626,17 @@ public class ParquetMetadataConverter {
         keyValueMetaData.put(keyValue.key, keyValue.value);
       }
     }
+    EncryptionType encryptionType;
+    if (encryptedFooter) {
+      encryptionType = EncryptionType.ENCRYPTED_FOOTER;
+    } else if (parquetMetadata.isSetEncryption_algorithm()) {
+      encryptionType = EncryptionType.PLAINTEXT_FOOTER;
+    } else {
+      encryptionType = EncryptionType.UNENCRYPTED;
+    }
     return new ParquetMetadata(
-        new org.apache.parquet.hadoop.metadata.FileMetaData(messageType, keyValueMetaData, parquetMetadata.getCreated_by(), fileDecryptor),
+        new org.apache.parquet.hadoop.metadata.FileMetaData(messageType, keyValueMetaData,
+          parquetMetadata.getCreated_by(), encryptionType, fileDecryptor),
         blocks);
   }
 
@@ -1711,14 +1857,14 @@ public class ParquetMetadataConverter {
       org.apache.parquet.column.Encoding valuesEncoding,
       OutputStream to,
       BlockCipher.Encryptor blockEncryptor,
-      byte[] AAD) throws IOException {
+      byte[] pageHeaderAAD) throws IOException {
     writePageHeader(newDataPageHeader(uncompressedSize,
                                       compressedSize,
                                       valueCount,
                                       rlEncoding,
                                       dlEncoding,
                                       valuesEncoding),
-                    to, blockEncryptor, AAD);
+                    to, blockEncryptor, pageHeaderAAD);
   }
 
   public void writeDataPageV1Header(
@@ -1744,7 +1890,7 @@ public class ParquetMetadataConverter {
       int crc,
       OutputStream to,
       BlockCipher.Encryptor blockEncryptor,
-      byte[] AAD) throws IOException {
+      byte[] pageHeaderAAD) throws IOException {
     writePageHeader(newDataPageHeader(uncompressedSize,
                                       compressedSize,
                                       valueCount,
@@ -1752,7 +1898,7 @@ public class ParquetMetadataConverter {
                                       dlEncoding,
                                       valuesEncoding,
                                       crc),
-                    to, blockEncryptor, AAD);
+                    to, blockEncryptor, pageHeaderAAD);
   }
 
   public void writeDataPageV2Header(
@@ -1772,13 +1918,13 @@ public class ParquetMetadataConverter {
       org.apache.parquet.column.Encoding dataEncoding,
       int rlByteLength, int dlByteLength,
       OutputStream to, BlockCipher.Encryptor blockEncryptor,
-      byte[] AAD) throws IOException {
+      byte[] pageHeaderAAD) throws IOException {
     writePageHeader(
         newDataPageV2Header(
             uncompressedSize, compressedSize,
             valueCount, nullCount, rowCount,
             dataEncoding,
-            rlByteLength, dlByteLength), to, blockEncryptor, AAD);
+            rlByteLength, dlByteLength), to, blockEncryptor, pageHeaderAAD);
   }
 
   private PageHeader newDataPageV2Header(
@@ -1786,13 +1932,43 @@ public class ParquetMetadataConverter {
       int valueCount, int nullCount, int rowCount,
       org.apache.parquet.column.Encoding dataEncoding,
       int rlByteLength, int dlByteLength) {
-    // TODO: pageHeader.crc = ...;
     DataPageHeaderV2 dataPageHeaderV2 = new DataPageHeaderV2(
         valueCount, nullCount, rowCount,
         getEncoding(dataEncoding),
         dlByteLength, rlByteLength);
     PageHeader pageHeader = new PageHeader(PageType.DATA_PAGE_V2, uncompressedSize, compressedSize);
     pageHeader.setData_page_header_v2(dataPageHeaderV2);
+    return pageHeader;
+  }
+
+  public void writeDataPageV2Header(
+    int uncompressedSize, int compressedSize,
+    int valueCount, int nullCount, int rowCount,
+    org.apache.parquet.column.Encoding dataEncoding,
+    int rlByteLength, int dlByteLength, int crc,
+    OutputStream to, BlockCipher.Encryptor blockEncryptor,
+    byte[] pageHeaderAAD) throws IOException {
+    writePageHeader(
+      newDataPageV2Header(
+        uncompressedSize, compressedSize,
+        valueCount, nullCount, rowCount,
+        dataEncoding,
+        rlByteLength, dlByteLength, crc),
+      to, blockEncryptor, pageHeaderAAD);
+  }
+
+  private PageHeader newDataPageV2Header(
+    int uncompressedSize, int compressedSize,
+    int valueCount, int nullCount, int rowCount,
+    org.apache.parquet.column.Encoding dataEncoding,
+    int rlByteLength, int dlByteLength, int crc) {
+    DataPageHeaderV2 dataPageHeaderV2 = new DataPageHeaderV2(
+      valueCount, nullCount, rowCount,
+      getEncoding(dataEncoding),
+      dlByteLength, rlByteLength);
+    PageHeader pageHeader = new PageHeader(PageType.DATA_PAGE_V2, uncompressedSize, compressedSize);
+    pageHeader.setData_page_header_v2(dataPageHeaderV2);
+    pageHeader.setCrc(crc);
     return pageHeader;
   }
 
@@ -1806,10 +1982,10 @@ public class ParquetMetadataConverter {
   public void writeDictionaryPageHeader(
       int uncompressedSize, int compressedSize, int valueCount,
       org.apache.parquet.column.Encoding valuesEncoding, OutputStream to,
-      BlockCipher.Encryptor blockEncryptor, byte[] AAD) throws IOException {
+      BlockCipher.Encryptor blockEncryptor, byte[] pageHeaderAAD) throws IOException {
     PageHeader pageHeader = new PageHeader(PageType.DICTIONARY_PAGE, uncompressedSize, compressedSize);
     pageHeader.setDictionary_page_header(new DictionaryPageHeader(valueCount, getEncoding(valuesEncoding)));
-    writePageHeader(pageHeader, to, blockEncryptor, AAD);
+    writePageHeader(pageHeader, to, blockEncryptor, pageHeaderAAD);
   }
 
   public void writeDictionaryPageHeader(
@@ -1822,11 +1998,11 @@ public class ParquetMetadataConverter {
   public void writeDictionaryPageHeader(
       int uncompressedSize, int compressedSize, int valueCount,
       org.apache.parquet.column.Encoding valuesEncoding, int crc, OutputStream to,
-      BlockCipher.Encryptor blockEncryptor, byte[] AAD) throws IOException {
+      BlockCipher.Encryptor blockEncryptor, byte[] pageHeaderAAD) throws IOException {
     PageHeader pageHeader = new PageHeader(PageType.DICTIONARY_PAGE, uncompressedSize, compressedSize);
     pageHeader.setCrc(crc);
     pageHeader.setDictionary_page_header(new DictionaryPageHeader(valueCount, getEncoding(valuesEncoding)));
-    writePageHeader(pageHeader, to, blockEncryptor, AAD);
+    writePageHeader(pageHeader, to, blockEncryptor, pageHeaderAAD);
   }
 
   private static BoundaryOrder toParquetBoundaryOrder(

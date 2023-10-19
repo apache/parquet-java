@@ -33,6 +33,8 @@ import org.apache.hadoop.fs.Path;
 
 import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.Preconditions;
+import org.apache.parquet.bytes.ByteBufferAllocator;
+import org.apache.parquet.bytes.HeapByteBufferAllocator;
 import org.apache.parquet.compression.CompressionCodecFactory;
 import org.apache.parquet.crypto.FileDecryptionProperties;
 import org.apache.parquet.filter.UnboundRecordFilter;
@@ -140,6 +142,16 @@ public class ParquetReader<T> implements Closeable {
     }
   }
 
+  /**
+   * @return the row index of the last read row. If no row has been processed, returns -1.
+   */
+  public long getCurrentRowIndex() {
+    if (reader == null) {
+      return -1;
+    }
+    return reader.getCurrentRowIndex();
+  }
+
   private void initReader() throws IOException {
     if (reader != null) {
       reader.close();
@@ -177,6 +189,7 @@ public class ParquetReader<T> implements Closeable {
     private final InputFile file;
     private final Path path;
     private Filter filter = null;
+    private ByteBufferAllocator allocator = new HeapByteBufferAllocator();
     protected Configuration conf;
     private ParquetReadOptions.Builder optionsBuilder;
 
@@ -218,7 +231,7 @@ public class ParquetReader<T> implements Closeable {
 
       // previous versions didn't use the builder, so may set filter before conf. this maintains
       // compatibility for filter. other options are reset by a new conf.
-      this.optionsBuilder = HadoopReadOptions.builder(conf);
+      this.optionsBuilder = HadoopReadOptions.builder(conf, path);
       if (filter != null) {
         optionsBuilder.withRecordFilter(filter);
       }
@@ -229,6 +242,12 @@ public class ParquetReader<T> implements Closeable {
     public Builder<T> withFilter(Filter filter) {
       this.filter = filter;
       optionsBuilder.withRecordFilter(filter);
+      return this;
+    }
+
+    public Builder<T> withAllocator(ByteBufferAllocator allocator) {
+      this.allocator = allocator;
+      optionsBuilder.withAllocator(allocator);
       return this;
     }
 
@@ -330,7 +349,9 @@ public class ParquetReader<T> implements Closeable {
     }
 
     public ParquetReader<T> build() throws IOException {
-      ParquetReadOptions options = optionsBuilder.build();
+      ParquetReadOptions options = optionsBuilder
+          .withAllocator(allocator)
+          .build();
 
       if (path != null) {
         FileSystem fs = path.getFileSystem(conf);

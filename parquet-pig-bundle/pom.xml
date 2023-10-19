@@ -21,7 +21,7 @@
     <groupId>org.apache.parquet</groupId>
     <artifactId>parquet</artifactId>
     <relativePath>../pom.xml</relativePath>
-    <version>1.13.0-SNAPSHOT</version>
+    <version>1.14.0-SNAPSHOT</version>
   </parent>
 
   <modelVersion>4.0.0</modelVersion>
@@ -70,6 +70,21 @@
                   <include>org.apache.parquet:parquet-*</include>
                 </includes>
               </artifactSet>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <!-- Skip analyzing dependencies in this module so we can depend on parquet-pig without any code references -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-dependency-plugin</artifactId>
+        <executions>
+          <execution>
+            <goals>
+              <goal>analyze-only</goal>
+            </goals>
+            <configuration>
+              <skip>true</skip>
             </configuration>
           </execution>
         </executions>

@@ -173,7 +173,10 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
       }
     }
 
-    if (!reader.getRowGroups().isEmpty()) {
+    if (!reader.getRowGroups().isEmpty() &&
+      // Encrypted files (parquet-mr 1.12+) can't have the delta encoding problem (resolved in parquet-mr 1.8)
+      reader.getFileMetaData().getEncryptionType() != FileMetaData.EncryptionType.ENCRYPTED_FOOTER &&
+      reader.getFileMetaData().getEncryptionType() != FileMetaData.EncryptionType.PLAINTEXT_FOOTER) {
       checkDeltaByteArrayProblem(
           reader.getFooter().getFileMetaData(), configuration,
           reader.getRowGroups().get(0));
@@ -205,6 +208,13 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
   @Override
   public boolean nextKeyValue() throws IOException, InterruptedException {
     return internalReader.nextKeyValue();
+  }
+
+  /**
+   * @return the row index of the current row. If no row has been processed, returns -1.
+   */
+  public long getCurrentRowIndex() throws IOException {
+    return internalReader.getCurrentRowIndex();
   }
 
   private ParquetInputSplit toParquetSplit(InputSplit split) throws IOException {

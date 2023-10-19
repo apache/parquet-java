@@ -21,9 +21,12 @@ package org.apache.parquet.filter2.predicate;
 import java.io.Serializable;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.Set;
 
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.io.api.Binary;
+
+import static org.apache.parquet.Preconditions.checkArgument;
 
 /**
  * These are the operators in a filter predicate expression tree.
@@ -118,7 +121,6 @@ public final class Operators {
   static abstract class ColumnFilterPredicate<T extends Comparable<T>> implements FilterPredicate, Serializable  {
     private final Column<T> column;
     private final T value;
-    private final String toString;
 
     protected ColumnFilterPredicate(Column<T> column, T value) {
       this.column = Objects.requireNonNull(column, "column cannot be null");
@@ -126,9 +128,6 @@ public final class Operators {
       // Eq and NotEq allow value to be null, Lt, Gt, LtEq, GtEq however do not, so they guard against
       // null in their own constructors.
       this.value = value;
-
-      String name = getClass().getSimpleName().toLowerCase(Locale.ENGLISH);
-      this.toString = name + "(" + column.getColumnPath().toDotString() + ", " + value + ")";
     }
 
     public Column<T> getColumn() {
@@ -141,7 +140,8 @@ public final class Operators {
 
     @Override
     public String toString() {
-      return toString;
+      return getClass().getSimpleName().toLowerCase(Locale.ENGLISH) + "(" + column.getColumnPath().toDotString() + ", "
+          + value + ")";
     }
 
     @Override
@@ -169,7 +169,7 @@ public final class Operators {
   public static final class Eq<T extends Comparable<T>> extends ColumnFilterPredicate<T> {
 
     // value can be null
-    Eq(Column<T> column, T value) {
+    public Eq(Column<T> column, T value) {
       super(column, value);
     }
 
@@ -247,17 +247,90 @@ public final class Operators {
     }
   }
 
+  /**
+   * Base class for {@link In} and {@link NotIn}. {@link In} is used to filter data based on a list of values.
+   * {@link NotIn} is used to filter data that are not in the list of values.
+   */
+  public static abstract class SetColumnFilterPredicate<T extends Comparable<T>> implements FilterPredicate, Serializable {
+    private final Column<T> column;
+    private final Set<T> values;
+
+    protected SetColumnFilterPredicate(Column<T> column, Set<T> values) {
+      this.column = Objects.requireNonNull(column, "column cannot be null");
+      this.values = Objects.requireNonNull(values, "values cannot be null");
+      checkArgument(!values.isEmpty(), "values in SetColumnFilterPredicate shouldn't be empty!");
+    }
+
+    public Column<T> getColumn() {
+      return column;
+    }
+
+    public Set<T> getValues() {
+      return values;
+    }
+
+    @Override
+    public String toString() {
+      String name = getClass().getSimpleName().toLowerCase(Locale.ENGLISH);
+      StringBuilder str = new StringBuilder();
+      str.append(name).append("(").append(column.getColumnPath().toDotString()).append(", ");
+      int iter = 0;
+      for (T value : values) {
+        if (iter >= 100) break;
+        str.append(value).append(", ");
+        iter++;
+      }
+      int length = str.length();
+      str = values.size() <= 100 ? str.delete(length - 2, length) : str.append("...");
+      return str.append(")").toString();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
+      SetColumnFilterPredicate<?> that = (SetColumnFilterPredicate<?>) o;
+      return column.equals(that.column) && values.equals(that.values);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(column, values);
+    }
+  }
+
+  public static final class In<T extends Comparable<T>> extends SetColumnFilterPredicate<T> {
+
+    public In(Column<T> column, Set<T> values) {
+      super(column, values);
+    }
+
+    @Override
+    public <R> R accept(Visitor<R> visitor) {
+      return visitor.visit(this);
+    }
+  }
+
+  public static final class NotIn<T extends Comparable<T>> extends SetColumnFilterPredicate<T> {
+
+    NotIn(Column<T> column, Set<T> values) {
+      super(column, values);
+    }
+
+    @Override
+    public <R> R accept(Visitor<R> visitor) {
+      return visitor.visit(this);
+    }
+  }
+
   // base class for And, Or
   private static abstract class BinaryLogicalFilterPredicate implements FilterPredicate, Serializable {
     private final FilterPredicate left;
     private final FilterPredicate right;
-    private final String toString;
 
     protected BinaryLogicalFilterPredicate(FilterPredicate left, FilterPredicate right) {
       this.left = Objects.requireNonNull(left, "left cannot be null");
       this.right = Objects.requireNonNull(right, "right cannot be null");
-      String name = getClass().getSimpleName().toLowerCase(Locale.ENGLISH);
-      this.toString = name + "(" + left + ", " + right + ")";
     }
 
     public FilterPredicate getLeft() {
@@ -270,7 +343,7 @@ public final class Operators {
 
     @Override
     public String toString() {
-      return toString;
+      return getClass().getSimpleName().toLowerCase(Locale.ENGLISH) + "(" + left + ", " + right + ")";
     }
 
     @Override
@@ -321,11 +394,9 @@ public final class Operators {
 
   public static class Not implements FilterPredicate, Serializable {
     private final FilterPredicate predicate;
-    private final String toString;
 
     Not(FilterPredicate predicate) {
       this.predicate = Objects.requireNonNull(predicate, "predicate cannot be null");
-      this.toString = "not(" + predicate + ")";
     }
 
     public FilterPredicate getPredicate() {
@@ -334,7 +405,7 @@ public final class Operators {
 
     @Override
     public String toString() {
-      return toString;
+      return "not(" + predicate + ")";
     }
 
     @Override
@@ -377,15 +448,12 @@ public final class Operators {
     
   public static final class UserDefinedByClass<T extends Comparable<T>, U extends UserDefinedPredicate<T>> extends UserDefined<T, U> {
     private final Class<U> udpClass;
-    private final String toString;
     private static final String INSTANTIATION_ERROR_MESSAGE =
         "Could not instantiate custom filter: %s. User defined predicates must be static classes with a default constructor.";
 
     UserDefinedByClass(Column<T> column, Class<U> udpClass) {
       super(column);
       this.udpClass = Objects.requireNonNull(udpClass, "udpClass cannot be null");
-      String name = getClass().getSimpleName().toLowerCase(Locale.ENGLISH);
-      this.toString = name + "(" + column.getColumnPath().toDotString() + ", " + udpClass.getName() + ")";
 
       // defensively try to instantiate the class early to make sure that it's possible
       getUserDefinedPredicate();
@@ -406,7 +474,8 @@ public final class Operators {
 
     @Override
     public String toString() {
-      return toString;
+      return getClass().getSimpleName().toLowerCase(Locale.ENGLISH) + "(" + column.getColumnPath().toDotString() + ", "
+          + udpClass.getName() + ")";
     }
 
     @Override
@@ -432,14 +501,11 @@ public final class Operators {
   }
   
   public static final class UserDefinedByInstance<T extends Comparable<T>, U extends UserDefinedPredicate<T> & Serializable> extends UserDefined<T, U> {
-    private final String toString;
     private final U udpInstance;
 
     UserDefinedByInstance(Column<T> column, U udpInstance) {
       super(column);
       this.udpInstance = Objects.requireNonNull(udpInstance, "udpInstance cannot be null");
-      String name = getClass().getSimpleName().toLowerCase(Locale.ENGLISH);
-      this.toString = name + "(" + column.getColumnPath().toDotString() + ", " + udpInstance + ")";
     }
 
     @Override
@@ -449,7 +515,8 @@ public final class Operators {
 
     @Override
     public String toString() {
-      return toString;
+      return getClass().getSimpleName().toLowerCase(Locale.ENGLISH) + "(" + column.getColumnPath().toDotString() + ", "
+          + udpInstance + ")";
     }
 
     @Override
@@ -478,11 +545,9 @@ public final class Operators {
   // of the not() operator
   public static final class LogicalNotUserDefined <T extends Comparable<T>, U extends UserDefinedPredicate<T>> implements FilterPredicate, Serializable {
     private final UserDefined<T, U> udp;
-    private final String toString;
 
     LogicalNotUserDefined(UserDefined<T, U> userDefined) {
       this.udp = Objects.requireNonNull(userDefined, "userDefined cannot be null");
-      this.toString = "inverted(" + udp + ")";
     }
 
     public UserDefined<T, U> getUserDefined() {
@@ -496,7 +561,7 @@ public final class Operators {
 
     @Override
     public String toString() {
-      return toString;
+      return "inverted(" + udp + ")";
     }
 
     @Override

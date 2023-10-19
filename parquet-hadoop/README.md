@@ -130,8 +130,8 @@ There is one dictionary page per column per row group when dictionary encoding i
 **Property:** `parquet.writer.version`  
 **Description:** The writer version. It can be either `PARQUET_1_0` or `PARQUET_2_0`.  
 `PARQUET_1_0` and `PARQUET_2_0` refer to DataPageHeaderV1 and DataPageHeaderV2.  
-The v1 pages store levels uncompressed while v1 pages compress levels with the data.  
-For more details, see the the [thrift definition](https://github.com/apache/parquet-format/blob/master/src/main/thrift/parquet.thrift).  
+The v2 pages store levels uncompressed while v1 pages compress levels with the data.  
+For more details, see the [thrift definition](https://github.com/apache/parquet-format/blob/master/src/main/thrift/parquet.thrift).  
 **Default value:** `PARQUET_1_0`  
 
 ---
@@ -175,6 +175,12 @@ If the frequency is low, the performance will be better.
 
 ---
 
+**Property:** `parquet.page.value.count.threshold`  
+**Description:** The value count threshold within a Parquet page used on each page check.
+**Default value:** `Integer.MAX_VALUE / 2`
+
+---
+
 **Property:** `parquet.page.size.check.estimate`  
 **Description:** If it is true, the column writer estimates the size of the next page.  
 It prevents issues with rows that vary significantly in size.  
@@ -197,7 +203,7 @@ This property is the length to be used for truncating binary values if possible 
 
 **Property:** `parquet.bloom.filter.enabled`  
 **Description:** Whether to enable writing bloom filter.  
-If it is true, the bloom filter will be enable for all columns. If it is false, it will be disabled for all columns.  
+If it is true, the bloom filter will be enabled for all columns. If it is false, it will be disabled for all columns.  
 It is also possible to enable it for some columns by specifying the column name within the property followed by #.  
 **Default value:** `false`  
 **Example:**
@@ -208,6 +214,24 @@ conf.set("parquet.bloom.filter.enabled", true);
 conf.set("parquet.bloom.filter.enabled#column.path", false);
 // The bloom filter will be enabled for all columns except 'column.path'
 ```
+
+---
+
+**Property:** `parquet.bloom.filter.adaptive.enabled`  
+**Description:** Whether to enable writing adaptive bloom filter.  
+If it is true, the bloom filter will be generated with the optimal bit size 
+according to the number of real data distinct values. If it is false, it will not take effect.
+Note that the maximum bytes of the bloom filter will not exceed `parquet.bloom.filter.max.bytes` configuration (if it is 
+set too small, the generated bloom filter will not be efficient).
+**Default value:** `false`
+
+---
+
+**Property:** `parquet.bloom.filter.candidates.number`  
+**Description:** The number of candidate bloom filters written at the same time.  
+When `parquet.bloom.filter.adaptive.enabled` is true, multiple candidate bloom filters will be inserted 
+at the same time, finally a bloom filter with the optimal bit size will be selected and written to the file.
+**Default value:** `5`
 
 ---
 
@@ -223,12 +247,33 @@ conf.set("parquet.bloom.filter.expected.ndv#column.path", 200)
 
 ---
 
+**Property:** `parquet.bloom.filter.fpp`  
+**Description:** The maximum expected false positive probability for the bloom filter in a column. Combined with `ndv`, `fpp` is
+used to compute the optimal size of the bloom filter.
+Note that if this property is not set, the default value 0.01 is used.  
+**Example:**
+```java
+// The bloom filter will be enabled for 'column.path' with expected number of distinct values equals to 200 and maximum expected false positive probability sets to 0.02
+conf.set("parquet.bloom.filter.expected.ndv#column.path", 200)
+conf.set("parquet.bloom.filter.fpp#column.path", 0.02)
+```
+
+---
+
 **Property:** `parquet.bloom.filter.max.bytes`  
 **Description:** The maximum number of bytes for a bloom filter bitset.  
 **Default value:** `1048576` (1MB)
 
 ---
 
+
+**Property:** `parquet.decrypt.off-heap.buffer.enabled`  
+**Description:** Whether to use direct buffers to decrypt encrypted files. This should be set to 
+true if the reader is using a `DirectByteBufferAllocator`
+**Default value:** `false`
+
+
+---
 **Property:** `parquet.page.row.count.limit`  
 **Description:** The maximum number of rows per page.  
 **Default value:** `20000`
@@ -340,7 +385,7 @@ ParquetInputFormat to materialize records. It should be a the descendant class o
 
 **Property:** `parquet.compression.codec.zstd.bufferPool.enabled`  
 **Description:** If it is true, [RecyclingBufferPool](https://github.com/luben/zstd-jni/blob/master/src/main/java/com/github/luben/zstd/RecyclingBufferPool.java) is used.  
-**Default value:** `false`
+**Default value:** `true`
 
 ---
 
@@ -363,14 +408,20 @@ ParquetInputFormat to materialize records. It should be a the descendant class o
 ## Class: PropertiesDrivenCryptoFactory
 
 **Property:** `parquet.encryption.column.keys`  
-**Description:** List of columns to encrypt, with master key IDs (see HIVE-21848).Format: `<masterKeyID>:<colName>,<colName>;<masterKeyID>:<colName>...`  
-**Default value:** None. If neither `column.keys` nor `footer.key` are set, the file won't be encrypted by the PropertiesDrivenCryptoFactory. If one of the two properties is set, an exception will be thrown.
+**Description:** List of columns to encrypt, with master key IDs (see HIVE-21848).Format: `<masterKeyID>:<colName>,<colName>;<masterKeyID>:<colName>...`. Note: nested column names must be specified as full dot-separated paths for each leaf column.  
+**Default value:** None.
 
 ---
 
 **Property:** `parquet.encryption.footer.key`  
 **Description:** Master key ID for footer encryption/signing.  
-**Default value:** None. If neither `column.keys` nor `footer.key` are set, the file won't be encrypted by the PropertiesDrivenCryptoFactory. If one of the two properties is set, an exception will be thrown.
+**Default value:** None.
+
+---
+
+**Property:** `parquet.encryption.uniform.key`  
+**Description:** Master key ID for uniform encryption of all columns and footer. If set, `column.keys` and `footer.key` parameters should not be used.  
+**Default value:** None.
 
 ---
 
@@ -437,7 +488,7 @@ If `false`, key material is stored in separate new files, created in the same fo
 
 ---
 
-**Property:** `parquet.encryption.kek.length.bits`
-**Description:** Length of key encryption keys (KEKs), randomly generated by parquet key management tools. Can be 128, 192 or 256 bits.
+**Property:** `parquet.encryption.kek.length.bits`  
+**Description:** Length of key encryption keys (KEKs), randomly generated by parquet key management tools. Can be 128, 192 or 256 bits.  
 **Default value:** `128`
 

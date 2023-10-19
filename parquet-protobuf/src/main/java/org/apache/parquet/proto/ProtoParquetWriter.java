@@ -77,8 +77,8 @@ public class ProtoParquetWriter<T extends MessageOrBuilder> extends ParquetWrite
   }
 
   /**
-   * Create a new {@link ProtoParquetWriter}. The default block size is 50 MB.The default
-   * page size is 1 MB.  Default compression is no compression. (Inherited from {@link ParquetWriter})
+   * Create a new {@link ProtoParquetWriter}. The default block size is 128 MB. The default
+   * page size is 1 MB. Default compression is no compression. (Inherited from {@link ParquetWriter})
    *
    * @param file The file name to write to.
    * @param protoMessage         Protobuf message class

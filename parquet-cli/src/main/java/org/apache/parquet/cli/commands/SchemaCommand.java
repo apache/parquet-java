@@ -70,7 +70,7 @@ public class SchemaCommand extends BaseCommand {
 
     if (targets.size() > 1) {
       Preconditions.checkArgument(outputPath == null,
-          "Cannot output multiple schemas to file " + outputPath);
+          "Cannot output multiple schemas to file %s", outputPath);
       for (String source : targets) {
         console.info("{}: {}", source, getSchema(source));
       }
@@ -119,9 +119,10 @@ public class SchemaCommand extends BaseCommand {
 
       switch (format) {
         case PARQUET:
-          return new ParquetFileReader(
-              getConf(), qualifiedPath(source), ParquetMetadataConverter.NO_FILTER)
-              .getFileMetaData().getSchema().toString();
+          try (ParquetFileReader reader = new ParquetFileReader(
+            getConf(), qualifiedPath(source), ParquetMetadataConverter.NO_FILTER)) {
+            return reader.getFileMetaData().getSchema().toString();
+          }
         default:
           throw new IllegalArgumentException(String.format(
               "Could not get a Parquet schema for format %s: %s", format, source));
