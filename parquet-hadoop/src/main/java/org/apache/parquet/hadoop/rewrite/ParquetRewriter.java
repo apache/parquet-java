@@ -358,7 +358,7 @@ public class ParquetRewriter implements Closeable {
   }
 
   /**
-   * Rewrite a single column with the given new compression codec or new encryptor
+   * Rewrite a single column with the given new compression codec and/or new encryptor
    *
    * @return whether the column statistics should be overwritten
    */
