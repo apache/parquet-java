@@ -50,7 +50,7 @@ class IndexCacher {
       boolean prefetchBlockAllIndexes) {
     this.fileReader = fileReader;
     this.columnPathSet = columnPathSet;
-    this.prefetchBlockAllIndexes = prefetchBlockAllIndexes;g
+    this.prefetchBlockAllIndexes = prefetchBlockAllIndexes;
   }
 
   void setCurrentBlockMetadata(BlockMetaData blockMetaData) throws IOException {
