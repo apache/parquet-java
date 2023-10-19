@@ -68,7 +68,7 @@
     <jackson.package>com.fasterxml.jackson</jackson.package>
     <jackson.version>2.15.2</jackson.version>
     <jackson-databind.version>2.15.2</jackson-databind.version>
-    <japicmp.version>0.16.0</japicmp.version>
+    <japicmp.version>0.18.1</japicmp.version>
     <shade.prefix>shaded.parquet</shade.prefix>
     <hadoop.version>3.3.5</hadoop.version>
     <parquet.format.version>2.9.0</parquet.format.version>
@@ -544,6 +544,8 @@
               <!-- japicmp is overly aggressive on interface types in signatures, a type was changed to a supertype but this still triggers it -->
               <exclude>org.apache.parquet.hadoop.ColumnChunkPageWriteStore</exclude>
               <exclude>org.apache.parquet.hadoop.ParquetRecordWriter</exclude>
+              <exclude>org.apache.parquet.proto.ProtoParquetReader#builder(org.apache.hadoop.fs.Path,boolean)</exclude>
+              <exclude>org.apache.parquet.proto.ProtoParquetReader#builder(org.apache.parquet.io.InputFile,boolean)</exclude>
             </excludes>
           </parameter>
         </configuration>
