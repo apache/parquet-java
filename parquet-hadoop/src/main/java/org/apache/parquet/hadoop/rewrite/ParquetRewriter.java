@@ -27,6 +27,7 @@ import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.ColumnReader;
 import org.apache.parquet.column.ColumnWriteStore;
 import org.apache.parquet.column.ColumnWriter;
+import org.apache.parquet.column.EncodingStats;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.impl.ColumnReadStoreImpl;
 import org.apache.parquet.column.page.DictionaryPage;
@@ -45,6 +46,7 @@ import org.apache.parquet.format.PageHeader;
 import org.apache.parquet.format.converter.ParquetMetadataConverter;
 import org.apache.parquet.hadoop.CodecFactory;
 import org.apache.parquet.hadoop.ColumnChunkPageWriteStore;
+import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.ParquetFileWriter;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
@@ -117,6 +119,10 @@ public class ParquetRewriter implements Closeable {
   private String originalCreatedBy = "";
   // Unique created_by information from all input files
   private Set<String> allOriginalCreatedBys = new HashSet<>();
+  // Indicates if rowgroups from different needs to be merged.
+  private boolean mergeRowGroups;
+  // Max size of the merged rowgroup
+  private long maxRowGroupSize;
 
   public ParquetRewriter(RewriteOptions options) throws IOException {
     Configuration conf = options.getConf();
@@ -130,6 +136,8 @@ public class ParquetRewriter implements Closeable {
 
     newCodecName = options.getNewCodecName();
     pruneColumns = options.getPruneColumns();
+    mergeRowGroups = options.isMergeRowGroups();
+    maxRowGroupSize = options.getMaxRowGroupSize();
 
     // Prune columns if specified
     if (pruneColumns != null && !pruneColumns.isEmpty()) {
@@ -246,6 +254,11 @@ public class ParquetRewriter implements Closeable {
   }
 
   public void processBlocks() throws IOException {
+    if (mergeRowGroups) {
+      mergeRowGroups();
+      return;
+    }
+
     while (reader != null) {
       processBlocksFromReader();
       initNextReader();
@@ -756,6 +769,27 @@ public class ParquetRewriter implements Closeable {
     public GroupConverter asGroupConverter() {
       return new DummyGroupConverter();
     }
+  }
+
+  private void mergeRowGroups() throws IOException {
+    if (null == reader) {
+      return;
+    }
+
+    boolean v2EncodingHint = meta.getBlocks().stream()
+      .flatMap(b -> b.getColumns().stream())
+      .anyMatch(chunk -> {
+        EncodingStats stats = chunk.getEncodingStats();
+        return stats != null && stats.usesV2Pages();
+      });
+
+    List<ParquetFileReader> readers = new ArrayList<>();
+    do {
+      readers.add(reader);
+      initNextReader();
+    }
+    while(reader != null);
+    new RowGroupMerger(schema, newCodecName, v2EncodingHint).merge(readers, maxRowGroupSize, writer);
   }
 
   private static class ColumnChunkEncryptorRunTime {

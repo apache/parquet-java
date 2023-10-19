@@ -509,6 +509,48 @@ public class ParquetRewriterTest {
     validateRowGroupRowCount();
   }
 
+  @Test
+  public void testMergeRowGroupFromTwoFiles() throws Exception {
+    testMultipleInputFilesSetup();
+
+    // Only merge two files but do not change anything.
+    List<Path> inputPaths = new ArrayList<>();
+    for (EncryptionTestFile inputFile : inputFiles) {
+      inputPaths.add(new Path(inputFile.getFileName()));
+    }
+    Path outputPath = new Path(outputFile);
+    RewriteOptions.Builder builder = new RewriteOptions.Builder(conf, inputPaths, outputPath);
+    RewriteOptions options = builder.mergeRowGroups(ParquetWriter.DEFAULT_BLOCK_SIZE)
+      .transform(CompressionCodecName.SNAPPY).build();
+
+    rewriter = new ParquetRewriter(options);
+    rewriter.processBlocks();
+    rewriter.close();
+
+    // Verify the schema are not changed
+    ParquetMetadata pmd = ParquetFileReader.readFooter(conf, new Path(outputFile), ParquetMetadataConverter.NO_FILTER);
+    MessageType schema = pmd.getFileMetaData().getSchema();
+    MessageType expectSchema = createSchema();
+    assertEquals(expectSchema, schema);
+
+    ParquetFileReader outReader = new ParquetFileReader(
+      HadoopInputFile.fromPath(new Path(outputFile), conf), HadoopReadOptions.builder(conf).build());
+
+    // Verify that only one RowGroup is created
+    assertEquals(1, outReader.getRowGroups().size());
+
+    // Verify codec has been translated
+    verifyCodec(outputFile, new HashSet<CompressionCodecName>() {{
+      add(CompressionCodecName.SNAPPY);
+    }}, null);
+
+    // Verify the merged data are not changed
+    validateColumnData(Collections.emptySet(), Collections.emptySet(), null);
+
+    // Verify original.created.by is preserved
+    validateCreatedBy();
+  }
+
   @Test(expected = InvalidSchemaException.class)
   public void testMergeTwoFilesWithDifferentSchema() throws Exception {
     MessageType schema1 = new MessageType("schema",
