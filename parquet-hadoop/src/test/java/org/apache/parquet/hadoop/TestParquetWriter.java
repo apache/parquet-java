@@ -288,14 +288,15 @@ public class TestParquetWriter {
 
   @Test
   public void testParquetFileWithBloomFilterWithFpp() throws IOException {
-    int totalCount = 100000;
-    double[] testFpp = {0.01, 0.05, 0.10, 0.15, 0.20, 0.25};
+    int buildBloomFilterCount = 100000;
+    double[] testFpps = {0.01, 0.05, 0.10, 0.15, 0.20, 0.25};
     int randomStrLen = 12;
+    final int testBloomFilterCount = 200000;
 
-    Set<String> distinctStrings = new HashSet<>();
-    while (distinctStrings.size() < totalCount) {
+    Set<String> distinctStringsForFileGenerate = new HashSet<>();
+    while (distinctStringsForFileGenerate.size() < buildBloomFilterCount) {
       String str = RandomStringUtils.randomAlphabetic(randomStrLen);
-      distinctStrings.add(str);
+      distinctStringsForFileGenerate.add(str);
     }
 
     MessageType schema = Types.buildMessage().
@@ -305,7 +306,7 @@ public class TestParquetWriter {
     GroupWriteSupport.setSchema(schema, conf);
 
     GroupFactory factory = new SimpleGroupFactory(schema);
-    for (int i = 0; i < testFpp.length; i++) {
+    for (double testFpp : testFpps) {
       File file = temp.newFile();
       file.delete();
       Path path = new Path(file.getAbsolutePath());
@@ -314,32 +315,32 @@ public class TestParquetWriter {
         .withConf(conf)
         .withDictionaryEncoding(false)
         .withBloomFilterEnabled("name", true)
-        .withBloomFilterNDV("name", totalCount)
-        .withBloomFilterFPP("name", testFpp[i])
+        .withBloomFilterNDV("name", buildBloomFilterCount)
+        .withBloomFilterFPP("name", testFpp)
         .build()) {
-        java.util.Iterator<String> iterator = distinctStrings.iterator();
-        while (iterator.hasNext()) {
-          writer.write(factory.newGroup().append("name", iterator.next()));
+        for (String str : distinctStringsForFileGenerate) {
+          writer.write(factory.newGroup().append("name", str));
         }
       }
-      distinctStrings.clear();
 
       try (ParquetFileReader reader = ParquetFileReader.open(HadoopInputFile.fromPath(path, new Configuration()))) {
         BlockMetaData blockMetaData = reader.getFooter().getBlocks().get(0);
         BloomFilter bloomFilter = reader.getBloomFilterDataReader(blockMetaData)
           .readBloomFilter(blockMetaData.getColumns().get(0));
 
-        // The exist counts the number of times FindHash returns true.
-        int exist = 0;
-        while (distinctStrings.size() < totalCount) {
-          String str = RandomStringUtils.randomAlphabetic(randomStrLen - 2);
-          if (distinctStrings.add(str) &&
+        // The false positive counts the number of times FindHash returns true.
+        int falsePositive = 0;
+        Set<String> distinctStringsForProbe = new HashSet<>();
+        while (distinctStringsForProbe.size() < testBloomFilterCount) {
+          String str = RandomStringUtils.randomAlphabetic(randomStrLen - 1);
+          if (distinctStringsForProbe.add(str) &&
             bloomFilter.findHash(LongHashFunction.xx(0).hashBytes(Binary.fromString(str).toByteBuffer()))) {
-            exist++;
+            falsePositive++;
           }
         }
-        // The exist should be less than totalCount * fpp. Add 10% here for error space.
-        assertTrue(exist < totalCount * (testFpp[i] * 1.1) && exist > 0);
+        // The false positive should be less than totalCount * fpp. Add 15% here for error space.
+        double expectedFalsePositiveMaxCount = Math.floor(testBloomFilterCount * (testFpp * 1.15));
+        assertTrue(falsePositive < expectedFalsePositiveMaxCount && falsePositive > 0);
       }
     }
   }
