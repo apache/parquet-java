@@ -45,6 +45,7 @@ import org.apache.parquet.format.PageHeader;
 import org.apache.parquet.format.converter.ParquetMetadataConverter;
 import org.apache.parquet.hadoop.CodecFactory;
 import org.apache.parquet.hadoop.ColumnChunkPageWriteStore;
+import org.apache.parquet.hadoop.IndexCache;
 import org.apache.parquet.hadoop.ParquetFileWriter;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
@@ -117,8 +118,8 @@ public class ParquetRewriter implements Closeable {
   private String originalCreatedBy = "";
   // Unique created_by information from all input files
   private final Set<String> allOriginalCreatedBys = new HashSet<>();
-  // Whether prefetch all block indexes
-  private final boolean prefetchBlockAllIndexes;
+  // The index cache strategy
+  private final IndexCache.CacheStrategy indexCacheStrategy;
 
   public ParquetRewriter(RewriteOptions options) throws IOException {
     Configuration conf = options.getConf();
@@ -161,7 +162,7 @@ public class ParquetRewriter implements Closeable {
       this.encryptMode = true;
     }
 
-    this.prefetchBlockAllIndexes = options.prefetchBlockAllIndexes();
+    this.indexCacheStrategy = options.getIndexCacheStrategy();
 
     ParquetFileWriter.Mode writerMode = ParquetFileWriter.Mode.CREATE;
     writer = new ParquetFileWriter(HadoopOutputFile.fromPath(outPath, conf), schema, writerMode,
@@ -196,7 +197,7 @@ public class ParquetRewriter implements Closeable {
         this.maskColumns.put(ColumnPath.fromDotString(col), maskMode);
       }
     }
-    this.prefetchBlockAllIndexes = false;
+    this.indexCacheStrategy = IndexCache.CacheStrategy.NONE;
   }
 
   // Open all input files to validate their schemas are compatible to merge
@@ -256,14 +257,14 @@ public class ParquetRewriter implements Closeable {
 
   public void processBlocks() throws IOException {
     while (reader != null) {
-      IndexCacher indexCacher = new IndexCacher(reader, descriptorsMap.keySet(), prefetchBlockAllIndexes);
-      processBlocksFromReader(indexCacher);
-      indexCacher.free();
+      IndexCache indexCache = IndexCache.create(reader, descriptorsMap.keySet(), indexCacheStrategy);
+      processBlocksFromReader(indexCache);
+      indexCache.clean();
       initNextReader();
     }
   }
 
-  private void processBlocksFromReader(IndexCacher indexCacher) throws IOException {
+  private void processBlocksFromReader(IndexCache indexCache) throws IOException {
     PageReadStore store = reader.readNextRowGroup();
     ColumnReadStoreImpl crStore = new ColumnReadStoreImpl(store, new DummyGroupConverter(), schema, originalCreatedBy);
 
@@ -272,7 +273,7 @@ public class ParquetRewriter implements Closeable {
       writer.startBlock(store.getRowCount());
 
       BlockMetaData blockMetaData = meta.getBlocks().get(blockId);
-      indexCacher.setCurrentBlockMetadata(blockMetaData);
+      indexCache.setBlockMetadata(blockMetaData);
       List<ColumnChunkMetaData> columnsInOrder = blockMetaData.getColumns();
       for (int i = 0, columnId = 0; i < columnsInOrder.size(); i++) {
         ColumnChunkMetaData chunk = columnsInOrder.get(i);
@@ -328,15 +329,15 @@ public class ParquetRewriter implements Closeable {
                   newCodecName,
                   columnChunkEncryptorRunTime,
                   encryptColumn,
-                  indexCacher.getBloomFilter(chunk),
-                  indexCacher.getColumnIndex(chunk),
-                  indexCacher.getOffsetIndex(chunk));
+                  indexCache.getBloomFilter(chunk),
+                  indexCache.getColumnIndex(chunk),
+                  indexCache.getOffsetIndex(chunk));
           writer.endColumn();
         } else {
           // Nothing changed, simply copy the binary data.
-          BloomFilter bloomFilter = indexCacher.getBloomFilter(chunk);
-          ColumnIndex columnIndex = indexCacher.getColumnIndex(chunk);
-          OffsetIndex offsetIndex = indexCacher.getOffsetIndex(chunk);
+          BloomFilter bloomFilter = indexCache.getBloomFilter(chunk);
+          ColumnIndex columnIndex = indexCache.getColumnIndex(chunk);
+          OffsetIndex offsetIndex = indexCache.getOffsetIndex(chunk);
           writer.appendColumnChunk(descriptor, reader.getStream(), chunk, bloomFilter, columnIndex, offsetIndex);
         }
 

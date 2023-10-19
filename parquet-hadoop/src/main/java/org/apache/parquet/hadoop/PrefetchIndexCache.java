@@ -16,10 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.parquet.hadoop.rewrite;
+package org.apache.parquet.hadoop;
 
+import org.apache.parquet.Preconditions;
 import org.apache.parquet.column.values.bloomfilter.BloomFilter;
-import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
@@ -32,61 +32,79 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * A cacher for caching file indexes(ColumnIndex, OffsetIndex, BloomFilter)
+ * This index cache will prefetch those columns' indexes when calling {@link #setBlockMetadata(BlockMetaData)}.
+ * <p>
+ *
+ * Note: the given index will be freed from the cache after calling the related get method.
  */
-class IndexCacher {
+class PrefetchIndexCache implements IndexCache {
   private final ParquetFileReader fileReader;
-  private final Set<ColumnPath> columnPathSet;
-  private final boolean prefetchBlockAllIndexes;
+  private final Set<ColumnPath> columns;
 
-  // Only used when prefetchBlockAllIndexes is true
   private Map<ColumnPath, ColumnIndex> columnIndexCache;
   private Map<ColumnPath, OffsetIndex> offsetIndexCache;
   private Map<ColumnPath, BloomFilter> bloomIndexCache;
 
-  IndexCacher(
+  PrefetchIndexCache(
       ParquetFileReader fileReader,
-      Set<ColumnPath> columnPathSet,
-      boolean prefetchBlockAllIndexes) {
+      Set<ColumnPath> columns) {
     this.fileReader = fileReader;
-    this.columnPathSet = columnPathSet;
-    this.prefetchBlockAllIndexes = prefetchBlockAllIndexes;
+    this.columns = columns;
   }
 
-  void setCurrentBlockMetadata(BlockMetaData blockMetaData) throws IOException {
-    if (prefetchBlockAllIndexes) {
-      free();
-      this.columnIndexCache = readAllColumnIndexes(blockMetaData);
-      this.offsetIndexCache = readAllOffsetIndexes(blockMetaData);
-      this.bloomIndexCache = readAllBloomFilters(blockMetaData);
-    }
+  @Override
+  public void setBlockMetadata(BlockMetaData currentBlockMetadata) throws IOException {
+    this.columnIndexCache = readAllColumnIndexes(currentBlockMetadata);
+    this.offsetIndexCache = readAllOffsetIndexes(currentBlockMetadata);
+    this.bloomIndexCache = readAllBloomFilters(currentBlockMetadata);
   }
 
-  ColumnIndex getColumnIndex(ColumnChunkMetaData chunk) throws IOException {
-    if (prefetchBlockAllIndexes) {
-      return columnIndexCache.remove(chunk.getPath());
-    }
-
-    return fileReader.readColumnIndex(chunk);
-  }
-
-  OffsetIndex getOffsetIndex(ColumnChunkMetaData chunk) throws IOException {
-    if (prefetchBlockAllIndexes) {
-      return offsetIndexCache.remove(chunk.getPath());
+  @Override
+  public ColumnIndex getColumnIndex(ColumnChunkMetaData chunk) throws IOException {
+    ColumnPath columnPath = chunk.getPath();
+    if (columns.contains(columnPath)) {
+      Preconditions.checkState(
+        columnIndexCache.containsKey(columnPath),
+        "Not found cached ColumnIndex for column: %s with cache strategy: %s",
+        columnPath.toDotString(),
+        CacheStrategy.PRECACHE_BLOCK);
     }
 
-    return fileReader.readOffsetIndex(chunk);
+    return columnIndexCache.remove(columnPath);
   }
 
-  BloomFilter getBloomFilter(ColumnChunkMetaData chunk) throws IOException {
-    if (prefetchBlockAllIndexes) {
-      return bloomIndexCache.remove(chunk.getPath());
+  @Override
+  public OffsetIndex getOffsetIndex(ColumnChunkMetaData chunk) throws IOException {
+    ColumnPath columnPath = chunk.getPath();
+
+    if (columns.contains(columnPath)) {
+      Preconditions.checkState(
+        offsetIndexCache.containsKey(columnPath),
+        "Not found cached OffsetIndex for column: %s with cache strategy: %s",
+        columnPath.toDotString(),
+        CacheStrategy.PRECACHE_BLOCK);
     }
 
-    return fileReader.readBloomFilter(chunk);
+    return offsetIndexCache.remove(columnPath);
   }
 
-  void free() {
+  @Override
+  public BloomFilter getBloomFilter(ColumnChunkMetaData chunk) throws IOException {
+    ColumnPath columnPath = chunk.getPath();
+
+    if (columns.contains(columnPath)) {
+      Preconditions.checkState(
+        bloomIndexCache.containsKey(columnPath),
+        "Not found cached BloomFilter for column: %s with cache strategy: %s",
+        columnPath.toDotString(),
+        CacheStrategy.PRECACHE_BLOCK);
+    }
+
+    return bloomIndexCache.remove(columnPath);
+  }
+
+  @Override
+  public void clean() {
     if (columnIndexCache != null) {
       columnIndexCache.clear();
       columnIndexCache = null;
@@ -104,9 +122,9 @@ class IndexCacher {
   }
 
   private Map<ColumnPath, ColumnIndex> readAllColumnIndexes(BlockMetaData blockMetaData) throws IOException {
-    Map<ColumnPath, ColumnIndex> columnIndexMap = new HashMap<>(columnPathSet.size());
+    Map<ColumnPath, ColumnIndex> columnIndexMap = new HashMap<>(columns.size());
     for (ColumnChunkMetaData chunk : blockMetaData.getColumns()) {
-      if (columnPathSet.contains(chunk.getPath())) {
+      if (columns.contains(chunk.getPath())) {
         columnIndexMap.put(chunk.getPath(), fileReader.readColumnIndex(chunk));
       }
     }
@@ -115,9 +133,9 @@ class IndexCacher {
   }
 
   private Map<ColumnPath, OffsetIndex> readAllOffsetIndexes(BlockMetaData blockMetaData) throws IOException {
-    Map<ColumnPath, OffsetIndex> offsetIndexMap = new HashMap<>(columnPathSet.size());
+    Map<ColumnPath, OffsetIndex> offsetIndexMap = new HashMap<>(columns.size());
     for (ColumnChunkMetaData chunk : blockMetaData.getColumns()) {
-      if (columnPathSet.contains(chunk.getPath())) {
+      if (columns.contains(chunk.getPath())) {
         offsetIndexMap.put(chunk.getPath(), fileReader.readOffsetIndex(chunk));
       }
     }
@@ -126,9 +144,9 @@ class IndexCacher {
   }
 
   private Map<ColumnPath, BloomFilter> readAllBloomFilters(BlockMetaData blockMetaData) throws IOException {
-    Map<ColumnPath, BloomFilter> bloomFilterMap = new HashMap<>(columnPathSet.size());
+    Map<ColumnPath, BloomFilter> bloomFilterMap = new HashMap<>(columns.size());
     for (ColumnChunkMetaData chunk : blockMetaData.getColumns()) {
-      if (columnPathSet.contains(chunk.getPath())) {
+      if (columns.contains(chunk.getPath())) {
         bloomFilterMap.put(chunk.getPath(), fileReader.readBloomFilter(chunk));
       }
     }

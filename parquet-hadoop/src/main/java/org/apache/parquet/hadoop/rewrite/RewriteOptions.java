@@ -22,6 +22,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.crypto.FileEncryptionProperties;
+import org.apache.parquet.hadoop.IndexCache;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 
 import java.util.Arrays;
@@ -41,7 +42,7 @@ public class RewriteOptions {
   private final Map<String, MaskMode> maskColumns;
   private final List<String> encryptColumns;
   private final FileEncryptionProperties fileEncryptionProperties;
-  private final boolean prefetchBlockAllIndexes;
+  private final IndexCache.CacheStrategy indexCacheStrategy;
 
   private RewriteOptions(Configuration conf,
                          List<Path> inputFiles,
@@ -51,7 +52,7 @@ public class RewriteOptions {
                          Map<String, MaskMode> maskColumns,
                          List<String> encryptColumns,
                          FileEncryptionProperties fileEncryptionProperties,
-                         boolean prefetchBlockAllIndexes) {
+                         IndexCache.CacheStrategy indexCacheStrategy) {
     this.conf = conf;
     this.inputFiles = inputFiles;
     this.outputFile = outputFile;
@@ -60,7 +61,7 @@ public class RewriteOptions {
     this.maskColumns = maskColumns;
     this.encryptColumns = encryptColumns;
     this.fileEncryptionProperties = fileEncryptionProperties;
-    this.prefetchBlockAllIndexes = prefetchBlockAllIndexes;
+    this.indexCacheStrategy = indexCacheStrategy;
   }
 
   public Configuration getConf() {
@@ -95,8 +96,8 @@ public class RewriteOptions {
     return fileEncryptionProperties;
   }
 
-  public boolean prefetchBlockAllIndexes() {
-    return prefetchBlockAllIndexes;
+  public IndexCache.CacheStrategy getIndexCacheStrategy() {
+    return indexCacheStrategy;
   }
 
   // Builder to create a RewriterOptions.
@@ -109,7 +110,7 @@ public class RewriteOptions {
     private Map<String, MaskMode> maskColumns;
     private List<String> encryptColumns;
     private FileEncryptionProperties fileEncryptionProperties;
-    private boolean prefetchBlockAllIndexes;
+    private IndexCache.CacheStrategy indexCacheStrategy = IndexCache.CacheStrategy.NONE;
 
     /**
      * Create a builder to create a RewriterOptions.
@@ -222,15 +223,16 @@ public class RewriteOptions {
     }
 
     /**
-     * Whether enable prefetch block indexes into cache.
+     * Set the index(ColumnIndex, Offset and BloomFilter) cache strategy.
      * <p>
-     * This could reduce the random seek while rewriting, disabled by default.
+     * This could reduce the random seek while rewriting with PRECACHE_BLOCK strategy, NONE by default.
      *
-     * @param prefetchBlockAllIndexes enable or not
+     * @param cacheStrategy the index cache strategy, supports: {@link IndexCache.CacheStrategy#NONE} or
+     *        {@link IndexCache.CacheStrategy#PRECACHE_BLOCK}
      * @return self
      */
-    public Builder prefetchBlockAllIndex(boolean prefetchBlockAllIndexes) {
-      this.prefetchBlockAllIndexes = prefetchBlockAllIndexes;
+    public Builder indexCacheStrategy(IndexCache.CacheStrategy cacheStrategy) {
+      this.indexCacheStrategy = cacheStrategy;
       return this;
     }
 
@@ -277,7 +279,7 @@ public class RewriteOptions {
               maskColumns,
               encryptColumns,
               fileEncryptionProperties,
-              prefetchBlockAllIndexes);
+              indexCacheStrategy);
     }
   }
 

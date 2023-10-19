@@ -37,6 +37,7 @@ import org.apache.parquet.format.DataPageHeader;
 import org.apache.parquet.format.DataPageHeaderV2;
 import org.apache.parquet.format.PageHeader;
 import org.apache.parquet.format.converter.ParquetMetadataConverter;
+import org.apache.parquet.hadoop.IndexCache;
 import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.hadoop.ParquetWriter;
@@ -97,20 +98,20 @@ public class ParquetRewriterTest {
   private final int numRecord = 100000;
   private final Configuration conf = new Configuration();
   private final ParquetProperties.WriterVersion writerVersion;
-  private final boolean prefetchBlockAllIndexes;
+  private final IndexCache.CacheStrategy indexCacheStrategy;
 
   private List<EncryptionTestFile> inputFiles = null;
   private String outputFile = null;
   private ParquetRewriter rewriter = null;
 
-  @Parameterized.Parameters(name = "WriterVersion = {0}, PrefetchBlockAllIndexes = {1}")
+  @Parameterized.Parameters(name = "WriterVersion = {0}, IndexCacheStrategy = {1}")
   public static Object[][] parameters() {
-    return new Object[][] {{"v1", true}, {"v1", false}, {"v2", true}, {"v2", false}};
+    return new Object[][] {{"v1", "NONE"}, {"v1", "PRECACHE_BLOCK"}, {"v2", "NONE"}, {"v2", "PRECACHE_BLOCK"}};
   }
 
-  public ParquetRewriterTest(String writerVersion, boolean prefetchBlockAllIndexes) {
+  public ParquetRewriterTest(String writerVersion, String indexCacheStrategy) {
     this.writerVersion = ParquetProperties.WriterVersion.fromString(writerVersion);
-    this.prefetchBlockAllIndexes = prefetchBlockAllIndexes;
+    this.indexCacheStrategy = IndexCache.CacheStrategy.valueOf(indexCacheStrategy);
   }
 
   private void testPruneSingleColumnTranslateCodec(List<Path> inputPaths) throws Exception {
@@ -119,7 +120,7 @@ public class ParquetRewriterTest {
     CompressionCodecName newCodec = CompressionCodecName.ZSTD;
     RewriteOptions.Builder builder = new RewriteOptions.Builder(conf, inputPaths, outputPath);
     RewriteOptions options =
-      builder.prune(pruneColumns).transform(newCodec).prefetchBlockAllIndex(prefetchBlockAllIndexes).build();
+      builder.prune(pruneColumns).transform(newCodec).indexCacheStrategy(indexCacheStrategy).build();
 
     rewriter = new ParquetRewriter(options);
     rewriter.processBlocks();
@@ -191,7 +192,7 @@ public class ParquetRewriterTest {
     CompressionCodecName newCodec = CompressionCodecName.ZSTD;
     RewriteOptions.Builder builder = new RewriteOptions.Builder(conf, inputPaths, outputPath);
     RewriteOptions options =
-      builder.prune(pruneColumns).mask(maskColumns).transform(newCodec).prefetchBlockAllIndex(prefetchBlockAllIndexes).build();
+      builder.prune(pruneColumns).mask(maskColumns).transform(newCodec).indexCacheStrategy(indexCacheStrategy).build();
 
     rewriter = new ParquetRewriter(options);
     rewriter.processBlocks();
@@ -267,7 +268,7 @@ public class ParquetRewriterTest {
             EncDecProperties.getFileEncryptionProperties(encryptColumns, ParquetCipher.AES_GCM_CTR_V1, false);
     builder.encrypt(Arrays.asList(encryptColumns)).encryptionProperties(fileEncryptionProperties);
 
-    builder.prefetchBlockAllIndex(prefetchBlockAllIndexes);
+    builder.indexCacheStrategy(indexCacheStrategy);
 
     RewriteOptions options = builder.build();
     rewriter = new ParquetRewriter(options);
@@ -352,7 +353,7 @@ public class ParquetRewriterTest {
     List<String> pruneCols = Lists.newArrayList("phoneNumbers");
 
     RewriteOptions options =
-      builder.mask(maskCols).prune(pruneCols).prefetchBlockAllIndex(prefetchBlockAllIndexes).build();
+      builder.mask(maskCols).prune(pruneCols).indexCacheStrategy(indexCacheStrategy).build();
     rewriter = new ParquetRewriter(options);
     rewriter.processBlocks();
     rewriter.close();
@@ -413,7 +414,7 @@ public class ParquetRewriterTest {
       .transform(CompressionCodecName.ZSTD)
       .encrypt(Arrays.asList(encryptColumns))
       .encryptionProperties(fileEncryptionProperties)
-      .prefetchBlockAllIndex(prefetchBlockAllIndexes)
+      .indexCacheStrategy(indexCacheStrategy)
       .build();
 
     rewriter = new ParquetRewriter(options);
@@ -485,7 +486,7 @@ public class ParquetRewriterTest {
     }
     Path outputPath = new Path(outputFile);
     RewriteOptions.Builder builder = new RewriteOptions.Builder(conf, inputPaths, outputPath);
-    RewriteOptions options = builder.prefetchBlockAllIndex(prefetchBlockAllIndexes).build();
+    RewriteOptions options = builder.indexCacheStrategy(indexCacheStrategy).build();
 
     rewriter = new ParquetRewriter(options);
     rewriter.processBlocks();
@@ -553,7 +554,7 @@ public class ParquetRewriterTest {
     }
     Path outputPath = new Path(outputFile);
     RewriteOptions.Builder builder = new RewriteOptions.Builder(conf, inputPaths, outputPath);
-    RewriteOptions options = builder.prefetchBlockAllIndex(prefetchBlockAllIndexes).build();
+    RewriteOptions options = builder.indexCacheStrategy(indexCacheStrategy).build();
 
     // This should throw an exception because the schemas are different
     rewriter = new ParquetRewriter(options);
