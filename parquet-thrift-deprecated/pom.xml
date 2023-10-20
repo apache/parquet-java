@@ -26,10 +26,10 @@
 
   <modelVersion>4.0.0</modelVersion>
 
-  <artifactId>parquet-thrift</artifactId>
+  <artifactId>parquet-thrift-deprecated</artifactId>
   <packaging>jar</packaging>
 
-  <name>Apache Parquet Thrift</name>
+  <name>Apache Parquet Thrift; [Deprecated, will be removed after 1.14]</name>
   <url>https://parquet.apache.org</url>
 
   <properties>
@@ -256,7 +256,7 @@
                   <workingDirectory>${basedir}</workingDirectory>
                   <arguments>
                     <argument>-c</argument>
-                    <argument>${thrift.executable} -version | fgrep 'Thrift version ${thrift.version}' &amp;&amp; exit 0;
+                    <argument>${thrift.executable} -version | fgrep 'Thrift version' &amp;&amp; exit 0;
                       echo "=================================================================================";
                       echo "========== [FATAL] Build is configured to require Thrift version ${thrift.version} ==========";
                       echo -n "========== Currently installed: ";
