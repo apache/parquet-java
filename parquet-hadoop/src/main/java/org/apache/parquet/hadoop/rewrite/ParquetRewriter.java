@@ -257,7 +257,7 @@ public class ParquetRewriter implements Closeable {
 
   public void processBlocks() throws IOException {
     while (reader != null) {
-      IndexCache indexCache = IndexCache.create(reader, descriptorsMap.keySet(), indexCacheStrategy);
+      IndexCache indexCache = IndexCache.create(reader, descriptorsMap.keySet(), indexCacheStrategy, true);
       processBlocksFromReader(indexCache);
       indexCache.clean();
       initNextReader();

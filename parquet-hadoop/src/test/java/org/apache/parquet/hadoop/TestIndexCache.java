@@ -78,7 +78,7 @@ public class TestIndexCache {
     ParquetReadOptions options = ParquetReadOptions.builder().build();
     ParquetFileReader fileReader = new ParquetFileReader(
       new LocalInputFile(Paths.get(file)), options);
-    IndexCache indexCache = IndexCache.create(fileReader, new HashSet<>(), IndexCache.CacheStrategy.NONE);
+    IndexCache indexCache = IndexCache.create(fileReader, new HashSet<>(), IndexCache.CacheStrategy.NONE, false);
     Assert.assertTrue(indexCache instanceof NoneIndexCache);
     List<BlockMetaData> blocks = fileReader.getFooter().getBlocks();
     for (BlockMetaData blockMetaData : blocks) {
@@ -108,8 +108,32 @@ public class TestIndexCache {
     columns.add(ColumnPath.fromDotString("Gender"));
     columns.add(ColumnPath.fromDotString("Links.Backward"));
     columns.add(ColumnPath.fromDotString("Links.Forward"));
-    IndexCache indexCache = IndexCache.create(fileReader, columns, IndexCache.CacheStrategy.PRECACHE_BLOCK);
+
+    IndexCache indexCache = IndexCache.create(fileReader, columns, IndexCache.CacheStrategy.PRECACHE_BLOCK, false);
     Assert.assertTrue(indexCache instanceof PrefetchIndexCache);
+    validPrecacheIndexCache(fileReader, indexCache, columns, false);
+
+    indexCache = IndexCache.create(fileReader, columns, IndexCache.CacheStrategy.PRECACHE_BLOCK, true);
+    Assert.assertTrue(indexCache instanceof PrefetchIndexCache);
+    validPrecacheIndexCache(fileReader, indexCache, columns, true);
+  }
+
+  private String createTestFile(String... bloomFilterEnabledColumns) throws IOException {
+    return new TestFileBuilder(conf, schema)
+      .withNumRecord(numRecords)
+      .withCodec("ZSTD")
+      .withRowGroupSize(8L * 1024 * 1024)
+      .withBloomFilterEnabled(bloomFilterEnabledColumns)
+      .withWriterVersion(writerVersion)
+      .build()
+      .getFileName();
+  }
+
+  private static void validPrecacheIndexCache(
+      ParquetFileReader fileReader,
+      IndexCache indexCache,
+      Set<ColumnPath> columns,
+      boolean freeCacheAfterGet) throws IOException {
     List<BlockMetaData> blocks = fileReader.getFooter().getBlocks();
     for (BlockMetaData blockMetaData : blocks) {
       indexCache.setBlockMetadata(blockMetaData);
@@ -122,27 +146,18 @@ public class TestIndexCache {
           fileReader.readBloomFilter(chunk),
           indexCache.getBloomFilter(chunk));
 
-        Assert.assertThrows(IllegalStateException.class, () -> indexCache.getColumnIndex(chunk));
-        Assert.assertThrows(IllegalStateException.class, () -> indexCache.getOffsetIndex(chunk));
-        if (columns.contains(chunk.getPath())) {
-          Assert.assertThrows(IllegalStateException.class, () -> indexCache.getBloomFilter(chunk));
+        if (freeCacheAfterGet) {
+          Assert.assertThrows(IllegalStateException.class, () -> indexCache.getColumnIndex(chunk));
+          Assert.assertThrows(IllegalStateException.class, () -> indexCache.getOffsetIndex(chunk));
+          if (columns.contains(chunk.getPath())) {
+            Assert.assertThrows(IllegalStateException.class, () -> indexCache.getBloomFilter(chunk));
+          }
         }
       }
     }
   }
 
-  private String createTestFile(String... bloomFilterEnabledColumns) throws IOException {
-    return new TestFileBuilder(conf, schema)
-      .withNumRecord(numRecords)
-      .withCodec("UNCOMPRESSED")
-      .withRowGroupSize(1024L)
-      .withBloomFilterEnabled(bloomFilterEnabledColumns)
-      .withWriterVersion(writerVersion)
-      .build()
-      .getFileName();
-  }
-
-  private void validateColumnIndex(ColumnIndex expected, ColumnIndex target) {
+  private static void validateColumnIndex(ColumnIndex expected, ColumnIndex target) {
     if (expected == null) {
       Assert.assertEquals("ColumnIndex should should equal", expected, target);
     } else {
@@ -156,7 +171,7 @@ public class TestIndexCache {
     }
   }
 
-  private void validateOffsetIndex(OffsetIndex expected, OffsetIndex target) {
+  private static void validateOffsetIndex(OffsetIndex expected, OffsetIndex target) {
     if (expected == null) {
       Assert.assertEquals("OffsetIndex should should equal", expected, target);
     } else {

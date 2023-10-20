@@ -44,16 +44,18 @@ public interface IndexCache {
    * @param fileReader the file reader
    * @param columns the columns that need to do cache
    * @param cacheStrategy the cache strategy, supports NONE and PRECACHE_BLOCK
+   * @param freeCacheAfterGet whether free the given index cache after calling the given get method
    * @return the index cache
    */
   static IndexCache create(
       ParquetFileReader fileReader,
       Set<ColumnPath> columns,
-      CacheStrategy cacheStrategy) {
+      CacheStrategy cacheStrategy,
+      boolean freeCacheAfterGet) {
     if (cacheStrategy == CacheStrategy.NONE) {
       return new NoneIndexCache(fileReader);
     } else if (cacheStrategy == CacheStrategy.PRECACHE_BLOCK) {
-      return new PrefetchIndexCache(fileReader, columns);
+      return new PrefetchIndexCache(fileReader, columns, freeCacheAfterGet);
     } else {
       throw new UnsupportedOperationException("Unknown cache strategy: " + cacheStrategy);
     }

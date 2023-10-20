@@ -34,26 +34,34 @@ import java.util.Set;
 /**
  * This index cache will prefetch indexes of all columns when calling {@link #setBlockMetadata(BlockMetaData)}.
  * <p>
- *
- * Note: the given index will be freed from the cache after calling the related get method.
+ * <b>NOTE:</b> the {@link #setBlockMetadata(BlockMetaData)} will free the previous block cache
  */
 class PrefetchIndexCache implements IndexCache {
   private final ParquetFileReader fileReader;
   private final Set<ColumnPath> columns;
+  private final boolean freeCacheAfterGet;
 
   private Map<ColumnPath, ColumnIndex> columnIndexCache;
   private Map<ColumnPath, OffsetIndex> offsetIndexCache;
   private Map<ColumnPath, BloomFilter> bloomIndexCache;
 
+  /**
+   * @param fileReader the file reader
+   * @param columns the columns that need to cache
+   * @param freeCacheAfterGet whether free the given index cache after calling the given get method
+   */
   PrefetchIndexCache(
       ParquetFileReader fileReader,
-      Set<ColumnPath> columns) {
+      Set<ColumnPath> columns,
+      boolean freeCacheAfterGet) {
     this.fileReader = fileReader;
     this.columns = columns;
+    this.freeCacheAfterGet = freeCacheAfterGet;
   }
 
   @Override
   public void setBlockMetadata(BlockMetaData currentBlockMetadata) throws IOException {
+    clean();
     this.columnIndexCache = readAllColumnIndexes(currentBlockMetadata);
     this.offsetIndexCache = readAllOffsetIndexes(currentBlockMetadata);
     this.bloomIndexCache = readAllBloomFilters(currentBlockMetadata);
@@ -70,7 +78,11 @@ class PrefetchIndexCache implements IndexCache {
         CacheStrategy.PRECACHE_BLOCK);
     }
 
-    return columnIndexCache.remove(columnPath);
+    if (freeCacheAfterGet) {
+      return columnIndexCache.remove(columnPath);
+    } else {
+      return columnIndexCache.get(columnPath);
+    }
   }
 
   @Override
@@ -85,7 +97,11 @@ class PrefetchIndexCache implements IndexCache {
         CacheStrategy.PRECACHE_BLOCK);
     }
 
-    return offsetIndexCache.remove(columnPath);
+    if (freeCacheAfterGet) {
+      return offsetIndexCache.remove(columnPath);
+    } else {
+      return offsetIndexCache.get(columnPath);
+    }
   }
 
   @Override
@@ -100,7 +116,11 @@ class PrefetchIndexCache implements IndexCache {
         CacheStrategy.PRECACHE_BLOCK);
     }
 
-    return bloomIndexCache.remove(columnPath);
+    if (freeCacheAfterGet) {
+      return bloomIndexCache.remove(columnPath);
+    } else {
+      return bloomIndexCache.get(columnPath);
+    }
   }
 
   @Override
