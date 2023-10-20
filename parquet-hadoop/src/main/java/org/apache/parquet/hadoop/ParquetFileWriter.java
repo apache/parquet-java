@@ -612,13 +612,13 @@ public class ParquetFileWriter {
    * @throws IOException if any I/O error occurs during writing the file
    */
   public void writeDataPage(
-      int valueCount, int uncompressedPageSize,
-      BytesInput bytes,
-      Statistics<?> statistics,
-      long rowCount,
-      Encoding rlEncoding,
-      Encoding dlEncoding,
-      Encoding valuesEncoding) throws IOException {
+    int valueCount, int uncompressedPageSize,
+    BytesInput bytes,
+    Statistics<?> statistics,
+    long rowCount,
+    Encoding rlEncoding,
+    Encoding dlEncoding,
+    Encoding valuesEncoding) throws IOException {
     writeDataPage(valueCount, uncompressedPageSize, bytes, statistics, rowCount, rlEncoding, dlEncoding, valuesEncoding, null, null);
   }
 
