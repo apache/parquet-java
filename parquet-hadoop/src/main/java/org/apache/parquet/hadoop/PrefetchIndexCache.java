@@ -32,7 +32,7 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * This index cache will prefetch those columns' indexes when calling {@link #setBlockMetadata(BlockMetaData)}.
+ * This index cache will prefetch indexes of all columns when calling {@link #setBlockMetadata(BlockMetaData)}.
  * <p>
  *
  * Note: the given index will be freed from the cache after calling the related get method.
