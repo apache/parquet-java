@@ -20,7 +20,6 @@ package org.apache.parquet.hadoop;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.parquet.crypto.ColumnDecryptionProperties;
@@ -45,11 +44,8 @@ import org.junit.rules.ErrorCollector;
 import org.junit.rules.TemporaryFolder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import okhttp3.ConnectionSpec;
-import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
-import okhttp3.RequestBody;
 import okhttp3.Response;
 
 import java.io.IOException;
@@ -100,6 +96,9 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
  *  ENCRYPT_COLUMNS_PLAINTEXT_FOOTER: Encrypt six columns, with different keys.
  *                                  Do not encrypt footer (to enable legacy readers)
  *                                  - plaintext footer mode.
+ *  ENCRYPT_COLUMNS_PLAINTEXT_FOOTER_COMPLETE: Encrypt six columns with different keys
+ *                                  Do not encrypt footer. Encrypt the rest of the columns
+ *                                  with the footer key.
  *  ENCRYPT_COLUMNS_AND_FOOTER_AAD: Encrypt six columns and the footer, with different
  *                                  keys. Supply aad_prefix for file identity
  *                                  verification.
@@ -255,6 +254,21 @@ public class TestEncryptionOptions {
           .withFooterKeyMetadata(footerKeyMetadata).build();
       }
     },
+    ENCRYPT_COLUMNS_PLAIN_FOOTER_COMPLETE {
+      /**
+       * Encryption configuration 8: Encrypt six columns with different keys.
+       * Encrypt the rest of the columns with the footer key. Don't encrypt footer.
+       */
+      public FileEncryptionProperties getEncryptionProperties() {
+        Map<ColumnPath, ColumnEncryptionProperties> columnPropertiesMap = getColumnEncryptionPropertiesMap();
+        return FileEncryptionProperties.builder(FOOTER_ENCRYPTION_KEY)
+          .withFooterKeyMetadata(footerKeyMetadata)
+          .withEncryptedColumns(columnPropertiesMap)
+          .withCompleteColumnEncryption()
+          .withPlaintextFooter()
+          .build();
+      }
+    },
     NO_ENCRYPTION {
       public FileEncryptionProperties getEncryptionProperties() {
         return null;
@@ -402,6 +416,14 @@ public class TestEncryptionOptions {
             .named("FormatTestObject").toString());
         }
 
+        // Project column encrypted with footer key
+        if ((decryptionConfiguration == DecryptionConfiguration.NO_DECRYPTION) &&
+          (encryptionConfiguration == EncryptionConfiguration.ENCRYPT_COLUMNS_PLAIN_FOOTER_COMPLETE)) {
+          conf.set("parquet.read.schema", Types.buildMessage()
+            .optional(INT32).named(SingleRow.PLAINTEXT_INT32_FIELD_NAME)
+            .named("FormatTestObject").toString());
+        }
+
         int rowNum = 0;
         try (ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), file)
           .withConf(conf)
@@ -471,6 +493,9 @@ public class TestEncryptionOptions {
       if (EncryptionConfiguration.UNIFORM_ENCRYPTION_PLAINTEXT_FOOTER == encryptionConfiguration) {
         continue;
       }
+      if (EncryptionConfiguration.ENCRYPT_COLUMNS_PLAIN_FOOTER_COMPLETE == encryptionConfiguration) {
+        continue;
+      }
       String fileName = getFileName(encryptionConfiguration);
       Path file = new Path(rootPath, fileName);
       if (!fs.exists(file)) {
@@ -498,6 +523,9 @@ public class TestEncryptionOptions {
           continue;
         }
         if (EncryptionConfiguration.UNIFORM_ENCRYPTION_PLAINTEXT_FOOTER == encryptionConfiguration) {
+          continue;
+        }
+        if (EncryptionConfiguration.ENCRYPT_COLUMNS_PLAIN_FOOTER_COMPLETE == encryptionConfiguration) {
           continue;
         }
         Path file = new Path(root, getFileName(encryptionConfiguration));
@@ -593,7 +621,7 @@ public class TestEncryptionOptions {
         return;
       }
     }
-    // Encryption_configuration 7 has null encryptor, so parquet is plaintext.
+    // Last encryption_configuration has null encryptor, so parquet is plaintext.
     // An exception is expected to be thrown if the file is being decrypted.
     if (encryptionConfiguration == EncryptionConfiguration.NO_ENCRYPTION) {
       if ((decryptionConfiguration == DecryptionConfiguration.DECRYPT_WITH_KEY_RETRIEVER) ||

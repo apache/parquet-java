@@ -33,6 +33,7 @@ public class FileEncryptionProperties {
 
   private static final ParquetCipher ALGORITHM_DEFAULT = ParquetCipher.AES_GCM_V1;
   private static final boolean ENCRYPTED_FOOTER_DEFAULT = true;
+  private static final boolean COMPLETE_COLUMN_ENCRYPTION_DEFAULT = false;
 
   private final EncryptionAlgorithm algorithm;
   private final boolean encryptedFooter;
@@ -40,11 +41,13 @@ public class FileEncryptionProperties {
   private final byte[] footerKeyMetadata;
   private final byte[] fileAAD;
   private final Map<ColumnPath, ColumnEncryptionProperties> columnPropertyMap;
+  private final boolean completeColumnEncryption;
 
   private FileEncryptionProperties(ParquetCipher cipher, 
       byte[] footerKey, byte[] footerKeyMetadata, boolean encryptedFooter,
       byte[] aadPrefix, boolean storeAadPrefixInFile,
-      Map<ColumnPath, ColumnEncryptionProperties> columnPropertyMap) {
+      Map<ColumnPath, ColumnEncryptionProperties> columnPropertyMap,
+      boolean completeColumnEncryption) {
 
     if (null == footerKey) {
       throw new IllegalArgumentException("Footer key is null");
@@ -52,8 +55,14 @@ public class FileEncryptionProperties {
     if (! (footerKey.length == 16 || footerKey.length == 24 || footerKey.length == 32)) {
       throw new IllegalArgumentException("Wrong footer key length " + footerKey.length);
     }
-    if (null != columnPropertyMap && columnPropertyMap.size() == 0) {
-      throw new IllegalArgumentException("No encrypted columns");
+    if (null != columnPropertyMap) {
+      if (columnPropertyMap.size() == 0) {
+        throw new IllegalArgumentException("No encrypted columns");
+      }
+    } else {
+      if (completeColumnEncryption) {
+        throw new IllegalArgumentException("Encrypted columns are not specified, cannot complete");
+      }
     }
 
     SecureRandom random = new SecureRandom();
@@ -88,6 +97,7 @@ public class FileEncryptionProperties {
     this.footerKeyMetadata = footerKeyMetadata;
     this.encryptedFooter = encryptedFooter;
     this.columnPropertyMap = columnPropertyMap;
+    this.completeColumnEncryption = completeColumnEncryption;
   }
 
   /**
@@ -109,10 +119,12 @@ public class FileEncryptionProperties {
     private byte[] aadPrefix;
     private Map<ColumnPath, ColumnEncryptionProperties> columnPropertyMap;
     private boolean storeAadPrefixInFile;
+    private boolean completeColumnEncryption;
 
     private Builder(byte[] footerKey) {
       this.parquetCipher = ALGORITHM_DEFAULT;
       this.encryptedFooter = ENCRYPTED_FOOTER_DEFAULT;
+      this.completeColumnEncryption = COMPLETE_COLUMN_ENCRYPTION_DEFAULT;
       this.footerKeyBytes = new byte[footerKey.length];
       System.arraycopy(footerKey, 0, this.footerKeyBytes, 0, footerKey.length);
     }
@@ -229,11 +241,17 @@ public class FileEncryptionProperties {
       return this;
     }
 
+    public Builder withCompleteColumnEncryption() {
+      this.completeColumnEncryption = true;
+
+      return this;
+    }
+
     public FileEncryptionProperties build() {
       return new FileEncryptionProperties(parquetCipher, 
           footerKeyBytes, footerKeyMetadata, encryptedFooter,
           aadPrefix, storeAadPrefixInFile, 
-          columnPropertyMap);
+          columnPropertyMap, completeColumnEncryption);
     }
   }
 
@@ -261,9 +279,14 @@ public class FileEncryptionProperties {
       ColumnEncryptionProperties columnProperties = columnPropertyMap.get(columnPath);
       if (null != columnProperties) {
         return columnProperties;
-      } else {
-        // plaintext column
-        return ColumnEncryptionProperties.builder(columnPath, false).build();
+      } else { // not set explicitly
+        if (completeColumnEncryption) {
+          // encrypted with footer key
+          return ColumnEncryptionProperties.builder(columnPath, true).build();
+        } else {
+          // plaintext column
+          return ColumnEncryptionProperties.builder(columnPath, false).build();
+       }
       }
     }
   }
