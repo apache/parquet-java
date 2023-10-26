@@ -35,7 +35,7 @@ public interface IndexCache {
 
   enum CacheStrategy {
     NONE, /* No cache */
-    PRECACHE_BLOCK /* Precache for block indexes */
+    PREFETCH_BLOCK /* Prefetch block indexes */
   }
 
   /**
@@ -43,7 +43,7 @@ public interface IndexCache {
    *
    * @param fileReader the file reader
    * @param columns the columns that need to do cache
-   * @param cacheStrategy the cache strategy, supports NONE and PRECACHE_BLOCK
+   * @param cacheStrategy the cache strategy, supports NONE and PREFETCH_BLOCK
    * @param freeCacheAfterGet whether free the given index cache after calling the given get method
    * @return the index cache
    */
@@ -54,7 +54,7 @@ public interface IndexCache {
       boolean freeCacheAfterGet) {
     if (cacheStrategy == CacheStrategy.NONE) {
       return new NoneIndexCache(fileReader);
-    } else if (cacheStrategy == CacheStrategy.PRECACHE_BLOCK) {
+    } else if (cacheStrategy == CacheStrategy.PREFETCH_BLOCK) {
       return new PrefetchIndexCache(fileReader, columns, freeCacheAfterGet);
     } else {
       throw new UnsupportedOperationException("Unknown cache strategy: " + cacheStrategy);

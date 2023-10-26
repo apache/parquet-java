@@ -106,7 +106,7 @@ public class ParquetRewriterTest {
 
   @Parameterized.Parameters(name = "WriterVersion = {0}, IndexCacheStrategy = {1}")
   public static Object[][] parameters() {
-    return new Object[][] {{"v1", "NONE"}, {"v1", "PRECACHE_BLOCK"}, {"v2", "NONE"}, {"v2", "PRECACHE_BLOCK"}};
+    return new Object[][] {{"v1", "NONE"}, {"v1", "PREFETCH_BLOCK"}, {"v2", "NONE"}, {"v2", "PREFETCH_BLOCK"}};
   }
 
   public ParquetRewriterTest(String writerVersion, String indexCacheStrategy) {

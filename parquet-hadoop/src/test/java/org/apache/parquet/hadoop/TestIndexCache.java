@@ -109,11 +109,11 @@ public class TestIndexCache {
     columns.add(ColumnPath.fromDotString("Links.Backward"));
     columns.add(ColumnPath.fromDotString("Links.Forward"));
 
-    IndexCache indexCache = IndexCache.create(fileReader, columns, IndexCache.CacheStrategy.PRECACHE_BLOCK, false);
+    IndexCache indexCache = IndexCache.create(fileReader, columns, IndexCache.CacheStrategy.PREFETCH_BLOCK, false);
     Assert.assertTrue(indexCache instanceof PrefetchIndexCache);
     validPrecacheIndexCache(fileReader, indexCache, columns, false);
 
-    indexCache = IndexCache.create(fileReader, columns, IndexCache.CacheStrategy.PRECACHE_BLOCK, true);
+    indexCache = IndexCache.create(fileReader, columns, IndexCache.CacheStrategy.PREFETCH_BLOCK, true);
     Assert.assertTrue(indexCache instanceof PrefetchIndexCache);
     validPrecacheIndexCache(fileReader, indexCache, columns, true);
   }

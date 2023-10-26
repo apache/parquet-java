@@ -75,7 +75,7 @@ class PrefetchIndexCache implements IndexCache {
         columnIndexCache.containsKey(columnPath),
         "Not found cached ColumnIndex for column: %s with cache strategy: %s",
         columnPath.toDotString(),
-        CacheStrategy.PRECACHE_BLOCK);
+        CacheStrategy.PREFETCH_BLOCK);
     }
 
     if (freeCacheAfterGet) {
@@ -94,7 +94,7 @@ class PrefetchIndexCache implements IndexCache {
         offsetIndexCache.containsKey(columnPath),
         "Not found cached OffsetIndex for column: %s with cache strategy: %s",
         columnPath.toDotString(),
-        CacheStrategy.PRECACHE_BLOCK);
+        CacheStrategy.PREFETCH_BLOCK);
     }
 
     if (freeCacheAfterGet) {
@@ -113,7 +113,7 @@ class PrefetchIndexCache implements IndexCache {
         bloomIndexCache.containsKey(columnPath),
         "Not found cached BloomFilter for column: %s with cache strategy: %s",
         columnPath.toDotString(),
-        CacheStrategy.PRECACHE_BLOCK);
+        CacheStrategy.PREFETCH_BLOCK);
     }
 
     if (freeCacheAfterGet) {

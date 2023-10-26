@@ -225,10 +225,10 @@ public class RewriteOptions {
     /**
      * Set the index(ColumnIndex, Offset and BloomFilter) cache strategy.
      * <p>
-     * This could reduce the random seek while rewriting with PRECACHE_BLOCK strategy, NONE by default.
+     * This could reduce the random seek while rewriting with PREFETCH_BLOCK strategy, NONE by default.
      *
      * @param cacheStrategy the index cache strategy, supports: {@link IndexCache.CacheStrategy#NONE} or
-     *        {@link IndexCache.CacheStrategy#PRECACHE_BLOCK}
+     *        {@link IndexCache.CacheStrategy#PREFETCH_BLOCK}
      * @return self
      */
     public Builder indexCacheStrategy(IndexCache.CacheStrategy cacheStrategy) {
