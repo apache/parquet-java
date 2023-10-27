@@ -451,15 +451,12 @@ public abstract class ColumnIndexBuilder {
     }
   };
 
+  private PrimitiveType type;
   private final BooleanList nullPages = new BooleanArrayList();
   private final LongList nullCounts = new LongArrayList();
-  private final IntList pageIndexes = new IntArrayList();
-
-  private PrimitiveType type;
   private long minMaxSize;
+  private final IntList pageIndexes = new IntArrayList();
   private int nextPageIndex;
-
-  protected boolean invalid;
 
   /**
    * @return a no-op builder that does not collect statistics objects and therefore returns {@code null} at
@@ -546,11 +543,6 @@ public abstract class ColumnIndexBuilder {
    *          the statistics to be added
    */
   public void add(Statistics<?> stats) {
-    if (stats.isEmpty()) {
-      invalid = true;
-      return;
-    }
-
     if (stats.hasNonNullValue()) {
       nullPages.add(false);
       Object min = stats.genericGetMin();
@@ -611,7 +603,7 @@ public abstract class ColumnIndexBuilder {
   }
 
   private ColumnIndexBase<?> build(PrimitiveType type) {
-    if (nullPages.isEmpty() || invalid) {
+    if (nullPages.isEmpty()) {
       return null;
     }
     ColumnIndexBase<?> columnIndex = createColumnIndex(type);

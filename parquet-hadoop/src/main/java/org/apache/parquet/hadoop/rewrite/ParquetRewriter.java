@@ -333,7 +333,7 @@ public class ParquetRewriter implements Closeable {
                   indexCache.getColumnIndex(chunk),
                   indexCache.getOffsetIndex(chunk));
           if (needOverwriteStatistics) {
-            // All the page statistics are invalid, so we need to overwrite the column statistics
+            // All the column statistics are invalid, so we need to overwrite the column statistics
             writer.endColumn(chunk.getStatistics());
           } else {
             writer.endColumn();
@@ -402,7 +402,7 @@ public class ParquetRewriter implements Closeable {
     DictionaryPage dictionaryPage = null;
     long readValues = 0;
     Statistics<?> statistics = null;
-    Statistics<?> emptyStatistics = Statistics.getBuilderForReading(chunk.getPrimitiveType()).build();
+    boolean needOverwriteColumnStatistics = false;
     ParquetMetadataConverter converter = new ParquetMetadataConverter();
     int pageOrdinal = 0;
     long totalChunkValues = chunk.getValueCount();
@@ -448,20 +448,16 @@ public class ParquetRewriter implements Closeable {
                   encryptColumn,
                   dataEncryptor,
                   dataPageAAD);
-          Statistics<?> v1PageStatistics = convertStatistics(
+          statistics = convertStatistics(
                   originalCreatedBy, chunk.getPrimitiveType(), headerV1.getStatistics(), columnIndex, pageOrdinal, converter);
-          if (v1PageStatistics == null) {
+          if (statistics == null) {
             // Reach here means both the columnIndex and the page header statistics are null
-            if (statistics != null) {
-              // Mixed null page statistics and non-null page statistics is not allowed
-              throw new IOException("Detected mixed null page statistics and non-null page statistics");
-            }
-            // Pass an empty page statistics to writer and overwrite the column statistics in the end
-            v1PageStatistics = emptyStatistics;
+            needOverwriteColumnStatistics = true;
           } else {
-            statistics = v1PageStatistics;
+            Preconditions.checkState(
+              !needOverwriteColumnStatistics,
+              "Detected mixed null page statistics and non-null page statistics");
           }
-
           readValues += headerV1.getNum_values();
           if (offsetIndex != null) {
             long rowCount = 1 + offsetIndex.getLastRowIndex(
@@ -469,7 +465,7 @@ public class ParquetRewriter implements Closeable {
             writer.writeDataPage(toIntWithCheck(headerV1.getNum_values()),
                     pageHeader.getUncompressed_page_size(),
                     BytesInput.from(pageLoad),
-                    v1PageStatistics,
+                    statistics,
                     toIntWithCheck(rowCount),
                     converter.getEncoding(headerV1.getRepetition_level_encoding()),
                     converter.getEncoding(headerV1.getDefinition_level_encoding()),
@@ -480,7 +476,7 @@ public class ParquetRewriter implements Closeable {
             writer.writeDataPage(toIntWithCheck(headerV1.getNum_values()),
                     pageHeader.getUncompressed_page_size(),
                     BytesInput.from(pageLoad),
-                    v1PageStatistics,
+                    statistics,
                     converter.getEncoding(headerV1.getRepetition_level_encoding()),
                     converter.getEncoding(headerV1.getDefinition_level_encoding()),
                     converter.getEncoding(headerV1.getEncoding()),
@@ -511,18 +507,15 @@ public class ParquetRewriter implements Closeable {
                   encryptColumn,
                   dataEncryptor,
                   dataPageAAD);
-          Statistics<?> v2PageStatistics = convertStatistics(
+          statistics = convertStatistics(
                   originalCreatedBy, chunk.getPrimitiveType(), headerV2.getStatistics(), columnIndex, pageOrdinal, converter);
-          if (v2PageStatistics == null) {
+          if (statistics == null) {
             // Reach here means both the columnIndex and the page header statistics are null
-            if (statistics != null) {
-              // Mixed null page statistics and non-null page statistics is not allowed
-              throw new IOException("Detected mixed null page statistics and non-null page statistics");
-            }
-            // Pass an empty page statistics to writer and overwrite the column statistics in the end
-            v2PageStatistics = emptyStatistics;
+            needOverwriteColumnStatistics = true;
           } else {
-            statistics = v2PageStatistics;
+            Preconditions.checkState(
+              !needOverwriteColumnStatistics,
+              "Detected mixed null page statistics and non-null page statistics");
           }
           readValues += headerV2.getNum_values();
           writer.writeDataPageV2(headerV2.getNum_rows(),
@@ -533,7 +526,7 @@ public class ParquetRewriter implements Closeable {
                   converter.getEncoding(headerV2.getEncoding()),
                   BytesInput.from(pageLoad),
                   rawDataLength,
-                  v2PageStatistics,
+                  statistics,
                   metaEncryptor,
                   dataPageHeaderAAD);
           pageOrdinal++;
@@ -544,7 +537,7 @@ public class ParquetRewriter implements Closeable {
       }
     }
 
-    return statistics == null;
+    return needOverwriteColumnStatistics;
   }
 
   private Statistics<?> convertStatistics(String createdBy,

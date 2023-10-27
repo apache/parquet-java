@@ -152,6 +152,7 @@ public class ParquetFileWriter {
   private long uncompressedLength;
   private long compressedLength;
   private Statistics<?> currentStatistics; // accumulated in writePage(s)
+  private boolean currentStatisticsAreValid;
   private ColumnIndexBuilder columnIndexBuilder;
   private OffsetIndexBuilder offsetIndexBuilder;
 
@@ -474,6 +475,7 @@ public class ParquetFileWriter {
     uncompressedLength = 0;
     // The statistics will be copied from the first one added at writeDataPage(s) so we have the correct typed one
     currentStatistics = null;
+    currentStatisticsAreValid = true;
 
     columnIndexBuilder = ColumnIndexBuilder.getBuilder(currentChunkType, columnIndexTruncateLength);
     offsetIndexBuilder = OffsetIndexBuilder.getBuilder();
@@ -722,14 +724,7 @@ public class ParquetFileWriter {
     LOG.debug("{}: write data page content {}", out.getPos(), compressedPageSize);
     bytes.writeAllTo(out);
 
-    // Copying the statistics if it is not initialized yet so we have the correct typed one
-    if (currentStatistics == null) {
-      currentStatistics = statistics.copy();
-    } else {
-      currentStatistics.mergeStatistics(statistics);
-    }
-
-    columnIndexBuilder.add(statistics);
+    mergeColumnStatistics(statistics);
 
     encodingStatsBuilder.addDataEncoding(valuesEncoding);
     currentEncodings.add(rlEncoding);
@@ -867,13 +862,8 @@ public class ParquetFileWriter {
     this.uncompressedLength += uncompressedSize + headersSize;
     this.compressedLength += compressedSize + headersSize;
 
-    if (currentStatistics == null) {
-      currentStatistics = statistics.copy();
-    } else {
-      currentStatistics.mergeStatistics(statistics);
-    }
+    mergeColumnStatistics(statistics);
 
-    columnIndexBuilder.add(statistics);
     currentEncodings.add(dataEncoding);
     encodingStatsBuilder.addDataEncoding(dataEncoding);
 
@@ -1000,6 +990,7 @@ public class ParquetFileWriter {
     currentStatistics = totalStatistics;
     // Invalid the ColumnIndex
     columnIndexBuilder = ColumnIndexBuilder.getNoOpBuilder();
+    currentStatisticsAreValid = true;
     endColumn();
   }
 
@@ -1010,6 +1001,7 @@ public class ParquetFileWriter {
   public void endColumn() throws IOException {
     state = state.endColumn();
     LOG.debug("{}: end column", out.getPos());
+    Preconditions.checkState(currentStatisticsAreValid, "Column statistics should be valid");
     if (columnIndexBuilder.getMinMaxSize() > columnIndexBuilder.getPageCount() * MAX_STATS_SIZE) {
       currentColumnIndexes.add(null);
     } else {
@@ -1330,6 +1322,27 @@ public class ParquetFileWriter {
       throw new ParquetEncodingException("Cannot write page larger than " + Integer.MAX_VALUE + " bytes: " + size);
     }
     return (int)size;
+  }
+
+  private void mergeColumnStatistics(Statistics<?> statistics) {
+    if (!currentStatisticsAreValid) {
+      return;
+    }
+
+    if (statistics == null) {
+      // The column index should be invalid if some page statistics are null.
+      // See PARQUET-2365 for more details
+      currentStatistics = null;
+      currentStatisticsAreValid = false;
+      columnIndexBuilder = ColumnIndexBuilder.getNoOpBuilder();
+    } else if (currentStatistics == null) {
+      // Copying the statistics if it is not initialized yet so we have the correct typed one
+      currentStatistics = statistics.copy();
+      columnIndexBuilder.add(statistics);
+    } else {
+      currentStatistics.mergeStatistics(statistics);
+      columnIndexBuilder.add(statistics);
+    }
   }
 
   private static void serializeOffsetIndexes(

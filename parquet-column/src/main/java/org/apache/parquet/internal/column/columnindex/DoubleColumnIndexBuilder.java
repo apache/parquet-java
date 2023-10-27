@@ -84,6 +84,7 @@ class DoubleColumnIndexBuilder extends ColumnIndexBuilder {
 
   private final DoubleList minValues = new DoubleArrayList();
   private final DoubleList maxValues = new DoubleArrayList();
+  private boolean invalid;
 
   private static double convert(ByteBuffer buffer) {
     return buffer.order(LITTLE_ENDIAN).getDouble(0);
