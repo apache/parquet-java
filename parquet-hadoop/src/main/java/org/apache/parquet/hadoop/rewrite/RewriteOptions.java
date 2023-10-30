@@ -22,6 +22,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.crypto.FileEncryptionProperties;
+import org.apache.parquet.hadoop.IndexCache;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 
 import java.util.Arrays;
@@ -33,14 +34,15 @@ import java.util.Map;
  */
 public class RewriteOptions {
 
-  final Configuration conf;
-  final List<Path> inputFiles;
-  final Path outputFile;
-  final List<String> pruneColumns;
-  final CompressionCodecName newCodecName;
-  final Map<String, MaskMode> maskColumns;
-  final List<String> encryptColumns;
-  final FileEncryptionProperties fileEncryptionProperties;
+  private final Configuration conf;
+  private final List<Path> inputFiles;
+  private final Path outputFile;
+  private final List<String> pruneColumns;
+  private final CompressionCodecName newCodecName;
+  private final Map<String, MaskMode> maskColumns;
+  private final List<String> encryptColumns;
+  private final FileEncryptionProperties fileEncryptionProperties;
+  private final IndexCache.CacheStrategy indexCacheStrategy;
 
   private RewriteOptions(Configuration conf,
                          List<Path> inputFiles,
@@ -49,7 +51,8 @@ public class RewriteOptions {
                          CompressionCodecName newCodecName,
                          Map<String, MaskMode> maskColumns,
                          List<String> encryptColumns,
-                         FileEncryptionProperties fileEncryptionProperties) {
+                         FileEncryptionProperties fileEncryptionProperties,
+                         IndexCache.CacheStrategy indexCacheStrategy) {
     this.conf = conf;
     this.inputFiles = inputFiles;
     this.outputFile = outputFile;
@@ -58,6 +61,7 @@ public class RewriteOptions {
     this.maskColumns = maskColumns;
     this.encryptColumns = encryptColumns;
     this.fileEncryptionProperties = fileEncryptionProperties;
+    this.indexCacheStrategy = indexCacheStrategy;
   }
 
   public Configuration getConf() {
@@ -92,16 +96,21 @@ public class RewriteOptions {
     return fileEncryptionProperties;
   }
 
+  public IndexCache.CacheStrategy getIndexCacheStrategy() {
+    return indexCacheStrategy;
+  }
+
   // Builder to create a RewriterOptions.
   public static class Builder {
-    private Configuration conf;
-    private List<Path> inputFiles;
-    private Path outputFile;
+    private final Configuration conf;
+    private final List<Path> inputFiles;
+    private final Path outputFile;
     private List<String> pruneColumns;
     private CompressionCodecName newCodecName;
     private Map<String, MaskMode> maskColumns;
     private List<String> encryptColumns;
     private FileEncryptionProperties fileEncryptionProperties;
+    private IndexCache.CacheStrategy indexCacheStrategy = IndexCache.CacheStrategy.NONE;
 
     /**
      * Create a builder to create a RewriterOptions.
@@ -214,6 +223,20 @@ public class RewriteOptions {
     }
 
     /**
+     * Set the index(ColumnIndex, Offset and BloomFilter) cache strategy.
+     * <p>
+     * This could reduce the random seek while rewriting with PREFETCH_BLOCK strategy, NONE by default.
+     *
+     * @param cacheStrategy the index cache strategy, supports: {@link IndexCache.CacheStrategy#NONE} or
+     *        {@link IndexCache.CacheStrategy#PREFETCH_BLOCK}
+     * @return self
+     */
+    public Builder indexCacheStrategy(IndexCache.CacheStrategy cacheStrategy) {
+      this.indexCacheStrategy = cacheStrategy;
+      return this;
+    }
+
+    /**
      * Build the RewriterOptions.
      *
      * @return a RewriterOptions
@@ -255,7 +278,8 @@ public class RewriteOptions {
               newCodecName,
               maskColumns,
               encryptColumns,
-              fileEncryptionProperties);
+              fileEncryptionProperties,
+              indexCacheStrategy);
     }
   }
 

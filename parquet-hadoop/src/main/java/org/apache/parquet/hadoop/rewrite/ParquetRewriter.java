@@ -45,6 +45,7 @@ import org.apache.parquet.format.PageHeader;
 import org.apache.parquet.format.converter.ParquetMetadataConverter;
 import org.apache.parquet.hadoop.CodecFactory;
 import org.apache.parquet.hadoop.ColumnChunkPageWriteStore;
+import org.apache.parquet.hadoop.IndexCache;
 import org.apache.parquet.hadoop.ParquetFileWriter;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
@@ -96,19 +97,19 @@ public class ParquetRewriter implements Closeable {
   private final byte[] pageBuffer = new byte[pageBufferSize];
   // Configurations for the new file
   private CompressionCodecName newCodecName = null;
-  private List<String> pruneColumns = null;
   private Map<ColumnPath, MaskMode> maskColumns = null;
   private Set<ColumnPath> encryptColumns = null;
   private boolean encryptMode = false;
-  private Map<String, String> extraMetaData = new HashMap<>();
+  private final Map<String, String> extraMetaData = new HashMap<>();
   // Writer to rewrite the input files
-  private ParquetFileWriter writer;
+  private final ParquetFileWriter writer;
   // Number of blocks written which is used to keep track of the actual row group ordinal
   private int numBlocksRewritten = 0;
   // Reader and relevant states of the in-processing input file
-  private Queue<TransParquetFileReader> inputFiles = new LinkedList<>();
+  private final Queue<TransParquetFileReader> inputFiles = new LinkedList<>();
   // Schema of input files (should be the same) and to write to the output file
   private MessageType schema = null;
+  private final Map<ColumnPath, ColumnDescriptor> descriptorsMap;
   // The reader for the current input file
   private TransParquetFileReader reader = null;
   // The metadata of current reader being processed
@@ -116,7 +117,9 @@ public class ParquetRewriter implements Closeable {
   // created_by information of current reader being processed
   private String originalCreatedBy = "";
   // Unique created_by information from all input files
-  private Set<String> allOriginalCreatedBys = new HashSet<>();
+  private final Set<String> allOriginalCreatedBys = new HashSet<>();
+  // The index cache strategy
+  private final IndexCache.CacheStrategy indexCacheStrategy;
 
   public ParquetRewriter(RewriteOptions options) throws IOException {
     Configuration conf = options.getConf();
@@ -129,8 +132,7 @@ public class ParquetRewriter implements Closeable {
     initNextReader();
 
     newCodecName = options.getNewCodecName();
-    pruneColumns = options.getPruneColumns();
-
+    List<String> pruneColumns = options.getPruneColumns();
     // Prune columns if specified
     if (pruneColumns != null && !pruneColumns.isEmpty()) {
       List<String> paths = new ArrayList<>();
@@ -145,6 +147,9 @@ public class ParquetRewriter implements Closeable {
       schema = pruneColumnsInSchema(schema, prunePaths);
     }
 
+    this.descriptorsMap =
+      schema.getColumns().stream().collect(Collectors.toMap(x -> ColumnPath.get(x.getPath()), x -> x));
+
     if (options.getMaskColumns() != null) {
       this.maskColumns = new HashMap<>();
       for (Map.Entry<String, MaskMode> col : options.getMaskColumns().entrySet()) {
@@ -156,6 +161,8 @@ public class ParquetRewriter implements Closeable {
       this.encryptColumns = convertToColumnPaths(options.getEncryptColumns());
       this.encryptMode = true;
     }
+
+    this.indexCacheStrategy = options.getIndexCacheStrategy();
 
     ParquetFileWriter.Mode writerMode = ParquetFileWriter.Mode.CREATE;
     writer = new ParquetFileWriter(HadoopOutputFile.fromPath(outPath, conf), schema, writerMode,
@@ -178,6 +185,8 @@ public class ParquetRewriter implements Closeable {
     this.writer = writer;
     this.meta = meta;
     this.schema = schema;
+    this.descriptorsMap =
+      schema.getColumns().stream().collect(Collectors.toMap(x -> ColumnPath.get(x.getPath()), x -> x));
     this.newCodecName = codecName;
     originalCreatedBy = originalCreatedBy == null ? meta.getFileMetaData().getCreatedBy() : originalCreatedBy;
     extraMetaData.putAll(meta.getFileMetaData().getKeyValueMetaData());
@@ -188,6 +197,7 @@ public class ParquetRewriter implements Closeable {
         this.maskColumns.put(ColumnPath.fromDotString(col), maskMode);
       }
     }
+    this.indexCacheStrategy = IndexCache.CacheStrategy.NONE;
   }
 
   // Open all input files to validate their schemas are compatible to merge
@@ -247,24 +257,24 @@ public class ParquetRewriter implements Closeable {
 
   public void processBlocks() throws IOException {
     while (reader != null) {
-      processBlocksFromReader();
+      IndexCache indexCache = IndexCache.create(reader, descriptorsMap.keySet(), indexCacheStrategy, true);
+      processBlocksFromReader(indexCache);
+      indexCache.clean();
       initNextReader();
     }
   }
 
-  private void processBlocksFromReader() throws IOException {
+  private void processBlocksFromReader(IndexCache indexCache) throws IOException {
     PageReadStore store = reader.readNextRowGroup();
     ColumnReadStoreImpl crStore = new ColumnReadStoreImpl(store, new DummyGroupConverter(), schema, originalCreatedBy);
-    Map<ColumnPath, ColumnDescriptor> descriptorsMap = schema.getColumns().stream().collect(
-            Collectors.toMap(x -> ColumnPath.get(x.getPath()), x -> x));
 
     int blockId = 0;
     while (store != null) {
       writer.startBlock(store.getRowCount());
 
       BlockMetaData blockMetaData = meta.getBlocks().get(blockId);
+      indexCache.setBlockMetadata(blockMetaData);
       List<ColumnChunkMetaData> columnsInOrder = blockMetaData.getColumns();
-
       for (int i = 0, columnId = 0; i < columnsInOrder.size(); i++) {
         ColumnChunkMetaData chunk = columnsInOrder.get(i);
         ColumnDescriptor descriptor = descriptorsMap.get(chunk.getPath());
@@ -314,13 +324,20 @@ public class ParquetRewriter implements Closeable {
 
           // Translate compression and/or encryption
           writer.startColumn(descriptor, crStore.getColumnReader(descriptor).getTotalValueCount(), newCodecName);
-          processChunk(chunk, newCodecName, columnChunkEncryptorRunTime, encryptColumn);
+          processChunk(
+                  chunk,
+                  newCodecName,
+                  columnChunkEncryptorRunTime,
+                  encryptColumn,
+                  indexCache.getBloomFilter(chunk),
+                  indexCache.getColumnIndex(chunk),
+                  indexCache.getOffsetIndex(chunk));
           writer.endColumn();
         } else {
           // Nothing changed, simply copy the binary data.
-          BloomFilter bloomFilter = reader.readBloomFilter(chunk);
-          ColumnIndex columnIndex = reader.readColumnIndex(chunk);
-          OffsetIndex offsetIndex = reader.readOffsetIndex(chunk);
+          BloomFilter bloomFilter = indexCache.getBloomFilter(chunk);
+          ColumnIndex columnIndex = indexCache.getColumnIndex(chunk);
+          OffsetIndex offsetIndex = indexCache.getOffsetIndex(chunk);
           writer.appendColumnChunk(descriptor, reader.getStream(), chunk, bloomFilter, columnIndex, offsetIndex);
         }
 
@@ -338,7 +355,10 @@ public class ParquetRewriter implements Closeable {
   private void processChunk(ColumnChunkMetaData chunk,
                             CompressionCodecName newCodecName,
                             ColumnChunkEncryptorRunTime columnChunkEncryptorRunTime,
-                            boolean encryptColumn) throws IOException {
+                            boolean encryptColumn,
+                            BloomFilter bloomFilter,
+                            ColumnIndex columnIndex,
+                            OffsetIndex offsetIndex) throws IOException {
     CompressionCodecFactory codecFactory = HadoopCodecs.newFactory(0);
     CompressionCodecFactory.BytesInputDecompressor decompressor = null;
     CompressionCodecFactory.BytesInputCompressor compressor = null;
@@ -364,9 +384,6 @@ public class ParquetRewriter implements Closeable {
       dataPageHeaderAAD = columnChunkEncryptorRunTime.getDataPageHeaderAAD();
     }
 
-    ColumnIndex columnIndex = reader.readColumnIndex(chunk);
-    OffsetIndex offsetIndex = reader.readOffsetIndex(chunk);
-    BloomFilter bloomFilter = reader.readBloomFilter(chunk);
     if (bloomFilter != null) {
       writer.addBloomFilter(chunk.getPath().toDotString(), bloomFilter);
     }
