@@ -540,6 +540,8 @@
             </excludeModules>
             <excludes>
               <exclude>${shade.prefix}</exclude>
+              <exclude>org.apache.parquet.hadoop.CodecFactory</exclude> <!-- change field type from Configuration to ParquetConfiguration -->
+              <exclude>org.apache.parquet.hadoop.ParquetReader</exclude> <!-- change field type from Configuration to ParquetConfiguration -->
               <exclude>org.apache.parquet.thrift.projection.deprecated.PathGlobPattern</exclude>
               <!-- japicmp is overly aggressive on interface types in signatures, a type was changed to a supertype but this still triggers it -->
               <exclude>org.apache.parquet.hadoop.ColumnChunkPageWriteStore</exclude>

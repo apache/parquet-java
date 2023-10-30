@@ -33,6 +33,7 @@ import java.util.TreeMap;
 import com.twitter.elephantbird.thrift.test.TestMapInList;
 import com.twitter.elephantbird.thrift.test.TestNameSet;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.parquet.conf.ParquetConfiguration;
 import org.junit.ComparisonFailure;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -708,7 +709,7 @@ public class TestParquetWriteProtocol {
     MessageType schema = new PigSchemaConverter().convert(pigSchema);
     LOG.info("{}", schema);
     TupleWriteSupport tupleWriteSupport = new TupleWriteSupport(pigSchema);
-    tupleWriteSupport.init(null);
+    tupleWriteSupport.init((ParquetConfiguration) null);
     tupleWriteSupport.prepareForWrite(recordConsumer);
     final Tuple pigTuple = thriftToPig.getPigTuple(a);
     LOG.info("{}", pigTuple);

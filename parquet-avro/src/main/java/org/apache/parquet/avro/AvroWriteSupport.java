@@ -34,7 +34,10 @@ import org.apache.avro.generic.GenericFixed;
 import org.apache.avro.generic.IndexedRecord;
 import org.apache.avro.util.Utf8;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.parquet.conf.HadoopParquetConfiguration;
+import org.apache.parquet.conf.ParquetConfiguration;
 import org.apache.parquet.hadoop.api.WriteSupport;
+import org.apache.parquet.hadoop.util.ConfigurationUtil;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.RecordConsumer;
 import org.apache.parquet.schema.GroupType;
@@ -129,6 +132,11 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
 
   @Override
   public WriteContext init(Configuration configuration) {
+    return init(new HadoopParquetConfiguration(configuration));
+  }
+
+  @Override
+  public WriteContext init(ParquetConfiguration configuration) {
     if (rootAvroSchema == null) {
       this.rootAvroSchema = new Schema.Parser().parse(configuration.get(AVRO_SCHEMA));
       this.rootSchema = new AvroSchemaConverter(configuration).convert(rootAvroSchema);
@@ -404,7 +412,7 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
     return Binary.fromCharSequence(value.toString());
   }
 
-  private static GenericData getDataModel(Configuration conf, Schema schema) {
+  private static GenericData getDataModel(ParquetConfiguration conf, Schema schema) {
     if (conf.get(AVRO_DATA_SUPPLIER) == null && schema != null) {
       GenericData modelForSchema;
       try {
@@ -423,7 +431,7 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
 
     Class<? extends AvroDataSupplier> suppClass = conf.getClass(
         AVRO_DATA_SUPPLIER, SpecificDataSupplier.class, AvroDataSupplier.class);
-    return ReflectionUtils.newInstance(suppClass, conf).get();
+    return ReflectionUtils.newInstance(suppClass, ConfigurationUtil.createHadoopConfiguration(conf)).get();
   }
 
   private abstract class ListWriter {

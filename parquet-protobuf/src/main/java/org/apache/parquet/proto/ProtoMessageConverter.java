@@ -25,6 +25,8 @@ import com.google.protobuf.Message;
 import com.twitter.elephantbird.util.Protobufs;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.column.Dictionary;
+import org.apache.parquet.conf.HadoopParquetConfiguration;
+import org.apache.parquet.conf.ParquetConfiguration;
 import org.apache.parquet.hadoop.BadConfigurationException;
 import org.apache.parquet.io.InvalidRecordException;
 import org.apache.parquet.io.ParquetDecodingException;
@@ -68,7 +70,7 @@ class ProtoMessageConverter extends GroupConverter {
     }
   };
 
-  protected final Configuration conf;
+  protected final ParquetConfiguration conf;
   protected final Converter[] converters;
   protected final ParentValueContainer parent;
   protected final Message.Builder myBuilder;
@@ -88,8 +90,16 @@ class ProtoMessageConverter extends GroupConverter {
     this(conf, pvc, Protobufs.getMessageBuilder(protoClass), parquetSchema, extraMetadata);
   }
 
+  ProtoMessageConverter(ParquetConfiguration conf, ParentValueContainer pvc, Class<? extends Message> protoClass, GroupType parquetSchema, Map<String, String> extraMetadata) {
+    this(conf, pvc, Protobufs.getMessageBuilder(protoClass), parquetSchema, extraMetadata);
+  }
+
   // For usage in message arrays
   ProtoMessageConverter(Configuration conf, ParentValueContainer pvc, Message.Builder builder, GroupType parquetSchema, Map<String, String> extraMetadata) {
+    this(new HadoopParquetConfiguration(conf), pvc, builder, parquetSchema, extraMetadata);
+  }
+
+  ProtoMessageConverter(ParquetConfiguration conf, ParentValueContainer pvc, Message.Builder builder, GroupType parquetSchema, Map<String, String> extraMetadata) {
     if (pvc == null) {
       throw new IllegalStateException("Missing parent value container");
     }
@@ -141,7 +151,12 @@ class ProtoMessageConverter extends GroupConverter {
   private Converter dummyScalarConverter(ParentValueContainer pvc,
                                          Type parquetField, Configuration conf,
                                          Map<String, String> extraMetadata) {
+    return dummyScalarConverter(pvc, parquetField, new HadoopParquetConfiguration(conf), extraMetadata);
+  }
 
+  private Converter dummyScalarConverter(ParentValueContainer pvc,
+                                         Type parquetField, ParquetConfiguration conf,
+                                         Map<String, String> extraMetadata) {
     if (parquetField.isPrimitive()) {
       PrimitiveType primitiveType = parquetField.asPrimitiveType();
       PrimitiveType.PrimitiveTypeName primitiveTypeName = primitiveType.getPrimitiveTypeName();

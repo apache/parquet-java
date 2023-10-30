@@ -22,6 +22,8 @@ package org.apache.parquet;
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.HeapByteBufferAllocator;
 import org.apache.parquet.compression.CompressionCodecFactory;
+import org.apache.parquet.conf.HadoopParquetConfiguration;
+import org.apache.parquet.conf.ParquetConfiguration;
 import org.apache.parquet.crypto.FileDecryptionProperties;
 import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.format.converter.ParquetMetadataConverter;
@@ -34,9 +36,21 @@ import java.util.Optional;
 import java.util.Set;
 
 import static org.apache.parquet.format.converter.ParquetMetadataConverter.NO_FILTER;
+import static org.apache.parquet.hadoop.ParquetInputFormat.BLOOM_FILTERING_ENABLED;
+import static org.apache.parquet.hadoop.ParquetInputFormat.COLUMN_INDEX_FILTERING_ENABLED;
+import static org.apache.parquet.hadoop.ParquetInputFormat.DICTIONARY_FILTERING_ENABLED;
+import static org.apache.parquet.hadoop.ParquetInputFormat.OFF_HEAP_DECRYPT_BUFFER_ENABLED;
+import static org.apache.parquet.hadoop.ParquetInputFormat.PAGE_VERIFY_CHECKSUM_ENABLED;
+import static org.apache.parquet.hadoop.ParquetInputFormat.RECORD_FILTERING_ENABLED;
+import static org.apache.parquet.hadoop.ParquetInputFormat.STATS_FILTERING_ENABLED;
+import static org.apache.parquet.hadoop.ParquetInputFormat.getFilter;
+import static org.apache.parquet.hadoop.UnmaterializableRecordCounter.BAD_RECORD_THRESHOLD_CONF_KEY;
 
 // Internal use only
 public class ParquetReadOptions {
+
+  private static final String ALLOCATION_SIZE = "parquet.read.allocation.size";
+
   private static final boolean RECORD_FILTERING_ENABLED_DEFAULT = true;
   private static final boolean STATS_FILTERING_ENABLED_DEFAULT = true;
   private static final boolean DICTIONARY_FILTERING_ENABLED_DEFAULT = true;
@@ -61,6 +75,7 @@ public class ParquetReadOptions {
   private final int maxAllocationSize;
   private final Map<String, String> properties;
   private final FileDecryptionProperties fileDecryptionProperties;
+  private final ParquetConfiguration conf;
 
   ParquetReadOptions(boolean useSignedStringMinMax,
                      boolean useStatsFilter,
@@ -77,6 +92,28 @@ public class ParquetReadOptions {
                      int maxAllocationSize,
                      Map<String, String> properties,
                      FileDecryptionProperties fileDecryptionProperties) {
+    this(useSignedStringMinMax, useStatsFilter, useDictionaryFilter, useRecordFilter, useColumnIndexFilter,
+      usePageChecksumVerification, useBloomFilter, useOffHeapDecryptBuffer, recordFilter, metadataFilter,
+      codecFactory, allocator, maxAllocationSize, properties, fileDecryptionProperties,
+      new HadoopParquetConfiguration());
+  }
+
+  ParquetReadOptions(boolean useSignedStringMinMax,
+                     boolean useStatsFilter,
+                     boolean useDictionaryFilter,
+                     boolean useRecordFilter,
+                     boolean useColumnIndexFilter,
+                     boolean usePageChecksumVerification,
+                     boolean useBloomFilter,
+                     boolean useOffHeapDecryptBuffer,
+                     FilterCompat.Filter recordFilter,
+                     ParquetMetadataConverter.MetadataFilter metadataFilter,
+                     CompressionCodecFactory codecFactory,
+                     ByteBufferAllocator allocator,
+                     int maxAllocationSize,
+                     Map<String, String> properties,
+                     FileDecryptionProperties fileDecryptionProperties,
+                     ParquetConfiguration conf) {
     this.useSignedStringMinMax = useSignedStringMinMax;
     this.useStatsFilter = useStatsFilter;
     this.useDictionaryFilter = useDictionaryFilter;
@@ -92,6 +129,7 @@ public class ParquetReadOptions {
     this.maxAllocationSize = maxAllocationSize;
     this.properties = Collections.unmodifiableMap(properties);
     this.fileDecryptionProperties = fileDecryptionProperties;
+    this.conf = conf;
   }
 
   public boolean useSignedStringMinMax() {
@@ -164,8 +202,16 @@ public class ParquetReadOptions {
         : defaultValue;
   }
 
+  public ParquetConfiguration getConfiguration() {
+    return conf;
+  }
+
   public static Builder builder() {
     return new Builder();
+  }
+
+  public static Builder builder(ParquetConfiguration conf) {
+    return new Builder(conf);
   }
 
   public static class Builder {
@@ -185,6 +231,31 @@ public class ParquetReadOptions {
     protected int maxAllocationSize = ALLOCATION_SIZE_DEFAULT;
     protected Map<String, String> properties = new HashMap<>();
     protected FileDecryptionProperties fileDecryptionProperties = null;
+    protected ParquetConfiguration conf;
+
+    public Builder() {
+      this(new HadoopParquetConfiguration());
+    }
+
+    public Builder(ParquetConfiguration conf) {
+      this.conf = conf;
+      useSignedStringMinMax(conf.getBoolean("parquet.strings.signed-min-max.enabled", false));
+      useDictionaryFilter(conf.getBoolean(DICTIONARY_FILTERING_ENABLED, true));
+      useStatsFilter(conf.getBoolean(STATS_FILTERING_ENABLED, true));
+      useRecordFilter(conf.getBoolean(RECORD_FILTERING_ENABLED, true));
+      useColumnIndexFilter(conf.getBoolean(COLUMN_INDEX_FILTERING_ENABLED, true));
+      usePageChecksumVerification(conf.getBoolean(PAGE_VERIFY_CHECKSUM_ENABLED,
+        usePageChecksumVerification));
+      useBloomFilter(conf.getBoolean(BLOOM_FILTERING_ENABLED, true));
+      useOffHeapDecryptBuffer(conf.getBoolean(OFF_HEAP_DECRYPT_BUFFER_ENABLED, false));
+      withCodecFactory(HadoopCodecs.newFactory(conf, 0));
+      withRecordFilter(getFilter(conf));
+      withMaxAllocationInBytes(conf.getInt(ALLOCATION_SIZE, 8388608));
+      String badRecordThresh = conf.get(BAD_RECORD_THRESHOLD_CONF_KEY);
+      if (badRecordThresh != null) {
+        set(BAD_RECORD_THRESHOLD_CONF_KEY, badRecordThresh);
+      }
+    }
 
     public Builder useSignedStringMinMax(boolean useSignedStringMinMax) {
       this.useSignedStringMinMax = useSignedStringMinMax;
@@ -325,6 +396,7 @@ public class ParquetReadOptions {
       withAllocator(options.allocator);
       withPageChecksumVerification(options.usePageChecksumVerification);
       withDecryption(options.fileDecryptionProperties);
+      conf = options.conf;
       for (Map.Entry<String, String> keyValue : options.properties.entrySet()) {
         set(keyValue.getKey(), keyValue.getValue());
       }
@@ -333,13 +405,17 @@ public class ParquetReadOptions {
 
     public ParquetReadOptions build() {
       if (codecFactory == null) {
-        codecFactory = HadoopCodecs.newFactory(0);
+        if (conf == null) {
+          codecFactory = HadoopCodecs.newFactory(0);
+        } else {
+          codecFactory = HadoopCodecs.newFactory(conf, 0);
+        }
       }
 
       return new ParquetReadOptions(
         useSignedStringMinMax, useStatsFilter, useDictionaryFilter, useRecordFilter,
         useColumnIndexFilter, usePageChecksumVerification, useBloomFilter, useOffHeapDecryptBuffer, recordFilter, metadataFilter,
-        codecFactory, allocator, maxAllocationSize, properties, fileDecryptionProperties);
+        codecFactory, allocator, maxAllocationSize, properties, fileDecryptionProperties, conf);
     }
   }
 }

@@ -19,6 +19,8 @@
 package org.apache.parquet.thrift;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.parquet.conf.HadoopParquetConfiguration;
+import org.apache.parquet.conf.ParquetConfiguration;
 import org.apache.thrift.TBase;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TProtocol;
@@ -38,10 +40,15 @@ public class TBaseRecordConverter<T extends TBase<?,?>> extends ThriftRecordConv
    */
   @Deprecated
   public TBaseRecordConverter(final Class<T> thriftClass, MessageType requestedParquetSchema, StructType thriftType) {
-    this(thriftClass, requestedParquetSchema, thriftType, null);
+    this(thriftClass, requestedParquetSchema, thriftType, (HadoopParquetConfiguration) null);
   }
 
+  @SuppressWarnings("unused")
   public TBaseRecordConverter(final Class<T> thriftClass, MessageType requestedParquetSchema, StructType thriftType, Configuration conf) {
+    this(thriftClass, requestedParquetSchema, thriftType, new HadoopParquetConfiguration(conf));
+  }
+
+  public TBaseRecordConverter(final Class<T> thriftClass, MessageType requestedParquetSchema, StructType thriftType, ParquetConfiguration conf) {
     super(new ThriftReader<T>() {
       @Override
       public T readOneRecord(TProtocol protocol) throws TException {

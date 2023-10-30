@@ -27,6 +27,8 @@ import java.util.Map;
 import java.util.Set;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.parquet.conf.HadoopParquetConfiguration;
+import org.apache.parquet.conf.ParquetConfiguration;
 import org.apache.pig.LoadPushDown.RequiredFieldList;
 import org.apache.pig.data.Tuple;
 import org.apache.pig.impl.logicalLayer.FrontendException;
@@ -61,6 +63,14 @@ public class TupleReadSupport extends ReadSupport<Tuple> {
    * @return the pig schema requested by the user or null if none.
    */
   static Schema getPigSchema(Configuration configuration) {
+    return getPigSchema(new HadoopParquetConfiguration(configuration));
+  }
+
+  /**
+   * @param configuration the configuration
+   * @return the pig schema requested by the user or null if none.
+   */
+  static Schema getPigSchema(ParquetConfiguration configuration) {
     return parsePigSchema(configuration.get(PARQUET_PIG_SCHEMA));
   }
 
@@ -69,9 +79,17 @@ public class TupleReadSupport extends ReadSupport<Tuple> {
    * @return List of required fields from pushProjection
    */
   static RequiredFieldList getRequiredFields(Configuration configuration) {
+    return getRequiredFields(new HadoopParquetConfiguration(configuration));
+  }
+
+  /**
+   * @param configuration configuration
+   * @return List of required fields from pushProjection
+   */
+  static RequiredFieldList getRequiredFields(ParquetConfiguration configuration) {
     String requiredFieldString = configuration.get(PARQUET_PIG_REQUIRED_FIELDS);
 
-    if(requiredFieldString == null) {
+    if (requiredFieldString == null) {
       return null;
     }
 
@@ -154,9 +172,9 @@ public class TupleReadSupport extends ReadSupport<Tuple> {
 
   @Override
   public ReadContext init(InitContext initContext) {
-    Schema pigSchema = getPigSchema(initContext.getConfiguration());
-    RequiredFieldList requiredFields = getRequiredFields(initContext.getConfiguration());
-    boolean columnIndexAccess = initContext.getConfiguration().getBoolean(PARQUET_COLUMN_INDEX_ACCESS, false);
+    Schema pigSchema = getPigSchema(initContext.getParquetConfiguration());
+    RequiredFieldList requiredFields = getRequiredFields(initContext.getParquetConfiguration());
+    boolean columnIndexAccess = initContext.getParquetConfiguration().getBoolean(PARQUET_COLUMN_INDEX_ACCESS, false);
 
     if (pigSchema == null) {
       return new ReadContext(initContext.getFileSchema());
@@ -174,9 +192,17 @@ public class TupleReadSupport extends ReadSupport<Tuple> {
       Map<String, String> keyValueMetaData,
       MessageType fileSchema,
       ReadContext readContext) {
+    return prepareForRead(new HadoopParquetConfiguration(configuration), keyValueMetaData, fileSchema, readContext);
+  }
+
+  @Override
+  public RecordMaterializer<Tuple> prepareForRead(
+      ParquetConfiguration configuration,
+      Map<String, String> keyValueMetaData,
+      MessageType fileSchema,
+      ReadContext readContext) {
     MessageType requestedSchema = readContext.getRequestedSchema();
     Schema requestedPigSchema = getPigSchema(configuration);
-
     if (requestedPigSchema == null) {
       throw new ParquetDecodingException("Missing Pig schema: ParquetLoader sets the schema in the job conf");
     }

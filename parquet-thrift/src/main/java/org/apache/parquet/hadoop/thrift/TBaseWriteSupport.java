@@ -16,6 +16,8 @@
 package org.apache.parquet.hadoop.thrift;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.parquet.conf.HadoopParquetConfiguration;
+import org.apache.parquet.conf.ParquetConfiguration;
 import org.apache.thrift.TBase;
 import org.apache.thrift.TException;
 
@@ -25,14 +27,22 @@ import org.apache.parquet.thrift.struct.ThriftType.StructType;
 
 public class TBaseWriteSupport<T extends TBase<?, ?>> extends AbstractThriftWriteSupport<T> {
 
-  private static Configuration conf;
+  private static ParquetConfiguration conf;
 
   public static <U extends TBase<?,?>> void setThriftClass(Configuration configuration, Class<U> thriftClass) {
+    setThriftClass(new HadoopParquetConfiguration(configuration), thriftClass);
+  }
+
+  public static <U extends TBase<?,?>> void setThriftClass(ParquetConfiguration configuration, Class<U> thriftClass) {
     conf = configuration;
     AbstractThriftWriteSupport.setGenericThriftClass(configuration, thriftClass);
   }
 
   public static Class<? extends TBase<?,?>> getThriftClass(Configuration configuration) {
+    return getThriftClass(new HadoopParquetConfiguration(configuration));
+  }
+
+  public static Class<? extends TBase<?,?>> getThriftClass(ParquetConfiguration configuration) {
     return (Class<? extends TBase<?,?>>)AbstractThriftWriteSupport.getGenericThriftClass(configuration);
   }
 

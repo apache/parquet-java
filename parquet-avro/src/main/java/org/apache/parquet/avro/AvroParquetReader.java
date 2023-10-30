@@ -26,6 +26,7 @@ import org.apache.avro.specific.SpecificData;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 
+import org.apache.parquet.conf.ParquetConfiguration;
 import org.apache.parquet.filter.UnboundRecordFilter;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.hadoop.api.ReadSupport;
@@ -53,6 +54,10 @@ public class AvroParquetReader<T> extends ParquetReader<T> {
     return new Builder<T>(file);
   }
 
+  public static <T> Builder<T> builder(InputFile file, ParquetConfiguration conf) {
+    return new Builder<T>(file, conf);
+  }
+
   /**
    * Convenience method for creating a ParquetReader which uses Avro
    * {@link GenericData} objects to store data from reads.
@@ -65,6 +70,21 @@ public class AvroParquetReader<T> extends ParquetReader<T> {
    */
   public static ParquetReader<GenericRecord> genericRecordReader(InputFile file) throws IOException {
     return new Builder<GenericRecord>(file).withDataModel(GenericData.get()).build();
+  }
+
+  /**
+   * Convenience method for creating a ParquetReader which uses Avro
+   * {@link GenericData} objects to store data from reads.
+   *
+   * @param file The location to read data from
+   * @param conf The configuration to use
+   * @return A {@code ParquetReader} which reads data as Avro
+   *         {@code GenericData}
+   * @throws IOException if the InputFile has been closed, or if some other I/O
+   *           error occurs
+   */
+  public static ParquetReader<GenericRecord> genericRecordReader(InputFile file, ParquetConfiguration conf) throws IOException {
+    return new Builder<GenericRecord>(file, conf).withDataModel(GenericData.get()).build();
   }
 
   /**
@@ -141,6 +161,10 @@ public class AvroParquetReader<T> extends ParquetReader<T> {
 
     private Builder(InputFile file) {
       super(file);
+    }
+
+    private Builder(InputFile file, ParquetConfiguration conf) {
+      super(file, conf);
     }
 
     public Builder<T> withDataModel(GenericData model) {

@@ -52,6 +52,8 @@ import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 
 import org.apache.hadoop.mapreduce.lib.input.FileSplit;
 import org.apache.parquet.Preconditions;
+import org.apache.parquet.conf.HadoopParquetConfiguration;
+import org.apache.parquet.conf.ParquetConfiguration;
 import org.apache.parquet.filter.UnboundRecordFilter;
 import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.filter2.compat.FilterCompat.Filter;
@@ -193,18 +195,13 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
     return ConfigurationUtil.getClassFromConfig(configuration, UNBOUND_RECORD_FILTER, UnboundRecordFilter.class);
   }
 
-  private static UnboundRecordFilter getUnboundRecordFilterInstance(Configuration configuration) {
+  private static UnboundRecordFilter getUnboundRecordFilterInstance(ParquetConfiguration configuration) {
     Class<?> clazz = ConfigurationUtil.getClassFromConfig(configuration, UNBOUND_RECORD_FILTER, UnboundRecordFilter.class);
-    if (clazz == null) { return null; }
-
+    if (clazz == null) {
+      return null;
+    }
     try {
-      UnboundRecordFilter unboundRecordFilter = (UnboundRecordFilter) clazz.newInstance();
-
-      if (unboundRecordFilter instanceof Configurable) {
-        ((Configurable)unboundRecordFilter).setConf(configuration);
-      }
-
-      return unboundRecordFilter;
+      return (UnboundRecordFilter) clazz.newInstance();
     } catch (InstantiationException | IllegalAccessException e) {
       throw new BadConfigurationException(
           "could not instantiate unbound record filter class", e);
@@ -232,6 +229,10 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
   }
 
   private static FilterPredicate getFilterPredicate(Configuration configuration) {
+    return getFilterPredicate(new HadoopParquetConfiguration(configuration));
+  }
+
+  private static FilterPredicate getFilterPredicate(ParquetConfiguration configuration) {
     try {
       return SerializationUtil.readObjectFromConfAsBase64(FILTER_PREDICATE, configuration);
     } catch (IOException e) {
@@ -247,6 +248,10 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
    * @return a filter for the unbound record filter specified in conf
    */
   public static Filter getFilter(Configuration conf) {
+    return getFilter(new HadoopParquetConfiguration(conf));
+  }
+
+  public static Filter getFilter(ParquetConfiguration conf) {
     return FilterCompat.get(getFilterPredicate(conf), getUnboundRecordFilterInstance(conf));
   }
 

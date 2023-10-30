@@ -25,6 +25,9 @@ import java.util.Map.Entry;
 
 import org.apache.hadoop.conf.Configuration;
 
+import org.apache.parquet.conf.HadoopParquetConfiguration;
+import org.apache.parquet.conf.ParquetConfiguration;
+import org.apache.parquet.hadoop.util.ConfigurationUtil;
 import org.apache.parquet.schema.MessageType;
 
 /**
@@ -35,7 +38,7 @@ public class InitContext {
 
   private final Map<String,Set<String>> keyValueMetadata;
   private Map<String,String> mergedKeyValueMetadata;
-  private final Configuration configuration;
+  private final ParquetConfiguration configuration;
   private final MessageType fileSchema;
 
   /**
@@ -45,6 +48,13 @@ public class InitContext {
    */
   public InitContext(
       Configuration configuration,
+      Map<String, Set<String>> keyValueMetadata,
+      MessageType fileSchema) {
+    this(new HadoopParquetConfiguration(configuration), keyValueMetadata, fileSchema);
+  }
+
+  public InitContext(
+      ParquetConfiguration configuration,
       Map<String, Set<String>> keyValueMetadata,
       MessageType fileSchema) {
     super();
@@ -77,6 +87,13 @@ public class InitContext {
    * @return the configuration for this job
    */
   public Configuration getConfiguration() {
+    return ConfigurationUtil.createHadoopConfiguration(configuration);
+  }
+
+  /**
+   * @return the Parquet configuration for this job
+   */
+  public ParquetConfiguration getParquetConfiguration() {
     return configuration;
   }
 

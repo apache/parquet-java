@@ -24,6 +24,8 @@ import com.github.luben.zstd.Zstd;
 import com.github.luben.zstd.ZstdOutputStream;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.bytes.BytesInput;
+import org.apache.parquet.conf.HadoopParquetConfiguration;
+import org.apache.parquet.conf.ParquetConfiguration;
 import org.apache.parquet.hadoop.codec.ZstdDecompressorStream;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 
@@ -50,6 +52,10 @@ import static org.apache.parquet.hadoop.codec.ZstandardCodec.PARQUET_COMPRESS_ZS
 class DirectZstd {
 
   static CodecFactory.BytesCompressor createCompressor(Configuration conf, int pageSize) {
+    return createCompressor(new HadoopParquetConfiguration(conf), pageSize);
+  }
+
+  static CodecFactory.BytesCompressor createCompressor(ParquetConfiguration conf, int pageSize) {
     return new ZstdCompressor(
       getPool(conf),
       conf.getInt(PARQUET_COMPRESS_ZSTD_LEVEL, DEFAULT_PARQUET_COMPRESS_ZSTD_LEVEL),
@@ -58,6 +64,10 @@ class DirectZstd {
   }
 
   static CodecFactory.BytesDecompressor createDecompressor(Configuration conf) {
+    return createDecompressor(new HadoopParquetConfiguration(conf));
+  }
+
+  static CodecFactory.BytesDecompressor createDecompressor(ParquetConfiguration conf) {
     return new ZstdDecompressor(getPool(conf));
   }
 
@@ -133,7 +143,7 @@ class DirectZstd {
     }
   }
 
-  private static BufferPool getPool(Configuration conf) {
+  private static BufferPool getPool(ParquetConfiguration conf) {
     if (conf.getBoolean(PARQUET_COMPRESS_ZSTD_BUFFERPOOL_ENABLED, DEFAULT_PARQUET_COMPRESS_ZSTD_BUFFERPOOL_ENABLED)) {
       return RecyclingBufferPool.INSTANCE;
     } else {

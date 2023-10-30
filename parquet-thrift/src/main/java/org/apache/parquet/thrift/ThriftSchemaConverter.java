@@ -24,6 +24,8 @@ import java.util.HashSet;
 import java.util.Set;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.parquet.conf.HadoopParquetConfiguration;
+import org.apache.parquet.conf.ParquetConfiguration;
 import org.apache.thrift.TBase;
 import org.apache.thrift.TEnum;
 import org.apache.thrift.TUnion;
@@ -52,19 +54,28 @@ import static org.apache.parquet.schema.Type.Repetition.REPEATED;
 public class ThriftSchemaConverter {
   private final FieldProjectionFilter fieldProjectionFilter;
 
-  private Configuration conf;
+  private ParquetConfiguration conf;
 
   public ThriftSchemaConverter() {
     this(FieldProjectionFilter.ALL_COLUMNS);
   }
 
   public ThriftSchemaConverter(Configuration configuration) {
+    this(new HadoopParquetConfiguration(configuration));
+  }
+
+  public ThriftSchemaConverter(ParquetConfiguration configuration) {
     this();
     conf = configuration;
   }
 
   public ThriftSchemaConverter(
       Configuration configuration, FieldProjectionFilter fieldProjectionFilter) {
+    this(new HadoopParquetConfiguration(configuration), fieldProjectionFilter);
+  }
+
+  public ThriftSchemaConverter(
+      ParquetConfiguration configuration, FieldProjectionFilter fieldProjectionFilter) {
     this(fieldProjectionFilter);
     conf = configuration;
   }

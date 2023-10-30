@@ -25,6 +25,8 @@ import com.google.protobuf.Descriptors.FieldDescriptor.JavaType;
 import com.google.protobuf.Message;
 import com.twitter.elephantbird.util.Protobufs;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.parquet.conf.HadoopParquetConfiguration;
+import org.apache.parquet.conf.ParquetConfiguration;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
@@ -81,9 +83,19 @@ public class ProtoSchemaConverter {
    * Instantiate a schema converter to get the parquet schema corresponding to protobuf classes.
    * Returns instances that are not specs compliant and limited to 5 levels of recursion depth.
    *
-   * @param config   Hadoop configuration object to parrse parquetSpecsCompliant and maxRecursion settings.
+   * @param config   Hadoop configuration object to parse parquetSpecsCompliant and maxRecursion settings.
    */
   public ProtoSchemaConverter(Configuration config) {
+    this(new HadoopParquetConfiguration(config));
+  }
+
+  /**
+   * Instantiate a schema converter to get the parquet schema corresponding to protobuf classes.
+   * Returns instances that are not specs compliant and limited to 5 levels of recursion depth.
+   *
+   * @param config   Parquet configuration object to parse parquetSpecsCompliant and maxRecursion settings.
+   */
+  public ProtoSchemaConverter(ParquetConfiguration config) {
     this(
         config.getBoolean(ProtoWriteSupport.PB_SPECS_COMPLIANT_WRITE, false),
         config.getInt(PB_MAX_RECURSION, 5));

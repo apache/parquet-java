@@ -38,6 +38,8 @@ import org.apache.avro.generic.GenericRecordBuilder;
 import org.apache.avro.util.Utf8;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
+import org.apache.parquet.conf.HadoopParquetConfiguration;
+import org.apache.parquet.conf.ParquetConfiguration;
 import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.io.api.Binary;
@@ -358,6 +360,11 @@ public class TestReadWriteOldListBehavior {
 
       @Override
       public WriteContext init(Configuration configuration) {
+        return init(new HadoopParquetConfiguration(configuration));
+      }
+
+      @Override
+      public WriteContext init(ParquetConfiguration configuration) {
         return new WriteContext(MessageTypeParser.parseMessageType(TestAvroSchemaConverter.ALL_PARQUET_SCHEMA),
             new HashMap<String, String>());
       }

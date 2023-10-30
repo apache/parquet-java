@@ -21,6 +21,7 @@ package org.apache.parquet.hadoop.example;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.column.ParquetProperties;
+import org.apache.parquet.conf.ParquetConfiguration;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.api.WriteSupport;
@@ -111,6 +112,11 @@ public class ExampleParquetWriter extends ParquetWriter<Group> {
 
     @Override
     protected WriteSupport<Group> getWriteSupport(Configuration conf) {
+      return getWriteSupport((ParquetConfiguration) null);
+    }
+
+    @Override
+    protected WriteSupport<Group> getWriteSupport(ParquetConfiguration conf) {
       return new GroupWriteSupport(type, extraMetaData);
     }
 

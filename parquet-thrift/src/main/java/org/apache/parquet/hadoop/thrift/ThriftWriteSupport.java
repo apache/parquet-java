@@ -19,6 +19,7 @@
 package org.apache.parquet.hadoop.thrift;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.parquet.conf.ParquetConfiguration;
 import org.apache.thrift.TBase;
 
 import org.apache.parquet.hadoop.api.WriteSupport;
@@ -65,6 +66,11 @@ public class ThriftWriteSupport<T extends TBase<?,?>> extends WriteSupport<T> {
 
   @Override
   public WriteContext init(Configuration configuration) {
+    return this.writeSupport.init(configuration);
+  }
+
+  @Override
+  public WriteContext init(ParquetConfiguration configuration) {
     return this.writeSupport.init(configuration);
   }
 

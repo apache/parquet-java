@@ -20,6 +20,7 @@ package org.apache.parquet.hadoop.api;
 
 import org.apache.hadoop.conf.Configuration;
 
+import org.apache.parquet.conf.ParquetConfiguration;
 import org.apache.parquet.io.api.RecordConsumer;
 
 /**
@@ -39,6 +40,11 @@ public class DelegatingWriteSupport<T> extends WriteSupport<T> {
 
   @Override
   public WriteSupport.WriteContext init(Configuration configuration) {
+    return delegate.init(configuration);
+  }
+
+  @Override
+  public WriteSupport.WriteContext init(ParquetConfiguration configuration) {
     return delegate.init(configuration);
   }
 

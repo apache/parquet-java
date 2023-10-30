@@ -22,6 +22,8 @@ import java.util.Map;
 
 import org.apache.hadoop.conf.Configuration;
 
+import org.apache.parquet.conf.HadoopParquetConfiguration;
+import org.apache.parquet.conf.ParquetConfiguration;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.convert.GroupRecordConverter;
 import org.apache.parquet.hadoop.api.ReadSupport;
@@ -34,6 +36,13 @@ public class GroupReadSupport extends ReadSupport<Group> {
   public org.apache.parquet.hadoop.api.ReadSupport.ReadContext init(
       Configuration configuration, Map<String, String> keyValueMetaData,
       MessageType fileSchema) {
+    return init(new HadoopParquetConfiguration(configuration), keyValueMetaData, fileSchema);
+  }
+
+  @Override
+  public org.apache.parquet.hadoop.api.ReadSupport.ReadContext init(
+      ParquetConfiguration configuration, Map<String, String> keyValueMetaData,
+      MessageType fileSchema) {
     String partialSchemaString = configuration.get(ReadSupport.PARQUET_READ_SCHEMA);
     MessageType requestedProjection = getSchemaForRead(fileSchema, partialSchemaString);
     return new ReadContext(requestedProjection);
@@ -43,6 +52,13 @@ public class GroupReadSupport extends ReadSupport<Group> {
   public RecordMaterializer<Group> prepareForRead(Configuration configuration,
       Map<String, String> keyValueMetaData, MessageType fileSchema,
       org.apache.parquet.hadoop.api.ReadSupport.ReadContext readContext) {
+    return new GroupRecordConverter(readContext.getRequestedSchema());
+  }
+
+  @Override
+  public RecordMaterializer<Group> prepareForRead(ParquetConfiguration configuration,
+                                                  Map<String, String> keyValueMetaData, MessageType fileSchema,
+                                                  org.apache.parquet.hadoop.api.ReadSupport.ReadContext readContext) {
     return new GroupRecordConverter(readContext.getRequestedSchema());
   }
 

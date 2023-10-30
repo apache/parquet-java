@@ -22,6 +22,7 @@ package org.apache.parquet.proto;
 import com.google.protobuf.Message;
 import com.google.protobuf.MessageOrBuilder;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.parquet.conf.ParquetConfiguration;
 import org.apache.parquet.schema.MessageType;
 
 import java.util.Collections;
@@ -50,6 +51,11 @@ public class ProtoRecordConverter<T extends MessageOrBuilder> extends ProtoMessa
   }
 
   public ProtoRecordConverter(Configuration conf, Class<? extends Message> protoclass, MessageType parquetSchema, Map<String, String> extraMetadata) {
+    super(conf, new SkipParentValueContainer(), protoclass, parquetSchema, extraMetadata);
+    reusedBuilder = getBuilder();
+  }
+
+  public ProtoRecordConverter(ParquetConfiguration conf, Class<? extends Message> protoclass, MessageType parquetSchema, Map<String, String> extraMetadata) {
     super(conf, new SkipParentValueContainer(), protoclass, parquetSchema, extraMetadata);
     reusedBuilder = getBuilder();
   }

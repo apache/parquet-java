@@ -19,18 +19,26 @@
 package org.apache.parquet.hadoop.util;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.parquet.conf.HadoopParquetConfiguration;
+import org.apache.parquet.conf.ParquetConfiguration;
 import org.apache.parquet.hadoop.BadConfigurationException;
+
+import java.util.Map;
 
 public class ConfigurationUtil {
 
   public static Class<?> getClassFromConfig(Configuration configuration, String configName, Class<?> assignableFrom) {
+    return getClassFromConfig(new HadoopParquetConfiguration(configuration), configName, assignableFrom);
+  }
+
+  public static Class<?> getClassFromConfig(ParquetConfiguration configuration, String configName, Class<?> assignableFrom) {
     final String className = configuration.get(configName);
     if (className == null) {
       return null;
     }
-    
+
     try {
-      final Class<?> foundClass = configuration.getClassByName(className);	
+      final Class<?> foundClass = configuration.getClassByName(className);
       if (!assignableFrom.isAssignableFrom(foundClass)) {
         throw new BadConfigurationException("class " + className + " set in job conf at "
                 + configName + " is not a subclass of " + assignableFrom.getCanonicalName());
@@ -39,6 +47,20 @@ public class ConfigurationUtil {
     } catch (ClassNotFoundException e) {
       throw new BadConfigurationException("could not instantiate class " + className + " set in job conf at " + configName, e);
     }
+  }
+
+  public static Configuration createHadoopConfiguration(ParquetConfiguration conf) {
+    if (conf == null) {
+      return new Configuration();
+    }
+    if (conf instanceof HadoopParquetConfiguration) {
+      return ((HadoopParquetConfiguration) conf).getConfiguration();
+    }
+    Configuration configuration = new Configuration();
+    for (Map.Entry<String, String> entry : conf) {
+      configuration.set(entry.getKey(), entry.getValue());
+    }
+    return configuration;
   }
 
 }

@@ -21,6 +21,7 @@ package org.apache.parquet.proto;
 import com.google.protobuf.Message;
 import com.google.protobuf.MessageOrBuilder;
 import org.apache.hadoop.fs.Path;
+import org.apache.parquet.conf.ParquetConfiguration;
 import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
@@ -120,8 +121,15 @@ public class ProtoParquetWriter<T extends MessageOrBuilder> extends ParquetWrite
 			return this;
 		}
 
-		protected WriteSupport<T> getWriteSupport(Configuration conf) {
-		    return (WriteSupport<T>) ProtoParquetWriter.writeSupport(protoMessage);
-		}
+    @Override
+    protected WriteSupport<T> getWriteSupport(Configuration conf) {
+      return getWriteSupport((ParquetConfiguration) null);
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    protected WriteSupport<T> getWriteSupport(ParquetConfiguration conf) {
+      return (WriteSupport<T>) ProtoParquetWriter.writeSupport(protoMessage);
+    }
 	}
 }

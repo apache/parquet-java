@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.UUID;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
+import org.apache.parquet.conf.ParquetConfiguration;
 import org.junit.Rule;
 import org.junit.rules.TemporaryFolder;
 import org.apache.parquet.hadoop.ParquetWriter;
@@ -86,6 +87,11 @@ public class DirectWriterTest {
 
     @Override
     public WriteContext init(Configuration configuration) {
+      return init((ParquetConfiguration) null);
+    }
+
+    @Override
+    public WriteContext init(ParquetConfiguration configuration) {
       return new WriteContext(type, metadata);
     }
 

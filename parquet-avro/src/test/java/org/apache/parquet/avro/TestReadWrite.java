@@ -52,6 +52,8 @@ import org.apache.avro.generic.GenericRecordBuilder;
 import org.apache.avro.util.Utf8;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
+import org.apache.parquet.conf.HadoopParquetConfiguration;
+import org.apache.parquet.conf.ParquetConfiguration;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.api.WriteSupport;
@@ -77,22 +79,31 @@ public class TestReadWrite {
   @Parameterized.Parameters
   public static Collection<Object[]> data() {
     Object[][] data = new Object[][] {
-        { false, false },  // use the new converters
-        { true, false },   // use the old converters
-        { false, true } }; // use a local disk location
+        { false, false, false },  // use the new converters with hadoop config
+        { true, false, false },   // use the old converters with hadoop config
+        { false, true, false },   // use a local disk location with hadoop config
+        { false, false, true },   // use the new converters with parquet config interface
+        { true, false, true },    // use the old converters with parquet config interface
+        { false, true, true } };  // use a local disk location with parquet config interface
     return Arrays.asList(data);
   }
 
   private final boolean compat;
   private final boolean local;
+  private final boolean confInterface;
   private final Configuration testConf = new Configuration();
+  private final ParquetConfiguration parquetConf = new HadoopParquetConfiguration(true);
 
-  public TestReadWrite(boolean compat, boolean local) {
+  public TestReadWrite(boolean compat, boolean local, boolean confInterface) {
     this.compat = compat;
     this.local = local;
+    this.confInterface = confInterface;
     this.testConf.setBoolean(AvroReadSupport.AVRO_COMPATIBILITY, compat);
-    testConf.setBoolean("parquet.avro.add-list-element-records", false);
-    testConf.setBoolean("parquet.avro.write-old-list-structure", false);
+    this.testConf.setBoolean("parquet.avro.add-list-element-records", false);
+    this.testConf.setBoolean("parquet.avro.write-old-list-structure", false);
+    this.parquetConf.setBoolean(AvroReadSupport.AVRO_COMPATIBILITY, compat);
+    this.parquetConf.setBoolean("parquet.avro.add-list-element-records", false);
+    this.parquetConf.setBoolean("parquet.avro.write-old-list-structure", false);
   }
 
   @Test
@@ -431,6 +442,11 @@ public class TestReadWrite {
 
       @Override
       public WriteContext init(Configuration configuration) {
+        return init(new HadoopParquetConfiguration(configuration));
+      }
+
+      @Override
+      public WriteContext init(ParquetConfiguration configuration) {
         return new WriteContext(MessageTypeParser.parseMessageType(TestAvroSchemaConverter.ALL_PARQUET_SCHEMA),
             new HashMap<String, String>());
       }
@@ -864,30 +880,44 @@ public class TestReadWrite {
   }
 
   private ParquetWriter<GenericRecord> writer(String file, Schema schema) throws IOException {
+    AvroParquetWriter.Builder<GenericRecord> writerBuilder;
     if (local) {
-      return AvroParquetWriter
+      writerBuilder = AvroParquetWriter
         .<GenericRecord>builder(new LocalOutputFile(Paths.get(file)))
-        .withSchema(schema)
-        .withConf(testConf)
+        .withSchema(schema);
+    } else {
+      writerBuilder = AvroParquetWriter
+        .<GenericRecord>builder(new Path(file))
+        .withSchema(schema);
+    }
+    if (confInterface) {
+      return writerBuilder
+        .withConf(parquetConf)
         .build();
     } else {
-      return AvroParquetWriter
-        .<GenericRecord>builder(new Path(file))
-        .withSchema(schema)
+      return writerBuilder
         .withConf(testConf)
         .build();
     }
   }
 
   private ParquetReader<GenericRecord> reader(String file) throws IOException {
+    AvroParquetReader.Builder<GenericRecord> readerBuilder;
     if (local) {
-      return AvroParquetReader
+      readerBuilder = AvroParquetReader
         .<GenericRecord>builder(new LocalInputFile(Paths.get(file)))
-        .withDataModel(GenericData.get())
-        .withConf(testConf)
+        .withDataModel(GenericData.get());
+    } else {
+      return new AvroParquetReader<>(testConf, new Path(file));
+    }
+    if (confInterface) {
+      return readerBuilder
+        .withConf(parquetConf)
         .build();
     } else {
-      return new AvroParquetReader(testConf, new Path(file));
+      return readerBuilder
+        .withConf(testConf)
+        .build();
     }
   }
 

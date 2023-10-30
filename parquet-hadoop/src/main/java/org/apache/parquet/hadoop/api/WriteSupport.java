@@ -25,6 +25,7 @@ import java.util.Objects;
 
 import org.apache.hadoop.conf.Configuration;
 
+import org.apache.parquet.conf.ParquetConfiguration;
 import org.apache.parquet.io.api.RecordConsumer;
 import org.apache.parquet.schema.MessageType;
 
@@ -104,6 +105,15 @@ abstract public class WriteSupport<T> {
    * @return the information needed to write the file
    */
   public abstract WriteContext init(Configuration configuration);
+
+  /**
+   * called first in the task
+   * @param configuration the job's configuration
+   * @return the information needed to write the file
+   */
+  public WriteContext init(ParquetConfiguration configuration) {
+    throw new UnsupportedOperationException("Override WriteSupport#init(ParquetConfiguration)");
+  }
 
   /**
    * This will be called once per row group
