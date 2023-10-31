@@ -49,13 +49,19 @@ public class PropertiesDrivenCryptoFactory implements EncryptionPropertiesFactor
 
   /**
    * List of columns to encrypt, with master key IDs (see HIVE-21848).
-   * Format: "masterKeyID:colName,colName;masterKeyID:colName..."
+   * Format: "masterKeyID:colName,colName;masterKeyID:colName...".
+   * Unlisted columns are not encrypted.
    */
   public static final String COLUMN_KEYS_PROPERTY_NAME = "parquet.encryption.column.keys";
   /**
    * Master key ID for footer encryption/signing.
    */
   public static final String FOOTER_KEY_PROPERTY_NAME = "parquet.encryption.footer.key";
+  /**
+   * Encrypt unlisted columns using footer key.
+   * By default, false - unlisted columns are not encrypted.
+   */
+  public static final String COMPLETE_COLUMN_ENCRYPTION_PROPERTY_NAME = "parquet.encryption.complete.columns";
   /**
    * Master key ID for uniform encryption (same key for all columns and footer).
    */
@@ -72,6 +78,7 @@ public class PropertiesDrivenCryptoFactory implements EncryptionPropertiesFactor
 
   public static final String ENCRYPTION_ALGORITHM_DEFAULT = ParquetCipher.AES_GCM_V1.toString();
   public static final boolean PLAINTEXT_FOOTER_DEFAULT = false;
+  public static final boolean COMPLETE_COLUMN_ENCRYPTION_DEFAULT = false;
 
   private static final SecureRandom RANDOM = new SecureRandom();
 
@@ -82,6 +89,9 @@ public class PropertiesDrivenCryptoFactory implements EncryptionPropertiesFactor
     String footerKeyId = fileHadoopConfig.getTrimmed(FOOTER_KEY_PROPERTY_NAME);
     String columnKeysStr = fileHadoopConfig.getTrimmed(COLUMN_KEYS_PROPERTY_NAME);
     String uniformKeyId = fileHadoopConfig.getTrimmed(UNIFORM_KEY_PROPERTY_NAME);
+    boolean completeColumnEncryption = fileHadoopConfig.getBoolean(COMPLETE_COLUMN_ENCRYPTION_PROPERTY_NAME,
+      COMPLETE_COLUMN_ENCRYPTION_DEFAULT);
+
 
     boolean emptyFooterKeyId = stringIsEmpty(footerKeyId);
     boolean emptyColumnKeyIds = stringIsEmpty(columnKeysStr);
@@ -110,6 +120,9 @@ public class PropertiesDrivenCryptoFactory implements EncryptionPropertiesFactor
       if (!emptyColumnKeyIds) {
         throw new ParquetCryptoRuntimeException("Uniform encryption. Cant have column keys configured in " +
           COLUMN_KEYS_PROPERTY_NAME);
+      }
+      if (completeColumnEncryption) {
+        throw new ParquetCryptoRuntimeException("Complete column encryption cant be applied in uniform encryption mode");
       }
 
       // Now assign footer key id to uniform key id
@@ -164,6 +177,10 @@ public class PropertiesDrivenCryptoFactory implements EncryptionPropertiesFactor
       Map<ColumnPath, ColumnEncryptionProperties> encryptedColumns =
         getColumnEncryptionProperties(dekLength, columnKeysStr, keyWrapper);
       propertiesBuilder = propertiesBuilder.withEncryptedColumns(encryptedColumns);
+
+      if (completeColumnEncryption) {
+        propertiesBuilder = propertiesBuilder.withCompleteColumnEncryption();
+      }
     }
 
     if (plaintextFooter) {

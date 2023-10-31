@@ -408,7 +408,10 @@ ParquetInputFormat to materialize records. It should be a the descendant class o
 ## Class: PropertiesDrivenCryptoFactory
 
 **Property:** `parquet.encryption.column.keys`  
-**Description:** List of columns to encrypt, with master key IDs (see HIVE-21848).Format: `<masterKeyID>:<colName>,<colName>;<masterKeyID>:<colName>...`. Note: nested column names must be specified as full dot-separated paths for each leaf column.  
+**Description:** List of columns to encrypt, with master key IDs (see HIVE-21848). 
+Format: `<masterKeyID>:<colName>,<colName>;<masterKeyID>:<colName>...`. 
+Unlisted columns are not encrypted.
+Note: nested column names must be specified as full dot-separated paths for each leaf column.  
 **Default value:** None.
 
 ---
@@ -416,6 +419,12 @@ ParquetInputFormat to materialize records. It should be a the descendant class o
 **Property:** `parquet.encryption.footer.key`  
 **Description:** Master key ID for footer encryption/signing.  
 **Default value:** None.
+
+---
+
+**Property:** `parquet.encryption.complete.columns`  
+**Description:** Complete column encryption - if set to `true`, unlisted columns are encrypted (using the footer master key).  
+**Default value:** `false`
 
 ---
 

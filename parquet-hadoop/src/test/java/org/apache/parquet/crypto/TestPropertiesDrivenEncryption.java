@@ -99,6 +99,9 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
  *                                  - plaintext footer mode.
  *  - ENCRYPT_COLUMNS_AND_FOOTER_CTR:   Encrypt two columns and the footer, with different
  *                                  keys. Use the alternative (AES_GCM_CTR_V1) algorithm.
+ *  - COMPLETE_COLUMN_ENCRYPTION:   Encrypt two columns and the footer, with different
+ *                                  keys. Encrypt other columns with the footer key.
+ *  - UNIFORM_ENCRYPTION:           Encrypt all columns and footer with the same master key.
  *  - NO_ENCRYPTION:   Do not encrypt anything
  *
  *
@@ -267,6 +270,18 @@ public class TestPropertiesDrivenEncryption {
         setColumnAndFooterKeys(conf);
         conf.set(PropertiesDrivenCryptoFactory.ENCRYPTION_ALGORITHM_PROPERTY_NAME,
           ParquetCipher.AES_GCM_CTR_V1.toString());
+        return conf;
+      }
+    },
+    COMPLETE_COLUMN_ENCRYPTION {
+      /**
+       * Encrypt two columns and the footer, with different master keys.
+       * Encrypt other columns with the footer master key.
+       */
+      public Configuration getHadoopConfiguration(TestPropertiesDrivenEncryption test) {
+        Configuration conf = getCryptoProperties(test);
+        setColumnAndFooterKeys(conf);
+        conf.setBoolean(PropertiesDrivenCryptoFactory.COMPLETE_COLUMN_ENCRYPTION_PROPERTY_NAME, true);
         return conf;
       }
     },
