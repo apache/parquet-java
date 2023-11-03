@@ -68,7 +68,7 @@
     <jackson.package>com.fasterxml.jackson</jackson.package>
     <jackson.version>2.15.2</jackson.version>
     <jackson-databind.version>2.15.2</jackson-databind.version>
-    <japicmp.version>0.18.1</japicmp.version>
+    <japicmp.version>0.18.2</japicmp.version>
     <shade.prefix>shaded.parquet</shade.prefix>
     <hadoop.version>3.3.5</hadoop.version>
     <parquet.format.version>2.9.0</parquet.format.version>
@@ -546,6 +546,12 @@
               <!-- japicmp is overly aggressive on interface types in signatures, a type was changed to a supertype but this still triggers it -->
               <exclude>org.apache.parquet.hadoop.ColumnChunkPageWriteStore</exclude>
               <exclude>org.apache.parquet.hadoop.ParquetRecordWriter</exclude>
+              <!-- likely japicmp bug, triggers on new interface methods after updating to 0.18.1 -->
+              <exclude>org.apache.parquet.conf.ParquetConfiguration#getClass(java.lang.String,java.lang.Class,java.lang.Class)</exclude>
+              <exclude>org.apache.parquet.hadoop.util.SerializationUtil#readObjectFromConfAsBase64(java.lang.String,org.apache.parquet.conf.ParquetConfiguration)</exclude>
+              <exclude>org.apache.parquet.conf.HadoopParquetConfiguration#getClass(java.lang.String,java.lang.Class,java.lang.Class)</exclude>
+              <exclude>org.apache.parquet.avro.AvroParquetReader#builder(org.apache.parquet.io.InputFile,org.apache.parquet.conf.ParquetConfiguration)</exclude>
+              <exclude>org.apache.parquet.hadoop.thrift.TBaseWriteSupport#setThriftClass(org.apache.parquet.conf.ParquetConfiguration,java.lang.Class)</exclude>
               <exclude>org.apache.parquet.proto.ProtoParquetReader#builder(org.apache.hadoop.fs.Path,boolean)</exclude>
               <exclude>org.apache.parquet.proto.ProtoParquetReader#builder(org.apache.parquet.io.InputFile,boolean)</exclude>
             </excludes>
