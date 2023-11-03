@@ -152,7 +152,6 @@ public class ParquetFileWriter {
   private long uncompressedLength;
   private long compressedLength;
   private Statistics<?> currentStatistics; // accumulated in writePage(s)
-  private boolean currentStatisticsAreValid;
   private ColumnIndexBuilder columnIndexBuilder;
   private OffsetIndexBuilder offsetIndexBuilder;
 
@@ -475,7 +474,6 @@ public class ParquetFileWriter {
     uncompressedLength = 0;
     // The statistics will be copied from the first one added at writeDataPage(s) so we have the correct typed one
     currentStatistics = null;
-    currentStatisticsAreValid = true;
 
     columnIndexBuilder = ColumnIndexBuilder.getBuilder(currentChunkType, columnIndexTruncateLength);
     offsetIndexBuilder = OffsetIndexBuilder.getBuilder();
@@ -990,7 +988,6 @@ public class ParquetFileWriter {
     currentStatistics = totalStatistics;
     // Invalid the ColumnIndex
     columnIndexBuilder = ColumnIndexBuilder.getNoOpBuilder();
-    currentStatisticsAreValid = true;
     endColumn();
   }
 
@@ -1001,7 +998,6 @@ public class ParquetFileWriter {
   public void endColumn() throws IOException {
     state = state.endColumn();
     LOG.debug("{}: end column", out.getPos());
-    Preconditions.checkState(currentStatisticsAreValid, "Column statistics should be valid");
     if (columnIndexBuilder.getMinMaxSize() > columnIndexBuilder.getPageCount() * MAX_STATS_SIZE) {
       currentColumnIndexes.add(null);
     } else {
@@ -1325,15 +1321,14 @@ public class ParquetFileWriter {
   }
 
   private void mergeColumnStatistics(Statistics<?> statistics) {
-    if (!currentStatisticsAreValid) {
+    if (currentStatistics != null && currentStatistics.isEmpty()) {
       return;
     }
 
-    if (statistics == null) {
-      // The column index should be invalid if some page statistics are null.
+    if (statistics == null || statistics.isEmpty()) {
+      // The column index and statistics should be invalid if some page statistics are null or empty.
       // See PARQUET-2365 for more details
-      currentStatistics = null;
-      currentStatisticsAreValid = false;
+      currentStatistics = Statistics.getBuilderForReading(currentChunkType).build();
       columnIndexBuilder = ColumnIndexBuilder.getNoOpBuilder();
     } else if (currentStatistics == null) {
       // Copying the statistics if it is not initialized yet so we have the correct typed one
