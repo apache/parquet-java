@@ -981,14 +981,12 @@ public class ParquetFileWriter {
    * is known while all the page statistics are invalid, for example when rewriting the column.
    *
    * @param totalStatistics the column total statistics
-   * @throws IOException if there is an error while writing
    */
-  public void endColumn(Statistics<?> totalStatistics) throws IOException {
+  public void invalidateStatistics(Statistics<?> totalStatistics) {
     Preconditions.checkArgument(totalStatistics != null, "Column total statistics can not be null");
     currentStatistics = totalStatistics;
     // Invalid the ColumnIndex
     columnIndexBuilder = ColumnIndexBuilder.getNoOpBuilder();
-    endColumn();
   }
 
   /**
@@ -1331,7 +1329,7 @@ public class ParquetFileWriter {
       currentStatistics = Statistics.getBuilderForReading(currentChunkType).build();
       columnIndexBuilder = ColumnIndexBuilder.getNoOpBuilder();
     } else if (currentStatistics == null) {
-      // Copying the statistics if it is not initialized yet so we have the correct typed one
+      // Copying the statistics if it is not initialized yet, so we have the correct typed one
       currentStatistics = statistics.copy();
       columnIndexBuilder.add(statistics);
     } else {

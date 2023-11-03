@@ -324,7 +324,7 @@ public class ParquetRewriter implements Closeable {
 
           // Translate compression and/or encryption
           writer.startColumn(descriptor, crStore.getColumnReader(descriptor).getTotalValueCount(), newCodecName);
-          boolean needOverwriteStatistics = processChunk(
+          processChunk(
                   chunk,
                   newCodecName,
                   columnChunkEncryptorRunTime,
@@ -332,12 +332,7 @@ public class ParquetRewriter implements Closeable {
                   indexCache.getBloomFilter(chunk),
                   indexCache.getColumnIndex(chunk),
                   indexCache.getOffsetIndex(chunk));
-          if (needOverwriteStatistics) {
-            // All the column statistics are invalid, so we need to overwrite the column statistics
-            writer.endColumn(chunk.getStatistics());
-          } else {
-            writer.endColumn();
-          }
+          writer.endColumn();
         } else {
           // Nothing changed, simply copy the binary data.
           BloomFilter bloomFilter = indexCache.getBloomFilter(chunk);
@@ -357,18 +352,13 @@ public class ParquetRewriter implements Closeable {
     }
   }
 
-  /**
-   * Rewrite a single column with the given new compression codec and/or new encryptor
-   *
-   * @return whether the column statistics should be overwritten
-   */
-  private boolean processChunk(ColumnChunkMetaData chunk,
-                               CompressionCodecName newCodecName,
-                               ColumnChunkEncryptorRunTime columnChunkEncryptorRunTime,
-                               boolean encryptColumn,
-                               BloomFilter bloomFilter,
-                               ColumnIndex columnIndex,
-                               OffsetIndex offsetIndex) throws IOException {
+  private void processChunk(ColumnChunkMetaData chunk,
+                            CompressionCodecName newCodecName,
+                            ColumnChunkEncryptorRunTime columnChunkEncryptorRunTime,
+                            boolean encryptColumn,
+                            BloomFilter bloomFilter,
+                            ColumnIndex columnIndex,
+                            OffsetIndex offsetIndex) throws IOException {
     CompressionCodecFactory codecFactory = HadoopCodecs.newFactory(0);
     CompressionCodecFactory.BytesInputDecompressor decompressor = null;
     CompressionCodecFactory.BytesInputCompressor compressor = null;
@@ -402,7 +392,7 @@ public class ParquetRewriter implements Closeable {
     DictionaryPage dictionaryPage = null;
     long readValues = 0;
     Statistics<?> statistics = null;
-    boolean needOverwriteColumnStatistics = false;
+    boolean isColumnStatisticsMalformed = false;
     ParquetMetadataConverter converter = new ParquetMetadataConverter();
     int pageOrdinal = 0;
     long totalChunkValues = chunk.getValueCount();
@@ -452,10 +442,10 @@ public class ParquetRewriter implements Closeable {
                   originalCreatedBy, chunk.getPrimitiveType(), headerV1.getStatistics(), columnIndex, pageOrdinal, converter);
           if (statistics == null) {
             // Reach here means both the columnIndex and the page header statistics are null
-            needOverwriteColumnStatistics = true;
+            isColumnStatisticsMalformed = true;
           } else {
             Preconditions.checkState(
-              !needOverwriteColumnStatistics,
+              !isColumnStatisticsMalformed,
               "Detected mixed null page statistics and non-null page statistics");
           }
           readValues += headerV1.getNum_values();
@@ -511,10 +501,10 @@ public class ParquetRewriter implements Closeable {
                   originalCreatedBy, chunk.getPrimitiveType(), headerV2.getStatistics(), columnIndex, pageOrdinal, converter);
           if (statistics == null) {
             // Reach here means both the columnIndex and the page header statistics are null
-            needOverwriteColumnStatistics = true;
+            isColumnStatisticsMalformed = true;
           } else {
             Preconditions.checkState(
-              !needOverwriteColumnStatistics,
+              !isColumnStatisticsMalformed,
               "Detected mixed null page statistics and non-null page statistics");
           }
           readValues += headerV2.getNum_values();
@@ -537,7 +527,10 @@ public class ParquetRewriter implements Closeable {
       }
     }
 
-    return needOverwriteColumnStatistics;
+    if (isColumnStatisticsMalformed) {
+      // All the column statistics are invalid, so we need to overwrite the column statistics
+      writer.invalidateStatistics(chunk.getStatistics());
+    }
   }
 
   private Statistics<?> convertStatistics(String createdBy,
