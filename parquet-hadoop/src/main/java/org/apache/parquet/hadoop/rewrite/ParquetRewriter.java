@@ -265,14 +265,9 @@ public class ParquetRewriter implements Closeable {
   }
 
   private void processBlocksFromReader(IndexCache indexCache) throws IOException {
-    PageReadStore store = reader.readNextRowGroup();
-    ColumnReadStoreImpl crStore = new ColumnReadStoreImpl(store, new DummyGroupConverter(), schema, originalCreatedBy);
-
-    int blockId = 0;
-    while (store != null) {
-      writer.startBlock(store.getRowCount());
-
+    for (int blockId = 0; blockId < meta.getBlocks().size(); blockId ++) {
       BlockMetaData blockMetaData = meta.getBlocks().get(blockId);
+      writer.startBlock(blockMetaData.getRowCount());
       indexCache.setBlockMetadata(blockMetaData);
       List<ColumnChunkMetaData> columnsInOrder = blockMetaData.getColumns();
       for (int i = 0, columnId = 0; i < columnsInOrder.size(); i++) {
@@ -304,9 +299,9 @@ public class ParquetRewriter implements Closeable {
                       "Required column [" + descriptor.getPrimitiveType().getName() + "] cannot be nullified");
             }
             nullifyColumn(
+                    blockId,
                     descriptor,
                     chunk,
-                    crStore,
                     writer,
                     schema,
                     newCodecName,
@@ -323,7 +318,7 @@ public class ParquetRewriter implements Closeable {
           }
 
           // Translate compression and/or encryption
-          writer.startColumn(descriptor, crStore.getColumnReader(descriptor).getTotalValueCount(), newCodecName);
+          writer.startColumn(descriptor, chunk.getValueCount(), newCodecName);
           processChunk(
                   chunk,
                   newCodecName,
@@ -345,9 +340,6 @@ public class ParquetRewriter implements Closeable {
       }
 
       writer.endBlock();
-      store = reader.readNextRowGroup();
-      crStore = new ColumnReadStoreImpl(store, new DummyGroupConverter(), schema, originalCreatedBy);
-      blockId++;
       numBlocksRewritten++;
     }
   }
@@ -653,9 +645,9 @@ public class ParquetRewriter implements Closeable {
     return prunePaths;
   }
 
-  private void nullifyColumn(ColumnDescriptor descriptor,
+  private void nullifyColumn(int blockIndex,
+                             ColumnDescriptor descriptor,
                              ColumnChunkMetaData chunk,
-                             ColumnReadStoreImpl crStore,
                              ParquetFileWriter writer,
                              MessageType schema,
                              CompressionCodecName newCodecName,
@@ -666,6 +658,8 @@ public class ParquetRewriter implements Closeable {
 
     long totalChunkValues = chunk.getValueCount();
     int dMax = descriptor.getMaxDefinitionLevel();
+    PageReadStore pageReadStore = reader.readRowGroup(blockIndex);
+    ColumnReadStoreImpl crStore = new ColumnReadStoreImpl(pageReadStore, new DummyGroupConverter(), schema, originalCreatedBy);
     ColumnReader cReader = crStore.getColumnReader(descriptor);
 
     ParquetProperties.WriterVersion writerVersion = chunk.getEncodingStats().usesV2Pages() ?
