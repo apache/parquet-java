@@ -722,14 +722,7 @@ public class ParquetFileWriter {
     LOG.debug("{}: write data page content {}", out.getPos(), compressedPageSize);
     bytes.writeAllTo(out);
 
-    // Copying the statistics if it is not initialized yet so we have the correct typed one
-    if (currentStatistics == null) {
-      currentStatistics = statistics.copy();
-    } else {
-      currentStatistics.mergeStatistics(statistics);
-    }
-
-    columnIndexBuilder.add(statistics);
+    mergeColumnStatistics(statistics);
 
     encodingStatsBuilder.addDataEncoding(valuesEncoding);
     currentEncodings.add(rlEncoding);
@@ -867,13 +860,8 @@ public class ParquetFileWriter {
     this.uncompressedLength += uncompressedSize + headersSize;
     this.compressedLength += compressedSize + headersSize;
 
-    if (currentStatistics == null) {
-      currentStatistics = statistics.copy();
-    } else {
-      currentStatistics.mergeStatistics(statistics);
-    }
+    mergeColumnStatistics(statistics);
 
-    columnIndexBuilder.add(statistics);
     currentEncodings.add(dataEncoding);
     encodingStatsBuilder.addDataEncoding(dataEncoding);
 
@@ -986,6 +974,19 @@ public class ParquetFileWriter {
     this.offsetIndexBuilder = offsetIndexBuilder;
 
     endColumn();
+  }
+
+  /**
+   * Overwrite the column total statistics. This special used when the column total statistics
+   * is known while all the page statistics are invalid, for example when rewriting the column.
+   *
+   * @param totalStatistics the column total statistics
+   */
+  public void invalidateStatistics(Statistics<?> totalStatistics) {
+    Preconditions.checkArgument(totalStatistics != null, "Column total statistics can not be null");
+    currentStatistics = totalStatistics;
+    // Invalid the ColumnIndex
+    columnIndexBuilder = ColumnIndexBuilder.getNoOpBuilder();
   }
 
   /**
@@ -1315,6 +1316,26 @@ public class ParquetFileWriter {
       throw new ParquetEncodingException("Cannot write page larger than " + Integer.MAX_VALUE + " bytes: " + size);
     }
     return (int)size;
+  }
+
+  private void mergeColumnStatistics(Statistics<?> statistics) {
+    if (currentStatistics != null && currentStatistics.isEmpty()) {
+      return;
+    }
+
+    if (statistics == null || statistics.isEmpty()) {
+      // The column index and statistics should be invalid if some page statistics are null or empty.
+      // See PARQUET-2365 for more details
+      currentStatistics = Statistics.getBuilderForReading(currentChunkType).build();
+      columnIndexBuilder = ColumnIndexBuilder.getNoOpBuilder();
+    } else if (currentStatistics == null) {
+      // Copying the statistics if it is not initialized yet, so we have the correct typed one
+      currentStatistics = statistics.copy();
+      columnIndexBuilder.add(statistics);
+    } else {
+      currentStatistics.mergeStatistics(statistics);
+      columnIndexBuilder.add(statistics);
+    }
   }
 
   private static void serializeOffsetIndexes(

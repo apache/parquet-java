@@ -392,6 +392,7 @@ public class ParquetRewriter implements Closeable {
     DictionaryPage dictionaryPage = null;
     long readValues = 0;
     Statistics<?> statistics = null;
+    boolean isColumnStatisticsMalformed = false;
     ParquetMetadataConverter converter = new ParquetMetadataConverter();
     int pageOrdinal = 0;
     long totalChunkValues = chunk.getValueCount();
@@ -439,6 +440,14 @@ public class ParquetRewriter implements Closeable {
                   dataPageAAD);
           statistics = convertStatistics(
                   originalCreatedBy, chunk.getPrimitiveType(), headerV1.getStatistics(), columnIndex, pageOrdinal, converter);
+          if (statistics == null) {
+            // Reach here means both the columnIndex and the page header statistics are null
+            isColumnStatisticsMalformed = true;
+          } else {
+            Preconditions.checkState(
+              !isColumnStatisticsMalformed,
+              "Detected mixed null page statistics and non-null page statistics");
+          }
           readValues += headerV1.getNum_values();
           if (offsetIndex != null) {
             long rowCount = 1 + offsetIndex.getLastRowIndex(
@@ -490,6 +499,14 @@ public class ParquetRewriter implements Closeable {
                   dataPageAAD);
           statistics = convertStatistics(
                   originalCreatedBy, chunk.getPrimitiveType(), headerV2.getStatistics(), columnIndex, pageOrdinal, converter);
+          if (statistics == null) {
+            // Reach here means both the columnIndex and the page header statistics are null
+            isColumnStatisticsMalformed = true;
+          } else {
+            Preconditions.checkState(
+              !isColumnStatisticsMalformed,
+              "Detected mixed null page statistics and non-null page statistics");
+          }
           readValues += headerV2.getNum_values();
           writer.writeDataPageV2(headerV2.getNum_rows(),
                   headerV2.getNum_nulls(),
@@ -508,6 +525,11 @@ public class ParquetRewriter implements Closeable {
           LOG.debug("skipping page of type {} of size {}", pageHeader.getType(), compressedPageSize);
           break;
       }
+    }
+
+    if (isColumnStatisticsMalformed) {
+      // All the column statistics are invalid, so we need to overwrite the column statistics
+      writer.invalidateStatistics(chunk.getStatistics());
     }
   }
 

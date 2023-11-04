@@ -80,6 +80,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.DOUBLE;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FLOAT;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
 import static org.apache.parquet.schema.Type.Repetition.OPTIONAL;
 import static org.apache.parquet.schema.Type.Repetition.REPEATED;
@@ -127,17 +129,7 @@ public class ParquetRewriterTest {
     rewriter.close();
 
     // Verify the schema are not changed for the columns not pruned
-    ParquetMetadata pmd = ParquetFileReader.readFooter(conf, new Path(outputFile), ParquetMetadataConverter.NO_FILTER);
-    MessageType schema = pmd.getFileMetaData().getSchema();
-    List<Type> fields = schema.getFields();
-    assertEquals(fields.size(), 3);
-    assertEquals(fields.get(0).getName(), "DocId");
-    assertEquals(fields.get(1).getName(), "Name");
-    assertEquals(fields.get(2).getName(), "Links");
-    List<Type> subFields = fields.get(2).asGroupType().getFields();
-    assertEquals(subFields.size(), 2);
-    assertEquals(subFields.get(0).getName(), "Backward");
-    assertEquals(subFields.get(1).getName(), "Forward");
+    validateSchema();
 
     // Verify codec has been translated
     verifyCodec(outputFile, new HashSet<CompressionCodecName>() {{
@@ -199,17 +191,7 @@ public class ParquetRewriterTest {
     rewriter.close();
 
     // Verify the schema are not changed for the columns not pruned
-    ParquetMetadata pmd = ParquetFileReader.readFooter(conf, new Path(outputFile), ParquetMetadataConverter.NO_FILTER);
-    MessageType schema = pmd.getFileMetaData().getSchema();
-    List<Type> fields = schema.getFields();
-    assertEquals(fields.size(), 3);
-    assertEquals(fields.get(0).getName(), "DocId");
-    assertEquals(fields.get(1).getName(), "Name");
-    assertEquals(fields.get(2).getName(), "Links");
-    List<Type> subFields = fields.get(2).asGroupType().getFields();
-    assertEquals(subFields.size(), 2);
-    assertEquals(subFields.get(0).getName(), "Backward");
-    assertEquals(subFields.get(1).getName(), "Forward");
+    validateSchema();
 
     // Verify codec has been translated
     verifyCodec(outputFile, new HashSet<CompressionCodecName>() {{
@@ -276,17 +258,7 @@ public class ParquetRewriterTest {
     rewriter.close();
 
     // Verify the schema are not changed for the columns not pruned
-    ParquetMetadata pmd = ParquetFileReader.readFooter(conf, new Path(outputFile), ParquetMetadataConverter.NO_FILTER);
-    MessageType schema = pmd.getFileMetaData().getSchema();
-    List<Type> fields = schema.getFields();
-    assertEquals(fields.size(), 3);
-    assertEquals(fields.get(0).getName(), "DocId");
-    assertEquals(fields.get(1).getName(), "Name");
-    assertEquals(fields.get(2).getName(), "Links");
-    List<Type> subFields = fields.get(2).asGroupType().getFields();
-    assertEquals(subFields.size(), 2);
-    assertEquals(subFields.get(0).getName(), "Backward");
-    assertEquals(subFields.get(1).getName(), "Forward");
+    validateSchema();
 
     // Verify codec has been translated
     FileDecryptionProperties fileDecryptionProperties = EncDecProperties.getFileDecryptionProperties();
@@ -672,6 +644,8 @@ public class ParquetRewriterTest {
       new PrimitiveType(OPTIONAL, INT64, "DocId"),
       new PrimitiveType(REQUIRED, BINARY, "Name"),
       new PrimitiveType(OPTIONAL, BINARY, "Gender"),
+      new PrimitiveType(REPEATED, FLOAT, "FloatFraction"),
+      new PrimitiveType(OPTIONAL, DOUBLE, "DoubleFraction"),
       new GroupType(OPTIONAL, "Links",
         new PrimitiveType(REPEATED, BINARY, "Backward"),
         new PrimitiveType(REPEATED, BINARY, "Forward")));
@@ -711,6 +685,16 @@ public class ParquetRewriterTest {
       if (!prunePaths.contains("Gender") && !nullifiedPaths.contains("Gender")) {
         assertArrayEquals(group.getBinary("Gender", 0).getBytes(),
                 expectGroup.getBinary("Gender", 0).getBytes());
+      }
+
+      if (!prunePaths.contains("FloatFraction") && !nullifiedPaths.contains("FloatFraction")) {
+        assertEquals(group.getFloat("FloatFraction", 0),
+                expectGroup.getFloat("FloatFraction", 0), 0);
+      }
+
+      if (!prunePaths.contains("DoubleFraction") && !nullifiedPaths.contains("DoubleFraction")) {
+        assertEquals(group.getDouble("DoubleFraction", 0),
+                expectGroup.getDouble("DoubleFraction", 0), 0);
       }
 
       Group subGroup = group.getGroup("Links", 0);
@@ -948,5 +932,21 @@ public class ParquetRewriterTest {
     }
 
     return allBloomFilters;
+  }
+
+  private void validateSchema() throws IOException {
+    ParquetMetadata pmd = ParquetFileReader.readFooter(conf, new Path(outputFile), ParquetMetadataConverter.NO_FILTER);
+    MessageType schema = pmd.getFileMetaData().getSchema();
+    List<Type> fields = schema.getFields();
+    assertEquals(fields.size(), 5);
+    assertEquals(fields.get(0).getName(), "DocId");
+    assertEquals(fields.get(1).getName(), "Name");
+    assertEquals(fields.get(2).getName(), "FloatFraction");
+    assertEquals(fields.get(3).getName(), "DoubleFraction");
+    assertEquals(fields.get(4).getName(), "Links");
+    List<Type> subFields = fields.get(4).asGroupType().getFields();
+    assertEquals(subFields.size(), 2);
+    assertEquals(subFields.get(0).getName(), "Backward");
+    assertEquals(subFields.get(1).getName(), "Forward");
   }
 }

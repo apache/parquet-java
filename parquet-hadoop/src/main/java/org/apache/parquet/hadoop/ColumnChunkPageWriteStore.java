@@ -211,14 +211,7 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
       this.totalValueCount += valueCount;
       this.pageCount += 1;
 
-      // Copying the statistics if it is not initialized yet so we have the correct typed one
-      if (totalStatistics == null) {
-        totalStatistics = statistics.copy();
-      } else {
-        totalStatistics.mergeStatistics(statistics);
-      }
-
-      columnIndexBuilder.add(statistics);
+      mergeColumnStatistics(statistics);
       offsetIndexBuilder.add(toIntWithCheck(tempOutputStream.size() + compressedSize), rowCount);
 
       // by concatenating before collecting instead of collecting twice,
@@ -298,14 +291,7 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
       this.totalValueCount += valueCount;
       this.pageCount += 1;
 
-      // Copying the statistics if it is not initialized yet so we have the correct typed one
-      if (totalStatistics == null) {
-        totalStatistics = statistics.copy();
-      } else {
-        totalStatistics.mergeStatistics(statistics);
-      }
-
-      columnIndexBuilder.add(statistics);
+      mergeColumnStatistics(statistics);
       offsetIndexBuilder.add(toIntWithCheck((long) tempOutputStream.size() + compressedSize), rowCount);
 
       // by concatenating before collecting instead of collecting twice,
@@ -327,6 +313,26 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
                 size);
       }
       return (int)size;
+    }
+
+    private void mergeColumnStatistics(Statistics<?> statistics) {
+      if (totalStatistics != null && totalStatistics.isEmpty()) {
+        return;
+      }
+
+      if (statistics == null || statistics.isEmpty()) {
+        // The column index and statistics should be invalid if some page statistics are null or empty.
+        // See PARQUET-2365 for more details
+        totalStatistics = Statistics.getBuilderForReading(path.getPrimitiveType()).build();
+        columnIndexBuilder = ColumnIndexBuilder.getNoOpBuilder();
+      } else if (totalStatistics == null) {
+        // Copying the statistics if it is not initialized yet, so we have the correct typed one
+        totalStatistics = statistics.copy();
+        columnIndexBuilder.add(statistics);
+      } else {
+        totalStatistics.mergeStatistics(statistics);
+        columnIndexBuilder.add(statistics);
+      }
     }
 
     @Override
