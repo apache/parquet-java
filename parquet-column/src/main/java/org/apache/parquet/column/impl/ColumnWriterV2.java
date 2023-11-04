@@ -25,6 +25,7 @@ import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.page.PageWriter;
+import org.apache.parquet.column.statistics.SizeStatistics;
 import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.column.values.ValuesWriter;
 import org.apache.parquet.column.values.bitpacking.DevNullValuesWriter;
@@ -76,8 +77,15 @@ final class ColumnWriterV2 extends ColumnWriterBase {
   }
 
   @Override
+  @Deprecated
   void writePage(int rowCount, int valueCount, Statistics<?> statistics, ValuesWriter repetitionLevels,
-      ValuesWriter definitionLevels, ValuesWriter values) throws IOException {
+                 ValuesWriter definitionLevels, ValuesWriter values) throws IOException {
+    writePage(rowCount, valueCount, statistics, null, repetitionLevels, definitionLevels, values);
+  }
+
+  @Override
+  void writePage(int rowCount, int valueCount, Statistics<?> statistics, SizeStatistics sizeStatistics,
+                 ValuesWriter repetitionLevels, ValuesWriter definitionLevels, ValuesWriter values) throws IOException {
     // TODO: rework this API. The bytes shall be retrieved before the encoding (encoding might be different otherwise)
     BytesInput bytes = values.getBytes();
     Encoding encoding = values.getEncoding();
@@ -89,6 +97,7 @@ final class ColumnWriterV2 extends ColumnWriterBase {
         definitionLevels.getBytes(),
         encoding,
         bytes,
-        statistics);
+        statistics,
+        sizeStatistics);
   }
 }

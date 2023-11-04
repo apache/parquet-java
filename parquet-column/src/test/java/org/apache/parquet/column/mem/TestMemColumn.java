@@ -221,8 +221,9 @@ public class TestMemColumn {
     for (int i = 0; i < 123; ++i) {
       // Writing 10 values per record
       for (int j = 0; j < 10; ++j) {
-        binaryColWriter.write(Binary.fromString("aaaaaaaaaaaa"), j == 0 ? 0 : 2, 2);
-        int32ColWriter.write(42, j == 0 ? 0 : 2, 2);
+        binaryColWriter.write(Binary.fromString("aaaaaaaaaaaa"),
+          j == 0 ? 0 : binaryCol.getMaxRepetitionLevel(), binaryCol.getMaxDefinitionLevel());
+        int32ColWriter.write(42, j == 0 ? 0 : int32Col.getMaxRepetitionLevel(), int32Col.getMaxDefinitionLevel());
       }
       writeStore.endRecord();
     }

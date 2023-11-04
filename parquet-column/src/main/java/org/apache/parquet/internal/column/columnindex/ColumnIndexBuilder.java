@@ -31,6 +31,7 @@ import java.util.function.IntConsumer;
 import java.util.function.IntPredicate;
 
 import org.apache.parquet.column.MinMax;
+import org.apache.parquet.column.statistics.SizeStatistics;
 import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.filter2.predicate.Operators.And;
 import org.apache.parquet.filter2.predicate.Operators.Eq;
@@ -104,6 +105,10 @@ public abstract class ColumnIndexBuilder {
     private int[] pageIndexes;
     // might be null
     private long[] nullCounts;
+    // might be null
+    private long[] repLevelHistogram;
+    // might be null
+    private long[] defLevelHistogram;
 
     static String truncate(String str) {
       if (str.length() <= MAX_VALUE_LENGTH_FOR_TOSTRING) {
@@ -162,6 +167,22 @@ public abstract class ColumnIndexBuilder {
         }
       }
       return list;
+    }
+
+    @Override
+    public List<Long> getRepetitionLevelHistogram() {
+      if (repLevelHistogram == null) {
+        return LongList.of();
+      }
+      return LongLists.unmodifiable(LongArrayList.wrap(repLevelHistogram));
+    }
+
+    @Override
+    public List<Long> getDefinitionLevelHistogram() {
+      if (defLevelHistogram == null) {
+        return LongList.of();
+      }
+      return LongLists.unmodifiable(LongArrayList.wrap(defLevelHistogram));
     }
 
     @Override
@@ -419,6 +440,10 @@ public abstract class ColumnIndexBuilder {
     }
 
     @Override
+    public void add(Statistics<?> stats, SizeStatistics sizeStats) {
+    }
+
+    @Override
     void addMinMax(Object min, Object max) {
     }
 
@@ -457,6 +482,8 @@ public abstract class ColumnIndexBuilder {
   private long minMaxSize;
   private final IntList pageIndexes = new IntArrayList();
   private int nextPageIndex;
+  private LongList repLevelHistogram = new LongArrayList();
+  private LongList defLevelHistogram = new LongArrayList();
 
   /**
    * @return a no-op builder that does not collect statistics objects and therefore returns {@code null} at
@@ -516,6 +543,7 @@ public abstract class ColumnIndexBuilder {
    *          the max values for each page
    * @return the newly created {@link ColumnIndex} object based on the specified arguments
    */
+  @Deprecated
   public static ColumnIndex build(
       PrimitiveType type,
       BoundaryOrder boundaryOrder,
@@ -523,10 +551,42 @@ public abstract class ColumnIndexBuilder {
       List<Long> nullCounts,
       List<ByteBuffer> minValues,
       List<ByteBuffer> maxValues) {
+    return build(type, boundaryOrder, nullPages, nullCounts, minValues, maxValues, null, null);
+  }
+
+  /**
+   * @param type
+   *          the primitive type
+   * @param boundaryOrder
+   *          the boundary order of the min/max values
+   * @param nullPages
+   *          the null pages (one boolean value for each page that signifies whether the page consists of nulls
+   *          entirely)
+   * @param nullCounts
+   *          the number of null values for each page
+   * @param minValues
+   *          the min values for each page
+   * @param maxValues
+   *          the max values for each page
+   * @param repLevelHistogram
+   *          the repetition level histogram for all levels of each page
+   * @param defLevelHistogram
+   *          the definition level histogram for all levels of each page
+   * @return the newly created {@link ColumnIndex} object based on the specified arguments
+   */
+  public static ColumnIndex build(
+      PrimitiveType type,
+      BoundaryOrder boundaryOrder,
+      List<Boolean> nullPages,
+      List<Long> nullCounts,
+      List<ByteBuffer> minValues,
+      List<ByteBuffer> maxValues,
+      List<Long> repLevelHistogram,
+      List<Long> defLevelHistogram) {
 
     ColumnIndexBuilder builder = createNewBuilder(type, Integer.MAX_VALUE);
 
-    builder.fill(nullPages, nullCounts, minValues, maxValues);
+    builder.fill(nullPages, nullCounts, minValues, maxValues, repLevelHistogram, defLevelHistogram);
     ColumnIndexBase<?> columnIndex = builder.build(type);
     columnIndex.boundaryOrder = requireNonNull(boundaryOrder);
     return columnIndex;
@@ -542,7 +602,20 @@ public abstract class ColumnIndexBuilder {
    * @param stats
    *          the statistics to be added
    */
+  @Deprecated
   public void add(Statistics<?> stats) {
+    add(stats, null);
+  }
+
+  /**
+   * Adds the data from the specified statistics to this builder
+   *
+   * @param stats
+   *          the statistics to be added
+   * @param sizeStats
+   *          the size statistics to be added
+   */
+  public void add(Statistics<?> stats, SizeStatistics sizeStats) {
     if (stats.hasNonNullValue()) {
       nullPages.add(false);
       Object min = stats.genericGetMin();
@@ -555,6 +628,16 @@ public abstract class ColumnIndexBuilder {
       nullPages.add(true);
     }
     nullCounts.add(stats.getNumNulls());
+
+    // Collect repetition and definition level histograms only when all pages are valid.
+    if (sizeStats != null && sizeStats.isValid() && repLevelHistogram != null && defLevelHistogram != null) {
+      repLevelHistogram.addAll(sizeStats.getRepetitionLevelHistogram());
+      defLevelHistogram.addAll(sizeStats.getDefinitionLevelHistogram());
+    } else {
+      repLevelHistogram = null;
+      defLevelHistogram = null;
+    }
+
     ++nextPageIndex;
   }
 
@@ -563,7 +646,7 @@ public abstract class ColumnIndexBuilder {
   abstract void addMinMax(Object min, Object max);
 
   private void fill(List<Boolean> nullPages, List<Long> nullCounts, List<ByteBuffer> minValues,
-      List<ByteBuffer> maxValues) {
+      List<ByteBuffer> maxValues, List<Long> repLevelHistogram, List<Long> defLevelHistogram) {
     clear();
     int pageCount = nullPages.size();
     if ((nullCounts != null && nullCounts.size() != pageCount) || minValues.size() != pageCount
@@ -571,6 +654,18 @@ public abstract class ColumnIndexBuilder {
       throw new IllegalArgumentException(
           String.format("Not all sizes are equal (nullPages:%d, nullCounts:%s, minValues:%d, maxValues:%d",
               nullPages.size(), nullCounts == null ? "null" : nullCounts.size(), minValues.size(), maxValues.size()));
+    }
+    if (repLevelHistogram != null && repLevelHistogram.size() % pageCount != 0) {
+      ///FIXME: it is unfortunate that we don't know the max repetition level here.
+      throw new IllegalArgumentException(
+          String.format("Size of repLevelHistogram:%d is not a multiply of pageCount:%d, ", repLevelHistogram.size(),
+              pageCount));
+    }
+    if (defLevelHistogram != null && defLevelHistogram.size() % pageCount != 0) {
+      ///FIXME: it is unfortunate that we don't know the max definition level here.
+      throw new IllegalArgumentException(
+          String.format("Size of defLevelHistogram:%d is not a multiply of pageCount:%d, ", defLevelHistogram.size(),
+              pageCount));
     }
     this.nullPages.addAll(nullPages);
     // Nullcounts is optional in the format
@@ -587,6 +682,14 @@ public abstract class ColumnIndexBuilder {
         minMaxSize += min.remaining();
         minMaxSize += max.remaining();
       }
+    }
+
+    // Repetition and definition level histograms are optional in the format
+    if (repLevelHistogram != null) {
+      this.repLevelHistogram.addAll(repLevelHistogram);
+    }
+    if (defLevelHistogram != null) {
+      this.defLevelHistogram.addAll(defLevelHistogram);
     }
   }
 
@@ -617,6 +720,13 @@ public abstract class ColumnIndexBuilder {
       columnIndex.nullCounts = nullCounts.toLongArray();
     }
     columnIndex.pageIndexes = pageIndexes.toIntArray();
+    // Repetition and definition level histograms are optional so keep them null if the builder has no values
+    if (repLevelHistogram != null && !repLevelHistogram.isEmpty()) {
+      columnIndex.repLevelHistogram = repLevelHistogram.toLongArray();
+    }
+    if (defLevelHistogram != null && !defLevelHistogram.isEmpty()) {
+      columnIndex.defLevelHistogram = defLevelHistogram.toLongArray();
+    }
 
     return columnIndex;
   }
@@ -662,6 +772,8 @@ public abstract class ColumnIndexBuilder {
     minMaxSize = 0;
     nextPageIndex = 0;
     pageIndexes.clear();
+    repLevelHistogram.clear();
+    defLevelHistogram.clear();
   }
 
   abstract void clearMinMax();

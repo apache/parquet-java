@@ -19,6 +19,7 @@
 package org.apache.parquet.internal.column.columnindex;
 
 import java.util.Formatter;
+import java.util.Optional;
 
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntList;
@@ -34,6 +35,7 @@ public class OffsetIndexBuilder {
     private long[] offsets;
     private int[] compressedPageSizes;
     private long[] firstRowIndexes;
+    private long[] unencodedByteArrayDataBytes;
 
     @Override
     public String toString() {
@@ -70,6 +72,14 @@ public class OffsetIndexBuilder {
     public int getPageOrdinal(int pageIndex) {
       return pageIndex;
     }
+
+    @Override
+    public Optional<Long> getUnencodedByteArrayDataBytes(int pageIndex) {
+      if (unencodedByteArrayDataBytes == null || unencodedByteArrayDataBytes.length == 0) {
+        return Optional.empty();
+      }
+      return Optional.of(unencodedByteArrayDataBytes[pageIndex]);
+    }
   }
 
   private static final OffsetIndexBuilder NO_OP_BUILDER = new OffsetIndexBuilder() {
@@ -85,6 +95,7 @@ public class OffsetIndexBuilder {
   private final LongList offsets = new LongArrayList();
   private final IntList compressedPageSizes = new IntArrayList();
   private final LongList firstRowIndexes = new LongArrayList();
+  private final LongList unencodedDataBytes = new LongArrayList();
   private long previousOffset;
   private int previousPageSize;
   private long previousRowIndex;
@@ -116,10 +127,27 @@ public class OffsetIndexBuilder {
    * @param rowCount
    *          the number of rows in the page
    */
+  @Deprecated
   public void add(int compressedPageSize, long rowCount) {
-    add(previousOffset + previousPageSize, compressedPageSize, previousRowIndex + previousRowCount);
+    add(compressedPageSize, rowCount, Optional.empty());
+  }
+
+  /**
+   * Adds the specified parameters to this builder. Used by the writers to building up {@link OffsetIndex} objects to be
+   * written to the Parquet file.
+   *
+   * @param compressedPageSize
+   *          the size of the page (including header)
+   * @param rowCount
+   *          the number of rows in the page
+   * @param unencodedDataBytes
+   *          the number of bytes of unencoded data of BYTE_ARRAY type
+   */
+  public void add(int compressedPageSize, long rowCount, Optional<Long> unencodedDataBytes) {
+    add(previousOffset + previousPageSize, compressedPageSize, previousRowIndex + previousRowCount, unencodedDataBytes);
     previousRowCount = rowCount;
   }
+
 
   /**
    * Adds the specified parameters to this builder. Used by the metadata converter to building up {@link OffsetIndex}
@@ -132,13 +160,34 @@ public class OffsetIndexBuilder {
    * @param firstRowIndex
    *          the index of the first row in the page (within the row group)
    */
+  @Deprecated
   public void add(long offset, int compressedPageSize, long firstRowIndex) {
+    add(offset, compressedPageSize, firstRowIndex, Optional.empty());
+  }
+
+  /**
+   * Adds the specified parameters to this builder. Used by the metadata converter to building up {@link OffsetIndex}
+   * objects read from the Parquet file.
+   *
+   * @param offset
+   *          the offset of the page in the file
+   * @param compressedPageSize
+   *          the size of the page (including header)
+   * @param firstRowIndex
+   *          the index of the first row in the page (within the row group)
+   * @param unencodedDataBytes
+   *          the number of bytes of unencoded data of BYTE_ARRAY type
+   */
+  public void add(long offset, int compressedPageSize, long firstRowIndex, Optional<Long> unencodedDataBytes) {
     previousOffset = offset;
     offsets.add(offset);
     previousPageSize = compressedPageSize;
     compressedPageSizes.add(compressedPageSize);
     previousRowIndex = firstRowIndex;
     firstRowIndexes.add(firstRowIndex);
+    if (unencodedDataBytes.isPresent()) {
+      this.unencodedDataBytes.add(unencodedDataBytes.get());
+    }
   }
 
   /**
@@ -157,6 +206,9 @@ public class OffsetIndexBuilder {
     this.offsets.addAll(new LongArrayList(offsetIndexImpl.offsets));
     this.compressedPageSizes.addAll(new IntArrayList(offsetIndexImpl.compressedPageSizes));
     this.firstRowIndexes.addAll(new LongArrayList(offsetIndexImpl.firstRowIndexes));
+    if (offsetIndexImpl.unencodedByteArrayDataBytes != null) {
+      this.unencodedDataBytes.addAll(new LongArrayList(offsetIndexImpl.unencodedByteArrayDataBytes));
+    }
     this.previousOffset = 0;
     this.previousPageSize = 0;
     this.previousRowIndex = 0;
@@ -187,6 +239,12 @@ public class OffsetIndexBuilder {
     offsetIndex.offsets = offsets;
     offsetIndex.compressedPageSizes = compressedPageSizes.toIntArray();
     offsetIndex.firstRowIndexes = firstRowIndexes.toLongArray();
+    if (!unencodedDataBytes.isEmpty()) {
+      if (unencodedDataBytes.size() != this.offsets.size()) {
+        throw new IllegalStateException("unencodedDataBytes does not have the same size as offsets");
+      }
+      offsetIndex.unencodedByteArrayDataBytes = unencodedDataBytes.toLongArray();
+    }
 
     return offsetIndex;
   }

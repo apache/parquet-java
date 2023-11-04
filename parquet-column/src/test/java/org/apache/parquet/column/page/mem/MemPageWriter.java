@@ -25,6 +25,7 @@ import org.apache.parquet.column.page.DataPageV1;
 import org.apache.parquet.column.page.DataPageV2;
 import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.page.PageWriter;
+import org.apache.parquet.column.statistics.SizeStatistics;
 import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.io.ParquetEncodingException;
 import org.slf4j.Logger;
@@ -63,6 +64,13 @@ public class MemPageWriter implements PageWriter {
   }
 
   @Override
+  public void writePage(BytesInput bytesInput, int valueCount, int rowCount, Statistics<?> statistics,
+                        SizeStatistics sizeStatistics, Encoding rlEncoding, Encoding dlEncoding,
+                        Encoding valuesEncoding) throws IOException {
+    writePage(bytesInput, valueCount, statistics, rlEncoding, dlEncoding, valuesEncoding);
+  }
+
+  @Override
   public void writePageV2(int rowCount, int nullCount, int valueCount,
       BytesInput repetitionLevels, BytesInput definitionLevels,
       Encoding dataEncoding, BytesInput data, Statistics<?> statistics) throws IOException {
@@ -74,6 +82,13 @@ public class MemPageWriter implements PageWriter {
     pages.add(DataPageV2.uncompressed(rowCount, nullCount, valueCount, copy(repetitionLevels), copy(definitionLevels), dataEncoding, copy(data), statistics));
     totalValueCount += valueCount;
     LOG.debug("page written for {} bytes and {} records", size, valueCount);
+  }
+
+  @Override
+  public void writePageV2(int rowCount, int nullCount, int valueCount, BytesInput repetitionLevels,
+                          BytesInput definitionLevels, Encoding dataEncoding, BytesInput data,
+                          Statistics<?> statistics, SizeStatistics sizeStatistics) throws IOException {
+    writePageV2(rowCount, nullCount, valueCount, repetitionLevels, definitionLevels, dataEncoding, data, statistics);
   }
 
   @Override
