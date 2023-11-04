@@ -32,6 +32,7 @@ import static org.apache.parquet.hadoop.ParquetFileWriter.MAGIC;
 import static org.apache.parquet.hadoop.ParquetFileWriter.PARQUET_COMMON_METADATA_FILE;
 import static org.apache.parquet.hadoop.ParquetFileWriter.PARQUET_METADATA_FILE;
 
+import java.io.ByteArrayInputStream;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
@@ -1442,11 +1443,24 @@ public class ParquetFileReader implements Closeable {
       }
     }
 
-    // Read Bloom filter data header.
+    // Seek to Bloom filter offset.
     f.seek(bloomFilterOffset);
+
+    // Read Bloom filter length.
+    int bloomFilterLength = meta.getBloomFilterLength();
+
+    // If it is set, read Bloom filter header and bitset together.
+    // Otherwise, read Bloom filter header first and then bitset.
+    InputStream in = f;
+    if (bloomFilterLength > 0) {
+      byte[] headerAndBitSet = new byte[bloomFilterLength];
+      f.readFully(headerAndBitSet);
+      in = new ByteArrayInputStream(headerAndBitSet);
+    }
+
     BloomFilterHeader bloomFilterHeader;
     try {
-      bloomFilterHeader = Util.readBloomFilterHeader(f, bloomFilterDecryptor, bloomFilterHeaderAAD);
+      bloomFilterHeader = Util.readBloomFilterHeader(in, bloomFilterDecryptor, bloomFilterHeaderAAD);
     } catch (IOException e) {
       LOG.warn("read no bloom filter");
       return null;
@@ -1472,9 +1486,9 @@ public class ParquetFileReader implements Closeable {
     byte[] bitset;
     if (null == bloomFilterDecryptor) {
       bitset = new byte[numBytes];
-      f.readFully(bitset);
+      in.read(bitset);
     } else {
-      bitset = bloomFilterDecryptor.decrypt(f, bloomFilterBitsetAAD);
+      bitset = bloomFilterDecryptor.decrypt(in, bloomFilterBitsetAAD);
       if (bitset.length != numBytes) {
         throw new ParquetCryptoRuntimeException("Wrong length of decrypted bloom filter bitset");
       }

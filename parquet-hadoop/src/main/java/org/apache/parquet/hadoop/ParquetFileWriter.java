@@ -1620,6 +1620,9 @@ public class ParquetFileWriter {
           serializedBitset = bloomFilterEncryptor.encrypt(serializedBitset, bloomFilterBitsetAAD);
         }
         out.write(serializedBitset);
+
+        int length = (int) (out.getPos() - offset);
+        column.setBloomFilterLength(length);
       }
     }
   }
