@@ -26,6 +26,7 @@ import org.apache.parquet.column.ColumnWriter;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.page.PageWriter;
+import org.apache.parquet.column.statistics.SizeStatistics;
 import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.column.values.ValuesWriter;
 import org.apache.parquet.column.values.bloomfilter.AdaptiveBlockSplitBloomFilter;
@@ -55,6 +56,7 @@ abstract class ColumnWriterBase implements ColumnWriter {
   private int valueCount;
 
   private Statistics<?> statistics;
+  private SizeStatistics.Builder sizeStatisticsBuilder;
   private long rowsWrittenSoFar = 0;
   private int pageRowCount;
 
@@ -112,6 +114,8 @@ abstract class ColumnWriterBase implements ColumnWriter {
 
   private void resetStatistics() {
     this.statistics = Statistics.createStats(path.getPrimitiveType());
+    this.sizeStatisticsBuilder = new SizeStatistics.Builder(
+        path.getPrimitiveType(), path.getMaxRepetitionLevel(), path.getMaxDefinitionLevel());
   }
 
   private void definitionLevel(int definitionLevel) {
@@ -138,6 +142,7 @@ abstract class ColumnWriterBase implements ColumnWriter {
     repetitionLevel(repetitionLevel);
     definitionLevel(definitionLevel);
     statistics.incrementNumNulls();
+    sizeStatisticsBuilder.add(repetitionLevel, definitionLevel);
     ++valueCount;
   }
 
@@ -201,6 +206,7 @@ abstract class ColumnWriterBase implements ColumnWriter {
     definitionLevel(definitionLevel);
     dataColumn.writeDouble(value);
     statistics.updateStats(value);
+    sizeStatisticsBuilder.add(repetitionLevel, definitionLevel);
     updateBloomFilter(value);
     ++valueCount;
   }
@@ -219,6 +225,7 @@ abstract class ColumnWriterBase implements ColumnWriter {
     definitionLevel(definitionLevel);
     dataColumn.writeFloat(value);
     statistics.updateStats(value);
+    sizeStatisticsBuilder.add(repetitionLevel, definitionLevel);
     updateBloomFilter(value);
     ++valueCount;
   }
@@ -237,6 +244,7 @@ abstract class ColumnWriterBase implements ColumnWriter {
     definitionLevel(definitionLevel);
     dataColumn.writeBytes(value);
     statistics.updateStats(value);
+    sizeStatisticsBuilder.add(repetitionLevel, definitionLevel, value);
     updateBloomFilter(value);
     ++valueCount;
   }
@@ -255,6 +263,7 @@ abstract class ColumnWriterBase implements ColumnWriter {
     definitionLevel(definitionLevel);
     dataColumn.writeBoolean(value);
     statistics.updateStats(value);
+    sizeStatisticsBuilder.add(repetitionLevel, definitionLevel);
     ++valueCount;
   }
 
@@ -272,6 +281,7 @@ abstract class ColumnWriterBase implements ColumnWriter {
     definitionLevel(definitionLevel);
     dataColumn.writeInteger(value);
     statistics.updateStats(value);
+    sizeStatisticsBuilder.add(repetitionLevel, definitionLevel);
     updateBloomFilter(value);
     ++valueCount;
   }
@@ -290,6 +300,7 @@ abstract class ColumnWriterBase implements ColumnWriter {
     definitionLevel(definitionLevel);
     dataColumn.writeLong(value);
     statistics.updateStats(value);
+    sizeStatisticsBuilder.add(repetitionLevel, definitionLevel);
     updateBloomFilter(value);
     ++valueCount;
   }
@@ -389,7 +400,15 @@ abstract class ColumnWriterBase implements ColumnWriter {
     this.rowsWrittenSoFar += pageRowCount;
     if (DEBUG) LOG.debug("write page");
     try {
-      writePage(pageRowCount, valueCount, statistics, repetitionLevelColumn, definitionLevelColumn, dataColumn);
+      SizeStatistics sizeStatistics = sizeStatisticsBuilder.build();
+      writePage(
+          pageRowCount,
+          valueCount,
+          statistics,
+          sizeStatistics,
+          repetitionLevelColumn,
+          definitionLevelColumn,
+          dataColumn);
     } catch (IOException e) {
       throw new ParquetEncodingException("could not write page for " + path, e);
     }
@@ -405,6 +424,16 @@ abstract class ColumnWriterBase implements ColumnWriter {
       int rowCount,
       int valueCount,
       Statistics<?> statistics,
+      ValuesWriter repetitionLevels,
+      ValuesWriter definitionLevels,
+      ValuesWriter values)
+      throws IOException;
+
+  abstract void writePage(
+      int rowCount,
+      int valueCount,
+      Statistics<?> statistics,
+      SizeStatistics sizeStatistics,
       ValuesWriter repetitionLevels,
       ValuesWriter definitionLevels,
       ValuesWriter values)

@@ -55,4 +55,16 @@ public interface ColumnIndex extends Visitor<PrimitiveIterator.OfInt> {
    * @return the list of the max values as {@link ByteBuffer}s; used for converting to the related thrift object
    */
   public List<ByteBuffer> getMaxValues();
+
+  /**
+   * @return the unmodifiable list of the repetition level histograms for each page concatenated together; used for
+   * converting to the related thrift object
+   */
+  public List<Long> getRepetitionLevelHistogram();
+
+  /**
+   * @return the unmodifiable list of the definition level histograms for each page concatenated together; used for
+   * converting to the related thrift object
+   */
+  public List<Long> getDefinitionLevelHistogram();
 }
