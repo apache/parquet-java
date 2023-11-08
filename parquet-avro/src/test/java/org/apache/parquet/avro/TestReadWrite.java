@@ -54,6 +54,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.conf.HadoopParquetConfiguration;
 import org.apache.parquet.conf.ParquetConfiguration;
+import org.apache.parquet.conf.PlainParquetConfiguration;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.api.WriteSupport;
@@ -79,31 +80,39 @@ public class TestReadWrite {
   @Parameterized.Parameters
   public static Collection<Object[]> data() {
     Object[][] data = new Object[][] {
-        { false, false, false },  // use the new converters with hadoop config
-        { true, false, false },   // use the old converters with hadoop config
-        { false, true, false },   // use a local disk location with hadoop config
-        { false, false, true },   // use the new converters with parquet config interface
-        { true, false, true },    // use the old converters with parquet config interface
-        { false, true, true } };  // use a local disk location with parquet config interface
+        { true, false, false, false },   // use the old converters with hadoop config
+        { true, false, true, false },    // use the old converters with parquet config interface
+        { false, false, false, false },  // use the new converters with hadoop config
+        { false, true, false, false },   // use a local disk location with hadoop config
+        { false, false, true, false },   // use the new converters with parquet config interface
+        { false, true, true, false },    // use a local disk location with parquet config interface
+        { false, false, true, true },    // use the new converters with plain parquet config
+        { false, true, true, true } };   // use a local disk location with plain parquet config
     return Arrays.asList(data);
   }
 
   private final boolean compat;
   private final boolean local;
   private final boolean confInterface;
+  private final boolean plainConf;
   private final Configuration testConf = new Configuration();
-  private final ParquetConfiguration parquetConf = new HadoopParquetConfiguration(true);
+  private final ParquetConfiguration hadoopConfWithInterface = new HadoopParquetConfiguration();
+  private final ParquetConfiguration plainParquetConf = new PlainParquetConfiguration();
 
-  public TestReadWrite(boolean compat, boolean local, boolean confInterface) {
+  public TestReadWrite(boolean compat, boolean local, boolean confInterface, boolean plainConf) {
     this.compat = compat;
     this.local = local;
     this.confInterface = confInterface;
+    this.plainConf = plainConf;
     this.testConf.setBoolean(AvroReadSupport.AVRO_COMPATIBILITY, compat);
     this.testConf.setBoolean("parquet.avro.add-list-element-records", false);
     this.testConf.setBoolean("parquet.avro.write-old-list-structure", false);
-    this.parquetConf.setBoolean(AvroReadSupport.AVRO_COMPATIBILITY, compat);
-    this.parquetConf.setBoolean("parquet.avro.add-list-element-records", false);
-    this.parquetConf.setBoolean("parquet.avro.write-old-list-structure", false);
+    this.hadoopConfWithInterface.setBoolean(AvroReadSupport.AVRO_COMPATIBILITY, compat);
+    this.hadoopConfWithInterface.setBoolean("parquet.avro.add-list-element-records", false);
+    this.hadoopConfWithInterface.setBoolean("parquet.avro.write-old-list-structure", false);
+    this.plainParquetConf.setBoolean(AvroReadSupport.AVRO_COMPATIBILITY, compat);
+    this.plainParquetConf.setBoolean("parquet.avro.add-list-element-records", false);
+    this.plainParquetConf.setBoolean("parquet.avro.write-old-list-structure", false);
   }
 
   @Test
@@ -891,9 +900,15 @@ public class TestReadWrite {
         .withSchema(schema);
     }
     if (confInterface) {
-      return writerBuilder
-        .withConf(parquetConf)
-        .build();
+      if (plainConf) {
+        return writerBuilder
+          .withConf(hadoopConfWithInterface)
+          .build();
+      } else {
+        return writerBuilder
+          .withConf(plainParquetConf)
+          .build();
+      }
     } else {
       return writerBuilder
         .withConf(testConf)
@@ -911,9 +926,15 @@ public class TestReadWrite {
       return new AvroParquetReader<>(testConf, new Path(file));
     }
     if (confInterface) {
-      return readerBuilder
-        .withConf(parquetConf)
-        .build();
+      if (plainConf) {
+        return readerBuilder
+          .withConf(hadoopConfWithInterface)
+          .build();
+      } else {
+        return readerBuilder
+          .withConf(plainParquetConf)
+          .build();
+      }
     } else {
       return readerBuilder
         .withConf(testConf)
