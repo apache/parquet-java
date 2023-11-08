@@ -94,7 +94,6 @@
     <powermock.version>2.0.9</powermock.version>
     <net.openhft.version>0.16</net.openhft.version>
     <exec-maven-plugin.version>1.6.0</exec-maven-plugin.version>
-    <yetus.audience-annotations.version>0.13.0</yetus.audience-annotations.version>
 
     <!-- parquet-cli dependencies -->
     <opencsv.version>2.3</opencsv.version>

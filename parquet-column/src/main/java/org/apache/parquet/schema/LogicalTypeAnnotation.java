@@ -19,7 +19,6 @@
 package org.apache.parquet.schema;
 
 import org.apache.parquet.Preconditions;
-import org.apache.yetus.audience.InterfaceAudience;
 
 import java.util.Collections;
 import java.util.HashSet;
@@ -150,9 +149,10 @@ public abstract class LogicalTypeAnnotation {
    * Convert this logical type to old logical type representation in parquet-mr (if there's any).
    * Those logical type implementations, which don't have a corresponding mapping should return null.
    *
+   * API should be considered private
+   *
    * @return the OriginalType representation of the new logical type, or null if there's none
    */
-  @InterfaceAudience.Private
   public abstract OriginalType toOriginalType();
 
   /**
@@ -186,8 +186,9 @@ public abstract class LogicalTypeAnnotation {
 
   /**
    * Helper method to convert the old representation of logical types (OriginalType) to new logical type.
+   *
+   * API should be considered private
    */
-  @InterfaceAudience.Private
   public static LogicalTypeAnnotation fromOriginalType(OriginalType originalType, DecimalMetadata decimalMetadata) {
     if (originalType == null) {
       return null;
@@ -302,8 +303,12 @@ public abstract class LogicalTypeAnnotation {
     private StringLogicalTypeAnnotation() {
     }
 
+    /**
+     * API Should be considered private
+     *
+     * @return the original type
+     */
     @Override
-    @InterfaceAudience.Private
     public OriginalType toOriginalType() {
       return OriginalType.UTF8;
     }
@@ -341,8 +346,12 @@ public abstract class LogicalTypeAnnotation {
     private MapLogicalTypeAnnotation() {
     }
 
+    /**
+     * API Should be considered private
+     *
+     * @return the original type
+     */
     @Override
-    @InterfaceAudience.Private
     public OriginalType toOriginalType() {
       return OriginalType.MAP;
     }
@@ -375,8 +384,12 @@ public abstract class LogicalTypeAnnotation {
     private ListLogicalTypeAnnotation() {
     }
 
+    /**
+     * API Should be considered private
+     *
+     * @return the original type
+     */
     @Override
-    @InterfaceAudience.Private
     public OriginalType toOriginalType() {
       return OriginalType.LIST;
     }
@@ -409,8 +422,12 @@ public abstract class LogicalTypeAnnotation {
     private EnumLogicalTypeAnnotation() {
     }
 
+    /**
+     * API Should be considered private
+     *
+     * @return the original type
+     */
     @Override
-    @InterfaceAudience.Private
     public OriginalType toOriginalType() {
       return OriginalType.ENUM;
     }
@@ -461,8 +478,12 @@ public abstract class LogicalTypeAnnotation {
       return scale;
     }
 
+    /**
+     * API Should be considered private
+     *
+     * @return the original type
+     */
     @Override
-    @InterfaceAudience.Private
     public OriginalType toOriginalType() {
       return OriginalType.DECIMAL;
     }
@@ -514,8 +535,12 @@ public abstract class LogicalTypeAnnotation {
     private DateLogicalTypeAnnotation() {
     }
 
+    /**
+     * API Should be considered private
+     *
+     * @return the original type
+     */
     @Override
-    @InterfaceAudience.Private
     public OriginalType toOriginalType() {
       return OriginalType.DATE;
     }
@@ -562,8 +587,12 @@ public abstract class LogicalTypeAnnotation {
       this.unit = unit;
     }
 
+    /**
+     * API Should be considered private
+     *
+     * @return the original type
+     */
     @Override
-    @InterfaceAudience.Private
     public OriginalType toOriginalType() {
       switch (unit) {
         case MILLIS:
@@ -641,8 +670,12 @@ public abstract class LogicalTypeAnnotation {
       this.unit = unit;
     }
 
+    /**
+     * API Should be considered private
+     *
+     * @return the original type
+     */
     @Override
-    @InterfaceAudience.Private
     public OriginalType toOriginalType() {
       switch (unit) {
         case MILLIS:
@@ -727,8 +760,12 @@ public abstract class LogicalTypeAnnotation {
       this.isSigned = isSigned;
     }
 
+    /**
+     * API Should be considered private
+     *
+     * @return the original type
+     */
     @Override
-    @InterfaceAudience.Private
     public OriginalType toOriginalType() {
       switch (bitWidth) {
         case 8:
@@ -799,8 +836,12 @@ public abstract class LogicalTypeAnnotation {
     private JsonLogicalTypeAnnotation() {
     }
 
+    /**
+     * API Should be considered private
+     *
+     * @return the original type
+     */
     @Override
-    @InterfaceAudience.Private
     public OriginalType toOriginalType() {
       return OriginalType.JSON;
     }
@@ -838,8 +879,12 @@ public abstract class LogicalTypeAnnotation {
     private BsonLogicalTypeAnnotation() {
     }
 
+    /**
+     * API Should be considered private
+     *
+     * @return the original type
+     */
     @Override
-    @InterfaceAudience.Private
     public OriginalType toOriginalType() {
       return OriginalType.BSON;
     }
@@ -878,8 +923,12 @@ public abstract class LogicalTypeAnnotation {
     private UUIDLogicalTypeAnnotation() {
     }
 
+    /**
+     * API Should be considered private
+     *
+     * @return the original type
+     */
     @Override
-    @InterfaceAudience.Private
     public OriginalType toOriginalType() {
       // No OriginalType for UUID
       return null;
@@ -914,8 +963,12 @@ public abstract class LogicalTypeAnnotation {
     private IntervalLogicalTypeAnnotation() {
     }
 
+    /**
+     * API Should be considered private
+     *
+     * @return the original type
+     */
     @Override
-    @InterfaceAudience.Private
     public OriginalType toOriginalType() {
       return OriginalType.INTERVAL;
     }
@@ -965,8 +1018,12 @@ public abstract class LogicalTypeAnnotation {
     private MapKeyValueTypeAnnotation() {
     }
 
+    /**
+     * API Should be considered private
+     *
+     * @return the original type
+     */
     @Override
-    @InterfaceAudience.Private
     public OriginalType toOriginalType() {
       return OriginalType.MAP_KEY_VALUE;
     }

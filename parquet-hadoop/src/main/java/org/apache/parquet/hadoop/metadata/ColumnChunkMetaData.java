@@ -41,7 +41,6 @@ import org.apache.parquet.internal.hadoop.metadata.IndexReference;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Types;
-import org.apache.yetus.audience.InterfaceAudience.Private;
 
 /**
  * Column meta data for a block stored in the file footer and passed in the InputSplit
@@ -288,54 +287,57 @@ abstract public class ColumnChunkMetaData {
   abstract public Statistics getStatistics();
 
   /**
+   * Method should be considered private
+   *
    * @return the reference to the column index
    */
-  @Private
   public IndexReference getColumnIndexReference() {
     decryptIfNeeded();
     return columnIndexReference;
   }
 
   /**
-   * @param indexReference
-   *          the reference to the column index
+   * Method should be considered private
+   *
+   * @param indexReference the reference to the column index
    */
-  @Private
   public void setColumnIndexReference(IndexReference indexReference) {
     this.columnIndexReference = indexReference;
   }
 
   /**
+   * Method should be considered private
+   *
    * @return the reference to the offset index
    */
-  @Private
   public IndexReference getOffsetIndexReference() {
     decryptIfNeeded();
     return offsetIndexReference;
   }
 
   /**
-   * @param offsetIndexReference
-   *          the reference to the offset index
+   * Method should be considered private
+   *
+   * @param offsetIndexReference the reference to the offset index
    */
-  @Private
   public void setOffsetIndexReference(IndexReference offsetIndexReference) {
     this.offsetIndexReference = offsetIndexReference;
   }
 
   /**
-   * @param bloomFilterOffset
-   *          the reference to the Bloom filter
+   * Method should be considered private
+   *
+   * @param bloomFilterOffset the reference to the Bloom filter
    */
-  @Private
   public void setBloomFilterOffset(long bloomFilterOffset) {
     this.bloomFilterOffset = bloomFilterOffset;
   }
 
   /**
+   * Method should be considered private
+   *
    * @return the offset to the Bloom filter or {@code -1} if there is no bloom filter for this column chunk
    */
-  @Private
   public long getBloomFilterOffset() {
     decryptIfNeeded();
     return bloomFilterOffset;
@@ -372,9 +374,10 @@ abstract public class ColumnChunkMetaData {
   }
 
   /**
+   * Method should be considered private
+   * 
    * @return whether or not this column is encrypted
    */
-  @Private
   public boolean isEncrypted() {
     return false;
   }
