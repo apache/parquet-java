@@ -59,6 +59,7 @@ import org.apache.arrow.vector.types.TimeUnit;
 import org.apache.arrow.vector.types.UnionMode;
 import org.apache.arrow.vector.types.pojo.ArrowType;
 import org.apache.arrow.vector.types.pojo.Field;
+import org.apache.arrow.vector.types.pojo.FieldType;
 import org.apache.arrow.vector.types.pojo.Schema;
 import org.apache.parquet.arrow.schema.SchemaMapping.ListTypeMapping;
 import org.apache.parquet.arrow.schema.SchemaMapping.PrimitiveTypeMapping;
@@ -68,7 +69,7 @@ import org.apache.parquet.arrow.schema.SchemaMapping.TypeMapping;
 import org.apache.parquet.arrow.schema.SchemaMapping.TypeMappingVisitor;
 import org.apache.parquet.arrow.schema.SchemaMapping.UnionTypeMapping;
 import org.apache.parquet.example.Paper;
-import org.apache.parquet.schema.LogicalTypeAnnotation;
+import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Types;
 import org.junit.Assert;
@@ -80,7 +81,11 @@ import org.junit.Test;
 public class TestSchemaConverter {
 
   private static Field field(String name, boolean nullable, ArrowType type, Field... children) {
-    return new Field(name, nullable, type, asList(children));
+    if (nullable) {
+      return new Field(name, FieldType.nullable(type), asList(children));
+    } else {
+      return new Field(name, FieldType.notNullable(type), asList(children));
+    }
   }
 
   private static Field field(String name, ArrowType type, Field... children) {
@@ -100,8 +105,10 @@ public class TestSchemaConverter {
     field("j", new ArrowType.Timestamp(TimeUnit.MILLISECOND, null)),
     field("k", new ArrowType.Timestamp(TimeUnit.MICROSECOND, "UTC")),
     field("l", new ArrowType.Timestamp(TimeUnit.MICROSECOND, null)),
-    field("m", new ArrowType.Interval(IntervalUnit.DAY_TIME))
+    field("m", new ArrowType.Interval(IntervalUnit.DAY_TIME)),
+    field("e", new ArrowType.Map(false), field(null, false, new ArrowType.Date(DateUnit.DAY)), field(null, true,  new ArrowType.Utf8()))
   ));
+
   private final MessageType complexParquetSchema = Types.buildMessage()
     .addField(Types.optional(INT32).as(INT_8).named("a"))
     .addField(Types.optionalGroup()
@@ -121,6 +128,7 @@ public class TestSchemaConverter {
     .addField(Types.optional(INT64).as(timestampType(true, MICROS)).named("k"))
     .addField(Types.optional(INT64).as(timestampType(false, MICROS)).named("l"))
     .addField(Types.optional(FIXED_LEN_BYTE_ARRAY).length(12).as(INTERVAL).named("m"))
+    .addField(Types.optionalMap().key(Types.optional(INT32).as(DATE).named("key")).value(Types.optional(BINARY).as(UTF8).named("value")).named("e"))
     .named("root");
 
   private final Schema allTypesArrowSchema = new Schema(asList(
@@ -268,30 +276,30 @@ public class TestSchemaConverter {
     )
   ));
 
-  private SchemaConverter converter = new SchemaConverter();
+  private final SchemaConverter converter = new SchemaConverter();
 
   @Test
-  public void testComplexArrowToParquet() throws IOException {
+  public void testComplexArrowToParquet() {
     MessageType parquet = converter.fromArrow(complexArrowSchema).getParquetSchema();
     Assert.assertEquals(complexParquetSchema.toString(), parquet.toString()); // easier to read
     Assert.assertEquals(complexParquetSchema, parquet);
   }
 
   @Test
-  public void testAllArrowToParquet() throws IOException {
+  public void testAllArrowToParquet() {
     MessageType parquet = converter.fromArrow(allTypesArrowSchema).getParquetSchema();
     Assert.assertEquals(allTypesParquetSchema.toString(), parquet.toString()); // easier to read
     Assert.assertEquals(allTypesParquetSchema, parquet);
   }
 
   @Test
-  public void testSupportedParquetToArrow() throws IOException {
+  public void testSupportedParquetToArrow() {
     Schema arrow = converter.fromParquet(supportedTypesParquetSchema).getArrowSchema();
     assertEquals(supportedTypesArrowSchema, arrow);
   }
 
   @Test
-  public void testRepeatedParquetToArrow() throws IOException {
+  public void testRepeatedParquetToArrow() {
     Schema arrow = converter.fromParquet(Paper.schema).getArrowSchema();
     assertEquals(paperArrowSchema, arrow);
   }
@@ -303,8 +311,6 @@ public class TestSchemaConverter {
 
   /**
    * for more pinpointed error on what is different
-   * @param left
-   * @param right
    */
   private void compareFields(List<Field> left, List<Field> right) {
     Assert.assertEquals(left + "\n" + right, left.size(), right.size());
@@ -318,7 +324,7 @@ public class TestSchemaConverter {
   }
 
   @Test
-  public void testAllMap() throws IOException {
+  public void testAllMap() {
     SchemaMapping map = converter.map(allTypesArrowSchema, allTypesParquetSchema);
     Assert.assertEquals("p, s<p>, l<p>, l<p>, u<p>, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p", toSummaryString(map));
   }
@@ -354,6 +360,11 @@ public class TestSchemaConverter {
           @Override
           public String visit(ListTypeMapping listTypeMapping) {
             return "l";
+          }
+
+          @Override
+          public String visit(SchemaMapping.MapTypeMapping mapTypeMapping) {
+            return "m";
           }
 
           @Override
@@ -428,6 +439,26 @@ public class TestSchemaConverter {
       field("a", new ArrowType.Binary())
     ));
     Assert.assertEquals(expected, converter.fromParquet(parquet).getArrowSchema());
+  }
+
+  @Test
+  public void testParquetMapToArrow() {
+    GroupType mapType = Types.requiredMap()
+      .key(INT32)
+      .optionalValue(INT64)
+      .named("myMap");
+    MessageType parquet = Types.buildMessage()
+      .addField(mapType).named("root");
+    Schema expected = new Schema(asList(
+      field("myMap", new ArrowType.Map(false),
+        field(null, false, new ArrowType.Int(32, true)),
+        field(null, true, new ArrowType.Int(64, true))
+        )
+    ));
+    SchemaMapping mapping = converter.fromParquet(parquet);
+    Schema actual = mapping.getArrowSchema();
+
+    Assert.assertEquals(expected, actual);
   }
 
   @Test
