@@ -21,6 +21,7 @@ package org.apache.parquet.arrow.schema;
 import static org.apache.parquet.schema.Type.Repetition.REPEATED;
 
 import org.apache.parquet.schema.GroupType;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.OriginalType;
 import org.apache.parquet.schema.Type;
 
@@ -41,7 +42,7 @@ class List3Levels {
    * @param list the Parquet List
    */
   public List3Levels(GroupType list) {
-    if (list.getOriginalType() != OriginalType.LIST || list.getFields().size() != 1) {
+    if (list.getLogicalTypeAnnotation() != LogicalTypeAnnotation.listType() || list.getFields().size() != 1) {
       throw new IllegalArgumentException("invalid list type: " + list);
     }
     this.list = list;
