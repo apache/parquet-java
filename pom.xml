@@ -546,6 +546,7 @@
               <exclude>org.apache.parquet.hadoop.ColumnChunkPageWriteStore</exclude>
               <exclude>org.apache.parquet.hadoop.ParquetRecordWriter</exclude>
               <!-- likely japicmp bug, triggers on new interface methods after updating to 0.18.1 -->
+              <exclude>org.apache.parquet.conf.PlainParquetConfiguration#getClass(java.lang.String,java.lang.Class,java.lang.Class)</exclude>
               <exclude>org.apache.parquet.conf.ParquetConfiguration#getClass(java.lang.String,java.lang.Class,java.lang.Class)</exclude>
               <exclude>org.apache.parquet.hadoop.util.SerializationUtil#readObjectFromConfAsBase64(java.lang.String,org.apache.parquet.conf.ParquetConfiguration)</exclude>
               <exclude>org.apache.parquet.conf.HadoopParquetConfiguration#getClass(java.lang.String,java.lang.Class,java.lang.Class)</exclude>
