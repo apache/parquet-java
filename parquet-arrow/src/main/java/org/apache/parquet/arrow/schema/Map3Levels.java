@@ -19,6 +19,7 @@
 package org.apache.parquet.arrow.schema;
 
 import org.apache.parquet.schema.GroupType;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.OriginalType;
 import org.apache.parquet.schema.Type;
 
@@ -38,7 +39,7 @@ class Map3Levels {
    * @param map the Parquet map
    */
   public Map3Levels(GroupType map) {
-    if (map.getOriginalType() != OriginalType.MAP || map.getFields().size() != 1) {
+    if (map.getLogicalTypeAnnotation() != LogicalTypeAnnotation.mapType() || map.getFields().size() != 1) {
       throw new IllegalArgumentException("invalid map type: " + map);
     }
     this.map = map;
