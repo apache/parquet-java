@@ -60,7 +60,7 @@ class Map3Levels {
   }
 
   /**
-   * @return repeated level, single child of list
+   * @return repeated level, single child of map
    */
   public GroupType getRepeated() {
     return repeated;
