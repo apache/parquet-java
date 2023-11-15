@@ -53,7 +53,7 @@ class Map3Levels {
   }
 
   /**
-   * @return the root list element (an optional group with one child)
+   * @return the root map element (an optional group with two children)
    */
   public GroupType getMap() {
     return map;
