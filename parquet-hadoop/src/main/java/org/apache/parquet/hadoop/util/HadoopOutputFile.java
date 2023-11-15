@@ -54,9 +54,17 @@ public class HadoopOutputFile implements OutputFile {
   private final Configuration conf;
 
   public static HadoopOutputFile fromPath(Path path, Configuration conf)
-      throws IOException {
+    throws IOException {
     FileSystem fs = path.getFileSystem(conf);
     return new HadoopOutputFile(fs, fs.makeQualified(path), conf);
+  }
+
+  public static HadoopOutputFile fromPathUnchecked(Path path, Configuration conf) {
+    try {
+      return fromPath(path, conf);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   private HadoopOutputFile(FileSystem fs, Path path, Configuration conf) {

@@ -21,11 +21,19 @@ package org.apache.parquet.hadoop.rewrite;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.Preconditions;
+import org.apache.parquet.conf.HadoopParquetConfiguration;
+import org.apache.parquet.conf.ParquetConfiguration;
 import org.apache.parquet.crypto.FileEncryptionProperties;
 import org.apache.parquet.hadoop.IndexCache;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
+import org.apache.parquet.hadoop.util.ConfigurationUtil;
+import org.apache.parquet.hadoop.util.HadoopInputFile;
+import org.apache.parquet.hadoop.util.HadoopOutputFile;
+import org.apache.parquet.io.InputFile;
+import org.apache.parquet.io.OutputFile;
 
-import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -34,9 +42,9 @@ import java.util.Map;
  */
 public class RewriteOptions {
 
-  private final Configuration conf;
-  private final List<Path> inputFiles;
-  private final Path outputFile;
+  private final ParquetConfiguration conf;
+  private final List<InputFile> inputFiles;
+  private final OutputFile outputFile;
   private final List<String> pruneColumns;
   private final CompressionCodecName newCodecName;
   private final Map<String, MaskMode> maskColumns;
@@ -44,9 +52,9 @@ public class RewriteOptions {
   private final FileEncryptionProperties fileEncryptionProperties;
   private final IndexCache.CacheStrategy indexCacheStrategy;
 
-  private RewriteOptions(Configuration conf,
-                         List<Path> inputFiles,
-                         Path outputFile,
+  private RewriteOptions(ParquetConfiguration conf,
+                         List<InputFile> inputFiles,
+                         OutputFile outputFile,
                          List<String> pruneColumns,
                          CompressionCodecName newCodecName,
                          Map<String, MaskMode> maskColumns,
@@ -64,15 +72,53 @@ public class RewriteOptions {
     this.indexCacheStrategy = indexCacheStrategy;
   }
 
+  /**
+   * Gets the {@link Configuration} part of the rewrite options.
+   *
+   * @return the associated {@link Configuration}
+   */
   public Configuration getConf() {
+    return ConfigurationUtil.createHadoopConfiguration(conf);
+  }
+
+  /**
+   * Gets the {@link ParquetConfiguration} part of the rewrite options.
+   *
+   * @return the associated {@link ParquetConfiguration}
+   */
+  public ParquetConfiguration getParquetConfiguration() {
     return conf;
   }
 
-  public List<Path> getInputFiles() {
+  /**
+   * Gets the {@link InputFile}s for the rewrite.
+   *
+   * @return a {@link List} of the associated {@link InputFile}s
+   */
+  public List<InputFile> getInputFiles() {
     return inputFiles;
   }
 
+  /**
+   * Get the {@link Path} for the rewrite if it exists, otherwise throws a {@link RuntimeException}.
+   *
+   * @return the associated {@link Path} if it exists
+   */
   public Path getOutputFile() {
+    if (outputFile instanceof HadoopOutputFile) {
+      HadoopOutputFile hadoopOutputFile = (HadoopOutputFile) outputFile;
+      return new Path(hadoopOutputFile.getPath());
+    } else {
+      throw new RuntimeException("The output file does not have an associated Hadoop Path.");
+    }
+  }
+
+  /**
+   * Get the {@link OutputFile} for the rewrite.
+   *
+   * @return the associated {@link OutputFile}
+   */
+  public OutputFile getParquetOutputFile() {
     return outputFile;
   }
 
@@ -102,9 +148,9 @@ public class RewriteOptions {
 
   // Builder to create a RewriterOptions.
   public static class Builder {
-    private final Configuration conf;
-    private final List<Path> inputFiles;
-    private final Path outputFile;
+    private final ParquetConfiguration conf;
+    private final List<InputFile> inputFiles;
+    private final OutputFile outputFile;
     private List<String> pruneColumns;
     private CompressionCodecName newCodecName;
     private Map<String, MaskMode> maskColumns;
@@ -120,9 +166,18 @@ public class RewriteOptions {
      * @param outputFile output file path to rewrite to
      */
     public Builder(Configuration conf, Path inputFile, Path outputFile) {
-      this.conf = conf;
-      this.inputFiles = Arrays.asList(inputFile);
-      this.outputFile = outputFile;
+      this(new HadoopParquetConfiguration(conf), HadoopInputFile.fromPathUnchecked(inputFile, conf), HadoopOutputFile.fromPathUnchecked(outputFile, conf));
+    }
+
+    /**
+     * Create a builder to create a RewriterOptions.
+     *
+     * @param conf       configuration for reading from input files and writing to output file
+     * @param inputFile  input file to read from
+     * @param outputFile output file to rewrite to
+     */
+    public Builder(ParquetConfiguration conf, InputFile inputFile, OutputFile outputFile) {
+      this(conf, Collections.singletonList(inputFile), outputFile);
     }
 
     /**
@@ -141,6 +196,30 @@ public class RewriteOptions {
      * @param outputFile output file path to rewrite to
      */
     public Builder(Configuration conf, List<Path> inputFiles, Path outputFile) {
+      this.conf = new HadoopParquetConfiguration(conf);
+      this.inputFiles = new ArrayList<>(inputFiles.size());
+      for (Path inputFile : inputFiles) {
+        this.inputFiles.add(HadoopInputFile.fromPathUnchecked(inputFile, conf));
+      }
+      this.outputFile = HadoopOutputFile.fromPathUnchecked(outputFile, conf);
+    }
+
+    /**
+     * Create a builder to create a RewriterOptions.
+     * <p>
+     * Please note that if merging more than one file, the schema of all files must be the same.
+     * Otherwise, the rewrite will fail.
+     * <p>
+     * The rewrite will keep original row groups from all input files. This may not be optimal
+     * if row groups are very small and will not solve small file problems. Instead, it will
+     * make it worse to have a large file footer in the output file.
+     * TODO: support rewrite by record to break the original row groups into reasonable ones.
+     *
+     * @param conf       configuration for reading from input files and writing to output file
+     * @param inputFiles list of input file paths to read from
+     * @param outputFile output file path to rewrite to
+     */
+    public Builder(ParquetConfiguration conf, List<InputFile> inputFiles, OutputFile outputFile) {
       this.conf = conf;
       this.inputFiles = inputFiles;
       this.outputFile = outputFile;
@@ -218,7 +297,18 @@ public class RewriteOptions {
      * @return self
      */
     public Builder addInputFile(Path path) {
-      this.inputFiles.add(path);
+      this.inputFiles.add(HadoopInputFile.fromPathUnchecked(path, ConfigurationUtil.createHadoopConfiguration(conf)));
+      return this;
+    }
+
+    /**
+     * Add an input file to read from.
+     *
+     * @param inputFile input file to read from
+     * @return self
+     */
+    public Builder addInputFile(InputFile inputFile) {
+      this.inputFiles.add(inputFile);
       return this;
     }
 
