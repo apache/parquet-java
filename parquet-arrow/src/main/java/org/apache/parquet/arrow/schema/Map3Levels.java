@@ -27,6 +27,9 @@ import static org.apache.parquet.schema.Type.Repetition.REPEATED;
 
 /**
  * Represents a standard 3 levels Parquet map
+ * - optional map
+ * - repeated key_value
+ * - required key, optional value
  */
 class Map3Levels {
   private final GroupType map;
