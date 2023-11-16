@@ -22,7 +22,6 @@ import static org.apache.parquet.schema.Type.Repetition.REPEATED;
 
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
-import org.apache.parquet.schema.OriginalType;
 import org.apache.parquet.schema.Type;
 
 /**

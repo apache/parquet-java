@@ -33,7 +33,7 @@
   <url>https://parquet.apache.org</url>
 
   <properties>
-    <arrow.version>0.10.0</arrow.version>
+    <arrow.version>14.0.1</arrow.version>
   </properties>
 
   <dependencies>
