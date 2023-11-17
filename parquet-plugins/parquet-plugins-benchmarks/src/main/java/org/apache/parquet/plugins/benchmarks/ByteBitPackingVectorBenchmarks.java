@@ -30,6 +30,8 @@ import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Warmup;
+import org.openjdk.jmh.annotations.Fork;
+import org.openjdk.jmh.annotations.Param;
 
 import java.util.concurrent.TimeUnit;
 
@@ -38,23 +40,44 @@ import java.util.concurrent.TimeUnit;
  */
 
 @State(Scope.Benchmark)
-@BenchmarkMode(Mode.AverageTime)
+@BenchmarkMode(Mode.Throughput)
 @Warmup(iterations = 1, batchSize = 100000)
 @Measurement(iterations = 1, batchSize = 100000)
-@OutputTimeUnit(TimeUnit.MILLISECONDS)
+@OutputTimeUnit(TimeUnit.SECONDS)
+@Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
 public class ByteBitPackingVectorBenchmarks {
-
   /**
    * The range of bitWidth is 1 ~ 32, change it directly if test other bitWidth.
    */
-  private static final int bitWidth = 7;
-  private static final int outputValues = 1024;
-  private final byte[] input = new byte[outputValues * bitWidth / 8];
-  private final int[] output = new int[outputValues];
-  private final int[] outputVector = new int[outputValues];
+  @Param({"1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31" })
+  private int bitWidth;
+  private int outputValues = 2048;
+
+  private byte[] input;
+  private int[] output;
+  private int[] outputVector;
+  private int totalBytesCount;
+  private int outCountPerVector;
+  private int totalByteCountVector;
+  private int inputByteCountPerVector;
+
+  private BytePacker bytePacker;
+  private BytePacker bytePackerVector;
 
   @Setup(Level.Trial)
   public void getInputBytes() {
+    input = new byte[outputValues * bitWidth / 8];
+    output = new int[outputValues];
+    outputVector = new int[outputValues];
+    totalBytesCount = input.length;
+
+    bytePacker = Packer.LITTLE_ENDIAN.newBytePacker(bitWidth);
+    bytePackerVector = Packer.LITTLE_ENDIAN.newBytePackerVector(bitWidth);
+
+    outCountPerVector = bytePackerVector.getUnpackCount();
+    inputByteCountPerVector = outCountPerVector / 8 * bitWidth;
+    totalByteCountVector = totalBytesCount - inputByteCountPerVector;
+
     for (int i = 0; i < input.length; i++) {
       input[i] = (byte) i;
     }
@@ -62,7 +85,6 @@ public class ByteBitPackingVectorBenchmarks {
 
   @Benchmark
   public void testUnpack() {
-    BytePacker bytePacker = Packer.LITTLE_ENDIAN.newBytePacker(bitWidth);
     for (int i = 0, j = 0; i < input.length; i += bitWidth, j += 8) {
       bytePacker.unpack8Values(input, i, output, j);
     }
@@ -70,16 +92,8 @@ public class ByteBitPackingVectorBenchmarks {
 
   @Benchmark
   public void testUnpackVector() {
-    BytePacker bytePacker = Packer.LITTLE_ENDIAN.newBytePacker(bitWidth);
-    BytePacker bytePackerVector = Packer.LITTLE_ENDIAN.newBytePackerVector(bitWidth);
-
     int byteIndex = 0;
     int valueIndex = 0;
-    int totalBytesCount = input.length;
-    int outCountPerVector = bytePackerVector.getUnpackCount();
-    int inputByteCountPerVector = outCountPerVector / 8 * bitWidth;
-    int totalByteCountVector = totalBytesCount - inputByteCountPerVector;
-
     for (; byteIndex < totalByteCountVector; byteIndex += inputByteCountPerVector, valueIndex += outCountPerVector) {
       bytePackerVector.unpackValuesUsingVector(input, byteIndex, outputVector, valueIndex);
     }
