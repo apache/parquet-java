@@ -33,7 +33,7 @@ import org.slf4j.LoggerFactory;
 import org.apache.parquet.util.DynMethods;
 
 /**
- * Package-private binding utils.
+ * Binding utils.
  */
 public final class BindingUtils {
   private static final Logger LOG = LoggerFactory.getLogger(BindingUtils.class);
@@ -127,9 +127,7 @@ public final class BindingUtils {
     } else if (cause instanceof UncheckedIOException) {
       // this is always an IOException
       return ((UncheckedIOException) cause).getCause();
-    } else if (cause instanceof CompletionException) {
-      return unwrapInnerException(cause);
-    } else if (cause instanceof ExecutionException) {
+    } else if (cause instanceof CompletionException || cause instanceof ExecutionException) {
       return unwrapInnerException(cause);
     } else if (cause instanceof RuntimeException) {
       throw (RuntimeException) cause;

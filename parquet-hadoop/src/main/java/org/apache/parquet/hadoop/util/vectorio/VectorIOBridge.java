@@ -168,10 +168,7 @@ public final class VectorIOBridge {
       ParquetFileRange parquetFileRange = (ParquetFileRange) fileRange.getReference();
       parquetFileRange.setDataReadFuture(fileRange.getData());
     });
-    //throw new RuntimeException("readVectoredRanges");
-
   }
-
 
   /**
    * Read data in a list of wrapped file ranges, extracting the inner

@@ -79,11 +79,6 @@
       <version>${hadoop.version}</version>
       <scope>provided</scope>
     </dependency>
-<!--    <dependency>
-      <groupId>org.apache.hadoop.extensions</groupId>
-      <artifactId>hadoop-api-shim</artifactId>
-      <scope>provided</scope>
-    </dependency>-->
     <dependency>
       <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-jackson</artifactId>
