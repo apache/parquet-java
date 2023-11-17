@@ -133,15 +133,8 @@ public class ParquetRewriterTest {
   }
 
   private void testPruneSingleColumnTranslateCodec(List<Path> inputPaths) throws Exception {
-    RewriteOptions.Builder builder;
-    if (usingHadoop) {
-      Path outputPath = new Path(outputFile);
-      builder = new RewriteOptions.Builder(conf, inputPaths, outputPath);
-    } else {
-      OutputFile outputPath = HadoopOutputFile.fromPath(new Path(outputFile), conf);
-      List<InputFile> inputs = inputPaths.stream().map(p -> HadoopInputFile.fromPathUnchecked(p, conf)).collect(Collectors.toList());
-      builder = new RewriteOptions.Builder(parquetConf, inputs, outputPath);
-    }
+    RewriteOptions.Builder builder = createBuilder(inputPaths);
+
     List<String> pruneColumns = Collections.singletonList("Gender");
     CompressionCodecName newCodec = CompressionCodecName.ZSTD;
     RewriteOptions options =
@@ -200,15 +193,8 @@ public class ParquetRewriterTest {
   }
 
   private void testPruneNullifyTranslateCodec(List<Path> inputPaths) throws Exception {
-    RewriteOptions.Builder builder;
-    if (usingHadoop) {
-      Path outputPath = new Path(outputFile);
-      builder = new RewriteOptions.Builder(conf, inputPaths, outputPath);
-    } else {
-      OutputFile outputPath = HadoopOutputFile.fromPath(new Path(outputFile), conf);
-      List<InputFile> inputs = inputPaths.stream().map(p -> HadoopInputFile.fromPathUnchecked(p, conf)).collect(Collectors.toList());
-      builder = new RewriteOptions.Builder(parquetConf, inputs, outputPath);
-    }
+    RewriteOptions.Builder builder = createBuilder(inputPaths);
+
     List<String> pruneColumns = Collections.singletonList("Gender");
     Map<String, MaskMode> maskColumns = new HashMap<>();
     maskColumns.put("Links.Forward", MaskMode.NULLIFY);
@@ -263,15 +249,7 @@ public class ParquetRewriterTest {
   }
 
   private void testPruneEncryptTranslateCodec(List<Path> inputPaths) throws Exception {
-    RewriteOptions.Builder builder;
-    if (usingHadoop) {
-      Path outputPath = new Path(outputFile);
-      builder = new RewriteOptions.Builder(conf, inputPaths, outputPath);
-    } else {
-      OutputFile outputPath = HadoopOutputFile.fromPath(new Path(outputFile), conf);
-      List<InputFile> inputs = inputPaths.stream().map(p -> HadoopInputFile.fromPathUnchecked(p, conf)).collect(Collectors.toList());
-      builder = new RewriteOptions.Builder(parquetConf, inputs, outputPath);
-    }
+    RewriteOptions.Builder builder = createBuilder(inputPaths);
 
     // Prune
     List<String> pruneColumns = Collections.singletonList("Gender");
@@ -351,15 +329,7 @@ public class ParquetRewriterTest {
 
     inputFiles = inputPaths.stream().map(p -> new EncryptionTestFile(p.toString(), null)).collect(Collectors.toList());
 
-    RewriteOptions.Builder builder;
-    if (usingHadoop) {
-      Path outputPath = new Path(outputFile);
-      builder = new RewriteOptions.Builder(conf, inputPaths, outputPath);
-    } else {
-      OutputFile outputPath = HadoopOutputFile.fromPath(new Path(outputFile), conf);
-      List<InputFile> inputs = inputPaths.stream().map(p -> HadoopInputFile.fromPathUnchecked(p, conf)).collect(Collectors.toList());
-      builder = new RewriteOptions.Builder(parquetConf, inputs, outputPath);
-    }
+    RewriteOptions.Builder builder = createBuilder(inputPaths);
 
     Map<String, MaskMode> maskCols = Maps.newHashMap();
     maskCols.put("location.lat", MaskMode.NULLIFY);
@@ -424,15 +394,7 @@ public class ParquetRewriterTest {
     FileEncryptionProperties fileEncryptionProperties = EncDecProperties.getFileEncryptionProperties(
             encryptColumns, ParquetCipher.AES_GCM_CTR_V1, false);
 
-    RewriteOptions.Builder builder;
-    if (usingHadoop) {
-      Path outputPath = new Path(outputFile);
-      builder = new RewriteOptions.Builder(conf, inputPaths, outputPath);
-    } else {
-      OutputFile outputPath = HadoopOutputFile.fromPath(new Path(outputFile), conf);
-      List<InputFile> inputs = inputPaths.stream().map(p -> HadoopInputFile.fromPathUnchecked(p, conf)).collect(Collectors.toList());
-      builder = new RewriteOptions.Builder(parquetConf, inputs, outputPath);
-    }
+    RewriteOptions.Builder builder = createBuilder(inputPaths);
 
     RewriteOptions options = builder
       .mask(maskColumns)
@@ -509,15 +471,7 @@ public class ParquetRewriterTest {
     for (EncryptionTestFile inputFile : inputFiles) {
       inputPaths.add(new Path(inputFile.getFileName()));
     }
-    RewriteOptions.Builder builder;
-    if (usingHadoop) {
-      Path outputPath = new Path(outputFile);
-      builder = new RewriteOptions.Builder(conf, inputPaths, outputPath);
-    } else {
-      OutputFile outputPath = HadoopOutputFile.fromPath(new Path(outputFile), conf);
-      List<InputFile> inputs = inputPaths.stream().map(p -> HadoopInputFile.fromPathUnchecked(p, conf)).collect(Collectors.toList());
-      builder = new RewriteOptions.Builder(parquetConf, inputs, outputPath);
-    }
+    RewriteOptions.Builder builder = createBuilder(inputPaths);
     RewriteOptions options = builder.indexCacheStrategy(indexCacheStrategy).build();
 
     rewriter = new ParquetRewriter(options);
@@ -584,15 +538,7 @@ public class ParquetRewriterTest {
     for (EncryptionTestFile inputFile : inputFiles) {
       inputPaths.add(new Path(inputFile.getFileName()));
     }
-    RewriteOptions.Builder builder;
-    if (usingHadoop) {
-      Path outputPath = new Path(outputFile);
-      builder = new RewriteOptions.Builder(conf, inputPaths, outputPath);
-    } else {
-      OutputFile outputPath = HadoopOutputFile.fromPath(new Path(outputFile), conf);
-      List<InputFile> inputs = inputPaths.stream().map(p -> HadoopInputFile.fromPathUnchecked(p, conf)).collect(Collectors.toList());
-      builder = new RewriteOptions.Builder(parquetConf, inputs, outputPath);
-    }
+    RewriteOptions.Builder builder = createBuilder(inputPaths);
     RewriteOptions options = builder.indexCacheStrategy(indexCacheStrategy).build();
 
     // This should throw an exception because the schemas are different
@@ -999,6 +945,19 @@ public class ParquetRewriterTest {
     }
 
     return allBloomFilters;
+  }
+
+  private RewriteOptions.Builder createBuilder(List<Path> inputPaths) throws IOException {
+    RewriteOptions.Builder builder;
+    if (usingHadoop) {
+      Path outputPath = new Path(outputFile);
+      builder = new RewriteOptions.Builder(conf, inputPaths, outputPath);
+    } else {
+      OutputFile outputPath = HadoopOutputFile.fromPath(new Path(outputFile), conf);
+      List<InputFile> inputs = inputPaths.stream().map(p -> HadoopInputFile.fromPathUnchecked(p, conf)).collect(Collectors.toList());
+      builder = new RewriteOptions.Builder(parquetConf, inputs, outputPath);
+    }
+    return builder;
   }
 
   private void validateSchema() throws IOException {

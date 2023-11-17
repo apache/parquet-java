@@ -36,6 +36,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * A set of options to create a ParquetRewriter.
@@ -91,11 +92,28 @@ public class RewriteOptions {
   }
 
   /**
+   * Gets the input {@link Path}s for the rewrite if they exist for all input files,
+   * otherwise throws a {@link RuntimeException}.
+   *
+   * @return a {@link List} of the associated input {@link Path}s
+   */
+  public List<Path> getInputFiles() {
+    return inputFiles.stream().map(f -> {
+      if (f instanceof HadoopOutputFile) {
+        HadoopOutputFile hadoopOutputFile = (HadoopOutputFile) f;
+        return new Path(hadoopOutputFile.getPath());
+      } else {
+        throw new RuntimeException("The input files do not all have an associated Hadoop Path.");
+      }
+    }).collect(Collectors.toList());
+  }
+
+  /**
    * Gets the {@link InputFile}s for the rewrite.
    *
    * @return a {@link List} of the associated {@link InputFile}s
    */
-  public List<InputFile> getInputFiles() {
+  public List<InputFile> getParquetInputFiles() {
     return inputFiles;
   }
 
