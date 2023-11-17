@@ -150,7 +150,7 @@ class InternalParquetRecordWriter<T> {
   private void checkBlockSizeReached() throws IOException {
     if (recordCount >= recordCountForNextMemCheck) { // checking the memory size is relatively expensive, so let's not do it for every record.
       long memSize = columnStore.getBufferedSize();
-      long recordSize = memSize / recordCount;
+      float recordSize = (float)memSize / recordCount;
       // flush the row group if it is within ~2 records of the limit
       // it is much better to be slightly under size than to be over at all
       if (memSize > (nextRowGroupSize - 2 * recordSize)) {
@@ -163,7 +163,7 @@ class InternalParquetRecordWriter<T> {
       } else {
         recordCountForNextMemCheck = min(
             max(props.getMinRowCountForPageSizeCheck(),
-              (recordCount + (long)(nextRowGroupSize / ((float)recordSize))) / 2), // will check halfway
+              (recordCount + (long)(nextRowGroupSize / recordSize)) / 2), // will check halfway
             recordCount + props.getMaxRowCountForPageSizeCheck() // will not look more than max records ahead
             );
         LOG.debug("Checked mem at {} will check again at: {}", recordCount, recordCountForNextMemCheck);
