@@ -159,7 +159,7 @@
     <dependency>
       <groupId>org.easymock</groupId>
       <artifactId>easymock</artifactId>
-      <version>5.1.0</version>
+      <version>5.2.0</version>
       <scope>test</scope>
     </dependency>
   </dependencies>
