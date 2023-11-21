@@ -19,8 +19,7 @@
 package org.apache.parquet.hadoop.rewrite;
 
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.Path;
-import org.apache.parquet.HadoopReadOptions;
+import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.column.ColumnDescriptor;
@@ -34,6 +33,7 @@ import org.apache.parquet.column.page.PageReadStore;
 import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.column.values.bloomfilter.BloomFilter;
 import org.apache.parquet.compression.CompressionCodecFactory;
+import org.apache.parquet.conf.ParquetConfiguration;
 import org.apache.parquet.crypto.AesCipher;
 import org.apache.parquet.crypto.InternalColumnEncryptionSetup;
 import org.apache.parquet.crypto.InternalFileEncryptor;
@@ -54,10 +54,10 @@ import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.hadoop.util.CompressionConverter.TransParquetFileReader;
 import org.apache.parquet.hadoop.util.HadoopCodecs;
-import org.apache.parquet.hadoop.util.HadoopInputFile;
-import org.apache.parquet.hadoop.util.HadoopOutputFile;
 import org.apache.parquet.internal.column.columnindex.ColumnIndex;
 import org.apache.parquet.internal.column.columnindex.OffsetIndex;
+import org.apache.parquet.io.InputFile;
+import org.apache.parquet.io.OutputFile;
 import org.apache.parquet.io.ParquetEncodingException;
 import org.apache.parquet.io.api.Converter;
 import org.apache.parquet.io.api.GroupConverter;
@@ -96,7 +96,7 @@ public class ParquetRewriter implements Closeable {
   private final int pageBufferSize = ParquetProperties.DEFAULT_PAGE_SIZE * 2;
   private final byte[] pageBuffer = new byte[pageBufferSize];
   // Configurations for the new file
-  private CompressionCodecName newCodecName = null;
+  private final CompressionCodecName newCodecName;
   private Map<ColumnPath, MaskMode> maskColumns = null;
   private Set<ColumnPath> encryptColumns = null;
   private boolean encryptMode = false;
@@ -122,11 +122,11 @@ public class ParquetRewriter implements Closeable {
   private final IndexCache.CacheStrategy indexCacheStrategy;
 
   public ParquetRewriter(RewriteOptions options) throws IOException {
-    Configuration conf = options.getConf();
-    Path outPath = options.getOutputFile();
-    openInputFiles(options.getInputFiles(), conf);
+    ParquetConfiguration conf = options.getParquetConfiguration();
+    OutputFile out = options.getParquetOutputFile();
+    openInputFiles(options.getParquetInputFiles(), conf);
     LOG.info("Start rewriting {} input file(s) {} to {}",
-      inputFiles.size(), options.getInputFiles(), outPath);
+      inputFiles.size(), options.getParquetInputFiles(), out);
 
     // Init reader of the first input file
     initNextReader();
@@ -165,7 +165,7 @@ public class ParquetRewriter implements Closeable {
     this.indexCacheStrategy = options.getIndexCacheStrategy();
 
     ParquetFileWriter.Mode writerMode = ParquetFileWriter.Mode.CREATE;
-    writer = new ParquetFileWriter(HadoopOutputFile.fromPath(outPath, conf), schema, writerMode,
+    writer = new ParquetFileWriter(out, schema, writerMode,
             DEFAULT_BLOCK_SIZE, MAX_PADDING_SIZE_DEFAULT, DEFAULT_COLUMN_INDEX_TRUNCATE_LENGTH,
             DEFAULT_STATISTICS_TRUNCATE_LENGTH, ParquetProperties.DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED,
             options.getFileEncryptionProperties());
@@ -201,13 +201,13 @@ public class ParquetRewriter implements Closeable {
   }
 
   // Open all input files to validate their schemas are compatible to merge
-  private void openInputFiles(List<Path> inputFiles, Configuration conf) {
+  private void openInputFiles(List<InputFile> inputFiles, ParquetConfiguration conf) {
     Preconditions.checkArgument(inputFiles != null && !inputFiles.isEmpty(), "No input files");
 
-    for (Path inputFile : inputFiles) {
+    for (InputFile inputFile : inputFiles) {
       try {
         TransParquetFileReader reader = new TransParquetFileReader(
-                HadoopInputFile.fromPath(inputFile, conf), HadoopReadOptions.builder(conf).build());
+                inputFile, ParquetReadOptions.builder(conf).build());
         MessageType inputFileSchema = reader.getFooter().getFileMetaData().getSchema();
         if (this.schema == null) {
           this.schema = inputFileSchema;
@@ -623,8 +623,7 @@ public class ParquetRewriter implements Closeable {
     List<Type> fields = schema.getFields();
     List<String> currentPath = new ArrayList<>();
     List<Type> prunedFields = pruneColumnsInFields(fields, currentPath, prunePaths);
-    MessageType newSchema = new MessageType(schema.getName(), prunedFields);
-    return newSchema;
+    return new MessageType(schema.getName(), prunedFields);
   }
 
   private List<Type> pruneColumnsInFields(List<Type> fields, List<String> currentPath, Set<ColumnPath> prunePaths) {
@@ -797,10 +796,10 @@ public class ParquetRewriter implements Closeable {
     private final BlockCipher.Encryptor metaDataEncryptor;
     private final byte[] fileAAD;
 
-    private byte[] dataPageHeaderAAD;
-    private byte[] dataPageAAD;
-    private byte[] dictPageHeaderAAD;
-    private byte[] dictPageAAD;
+    private final byte[] dataPageHeaderAAD;
+    private final byte[] dataPageAAD;
+    private final byte[] dictPageHeaderAAD;
+    private final byte[] dictPageAAD;
 
     public ColumnChunkEncryptorRunTime(InternalFileEncryptor fileEncryptor,
                                        ColumnChunkMetaData chunk,

@@ -27,6 +27,8 @@ import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.Version;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.values.bloomfilter.BloomFilter;
+import org.apache.parquet.conf.ParquetConfiguration;
+import org.apache.parquet.conf.PlainParquetConfiguration;
 import org.apache.parquet.crypto.FileDecryptionProperties;
 import org.apache.parquet.crypto.FileEncryptionProperties;
 import org.apache.parquet.crypto.ParquetCipher;
@@ -52,11 +54,13 @@ import org.apache.parquet.hadoop.util.CompressionConverter.TransParquetFileReade
 import org.apache.parquet.hadoop.util.EncDecProperties;
 import org.apache.parquet.hadoop.util.EncryptionTestFile;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
+import org.apache.parquet.hadoop.util.HadoopOutputFile;
 import org.apache.parquet.hadoop.util.TestFileBuilder;
 import org.apache.parquet.internal.column.columnindex.ColumnIndex;
 import org.apache.parquet.internal.column.columnindex.OffsetIndex;
 import org.apache.parquet.io.InputFile;
 import org.apache.parquet.io.InvalidRecordException;
+import org.apache.parquet.io.OutputFile;
 import org.apache.parquet.io.SeekableInputStream;
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.InvalidSchemaException;
@@ -99,28 +103,40 @@ public class ParquetRewriterTest {
 
   private final int numRecord = 100000;
   private final Configuration conf = new Configuration();
+  private final ParquetConfiguration parquetConf = new PlainParquetConfiguration();
   private final ParquetProperties.WriterVersion writerVersion;
   private final IndexCache.CacheStrategy indexCacheStrategy;
+  private final boolean usingHadoop;
 
   private List<EncryptionTestFile> inputFiles = null;
   private String outputFile = null;
   private ParquetRewriter rewriter = null;
 
-  @Parameterized.Parameters(name = "WriterVersion = {0}, IndexCacheStrategy = {1}")
+  @Parameterized.Parameters(name = "WriterVersion = {0}, IndexCacheStrategy = {1}, UsingHadoop = {2}")
   public static Object[][] parameters() {
-    return new Object[][] {{"v1", "NONE"}, {"v1", "PREFETCH_BLOCK"}, {"v2", "NONE"}, {"v2", "PREFETCH_BLOCK"}};
+    return new Object[][] {
+      {"v1", "NONE", true},
+      {"v1", "PREFETCH_BLOCK", true},
+      {"v2", "NONE", true},
+      {"v2", "PREFETCH_BLOCK", true},
+      {"v1", "NONE", false},
+      {"v1", "PREFETCH_BLOCK", false},
+      {"v2", "NONE", false},
+      {"v2", "PREFETCH_BLOCK", false}
+    };
   }
 
-  public ParquetRewriterTest(String writerVersion, String indexCacheStrategy) {
+  public ParquetRewriterTest(String writerVersion, String indexCacheStrategy, boolean usingHadoop) {
     this.writerVersion = ParquetProperties.WriterVersion.fromString(writerVersion);
     this.indexCacheStrategy = IndexCache.CacheStrategy.valueOf(indexCacheStrategy);
+    this.usingHadoop = usingHadoop;
   }
 
   private void testPruneSingleColumnTranslateCodec(List<Path> inputPaths) throws Exception {
-    Path outputPath = new Path(outputFile);
-    List<String> pruneColumns = Arrays.asList("Gender");
+    RewriteOptions.Builder builder = createBuilder(inputPaths);
+
+    List<String> pruneColumns = Collections.singletonList("Gender");
     CompressionCodecName newCodec = CompressionCodecName.ZSTD;
-    RewriteOptions.Builder builder = new RewriteOptions.Builder(conf, inputPaths, outputPath);
     RewriteOptions options =
       builder.prune(pruneColumns).transform(newCodec).indexCacheStrategy(indexCacheStrategy).build();
 
@@ -177,12 +193,12 @@ public class ParquetRewriterTest {
   }
 
   private void testPruneNullifyTranslateCodec(List<Path> inputPaths) throws Exception {
-    Path outputPath = new Path(outputFile);
-    List<String> pruneColumns = Arrays.asList("Gender");
+    RewriteOptions.Builder builder = createBuilder(inputPaths);
+
+    List<String> pruneColumns = Collections.singletonList("Gender");
     Map<String, MaskMode> maskColumns = new HashMap<>();
     maskColumns.put("Links.Forward", MaskMode.NULLIFY);
     CompressionCodecName newCodec = CompressionCodecName.ZSTD;
-    RewriteOptions.Builder builder = new RewriteOptions.Builder(conf, inputPaths, outputPath);
     RewriteOptions options =
       builder.prune(pruneColumns).mask(maskColumns).transform(newCodec).indexCacheStrategy(indexCacheStrategy).build();
 
@@ -233,11 +249,10 @@ public class ParquetRewriterTest {
   }
 
   private void testPruneEncryptTranslateCodec(List<Path> inputPaths) throws Exception {
-    Path outputPath = new Path(outputFile);
-    RewriteOptions.Builder builder = new RewriteOptions.Builder(conf, inputPaths, outputPath);
+    RewriteOptions.Builder builder = createBuilder(inputPaths);
 
     // Prune
-    List<String> pruneColumns = Arrays.asList("Gender");
+    List<String> pruneColumns = Collections.singletonList("Gender");
     builder.prune(pruneColumns);
 
     // Translate codec
@@ -314,8 +329,7 @@ public class ParquetRewriterTest {
 
     inputFiles = inputPaths.stream().map(p -> new EncryptionTestFile(p.toString(), null)).collect(Collectors.toList());
 
-    Path outputPath = new Path(outputFile);
-    RewriteOptions.Builder builder = new RewriteOptions.Builder(conf, inputPaths, outputPath);
+    RewriteOptions.Builder builder = createBuilder(inputPaths);
 
     Map<String, MaskMode> maskCols = Maps.newHashMap();
     maskCols.put("location.lat", MaskMode.NULLIFY);
@@ -380,8 +394,9 @@ public class ParquetRewriterTest {
     FileEncryptionProperties fileEncryptionProperties = EncDecProperties.getFileEncryptionProperties(
             encryptColumns, ParquetCipher.AES_GCM_CTR_V1, false);
 
-    Path outputPath = new Path(outputFile);
-    RewriteOptions options = new RewriteOptions.Builder(conf, inputPaths, outputPath)
+    RewriteOptions.Builder builder = createBuilder(inputPaths);
+
+    RewriteOptions options = builder
       .mask(maskColumns)
       .transform(CompressionCodecName.ZSTD)
       .encrypt(Arrays.asList(encryptColumns))
@@ -456,8 +471,7 @@ public class ParquetRewriterTest {
     for (EncryptionTestFile inputFile : inputFiles) {
       inputPaths.add(new Path(inputFile.getFileName()));
     }
-    Path outputPath = new Path(outputFile);
-    RewriteOptions.Builder builder = new RewriteOptions.Builder(conf, inputPaths, outputPath);
+    RewriteOptions.Builder builder = createBuilder(inputPaths);
     RewriteOptions options = builder.indexCacheStrategy(indexCacheStrategy).build();
 
     rewriter = new ParquetRewriter(options);
@@ -524,8 +538,7 @@ public class ParquetRewriterTest {
     for (EncryptionTestFile inputFile : inputFiles) {
       inputPaths.add(new Path(inputFile.getFileName()));
     }
-    Path outputPath = new Path(outputFile);
-    RewriteOptions.Builder builder = new RewriteOptions.Builder(conf, inputPaths, outputPath);
+    RewriteOptions.Builder builder = createBuilder(inputPaths);
     RewriteOptions options = builder.indexCacheStrategy(indexCacheStrategy).build();
 
     // This should throw an exception because the schemas are different
@@ -932,6 +945,19 @@ public class ParquetRewriterTest {
     }
 
     return allBloomFilters;
+  }
+
+  private RewriteOptions.Builder createBuilder(List<Path> inputPaths) throws IOException {
+    RewriteOptions.Builder builder;
+    if (usingHadoop) {
+      Path outputPath = new Path(outputFile);
+      builder = new RewriteOptions.Builder(conf, inputPaths, outputPath);
+    } else {
+      OutputFile outputPath = HadoopOutputFile.fromPath(new Path(outputFile), conf);
+      List<InputFile> inputs = inputPaths.stream().map(p -> HadoopInputFile.fromPathUnchecked(p, conf)).collect(Collectors.toList());
+      builder = new RewriteOptions.Builder(parquetConf, inputs, outputPath);
+    }
+    return builder;
   }
 
   private void validateSchema() throws IOException {
