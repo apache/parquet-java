@@ -18,14 +18,17 @@
  */
 package org.apache.parquet.hadoop.codec;
 
+import org.xerial.snappy.Snappy;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-import org.xerial.snappy.Snappy;
-
+/**
+ * This class is a wrapper around the snappy compressor. It always consumes the
+ * entire input in setInput and compresses it as one compressed block.
+ */
 public class SnappyCompressor extends NonBlockedCompressor {
 
-  @Override
   protected int maxCompressedLength(int byteSize) {
     return Snappy.maxCompressedLength(byteSize);
   }
@@ -34,5 +37,4 @@ public class SnappyCompressor extends NonBlockedCompressor {
   protected int compress(ByteBuffer uncompressed, ByteBuffer compressed) throws IOException {
     return Snappy.compress(uncompressed, compressed);
   }
-
 }
