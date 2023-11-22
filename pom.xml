@@ -140,7 +140,7 @@
     <module>parquet-format-structures</module>
     <module>parquet-generator</module>
     <module>parquet-hadoop</module>
-<!--    <module>parquet-jackson</module>-->
+    <module>parquet-jackson</module>
 <!--    <module>parquet-pig</module>-->
 <!--    <module>parquet-pig-bundle</module>-->
 <!--    <module>parquet-protobuf</module>-->
