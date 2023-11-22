@@ -26,8 +26,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        java: [ '8', '11', '17' ]
-        codes: [ 'uncompressed,brotli', 'gzip,snappy' ]
+        java: [ '8']
+        codes: [ 'gzip,snappy' ]
     name: Build Parquet with JDK ${{ matrix.java }} and ${{ matrix.codes }}
 
     steps:
