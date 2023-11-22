@@ -138,7 +138,7 @@
     <module>parquet-common</module>
     <module>parquet-encoding</module>
     <module>parquet-format-structures</module>
-<!--    <module>parquet-generator</module>-->
+    <module>parquet-generator</module>
     <module>parquet-hadoop</module>
 <!--    <module>parquet-jackson</module>-->
 <!--    <module>parquet-pig</module>-->
