@@ -380,7 +380,7 @@ public class ParquetMetadataConverter {
         case NANOS:
           return empty();
         default:
-          throw new RuntimeException("Unknown converted type for " + timeLogicalType.toOriginalType());
+          throw new RuntimeException("Unknown converted type for " + timeLogicalType);
       }
     }
 
@@ -394,7 +394,7 @@ public class ParquetMetadataConverter {
         case NANOS:
           return empty();
         default:
-          throw new RuntimeException("Unknown converted type for " + timestampLogicalType.toOriginalType());
+          throw new RuntimeException("Unknown converted type for " + timestampLogicalType);
       }
     }
 
@@ -411,7 +411,7 @@ public class ParquetMetadataConverter {
         case 64:
           return of(signed ? ConvertedType.INT_64 : ConvertedType.UINT_64);
         default:
-          throw new RuntimeException("Unknown original type " + intLogicalType.toOriginalType());
+          throw new RuntimeException("Unknown original type " + intLogicalType);
       }
     }
 
@@ -1026,6 +1026,20 @@ public class ParquetMetadataConverter {
     }
   }
 
+  private boolean getAdjustToUtc(SchemaElement schemaElement) {
+    if (schemaElement != null && schemaElement.logicalType != null) {
+      Object field = schemaElement.logicalType.getFieldValue();
+      if (field instanceof TimeType) {
+        return ((TimeType)field).isAdjustedToUTC;
+      }
+      else if (field instanceof TimestampType) {
+        return ((TimestampType)field).isAdjustedToUTC;
+      }
+    }
+
+    return true;
+  }
+
   // Visible for testing
   LogicalTypeAnnotation getLogicalTypeAnnotation(ConvertedType type, SchemaElement schemaElement) {
     switch (type) {
@@ -1046,13 +1060,13 @@ public class ParquetMetadataConverter {
       case DATE:
         return LogicalTypeAnnotation.dateType();
       case TIME_MILLIS:
-        return LogicalTypeAnnotation.timeType(true, LogicalTypeAnnotation.TimeUnit.MILLIS);
+        return LogicalTypeAnnotation.timeType(getAdjustToUtc(schemaElement), LogicalTypeAnnotation.TimeUnit.MILLIS);
       case TIME_MICROS:
-        return LogicalTypeAnnotation.timeType(true, LogicalTypeAnnotation.TimeUnit.MICROS);
+        return LogicalTypeAnnotation.timeType(getAdjustToUtc(schemaElement), LogicalTypeAnnotation.TimeUnit.MICROS);
       case TIMESTAMP_MILLIS:
-        return LogicalTypeAnnotation.timestampType(true, LogicalTypeAnnotation.TimeUnit.MILLIS);
+        return LogicalTypeAnnotation.timestampType(getAdjustToUtc(schemaElement), LogicalTypeAnnotation.TimeUnit.MILLIS);
       case TIMESTAMP_MICROS:
-        return LogicalTypeAnnotation.timestampType(true, LogicalTypeAnnotation.TimeUnit.MICROS);
+        return LogicalTypeAnnotation.timestampType(getAdjustToUtc(schemaElement), LogicalTypeAnnotation.TimeUnit.MICROS);
       case INTERVAL:
         return LogicalTypeAnnotation.IntervalLogicalTypeAnnotation.getInstance();
       case INT_8:
@@ -1715,15 +1729,15 @@ public class ParquetMetadataConverter {
         childBuilder.as(getLogicalTypeAnnotation(schemaElement.logicalType));
       }
       if (schemaElement.isSetConverted_type()) {
-        OriginalType originalType = getLogicalTypeAnnotation(schemaElement.converted_type, schemaElement).toOriginalType();
-        OriginalType newOriginalType = (schemaElement.isSetLogicalType() && getLogicalTypeAnnotation(schemaElement.logicalType) != null) ?
-           getLogicalTypeAnnotation(schemaElement.logicalType).toOriginalType() : null;
-        if (!originalType.equals(newOriginalType)) {
-          if (newOriginalType != null) {
+        LogicalTypeAnnotation typeAnnotation = getLogicalTypeAnnotation(schemaElement.converted_type, schemaElement);
+        LogicalTypeAnnotation newTypeAnnotation = (schemaElement.isSetLogicalType() && getLogicalTypeAnnotation(schemaElement.logicalType) != null) ?
+           getLogicalTypeAnnotation(schemaElement.logicalType) : null;
+        if (!typeAnnotation.equals(newTypeAnnotation)) {
+          if (newTypeAnnotation != null) {
             LOG.warn("Converted type and logical type metadata mismatch (convertedType: {}, logical type: {}). Using value in converted type.",
               schemaElement.converted_type, schemaElement.logicalType);
           }
-          childBuilder.as(originalType);
+          childBuilder.as(typeAnnotation);
         }
       }
       if (schemaElement.isSetField_id()) {
