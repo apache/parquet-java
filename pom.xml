@@ -71,7 +71,7 @@
     <japicmp.version>0.18.2</japicmp.version>
     <shade.prefix>shaded.parquet</shade.prefix>
     <hadoop.version>3.3.5</hadoop.version>
-    <parquet.format.version>2.9.0</parquet.format.version>
+    <parquet.format.version>2.10.0</parquet.format.version>
     <previous.version>1.13.0</previous.version>
     <thrift.executable>thrift</thrift.executable>
     <format.thrift.executable>${thrift.executable}</format.thrift.executable>
