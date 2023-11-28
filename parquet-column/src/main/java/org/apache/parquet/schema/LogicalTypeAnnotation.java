@@ -151,8 +151,11 @@ public abstract class LogicalTypeAnnotation {
    *
    * API should be considered private
    *
+   * Deprecated: Please use the LogicalTypeAnnotation itself
+   *
    * @return the OriginalType representation of the new logical type, or null if there's none
    */
+  @Deprecated
   public abstract OriginalType toOriginalType();
 
   /**
@@ -314,9 +317,12 @@ public abstract class LogicalTypeAnnotation {
     /**
      * API Should be considered private
      *
+     * Deprecated: Please use the LogicalTypeAnnotation itself
+     *
      * @return the original type
      */
     @Override
+    @Deprecated
     public OriginalType toOriginalType() {
       return OriginalType.UTF8;
     }
@@ -357,9 +363,12 @@ public abstract class LogicalTypeAnnotation {
     /**
      * API Should be considered private
      *
+     * Deprecated: Please use the LogicalTypeAnnotation itself
+     *
      * @return the original type
      */
     @Override
+    @Deprecated
     public OriginalType toOriginalType() {
       return OriginalType.MAP;
     }
@@ -395,9 +404,12 @@ public abstract class LogicalTypeAnnotation {
     /**
      * API Should be considered private
      *
+     * Deprecated: Please use the LogicalTypeAnnotation itself
+     *
      * @return the original type
      */
     @Override
+    @Deprecated
     public OriginalType toOriginalType() {
       return OriginalType.LIST;
     }
@@ -433,9 +445,12 @@ public abstract class LogicalTypeAnnotation {
     /**
      * API Should be considered private
      *
+     * Deprecated: Please use the LogicalTypeAnnotation itself
+     *
      * @return the original type
      */
     @Override
+    @Deprecated
     public OriginalType toOriginalType() {
       return OriginalType.ENUM;
     }
@@ -489,9 +504,12 @@ public abstract class LogicalTypeAnnotation {
     /**
      * API Should be considered private
      *
+     * Deprecated: Please use the LogicalTypeAnnotation itself
+     *
      * @return the original type
      */
     @Override
+    @Deprecated
     public OriginalType toOriginalType() {
       return OriginalType.DECIMAL;
     }
@@ -546,9 +564,12 @@ public abstract class LogicalTypeAnnotation {
     /**
      * API Should be considered private
      *
+     * Deprecated: Please use the LogicalTypeAnnotation itself
+     *
      * @return the original type
      */
     @Override
+    @Deprecated
     public OriginalType toOriginalType() {
       return OriginalType.DATE;
     }
@@ -598,9 +619,12 @@ public abstract class LogicalTypeAnnotation {
     /**
      * API Should be considered private
      *
+     * Deprecated: Please use the LogicalTypeAnnotation itself
+     *
      * @return the original type
      */
     @Override
+    @Deprecated
     public OriginalType toOriginalType() {
       switch (unit) {
         case MILLIS:
@@ -681,9 +705,12 @@ public abstract class LogicalTypeAnnotation {
     /**
      * API Should be considered private
      *
+     * Deprecated: Please use the LogicalTypeAnnotation itself
+     *
      * @return the original type
      */
     @Override
+    @Deprecated
     public OriginalType toOriginalType() {
       switch (unit) {
         case MILLIS:
@@ -771,9 +798,12 @@ public abstract class LogicalTypeAnnotation {
     /**
      * API Should be considered private
      *
+     * Deprecated: Please use the LogicalTypeAnnotation itself
+     *
      * @return the original type
      */
     @Override
+    @Deprecated
     public OriginalType toOriginalType() {
       switch (bitWidth) {
         case 8:
@@ -847,9 +877,12 @@ public abstract class LogicalTypeAnnotation {
     /**
      * API Should be considered private
      *
+     * Deprecated: Please use the LogicalTypeAnnotation itself
+     *
      * @return the original type
      */
     @Override
+    @Deprecated
     public OriginalType toOriginalType() {
       return OriginalType.JSON;
     }
@@ -890,9 +923,12 @@ public abstract class LogicalTypeAnnotation {
     /**
      * API Should be considered private
      *
+     * Deprecated: Please use the LogicalTypeAnnotation itself
+     *
      * @return the original type
      */
     @Override
+    @Deprecated
     public OriginalType toOriginalType() {
       return OriginalType.BSON;
     }
@@ -934,9 +970,12 @@ public abstract class LogicalTypeAnnotation {
     /**
      * API Should be considered private
      *
+     * Deprecated: Please use the LogicalTypeAnnotation itself
+     *
      * @return the original type
      */
     @Override
+    @Deprecated
     public OriginalType toOriginalType() {
       // No OriginalType for UUID
       return null;
@@ -974,9 +1013,12 @@ public abstract class LogicalTypeAnnotation {
     /**
      * API Should be considered private
      *
+     * Deprecated: Please use the LogicalTypeAnnotation itself
+     *
      * @return the original type
      */
     @Override
+    @Deprecated
     public OriginalType toOriginalType() {
       return OriginalType.INTERVAL;
     }
@@ -1029,9 +1071,12 @@ public abstract class LogicalTypeAnnotation {
     /**
      * API Should be considered private
      *
+     * Deprecated: Please use the LogicalTypeAnnotation itself
+     *
      * @return the original type
      */
     @Override
+    @Deprecated
     public OriginalType toOriginalType() {
       return OriginalType.MAP_KEY_VALUE;
     }
