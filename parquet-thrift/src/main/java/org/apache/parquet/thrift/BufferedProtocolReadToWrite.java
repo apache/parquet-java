@@ -369,7 +369,7 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
       ThriftField expectedField;
       if ((expectedField = type.getChildById(field.id)) == null) {
         handleUnrecognizedField(field, type, in);
-        hasFieldsIgnored |= true;
+        hasFieldsIgnored = true;
         continue;
       }
       
