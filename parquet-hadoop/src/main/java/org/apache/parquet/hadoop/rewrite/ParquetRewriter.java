@@ -648,7 +648,7 @@ public class ParquetRewriter implements Closeable {
       } else {
         List<Type> childFields = ((GroupType) field).getFields();
         List<Type> prunedFields = pruneColumnsInFields(childFields, currentPath, prunePaths);
-        if (prunedFields.size() > 0) {
+        if (!prunedFields.isEmpty()) {
           prunedField = ((GroupType) field).withNewFields(prunedFields);
         }
       }

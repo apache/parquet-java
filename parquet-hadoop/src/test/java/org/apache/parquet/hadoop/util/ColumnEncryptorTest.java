@@ -125,7 +125,7 @@ public class ColumnEncryptorTest {
       EncDecProperties.getFileEncryptionProperties(encryptColumns, ParquetCipher.AES_GCM_CTR_V1, false));
 
     ParquetMetadata metaData = getParquetMetadata(EncDecProperties.getFileDecryptionProperties());
-    assertTrue(metaData.getBlocks().size() > 0);
+    assertFalse(metaData.getBlocks().isEmpty());
     List<ColumnChunkMetaData> columns = metaData.getBlocks().get(0).getColumns();
     Set<String> set = new HashSet<>(Arrays.asList(encryptColumns));
     for (ColumnChunkMetaData column : columns) {

@@ -225,7 +225,7 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
     Type valueType = innerGroup.getType(1);
 
     recordConsumer.startGroup(); // group wrapper (original type MAP)
-    if (map.size() > 0) {
+    if (!map.isEmpty()) {
       recordConsumer.startField(MAP_REPEATED_NAME, 0);
 
       for (Map.Entry<CharSequence, V> entry : map.entrySet()) {
@@ -659,7 +659,7 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
   private class ThreeLevelListWriter extends ListWriter {
     @Override
     protected void writeCollection(GroupType type, Schema schema, Collection<?> collection) {
-      if (collection.size() > 0) {
+      if (!collection.isEmpty()) {
         recordConsumer.startField(LIST_REPEATED_NAME, 0);
         GroupType repeatedType = type.getType(0).asGroupType();
         Type elementType = repeatedType.getType(0);

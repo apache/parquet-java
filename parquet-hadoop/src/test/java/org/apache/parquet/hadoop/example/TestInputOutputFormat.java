@@ -20,6 +20,7 @@ package org.apache.parquet.hadoop.example;
 
 import static java.lang.Thread.sleep;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
@@ -134,7 +135,7 @@ public class TestInputOutputFormat {
     @Override
     public org.apache.parquet.hadoop.api.ReadSupport.ReadContext init(InitContext context) {
       Set<String> counts = context.getKeyValueMetadata().get("my.count");
-      assertTrue("counts: " + counts, counts.size() > 0);
+      assertFalse("counts: " + counts, counts.isEmpty());
       return super.init(context);
     }
   }

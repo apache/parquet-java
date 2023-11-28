@@ -56,7 +56,7 @@ public class FileEncryptionProperties {
       throw new IllegalArgumentException("Wrong footer key length " + footerKey.length);
     }
     if (null != columnPropertyMap) {
-      if (columnPropertyMap.size() == 0) {
+      if (columnPropertyMap.isEmpty()) {
         throw new IllegalArgumentException("No encrypted columns");
       }
     } else {
