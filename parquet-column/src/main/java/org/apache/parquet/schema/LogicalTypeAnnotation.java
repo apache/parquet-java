@@ -174,10 +174,7 @@ public abstract class LogicalTypeAnnotation {
 
   @Override
   public String toString() {
-    StringBuilder sb = new StringBuilder();
-    sb.append(getType());
-    sb.append(typeParametersAsString());
-    return sb.toString();
+      return getType() + typeParametersAsString();
   }
 
   PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
@@ -508,13 +505,7 @@ public abstract class LogicalTypeAnnotation {
 
     @Override
     protected String typeParametersAsString() {
-      StringBuilder sb = new StringBuilder();
-      sb.append("(");
-      sb.append(precision);
-      sb.append(",");
-      sb.append(scale);
-      sb.append(")");
-      return sb.toString();
+        return "(" + precision + "," + scale + ")";
     }
 
     @Override
@@ -624,13 +615,7 @@ public abstract class LogicalTypeAnnotation {
 
     @Override
     protected String typeParametersAsString() {
-      StringBuilder sb = new StringBuilder();
-      sb.append("(");
-      sb.append(unit);
-      sb.append(",");
-      sb.append(isAdjustedToUTC);
-      sb.append(")");
-      return sb.toString();
+        return "(" + unit + "," + isAdjustedToUTC + ")";
     }
 
     public TimeUnit getUnit() {
@@ -707,13 +692,7 @@ public abstract class LogicalTypeAnnotation {
 
     @Override
     protected String typeParametersAsString() {
-      StringBuilder sb = new StringBuilder();
-      sb.append("(");
-      sb.append(unit);
-      sb.append(",");
-      sb.append(isAdjustedToUTC);
-      sb.append(")");
-      return sb.toString();
+        return "(" + unit + "," + isAdjustedToUTC + ")";
     }
 
     public TimeUnit getUnit() {
@@ -801,13 +780,7 @@ public abstract class LogicalTypeAnnotation {
 
     @Override
     protected String typeParametersAsString() {
-      StringBuilder sb = new StringBuilder();
-      sb.append("(");
-      sb.append(bitWidth);
-      sb.append(",");
-      sb.append(isSigned);
-      sb.append(")");
-      return sb.toString();
+      return "(" + bitWidth + "," + isSigned + ")";
     }
 
     public int getBitWidth() {
