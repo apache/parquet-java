@@ -38,6 +38,7 @@ import org.slf4j.LoggerFactory;
 public class PlainValuesWriter extends ValuesWriter {
   private static final Logger LOG = LoggerFactory.getLogger(PlainValuesWriter.class);
 
+  @Deprecated
   public static final Charset CHARSET = Charset.forName("UTF-8");
 
   private CapacityByteArrayOutputStream arrayOut;
