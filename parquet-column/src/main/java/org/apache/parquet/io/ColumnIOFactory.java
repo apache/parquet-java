@@ -32,7 +32,7 @@ import org.apache.parquet.schema.TypeVisitor;
  */
 public class ColumnIOFactory {
 
-  private class ColumnIOCreatorVisitor implements TypeVisitor {
+  private static class ColumnIOCreatorVisitor implements TypeVisitor {
 
     private MessageColumnIO columnIO;
     private GroupColumnIO current;
