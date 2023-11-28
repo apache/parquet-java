@@ -20,6 +20,7 @@ package org.apache.parquet.glob;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import org.apache.parquet.glob.GlobNode.Atom;
@@ -57,7 +58,7 @@ final class GlobParser {
      */
 
     if (pattern.isEmpty() || pattern.equals("{}")) {
-      return new GlobNodeSequence(Arrays.<GlobNode>asList(new Atom("")));
+      return new GlobNodeSequence(Collections.singletonList(new Atom("")));
     }
 
     // the outer parse method needs to parse the pattern into a

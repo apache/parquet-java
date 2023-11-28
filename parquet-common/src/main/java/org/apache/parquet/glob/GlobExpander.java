@@ -20,6 +20,7 @@ package org.apache.parquet.glob;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import org.apache.parquet.glob.GlobNode.Atom;
@@ -70,7 +71,7 @@ public final class GlobExpander {
     @Override
     public List<String> visit(Atom atom) {
       // atoms are the base case, just return a singleton list
-      return Arrays.asList(atom.get());
+      return Collections.singletonList(atom.get());
     }
 
     @Override
