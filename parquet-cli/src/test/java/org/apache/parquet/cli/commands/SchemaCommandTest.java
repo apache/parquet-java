@@ -18,15 +18,14 @@
  */
 package org.apache.parquet.cli.commands;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.Arrays;
 import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileAlreadyExistsException;
 import org.junit.Assert;
 import org.junit.Test;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.Arrays;
 
 public class SchemaCommandTest extends ParquetFileTest {
   @Test
@@ -52,7 +51,6 @@ public class SchemaCommandTest extends ParquetFileTest {
     Assert.assertEquals(0, command.run());
     Assert.assertTrue(0 < outputFile.length());
   }
-
 
   @Test(expected = FileAlreadyExistsException.class)
   public void testSchemaCommandOverwriteExistentFileWithoutOverwriteOption() throws IOException {

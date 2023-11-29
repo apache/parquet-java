@@ -18,12 +18,11 @@
  */
 package org.apache.parquet.arrow.schema;
 
+import static org.apache.parquet.schema.Type.Repetition.REPEATED;
+
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
-import org.apache.parquet.schema.OriginalType;
 import org.apache.parquet.schema.Type;
-
-import static org.apache.parquet.schema.Type.Repetition.REPEATED;
 
 /**
  * Represents a standard 3 levels Parquet map
@@ -39,15 +38,19 @@ class Map3Levels {
 
   /**
    * Will validate the structure of the map
+   *
    * @param map the Parquet map
    */
   public Map3Levels(GroupType map) {
-    if (map.getLogicalTypeAnnotation() != LogicalTypeAnnotation.mapType() || map.getFields().size() != 1) {
+    if (map.getLogicalTypeAnnotation() != LogicalTypeAnnotation.mapType()
+        || map.getFields().size() != 1) {
       throw new IllegalArgumentException("invalid map type: " + map);
     }
     this.map = map;
     Type repeatedField = map.getFields().get(0);
-    if (repeatedField.isPrimitive() || !repeatedField.isRepetition(REPEATED) || repeatedField.asGroupType().getFields().size() != 2) {
+    if (repeatedField.isPrimitive()
+        || !repeatedField.isRepetition(REPEATED)
+        || repeatedField.asGroupType().getFields().size() != 2) {
       throw new IllegalArgumentException("invalid map key: " + map);
     }
     this.repeated = repeatedField.asGroupType();
@@ -82,5 +85,4 @@ class Map3Levels {
   public Type getValue() {
     return value;
   }
-
 }

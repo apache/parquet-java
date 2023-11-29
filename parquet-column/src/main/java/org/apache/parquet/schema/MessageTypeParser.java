@@ -23,7 +23,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.StringTokenizer;
-
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Type.Repetition;
 import org.apache.parquet.schema.Types.GroupBuilder;
@@ -52,7 +51,7 @@ public class MessageTypeParser {
       while (st.hasMoreTokens()) {
         String t = st.nextToken();
         if (t.equals("\n")) {
-          ++ line;
+          ++line;
           currentLine.setLength(0);
         } else {
           currentLine.append(t);
@@ -76,7 +75,6 @@ public class MessageTypeParser {
   private MessageTypeParser() {}
 
   /**
-   *
    * @param input the text representation of the schema to parse
    * @return the corresponding object representation
    */
@@ -135,13 +133,15 @@ public class MessageTypeParser {
     try {
       addGroupTypeFields(t, st, childBuilder);
     } catch (IllegalArgumentException e) {
-      throw new IllegalArgumentException("problem reading type: type = group, name = " + name + ", original type = " + originalType, e);
+      throw new IllegalArgumentException(
+          "problem reading type: type = group, name = " + name + ", original type = " + originalType, e);
     }
 
     childBuilder.named(name);
   }
 
-  private static void addPrimitiveType(Tokenizer st, PrimitiveTypeName type, Repetition r, Types.GroupBuilder<?> builder) {
+  private static void addPrimitiveType(
+      Tokenizer st, PrimitiveTypeName type, Repetition r, Types.GroupBuilder<?> builder) {
     PrimitiveBuilder<?> childBuilder = builder.primitive(type, r);
     String t;
 
@@ -210,19 +210,25 @@ public class MessageTypeParser {
     try {
       childBuilder.named(name);
     } catch (IllegalArgumentException e) {
-      throw new IllegalArgumentException("problem reading type: type = " + type + ", name = " + name + ", original type = " + originalType, e);
+      throw new IllegalArgumentException(
+          "problem reading type: type = " + type + ", name = " + name + ", original type = " + originalType,
+          e);
     }
   }
 
   private static boolean isLogicalType(String t) {
-    return Arrays.stream(LogicalTypeAnnotation.LogicalTypeToken.values()).anyMatch((type) -> type.name().equals(t));
+    return Arrays.stream(LogicalTypeAnnotation.LogicalTypeToken.values())
+        .anyMatch((type) -> type.name().equals(t));
   }
 
   private static PrimitiveTypeName asPrimitive(String t, Tokenizer st) {
     try {
       return PrimitiveTypeName.valueOf(t.toUpperCase(Locale.ENGLISH));
     } catch (IllegalArgumentException e) {
-      throw new IllegalArgumentException("expected one of " + Arrays.toString(PrimitiveTypeName.values())  +" got " + t + " at " + st.getLocationString(), e);
+      throw new IllegalArgumentException(
+          "expected one of " + Arrays.toString(PrimitiveTypeName.values()) + " got " + t + " at "
+              + st.getLocationString(),
+          e);
     }
   }
 
@@ -230,14 +236,17 @@ public class MessageTypeParser {
     try {
       return Repetition.valueOf(t.toUpperCase(Locale.ENGLISH));
     } catch (IllegalArgumentException e) {
-      throw new IllegalArgumentException("expected one of " + Arrays.toString(Repetition.values())  +" got " + t + " at " + st.getLocationString(), e);
+      throw new IllegalArgumentException(
+          "expected one of " + Arrays.toString(Repetition.values()) + " got " + t + " at "
+              + st.getLocationString(),
+          e);
     }
   }
 
   private static void check(String t, String expected, String message, Tokenizer tokenizer) {
     if (!t.equalsIgnoreCase(expected)) {
-      throw new IllegalArgumentException(message+ ": expected '" + expected + "' but got '" + t + "' at " + tokenizer.getLocationString());
+      throw new IllegalArgumentException(
+          message + ": expected '" + expected + "' but got '" + t + "' at " + tokenizer.getLocationString());
     }
   }
-
 }

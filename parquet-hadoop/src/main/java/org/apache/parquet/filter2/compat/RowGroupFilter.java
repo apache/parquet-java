@@ -22,7 +22,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
-
 import org.apache.parquet.filter2.bloomfilterlevel.BloomFilterImpl;
 import org.apache.parquet.filter2.compat.FilterCompat.Filter;
 import org.apache.parquet.filter2.compat.FilterCompat.NoOpFilter;
@@ -34,8 +33,6 @@ import org.apache.parquet.filter2.statisticslevel.StatisticsFilter;
 import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.schema.MessageType;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Given a {@link Filter} applies it to a list of BlockMetaData (row groups)
@@ -63,11 +60,12 @@ public class RowGroupFilter implements Visitor<List<BlockMetaData>> {
    */
   @Deprecated
   public static List<BlockMetaData> filterRowGroups(Filter filter, List<BlockMetaData> blocks, MessageType schema) {
-	  Objects.requireNonNull(filter, "filter cannot be null");
+    Objects.requireNonNull(filter, "filter cannot be null");
     return filter.accept(new RowGroupFilter(blocks, schema));
   }
 
-  public static List<BlockMetaData> filterRowGroups(List<FilterLevel> levels, Filter filter, List<BlockMetaData> blocks, ParquetFileReader reader) {
+  public static List<BlockMetaData> filterRowGroups(
+      List<FilterLevel> levels, Filter filter, List<BlockMetaData> blocks, ParquetFileReader reader) {
     Objects.requireNonNull(filter, "filter cannot be null");
     return filter.accept(new RowGroupFilter(levels, blocks, reader));
   }
@@ -99,19 +97,20 @@ public class RowGroupFilter implements Visitor<List<BlockMetaData>> {
     for (BlockMetaData block : blocks) {
       boolean drop = false;
 
-      if(levels.contains(FilterLevel.STATISTICS)) {
+      if (levels.contains(FilterLevel.STATISTICS)) {
         drop = StatisticsFilter.canDrop(filterPredicate, block.getColumns());
       }
 
-      if(!drop && levels.contains(FilterLevel.DICTIONARY)) {
+      if (!drop && levels.contains(FilterLevel.DICTIONARY)) {
         drop = DictionaryFilter.canDrop(filterPredicate, block.getColumns(), reader.getDictionaryReader(block));
       }
 
       if (!drop && levels.contains(FilterLevel.BLOOMFILTER)) {
-        drop = BloomFilterImpl.canDrop(filterPredicate, block.getColumns(), reader.getBloomFilterDataReader(block));
+        drop = BloomFilterImpl.canDrop(
+            filterPredicate, block.getColumns(), reader.getBloomFilterDataReader(block));
       }
 
-      if(!drop) {
+      if (!drop) {
         filteredBlocks.add(block);
       }
     }

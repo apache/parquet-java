@@ -19,6 +19,10 @@
 
 package org.apache.parquet.crypto.propertiesfactory;
 
+import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.crypto.ColumnEncryptionProperties;
@@ -35,11 +39,6 @@ import org.apache.parquet.schema.MessageType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 public class SchemaCryptoPropertiesFactory implements EncryptionPropertiesFactory, DecryptionPropertiesFactory {
 
   public static final String PATH_NAME_PREFIX = "column_encryption_1178_";
@@ -48,16 +47,18 @@ public class SchemaCryptoPropertiesFactory implements EncryptionPropertiesFactor
 
   public static final String CONF_ENCRYPTION_ALGORITHM = "parquet.encryption.algorithm";
   public static final String CONF_ENCRYPTION_FOOTER = "parquet.encrypt.footer";
-  private static final byte[] FOOTER_KEY = {0x01, 0x02, 0x03, 0x4, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a,
-    0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10};
+  private static final byte[] FOOTER_KEY = {
+    0x01, 0x02, 0x03, 0x4, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10
+  };
   private static final byte[] FOOTER_KEY_METADATA = "footkey".getBytes(StandardCharsets.UTF_8);
-  private static final byte[] COL_KEY = {0x02, 0x03, 0x4, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b,
-    0x0c, 0x0d, 0x0e, 0x0f, 0x10, 0x11};
+  private static final byte[] COL_KEY = {
+    0x02, 0x03, 0x4, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10, 0x11
+  };
   private static final byte[] COL_KEY_METADATA = "col".getBytes(StandardCharsets.UTF_8);
 
   @Override
-  public FileEncryptionProperties getFileEncryptionProperties(Configuration conf, Path tempFilePath,
-                                                              WriteContext fileWriteContext) throws ParquetCryptoRuntimeException {
+  public FileEncryptionProperties getFileEncryptionProperties(
+      Configuration conf, Path tempFilePath, WriteContext fileWriteContext) throws ParquetCryptoRuntimeException {
     MessageType schema = fileWriteContext.getSchema();
     List<String[]> paths = schema.getPaths();
     if (paths == null || paths.isEmpty()) {
@@ -71,7 +72,8 @@ public class SchemaCryptoPropertiesFactory implements EncryptionPropertiesFactor
     }
 
     if (columnPropertyMap.isEmpty()) {
-      log.debug("No column is encrypted. Returning null so that Parquet can skip. Empty properties will cause Parquet exception");
+      log.debug(
+          "No column is encrypted. Returning null so that Parquet can skip. Empty properties will cause Parquet exception");
       return null;
     }
 
@@ -84,8 +86,7 @@ public class SchemaCryptoPropertiesFactory implements EncryptionPropertiesFactor
      * Otherwise, it will be ignored.
      */
     boolean shouldEncryptFooter = getEncryptFooter(conf);
-    FileEncryptionProperties.Builder encryptionPropertiesBuilder =
-      FileEncryptionProperties.builder(FOOTER_KEY)
+    FileEncryptionProperties.Builder encryptionPropertiesBuilder = FileEncryptionProperties.builder(FOOTER_KEY)
         .withFooterKeyMetadata(FOOTER_KEY_METADATA)
         .withAlgorithm(getParquetCipherOrDefault(conf))
         .withEncryptedColumns(columnPropertyMap);
@@ -94,9 +95,9 @@ public class SchemaCryptoPropertiesFactory implements EncryptionPropertiesFactor
     }
     FileEncryptionProperties encryptionProperties = encryptionPropertiesBuilder.build();
     log.info(
-      "FileEncryptionProperties is built with, algorithm:{}, footerEncrypted:{}",
-      encryptionProperties.getAlgorithm(),
-      encryptionProperties.encryptedFooter());
+        "FileEncryptionProperties is built with, algorithm:{}, footerEncrypted:{}",
+        encryptionProperties.getAlgorithm(),
+        encryptionProperties.encryptedFooter());
     return encryptionProperties;
   }
 
@@ -112,26 +113,30 @@ public class SchemaCryptoPropertiesFactory implements EncryptionPropertiesFactor
     return encryptFooter;
   }
 
-  private void getColumnEncryptionProperties(String[] path, Map<ColumnPath, ColumnEncryptionProperties> columnPropertyMap,
-                                             Configuration conf) throws ParquetCryptoRuntimeException {
+  private void getColumnEncryptionProperties(
+      String[] path, Map<ColumnPath, ColumnEncryptionProperties> columnPropertyMap, Configuration conf)
+      throws ParquetCryptoRuntimeException {
     String pathName = String.join(".", path);
     String columnKeyName = conf.get(PATH_NAME_PREFIX + pathName, null);
     if (columnKeyName != null) {
       ColumnPath columnPath = ColumnPath.get(path);
       ColumnEncryptionProperties colEncProp = ColumnEncryptionProperties.builder(columnPath)
-        .withKey(COL_KEY)
-        .withKeyMetaData(COL_KEY_METADATA)
-        .build();
+          .withKey(COL_KEY)
+          .withKeyMetaData(COL_KEY_METADATA)
+          .build();
       columnPropertyMap.put(columnPath, colEncProp);
     }
   }
 
   @Override
   public FileDecryptionProperties getFileDecryptionProperties(Configuration hadoopConfig, Path filePath)
-    throws ParquetCryptoRuntimeException {
+      throws ParquetCryptoRuntimeException {
     DecryptionKeyRetrieverMock keyRetriever = new DecryptionKeyRetrieverMock();
     keyRetriever.putKey("footkey", FOOTER_KEY);
     keyRetriever.putKey("col", COL_KEY);
-    return FileDecryptionProperties.builder().withPlaintextFilesAllowed().withKeyRetriever(keyRetriever).build();
+    return FileDecryptionProperties.builder()
+        .withPlaintextFilesAllowed()
+        .withKeyRetriever(keyRetriever)
+        .build();
   }
 }

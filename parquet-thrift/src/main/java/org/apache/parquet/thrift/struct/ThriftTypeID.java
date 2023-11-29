@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -17,8 +17,6 @@
  * under the License.
  */
 package org.apache.parquet.thrift.struct;
-
-import org.apache.thrift.protocol.TType;
 
 import org.apache.parquet.thrift.struct.ThriftType.BoolType;
 import org.apache.parquet.thrift.struct.ThriftType.ByteType;
@@ -32,26 +30,29 @@ import org.apache.parquet.thrift.struct.ThriftType.MapType;
 import org.apache.parquet.thrift.struct.ThriftType.SetType;
 import org.apache.parquet.thrift.struct.ThriftType.StringType;
 import org.apache.parquet.thrift.struct.ThriftType.StructType;
+import org.apache.thrift.protocol.TType;
+
 /**
  * The list of thrift types
  */
 public enum ThriftTypeID {
-  STOP (TType.STOP),
-  VOID (TType.VOID),
-  BOOL (TType.BOOL, BoolType.class),
-  BYTE (TType.BYTE, ByteType.class),
-  DOUBLE (TType.DOUBLE, DoubleType.class),
-  I16 (TType.I16, I16Type.class),
-  I32 (TType.I32, I32Type.class),
-  I64 (TType.I64, I64Type.class),
-  STRING (TType.STRING, StringType.class),
-  STRUCT (TType.STRUCT, true, StructType.class),
-  MAP (TType.MAP, true, MapType.class),
-  SET (TType.SET, true, SetType.class),
-  LIST (TType.LIST, true, ListType.class),
-  ENUM (TType.ENUM, TType.I32, EnumType.class);
+  STOP(TType.STOP),
+  VOID(TType.VOID),
+  BOOL(TType.BOOL, BoolType.class),
+  BYTE(TType.BYTE, ByteType.class),
+  DOUBLE(TType.DOUBLE, DoubleType.class),
+  I16(TType.I16, I16Type.class),
+  I32(TType.I32, I32Type.class),
+  I64(TType.I64, I64Type.class),
+  STRING(TType.STRING, StringType.class),
+  STRUCT(TType.STRUCT, true, StructType.class),
+  MAP(TType.MAP, true, MapType.class),
+  SET(TType.SET, true, SetType.class),
+  LIST(TType.LIST, true, ListType.class),
+  ENUM(TType.ENUM, TType.I32, EnumType.class);
 
   private static ThriftTypeID[] types = new ThriftTypeID[17];
+
   static {
     for (ThriftTypeID t : ThriftTypeID.values()) {
       types[t.thriftType] = t;
@@ -79,7 +80,8 @@ public enum ThriftTypeID {
     this(thriftType, thriftType, complex, clss);
   }
 
-  private ThriftTypeID(byte thriftType, byte serializedThriftType, boolean complex, Class<? extends ThriftType> clss) {
+  private ThriftTypeID(
+      byte thriftType, byte serializedThriftType, boolean complex, Class<? extends ThriftType> clss) {
     this.thriftType = thriftType;
     this.serializedThriftType = serializedThriftType;
     this.complex = complex;

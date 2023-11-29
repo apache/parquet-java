@@ -23,13 +23,11 @@ package org.apache.parquet.util;
  * This is a class for testing DynMethods and DynConstructors.
  */
 public class Concatenator {
-  public static class SomeCheckedException extends Exception {
-  }
+  public static class SomeCheckedException extends Exception {}
 
   private String sep = "";
 
-  public Concatenator() {
-  }
+  public Concatenator() {}
 
   public Concatenator(String sep) {
     this.sep = sep;

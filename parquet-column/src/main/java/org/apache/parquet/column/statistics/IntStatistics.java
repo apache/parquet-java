@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -25,8 +25,8 @@ import org.apache.parquet.schema.Types;
 public class IntStatistics extends Statistics<Integer> {
 
   // A fake type object to be used to generate the proper comparator
-  private static final PrimitiveType DEFAULT_FAKE_TYPE = Types.optional(PrimitiveType.PrimitiveTypeName.INT32)
-      .named("fake_int32_type");
+  private static final PrimitiveType DEFAULT_FAKE_TYPE =
+      Types.optional(PrimitiveType.PrimitiveTypeName.INT32).named("fake_int32_type");
 
   private int max;
   private int min;
@@ -62,7 +62,7 @@ public class IntStatistics extends Statistics<Integer> {
 
   @Override
   public void mergeStatisticsMinMax(Statistics stats) {
-    IntStatistics intStats = (IntStatistics)stats;
+    IntStatistics intStats = (IntStatistics) stats;
     if (!this.hasNonNullValue()) {
       initializeStats(intStats.getMin(), intStats.getMax());
     } else {
@@ -98,14 +98,18 @@ public class IntStatistics extends Statistics<Integer> {
   }
 
   public void updateStats(int min_value, int max_value) {
-    if (comparator().compare(min, min_value) > 0) { min = min_value; }
-    if (comparator().compare(max, max_value) < 0) { max = max_value; }
+    if (comparator().compare(min, min_value) > 0) {
+      min = min_value;
+    }
+    if (comparator().compare(max, max_value) < 0) {
+      max = max_value;
+    }
   }
 
   public void initializeStats(int min_value, int max_value) {
-      min = min_value;
-      max = max_value;
-      this.markAsNotEmpty();
+    min = min_value;
+    max = max_value;
+    this.markAsNotEmpty();
   }
 
   @Override

@@ -18,6 +18,11 @@
  */
 package org.apache.parquet.hadoop.rewrite;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.Preconditions;
@@ -31,12 +36,6 @@ import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.hadoop.util.HadoopOutputFile;
 import org.apache.parquet.io.InputFile;
 import org.apache.parquet.io.OutputFile;
-
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
  * A set of options to create a ParquetRewriter.
@@ -53,15 +52,16 @@ public class RewriteOptions {
   private final FileEncryptionProperties fileEncryptionProperties;
   private final IndexCache.CacheStrategy indexCacheStrategy;
 
-  private RewriteOptions(ParquetConfiguration conf,
-                         List<InputFile> inputFiles,
-                         OutputFile outputFile,
-                         List<String> pruneColumns,
-                         CompressionCodecName newCodecName,
-                         Map<String, MaskMode> maskColumns,
-                         List<String> encryptColumns,
-                         FileEncryptionProperties fileEncryptionProperties,
-                         IndexCache.CacheStrategy indexCacheStrategy) {
+  private RewriteOptions(
+      ParquetConfiguration conf,
+      List<InputFile> inputFiles,
+      OutputFile outputFile,
+      List<String> pruneColumns,
+      CompressionCodecName newCodecName,
+      Map<String, MaskMode> maskColumns,
+      List<String> encryptColumns,
+      FileEncryptionProperties fileEncryptionProperties,
+      IndexCache.CacheStrategy indexCacheStrategy) {
     this.conf = conf;
     this.inputFiles = inputFiles;
     this.outputFile = outputFile;
@@ -98,14 +98,16 @@ public class RewriteOptions {
    * @return a {@link List} of the associated input {@link Path}s
    */
   public List<Path> getInputFiles() {
-    return inputFiles.stream().map(f -> {
-      if (f instanceof HadoopOutputFile) {
-        HadoopOutputFile hadoopOutputFile = (HadoopOutputFile) f;
-        return new Path(hadoopOutputFile.getPath());
-      } else {
-        throw new RuntimeException("The input files do not all have an associated Hadoop Path.");
-      }
-    }).collect(Collectors.toList());
+    return inputFiles.stream()
+        .map(f -> {
+          if (f instanceof HadoopOutputFile) {
+            HadoopOutputFile hadoopOutputFile = (HadoopOutputFile) f;
+            return new Path(hadoopOutputFile.getPath());
+          } else {
+            throw new RuntimeException("The input files do not all have an associated Hadoop Path.");
+          }
+        })
+        .collect(Collectors.toList());
   }
 
   /**
@@ -184,7 +186,10 @@ public class RewriteOptions {
      * @param outputFile output file path to rewrite to
      */
     public Builder(Configuration conf, Path inputFile, Path outputFile) {
-      this(new HadoopParquetConfiguration(conf), HadoopInputFile.fromPathUnchecked(inputFile, conf), HadoopOutputFile.fromPathUnchecked(outputFile, conf));
+      this(
+          new HadoopParquetConfiguration(conf),
+          HadoopInputFile.fromPathUnchecked(inputFile, conf),
+          HadoopOutputFile.fromPathUnchecked(outputFile, conf));
     }
 
     /**
@@ -315,7 +320,8 @@ public class RewriteOptions {
      * @return self
      */
     public Builder addInputFile(Path path) {
-      this.inputFiles.add(HadoopInputFile.fromPathUnchecked(path, ConfigurationUtil.createHadoopConfiguration(conf)));
+      this.inputFiles.add(
+          HadoopInputFile.fromPathUnchecked(path, ConfigurationUtil.createHadoopConfiguration(conf)));
       return this;
     }
 
@@ -336,7 +342,7 @@ public class RewriteOptions {
      * This could reduce the random seek while rewriting with PREFETCH_BLOCK strategy, NONE by default.
      *
      * @param cacheStrategy the index cache strategy, supports: {@link IndexCache.CacheStrategy#NONE} or
-     *        {@link IndexCache.CacheStrategy#PREFETCH_BLOCK}
+     *                      {@link IndexCache.CacheStrategy#PREFETCH_BLOCK}
      * @return self
      */
     public Builder indexCacheStrategy(IndexCache.CacheStrategy cacheStrategy) {
@@ -356,39 +362,41 @@ public class RewriteOptions {
       if (pruneColumns != null) {
         if (maskColumns != null) {
           for (String pruneColumn : pruneColumns) {
-            Preconditions.checkArgument(!maskColumns.containsKey(pruneColumn),
-                    "Cannot prune and mask same column");
+            Preconditions.checkArgument(
+                !maskColumns.containsKey(pruneColumn), "Cannot prune and mask same column");
           }
         }
 
         if (encryptColumns != null) {
           for (String pruneColumn : pruneColumns) {
-            Preconditions.checkArgument(!encryptColumns.contains(pruneColumn),
-                    "Cannot prune and encrypt same column");
+            Preconditions.checkArgument(
+                !encryptColumns.contains(pruneColumn), "Cannot prune and encrypt same column");
           }
         }
       }
 
       if (encryptColumns != null && !encryptColumns.isEmpty()) {
-        Preconditions.checkArgument(fileEncryptionProperties != null,
-                "FileEncryptionProperties is required when encrypting columns");
+        Preconditions.checkArgument(
+            fileEncryptionProperties != null,
+            "FileEncryptionProperties is required when encrypting columns");
       }
 
       if (fileEncryptionProperties != null) {
-        Preconditions.checkArgument(encryptColumns != null && !encryptColumns.isEmpty(),
-                "Encrypt columns is required when FileEncryptionProperties is set");
+        Preconditions.checkArgument(
+            encryptColumns != null && !encryptColumns.isEmpty(),
+            "Encrypt columns is required when FileEncryptionProperties is set");
       }
 
-      return new RewriteOptions(conf,
-              inputFiles,
-              outputFile,
-              pruneColumns,
-              newCodecName,
-              maskColumns,
-              encryptColumns,
-              fileEncryptionProperties,
-              indexCacheStrategy);
+      return new RewriteOptions(
+          conf,
+          inputFiles,
+          outputFile,
+          pruneColumns,
+          newCodecName,
+          maskColumns,
+          encryptColumns,
+          fileEncryptionProperties,
+          indexCacheStrategy);
     }
   }
-
 }

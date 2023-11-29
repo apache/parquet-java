@@ -18,6 +18,22 @@
  */
 package org.apache.parquet.hadoop.util;
 
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
+import static org.apache.parquet.schema.Type.Repetition.OPTIONAL;
+import static org.apache.parquet.schema.Type.Repetition.REPEATED;
+import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.HadoopReadOptions;
@@ -36,31 +52,13 @@ import org.apache.parquet.hadoop.example.GroupReadSupport;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.hadoop.util.CompressionConverter.TransParquetFileReader;
-import org.apache.parquet.schema.GroupType;
-import org.apache.parquet.schema.MessageType;
-import org.apache.parquet.schema.PrimitiveType;
-
 import org.apache.parquet.internal.column.columnindex.OffsetIndex;
 import org.apache.parquet.io.InputFile;
 import org.apache.parquet.io.SeekableInputStream;
+import org.apache.parquet.schema.GroupType;
+import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.schema.PrimitiveType;
 import org.junit.Test;
-
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
-import static org.apache.parquet.schema.Type.Repetition.OPTIONAL;
-import static org.apache.parquet.schema.Type.Repetition.REPEATED;
-import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
 
 public class ColumnEncryptorTest {
 
@@ -74,10 +72,10 @@ public class ColumnEncryptorTest {
     MessageType schema = createSchema();
     columnEncryptor = new ColumnEncryptor(conf);
     inputFile = new TestFileBuilder(conf, schema)
-      .withNumRecord(numRecord)
-      .withCodec(compression)
-      .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
-      .build();
+        .withNumRecord(numRecord)
+        .withCodec(compression)
+        .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
+        .build();
     outputFile = TestFileBuilder.createTempFile("test");
   }
 
@@ -85,8 +83,11 @@ public class ColumnEncryptorTest {
   public void testFlatColumn() throws IOException {
     String[] encryptColumns = {"DocId"};
     testSetup("GZIP");
-    columnEncryptor.encryptColumns(inputFile.getFileName(), outputFile, Arrays.asList(encryptColumns),
-      EncDecProperties.getFileEncryptionProperties(encryptColumns, ParquetCipher.AES_GCM_CTR_V1, false));
+    columnEncryptor.encryptColumns(
+        inputFile.getFileName(),
+        outputFile,
+        Arrays.asList(encryptColumns),
+        EncDecProperties.getFileEncryptionProperties(encryptColumns, ParquetCipher.AES_GCM_CTR_V1, false));
     verifyResultDecryptionWithValidKey();
   }
 
@@ -94,8 +95,11 @@ public class ColumnEncryptorTest {
   public void testNestedColumn() throws IOException {
     String[] encryptColumns = {"Links.Forward"};
     testSetup("GZIP");
-    columnEncryptor.encryptColumns(inputFile.getFileName(), outputFile, Arrays.asList(encryptColumns),
-      EncDecProperties.getFileEncryptionProperties(encryptColumns, ParquetCipher.AES_GCM_CTR_V1, false));
+    columnEncryptor.encryptColumns(
+        inputFile.getFileName(),
+        outputFile,
+        Arrays.asList(encryptColumns),
+        EncDecProperties.getFileEncryptionProperties(encryptColumns, ParquetCipher.AES_GCM_CTR_V1, false));
     verifyResultDecryptionWithValidKey();
   }
 
@@ -103,8 +107,11 @@ public class ColumnEncryptorTest {
   public void testNoEncryption() throws IOException {
     String[] encryptColumns = {};
     testSetup("GZIP");
-    columnEncryptor.encryptColumns(inputFile.getFileName(), outputFile, Arrays.asList(encryptColumns),
-      EncDecProperties.getFileEncryptionProperties(encryptColumns, ParquetCipher.AES_GCM_CTR_V1, false));
+    columnEncryptor.encryptColumns(
+        inputFile.getFileName(),
+        outputFile,
+        Arrays.asList(encryptColumns),
+        EncDecProperties.getFileEncryptionProperties(encryptColumns, ParquetCipher.AES_GCM_CTR_V1, false));
     verifyResultDecryptionWithValidKey();
   }
 
@@ -112,8 +119,11 @@ public class ColumnEncryptorTest {
   public void testEncryptAllColumns() throws IOException {
     String[] encryptColumns = {"DocId", "Name", "Gender", "Links.Forward", "Links.Backward"};
     testSetup("GZIP");
-    columnEncryptor.encryptColumns(inputFile.getFileName(), outputFile, Arrays.asList(encryptColumns),
-      EncDecProperties.getFileEncryptionProperties(encryptColumns, ParquetCipher.AES_GCM_CTR_V1, false));
+    columnEncryptor.encryptColumns(
+        inputFile.getFileName(),
+        outputFile,
+        Arrays.asList(encryptColumns),
+        EncDecProperties.getFileEncryptionProperties(encryptColumns, ParquetCipher.AES_GCM_CTR_V1, false));
     verifyResultDecryptionWithValidKey();
   }
 
@@ -121,8 +131,11 @@ public class ColumnEncryptorTest {
   public void testEncryptSomeColumns() throws IOException {
     String[] encryptColumns = {"DocId", "Name", "Links.Forward"};
     testSetup("GZIP");
-    columnEncryptor.encryptColumns(inputFile.getFileName(), outputFile, Arrays.asList(encryptColumns),
-      EncDecProperties.getFileEncryptionProperties(encryptColumns, ParquetCipher.AES_GCM_CTR_V1, false));
+    columnEncryptor.encryptColumns(
+        inputFile.getFileName(),
+        outputFile,
+        Arrays.asList(encryptColumns),
+        EncDecProperties.getFileEncryptionProperties(encryptColumns, ParquetCipher.AES_GCM_CTR_V1, false));
 
     ParquetMetadata metaData = getParquetMetadata(EncDecProperties.getFileDecryptionProperties());
     assertFalse(metaData.getBlocks().isEmpty());
@@ -141,8 +154,11 @@ public class ColumnEncryptorTest {
   public void testFooterEncryption() throws IOException {
     String[] encryptColumns = {"DocId"};
     testSetup("GZIP");
-    columnEncryptor.encryptColumns(inputFile.getFileName(), outputFile, Arrays.asList(encryptColumns),
-      EncDecProperties.getFileEncryptionProperties(encryptColumns, ParquetCipher.AES_GCM_CTR_V1, true));
+    columnEncryptor.encryptColumns(
+        inputFile.getFileName(),
+        outputFile,
+        Arrays.asList(encryptColumns),
+        EncDecProperties.getFileEncryptionProperties(encryptColumns, ParquetCipher.AES_GCM_CTR_V1, true));
 
     verifyResultDecryptionWithValidKey();
   }
@@ -151,8 +167,11 @@ public class ColumnEncryptorTest {
   public void testAesGcm() throws IOException {
     String[] encryptColumns = {"DocId"};
     testSetup("GZIP");
-    columnEncryptor.encryptColumns(inputFile.getFileName(), outputFile, Arrays.asList(encryptColumns),
-      EncDecProperties.getFileEncryptionProperties(encryptColumns, ParquetCipher.AES_GCM_V1, true));
+    columnEncryptor.encryptColumns(
+        inputFile.getFileName(),
+        outputFile,
+        Arrays.asList(encryptColumns),
+        EncDecProperties.getFileEncryptionProperties(encryptColumns, ParquetCipher.AES_GCM_V1, true));
 
     verifyResultDecryptionWithValidKey();
   }
@@ -161,8 +180,11 @@ public class ColumnEncryptorTest {
   public void testColumnIndex() throws IOException {
     String[] encryptColumns = {"Name"};
     testSetup("GZIP");
-    columnEncryptor.encryptColumns(inputFile.getFileName(), outputFile, Arrays.asList(encryptColumns),
-      EncDecProperties.getFileEncryptionProperties(encryptColumns, ParquetCipher.AES_GCM_V1, false));
+    columnEncryptor.encryptColumns(
+        inputFile.getFileName(),
+        outputFile,
+        Arrays.asList(encryptColumns),
+        EncDecProperties.getFileEncryptionProperties(encryptColumns, ParquetCipher.AES_GCM_V1, false));
 
     verifyResultDecryptionWithValidKey();
     verifyOffsetIndexes();
@@ -172,62 +194,74 @@ public class ColumnEncryptorTest {
   public void testDifferentCompression() throws IOException {
     String[] encryptColumns = {"Links.Forward"};
     String[] compressions = {"GZIP", "ZSTD", "SNAPPY", "UNCOMPRESSED"};
-    for (String compression : compressions)  {
+    for (String compression : compressions) {
       testSetup(compression);
-      columnEncryptor.encryptColumns(inputFile.getFileName(), outputFile, Arrays.asList(encryptColumns),
-        EncDecProperties.getFileEncryptionProperties(encryptColumns, ParquetCipher.AES_GCM_CTR_V1, false));
+      columnEncryptor.encryptColumns(
+          inputFile.getFileName(),
+          outputFile,
+          Arrays.asList(encryptColumns),
+          EncDecProperties.getFileEncryptionProperties(encryptColumns, ParquetCipher.AES_GCM_CTR_V1, false));
       verifyResultDecryptionWithValidKey();
     }
   }
 
-  private void verifyResultDecryptionWithValidKey() throws IOException  {
+  private void verifyResultDecryptionWithValidKey() throws IOException {
     ParquetReader<Group> reader = createReader(outputFile);
     for (int i = 0; i < numRecord; i++) {
       Group group = reader.read();
-      assertTrue(group.getLong("DocId", 0) ==
-        inputFile.getFileContent()[i].getLong("DocId", 0));
-      assertArrayEquals(group.getBinary("Name", 0).getBytes(),
-        inputFile.getFileContent()[i].getString("Name", 0).getBytes(StandardCharsets.UTF_8));
-      assertArrayEquals(group.getBinary("Gender", 0).getBytes(),
-        inputFile.getFileContent()[i].getString("Gender", 0).getBytes(StandardCharsets.UTF_8));
+      assertTrue(group.getLong("DocId", 0) == inputFile.getFileContent()[i].getLong("DocId", 0));
+      assertArrayEquals(
+          group.getBinary("Name", 0).getBytes(),
+          inputFile.getFileContent()[i].getString("Name", 0).getBytes(StandardCharsets.UTF_8));
+      assertArrayEquals(
+          group.getBinary("Gender", 0).getBytes(),
+          inputFile.getFileContent()[i].getString("Gender", 0).getBytes(StandardCharsets.UTF_8));
       Group subGroupInRead = group.getGroup("Links", 0);
       Group expectedSubGroup = inputFile.getFileContent()[i].getGroup("Links", 0);
-      assertArrayEquals(subGroupInRead.getBinary("Forward", 0).getBytes(),
-        expectedSubGroup.getBinary("Forward", 0).getBytes());
-      assertArrayEquals(subGroupInRead.getBinary("Backward", 0).getBytes(),
-        expectedSubGroup.getBinary("Backward", 0).getBytes());
+      assertArrayEquals(
+          subGroupInRead.getBinary("Forward", 0).getBytes(),
+          expectedSubGroup.getBinary("Forward", 0).getBytes());
+      assertArrayEquals(
+          subGroupInRead.getBinary("Backward", 0).getBytes(),
+          expectedSubGroup.getBinary("Backward", 0).getBytes());
     }
     reader.close();
   }
 
   private void verifyOffsetIndexes() throws IOException {
     ParquetReadOptions readOptions = HadoopReadOptions.builder(conf)
-      .withDecryption(EncDecProperties.getFileDecryptionProperties())
-      .build();
+        .withDecryption(EncDecProperties.getFileDecryptionProperties())
+        .build();
 
     try (TransParquetFileReader inReader = createFileReader(inputFile.getFileName());
-         TransParquetFileReader outReader = createFileReader(outputFile)) {
+        TransParquetFileReader outReader = createFileReader(outputFile)) {
       ParquetMetadata inMetaData = getMetadata(readOptions, inputFile.getFileName(), inReader);
       ParquetMetadata outMetaData = getMetadata(readOptions, outputFile, outReader);
       compareOffsetIndexes(inReader, outReader, inMetaData, outMetaData);
     }
   }
 
-  private ParquetMetadata getMetadata(ParquetReadOptions readOptions, String file, TransParquetFileReader reader) throws IOException {
-    return ParquetFileReader.readFooter(HadoopInputFile.fromPath(new Path(file), conf),
-                                        readOptions,
-                                        reader.getStream());
+  private ParquetMetadata getMetadata(ParquetReadOptions readOptions, String file, TransParquetFileReader reader)
+      throws IOException {
+    return ParquetFileReader.readFooter(
+        HadoopInputFile.fromPath(new Path(file), conf), readOptions, reader.getStream());
   }
 
-  private void compareOffsetIndexes(TransParquetFileReader inReader, TransParquetFileReader outReader,
-                                    ParquetMetadata inMetaData, ParquetMetadata outMetaData) throws IOException {
+  private void compareOffsetIndexes(
+      TransParquetFileReader inReader,
+      TransParquetFileReader outReader,
+      ParquetMetadata inMetaData,
+      ParquetMetadata outMetaData)
+      throws IOException {
 
     PageReadStore inStore = inReader.readNextRowGroup();
     PageReadStore outStore = outReader.readNextRowGroup();
     int blockIndex = 0;
     while (inStore != null && outStore != null) {
-      List<ColumnChunkMetaData> inColumns = inMetaData.getBlocks().get(blockIndex).getColumns();
-      List<ColumnChunkMetaData> outColumns = outMetaData.getBlocks().get(blockIndex).getColumns();
+      List<ColumnChunkMetaData> inColumns =
+          inMetaData.getBlocks().get(blockIndex).getColumns();
+      List<ColumnChunkMetaData> outColumns =
+          outMetaData.getBlocks().get(blockIndex).getColumns();
       assertEquals(inColumns.size(), outColumns.size());
       validateColumns(inReader, outReader, inColumns, outColumns);
       inStore = inReader.readNextRowGroup();
@@ -239,9 +273,13 @@ public class ColumnEncryptorTest {
     }
   }
 
-  private void validateColumns(TransParquetFileReader inReader, TransParquetFileReader outReader,
-                               List<ColumnChunkMetaData> inColumns, List<ColumnChunkMetaData> outColumns) throws IOException {
-    for (int i = 0; i < inColumns.size(); i ++) {
+  private void validateColumns(
+      TransParquetFileReader inReader,
+      TransParquetFileReader outReader,
+      List<ColumnChunkMetaData> inColumns,
+      List<ColumnChunkMetaData> outColumns)
+      throws IOException {
+    for (int i = 0; i < inColumns.size(); i++) {
       ColumnChunkMetaData inChunk = inColumns.get(i);
       ColumnChunkMetaData outChunk = outColumns.get(i);
       OffsetIndex inOffsetIndex = inReader.readOffsetIndex(inChunk);
@@ -254,23 +292,27 @@ public class ColumnEncryptorTest {
     }
   }
 
-  private void validatePages(TransParquetFileReader inReader, TransParquetFileReader outReader,
-                         OffsetIndex inOffsetIndex, OffsetIndex outOffsetIndex) throws IOException {
-      for (int pageId = 0; pageId < inOffsetIndex.getPageCount(); pageId ++) {
-        long inPageOffset = inOffsetIndex.getOffset(pageId);
-        inReader.setStreamPosition(inPageOffset);
-        long outPageOffset = outOffsetIndex.getOffset(pageId);
-        outReader.setStreamPosition(outPageOffset);
-        PageHeader inPageHeader = inReader.readPageHeader();
-        PageHeader outPageHeader = outReader.readPageHeader();
-        assertEquals(inPageHeader, outPageHeader);
-        DataPageHeader inHeaderV1 = inPageHeader.data_page_header;
-        DataPageHeader outHeaderV1 = outPageHeader.data_page_header;
-        assertEquals(inHeaderV1, outHeaderV1);
-        BytesInput inPageLoad = readBlockAllocate(inReader, inPageHeader.compressed_page_size);
-        BytesInput outPageLoad = readBlockAllocate(outReader, outPageHeader.compressed_page_size);
-        assertEquals(inPageLoad.toByteBuffer(), outPageLoad.toByteBuffer());
-      }
+  private void validatePages(
+      TransParquetFileReader inReader,
+      TransParquetFileReader outReader,
+      OffsetIndex inOffsetIndex,
+      OffsetIndex outOffsetIndex)
+      throws IOException {
+    for (int pageId = 0; pageId < inOffsetIndex.getPageCount(); pageId++) {
+      long inPageOffset = inOffsetIndex.getOffset(pageId);
+      inReader.setStreamPosition(inPageOffset);
+      long outPageOffset = outOffsetIndex.getOffset(pageId);
+      outReader.setStreamPosition(outPageOffset);
+      PageHeader inPageHeader = inReader.readPageHeader();
+      PageHeader outPageHeader = outReader.readPageHeader();
+      assertEquals(inPageHeader, outPageHeader);
+      DataPageHeader inHeaderV1 = inPageHeader.data_page_header;
+      DataPageHeader outHeaderV1 = outPageHeader.data_page_header;
+      assertEquals(inHeaderV1, outHeaderV1);
+      BytesInput inPageLoad = readBlockAllocate(inReader, inPageHeader.compressed_page_size);
+      BytesInput outPageLoad = readBlockAllocate(outReader, outPageHeader.compressed_page_size);
+      assertEquals(inPageLoad.toByteBuffer(), outPageLoad.toByteBuffer());
+    }
   }
 
   private BytesInput readBlockAllocate(TransParquetFileReader reader, int length) throws IOException {
@@ -280,36 +322,42 @@ public class ColumnEncryptorTest {
   }
 
   private TransParquetFileReader createFileReader(String path) throws IOException {
-    return new TransParquetFileReader(HadoopInputFile.fromPath(new Path(path), conf),
-      HadoopReadOptions.builder(conf)
-        .withDecryption(EncDecProperties.getFileDecryptionProperties())
-        .build());
+    return new TransParquetFileReader(
+        HadoopInputFile.fromPath(new Path(path), conf),
+        HadoopReadOptions.builder(conf)
+            .withDecryption(EncDecProperties.getFileDecryptionProperties())
+            .build());
   }
 
   private ParquetReader<Group> createReader(String path) throws IOException {
-    return ParquetReader.builder(new GroupReadSupport(),
-      new Path(path)).withConf(conf).withDecryption(EncDecProperties.getFileDecryptionProperties()).build();
+    return ParquetReader.builder(new GroupReadSupport(), new Path(path))
+        .withConf(conf)
+        .withDecryption(EncDecProperties.getFileDecryptionProperties())
+        .build();
   }
 
   private ParquetMetadata getParquetMetadata(FileDecryptionProperties decryptionProperties) throws IOException {
     ParquetMetadata metaData;
     ParquetReadOptions readOptions = ParquetReadOptions.builder()
-      .withDecryption(decryptionProperties)
-      .build();
+        .withDecryption(decryptionProperties)
+        .build();
     InputFile file = HadoopInputFile.fromPath(new Path(outputFile), conf);
     try (SeekableInputStream in = file.newStream()) {
-      metaData  = ParquetFileReader.readFooter(file, readOptions, in);
+      metaData = ParquetFileReader.readFooter(file, readOptions, in);
     }
     return metaData;
   }
 
   private MessageType createSchema() {
-    return new MessageType("schema",
+    return new MessageType(
+        "schema",
         new PrimitiveType(OPTIONAL, INT64, "DocId"),
         new PrimitiveType(REQUIRED, BINARY, "Name"),
         new PrimitiveType(OPTIONAL, BINARY, "Gender"),
-        new GroupType(OPTIONAL, "Links",
-          new PrimitiveType(REPEATED, BINARY, "Backward"),
-          new PrimitiveType(REPEATED, BINARY, "Forward")));
+        new GroupType(
+            OPTIONAL,
+            "Links",
+            new PrimitiveType(REPEATED, BINARY, "Backward"),
+            new PrimitiveType(REPEATED, BINARY, "Forward")));
   }
 }

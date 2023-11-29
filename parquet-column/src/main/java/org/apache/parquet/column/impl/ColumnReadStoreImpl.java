@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -20,7 +20,6 @@ package org.apache.parquet.column.impl;
 
 import java.util.Optional;
 import java.util.PrimitiveIterator;
-
 import org.apache.parquet.VersionParser;
 import org.apache.parquet.VersionParser.ParsedVersion;
 import org.apache.parquet.VersionParser.VersionParseException;
@@ -38,7 +37,7 @@ import org.apache.parquet.schema.Type;
 
 /**
  * Implementation of the ColumnReadStore
- *
+ * <p>
  * Initializes individual columns based on schema and converter
  */
 public class ColumnReadStoreImpl implements ColumnReadStore {
@@ -49,14 +48,13 @@ public class ColumnReadStoreImpl implements ColumnReadStore {
   private final ParsedVersion writerVersion;
 
   /**
-   * @param pageReadStore underlying page storage
+   * @param pageReadStore   underlying page storage
    * @param recordConverter the user provided converter to materialize records
-   * @param schema the schema we are reading
-   * @param createdBy writer version string from the Parquet file being read
+   * @param schema          the schema we are reading
+   * @param createdBy       writer version string from the Parquet file being read
    */
-  public ColumnReadStoreImpl(PageReadStore pageReadStore,
-                             GroupConverter recordConverter,
-                             MessageType schema, String createdBy) {
+  public ColumnReadStoreImpl(
+      PageReadStore pageReadStore, GroupConverter recordConverter, MessageType schema, String createdBy) {
     super();
     this.pageReadStore = pageReadStore;
     this.recordConverter = recordConverter;
@@ -100,5 +98,4 @@ public class ColumnReadStoreImpl implements ColumnReadStore {
     PrimitiveConverter converter = currentConverter.asPrimitiveConverter();
     return converter;
   }
-
 }

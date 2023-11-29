@@ -20,15 +20,13 @@ package org.apache.parquet.internal.column.columnindex;
 
 import static java.nio.ByteOrder.LITTLE_ENDIAN;
 
+import it.unimi.dsi.fastutil.longs.LongArrayList;
+import it.unimi.dsi.fastutil.longs.LongList;
 import java.nio.ByteBuffer;
-
 import org.apache.parquet.filter2.predicate.Statistics;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.PrimitiveComparator;
 import org.apache.parquet.schema.PrimitiveType;
-
-import it.unimi.dsi.fastutil.longs.LongArrayList;
-import it.unimi.dsi.fastutil.longs.LongList;
 
 class LongColumnIndexBuilder extends ColumnIndexBuilder {
   private static class LongColumnIndex extends ColumnIndexBase<Long> {

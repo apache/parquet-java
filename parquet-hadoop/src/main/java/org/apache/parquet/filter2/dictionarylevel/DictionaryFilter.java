@@ -18,21 +18,6 @@
  */
 package org.apache.parquet.filter2.dictionarylevel;
 
-import org.apache.parquet.column.ColumnDescriptor;
-import org.apache.parquet.column.Dictionary;
-import org.apache.parquet.column.Encoding;
-import org.apache.parquet.column.EncodingStats;
-import org.apache.parquet.column.page.DictionaryPage;
-import org.apache.parquet.column.page.DictionaryPageReadStore;
-import org.apache.parquet.filter2.predicate.FilterPredicate;
-import org.apache.parquet.filter2.predicate.Operators.*;
-import org.apache.parquet.filter2.predicate.UserDefinedPredicate;
-import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
-import org.apache.parquet.hadoop.metadata.ColumnPath;
-import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.IOException;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -42,6 +27,33 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.IntFunction;
+import org.apache.parquet.column.ColumnDescriptor;
+import org.apache.parquet.column.Dictionary;
+import org.apache.parquet.column.Encoding;
+import org.apache.parquet.column.EncodingStats;
+import org.apache.parquet.column.page.DictionaryPage;
+import org.apache.parquet.column.page.DictionaryPageReadStore;
+import org.apache.parquet.filter2.predicate.FilterPredicate;
+import org.apache.parquet.filter2.predicate.Operators.And;
+import org.apache.parquet.filter2.predicate.Operators.Column;
+import org.apache.parquet.filter2.predicate.Operators.Eq;
+import org.apache.parquet.filter2.predicate.Operators.Gt;
+import org.apache.parquet.filter2.predicate.Operators.GtEq;
+import org.apache.parquet.filter2.predicate.Operators.In;
+import org.apache.parquet.filter2.predicate.Operators.LogicalNotUserDefined;
+import org.apache.parquet.filter2.predicate.Operators.Lt;
+import org.apache.parquet.filter2.predicate.Operators.LtEq;
+import org.apache.parquet.filter2.predicate.Operators.Not;
+import org.apache.parquet.filter2.predicate.Operators.NotEq;
+import org.apache.parquet.filter2.predicate.Operators.NotIn;
+import org.apache.parquet.filter2.predicate.Operators.Or;
+import org.apache.parquet.filter2.predicate.Operators.UserDefined;
+import org.apache.parquet.filter2.predicate.UserDefinedPredicate;
+import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
+import org.apache.parquet.hadoop.metadata.ColumnPath;
+import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Applies filters based on the contents of column dictionaries.
@@ -52,7 +64,8 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
   private static final boolean BLOCK_MIGHT_MATCH = false;
   private static final boolean BLOCK_CANNOT_MATCH = true;
 
-  public static boolean canDrop(FilterPredicate pred, List<ColumnChunkMetaData> columns, DictionaryPageReadStore dictionaries) {
+  public static boolean canDrop(
+      FilterPredicate pred, List<ColumnChunkMetaData> columns, DictionaryPageReadStore dictionaries) {
     Objects.requireNonNull(pred, "pred cannnot be null");
     Objects.requireNonNull(columns, "columns cannnot be null");
     return pred.accept(new DictionaryFilter(columns, dictionaries));
@@ -88,32 +101,32 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
     IntFunction<Object> dictValueProvider;
     PrimitiveTypeName type = meta.getPrimitiveType().getPrimitiveTypeName();
     switch (type) {
-    case FIXED_LEN_BYTE_ARRAY: // Same as BINARY
-    case BINARY:
-      dictValueProvider = dict::decodeToBinary;
-      break;
-    case INT32:
-      dictValueProvider = dict::decodeToInt;
-      break;
-    case INT64:
-      dictValueProvider = dict::decodeToLong;
-      break;
-    case FLOAT:
-      dictValueProvider = dict::decodeToFloat;
-      break;
-    case DOUBLE:
-      dictValueProvider = dict::decodeToDouble;
-      break;
-    default:
-      LOG.warn("Unsupported dictionary type: {}", type);
-      return null;
+      case FIXED_LEN_BYTE_ARRAY: // Same as BINARY
+      case BINARY:
+        dictValueProvider = dict::decodeToBinary;
+        break;
+      case INT32:
+        dictValueProvider = dict::decodeToInt;
+        break;
+      case INT64:
+        dictValueProvider = dict::decodeToLong;
+        break;
+      case FLOAT:
+        dictValueProvider = dict::decodeToFloat;
+        break;
+      case DOUBLE:
+        dictValueProvider = dict::decodeToDouble;
+        break;
+      default:
+        LOG.warn("Unsupported dictionary type: {}", type);
+        return null;
     }
 
     Set<T> dictSet = new HashSet<>();
     for (int i = 0; i <= dict.getMaxId(); i++) {
       dictSet.add((T) dictValueProvider.apply(i));
     }
-    
+
     return dictSet;
   }
 
@@ -448,8 +461,8 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
     }
 
     boolean mayContainNull = (meta.getStatistics() == null
-      || !meta.getStatistics().isNumNullsSet()
-      || meta.getStatistics().getNumNulls() > 0);
+        || !meta.getStatistics().isNumNullsSet()
+        || meta.getStatistics().getNumNulls() > 0);
     // The column may contain nulls and the values set contains no null, so the row group cannot be eliminated.
     if (mayContainNull) {
       return BLOCK_MIGHT_MATCH;
@@ -487,10 +500,12 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
   @Override
   public Boolean visit(Not not) {
     throw new IllegalArgumentException(
-        "This predicate contains a not! Did you forget to run this predicate through LogicalInverseRewriter? " + not);
+        "This predicate contains a not! Did you forget to run this predicate through LogicalInverseRewriter? "
+            + not);
   }
 
-  private <T extends Comparable<T>, U extends UserDefinedPredicate<T>> Boolean visit(UserDefined<T, U> ud, boolean inverted) {
+  private <T extends Comparable<T>, U extends UserDefinedPredicate<T>> Boolean visit(
+      UserDefined<T, U> ud, boolean inverted) {
     Column<T> filterColumn = ud.getColumn();
     ColumnChunkMetaData meta = getColumnChunk(filterColumn.getColumnPath());
     U udp = ud.getUserDefinedPredicate();
@@ -558,7 +573,6 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
       }
 
       return true;
-
     } else {
       // if PLAIN_DICTIONARY wasn't present, then either the column is not
       // dictionary-encoded, or the 2.0 encoding, RLE_DICTIONARY, was used.

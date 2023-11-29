@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -19,13 +19,11 @@
 package org.apache.parquet.avro;
 
 import java.io.IOException;
-
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.specific.SpecificData;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
-
 import org.apache.parquet.conf.ParquetConfiguration;
 import org.apache.parquet.filter.UnboundRecordFilter;
 import org.apache.parquet.hadoop.ParquetReader;
@@ -41,7 +39,7 @@ public class AvroParquetReader<T> extends ParquetReader<T> {
 
   /**
    * @param file a file path
-   * @param <T> the Java type of records to read from the file
+   * @param <T>  the Java type of records to read from the file
    * @return an Avro reader builder
    * @deprecated will be removed in 2.0.0; use {@link #builder(InputFile)} instead.
    */
@@ -64,9 +62,9 @@ public class AvroParquetReader<T> extends ParquetReader<T> {
    *
    * @param file The location to read data from
    * @return A {@code ParquetReader} which reads data as Avro
-   *         {@code GenericData}
+   * {@code GenericData}
    * @throws IOException if the InputFile has been closed, or if some other I/O
-   *           error occurs
+   *                     error occurs
    */
   public static ParquetReader<GenericRecord> genericRecordReader(InputFile file) throws IOException {
     return new Builder<GenericRecord>(file).withDataModel(GenericData.get()).build();
@@ -79,12 +77,15 @@ public class AvroParquetReader<T> extends ParquetReader<T> {
    * @param file The location to read data from
    * @param conf The configuration to use
    * @return A {@code ParquetReader} which reads data as Avro
-   *         {@code GenericData}
+   * {@code GenericData}
    * @throws IOException if the InputFile has been closed, or if some other I/O
-   *           error occurs
+   *                     error occurs
    */
-  public static ParquetReader<GenericRecord> genericRecordReader(InputFile file, ParquetConfiguration conf) throws IOException {
-    return new Builder<GenericRecord>(file, conf).withDataModel(GenericData.get()).build();
+  public static ParquetReader<GenericRecord> genericRecordReader(InputFile file, ParquetConfiguration conf)
+      throws IOException {
+    return new Builder<GenericRecord>(file, conf)
+        .withDataModel(GenericData.get())
+        .build();
   }
 
   /**
@@ -93,10 +94,9 @@ public class AvroParquetReader<T> extends ParquetReader<T> {
    *
    * @param file The location to read data from
    * @return A {@code ParquetReader} which reads data as Avro
-   *         {@code GenericData}
+   * {@code GenericData}
    * @throws IOException if the InputFile has been closed, or if some other I/O
-   *           error occurs
-   *
+   *                     error occurs
    * @deprecated will be removed in 2.0.0; use {@link #genericRecordReader(InputFile)} instead.
    */
   @Deprecated
@@ -115,7 +115,7 @@ public class AvroParquetReader<T> extends ParquetReader<T> {
   }
 
   /**
-   * @param file a file path
+   * @param file                a file path
    * @param unboundRecordFilter an unbound record filter (from the old filter API)
    * @throws IOException if there is an error while reading
    * @deprecated will be removed in 2.0.0; use {@link #builder(InputFile)} instead.
@@ -137,14 +137,15 @@ public class AvroParquetReader<T> extends ParquetReader<T> {
   }
 
   /**
-   * @param conf a configuration
-   * @param file a file path
+   * @param conf                a configuration
+   * @param file                a file path
    * @param unboundRecordFilter an unbound record filter (from the old filter API)
    * @throws IOException if there is an error while reading
    * @deprecated will be removed in 2.0.0; use {@link #builder(InputFile)} instead.
    */
   @Deprecated
-  public AvroParquetReader(Configuration conf, Path file, UnboundRecordFilter unboundRecordFilter) throws IOException {
+  public AvroParquetReader(Configuration conf, Path file, UnboundRecordFilter unboundRecordFilter)
+      throws IOException {
     super(conf, file, new AvroReadSupport<T>(), unboundRecordFilter);
   }
 
@@ -171,8 +172,7 @@ public class AvroParquetReader<T> extends ParquetReader<T> {
       this.model = model;
 
       // only generic and specific are supported by AvroIndexedRecordConverter
-      if (model.getClass() != GenericData.class &&
-          model.getClass() != SpecificData.class) {
+      if (model.getClass() != GenericData.class && model.getClass() != SpecificData.class) {
         isReflect = true;
       }
 

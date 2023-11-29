@@ -18,13 +18,12 @@
  */
 package org.apache.parquet.cli.commands;
 
-import org.apache.hadoop.conf.Configuration;
-import org.junit.Assert;
-import org.junit.Test;
-
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
+import org.apache.hadoop.conf.Configuration;
+import org.junit.Assert;
+import org.junit.Test;
 
 public class CSVSchemaCommandTest extends CSVFileTest {
   @Test

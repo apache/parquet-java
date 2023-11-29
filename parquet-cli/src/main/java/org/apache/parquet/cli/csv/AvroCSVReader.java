@@ -22,14 +22,14 @@ package org.apache.parquet.cli.csv;
 import au.com.bytecode.opencsv.CSVReader;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
-import org.apache.parquet.cli.util.RuntimeIOException;
-import org.apache.avro.Schema;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
+import org.apache.avro.Schema;
+import org.apache.parquet.cli.util.RuntimeIOException;
 
 public class AvroCSVReader<E> implements Iterator<E>, Iterable<E>, Closeable {
 
@@ -40,12 +40,12 @@ public class AvroCSVReader<E> implements Iterator<E>, Iterable<E>, Closeable {
   private String[] next = null;
   private E record = null;
 
-  public AvroCSVReader(InputStream stream, CSVProperties props,
-                       Schema schema, Class<E> type, boolean reuseRecords) {
+  public AvroCSVReader(InputStream stream, CSVProperties props, Schema schema, Class<E> type, boolean reuseRecords) {
     this.reader = AvroCSV.newReader(stream, props);
     this.reuseRecords = reuseRecords;
 
-    Preconditions.checkArgument(Schema.Type.RECORD.equals(schema.getType()),
+    Preconditions.checkArgument(
+        Schema.Type.RECORD.equals(schema.getType()),
         "Schemas for CSV files must be records of primitive types");
 
     List<String> header = null;
@@ -54,11 +54,9 @@ public class AvroCSVReader<E> implements Iterator<E>, Iterable<E>, Closeable {
       header = Lists.newArrayList(next);
     } else if (props.header != null) {
       try {
-        header = Lists.newArrayList(
-            AvroCSV.newParser(props).parseLine(props.header));
+        header = Lists.newArrayList(AvroCSV.newParser(props).parseLine(props.header));
       } catch (IOException e) {
-        throw new RuntimeIOException(
-            "Failed to parse header from properties: " + props.header, e);
+        throw new RuntimeIOException("Failed to parse header from properties: " + props.header, e);
       }
     }
 

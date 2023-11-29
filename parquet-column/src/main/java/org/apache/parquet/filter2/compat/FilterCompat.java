@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -18,15 +18,14 @@
  */
 package org.apache.parquet.filter2.compat;
 
+import static org.apache.parquet.Preconditions.checkArgument;
+
+import java.util.Objects;
 import org.apache.parquet.filter.UnboundRecordFilter;
 import org.apache.parquet.filter2.predicate.FilterPredicate;
 import org.apache.parquet.filter2.predicate.LogicalInverseRewriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import static org.apache.parquet.Preconditions.checkArgument;
-
-import java.util.Objects;
 
 /**
  * Parquet currently has two ways to specify a filter for dropping records at read time.
@@ -50,7 +49,9 @@ public class FilterCompat {
    */
   public static interface Visitor<T> {
     T visit(FilterPredicateCompat filterPredicateCompat);
+
     T visit(UnboundRecordFilterCompat unboundRecordFilterCompat);
+
     T visit(NoOpFilter noOpFilter);
   }
 
@@ -102,12 +103,13 @@ public class FilterCompat {
    * <p>
    * If both are null, the no op filter will be returned.
    *
-   * @param filterPredicate a filter predicate, or null
+   * @param filterPredicate     a filter predicate, or null
    * @param unboundRecordFilter an unbound record filter, or null
    * @return a Filter wrapping either the predicate or the unbound record filter (from the old API)
    */
   public static Filter get(FilterPredicate filterPredicate, UnboundRecordFilter unboundRecordFilter) {
-    checkArgument(filterPredicate == null || unboundRecordFilter == null,
+    checkArgument(
+        filterPredicate == null || unboundRecordFilter == null,
         "Cannot provide both a FilterPredicate and an UnboundRecordFilter");
 
     if (filterPredicate != null) {
@@ -155,7 +157,8 @@ public class FilterCompat {
     private final UnboundRecordFilter unboundRecordFilter;
 
     private UnboundRecordFilterCompat(UnboundRecordFilter unboundRecordFilter) {
-      this.unboundRecordFilter = Objects.requireNonNull(unboundRecordFilter, "unboundRecordFilter cannot be null");
+      this.unboundRecordFilter =
+          Objects.requireNonNull(unboundRecordFilter, "unboundRecordFilter cannot be null");
     }
 
     public UnboundRecordFilter getUnboundRecordFilter() {
@@ -177,5 +180,4 @@ public class FilterCompat {
       return visitor.visit(this);
     }
   }
-
 }
