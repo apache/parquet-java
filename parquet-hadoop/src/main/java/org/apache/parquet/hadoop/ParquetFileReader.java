@@ -123,7 +123,7 @@ public class ParquetFileReader implements Closeable {
 
   private static final Logger LOG = LoggerFactory.getLogger(ParquetFileReader.class);
 
-  public static String PARQUET_READ_PARALLELISM = "parquet.metadata.read.parallelism";
+  public static final String PARQUET_READ_PARALLELISM = "parquet.metadata.read.parallelism";
 
   private final ParquetMetadataConverter converter;
 
