@@ -74,8 +74,9 @@ public class DeprecatedFieldProjectionFilter implements FieldProjectionFilter {
 
   @Override
   public boolean keep(FieldsPath path) {
-    if (filterPatterns.size() == 0)
+    if (filterPatterns.isEmpty()) {
       return true;
+    }
 
     for (PathGlobPatternStatus pattern : filterPatterns) {
       if (pattern.matches(path.toDelimitedString("/")))

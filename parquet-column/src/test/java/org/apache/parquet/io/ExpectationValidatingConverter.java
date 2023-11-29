@@ -152,7 +152,7 @@ public class ExpectationValidatingConverter extends RecordMaterializer<Void> {
 
   private String path(List<GroupType> path, Type type) {
     StringBuilder pathString = new StringBuilder();
-    if (path.size() > 0) {
+    if (!path.isEmpty()) {
       for (int i = 1; i < path.size(); i++) {
         pathString.append(path.get(i).getName()).append('.');
       }

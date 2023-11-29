@@ -85,7 +85,7 @@ public class ColumnMaskingCommand extends BaseCommand {
     Preconditions.checkArgument(input != null && output != null,
       "Both input and output parquet file paths are required.");
 
-    Preconditions.checkArgument(cols != null && cols.size() > 0,
+    Preconditions.checkArgument(cols != null && !cols.isEmpty(),
       "columns cannot be null or empty");
 
     MaskMode maskMode = MaskMode.fromString(mode);

@@ -64,7 +64,7 @@ public class WriteUsingMR {
   public static class WritingMapper extends Mapper<LongWritable, Text, Void, Message> {
 
     public void run(Context context) throws IOException, InterruptedException {
-      if (inputMessages == null || inputMessages.size() == 0) {
+      if (inputMessages == null || inputMessages.isEmpty()) {
         throw new RuntimeException("No mock data given");
       } else {
         for (Message msg : inputMessages) {

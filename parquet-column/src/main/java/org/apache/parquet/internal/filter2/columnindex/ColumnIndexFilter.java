@@ -192,7 +192,7 @@ public class ColumnIndexFilter implements Visitor<RowRanges> {
   @Override
   public RowRanges visit(And and) {
     RowRanges leftResult = and.getLeft().accept(this);
-    if (leftResult.getRanges().size() == 0) {
+    if (leftResult.getRanges().isEmpty()) {
       return leftResult;
     }
 

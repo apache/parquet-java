@@ -1247,7 +1247,7 @@ public class ParquetMetadataConverter {
     long preStartIndex = 0;
     long preCompressedSize = 0;
     boolean firstColumnWithMetadata = true;
-    if (rowGroups != null && rowGroups.size() > 0) {
+    if (rowGroups != null && !rowGroups.isEmpty()) {
       firstColumnWithMetadata = rowGroups.get(0).getColumns().get(0).isSetMeta_data();
     }
     for (RowGroup rowGroup : rowGroups) {
@@ -1321,7 +1321,7 @@ public class ParquetMetadataConverter {
     long preStartIndex = 0;
     long preCompressedSize = 0;
     boolean firstColumnWithMetadata = true;
-    if (rowGroups != null && rowGroups.size() > 0) {
+    if (rowGroups != null && !rowGroups.isEmpty()) {
       firstColumnWithMetadata = rowGroups.get(0).getColumns().get(0).isSetMeta_data();
     }
     for (RowGroup rowGroup : rowGroups) {

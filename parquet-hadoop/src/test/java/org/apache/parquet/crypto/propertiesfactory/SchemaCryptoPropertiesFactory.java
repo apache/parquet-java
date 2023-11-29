@@ -70,7 +70,7 @@ public class SchemaCryptoPropertiesFactory implements EncryptionPropertiesFactor
       getColumnEncryptionProperties(path, columnPropertyMap, conf);
     }
 
-    if (columnPropertyMap.size() == 0) {
+    if (columnPropertyMap.isEmpty()) {
       log.debug("No column is encrypted. Returning null so that Parquet can skip. Empty properties will cause Parquet exception");
       return null;
     }

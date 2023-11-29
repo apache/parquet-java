@@ -74,7 +74,7 @@ public class ColumnSizeCommand extends BaseCommand {
     Map<String, Float> columnRatio = getColumnRatio(columnSizes);
 
     // If user defined columns, only print out size for those columns
-    if (columns != null && columns.size() > 0) {
+    if (columns != null && !columns.isEmpty()) {
       for (String inputColumn : columns) {
         long size = 0;
         float ratio = 0;

@@ -286,7 +286,7 @@ public class ParquetRewriterTest {
 
     // Verify column encryption
     ParquetMetadata metaData = getFileMetaData(outputFile, fileDecryptionProperties);
-    assertTrue(metaData.getBlocks().size() > 0);
+    assertFalse(metaData.getBlocks().isEmpty());
     List<ColumnChunkMetaData> columns = metaData.getBlocks().get(0).getColumns();
     Set<String> set = new HashSet<>(Arrays.asList(encryptColumns));
     for (ColumnChunkMetaData column : columns) {
@@ -429,7 +429,7 @@ public class ParquetRewriterTest {
 
     // Verify the column is encrypted
     ParquetMetadata metaData = getFileMetaData(outputFile, fileDecryptionProperties);
-    assertTrue(metaData.getBlocks().size() > 0);
+    assertFalse(metaData.getBlocks().isEmpty());
     Set<String> encryptedColumns = new HashSet<>(Arrays.asList(encryptColumns));
     for (BlockMetaData blockMetaData : metaData.getBlocks()) {
       List<ColumnChunkMetaData> columns = blockMetaData.getColumns();

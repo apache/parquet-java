@@ -733,7 +733,7 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
 
     @Override
     public void end() {
-      if (elementEvents.size() > 0) {
+      if (!elementEvents.isEmpty()) {
         listEvents.addAll(elementEvents);
       } else {
         nullElementCount += 1;

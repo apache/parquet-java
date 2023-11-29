@@ -147,7 +147,7 @@ public class TupleWriteSupport extends WriteSupport<Tuple> {
         @SuppressWarnings("unchecked") // I know
         Map<String, Object> map = (Map<String, Object>)t.get(i);
         recordConsumer.startGroup();
-        if (map.size() > 0) {
+        if (!map.isEmpty()) {
           recordConsumer.startField(mapType.getName(), 0);
           Set<Entry<String, Object>> entrySet = map.entrySet();
           for (Entry<String, Object> entry : entrySet) {

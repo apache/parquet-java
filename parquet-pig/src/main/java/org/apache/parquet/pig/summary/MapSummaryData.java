@@ -37,7 +37,7 @@ public class MapSummaryData extends SummaryData {
     super.add(m);
     size.add(m.size());
     FieldSchema field = getField(schema, 0);
-    if (m.size() > 0 && key == null) {
+    if (!m.isEmpty() && key == null) {
       key = new FieldSummaryData();
       key.setName(getName(field));
       value = new FieldSummaryData();
