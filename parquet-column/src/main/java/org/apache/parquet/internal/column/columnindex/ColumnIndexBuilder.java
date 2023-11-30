@@ -33,7 +33,6 @@ import it.unimi.dsi.fastutil.longs.LongLists;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Formatter;
-import java.util.Iterator;
 import java.util.List;
 import java.util.PrimitiveIterator;
 import java.util.Set;
@@ -299,9 +298,7 @@ public abstract class ColumnIndexBuilder {
     public <T extends Comparable<T>> PrimitiveIterator.OfInt visit(In<T> in) {
       Set<T> values = in.getValues();
       IntSet matchingIndexesForNull = new IntOpenHashSet(); // for null
-      Iterator<T> it = values.iterator();
-      while (it.hasNext()) {
-        T value = it.next();
+      for (T value : values) {
         if (value == null) {
           if (nullCounts == null) {
             // Searching for nulls so if we don't have null related statistics we have to return all pages
@@ -313,8 +310,7 @@ public abstract class ColumnIndexBuilder {
               }
             }
             if (values.size() == 1) {
-              return IndexIterator.filter(
-                  getPageCount(), pageIndex -> matchingIndexesForNull.contains(pageIndex));
+              return IndexIterator.filter(getPageCount(), matchingIndexesForNull::contains);
             }
           }
         }
@@ -343,7 +339,7 @@ public abstract class ColumnIndexBuilder {
       matchingIndexesLessThanMax.retainAll(matchingIndexesGreaterThanMin);
       IntSet matchingIndex = matchingIndexesLessThanMax;
       matchingIndex.addAll(matchingIndexesForNull); // add the matching null pages
-      return IndexIterator.filter(getPageCount(), pageIndex -> matchingIndex.contains(pageIndex));
+      return IndexIterator.filter(getPageCount(), matchingIndex::contains);
     }
 
     @Override
