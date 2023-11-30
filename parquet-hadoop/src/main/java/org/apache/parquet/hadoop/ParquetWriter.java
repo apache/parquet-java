@@ -350,7 +350,33 @@ public class ParquetWriter<T> implements Closeable {
       ParquetProperties encodingProps,
       FileEncryptionProperties encryptionProperties)
       throws IOException {
+    this(
+        file,
+        mode,
+        writeSupport,
+        compressionCodecName,
+        new CodecFactory(conf, encodingProps.getPageSizeThreshold()),
+        rowGroupSize,
+        validating,
+        conf,
+        maxPaddingSize,
+        encodingProps,
+        encryptionProperties);
+  }
 
+  ParquetWriter(
+      OutputFile file,
+      ParquetFileWriter.Mode mode,
+      WriteSupport<T> writeSupport,
+      CompressionCodecName compressionCodecName,
+      CompressionCodecFactory codecFactory,
+      long rowGroupSize,
+      boolean validating,
+      ParquetConfiguration conf,
+      int maxPaddingSize,
+      ParquetProperties encodingProps,
+      FileEncryptionProperties encryptionProperties)
+      throws IOException {
     WriteSupport.WriteContext writeContext = writeSupport.init(conf);
     MessageType schema = writeContext.getSchema();
 
@@ -375,7 +401,7 @@ public class ParquetWriter<T> implements Closeable {
         encryptionProperties);
     fileWriter.start();
 
-    this.codecFactory = new CodecFactory(conf, encodingProps.getPageSizeThreshold());
+    this.codecFactory = codecFactory;
     CompressionCodecFactory.BytesInputCompressor compressor = codecFactory.getCompressor(compressionCodecName);
     this.writer = new InternalParquetRecordWriter<T>(
         fileWriter,
@@ -437,6 +463,7 @@ public class ParquetWriter<T> implements Closeable {
     private FileEncryptionProperties encryptionProperties = null;
     private ParquetConfiguration conf = null;
     private ParquetFileWriter.Mode mode;
+    private CompressionCodecFactory codecFactory = null;
     private CompressionCodecName codecName = DEFAULT_COMPRESSION_CODEC_NAME;
     private long rowGroupSize = DEFAULT_BLOCK_SIZE;
     private int maxPaddingSize = MAX_PADDING_SIZE_DEFAULT;
@@ -514,6 +541,18 @@ public class ParquetWriter<T> implements Closeable {
      */
     public SELF withCompressionCodec(CompressionCodecName codecName) {
       this.codecName = codecName;
+      return self();
+    }
+
+    /**
+     * Set the {@link CompressionCodecFactory codec factory} used by the
+     * constructed writer.
+     *
+     * @param codecFactory a {@link CompressionCodecFactory}
+     * @return this builder for method chaining.
+     */
+    public SELF withCodecFactory(CompressionCodecFactory codecFactory) {
+      this.codecFactory = codecFactory;
       return self();
     }
 
@@ -836,6 +875,10 @@ public class ParquetWriter<T> implements Closeable {
       if (conf == null) {
         conf = new HadoopParquetConfiguration();
       }
+      ParquetProperties encodingProps = encodingPropsBuilder.build();
+      if (codecFactory == null) {
+        codecFactory = new CodecFactory(conf, encodingProps.getPageSizeThreshold());
+      }
       if (file != null) {
         return new ParquetWriter<>(
             file,
@@ -846,7 +889,7 @@ public class ParquetWriter<T> implements Closeable {
             enableValidation,
             conf,
             maxPaddingSize,
-            encodingPropsBuilder.build(),
+            encodingProps,
             encryptionProperties);
       } else {
         return new ParquetWriter<>(
@@ -858,7 +901,7 @@ public class ParquetWriter<T> implements Closeable {
             enableValidation,
             conf,
             maxPaddingSize,
-            encodingPropsBuilder.build(),
+            encodingProps,
             encryptionProperties);
       }
     }
