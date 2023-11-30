@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -17,7 +17,6 @@
  * under the License.
  */
 package org.apache.parquet.column.values.dictionary;
-
 
 import java.io.IOException;
 import org.apache.parquet.bytes.ByteBufferInputStream;
@@ -47,12 +46,10 @@ public class DictionaryValuesReader extends ValuesReader {
   }
 
   @Override
-  public void initFromPage(int valueCount, ByteBufferInputStream stream)
-      throws IOException {
+  public void initFromPage(int valueCount, ByteBufferInputStream stream) throws IOException {
     this.in = stream.remainingStream();
     if (in.available() > 0) {
-      LOG.debug("init from page at offset {} for length {}",
-          stream.position(), stream.available());
+      LOG.debug("init from page at offset {} for length {}", stream.position(), stream.available());
       int bitWidth = BytesUtils.readIntLittleEndianOnOneByte(in);
       LOG.debug("bit width {}", bitWidth);
       decoder = new RunLengthBitPackingHybridDecoder(bitWidth, in);

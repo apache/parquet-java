@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -18,19 +18,15 @@
  */
 package org.apache.parquet.hadoop.thrift;
 
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
 import com.google.common.collect.Lists;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
-import org.apache.avro.Schema;
-import org.apache.avro.generic.GenericRecord;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
-import org.apache.parquet.thrift.test.compat.ListOfLists;
-import org.apache.thrift.TBase;
-import org.junit.Assert;
-import org.junit.Ignore;
-import org.junit.Test;
 import org.apache.parquet.DirectWriterTest;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.io.api.RecordConsumer;
@@ -38,13 +34,15 @@ import org.apache.parquet.thrift.ThriftParquetReader;
 import org.apache.parquet.thrift.ThriftRecordConverter;
 import org.apache.parquet.thrift.test.compat.ListOfCounts;
 import org.apache.parquet.thrift.test.compat.ListOfInts;
+import org.apache.parquet.thrift.test.compat.ListOfLists;
 import org.apache.parquet.thrift.test.compat.ListOfLocations;
 import org.apache.parquet.thrift.test.compat.ListOfSingleElementGroups;
 import org.apache.parquet.thrift.test.compat.Location;
 import org.apache.parquet.thrift.test.compat.SingleElementGroup;
-
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import org.apache.thrift.TBase;
+import org.junit.Assert;
+import org.junit.Ignore;
+import org.junit.Test;
 
 public class TestArrayCompatibility extends DirectWriterTest {
 
@@ -52,10 +50,7 @@ public class TestArrayCompatibility extends DirectWriterTest {
   @Ignore("Not yet supported")
   public void testUnannotatedListOfPrimitives() throws Exception {
     Path test = writeDirect(
-        "message UnannotatedListOfPrimitives {" +
-            "  repeated int32 list_of_ints;" +
-            "}",
-        new DirectWriter() {
+        "message UnannotatedListOfPrimitives {" + "  repeated int32 list_of_ints;" + "}", new DirectWriter() {
           @Override
           public void write(RecordConsumer rc) {
             rc.startMessage();
@@ -75,12 +70,11 @@ public class TestArrayCompatibility extends DirectWriterTest {
   @Ignore("Not yet supported")
   public void testUnannotatedListOfGroups() throws Exception {
     Path test = writeDirect(
-        "message UnannotatedListOfGroups {" +
-            "  repeated group list_of_points {" +
-            "    required float x;" +
-            "    required float y;" +
-            "  }" +
-            "}",
+        "message UnannotatedListOfGroups {" + "  repeated group list_of_points {"
+            + "    required float x;"
+            + "    required float y;"
+            + "  }"
+            + "}",
         new DirectWriter() {
           @Override
           public void write(RecordConsumer rc) {
@@ -114,11 +108,10 @@ public class TestArrayCompatibility extends DirectWriterTest {
   @Test
   public void testRepeatedPrimitiveInList() throws Exception {
     Path test = writeDirect(
-        "message RepeatedPrimitiveInList {" +
-            "  required group list_of_ints (LIST) {" +
-            "    repeated int32 array;" +
-            "  }" +
-            "}",
+        "message RepeatedPrimitiveInList {" + "  required group list_of_ints (LIST) {"
+            + "    repeated int32 array;"
+            + "  }"
+            + "}",
         new DirectWriter() {
           @Override
           public void write(RecordConsumer rc) {
@@ -140,7 +133,7 @@ public class TestArrayCompatibility extends DirectWriterTest {
           }
         });
 
-    ListOfInts expected = new ListOfInts(Lists.newArrayList(34, 35,36));
+    ListOfInts expected = new ListOfInts(Lists.newArrayList(34, 35, 36));
     ListOfInts actual = reader(test, ListOfInts.class).read();
     Assert.assertEquals("Should read record correctly", expected, actual);
   }
@@ -149,14 +142,13 @@ public class TestArrayCompatibility extends DirectWriterTest {
   public void testMultiFieldGroupInList() throws Exception {
     // tests the missing element layer, detected by a multi-field group
     Path test = writeDirect(
-        "message MultiFieldGroupInList {" +
-            "  optional group locations (LIST) {" +
-            "    repeated group element {" +
-            "      required double latitude;" +
-            "      required double longitude;" +
-            "    }" +
-            "  }" +
-            "}",
+        "message MultiFieldGroupInList {" + "  optional group locations (LIST) {"
+            + "    repeated group element {"
+            + "      required double latitude;"
+            + "      required double longitude;"
+            + "    }"
+            + "  }"
+            + "}",
         new DirectWriter() {
           @Override
           public void write(RecordConsumer rc) {
@@ -205,13 +197,12 @@ public class TestArrayCompatibility extends DirectWriterTest {
     // correct interpretation can be determined from the thrift class
 
     Path test = writeDirect(
-        "message SingleFieldGroupInList {" +
-            "  optional group single_element_groups (LIST) {" +
-            "    repeated group single_element_group {" +
-            "      required int64 count;" +
-            "    }" +
-            "  }" +
-            "}",
+        "message SingleFieldGroupInList {" + "  optional group single_element_groups (LIST) {"
+            + "    repeated group single_element_group {"
+            + "      required int64 count;"
+            + "    }"
+            + "  }"
+            + "}",
         new DirectWriter() {
           @Override
           public void write(RecordConsumer rc) {
@@ -261,16 +252,15 @@ public class TestArrayCompatibility extends DirectWriterTest {
   @Test
   public void testNewOptionalGroupInList() throws Exception {
     Path test = writeDirect(
-        "message NewOptionalGroupInList {" +
-            "  optional group locations (LIST) {" +
-            "    repeated group list {" +
-            "      optional group element {" +
-            "        required double latitude;" +
-            "        required double longitude;" +
-            "      }" +
-            "    }" +
-            "  }" +
-            "}",
+        "message NewOptionalGroupInList {" + "  optional group locations (LIST) {"
+            + "    repeated group list {"
+            + "      optional group element {"
+            + "        required double latitude;"
+            + "        required double longitude;"
+            + "      }"
+            + "    }"
+            + "  }"
+            + "}",
         new DirectWriter() {
           @Override
           public void write(RecordConsumer rc) {
@@ -327,7 +317,7 @@ public class TestArrayCompatibility extends DirectWriterTest {
     ListOfLocations expected = new ListOfLocations();
     expected.addToLocations(new Location(0.0, 0.0));
     // null is not included because thrift does not allow null in lists
-    //expected.addToLocations(null);
+    // expected.addToLocations(null);
     expected.addToLocations(new Location(0.0, 180.0));
 
     try {
@@ -344,16 +334,15 @@ public class TestArrayCompatibility extends DirectWriterTest {
   @Test
   public void testNewRequiredGroupInList() throws Exception {
     Path test = writeDirect(
-        "message NewRequiredGroupInList {" +
-            "  optional group locations (LIST) {" +
-            "    repeated group list {" +
-            "      required group element {" +
-            "        required double latitude;" +
-            "        required double longitude;" +
-            "      }" +
-            "    }" +
-            "  }" +
-            "}",
+        "message NewRequiredGroupInList {" + "  optional group locations (LIST) {"
+            + "    repeated group list {"
+            + "      required group element {"
+            + "        required double latitude;"
+            + "        required double longitude;"
+            + "      }"
+            + "    }"
+            + "  }"
+            + "}",
         new DirectWriter() {
           @Override
           public void write(RecordConsumer rc) {
@@ -413,16 +402,15 @@ public class TestArrayCompatibility extends DirectWriterTest {
   @Test
   public void testAvroCompatRequiredGroupInList() throws Exception {
     Path test = writeDirect(
-        "message AvroCompatRequiredGroupInList {" +
-            "  optional group locations (LIST) {" +
-            "    repeated group array {" +
-            "      required group element {" +
-            "        required double latitude;" +
-            "        required double longitude;" +
-            "      }" +
-            "    }" +
-            "  }" +
-            "}",
+        "message AvroCompatRequiredGroupInList {" + "  optional group locations (LIST) {"
+            + "    repeated group array {"
+            + "      required group element {"
+            + "        required double latitude;"
+            + "        required double longitude;"
+            + "      }"
+            + "    }"
+            + "  }"
+            + "}",
         new DirectWriter() {
           @Override
           public void write(RecordConsumer rc) {
@@ -482,13 +470,12 @@ public class TestArrayCompatibility extends DirectWriterTest {
   @Test
   public void testAvroCompatListInList() throws Exception {
     Path test = writeDirect(
-        "message AvroCompatListInList {" +
-            "  optional group listOfLists (LIST) {" +
-            "    repeated group array (LIST) {" +
-            "      repeated int32 array;" +
-            "    }" +
-            "  }" +
-            "}",
+        "message AvroCompatListInList {" + "  optional group listOfLists (LIST) {"
+            + "    repeated group array (LIST) {"
+            + "      repeated int32 array;"
+            + "    }"
+            + "  }"
+            + "}",
         new DirectWriter() {
           @Override
           public void write(RecordConsumer rc) {
@@ -544,13 +531,12 @@ public class TestArrayCompatibility extends DirectWriterTest {
   @Test
   public void testThriftCompatListInList() throws Exception {
     Path test = writeDirect(
-        "message ThriftCompatListInList {" +
-            "  optional group listOfLists (LIST) {" +
-            "    repeated group listOfLists_tuple (LIST) {" +
-            "      repeated int32 listOfLists_tuple_tuple;" +
-            "    }" +
-            "  }" +
-            "}",
+        "message ThriftCompatListInList {" + "  optional group listOfLists (LIST) {"
+            + "    repeated group listOfLists_tuple (LIST) {"
+            + "      repeated int32 listOfLists_tuple_tuple;"
+            + "    }"
+            + "  }"
+            + "}",
         new DirectWriter() {
           @Override
           public void write(RecordConsumer rc) {
@@ -606,16 +592,15 @@ public class TestArrayCompatibility extends DirectWriterTest {
   @Test
   public void testOldThriftCompatRequiredGroupInList() throws Exception {
     Path test = writeDirect(
-        "message OldThriftCompatRequiredGroupInList {" +
-            "  optional group locations (LIST) {" +
-            "    repeated group locations_tuple {" +
-            "      required group element {" +
-            "        required double latitude;" +
-            "        required double longitude;" +
-            "      }" +
-            "    }" +
-            "  }" +
-            "}",
+        "message OldThriftCompatRequiredGroupInList {" + "  optional group locations (LIST) {"
+            + "    repeated group locations_tuple {"
+            + "      required group element {"
+            + "        required double latitude;"
+            + "        required double longitude;"
+            + "      }"
+            + "    }"
+            + "  }"
+            + "}",
         new DirectWriter() {
           @Override
           public void write(RecordConsumer rc) {
@@ -675,16 +660,15 @@ public class TestArrayCompatibility extends DirectWriterTest {
   @Test
   public void testHiveCompatOptionalGroupInList() throws Exception {
     Path test = writeDirect(
-        "message HiveCompatOptionalGroupInList {" +
-            "  optional group locations (LIST) {" +
-            "    repeated group bag {" +
-            "      optional group element {" +
-            "        required double latitude;" +
-            "        required double longitude;" +
-            "      }" +
-            "    }" +
-            "  }" +
-            "}",
+        "message HiveCompatOptionalGroupInList {" + "  optional group locations (LIST) {"
+            + "    repeated group bag {"
+            + "      optional group element {"
+            + "        required double latitude;"
+            + "        required double longitude;"
+            + "      }"
+            + "    }"
+            + "  }"
+            + "}",
         new DirectWriter() {
           @Override
           public void write(RecordConsumer rc) {
@@ -749,15 +733,12 @@ public class TestArrayCompatibility extends DirectWriterTest {
     assertReaderContains(readerIgnoreNulls(test, ListOfLocations.class), expected);
   }
 
-  public <T extends TBase<?, ?>> ParquetReader<T> reader(
-      Path file, Class<T> thriftClass) throws IOException {
-    return ThriftParquetReader.<T>build(file)
-        .withThriftClass(thriftClass)
-        .build();
+  public <T extends TBase<?, ?>> ParquetReader<T> reader(Path file, Class<T> thriftClass) throws IOException {
+    return ThriftParquetReader.<T>build(file).withThriftClass(thriftClass).build();
   }
 
-  public <T extends TBase<?, ?>> ParquetReader<T> readerIgnoreNulls(
-      Path file, Class<T> thriftClass) throws IOException {
+  public <T extends TBase<?, ?>> ParquetReader<T> readerIgnoreNulls(Path file, Class<T> thriftClass)
+      throws IOException {
     Configuration conf = new Configuration();
     conf.setBoolean(ThriftRecordConverter.IGNORE_NULL_LIST_ELEMENTS, true);
     return ThriftParquetReader.<T>build(file)
@@ -766,14 +747,12 @@ public class TestArrayCompatibility extends DirectWriterTest {
         .build();
   }
 
-  public <T> void assertReaderContains(ParquetReader<T> reader, T... expected)
-      throws IOException {
+  public <T> void assertReaderContains(ParquetReader<T> reader, T... expected) throws IOException {
     T record;
     List<T> actual = Lists.newArrayList();
     while ((record = reader.read()) != null) {
       actual.add(record);
     }
-    Assert.assertEquals("Should match exepected records",
-        Lists.newArrayList(expected), actual);
+    Assert.assertEquals("Should match exepected records", Lists.newArrayList(expected), actual);
   }
 }

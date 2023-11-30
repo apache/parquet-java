@@ -18,14 +18,13 @@
  */
 package org.apache.parquet.cli.commands;
 
+import java.io.File;
 import org.apache.commons.logging.LogFactory;
 import org.apache.log4j.PropertyConfigurator;
 import org.junit.Rule;
 import org.junit.rules.TemporaryFolder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.File;
 
 public abstract class FileTest {
 
@@ -47,12 +46,10 @@ public abstract class FileTest {
   }
 
   protected static Logger createLogger() {
-    PropertyConfigurator.configure(
-      ParquetFileTest.class.getResource("/cli-logging.properties"));
+    PropertyConfigurator.configure(ParquetFileTest.class.getResource("/cli-logging.properties"));
     Logger console = LoggerFactory.getLogger(ParquetFileTest.class);
-    LogFactory.getFactory().setAttribute(
-      "org.apache.commons.logging.Log",
-      "org.apache.commons.logging.impl.Log4JLogger");
+    LogFactory.getFactory()
+        .setAttribute("org.apache.commons.logging.Log", "org.apache.commons.logging.impl.Log4JLogger");
     return console;
   }
 }

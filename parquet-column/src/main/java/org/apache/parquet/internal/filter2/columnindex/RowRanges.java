@@ -25,7 +25,6 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.PrimitiveIterator;
 import java.util.Set;
-
 import org.apache.parquet.filter2.compat.FilterCompat.Filter;
 import org.apache.parquet.internal.column.columnindex.OffsetIndex;
 
@@ -128,11 +127,11 @@ public class RowRanges {
    * [firstRowIndex[n], lastRowIndex[n]]
    * </pre>
    * (See OffsetIndex.getFirstRowIndex and OffsetIndex.getLastRowIndex for details.)
-   *
+   * <p>
    * The union of the ranges are calculated so the result ranges always contain the disjunct ranges. See union for
    * details.
    *
-   * @param rowCount row count
+   * @param rowCount    row count
    * @param pageIndexes pageIndexes
    * @param offsetIndex offsetIndex
    * @return a mutable RowRanges
@@ -141,7 +140,8 @@ public class RowRanges {
     RowRanges ranges = new RowRanges();
     while (pageIndexes.hasNext()) {
       int pageIndex = pageIndexes.nextInt();
-      ranges.add(new Range(offsetIndex.getFirstRowIndex(pageIndex), offsetIndex.getLastRowIndex(pageIndex, rowCount)));
+      ranges.add(new Range(
+          offsetIndex.getFirstRowIndex(pageIndex), offsetIndex.getLastRowIndex(pageIndex, rowCount)));
     }
     return ranges;
   }
@@ -157,7 +157,8 @@ public class RowRanges {
    * [113, 230] ∪ [232, 340] = [113, 230], [232, 340]
    * </pre>
    * The result RowRanges object will contain all the row indexes that were contained in one of the specified objects.
-   * @param left left RowRanges
+   *
+   * @param left  left RowRanges
    * @param right right RowRanges
    * @return a mutable RowRanges contains all the row indexes that were contained in one of the specified objects
    */
@@ -199,7 +200,8 @@ public class RowRanges {
    * while
    * [113, 230] ∩ [231, 340] = &lt;EMPTY&gt;
    * </pre>
-   * @param left left RowRanges
+   *
+   * @param left  left RowRanges
    * @param right right RowRanges
    * @return a mutable RowRanges contains all the row indexes that were contained in both of the specified objects
    */
@@ -296,15 +298,14 @@ public class RowRanges {
   }
 
   /**
-   * @param from
-   *          the first row of the range to be checked for connection
-   * @param to
-   *          the last row of the range to be checked for connection
+   * @param from the first row of the range to be checked for connection
+   * @param to   the last row of the range to be checked for connection
    * @return {@code true} if the specified range is overlapping (have common elements) with one of the ranges
    */
   public boolean isOverlapping(long from, long to) {
-    return Collections.binarySearch(ranges, new Range(from, to),
-        (r1, r2) -> r1.isBefore(r2) ? -1 : r1.isAfter(r2) ? 1 : 0) >= 0;
+    return Collections.binarySearch(
+            ranges, new Range(from, to), (r1, r2) -> r1.isBefore(r2) ? -1 : r1.isAfter(r2) ? 1 : 0)
+        >= 0;
   }
 
   public List<Range> getRanges() {

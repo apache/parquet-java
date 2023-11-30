@@ -18,10 +18,10 @@
  */
 package org.apache.parquet.filter2.predicate;
 
+import static org.apache.parquet.Preconditions.checkArgument;
+
 import java.util.HashMap;
 import java.util.Map;
-
-import static org.apache.parquet.Preconditions.checkArgument;
 
 /**
  * Converts a {@code Class<primitive>} to it's corresponding {@code Class<Boxed>}, eg
@@ -46,5 +46,5 @@ public class PrimitiveToBoxedClass {
     return primitiveToBoxed.get(c);
   }
 
-  private PrimitiveToBoxedClass() { }
+  private PrimitiveToBoxedClass() {}
 }

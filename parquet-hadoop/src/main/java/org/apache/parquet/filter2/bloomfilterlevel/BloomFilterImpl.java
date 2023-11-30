@@ -19,14 +19,12 @@
 
 package org.apache.parquet.filter2.bloomfilterlevel;
 
+import static org.apache.parquet.Preconditions.checkNotNull;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import org.apache.parquet.column.values.bloomfilter.BloomFilter;
 import org.apache.parquet.filter2.predicate.FilterPredicate;
 import org.apache.parquet.filter2.predicate.Operators;
@@ -34,17 +32,18 @@ import org.apache.parquet.filter2.predicate.UserDefinedPredicate;
 import org.apache.parquet.hadoop.BloomFilterReader;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import static org.apache.parquet.Preconditions.checkNotNull;
-
-public class BloomFilterImpl implements FilterPredicate.Visitor<Boolean>{
+public class BloomFilterImpl implements FilterPredicate.Visitor<Boolean> {
   private static final Logger LOG = LoggerFactory.getLogger(BloomFilterImpl.class);
   private static final boolean BLOCK_MIGHT_MATCH = false;
   private static final boolean BLOCK_CANNOT_MATCH = true;
 
   private final Map<ColumnPath, ColumnChunkMetaData> columns = new HashMap<ColumnPath, ColumnChunkMetaData>();
 
-  public static boolean canDrop(FilterPredicate pred, List<ColumnChunkMetaData> columns, BloomFilterReader bloomFilterReader) {
+  public static boolean canDrop(
+      FilterPredicate pred, List<ColumnChunkMetaData> columns, BloomFilterReader bloomFilterReader) {
     checkNotNull(pred, "pred");
     checkNotNull(columns, "columns");
     return pred.accept(new BloomFilterImpl(columns, bloomFilterReader));
@@ -168,10 +167,12 @@ public class BloomFilterImpl implements FilterPredicate.Visitor<Boolean>{
   @Override
   public Boolean visit(Operators.Not not) {
     throw new IllegalArgumentException(
-      "This predicate contains a not! Did you forget to run this predicate through LogicalInverseRewriter? " + not);
+        "This predicate contains a not! Did you forget to run this predicate through LogicalInverseRewriter? "
+            + not);
   }
 
-  private <T extends Comparable<T>, U extends UserDefinedPredicate<T>> Boolean visit(Operators.UserDefined<T, U> ud, boolean inverted) {
+  private <T extends Comparable<T>, U extends UserDefinedPredicate<T>> Boolean visit(
+      Operators.UserDefined<T, U> ud, boolean inverted) {
     return BLOCK_MIGHT_MATCH;
   }
 
@@ -181,7 +182,8 @@ public class BloomFilterImpl implements FilterPredicate.Visitor<Boolean>{
   }
 
   @Override
-  public <T extends Comparable<T>, U extends UserDefinedPredicate<T>> Boolean visit(Operators.LogicalNotUserDefined<T, U> udp) {
+  public <T extends Comparable<T>, U extends UserDefinedPredicate<T>> Boolean visit(
+      Operators.LogicalNotUserDefined<T, U> udp) {
     return visit(udp.getUserDefined(), true);
   }
 }

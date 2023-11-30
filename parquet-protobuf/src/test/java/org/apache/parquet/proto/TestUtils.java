@@ -18,26 +18,24 @@
  */
 package org.apache.parquet.proto;
 
+import static org.junit.Assert.fail;
+
 import com.google.common.base.Charsets;
 import com.google.common.io.Resources;
 import com.google.protobuf.Descriptors;
 import com.google.protobuf.Message;
 import com.google.protobuf.MessageOrBuilder;
 import com.twitter.elephantbird.util.Protobufs;
-
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.io.InputFile;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-
-import static org.junit.Assert.fail;
 
 public class TestUtils {
 
@@ -79,28 +77,29 @@ public class TestUtils {
   /**
    * Writes messages to file, reads messages from file and checks if everything is OK.
    */
-  public static <T extends  MessageOrBuilder> List<T> testData(T... messages) throws IOException {
+  public static <T extends MessageOrBuilder> List<T> testData(T... messages) throws IOException {
 
     checkSameBuilderInstance(messages);
 
     List<MessageOrBuilder> output = writeAndRead(messages);
     List<Message> outputAsMessages = asMessages(output);
-    Descriptors.Descriptor messageDescriptor = Protobufs.getMessageDescriptor(asMessage(messages[0]).getClass());
+    Descriptors.Descriptor messageDescriptor =
+        Protobufs.getMessageDescriptor(asMessage(messages[0]).getClass());
     Descriptors.FileDescriptor.Syntax syntax = messageDescriptor.getFile().getSyntax();
-    for (int i = 0 ; i < messages.length ; i++) {
+    for (int i = 0; i < messages.length; i++) {
       if (Descriptors.FileDescriptor.Syntax.PROTO2.equals(syntax)) {
         com.google.common.truth.extensions.proto.ProtoTruth.assertThat(outputAsMessages.get(i))
-          .ignoringRepeatedFieldOrder()
-          .reportingMismatchesOnly()
-          .isEqualTo(asMessage(messages[i]));
+            .ignoringRepeatedFieldOrder()
+            .reportingMismatchesOnly()
+            .isEqualTo(asMessage(messages[i]));
       } else if (Descriptors.FileDescriptor.Syntax.PROTO3.equals(syntax)) {
         // proto3 will return default values for absent fields which is what is returned in output
         // this is why we can ignore absent fields here
         com.google.common.truth.extensions.proto.ProtoTruth.assertThat(outputAsMessages.get(i))
-          .ignoringRepeatedFieldOrder()
-          .ignoringFieldAbsence()
-          .reportingMismatchesOnly()
-          .isEqualTo(asMessage(messages[i]));
+            .ignoringRepeatedFieldOrder()
+            .ignoringFieldAbsence()
+            .reportingMismatchesOnly()
+            .isEqualTo(asMessage(messages[i]));
       }
     }
     return (List<T>) outputAsMessages;
@@ -169,13 +168,15 @@ public class TestUtils {
 
   /**
    * Read messages from given file into the expected proto class with ignoreUnknown fields flag.
+   *
    * @param file
    * @param messageClass
    * @param <T>
    * @param ignoreUnknownFields
    * @return List of protobuf messages for the given type.
    */
-  public static <T extends MessageOrBuilder> List<T> readMessages(Path file, Class<T> messageClass, boolean ignoreUnknownFields) throws IOException {
+  public static <T extends MessageOrBuilder> List<T> readMessages(
+      Path file, Class<T> messageClass, boolean ignoreUnknownFields) throws IOException {
     InputFile inputFile = HadoopInputFile.fromPath(file, new Configuration());
     ParquetReader.Builder readerBuilder = ProtoParquetReader.builder(inputFile, ignoreUnknownFields);
     if (messageClass != null) {
@@ -198,12 +199,14 @@ public class TestUtils {
 
   /**
    * Read messages from given file into the expected proto class.
+   *
    * @param file
    * @param messageClass
    * @param <T>
    * @return List of protobuf messages for the given type.
    */
-  public static <T extends MessageOrBuilder> List<T> readMessages(Path file, Class<T> messageClass) throws IOException {
+  public static <T extends MessageOrBuilder> List<T> readMessages(Path file, Class<T> messageClass)
+      throws IOException {
     return readMessages(file, messageClass, false);
   }
 
@@ -214,8 +217,9 @@ public class TestUtils {
     Path file = someTemporaryFilePath();
     Class<? extends Message> cls = inferRecordsClass(records);
 
-    ParquetWriter<MessageOrBuilder> writer =
-      ProtoParquetWriter.<MessageOrBuilder>builder(file).withMessage(cls).build();
+    ParquetWriter<MessageOrBuilder> writer = ProtoParquetWriter.<MessageOrBuilder>builder(file)
+        .withMessage(cls)
+        .build();
 
     for (MessageOrBuilder record : records) {
       writer.write(record);

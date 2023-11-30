@@ -18,34 +18,29 @@
  */
 package org.apache.parquet.thrift;
 
+import static org.apache.parquet.schema.Type.Repetition;
+import static org.apache.parquet.thrift.struct.ThriftField.Requirement;
+import static org.junit.Assert.assertEquals;
+
 import java.util.ArrayList;
 import java.util.List;
-
 import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
-import org.apache.parquet.schema.Types;
 import org.apache.parquet.schema.Type;
-
+import org.apache.parquet.schema.Types;
 import org.apache.parquet.thrift.projection.FieldProjectionFilter;
 import org.apache.parquet.thrift.struct.ThriftField;
 import org.apache.parquet.thrift.struct.ThriftType;
 import org.apache.parquet.thrift.struct.ThriftType.StructType;
 import org.apache.parquet.thrift.struct.ThriftType.StructType.StructOrUnionType;
-
 import org.junit.Test;
-
-import static org.apache.parquet.schema.Type.Repetition;
-import static org.apache.parquet.thrift.struct.ThriftField.Requirement;
-import static org.junit.Assert.assertEquals;
 
 public class TestThriftSchemaConvertVisitor {
 
   private MessageType buildOneFieldParquetMessage(Type expectedParquetField) {
-    return Types.buildMessage()
-      .addFields(expectedParquetField)
-      .named("ParquetSchema");
+    return Types.buildMessage().addFields(expectedParquetField).named("ParquetSchema");
   }
 
   private StructType buildOneFieldThriftStructType(String fieldName, Short fieldId, ThriftType thriftType) {
@@ -66,8 +61,8 @@ public class TestThriftSchemaConvertVisitor {
     MessageType actual = ThriftSchemaConvertVisitor.convert(thriftStruct, FieldProjectionFilter.ALL_COLUMNS);
 
     Type expectedParquetField = Types.primitive(PrimitiveTypeName.INT32, Repetition.REQUIRED)
-      .named(fieldName)
-      .withId(fieldId);
+        .named(fieldName)
+        .withId(fieldId);
     MessageType expected = buildOneFieldParquetMessage(expectedParquetField);
 
     assertEquals(expected, actual);
@@ -86,9 +81,9 @@ public class TestThriftSchemaConvertVisitor {
     MessageType actual = ThriftSchemaConvertVisitor.convert(thriftStruct, FieldProjectionFilter.ALL_COLUMNS);
 
     Type expectedParquetField = Types.primitive(PrimitiveTypeName.INT32, Repetition.REQUIRED)
-      .as(timeLogicalType)
-      .named(fieldName)
-      .withId(fieldId);
+        .as(timeLogicalType)
+        .named(fieldName)
+        .withId(fieldId);
     MessageType expected = buildOneFieldParquetMessage(expectedParquetField);
 
     assertEquals(expected, actual);
@@ -100,13 +95,13 @@ public class TestThriftSchemaConvertVisitor {
     Short fieldId = 0;
 
     ThriftType i64Type = new ThriftType.I64Type();
-    
+
     StructType thriftStruct = buildOneFieldThriftStructType(fieldName, fieldId, i64Type);
     MessageType actual = ThriftSchemaConvertVisitor.convert(thriftStruct, FieldProjectionFilter.ALL_COLUMNS);
 
     Type expectedParquetField = Types.primitive(PrimitiveTypeName.INT64, Repetition.REQUIRED)
-      .named(fieldName)
-      .withId(fieldId);
+        .named(fieldName)
+        .withId(fieldId);
     MessageType expected = buildOneFieldParquetMessage(expectedParquetField);
 
     assertEquals(expected, actual);
@@ -120,14 +115,14 @@ public class TestThriftSchemaConvertVisitor {
 
     ThriftType timestampI64Type = new ThriftType.I64Type();
     timestampI64Type.setLogicalTypeAnnotation(timestampLogicalType);
-    
+
     StructType thriftStruct = buildOneFieldThriftStructType(fieldName, fieldId, timestampI64Type);
     MessageType actual = ThriftSchemaConvertVisitor.convert(thriftStruct, FieldProjectionFilter.ALL_COLUMNS);
 
     Type expectedParquetField = Types.primitive(PrimitiveTypeName.INT64, Repetition.REQUIRED)
-      .as(timestampLogicalType)
-      .named(fieldName)
-      .withId(fieldId);
+        .as(timestampLogicalType)
+        .named(fieldName)
+        .withId(fieldId);
     MessageType expected = buildOneFieldParquetMessage(expectedParquetField);
 
     assertEquals(expected, actual);
@@ -140,18 +135,17 @@ public class TestThriftSchemaConvertVisitor {
     Short fieldId = 0;
 
     ThriftType stringType = new ThriftType.StringType();
-    
+
     StructType thriftStruct = buildOneFieldThriftStructType(fieldName, fieldId, stringType);
     MessageType actual = ThriftSchemaConvertVisitor.convert(thriftStruct, FieldProjectionFilter.ALL_COLUMNS);
 
     Type expectedParquetField = Types.primitive(PrimitiveTypeName.BINARY, Repetition.REQUIRED)
-      .as(stringLogicalType)
-      .named(fieldName)
-      .withId(fieldId);
+        .as(stringLogicalType)
+        .named(fieldName)
+        .withId(fieldId);
     MessageType expected = buildOneFieldParquetMessage(expectedParquetField);
 
     assertEquals(expected, actual);
-
   }
 
   @Test
@@ -163,14 +157,14 @@ public class TestThriftSchemaConvertVisitor {
     ThriftType.StringType jsonBinaryType = new ThriftType.StringType();
     jsonBinaryType.setBinary(true);
     jsonBinaryType.setLogicalTypeAnnotation(jsonLogicalType);
-    
+
     StructType thriftStruct = buildOneFieldThriftStructType(fieldName, fieldId, jsonBinaryType);
     MessageType actual = ThriftSchemaConvertVisitor.convert(thriftStruct, FieldProjectionFilter.ALL_COLUMNS);
 
     Type expectedParquetField = Types.primitive(PrimitiveTypeName.BINARY, Repetition.REQUIRED)
-      .as(jsonLogicalType)
-      .named(fieldName)
-      .withId(fieldId);
+        .as(jsonLogicalType)
+        .named(fieldName)
+        .withId(fieldId);
     MessageType expected = buildOneFieldParquetMessage(expectedParquetField);
 
     assertEquals(expected, actual);

@@ -19,27 +19,30 @@
 
 package org.apache.parquet.crypto;
 
-import org.apache.hadoop.conf.Configuration;
-import org.junit.Test;
-
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+
+import org.apache.hadoop.conf.Configuration;
+import org.junit.Test;
 
 public class EncryptionPropertiesFactoryTest {
   @Test
   public void testLoadEncPropertiesFactory() {
     Configuration conf = new Configuration();
-    conf.set(EncryptionPropertiesFactory.CRYPTO_FACTORY_CLASS_PROPERTY_NAME,
-      "org.apache.parquet.crypto.SampleEncryptionPropertiesFactory");
+    conf.set(
+        EncryptionPropertiesFactory.CRYPTO_FACTORY_CLASS_PROPERTY_NAME,
+        "org.apache.parquet.crypto.SampleEncryptionPropertiesFactory");
 
     EncryptionPropertiesFactory encryptionPropertiesFactory = EncryptionPropertiesFactory.loadFactory(conf);
-    FileEncryptionProperties encryptionProperties = encryptionPropertiesFactory.getFileEncryptionProperties(conf,
-      null, null);
+    FileEncryptionProperties encryptionProperties =
+        encryptionPropertiesFactory.getFileEncryptionProperties(conf, null, null);
 
     assertArrayEquals(encryptionProperties.getFooterKey(), SampleEncryptionPropertiesFactory.FOOTER_KEY);
-    assertEquals(encryptionProperties.getColumnProperties(SampleEncryptionPropertiesFactory.COL1),
-      SampleEncryptionPropertiesFactory.COL1_ENCR_PROPERTIES);
-    assertEquals(encryptionProperties.getColumnProperties(SampleEncryptionPropertiesFactory.COL2),
-      SampleEncryptionPropertiesFactory.COL2_ENCR_PROPERTIES);
+    assertEquals(
+        encryptionProperties.getColumnProperties(SampleEncryptionPropertiesFactory.COL1),
+        SampleEncryptionPropertiesFactory.COL1_ENCR_PROPERTIES);
+    assertEquals(
+        encryptionProperties.getColumnProperties(SampleEncryptionPropertiesFactory.COL2),
+        SampleEncryptionPropertiesFactory.COL2_ENCR_PROPERTIES);
   }
 }

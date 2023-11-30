@@ -18,6 +18,16 @@
  */
 package org.apache.parquet.hadoop;
 
+import static org.apache.parquet.schema.LogicalTypeAnnotation.stringType;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
+import static org.junit.Assert.assertEquals;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.Preconditions;
@@ -36,17 +46,6 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.Collections;
-import java.util.List;
-import java.util.stream.Collectors;
-
-import static org.apache.parquet.schema.LogicalTypeAnnotation.stringType;
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
-import static org.junit.Assert.assertEquals;
-
 public class TestParquetWriterTruncation {
 
   @Rule
@@ -54,8 +53,11 @@ public class TestParquetWriterTruncation {
 
   @Test
   public void testTruncateColumnIndex() throws IOException {
-    MessageType schema = Types.buildMessage().
-      required(BINARY).as(stringType()).named("name").named("msg");
+    MessageType schema = Types.buildMessage()
+        .required(BINARY)
+        .as(stringType())
+        .named("name")
+        .named("msg");
 
     Configuration conf = new Configuration();
     GroupWriteSupport.setSchema(schema, conf);
@@ -63,18 +65,19 @@ public class TestParquetWriterTruncation {
     GroupFactory factory = new SimpleGroupFactory(schema);
     Path path = newTempPath();
     try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(path)
-      .withPageRowCountLimit(10)
-      .withConf(conf)
-      .withDictionaryEncoding(false)
-      .withColumnIndexTruncateLength(10)
-      .build()) {
+        .withPageRowCountLimit(10)
+        .withConf(conf)
+        .withDictionaryEncoding(false)
+        .withColumnIndexTruncateLength(10)
+        .build()) {
 
       writer.write(factory.newGroup().append("name", "1234567890abcdefghijklmnopqrstuvwxyz"));
     }
 
     try (ParquetFileReader reader = ParquetFileReader.open(HadoopInputFile.fromPath(path, new Configuration()))) {
 
-      ColumnChunkMetaData column = reader.getFooter().getBlocks().get(0).getColumns().get(0);
+      ColumnChunkMetaData column =
+          reader.getFooter().getBlocks().get(0).getColumns().get(0);
       ColumnIndex index = reader.readColumnIndex(column);
       assertEquals(Collections.singletonList("1234567890"), asStrings(index.getMinValues()));
       assertEquals(Collections.singletonList("1234567891"), asStrings(index.getMaxValues()));
@@ -83,8 +86,11 @@ public class TestParquetWriterTruncation {
 
   @Test
   public void testTruncateStatistics() throws IOException {
-    MessageType schema = Types.buildMessage().
-      required(BINARY).as(stringType()).named("name").named("msg");
+    MessageType schema = Types.buildMessage()
+        .required(BINARY)
+        .as(stringType())
+        .named("name")
+        .named("msg");
 
     Configuration conf = new Configuration();
     GroupWriteSupport.setSchema(schema, conf);
@@ -92,18 +98,19 @@ public class TestParquetWriterTruncation {
     GroupFactory factory = new SimpleGroupFactory(schema);
     Path path = newTempPath();
     try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(path)
-      .withPageRowCountLimit(10)
-      .withConf(conf)
-      .withDictionaryEncoding(false)
-      .withStatisticsTruncateLength(10)
-      .build()) {
+        .withPageRowCountLimit(10)
+        .withConf(conf)
+        .withDictionaryEncoding(false)
+        .withStatisticsTruncateLength(10)
+        .build()) {
 
       writer.write(factory.newGroup().append("name", "1234567890abcdefghijklmnopqrstuvwxyz"));
     }
 
     try (ParquetFileReader reader = ParquetFileReader.open(HadoopInputFile.fromPath(path, new Configuration()))) {
 
-      ColumnChunkMetaData column = reader.getFooter().getBlocks().get(0).getColumns().get(0);
+      ColumnChunkMetaData column =
+          reader.getFooter().getBlocks().get(0).getColumns().get(0);
       Statistics<?> statistics = column.getStatistics();
       assertEquals("1234567890", new String(statistics.getMinBytes()));
       assertEquals("1234567891", new String(statistics.getMaxBytes()));
@@ -117,9 +124,6 @@ public class TestParquetWriterTruncation {
   }
 
   private static List<String> asStrings(List<ByteBuffer> buffers) {
-    return buffers.stream()
-      .map(buffer -> new String(buffer.array()))
-      .collect(Collectors.toList());
+    return buffers.stream().map(buffer -> new String(buffer.array())).collect(Collectors.toList());
   }
-
 }

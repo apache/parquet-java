@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -18,9 +18,7 @@
  */
 package org.apache.parquet.io.api;
 
-
 /**
- *
  * Abstraction for writing records
  * It decouples the striping algorithm from the actual record model
  * example:
@@ -39,7 +37,7 @@ package org.apache.parquet.io.api;
  *  endField("B", 1)
  * endMessage()
  * </pre>
- *
+ * <p>
  * would produce the following message:
  * <pre>
  * {
@@ -50,85 +48,91 @@ package org.apache.parquet.io.api;
  * }
  * </pre>
  */
-abstract public class RecordConsumer {
+public abstract class RecordConsumer {
 
   /**
    * start a new record
    */
-  abstract public void startMessage();
+  public abstract void startMessage();
 
   /**
    * end of a record
    */
-  abstract public void endMessage();
+  public abstract void endMessage();
 
   /**
    * start of a field in a group or message
    * if the field is repeated the field is started only once and all values added in between start and end
+   *
    * @param field name of the field
    * @param index of the field in the group or message
    */
-  abstract public void startField(String field, int index);
+  public abstract void startField(String field, int index);
 
   /**
    * end of a field in a group or message
+   *
    * @param field name of the field
    * @param index of the field in the group or message
    */
-  abstract public void endField(String field, int index);
+  public abstract void endField(String field, int index);
 
   /**
    * start of a group in a field
    */
-  abstract public void startGroup();
+  public abstract void startGroup();
 
   /**
    * end of a group in a field
    */
-  abstract public void endGroup();
+  public abstract void endGroup();
 
   /**
    * add an int value in the current field
+   *
    * @param value an int value
    */
-  abstract public void addInteger(int value);
+  public abstract void addInteger(int value);
 
   /**
    * add a long value in the current field
+   *
    * @param value a long value
    */
-  abstract public void addLong(long value);
+  public abstract void addLong(long value);
 
   /**
    * add a boolean value in the current field
+   *
    * @param value a boolean value
    */
-  abstract public void addBoolean(boolean value);
+  public abstract void addBoolean(boolean value);
 
   /**
    * add a binary value in the current field
+   *
    * @param value a binary value
    */
-  abstract public void addBinary(Binary value);
+  public abstract void addBinary(Binary value);
 
   /**
    * add a float value in the current field
+   *
    * @param value a float value
    */
-  abstract public void addFloat(float value);
+  public abstract void addFloat(float value);
 
   /**
    * add a double value in the current field
+   *
    * @param value a double value
    */
-  abstract public void addDouble(double value);
+  public abstract void addDouble(double value);
 
   /**
    * NoOps by default
    * Subclass class can implement its own flushing logic
    */
-  //TODO: make this abstract in 2.0
-  public void flush() {
-  }
-
+  // TODO: make this abstract in 2.0
+  public void flush() {}
 }

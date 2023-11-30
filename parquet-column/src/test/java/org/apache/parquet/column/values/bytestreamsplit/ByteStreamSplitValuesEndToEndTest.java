@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -21,7 +21,6 @@ package org.apache.parquet.column.values.bytestreamsplit;
 import static org.junit.Assert.assertEquals;
 
 import java.util.Random;
-
 import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.DirectByteBufferAllocator;
@@ -43,9 +42,8 @@ public class ByteStreamSplitValuesEndToEndTest {
     ByteStreamSplitValuesWriter.FloatByteStreamSplitValuesWriter writer = null;
     try {
       // Encode data.
-      writer
-            = new ByteStreamSplitValuesWriter.FloatByteStreamSplitValuesWriter(
-                    numElements * 4, numElements * 4, new DirectByteBufferAllocator());
+      writer = new ByteStreamSplitValuesWriter.FloatByteStreamSplitValuesWriter(
+          numElements * 4, numElements * 4, new DirectByteBufferAllocator());
       for (float v : values) {
         writer.writeFloat(v);
       }
@@ -54,8 +52,7 @@ public class ByteStreamSplitValuesEndToEndTest {
       BytesInput input = writer.getBytes();
       assertEquals(numElements * 4, input.size());
 
-      ByteStreamSplitValuesReaderForFloat reader
-              = new ByteStreamSplitValuesReaderForFloat();
+      ByteStreamSplitValuesReaderForFloat reader = new ByteStreamSplitValuesReaderForFloat();
 
       reader.initFromPage(numElements, ByteBufferInputStream.wrap(input.toByteBuffer()));
 
@@ -83,9 +80,9 @@ public class ByteStreamSplitValuesEndToEndTest {
     }
 
     // Encode data.
-    ByteStreamSplitValuesWriter.DoubleByteStreamSplitValuesWriter writer
-            = new ByteStreamSplitValuesWriter.DoubleByteStreamSplitValuesWriter(
-                    numElements * 8, numElements * 8, new DirectByteBufferAllocator());
+    ByteStreamSplitValuesWriter.DoubleByteStreamSplitValuesWriter writer =
+        new ByteStreamSplitValuesWriter.DoubleByteStreamSplitValuesWriter(
+            numElements * 8, numElements * 8, new DirectByteBufferAllocator());
     for (double v : values) {
       writer.writeDouble(v);
     }
@@ -94,8 +91,7 @@ public class ByteStreamSplitValuesEndToEndTest {
     BytesInput input = writer.getBytes();
     assertEquals(numElements * 8, input.size());
 
-    ByteStreamSplitValuesReaderForDouble reader
-            = new ByteStreamSplitValuesReaderForDouble();
+    ByteStreamSplitValuesReaderForDouble reader = new ByteStreamSplitValuesReaderForDouble();
 
     reader.initFromPage(numElements, ByteBufferInputStream.wrap(input.toByteBuffer()));
 
@@ -107,5 +103,4 @@ public class ByteStreamSplitValuesEndToEndTest {
     writer.reset();
     writer.close();
   }
-
 }

@@ -21,7 +21,6 @@ package org.apache.parquet.internal.column.columnindex;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.PrimitiveIterator;
-
 import org.apache.parquet.filter2.predicate.FilterPredicate.Visitor;
 import org.apache.parquet.internal.filter2.columnindex.ColumnIndexFilter;
 
@@ -56,5 +55,4 @@ public interface ColumnIndex extends Visitor<PrimitiveIterator.OfInt> {
    * @return the list of the max values as {@link ByteBuffer}s; used for converting to the related thrift object
    */
   public List<ByteBuffer> getMaxValues();
-
 }

@@ -37,7 +37,6 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Supplier;
-
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.ColumnReadStore;
 import org.apache.parquet.column.ColumnReader;
@@ -75,10 +74,8 @@ public class ColumnIndexValidator {
             + "Null count in the index: %s\n"),
     NULL_PAGE_HAS_NO_VALUES("Only pages consisting entirely of NULL-s can be marked as a null page in the index.\n"
         + "Actual non-null value in the page: %s"),
-    NULL_PAGE_HAS_NO_MIN("A null page shall not have a min value in the index\n"
-        + "Min value in the index: %s\n"),
-    NULL_PAGE_HAS_NO_MAX("A null page shall not have a max value in the index\n"
-        + "Max value in the index: %s\n"),
+    NULL_PAGE_HAS_NO_MIN("A null page shall not have a min value in the index\n" + "Min value in the index: %s\n"),
+    NULL_PAGE_HAS_NO_MAX("A null page shall not have a max value in the index\n" + "Max value in the index: %s\n"),
     MIN_ASCENDING(
         "According to the ASCENDING boundary order, the min value for a page must be greater than or equal to the min value of the previous page.\n"
             + "Min value for the page: %s\n"
@@ -104,8 +101,14 @@ public class ColumnIndexValidator {
   }
 
   public static class ContractViolation {
-    public ContractViolation(Contract violatedContract, String referenceValue, String offendingValue,
-        int rowGroupNumber, int columnNumber, ColumnPath columnPath, int pageNumber) {
+    public ContractViolation(
+        Contract violatedContract,
+        String referenceValue,
+        String offendingValue,
+        int rowGroupNumber,
+        int columnNumber,
+        ColumnPath columnPath,
+        int pageNumber) {
       this.violatedContract = violatedContract;
       this.referenceValue = referenceValue;
       this.offendingValue = offendingValue;
@@ -128,7 +131,10 @@ public class ColumnIndexValidator {
       return String.format(
           "Contract violation\nLocation: row group %d, column %d (\"%s\"), page %d\nViolated contract: "
               + violatedContract.description,
-          rowGroupNumber, columnNumber, columnPath.toDotString(), pageNumber,
+          rowGroupNumber,
+          columnNumber,
+          columnPath.toDotString(),
+          pageNumber,
           referenceValue,
           offendingValue);
     }
@@ -154,22 +160,22 @@ public class ColumnIndexValidator {
 
   static StatValue.Builder getBuilder(PrimitiveType type) {
     switch (type.getPrimitiveTypeName()) {
-    case BINARY:
-    case FIXED_LEN_BYTE_ARRAY:
-    case INT96:
-      return new BinaryStatValueBuilder(type);
-    case BOOLEAN:
-      return new BooleanStatValueBuilder(type);
-    case DOUBLE:
-      return new DoubleStatValueBuilder(type);
-    case FLOAT:
-      return new FloatStatValueBuilder(type);
-    case INT32:
-      return new IntStatValueBuilder(type);
-    case INT64:
-      return new LongStatValueBuilder(type);
-    default:
-      throw new IllegalArgumentException("Unsupported type: " + type);
+      case BINARY:
+      case FIXED_LEN_BYTE_ARRAY:
+      case INT96:
+        return new BinaryStatValueBuilder(type);
+      case BOOLEAN:
+        return new BooleanStatValueBuilder(type);
+      case DOUBLE:
+        return new DoubleStatValueBuilder(type);
+      case FLOAT:
+        return new FloatStatValueBuilder(type);
+      case INT32:
+        return new IntStatValueBuilder(type);
+      case INT64:
+        return new LongStatValueBuilder(type);
+      default:
+        throw new IllegalArgumentException("Unsupported type: " + type);
     }
   }
 
@@ -454,15 +460,15 @@ public class ColumnIndexValidator {
 
       if (isNullPage) {
         // By specification null pages have empty byte arrays as min/max values
-        validateContract(!minValue.hasRemaining(),
-            NULL_PAGE_HAS_NO_MIN,
-            () -> statValueBuilder.build(minValue).toString());
-        validateContract(!maxValue.hasRemaining(),
-            NULL_PAGE_HAS_NO_MAX,
-            () -> statValueBuilder.build(maxValue).toString());
+        validateContract(!minValue.hasRemaining(), NULL_PAGE_HAS_NO_MIN, () -> statValueBuilder
+            .build(minValue)
+            .toString());
+        validateContract(!maxValue.hasRemaining(), NULL_PAGE_HAS_NO_MAX, () -> statValueBuilder
+            .build(maxValue)
+            .toString());
       } else if (prevMinValue != null) {
-        validateBoundaryOrder(statValueBuilder.build(prevMinValue), statValueBuilder.build(prevMaxValue),
-            boundaryOrder);
+        validateBoundaryOrder(
+            statValueBuilder.build(prevMinValue), statValueBuilder.build(prevMaxValue), boundaryOrder);
       }
     }
 
@@ -478,68 +484,69 @@ public class ColumnIndexValidator {
     }
 
     void finishPage() {
-      validateContract(nullCountInIndex == nullCountActual,
+      validateContract(
+          nullCountInIndex == nullCountActual,
           NULL_COUNT_CORRECT,
           () -> Long.toString(nullCountActual),
           () -> Long.toString(nullCountInIndex));
     }
 
-    void validateContract(boolean contractCondition,
-        Contract type,
-        Supplier<String> value1) {
+    void validateContract(boolean contractCondition, Contract type, Supplier<String> value1) {
       validateContract(contractCondition, type, value1, () -> "N/A");
     }
 
-    void validateContract(boolean contractCondition,
-        Contract type,
-        Supplier<String> value1,
-        Supplier<String> value2) {
+    void validateContract(
+        boolean contractCondition, Contract type, Supplier<String> value1, Supplier<String> value2) {
       if (!contractCondition && !pageViolations.contains(type)) {
-        violations.add(
-            new ContractViolation(type, value1.get(), value2.get(), rowGroupNumber,
-                columnNumber, columnPath, pageNumber));
+        violations.add(new ContractViolation(
+            type, value1.get(), value2.get(), rowGroupNumber, columnNumber, columnPath, pageNumber));
         pageViolations.add(type);
       }
     }
 
     private void validateValue() {
-      validateContract(!isNullPage,
-          NULL_PAGE_HAS_NO_VALUES,
-          () -> statValueBuilder.stringifyValue(columnReader));
-      validateContract(minValue.compareToValue(columnReader) <= 0,
+      validateContract(!isNullPage, NULL_PAGE_HAS_NO_VALUES, () -> statValueBuilder.stringifyValue(columnReader));
+      validateContract(
+          minValue.compareToValue(columnReader) <= 0,
           MIN_LTEQ_VALUE,
           () -> statValueBuilder.stringifyValue(columnReader),
           minValue::toString);
-      validateContract(maxValue.compareToValue(columnReader) >= 0,
+      validateContract(
+          maxValue.compareToValue(columnReader) >= 0,
           MAX_GTEQ_VALUE,
           () -> statValueBuilder.stringifyValue(columnReader),
           maxValue::toString);
     }
 
-    private void validateBoundaryOrder(StatValue prevMinValue, StatValue prevMaxValue, BoundaryOrder boundaryOrder) {
+    private void validateBoundaryOrder(
+        StatValue prevMinValue, StatValue prevMaxValue, BoundaryOrder boundaryOrder) {
       switch (boundaryOrder) {
-      case ASCENDING:
-        validateContract(minValue.compareTo(prevMinValue) >= 0,
-            MIN_ASCENDING,
-            minValue::toString,
-            prevMinValue::toString);
-        validateContract(maxValue.compareTo(prevMaxValue) >= 0,
-            MAX_ASCENDING,
-            maxValue::toString,
-            prevMaxValue::toString);
-        break;
-      case DESCENDING:
-        validateContract(minValue.compareTo(prevMinValue) <= 0,
-            MIN_DESCENDING,
-            minValue::toString,
-            prevMinValue::toString);
-        validateContract(maxValue.compareTo(prevMaxValue) <= 0,
-            MAX_DESCENDING,
-            maxValue::toString,
-            prevMaxValue::toString);
-        break;
-      case UNORDERED:
-        // No checks necessary.
+        case ASCENDING:
+          validateContract(
+              minValue.compareTo(prevMinValue) >= 0,
+              MIN_ASCENDING,
+              minValue::toString,
+              prevMinValue::toString);
+          validateContract(
+              maxValue.compareTo(prevMaxValue) >= 0,
+              MAX_ASCENDING,
+              maxValue::toString,
+              prevMaxValue::toString);
+          break;
+        case DESCENDING:
+          validateContract(
+              minValue.compareTo(prevMinValue) <= 0,
+              MIN_DESCENDING,
+              minValue::toString,
+              prevMinValue::toString);
+          validateContract(
+              maxValue.compareTo(prevMaxValue) <= 0,
+              MAX_DESCENDING,
+              maxValue::toString,
+              prevMaxValue::toString);
+          break;
+        case UNORDERED:
+          // No checks necessary.
       }
     }
   }
@@ -555,9 +562,10 @@ public class ColumnIndexValidator {
       int rowGroupNumber = 0;
       PageReadStore rowGroup = reader.readNextRowGroup();
       while (rowGroup != null) {
-        ColumnReadStore columnReadStore = new ColumnReadStoreImpl(rowGroup,
-            new DummyRecordConverter(schema).getRootConverter(), schema, null);
-        List<ColumnChunkMetaData> columnChunks = blocks.get(rowGroupNumber).getColumns();
+        ColumnReadStore columnReadStore = new ColumnReadStoreImpl(
+            rowGroup, new DummyRecordConverter(schema).getRootConverter(), schema, null);
+        List<ColumnChunkMetaData> columnChunks =
+            blocks.get(rowGroupNumber).getColumns();
         assert (columnChunks.size() == columns.size());
         for (int columnNumber = 0; columnNumber < columns.size(); ++columnNumber) {
           ColumnDescriptor column = columns.get(columnNumber);
@@ -583,8 +591,12 @@ public class ColumnIndexValidator {
             ByteBuffer maxValue = maxValues.get(pageNumber);
             PageValidator pageValidator = new PageValidator(
                 column.getPrimitiveType(),
-                rowGroupNumber, columnNumber, columnPath, pageNumber,
-                violations, columnReader,
+                rowGroupNumber,
+                columnNumber,
+                columnPath,
+                pageNumber,
+                violations,
+                columnReader,
                 minValue,
                 maxValue,
                 prevMinValue,

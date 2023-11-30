@@ -18,6 +18,8 @@
  */
 package org.apache.parquet.thrift;
 
+import static org.apache.parquet.thrift.TestThriftSchemaConverter.shouldGetProjectedSchema;
+
 import org.apache.parquet.thrift.test.compat.ListOfUnions;
 import org.apache.parquet.thrift.test.compat.MapWithUnionKey;
 import org.apache.parquet.thrift.test.compat.MapWithUnionValue;
@@ -31,8 +33,6 @@ import org.apache.parquet.thrift.test.compat.UnionOfStructs;
 import org.apache.parquet.thrift.test.compat.UnionV2;
 import org.junit.Test;
 
-import static org.apache.parquet.thrift.TestThriftSchemaConverter.shouldGetProjectedSchema;
-
 public class TestThriftSchemaConverterProjectUnion {
 
   /**
@@ -42,33 +42,37 @@ public class TestThriftSchemaConverterProjectUnion {
   public void testTopLevelUnions() {
 
     // very simple case, a union of structs where each struct has only 1 field
-    shouldGetProjectedSchema("aLong/**", "aLong",
-        "message ParquetSchema {\n" +
-        "  optional group aString = 1 {\n" +
-        "    required binary s (UTF8) = 1;\n" +
-        "  }\n" +
-        "  optional group aLong = 2 {\n" +
-        "    required int64 l = 1;\n" +
-        "  }\n" +
-        "  optional group aNewBool = 3 {\n" +
-        "    required boolean b = 1;\n" +
-        "  }\n" +
-        "}", UnionV2.class);
+    shouldGetProjectedSchema(
+        "aLong/**",
+        "aLong",
+        "message ParquetSchema {\n" + "  optional group aString = 1 {\n"
+            + "    required binary s (UTF8) = 1;\n"
+            + "  }\n"
+            + "  optional group aLong = 2 {\n"
+            + "    required int64 l = 1;\n"
+            + "  }\n"
+            + "  optional group aNewBool = 3 {\n"
+            + "    required boolean b = 1;\n"
+            + "  }\n"
+            + "}",
+        UnionV2.class);
 
     // a union of structs, where each struct has more than one field
     // we should still only get one field per child here though
-    shouldGetProjectedSchema("aNewBool/**", "aNewBool",
-        "message ParquetSchema {\n" +
-        "  optional group structV3 = 1 {\n" +
-        "    required binary name (UTF8) = 1;\n" +
-        "  }\n" +
-        "  optional group structV4 = 2 {\n" +
-        "    required binary name (UTF8) = 1;\n" +
-        "  }\n" +
-        "  optional group aNewBool = 3 {\n" +
-        "    required boolean b = 1;\n" +
-        "  }\n" +
-        "}", UnionOfStructs.class);
+    shouldGetProjectedSchema(
+        "aNewBool/**",
+        "aNewBool",
+        "message ParquetSchema {\n" + "  optional group structV3 = 1 {\n"
+            + "    required binary name (UTF8) = 1;\n"
+            + "  }\n"
+            + "  optional group structV4 = 2 {\n"
+            + "    required binary name (UTF8) = 1;\n"
+            + "  }\n"
+            + "  optional group aNewBool = 3 {\n"
+            + "    required boolean b = 1;\n"
+            + "  }\n"
+            + "}",
+        UnionOfStructs.class);
   }
 
   /**
@@ -76,10 +80,11 @@ public class TestThriftSchemaConverterProjectUnion {
    */
   @Test
   public void optionalUnionShouldBeDropped() {
-    shouldGetProjectedSchema("name", "name",
-        "message ParquetSchema {\n" +
-        "  required binary name (UTF8) = 1;\n" +
-        "}", StructWithOptionalUnionOfStructs.class);
+    shouldGetProjectedSchema(
+        "name",
+        "name",
+        "message ParquetSchema {\n" + "  required binary name (UTF8) = 1;\n" + "}",
+        StructWithOptionalUnionOfStructs.class);
   }
 
   /**
@@ -88,10 +93,11 @@ public class TestThriftSchemaConverterProjectUnion {
    */
   @Test
   public void optionalUnionInRequiredStructShouldBeDropped() {
-    shouldGetProjectedSchema("name", "name",
-        "message ParquetSchema {\n" +
-        "  required binary name (UTF8) = 1;\n" +
-        "}", OptionalInsideRequired.class);
+    shouldGetProjectedSchema(
+        "name",
+        "name",
+        "message ParquetSchema {\n" + "  required binary name (UTF8) = 1;\n" + "}",
+        OptionalInsideRequired.class);
   }
 
   /**
@@ -101,10 +107,11 @@ public class TestThriftSchemaConverterProjectUnion {
   @Test
   public void requiredUnionInsideOptionalStructShouldBeDropped() {
     // test a required union inside an optional struct
-    shouldGetProjectedSchema("name", "name",
-        "message ParquetSchema {\n" +
-        "  required binary name (UTF8) = 1;\n" +
-        "}", RequiredInsideOptional.class);
+    shouldGetProjectedSchema(
+        "name",
+        "name",
+        "message ParquetSchema {\n" + "  required binary name (UTF8) = 1;\n" + "}",
+        RequiredInsideOptional.class);
   }
 
   /**
@@ -113,23 +120,25 @@ public class TestThriftSchemaConverterProjectUnion {
    */
   @Test
   public void requiredUnionInsideOptionalStructShouldBeKeptIfParentSelected() {
-    shouldGetProjectedSchema("aStruct/name", "aStruct.name",
-        "message ParquetSchema {\n" +
-        "  optional group aStruct = 2 {\n" +
-        "    required binary name (UTF8) = 1;\n" +
-        "    required group aUnion = 2 {\n" +
-        "      optional group structV3 = 1 {\n" +
-        "        required binary name (UTF8) = 1;\n" +
-        "      }\n" +
-        "      optional group structV4 = 2 {\n" +
-        "        required binary name (UTF8) = 1;\n" +
-        "      }\n" +
-        "      optional group aNewBool = 3 {\n" +
-        "        required boolean b = 1;\n" +
-        "      }\n" +
-        "    }\n" +
-        "  }\n" +
-        "}", RequiredInsideOptional.class);
+    shouldGetProjectedSchema(
+        "aStruct/name",
+        "aStruct.name",
+        "message ParquetSchema {\n" + "  optional group aStruct = 2 {\n"
+            + "    required binary name (UTF8) = 1;\n"
+            + "    required group aUnion = 2 {\n"
+            + "      optional group structV3 = 1 {\n"
+            + "        required binary name (UTF8) = 1;\n"
+            + "      }\n"
+            + "      optional group structV4 = 2 {\n"
+            + "        required binary name (UTF8) = 1;\n"
+            + "      }\n"
+            + "      optional group aNewBool = 3 {\n"
+            + "        required boolean b = 1;\n"
+            + "      }\n"
+            + "    }\n"
+            + "  }\n"
+            + "}",
+        RequiredInsideOptional.class);
   }
 
   /**
@@ -141,21 +150,20 @@ public class TestThriftSchemaConverterProjectUnion {
     shouldGetProjectedSchema(
         "aUnion/structV4/addedStruct/gender",
         "aUnion.structV4.addedStruct.gender",
-        "message ParquetSchema {\n" +
-        "  optional group aUnion = 2 {\n" +
-        "    optional group structV3 = 1 {\n" +
-        "      required binary name (UTF8) = 1;\n" +
-        "    }\n" +
-        "    optional group structV4 = 2 {\n" +
-        "      optional group addedStruct = 4 {\n" +
-        "        optional binary gender (UTF8) = 3;\n" +
-        "      }\n" +
-        "    }\n" +
-        "    optional group aNewBool = 3 {\n" +
-        "      required boolean b = 1;\n" +
-        "    }\n" +
-        "  }\n" +
-        "}",
+        "message ParquetSchema {\n" + "  optional group aUnion = 2 {\n"
+            + "    optional group structV3 = 1 {\n"
+            + "      required binary name (UTF8) = 1;\n"
+            + "    }\n"
+            + "    optional group structV4 = 2 {\n"
+            + "      optional group addedStruct = 4 {\n"
+            + "        optional binary gender (UTF8) = 3;\n"
+            + "      }\n"
+            + "    }\n"
+            + "    optional group aNewBool = 3 {\n"
+            + "      required boolean b = 1;\n"
+            + "    }\n"
+            + "  }\n"
+            + "}",
         StructWithOptionalUnionOfStructs.class);
   }
 
@@ -168,88 +176,89 @@ public class TestThriftSchemaConverterProjectUnion {
   @Test
   public void testUnionInsideUnion() {
 
-    shouldGetProjectedSchema("structV3/age", "structV3.age",
-        "message ParquetSchema {\n" +
-        "  optional group structV3 = 1 {\n" +
-        "    optional binary age (UTF8) = 2;\n" +
-        "  }\n" +
-        "  optional group unionOfStructs = 2 {\n" +
-        "    optional group structV3 = 1 {\n" +
-        "      required binary name (UTF8) = 1;\n" +
-        "    }\n" +
-        "    optional group structV4 = 2 {\n" +
-        "      required binary name (UTF8) = 1;\n" +
-        "    }\n" +
-        "    optional group aNewBool = 3 {\n" +
-        "      required boolean b = 1;\n" +
-        "    }\n" +
-        "  }\n" +
-        "  optional group aLong = 3 {\n" +
-        "    required int64 l = 1;\n" +
-        "  }\n" +
-        "}", NestedUnion.class);
+    shouldGetProjectedSchema(
+        "structV3/age",
+        "structV3.age",
+        "message ParquetSchema {\n" + "  optional group structV3 = 1 {\n"
+            + "    optional binary age (UTF8) = 2;\n"
+            + "  }\n"
+            + "  optional group unionOfStructs = 2 {\n"
+            + "    optional group structV3 = 1 {\n"
+            + "      required binary name (UTF8) = 1;\n"
+            + "    }\n"
+            + "    optional group structV4 = 2 {\n"
+            + "      required binary name (UTF8) = 1;\n"
+            + "    }\n"
+            + "    optional group aNewBool = 3 {\n"
+            + "      required boolean b = 1;\n"
+            + "    }\n"
+            + "  }\n"
+            + "  optional group aLong = 3 {\n"
+            + "    required int64 l = 1;\n"
+            + "  }\n"
+            + "}",
+        NestedUnion.class);
 
     shouldGetProjectedSchema(
         "unionOfStructs/structV4/addedStruct/gender",
         "unionOfStructs.structV4.addedStruct.gender",
-        "message ParquetSchema {\n" +
-        "  optional group structV3 = 1 {\n" +
-        "    required binary name (UTF8) = 1;\n" +
-        "  }\n" +
-        "  optional group unionOfStructs = 2 {\n" +
-        "    optional group structV3 = 1 {\n" +
-        "      required binary name (UTF8) = 1;\n" +
-        "    }\n" +
-        "    optional group structV4 = 2 {\n" +
-        "      optional group addedStruct = 4 {\n" +
-        "        optional binary gender (UTF8) = 3;\n" +
-        "      }\n" +
-        "    }\n" +
-        "    optional group aNewBool = 3 {\n" +
-        "      required boolean b = 1;\n" +
-        "    }\n" +
-        "  }\n" +
-        "  optional group aLong = 3 {\n" +
-        "    required int64 l = 1;\n" +
-        "  }\n" +
-        "}\n", NestedUnion.class);
+        "message ParquetSchema {\n" + "  optional group structV3 = 1 {\n"
+            + "    required binary name (UTF8) = 1;\n"
+            + "  }\n"
+            + "  optional group unionOfStructs = 2 {\n"
+            + "    optional group structV3 = 1 {\n"
+            + "      required binary name (UTF8) = 1;\n"
+            + "    }\n"
+            + "    optional group structV4 = 2 {\n"
+            + "      optional group addedStruct = 4 {\n"
+            + "        optional binary gender (UTF8) = 3;\n"
+            + "      }\n"
+            + "    }\n"
+            + "    optional group aNewBool = 3 {\n"
+            + "      required boolean b = 1;\n"
+            + "    }\n"
+            + "  }\n"
+            + "  optional group aLong = 3 {\n"
+            + "    required int64 l = 1;\n"
+            + "  }\n"
+            + "}\n",
+        NestedUnion.class);
 
     shouldGetProjectedSchema(
         "unionV2/aLong/**",
         "unionV2.aLong",
-        "message ParquetSchema {\n" +
-        "  optional group nestedUnion = 1 {\n" +
-        "    optional group structV3 = 1 {\n" +
-        "      required binary name (UTF8) = 1;\n" +
-        "    }\n" +
-        "    optional group unionOfStructs = 2 {\n" +
-        "      optional group structV3 = 1 {\n" +
-        "        required binary name (UTF8) = 1;\n" +
-        "      }\n" +
-        "      optional group structV4 = 2 {\n" +
-        "        required binary name (UTF8) = 1;\n" +
-        "      }\n" +
-        "      optional group aNewBool = 3 {\n" +
-        "        required boolean b = 1;\n" +
-        "      }\n" +
-        "    }\n" +
-        "    optional group aLong = 3 {\n" +
-        "      required int64 l = 1;\n" +
-        "    }\n" +
-        "  }\n" +
-        "  optional group unionV2 = 2 {\n" +
-        "    optional group aString = 1 {\n" +
-        "      required binary s (UTF8) = 1;\n" +
-        "    }\n" +
-        "    optional group aLong = 2 {\n" +
-        "      required int64 l = 1;\n" +
-        "    }\n" +
-        "    optional group aNewBool = 3 {\n" +
-        "      required boolean b = 1;\n" +
-        "    }\n" +
-        "  }\n" +
-        "}", NestedNestedUnion.class);
-
+        "message ParquetSchema {\n" + "  optional group nestedUnion = 1 {\n"
+            + "    optional group structV3 = 1 {\n"
+            + "      required binary name (UTF8) = 1;\n"
+            + "    }\n"
+            + "    optional group unionOfStructs = 2 {\n"
+            + "      optional group structV3 = 1 {\n"
+            + "        required binary name (UTF8) = 1;\n"
+            + "      }\n"
+            + "      optional group structV4 = 2 {\n"
+            + "        required binary name (UTF8) = 1;\n"
+            + "      }\n"
+            + "      optional group aNewBool = 3 {\n"
+            + "        required boolean b = 1;\n"
+            + "      }\n"
+            + "    }\n"
+            + "    optional group aLong = 3 {\n"
+            + "      required int64 l = 1;\n"
+            + "    }\n"
+            + "  }\n"
+            + "  optional group unionV2 = 2 {\n"
+            + "    optional group aString = 1 {\n"
+            + "      required binary s (UTF8) = 1;\n"
+            + "    }\n"
+            + "    optional group aLong = 2 {\n"
+            + "      required int64 l = 1;\n"
+            + "    }\n"
+            + "    optional group aNewBool = 3 {\n"
+            + "      required boolean b = 1;\n"
+            + "    }\n"
+            + "  }\n"
+            + "}",
+        NestedNestedUnion.class);
   }
 
   @Test
@@ -260,45 +269,44 @@ public class TestThriftSchemaConverterProjectUnion {
     // at the same time, this should also drop the required list of unions, because it is safe to
     // drop even a required but repeated group
     shouldGetProjectedSchema(
-      "optListUnion/structV3/age",
-      "optListUnion.structV3.age",
-      "message ParquetSchema {\n" +
-      "  optional group optListUnion (LIST) = 1 {\n" +
-      "    repeated group optListUnion_tuple {\n" +
-      "      optional group structV3 = 1 {\n" +
-      "        optional binary age (UTF8) = 2;\n" +
-      "      }\n" +
-      "      optional group structV4 = 2 {\n" +
-      "        required binary name (UTF8) = 1;\n" +
-      "      }\n" +
-      "      optional group aNewBool = 3 {\n" +
-      "        required boolean b = 1;\n" +
-      "      }\n" +
-      "    }\n" +
-      "  }\n" +
-      "}", ListOfUnions.class);
+        "optListUnion/structV3/age",
+        "optListUnion.structV3.age",
+        "message ParquetSchema {\n" + "  optional group optListUnion (LIST) = 1 {\n"
+            + "    repeated group optListUnion_tuple {\n"
+            + "      optional group structV3 = 1 {\n"
+            + "        optional binary age (UTF8) = 2;\n"
+            + "      }\n"
+            + "      optional group structV4 = 2 {\n"
+            + "        required binary name (UTF8) = 1;\n"
+            + "      }\n"
+            + "      optional group aNewBool = 3 {\n"
+            + "        required boolean b = 1;\n"
+            + "      }\n"
+            + "    }\n"
+            + "  }\n"
+            + "}",
+        ListOfUnions.class);
 
     // same goes for selecting a field from a required list of unions
     // and at the same time, the optional list of unions should be dropped too
     shouldGetProjectedSchema(
         "reqListUnion/structV3/age",
         "reqListUnion.structV3.age",
-        "message ParquetSchema {\n" +
-        "  required group reqListUnion (LIST) = 2 {\n" +
-        "    repeated group reqListUnion_tuple {\n" +
-        "      optional group structV3 = 1 {\n" +
-        "        optional binary age (UTF8) = 2;\n" +
-        "      }\n" +
-        "      optional group structV4 = 2 {\n" +
-        "        required binary name (UTF8) = 1;\n" +
-        "      }\n" +
-        "      optional group aNewBool = 3 {\n" +
-        "        required boolean b = 1;\n" +
-        "      }\n" +
-        "    }\n" +
-        "  }\n" +
-        "}", ListOfUnions.class);
-
+        "message ParquetSchema {\n" + "  required group reqListUnion (LIST) = 2 {\n"
+            + "    repeated group reqListUnion_tuple {\n"
+            + "      optional group structV3 = 1 {\n"
+            + "        optional binary age (UTF8) = 2;\n"
+            + "      }\n"
+            + "      optional group structV4 = 2 {\n"
+            + "        required binary name (UTF8) = 1;\n"
+            + "      }\n"
+            + "      optional group aNewBool = 3 {\n"
+            + "        required boolean b = 1;\n"
+            + "      }\n"
+            + "    }\n"
+            + "  }\n"
+            + "}",
+        ListOfUnions.class);
   }
 
   @Test
@@ -306,68 +314,68 @@ public class TestThriftSchemaConverterProjectUnion {
     shouldGetProjectedSchema(
         "optMapWithUnionKey/key/**",
         "optMapWithUnionKey.key",
-        "message ParquetSchema {\n" +
-        "  optional group optMapWithUnionKey (MAP) = 1 {\n" +
-        "    repeated group key_value (MAP_KEY_VALUE) {\n" +
-        "      required group key {\n" +
-        "        optional group structV3 = 1 {\n" +
-        "          required binary name (UTF8) = 1;\n" +
-        "          optional binary age (UTF8) = 2;\n" +
-        "          optional binary gender (UTF8) = 3;\n" +
-        "        }\n" +
-        "        optional group structV4 = 2 {\n" +
-        "          required binary name (UTF8) = 1;\n" +
-        "          optional binary age (UTF8) = 2;\n" +
-        "          optional binary gender (UTF8) = 3;\n" +
-        "          optional group addedStruct = 4 {\n" +
-        "            required binary name (UTF8) = 1;\n" +
-        "            optional binary age (UTF8) = 2;\n" +
-        "            optional binary gender (UTF8) = 3;\n" +
-        "          }\n" +
-        "        }\n" +
-        "        optional group aNewBool = 3 {\n" +
-        "          required boolean b = 1;\n" +
-        "        }\n" +
-        "      }\n" +
-        "      optional group value {\n" +
-        "        required binary name (UTF8) = 1;\n" +
-        "      } " +
-        "    }\n" +
-        "  }\n" +
-        "}", MapWithUnionKey.class);
+        "message ParquetSchema {\n" + "  optional group optMapWithUnionKey (MAP) = 1 {\n"
+            + "    repeated group key_value (MAP_KEY_VALUE) {\n"
+            + "      required group key {\n"
+            + "        optional group structV3 = 1 {\n"
+            + "          required binary name (UTF8) = 1;\n"
+            + "          optional binary age (UTF8) = 2;\n"
+            + "          optional binary gender (UTF8) = 3;\n"
+            + "        }\n"
+            + "        optional group structV4 = 2 {\n"
+            + "          required binary name (UTF8) = 1;\n"
+            + "          optional binary age (UTF8) = 2;\n"
+            + "          optional binary gender (UTF8) = 3;\n"
+            + "          optional group addedStruct = 4 {\n"
+            + "            required binary name (UTF8) = 1;\n"
+            + "            optional binary age (UTF8) = 2;\n"
+            + "            optional binary gender (UTF8) = 3;\n"
+            + "          }\n"
+            + "        }\n"
+            + "        optional group aNewBool = 3 {\n"
+            + "          required boolean b = 1;\n"
+            + "        }\n"
+            + "      }\n"
+            + "      optional group value {\n"
+            + "        required binary name (UTF8) = 1;\n"
+            + "      } "
+            + "    }\n"
+            + "  }\n"
+            + "}",
+        MapWithUnionKey.class);
 
     shouldGetProjectedSchema(
         "optMapWithUnionKey/key/**;optMapWithUnionKey/value/gender",
         "optMapWithUnionKey.{key,value.gender}",
-        "message ParquetSchema {\n" +
-        "  optional group optMapWithUnionKey (MAP) = 1 {\n" +
-        "    repeated group key_value (MAP_KEY_VALUE) {\n" +
-        "      required group key {\n" +
-        "        optional group structV3 = 1 {\n" +
-        "          required binary name (UTF8) = 1;\n" +
-        "          optional binary age (UTF8) = 2;\n" +
-        "          optional binary gender (UTF8) = 3;\n" +
-        "        }\n" +
-        "        optional group structV4 = 2 {\n" +
-        "          required binary name (UTF8) = 1;\n" +
-        "          optional binary age (UTF8) = 2;\n" +
-        "          optional binary gender (UTF8) = 3;\n" +
-        "          optional group addedStruct = 4 {\n" +
-        "            required binary name (UTF8) = 1;\n" +
-        "            optional binary age (UTF8) = 2;\n" +
-        "            optional binary gender (UTF8) = 3;\n" +
-        "          }\n" +
-        "        }\n" +
-        "        optional group aNewBool = 3 {\n" +
-        "          required boolean b = 1;\n" +
-        "        }\n" +
-        "      }\n" +
-        "      optional group value {\n" +
-        "        optional binary gender (UTF8) = 3;\n" +
-        "      }\n" +
-        "    }\n" +
-        "  }\n" +
-        "}", MapWithUnionKey.class);
+        "message ParquetSchema {\n" + "  optional group optMapWithUnionKey (MAP) = 1 {\n"
+            + "    repeated group key_value (MAP_KEY_VALUE) {\n"
+            + "      required group key {\n"
+            + "        optional group structV3 = 1 {\n"
+            + "          required binary name (UTF8) = 1;\n"
+            + "          optional binary age (UTF8) = 2;\n"
+            + "          optional binary gender (UTF8) = 3;\n"
+            + "        }\n"
+            + "        optional group structV4 = 2 {\n"
+            + "          required binary name (UTF8) = 1;\n"
+            + "          optional binary age (UTF8) = 2;\n"
+            + "          optional binary gender (UTF8) = 3;\n"
+            + "          optional group addedStruct = 4 {\n"
+            + "            required binary name (UTF8) = 1;\n"
+            + "            optional binary age (UTF8) = 2;\n"
+            + "            optional binary gender (UTF8) = 3;\n"
+            + "          }\n"
+            + "        }\n"
+            + "        optional group aNewBool = 3 {\n"
+            + "          required boolean b = 1;\n"
+            + "        }\n"
+            + "      }\n"
+            + "      optional group value {\n"
+            + "        optional binary gender (UTF8) = 3;\n"
+            + "      }\n"
+            + "    }\n"
+            + "  }\n"
+            + "}",
+        MapWithUnionKey.class);
   }
 
   @Test
@@ -375,30 +383,30 @@ public class TestThriftSchemaConverterProjectUnion {
     shouldGetProjectedSchema(
         "optMapWithUnionValue/key/**;optMapWithUnionValue/value/structV4/addedStruct/gender",
         "optMapWithUnionValue.{key,value.structV4.addedStruct.gender}",
-        "message ParquetSchema {\n" +
-        "  optional group optMapWithUnionValue (MAP) = 1 {\n" +
-        "    repeated group key_value (MAP_KEY_VALUE) {\n" +
-        "      required group key {\n" +
-        "        required binary name (UTF8) = 1;\n" +
-        "        optional binary age (UTF8) = 2;\n" +
-        "        optional binary gender (UTF8) = 3;\n" +
-        "      }\n" +
-        "      optional group value {\n" +
-        "        optional group structV3 = 1 {\n" +
-        "          required binary name (UTF8) = 1;\n" +
-        "        }\n" +
-        "        optional group structV4 = 2 {\n" +
-        "          optional group addedStruct = 4 {\n" +
-        "            optional binary gender (UTF8) = 3;\n" +
-        "          }\n" +
-        "        }\n" +
-        "        optional group aNewBool = 3 {\n" +
-        "          required boolean b = 1;\n" +
-        "        }\n" +
-        "      }\n" +
-        "    }\n" +
-        "  }\n" +
-        "}", MapWithUnionValue.class);
+        "message ParquetSchema {\n" + "  optional group optMapWithUnionValue (MAP) = 1 {\n"
+            + "    repeated group key_value (MAP_KEY_VALUE) {\n"
+            + "      required group key {\n"
+            + "        required binary name (UTF8) = 1;\n"
+            + "        optional binary age (UTF8) = 2;\n"
+            + "        optional binary gender (UTF8) = 3;\n"
+            + "      }\n"
+            + "      optional group value {\n"
+            + "        optional group structV3 = 1 {\n"
+            + "          required binary name (UTF8) = 1;\n"
+            + "        }\n"
+            + "        optional group structV4 = 2 {\n"
+            + "          optional group addedStruct = 4 {\n"
+            + "            optional binary gender (UTF8) = 3;\n"
+            + "          }\n"
+            + "        }\n"
+            + "        optional group aNewBool = 3 {\n"
+            + "          required boolean b = 1;\n"
+            + "        }\n"
+            + "      }\n"
+            + "    }\n"
+            + "  }\n"
+            + "}",
+        MapWithUnionValue.class);
   }
 
   /**
@@ -407,74 +415,76 @@ public class TestThriftSchemaConverterProjectUnion {
    */
   @Test
   public void testMessyNestedUnions() {
-    shouldGetProjectedSchema("reqStructWithUnionV2/name", "reqStructWithUnionV2.name",
-        "message ParquetSchema {\n" +
-            "  required group reqUnionOfStructs = 2 {\n" +
-            "    optional group structV3 = 1 {\n" +
-            "      required binary name (UTF8) = 1;\n" +
-            "    }\n" +
-            "    optional group structV4 = 2 {\n" +
-            "      required binary name (UTF8) = 1;\n" +
-            "    }\n" +
-            "    optional group aNewBool = 3 {\n" +
-            "      required boolean b = 1;\n" +
-            "    }\n" +
-            "  }\n" +
-            "  required group reqNestedUnion = 5 {\n" +
-            "    optional group structV3 = 1 {\n" +
-            "      required binary name (UTF8) = 1;\n" +
-            "    }\n" +
-            "    optional group unionOfStructs = 2 {\n" +
-            "      optional group structV3 = 1 {\n" +
-            "        required binary name (UTF8) = 1;\n" +
-            "      }\n" +
-            "      optional group structV4 = 2 {\n" +
-            "        required binary name (UTF8) = 1;\n" +
-            "      }\n" +
-            "      optional group aNewBool = 3 {\n" +
-            "        required boolean b = 1;\n" +
-            "      }\n" +
-            "    }\n" +
-            "    optional group aLong = 3 {\n" +
-            "      required int64 l = 1;\n" +
-            "    }\n" +
-            "  }\n" +
-            "  required group reqStructWithUnionV2 = 8 {\n" +
-            "    required binary name (UTF8) = 1;\n" +
-            "    required group aUnion = 2 {\n" +
-            "      optional group aString = 1 {\n" +
-            "        required binary s (UTF8) = 1;\n" +
-            "      }\n" +
-            "      optional group aLong = 2 {\n" +
-            "        required int64 l = 1;\n" +
-            "      }\n" +
-            "      optional group aNewBool = 3 {\n" +
-            "        required boolean b = 1;\n" +
-            "      }\n" +
-            "    }\n" +
-            "  }\n" +
-            "  required group reqUnionStructUnion = 11 {\n" +
-            "    optional group structV3 = 1 {\n" +
-            "      required binary name (UTF8) = 1;\n" +
-            "    }\n" +
-            "    optional group structWithUnionOfStructs = 2 {\n" +
-            "      required binary name (UTF8) = 1;\n" +
-            "      required group aUnion = 2 {\n" +
-            "        optional group structV3 = 1 {\n" +
-            "          required binary name (UTF8) = 1;\n" +
-            "        }\n" +
-            "        optional group structV4 = 2 {\n" +
-            "          required binary name (UTF8) = 1;\n" +
-            "        }\n" +
-            "        optional group aNewBool = 3 {\n" +
-            "          required boolean b = 1;\n" +
-            "        }\n" +
-            "      }\n" +
-            "    }\n" +
-            "    optional group aLong = 3 {\n" +
-            "      required int64 l = 1;\n" +
-            "    }\n" +
-            "  }\n" +
-            "}", StructWithNestedUnion.class);
+    shouldGetProjectedSchema(
+        "reqStructWithUnionV2/name",
+        "reqStructWithUnionV2.name",
+        "message ParquetSchema {\n" + "  required group reqUnionOfStructs = 2 {\n"
+            + "    optional group structV3 = 1 {\n"
+            + "      required binary name (UTF8) = 1;\n"
+            + "    }\n"
+            + "    optional group structV4 = 2 {\n"
+            + "      required binary name (UTF8) = 1;\n"
+            + "    }\n"
+            + "    optional group aNewBool = 3 {\n"
+            + "      required boolean b = 1;\n"
+            + "    }\n"
+            + "  }\n"
+            + "  required group reqNestedUnion = 5 {\n"
+            + "    optional group structV3 = 1 {\n"
+            + "      required binary name (UTF8) = 1;\n"
+            + "    }\n"
+            + "    optional group unionOfStructs = 2 {\n"
+            + "      optional group structV3 = 1 {\n"
+            + "        required binary name (UTF8) = 1;\n"
+            + "      }\n"
+            + "      optional group structV4 = 2 {\n"
+            + "        required binary name (UTF8) = 1;\n"
+            + "      }\n"
+            + "      optional group aNewBool = 3 {\n"
+            + "        required boolean b = 1;\n"
+            + "      }\n"
+            + "    }\n"
+            + "    optional group aLong = 3 {\n"
+            + "      required int64 l = 1;\n"
+            + "    }\n"
+            + "  }\n"
+            + "  required group reqStructWithUnionV2 = 8 {\n"
+            + "    required binary name (UTF8) = 1;\n"
+            + "    required group aUnion = 2 {\n"
+            + "      optional group aString = 1 {\n"
+            + "        required binary s (UTF8) = 1;\n"
+            + "      }\n"
+            + "      optional group aLong = 2 {\n"
+            + "        required int64 l = 1;\n"
+            + "      }\n"
+            + "      optional group aNewBool = 3 {\n"
+            + "        required boolean b = 1;\n"
+            + "      }\n"
+            + "    }\n"
+            + "  }\n"
+            + "  required group reqUnionStructUnion = 11 {\n"
+            + "    optional group structV3 = 1 {\n"
+            + "      required binary name (UTF8) = 1;\n"
+            + "    }\n"
+            + "    optional group structWithUnionOfStructs = 2 {\n"
+            + "      required binary name (UTF8) = 1;\n"
+            + "      required group aUnion = 2 {\n"
+            + "        optional group structV3 = 1 {\n"
+            + "          required binary name (UTF8) = 1;\n"
+            + "        }\n"
+            + "        optional group structV4 = 2 {\n"
+            + "          required binary name (UTF8) = 1;\n"
+            + "        }\n"
+            + "        optional group aNewBool = 3 {\n"
+            + "          required boolean b = 1;\n"
+            + "        }\n"
+            + "      }\n"
+            + "    }\n"
+            + "    optional group aLong = 3 {\n"
+            + "      required int64 l = 1;\n"
+            + "    }\n"
+            + "  }\n"
+            + "}",
+        StructWithNestedUnion.class);
   }
 }

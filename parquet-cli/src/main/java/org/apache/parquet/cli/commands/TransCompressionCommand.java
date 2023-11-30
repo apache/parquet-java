@@ -19,10 +19,14 @@
 
 package org.apache.parquet.cli.commands;
 
+import static org.apache.parquet.format.converter.ParquetMetadataConverter.NO_FILTER;
+
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
+import java.io.IOException;
+import java.util.List;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.HadoopReadOptions;
 import org.apache.parquet.cli.BaseCommand;
@@ -36,13 +40,9 @@ import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.schema.MessageType;
 import org.slf4j.Logger;
 
-import java.io.IOException;
-import java.util.List;
-
-import static org.apache.parquet.format.converter.ParquetMetadataConverter.NO_FILTER;
-
-@Parameters(commandDescription="(Deprecated: will be removed in 2.0.0, use rewrite command instead) " +
-        "Translate the compression from one to another (It doesn't support bloom filter feature yet).")
+@Parameters(
+    commandDescription = "(Deprecated: will be removed in 2.0.0, use rewrite command instead) "
+        + "Translate the compression from one to another (It doesn't support bloom filter feature yet).")
 public class TransCompressionCommand extends BaseCommand {
 
   private CompressionConverter compressionConverter;
@@ -56,23 +56,22 @@ public class TransCompressionCommand extends BaseCommand {
   String input;
 
   @Parameter(
-    names={"-o", "--output"},
-    description = "<output parquet file path>")
+      names = {"-o", "--output"},
+      description = "<output parquet file path>")
   String output;
 
   @Parameter(
-    names = {"-c", "--compression-codec"},
-    description = "<new compression codec>")
+      names = {"-c", "--compression-codec"},
+      description = "<new compression codec>")
   String codec;
 
   @Override
   @SuppressWarnings("unchecked")
   public int run() throws IOException {
-    Preconditions.checkArgument(input != null && output != null,
-      "Both input and output parquet file paths are required.");
+    Preconditions.checkArgument(
+        input != null && output != null, "Both input and output parquet file paths are required.");
 
-    Preconditions.checkArgument(codec != null,
-      "The codec cannot be null");
+    Preconditions.checkArgument(codec != null, "The codec cannot be null");
 
     Path inPath = new Path(input);
     Path outPath = new Path(output);
@@ -83,8 +82,11 @@ public class TransCompressionCommand extends BaseCommand {
     ParquetFileWriter writer = new ParquetFileWriter(getConf(), schema, outPath, ParquetFileWriter.Mode.CREATE);
     writer.start();
 
-    try (TransParquetFileReader reader = new TransParquetFileReader(HadoopInputFile.fromPath(inPath, getConf()), HadoopReadOptions.builder(getConf()).build())) {
-      compressionConverter.processBlocks(reader, writer, metaData, schema, metaData.getFileMetaData().getCreatedBy(), codecName);
+    try (TransParquetFileReader reader = new TransParquetFileReader(
+        HadoopInputFile.fromPath(inPath, getConf()),
+        HadoopReadOptions.builder(getConf()).build())) {
+      compressionConverter.processBlocks(
+          reader, writer, metaData, schema, metaData.getFileMetaData().getCreatedBy(), codecName);
     } finally {
       writer.end(metaData.getFileMetaData().getKeyValueMetaData());
     }
@@ -94,8 +96,6 @@ public class TransCompressionCommand extends BaseCommand {
   @Override
   public List<String> getExamples() {
     return Lists.newArrayList(
-        "# Translate the compression from one to another",
-        " input.parquet -o output.parquet -c ZSTD"
-    );
+        "# Translate the compression from one to another", " input.parquet -o output.parquet -c ZSTD");
   }
 }

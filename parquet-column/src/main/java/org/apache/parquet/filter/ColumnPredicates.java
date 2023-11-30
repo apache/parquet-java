@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -19,7 +19,6 @@
 package org.apache.parquet.filter;
 
 import java.util.Objects;
-
 import org.apache.parquet.column.ColumnReader;
 import org.apache.parquet.io.api.Binary;
 
@@ -34,7 +33,7 @@ public class ColumnPredicates {
     boolean apply(ColumnReader input);
   }
 
-  public static interface PredicateFunction <T> {
+  public static interface PredicateFunction<T> {
     boolean functionToApply(T input);
   }
 
@@ -61,7 +60,7 @@ public class ColumnPredicates {
   }
 
   public static Predicate equalTo(final String target) {
-	Objects.requireNonNull(target, "target cannot be null");
+    Objects.requireNonNull(target, "target cannot be null");
     return new Predicate() {
       @Override
       public boolean apply(ColumnReader input) {
@@ -74,7 +73,7 @@ public class ColumnPredicates {
     return new Predicate() {
       @Override
       public boolean apply(ColumnReader input) {
-          return fn.functionToApply(input.getBinary().toStringUsingUTF8());
+        return fn.functionToApply(input.getBinary().toStringUsingUTF8());
       }
     };
   }
@@ -160,7 +159,7 @@ public class ColumnPredicates {
     };
   }
 
-  public static Predicate applyFunctionToBoolean (final BooleanPredicateFunction fn) {
+  public static Predicate applyFunctionToBoolean(final BooleanPredicateFunction fn) {
     return new Predicate() {
       @Override
       public boolean apply(ColumnReader input) {
@@ -180,11 +179,11 @@ public class ColumnPredicates {
     };
   }
 
-  public static Predicate applyFunctionToBinary (final PredicateFunction<Binary> fn) {
+  public static Predicate applyFunctionToBinary(final PredicateFunction<Binary> fn) {
     return new Predicate() {
       @Override
       public boolean apply(ColumnReader input) {
-	  return fn.functionToApply(input.getBinary());
+        return fn.functionToApply(input.getBinary());
       }
     };
   }

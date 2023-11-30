@@ -31,18 +31,14 @@ public class ColumnReaderImpl extends ColumnReaderBase {
 
   /**
    * creates a reader for triplets
-   * 
-   * @param path
-   *          the descriptor for the corresponding column
-   * @param pageReader
-   *          the underlying store to read from
-   * @param converter
-   *          a converter that materializes the values in this column in the current record
-   * @param writerVersion
-   *          writer version string from the Parquet file being read
+   *
+   * @param path          the descriptor for the corresponding column
+   * @param pageReader    the underlying store to read from
+   * @param converter     a converter that materializes the values in this column in the current record
+   * @param writerVersion writer version string from the Parquet file being read
    */
-  public ColumnReaderImpl(ColumnDescriptor path, PageReader pageReader, PrimitiveConverter converter,
-      ParsedVersion writerVersion) {
+  public ColumnReaderImpl(
+      ColumnDescriptor path, PageReader pageReader, PrimitiveConverter converter, ParsedVersion writerVersion) {
     super(path, pageReader, converter, writerVersion);
     consume();
   }
@@ -53,6 +49,5 @@ public class ColumnReaderImpl extends ColumnReaderBase {
   }
 
   @Override
-  void newPageInitialized(DataPage page) {
-  }
+  void newPageInitialized(DataPage page) {}
 }

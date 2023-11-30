@@ -23,7 +23,6 @@ import static org.apache.parquet.bytes.BytesUtils.getWidthFromMaxInt;
 import java.util.Objects;
 import java.util.OptionalDouble;
 import java.util.OptionalLong;
-
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.CapacityByteArrayOutputStream;
@@ -70,8 +69,8 @@ public class ParquetProperties {
   private static final int MIN_SLAB_SIZE = 64;
 
   public enum WriterVersion {
-    PARQUET_1_0 ("v1"),
-    PARQUET_2_0 ("v2");
+    PARQUET_1_0("v1"),
+    PARQUET_2_0("v2");
 
     private final String shortName;
 
@@ -118,8 +117,8 @@ public class ParquetProperties {
   private ParquetProperties(Builder builder) {
     this.pageSizeThreshold = builder.pageSize;
     this.pageValueCountThreshold = builder.pageValueCountThreshold;
-    this.initialSlabSize = CapacityByteArrayOutputStream
-      .initialSlabSizeHeuristic(MIN_SLAB_SIZE, pageSizeThreshold, 10);
+    this.initialSlabSize =
+        CapacityByteArrayOutputStream.initialSlabSizeHeuristic(MIN_SLAB_SIZE, pageSizeThreshold, 10);
     this.dictionaryPageSizeThreshold = builder.dictPageSize;
     this.writerVersion = builder.writerVersion;
     this.dictionaryEnabled = builder.enableDict.build();
@@ -206,15 +205,14 @@ public class ParquetProperties {
   }
 
   public boolean isByteStreamSplitEnabled() {
-      return enableByteStreamSplit;
+    return enableByteStreamSplit;
   }
 
   public ByteBufferAllocator getAllocator() {
     return allocator;
   }
 
-  public ColumnWriteStore newColumnWriteStore(MessageType schema,
-                                              PageWriteStore pageStore) {
+  public ColumnWriteStore newColumnWriteStore(MessageType schema, PageWriteStore pageStore) {
     switch (writerVersion) {
       case PARQUET_1_0:
         return new ColumnWriteStoreV1(schema, pageStore, this);
@@ -225,16 +223,15 @@ public class ParquetProperties {
     }
   }
 
-  public ColumnWriteStore newColumnWriteStore(MessageType schema,
-                                              PageWriteStore pageStore,
-                                              BloomFilterWriteStore bloomFilterWriteStore) {
+  public ColumnWriteStore newColumnWriteStore(
+      MessageType schema, PageWriteStore pageStore, BloomFilterWriteStore bloomFilterWriteStore) {
     switch (writerVersion) {
-    case PARQUET_1_0:
-      return new ColumnWriteStoreV1(schema, pageStore, bloomFilterWriteStore, this);
-    case PARQUET_2_0:
-      return new ColumnWriteStoreV2(schema, pageStore, bloomFilterWriteStore, this);
-    default:
-      throw new IllegalArgumentException("unknown version " + writerVersion);
+      case PARQUET_1_0:
+        return new ColumnWriteStoreV1(schema, pageStore, bloomFilterWriteStore, this);
+      case PARQUET_2_0:
+        return new ColumnWriteStoreV2(schema, pageStore, bloomFilterWriteStore, this);
+      default:
+        throw new IllegalArgumentException("unknown version " + writerVersion);
     }
   }
 
@@ -351,8 +348,10 @@ public class ParquetProperties {
       bloomFilterEnabled = ColumnProperty.<Boolean>builder().withDefaultValue(DEFAULT_BLOOM_FILTER_ENABLED);
       bloomFilterNDVs = ColumnProperty.<Long>builder().withDefaultValue(null);
       bloomFilterFPPs = ColumnProperty.<Double>builder().withDefaultValue(DEFAULT_BLOOM_FILTER_FPP);
-      adaptiveBloomFilterEnabled = ColumnProperty.<Boolean>builder().withDefaultValue(DEFAULT_ADAPTIVE_BLOOM_FILTER_ENABLED);
-      numBloomFilterCandidates = ColumnProperty.<Integer>builder().withDefaultValue(DEFAULT_BLOOM_FILTER_CANDIDATES_NUMBER);
+      adaptiveBloomFilterEnabled =
+          ColumnProperty.<Boolean>builder().withDefaultValue(DEFAULT_ADAPTIVE_BLOOM_FILTER_ENABLED);
+      numBloomFilterCandidates =
+          ColumnProperty.<Integer>builder().withDefaultValue(DEFAULT_BLOOM_FILTER_CANDIDATES_NUMBER);
     }
 
     private Builder(ParquetProperties toCopy) {
@@ -383,8 +382,7 @@ public class ParquetProperties {
      * @return this builder for method chaining.
      */
     public Builder withPageSize(int pageSize) {
-      Preconditions.checkArgument(pageSize > 0,
-          "Invalid page size (negative): %s", pageSize);
+      Preconditions.checkArgument(pageSize > 0, "Invalid page size (negative): %s", pageSize);
       this.pageSize = pageSize;
       return this;
     }
@@ -403,7 +401,7 @@ public class ParquetProperties {
     /**
      * Enable or disable dictionary encoding for the specified column.
      *
-     * @param columnPath the path of the column (dot-string)
+     * @param columnPath       the path of the column (dot-string)
      * @param enableDictionary whether dictionary encoding should be enabled
      * @return this builder for method chaining.
      */
@@ -424,8 +422,8 @@ public class ParquetProperties {
      * @return this builder for method chaining.
      */
     public Builder withDictionaryPageSize(int dictionaryPageSize) {
-      Preconditions.checkArgument(dictionaryPageSize > 0,
-          "Invalid dictionary page size (negative): %s", dictionaryPageSize);
+      Preconditions.checkArgument(
+          dictionaryPageSize > 0, "Invalid dictionary page size (negative): %s", dictionaryPageSize);
       this.dictPageSize = dictionaryPageSize;
       return this;
     }
@@ -442,22 +440,19 @@ public class ParquetProperties {
     }
 
     public Builder withMinRowCountForPageSizeCheck(int min) {
-      Preconditions.checkArgument(min > 0,
-          "Invalid row count for page size check (negative): %s", min);
+      Preconditions.checkArgument(min > 0, "Invalid row count for page size check (negative): %s", min);
       this.minRowCountForPageSizeCheck = min;
       return this;
     }
 
     public Builder withMaxRowCountForPageSizeCheck(int max) {
-      Preconditions.checkArgument(max > 0,
-          "Invalid row count for page size check (negative): %s", max);
+      Preconditions.checkArgument(max > 0, "Invalid row count for page size check (negative): %s", max);
       this.maxRowCountForPageSizeCheck = max;
       return this;
     }
 
     public Builder withPageValueCountThreshold(int value) {
-      Preconditions.checkArgument(value > 0,
-          "Invalid page value count threshold (negative): %s", value);
+      Preconditions.checkArgument(value > 0, "Invalid page value count threshold (negative): %s", value);
       this.pageValueCountThreshold = value;
       return this;
     }
@@ -479,13 +474,15 @@ public class ParquetProperties {
     }
 
     public Builder withColumnIndexTruncateLength(int length) {
-      Preconditions.checkArgument(length > 0, "Invalid column index min/max truncate length (negative or zero) : %s", length);
+      Preconditions.checkArgument(
+          length > 0, "Invalid column index min/max truncate length (negative or zero) : %s", length);
       this.columnIndexTruncateLength = length;
       return this;
     }
 
     public Builder withStatisticsTruncateLength(int length) {
-      Preconditions.checkArgument(length > 0, "Invalid statistics min/max truncate length (negative or zero) : %s", length);
+      Preconditions.checkArgument(
+          length > 0, "Invalid statistics min/max truncate length (negative or zero) : %s", length);
       this.statisticsTruncateLength = length;
       return this;
     }
@@ -507,8 +504,7 @@ public class ParquetProperties {
      * {@link #withBloomFilterEnabled(String, boolean)}).
      *
      * @param columnPath the path of the column (dot-string)
-     * @param ndv the NDV of the column
-     *
+     * @param ndv        the NDV of the column
      * @return this builder for method chaining
      */
     public Builder withBloomFilterNDV(String columnPath, long ndv) {
@@ -530,7 +526,6 @@ public class ParquetProperties {
      * {@link #withBloomFilterEnabled(String, boolean)}.
      *
      * @param enabled whether bloom filter shall be enabled for all columns
-     *
      * @return this builder for method chaining
      */
     public Builder withBloomFilterEnabled(boolean enabled) {
@@ -554,10 +549,11 @@ public class ParquetProperties {
      * When `AdaptiveBloomFilter` is enabled, set how many bloom filter candidates to use.
      *
      * @param columnPath the path of the column (dot-string)
-     * @param number the number of candidates
+     * @param number     the number of candidates
      */
     public Builder withBloomFilterCandidatesNumber(String columnPath, int number) {
-      Preconditions.checkArgument(number > 0, "Invalid candidates number for column \"%s\": %d", columnPath, number);
+      Preconditions.checkArgument(
+          number > 0, "Invalid candidates number for column \"%s\": %d", columnPath, number);
       this.numBloomFilterCandidates.withDefaultValue(number);
       return this;
     }
@@ -570,7 +566,6 @@ public class ParquetProperties {
      *
      * @param columnPath the path of the column (dot-string)
      * @param enabled    whether bloom filter shall be enabled
-     *
      * @return this builder for method chaining
      */
     public Builder withBloomFilterEnabled(String columnPath, boolean enabled) {
@@ -599,6 +594,5 @@ public class ParquetProperties {
 
       return properties;
     }
-
   }
 }

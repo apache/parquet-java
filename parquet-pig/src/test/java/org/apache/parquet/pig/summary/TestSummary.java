@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -26,7 +26,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
 import org.apache.pig.ExecType;
 import org.apache.pig.PigServer;
 import org.apache.pig.builtin.mock.Storage;
@@ -51,8 +50,7 @@ public class TestSummary {
       t(b(t(b(t("bar"))), t(2, "bloh"))),
       t(b(t(b(t("bar"))), t(1l, m("foo", "bar", "baz", "buz")), t(2, "bloh"))),
       t(),
-      t(null, null)
-      );
+      t(null, null));
 
   public static Tuple t(Object... objects) {
     return tf.newTuple(Arrays.asList(objects));
@@ -65,7 +63,7 @@ public class TestSummary {
   public static Map<String, Object> m(Object... objects) {
     Map<String, Object> m = new HashMap<String, Object>();
     for (int i = 0; i < objects.length; i += 2) {
-      m.put((String)objects[i], objects[i + 1]);
+      m.put((String) objects[i], objects[i + 1]);
     }
     return m;
   }
@@ -76,7 +74,6 @@ public class TestSummary {
     String result = summary.exec(t(TEST_BAG));
     validate(result, 1);
   }
-
 
   @Test
   public void testAlgebraic() throws IOException {
@@ -95,26 +92,39 @@ public class TestSummary {
           mapOut.add(exec);
         }
         Tuple exec = intermediate1.exec(t(mapOut));
-        validate((String)exec.get(0), 1);
+        validate((String) exec.get(0), 1);
         combinedMapOut.add(exec);
       }
       combinedRedIn.add(intermediate2.exec(t(combinedMapOut)));
     }
     String result = finall.exec(t(combinedRedIn));
-    validate(result, 5*5);
-
+    validate(result, 5 * 5);
   }
 
   private void validate(String result, int factor) throws IOException {
     TupleSummaryData s = SummaryData.fromJSON(result, TupleSummaryData.class);
-//          System.out.println(SummaryData.toPrettyJSON(s));
+    //          System.out.println(SummaryData.toPrettyJSON(s));
     assertEquals(9 * factor, s.getCount());
     assertEquals(1 * factor, s.getFields().get(0).getNull().longValue());
     assertEquals(7 * factor, s.getFields().get(0).getBag().getCount());
-    assertEquals(18 * factor,
-        s.getFields().get(0).getBag().getContent().getTuple().getFields().get(0).getCount());
-    MapSummaryData map =
-        s.getFields().get(0).getBag().getContent().getTuple().getFields().get(1).getMap();
+    assertEquals(
+        18 * factor,
+        s.getFields()
+            .get(0)
+            .getBag()
+            .getContent()
+            .getTuple()
+            .getFields()
+            .get(0)
+            .getCount());
+    MapSummaryData map = s.getFields()
+        .get(0)
+        .getBag()
+        .getContent()
+        .getTuple()
+        .getFields()
+        .get(1)
+        .getMap();
     assertEquals(2 * factor, map.getCount());
     assertEquals(3 * factor, map.getKey().getCount());
   }
@@ -129,10 +139,11 @@ public class TestSummary {
     }
     data.set("in", "a:chararray, a1:chararray, b:int, c:{t:(a2:chararray, b2:[])}", list);
     pigServer.registerQuery("A = LOAD 'in' USING mock.Storage();");
-    pigServer.registerQuery("B = FOREACH (GROUP A ALL) GENERATE "+Summary.class.getName()+"(A);");
+    pigServer.registerQuery("B = FOREACH (GROUP A ALL) GENERATE " + Summary.class.getName() + "(A);");
     pigServer.registerQuery("STORE B INTO 'out' USING mock.Storage();");
     System.out.println(data.get("out").get(0).get(0));
-    TupleSummaryData s = SummaryData.fromJSON((String)data.get("out").get(0).get(0), TupleSummaryData.class);
+    TupleSummaryData s =
+        SummaryData.fromJSON((String) data.get("out").get(0).get(0), TupleSummaryData.class);
     System.out.println(s);
   }
 
@@ -145,14 +156,14 @@ public class TestSummary {
     for (int i = 0; i < 10; i++) {
       list.add(t("a", i - 9));
     }
-    
+
     data.set("in", "a:chararray, b:int", list);
     pigServer.registerQuery("A = LOAD 'in' USING mock.Storage();");
     pigServer.registerQuery("B = FOREACH (GROUP A ALL) GENERATE " + Summary.class.getName() + "(A);");
     pigServer.registerQuery("STORE B INTO 'out' USING mock.Storage();");
-    TupleSummaryData s = SummaryData.fromJSON((String) data.get("out").get(0).get(0), TupleSummaryData.class);
-    System.out.println(s);	  
+    TupleSummaryData s =
+        SummaryData.fromJSON((String) data.get("out").get(0).get(0), TupleSummaryData.class);
+    System.out.println(s);
     assertEquals(0, s.getFields().get(1).getNumber().getValue().getMax(), 0);
   }
-
 }

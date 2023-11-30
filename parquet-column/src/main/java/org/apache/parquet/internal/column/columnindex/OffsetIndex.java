@@ -30,29 +30,25 @@ public interface OffsetIndex {
   public int getPageCount();
 
   /**
-   * @param pageIndex
-   *          the index of the page
+   * @param pageIndex the index of the page
    * @return the offset of the page in the file
    */
   public long getOffset(int pageIndex);
 
   /**
-   * @param pageIndex
-   *          the index of the page
+   * @param pageIndex the index of the page
    * @return the compressed size of the page (including page header)
    */
   public int getCompressedPageSize(int pageIndex);
 
   /**
-   * @param pageIndex
-   *          the index of the page
+   * @param pageIndex the index of the page
    * @return the index of the first row in the page
    */
   public long getFirstRowIndex(int pageIndex);
 
   /**
-   * @param pageIndex
-   *         the index of the page
+   * @param pageIndex the index of the page
    * @return the original ordinal of the page in the column chunk
    */
   public default int getPageOrdinal(int pageIndex) {
@@ -60,10 +56,8 @@ public interface OffsetIndex {
   }
 
   /**
-   * @param pageIndex
-   *          the index of the page
-   * @param rowGroupRowCount
-   *          the total number of rows in the row-group
+   * @param pageIndex        the index of the page
+   * @param rowGroupRowCount the total number of rows in the row-group
    * @return the calculated index of the last row of the given page
    */
   public default long getLastRowIndex(int pageIndex, long rowGroupRowCount) {

@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -23,7 +23,7 @@ import org.apache.parquet.column.Dictionary;
 /**
  * converter for leaves of the schema
  */
-abstract public class PrimitiveConverter extends Converter {
+public abstract class PrimitiveConverter extends Converter {
 
   @Override
   public boolean isPrimitive() {
@@ -37,6 +37,7 @@ abstract public class PrimitiveConverter extends Converter {
 
   /**
    * if it returns true we will attempt to use dictionary based conversion instead
+   *
    * @return if dictionary is supported
    */
   public boolean hasDictionarySupport() {
@@ -46,6 +47,7 @@ abstract public class PrimitiveConverter extends Converter {
   /**
    * Set the dictionary to use if the data was encoded using dictionary encoding
    * and the converter hasDictionarySupport().
+   *
    * @param dictionary the dictionary to use for conversion
    */
   public void setDictionary(Dictionary dictionary) {
@@ -57,6 +59,7 @@ abstract public class PrimitiveConverter extends Converter {
   /**
    * add a value based on the dictionary set with setDictionary()
    * Will be used if the Converter has dictionary support and the data was encoded using a dictionary
+   *
    * @param dictionaryId the id in the dictionary of the value to add
    */
   public void addValueFromDictionary(int dictionaryId) {
@@ -104,5 +107,4 @@ abstract public class PrimitiveConverter extends Converter {
   public void addLong(long value) {
     throw new UnsupportedOperationException(getClass().getName());
   }
-
 }

@@ -21,7 +21,6 @@ package org.apache.parquet.crypto.keytools.mocks;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
-
 import org.apache.parquet.crypto.KeyAccessDeniedException;
 import org.apache.parquet.crypto.ParquetCryptoRuntimeException;
 import org.apache.parquet.crypto.keytools.LocalWrapKmsClient;
@@ -37,7 +36,7 @@ public class LocalWrapInMemoryKMS extends LocalWrapKmsClient {
 
   public static final String KEY_LIST_PROPERTY_NAME = "parquet.encryption.key.list";
 
-  private static Map<String,byte[]> masterKeyMap;
+  private static Map<String, byte[]> masterKeyMap;
 
   @Override
   protected synchronized void initializeInternal() throws KeyAccessDeniedException {
@@ -50,10 +49,10 @@ public class LocalWrapInMemoryKMS extends LocalWrapKmsClient {
   }
 
   private static Map<String, byte[]> parseKeyList(String[] masterKeys) {
-    Map<String,byte[]> keyMap = new HashMap<>();
+    Map<String, byte[]> keyMap = new HashMap<>();
 
     int nKeys = masterKeys.length;
-    for (int i=0; i < nKeys; i++) {
+    for (int i = 0; i < nKeys; i++) {
       String[] parts = masterKeys[i].split(":");
       String keyName = parts[0].trim();
       if (parts.length != 2) {

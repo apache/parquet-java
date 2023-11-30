@@ -22,6 +22,11 @@ import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.cli.BaseCommand;
@@ -31,55 +36,49 @@ import org.apache.parquet.hadoop.rewrite.ParquetRewriter;
 import org.apache.parquet.hadoop.rewrite.RewriteOptions;
 import org.slf4j.Logger;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 @Parameters(commandDescription = "Rewrite one or more Parquet files to a new Parquet file")
 public class RewriteCommand extends BaseCommand {
 
   @Parameter(
-          names = {"-i", "--input"},
-          description = "<comma-separated text of input parquet file paths>",
-          required = true)
+      names = {"-i", "--input"},
+      description = "<comma-separated text of input parquet file paths>",
+      required = true)
   List<String> inputs;
 
   @Parameter(
-          names = {"-o", "--output"},
-          description = "<output parquet file path>",
-          required = true)
+      names = {"-o", "--output"},
+      description = "<output parquet file path>",
+      required = true)
   String output;
 
   @Parameter(
-          names={"--overwrite"},
-          description="Overwrite the output file if it exists",
-          required = false)
+      names = {"--overwrite"},
+      description = "Overwrite the output file if it exists",
+      required = false)
   boolean overwrite;
 
   @Parameter(
-          names = {"--mask-mode"},
-          description = "<mask mode: nullify>",
-          required = false)
+      names = {"--mask-mode"},
+      description = "<mask mode: nullify>",
+      required = false)
   String maskMode;
 
   @Parameter(
-          names = {"--mask-columns"},
-          description = "<columns to be replaced with masked value>",
-          required = false)
+      names = {"--mask-columns"},
+      description = "<columns to be replaced with masked value>",
+      required = false)
   List<String> maskColumns;
 
   @Parameter(
-          names = {"--prune-columns"},
-          description = "<columns to be removed>",
-          required = false)
+      names = {"--prune-columns"},
+      description = "<columns to be removed>",
+      required = false)
   List<String> pruneColumns;
 
   @Parameter(
-          names = {"-c", "--compression-codec"},
-          description = "<new compression codec>",
-          required = false)
+      names = {"-c", "--compression-codec"},
+      description = "<new compression codec>",
+      required = false)
   String codec;
 
   public RewriteCommand(Logger console) {
@@ -87,8 +86,9 @@ public class RewriteCommand extends BaseCommand {
   }
 
   private RewriteOptions buildOptionsOrFail() throws IOException {
-    Preconditions.checkArgument(inputs != null && !inputs.isEmpty() && output != null,
-            "Both input and output parquet file paths are required.");
+    Preconditions.checkArgument(
+        inputs != null && !inputs.isEmpty() && output != null,
+        "Both input and output parquet file paths are required.");
 
     List<Path> inputPaths = new ArrayList<>();
     for (String input : inputs) {
@@ -143,8 +143,7 @@ public class RewriteCommand extends BaseCommand {
   @Override
   public List<String> getExamples() {
     return Lists.newArrayList(
-            "# Rewrite one or more Parquet files to a new Parquet file",
-            "-i input.parquet -o output.parquet --mask-mode nullify --mask-columns col1_name"
-    );
+        "# Rewrite one or more Parquet files to a new Parquet file",
+        "-i input.parquet -o output.parquet --mask-mode nullify --mask-columns col1_name");
   }
 }

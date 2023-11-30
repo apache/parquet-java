@@ -23,20 +23,19 @@ import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
-import org.apache.parquet.cli.BaseCommand;
-import org.apache.parquet.cli.util.Formats;
-import org.apache.avro.file.SeekableInput;
-import org.apache.hadoop.fs.Path;
-import org.apache.parquet.format.converter.ParquetMetadataConverter;
-import org.apache.parquet.hadoop.ParquetFileReader;
-import org.slf4j.Logger;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import org.apache.avro.file.SeekableInput;
+import org.apache.parquet.cli.BaseCommand;
+import org.apache.parquet.cli.util.Formats;
+import org.apache.parquet.format.converter.ParquetMetadataConverter;
+import org.apache.parquet.hadoop.ParquetFileReader;
+import org.slf4j.Logger;
 
-@Parameters(commandDescription="Print the Avro schema for a file")
+@Parameters(commandDescription = "Print the Avro schema for a file")
 public class SchemaCommand extends BaseCommand {
 
   public SchemaCommand(Logger console) {
@@ -47,40 +46,36 @@ public class SchemaCommand extends BaseCommand {
   List<String> targets;
 
   @Parameter(
-      names={"-o", "--output"},
-      description="Output file path")
+      names = {"-o", "--output"},
+      description = "Output file path")
   String outputPath = null;
 
   @Parameter(
-      names={"--overwrite"},
-      description="Overwrite the output file if it exists")
+      names = {"--overwrite"},
+      description = "Overwrite the output file if it exists")
   boolean overwrite = false;
 
   @Parameter(
-      names={"--parquet"},
-      description="Print a Parquet schema, without converting to Avro",
-      hidden=true)
+      names = {"--parquet"},
+      description = "Print a Parquet schema, without converting to Avro",
+      hidden = true)
   boolean parquetSchema = false;
 
   @Override
   @SuppressWarnings("unchecked")
   public int run() throws IOException {
-    Preconditions.checkArgument(targets != null && targets.size() == 1,
-        "Parquet file is required.");
+    Preconditions.checkArgument(targets != null && targets.size() == 1, "Parquet file is required.");
 
     if (targets.size() > 1) {
-      Preconditions.checkArgument(outputPath == null,
-          "Cannot output multiple schemas to file %s", outputPath);
+      Preconditions.checkArgument(outputPath == null, "Cannot output multiple schemas to file %s", outputPath);
       for (String source : targets) {
         console.info("{}: {}", source, getSchema(source));
       }
-
     } else {
       String source = targets.get(0);
 
       if (outputPath != null) {
-        try (OutputStream out = overwrite ?
-          create(outputPath) : createWithNoOverwrite(outputPath)) {
+        try (OutputStream out = overwrite ? create(outputPath) : createWithNoOverwrite(outputPath)) {
           out.write(getSchema(source).getBytes(StandardCharsets.UTF_8));
         }
       } else {
@@ -99,8 +94,7 @@ public class SchemaCommand extends BaseCommand {
         "# Print the Avro schema for an Avro file",
         "sample.avro",
         "# Print the Avro schema for a JSON file",
-        "sample.json"
-    );
+        "sample.json");
   }
 
   private String getSchema(String source) throws IOException {
@@ -120,12 +114,12 @@ public class SchemaCommand extends BaseCommand {
       switch (format) {
         case PARQUET:
           try (ParquetFileReader reader = new ParquetFileReader(
-            getConf(), qualifiedPath(source), ParquetMetadataConverter.NO_FILTER)) {
+              getConf(), qualifiedPath(source), ParquetMetadataConverter.NO_FILTER)) {
             return reader.getFileMetaData().getSchema().toString();
           }
         default:
-          throw new IllegalArgumentException(String.format(
-              "Could not get a Parquet schema for format %s: %s", format, source));
+          throw new IllegalArgumentException(
+              String.format("Could not get a Parquet schema for format %s: %s", format, source));
       }
     }
   }

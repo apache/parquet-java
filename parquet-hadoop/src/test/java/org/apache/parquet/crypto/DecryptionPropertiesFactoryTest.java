@@ -19,25 +19,29 @@
 
 package org.apache.parquet.crypto;
 
+import static org.junit.Assert.assertArrayEquals;
+
 import org.apache.hadoop.conf.Configuration;
 import org.junit.Test;
-
-import static org.junit.Assert.assertArrayEquals;
 
 public class DecryptionPropertiesFactoryTest {
   @Test
   public void testLoadDecPropertiesFactory() {
     Configuration conf = new Configuration();
-    conf.set(EncryptionPropertiesFactory.CRYPTO_FACTORY_CLASS_PROPERTY_NAME,
-      "org.apache.parquet.crypto.SampleDecryptionPropertiesFactory");
+    conf.set(
+        EncryptionPropertiesFactory.CRYPTO_FACTORY_CLASS_PROPERTY_NAME,
+        "org.apache.parquet.crypto.SampleDecryptionPropertiesFactory");
 
     DecryptionPropertiesFactory decryptionPropertiesFactory = DecryptionPropertiesFactory.loadFactory(conf);
-    FileDecryptionProperties decryptionProperties = decryptionPropertiesFactory.getFileDecryptionProperties(conf, null);
+    FileDecryptionProperties decryptionProperties =
+        decryptionPropertiesFactory.getFileDecryptionProperties(conf, null);
 
     assertArrayEquals(decryptionProperties.getFooterKey(), SampleDecryptionPropertiesFactory.FOOTER_KEY);
-    assertArrayEquals(decryptionProperties.getColumnKey(SampleDecryptionPropertiesFactory.COL1),
-      SampleDecryptionPropertiesFactory.COL1_KEY);
-    assertArrayEquals(decryptionProperties.getColumnKey(SampleDecryptionPropertiesFactory.COL2),
-      SampleDecryptionPropertiesFactory.COL2_KEY);
+    assertArrayEquals(
+        decryptionProperties.getColumnKey(SampleDecryptionPropertiesFactory.COL1),
+        SampleDecryptionPropertiesFactory.COL1_KEY);
+    assertArrayEquals(
+        decryptionProperties.getColumnKey(SampleDecryptionPropertiesFactory.COL2),
+        SampleDecryptionPropertiesFactory.COL2_KEY);
   }
 }

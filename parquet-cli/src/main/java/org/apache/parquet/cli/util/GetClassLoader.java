@@ -33,7 +33,6 @@ public class GetClassLoader implements PrivilegedAction<ClassLoader> {
 
   @Override
   public ClassLoader run() {
-    return new URLClassLoader(
-        urls, Thread.currentThread().getContextClassLoader());
+    return new URLClassLoader(urls, Thread.currentThread().getContextClassLoader());
   }
 }

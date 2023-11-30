@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -18,30 +18,31 @@
  */
 package org.apache.parquet.filter2.predicate;
 
+import static org.apache.parquet.Preconditions.checkArgument;
+
 import java.io.Serializable;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
-
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.io.api.Binary;
-
-import static org.apache.parquet.Preconditions.checkArgument;
 
 /**
  * These are the operators in a filter predicate expression tree.
  * They are constructed by using the methods in {@link FilterApi}
  */
 public final class Operators {
-  private Operators() { }
+  private Operators() {}
 
-  public static abstract class Column<T extends Comparable<T>> implements Serializable {
+  public abstract static class Column<T extends Comparable<T>> implements Serializable {
     private final ColumnPath columnPath;
     private final Class<T> columnType;
 
     protected Column(ColumnPath columnPath, Class<T> columnType) {
-      this.columnPath = Objects.requireNonNull(columnPath, "columnPath cannot be null");;
-      this.columnType = Objects.requireNonNull(columnType, "columnType cannot be null");;
+      this.columnPath = Objects.requireNonNull(columnPath, "columnPath cannot be null");
+      ;
+      this.columnType = Objects.requireNonNull(columnType, "columnType cannot be null");
+      ;
     }
 
     public Class<T> getColumnType() {
@@ -78,8 +79,10 @@ public final class Operators {
     }
   }
 
-  public static interface SupportsEqNotEq { } // marker for columns that can be used with eq() and notEq()
-  public static interface SupportsLtGt extends SupportsEqNotEq { } // marker for columns that can be used with lt(), ltEq(), gt(), gtEq()
+  public static interface SupportsEqNotEq {} // marker for columns that can be used with eq() and notEq()
+
+  public static interface SupportsLtGt
+      extends SupportsEqNotEq {} // marker for columns that can be used with lt(), ltEq(), gt(), gtEq()
 
   public static final class IntColumn extends Column<Integer> implements SupportsLtGt {
     IntColumn(ColumnPath columnPath) {
@@ -118,7 +121,7 @@ public final class Operators {
   }
 
   // base class for Eq, NotEq, Lt, Gt, LtEq, GtEq
-  static abstract class ColumnFilterPredicate<T extends Comparable<T>> implements FilterPredicate, Serializable  {
+  abstract static class ColumnFilterPredicate<T extends Comparable<T>> implements FilterPredicate, Serializable {
     private final Column<T> column;
     private final T value;
 
@@ -140,8 +143,8 @@ public final class Operators {
 
     @Override
     public String toString() {
-      return getClass().getSimpleName().toLowerCase(Locale.ENGLISH) + "(" + column.getColumnPath().toDotString() + ", "
-          + value + ")";
+      return getClass().getSimpleName().toLowerCase(Locale.ENGLISH) + "("
+          + column.getColumnPath().toDotString() + ", " + value + ")";
     }
 
     @Override
@@ -177,7 +180,6 @@ public final class Operators {
     public <R> R accept(Visitor<R> visitor) {
       return visitor.visit(this);
     }
-
   }
 
   public static final class NotEq<T extends Comparable<T>> extends ColumnFilterPredicate<T> {
@@ -192,7 +194,6 @@ public final class Operators {
       return visitor.visit(this);
     }
   }
-
 
   public static final class Lt<T extends Comparable<T>> extends ColumnFilterPredicate<T> {
 
@@ -219,7 +220,6 @@ public final class Operators {
       return visitor.visit(this);
     }
   }
-
 
   public static final class Gt<T extends Comparable<T>> extends ColumnFilterPredicate<T> {
 
@@ -251,7 +251,8 @@ public final class Operators {
    * Base class for {@link In} and {@link NotIn}. {@link In} is used to filter data based on a list of values.
    * {@link NotIn} is used to filter data that are not in the list of values.
    */
-  public static abstract class SetColumnFilterPredicate<T extends Comparable<T>> implements FilterPredicate, Serializable {
+  public abstract static class SetColumnFilterPredicate<T extends Comparable<T>>
+      implements FilterPredicate, Serializable {
     private final Column<T> column;
     private final Set<T> values;
 
@@ -273,7 +274,10 @@ public final class Operators {
     public String toString() {
       String name = getClass().getSimpleName().toLowerCase(Locale.ENGLISH);
       StringBuilder str = new StringBuilder();
-      str.append(name).append("(").append(column.getColumnPath().toDotString()).append(", ");
+      str.append(name)
+          .append("(")
+          .append(column.getColumnPath().toDotString())
+          .append(", ");
       int iter = 0;
       for (T value : values) {
         if (iter >= 100) break;
@@ -324,7 +328,7 @@ public final class Operators {
   }
 
   // base class for And, Or
-  private static abstract class BinaryLogicalFilterPredicate implements FilterPredicate, Serializable {
+  private abstract static class BinaryLogicalFilterPredicate implements FilterPredicate, Serializable {
     private final FilterPredicate left;
     private final FilterPredicate right;
 
@@ -427,7 +431,8 @@ public final class Operators {
     }
   }
 
-  public static abstract class UserDefined<T extends Comparable<T>, U extends UserDefinedPredicate<T>> implements FilterPredicate, Serializable {
+  public abstract static class UserDefined<T extends Comparable<T>, U extends UserDefinedPredicate<T>>
+      implements FilterPredicate, Serializable {
     protected final Column<T> column;
 
     UserDefined(Column<T> column) {
@@ -445,8 +450,9 @@ public final class Operators {
       return visitor.visit(this);
     }
   }
-    
-  public static final class UserDefinedByClass<T extends Comparable<T>, U extends UserDefinedPredicate<T>> extends UserDefined<T, U> {
+
+  public static final class UserDefinedByClass<T extends Comparable<T>, U extends UserDefinedPredicate<T>>
+      extends UserDefined<T, U> {
     private final Class<U> udpClass;
     private static final String INSTANTIATION_ERROR_MESSAGE =
         "Could not instantiate custom filter: %s. User defined predicates must be static classes with a default constructor.";
@@ -474,8 +480,8 @@ public final class Operators {
 
     @Override
     public String toString() {
-      return getClass().getSimpleName().toLowerCase(Locale.ENGLISH) + "(" + column.getColumnPath().toDotString() + ", "
-          + udpClass.getName() + ")";
+      return getClass().getSimpleName().toLowerCase(Locale.ENGLISH) + "("
+          + column.getColumnPath().toDotString() + ", " + udpClass.getName() + ")";
     }
 
     @Override
@@ -499,8 +505,10 @@ public final class Operators {
       return result;
     }
   }
-  
-  public static final class UserDefinedByInstance<T extends Comparable<T>, U extends UserDefinedPredicate<T> & Serializable> extends UserDefined<T, U> {
+
+  public static final class UserDefinedByInstance<
+          T extends Comparable<T>, U extends UserDefinedPredicate<T> & Serializable>
+      extends UserDefined<T, U> {
     private final U udpInstance;
 
     UserDefinedByInstance(Column<T> column, U udpInstance) {
@@ -515,8 +523,8 @@ public final class Operators {
 
     @Override
     public String toString() {
-      return getClass().getSimpleName().toLowerCase(Locale.ENGLISH) + "(" + column.getColumnPath().toDotString() + ", "
-          + udpInstance + ")";
+      return getClass().getSimpleName().toLowerCase(Locale.ENGLISH) + "("
+          + column.getColumnPath().toDotString() + ", " + udpInstance + ")";
     }
 
     @Override
@@ -543,7 +551,8 @@ public final class Operators {
 
   // Represents the inverse of a UserDefined. It is equivalent to not(userDefined), without the use
   // of the not() operator
-  public static final class LogicalNotUserDefined <T extends Comparable<T>, U extends UserDefinedPredicate<T>> implements FilterPredicate, Serializable {
+  public static final class LogicalNotUserDefined<T extends Comparable<T>, U extends UserDefinedPredicate<T>>
+      implements FilterPredicate, Serializable {
     private final UserDefined<T, U> udp;
 
     LogicalNotUserDefined(UserDefined<T, U> userDefined) {
@@ -583,5 +592,4 @@ public final class Operators {
       return result;
     }
   }
-
 }

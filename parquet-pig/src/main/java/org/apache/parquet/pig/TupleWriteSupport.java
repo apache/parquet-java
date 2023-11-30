@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -24,10 +24,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.conf.HadoopParquetConfiguration;
 import org.apache.parquet.conf.ParquetConfiguration;
+import org.apache.parquet.hadoop.api.WriteSupport;
+import org.apache.parquet.io.ParquetEncodingException;
+import org.apache.parquet.io.api.Binary;
+import org.apache.parquet.io.api.RecordConsumer;
+import org.apache.parquet.schema.GroupType;
+import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.schema.Type;
 import org.apache.pig.backend.executionengine.ExecException;
 import org.apache.pig.data.DataBag;
 import org.apache.pig.data.DataByteArray;
@@ -39,14 +45,6 @@ import org.apache.pig.impl.logicalLayer.schema.Schema;
 import org.apache.pig.impl.logicalLayer.schema.Schema.FieldSchema;
 import org.apache.pig.impl.util.Utils;
 import org.apache.pig.parser.ParserException;
-
-import org.apache.parquet.hadoop.api.WriteSupport;
-import org.apache.parquet.io.ParquetEncodingException;
-import org.apache.parquet.io.api.Binary;
-import org.apache.parquet.io.api.RecordConsumer;
-import org.apache.parquet.schema.GroupType;
-import org.apache.parquet.schema.MessageType;
-import org.apache.parquet.schema.Type;
 
 public class TupleWriteSupport extends WriteSupport<Tuple> {
   private static final TupleFactory TF = TupleFactory.getInstance();
@@ -121,48 +119,53 @@ public class TupleWriteSupport extends WriteSupport<Tuple> {
       recordConsumer.startField(fieldType.getName(), i);
       FieldSchema pigType = pigFields.get(i);
       switch (pigType.type) {
-      case DataType.BAG:
-        Type bagType = fieldType.asGroupType().getType(0);
-        FieldSchema pigBagInnerType = pigType.schema.getField(0);
-        DataBag bag = (DataBag)t.get(i);
-        recordConsumer.startGroup();
-        if (bag.size() > 0) {
-          recordConsumer.startField(bagType.getName(), 0);
-          for (Tuple tuple : bag) {
-            if (bagType.isPrimitive()) {
-              writeValue(bagType, pigBagInnerType, tuple, 0);
-            } else {
+        case DataType.BAG:
+          Type bagType = fieldType.asGroupType().getType(0);
+          FieldSchema pigBagInnerType = pigType.schema.getField(0);
+          DataBag bag = (DataBag) t.get(i);
+          recordConsumer.startGroup();
+          if (bag.size() > 0) {
+            recordConsumer.startField(bagType.getName(), 0);
+            for (Tuple tuple : bag) {
+              if (bagType.isPrimitive()) {
+                writeValue(bagType, pigBagInnerType, tuple, 0);
+              } else {
+                recordConsumer.startGroup();
+                writeTuple(bagType.asGroupType(), pigBagInnerType.schema, tuple);
+                recordConsumer.endGroup();
+              }
+            }
+            recordConsumer.endField(bagType.getName(), 0);
+          }
+          recordConsumer.endGroup();
+          break;
+        case DataType.MAP:
+          Type mapType = fieldType.asGroupType().getType(0);
+          FieldSchema pigMapInnerType = pigType.schema.getField(0);
+          @SuppressWarnings("unchecked") // I know
+          Map<String, Object> map = (Map<String, Object>) t.get(i);
+          recordConsumer.startGroup();
+          if (!map.isEmpty()) {
+            recordConsumer.startField(mapType.getName(), 0);
+            Set<Entry<String, Object>> entrySet = map.entrySet();
+            for (Entry<String, Object> entry : entrySet) {
               recordConsumer.startGroup();
-              writeTuple(bagType.asGroupType(), pigBagInnerType.schema, tuple);
+              Schema keyValueSchema = new Schema(Arrays.asList(
+                  new FieldSchema("key", DataType.CHARARRAY),
+                  new FieldSchema("value", pigMapInnerType.schema, pigMapInnerType.type)));
+              writeTuple(
+                  mapType.asGroupType(),
+                  keyValueSchema,
+                  TF.newTuple(Arrays.asList(entry.getKey(), entry.getValue())));
               recordConsumer.endGroup();
             }
+            recordConsumer.endField(mapType.getName(), 0);
           }
-          recordConsumer.endField(bagType.getName(), 0);
-        }
-        recordConsumer.endGroup();
-        break;
-      case DataType.MAP:
-        Type mapType = fieldType.asGroupType().getType(0);
-        FieldSchema pigMapInnerType = pigType.schema.getField(0);
-        @SuppressWarnings("unchecked") // I know
-        Map<String, Object> map = (Map<String, Object>)t.get(i);
-        recordConsumer.startGroup();
-        if (map.size() > 0) {
-          recordConsumer.startField(mapType.getName(), 0);
-          Set<Entry<String, Object>> entrySet = map.entrySet();
-          for (Entry<String, Object> entry : entrySet) {
-            recordConsumer.startGroup();
-            Schema keyValueSchema = new Schema(Arrays.asList(new FieldSchema("key", DataType.CHARARRAY), new FieldSchema("value", pigMapInnerType.schema, pigMapInnerType.type)));
-            writeTuple(mapType.asGroupType(), keyValueSchema, TF.newTuple(Arrays.asList(entry.getKey(), entry.getValue())));
-            recordConsumer.endGroup();
-          }
-          recordConsumer.endField(mapType.getName(), 0);
-        }
-        recordConsumer.endGroup();
-        break;
-      default:
-        writeValue(fieldType, pigType, t, i);
-        break;
+          recordConsumer.endGroup();
+          break;
+        default:
+          writeValue(fieldType, pigType, t, i);
+          break;
       }
       recordConsumer.endField(fieldType.getName(), i);
     }
@@ -172,45 +175,49 @@ public class TupleWriteSupport extends WriteSupport<Tuple> {
     try {
       if (type.isPrimitive()) {
         switch (type.asPrimitiveType().getPrimitiveTypeName()) {
-        // TODO: use PrimitiveTuple accessors
-        case BINARY:
-          byte[] bytes;
-          if (pigType.type == DataType.BYTEARRAY) {
-            bytes = ((DataByteArray)t.get(i)).get();
-          } else if (pigType.type == DataType.CHARARRAY) {
-            bytes = ((String)t.get(i)).getBytes("UTF-8");
-          } else {
-            throw new UnsupportedOperationException("can not convert from " + DataType.findTypeName(pigType.type) + " to BINARY ");
-          }
-          recordConsumer.addBinary(Binary.fromReusedByteArray(bytes));
-          break;
-        case BOOLEAN:
-          recordConsumer.addBoolean((Boolean)t.get(i));
-          break;
-        case INT32:
-          recordConsumer.addInteger(((Number)t.get(i)).intValue());
-          break;
-        case INT64:
-          recordConsumer.addLong(((Number)t.get(i)).longValue());
-          break;
-        case DOUBLE:
-          recordConsumer.addDouble(((Number)t.get(i)).doubleValue());
-          break;
-        case FLOAT:
-          recordConsumer.addFloat(((Number)t.get(i)).floatValue());
-          break;
-        default:
-          throw new UnsupportedOperationException(type.asPrimitiveType().getPrimitiveTypeName().name());
+            // TODO: use PrimitiveTuple accessors
+          case BINARY:
+            byte[] bytes;
+            if (pigType.type == DataType.BYTEARRAY) {
+              bytes = ((DataByteArray) t.get(i)).get();
+            } else if (pigType.type == DataType.CHARARRAY) {
+              bytes = ((String) t.get(i)).getBytes("UTF-8");
+            } else {
+              throw new UnsupportedOperationException(
+                  "can not convert from " + DataType.findTypeName(pigType.type) + " to BINARY ");
+            }
+            recordConsumer.addBinary(Binary.fromReusedByteArray(bytes));
+            break;
+          case BOOLEAN:
+            recordConsumer.addBoolean((Boolean) t.get(i));
+            break;
+          case INT32:
+            recordConsumer.addInteger(((Number) t.get(i)).intValue());
+            break;
+          case INT64:
+            recordConsumer.addLong(((Number) t.get(i)).longValue());
+            break;
+          case DOUBLE:
+            recordConsumer.addDouble(((Number) t.get(i)).doubleValue());
+            break;
+          case FLOAT:
+            recordConsumer.addFloat(((Number) t.get(i)).floatValue());
+            break;
+          default:
+            throw new UnsupportedOperationException(
+                type.asPrimitiveType().getPrimitiveTypeName().name());
         }
       } else {
         assert pigType.type == DataType.TUPLE;
         recordConsumer.startGroup();
-        writeTuple(type.asGroupType(), pigType.schema, (Tuple)t.get(i));
+        writeTuple(type.asGroupType(), pigType.schema, (Tuple) t.get(i));
         recordConsumer.endGroup();
       }
     } catch (Exception e) {
-      throw new ParquetEncodingException("can not write value at " + i + " in tuple " + t + " from type '" + pigType + "' to type '" + type +"'", e);
+      throw new ParquetEncodingException(
+          "can not write value at " + i + " in tuple " + t + " from type '" + pigType + "' to type '" + type
+              + "'",
+          e);
     }
   }
-
 }
