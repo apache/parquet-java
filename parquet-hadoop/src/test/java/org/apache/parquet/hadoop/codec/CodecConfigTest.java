@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -18,60 +18,67 @@
  */
 package org.apache.parquet.hadoop.codec;
 
-import org.junit.Assert;
+import java.io.IOException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.mapred.JobConf;
-import org.apache.hadoop.mapreduce.*;
-import org.junit.Test;
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.JobID;
+import org.apache.hadoop.mapreduce.TaskAttemptContext;
+import org.apache.hadoop.mapreduce.TaskAttemptID;
+import org.apache.hadoop.mapreduce.TaskID;
 import org.apache.parquet.hadoop.ParquetOutputFormat;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
-
-import java.io.IOException;
 import org.apache.parquet.hadoop.util.ContextUtil;
+import org.junit.Assert;
+import org.junit.Test;
 
 public class CodecConfigTest {
   @Test
   public void testReadingCodecs() throws IOException {
     shouldUseParquetFlagToSetCodec("gzip", CompressionCodecName.GZIP);
-    shouldUseHadoopFlagToSetCodec(CompressionCodecName.GZIP.getHadoopCompressionCodecClassName(), CompressionCodecName.GZIP);
+    shouldUseHadoopFlagToSetCodec(
+        CompressionCodecName.GZIP.getHadoopCompressionCodecClassName(), CompressionCodecName.GZIP);
     shouldUseParquetFlagToSetCodec("snappy", CompressionCodecName.SNAPPY);
-    shouldUseHadoopFlagToSetCodec(CompressionCodecName.SNAPPY.getHadoopCompressionCodecClassName(), CompressionCodecName.SNAPPY);
-    //When codec is unrecognized, use uncompressed
+    shouldUseHadoopFlagToSetCodec(
+        CompressionCodecName.SNAPPY.getHadoopCompressionCodecClassName(), CompressionCodecName.SNAPPY);
+    // When codec is unrecognized, use uncompressed
     shouldUseHadoopFlagToSetCodec("unexistedCodec", CompressionCodecName.UNCOMPRESSED);
-    //For unsupported codec, use uncompressed
+    // For unsupported codec, use uncompressed
     shouldUseHadoopFlagToSetCodec("org.apache.hadoop.io.compress.DefaultCodec", CompressionCodecName.UNCOMPRESSED);
   }
 
-  public void shouldUseParquetFlagToSetCodec(String codecNameStr, CompressionCodecName expectedCodec) throws IOException {
+  public void shouldUseParquetFlagToSetCodec(String codecNameStr, CompressionCodecName expectedCodec)
+      throws IOException {
 
-    //Test mapreduce API
+    // Test mapreduce API
     Job job = new Job();
     Configuration conf = job.getConfiguration();
     conf.set(ParquetOutputFormat.COMPRESSION, codecNameStr);
-    TaskAttemptContext task = ContextUtil.newTaskAttemptContext(conf, new TaskAttemptID(new TaskID(new JobID("test", 1), false, 1), 1));
+    TaskAttemptContext task = ContextUtil.newTaskAttemptContext(
+        conf, new TaskAttemptID(new TaskID(new JobID("test", 1), false, 1), 1));
     Assert.assertEquals(CodecConfig.from(task).getCodec(), expectedCodec);
 
-    //Test mapred API
+    // Test mapred API
     JobConf jobConf = new JobConf();
     jobConf.set(ParquetOutputFormat.COMPRESSION, codecNameStr);
     Assert.assertEquals(CodecConfig.from(jobConf).getCodec(), expectedCodec);
   }
 
-  public void shouldUseHadoopFlagToSetCodec(String codecClassStr, CompressionCodecName expectedCodec) throws IOException {
-    //Test mapreduce API
+  public void shouldUseHadoopFlagToSetCodec(String codecClassStr, CompressionCodecName expectedCodec)
+      throws IOException {
+    // Test mapreduce API
     Job job = new Job();
     Configuration conf = job.getConfiguration();
     conf.setBoolean("mapred.output.compress", true);
     conf.set("mapred.output.compression.codec", codecClassStr);
-    TaskAttemptContext task = ContextUtil.newTaskAttemptContext(conf, new TaskAttemptID(new TaskID(new JobID("test", 1), false, 1), 1));
+    TaskAttemptContext task = ContextUtil.newTaskAttemptContext(
+        conf, new TaskAttemptID(new TaskID(new JobID("test", 1), false, 1), 1));
     Assert.assertEquals(expectedCodec, CodecConfig.from(task).getCodec());
 
-    //Test mapred API
+    // Test mapred API
     JobConf jobConf = new JobConf();
     jobConf.setBoolean("mapred.output.compress", true);
     jobConf.set("mapred.output.compression.codec", codecClassStr);
     Assert.assertEquals(CodecConfig.from(jobConf).getCodec(), expectedCodec);
   }
-
-
 }

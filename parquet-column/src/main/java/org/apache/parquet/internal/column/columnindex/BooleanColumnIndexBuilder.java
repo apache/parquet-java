@@ -18,14 +18,13 @@
  */
 package org.apache.parquet.internal.column.columnindex;
 
+import it.unimi.dsi.fastutil.booleans.BooleanArrayList;
+import it.unimi.dsi.fastutil.booleans.BooleanList;
 import java.nio.ByteBuffer;
 import org.apache.parquet.filter2.predicate.Statistics;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.PrimitiveComparator;
 import org.apache.parquet.schema.PrimitiveType;
-
-import it.unimi.dsi.fastutil.booleans.BooleanArrayList;
-import it.unimi.dsi.fastutil.booleans.BooleanList;
 
 class BooleanColumnIndexBuilder extends ColumnIndexBuilder {
   private static class BooleanColumnIndex extends ColumnIndexBase<Boolean> {

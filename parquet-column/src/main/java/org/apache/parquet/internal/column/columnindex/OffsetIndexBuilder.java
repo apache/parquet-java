@@ -18,12 +18,11 @@
  */
 package org.apache.parquet.internal.column.columnindex;
 
-import java.util.Formatter;
-
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntList;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.longs.LongList;
+import java.util.Formatter;
 
 /**
  * Builder implementation to create {@link OffsetIndex} objects during writing a parquet file.
@@ -40,7 +39,8 @@ public class OffsetIndexBuilder {
       try (Formatter formatter = new Formatter()) {
         formatter.format("%-10s  %20s  %16s  %20s\n", "", "offset", "compressed size", "first row index");
         for (int i = 0, n = offsets.length; i < n; ++i) {
-          formatter.format("page-%-5d  %20d  %16d  %20d\n", i, offsets[i], compressedPageSizes[i], firstRowIndexes[i]);
+          formatter.format(
+              "page-%-5d  %20d  %16d  %20d\n", i, offsets[i], compressedPageSizes[i], firstRowIndexes[i]);
         }
         return formatter.toString();
       }
@@ -74,12 +74,10 @@ public class OffsetIndexBuilder {
 
   private static final OffsetIndexBuilder NO_OP_BUILDER = new OffsetIndexBuilder() {
     @Override
-    public void add(int compressedPageSize, long rowCount) {
-    }
+    public void add(int compressedPageSize, long rowCount) {}
 
     @Override
-    public void add(long offset, int compressedPageSize, long rowCount) {
-    }
+    public void add(long offset, int compressedPageSize, long rowCount) {}
   };
 
   private final LongList offsets = new LongArrayList();
@@ -104,17 +102,14 @@ public class OffsetIndexBuilder {
     return new OffsetIndexBuilder();
   }
 
-  private OffsetIndexBuilder() {
-  }
+  private OffsetIndexBuilder() {}
 
   /**
    * Adds the specified parameters to this builder. Used by the writers to building up {@link OffsetIndex} objects to be
    * written to the Parquet file.
    *
-   * @param compressedPageSize
-   *          the size of the page (including header)
-   * @param rowCount
-   *          the number of rows in the page
+   * @param compressedPageSize the size of the page (including header)
+   * @param rowCount           the number of rows in the page
    */
   public void add(int compressedPageSize, long rowCount) {
     add(previousOffset + previousPageSize, compressedPageSize, previousRowIndex + previousRowCount);
@@ -125,12 +120,9 @@ public class OffsetIndexBuilder {
    * Adds the specified parameters to this builder. Used by the metadata converter to building up {@link OffsetIndex}
    * objects read from the Parquet file.
    *
-   * @param offset
-   *          the offset of the page in the file
-   * @param compressedPageSize
-   *          the size of the page (including header)
-   * @param firstRowIndex
-   *          the index of the first row in the page (within the row group)
+   * @param offset             the offset of the page in the file
+   * @param compressedPageSize the size of the page (including header)
+   * @param firstRowIndex      the index of the first row in the page (within the row group)
    */
   public void add(long offset, int compressedPageSize, long firstRowIndex) {
     previousOffset = offset;
@@ -160,7 +152,7 @@ public class OffsetIndexBuilder {
     this.previousOffset = 0;
     this.previousPageSize = 0;
     this.previousRowIndex = 0;
-    this.previousRowCount  = 0;
+    this.previousRowCount = 0;
 
     return this;
   }
@@ -169,8 +161,7 @@ public class OffsetIndexBuilder {
    * Builds the offset index. Used by the writers to building up {@link OffsetIndex} objects to be
    * written to the Parquet file.
    *
-   * @param shift
-   *          how much to be shifted away 
+   * @param shift how much to be shifted away
    * @return the newly created offset index or {@code null} if the {@link OffsetIndex} object would be empty
    */
   public OffsetIndex build(long shift) {

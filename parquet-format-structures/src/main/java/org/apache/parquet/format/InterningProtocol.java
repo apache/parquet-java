@@ -20,7 +20,6 @@
 package org.apache.parquet.format;
 
 import java.nio.ByteBuffer;
-
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TField;
 import org.apache.thrift.protocol.TList;
@@ -232,5 +231,4 @@ public class InterningProtocol extends TProtocol {
   public int getMinSerializedSize(byte type) throws TException {
     return delegate.getMinSerializedSize(type);
   }
-
 }

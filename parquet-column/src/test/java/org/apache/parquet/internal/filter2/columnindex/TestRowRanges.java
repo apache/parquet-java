@@ -25,14 +25,12 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-import java.util.Arrays;
-import java.util.PrimitiveIterator;
-
-import org.apache.parquet.internal.column.columnindex.OffsetIndexBuilder;
-import org.junit.Test;
-
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.longs.LongList;
+import java.util.Arrays;
+import java.util.PrimitiveIterator;
+import org.apache.parquet.internal.column.columnindex.OffsetIndexBuilder;
+import org.junit.Test;
 
 /**
  * Unit test for {@link RowRanges}
@@ -70,7 +68,8 @@ public class TestRowRanges {
   private static void assertAllRowsEqual(PrimitiveIterator.OfLong actualIt, long... expectedValues) {
     LongList actualList = new LongArrayList();
     actualIt.forEachRemaining((long value) -> actualList.add(value));
-    assertArrayEquals(Arrays.toString(expectedValues) + "!= " + actualList, expectedValues, actualList.toLongArray());
+    assertArrayEquals(
+        Arrays.toString(expectedValues) + "!= " + actualList, expectedValues, actualList.toLongArray());
   }
 
   @Test
@@ -115,8 +114,10 @@ public class TestRowRanges {
         14, 15,
         21, 22);
     RowRanges empty = buildRanges();
-    assertAllRowsEqual(union(ranges1, ranges2).iterator(), 1, 2, 3, 4, 5, 7, 8, 9, 11, 12, 14, 15, 20, 21, 22, 23, 24);
-    assertAllRowsEqual(union(ranges2, ranges1).iterator(), 1, 2, 3, 4, 5, 7, 8, 9, 11, 12, 14, 15, 20, 21, 22, 23, 24);
+    assertAllRowsEqual(
+        union(ranges1, ranges2).iterator(), 1, 2, 3, 4, 5, 7, 8, 9, 11, 12, 14, 15, 20, 21, 22, 23, 24);
+    assertAllRowsEqual(
+        union(ranges2, ranges1).iterator(), 1, 2, 3, 4, 5, 7, 8, 9, 11, 12, 14, 15, 20, 21, 22, 23, 24);
     assertAllRowsEqual(union(ranges1, ranges1).iterator(), 2, 3, 4, 5, 7, 8, 9, 14, 20, 21, 22, 23, 24);
     assertAllRowsEqual(union(ranges1, empty).iterator(), 2, 3, 4, 5, 7, 8, 9, 14, 20, 21, 22, 23, 24);
     assertAllRowsEqual(union(empty, ranges1).iterator(), 2, 3, 4, 5, 7, 8, 9, 14, 20, 21, 22, 23, 24);
@@ -151,5 +152,4 @@ public class TestRowRanges {
     assertAllRowsEqual(intersection(empty, ranges2).iterator());
     assertAllRowsEqual(intersection(empty, empty).iterator());
   }
-
 }

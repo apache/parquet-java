@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -33,7 +33,8 @@ public class AvroParquetOutputFormat<T> extends ParquetOutputFormat<T> {
    * schema so that the records can be written in Parquet format. It is also
    * stored in the Parquet metadata so that records can be reconstructed as Avro
    * objects at read time without specifying a read schema.
-   * @param job a job
+   *
+   * @param job    a job
    * @param schema a schema for the data that will be written
    * @see org.apache.parquet.avro.AvroParquetInputFormat#setAvroReadSchema(org.apache.hadoop.mapreduce.Job, org.apache.avro.Schema)
    */
@@ -50,12 +51,10 @@ public class AvroParquetOutputFormat<T> extends ParquetOutputFormat<T> {
    * supplier provides instances of {@link org.apache.avro.generic.GenericData}
    * that are used to deconstruct records.
    *
-   * @param job a {@link Job} to configure
+   * @param job           a {@link Job} to configure
    * @param supplierClass a supplier class
    */
-  public static void setAvroDataSupplier(
-      Job job, Class<? extends AvroDataSupplier> supplierClass) {
-    AvroWriteSupport.setAvroDataSupplier(ContextUtil.getConfiguration(job),
-        supplierClass);
+  public static void setAvroDataSupplier(Job job, Class<? extends AvroDataSupplier> supplierClass) {
+    AvroWriteSupport.setAvroDataSupplier(ContextUtil.getConfiguration(job), supplierClass);
   }
 }

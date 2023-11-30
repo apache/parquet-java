@@ -21,7 +21,6 @@ package org.apache.parquet.cli.rawpages;
 import static org.apache.parquet.hadoop.ParquetFileWriter.MAGIC;
 
 import java.io.IOException;
-
 import org.apache.parquet.cli.util.RawUtils;
 import org.apache.parquet.format.CliUtils;
 import org.apache.parquet.format.ColumnChunk;
@@ -60,9 +59,13 @@ public class RawPagesReader implements AutoCloseable {
         long dictOffset = metaData.getDictionary_page_offset();
         long seekTo = metaData.getData_page_offset();
         console.info(
-          "Start of chunk (rowGroup: {}, columnName: {}, dictPageOffset: {}, dataPageOffset: {}, numValues: {}, totalSize: {})",
-          i, path, metaData.isSetDictionary_page_offset() ? dictOffset : "-", seekTo, metaData.getNum_values(),
-          totalSize);
+            "Start of chunk (rowGroup: {}, columnName: {}, dictPageOffset: {}, dataPageOffset: {}, numValues: {}, totalSize: {})",
+            i,
+            path,
+            metaData.isSetDictionary_page_offset() ? dictOffset : "-",
+            seekTo,
+            metaData.getNum_values(),
+            totalSize);
         if (metaData.isSetDictionary_page_offset() && dictOffset > 0 && dictOffset < seekTo) {
           seekTo = metaData.getDictionary_page_offset();
         }
@@ -71,13 +74,18 @@ public class RawPagesReader implements AutoCloseable {
         int pageIndex = 0;
         for (long offset = input.getPos(); offset < endPos; offset = input.getPos()) {
           PageHeader pageHeader = Util.readPageHeader(input);
-          console.info("Page {}. (offset: {}, headerSize: {})\n{}", pageIndex++, offset, (input.getPos() - offset),
-            RawUtils.prettifyJson(CliUtils.toJson(pageHeader)));
+          console.info(
+              "Page {}. (offset: {}, headerSize: {})\n{}",
+              pageIndex++,
+              offset,
+              (input.getPos() - offset),
+              RawUtils.prettifyJson(CliUtils.toJson(pageHeader)));
           input.skip(pageHeader.getCompressed_page_size());
         }
         if (input.getPos() != endPos) {
-          console.warn("!!! Current file offset does not match with the total size of the chunk in the footer: {}",
-            input.getPos());
+          console.warn(
+              "!!! Current file offset does not match with the total size of the chunk in the footer: {}",
+              input.getPos());
         } else {
           console.info("End of chunk (offset: {})", (endPos - 1));
         }

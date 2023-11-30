@@ -19,12 +19,11 @@
 
 package org.apache.parquet.hadoop.util;
 
-import org.apache.hadoop.fs.FSDataInputStream;
-import org.apache.parquet.io.DelegatingSeekableInputStream;
-
 import java.io.EOFException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import org.apache.hadoop.fs.FSDataInputStream;
+import org.apache.parquet.io.DelegatingSeekableInputStream;
 
 /**
  * SeekableInputStream implementation for FSDataInputStream that implements

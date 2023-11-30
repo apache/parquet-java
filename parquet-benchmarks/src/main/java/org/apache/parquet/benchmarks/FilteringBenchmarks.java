@@ -27,11 +27,12 @@ import static org.openjdk.jmh.annotations.Level.Invocation;
 import static org.openjdk.jmh.annotations.Mode.SingleShotTime;
 import static org.openjdk.jmh.annotations.Scope.Benchmark;
 
+import it.unimi.dsi.fastutil.longs.LongArrayList;
+import it.unimi.dsi.fastutil.longs.LongList;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.Random;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -66,9 +67,6 @@ import org.openjdk.jmh.infra.Blackhole;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import it.unimi.dsi.fastutil.longs.LongArrayList;
-import it.unimi.dsi.fastutil.longs.LongList;
-
 /**
  * Benchmarks related to the different filtering options (e.g. w or w/o column index).
  * <p>
@@ -95,7 +93,7 @@ public class FilteringBenchmarks {
    * For logging human readable file size
    */
   private static class FileSize {
-    private static final String[] SUFFIXES = { "KiB", "MiB", "GiB", "TiB", "PiB", "EiB" };
+    private static final String[] SUFFIXES = {"KiB", "MiB", "GiB", "TiB", "PiB", "EiB"};
     private final Path file;
 
     FileSize(Path file) {
@@ -216,6 +214,7 @@ public class FilteringBenchmarks {
         // Nothing to do
       }
     };
+
     abstract void arrangeData(long[] data);
 
     public static void arrangeToBuckets(long[] data, int bucketCnt) {
@@ -256,66 +255,80 @@ public class FilteringBenchmarks {
     PAGE_ROW_COUNT_1K {
       @Override
       public <T> ParquetWriter.Builder<T, ?> configureBuilder(ParquetWriter.Builder<T, ?> builder) {
-        return builder
-            .withPageSize(Integer.MAX_VALUE) // Ensure that only the row count limit takes into account
+        return builder.withPageSize(
+                Integer.MAX_VALUE) // Ensure that only the row count limit takes into account
             .withPageRowCountLimit(1_000);
       }
     },
     PAGE_ROW_COUNT_10K {
       @Override
       public <T> ParquetWriter.Builder<T, ?> configureBuilder(ParquetWriter.Builder<T, ?> builder) {
-        return builder
-            .withPageSize(Integer.MAX_VALUE) // Ensure that only the row count limit takes into account
+        return builder.withPageSize(
+                Integer.MAX_VALUE) // Ensure that only the row count limit takes into account
             .withPageRowCountLimit(10_000);
       }
     },
     PAGE_ROW_COUNT_50K {
       @Override
       public <T> ParquetWriter.Builder<T, ?> configureBuilder(ParquetWriter.Builder<T, ?> builder) {
-        return builder
-            .withPageSize(Integer.MAX_VALUE) // Ensure that only the row count limit takes into account
+        return builder.withPageSize(
+                Integer.MAX_VALUE) // Ensure that only the row count limit takes into account
             .withPageRowCountLimit(50_000);
       }
     },
     PAGE_ROW_COUNT_100K {
       @Override
       public <T> ParquetWriter.Builder<T, ?> configureBuilder(ParquetWriter.Builder<T, ?> builder) {
-        return builder
-            .withPageSize(Integer.MAX_VALUE) // Ensure that only the row count limit takes into account
+        return builder.withPageSize(
+                Integer.MAX_VALUE) // Ensure that only the row count limit takes into account
             .withPageRowCountLimit(100_000);
       }
     };
   }
 
   @State(Benchmark)
-  public static abstract class BaseContext {
+  public abstract static class BaseContext {
     private static final MessageType SCHEMA = Types.buildMessage()
-        .required(INT64).named("int64_col")
-        .required(BINARY).as(stringType()).named("dummy1_col")
-        .required(BINARY).as(stringType()).named("dummy2_col")
-        .required(BINARY).as(stringType()).named("dummy3_col")
-        .required(BINARY).as(stringType()).named("dummy4_col")
-        .required(BINARY).as(stringType()).named("dummy5_col")
+        .required(INT64)
+        .named("int64_col")
+        .required(BINARY)
+        .as(stringType())
+        .named("dummy1_col")
+        .required(BINARY)
+        .as(stringType())
+        .named("dummy2_col")
+        .required(BINARY)
+        .as(stringType())
+        .named("dummy3_col")
+        .required(BINARY)
+        .as(stringType())
+        .named("dummy4_col")
+        .required(BINARY)
+        .as(stringType())
+        .named("dummy5_col")
         .named("schema");
     public static final LongColumn COLUMN = FilterApi.longColumn("int64_col");
     private Path file;
     private Random random;
     private StringGenerator dummyGenerator;
+
     @Param
     private ColumnCharacteristic characteristic;
 
     @Setup
     public void writeFile() throws IOException {
       WriteConfigurator writeConfigurator = getWriteConfigurator();
-      file = new Path(
-          Files.createTempFile("benchmark-filtering_" + characteristic + '_' + writeConfigurator + '_', ".parquet")
-              .toAbsolutePath().toString());
+      file = new Path(Files.createTempFile(
+              "benchmark-filtering_" + characteristic + '_' + writeConfigurator + '_', ".parquet")
+          .toAbsolutePath()
+          .toString());
       long[] data = generateData();
       characteristic.arrangeData(data);
-      try (ParquetWriter<Group> writer = writeConfigurator.configureBuilder(ExampleParquetWriter.builder(file)
-          .config(GroupWriteSupport.PARQUET_EXAMPLE_SCHEMA, SCHEMA.toString())
-          .withRowGroupSize(Integer.MAX_VALUE) // Ensure to have one row-group per file only
-          .withWriteMode(OVERWRITE))
+      try (ParquetWriter<Group> writer = writeConfigurator
+          .configureBuilder(ExampleParquetWriter.builder(file)
+              .config(GroupWriteSupport.PARQUET_EXAMPLE_SCHEMA, SCHEMA.toString())
+              .withRowGroupSize(Integer.MAX_VALUE) // Ensure to have one row-group per file only
+              .withWriteMode(OVERWRITE))
           .build()) {
         for (long value : data) {
           Group group = new SimpleGroup(SCHEMA);
@@ -420,7 +433,8 @@ public class FilteringBenchmarks {
   }
 
   private void benchmark(Blackhole blackhole, BaseContext context) throws Exception {
-    FilterPredicate filter = FilterApi.eq(BaseContext.COLUMN, context.getRandom().nextLong());
+    FilterPredicate filter =
+        FilterApi.eq(BaseContext.COLUMN, context.getRandom().nextLong());
     try (ParquetReader<Group> reader = context.createReaderBuilder()
         .withFilter(FilterCompat.get(filter))
         .build()) {

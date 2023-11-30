@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -18,16 +18,15 @@
  */
 package org.apache.parquet.column.values.bytestreamsplit;
 
-import java.io.IOException;
-import org.apache.parquet.bytes.ByteBufferInputStream;
-import org.apache.parquet.io.ParquetDecodingException;
-
 import static org.junit.Assert.assertEquals;
-import org.junit.Test;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Random;
+import org.apache.parquet.bytes.ByteBufferInputStream;
+import org.apache.parquet.io.ParquetDecodingException;
 import org.junit.Assert;
+import org.junit.Test;
 
 public class ByteStreamSplitValuesReaderTest {
 
@@ -47,13 +46,25 @@ public class ByteStreamSplitValuesReaderTest {
     @Test
     public void testSingleElement() throws Exception {
       byte[] byteData = {(byte) 0x00, (byte) 0x00, (byte) 0x10, (byte) 0x40};
-      testReader(byteData, new float[]{2.25f});
+      testReader(byteData, new float[] {2.25f});
     }
 
     @Test
     public void testSmallBuffer() throws Exception {
-      byte[] byteData = {(byte) 0x40, (byte) 0x00, (byte) 0x80, (byte) 0x40, (byte) 0x05, (byte) 0x84,
-        (byte) 0xc5, (byte) 0xbd, (byte) 0x32, (byte) 0xc2, (byte) 0x41, (byte) 0x42};
+      byte[] byteData = {
+        (byte) 0x40,
+        (byte) 0x00,
+        (byte) 0x80,
+        (byte) 0x40,
+        (byte) 0x05,
+        (byte) 0x84,
+        (byte) 0xc5,
+        (byte) 0xbd,
+        (byte) 0x32,
+        (byte) 0xc2,
+        (byte) 0x41,
+        (byte) 0x42
+      };
       float expectedValues[] = {-98.62548828125f, 23.62744140625f, 44.62939453125f};
       testReader(byteData, expectedValues);
     }
@@ -89,7 +100,8 @@ public class ByteStreamSplitValuesReaderTest {
       try {
         reader.readFloat();
         Assert.fail("Expected an exception.");
-      } catch (ParquetDecodingException ex) {}
+      } catch (ParquetDecodingException ex) {
+      }
     }
 
     @Test
@@ -124,7 +136,8 @@ public class ByteStreamSplitValuesReaderTest {
       try {
         reader.skip(33);
         Assert.fail("Expected an exception.");
-      } catch (ParquetDecodingException ex) {}
+      } catch (ParquetDecodingException ex) {
+      }
     }
 
     @Test
@@ -139,7 +152,8 @@ public class ByteStreamSplitValuesReaderTest {
       try {
         reader.skip(-1);
         Assert.fail("Expected an exception.");
-      } catch (ParquetDecodingException ex) {}
+      } catch (ParquetDecodingException ex) {
+      }
     }
   }
 
@@ -158,17 +172,40 @@ public class ByteStreamSplitValuesReaderTest {
 
     @Test
     public void testSingleElement() throws Exception {
-      byte[] byteData = {(byte) 0xFE, (byte) 0xFF, (byte) 0xFF, (byte) 0x0D, (byte) 0xA8, (byte) 0x77,
-        (byte) 0xD2, (byte) 0x40};
-      testReader(byteData, new double[]{18910.62585449218});
+      byte[] byteData = {
+        (byte) 0xFE, (byte) 0xFF, (byte) 0xFF, (byte) 0x0D, (byte) 0xA8, (byte) 0x77, (byte) 0xD2, (byte) 0x40
+      };
+      testReader(byteData, new double[] {18910.62585449218});
     }
 
     @Test
     public void testSmallBuffer() throws Exception {
-      byte[] byteData = {(byte) 0xE7, (byte) 0x72, (byte) 0xBE, (byte) 0x09, (byte) 0xA1, (byte) 0xC1,
-        (byte) 0x0A, (byte) 0x0A, (byte) 0x17, (byte) 0xD7, (byte) 0x21, (byte) 0x26, (byte) 0x01,
-        (byte) 0xC7, (byte) 0x53, (byte) 0x0A, (byte) 0x46, (byte) 0x05, (byte) 0x70, (byte) 0xF3,
-        (byte) 0xE4, (byte) 0x40, (byte) 0xC0, (byte) 0x3F};
+      byte[] byteData = {
+        (byte) 0xE7,
+        (byte) 0x72,
+        (byte) 0xBE,
+        (byte) 0x09,
+        (byte) 0xA1,
+        (byte) 0xC1,
+        (byte) 0x0A,
+        (byte) 0x0A,
+        (byte) 0x17,
+        (byte) 0xD7,
+        (byte) 0x21,
+        (byte) 0x26,
+        (byte) 0x01,
+        (byte) 0xC7,
+        (byte) 0x53,
+        (byte) 0x0A,
+        (byte) 0x46,
+        (byte) 0x05,
+        (byte) 0x70,
+        (byte) 0xF3,
+        (byte) 0xE4,
+        (byte) 0x40,
+        (byte) 0xC0,
+        (byte) 0x3F
+      };
       double expectedValues[] = {256.625449218, -78956.4455667788, 0.62565};
       testReader(byteData, expectedValues);
     }

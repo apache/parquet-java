@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -23,9 +23,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-
+import org.apache.parquet.column.MinMax;
 import org.apache.parquet.column.statistics.Statistics;
-import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.filter2.predicate.FilterPredicate;
 import org.apache.parquet.filter2.predicate.Operators.And;
 import org.apache.parquet.filter2.predicate.Operators.Column;
@@ -43,24 +42,24 @@ import org.apache.parquet.filter2.predicate.Operators.Or;
 import org.apache.parquet.filter2.predicate.Operators.UserDefined;
 import org.apache.parquet.filter2.predicate.UserDefinedPredicate;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
-import org.apache.parquet.column.MinMax;
+import org.apache.parquet.hadoop.metadata.ColumnPath;
 
 /**
  * Applies a {@link org.apache.parquet.filter2.predicate.FilterPredicate} to statistics about a group of
  * records.
- *
+ * <p>
  * Note: the supplied predicate must not contain any instances of the not() operator as this is not
  * supported by this filter.
- *
+ * <p>
  * the supplied predicate should first be run through {@link org.apache.parquet.filter2.predicate.LogicalInverseRewriter} to rewrite it
  * in a form that doesn't make use of the not() operator.
- *
+ * <p>
  * the supplied predicate should also have already been run through
  * {@link org.apache.parquet.filter2.predicate.SchemaCompatibilityValidator}
  * to make sure it is compatible with the schema of this file.
- *
+ * <p>
  * Returns true if all the records represented by the statistics in the provided column metadata can be dropped.
- *         false otherwise (including when it is not known, which is often the case).
+ * false otherwise (including when it is not known, which is often the case).
  */
 // TODO: this belongs in the parquet-column project, but some of the classes here need to be moved too
 // TODO: (https://issues.apache.org/jira/browse/PARQUET-38)
@@ -200,8 +199,7 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
     T max = minMax.getMax();
 
     // drop if all the element in value < min || all the element in value > max
-    if (stats.compareMinToValue(max) <= 0 &&
-      stats.compareMaxToValue(min) >= 0) {
+    if (stats.compareMinToValue(max) <= 0 && stats.compareMaxToValue(min) >= 0) {
       return BLOCK_MIGHT_MATCH;
     } else {
       return BLOCK_CANNOT_MATCH;
@@ -422,10 +420,12 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
   @Override
   public Boolean visit(Not not) {
     throw new IllegalArgumentException(
-        "This predicate contains a not! Did you forget to run this predicate through LogicalInverseRewriter? " + not);
+        "This predicate contains a not! Did you forget to run this predicate through LogicalInverseRewriter? "
+            + not);
   }
 
-  private <T extends Comparable<T>, U extends UserDefinedPredicate<T>> Boolean visit(UserDefined<T, U> ud, boolean inverted) {
+  private <T extends Comparable<T>, U extends UserDefinedPredicate<T>> Boolean visit(
+      UserDefined<T, U> ud, boolean inverted) {
     Column<T> filterColumn = ud.getColumn();
     ColumnChunkMetaData columnChunk = getColumnChunk(filterColumn.getColumnPath());
     U udp = ud.getUserDefinedPredicate();
@@ -462,8 +462,8 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
     }
 
     org.apache.parquet.filter2.predicate.Statistics<T> udpStats =
-      new org.apache.parquet.filter2.predicate.Statistics<T>(stats.genericGetMin(), stats.genericGetMax(),
-        stats.comparator());
+        new org.apache.parquet.filter2.predicate.Statistics<T>(
+            stats.genericGetMin(), stats.genericGetMax(), stats.comparator());
 
     if (inverted) {
       return udp.inverseCanDrop(udpStats);
@@ -478,8 +478,8 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
   }
 
   @Override
-  public <T extends Comparable<T>, U extends UserDefinedPredicate<T>> Boolean visit(LogicalNotUserDefined<T, U> lnud) {
+  public <T extends Comparable<T>, U extends UserDefinedPredicate<T>> Boolean visit(
+      LogicalNotUserDefined<T, U> lnud) {
     return visit(lnud.getUserDefined(), true);
   }
-
 }

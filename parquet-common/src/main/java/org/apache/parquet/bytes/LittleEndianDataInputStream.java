@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -33,7 +33,7 @@ public final class LittleEndianDataInputStream extends InputStream {
    * Creates a LittleEndianDataInputStream that uses the specified
    * underlying InputStream.
    *
-   * @param  in   the specified input stream
+   * @param in the specified input stream
    */
   public LittleEndianDataInputStream(InputStream in) {
     this.in = in;
@@ -47,13 +47,13 @@ public final class LittleEndianDataInputStream extends InputStream {
    * for this operation are read from the contained
    * input stream.
    *
-   * @param      b   the buffer into which the data is read.
-   * @exception  EOFException  if this input stream reaches the end before
-   *             reading all the bytes.
-   * @exception  IOException   the stream has been closed and the contained
-   *             input stream does not support reading after close, or
-   *             another I/O error occurs.
-   * @see        java.io.FilterInputStream#in
+   * @param b the buffer into which the data is read.
+   * @throws EOFException if this input stream reaches the end before
+   *                      reading all the bytes.
+   * @throws IOException  the stream has been closed and the contained
+   *                      input stream does not support reading after close, or
+   *                      another I/O error occurs.
+   * @see java.io.FilterInputStream#in
    */
   public final void readFully(byte b[]) throws IOException {
     readFully(b, 0, b.length);
@@ -67,24 +67,22 @@ public final class LittleEndianDataInputStream extends InputStream {
    * for this operation are read from the contained
    * input stream.
    *
-   * @param      b     the buffer into which the data is read.
-   * @param      off   the start offset of the data.
-   * @param      len   the number of bytes to read.
-   * @exception  EOFException  if this input stream reaches the end before
-   *               reading all the bytes.
-   * @exception  IOException   the stream has been closed and the contained
-   *             input stream does not support reading after close, or
-   *             another I/O error occurs.
-   * @see        java.io.FilterInputStream#in
+   * @param b   the buffer into which the data is read.
+   * @param off the start offset of the data.
+   * @param len the number of bytes to read.
+   * @throws EOFException if this input stream reaches the end before
+   *                      reading all the bytes.
+   * @throws IOException  the stream has been closed and the contained
+   *                      input stream does not support reading after close, or
+   *                      another I/O error occurs.
+   * @see java.io.FilterInputStream#in
    */
   public final void readFully(byte b[], int off, int len) throws IOException {
-    if (len < 0)
-      throw new IndexOutOfBoundsException();
+    if (len < 0) throw new IndexOutOfBoundsException();
     int n = 0;
     while (n < len) {
       int count = in.read(b, off + n, len - n);
-      if (count < 0)
-        throw new EOFException();
+      if (count < 0) throw new EOFException();
       n += count;
     }
   }
@@ -96,18 +94,18 @@ public final class LittleEndianDataInputStream extends InputStream {
    * Bytes for this operation are read from the contained
    * input stream.
    *
-   * @param      n   the number of bytes to be skipped.
-   * @return     the actual number of bytes skipped.
-   * @exception  IOException  if the contained input stream does not support
-   *             seek, or the stream has been closed and
-   *             the contained input stream does not support
-   *             reading after close, or another I/O error occurs.
+   * @param n the number of bytes to be skipped.
+   * @return the actual number of bytes skipped.
+   * @throws IOException if the contained input stream does not support
+   *                     seek, or the stream has been closed and
+   *                     the contained input stream does not support
+   *                     reading after close, or another I/O error occurs.
    */
   public final int skipBytes(int n) throws IOException {
     int total = 0;
     int cur = 0;
 
-    while ((total<n) && ((cur = (int) in.skip(n-total)) > 0)) {
+    while ((total < n) && ((cur = (int) in.skip(n - total)) > 0)) {
       total += cur;
     }
 
@@ -151,7 +149,7 @@ public final class LittleEndianDataInputStream extends InputStream {
   }
 
   /**
-   * @param b a byte array
+   * @param b   a byte array
    * @param off an offset into the byte array
    * @param len the length to read
    * @return the number of bytes read
@@ -220,17 +218,16 @@ public final class LittleEndianDataInputStream extends InputStream {
    * Bytes for this operation are read from the contained
    * input stream.
    *
-   * @return     the <code>boolean</code> value read.
-   * @exception  EOFException  if this input stream has reached the end.
-   * @exception  IOException   the stream has been closed and the contained
-   *             input stream does not support reading after close, or
-   *             another I/O error occurs.
-   * @see        java.io.FilterInputStream#in
+   * @return the <code>boolean</code> value read.
+   * @throws EOFException if this input stream has reached the end.
+   * @throws IOException  the stream has been closed and the contained
+   *                      input stream does not support reading after close, or
+   *                      another I/O error occurs.
+   * @see java.io.FilterInputStream#in
    */
   public final boolean readBoolean() throws IOException {
     int ch = in.read();
-    if (ch < 0)
-      throw new EOFException();
+    if (ch < 0) throw new EOFException();
     return (ch != 0);
   }
 
@@ -242,19 +239,18 @@ public final class LittleEndianDataInputStream extends InputStream {
    * for this operation are read from the contained
    * input stream.
    *
-   * @return     the next byte of this input stream as a signed 8-bit
-   *             <code>byte</code>.
-   * @exception  EOFException  if this input stream has reached the end.
-   * @exception  IOException   the stream has been closed and the contained
-   *             input stream does not support reading after close, or
-   *             another I/O error occurs.
-   * @see        java.io.FilterInputStream#in
+   * @return the next byte of this input stream as a signed 8-bit
+   * <code>byte</code>.
+   * @throws EOFException if this input stream has reached the end.
+   * @throws IOException  the stream has been closed and the contained
+   *                      input stream does not support reading after close, or
+   *                      another I/O error occurs.
+   * @see java.io.FilterInputStream#in
    */
   public final byte readByte() throws IOException {
     int ch = in.read();
-    if (ch < 0)
-      throw new EOFException();
-    return (byte)(ch);
+    if (ch < 0) throw new EOFException();
+    return (byte) (ch);
   }
 
   /**
@@ -265,18 +261,17 @@ public final class LittleEndianDataInputStream extends InputStream {
    * for this operation are read from the contained
    * input stream.
    *
-   * @return     the next byte of this input stream, interpreted as an
-   *             unsigned 8-bit number.
-   * @exception  EOFException  if this input stream has reached the end.
-   * @exception  IOException   the stream has been closed and the contained
-   *             input stream does not support reading after close, or
-   *             another I/O error occurs.
-   * @see         java.io.FilterInputStream#in
+   * @return the next byte of this input stream, interpreted as an
+   * unsigned 8-bit number.
+   * @throws EOFException if this input stream has reached the end.
+   * @throws IOException  the stream has been closed and the contained
+   *                      input stream does not support reading after close, or
+   *                      another I/O error occurs.
+   * @see java.io.FilterInputStream#in
    */
   public final int readUnsignedByte() throws IOException {
     int ch = in.read();
-    if (ch < 0)
-      throw new EOFException();
+    if (ch < 0) throw new EOFException();
     return ch;
   }
 
@@ -285,21 +280,20 @@ public final class LittleEndianDataInputStream extends InputStream {
    * for this operation are read from the contained
    * input stream.
    *
-   * @return     the next two bytes of this input stream, interpreted as a
-   *             signed 16-bit number.
-   * @exception  EOFException  if this input stream reaches the end before
-   *               reading two bytes.
-   * @exception  IOException   the stream has been closed and the contained
-   *             input stream does not support reading after close, or
-   *             another I/O error occurs.
-   * @see        java.io.FilterInputStream#in
+   * @return the next two bytes of this input stream, interpreted as a
+   * signed 16-bit number.
+   * @throws EOFException if this input stream reaches the end before
+   *                      reading two bytes.
+   * @throws IOException  the stream has been closed and the contained
+   *                      input stream does not support reading after close, or
+   *                      another I/O error occurs.
+   * @see java.io.FilterInputStream#in
    */
   public final short readShort() throws IOException {
     int ch2 = in.read();
     int ch1 = in.read();
-    if ((ch1 | ch2) < 0)
-      throw new EOFException();
-    return (short)((ch1 << 8) + (ch2 << 0));
+    if ((ch1 | ch2) < 0) throw new EOFException();
+    return (short) ((ch1 << 8) + (ch2 << 0));
   }
 
   /**
@@ -307,20 +301,19 @@ public final class LittleEndianDataInputStream extends InputStream {
    * for this operation are read from the contained
    * input stream.
    *
-   * @return     the next two bytes of this input stream, interpreted as an
-   *             unsigned 16-bit integer.
-   * @exception  EOFException  if this input stream reaches the end before
-   *             reading two bytes.
-   * @exception  IOException   the stream has been closed and the contained
-   *             input stream does not support reading after close, or
-   *             another I/O error occurs.
-   * @see        java.io.FilterInputStream#in
+   * @return the next two bytes of this input stream, interpreted as an
+   * unsigned 16-bit integer.
+   * @throws EOFException if this input stream reaches the end before
+   *                      reading two bytes.
+   * @throws IOException  the stream has been closed and the contained
+   *                      input stream does not support reading after close, or
+   *                      another I/O error occurs.
+   * @see java.io.FilterInputStream#in
    */
   public final int readUnsignedShort() throws IOException {
     int ch2 = in.read();
     int ch1 = in.read();
-    if ((ch1 | ch2) < 0)
-      throw new EOFException();
+    if ((ch1 | ch2) < 0) throw new EOFException();
     return (ch1 << 8) + (ch2 << 0);
   }
 
@@ -329,14 +322,14 @@ public final class LittleEndianDataInputStream extends InputStream {
    * for this operation are read from the contained
    * input stream.
    *
-   * @return     the next four bytes of this input stream, interpreted as an
-   *             <code>int</code>.
-   * @exception  EOFException  if this input stream reaches the end before
-   *               reading four bytes.
-   * @exception  IOException   the stream has been closed and the contained
-   *             input stream does not support reading after close, or
-   *             another I/O error occurs.
-   * @see        java.io.FilterInputStream#in
+   * @return the next four bytes of this input stream, interpreted as an
+   * <code>int</code>.
+   * @throws EOFException if this input stream reaches the end before
+   *                      reading four bytes.
+   * @throws IOException  the stream has been closed and the contained
+   *                      input stream does not support reading after close, or
+   *                      another I/O error occurs.
+   * @see java.io.FilterInputStream#in
    */
   public final int readInt() throws IOException {
     // TODO: has this been benchmarked against two alternate implementations?
@@ -348,8 +341,7 @@ public final class LittleEndianDataInputStream extends InputStream {
     int ch3 = in.read();
     int ch2 = in.read();
     int ch1 = in.read();
-    if ((ch1 | ch2 | ch3 | ch4) < 0)
-      throw new EOFException();
+    if ((ch1 | ch2 | ch3 | ch4) < 0) throw new EOFException();
     return ((ch1 << 24) + (ch2 << 16) + (ch3 << 8) + (ch4 << 0));
   }
 
@@ -360,26 +352,26 @@ public final class LittleEndianDataInputStream extends InputStream {
    * for this operation are read from the contained
    * input stream.
    *
-   * @return     the next eight bytes of this input stream, interpreted as a
-   *             <code>long</code>.
-   * @exception  EOFException  if this input stream reaches the end before
-   *               reading eight bytes.
-   * @exception  IOException   the stream has been closed and the contained
-   *             input stream does not support reading after close, or
-   *             another I/O error occurs.
-   * @see        java.io.FilterInputStream#in
+   * @return the next eight bytes of this input stream, interpreted as a
+   * <code>long</code>.
+   * @throws EOFException if this input stream reaches the end before
+   *                      reading eight bytes.
+   * @throws IOException  the stream has been closed and the contained
+   *                      input stream does not support reading after close, or
+   *                      another I/O error occurs.
+   * @see java.io.FilterInputStream#in
    */
   public final long readLong() throws IOException {
     // TODO: see perf question above in readInt
     readFully(readBuffer, 0, 8);
-    return (((long)readBuffer[7] << 56) +
-        ((long)(readBuffer[6] & 255) << 48) +
-        ((long)(readBuffer[5] & 255) << 40) +
-        ((long)(readBuffer[4] & 255) << 32) +
-        ((long)(readBuffer[3] & 255) << 24) +
-        ((readBuffer[2] & 255) << 16) +
-        ((readBuffer[1] & 255) <<  8) +
-        ((readBuffer[0] & 255) <<  0));
+    return (((long) readBuffer[7] << 56)
+        + ((long) (readBuffer[6] & 255) << 48)
+        + ((long) (readBuffer[5] & 255) << 40)
+        + ((long) (readBuffer[4] & 255) << 32)
+        + ((long) (readBuffer[3] & 255) << 24)
+        + ((readBuffer[2] & 255) << 16)
+        + ((readBuffer[1] & 255) << 8)
+        + ((readBuffer[0] & 255) << 0));
   }
 
   /**
@@ -387,14 +379,14 @@ public final class LittleEndianDataInputStream extends InputStream {
    * for this operation are read from the contained
    * input stream.
    *
-   * @return     the next four bytes of this input stream, interpreted as a
-   *             <code>float</code>.
-   * @exception  EOFException  if this input stream reaches the end before
-   *               reading four bytes.
-   * @exception  IOException   the stream has been closed and the contained
-   *             input stream does not support reading after close, or
-   *             another I/O error occurs.
-   * @see        java.lang.Float#intBitsToFloat(int)
+   * @return the next four bytes of this input stream, interpreted as a
+   * <code>float</code>.
+   * @throws EOFException if this input stream reaches the end before
+   *                      reading four bytes.
+   * @throws IOException  the stream has been closed and the contained
+   *                      input stream does not support reading after close, or
+   *                      another I/O error occurs.
+   * @see java.lang.Float#intBitsToFloat(int)
    */
   public final float readFloat() throws IOException {
     return Float.intBitsToFloat(readInt());
@@ -405,17 +397,16 @@ public final class LittleEndianDataInputStream extends InputStream {
    * for this operation are read from the contained
    * input stream.
    *
-   * @return     the next eight bytes of this input stream, interpreted as a
-   *             <code>double</code>.
-   * @exception  EOFException  if this input stream reaches the end before
-   *               reading eight bytes.
-   * @exception  IOException   the stream has been closed and the contained
-   *             input stream does not support reading after close, or
-   *             another I/O error occurs.
-   * @see        java.lang.Double#longBitsToDouble(long)
+   * @return the next eight bytes of this input stream, interpreted as a
+   * <code>double</code>.
+   * @throws EOFException if this input stream reaches the end before
+   *                      reading eight bytes.
+   * @throws IOException  the stream has been closed and the contained
+   *                      input stream does not support reading after close, or
+   *                      another I/O error occurs.
+   * @see java.lang.Double#longBitsToDouble(long)
    */
   public final double readDouble() throws IOException {
     return Double.longBitsToDouble(readLong());
   }
-
 }

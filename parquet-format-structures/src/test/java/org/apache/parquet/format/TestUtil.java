@@ -29,9 +29,8 @@ import static org.junit.Assert.fail;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-
-import org.junit.Test;
 import org.apache.parquet.format.Util.DefaultFileMetaDataConsumer;
+import org.junit.Test;
 
 public class TestUtil {
 
@@ -43,23 +42,9 @@ public class TestUtil {
         asList(new SchemaElement("foo")),
         10,
         asList(
-            new RowGroup(
-                asList(
-                    new ColumnChunk(0),
-                    new ColumnChunk(1)
-                    ),
-                10,
-                5),
-            new RowGroup(
-                asList(
-                    new ColumnChunk(2),
-                    new ColumnChunk(3)
-                    ),
-                11,
-                5)
-        )
-    );
-    writeFileMetaData(md , baos);
+            new RowGroup(asList(new ColumnChunk(0), new ColumnChunk(1)), 10, 5),
+            new RowGroup(asList(new ColumnChunk(2), new ColumnChunk(3)), 11, 5)));
+    writeFileMetaData(md, baos);
     FileMetaData md2 = readFileMetaData(in(baos));
     FileMetaData md3 = new FileMetaData();
     readFileMetaData(in(baos), new DefaultFileMetaDataConsumer(md3));
@@ -90,7 +75,8 @@ public class TestUtil {
       Util.readPageHeader(in(out));
       fail("Expected exception but did not thrown");
     } catch (InvalidParquetMetadataException e) {
-      assertTrue("Exception message does not contain the expected parts",
+      assertTrue(
+          "Exception message does not contain the expected parts",
           e.getMessage().contains("Compressed page size"));
     }
   }

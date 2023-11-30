@@ -19,30 +19,29 @@
 
 package org.apache.parquet.cli.commands;
 
+import static org.apache.avro.generic.GenericData.Record;
+import static org.apache.parquet.cli.util.Expressions.filterSchema;
+
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.io.Closeables;
+import java.io.Closeable;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.util.List;
 import org.apache.avro.Schema;
 import org.apache.avro.file.CodecFactory;
 import org.apache.avro.file.DataFileWriter;
 import org.apache.avro.generic.GenericDatumWriter;
 import org.apache.avro.io.DatumWriter;
-import org.apache.hadoop.fs.Path;
 import org.apache.parquet.cli.BaseCommand;
 import org.apache.parquet.cli.util.Codecs;
 import org.apache.parquet.cli.util.Schemas;
 import org.slf4j.Logger;
-import java.io.Closeable;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.util.List;
 
-import static org.apache.avro.generic.GenericData.Record;
-import static org.apache.parquet.cli.util.Expressions.filterSchema;
-
-@Parameters(commandDescription="Create an Avro file from a data file")
+@Parameters(commandDescription = "Create an Avro file from a data file")
 public class ToAvroCommand extends BaseCommand {
 
   public ToAvroCommand(Logger console) {
@@ -53,12 +52,13 @@ public class ToAvroCommand extends BaseCommand {
   List<String> targets;
 
   @Parameter(
-      names={"-o", "--output"},
-      description="Output file path",
-      required=true)
+      names = {"-o", "--output"},
+      description = "Output file path",
+      required = true)
   String outputPath = null;
 
-  @Parameter(names = {"-s", "--schema"},
+  @Parameter(
+      names = {"-s", "--schema"},
       description = "The file containing an Avro schema for the output file")
   String avroSchemaFile;
 
@@ -67,20 +67,20 @@ public class ToAvroCommand extends BaseCommand {
       description = "List of columns")
   List<String> columns;
 
-  @Parameter(names = {"--compression-codec"},
+  @Parameter(
+      names = {"--compression-codec"},
       description = "A compression codec name.")
   String compressionCodecName = "GZIP";
 
   @Parameter(
-      names={"--overwrite"},
-      description="Overwrite the output file if it exists")
+      names = {"--overwrite"},
+      description = "Overwrite the output file if it exists")
   boolean overwrite = false;
 
   @Override
   @SuppressWarnings("unchecked")
   public int run() throws IOException {
-    Preconditions.checkArgument(targets != null && targets.size() == 1,
-        "A data file is required.");
+    Preconditions.checkArgument(targets != null && targets.size() == 1, "A data file is required.");
 
     String source = targets.get(0);
 
@@ -102,7 +102,7 @@ public class ToAvroCommand extends BaseCommand {
     try (DataFileWriter<Record> fileWriter = new DataFileWriter<>(datumWriter)) {
       fileWriter.setCodec(codecFactory);
       try (OutputStream os = overwrite ? create(outputPath) : createWithNoOverwrite(outputPath);
-           DataFileWriter<Record> writer = fileWriter.create(projection, os)) {
+          DataFileWriter<Record> writer = fileWriter.create(projection, os)) {
         for (Record record : reader) {
           writer.append(record);
           count += 1;
@@ -128,7 +128,6 @@ public class ToAvroCommand extends BaseCommand {
         "# Create an Avro file in HDFS from a local JSON file",
         "path/to/sample.json hdfs:/user/me/sample.parquet",
         "# Create an Avro file from data in S3",
-        "s3:/data/path/sample.parquet sample.avro"
-    );
+        "s3:/data/path/sample.parquet sample.avro");
   }
 }

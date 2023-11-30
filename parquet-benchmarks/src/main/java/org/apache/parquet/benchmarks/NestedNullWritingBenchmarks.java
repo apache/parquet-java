@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -27,7 +27,6 @@ import static org.openjdk.jmh.annotations.Scope.Benchmark;
 
 import java.io.IOException;
 import java.util.Random;
-
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.GroupFactory;
 import org.apache.parquet.example.data.simple.SimpleGroupFactory;
@@ -79,9 +78,12 @@ public class NestedNullWritingBenchmarks {
       .value(BINARY, OPTIONAL)
       .named("dummy_map")
       .optionalGroup()
-      .optional(BINARY).named("dummy_group_value1")
-      .optional(BINARY).named("dummy_group_value2")
-      .optional(BINARY).named("dummy_group_value3")
+      .optional(BINARY)
+      .named("dummy_group_value1")
+      .optional(BINARY)
+      .named("dummy_group_value2")
+      .optional(BINARY)
+      .named("dummy_group_value3")
       .named("dummy_group")
       .named("msg");
   private static final int RECORD_COUNT = 10_000_000;

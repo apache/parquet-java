@@ -18,17 +18,15 @@
  */
 package org.apache.parquet.hadoop;
 
+import it.unimi.dsi.fastutil.ints.IntArrayList;
+import it.unimi.dsi.fastutil.ints.IntList;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Formatter;
 import java.util.List;
-
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.internal.column.columnindex.OffsetIndex;
 import org.apache.parquet.internal.filter2.columnindex.RowRanges;
-
-import it.unimi.dsi.fastutil.ints.IntArrayList;
-import it.unimi.dsi.fastutil.ints.IntList;
 
 /**
  * Internal utility class to help at column index based filtering.
@@ -69,7 +67,7 @@ class ColumnIndexFilterUtils {
       this.offsetIndex = offsetIndex;
       this.indexMap = indexMap;
     }
-    
+
     @Override
     public int getPageOrdinal(int pageIndex) {
       return indexMap[pageIndex];
@@ -98,7 +96,8 @@ class ColumnIndexFilterUtils {
     @Override
     public long getLastRowIndex(int pageIndex, long totalRowCount) {
       int nextIndex = indexMap[pageIndex] + 1;
-      return (nextIndex >= offsetIndex.getPageCount() ? totalRowCount : offsetIndex.getFirstRowIndex(nextIndex)) - 1;
+      return (nextIndex >= offsetIndex.getPageCount() ? totalRowCount : offsetIndex.getFirstRowIndex(nextIndex))
+          - 1;
     }
 
     @Override
@@ -108,7 +107,8 @@ class ColumnIndexFilterUtils {
         for (int i = 0, n = offsetIndex.getPageCount(); i < n; ++i) {
           int index = Arrays.binarySearch(indexMap, i);
           boolean isHidden = index < 0;
-          formatter.format("%spage-%-5d  %20d  %16d  %20d\n",
+          formatter.format(
+              "%spage-%-5d  %20d  %16d  %20d\n",
               isHidden ? "- " : "  ",
               isHidden ? i : index,
               offsetIndex.getOffset(i),
@@ -134,8 +134,8 @@ class ColumnIndexFilterUtils {
     return new FilteredOffsetIndex(offsetIndex, indexMap.toIntArray());
   }
 
-  static List<OffsetRange> calculateOffsetRanges(OffsetIndex offsetIndex, ColumnChunkMetaData cm,
-      long firstPageOffset) {
+  static List<OffsetRange> calculateOffsetRanges(
+      OffsetIndex offsetIndex, ColumnChunkMetaData cm, long firstPageOffset) {
     List<OffsetRange> ranges = new ArrayList<>();
     int n = offsetIndex.getPageCount();
     if (n > 0) {

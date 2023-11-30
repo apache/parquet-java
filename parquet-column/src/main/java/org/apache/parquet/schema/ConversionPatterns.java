@@ -18,11 +18,11 @@
  */
 package org.apache.parquet.schema;
 
+import static org.apache.parquet.schema.LogicalTypeAnnotation.stringType;
+
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Type.Repetition;
-
-import static org.apache.parquet.schema.LogicalTypeAnnotation.stringType;
 
 /**
  * Utility functions to convert from Java-like map and list types
@@ -36,13 +36,14 @@ public abstract class ConversionPatterns {
   /**
    * to preserve the difference between empty list and null when optional
    *
-   * @param repetition   repetition for the list or map
-   * @param alias        name of the field
+   * @param repetition            repetition for the list or map
+   * @param alias                 name of the field
    * @param logicalTypeAnnotation logical type for the list or map
-   * @param nested       the nested repeated field
+   * @param nested                the nested repeated field
    * @return a group type
    */
-  private static GroupType listWrapper(Repetition repetition, String alias, LogicalTypeAnnotation logicalTypeAnnotation, Type nested) {
+  private static GroupType listWrapper(
+      Repetition repetition, String alias, LogicalTypeAnnotation logicalTypeAnnotation, Type nested) {
     if (!nested.isRepetition(Repetition.REPEATED)) {
       throw new IllegalArgumentException("Nested type should be repeated: " + nested);
     }
@@ -54,41 +55,45 @@ public abstract class ConversionPatterns {
   }
 
   public static GroupType stringKeyMapType(Repetition repetition, String alias, String mapAlias, Type valueType) {
-    return mapType(repetition, alias, mapAlias, new PrimitiveType(Repetition.REQUIRED, PrimitiveTypeName.BINARY, "key", stringType()), valueType);
+    return mapType(
+        repetition,
+        alias,
+        mapAlias,
+        new PrimitiveType(Repetition.REQUIRED, PrimitiveTypeName.BINARY, "key", stringType()),
+        valueType);
   }
 
   public static GroupType stringKeyMapType(Repetition repetition, String alias, Type valueType) {
     return stringKeyMapType(repetition, alias, MAP_REPEATED_NAME, valueType);
   }
 
-  public static GroupType mapType(Repetition repetition, String alias, String mapAlias, Type keyType, Type valueType) {
-    //support projection only on key of a map
+  public static GroupType mapType(
+      Repetition repetition, String alias, String mapAlias, Type keyType, Type valueType) {
+    // support projection only on key of a map
     if (valueType == null) {
       return listWrapper(
-              repetition,
-              alias,
-              LogicalTypeAnnotation.mapType(),
-              new GroupType(
-                      Repetition.REPEATED,
-                      mapAlias,
-                      LogicalTypeAnnotation.MapKeyValueTypeAnnotation.getInstance(),
-                      keyType)
-      );
+          repetition,
+          alias,
+          LogicalTypeAnnotation.mapType(),
+          new GroupType(
+              Repetition.REPEATED,
+              mapAlias,
+              LogicalTypeAnnotation.MapKeyValueTypeAnnotation.getInstance(),
+              keyType));
     } else {
       if (!valueType.getName().equals("value")) {
         throw new RuntimeException(valueType.getName() + " should be value");
       }
       return listWrapper(
-              repetition,
-              alias,
-              LogicalTypeAnnotation.mapType(),
-              new GroupType(
-                      Repetition.REPEATED,
-                      mapAlias,
-                      LogicalTypeAnnotation.MapKeyValueTypeAnnotation.getInstance(),
-                      keyType,
-                      valueType)
-      );
+          repetition,
+          alias,
+          LogicalTypeAnnotation.mapType(),
+          new GroupType(
+              Repetition.REPEATED,
+              mapAlias,
+              LogicalTypeAnnotation.MapKeyValueTypeAnnotation.getInstance(),
+              keyType,
+              valueType));
     }
   }
 
@@ -101,12 +106,7 @@ public abstract class ConversionPatterns {
    */
   @Deprecated
   public static GroupType listType(Repetition repetition, String alias, Type nestedType) {
-    return listWrapper(
-            repetition,
-            alias,
-            LogicalTypeAnnotation.listType(),
-            nestedType
-    );
+    return listWrapper(repetition, alias, LogicalTypeAnnotation.listType(), nestedType);
   }
 
   /**
@@ -116,18 +116,17 @@ public abstract class ConversionPatterns {
    * required for non-null and optional for nullable.
    *
    * @param listRepetition the repetition of the entire list structure
-   * @param name the name of the list structure type
-   * @param elementType the type of elements contained by the list
+   * @param name           the name of the list structure type
+   * @param elementType    the type of elements contained by the list
    * @return a GroupType that represents the list
    */
   public static GroupType listOfElements(Repetition listRepetition, String name, Type elementType) {
-    Preconditions.checkArgument(elementType.getName().equals(ELEMENT_NAME),
-        "List element type must be named 'element'");
+    Preconditions.checkArgument(
+        elementType.getName().equals(ELEMENT_NAME), "List element type must be named 'element'");
     return listWrapper(
         listRepetition,
         name,
         LogicalTypeAnnotation.listType(),
-        new GroupType(Repetition.REPEATED, "list", elementType)
-    );
+        new GroupType(Repetition.REPEATED, "list", elementType));
   }
 }

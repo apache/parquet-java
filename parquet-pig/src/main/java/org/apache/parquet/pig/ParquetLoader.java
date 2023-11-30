@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -20,16 +20,33 @@ package org.apache.parquet.pig;
 
 import static java.util.Arrays.asList;
 import static org.apache.hadoop.mapreduce.lib.input.FileInputFormat.setInputPaths;
+import static org.apache.parquet.filter2.predicate.FilterApi.and;
+import static org.apache.parquet.filter2.predicate.FilterApi.binaryColumn;
+import static org.apache.parquet.filter2.predicate.FilterApi.booleanColumn;
+import static org.apache.parquet.filter2.predicate.FilterApi.doubleColumn;
+import static org.apache.parquet.filter2.predicate.FilterApi.eq;
+import static org.apache.parquet.filter2.predicate.FilterApi.floatColumn;
+import static org.apache.parquet.filter2.predicate.FilterApi.gt;
+import static org.apache.parquet.filter2.predicate.FilterApi.gtEq;
+import static org.apache.parquet.filter2.predicate.FilterApi.intColumn;
+import static org.apache.parquet.filter2.predicate.FilterApi.longColumn;
+import static org.apache.parquet.filter2.predicate.FilterApi.lt;
+import static org.apache.parquet.filter2.predicate.FilterApi.ltEq;
+import static org.apache.parquet.filter2.predicate.FilterApi.not;
+import static org.apache.parquet.filter2.predicate.FilterApi.notEq;
+import static org.apache.parquet.filter2.predicate.FilterApi.or;
 import static org.apache.parquet.hadoop.util.ContextUtil.getConfiguration;
 import static org.apache.parquet.pig.PigSchemaConverter.parsePigSchema;
 import static org.apache.parquet.pig.PigSchemaConverter.pigSchemaToString;
 import static org.apache.parquet.pig.PigSchemaConverter.serializeRequiredFieldList;
-import static org.apache.parquet.pig.TupleReadSupport.PARQUET_PIG_SCHEMA;
-import static org.apache.parquet.pig.TupleReadSupport.PARQUET_PIG_REQUIRED_FIELDS;
 import static org.apache.parquet.pig.TupleReadSupport.PARQUET_COLUMN_INDEX_ACCESS;
+import static org.apache.parquet.pig.TupleReadSupport.PARQUET_PIG_REQUIRED_FIELDS;
+import static org.apache.parquet.pig.TupleReadSupport.PARQUET_PIG_SCHEMA;
 import static org.apache.parquet.pig.TupleReadSupport.getPigSchemaFromMultipleFiles;
-
-import static org.apache.parquet.filter2.predicate.FilterApi.*;
+import static org.apache.pig.Expression.BinaryExpression;
+import static org.apache.pig.Expression.Column;
+import static org.apache.pig.Expression.Const;
+import static org.apache.pig.Expression.OpType;
 
 import java.io.IOException;
 import java.lang.ref.Reference;
@@ -39,7 +56,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.WeakHashMap;
-
 import org.apache.hadoop.mapreduce.InputFormat;
 import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.Job;
@@ -48,6 +64,9 @@ import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.parquet.filter2.predicate.FilterPredicate;
 import org.apache.parquet.filter2.predicate.LogicalInverseRewriter;
 import org.apache.parquet.filter2.predicate.Operators;
+import org.apache.parquet.hadoop.ParquetInputFormat;
+import org.apache.parquet.hadoop.metadata.GlobalMetaData;
+import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.io.api.Binary;
 import org.apache.pig.Expression;
 import org.apache.pig.Expression.BetweenExpression;
@@ -67,15 +86,6 @@ import org.apache.pig.impl.logicalLayer.schema.Schema;
 import org.apache.pig.impl.logicalLayer.schema.Schema.FieldSchema;
 import org.apache.pig.impl.util.UDFContext;
 import org.apache.pig.parser.ParserException;
-
-import static org.apache.pig.Expression.BinaryExpression;
-import static org.apache.pig.Expression.Column;
-import static org.apache.pig.Expression.Const;
-import static org.apache.pig.Expression.OpType;
-
-import org.apache.parquet.hadoop.ParquetInputFormat;
-import org.apache.parquet.hadoop.metadata.GlobalMetaData;
-import org.apache.parquet.io.ParquetDecodingException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -89,7 +99,8 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
   private static final boolean DEFAULT_PREDICATE_PUSHDOWN_ENABLED = false;
 
   // Using a weak hash map will ensure that the cache will be gc'ed when there is memory pressure
-  static final Map<String, Reference<ParquetInputFormat<Tuple>>> inputFormatCache = new WeakHashMap<String, Reference<ParquetInputFormat<Tuple>>>();
+  static final Map<String, Reference<ParquetInputFormat<Tuple>>> inputFormatCache =
+      new WeakHashMap<String, Reference<ParquetInputFormat<Tuple>>>();
 
   private Schema requestedSchema;
   private boolean columnIndexAccess;
@@ -111,6 +122,7 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
 
   /**
    * To read only a subset of the columns in the file
+   *
    * @param requestedSchemaStr a subset of the original pig schema in the file
    */
   public ParquetLoader(String requestedSchemaStr) {
@@ -122,16 +134,16 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
    * column positions.  Using column positions allows for renaming the fields
    * and is more inline with the "schema-on-read" approach to accessing file
    * data.
-   *
+   * <p>
    * Example:
    * File Schema:  'c1:int, c2:float, c3:double, c4:long'
    * ParquetLoader('n1:int, n2:float, n3:double, n4:long', 'true');
-   *
+   * <p>
    * This will use the names provided in the requested schema and assign them
    * to column positions indicated by order.
    *
    * @param requestedSchemaStr a subset of the original pig schema in the file
-   * @param columnIndexAccess use column index positions as opposed to name (default: false)
+   * @param columnIndexAccess  use column index positions as opposed to name (default: false)
    */
   public ParquetLoader(String requestedSchemaStr, String columnIndexAccess) {
     this(parsePigSchema(requestedSchemaStr), Boolean.parseBoolean(columnIndexAccess));
@@ -139,10 +151,10 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
 
   /**
    * Use the provided schema to access the underlying file data.
-   *
+   * <p>
    * The same as the string based constructor but for programmatic use.
    *
-   * @param requestedSchema a subset of the original pig schema in the file
+   * @param requestedSchema   a subset of the original pig schema in the file
    * @param columnIndexAccess use column index positions as opposed to name (default: false)
    */
   public ParquetLoader(Schema requestedSchema, boolean columnIndexAccess) {
@@ -161,35 +173,36 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
   }
 
   private void setInput(String location, Job job) throws IOException {
-    this.setLocationHasBeenCalled  = true;
+    this.setLocationHasBeenCalled = true;
     this.location = location;
     setInputPaths(job, location);
 
-    //This is prior to load because the initial value comes from the constructor
-    //not file metadata or pig framework and would get overwritten in initSchema().
-    if(UDFContext.getUDFContext().isFrontend()) {
+    // This is prior to load because the initial value comes from the constructor
+    // not file metadata or pig framework and would get overwritten in initSchema().
+    if (UDFContext.getUDFContext().isFrontend()) {
       storeInUDFContext(PARQUET_COLUMN_INDEX_ACCESS, Boolean.toString(columnIndexAccess));
     }
 
     schema = PigSchemaConverter.parsePigSchema(getPropertyFromUDFContext(PARQUET_PIG_SCHEMA));
-    requiredFieldList = PigSchemaConverter.deserializeRequiredFieldList(getPropertyFromUDFContext(PARQUET_PIG_REQUIRED_FIELDS));
+    requiredFieldList =
+        PigSchemaConverter.deserializeRequiredFieldList(getPropertyFromUDFContext(PARQUET_PIG_REQUIRED_FIELDS));
     columnIndexAccess = Boolean.parseBoolean(getPropertyFromUDFContext(PARQUET_COLUMN_INDEX_ACCESS));
 
     initSchema(job);
 
-    if(UDFContext.getUDFContext().isFrontend()) {
-      //Setting for task-side loading via initSchema()
+    if (UDFContext.getUDFContext().isFrontend()) {
+      // Setting for task-side loading via initSchema()
       storeInUDFContext(PARQUET_PIG_SCHEMA, pigSchemaToString(schema));
       storeInUDFContext(PARQUET_PIG_REQUIRED_FIELDS, serializeRequiredFieldList(requiredFieldList));
     }
 
-    //Used by task-side loader via TupleReadSupport
+    // Used by task-side loader via TupleReadSupport
     getConfiguration(job).set(PARQUET_PIG_SCHEMA, pigSchemaToString(schema));
     getConfiguration(job).set(PARQUET_PIG_REQUIRED_FIELDS, serializeRequiredFieldList(requiredFieldList));
     getConfiguration(job).set(PARQUET_COLUMN_INDEX_ACCESS, Boolean.toString(columnIndexAccess));
 
     FilterPredicate filterPredicate = (FilterPredicate) getFromUDFContext(ParquetInputFormat.FILTER_PREDICATE);
-    if(filterPredicate != null) {
+    if (filterPredicate != null) {
       ParquetInputFormat.setFilterPredicate(getConfiguration(job), filterPredicate);
     }
   }
@@ -217,18 +230,19 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
 
     @Override
     public RecordReader<Void, Tuple> createRecordReader(
-        InputSplit inputSplit, TaskAttemptContext taskAttemptContext)
-            throws IOException, InterruptedException {
+        InputSplit inputSplit, TaskAttemptContext taskAttemptContext) throws IOException, InterruptedException {
       // for local mode we don't want to keep that around
       inputFormatCache.remove(location);
       return super.createRecordReader(inputSplit, taskAttemptContext);
     }
-  };
+  }
+  ;
 
   private ParquetInputFormat<Tuple> getParquetInputFormat() throws ParserException {
     checkSetLocationHasBeenCalled();
     if (parquetInputFormat == null) {
-      // unfortunately Pig will create many Loaders, so we cache the inputformat to avoid reading the metadata more than once
+      // unfortunately Pig will create many Loaders, so we cache the inputformat to avoid reading the metadata
+      // more than once
       Reference<ParquetInputFormat<Tuple>> ref = inputFormatCache.get(location);
       parquetInputFormat = ref == null ? null : ref.get();
       if (parquetInputFormat == null) {
@@ -241,8 +255,7 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
 
   @SuppressWarnings("unchecked")
   @Override
-  public void prepareToRead(@SuppressWarnings("rawtypes") RecordReader reader, PigSplit split)
-      throws IOException {
+  public void prepareToRead(@SuppressWarnings("rawtypes") RecordReader reader, PigSplit split) throws IOException {
     LOG.debug("LoadFunc.prepareToRead({}, {})", reader, split);
     this.reader = reader;
   }
@@ -251,7 +264,7 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
   public Tuple getNext() throws IOException {
     try {
       if (reader.nextKeyValue()) {
-        return (Tuple)reader.getCurrentValue();
+        return (Tuple) reader.getCurrentValue();
       } else {
         return null;
       }
@@ -303,9 +316,9 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
     if (schema == null) {
       return;
     }
-    for(FieldSchema fieldSchema:schema.getFields()){
-      if (fieldSchema.type== DataType.BOOLEAN) {
-        fieldSchema.type=DataType.INTEGER;
+    for (FieldSchema fieldSchema : schema.getFields()) {
+      if (fieldSchema.type == DataType.BOOLEAN) {
+        fieldSchema.type = DataType.INTEGER;
       }
       convertToElephantBirdCompatibleSchema(fieldSchema.schema);
     }
@@ -316,14 +329,13 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
   }
 
   @Override
-  public ResourceStatistics getStatistics(String location, Job job)
-      throws IOException {
+  public ResourceStatistics getStatistics(String location, Job job) throws IOException {
     if (LOG.isDebugEnabled()) {
       String jobToString = String.format("job[id=%s, name=%s]", job.getJobID(), job.getJobName());
       LOG.debug("LoadMetadata.getStatistics({}, {})", location, jobToString);
     }
     /* We need to call setInput since setLocation is not
-       guaranteed to be called before this */
+    guaranteed to be called before this */
     setInput(location, job);
     long length = 0;
     try {
@@ -353,28 +365,29 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
 
   protected String getPropertyFromUDFContext(String key) {
     UDFContext udfContext = UDFContext.getUDFContext();
-    return udfContext.getUDFProperties(this.getClass(), new String[]{signature}).getProperty(key);
+    return udfContext
+        .getUDFProperties(this.getClass(), new String[] {signature})
+        .getProperty(key);
   }
 
   protected Object getFromUDFContext(String key) {
     UDFContext udfContext = UDFContext.getUDFContext();
-    return udfContext.getUDFProperties(this.getClass(), new String[]{signature}).get(key);
+    return udfContext
+        .getUDFProperties(this.getClass(), new String[] {signature})
+        .get(key);
   }
 
   protected void storeInUDFContext(String key, Object value) {
     UDFContext udfContext = UDFContext.getUDFContext();
-    java.util.Properties props = udfContext.getUDFProperties(
-        this.getClass(), new String[]{signature});
+    java.util.Properties props = udfContext.getUDFProperties(this.getClass(), new String[] {signature});
     props.put(key, value);
   }
 
   @Override
-  public RequiredFieldResponse pushProjection(RequiredFieldList requiredFieldList)
-      throws FrontendException {
+  public RequiredFieldResponse pushProjection(RequiredFieldList requiredFieldList) throws FrontendException {
     this.requiredFieldList = requiredFieldList;
 
-    if (requiredFieldList == null)
-      return null;
+    if (requiredFieldList == null) return null;
 
     schema = getSchemaFromRequiredFieldList(schema, requiredFieldList.getFields());
     storeInUDFContext(PARQUET_PIG_SCHEMA, pigSchemaToString(schema));
@@ -385,7 +398,7 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
 
   @Override
   public void setUDFContextSignature(String signature) {
-      this.signature = signature;
+    this.signature = signature;
   }
 
   private Schema getSchemaFromRequiredFieldList(Schema schema, List<RequiredField> fieldList)
@@ -415,14 +428,14 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
 
   @Override
   public List<String> getPredicateFields(String s, Job job) throws IOException {
-    if(!job.getConfiguration().getBoolean(ENABLE_PREDICATE_FILTER_PUSHDOWN, DEFAULT_PREDICATE_PUSHDOWN_ENABLED)) {
+    if (!job.getConfiguration().getBoolean(ENABLE_PREDICATE_FILTER_PUSHDOWN, DEFAULT_PREDICATE_PUSHDOWN_ENABLED)) {
       return null;
     }
 
     List<String> fields = new ArrayList<String>();
 
-    for(FieldSchema field : schema.getFields()) {
-      switch(field.type) {
+    for (FieldSchema field : schema.getFields()) {
+      switch (field.type) {
         case DataType.BOOLEAN:
         case DataType.INTEGER:
         case DataType.LONG:
@@ -442,18 +455,18 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
 
   @Override
   public List<Expression.OpType> getSupportedExpressionTypes() {
-    OpType supportedTypes [] = {
-        OpType.OP_EQ,
-        OpType.OP_NE,
-        OpType.OP_GT,
-        OpType.OP_GE,
-        OpType.OP_LT,
-        OpType.OP_LE,
-        OpType.OP_AND,
-        OpType.OP_OR,
-        //OpType.OP_BETWEEN, // not implemented in Pig yet
-        //OpType.OP_IN,      // not implemented in Pig yet
-        OpType.OP_NOT
+    OpType supportedTypes[] = {
+      OpType.OP_EQ,
+      OpType.OP_NE,
+      OpType.OP_GT,
+      OpType.OP_GE,
+      OpType.OP_LT,
+      OpType.OP_LE,
+      OpType.OP_AND,
+      OpType.OP_OR,
+      // OpType.OP_BETWEEN, // not implemented in Pig yet
+      // OpType.OP_IN,      // not implemented in Pig yet
+      OpType.OP_NOT
     };
 
     return Arrays.asList(supportedTypes);
@@ -505,8 +518,7 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
         return buildFilter(op, (Column) rhs, (Const) lhs);
       }
     } else if (e instanceof UnaryExpression && op == OpType.OP_NOT) {
-      return LogicalInverseRewriter.rewrite(
-          not(buildFilter(((UnaryExpression) e).getExpression())));
+      return LogicalInverseRewriter.rewrite(not(buildFilter(((UnaryExpression) e).getExpression())));
     }
 
     throw new RuntimeException("Could not build filter for expression: " + e);
@@ -519,11 +531,14 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
       switch (f.type) {
         case DataType.BOOLEAN:
           Operators.BooleanColumn boolCol = booleanColumn(name);
-          switch(op) {
-            case OP_EQ: return eq(boolCol, getValue(value, boolCol.getColumnType()));
-            case OP_NE: return notEq(boolCol, getValue(value, boolCol.getColumnType()));
-            default: throw new RuntimeException(
-                "Operation " + op + " not supported for boolean column: " + name);
+          switch (op) {
+            case OP_EQ:
+              return eq(boolCol, getValue(value, boolCol.getColumnType()));
+            case OP_NE:
+              return notEq(boolCol, getValue(value, boolCol.getColumnType()));
+            default:
+              throw new RuntimeException(
+                  "Operation " + op + " not supported for boolean column: " + name);
           }
         case DataType.INTEGER:
           Operators.IntColumn intCol = intColumn(name);
@@ -549,15 +564,21 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
   }
 
   private static <C extends Comparable<C>, COL extends Operators.Column<C> & Operators.SupportsLtGt>
-  FilterPredicate op(Expression.OpType op, COL col, Const valueExpr) {
+      FilterPredicate op(Expression.OpType op, COL col, Const valueExpr) {
     C value = getValue(valueExpr, col.getColumnType());
     switch (op) {
-      case OP_EQ: return eq(col, value);
-      case OP_NE: return notEq(col, value);
-      case OP_GT: return gt(col, value);
-      case OP_GE: return gtEq(col, value);
-      case OP_LT: return lt(col, value);
-      case OP_LE: return ltEq(col, value);
+      case OP_EQ:
+        return eq(col, value);
+      case OP_NE:
+        return notEq(col, value);
+      case OP_GT:
+        return gt(col, value);
+      case OP_GE:
+        return gtEq(col, value);
+      case OP_LT:
+        return lt(col, value);
+      case OP_LE:
+        return ltEq(col, value);
     }
     return null;
   }
@@ -571,5 +592,4 @@ public class ParquetLoader extends LoadFunc implements LoadMetadata, LoadPushDow
 
     return type.cast(value);
   }
-
 }

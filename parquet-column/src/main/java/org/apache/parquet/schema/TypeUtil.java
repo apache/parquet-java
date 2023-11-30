@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -24,8 +24,7 @@ public class TypeUtil {
       @Override
       public void visit(GroupType groupType) {
         if (groupType.getFieldCount() <= 0) {
-          throw new InvalidSchemaException(
-              "Cannot write a schema with an empty group: " + groupType);
+          throw new InvalidSchemaException("Cannot write a schema with an empty group: " + groupType);
         }
         for (Type type : groupType.getFields()) {
           type.accept(this);
@@ -38,8 +37,7 @@ public class TypeUtil {
       }
 
       @Override
-      public void visit(PrimitiveType primitiveType) {
-      }
+      public void visit(PrimitiveType primitiveType) {}
     });
   }
 }

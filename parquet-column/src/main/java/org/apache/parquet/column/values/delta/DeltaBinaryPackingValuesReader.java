@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -19,15 +19,13 @@
 package org.apache.parquet.column.values.delta;
 
 import java.io.IOException;
-
+import java.nio.ByteBuffer;
 import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.column.values.ValuesReader;
 import org.apache.parquet.column.values.bitpacking.BytePackerForLong;
 import org.apache.parquet.column.values.bitpacking.Packer;
 import org.apache.parquet.io.ParquetDecodingException;
-
-import java.nio.ByteBuffer;
 
 /**
  * Read values written by {@link DeltaBinaryPackingValuesWriter}
@@ -38,6 +36,7 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
    * values read by the caller
    */
   private int valuesRead;
+
   private long minDeltaInCurrentBlock;
 
   /**
@@ -49,6 +48,7 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
    * when data is not aligned to mini block, which means padding 0s are in the buffer
    */
   private int valuesBuffered;
+
   private ByteBufferInputStream in;
   private DeltaBinaryPackingConfig config;
   private int[] bitWidths;
@@ -65,10 +65,12 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
     allocateValuesBuffer();
     bitWidths = new int[config.miniBlockNumInABlock];
 
-    //read first value from header
+    // read first value from header
     valuesBuffer[valuesBuffered++] = BytesUtils.readZigZagVarLong(in);
 
-    while (valuesBuffered < totalValueCount) { //values Buffered could be more than totalValueCount, since we flush on a mini block basis
+    while (valuesBuffered
+        < totalValueCount) { // values Buffered could be more than totalValueCount, since we flush on a mini
+      // block basis
       loadNewBlockToBuffer();
     }
     updateNextOffset((int) (in.position() - startPos));
@@ -80,7 +82,7 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
    */
   private void allocateValuesBuffer() {
     int totalMiniBlockCount = (int) Math.ceil((double) totalValueCount / config.miniBlockSizeInValues);
-    //+ 1 because first value written to header is also stored in values buffer
+    // + 1 because first value written to header is also stored in values buffer
     valuesBuffer = new long[totalMiniBlockCount * config.miniBlockSizeInValues + 1];
   }
 
@@ -132,9 +134,9 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
       unpackMiniBlock(packer);
     }
 
-    //calculate values from deltas unpacked for current block
-    int valueUnpacked=i*config.miniBlockSizeInValues;
-    for (int j = valuesBuffered-valueUnpacked; j < valuesBuffered; j++) {
+    // calculate values from deltas unpacked for current block
+    int valueUnpacked = i * config.miniBlockSizeInValues;
+    for (int j = valuesBuffered - valueUnpacked; j < valuesBuffered; j++) {
       int index = j;
       valuesBuffer[index] += minDeltaInCurrentBlock + valuesBuffer[index - 1];
     }

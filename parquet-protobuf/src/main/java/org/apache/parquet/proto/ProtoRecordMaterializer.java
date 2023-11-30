@@ -20,6 +20,7 @@ package org.apache.parquet.proto;
 
 import com.google.protobuf.Message;
 import com.google.protobuf.MessageOrBuilder;
+import java.util.Map;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.conf.HadoopParquetConfiguration;
 import org.apache.parquet.conf.ParquetConfiguration;
@@ -27,17 +28,23 @@ import org.apache.parquet.io.api.GroupConverter;
 import org.apache.parquet.io.api.RecordMaterializer;
 import org.apache.parquet.schema.MessageType;
 
-import java.util.Map;
-
 class ProtoRecordMaterializer<T extends MessageOrBuilder> extends RecordMaterializer<T> {
 
   private final ProtoRecordConverter<T> root;
 
-  public ProtoRecordMaterializer(Configuration conf, MessageType requestedSchema, Class<? extends Message> protobufClass, Map<String, String> metadata) {
+  public ProtoRecordMaterializer(
+      Configuration conf,
+      MessageType requestedSchema,
+      Class<? extends Message> protobufClass,
+      Map<String, String> metadata) {
     this(new HadoopParquetConfiguration(conf), requestedSchema, protobufClass, metadata);
   }
 
-  public ProtoRecordMaterializer(ParquetConfiguration conf, MessageType requestedSchema, Class<? extends Message> protobufClass, Map<String, String> metadata) {
+  public ProtoRecordMaterializer(
+      ParquetConfiguration conf,
+      MessageType requestedSchema,
+      Class<? extends Message> protobufClass,
+      Map<String, String> metadata) {
     this.root = new ProtoRecordConverter<T>(conf, protobufClass, requestedSchema, metadata);
   }
 
