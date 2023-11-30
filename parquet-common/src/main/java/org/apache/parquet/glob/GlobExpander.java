@@ -19,7 +19,6 @@
 package org.apache.parquet.glob;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import org.apache.parquet.glob.GlobNode.Atom;
