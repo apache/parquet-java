@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -42,8 +42,7 @@ public class DeltaByteArrayReader extends ValuesReader implements RequiresPrevio
   }
 
   @Override
-  public void initFromPage(int valueCount, ByteBufferInputStream stream)
-      throws IOException {
+  public void initFromPage(int valueCount, ByteBufferInputStream stream) throws IOException {
     prefixLengthReader.initFromPage(valueCount, stream);
     suffixReader.initFromPage(valueCount, stream);
   }
@@ -68,11 +67,11 @@ public class DeltaByteArrayReader extends ValuesReader implements RequiresPrevio
     // because of PARQUET-246.
 
     // We have to do this to materialize the output
-    if(prefixLength != 0) {
+    if (prefixLength != 0) {
       byte[] out = new byte[length];
       System.arraycopy(previous.getBytesUnsafe(), 0, out, 0, prefixLength);
       System.arraycopy(suffix.getBytesUnsafe(), 0, out, prefixLength, suffix.length());
-      previous =  Binary.fromConstantByteArray(out);
+      previous = Binary.fromConstantByteArray(out);
     } else {
       previous = suffix;
     }

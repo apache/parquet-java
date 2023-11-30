@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -18,21 +18,18 @@
  */
 package org.apache.parquet.io;
 
-
 import java.util.Arrays;
 import java.util.List;
-
 import org.apache.parquet.column.ColumnDescriptor;
-import org.apache.parquet.schema.Type;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
-
+import org.apache.parquet.schema.Type;
 
 /**
  * Primitive level of the IO structure
  */
 public class PrimitiveColumnIO extends ColumnIO {
-//  private static final Logger logger = Logger.getLogger(PrimitiveColumnIO.class.getName());
+  //  private static final Logger logger = Logger.getLogger(PrimitiveColumnIO.class.getName());
 
   private ColumnIO[] path;
   private ColumnDescriptor columnDescriptor;
@@ -44,20 +41,17 @@ public class PrimitiveColumnIO extends ColumnIO {
   }
 
   @Override
-  void setLevels(int r, int d, String[] fieldPath, int[] fieldIndexPath, List<ColumnIO> repetition, List<ColumnIO> path) {
+  void setLevels(
+      int r, int d, String[] fieldPath, int[] fieldIndexPath, List<ColumnIO> repetition, List<ColumnIO> path) {
     super.setLevels(r, d, fieldPath, fieldIndexPath, repetition, path);
     PrimitiveType type = getType().asPrimitiveType();
-    this.columnDescriptor = new ColumnDescriptor(
-        fieldPath,
-        type,
-        getRepetitionLevel(),
-        getDefinitionLevel());
+    this.columnDescriptor = new ColumnDescriptor(fieldPath, type, getRepetitionLevel(), getDefinitionLevel());
     this.path = path.toArray(new ColumnIO[0]);
   }
 
   @Override
   List<String[]> getColumnNames() {
-    return Arrays.asList(new String[][] { getFieldPath() });
+    return Arrays.asList(new String[][] {getFieldPath()});
   }
 
   public ColumnDescriptor getColumnDescriptor() {
@@ -88,6 +82,7 @@ public class PrimitiveColumnIO extends ColumnIO {
   PrimitiveColumnIO getFirst() {
     return this;
   }
+
   public boolean isFirst(int r) {
     return getFirst(r) == this;
   }
@@ -104,5 +99,4 @@ public class PrimitiveColumnIO extends ColumnIO {
   public int getId() {
     return id;
   }
-
 }

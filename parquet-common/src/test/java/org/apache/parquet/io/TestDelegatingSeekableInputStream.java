@@ -19,17 +19,16 @@
 
 package org.apache.parquet.io;
 
-import org.apache.parquet.TestUtils;
-import org.junit.Assert;
-import org.junit.Test;
+import static org.apache.parquet.io.MockInputStream.TEST_ARRAY;
+
 import java.io.EOFException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.concurrent.Callable;
-
-import static org.apache.parquet.io.MockInputStream.TEST_ARRAY;
-
+import org.apache.parquet.TestUtils;
+import org.junit.Assert;
+import org.junit.Test;
 
 public class TestDelegatingSeekableInputStream {
 
@@ -40,8 +39,7 @@ public class TestDelegatingSeekableInputStream {
     MockInputStream stream = new MockInputStream();
     DelegatingSeekableInputStream.readFully(stream, buffer, 0, buffer.length);
 
-    Assert.assertArrayEquals("Byte array contents should match",
-        Arrays.copyOfRange(TEST_ARRAY, 0, 5), buffer);
+    Assert.assertArrayEquals("Byte array contents should match", Arrays.copyOfRange(TEST_ARRAY, 0, 5), buffer);
     Assert.assertEquals("Stream position should reflect bytes read", 5, stream.getPos());
   }
 
@@ -52,8 +50,7 @@ public class TestDelegatingSeekableInputStream {
     MockInputStream stream = new MockInputStream(2, 3, 3);
     DelegatingSeekableInputStream.readFully(stream, buffer, 0, buffer.length);
 
-    Assert.assertArrayEquals("Byte array contents should match",
-        Arrays.copyOfRange(TEST_ARRAY, 0, 5), buffer);
+    Assert.assertArrayEquals("Byte array contents should match", Arrays.copyOfRange(TEST_ARRAY, 0, 5), buffer);
     Assert.assertEquals("Stream position should reflect bytes read", 5, stream.getPos());
   }
 
@@ -67,8 +64,8 @@ public class TestDelegatingSeekableInputStream {
     Assert.assertArrayEquals("Byte array contents should match", TEST_ARRAY, buffer);
     Assert.assertEquals("Stream position should reflect bytes read", 10, stream.getPos());
 
-    TestUtils.assertThrows("Should throw EOFException if no more bytes left",
-        EOFException.class, (Callable<Void>) () -> {
+    TestUtils.assertThrows(
+        "Should throw EOFException if no more bytes left", EOFException.class, (Callable<Void>) () -> {
           DelegatingSeekableInputStream.readFully(stream, buffer, 0, 1);
           return null;
         });
@@ -80,14 +77,13 @@ public class TestDelegatingSeekableInputStream {
 
     final MockInputStream stream = new MockInputStream(2, 3, 3);
 
-    TestUtils.assertThrows("Should throw EOFException if no more bytes left",
-        EOFException.class, (Callable<Void>) () -> {
+    TestUtils.assertThrows(
+        "Should throw EOFException if no more bytes left", EOFException.class, (Callable<Void>) () -> {
           DelegatingSeekableInputStream.readFully(stream, buffer, 0, buffer.length);
           return null;
         });
 
-    Assert.assertArrayEquals("Should have consumed bytes",
-        TEST_ARRAY, Arrays.copyOfRange(buffer, 0, 10));
+    Assert.assertArrayEquals("Should have consumed bytes", TEST_ARRAY, Arrays.copyOfRange(buffer, 0, 10));
     Assert.assertEquals("Stream position should reflect bytes read", 10, stream.getPos());
   }
 
@@ -98,8 +94,10 @@ public class TestDelegatingSeekableInputStream {
     MockInputStream stream = new MockInputStream();
     DelegatingSeekableInputStream.readFully(stream, buffer, 2, 5);
 
-    Assert.assertArrayEquals("Byte array contents should match",
-        Arrays.copyOfRange(TEST_ARRAY, 0, 5), Arrays.copyOfRange(buffer, 2, 7));
+    Assert.assertArrayEquals(
+        "Byte array contents should match",
+        Arrays.copyOfRange(TEST_ARRAY, 0, 5),
+        Arrays.copyOfRange(buffer, 2, 7));
     Assert.assertEquals("Stream position should reflect bytes read", 5, stream.getPos());
   }
 
@@ -120,8 +118,10 @@ public class TestDelegatingSeekableInputStream {
     MockInputStream stream = new MockInputStream(2, 2, 3);
     DelegatingSeekableInputStream.readFully(stream, buffer, 2, 5);
 
-    Assert.assertArrayEquals("Byte array contents should match",
-        Arrays.copyOfRange(TEST_ARRAY, 0, 5), Arrays.copyOfRange(buffer, 2, 7));
+    Assert.assertArrayEquals(
+        "Byte array contents should match",
+        Arrays.copyOfRange(TEST_ARRAY, 0, 5),
+        Arrays.copyOfRange(buffer, 2, 7));
     Assert.assertEquals("Stream position should reflect bytes read", 5, stream.getPos());
   }
 
@@ -142,8 +142,7 @@ public class TestDelegatingSeekableInputStream {
     Assert.assertEquals(-1, len);
 
     readBuffer.flip();
-    Assert.assertEquals("Buffer contents should match",
-        ByteBuffer.wrap(TEST_ARRAY), readBuffer);
+    Assert.assertEquals("Buffer contents should match", ByteBuffer.wrap(TEST_ARRAY), readBuffer);
   }
 
   @Test
@@ -161,8 +160,7 @@ public class TestDelegatingSeekableInputStream {
     Assert.assertEquals(0, len);
 
     readBuffer.flip();
-    Assert.assertEquals("Buffer contents should match",
-        ByteBuffer.wrap(TEST_ARRAY, 0, 5), readBuffer);
+    Assert.assertEquals("Buffer contents should match", ByteBuffer.wrap(TEST_ARRAY, 0, 5), readBuffer);
   }
 
   @Test
@@ -192,8 +190,7 @@ public class TestDelegatingSeekableInputStream {
     Assert.assertEquals(10, readBuffer.limit());
 
     readBuffer.flip();
-    Assert.assertEquals("Buffer contents should match",
-        ByteBuffer.wrap(TEST_ARRAY), readBuffer);
+    Assert.assertEquals("Buffer contents should match", ByteBuffer.wrap(TEST_ARRAY), readBuffer);
   }
 
   @Test
@@ -218,8 +215,7 @@ public class TestDelegatingSeekableInputStream {
     Assert.assertEquals(-1, len);
 
     readBuffer.reset();
-    Assert.assertEquals("Buffer contents should match",
-        ByteBuffer.wrap(TEST_ARRAY), readBuffer);
+    Assert.assertEquals("Buffer contents should match", ByteBuffer.wrap(TEST_ARRAY), readBuffer);
   }
 
   @Test
@@ -243,8 +239,7 @@ public class TestDelegatingSeekableInputStream {
     Assert.assertEquals(0, len);
 
     readBuffer.flip();
-    Assert.assertEquals("Buffer contents should match",
-        ByteBuffer.wrap(TEST_ARRAY, 0, 8), readBuffer);
+    Assert.assertEquals("Buffer contents should match", ByteBuffer.wrap(TEST_ARRAY, 0, 8), readBuffer);
   }
 
   @Test
@@ -270,8 +265,7 @@ public class TestDelegatingSeekableInputStream {
     Assert.assertEquals(0, len);
 
     readBuffer.reset();
-    Assert.assertEquals("Buffer contents should match",
-        ByteBuffer.wrap(TEST_ARRAY, 0, 8), readBuffer);
+    Assert.assertEquals("Buffer contents should match", ByteBuffer.wrap(TEST_ARRAY, 0, 8), readBuffer);
   }
 
   @Test
@@ -289,8 +283,7 @@ public class TestDelegatingSeekableInputStream {
     Assert.assertEquals(-1, len);
 
     readBuffer.flip();
-    Assert.assertEquals("Buffer contents should match",
-        ByteBuffer.wrap(TEST_ARRAY), readBuffer);
+    Assert.assertEquals("Buffer contents should match", ByteBuffer.wrap(TEST_ARRAY), readBuffer);
   }
 
   @Test
@@ -308,8 +301,7 @@ public class TestDelegatingSeekableInputStream {
     Assert.assertEquals(0, len);
 
     readBuffer.flip();
-    Assert.assertEquals("Buffer contents should match",
-        ByteBuffer.wrap(TEST_ARRAY, 0, 5), readBuffer);
+    Assert.assertEquals("Buffer contents should match", ByteBuffer.wrap(TEST_ARRAY, 0, 5), readBuffer);
   }
 
   @Test
@@ -339,8 +331,7 @@ public class TestDelegatingSeekableInputStream {
     Assert.assertEquals(10, readBuffer.limit());
 
     readBuffer.flip();
-    Assert.assertEquals("Buffer contents should match",
-        ByteBuffer.wrap(TEST_ARRAY), readBuffer);
+    Assert.assertEquals("Buffer contents should match", ByteBuffer.wrap(TEST_ARRAY), readBuffer);
   }
 
   @Test
@@ -365,8 +356,7 @@ public class TestDelegatingSeekableInputStream {
     Assert.assertEquals(-1, len);
 
     readBuffer.reset();
-    Assert.assertEquals("Buffer contents should match",
-        ByteBuffer.wrap(TEST_ARRAY), readBuffer);
+    Assert.assertEquals("Buffer contents should match", ByteBuffer.wrap(TEST_ARRAY), readBuffer);
   }
 
   @Test
@@ -390,8 +380,7 @@ public class TestDelegatingSeekableInputStream {
     Assert.assertEquals(0, len);
 
     readBuffer.flip();
-    Assert.assertEquals("Buffer contents should match",
-        ByteBuffer.wrap(TEST_ARRAY, 0, 8), readBuffer);
+    Assert.assertEquals("Buffer contents should match", ByteBuffer.wrap(TEST_ARRAY, 0, 8), readBuffer);
   }
 
   @Test
@@ -417,8 +406,7 @@ public class TestDelegatingSeekableInputStream {
     Assert.assertEquals(0, len);
 
     readBuffer.reset();
-    Assert.assertEquals("Buffer contents should match",
-        ByteBuffer.wrap(TEST_ARRAY, 0, 8), readBuffer);
+    Assert.assertEquals("Buffer contents should match", ByteBuffer.wrap(TEST_ARRAY, 0, 8), readBuffer);
   }
 
   @Test
@@ -453,8 +441,7 @@ public class TestDelegatingSeekableInputStream {
     Assert.assertEquals(-1, len);
 
     readBuffer.flip();
-    Assert.assertEquals("Buffer contents should match",
-        ByteBuffer.wrap(TEST_ARRAY), readBuffer);
+    Assert.assertEquals("Buffer contents should match", ByteBuffer.wrap(TEST_ARRAY), readBuffer);
   }
 
   @Test
@@ -482,8 +469,7 @@ public class TestDelegatingSeekableInputStream {
     Assert.assertEquals(0, len);
 
     readBuffer.reset();
-    Assert.assertEquals("Buffer contents should match",
-        ByteBuffer.wrap(TEST_ARRAY, 0, 8), readBuffer);
+    Assert.assertEquals("Buffer contents should match", ByteBuffer.wrap(TEST_ARRAY, 0, 8), readBuffer);
   }
 
   @Test
@@ -501,8 +487,7 @@ public class TestDelegatingSeekableInputStream {
     Assert.assertEquals(8, readBuffer.limit());
 
     readBuffer.flip();
-    Assert.assertEquals("Buffer contents should match",
-        ByteBuffer.wrap(TEST_ARRAY, 0, 8), readBuffer);
+    Assert.assertEquals("Buffer contents should match", ByteBuffer.wrap(TEST_ARRAY, 0, 8), readBuffer);
   }
 
   @Test
@@ -511,11 +496,10 @@ public class TestDelegatingSeekableInputStream {
 
     final MockInputStream stream = new MockInputStream();
 
-    TestUtils.assertThrows("Should throw EOFException",
-        EOFException.class, () -> {
-          DelegatingSeekableInputStream.readFullyHeapBuffer(stream, readBuffer);
-          return null;
-        });
+    TestUtils.assertThrows("Should throw EOFException", EOFException.class, () -> {
+      DelegatingSeekableInputStream.readFullyHeapBuffer(stream, readBuffer);
+      return null;
+    });
 
     Assert.assertEquals(0, readBuffer.position());
     Assert.assertEquals(20, readBuffer.limit());
@@ -538,8 +522,7 @@ public class TestDelegatingSeekableInputStream {
     Assert.assertEquals(10, readBuffer.limit());
 
     readBuffer.flip();
-    Assert.assertEquals("Buffer contents should match",
-        ByteBuffer.wrap(TEST_ARRAY), readBuffer);
+    Assert.assertEquals("Buffer contents should match", ByteBuffer.wrap(TEST_ARRAY), readBuffer);
   }
 
   @Test
@@ -557,8 +540,7 @@ public class TestDelegatingSeekableInputStream {
     Assert.assertEquals(10, readBuffer.limit());
 
     readBuffer.flip();
-    Assert.assertEquals("Buffer contents should match",
-        ByteBuffer.wrap(TEST_ARRAY), readBuffer);
+    Assert.assertEquals("Buffer contents should match", ByteBuffer.wrap(TEST_ARRAY), readBuffer);
   }
 
   @Test
@@ -578,8 +560,7 @@ public class TestDelegatingSeekableInputStream {
     Assert.assertEquals(10, readBuffer.limit());
 
     readBuffer.reset();
-    Assert.assertEquals("Buffer contents should match",
-        ByteBuffer.wrap(TEST_ARRAY, 0, 7), readBuffer);
+    Assert.assertEquals("Buffer contents should match", ByteBuffer.wrap(TEST_ARRAY, 0, 7), readBuffer);
   }
 
   @Test
@@ -598,8 +579,7 @@ public class TestDelegatingSeekableInputStream {
     Assert.assertEquals(7, readBuffer.limit());
 
     readBuffer.flip();
-    Assert.assertEquals("Buffer contents should match",
-        ByteBuffer.wrap(TEST_ARRAY, 0, 7), readBuffer);
+    Assert.assertEquals("Buffer contents should match", ByteBuffer.wrap(TEST_ARRAY, 0, 7), readBuffer);
 
     readBuffer.position(7);
     readBuffer.limit(10);
@@ -608,8 +588,7 @@ public class TestDelegatingSeekableInputStream {
     Assert.assertEquals(10, readBuffer.limit());
 
     readBuffer.flip();
-    Assert.assertEquals("Buffer contents should match",
-        ByteBuffer.wrap(TEST_ARRAY), readBuffer);
+    Assert.assertEquals("Buffer contents should match", ByteBuffer.wrap(TEST_ARRAY), readBuffer);
   }
 
   @Test
@@ -630,8 +609,7 @@ public class TestDelegatingSeekableInputStream {
     Assert.assertEquals(7, readBuffer.limit());
 
     readBuffer.reset();
-    Assert.assertEquals("Buffer contents should match",
-        ByteBuffer.wrap(TEST_ARRAY, 0, 4), readBuffer);
+    Assert.assertEquals("Buffer contents should match", ByteBuffer.wrap(TEST_ARRAY, 0, 4), readBuffer);
 
     readBuffer.position(7);
     readBuffer.limit(10);
@@ -640,8 +618,7 @@ public class TestDelegatingSeekableInputStream {
     Assert.assertEquals(10, readBuffer.limit());
 
     readBuffer.reset();
-    Assert.assertEquals("Buffer contents should match",
-        ByteBuffer.wrap(TEST_ARRAY, 0, 7), readBuffer);
+    Assert.assertEquals("Buffer contents should match", ByteBuffer.wrap(TEST_ARRAY, 0, 7), readBuffer);
   }
 
   @Test
@@ -659,8 +636,7 @@ public class TestDelegatingSeekableInputStream {
     Assert.assertEquals(8, readBuffer.limit());
 
     readBuffer.flip();
-    Assert.assertEquals("Buffer contents should match",
-        ByteBuffer.wrap(TEST_ARRAY, 0, 8), readBuffer);
+    Assert.assertEquals("Buffer contents should match", ByteBuffer.wrap(TEST_ARRAY, 0, 8), readBuffer);
   }
 
   @Test
@@ -669,11 +645,10 @@ public class TestDelegatingSeekableInputStream {
 
     final MockInputStream stream = new MockInputStream();
 
-    TestUtils.assertThrows("Should throw EOFException",
-        EOFException.class, () -> {
-          DelegatingSeekableInputStream.readFullyDirectBuffer(stream, readBuffer, TEMP.get());
-          return null;
-        });
+    TestUtils.assertThrows("Should throw EOFException", EOFException.class, () -> {
+      DelegatingSeekableInputStream.readFullyDirectBuffer(stream, readBuffer, TEMP.get());
+      return null;
+    });
 
     // NOTE: This behavior differs from readFullyHeapBuffer because direct uses
     // several read operations that will read up to the end of the input. This
@@ -702,8 +677,7 @@ public class TestDelegatingSeekableInputStream {
     Assert.assertEquals(10, readBuffer.limit());
 
     readBuffer.flip();
-    Assert.assertEquals("Buffer contents should match",
-        ByteBuffer.wrap(TEST_ARRAY), readBuffer);
+    Assert.assertEquals("Buffer contents should match", ByteBuffer.wrap(TEST_ARRAY), readBuffer);
   }
 
   @Test
@@ -721,8 +695,7 @@ public class TestDelegatingSeekableInputStream {
     Assert.assertEquals(10, readBuffer.limit());
 
     readBuffer.flip();
-    Assert.assertEquals("Buffer contents should match",
-        ByteBuffer.wrap(TEST_ARRAY), readBuffer);
+    Assert.assertEquals("Buffer contents should match", ByteBuffer.wrap(TEST_ARRAY), readBuffer);
   }
 
   @Test
@@ -742,8 +715,7 @@ public class TestDelegatingSeekableInputStream {
     Assert.assertEquals(10, readBuffer.limit());
 
     readBuffer.reset();
-    Assert.assertEquals("Buffer contents should match",
-        ByteBuffer.wrap(TEST_ARRAY, 0, 7), readBuffer);
+    Assert.assertEquals("Buffer contents should match", ByteBuffer.wrap(TEST_ARRAY, 0, 7), readBuffer);
   }
 
   @Test
@@ -762,8 +734,7 @@ public class TestDelegatingSeekableInputStream {
     Assert.assertEquals(7, readBuffer.limit());
 
     readBuffer.flip();
-    Assert.assertEquals("Buffer contents should match",
-        ByteBuffer.wrap(TEST_ARRAY, 0, 7), readBuffer);
+    Assert.assertEquals("Buffer contents should match", ByteBuffer.wrap(TEST_ARRAY, 0, 7), readBuffer);
 
     readBuffer.position(7);
     readBuffer.limit(10);
@@ -772,8 +743,7 @@ public class TestDelegatingSeekableInputStream {
     Assert.assertEquals(10, readBuffer.limit());
 
     readBuffer.flip();
-    Assert.assertEquals("Buffer contents should match",
-        ByteBuffer.wrap(TEST_ARRAY), readBuffer);
+    Assert.assertEquals("Buffer contents should match", ByteBuffer.wrap(TEST_ARRAY), readBuffer);
   }
 
   @Test
@@ -794,8 +764,7 @@ public class TestDelegatingSeekableInputStream {
     Assert.assertEquals(7, readBuffer.limit());
 
     readBuffer.reset();
-    Assert.assertEquals("Buffer contents should match",
-        ByteBuffer.wrap(TEST_ARRAY, 0, 4), readBuffer);
+    Assert.assertEquals("Buffer contents should match", ByteBuffer.wrap(TEST_ARRAY, 0, 4), readBuffer);
 
     readBuffer.position(7);
     readBuffer.limit(10);
@@ -804,8 +773,7 @@ public class TestDelegatingSeekableInputStream {
     Assert.assertEquals(10, readBuffer.limit());
 
     readBuffer.reset();
-    Assert.assertEquals("Buffer contents should match",
-        ByteBuffer.wrap(TEST_ARRAY, 0, 7), readBuffer);
+    Assert.assertEquals("Buffer contents should match", ByteBuffer.wrap(TEST_ARRAY, 0, 7), readBuffer);
   }
 
   @Test
@@ -828,8 +796,7 @@ public class TestDelegatingSeekableInputStream {
     Assert.assertEquals(7, readBuffer.limit());
 
     readBuffer.reset();
-    Assert.assertEquals("Buffer contents should match",
-        ByteBuffer.wrap(TEST_ARRAY, 0, 4), readBuffer);
+    Assert.assertEquals("Buffer contents should match", ByteBuffer.wrap(TEST_ARRAY, 0, 4), readBuffer);
 
     readBuffer.position(7);
     readBuffer.limit(10);
@@ -838,7 +805,6 @@ public class TestDelegatingSeekableInputStream {
     Assert.assertEquals(10, readBuffer.limit());
 
     readBuffer.reset();
-    Assert.assertEquals("Buffer contents should match",
-        ByteBuffer.wrap(TEST_ARRAY, 0, 7), readBuffer);
+    Assert.assertEquals("Buffer contents should match", ByteBuffer.wrap(TEST_ARRAY, 0, 7), readBuffer);
   }
 }

@@ -19,18 +19,24 @@
 
 package org.apache.parquet.cli.commands;
 
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
+
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
 import com.beust.jcommander.internal.Lists;
 import com.google.common.base.Predicate;
 import com.google.common.collect.Iterables;
-import org.apache.parquet.cli.BaseCommand;
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.List;
+import javax.annotation.Nullable;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.CorruptStatistics;
 import org.apache.parquet.Version;
 import org.apache.parquet.VersionParser;
 import org.apache.parquet.bytes.BytesInput;
-import org.apache.parquet.util.DynConstructors;
+import org.apache.parquet.cli.BaseCommand;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.ColumnReader;
 import org.apache.parquet.column.page.DataPage;
@@ -49,14 +55,8 @@ import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.PrimitiveConverter;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeNameConverter;
+import org.apache.parquet.util.DynConstructors;
 import org.slf4j.Logger;
-import javax.annotation.Nullable;
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.List;
-
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 
 @Parameters(commandDescription = "Check Parquet files for corrupt page and column stats (PARQUET-251)")
 public class CheckParquet251Command extends BaseCommand {
@@ -86,21 +86,19 @@ public class CheckParquet251Command extends BaseCommand {
 
   private String check(String file) throws IOException {
     Path path = qualifiedPath(file);
-    ParquetMetadata footer = ParquetFileReader.readFooter(
-        getConf(), path, ParquetMetadataConverter.NO_FILTER);
+    ParquetMetadata footer = ParquetFileReader.readFooter(getConf(), path, ParquetMetadataConverter.NO_FILTER);
 
     FileMetaData meta = footer.getFileMetaData();
     String createdBy = meta.getCreatedBy();
     if (CorruptStatistics.shouldIgnoreStatistics(createdBy, BINARY)) {
       // create fake metadata that will read corrupt stats and return them
-      FileMetaData fakeMeta = new FileMetaData(
-          meta.getSchema(), meta.getKeyValueMetaData(), Version.FULL_VERSION);
+      FileMetaData fakeMeta =
+          new FileMetaData(meta.getSchema(), meta.getKeyValueMetaData(), Version.FULL_VERSION);
 
       // get just the binary columns
       List<ColumnDescriptor> columns = Lists.newArrayList();
-      Iterables.addAll(columns, Iterables.filter(
-          meta.getSchema().getColumns(),
-          new Predicate<ColumnDescriptor>() {
+      Iterables.addAll(
+          columns, Iterables.filter(meta.getSchema().getColumns(), new Predicate<ColumnDescriptor>() {
             @Override
             public boolean apply(@Nullable ColumnDescriptor input) {
               return input != null && input.getType() == BINARY;
@@ -108,11 +106,12 @@ public class CheckParquet251Command extends BaseCommand {
           }));
 
       // now check to see if the data is actually corrupt
-      try (ParquetFileReader reader = new ParquetFileReader(getConf(),
-        fakeMeta, path, footer.getBlocks(), columns)) {
+      try (ParquetFileReader reader =
+          new ParquetFileReader(getConf(), fakeMeta, path, footer.getBlocks(), columns)) {
         PageStatsValidator validator = new PageStatsValidator();
-        for (PageReadStore pages = reader.readNextRowGroup(); pages != null;
-             pages = reader.readNextRowGroup()) {
+        for (PageReadStore pages = reader.readNextRowGroup();
+            pages != null;
+            pages = reader.readNextRowGroup()) {
           validator.validate(columns, pages);
         }
       } catch (BadStatsException e) {
@@ -125,11 +124,8 @@ public class CheckParquet251Command extends BaseCommand {
 
   @Override
   public List<String> getExamples() {
-    return Arrays.asList(
-        "# Check file1.parquet for corrupt page and column stats",
-        "file1.parquet");
+    return Arrays.asList("# Check file1.parquet for corrupt page and column stats", "file1.parquet");
   }
-
 
   public static class BadStatsException extends RuntimeException {
     public BadStatsException(String message) {
@@ -162,8 +158,7 @@ public class CheckParquet251Command extends BaseCommand {
     }
   }
 
-  private static <T extends Comparable<T>>
-  Statistics<T> getStatisticsFromPageHeader(DataPage page) {
+  private static <T extends Comparable<T>> Statistics<T> getStatisticsFromPageHeader(DataPage page) {
     return page.accept(new DataPage.Visitor<Statistics<T>>() {
       @Override
       @SuppressWarnings("unchecked")
@@ -210,8 +205,7 @@ public class CheckParquet251Command extends BaseCommand {
     }
   }
 
-  private PrimitiveConverter getValidatingConverter(
-      final DataPage page, PrimitiveTypeName type) {
+  private PrimitiveConverter getValidatingConverter(final DataPage page, PrimitiveTypeName type) {
     return type.convert(new PrimitiveTypeNameConverter<PrimitiveConverter, RuntimeException>() {
       @Override
       public PrimitiveConverter convertFLOAT(PrimitiveTypeName primitiveTypeName) {
@@ -291,12 +285,15 @@ public class CheckParquet251Command extends BaseCommand {
     });
   }
 
-  private static final DynConstructors.Ctor<ColumnReader> COL_READER_CTOR =
-      new DynConstructors.Builder(ColumnReader.class)
-          .hiddenImpl("org.apache.parquet.column.impl.ColumnReaderImpl",
-              ColumnDescriptor.class, PageReader.class,
-              PrimitiveConverter.class, VersionParser.ParsedVersion.class)
-          .build();
+  private static final DynConstructors.Ctor<ColumnReader> COL_READER_CTOR = new DynConstructors.Builder(
+          ColumnReader.class)
+      .hiddenImpl(
+          "org.apache.parquet.column.impl.ColumnReaderImpl",
+          ColumnDescriptor.class,
+          PageReader.class,
+          PrimitiveConverter.class,
+          VersionParser.ParsedVersion.class)
+      .build();
 
   public class PageStatsValidator {
     public void validate(List<ColumnDescriptor> columns, PageReadStore store) {
@@ -308,7 +305,8 @@ public class CheckParquet251Command extends BaseCommand {
           try {
             reusableDict = new DictionaryPage(
                 BytesInput.from(dict.getBytes().toByteArray()),
-                dict.getDictionarySize(), dict.getEncoding());
+                dict.getDictionarySize(),
+                dict.getEncoding());
           } catch (IOException e) {
             throw new ParquetDecodingException("Cannot read dictionary", e);
           }
@@ -320,8 +318,7 @@ public class CheckParquet251Command extends BaseCommand {
       }
     }
 
-    private void validateStatsForPage(DataPage page, DictionaryPage dict,
-                                      ColumnDescriptor desc) {
+    private void validateStatsForPage(DataPage page, DictionaryPage dict, ColumnDescriptor desc) {
       SingletonPageReader reader = new SingletonPageReader(dict, page);
       PrimitiveConverter converter = getValidatingConverter(page, desc.getType());
       Statistics stats = getStatisticsFromPageHeader(page);
@@ -345,7 +342,9 @@ public class CheckParquet251Command extends BaseCommand {
       console.debug(String.format(
           "Validated stats min=%s max=%s nulls=%d for page=%s col=%s",
           stats.minAsString(),
-          stats.maxAsString(), stats.getNumNulls(), page,
+          stats.maxAsString(),
+          stats.getNumNulls(),
+          page,
           Arrays.toString(desc.getPath())));
     }
   }

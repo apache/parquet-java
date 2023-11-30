@@ -18,18 +18,17 @@
  */
 package org.apache.parquet.hadoop.codec;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.compress.Compressor;
 import org.apache.parquet.Preconditions;
-
-import java.io.IOException;
-import java.nio.ByteBuffer;
 
 /**
  * This class is a wrapper around the underlying compressor. It always consumes
  * the entire input in setInput and compresses it as one compressed block.
  */
-abstract public class NonBlockedCompressor implements Compressor {
+public abstract class NonBlockedCompressor implements Compressor {
 
   // Buffer for compressed output. This buffer grows as necessary.
   private ByteBuffer outputBuffer = ByteBuffer.allocateDirect(0);
@@ -97,8 +96,8 @@ abstract public class NonBlockedCompressor implements Compressor {
     // dependency by some external downstream projects.
     SnappyUtil.validateBuffer(buffer, off, len);
 
-    Preconditions.checkArgument(!outputBuffer.hasRemaining(),
-      "Output buffer should be empty. Caller must call compress()");
+    Preconditions.checkArgument(
+        !outputBuffer.hasRemaining(), "Output buffer should be empty. Caller must call compress()");
 
     if (inputBuffer.capacity() - inputBuffer.position() < len) {
       ByteBuffer tmp = ByteBuffer.allocateDirect(inputBuffer.position() + len);
@@ -166,7 +165,7 @@ abstract public class NonBlockedCompressor implements Compressor {
 
   @Override
   public void setDictionary(byte[] dictionary, int off, int len) {
-    // No-op		
+    // No-op
   }
 
   /**
@@ -176,7 +175,7 @@ abstract public class NonBlockedCompressor implements Compressor {
    * @param byteSize byte size of the data to compress
    * @return maximum byte size of the compressed data
    */
-  abstract protected int maxCompressedLength(int byteSize);
+  protected abstract int maxCompressedLength(int byteSize);
 
   /**
    * Compress the content in the given input buffer. After the compression,
@@ -187,6 +186,5 @@ abstract public class NonBlockedCompressor implements Compressor {
    * @param compressed   output of the compressed data. Uses range [pos()..].
    * @return byte size of the compressed data.
    */
-  abstract protected int compress(ByteBuffer uncompressed, ByteBuffer compressed) throws IOException;
-
+  protected abstract int compress(ByteBuffer uncompressed, ByteBuffer compressed) throws IOException;
 }

@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -22,17 +22,17 @@ import static java.lang.Thread.sleep;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
+import com.twitter.data.proto.tutorial.thrift.AddressBook;
+import com.twitter.data.proto.tutorial.thrift.Name;
+import com.twitter.data.proto.tutorial.thrift.Person;
+import com.twitter.data.proto.tutorial.thrift.PhoneNumber;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
-
-import org.junit.Assert;
-
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -42,19 +42,14 @@ import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
-import org.apache.thrift.TBase;
-import org.junit.Test;
-
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.thrift.test.compat.StructV1;
 import org.apache.parquet.thrift.test.compat.StructV2;
 import org.apache.parquet.thrift.test.compat.StructV3;
-
-import com.twitter.data.proto.tutorial.thrift.AddressBook;
-import com.twitter.data.proto.tutorial.thrift.Name;
-import com.twitter.data.proto.tutorial.thrift.Person;
-import com.twitter.data.proto.tutorial.thrift.PhoneNumber;
+import org.apache.thrift.TBase;
+import org.junit.Assert;
+import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -65,18 +60,20 @@ public class TestInputOutputFormat {
     final ArrayList<Person> persons = new ArrayList<Person>();
     for (int j = 0; j < i % 3; j++) {
       final ArrayList<PhoneNumber> phones = new ArrayList<PhoneNumber>();
-      for (int k = 0; k < i%4; k++) {
-        phones.add(new PhoneNumber("12345"+i));
+      for (int k = 0; k < i % 4; k++) {
+        phones.add(new PhoneNumber("12345" + i));
       }
-      persons.add(new Person(new Name("John"+i, "Roberts"), i, "John@example.com" + i, phones));
+      persons.add(new Person(new Name("John" + i, "Roberts"), i, "John@example.com" + i, phones));
     }
     AddressBook a = new AddressBook(persons);
     return a;
-  };
+  }
+  ;
 
   public static class MyMapper extends Mapper<LongWritable, Text, Void, AddressBook> {
 
-    public void run(org.apache.hadoop.mapreduce.Mapper<LongWritable,Text,Void,AddressBook>.Context context) throws IOException, InterruptedException {
+    public void run(org.apache.hadoop.mapreduce.Mapper<LongWritable, Text, Void, AddressBook>.Context context)
+        throws IOException, InterruptedException {
       for (int i = 0; i < 10; i++) {
         AddressBook a = TestInputOutputFormat.nextAddressbook(i);
         context.write(null, a);
@@ -85,10 +82,10 @@ public class TestInputOutputFormat {
   }
 
   public static class MyMapper2 extends Mapper<Void, Group, LongWritable, Text> {
-    protected void map(Void key, AddressBook value, Mapper<Void,Group,LongWritable,Text>.Context context) throws IOException ,InterruptedException {
+    protected void map(Void key, AddressBook value, Mapper<Void, Group, LongWritable, Text>.Context context)
+        throws IOException, InterruptedException {
       context.write(null, new Text(value.toString()));
     }
-
   }
 
   @Test
@@ -138,39 +135,59 @@ public class TestInputOutputFormat {
       lineOut = lineOut.substring(lineOut.indexOf("\t") + 1);
       AddressBook a = nextAddressbook(lineNumber);
       assertEquals("line " + lineNumber, a.toString(), lineOut);
-      ++ lineNumber;
+      ++lineNumber;
     }
     assertNull("line " + lineNumber, out.readLine());
     out.close();
   }
 
   public static class SchemaEvolutionMapper1 extends Mapper<LongWritable, Text, Void, StructV1> {
-    protected void map(LongWritable key, Text value, org.apache.hadoop.mapreduce.Mapper<LongWritable,Text,Void,StructV1>.Context context) throws IOException ,InterruptedException {
+    protected void map(
+        LongWritable key,
+        Text value,
+        org.apache.hadoop.mapreduce.Mapper<LongWritable, Text, Void, StructV1>.Context context)
+        throws IOException, InterruptedException {
       context.write(null, new StructV1(value.toString() + 1));
-    };
+    }
+    ;
   }
 
   public static class SchemaEvolutionMapper2 extends Mapper<LongWritable, Text, Void, StructV2> {
-    protected void map(LongWritable key, Text value, org.apache.hadoop.mapreduce.Mapper<LongWritable,Text,Void,StructV2>.Context context) throws IOException ,InterruptedException {
+    protected void map(
+        LongWritable key,
+        Text value,
+        org.apache.hadoop.mapreduce.Mapper<LongWritable, Text, Void, StructV2>.Context context)
+        throws IOException, InterruptedException {
       final StructV2 s = new StructV2(value.toString() + 2);
       s.setAge("undetermined");
       context.write(null, s);
-    };
+    }
+    ;
   }
 
   public static class SchemaEvolutionMapper3 extends Mapper<LongWritable, Text, Void, StructV3> {
-    protected void map(LongWritable key, Text value, org.apache.hadoop.mapreduce.Mapper<LongWritable,Text,Void,StructV3>.Context context) throws IOException ,InterruptedException {
+    protected void map(
+        LongWritable key,
+        Text value,
+        org.apache.hadoop.mapreduce.Mapper<LongWritable, Text, Void, StructV3>.Context context)
+        throws IOException, InterruptedException {
       final StructV3 s = new StructV3(value.toString() + 3);
       s.setAge("average");
       s.setGender("unavailable");
       context.write(null, s);
-    };
+    }
+    ;
   }
 
   public static class SchemaEvolutionReadMapper extends Mapper<LongWritable, Text, Void, StructV3> {
-    protected void map(LongWritable key, StructV3 value, org.apache.hadoop.mapreduce.Mapper<LongWritable,Text,Void,Text>.Context context) throws IOException ,InterruptedException {
+    protected void map(
+        LongWritable key,
+        StructV3 value,
+        org.apache.hadoop.mapreduce.Mapper<LongWritable, Text, Void, Text>.Context context)
+        throws IOException, InterruptedException {
       context.write(null, new Text(value.toString()));
-    };
+    }
+    ;
   }
 
   @Test
@@ -187,9 +204,24 @@ public class TestInputOutputFormat {
     fileSystem.delete(parquetPath, true);
     fileSystem.delete(outputPath, true);
     {
-      write(conf, inputPath, new Path(parquetPath, "V1"), TestInputOutputFormat.SchemaEvolutionMapper1.class, StructV1.class);
-      write(conf, inputPath, new Path(parquetPath, "V2"), TestInputOutputFormat.SchemaEvolutionMapper2.class, StructV2.class);
-      write(conf, inputPath, new Path(parquetPath, "V3"), TestInputOutputFormat.SchemaEvolutionMapper3.class, StructV3.class);
+      write(
+          conf,
+          inputPath,
+          new Path(parquetPath, "V1"),
+          TestInputOutputFormat.SchemaEvolutionMapper1.class,
+          StructV1.class);
+      write(
+          conf,
+          inputPath,
+          new Path(parquetPath, "V2"),
+          TestInputOutputFormat.SchemaEvolutionMapper2.class,
+          StructV2.class);
+      write(
+          conf,
+          inputPath,
+          new Path(parquetPath, "V3"),
+          TestInputOutputFormat.SchemaEvolutionMapper3.class,
+          StructV3.class);
     }
     {
       final Job job = new Job(conf, "read");
@@ -210,22 +242,26 @@ public class TestInputOutputFormat {
     read(outputPath + "/part-m-00002", 3);
   }
 
-  private void read(String outputPath, int expected) throws FileNotFoundException,
-      IOException {
+  private void read(String outputPath, int expected) throws FileNotFoundException, IOException {
     final BufferedReader out = new BufferedReader(new FileReader(new File(outputPath.toString())));
     String lineOut = null;
     int lineNumber = 0;
     while ((lineOut = out.readLine()) != null) {
       lineOut = lineOut.substring(lineOut.indexOf("\t") + 1);
       System.out.println(lineOut);
-      ++ lineNumber;
+      ++lineNumber;
     }
     out.close();
     Assert.assertEquals(expected, lineNumber);
   }
 
-  private void write(final Configuration conf, final Path inputPath,
-      final Path parquetPath, Class<? extends Mapper> mapperClass, Class<? extends TBase<?, ?>> outputClass) throws IOException, Exception {
+  private void write(
+      final Configuration conf,
+      final Path inputPath,
+      final Path parquetPath,
+      Class<? extends Mapper> mapperClass,
+      Class<? extends TBase<?, ?>> outputClass)
+      throws IOException, Exception {
     final Job job = new Job(conf, "write");
 
     // input not really used
@@ -254,5 +290,4 @@ public class TestInputOutputFormat {
       throw new RuntimeException("job failed " + job.getJobName());
     }
   }
-
 }

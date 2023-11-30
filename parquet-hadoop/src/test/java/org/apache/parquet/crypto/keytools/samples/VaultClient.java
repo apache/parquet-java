@@ -18,27 +18,25 @@
  */
 package org.apache.parquet.crypto.keytools.samples;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.Base64;
+import java.util.HashMap;
+import java.util.Map;
 import okhttp3.ConnectionSpec;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.crypto.KeyAccessDeniedException;
 import org.apache.parquet.crypto.ParquetCryptoRuntimeException;
 import org.apache.parquet.crypto.keytools.KeyToolkit;
 import org.apache.parquet.crypto.keytools.KmsClient;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.Base64;
-import java.util.HashMap;
-import java.util.Map;
 
 /**
  * An example of KmsClient implementation. Not for production use!
@@ -50,7 +48,7 @@ public class VaultClient implements KmsClient {
   private static final String DEFAULT_TRANSIT_ENGINE = "/v1/transit/";
   private static final String transitWrapEndpoint = "encrypt/";
   private static final String transitUnwrapEndpoint = "decrypt/";
-  private static final String tokenHeader="X-Vault-Token";
+  private static final String tokenHeader = "X-Vault-Token";
   private static final ObjectMapper objectMapper = new ObjectMapper();
 
   private String kmsToken;
@@ -58,11 +56,11 @@ public class VaultClient implements KmsClient {
 
   private String endPointPrefix;
   private OkHttpClient httpClient = new OkHttpClient.Builder()
-    .connectionSpecs(Arrays.asList(ConnectionSpec.MODERN_TLS, ConnectionSpec.COMPATIBLE_TLS))
-    .build();
+      .connectionSpecs(Arrays.asList(ConnectionSpec.MODERN_TLS, ConnectionSpec.COMPATIBLE_TLS))
+      .build();
 
   @Override
-  public void initialize(Configuration configuration, String kmsInstanceID, String kmsInstanceURL, String accessToken) 
+  public void initialize(Configuration configuration, String kmsInstanceID, String kmsInstanceURL, String accessToken)
       throws KeyAccessDeniedException {
     hadoopConfiguration = configuration;
     checkToken(accessToken);
@@ -88,26 +86,24 @@ public class VaultClient implements KmsClient {
   }
 
   @Override
-  public String wrapKey(byte[] keyBytes, String masterKeyIdentifier)
-      throws KeyAccessDeniedException {
+  public String wrapKey(byte[] keyBytes, String masterKeyIdentifier) throws KeyAccessDeniedException {
     refreshToken();
     Map<String, String> writeKeyMap = new HashMap<String, String>(1);
     final String dataKeyStr = Base64.getEncoder().encodeToString(keyBytes);
     writeKeyMap.put("plaintext", dataKeyStr);
-    String response = getContentFromTransitEngine(endPointPrefix + transitWrapEndpoint, 
-        buildPayload(writeKeyMap), masterKeyIdentifier);
+    String response = getContentFromTransitEngine(
+        endPointPrefix + transitWrapEndpoint, buildPayload(writeKeyMap), masterKeyIdentifier);
     String ciphertext = parseReturn(response, "ciphertext");
     return ciphertext;
   }
 
   @Override
-  public byte[] unwrapKey(String wrappedKey, String masterKeyIdentifier)
-      throws KeyAccessDeniedException {
+  public byte[] unwrapKey(String wrappedKey, String masterKeyIdentifier) throws KeyAccessDeniedException {
     refreshToken();
     Map<String, String> writeKeyMap = new HashMap<String, String>(1);
     writeKeyMap.put("ciphertext", wrappedKey);
-    String response = getContentFromTransitEngine(endPointPrefix + transitUnwrapEndpoint, 
-        buildPayload(writeKeyMap), masterKeyIdentifier);
+    String response = getContentFromTransitEngine(
+        endPointPrefix + transitUnwrapEndpoint, buildPayload(writeKeyMap), masterKeyIdentifier);
     String plaintext = parseReturn(response, "plaintext");
     final byte[] key = Base64.getDecoder().decode(plaintext);
     return key;
@@ -140,8 +136,9 @@ public class VaultClient implements KmsClient {
     final RequestBody requestBody = RequestBody.create(JSON_MEDIA_TYPE, jPayload);
     Request request = new Request.Builder()
         .url(endPoint + masterKeyIdentifier)
-        .header(tokenHeader,  kmsToken)
-        .post(requestBody).build();
+        .header(tokenHeader, kmsToken)
+        .post(requestBody)
+        .build();
 
     return executeAndGetResponse(endPoint, request);
   }
@@ -160,7 +157,8 @@ public class VaultClient implements KmsClient {
         throw new IOException("Vault call [" + endPoint + "] didn't succeed: " + responseBody);
       }
     } catch (IOException e) {
-      throw new ParquetCryptoRuntimeException("Vault call [" + request.url().toString() + endPoint + "] didn't succeed", e);
+      throw new ParquetCryptoRuntimeException(
+          "Vault call [" + request.url().toString() + endPoint + "] didn't succeed", e);
     } finally {
       if (null != response) {
         response.close();
@@ -173,11 +171,13 @@ public class VaultClient implements KmsClient {
     try {
       matchingValue = objectMapper.readTree(response).findValue(searchKey).textValue();
     } catch (IOException e) {
-      throw new ParquetCryptoRuntimeException("Failed to parse vault response. " + searchKey + " not found."  + response, e);
+      throw new ParquetCryptoRuntimeException(
+          "Failed to parse vault response. " + searchKey + " not found." + response, e);
     }
 
-    if(null == matchingValue) {
-      throw new ParquetCryptoRuntimeException("Failed to match vault response. " + searchKey + " not found."  + response);
+    if (null == matchingValue) {
+      throw new ParquetCryptoRuntimeException(
+          "Failed to match vault response. " + searchKey + " not found." + response);
     }
     return matchingValue;
   }

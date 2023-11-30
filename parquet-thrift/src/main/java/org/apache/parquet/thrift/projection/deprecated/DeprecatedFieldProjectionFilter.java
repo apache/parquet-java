@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -21,9 +21,8 @@ package org.apache.parquet.thrift.projection.deprecated;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
-
-import org.apache.parquet.thrift.projection.FieldsPath;
 import org.apache.parquet.thrift.projection.FieldProjectionFilter;
+import org.apache.parquet.thrift.projection.FieldsPath;
 import org.apache.parquet.thrift.projection.ThriftProjectionException;
 
 /**
@@ -63,8 +62,7 @@ public class DeprecatedFieldProjectionFilter implements FieldProjectionFilter {
 
     filterPatterns = new LinkedList<PathGlobPatternStatus>();
 
-    if (filterDescStr == null || filterDescStr.isEmpty())
-      return;
+    if (filterDescStr == null || filterDescStr.isEmpty()) return;
 
     String[] rawPatterns = filterDescStr.split(PATTERN_SEPARATOR);
     for (String rawPattern : rawPatterns) {
@@ -79,8 +77,7 @@ public class DeprecatedFieldProjectionFilter implements FieldProjectionFilter {
     }
 
     for (PathGlobPatternStatus pattern : filterPatterns) {
-      if (pattern.matches(path.toDelimitedString("/")))
-        return true;
+      if (pattern.matches(path.toDelimitedString("/"))) return true;
     }
     return false;
   }

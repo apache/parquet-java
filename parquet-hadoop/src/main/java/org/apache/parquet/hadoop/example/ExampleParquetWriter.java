@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -18,6 +18,9 @@
  */
 package org.apache.parquet.hadoop.example;
 
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.column.ParquetProperties;
@@ -28,9 +31,6 @@ import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.io.OutputFile;
 import org.apache.parquet.schema.MessageType;
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
 
 /**
  * An example file writer class.
@@ -72,15 +72,28 @@ public class ExampleParquetWriter extends ParquetWriter<Group> {
    * @param conf The Configuration to use.
    * @throws IOException
    */
-  ExampleParquetWriter(Path file, WriteSupport<Group> writeSupport,
-                       CompressionCodecName compressionCodecName,
-                       int blockSize, int pageSize, boolean enableDictionary,
-                       boolean enableValidation,
-                       ParquetProperties.WriterVersion writerVersion,
-                       Configuration conf)
+  ExampleParquetWriter(
+      Path file,
+      WriteSupport<Group> writeSupport,
+      CompressionCodecName compressionCodecName,
+      int blockSize,
+      int pageSize,
+      boolean enableDictionary,
+      boolean enableValidation,
+      ParquetProperties.WriterVersion writerVersion,
+      Configuration conf)
       throws IOException {
-    super(file, writeSupport, compressionCodecName, blockSize, pageSize,
-        pageSize, enableDictionary, enableValidation, writerVersion, conf);
+    super(
+        file,
+        writeSupport,
+        compressionCodecName,
+        blockSize,
+        pageSize,
+        pageSize,
+        enableDictionary,
+        enableValidation,
+        writerVersion,
+        conf);
   }
 
   public static class Builder extends ParquetWriter.Builder<Group, Builder> {
@@ -119,6 +132,5 @@ public class ExampleParquetWriter extends ParquetWriter<Group> {
     protected WriteSupport<Group> getWriteSupport(ParquetConfiguration conf) {
       return new GroupWriteSupport(type, extraMetaData);
     }
-
   }
 }

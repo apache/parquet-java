@@ -18,6 +18,11 @@
  */
 package org.apache.parquet.io.api;
 
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -25,14 +30,8 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
-
 import org.apache.parquet.io.api.TestBinary.BinaryFactory.BinaryAndOriginal;
 import org.junit.Test;
-
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertTrue;
 
 public class TestBinary {
 
@@ -74,7 +73,7 @@ public class TestBinary {
   private static final BinaryFactory BYTE_ARRAY_SLICE_BACKED_BF = new BinaryFactory() {
     @Override
     public BinaryAndOriginal get(byte[] bytes, boolean reused) throws Exception {
-      byte [] orig = padded(bytes);
+      byte[] orig = padded(bytes);
       Binary b;
       if (reused) {
         b = Binary.fromReusedByteArray(orig, 5, bytes.length);
@@ -89,7 +88,7 @@ public class TestBinary {
   private static final BinaryFactory BUFFER_BF = new BinaryFactory() {
     @Override
     public BinaryAndOriginal get(byte[] bytes, boolean reused) throws Exception {
-      byte [] orig = padded(bytes);
+      byte[] orig = padded(bytes);
       ByteBuffer buff = ByteBuffer.wrap(orig, 5, bytes.length);
       Binary b;
 
@@ -157,7 +156,7 @@ public class TestBinary {
 
   @Test
   public void testWriteAllTo() throws Exception {
-    byte[] orig = {10, 9 ,8, 7, 6, 5, 4, 3, 2, 1};
+    byte[] orig = {10, 9, 8, 7, 6, 5, 4, 3, 2, 1};
     testWriteAllToHelper(Binary.fromConstantByteBuffer(ByteBuffer.wrap(orig)), orig);
     ByteBuffer buf = ByteBuffer.allocateDirect(orig.length);
     buf.put(orig);
@@ -179,7 +178,9 @@ public class TestBinary {
   private void testSlice(BinaryFactory bf, boolean reused) throws Exception {
     BinaryAndOriginal bao = bf.get(testString.getBytes(UTF8), reused);
 
-    assertArrayEquals(testString.getBytes(UTF8), bao.binary.slice(0, testString.length()).getBytesUnsafe());
+    assertArrayEquals(
+        testString.getBytes(UTF8),
+        bao.binary.slice(0, testString.length()).getBytesUnsafe());
     assertArrayEquals("123".getBytes(UTF8), bao.binary.slice(5, 3).getBytesUnsafe());
   }
 
@@ -230,8 +231,7 @@ public class TestBinary {
     out.close();
     baos.close();
 
-    ObjectInputStream in = new ObjectInputStream(new ByteArrayInputStream(
-        baos.toByteArray()));
+    ObjectInputStream in = new ObjectInputStream(new ByteArrayInputStream(baos.toByteArray()));
     Object object = in.readObject();
     assertTrue(object instanceof Binary);
     assertEquals(bao.binary, object);

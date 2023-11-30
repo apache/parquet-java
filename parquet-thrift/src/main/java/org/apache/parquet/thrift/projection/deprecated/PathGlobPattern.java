@@ -24,7 +24,7 @@ import com.google.re2j.PatternSyntaxException;
 /**
  * Enhanced version of GlobPattern class that is defined in hadoop with extra capability of matching
  * full path separated by '/', and double star matching
- *
+ * <p>
  * This is used for parsing values assigned to ThriftReadSupport.THRIFT_COLUMN_FILTER_KEY
  */
 @Deprecated

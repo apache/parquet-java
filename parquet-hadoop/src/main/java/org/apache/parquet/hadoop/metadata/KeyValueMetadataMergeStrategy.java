@@ -18,16 +18,9 @@
  */
 package org.apache.parquet.hadoop.metadata;
 
-import org.apache.parquet.schema.MessageType;
-
 import java.io.Serializable;
-import java.util.HashMap;
 import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Objects;
 import java.util.Set;
-
-import static java.util.Collections.unmodifiableMap;
 
 /**
  * Strategy to merge metadata. Possible implementations:

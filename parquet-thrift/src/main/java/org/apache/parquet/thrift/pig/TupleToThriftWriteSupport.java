@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -18,18 +18,16 @@
  */
 package org.apache.parquet.thrift.pig;
 
+import com.twitter.elephantbird.pig.util.PigToThrift;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.conf.HadoopParquetConfiguration;
 import org.apache.parquet.conf.ParquetConfiguration;
-import org.apache.pig.data.Tuple;
-import org.apache.thrift.TBase;
-
 import org.apache.parquet.hadoop.BadConfigurationException;
 import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.hadoop.thrift.ThriftWriteSupport;
 import org.apache.parquet.io.api.RecordConsumer;
-
-import com.twitter.elephantbird.pig.util.PigToThrift;
+import org.apache.pig.data.Tuple;
+import org.apache.thrift.TBase;
 
 /**
  * Stores Pig tuples as Thrift objects
@@ -37,8 +35,8 @@ import com.twitter.elephantbird.pig.util.PigToThrift;
 public class TupleToThriftWriteSupport extends WriteSupport<Tuple> {
 
   private final String className;
-  private ThriftWriteSupport<TBase<?,?>> thriftWriteSupport;
-  private PigToThrift<TBase<?,?>> pigToThrift;
+  private ThriftWriteSupport<TBase<?, ?>> thriftWriteSupport;
+  private PigToThrift<TBase<?, ?>> pigToThrift;
 
   /**
    * @param className the thrift class name
@@ -82,5 +80,4 @@ public class TupleToThriftWriteSupport extends WriteSupport<Tuple> {
   public void write(Tuple t) {
     thriftWriteSupport.write(pigToThrift.getThriftObject(t));
   }
-
 }

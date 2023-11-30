@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -24,13 +24,11 @@ import java.io.ByteArrayInputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-
-import org.junit.Test;
-
-import org.apache.parquet.bytes.DirectByteBufferAllocator;
 import org.apache.parquet.bytes.BytesUtils;
+import org.apache.parquet.bytes.DirectByteBufferAllocator;
 import org.apache.parquet.column.values.bitpacking.BytePacker;
 import org.apache.parquet.column.values.bitpacking.Packer;
+import org.junit.Test;
 
 public class TestRunLengthBitPackingHybridEncoder {
 
@@ -40,8 +38,8 @@ public class TestRunLengthBitPackingHybridEncoder {
 
   private RunLengthBitPackingHybridEncoder getRunLengthBitPackingHybridEncoder(
       int bitWidth, int initialCapacity, int pageSize) {
-    return new RunLengthBitPackingHybridEncoder(bitWidth, initialCapacity,
-        pageSize, new DirectByteBufferAllocator());
+    return new RunLengthBitPackingHybridEncoder(
+        bitWidth, initialCapacity, pageSize, new DirectByteBufferAllocator());
   }
 
   @Test
@@ -204,7 +202,7 @@ public class TestRunLengthBitPackingHybridEncoder {
   public void testPaddingZerosOnUnfinishedBitPackedRuns() throws Exception {
     RunLengthBitPackingHybridEncoder encoder = getRunLengthBitPackingHybridEncoder(5, 5, 10);
     for (int i = 0; i < 9; i++) {
-      encoder.writeInt(i+1);
+      encoder.writeInt(i + 1);
     }
 
     ByteArrayInputStream is = new ByteArrayInputStream(encoder.toBytes().toByteArray());
@@ -286,14 +284,13 @@ public class TestRunLengthBitPackingHybridEncoder {
     assertEquals(-1, is.read());
   }
 
-
   @Test
   public void testGroupBoundary() throws Exception {
-	byte[] bytes = new byte[2];
-	// Create an RLE byte stream that has 3 values (1 literal group) with
-	// bit width 2.
-	bytes[0] = (1 << 1 )| 1;
-	bytes[1] = (1 << 0) | (2 << 2) | (3 << 4);
+    byte[] bytes = new byte[2];
+    // Create an RLE byte stream that has 3 values (1 literal group) with
+    // bit width 2.
+    bytes[0] = (1 << 1) | 1;
+    bytes[1] = (1 << 0) | (2 << 2) | (3 << 4);
     ByteArrayInputStream stream = new ByteArrayInputStream(bytes);
     RunLengthBitPackingHybridDecoder decoder = new RunLengthBitPackingHybridDecoder(2, stream);
     assertEquals(decoder.readInt(), 1);
@@ -302,8 +299,7 @@ public class TestRunLengthBitPackingHybridEncoder {
     assertEquals(stream.available(), 0);
   }
 
-  private static List<Integer> unpack(int bitWidth, int numValues, ByteArrayInputStream is)
-    throws Exception {
+  private static List<Integer> unpack(int bitWidth, int numValues, ByteArrayInputStream is) throws Exception {
 
     BytePacker packer = Packer.LITTLE_ENDIAN.newBytePacker(bitWidth);
     int[] unpacked = new int[8];
@@ -311,7 +307,7 @@ public class TestRunLengthBitPackingHybridEncoder {
 
     List<Integer> values = new ArrayList<>(numValues);
 
-    while(values.size() < numValues) {
+    while (values.size() < numValues) {
       for (int i = 0; i < bitWidth; i++) {
         next8Values[i] = (byte) is.read();
       }
@@ -325,5 +321,4 @@ public class TestRunLengthBitPackingHybridEncoder {
 
     return values;
   }
-
 }

@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -37,7 +37,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -49,12 +48,9 @@ import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
-import org.apache.parquet.filter2.predicate.FilterApi;
-import org.junit.Before;
-import org.junit.Test;
-
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroupFactory;
+import org.apache.parquet.filter2.predicate.FilterApi;
 import org.apache.parquet.hadoop.ParquetInputFormat;
 import org.apache.parquet.hadoop.ParquetOutputFormat;
 import org.apache.parquet.hadoop.api.DelegatingReadSupport;
@@ -64,6 +60,8 @@ import org.apache.parquet.hadoop.api.ReadSupport;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.util.ContextUtil;
 import org.apache.parquet.schema.MessageTypeParser;
+import org.junit.Before;
+import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -80,30 +78,21 @@ public class TestInputOutputFormat {
   private String partialSchema;
   private Configuration conf;
 
-  private Class<? extends Mapper<?,?,?,?>> readMapperClass;
-  private Class<? extends Mapper<?,?,?,?>> writeMapperClass;
+  private Class<? extends Mapper<?, ?, ?, ?>> readMapperClass;
+  private Class<? extends Mapper<?, ?, ?, ?>> writeMapperClass;
 
   @Before
   public void setUp() {
     conf = new Configuration();
-    writeSchema = "message example {\n" +
-            "required int32 line;\n" +
-            "required binary content;\n" +
-            "}";
+    writeSchema = "message example {\n" + "required int32 line;\n" + "required binary content;\n" + "}";
 
-    readSchema = "message example {\n" +
-            "required int32 line;\n" +
-            "required binary content;\n" +
-            "}";
+    readSchema = "message example {\n" + "required int32 line;\n" + "required binary content;\n" + "}";
 
-    partialSchema = "message example {\n" +
-            "required int32 line;\n" +
-            "}";
+    partialSchema = "message example {\n" + "required int32 line;\n" + "}";
 
     readMapperClass = ReadMapper.class;
     writeMapperClass = WriteMapper.class;
   }
-
 
   public static final class MyWriteSupport extends DelegatingWriteSupport<Group> {
 
@@ -116,7 +105,7 @@ public class TestInputOutputFormat {
     @Override
     public void write(Group record) {
       super.write(record);
-      ++ count;
+      ++count;
     }
 
     @Override
@@ -143,32 +132,39 @@ public class TestInputOutputFormat {
   public static class ReadMapper extends Mapper<LongWritable, Text, Void, Group> {
     private SimpleGroupFactory factory;
 
-    protected void setup(org.apache.hadoop.mapreduce.Mapper<LongWritable, Text, Void, Group>.Context context) throws java.io.IOException, InterruptedException {
+    protected void setup(org.apache.hadoop.mapreduce.Mapper<LongWritable, Text, Void, Group>.Context context)
+        throws java.io.IOException, InterruptedException {
       factory = new SimpleGroupFactory(GroupWriteSupport.getSchema(ContextUtil.getConfiguration(context)));
     }
 
-    protected void map(LongWritable key, Text value, Mapper<LongWritable, Text, Void, Group>.Context context) throws java.io.IOException, InterruptedException {
-      Group group = factory.newGroup()
-              .append("line", (int) key.get())
-              .append("content", value.toString());
+    protected void map(LongWritable key, Text value, Mapper<LongWritable, Text, Void, Group>.Context context)
+        throws java.io.IOException, InterruptedException {
+      Group group = factory.newGroup().append("line", (int) key.get()).append("content", value.toString());
       context.write(null, group);
     }
   }
 
   public static class WriteMapper extends Mapper<Void, Group, LongWritable, Text> {
-    protected void map(Void key, Group value, Mapper<Void, Group, LongWritable, Text>.Context context) throws IOException, InterruptedException {
+    protected void map(Void key, Group value, Mapper<Void, Group, LongWritable, Text>.Context context)
+        throws IOException, InterruptedException {
       context.write(new LongWritable(value.getInteger("line", 0)), new Text(value.getString("content", 0)));
     }
   }
+
   public static class PartialWriteMapper extends Mapper<Void, Group, LongWritable, Text> {
-    protected void map(Void key, Group value, Mapper<Void, Group, LongWritable, Text>.Context context) throws IOException, InterruptedException {
+    protected void map(Void key, Group value, Mapper<Void, Group, LongWritable, Text>.Context context)
+        throws IOException, InterruptedException {
       context.write(new LongWritable(value.getInteger("line", 0)), new Text("dummy"));
     }
   }
-  private void runMapReduceJob(CompressionCodecName codec) throws IOException, ClassNotFoundException, InterruptedException {
+
+  private void runMapReduceJob(CompressionCodecName codec)
+      throws IOException, ClassNotFoundException, InterruptedException {
     runMapReduceJob(codec, Collections.<String, String>emptyMap());
   }
-  private void runMapReduceJob(CompressionCodecName codec, Map<String, String> extraConf) throws IOException, ClassNotFoundException, InterruptedException {
+
+  private void runMapReduceJob(CompressionCodecName codec, Map<String, String> extraConf)
+      throws IOException, ClassNotFoundException, InterruptedException {
     Configuration conf = new Configuration(this.conf);
     for (Map.Entry<String, String> entry : extraConf.entrySet()) {
       conf.set(entry.getKey(), entry.getValue());
@@ -187,9 +183,7 @@ public class TestInputOutputFormat {
       writeJob.setMapperClass(readMapperClass);
 
       ParquetOutputFormat.setWriteSupportClass(writeJob, MyWriteSupport.class);
-      GroupWriteSupport.setSchema(
-              MessageTypeParser.parseMessageType(writeSchema),
-              writeJob.getConfiguration());
+      GroupWriteSupport.setSchema(MessageTypeParser.parseMessageType(writeSchema), writeJob.getConfiguration());
       writeJob.submit();
       waitForJob(writeJob);
     }
@@ -210,10 +204,13 @@ public class TestInputOutputFormat {
     }
   }
 
-  private void testReadWrite(CompressionCodecName codec) throws IOException, ClassNotFoundException, InterruptedException {
+  private void testReadWrite(CompressionCodecName codec)
+      throws IOException, ClassNotFoundException, InterruptedException {
     testReadWrite(codec, Collections.<String, String>emptyMap());
   }
-  private void testReadWrite(CompressionCodecName codec, Map<String, String> conf) throws IOException, ClassNotFoundException, InterruptedException {
+
+  private void testReadWrite(CompressionCodecName codec, Map<String, String> conf)
+      throws IOException, ClassNotFoundException, InterruptedException {
     runMapReduceJob(codec, conf);
     final BufferedReader in = new BufferedReader(new FileReader(new File(inputPath.toString())));
     final BufferedReader out = new BufferedReader(new FileReader(new File(outputPath.toString(), "part-m-00000")));
@@ -242,24 +239,31 @@ public class TestInputOutputFormat {
 
   @Test
   public void testReadWriteTaskSideMD() throws IOException, ClassNotFoundException, InterruptedException {
-    testReadWrite(CompressionCodecName.UNCOMPRESSED, new HashMap<String, String>() {{ put("parquet.task.side.metadata", "true"); }});
+    testReadWrite(CompressionCodecName.UNCOMPRESSED, new HashMap<String, String>() {
+      {
+        put("parquet.task.side.metadata", "true");
+      }
+    });
   }
 
   /**
    * Uses a filter that drops all records to test handling of tasks (mappers) that need to do no work at all
    */
   @Test
-  public void testReadWriteTaskSideMDAggressiveFilter() throws IOException, ClassNotFoundException, InterruptedException {
+  public void testReadWriteTaskSideMDAggressiveFilter()
+      throws IOException, ClassNotFoundException, InterruptedException {
     Configuration conf = new Configuration();
 
     // this filter predicate should trigger row group filtering that drops all row-groups
     ParquetInputFormat.setFilterPredicate(conf, FilterApi.eq(FilterApi.intColumn("line"), -1000));
     final String fpString = conf.get(ParquetInputFormat.FILTER_PREDICATE);
 
-    runMapReduceJob(CompressionCodecName.UNCOMPRESSED, new HashMap<String, String>() {{
-      put("parquet.task.side.metadata", "true");
-      put(ParquetInputFormat.FILTER_PREDICATE, fpString);
-    }});
+    runMapReduceJob(CompressionCodecName.UNCOMPRESSED, new HashMap<String, String>() {
+      {
+        put("parquet.task.side.metadata", "true");
+        put(ParquetInputFormat.FILTER_PREDICATE, fpString);
+      }
+    });
 
     File file = new File(outputPath.toString(), "part-m-00000");
     List<String> lines = Files.readAllLines(file.toPath(), StandardCharsets.UTF_8);
@@ -275,10 +279,12 @@ public class TestInputOutputFormat {
     ParquetInputFormat.setFilterPredicate(conf, FilterApi.lt(FilterApi.intColumn("line"), 500));
     final String fpString = conf.get(ParquetInputFormat.FILTER_PREDICATE);
 
-    runMapReduceJob(CompressionCodecName.UNCOMPRESSED, new HashMap<String, String>() {{
-      put("parquet.task.side.metadata", "true");
-      put(ParquetInputFormat.FILTER_PREDICATE, fpString);
-    }});
+    runMapReduceJob(CompressionCodecName.UNCOMPRESSED, new HashMap<String, String>() {
+      {
+        put("parquet.task.side.metadata", "true");
+        put(ParquetInputFormat.FILTER_PREDICATE, fpString);
+      }
+    });
 
     File file = new File(inputPath.toString());
     List<String> expected = Files.readAllLines(file.toPath(), StandardCharsets.UTF_8);
@@ -286,7 +292,7 @@ public class TestInputOutputFormat {
     // grab the lines that contain the first 500 characters (including the rest of the line past 500 characters)
     int size = 0;
     Iterator<String> iter = expected.iterator();
-    while(iter.hasNext()) {
+    while (iter.hasNext()) {
       String next = iter.next();
 
       if (size < 500) {
@@ -312,8 +318,8 @@ public class TestInputOutputFormat {
   }
 
   @Test
-  public void testProjection() throws Exception{
-    readSchema=partialSchema;
+  public void testProjection() throws Exception {
+    readSchema = partialSchema;
     writeMapperClass = PartialWriteMapper.class;
     runMapReduceJob(CompressionCodecName.GZIP);
   }
@@ -336,9 +342,8 @@ public class TestInputOutputFormat {
 
     assertTrue(value(readJob, "parquet", "bytesread") > 0L);
     assertTrue(value(readJob, "parquet", "bytestotal") > 0L);
-    assertTrue(value(readJob, "parquet", "bytesread")
-            == value(readJob, "parquet", "bytestotal"));
-    //not testing the time read counter since it could be zero due to the size of data is too small
+    assertTrue(value(readJob, "parquet", "bytesread") == value(readJob, "parquet", "bytestotal"));
+    // not testing the time read counter since it could be zero due to the size of data is too small
   }
 
   @Test

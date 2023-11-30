@@ -19,6 +19,17 @@
 
 package org.apache.parquet.hadoop.util;
 
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
+import static org.apache.parquet.schema.Type.Repetition.OPTIONAL;
+import static org.apache.parquet.schema.Type.Repetition.REPEATED;
+import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
+import static org.junit.Assert.assertEquals;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.util.Arrays;
+import java.util.List;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.example.data.Group;
@@ -37,18 +48,6 @@ import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
 import org.junit.Test;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.util.Arrays;
-import java.util.List;
-
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
-import static org.apache.parquet.schema.Type.Repetition.OPTIONAL;
-import static org.apache.parquet.schema.Type.Repetition.REPEATED;
-import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
-import static org.junit.Assert.assertEquals;
-
 public class ColumnPrunerTest {
 
   private final int numRecord = 1000;
@@ -66,7 +65,8 @@ public class ColumnPrunerTest {
     columnPruner.pruneColumns(conf, new Path(inputFile), new Path(outputFile), cols);
 
     // Verify the schema are not changed for the columns not pruned
-    ParquetMetadata pmd = ParquetFileReader.readFooter(conf, new Path(outputFile), ParquetMetadataConverter.NO_FILTER);
+    ParquetMetadata pmd =
+        ParquetFileReader.readFooter(conf, new Path(outputFile), ParquetMetadataConverter.NO_FILTER);
     MessageType schema = pmd.getFileMetaData().getSchema();
     List<Type> fields = schema.getFields();
     assertEquals(fields.size(), 3);
@@ -95,7 +95,8 @@ public class ColumnPrunerTest {
     columnPruner.pruneColumns(conf, new Path(inputFile), new Path(outputFile), cols);
 
     // Verify the schema are not changed for the columns not pruned
-    ParquetMetadata pmd = ParquetFileReader.readFooter(conf, new Path(outputFile), ParquetMetadataConverter.NO_FILTER);
+    ParquetMetadata pmd =
+        ParquetFileReader.readFooter(conf, new Path(outputFile), ParquetMetadataConverter.NO_FILTER);
     MessageType schema = pmd.getFileMetaData().getSchema();
     List<Type> fields = schema.getFields();
     assertEquals(fields.size(), 2);
@@ -131,7 +132,8 @@ public class ColumnPrunerTest {
     columnPruner.pruneColumns(conf, new Path(inputFile), new Path(outputFile), cols);
 
     // Verify the schema are not changed for the columns not pruned
-    ParquetMetadata pmd = ParquetFileReader.readFooter(conf, new Path(outputFile), ParquetMetadataConverter.NO_FILTER);
+    ParquetMetadata pmd =
+        ParquetFileReader.readFooter(conf, new Path(outputFile), ParquetMetadataConverter.NO_FILTER);
     MessageType schema = pmd.getFileMetaData().getSchema();
     List<Type> fields = schema.getFields();
     assertEquals(fields.size(), 4);
@@ -159,7 +161,8 @@ public class ColumnPrunerTest {
     columnPruner.pruneColumns(conf, new Path(inputFile), new Path(outputFile), cols);
 
     // Verify the schema are not changed for the columns not pruned
-    ParquetMetadata pmd = ParquetFileReader.readFooter(conf, new Path(outputFile), ParquetMetadataConverter.NO_FILTER);
+    ParquetMetadata pmd =
+        ParquetFileReader.readFooter(conf, new Path(outputFile), ParquetMetadataConverter.NO_FILTER);
     MessageType schema = pmd.getFileMetaData().getSchema();
     List<Type> fields = schema.getFields();
     assertEquals(fields.size(), 3);
@@ -182,7 +185,9 @@ public class ColumnPrunerTest {
   }
 
   private void validateColumns(String inputFile, List<String> prunePaths) throws IOException {
-    ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), new Path(inputFile)).withConf(conf).build();
+    ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), new Path(inputFile))
+        .withConf(conf)
+        .build();
     for (int i = 0; i < numRecord; i++) {
       Group group = reader.read();
       if (!prunePaths.contains("DocId")) {
@@ -208,18 +213,22 @@ public class ColumnPrunerTest {
   }
 
   private String createParquetFile(String prefix) throws IOException {
-    MessageType schema = new MessageType("schema",
-      new PrimitiveType(REQUIRED, INT64, "DocId"),
-      new PrimitiveType(REQUIRED, BINARY, "Name"),
-      new PrimitiveType(REQUIRED, BINARY, "Gender"),
-      new GroupType(OPTIONAL, "Links",
-        new PrimitiveType(REPEATED, INT64, "Backward"),
-        new PrimitiveType(REPEATED, INT64, "Forward")));
+    MessageType schema = new MessageType(
+        "schema",
+        new PrimitiveType(REQUIRED, INT64, "DocId"),
+        new PrimitiveType(REQUIRED, BINARY, "Name"),
+        new PrimitiveType(REQUIRED, BINARY, "Gender"),
+        new GroupType(
+            OPTIONAL,
+            "Links",
+            new PrimitiveType(REPEATED, INT64, "Backward"),
+            new PrimitiveType(REPEATED, INT64, "Forward")));
 
     conf.set(GroupWriteSupport.PARQUET_EXAMPLE_SCHEMA, schema.toString());
 
     String file = createTempFile(prefix);
-    ExampleParquetWriter.Builder builder = ExampleParquetWriter.builder(new Path(file)).withConf(conf);
+    ExampleParquetWriter.Builder builder =
+        ExampleParquetWriter.builder(new Path(file)).withConf(conf);
     try (ParquetWriter writer = builder.build()) {
       for (int i = 0; i < numRecord; i++) {
         SimpleGroup g = new SimpleGroup(schema);

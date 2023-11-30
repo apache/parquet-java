@@ -33,7 +33,7 @@ public class LogicalTypes {
   }
 
   public static final LogicalType UTF8 = LogicalType.STRING(new StringType());
-  public static final LogicalType MAP  = LogicalType.MAP(new MapType());
+  public static final LogicalType MAP = LogicalType.MAP(new MapType());
   public static final LogicalType LIST = LogicalType.LIST(new ListType());
   public static final LogicalType ENUM = LogicalType.ENUM(new EnumType());
   public static final LogicalType DATE = LogicalType.DATE(new DateType());

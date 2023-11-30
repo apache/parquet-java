@@ -18,20 +18,16 @@
  */
 package org.apache.parquet.hadoop.util;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.Map;
 import org.apache.parquet.crypto.ColumnEncryptionProperties;
 import org.apache.parquet.crypto.DecryptionKeyRetriever;
 import org.apache.parquet.crypto.FileDecryptionProperties;
 import org.apache.parquet.crypto.FileEncryptionProperties;
 import org.apache.parquet.crypto.ParquetCipher;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
-
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
 
 public class EncDecProperties {
 
@@ -50,21 +46,27 @@ public class EncDecProperties {
     }
   }
 
-  private static final byte[] FOOTER_KEY = {0x01, 0x02, 0x03, 0x4, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a,
-    0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10};
+  private static final byte[] FOOTER_KEY = {
+    0x01, 0x02, 0x03, 0x4, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10
+  };
   private static final byte[] FOOTER_KEY_METADATA = "footkey".getBytes(StandardCharsets.UTF_8);
-  private static final byte[] COL_KEY = {0x02, 0x03, 0x4, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b,
-    0x0c, 0x0d, 0x0e, 0x0f, 0x10, 0x11};
+  private static final byte[] COL_KEY = {
+    0x02, 0x03, 0x4, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10, 0x11
+  };
   private static final byte[] COL_KEY_METADATA = "col".getBytes(StandardCharsets.UTF_8);
 
   public static FileDecryptionProperties getFileDecryptionProperties() throws IOException {
     DecryptionKeyRetrieverMock keyRetriever = new DecryptionKeyRetrieverMock();
     keyRetriever.putKey("footkey", FOOTER_KEY);
     keyRetriever.putKey("col", COL_KEY);
-    return FileDecryptionProperties.builder().withPlaintextFilesAllowed().withKeyRetriever(keyRetriever).build();
+    return FileDecryptionProperties.builder()
+        .withPlaintextFilesAllowed()
+        .withKeyRetriever(keyRetriever)
+        .build();
   }
 
-  public static FileEncryptionProperties getFileEncryptionProperties(String[] encryptColumns, ParquetCipher cipher, Boolean encryptFooter) {
+  public static FileEncryptionProperties getFileEncryptionProperties(
+      String[] encryptColumns, ParquetCipher cipher, Boolean encryptFooter) {
     if (encryptColumns.length == 0) {
       return null;
     }
@@ -73,14 +75,13 @@ public class EncDecProperties {
     for (String encryptColumn : encryptColumns) {
       ColumnPath columnPath = ColumnPath.fromDotString(encryptColumn);
       ColumnEncryptionProperties columnEncryptionProperties = ColumnEncryptionProperties.builder(columnPath)
-        .withKey(COL_KEY)
-        .withKeyMetaData(COL_KEY_METADATA)
-        .build();
+          .withKey(COL_KEY)
+          .withKeyMetaData(COL_KEY_METADATA)
+          .build();
       columnPropertyMap.put(columnPath, columnEncryptionProperties);
     }
 
-    FileEncryptionProperties.Builder encryptionPropertiesBuilder =
-      FileEncryptionProperties.builder(FOOTER_KEY)
+    FileEncryptionProperties.Builder encryptionPropertiesBuilder = FileEncryptionProperties.builder(FOOTER_KEY)
         .withFooterKeyMetadata(FOOTER_KEY_METADATA)
         .withAlgorithm(cipher)
         .withEncryptedColumns(columnPropertyMap);

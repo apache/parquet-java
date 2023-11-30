@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -25,13 +25,11 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 import java.util.List;
-
 import org.apache.hadoop.mapred.FileSplit;
 import org.apache.hadoop.mapred.InputSplit;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.RecordReader;
 import org.apache.hadoop.mapred.Reporter;
-
 import org.apache.parquet.hadoop.Footer;
 import org.apache.parquet.hadoop.ParquetInputFormat;
 import org.apache.parquet.hadoop.ParquetInputSplit;
@@ -42,8 +40,8 @@ public class DeprecatedParquetInputFormat<V> extends org.apache.hadoop.mapred.Fi
   protected ParquetInputFormat<V> realInputFormat = new ParquetInputFormat<V>();
 
   @Override
-  public RecordReader<Void, Container<V>> getRecordReader(InputSplit split, JobConf job,
-                  Reporter reporter) throws IOException {
+  public RecordReader<Void, Container<V>> getRecordReader(InputSplit split, JobConf job, Reporter reporter)
+      throws IOException {
     return new RecordReaderWrapper<V>(split, job, reporter);
   }
 
@@ -80,9 +78,7 @@ public class DeprecatedParquetInputFormat<V> extends org.apache.hadoop.mapred.Fi
     private boolean firstRecord = false;
     private boolean eof = false;
 
-    public RecordReaderWrapper(
-        InputSplit oldSplit, JobConf oldJobConf, Reporter reporter)
-        throws IOException {
+    public RecordReaderWrapper(InputSplit oldSplit, JobConf oldJobConf, Reporter reporter) throws IOException {
       splitLen = oldSplit.getLength();
 
       try {
@@ -104,7 +100,6 @@ public class DeprecatedParquetInputFormat<V> extends org.apache.hadoop.mapred.Fi
         if (realReader.nextKeyValue()) {
           firstRecord = true;
           valueContainer.set(realReader.getCurrentValue());
-
         } else {
           eof = true;
         }
@@ -187,12 +182,12 @@ public class DeprecatedParquetInputFormat<V> extends org.apache.hadoop.mapred.Fi
 
     @Override
     public long getLength() throws IOException {
-        return realSplit.getLength();
+      return realSplit.getLength();
     }
 
     @Override
     public String[] getLocations() throws IOException {
-        return realSplit.getLocations();
+      return realSplit.getLocations();
     }
 
     @Override

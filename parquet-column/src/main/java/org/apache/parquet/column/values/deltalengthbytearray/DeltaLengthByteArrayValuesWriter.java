@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -19,7 +19,6 @@
 package org.apache.parquet.column.values.deltalengthbytearray;
 
 import java.io.IOException;
-
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.CapacityByteArrayOutputStream;
@@ -40,7 +39,6 @@ import org.slf4j.LoggerFactory;
  *   delta-length-byte-array : length* byte-array*
  *   }
  * </pre>
- *
  */
 public class DeltaLengthByteArrayValuesWriter extends ValuesWriter {
 
@@ -56,7 +54,9 @@ public class DeltaLengthByteArrayValuesWriter extends ValuesWriter {
     lengthWriter = new DeltaBinaryPackingValuesWriterForInteger(
         DeltaBinaryPackingValuesWriter.DEFAULT_NUM_BLOCK_VALUES,
         DeltaBinaryPackingValuesWriter.DEFAULT_NUM_MINIBLOCKS,
-        initialSize, pageSize, allocator);
+        initialSize,
+        pageSize,
+        allocator);
   }
 
   @Override
@@ -112,4 +112,3 @@ public class DeltaLengthByteArrayValuesWriter extends ValuesWriter {
     return arrayOut.memUsageString(lengthWriter.memUsageString(prefix) + " DELTA_LENGTH_BYTE_ARRAY");
   }
 }
-

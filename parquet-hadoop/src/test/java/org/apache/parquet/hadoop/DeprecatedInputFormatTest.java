@@ -18,33 +18,9 @@
  */
 package org.apache.parquet.hadoop;
 
-import org.apache.commons.io.FileUtils;
-import org.apache.hadoop.conf.Configurable;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.io.LongWritable;
-import org.apache.hadoop.io.Text;
-import org.apache.hadoop.mapred.*;
-import org.apache.hadoop.mapred.lib.CombineFileInputFormat;
-import org.apache.hadoop.mapred.lib.CombineFileRecordReader;
-import org.apache.hadoop.mapred.lib.CombineFileSplit;
-import org.apache.hadoop.mapreduce.Job;
-import org.apache.hadoop.mapreduce.Mapper;
-import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
-import org.junit.Before;
-import org.junit.Test;
-import org.apache.parquet.example.data.Group;
-import org.apache.parquet.example.data.simple.SimpleGroupFactory;
-import org.apache.parquet.hadoop.api.ReadSupport;
-import org.apache.parquet.hadoop.example.ExampleOutputFormat;
-import org.apache.parquet.hadoop.example.GroupReadSupport;
-import org.apache.parquet.hadoop.example.GroupWriteSupport;
-import org.apache.parquet.hadoop.mapred.Container;
-import org.apache.parquet.hadoop.mapred.DeprecatedParquetInputFormat;
-import org.apache.parquet.hadoop.metadata.CompressionCodecName;
-import org.apache.parquet.hadoop.util.ContextUtil;
-import org.apache.parquet.schema.MessageTypeParser;
+import static java.lang.Thread.sleep;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -56,10 +32,40 @@ import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.util.HashSet;
 import java.util.Set;
-
-import static java.lang.Thread.sleep;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import org.apache.commons.io.FileUtils;
+import org.apache.hadoop.conf.Configurable;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.LongWritable;
+import org.apache.hadoop.io.Text;
+import org.apache.hadoop.mapred.FileSplit;
+import org.apache.hadoop.mapred.InputSplit;
+import org.apache.hadoop.mapred.JobClient;
+import org.apache.hadoop.mapred.JobConf;
+import org.apache.hadoop.mapred.OutputCollector;
+import org.apache.hadoop.mapred.RecordReader;
+import org.apache.hadoop.mapred.Reporter;
+import org.apache.hadoop.mapred.RunningJob;
+import org.apache.hadoop.mapred.lib.CombineFileInputFormat;
+import org.apache.hadoop.mapred.lib.CombineFileRecordReader;
+import org.apache.hadoop.mapred.lib.CombineFileSplit;
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.Mapper;
+import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
+import org.apache.parquet.example.data.Group;
+import org.apache.parquet.example.data.simple.SimpleGroupFactory;
+import org.apache.parquet.hadoop.api.ReadSupport;
+import org.apache.parquet.hadoop.example.ExampleOutputFormat;
+import org.apache.parquet.hadoop.example.GroupReadSupport;
+import org.apache.parquet.hadoop.example.GroupWriteSupport;
+import org.apache.parquet.hadoop.mapred.Container;
+import org.apache.parquet.hadoop.mapred.DeprecatedParquetInputFormat;
+import org.apache.parquet.hadoop.metadata.CompressionCodecName;
+import org.apache.parquet.hadoop.util.ContextUtil;
+import org.apache.parquet.schema.MessageTypeParser;
+import org.junit.Before;
+import org.junit.Test;
 
 /**
  * DeprecatedParquetInputFormat is used by cascading. It initializes the recordReader using an initialize method with
@@ -80,18 +86,13 @@ public class DeprecatedInputFormatTest {
   public void setUp() {
     conf = new Configuration();
     jobConf = new JobConf();
-    writeSchema = "message example {\n" +
-            "required int32 line;\n" +
-            "required binary content;\n" +
-            "}";
+    writeSchema = "message example {\n" + "required int32 line;\n" + "required binary content;\n" + "}";
 
-    readSchema = "message example {\n" +
-            "required int32 line;\n" +
-            "required binary content;\n" +
-            "}";
+    readSchema = "message example {\n" + "required int32 line;\n" + "required binary content;\n" + "}";
   }
 
-  private void runMapReduceJob(CompressionCodecName codec) throws IOException, ClassNotFoundException, InterruptedException {
+  private void runMapReduceJob(CompressionCodecName codec)
+      throws IOException, ClassNotFoundException, InterruptedException {
 
     final FileSystem fileSystem = parquetPath.getFileSystem(conf);
     fileSystem.delete(parquetPath, true);
@@ -105,10 +106,7 @@ public class DeprecatedInputFormatTest {
       ExampleOutputFormat.setOutputPath(writeJob, parquetPath);
       writeJob.setOutputFormatClass(ExampleOutputFormat.class);
       writeJob.setMapperClass(ReadMapper.class);
-      ExampleOutputFormat.setSchema(
-              writeJob,
-              MessageTypeParser.parseMessageType(
-                      writeSchema));
+      ExampleOutputFormat.setSchema(writeJob, MessageTypeParser.parseMessageType(writeSchema));
       writeJob.submit();
       waitForJob(writeJob);
     }
@@ -128,49 +126,38 @@ public class DeprecatedInputFormatTest {
   // This is the RecordReader implementation simulate cascading 2 behavior:
   // https://github.com/Cascading/cascading/blob/2.6/cascading-hadoop/
   // src/main/shared/cascading/tap/hadoop/io/CombineFileRecordReaderWrapper.java
-  static class CombineFileRecordReaderWrapper<K, V> implements RecordReader<K, V>
-  {
+  static class CombineFileRecordReaderWrapper<K, V> implements RecordReader<K, V> {
     private final RecordReader<K, V> delegate;
 
-    public CombineFileRecordReaderWrapper( CombineFileSplit split, Configuration conf, Reporter reporter, Integer idx ) throws Exception
-    {
-      FileSplit fileSplit = new FileSplit(
-        split.getPath( idx ),
-        split.getOffset( idx ),
-        split.getLength( idx ),
-        split.getLocations()
-      );
+    public CombineFileRecordReaderWrapper(
+        CombineFileSplit split, Configuration conf, Reporter reporter, Integer idx) throws Exception {
+      FileSplit fileSplit =
+          new FileSplit(split.getPath(idx), split.getOffset(idx), split.getLength(idx), split.getLocations());
 
-      delegate = new DeprecatedParquetInputFormat().getRecordReader( fileSplit, (JobConf) conf, reporter );
+      delegate = new DeprecatedParquetInputFormat().getRecordReader(fileSplit, (JobConf) conf, reporter);
     }
 
-    public boolean next( K key, V value ) throws IOException
-    {
-      return delegate.next( key, value );
+    public boolean next(K key, V value) throws IOException {
+      return delegate.next(key, value);
     }
 
-    public K createKey()
-    {
+    public K createKey() {
       return delegate.createKey();
     }
 
-    public V createValue()
-    {
+    public V createValue() {
       return delegate.createValue();
     }
 
-    public long getPos() throws IOException
-    {
+    public long getPos() throws IOException {
       return delegate.getPos();
     }
 
-    public void close() throws IOException
-    {
+    public void close() throws IOException {
       delegate.close();
     }
 
-    public float getProgress() throws IOException
-    {
+    public float getProgress() throws IOException {
       return delegate.getProgress();
     }
   }
@@ -178,21 +165,21 @@ public class DeprecatedInputFormatTest {
   // This is the InputFormat implementation simulates cascading 2:
   // https://github.com/Cascading/cascading/blob/2.6/cascading-hadoop/
   // src/main/shared/cascading/tap/hadoop/Hfs.java#L773
-  static class CombinedInputFormat extends CombineFileInputFormat implements Configurable
-  {
+  static class CombinedInputFormat extends CombineFileInputFormat implements Configurable {
     private Configuration conf;
-    public RecordReader getRecordReader( InputSplit split, JobConf job, Reporter reporter ) throws IOException
-    {
-      return new CombineFileRecordReader( job, (CombineFileSplit) split, reporter, CombineFileRecordReaderWrapper.class );
+
+    public RecordReader getRecordReader(InputSplit split, JobConf job, Reporter reporter) throws IOException {
+      return new CombineFileRecordReader(
+          job, (CombineFileSplit) split, reporter, CombineFileRecordReaderWrapper.class);
     }
+
     @Override
-    public void setConf( Configuration conf )
-    {
+    public void setConf(Configuration conf) {
       this.conf = conf;
     }
+
     @Override
-    public Configuration getConf()
-    {
+    public Configuration getConf() {
       return conf;
     }
   }
@@ -207,8 +194,7 @@ public class DeprecatedInputFormatTest {
     }
   }
 
-  private File createParquetFile(String content)
-    throws IOException, ClassNotFoundException, InterruptedException {
+  private File createParquetFile(String content) throws IOException, ClassNotFoundException, InterruptedException {
     File inputFile = File.createTempFile("temp", null);
     File outputFile = File.createTempFile("temp", null);
     outputFile.delete();
@@ -225,10 +211,7 @@ public class DeprecatedInputFormatTest {
     ExampleOutputFormat.setOutputPath(writeJob, new Path(outputFile.toURI()));
     writeJob.setOutputFormatClass(ExampleOutputFormat.class);
     writeJob.setMapperClass(ReadMapper.class);
-    ExampleOutputFormat.setSchema(
-      writeJob,
-      MessageTypeParser.parseMessageType(
-        writeSchema));
+    ExampleOutputFormat.setSchema(writeJob, MessageTypeParser.parseMessageType(writeSchema));
     writeJob.submit();
     waitForJob(writeJob);
     File partFile = outputFile.listFiles(new PartFileFilter())[0];
@@ -250,8 +233,7 @@ public class DeprecatedInputFormatTest {
 
     File outputDir = File.createTempFile("temp", null);
     outputDir.delete();
-    org.apache.hadoop.mapred.JobConf conf
-      = new org.apache.hadoop.mapred.JobConf(DeprecatedInputFormatTest.class);
+    org.apache.hadoop.mapred.JobConf conf = new org.apache.hadoop.mapred.JobConf(DeprecatedInputFormatTest.class);
     conf.setInputFormat(CombinedInputFormat.class);
     conf.setNumReduceTasks(0);
     conf.setOutputFormat(org.apache.hadoop.mapred.TextOutputFormat.class);
@@ -279,11 +261,29 @@ public class DeprecatedInputFormatTest {
   @Test
   public void testReadWriteWithCountDeprecated() throws Exception {
     runMapReduceJob(CompressionCodecName.GZIP);
-    assertTrue(mapRedJob.getCounters().getGroup("parquet").getCounterForName("bytesread").getValue() > 0L);
-    assertTrue(mapRedJob.getCounters().getGroup("parquet").getCounterForName("bytestotal").getValue() > 0L);
-    assertTrue(mapRedJob.getCounters().getGroup("parquet").getCounterForName("bytesread").getValue()
-            == mapRedJob.getCounters().getGroup("parquet").getCounterForName("bytestotal").getValue());
-    //not testing the time read counter since it could be zero due to the size of data is too small
+    assertTrue(mapRedJob
+            .getCounters()
+            .getGroup("parquet")
+            .getCounterForName("bytesread")
+            .getValue()
+        > 0L);
+    assertTrue(mapRedJob
+            .getCounters()
+            .getGroup("parquet")
+            .getCounterForName("bytestotal")
+            .getValue()
+        > 0L);
+    assertTrue(mapRedJob
+            .getCounters()
+            .getGroup("parquet")
+            .getCounterForName("bytesread")
+            .getValue()
+        == mapRedJob
+            .getCounters()
+            .getGroup("parquet")
+            .getCounterForName("bytestotal")
+            .getValue());
+    // not testing the time read counter since it could be zero due to the size of data is too small
   }
 
   @Test
@@ -292,9 +292,27 @@ public class DeprecatedInputFormatTest {
     jobConf.set("parquet.benchmark.bytes.total", "false");
     jobConf.set("parquet.benchmark.bytes.read", "false");
     runMapReduceJob(CompressionCodecName.GZIP);
-    assertEquals(mapRedJob.getCounters().getGroup("parquet").getCounterForName("bytesread").getValue(), 0L);
-    assertEquals(mapRedJob.getCounters().getGroup("parquet").getCounterForName("bytestotal").getValue(), 0L);
-    assertEquals(mapRedJob.getCounters().getGroup("parquet").getCounterForName("timeread").getValue(), 0L);
+    assertEquals(
+        mapRedJob
+            .getCounters()
+            .getGroup("parquet")
+            .getCounterForName("bytesread")
+            .getValue(),
+        0L);
+    assertEquals(
+        mapRedJob
+            .getCounters()
+            .getGroup("parquet")
+            .getCounterForName("bytestotal")
+            .getValue(),
+        0L);
+    assertEquals(
+        mapRedJob
+            .getCounters()
+            .getGroup("parquet")
+            .getCounterForName("timeread")
+            .getValue(),
+        0L);
   }
 
   private void waitForJob(Job job) throws InterruptedException, IOException {
@@ -316,31 +334,32 @@ public class DeprecatedInputFormatTest {
     }
 
     protected void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
-      Group group = factory.newGroup()
-              .append("line", (int) key.get())
-              .append("content", value.toString());
+      Group group = factory.newGroup().append("line", (int) key.get()).append("content", value.toString());
       context.write(null, group);
     }
   }
 
-  public static class DeprecatedWriteMapper implements org.apache.hadoop.mapred.Mapper<Void, Container<Group>, LongWritable, Text> {
+  public static class DeprecatedWriteMapper
+      implements org.apache.hadoop.mapred.Mapper<Void, Container<Group>, LongWritable, Text> {
 
     @Override
-    public void map(Void aVoid, Container<Group> valueContainer, OutputCollector<LongWritable, Text> longWritableTextOutputCollector, Reporter reporter) throws IOException {
+    public void map(
+        Void aVoid,
+        Container<Group> valueContainer,
+        OutputCollector<LongWritable, Text> longWritableTextOutputCollector,
+        Reporter reporter)
+        throws IOException {
       Group value = valueContainer.get();
-      longWritableTextOutputCollector.collect(new LongWritable(value.getInteger("line", 0)), new Text(value.getString("content", 0)));
+      longWritableTextOutputCollector.collect(
+          new LongWritable(value.getInteger("line", 0)), new Text(value.getString("content", 0)));
     }
 
     @Override
-    public void close() throws IOException {
-    }
+    public void close() throws IOException {}
 
     @Override
-    public void configure(JobConf entries) {
-    }
+    public void configure(JobConf entries) {}
   }
 
-  static class MyDeprecatedInputFormat extends DeprecatedParquetInputFormat<Group> {
-
-  }
+  static class MyDeprecatedInputFormat extends DeprecatedParquetInputFormat<Group> {}
 }

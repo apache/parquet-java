@@ -18,6 +18,16 @@
  */
 package org.apache.parquet.encodings;
 
+import static junit.framework.Assert.assertEquals;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
+import java.util.Locale;
+import java.util.Random;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.bytes.BytesInput;
@@ -42,20 +52,18 @@ import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.PrimitiveConverter;
-import org.apache.parquet.schema.*;
+import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
+import org.apache.parquet.schema.Types;
 import org.apache.parquet.statistics.RandomValues;
 import org.apache.parquet.statistics.TestStatistics;
-import org.junit.*;
+import org.junit.BeforeClass;
+import org.junit.Rule;
+import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.*;
-
-import static junit.framework.Assert.assertEquals;
 
 /**
  * This class contains test cases to validate each data type encoding.
@@ -88,9 +96,14 @@ public class FileEncodingsIT {
   @Parameterized.Parameters
   public static Collection<Object[]> getParameters() {
     List<PrimitiveTypeName> types = Arrays.asList(
-        PrimitiveTypeName.BOOLEAN, PrimitiveTypeName.INT32, PrimitiveTypeName.INT64,
-        PrimitiveTypeName.INT96, PrimitiveTypeName.FLOAT, PrimitiveTypeName.DOUBLE,
-        PrimitiveTypeName.BINARY, PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY);
+        PrimitiveTypeName.BOOLEAN,
+        PrimitiveTypeName.INT32,
+        PrimitiveTypeName.INT64,
+        PrimitiveTypeName.INT96,
+        PrimitiveTypeName.FLOAT,
+        PrimitiveTypeName.DOUBLE,
+        PrimitiveTypeName.BINARY,
+        PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY);
 
     List<CompressionCodecName> codecs;
     String codecList = System.getenv("TEST_CODECS");
@@ -136,17 +149,26 @@ public class FileEncodingsIT {
   @Test
   public void testFileEncodingsWithoutDictionary() throws Exception {
     final boolean DISABLE_DICTIONARY = false;
-    List<?> randomValues; randomValues = generateRandomValues(this.paramTypeName, RECORD_COUNT);
+    List<?> randomValues;
+    randomValues = generateRandomValues(this.paramTypeName, RECORD_COUNT);
 
     /* Run an encoding test per each writer version.
      * This loop will make sure to test future writer versions added to WriterVersion enum.
      */
     for (WriterVersion writerVersion : WriterVersion.values()) {
-      System.out.println(String.format("Testing %s/%s/%s encodings using ROW_GROUP_SIZE=%d PAGE_SIZE=%d",
+      System.out.println(String.format(
+          "Testing %s/%s/%s encodings using ROW_GROUP_SIZE=%d PAGE_SIZE=%d",
           writerVersion, this.paramTypeName, this.compression, TEST_ROW_GROUP_SIZE, TEST_PAGE_SIZE));
 
       Path parquetFile = createTempFile();
-      writeValuesToFile(parquetFile, this.paramTypeName, randomValues, TEST_ROW_GROUP_SIZE, TEST_PAGE_SIZE, DISABLE_DICTIONARY, writerVersion);
+      writeValuesToFile(
+          parquetFile,
+          this.paramTypeName,
+          randomValues,
+          TEST_ROW_GROUP_SIZE,
+          TEST_PAGE_SIZE,
+          DISABLE_DICTIONARY,
+          writerVersion);
       PageGroupValidator.validatePages(parquetFile, randomValues);
     }
   }
@@ -160,11 +182,19 @@ public class FileEncodingsIT {
      * This loop will make sure to test future writer versions added to WriterVersion enum.
      */
     for (WriterVersion writerVersion : WriterVersion.values()) {
-      System.out.println(String.format("Testing %s/%s/%s + DICTIONARY encodings using ROW_GROUP_SIZE=%d PAGE_SIZE=%d",
+      System.out.println(String.format(
+          "Testing %s/%s/%s + DICTIONARY encodings using ROW_GROUP_SIZE=%d PAGE_SIZE=%d",
           writerVersion, this.paramTypeName, this.compression, TEST_ROW_GROUP_SIZE, TEST_PAGE_SIZE));
 
       Path parquetFile = createTempFile();
-      writeValuesToFile(parquetFile, this.paramTypeName, dictionaryValues, TEST_ROW_GROUP_SIZE, TEST_PAGE_SIZE, ENABLE_DICTIONARY, writerVersion);
+      writeValuesToFile(
+          parquetFile,
+          this.paramTypeName,
+          dictionaryValues,
+          TEST_ROW_GROUP_SIZE,
+          TEST_PAGE_SIZE,
+          ENABLE_DICTIONARY,
+          writerVersion);
       PageGroupValidator.validatePages(parquetFile, dictionaryValues);
     }
   }
@@ -182,10 +212,22 @@ public class FileEncodingsIT {
    * Writes a set of values to a parquet file.
    * The ParquetWriter will write the values with dictionary encoding disabled so that we test specific encodings for
    */
-  private void writeValuesToFile(Path file, PrimitiveTypeName type, List<?> values, int rowGroupSize, int pageSize, boolean enableDictionary, WriterVersion version) throws IOException {
+  private void writeValuesToFile(
+      Path file,
+      PrimitiveTypeName type,
+      List<?> values,
+      int rowGroupSize,
+      int pageSize,
+      boolean enableDictionary,
+      WriterVersion version)
+      throws IOException {
     MessageType schema;
     if (type == PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY) {
-      schema = Types.buildMessage().required(type).length(FIXED_LENGTH).named("field").named("test");
+      schema = Types.buildMessage()
+          .required(type)
+          .length(FIXED_LENGTH)
+          .named("field")
+          .named("test");
     } else {
       schema = Types.buildMessage().required(type).named("field").named("test");
     }
@@ -203,28 +245,28 @@ public class FileEncodingsIT {
         .withConf(configuration)
         .build();
 
-    for (Object o: values) {
+    for (Object o : values) {
       switch (type) {
         case BOOLEAN:
-          writer.write(message.newGroup().append("field", (Boolean)o));
-        break;
+          writer.write(message.newGroup().append("field", (Boolean) o));
+          break;
         case INT32:
-          writer.write(message.newGroup().append("field", (Integer)o));
-        break;
+          writer.write(message.newGroup().append("field", (Integer) o));
+          break;
         case INT64:
-          writer.write(message.newGroup().append("field", (Long)o));
-        break;
+          writer.write(message.newGroup().append("field", (Long) o));
+          break;
         case FLOAT:
-          writer.write(message.newGroup().append("field", (Float)o));
-        break;
+          writer.write(message.newGroup().append("field", (Float) o));
+          break;
         case DOUBLE:
-          writer.write(message.newGroup().append("field", (Double)o));
-        break;
+          writer.write(message.newGroup().append("field", (Double) o));
+          break;
         case INT96:
         case BINARY:
         case FIXED_LEN_BYTE_ARRAY:
-          writer.write(message.newGroup().append("field", (Binary)o));
-        break;
+          writer.write(message.newGroup().append("field", (Binary) o));
+          break;
         default:
           throw new IllegalArgumentException("Unknown type name: " + type);
       }
@@ -236,33 +278,33 @@ public class FileEncodingsIT {
   private List<?> generateRandomValues(PrimitiveTypeName type, int count) {
     List<Object> values = new ArrayList<Object>();
 
-    for (int i=0; i<count; i++) {
+    for (int i = 0; i < count; i++) {
       Object value;
       switch (type) {
         case BOOLEAN:
           value = (intGenerator.nextValue() % 2 == 0) ? true : false;
-        break;
+          break;
         case INT32:
           value = intGenerator.nextValue();
-        break;
+          break;
         case INT64:
           value = longGenerator.nextValue();
-        break;
+          break;
         case FLOAT:
           value = floatGenerator.nextValue();
-        break;
+          break;
         case DOUBLE:
           value = doubleGenerator.nextValue();
-        break;
+          break;
         case INT96:
           value = int96Generator.nextBinaryValue();
-        break;
+          break;
         case BINARY:
           value = binaryGenerator.nextBinaryValue();
-        break;
+          break;
         case FIXED_LEN_BYTE_ARRAY:
           value = fixedBinaryGenerator.nextBinaryValue();
-        break;
+          break;
         default:
           throw new IllegalArgumentException("Unknown type name: " + type);
       }
@@ -278,11 +320,12 @@ public class FileEncodingsIT {
 
     final List<?> DICT_BINARY_VALUES = generateRandomValues(PrimitiveTypeName.BINARY, DICT_VALUES_SIZE);
     final List<?> DICT_INT96_VALUES = generateRandomValues(PrimitiveTypeName.INT96, DICT_VALUES_SIZE);
-    final List<?> DICT_FIXED_LEN_VALUES = generateRandomValues(PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY, DICT_VALUES_SIZE);
+    final List<?> DICT_FIXED_LEN_VALUES =
+        generateRandomValues(PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY, DICT_VALUES_SIZE);
 
     List<Object> values = new ArrayList<Object>();
 
-    for (int i=0; i<count; i++) {
+    for (int i = 0; i < count; i++) {
       int dictValue = i % DICT_VALUES_SIZE;
       Object value;
       switch (type) {
@@ -293,13 +336,13 @@ public class FileEncodingsIT {
           value = dictValue;
           break;
         case INT64:
-          value = (long)dictValue;
+          value = (long) dictValue;
           break;
         case FLOAT:
-          value = (float)dictValue;
+          value = (float) dictValue;
           break;
         case DOUBLE:
-          value = (double)dictValue;
+          value = (double) dictValue;
           break;
         case INT96:
           value = DICT_INT96_VALUES.get(dictValue);
@@ -336,7 +379,8 @@ public class FileEncodingsIT {
           List<DataPage> pageGroup = getPageGroupForColumn(pageReadStore, columnsDesc);
           DictionaryPage dictPage = reusableCopy(getDictionaryPageForColumn(pageReadStore, columnsDesc));
 
-          List<?> expectedRowGroupValues = expectedValues.subList(rowsRead, (int)(rowsRead + pageReadStore.getRowCount()));
+          List<?> expectedRowGroupValues =
+              expectedValues.subList(rowsRead, (int) (rowsRead + pageReadStore.getRowCount()));
           validateFirstToLast(rowGroupID, dictPage, pageGroup, columnsDesc, expectedRowGroupValues);
           validateLastToFirst(rowGroupID, dictPage, pageGroup, columnsDesc, expectedRowGroupValues);
         }
@@ -352,8 +396,7 @@ public class FileEncodingsIT {
       }
       try {
         return new DictionaryPage(
-            BytesInput.from(dict.getBytes().toByteArray()),
-            dict.getDictionarySize(), dict.getEncoding());
+            BytesInput.from(dict.getBytes().toByteArray()), dict.getDictionarySize(), dict.getEncoding());
       } catch (IOException e) {
         throw new ParquetDecodingException("Cannot read dictionary", e);
       }
@@ -364,9 +407,14 @@ public class FileEncodingsIT {
         @Override
         public DataPage visit(DataPageV1 data) {
           try {
-            return new DataPageV1(BytesInput.from(data.getBytes().toByteArray()),
-                data.getValueCount(), data.getUncompressedSize(), data.getStatistics(),
-                data.getRlEncoding(), data.getDlEncoding(), data.getValueEncoding());
+            return new DataPageV1(
+                BytesInput.from(data.getBytes().toByteArray()),
+                data.getValueCount(),
+                data.getUncompressedSize(),
+                data.getStatistics(),
+                data.getRlEncoding(),
+                data.getDlEncoding(),
+                data.getValueEncoding());
           } catch (IOException e) {
             throw new ParquetDecodingException("Cannot read data", e);
           }
@@ -375,12 +423,16 @@ public class FileEncodingsIT {
         @Override
         public DataPage visit(DataPageV2 data) {
           try {
-            return new DataPageV2(data.getRowCount(), data.getNullCount(), data.getValueCount(),
+            return new DataPageV2(
+                data.getRowCount(),
+                data.getNullCount(),
+                data.getValueCount(),
                 BytesInput.from(data.getRepetitionLevels().toByteArray()),
                 BytesInput.from(data.getDefinitionLevels().toByteArray()),
                 data.getDataEncoding(),
                 BytesInput.from(data.getData().toByteArray()),
-                data.getUncompressedSize(), data.getStatistics(),
+                data.getUncompressedSize(),
+                data.getStatistics(),
                 data.isCompressed());
           } catch (IOException e) {
             throw new ParquetDecodingException("Cannot read data", e);
@@ -389,7 +441,12 @@ public class FileEncodingsIT {
       });
     }
 
-    private static void validateFirstToLast(int rowGroupID, DictionaryPage dictPage, List<DataPage> pageGroup, ColumnDescriptor desc, List<?> expectedValues) {
+    private static void validateFirstToLast(
+        int rowGroupID,
+        DictionaryPage dictPage,
+        List<DataPage> pageGroup,
+        ColumnDescriptor desc,
+        List<?> expectedValues) {
       int rowsRead = 0, pageID = 0;
       for (DataPage page : pageGroup) {
         List<?> expectedPageValues = expectedValues.subList(rowsRead, rowsRead + page.getValueCount());
@@ -399,7 +456,12 @@ public class FileEncodingsIT {
       }
     }
 
-    private static void validateLastToFirst(int rowGroupID, DictionaryPage dictPage, List<DataPage> pageGroup, ColumnDescriptor desc, List<?> expectedValues) {
+    private static void validateLastToFirst(
+        int rowGroupID,
+        DictionaryPage dictPage,
+        List<DataPage> pageGroup,
+        ColumnDescriptor desc,
+        List<?> expectedValues) {
       int rowsLeft = expectedValues.size();
       for (int pageID = pageGroup.size() - 1; pageID >= 0; pageID--) {
         DataPage page = pageGroup.get(pageID);
@@ -410,12 +472,14 @@ public class FileEncodingsIT {
       }
     }
 
-    private static DictionaryPage getDictionaryPageForColumn(PageReadStore pageReadStore, ColumnDescriptor columnDescriptor) {
+    private static DictionaryPage getDictionaryPageForColumn(
+        PageReadStore pageReadStore, ColumnDescriptor columnDescriptor) {
       PageReader pageReader = pageReadStore.getPageReader(columnDescriptor);
       return pageReader.readDictionaryPage();
     }
 
-    private static List<DataPage> getPageGroupForColumn(PageReadStore pageReadStore, ColumnDescriptor columnDescriptor) {
+    private static List<DataPage> getPageGroupForColumn(
+        PageReadStore pageReadStore, ColumnDescriptor columnDescriptor) {
       PageReader pageReader = pageReadStore.getPageReader(columnDescriptor);
       List<DataPage> pageGroup = new ArrayList<DataPage>();
 
@@ -428,16 +492,21 @@ public class FileEncodingsIT {
     }
 
     private static MessageType readSchemaFromFile(Path file) throws IOException {
-      ParquetMetadata metadata = ParquetFileReader.readFooter(configuration, file, ParquetMetadataConverter.NO_FILTER);
+      ParquetMetadata metadata =
+          ParquetFileReader.readFooter(configuration, file, ParquetMetadataConverter.NO_FILTER);
       return metadata.getFileMetaData().getSchema();
     }
-
 
     private static List<PageReadStore> readBlocksFromFile(Path file) throws IOException {
       List<PageReadStore> rowGroups = new ArrayList<PageReadStore>();
 
-      ParquetMetadata metadata = ParquetFileReader.readFooter(configuration, file, ParquetMetadataConverter.NO_FILTER);
-      ParquetFileReader fileReader = new ParquetFileReader(configuration, metadata.getFileMetaData(), file, metadata.getBlocks(),
+      ParquetMetadata metadata =
+          ParquetFileReader.readFooter(configuration, file, ParquetMetadataConverter.NO_FILTER);
+      ParquetFileReader fileReader = new ParquetFileReader(
+          configuration,
+          metadata.getFileMetaData(),
+          file,
+          metadata.getBlocks(),
           metadata.getFileMetaData().getSchema().getColumns());
 
       PageReadStore group;
@@ -466,11 +535,21 @@ public class FileEncodingsIT {
     }
 
     public void validateNextValue(Object value) {
-      assertEquals(String.format("Value from page is different than expected, ROW_GROUP_ID=%d PAGE_ID=%d VALUE_POS=%d",
-          rowGroupID, pageID, currentPos), expectedValues.get(currentPos++), value);
+      assertEquals(
+          String.format(
+              "Value from page is different than expected, ROW_GROUP_ID=%d PAGE_ID=%d VALUE_POS=%d",
+              rowGroupID, pageID, currentPos),
+          expectedValues.get(currentPos++),
+          value);
     }
 
-    public static void validateValuesForPage(int rowGroupID, int pageID, DictionaryPage dictPage, DataPage page, ColumnDescriptor columnDesc, List<?> expectedValues) {
+    public static void validateValuesForPage(
+        int rowGroupID,
+        int pageID,
+        DictionaryPage dictPage,
+        DataPage page,
+        ColumnDescriptor columnDesc,
+        List<?> expectedValues) {
       TestStatistics.SingletonPageReader pageReader = new TestStatistics.SingletonPageReader(dictPage, page);
       PrimitiveConverter converter = getConverter(rowGroupID, pageID, columnDesc.getType(), expectedValues);
       ColumnReaderImpl column = new ColumnReaderImpl(columnDesc, pageReader, converter, null);
@@ -480,7 +559,8 @@ public class FileEncodingsIT {
       }
     }
 
-    private static PrimitiveConverter getConverter(final int rowGroupID, final int pageID, PrimitiveTypeName type, final List<?> expectedValues) {
+    private static PrimitiveConverter getConverter(
+        final int rowGroupID, final int pageID, PrimitiveTypeName type, final List<?> expectedValues) {
       return type.convert(new PrimitiveType.PrimitiveTypeNameConverter<PrimitiveConverter, RuntimeException>() {
 
         @Override
@@ -533,7 +613,8 @@ public class FileEncodingsIT {
         }
 
         @Override
-        public PrimitiveConverter convertFIXED_LEN_BYTE_ARRAY(PrimitiveTypeName primitiveTypeName) throws RuntimeException {
+        public PrimitiveConverter convertFIXED_LEN_BYTE_ARRAY(PrimitiveTypeName primitiveTypeName)
+            throws RuntimeException {
           return convertBINARY(primitiveTypeName);
         }
 

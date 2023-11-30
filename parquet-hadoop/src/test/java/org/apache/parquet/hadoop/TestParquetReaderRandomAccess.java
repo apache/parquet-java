@@ -18,6 +18,22 @@
  */
 package org.apache.parquet.hadoop;
 
+import static org.apache.parquet.filter2.predicate.FilterApi.eq;
+import static org.apache.parquet.filter2.predicate.FilterApi.longColumn;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
+import static org.apache.parquet.schema.Type.Repetition.OPTIONAL;
+import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Random;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.column.ParquetProperties;
@@ -41,32 +57,17 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Random;
-
-import static org.apache.parquet.filter2.predicate.FilterApi.eq;
-import static org.apache.parquet.filter2.predicate.FilterApi.longColumn;
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
-import static org.apache.parquet.schema.Type.Repetition.OPTIONAL;
-import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
-import static org.junit.Assert.*;
-
 /**
  * This tests the random access methods of the ParquetFileReader, specifically:
  * <ul>
  *   <li>{@link ParquetFileReader#readRowGroup(int)}</li>
  *   <li>{@link ParquetFileReader#readFilteredRowGroup(int)}</li>
  * </ul>
- *
+ * <p>
  *  For this we use two columns.
  *  Column "i64" that starts at value 0 and counts up.
  *  Column "i64_flip" that start at value 1 and flips between 1 and 0.
- *
+ * <p>
  *  With these two column we can validate the read data without holding the written data in memory.
  *  The "i64_flip" column is mainly used to test the filtering.
  *  We filter "i64_flip" to be equal to one, that means all values in "i64" have to be even.
@@ -90,14 +91,13 @@ public class TestParquetReaderRandomAccess {
 
     List<DataContext> contexts = new ArrayList<>();
 
-    for (boolean enableDictionary : new boolean[]{false, true}) {
-      for (WriterVersion writerVersion : new WriterVersion[]{WriterVersion.PARQUET_1_0, WriterVersion.PARQUET_2_0}) {
-       contexts.add(
-         new DataContextRandom(random.nextLong(), file, blockSize,
-           pageSize, enableDictionary, writerVersion));
-       contexts.add(
-         new DataContextRandomAndSequential(random.nextLong(), file, blockSize,
-           pageSize, enableDictionary, writerVersion));
+    for (boolean enableDictionary : new boolean[] {false, true}) {
+      for (WriterVersion writerVersion :
+          new WriterVersion[] {WriterVersion.PARQUET_1_0, WriterVersion.PARQUET_2_0}) {
+        contexts.add(new DataContextRandom(
+            random.nextLong(), file, blockSize, pageSize, enableDictionary, writerVersion));
+        contexts.add(new DataContextRandomAndSequential(
+            random.nextLong(), file, blockSize, pageSize, enableDictionary, writerVersion));
       }
     }
 
@@ -107,7 +107,7 @@ public class TestParquetReaderRandomAccess {
   }
 
   public static class SequentialLongGenerator extends RandomValues.RandomValueGenerator<Long> {
-    private long value= 0;
+    private long value = 0;
 
     protected SequentialLongGenerator() {
       super(0L);
@@ -133,7 +133,7 @@ public class TestParquetReaderRandomAccess {
     }
   }
 
-  public static abstract class DataContext extends DataGenerationContext.WriteContext {
+  public abstract static class DataContext extends DataGenerationContext.WriteContext {
 
     private static final int recordCount = 1_000_000;
 
@@ -141,21 +141,27 @@ public class TestParquetReaderRandomAccess {
     private final Random random;
     private final FilterCompat.Filter filter;
 
-    public DataContext(long seed, File path, int blockSize, int pageSize, boolean enableDictionary, ParquetProperties.WriterVersion version) throws IOException {
+    public DataContext(
+        long seed,
+        File path,
+        int blockSize,
+        int pageSize,
+        boolean enableDictionary,
+        ParquetProperties.WriterVersion version)
+        throws IOException {
       super(path, buildSchema(), blockSize, pageSize, enableDictionary, true, version);
 
       this.random = new Random(seed);
-      this.randomGenerators = Arrays.asList(
-        new SequentialLongGenerator(),
-        new SequentialFlippingLongGenerator());
+      this.randomGenerators = Arrays.asList(new SequentialLongGenerator(), new SequentialFlippingLongGenerator());
 
       this.filter = FilterCompat.get(eq(longColumn("i64_flip"), 1L));
     }
 
     private static MessageType buildSchema() {
-      return new MessageType("schema",
-        new PrimitiveType(REQUIRED, INT64, "i64"),
-        new PrimitiveType(REQUIRED, INT64, "i64_flip"));
+      return new MessageType(
+          "schema",
+          new PrimitiveType(REQUIRED, INT64, "i64"),
+          new PrimitiveType(REQUIRED, INT64, "i64_flip"));
     }
 
     @Override
@@ -181,24 +187,26 @@ public class TestParquetReaderRandomAccess {
       ParquetReadOptions options = ParquetReadOptions.builder().build();
 
       ParquetReadOptions filterOptions = ParquetReadOptions.builder()
-        .copy(options)
-        .withRecordFilter(filter)
-        .useDictionaryFilter(true)
-        .useStatsFilter(true)
-        .useRecordFilter(true)
-        .useColumnIndexFilter(true)
-        .build();
+          .copy(options)
+          .withRecordFilter(filter)
+          .useDictionaryFilter(true)
+          .useStatsFilter(true)
+          .useRecordFilter(true)
+          .useColumnIndexFilter(true)
+          .build();
 
       List<Long> fromNumber = new ArrayList<>();
       List<Long> toNumber = new ArrayList<>();
       int blockAmount;
 
-      try (ParquetFileReader reader = new ParquetFileReader(HadoopInputFile.fromPath(super.fsPath, configuration), options)) {
+      try (ParquetFileReader reader =
+          new ParquetFileReader(HadoopInputFile.fromPath(super.fsPath, configuration), options)) {
         blockAmount = reader.getRowGroups().size();
         PageReadStore pages;
         while ((pages = reader.readNextRowGroup()) != null) {
           MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(super.schema);
-          RecordReader<Group> recordReader = columnIO.getRecordReader(pages, new GroupRecordConverter(super.schema));
+          RecordReader<Group> recordReader =
+              columnIO.getRecordReader(pages, new GroupRecordConverter(super.schema));
           long rowCount = pages.getRowCount();
           long from = recordReader.read().getLong("i64", 0);
           for (int i = 1; i < rowCount - 1; i++) {
@@ -229,16 +237,19 @@ public class TestParquetReaderRandomAccess {
 
       Collections.shuffle(indexes, random);
 
-      try (ParquetFileReader reader = new ParquetFileReader(HadoopInputFile.fromPath(super.fsPath, configuration), options)) {
+      try (ParquetFileReader reader =
+          new ParquetFileReader(HadoopInputFile.fromPath(super.fsPath, configuration), options)) {
         test(reader, indexes, fromNumber, toNumber, blockAmount);
       }
 
-      try (ParquetFileReader reader = new ParquetFileReader(HadoopInputFile.fromPath(super.fsPath, configuration), filterOptions)) {
+      try (ParquetFileReader reader =
+          new ParquetFileReader(HadoopInputFile.fromPath(super.fsPath, configuration), filterOptions)) {
         testFiltered(reader, indexes, fromNumber, toNumber, blockAmount);
       }
     }
 
-    public void assertValues(PageReadStore pages, List<Long> fromNumber, List<Long> toNumber, int index, int blockAmount) {
+    public void assertValues(
+        PageReadStore pages, List<Long> fromNumber, List<Long> toNumber, int index, int blockAmount) {
       if (index < 0 || index >= blockAmount) {
         assertNull(pages);
         return;
@@ -263,7 +274,8 @@ public class TestParquetReaderRandomAccess {
       assertTrue(exceptionThrown);
     }
 
-    public void assertFilteredValues(PageReadStore pages, List<Long> fromNumber, List<Long> toNumber, int index, int blockAmount) {
+    public void assertFilteredValues(
+        PageReadStore pages, List<Long> fromNumber, List<Long> toNumber, int index, int blockAmount) {
       if (index < 0 || index >= blockAmount) {
         assertNull(pages);
         return;
@@ -273,7 +285,8 @@ public class TestParquetReaderRandomAccess {
       long lastValue = toNumber.get(index);
 
       MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(super.schema);
-      RecordReader<Group> recordReader = columnIO.getRecordReader(pages, new GroupRecordConverter(super.schema), filter);
+      RecordReader<Group> recordReader =
+          columnIO.getRecordReader(pages, new GroupRecordConverter(super.schema), filter);
 
       for (long i = firstValue; i <= lastValue; i++) {
         Group group = recordReader.read();
@@ -294,27 +307,59 @@ public class TestParquetReaderRandomAccess {
       assertTrue(exceptionThrown);
     }
 
-    protected abstract void test(ParquetFileReader reader, List<Integer> indexes, List<Long> fromNumber, List<Long> toNumber, int blockAmount) throws IOException;
-    protected abstract void testFiltered(ParquetFileReader reader, List<Integer> indexes, List<Long> fromNumber, List<Long> toNumber, int blockAmount) throws IOException;
+    protected abstract void test(
+        ParquetFileReader reader,
+        List<Integer> indexes,
+        List<Long> fromNumber,
+        List<Long> toNumber,
+        int blockAmount)
+        throws IOException;
+
+    protected abstract void testFiltered(
+        ParquetFileReader reader,
+        List<Integer> indexes,
+        List<Long> fromNumber,
+        List<Long> toNumber,
+        int blockAmount)
+        throws IOException;
   }
 
   public static class DataContextRandom extends DataContext {
 
-    public DataContextRandom(long seed, File path, int blockSize, int pageSize, boolean enableDictionary, ParquetProperties.WriterVersion version) throws IOException {
+    public DataContextRandom(
+        long seed,
+        File path,
+        int blockSize,
+        int pageSize,
+        boolean enableDictionary,
+        ParquetProperties.WriterVersion version)
+        throws IOException {
       super(seed, path, blockSize, pageSize, enableDictionary, version);
     }
 
     @Override
-    protected void test(ParquetFileReader reader, List<Integer> indexes, List<Long> fromNumber, List<Long> toNumber, int blockAmount) throws IOException {
-      for (int index: indexes) {
+    protected void test(
+        ParquetFileReader reader,
+        List<Integer> indexes,
+        List<Long> fromNumber,
+        List<Long> toNumber,
+        int blockAmount)
+        throws IOException {
+      for (int index : indexes) {
         PageReadStore pages = reader.readRowGroup(index);
         assertValues(pages, fromNumber, toNumber, index, blockAmount);
       }
     }
 
     @Override
-    protected void testFiltered(ParquetFileReader reader, List<Integer> indexes, List<Long> fromNumber, List<Long> toNumber, int blockAmount) throws IOException {
-      for (int index: indexes) {
+    protected void testFiltered(
+        ParquetFileReader reader,
+        List<Integer> indexes,
+        List<Long> fromNumber,
+        List<Long> toNumber,
+        int blockAmount)
+        throws IOException {
+      for (int index : indexes) {
         PageReadStore pages = reader.readFilteredRowGroup(index);
         assertFilteredValues(pages, fromNumber, toNumber, index, blockAmount);
       }
@@ -323,17 +368,30 @@ public class TestParquetReaderRandomAccess {
 
   public static class DataContextRandomAndSequential extends DataContext {
 
-    public DataContextRandomAndSequential(long seed, File path, int blockSize, int pageSize, boolean enableDictionary, ParquetProperties.WriterVersion version) throws IOException {
+    public DataContextRandomAndSequential(
+        long seed,
+        File path,
+        int blockSize,
+        int pageSize,
+        boolean enableDictionary,
+        ParquetProperties.WriterVersion version)
+        throws IOException {
       super(seed, path, blockSize, pageSize, enableDictionary, version);
     }
 
     @Override
-    protected void test(ParquetFileReader reader, List<Integer> indexes, List<Long> fromNumber, List<Long> toNumber, int blockAmount) throws IOException {
-      int splitPoint = indexes.size()/2;
+    protected void test(
+        ParquetFileReader reader,
+        List<Integer> indexes,
+        List<Long> fromNumber,
+        List<Long> toNumber,
+        int blockAmount)
+        throws IOException {
+      int splitPoint = indexes.size() / 2;
 
       {
         PageReadStore pages = reader.readNextRowGroup();
-        assertValues(pages, fromNumber, toNumber, 0 , blockAmount);
+        assertValues(pages, fromNumber, toNumber, 0, blockAmount);
       }
       for (int i = 0; i < splitPoint; i++) {
         int index = indexes.get(i);
@@ -342,7 +400,7 @@ public class TestParquetReaderRandomAccess {
       }
       {
         PageReadStore pages = reader.readNextRowGroup();
-        assertValues(pages, fromNumber, toNumber, 1 , blockAmount);
+        assertValues(pages, fromNumber, toNumber, 1, blockAmount);
       }
       for (int i = splitPoint; i < indexes.size(); i++) {
         int index = indexes.get(i);
@@ -351,13 +409,19 @@ public class TestParquetReaderRandomAccess {
       }
       {
         PageReadStore pages = reader.readNextRowGroup();
-        assertValues(pages, fromNumber, toNumber, 2 , blockAmount);
+        assertValues(pages, fromNumber, toNumber, 2, blockAmount);
       }
     }
 
     @Override
-    protected void testFiltered(ParquetFileReader reader, List<Integer> indexes, List<Long> fromNumber, List<Long> toNumber, int blockAmount) throws IOException {
-      int splitPoint = indexes.size()/2;
+    protected void testFiltered(
+        ParquetFileReader reader,
+        List<Integer> indexes,
+        List<Long> fromNumber,
+        List<Long> toNumber,
+        int blockAmount)
+        throws IOException {
+      int splitPoint = indexes.size() / 2;
 
       {
         PageReadStore pages = reader.readNextFilteredRowGroup();
@@ -383,5 +447,4 @@ public class TestParquetReaderRandomAccess {
       }
     }
   }
-
 }
