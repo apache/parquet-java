@@ -18,14 +18,11 @@
  */
 package org.apache.parquet.hadoop;
 
-import org.junit.Test;
-import org.junit.Rule;
-import org.junit.rules.ErrorCollector;
-
-import okhttp3.OkHttpClient;
-
-
 import java.io.IOException;
+import okhttp3.OkHttpClient;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.ErrorCollector;
 
 /*
  * This file continues the testing in TestEncryptionOptions. This test goals:
@@ -46,5 +43,4 @@ public class ITTestEncryptionOptions {
   public void testInteropReadEncryptedParquetFiles() throws IOException {
     test.testInteropReadEncryptedParquetFiles(errorCollector, httpClient);
   }
-
 }

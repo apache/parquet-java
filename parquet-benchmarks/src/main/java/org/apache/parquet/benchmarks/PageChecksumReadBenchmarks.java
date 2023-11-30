@@ -18,6 +18,20 @@
  */
 package org.apache.parquet.benchmarks;
 
+import static org.apache.parquet.benchmarks.BenchmarkConstants.ONE_K;
+import static org.apache.parquet.benchmarks.BenchmarkConstants.ONE_MILLION;
+import static org.apache.parquet.benchmarks.BenchmarkFiles.configuration;
+import static org.apache.parquet.benchmarks.BenchmarkFiles.file_100K_CHECKSUMS_GZIP;
+import static org.apache.parquet.benchmarks.BenchmarkFiles.file_100K_CHECKSUMS_SNAPPY;
+import static org.apache.parquet.benchmarks.BenchmarkFiles.file_100K_CHECKSUMS_UNCOMPRESSED;
+import static org.apache.parquet.benchmarks.BenchmarkFiles.file_10M_CHECKSUMS_GZIP;
+import static org.apache.parquet.benchmarks.BenchmarkFiles.file_10M_CHECKSUMS_SNAPPY;
+import static org.apache.parquet.benchmarks.BenchmarkFiles.file_10M_CHECKSUMS_UNCOMPRESSED;
+import static org.apache.parquet.benchmarks.BenchmarkFiles.file_1M_CHECKSUMS_GZIP;
+import static org.apache.parquet.benchmarks.BenchmarkFiles.file_1M_CHECKSUMS_SNAPPY;
+import static org.apache.parquet.benchmarks.BenchmarkFiles.file_1M_CHECKSUMS_UNCOMPRESSED;
+
+import java.io.IOException;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.hadoop.ParquetReader;
@@ -30,21 +44,6 @@ import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.infra.Blackhole;
-
-import static org.apache.parquet.benchmarks.BenchmarkConstants.ONE_K;
-import static org.apache.parquet.benchmarks.BenchmarkConstants.ONE_MILLION;
-import static org.apache.parquet.benchmarks.BenchmarkFiles.configuration;
-import static org.apache.parquet.benchmarks.BenchmarkFiles.file_100K_CHECKSUMS_UNCOMPRESSED;
-import static org.apache.parquet.benchmarks.BenchmarkFiles.file_100K_CHECKSUMS_GZIP;
-import static org.apache.parquet.benchmarks.BenchmarkFiles.file_100K_CHECKSUMS_SNAPPY;
-import static org.apache.parquet.benchmarks.BenchmarkFiles.file_1M_CHECKSUMS_UNCOMPRESSED;
-import static org.apache.parquet.benchmarks.BenchmarkFiles.file_1M_CHECKSUMS_GZIP;
-import static org.apache.parquet.benchmarks.BenchmarkFiles.file_1M_CHECKSUMS_SNAPPY;
-import static org.apache.parquet.benchmarks.BenchmarkFiles.file_10M_CHECKSUMS_UNCOMPRESSED;
-import static org.apache.parquet.benchmarks.BenchmarkFiles.file_10M_CHECKSUMS_GZIP;
-import static org.apache.parquet.benchmarks.BenchmarkFiles.file_10M_CHECKSUMS_SNAPPY;
-
-import java.io.IOException;
 
 @State(Scope.Thread)
 public class PageChecksumReadBenchmarks {
@@ -60,8 +59,7 @@ public class PageChecksumReadBenchmarks {
     pageChecksumDataGenerator.generateAll();
   }
 
-  private void readFile(Path file, int nRows, boolean verifyChecksums, Blackhole blackhole)
-    throws IOException {
+  private void readFile(Path file, int nRows, boolean verifyChecksums, Blackhole blackhole) throws IOException {
     try (ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), file)
         .withConf(configuration)
         .usePageChecksumVerification(verifyChecksums)
@@ -192,5 +190,4 @@ public class PageChecksumReadBenchmarks {
   public void read10MRowsSnappyWithVerification(Blackhole blackhole) throws IOException {
     readFile(file_10M_CHECKSUMS_SNAPPY, 10 * ONE_MILLION, true, blackhole);
   }
-
 }

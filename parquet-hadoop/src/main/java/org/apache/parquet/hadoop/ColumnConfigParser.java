@@ -24,7 +24,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
-
 import org.apache.hadoop.conf.Configuration;
 
 /**
@@ -54,8 +53,8 @@ class ColumnConfigParser {
 
   private final List<ConfigHelper<?>> helpers = new ArrayList<>();
 
-  public <T> ColumnConfigParser withColumnConfig(String rootKey, Function<String, T> function,
-      BiConsumer<String, T> consumer) {
+  public <T> ColumnConfigParser withColumnConfig(
+      String rootKey, Function<String, T> function, BiConsumer<String, T> consumer) {
     helpers.add(new ConfigHelper<T>(rootKey + '#', function, consumer));
     return this;
   }
@@ -63,7 +62,8 @@ class ColumnConfigParser {
   public void parseConfig(Configuration conf) {
     for (Map.Entry<String, String> entry : conf) {
       for (ConfigHelper<?> helper : helpers) {
-        // We retrieve the value from function instead of parsing from the string here to use the exact implementations
+        // We retrieve the value from function instead of parsing from the string here to use the exact
+        // implementations
         // in Configuration
         helper.processKey(entry.getKey());
       }

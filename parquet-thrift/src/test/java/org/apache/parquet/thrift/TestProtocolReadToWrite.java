@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -18,8 +18,47 @@
  */
 package org.apache.parquet.thrift;
 
-import com.twitter.data.proto.tutorial.thrift.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
+import com.twitter.data.proto.tutorial.thrift.AddressBook;
+import com.twitter.data.proto.tutorial.thrift.Name;
+import com.twitter.data.proto.tutorial.thrift.Person;
+import com.twitter.data.proto.tutorial.thrift.PhoneNumber;
+import com.twitter.data.proto.tutorial.thrift.PhoneType;
 import com.twitter.elephantbird.thrift.test.TestMapInSet;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import org.apache.parquet.thrift.test.Phone;
+import org.apache.parquet.thrift.test.StructWithExtraField;
+import org.apache.parquet.thrift.test.StructWithIndexStartsFrom4;
+import org.apache.parquet.thrift.test.compat.ABool;
+import org.apache.parquet.thrift.test.compat.ALong;
+import org.apache.parquet.thrift.test.compat.AStructThatLooksLikeUnionV2;
+import org.apache.parquet.thrift.test.compat.NumberEnumWithMoreValue;
+import org.apache.parquet.thrift.test.compat.StructV1;
+import org.apache.parquet.thrift.test.compat.StructV2;
+import org.apache.parquet.thrift.test.compat.StructV3;
+import org.apache.parquet.thrift.test.compat.StructV4WithExtracStructField;
+import org.apache.parquet.thrift.test.compat.StructWithAStructThatLooksLikeUnionV2;
+import org.apache.parquet.thrift.test.compat.StructWithEnum;
+import org.apache.parquet.thrift.test.compat.StructWithMoreEnum;
+import org.apache.parquet.thrift.test.compat.StructWithUnionV1;
+import org.apache.parquet.thrift.test.compat.StructWithUnionV2;
+import org.apache.parquet.thrift.test.compat.UnionThatLooksLikeUnionV3;
+import org.apache.parquet.thrift.test.compat.UnionV1;
+import org.apache.parquet.thrift.test.compat.UnionV2;
+import org.apache.parquet.thrift.test.compat.UnionV3;
 import org.apache.thrift.TBase;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TCompactProtocol;
@@ -27,30 +66,27 @@ import org.apache.thrift.protocol.TField;
 import org.apache.thrift.transport.TIOStreamTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.junit.Test;
-import org.apache.parquet.thrift.test.Phone;
-import org.apache.parquet.thrift.test.StructWithExtraField;
-import org.apache.parquet.thrift.test.StructWithIndexStartsFrom4;
-import org.apache.parquet.thrift.test.compat.*;
 import thrift.test.OneOfEach;
-
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.nio.ByteBuffer;
-import java.util.*;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 public class TestProtocolReadToWrite {
 
   @Test
   public void testOneOfEach() throws Exception {
     OneOfEach a = new OneOfEach(
-        true, false, (byte)8, (short)16, (int)32, (long)64, (double)1234, "string", "å", false,
-        ByteBuffer.wrap("a".getBytes()), new ArrayList<Byte>(), new ArrayList<Short>(), new ArrayList<Long>());
+        true,
+        false,
+        (byte) 8,
+        (short) 16,
+        (int) 32,
+        (long) 64,
+        (double) 1234,
+        "string",
+        "å",
+        false,
+        ByteBuffer.wrap("a".getBytes()),
+        new ArrayList<Byte>(),
+        new ArrayList<Short>(),
+        new ArrayList<Long>());
     writeReadCompare(a);
   }
 
@@ -59,18 +95,16 @@ public class TestProtocolReadToWrite {
     ArrayList<Person> persons = new ArrayList<Person>();
     final PhoneNumber phoneNumber = new PhoneNumber("555 999 9998");
     phoneNumber.type = PhoneType.HOME;
-    persons.add(
-        new Person(
-            new Name("Bob", "Roberts"),
-            1,
-            "bob@roberts.com",
-            Arrays.asList(new PhoneNumber("555 999 9999"), phoneNumber)));
-    persons.add(
-        new Person(
-            new Name("Dick", "Richardson"),
-            2,
-            "dick@richardson.com",
-            Arrays.asList(new PhoneNumber("555 999 9997"), new PhoneNumber("555 999 9996"))));
+    persons.add(new Person(
+        new Name("Bob", "Roberts"),
+        1,
+        "bob@roberts.com",
+        Arrays.asList(new PhoneNumber("555 999 9999"), phoneNumber)));
+    persons.add(new Person(
+        new Name("Dick", "Richardson"),
+        2,
+        "dick@richardson.com",
+        Arrays.asList(new PhoneNumber("555 999 9997"), new PhoneNumber("555 999 9996"))));
     AddressBook a = new AddressBook(persons);
     writeReadCompare(a);
   }
@@ -91,9 +125,11 @@ public class TestProtocolReadToWrite {
     writeReadCompare(a);
   }
 
-  private void writeReadCompare(TBase<?, ?> a)
-          throws TException, InstantiationException, IllegalAccessException {
-    ProtocolPipe[] pipes = {new ProtocolReadToWrite(), new BufferedProtocolReadToWrite(ThriftSchemaConverter.toStructType((Class<TBase<?, ?>>)a.getClass()))};
+  private void writeReadCompare(TBase<?, ?> a) throws TException, InstantiationException, IllegalAccessException {
+    ProtocolPipe[] pipes = {
+      new ProtocolReadToWrite(),
+      new BufferedProtocolReadToWrite(ThriftSchemaConverter.toStructType((Class<TBase<?, ?>>) a.getClass()))
+    };
     for (ProtocolPipe p : pipes) {
       final ByteArrayOutputStream in = new ByteArrayOutputStream();
       final ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -108,16 +144,29 @@ public class TestProtocolReadToWrite {
 
   @Test
   public void testIncompatibleSchemaRecord() throws Exception {
-    //handler will rethrow the exception for verifying purpose
+    // handler will rethrow the exception for verifying purpose
     CountingErrorHandler countingHandler = new CountingErrorHandler();
 
-    BufferedProtocolReadToWrite p = new BufferedProtocolReadToWrite(ThriftSchemaConverter.toStructType(AddressBook.class), countingHandler);
+    BufferedProtocolReadToWrite p =
+        new BufferedProtocolReadToWrite(ThriftSchemaConverter.toStructType(AddressBook.class), countingHandler);
 
     final ByteArrayOutputStream in = new ByteArrayOutputStream();
     final ByteArrayOutputStream out = new ByteArrayOutputStream();
     OneOfEach a = new OneOfEach(
-            true, false, (byte)8, (short)16, (int)32, (long)64, (double)1234, "string", "å", false,
-            ByteBuffer.wrap("a".getBytes()), new ArrayList<Byte>(), new ArrayList<Short>(), new ArrayList<Long>());
+        true,
+        false,
+        (byte) 8,
+        (short) 16,
+        (int) 32,
+        (long) 64,
+        (double) 1234,
+        "string",
+        "å",
+        false,
+        ByteBuffer.wrap("a".getBytes()),
+        new ArrayList<Byte>(),
+        new ArrayList<Short>(),
+        new ArrayList<Long>());
     a.write(protocol(in));
     try {
       p.readOne(protocol(new ByteArrayInputStream(in.toByteArray())), protocol(out));
@@ -135,12 +184,13 @@ public class TestProtocolReadToWrite {
   @Test
   public void testUnrecognizedUnionMemberSchema() throws Exception {
     CountingErrorHandler countingHandler = new CountingErrorHandler();
-    BufferedProtocolReadToWrite p = new BufferedProtocolReadToWrite(ThriftSchemaConverter.toStructType(StructWithUnionV1.class), countingHandler);
+    BufferedProtocolReadToWrite p = new BufferedProtocolReadToWrite(
+        ThriftSchemaConverter.toStructType(StructWithUnionV1.class), countingHandler);
     final ByteArrayOutputStream in = new ByteArrayOutputStream();
     final ByteArrayOutputStream out = new ByteArrayOutputStream();
     StructWithUnionV1 validUnion = new StructWithUnionV1("a valid struct", UnionV1.aLong(new ALong(17L)));
-    StructWithUnionV2 invalidUnion = new StructWithUnionV2("a struct with new union member",
-        UnionV2.aNewBool(new ABool(true)));
+    StructWithUnionV2 invalidUnion =
+        new StructWithUnionV2("a struct with new union member", UnionV2.aNewBool(new ABool(true)));
 
     validUnion.write(protocol(in));
     invalidUnion.write(protocol(in));
@@ -165,21 +215,22 @@ public class TestProtocolReadToWrite {
   @Test
   public void testUnionWithExtraOrNoValues() throws Exception {
     CountingErrorHandler countingHandler = new CountingErrorHandler();
-    BufferedProtocolReadToWrite p = new BufferedProtocolReadToWrite(ThriftSchemaConverter.toStructType(StructWithUnionV2.class), countingHandler);
+    BufferedProtocolReadToWrite p = new BufferedProtocolReadToWrite(
+        ThriftSchemaConverter.toStructType(StructWithUnionV2.class), countingHandler);
     ByteArrayOutputStream in = new ByteArrayOutputStream();
     final ByteArrayOutputStream out = new ByteArrayOutputStream();
 
     StructWithUnionV2 validUnion = new StructWithUnionV2("a valid struct", UnionV2.aLong(new ALong(17L)));
 
-    StructWithAStructThatLooksLikeUnionV2 allMissing = new StructWithAStructThatLooksLikeUnionV2("all missing",
-        new AStructThatLooksLikeUnionV2());
+    StructWithAStructThatLooksLikeUnionV2 allMissing =
+        new StructWithAStructThatLooksLikeUnionV2("all missing", new AStructThatLooksLikeUnionV2());
 
     AStructThatLooksLikeUnionV2 extra = new AStructThatLooksLikeUnionV2();
     extra.setALong(new ALong(18L));
     extra.setANewBool(new ABool(false));
 
-    StructWithAStructThatLooksLikeUnionV2 hasExtra = new StructWithAStructThatLooksLikeUnionV2("has extra",
-        new AStructThatLooksLikeUnionV2(extra));
+    StructWithAStructThatLooksLikeUnionV2 hasExtra =
+        new StructWithAStructThatLooksLikeUnionV2("has extra", new AStructThatLooksLikeUnionV2(extra));
 
     validUnion.write(protocol(in));
     allMissing.write(protocol(in));
@@ -224,7 +275,8 @@ public class TestProtocolReadToWrite {
   @Test
   public void testUnionWithStructWithUnknownField() throws Exception {
     CountingErrorHandler countingHandler = new CountingErrorHandler();
-    BufferedProtocolReadToWrite p = new BufferedProtocolReadToWrite(ThriftSchemaConverter.toStructType(UnionV3.class), countingHandler);
+    BufferedProtocolReadToWrite p =
+        new BufferedProtocolReadToWrite(ThriftSchemaConverter.toStructType(UnionV3.class), countingHandler);
     ByteArrayOutputStream in = new ByteArrayOutputStream();
     final ByteArrayOutputStream out = new ByteArrayOutputStream();
 
@@ -267,7 +319,8 @@ public class TestProtocolReadToWrite {
   @Test
   public void testEnumMissingSchema() throws Exception {
     CountingErrorHandler countingHandler = new CountingErrorHandler();
-    BufferedProtocolReadToWrite p = new BufferedProtocolReadToWrite(ThriftSchemaConverter.toStructType(StructWithEnum.class), countingHandler);
+    BufferedProtocolReadToWrite p = new BufferedProtocolReadToWrite(
+        ThriftSchemaConverter.toStructType(StructWithEnum.class), countingHandler);
     final ByteArrayOutputStream in = new ByteArrayOutputStream();
     final ByteArrayOutputStream out = new ByteArrayOutputStream();
     StructWithMoreEnum enumDefinedInOldDefinition = new StructWithMoreEnum(NumberEnumWithMoreValue.THREE);
@@ -294,6 +347,7 @@ public class TestProtocolReadToWrite {
 
   /**
    * When data contains extra field, it should notify the handler and read the data with extra field dropped
+   *
    * @throws Exception
    */
   @Test
@@ -306,9 +360,10 @@ public class TestProtocolReadToWrite {
         fieldIgnoredCount++;
       }
     };
-    BufferedProtocolReadToWrite structForRead = new BufferedProtocolReadToWrite(ThriftSchemaConverter.toStructType(StructV3.class), countingHandler);
+    BufferedProtocolReadToWrite structForRead =
+        new BufferedProtocolReadToWrite(ThriftSchemaConverter.toStructType(StructV3.class), countingHandler);
 
-    //Data has an extra field of type struct
+    // Data has an extra field of type struct
     final ByteArrayOutputStream in = new ByteArrayOutputStream();
     StructV4WithExtracStructField dataWithNewSchema = new StructV4WithExtracStructField("name");
     dataWithNewSchema.setAge("10");
@@ -318,11 +373,11 @@ public class TestProtocolReadToWrite {
     dataWithNewSchema.setAddedStruct(structV3);
     dataWithNewSchema.write(protocol(in));
 
-    //read using the schema that doesn't have the extra field
+    // read using the schema that doesn't have the extra field
     final ByteArrayOutputStream out = new ByteArrayOutputStream();
     structForRead.readOne(protocol(new ByteArrayInputStream(in.toByteArray())), protocol(out));
 
-    //record will be read without extra field
+    // record will be read without extra field
     assertEquals(1, countingHandler.recordCountOfMissingFields);
     assertEquals(1, countingHandler.fieldIgnoredCount);
 
@@ -344,14 +399,16 @@ public class TestProtocolReadToWrite {
       }
     };
 
-    BufferedProtocolReadToWrite structForRead = new BufferedProtocolReadToWrite(ThriftSchemaConverter.toStructType(StructWithIndexStartsFrom4.class), countingHandler);
+    BufferedProtocolReadToWrite structForRead = new BufferedProtocolReadToWrite(
+        ThriftSchemaConverter.toStructType(StructWithIndexStartsFrom4.class), countingHandler);
 
-    //Data has an extra field of type struct
+    // Data has an extra field of type struct
     final ByteArrayOutputStream in = new ByteArrayOutputStream();
-    StructWithExtraField dataWithNewExtraField = new StructWithExtraField(new Phone("111", "222"), new Phone("333", "444"));
+    StructWithExtraField dataWithNewExtraField =
+        new StructWithExtraField(new Phone("111", "222"), new Phone("333", "444"));
     dataWithNewExtraField.write(protocol(in));
 
-    //read using the schema that doesn't have the extra field
+    // read using the schema that doesn't have the extra field
     final ByteArrayOutputStream out = new ByteArrayOutputStream();
     structForRead.readOne(protocol(new ByteArrayInputStream(in.toByteArray())), protocol(out));
 

@@ -19,11 +19,19 @@
 
 package org.apache.parquet.cli.commands;
 
+import static org.apache.avro.generic.GenericData.Record;
+import static org.apache.parquet.cli.util.Expressions.filterSchema;
+import static org.apache.parquet.column.ParquetProperties.WriterVersion.PARQUET_1_0;
+import static org.apache.parquet.column.ParquetProperties.WriterVersion.PARQUET_2_0;
+
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.io.Closeables;
+import java.io.Closeable;
+import java.io.IOException;
+import java.util.List;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.hadoop.fs.FileSystem;
@@ -35,16 +43,8 @@ import org.apache.parquet.cli.util.Schemas;
 import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.slf4j.Logger;
-import java.io.Closeable;
-import java.io.IOException;
-import java.util.List;
 
-import static org.apache.avro.generic.GenericData.Record;
-import static org.apache.parquet.cli.util.Expressions.filterSchema;
-import static org.apache.parquet.column.ParquetProperties.WriterVersion.PARQUET_1_0;
-import static org.apache.parquet.column.ParquetProperties.WriterVersion.PARQUET_2_0;
-
-@Parameters(commandDescription="Create a Parquet file from a data file")
+@Parameters(commandDescription = "Create a Parquet file from a data file")
 public class ConvertCommand extends BaseCommand {
 
   public ConvertCommand(Logger console) {
@@ -55,12 +55,13 @@ public class ConvertCommand extends BaseCommand {
   List<String> targets;
 
   @Parameter(
-      names={"-o", "--output"},
-      description="Output file path",
-      required=true)
+      names = {"-o", "--output"},
+      description = "Output file path",
+      required = true)
   String outputPath = null;
 
-  @Parameter(names = {"-s", "--schema"},
+  @Parameter(
+      names = {"-s", "--schema"},
       description = "The file containing the Avro schema.")
   String avroSchemaFile;
 
@@ -69,35 +70,35 @@ public class ConvertCommand extends BaseCommand {
       description = "List of columns")
   List<String> columns;
 
-  @Parameter(names = {"--compression-codec"},
+  @Parameter(
+      names = {"--compression-codec"},
       description = "A compression codec name.")
   String compressionCodecName = "GZIP";
 
   @Parameter(
-      names={"--overwrite"},
-      description="Overwrite the output file if it exists")
+      names = {"--overwrite"},
+      description = "Overwrite the output file if it exists")
   boolean overwrite = false;
 
   @Parameter(
-      names={"-2", "--format-version-2", "--writer-version-2"},
-      description="Use Parquet format version 2",
+      names = {"-2", "--format-version-2", "--writer-version-2"},
+      description = "Use Parquet format version 2",
       hidden = true)
   boolean v2 = false;
 
-  @Parameter(names="--row-group-size", description="Target row group size")
+  @Parameter(names = "--row-group-size", description = "Target row group size")
   int rowGroupSize = ParquetWriter.DEFAULT_BLOCK_SIZE;
 
-  @Parameter(names="--page-size", description="Target page size")
+  @Parameter(names = "--page-size", description = "Target page size")
   int pageSize = ParquetWriter.DEFAULT_PAGE_SIZE;
 
-  @Parameter(names="--dictionary-size", description="Max dictionary page size")
+  @Parameter(names = "--dictionary-size", description = "Max dictionary page size")
   int dictionaryPageSize = ParquetWriter.DEFAULT_PAGE_SIZE;
 
   @Override
   @SuppressWarnings("unchecked")
   public int run() throws IOException {
-    Preconditions.checkArgument(targets != null && targets.size() == 1,
-        "A data file is required.");
+    Preconditions.checkArgument(targets != null && targets.size() == 1, "A data file is required.");
 
     String source = targets.get(0);
 
@@ -122,8 +123,7 @@ public class ConvertCommand extends BaseCommand {
     boolean threw = true;
     long count = 0;
     try {
-      try (ParquetWriter<Record> writer = AvroParquetWriter
-          .<Record>builder(qualifiedPath(outputPath))
+      try (ParquetWriter<Record> writer = AvroParquetWriter.<Record>builder(qualifiedPath(outputPath))
           .withWriterVersion(v2 ? PARQUET_2_0 : PARQUET_1_0)
           .withConf(getConf())
           .withCompressionCodec(codec)
@@ -159,7 +159,6 @@ public class ConvertCommand extends BaseCommand {
         "# Create a Parquet file in S3 from a local Avro file",
         "path/to/sample.avro -o s3:/user/me/sample.parquet",
         "# Create a Parquet file from Avro data in S3",
-        "s3:/data/path/sample.avro -o sample.parquet"
-    );
+        "s3:/data/path/sample.avro -o sample.parquet");
   }
 }

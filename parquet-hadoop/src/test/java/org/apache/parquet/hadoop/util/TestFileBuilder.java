@@ -13,6 +13,17 @@
  */
 package org.apache.parquet.hadoop.util;
 
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.DOUBLE;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FLOAT;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.ThreadLocalRandom;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.column.ParquetProperties;
@@ -29,214 +40,175 @@ import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.ThreadLocalRandom;
+public class TestFileBuilder {
+  private MessageType schema;
+  private Configuration conf;
+  private Map<String, String> extraMeta = new HashMap<>();
+  private int numRecord = 100000;
+  private ParquetProperties.WriterVersion writerVersion = ParquetProperties.WriterVersion.PARQUET_1_0;
+  private int pageSize = ParquetProperties.DEFAULT_PAGE_SIZE;
+  private String codec = "ZSTD";
+  private String[] encryptColumns = {};
+  private ParquetCipher cipher = ParquetCipher.AES_GCM_V1;
+  private Boolean footerEncryption = false;
+  private long rowGroupSize = ParquetWriter.DEFAULT_BLOCK_SIZE;
+  private String[] bloomFilterEnabled = {};
 
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.DOUBLE;
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FLOAT;
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
+  public TestFileBuilder(Configuration conf, MessageType schema) {
+    this.conf = conf;
+    this.schema = schema;
+    conf.set(GroupWriteSupport.PARQUET_EXAMPLE_SCHEMA, schema.toString());
+  }
 
-public class TestFileBuilder
-{
-    private MessageType schema;
-    private Configuration conf;
-    private Map<String, String> extraMeta = new HashMap<>();
-    private int numRecord = 100000;
-    private ParquetProperties.WriterVersion writerVersion = ParquetProperties.WriterVersion.PARQUET_1_0;
-    private int pageSize = ParquetProperties.DEFAULT_PAGE_SIZE;
-    private String codec = "ZSTD";
-    private String[] encryptColumns = {};
-    private ParquetCipher cipher = ParquetCipher.AES_GCM_V1;
-    private Boolean footerEncryption = false;
-    private long rowGroupSize = ParquetWriter.DEFAULT_BLOCK_SIZE;
-    private String[] bloomFilterEnabled = {};
+  public TestFileBuilder withNumRecord(int numRecord) {
+    this.numRecord = numRecord;
+    return this;
+  }
 
-    public TestFileBuilder(Configuration conf, MessageType schema)
-    {
-        this.conf = conf;
-        this.schema = schema;
-        conf.set(GroupWriteSupport.PARQUET_EXAMPLE_SCHEMA, schema.toString());
+  public TestFileBuilder withEncrytionAlgorithm(ParquetCipher cipher) {
+    this.cipher = cipher;
+    return this;
+  }
+
+  public TestFileBuilder withExtraMeta(Map<String, String> extraMeta) {
+    this.extraMeta = extraMeta;
+    return this;
+  }
+
+  public TestFileBuilder withWriterVersion(ParquetProperties.WriterVersion writerVersion) {
+    this.writerVersion = writerVersion;
+    return this;
+  }
+
+  public TestFileBuilder withPageSize(int pageSize) {
+    this.pageSize = pageSize;
+    return this;
+  }
+
+  public TestFileBuilder withCodec(String codec) {
+    this.codec = codec;
+    return this;
+  }
+
+  public TestFileBuilder withEncryptColumns(String[] encryptColumns) {
+    this.encryptColumns = encryptColumns;
+    return this;
+  }
+
+  public TestFileBuilder withFooterEncryption() {
+    this.footerEncryption = true;
+    return this;
+  }
+
+  public TestFileBuilder withRowGroupSize(long rowGroupSize) {
+    this.rowGroupSize = rowGroupSize;
+    return this;
+  }
+
+  public TestFileBuilder withBloomFilterEnabled(String[] bloomFilterEnabled) {
+    this.bloomFilterEnabled = bloomFilterEnabled;
+    return this;
+  }
+
+  public EncryptionTestFile build() throws IOException {
+    String fileName = createTempFile("test");
+    SimpleGroup[] fileContent = createFileContent(schema);
+    FileEncryptionProperties encryptionProperties =
+        EncDecProperties.getFileEncryptionProperties(encryptColumns, cipher, footerEncryption);
+    ExampleParquetWriter.Builder builder = ExampleParquetWriter.builder(new Path(fileName))
+        .withConf(conf)
+        .withWriterVersion(writerVersion)
+        .withExtraMetaData(extraMeta)
+        .withValidation(true)
+        .withPageSize(pageSize)
+        .withRowGroupSize(rowGroupSize)
+        .withEncryption(encryptionProperties)
+        .withCompressionCodec(CompressionCodecName.valueOf(codec));
+
+    for (String columnPath : bloomFilterEnabled) {
+      builder.withBloomFilterEnabled(columnPath, true);
     }
 
-    public TestFileBuilder withNumRecord(int numRecord)
-    {
-        this.numRecord = numRecord;
-        return this;
+    try (ParquetWriter writer = builder.build()) {
+      for (int i = 0; i < fileContent.length; i++) {
+        writer.write(fileContent[i]);
+      }
     }
+    return new EncryptionTestFile(fileName, fileContent);
+  }
 
-    public TestFileBuilder withEncrytionAlgorithm(ParquetCipher cipher)
-    {
-        this.cipher = cipher;
-        return this;
+  private SimpleGroup[] createFileContent(MessageType schema) {
+    SimpleGroup[] simpleGroups = new SimpleGroup[numRecord];
+    for (int i = 0; i < simpleGroups.length; i++) {
+      SimpleGroup g = new SimpleGroup(schema);
+      for (Type type : schema.getFields()) {
+        addValueToSimpleGroup(g, type);
+      }
+      simpleGroups[i] = g;
     }
+    return simpleGroups;
+  }
 
-    public TestFileBuilder withExtraMeta(Map<String, String> extraMeta)
-    {
-        this.extraMeta = extraMeta;
-        return this;
+  private void addValueToSimpleGroup(Group g, Type type) {
+    if (type.isPrimitive()) {
+      PrimitiveType primitiveType = (PrimitiveType) type;
+      if (primitiveType.getPrimitiveTypeName().equals(INT32)) {
+        g.add(type.getName(), getInt());
+      } else if (primitiveType.getPrimitiveTypeName().equals(INT64)) {
+        g.add(type.getName(), getLong());
+      } else if (primitiveType.getPrimitiveTypeName().equals(BINARY)) {
+        g.add(type.getName(), getString());
+      } else if (primitiveType.getPrimitiveTypeName().equals(FLOAT)) {
+        g.add(type.getName(), getFloat());
+      } else if (primitiveType.getPrimitiveTypeName().equals(DOUBLE)) {
+        g.add(type.getName(), getDouble());
+      }
+      // Only support 5 types now, more can be added later
+    } else {
+      GroupType groupType = (GroupType) type;
+      Group parentGroup = g.addGroup(groupType.getName());
+      for (Type field : groupType.getFields()) {
+        addValueToSimpleGroup(parentGroup, field);
+      }
     }
+  }
 
-    public TestFileBuilder withWriterVersion(ParquetProperties.WriterVersion writerVersion)
-    {
-        this.writerVersion = writerVersion;
-        return this;
+  private static long getInt() {
+    return ThreadLocalRandom.current().nextInt(10000);
+  }
+
+  private static long getLong() {
+    return ThreadLocalRandom.current().nextLong(100000);
+  }
+
+  private static String getString() {
+    char[] chars = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'x', 'z', 'y'};
+    StringBuilder sb = new StringBuilder();
+    for (int i = 0; i < 100; i++) {
+      sb.append(chars[ThreadLocalRandom.current().nextInt(10)]);
     }
+    return sb.toString();
+  }
 
-    public TestFileBuilder withPageSize(int pageSize)
-    {
-        this.pageSize = pageSize;
-        return this;
+  private static float getFloat() {
+    if (ThreadLocalRandom.current().nextBoolean()) {
+      return Float.NaN;
     }
+    return ThreadLocalRandom.current().nextFloat();
+  }
 
-    public TestFileBuilder withCodec(String codec)
-    {
-        this.codec = codec;
-        return this;
+  private static double getDouble() {
+    if (ThreadLocalRandom.current().nextBoolean()) {
+      return Double.NaN;
     }
+    return ThreadLocalRandom.current().nextDouble();
+  }
 
-    public TestFileBuilder withEncryptColumns(String[] encryptColumns)
-    {
-        this.encryptColumns = encryptColumns;
-        return this;
+  public static String createTempFile(String prefix) {
+    try {
+      return Files.createTempDirectory(prefix).toAbsolutePath().toString() + "/test.parquet";
+    } catch (IOException e) {
+      throw new AssertionError("Unable to create temporary file", e);
     }
-
-    public TestFileBuilder withFooterEncryption()
-    {
-        this.footerEncryption = true;
-        return this;
-    }
-
-    public TestFileBuilder withRowGroupSize(long rowGroupSize)
-    {
-        this.rowGroupSize = rowGroupSize;
-        return this;
-    }
-
-    public TestFileBuilder withBloomFilterEnabled(String[] bloomFilterEnabled)
-    {
-        this.bloomFilterEnabled = bloomFilterEnabled;
-        return this;
-    }
-
-    public EncryptionTestFile build()
-            throws IOException
-    {
-        String fileName = createTempFile("test");
-        SimpleGroup[] fileContent = createFileContent(schema);
-        FileEncryptionProperties encryptionProperties = EncDecProperties.getFileEncryptionProperties(encryptColumns, cipher, footerEncryption);
-        ExampleParquetWriter.Builder builder = ExampleParquetWriter.builder(new Path(fileName))
-                .withConf(conf)
-                .withWriterVersion(writerVersion)
-                .withExtraMetaData(extraMeta)
-                .withValidation(true)
-                .withPageSize(pageSize)
-                .withRowGroupSize(rowGroupSize)
-                .withEncryption(encryptionProperties)
-                .withCompressionCodec(CompressionCodecName.valueOf(codec));
-
-        for (String columnPath: bloomFilterEnabled) {
-          builder.withBloomFilterEnabled(columnPath, true);
-        }
-
-        try (ParquetWriter writer = builder.build()) {
-            for (int i = 0; i < fileContent.length; i++) {
-                writer.write(fileContent[i]);
-            }
-        }
-        return new EncryptionTestFile(fileName, fileContent);
-    }
-
-    private SimpleGroup[] createFileContent(MessageType schema)
-    {
-        SimpleGroup[] simpleGroups = new SimpleGroup[numRecord];
-        for (int i = 0; i < simpleGroups.length; i++) {
-            SimpleGroup g = new SimpleGroup(schema);
-            for (Type type : schema.getFields()) {
-                addValueToSimpleGroup(g, type);
-            }
-            simpleGroups[i] = g;
-        }
-        return simpleGroups;
-    }
-
-    private void addValueToSimpleGroup(Group g, Type type)
-    {
-        if (type.isPrimitive()) {
-            PrimitiveType primitiveType = (PrimitiveType) type;
-            if (primitiveType.getPrimitiveTypeName().equals(INT32)) {
-                g.add(type.getName(), getInt());
-            }
-            else if (primitiveType.getPrimitiveTypeName().equals(INT64)) {
-                g.add(type.getName(), getLong());
-            }
-            else if (primitiveType.getPrimitiveTypeName().equals(BINARY)) {
-                g.add(type.getName(), getString());
-            }
-            else if (primitiveType.getPrimitiveTypeName().equals(FLOAT)) {
-                g.add(type.getName(), getFloat());
-            }
-            else if (primitiveType.getPrimitiveTypeName().equals(DOUBLE)) {
-                g.add(type.getName(), getDouble());
-            }
-            // Only support 5 types now, more can be added later
-        }
-        else {
-            GroupType groupType = (GroupType) type;
-            Group parentGroup = g.addGroup(groupType.getName());
-            for (Type field : groupType.getFields()) {
-                addValueToSimpleGroup(parentGroup, field);
-            }
-        }
-    }
-
-    private static long getInt()
-    {
-        return ThreadLocalRandom.current().nextInt(10000);
-    }
-
-    private static long getLong()
-    {
-        return ThreadLocalRandom.current().nextLong(100000);
-    }
-
-    private static String getString()
-    {
-        char[] chars = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'x', 'z', 'y'};
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < 100; i++) {
-            sb.append(chars[ThreadLocalRandom.current().nextInt(10)]);
-        }
-        return sb.toString();
-    }
-
-    private static float getFloat()
-    {
-        if (ThreadLocalRandom.current().nextBoolean()) {
-            return Float.NaN;
-        }
-        return ThreadLocalRandom.current().nextFloat();
-    }
-
-    private static double getDouble()
-    {
-        if (ThreadLocalRandom.current().nextBoolean()) {
-            return Double.NaN;
-        }
-        return ThreadLocalRandom.current().nextDouble();
-    }
-
-    public static String createTempFile(String prefix)
-    {
-        try {
-            return Files.createTempDirectory(prefix).toAbsolutePath().toString() + "/test.parquet";
-        }
-        catch (IOException e) {
-            throw new AssertionError("Unable to create temporary file", e);
-        }
-    }
+  }
 }

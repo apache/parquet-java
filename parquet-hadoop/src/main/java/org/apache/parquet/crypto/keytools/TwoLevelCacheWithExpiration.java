@@ -26,7 +26,7 @@ import java.util.concurrent.ConcurrentMap;
  * Concurrent two-level cache with expiration of internal caches according to token lifetime.
  * External cache is per token, internal is per String key.
  * Wrapper class around:
- *   ConcurrentMap<String, ExpiringCacheEntry<ConcurrentMap<String, V>>>
+ * ConcurrentMap<String, ExpiringCacheEntry<ConcurrentMap<String, V>>>
  *
  * @param <V> Value
  */
@@ -35,7 +35,7 @@ class TwoLevelCacheWithExpiration<V> {
   private final ConcurrentMap<String, ExpiringCacheEntry<ConcurrentMap<String, V>>> cache;
   private volatile long lastCacheCleanupTimestamp;
 
-  static class ExpiringCacheEntry<E>  {
+  static class ExpiringCacheEntry<E> {
     private final long expirationTimestamp;
     private final E cachedItem;
 
@@ -59,23 +59,24 @@ class TwoLevelCacheWithExpiration<V> {
     this.lastCacheCleanupTimestamp = System.currentTimeMillis();
   }
 
-  ConcurrentMap<String,V> getOrCreateInternalCache(String accessToken, long cacheEntryLifetime) {
-    ExpiringCacheEntry<ConcurrentMap<String, V>> externalCacheEntry = cache.compute(accessToken, (token, cacheEntry) -> {
-      if ((null == cacheEntry) || cacheEntry.isExpired()) {
-        return new ExpiringCacheEntry<>(new ConcurrentHashMap<String, V>(), cacheEntryLifetime);
-      } else {
-        return cacheEntry;
-      }
-    });
+  ConcurrentMap<String, V> getOrCreateInternalCache(String accessToken, long cacheEntryLifetime) {
+    ExpiringCacheEntry<ConcurrentMap<String, V>> externalCacheEntry =
+        cache.compute(accessToken, (token, cacheEntry) -> {
+          if ((null == cacheEntry) || cacheEntry.isExpired()) {
+            return new ExpiringCacheEntry<>(new ConcurrentHashMap<String, V>(), cacheEntryLifetime);
+          } else {
+            return cacheEntry;
+          }
+        });
     return externalCacheEntry.getCachedItem();
   }
 
   void removeCacheEntriesForToken(String accessToken) {
-      cache.remove(accessToken);
+    cache.remove(accessToken);
   }
 
   void removeCacheEntriesForAllTokens() {
-      cache.clear();
+    cache.clear();
   }
 
   public void checkCacheForExpiredTokens(long cacheCleanupPeriod) {

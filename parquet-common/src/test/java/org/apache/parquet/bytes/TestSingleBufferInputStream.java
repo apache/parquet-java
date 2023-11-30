@@ -19,17 +19,18 @@
 
 package org.apache.parquet.bytes;
 
-import org.junit.Assert;
-import org.junit.Test;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import org.junit.Assert;
+import org.junit.Test;
 
 public class TestSingleBufferInputStream extends TestByteBufferInputStreams {
   static final ByteBuffer DATA = ByteBuffer.wrap(new byte[] {
-          0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
-          20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34 });
+    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29,
+    30, 31, 32, 33, 34
+  });
 
   @Override
   protected ByteBufferInputStream newStream() {
@@ -38,9 +39,8 @@ public class TestSingleBufferInputStream extends TestByteBufferInputStreams {
 
   @Override
   protected void checkOriginalData() {
-      Assert.assertEquals("Position should not change", 0, DATA.position());
-      Assert.assertEquals("Limit should not change",
-          DATA.array().length, DATA.limit());
+    Assert.assertEquals("Position should not change", 0, DATA.position());
+    Assert.assertEquals("Limit should not change", DATA.array().length, DATA.limit());
   }
 
   @Test
@@ -61,8 +61,7 @@ public class TestSingleBufferInputStream extends TestByteBufferInputStreams {
     int i = 0;
 
     ByteBuffer one = buffers.get(0);
-    Assert.assertSame("Should use the same backing array",
-        one.array(), DATA.array());
+    Assert.assertSame("Should use the same backing array", one.array(), DATA.array());
     Assert.assertEquals(8, one.remaining());
     Assert.assertEquals(0, one.position());
     Assert.assertEquals(8, one.limit());
@@ -72,8 +71,7 @@ public class TestSingleBufferInputStream extends TestByteBufferInputStreams {
     }
 
     ByteBuffer two = buffers.get(1);
-    Assert.assertSame("Should use the same backing array",
-        two.array(), DATA.array());
+    Assert.assertSame("Should use the same backing array", two.array(), DATA.array());
     Assert.assertEquals(8, two.remaining());
     Assert.assertEquals(8, two.position());
     Assert.assertEquals(16, two.limit());
@@ -84,8 +82,7 @@ public class TestSingleBufferInputStream extends TestByteBufferInputStreams {
 
     // three is a copy of part of the 4th buffer
     ByteBuffer three = buffers.get(2);
-    Assert.assertSame("Should use the same backing array",
-        three.array(), DATA.array());
+    Assert.assertSame("Should use the same backing array", three.array(), DATA.array());
     Assert.assertEquals(8, three.remaining());
     Assert.assertEquals(16, three.position());
     Assert.assertEquals(24, three.limit());
@@ -96,8 +93,7 @@ public class TestSingleBufferInputStream extends TestByteBufferInputStreams {
 
     // four should be a copy of the next 8 bytes
     ByteBuffer four = buffers.get(3);
-    Assert.assertSame("Should use the same backing array",
-        four.array(), DATA.array());
+    Assert.assertSame("Should use the same backing array", four.array(), DATA.array());
     Assert.assertEquals(8, four.remaining());
     Assert.assertEquals(24, four.position());
     Assert.assertEquals(32, four.limit());
@@ -108,8 +104,7 @@ public class TestSingleBufferInputStream extends TestByteBufferInputStreams {
 
     // five should be a copy of the next 8 bytes
     ByteBuffer five = buffers.get(4);
-    Assert.assertSame("Should use the same backing array",
-        five.array(), DATA.array());
+    Assert.assertSame("Should use the same backing array", five.array(), DATA.array());
     Assert.assertEquals(3, five.remaining());
     Assert.assertEquals(32, five.position());
     Assert.assertEquals(35, five.limit());
@@ -124,7 +119,7 @@ public class TestSingleBufferInputStream extends TestByteBufferInputStreams {
     ByteBufferInputStream stream = newStream();
 
     List<ByteBuffer> buffers = stream.sliceBuffers(stream.available());
-    Assert.assertEquals("Should return duplicates of all non-empty buffers",
-        Collections.singletonList(DATA), buffers);
+    Assert.assertEquals(
+        "Should return duplicates of all non-empty buffers", Collections.singletonList(DATA), buffers);
   }
 }

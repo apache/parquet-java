@@ -1,4 +1,5 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
   <parent>
@@ -69,6 +70,7 @@
     <jackson.version>2.16.0</jackson.version>
     <jackson-databind.version>2.15.2</jackson-databind.version>
     <japicmp.version>0.18.2</japicmp.version>
+    <spotless.version>2.30.0</spotless.version>
     <shade.prefix>shaded.parquet</shade.prefix>
     <hadoop.version>3.3.5</hadoop.version>
     <parquet.format.version>2.10.0</parquet.format.version>
@@ -282,25 +284,25 @@
 
         <plugin>
           <artifactId>maven-enforcer-plugin</artifactId>
-         <executions>
-           <execution>
-            <id>enforce-banned-dependencies</id>
-            <goals>
-              <goal>enforce</goal>
-            </goals>
-            <configuration>
-              <rules>
-                <bannedDependencies>
-                  <excludes>
-                    <exclude>org.slf4j:slf4j-log4j12:*:*:compile</exclude>
-                    <exclude>org.slf4j:slf4j-reload4j:*:*:compile</exclude>
-                  </excludes>
-                </bannedDependencies>
-              </rules>
-              <fail>true</fail>
-            </configuration>
-          </execution>
-         </executions>
+          <executions>
+            <execution>
+              <id>enforce-banned-dependencies</id>
+              <goals>
+                <goal>enforce</goal>
+              </goals>
+              <configuration>
+                <rules>
+                  <bannedDependencies>
+                    <excludes>
+                      <exclude>org.slf4j:slf4j-log4j12:*:*:compile</exclude>
+                      <exclude>org.slf4j:slf4j-reload4j:*:*:compile</exclude>
+                    </excludes>
+                  </bannedDependencies>
+                </rules>
+                <fail>true</fail>
+              </configuration>
+            </execution>
+          </executions>
         </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
@@ -399,10 +401,10 @@
 
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
-          <artifactId>maven-remote-resources-plugin</artifactId>
-          <configuration>
-            <skip>true</skip>
-          </configuration>
+        <artifactId>maven-remote-resources-plugin</artifactId>
+        <configuration>
+          <skip>true</skip>
+        </configuration>
       </plugin>
 
       <plugin>
@@ -467,8 +469,8 @@
             <goals>
               <goal>create</goal>
             </goals>
-         </execution>
-       </executions>
+          </execution>
+        </executions>
       </plugin>
 
       <plugin>
@@ -510,6 +512,43 @@
             <exclude>**/dependency-reduced-pom.xml</exclude>
           </excludes>
         </configuration>
+      </plugin>
+
+      <!-- https://mvnrepository.com/artifact/com.diffplug.spotless/spotless-maven-plugin -->
+      <plugin>
+        <groupId>com.diffplug.spotless</groupId>
+        <artifactId>spotless-maven-plugin</artifactId>
+        <version>${spotless.version}</version>
+        <configuration>
+          <java>
+            <excludes>
+              <exclude>**/generated-sources/**</exclude>
+            </excludes>
+            <toggleOffOn/>
+            <removeUnusedImports/>
+            <importOrder/>
+            <trimTrailingWhitespace/>
+            <palantirJavaFormat/>
+            <endWithNewline/>
+            <formatAnnotations/>
+            <indent>
+              <tabs>true</tabs>
+              <spacesPerTab>4</spacesPerTab>
+            </indent>
+            <indent>
+              <spaces>true</spaces>
+              <spacesPerTab>2</spacesPerTab>
+            </indent>
+          </java>
+        </configuration>
+        <executions>
+          <execution>
+            <phase>verify</phase>
+            <goals>
+              <goal>check</goal>
+            </goals>
+          </execution>
+        </executions>
       </plugin>
 
       <plugin>

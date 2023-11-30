@@ -18,10 +18,13 @@
  */
 package org.apache.parquet.thrift.projection;
 
+import static org.junit.Assert.assertEquals;
+
+import com.twitter.data.proto.tutorial.thrift.Person;
+import com.twitter.elephantbird.thrift.test.TestStructInMap;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-
 import org.apache.parquet.thrift.ThriftSchemaConverter;
 import org.apache.parquet.thrift.struct.ThriftField;
 import org.apache.parquet.thrift.struct.ThriftType;
@@ -39,34 +42,48 @@ import org.apache.parquet.thrift.struct.ThriftType.StringType;
 import org.apache.parquet.thrift.struct.ThriftType.StructType;
 import org.junit.Test;
 
-import com.twitter.data.proto.tutorial.thrift.Person;
-import com.twitter.elephantbird.thrift.test.TestStructInMap;
-
-import static org.junit.Assert.assertEquals;
-
 public class TestFieldsPath {
   @Test
   public void testFieldsPath() {
     StructType person = ThriftSchemaConverter.toStructType(Person.class);
 
     List<String> paths = PrimitivePathVisitor.visit(person, ".");
-    assertEquals(Arrays.asList("name.first_name", "name.last_name", "id", "email", "phones.number", "phones.type"),
+    assertEquals(
+        Arrays.asList("name.first_name", "name.last_name", "id", "email", "phones.number", "phones.type"),
         paths);
 
     paths = PrimitivePathVisitor.visit(person, "/");
-    assertEquals(Arrays.asList("name/first_name", "name/last_name", "id", "email", "phones/number", "phones/type"),
+    assertEquals(
+        Arrays.asList("name/first_name", "name/last_name", "id", "email", "phones/number", "phones/type"),
         paths);
 
     StructType structInMap = ThriftSchemaConverter.toStructType(TestStructInMap.class);
 
     paths = PrimitivePathVisitor.visit(structInMap, ".");
-    assertEquals(Arrays.asList("name", "names.key", "names.value.name.first_name", "names.value.name.last_name",
-            "names.value.phones.key", "names.value.phones.value", "name_to_id.key", "name_to_id.value"), paths);
+    assertEquals(
+        Arrays.asList(
+            "name",
+            "names.key",
+            "names.value.name.first_name",
+            "names.value.name.last_name",
+            "names.value.phones.key",
+            "names.value.phones.value",
+            "name_to_id.key",
+            "name_to_id.value"),
+        paths);
 
     paths = PrimitivePathVisitor.visit(structInMap, "/");
-    assertEquals(Arrays.asList("name", "names/key", "names/value/name/first_name", "names/value/name/last_name",
-        "names/value/phones/key", "names/value/phones/value", "name_to_id/key", "name_to_id/value"), paths);
-
+    assertEquals(
+        Arrays.asList(
+            "name",
+            "names/key",
+            "names/value/name/first_name",
+            "names/value/name/last_name",
+            "names/value/phones/key",
+            "names/value/phones/value",
+            "name_to_id/key",
+            "name_to_id/value"),
+        paths);
   }
 
   private static class PrimitivePathVisitor implements ThriftType.StateVisitor<List<String>, FieldsPath> {

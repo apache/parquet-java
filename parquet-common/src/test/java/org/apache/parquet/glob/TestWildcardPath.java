@@ -18,10 +18,9 @@
  */
 package org.apache.parquet.glob;
 
-import org.junit.Test;
-
 import static org.junit.Assert.fail;
 
+import org.junit.Test;
 
 public class TestWildcardPath {
 
@@ -40,7 +39,6 @@ public class TestWildcardPath {
       }
     }
   }
-
 
   @Test
   public void testNoWildcards() {
@@ -90,7 +88,6 @@ public class TestWildcardPath {
     assertMatches(wp, "a.b.c.x.y.z", "foo.x.y.z", "foo.x.y.z.child");
     assertDoesNotMatch(wp, "x.y.z", "a.b.c.x.y", "xy.z", "hi", "zoopx.y.z", "zoopx.y.z.child");
 
-
     wp = new WildcardPath("", "x.y.z*", '.');
     assertMatches(wp, "x.y.z", "x.y.z.foo", "x.y.zoo", "x.y.zoo.bar");
     assertDoesNotMatch(wp, "a.b.c.x.y.z", "foo.x.y.z", "hi");
@@ -103,20 +100,36 @@ public class TestWildcardPath {
   @Test
   public void testComplex() {
     WildcardPath wp = new WildcardPath("", "*.street", '.');
-    assertMatches(wp,
-        "home.address.street", "home.address.street.number", "work.address.street", "work.address.street.foo",
-        "street.street", "street.street.street.street", "thing.street.thing"
-    );
+    assertMatches(
+        wp,
+        "home.address.street",
+        "home.address.street.number",
+        "work.address.street",
+        "work.address.street.foo",
+        "street.street",
+        "street.street.street.street",
+        "thing.street.thing");
 
-    assertDoesNotMatch(wp,
-        "home.address.street_2", "home.address.street_2.number", "work.addressstreet", "work.addressstreet.foo", "",
-        "x.y.z.street2", "x.y.z.street2.z"
-    );
+    assertDoesNotMatch(
+        wp,
+        "home.address.street_2",
+        "home.address.street_2.number",
+        "work.addressstreet",
+        "work.addressstreet.foo",
+        "",
+        "x.y.z.street2",
+        "x.y.z.street2.z");
 
     wp = new WildcardPath("", "x.y.*_stat.average", '.');
-    assertMatches(wp, "x.y.z_stat.average", "x.y.foo_stat.average", "x.y.z.a.b_stat.average",
-        "x.y.z.a.b_stat.average.child", "x.y.z._stat.average");
-    assertDoesNotMatch(wp, "x.y.z_stats.average", "x.y.z_stat.averages", "x.y_stat.average", "x.yyy.foo_stat.average");
+    assertMatches(
+        wp,
+        "x.y.z_stat.average",
+        "x.y.foo_stat.average",
+        "x.y.z.a.b_stat.average",
+        "x.y.z.a.b_stat.average.child",
+        "x.y.z._stat.average");
+    assertDoesNotMatch(
+        wp, "x.y.z_stats.average", "x.y.z_stat.averages", "x.y_stat.average", "x.yyy.foo_stat.average");
 
     wp = new WildcardPath("", "x.y.pre*.bar", '.');
     assertMatches(wp, "x.y.pre.bar", "x.y.preabc.bar", "x.y.prebar.bar");

@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -26,7 +26,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
 import org.apache.parquet.schema.GroupType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,11 +47,12 @@ public class GroupColumnIO extends ColumnIO {
   void add(ColumnIO child) {
     children.add(child);
     childrenByName.put(child.getType().getName(), child);
-    ++ childrenSize;
+    ++childrenSize;
   }
 
   @Override
-  void setLevels(int r, int d, String[] fieldPath, int[] indexFieldPath, List<ColumnIO> repetition, List<ColumnIO> path) {
+  void setLevels(
+      int r, int d, String[] fieldPath, int[] indexFieldPath, List<ColumnIO> repetition, List<ColumnIO> path) {
     super.setLevels(r, d, fieldPath, indexFieldPath, repetition, path);
     for (ColumnIO child : this.children) {
       String[] newFieldPath = Arrays.copyOf(fieldPath, fieldPath.length + 1);
@@ -76,9 +76,7 @@ public class GroupColumnIO extends ColumnIO {
           newFieldPath,
           newIndexFieldPath,
           newRepetition,
-          newPath
-          );
-
+          newPath);
     }
   }
 
@@ -93,7 +91,7 @@ public class GroupColumnIO extends ColumnIO {
 
   @Override
   PrimitiveColumnIO getLast() {
-    return children.get(children.size()-1).getLast();
+    return children.get(children.size() - 1).getLast();
   }
 
   @Override
@@ -115,7 +113,5 @@ public class GroupColumnIO extends ColumnIO {
 
   public int getChildrenCount() {
     return childrenSize;
-
   }
-
 }

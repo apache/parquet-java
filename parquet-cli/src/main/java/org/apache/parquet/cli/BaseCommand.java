@@ -23,6 +23,19 @@ import com.beust.jcommander.internal.Lists;
 import com.google.common.base.Preconditions;
 import com.google.common.io.CharStreams;
 import com.google.common.io.Resources;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.security.AccessController;
+import java.util.Iterator;
+import java.util.List;
+import java.util.NoSuchElementException;
 import org.apache.avro.Schema;
 import org.apache.avro.file.DataFileReader;
 import org.apache.avro.file.SeekableInput;
@@ -44,19 +57,6 @@ import org.apache.parquet.cli.util.Schemas;
 import org.apache.parquet.cli.util.SeekableFSDataInputStream;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.slf4j.Logger;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.net.MalformedURLException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.URL;
-import java.nio.charset.StandardCharsets;
-import java.security.AccessController;
-import java.util.Iterator;
-import java.util.List;
-import java.util.NoSuchElementException;
 
 public abstract class BaseCommand implements Command, Configurable {
 
@@ -85,16 +85,15 @@ public abstract class BaseCommand implements Command, Configurable {
 
   /**
    * Output content to the console or a file.
-   *
+   * <p>
    * This will not produce checksum files.
    *
-   * @param content String content to write
-   * @param console A {@link Logger} for writing to the console
+   * @param content  String content to write
+   * @param console  A {@link Logger} for writing to the console
    * @param filename The destination {@link Path} as a String
    * @throws IOException if there is an error while writing
    */
-  public void output(String content, Logger console, String filename)
-      throws IOException {
+  public void output(String content, Logger console, String filename) throws IOException {
     if (filename == null || "-".equals(filename)) {
       console.info(content);
     } else {
@@ -109,9 +108,9 @@ public abstract class BaseCommand implements Command, Configurable {
 
   /**
    * Creates a file and returns an open {@link FSDataOutputStream}.
-   *
+   * <p>
    * If the file does not have a file system scheme, this uses the default FS.
-   *
+   * <p>
    * This will not produce checksum files and will overwrite a file that
    * already exists.
    *
@@ -125,9 +124,9 @@ public abstract class BaseCommand implements Command, Configurable {
 
   /**
    * Creates a file and returns an open {@link FSDataOutputStream}.
-   *
+   * <p>
    * If the file does not have a file system scheme, this uses the default FS.
-   *
+   * <p>
    * This will produce checksum files and will overwrite a file that already
    * exists.
    *
@@ -135,16 +134,15 @@ public abstract class BaseCommand implements Command, Configurable {
    * @return An open FSDataOutputStream
    * @throws IOException if there is an error creating the file
    */
-  public FSDataOutputStream createWithChecksum(String filename)
-      throws IOException {
+  public FSDataOutputStream createWithChecksum(String filename) throws IOException {
     return create(filename, false);
   }
 
   /**
    * Creates a file and returns an open {@link FSDataOutputStream}.
-   *
+   * <p>
    * If the file does not have a file system scheme, this uses the default FS.
-   *
+   * <p>
    * This will neither produce checksum files nor overwrite a file that already
    * exists.
    *
@@ -152,18 +150,15 @@ public abstract class BaseCommand implements Command, Configurable {
    * @return An open FSDataOutputStream
    * @throws IOException if there is an error creating the file
    */
-  public FSDataOutputStream createWithNoOverwrite(String filename)
-    throws IOException {
+  public FSDataOutputStream createWithNoOverwrite(String filename) throws IOException {
     return create(filename, true, false);
   }
 
-  private FSDataOutputStream create(String filename, boolean noChecksum)
-      throws IOException {
+  private FSDataOutputStream create(String filename, boolean noChecksum) throws IOException {
     return create(filename, noChecksum, true);
   }
 
-  private FSDataOutputStream create(String filename, boolean noChecksum, boolean overwrite)
-    throws IOException {
+  private FSDataOutputStream create(String filename, boolean noChecksum, boolean overwrite) throws IOException {
     Path filePath = qualifiedPath(filename);
     // even though it was qualified using the default FS, it may not be in it
     FileSystem fs = filePath.getFileSystem(getConf());
@@ -175,7 +170,7 @@ public abstract class BaseCommand implements Command, Configurable {
 
   /**
    * Returns a qualified {@link Path} for the {@code filename}.
-   *
+   * <p>
    * If the file does not have a file system scheme, this uses the default FS.
    *
    * @param filename The filename to qualify
@@ -190,7 +185,7 @@ public abstract class BaseCommand implements Command, Configurable {
   /**
    * Returns a {@link URI} for the {@code filename} that is a qualified Path or
    * a resource URI.
-   *
+   * <p>
    * If the file does not have a file system scheme, this uses the default FS.
    *
    * @param filename The filename to qualify
@@ -203,18 +198,19 @@ public abstract class BaseCommand implements Command, Configurable {
       if (RESOURCE_URI_SCHEME.equals(fileURI.getScheme())) {
         return fileURI;
       }
-    } catch (URISyntaxException ignore) {}
+    } catch (URISyntaxException ignore) {
+    }
     return qualifiedPath(filename).toUri();
   }
 
   /**
    * Opens an existing file or resource.
-   *
+   * <p>
    * If the file does not have a file system scheme, this uses the default FS.
    *
    * @param filename The filename to open.
    * @return An open InputStream with the file contents
-   * @throws IOException if there is an error opening the file
+   * @throws IOException              if there is an error opening the file
    * @throws IllegalArgumentException If the file does not exist
    */
   public InputStream open(String filename) throws IOException {
@@ -263,13 +259,12 @@ public abstract class BaseCommand implements Command, Configurable {
   /**
    * Returns a {@link ClassLoader} for a set of jars and directories.
    *
-   * @param jars A list of jar paths
+   * @param jars  A list of jar paths
    * @param paths A list of directories containing .class files
    * @return a classloader for the jars and paths
    * @throws MalformedURLException if  a jar or path is invalid
    */
-  protected static ClassLoader loaderFor(List<String> jars, List<String> paths)
-      throws MalformedURLException {
+  protected static ClassLoader loaderFor(List<String> jars, List<String> paths) throws MalformedURLException {
     return AccessController.doPrivileged(new GetClassLoader(urls(jars, paths)));
   }
 
@@ -280,8 +275,7 @@ public abstract class BaseCommand implements Command, Configurable {
    * @return a classloader for the jars
    * @throws MalformedURLException if a URL is invalid
    */
-  protected static ClassLoader loaderForJars(List<String> jars)
-      throws MalformedURLException {
+  protected static ClassLoader loaderForJars(List<String> jars) throws MalformedURLException {
     return AccessController.doPrivileged(new GetClassLoader(urls(jars, null)));
   }
 
@@ -292,45 +286,39 @@ public abstract class BaseCommand implements Command, Configurable {
    * @return a classloader for the paths
    * @throws MalformedURLException if a path is invalid
    */
-  protected static ClassLoader loaderForPaths(List<String> paths)
-      throws MalformedURLException {
+  protected static ClassLoader loaderForPaths(List<String> paths) throws MalformedURLException {
     return AccessController.doPrivileged(new GetClassLoader(urls(null, paths)));
   }
 
-  private static List<URL> urls(List<String> jars, List<String> dirs)
-      throws MalformedURLException {
+  private static List<URL> urls(List<String> jars, List<String> dirs) throws MalformedURLException {
     // check the additional jars and lib directories in the local FS
     final List<URL> urls = Lists.newArrayList();
     if (dirs != null) {
       for (String lib : dirs) {
         // final URLs must end in '/' for URLClassLoader
         File path = lib.endsWith("/") ? new File(lib) : new File(lib + "/");
-        Preconditions.checkArgument(path.exists(),
-            "Lib directory does not exist: %s", lib);
-        Preconditions.checkArgument(path.isDirectory(),
-            "Not a directory: %s", lib);
-        Preconditions.checkArgument(path.canRead() && path.canExecute(),
-            "Insufficient permissions to access lib directory: %s", lib);
+        Preconditions.checkArgument(path.exists(), "Lib directory does not exist: %s", lib);
+        Preconditions.checkArgument(path.isDirectory(), "Not a directory: %s", lib);
+        Preconditions.checkArgument(
+            path.canRead() && path.canExecute(),
+            "Insufficient permissions to access lib directory: %s",
+            lib);
         urls.add(path.toURI().toURL());
       }
     }
     if (jars != null) {
       for (String jar : jars) {
         File path = new File(jar);
-        Preconditions.checkArgument(path.exists(),
-            "Jar files does not exist: %s", jar);
-        Preconditions.checkArgument(path.isFile(),
-            "Not a file: %s", jar);
-        Preconditions.checkArgument(path.canRead(),
-            "Cannot read jar file: %s", jar);
+        Preconditions.checkArgument(path.exists(), "Jar files does not exist: %s", jar);
+        Preconditions.checkArgument(path.isFile(), "Not a file: %s", jar);
+        Preconditions.checkArgument(path.canRead(), "Cannot read jar file: %s", jar);
         urls.add(path.toURI().toURL());
       }
     }
     return urls;
   }
 
-  protected <D> Iterable<D> openDataFile(final String source, Schema projection)
-      throws IOException {
+  protected <D> Iterable<D> openDataFile(final String source, Schema projection) throws IOException {
     Formats.Format format = Formats.detectFormat(open(source));
     switch (format) {
       case PARQUET:
@@ -371,8 +359,7 @@ public abstract class BaseCommand implements Command, Configurable {
                   this.hasNext = (next != null);
                   return next;
                 } catch (IOException e) {
-                  throw new RuntimeException(
-                      "Failed while reading Parquet file: " + source, e);
+                  throw new RuntimeException("Failed while reading Parquet file: " + source, e);
                 }
               }
 
@@ -385,16 +372,15 @@ public abstract class BaseCommand implements Command, Configurable {
         };
 
       case AVRO:
-        Iterable<D> avroReader = (Iterable<D>) DataFileReader.openReader(
-            openSeekable(source), new GenericDatumReader<>(projection));
+        Iterable<D> avroReader = (Iterable<D>)
+            DataFileReader.openReader(openSeekable(source), new GenericDatumReader<>(projection));
         return avroReader;
 
       default:
         if (source.endsWith("json")) {
           return new AvroJsonReader<>(open(source), projection);
         } else {
-          Preconditions.checkArgument(projection == null,
-              "Cannot select columns from text files");
+          Preconditions.checkArgument(projection == null, "Cannot select columns from text files");
           Iterable text = CharStreams.readLines(new InputStreamReader(open(source)));
           return text;
         }
@@ -421,8 +407,7 @@ public abstract class BaseCommand implements Command, Configurable {
         default:
       }
 
-      throw new IllegalArgumentException(String.format(
-          "Could not determine file format of %s.", source));
+      throw new IllegalArgumentException(String.format("Could not determine file format of %s.", source));
     }
   }
 }

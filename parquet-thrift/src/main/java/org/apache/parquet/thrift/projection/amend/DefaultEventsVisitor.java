@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -18,37 +18,36 @@
  */
 package org.apache.parquet.thrift.projection.amend;
 
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
+import org.apache.parquet.thrift.ParquetProtocol;
+import org.apache.parquet.thrift.struct.ThriftField;
+import org.apache.parquet.thrift.struct.ThriftType;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TList;
 import org.apache.thrift.protocol.TMap;
 import org.apache.thrift.protocol.TSet;
 import org.apache.thrift.protocol.TStruct;
-import org.apache.parquet.thrift.ParquetProtocol;
-import org.apache.parquet.thrift.struct.ThriftField;
-import org.apache.parquet.thrift.struct.ThriftType;
-
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Create a dummy events for all required fields according to thrift definition
  */
 class DefaultEventsVisitor implements ThriftType.StateVisitor<Void, Void> {
-  List<ParquetProtocol> dummyEvents= new ArrayList<ParquetProtocol>();
+  List<ParquetProtocol> dummyEvents = new ArrayList<ParquetProtocol>();
+
   @Override
   public Void visit(ThriftType.MapType mapType, Void v) {
-     dummyEvents.add(new ParquetProtocol("readMapBegin()") {
-       @Override
-       public TMap readMapBegin() throws TException {
-         return new TMap();
-       }
-     });
+    dummyEvents.add(new ParquetProtocol("readMapBegin()") {
+      @Override
+      public TMap readMapBegin() throws TException {
+        return new TMap();
+      }
+    });
 
     dummyEvents.add(new ParquetProtocol("readMapEnd()") {
       @Override
-      public void readMapEnd() throws TException {
-      }
+      public void readMapEnd() throws TException {}
     });
     return null;
   }
@@ -64,13 +63,11 @@ class DefaultEventsVisitor implements ThriftType.StateVisitor<Void, Void> {
 
     dummyEvents.add(new ParquetProtocol("readSetEnd()") {
       @Override
-      public void readSetEnd() throws TException {
-      }
+      public void readSetEnd() throws TException {}
     });
 
     return null;
   }
-
 
   @Override
   public Void visit(final ThriftType.ListType listType, Void v) {
@@ -83,8 +80,7 @@ class DefaultEventsVisitor implements ThriftType.StateVisitor<Void, Void> {
 
     dummyEvents.add(new ParquetProtocol("readListEnd()") {
       @Override
-      public void readListEnd() throws TException {
-      }
+      public void readListEnd() throws TException {}
     });
 
     return null;
@@ -96,7 +92,7 @@ class DefaultEventsVisitor implements ThriftType.StateVisitor<Void, Void> {
     List<ThriftField> children = structType.getChildren();
     for (ThriftField child : children) {
       dummyEvents.add(new ReadFieldBeginProtocol(child));
-      child.getType().accept(this, null); //currently will create all the attributes in struct, it's safer
+      child.getType().accept(this, null); // currently will create all the attributes in struct, it's safer
       dummyEvents.add(DefaultProtocolEventsGenerator.READ_FIELD_END);
     }
     dummyEvents.add(DefaultProtocolEventsGenerator.READ_FIELD_STOP);
@@ -126,7 +122,6 @@ class DefaultEventsVisitor implements ThriftType.StateVisitor<Void, Void> {
     });
     return null;
   }
-
 
   @Override
   public Void visit(ThriftType.ByteType byteType, Void v) {
@@ -198,8 +193,9 @@ class DefaultEventsVisitor implements ThriftType.StateVisitor<Void, Void> {
 
     public StructBeginProtocol(String structName) {
       super("readStructBegin()");
-      this.structName=structName;
+      this.structName = structName;
     }
+
     @Override
     public TStruct readStructBegin() throws TException {
       return new TStruct(structName);

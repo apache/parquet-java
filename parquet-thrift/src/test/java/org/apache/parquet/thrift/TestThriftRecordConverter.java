@@ -18,12 +18,14 @@
  */
 package org.apache.parquet.thrift;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
+
 import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
-
 import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.thrift.ThriftRecordConverter.FieldEnumConverter;
@@ -38,9 +40,6 @@ import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TProtocol;
 import org.junit.Test;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
-
 public class TestThriftRecordConverter {
   @Test
   public void testUnknownEnumThrowsGoodException() throws Exception {
@@ -49,7 +48,7 @@ public class TestThriftRecordConverter {
 
     ArrayList<TProtocol> events = new ArrayList<TProtocol>();
 
-    FieldEnumConverter conv = new  FieldEnumConverter(events, field);
+    FieldEnumConverter conv = new FieldEnumConverter(events, field);
 
     conv.addBinary(Binary.fromString("hello"));
 
@@ -60,30 +59,36 @@ public class TestThriftRecordConverter {
       conv.addBinary(Binary.fromString("FAKE_ENUM_VALUE"));
       fail("this should throw");
     } catch (ParquetDecodingException e) {
-      assertEquals(("Unrecognized enum value: FAKE_ENUM_VALUE known values: {Binary{\"hello\"}=77} in {\n" +
-          "  \"name\" : \"name\",\n" +
-          "  \"fieldId\" : 1,\n" +
-          "  \"requirement\" : \"REQUIRED\",\n" +
-          "  \"type\" : {\n" +
-          "    \"id\" : \"ENUM\",\n" +
-          "    \"values\" : [ {\n" +
-          "      \"id\" : 77,\n" +
-          "      \"name\" : \"hello\"\n" +
-          "    } ],\n" +
-          "    \"logicalTypeAnnotation\" : null\n" +
-          "  }\n" +
-          "}").replace("\n", System.lineSeparator()), e.getMessage());
+      assertEquals(
+          ("Unrecognized enum value: FAKE_ENUM_VALUE known values: {Binary{\"hello\"}=77} in {\n"
+                  + "  \"name\" : \"name\",\n"
+                  + "  \"fieldId\" : 1,\n"
+                  + "  \"requirement\" : \"REQUIRED\",\n"
+                  + "  \"type\" : {\n"
+                  + "    \"id\" : \"ENUM\",\n"
+                  + "    \"values\" : [ {\n"
+                  + "      \"id\" : 77,\n"
+                  + "      \"name\" : \"hello\"\n"
+                  + "    } ],\n"
+                  + "    \"logicalTypeAnnotation\" : null\n"
+                  + "  }\n"
+                  + "}")
+              .replace("\n", System.lineSeparator()),
+          e.getMessage());
     }
   }
 
   @Test
   public void constructorDoesNotRequireStructOrUnionTypeMeta() throws Exception {
-    String jsonWithNoStructOrUnionMeta = String.join("\n",
+    String jsonWithNoStructOrUnionMeta = String.join(
+        "\n",
         Files.readAllLines(
-            new File("src/test/resources/org/apache/parquet/thrift/StructWithUnionV1NoStructOrUnionMeta.json").toPath(),
+            new File(
+                    "src/test/resources/org/apache/parquet/thrift/StructWithUnionV1NoStructOrUnionMeta.json")
+                .toPath(),
             StandardCharsets.UTF_8));
 
-    StructType noStructOrUnionMeta  = (StructType) ThriftType.fromJSON(jsonWithNoStructOrUnionMeta);
+    StructType noStructOrUnionMeta = (StructType) ThriftType.fromJSON(jsonWithNoStructOrUnionMeta);
 
     // this used to throw, see PARQUET-346
     new ThriftRecordConverter<StructWithUnionV1>(
@@ -95,7 +100,6 @@ public class TestThriftRecordConverter {
         },
         "name",
         new ThriftSchemaConverter().convert(StructWithUnionV1.class),
-        noStructOrUnionMeta
-    );
+        noStructOrUnionMeta);
   }
 }

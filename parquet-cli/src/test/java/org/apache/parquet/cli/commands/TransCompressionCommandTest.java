@@ -18,14 +18,13 @@
  */
 package org.apache.parquet.cli.commands;
 
+import java.io.File;
+import java.io.IOException;
 import org.apache.hadoop.conf.Configuration;
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.io.File;
-import java.io.IOException;
-
-public class TransCompressionCommandTest extends ParquetFileTest{
+public class TransCompressionCommandTest extends ParquetFileTest {
 
   @Test
   public void testTransCompressionCommand() throws IOException {
@@ -41,5 +40,4 @@ public class TransCompressionCommandTest extends ParquetFileTest{
     Assert.assertEquals(0, command.run());
     Assert.assertTrue(output.exists());
   }
-
 }

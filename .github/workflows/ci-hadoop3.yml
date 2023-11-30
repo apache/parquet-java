@@ -26,17 +26,17 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        java: [ '8', '11', '17' ]
+        java: [ { setup: '8', maven: '1.8' }, { setup: '11', maven: '11' }, { setup: '17', maven: '17' } ]
         codes: [ 'uncompressed,brotli', 'gzip,snappy' ]
-    name: Build Parquet with JDK ${{ matrix.java }} and ${{ matrix.codes }}
+    name: Build Parquet with JDK ${{ matrix.java.setup }} and ${{ matrix.codes }}
 
     steps:
       - uses: actions/checkout@master
-      - name: Set up JDK ${{ matrix.java }}
+      - name: Set up JDK ${{ matrix.java.setup }}
         uses: actions/setup-java@v3
         with:
           distribution: temurin
-          java-version: ${{ matrix.java }}
+          java-version: ${{ matrix.java.setup }}
       - name: before_install
         env:
           CI_TARGET_BRANCH: $GITHUB_HEAD_REF
@@ -46,11 +46,11 @@ jobs:
         run: |
           EXTRA_JAVA_TEST_ARGS=$(mvn help:evaluate -Dexpression=extraJavaTestArgs -q -DforceStdout)
           export MAVEN_OPTS="$MAVEN_OPTS $EXTRA_JAVA_TEST_ARGS"
-          mvn install --batch-mode -DskipTests=true -Dmaven.javadoc.skip=true -Dsource.skip=true -Djava.version=${{ matrix.java }}
+          mvn install --batch-mode -DskipTests=true -Dmaven.javadoc.skip=true -Dsource.skip=true -Djava.version=${{ matrix.java.maven }}
       - name: verify
         env:
           TEST_CODECS: ${{ matrix.codes }}
-          JAVA_VERSION: ${{ matrix.java }}
+          JAVA_VERSION: ${{ matrix.java.setup }}
         run: |
           EXTRA_JAVA_TEST_ARGS=$(mvn help:evaluate -Dexpression=extraJavaTestArgs -q -DforceStdout)
           export MAVEN_OPTS="$MAVEN_OPTS $EXTRA_JAVA_TEST_ARGS"

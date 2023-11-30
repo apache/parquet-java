@@ -42,12 +42,6 @@ import com.google.common.collect.Iterators;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
-import org.apache.parquet.cli.util.RecordException;
-import org.apache.parquet.cli.util.RuntimeIOException;
-import org.apache.parquet.cli.util.Schemas;
-import org.apache.avro.AvroRuntimeException;
-import org.apache.avro.Schema;
-import org.apache.avro.generic.GenericData;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
@@ -57,6 +51,12 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.apache.avro.AvroRuntimeException;
+import org.apache.avro.Schema;
+import org.apache.avro.generic.GenericData;
+import org.apache.parquet.cli.util.RecordException;
+import org.apache.parquet.cli.util.RuntimeIOException;
+import org.apache.parquet.cli.util.Schemas;
 
 public class AvroJson {
 
@@ -101,37 +101,32 @@ public class AvroJson {
     }
   }
 
-  public static Object convertToAvro(GenericData model, JsonNode datum,
-                                     Schema schema) {
+  public static Object convertToAvro(GenericData model, JsonNode datum, Schema schema) {
     if (datum == null) {
       return null;
     }
     switch (schema.getType()) {
       case RECORD:
-        RecordException.check(datum.isObject(),
-            "Cannot convert non-object to record: %s", datum);
+        RecordException.check(datum.isObject(), "Cannot convert non-object to record: %s", datum);
         Object record = model.newRecord(null, schema);
         for (Schema.Field field : schema.getFields()) {
-          model.setField(record, field.name(), field.pos(),
-              convertField(model, datum.get(field.name()), field));
+          model.setField(
+              record, field.name(), field.pos(), convertField(model, datum.get(field.name()), field));
         }
         return record;
 
       case MAP:
-        RecordException.check(datum.isObject(),
-            "Cannot convert non-object to map: %s", datum);
+        RecordException.check(datum.isObject(), "Cannot convert non-object to map: %s", datum);
         Map<String, Object> map = Maps.newLinkedHashMap();
         Iterator<Map.Entry<String, JsonNode>> iter = datum.fields();
         while (iter.hasNext()) {
           Map.Entry<String, JsonNode> entry = iter.next();
-          map.put(entry.getKey(), convertToAvro(
-              model, entry.getValue(), schema.getValueType()));
+          map.put(entry.getKey(), convertToAvro(model, entry.getValue(), schema.getValueType()));
         }
         return map;
 
       case ARRAY:
-        RecordException.check(datum.isArray(),
-            "Cannot convert to array: %s", datum);
+        RecordException.check(datum.isArray(), "Cannot convert to array: %s", datum);
         List<Object> list = Lists.newArrayListWithExpectedSize(datum.size());
         for (JsonNode element : datum) {
           list.add(convertToAvro(model, element, schema.getElementType()));
@@ -139,49 +134,41 @@ public class AvroJson {
         return list;
 
       case UNION:
-        return convertToAvro(model, datum,
-            resolveUnion(datum, schema.getTypes()));
+        return convertToAvro(model, datum, resolveUnion(datum, schema.getTypes()));
 
       case BOOLEAN:
-        RecordException.check(datum.isBoolean(),
-            "Cannot convert to boolean: %s", datum);
+        RecordException.check(datum.isBoolean(), "Cannot convert to boolean: %s", datum);
         return datum.booleanValue();
 
       case FLOAT:
-        RecordException.check(datum.isFloat() || datum.isInt(),
-            "Cannot convert to float: %s", datum);
+        RecordException.check(datum.isFloat() || datum.isInt(), "Cannot convert to float: %s", datum);
         return datum.floatValue();
 
       case DOUBLE:
         RecordException.check(
-            datum.isDouble() || datum.isFloat() ||
-            datum.isLong() || datum.isInt(),
-            "Cannot convert to double: %s", datum);
+            datum.isDouble() || datum.isFloat() || datum.isLong() || datum.isInt(),
+            "Cannot convert to double: %s",
+            datum);
         return datum.doubleValue();
 
       case INT:
-        RecordException.check(datum.isInt(),
-            "Cannot convert to int: %s", datum);
+        RecordException.check(datum.isInt(), "Cannot convert to int: %s", datum);
         return datum.intValue();
 
       case LONG:
-        RecordException.check(datum.isLong() || datum.isInt(),
-            "Cannot convert to long: %s", datum);
+        RecordException.check(datum.isLong() || datum.isInt(), "Cannot convert to long: %s", datum);
         return datum.longValue();
 
       case STRING:
-        RecordException.check(datum.isTextual(),
-            "Cannot convert to string: %s", datum);
+        RecordException.check(datum.isTextual(), "Cannot convert to string: %s", datum);
         return datum.textValue();
 
       case ENUM:
-        RecordException.check(datum.isTextual(),
-            "Cannot convert to string: %s", datum);
+        RecordException.check(datum.isTextual(), "Cannot convert to string: %s", datum);
         return model.createEnum(datum.textValue(), schema);
 
       case BYTES:
-        RecordException.check(datum.isBinary(),
-            "Cannot convert to binary: %s", datum);
+        RecordException.check(datum.isBinary(), "Cannot convert to binary: %s", datum);
         try {
           return ByteBuffer.wrap(datum.binaryValue());
         } catch (IOException e) {
@@ -189,16 +176,18 @@ public class AvroJson {
         }
 
       case FIXED:
-        RecordException.check(datum.isBinary(),
-            "Cannot convert to fixed: %s", datum);
+        RecordException.check(datum.isBinary(), "Cannot convert to fixed: %s", datum);
         byte[] bytes;
         try {
           bytes = datum.binaryValue();
         } catch (IOException e) {
           throw new RecordException("Failed to read JSON binary", e);
         }
-        RecordException.check(bytes.length < schema.getFixedSize(),
-            "Binary data is too short: %s bytes for %s", bytes.length, schema);
+        RecordException.check(
+            bytes.length < schema.getFixedSize(),
+            "Binary data is too short: %s bytes for %s",
+            bytes.length,
+            schema);
         return model.createFixed(null, bytes, schema);
 
       case NULL:
@@ -210,8 +199,7 @@ public class AvroJson {
     }
   }
 
-  private static Object convertField(GenericData model, JsonNode datum,
-                                     Schema.Field field) {
+  private static Object convertField(GenericData model, JsonNode datum, Schema.Field field) {
     try {
       Object value = convertToAvro(model, datum, field.schema());
       if (value != null || Schemas.nullOk(field.schema())) {
@@ -221,12 +209,13 @@ public class AvroJson {
       }
     } catch (RecordException e) {
       // add the field name to the error message
-      throw new RecordException(String.format(
-          "Cannot convert field %s", field.name()), e);
+      throw new RecordException(String.format("Cannot convert field %s", field.name()), e);
     } catch (AvroRuntimeException e) {
-      throw new RecordException(String.format(
-          "Field %s: cannot make %s value: '%s'",
-          field.name(), field.schema(), String.valueOf(datum)), e);
+      throw new RecordException(
+          String.format(
+              "Field %s: cannot make %s value: '%s'",
+              field.name(), field.schema(), String.valueOf(datum)),
+          e);
     }
   }
 
@@ -246,15 +235,12 @@ public class AvroJson {
     if (datum == null || datum.isNull()) {
       primitiveSchema = closestPrimitive(primitives, Schema.Type.NULL);
     } else if (datum.isShort() || datum.isInt()) {
-      primitiveSchema = closestPrimitive(primitives,
-          Schema.Type.INT, Schema.Type.LONG,
-          Schema.Type.FLOAT, Schema.Type.DOUBLE);
+      primitiveSchema = closestPrimitive(
+          primitives, Schema.Type.INT, Schema.Type.LONG, Schema.Type.FLOAT, Schema.Type.DOUBLE);
     } else if (datum.isLong()) {
-      primitiveSchema = closestPrimitive(primitives,
-          Schema.Type.LONG, Schema.Type.DOUBLE);
+      primitiveSchema = closestPrimitive(primitives, Schema.Type.LONG, Schema.Type.DOUBLE);
     } else if (datum.isFloat()) {
-      primitiveSchema = closestPrimitive(primitives,
-          Schema.Type.FLOAT, Schema.Type.DOUBLE);
+      primitiveSchema = closestPrimitive(primitives, Schema.Type.FLOAT, Schema.Type.DOUBLE);
     } else if (datum.isDouble()) {
       primitiveSchema = closestPrimitive(primitives, Schema.Type.DOUBLE);
     } else if (datum.isBoolean()) {
@@ -272,14 +258,12 @@ public class AvroJson {
       }
     }
 
-    throw new RecordException(String.format(
-        "Cannot resolve union: %s not in %s", datum, schemas));
+    throw new RecordException(String.format("Cannot resolve union: %s not in %s", datum, schemas));
   }
 
   // this does not contain string, bytes, or fixed because the datum type
   // doesn't necessarily determine the schema.
-  private static ImmutableMap<Schema.Type, Schema> PRIMITIVES = ImmutableMap
-      .<Schema.Type, Schema>builder()
+  private static ImmutableMap<Schema.Type, Schema> PRIMITIVES = ImmutableMap.<Schema.Type, Schema>builder()
       .put(Schema.Type.NULL, Schema.create(Schema.Type.NULL))
       .put(Schema.Type.BOOLEAN, Schema.create(Schema.Type.BOOLEAN))
       .put(Schema.Type.INT, Schema.create(Schema.Type.INT))
@@ -340,8 +324,7 @@ public class AvroJson {
         }
         break;
       case DOUBLE:
-        if (datum.isDouble() || datum.isFloat() ||
-            datum.isLong() || datum.isInt()) {
+        if (datum.isDouble() || datum.isFloat() || datum.isLong() || datum.isInt()) {
           return true;
         }
         break;
@@ -382,15 +365,13 @@ public class AvroJson {
     return false;
   }
 
-  public static Schema inferSchema(InputStream incoming, final String name,
-                                   int numRecords) {
-    Iterator<Schema> schemas = Iterators.transform(parser(incoming),
-        new Function<JsonNode, Schema>() {
-          @Override
-          public Schema apply(JsonNode node) {
-            return inferSchema(node, name);
-          }
-        });
+  public static Schema inferSchema(InputStream incoming, final String name, int numRecords) {
+    Iterator<Schema> schemas = Iterators.transform(parser(incoming), new Function<JsonNode, Schema>() {
+      @Override
+      public Schema apply(JsonNode node) {
+        return inferSchema(node, name);
+      }
+    });
 
     if (!schemas.hasNext()) {
       return null;
@@ -430,12 +411,12 @@ public class AvroJson {
     @Override
     public Schema object(ObjectNode object, Map<String, Schema> fields) {
       if (objectsToRecords || recordLevels.size() < 1) {
-        List<Schema.Field> recordFields = Lists.newArrayListWithExpectedSize(
-            fields.size());
+        List<Schema.Field> recordFields = Lists.newArrayListWithExpectedSize(fields.size());
 
         for (Map.Entry<String, Schema> entry : fields.entrySet()) {
           recordFields.add(new Schema.Field(
-              entry.getKey(), entry.getValue(),
+              entry.getKey(),
+              entry.getValue(),
               "Type inferred from '" + object.get(entry.getKey()) + "'",
               null));
         }
@@ -444,14 +425,12 @@ public class AvroJson {
         if (recordLevels.size() < 1) {
           recordSchema = Schema.createRecord(name, null, null, false);
         } else {
-          recordSchema = Schema.createRecord(
-              DOT.join(recordLevels), null, null, false);
+          recordSchema = Schema.createRecord(DOT.join(recordLevels), null, null, false);
         }
 
         recordSchema.setFields(recordFields);
 
         return recordSchema;
-
       } else {
         // translate to a map; use LinkedHashSet to preserve schema order
         switch (fields.size()) {
@@ -499,8 +478,7 @@ public class AvroJson {
       } else if (number.isDouble()) {
         return Schema.create(Schema.Type.DOUBLE);
       } else {
-        throw new UnsupportedOperationException(
-            number.getClass().getName() + " is not supported");
+        throw new UnsupportedOperationException(number.getClass().getName() + " is not supported");
       }
     }
 
@@ -523,8 +501,7 @@ public class AvroJson {
   private static <T> T visit(JsonNode node, JsonTreeVisitor<T> visitor) {
     switch (node.getNodeType()) {
       case OBJECT:
-        Preconditions.checkArgument(node instanceof ObjectNode,
-            "Expected instance of ObjectNode: %s", node);
+        Preconditions.checkArgument(node instanceof ObjectNode, "Expected instance of ObjectNode: %s", node);
 
         // use LinkedHashMap to preserve field order
         Map<String, T> fields = Maps.newLinkedHashMap();
@@ -541,8 +518,7 @@ public class AvroJson {
         return visitor.object((ObjectNode) node, fields);
 
       case ARRAY:
-        Preconditions.checkArgument(node instanceof ArrayNode,
-            "Expected instance of ArrayNode: %s", node);
+        Preconditions.checkArgument(node instanceof ArrayNode, "Expected instance of ArrayNode: %s", node);
 
         List<T> elements = Lists.newArrayListWithExpectedSize(node.size());
 
@@ -553,43 +529,36 @@ public class AvroJson {
         return visitor.array((ArrayNode) node, elements);
 
       case BINARY:
-        Preconditions.checkArgument(node instanceof BinaryNode,
-            "Expected instance of BinaryNode: %s", node);
+        Preconditions.checkArgument(node instanceof BinaryNode, "Expected instance of BinaryNode: %s", node);
         return visitor.binary((BinaryNode) node);
 
       case STRING:
-        Preconditions.checkArgument(node instanceof TextNode,
-            "Expected instance of TextNode: %s", node);
+        Preconditions.checkArgument(node instanceof TextNode, "Expected instance of TextNode: %s", node);
 
         return visitor.text((TextNode) node);
 
       case NUMBER:
-        Preconditions.checkArgument(node instanceof NumericNode,
-            "Expected instance of NumericNode: %s", node);
+        Preconditions.checkArgument(node instanceof NumericNode, "Expected instance of NumericNode: %s", node);
 
         return visitor.number((NumericNode) node);
 
       case BOOLEAN:
-        Preconditions.checkArgument(node instanceof BooleanNode,
-            "Expected instance of BooleanNode: %s", node);
+        Preconditions.checkArgument(node instanceof BooleanNode, "Expected instance of BooleanNode: %s", node);
 
         return visitor.bool((BooleanNode) node);
 
       case MISSING:
-        Preconditions.checkArgument(node instanceof MissingNode,
-            "Expected instance of MissingNode: %s", node);
+        Preconditions.checkArgument(node instanceof MissingNode, "Expected instance of MissingNode: %s", node);
 
         return visitor.missing((MissingNode) node);
 
       case NULL:
-        Preconditions.checkArgument(node instanceof NullNode,
-            "Expected instance of NullNode: %s", node);
+        Preconditions.checkArgument(node instanceof NullNode, "Expected instance of NullNode: %s", node);
 
         return visitor.nullNode((NullNode) node);
 
       default:
-        throw new IllegalArgumentException(
-            "Unknown node type: " + node.getNodeType() + ": " + node);
+        throw new IllegalArgumentException("Unknown node type: " + node.getNodeType() + ": " + node);
     }
   }
 

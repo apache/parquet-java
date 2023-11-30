@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -18,10 +18,13 @@
  */
 package org.apache.parquet.column.values.delta.benchmark;
 
+import com.carrotsearch.junitbenchmarks.BenchmarkOptions;
+import com.carrotsearch.junitbenchmarks.BenchmarkRule;
+import com.carrotsearch.junitbenchmarks.annotation.AxisRange;
+import com.carrotsearch.junitbenchmarks.annotation.BenchmarkMethodChart;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Random;
-
 import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.bytes.DirectByteBufferAllocator;
 import org.apache.parquet.column.values.ValuesReader;
@@ -34,11 +37,6 @@ import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 
-import com.carrotsearch.junitbenchmarks.BenchmarkOptions;
-import com.carrotsearch.junitbenchmarks.BenchmarkRule;
-import com.carrotsearch.junitbenchmarks.annotation.AxisRange;
-import com.carrotsearch.junitbenchmarks.annotation.BenchmarkMethodChart;
-
 @AxisRange(min = 0, max = 1)
 @BenchmarkMethodChart(filePrefix = "benchmark-encoding-reading-random")
 public class BenchmarkReadingRandomIntegers {
@@ -47,6 +45,7 @@ public class BenchmarkReadingRandomIntegers {
   public static byte[] deltaBytes;
   public static byte[] rleBytes;
   public static int[] data;
+
   @Rule
   public org.junit.rules.TestRule benchmarkRun = new BenchmarkRule();
 
@@ -60,8 +59,7 @@ public class BenchmarkReadingRandomIntegers {
 
     ValuesWriter delta = new DeltaBinaryPackingValuesWriterForInteger(
         blockSize, miniBlockNum, 100, 20000, new DirectByteBufferAllocator());
-    ValuesWriter rle = new RunLengthBitPackingHybridValuesWriter(
-        32, 100, 20000, new DirectByteBufferAllocator());
+    ValuesWriter rle = new RunLengthBitPackingHybridValuesWriter(32, 100, 20000, new DirectByteBufferAllocator());
 
     for (int i = 0; i < data.length; i++) {
       delta.writeInteger(data[i]);
@@ -97,6 +95,4 @@ public class BenchmarkReadingRandomIntegers {
       reader.readInteger();
     }
   }
-
 }
-

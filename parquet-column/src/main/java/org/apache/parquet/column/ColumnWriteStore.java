@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -27,47 +27,50 @@ public interface ColumnWriteStore {
    * @param path the column for which to create a writer
    * @return the column writer for the given column
    */
-  abstract public ColumnWriter getColumnWriter(ColumnDescriptor path);
+  public abstract ColumnWriter getColumnWriter(ColumnDescriptor path);
 
   /**
    * when we are done writing to flush to the underlying storage
    */
-  abstract public void flush();
+  public abstract void flush();
 
   /**
    * called to notify of record boundaries
    */
-  abstract public void endRecord();
+  public abstract void endRecord();
 
   /**
    * used for information
+   *
    * @return approximate size used in memory
    */
-  abstract public long getAllocatedSize();
+  public abstract long getAllocatedSize();
 
   /**
    * used to flush row groups to disk
+   *
    * @return approximate size of the buffered encoded binary data
    */
-  abstract public long getBufferedSize();
+  public abstract long getBufferedSize();
 
   /**
    * used for debugging purpose
+   *
    * @return a formated string representing memory usage per column
    */
-  abstract public String memUsageString();
+  public abstract String memUsageString();
 
   /**
    * Close the related output stream and release any resources
    */
-  abstract public void close();
+  public abstract void close();
 
   /**
    * Returns whether flushing the possibly cached values (or nulls) to the underlying column writers is necessary,
    * because the pages might be closed after the next invocation of {@link #endRecord()}.
    *
    * @return {@code true} if all the values shall be written to the underlying column writers before calling
-   *         {@link #endRecord()}
+   * {@link #endRecord()}
    */
   default boolean isColumnFlushNeeded() {
     return false;

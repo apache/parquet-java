@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -22,20 +22,17 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
-
 import org.apache.hadoop.conf.Configuration;
-
 import org.apache.parquet.conf.ParquetConfiguration;
 import org.apache.parquet.io.api.RecordConsumer;
 import org.apache.parquet.schema.MessageType;
-
 
 /**
  * Abstraction to use with {@link org.apache.parquet.hadoop.ParquetOutputFormat} to convert incoming records
  *
  * @param <T> the type of the incoming records
  */
-abstract public class WriteSupport<T> {
+public abstract class WriteSupport<T> {
 
   /**
    * information to be persisted in the file
@@ -45,30 +42,30 @@ abstract public class WriteSupport<T> {
     private final Map<String, String> extraMetaData;
 
     /**
-     * @param schema the schema of the data
+     * @param schema        the schema of the data
      * @param extraMetaData application specific metadata to add in the file
-     *
      * @throws NullPointerException if schema or extraMetaData is {@code null}
      */
     public WriteContext(MessageType schema, Map<String, String> extraMetaData) {
       super();
       this.schema = Objects.requireNonNull(schema, "schema cannot be null");
-      this.extraMetaData = Collections.unmodifiableMap(Objects
-          .requireNonNull(extraMetaData, "extraMetaData cannot be null"));
+      this.extraMetaData =
+          Collections.unmodifiableMap(Objects.requireNonNull(extraMetaData, "extraMetaData cannot be null"));
     }
+
     /**
      * @return the schema of the file
      */
     public MessageType getSchema() {
       return schema;
     }
+
     /**
      * @return application specific metadata
      */
     public Map<String, String> getExtraMetaData() {
       return extraMetaData;
     }
-
   }
 
   /**
@@ -81,13 +78,12 @@ abstract public class WriteSupport<T> {
 
     /**
      * @param extraMetaData application specific metadata to add in the file
-     *
      * @throws NullPointerException if extraMetaData is {@code null}
      */
     public FinalizedWriteContext(Map<String, String> extraMetaData) {
       super();
-      this.extraMetaData = Collections.unmodifiableMap(Objects
-          .requireNonNull(extraMetaData, "extraMetaData cannot be null"));
+      this.extraMetaData =
+          Collections.unmodifiableMap(Objects.requireNonNull(extraMetaData, "extraMetaData cannot be null"));
     }
 
     /**
@@ -96,11 +92,11 @@ abstract public class WriteSupport<T> {
     public Map<String, String> getExtraMetaData() {
       return extraMetaData;
     }
-
   }
 
   /**
    * called first in the task
+   *
    * @param configuration the job's configuration
    * @return the information needed to write the file
    */
@@ -108,6 +104,7 @@ abstract public class WriteSupport<T> {
 
   /**
    * called first in the task
+   *
    * @param configuration the job's configuration
    * @return the information needed to write the file
    */
@@ -117,12 +114,14 @@ abstract public class WriteSupport<T> {
 
   /**
    * This will be called once per row group
+   *
    * @param recordConsumer the recordConsumer to write to
    */
   public abstract void prepareForWrite(RecordConsumer recordConsumer);
 
   /**
    * called once per record
+   *
    * @param record one record to write to the previously provided record consumer
    */
   public abstract void write(T record);
@@ -141,10 +140,10 @@ abstract public class WriteSupport<T> {
 
   /**
    * called once in the end after the last record was written
+   *
    * @return information to be added in the file
    */
   public FinalizedWriteContext finalizeWrite() {
     return new FinalizedWriteContext(new HashMap<String, String>());
   }
-
 }

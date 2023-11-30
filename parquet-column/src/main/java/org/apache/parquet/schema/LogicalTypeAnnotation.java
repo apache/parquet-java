@@ -18,16 +18,6 @@
  */
 package org.apache.parquet.schema;
 
-import org.apache.parquet.Preconditions;
-
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
-import java.util.function.Supplier;
-
 import static java.util.Arrays.asList;
 import static java.util.Optional.empty;
 import static org.apache.parquet.schema.ColumnOrder.ColumnOrderName.TYPE_DEFINED_ORDER;
@@ -42,6 +32,15 @@ import static org.apache.parquet.schema.PrimitiveStringifier.TIME_NANOS_STRINGIF
 import static org.apache.parquet.schema.PrimitiveStringifier.TIME_NANOS_UTC_STRINGIFIER;
 import static org.apache.parquet.schema.PrimitiveStringifier.TIME_STRINGIFIER;
 import static org.apache.parquet.schema.PrimitiveStringifier.TIME_UTC_STRINGIFIER;
+
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
+import java.util.function.Supplier;
+import org.apache.parquet.Preconditions;
 
 public abstract class LogicalTypeAnnotation {
   enum LogicalTypeToken {
@@ -103,7 +102,8 @@ public abstract class LogicalTypeAnnotation {
       @Override
       protected LogicalTypeAnnotation fromString(List<String> params) {
         if (params.size() != 2) {
-          throw new RuntimeException("Expecting 2 parameters for timestamp logical type, got " + params.size());
+          throw new RuntimeException(
+              "Expecting 2 parameters for timestamp logical type, got " + params.size());
         }
         return timestampType(Boolean.parseBoolean(params.get(1)), TimeUnit.valueOf(params.get(0)));
       }
@@ -148,11 +148,14 @@ public abstract class LogicalTypeAnnotation {
   /**
    * Convert this logical type to old logical type representation in parquet-mr (if there's any).
    * Those logical type implementations, which don't have a corresponding mapping should return null.
-   *
+   * <p>
    * API should be considered private
+   * <p>
+   * Deprecated: Please use the LogicalTypeAnnotation itself
    *
    * @return the OriginalType representation of the new logical type, or null if there's none
    */
+  @Deprecated
   public abstract OriginalType toOriginalType();
 
   /**
@@ -183,7 +186,7 @@ public abstract class LogicalTypeAnnotation {
 
   /**
    * Helper method to convert the old representation of logical types (OriginalType) to new logical type.
-   *
+   * <p>
    * API should be considered private
    */
   public static LogicalTypeAnnotation fromOriginalType(OriginalType originalType, DecimalMetadata decimalMetadata) {
@@ -238,7 +241,8 @@ public abstract class LogicalTypeAnnotation {
       case MAP_KEY_VALUE:
         return MapKeyValueTypeAnnotation.getInstance();
       default:
-        throw new RuntimeException("Can't convert original type to logical type, unknown original type " + originalType);
+        throw new RuntimeException(
+            "Can't convert original type to logical type, unknown original type " + originalType);
     }
   }
 
@@ -280,9 +284,10 @@ public abstract class LogicalTypeAnnotation {
 
   public static IntLogicalTypeAnnotation intType(final int bitWidth, final boolean isSigned) {
     Preconditions.checkArgument(
-      bitWidth == 8 || bitWidth == 16 || bitWidth == 32 || bitWidth == 64,
-      "Invalid bit width for integer logical type, %s is not allowed, " +
-        "valid bit width values: 8, 16, 32, 64", bitWidth);
+        bitWidth == 8 || bitWidth == 16 || bitWidth == 32 || bitWidth == 64,
+        "Invalid bit width for integer logical type, %s is not allowed, "
+            + "valid bit width values: 8, 16, 32, 64",
+        bitWidth);
     return new IntLogicalTypeAnnotation(bitWidth, isSigned);
   }
 
@@ -305,15 +310,17 @@ public abstract class LogicalTypeAnnotation {
   public static class StringLogicalTypeAnnotation extends LogicalTypeAnnotation {
     private static final StringLogicalTypeAnnotation INSTANCE = new StringLogicalTypeAnnotation();
 
-    private StringLogicalTypeAnnotation() {
-    }
+    private StringLogicalTypeAnnotation() {}
 
     /**
      * API Should be considered private
+     * <p>
+     * Deprecated: Please use the LogicalTypeAnnotation itself
      *
      * @return the original type
      */
     @Override
+    @Deprecated
     public OriginalType toOriginalType() {
       return OriginalType.UTF8;
     }
@@ -348,15 +355,17 @@ public abstract class LogicalTypeAnnotation {
   public static class MapLogicalTypeAnnotation extends LogicalTypeAnnotation {
     private static final MapLogicalTypeAnnotation INSTANCE = new MapLogicalTypeAnnotation();
 
-    private MapLogicalTypeAnnotation() {
-    }
+    private MapLogicalTypeAnnotation() {}
 
     /**
      * API Should be considered private
+     * <p>
+     * Deprecated: Please use the LogicalTypeAnnotation itself
      *
      * @return the original type
      */
     @Override
+    @Deprecated
     public OriginalType toOriginalType() {
       return OriginalType.MAP;
     }
@@ -386,15 +395,17 @@ public abstract class LogicalTypeAnnotation {
   public static class ListLogicalTypeAnnotation extends LogicalTypeAnnotation {
     private static final ListLogicalTypeAnnotation INSTANCE = new ListLogicalTypeAnnotation();
 
-    private ListLogicalTypeAnnotation() {
-    }
+    private ListLogicalTypeAnnotation() {}
 
     /**
      * API Should be considered private
+     * <p>
+     * Deprecated: Please use the LogicalTypeAnnotation itself
      *
      * @return the original type
      */
     @Override
+    @Deprecated
     public OriginalType toOriginalType() {
       return OriginalType.LIST;
     }
@@ -424,15 +435,17 @@ public abstract class LogicalTypeAnnotation {
   public static class EnumLogicalTypeAnnotation extends LogicalTypeAnnotation {
     private static final EnumLogicalTypeAnnotation INSTANCE = new EnumLogicalTypeAnnotation();
 
-    private EnumLogicalTypeAnnotation() {
-    }
+    private EnumLogicalTypeAnnotation() {}
 
     /**
      * API Should be considered private
+     * <p>
+     * Deprecated: Please use the LogicalTypeAnnotation itself
      *
      * @return the original type
      */
     @Override
+    @Deprecated
     public OriginalType toOriginalType() {
       return OriginalType.ENUM;
     }
@@ -485,10 +498,13 @@ public abstract class LogicalTypeAnnotation {
 
     /**
      * API Should be considered private
+     * <p>
+     * Deprecated: Please use the LogicalTypeAnnotation itself
      *
      * @return the original type
      */
     @Override
+    @Deprecated
     public OriginalType toOriginalType() {
       return OriginalType.DECIMAL;
     }
@@ -531,15 +547,17 @@ public abstract class LogicalTypeAnnotation {
   public static class DateLogicalTypeAnnotation extends LogicalTypeAnnotation {
     private static final DateLogicalTypeAnnotation INSTANCE = new DateLogicalTypeAnnotation();
 
-    private DateLogicalTypeAnnotation() {
-    }
+    private DateLogicalTypeAnnotation() {}
 
     /**
      * API Should be considered private
+     * <p>
+     * Deprecated: Please use the LogicalTypeAnnotation itself
      *
      * @return the original type
      */
     @Override
+    @Deprecated
     public OriginalType toOriginalType() {
       return OriginalType.DATE;
     }
@@ -588,10 +606,13 @@ public abstract class LogicalTypeAnnotation {
 
     /**
      * API Should be considered private
+     * <p>
+     * Deprecated: Please use the LogicalTypeAnnotation itself
      *
      * @return the original type
      */
     @Override
+    @Deprecated
     public OriginalType toOriginalType() {
       switch (unit) {
         case MILLIS:
@@ -665,10 +686,13 @@ public abstract class LogicalTypeAnnotation {
 
     /**
      * API Should be considered private
+     * <p>
+     * Deprecated: Please use the LogicalTypeAnnotation itself
      *
      * @return the original type
      */
     @Override
+    @Deprecated
     public OriginalType toOriginalType() {
       switch (unit) {
         case MILLIS:
@@ -733,8 +757,8 @@ public abstract class LogicalTypeAnnotation {
   }
 
   public static class IntLogicalTypeAnnotation extends LogicalTypeAnnotation {
-    private static final Set<Integer> VALID_BIT_WIDTH = Collections.unmodifiableSet(
-      new HashSet<>(asList(8, 16, 32, 64)));
+    private static final Set<Integer> VALID_BIT_WIDTH =
+        Collections.unmodifiableSet(new HashSet<>(asList(8, 16, 32, 64)));
 
     private final int bitWidth;
     private final boolean isSigned;
@@ -749,10 +773,13 @@ public abstract class LogicalTypeAnnotation {
 
     /**
      * API Should be considered private
+     * <p>
+     * Deprecated: Please use the LogicalTypeAnnotation itself
      *
      * @return the original type
      */
     @Override
+    @Deprecated
     public OriginalType toOriginalType() {
       switch (bitWidth) {
         case 8:
@@ -814,15 +841,17 @@ public abstract class LogicalTypeAnnotation {
   public static class JsonLogicalTypeAnnotation extends LogicalTypeAnnotation {
     private static final JsonLogicalTypeAnnotation INSTANCE = new JsonLogicalTypeAnnotation();
 
-    private JsonLogicalTypeAnnotation() {
-    }
+    private JsonLogicalTypeAnnotation() {}
 
     /**
      * API Should be considered private
+     * <p>
+     * Deprecated: Please use the LogicalTypeAnnotation itself
      *
      * @return the original type
      */
     @Override
+    @Deprecated
     public OriginalType toOriginalType() {
       return OriginalType.JSON;
     }
@@ -857,15 +886,17 @@ public abstract class LogicalTypeAnnotation {
   public static class BsonLogicalTypeAnnotation extends LogicalTypeAnnotation {
     private static final BsonLogicalTypeAnnotation INSTANCE = new BsonLogicalTypeAnnotation();
 
-    private BsonLogicalTypeAnnotation() {
-    }
+    private BsonLogicalTypeAnnotation() {}
 
     /**
      * API Should be considered private
+     * <p>
+     * Deprecated: Please use the LogicalTypeAnnotation itself
      *
      * @return the original type
      */
     @Override
+    @Deprecated
     public OriginalType toOriginalType() {
       return OriginalType.BSON;
     }
@@ -901,15 +932,17 @@ public abstract class LogicalTypeAnnotation {
     private static final UUIDLogicalTypeAnnotation INSTANCE = new UUIDLogicalTypeAnnotation();
     public static final int BYTES = 16;
 
-    private UUIDLogicalTypeAnnotation() {
-    }
+    private UUIDLogicalTypeAnnotation() {}
 
     /**
      * API Should be considered private
+     * <p>
+     * Deprecated: Please use the LogicalTypeAnnotation itself
      *
      * @return the original type
      */
     @Override
+    @Deprecated
     public OriginalType toOriginalType() {
       // No OriginalType for UUID
       return null;
@@ -941,15 +974,17 @@ public abstract class LogicalTypeAnnotation {
       return INSTANCE;
     }
 
-    private IntervalLogicalTypeAnnotation() {
-    }
+    private IntervalLogicalTypeAnnotation() {}
 
     /**
      * API Should be considered private
+     * <p>
+     * Deprecated: Please use the LogicalTypeAnnotation itself
      *
      * @return the original type
      */
     @Override
+    @Deprecated
     public OriginalType toOriginalType() {
       return OriginalType.INTERVAL;
     }
@@ -996,15 +1031,17 @@ public abstract class LogicalTypeAnnotation {
       return INSTANCE;
     }
 
-    private MapKeyValueTypeAnnotation() {
-    }
+    private MapKeyValueTypeAnnotation() {}
 
     /**
      * API Should be considered private
+     * <p>
+     * Deprecated: Please use the LogicalTypeAnnotation itself
      *
      * @return the original type
      */
     @Override
+    @Deprecated
     public OriginalType toOriginalType() {
       return OriginalType.MAP_KEY_VALUE;
     }
@@ -1036,7 +1073,7 @@ public abstract class LogicalTypeAnnotation {
    * The default implementation for each logical type specific visitor method is empty.
    * <p>
    * Example usage: logicalTypeAnnotation.accept(new LogicalTypeAnnotationVisitor() { ... });
-   *
+   * <p>
    * Every visit method returns {@link Optional#empty()} by default.
    * It means that for the given logical type no specific action is needed.
    * Client code can use {@link Optional#orElse(Object)} to return a default value for unhandled types,

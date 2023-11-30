@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -18,17 +18,15 @@
  */
 package org.apache.parquet.io;
 
-
 import java.util.Arrays;
 import java.util.List;
-
 import org.apache.parquet.schema.Type;
 import org.apache.parquet.schema.Type.Repetition;
 
 /**
  * a structure used to serialize deserialize records
  */
-abstract public class ColumnIO {
+public abstract class ColumnIO {
 
   private final GroupColumnIO parent;
   private final Type type;
@@ -38,7 +36,6 @@ abstract public class ColumnIO {
   private int definitionLevel;
   private String[] fieldPath;
   private int[] indexFieldPath;
-
 
   ColumnIO(Type type, GroupColumnIO parent, int index) {
     this.type = type;
@@ -102,7 +99,8 @@ abstract public class ColumnIO {
     return type;
   }
 
-  void setLevels(int r, int d, String[] fieldPath, int[] indexFieldPath, List<ColumnIO> repetition, List<ColumnIO> path) {
+  void setLevels(
+      int r, int d, String[] fieldPath, int[] indexFieldPath, List<ColumnIO> repetition, List<ColumnIO> path) {
     setRepetitionLevel(r);
     setDefinitionLevel(d);
     setFieldPath(fieldPath, indexFieldPath);
@@ -115,24 +113,24 @@ abstract public class ColumnIO {
   }
 
   abstract PrimitiveColumnIO getLast();
+
   abstract PrimitiveColumnIO getFirst();
 
   ColumnIO getParent(int r) {
     if (getRepetitionLevel() == r && getType().isRepetition(Repetition.REPEATED)) {
       return this;
-    } else  if (getParent()!=null && getParent().getDefinitionLevel()>=r) {
+    } else if (getParent() != null && getParent().getDefinitionLevel() >= r) {
       return getParent().getParent(r);
     } else {
-      throw new InvalidRecordException("no parent("+r+") for "+Arrays.toString(this.getFieldPath()));
+      throw new InvalidRecordException("no parent(" + r + ") for " + Arrays.toString(this.getFieldPath()));
     }
   }
 
   @Override
   public String toString() {
-    return this.getClass().getSimpleName()+" "+type.getName()
-        +" r:"+repetitionLevel
-        +" d:"+definitionLevel
-        +" "+Arrays.toString(fieldPath);
+    return this.getClass().getSimpleName() + " " + type.getName()
+        + " r:" + repetitionLevel
+        + " d:" + definitionLevel
+        + " " + Arrays.toString(fieldPath);
   }
-
 }

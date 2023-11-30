@@ -18,21 +18,20 @@
  */
 package org.apache.parquet.hadoop;
 
+import java.io.File;
+import java.lang.management.ManagementFactory;
+import java.util.Set;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapreduce.RecordWriter;
+import org.apache.parquet.hadoop.example.GroupWriteSupport;
+import org.apache.parquet.hadoop.metadata.CompressionCodecName;
+import org.apache.parquet.schema.MessageTypeParser;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
-import org.apache.parquet.hadoop.example.GroupWriteSupport;
-import org.apache.parquet.hadoop.metadata.CompressionCodecName;
-import org.apache.parquet.schema.MessageTypeParser;
-
-import java.io.File;
-import java.lang.management.ManagementFactory;
-import java.util.Set;
 
 /**
  * Verify MemoryManager could adjust its writers' allocated memory size.
@@ -40,10 +39,7 @@ import java.util.Set;
 public class TestMemoryManager {
 
   Configuration conf = new Configuration();
-  String writeSchema = "message example {\n" +
-      "required int32 line;\n" +
-      "required binary content;\n" +
-      "}";
+  String writeSchema = "message example {\n" + "required int32 line;\n" + "required binary content;\n" + "}";
   long expectedPoolSize;
   ParquetOutputFormat parquetOutputFormat;
   int counter = 0;
@@ -54,8 +50,8 @@ public class TestMemoryManager {
 
     GroupWriteSupport.setSchema(MessageTypeParser.parseMessageType(writeSchema), conf);
     expectedPoolSize = Math.round((double)
-        ManagementFactory.getMemoryMXBean().getHeapMemoryUsage().getMax() *
-        MemoryManager.DEFAULT_MEMORY_POOL_RATIO);
+            ManagementFactory.getMemoryMXBean().getHeapMemoryUsage().getMax()
+        * MemoryManager.DEFAULT_MEMORY_POOL_RATIO);
 
     long rowGroupSize = expectedPoolSize / 2;
     conf.setLong(ParquetOutputFormat.BLOCK_SIZE, rowGroupSize);
@@ -70,8 +66,9 @@ public class TestMemoryManager {
     // this value tends to change a little between setup and tests, so this
     // validates that it is within 15% of the expected value
     long poolSize = ParquetOutputFormat.getMemoryManager().getTotalMemoryPool();
-    Assert.assertTrue("Pool size should be within 15% of the expected value" +
-                    " (expected = " + expectedPoolSize + " actual = " + poolSize + ")",
+    Assert.assertTrue(
+        "Pool size should be within 15% of the expected value" + " (expected = " + expectedPoolSize
+            + " actual = " + poolSize + ")",
         Math.abs(expectedPoolSize - poolSize) < (long) (expectedPoolSize * 0.15));
   }
 
@@ -81,45 +78,35 @@ public class TestMemoryManager {
     long rowGroupSize = poolSize / 2;
     conf.setLong(ParquetOutputFormat.BLOCK_SIZE, rowGroupSize);
 
-    Assert.assertTrue("Pool should hold 2 full row groups",
-        (2 * rowGroupSize) <= poolSize);
-    Assert.assertTrue("Pool should not hold 3 full row groups",
-        poolSize < (3 * rowGroupSize));
+    Assert.assertTrue("Pool should hold 2 full row groups", (2 * rowGroupSize) <= poolSize);
+    Assert.assertTrue("Pool should not hold 3 full row groups", poolSize < (3 * rowGroupSize));
 
-    Assert.assertEquals("Allocations should start out at 0",
-        0, getTotalAllocation());
+    Assert.assertEquals("Allocations should start out at 0", 0, getTotalAllocation());
 
     RecordWriter writer1 = createWriter(1);
-    Assert.assertTrue("Allocations should never exceed pool size",
-        getTotalAllocation() <= poolSize);
-    Assert.assertEquals("First writer should be limited by row group size",
-        rowGroupSize, getTotalAllocation());
+    Assert.assertTrue("Allocations should never exceed pool size", getTotalAllocation() <= poolSize);
+    Assert.assertEquals("First writer should be limited by row group size", rowGroupSize, getTotalAllocation());
 
     RecordWriter writer2 = createWriter(2);
-    Assert.assertTrue("Allocations should never exceed pool size",
-        getTotalAllocation() <= poolSize);
-    Assert.assertEquals("Second writer should be limited by row group size",
-        2 * rowGroupSize, getTotalAllocation());
+    Assert.assertTrue("Allocations should never exceed pool size", getTotalAllocation() <= poolSize);
+    Assert.assertEquals(
+        "Second writer should be limited by row group size", 2 * rowGroupSize, getTotalAllocation());
 
     RecordWriter writer3 = createWriter(3);
-    Assert.assertTrue("Allocations should never exceed pool size",
-        getTotalAllocation() <= poolSize);
+    Assert.assertTrue("Allocations should never exceed pool size", getTotalAllocation() <= poolSize);
 
     writer1.close(null);
-    Assert.assertTrue("Allocations should never exceed pool size",
-        getTotalAllocation() <= poolSize);
-    Assert.assertEquals("Allocations should be increased to the row group size",
-        2 * rowGroupSize, getTotalAllocation());
+    Assert.assertTrue("Allocations should never exceed pool size", getTotalAllocation() <= poolSize);
+    Assert.assertEquals(
+        "Allocations should be increased to the row group size", 2 * rowGroupSize, getTotalAllocation());
 
     writer2.close(null);
-    Assert.assertTrue("Allocations should never exceed pool size",
-        getTotalAllocation() <= poolSize);
-    Assert.assertEquals("Allocations should be increased to the row group size",
-        rowGroupSize, getTotalAllocation());
+    Assert.assertTrue("Allocations should never exceed pool size", getTotalAllocation() <= poolSize);
+    Assert.assertEquals(
+        "Allocations should be increased to the row group size", rowGroupSize, getTotalAllocation());
 
     writer3.close(null);
-    Assert.assertEquals("Allocations should be increased to the row group size",
-        0, getTotalAllocation());
+    Assert.assertEquals("Allocations should be increased to the row group size", 0, getTotalAllocation());
   }
 
   @Test
@@ -129,20 +116,16 @@ public class TestMemoryManager {
     long rowGroupSize = poolSize / 2;
     conf.setLong(ParquetOutputFormat.BLOCK_SIZE, rowGroupSize);
 
-    Assert.assertTrue("Pool should hold 2 full row groups",
-        (2 * rowGroupSize) <= poolSize);
-    Assert.assertTrue("Pool should not hold 3 full row groups",
-        poolSize < (3 * rowGroupSize));
+    Assert.assertTrue("Pool should hold 2 full row groups", (2 * rowGroupSize) <= poolSize);
+    Assert.assertTrue("Pool should not hold 3 full row groups", poolSize < (3 * rowGroupSize));
 
     Runnable callback = () -> counter++;
 
     // first-time registration should succeed
-    ParquetOutputFormat.getMemoryManager()
-        .registerScaleCallBack("increment-test-counter", callback);
+    ParquetOutputFormat.getMemoryManager().registerScaleCallBack("increment-test-counter", callback);
 
     try {
-      ParquetOutputFormat.getMemoryManager()
-          .registerScaleCallBack("increment-test-counter", callback);
+      ParquetOutputFormat.getMemoryManager().registerScaleCallBack("increment-test-counter", callback);
       Assert.fail("Duplicated registering callback should throw duplicates exception.");
     } catch (IllegalArgumentException e) {
       // expected
@@ -156,10 +139,12 @@ public class TestMemoryManager {
     writer2.close(null);
     writer3.close(null);
 
-    //Verify Callback mechanism
+    // Verify Callback mechanism
     Assert.assertEquals("Allocations should be adjusted once", 1, counter);
-    Assert.assertEquals("Should not allow duplicate callbacks",
-        1, ParquetOutputFormat.getMemoryManager().getScaleCallBacks().size());
+    Assert.assertEquals(
+        "Should not allow duplicate callbacks",
+        1,
+        ParquetOutputFormat.getMemoryManager().getScaleCallBacks().size());
   }
 
   @Rule
@@ -170,16 +155,15 @@ public class TestMemoryManager {
     if (!file.delete()) {
       throw new RuntimeException("Could not delete file: " + file);
     }
-    RecordWriter writer = parquetOutputFormat.getRecordWriter(
-        conf, new Path(file.toString()),
-        CompressionCodecName.UNCOMPRESSED);
+    RecordWriter writer =
+        parquetOutputFormat.getRecordWriter(conf, new Path(file.toString()), CompressionCodecName.UNCOMPRESSED);
 
     return writer;
   }
 
   private long getTotalAllocation() {
-    Set<InternalParquetRecordWriter<?>> writers = ParquetOutputFormat
-        .getMemoryManager().getWriterList().keySet();
+    Set<InternalParquetRecordWriter<?>> writers =
+        ParquetOutputFormat.getMemoryManager().getWriterList().keySet();
     long total = 0;
     for (InternalParquetRecordWriter<?> writer : writers) {
       total += writer.getRowGroupSizeThreshold();

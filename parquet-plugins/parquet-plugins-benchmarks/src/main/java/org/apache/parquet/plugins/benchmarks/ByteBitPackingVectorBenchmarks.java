@@ -18,27 +18,25 @@
  */
 package org.apache.parquet.plugins.benchmarks;
 
+import java.util.concurrent.TimeUnit;
 import org.apache.parquet.column.values.bitpacking.BytePacker;
 import org.apache.parquet.column.values.bitpacking.Packer;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
+import org.openjdk.jmh.annotations.Fork;
 import org.openjdk.jmh.annotations.Level;
 import org.openjdk.jmh.annotations.Measurement;
 import org.openjdk.jmh.annotations.Mode;
 import org.openjdk.jmh.annotations.OutputTimeUnit;
+import org.openjdk.jmh.annotations.Param;
 import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Warmup;
-import org.openjdk.jmh.annotations.Fork;
-import org.openjdk.jmh.annotations.Param;
-
-import java.util.concurrent.TimeUnit;
 
 /**
  * This class uses the java17 vector API, add VM options --add-modules=jdk.incubator.vector
  */
-
 @State(Scope.Benchmark)
 @BenchmarkMode(Mode.Throughput)
 @Warmup(iterations = 1, batchSize = 100000)
@@ -49,8 +47,12 @@ public class ByteBitPackingVectorBenchmarks {
   /**
    * The range of bitWidth is 1 ~ 32, change it directly if test other bitWidth.
    */
-  @Param({"1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31" })
+  @Param({
+    "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20",
+    "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31"
+  })
   private int bitWidth;
+
   private int outputValues = 2048;
 
   private byte[] input;
@@ -94,7 +96,9 @@ public class ByteBitPackingVectorBenchmarks {
   public void testUnpackVector() {
     int byteIndex = 0;
     int valueIndex = 0;
-    for (; byteIndex < totalByteCountVector; byteIndex += inputByteCountPerVector, valueIndex += outCountPerVector) {
+    for (;
+        byteIndex < totalByteCountVector;
+        byteIndex += inputByteCountPerVector, valueIndex += outCountPerVector) {
       bytePackerVector.unpackValuesUsingVector(input, byteIndex, outputVector, valueIndex);
     }
 

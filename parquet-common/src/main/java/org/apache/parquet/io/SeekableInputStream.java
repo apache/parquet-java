@@ -56,7 +56,7 @@ public abstract class SeekableInputStream extends InputStream {
    * array is full.
    *
    * @param bytes a byte array to fill with data from the stream
-   * @throws IOException If the underlying stream throws IOException
+   * @throws IOException  If the underlying stream throws IOException
    * @throws EOFException If the stream has fewer bytes left than are needed to
    *                      fill the array, {@code bytes.length}
    */
@@ -71,8 +71,8 @@ public abstract class SeekableInputStream extends InputStream {
    *
    * @param bytes a byte array to fill with data from the stream
    * @param start the starting position in the byte array for data
-   * @param len the length of bytes to read into the byte array
-   * @throws IOException If the underlying stream throws IOException
+   * @param len   the length of bytes to read into the byte array
+   * @throws IOException  If the underlying stream throws IOException
    * @throws EOFException If the stream has fewer than {@code len} bytes left
    */
   public abstract void readFully(byte[] bytes, int start, int len) throws IOException;
@@ -99,10 +99,9 @@ public abstract class SeekableInputStream extends InputStream {
    * ends before the buffer is full.
    *
    * @param buf a byte buffer to fill with data from the stream
-   * @throws IOException If the underlying stream throws IOException
+   * @throws IOException  If the underlying stream throws IOException
    * @throws EOFException If the stream has fewer bytes left than are needed to
    *                      fill the buffer, {@code buf.remaining()}
    */
   public abstract void readFully(ByteBuffer buf) throws IOException;
-
 }

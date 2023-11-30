@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -18,18 +18,16 @@
  */
 package org.apache.parquet.filter2.recordlevel;
 
-import java.util.Arrays;
-import java.util.List;
-
-import org.junit.Test;
-
-import org.apache.parquet.filter2.recordlevel.IncrementallyUpdatedFilterPredicate.ValueInspector;
-
+import static org.apache.parquet.filter2.recordlevel.TestIncrementallyUpdatedFilterPredicateEvaluator.intIsEven;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
-import static org.apache.parquet.filter2.recordlevel.TestIncrementallyUpdatedFilterPredicateEvaluator.intIsEven;
+
+import java.util.Arrays;
+import java.util.List;
+import org.apache.parquet.filter2.recordlevel.IncrementallyUpdatedFilterPredicate.ValueInspector;
+import org.junit.Test;
 
 public class TestValueInspector {
 
@@ -59,8 +57,10 @@ public class TestValueInspector {
       v.update(11);
       fail("this should throw");
     } catch (IllegalStateException e) {
-      assertEquals("setResult() called on a ValueInspector whose result is already known!"
-          + " Did you forget to call reset()?", e.getMessage());
+      assertEquals(
+          "setResult() called on a ValueInspector whose result is already known!"
+              + " Did you forget to call reset()?",
+          e.getMessage());
     }
 
     // back to unknown state
@@ -79,7 +79,6 @@ public class TestValueInspector {
     v.update(11);
     assertTrue(v.isKnown());
     assertFalse(v.getResult());
-
   }
 
   @Test
@@ -92,6 +91,5 @@ public class TestValueInspector {
       assertEquals(x % 2 == 0, v.getResult());
       v.reset();
     }
-
   }
 }

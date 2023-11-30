@@ -19,6 +19,10 @@
 
 package org.apache.parquet.hadoop.codec;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
+import java.io.IOException;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -32,11 +36,6 @@ import org.apache.parquet.hadoop.example.GroupReadSupport;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
 public class TestInteropReadLz4RawCodec {
 
@@ -61,7 +60,8 @@ public class TestInteropReadLz4RawCodec {
     String[] c1ExpectValues = {"abc", "def", "abc", "def"};
     double[] c2ExpectValues = {42.0, 7.7, 42.125, 7.7};
 
-    try (ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), simpleFile).build()) {
+    try (ParquetReader<Group> reader =
+        ParquetReader.builder(new GroupReadSupport(), simpleFile).build()) {
       for (int i = 0; i < expectRows; ++i) {
         Group group = reader.read();
         assertTrue(group != null);
@@ -81,11 +81,16 @@ public class TestInteropReadLz4RawCodec {
     // Test larger parquet file with lz4 raw compressed
     final int expectRows = 10000;
     Path largerFile = downloadInteropFiles(rootPath, LARGER_FILE, httpClient);
-    String[] c0ExpectValues = {"c7ce6bef-d5b0-4863-b199-8ea8c7fb117b", "e8fb9197-cb9f-4118-b67f-fbfa65f61843",
-      "ab52a0cc-c6bb-4d61-8a8f-166dc4b8b13c", "85440778-460a-41ac-aa2e-ac3ee41696bf"};
+    String[] c0ExpectValues = {
+      "c7ce6bef-d5b0-4863-b199-8ea8c7fb117b",
+      "e8fb9197-cb9f-4118-b67f-fbfa65f61843",
+      "ab52a0cc-c6bb-4d61-8a8f-166dc4b8b13c",
+      "85440778-460a-41ac-aa2e-ac3ee41696bf"
+    };
 
     int index = 0;
-    try (ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), largerFile).build()) {
+    try (ParquetReader<Group> reader =
+        ParquetReader.builder(new GroupReadSupport(), largerFile).build()) {
       for (int i = 0; i < expectRows; ++i) {
         Group group = reader.read();
         assertTrue(group != null);
@@ -125,5 +130,4 @@ public class TestInteropReadLz4RawCodec {
     }
     return file;
   }
-
 }

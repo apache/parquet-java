@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -21,12 +21,12 @@ package org.apache.parquet.column.values.bitpacking;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.column.values.bitpacking.BitPacking.BitPackingReader;
 import org.apache.parquet.column.values.bitpacking.BitPacking.BitPackingWriter;
 
 // TODO: rework the whole thing. It does not need to use streams at all
+
 /**
  * provides the correct implementation of a bitpacking based on the width in bits
  */
@@ -36,96 +36,95 @@ public class BitPacking {
    * to writes ints to a stream packed to only the needed bits.
    * there is no guarantee of corecteness if ints larger than the max size are written
    */
-  abstract public static class BitPackingWriter {
+  public abstract static class BitPackingWriter {
     /**
      * will write the bits to the underlying stream aligned on the buffer size
+     *
      * @param val the value to encode
      * @throws IOException if there is an exception while writing
      */
-    abstract public void write(int val) throws IOException;
+    public abstract void write(int val) throws IOException;
 
     /**
      * will flush the buffer to the underlying stream (and pad with 0s)
+     *
      * @throws IOException if there is an exception while finishing
      */
-    abstract public void finish() throws IOException;
+    public abstract void finish() throws IOException;
   }
 
   /**
    * to read back what has been written with the corresponding  writer
    */
-  abstract public static class BitPackingReader {
+  public abstract static class BitPackingReader {
 
     /**
-     *
      * @return and int decoded from the underlying stream
      * @throws IOException if there is an exception while reading
      */
-    abstract public int read() throws IOException;
+    public abstract int read() throws IOException;
   }
 
-  private BitPacking() {
-  }
+  private BitPacking() {}
 
   /**
    * @param bitLength the width in bits of the integers to write
-   * @param out the stream to write the bytes to
+   * @param out       the stream to write the bytes to
    * @return the correct implementation for the width
    */
   public static BitPackingWriter getBitPackingWriter(int bitLength, OutputStream out) {
     switch (bitLength) {
-    case 0:
-      return new ZeroBitPackingWriter();
-    case 1:
-      return new OneBitPackingWriter(out);
-    case 2:
-      return new TwoBitPackingWriter(out);
-    case 3:
-      return new ThreeBitPackingWriter(out);
-    case 4:
-      return new FourBitPackingWriter(out);
-    case 5:
-      return new FiveBitPackingWriter(out);
-    case 6:
-      return new SixBitPackingWriter(out);
-    case 7:
-      return new SevenBitPackingWriter(out);
-    case 8:
-      return new EightBitPackingWriter(out);
-    default:
-      throw new UnsupportedOperationException("only support up to 8 for now");
+      case 0:
+        return new ZeroBitPackingWriter();
+      case 1:
+        return new OneBitPackingWriter(out);
+      case 2:
+        return new TwoBitPackingWriter(out);
+      case 3:
+        return new ThreeBitPackingWriter(out);
+      case 4:
+        return new FourBitPackingWriter(out);
+      case 5:
+        return new FiveBitPackingWriter(out);
+      case 6:
+        return new SixBitPackingWriter(out);
+      case 7:
+        return new SevenBitPackingWriter(out);
+      case 8:
+        return new EightBitPackingWriter(out);
+      default:
+        throw new UnsupportedOperationException("only support up to 8 for now");
     }
   }
 
   /**
-   *
-   * @param bitLength the width in bits of the integers to read
-   * @param in the stream to read the bytes from
+   * @param bitLength  the width in bits of the integers to read
+   * @param in         the stream to read the bytes from
    * @param valueCount not sure
    * @return the correct implementation for the width
    */
   public static BitPackingReader createBitPackingReader(int bitLength, InputStream in, long valueCount) {
     switch (bitLength) {
-    case 0:
-      return new ZeroBitPackingReader();
-    case 1:
-      return new OneBitPackingReader(in);
-    case 2:
-      return new TwoBitPackingReader(in);
-    case 3:
-      return new ThreeBitPackingReader(in, valueCount);
-    case 4:
-      return new FourBitPackingReader(in);
-    case 5:
-      return new FiveBitPackingReader(in, valueCount);
-    case 6:
-      return new SixBitPackingReader(in, valueCount);
-    case 7:
-      return new SevenBitPackingReader(in, valueCount);
-    case 8:
-      return new EightBitPackingReader(in);
-    default:
-      throw new UnsupportedOperationException("only support up to 8 for now");
+      case 0:
+        return new ZeroBitPackingReader();
+      case 1:
+        return new OneBitPackingReader(in);
+      case 2:
+        return new TwoBitPackingReader(in);
+      case 3:
+        return new ThreeBitPackingReader(in, valueCount);
+      case 4:
+        return new FourBitPackingReader(in);
+      case 5:
+        return new FiveBitPackingReader(in, valueCount);
+      case 6:
+        return new SixBitPackingReader(in, valueCount);
+      case 7:
+        return new SevenBitPackingReader(in, valueCount);
+      case 8:
+        return new EightBitPackingReader(in);
+      default:
+        throw new UnsupportedOperationException("only support up to 8 for now");
     }
   }
 }
@@ -136,7 +135,7 @@ abstract class BaseBitPackingWriter extends BitPackingWriter {
     int padding = numberOfBits % 8 == 0 ? 0 : 8 - (numberOfBits % 8);
     buffer = buffer << padding;
     int numberOfBytes = (numberOfBits + padding) / 8;
-    for (int i = (numberOfBytes - 1) * 8; i >= 0 ; i -= 8) {
+    for (int i = (numberOfBytes - 1) * 8; i >= 0; i -= 8) {
       out.write((buffer >>> i) & 0xFF);
     }
   }
@@ -145,37 +144,34 @@ abstract class BaseBitPackingWriter extends BitPackingWriter {
     int padding = numberOfBits % 8 == 0 ? 0 : 8 - (numberOfBits % 8);
     buffer = buffer << padding;
     int numberOfBytes = (numberOfBits + padding) / 8;
-    for (int i = (numberOfBytes - 1) * 8; i >= 0 ; i -= 8) {
-      out.write((int)(buffer >>> i) & 0xFF);
+    for (int i = (numberOfBytes - 1) * 8; i >= 0; i -= 8) {
+      out.write((int) (buffer >>> i) & 0xFF);
     }
   }
 }
+
 abstract class BaseBitPackingReader extends BitPackingReader {
 
   int alignToBytes(int bitsCount) {
     return BytesUtils.paddedByteCountFromBits(bitsCount);
   }
-
 }
 
 class ZeroBitPackingWriter extends BitPackingWriter {
 
   @Override
-  public void write(int val) throws IOException {
-  }
+  public void write(int val) throws IOException {}
 
   @Override
-  public void finish() {
-  }
-
+  public void finish() {}
 }
+
 class ZeroBitPackingReader extends BitPackingReader {
 
   @Override
   public int read() throws IOException {
     return 0;
   }
-
 }
 
 class OneBitPackingWriter extends BitPackingWriter {
@@ -193,7 +189,7 @@ class OneBitPackingWriter extends BitPackingWriter {
   public void write(int val) throws IOException {
     buffer = buffer << 1;
     buffer |= val;
-    ++ count;
+    ++count;
     if (count == 8) {
       out.write(buffer);
       buffer = 0;
@@ -209,8 +205,8 @@ class OneBitPackingWriter extends BitPackingWriter {
     // check this does not impede perf
     out = null;
   }
-
 }
+
 class OneBitPackingReader extends BitPackingReader {
 
   private final InputStream in;
@@ -229,10 +225,9 @@ class OneBitPackingReader extends BitPackingReader {
       count = 8;
     }
     int result = (buffer >> (count - 1)) & 1;
-    -- count;
+    --count;
     return result;
   }
-
 }
 
 class TwoBitPackingWriter extends BitPackingWriter {
@@ -250,7 +245,7 @@ class TwoBitPackingWriter extends BitPackingWriter {
   public void write(int val) throws IOException {
     buffer = buffer << 2;
     buffer |= val;
-    ++ count;
+    ++count;
     if (count == 4) {
       out.write(buffer);
       buffer = 0;
@@ -266,8 +261,8 @@ class TwoBitPackingWriter extends BitPackingWriter {
     // check this does not impede perf
     out = null;
   }
-
 }
+
 class TwoBitPackingReader extends BitPackingReader {
 
   private final InputStream in;
@@ -286,10 +281,9 @@ class TwoBitPackingReader extends BitPackingReader {
       count = 4;
     }
     int result = (buffer >> ((count - 1) * 2)) & 3;
-    -- count;
+    --count;
     return result;
   }
-
 }
 
 class ThreeBitPackingWriter extends BaseBitPackingWriter {
@@ -307,11 +301,11 @@ class ThreeBitPackingWriter extends BaseBitPackingWriter {
   public void write(int val) throws IOException {
     buffer = buffer << 3;
     buffer |= val;
-    ++ count;
+    ++count;
     if (count == 8) {
       out.write((buffer >>> 16) & 0xFF);
-      out.write((buffer >>>  8) & 0xFF);
-      out.write((buffer >>>  0) & 0xFF);
+      out.write((buffer >>> 8) & 0xFF);
+      out.write((buffer >>> 0) & 0xFF);
       buffer = 0;
       count = 0;
     }
@@ -328,8 +322,8 @@ class ThreeBitPackingWriter extends BaseBitPackingWriter {
     // check this does not impede perf
     out = null;
   }
-
 }
+
 class ThreeBitPackingReader extends BaseBitPackingReader {
 
   private final InputStream in;
@@ -350,9 +344,9 @@ class ThreeBitPackingReader extends BaseBitPackingReader {
     if (count == 0) {
       if (valueCount - totalRead < 8) {
         buffer = 0;
-        int bitsToRead = 3 * (int)(valueCount - totalRead);
+        int bitsToRead = 3 * (int) (valueCount - totalRead);
         int bytesToRead = alignToBytes(bitsToRead);
-        for (int i = 3 - 1 ; i >= 3 - bytesToRead ; i--) {
+        for (int i = 3 - 1; i >= 3 - bytesToRead; i--) {
           buffer |= in.read() << (i * 8);
         }
         count = 8;
@@ -364,10 +358,9 @@ class ThreeBitPackingReader extends BaseBitPackingReader {
       }
     }
     int result = (buffer >> ((count - 1) * 3)) & 7;
-    -- count;
+    --count;
     return result;
   }
-
 }
 
 class FourBitPackingWriter extends BitPackingWriter {
@@ -385,7 +378,7 @@ class FourBitPackingWriter extends BitPackingWriter {
   public void write(int val) throws IOException {
     buffer = buffer << 4;
     buffer |= val;
-    ++ count;
+    ++count;
     if (count == 2) {
       out.write(buffer);
       buffer = 0;
@@ -402,8 +395,8 @@ class FourBitPackingWriter extends BitPackingWriter {
     // check this does not impede perf
     out = null;
   }
-
 }
+
 class FourBitPackingReader extends BitPackingReader {
 
   private final InputStream in;
@@ -422,10 +415,9 @@ class FourBitPackingReader extends BitPackingReader {
       count = 2;
     }
     int result = (buffer >> ((count - 1) * 4)) & 15;
-    -- count;
+    --count;
     return result;
   }
-
 }
 
 class FiveBitPackingWriter extends BaseBitPackingWriter {
@@ -443,13 +435,13 @@ class FiveBitPackingWriter extends BaseBitPackingWriter {
   public void write(int val) throws IOException {
     buffer = buffer << 5;
     buffer |= val;
-    ++ count;
+    ++count;
     if (count == 8) {
-      out.write((int)(buffer >>> 32) & 0xFF);
-      out.write((int)(buffer >>> 24) & 0xFF);
-      out.write((int)(buffer >>> 16) & 0xFF);
-      out.write((int)(buffer >>>  8) & 0xFF);
-      out.write((int)(buffer >>>  0) & 0xFF);
+      out.write((int) (buffer >>> 32) & 0xFF);
+      out.write((int) (buffer >>> 24) & 0xFF);
+      out.write((int) (buffer >>> 16) & 0xFF);
+      out.write((int) (buffer >>> 8) & 0xFF);
+      out.write((int) (buffer >>> 0) & 0xFF);
       buffer = 0;
       count = 0;
     }
@@ -466,8 +458,8 @@ class FiveBitPackingWriter extends BaseBitPackingWriter {
     // check this does not impede perf
     out = null;
   }
-
 }
+
 class FiveBitPackingReader extends BaseBitPackingReader {
 
   private final InputStream in;
@@ -476,7 +468,6 @@ class FiveBitPackingReader extends BaseBitPackingReader {
   private long buffer = 0;
   private int count = 0;
   private long totalRead = 0;
-
 
   public FiveBitPackingReader(InputStream in, long valueCount) {
     this.in = in;
@@ -488,17 +479,16 @@ class FiveBitPackingReader extends BaseBitPackingReader {
     if (count == 0) {
       if (valueCount - totalRead < 8) {
         buffer = 0;
-        int bitsToRead = 5 * (int)(valueCount - totalRead);
+        int bitsToRead = 5 * (int) (valueCount - totalRead);
         int bytesToRead = alignToBytes(bitsToRead);
-        for (int i = 5 - 1; i >= 5 - bytesToRead ; i--) {
-          buffer |= (((long)in.read()) & 255) << (i * 8);
+        for (int i = 5 - 1; i >= 5 - bytesToRead; i--) {
+          buffer |= (((long) in.read()) & 255) << (i * 8);
         }
         count = 8;
         totalRead = valueCount;
       } else {
-        buffer =
-            ((((long)in.read()) & 255) << 32)
-            + ((((long)in.read()) & 255) << 24)
+        buffer = ((((long) in.read()) & 255) << 32)
+            + ((((long) in.read()) & 255) << 24)
             + (in.read() << 16)
             + (in.read() << 8)
             + in.read();
@@ -506,11 +496,10 @@ class FiveBitPackingReader extends BaseBitPackingReader {
         totalRead += 8;
       }
     }
-    int result = (((int)(buffer >> ((count - 1) * 5))) & 31);
-    -- count;
+    int result = (((int) (buffer >> ((count - 1) * 5))) & 31);
+    --count;
     return result;
   }
-
 }
 
 class SixBitPackingWriter extends BaseBitPackingWriter {
@@ -528,11 +517,11 @@ class SixBitPackingWriter extends BaseBitPackingWriter {
   public void write(int val) throws IOException {
     buffer = buffer << 6;
     buffer |= val;
-    ++ count;
+    ++count;
     if (count == 4) {
       out.write((buffer >>> 16) & 0xFF);
-      out.write((buffer >>>  8) & 0xFF);
-      out.write((buffer >>>  0) & 0xFF);
+      out.write((buffer >>> 8) & 0xFF);
+      out.write((buffer >>> 0) & 0xFF);
       buffer = 0;
       count = 0;
     }
@@ -549,8 +538,8 @@ class SixBitPackingWriter extends BaseBitPackingWriter {
     // check this does not impede perf
     out = null;
   }
-
 }
+
 class SixBitPackingReader extends BaseBitPackingReader {
 
   private final InputStream in;
@@ -560,7 +549,6 @@ class SixBitPackingReader extends BaseBitPackingReader {
   private int count = 0;
 
   private long totalRead = 0;
-
 
   public SixBitPackingReader(InputStream in, long valueCount) {
     this.in = in;
@@ -572,9 +560,9 @@ class SixBitPackingReader extends BaseBitPackingReader {
     if (count == 0) {
       if (valueCount - totalRead < 4) {
         buffer = 0;
-        int bitsToRead = 6 * (int)(valueCount - totalRead);
+        int bitsToRead = 6 * (int) (valueCount - totalRead);
         int bytesToRead = alignToBytes(bitsToRead);
-        for (int i = 3 - 1; i >= 3 - bytesToRead ; i--) {
+        for (int i = 3 - 1; i >= 3 - bytesToRead; i--) {
           buffer |= in.read() << (i * 8);
         }
         count = 4;
@@ -586,10 +574,9 @@ class SixBitPackingReader extends BaseBitPackingReader {
       }
     }
     int result = (buffer >> ((count - 1) * 6)) & 63;
-    -- count;
+    --count;
     return result;
   }
-
 }
 
 class SevenBitPackingWriter extends BaseBitPackingWriter {
@@ -607,15 +594,15 @@ class SevenBitPackingWriter extends BaseBitPackingWriter {
   public void write(int val) throws IOException {
     buffer = buffer << 7;
     buffer |= val;
-    ++ count;
+    ++count;
     if (count == 8) {
-      out.write((int)(buffer >>> 48) & 0xFF);
-      out.write((int)(buffer >>> 40) & 0xFF);
-      out.write((int)(buffer >>> 32) & 0xFF);
-      out.write((int)(buffer >>> 24) & 0xFF);
-      out.write((int)(buffer >>> 16) & 0xFF);
-      out.write((int)(buffer >>>  8) & 0xFF);
-      out.write((int)(buffer >>>  0) & 0xFF);
+      out.write((int) (buffer >>> 48) & 0xFF);
+      out.write((int) (buffer >>> 40) & 0xFF);
+      out.write((int) (buffer >>> 32) & 0xFF);
+      out.write((int) (buffer >>> 24) & 0xFF);
+      out.write((int) (buffer >>> 16) & 0xFF);
+      out.write((int) (buffer >>> 8) & 0xFF);
+      out.write((int) (buffer >>> 0) & 0xFF);
       buffer = 0;
       count = 0;
     }
@@ -632,8 +619,8 @@ class SevenBitPackingWriter extends BaseBitPackingWriter {
     // check this does not impede perf
     out = null;
   }
-
 }
+
 class SevenBitPackingReader extends BaseBitPackingReader {
 
   private final InputStream in;
@@ -643,7 +630,6 @@ class SevenBitPackingReader extends BaseBitPackingReader {
   private int count = 0;
   private long totalRead = 0;
 
-
   public SevenBitPackingReader(InputStream in, long valueCount) {
     this.in = in;
     this.valueCount = valueCount;
@@ -652,21 +638,20 @@ class SevenBitPackingReader extends BaseBitPackingReader {
   @Override
   public int read() throws IOException {
     if (count == 0) {
-      if (valueCount - totalRead  < 8) {
+      if (valueCount - totalRead < 8) {
         buffer = 0;
-        int bitsToRead = 7 * (int)(valueCount - totalRead);
+        int bitsToRead = 7 * (int) (valueCount - totalRead);
         int bytesToRead = alignToBytes(bitsToRead);
-        for (int i = 7 - 1; i >= 7 - bytesToRead ; i--) {
-          buffer |= (((long)in.read()) & 255) << (i * 8);
+        for (int i = 7 - 1; i >= 7 - bytesToRead; i--) {
+          buffer |= (((long) in.read()) & 255) << (i * 8);
         }
         count = 8;
         totalRead = valueCount;
       } else {
-        buffer =
-            ((((long)in.read()) & 255) << 48)
-            + ((((long)in.read()) & 255) << 40)
-            + ((((long)in.read()) & 255) << 32)
-            + ((((long)in.read()) & 255) << 24)
+        buffer = ((((long) in.read()) & 255) << 48)
+            + ((((long) in.read()) & 255) << 40)
+            + ((((long) in.read()) & 255) << 32)
+            + ((((long) in.read()) & 255) << 24)
             + (in.read() << 16)
             + (in.read() << 8)
             + in.read();
@@ -674,11 +659,10 @@ class SevenBitPackingReader extends BaseBitPackingReader {
         totalRead += 8;
       }
     }
-    int result = (((int)(buffer >> ((count - 1) * 7))) & 127);
-    -- count;
+    int result = (((int) (buffer >> ((count - 1) * 7))) & 127);
+    --count;
     return result;
   }
-
 }
 
 class EightBitPackingWriter extends BitPackingWriter {
@@ -699,8 +683,8 @@ class EightBitPackingWriter extends BitPackingWriter {
     // check this does not impede perf
     out = null;
   }
-
 }
+
 class EightBitPackingReader extends BitPackingReader {
 
   private final InputStream in;
@@ -713,5 +697,4 @@ class EightBitPackingReader extends BitPackingReader {
   public int read() throws IOException {
     return in.read();
   }
-
 }

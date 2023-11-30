@@ -25,6 +25,15 @@ import com.beust.jcommander.ParameterException;
 import com.beust.jcommander.Parameters;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableSet;
+import java.util.Set;
+import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.conf.Configurable;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.conf.Configured;
+import org.apache.hadoop.util.Tool;
+import org.apache.hadoop.util.ToolRunner;
+import org.apache.log4j.Level;
+import org.apache.log4j.PropertyConfigurator;
 import org.apache.parquet.cli.commands.CSVSchemaCommand;
 import org.apache.parquet.cli.commands.CatCommand;
 import org.apache.parquet.cli.commands.CheckParquet251Command;
@@ -43,29 +52,20 @@ import org.apache.parquet.cli.commands.ShowDictionaryCommand;
 import org.apache.parquet.cli.commands.ShowFooterCommand;
 import org.apache.parquet.cli.commands.ShowPagesCommand;
 import org.apache.parquet.cli.commands.ToAvroCommand;
-import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.conf.Configurable;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.conf.Configured;
-import org.apache.hadoop.util.Tool;
-import org.apache.hadoop.util.ToolRunner;
-import org.apache.log4j.Level;
-import org.apache.log4j.PropertyConfigurator;
 import org.apache.parquet.cli.commands.TransCompressionCommand;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import java.util.Set;
 
 @Parameters(commandDescription = "Parquet file utils")
 public class Main extends Configured implements Tool {
 
-  @Parameter(names = {"-v", "--verbose", "--debug"},
+  @Parameter(
+      names = {"-v", "--verbose", "--debug"},
       description = "Print extra debugging information")
   private boolean debug = false;
 
   @VisibleForTesting
-  @Parameter(names="--dollar-zero",
-      description="A way for the runtime path to be passed in", hidden=true)
+  @Parameter(names = "--dollar-zero", description = "A way for the runtime path to be passed in", hidden = true)
   String programName = DEFAULT_PROGRAM_NAME;
 
   @VisibleForTesting
@@ -183,13 +183,11 @@ public class Main extends Configured implements Tool {
 
   public static void main(String[] args) throws Exception {
     // reconfigure logging with the kite CLI configuration
-    PropertyConfigurator.configure(
-        Main.class.getResource("/cli-logging.properties"));
+    PropertyConfigurator.configure(Main.class.getResource("/cli-logging.properties"));
     Logger console = LoggerFactory.getLogger(Main.class);
     // use Log4j for any libraries using commons-logging
-    LogFactory.getFactory().setAttribute(
-        "org.apache.commons.logging.Log",
-        "org.apache.commons.logging.impl.Log4JLogger");
+    LogFactory.getFactory()
+        .setAttribute("org.apache.commons.logging.Log", "org.apache.commons.logging.impl.Log4JLogger");
     int rc = ToolRunner.run(new Configuration(), new Main(console), args);
     System.exit(rc);
   }
