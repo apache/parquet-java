@@ -18,13 +18,12 @@
  */
 package org.apache.parquet;
 
-import org.junit.Test;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.util.Arrays;
 import java.util.List;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import org.junit.Test;
 
 public class SemanticVersionTest {
   @Test
@@ -52,9 +51,15 @@ public class SemanticVersionTest {
 
   @Test
   public void testSemverPrereleaseExamples() throws Exception {
-    List<String> examples = Arrays.asList("1.0.0-alpha", "1.0.0-alpha.1",
-        "1.0.0-alpha.beta", "1.0.0-beta", "1.0.0-beta.2", "1.0.0-beta.11",
-        "1.0.0-rc.1", "1.0.0");
+    List<String> examples = Arrays.asList(
+        "1.0.0-alpha",
+        "1.0.0-alpha.1",
+        "1.0.0-alpha.beta",
+        "1.0.0-beta",
+        "1.0.0-beta.2",
+        "1.0.0-beta.11",
+        "1.0.0-rc.1",
+        "1.0.0");
     for (int i = 0; i < examples.size() - 1; i += 1) {
       assertLessThan(examples.get(i), examples.get(i + 1));
       assertEqualTo(examples.get(i), examples.get(i));
@@ -95,12 +100,9 @@ public class SemanticVersionTest {
   public void testParse() throws Exception {
     assertEquals(new SemanticVersion(1, 8, 0), SemanticVersion.parse("1.8.0"));
     assertEquals(new SemanticVersion(1, 8, 0, true), SemanticVersion.parse("1.8.0rc3"));
-    assertEquals(new SemanticVersion(1, 8, 0, "rc3", "SNAPSHOT", null),
-        SemanticVersion.parse("1.8.0rc3-SNAPSHOT"));
-    assertEquals(new SemanticVersion(1, 8, 0, null, "SNAPSHOT", null),
-        SemanticVersion.parse("1.8.0-SNAPSHOT"));
-    assertEquals(new SemanticVersion(1, 5, 0, null, "cdh5.5.0", null),
-        SemanticVersion.parse("1.5.0-cdh5.5.0"));
+    assertEquals(new SemanticVersion(1, 8, 0, "rc3", "SNAPSHOT", null), SemanticVersion.parse("1.8.0rc3-SNAPSHOT"));
+    assertEquals(new SemanticVersion(1, 8, 0, null, "SNAPSHOT", null), SemanticVersion.parse("1.8.0-SNAPSHOT"));
+    assertEquals(new SemanticVersion(1, 5, 0, null, "cdh5.5.0", null), SemanticVersion.parse("1.5.0-cdh5.5.0"));
   }
 
   private static void assertLessThan(String a, String b) throws SemanticVersion.SemanticVersionParseException {

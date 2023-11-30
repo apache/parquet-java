@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -24,7 +24,7 @@ import org.apache.parquet.io.api.RecordConsumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-abstract public class Group extends GroupValueSource {
+public abstract class Group extends GroupValueSource {
   private static final Logger LOG = LoggerFactory.getLogger(Group.class);
 
   public void add(String field, int value) {
@@ -75,28 +75,28 @@ abstract public class Group extends GroupValueSource {
     return getGroup(getType().getFieldIndex(field), index);
   }
 
-  abstract public void add(int fieldIndex, int value);
+  public abstract void add(int fieldIndex, int value);
 
-  abstract public void add(int fieldIndex, long value);
+  public abstract void add(int fieldIndex, long value);
 
-  abstract public void add(int fieldIndex, String value);
+  public abstract void add(int fieldIndex, String value);
 
-  abstract public void add(int fieldIndex, boolean value);
+  public abstract void add(int fieldIndex, boolean value);
 
-  abstract public void add(int fieldIndex, NanoTime value);
+  public abstract void add(int fieldIndex, NanoTime value);
 
-  abstract public void add(int fieldIndex, Binary value);
+  public abstract void add(int fieldIndex, Binary value);
 
-  abstract public void add(int fieldIndex, float value);
+  public abstract void add(int fieldIndex, float value);
 
-  abstract public void add(int fieldIndex, double value);
+  public abstract void add(int fieldIndex, double value);
 
-  abstract public void add(int fieldIndex, Group value);
+  public abstract void add(int fieldIndex, Group value);
 
-  abstract public Group addGroup(int fieldIndex);
+  public abstract Group addGroup(int fieldIndex);
 
   @Override
-  abstract public Group getGroup(int fieldIndex, int index);
+  public abstract Group getGroup(int fieldIndex, int index);
 
   public Group asGroup() {
     return this;
@@ -142,6 +142,5 @@ abstract public class Group extends GroupValueSource {
     return this;
   }
 
-  abstract public void writeValue(int field, int index, RecordConsumer recordConsumer);
-
+  public abstract void writeValue(int field, int index, RecordConsumer recordConsumer);
 }

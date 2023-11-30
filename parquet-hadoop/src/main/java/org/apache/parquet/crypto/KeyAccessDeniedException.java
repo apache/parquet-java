@@ -19,7 +19,6 @@
 
 package org.apache.parquet.crypto;
 
-
 public class KeyAccessDeniedException extends ParquetCryptoRuntimeException {
   private static final long serialVersionUID = 1L;
 

@@ -25,7 +25,6 @@ import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.compress.CodecPool;
 import org.apache.hadoop.io.compress.CompressionCodec;
@@ -33,7 +32,6 @@ import org.apache.hadoop.io.compress.CompressionOutputStream;
 import org.apache.hadoop.io.compress.Compressor;
 import org.apache.hadoop.io.compress.Decompressor;
 import org.apache.hadoop.util.ReflectionUtils;
-
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.compression.CompressionCodecFactory;
@@ -45,8 +43,8 @@ import org.apache.parquet.hadoop.util.ConfigurationUtil;
 
 public class CodecFactory implements CompressionCodecFactory {
 
-  protected static final Map<String, CompressionCodec> CODEC_BY_NAME = Collections
-      .synchronizedMap(new HashMap<String, CompressionCodec>());
+  protected static final Map<String, CompressionCodec> CODEC_BY_NAME =
+      Collections.synchronizedMap(new HashMap<String, CompressionCodec>());
 
   private final Map<CompressionCodecName, BytesCompressor> compressors = new HashMap<>();
   private final Map<CompressionCodecName, BytesDecompressor> decompressors = new HashMap<>();
@@ -58,10 +56,10 @@ public class CodecFactory implements CompressionCodecFactory {
    * Create a new codec factory.
    *
    * @param configuration used to pass compression codec configuration information
-   * @param pageSize the expected page size, does not set a hard limit, currently just
-   *                 used to set the initial size of the output stream used when
-   *                 compressing a buffer. If this factory is only used to construct
-   *                 decompressors this parameter has no impact on the function of the factory
+   * @param pageSize      the expected page size, does not set a hard limit, currently just
+   *                      used to set the initial size of the output stream used when
+   *                      compressing a buffer. If this factory is only used to construct
+   *                      decompressors this parameter has no impact on the function of the factory
    */
   public CodecFactory(Configuration configuration, int pageSize) {
     this(new HadoopParquetConfiguration(configuration), pageSize);
@@ -71,10 +69,10 @@ public class CodecFactory implements CompressionCodecFactory {
    * Create a new codec factory.
    *
    * @param configuration used to pass compression codec configuration information
-   * @param pageSize the expected page size, does not set a hard limit, currently just
-   *                 used to set the initial size of the output stream used when
-   *                 compressing a buffer. If this factory is only used to construct
-   *                 decompressors this parameter has no impact on the function of the factory
+   * @param pageSize      the expected page size, does not set a hard limit, currently just
+   *                      used to set the initial size of the output stream used when
+   *                      compressing a buffer. If this factory is only used to construct
+   *                      decompressors this parameter has no impact on the function of the factory
    */
   public CodecFactory(ParquetConfiguration configuration, int pageSize) {
     this.configuration = configuration;
@@ -85,22 +83,23 @@ public class CodecFactory implements CompressionCodecFactory {
    * Create a codec factory that will provide compressors and decompressors
    * that will work natively with ByteBuffers backed by direct memory.
    *
-   * @param config configuration options for different compression codecs
+   * @param config    configuration options for different compression codecs
    * @param allocator an allocator for creating result buffers during compression
    *                  and decompression, must provide buffers backed by Direct
    *                  memory and return true for the isDirect() method
    *                  on the ByteBufferAllocator interface
-   * @param pageSize the default page size. This does not set a hard limit on the
-   *                 size of buffers that can be compressed, but performance may
-   *                 be improved by setting it close to the expected size of buffers
-   *                 (in the case of parquet, pages) that will be compressed. This
-   *                 setting is unused in the case of decompressing data, as parquet
-   *                 always records the uncompressed size of a buffer. If this
-   *                 CodecFactory is only going to be used for decompressors, this
-   *                 parameter will not impact the function of the factory.
+   * @param pageSize  the default page size. This does not set a hard limit on the
+   *                  size of buffers that can be compressed, but performance may
+   *                  be improved by setting it close to the expected size of buffers
+   *                  (in the case of parquet, pages) that will be compressed. This
+   *                  setting is unused in the case of decompressing data, as parquet
+   *                  always records the uncompressed size of a buffer. If this
+   *                  CodecFactory is only going to be used for decompressors, this
+   *                  parameter will not impact the function of the factory.
    * @return a configured direct codec factory
    */
-  public static CodecFactory createDirectCodecFactory(Configuration config, ByteBufferAllocator allocator, int pageSize) {
+  public static CodecFactory createDirectCodecFactory(
+      Configuration config, ByteBufferAllocator allocator, int pageSize) {
     return new DirectCodecFactory(config, allocator, pageSize);
   }
 
@@ -127,7 +126,8 @@ public class CodecFactory implements CompressionCodecFactory {
         }
         InputStream is = codec.createInputStream(bytes.toInputStream(), decompressor);
 
-        // We need to explicitly close the ZstdDecompressorStream here to release the resources it holds to avoid
+        // We need to explicitly close the ZstdDecompressorStream here to release the resources it holds to
+        // avoid
         // off-heap memory fragmentation issue, see https://issues.apache.org/jira/browse/PARQUET-2160.
         // This change will load the decompressor stream into heap a little earlier, since the problem it solves
         // only happens in the ZSTD codec, so this modification is only made for ZSTD streams.
@@ -144,8 +144,10 @@ public class CodecFactory implements CompressionCodecFactory {
     }
 
     @Override
-    public void decompress(ByteBuffer input, int compressedSize, ByteBuffer output, int uncompressedSize) throws IOException {
-      ByteBuffer decompressed = decompress(BytesInput.from(input), uncompressedSize).toByteBuffer();
+    public void decompress(ByteBuffer input, int compressedSize, ByteBuffer output, int uncompressedSize)
+        throws IOException {
+      ByteBuffer decompressed =
+          decompress(BytesInput.from(input), uncompressedSize).toByteBuffer();
       output.put(decompressed);
     }
 
@@ -208,7 +210,6 @@ public class CodecFactory implements CompressionCodecFactory {
     public CompressionCodecName getCodecName() {
       return codecName;
     }
-
   }
 
   @Override
@@ -240,9 +241,7 @@ public class CodecFactory implements CompressionCodecFactory {
   }
 
   /**
-   *
-   * @param codecName
-   *          the requested codec
+   * @param codecName the requested codec
    * @return the corresponding hadoop codec. null if UNCOMPRESSED
    */
   protected CompressionCodec getCodec(CompressionCodecName codecName) {
@@ -264,7 +263,8 @@ public class CodecFactory implements CompressionCodecFactory {
         // Try to load the class using the job classloader
         codecClass = new Configuration(false).getClassLoader().loadClass(codecClassName);
       }
-      codec = (CompressionCodec) ReflectionUtils.newInstance(codecClass, ConfigurationUtil.createHadoopConfiguration(configuration));
+      codec = (CompressionCodec)
+          ReflectionUtils.newInstance(codecClass, ConfigurationUtil.createHadoopConfiguration(configuration));
       CODEC_BY_NAME.put(codecCacheKey, codec);
       return codec;
     } catch (ClassNotFoundException e) {
@@ -307,9 +307,11 @@ public class CodecFactory implements CompressionCodecFactory {
    * @deprecated will be removed in 2.0.0; use CompressionCodecFactory.BytesInputCompressor instead.
    */
   @Deprecated
-  public static abstract class BytesCompressor implements CompressionCodecFactory.BytesInputCompressor {
+  public abstract static class BytesCompressor implements CompressionCodecFactory.BytesInputCompressor {
     public abstract BytesInput compress(BytesInput bytes) throws IOException;
+
     public abstract CompressionCodecName getCodecName();
+
     public abstract void release();
   }
 
@@ -317,9 +319,12 @@ public class CodecFactory implements CompressionCodecFactory {
    * @deprecated will be removed in 2.0.0; use CompressionCodecFactory.BytesInputDecompressor instead.
    */
   @Deprecated
-  public static abstract class BytesDecompressor implements CompressionCodecFactory.BytesInputDecompressor {
+  public abstract static class BytesDecompressor implements CompressionCodecFactory.BytesInputDecompressor {
     public abstract BytesInput decompress(BytesInput bytes, int uncompressedSize) throws IOException;
-    public abstract void decompress(ByteBuffer input, int compressedSize, ByteBuffer output, int uncompressedSize) throws IOException;
+
+    public abstract void decompress(ByteBuffer input, int compressedSize, ByteBuffer output, int uncompressedSize)
+        throws IOException;
+
     public abstract void release();
   }
 }

@@ -47,7 +47,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Random;
 import java.util.function.Supplier;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.example.data.Group;
@@ -60,15 +59,12 @@ import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.example.ExampleParquetWriter;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.io.api.Binary;
-import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.OriginalType;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
 import org.apache.parquet.schema.Types;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -78,12 +74,11 @@ import org.junit.runners.Parameterized.Parameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.io.Files;
-
 @RunWith(Parameterized.class)
 public class TestColumnIndexes {
   private static final int MAX_TOTAL_ROWS = 100_000;
-  private static final MessageType SCHEMA = new MessageType("schema",
+  private static final MessageType SCHEMA = new MessageType(
+      "schema",
       new PrimitiveType(OPTIONAL, INT32, "i32"),
       new PrimitiveType(OPTIONAL, INT64, "i64"),
       new PrimitiveType(OPTIONAL, INT96, "i96"),
@@ -106,7 +101,10 @@ public class TestColumnIndexes {
       Types.optional(INT64).as(intType(64, false)).named("uint64"),
       Types.optional(INT32).as(decimalType(2, 9)).named("decimal-int32"),
       Types.optional(INT64).as(decimalType(4, 18)).named("decimal-int64"),
-      Types.optional(FIXED_LEN_BYTE_ARRAY).length(19).as(decimalType(25, 45)).named("decimal-fixed"),
+      Types.optional(FIXED_LEN_BYTE_ARRAY)
+          .length(19)
+          .as(decimalType(25, 45))
+          .named("decimal-fixed"),
       Types.optional(BINARY).as(decimalType(20, 38)).named("decimal-binary"),
       Types.optional(BINARY).as(stringType()).named("utf8"),
       Types.optional(BINARY).as(enumType()).named("enum"),
@@ -117,7 +115,10 @@ public class TestColumnIndexes {
       Types.optional(INT64).as(timeType(false, TimeUnit.MICROS)).named("time-micros"),
       Types.optional(INT64).as(timestampType(true, TimeUnit.MILLIS)).named("timestamp-millis"),
       Types.optional(INT64).as(timestampType(false, TimeUnit.NANOS)).named("timestamp-nanos"),
-      Types.optional(FIXED_LEN_BYTE_ARRAY).length(12).as(OriginalType.INTERVAL).named("interval"),
+      Types.optional(FIXED_LEN_BYTE_ARRAY)
+          .length(12)
+          .as(OriginalType.INTERVAL)
+          .named("interval"),
       Types.optional(FIXED_LEN_BYTE_ARRAY).length(16).as(uuidType()).named("uuid"),
       Types.optional(BINARY).as(stringType()).named("always-null"));
 
@@ -129,64 +130,115 @@ public class TestColumnIndexes {
         sortedOrRandom(RandomValues.int96Generator(random.nextLong()), random, recordCount, fieldIndex++),
         sortedOrRandom(new RandomValues.FloatGenerator(random.nextLong()), random, recordCount, fieldIndex++),
         sortedOrRandom(new RandomValues.DoubleGenerator(random.nextLong()), random, recordCount, fieldIndex++),
-        sortedOrRandom(RandomValues.binaryStringGenerator(random.nextLong()), random, recordCount, fieldIndex++),
+        sortedOrRandom(
+            RandomValues.binaryStringGenerator(random.nextLong()), random, recordCount, fieldIndex++),
         sortedOrRandom(new RandomValues.BinaryGenerator(random.nextLong()), random, recordCount, fieldIndex++),
-        sortedOrRandom(new RandomValues.FixedGenerator(random.nextLong(), 17), random, recordCount, fieldIndex++),
-        sortedOrRandom(new RandomValues.UnconstrainedIntGenerator(random.nextLong()), random, recordCount,
+        sortedOrRandom(
+            new RandomValues.FixedGenerator(random.nextLong(), 17), random, recordCount, fieldIndex++),
+        sortedOrRandom(
+            new RandomValues.UnconstrainedIntGenerator(random.nextLong()),
+            random,
+            recordCount,
             fieldIndex++),
-        sortedOrRandom(new RandomValues.UnconstrainedLongGenerator(random.nextLong()), random, recordCount,
+        sortedOrRandom(
+            new RandomValues.UnconstrainedLongGenerator(random.nextLong()),
+            random,
+            recordCount,
             fieldIndex++),
-        sortedOrRandom(new RandomValues.UnconstrainedFloatGenerator(random.nextLong()), random, recordCount,
+        sortedOrRandom(
+            new RandomValues.UnconstrainedFloatGenerator(random.nextLong()),
+            random,
+            recordCount,
             fieldIndex++),
-        sortedOrRandom(new RandomValues.UnconstrainedDoubleGenerator(random.nextLong()), random, recordCount,
+        sortedOrRandom(
+            new RandomValues.UnconstrainedDoubleGenerator(random.nextLong()),
+            random,
+            recordCount,
             fieldIndex++),
-        sortedOrRandom(new RandomValues.IntGenerator(random.nextLong(), Byte.MIN_VALUE, Byte.MAX_VALUE), random,
-            recordCount, fieldIndex++),
-        sortedOrRandom(new RandomValues.UIntGenerator(random.nextLong(), Byte.MIN_VALUE, Byte.MAX_VALUE), random,
-            recordCount, fieldIndex++),
-        sortedOrRandom(new RandomValues.IntGenerator(random.nextLong(), Short.MIN_VALUE, Short.MAX_VALUE), random,
-            recordCount, fieldIndex++),
-        sortedOrRandom(new RandomValues.UIntGenerator(random.nextLong(), Short.MIN_VALUE, Short.MAX_VALUE), random,
-            recordCount, fieldIndex++),
-        sortedOrRandom(new RandomValues.UnconstrainedIntGenerator(random.nextLong()), random, recordCount,
+        sortedOrRandom(
+            new RandomValues.IntGenerator(random.nextLong(), Byte.MIN_VALUE, Byte.MAX_VALUE),
+            random,
+            recordCount,
             fieldIndex++),
-        sortedOrRandom(new RandomValues.UnconstrainedIntGenerator(random.nextLong()), random, recordCount,
+        sortedOrRandom(
+            new RandomValues.UIntGenerator(random.nextLong(), Byte.MIN_VALUE, Byte.MAX_VALUE),
+            random,
+            recordCount,
             fieldIndex++),
-        sortedOrRandom(new RandomValues.UnconstrainedLongGenerator(random.nextLong()), random, recordCount,
+        sortedOrRandom(
+            new RandomValues.IntGenerator(random.nextLong(), Short.MIN_VALUE, Short.MAX_VALUE),
+            random,
+            recordCount,
             fieldIndex++),
-        sortedOrRandom(new RandomValues.UnconstrainedLongGenerator(random.nextLong()), random, recordCount,
+        sortedOrRandom(
+            new RandomValues.UIntGenerator(random.nextLong(), Short.MIN_VALUE, Short.MAX_VALUE),
+            random,
+            recordCount,
             fieldIndex++),
-        sortedOrRandom(new RandomValues.UnconstrainedIntGenerator(random.nextLong()), random, recordCount,
+        sortedOrRandom(
+            new RandomValues.UnconstrainedIntGenerator(random.nextLong()),
+            random,
+            recordCount,
             fieldIndex++),
-        sortedOrRandom(new RandomValues.UnconstrainedLongGenerator(random.nextLong()), random, recordCount,
+        sortedOrRandom(
+            new RandomValues.UnconstrainedIntGenerator(random.nextLong()),
+            random,
+            recordCount,
             fieldIndex++),
-        sortedOrRandom(new RandomValues.FixedGenerator(random.nextLong(), 19), random, recordCount, fieldIndex++),
+        sortedOrRandom(
+            new RandomValues.UnconstrainedLongGenerator(random.nextLong()),
+            random,
+            recordCount,
+            fieldIndex++),
+        sortedOrRandom(
+            new RandomValues.UnconstrainedLongGenerator(random.nextLong()),
+            random,
+            recordCount,
+            fieldIndex++),
+        sortedOrRandom(
+            new RandomValues.UnconstrainedIntGenerator(random.nextLong()),
+            random,
+            recordCount,
+            fieldIndex++),
+        sortedOrRandom(
+            new RandomValues.UnconstrainedLongGenerator(random.nextLong()),
+            random,
+            recordCount,
+            fieldIndex++),
+        sortedOrRandom(
+            new RandomValues.FixedGenerator(random.nextLong(), 19), random, recordCount, fieldIndex++),
         sortedOrRandom(new RandomValues.BinaryGenerator(random.nextLong()), random, recordCount, fieldIndex++),
-        sortedOrRandom(RandomValues.binaryStringGenerator(random.nextLong()), random, recordCount, fieldIndex++),
-        sortedOrRandom(RandomValues.binaryStringGenerator(random.nextLong()), random, recordCount, fieldIndex++),
-        sortedOrRandom(RandomValues.binaryStringGenerator(random.nextLong()), random, recordCount, fieldIndex++),
+        sortedOrRandom(
+            RandomValues.binaryStringGenerator(random.nextLong()), random, recordCount, fieldIndex++),
+        sortedOrRandom(
+            RandomValues.binaryStringGenerator(random.nextLong()), random, recordCount, fieldIndex++),
+        sortedOrRandom(
+            RandomValues.binaryStringGenerator(random.nextLong()), random, recordCount, fieldIndex++),
         sortedOrRandom(new RandomValues.BinaryGenerator(random.nextLong()), random, recordCount, fieldIndex++),
         sortedOrRandom(new RandomValues.IntGenerator(random.nextLong()), random, recordCount, fieldIndex++),
         sortedOrRandom(new RandomValues.IntGenerator(random.nextLong()), random, recordCount, fieldIndex++),
         sortedOrRandom(new RandomValues.LongGenerator(random.nextLong()), random, recordCount, fieldIndex++),
         sortedOrRandom(new RandomValues.LongGenerator(random.nextLong()), random, recordCount, fieldIndex++),
         sortedOrRandom(new RandomValues.LongGenerator(random.nextLong()), random, recordCount, fieldIndex++),
-        sortedOrRandom(new RandomValues.FixedGenerator(random.nextLong(), 12), random, recordCount, fieldIndex++),
-        sortedOrRandom(new RandomValues.FixedGenerator(random.nextLong(), 16), random, recordCount, fieldIndex++),
+        sortedOrRandom(
+            new RandomValues.FixedGenerator(random.nextLong(), 12), random, recordCount, fieldIndex++),
+        sortedOrRandom(
+            new RandomValues.FixedGenerator(random.nextLong(), 16), random, recordCount, fieldIndex++),
         null);
   }
 
-  private static <T> Supplier<T> sortedOrRandom(Supplier<T> generator, Random random, int recordCount, int fieldIndex) {
+  private static <T> Supplier<T> sortedOrRandom(
+      Supplier<T> generator, Random random, int recordCount, int fieldIndex) {
     Comparator<T> cmp = SCHEMA.getType(fieldIndex).asPrimitiveType().comparator();
 
     // 20% chance for ascending, 20% for descending, 60% to remain random
     switch (random.nextInt(5)) {
-    case 1:
-      return RandomValues.wrapSorted(generator, recordCount, true, cmp);
-    case 2:
-      return RandomValues.wrapSorted(generator, recordCount, false, cmp);
-    default:
-      return generator;
+      case 1:
+        return RandomValues.wrapSorted(generator, recordCount, true, cmp);
+      case 2:
+        return RandomValues.wrapSorted(generator, recordCount, false, cmp);
+      default:
+        return generator;
     }
   }
 
@@ -231,26 +283,26 @@ public class TestColumnIndexes {
           continue;
         }
         switch (type.asPrimitiveType().getPrimitiveTypeName()) {
-        case BINARY:
-        case FIXED_LEN_BYTE_ARRAY:
-        case INT96:
-          group.append(type.getName(), (Binary) generator.get());
-          break;
-        case INT32:
-          group.append(type.getName(), (Integer) generator.get());
-          break;
-        case INT64:
-          group.append(type.getName(), (Long) generator.get());
-          break;
-        case FLOAT:
-          group.append(type.getName(), (Float) generator.get());
-          break;
-        case DOUBLE:
-          group.append(type.getName(), (Double) generator.get());
-          break;
-        case BOOLEAN:
-          group.append(type.getName(), (Boolean) generator.get());
-          break;
+          case BINARY:
+          case FIXED_LEN_BYTE_ARRAY:
+          case INT96:
+            group.append(type.getName(), (Binary) generator.get());
+            break;
+          case INT32:
+            group.append(type.getName(), (Integer) generator.get());
+            break;
+          case INT64:
+            group.append(type.getName(), (Long) generator.get());
+            break;
+          case FLOAT:
+            group.append(type.getName(), (Float) generator.get());
+            break;
+          case DOUBLE:
+            group.append(type.getName(), (Double) generator.get());
+            break;
+          case BOOLEAN:
+            group.append(type.getName(), (Boolean) generator.get());
+            break;
         }
       }
       return group;
@@ -292,8 +344,8 @@ public class TestColumnIndexes {
       file = context.write(new Path(tmp.getRoot().getAbsolutePath()));
       LOGGER.info("Parquet file \"{}\" is successfully created for the context: {}", file, context);
 
-      List<ContractViolation> violations = ColumnIndexValidator
-          .checkContractViolations(HadoopInputFile.fromPath(file, new Configuration()));
+      List<ContractViolation> violations =
+          ColumnIndexValidator.checkContractViolations(HadoopInputFile.fromPath(file, new Configuration()));
       assertTrue(violations.toString(), violations.isEmpty());
     } finally {
       if (file != null) {

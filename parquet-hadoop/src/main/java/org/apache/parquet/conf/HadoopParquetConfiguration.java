@@ -19,10 +19,9 @@
 
 package org.apache.parquet.conf;
 
-import org.apache.hadoop.conf.Configuration;
-
 import java.util.Iterator;
 import java.util.Map;
+import org.apache.hadoop.conf.Configuration;
 
 /**
  * Implementation of the Parquet configuration interface relying on Hadoop's

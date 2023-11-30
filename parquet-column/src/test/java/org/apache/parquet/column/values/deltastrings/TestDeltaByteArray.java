@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -19,16 +19,14 @@
 package org.apache.parquet.column.values.deltastrings;
 
 import java.io.IOException;
-
 import org.apache.parquet.bytes.ByteBufferInputStream;
-import org.junit.Test;
-import org.junit.Assert;
-
 import org.apache.parquet.bytes.DirectByteBufferAllocator;
 import org.apache.parquet.column.values.Utils;
 import org.apache.parquet.column.values.ValuesReader;
 import org.apache.parquet.column.values.delta.DeltaBinaryPackingValuesReader;
 import org.apache.parquet.io.api.Binary;
+import org.junit.Assert;
+import org.junit.Test;
 
 public class TestDeltaByteArray {
 
@@ -36,7 +34,7 @@ public class TestDeltaByteArray {
   static String[] randvalues = Utils.getRandomStringSamples(10000, 32);
 
   @Test
-  public void testSerialization () throws Exception {
+  public void testSerialization() throws Exception {
     DeltaByteArrayWriter writer = new DeltaByteArrayWriter(64 * 1024, 64 * 1024, new DirectByteBufferAllocator());
     DeltaByteArrayReader reader = new DeltaByteArrayReader();
 
@@ -86,16 +84,18 @@ public class TestDeltaByteArray {
     Assert.assertEquals(7, bin[2]);
   }
 
-  private void assertReadWrite(DeltaByteArrayWriter writer, DeltaByteArrayReader reader, String[] vals) throws Exception {
+  private void assertReadWrite(DeltaByteArrayWriter writer, DeltaByteArrayReader reader, String[] vals)
+      throws Exception {
     Utils.writeData(writer, vals);
     Binary[] bin = Utils.readData(reader, writer.getBytes().toInputStream(), vals.length);
 
-    for(int i = 0; i< bin.length ; i++) {
+    for (int i = 0; i < bin.length; i++) {
       Assert.assertEquals(Binary.fromString(vals[i]), bin[i]);
     }
   }
 
-  private void assertReadWriteWithSkip(DeltaByteArrayWriter writer, DeltaByteArrayReader reader, String[] vals) throws Exception {
+  private void assertReadWriteWithSkip(DeltaByteArrayWriter writer, DeltaByteArrayReader reader, String[] vals)
+      throws Exception {
     Utils.writeData(writer, vals);
 
     reader.initFromPage(vals.length, writer.getBytes().toInputStream());
@@ -105,7 +105,8 @@ public class TestDeltaByteArray {
     }
   }
 
-  private void assertReadWriteWithSkipN(DeltaByteArrayWriter writer, DeltaByteArrayReader reader, String[] vals) throws Exception {
+  private void assertReadWriteWithSkipN(DeltaByteArrayWriter writer, DeltaByteArrayReader reader, String[] vals)
+      throws Exception {
     Utils.writeData(writer, vals);
 
     reader.initFromPage(vals.length, writer.getBytes().toInputStream());

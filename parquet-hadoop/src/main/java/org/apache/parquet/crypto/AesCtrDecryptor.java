@@ -19,17 +19,15 @@
 
 package org.apache.parquet.crypto;
 
-import java.nio.ByteBuffer;
-import javax.crypto.Cipher;
-import javax.crypto.spec.IvParameterSpec;
-
-import org.apache.parquet.format.BlockCipher;
-
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.ByteBuffer;
 import java.security.GeneralSecurityException;
+import javax.crypto.Cipher;
+import javax.crypto.spec.IvParameterSpec;
+import org.apache.parquet.format.BlockCipher;
 
-public class AesCtrDecryptor extends AesCipher implements BlockCipher.Decryptor{
+public class AesCtrDecryptor extends AesCipher implements BlockCipher.Decryptor {
 
   private final byte[] ctrIV;
 
@@ -78,7 +76,7 @@ public class AesCtrDecryptor extends AesCipher implements BlockCipher.Decryptor{
         inputOffset += CHUNK_LENGTH;
         outputOffset += written;
         inputLength -= CHUNK_LENGTH;
-      } 
+      }
 
       cipher.doFinal(ciphertext, inputOffset, inputLength, plainText, outputOffset);
     } catch (GeneralSecurityException e) {
@@ -87,6 +85,7 @@ public class AesCtrDecryptor extends AesCipher implements BlockCipher.Decryptor{
 
     return plainText;
   }
+
   public ByteBuffer decrypt(ByteBuffer ciphertext, byte[] AAD) {
     int cipherTextOffset = SIZE_LENGTH;
     int cipherTextLength = ciphertext.limit() - ciphertext.position() - SIZE_LENGTH;
@@ -143,11 +142,10 @@ public class AesCtrDecryptor extends AesCipher implements BlockCipher.Decryptor{
       gotBytes += n;
     }
 
-    final int ciphertextLength =
-        ((lengthBuffer[3] & 0xff) << 24) |
-        ((lengthBuffer[2] & 0xff) << 16) |
-        ((lengthBuffer[1] & 0xff) << 8)  |
-        ((lengthBuffer[0] & 0xff));
+    final int ciphertextLength = ((lengthBuffer[3] & 0xff) << 24)
+        | ((lengthBuffer[2] & 0xff) << 16)
+        | ((lengthBuffer[1] & 0xff) << 8)
+        | ((lengthBuffer[0] & 0xff));
 
     if (ciphertextLength < 1) {
       throw new IOException("Wrong length of encrypted metadata: " + ciphertextLength);
@@ -159,7 +157,8 @@ public class AesCtrDecryptor extends AesCipher implements BlockCipher.Decryptor{
     while (gotBytes < ciphertextLength) {
       int n = from.read(ciphertextBuffer, gotBytes, ciphertextLength - gotBytes);
       if (n <= 0) {
-        throw new IOException("Tried to read " + ciphertextLength + " bytes, but only got " + gotBytes + " bytes.");
+        throw new IOException(
+            "Tried to read " + ciphertextLength + " bytes, but only got " + gotBytes + " bytes.");
       }
       gotBytes += n;
     }

@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -20,12 +20,13 @@ package org.apache.parquet.pig;
 
 import java.io.IOException;
 import java.util.Properties;
-
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.OutputFormat;
 import org.apache.hadoop.mapreduce.RecordWriter;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+import org.apache.parquet.hadoop.ParquetOutputFormat;
+import org.apache.parquet.io.ParquetEncodingException;
 import org.apache.pig.ResourceSchema;
 import org.apache.pig.ResourceStatistics;
 import org.apache.pig.StoreFunc;
@@ -36,13 +37,10 @@ import org.apache.pig.impl.util.UDFContext;
 import org.apache.pig.impl.util.Utils;
 import org.apache.pig.parser.ParserException;
 
-import org.apache.parquet.hadoop.ParquetOutputFormat;
-import org.apache.parquet.io.ParquetEncodingException;
-
 /**
  * A pig storer implementation for the Parquet file format.
  * see {@link ParquetOutputFormat} for available parameters.
- *
+ * <p>
  * It uses a TupleWriteSupport to write Tuples into the ParquetOutputFormat
  * The Pig schema is automatically converted to the Parquet schema using {@link PigSchemaConverter}
  * and stored in the file
@@ -57,8 +55,7 @@ public class ParquetStorer extends StoreFunc implements StoreMetadata {
 
   private Properties getProperties() {
     UDFContext udfc = UDFContext.getUDFContext();
-    Properties p =
-        udfc.getUDFProperties(this.getClass(), new String[]{ signature });
+    Properties p = udfc.getUDFProperties(this.getClass(), new String[] {signature});
     return p;
   }
 
@@ -74,8 +71,7 @@ public class ParquetStorer extends StoreFunc implements StoreMetadata {
     }
   }
 
-  public ParquetStorer() {
-  }
+  public ParquetStorer() {}
 
   /**
    * {@inheritDoc}
@@ -106,7 +102,7 @@ public class ParquetStorer extends StoreFunc implements StoreMetadata {
   /**
    * {@inheritDoc}
    */
-  @SuppressWarnings({ "rawtypes", "unchecked" }) // that's how the base class is defined
+  @SuppressWarnings({"rawtypes", "unchecked"}) // that's how the base class is defined
   @Override
   public void prepareToWrite(RecordWriter recordWriter) throws IOException {
     this.recordWriter = recordWriter;
@@ -137,16 +133,11 @@ public class ParquetStorer extends StoreFunc implements StoreMetadata {
    * {@inheritDoc}
    */
   @Override
-  public void storeSchema(ResourceSchema schema, String location, Job job)
-      throws IOException {
-  }
+  public void storeSchema(ResourceSchema schema, String location, Job job) throws IOException {}
 
   /**
    * {@inheritDoc}
    */
   @Override
-  public void storeStatistics(ResourceStatistics resourceStatistics, String location, Job job)
-      throws IOException {
-  }
-
+  public void storeStatistics(ResourceStatistics resourceStatistics, String location, Job job) throws IOException {}
 }

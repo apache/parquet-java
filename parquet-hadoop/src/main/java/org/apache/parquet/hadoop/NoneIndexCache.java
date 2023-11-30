@@ -18,13 +18,12 @@
  */
 package org.apache.parquet.hadoop;
 
+import java.io.IOException;
 import org.apache.parquet.column.values.bloomfilter.BloomFilter;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.internal.column.columnindex.ColumnIndex;
 import org.apache.parquet.internal.column.columnindex.OffsetIndex;
-
-import java.io.IOException;
 
 /**
  * Cache nothing. All the get methods are pushed to ParquetFileReader to read the given index.

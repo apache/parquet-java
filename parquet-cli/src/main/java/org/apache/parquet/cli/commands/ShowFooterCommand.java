@@ -21,10 +21,15 @@ package org.apache.parquet.cli.commands;
 
 import static org.apache.parquet.hadoop.ParquetFileWriter.MAGIC;
 
+import com.beust.jcommander.Parameter;
+import com.beust.jcommander.Parameters;
+import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility;
+import com.fasterxml.jackson.annotation.PropertyAccessor;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
-
 import org.apache.parquet.cli.BaseCommand;
 import org.apache.parquet.cli.util.RawUtils;
 import org.apache.parquet.format.CliUtils;
@@ -34,13 +39,6 @@ import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.io.InputFile;
 import org.apache.parquet.io.SeekableInputStream;
 import org.slf4j.Logger;
-
-import com.beust.jcommander.Parameter;
-import com.beust.jcommander.Parameters;
-import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility;
-import com.fasterxml.jackson.annotation.PropertyAccessor;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Parameters(commandDescription = "Print the Parquet file footer in json format")
 public class ShowFooterCommand extends BaseCommand {
@@ -52,7 +50,9 @@ public class ShowFooterCommand extends BaseCommand {
   @Parameter(description = "<parquet path>", required = true)
   String target;
 
-  @Parameter(names = { "-r", "--raw" }, description = "Print the raw thrift object of the footer")
+  @Parameter(
+      names = {"-r", "--raw"},
+      description = "Print the raw thrift object of the footer")
   boolean raw = false;
 
   @Override
@@ -97,5 +97,4 @@ public class ShowFooterCommand extends BaseCommand {
         "# Print the raw thrift footer object of the specified Parquet file in json format",
         "sample.parquet --raw");
   }
-
 }

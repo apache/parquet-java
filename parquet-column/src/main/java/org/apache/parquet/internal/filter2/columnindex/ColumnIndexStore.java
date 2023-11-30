@@ -38,18 +38,15 @@ public interface ColumnIndexStore {
   }
 
   /**
-   * @param column
-   *          the path of the column
+   * @param column the path of the column
    * @return the column index for the column-chunk in the row-group or {@code null} if no column index is available
    */
   ColumnIndex getColumnIndex(ColumnPath column);
 
   /**
-   * @param column
-   *          the path of the column
+   * @param column the path of the column
    * @return the offset index for the column-chunk in the row-group
-   * @throws MissingOffsetIndexException
-   *           if the related offset index is missing
+   * @throws MissingOffsetIndexException if the related offset index is missing
    */
   OffsetIndex getOffsetIndex(ColumnPath column) throws MissingOffsetIndexException;
 }

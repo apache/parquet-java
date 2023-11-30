@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -20,7 +20,6 @@ package org.apache.parquet.hadoop;
 
 import java.io.IOException;
 import java.util.List;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
@@ -28,7 +27,6 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapreduce.JobContext;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputCommitter;
-
 import org.apache.parquet.hadoop.ParquetOutputFormat.JobSummaryLevel;
 import org.apache.parquet.hadoop.util.ContextUtil;
 import org.slf4j.Logger;
@@ -47,7 +45,7 @@ public class ParquetOutputCommitter extends FileOutputCommitter {
   public void commitJob(JobContext jobContext) throws IOException {
     super.commitJob(jobContext);
     Configuration configuration = ContextUtil.getConfiguration(jobContext);
-    writeMetaDataFile(configuration,outputPath);
+    writeMetaDataFile(configuration, outputPath);
   }
 
   // TODO: This method should propagate errors, and we should clean up
@@ -65,10 +63,12 @@ public class ParquetOutputCommitter extends FileOutputCommitter {
 
       switch (level) {
         case ALL:
-          footers = ParquetFileReader.readAllFootersInParallel(configuration, outputStatus, false); // don't skip row groups
+          footers = ParquetFileReader.readAllFootersInParallel(
+              configuration, outputStatus, false); // don't skip row groups
           break;
         case COMMON_ONLY:
-          footers = ParquetFileReader.readAllFootersInParallel(configuration, outputStatus, true); // skip row groups
+          footers = ParquetFileReader.readAllFootersInParallel(
+              configuration, outputStatus, true); // skip row groups
           break;
         default:
           throw new IllegalArgumentException("Unrecognized job summary level: " + level);
@@ -96,14 +96,14 @@ public class ParquetOutputCommitter extends FileOutputCommitter {
         }
 
         try {
-          final Path commonMetadataPath = new Path(outputPath, ParquetFileWriter.PARQUET_COMMON_METADATA_FILE);
+          final Path commonMetadataPath =
+              new Path(outputPath, ParquetFileWriter.PARQUET_COMMON_METADATA_FILE);
           if (fileSystem.exists(commonMetadataPath)) {
             fileSystem.delete(commonMetadataPath, true);
           }
         } catch (Exception e2) {
           LOG.warn("could not delete metadata file" + outputPath, e2);
         }
-
       }
     } catch (Exception e) {
       LOG.warn("could not write summary file for " + outputPath, e);

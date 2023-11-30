@@ -30,8 +30,7 @@ public class IncompatibleSchemaModificationException extends ParquetRuntimeExcep
     super();
   }
 
-  public IncompatibleSchemaModificationException(String message,
-      Throwable cause) {
+  public IncompatibleSchemaModificationException(String message, Throwable cause) {
     super(message, cause);
   }
 
@@ -42,5 +41,4 @@ public class IncompatibleSchemaModificationException extends ParquetRuntimeExcep
   public IncompatibleSchemaModificationException(Throwable cause) {
     super(cause);
   }
-
 }

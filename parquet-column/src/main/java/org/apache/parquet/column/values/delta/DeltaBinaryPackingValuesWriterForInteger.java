@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -19,7 +19,6 @@
 package org.apache.parquet.column.values.delta;
 
 import java.io.IOException;
-
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.BytesUtils;
@@ -61,13 +60,12 @@ public class DeltaBinaryPackingValuesWriterForInteger extends DeltaBinaryPacking
    */
   private int minDeltaInCurrentBlock = Integer.MAX_VALUE;
 
-  public DeltaBinaryPackingValuesWriterForInteger(
-      int slabSize, int pageSize, ByteBufferAllocator allocator) {
+  public DeltaBinaryPackingValuesWriterForInteger(int slabSize, int pageSize, ByteBufferAllocator allocator) {
     this(DEFAULT_NUM_BLOCK_VALUES, DEFAULT_NUM_MINIBLOCKS, slabSize, pageSize, allocator);
   }
 
-  public DeltaBinaryPackingValuesWriterForInteger(int blockSizeInValues, int miniBlockNum, 
-      int slabSize, int pageSize, ByteBufferAllocator allocator) {
+  public DeltaBinaryPackingValuesWriterForInteger(
+      int blockSizeInValues, int miniBlockNum, int slabSize, int pageSize, ByteBufferAllocator allocator) {
     super(blockSizeInValues, miniBlockNum, slabSize, pageSize, allocator);
     deltaBlockBuffer = new int[config.blockSizeInValues];
     miniBlockByteBuffer = new byte[config.miniBlockSizeInValues * MAX_BITWIDTH];
@@ -121,7 +119,7 @@ public class DeltaBinaryPackingValuesWriterForInteger extends DeltaBinaryPacking
       int blockOffset = 0;
       BytePacker packer = Packer.LITTLE_ENDIAN.newBytePacker(currentBitWidth);
       int miniBlockStart = i * config.miniBlockSizeInValues;
-      for (int j = miniBlockStart; j < (i + 1) * config.miniBlockSizeInValues; j += 8) {//8 values per pack
+      for (int j = miniBlockStart; j < (i + 1) * config.miniBlockSizeInValues; j += 8) { // 8 values per pack
         // mini block is atomic in terms of flushing
         // This may write more values when reach to the end of data writing to last mini block,
         // since it may not be aligned to miniblock,
@@ -154,7 +152,8 @@ public class DeltaBinaryPackingValuesWriterForInteger extends DeltaBinaryPacking
       int mask = 0;
       int miniStart = miniBlockIndex * config.miniBlockSizeInValues;
 
-      //The end of current mini block could be the end of current block(deltaValuesToFlush) buffer when data is not aligned to mini block
+      // The end of current mini block could be the end of current block(deltaValuesToFlush) buffer when data is
+      // not aligned to mini block
       int miniEnd = Math.min((miniBlockIndex + 1) * config.miniBlockSizeInValues, deltaValuesToFlush);
 
       for (int i = miniStart; i < miniEnd; i++) {
@@ -176,10 +175,10 @@ public class DeltaBinaryPackingValuesWriterForInteger extends DeltaBinaryPacking
       flushBlockBuffer();
     }
     return BytesInput.concat(
-            config.toBytesInput(),
-            BytesInput.fromUnsignedVarInt(totalValueCount),
-            BytesInput.fromZigZagVarInt(firstValue),
-            BytesInput.from(baos));
+        config.toBytesInput(),
+        BytesInput.fromUnsignedVarInt(totalValueCount),
+        BytesInput.fromZigZagVarInt(firstValue),
+        BytesInput.from(baos));
   }
 
   @Override

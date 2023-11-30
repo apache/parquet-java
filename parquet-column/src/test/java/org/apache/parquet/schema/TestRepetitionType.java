@@ -18,9 +18,9 @@
  */
 package org.apache.parquet.schema;
 
-import org.junit.Test;
-
 import static org.junit.Assert.assertEquals;
+
+import org.junit.Test;
 
 public class TestRepetitionType {
   @Test
@@ -29,7 +29,8 @@ public class TestRepetitionType {
     Type.Repetition OPTIONAL = Type.Repetition.OPTIONAL;
     Type.Repetition REPEATED = Type.Repetition.REPEATED;
 
-    assertEquals(REPEATED, Type.Repetition.leastRestrictive(REQUIRED, OPTIONAL, REPEATED, REQUIRED, OPTIONAL, REPEATED));
+    assertEquals(
+        REPEATED, Type.Repetition.leastRestrictive(REQUIRED, OPTIONAL, REPEATED, REQUIRED, OPTIONAL, REPEATED));
     assertEquals(OPTIONAL, Type.Repetition.leastRestrictive(REQUIRED, OPTIONAL, REQUIRED, OPTIONAL));
     assertEquals(REQUIRED, Type.Repetition.leastRestrictive(REQUIRED, REQUIRED));
   }

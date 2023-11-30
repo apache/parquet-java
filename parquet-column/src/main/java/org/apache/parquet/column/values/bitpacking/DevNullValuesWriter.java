@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -19,6 +19,7 @@
 package org.apache.parquet.column.values.bitpacking;
 
 import static org.apache.parquet.column.Encoding.BIT_PACKED;
+
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.values.ValuesWriter;
@@ -36,36 +37,28 @@ public class DevNullValuesWriter extends ValuesWriter {
   }
 
   @Override
-  public void reset() {
-  }
+  public void reset() {}
 
   @Override
-  public void writeInteger(int v) {
-  }
+  public void writeInteger(int v) {}
 
   @Override
-  public void writeByte(int value) {
-  }
+  public void writeByte(int value) {}
 
   @Override
-  public void writeBoolean(boolean v) {
-  }
+  public void writeBoolean(boolean v) {}
 
   @Override
-  public void writeBytes(Binary v) {
-  }
+  public void writeBytes(Binary v) {}
 
   @Override
-  public void writeLong(long v) {
-  }
+  public void writeLong(long v) {}
 
   @Override
-  public void writeDouble(double v) {
-  }
+  public void writeDouble(double v) {}
 
   @Override
-  public void writeFloat(float v) {
-  }
+  public void writeFloat(float v) {}
 
   @Override
   public BytesInput getBytes() {

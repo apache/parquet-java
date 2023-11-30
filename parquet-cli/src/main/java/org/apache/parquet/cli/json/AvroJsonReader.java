@@ -19,12 +19,11 @@
 
 package org.apache.parquet.cli.json;
 
+import com.google.common.collect.Iterators;
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Iterator;
-
-import com.google.common.collect.Iterators;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.parquet.cli.util.RuntimeIOException;
@@ -41,8 +40,8 @@ public class AvroJsonReader<E> implements Iterator<E>, Iterable<E>, Closeable {
     this.stream = stream;
     this.schema = schema;
     this.model = GenericData.get();
-    this.iterator = Iterators.transform(AvroJson.parser(stream),
-      node -> (E) AvroJson.convertToAvro(model, node, AvroJsonReader.this.schema));
+    this.iterator = Iterators.transform(
+        AvroJson.parser(stream), node -> (E) AvroJson.convertToAvro(model, node, AvroJsonReader.this.schema));
   }
 
   @Override

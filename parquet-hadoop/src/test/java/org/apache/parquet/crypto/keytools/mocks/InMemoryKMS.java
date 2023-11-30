@@ -22,7 +22,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.crypto.KeyAccessDeniedException;
 import org.apache.parquet.crypto.ParquetCryptoRuntimeException;
@@ -41,8 +40,8 @@ public class InMemoryKMS implements KmsClient {
   public static final String KEY_LIST_PROPERTY_NAME = "parquet.encryption.key.list";
   public static final String NEW_KEY_LIST_PROPERTY_NAME = "parquet.encryption.new.key.list";
 
-  private static Map<String,byte[]> masterKeyMap;
-  private static Map<String,byte[]> newMasterKeyMap;
+  private static Map<String, byte[]> masterKeyMap;
+  private static Map<String, byte[]> newMasterKeyMap;
 
   public static synchronized void startKeyRotation(Configuration hadoopConfiguration) {
     String[] newMasterKeys = hadoopConfiguration.getTrimmedStrings(NEW_KEY_LIST_PROPERTY_NAME);
@@ -57,7 +56,8 @@ public class InMemoryKMS implements KmsClient {
   }
 
   @Override
-  public synchronized void initialize(Configuration configuration, String kmsInstanceID, String kmsInstanceURL, String accessToken) {
+  public synchronized void initialize(
+      Configuration configuration, String kmsInstanceID, String kmsInstanceURL, String accessToken) {
     // Parse master  keys
     String[] masterKeys = configuration.getTrimmedStrings(KEY_LIST_PROPERTY_NAME);
     if (null == masterKeys || masterKeys.length == 0) {
@@ -69,10 +69,10 @@ public class InMemoryKMS implements KmsClient {
   }
 
   private static Map<String, byte[]> parseKeyList(String[] masterKeys) {
-    Map<String,byte[]> keyMap = new HashMap<>();
+    Map<String, byte[]> keyMap = new HashMap<>();
 
     int nKeys = masterKeys.length;
-    for (int i=0; i < nKeys; i++) {
+    for (int i = 0; i < nKeys; i++) {
       String[] parts = masterKeys[i].split(":");
       String keyName = parts[0].trim();
       if (parts.length != 2) {

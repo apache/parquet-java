@@ -20,6 +20,7 @@ package org.apache.parquet.proto;
 
 import com.google.protobuf.Message;
 import com.twitter.elephantbird.util.Protobufs;
+import java.util.Map;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.conf.HadoopParquetConfiguration;
 import org.apache.parquet.conf.ParquetConfiguration;
@@ -29,9 +30,6 @@ import org.apache.parquet.io.api.RecordMaterializer;
 import org.apache.parquet.schema.MessageType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.Map;
-
 
 public class ProtoReadSupport<T extends Message> extends ReadSupport<T> {
 
@@ -63,7 +61,8 @@ public class ProtoReadSupport<T extends Message> extends ReadSupport<T> {
   public ReadContext init(InitContext context) {
     String requestedProjectionString = context.getParquetConfiguration().get(PB_REQUESTED_PROJECTION);
 
-    if (requestedProjectionString != null && !requestedProjectionString.trim().isEmpty()) {
+    if (requestedProjectionString != null
+        && !requestedProjectionString.trim().isEmpty()) {
       MessageType requestedProjection = getSchemaForRead(context.getFileSchema(), requestedProjectionString);
       LOG.debug("Reading data with projection {}", requestedProjection);
       return new ReadContext(requestedProjection);
@@ -75,12 +74,20 @@ public class ProtoReadSupport<T extends Message> extends ReadSupport<T> {
   }
 
   @Override
-  public RecordMaterializer<T> prepareForRead(Configuration configuration, Map<String, String> keyValueMetaData, MessageType fileSchema, ReadContext readContext) {
+  public RecordMaterializer<T> prepareForRead(
+      Configuration configuration,
+      Map<String, String> keyValueMetaData,
+      MessageType fileSchema,
+      ReadContext readContext) {
     return prepareForRead(new HadoopParquetConfiguration(configuration), keyValueMetaData, fileSchema, readContext);
   }
 
   @Override
-  public RecordMaterializer<T> prepareForRead(ParquetConfiguration configuration, Map<String, String> keyValueMetaData, MessageType fileSchema, ReadContext readContext) {
+  public RecordMaterializer<T> prepareForRead(
+      ParquetConfiguration configuration,
+      Map<String, String> keyValueMetaData,
+      MessageType fileSchema,
+      ReadContext readContext) {
     String headerProtoClass = keyValueMetaData.get(PB_CLASS);
     String configuredProtoClass = configuration.get(PB_CLASS);
 
@@ -99,6 +106,4 @@ public class ProtoReadSupport<T extends Message> extends ReadSupport<T> {
     Class<? extends Message> protobufClass = Protobufs.getProtobufClass(headerProtoClass);
     return new ProtoRecordMaterializer(configuration, requestedSchema, protobufClass, keyValueMetaData);
   }
-
-
 }

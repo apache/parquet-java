@@ -18,10 +18,22 @@
  */
 package org.apache.parquet.thrift;
 
+import static org.apache.parquet.schema.ConversionPatterns.listOfElements;
+import static org.apache.parquet.schema.ConversionPatterns.listType;
+import static org.apache.parquet.schema.ConversionPatterns.mapType;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BOOLEAN;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.DOUBLE;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
+import static org.apache.parquet.schema.Type.Repetition.OPTIONAL;
+import static org.apache.parquet.schema.Type.Repetition.REPEATED;
+import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
+import static org.apache.parquet.schema.Types.primitive;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.ShouldNeverHappenException;
 import org.apache.parquet.conf.HadoopParquetConfiguration;
@@ -56,19 +68,6 @@ import org.apache.parquet.thrift.struct.ThriftType.StringType;
 import org.apache.parquet.thrift.struct.ThriftType.StructType;
 import org.apache.parquet.thrift.struct.ThriftType.StructType.StructOrUnionType;
 
-import static org.apache.parquet.schema.ConversionPatterns.listOfElements;
-import static org.apache.parquet.schema.ConversionPatterns.listType;
-import static org.apache.parquet.schema.ConversionPatterns.mapType;
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BOOLEAN;
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.DOUBLE;
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
-import static org.apache.parquet.schema.Type.Repetition.OPTIONAL;
-import static org.apache.parquet.schema.Type.Repetition.REPEATED;
-import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
-import static org.apache.parquet.schema.Types.primitive;
-
 /**
  * Visitor Class for converting a thrift definition to parquet message type.
  * Projection can be done by providing a {@link FieldProjectionFilter}
@@ -80,28 +79,33 @@ class ThriftSchemaConvertVisitor implements ThriftType.StateVisitor<ConvertedFie
 
   private final boolean writeThreeLevelList;
 
-  private ThriftSchemaConvertVisitor(FieldProjectionFilter fieldProjectionFilter, boolean doProjection,
-                                     boolean keepOneOfEachUnion, Configuration configuration) {
+  private ThriftSchemaConvertVisitor(
+      FieldProjectionFilter fieldProjectionFilter,
+      boolean doProjection,
+      boolean keepOneOfEachUnion,
+      Configuration configuration) {
     this(fieldProjectionFilter, doProjection, keepOneOfEachUnion, new HadoopParquetConfiguration(configuration));
   }
 
-  private ThriftSchemaConvertVisitor(FieldProjectionFilter fieldProjectionFilter, boolean doProjection,
-                                     boolean keepOneOfEachUnion, ParquetConfiguration configuration) {
-    this.fieldProjectionFilter = Objects.requireNonNull(fieldProjectionFilter,
-      "fieldProjectionFilter cannot be null");
+  private ThriftSchemaConvertVisitor(
+      FieldProjectionFilter fieldProjectionFilter,
+      boolean doProjection,
+      boolean keepOneOfEachUnion,
+      ParquetConfiguration configuration) {
+    this.fieldProjectionFilter =
+        Objects.requireNonNull(fieldProjectionFilter, "fieldProjectionFilter cannot be null");
     this.doProjection = doProjection;
     this.keepOneOfEachUnion = keepOneOfEachUnion;
     if (configuration != null) {
       this.writeThreeLevelList = configuration.getBoolean(
-        ParquetWriteProtocol.WRITE_THREE_LEVEL_LISTS,
-        ParquetWriteProtocol.WRITE_THREE_LEVEL_LISTS_DEFAULT);
+          ParquetWriteProtocol.WRITE_THREE_LEVEL_LISTS, ParquetWriteProtocol.WRITE_THREE_LEVEL_LISTS_DEFAULT);
     } else {
       writeThreeLevelList = ParquetWriteProtocol.WRITE_THREE_LEVEL_LISTS_DEFAULT;
     }
   }
 
-  private ThriftSchemaConvertVisitor(FieldProjectionFilter fieldProjectionFilter, boolean doProjection,
-                                     boolean keepOneOfEachUnion) {
+  private ThriftSchemaConvertVisitor(
+      FieldProjectionFilter fieldProjectionFilter, boolean doProjection, boolean keepOneOfEachUnion) {
     this(fieldProjectionFilter, doProjection, keepOneOfEachUnion, new Configuration());
   }
 
@@ -110,23 +114,24 @@ class ThriftSchemaConvertVisitor implements ThriftType.StateVisitor<ConvertedFie
     return convert(struct, filter, true, new Configuration());
   }
 
-  public static MessageType convert(StructType struct, FieldProjectionFilter filter, boolean keepOneOfEachUnion,
-                                    Configuration conf) {
+  public static MessageType convert(
+      StructType struct, FieldProjectionFilter filter, boolean keepOneOfEachUnion, Configuration conf) {
     return convert(struct, filter, keepOneOfEachUnion, new HadoopParquetConfiguration(conf));
   }
 
-  public static MessageType convert(StructType struct, FieldProjectionFilter filter, boolean keepOneOfEachUnion,
-                                    ParquetConfiguration conf) {
+  public static MessageType convert(
+      StructType struct, FieldProjectionFilter filter, boolean keepOneOfEachUnion, ParquetConfiguration conf) {
     State state = new State(new FieldsPath(), REPEATED, "ParquetSchema");
 
-    ConvertedField converted = struct.accept(
-      new ThriftSchemaConvertVisitor(filter, true, keepOneOfEachUnion, conf), state);
+    ConvertedField converted =
+        struct.accept(new ThriftSchemaConvertVisitor(filter, true, keepOneOfEachUnion, conf), state);
 
     if (!converted.isKeep()) {
       throw new ThriftProjectionException("No columns have been selected");
     }
 
-    return new MessageType(state.name, converted.asKeep().getType().asGroupType().getFields());
+    return new MessageType(
+        state.name, converted.asKeep().getType().asGroupType().getFields());
   }
 
   /**
@@ -167,15 +172,16 @@ class ThriftSchemaConvertVisitor implements ThriftType.StateVisitor<ConvertedFie
     // as that doesn't make sense when assembling back into a map.
     // NOTE: doProjections prevents us from infinite recursion here.
     if (doProjection) {
-      ConvertedField fullConvKey = keyField
-          .getType()
-          .accept(new ThriftSchemaConvertVisitor(FieldProjectionFilter.ALL_COLUMNS, false, keepOneOfEachUnion), keyState);
+      ConvertedField fullConvKey = keyField.getType()
+          .accept(
+              new ThriftSchemaConvertVisitor(
+                  FieldProjectionFilter.ALL_COLUMNS, false, keepOneOfEachUnion),
+              keyState);
 
       if (!fullConvKey.asKeep().getType().equals(convertedKey.asKeep().getType())) {
-        throw new ThriftProjectionException("Cannot select only a subset of the fields in a map key, " +
-            "for path " + state.path);
+        throw new ThriftProjectionException(
+            "Cannot select only a subset of the fields in a map key, " + "for path " + state.path);
       }
-
     }
 
     // now, are we keeping the value?
@@ -194,8 +200,11 @@ class ThriftSchemaConvertVisitor implements ThriftType.StateVisitor<ConvertedFie
 
     // keep only the key, not the value
 
-    ConvertedField sentinelValue =
-        valueField.getType().accept(new ThriftSchemaConvertVisitor(new KeepOnlyFirstPrimitiveFilter(), true, keepOneOfEachUnion), valueState);
+    ConvertedField sentinelValue = valueField
+        .getType()
+        .accept(
+            new ThriftSchemaConvertVisitor(new KeepOnlyFirstPrimitiveFilter(), true, keepOneOfEachUnion),
+            valueState);
 
     Type mapField = mapType(
         state.repetition,
@@ -219,21 +228,27 @@ class ThriftSchemaConvertVisitor implements ThriftType.StateVisitor<ConvertedFie
     if (converted.isKeep()) {
       // doProjection prevents an infinite recursion here
       if (isSet && doProjection) {
-        ConvertedField fullConv = listLike
-            .getType()
-            .accept(new ThriftSchemaConvertVisitor(FieldProjectionFilter.ALL_COLUMNS, false, keepOneOfEachUnion), childState);
+        ConvertedField fullConv = listLike.getType()
+            .accept(
+                new ThriftSchemaConvertVisitor(
+                    FieldProjectionFilter.ALL_COLUMNS, false, keepOneOfEachUnion),
+                childState);
         if (!converted.asKeep().getType().equals(fullConv.asKeep().getType())) {
-          throw new ThriftProjectionException("Cannot select only a subset of the fields in a set, " +
-              "for path " + state.path);
+          throw new ThriftProjectionException(
+              "Cannot select only a subset of the fields in a set, " + "for path " + state.path);
         }
       }
 
       if (writeThreeLevelList) {
         return new Keep(
-            state.path, listOfElements(state.repetition, state.name, converted.asKeep().getType()));
+            state.path,
+            listOfElements(
+                state.repetition, state.name, converted.asKeep().getType()));
       } else {
         return new Keep(
-            state.path, listType(state.repetition, state.name, converted.asKeep().getType()));
+            state.path,
+            listType(
+                state.repetition, state.name, converted.asKeep().getType()));
       }
     }
 
@@ -277,8 +292,11 @@ class ThriftSchemaConvertVisitor implements ThriftType.StateVisitor<ConvertedFie
 
         // re-do the recursion, with a new projection filter that keeps only
         // the first primitive it encounters
-        ConvertedField firstPrimitive = child.getType().accept(
-            new ThriftSchemaConvertVisitor(new KeepOnlyFirstPrimitiveFilter(), true, keepOneOfEachUnion), childState);
+        ConvertedField firstPrimitive = child.getType()
+            .accept(
+                new ThriftSchemaConvertVisitor(
+                    new KeepOnlyFirstPrimitiveFilter(), true, keepOneOfEachUnion),
+                childState);
 
         convertedChildren.add(firstPrimitive.asKeep().getType().withId(child.getFieldId()));
         hasSentinelUnionColumns = true;
@@ -296,7 +314,6 @@ class ThriftSchemaConvertVisitor implements ThriftType.StateVisitor<ConvertedFie
         convertedChildren.add(converted.asKeep().getType().withId(child.getFieldId()));
         hasNonSentinelUnionColumns = true;
       }
-
     }
 
     if (!hasNonSentinelUnionColumns && hasSentinelUnionColumns) {
@@ -355,23 +372,29 @@ class ThriftSchemaConvertVisitor implements ThriftType.StateVisitor<ConvertedFie
 
   @Override
   public ConvertedField visit(I16Type i16Type, State state) {
-    return visitPrimitiveType(INT32, LogicalTypeAnnotation.intType(16, true),state);
+    return visitPrimitiveType(INT32, LogicalTypeAnnotation.intType(16, true), state);
   }
 
   @Override
   public ConvertedField visit(I32Type i32Type, State state) {
-    return i32Type.hasLogicalTypeAnnotation() ? visitPrimitiveType(INT32, i32Type.getLogicalTypeAnnotation(), state) : visitPrimitiveType(INT32, state);
+    return i32Type.hasLogicalTypeAnnotation()
+        ? visitPrimitiveType(INT32, i32Type.getLogicalTypeAnnotation(), state)
+        : visitPrimitiveType(INT32, state);
   }
 
   @Override
   public ConvertedField visit(I64Type i64Type, State state) {
-    return i64Type.hasLogicalTypeAnnotation() ? visitPrimitiveType(INT64, i64Type.getLogicalTypeAnnotation(), state) : visitPrimitiveType(INT64, state);
+    return i64Type.hasLogicalTypeAnnotation()
+        ? visitPrimitiveType(INT64, i64Type.getLogicalTypeAnnotation(), state)
+        : visitPrimitiveType(INT64, state);
   }
 
   @Override
   public ConvertedField visit(StringType stringType, State state) {
     if (stringType.isBinary()) {
-      return stringType.hasLogicalTypeAnnotation() ? visitPrimitiveType(BINARY, stringType.getLogicalTypeAnnotation(), state) : visitPrimitiveType(BINARY, state);
+      return stringType.hasLogicalTypeAnnotation()
+          ? visitPrimitiveType(BINARY, stringType.getLogicalTypeAnnotation(), state)
+          : visitPrimitiveType(BINARY, state);
     } else {
       return visitPrimitiveType(BINARY, LogicalTypeAnnotation.stringType(), state);
     }
@@ -417,5 +440,4 @@ class ThriftSchemaConvertVisitor implements ThriftType.StateVisitor<ConvertedFie
       this.name = name;
     }
   }
-
 }

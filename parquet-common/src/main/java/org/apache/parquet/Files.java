@@ -29,25 +29,23 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Use java.nio.file.Files facilities as replacement. 
+ * Use java.nio.file.Files facilities as replacement.
  */
 @Deprecated
 public final class Files {
-  private Files() { }
+  private Files() {}
 
   public static List<String> readAllLines(File file, Charset charset) throws IOException {
     BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), charset));
     try {
       List<String> result = new ArrayList<String>();
-      for (;;) {
+      for (; ; ) {
         String line = reader.readLine();
-        if (line == null)
-          break;
+        if (line == null) break;
         result.add(line);
       }
       return result;
-    }
-    finally {
+    } finally {
       reader.close();
     }
   }

@@ -25,7 +25,6 @@ import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.List;
-
 import org.apache.parquet.ShouldNeverHappenException;
 
 public class ByteBufferInputStream extends InputStream {
@@ -54,8 +53,7 @@ public class ByteBufferInputStream extends InputStream {
   }
 
   /**
-   * @param buffer
-   *          the buffer to be wrapped in this input stream
+   * @param buffer the buffer to be wrapped in this input stream
    * @deprecated Will be removed in 2.0.0; Use {@link #wrap(ByteBuffer...)} instead
    */
   @Deprecated
@@ -64,12 +62,9 @@ public class ByteBufferInputStream extends InputStream {
   }
 
   /**
-   * @param buffer
-   *          the buffer to be wrapped in this input stream
-   * @param offset
-   *          the offset of the data in the buffer
-   * @param count
-   *          the number of bytes to be read from the buffer
+   * @param buffer the buffer to be wrapped in this input stream
+   * @param offset the offset of the data in the buffer
+   * @param count  the number of bytes to be read from the buffer
    * @deprecated Will be removed in 2.0.0; Use {@link #wrap(ByteBuffer...)} instead
    */
   @Deprecated
@@ -101,8 +96,7 @@ public class ByteBufferInputStream extends InputStream {
   public void skipFully(long n) throws IOException {
     long skipped = skip(n);
     if (skipped < n) {
-      throw new EOFException(
-          "Not enough bytes to skip: " + skipped + " < " + n);
+      throw new EOFException("Not enough bytes to skip: " + skipped + " < " + n);
     }
   }
 

@@ -18,16 +18,13 @@
  */
 package org.apache.parquet.pig.summary;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
-
-
-import com.fasterxml.jackson.annotation.JsonInclude;
 import org.apache.parquet.pig.summary.EnumStat.EnumValueCount;
-
 
 /**
  * Summary data for a String
@@ -78,5 +75,4 @@ public class StringSummaryData extends SummaryData {
   public void setValues(Collection<EnumValueCount> values) {
     this.values.setValues(values);
   }
-
 }

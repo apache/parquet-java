@@ -18,7 +18,14 @@
  */
 package org.apache.parquet.avro;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
+
 import com.google.common.collect.Lists;
+import java.math.BigDecimal;
+import java.time.Instant;
 import org.apache.avro.Conversion;
 import org.apache.avro.Conversions;
 import org.apache.avro.Schema;
@@ -31,14 +38,6 @@ import org.mockito.Mockito;
 import org.powermock.api.mockito.PowerMockito;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
-
-import java.math.BigDecimal;
-import java.time.Instant;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-import static org.mockito.Mockito.CALLS_REAL_METHODS;
 
 @RunWith(PowerMockRunner.class)
 @PrepareForTest(AvroRecordConverter.class)
@@ -68,8 +67,7 @@ public class TestAvroRecordConverter {
 
   @Test
   public void testModelForGenericRecord() {
-    SpecificData model = AvroRecordConverter.getModelForSchema(
-      Schema.createRecord(
+    SpecificData model = AvroRecordConverter.getModelForSchema(Schema.createRecord(
         "someSchema",
         "doc",
         "some.namespace",
@@ -122,9 +120,12 @@ public class TestAvroRecordConverter {
   }
 
   // Test Avro record class stubs, generated using different versions of the Avro compiler
-  public abstract static class Avro110GeneratedClass extends org.apache.avro.specific.SpecificRecordBase implements org.apache.avro.specific.SpecificRecord {
+  public abstract static class Avro110GeneratedClass extends org.apache.avro.specific.SpecificRecordBase
+      implements org.apache.avro.specific.SpecificRecord {
     private static final long serialVersionUID = 5558880508010468207L;
-    public static final org.apache.avro.Schema SCHEMA$ = new org.apache.avro.Schema.Parser().parse("{\"type\":\"record\",\"name\":\"Avro110GeneratedClass\",\"namespace\":\"org.apache.parquet.avro.TestAvroRecordConverter\",\"doc\":\"\",\"fields\":[{\"name\":\"decimal\",\"type\":{\"type\":\"bytes\",\"logicalType\":\"decimal\",\"precision\":4,\"scale\":2}}]}");
+    public static final org.apache.avro.Schema SCHEMA$ = new org.apache.avro.Schema.Parser()
+        .parse(
+            "{\"type\":\"record\",\"name\":\"Avro110GeneratedClass\",\"namespace\":\"org.apache.parquet.avro.TestAvroRecordConverter\",\"doc\":\"\",\"fields\":[{\"name\":\"decimal\",\"type\":{\"type\":\"bytes\",\"logicalType\":\"decimal\",\"precision\":4,\"scale\":2}}]}");
 
     public static org.apache.avro.Schema getClassSchema() {
       return SCHEMA$;
@@ -137,9 +138,12 @@ public class TestAvroRecordConverter {
     }
   }
 
-  public abstract static class Avro19GeneratedClass extends org.apache.avro.specific.SpecificRecordBase implements org.apache.avro.specific.SpecificRecord {
+  public abstract static class Avro19GeneratedClass extends org.apache.avro.specific.SpecificRecordBase
+      implements org.apache.avro.specific.SpecificRecord {
     private static final long serialVersionUID = 5558880508010468207L;
-    public static final org.apache.avro.Schema SCHEMA$ = new org.apache.avro.Schema.Parser().parse("{\"type\":\"record\",\"name\":\"Avro19GeneratedClass\",\"namespace\":\"org.apache.parquet.avro.TestAvroRecordConverter\",\"doc\":\"\",\"fields\":[{\"name\":\"decimal\",\"type\":{\"type\":\"bytes\",\"logicalType\":\"decimal\",\"precision\":4,\"scale\":2}}]}");
+    public static final org.apache.avro.Schema SCHEMA$ = new org.apache.avro.Schema.Parser()
+        .parse(
+            "{\"type\":\"record\",\"name\":\"Avro19GeneratedClass\",\"namespace\":\"org.apache.parquet.avro.TestAvroRecordConverter\",\"doc\":\"\",\"fields\":[{\"name\":\"decimal\",\"type\":{\"type\":\"bytes\",\"logicalType\":\"decimal\",\"precision\":4,\"scale\":2}}]}");
 
     public static org.apache.avro.Schema getClassSchema() {
       return SCHEMA$;
@@ -152,9 +156,12 @@ public class TestAvroRecordConverter {
     }
   }
 
-  public abstract static class Avro18GeneratedClass extends org.apache.avro.specific.SpecificRecordBase implements org.apache.avro.specific.SpecificRecord {
+  public abstract static class Avro18GeneratedClass extends org.apache.avro.specific.SpecificRecordBase
+      implements org.apache.avro.specific.SpecificRecord {
     private static final long serialVersionUID = 5558880508010468207L;
-    public static final org.apache.avro.Schema SCHEMA$ = new org.apache.avro.Schema.Parser().parse("{\"type\":\"record\",\"name\":\"Avro18GeneratedClass\",\"namespace\":\"org.apache.parquet.avro.TestAvroRecordConverter\",\"doc\":\"\",\"fields\":[{\"name\":\"decimal\",\"type\":{\"type\":\"bytes\",\"logicalType\":\"decimal\",\"precision\":4,\"scale\":2}}]}");
+    public static final org.apache.avro.Schema SCHEMA$ = new org.apache.avro.Schema.Parser()
+        .parse(
+            "{\"type\":\"record\",\"name\":\"Avro18GeneratedClass\",\"namespace\":\"org.apache.parquet.avro.TestAvroRecordConverter\",\"doc\":\"\",\"fields\":[{\"name\":\"decimal\",\"type\":{\"type\":\"bytes\",\"logicalType\":\"decimal\",\"precision\":4,\"scale\":2}}]}");
 
     public static org.apache.avro.Schema getClassSchema() {
       return SCHEMA$;
@@ -162,13 +169,11 @@ public class TestAvroRecordConverter {
 
     private static SpecificData MODEL$ = new SpecificData();
 
-    protected static final org.apache.avro.Conversions.DecimalConversion DECIMAL_CONVERSION = new org.apache.avro.Conversions.DecimalConversion();
+    protected static final org.apache.avro.Conversions.DecimalConversion DECIMAL_CONVERSION =
+        new org.apache.avro.Conversions.DecimalConversion();
 
     private static final org.apache.avro.Conversion<?>[] conversions =
-      new org.apache.avro.Conversion<?>[] {
-        DECIMAL_CONVERSION,
-        null
-      };
+        new org.apache.avro.Conversion<?>[] {DECIMAL_CONVERSION, null};
 
     @Override
     public org.apache.avro.Conversion<?> getConversion(int field) {
@@ -176,9 +181,12 @@ public class TestAvroRecordConverter {
     }
   }
 
-  public abstract static class Avro17GeneratedClass extends org.apache.avro.specific.SpecificRecordBase implements org.apache.avro.specific.SpecificRecord {
+  public abstract static class Avro17GeneratedClass extends org.apache.avro.specific.SpecificRecordBase
+      implements org.apache.avro.specific.SpecificRecord {
     private static final long serialVersionUID = 5558880508010468207L;
-    public static final org.apache.avro.Schema SCHEMA$ = new org.apache.avro.Schema.Parser().parse("{\"type\":\"record\",\"name\":\"Avro17GeneratedClass\",\"namespace\":\"org.apache.parquet.avro.TestAvroRecordConverter\",\"doc\":\"\",\"fields\":[{\"name\":\"decimal\",\"type\":{\"type\":\"bytes\",\"logicalType\":\"decimal\",\"precision\":4,\"scale\":2}}]}");
+    public static final org.apache.avro.Schema SCHEMA$ = new org.apache.avro.Schema.Parser()
+        .parse(
+            "{\"type\":\"record\",\"name\":\"Avro17GeneratedClass\",\"namespace\":\"org.apache.parquet.avro.TestAvroRecordConverter\",\"doc\":\"\",\"fields\":[{\"name\":\"decimal\",\"type\":{\"type\":\"bytes\",\"logicalType\":\"decimal\",\"precision\":4,\"scale\":2}}]}");
 
     public static org.apache.avro.Schema getClassSchema() {
       return SCHEMA$;
@@ -186,13 +194,11 @@ public class TestAvroRecordConverter {
 
     private static SpecificData MODEL$ = new SpecificData();
 
-    protected static final org.apache.avro.Conversions.DecimalConversion DECIMAL_CONVERSION = new org.apache.avro.Conversions.DecimalConversion();
+    protected static final org.apache.avro.Conversions.DecimalConversion DECIMAL_CONVERSION =
+        new org.apache.avro.Conversions.DecimalConversion();
 
     private static final org.apache.avro.Conversion<?>[] conversions =
-      new org.apache.avro.Conversion<?>[] {
-        DECIMAL_CONVERSION,
-        null
-      };
+        new org.apache.avro.Conversion<?>[] {DECIMAL_CONVERSION, null};
 
     @Override
     public org.apache.avro.Conversion<?> getConversion(int field) {

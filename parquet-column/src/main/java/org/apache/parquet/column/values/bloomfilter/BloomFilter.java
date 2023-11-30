@@ -18,10 +18,9 @@
  */
 package org.apache.parquet.column.values.bloomfilter;
 
-import org.apache.parquet.io.api.Binary;
-
 import java.io.IOException;
 import java.io.OutputStream;
+import org.apache.parquet.io.api.Binary;
 
 /**
  * A Bloom filter is a compact structure to indicate whether an item is not in a set or probably
@@ -118,7 +117,7 @@ public interface BloomFilter {
    * @param value the value to hash
    * @return hash result
    */
-  long hash(long value) ;
+  long hash(long value);
 
   /**
    * Compute hash for double value by using its plain encoding result.

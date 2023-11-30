@@ -20,6 +20,16 @@ package org.apache.parquet.internal.column.columnindex;
 
 import static java.util.Objects.requireNonNull;
 
+import it.unimi.dsi.fastutil.booleans.BooleanArrayList;
+import it.unimi.dsi.fastutil.booleans.BooleanList;
+import it.unimi.dsi.fastutil.booleans.BooleanLists;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
+import it.unimi.dsi.fastutil.ints.IntList;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.ints.IntSet;
+import it.unimi.dsi.fastutil.longs.LongArrayList;
+import it.unimi.dsi.fastutil.longs.LongList;
+import it.unimi.dsi.fastutil.longs.LongLists;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Formatter;
@@ -27,9 +37,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.PrimitiveIterator;
 import java.util.Set;
-import java.util.function.IntConsumer;
 import java.util.function.IntPredicate;
-
 import org.apache.parquet.column.MinMax;
 import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.filter2.predicate.Operators.And;
@@ -44,7 +52,6 @@ import org.apache.parquet.filter2.predicate.Operators.Not;
 import org.apache.parquet.filter2.predicate.Operators.NotEq;
 import org.apache.parquet.filter2.predicate.Operators.NotIn;
 import org.apache.parquet.filter2.predicate.Operators.Or;
-import org.apache.parquet.filter2.predicate.Operators.SetColumnFilterPredicate;
 import org.apache.parquet.filter2.predicate.Operators.UserDefined;
 import org.apache.parquet.filter2.predicate.UserDefinedPredicate;
 import org.apache.parquet.io.api.Binary;
@@ -52,23 +59,12 @@ import org.apache.parquet.schema.PrimitiveComparator;
 import org.apache.parquet.schema.PrimitiveStringifier;
 import org.apache.parquet.schema.PrimitiveType;
 
-import it.unimi.dsi.fastutil.booleans.BooleanArrayList;
-import it.unimi.dsi.fastutil.booleans.BooleanList;
-import it.unimi.dsi.fastutil.booleans.BooleanLists;
-import it.unimi.dsi.fastutil.ints.IntArrayList;
-import it.unimi.dsi.fastutil.ints.IntList;
-import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
-import it.unimi.dsi.fastutil.ints.IntSet;
-import it.unimi.dsi.fastutil.longs.LongArrayList;
-import it.unimi.dsi.fastutil.longs.LongList;
-import it.unimi.dsi.fastutil.longs.LongLists;
-
 /**
  * Builder implementation to create {@link ColumnIndex} objects.
  */
 public abstract class ColumnIndexBuilder {
 
-  static abstract class ColumnIndexBase<C> implements ColumnIndex {
+  abstract static class ColumnIndexBase<C> implements ColumnIndex {
     /*
      * A class containing the value to be compared to the min/max values. This way we only need to do the deboxing once
      * per predicate execution instead for every comparison.
@@ -90,10 +86,10 @@ public abstract class ColumnIndexBuilder {
     private static final ByteBuffer EMPTY_BYTE_BUFFER = ByteBuffer.allocate(0);
     private static final int MAX_VALUE_LENGTH_FOR_TOSTRING = 40;
     private static final String TOSTRING_TRUNCATION_MARKER = "(...)";
-    private static final int TOSTRING_TRUNCATION_START_POS = (MAX_VALUE_LENGTH_FOR_TOSTRING
-        - TOSTRING_TRUNCATION_MARKER.length()) / 2;
-    private static final int TOSTRING_TRUNCATION_END_POS = MAX_VALUE_LENGTH_FOR_TOSTRING
-        - TOSTRING_TRUNCATION_MARKER.length() - TOSTRING_TRUNCATION_START_POS;
+    private static final int TOSTRING_TRUNCATION_START_POS =
+        (MAX_VALUE_LENGTH_FOR_TOSTRING - TOSTRING_TRUNCATION_MARKER.length()) / 2;
+    private static final int TOSTRING_TRUNCATION_END_POS =
+        MAX_VALUE_LENGTH_FOR_TOSTRING - TOSTRING_TRUNCATION_MARKER.length() - TOSTRING_TRUNCATION_START_POS;
     private static final String TOSTRING_MISSING_VALUE_MARKER = "<none>";
 
     final PrimitiveStringifier stringifier;
@@ -109,7 +105,8 @@ public abstract class ColumnIndexBuilder {
       if (str.length() <= MAX_VALUE_LENGTH_FOR_TOSTRING) {
         return str;
       }
-      return str.substring(0, TOSTRING_TRUNCATION_START_POS) + TOSTRING_TRUNCATION_MARKER
+      return str.substring(0, TOSTRING_TRUNCATION_START_POS)
+          + TOSTRING_TRUNCATION_MARKER
           + str.substring(str.length() - TOSTRING_TRUNCATION_END_POS);
     }
 
@@ -168,12 +165,14 @@ public abstract class ColumnIndexBuilder {
     public String toString() {
       try (Formatter formatter = new Formatter()) {
         formatter.format("Boundary order: %s\n", boundaryOrder);
-        String minMaxPart = "  %-" + MAX_VALUE_LENGTH_FOR_TOSTRING + "s  %-" + MAX_VALUE_LENGTH_FOR_TOSTRING + "s\n";
+        String minMaxPart =
+            "  %-" + MAX_VALUE_LENGTH_FOR_TOSTRING + "s  %-" + MAX_VALUE_LENGTH_FOR_TOSTRING + "s\n";
         formatter.format("%-10s  %20s" + minMaxPart, "", "null count", "min", "max");
         String format = "page-%-5d  %20s" + minMaxPart;
         int arrayIndex = 0;
         for (int i = 0, n = nullPages.length; i < n; ++i) {
-          String nullCount = nullCounts == null ? TOSTRING_MISSING_VALUE_MARKER : Long.toString(nullCounts[i]);
+          String nullCount =
+              nullCounts == null ? TOSTRING_MISSING_VALUE_MARKER : Long.toString(nullCounts[i]);
           String min, max;
           if (nullPages[i]) {
             min = max = TOSTRING_MISSING_VALUE_MARKER;
@@ -220,7 +219,8 @@ public abstract class ColumnIndexBuilder {
     abstract String getMaxValueAsString(int arrayIndex);
 
     /* Creates a Statistics object for filtering. Used for user defined predicates. */
-    abstract <T extends Comparable<T>> org.apache.parquet.filter2.predicate.Statistics<T> createStats(int arrayIndex);
+    abstract <T extends Comparable<T>> org.apache.parquet.filter2.predicate.Statistics<T> createStats(
+        int arrayIndex);
 
     /* Creates a ValueComparator object containing the specified value to be compared for min/max values */
     abstract ValueComparator createValueComparator(Object value);
@@ -288,18 +288,19 @@ public abstract class ColumnIndexBuilder {
 
       // Merging value filtering with pages containing nulls
       IntSet matchingIndexes = new IntOpenHashSet();
-      getBoundaryOrder().notEq(createValueComparator(value))
+      getBoundaryOrder()
+          .notEq(createValueComparator(value))
           .forEachRemaining((int index) -> matchingIndexes.add(index));
-      return IndexIterator.filter(getPageCount(),
-          pageIndex -> nullCounts[pageIndex] > 0 || matchingIndexes.contains(pageIndex));
+      return IndexIterator.filter(
+          getPageCount(), pageIndex -> nullCounts[pageIndex] > 0 || matchingIndexes.contains(pageIndex));
     }
 
     @Override
     public <T extends Comparable<T>> PrimitiveIterator.OfInt visit(In<T> in) {
       Set<T> values = in.getValues();
-      IntSet matchingIndexesForNull = new IntOpenHashSet();  // for null
+      IntSet matchingIndexesForNull = new IntOpenHashSet(); // for null
       Iterator<T> it = values.iterator();
-      while(it.hasNext()) {
+      while (it.hasNext()) {
         T value = it.next();
         if (value == null) {
           if (nullCounts == null) {
@@ -312,7 +313,8 @@ public abstract class ColumnIndexBuilder {
               }
             }
             if (values.size() == 1) {
-              return IndexIterator.filter(getPageCount(), pageIndex -> matchingIndexesForNull.contains(pageIndex));
+              return IndexIterator.filter(
+                  getPageCount(), pageIndex -> matchingIndexesForNull.contains(pageIndex));
             }
           }
         }
@@ -332,13 +334,15 @@ public abstract class ColumnIndexBuilder {
       // If there might be values in a page that are <= the max value in the IN set,
       // and >= the min value in the IN set, then the page might contain
       // the values in the IN set.
-      getBoundaryOrder().ltEq(createValueComparator(max))
-        .forEachRemaining((int index) -> matchingIndexesLessThanMax.add(index));
-      getBoundaryOrder().gtEq(createValueComparator(min))
-        .forEachRemaining((int index) -> matchingIndexesGreaterThanMin.add(index));
+      getBoundaryOrder()
+          .ltEq(createValueComparator(max))
+          .forEachRemaining((int index) -> matchingIndexesLessThanMax.add(index));
+      getBoundaryOrder()
+          .gtEq(createValueComparator(min))
+          .forEachRemaining((int index) -> matchingIndexesGreaterThanMin.add(index));
       matchingIndexesLessThanMax.retainAll(matchingIndexesGreaterThanMin);
       IntSet matchingIndex = matchingIndexesLessThanMax;
-      matchingIndex.addAll(matchingIndexesForNull);  // add the matching null pages
+      matchingIndex.addAll(matchingIndexesForNull); // add the matching null pages
       return IndexIterator.filter(getPageCount(), pageIndex -> matchingIndex.contains(pageIndex));
     }
 
@@ -380,7 +384,8 @@ public abstract class ColumnIndexBuilder {
     @Override
     public <T extends Comparable<T>, U extends UserDefinedPredicate<T>> PrimitiveIterator.OfInt visit(
         LogicalNotUserDefined<T, U> udp) {
-      final UserDefinedPredicate<T> inversePredicate = udp.getUserDefined().getUserDefinedPredicate();
+      final UserDefinedPredicate<T> inversePredicate =
+          udp.getUserDefined().getUserDefinedPredicate();
       final boolean acceptNulls = !inversePredicate.acceptsNullValue();
 
       if (acceptNulls && nullCounts == null) {
@@ -415,12 +420,10 @@ public abstract class ColumnIndexBuilder {
     }
 
     @Override
-    public void add(Statistics<?> stats) {
-    }
+    public void add(Statistics<?> stats) {}
 
     @Override
-    void addMinMax(Object min, Object max) {
-    }
+    void addMinMax(Object min, Object max) {}
 
     @Override
     ColumnIndexBase<?> createColumnIndex(PrimitiveType type) {
@@ -428,12 +431,10 @@ public abstract class ColumnIndexBuilder {
     }
 
     @Override
-    void clearMinMax() {
-    }
+    void clearMinMax() {}
 
     @Override
-    void addMinMaxFromBytes(ByteBuffer min, ByteBuffer max) {
-    }
+    void addMinMaxFromBytes(ByteBuffer min, ByteBuffer max) {}
 
     @Override
     int compareMinValues(PrimitiveComparator<Binary> comparator, int index1, int index2) {
@@ -460,17 +461,15 @@ public abstract class ColumnIndexBuilder {
 
   /**
    * @return a no-op builder that does not collect statistics objects and therefore returns {@code null} at
-   *         {@link #build()}.
+   * {@link #build()}.
    */
   public static ColumnIndexBuilder getNoOpBuilder() {
     return NO_OP_BUILDER;
   }
 
   /**
-   * @param type
-   *          the type this builder is to be created for
-   * @param truncateLength
-   *          the length to be used for truncating binary values if possible
+   * @param type           the type this builder is to be created for
+   * @param truncateLength the length to be used for truncating binary values if possible
    * @return a {@link ColumnIndexBuilder} instance to be used for creating {@link ColumnIndex} objects
    */
   public static ColumnIndexBuilder getBuilder(PrimitiveType type, int truncateLength) {
@@ -501,19 +500,13 @@ public abstract class ColumnIndexBuilder {
   }
 
   /**
-   * @param type
-   *          the primitive type
-   * @param boundaryOrder
-   *          the boundary order of the min/max values
-   * @param nullPages
-   *          the null pages (one boolean value for each page that signifies whether the page consists of nulls
-   *          entirely)
-   * @param nullCounts
-   *          the number of null values for each page
-   * @param minValues
-   *          the min values for each page
-   * @param maxValues
-   *          the max values for each page
+   * @param type          the primitive type
+   * @param boundaryOrder the boundary order of the min/max values
+   * @param nullPages     the null pages (one boolean value for each page that signifies whether the page consists of nulls
+   *                      entirely)
+   * @param nullCounts    the number of null values for each page
+   * @param minValues     the min values for each page
+   * @param maxValues     the max values for each page
    * @return the newly created {@link ColumnIndex} object based on the specified arguments
    */
   public static ColumnIndex build(
@@ -539,8 +532,7 @@ public abstract class ColumnIndexBuilder {
   /**
    * Adds the data from the specified statistics to this builder
    *
-   * @param stats
-   *          the statistics to be added
+   * @param stats the statistics to be added
    */
   public void add(Statistics<?> stats) {
     if (stats.hasNonNullValue()) {
@@ -562,15 +554,19 @@ public abstract class ColumnIndexBuilder {
 
   abstract void addMinMax(Object min, Object max);
 
-  private void fill(List<Boolean> nullPages, List<Long> nullCounts, List<ByteBuffer> minValues,
-      List<ByteBuffer> maxValues) {
+  private void fill(
+      List<Boolean> nullPages, List<Long> nullCounts, List<ByteBuffer> minValues, List<ByteBuffer> maxValues) {
     clear();
     int pageCount = nullPages.size();
-    if ((nullCounts != null && nullCounts.size() != pageCount) || minValues.size() != pageCount
+    if ((nullCounts != null && nullCounts.size() != pageCount)
+        || minValues.size() != pageCount
         || maxValues.size() != pageCount) {
-      throw new IllegalArgumentException(
-          String.format("Not all sizes are equal (nullPages:%d, nullCounts:%s, minValues:%d, maxValues:%d",
-              nullPages.size(), nullCounts == null ? "null" : nullCounts.size(), minValues.size(), maxValues.size()));
+      throw new IllegalArgumentException(String.format(
+          "Not all sizes are equal (nullPages:%d, nullCounts:%s, minValues:%d, maxValues:%d",
+          nullPages.size(),
+          nullCounts == null ? "null" : nullCounts.size(),
+          minValues.size(),
+          maxValues.size()));
     }
     this.nullPages.addAll(nullPages);
     // Nullcounts is optional in the format

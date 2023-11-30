@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -19,35 +19,6 @@
 package org.apache.parquet.thrift;
 
 import static org.junit.Assert.assertEquals;
-
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeMap;
-
-import thrift.test.OneOfEach;
-
-import org.apache.pig.data.Tuple;
-import org.apache.pig.impl.logicalLayer.schema.Schema;
-import org.apache.thrift.TBase;
-import org.apache.thrift.TException;
-import org.junit.Test;
-
-import org.apache.parquet.io.ColumnIOFactory;
-import org.apache.parquet.io.ConverterConsumer;
-import org.apache.parquet.io.MessageColumnIO;
-import org.apache.parquet.io.RecordConsumerLoggingWrapper;
-import org.apache.parquet.io.api.RecordConsumer;
-import org.apache.parquet.pig.PigSchemaConverter;
-import org.apache.parquet.pig.convert.TupleRecordMaterializer;
-import org.apache.parquet.schema.MessageType;
-import org.apache.parquet.thrift.struct.ThriftType.StructType;
 
 import com.twitter.data.proto.tutorial.thrift.AddressBook;
 import com.twitter.data.proto.tutorial.thrift.Name;
@@ -62,6 +33,31 @@ import com.twitter.elephantbird.thrift.test.TestNameList;
 import com.twitter.elephantbird.thrift.test.TestPerson;
 import com.twitter.elephantbird.thrift.test.TestPhoneType;
 import com.twitter.elephantbird.thrift.test.TestStructInMap;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
+import org.apache.parquet.io.ColumnIOFactory;
+import org.apache.parquet.io.ConverterConsumer;
+import org.apache.parquet.io.MessageColumnIO;
+import org.apache.parquet.io.RecordConsumerLoggingWrapper;
+import org.apache.parquet.io.api.RecordConsumer;
+import org.apache.parquet.pig.PigSchemaConverter;
+import org.apache.parquet.pig.convert.TupleRecordMaterializer;
+import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.thrift.struct.ThriftType.StructType;
+import org.apache.pig.data.Tuple;
+import org.apache.pig.impl.logicalLayer.schema.Schema;
+import org.apache.thrift.TBase;
+import org.apache.thrift.TException;
+import org.junit.Test;
+import thrift.test.OneOfEach;
 
 public class TestThriftToPigCompatibility {
 
@@ -75,7 +71,7 @@ public class TestThriftToPigCompatibility {
 
   @Test
   public void testMapInSet() throws Exception {
-    final Set<Map<String, String>> set = new HashSet<Map<String,String>>();
+    final Set<Map<String, String>> set = new HashSet<Map<String, String>>();
     final Map<String, String> map = new HashMap<String, String>();
     map.put("foo", "bar");
     set.add(map);
@@ -105,28 +101,37 @@ public class TestThriftToPigCompatibility {
     ArrayList<Person> persons = new ArrayList<Person>();
     final PhoneNumber phoneNumber = new PhoneNumber("555 999 9998");
     phoneNumber.type = PhoneType.HOME;
-    persons.add(
-        new Person(
-            new Name("Bob", "Roberts"),
-            1,
-            "bob@roberts.com",
-            Arrays.asList(new PhoneNumber("555 999 9999"), phoneNumber)));
-    persons.add(
-        new Person(
-            new Name("Dick", "Richardson"),
-            2,
-            "dick@richardson.com",
-            Arrays.asList(new PhoneNumber("555 999 9997"), new PhoneNumber("555 999 9996"))));
+    persons.add(new Person(
+        new Name("Bob", "Roberts"),
+        1,
+        "bob@roberts.com",
+        Arrays.asList(new PhoneNumber("555 999 9999"), phoneNumber)));
+    persons.add(new Person(
+        new Name("Dick", "Richardson"),
+        2,
+        "dick@richardson.com",
+        Arrays.asList(new PhoneNumber("555 999 9997"), new PhoneNumber("555 999 9996"))));
     AddressBook a = new AddressBook(persons);
     validateSameTupleAsEB(a);
   }
 
-
   @Test
   public void testOneOfEach() throws Exception {
     OneOfEach a = new OneOfEach(
-        true, false, (byte)8, (short)16, (int)32, (long)64, (double)1234, "string", "å", false,
-        ByteBuffer.wrap("a".getBytes()), new ArrayList<Byte>(), new ArrayList<Short>(), new ArrayList<Long>());
+        true,
+        false,
+        (byte) 8,
+        (short) 16,
+        (int) 32,
+        (long) 64,
+        (double) 1234,
+        "string",
+        "å",
+        false,
+        ByteBuffer.wrap("a".getBytes()),
+        new ArrayList<Byte>(),
+        new ArrayList<Short>(),
+        new ArrayList<Long>());
     validateSameTupleAsEB(a);
   }
 
@@ -145,10 +150,11 @@ public class TestThriftToPigCompatibility {
    * <li>Reads using the pig mapping
    * <li>Use Elephant bird to convert from thrift to pig
    * <li>Check that both transformations give the same result
+   *
    * @param o the object to convert
    * @throws TException
    */
-  public static <T extends TBase<?,?>> void validateSameTupleAsEB(T o) throws TException {
+  public static <T extends TBase<?, ?>> void validateSameTupleAsEB(T o) throws TException {
     final ThriftSchemaConverter thriftSchemaConverter = new ThriftSchemaConverter();
     @SuppressWarnings("unchecked")
     final Class<T> class1 = (Class<T>) o.getClass();
@@ -160,7 +166,8 @@ public class TestThriftToPigCompatibility {
     final TupleRecordMaterializer tupleRecordConverter = new TupleRecordMaterializer(schema, pigSchema, true);
     RecordConsumer recordConsumer = new ConverterConsumer(tupleRecordConverter.getRootConverter(), schema);
     final MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
-    ParquetWriteProtocol p = new ParquetWriteProtocol(new RecordConsumerLoggingWrapper(recordConsumer), columnIO, structType);
+    ParquetWriteProtocol p =
+        new ParquetWriteProtocol(new RecordConsumerLoggingWrapper(recordConsumer), columnIO, structType);
     o.write(p);
     final Tuple t = tupleRecordConverter.getCurrentRecord();
     final Tuple expected = thriftToPig.getPigTuple(o);

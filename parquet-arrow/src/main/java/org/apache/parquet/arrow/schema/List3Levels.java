@@ -38,15 +38,19 @@ class List3Levels {
 
   /**
    * Will validate the structure of the list
+   *
    * @param list the Parquet List
    */
   public List3Levels(GroupType list) {
-    if (list.getLogicalTypeAnnotation() != LogicalTypeAnnotation.listType() || list.getFields().size() != 1) {
+    if (list.getLogicalTypeAnnotation() != LogicalTypeAnnotation.listType()
+        || list.getFields().size() != 1) {
       throw new IllegalArgumentException("invalid list type: " + list);
     }
     this.list = list;
     Type repeatedField = list.getFields().get(0);
-    if (repeatedField.isPrimitive() || !repeatedField.isRepetition(REPEATED) || repeatedField.asGroupType().getFields().size() != 1) {
+    if (repeatedField.isPrimitive()
+        || !repeatedField.isRepetition(REPEATED)
+        || repeatedField.asGroupType().getFields().size() != 1) {
       throw new IllegalArgumentException("invalid list type: " + list);
     }
     this.repeated = repeatedField.asGroupType();
@@ -73,5 +77,4 @@ class List3Levels {
   public Type getElement() {
     return element;
   }
-
 }

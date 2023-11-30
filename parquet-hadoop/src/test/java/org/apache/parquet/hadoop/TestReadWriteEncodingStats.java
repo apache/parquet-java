@@ -19,6 +19,16 @@
 
 package org.apache.parquet.hadoop;
 
+import static org.apache.parquet.column.ParquetProperties.WriterVersion.PARQUET_1_0;
+import static org.apache.parquet.schema.MessageTypeParser.parseMessageType;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.UUID;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.column.EncodingStats;
@@ -32,17 +42,6 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.UUID;
-
-import static org.apache.parquet.column.ParquetProperties.WriterVersion.PARQUET_1_0;
-import static org.apache.parquet.schema.MessageTypeParser.parseMessageType;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-
 /**
  * Tests that files are written with EncodingStats, the stats are readable, and generally correct.
  */
@@ -53,12 +52,11 @@ public class TestReadWriteEncodingStats {
 
   private static final Configuration CONF = new Configuration();
   private static final int NUM_RECORDS = 1000;
-  private static final MessageType SCHEMA = parseMessageType(
-      "message test { "
-          + "required binary dict_binary_field; "
-          + "required int32 plain_int32_field; "
-          + "required binary fallback_binary_field; "
-          + "} ");
+  private static final MessageType SCHEMA = parseMessageType("message test { "
+      + "required binary dict_binary_field; "
+      + "required int32 plain_int32_field; "
+      + "required binary fallback_binary_field; "
+      + "} ");
 
   private static final String ALPHABET = "abcdefghijklmnopqrstuvwxyz";
 
@@ -68,14 +66,18 @@ public class TestReadWriteEncodingStats {
       int index = i % ALPHABET.length();
 
       Group group = f.newGroup()
-          .append("dict_binary_field", ALPHABET.substring(index, index+1))
+          .append("dict_binary_field", ALPHABET.substring(index, index + 1))
           .append("plain_int32_field", i)
-          .append("fallback_binary_field", i < (NUM_RECORDS / 2) ?
-              ALPHABET.substring(index, index+1) : UUID.randomUUID().toString());
+          .append(
+              "fallback_binary_field",
+              i < (NUM_RECORDS / 2)
+                  ? ALPHABET.substring(index, index + 1)
+                  : UUID.randomUUID().toString());
 
       writer.write(group);
     }
   }
+
   @Test
   public void testReadWrite() throws Exception {
     File file = temp.newFile("encoding-stats.parquet");
@@ -86,7 +88,7 @@ public class TestReadWriteEncodingStats {
         .withWriterVersion(PARQUET_1_0)
         .withPageSize(1024) // ensure multiple pages are written
         .enableDictionaryEncoding()
-        .withDictionaryPageSize(2*1024)
+        .withDictionaryPageSize(2 * 1024)
         .withConf(CONF)
         .withType(SCHEMA)
         .build();

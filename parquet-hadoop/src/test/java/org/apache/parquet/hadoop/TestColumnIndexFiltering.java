@@ -63,7 +63,6 @@ import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.column.ParquetProperties;
@@ -104,24 +103,25 @@ import org.slf4j.LoggerFactory;
 public class TestColumnIndexFiltering {
   private static final Logger LOGGER = LoggerFactory.getLogger(TestColumnIndexFiltering.class);
   private static final Random RANDOM = new Random(42);
-  private static final String[] PHONE_KINDS = { null, "mobile", "home", "work" };
+  private static final String[] PHONE_KINDS = {null, "mobile", "home", "work"};
   private static final List<User> DATA = Collections.unmodifiableList(generateData(10000));
   private static final Path FILE_V1 = createTempFile(false);
   private static final Path FILE_V2 = createTempFile(false);
   private static final Path FILE_V1_E = createTempFile(true);
   private static final Path FILE_V2_E = createTempFile(true);
   private static final MessageType SCHEMA_WITHOUT_NAME = Types.buildMessage()
-      .required(INT64).named("id")
+      .required(INT64)
+      .named("id")
       .optionalGroup()
-        .addField(optional(DOUBLE).named("lon"))
-        .addField(optional(DOUBLE).named("lat"))
-        .named("location")
+      .addField(optional(DOUBLE).named("lon"))
+      .addField(optional(DOUBLE).named("lat"))
+      .named("location")
       .optionalGroup()
-        .repeatedGroup()
-          .addField(required(INT64).named("number"))
-          .addField(optional(BINARY).as(stringType()).named("kind"))
-          .named("phone")
-        .named("phoneNumbers")
+      .repeatedGroup()
+      .addField(required(INT64).named("number"))
+      .addField(optional(BINARY).as(stringType()).named("kind"))
+      .named("phone")
+      .named("phoneNumbers")
       .named("user_without_name");
 
   private static final byte[] FOOTER_ENCRYPTION_KEY = "0123456789012345".getBytes();
@@ -134,10 +134,10 @@ public class TestColumnIndexFiltering {
   @Parameters(name = "Run {index}: isEncrypted={1}")
   public static Collection<Object[]> params() {
     return Arrays.asList(
-      new Object[] { FILE_V1, false /*isEncrypted*/ },
-      new Object[] { FILE_V2, false /*isEncrypted*/ },
-      new Object[] { FILE_V1_E, true /*isEncrypted*/ },
-      new Object[] { FILE_V2_E, true /*isEncrypted*/ });
+        new Object[] {FILE_V1, false /*isEncrypted*/},
+        new Object[] {FILE_V2, false /*isEncrypted*/},
+        new Object[] {FILE_V1_E, true /*isEncrypted*/},
+        new Object[] {FILE_V2_E, true /*isEncrypted*/});
   }
 
   private final Path file;
@@ -220,7 +220,8 @@ public class TestColumnIndexFiltering {
   private static Path createTempFile(boolean encrypted) {
     String suffix = encrypted ? ".parquet.encrypted" : ".parquet";
     try {
-      return new Path(Files.createTempFile("test-ci_", suffix).toAbsolutePath().toString());
+      return new Path(
+          Files.createTempFile("test-ci_", suffix).toAbsolutePath().toString());
     } catch (IOException e) {
       throw new AssertionError("Unable to create temporary file", e);
     }
@@ -242,39 +243,44 @@ public class TestColumnIndexFiltering {
   private List<User> readUsers(Filter filter, boolean useOtherFiltering, boolean useColumnIndexFilter)
       throws IOException {
     FileDecryptionProperties decryptionProperties = getFileDecryptionProperties();
-    return PhoneBookWriter.readUsers(ParquetReader.builder(new GroupReadSupport(), file)
-        .withFilter(filter)
-        .withDecryption(decryptionProperties)
-        .useDictionaryFilter(useOtherFiltering)
-        .useStatsFilter(useOtherFiltering)
-        .useRecordFilter(useOtherFiltering)
-        .useColumnIndexFilter(useColumnIndexFilter), true);
+    return PhoneBookWriter.readUsers(
+        ParquetReader.builder(new GroupReadSupport(), file)
+            .withFilter(filter)
+            .withDecryption(decryptionProperties)
+            .useDictionaryFilter(useOtherFiltering)
+            .useStatsFilter(useOtherFiltering)
+            .useRecordFilter(useOtherFiltering)
+            .useColumnIndexFilter(useColumnIndexFilter),
+        true);
   }
 
-  private List<User> readUsersWithProjection(Filter filter, MessageType schema, boolean useOtherFiltering,
-                                             boolean useColumnIndexFilter) throws IOException {
+  private List<User> readUsersWithProjection(
+      Filter filter, MessageType schema, boolean useOtherFiltering, boolean useColumnIndexFilter)
+      throws IOException {
     FileDecryptionProperties decryptionProperties = getFileDecryptionProperties();
-    return PhoneBookWriter.readUsers(ParquetReader.builder(new GroupReadSupport(), file)
-        .withFilter(filter)
-        .withDecryption(decryptionProperties)
-        .useDictionaryFilter(useOtherFiltering)
-        .useStatsFilter(useOtherFiltering)
-        .useRecordFilter(useOtherFiltering)
-        .useColumnIndexFilter(useColumnIndexFilter)
-        .set(ReadSupport.PARQUET_READ_SCHEMA, schema.toString()), true);
+    return PhoneBookWriter.readUsers(
+        ParquetReader.builder(new GroupReadSupport(), file)
+            .withFilter(filter)
+            .withDecryption(decryptionProperties)
+            .useDictionaryFilter(useOtherFiltering)
+            .useStatsFilter(useOtherFiltering)
+            .useRecordFilter(useOtherFiltering)
+            .useColumnIndexFilter(useColumnIndexFilter)
+            .set(ReadSupport.PARQUET_READ_SCHEMA, schema.toString()),
+        true);
   }
 
   private FileDecryptionProperties getFileDecryptionProperties() {
     FileDecryptionProperties decryptionProperties = null;
     if (isEncrypted) {
       DecryptionKeyRetrieverMock decryptionKeyRetrieverMock = new DecryptionKeyRetrieverMock()
-        .putKey(FOOTER_ENCRYPTION_KEY_ID, FOOTER_ENCRYPTION_KEY)
-        .putKey(COLUMN_ENCRYPTION_KEY1_ID, COLUMN_ENCRYPTION_KEY1)
-        .putKey(COLUMN_ENCRYPTION_KEY2_ID, COLUMN_ENCRYPTION_KEY2);
+          .putKey(FOOTER_ENCRYPTION_KEY_ID, FOOTER_ENCRYPTION_KEY)
+          .putKey(COLUMN_ENCRYPTION_KEY1_ID, COLUMN_ENCRYPTION_KEY1)
+          .putKey(COLUMN_ENCRYPTION_KEY2_ID, COLUMN_ENCRYPTION_KEY2);
 
       decryptionProperties = FileDecryptionProperties.builder()
-        .withKeyRetriever(decryptionKeyRetrieverMock)
-        .build();
+          .withKeyRetriever(decryptionKeyRetrieverMock)
+          .build();
     }
     return decryptionProperties;
   }
@@ -303,8 +309,9 @@ public class TestColumnIndexFiltering {
     List<User> result = readUsers(actualFilter, false);
 
     assertTrue("Column-index filtering should drop some pages", result.size() < DATA.size());
-    LOGGER.info("{}/{} records read; filtering ratio: {}%", result.size(), DATA.size(),
-        100 * result.size() / DATA.size());
+    LOGGER.info(
+        "{}/{} records read; filtering ratio: {}%",
+        result.size(), DATA.size(), 100 * result.size() / DATA.size());
     // Asserts that all the required records are in the result
     assertContains(DATA.stream().filter(expectedFilter), result);
     // Asserts that all the retrieved records are in the file (validating non-matching records)
@@ -324,41 +331,40 @@ public class TestColumnIndexFiltering {
     writePhoneBookToFile(FILE_V2_E, ParquetProperties.WriterVersion.PARQUET_2_0, encryptionProperties);
   }
 
-  private static void writePhoneBookToFile(Path file, WriterVersion parquetVersion,
-                                           FileEncryptionProperties encryptionProperties) throws IOException {
-    int pageSize = DATA.size() / 10;     // Ensure that several pages will be created
+  private static void writePhoneBookToFile(
+      Path file, WriterVersion parquetVersion, FileEncryptionProperties encryptionProperties) throws IOException {
+    int pageSize = DATA.size() / 10; // Ensure that several pages will be created
     int rowGroupSize = pageSize * 6 * 5; // Ensure that there are more row-groups created
 
-    PhoneBookWriter.write(ExampleParquetWriter.builder(file)
-        .withWriteMode(OVERWRITE)
-        .withRowGroupSize(rowGroupSize)
-        .withPageSize(pageSize)
-        .withEncryption(encryptionProperties)
-        .withWriterVersion(parquetVersion),
-      DATA);
+    PhoneBookWriter.write(
+        ExampleParquetWriter.builder(file)
+            .withWriteMode(OVERWRITE)
+            .withRowGroupSize(rowGroupSize)
+            .withPageSize(pageSize)
+            .withEncryption(encryptionProperties)
+            .withWriterVersion(parquetVersion),
+        DATA);
   }
 
   private static FileEncryptionProperties getFileEncryptionProperties() {
-    ColumnEncryptionProperties columnProperties1 = ColumnEncryptionProperties
-      .builder("id")
-      .withKey(COLUMN_ENCRYPTION_KEY1)
-      .withKeyID(COLUMN_ENCRYPTION_KEY1_ID)
-      .build();
+    ColumnEncryptionProperties columnProperties1 = ColumnEncryptionProperties.builder("id")
+        .withKey(COLUMN_ENCRYPTION_KEY1)
+        .withKeyID(COLUMN_ENCRYPTION_KEY1_ID)
+        .build();
 
-    ColumnEncryptionProperties columnProperties2 = ColumnEncryptionProperties
-      .builder("name")
-      .withKey(COLUMN_ENCRYPTION_KEY2)
-      .withKeyID(COLUMN_ENCRYPTION_KEY2_ID)
-      .build();
+    ColumnEncryptionProperties columnProperties2 = ColumnEncryptionProperties.builder("name")
+        .withKey(COLUMN_ENCRYPTION_KEY2)
+        .withKeyID(COLUMN_ENCRYPTION_KEY2_ID)
+        .build();
     Map<ColumnPath, ColumnEncryptionProperties> columnPropertiesMap = new HashMap<>();
 
     columnPropertiesMap.put(columnProperties1.getPath(), columnProperties1);
     columnPropertiesMap.put(columnProperties2.getPath(), columnProperties2);
 
     FileEncryptionProperties encryptionProperties = FileEncryptionProperties.builder(FOOTER_ENCRYPTION_KEY)
-      .withFooterKeyID(FOOTER_ENCRYPTION_KEY_ID)
-      .withEncryptedColumns(columnPropertiesMap)
-      .build();
+        .withFooterKeyID(FOOTER_ENCRYPTION_KEY_ID)
+        .withEncryptedColumns(columnPropertiesMap)
+        .build();
 
     return encryptionProperties;
   }
@@ -377,9 +383,7 @@ public class TestColumnIndexFiltering {
 
   @Test
   public void testSimpleFiltering() throws IOException {
-    assertCorrectFiltering(
-        record -> record.getId() == 1234,
-        eq(longColumn("id"), 1234l));
+    assertCorrectFiltering(record -> record.getId() == 1234, eq(longColumn("id"), 1234l));
 
     Set<Long> idSet = new HashSet<>();
     idSet.add(1234l);
@@ -391,14 +395,17 @@ public class TestColumnIndexFiltering {
     idSet.add(2468l);
 
     assertCorrectFiltering(
-      record -> (record.getId() == 1234 || record.getId() == 5678 || record.getId() == 1357 ||
-        record.getId() == 111 || record.getId() == 6666 || record.getId() == 2 || record.getId() == 2468),
-      in(longColumn("id"), idSet)
-    );
+        record -> (record.getId() == 1234
+            || record.getId() == 5678
+            || record.getId() == 1357
+            || record.getId() == 111
+            || record.getId() == 6666
+            || record.getId() == 2
+            || record.getId() == 2468),
+        in(longColumn("id"), idSet));
 
     assertCorrectFiltering(
-        record -> "miller".equals(record.getName()),
-        eq(binaryColumn("name"), Binary.fromString("miller")));
+        record -> "miller".equals(record.getName()), eq(binaryColumn("name"), Binary.fromString("miller")));
 
     Set<Binary> nameSet = new HashSet<>();
     nameSet.add(Binary.fromString("anderson"));
@@ -407,21 +414,18 @@ public class TestColumnIndexFiltering {
     nameSet.add(Binary.fromString("williams"));
 
     assertCorrectFiltering(
-      record -> ("anderson".equals(record.getName()) || "miller".equals(record.getName()) ||
-        "thomas".equals(record.getName()) || "williams".equals(record.getName())),
-      in(binaryColumn("name"), nameSet)
-    );
+        record -> ("anderson".equals(record.getName())
+            || "miller".equals(record.getName())
+            || "thomas".equals(record.getName())
+            || "williams".equals(record.getName())),
+        in(binaryColumn("name"), nameSet));
 
-    assertCorrectFiltering(
-        record -> record.getName() == null,
-        eq(binaryColumn("name"), null));
+    assertCorrectFiltering(record -> record.getName() == null, eq(binaryColumn("name"), null));
 
     Set<Binary> nullSet = new HashSet<>();
     nullSet.add(null);
 
-    assertCorrectFiltering(
-      record -> record.getName() == null,
-      in(binaryColumn("name"), nullSet));
+    assertCorrectFiltering(record -> record.getName() == null, in(binaryColumn("name"), nullSet));
   }
 
   @Test
@@ -435,11 +439,14 @@ public class TestColumnIndexFiltering {
     assertEquals(DATA, readUsers((Filter) null, true));
 
     // Column index filtering turned off
-    assertEquals(DATA.stream().filter(user -> user.getId() == 1234).collect(Collectors.toList()),
+    assertEquals(
+        DATA.stream().filter(user -> user.getId() == 1234).collect(Collectors.toList()),
         readUsers(eq(longColumn("id"), 1234l), true, false));
-    assertEquals(DATA.stream().filter(user -> "miller".equals(user.getName())).collect(Collectors.toList()),
+    assertEquals(
+        DATA.stream().filter(user -> "miller".equals(user.getName())).collect(Collectors.toList()),
         readUsers(eq(binaryColumn("name"), Binary.fromString("miller")), true, false));
-    assertEquals(DATA.stream().filter(user -> user.getName() == null).collect(Collectors.toList()),
+    assertEquals(
+        DATA.stream().filter(user -> user.getName() == null).collect(Collectors.toList()),
         readUsers(eq(binaryColumn("name"), null), true, false));
 
     // Every filtering mechanism turned off
@@ -457,7 +464,8 @@ public class TestColumnIndexFiltering {
           Double lon = loc == null ? null : loc.getLon();
           return lat != null && lon != null && 37 <= lat && lat <= 70 && -21 <= lon && lon <= 35;
         },
-        and(and(gtEq(doubleColumn("location.lat"), 37.0), ltEq(doubleColumn("location.lat"), 70.0)),
+        and(
+            and(gtEq(doubleColumn("location.lat"), 37.0), ltEq(doubleColumn("location.lat"), 70.0)),
             and(gtEq(doubleColumn("location.lon"), -21.0), ltEq(doubleColumn("location.lon"), 35.0))));
     assertCorrectFiltering(
         record -> {
@@ -470,7 +478,9 @@ public class TestColumnIndexFiltering {
           String name = record.getName();
           return name != null && name.compareTo("thomas") < 0 && record.getId() <= 3 * DATA.size() / 4;
         },
-        and(lt(binaryColumn("name"), Binary.fromString("thomas")), ltEq(longColumn("id"), 3l * DATA.size() / 4)));
+        and(
+            lt(binaryColumn("name"), Binary.fromString("thomas")),
+            ltEq(longColumn("id"), 3l * DATA.size() / 4)));
   }
 
   public static class NameStartsWithVowel extends UserDefinedPredicate<Binary> {
@@ -565,12 +575,14 @@ public class TestColumnIndexFiltering {
   public void testUDF() throws IOException {
     assertCorrectFiltering(
         record -> NameStartsWithVowel.isStartingWithVowel(record.getName()) || record.getId() % 234 == 0,
-        or(userDefined(binaryColumn("name"), NameStartsWithVowel.class),
+        or(
+            userDefined(binaryColumn("name"), NameStartsWithVowel.class),
             userDefined(longColumn("id"), new IsDivisibleBy(234))));
     assertCorrectFiltering(
         record -> !(NameStartsWithVowel.isStartingWithVowel(record.getName()) || record.getId() % 234 == 0),
-            not(or(userDefined(binaryColumn("name"), NameStartsWithVowel.class),
-                userDefined(longColumn("id"), new IsDivisibleBy(234)))));
+        not(or(
+            userDefined(binaryColumn("name"), NameStartsWithVowel.class),
+            userDefined(longColumn("id"), new IsDivisibleBy(234)))));
   }
 
   @Test
@@ -579,23 +591,23 @@ public class TestColumnIndexFiltering {
     assertEquals(DATA, readUsers(notEq(binaryColumn("not-existing-binary"), Binary.EMPTY), true));
     assertCorrectFiltering(
         record -> record.getId() == 1234,
-        and(eq(longColumn("id"), 1234l),
-            eq(longColumn("not-existing-long"), null)));
+        and(eq(longColumn("id"), 1234l), eq(longColumn("not-existing-long"), null)));
     assertCorrectFiltering(
         record -> "miller".equals(record.getName()),
-        and(eq(binaryColumn("name"), Binary.fromString("miller")),
+        and(
+            eq(binaryColumn("name"), Binary.fromString("miller")),
             invert(userDefined(binaryColumn("not-existing-binary"), NameStartsWithVowel.class))));
 
     // Missing column filter is always false
     assertEquals(emptyList(), readUsers(lt(longColumn("not-existing-long"), 0l), true));
     assertCorrectFiltering(
         record -> "miller".equals(record.getName()),
-        or(eq(binaryColumn("name"), Binary.fromString("miller")),
+        or(
+            eq(binaryColumn("name"), Binary.fromString("miller")),
             gtEq(binaryColumn("not-existing-binary"), Binary.EMPTY)));
     assertCorrectFiltering(
         record -> record.getId() == 1234,
-        or(eq(longColumn("id"), 1234l),
-            userDefined(longColumn("not-existing-long"), new IsDivisibleBy(1))));
+        or(eq(longColumn("id"), 1234l), userDefined(longColumn("not-existing-long"), new IsDivisibleBy(1))));
   }
 
   @Test
@@ -603,15 +615,20 @@ public class TestColumnIndexFiltering {
     // All rows shall be retrieved because all values in column 'name' shall be handled as null values
     assertEquals(
         DATA.stream().map(user -> user.cloneWithName(null)).collect(toList()),
-        readUsersWithProjection(FilterCompat.get(eq(binaryColumn("name"), null)), SCHEMA_WITHOUT_NAME, true, true));
+        readUsersWithProjection(
+            FilterCompat.get(eq(binaryColumn("name"), null)), SCHEMA_WITHOUT_NAME, true, true));
 
     // Column index filter shall drop all pages because all values in column 'name' shall be handled as null values
     assertEquals(
         emptyList(),
-        readUsersWithProjection(FilterCompat.get(notEq(binaryColumn("name"), null)), SCHEMA_WITHOUT_NAME, false, true));
+        readUsersWithProjection(
+            FilterCompat.get(notEq(binaryColumn("name"), null)), SCHEMA_WITHOUT_NAME, false, true));
     assertEquals(
         emptyList(),
-        readUsersWithProjection(FilterCompat.get(userDefined(binaryColumn("name"), NameStartsWithVowel.class)),
-            SCHEMA_WITHOUT_NAME, false, true));
+        readUsersWithProjection(
+            FilterCompat.get(userDefined(binaryColumn("name"), NameStartsWithVowel.class)),
+            SCHEMA_WITHOUT_NAME,
+            false,
+            true));
   }
 }
