@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -18,12 +18,11 @@
  */
 package org.apache.parquet.pig.convert;
 
-import org.apache.pig.data.Tuple;
-import org.apache.pig.impl.logicalLayer.schema.Schema;
-
 import org.apache.parquet.io.api.GroupConverter;
 import org.apache.parquet.io.api.RecordMaterializer;
 import org.apache.parquet.schema.GroupType;
+import org.apache.pig.data.Tuple;
+import org.apache.pig.impl.logicalLayer.schema.Schema;
 
 public class TupleRecordMaterializer extends RecordMaterializer<Tuple> {
 
@@ -32,8 +31,9 @@ public class TupleRecordMaterializer extends RecordMaterializer<Tuple> {
   public TupleRecordMaterializer(GroupType parquetSchema, Schema pigSchema, boolean numbersDefaultToZero) {
     this(parquetSchema, pigSchema, numbersDefaultToZero, false);
   }
-  
-  public TupleRecordMaterializer(GroupType parquetSchema, Schema pigSchema, boolean numbersDefaultToZero, boolean columnIndexAccess) {
+
+  public TupleRecordMaterializer(
+      GroupType parquetSchema, Schema pigSchema, boolean numbersDefaultToZero, boolean columnIndexAccess) {
     this.root = new TupleConverter(parquetSchema, pigSchema, numbersDefaultToZero, columnIndexAccess);
   }
 
@@ -46,5 +46,4 @@ public class TupleRecordMaterializer extends RecordMaterializer<Tuple> {
   public GroupConverter getRootConverter() {
     return root;
   }
-
 }

@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -17,7 +17,6 @@
  * under the License.
  */
 package org.apache.parquet.io;
-
 
 /**
  * used to read reassembled records
@@ -28,6 +27,7 @@ public abstract class RecordReader<T> {
 
   /**
    * Reads one record and returns it.
+   *
    * @return the materialized record
    */
   public abstract T read();
@@ -35,6 +35,7 @@ public abstract class RecordReader<T> {
   /**
    * Returns whether the current record should be skipped (dropped)
    * Will be called *after* read()
+   *
    * @return true if the current record should be skipped
    */
   public boolean shouldSkipCurrentRecord() {

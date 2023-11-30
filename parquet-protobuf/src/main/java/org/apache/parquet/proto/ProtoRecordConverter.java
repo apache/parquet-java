@@ -18,15 +18,13 @@
  */
 package org.apache.parquet.proto;
 
-
 import com.google.protobuf.Message;
 import com.google.protobuf.MessageOrBuilder;
+import java.util.Collections;
+import java.util.Map;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.conf.ParquetConfiguration;
 import org.apache.parquet.schema.MessageType;
-
-import java.util.Collections;
-import java.util.Map;
 
 /**
  * Converts data content of root message from Protocol Buffer message to parquet message.
@@ -50,23 +48,33 @@ public class ProtoRecordConverter<T extends MessageOrBuilder> extends ProtoMessa
     }
   }
 
-  public ProtoRecordConverter(Configuration conf, Class<? extends Message> protoclass, MessageType parquetSchema, Map<String, String> extraMetadata) {
+  public ProtoRecordConverter(
+      Configuration conf,
+      Class<? extends Message> protoclass,
+      MessageType parquetSchema,
+      Map<String, String> extraMetadata) {
     super(conf, new SkipParentValueContainer(), protoclass, parquetSchema, extraMetadata);
     reusedBuilder = getBuilder();
   }
 
-  public ProtoRecordConverter(ParquetConfiguration conf, Class<? extends Message> protoclass, MessageType parquetSchema, Map<String, String> extraMetadata) {
+  public ProtoRecordConverter(
+      ParquetConfiguration conf,
+      Class<? extends Message> protoclass,
+      MessageType parquetSchema,
+      Map<String, String> extraMetadata) {
     super(conf, new SkipParentValueContainer(), protoclass, parquetSchema, extraMetadata);
     reusedBuilder = getBuilder();
   }
 
-  public ProtoRecordConverter(Configuration conf, Message.Builder builder, MessageType parquetSchema, Map<String, String> extraMetadata) {
+  public ProtoRecordConverter(
+      Configuration conf, Message.Builder builder, MessageType parquetSchema, Map<String, String> extraMetadata) {
     super(conf, new SkipParentValueContainer(), builder, parquetSchema, extraMetadata);
     reusedBuilder = getBuilder();
   }
 
   // Old version constructors, kept for code backward compatibility.
-  // The instance will not be able to handle unknowned enum values written by parquet-proto (the behavior before PARQUET-1455)
+  // The instance will not be able to handle unknowned enum values written by parquet-proto (the behavior before
+  // PARQUET-1455)
   @Deprecated
   public ProtoRecordConverter(Class<? extends Message> protoclass, MessageType parquetSchema) {
     this(new Configuration(), protoclass, parquetSchema, Collections.emptyMap());

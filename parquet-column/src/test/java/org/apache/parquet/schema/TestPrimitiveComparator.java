@@ -18,25 +18,24 @@
  */
 package org.apache.parquet.schema;
 
-import org.apache.parquet.io.api.Binary;
-import org.junit.Test;
+import static org.apache.parquet.schema.PrimitiveComparator.BINARY_AS_SIGNED_INTEGER_COMPARATOR;
+import static org.apache.parquet.schema.PrimitiveComparator.BOOLEAN_COMPARATOR;
+import static org.apache.parquet.schema.PrimitiveComparator.DOUBLE_COMPARATOR;
+import static org.apache.parquet.schema.PrimitiveComparator.FLOAT_COMPARATOR;
+import static org.apache.parquet.schema.PrimitiveComparator.SIGNED_INT32_COMPARATOR;
+import static org.apache.parquet.schema.PrimitiveComparator.SIGNED_INT64_COMPARATOR;
+import static org.apache.parquet.schema.PrimitiveComparator.UNSIGNED_INT32_COMPARATOR;
+import static org.apache.parquet.schema.PrimitiveComparator.UNSIGNED_INT64_COMPARATOR;
+import static org.apache.parquet.schema.PrimitiveComparator.UNSIGNED_LEXICOGRAPHICAL_BINARY_COMPARATOR;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
-
-import static org.apache.parquet.schema.PrimitiveComparator.BOOLEAN_COMPARATOR;
-import static org.apache.parquet.schema.PrimitiveComparator.DOUBLE_COMPARATOR;
-import static org.apache.parquet.schema.PrimitiveComparator.FLOAT_COMPARATOR;
-import static org.apache.parquet.schema.PrimitiveComparator.UNSIGNED_LEXICOGRAPHICAL_BINARY_COMPARATOR;
-import static org.apache.parquet.schema.PrimitiveComparator.BINARY_AS_SIGNED_INTEGER_COMPARATOR;
-import static org.apache.parquet.schema.PrimitiveComparator.SIGNED_INT32_COMPARATOR;
-import static org.apache.parquet.schema.PrimitiveComparator.SIGNED_INT64_COMPARATOR;
-import static org.apache.parquet.schema.PrimitiveComparator.UNSIGNED_INT32_COMPARATOR;
-import static org.apache.parquet.schema.PrimitiveComparator.UNSIGNED_INT64_COMPARATOR;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import org.apache.parquet.io.api.Binary;
+import org.junit.Test;
 
 /*
  * This test verifies all the PrimitiveComparator implementations. The logic of all tests is the same: list the
@@ -47,7 +46,7 @@ public class TestPrimitiveComparator {
 
   @Test
   public void testBooleanComparator() {
-    Boolean[] valuesInAscendingOrder = { null, false, true };
+    Boolean[] valuesInAscendingOrder = {null, false, true};
 
     for (int i = 0; i < valuesInAscendingOrder.length; ++i) {
       for (int j = 0; j < valuesInAscendingOrder.length; ++j) {
@@ -66,28 +65,22 @@ public class TestPrimitiveComparator {
 
   @Test
   public void testSignedInt32Comparator() {
-    testInt32Comparator(SIGNED_INT32_COMPARATOR,
-        null,
-        Integer.MIN_VALUE,
-        -12345,
-        -1,
-        0,
-        1,
-        12345,
-        Integer.MAX_VALUE);
+    testInt32Comparator(
+        SIGNED_INT32_COMPARATOR, null, Integer.MIN_VALUE, -12345, -1, 0, 1, 12345, Integer.MAX_VALUE);
   }
 
   @Test
   public void testUnsignedInt32Comparator() {
-    testInt32Comparator(UNSIGNED_INT32_COMPARATOR,
+    testInt32Comparator(
+        UNSIGNED_INT32_COMPARATOR,
         null,
-        0,                  // 0x00000000
-        1,                  // 0x00000001
-        12345,              // 0x00003039
-        Integer.MAX_VALUE,  // 0x7FFFFFFF
-        Integer.MIN_VALUE,  // 0x80000000
-        -12345,             // 0xFFFFCFC7
-        -1);                // 0xFFFFFFFF
+        0, // 0x00000000
+        1, // 0x00000001
+        12345, // 0x00003039
+        Integer.MAX_VALUE, // 0x7FFFFFFF
+        Integer.MIN_VALUE, // 0x80000000
+        -12345, // 0xFFFFCFC7
+        -1); // 0xFFFFFFFF
   }
 
   private void testInt32Comparator(PrimitiveComparator<Integer> comparator, Integer... valuesInAscendingOrder) {
@@ -108,7 +101,8 @@ public class TestPrimitiveComparator {
 
   @Test
   public void testSignedInt64Comparator() {
-    testInt64Comparator(SIGNED_INT64_COMPARATOR,
+    testInt64Comparator(
+        SIGNED_INT64_COMPARATOR,
         null,
         Long.MIN_VALUE,
         -12345678901L,
@@ -121,15 +115,16 @@ public class TestPrimitiveComparator {
 
   @Test
   public void testUnsignedInt64Comparator() {
-    testInt64Comparator(UNSIGNED_INT64_COMPARATOR,
+    testInt64Comparator(
+        UNSIGNED_INT64_COMPARATOR,
         null,
-        0L,              // 0x0000000000000000
-        1L,              // 0x0000000000000001
-        12345678901L,    // 0x00000002DFDC1C35
-        Long.MAX_VALUE,  // 0x7FFFFFFFFFFFFFFF
-        Long.MIN_VALUE,  // 0x8000000000000000
-        -12345678901L,   // 0xFFFFFFFD2023E3CB
-        -1L);            // 0xFFFFFFFFFFFFFFFF
+        0L, // 0x0000000000000000
+        1L, // 0x0000000000000001
+        12345678901L, // 0x00000002DFDC1C35
+        Long.MAX_VALUE, // 0x7FFFFFFFFFFFFFFF
+        Long.MIN_VALUE, // 0x8000000000000000
+        -12345678901L, // 0xFFFFFFFD2023E3CB
+        -1L); // 0xFFFFFFFFFFFFFFFF
   }
 
   private void testInt64Comparator(PrimitiveComparator<Long> comparator, Long... valuesInAscendingOrder) {
@@ -151,16 +146,17 @@ public class TestPrimitiveComparator {
   @Test
   public void testFloatComparator() {
     Float[] valuesInAscendingOrder = {
-        null,
-        Float.NEGATIVE_INFINITY,
-        -Float.MAX_VALUE,
-        -1234.5678F,
-        -Float.MIN_VALUE,
-        0.0F,
-        Float.MIN_VALUE,
-        1234.5678F,
-        Float.MAX_VALUE,
-        Float.POSITIVE_INFINITY };
+      null,
+      Float.NEGATIVE_INFINITY,
+      -Float.MAX_VALUE,
+      -1234.5678F,
+      -Float.MIN_VALUE,
+      0.0F,
+      Float.MIN_VALUE,
+      1234.5678F,
+      Float.MAX_VALUE,
+      Float.POSITIVE_INFINITY
+    };
 
     for (int i = 0; i < valuesInAscendingOrder.length; ++i) {
       for (int j = 0; j < valuesInAscendingOrder.length; ++j) {
@@ -180,16 +176,17 @@ public class TestPrimitiveComparator {
   @Test
   public void testDoubleComparator() {
     Double[] valuesInAscendingOrder = {
-        null,
-        Double.NEGATIVE_INFINITY,
-        -Double.MAX_VALUE,
-        -123456.7890123456789,
-        -Double.MIN_VALUE,
-        0.0,
-        Double.MIN_VALUE,
-        123456.7890123456789,
-        Double.MAX_VALUE,
-        Double.POSITIVE_INFINITY };
+      null,
+      Double.NEGATIVE_INFINITY,
+      -Double.MAX_VALUE,
+      -123456.7890123456789,
+      -Double.MIN_VALUE,
+      0.0,
+      Double.MIN_VALUE,
+      123456.7890123456789,
+      Double.MAX_VALUE,
+      Double.POSITIVE_INFINITY
+    };
 
     for (int i = 0; i < valuesInAscendingOrder.length; ++i) {
       for (int j = 0; j < valuesInAscendingOrder.length; ++j) {
@@ -208,41 +205,47 @@ public class TestPrimitiveComparator {
 
   @Test
   public void testLexicographicalBinaryComparator() {
-    testObjectComparator(UNSIGNED_LEXICOGRAPHICAL_BINARY_COMPARATOR,
+    testObjectComparator(
+        UNSIGNED_LEXICOGRAPHICAL_BINARY_COMPARATOR,
         null,
-        Binary.fromConstantByteArray(new byte[0]),                                           // ||
-        Binary.fromConstantByteArray(new byte[] { 127, 127, 0, 127 }, 2, 1),                 // |00|
-        Binary.fromCharSequence("aaa"),                                                      // |61|61|61|
-        Binary.fromString("aaaa"),                                                           // |61|61|61|61|
-        Binary.fromReusedByteArray("aaab".getBytes()),                                       // |61|61|61|62|
-        Binary.fromReusedByteArray("azzza".getBytes(), 1, 3),                                // |7A|7A|7A|
-        Binary.fromReusedByteBuffer(ByteBuffer.wrap("zzzzzz".getBytes())),                   // |7A|7A|7A|7A|7A|7A|
-        Binary.fromReusedByteBuffer(ByteBuffer.wrap("aazzzzzzaa".getBytes(), 2, 7)),         // |7A|7A|7A|7A|7A|7A|61|
-        Binary.fromConstantByteBuffer(ByteBuffer.wrap(new byte[] { -128, -128, -128 })),     // |80|80|80|
-        Binary.fromConstantByteBuffer(ByteBuffer.wrap(new byte[] { -128, -128, -1 }, 1, 2))  // |80|FF|
-    );
+        Binary.fromConstantByteArray(new byte[0]), // ||
+        Binary.fromConstantByteArray(new byte[] {127, 127, 0, 127}, 2, 1), // |00|
+        Binary.fromCharSequence("aaa"), // |61|61|61|
+        Binary.fromString("aaaa"), // |61|61|61|61|
+        Binary.fromReusedByteArray("aaab".getBytes()), // |61|61|61|62|
+        Binary.fromReusedByteArray("azzza".getBytes(), 1, 3), // |7A|7A|7A|
+        Binary.fromReusedByteBuffer(ByteBuffer.wrap("zzzzzz".getBytes())), // |7A|7A|7A|7A|7A|7A|
+        Binary.fromReusedByteBuffer(ByteBuffer.wrap("aazzzzzzaa".getBytes(), 2, 7)), // |7A|7A|7A|7A|7A|7A|61|
+        Binary.fromConstantByteBuffer(ByteBuffer.wrap(new byte[] {-128, -128, -128})), // |80|80|80|
+        Binary.fromConstantByteBuffer(ByteBuffer.wrap(new byte[] {-128, -128, -1}, 1, 2)) // |80|FF|
+        );
   }
 
   @Test
   public void testBinaryAsSignedIntegerComparator() {
-    testObjectComparator(BINARY_AS_SIGNED_INTEGER_COMPARATOR,
+    testObjectComparator(
+        BINARY_AS_SIGNED_INTEGER_COMPARATOR,
         null,
         Binary.fromConstantByteArray(new BigInteger("-9999999999999999999999999999999999999999").toByteArray()),
         Binary.fromReusedByteArray(new BigInteger("-9999999999999999999999999999999999999998").toByteArray()),
-        Binary.fromConstantByteArray(BigInteger.valueOf(Long.MIN_VALUE).subtract(BigInteger.ONE).toByteArray()),
+        Binary.fromConstantByteArray(BigInteger.valueOf(Long.MIN_VALUE)
+            .subtract(BigInteger.ONE)
+            .toByteArray()),
         Binary.fromConstantByteArray(BigInteger.valueOf(Long.MIN_VALUE).toByteArray()),
-        Binary.fromConstantByteArray(BigInteger.valueOf(Long.MIN_VALUE).add(BigInteger.ONE).toByteArray()),
-        Binary.fromReusedByteArray(new byte[] { (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, -2 }, 1, 3),
+        Binary.fromConstantByteArray(
+            BigInteger.valueOf(Long.MIN_VALUE).add(BigInteger.ONE).toByteArray()),
+        Binary.fromReusedByteArray(new byte[] {(byte) 0xFF, (byte) 0xFF, (byte) 0xFF, -2}, 1, 3),
         Binary.fromReusedByteArray(new BigInteger("-1").toByteArray()),
         Binary.fromConstantByteBuffer(ByteBuffer.wrap(new BigInteger("0").toByteArray())),
-        Binary.fromReusedByteBuffer(ByteBuffer.wrap(new byte[] { 0, 0, 0, 1 })),
-        Binary.fromConstantByteBuffer(ByteBuffer.wrap(new byte[] { 0, 0, 0, 2 }), 2, 2),
+        Binary.fromReusedByteBuffer(ByteBuffer.wrap(new byte[] {0, 0, 0, 1})),
+        Binary.fromConstantByteBuffer(ByteBuffer.wrap(new byte[] {0, 0, 0, 2}), 2, 2),
+        Binary.fromConstantByteBuffer(ByteBuffer.wrap(BigInteger.valueOf(Long.MAX_VALUE)
+            .subtract(BigInteger.ONE)
+            .toByteArray())),
         Binary.fromConstantByteBuffer(
-            ByteBuffer.wrap(BigInteger.valueOf(Long.MAX_VALUE).subtract(BigInteger.ONE).toByteArray())),
-        Binary.fromConstantByteBuffer(ByteBuffer.wrap(BigInteger.valueOf(Long.MAX_VALUE).toByteArray())),
-        Binary
-            .fromConstantByteBuffer(
-                ByteBuffer.wrap(BigInteger.valueOf(Long.MAX_VALUE).add(BigInteger.ONE).toByteArray())),
+            ByteBuffer.wrap(BigInteger.valueOf(Long.MAX_VALUE).toByteArray())),
+        Binary.fromConstantByteBuffer(ByteBuffer.wrap(
+            BigInteger.valueOf(Long.MAX_VALUE).add(BigInteger.ONE).toByteArray())),
         Binary.fromConstantByteBuffer(
             ByteBuffer.wrap(new BigInteger("999999999999999999999999999999999999999").toByteArray())),
         Binary.fromReusedByteBuffer(
@@ -254,16 +257,18 @@ public class TestPrimitiveComparator {
   @Test
   public void testBinaryAsSignedIntegerComparatorWithEquals() {
     List<Binary> valuesToCompare = new ArrayList<>();
-    valuesToCompare.add(Binary.fromConstantByteBuffer(ByteBuffer.wrap(new byte[] { 0, 0, -108 })));
-    valuesToCompare.add(Binary.fromConstantByteBuffer(ByteBuffer.wrap(new byte[] { 0, 0, 0, 0, 0, -108 })));
-    valuesToCompare.add(Binary.fromConstantByteBuffer(ByteBuffer.wrap(new byte[] { 0, 0, 0, -108 })));
-    valuesToCompare.add(Binary.fromConstantByteBuffer(ByteBuffer.wrap(new byte[] { 0, 0, 0, 0, -108 })));
-    valuesToCompare.add(Binary.fromConstantByteBuffer(ByteBuffer.wrap(new byte[] { 0, -108 })));
+    valuesToCompare.add(Binary.fromConstantByteBuffer(ByteBuffer.wrap(new byte[] {0, 0, -108})));
+    valuesToCompare.add(Binary.fromConstantByteBuffer(ByteBuffer.wrap(new byte[] {0, 0, 0, 0, 0, -108})));
+    valuesToCompare.add(Binary.fromConstantByteBuffer(ByteBuffer.wrap(new byte[] {0, 0, 0, -108})));
+    valuesToCompare.add(Binary.fromConstantByteBuffer(ByteBuffer.wrap(new byte[] {0, 0, 0, 0, -108})));
+    valuesToCompare.add(Binary.fromConstantByteBuffer(ByteBuffer.wrap(new byte[] {0, -108})));
 
     for (Binary v1 : valuesToCompare) {
       for (Binary v2 : valuesToCompare) {
-        assertEquals(String.format("Wrong result of comparison %s and %s", v1, v2),
-            0, BINARY_AS_SIGNED_INTEGER_COMPARATOR.compare(v1, v2));
+        assertEquals(
+            String.format("Wrong result of comparison %s and %s", v1, v2),
+            0,
+            BINARY_AS_SIGNED_INTEGER_COMPARATOR.compare(v1, v2));
       }
     }
   }

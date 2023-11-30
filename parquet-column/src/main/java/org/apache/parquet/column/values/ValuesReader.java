@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -20,17 +20,16 @@ package org.apache.parquet.column.values;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-
 import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.io.api.Binary;
 
 /**
  * Base class to implement an encoding for a given column type.
- *
+ * <p>
  * A ValuesReader is provided with a page (byte-buffer) and is responsible
  * for deserializing the primitive values stored in that page.
- *
+ * <p>
  * Given that pages are homogeneous (store only a single type), typical subclasses
  * will only override one of the read*() methods.
  */
@@ -42,24 +41,23 @@ public abstract class ValuesReader {
 
   /**
    * Called to initialize the column reader from a part of a page.
-   *
+   * <p>
    * The underlying implementation knows how much data to read, so a length
    * is not provided.
-   *
+   * <p>
    * Each page may contain several sections:
    * <ul>
    *  <li> repetition levels column
    *  <li> definition levels column
    *  <li> data column
    * </ul>
-   *
+   * <p>
    * This function is called with 'offset' pointing to the beginning of one of these sections,
    * and should return the offset to the section following it.
    *
    * @param valueCount count of values in this page
-   * @param page the array to read from containing the page data (repetition levels, definition levels, data)
-   * @param offset where to start reading from in the page
-   *
+   * @param page       the array to read from containing the page data (repetition levels, definition levels, data)
+   * @param offset     where to start reading from in the page
    * @throws IOException
    * @deprecated Will be removed in 2.0.0
    */
@@ -77,9 +75,10 @@ public abstract class ValuesReader {
 
   /**
    * Same functionality as method of the same name that takes a ByteBuffer instead of a byte[].
-   *
+   * <p>
    * This method is only provided for backward compatibility and will be removed in a future release.
    * Please update any code using it as soon as possible.
+   *
    * @see #initFromPage(int, ByteBuffer, int)
    */
   @Deprecated
@@ -89,11 +88,11 @@ public abstract class ValuesReader {
 
   /**
    * Called to initialize the column reader from a part of a page.
-   *
+   * <p>
    * Implementations must consume all bytes from the input stream, leaving the
    * stream ready to read the next section of data. The underlying
    * implementation knows how much data to read, so a length is not provided.
-   *
+   * <p>
    * Each page may contain several sections:
    * <ul>
    *  <li> repetition levels column
@@ -102,8 +101,7 @@ public abstract class ValuesReader {
    * </ul>
    *
    * @param valueCount count of values in this page
-   * @param in an input stream containing the page data at the correct offset
-   *
+   * @param in         an input stream containing the page data at the correct offset
    * @throws IOException if there is an exception while reading from the input stream
    */
   public void initFromPage(int valueCount, ByteBufferInputStream in) throws IOException {
@@ -117,6 +115,7 @@ public abstract class ValuesReader {
 
   /**
    * Called to return offset of the next section
+   *
    * @return offset of the next section
    * @deprecated Will be removed in 2.0.0
    */
@@ -137,6 +136,7 @@ public abstract class ValuesReader {
 
   /**
    * usable when the encoding is dictionary based
+   *
    * @return the id of the next value from the page
    */
   public int readValueDictionaryId() {
@@ -188,13 +188,12 @@ public abstract class ValuesReader {
   /**
    * Skips the next value in the page
    */
-  abstract public void skip();
+  public abstract void skip();
 
   /**
    * Skips the next n values in the page
    *
-   * @param n
-   *          the number of values to be skipped
+   * @param n the number of values to be skipped
    */
   public void skip(int n) {
     for (int i = 0; i < n; ++i) {
@@ -202,4 +201,3 @@ public abstract class ValuesReader {
     }
   }
 }
-

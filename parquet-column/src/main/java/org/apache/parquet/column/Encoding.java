@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -19,21 +19,19 @@
 package org.apache.parquet.column;
 
 import static org.apache.parquet.column.values.bitpacking.Packer.BIG_ENDIAN;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BOOLEAN;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BOOLEAN;
 
 import java.io.IOException;
-
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.values.ValuesReader;
 import org.apache.parquet.column.values.bitpacking.ByteBitPackingValuesReader;
 import org.apache.parquet.column.values.bytestreamsplit.ByteStreamSplitValuesReaderForDouble;
 import org.apache.parquet.column.values.bytestreamsplit.ByteStreamSplitValuesReaderForFloat;
-import org.apache.parquet.column.values.rle.ZeroIntegerValuesReader;
 import org.apache.parquet.column.values.delta.DeltaBinaryPackingValuesReader;
 import org.apache.parquet.column.values.deltalengthbytearray.DeltaLengthByteArrayValuesReader;
 import org.apache.parquet.column.values.deltastrings.DeltaByteArrayReader;
@@ -44,66 +42,67 @@ import org.apache.parquet.column.values.dictionary.PlainValuesDictionary.PlainFl
 import org.apache.parquet.column.values.dictionary.PlainValuesDictionary.PlainIntegerDictionary;
 import org.apache.parquet.column.values.dictionary.PlainValuesDictionary.PlainLongDictionary;
 import org.apache.parquet.column.values.plain.BinaryPlainValuesReader;
-import org.apache.parquet.column.values.plain.FixedLenByteArrayPlainValuesReader;
 import org.apache.parquet.column.values.plain.BooleanPlainValuesReader;
+import org.apache.parquet.column.values.plain.FixedLenByteArrayPlainValuesReader;
 import org.apache.parquet.column.values.plain.PlainValuesReader.DoublePlainValuesReader;
 import org.apache.parquet.column.values.plain.PlainValuesReader.FloatPlainValuesReader;
 import org.apache.parquet.column.values.plain.PlainValuesReader.IntegerPlainValuesReader;
 import org.apache.parquet.column.values.plain.PlainValuesReader.LongPlainValuesReader;
 import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridValuesReader;
+import org.apache.parquet.column.values.rle.ZeroIntegerValuesReader;
 import org.apache.parquet.io.ParquetDecodingException;
 
 /**
  * encoding of the data
  */
 public enum Encoding {
-
   PLAIN {
     @Override
     public ValuesReader getValuesReader(ColumnDescriptor descriptor, ValuesType valuesType) {
       switch (descriptor.getType()) {
-      case BOOLEAN:
-        return new BooleanPlainValuesReader();
-      case BINARY:
-        return new BinaryPlainValuesReader();
-      case FLOAT:
-        return new FloatPlainValuesReader();
-      case DOUBLE:
-        return new DoublePlainValuesReader();
-      case INT32:
-        return new IntegerPlainValuesReader();
-      case INT64:
-        return new LongPlainValuesReader();
-      case INT96:
-        return new FixedLenByteArrayPlainValuesReader(12);
-      case FIXED_LEN_BYTE_ARRAY:
-        return new FixedLenByteArrayPlainValuesReader(descriptor.getTypeLength());
-      default:
-        throw new ParquetDecodingException("no plain reader for type " + descriptor.getType());
+        case BOOLEAN:
+          return new BooleanPlainValuesReader();
+        case BINARY:
+          return new BinaryPlainValuesReader();
+        case FLOAT:
+          return new FloatPlainValuesReader();
+        case DOUBLE:
+          return new DoublePlainValuesReader();
+        case INT32:
+          return new IntegerPlainValuesReader();
+        case INT64:
+          return new LongPlainValuesReader();
+        case INT96:
+          return new FixedLenByteArrayPlainValuesReader(12);
+        case FIXED_LEN_BYTE_ARRAY:
+          return new FixedLenByteArrayPlainValuesReader(descriptor.getTypeLength());
+        default:
+          throw new ParquetDecodingException("no plain reader for type " + descriptor.getType());
       }
     }
 
     @Override
-    public Dictionary initDictionary(ColumnDescriptor descriptor, DictionaryPage dictionaryPage) throws IOException {
+    public Dictionary initDictionary(ColumnDescriptor descriptor, DictionaryPage dictionaryPage)
+        throws IOException {
       switch (descriptor.getType()) {
-      case BINARY:
-        return new PlainBinaryDictionary(dictionaryPage);
-      case FIXED_LEN_BYTE_ARRAY:
-        return new PlainBinaryDictionary(dictionaryPage, descriptor.getTypeLength());
-      case INT96:
-        return new PlainBinaryDictionary(dictionaryPage, 12);
-      case INT64:
-        return new PlainLongDictionary(dictionaryPage);
-      case DOUBLE:
-        return new PlainDoubleDictionary(dictionaryPage);
-      case INT32:
-        return new PlainIntegerDictionary(dictionaryPage);
-      case FLOAT:
-        return new PlainFloatDictionary(dictionaryPage);
-      default:
-        throw new ParquetDecodingException("Dictionary encoding not supported for type: " + descriptor.getType());
+        case BINARY:
+          return new PlainBinaryDictionary(dictionaryPage);
+        case FIXED_LEN_BYTE_ARRAY:
+          return new PlainBinaryDictionary(dictionaryPage, descriptor.getTypeLength());
+        case INT96:
+          return new PlainBinaryDictionary(dictionaryPage, 12);
+        case INT64:
+          return new PlainLongDictionary(dictionaryPage);
+        case DOUBLE:
+          return new PlainDoubleDictionary(dictionaryPage);
+        case INT32:
+          return new PlainIntegerDictionary(dictionaryPage);
+        case FLOAT:
+          return new PlainFloatDictionary(dictionaryPage);
+        default:
+          throw new ParquetDecodingException(
+              "Dictionary encoding not supported for type: " + descriptor.getType());
       }
-
     }
   },
 
@@ -115,7 +114,7 @@ public enum Encoding {
     @Override
     public ValuesReader getValuesReader(ColumnDescriptor descriptor, ValuesType valuesType) {
       int bitWidth = BytesUtils.getWidthFromMaxInt(getMaxLevel(descriptor, valuesType));
-      if(bitWidth == 0) {
+      if (bitWidth == 0) {
         return new ZeroIntegerValuesReader();
       }
       return new RunLengthBitPackingHybridValuesReader(bitWidth);
@@ -126,12 +125,12 @@ public enum Encoding {
     @Override
     public ValuesReader getValuesReader(ColumnDescriptor descriptor, ValuesType valuesType) {
       switch (descriptor.getType()) {
-      case FLOAT:
-        return new ByteStreamSplitValuesReaderForFloat();
-      case DOUBLE:
-        return new ByteStreamSplitValuesReaderForDouble();
-      default:
-        throw new ParquetDecodingException("no byte stream split reader for type " + descriptor.getType());
+        case FLOAT:
+          return new ByteStreamSplitValuesReaderForFloat();
+        case DOUBLE:
+          return new ByteStreamSplitValuesReaderForDouble();
+        default:
+          throw new ParquetDecodingException("no byte stream split reader for type " + descriptor.getType());
       }
     }
   },
@@ -154,12 +153,14 @@ public enum Encoding {
   @Deprecated
   PLAIN_DICTIONARY {
     @Override
-    public ValuesReader getDictionaryBasedValuesReader(ColumnDescriptor descriptor, ValuesType valuesType, Dictionary dictionary) {
+    public ValuesReader getDictionaryBasedValuesReader(
+        ColumnDescriptor descriptor, ValuesType valuesType, Dictionary dictionary) {
       return RLE_DICTIONARY.getDictionaryBasedValuesReader(descriptor, valuesType, dictionary);
     }
 
     @Override
-    public Dictionary initDictionary(ColumnDescriptor descriptor, DictionaryPage dictionaryPage) throws IOException {
+    public Dictionary initDictionary(ColumnDescriptor descriptor, DictionaryPage dictionaryPage)
+        throws IOException {
       return PLAIN.initDictionary(descriptor, dictionaryPage);
     }
 
@@ -167,7 +168,6 @@ public enum Encoding {
     public boolean usesDictionary() {
       return true;
     }
-
   },
 
   /**
@@ -177,8 +177,9 @@ public enum Encoding {
   DELTA_BINARY_PACKED {
     @Override
     public ValuesReader getValuesReader(ColumnDescriptor descriptor, ValuesType valuesType) {
-      if(descriptor.getType() != INT32 && descriptor.getType() != INT64) {
-        throw new ParquetDecodingException("Encoding DELTA_BINARY_PACKED is only supported for type INT32 and INT64");
+      if (descriptor.getType() != INT32 && descriptor.getType() != INT64) {
+        throw new ParquetDecodingException(
+            "Encoding DELTA_BINARY_PACKED is only supported for type INT32 and INT64");
       }
       return new DeltaBinaryPackingValuesReader();
     }
@@ -190,10 +191,10 @@ public enum Encoding {
    */
   DELTA_LENGTH_BYTE_ARRAY {
     @Override
-    public ValuesReader getValuesReader(ColumnDescriptor descriptor,
-        ValuesType valuesType) {
+    public ValuesReader getValuesReader(ColumnDescriptor descriptor, ValuesType valuesType) {
       if (descriptor.getType() != BINARY) {
-        throw new ParquetDecodingException("Encoding DELTA_LENGTH_BYTE_ARRAY is only supported for type BINARY");
+        throw new ParquetDecodingException(
+            "Encoding DELTA_LENGTH_BYTE_ARRAY is only supported for type BINARY");
       }
       return new DeltaLengthByteArrayValuesReader();
     }
@@ -205,10 +206,10 @@ public enum Encoding {
    */
   DELTA_BYTE_ARRAY {
     @Override
-    public ValuesReader getValuesReader(ColumnDescriptor descriptor,
-        ValuesType valuesType) {
+    public ValuesReader getValuesReader(ColumnDescriptor descriptor, ValuesType valuesType) {
       if (descriptor.getType() != BINARY && descriptor.getType() != FIXED_LEN_BYTE_ARRAY) {
-        throw new ParquetDecodingException("Encoding DELTA_BYTE_ARRAY is only supported for type BINARY and FIXED_LEN_BYTE_ARRAY");
+        throw new ParquetDecodingException(
+            "Encoding DELTA_BYTE_ARRAY is only supported for type BINARY and FIXED_LEN_BYTE_ARRAY");
       }
       return new DeltaByteArrayReader();
     }
@@ -218,20 +219,21 @@ public enum Encoding {
    * Dictionary encoding: the ids are encoded using the RLE encoding
    */
   RLE_DICTIONARY {
-
     @Override
-    public ValuesReader getDictionaryBasedValuesReader(ColumnDescriptor descriptor, ValuesType valuesType, Dictionary dictionary) {
+    public ValuesReader getDictionaryBasedValuesReader(
+        ColumnDescriptor descriptor, ValuesType valuesType, Dictionary dictionary) {
       switch (descriptor.getType()) {
-      case BINARY:
-      case FIXED_LEN_BYTE_ARRAY:
-      case INT96:
-      case INT64:
-      case DOUBLE:
-      case INT32:
-      case FLOAT:
-        return new DictionaryValuesReader(dictionary);
-      default:
-        throw new ParquetDecodingException("Dictionary encoding not supported for type: " + descriptor.getType());
+        case BINARY:
+        case FIXED_LEN_BYTE_ARRAY:
+        case INT96:
+        case INT64:
+        case DOUBLE:
+        case INT32:
+        case FLOAT:
+          return new DictionaryValuesReader(dictionary);
+        default:
+          throw new ParquetDecodingException(
+              "Dictionary encoding not supported for type: " + descriptor.getType());
       }
     }
 
@@ -239,25 +241,24 @@ public enum Encoding {
     public boolean usesDictionary() {
       return true;
     }
-
   };
 
   int getMaxLevel(ColumnDescriptor descriptor, ValuesType valuesType) {
     int maxLevel;
     switch (valuesType) {
-    case REPETITION_LEVEL:
-      maxLevel = descriptor.getMaxRepetitionLevel();
-      break;
-    case DEFINITION_LEVEL:
-      maxLevel = descriptor.getMaxDefinitionLevel();
-      break;
-    case VALUES:
-      if(descriptor.getType() == BOOLEAN) {
-        maxLevel = 1;
+      case REPETITION_LEVEL:
+        maxLevel = descriptor.getMaxRepetitionLevel();
         break;
-      }
-    default:
-      throw new ParquetDecodingException("Unsupported encoding for values: " + this);
+      case DEFINITION_LEVEL:
+        maxLevel = descriptor.getMaxDefinitionLevel();
+        break;
+      case VALUES:
+        if (descriptor.getType() == BOOLEAN) {
+          maxLevel = 1;
+          break;
+        }
+      default:
+        throw new ParquetDecodingException("Unsupported encoding for values: " + this);
     }
     return maxLevel;
   }
@@ -271,10 +272,11 @@ public enum Encoding {
 
   /**
    * initializes a dictionary from a page
-   * @param descriptor the column descriptor for the dictionary-encoded column
+   *
+   * @param descriptor     the column descriptor for the dictionary-encoded column
    * @param dictionaryPage a dictionary page
    * @return the corresponding dictionary
-   * @throws IOException if there is an exception while reading the dictionary page
+   * @throws IOException                   if there is an exception while reading the dictionary page
    * @throws UnsupportedOperationException if the encoding is not dictionary based
    */
   public Dictionary initDictionary(ColumnDescriptor descriptor, DictionaryPage dictionaryPage) throws IOException {
@@ -290,7 +292,8 @@ public enum Encoding {
    * @throws UnsupportedOperationException if the encoding is dictionary based
    */
   public ValuesReader getValuesReader(ColumnDescriptor descriptor, ValuesType valuesType) {
-    throw new UnsupportedOperationException("Error decoding " + descriptor + ". " + this.name() + " is dictionary based");
+    throw new UnsupportedOperationException(
+        "Error decoding " + descriptor + ". " + this.name() + " is dictionary based");
   }
 
   /**
@@ -302,8 +305,8 @@ public enum Encoding {
    * @return the proper values reader for the given column
    * @throws UnsupportedOperationException if the encoding is not dictionary based
    */
-  public ValuesReader getDictionaryBasedValuesReader(ColumnDescriptor descriptor, ValuesType valuesType, Dictionary dictionary) {
+  public ValuesReader getDictionaryBasedValuesReader(
+      ColumnDescriptor descriptor, ValuesType valuesType, Dictionary dictionary) {
     throw new UnsupportedOperationException(this.name() + " is not dictionary based");
   }
-
 }

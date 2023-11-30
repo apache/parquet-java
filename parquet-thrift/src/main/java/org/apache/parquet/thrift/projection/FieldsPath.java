@@ -19,7 +19,6 @@
 package org.apache.parquet.thrift.projection;
 
 import java.util.ArrayList;
-
 import org.apache.parquet.thrift.struct.ThriftField;
 import org.apache.parquet.thrift.struct.ThriftType;
 
@@ -76,12 +75,13 @@ public class FieldsPath {
 
   private static boolean isValueFieldOfMap(ThriftField currentField, ThriftField previousField) {
     ThriftType previousType = previousField.getType();
-    return previousType instanceof ThriftType.MapType && ((ThriftType.MapType) previousType).getValue() == currentField;
+    return previousType instanceof ThriftType.MapType
+        && ((ThriftType.MapType) previousType).getValue() == currentField;
   }
 
   private static boolean isKeyFieldOfMap(ThriftField currentField, ThriftField previousField) {
     ThriftType previousType = previousField.getType();
-    return previousType instanceof ThriftType.MapType && ((ThriftType.MapType) previousType).getKey() == currentField;
+    return previousType instanceof ThriftType.MapType
+        && ((ThriftType.MapType) previousType).getKey() == currentField;
   }
-
 }

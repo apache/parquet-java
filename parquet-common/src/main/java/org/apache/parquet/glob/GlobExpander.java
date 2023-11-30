@@ -22,7 +22,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-
 import org.apache.parquet.glob.GlobNode.Atom;
 import org.apache.parquet.glob.GlobNode.GlobNodeSequence;
 import org.apache.parquet.glob.GlobNode.OneOf;
@@ -31,17 +30,17 @@ import org.apache.parquet.glob.GlobNode.OneOf;
  * Implementation of {@link org.apache.parquet.Strings#expandGlob(String)}
  */
 public final class GlobExpander {
-  private GlobExpander()  { }
+  private GlobExpander() {}
 
   /**
    * Expands a string with braces ("{}") into all of its possible permutations.
    * We call anything inside of {} braces a "one-of" group.
-   *
+   * <p>
    * The only special characters in this glob syntax are '}', '{' and ','
-   *
+   * <p>
    * The top-level pattern must not contain any commas, but a "one-of" group separates
    * its elements with commas, and a one-of group may contain sub one-of groups.
-   *
+   * <p>
    * For example:
    * start{a,b,c}end -&gt; startaend, startbend, startcend
    * start{a,{b,c},d} -&gt; startaend, startbend, startcend, startdend
@@ -59,7 +58,7 @@ public final class GlobExpander {
    * Transforms a tree of {@link GlobNode} into a list of all the strings that satisfy
    * this tree.
    */
-  private final static class GlobExpanderImpl implements GlobNode.Visitor<List<String>> {
+  private static final class GlobExpanderImpl implements GlobNode.Visitor<List<String>> {
     private static final GlobExpanderImpl INSTANCE = new GlobExpanderImpl();
 
     private GlobExpanderImpl() {}

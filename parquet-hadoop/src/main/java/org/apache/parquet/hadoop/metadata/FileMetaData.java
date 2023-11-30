@@ -32,7 +32,11 @@ import org.apache.parquet.schema.MessageType;
 public final class FileMetaData implements Serializable {
   private static final long serialVersionUID = 1L;
 
-  public enum EncryptionType {UNENCRYPTED, PLAINTEXT_FOOTER, ENCRYPTED_FOOTER}
+  public enum EncryptionType {
+    UNENCRYPTED,
+    PLAINTEXT_FOOTER,
+    ENCRYPTED_FOOTER
+  }
 
   private final MessageType schema;
   private final Map<String, String> keyValueMetaData;
@@ -42,10 +46,10 @@ public final class FileMetaData implements Serializable {
 
   /**
    * FileMetaData for writers.
-   * @param schema the schema for the file
-   * @param keyValueMetaData the app specific metadata
-   * @param createdBy the description of the library that created the file
    *
+   * @param schema           the schema for the file
+   * @param keyValueMetaData the app specific metadata
+   * @param createdBy        the description of the library that created the file
    * @throws NullPointerException if schema or keyValueMetaData is {@code null}
    */
   public FileMetaData(MessageType schema, Map<String, String> keyValueMetaData, String createdBy) {
@@ -53,20 +57,27 @@ public final class FileMetaData implements Serializable {
   }
 
   @Deprecated
-  public FileMetaData(MessageType schema, Map<String, String> keyValueMetaData, String createdBy,
-                      InternalFileDecryptor fileDecryptor) {
+  public FileMetaData(
+      MessageType schema,
+      Map<String, String> keyValueMetaData,
+      String createdBy,
+      InternalFileDecryptor fileDecryptor) {
     this(schema, keyValueMetaData, createdBy, null, fileDecryptor);
   }
 
   /**
    * FileMetaData for readers (decryptors).
    */
-  public FileMetaData(MessageType schema, Map<String, String> keyValueMetaData, String createdBy,
-                      EncryptionType encryptionType, InternalFileDecryptor fileDecryptor) {
+  public FileMetaData(
+      MessageType schema,
+      Map<String, String> keyValueMetaData,
+      String createdBy,
+      EncryptionType encryptionType,
+      InternalFileDecryptor fileDecryptor) {
     super();
     this.schema = Objects.requireNonNull(schema, "schema cannot be null");
-    this.keyValueMetaData = unmodifiableMap(Objects
-        .requireNonNull(keyValueMetaData, "keyValueMetaData cannot be null"));
+    this.keyValueMetaData =
+        unmodifiableMap(Objects.requireNonNull(keyValueMetaData, "keyValueMetaData cannot be null"));
     this.createdBy = createdBy;
     this.fileDecryptor = fileDecryptor;
     this.encryptionType = encryptionType;

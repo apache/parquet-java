@@ -38,4 +38,3 @@ public class ShowBloomFilterCommandTest extends ParquetFileTest {
     Assert.assertEquals(0, command.run());
   }
 }
-

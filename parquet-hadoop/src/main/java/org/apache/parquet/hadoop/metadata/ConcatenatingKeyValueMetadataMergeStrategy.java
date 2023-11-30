@@ -24,12 +24,12 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- *  Strategy to concatenate if there are multiple values for a given key in metadata.
- *  Note: use this with caution. This is expected to work only for certain use cases.
+ * Strategy to concatenate if there are multiple values for a given key in metadata.
+ * Note: use this with caution. This is expected to work only for certain use cases.
  */
 public class ConcatenatingKeyValueMetadataMergeStrategy implements KeyValueMetadataMergeStrategy {
   private static final String DEFAULT_DELIMITER = ",";
-  
+
   private final String delimiter;
 
   /**
@@ -41,13 +41,13 @@ public class ConcatenatingKeyValueMetadataMergeStrategy implements KeyValueMetad
 
   /**
    * Constructor to use different delimiter for concatenation.
-   * 
+   *
    * @param delim delimiter char sequence.
    */
   public ConcatenatingKeyValueMetadataMergeStrategy(String delim) {
     this.delimiter = delim;
   }
-  
+
   /**
    * @param keyValueMetaData the merged app specific metadata
    */

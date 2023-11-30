@@ -19,9 +19,6 @@
 
 package org.apache.parquet.column.values.bloomfilter;
 
-import org.apache.parquet.Preconditions;
-import org.apache.parquet.io.api.Binary;
-
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -29,6 +26,8 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.IntBuffer;
 import java.util.Arrays;
+import org.apache.parquet.Preconditions;
+import org.apache.parquet.io.api.Binary;
 
 /*
  * This Bloom filter is implemented using block-based Bloom filter algorithm from Putze et al.'s
@@ -82,8 +81,9 @@ public class BlockSplitBloomFilter implements BloomFilter {
 
   // The block-based algorithm needs 8 odd SALT values to calculate eight indexes
   // of bits to set, one per 32-bit word.
-  private static final int[] SALT = {0x47b6137b, 0x44974d91, 0x8824ad5b, 0xa2b7289d,
-    0x705495c7, 0x2df1424b, 0x9efc4947, 0x5c6bfb31};
+  private static final int[] SALT = {
+    0x47b6137b, 0x44974d91, 0x8824ad5b, 0xa2b7289d, 0x705495c7, 0x2df1424b, 0x9efc4947, 0x5c6bfb31
+  };
 
   /**
    * Constructor of block-based Bloom filter.
@@ -100,10 +100,10 @@ public class BlockSplitBloomFilter implements BloomFilter {
   /**
    * Constructor of block-based Bloom filter.
    *
-   * @param numBytes The number of bytes for Bloom filter bitset. The range of num_bytes should be within
-   *                 [DEFAULT_MINIMUM_BYTES, maximumBytes], it will be rounded up/down
-   *                 to lower/upper bound if num_bytes is out of range. It will also be rounded up to a power
-   *                 of 2. It uses XXH64 as its default hash function.
+   * @param numBytes     The number of bytes for Bloom filter bitset. The range of num_bytes should be within
+   *                     [DEFAULT_MINIMUM_BYTES, maximumBytes], it will be rounded up/down
+   *                     to lower/upper bound if num_bytes is out of range. It will also be rounded up to a power
+   *                     of 2. It uses XXH64 as its default hash function.
    * @param maximumBytes The maximum bytes of the Bloom filter.
    */
   public BlockSplitBloomFilter(int numBytes, int maximumBytes) {
@@ -113,7 +113,7 @@ public class BlockSplitBloomFilter implements BloomFilter {
   /**
    * Constructor of block-based Bloom filter.
    *
-   * @param numBytes The number of bytes for Bloom filter bitset
+   * @param numBytes     The number of bytes for Bloom filter bitset
    * @param hashStrategy The hash strategy of Bloom filter.
    */
   private BlockSplitBloomFilter(int numBytes, HashStrategy hashStrategy) {
@@ -123,9 +123,9 @@ public class BlockSplitBloomFilter implements BloomFilter {
   /**
    * Constructor of block-based Bloom filter.
    *
-   * @param numBytes The number of bytes for Bloom filter bitset. The range of num_bytes should be within
-   *                 [minimumBytes, maximumBytes], it will be rounded up/down to lower/upper bound if
-   *                 num_bytes is out of range. It will also be rounded up to a power of 2.
+   * @param numBytes     The number of bytes for Bloom filter bitset. The range of num_bytes should be within
+   *                     [minimumBytes, maximumBytes], it will be rounded up/down to lower/upper bound if
+   *                     num_bytes is out of range. It will also be rounded up to a power of 2.
    * @param minimumBytes The minimum bytes of the Bloom filter.
    * @param maximumBytes The maximum bytes of the Bloom filter.
    * @param hashStrategy The adopted hash strategy of the Bloom filter.
@@ -157,7 +157,6 @@ public class BlockSplitBloomFilter implements BloomFilter {
     }
   }
 
-
   /**
    * Construct the Bloom filter with given bitset, it is used when reconstructing
    * Bloom filter from parquet file. It use XXH64 as its default hash
@@ -173,7 +172,7 @@ public class BlockSplitBloomFilter implements BloomFilter {
    * Construct the Bloom filter with given bitset, it is used when reconstructing
    * Bloom filter from parquet file.
    *
-   * @param bitset The given bitset to construct Bloom filter.
+   * @param bitset       The given bitset to construct Bloom filter.
    * @param hashStrategy The hash strategy Bloom filter apply.
    */
   private BlockSplitBloomFilter(byte[] bitset, HashStrategy hashStrategy) {
@@ -245,8 +244,8 @@ public class BlockSplitBloomFilter implements BloomFilter {
   public void insertHash(long hash) {
     long numBlocks = bitset.length / BYTES_PER_BLOCK;
     long lowHash = hash >>> 32;
-    int blockIndex = (int)((lowHash * numBlocks) >> 32);
-    int key = (int)hash;
+    int blockIndex = (int) ((lowHash * numBlocks) >> 32);
+    int key = (int) hash;
 
     // Calculate mask for bucket.
     int[] mask = setMask(key);
@@ -261,8 +260,8 @@ public class BlockSplitBloomFilter implements BloomFilter {
   public boolean findHash(long hash) {
     long numBlocks = bitset.length / BYTES_PER_BLOCK;
     long lowHash = hash >>> 32;
-    int blockIndex = (int)((lowHash * numBlocks) >> 32);
-    int key = (int)hash;
+    int blockIndex = (int) ((lowHash * numBlocks) >> 32);
+    int key = (int) hash;
 
     // Calculate mask for the tiny Bloom filter.
     int[] mask = setMask(key);
@@ -280,14 +279,12 @@ public class BlockSplitBloomFilter implements BloomFilter {
    *
    * @param n: The number of distinct values.
    * @param p: The false positive probability.
-   *
    * @return optimal number of bits of given n and p.
    */
   public static int optimalNumOfBits(long n, double p) {
-    Preconditions.checkArgument((p > 0.0 && p < 1.0),
-      "FPP should be less than 1.0 and great than 0.0");
+    Preconditions.checkArgument((p > 0.0 && p < 1.0), "FPP should be less than 1.0 and great than 0.0");
     final double m = -8 * n / Math.log(1 - Math.pow(p, 1.0 / 8));
-    int numBits = (int)m ;
+    int numBits = (int) m;
 
     // Handle overflow.
     if (numBits > UPPER_BOUND_BYTES << 3 || m < 0) {
@@ -295,7 +292,7 @@ public class BlockSplitBloomFilter implements BloomFilter {
     }
 
     // Round numBits up to (k * BITS_PER_BLOCK)
-    numBits = (numBits + BITS_PER_BLOCK -1) & ~BITS_PER_BLOCK;
+    numBits = (numBits + BITS_PER_BLOCK - 1) & ~BITS_PER_BLOCK;
 
     if (numBits < (LOWER_BOUND_BYTES << 3)) {
       numBits = LOWER_BOUND_BYTES << 3;
@@ -316,11 +313,11 @@ public class BlockSplitBloomFilter implements BloomFilter {
     }
 
     if (value instanceof Integer) {
-      cacheBuffer.putInt((Integer)value);
+      cacheBuffer.putInt((Integer) value);
     } else if (value instanceof Long) {
-      cacheBuffer.putLong((Long)value);
+      cacheBuffer.putLong((Long) value);
     } else if (value instanceof Float) {
-      cacheBuffer.putFloat((Float)value);
+      cacheBuffer.putFloat((Float) value);
     } else if (value instanceof Double) {
       cacheBuffer.putDouble((Double) value);
     } else {
@@ -338,8 +335,8 @@ public class BlockSplitBloomFilter implements BloomFilter {
     if (object instanceof BlockSplitBloomFilter) {
       BlockSplitBloomFilter that = (BlockSplitBloomFilter) object;
       return Arrays.equals(this.bitset, that.bitset)
-        && this.getAlgorithm() == that.getAlgorithm()
-        && this.hashStrategy == that.hashStrategy;
+          && this.getAlgorithm() == that.getAlgorithm()
+          && this.hashStrategy == that.hashStrategy;
     }
     return false;
   }
@@ -399,21 +396,25 @@ public class BlockSplitBloomFilter implements BloomFilter {
   @Override
   public boolean canMergeFrom(BloomFilter otherBloomFilter) {
     return otherBloomFilter != null
-      && getBitsetSize() == otherBloomFilter.getBitsetSize()
-      && getAlgorithm() == otherBloomFilter.getAlgorithm()
-      && getHashStrategy() == otherBloomFilter.getHashStrategy();
+        && getBitsetSize() == otherBloomFilter.getBitsetSize()
+        && getAlgorithm() == otherBloomFilter.getAlgorithm()
+        && getHashStrategy() == otherBloomFilter.getHashStrategy();
   }
 
   @Override
   public void merge(BloomFilter otherBloomFilter) throws IOException {
-    Preconditions.checkArgument(otherBloomFilter != null,
-      "The BloomFilter to merge shouldn't be null");
-    Preconditions.checkArgument(canMergeFrom(otherBloomFilter),
-      "BloomFilters must have the same size of bitset, hashStrategy and algorithm." +
-        "This BloomFilter's size of bitset is %s , hashStrategy is %s, algorithm is %s ," +
-        "but the other BloomFilter's size of bitset is %s , hashStrategy is %s, algorithm is %s.",
-      getBitsetSize(), getHashStrategy(), getAlgorithm(),
-      otherBloomFilter.getBitsetSize(), otherBloomFilter.getHashStrategy(), otherBloomFilter.getAlgorithm());
+    Preconditions.checkArgument(otherBloomFilter != null, "The BloomFilter to merge shouldn't be null");
+    Preconditions.checkArgument(
+        canMergeFrom(otherBloomFilter),
+        "BloomFilters must have the same size of bitset, hashStrategy and algorithm."
+            + "This BloomFilter's size of bitset is %s , hashStrategy is %s, algorithm is %s ,"
+            + "but the other BloomFilter's size of bitset is %s , hashStrategy is %s, algorithm is %s.",
+        getBitsetSize(),
+        getHashStrategy(),
+        getAlgorithm(),
+        otherBloomFilter.getBitsetSize(),
+        otherBloomFilter.getHashStrategy(),
+        otherBloomFilter.getAlgorithm());
     ByteArrayOutputStream otherOutputStream = new ByteArrayOutputStream();
     otherBloomFilter.writeTo(otherOutputStream);
     byte[] otherBits = otherOutputStream.toByteArray();

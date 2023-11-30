@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -20,14 +20,12 @@ package org.apache.parquet.column.page.mem;
 
 import java.util.Iterator;
 import java.util.Objects;
-
-import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.page.DataPage;
+import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.page.PageReader;
 import org.apache.parquet.io.ParquetDecodingException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 
 public class MemPageReader implements PageReader {
   private static final Logger LOG = LoggerFactory.getLogger(MemPageReader.class);
@@ -63,5 +61,4 @@ public class MemPageReader implements PageReader {
   public DictionaryPage readDictionaryPage() {
     return dictionaryPage;
   }
-
 }

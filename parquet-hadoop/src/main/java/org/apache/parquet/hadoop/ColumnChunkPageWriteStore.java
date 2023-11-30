@@ -27,7 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.zip.CRC32;
-
+import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.ConcatenatingByteArrayCollector;
 import org.apache.parquet.column.ColumnDescriptor;
@@ -52,7 +52,6 @@ import org.apache.parquet.internal.column.columnindex.ColumnIndexBuilder;
 import org.apache.parquet.internal.column.columnindex.OffsetIndexBuilder;
 import org.apache.parquet.io.ParquetEncodingException;
 import org.apache.parquet.schema.MessageType;
-import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -91,7 +90,7 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
 
     private final CRC32 crc;
     boolean pageWriteChecksumEnabled;
-    
+
     private final BlockCipher.Encryptor headerBlockEncryptor;
     private final BlockCipher.Encryptor pageBlockEncryptor;
     private final int rowGroupOrdinal;
@@ -101,16 +100,17 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
     private final byte[] dataPageHeaderAAD;
     private final byte[] fileAAD;
 
-    private ColumnChunkPageWriter(ColumnDescriptor path,
-                                  BytesInputCompressor compressor,
-                                  ByteBufferAllocator allocator,
-                                  int columnIndexTruncateLength,
-                                  boolean pageWriteChecksumEnabled,
-                                  BlockCipher.Encryptor headerBlockEncryptor,
-                                  BlockCipher.Encryptor pageBlockEncryptor,
-                                  byte[] fileAAD,
-                                  int rowGroupOrdinal,
-                                  int columnOrdinal) {
+    private ColumnChunkPageWriter(
+        ColumnDescriptor path,
+        BytesInputCompressor compressor,
+        ByteBufferAllocator allocator,
+        int columnIndexTruncateLength,
+        boolean pageWriteChecksumEnabled,
+        BlockCipher.Encryptor headerBlockEncryptor,
+        BlockCipher.Encryptor pageBlockEncryptor,
+        byte[] fileAAD,
+        int rowGroupOrdinal,
+        int columnOrdinal) {
       this.path = path;
       this.compressor = compressor;
       this.allocator = allocator;
@@ -119,7 +119,7 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
       this.offsetIndexBuilder = OffsetIndexBuilder.getBuilder();
       this.pageWriteChecksumEnabled = pageWriteChecksumEnabled;
       this.crc = pageWriteChecksumEnabled ? new CRC32() : null;
-      
+
       this.headerBlockEncryptor = headerBlockEncryptor;
       this.pageBlockEncryptor = pageBlockEncryptor;
       this.fileAAD = fileAAD;
@@ -127,14 +127,14 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
       this.columnOrdinal = columnOrdinal;
       this.pageOrdinal = -1;
       if (null != headerBlockEncryptor) {
-        dataPageHeaderAAD = AesCipher.createModuleAAD(fileAAD, ModuleType.DataPageHeader, 
-            rowGroupOrdinal, columnOrdinal, 0);
+        dataPageHeaderAAD = AesCipher.createModuleAAD(
+            fileAAD, ModuleType.DataPageHeader, rowGroupOrdinal, columnOrdinal, 0);
       } else {
         dataPageHeaderAAD = null;
       }
       if (null != pageBlockEncryptor) {
-        dataPageAAD = AesCipher.createModuleAAD(fileAAD, ModuleType.DataPage, 
-            rowGroupOrdinal, columnOrdinal, 0);
+        dataPageAAD =
+            AesCipher.createModuleAAD(fileAAD, ModuleType.DataPage, rowGroupOrdinal, columnOrdinal, 0);
       } else {
         dataPageAAD = null;
       }
@@ -142,8 +142,14 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
 
     @Override
     @Deprecated
-    public void writePage(BytesInput bytesInput, int valueCount, Statistics<?> statistics, Encoding rlEncoding,
-        Encoding dlEncoding, Encoding valuesEncoding) throws IOException {
+    public void writePage(
+        BytesInput bytesInput,
+        int valueCount,
+        Statistics<?> statistics,
+        Encoding rlEncoding,
+        Encoding dlEncoding,
+        Encoding valuesEncoding)
+        throws IOException {
       // Setting the builders to the no-op ones so no column/offset indexes will be written for this column chunk
       columnIndexBuilder = ColumnIndexBuilder.getNoOpBuilder();
       offsetIndexBuilder = OffsetIndexBuilder.getNoOpBuilder();
@@ -152,30 +158,31 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
     }
 
     @Override
-    public void writePage(BytesInput bytes,
-                          int valueCount,
-                          int rowCount,
-                          Statistics statistics,
-                          Encoding rlEncoding,
-                          Encoding dlEncoding,
-                          Encoding valuesEncoding) throws IOException {
+    public void writePage(
+        BytesInput bytes,
+        int valueCount,
+        int rowCount,
+        Statistics statistics,
+        Encoding rlEncoding,
+        Encoding dlEncoding,
+        Encoding valuesEncoding)
+        throws IOException {
       pageOrdinal++;
       long uncompressedSize = bytes.size();
       if (uncompressedSize > Integer.MAX_VALUE || uncompressedSize < 0) {
         throw new ParquetEncodingException(
-            "Cannot write page larger than Integer.MAX_VALUE or negative bytes: " +
-                uncompressedSize);
+            "Cannot write page larger than Integer.MAX_VALUE or negative bytes: " + uncompressedSize);
       }
       BytesInput compressedBytes = compressor.compress(bytes);
       if (null != pageBlockEncryptor) {
         AesCipher.quickUpdatePageAAD(dataPageAAD, pageOrdinal);
-        compressedBytes = BytesInput.from(pageBlockEncryptor.encrypt(compressedBytes.toByteArray(), dataPageAAD));
+        compressedBytes =
+            BytesInput.from(pageBlockEncryptor.encrypt(compressedBytes.toByteArray(), dataPageAAD));
       }
       long compressedSize = compressedBytes.size();
       if (compressedSize > Integer.MAX_VALUE) {
         throw new ParquetEncodingException(
-            "Cannot write compressed page larger than Integer.MAX_VALUE bytes: "
-                + compressedSize);
+            "Cannot write compressed page larger than Integer.MAX_VALUE bytes: " + compressedSize);
       }
       tempOutputStream.reset();
       if (null != headerBlockEncryptor) {
@@ -185,27 +192,27 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
         crc.reset();
         crc.update(compressedBytes.toByteArray());
         parquetMetadataConverter.writeDataPageV1Header(
-          (int)uncompressedSize,
-          (int)compressedSize,
-          valueCount,
-          rlEncoding,
-          dlEncoding,
-          valuesEncoding,
-          (int) crc.getValue(),
-          tempOutputStream,
-          headerBlockEncryptor,
-          dataPageHeaderAAD);
+            (int) uncompressedSize,
+            (int) compressedSize,
+            valueCount,
+            rlEncoding,
+            dlEncoding,
+            valuesEncoding,
+            (int) crc.getValue(),
+            tempOutputStream,
+            headerBlockEncryptor,
+            dataPageHeaderAAD);
       } else {
         parquetMetadataConverter.writeDataPageV1Header(
-          (int)uncompressedSize,
-          (int)compressedSize,
-          valueCount,
-          rlEncoding,
-          dlEncoding,
-          valuesEncoding,
-          tempOutputStream,
-          headerBlockEncryptor,
-          dataPageHeaderAAD);
+            (int) uncompressedSize,
+            (int) compressedSize,
+            valueCount,
+            rlEncoding,
+            dlEncoding,
+            valuesEncoding,
+            tempOutputStream,
+            headerBlockEncryptor,
+            dataPageHeaderAAD);
       }
       this.uncompressedLength += uncompressedSize;
       this.compressedLength += compressedSize;
@@ -225,26 +232,28 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
 
     @Override
     public void writePageV2(
-        int rowCount, int nullCount, int valueCount,
-        BytesInput repetitionLevels, BytesInput definitionLevels,
-        Encoding dataEncoding, BytesInput data,
-        Statistics<?> statistics) throws IOException {
+        int rowCount,
+        int nullCount,
+        int valueCount,
+        BytesInput repetitionLevels,
+        BytesInput definitionLevels,
+        Encoding dataEncoding,
+        BytesInput data,
+        Statistics<?> statistics)
+        throws IOException {
       pageOrdinal++;
-      
+
       int rlByteLength = toIntWithCheck(repetitionLevels.size());
       int dlByteLength = toIntWithCheck(definitionLevels.size());
-      int uncompressedSize = toIntWithCheck(
-          data.size() + repetitionLevels.size() + definitionLevels.size()
-      );
+      int uncompressedSize = toIntWithCheck(data.size() + repetitionLevels.size() + definitionLevels.size());
       // TODO: decide if we compress
       BytesInput compressedData = compressor.compress(data);
       if (null != pageBlockEncryptor) {
         AesCipher.quickUpdatePageAAD(dataPageAAD, pageOrdinal);
         compressedData = BytesInput.from(pageBlockEncryptor.encrypt(compressedData.toByteArray(), dataPageAAD));
       }
-      int compressedSize = toIntWithCheck(
-          compressedData.size() + repetitionLevels.size() + definitionLevels.size()
-      );
+      int compressedSize =
+          toIntWithCheck(compressedData.size() + repetitionLevels.size() + definitionLevels.size());
       tempOutputStream.reset();
       if (null != headerBlockEncryptor) {
         AesCipher.quickUpdatePageAAD(dataPageHeaderAAD, pageOrdinal);
@@ -261,31 +270,31 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
           crc.update(compressedData.toByteArray());
         }
         parquetMetadataConverter.writeDataPageV2Header(
-          uncompressedSize,
-          compressedSize,
-          valueCount,
-          nullCount,
-          rowCount,
-          dataEncoding,
-          rlByteLength,
-          dlByteLength,
-          (int) crc.getValue(),
-          tempOutputStream,
-          headerBlockEncryptor,
-          dataPageHeaderAAD);
+            uncompressedSize,
+            compressedSize,
+            valueCount,
+            nullCount,
+            rowCount,
+            dataEncoding,
+            rlByteLength,
+            dlByteLength,
+            (int) crc.getValue(),
+            tempOutputStream,
+            headerBlockEncryptor,
+            dataPageHeaderAAD);
       } else {
         parquetMetadataConverter.writeDataPageV2Header(
-          uncompressedSize,
-          compressedSize,
-          valueCount,
-          nullCount,
-          rowCount,
-          dataEncoding,
-          rlByteLength,
-          dlByteLength,
-          tempOutputStream,
-          headerBlockEncryptor,
-          dataPageHeaderAAD);
+            uncompressedSize,
+            compressedSize,
+            valueCount,
+            nullCount,
+            rowCount,
+            dataEncoding,
+            rlByteLength,
+            dlByteLength,
+            tempOutputStream,
+            headerBlockEncryptor,
+            dataPageHeaderAAD);
       }
       this.uncompressedLength += uncompressedSize;
       this.compressedLength += compressedSize;
@@ -297,23 +306,17 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
 
       // by concatenating before collecting instead of collecting twice,
       // we only allocate one buffer to copy into instead of multiple.
-      buf.collect(
-          BytesInput.concat(
-              BytesInput.from(tempOutputStream),
-              repetitionLevels,
-              definitionLevels,
-              compressedData)
-      );
+      buf.collect(BytesInput.concat(
+          BytesInput.from(tempOutputStream), repetitionLevels, definitionLevels, compressedData));
       dataEncodings.add(dataEncoding);
     }
 
     private int toIntWithCheck(long size) {
       if (size > Integer.MAX_VALUE) {
         throw new ParquetEncodingException(
-            "Cannot write page larger than " + Integer.MAX_VALUE + " bytes: " +
-                size);
+            "Cannot write page larger than " + Integer.MAX_VALUE + " bytes: " + size);
       }
-      return (int)size;
+      return (int) size;
     }
 
     private void mergeColumnStatistics(Statistics<?> statistics) {
@@ -324,7 +327,8 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
       if (statistics == null || statistics.isEmpty()) {
         // The column index and statistics should be invalid if some page statistics are null or empty.
         // See PARQUET-2365 for more details
-        totalStatistics = Statistics.getBuilderForReading(path.getPrimitiveType()).build();
+        totalStatistics =
+            Statistics.getBuilderForReading(path.getPrimitiveType()).build();
         columnIndexBuilder = ColumnIndexBuilder.getNoOpBuilder();
       } else if (totalStatistics == null) {
         // Copying the statistics if it is not initialized yet, so we have the correct typed one
@@ -376,17 +380,25 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
             dataEncodings,
             headerBlockEncryptor,
             rowGroupOrdinal,
-            columnOrdinal, 
+            columnOrdinal,
             fileAAD);
       }
       if (LOG.isDebugEnabled()) {
-        LOG.debug(
-            String.format(
+        LOG.debug(String.format(
                 "written %,dB for %s: %,d values, %,dB raw, %,dB comp, %d pages, encodings: %s",
-                buf.size(), path, totalValueCount, uncompressedLength, compressedLength, pageCount, new HashSet<Encoding>(dataEncodings))
-                + (dictionaryPage != null ? String.format(
-                ", dic { %,d entries, %,dB raw, %,dB comp}",
-                dictionaryPage.getDictionarySize(), dictionaryPage.getUncompressedSize(), dictionaryPage.getDictionarySize())
+                buf.size(),
+                path,
+                totalValueCount,
+                uncompressedLength,
+                compressedLength,
+                pageCount,
+                new HashSet<Encoding>(dataEncodings))
+            + (dictionaryPage != null
+                ? String.format(
+                    ", dic { %,d entries, %,dB raw, %,dB comp}",
+                    dictionaryPage.getDictionarySize(),
+                    dictionaryPage.getUncompressedSize(),
+                    dictionaryPage.getDictionarySize())
                 : ""));
       }
       rlEncodings.clear();
@@ -407,15 +419,19 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
         throw new ParquetEncodingException("Only one dictionary page is allowed");
       }
       BytesInput dictionaryBytes = dictionaryPage.getBytes();
-      int uncompressedSize = (int)dictionaryBytes.size();
+      int uncompressedSize = (int) dictionaryBytes.size();
       BytesInput compressedBytes = compressor.compress(dictionaryBytes);
       if (null != pageBlockEncryptor) {
-        byte[] dictonaryPageAAD = AesCipher.createModuleAAD(fileAAD, ModuleType.DictionaryPage, 
-            rowGroupOrdinal, columnOrdinal, -1);
-        compressedBytes = BytesInput.from(pageBlockEncryptor.encrypt(compressedBytes.toByteArray(), dictonaryPageAAD));
+        byte[] dictonaryPageAAD = AesCipher.createModuleAAD(
+            fileAAD, ModuleType.DictionaryPage, rowGroupOrdinal, columnOrdinal, -1);
+        compressedBytes =
+            BytesInput.from(pageBlockEncryptor.encrypt(compressedBytes.toByteArray(), dictonaryPageAAD));
       }
-      this.dictionaryPage = new DictionaryPage(BytesInput.copy(compressedBytes), uncompressedSize, 
-          dictionaryPage.getDictionarySize(), dictionaryPage.getEncoding());
+      this.dictionaryPage = new DictionaryPage(
+          BytesInput.copy(compressedBytes),
+          uncompressedSize,
+          dictionaryPage.getDictionarySize(),
+          dictionaryPage.getEncoding());
     }
 
     @Override
@@ -429,35 +445,75 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
     }
   }
 
-  private final Map<ColumnDescriptor, ColumnChunkPageWriter> writers = new HashMap<ColumnDescriptor, ColumnChunkPageWriter>();
+  private final Map<ColumnDescriptor, ColumnChunkPageWriter> writers =
+      new HashMap<ColumnDescriptor, ColumnChunkPageWriter>();
   private final MessageType schema;
 
-  public ColumnChunkPageWriteStore(BytesInputCompressor compressor, MessageType schema, ByteBufferAllocator allocator,
-                                   int columnIndexTruncateLength) {
-    this(compressor, schema, allocator, columnIndexTruncateLength,
-      ParquetProperties.DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED);
+  public ColumnChunkPageWriteStore(
+      BytesInputCompressor compressor,
+      MessageType schema,
+      ByteBufferAllocator allocator,
+      int columnIndexTruncateLength) {
+    this(
+        compressor,
+        schema,
+        allocator,
+        columnIndexTruncateLength,
+        ParquetProperties.DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED);
   }
 
-  public ColumnChunkPageWriteStore(BytesInputCompressor compressor, MessageType schema, ByteBufferAllocator allocator,
-      int columnIndexTruncateLength, boolean pageWriteChecksumEnabled) {
+  public ColumnChunkPageWriteStore(
+      BytesInputCompressor compressor,
+      MessageType schema,
+      ByteBufferAllocator allocator,
+      int columnIndexTruncateLength,
+      boolean pageWriteChecksumEnabled) {
     this.schema = schema;
     for (ColumnDescriptor path : schema.getColumns()) {
-      writers.put(path, new ColumnChunkPageWriter(path, compressor, allocator, columnIndexTruncateLength, 
-          pageWriteChecksumEnabled, null, null, null, -1, -1));
+      writers.put(
+          path,
+          new ColumnChunkPageWriter(
+              path,
+              compressor,
+              allocator,
+              columnIndexTruncateLength,
+              pageWriteChecksumEnabled,
+              null,
+              null,
+              null,
+              -1,
+              -1));
     }
   }
-  
-  public ColumnChunkPageWriteStore(BytesInputCompressor compressor, MessageType schema, ByteBufferAllocator allocator,
-                                   int columnIndexTruncateLength, boolean pageWriteChecksumEnabled, InternalFileEncryptor fileEncryptor, int rowGroupOrdinal) {
+
+  public ColumnChunkPageWriteStore(
+      BytesInputCompressor compressor,
+      MessageType schema,
+      ByteBufferAllocator allocator,
+      int columnIndexTruncateLength,
+      boolean pageWriteChecksumEnabled,
+      InternalFileEncryptor fileEncryptor,
+      int rowGroupOrdinal) {
     this.schema = schema;
     if (null == fileEncryptor) {
       for (ColumnDescriptor path : schema.getColumns()) {
-        writers.put(path, new ColumnChunkPageWriter(path, compressor, allocator, columnIndexTruncateLength, 
-            pageWriteChecksumEnabled, null, null, null, -1, -1));
+        writers.put(
+            path,
+            new ColumnChunkPageWriter(
+                path,
+                compressor,
+                allocator,
+                columnIndexTruncateLength,
+                pageWriteChecksumEnabled,
+                null,
+                null,
+                null,
+                -1,
+                -1));
       }
       return;
     }
-    
+
     // Encrypted file
     int columnOrdinal = -1;
     byte[] fileAAD = fileEncryptor.getFileAAD();
@@ -466,15 +522,26 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
       BlockCipher.Encryptor headerBlockEncryptor = null;
       BlockCipher.Encryptor pageBlockEncryptor = null;
       ColumnPath columnPath = ColumnPath.get(path.getPath());
-      
+
       InternalColumnEncryptionSetup columnSetup = fileEncryptor.getColumnSetup(columnPath, true, columnOrdinal);
       if (columnSetup.isEncrypted()) {
         headerBlockEncryptor = columnSetup.getMetaDataEncryptor();
         pageBlockEncryptor = columnSetup.getDataEncryptor();
       }
 
-      writers.put(path,  new ColumnChunkPageWriter(path, compressor, allocator, columnIndexTruncateLength, pageWriteChecksumEnabled,
-          headerBlockEncryptor, pageBlockEncryptor, fileAAD, rowGroupOrdinal, columnOrdinal));
+      writers.put(
+          path,
+          new ColumnChunkPageWriter(
+              path,
+              compressor,
+              allocator,
+              columnIndexTruncateLength,
+              pageWriteChecksumEnabled,
+              headerBlockEncryptor,
+              pageBlockEncryptor,
+              fileAAD,
+              rowGroupOrdinal,
+              columnOrdinal));
     }
   }
 
@@ -494,5 +561,4 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
       pageWriter.writeToFileWriter(writer);
     }
   }
-
 }

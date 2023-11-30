@@ -18,11 +18,10 @@
  */
 package org.apache.parquet.schema;
 
-import org.apache.parquet.io.api.Binary;
-
 import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.Comparator;
+import org.apache.parquet.io.api.Binary;
 
 /**
  * {@link Comparator} implementation that also supports the comparison of the related primitive type to avoid the
@@ -42,7 +41,8 @@ public abstract class PrimitiveComparator<T> implements Comparator<T>, Serializa
   }
 
   public int compare(long l1, long l2) {
-    throw new UnsupportedOperationException("compare(long, long) was called on a non-long comparator: " + toString());
+    throw new UnsupportedOperationException(
+        "compare(long, long) was called on a non-long comparator: " + toString());
   }
 
   public int compare(float f1, float f2) {
@@ -82,7 +82,7 @@ public abstract class PrimitiveComparator<T> implements Comparator<T>, Serializa
     }
   };
 
-  private static abstract class IntComparator extends PrimitiveComparator<Integer> {
+  private abstract static class IntComparator extends PrimitiveComparator<Integer> {
     @Override
     int compareNotNulls(Integer o1, Integer o2) {
       return compare(o1.intValue(), o2.intValue());
@@ -114,7 +114,7 @@ public abstract class PrimitiveComparator<T> implements Comparator<T>, Serializa
     }
   };
 
-  private static abstract class LongComparator extends PrimitiveComparator<Long> {
+  private abstract static class LongComparator extends PrimitiveComparator<Long> {
     @Override
     int compareNotNulls(Long o1, Long o2) {
       return compare(o1.longValue(), o2.longValue());
@@ -180,7 +180,7 @@ public abstract class PrimitiveComparator<T> implements Comparator<T>, Serializa
     }
   };
 
-  private static abstract class BinaryComparator extends PrimitiveComparator<Binary> {
+  private abstract static class BinaryComparator extends PrimitiveComparator<Binary> {
     @Override
     int compareNotNulls(Binary o1, Binary o2) {
       return compareBinary(o1, o2);
@@ -193,17 +193,18 @@ public abstract class PrimitiveComparator<T> implements Comparator<T>, Serializa
     }
   }
 
-  public static final PrimitiveComparator<Binary> UNSIGNED_LEXICOGRAPHICAL_BINARY_COMPARATOR = new BinaryComparator() {
-    @Override
-    int compareBinary(Binary b1, Binary b2) {
-      return Binary.lexicographicCompare(b1, b2);
-    }
+  public static final PrimitiveComparator<Binary> UNSIGNED_LEXICOGRAPHICAL_BINARY_COMPARATOR =
+      new BinaryComparator() {
+        @Override
+        int compareBinary(Binary b1, Binary b2) {
+          return Binary.lexicographicCompare(b1, b2);
+        }
 
-    @Override
-    public String toString() {
-      return "UNSIGNED_LEXICOGRAPHICAL_BINARY_COMPARATOR";
-    }
-  };
+        @Override
+        public String toString() {
+          return "UNSIGNED_LEXICOGRAPHICAL_BINARY_COMPARATOR";
+        }
+      };
 
   /*
    * This comparator is for comparing two signed decimal values represented in twos-complement binary. In case of the

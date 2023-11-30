@@ -19,12 +19,8 @@
 
 package org.apache.parquet.crypto.keytools;
 
-import org.apache.hadoop.conf.Configuration;
-import org.apache.parquet.crypto.KeyAccessDeniedException;
-import org.apache.parquet.crypto.ParquetCryptoRuntimeException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.core.type.TypeReference;
-
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
@@ -32,6 +28,9 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.parquet.crypto.KeyAccessDeniedException;
+import org.apache.parquet.crypto.ParquetCryptoRuntimeException;
 
 /**
  * Typically, KMS systems support in-server key wrapping. Their clients should implement KmsClient interface directly.
@@ -53,13 +52,13 @@ public abstract class LocalWrapKmsClient implements KmsClient {
   private ConcurrentMap<String, byte[]> masterKeyCache;
 
   /**
-   * KMS systems wrap keys by encrypting them by master keys, and attaching additional information (such as the version 
+   * KMS systems wrap keys by encrypting them by master keys, and attaching additional information (such as the version
    * number of the masker key) to the result of encryption. The master key version is required in  key rotation.
    * Currently, the local wrapping mode does not support key rotation (because not all KMS systems allow to fetch a master
    * key by its ID and version number). Still, the local wrapping mode adds a placeholder for the master key version, that will
    * enable support for key rotation in this mode in the future, with appropriate KMS systems. This will also enable backward
    * compatibility, where future readers will be able to extract master key version in the files written by the current code.
-   * 
+   * <p>
    * LocalKeyWrap class writes (and reads) the "key wrap" as a flat json with the following fields:
    * 1. "masterKeyVersion" - a String, with the master key version. In the current version, only one value is allowed - "NO_VERSION".
    * 2. "encryptedKey" - a String, with the key encrypted by the master key (base64-encoded).
@@ -92,8 +91,8 @@ public abstract class LocalWrapKmsClient implements KmsClient {
     private static LocalKeyWrap parse(String wrappedKey) {
       Map<String, String> keyWrapMap = null;
       try {
-        keyWrapMap = OBJECT_MAPPER.readValue(new StringReader(wrappedKey),
-            new TypeReference<Map<String, String>>() {});
+        keyWrapMap = OBJECT_MAPPER.readValue(
+            new StringReader(wrappedKey), new TypeReference<Map<String, String>>() {});
       } catch (IOException e) {
         throw new ParquetCryptoRuntimeException("Failed to parse local key wrap json " + wrappedKey, e);
       }
@@ -113,10 +112,11 @@ public abstract class LocalWrapKmsClient implements KmsClient {
   }
 
   @Override
-  public void initialize(Configuration configuration, String kmsInstanceID, String kmsInstanceURL, String accessToken) {
+  public void initialize(
+      Configuration configuration, String kmsInstanceID, String kmsInstanceURL, String accessToken) {
     this.kmsInstanceID = kmsInstanceID;
     this.kmsInstanceURL = kmsInstanceURL;
-    
+
     masterKeyCache = new ConcurrentHashMap<>();
     hadoopConfiguration = configuration;
     kmsToken = accessToken;
@@ -126,10 +126,10 @@ public abstract class LocalWrapKmsClient implements KmsClient {
 
   @Override
   public String wrapKey(byte[] key, String masterKeyIdentifier) throws KeyAccessDeniedException {
-    byte[] masterKey =  masterKeyCache.computeIfAbsent(masterKeyIdentifier,
-          (k) -> getKeyFromServer(masterKeyIdentifier));
+    byte[] masterKey =
+        masterKeyCache.computeIfAbsent(masterKeyIdentifier, (k) -> getKeyFromServer(masterKeyIdentifier));
     byte[] AAD = masterKeyIdentifier.getBytes(StandardCharsets.UTF_8);
-    String encryptedEncodedKey =  KeyToolkit.encryptKeyLocally(key, masterKey, AAD);
+    String encryptedEncodedKey = KeyToolkit.encryptKeyLocally(key, masterKey, AAD);
     return LocalKeyWrap.createSerialized(encryptedEncodedKey);
   }
 
@@ -138,12 +138,12 @@ public abstract class LocalWrapKmsClient implements KmsClient {
     LocalKeyWrap keyWrap = LocalKeyWrap.parse(wrappedKey);
     String masterKeyVersion = keyWrap.getMasterKeyVersion();
     if (!LOCAL_WRAP_NO_KEY_VERSION.equals(masterKeyVersion)) {
-      throw new ParquetCryptoRuntimeException("Master key versions are not supported for local wrapping: "
-        + masterKeyVersion);
+      throw new ParquetCryptoRuntimeException(
+          "Master key versions are not supported for local wrapping: " + masterKeyVersion);
     }
     String encryptedEncodedKey = keyWrap.getEncryptedKey();
-    byte[] masterKey = masterKeyCache.computeIfAbsent(masterKeyIdentifier,
-        (k) -> getKeyFromServer(masterKeyIdentifier));
+    byte[] masterKey =
+        masterKeyCache.computeIfAbsent(masterKeyIdentifier, (k) -> getKeyFromServer(masterKeyIdentifier));
     byte[] AAD = masterKeyIdentifier.getBytes(StandardCharsets.UTF_8);
     return KeyToolkit.decryptKeyLocally(encryptedEncodedKey, masterKey, AAD);
   }
@@ -154,28 +154,25 @@ public abstract class LocalWrapKmsClient implements KmsClient {
     byte[] key = getMasterKeyFromServer(keyIdentifier);
     int keyLength = key.length;
     if (!(16 == keyLength || 24 == keyLength || 32 == keyLength)) {
-      throw new ParquetCryptoRuntimeException( "Wrong length: "+ keyLength +
-          " of AES key: "  + keyIdentifier);
+      throw new ParquetCryptoRuntimeException("Wrong length: " + keyLength + " of AES key: " + keyIdentifier);
     }
     return key;
   }
 
   /**
    * Get master key from the remote KMS server.
-   * 
+   * <p>
    * If your KMS client code throws runtime exceptions related to access/permission problems
    * (such as Hadoop AccessControlException), catch them and throw the KeyAccessDeniedException.
-   * 
+   *
    * @param masterKeyIdentifier: a string that uniquely identifies the master key in a KMS instance
    * @return master key bytes
    * @throws KeyAccessDeniedException unauthorized to get the master key
    */
-  protected abstract byte[] getMasterKeyFromServer(String masterKeyIdentifier) 
-      throws KeyAccessDeniedException;
+  protected abstract byte[] getMasterKeyFromServer(String masterKeyIdentifier) throws KeyAccessDeniedException;
 
   /**
    * Pass configuration with KMS-specific parameters.
    */
-  protected abstract void initializeInternal() 
-      throws KeyAccessDeniedException;
+  protected abstract void initializeInternal() throws KeyAccessDeniedException;
 }

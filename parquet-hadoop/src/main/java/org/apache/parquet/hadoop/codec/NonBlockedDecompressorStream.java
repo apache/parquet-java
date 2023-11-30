@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -20,7 +20,6 @@ package org.apache.parquet.hadoop.codec;
 
 import java.io.IOException;
 import java.io.InputStream;
-
 import org.apache.hadoop.io.compress.Decompressor;
 import org.apache.hadoop.io.compress.DecompressorStream;
 
@@ -31,27 +30,28 @@ import org.apache.hadoop.io.compress.DecompressorStream;
  */
 public class NonBlockedDecompressorStream extends DecompressorStream {
   private boolean inputHandled;
-  
-  public NonBlockedDecompressorStream(InputStream stream, Decompressor decompressor, int bufferSize) throws IOException {
-	super(stream, decompressor, bufferSize);
+
+  public NonBlockedDecompressorStream(InputStream stream, Decompressor decompressor, int bufferSize)
+      throws IOException {
+    super(stream, decompressor, bufferSize);
   }
-  
+
   @Override
   public int read(byte[] b, int off, int len) throws IOException {
-	if (!inputHandled) {
-	  // Send all the compressed input to the decompressor.
-	  while (true) {
-		int compressedBytes = getCompressedData();
-		if (compressedBytes == -1) break;
-		decompressor.setInput(buffer, 0, compressedBytes);
-	  }
-	  inputHandled = true;
-	}
-	
-	int decompressedBytes = decompressor.decompress(b, off, len);
-	if (decompressor.finished()) {
-	  decompressor.reset();
-	}
-	return decompressedBytes;
+    if (!inputHandled) {
+      // Send all the compressed input to the decompressor.
+      while (true) {
+        int compressedBytes = getCompressedData();
+        if (compressedBytes == -1) break;
+        decompressor.setInput(buffer, 0, compressedBytes);
+      }
+      inputHandled = true;
+    }
+
+    int decompressedBytes = decompressor.decompress(b, off, len);
+    if (decompressor.finished()) {
+      decompressor.reset();
+    }
+    return decompressedBytes;
   }
 }

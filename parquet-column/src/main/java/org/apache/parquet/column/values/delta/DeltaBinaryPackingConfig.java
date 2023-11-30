@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -18,13 +18,11 @@
  */
 package org.apache.parquet.column.values.delta;
 
-
+import java.io.IOException;
+import java.io.InputStream;
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.BytesUtils;
-
-import java.io.IOException;
-import java.io.InputStream;
 
 /**
  * Config for delta binary packing
@@ -43,13 +41,11 @@ class DeltaBinaryPackingConfig {
   }
 
   public static DeltaBinaryPackingConfig readConfig(InputStream in) throws IOException {
-    return new DeltaBinaryPackingConfig(BytesUtils.readUnsignedVarInt(in),
-            BytesUtils.readUnsignedVarInt(in));
+    return new DeltaBinaryPackingConfig(BytesUtils.readUnsignedVarInt(in), BytesUtils.readUnsignedVarInt(in));
   }
 
   public BytesInput toBytesInput() {
     return BytesInput.concat(
-            BytesInput.fromUnsignedVarInt(blockSizeInValues),
-            BytesInput.fromUnsignedVarInt(miniBlockNumInABlock));
+        BytesInput.fromUnsignedVarInt(blockSizeInValues), BytesInput.fromUnsignedVarInt(miniBlockNumInABlock));
   }
 }

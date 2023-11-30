@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.filter2.predicate;
 
+import java.util.Objects;
 import org.apache.parquet.filter2.predicate.FilterPredicate.Visitor;
 import org.apache.parquet.filter2.predicate.Operators.And;
 import org.apache.parquet.filter2.predicate.Operators.Eq;
@@ -33,13 +34,11 @@ import org.apache.parquet.filter2.predicate.Operators.NotIn;
 import org.apache.parquet.filter2.predicate.Operators.Or;
 import org.apache.parquet.filter2.predicate.Operators.UserDefined;
 
-import java.util.Objects;
-
 /**
  * Converts a {@link FilterPredicate} to its logical inverse.
  * The returned predicate should be equivalent to not(p), but without
  * the use of a not() operator.
- *
+ * <p>
  * See also {@link LogicalInverseRewriter}, which can remove the use
  * of all not() operators without inverting the overall predicate.
  */
@@ -109,12 +108,13 @@ public final class LogicalInverter implements Visitor<FilterPredicate> {
   }
 
   @Override
-  public <T extends Comparable<T>,  U extends UserDefinedPredicate<T>> FilterPredicate visit(UserDefined<T, U> udp) {
+  public <T extends Comparable<T>, U extends UserDefinedPredicate<T>> FilterPredicate visit(UserDefined<T, U> udp) {
     return new LogicalNotUserDefined<>(udp);
   }
 
   @Override
-  public <T extends Comparable<T>,  U extends UserDefinedPredicate<T>> FilterPredicate visit(LogicalNotUserDefined<T, U> udp) {
+  public <T extends Comparable<T>, U extends UserDefinedPredicate<T>> FilterPredicate visit(
+      LogicalNotUserDefined<T, U> udp) {
     return udp.getUserDefined();
   }
 }

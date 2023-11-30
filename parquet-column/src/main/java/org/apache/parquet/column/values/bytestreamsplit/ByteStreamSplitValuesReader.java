@@ -18,11 +18,10 @@
  */
 package org.apache.parquet.column.values.bytestreamsplit;
 
+import java.io.IOException;
 import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.column.values.ValuesReader;
 import org.apache.parquet.io.ParquetDecodingException;
-
-import java.io.IOException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,8 +39,7 @@ public abstract class ByteStreamSplitValuesReader extends ValuesReader {
     this.valuesCount = 0;
   }
 
-  protected void gatherElementDataFromStreams(byte[] gatheredData)
-          throws ParquetDecodingException {
+  protected void gatherElementDataFromStreams(byte[] gatheredData) throws ParquetDecodingException {
     if (gatheredData.length != elementSizeInBytes) {
       throw new ParquetDecodingException("gatherData buffer is not of the expected size.");
     }
@@ -55,7 +53,8 @@ public abstract class ByteStreamSplitValuesReader extends ValuesReader {
   }
 
   @Override
-  public void initFromPage(int valuesCount, ByteBufferInputStream stream) throws ParquetDecodingException, IOException {
+  public void initFromPage(int valuesCount, ByteBufferInputStream stream)
+      throws ParquetDecodingException, IOException {
     LOG.debug("init from page at offset {} for length {}", stream.position(), stream.available());
 
     // ByteStreamSplitValuesWriter does not write number of encoded values to the stream. As the parquet
@@ -63,8 +62,8 @@ public abstract class ByteStreamSplitValuesReader extends ValuesReader {
     // by dividing the number of bytes in the stream by the size of each element.
     if (stream.available() % elementSizeInBytes != 0) {
       String errorMessage = String.format(
-              "Invalid ByteStreamSplit stream, total length: %d bytes, element size: %d bytes.",
-              stream.available(), elementSizeInBytes);
+          "Invalid ByteStreamSplit stream, total length: %d bytes, element size: %d bytes.",
+          stream.available(), elementSizeInBytes);
       throw new ParquetDecodingException(errorMessage);
     }
     this.valuesCount = stream.available() / elementSizeInBytes;
@@ -72,8 +71,8 @@ public abstract class ByteStreamSplitValuesReader extends ValuesReader {
     // The input valuesCount includes number of nulls. It is used for an upperbound check only.
     if (valuesCount < this.valuesCount) {
       String errorMessage = String.format(
-              "Invalid ByteStreamSplit stream, num values upper bound (w/ nulls): %d, num encoded values: %d",
-              valuesCount, this.valuesCount);
+          "Invalid ByteStreamSplit stream, num values upper bound (w/ nulls): %d, num encoded values: %d",
+          valuesCount, this.valuesCount);
       throw new ParquetDecodingException(errorMessage);
     }
 
@@ -84,8 +83,8 @@ public abstract class ByteStreamSplitValuesReader extends ValuesReader {
     // Eagerly read the data for each stream.
     final int numRead = stream.read(byteStreamData, 0, totalSizeInBytes);
     if (numRead != totalSizeInBytes) {
-      String errorMessage = String.format("Failed to read requested number of bytes. Expected: %d. Read %d.",
-              totalSizeInBytes, numRead);
+      String errorMessage = String.format(
+          "Failed to read requested number of bytes. Expected: %d. Read %d.", totalSizeInBytes, numRead);
       throw new ParquetDecodingException(errorMessage);
     }
 
@@ -101,11 +100,10 @@ public abstract class ByteStreamSplitValuesReader extends ValuesReader {
   public void skip(int n) {
     if (n < 0 || indexInStream + n > valuesCount) {
       String errorMessage = String.format(
-              "Cannot skip this many elements. Current index: %d. Skip %d. Total number of elements: %d",
-              indexInStream, n, valuesCount);
+          "Cannot skip this many elements. Current index: %d. Skip %d. Total number of elements: %d",
+          indexInStream, n, valuesCount);
       throw new ParquetDecodingException(errorMessage);
     }
     indexInStream += n;
   }
-
 }

@@ -22,17 +22,16 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-
 import org.apache.parquet.glob.GlobNode.Atom;
 import org.apache.parquet.glob.GlobNode.GlobNodeSequence;
 import org.apache.parquet.glob.GlobNode.OneOf;
 
 final class GlobParser {
-  private GlobParser() { }
+  private GlobParser() {}
 
   /**
    * Parse a String into a {@link GlobNodeSequence}
-   *
+   * <p>
    * See {@link org.apache.parquet.Strings#expandGlob(String)}
    */
   public static GlobNodeSequence parse(String pattern) {
@@ -77,8 +76,8 @@ final class GlobParser {
           if (unmatchedBraces == 0) {
             // commas not allowed in the top level expression
             // TODO: maybe turn this check off?
-            throw new GlobParseException("Unexpected comma outside of a {} group:\n"
-                + annotateMessage(pattern, i));
+            throw new GlobParseException(
+                "Unexpected comma outside of a {} group:\n" + annotateMessage(pattern, i));
           }
           break;
         case '{':
@@ -91,8 +90,7 @@ final class GlobParser {
         case '}':
           unmatchedBraces--;
           if (unmatchedBraces < 0) {
-            throw new GlobParseException("Unexpected closing }:\n"
-                + annotateMessage(pattern, i));
+            throw new GlobParseException("Unexpected closing }:\n" + annotateMessage(pattern, i));
           }
           if (unmatchedBraces == 0) {
             // grab everything from the end of the last group up to here,
@@ -173,8 +171,7 @@ final class GlobParser {
         case '}':
           unmatchedBraces--;
           if (unmatchedBraces < 0) {
-            throw new GlobParseException("Unexpected closing }:\n"
-                + annotateMessage(pattern, i));
+            throw new GlobParseException("Unexpected closing }:\n" + annotateMessage(pattern, i));
           }
           break;
       }
@@ -211,8 +208,7 @@ final class GlobParser {
   }
 
   public static class GlobParseException extends RuntimeException {
-    public GlobParseException() {
-    }
+    public GlobParseException() {}
 
     public GlobParseException(String message) {
       super(message);

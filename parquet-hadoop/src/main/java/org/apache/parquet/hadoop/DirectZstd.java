@@ -17,28 +17,27 @@
  */
 package org.apache.parquet.hadoop;
 
+import static org.apache.parquet.hadoop.codec.ZstandardCodec.DEFAULTPARQUET_COMPRESS_ZSTD_WORKERS;
+import static org.apache.parquet.hadoop.codec.ZstandardCodec.DEFAULT_PARQUET_COMPRESS_ZSTD_BUFFERPOOL_ENABLED;
+import static org.apache.parquet.hadoop.codec.ZstandardCodec.DEFAULT_PARQUET_COMPRESS_ZSTD_LEVEL;
+import static org.apache.parquet.hadoop.codec.ZstandardCodec.PARQUET_COMPRESS_ZSTD_BUFFERPOOL_ENABLED;
+import static org.apache.parquet.hadoop.codec.ZstandardCodec.PARQUET_COMPRESS_ZSTD_LEVEL;
+import static org.apache.parquet.hadoop.codec.ZstandardCodec.PARQUET_COMPRESS_ZSTD_WORKERS;
+
 import com.github.luben.zstd.BufferPool;
 import com.github.luben.zstd.NoPool;
 import com.github.luben.zstd.RecyclingBufferPool;
 import com.github.luben.zstd.Zstd;
 import com.github.luben.zstd.ZstdOutputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.conf.HadoopParquetConfiguration;
 import org.apache.parquet.conf.ParquetConfiguration;
 import org.apache.parquet.hadoop.codec.ZstdDecompressorStream;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
-
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-
-import static org.apache.parquet.hadoop.codec.ZstandardCodec.DEFAULT_PARQUET_COMPRESS_ZSTD_BUFFERPOOL_ENABLED;
-import static org.apache.parquet.hadoop.codec.ZstandardCodec.DEFAULT_PARQUET_COMPRESS_ZSTD_LEVEL;
-import static org.apache.parquet.hadoop.codec.ZstandardCodec.DEFAULTPARQUET_COMPRESS_ZSTD_WORKERS;
-import static org.apache.parquet.hadoop.codec.ZstandardCodec.PARQUET_COMPRESS_ZSTD_BUFFERPOOL_ENABLED;
-import static org.apache.parquet.hadoop.codec.ZstandardCodec.PARQUET_COMPRESS_ZSTD_LEVEL;
-import static org.apache.parquet.hadoop.codec.ZstandardCodec.PARQUET_COMPRESS_ZSTD_WORKERS;
 
 /**
  * Utility class to support creating compressor and decompressor instances for the ZStandard codec. It is implemented in
@@ -57,10 +56,10 @@ class DirectZstd {
 
   static CodecFactory.BytesCompressor createCompressor(ParquetConfiguration conf, int pageSize) {
     return new ZstdCompressor(
-      getPool(conf),
-      conf.getInt(PARQUET_COMPRESS_ZSTD_LEVEL, DEFAULT_PARQUET_COMPRESS_ZSTD_LEVEL),
-      conf.getInt(PARQUET_COMPRESS_ZSTD_WORKERS, DEFAULTPARQUET_COMPRESS_ZSTD_WORKERS),
-      pageSize);
+        getPool(conf),
+        conf.getInt(PARQUET_COMPRESS_ZSTD_LEVEL, DEFAULT_PARQUET_COMPRESS_ZSTD_LEVEL),
+        conf.getInt(PARQUET_COMPRESS_ZSTD_WORKERS, DEFAULTPARQUET_COMPRESS_ZSTD_WORKERS),
+        pageSize);
   }
 
   static CodecFactory.BytesDecompressor createDecompressor(Configuration conf) {
@@ -117,13 +116,15 @@ class DirectZstd {
     public BytesInput decompress(BytesInput bytes, int uncompressedSize) throws IOException {
       // Since BytesInput does not support direct memory this implementation is heap based
       try (ZstdDecompressorStream decompressorStream = new ZstdDecompressorStream(bytes.toInputStream(), pool)) {
-        // We need to copy the bytes from the input stream, so we can close it here (BytesInput does not support closing)
+        // We need to copy the bytes from the input stream, so we can close it here (BytesInput does not support
+        // closing)
         return BytesInput.copy(BytesInput.from(decompressorStream, uncompressedSize));
       }
     }
 
     @Override
-    public void decompress(ByteBuffer input, int compressedSize, ByteBuffer output, int uncompressedSize) throws IOException {
+    public void decompress(ByteBuffer input, int compressedSize, ByteBuffer output, int uncompressedSize)
+        throws IOException {
       Zstd.decompress(output, input);
     }
 
@@ -144,7 +145,8 @@ class DirectZstd {
   }
 
   private static BufferPool getPool(ParquetConfiguration conf) {
-    if (conf.getBoolean(PARQUET_COMPRESS_ZSTD_BUFFERPOOL_ENABLED, DEFAULT_PARQUET_COMPRESS_ZSTD_BUFFERPOOL_ENABLED)) {
+    if (conf.getBoolean(
+        PARQUET_COMPRESS_ZSTD_BUFFERPOOL_ENABLED, DEFAULT_PARQUET_COMPRESS_ZSTD_BUFFERPOOL_ENABLED)) {
       return RecyclingBufferPool.INSTANCE;
     } else {
       return NoPool.INSTANCE;

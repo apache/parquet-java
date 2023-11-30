@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -20,17 +20,15 @@ package org.apache.parquet.thrift.pig;
 
 import java.io.IOException;
 import java.util.Arrays;
-
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.OutputFormat;
 import org.apache.hadoop.mapreduce.RecordWriter;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
-import org.apache.pig.StoreFunc;
-import org.apache.pig.data.Tuple;
-
 import org.apache.parquet.hadoop.ParquetOutputFormat;
 import org.apache.parquet.io.ParquetEncodingException;
+import org.apache.pig.StoreFunc;
+import org.apache.pig.data.Tuple;
 
 /**
  * To store in Pig using a thrift class
@@ -45,7 +43,8 @@ public class ParquetThriftStorer extends StoreFunc {
 
   public ParquetThriftStorer(String[] params) {
     if (params == null || params.length != 1) {
-      throw new IllegalArgumentException("required the thrift class name in parameter. Got " + Arrays.toString(params) + " instead");
+      throw new IllegalArgumentException(
+          "required the thrift class name in parameter. Got " + Arrays.toString(params) + " instead");
     }
     className = params[0];
   }
@@ -61,7 +60,7 @@ public class ParquetThriftStorer extends StoreFunc {
   /**
    * {@inheritDoc}
    */
-  @SuppressWarnings({ "rawtypes", "unchecked" }) // that's how the base class is defined
+  @SuppressWarnings({"rawtypes", "unchecked"}) // that's how the base class is defined
   @Override
   public void prepareToWrite(RecordWriter recordWriter) throws IOException {
     this.recordWriter = recordWriter;
@@ -86,5 +85,4 @@ public class ParquetThriftStorer extends StoreFunc {
   public void setStoreLocation(String location, Job job) throws IOException {
     FileOutputFormat.setOutputPath(job, new Path(location));
   }
-
 }
