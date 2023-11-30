@@ -29,6 +29,7 @@ import org.apache.parquet.cli.BaseCommand;
 import org.apache.parquet.hadoop.util.ColumnPruner;
 import org.slf4j.Logger;
 
+@Deprecated
 @Parameters(
     commandDescription = "(Deprecated: will be removed in 2.0.0, use rewrite command instead) "
         + "Prune column(s) in a Parquet file and save it to a new file. "
