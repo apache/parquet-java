@@ -28,7 +28,7 @@ public class MainTest {
 
   @Test
   public void mainTest() throws Exception {
-    ToolRunner.run(new Configuration(), new Main(LoggerFactory.getLogger(MainTest.class)), new String[]{});
+    ToolRunner.run(new Configuration(), new Main(LoggerFactory.getLogger(MainTest.class)), new String[] {});
     Assert.assertTrue("we simply verify there are no errors here", true);
   }
 }

@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -36,14 +36,14 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
 import org.apache.parquet.column.ColumnReader;
 import org.apache.parquet.filter.ColumnPredicates;
 import org.apache.parquet.filter.ColumnRecordFilter;
 import org.apache.parquet.filter.RecordFilter;
 import org.apache.parquet.filter.UnboundRecordFilter;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -60,9 +60,7 @@ public class TestSpecificInputOutputFormat {
         .setYear(2014 + i)
         .setOptionalExtra(LeatherTrim.newBuilder().setColour("black").build())
         .setRegistration("California");
-    Engine.Builder engineBuilder = Engine.newBuilder()
-        .setCapacity(85.0f)
-        .setHasTurboCharger(false);
+    Engine.Builder engineBuilder = Engine.newBuilder().setCapacity(85.0f).setHasTurboCharger(false);
     if (i % 2 == 0) {
       engineBuilder.setType(EngineType.ELECTRIC);
     } else {
@@ -73,7 +71,8 @@ public class TestSpecificInputOutputFormat {
       List<Service> serviceList = Lists.newArrayList();
       serviceList.add(Service.newBuilder()
           .setDate(1374084640)
-          .setMechanic("Elon Musk").build());
+          .setMechanic("Elon Musk")
+          .build());
       carBuilder.setServiceHistory(serviceList);
     }
     return carBuilder.build();
@@ -82,7 +81,7 @@ public class TestSpecificInputOutputFormat {
   public static class MyMapper extends Mapper<LongWritable, Text, Void, Car> {
 
     @Override
-    public void run(Context context) throws IOException ,InterruptedException {
+    public void run(Context context) throws IOException, InterruptedException {
       for (int i = 0; i < 10; i++) {
         context.write(null, nextRecord(i));
       }
@@ -91,27 +90,23 @@ public class TestSpecificInputOutputFormat {
 
   public static class MyMapper2 extends Mapper<Void, Car, Void, Car> {
     @Override
-    protected void map(Void key, Car car, Context context) throws IOException ,InterruptedException {
+    protected void map(Void key, Car car, Context context) throws IOException, InterruptedException {
       // Note: Car can be null because of predicate pushdown defined by an UnboundedRecordFilter (see below)
       if (car != null) {
         context.write(null, car);
       }
     }
-
   }
 
-  public static class MyMapperShort extends
-      Mapper<Void, ShortCar, Void, ShortCar> {
+  public static class MyMapperShort extends Mapper<Void, ShortCar, Void, ShortCar> {
     @Override
-    protected void map(Void key, ShortCar car, Context context)
-        throws IOException, InterruptedException {
+    protected void map(Void key, ShortCar car, Context context) throws IOException, InterruptedException {
       // Note: Car can be null because of predicate pushdown defined by an
       // UnboundedRecordFilter (see below)
       if (car != null) {
         context.write(null, car);
       }
     }
-
   }
 
   public static class ElectricCarFilter implements UnboundRecordFilter {
@@ -155,7 +150,7 @@ public class TestSpecificInputOutputFormat {
       waitForJob(job);
     }
   }
-  
+
   @Test
   public void testReadWrite() throws Exception {
 
@@ -166,13 +161,13 @@ public class TestSpecificInputOutputFormat {
     AvroParquetInputFormat.setUnboundRecordFilter(job, ElectricCarFilter.class);
 
     // Test schema projection by dropping the optional extras
-    Schema projection = Schema.createRecord(Car.SCHEMA$.getName(),
-        Car.SCHEMA$.getDoc(), Car.SCHEMA$.getNamespace(), false);
+    Schema projection =
+        Schema.createRecord(Car.SCHEMA$.getName(), Car.SCHEMA$.getDoc(), Car.SCHEMA$.getNamespace(), false);
     List<Schema.Field> fields = Lists.newArrayList();
     for (Schema.Field field : Car.SCHEMA$.getFields()) {
       if (!"optionalExtra".equals(field.name())) {
-        fields.add(new Schema.Field(field.name(), field.schema(), field.doc(),
-            field.defaultVal(), field.order()));
+        fields.add(
+            new Schema.Field(field.name(), field.schema(), field.doc(), field.defaultVal(), field.order()));
       }
     }
     projection.setFields(fields);
@@ -187,9 +182,8 @@ public class TestSpecificInputOutputFormat {
 
     waitForJob(job);
 
-    final Path mapperOutput = new Path(outputPath.toString(),
-        "part-m-00000.parquet");
-    try(final AvroParquetReader<Car> out = new AvroParquetReader<>(mapperOutput)) {
+    final Path mapperOutput = new Path(outputPath.toString(), "part-m-00000.parquet");
+    try (final AvroParquetReader<Car> out = new AvroParquetReader<>(mapperOutput)) {
       Car car;
       Car previousCar = null;
       int lineNumber = 0;
@@ -225,14 +219,14 @@ public class TestSpecificInputOutputFormat {
 
     // Test schema projection by dropping the engine, year, and vin (like ShortCar),
     // but making make optional (unlike ShortCar)
-    Schema projection = Schema.createRecord(Car.SCHEMA$.getName(),
-        Car.SCHEMA$.getDoc(), Car.SCHEMA$.getNamespace(), false);
+    Schema projection =
+        Schema.createRecord(Car.SCHEMA$.getName(), Car.SCHEMA$.getDoc(), Car.SCHEMA$.getNamespace(), false);
     List<Schema.Field> fields = Lists.newArrayList();
     for (Schema.Field field : Car.SCHEMA$.getFields()) {
       // No make!
       if ("engine".equals(field.name()) || "year".equals(field.name()) || "vin".equals(field.name())) {
-        fields.add(new Schema.Field(field.name(), field.schema(), field.doc(),
-            field.defaultVal(), field.order()));
+        fields.add(
+            new Schema.Field(field.name(), field.schema(), field.doc(), field.defaultVal(), field.order()));
       }
     }
     projection.setFields(fields);
@@ -249,7 +243,7 @@ public class TestSpecificInputOutputFormat {
     waitForJob(job);
 
     final Path mapperOutput = new Path(outputPath.toString(), "part-m-00000.parquet");
-    try(final AvroParquetReader<ShortCar> out = new AvroParquetReader<>(mapperOutput)) {
+    try (final AvroParquetReader<ShortCar> out = new AvroParquetReader<>(mapperOutput)) {
       ShortCar car;
       int lineNumber = 0;
       while ((car = out.read()) != null) {

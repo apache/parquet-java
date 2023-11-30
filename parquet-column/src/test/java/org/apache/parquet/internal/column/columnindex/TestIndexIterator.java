@@ -20,13 +20,11 @@ package org.apache.parquet.internal.column.columnindex;
 
 import static org.junit.Assert.assertArrayEquals;
 
-import java.util.Arrays;
-import java.util.PrimitiveIterator;
-
-import org.junit.Test;
-
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntList;
+import java.util.Arrays;
+import java.util.PrimitiveIterator;
+import org.junit.Test;
 
 /**
  * Unit test for {@link IndexIterator}.
@@ -57,7 +55,9 @@ public class TestIndexIterator {
     actualIt.forEachRemaining((int value) -> actualList.add(value));
     int[] actualValues = actualList.toIntArray();
     assertArrayEquals(
-        "ExpectedValues: " + Arrays.toString(expectedValues) + " ActualValues: " + Arrays.toString(actualValues),
-        expectedValues, actualValues);
+        "ExpectedValues: " + Arrays.toString(expectedValues) + " ActualValues: "
+            + Arrays.toString(actualValues),
+        expectedValues,
+        actualValues);
   }
 }

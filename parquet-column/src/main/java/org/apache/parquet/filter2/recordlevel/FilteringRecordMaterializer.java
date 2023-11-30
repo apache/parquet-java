@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -26,9 +26,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
-
-import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.filter2.recordlevel.IncrementallyUpdatedFilterPredicate.ValueInspector;
+import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.io.PrimitiveColumnIO;
 import org.apache.parquet.io.api.GroupConverter;
 import org.apache.parquet.io.api.RecordMaterializer;
@@ -65,15 +64,17 @@ public class FilteringRecordMaterializer<T> extends RecordMaterializer<T> {
     Map<List<Integer>, PrimitiveColumnIO> columnIOsByIndexFieldPath = new HashMap<>();
 
     for (PrimitiveColumnIO c : columnIOs) {
-      List<Integer> indexFieldPath = Arrays.stream(c.getIndexFieldPath())
-          .boxed().collect(Collectors.toList());
+      List<Integer> indexFieldPath =
+          Arrays.stream(c.getIndexFieldPath()).boxed().collect(Collectors.toList());
       columnIOsByIndexFieldPath.put(indexFieldPath, c);
     }
 
     // create a proxy for the delegate's root converter
     this.rootConverter = new FilteringGroupConverter(
-        delegate.getRootConverter(), Collections.emptyList(),
-        valueInspectorsByColumn, columnIOsByIndexFieldPath);
+        delegate.getRootConverter(),
+        Collections.emptyList(),
+        valueInspectorsByColumn,
+        columnIOsByIndexFieldPath);
   }
 
   @Override

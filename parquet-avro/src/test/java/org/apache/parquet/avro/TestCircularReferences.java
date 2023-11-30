@@ -6,16 +6,15 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.apache.parquet.avro;
 
 import java.io.File;
@@ -210,7 +209,7 @@ public class TestCircularReferences {
         long id = getId(value, schema);
 
         // keep track of this for later references
-        //references.put(id, value);
+        // references.put(id, value);
         ids.put(value, id);
 
         return value;
@@ -244,7 +243,6 @@ public class TestCircularReferences {
         if (id != null) {
           if (references.containsKey(id)) {
             record.put(refField.pos(), references.get(id));
-
           } else {
             List<Callback> callbacks = callbacksById.get(id);
             if (callbacks == null) {
@@ -327,17 +325,14 @@ public class TestCircularReferences {
     Referenceable idRef = new Referenceable("id");
 
     Schema parentRefSchema = Schema.createUnion(
-        Schema.create(Schema.Type.NULL),
-        Schema.create(Schema.Type.LONG),
-        idRef.addToSchema(placeholderSchema));
+        Schema.create(Schema.Type.NULL), Schema.create(Schema.Type.LONG), idRef.addToSchema(placeholderSchema));
 
     Reference parentRef = new Reference("parent");
 
     List<Schema.Field> childFields = new ArrayList<Schema.Field>();
     childFields.add(new Schema.Field("c", Schema.create(Schema.Type.STRING), null, null));
     childFields.add(new Schema.Field("parent", parentRefSchema, null, null));
-    Schema childSchema = parentRef.addToSchema(
-        Schema.createRecord("Child", null, null, false, childFields));
+    Schema childSchema = parentRef.addToSchema(Schema.createRecord("Child", null, null, false, childFields));
 
     List<Schema.Field> parentFields = new ArrayList<Schema.Field>();
     parentFields.add(new Schema.Field("id", Schema.create(Schema.Type.LONG), null, null));
@@ -366,22 +361,16 @@ public class TestCircularReferences {
     Record actual = records.get(0);
 
     // because the record is a recursive structure, equals won't work
-    Assert.assertEquals("Should correctly read back the parent id",
-        1L, actual.get("id"));
-    Assert.assertEquals("Should correctly read back the parent data",
-        new Utf8("parent data!"), actual.get("p"));
+    Assert.assertEquals("Should correctly read back the parent id", 1L, actual.get("id"));
+    Assert.assertEquals("Should correctly read back the parent data", new Utf8("parent data!"), actual.get("p"));
 
     Record actualChild = (Record) actual.get("child");
-    Assert.assertEquals("Should correctly read back the child data",
-        new Utf8("child data!"), actualChild.get("c"));
+    Assert.assertEquals("Should correctly read back the child data", new Utf8("child data!"), actualChild.get("c"));
     Object childParent = actualChild.get("parent");
-    Assert.assertTrue("Should have a parent Record object",
-        childParent instanceof Record);
+    Assert.assertTrue("Should have a parent Record object", childParent instanceof Record);
 
     Record childParentRecord = (Record) actualChild.get("parent");
-    Assert.assertEquals("Should have the right parent id",
-        1L, childParentRecord.get("id"));
-    Assert.assertEquals("Should have the right parent data",
-        new Utf8("parent data!"), childParentRecord.get("p"));
+    Assert.assertEquals("Should have the right parent id", 1L, childParentRecord.get("id"));
+    Assert.assertEquals("Should have the right parent data", new Utf8("parent data!"), childParentRecord.get("p"));
   }
 }

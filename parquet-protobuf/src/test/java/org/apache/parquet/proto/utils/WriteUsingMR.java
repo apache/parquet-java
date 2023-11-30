@@ -18,7 +18,13 @@
  */
 package org.apache.parquet.proto.utils;
 
+import static java.lang.Thread.sleep;
+
 import com.google.protobuf.Message;
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -31,13 +37,6 @@ import org.apache.parquet.proto.ProtoParquetOutputFormat;
 import org.apache.parquet.proto.TestUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-
-import static java.lang.Thread.sleep;
 
 /**
  * Writes data to parquet file using MapReduce job.
@@ -64,7 +63,7 @@ public class WriteUsingMR {
   public static class WritingMapper extends Mapper<LongWritable, Text, Void, Message> {
 
     public void run(Context context) throws IOException, InterruptedException {
-      if (inputMessages == null || inputMessages.size() == 0) {
+      if (inputMessages == null || inputMessages.isEmpty()) {
         throw new RuntimeException("No mock data given");
       } else {
         for (Message msg : inputMessages) {
@@ -78,7 +77,6 @@ public class WriteUsingMR {
   public Path write(Message... messages) throws Exception {
 
     synchronized (WriteUsingMR.class) {
-
       outputPath = TestUtils.someTemporaryFilePath();
 
       Path inputPath = TestUtils.someTemporaryFilePath();

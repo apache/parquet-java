@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -21,7 +21,7 @@ package org.apache.parquet.example.data;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.GroupType;
 
-abstract public class GroupValueSource {
+public abstract class GroupValueSource {
 
   public int getFieldRepetitionCount(String field) {
     return getFieldRepetitionCount(getType().getFieldIndex(field));
@@ -63,27 +63,27 @@ abstract public class GroupValueSource {
     return getInt96(getType().getFieldIndex(field), index);
   }
 
-  abstract public int getFieldRepetitionCount(int fieldIndex);
+  public abstract int getFieldRepetitionCount(int fieldIndex);
 
-  abstract public GroupValueSource getGroup(int fieldIndex, int index);
+  public abstract GroupValueSource getGroup(int fieldIndex, int index);
 
-  abstract public String getString(int fieldIndex, int index);
+  public abstract String getString(int fieldIndex, int index);
 
-  abstract public int getInteger(int fieldIndex, int index);
+  public abstract int getInteger(int fieldIndex, int index);
 
-  abstract public long getLong(int fieldIndex, int index);
+  public abstract long getLong(int fieldIndex, int index);
 
-  abstract public double getDouble(int fieldIndex, int index);
+  public abstract double getDouble(int fieldIndex, int index);
 
-  abstract public float getFloat(int fieldIndex, int index);
+  public abstract float getFloat(int fieldIndex, int index);
 
-  abstract public boolean getBoolean(int fieldIndex, int index);
+  public abstract boolean getBoolean(int fieldIndex, int index);
 
-  abstract public Binary getBinary(int fieldIndex, int index);
+  public abstract Binary getBinary(int fieldIndex, int index);
 
-  abstract public Binary getInt96(int fieldIndex, int index);
+  public abstract Binary getInt96(int fieldIndex, int index);
 
-  abstract public String getValueToString(int fieldIndex, int index);
+  public abstract String getValueToString(int fieldIndex, int index);
 
-  abstract public GroupType getType();
+  public abstract GroupType getType();
 }

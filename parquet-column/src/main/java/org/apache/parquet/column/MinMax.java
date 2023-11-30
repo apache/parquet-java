@@ -44,12 +44,12 @@ public final class MinMax<T> {
       if (max == null) {
         max = element;
       } else if (element != null && comparator.compare(max, element) < 0) {
-          max = element;
+        max = element;
       }
       if (min == null) {
         min = element;
       } else if (element != null && comparator.compare(min, element) > 0) {
-          min = element;
+        min = element;
       }
     });
   }

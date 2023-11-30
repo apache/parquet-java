@@ -18,6 +18,13 @@
  */
 package org.apache.parquet.hadoop.codec;
 
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
+
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.Random;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.compress.CompressionCodec;
 import org.apache.hadoop.io.compress.CompressionOutputStream;
@@ -27,14 +34,6 @@ import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.junit.Assert;
 import org.junit.Test;
-
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.Random;
-
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
 
 public class TestCompressionCodec {
 
@@ -64,8 +63,8 @@ public class TestCompressionCodec {
   }
 
   // Test compression in the block fashion
-  private void testBlockCompression(Compressor compressor, Decompressor decompressor,
-                                    String data) throws IOException {
+  private void testBlockCompression(Compressor compressor, Decompressor decompressor, String data)
+      throws IOException {
     compressor.reset();
     decompressor.reset();
 
@@ -173,5 +172,4 @@ public class TestCompressionCodec {
         return null;
     }
   }
-
 }

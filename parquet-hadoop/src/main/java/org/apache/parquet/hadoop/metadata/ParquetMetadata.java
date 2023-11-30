@@ -18,17 +18,11 @@
  */
 package org.apache.parquet.hadoop.metadata;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.util.List;
-
-import com.fasterxml.jackson.core.JsonGenerationException;
-import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.databind.JsonMappingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-
 
 /**
  * Meta Data block stored in the footer of the file
@@ -47,7 +41,6 @@ public class ParquetMetadata {
   }
 
   /**
-   *
    * @param parquetMetaData an instance of parquet metadata to convert
    * @return the pretty printed json representation
    */
@@ -59,8 +52,9 @@ public class ParquetMetadata {
     try (StringWriter stringWriter = new StringWriter()) {
       if (isPrettyPrint) {
         Object objectToPrint;
-        if (parquetMetaData.getFileMetaData() == null ||
-            parquetMetaData.getFileMetaData().getEncryptionType() == FileMetaData.EncryptionType.UNENCRYPTED) {
+        if (parquetMetaData.getFileMetaData() == null
+            || parquetMetaData.getFileMetaData().getEncryptionType()
+                == FileMetaData.EncryptionType.UNENCRYPTED) {
           objectToPrint = parquetMetaData;
         } else {
           objectToPrint = parquetMetaData.getFileMetaData();
@@ -76,7 +70,6 @@ public class ParquetMetadata {
   }
 
   /**
-   *
    * @param json the json representation
    * @return the parsed object
    */
@@ -92,9 +85,8 @@ public class ParquetMetadata {
   private final List<BlockMetaData> blocks;
 
   /**
-   *
    * @param fileMetaData file level metadata
-   * @param blocks block level metadata
+   * @param blocks       block level metadata
    */
   public ParquetMetadata(FileMetaData fileMetaData, List<BlockMetaData> blocks) {
     this.fileMetaData = fileMetaData;
@@ -102,7 +94,6 @@ public class ParquetMetadata {
   }
 
   /**
-   *
    * @return block level metadata
    */
   public List<BlockMetaData> getBlocks() {
@@ -110,17 +101,14 @@ public class ParquetMetadata {
   }
 
   /**
-   *
    * @return file level meta data
    */
   public FileMetaData getFileMetaData() {
     return fileMetaData;
   }
 
-
   @Override
   public String toString() {
-    return "ParquetMetaData{"+fileMetaData+", blocks: "+blocks+"}";
+    return "ParquetMetaData{" + fileMetaData + ", blocks: " + blocks + "}";
   }
-
 }

@@ -120,7 +120,6 @@ class MultiBufferInputStream extends ByteBufferInputStream {
         out.put(copyBuffer);
         bytesCopied += bytesToCopy;
         this.position += bytesToCopy;
-
       } else if (!nextBuffer()) {
         // there are no more buffers
         return bytesCopied > 0 ? bytesCopied : -1;
@@ -202,9 +201,7 @@ class MultiBufferInputStream extends ByteBufferInputStream {
     try {
       return sliceBuffers(length - position);
     } catch (EOFException e) {
-      throw new RuntimeException(
-          "[Parquet bug] Stream is bad: incorrect bytes remaining " +
-              (length - position));
+      throw new RuntimeException("[Parquet bug] Stream is bad: incorrect bytes remaining " + (length - position));
     }
   }
 

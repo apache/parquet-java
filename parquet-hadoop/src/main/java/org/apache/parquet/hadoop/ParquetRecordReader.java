@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -25,16 +25,15 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapred.Reporter;
 import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.RecordReader;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
-
 import org.apache.hadoop.mapreduce.lib.input.FileSplit;
 import org.apache.parquet.CorruptDeltaByteArrays;
+import org.apache.parquet.HadoopReadOptions;
 import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.filter.UnboundRecordFilter;
@@ -46,7 +45,6 @@ import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.FileMetaData;
 import org.apache.parquet.hadoop.util.ContextUtil;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
-import org.apache.parquet.HadoopReadOptions;
 import org.apache.parquet.hadoop.util.counters.BenchmarkCounter;
 import org.apache.parquet.io.ParquetDecodingException;
 import org.slf4j.Logger;
@@ -109,8 +107,7 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
    * {@inheritDoc}
    */
   @Override
-  public T getCurrentValue() throws IOException,
-  InterruptedException {
+  public T getCurrentValue() throws IOException, InterruptedException {
     return internalReader.getCurrentValue();
   }
 
@@ -126,15 +123,14 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
    * {@inheritDoc}
    */
   @Override
-  public void initialize(InputSplit inputSplit, TaskAttemptContext context)
-      throws IOException, InterruptedException {
+  public void initialize(InputSplit inputSplit, TaskAttemptContext context) throws IOException, InterruptedException {
 
     if (ContextUtil.hasCounterMethod(context)) {
       BenchmarkCounter.initCounterFromContext(context);
     } else {
-      LOG.error(
-          String.format("Can not initialize counter because the class '%s' does not have a '.getCounterMethod'",
-               context.getClass().getCanonicalName()));
+      LOG.error(String.format(
+          "Can not initialize counter because the class '%s' does not have a '.getCounterMethod'",
+          context.getClass().getCanonicalName()));
     }
 
     initializeInternalReader(toParquetSplit(inputSplit), ContextUtil.getConfiguration(context));
@@ -142,7 +138,7 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
 
   public void initialize(InputSplit inputSplit, Configuration configuration, Reporter reporter)
       throws IOException, InterruptedException {
-    BenchmarkCounter.initCounterFromReporter(reporter,configuration);
+    BenchmarkCounter.initCounterFromReporter(reporter, configuration);
     initializeInternalReader(toParquetSplit(inputSplit), configuration);
   }
 
@@ -159,26 +155,27 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
     }
 
     // open a reader with the metadata filter
-    ParquetFileReader reader = ParquetFileReader.open(
-        HadoopInputFile.fromPath(path, configuration), optionsBuilder.build());
+    ParquetFileReader reader =
+        ParquetFileReader.open(HadoopInputFile.fromPath(path, configuration), optionsBuilder.build());
 
     if (rowGroupOffsets != null) {
       // verify a row group was found for each offset
       List<BlockMetaData> blocks = reader.getFooter().getBlocks();
       if (blocks.size() != rowGroupOffsets.length) {
-        throw new IllegalStateException(
-            "All of the offsets in the split should be found in the file."
+        throw new IllegalStateException("All of the offsets in the split should be found in the file."
             + " expected: " + Arrays.toString(rowGroupOffsets)
             + " found: " + blocks);
       }
     }
 
-    if (!reader.getRowGroups().isEmpty() &&
-      // Encrypted files (parquet-mr 1.12+) can't have the delta encoding problem (resolved in parquet-mr 1.8)
-      reader.getFileMetaData().getEncryptionType() != FileMetaData.EncryptionType.ENCRYPTED_FOOTER &&
-      reader.getFileMetaData().getEncryptionType() != FileMetaData.EncryptionType.PLAINTEXT_FOOTER) {
+    if (!reader.getRowGroups().isEmpty()
+        &&
+        // Encrypted files (parquet-mr 1.12+) can't have the delta encoding problem (resolved in parquet-mr 1.8)
+        reader.getFileMetaData().getEncryptionType() != FileMetaData.EncryptionType.ENCRYPTED_FOOTER
+        && reader.getFileMetaData().getEncryptionType() != FileMetaData.EncryptionType.PLAINTEXT_FOOTER) {
       checkDeltaByteArrayProblem(
-          reader.getFooter().getFileMetaData(), configuration,
+          reader.getFooter().getFileMetaData(),
+          configuration,
           reader.getRowGroups().get(0));
     }
 
@@ -195,8 +192,8 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
       }
       for (Encoding encoding : encodings) {
         if (CorruptDeltaByteArrays.requiresSequentialReads(meta.getCreatedBy(), encoding)) {
-          throw new ParquetDecodingException("Cannot read data due to " +
-              "PARQUET-246: to read safely, set " + SPLIT_FILES + " to false");
+          throw new ParquetDecodingException("Cannot read data due to " + "PARQUET-246: to read safely, set "
+              + SPLIT_FILES + " to false");
         }
       }
     }
@@ -223,11 +220,9 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
     } else if (split instanceof FileSplit) {
       return ParquetInputSplit.from((FileSplit) split);
     } else if (split instanceof org.apache.hadoop.mapred.FileSplit) {
-      return ParquetInputSplit.from(
-          (org.apache.hadoop.mapred.FileSplit) split);
+      return ParquetInputSplit.from((org.apache.hadoop.mapred.FileSplit) split);
     } else {
-      throw new IllegalArgumentException(
-          "Invalid split (not a FileSplit or ParquetInputSplit): " + split);
+      throw new IllegalArgumentException("Invalid split (not a FileSplit or ParquetInputSplit): " + split);
     }
   }
 }

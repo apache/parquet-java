@@ -22,7 +22,6 @@ package org.apache.parquet.column;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
-
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 
 /**
@@ -80,8 +79,7 @@ abstract class ColumnProperty<T> {
     private T defaultValue;
     private final Map<ColumnPath, T> values = new HashMap<>();
 
-    private Builder() {
-    }
+    private Builder() {}
 
     public Builder<T> withDefaultValue(T defaultValue) {
       this.defaultValue = defaultValue;

@@ -19,9 +19,9 @@
 
 package org.apache.parquet.hadoop.util;
 
+import java.io.IOException;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.parquet.io.DelegatingSeekableInputStream;
-import java.io.IOException;
 
 /**
  * SeekableInputStream implementation that implements read(ByteBuffer) for
@@ -55,5 +55,4 @@ class H1SeekableInputStream extends DelegatingSeekableInputStream {
   public void readFully(byte[] bytes, int start, int len) throws IOException {
     stream.readFully(bytes, start, len);
   }
-
 }

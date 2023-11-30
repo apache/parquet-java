@@ -19,10 +19,10 @@
 
 package org.apache.parquet.compression;
 
-import org.apache.parquet.bytes.BytesInput;
-import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import org.apache.parquet.bytes.BytesInput;
+import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 
 public interface CompressionCodecFactory {
 
@@ -34,14 +34,18 @@ public interface CompressionCodecFactory {
 
   interface BytesInputCompressor {
     BytesInput compress(BytesInput bytes) throws IOException;
+
     CompressionCodecName getCodecName();
+
     void release();
   }
 
   interface BytesInputDecompressor {
     BytesInput decompress(BytesInput bytes, int uncompressedSize) throws IOException;
-    void decompress(ByteBuffer input, int compressedSize, ByteBuffer output, int uncompressedSize) throws IOException;
+
+    void decompress(ByteBuffer input, int compressedSize, ByteBuffer output, int uncompressedSize)
+        throws IOException;
+
     void release();
   }
-
 }

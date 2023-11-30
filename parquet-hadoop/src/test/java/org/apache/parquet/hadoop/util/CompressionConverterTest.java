@@ -18,7 +18,23 @@
  */
 package org.apache.parquet.hadoop.util;
 
+import static org.apache.parquet.format.converter.ParquetMetadataConverter.NO_FILTER;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
+import static org.apache.parquet.schema.Type.Repetition.OPTIONAL;
+import static org.apache.parquet.schema.Type.Repetition.REPEATED;
+import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertTrue;
+
 import com.google.common.collect.ImmutableMap;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import java.util.concurrent.ThreadLocalRandom;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.HadoopReadOptions;
@@ -48,28 +64,10 @@ import org.apache.parquet.schema.PrimitiveType;
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
-import java.util.concurrent.ThreadLocalRandom;
-
-import static org.apache.parquet.format.converter.ParquetMetadataConverter.NO_FILTER;
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
-import static org.apache.parquet.schema.Type.Repetition.OPTIONAL;
-import static org.apache.parquet.schema.Type.Repetition.REPEATED;
-import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertTrue;
-
 public class CompressionConverterTest {
 
   private Configuration conf = new Configuration();
-  private Map<String, String> extraMeta
-    = ImmutableMap.of("key1", "value1", "key2", "value2");
+  private Map<String, String> extraMeta = ImmutableMap.of("key1", "value1", "key2", "value2");
   private CompressionConverter compressionConverter = new CompressionConverter();
   private Random rnd = new Random(5);
 
@@ -77,20 +75,35 @@ public class CompressionConverterTest {
   public void testTransCompression() throws Exception {
     String[] codecs = {"UNCOMPRESSED", "SNAPPY", "GZIP", "ZSTD"};
     for (int i = 0; i < codecs.length; i++) {
-      for (int j = 0; j <codecs.length; j++) {
+      for (int j = 0; j < codecs.length; j++) {
         // Same codec for both are considered as valid test case
-        testInternal(codecs[i], codecs[j], ParquetProperties.WriterVersion.PARQUET_1_0, ParquetProperties.DEFAULT_PAGE_SIZE);
-        testInternal(codecs[i], codecs[j], ParquetProperties.WriterVersion.PARQUET_2_0, ParquetProperties.DEFAULT_PAGE_SIZE);
+        testInternal(
+            codecs[i],
+            codecs[j],
+            ParquetProperties.WriterVersion.PARQUET_1_0,
+            ParquetProperties.DEFAULT_PAGE_SIZE);
+        testInternal(
+            codecs[i],
+            codecs[j],
+            ParquetProperties.WriterVersion.PARQUET_2_0,
+            ParquetProperties.DEFAULT_PAGE_SIZE);
         testInternal(codecs[i], codecs[j], ParquetProperties.WriterVersion.PARQUET_1_0, 64);
-        testInternal(codecs[i], codecs[j], ParquetProperties.WriterVersion.PARQUET_1_0, ParquetProperties.DEFAULT_PAGE_SIZE * 100);
+        testInternal(
+            codecs[i],
+            codecs[j],
+            ParquetProperties.WriterVersion.PARQUET_1_0,
+            ParquetProperties.DEFAULT_PAGE_SIZE * 100);
       }
     }
   }
 
-  private void testInternal(String srcCodec, String destCodec, ParquetProperties.WriterVersion writerVersion, int pageSize) throws Exception {
+  private void testInternal(
+      String srcCodec, String destCodec, ParquetProperties.WriterVersion writerVersion, int pageSize)
+      throws Exception {
     int numRecord = 1000;
     TestDocs testDocs = new TestDocs(numRecord);
-    String inputFile = createParquetFile(conf, extraMeta, numRecord, "input", srcCodec, writerVersion, pageSize, testDocs);
+    String inputFile =
+        createParquetFile(conf, extraMeta, numRecord, "input", srcCodec, writerVersion, pageSize, testDocs);
     String outputFile = createTempFile("output_trans");
 
     convertCompression(conf, inputFile, outputFile, destCodec);
@@ -100,7 +113,8 @@ public class CompressionConverterTest {
     validColumnIndex(inputFile, outputFile);
   }
 
-  private void convertCompression(Configuration conf, String inputFile, String outputFile, String codec) throws IOException {
+  private void convertCompression(Configuration conf, String inputFile, String outputFile, String codec)
+      throws IOException {
     Path inPath = new Path(inputFile);
     Path outPath = new Path(outputFile);
     CompressionCodecName codecName = CompressionCodecName.valueOf(codec);
@@ -110,15 +124,20 @@ public class CompressionConverterTest {
     ParquetFileWriter writer = new ParquetFileWriter(conf, schema, outPath, ParquetFileWriter.Mode.CREATE);
     writer.start();
 
-    try (TransParquetFileReader reader = new TransParquetFileReader(HadoopInputFile.fromPath(inPath, conf), HadoopReadOptions.builder(conf).build())) {
-      compressionConverter.processBlocks(reader, writer, metaData, schema, metaData.getFileMetaData().getCreatedBy(), codecName);
+    try (TransParquetFileReader reader = new TransParquetFileReader(
+        HadoopInputFile.fromPath(inPath, conf),
+        HadoopReadOptions.builder(conf).build())) {
+      compressionConverter.processBlocks(
+          reader, writer, metaData, schema, metaData.getFileMetaData().getCreatedBy(), codecName);
     } finally {
       writer.end(metaData.getFileMetaData().getKeyValueMetaData());
     }
   }
 
   private void validateColumns(String file, int numRecord, TestDocs testDocs) throws IOException {
-    ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), new Path(file)).withConf(conf).build();
+    ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), new Path(file))
+        .withConf(conf)
+        .build();
     for (int i = 0; i < numRecord; i++) {
       Group group = reader.read();
       assertTrue(group.getLong("DocId", 0) == testDocs.docId[i]);
@@ -134,20 +153,31 @@ public class CompressionConverterTest {
   private void validMeta(String inputFile, String outFile) throws Exception {
     ParquetMetadata inMetaData = ParquetFileReader.readFooter(conf, new Path(inputFile), NO_FILTER);
     ParquetMetadata outMetaData = ParquetFileReader.readFooter(conf, new Path(outFile), NO_FILTER);
-    Assert.assertEquals(inMetaData.getFileMetaData().getSchema(), outMetaData.getFileMetaData().getSchema());
-    Assert.assertEquals(inMetaData.getFileMetaData().getKeyValueMetaData(), outMetaData.getFileMetaData().getKeyValueMetaData());
+    Assert.assertEquals(
+        inMetaData.getFileMetaData().getSchema(),
+        outMetaData.getFileMetaData().getSchema());
+    Assert.assertEquals(
+        inMetaData.getFileMetaData().getKeyValueMetaData(),
+        outMetaData.getFileMetaData().getKeyValueMetaData());
   }
 
   private void validColumnIndex(String inputFile, String outFile) throws Exception {
     ParquetMetadata inMetaData = ParquetFileReader.readFooter(conf, new Path(inputFile), NO_FILTER);
     ParquetMetadata outMetaData = ParquetFileReader.readFooter(conf, new Path(outFile), NO_FILTER);
-    Assert.assertEquals(inMetaData.getBlocks().size(), outMetaData.getBlocks().size());
-    try (TransParquetFileReader inReader = new TransParquetFileReader(HadoopInputFile.fromPath(new Path(inputFile), conf), HadoopReadOptions.builder(conf).build());
-         TransParquetFileReader outReader = new TransParquetFileReader(HadoopInputFile.fromPath(new Path(outFile), conf), HadoopReadOptions.builder(conf).build())) {
+    Assert.assertEquals(
+        inMetaData.getBlocks().size(), outMetaData.getBlocks().size());
+    try (TransParquetFileReader inReader = new TransParquetFileReader(
+            HadoopInputFile.fromPath(new Path(inputFile), conf),
+            HadoopReadOptions.builder(conf).build());
+        TransParquetFileReader outReader = new TransParquetFileReader(
+            HadoopInputFile.fromPath(new Path(outFile), conf),
+            HadoopReadOptions.builder(conf).build())) {
       for (int i = 0; i < inMetaData.getBlocks().size(); i++) {
         BlockMetaData inBlockMetaData = inMetaData.getBlocks().get(i);
         BlockMetaData outBlockMetaData = outMetaData.getBlocks().get(i);
-        Assert.assertEquals(inBlockMetaData.getColumns().size(), outBlockMetaData.getColumns().size());
+        Assert.assertEquals(
+            inBlockMetaData.getColumns().size(),
+            outBlockMetaData.getColumns().size());
         for (int j = 0; j < inBlockMetaData.getColumns().size(); j++) {
           ColumnChunkMetaData inChunk = inBlockMetaData.getColumns().get(j);
           ColumnIndex inColumnIndex = inReader.readColumnIndex(inChunk);
@@ -169,10 +199,11 @@ public class CompressionConverterTest {
             Assert.assertEquals(inOffsetIndex.getPageCount(), outOffsetIndex.getPageCount());
             for (int k = 0; k < inOffsetIndex.getPageCount(); k++) {
               Assert.assertEquals(inOffsetIndex.getFirstRowIndex(k), outOffsetIndex.getFirstRowIndex(k));
-              Assert.assertEquals(inOffsetIndex.getLastRowIndex(k, inChunk.getValueCount()),
-                outOffsetIndex.getLastRowIndex(k, outChunk.getValueCount()));
-              Assert.assertEquals(inOffsetIndex.getOffset(k), (long)inOffsets.get(k));
-              Assert.assertEquals(outOffsetIndex.getOffset(k), (long)outOffsets.get(k));
+              Assert.assertEquals(
+                  inOffsetIndex.getLastRowIndex(k, inChunk.getValueCount()),
+                  outOffsetIndex.getLastRowIndex(k, outChunk.getValueCount()));
+              Assert.assertEquals(inOffsetIndex.getOffset(k), (long) inOffsets.get(k));
+              Assert.assertEquals(outOffsetIndex.getOffset(k), (long) outOffsets.get(k));
             }
           }
         }
@@ -216,28 +247,39 @@ public class CompressionConverterTest {
     return offsets;
   }
 
-  private String createParquetFile(Configuration conf, Map<String, String> extraMeta, int numRecord, String prefix, String codec,
-                                         ParquetProperties.WriterVersion writerVersion, int pageSize, TestDocs testDocs) throws IOException {
-    MessageType schema = new MessageType("schema",
-      new PrimitiveType(REQUIRED, INT64, "DocId"),
-      new PrimitiveType(REQUIRED, BINARY, "Name"),
-      new PrimitiveType(REQUIRED, BINARY, "Gender"),
-      new GroupType(OPTIONAL, "Links",
-        new PrimitiveType(REPEATED, BINARY, "Backward"),
-        new PrimitiveType(REPEATED, BINARY, "Forward")));
+  private String createParquetFile(
+      Configuration conf,
+      Map<String, String> extraMeta,
+      int numRecord,
+      String prefix,
+      String codec,
+      ParquetProperties.WriterVersion writerVersion,
+      int pageSize,
+      TestDocs testDocs)
+      throws IOException {
+    MessageType schema = new MessageType(
+        "schema",
+        new PrimitiveType(REQUIRED, INT64, "DocId"),
+        new PrimitiveType(REQUIRED, BINARY, "Name"),
+        new PrimitiveType(REQUIRED, BINARY, "Gender"),
+        new GroupType(
+            OPTIONAL,
+            "Links",
+            new PrimitiveType(REPEATED, BINARY, "Backward"),
+            new PrimitiveType(REPEATED, BINARY, "Forward")));
 
     conf.set(GroupWriteSupport.PARQUET_EXAMPLE_SCHEMA, schema.toString());
 
     String file = createTempFile(prefix);
     ExampleParquetWriter.Builder builder = ExampleParquetWriter.builder(new Path(file))
-      .withConf(conf)
-      .withWriterVersion(writerVersion)
-      .withExtraMetaData(extraMeta)
-      .withDictionaryEncoding("DocId", true)
-      .withValidation(true)
-      .enablePageWriteChecksum()
-      .withPageSize(pageSize)
-      .withCompressionCodec(CompressionCodecName.valueOf(codec));
+        .withConf(conf)
+        .withWriterVersion(writerVersion)
+        .withExtraMetaData(extraMeta)
+        .withDictionaryEncoding("DocId", true)
+        .withValidation(true)
+        .enablePageWriteChecksum()
+        .withPageSize(pageSize)
+        .withCompressionCodec(CompressionCodecName.valueOf(codec));
     try (ParquetWriter writer = builder.build()) {
       for (int i = 0; i < numRecord; i++) {
         SimpleGroup g = new SimpleGroup(schema);
@@ -275,7 +317,7 @@ public class CompressionConverterTest {
     }
   }
 
-  private  class TestDocs {
+  private class TestDocs {
     public long[] docId;
     public String[] name;
     public String[] gender;

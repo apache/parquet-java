@@ -18,6 +18,10 @@
  */
 package org.apache.parquet.cli.commands;
 
+import com.beust.jcommander.Parameter;
+import com.beust.jcommander.Parameters;
+import com.google.common.base.Preconditions;
+import com.google.common.collect.Lists;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -25,7 +29,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
 import org.apache.parquet.cli.BaseCommand;
 import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
@@ -35,11 +38,6 @@ import org.apache.parquet.internal.column.columnindex.ColumnIndex;
 import org.apache.parquet.internal.column.columnindex.OffsetIndex;
 import org.apache.parquet.io.InputFile;
 import org.slf4j.Logger;
-
-import com.beust.jcommander.Parameter;
-import com.beust.jcommander.Parameters;
-import com.google.common.base.Preconditions;
-import com.google.common.collect.Lists;
 
 /**
  * parquet-cli command to print column and offset indexes.
@@ -53,35 +51,37 @@ public class ShowColumnIndexCommand extends BaseCommand {
   @Parameter(description = "<parquet path>")
   List<String> files;
 
-  @Parameter(names = { "-c", "--column" }, description = "Shows the column/offset indexes for the given column only")
+  @Parameter(
+      names = {"-c", "--column"},
+      description = "Shows the column/offset indexes for the given column only")
   List<String> ColumnPaths;
 
-  @Parameter(names = { "-r",
-      "--row-group" }, description = "Shows the column/offset indexes for the given row-groups only; "
+  @Parameter(
+      names = {"-r", "--row-group"},
+      description = "Shows the column/offset indexes for the given row-groups only; "
           + "row-groups are referenced by their indexes from 0")
   List<String> rowGroupIndexes;
 
-  @Parameter(names = { "-i", "--column-index" }, description = "Shows the column indexes; "
-      + "active by default unless -o is used")
+  @Parameter(
+      names = {"-i", "--column-index"},
+      description = "Shows the column indexes; " + "active by default unless -o is used")
   boolean showColumnIndex;
 
-  @Parameter(names = { "-o", "--offset-index" }, description = "Shows the offset indexes; "
-      + "active by default unless -i is used")
+  @Parameter(
+      names = {"-o", "--offset-index"},
+      description = "Shows the offset indexes; " + "active by default unless -i is used")
   boolean showOffsetIndex;
 
   @Override
   public List<String> getExamples() {
     return Lists.newArrayList(
-        "# Show only column indexes for column 'col' from a Parquet file",
-        "-c col -i sample.parquet");
+        "# Show only column indexes for column 'col' from a Parquet file", "-c col -i sample.parquet");
   }
 
   @Override
   public int run() throws IOException {
-    Preconditions.checkArgument(files != null && files.size() >= 1,
-        "A Parquet file is required.");
-    Preconditions.checkArgument(files.size() == 1,
-        "Cannot process multiple Parquet files.");
+    Preconditions.checkArgument(files != null && files.size() >= 1, "A Parquet file is required.");
+    Preconditions.checkArgument(files.size() == 1, "Cannot process multiple Parquet files.");
 
     InputFile in = HadoopInputFile.fromPath(qualifiedPath(files.get(0)), getConf());
     if (!showColumnIndex && !showOffsetIndex) {
@@ -153,5 +153,4 @@ public class ShowColumnIndexCommand extends BaseCommand {
     }
     return filtered;
   }
-
 }

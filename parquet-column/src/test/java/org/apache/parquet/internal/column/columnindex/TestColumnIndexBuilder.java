@@ -60,7 +60,6 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.filter2.predicate.FilterPredicate;
@@ -152,7 +151,8 @@ public class TestColumnIndexBuilder {
       double min = statistics.getMin();
       double max = statistics.getMax();
       Comparator<Double> cmp = statistics.getComparator();
-      return cmp.compare(Math.floor(min), Math.floor(max)) == 0 && cmp.compare(Math.floor(min), min) != 0
+      return cmp.compare(Math.floor(min), Math.floor(max)) == 0
+          && cmp.compare(Math.floor(min), min) != 0
           && cmp.compare(Math.floor(max), max) != 0;
     }
 
@@ -180,7 +180,8 @@ public class TestColumnIndexBuilder {
       float min = statistics.getMin();
       float max = statistics.getMax();
       Comparator<Float> cmp = statistics.getComparator();
-      return cmp.compare(floor(min), floor(max)) == 0 && cmp.compare(floor(min), min) != 0
+      return cmp.compare(floor(min), floor(max)) == 0
+          && cmp.compare(floor(min), min) != 0
           && cmp.compare(floor(max), max) != 0;
     }
 
@@ -237,7 +238,8 @@ public class TestColumnIndexBuilder {
 
   @Test
   public void testBuildBinaryDecimal() {
-    PrimitiveType type = Types.required(BINARY).as(DECIMAL).precision(12).scale(2).named("test_binary_decimal");
+    PrimitiveType type =
+        Types.required(BINARY).as(DECIMAL).precision(12).scale(2).named("test_binary_decimal");
     ColumnIndexBuilder builder = ColumnIndexBuilder.getBuilder(type, Integer.MAX_VALUE);
     assertThat(builder, instanceOf(BinaryColumnIndexBuilder.class));
     assertNull(builder.build());
@@ -258,7 +260,8 @@ public class TestColumnIndexBuilder {
     assertEquals(BoundaryOrder.UNORDERED, columnIndex.getBoundaryOrder());
     assertCorrectNullCounts(columnIndex, 2, 0, 3, 3, 0, 4, 2, 0);
     assertCorrectNullPages(columnIndex, true, false, false, true, false, true, true, false);
-    assertCorrectValues(columnIndex.getMaxValues(),
+    assertCorrectValues(
+        columnIndex.getMaxValues(),
         null,
         decimalBinary("1234567890.12"),
         decimalBinary("-234.23"),
@@ -267,7 +270,8 @@ public class TestColumnIndexBuilder {
         null,
         null,
         decimalBinary("87656273"));
-    assertCorrectValues(columnIndex.getMinValues(),
+    assertCorrectValues(
+        columnIndex.getMinValues(),
         null,
         decimalBinary("-0.17"),
         decimalBinary("-234.23"),
@@ -310,7 +314,8 @@ public class TestColumnIndexBuilder {
     assertEquals(BoundaryOrder.ASCENDING, columnIndex.getBoundaryOrder());
     assertCorrectNullCounts(columnIndex, 4, 0, 0, 2, 0, 2, 3, 3);
     assertCorrectNullPages(columnIndex, true, false, false, true, false, true, false, true);
-    assertCorrectValues(columnIndex.getMaxValues(),
+    assertCorrectValues(
+        columnIndex.getMaxValues(),
         null,
         decimalBinary("-234.23"),
         decimalBinary("87656273"),
@@ -319,7 +324,8 @@ public class TestColumnIndexBuilder {
         null,
         decimalBinary("1234567890.12"),
         null);
-    assertCorrectValues(columnIndex.getMinValues(),
+    assertCorrectValues(
+        columnIndex.getMinValues(),
         null,
         decimalBinary("-9999293.23"),
         decimalBinary("-0.17"),
@@ -362,7 +368,8 @@ public class TestColumnIndexBuilder {
     assertEquals(BoundaryOrder.DESCENDING, columnIndex.getBoundaryOrder());
     assertCorrectNullCounts(columnIndex, 3, 2, 3, 4, 0, 0, 2, 0);
     assertCorrectNullPages(columnIndex, true, true, false, true, false, false, true, false);
-    assertCorrectValues(columnIndex.getMaxValues(),
+    assertCorrectValues(
+        columnIndex.getMaxValues(),
         null,
         null,
         decimalBinary("1234567890.12"),
@@ -371,7 +378,8 @@ public class TestColumnIndexBuilder {
         decimalBinary("987656273"),
         null,
         decimalBinary("-234.23"));
-    assertCorrectValues(columnIndex.getMinValues(),
+    assertCorrectValues(
+        columnIndex.getMinValues(),
         null,
         null,
         decimalBinary("1234567890.12"),
@@ -422,7 +430,8 @@ public class TestColumnIndexBuilder {
     assertEquals(BoundaryOrder.UNORDERED, columnIndex.getBoundaryOrder());
     assertCorrectNullCounts(columnIndex, 2, 2, 5, 2, 0, 1, 0, 2);
     assertCorrectNullPages(columnIndex, true, false, true, true, false, false, false, true);
-    assertCorrectValues(columnIndex.getMaxValues(),
+    assertCorrectValues(
+        columnIndex.getMaxValues(),
         null,
         stringBinary("Slartibartfast"),
         null,
@@ -431,7 +440,8 @@ public class TestColumnIndexBuilder {
         stringBinary("Trilian"),
         stringBinary("Beeblebrox"),
         null);
-    assertCorrectValues(columnIndex.getMinValues(),
+    assertCorrectValues(
+        columnIndex.getMinValues(),
         null,
         stringBinary("Jeltz"),
         null,
@@ -474,7 +484,8 @@ public class TestColumnIndexBuilder {
     assertEquals(BoundaryOrder.ASCENDING, columnIndex.getBoundaryOrder());
     assertCorrectNullCounts(columnIndex, 2, 2, 5, 0, 1, 2, 0, 2);
     assertCorrectNullPages(columnIndex, false, true, true, false, false, true, false, true);
-    assertCorrectValues(columnIndex.getMaxValues(),
+    assertCorrectValues(
+        columnIndex.getMaxValues(),
         stringBinary("Dent"),
         null,
         null,
@@ -483,7 +494,8 @@ public class TestColumnIndexBuilder {
         null,
         stringBinary("Slartibartfast"),
         null);
-    assertCorrectValues(columnIndex.getMinValues(),
+    assertCorrectValues(
+        columnIndex.getMinValues(),
         stringBinary("Beeblebrox"),
         null,
         null,
@@ -495,7 +507,7 @@ public class TestColumnIndexBuilder {
     assertCorrectFiltering(columnIndex, eq(col, stringBinary("Jeltz")), 3, 4);
     assertCorrectFiltering(columnIndex, eq(col, null), 0, 1, 2, 4, 5, 7);
     Set<Binary> set2 = new HashSet<>();
-    set2.add( stringBinary("Jeltz"));
+    set2.add(stringBinary("Jeltz"));
     assertCorrectFiltering(columnIndex, in(col, set2), 3, 4);
     assertCorrectFiltering(columnIndex, notIn(col, set2), 0, 1, 2, 3, 4, 5, 6, 7);
     set2.add(null);
@@ -508,7 +520,8 @@ public class TestColumnIndexBuilder {
     assertCorrectFiltering(columnIndex, lt(col, stringBinary("Dent")), 0);
     assertCorrectFiltering(columnIndex, ltEq(col, stringBinary("Dent")), 0, 3, 4);
     assertCorrectFiltering(columnIndex, userDefined(col, BinaryUtf8StartsWithB.class), 0);
-    assertCorrectFiltering(columnIndex, invert(userDefined(col, BinaryUtf8StartsWithB.class)), 0, 1, 2, 3, 4, 5, 6, 7);
+    assertCorrectFiltering(
+        columnIndex, invert(userDefined(col, BinaryUtf8StartsWithB.class)), 0, 1, 2, 3, 4, 5, 6, 7);
 
     builder = ColumnIndexBuilder.getBuilder(type, Integer.MAX_VALUE);
     sb = new StatsBuilder();
@@ -526,7 +539,8 @@ public class TestColumnIndexBuilder {
     assertEquals(BoundaryOrder.DESCENDING, columnIndex.getBoundaryOrder());
     assertCorrectNullCounts(columnIndex, 2, 0, 5, 1, 0, 2, 2, 2);
     assertCorrectNullPages(columnIndex, true, false, true, false, false, true, true, false);
-    assertCorrectValues(columnIndex.getMaxValues(),
+    assertCorrectValues(
+        columnIndex.getMaxValues(),
         null,
         stringBinary("Slartibartfast"),
         null,
@@ -535,7 +549,8 @@ public class TestColumnIndexBuilder {
         null,
         null,
         stringBinary("Dent"));
-    assertCorrectValues(columnIndex.getMinValues(),
+    assertCorrectValues(
+        columnIndex.getMinValues(),
         null,
         stringBinary("Slartibartfast"),
         null,
@@ -560,7 +575,8 @@ public class TestColumnIndexBuilder {
     assertCorrectFiltering(columnIndex, lt(col, stringBinary("Marvin")), 3, 4, 7);
     assertCorrectFiltering(columnIndex, ltEq(col, stringBinary("Marvin")), 3, 4, 7);
     assertCorrectFiltering(columnIndex, userDefined(col, BinaryUtf8StartsWithB.class), 7);
-    assertCorrectFiltering(columnIndex, invert(userDefined(col, BinaryUtf8StartsWithB.class)), 0, 1, 2, 3, 4, 5, 6, 7);
+    assertCorrectFiltering(
+        columnIndex, invert(userDefined(col, BinaryUtf8StartsWithB.class)), 0, 1, 2, 3, 4, 5, 6, 7);
   }
 
   @Test
@@ -591,7 +607,8 @@ public class TestColumnIndexBuilder {
     assertEquals(BoundaryOrder.ASCENDING, columnIndex.getBoundaryOrder());
     assertCorrectNullCounts(columnIndex, 1, 2, 3, 4, 5, 6, 7, 8);
     assertCorrectNullPages(columnIndex, true, true, false, false, true, false, true, false);
-    assertCorrectValues(columnIndex.getMaxValues(),
+    assertCorrectValues(
+        columnIndex.getMaxValues(),
         null,
         null,
         stringBinary("Dent"),
@@ -600,7 +617,8 @@ public class TestColumnIndexBuilder {
         stringBinary("Prefect"),
         null,
         stringBinary("Slartibartfast"));
-    assertCorrectValues(columnIndex.getMinValues(),
+    assertCorrectValues(
+        columnIndex.getMinValues(),
         null,
         null,
         stringBinary("Beeblebrox"),
@@ -639,7 +657,8 @@ public class TestColumnIndexBuilder {
     assertEquals(BoundaryOrder.ASCENDING, columnIndex.getBoundaryOrder());
     assertNull(columnIndex.getNullCounts());
     assertCorrectNullPages(columnIndex, true, true, false, false, true, false, true, false);
-    assertCorrectValues(columnIndex.getMaxValues(),
+    assertCorrectValues(
+        columnIndex.getMaxValues(),
         null,
         null,
         stringBinary("Dent"),
@@ -648,7 +667,8 @@ public class TestColumnIndexBuilder {
         stringBinary("Prefect"),
         null,
         stringBinary("Slartibartfast"));
-    assertCorrectValues(columnIndex.getMinValues(),
+    assertCorrectValues(
+        columnIndex.getMinValues(),
         null,
         null,
         stringBinary("Beeblebrox"),
@@ -670,7 +690,8 @@ public class TestColumnIndexBuilder {
     assertCorrectFiltering(columnIndex, notIn(col, set), 0, 1, 2, 3, 4, 5, 6, 7);
     assertCorrectFiltering(columnIndex, notEq(col, stringBinary("Dent")), 0, 1, 2, 3, 4, 5, 6, 7);
     assertCorrectFiltering(columnIndex, notEq(col, null), 2, 3, 5, 7);
-    assertCorrectFiltering(columnIndex, userDefined(col, BinaryDecimalIsNullOrZeroUdp.class), 0, 1, 2, 3, 4, 5, 6, 7);
+    assertCorrectFiltering(
+        columnIndex, userDefined(col, BinaryDecimalIsNullOrZeroUdp.class), 0, 1, 2, 3, 4, 5, 6, 7);
     assertCorrectFiltering(columnIndex, invert(userDefined(col, BinaryDecimalIsNullOrZeroUdp.class)), 2, 3, 5, 7);
   }
 
@@ -1002,7 +1023,8 @@ public class TestColumnIndexBuilder {
     assertEquals(BoundaryOrder.ASCENDING, columnIndex.getBoundaryOrder());
     assertCorrectNullCounts(columnIndex, 2, 2, 1, 2, 3, 0, 2, 0, 2);
     assertCorrectNullPages(columnIndex, true, false, false, true, true, false, true, false, true);
-    assertCorrectValues(columnIndex.getMaxValues(), null, -345.2f, -234.7f, null, null, 2.99999f, null, 42.83f, null);
+    assertCorrectValues(
+        columnIndex.getMaxValues(), null, -345.2f, -234.7f, null, null, 2.99999f, null, 42.83f, null);
     assertCorrectValues(columnIndex.getMinValues(), null, -532.3f, -300.6f, null, null, -234.6f, null, 3.0f, null);
     assertCorrectFiltering(columnIndex, eq(col, 0.0f), 5);
     assertCorrectFiltering(columnIndex, eq(col, null), 0, 1, 2, 3, 4, 6, 8);
@@ -1040,7 +1062,8 @@ public class TestColumnIndexBuilder {
     assertCorrectNullCounts(columnIndex, 5, 0, 3, 1, 2, 0, 2, 2, 0);
     assertCorrectNullPages(columnIndex, true, false, true, false, true, false, true, true, false);
     assertCorrectValues(columnIndex.getMaxValues(), null, 532.3f, null, 234.7f, null, 234.6f, null, null, -3.0f);
-    assertCorrectValues(columnIndex.getMinValues(), null, 345.2f, null, 234.6f, null, -2.99999f, null, null, -42.83f);
+    assertCorrectValues(
+        columnIndex.getMinValues(), null, 345.2f, null, 234.6f, null, -2.99999f, null, null, -42.83f);
     assertCorrectFiltering(columnIndex, eq(col, 234.65f), 3);
     assertCorrectFiltering(columnIndex, eq(col, null), 0, 2, 3, 4, 6, 7);
     Set<Float> set3 = new HashSet<>();
@@ -1171,8 +1194,8 @@ public class TestColumnIndexBuilder {
     assertCorrectFiltering(columnIndex, lt(col, 2), 1, 2, 5);
     assertCorrectFiltering(columnIndex, ltEq(col, 2), 1, 2, 5);
     assertCorrectFiltering(columnIndex, userDefined(col, IntegerIsDivisableWith3.class), 1, 2, 5, 7);
-    assertCorrectFiltering(columnIndex, invert(userDefined(col, IntegerIsDivisableWith3.class)), 0, 1, 2, 3, 4, 5, 6, 7,
-        8);
+    assertCorrectFiltering(
+        columnIndex, invert(userDefined(col, IntegerIsDivisableWith3.class)), 0, 1, 2, 3, 4, 5, 6, 7, 8);
 
     builder = ColumnIndexBuilder.getBuilder(type, Integer.MAX_VALUE);
     sb = new StatsBuilder();
@@ -1209,8 +1232,8 @@ public class TestColumnIndexBuilder {
     assertCorrectFiltering(columnIndex, lt(col, 2), 5, 8);
     assertCorrectFiltering(columnIndex, ltEq(col, 2), 5, 8);
     assertCorrectFiltering(columnIndex, userDefined(col, IntegerIsDivisableWith3.class), 1, 3, 5, 8);
-    assertCorrectFiltering(columnIndex, invert(userDefined(col, IntegerIsDivisableWith3.class)), 0, 1, 2, 3, 4, 5, 6, 7,
-        8);
+    assertCorrectFiltering(
+        columnIndex, invert(userDefined(col, IntegerIsDivisableWith3.class)), 0, 1, 2, 3, 4, 5, 6, 7, 8);
   }
 
   @Test
@@ -1305,8 +1328,8 @@ public class TestColumnIndexBuilder {
     assertCorrectFiltering(columnIndex, lt(col, 42), 1, 2);
     assertCorrectFiltering(columnIndex, ltEq(col, 42), 1, 2, 5);
     assertCorrectFiltering(columnIndex, userDefined(col, IntegerIsDivisableWith3.class), 1, 2, 5, 7);
-    assertCorrectFiltering(columnIndex, invert(userDefined(col, IntegerIsDivisableWith3.class)), 0, 1, 2, 3, 4, 5, 6, 7,
-        8);
+    assertCorrectFiltering(
+        columnIndex, invert(userDefined(col, IntegerIsDivisableWith3.class)), 0, 1, 2, 3, 4, 5, 6, 7, 8);
 
     builder = ColumnIndexBuilder.getBuilder(type, Integer.MAX_VALUE);
     sb = new StatsBuilder();
@@ -1343,8 +1366,8 @@ public class TestColumnIndexBuilder {
     assertCorrectFiltering(columnIndex, lt(col, 42), 8);
     assertCorrectFiltering(columnIndex, ltEq(col, 42), 5, 8);
     assertCorrectFiltering(columnIndex, userDefined(col, IntegerIsDivisableWith3.class), 1, 3, 5, 8);
-    assertCorrectFiltering(columnIndex, invert(userDefined(col, IntegerIsDivisableWith3.class)), 0, 2, 3, 4, 5, 6, 7,
-        8);
+    assertCorrectFiltering(
+        columnIndex, invert(userDefined(col, IntegerIsDivisableWith3.class)), 0, 2, 3, 4, 5, 6, 7, 8);
   }
 
   @Test
@@ -1423,8 +1446,8 @@ public class TestColumnIndexBuilder {
     assertCorrectFiltering(columnIndex, lt(col, -42l), 1, 2);
     assertCorrectFiltering(columnIndex, ltEq(col, -42l), 1, 2, 5);
     assertCorrectFiltering(columnIndex, userDefined(col, LongIsDivisableWith3.class), 1, 2, 5, 7);
-    assertCorrectFiltering(columnIndex, invert(userDefined(col, LongIsDivisableWith3.class)), 0, 1, 2, 3, 4, 5, 6, 7,
-        8);
+    assertCorrectFiltering(
+        columnIndex, invert(userDefined(col, LongIsDivisableWith3.class)), 0, 1, 2, 3, 4, 5, 6, 7, 8);
 
     builder = ColumnIndexBuilder.getBuilder(type, Integer.MAX_VALUE);
     sb = new StatsBuilder();
@@ -1461,8 +1484,8 @@ public class TestColumnIndexBuilder {
     assertCorrectFiltering(columnIndex, lt(col, -42l));
     assertCorrectFiltering(columnIndex, ltEq(col, -42l), 8);
     assertCorrectFiltering(columnIndex, userDefined(col, LongIsDivisableWith3.class), 1, 3, 5, 8);
-    assertCorrectFiltering(columnIndex, invert(userDefined(col, LongIsDivisableWith3.class)), 0, 1, 2, 3, 4, 5, 6, 7,
-        8);
+    assertCorrectFiltering(
+        columnIndex, invert(userDefined(col, LongIsDivisableWith3.class)), 0, 1, 2, 3, 4, 5, 6, 7, 8);
   }
 
   @Test
@@ -1485,8 +1508,12 @@ public class TestColumnIndexBuilder {
   public void testNoOpBuilder() {
     ColumnIndexBuilder builder = ColumnIndexBuilder.getNoOpBuilder();
     StatsBuilder sb = new StatsBuilder();
-    builder.add(sb.stats(Types.required(BINARY).as(UTF8).named("test_binary_utf8"), stringBinary("Jeltz"),
-        stringBinary("Slartibartfast"), null, null));
+    builder.add(sb.stats(
+        Types.required(BINARY).as(UTF8).named("test_binary_utf8"),
+        stringBinary("Jeltz"),
+        stringBinary("Slartibartfast"),
+        null,
+        null));
     builder.add(sb.stats(Types.required(BOOLEAN).named("test_boolean"), true, true, null, null));
     builder.add(sb.stats(Types.required(DOUBLE).named("test_double"), null, null, null));
     builder.add(sb.stats(Types.required(INT32).named("test_int32"), null, null));
@@ -1612,7 +1639,9 @@ public class TestColumnIndexBuilder {
         assertFalse("The byte buffer should be empty for null pages", value.hasRemaining());
       } else {
         assertEquals("The byte buffer should be 8 bytes long for double", 8, value.remaining());
-        assertTrue("Invalid value for page " + i, Double.compare(expectedValue.doubleValue(), value.getDouble(0)) == 0);
+        assertTrue(
+            "Invalid value for page " + i,
+            Double.compare(expectedValue.doubleValue(), value.getDouble(0)) == 0);
       }
     }
   }
@@ -1626,7 +1655,9 @@ public class TestColumnIndexBuilder {
         assertFalse("The byte buffer should be empty for null pages", value.hasRemaining());
       } else {
         assertEquals("The byte buffer should be 4 bytes long for double", 4, value.remaining());
-        assertTrue("Invalid value for page " + i, Float.compare(expectedValue.floatValue(), value.getFloat(0)) == 0);
+        assertTrue(
+            "Invalid value for page " + i,
+            Float.compare(expectedValue.floatValue(), value.getFloat(0)) == 0);
       }
     }
   }
@@ -1663,7 +1694,10 @@ public class TestColumnIndexBuilder {
     List<Long> nullCounts = columnIndex.getNullCounts();
     assertEquals(expectedNullCounts.length, nullCounts.size());
     for (int i = 0; i < expectedNullCounts.length; ++i) {
-      assertEquals("Invalid null count at page " + i, expectedNullCounts[i], nullCounts.get(i).longValue());
+      assertEquals(
+          "Invalid null count at page " + i,
+          expectedNullCounts[i],
+          nullCounts.get(i).longValue());
     }
   }
 
@@ -1671,7 +1705,10 @@ public class TestColumnIndexBuilder {
     List<Boolean> nullPages = columnIndex.getNullPages();
     assertEquals(expectedNullPages.length, nullPages.size());
     for (int i = 0; i < expectedNullPages.length; ++i) {
-      assertEquals("Invalid null pages at page " + i, expectedNullPages[i], nullPages.get(i).booleanValue());
+      assertEquals(
+          "Invalid null pages at page " + i,
+          expectedNullPages[i],
+          nullPages.get(i).booleanValue());
     }
   }
 

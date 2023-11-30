@@ -18,14 +18,14 @@
  */
 package org.apache.parquet.avro;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.assertNull;
 import static org.apache.parquet.filter.ColumnPredicates.equalTo;
 import static org.apache.parquet.filter.ColumnRecordFilter.column;
 import static org.apache.parquet.hadoop.ParquetWriter.DEFAULT_BLOCK_SIZE;
 import static org.apache.parquet.hadoop.ParquetWriter.DEFAULT_PAGE_SIZE;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 import com.google.common.collect.ImmutableList;
 import java.io.File;
@@ -37,15 +37,13 @@ import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-
 import org.apache.avro.Schema;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
-import org.junit.Test;
-import org.apache.parquet.avro.LogicalTypesTest;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
+import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
@@ -59,8 +57,9 @@ public class TestSpecificReadWrite {
   @Parameterized.Parameters
   public static Collection<Object[]> data() {
     Object[][] data = new Object[][] {
-        { false },  // use the new converters
-        { true } }; // use the old converters
+      {false}, // use the new converters
+      {true}
+    }; // use the old converters
     return Arrays.asList(data);
   }
 
@@ -73,7 +72,7 @@ public class TestSpecificReadWrite {
   @Test
   public void testCompatReadWriteSpecific() throws IOException {
     Path path = writeCarsToParquetFile(10, CompressionCodecName.UNCOMPRESSED, false);
-    try(ParquetReader<Car> reader = new AvroParquetReader<>(testConf, path)) {
+    try (ParquetReader<Car> reader = new AvroParquetReader<>(testConf, path)) {
       for (int i = 0; i < 10; i++) {
         assertEquals(getVwPolo().toString(), reader.read().toString());
         assertEquals(getVwPassat().toString(), reader.read().toString());
@@ -86,7 +85,7 @@ public class TestSpecificReadWrite {
   @Test
   public void testReadWriteSpecificWithDictionary() throws IOException {
     Path path = writeCarsToParquetFile(10, CompressionCodecName.UNCOMPRESSED, true);
-    try(ParquetReader<Car> reader = new AvroParquetReader<>(testConf, path)) {
+    try (ParquetReader<Car> reader = new AvroParquetReader<>(testConf, path)) {
       for (int i = 0; i < 10; i++) {
         assertEquals(getVwPolo().toString(), reader.read().toString());
         assertEquals(getVwPassat().toString(), reader.read().toString());
@@ -99,7 +98,8 @@ public class TestSpecificReadWrite {
   @Test
   public void testFilterMatchesMultiple() throws IOException {
     Path path = writeCarsToParquetFile(10, CompressionCodecName.UNCOMPRESSED, false);
-    try(ParquetReader<Car> reader = new AvroParquetReader<>(testConf, path, column("make", equalTo("Volkswagen")))) {
+    try (ParquetReader<Car> reader =
+        new AvroParquetReader<>(testConf, path, column("make", equalTo("Volkswagen")))) {
       for (int i = 0; i < 10; i++) {
         assertEquals(getVwPolo().toString(), reader.read().toString());
         assertEquals(getVwPassat().toString(), reader.read().toString());
@@ -110,8 +110,10 @@ public class TestSpecificReadWrite {
 
   @Test
   public void testFilterMatchesMultipleBlocks() throws IOException {
-    Path path = writeCarsToParquetFile(10000, CompressionCodecName.UNCOMPRESSED, false, DEFAULT_BLOCK_SIZE/64, DEFAULT_PAGE_SIZE/64);
-    try(ParquetReader<Car> reader = new AvroParquetReader<>(testConf, path, column("make", equalTo("Volkswagen")))) {
+    Path path = writeCarsToParquetFile(
+        10000, CompressionCodecName.UNCOMPRESSED, false, DEFAULT_BLOCK_SIZE / 64, DEFAULT_PAGE_SIZE / 64);
+    try (ParquetReader<Car> reader =
+        new AvroParquetReader<>(testConf, path, column("make", equalTo("Volkswagen")))) {
       for (int i = 0; i < 10000; i++) {
         assertEquals(getVwPolo().toString(), reader.read().toString());
         assertEquals(getVwPassat().toString(), reader.read().toString());
@@ -122,8 +124,9 @@ public class TestSpecificReadWrite {
 
   @Test
   public void testFilterMatchesNoBlocks() throws IOException {
-    Path path = writeCarsToParquetFile(10000, CompressionCodecName.UNCOMPRESSED, false, DEFAULT_BLOCK_SIZE/64, DEFAULT_PAGE_SIZE/64);
-    try(ParquetReader<Car> reader = new AvroParquetReader<>(testConf, path, column("make", equalTo("Bogus")))) {
+    Path path = writeCarsToParquetFile(
+        10000, CompressionCodecName.UNCOMPRESSED, false, DEFAULT_BLOCK_SIZE / 64, DEFAULT_PAGE_SIZE / 64);
+    try (ParquetReader<Car> reader = new AvroParquetReader<>(testConf, path, column("make", equalTo("Bogus")))) {
       assertNull(reader.read());
     }
   }
@@ -135,12 +138,16 @@ public class TestSpecificReadWrite {
     tmp.delete();
     Path path = new Path(tmp.getPath());
 
-    Car vwPolo   = getVwPolo();
+    Car vwPolo = getVwPolo();
     Car vwPassat = getVwPassat();
-    Car bmwMini  = getBmwMini();
+    Car bmwMini = getBmwMini();
 
-    try(ParquetWriter<Car> writer = new AvroParquetWriter<Car>(path, Car.SCHEMA$,
-        CompressionCodecName.UNCOMPRESSED, DEFAULT_BLOCK_SIZE/128, DEFAULT_PAGE_SIZE/128,
+    try (ParquetWriter<Car> writer = new AvroParquetWriter<Car>(
+        path,
+        Car.SCHEMA$,
+        CompressionCodecName.UNCOMPRESSED,
+        DEFAULT_BLOCK_SIZE / 128,
+        DEFAULT_PAGE_SIZE / 128,
         false)) {
       for (int i = 0; i < 10000; i++) {
         writer.write(vwPolo);
@@ -150,8 +157,7 @@ public class TestSpecificReadWrite {
       writer.write(bmwMini); // only write BMW in last block
     }
 
-    try(ParquetReader<Car> reader = new AvroParquetReader<Car>(testConf, path, column("make",
-        equalTo("BMW")))) {
+    try (ParquetReader<Car> reader = new AvroParquetReader<Car>(testConf, path, column("make", equalTo("BMW")))) {
       assertEquals(getBmwMini().toString(), reader.read().toString());
       assertNull(reader.read());
     }
@@ -159,8 +165,9 @@ public class TestSpecificReadWrite {
 
   @Test
   public void testFilterWithDictionary() throws IOException {
-    Path path = writeCarsToParquetFile(1,CompressionCodecName.UNCOMPRESSED,true);
-    try(ParquetReader<Car> reader = new AvroParquetReader<>(testConf, path, column("make", equalTo("Volkswagen")))) {
+    Path path = writeCarsToParquetFile(1, CompressionCodecName.UNCOMPRESSED, true);
+    try (ParquetReader<Car> reader =
+        new AvroParquetReader<>(testConf, path, column("make", equalTo("Volkswagen")))) {
       assertEquals(getVwPolo().toString(), reader.read().toString());
       assertEquals(getVwPassat().toString(), reader.read().toString());
       assertNull(reader.read());
@@ -171,7 +178,8 @@ public class TestSpecificReadWrite {
   public void testFilterOnSubAttribute() throws IOException {
     Path path = writeCarsToParquetFile(1, CompressionCodecName.UNCOMPRESSED, false);
 
-    ParquetReader<Car> reader = new AvroParquetReader<Car>(testConf, path, column("engine.type", equalTo(EngineType.DIESEL)));
+    ParquetReader<Car> reader =
+        new AvroParquetReader<Car>(testConf, path, column("engine.type", equalTo(EngineType.DIESEL)));
     assertEquals(reader.read().toString(), getVwPassat().toString());
     assertNull(reader.read());
 
@@ -192,25 +200,25 @@ public class TestSpecificReadWrite {
     Schema schema = Car.getClassSchema();
     List<Schema.Field> fields = schema.getFields();
 
-    //Schema.Parser parser = new Schema.Parser();
+    // Schema.Parser parser = new Schema.Parser();
     List<Schema.Field> projectedFields = new ArrayList<Schema.Field>();
     for (Schema.Field field : fields) {
       String name = field.name();
-      if ("optionalExtra".equals(name) ||
-          "serviceHistory".equals(name)) {
+      if ("optionalExtra".equals(name) || "serviceHistory".equals(name)) {
         continue;
       }
 
-      //Schema schemaClone = parser.parse(field.schema().toString(false));
+      // Schema schemaClone = parser.parse(field.schema().toString(false));
       Schema.Field fieldClone = new Schema.Field(name, field.schema(), field.doc(), field.defaultVal());
       projectedFields.add(fieldClone);
     }
 
-    Schema projectedSchema = Schema.createRecord(schema.getName(), schema.getDoc(), schema.getNamespace(), schema.isError());
+    Schema projectedSchema =
+        Schema.createRecord(schema.getName(), schema.getDoc(), schema.getNamespace(), schema.isError());
     projectedSchema.setFields(projectedFields);
     AvroReadSupport.setRequestedProjection(conf, projectedSchema);
 
-    try(ParquetReader<Car> reader = new AvroParquetReader<Car>(conf, path)) {
+    try (ParquetReader<Car> reader = new AvroParquetReader<Car>(conf, path)) {
       for (Car car = reader.read(); car != null; car = reader.read()) {
         assertTrue(car.getDoors() == 4 || car.getDoors() == 5);
         assertNotNull(car.getEngine());
@@ -230,7 +238,7 @@ public class TestSpecificReadWrite {
     Configuration conf = new Configuration(testConf);
     AvroReadSupport.setAvroReadSchema(conf, NewCar.SCHEMA$);
 
-    try(ParquetReader<NewCar> reader = new AvroParquetReader<>(conf, path)) {
+    try (ParquetReader<NewCar> reader = new AvroParquetReader<>(conf, path)) {
       for (NewCar car = reader.read(); car != null; car = reader.read()) {
         assertNotNull(car.getEngine());
         assertNotNull(car.getBrand());
@@ -245,10 +253,11 @@ public class TestSpecificReadWrite {
   @Test
   public void testParsesSpecificDataModel() throws IOException {
     // SpecificRecord contains a logical type and will fail to decode unless its SpecificData model is parsed
-    List<LogicalTypesTest> records = IntStream
-      .range(0, 25)
-      .mapToObj(i -> LogicalTypesTest.newBuilder().setTimestamp(Instant.now()).build())
-      .collect(Collectors.toList());
+    List<LogicalTypesTest> records = IntStream.range(0, 25)
+        .mapToObj(i -> LogicalTypesTest.newBuilder()
+            .setTimestamp(Instant.now())
+            .build())
+        .collect(Collectors.toList());
 
     // Test that SpecificData model is parsed in AvroParquetWriter
     File tmp = File.createTempFile(getClass().getSimpleName(), ".tmp");
@@ -256,13 +265,11 @@ public class TestSpecificReadWrite {
     tmp.delete();
     Path path = new Path(tmp.getPath());
 
-    try(
-      ParquetWriter<LogicalTypesTest> writer = AvroParquetWriter.<LogicalTypesTest>builder(path)
+    try (ParquetWriter<LogicalTypesTest> writer = AvroParquetWriter.<LogicalTypesTest>builder(path)
         .withSchema(LogicalTypesTest.SCHEMA$)
         .withConf(new Configuration(false))
         .withCompressionCodec(CompressionCodecName.UNCOMPRESSED)
-        .build()
-    ) {
+        .build()) {
       for (LogicalTypesTest record : records) {
         writer.write(record);
       }
@@ -279,22 +286,25 @@ public class TestSpecificReadWrite {
     assertEquals(records, output);
   }
 
-  private Path writeCarsToParquetFile( int num, CompressionCodecName compression, boolean enableDictionary) throws IOException {
+  private Path writeCarsToParquetFile(int num, CompressionCodecName compression, boolean enableDictionary)
+      throws IOException {
     return writeCarsToParquetFile(num, compression, enableDictionary, DEFAULT_BLOCK_SIZE, DEFAULT_PAGE_SIZE);
   }
 
-  private Path writeCarsToParquetFile( int num, CompressionCodecName compression, boolean enableDictionary, int blockSize, int pageSize) throws IOException {
+  private Path writeCarsToParquetFile(
+      int num, CompressionCodecName compression, boolean enableDictionary, int blockSize, int pageSize)
+      throws IOException {
     File tmp = File.createTempFile(getClass().getSimpleName(), ".tmp");
     tmp.deleteOnExit();
     tmp.delete();
     Path path = new Path(tmp.getPath());
 
-    Car vwPolo   = getVwPolo();
+    Car vwPolo = getVwPolo();
     Car vwPassat = getVwPassat();
-    Car bmwMini  = getBmwMini();
+    Car bmwMini = getBmwMini();
 
-    try(ParquetWriter<Car> writer = new AvroParquetWriter<>(path, Car.SCHEMA$, compression,
-      blockSize, pageSize, enableDictionary)) {
+    try (ParquetWriter<Car> writer =
+        new AvroParquetWriter<>(path, Car.SCHEMA$, compression, blockSize, pageSize, enableDictionary)) {
       for (int i = 0; i < num; i++) {
         writer.write(vwPolo);
         writer.write(vwPassat);
@@ -313,13 +323,22 @@ public class TestSpecificReadWrite {
         .setModel("Polo")
         .setVin(new Vin(vin.getBytes()))
         .setDoors(4)
-        .setEngine(Engine.newBuilder().setType(EngineType.PETROL)
-                  .setCapacity(1.4f).setHasTurboCharger(false).build())
+        .setEngine(Engine.newBuilder()
+            .setType(EngineType.PETROL)
+            .setCapacity(1.4f)
+            .setHasTurboCharger(false)
+            .build())
         .setOptionalExtra(
             Stereo.newBuilder().setMake("Blaupunkt").setSpeakers(4).build())
         .setServiceHistory(ImmutableList.of(
-            Service.newBuilder().setDate(1325376000l).setMechanic("Jim").build(),
-            Service.newBuilder().setDate(1356998400l).setMechanic("Mike").build()))
+            Service.newBuilder()
+                .setDate(1325376000l)
+                .setMechanic("Jim")
+                .build(),
+            Service.newBuilder()
+                .setDate(1356998400l)
+                .setMechanic("Mike")
+                .build()))
         .build();
   }
 
@@ -332,12 +351,16 @@ public class TestSpecificReadWrite {
         .setModel("Passat")
         .setVin(new Vin(vin.getBytes()))
         .setDoors(5)
-        .setEngine(Engine.newBuilder().setType(EngineType.DIESEL)
-            .setCapacity(2.0f).setHasTurboCharger(false).build())
-        .setOptionalExtra(
-            LeatherTrim.newBuilder().setColour("Black").build())
-        .setServiceHistory(ImmutableList.of(
-            Service.newBuilder().setDate(1325376000l).setMechanic("Jim").build()))
+        .setEngine(Engine.newBuilder()
+            .setType(EngineType.DIESEL)
+            .setCapacity(2.0f)
+            .setHasTurboCharger(false)
+            .build())
+        .setOptionalExtra(LeatherTrim.newBuilder().setColour("Black").build())
+        .setServiceHistory(ImmutableList.of(Service.newBuilder()
+            .setDate(1325376000l)
+            .setMechanic("Jim")
+            .build()))
         .build();
   }
 
@@ -350,11 +373,16 @@ public class TestSpecificReadWrite {
         .setModel("Mini")
         .setVin(new Vin(vin.getBytes()))
         .setDoors(4)
-        .setEngine(Engine.newBuilder().setType(EngineType.PETROL)
-            .setCapacity(1.6f).setHasTurboCharger(true).build())
+        .setEngine(Engine.newBuilder()
+            .setType(EngineType.PETROL)
+            .setCapacity(1.6f)
+            .setHasTurboCharger(true)
+            .build())
         .setOptionalExtra(null)
-        .setServiceHistory(ImmutableList.of(
-            Service.newBuilder().setDate(1356998400l).setMechanic("Mike").build()))
+        .setServiceHistory(ImmutableList.of(Service.newBuilder()
+            .setDate(1356998400l)
+            .setMechanic("Mike")
+            .build()))
         .build();
   }
 }

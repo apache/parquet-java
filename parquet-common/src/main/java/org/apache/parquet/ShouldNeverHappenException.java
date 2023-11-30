@@ -23,8 +23,7 @@ package org.apache.parquet;
  * not know this, for example the default clause of an exhaustive switch statement.
  */
 public class ShouldNeverHappenException extends ParquetRuntimeException {
-  public ShouldNeverHappenException() {
-  }
+  public ShouldNeverHappenException() {}
 
   public ShouldNeverHappenException(String message, Throwable cause) {
     super(message, cause);

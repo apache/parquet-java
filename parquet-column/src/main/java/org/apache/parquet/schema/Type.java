@@ -20,7 +20,6 @@ package org.apache.parquet.schema;
 
 import java.util.List;
 import java.util.Objects;
-
 import org.apache.parquet.io.InvalidRecordException;
 
 /**
@@ -29,7 +28,7 @@ import org.apache.parquet.io.InvalidRecordException;
  * (eg a primitive or group) as well as its attributes such as whether it is
  * repeated, required, or optional.
  */
-abstract public class Type {
+public abstract class Type {
 
   /**
    * represents a field ID
@@ -43,6 +42,7 @@ abstract public class Type {
 
     /**
      * For bean serialization, used by Cascading 3.
+     *
      * @return this type's id
      * @deprecated use {@link #intValue()} instead.
      */
@@ -57,7 +57,7 @@ abstract public class Type {
 
     @Override
     public boolean equals(Object obj) {
-      return (obj instanceof ID) && ((ID)obj).id == id;
+      return (obj instanceof ID) && ((ID) obj).id == id;
     }
 
     @Override
@@ -101,15 +101,13 @@ abstract public class Type {
       public boolean isMoreRestrictiveThan(Repetition other) {
         return false;
       }
-    }
-    ;
+    };
 
     /**
      * @param other a repetition to test
      * @return true if it is strictly more restrictive than other
      */
-    abstract public boolean isMoreRestrictiveThan(Repetition other);
-
+    public abstract boolean isMoreRestrictiveThan(Repetition other);
 
     /**
      * @param repetitions repetitions to traverse
@@ -140,7 +138,7 @@ abstract public class Type {
   private final ID id;
 
   /**
-   * @param name the name of the type
+   * @param name       the name of the type
    * @param repetition OPTIONAL, REPEATED, REQUIRED
    */
   @Deprecated
@@ -149,8 +147,8 @@ abstract public class Type {
   }
 
   /**
-   * @param name the name of the type
-   * @param repetition OPTIONAL, REPEATED, REQUIRED
+   * @param name         the name of the type
+   * @param repetition   OPTIONAL, REPEATED, REQUIRED
    * @param originalType (optional) the original type to help with cross schema conversion (LIST, MAP, ...)
    */
   @Deprecated
@@ -159,10 +157,10 @@ abstract public class Type {
   }
 
   /**
-   * @param name the name of the type
-   * @param repetition OPTIONAL, REPEATED, REQUIRED
+   * @param name         the name of the type
+   * @param repetition   OPTIONAL, REPEATED, REQUIRED
    * @param originalType (optional) the original type to help with cross schema conversion (LIST, MAP, ...)
-   * @param id (optional) the id of the fields.
+   * @param id           (optional) the id of the fields.
    */
   Type(String name, Repetition repetition, OriginalType originalType, ID id) {
     this(name, repetition, originalType, null, id);
@@ -172,7 +170,8 @@ abstract public class Type {
     super();
     this.name = Objects.requireNonNull(name, "name cannot be null");
     this.repetition = Objects.requireNonNull(repetition, "repetition cannot be null");
-    this.logicalTypeAnnotation = originalType == null ? null : LogicalTypeAnnotation.fromOriginalType(originalType, decimalMetadata);
+    this.logicalTypeAnnotation =
+        originalType == null ? null : LogicalTypeAnnotation.fromOriginalType(originalType, decimalMetadata);
     this.id = id;
   }
 
@@ -237,7 +236,7 @@ abstract public class Type {
   /**
    * @return if this is a primitive type
    */
-  abstract public boolean isPrimitive();
+  public abstract boolean isPrimitive();
 
   /**
    * @return this if it's a group type
@@ -247,7 +246,7 @@ abstract public class Type {
     if (isPrimitive()) {
       throw new ClassCastException(this + " is not a group");
     }
-    return (GroupType)this;
+    return (GroupType) this;
   }
 
   /**
@@ -258,34 +257,36 @@ abstract public class Type {
     if (!isPrimitive()) {
       throw new ClassCastException(this + " is not primitive");
     }
-    return (PrimitiveType)this;
+    return (PrimitiveType) this;
   }
 
   /**
    * Writes a string representation to the provided StringBuilder
-   * @param sb the StringBuilder to write itself to
+   *
+   * @param sb     the StringBuilder to write itself to
    * @param indent indentation level
    */
-  abstract public void writeToStringBuilder(StringBuilder sb, String indent);
+  public abstract void writeToStringBuilder(StringBuilder sb, String indent);
 
   /**
    * Visits this type with the given visitor
+   *
    * @param visitor the visitor to visit this type
    */
-  abstract public void accept(TypeVisitor visitor);
+  public abstract void accept(TypeVisitor visitor);
 
   @Deprecated
-  abstract protected int typeHashCode();
+  protected abstract int typeHashCode();
 
   @Deprecated
-  abstract protected boolean typeEquals(Type other);
+  protected abstract boolean typeEquals(Type other);
 
   @Override
   public int hashCode() {
     int c = repetition.hashCode();
     c = 31 * c + name.hashCode();
     if (logicalTypeAnnotation != null) {
-      c = 31 * c +  logicalTypeAnnotation.hashCode();
+      c = 31 * c + logicalTypeAnnotation.hashCode();
     }
     if (id != null) {
       c = 31 * c + id.hashCode();
@@ -294,8 +295,7 @@ abstract public class Type {
   }
 
   protected boolean equals(Type other) {
-    return
-        name.equals(other.name)
+    return name.equals(other.name)
         && repetition == other.repetition
         && eqOrBothNull(repetition, other.repetition)
         && eqOrBothNull(id, other.id)
@@ -307,7 +307,7 @@ abstract public class Type {
     if (!(other instanceof Type) || other == null) {
       return false;
     }
-    return equals((Type)other);
+    return equals((Type) other);
   }
 
   protected boolean eqOrBothNull(Object o1, Object o2) {
@@ -332,7 +332,7 @@ abstract public class Type {
 
   /**
    * @param toMerge the type to merge into this one
-   * @param strict should schema primitive types match
+   * @param strict  should schema primitive types match
    * @return the union result of merging toMerge into this
    */
   protected abstract Type union(Type toMerge, boolean strict);
@@ -348,19 +348,16 @@ abstract public class Type {
   }
 
   void checkContains(Type subType) {
-    if (!this.name.equals(subType.name)
-        || this.repetition != subType.repetition) {
+    if (!this.name.equals(subType.name) || this.repetition != subType.repetition) {
       throw new InvalidRecordException(subType + " found: expected " + this);
     }
   }
 
   /**
-   *
-   * @param path a list of groups to convert
+   * @param path      a list of groups to convert
    * @param converter logic to convert the tree
-   * @param <T> the type returned by the converter
+   * @param <T>       the type returned by the converter
    * @return the converted tree
    */
-   abstract <T> T convert(List<GroupType> path, TypeConverter<T> converter);
-
+  abstract <T> T convert(List<GroupType> path, TypeConverter<T> converter);
 }

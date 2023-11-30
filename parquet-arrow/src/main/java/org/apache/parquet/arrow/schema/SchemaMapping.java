@@ -22,7 +22,6 @@ import static java.util.Arrays.asList;
 
 import java.util.Collections;
 import java.util.List;
-
 import org.apache.arrow.vector.types.pojo.Field;
 import org.apache.arrow.vector.types.pojo.Schema;
 import org.apache.parquet.schema.GroupType;
@@ -32,6 +31,7 @@ import org.apache.parquet.schema.Type;
 
 /**
  * The mapping between an Arrow and a Parquet schema
+ *
  * @see SchemaConverter
  */
 public class SchemaMapping {
@@ -64,14 +64,20 @@ public class SchemaMapping {
 
   /**
    * To traverse a schema mapping
+   *
    * @param <T> the Java return type of the visitor
    */
   public interface TypeMappingVisitor<T> {
     T visit(PrimitiveTypeMapping primitiveTypeMapping);
+
     T visit(StructTypeMapping structTypeMapping);
+
     T visit(UnionTypeMapping unionTypeMapping);
+
     T visit(ListTypeMapping listTypeMapping);
+
     T visit(MapTypeMapping mapTypeMapping);
+
     T visit(RepeatedTypeMapping repeatedTypeMapping);
   }
 
@@ -104,7 +110,6 @@ public class SchemaMapping {
     }
 
     public abstract <T> T accept(TypeMappingVisitor<T> visitor);
-
   }
 
   /**
@@ -211,7 +216,6 @@ public class SchemaMapping {
       return visitor.visit(this);
     }
   }
-
 
   /**
    * mapping of a List type and repeated Parquet field (non-list annotated)

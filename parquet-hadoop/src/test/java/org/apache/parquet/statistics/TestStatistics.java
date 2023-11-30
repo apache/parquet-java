@@ -19,6 +19,25 @@
 
 package org.apache.parquet.statistics;
 
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.DOUBLE;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FLOAT;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT96;
+import static org.apache.parquet.schema.Type.Repetition.OPTIONAL;
+import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
+import java.io.File;
+import java.io.IOException;
+import java.math.BigInteger;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Random;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.ParquetProperties;
@@ -51,23 +70,9 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
-import java.io.File;
-import java.io.IOException;
-import java.math.BigInteger;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Random;
-
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.*;
-import static org.apache.parquet.schema.Type.Repetition.OPTIONAL;
-import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.assertEquals;
-
 public class TestStatistics {
   private static final int MEGABYTE = 1 << 20;
-  private static final long RANDOM_SEED = 1441990701846L; //System.currentTimeMillis();
+  private static final long RANDOM_SEED = 1441990701846L; // System.currentTimeMillis();
 
   public static class SingletonPageReader implements PageReader {
     private final DictionaryPage dict;
@@ -137,8 +142,7 @@ public class TestStatistics {
     }
   }
 
-  private static PrimitiveConverter getValidatingConverter(
-      final DataPage page, PrimitiveTypeName type) {
+  private static PrimitiveConverter getValidatingConverter(final DataPage page, PrimitiveTypeName type) {
     return type.convert(new PrimitiveType.PrimitiveTypeNameConverter<PrimitiveConverter, RuntimeException>() {
       @Override
       public PrimitiveConverter convertFLOAT(PrimitiveTypeName primitiveTypeName) {
@@ -235,7 +239,8 @@ public class TestStatistics {
       PrimitiveConverter converter = getValidatingConverter(page, desc.getType());
       Statistics<?> stats = getStatisticsFromPageHeader(page);
 
-      assertEquals("Statistics does not use the proper comparator",
+      assertEquals(
+          "Statistics does not use the proper comparator",
           desc.getPrimitiveType().comparator().getClass(),
           stats.comparator().getClass());
 
@@ -268,7 +273,14 @@ public class TestStatistics {
 
     private final List<RandomValueGenerator<?>> randomGenerators;
 
-    public DataContext(long seed, File path, int blockSize, int pageSize, boolean enableDictionary, ParquetProperties.WriterVersion version) throws IOException {
+    public DataContext(
+        long seed,
+        File path,
+        int blockSize,
+        int pageSize,
+        boolean enableDictionary,
+        ParquetProperties.WriterVersion version)
+        throws IOException {
       super(path, buildSchema(seed), blockSize, pageSize, enableDictionary, true, version);
 
       this.random = new Random(seed);
@@ -310,8 +322,7 @@ public class TestStatistics {
           new RandomValues.LongGenerator(random.nextLong()),
           new RandomValues.LongGenerator(random.nextLong()),
           new RandomValues.LongGenerator(random.nextLong()),
-          new RandomValues.FixedGenerator(random.nextLong(), 12)
-      );
+          new RandomValues.FixedGenerator(random.nextLong(), 12));
     }
 
     private static MessageType buildSchema(long seed) {
@@ -322,7 +333,8 @@ public class TestStatistics {
       int binaryPrecision = calculatePrecision(16);
       int binaryScale = binaryPrecision / 4;
 
-      return new MessageType("schema",
+      return new MessageType(
+          "schema",
           new PrimitiveType(OPTIONAL, INT32, "i32"),
           new PrimitiveType(OPTIONAL, INT64, "i64"),
           new PrimitiveType(OPTIONAL, INT96, "i96"),
@@ -343,11 +355,26 @@ public class TestStatistics {
           Types.optional(INT32).as(OriginalType.UINT_32).named("uint32"),
           Types.optional(INT64).as(OriginalType.INT_64).named("int64"),
           Types.optional(INT64).as(OriginalType.UINT_64).named("uint64"),
-          Types.optional(INT32).as(OriginalType.DECIMAL).precision(9).scale(2).named("decimal-int32"),
-          Types.optional(INT64).as(OriginalType.DECIMAL).precision(18).scale(4).named("decimal-int64"),
-          Types.optional(FIXED_LEN_BYTE_ARRAY).length(fixedBinaryLength).as(OriginalType.DECIMAL)
-              .precision(fixedPrecision).scale(fixedScale).named("decimal-fixed"),
-          Types.optional(BINARY).as(OriginalType.DECIMAL).precision(binaryPrecision).scale(binaryScale)
+          Types.optional(INT32)
+              .as(OriginalType.DECIMAL)
+              .precision(9)
+              .scale(2)
+              .named("decimal-int32"),
+          Types.optional(INT64)
+              .as(OriginalType.DECIMAL)
+              .precision(18)
+              .scale(4)
+              .named("decimal-int64"),
+          Types.optional(FIXED_LEN_BYTE_ARRAY)
+              .length(fixedBinaryLength)
+              .as(OriginalType.DECIMAL)
+              .precision(fixedPrecision)
+              .scale(fixedScale)
+              .named("decimal-fixed"),
+          Types.optional(BINARY)
+              .as(OriginalType.DECIMAL)
+              .precision(binaryPrecision)
+              .scale(binaryScale)
               .named("decimal-binary"),
           Types.optional(BINARY).as(OriginalType.UTF8).named("utf8"),
           Types.optional(BINARY).as(OriginalType.ENUM).named("enum"),
@@ -358,8 +385,10 @@ public class TestStatistics {
           Types.optional(INT64).as(OriginalType.TIME_MICROS).named("time-micros"),
           Types.optional(INT64).as(OriginalType.TIMESTAMP_MILLIS).named("timestamp-millis"),
           Types.optional(INT64).as(OriginalType.TIMESTAMP_MICROS).named("timestamp-micros"),
-          Types.optional(FIXED_LEN_BYTE_ARRAY).length(12).as(OriginalType.INTERVAL).named("interval")
-      );
+          Types.optional(FIXED_LEN_BYTE_ARRAY)
+              .length(12)
+              .as(OriginalType.INTERVAL)
+              .named("interval"));
     }
 
     private static int calculatePrecision(int byteCnt) {
@@ -379,26 +408,26 @@ public class TestStatistics {
             continue;
           }
           switch (type.asPrimitiveType().getPrimitiveTypeName()) {
-          case BINARY:
-          case FIXED_LEN_BYTE_ARRAY:
-          case INT96:
-            group.append(type.getName(), ((RandomBinaryBase<?>) generator).nextBinaryValue());
-            break;
-          case INT32:
-            group.append(type.getName(), (Integer) generator.nextValue());
-            break;
-          case INT64:
-            group.append(type.getName(), (Long) generator.nextValue());
-            break;
-          case FLOAT:
-            group.append(type.getName(), (Float) generator.nextValue());
-            break;
-          case DOUBLE:
-            group.append(type.getName(), (Double) generator.nextValue());
-            break;
-          case BOOLEAN:
-            group.append(type.getName(), (Boolean) generator.nextValue());
-            break;
+            case BINARY:
+            case FIXED_LEN_BYTE_ARRAY:
+            case INT96:
+              group.append(type.getName(), ((RandomBinaryBase<?>) generator).nextBinaryValue());
+              break;
+            case INT32:
+              group.append(type.getName(), (Integer) generator.nextValue());
+              break;
+            case INT64:
+              group.append(type.getName(), (Long) generator.nextValue());
+              break;
+            case FLOAT:
+              group.append(type.getName(), (Float) generator.nextValue());
+              break;
+            case DOUBLE:
+              group.append(type.getName(), (Double) generator.nextValue());
+              break;
+            case BOOLEAN:
+              group.append(type.getName(), (Boolean) generator.nextValue());
+              break;
           }
         }
         writer.write(group);
@@ -408,13 +437,14 @@ public class TestStatistics {
     @Override
     public void test() throws IOException {
       Configuration configuration = new Configuration();
-      ParquetMetadata metadata = ParquetFileReader.readFooter(configuration,
-          super.fsPath, ParquetMetadataConverter.NO_FILTER);
-      try (ParquetFileReader reader = new ParquetFileReader(configuration,
-        metadata.getFileMetaData(),
-        super.fsPath,
-        metadata.getBlocks(),
-        metadata.getFileMetaData().getSchema().getColumns())) {
+      ParquetMetadata metadata =
+          ParquetFileReader.readFooter(configuration, super.fsPath, ParquetMetadataConverter.NO_FILTER);
+      try (ParquetFileReader reader = new ParquetFileReader(
+          configuration,
+          metadata.getFileMetaData(),
+          super.fsPath,
+          metadata.getBlocks(),
+          metadata.getFileMetaData().getSchema().getColumns())) {
 
         PageStatsValidator validator = new PageStatsValidator();
 
@@ -438,19 +468,38 @@ public class TestStatistics {
 
     Random random = new Random(RANDOM_SEED);
 
-    int blockSize =(random.nextInt(54) + 10) * MEGABYTE;
+    int blockSize = (random.nextInt(54) + 10) * MEGABYTE;
     int pageSize = (random.nextInt(10) + 1) * MEGABYTE;
 
     List<DataContext> contexts = Arrays.asList(
-        new DataContext(random.nextLong(), file, blockSize,
-            pageSize, false, ParquetProperties.WriterVersion.PARQUET_1_0),
-        new DataContext(random.nextLong(), file, blockSize,
-            pageSize, true, ParquetProperties.WriterVersion.PARQUET_1_0),
-        new DataContext(random.nextLong(), file, blockSize,
-            pageSize, false, ParquetProperties.WriterVersion.PARQUET_2_0),
-        new DataContext(random.nextLong(), file, blockSize,
-            pageSize, true, ParquetProperties.WriterVersion.PARQUET_2_0)
-    );
+        new DataContext(
+            random.nextLong(),
+            file,
+            blockSize,
+            pageSize,
+            false,
+            ParquetProperties.WriterVersion.PARQUET_1_0),
+        new DataContext(
+            random.nextLong(),
+            file,
+            blockSize,
+            pageSize,
+            true,
+            ParquetProperties.WriterVersion.PARQUET_1_0),
+        new DataContext(
+            random.nextLong(),
+            file,
+            blockSize,
+            pageSize,
+            false,
+            ParquetProperties.WriterVersion.PARQUET_2_0),
+        new DataContext(
+            random.nextLong(),
+            file,
+            blockSize,
+            pageSize,
+            true,
+            ParquetProperties.WriterVersion.PARQUET_2_0));
 
     for (DataContext test : contexts) {
       DataGenerationContext.writeAndTest(test);

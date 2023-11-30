@@ -18,53 +18,63 @@
  */
 package org.apache.parquet.thrift.struct;
 
+import static org.junit.Assert.assertEquals;
+
 import java.util.LinkedList;
-
-import org.junit.Test;
-
 import org.apache.parquet.thrift.struct.ThriftType.StructType;
 import org.apache.parquet.thrift.struct.ThriftType.StructType.StructOrUnionType;
-
-import static org.junit.Assert.assertEquals;
+import org.junit.Test;
 
 public class TestThriftType {
 
   @Test
   public void testWriteUnionInfo() throws Exception {
     StructType st = new StructType(new LinkedList<ThriftField>(), null);
-    assertEquals(("{\n"
-                +"  \"id\" : \"STRUCT\",\n"
-                +"  \"children\" : [ ],\n"
-                +"  \"structOrUnionType\" : \"STRUCT\",\n"
-                +"  \"logicalTypeAnnotation\" : null\n"
-                +"}").replace("\n", System.lineSeparator()), st.toJSON());
+    assertEquals(
+        ("{\n"
+                + "  \"id\" : \"STRUCT\",\n"
+                + "  \"children\" : [ ],\n"
+                + "  \"structOrUnionType\" : \"STRUCT\",\n"
+                + "  \"logicalTypeAnnotation\" : null\n"
+                + "}")
+            .replace("\n", System.lineSeparator()),
+        st.toJSON());
 
     st = new StructType(new LinkedList<ThriftField>(), StructOrUnionType.UNION);
-    assertEquals(("{\n"
-        +"  \"id\" : \"STRUCT\",\n"
-        +"  \"children\" : [ ],\n"
-        +"  \"structOrUnionType\" : \"UNION\",\n"
-        +"  \"logicalTypeAnnotation\" : null\n"
-        +"}").replace("\n", System.lineSeparator()), st.toJSON());
+    assertEquals(
+        ("{\n"
+                + "  \"id\" : \"STRUCT\",\n"
+                + "  \"children\" : [ ],\n"
+                + "  \"structOrUnionType\" : \"UNION\",\n"
+                + "  \"logicalTypeAnnotation\" : null\n"
+                + "}")
+            .replace("\n", System.lineSeparator()),
+        st.toJSON());
 
     st = new StructType(new LinkedList<ThriftField>(), StructOrUnionType.STRUCT);
-    assertEquals(("{\n"
-        +"  \"id\" : \"STRUCT\",\n"
-        +"  \"children\" : [ ],\n"
-        +"  \"structOrUnionType\" : \"STRUCT\",\n"
-        +"  \"logicalTypeAnnotation\" : null\n"
-        +"}").replace("\n", System.lineSeparator()), st.toJSON());
+    assertEquals(
+        ("{\n"
+                + "  \"id\" : \"STRUCT\",\n"
+                + "  \"children\" : [ ],\n"
+                + "  \"structOrUnionType\" : \"STRUCT\",\n"
+                + "  \"logicalTypeAnnotation\" : null\n"
+                + "}")
+            .replace("\n", System.lineSeparator()),
+        st.toJSON());
   }
 
   @Test
   public void testParseUnionInfo() throws Exception {
-    StructType st = (StructType) StructType.fromJSON("{\"id\": \"STRUCT\", \"children\":[], \"structOrUnionType\": \"UNION\"}");
+    StructType st = (StructType)
+        StructType.fromJSON("{\"id\": \"STRUCT\", \"children\":[], \"structOrUnionType\": \"UNION\"}");
     assertEquals(st.getStructOrUnionType(), StructOrUnionType.UNION);
-    st = (StructType) StructType.fromJSON("{\"id\": \"STRUCT\", \"children\":[], \"structOrUnionType\": \"STRUCT\"}");
+    st = (StructType)
+        StructType.fromJSON("{\"id\": \"STRUCT\", \"children\":[], \"structOrUnionType\": \"STRUCT\"}");
     assertEquals(st.getStructOrUnionType(), StructOrUnionType.STRUCT);
     st = (StructType) StructType.fromJSON("{\"id\": \"STRUCT\", \"children\":[]}");
     assertEquals(st.getStructOrUnionType(), StructOrUnionType.STRUCT);
-    st = (StructType) StructType.fromJSON("{\"id\": \"STRUCT\", \"children\":[], \"structOrUnionType\": \"UNKNOWN\"}");
+    st = (StructType)
+        StructType.fromJSON("{\"id\": \"STRUCT\", \"children\":[], \"structOrUnionType\": \"UNKNOWN\"}");
     assertEquals(st.getStructOrUnionType(), StructOrUnionType.UNKNOWN);
   }
 }

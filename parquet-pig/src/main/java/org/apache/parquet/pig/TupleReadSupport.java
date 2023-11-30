@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -25,16 +25,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.conf.HadoopParquetConfiguration;
 import org.apache.parquet.conf.ParquetConfiguration;
-import org.apache.pig.LoadPushDown.RequiredFieldList;
-import org.apache.pig.data.Tuple;
-import org.apache.pig.impl.logicalLayer.FrontendException;
-import org.apache.pig.impl.logicalLayer.schema.Schema;
-import org.apache.pig.impl.logicalLayer.schema.Schema.FieldSchema;
-import org.apache.pig.impl.util.ObjectSerializer;
 import org.apache.parquet.hadoop.api.InitContext;
 import org.apache.parquet.hadoop.api.ReadSupport;
 import org.apache.parquet.io.ParquetDecodingException;
@@ -42,6 +35,12 @@ import org.apache.parquet.io.api.RecordMaterializer;
 import org.apache.parquet.pig.convert.TupleRecordMaterializer;
 import org.apache.parquet.schema.IncompatibleSchemaModificationException;
 import org.apache.parquet.schema.MessageType;
+import org.apache.pig.LoadPushDown.RequiredFieldList;
+import org.apache.pig.data.Tuple;
+import org.apache.pig.impl.logicalLayer.FrontendException;
+import org.apache.pig.impl.logicalLayer.schema.Schema;
+import org.apache.pig.impl.logicalLayer.schema.Schema.FieldSchema;
+import org.apache.pig.impl.util.ObjectSerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -101,7 +100,7 @@ public class TupleReadSupport extends ReadSupport<Tuple> {
   }
 
   /**
-   * @param fileSchema the parquet schema from the file
+   * @param fileSchema       the parquet schema from the file
    * @param keyValueMetaData the extra meta data from the files
    * @return the pig schema according to the file
    */
@@ -122,7 +121,7 @@ public class TupleReadSupport extends ReadSupport<Tuple> {
   }
 
   /**
-   * @param fileSchema the parquet schema from the file
+   * @param fileSchema       the parquet schema from the file
    * @param keyValueMetaData the extra meta data from the file
    * @return the pig schema according to the file
    */
@@ -159,12 +158,15 @@ public class TupleReadSupport extends ReadSupport<Tuple> {
   }
 
   private static FieldSchema union(FieldSchema mergedFieldSchema, FieldSchema newFieldSchema) {
-    if (!mergedFieldSchema.alias.equals(newFieldSchema.alias)
-        || mergedFieldSchema.type != newFieldSchema.type) {
-      throw new IncompatibleSchemaModificationException("Incompatible Pig schema change: " + mergedFieldSchema + " can not accept");
+    if (!mergedFieldSchema.alias.equals(newFieldSchema.alias) || mergedFieldSchema.type != newFieldSchema.type) {
+      throw new IncompatibleSchemaModificationException(
+          "Incompatible Pig schema change: " + mergedFieldSchema + " can not accept");
     }
     try {
-      return new FieldSchema(mergedFieldSchema.alias, union(mergedFieldSchema.schema, newFieldSchema.schema), mergedFieldSchema.type);
+      return new FieldSchema(
+          mergedFieldSchema.alias,
+          union(mergedFieldSchema.schema, newFieldSchema.schema),
+          mergedFieldSchema.type);
     } catch (FrontendException e) {
       throw new SchemaConversionException(e);
     }
@@ -174,14 +176,16 @@ public class TupleReadSupport extends ReadSupport<Tuple> {
   public ReadContext init(InitContext initContext) {
     Schema pigSchema = getPigSchema(initContext.getParquetConfiguration());
     RequiredFieldList requiredFields = getRequiredFields(initContext.getParquetConfiguration());
-    boolean columnIndexAccess = initContext.getParquetConfiguration().getBoolean(PARQUET_COLUMN_INDEX_ACCESS, false);
+    boolean columnIndexAccess =
+        initContext.getParquetConfiguration().getBoolean(PARQUET_COLUMN_INDEX_ACCESS, false);
 
     if (pigSchema == null) {
       return new ReadContext(initContext.getFileSchema());
     } else {
 
       // project the file schema according to the requested Pig schema
-      MessageType parquetRequestedSchema = new PigSchemaConverter(columnIndexAccess).filter(initContext.getFileSchema(), pigSchema, requiredFields);
+      MessageType parquetRequestedSchema = new PigSchemaConverter(columnIndexAccess)
+          .filter(initContext.getFileSchema(), pigSchema, requiredFields);
       return new ReadContext(parquetRequestedSchema);
     }
   }
@@ -211,7 +215,7 @@ public class TupleReadSupport extends ReadSupport<Tuple> {
     if (elephantBirdCompatible) {
       LOG.info("Numbers will default to 0 instead of NULL; Boolean will be converted to Int");
     }
-    return new TupleRecordMaterializer(requestedSchema, requestedPigSchema, elephantBirdCompatible, columnIndexAccess);
+    return new TupleRecordMaterializer(
+        requestedSchema, requestedPigSchema, elephantBirdCompatible, columnIndexAccess);
   }
-
 }
