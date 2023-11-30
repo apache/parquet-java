@@ -177,7 +177,7 @@ public abstract class LogicalTypeAnnotation {
 
   @Override
   public String toString() {
-      return getType() + typeParametersAsString();
+    return getType() + typeParametersAsString();
   }
 
   PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
@@ -521,7 +521,7 @@ public abstract class LogicalTypeAnnotation {
 
     @Override
     protected String typeParametersAsString() {
-        return "(" + precision + "," + scale + ")";
+      return "(" + precision + "," + scale + ")";
     }
 
     @Override
@@ -636,7 +636,7 @@ public abstract class LogicalTypeAnnotation {
 
     @Override
     protected String typeParametersAsString() {
-        return "(" + unit + "," + isAdjustedToUTC + ")";
+      return "(" + unit + "," + isAdjustedToUTC + ")";
     }
 
     public TimeUnit getUnit() {
@@ -716,7 +716,7 @@ public abstract class LogicalTypeAnnotation {
 
     @Override
     protected String typeParametersAsString() {
-        return "(" + unit + "," + isAdjustedToUTC + ")";
+      return "(" + unit + "," + isAdjustedToUTC + ")";
     }
 
     public TimeUnit getUnit() {
