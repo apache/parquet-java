@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -18,30 +18,6 @@
  */
 package org.apache.parquet.filter2.predicate;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.Serializable;
-
-import org.junit.Test;
-
-import org.apache.parquet.hadoop.metadata.ColumnPath;
-import org.apache.parquet.filter2.predicate.Operators.And;
-import org.apache.parquet.filter2.predicate.Operators.BinaryColumn;
-import org.apache.parquet.filter2.predicate.Operators.DoubleColumn;
-import org.apache.parquet.filter2.predicate.Operators.Eq;
-import org.apache.parquet.filter2.predicate.Operators.Gt;
-import org.apache.parquet.filter2.predicate.Operators.IntColumn;
-import org.apache.parquet.filter2.predicate.Operators.LongColumn;
-import org.apache.parquet.filter2.predicate.Operators.Not;
-import org.apache.parquet.filter2.predicate.Operators.Or;
-import org.apache.parquet.filter2.predicate.Operators.UserDefined;
-import org.apache.parquet.filter2.predicate.Operators.UserDefinedByClass;
-import org.apache.parquet.io.api.Binary;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 import static org.apache.parquet.filter2.predicate.FilterApi.and;
 import static org.apache.parquet.filter2.predicate.FilterApi.binaryColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.doubleColumn;
@@ -54,6 +30,28 @@ import static org.apache.parquet.filter2.predicate.FilterApi.notEq;
 import static org.apache.parquet.filter2.predicate.FilterApi.or;
 import static org.apache.parquet.filter2.predicate.FilterApi.userDefined;
 import static org.apache.parquet.filter2.predicate.Operators.NotEq;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.Serializable;
+import org.apache.parquet.filter2.predicate.Operators.And;
+import org.apache.parquet.filter2.predicate.Operators.BinaryColumn;
+import org.apache.parquet.filter2.predicate.Operators.DoubleColumn;
+import org.apache.parquet.filter2.predicate.Operators.Eq;
+import org.apache.parquet.filter2.predicate.Operators.Gt;
+import org.apache.parquet.filter2.predicate.Operators.IntColumn;
+import org.apache.parquet.filter2.predicate.Operators.LongColumn;
+import org.apache.parquet.filter2.predicate.Operators.Not;
+import org.apache.parquet.filter2.predicate.Operators.Or;
+import org.apache.parquet.filter2.predicate.Operators.UserDefined;
+import org.apache.parquet.filter2.predicate.Operators.UserDefinedByClass;
+import org.apache.parquet.hadoop.metadata.ColumnPath;
+import org.apache.parquet.io.api.Binary;
+import org.junit.Test;
 
 public class TestFilterApiMethods {
 
@@ -85,7 +83,8 @@ public class TestFilterApiMethods {
     assertEquals(7, ((Eq) leftEq).getValue());
     assertEquals(17, ((NotEq) rightNotEq).getValue());
     assertEquals(ColumnPath.get("a", "b", "c"), ((Eq) leftEq).getColumn().getColumnPath());
-    assertEquals(ColumnPath.get("a", "b", "c"), ((NotEq) rightNotEq).getColumn().getColumnPath());
+    assertEquals(
+        ColumnPath.get("a", "b", "c"), ((NotEq) rightNotEq).getColumn().getColumnPath());
 
     assertTrue(gt instanceof Gt);
     assertEquals(100.0, ((Gt) gt).getValue());
@@ -95,8 +94,9 @@ public class TestFilterApiMethods {
   @Test
   public void testToString() {
     FilterPredicate pred = or(predicate, notEq(binColumn, Binary.fromString("foobarbaz")));
-    assertEquals("or(and(not(or(eq(a.b.c, 7), noteq(a.b.c, 17))), gt(x.y.z, 100.0)), "
-        + "noteq(a.string.column, Binary{\"foobarbaz\"}))",
+    assertEquals(
+        "or(and(not(or(eq(a.b.c, 7), noteq(a.b.c, 17))), gt(x.y.z, 100.0)), "
+            + "noteq(a.string.column, Binary{\"foobarbaz\"}))",
         pred.toString());
   }
 
@@ -111,9 +111,11 @@ public class TestFilterApiMethods {
   }
 
   @Test
-  public void testSerializable() throws Exception {    
+  public void testSerializable() throws Exception {
     BinaryColumn binary = binaryColumn("foo");
-    FilterPredicate p = and(or(and(userDefined(intColumn, DummyUdp.class), predicate), eq(binary, Binary.fromString("hi"))), userDefined(longColumn, new IsMultipleOf(7)));
+    FilterPredicate p = and(
+        or(and(userDefined(intColumn, DummyUdp.class), predicate), eq(binary, Binary.fromString("hi"))),
+        userDefined(longColumn, new IsMultipleOf(7)));
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     ObjectOutputStream oos = new ObjectOutputStream(baos);
     oos.writeObject(p);
@@ -126,7 +128,7 @@ public class TestFilterApiMethods {
 
   public static class IsMultipleOf extends UserDefinedPredicate<Long> implements Serializable {
 
-    private long of; 
+    private long of;
 
     public IsMultipleOf(long of) {
       this.of = of;
@@ -149,7 +151,7 @@ public class TestFilterApiMethods {
     public boolean inverseCanDrop(Statistics<Long> statistics) {
       return false;
     }
-    
+
     @Override
     public boolean equals(Object o) {
       if (this == o) return true;
@@ -158,12 +160,12 @@ public class TestFilterApiMethods {
       IsMultipleOf that = (IsMultipleOf) o;
       return this.of == that.of;
     }
-    
+
     @Override
     public int hashCode() {
       return new Long(of).hashCode();
     }
-    
+
     @Override
     public String toString() {
       return "IsMultipleOf(" + of + ")";

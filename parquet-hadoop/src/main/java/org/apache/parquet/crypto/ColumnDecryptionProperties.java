@@ -39,8 +39,7 @@ public class ColumnDecryptionProperties {
       throw new IllegalArgumentException("Null key for column " + columnPath);
     }
     if (!(keyBytes.length == 16 || keyBytes.length == 24 || keyBytes.length == 32)) {
-      throw new IllegalArgumentException("Wrong key length: " + keyBytes.length + 
-          " on column: " + columnPath);
+      throw new IllegalArgumentException("Wrong key length: " + keyBytes.length + " on column: " + columnPath);
     }
 
     this.columnPath = columnPath;
@@ -49,7 +48,7 @@ public class ColumnDecryptionProperties {
 
   /**
    * Convenience builder for regular (not nested) columns.
-   * 
+   *
    * @param name Flat column name
    * @return Builder
    */
@@ -70,12 +69,12 @@ public class ColumnDecryptionProperties {
     }
 
     /**
-     * Set an explicit column key. 
-     * If applied on a file that contains key metadata for this column - 
+     * Set an explicit column key.
+     * If applied on a file that contains key metadata for this column -
      * the metadata will be ignored, the column will be decrypted with this key.
      * However, if the column was encrypted with the footer key, it will also be decrypted with the
      * footer key, and the column key passed in this method will be ignored.
-     * 
+     *
      * @param columnKey Key length must be either 16, 24 or 32 bytes.
      * @return Builder
      */

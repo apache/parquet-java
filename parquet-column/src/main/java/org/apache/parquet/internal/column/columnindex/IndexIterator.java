@@ -23,7 +23,6 @@ import java.util.PrimitiveIterator;
 import java.util.function.IntPredicate;
 import java.util.function.IntUnaryOperator;
 import java.util.stream.IntStream;
-
 import org.apache.parquet.internal.column.columnindex.ColumnIndexBuilder.ColumnIndexBase;
 
 /**

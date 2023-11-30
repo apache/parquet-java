@@ -49,6 +49,8 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
 import static org.apache.parquet.schema.Types.optional;
 import static org.junit.Assert.assertArrayEquals;
 
+import it.unimi.dsi.fastutil.longs.LongArrayList;
+import it.unimi.dsi.fastutil.longs.LongList;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -56,7 +58,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.LongStream;
-
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.filter2.predicate.Statistics;
@@ -73,9 +74,6 @@ import org.apache.parquet.internal.column.columnindex.TestColumnIndexBuilder.Int
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.PrimitiveType;
 import org.junit.Test;
-
-import it.unimi.dsi.fastutil.longs.LongArrayList;
-import it.unimi.dsi.fastutil.longs.LongList;
 
 /**
  * Unit tests of {@link ColumnIndexFilter}
@@ -161,7 +159,6 @@ public class TestColumnIndexFilter {
     public boolean inverseCanDrop(Statistics<Integer> statistics) {
       return true;
     }
-
   }
 
   /**
@@ -219,6 +216,7 @@ public class TestColumnIndexFilter {
    * </pre>
    */
   private static final long TOTAL_ROW_COUNT = 30;
+
   private static final ColumnIndex COLUMN1_CI = new CIBuilder(optional(INT32).named("column1"), ASCENDING)
       .addPage(0, 1, 1)
       .addPage(1, 2, 6)
@@ -237,7 +235,8 @@ public class TestColumnIndexFilter {
       .addPage(6)
       .addPage(3)
       .build();
-  private static final ColumnIndex COLUMN2_CI = new CIBuilder(optional(BINARY).as(stringType()).named("column2"), DESCENDING)
+  private static final ColumnIndex COLUMN2_CI = new CIBuilder(
+          optional(BINARY).as(stringType()).named("column2"), DESCENDING)
       .addPage(0, "Zulu", "Zulu")
       .addPage(0, "Whiskey", "Yankee")
       .addPage(1, "Tango", "Victor")
@@ -291,10 +290,8 @@ public class TestColumnIndexFilter {
       .addNullPage(1)
       .addNullPage(29)
       .build();
-  private static final OffsetIndex COLUMN5_OI = new OIBuilder()
-      .addPage(1)
-      .addPage(29)
-      .build();
+  private static final OffsetIndex COLUMN5_OI =
+      new OIBuilder().addPage(1).addPage(29).build();
   private static final ColumnIndexStore STORE = new ColumnIndexStore() {
     @Override
     public ColumnIndex getColumnIndex(ColumnPath column) {
@@ -360,127 +357,551 @@ public class TestColumnIndexFilter {
     Set<ColumnPath> paths = paths("column1", "column2", "column3", "column4");
 
     assertAllRows(
-        calculateRowRanges(FilterCompat.get(
-            userDefined(intColumn("column1"), AnyInt.class)), STORE, paths, TOTAL_ROW_COUNT),
+        calculateRowRanges(
+            FilterCompat.get(userDefined(intColumn("column1"), AnyInt.class)),
+            STORE,
+            paths,
+            TOTAL_ROW_COUNT),
         TOTAL_ROW_COUNT);
 
     Set<Integer> set1 = new HashSet<>();
     set1.add(7);
-    assertRows(calculateRowRanges(FilterCompat.get(in(intColumn("column1"), set1)), STORE, paths, TOTAL_ROW_COUNT),
-      7, 8, 9, 10, 11, 12, 13);
+    assertRows(
+        calculateRowRanges(FilterCompat.get(in(intColumn("column1"), set1)), STORE, paths, TOTAL_ROW_COUNT),
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13);
     set1.add(1);
-    assertRows(calculateRowRanges(FilterCompat.get(in(intColumn("column1"), set1)), STORE, paths, TOTAL_ROW_COUNT),
-      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13);
-    assertRows(calculateRowRanges(FilterCompat.get(notIn(intColumn("column1"), set1)), STORE, paths, TOTAL_ROW_COUNT),
-      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29);
+    assertRows(
+        calculateRowRanges(FilterCompat.get(in(intColumn("column1"), set1)), STORE, paths, TOTAL_ROW_COUNT),
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13);
+    assertRows(
+        calculateRowRanges(FilterCompat.get(notIn(intColumn("column1"), set1)), STORE, paths, TOTAL_ROW_COUNT),
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29);
 
     Set<Binary> set2 = new HashSet<>();
     set2.add(fromString("Zulu"));
     set2.add(fromString("Alfa"));
-    assertRows(calculateRowRanges(FilterCompat.get(in(binaryColumn("column2"), set2)), STORE, paths, TOTAL_ROW_COUNT),
-      0, 1, 2, 3, 4, 5, 6, 7, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29);
-    assertRows(calculateRowRanges(FilterCompat.get(notIn(binaryColumn("column2"), set2)), STORE, paths, TOTAL_ROW_COUNT),
-      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29);
+    assertRows(
+        calculateRowRanges(FilterCompat.get(in(binaryColumn("column2"), set2)), STORE, paths, TOTAL_ROW_COUNT),
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29);
+    assertRows(
+        calculateRowRanges(
+            FilterCompat.get(notIn(binaryColumn("column2"), set2)), STORE, paths, TOTAL_ROW_COUNT),
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29);
 
     Set<Double> set3 = new HashSet<>();
     set3.add(2.03);
-    assertRows(calculateRowRanges(FilterCompat.get(in(doubleColumn("column3"), set3)), STORE, paths, TOTAL_ROW_COUNT),
-      0, 1, 2, 3, 4, 5, 16, 17, 18, 19, 20, 21, 22);
-    assertRows(calculateRowRanges(FilterCompat.get(notIn(doubleColumn("column3"), set3)), STORE, paths, TOTAL_ROW_COUNT),
-      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29);
+    assertRows(
+        calculateRowRanges(FilterCompat.get(in(doubleColumn("column3"), set3)), STORE, paths, TOTAL_ROW_COUNT),
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22);
+    assertRows(
+        calculateRowRanges(
+            FilterCompat.get(notIn(doubleColumn("column3"), set3)), STORE, paths, TOTAL_ROW_COUNT),
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29);
     set3.add(9.98);
-    assertRows(calculateRowRanges(FilterCompat.get(in(doubleColumn("column3"), set3)), STORE, paths, TOTAL_ROW_COUNT),
-      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25);
-    assertRows(calculateRowRanges(FilterCompat.get(notIn(doubleColumn("column3"), set3)), STORE, paths, TOTAL_ROW_COUNT),
-      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29);
+    assertRows(
+        calculateRowRanges(FilterCompat.get(in(doubleColumn("column3"), set3)), STORE, paths, TOTAL_ROW_COUNT),
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25);
+    assertRows(
+        calculateRowRanges(
+            FilterCompat.get(notIn(doubleColumn("column3"), set3)), STORE, paths, TOTAL_ROW_COUNT),
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29);
     set3.add(null);
-    assertRows(calculateRowRanges(FilterCompat.get(in(doubleColumn("column3"), set3)), STORE, paths, TOTAL_ROW_COUNT),
-      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29);
-    assertRows(calculateRowRanges(FilterCompat.get(notIn(doubleColumn("column3"), set3)), STORE, paths, TOTAL_ROW_COUNT),
-      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29);
+    assertRows(
+        calculateRowRanges(FilterCompat.get(in(doubleColumn("column3"), set3)), STORE, paths, TOTAL_ROW_COUNT),
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29);
+    assertRows(
+        calculateRowRanges(
+            FilterCompat.get(notIn(doubleColumn("column3"), set3)), STORE, paths, TOTAL_ROW_COUNT),
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29);
 
     Set<Boolean> set4 = new HashSet<>();
     set4.add(null);
-    assertRows(calculateRowRanges(FilterCompat.get(in(booleanColumn("column4"), set4)), STORE, paths, TOTAL_ROW_COUNT),
-      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29);
+    assertRows(
+        calculateRowRanges(FilterCompat.get(in(booleanColumn("column4"), set4)), STORE, paths, TOTAL_ROW_COUNT),
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29);
     // no column index, can't filter this row
-    assertRows(calculateRowRanges(FilterCompat.get(notIn(booleanColumn("column4"), set4)), STORE, paths, TOTAL_ROW_COUNT),
-      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29);
+    assertRows(
+        calculateRowRanges(
+            FilterCompat.get(notIn(booleanColumn("column4"), set4)), STORE, paths, TOTAL_ROW_COUNT),
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29);
 
     Set<Integer> set5 = new HashSet<>();
     set5.add(7);
     set5.add(20);
-    assertRows(calculateRowRanges(FilterCompat.get(in(intColumn("column5"), set5)), STORE, paths, TOTAL_ROW_COUNT),
-      new long[0]);
-    assertRows(calculateRowRanges(FilterCompat.get(notIn(intColumn("column5"), set5)), STORE, paths, TOTAL_ROW_COUNT),
-      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29);
+    assertRows(
+        calculateRowRanges(FilterCompat.get(in(intColumn("column5"), set5)), STORE, paths, TOTAL_ROW_COUNT),
+        new long[0]);
+    assertRows(
+        calculateRowRanges(FilterCompat.get(notIn(intColumn("column5"), set5)), STORE, paths, TOTAL_ROW_COUNT),
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29);
 
-    assertRows(calculateRowRanges(FilterCompat.get(
-        and(
-            and(
-                eq(intColumn("column1"), null),
-                eq(binaryColumn("column2"), null)),
-            and(
-                eq(doubleColumn("column3"), null),
-                eq(booleanColumn("column4"), null)))),
-        STORE, paths, TOTAL_ROW_COUNT),
-        6, 9);
-    assertRows(calculateRowRanges(FilterCompat.get(
-        and(
-            and(
-                notEq(intColumn("column1"), null),
-                notEq(binaryColumn("column2"), null)),
-            and(
-                notEq(doubleColumn("column3"), null),
-                notEq(booleanColumn("column4"), null)))),
-        STORE, paths, TOTAL_ROW_COUNT),
-        0, 1, 2, 3, 4, 5, 6, 7, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25);
-    assertRows(calculateRowRanges(FilterCompat.get(
-        or(
-            and(
-                lt(intColumn("column1"), 20),
-                gtEq(binaryColumn("column2"), fromString("Quebec"))),
-            and(
-                gt(doubleColumn("column3"), 5.32),
-                ltEq(binaryColumn("column4"), fromString("XYZ"))))),
-        STORE, paths, TOTAL_ROW_COUNT),
-        0, 1, 2, 3, 4, 5, 6, 7, 10, 11, 12, 13, 14, 15, 23, 24, 25);
-    assertRows(calculateRowRanges(FilterCompat.get(
-        and(
-            and(
-                gtEq(intColumn("column1"), 7),
-                gt(binaryColumn("column2"), fromString("India"))),
-            and(
-                eq(doubleColumn("column3"), null),
-                notEq(binaryColumn("column4"), null)))),
-        STORE, paths, TOTAL_ROW_COUNT),
-        7, 16, 17, 18, 19, 20);
-    assertRows(calculateRowRanges(FilterCompat.get(
-        and(
-            or(
-                invert(userDefined(intColumn("column1"), AnyInt.class)),
-                eq(binaryColumn("column2"), fromString("Echo"))),
-            eq(doubleColumn("column3"), 6.0))),
-        STORE, paths, TOTAL_ROW_COUNT),
-        23, 24, 25);
-    assertRows(calculateRowRanges(FilterCompat.get(
-        and(
-            userDefined(intColumn("column1"), IntegerIsDivisableWith3.class),
-            and(
-                userDefined(binaryColumn("column2"), BinaryUtf8StartsWithB.class),
-                userDefined(doubleColumn("column3"), DoubleIsInteger.class)))),
-        STORE, paths, TOTAL_ROW_COUNT),
-        21, 22, 23, 24, 25);
-    assertRows(calculateRowRanges(FilterCompat.get(
-        and(
-            and(
-                gtEq(intColumn("column1"), 7),
-                lt(intColumn("column1"), 11)),
-            and(
-                gt(binaryColumn("column2"), fromString("Romeo")),
-                ltEq(binaryColumn("column2"), fromString("Tango"))))),
-        STORE, paths, TOTAL_ROW_COUNT),
-        7, 11, 12, 13);
+    assertRows(
+        calculateRowRanges(
+            FilterCompat.get(and(
+                and(eq(intColumn("column1"), null), eq(binaryColumn("column2"), null)),
+                and(eq(doubleColumn("column3"), null), eq(booleanColumn("column4"), null)))),
+            STORE,
+            paths,
+            TOTAL_ROW_COUNT),
+        6,
+        9);
+    assertRows(
+        calculateRowRanges(
+            FilterCompat.get(and(
+                and(notEq(intColumn("column1"), null), notEq(binaryColumn("column2"), null)),
+                and(notEq(doubleColumn("column3"), null), notEq(booleanColumn("column4"), null)))),
+            STORE,
+            paths,
+            TOTAL_ROW_COUNT),
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25);
+    assertRows(
+        calculateRowRanges(
+            FilterCompat.get(or(
+                and(lt(intColumn("column1"), 20), gtEq(binaryColumn("column2"), fromString("Quebec"))),
+                and(
+                    gt(doubleColumn("column3"), 5.32),
+                    ltEq(binaryColumn("column4"), fromString("XYZ"))))),
+            STORE,
+            paths,
+            TOTAL_ROW_COUNT),
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        23,
+        24,
+        25);
+    assertRows(
+        calculateRowRanges(
+            FilterCompat.get(and(
+                and(gtEq(intColumn("column1"), 7), gt(binaryColumn("column2"), fromString("India"))),
+                and(eq(doubleColumn("column3"), null), notEq(binaryColumn("column4"), null)))),
+            STORE,
+            paths,
+            TOTAL_ROW_COUNT),
+        7,
+        16,
+        17,
+        18,
+        19,
+        20);
+    assertRows(
+        calculateRowRanges(
+            FilterCompat.get(and(
+                or(
+                    invert(userDefined(intColumn("column1"), AnyInt.class)),
+                    eq(binaryColumn("column2"), fromString("Echo"))),
+                eq(doubleColumn("column3"), 6.0))),
+            STORE,
+            paths,
+            TOTAL_ROW_COUNT),
+        23,
+        24,
+        25);
+    assertRows(
+        calculateRowRanges(
+            FilterCompat.get(and(
+                userDefined(intColumn("column1"), IntegerIsDivisableWith3.class),
+                and(
+                    userDefined(binaryColumn("column2"), BinaryUtf8StartsWithB.class),
+                    userDefined(doubleColumn("column3"), DoubleIsInteger.class)))),
+            STORE,
+            paths,
+            TOTAL_ROW_COUNT),
+        21,
+        22,
+        23,
+        24,
+        25);
+    assertRows(
+        calculateRowRanges(
+            FilterCompat.get(and(
+                and(gtEq(intColumn("column1"), 7), lt(intColumn("column1"), 11)),
+                and(
+                    gt(binaryColumn("column2"), fromString("Romeo")),
+                    ltEq(binaryColumn("column2"), fromString("Tango"))))),
+            STORE,
+            paths,
+            TOTAL_ROW_COUNT),
+        7,
+        11,
+        12,
+        13);
   }
 
   @Test
@@ -488,46 +909,60 @@ public class TestColumnIndexFilter {
     Set<ColumnPath> paths = paths("column1", "column2", "column3", "column4");
 
     // Missing column filter is always true
-    assertAllRows(calculateRowRanges(FilterCompat.get(
-        notEq(intColumn("missing_column"), 0)),
-        STORE, paths, TOTAL_ROW_COUNT),
+    assertAllRows(
+        calculateRowRanges(
+            FilterCompat.get(notEq(intColumn("missing_column"), 0)), STORE, paths, TOTAL_ROW_COUNT),
         TOTAL_ROW_COUNT);
-    assertRows(calculateRowRanges(FilterCompat.get(
-        and(
-            and(
-                gtEq(intColumn("column1"), 7),
-                lt(intColumn("column1"), 11)),
-            eq(binaryColumn("missing_column"), null))),
-        STORE, paths, TOTAL_ROW_COUNT),
-        7, 8, 9, 10, 11, 12, 13);
+    assertRows(
+        calculateRowRanges(
+            FilterCompat.get(and(
+                and(gtEq(intColumn("column1"), 7), lt(intColumn("column1"), 11)),
+                eq(binaryColumn("missing_column"), null))),
+            STORE,
+            paths,
+            TOTAL_ROW_COUNT),
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13);
 
     // Missing column filter is always false
-    assertRows(calculateRowRanges(FilterCompat.get(
-        or(
-            and(
-                gtEq(intColumn("column1"), 7),
-                lt(intColumn("column1"), 11)),
-            notEq(binaryColumn("missing_column"), null))),
-        STORE, paths, TOTAL_ROW_COUNT),
-        7, 8, 9, 10, 11, 12, 13);
-    assertRows(calculateRowRanges(FilterCompat.get(
-        gt(intColumn("missing_column"), 0)),
-        STORE, paths, TOTAL_ROW_COUNT));
+    assertRows(
+        calculateRowRanges(
+            FilterCompat.get(or(
+                and(gtEq(intColumn("column1"), 7), lt(intColumn("column1"), 11)),
+                notEq(binaryColumn("missing_column"), null))),
+            STORE,
+            paths,
+            TOTAL_ROW_COUNT),
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13);
+    assertRows(calculateRowRanges(
+        FilterCompat.get(gt(intColumn("missing_column"), 0)), STORE, paths, TOTAL_ROW_COUNT));
   }
 
   @Test
   public void testFilteringWithMissingOffsetIndex() {
     Set<ColumnPath> paths = paths("column1", "column2", "column3", "column4", "column_wo_oi");
 
-    assertAllRows(calculateRowRanges(FilterCompat.get(
-        and(
-            and(
-                gtEq(intColumn("column1"), 7),
-                lt(intColumn("column1"), 11)),
-            and(
-                gt(binaryColumn("column2"), fromString("Romeo")),
-                ltEq(binaryColumn("column_wo_oi"), fromString("Tango"))))),
-        STORE, paths, TOTAL_ROW_COUNT),
+    assertAllRows(
+        calculateRowRanges(
+            FilterCompat.get(and(
+                and(gtEq(intColumn("column1"), 7), lt(intColumn("column1"), 11)),
+                and(
+                    gt(binaryColumn("column2"), fromString("Romeo")),
+                    ltEq(binaryColumn("column_wo_oi"), fromString("Tango"))))),
+            STORE,
+            paths,
+            TOTAL_ROW_COUNT),
         TOTAL_ROW_COUNT);
   }
 
@@ -535,21 +970,23 @@ public class TestColumnIndexFilter {
   public void testFilteringWithAllNullPages() {
     Set<ColumnPath> paths = paths("column1", "column5");
 
-    assertAllRows(calculateRowRanges(FilterCompat.get(
-        notEq(longColumn("column5"), 1234567L)),
-        STORE, paths, TOTAL_ROW_COUNT),
+    assertAllRows(
+        calculateRowRanges(
+            FilterCompat.get(notEq(longColumn("column5"), 1234567L)), STORE, paths, TOTAL_ROW_COUNT),
         TOTAL_ROW_COUNT);
-    assertAllRows(calculateRowRanges(FilterCompat.get(
-        or(gtEq(intColumn("column1"), 10),
-            notEq(longColumn("column5"), 1234567L))),
-        STORE, paths, TOTAL_ROW_COUNT),
+    assertAllRows(
+        calculateRowRanges(
+            FilterCompat.get(or(gtEq(intColumn("column1"), 10), notEq(longColumn("column5"), 1234567L))),
+            STORE,
+            paths,
+            TOTAL_ROW_COUNT),
         TOTAL_ROW_COUNT);
-    assertRows(calculateRowRanges(FilterCompat.get(
-        eq(longColumn("column5"), 1234567L)),
-        STORE, paths, TOTAL_ROW_COUNT));
-    assertRows(calculateRowRanges(FilterCompat.get(
-        and(lt(intColumn("column1"), 20),
-            gtEq(longColumn("column5"), 1234567L))),
-        STORE, paths, TOTAL_ROW_COUNT));
+    assertRows(calculateRowRanges(
+        FilterCompat.get(eq(longColumn("column5"), 1234567L)), STORE, paths, TOTAL_ROW_COUNT));
+    assertRows(calculateRowRanges(
+        FilterCompat.get(and(lt(intColumn("column1"), 20), gtEq(longColumn("column5"), 1234567L))),
+        STORE,
+        paths,
+        TOTAL_ROW_COUNT));
   }
 }

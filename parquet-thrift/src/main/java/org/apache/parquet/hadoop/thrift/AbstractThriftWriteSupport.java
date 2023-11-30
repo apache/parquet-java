@@ -1,12 +1,12 @@
 /**
  * Copyright 2012 Twitter, Inc.
- *
+ * <p>
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
+ * <p>
  * http://www.apache.org/licenses/LICENSE-2.0
- *
+ * <p>
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -15,15 +15,11 @@
  */
 package org.apache.parquet.hadoop.thrift;
 
+import com.twitter.elephantbird.pig.util.ThriftToPig;
 import java.util.Map;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.conf.HadoopParquetConfiguration;
 import org.apache.parquet.conf.ParquetConfiguration;
-import org.apache.thrift.TBase;
-
-import com.twitter.elephantbird.pig.util.ThriftToPig;
-
 import org.apache.parquet.hadoop.BadConfigurationException;
 import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.io.ColumnIOFactory;
@@ -35,9 +31,9 @@ import org.apache.parquet.thrift.ParquetWriteProtocol;
 import org.apache.parquet.thrift.ThriftMetaData;
 import org.apache.parquet.thrift.ThriftSchemaConverter;
 import org.apache.parquet.thrift.struct.ThriftType.StructType;
+import org.apache.thrift.TBase;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 
 public abstract class AbstractThriftWriteSupport<T> extends WriteSupport<T> {
   public static final String PARQUET_THRIFT_CLASS = "parquet.thrift.class";
@@ -60,7 +56,8 @@ public abstract class AbstractThriftWriteSupport<T> extends WriteSupport<T> {
   public static Class<?> getGenericThriftClass(ParquetConfiguration configuration) {
     final String thriftClassName = configuration.get(PARQUET_THRIFT_CLASS);
     if (thriftClassName == null) {
-      throw new BadConfigurationException("the thrift class conf is missing in job conf at " + PARQUET_THRIFT_CLASS);
+      throw new BadConfigurationException(
+          "the thrift class conf is missing in job conf at " + PARQUET_THRIFT_CLASS);
     }
 
     try {
@@ -68,7 +65,9 @@ public abstract class AbstractThriftWriteSupport<T> extends WriteSupport<T> {
       Class thriftClass = Class.forName(thriftClassName);
       return thriftClass;
     } catch (ClassNotFoundException e) {
-      throw new BadConfigurationException("the class "+thriftClassName+" in job conf at " + PARQUET_THRIFT_CLASS + " could not be found", e);
+      throw new BadConfigurationException(
+          "the class " + thriftClassName + " in job conf at " + PARQUET_THRIFT_CLASS + " could not be found",
+          e);
     }
   }
 
@@ -82,8 +81,7 @@ public abstract class AbstractThriftWriteSupport<T> extends WriteSupport<T> {
    * used from hadoop
    * the configuration must contain a thriftClass setting
    */
-  public AbstractThriftWriteSupport() {
-  }
+  public AbstractThriftWriteSupport() {}
 
   /**
    * @param thriftClass the thrift class used for writing values
@@ -99,11 +97,13 @@ public abstract class AbstractThriftWriteSupport<T> extends WriteSupport<T> {
     ThriftSchemaConverter thriftSchemaConverter = new ThriftSchemaConverter(conf);
     this.schema = thriftSchemaConverter.convert(thriftStruct);
 
-    final Map<String, String> extraMetaData = new ThriftMetaData(thriftClass.getName(), thriftStruct).toExtraMetaData();
+    final Map<String, String> extraMetaData =
+        new ThriftMetaData(thriftClass.getName(), thriftStruct).toExtraMetaData();
     // adding the Pig schema as it would have been mapped from thrift
     // TODO: make this work for non-tbase types
     if (isPigLoaded() && TBase.class.isAssignableFrom(thriftClass)) {
-      new PigMetaData(new ThriftToPig((Class<? extends TBase<?,?>>)thriftClass).toSchema()).addToMetaData(extraMetaData);
+      new PigMetaData(new ThriftToPig((Class<? extends TBase<?, ?>>) thriftClass).toSchema())
+          .addToMetaData(extraMetaData);
     }
 
     this.writeContext = new WriteContext(schema, extraMetaData);
@@ -136,8 +136,7 @@ public abstract class AbstractThriftWriteSupport<T> extends WriteSupport<T> {
   @Override
   public void prepareForWrite(RecordConsumer recordConsumer) {
     final MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
-    this.parquetWriteProtocol = new ParquetWriteProtocol(
-        conf, recordConsumer, columnIO, thriftStruct);
+    this.parquetWriteProtocol = new ParquetWriteProtocol(conf, recordConsumer, columnIO, thriftStruct);
   }
 
   protected abstract StructType getThriftStruct();

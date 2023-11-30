@@ -18,6 +18,31 @@
  */
 package org.apache.parquet.benchmarks;
 
+import static org.apache.parquet.benchmarks.BenchmarkConstants.ONE_K;
+import static org.apache.parquet.benchmarks.BenchmarkConstants.ONE_MILLION;
+import static org.apache.parquet.benchmarks.BenchmarkFiles.file_100K_CHECKSUMS_GZIP;
+import static org.apache.parquet.benchmarks.BenchmarkFiles.file_100K_CHECKSUMS_SNAPPY;
+import static org.apache.parquet.benchmarks.BenchmarkFiles.file_100K_CHECKSUMS_UNCOMPRESSED;
+import static org.apache.parquet.benchmarks.BenchmarkFiles.file_100K_NOCHECKSUMS_GZIP;
+import static org.apache.parquet.benchmarks.BenchmarkFiles.file_100K_NOCHECKSUMS_SNAPPY;
+import static org.apache.parquet.benchmarks.BenchmarkFiles.file_100K_NOCHECKSUMS_UNCOMPRESSED;
+import static org.apache.parquet.benchmarks.BenchmarkFiles.file_10M_CHECKSUMS_GZIP;
+import static org.apache.parquet.benchmarks.BenchmarkFiles.file_10M_CHECKSUMS_SNAPPY;
+import static org.apache.parquet.benchmarks.BenchmarkFiles.file_10M_CHECKSUMS_UNCOMPRESSED;
+import static org.apache.parquet.benchmarks.BenchmarkFiles.file_10M_NOCHECKSUMS_GZIP;
+import static org.apache.parquet.benchmarks.BenchmarkFiles.file_10M_NOCHECKSUMS_SNAPPY;
+import static org.apache.parquet.benchmarks.BenchmarkFiles.file_10M_NOCHECKSUMS_UNCOMPRESSED;
+import static org.apache.parquet.benchmarks.BenchmarkFiles.file_1M_CHECKSUMS_GZIP;
+import static org.apache.parquet.benchmarks.BenchmarkFiles.file_1M_CHECKSUMS_SNAPPY;
+import static org.apache.parquet.benchmarks.BenchmarkFiles.file_1M_CHECKSUMS_UNCOMPRESSED;
+import static org.apache.parquet.benchmarks.BenchmarkFiles.file_1M_NOCHECKSUMS_GZIP;
+import static org.apache.parquet.benchmarks.BenchmarkFiles.file_1M_NOCHECKSUMS_SNAPPY;
+import static org.apache.parquet.benchmarks.BenchmarkFiles.file_1M_NOCHECKSUMS_UNCOMPRESSED;
+import static org.apache.parquet.hadoop.metadata.CompressionCodecName.GZIP;
+import static org.apache.parquet.hadoop.metadata.CompressionCodecName.SNAPPY;
+import static org.apache.parquet.hadoop.metadata.CompressionCodecName.UNCOMPRESSED;
+
+import java.io.IOException;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Level;
@@ -25,31 +50,6 @@ import org.openjdk.jmh.annotations.Mode;
 import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
-
-import static org.apache.parquet.benchmarks.BenchmarkConstants.ONE_K;
-import static org.apache.parquet.benchmarks.BenchmarkConstants.ONE_MILLION;
-import static org.apache.parquet.benchmarks.BenchmarkFiles.file_100K_CHECKSUMS_UNCOMPRESSED;
-import static org.apache.parquet.benchmarks.BenchmarkFiles.file_100K_NOCHECKSUMS_UNCOMPRESSED;
-import static org.apache.parquet.benchmarks.BenchmarkFiles.file_100K_CHECKSUMS_GZIP;
-import static org.apache.parquet.benchmarks.BenchmarkFiles.file_100K_NOCHECKSUMS_GZIP;
-import static org.apache.parquet.benchmarks.BenchmarkFiles.file_100K_CHECKSUMS_SNAPPY;
-import static org.apache.parquet.benchmarks.BenchmarkFiles.file_100K_NOCHECKSUMS_SNAPPY;
-import static org.apache.parquet.benchmarks.BenchmarkFiles.file_1M_CHECKSUMS_UNCOMPRESSED;
-import static org.apache.parquet.benchmarks.BenchmarkFiles.file_1M_NOCHECKSUMS_UNCOMPRESSED;
-import static org.apache.parquet.benchmarks.BenchmarkFiles.file_1M_CHECKSUMS_GZIP;
-import static org.apache.parquet.benchmarks.BenchmarkFiles.file_1M_NOCHECKSUMS_GZIP;
-import static org.apache.parquet.benchmarks.BenchmarkFiles.file_1M_CHECKSUMS_SNAPPY;
-import static org.apache.parquet.benchmarks.BenchmarkFiles.file_1M_NOCHECKSUMS_SNAPPY;
-import static org.apache.parquet.benchmarks.BenchmarkFiles.file_10M_CHECKSUMS_UNCOMPRESSED;
-import static org.apache.parquet.benchmarks.BenchmarkFiles.file_10M_NOCHECKSUMS_UNCOMPRESSED;
-import static org.apache.parquet.benchmarks.BenchmarkFiles.file_10M_CHECKSUMS_GZIP;
-import static org.apache.parquet.benchmarks.BenchmarkFiles.file_10M_NOCHECKSUMS_GZIP;
-import static org.apache.parquet.benchmarks.BenchmarkFiles.file_10M_CHECKSUMS_SNAPPY;
-import static org.apache.parquet.benchmarks.BenchmarkFiles.file_10M_NOCHECKSUMS_SNAPPY;
-
-import java.io.IOException;
-
-import static org.apache.parquet.hadoop.metadata.CompressionCodecName.*;
 
 @State(Scope.Thread)
 public class PageChecksumWriteBenchmarks {
@@ -142,7 +142,8 @@ public class PageChecksumWriteBenchmarks {
   @Benchmark
   @BenchmarkMode(Mode.SingleShotTime)
   public void write10MRowsUncompressedWithoutChecksums() throws IOException {
-    pageChecksumDataGenerator.generateData(file_10M_NOCHECKSUMS_UNCOMPRESSED, 10 * ONE_MILLION, false, UNCOMPRESSED);
+    pageChecksumDataGenerator.generateData(
+        file_10M_NOCHECKSUMS_UNCOMPRESSED, 10 * ONE_MILLION, false, UNCOMPRESSED);
   }
 
   @Benchmark
@@ -174,5 +175,4 @@ public class PageChecksumWriteBenchmarks {
   public void write10MRowsSnappyWithChecksums() throws IOException {
     pageChecksumDataGenerator.generateData(file_10M_CHECKSUMS_SNAPPY, 10 * ONE_MILLION, true, SNAPPY);
   }
-
 }

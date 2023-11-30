@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -17,7 +17,6 @@
  * under the License.
  */
 /**
- *
  * <p>
  * Provides classes to store Avro data in Parquet files. Avro schemas are converted to
  * parquet schemas as follows. Only record schemas are converted,
@@ -166,7 +165,7 @@
  * and fixed types are lost in the conversion to Parquet.
  * Avro aliases, default values, field ordering, and documentation strings are all
  * dropped in the conversion to Parquet.
- *
+ * <p>
  * Parquet maps can have any type for keys, but this is not true in Avro where map keys
  * are assumed to be strings.
  * </p>

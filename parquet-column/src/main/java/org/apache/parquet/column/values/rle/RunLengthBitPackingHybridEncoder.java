@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -19,9 +19,8 @@
 package org.apache.parquet.column.values.rle;
 
 import java.io.IOException;
-
-import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.Preconditions;
+import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.bytes.CapacityByteArrayOutputStream;
@@ -29,7 +28,6 @@ import org.apache.parquet.column.values.bitpacking.BytePacker;
 import org.apache.parquet.column.values.bitpacking.Packer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 
 /**
  * Encodes values using a combination of run length encoding and bit packing,
@@ -52,8 +50,8 @@ import org.slf4j.LoggerFactory;
  * }
  * </pre>
  * NOTE: this class is only responsible for creating and returning the {@code <encoded-data>}
- *       portion of the above grammar. The {@code <length>} portion is done by
- *       {@link RunLengthBitPackingHybridValuesWriter}
+ * portion of the above grammar. The {@code <length>} portion is done by
+ * {@link RunLengthBitPackingHybridValuesWriter}
  * <p>
  * Only supports positive values (including 0) // TODO: is that ok? Should we make a signed version?
  */
@@ -86,6 +84,7 @@ public class RunLengthBitPackingHybridEncoder {
    * or discard them after writing a rle-run
    */
   private final int[] bufferedValues;
+
   private int numBufferedValues;
 
   /**
@@ -103,10 +102,10 @@ public class RunLengthBitPackingHybridEncoder {
    * A "pointer" to a single byte in baos,
    * which we use as our bit-packed-header. It's really
    * the logical index of the byte in baos.
-   *
+   * <p>
    * We are only using one byte for this header,
    * which limits us to writing 504 values per bit-packed-run.
-   *
+   * <p>
    * MSB must be 0 for varint encoding, LSB must be 1 to signify
    * that this is a bit-packed-header leaves 6 bits to write the
    * number of 8-groups -> (2^6 - 1) * 8 = 504
@@ -115,9 +114,12 @@ public class RunLengthBitPackingHybridEncoder {
 
   private boolean toBytesCalled;
 
-  public RunLengthBitPackingHybridEncoder(int bitWidth, int initialCapacity, int pageSize, ByteBufferAllocator allocator) {
-    LOG.debug("Encoding: RunLengthBitPackingHybridEncoder with "
-      + "bithWidth: {} initialCapacity {}", bitWidth, initialCapacity);
+  public RunLengthBitPackingHybridEncoder(
+      int bitWidth, int initialCapacity, int pageSize, ByteBufferAllocator allocator) {
+    LOG.debug(
+        "Encoding: RunLengthBitPackingHybridEncoder with " + "bithWidth: {} initialCapacity {}",
+        bitWidth,
+        initialCapacity);
 
     Preconditions.checkArgument(bitWidth >= 0 && bitWidth <= 32, "bitWidth must be >= 0 and <= 32");
 
@@ -210,7 +212,7 @@ public class RunLengthBitPackingHybridEncoder {
   /**
    * If we are currently writing a bit-packed-run, update the
    * bit-packed-header and consider this run to be over
-   *
+   * <p>
    * does nothing if we're not currently writing a bit-packed run
    */
   private void endPreviousBitPackedRun() {
@@ -251,13 +253,12 @@ public class RunLengthBitPackingHybridEncoder {
   }
 
   public BytesInput toBytes() throws IOException {
-    Preconditions.checkArgument(!toBytesCalled,
-        "You cannot call toBytes() more than once without calling reset()");
+    Preconditions.checkArgument(!toBytesCalled, "You cannot call toBytes() more than once without calling reset()");
 
     // write anything that is buffered / queued up for an rle-run
     if (repeatCount >= 8) {
       writeRleRun();
-    } else if(numBufferedValues > 0) {
+    } else if (numBufferedValues > 0) {
       for (int i = numBufferedValues; i < 8; i++) {
         bufferedValues[i] = 0;
       }

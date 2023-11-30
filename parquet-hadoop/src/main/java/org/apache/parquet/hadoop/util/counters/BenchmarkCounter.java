@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -54,7 +54,7 @@ public class BenchmarkCounter {
   /**
    * Init counters in hadoop's mapred API, which is used by cascading and Hive.
    *
-   * @param reporter a reporter
+   * @param reporter      a reporter
    * @param configuration a configuration
    */
   public static void initCounterFromReporter(Reporter reporter, Configuration configuration) {
@@ -63,8 +63,10 @@ public class BenchmarkCounter {
   }
 
   private static void loadCounters() {
-    bytesReadCounter = getCounterWhenFlagIsSet(COUNTER_GROUP_NAME, BYTES_READ_COUNTER_NAME, ENABLE_BYTES_READ_COUNTER);
-    totalBytesCounter = getCounterWhenFlagIsSet(COUNTER_GROUP_NAME, BYTES_TOTAL_COUNTER_NAME, ENABLE_BYTES_TOTAL_COUNTER);
+    bytesReadCounter =
+        getCounterWhenFlagIsSet(COUNTER_GROUP_NAME, BYTES_READ_COUNTER_NAME, ENABLE_BYTES_READ_COUNTER);
+    totalBytesCounter =
+        getCounterWhenFlagIsSet(COUNTER_GROUP_NAME, BYTES_TOTAL_COUNTER_NAME, ENABLE_BYTES_TOTAL_COUNTER);
     timeCounter = getCounterWhenFlagIsSet(COUNTER_GROUP_NAME, TIME_READ_COUNTER_NAME, ENABLE_TIME_READ_COUNTER);
   }
 
@@ -99,7 +101,7 @@ public class BenchmarkCounter {
   public static class NullCounter implements ICounter {
     @Override
     public void increment(long val) {
-      //do nothing
+      // do nothing
     }
 
     @Override
@@ -108,5 +110,3 @@ public class BenchmarkCounter {
     }
   }
 }
-
-

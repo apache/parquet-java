@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -21,12 +21,10 @@ package org.apache.parquet.io;
 import static org.junit.Assert.assertEquals;
 
 import java.util.Deque;
-
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.RecordConsumer;
 
-final public class ExpectationValidatingRecordConsumer extends
-    RecordConsumer {
+public final class ExpectationValidatingRecordConsumer extends RecordConsumer {
   private final Deque<String> expectations;
   int count = 0;
 
@@ -35,8 +33,8 @@ final public class ExpectationValidatingRecordConsumer extends
   }
 
   private void validate(String got) {
-//    System.out.println("  \"" + got + "\";");
-    assertEquals("event #"+count, expectations.pop(), got);
+    //    System.out.println("  \"" + got + "\";");
+    assertEquals("event #" + count, expectations.pop(), got);
     ++count;
   }
 
@@ -52,7 +50,7 @@ final public class ExpectationValidatingRecordConsumer extends
 
   @Override
   public void startField(String field, int index) {
-    validate("startField("+field+", "+index+")");
+    validate("startField(" + field + ", " + index + ")");
   }
 
   @Override
@@ -67,37 +65,37 @@ final public class ExpectationValidatingRecordConsumer extends
 
   @Override
   public void endField(String field, int index) {
-    validate("endField("+field+", "+index+")");
+    validate("endField(" + field + ", " + index + ")");
   }
 
   @Override
   public void addInteger(int value) {
-    validate("addInt("+value+")");
+    validate("addInt(" + value + ")");
   }
 
   @Override
   public void addLong(long value) {
-    validate("addLong("+value+")");
+    validate("addLong(" + value + ")");
   }
 
   @Override
   public void addBoolean(boolean value) {
-    validate("addBoolean("+value+")");
+    validate("addBoolean(" + value + ")");
   }
 
   @Override
   public void addBinary(Binary value) {
-    validate("addBinary("+value.toStringUsingUTF8()+")");
+    validate("addBinary(" + value.toStringUsingUTF8() + ")");
   }
 
   @Override
   public void addFloat(float value) {
-    validate("addFloat("+value+")");
+    validate("addFloat(" + value + ")");
   }
 
   @Override
   public void addDouble(double value) {
-    validate("addDouble("+value+")");
+    validate("addDouble(" + value + ")");
   }
 
   /**
@@ -107,6 +105,4 @@ final public class ExpectationValidatingRecordConsumer extends
   public void flush() {
     validate("flush()");
   }
-
 }
-

@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -18,27 +18,25 @@
  */
 package org.apache.parquet.filter2.compat;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Set;
-import java.util.HashSet;
-
-import org.junit.Test;
-
-import org.apache.parquet.column.statistics.IntStatistics;
-import org.apache.parquet.filter2.predicate.Operators.IntColumn;
-import org.apache.parquet.hadoop.metadata.BlockMetaData;
-import org.apache.parquet.schema.MessageType;
-import org.apache.parquet.schema.MessageTypeParser;
-
-import static org.junit.Assert.assertEquals;
 import static org.apache.parquet.filter2.predicate.FilterApi.eq;
 import static org.apache.parquet.filter2.predicate.FilterApi.in;
 import static org.apache.parquet.filter2.predicate.FilterApi.intColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.notEq;
 import static org.apache.parquet.filter2.predicate.FilterApi.notIn;
 import static org.apache.parquet.hadoop.TestInputFormat.makeBlockFromStats;
+import static org.junit.Assert.assertEquals;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import org.apache.parquet.column.statistics.IntStatistics;
+import org.apache.parquet.filter2.predicate.Operators.IntColumn;
+import org.apache.parquet.hadoop.metadata.BlockMetaData;
+import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.schema.MessageTypeParser;
+import org.junit.Test;
 
 public class TestRowGroupFilter {
   @Test
@@ -64,13 +62,11 @@ public class TestRowGroupFilter {
     BlockMetaData b3 = makeBlockFromStats(stats3, 303);
     blocks.add(b3);
 
-
     IntStatistics stats4 = new IntStatistics();
     stats4.setMinMax(0, 0);
     stats4.setNumNulls(304);
     BlockMetaData b4 = makeBlockFromStats(stats4, 304);
     blocks.add(b4);
-
 
     IntStatistics stats5 = new IntStatistics();
     stats5.setMinMax(50, 50);
@@ -124,5 +120,4 @@ public class TestRowGroupFilter {
     filtered = RowGroupFilter.filterRowGroups(FilterCompat.get(eq(foo, 0)), blocks, schema);
     assertEquals(Arrays.asList(b6), filtered);
   }
-
 }

@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -24,10 +24,8 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
-
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroup;
 import org.apache.parquet.filter2.compat.FilterCompat.Filter;
@@ -40,21 +38,20 @@ import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
 
 public class PhoneBookWriter {
-  private static final String schemaString =
-      "message user {\n"
-          + "  required int64 id;\n"
-          + "  optional binary name (UTF8);\n"
-          + "  optional group location {\n"
-          + "    optional double lon;\n"
-          + "    optional double lat;\n"
-          + "  }\n"
-          + "  optional group phoneNumbers {\n"
-          + "    repeated group phone {\n"
-          + "      required int64 number;\n"
-          + "      optional binary kind (UTF8);\n"
-          + "    }\n"
-          + "  }\n"
-          + "}\n";
+  private static final String schemaString = "message user {\n"
+      + "  required int64 id;\n"
+      + "  optional binary name (UTF8);\n"
+      + "  optional group location {\n"
+      + "    optional double lon;\n"
+      + "    optional double lat;\n"
+      + "  }\n"
+      + "  optional group phoneNumbers {\n"
+      + "    repeated group phone {\n"
+      + "      required int64 number;\n"
+      + "      optional binary kind (UTF8);\n"
+      + "    }\n"
+      + "  }\n"
+      + "}\n";
 
   private static final MessageType schema = MessageTypeParser.parseMessageType(schemaString);
 
@@ -183,7 +180,8 @@ public class PhoneBookWriter {
       if (id != user.id) return false;
       if (location != null ? !location.equals(user.location) : user.location != null) return false;
       if (name != null ? !name.equals(user.name) : user.name != null) return false;
-      if (phoneNumbers != null ? !phoneNumbers.equals(user.phoneNumbers) : user.phoneNumbers != null) return false;
+      if (phoneNumbers != null ? !phoneNumbers.equals(user.phoneNumbers) : user.phoneNumbers != null)
+        return false;
 
       return true;
     }
@@ -199,7 +197,8 @@ public class PhoneBookWriter {
 
     @Override
     public String toString() {
-      return "User [id=" + id + ", name=" + name + ", phoneNumbers=" + phoneNumbers + ", location=" + location + "]";
+      return "User [id=" + id + ", name=" + name + ", phoneNumbers=" + phoneNumbers + ", location=" + location
+          + "]";
     }
 
     public User cloneWithName(String name) {
@@ -239,7 +238,10 @@ public class PhoneBookWriter {
   }
 
   private static User userFromGroup(Group root) {
-    return new User(getLong(root, "id"), getString(root, "name"), getPhoneNumbers(getGroup(root, "phoneNumbers")),
+    return new User(
+        getLong(root, "id"),
+        getString(root, "name"),
+        getPhoneNumbers(getGroup(root, "phoneNumbers")),
         getLocation(getGroup(root, "location")));
   }
 
@@ -273,7 +275,8 @@ public class PhoneBookWriter {
     } else if (repetition == 1) {
       return false;
     }
-    throw new AssertionError("Invalid repetitionCount " + repetition + " for field " + field + " in group " + group);
+    throw new AssertionError(
+        "Invalid repetitionCount " + repetition + " for field " + field + " in group " + group);
   }
 
   private static Long getLong(Group group, String field) {
@@ -351,8 +354,10 @@ public class PhoneBookWriter {
    * If `validateRowIndexes` is set to true, this method will also validate the ROW_INDEXes for the
    * rows read from ParquetReader - ROW_INDEX for a row should be same as underlying user id.
    */
-  public static List<User> readUsers(ParquetReader.Builder<Group> builder, boolean validateRowIndexes) throws IOException {
-    ParquetReader<Group> reader = builder.set(GroupWriteSupport.PARQUET_EXAMPLE_SCHEMA, schema.toString()).build();
+  public static List<User> readUsers(ParquetReader.Builder<Group> builder, boolean validateRowIndexes)
+      throws IOException {
+    ParquetReader<Group> reader = builder.set(GroupWriteSupport.PARQUET_EXAMPLE_SCHEMA, schema.toString())
+        .build();
 
     List<User> users = new ArrayList<>();
     for (Group group = reader.read(); group != null; group = reader.read()) {
@@ -369,5 +374,4 @@ public class PhoneBookWriter {
     File f = new File(args[0]);
     writeToFile(f, TestRecordLevelFilters.makeUsers());
   }
-
 }

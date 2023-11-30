@@ -20,7 +20,6 @@
 package org.apache.parquet.hadoop;
 
 import java.io.IOException;
-
 import org.apache.parquet.format.PageHeader;
 import org.apache.parquet.format.Util;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
@@ -48,7 +47,8 @@ class Offsets {
     long dictionaryPageOffset;
     if (chunk.hasDictionaryPage()) {
       long dictionaryPageSize;
-      if (chunk.getDictionaryPageOffset() == 0 || chunk.getFirstDataPageOffset() <= chunk.getDictionaryPageOffset()) {
+      if (chunk.getDictionaryPageOffset() == 0
+          || chunk.getFirstDataPageOffset() <= chunk.getDictionaryPageOffset()) {
         /*
          * The offsets might not contain the proper values (so we need to read the dictionary page header):
          * - The dictionaryPageOffset might not be set; in this case 0 is returned

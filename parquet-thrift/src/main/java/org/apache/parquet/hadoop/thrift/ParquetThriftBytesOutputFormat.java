@@ -21,13 +21,12 @@ package org.apache.parquet.hadoop.thrift;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.BytesWritable;
 import org.apache.hadoop.mapreduce.Job;
-import org.apache.thrift.TBase;
-import org.apache.thrift.protocol.TProtocol;
-import org.apache.thrift.protocol.TProtocolFactory;
-
 import org.apache.parquet.hadoop.ParquetOutputFormat;
 import org.apache.parquet.hadoop.util.ContextUtil;
 import org.apache.parquet.thrift.FieldIgnoredHandler;
+import org.apache.thrift.TBase;
+import org.apache.thrift.protocol.TProtocol;
+import org.apache.thrift.protocol.TProtocolFactory;
 
 /**
  * Output format that turns Thrift bytes into Parquet format using the thrift TProtocol layer
@@ -38,7 +37,7 @@ public class ParquetThriftBytesOutputFormat extends ParquetOutputFormat<BytesWri
     TBaseWriteSupport.setThriftClass(ContextUtil.getConfiguration(job), thriftClass);
   }
 
-  public static Class<? extends TBase<?,?>> getThriftClass(Job job) {
+  public static Class<? extends TBase<?, ?>> getThriftClass(Job job) {
     return TBaseWriteSupport.getThriftClass(ContextUtil.getConfiguration(job));
   }
 
@@ -54,43 +53,42 @@ public class ParquetThriftBytesOutputFormat extends ParquetOutputFormat<BytesWri
   }
 
   /**
-   *  The buffered implementation will buffer each record and deal with invalid records (more expansive).
-   *  when catching an exception the record can be discarded.
-   *  The non-buffered implementation will stream field by field. Exceptions are unrecoverable and the file
-   *  must be closed when an invalid record is written.
+   * The buffered implementation will buffer each record and deal with invalid records (more expansive).
+   * when catching an exception the record can be discarded.
+   * The non-buffered implementation will stream field by field. Exceptions are unrecoverable and the file
+   * must be closed when an invalid record is written.
    *
-   * @param configuration configuration
+   * @param configuration   configuration
    * @param protocolFactory the protocol factory to use to read the bytes
-   * @param thriftClass thriftClass the class to extract the schema from
-   * @param buffered whether we should buffer each record
-   * @param errorHandler handle record corruption and schema incompatible exception
+   * @param thriftClass     thriftClass the class to extract the schema from
+   * @param buffered        whether we should buffer each record
+   * @param errorHandler    handle record corruption and schema incompatible exception
    */
-  public ParquetThriftBytesOutputFormat(Configuration configuration,
-                                        TProtocolFactory protocolFactory,
-                                        Class<? extends TBase<?, ?>> thriftClass,
-                                        boolean buffered,
-                                        FieldIgnoredHandler errorHandler) {
-    super(new ThriftBytesWriteSupport(
-        configuration, protocolFactory, thriftClass, buffered, errorHandler));
+  public ParquetThriftBytesOutputFormat(
+      Configuration configuration,
+      TProtocolFactory protocolFactory,
+      Class<? extends TBase<?, ?>> thriftClass,
+      boolean buffered,
+      FieldIgnoredHandler errorHandler) {
+    super(new ThriftBytesWriteSupport(configuration, protocolFactory, thriftClass, buffered, errorHandler));
   }
 
   /**
+   * @param protocolFactory the protocol factory to use to read the bytes
+   * @param thriftClass     thriftClass the class to extract the schema from
+   * @param buffered        whether we should buffer each record
+   * @param errorHandler    handle record corruption and schema incompatible exception
    * @deprecated Use @link{ParquetThriftBytesOutputFormat(
    * Configuration configuration, TProtocolFactory protocolFactory,
    * {@literal Class<\? extends TBase<\?, ?>>} thriftClass, boolean buffered,
    * FieldIgnoredHandler errorHandler)} instead.
-   *
-   * @param protocolFactory the protocol factory to use to read the bytes
-   * @param thriftClass thriftClass the class to extract the schema from
-   * @param buffered whether we should buffer each record
-   * @param errorHandler handle record corruption and schema incompatible exception
    */
   @Deprecated
-  public ParquetThriftBytesOutputFormat(TProtocolFactory protocolFactory,
-                                        Class<? extends TBase<?, ?>> thriftClass,
-                                        boolean buffered,
-                                        FieldIgnoredHandler errorHandler) {
+  public ParquetThriftBytesOutputFormat(
+      TProtocolFactory protocolFactory,
+      Class<? extends TBase<?, ?>> thriftClass,
+      boolean buffered,
+      FieldIgnoredHandler errorHandler) {
     this(new Configuration(), protocolFactory, thriftClass, buffered, errorHandler);
   }
-
 }

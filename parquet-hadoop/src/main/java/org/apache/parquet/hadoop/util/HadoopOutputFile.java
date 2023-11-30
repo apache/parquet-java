@@ -19,14 +19,14 @@
 
 package org.apache.parquet.hadoop.util;
 
+import java.io.IOException;
+import java.util.HashSet;
+import java.util.Set;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.io.OutputFile;
 import org.apache.parquet.io.PositionOutputStream;
-import java.io.IOException;
-import java.util.HashSet;
-import java.util.Set;
 
 public class HadoopOutputFile implements OutputFile {
   // need to supply a buffer size when setting block size. this is the default
@@ -34,6 +34,7 @@ public class HadoopOutputFile implements OutputFile {
   private static final int DFS_BUFFER_SIZE_DEFAULT = 4096;
 
   private static final Set<String> BLOCK_FS_SCHEMES = new HashSet<String>();
+
   static {
     BLOCK_FS_SCHEMES.add("hdfs");
     BLOCK_FS_SCHEMES.add("webhdfs");
@@ -53,8 +54,7 @@ public class HadoopOutputFile implements OutputFile {
   private final Path path;
   private final Configuration conf;
 
-  public static HadoopOutputFile fromPath(Path path, Configuration conf)
-    throws IOException {
+  public static HadoopOutputFile fromPath(Path path, Configuration conf) throws IOException {
     FileSystem fs = path.getFileSystem(conf);
     return new HadoopOutputFile(fs, fs.makeQualified(path), conf);
   }
@@ -79,15 +79,21 @@ public class HadoopOutputFile implements OutputFile {
 
   @Override
   public PositionOutputStream create(long blockSizeHint) throws IOException {
-    return HadoopStreams.wrap(fs.create(path, false /* do not overwrite */,
-        DFS_BUFFER_SIZE_DEFAULT, fs.getDefaultReplication(path),
+    return HadoopStreams.wrap(fs.create(
+        path,
+        false /* do not overwrite */,
+        DFS_BUFFER_SIZE_DEFAULT,
+        fs.getDefaultReplication(path),
         Math.max(fs.getDefaultBlockSize(path), blockSizeHint)));
   }
 
   @Override
   public PositionOutputStream createOrOverwrite(long blockSizeHint) throws IOException {
-    return HadoopStreams.wrap(fs.create(path, true /* overwrite if exists */,
-        DFS_BUFFER_SIZE_DEFAULT, fs.getDefaultReplication(path),
+    return HadoopStreams.wrap(fs.create(
+        path,
+        true /* overwrite if exists */,
+        DFS_BUFFER_SIZE_DEFAULT,
+        fs.getDefaultReplication(path),
         Math.max(fs.getDefaultBlockSize(path), blockSizeHint)));
   }
 

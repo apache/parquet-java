@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -18,6 +18,12 @@
  */
 package org.apache.parquet.hadoop;
 
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.page.DictionaryPage;
@@ -25,17 +31,11 @@ import org.apache.parquet.column.page.DictionaryPageReadStore;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.io.ParquetDecodingException;
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * A {@link DictionaryPageReadStore} implementation that reads dictionaries from
  * an open {@link ParquetFileReader}.
- *
+ * <p>
  * This implementation will delegate dictionary reads to a
  * {@link ColumnChunkPageReadStore} to avoid extra reads after a row group has
  * been loaded into memory.
@@ -51,10 +51,9 @@ class DictionaryPageReader implements DictionaryPageReadStore {
    * Instantiate a new DictionaryPageReader.
    *
    * @param reader The target ParquetFileReader
-   * @param block The target BlockMetaData
-   *
+   * @param block  The target BlockMetaData
    * @throws NullPointerException if {@code reader} or {@code block} is
-   *           {@code null}
+   *                              {@code null}
    */
   DictionaryPageReader(ParquetFileReader reader, BlockMetaData block) {
     this.reader = Objects.requireNonNull(reader);
@@ -88,28 +87,27 @@ class DictionaryPageReader implements DictionaryPageReadStore {
     String dotPath = String.join(".", descriptor.getPath());
     ColumnChunkMetaData column = columns.get(dotPath);
     if (column == null) {
-      throw new ParquetDecodingException(
-          "Failed to load dictionary, unknown column: " + dotPath);
+      throw new ParquetDecodingException("Failed to load dictionary, unknown column: " + dotPath);
     }
 
-    return dictionaryPageCache.computeIfAbsent(dotPath, key -> {
-      try {
-        final DictionaryPage dict =
-            column.hasDictionaryPage() ? reader.readDictionary(column) : null;
+    return dictionaryPageCache
+        .computeIfAbsent(dotPath, key -> {
+          try {
+            final DictionaryPage dict = column.hasDictionaryPage() ? reader.readDictionary(column) : null;
 
-        // Copy the dictionary to ensure it can be reused if it is returned
-        // more than once. This can happen when a DictionaryFilter has two or
-        // more predicates for the same column. Cache misses as well.
-        return (dict != null) ? Optional.of(reusableCopy(dict)) : Optional.empty();
-      } catch (IOException e) {
-        throw new ParquetDecodingException("Failed to read dictionary", e);
-      }
-    }).orElse(null);
+            // Copy the dictionary to ensure it can be reused if it is returned
+            // more than once. This can happen when a DictionaryFilter has two or
+            // more predicates for the same column. Cache misses as well.
+            return (dict != null) ? Optional.of(reusableCopy(dict)) : Optional.empty();
+          } catch (IOException e) {
+            throw new ParquetDecodingException("Failed to read dictionary", e);
+          }
+        })
+        .orElse(null);
   }
 
-  private static DictionaryPage reusableCopy(DictionaryPage dict)
-      throws IOException {
-    return new DictionaryPage(BytesInput.from(dict.getBytes().toByteArray()),
-        dict.getDictionarySize(), dict.getEncoding());
+  private static DictionaryPage reusableCopy(DictionaryPage dict) throws IOException {
+    return new DictionaryPage(
+        BytesInput.from(dict.getBytes().toByteArray()), dict.getDictionarySize(), dict.getEncoding());
   }
 }

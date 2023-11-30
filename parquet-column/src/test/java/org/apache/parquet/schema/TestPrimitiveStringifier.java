@@ -51,7 +51,6 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
-
 import org.apache.parquet.TestUtils;
 import org.apache.parquet.io.api.Binary;
 import org.junit.Test;
@@ -85,7 +84,8 @@ public class TestPrimitiveStringifier {
 
     assertEquals("null", stringifier.stringify(null));
     assertEquals("0x", stringifier.stringify(Binary.EMPTY));
-    assertEquals("0x0123456789ABCDEF", stringifier.stringify(toBinary(0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF)));
+    assertEquals(
+        "0x0123456789ABCDEF", stringifier.stringify(toBinary(0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF)));
   }
 
   @Test
@@ -110,7 +110,8 @@ public class TestPrimitiveStringifier {
     assertEquals("null", stringifier.stringify(null));
     assertEquals("", stringifier.stringify(Binary.EMPTY));
     assertEquals("This is a UTF-8 test", stringifier.stringify(Binary.fromString("This is a UTF-8 test")));
-    assertEquals("これはUTF-8のテストです",
+    assertEquals(
+        "これはUTF-8のテストです",
         stringifier.stringify(Binary.fromConstantByteArray("これはUTF-8のテストです".getBytes(UTF_8))));
 
     checkThrowingUnsupportedException(stringifier, Binary.class);
@@ -123,28 +124,31 @@ public class TestPrimitiveStringifier {
     assertEquals("null", stringifier.stringify(null));
 
     assertEquals("<INVALID>", stringifier.stringify(Binary.EMPTY));
-    assertEquals("<INVALID>",
-        stringifier.stringify(Binary.fromConstantByteArray(new byte[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 })));
-    assertEquals("<INVALID>",
-        stringifier.stringify(Binary.fromReusedByteArray(new byte[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13 })));
+    assertEquals(
+        "<INVALID>",
+        stringifier.stringify(Binary.fromConstantByteArray(new byte[] {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11})));
+    assertEquals("<INVALID>", stringifier.stringify(Binary.fromReusedByteArray(new byte[] {
+      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13
+    })));
 
     ByteBuffer buffer = ByteBuffer.allocate(12);
-    assertEquals("interval(0 months, 0 days, 0 millis)",
-        stringifier.stringify(Binary.fromConstantByteBuffer(buffer)));
+    assertEquals(
+        "interval(0 months, 0 days, 0 millis)", stringifier.stringify(Binary.fromConstantByteBuffer(buffer)));
 
     buffer.putInt(0x03000000);
     buffer.putInt(0x06000000);
     buffer.putInt(0x09000000);
     buffer.flip();
-    assertEquals("interval(3 months, 6 days, 9 millis)",
-        stringifier.stringify(Binary.fromConstantByteBuffer(buffer)));
+    assertEquals(
+        "interval(3 months, 6 days, 9 millis)", stringifier.stringify(Binary.fromConstantByteBuffer(buffer)));
 
     buffer.clear();
     buffer.putInt(0xFFFFFFFF);
     buffer.putInt(0xFEFFFFFF);
     buffer.putInt(0xFDFFFFFF);
     buffer.flip();
-    assertEquals("interval(4294967295 months, 4294967294 days, 4294967293 millis)",
+    assertEquals(
+        "interval(4294967295 months, 4294967294 days, 4294967293 millis)",
         stringifier.stringify(Binary.fromReusedByteBuffer(buffer)));
 
     checkThrowingUnsupportedException(stringifier, Binary.class);
@@ -170,7 +174,8 @@ public class TestPrimitiveStringifier {
 
   @Test
   public void testTimestampMillisStringifier() {
-    for (PrimitiveStringifier stringifier : asList(TIMESTAMP_MILLIS_STRINGIFIER, TIMESTAMP_MILLIS_UTC_STRINGIFIER)) {
+    for (PrimitiveStringifier stringifier :
+        asList(TIMESTAMP_MILLIS_STRINGIFIER, TIMESTAMP_MILLIS_UTC_STRINGIFIER)) {
       String timezoneAmendment = (stringifier == TIMESTAMP_MILLIS_STRINGIFIER ? "" : "+0000");
 
       assertEquals(withZoneString("1970-01-01T00:00:00.000", timezoneAmendment), stringifier.stringify(0l));
@@ -179,12 +184,16 @@ public class TestPrimitiveStringifier {
       cal.clear();
       cal.set(2017, Calendar.DECEMBER, 15, 10, 9, 54);
       cal.set(Calendar.MILLISECOND, 120);
-      assertEquals(withZoneString("2017-12-15T10:09:54.120", timezoneAmendment), stringifier.stringify(cal.getTimeInMillis()));
+      assertEquals(
+          withZoneString("2017-12-15T10:09:54.120", timezoneAmendment),
+          stringifier.stringify(cal.getTimeInMillis()));
 
       cal.clear();
       cal.set(1948, Calendar.NOVEMBER, 23, 20, 19, 1);
       cal.set(Calendar.MILLISECOND, 9);
-      assertEquals(withZoneString("1948-11-23T20:19:01.009", timezoneAmendment), stringifier.stringify(cal.getTimeInMillis()));
+      assertEquals(
+          withZoneString("1948-11-23T20:19:01.009", timezoneAmendment),
+          stringifier.stringify(cal.getTimeInMillis()));
 
       checkThrowingUnsupportedException(stringifier, Long.TYPE);
     }
@@ -192,7 +201,8 @@ public class TestPrimitiveStringifier {
 
   @Test
   public void testTimestampMicrosStringifier() {
-    for (PrimitiveStringifier stringifier : asList(TIMESTAMP_MICROS_STRINGIFIER, TIMESTAMP_MICROS_UTC_STRINGIFIER)) {
+    for (PrimitiveStringifier stringifier :
+        asList(TIMESTAMP_MICROS_STRINGIFIER, TIMESTAMP_MICROS_UTC_STRINGIFIER)) {
       String timezoneAmendment = (stringifier == TIMESTAMP_MICROS_STRINGIFIER ? "" : "+0000");
 
       assertEquals(withZoneString("1970-01-01T00:00:00.000000", timezoneAmendment), stringifier.stringify(0l));
@@ -202,13 +212,15 @@ public class TestPrimitiveStringifier {
       cal.set(2053, Calendar.JULY, 10, 22, 13, 24);
       cal.set(Calendar.MILLISECOND, 84);
       long micros = cal.getTimeInMillis() * 1000 + 900;
-      assertEquals(withZoneString("2053-07-10T22:13:24.084900", timezoneAmendment), stringifier.stringify(micros));
+      assertEquals(
+          withZoneString("2053-07-10T22:13:24.084900", timezoneAmendment), stringifier.stringify(micros));
 
       cal.clear();
       cal.set(1848, Calendar.MARCH, 15, 9, 23, 59);
       cal.set(Calendar.MILLISECOND, 765);
       micros = cal.getTimeInMillis() * 1000 - 1;
-      assertEquals(withZoneString("1848-03-15T09:23:59.764999", timezoneAmendment), stringifier.stringify(micros));
+      assertEquals(
+          withZoneString("1848-03-15T09:23:59.764999", timezoneAmendment), stringifier.stringify(micros));
 
       checkThrowingUnsupportedException(stringifier, Long.TYPE);
     }
@@ -226,13 +238,15 @@ public class TestPrimitiveStringifier {
       cal.set(2053, Calendar.JULY, 10, 22, 13, 24);
       cal.set(Calendar.MILLISECOND, 84);
       long nanos = cal.getTimeInMillis() * 1_000_000 + 536;
-      assertEquals(withZoneString("2053-07-10T22:13:24.084000536", timezoneAmendment), stringifier.stringify(nanos));
+      assertEquals(
+          withZoneString("2053-07-10T22:13:24.084000536", timezoneAmendment), stringifier.stringify(nanos));
 
       cal.clear();
       cal.set(1848, Calendar.MARCH, 15, 9, 23, 59);
       cal.set(Calendar.MILLISECOND, 765);
       nanos = cal.getTimeInMillis() * 1_000_000 - 1;
-      assertEquals(withZoneString("1848-03-15T09:23:59.764999999", timezoneAmendment), stringifier.stringify(nanos));
+      assertEquals(
+          withZoneString("1848-03-15T09:23:59.764999999", timezoneAmendment), stringifier.stringify(nanos));
 
       checkThrowingUnsupportedException(stringifier, Long.TYPE);
     }
@@ -246,17 +260,29 @@ public class TestPrimitiveStringifier {
       assertEquals(withZoneString("00:00:00.000", timezoneAmendment), stringifier.stringify(0));
       assertEquals(withZoneString("00:00:00.000000", timezoneAmendment), stringifier.stringify(0l));
 
-      assertEquals(withZoneString("12:34:56.789", timezoneAmendment), stringifier.stringify((int) convert(MILLISECONDS, 12, 34, 56, 789)));
-      assertEquals(withZoneString("12:34:56.789012", timezoneAmendment), stringifier.stringify(convert(MICROSECONDS, 12, 34, 56, 789012)));
+      assertEquals(withZoneString("12:34:56.789", timezoneAmendment), stringifier.stringify((int)
+          convert(MILLISECONDS, 12, 34, 56, 789)));
+      assertEquals(
+          withZoneString("12:34:56.789012", timezoneAmendment),
+          stringifier.stringify(convert(MICROSECONDS, 12, 34, 56, 789012)));
 
-      assertEquals(withZoneString("-12:34:56.789", timezoneAmendment), stringifier.stringify((int) convert(MILLISECONDS, -12, -34, -56, -789)));
-      assertEquals(withZoneString("-12:34:56.789012", timezoneAmendment), stringifier.stringify(convert(MICROSECONDS, -12, -34, -56, -789012)));
+      assertEquals(withZoneString("-12:34:56.789", timezoneAmendment), stringifier.stringify((int)
+          convert(MILLISECONDS, -12, -34, -56, -789)));
+      assertEquals(
+          withZoneString("-12:34:56.789012", timezoneAmendment),
+          stringifier.stringify(convert(MICROSECONDS, -12, -34, -56, -789012)));
 
-      assertEquals(withZoneString("123:12:34.567", timezoneAmendment), stringifier.stringify((int) convert(MILLISECONDS, 123, 12, 34, 567)));
-      assertEquals(withZoneString("12345:12:34.056789", timezoneAmendment), stringifier.stringify(convert(MICROSECONDS, 12345, 12, 34, 56789)));
+      assertEquals(withZoneString("123:12:34.567", timezoneAmendment), stringifier.stringify((int)
+          convert(MILLISECONDS, 123, 12, 34, 567)));
+      assertEquals(
+          withZoneString("12345:12:34.056789", timezoneAmendment),
+          stringifier.stringify(convert(MICROSECONDS, 12345, 12, 34, 56789)));
 
-      assertEquals(withZoneString("-123:12:34.567", timezoneAmendment), stringifier.stringify((int) convert(MILLISECONDS, -123, -12, -34, -567)));
-      assertEquals(withZoneString("-12345:12:34.056789", timezoneAmendment), stringifier.stringify(convert(MICROSECONDS, -12345, -12, -34, -56789)));
+      assertEquals(withZoneString("-123:12:34.567", timezoneAmendment), stringifier.stringify((int)
+          convert(MILLISECONDS, -123, -12, -34, -567)));
+      assertEquals(
+          withZoneString("-12345:12:34.056789", timezoneAmendment),
+          stringifier.stringify(convert(MICROSECONDS, -12345, -12, -34, -56789)));
 
       checkThrowingUnsupportedException(stringifier, Integer.TYPE, Long.TYPE);
     }
@@ -269,10 +295,18 @@ public class TestPrimitiveStringifier {
 
       assertEquals(withZoneString("00:00:00.000000000", timezoneAmendment), stringifier.stringify(0l));
 
-      assertEquals(withZoneString("12:34:56.789012987", timezoneAmendment), stringifier.stringify(convert(NANOSECONDS, 12, 34, 56, 789012987)));
-      assertEquals(withZoneString("-12:34:56.000789012", timezoneAmendment), stringifier.stringify(convert(NANOSECONDS, -12, -34, -56, -789012)));
-      assertEquals(withZoneString("12345:12:34.000056789", timezoneAmendment), stringifier.stringify(convert(NANOSECONDS, 12345, 12, 34, 56789)));
-      assertEquals(withZoneString("-12345:12:34.000056789", timezoneAmendment), stringifier.stringify(convert(NANOSECONDS, -12345, -12, -34, -56789)));
+      assertEquals(
+          withZoneString("12:34:56.789012987", timezoneAmendment),
+          stringifier.stringify(convert(NANOSECONDS, 12, 34, 56, 789012987)));
+      assertEquals(
+          withZoneString("-12:34:56.000789012", timezoneAmendment),
+          stringifier.stringify(convert(NANOSECONDS, -12, -34, -56, -789012)));
+      assertEquals(
+          withZoneString("12345:12:34.000056789", timezoneAmendment),
+          stringifier.stringify(convert(NANOSECONDS, 12345, 12, 34, 56789)));
+      assertEquals(
+          withZoneString("-12345:12:34.000056789", timezoneAmendment),
+          stringifier.stringify(convert(NANOSECONDS, -12345, -12, -34, -56789)));
 
       checkThrowingUnsupportedException(stringifier, Integer.TYPE, Long.TYPE);
     }
@@ -300,11 +334,15 @@ public class TestPrimitiveStringifier {
 
     assertEquals("null", stringifier.stringify(null));
     assertEquals("<INVALID>", stringifier.stringify(Binary.EMPTY));
-    assertEquals("0.0000", stringifier.stringify(Binary.fromReusedByteArray(new byte[] { 0 })));
-    assertEquals("9876543210987654321098765432109876543210987654.3210", stringifier.stringify(Binary
-        .fromConstantByteArray(new BigInteger("98765432109876543210987654321098765432109876543210").toByteArray())));
-    assertEquals("-1234567890123456789012345678901234567890123456.7890", stringifier.stringify(Binary
-        .fromConstantByteArray(new BigInteger("-12345678901234567890123456789012345678901234567890").toByteArray())));
+    assertEquals("0.0000", stringifier.stringify(Binary.fromReusedByteArray(new byte[] {0})));
+    assertEquals(
+        "9876543210987654321098765432109876543210987654.3210",
+        stringifier.stringify(Binary.fromConstantByteArray(
+            new BigInteger("98765432109876543210987654321098765432109876543210").toByteArray())));
+    assertEquals(
+        "-1234567890123456789012345678901234567890123456.7890",
+        stringifier.stringify(Binary.fromConstantByteArray(
+            new BigInteger("-12345678901234567890123456789012345678901234567890").toByteArray())));
 
     checkThrowingUnsupportedException(stringifier, Integer.TYPE, Long.TYPE, Binary.class);
   }
@@ -313,29 +351,45 @@ public class TestPrimitiveStringifier {
   public void testUUIDStringifier() {
     PrimitiveStringifier stringifier = PrimitiveStringifier.UUID_STRINGIFIER;
 
-    assertEquals("00112233-4455-6677-8899-aabbccddeeff", stringifier.stringify(
-        toBinary(0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff)));
-    assertEquals("00000000-0000-0000-0000-000000000000", stringifier.stringify(
-        toBinary(0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00)));
-    assertEquals("ffffffff-ffff-ffff-ffff-ffffffffffff", stringifier.stringify(
-        toBinary(0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff)));
-    assertEquals("0eb1497c-19b6-42bc-b028-b4b612bed141", stringifier.stringify(
-        toBinary(0x0e, 0xb1, 0x49, 0x7c, 0x19, 0xb6, 0x42, 0xbc, 0xb0, 0x28, 0xb4, 0xb6, 0x12, 0xbe, 0xd1, 0x41)));
+    assertEquals(
+        "00112233-4455-6677-8899-aabbccddeeff",
+        stringifier.stringify(toBinary(
+            0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee,
+            0xff)));
+    assertEquals(
+        "00000000-0000-0000-0000-000000000000",
+        stringifier.stringify(toBinary(
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00)));
+    assertEquals(
+        "ffffffff-ffff-ffff-ffff-ffffffffffff",
+        stringifier.stringify(toBinary(
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+            0xff)));
+    assertEquals(
+        "0eb1497c-19b6-42bc-b028-b4b612bed141",
+        stringifier.stringify(toBinary(
+            0x0e, 0xb1, 0x49, 0x7c, 0x19, 0xb6, 0x42, 0xbc, 0xb0, 0x28, 0xb4, 0xb6, 0x12, 0xbe, 0xd1,
+            0x41)));
 
     // Check that the stringifier does not care about the length, it always takes the first 16 bytes
-    assertEquals("87a09cca-3b1e-4a0a-9c77-591924c3b57b", stringifier.stringify(
-        toBinary(0x87, 0xa0, 0x9c, 0xca, 0x3b, 0x1e, 0x4a, 0x0a, 0x9c, 0x77, 0x59, 0x19, 0x24, 0xc3, 0xb5, 0x7b, 0x00,
-            0x00, 0x00)));
+    assertEquals(
+        "87a09cca-3b1e-4a0a-9c77-591924c3b57b",
+        stringifier.stringify(toBinary(
+            0x87, 0xa0, 0x9c, 0xca, 0x3b, 0x1e, 0x4a, 0x0a, 0x9c, 0x77, 0x59, 0x19, 0x24, 0xc3, 0xb5, 0x7b,
+            0x00, 0x00, 0x00)));
 
     // As there is no validation implemented, if the 16 bytes is not available, the array will be over-indexed
-    TestUtils.assertThrows("Expected exception for over-indexing", ArrayIndexOutOfBoundsException.class,
-        () -> stringifier.stringify(
-            toBinary(0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee)));
+    TestUtils.assertThrows(
+        "Expected exception for over-indexing",
+        ArrayIndexOutOfBoundsException.class,
+        () -> stringifier.stringify(toBinary(
+            0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee)));
 
     checkThrowingUnsupportedException(stringifier, Binary.class);
   }
 
-  private Binary toBinary(int...bytes) {
+  private Binary toBinary(int... bytes) {
     byte[] array = new byte[bytes.length];
     for (int i = 0; i < array.length; ++i) {
       array[i] = (byte) bytes[i];

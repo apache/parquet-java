@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -20,19 +20,18 @@ package org.apache.parquet.hadoop.codec;
 
 import com.github.luben.zstd.BufferPool;
 import com.github.luben.zstd.ZstdOutputStream;
-import org.apache.hadoop.io.compress.CompressionOutputStream;
-
 import java.io.IOException;
 import java.io.OutputStream;
+import org.apache.hadoop.io.compress.CompressionOutputStream;
 
 public class ZstdCompressorStream extends CompressionOutputStream {
 
   private ZstdOutputStream zstdOutputStream;
 
   public ZstdCompressorStream(OutputStream stream, int level, int workers) throws IOException {
-	    super(stream);
-	    zstdOutputStream = new ZstdOutputStream(stream, level);
-	    zstdOutputStream.setWorkers(workers);
+    super(stream);
+    zstdOutputStream = new ZstdOutputStream(stream, level);
+    zstdOutputStream.setWorkers(workers);
   }
 
   public ZstdCompressorStream(OutputStream stream, BufferPool pool, int level, int workers) throws IOException {
@@ -51,7 +50,7 @@ public class ZstdCompressorStream extends CompressionOutputStream {
   }
 
   public void finish() throws IOException {
-     //no-opt, doesn't apply to ZSTD
+    // no-opt, doesn't apply to ZSTD
   }
 
   public void resetState() throws IOException {

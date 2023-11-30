@@ -18,22 +18,22 @@
  */
 package org.apache.parquet.cli.commands;
 
+import static org.apache.parquet.cli.util.Expressions.select;
+
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.io.Closeables;
-import org.apache.avro.Schema;
-import org.apache.parquet.cli.BaseCommand;
-import org.apache.parquet.cli.util.Expressions;
-import org.slf4j.Logger;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import static org.apache.parquet.cli.util.Expressions.select;
+import org.apache.avro.Schema;
+import org.apache.parquet.cli.BaseCommand;
+import org.apache.parquet.cli.util.Expressions;
+import org.slf4j.Logger;
 
 @Parameters(commandDescription = "Print the first N records from a file")
 public class CatCommand extends BaseCommand {
@@ -41,8 +41,9 @@ public class CatCommand extends BaseCommand {
   @Parameter(description = "<file>")
   List<String> sourceFiles;
 
-  @Parameter(names={"-n", "--num-records"},
-      description="The number of records to print")
+  @Parameter(
+      names = {"-n", "--num-records"},
+      description = "The number of records to print")
   long numRecords;
 
   @Parameter(
@@ -57,9 +58,7 @@ public class CatCommand extends BaseCommand {
 
   @Override
   public int run() throws IOException {
-    Preconditions.checkArgument(
-        sourceFiles != null && !sourceFiles.isEmpty(),
-        "Missing file name");
+    Preconditions.checkArgument(sourceFiles != null && !sourceFiles.isEmpty(), "Missing file name");
 
     // Ensure all source files have the columns specified first
     Map<String, Schema> schemas = new HashMap<>();
@@ -104,8 +103,6 @@ public class CatCommand extends BaseCommand {
         "# Show the first 10 records in file \"data.avro\":",
         "data.avro",
         "# Show the first 50 records in file \"data.parquet\":",
-        "data.parquet -n 50"
-    );
+        "data.parquet -n 50");
   }
 }
-

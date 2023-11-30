@@ -18,13 +18,12 @@
  */
 package org.apache.parquet.hadoop.codec;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import org.apache.hadoop.io.compress.Decompressor;
 import org.apache.parquet.Preconditions;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-
-abstract public class NonBlockedDecompressor implements Decompressor {
+public abstract class NonBlockedDecompressor implements Decompressor {
 
   // Buffer for uncompressed output. This buffer grows as necessary.
   private ByteBuffer outputBuffer = ByteBuffer.allocateDirect(0);
@@ -155,7 +154,7 @@ abstract public class NonBlockedDecompressor implements Decompressor {
 
   @Override
   public void setDictionary(byte[] b, int off, int len) {
-    // No-op		
+    // No-op
   }
 
   /**
@@ -165,7 +164,7 @@ abstract public class NonBlockedDecompressor implements Decompressor {
    * @param maxUncompressedLength maximum length of the uncompressed data
    * @return uncompressed byte length of the given input
    */
-  abstract protected int maxUncompressedLength(ByteBuffer compressed, int maxUncompressedLength) throws IOException;
+  protected abstract int maxUncompressedLength(ByteBuffer compressed, int maxUncompressedLength) throws IOException;
 
   /**
    * Uncompress the content in the input buffer. The result is dumped to the
@@ -175,6 +174,5 @@ abstract public class NonBlockedDecompressor implements Decompressor {
    * @param uncompressed output of the the uncompressed data. It uses buffer[pos()..]
    * @return uncompressed data size
    */
-  abstract protected int uncompress(ByteBuffer compressed, ByteBuffer uncompressed) throws IOException;
-
+  protected abstract int uncompress(ByteBuffer compressed, ByteBuffer uncompressed) throws IOException;
 }

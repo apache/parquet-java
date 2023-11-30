@@ -19,9 +19,8 @@
 
 package org.apache.parquet.column.values.bloomfilter;
 
-import net.openhft.hashing.LongHashFunction;
-
 import java.nio.ByteBuffer;
+import net.openhft.hashing.LongHashFunction;
 
 /**
  * The implementation of HashFunction interface. The XxHash uses XXH64 version xxHash

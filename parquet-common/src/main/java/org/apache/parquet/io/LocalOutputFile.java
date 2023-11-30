@@ -31,7 +31,7 @@ import java.nio.file.StandardOpenOption;
 public class LocalOutputFile implements OutputFile {
 
   private class LocalPositionOutputStream extends PositionOutputStream {
-    
+
     private final BufferedOutputStream stream;
     private long pos = 0;
 
@@ -86,8 +86,8 @@ public class LocalOutputFile implements OutputFile {
 
   @Override
   public PositionOutputStream createOrOverwrite(long buffer) throws IOException {
-    return new LocalPositionOutputStream((int) buffer, StandardOpenOption.CREATE,
-      StandardOpenOption.TRUNCATE_EXISTING);
+    return new LocalPositionOutputStream(
+        (int) buffer, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
   }
 
   @Override
