@@ -25,7 +25,7 @@ Make sure you have checked _all_ steps below.
 
 ### Style
 - [ ] My contribution adheres to the code style guidelines and Spotless passes.
-    - To apply the necessary changes, run the spotless:apply goal in Maven
+    - To apply the necessary changes, run `mvn spotless:apply -Pvector-plugins`
 
 ### Documentation
 
