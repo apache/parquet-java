@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -26,7 +26,6 @@ import org.apache.parquet.schema.PrimitiveStringifier;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Type;
-
 
 /**
  * Statistics class to keep track of statistics in parquet pages and column chunks
@@ -155,6 +154,7 @@ public abstract class Statistics<T extends Comparable<T>> {
 
   /**
    * Returns the typed statistics object based on the passed type parameter
+   *
    * @param type PrimitiveTypeName type of the column
    * @return instance of a typed statistics class
    * @deprecated Use {@link #createStats(Type)} instead
@@ -187,8 +187,7 @@ public abstract class Statistics<T extends Comparable<T>> {
    * Creates an empty {@code Statistics} instance for the specified type to be
    * used for reading/writing the new min/max statistics used in the V2 format.
    *
-   * @param type
-   *          type of the column
+   * @param type type of the column
    * @return instance of a typed statistics class
    */
   public static Statistics<?> createStats(Type type) {
@@ -216,8 +215,7 @@ public abstract class Statistics<T extends Comparable<T>> {
   /**
    * Returns a builder to create new statistics object. Used to read the statistics from the parquet file.
    *
-   * @param type
-   *          type of the column
+   * @param type type of the column
    * @return builder to create new statistics object
    */
   public static Builder getBuilderForReading(PrimitiveType type) {
@@ -233,6 +231,7 @@ public abstract class Statistics<T extends Comparable<T>> {
 
   /**
    * updates statistics min and max using the passed value
+   *
    * @param value value to use to update min and max
    */
   public void updateStats(int value) {
@@ -241,6 +240,7 @@ public abstract class Statistics<T extends Comparable<T>> {
 
   /**
    * updates statistics min and max using the passed value
+   *
    * @param value value to use to update min and max
    */
   public void updateStats(long value) {
@@ -249,6 +249,7 @@ public abstract class Statistics<T extends Comparable<T>> {
 
   /**
    * updates statistics min and max using the passed value
+   *
    * @param value value to use to update min and max
    */
   public void updateStats(float value) {
@@ -257,6 +258,7 @@ public abstract class Statistics<T extends Comparable<T>> {
 
   /**
    * updates statistics min and max using the passed value
+   *
    * @param value value to use to update min and max
    */
   public void updateStats(double value) {
@@ -265,6 +267,7 @@ public abstract class Statistics<T extends Comparable<T>> {
 
   /**
    * updates statistics min and max using the passed value
+   *
    * @param value value to use to update min and max
    */
   public void updateStats(boolean value) {
@@ -273,6 +276,7 @@ public abstract class Statistics<T extends Comparable<T>> {
 
   /**
    * updates statistics min and max using the passed value
+   *
    * @param value value to use to update min and max
    */
   public void updateStats(Binary value) {
@@ -281,29 +285,31 @@ public abstract class Statistics<T extends Comparable<T>> {
 
   /**
    * Equality comparison method to compare two statistics objects.
+   *
    * @param other Object to compare against
    * @return true if objects are equal, false otherwise
    */
   @Override
   public boolean equals(Object other) {
-    if (other == this)
-      return true;
-    if (!(other instanceof Statistics))
-      return false;
+    if (other == this) return true;
+    if (!(other instanceof Statistics)) return false;
     Statistics stats = (Statistics) other;
-    return type.equals(stats.type) &&
-        Arrays.equals(stats.getMaxBytes(), this.getMaxBytes()) &&
-        Arrays.equals(stats.getMinBytes(), this.getMinBytes()) &&
-        stats.getNumNulls() == this.getNumNulls();
+    return type.equals(stats.type)
+        && Arrays.equals(stats.getMaxBytes(), this.getMaxBytes())
+        && Arrays.equals(stats.getMinBytes(), this.getMinBytes())
+        && stats.getNumNulls() == this.getNumNulls();
   }
 
   /**
    * Hash code for the statistics object
+   *
    * @return hash code int
    */
   @Override
   public int hashCode() {
-    return 31 * type.hashCode() + 31 * Arrays.hashCode(getMaxBytes()) + 17 * Arrays.hashCode(getMinBytes())
+    return 31 * type.hashCode()
+        + 31 * Arrays.hashCode(getMaxBytes())
+        + 17 * Arrays.hashCode(getMinBytes())
         + Long.valueOf(this.getNumNulls()).hashCode();
   }
 
@@ -311,6 +317,7 @@ public abstract class Statistics<T extends Comparable<T>> {
    * Method to merge this statistics object with the object passed
    * as parameter. Merging keeps the smallest of min values, largest of max
    * values and combines the number of null counts.
+   *
    * @param stats Statistics object to merge with
    */
   public void mergeStatistics(Statistics stats) {
@@ -331,18 +338,20 @@ public abstract class Statistics<T extends Comparable<T>> {
   /**
    * Abstract method to merge this statistics min and max with the values
    * of the parameter object. Does not do any checks, only called internally.
+   *
    * @param stats Statistics object to merge with
    */
-  abstract protected void mergeStatisticsMinMax(Statistics stats);
+  protected abstract void mergeStatisticsMinMax(Statistics stats);
 
   /**
    * Abstract method to set min and max values from byte arrays.
+   *
    * @param minBytes byte array to set the min value to
    * @param maxBytes byte array to set the max value to
    * @deprecated will be removed in 2.0.0. Use {@link #getBuilderForReading(PrimitiveType)} instead.
    */
   @Deprecated
-  abstract public void setMinMaxFromBytes(byte[] minBytes, byte[] maxBytes);
+  public abstract void setMinMaxFromBytes(byte[] minBytes, byte[] maxBytes);
 
   /**
    * Returns the min value in the statistics. The java natural order of the returned type defined by {@link
@@ -352,7 +361,7 @@ public abstract class Statistics<T extends Comparable<T>> {
    *
    * @return the min value
    */
-  abstract public T genericGetMin();
+  public abstract T genericGetMin();
 
   /**
    * Returns the max value in the statistics. The java natural order of the returned type defined by {@link
@@ -362,7 +371,7 @@ public abstract class Statistics<T extends Comparable<T>> {
    *
    * @return the max value
    */
-  abstract public T genericGetMax();
+  public abstract T genericGetMax();
 
   /**
    * Returns the {@link PrimitiveComparator} implementation to be used to compare two generic values in the proper way
@@ -379,10 +388,9 @@ public abstract class Statistics<T extends Comparable<T>> {
    * {@code comparator().compare(genericGetMin(), value)}. The corresponding statistics implementations overload this
    * method so the one with the primitive argument shall be used to avoid boxing/unboxing.
    *
-   * @param value
-   *          the value which {@code min} is to be compared to
+   * @param value the value which {@code min} is to be compared to
    * @return a negative integer, zero, or a positive integer as {@code min} is less than, equal to, or greater than
-   *         {@code value}.
+   * {@code value}.
    */
   public final int compareMinToValue(T value) {
     return comparator.compare(genericGetMin(), value);
@@ -393,10 +401,9 @@ public abstract class Statistics<T extends Comparable<T>> {
    * {@code comparator().compare(genericGetMax(), value)}. The corresponding statistics implementations overload this
    * method so the one with the primitive argument shall be used to avoid boxing/unboxing.
    *
-   * @param value
-   *          the value which {@code max} is to be compared to
+   * @param value the value which {@code max} is to be compared to
    * @return a negative integer, zero, or a positive integer as {@code max} is less than, equal to, or greater than
-   *         {@code value}.
+   * {@code value}.
    */
   public final int compareMaxToValue(T value) {
     return comparator.compare(genericGetMax(), value);
@@ -404,15 +411,17 @@ public abstract class Statistics<T extends Comparable<T>> {
 
   /**
    * Abstract method to return the max value as a byte array
+   *
    * @return byte array corresponding to the max value
    */
-  abstract public byte[] getMaxBytes();
+  public abstract byte[] getMaxBytes();
 
   /**
    * Abstract method to return the min value as a byte array
+   *
    * @return byte array corresponding to the min value
    */
-  abstract public byte[] getMinBytes();
+  public abstract byte[] getMinBytes();
 
   /**
    * Returns the string representation of min for debugging/logging purposes.
@@ -437,42 +446,44 @@ public abstract class Statistics<T extends Comparable<T>> {
   /**
    * Abstract method to return whether the min and max values fit in the given
    * size.
+   *
    * @param size a size in bytes
    * @return true iff the min and max values are less than size bytes
    */
-  abstract public boolean isSmallerThan(long size);
+  public abstract boolean isSmallerThan(long size);
 
   @Override
   public String toString() {
     if (this.hasNonNullValue()) {
       if (isNumNullsSet()) {
-        return String.format("min: %s, max: %s, num_nulls: %d", minAsString(), maxAsString(), this.getNumNulls());
+        return String.format(
+            "min: %s, max: %s, num_nulls: %d", minAsString(), maxAsString(), this.getNumNulls());
       } else {
         return String.format("min: %s, max: %s, num_nulls not defined", minAsString(), maxAsString());
       }
-    } else if (!this.isEmpty())
-      return String.format("num_nulls: %d, min/max not defined", this.getNumNulls());
-    else
-      return "no stats for this column";
+    } else if (!this.isEmpty()) return String.format("num_nulls: %d, min/max not defined", this.getNumNulls());
+    else return "no stats for this column";
   }
 
   /**
    * Increments the null count by one
    */
   public void incrementNumNulls() {
-    num_nulls++ ;
+    num_nulls++;
   }
 
   /**
    * Increments the null count by the parameter value
+   *
    * @param increment value to increment the null count by
    */
   public void incrementNumNulls(long increment) {
-    num_nulls += increment ;
+    num_nulls += increment;
   }
 
   /**
    * Returns the null count
+   *
    * @return null count or {@code -1} if the null count is not set
    */
   public long getNumNulls() {
@@ -482,8 +493,7 @@ public abstract class Statistics<T extends Comparable<T>> {
   /**
    * Sets the number of nulls to the parameter value
    *
-   * @param nulls
-   *          null count to set the count to
+   * @param nulls null count to set the count to
    * @deprecated will be removed in 2.0.0. Use {@link #getBuilderForReading(PrimitiveType)} instead.
    */
   @Deprecated
@@ -494,6 +504,7 @@ public abstract class Statistics<T extends Comparable<T>> {
   /**
    * Returns a boolean specifying if the Statistics object is empty,
    * i.e does not contain valid statistics for the page/column yet
+   *
    * @return true if object is empty, false otherwise
    */
   public boolean isEmpty() {
@@ -536,4 +547,3 @@ public abstract class Statistics<T extends Comparable<T>> {
     return type;
   }
 }
-

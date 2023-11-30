@@ -28,12 +28,13 @@ public interface FieldConsumer {
 
   /**
    * called by the EventBasedThriftReader when reading a field from a Struct
-   * @param protocol the underlying protocol
+   *
+   * @param protocol               the underlying protocol
    * @param eventBasedThriftReader the reader to delegate to further calls.
-   * @param id the id of the field
-   * @param type the type of the field
+   * @param id                     the id of the field
+   * @param type                   the type of the field
    * @throws TException if any thrift related error occurs during the reading
    */
-  public void consumeField(TProtocol protocol, EventBasedThriftReader eventBasedThriftReader, short id, byte type) throws TException;
-
+  public void consumeField(TProtocol protocol, EventBasedThriftReader eventBasedThriftReader, short id, byte type)
+      throws TException;
 }

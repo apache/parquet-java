@@ -18,18 +18,18 @@
  */
 package org.apache.parquet.proto;
 
+import static org.junit.Assert.assertEquals;
+
 import com.google.common.base.Joiner;
 import com.google.protobuf.Message;
 import com.google.protobuf.Struct;
 import com.google.protobuf.Value;
-import org.junit.Test;
 import org.apache.parquet.proto.test.TestProto3;
 import org.apache.parquet.proto.test.TestProtobuf;
 import org.apache.parquet.proto.test.Trees;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
-
-import static org.junit.Assert.assertEquals;
+import org.junit.Test;
 
 public class ProtoSchemaConverterTest {
 
@@ -39,21 +39,29 @@ public class ProtoSchemaConverterTest {
   /**
    * Converts given pbClass to parquet schema and compares it with expected parquet schema.
    */
-  private static void testConversion(Class<? extends Message> pbClass, String parquetSchemaString, boolean parquetSpecsCompliant, boolean unwrapWrappers) {
-    testConversion(pbClass, parquetSchemaString, new ProtoSchemaConverter(parquetSpecsCompliant, 5, unwrapWrappers));
+  private static void testConversion(
+      Class<? extends Message> pbClass,
+      String parquetSchemaString,
+      boolean parquetSpecsCompliant,
+      boolean unwrapWrappers) {
+    testConversion(
+        pbClass, parquetSchemaString, new ProtoSchemaConverter(parquetSpecsCompliant, 5, unwrapWrappers));
   }
 
   private static void testConversion(Class<? extends Message> pbClass, String parquetSchemaString) {
     testConversion(pbClass, parquetSchemaString, true, false);
   }
 
-  private static void testConversion(Class<? extends Message> pbClass, String parquetSchemaString, ProtoSchemaConverter converter) {
+  private static void testConversion(
+      Class<? extends Message> pbClass, String parquetSchemaString, ProtoSchemaConverter converter) {
     MessageType schema = converter.convert(pbClass);
     MessageType expectedMT = MessageTypeParser.parseMessageType(parquetSchemaString);
     assertEquals(expectedMT.toString(), schema.toString());
   }
 
-  private void testConversion(Class<? extends Message> pbClass, String parquetSchemaString, boolean parquetSpecsCompliant) throws Exception {
+  private void testConversion(
+      Class<? extends Message> pbClass, String parquetSchemaString, boolean parquetSpecsCompliant)
+      throws Exception {
     testConversion(pbClass, parquetSchemaString, parquetSpecsCompliant, false);
   }
 
@@ -203,10 +211,8 @@ public class ProtoSchemaConverterTest {
 
   @Test
   public void testConvertRepeatedIntMessageNonSpecsCompliant() {
-    String expectedSchema = JOINER.join(
-        "message TestProtobuf.RepeatedIntMessage {",
-        "  repeated int32 repeatedInt = 1;",
-        "}");
+    String expectedSchema =
+        JOINER.join("message TestProtobuf.RepeatedIntMessage {", "  repeated int32 repeatedInt = 1;", "}");
 
     testConversion(TestProtobuf.RepeatedIntMessage.class, expectedSchema, false, false);
   }
@@ -228,10 +234,8 @@ public class ProtoSchemaConverterTest {
 
   @Test
   public void testProto3ConvertRepeatedIntMessageNonSpecsCompliant() {
-    String expectedSchema = JOINER.join(
-        "message TestProto3.RepeatedIntMessage {",
-        "  repeated int32 repeatedInt = 1;",
-        "}");
+    String expectedSchema =
+        JOINER.join("message TestProto3.RepeatedIntMessage {", "  repeated int32 repeatedInt = 1;", "}");
 
     testConversion(TestProto3.RepeatedIntMessage.class, expectedSchema, false, false);
   }
@@ -358,24 +362,22 @@ public class ProtoSchemaConverterTest {
 
   @Test
   public void testProto3ConvertDateTimeMessageWrapped() throws Exception {
-    String expectedSchema =
-      "message TestProto3.DateTimeMessage {\n" +
-        "  optional group timestamp = 1 {\n" +
-        "    optional int64 seconds = 1;\n" +
-        "    optional int32 nanos = 2;\n" +
-        "  }\n" +
-        "  optional group date = 2 {\n" +
-        "    optional int32 year = 1;\n" +
-        "    optional int32 month = 2;\n" +
-        "    optional int32 day = 3;\n" +
-        "  }\n" +
-        "  optional group time = 3 {\n" +
-        "    optional int32 hours = 1;\n" +
-        "    optional int32 minutes = 2;\n" +
-        "    optional int32 seconds = 3;\n" +
-        "    optional int32 nanos = 4;\n" +
-        "  }\n" +
-        "}";
+    String expectedSchema = "message TestProto3.DateTimeMessage {\n" + "  optional group timestamp = 1 {\n"
+        + "    optional int64 seconds = 1;\n"
+        + "    optional int32 nanos = 2;\n"
+        + "  }\n"
+        + "  optional group date = 2 {\n"
+        + "    optional int32 year = 1;\n"
+        + "    optional int32 month = 2;\n"
+        + "    optional int32 day = 3;\n"
+        + "  }\n"
+        + "  optional group time = 3 {\n"
+        + "    optional int32 hours = 1;\n"
+        + "    optional int32 minutes = 2;\n"
+        + "    optional int32 seconds = 3;\n"
+        + "    optional int32 nanos = 4;\n"
+        + "  }\n"
+        + "}";
 
     testConversion(TestProto3.DateTimeMessage.class, expectedSchema, false, false);
   }
@@ -383,29 +385,26 @@ public class ProtoSchemaConverterTest {
   @Test
   public void testProto3ConvertDateTimeMessageUnwrapped() throws Exception {
     String expectedSchema =
-      "message TestProto3.DateTimeMessage {\n" +
-        "  optional int64 timestamp (TIMESTAMP(NANOS,true)) = 1;\n" +
-        "  optional int32 date (DATE) = 2;\n" +
-        "  optional int64 time (TIME(NANOS,true)) = 3;\n" +
-        "}";
+        "message TestProto3.DateTimeMessage {\n" + "  optional int64 timestamp (TIMESTAMP(NANOS,true)) = 1;\n"
+            + "  optional int32 date (DATE) = 2;\n"
+            + "  optional int64 time (TIME(NANOS,true)) = 3;\n"
+            + "}";
 
     testConversion(TestProto3.DateTimeMessage.class, expectedSchema, false, true);
   }
 
   @Test
   public void testProto3ConvertWrappedMessageUnwrapped() throws Exception {
-    String expectedSchema =
-      "message TestProto3.WrappedMessage {\n" +
-        "  optional double wrappedDouble = 1;\n" +
-        "  optional float wrappedFloat = 2;\n" +
-        "  optional int64 wrappedInt64 = 3;\n" +
-        "  optional int64 wrappedUInt64 = 4;\n" +
-        "  optional int32 wrappedInt32 = 5;\n" +
-        "  optional int64 wrappedUInt32 = 6;\n" +
-        "  optional boolean wrappedBool = 7;\n" +
-        "  optional binary wrappedString (UTF8) = 8;\n" +
-        "  optional binary wrappedBytes = 9;\n" +
-        "}";
+    String expectedSchema = "message TestProto3.WrappedMessage {\n" + "  optional double wrappedDouble = 1;\n"
+        + "  optional float wrappedFloat = 2;\n"
+        + "  optional int64 wrappedInt64 = 3;\n"
+        + "  optional int64 wrappedUInt64 = 4;\n"
+        + "  optional int32 wrappedInt32 = 5;\n"
+        + "  optional int64 wrappedUInt32 = 6;\n"
+        + "  optional boolean wrappedBool = 7;\n"
+        + "  optional binary wrappedString (UTF8) = 8;\n"
+        + "  optional binary wrappedBytes = 9;\n"
+        + "}";
 
     testConversion(TestProto3.WrappedMessage.class, expectedSchema, false, true);
   }
@@ -436,8 +435,10 @@ public class ProtoSchemaConverterTest {
         "  }",
         "}");
     testConversion(Trees.BinaryTree.class, expectedSchema, new ProtoSchemaConverter(true, 1, false));
-    testConversion(Trees.BinaryTree.class, TestUtils.readResource("BinaryTree.par"), new ProtoSchemaConverter(true, PAR_RECURSION_DEPTH, false));
-
+    testConversion(
+        Trees.BinaryTree.class,
+        TestUtils.readResource("BinaryTree.par"),
+        new ProtoSchemaConverter(true, PAR_RECURSION_DEPTH, false));
   }
 
   @Test
@@ -461,8 +462,10 @@ public class ProtoSchemaConverterTest {
         "  }",
         "}");
     testConversion(Trees.WideTree.class, expectedSchema, new ProtoSchemaConverter(true, 1, false));
-    testConversion(Trees.WideTree.class, TestUtils.readResource("WideTree.par"), new ProtoSchemaConverter(true, PAR_RECURSION_DEPTH, false));
-
+    testConversion(
+        Trees.WideTree.class,
+        TestUtils.readResource("WideTree.par"),
+        new ProtoSchemaConverter(true, PAR_RECURSION_DEPTH, false));
   }
 
   @Test
@@ -512,7 +515,10 @@ public class ProtoSchemaConverterTest {
         "  }",
         "}");
     testConversion(Value.class, expectedSchema, new ProtoSchemaConverter(true, 1, false));
-    testConversion(Value.class, TestUtils.readResource("Value.par"), new ProtoSchemaConverter(true, PAR_RECURSION_DEPTH, false));
+    testConversion(
+        Value.class,
+        TestUtils.readResource("Value.par"),
+        new ProtoSchemaConverter(true, PAR_RECURSION_DEPTH, false));
   }
 
   @Test
@@ -567,7 +573,10 @@ public class ProtoSchemaConverterTest {
         "  }",
         "}");
     testConversion(Struct.class, expectedSchema, new ProtoSchemaConverter(true, 1, false));
-    testConversion(Struct.class, TestUtils.readResource("Struct.par"), new ProtoSchemaConverter(true, PAR_RECURSION_DEPTH, false));
+    testConversion(
+        Struct.class,
+        TestUtils.readResource("Struct.par"),
+        new ProtoSchemaConverter(true, PAR_RECURSION_DEPTH, false));
   }
 
   @Test

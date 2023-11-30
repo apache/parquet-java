@@ -19,13 +19,13 @@
 
 package org.apache.parquet.hadoop.util;
 
+import java.io.IOException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.parquet.io.SeekableInputStream;
 import org.apache.parquet.io.InputFile;
-import java.io.IOException;
+import org.apache.parquet.io.SeekableInputStream;
 
 public class HadoopInputFile implements InputFile {
 
@@ -33,8 +33,7 @@ public class HadoopInputFile implements InputFile {
   private final FileStatus stat;
   private final Configuration conf;
 
-  public static HadoopInputFile fromPath(Path path, Configuration conf)
-      throws IOException {
+  public static HadoopInputFile fromPath(Path path, Configuration conf) throws IOException {
     FileSystem fs = path.getFileSystem(conf);
     return new HadoopInputFile(fs, fs.getFileStatus(path), conf);
   }
@@ -47,8 +46,7 @@ public class HadoopInputFile implements InputFile {
     }
   }
 
-  public static HadoopInputFile fromStatus(FileStatus stat, Configuration conf)
-      throws IOException {
+  public static HadoopInputFile fromStatus(FileStatus stat, Configuration conf) throws IOException {
     FileSystem fs = stat.getPath().getFileSystem(conf);
     return new HadoopInputFile(fs, stat, conf);
   }
@@ -62,7 +60,7 @@ public class HadoopInputFile implements InputFile {
   public Configuration getConfiguration() {
     return conf;
   }
-  
+
   public Path getPath() {
     return stat.getPath();
   }

@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -22,7 +22,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-
 /**
  * Block metadata stored in the footer and passed in an InputSplit
  */
@@ -35,9 +34,8 @@ public class BlockMetaData {
   private int ordinal;
   private long rowIndexOffset = -1;
 
-  public BlockMetaData() {
-  }
-  
+  public BlockMetaData() {}
+
   /**
    * @param path the path to the file containing the data. Or null if same file the metadata was found
    */
@@ -69,7 +67,9 @@ public class BlockMetaData {
   /**
    * @return -1 if the rowIndexOffset for the {@link BlockMetaData} is unavailable else returns the actual rowIndexOffset
    */
-  public long getRowIndexOffset() { return rowIndexOffset; }
+  public long getRowIndexOffset() {
+    return rowIndexOffset;
+  }
 
   /**
    * @param rowIndexOffset the rowIndexOffset to set
@@ -93,7 +93,6 @@ public class BlockMetaData {
   }
 
   /**
-   *
    * @param column the metadata for a column
    */
   public void addColumn(ColumnChunkMetaData column) {
@@ -101,7 +100,6 @@ public class BlockMetaData {
   }
 
   /**
-   *
    * @return the metadata for columns
    */
   public List<ColumnChunkMetaData> getColumns() {
@@ -109,13 +107,12 @@ public class BlockMetaData {
   }
 
   /**
-   *
    * @return the starting pos of first column
    */
   public long getStartingPos() {
     return getColumns().get(0).getStartingPos();
   }
-  
+
   @Override
   public String toString() {
     String rowIndexOffsetStr = "";
@@ -135,7 +132,7 @@ public class BlockMetaData {
     }
     return totalSize;
   }
-  
+
   /**
    * @return row group ordinal
    */
@@ -144,9 +141,8 @@ public class BlockMetaData {
   }
 
   /**
-  *
-  * @param ordinal - row group ordinal
-  */
+   * @param ordinal - row group ordinal
+   */
   public void setOrdinal(int ordinal) {
     this.ordinal = ordinal;
   }

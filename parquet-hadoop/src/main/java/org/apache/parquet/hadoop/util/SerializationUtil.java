@@ -27,7 +27,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.conf.HadoopParquetConfiguration;
 import org.apache.parquet.conf.ParquetConfiguration;
@@ -35,30 +34,28 @@ import org.apache.parquet.conf.ParquetConfiguration;
 /**
  * Serialization utils copied from:
  * https://github.com/kevinweil/elephant-bird/blob/master/core/src/main/java/com/twitter/elephantbird/util/HadoopUtils.java
- *
+ * <p>
  * TODO: Refactor elephant-bird so that we can depend on utils like this without extra baggage.
  */
 public final class SerializationUtil {
 
-  private SerializationUtil() { }
+  private SerializationUtil() {}
 
   /**
    * Writes an object to a configuration.
    *
-   * @param key for the configuration
-   * @param obj the object to write
+   * @param key  for the configuration
+   * @param obj  the object to write
    * @param conf to read from
    * @throws IOException if there is an error while writing
    */
   public static void writeObjectToConfAsBase64(String key, Object obj, Configuration conf) throws IOException {
-    try(ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
-      try(GZIPOutputStream gos = new GZIPOutputStream(baos);
-            ObjectOutputStream oos = new ObjectOutputStream(gos)) {
+    try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+      try (GZIPOutputStream gos = new GZIPOutputStream(baos);
+          ObjectOutputStream oos = new ObjectOutputStream(gos)) {
         oos.writeObject(obj);
       }
-      conf.set(key,
-          new String(Base64.getMimeEncoder().encode(baos.toByteArray()),
-              StandardCharsets.UTF_8));
+      conf.set(key, new String(Base64.getMimeEncoder().encode(baos.toByteArray()), StandardCharsets.UTF_8));
     }
   }
 
@@ -66,9 +63,9 @@ public final class SerializationUtil {
    * Reads an object (that was written using
    * {@link #writeObjectToConfAsBase64}) from a configuration
    *
-   * @param key for the configuration
+   * @param key  for the configuration
    * @param conf to read from
-   * @param <T> the Java type of the deserialized object
+   * @param <T>  the Java type of the deserialized object
    * @return the read object, or null if key is not present in conf
    * @throws IOException if there is an error while reading
    */
@@ -80,9 +77,9 @@ public final class SerializationUtil {
    * Reads an object (that was written using
    * {@link #writeObjectToConfAsBase64}) from a configuration
    *
-   * @param key for the configuration
+   * @param key  for the configuration
    * @param conf to read from
-   * @param <T> the Java type of the deserialized object
+   * @param <T>  the Java type of the deserialized object
    * @return the read object, or null if key is not present in conf
    * @throws IOException if there is an error while reading
    */
@@ -93,12 +90,11 @@ public final class SerializationUtil {
       return null;
     }
 
-    byte[] bytes =
-        Base64.getMimeDecoder().decode(b64.getBytes(StandardCharsets.UTF_8));
+    byte[] bytes = Base64.getMimeDecoder().decode(b64.getBytes(StandardCharsets.UTF_8));
 
     try (ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
-           GZIPInputStream gis = new GZIPInputStream(bais);
-           ObjectInputStream ois  = new ObjectInputStream(gis)) {
+        GZIPInputStream gis = new GZIPInputStream(bais);
+        ObjectInputStream ois = new ObjectInputStream(gis)) {
       return (T) ois.readObject();
     } catch (ClassNotFoundException e) {
       throw new IOException("Could not read object from config with key " + key, e);

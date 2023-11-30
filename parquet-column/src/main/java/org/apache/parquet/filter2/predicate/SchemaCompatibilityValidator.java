@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -21,7 +21,6 @@ package org.apache.parquet.filter2.predicate;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
-
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.filter2.predicate.Operators.And;
 import org.apache.parquet.filter2.predicate.Operators.Column;
@@ -46,12 +45,12 @@ import org.apache.parquet.schema.MessageType;
  * Inspects the column types found in the provided {@link FilterPredicate} and compares them
  * to the actual schema found in the parquet file. If the provided predicate's types are
  * not consistent with the file schema, and IllegalArgumentException is thrown.
- *
+ * <p>
  * Ideally, all this would be checked at compile time, and this class wouldn't be needed.
  * If we can come up with a way to do that, we should.
- *
+ * <p>
  * This class is stateful, cannot be reused, and is not thread safe.
- *
+ * <p>
  * TODO: detect if a column is optional or required and validate that eq(null)
  * TODO: is not called on required fields (is that too strict?)
  * TODO: (https://issues.apache.org/jira/browse/PARQUET-44)

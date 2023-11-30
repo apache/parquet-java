@@ -19,15 +19,15 @@
 
 package org.apache.parquet.util;
 
-import org.apache.parquet.Preconditions;
+import static org.apache.parquet.Exceptions.throwIfInstance;
+
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.HashMap;
 import java.util.Map;
-
-import static org.apache.parquet.Exceptions.throwIfInstance;
+import org.apache.parquet.Preconditions;
 
 public class DynConstructors {
   public static class Ctor<C> extends DynMethods.UnboundMethod {
@@ -68,16 +68,14 @@ public class DynConstructors {
     @Override
     @SuppressWarnings("unchecked")
     public <R> R invoke(Object target, Object... args) {
-      Preconditions.checkArgument(target == null,
-          "Invalid call to constructor: target must be null");
+      Preconditions.checkArgument(target == null, "Invalid call to constructor: target must be null");
       return (R) newInstance(args);
     }
 
     @Override
     @SuppressWarnings("unchecked")
     public <R> R invokeChecked(Object target, Object... args) throws Exception {
-      Preconditions.checkArgument(target == null,
-          "Invalid call to constructor: target must be null");
+      Preconditions.checkArgument(target == null, "Invalid call to constructor: target must be null");
       return (R) newInstanceChecked(args);
     }
 
@@ -93,8 +91,7 @@ public class DynConstructors {
 
     @Override
     public String toString() {
-      return getClass().getSimpleName() +
-          "(constructor=" + ctor + ", class=" + constructed + ")";
+      return getClass().getSimpleName() + "(constructor=" + ctor + ", class=" + constructed + ")";
     }
   }
 
@@ -201,8 +198,8 @@ public class DynConstructors {
       if (ctor != null) {
         return ctor;
       }
-      throw new NoSuchMethodException("Cannot find constructor for " +
-          baseClass + "\n" + formatProblems(problems));
+      throw new NoSuchMethodException(
+          "Cannot find constructor for " + baseClass + "\n" + formatProblems(problems));
     }
 
     @SuppressWarnings("unchecked")
@@ -210,8 +207,7 @@ public class DynConstructors {
       if (ctor != null) {
         return ctor;
       }
-      throw new RuntimeException("Cannot find constructor for " +
-          baseClass + "\n" + formatProblems(problems));
+      throw new RuntimeException("Cannot find constructor for " + baseClass + "\n" + formatProblems(problems));
     }
   }
 
@@ -238,9 +234,13 @@ public class DynConstructors {
       } else {
         sb.append("\n");
       }
-      sb.append("\tMissing ").append(problem.getKey()).append(" [")
-          .append(problem.getValue().getClass().getName()).append(": ")
-          .append(problem.getValue().getMessage()).append("]");
+      sb.append("\tMissing ")
+          .append(problem.getKey())
+          .append(" [")
+          .append(problem.getValue().getClass().getName())
+          .append(": ")
+          .append(problem.getValue().getMessage())
+          .append("]");
     }
     return sb.toString();
   }

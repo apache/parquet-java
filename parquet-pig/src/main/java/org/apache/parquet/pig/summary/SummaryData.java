@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -18,16 +18,12 @@
  */
 package org.apache.parquet.pig.summary;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import java.io.IOException;
 import java.io.StringReader;
 import java.io.StringWriter;
-
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.core.JsonGenerationException;
-import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.databind.JsonMappingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
 import org.apache.pig.impl.logicalLayer.FrontendException;
 import org.apache.pig.impl.logicalLayer.schema.Schema;
 import org.apache.pig.impl.logicalLayer.schema.Schema.FieldSchema;
@@ -40,6 +36,7 @@ public abstract class SummaryData {
 
   private static ObjectMapper objectMapper = new ObjectMapper();
   private static ObjectMapper prettyObjectMapper = new ObjectMapper();
+
   static {
     prettyObjectMapper.enable(SerializationFeature.INDENT_OUTPUT);
   }
@@ -105,6 +102,7 @@ public abstract class SummaryData {
 
   /**
    * add a single element to the structure
+   *
    * @param o never null
    */
   public void add(Object o) {
@@ -113,6 +111,7 @@ public abstract class SummaryData {
 
   /**
    * merge the given input into this one
+   *
    * @param other never null
    */
   public void merge(SummaryData other) {
@@ -126,7 +125,6 @@ public abstract class SummaryData {
   public void setCount(long count) {
     this.count = count;
   }
-
 
   @Override
   public String toString() {

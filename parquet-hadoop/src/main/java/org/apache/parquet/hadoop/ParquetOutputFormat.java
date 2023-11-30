@@ -18,14 +18,13 @@
  */
 package org.apache.parquet.hadoop;
 
-import static org.apache.parquet.column.ParquetProperties.DEFAULT_BLOOM_FILTER_ENABLED;
 import static org.apache.parquet.column.ParquetProperties.DEFAULT_ADAPTIVE_BLOOM_FILTER_ENABLED;
+import static org.apache.parquet.column.ParquetProperties.DEFAULT_BLOOM_FILTER_ENABLED;
 import static org.apache.parquet.hadoop.ParquetWriter.DEFAULT_BLOCK_SIZE;
 import static org.apache.parquet.hadoop.util.ContextUtil.getConfiguration;
 
 import java.io.IOException;
 import java.util.Objects;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapred.JobConf;
@@ -35,7 +34,6 @@ import org.apache.hadoop.mapreduce.OutputCommitter;
 import org.apache.hadoop.mapreduce.RecordWriter;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
-
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
 import org.apache.parquet.crypto.EncryptionPropertiesFactory;
@@ -52,11 +50,11 @@ import org.slf4j.LoggerFactory;
 
 /**
  * OutputFormat to write to a Parquet file
- *
+ * <p>
  * It requires a {@link WriteSupport} to convert the actual records to the underlying format.
  * It requires the schema of the incoming records. (provided by the write support)
  * It allows storing extra metadata in the footer (for example: for schema compatibility purpose when converting from a different schema language).
- *
+ * <p>
  * The format configuration settings in the job configuration:
  * <pre>
  * # The block size is the size of a row group being buffered in memory
@@ -91,14 +89,14 @@ import org.slf4j.LoggerFactory;
  * # This is also the minimum size of a row group. Default: 8388608
  * parquet.writer.max-padding=8388608 # 8 MB
  * </pre>
- *
+ * <p>
  * If parquet.compression is not set, the following properties are checked (FileOutputFormat behavior).
  * Note that we explicitely disallow custom Codecs
  * <pre>
  * mapred.output.compress=true
  * mapred.output.compression.codec=org.apache.hadoop.io.compress.SomeCodec # the codec must be one of Snappy, GZip or LZO
  * </pre>
- *
+ * <p>
  * if none of those is set the data is uncompressed.
  *
  * @param <T> the type of the materialized records
@@ -127,23 +125,24 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
    * An alias for JOB_SUMMARY_LEVEL, where true means ALL and false means NONE
    */
   @Deprecated
-  public static final String ENABLE_JOB_SUMMARY   = "parquet.enable.summary-metadata";
+  public static final String ENABLE_JOB_SUMMARY = "parquet.enable.summary-metadata";
 
   /**
    * Must be one of the values in {@link JobSummaryLevel} (case insensitive)
    */
   public static final String JOB_SUMMARY_LEVEL = "parquet.summary.metadata.level";
-  public static final String BLOCK_SIZE           = "parquet.block.size";
-  public static final String PAGE_SIZE            = "parquet.page.size";
-  public static final String COMPRESSION          = "parquet.compression";
-  public static final String WRITE_SUPPORT_CLASS  = "parquet.write.support.class";
+
+  public static final String BLOCK_SIZE = "parquet.block.size";
+  public static final String PAGE_SIZE = "parquet.page.size";
+  public static final String COMPRESSION = "parquet.compression";
+  public static final String WRITE_SUPPORT_CLASS = "parquet.write.support.class";
   public static final String DICTIONARY_PAGE_SIZE = "parquet.dictionary.page.size";
-  public static final String ENABLE_DICTIONARY    = "parquet.enable.dictionary";
-  public static final String VALIDATION           = "parquet.validation";
-  public static final String WRITER_VERSION       = "parquet.writer.version";
-  public static final String MEMORY_POOL_RATIO    = "parquet.memory.pool.ratio";
+  public static final String ENABLE_DICTIONARY = "parquet.enable.dictionary";
+  public static final String VALIDATION = "parquet.validation";
+  public static final String WRITER_VERSION = "parquet.writer.version";
+  public static final String MEMORY_POOL_RATIO = "parquet.memory.pool.ratio";
   public static final String MIN_MEMORY_ALLOCATION = "parquet.memory.min.chunk.size";
-  public static final String MAX_PADDING_BYTES    = "parquet.writer.max-padding";
+  public static final String MAX_PADDING_BYTES = "parquet.writer.max-padding";
   public static final String MIN_ROW_COUNT_FOR_PAGE_SIZE_CHECK = "parquet.page.size.row.check.min";
   public static final String MAX_ROW_COUNT_FOR_PAGE_SIZE_CHECK = "parquet.page.size.row.check.max";
   public static final String PAGE_VALUE_COUNT_THRESHOLD = "parquet.page.value.count.threshold";
@@ -168,7 +167,8 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     }
 
     if (level != null && deprecatedFlag != null) {
-      LOG.warn("Both " + JOB_SUMMARY_LEVEL + " and " + ENABLE_JOB_SUMMARY + " are set! " + ENABLE_JOB_SUMMARY + " will be ignored.");
+      LOG.warn("Both " + JOB_SUMMARY_LEVEL + " and " + ENABLE_JOB_SUMMARY + " are set! " + ENABLE_JOB_SUMMARY
+          + " will be ignored.");
     }
 
     if (level != null) {
@@ -182,12 +182,12 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     return JobSummaryLevel.ALL;
   }
 
-  public static void setWriteSupportClass(Job job,  Class<?> writeSupportClass) {
+  public static void setWriteSupportClass(Job job, Class<?> writeSupportClass) {
     getConfiguration(job).set(WRITE_SUPPORT_CLASS, writeSupportClass.getName());
   }
 
   public static void setWriteSupportClass(JobConf job, Class<?> writeSupportClass) {
-      job.set(WRITE_SUPPORT_CLASS, writeSupportClass.getName());
+    job.set(WRITE_SUPPORT_CLASS, writeSupportClass.getName());
   }
 
   public static Class<?> getWriteSupportClass(Configuration configuration) {
@@ -195,7 +195,8 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     if (className == null) {
       return null;
     }
-    final Class<?> writeSupportClass = ConfigurationUtil.getClassFromConfig(configuration, WRITE_SUPPORT_CLASS, WriteSupport.class);
+    final Class<?> writeSupportClass =
+        ConfigurationUtil.getClassFromConfig(configuration, WRITE_SUPPORT_CLASS, WriteSupport.class);
     return writeSupportClass;
   }
 
@@ -224,8 +225,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   }
 
   public static int getBloomFilterMaxBytes(Configuration conf) {
-    return conf.getInt(BLOOM_FILTER_MAX_BYTES,
-      ParquetProperties.DEFAULT_MAX_BLOOM_FILTER_BYTES);
+    return conf.getInt(BLOOM_FILTER_MAX_BYTES, ParquetProperties.DEFAULT_MAX_BLOOM_FILTER_BYTES);
   }
 
   public static boolean getBloomFilterEnabled(Configuration conf) {
@@ -265,28 +265,26 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   }
 
   public static boolean getEnableDictionary(Configuration configuration) {
-    return configuration.getBoolean(
-        ENABLE_DICTIONARY, ParquetProperties.DEFAULT_IS_DICTIONARY_ENABLED);
+    return configuration.getBoolean(ENABLE_DICTIONARY, ParquetProperties.DEFAULT_IS_DICTIONARY_ENABLED);
   }
 
   public static int getMinRowCountForPageSizeCheck(Configuration configuration) {
-    return configuration.getInt(MIN_ROW_COUNT_FOR_PAGE_SIZE_CHECK,
-        ParquetProperties.DEFAULT_MINIMUM_RECORD_COUNT_FOR_CHECK);
+    return configuration.getInt(
+        MIN_ROW_COUNT_FOR_PAGE_SIZE_CHECK, ParquetProperties.DEFAULT_MINIMUM_RECORD_COUNT_FOR_CHECK);
   }
 
   public static int getMaxRowCountForPageSizeCheck(Configuration configuration) {
-    return configuration.getInt(MAX_ROW_COUNT_FOR_PAGE_SIZE_CHECK,
-        ParquetProperties.DEFAULT_MAXIMUM_RECORD_COUNT_FOR_CHECK);
+    return configuration.getInt(
+        MAX_ROW_COUNT_FOR_PAGE_SIZE_CHECK, ParquetProperties.DEFAULT_MAXIMUM_RECORD_COUNT_FOR_CHECK);
   }
 
   public static int getValueCountThreshold(Configuration configuration) {
-    return configuration.getInt(PAGE_VALUE_COUNT_THRESHOLD,
-        ParquetProperties.DEFAULT_PAGE_VALUE_COUNT_THRESHOLD);
+    return configuration.getInt(PAGE_VALUE_COUNT_THRESHOLD, ParquetProperties.DEFAULT_PAGE_VALUE_COUNT_THRESHOLD);
   }
 
   public static boolean getEstimatePageSizeCheck(Configuration configuration) {
-    return configuration.getBoolean(ESTIMATE_PAGE_SIZE_CHECK,
-        ParquetProperties.DEFAULT_ESTIMATE_ROW_COUNT_FOR_PAGE_SIZE_CHECK);
+    return configuration.getBoolean(
+        ESTIMATE_PAGE_SIZE_CHECK, ParquetProperties.DEFAULT_ESTIMATE_ROW_COUNT_FOR_PAGE_SIZE_CHECK);
   }
 
   @Deprecated
@@ -303,13 +301,11 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   }
 
   public static int getDictionaryPageSize(Configuration configuration) {
-    return configuration.getInt(
-        DICTIONARY_PAGE_SIZE, ParquetProperties.DEFAULT_DICTIONARY_PAGE_SIZE);
+    return configuration.getInt(DICTIONARY_PAGE_SIZE, ParquetProperties.DEFAULT_DICTIONARY_PAGE_SIZE);
   }
 
   public static WriterVersion getWriterVersion(Configuration configuration) {
-    String writerVersion = configuration.get(
-        WRITER_VERSION, ParquetProperties.DEFAULT_WRITER_VERSION.toString());
+    String writerVersion = configuration.get(WRITER_VERSION, ParquetProperties.DEFAULT_WRITER_VERSION.toString());
     return WriterVersion.fromString(writerVersion);
   }
 
@@ -400,7 +396,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
    * constructor used when this OutputFormat in wrapped in another one (In Pig for example)
    *
    * @param writeSupport the class used to convert the incoming records
-   * @param <S> the Java write support type
+   * @param <S>          the Java write support type
    */
   public <S extends WriteSupport<T>> ParquetOutputFormat(S writeSupport) {
     this.writeSupport = writeSupport;
@@ -412,8 +408,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
    *
    * @param <S> the Java write support type
    */
-  public <S extends WriteSupport<T>> ParquetOutputFormat() {
-  }
+  public <S extends WriteSupport<T>> ParquetOutputFormat() {}
 
   /**
    * {@inheritDoc}
@@ -436,7 +431,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   }
 
   public RecordWriter<Void, T> getRecordWriter(TaskAttemptContext taskAttemptContext, Path file)
-    throws IOException, InterruptedException {
+      throws IOException, InterruptedException {
     return getRecordWriter(taskAttemptContext, file, Mode.CREATE);
   }
 
@@ -451,7 +446,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   }
 
   public RecordWriter<Void, T> getRecordWriter(Configuration conf, Path file, CompressionCodecName codec, Mode mode)
-        throws IOException, InterruptedException {
+      throws IOException, InterruptedException {
     final WriteSupport<T> writeSupport = getWriteSupport(conf);
 
     ParquetProperties.Builder propsBuilder = ParquetProperties.builder()
@@ -471,16 +466,20 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
         .withPageRowCountLimit(getPageRowCountLimit(conf))
         .withPageWriteChecksumEnabled(getPageWriteChecksumEnabled(conf));
     new ColumnConfigParser()
-        .withColumnConfig(ENABLE_DICTIONARY, key -> conf.getBoolean(key, false), propsBuilder::withDictionaryEncoding)
-        .withColumnConfig(BLOOM_FILTER_ENABLED, key -> conf.getBoolean(key, false),
-            propsBuilder::withBloomFilterEnabled)
-        .withColumnConfig(BLOOM_FILTER_EXPECTED_NDV, key -> conf.getLong(key, -1L), propsBuilder::withBloomFilterNDV)
-        .withColumnConfig(BLOOM_FILTER_FPP, key -> conf.getDouble(key, ParquetProperties.DEFAULT_BLOOM_FILTER_FPP),
+        .withColumnConfig(
+            ENABLE_DICTIONARY, key -> conf.getBoolean(key, false), propsBuilder::withDictionaryEncoding)
+        .withColumnConfig(
+            BLOOM_FILTER_ENABLED, key -> conf.getBoolean(key, false), propsBuilder::withBloomFilterEnabled)
+        .withColumnConfig(
+            BLOOM_FILTER_EXPECTED_NDV, key -> conf.getLong(key, -1L), propsBuilder::withBloomFilterNDV)
+        .withColumnConfig(
+            BLOOM_FILTER_FPP,
+            key -> conf.getDouble(key, ParquetProperties.DEFAULT_BLOOM_FILTER_FPP),
             propsBuilder::withBloomFilterFPP)
         .withColumnConfig(
-          BLOOM_FILTER_CANDIDATES_NUMBER,
-          key -> conf.getInt(key, ParquetProperties.DEFAULT_BLOOM_FILTER_CANDIDATES_NUMBER),
-          propsBuilder::withBloomFilterCandidatesNumber)
+            BLOOM_FILTER_CANDIDATES_NUMBER,
+            key -> conf.getInt(key, ParquetProperties.DEFAULT_BLOOM_FILTER_CANDIDATES_NUMBER),
+            propsBuilder::withBloomFilterCandidatesNumber)
         .parseConfig(conf);
 
     ParquetProperties props = propsBuilder.build();
@@ -491,30 +490,38 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
 
     LOG.info(
         "ParquetRecordWriter [block size: {}b, row group padding size: {}b, validating: {}]",
-        blockSize, maxPaddingSize, validating);
+        blockSize,
+        maxPaddingSize,
+        validating);
     LOG.debug("Parquet properties are:\n{}", props);
 
     WriteContext fileWriteContext = writeSupport.init(conf);
 
     FileEncryptionProperties encryptionProperties = createEncryptionProperties(conf, file, fileWriteContext);
 
-    ParquetFileWriter w = new ParquetFileWriter(HadoopOutputFile.fromPath(file, conf),
-        fileWriteContext.getSchema(), mode, blockSize, maxPaddingSize, props.getColumnIndexTruncateLength(),
-        props.getStatisticsTruncateLength(), props.getPageWriteChecksumEnabled(), encryptionProperties);
+    ParquetFileWriter w = new ParquetFileWriter(
+        HadoopOutputFile.fromPath(file, conf),
+        fileWriteContext.getSchema(),
+        mode,
+        blockSize,
+        maxPaddingSize,
+        props.getColumnIndexTruncateLength(),
+        props.getStatisticsTruncateLength(),
+        props.getPageWriteChecksumEnabled(),
+        encryptionProperties);
     w.start();
 
-    float maxLoad = conf.getFloat(ParquetOutputFormat.MEMORY_POOL_RATIO,
-        MemoryManager.DEFAULT_MEMORY_POOL_RATIO);
-    long minAllocation = conf.getLong(ParquetOutputFormat.MIN_MEMORY_ALLOCATION,
-        MemoryManager.DEFAULT_MIN_MEMORY_ALLOCATION);
+    float maxLoad = conf.getFloat(ParquetOutputFormat.MEMORY_POOL_RATIO, MemoryManager.DEFAULT_MEMORY_POOL_RATIO);
+    long minAllocation =
+        conf.getLong(ParquetOutputFormat.MIN_MEMORY_ALLOCATION, MemoryManager.DEFAULT_MIN_MEMORY_ALLOCATION);
     synchronized (ParquetOutputFormat.class) {
       if (memoryManager == null) {
         memoryManager = new MemoryManager(maxLoad, minAllocation);
       }
     }
     if (memoryManager.getMemoryPoolRatio() != maxLoad) {
-      LOG.warn("The configuration " + MEMORY_POOL_RATIO + " has been set. It should not " +
-          "be reset by the new value: " + maxLoad);
+      LOG.warn("The configuration " + MEMORY_POOL_RATIO + " has been set. It should not "
+          + "be reset by the new value: " + maxLoad);
     }
 
     return new ParquetRecordWriter<T>(
@@ -535,12 +542,11 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
    * @return the configured write support
    */
   @SuppressWarnings("unchecked")
-  public WriteSupport<T> getWriteSupport(Configuration configuration){
+  public WriteSupport<T> getWriteSupport(Configuration configuration) {
     if (writeSupport != null) return writeSupport;
     Class<?> writeSupportClass = getWriteSupportClass(configuration);
     try {
-      return (WriteSupport<T>) Objects
-          .requireNonNull(writeSupportClass, "writeSupportClass cannot be null")
+      return (WriteSupport<T>) Objects.requireNonNull(writeSupportClass, "writeSupportClass cannot be null")
           .newInstance();
     } catch (InstantiationException | IllegalAccessException e) {
       throw new BadConfigurationException("could not instantiate write support class: " + writeSupportClass, e);
@@ -548,8 +554,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   }
 
   @Override
-  public OutputCommitter getOutputCommitter(TaskAttemptContext context)
-      throws IOException {
+  public OutputCommitter getOutputCommitter(TaskAttemptContext context) throws IOException {
     if (committer == null) {
       Path output = getOutputPath(context);
       committer = new ParquetOutputCommitter(output, context);
@@ -562,12 +567,12 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
    */
   private static MemoryManager memoryManager;
 
-  public synchronized static MemoryManager getMemoryManager() {
+  public static synchronized MemoryManager getMemoryManager() {
     return memoryManager;
   }
 
-  public static FileEncryptionProperties createEncryptionProperties(Configuration fileHadoopConfig, Path tempFilePath,
-      WriteContext fileWriteContext) {
+  public static FileEncryptionProperties createEncryptionProperties(
+      Configuration fileHadoopConfig, Path tempFilePath, WriteContext fileWriteContext) {
     EncryptionPropertiesFactory cryptoFactory = EncryptionPropertiesFactory.loadFactory(fileHadoopConfig);
     if (null == cryptoFactory) {
       return null;

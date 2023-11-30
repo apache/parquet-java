@@ -32,9 +32,14 @@ public class InternalColumnDecryptionSetup {
   private final int columnOrdinal;
   private final byte[] keyMetadata;
 
-  InternalColumnDecryptionSetup(ColumnPath path, boolean encrypted, 
-      boolean isEncryptedWithFooterKey, BlockCipher.Decryptor dataDecryptor, 
-      BlockCipher.Decryptor metaDataDecryptor, int columnOrdinal, byte[] keyMetadata) {
+  InternalColumnDecryptionSetup(
+      ColumnPath path,
+      boolean encrypted,
+      boolean isEncryptedWithFooterKey,
+      BlockCipher.Decryptor dataDecryptor,
+      BlockCipher.Decryptor metaDataDecryptor,
+      int columnOrdinal,
+      byte[] keyMetadata) {
     this.columnPath = path;
     this.isEncrypted = encrypted;
     this.isEncryptedWithFooterKey = isEncryptedWithFooterKey;

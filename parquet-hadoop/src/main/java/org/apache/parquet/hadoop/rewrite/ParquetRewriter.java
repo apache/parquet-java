@@ -18,6 +18,23 @@
  */
 package org.apache.parquet.hadoop.rewrite;
 
+import static org.apache.parquet.column.ParquetProperties.DEFAULT_COLUMN_INDEX_TRUNCATE_LENGTH;
+import static org.apache.parquet.column.ParquetProperties.DEFAULT_STATISTICS_TRUNCATE_LENGTH;
+import static org.apache.parquet.crypto.ModuleCipherFactory.ModuleType;
+import static org.apache.parquet.hadoop.ParquetWriter.DEFAULT_BLOCK_SIZE;
+import static org.apache.parquet.hadoop.ParquetWriter.MAX_PADDING_SIZE_DEFAULT;
+
+import java.io.Closeable;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Queue;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.Preconditions;
@@ -70,24 +87,6 @@ import org.apache.parquet.schema.Type;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.Closeable;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Queue;
-import java.util.Set;
-import java.util.stream.Collectors;
-
-import static org.apache.parquet.column.ParquetProperties.DEFAULT_COLUMN_INDEX_TRUNCATE_LENGTH;
-import static org.apache.parquet.column.ParquetProperties.DEFAULT_STATISTICS_TRUNCATE_LENGTH;
-import static org.apache.parquet.crypto.ModuleCipherFactory.ModuleType;
-import static org.apache.parquet.hadoop.ParquetWriter.DEFAULT_BLOCK_SIZE;
-import static org.apache.parquet.hadoop.ParquetWriter.MAX_PADDING_SIZE_DEFAULT;
-
 public class ParquetRewriter implements Closeable {
 
   // Key to store original writer version in the file key-value metadata
@@ -125,8 +124,7 @@ public class ParquetRewriter implements Closeable {
     ParquetConfiguration conf = options.getParquetConfiguration();
     OutputFile out = options.getParquetOutputFile();
     openInputFiles(options.getParquetInputFiles(), conf);
-    LOG.info("Start rewriting {} input file(s) {} to {}",
-      inputFiles.size(), options.getParquetInputFiles(), out);
+    LOG.info("Start rewriting {} input file(s) {} to {}", inputFiles.size(), options.getParquetInputFiles(), out);
 
     // Init reader of the first input file
     initNextReader();
@@ -148,7 +146,7 @@ public class ParquetRewriter implements Closeable {
     }
 
     this.descriptorsMap =
-      schema.getColumns().stream().collect(Collectors.toMap(x -> ColumnPath.get(x.getPath()), x -> x));
+        schema.getColumns().stream().collect(Collectors.toMap(x -> ColumnPath.get(x.getPath()), x -> x));
 
     if (options.getMaskColumns() != null) {
       this.maskColumns = new HashMap<>();
@@ -165,28 +163,35 @@ public class ParquetRewriter implements Closeable {
     this.indexCacheStrategy = options.getIndexCacheStrategy();
 
     ParquetFileWriter.Mode writerMode = ParquetFileWriter.Mode.CREATE;
-    writer = new ParquetFileWriter(out, schema, writerMode,
-            DEFAULT_BLOCK_SIZE, MAX_PADDING_SIZE_DEFAULT, DEFAULT_COLUMN_INDEX_TRUNCATE_LENGTH,
-            DEFAULT_STATISTICS_TRUNCATE_LENGTH, ParquetProperties.DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED,
-            options.getFileEncryptionProperties());
+    writer = new ParquetFileWriter(
+        out,
+        schema,
+        writerMode,
+        DEFAULT_BLOCK_SIZE,
+        MAX_PADDING_SIZE_DEFAULT,
+        DEFAULT_COLUMN_INDEX_TRUNCATE_LENGTH,
+        DEFAULT_STATISTICS_TRUNCATE_LENGTH,
+        ParquetProperties.DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED,
+        options.getFileEncryptionProperties());
     writer.start();
   }
 
   // Ctor for legacy CompressionConverter and ColumnMasker
-  public ParquetRewriter(TransParquetFileReader reader,
-                         ParquetFileWriter writer,
-                         ParquetMetadata meta,
-                         MessageType schema,
-                         String originalCreatedBy,
-                         CompressionCodecName codecName,
-                         List<String> maskColumns,
-                         MaskMode maskMode) {
+  public ParquetRewriter(
+      TransParquetFileReader reader,
+      ParquetFileWriter writer,
+      ParquetMetadata meta,
+      MessageType schema,
+      String originalCreatedBy,
+      CompressionCodecName codecName,
+      List<String> maskColumns,
+      MaskMode maskMode) {
     this.reader = reader;
     this.writer = writer;
     this.meta = meta;
     this.schema = schema;
     this.descriptorsMap =
-      schema.getColumns().stream().collect(Collectors.toMap(x -> ColumnPath.get(x.getPath()), x -> x));
+        schema.getColumns().stream().collect(Collectors.toMap(x -> ColumnPath.get(x.getPath()), x -> x));
     this.newCodecName = codecName;
     originalCreatedBy = originalCreatedBy == null ? meta.getFileMetaData().getCreatedBy() : originalCreatedBy;
     extraMetaData.putAll(meta.getFileMetaData().getKeyValueMetaData());
@@ -207,19 +212,25 @@ public class ParquetRewriter implements Closeable {
     for (InputFile inputFile : inputFiles) {
       try {
         TransParquetFileReader reader = new TransParquetFileReader(
-                inputFile, ParquetReadOptions.builder(conf).build());
-        MessageType inputFileSchema = reader.getFooter().getFileMetaData().getSchema();
+            inputFile, ParquetReadOptions.builder(conf).build());
+        MessageType inputFileSchema =
+            reader.getFooter().getFileMetaData().getSchema();
         if (this.schema == null) {
           this.schema = inputFileSchema;
         } else {
           // Now we enforce equality of schemas from input files for simplicity.
           if (!this.schema.equals(inputFileSchema)) {
-            LOG.error("Input files have different schemas, expect: {}, input: {}, current file: {}",
-                    this.schema, inputFileSchema, inputFile);
-            throw new InvalidSchemaException("Input files have different schemas, current file: " + inputFile);
+            LOG.error(
+                "Input files have different schemas, expect: {}, input: {}, current file: {}",
+                this.schema,
+                inputFileSchema,
+                inputFile);
+            throw new InvalidSchemaException(
+                "Input files have different schemas, current file: " + inputFile);
           }
         }
-        this.allOriginalCreatedBys.add(reader.getFooter().getFileMetaData().getCreatedBy());
+        this.allOriginalCreatedBys.add(
+            reader.getFooter().getFileMetaData().getCreatedBy());
         this.inputFiles.add(reader);
       } catch (IOException e) {
         throw new IllegalArgumentException("Failed to open input file: " + inputFile, e);
@@ -265,7 +276,7 @@ public class ParquetRewriter implements Closeable {
   }
 
   private void processBlocksFromReader(IndexCache indexCache) throws IOException {
-    for (int blockId = 0; blockId < meta.getBlocks().size(); blockId ++) {
+    for (int blockId = 0; blockId < meta.getBlocks().size(); blockId++) {
       BlockMetaData blockMetaData = meta.getBlocks().get(blockId);
       writer.startBlock(blockMetaData.getRowCount());
       indexCache.setBlockMetadata(blockMetaData);
@@ -287,25 +298,20 @@ public class ParquetRewriter implements Closeable {
 
         reader.setStreamPosition(chunk.getStartingPos());
         CompressionCodecName newCodecName = this.newCodecName == null ? chunk.getCodec() : this.newCodecName;
-        boolean encryptColumn = encryptMode && encryptColumns != null && encryptColumns.contains(chunk.getPath());
+        boolean encryptColumn =
+            encryptMode && encryptColumns != null && encryptColumns.contains(chunk.getPath());
 
         if (maskColumns != null && maskColumns.containsKey(chunk.getPath())) {
           // Mask column and compress it again.
           MaskMode maskMode = maskColumns.get(chunk.getPath());
           if (maskMode.equals(MaskMode.NULLIFY)) {
-            Type.Repetition repetition = descriptor.getPrimitiveType().getRepetition();
+            Type.Repetition repetition =
+                descriptor.getPrimitiveType().getRepetition();
             if (repetition.equals(Type.Repetition.REQUIRED)) {
-              throw new IOException(
-                      "Required column [" + descriptor.getPrimitiveType().getName() + "] cannot be nullified");
+              throw new IOException("Required column ["
+                  + descriptor.getPrimitiveType().getName() + "] cannot be nullified");
             }
-            nullifyColumn(
-                    blockId,
-                    descriptor,
-                    chunk,
-                    writer,
-                    schema,
-                    newCodecName,
-                    encryptColumn);
+            nullifyColumn(blockId, descriptor, chunk, writer, schema, newCodecName, encryptColumn);
           } else {
             throw new UnsupportedOperationException("Only nullify is supported for now");
           }
@@ -313,27 +319,28 @@ public class ParquetRewriter implements Closeable {
           // Prepare encryption context
           ColumnChunkEncryptorRunTime columnChunkEncryptorRunTime = null;
           if (encryptMode) {
-            columnChunkEncryptorRunTime =
-               new ColumnChunkEncryptorRunTime(writer.getEncryptor(), chunk, numBlocksRewritten, columnId);
+            columnChunkEncryptorRunTime = new ColumnChunkEncryptorRunTime(
+                writer.getEncryptor(), chunk, numBlocksRewritten, columnId);
           }
 
           // Translate compression and/or encryption
           writer.startColumn(descriptor, chunk.getValueCount(), newCodecName);
           processChunk(
-                  chunk,
-                  newCodecName,
-                  columnChunkEncryptorRunTime,
-                  encryptColumn,
-                  indexCache.getBloomFilter(chunk),
-                  indexCache.getColumnIndex(chunk),
-                  indexCache.getOffsetIndex(chunk));
+              chunk,
+              newCodecName,
+              columnChunkEncryptorRunTime,
+              encryptColumn,
+              indexCache.getBloomFilter(chunk),
+              indexCache.getColumnIndex(chunk),
+              indexCache.getOffsetIndex(chunk));
           writer.endColumn();
         } else {
           // Nothing changed, simply copy the binary data.
           BloomFilter bloomFilter = indexCache.getBloomFilter(chunk);
           ColumnIndex columnIndex = indexCache.getColumnIndex(chunk);
           OffsetIndex offsetIndex = indexCache.getOffsetIndex(chunk);
-          writer.appendColumnChunk(descriptor, reader.getStream(), chunk, bloomFilter, columnIndex, offsetIndex);
+          writer.appendColumnChunk(
+              descriptor, reader.getStream(), chunk, bloomFilter, columnIndex, offsetIndex);
         }
 
         columnId++;
@@ -344,13 +351,15 @@ public class ParquetRewriter implements Closeable {
     }
   }
 
-  private void processChunk(ColumnChunkMetaData chunk,
-                            CompressionCodecName newCodecName,
-                            ColumnChunkEncryptorRunTime columnChunkEncryptorRunTime,
-                            boolean encryptColumn,
-                            BloomFilter bloomFilter,
-                            ColumnIndex columnIndex,
-                            OffsetIndex offsetIndex) throws IOException {
+  private void processChunk(
+      ColumnChunkMetaData chunk,
+      CompressionCodecName newCodecName,
+      ColumnChunkEncryptorRunTime columnChunkEncryptorRunTime,
+      boolean encryptColumn,
+      BloomFilter bloomFilter,
+      ColumnIndex columnIndex,
+      OffsetIndex offsetIndex)
+      throws IOException {
     CompressionCodecFactory codecFactory = HadoopCodecs.newFactory(0);
     CompressionCodecFactory.BytesInputDecompressor decompressor = null;
     CompressionCodecFactory.BytesInputCompressor compressor = null;
@@ -397,22 +406,23 @@ public class ParquetRewriter implements Closeable {
           if (dictionaryPage != null) {
             throw new IOException("has more than one dictionary page in column chunk: " + chunk);
           }
-          //No quickUpdatePageAAD needed for dictionary page
+          // No quickUpdatePageAAD needed for dictionary page
           DictionaryPageHeader dictPageHeader = pageHeader.dictionary_page_header;
-          pageLoad = processPageLoad(reader,
-                  true,
-                  compressor,
-                  decompressor,
-                  pageHeader.getCompressed_page_size(),
-                  pageHeader.getUncompressed_page_size(),
-                  encryptColumn,
-                  dataEncryptor,
-                  dictPageAAD);
+          pageLoad = processPageLoad(
+              reader,
+              true,
+              compressor,
+              decompressor,
+              pageHeader.getCompressed_page_size(),
+              pageHeader.getUncompressed_page_size(),
+              encryptColumn,
+              dataEncryptor,
+              dictPageAAD);
           dictionaryPage = new DictionaryPage(
-            BytesInput.from(pageLoad),
-            pageHeader.getUncompressed_page_size(),
-            dictPageHeader.getNum_values(),
-            converter.getEncoding(dictPageHeader.getEncoding()));
+              BytesInput.from(pageLoad),
+              pageHeader.getUncompressed_page_size(),
+              dictPageHeader.getNum_values(),
+              converter.getEncoding(dictPageHeader.getEncoding()));
           writer.writeDictionaryPage(dictionaryPage, metaEncryptor, dictPageHeaderAAD);
           break;
         case DATA_PAGE:
@@ -421,49 +431,58 @@ public class ParquetRewriter implements Closeable {
             AesCipher.quickUpdatePageAAD(dataPageAAD, pageOrdinal);
           }
           DataPageHeader headerV1 = pageHeader.data_page_header;
-          pageLoad = processPageLoad(reader,
-                  true,
-                  compressor,
-                  decompressor,
-                  pageHeader.getCompressed_page_size(),
-                  pageHeader.getUncompressed_page_size(),
-                  encryptColumn,
-                  dataEncryptor,
-                  dataPageAAD);
+          pageLoad = processPageLoad(
+              reader,
+              true,
+              compressor,
+              decompressor,
+              pageHeader.getCompressed_page_size(),
+              pageHeader.getUncompressed_page_size(),
+              encryptColumn,
+              dataEncryptor,
+              dataPageAAD);
           statistics = convertStatistics(
-                  originalCreatedBy, chunk.getPrimitiveType(), headerV1.getStatistics(), columnIndex, pageOrdinal, converter);
+              originalCreatedBy,
+              chunk.getPrimitiveType(),
+              headerV1.getStatistics(),
+              columnIndex,
+              pageOrdinal,
+              converter);
           if (statistics == null) {
             // Reach here means both the columnIndex and the page header statistics are null
             isColumnStatisticsMalformed = true;
           } else {
             Preconditions.checkState(
-              !isColumnStatisticsMalformed,
-              "Detected mixed null page statistics and non-null page statistics");
+                !isColumnStatisticsMalformed,
+                "Detected mixed null page statistics and non-null page statistics");
           }
           readValues += headerV1.getNum_values();
           if (offsetIndex != null) {
-            long rowCount = 1 + offsetIndex.getLastRowIndex(
-                    pageOrdinal, totalChunkValues) - offsetIndex.getFirstRowIndex(pageOrdinal);
-            writer.writeDataPage(toIntWithCheck(headerV1.getNum_values()),
-                    pageHeader.getUncompressed_page_size(),
-                    BytesInput.from(pageLoad),
-                    statistics,
-                    toIntWithCheck(rowCount),
-                    converter.getEncoding(headerV1.getRepetition_level_encoding()),
-                    converter.getEncoding(headerV1.getDefinition_level_encoding()),
-                    converter.getEncoding(headerV1.getEncoding()),
-                    metaEncryptor,
-                    dataPageHeaderAAD);
+            long rowCount = 1
+                + offsetIndex.getLastRowIndex(pageOrdinal, totalChunkValues)
+                - offsetIndex.getFirstRowIndex(pageOrdinal);
+            writer.writeDataPage(
+                toIntWithCheck(headerV1.getNum_values()),
+                pageHeader.getUncompressed_page_size(),
+                BytesInput.from(pageLoad),
+                statistics,
+                toIntWithCheck(rowCount),
+                converter.getEncoding(headerV1.getRepetition_level_encoding()),
+                converter.getEncoding(headerV1.getDefinition_level_encoding()),
+                converter.getEncoding(headerV1.getEncoding()),
+                metaEncryptor,
+                dataPageHeaderAAD);
           } else {
-            writer.writeDataPage(toIntWithCheck(headerV1.getNum_values()),
-                    pageHeader.getUncompressed_page_size(),
-                    BytesInput.from(pageLoad),
-                    statistics,
-                    converter.getEncoding(headerV1.getRepetition_level_encoding()),
-                    converter.getEncoding(headerV1.getDefinition_level_encoding()),
-                    converter.getEncoding(headerV1.getEncoding()),
-                    metaEncryptor,
-                    dataPageHeaderAAD);
+            writer.writeDataPage(
+                toIntWithCheck(headerV1.getNum_values()),
+                pageHeader.getUncompressed_page_size(),
+                BytesInput.from(pageLoad),
+                statistics,
+                converter.getEncoding(headerV1.getRepetition_level_encoding()),
+                converter.getEncoding(headerV1.getDefinition_level_encoding()),
+                converter.getEncoding(headerV1.getEncoding()),
+                metaEncryptor,
+                dataPageHeaderAAD);
           }
           pageOrdinal++;
           break;
@@ -480,37 +499,43 @@ public class ParquetRewriter implements Closeable {
           int payLoadLength = pageHeader.getCompressed_page_size() - rlLength - dlLength;
           int rawDataLength = pageHeader.getUncompressed_page_size() - rlLength - dlLength;
           pageLoad = processPageLoad(
-                  reader,
-                  headerV2.is_compressed,
-                  compressor,
-                  decompressor,
-                  payLoadLength,
-                  rawDataLength,
-                  encryptColumn,
-                  dataEncryptor,
-                  dataPageAAD);
+              reader,
+              headerV2.is_compressed,
+              compressor,
+              decompressor,
+              payLoadLength,
+              rawDataLength,
+              encryptColumn,
+              dataEncryptor,
+              dataPageAAD);
           statistics = convertStatistics(
-                  originalCreatedBy, chunk.getPrimitiveType(), headerV2.getStatistics(), columnIndex, pageOrdinal, converter);
+              originalCreatedBy,
+              chunk.getPrimitiveType(),
+              headerV2.getStatistics(),
+              columnIndex,
+              pageOrdinal,
+              converter);
           if (statistics == null) {
             // Reach here means both the columnIndex and the page header statistics are null
             isColumnStatisticsMalformed = true;
           } else {
             Preconditions.checkState(
-              !isColumnStatisticsMalformed,
-              "Detected mixed null page statistics and non-null page statistics");
+                !isColumnStatisticsMalformed,
+                "Detected mixed null page statistics and non-null page statistics");
           }
           readValues += headerV2.getNum_values();
-          writer.writeDataPageV2(headerV2.getNum_rows(),
-                  headerV2.getNum_nulls(),
-                  headerV2.getNum_values(),
-                  rlLevels,
-                  dlLevels,
-                  converter.getEncoding(headerV2.getEncoding()),
-                  BytesInput.from(pageLoad),
-                  rawDataLength,
-                  statistics,
-                  metaEncryptor,
-                  dataPageHeaderAAD);
+          writer.writeDataPageV2(
+              headerV2.getNum_rows(),
+              headerV2.getNum_nulls(),
+              headerV2.getNum_values(),
+              rlLevels,
+              dlLevels,
+              converter.getEncoding(headerV2.getEncoding()),
+              BytesInput.from(pageLoad),
+              rawDataLength,
+              statistics,
+              metaEncryptor,
+              dataPageHeaderAAD);
           pageOrdinal++;
           break;
         default:
@@ -525,28 +550,34 @@ public class ParquetRewriter implements Closeable {
     }
   }
 
-  private Statistics<?> convertStatistics(String createdBy,
-                                          PrimitiveType type,
-                                          org.apache.parquet.format.Statistics pageStatistics,
-                                          ColumnIndex columnIndex,
-                                          int pageIndex,
-                                          ParquetMetadataConverter converter) throws IOException {
+  private Statistics<?> convertStatistics(
+      String createdBy,
+      PrimitiveType type,
+      org.apache.parquet.format.Statistics pageStatistics,
+      ColumnIndex columnIndex,
+      int pageIndex,
+      ParquetMetadataConverter converter)
+      throws IOException {
     if (columnIndex != null) {
       if (columnIndex.getNullPages() == null) {
-        throw new IOException("columnIndex has null variable 'nullPages' which indicates corrupted data for type: " +
-                type.getName());
+        throw new IOException(
+            "columnIndex has null variable 'nullPages' which indicates corrupted data for type: "
+                + type.getName());
       }
       if (pageIndex > columnIndex.getNullPages().size()) {
-        throw new IOException("There are more pages " + pageIndex + " found in the column than in the columnIndex " +
-                columnIndex.getNullPages().size());
+        throw new IOException(
+            "There are more pages " + pageIndex + " found in the column than in the columnIndex "
+                + columnIndex.getNullPages().size());
       }
       org.apache.parquet.column.statistics.Statistics.Builder statsBuilder =
-              org.apache.parquet.column.statistics.Statistics.getBuilderForReading(type);
+          org.apache.parquet.column.statistics.Statistics.getBuilderForReading(type);
       statsBuilder.withNumNulls(columnIndex.getNullCounts().get(pageIndex));
 
       if (!columnIndex.getNullPages().get(pageIndex)) {
-        statsBuilder.withMin(columnIndex.getMinValues().get(pageIndex).array().clone());
-        statsBuilder.withMax(columnIndex.getMaxValues().get(pageIndex).array().clone());
+        statsBuilder.withMin(
+            columnIndex.getMinValues().get(pageIndex).array().clone());
+        statsBuilder.withMax(
+            columnIndex.getMaxValues().get(pageIndex).array().clone());
       }
       return statsBuilder.build();
     } else if (pageStatistics != null) {
@@ -556,15 +587,17 @@ public class ParquetRewriter implements Closeable {
     }
   }
 
-  private byte[] processPageLoad(TransParquetFileReader reader,
-                                 boolean isCompressed,
-                                 CompressionCodecFactory.BytesInputCompressor compressor,
-                                 CompressionCodecFactory.BytesInputDecompressor decompressor,
-                                 int payloadLength,
-                                 int rawDataLength,
-                                 boolean encrypt,
-                                 BlockCipher.Encryptor dataEncryptor,
-                                 byte[] AAD) throws IOException {
+  private byte[] processPageLoad(
+      TransParquetFileReader reader,
+      boolean isCompressed,
+      CompressionCodecFactory.BytesInputCompressor compressor,
+      CompressionCodecFactory.BytesInputDecompressor decompressor,
+      int payloadLength,
+      int rawDataLength,
+      boolean encrypt,
+      BlockCipher.Encryptor dataEncryptor,
+      byte[] AAD)
+      throws IOException {
     BytesInput data = readBlock(payloadLength, reader);
 
     // recompress page load
@@ -648,7 +681,7 @@ public class ParquetRewriter implements Closeable {
       } else {
         List<Type> childFields = ((GroupType) field).getFields();
         List<Type> prunedFields = pruneColumnsInFields(childFields, currentPath, prunePaths);
-        if (prunedFields.size() > 0) {
+        if (!prunedFields.isEmpty()) {
           prunedField = ((GroupType) field).withNewFields(prunedFields);
         }
       }
@@ -666,13 +699,15 @@ public class ParquetRewriter implements Closeable {
     return prunePaths;
   }
 
-  private void nullifyColumn(int blockIndex,
-                             ColumnDescriptor descriptor,
-                             ColumnChunkMetaData chunk,
-                             ParquetFileWriter writer,
-                             MessageType schema,
-                             CompressionCodecName newCodecName,
-                             boolean encryptColumn) throws IOException {
+  private void nullifyColumn(
+      int blockIndex,
+      ColumnDescriptor descriptor,
+      ColumnChunkMetaData chunk,
+      ParquetFileWriter writer,
+      MessageType schema,
+      CompressionCodecName newCodecName,
+      boolean encryptColumn)
+      throws IOException {
     if (encryptColumn) {
       Preconditions.checkArgument(writer.getEncryptor() != null, "Missing encryptor");
     }
@@ -680,22 +715,28 @@ public class ParquetRewriter implements Closeable {
     long totalChunkValues = chunk.getValueCount();
     int dMax = descriptor.getMaxDefinitionLevel();
     PageReadStore pageReadStore = reader.readRowGroup(blockIndex);
-    ColumnReadStoreImpl crStore = new ColumnReadStoreImpl(pageReadStore, new DummyGroupConverter(), schema, originalCreatedBy);
+    ColumnReadStoreImpl crStore =
+        new ColumnReadStoreImpl(pageReadStore, new DummyGroupConverter(), schema, originalCreatedBy);
     ColumnReader cReader = crStore.getColumnReader(descriptor);
 
-    ParquetProperties.WriterVersion writerVersion = chunk.getEncodingStats().usesV2Pages() ?
-            ParquetProperties.WriterVersion.PARQUET_2_0 : ParquetProperties.WriterVersion.PARQUET_1_0;
-    ParquetProperties props = ParquetProperties.builder()
-            .withWriterVersion(writerVersion)
-            .build();
+    ParquetProperties.WriterVersion writerVersion = chunk.getEncodingStats().usesV2Pages()
+        ? ParquetProperties.WriterVersion.PARQUET_2_0
+        : ParquetProperties.WriterVersion.PARQUET_1_0;
+    ParquetProperties props =
+        ParquetProperties.builder().withWriterVersion(writerVersion).build();
     CodecFactory codecFactory = new CodecFactory(new Configuration(), props.getPageSizeThreshold());
     CompressionCodecFactory.BytesInputCompressor compressor = codecFactory.getCompressor(newCodecName);
 
     // Create new schema that only has the current column
     MessageType newSchema = newSchema(schema, descriptor);
     ColumnChunkPageWriteStore cPageStore = new ColumnChunkPageWriteStore(
-            compressor, newSchema, props.getAllocator(), props.getColumnIndexTruncateLength(),
-            props.getPageWriteChecksumEnabled(), writer.getEncryptor(), numBlocksRewritten);
+        compressor,
+        newSchema,
+        props.getAllocator(),
+        props.getColumnIndexTruncateLength(),
+        props.getPageWriteChecksumEnabled(),
+        writer.getEncryptor(),
+        numBlocksRewritten);
     ColumnWriteStore cStore = props.newColumnWriteStore(newSchema, cPageStore);
     ColumnWriter cWriter = cStore.getColumnWriter(descriptor);
 
@@ -705,8 +746,8 @@ public class ParquetRewriter implements Closeable {
       if (dlvl == dMax) {
         // since we checked ether optional or repeated, dlvl should be > 0
         if (dlvl == 0) {
-          throw new IOException("definition level is detected to be 0 for column " +
-                  chunk.getPath().toDotString() + " to be nullified");
+          throw new IOException("definition level is detected to be 0 for column "
+              + chunk.getPath().toDotString() + " to be nullified");
         }
         // we just write one null for the whole list at the top level,
         // instead of nullify the elements in the list one by one
@@ -770,12 +811,10 @@ public class ParquetRewriter implements Closeable {
 
   private static final class DummyGroupConverter extends GroupConverter {
     @Override
-    public void start() {
-    }
+    public void start() {}
 
     @Override
-    public void end() {
-    }
+    public void end() {}
 
     @Override
     public Converter getConverter(int fieldIndex) {
@@ -801,12 +840,11 @@ public class ParquetRewriter implements Closeable {
     private final byte[] dictPageHeaderAAD;
     private final byte[] dictPageAAD;
 
-    public ColumnChunkEncryptorRunTime(InternalFileEncryptor fileEncryptor,
-                                       ColumnChunkMetaData chunk,
-                                       int blockId,
-                                       int columnId) throws IOException {
-      Preconditions.checkArgument(fileEncryptor != null,
-              "FileEncryptor is required to create ColumnChunkEncryptorRunTime");
+    public ColumnChunkEncryptorRunTime(
+        InternalFileEncryptor fileEncryptor, ColumnChunkMetaData chunk, int blockId, int columnId)
+        throws IOException {
+      Preconditions.checkArgument(
+          fileEncryptor != null, "FileEncryptor is required to create ColumnChunkEncryptorRunTime");
 
       this.colEncrSetup = fileEncryptor.getColumnSetup(chunk.getPath(), true, columnId);
       this.dataEncryptor = colEncrSetup.getDataEncryptor();
@@ -854,5 +892,4 @@ public class ParquetRewriter implements Closeable {
       return this.dictPageAAD;
     }
   }
-
 }

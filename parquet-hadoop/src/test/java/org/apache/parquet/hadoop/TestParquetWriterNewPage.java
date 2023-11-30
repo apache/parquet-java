@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -19,8 +19,6 @@
 package org.apache.parquet.hadoop;
 
 import static java.util.Arrays.asList;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 import static org.apache.parquet.column.Encoding.DELTA_BYTE_ARRAY;
 import static org.apache.parquet.column.Encoding.PLAIN;
 import static org.apache.parquet.column.Encoding.PLAIN_DICTIONARY;
@@ -31,15 +29,14 @@ import static org.apache.parquet.format.converter.ParquetMetadataConverter.NO_FI
 import static org.apache.parquet.hadoop.ParquetFileReader.readFooter;
 import static org.apache.parquet.hadoop.metadata.CompressionCodecName.UNCOMPRESSED;
 import static org.apache.parquet.schema.MessageTypeParser.parseMessageType;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.util.HashMap;
 import java.util.Map;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.junit.Test;
-
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
 import org.apache.parquet.example.data.Group;
@@ -51,6 +48,7 @@ import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.MessageType;
+import org.junit.Test;
 
 public class TestParquetWriterNewPage {
 
@@ -63,8 +61,7 @@ public class TestParquetWriterNewPage {
       fs.delete(root, true);
     }
     fs.mkdirs(root);
-    MessageType schema = parseMessageType(
-        "message test { "
+    MessageType schema = parseMessageType("message test { "
         + "required binary binary_field; "
         + "required int32 int32_field; "
         + "required int64 int64_field; "
@@ -86,12 +83,9 @@ public class TestParquetWriterNewPage {
       for (WriterVersion version : WriterVersion.values()) {
         Path file = new Path(root, version.name() + "_" + modulo);
         ParquetWriter<Group> writer = new ParquetWriter<Group>(
-            file,
-            new GroupWriteSupport(),
-            UNCOMPRESSED, 1024, 1024, 512, true, false, version, conf);
+            file, new GroupWriteSupport(), UNCOMPRESSED, 1024, 1024, 512, true, false, version, conf);
         for (int i = 0; i < 1000; i++) {
-          writer.write(
-              f.newGroup()
+          writer.write(f.newGroup()
               .append("binary_field", "test" + (i % modulo))
               .append("int32_field", 32)
               .append("int64_field", 64l)
@@ -103,18 +97,21 @@ public class TestParquetWriterNewPage {
         }
         writer.close();
 
-        ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), file).withConf(conf).build();
+        ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), file)
+            .withConf(conf)
+            .build();
         for (int i = 0; i < 1000; i++) {
           Group group = reader.read();
-          assertEquals("test" + (i % modulo), group.getBinary("binary_field", 0).toStringUsingUTF8());
+          assertEquals(
+              "test" + (i % modulo),
+              group.getBinary("binary_field", 0).toStringUsingUTF8());
           assertEquals(32, group.getInteger("int32_field", 0));
           assertEquals(64l, group.getLong("int64_field", 0));
           assertEquals(true, group.getBoolean("boolean_field", 0));
           assertEquals(1.0f, group.getFloat("float_field", 0), 0.001);
           assertEquals(2.0d, group.getDouble("double_field", 0), 0.001);
           assertEquals("foo", group.getBinary("flba_field", 0).toStringUsingUTF8());
-          assertEquals(Binary.fromConstantByteArray(new byte[12]), group.getInt96("int96_field",
-              0));
+          assertEquals(Binary.fromConstantByteArray(new byte[12]), group.getInt96("int96_field", 0));
           assertEquals(0, group.getFieldRepetitionCount("null_field"));
         }
         reader.close();

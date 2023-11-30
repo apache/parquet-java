@@ -19,13 +19,20 @@
 
 package org.apache.parquet.cli.util;
 
+import com.fasterxml.jackson.databind.node.NullNode;
 import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import com.google.common.io.Closeables;
-import org.apache.parquet.cli.json.AvroJson;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URI;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
 import org.apache.avro.Schema;
 import org.apache.avro.file.DataFileStream;
 import org.apache.avro.generic.GenericDatumReader;
@@ -34,16 +41,9 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.avro.AvroSchemaConverter;
+import org.apache.parquet.cli.json.AvroJson;
 import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
-import com.fasterxml.jackson.databind.node.NullNode;
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.URI;
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Set;
 
 public class Schemas {
 
@@ -53,8 +53,7 @@ public class Schemas {
   }
 
   public static Schema fromAvro(InputStream in) throws IOException {
-    GenericDatumReader<GenericRecord> datumReader =
-        new GenericDatumReader<GenericRecord>();
+    GenericDatumReader<GenericRecord> datumReader = new GenericDatumReader<GenericRecord>();
     DataFileStream<GenericRecord> stream = null;
     boolean threw = true;
 
@@ -74,19 +73,16 @@ public class Schemas {
 
     ParquetMetadata footer = ParquetFileReader.readFooter(fs.getConf(), path);
 
-    String schemaString = footer.getFileMetaData()
-        .getKeyValueMetaData().get("parquet.avro.schema");
+    String schemaString = footer.getFileMetaData().getKeyValueMetaData().get("parquet.avro.schema");
     if (schemaString == null) {
       // try the older property
-      schemaString = footer.getFileMetaData()
-          .getKeyValueMetaData().get("avro.schema");
+      schemaString = footer.getFileMetaData().getKeyValueMetaData().get("avro.schema");
     }
 
     if (schemaString != null) {
       return new Schema.Parser().parse(schemaString);
     } else {
-      return new AvroSchemaConverter()
-          .convert(footer.getFileMetaData().getSchema());
+      return new AvroSchemaConverter().convert(footer.getFileMetaData().getSchema());
     }
   }
 
@@ -184,15 +180,14 @@ public class Schemas {
    * Map value and array element types will use unions if necessary, and union
    * schemas are merged recursively.
    *
-   * @param left a {@code Schema}
+   * @param left  a {@code Schema}
    * @param right a {@code Schema}
    * @return a merged {@code Schema}
    * @throws IllegalStateException if the schemas are not compatible
    */
   public static Schema merge(Schema left, Schema right) {
     Schema merged = mergeOnly(left, right);
-    Preconditions.checkState(merged != null,
-        "Cannot merge %s and %s", left, right);
+    Preconditions.checkState(merged != null, "Cannot merge %s and %s", left, right);
     return merged;
   }
 
@@ -203,11 +198,11 @@ public class Schemas {
    * if the two records have the same name or have no names but have a
    * significant number of shared fields.
    * <p>
-   * @see {@link #mergeOrUnion} to return a union when a merge is not possible.
    *
-   * @param left a {@code Schema}
+   * @param left  a {@code Schema}
    * @param right a {@code Schema}
    * @return a {@code Schema} for both types
+   * @see {@link #mergeOrUnion} to return a union when a merge is not possible.
    */
   private static Schema mergeOrUnion(Schema left, Schema right) {
     Schema merged = mergeOnly(left, right);
@@ -226,7 +221,7 @@ public class Schemas {
    * <p>
    * If both schemas are not unions, no merge is attempted.
    *
-   * @param left a {@code Schema}
+   * @param left  a {@code Schema}
    * @param right a {@code Schema}
    * @return a UNION schema of the to {@code Schema} instances
    */
@@ -239,7 +234,6 @@ public class Schemas {
           combined = union(combined, type);
         }
         return combined;
-
       } else {
         boolean notMerged = true;
         // combine a union with a non-union by checking if each type will merge
@@ -283,11 +277,11 @@ public class Schemas {
    * if the two records have the same name or have no names but have a
    * significant number of shared fields.
    * <p>
-   * @see {@link #mergeOrUnion} to return a union when a merge is not possible.
    *
-   * @param left a {@code Schema}
+   * @param left  a {@code Schema}
    * @param right a {@code Schema}
    * @return a merged {@code Schema} or {@code null} if merging is not possible
+   * @see {@link #mergeOrUnion} to return a union when a merge is not possible.
    */
   private static Schema mergeOnly(Schema left, Schema right) {
     if (Objects.equal(left, right)) {
@@ -326,8 +320,9 @@ public class Schemas {
       case UNION:
         return union(left, right);
       case RECORD:
-        if (left.getName() == null && right.getName() == null &&
-            fieldSimilarity(left, right) < SIMILARITY_THRESH) {
+        if (left.getName() == null
+            && right.getName() == null
+            && fieldSimilarity(left, right) < SIMILARITY_THRESH) {
           return null;
         } else if (!Objects.equal(left.getName(), right.getName())) {
           return null;
@@ -337,19 +332,16 @@ public class Schemas {
             coalesce(left.getName(), right.getName()),
             coalesce(left.getDoc(), right.getDoc()),
             coalesce(left.getNamespace(), right.getNamespace()),
-            false
-        );
+            false);
         combinedRecord.setFields(mergeFields(left, right));
 
         return combinedRecord;
 
       case MAP:
-        return Schema.createMap(
-            mergeOrUnion(left.getValueType(), right.getValueType()));
+        return Schema.createMap(mergeOrUnion(left.getValueType(), right.getValueType()));
 
       case ARRAY:
-        return Schema.createArray(
-            mergeOrUnion(left.getElementType(), right.getElementType()));
+        return Schema.createArray(mergeOrUnion(left.getElementType(), right.getElementType()));
 
       case ENUM:
         if (!Objects.equal(left.getName(), right.getName())) {
@@ -362,15 +354,13 @@ public class Schemas {
             left.getName(),
             coalesce(left.getDoc(), right.getDoc()),
             coalesce(left.getNamespace(), right.getNamespace()),
-            ImmutableList.copyOf(symbols)
-        );
+            ImmutableList.copyOf(symbols));
 
       default:
         // all primitives are handled before the switch by the equality check.
         // schemas that reach this point are not primitives and also not any of
         // the above known types.
-        throw new UnsupportedOperationException(
-            "Unknown schema type: " + left.getType());
+        throw new UnsupportedOperationException("Unknown schema type: " + left.getType());
     }
   }
 
@@ -419,16 +409,13 @@ public class Schemas {
             leftField.name(),
             mergeOrUnion(leftField.schema(), rightField.schema()),
             coalesce(leftField.doc(), rightField.doc()),
-            coalesce(leftField.defaultVal(), rightField.defaultVal())
-        ));
+            coalesce(leftField.defaultVal(), rightField.defaultVal())));
       } else {
         if (leftField.defaultVal() != null) {
           fields.add(copy(leftField));
         } else {
           fields.add(new Schema.Field(
-              leftField.name(), nullableForDefault(leftField.schema()),
-              leftField.doc(), NULL_DEFAULT
-          ));
+              leftField.name(), nullableForDefault(leftField.schema()), leftField.doc(), NULL_DEFAULT));
         }
       }
     }
@@ -439,9 +426,10 @@ public class Schemas {
           fields.add(copy(rightField));
         } else {
           fields.add(new Schema.Field(
-              rightField.name(), nullableForDefault(rightField.schema()),
-              rightField.doc(), NULL_DEFAULT
-          ));
+              rightField.name(),
+              nullableForDefault(rightField.schema()),
+              rightField.doc(),
+              NULL_DEFAULT));
         }
       }
     }
@@ -459,8 +447,7 @@ public class Schemas {
    * @return a copy of the field
    */
   public static Schema.Field copy(Schema.Field field) {
-    return new Schema.Field(
-        field.name(), field.schema(), field.doc(), field.defaultVal());
+    return new Schema.Field(field.name(), field.schema(), field.doc(), field.defaultVal());
   }
 
   private static float fieldSimilarity(Schema left, Schema right) {
@@ -482,6 +469,7 @@ public class Schemas {
   }
 
   private static float SIMILARITY_THRESH = 0.3f;
+
   private static float hmean(float left, float right) {
     return (2.0f * left * right) / (left + right);
   }

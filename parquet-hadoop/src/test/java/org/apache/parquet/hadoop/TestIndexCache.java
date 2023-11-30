@@ -18,6 +18,17 @@
  */
 package org.apache.parquet.hadoop;
 
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
+import static org.apache.parquet.schema.Type.Repetition.OPTIONAL;
+import static org.apache.parquet.schema.Type.Repetition.REPEATED;
+import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
+
+import java.io.IOException;
+import java.nio.file.Paths;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.column.ParquetProperties;
@@ -36,29 +47,20 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
-import java.io.IOException;
-import java.nio.file.Paths;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
-import static org.apache.parquet.schema.Type.Repetition.OPTIONAL;
-import static org.apache.parquet.schema.Type.Repetition.REPEATED;
-import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
-
 @RunWith(Parameterized.class)
 public class TestIndexCache {
   private final Configuration conf = new Configuration();
   private final int numRecords = 100000;
-  private final MessageType schema = new MessageType("schema",
-    new PrimitiveType(OPTIONAL, INT64, "DocId"),
-    new PrimitiveType(REQUIRED, BINARY, "Name"),
-    new PrimitiveType(OPTIONAL, BINARY, "Gender"),
-    new GroupType(OPTIONAL, "Links",
-      new PrimitiveType(REPEATED, BINARY, "Backward"),
-      new PrimitiveType(REPEATED, BINARY, "Forward")));
+  private final MessageType schema = new MessageType(
+      "schema",
+      new PrimitiveType(OPTIONAL, INT64, "DocId"),
+      new PrimitiveType(REQUIRED, BINARY, "Name"),
+      new PrimitiveType(OPTIONAL, BINARY, "Gender"),
+      new GroupType(
+          OPTIONAL,
+          "Links",
+          new PrimitiveType(REPEATED, BINARY, "Backward"),
+          new PrimitiveType(REPEATED, BINARY, "Forward")));
 
   private final ParquetProperties.WriterVersion writerVersion;
 
@@ -76,8 +78,7 @@ public class TestIndexCache {
     String file = createTestFile("DocID");
 
     ParquetReadOptions options = ParquetReadOptions.builder().build();
-    ParquetFileReader fileReader = new ParquetFileReader(
-      new LocalInputFile(Paths.get(file)), options);
+    ParquetFileReader fileReader = new ParquetFileReader(new LocalInputFile(Paths.get(file)), options);
     IndexCache indexCache = IndexCache.create(fileReader, new HashSet<>(), IndexCache.CacheStrategy.NONE, false);
     Assert.assertTrue(indexCache instanceof NoneIndexCache);
     List<BlockMetaData> blocks = fileReader.getFooter().getBlocks();
@@ -88,9 +89,9 @@ public class TestIndexCache {
         validateOffsetIndex(fileReader.readOffsetIndex(chunk), indexCache.getOffsetIndex(chunk));
 
         Assert.assertEquals(
-          "BloomFilter should match",
-          fileReader.readBloomFilter(chunk),
-          indexCache.getBloomFilter(chunk));
+            "BloomFilter should match",
+            fileReader.readBloomFilter(chunk),
+            indexCache.getBloomFilter(chunk));
       }
     }
   }
@@ -100,8 +101,7 @@ public class TestIndexCache {
     String file = createTestFile("DocID", "Name");
 
     ParquetReadOptions options = ParquetReadOptions.builder().build();
-    ParquetFileReader fileReader = new ParquetFileReader(
-      new LocalInputFile(Paths.get(file)), options);
+    ParquetFileReader fileReader = new ParquetFileReader(new LocalInputFile(Paths.get(file)), options);
     Set<ColumnPath> columns = new HashSet<>();
     columns.add(ColumnPath.fromDotString("DocId"));
     columns.add(ColumnPath.fromDotString("Name"));
@@ -120,20 +120,18 @@ public class TestIndexCache {
 
   private String createTestFile(String... bloomFilterEnabledColumns) throws IOException {
     return new TestFileBuilder(conf, schema)
-      .withNumRecord(numRecords)
-      .withCodec("ZSTD")
-      .withRowGroupSize(8L * 1024 * 1024)
-      .withBloomFilterEnabled(bloomFilterEnabledColumns)
-      .withWriterVersion(writerVersion)
-      .build()
-      .getFileName();
+        .withNumRecord(numRecords)
+        .withCodec("ZSTD")
+        .withRowGroupSize(8L * 1024 * 1024)
+        .withBloomFilterEnabled(bloomFilterEnabledColumns)
+        .withWriterVersion(writerVersion)
+        .build()
+        .getFileName();
   }
 
   private static void validPrecacheIndexCache(
-      ParquetFileReader fileReader,
-      IndexCache indexCache,
-      Set<ColumnPath> columns,
-      boolean freeCacheAfterGet) throws IOException {
+      ParquetFileReader fileReader, IndexCache indexCache, Set<ColumnPath> columns, boolean freeCacheAfterGet)
+      throws IOException {
     List<BlockMetaData> blocks = fileReader.getFooter().getBlocks();
     for (BlockMetaData blockMetaData : blocks) {
       indexCache.setBlockMetadata(blockMetaData);
@@ -142,9 +140,9 @@ public class TestIndexCache {
         validateOffsetIndex(fileReader.readOffsetIndex(chunk), indexCache.getOffsetIndex(chunk));
 
         Assert.assertEquals(
-          "BloomFilter should match",
-          fileReader.readBloomFilter(chunk),
-          indexCache.getBloomFilter(chunk));
+            "BloomFilter should match",
+            fileReader.readBloomFilter(chunk),
+            indexCache.getBloomFilter(chunk));
 
         if (freeCacheAfterGet) {
           Assert.assertThrows(IllegalStateException.class, () -> indexCache.getColumnIndex(chunk));

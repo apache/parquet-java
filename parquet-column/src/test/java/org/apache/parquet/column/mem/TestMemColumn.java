@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -48,7 +48,8 @@ public class TestMemColumn {
 
   @Test
   public void testMemColumn() throws Exception {
-    MessageType schema = MessageTypeParser.parseMessageType("message msg { required group foo { required int64 bar; } }");
+    MessageType schema =
+        MessageTypeParser.parseMessageType("message msg { required group foo { required int64 bar; } }");
     ColumnDescriptor path = schema.getColumnDescription(new String[] {"foo", "bar"});
     MemPageStore memPageStore = new MemPageStore(10);
     ColumnWriteStoreV1 memColumnsStore = newColumnWriteStoreImpl(memPageStore);
@@ -73,18 +74,15 @@ public class TestMemColumn {
   }
 
   private ColumnReader getColumnReader(MemPageStore memPageStore, ColumnDescriptor path, MessageType schema) {
-    return new ColumnReadStoreImpl(
-        memPageStore,
-        new DummyRecordConverter(schema).getRootConverter(),
-        schema,
-        null
-        ).getColumnReader(path);
+    return new ColumnReadStoreImpl(memPageStore, new DummyRecordConverter(schema).getRootConverter(), schema, null)
+        .getColumnReader(path);
   }
 
   @Test
   public void testMemColumnBinary() throws Exception {
-    MessageType mt = MessageTypeParser.parseMessageType("message msg { required group foo { required binary bar; } }");
-    String[] col = new String[]{"foo", "bar"};
+    MessageType mt =
+        MessageTypeParser.parseMessageType("message msg { required group foo { required binary bar; } }");
+    String[] col = new String[] {"foo", "bar"};
     MemPageStore memPageStore = new MemPageStore(10);
 
     ColumnWriteStoreV1 memColumnsStore = newColumnWriteStoreImpl(memPageStore);
@@ -107,8 +105,9 @@ public class TestMemColumn {
 
   @Test
   public void testMemColumnBinaryExceedIntMaxValue() throws Exception {
-    MessageType mt = MessageTypeParser.parseMessageType("message msg { required group v (LIST) { repeated group list { optional binary element; } } }");
-    String[] col = new String[]{"v", "list", "element"};
+    MessageType mt = MessageTypeParser.parseMessageType(
+        "message msg { required group v (LIST) { repeated group list { optional binary element; } } }");
+    String[] col = new String[] {"v", "list", "element"};
     MemPageStore memPageStore = new MemPageStore(100);
 
     ColumnWriteStoreV1 memColumnsStore = newColumnWriteStoreImpl(memPageStore);
@@ -117,22 +116,25 @@ public class TestMemColumn {
 
     int numRows = 20000;
     int numEntries = 110000;
-    for (int row=0; row < numRows; row++) {
+    for (int row = 0; row < numRows; row++) {
       columnWriter.writeNull(0, 1);
-      for (int i=1; i < numEntries; i++) columnWriter.writeNull( 1, 1);
+      for (int i = 1; i < numEntries; i++) columnWriter.writeNull(1, 1);
       memColumnsStore.endRecord();
     }
     memColumnsStore.flush();
 
     ColumnReader columnReader = getColumnReader(memPageStore, path, mt);
-    assertEquals("parquet page value-count should fit on the signed-int range",
-      columnReader.getTotalValueCount(), (long) numRows * numEntries);
+    assertEquals(
+        "parquet page value-count should fit on the signed-int range",
+        columnReader.getTotalValueCount(),
+        (long) numRows * numEntries);
   }
 
   @Test
   public void testMemColumnSeveralPages() throws Exception {
-    MessageType mt = MessageTypeParser.parseMessageType("message msg { required group foo { required int64 bar; } }");
-    String[] col = new String[]{"foo", "bar"};
+    MessageType mt =
+        MessageTypeParser.parseMessageType("message msg { required group foo { required int64 bar; } }");
+    String[] col = new String[] {"foo", "bar"};
     MemPageStore memPageStore = new MemPageStore(10);
     ColumnWriteStoreV1 memColumnsStore = newColumnWriteStoreImpl(memPageStore);
     ColumnDescriptor path1 = mt.getColumnDescription(col);
@@ -156,16 +158,17 @@ public class TestMemColumn {
 
   @Test
   public void testMemColumnSeveralPagesRepeated() throws Exception {
-    MessageType mt = MessageTypeParser.parseMessageType("message msg { repeated group foo { repeated int64 bar; } }");
-    String[] col = new String[]{"foo", "bar"};
+    MessageType mt =
+        MessageTypeParser.parseMessageType("message msg { repeated group foo { repeated int64 bar; } }");
+    String[] col = new String[] {"foo", "bar"};
     MemPageStore memPageStore = new MemPageStore(10);
     ColumnWriteStoreV1 memColumnsStore = newColumnWriteStoreImpl(memPageStore);
     ColumnDescriptor path1 = mt.getColumnDescription(col);
     ColumnDescriptor path = path1;
 
     ColumnWriter columnWriter = memColumnsStore.getColumnWriter(path);
-    int[] rs = { 0, 0, 0, 1, 1, 1, 2, 2, 2};
-    int[] ds = { 0, 1, 2, 0, 1, 2, 0, 1, 2};
+    int[] rs = {0, 0, 0, 1, 1, 1, 2, 2, 2};
+    int[] ds = {0, 1, 2, 0, 1, 2, 0, 1, 2};
     for (int i = 0; i < 837; i++) {
       int r = rs[i % rs.length];
       int d = ds[i % ds.length];
@@ -174,7 +177,7 @@ public class TestMemColumn {
         memColumnsStore.endRecord();
       }
       if (d == 2) {
-        columnWriter.write((long)i, r, d);
+        columnWriter.write((long) i, r, d);
       } else {
         columnWriter.writeNull(r, d);
       }
@@ -194,28 +197,35 @@ public class TestMemColumn {
         assertEquals("data row " + i, i, columnReader.getLong());
       }
       columnReader.consume();
-      ++ i;
+      ++i;
     }
   }
 
   @Test
   public void testPageSize() {
     MessageType schema = Types.buildMessage()
-        .requiredList().requiredElement(BINARY).named("binary_col")
-        .requiredList().requiredElement(INT32).named("int32_col")
+        .requiredList()
+        .requiredElement(BINARY)
+        .named("binary_col")
+        .requiredList()
+        .requiredElement(INT32)
+        .named("int32_col")
         .named("msg");
     MemPageStore memPageStore = new MemPageStore(123);
 
     // Using V2 pages so we have rowCount info
-    ColumnWriteStore writeStore = new ColumnWriteStoreV2(schema, memPageStore, ParquetProperties.builder()
-        .withPageSize(1024) // Less than 10 records for binary_col
-        .withMinRowCountForPageSizeCheck(1) // Enforce having precise page sizing
-        .withPageRowCountLimit(10)
-        .withDictionaryEncoding(false) // Enforce having large binary_col pages
-        .build());
-    ColumnDescriptor binaryCol = schema.getColumnDescription(new String[] { "binary_col", "list", "element" });
+    ColumnWriteStore writeStore = new ColumnWriteStoreV2(
+        schema,
+        memPageStore,
+        ParquetProperties.builder()
+            .withPageSize(1024) // Less than 10 records for binary_col
+            .withMinRowCountForPageSizeCheck(1) // Enforce having precise page sizing
+            .withPageRowCountLimit(10)
+            .withDictionaryEncoding(false) // Enforce having large binary_col pages
+            .build());
+    ColumnDescriptor binaryCol = schema.getColumnDescription(new String[] {"binary_col", "list", "element"});
     ColumnWriter binaryColWriter = writeStore.getColumnWriter(binaryCol);
-    ColumnDescriptor int32Col = schema.getColumnDescription(new String[] { "int32_col", "list", "element" });
+    ColumnDescriptor int32Col = schema.getColumnDescription(new String[] {"int32_col", "list", "element"});
     ColumnWriter int32ColWriter = writeStore.getColumnWriter(int32Col);
     // Writing 123 records
     for (int i = 0; i < 123; ++i) {
@@ -238,7 +248,11 @@ public class TestMemColumn {
         DataPage page = binaryColPageReader.readPage();
         ++pageCnt;
         valueCnt += page.getValueCount();
-        LOG.info("binary_col page-{}: {} bytes, {} rows", pageCnt, page.getCompressedSize(), page.getIndexRowCount().get());
+        LOG.info(
+            "binary_col page-{}: {} bytes, {} rows",
+            pageCnt,
+            page.getCompressedSize(),
+            page.getIndexRowCount().get());
         assertTrue("Compressed size should be less than 1024", page.getCompressedSize() <= 1024);
       }
     }
@@ -253,16 +267,21 @@ public class TestMemColumn {
         DataPage page = int32ColPageReader.readPage();
         ++pageCnt;
         valueCnt += page.getValueCount();
-        LOG.info("int32_col page-{}: {} bytes, {} rows", pageCnt, page.getCompressedSize(), page.getIndexRowCount().get());
-        assertTrue("Row count should be less than 10", page.getIndexRowCount().get() <= 10);
+        LOG.info(
+            "int32_col page-{}: {} bytes, {} rows",
+            pageCnt,
+            page.getCompressedSize(),
+            page.getIndexRowCount().get());
+        assertTrue(
+            "Row count should be less than 10",
+            page.getIndexRowCount().get() <= 10);
       }
     }
   }
 
   private ColumnWriteStoreV1 newColumnWriteStoreImpl(MemPageStore memPageStore) {
-    return new ColumnWriteStoreV1(memPageStore,
-        ParquetProperties.builder()
-            .withDictionaryEncoding(false)
-            .build());
+    return new ColumnWriteStoreV1(
+        memPageStore,
+        ParquetProperties.builder().withDictionaryEncoding(false).build());
   }
 }

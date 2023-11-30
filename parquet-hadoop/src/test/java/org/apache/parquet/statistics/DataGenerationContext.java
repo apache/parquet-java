@@ -18,6 +18,8 @@
  */
 package org.apache.parquet.statistics;
 
+import java.io.File;
+import java.io.IOException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.column.ParquetProperties;
@@ -27,11 +29,8 @@ import org.apache.parquet.hadoop.example.GroupWriteSupport;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.schema.MessageType;
 
-import java.io.File;
-import java.io.IOException;
-
 public class DataGenerationContext {
-  public static abstract class WriteContext {
+  public abstract static class WriteContext {
     protected final File path;
     protected final Path fsPath;
     protected final MessageType schema;
@@ -41,7 +40,15 @@ public class DataGenerationContext {
     protected final boolean enableValidation;
     protected final ParquetProperties.WriterVersion version;
 
-    public WriteContext(File path, MessageType schema, int blockSize, int pageSize, boolean enableDictionary, boolean enableValidation, ParquetProperties.WriterVersion version) throws IOException {
+    public WriteContext(
+        File path,
+        MessageType schema,
+        int blockSize,
+        int pageSize,
+        boolean enableDictionary,
+        boolean enableValidation,
+        ParquetProperties.WriterVersion version)
+        throws IOException {
       this.path = path;
       this.fsPath = new Path(path.toString());
       this.schema = schema;
@@ -72,9 +79,17 @@ public class DataGenerationContext {
     ParquetProperties.WriterVersion writerVersion = context.version;
     CompressionCodecName codec = CompressionCodecName.UNCOMPRESSED;
 
-    try (ParquetWriter<Group> writer = new ParquetWriter<Group>(context.fsPath,
-      groupWriteSupport, codec, blockSize, pageSize, dictionaryPageSize,
-      enableDictionary, enableValidation, writerVersion, configuration)) {
+    try (ParquetWriter<Group> writer = new ParquetWriter<Group>(
+        context.fsPath,
+        groupWriteSupport,
+        codec,
+        blockSize,
+        pageSize,
+        dictionaryPageSize,
+        enableDictionary,
+        enableValidation,
+        writerVersion,
+        configuration)) {
       context.write(writer);
     }
 

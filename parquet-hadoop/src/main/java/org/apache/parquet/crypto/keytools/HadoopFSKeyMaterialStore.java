@@ -18,27 +18,26 @@
  */
 package org.apache.parquet.crypto.keytools;
 
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FSDataInputStream;
-import org.apache.hadoop.fs.FSDataOutputStream;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
-import org.apache.parquet.crypto.ParquetCryptoRuntimeException;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FSDataInputStream;
+import org.apache.hadoop.fs.FSDataOutputStream;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
+import org.apache.parquet.crypto.ParquetCryptoRuntimeException;
 
 public class HadoopFSKeyMaterialStore implements FileKeyMaterialStore {
-  public final static String KEY_MATERIAL_FILE_PREFIX = "_KEY_MATERIAL_FOR_";
+  public static final String KEY_MATERIAL_FILE_PREFIX = "_KEY_MATERIAL_FOR_";
   public static final String TEMP_FILE_PREFIX = "_TMP";
-  public final static String KEY_MATERIAL_FILE_SUFFFIX = ".json";
+  public static final String KEY_MATERIAL_FILE_SUFFFIX = ".json";
   private static final ObjectMapper objectMapper = new ObjectMapper();
 
   private FileSystem hadoopFileSystem;
@@ -51,10 +50,10 @@ public class HadoopFSKeyMaterialStore implements FileKeyMaterialStore {
 
   @Override
   public void initialize(Path parquetFilePath, Configuration hadoopConfig, boolean tempStore) {
-    String fullPrefix = (tempStore? TEMP_FILE_PREFIX : "");
+    String fullPrefix = (tempStore ? TEMP_FILE_PREFIX : "");
     fullPrefix += KEY_MATERIAL_FILE_PREFIX;
-    keyMaterialFile = new Path(parquetFilePath.getParent(),
-      fullPrefix + parquetFilePath.getName() + KEY_MATERIAL_FILE_SUFFFIX);
+    keyMaterialFile = new Path(
+        parquetFilePath.getParent(), fullPrefix + parquetFilePath.getName() + KEY_MATERIAL_FILE_SUFFFIX);
   }
 
   @Override
@@ -66,7 +65,7 @@ public class HadoopFSKeyMaterialStore implements FileKeyMaterialStore {
   }
 
   @Override
-  public String getKeyMaterial(String keyIDInFile)  throws ParquetCryptoRuntimeException {
+  public String getKeyMaterial(String keyIDInFile) throws ParquetCryptoRuntimeException {
     if (null == keyMaterialMap) {
       loadKeyMaterialMap();
     }
@@ -76,8 +75,8 @@ public class HadoopFSKeyMaterialStore implements FileKeyMaterialStore {
   private void loadKeyMaterialMap() {
     try (FSDataInputStream keyMaterialStream = hadoopFileSystem.open(keyMaterialFile)) {
       JsonNode keyMaterialJson = objectMapper.readTree(keyMaterialStream);
-      keyMaterialMap = objectMapper.readValue(keyMaterialJson.traverse(),
-        new TypeReference<Map<String, String>>() { });
+      keyMaterialMap =
+          objectMapper.readValue(keyMaterialJson.traverse(), new TypeReference<Map<String, String>>() {});
     } catch (FileNotFoundException e) {
       throw new ParquetCryptoRuntimeException("External key material not found at " + keyMaterialFile, e);
     } catch (IOException e) {
@@ -119,8 +118,9 @@ public class HadoopFSKeyMaterialStore implements FileKeyMaterialStore {
     try {
       targetStore = (HadoopFSKeyMaterialStore) keyMaterialStore;
     } catch (ClassCastException e) {
-      throw new IllegalArgumentException("Currently supports only moving to HadoopFSKeyMaterialStore, not to " +
-          keyMaterialStore.getClass(), e);
+      throw new IllegalArgumentException(
+          "Currently supports only moving to HadoopFSKeyMaterialStore, not to " + keyMaterialStore.getClass(),
+          e);
     }
     Path targetKeyMaterialFile = targetStore.getStorageFilePath();
     try {
