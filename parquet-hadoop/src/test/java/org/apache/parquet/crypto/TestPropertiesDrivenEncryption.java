@@ -158,7 +158,7 @@ public class TestPropertiesDrivenEncryption {
   public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
   @Rule
-  public ErrorCollector errorCollector = new ErrorCollector();
+  public final ErrorCollector errorCollector = new ErrorCollector();
 
   private static final Base64.Encoder encoder = Base64.getEncoder();
   private static final String FOOTER_MASTER_KEY =
