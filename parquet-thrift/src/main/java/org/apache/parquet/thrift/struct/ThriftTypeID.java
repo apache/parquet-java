@@ -30,6 +30,7 @@ import org.apache.parquet.thrift.struct.ThriftType.MapType;
 import org.apache.parquet.thrift.struct.ThriftType.SetType;
 import org.apache.parquet.thrift.struct.ThriftType.StringType;
 import org.apache.parquet.thrift.struct.ThriftType.StructType;
+import org.apache.parquet.thrift.struct.ThriftType.UUIDType;
 import org.apache.thrift.protocol.TType;
 
 /**
@@ -49,13 +50,19 @@ public enum ThriftTypeID {
   MAP(TType.MAP, true, MapType.class),
   SET(TType.SET, true, SetType.class),
   LIST(TType.LIST, true, ListType.class),
-  ENUM(TType.ENUM, TType.I32, EnumType.class);
+  ENUM(TType.ENUM, TType.I32, EnumType.class),
+  UUID(TType.UUID, UUIDType.class);
 
-  private static ThriftTypeID[] types = new ThriftTypeID[17];
+  private static final ThriftTypeID[] types;
 
   static {
+    types = new ThriftTypeID[18];
     for (ThriftTypeID t : ThriftTypeID.values()) {
-      types[t.thriftType] = t;
+      if (t.thriftType == -1) {
+        types[17] = t;
+      } else {
+        types[t.thriftType] = t;
+      }
     }
   }
 

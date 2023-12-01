@@ -771,6 +771,7 @@ public class ParquetWriteProtocol extends ParquetProtocol {
       case I32:
       case I64:
       case STRING:
+      case UUID:
         p = new PrimitiveWriteProtocol((PrimitiveColumnIO) columnIO, returnClause);
         break;
       case STRUCT:

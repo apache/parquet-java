@@ -21,6 +21,7 @@ package org.apache.parquet.thrift;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import org.apache.parquet.ShouldNeverHappenException;
 import org.apache.parquet.thrift.struct.ThriftField;
 import org.apache.parquet.thrift.struct.ThriftType;
@@ -239,6 +240,10 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
         final ByteBuffer bin = in.readBinary();
         writeStringAction(buffer, bin);
         break;
+      case TType.UUID:
+        final UUID uuid = in.readUuid();
+        writeUuidAction(buffer, uuid);
+        break;
       case TType.VOID:
         break;
       default:
@@ -257,6 +262,20 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
       @Override
       public String toDebugString() {
         return String.valueOf(bin);
+      }
+    });
+  }
+
+  private void writeUuidAction(List<Action> buffer, final UUID uuid) {
+    buffer.add(new Action() {
+      @Override
+      public void write(TProtocol out) throws TException {
+        out.writeUuid(uuid);
+      }
+
+      @Override
+      public String toDebugString() {
+        return uuid.toString();
       }
     });
   }
@@ -618,6 +637,9 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
     public void writeI64(long l) throws TException {}
 
     @Override
+    public void writeUuid(UUID uuid) throws TException {}
+
+    @Override
     public void writeDouble(double v) throws TException {}
 
     @Override
@@ -697,6 +719,11 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
     @Override
     public long readI64() throws TException {
       return 0;
+    }
+
+    @Override
+    public UUID readUuid() throws TException {
+      return null;
     }
 
     @Override
