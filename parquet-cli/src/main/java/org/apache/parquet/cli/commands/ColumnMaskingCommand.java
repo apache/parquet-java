@@ -40,6 +40,7 @@ import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.schema.MessageType;
 import org.slf4j.Logger;
 
+@Deprecated
 @Parameters(
     commandDescription = "(Deprecated: will be removed in 2.0.0, use rewrite command instead) "
         + "Replace columns with masked values and write to a new Parquet file")

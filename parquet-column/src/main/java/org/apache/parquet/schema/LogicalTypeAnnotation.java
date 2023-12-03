@@ -150,10 +150,9 @@ public abstract class LogicalTypeAnnotation {
    * Those logical type implementations, which don't have a corresponding mapping should return null.
    * <p>
    * API should be considered private
-   * <p>
-   * Deprecated: Please use the LogicalTypeAnnotation itself
    *
    * @return the OriginalType representation of the new logical type, or null if there's none
+   * @deprecated Please use the LogicalTypeAnnotation itself
    */
   @Deprecated
   public abstract OriginalType toOriginalType();
@@ -317,10 +316,9 @@ public abstract class LogicalTypeAnnotation {
 
     /**
      * API Should be considered private
-     * <p>
-     * Deprecated: Please use the LogicalTypeAnnotation itself
      *
      * @return the original type
+     * @deprecated Please use the LogicalTypeAnnotation itself
      */
     @Override
     @Deprecated
@@ -362,10 +360,9 @@ public abstract class LogicalTypeAnnotation {
 
     /**
      * API Should be considered private
-     * <p>
-     * Deprecated: Please use the LogicalTypeAnnotation itself
      *
      * @return the original type
+     * @deprecated Please use the LogicalTypeAnnotation itself
      */
     @Override
     @Deprecated
@@ -402,10 +399,9 @@ public abstract class LogicalTypeAnnotation {
 
     /**
      * API Should be considered private
-     * <p>
-     * Deprecated: Please use the LogicalTypeAnnotation itself
      *
      * @return the original type
+     * @deprecated Please use the LogicalTypeAnnotation itself
      */
     @Override
     @Deprecated
@@ -442,10 +438,9 @@ public abstract class LogicalTypeAnnotation {
 
     /**
      * API Should be considered private
-     * <p>
-     * Deprecated: Please use the LogicalTypeAnnotation itself
      *
      * @return the original type
+     * @deprecated Please use the LogicalTypeAnnotation itself
      */
     @Override
     @Deprecated
@@ -501,10 +496,9 @@ public abstract class LogicalTypeAnnotation {
 
     /**
      * API Should be considered private
-     * <p>
-     * Deprecated: Please use the LogicalTypeAnnotation itself
      *
      * @return the original type
+     * @deprecated Please use the LogicalTypeAnnotation itself
      */
     @Override
     @Deprecated
@@ -560,10 +554,9 @@ public abstract class LogicalTypeAnnotation {
 
     /**
      * API Should be considered private
-     * <p>
-     * Deprecated: Please use the LogicalTypeAnnotation itself
      *
      * @return the original type
+     * @deprecated Please use the LogicalTypeAnnotation itself
      */
     @Override
     @Deprecated
@@ -615,10 +608,9 @@ public abstract class LogicalTypeAnnotation {
 
     /**
      * API Should be considered private
-     * <p>
-     * Deprecated: Please use the LogicalTypeAnnotation itself
      *
      * @return the original type
+     * @deprecated Please use the LogicalTypeAnnotation itself
      */
     @Override
     @Deprecated
@@ -701,10 +693,9 @@ public abstract class LogicalTypeAnnotation {
 
     /**
      * API Should be considered private
-     * <p>
-     * Deprecated: Please use the LogicalTypeAnnotation itself
      *
      * @return the original type
+     * @deprecated Please use the LogicalTypeAnnotation itself
      */
     @Override
     @Deprecated
@@ -794,10 +785,9 @@ public abstract class LogicalTypeAnnotation {
 
     /**
      * API Should be considered private
-     * <p>
-     * Deprecated: Please use the LogicalTypeAnnotation itself
      *
      * @return the original type
+     * @deprecated Please use the LogicalTypeAnnotation itself
      */
     @Override
     @Deprecated
@@ -872,10 +862,9 @@ public abstract class LogicalTypeAnnotation {
 
     /**
      * API Should be considered private
-     * <p>
-     * Deprecated: Please use the LogicalTypeAnnotation itself
      *
      * @return the original type
+     * @deprecated Please use the LogicalTypeAnnotation itself
      */
     @Override
     @Deprecated
@@ -917,10 +906,9 @@ public abstract class LogicalTypeAnnotation {
 
     /**
      * API Should be considered private
-     * <p>
-     * Deprecated: Please use the LogicalTypeAnnotation itself
      *
      * @return the original type
+     * @deprecated Please use the LogicalTypeAnnotation itself
      */
     @Override
     @Deprecated
@@ -963,10 +951,9 @@ public abstract class LogicalTypeAnnotation {
 
     /**
      * API Should be considered private
-     * <p>
-     * Deprecated: Please use the LogicalTypeAnnotation itself
      *
      * @return the original type
+     * @deprecated Please use the LogicalTypeAnnotation itself
      */
     @Override
     @Deprecated
@@ -1005,10 +992,9 @@ public abstract class LogicalTypeAnnotation {
 
     /**
      * API Should be considered private
-     * <p>
-     * Deprecated: Please use the LogicalTypeAnnotation itself
      *
      * @return the original type
+     * @deprecated Please use the LogicalTypeAnnotation itself
      */
     @Override
     @Deprecated
@@ -1062,10 +1048,9 @@ public abstract class LogicalTypeAnnotation {
 
     /**
      * API Should be considered private
-     * <p>
-     * Deprecated: Please use the LogicalTypeAnnotation itself
      *
      * @return the original type
+     * @deprecated Please use the LogicalTypeAnnotation itself
      */
     @Override
     @Deprecated
