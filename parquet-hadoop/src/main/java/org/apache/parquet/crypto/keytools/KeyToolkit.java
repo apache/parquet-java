@@ -90,7 +90,7 @@ public class KeyToolkit {
   public static final int KEK_LENGTH_DEFAULT = 128;
 
   private static long lastCacheCleanForKeyRotationTime = 0;
-  private static Object lastCacheCleanForKeyRotationTimeLock = new Object();
+  private static final Object lastCacheCleanForKeyRotationTimeLock = new Object();
   // KMS servers typically allow to run key rotation once in a few hours / a day.
   // We clean KEK writer cache (if needed) after 1 hour
   private static final int CACHE_CLEAN_PERIOD_FOR_KEY_ROTATION = 60 * 60 * 1000; // 1 hour
