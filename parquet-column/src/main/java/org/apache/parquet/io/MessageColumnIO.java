@@ -227,12 +227,7 @@ public class MessageColumnIO extends GroupColumnIO {
     }
 
     private List<ColumnWriter> getLeafWriters(GroupColumnIO group) {
-      List<ColumnWriter> writers = groupToLeafWriter.get(group);
-      if (writers == null) {
-        writers = new ArrayList<>();
-        groupToLeafWriter.put(group, writers);
-      }
-      return writers;
+      return groupToLeafWriter.computeIfAbsent(group, k -> new ArrayList<>());
     }
 
     public MessageColumnIORecordConsumer(ColumnWriteStore columns) {
