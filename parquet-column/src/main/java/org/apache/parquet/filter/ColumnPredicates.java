@@ -29,162 +29,92 @@ import org.apache.parquet.io.api.Binary;
  */
 public class ColumnPredicates {
 
-  public static interface Predicate {
+  public interface Predicate {
     boolean apply(ColumnReader input);
   }
 
-  public static interface PredicateFunction<T> {
+  public interface PredicateFunction<T> {
     boolean functionToApply(T input);
   }
 
   /* provide the following to avoid boxing primitives */
 
-  public static interface IntegerPredicateFunction {
+  public interface IntegerPredicateFunction {
     boolean functionToApply(int input);
   }
 
-  public static interface LongPredicateFunction {
+  public interface LongPredicateFunction {
     boolean functionToApply(long input);
   }
 
-  public static interface FloatPredicateFunction {
+  public interface FloatPredicateFunction {
     boolean functionToApply(float input);
   }
 
-  public static interface DoublePredicateFunction {
+  public interface DoublePredicateFunction {
     boolean functionToApply(double input);
   }
 
-  public static interface BooleanPredicateFunction {
+  public interface BooleanPredicateFunction {
     boolean functionToApply(boolean input);
   }
 
   public static Predicate equalTo(final String target) {
     Objects.requireNonNull(target, "target cannot be null");
-    return new Predicate() {
-      @Override
-      public boolean apply(ColumnReader input) {
-        return target.equals(input.getBinary().toStringUsingUTF8());
-      }
-    };
+    return input -> target.equals(input.getBinary().toStringUsingUTF8());
   }
 
   public static Predicate applyFunctionToString(final PredicateFunction<String> fn) {
-    return new Predicate() {
-      @Override
-      public boolean apply(ColumnReader input) {
-        return fn.functionToApply(input.getBinary().toStringUsingUTF8());
-      }
-    };
+    return input -> fn.functionToApply(input.getBinary().toStringUsingUTF8());
   }
 
   public static Predicate equalTo(final int target) {
-    return new Predicate() {
-      @Override
-      public boolean apply(ColumnReader input) {
-        return input.getInteger() == target;
-      }
-    };
+    return input -> input.getInteger() == target;
   }
 
   public static Predicate applyFunctionToInteger(final IntegerPredicateFunction fn) {
-    return new Predicate() {
-      @Override
-      public boolean apply(ColumnReader input) {
-        return fn.functionToApply(input.getInteger());
-      }
-    };
+    return input -> fn.functionToApply(input.getInteger());
   }
 
   public static Predicate equalTo(final long target) {
-    return new Predicate() {
-      @Override
-      public boolean apply(ColumnReader input) {
-        return input.getLong() == target;
-      }
-    };
+    return input -> input.getLong() == target;
   }
 
   public static Predicate applyFunctionToLong(final LongPredicateFunction fn) {
-    return new Predicate() {
-      @Override
-      public boolean apply(ColumnReader input) {
-        return fn.functionToApply(input.getLong());
-      }
-    };
+    return input -> fn.functionToApply(input.getLong());
   }
 
   public static Predicate equalTo(final float target) {
-    return new Predicate() {
-      @Override
-      public boolean apply(ColumnReader input) {
-        return input.getFloat() == target;
-      }
-    };
+    return input -> input.getFloat() == target;
   }
 
   public static Predicate applyFunctionToFloat(final FloatPredicateFunction fn) {
-    return new Predicate() {
-      @Override
-      public boolean apply(ColumnReader input) {
-        return fn.functionToApply(input.getFloat());
-      }
-    };
+    return input -> fn.functionToApply(input.getFloat());
   }
 
   public static Predicate equalTo(final double target) {
-    return new Predicate() {
-      @Override
-      public boolean apply(ColumnReader input) {
-        return input.getDouble() == target;
-      }
-    };
+    return input -> input.getDouble() == target;
   }
 
   public static Predicate applyFunctionToDouble(final DoublePredicateFunction fn) {
-    return new Predicate() {
-      @Override
-      public boolean apply(ColumnReader input) {
-        return fn.functionToApply(input.getDouble());
-      }
-    };
+    return input -> fn.functionToApply(input.getDouble());
   }
 
   public static Predicate equalTo(final boolean target) {
-    return new Predicate() {
-      @Override
-      public boolean apply(ColumnReader input) {
-        return input.getBoolean() == target;
-      }
-    };
+    return input -> input.getBoolean() == target;
   }
 
   public static Predicate applyFunctionToBoolean(final BooleanPredicateFunction fn) {
-    return new Predicate() {
-      @Override
-      public boolean apply(ColumnReader input) {
-        return fn.functionToApply(input.getBoolean());
-      }
-    };
+    return input -> fn.functionToApply(input.getBoolean());
   }
 
   public static <E extends Enum> Predicate equalTo(final E target) {
     Objects.requireNonNull(target, "target cannot be null");
     final String targetAsString = target.name();
-    return new Predicate() {
-      @Override
-      public boolean apply(ColumnReader input) {
-        return targetAsString.equals(input.getBinary().toStringUsingUTF8());
-      }
-    };
+    return input -> targetAsString.equals(input.getBinary().toStringUsingUTF8());
   }
 
   public static Predicate applyFunctionToBinary(final PredicateFunction<Binary> fn) {
-    return new Predicate() {
-      @Override
-      public boolean apply(ColumnReader input) {
-        return fn.functionToApply(input.getBinary());
-      }
-    };
+    return input -> fn.functionToApply(input.getBinary());
   }
 }
