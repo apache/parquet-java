@@ -23,6 +23,7 @@ import it.unimi.dsi.fastutil.ints.IntIterator;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -512,7 +513,7 @@ public class MessageColumnIO extends GroupColumnIO {
   }
 
   void setLevels() {
-    setLevels(0, 0, new String[0], new int[0], Arrays.<ColumnIO>asList(this), Arrays.<ColumnIO>asList(this));
+    setLevels(0, 0, new String[0], new int[0], Collections.singletonList(this), Collections.singletonList(this));
   }
 
   void setLeaves(List<PrimitiveColumnIO> leaves) {

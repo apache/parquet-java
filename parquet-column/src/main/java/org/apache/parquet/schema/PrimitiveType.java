@@ -23,6 +23,7 @@ import static java.util.Optional.of;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit.MILLIS;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
@@ -734,7 +735,7 @@ public final class PrimitiveType extends Type {
 
   @Override
   protected List<String[]> getPaths(int depth) {
-    return Arrays.<String[]>asList(new String[depth]);
+    return Collections.singletonList(new String[depth]);
   }
 
   @Override
