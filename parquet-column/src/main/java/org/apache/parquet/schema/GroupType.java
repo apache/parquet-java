@@ -175,7 +175,7 @@ public class GroupType extends Type {
     if (i == null) {
       throw new InvalidRecordException(name + " not found in " + this);
     }
-    return i.intValue();
+    return i;
   }
 
   /**
