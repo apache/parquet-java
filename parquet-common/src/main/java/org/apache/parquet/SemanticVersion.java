@@ -103,9 +103,9 @@ public final class SemanticVersion implements Comparable<SemanticVersion> {
     final int patch;
 
     try {
-      major = Integer.valueOf(matcher.group(1));
-      minor = Integer.valueOf(matcher.group(2));
-      patch = Integer.valueOf(matcher.group(3));
+      major = Integer.parseInt(matcher.group(1));
+      minor = Integer.parseInt(matcher.group(2));
+      patch = Integer.parseInt(matcher.group(3));
     } catch (NumberFormatException e) {
       throw new SemanticVersionParseException(e);
     }

@@ -92,7 +92,7 @@ public class UnmaterializableRecordCounter {
   private static float getFloat(ParquetReadOptions options, String key, float defaultValue) {
     String value = options.getProperty(key);
     if (value != null) {
-      return Float.valueOf(value);
+      return Float.parseFloat(value);
     } else {
       return defaultValue;
     }

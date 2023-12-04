@@ -212,10 +212,7 @@ public class AvroJson {
       throw new RecordException(String.format("Cannot convert field %s", field.name()), e);
     } catch (AvroRuntimeException e) {
       throw new RecordException(
-          String.format(
-              "Field %s: cannot make %s value: '%s'",
-              field.name(), field.schema(), String.valueOf(datum)),
-          e);
+          String.format("Field %s: cannot make %s value: '%s'", field.name(), field.schema(), datum), e);
     }
   }
 

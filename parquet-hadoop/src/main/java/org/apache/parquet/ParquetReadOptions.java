@@ -212,7 +212,7 @@ public class ParquetReadOptions {
 
   public boolean isEnabled(String property, boolean defaultValue) {
     Optional<String> propValue = Optional.ofNullable(properties.get(property));
-    return propValue.isPresent() ? Boolean.valueOf(propValue.get()) : defaultValue;
+    return propValue.map(Boolean::parseBoolean).orElse(defaultValue);
   }
 
   public ParquetConfiguration getConfiguration() {

@@ -176,7 +176,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     }
 
     if (deprecatedFlag != null) {
-      return Boolean.valueOf(deprecatedFlag) ? JobSummaryLevel.ALL : JobSummaryLevel.NONE;
+      return Boolean.parseBoolean(deprecatedFlag) ? JobSummaryLevel.ALL : JobSummaryLevel.NONE;
     }
 
     return JobSummaryLevel.ALL;
