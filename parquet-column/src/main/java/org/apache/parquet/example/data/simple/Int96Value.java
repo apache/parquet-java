@@ -41,6 +41,6 @@ public class Int96Value extends Primitive {
 
   @Override
   public String toString() {
-    return "Int96Value{" + String.valueOf(value) + "}";
+    return "Int96Value{" + value + "}";
   }
 }

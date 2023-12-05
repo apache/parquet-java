@@ -63,7 +63,7 @@ public class CSVProperties {
     private String delimiter = DEFAULT_DELIMITER;
     private String quote = DEFAULT_QUOTE;
     private String escape = DEFAULT_ESCAPE;
-    private boolean useHeader = Boolean.valueOf(DEFAULT_HAS_HEADER);
+    private boolean useHeader = Boolean.parseBoolean(DEFAULT_HAS_HEADER);
     private int linesToSkip = DEFAULT_LINES_TO_SKIP;
     private String header = null;
 

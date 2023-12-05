@@ -169,10 +169,10 @@ public class TupleConverter extends GroupConverter {
     return converters[fieldIndex];
   }
 
-  private static final Integer I32_ZERO = Integer.valueOf(0);
-  private static final Long I64_ZERO = Long.valueOf(0);
-  private static final Float FLOAT_ZERO = Float.valueOf(0);
-  private static final Double DOUBLE_ZERO = Double.valueOf(0);
+  private static final Integer I32_ZERO = 0;
+  private static final Long I64_ZERO = 0L;
+  private static final Float FLOAT_ZERO = 0.0f;
+  private static final Double DOUBLE_ZERO = 0.0d;
 
   @Override
   public final void start() {
