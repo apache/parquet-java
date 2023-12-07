@@ -882,6 +882,8 @@ public class ParquetRewriterTest {
         BlockMetaData inBlockMetaData = inMetaData.getBlocks().get(inBlockId);
         BlockMetaData outBlockMetaData = outMetaData.getBlocks().get(outBlockId);
 
+        assertEquals(inBlockMetaData.getRowCount(), outBlockMetaData.getRowCount());
+
         for (int j = 0; j < outBlockMetaData.getColumns().size(); j++) {
           if (!outFileColumnMapping.containsKey(j)) {
             continue;
@@ -908,8 +910,8 @@ public class ParquetRewriterTest {
             for (int k = 0; k < inOffsetIndex.getPageCount(); k++) {
               assertEquals(inOffsetIndex.getFirstRowIndex(k), outOffsetIndex.getFirstRowIndex(k));
               assertEquals(
-                  inOffsetIndex.getLastRowIndex(k, inChunk.getValueCount()),
-                  outOffsetIndex.getLastRowIndex(k, outChunk.getValueCount()));
+                  inOffsetIndex.getLastRowIndex(k, inBlockMetaData.getRowCount()),
+                  outOffsetIndex.getLastRowIndex(k, outBlockMetaData.getRowCount()));
               assertEquals(inOffsetIndex.getOffset(k), (long) inOffsets.get(k));
               assertEquals(outOffsetIndex.getOffset(k), (long) outOffsets.get(k));
             }
