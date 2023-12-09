@@ -24,6 +24,7 @@ import java.io.ObjectStreamException;
 import java.io.OutputStream;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.CharBuffer;
 import java.nio.charset.CharacterCodingException;
 import java.nio.charset.CharsetEncoder;
@@ -84,6 +85,8 @@ public abstract class Binary implements Comparable<Binary>, Serializable {
   abstract int lexicographicCompare(ByteBuffer other, int otherOffset, int otherLength);
 
   public abstract ByteBuffer toByteBuffer();
+
+  public abstract short get2BytesLittleEndian();
 
   @Override
   public boolean equals(Object obj) {
@@ -217,6 +220,15 @@ public abstract class Binary implements Comparable<Binary>, Serializable {
     @Override
     public ByteBuffer toByteBuffer() {
       return ByteBuffer.wrap(value, offset, length);
+    }
+
+    @Override
+    public short get2BytesLittleEndian() {
+      if (length != 2) {
+        throw new IllegalArgumentException("length must be 2");
+      }
+
+      return (short) (((value[offset + 1] & 0xff) << 8) | (value[offset] & 0xff));
     }
 
     @Override
@@ -368,6 +380,15 @@ public abstract class Binary implements Comparable<Binary>, Serializable {
     @Override
     public ByteBuffer toByteBuffer() {
       return ByteBuffer.wrap(value);
+    }
+
+    @Override
+    public short get2BytesLittleEndian() {
+      if (value.length != 2) {
+        throw new IllegalArgumentException("length must be 2");
+      }
+
+      return (short) (((value[1] & 0xff) << 8) | (value[0] & 0xff));
     }
 
     @Override
@@ -545,6 +566,15 @@ public abstract class Binary implements Comparable<Binary>, Serializable {
       ret.position(offset);
       ret.limit(offset + length);
       return ret;
+    }
+
+    @Override
+    public short get2BytesLittleEndian() {
+      if (length != 2) {
+        throw new IllegalArgumentException("length must be 2");
+      }
+
+      return value.order(ByteOrder.LITTLE_ENDIAN).getShort(offset);
     }
 
     @Override

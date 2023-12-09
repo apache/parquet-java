@@ -510,6 +510,7 @@
             <exclude>thrift-${thrift.version}/**</exclude>
             <exclude>thrift-${thrift.version}.tar.gz</exclude>
             <exclude>**/dependency-reduced-pom.xml</exclude>
+            <exclude>**/*.rej</exclude>
           </excludes>
         </configuration>
       </plugin>
@@ -596,6 +597,9 @@
 
               <!-- Due to the removal of deprecated methods -->
               <exclude>org.apache.parquet.arrow.schema.SchemaMapping</exclude>
+
+              <exclude>org.apache.parquet.io.api.Binary#get2BytesLittleEndian()</exclude>
+              <exclude>org.apache.parquet.schema.LogicalTypeAnnotation$Float16LogicalTypeAnnotation#accept(org.apache.parquet.schema.LogicalTypeAnnotation$LogicalTypeAnnotationVisitor)</exclude>
             </excludes>
           </parameter>
         </configuration>

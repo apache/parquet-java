@@ -140,6 +140,12 @@ public abstract class LogicalTypeAnnotation {
       protected LogicalTypeAnnotation fromString(List<String> params) {
         return IntervalLogicalTypeAnnotation.getInstance();
       }
+    },
+    FLOAT16 {
+      @Override
+      protected LogicalTypeAnnotation fromString(List<String> params) {
+        return float16Type();
+      }
     };
 
     protected abstract LogicalTypeAnnotation fromString(List<String> params);
@@ -304,6 +310,10 @@ public abstract class LogicalTypeAnnotation {
 
   public static UUIDLogicalTypeAnnotation uuidType() {
     return UUIDLogicalTypeAnnotation.INSTANCE;
+  }
+
+  public static Float16LogicalTypeAnnotation float16Type() {
+    return Float16LogicalTypeAnnotation.INSTANCE;
   }
 
   public static class StringLogicalTypeAnnotation extends LogicalTypeAnnotation {
@@ -951,6 +961,34 @@ public abstract class LogicalTypeAnnotation {
     }
   }
 
+  public static class Float16LogicalTypeAnnotation extends LogicalTypeAnnotation {
+    private static final Float16LogicalTypeAnnotation INSTANCE = new Float16LogicalTypeAnnotation();
+    public static final int BYTES = 2;
+
+    private Float16LogicalTypeAnnotation() {}
+
+    @Override
+    public OriginalType toOriginalType() {
+      // No OriginalType for Float16
+      return null;
+    }
+
+    @Override
+    public <T> Optional<T> accept(LogicalTypeAnnotationVisitor<T> logicalTypeAnnotationVisitor) {
+      return logicalTypeAnnotationVisitor.visit(this);
+    }
+
+    @Override
+    LogicalTypeToken getType() {
+      return LogicalTypeToken.FLOAT16;
+    }
+
+    @Override
+    PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
+      return PrimitiveStringifier.FLOAT16_STRINGIFIER;
+    }
+  }
+
   // This logical type annotation is implemented to support backward compatibility with ConvertedType.
   // The new logical type representation in parquet-format doesn't have any interval type,
   // thus this annotation is mapped to UNKNOWN.
@@ -1118,6 +1156,10 @@ public abstract class LogicalTypeAnnotation {
     }
 
     default Optional<T> visit(MapKeyValueTypeAnnotation mapKeyValueLogicalType) {
+      return empty();
+    }
+
+    default Optional<T> visit(Float16LogicalTypeAnnotation float16LogicalType) {
       return empty();
     }
   }

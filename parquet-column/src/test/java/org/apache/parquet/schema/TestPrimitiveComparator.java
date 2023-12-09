@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.schema;
 
+import static org.apache.parquet.schema.PrimitiveComparator.BINARY_AS_FLOAT16_COMPARATOR;
 import static org.apache.parquet.schema.PrimitiveComparator.BINARY_AS_SIGNED_INTEGER_COMPARATOR;
 import static org.apache.parquet.schema.PrimitiveComparator.BOOLEAN_COMPARATOR;
 import static org.apache.parquet.schema.PrimitiveComparator.DOUBLE_COMPARATOR;
@@ -269,6 +270,33 @@ public class TestPrimitiveComparator {
             String.format("Wrong result of comparison %s and %s", v1, v2),
             0,
             BINARY_AS_SIGNED_INTEGER_COMPARATOR.compare(v1, v2));
+      }
+    }
+  }
+
+  @Test
+  public void testFloat16Comparator() {
+    Binary[] valuesInAscendingOrder = {
+      Binary.fromConstantByteArray(new byte[] {0x00, (byte) 0xfc}), // -Infinity
+      Binary.fromConstantByteArray(new byte[] {0x00, (byte) 0xc0}), // -2.0
+      Binary.fromConstantByteArray(new byte[] {(byte) 0x01, (byte) 0x84}), // -6.109476E-5
+      Binary.fromConstantByteArray(new byte[] {(byte) 0x00, (byte) 0x80}), // -0
+      Binary.fromConstantByteArray(new byte[] {(byte) 0x00, (byte) 0x00}), // +0
+      Binary.fromConstantByteArray(new byte[] {(byte) 0x01, (byte) 0x00}), // 5.9604645E-8
+      Binary.fromConstantByteArray(new byte[] {(byte) 0xff, (byte) 0x7b}), // 65504.0
+      Binary.fromConstantByteArray(new byte[] {(byte) 0x00, (byte) 0x7c})
+    }; // Infinity
+
+    for (int i = 0; i < valuesInAscendingOrder.length; ++i) {
+      for (int j = 0; j < valuesInAscendingOrder.length; ++j) {
+        Binary bi = valuesInAscendingOrder[i];
+        Binary bj = valuesInAscendingOrder[j];
+        float fi = Float16.toFloat(bi);
+        float fj = Float16.toFloat(bj);
+        assertEquals(Float.compare(fi, fj), BINARY_AS_FLOAT16_COMPARATOR.compare(bi, bj));
+        if (i < j) {
+          assertEquals(-1, Float.compare(fi, fj));
+        }
       }
     }
   }

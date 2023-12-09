@@ -277,4 +277,20 @@ public abstract class PrimitiveComparator<T> implements Comparator<T>, Serializa
       return "BINARY_AS_SIGNED_INTEGER_COMPARATOR";
     }
   };
+
+  /**
+   * This comparator is for comparing two float16 values represented in 2 bytes binary.
+   */
+  static final PrimitiveComparator<Binary> BINARY_AS_FLOAT16_COMPARATOR = new BinaryComparator() {
+
+    @Override
+    int compareBinary(Binary b1, Binary b2) {
+      return Float16.compare(b1.get2BytesLittleEndian(), b2.get2BytesLittleEndian());
+    }
+
+    @Override
+    public String toString() {
+      return "BINARY_AS_FLOAT16_COMPARATOR";
+    }
+  };
 }
