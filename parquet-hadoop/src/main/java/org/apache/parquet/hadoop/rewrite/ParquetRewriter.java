@@ -326,6 +326,7 @@ public class ParquetRewriter implements Closeable {
           // Translate compression and/or encryption
           writer.startColumn(descriptor, chunk.getValueCount(), newCodecName);
           processChunk(
+              blockMetaData.getRowCount(),
               chunk,
               newCodecName,
               columnChunkEncryptorRunTime,
@@ -352,6 +353,7 @@ public class ParquetRewriter implements Closeable {
   }
 
   private void processChunk(
+      long blockRowCount,
       ColumnChunkMetaData chunk,
       CompressionCodecName newCodecName,
       ColumnChunkEncryptorRunTime columnChunkEncryptorRunTime,
@@ -391,7 +393,8 @@ public class ParquetRewriter implements Closeable {
 
     reader.setStreamPosition(chunk.getStartingPos());
     DictionaryPage dictionaryPage = null;
-    long readValues = 0;
+    long readValues = 0L;
+    long readRows = 0L;
     Statistics<?> statistics = null;
     boolean isColumnStatisticsMalformed = false;
     ParquetMetadataConverter converter = new ParquetMetadataConverter();
@@ -459,8 +462,9 @@ public class ParquetRewriter implements Closeable {
           readValues += headerV1.getNum_values();
           if (offsetIndex != null) {
             long rowCount = 1
-                + offsetIndex.getLastRowIndex(pageOrdinal, totalChunkValues)
+                + offsetIndex.getLastRowIndex(pageOrdinal, blockRowCount)
                 - offsetIndex.getFirstRowIndex(pageOrdinal);
+            readRows += rowCount;
             writer.writeDataPage(
                 toIntWithCheck(headerV1.getNum_values()),
                 pageHeader.getUncompressed_page_size(),
@@ -524,6 +528,7 @@ public class ParquetRewriter implements Closeable {
                 "Detected mixed null page statistics and non-null page statistics");
           }
           readValues += headerV2.getNum_values();
+          readRows += headerV2.getNum_rows();
           writer.writeDataPageV2(
               headerV2.getNum_rows(),
               headerV2.getNum_nulls(),
@@ -543,6 +548,12 @@ public class ParquetRewriter implements Closeable {
           break;
       }
     }
+
+    Preconditions.checkState(
+        readRows == 0 || readRows == blockRowCount,
+        "Read row count: %s not match with block total row count: %s",
+        readRows,
+        blockRowCount);
 
     if (isColumnStatisticsMalformed) {
       // All the column statistics are invalid, so we need to overwrite the column statistics
