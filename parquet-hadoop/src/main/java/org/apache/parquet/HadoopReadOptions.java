@@ -29,6 +29,7 @@ import org.apache.parquet.crypto.DecryptionPropertiesFactory;
 import org.apache.parquet.crypto.FileDecryptionProperties;
 import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.format.converter.ParquetMetadataConverter.MetadataFilter;
+import org.apache.parquet.hadoop.ParquetMetricsCallback;
 
 public class HadoopReadOptions extends ParquetReadOptions {
   private final Configuration conf;
@@ -49,7 +50,8 @@ public class HadoopReadOptions extends ParquetReadOptions {
       int maxAllocationSize,
       Map<String, String> properties,
       Configuration conf,
-      FileDecryptionProperties fileDecryptionProperties) {
+      FileDecryptionProperties fileDecryptionProperties,
+      ParquetMetricsCallback metricsCallback) {
     super(
         useSignedStringMinMax,
         useStatsFilter,
@@ -66,6 +68,7 @@ public class HadoopReadOptions extends ParquetReadOptions {
         maxAllocationSize,
         properties,
         fileDecryptionProperties,
+        metricsCallback,
         new HadoopParquetConfiguration(conf));
     this.conf = conf;
   }
@@ -127,7 +130,8 @@ public class HadoopReadOptions extends ParquetReadOptions {
           maxAllocationSize,
           properties,
           conf,
-          fileDecryptionProperties);
+          fileDecryptionProperties,
+          metricsCallback);
     }
   }
 

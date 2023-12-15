@@ -123,18 +123,9 @@ public class ParquetFileReader implements Closeable {
 
   public static String PARQUET_READ_PARALLELISM = "parquet.metadata.read.parallelism";
 
-  private ParquetMetricsCallback metricsCallback;
-
   private final ParquetMetadataConverter converter;
 
   private final CRC32 crc;
-
-  /**
-   * set a callback to send back metrics info
-   */
-  public void initMetrics(ParquetMetricsCallback callback) {
-    this.metricsCallback = callback;
-  }
 
   /**
    * for files provided, check if there's a summary file.
@@ -815,6 +806,38 @@ public class ParquetFileReader implements Closeable {
           .withDecryption(fileDecryptor.getDecryptionProperties())
           .build();
     }
+    this.footer = footer;
+    try {
+      this.blocks = filterRowGroups(footer.getBlocks());
+    } catch (Exception e) {
+      // In case that filterRowGroups throws an exception in the constructor, the new stream
+      // should be closed. Otherwise, there's no way to close this outside.
+      f.close();
+      throw e;
+    }
+    this.blockIndexStores = listWithNulls(this.blocks.size());
+    this.blockRowRanges = listWithNulls(this.blocks.size());
+    for (ColumnDescriptor col : footer.getFileMetaData().getSchema().getColumns()) {
+      paths.put(ColumnPath.get(col.getPath()), col);
+    }
+    this.crc = options.usePageChecksumVerification() ? new CRC32() : null;
+  }
+
+  /**
+   * @param conf   the Hadoop Configuration
+   * @param file   Path to a parquet file
+   * @param footer a {@link ParquetMetadata} footer already read from the file
+   * @throws IOException if the file can not be opened
+   * @deprecated will be removed in 2.0.0.
+   */
+  public ParquetFileReader(Configuration conf, Path file, ParquetMetadata footer, ParquetReadOptions options)
+      throws IOException {
+    this.converter = new ParquetMetadataConverter(conf);
+    this.file = HadoopInputFile.fromPath(file, conf);
+    this.f = this.file.newStream();
+    this.fileMetaData = footer.getFileMetaData();
+    this.fileDecryptor = fileMetaData.getFileDecryptor();
+    this.options = options;
     this.footer = footer;
     try {
       this.blocks = filterRowGroups(footer.getBlocks());
@@ -1787,7 +1810,7 @@ public class ParquetFileReader implements Closeable {
           rowGroupOrdinal,
           columnOrdinal,
           options,
-          metricsCallback);
+          options.getMetricsCallback());
     }
 
     private boolean hasMorePages(long valuesCountReadSoFar, int dataPageCountReadSoFar) {
@@ -1987,6 +2010,7 @@ public class ParquetFileReader implements Closeable {
     }
 
     private void setReadMetrics(long startNs) {
+      ParquetMetricsCallback metricsCallback = options.getMetricsCallback();
       if (metricsCallback != null) {
         long totalFileReadTimeNs = System.nanoTime() - startNs;
         double sizeInMb = ((double) length) / (1024 * 1024);

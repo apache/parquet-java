@@ -77,7 +77,7 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
     private final BlockCipher.Decryptor blockDecryptor;
     private final byte[] dataPageAAD;
     private final byte[] dictionaryPageAAD;
-    ParquetMetricsCallback metricsCallback;
+    private final ParquetMetricsCallback metricsCallback;
 
     ColumnChunkPageReader(
         BytesInputDecompressor decompressor,
