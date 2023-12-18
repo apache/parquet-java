@@ -20,6 +20,8 @@ package org.apache.parquet.hadoop;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.column.ParquetProperties;
@@ -403,15 +405,29 @@ public class ParquetWriter<T> implements Closeable {
 
     this.codecFactory = codecFactory;
     CompressionCodecFactory.BytesInputCompressor compressor = codecFactory.getCompressor(compressionCodecName);
+
+    final String extraMetadataConfPrefix = ParquetOutputFormat.EXTRA_WRITE_METADATA + ".";
+    final Map<String, String> extraMetadata = new HashMap<>(writeContext.getExtraMetaData());
+
+    conf.iterator().forEachRemaining(entry -> {
+      if (entry.getKey().startsWith(extraMetadataConfPrefix)) {
+        final String metadataKey = entry.getKey().replaceFirst(extraMetadataConfPrefix, "");
+
+        if (metadataKey.equals(OBJECT_MODEL_NAME_PROP)) {
+          throw new IllegalArgumentException("Cannot overwrite metadata key " + OBJECT_MODEL_NAME_PROP
+              + ". Please use another key name.");
+        }
+
+        if (extraMetadata.put(metadataKey, entry.getValue()) != null) {
+          throw new IllegalArgumentException("Extra metadata key " + metadataKey
+              + " conflicts with reserved metadata keys present in "
+              + writeSupport.getClass().getName() + ". Please use another key name.");
+        }
+      }
+    });
+
     this.writer = new InternalParquetRecordWriter<T>(
-        fileWriter,
-        writeSupport,
-        schema,
-        writeContext.getExtraMetaData(),
-        rowGroupSize,
-        compressor,
-        validating,
-        encodingProps);
+        fileWriter, writeSupport, schema, extraMetadata, rowGroupSize, compressor, validating, encodingProps);
   }
 
   public void write(T object) throws IOException {
