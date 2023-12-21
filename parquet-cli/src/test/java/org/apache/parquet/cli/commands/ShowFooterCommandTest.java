@@ -21,9 +21,18 @@ package org.apache.parquet.cli.commands;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility;
+import com.fasterxml.jackson.annotation.PropertyAccessor;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.File;
 import java.io.IOException;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
+import org.apache.parquet.cli.util.RawUtils;
+import org.apache.parquet.hadoop.ParquetFileReader;
+import org.apache.parquet.hadoop.metadata.ParquetMetadata;
+import org.apache.parquet.hadoop.util.HadoopInputFile;
+import org.apache.parquet.io.InputFile;
 import org.junit.jupiter.api.Test;
 
 public class ShowFooterCommandTest extends ParquetFileTest {
@@ -38,5 +47,24 @@ public class ShowFooterCommandTest extends ParquetFileTest {
 
     command.raw = true;
     assertThat(command.run()).isZero();
+  }
+
+  /**
+   * The file a footer was read from is not part of the printed footer, even though the mapper used here serializes
+   * fields rather than getters.
+   */
+  @Test
+  public void testInputFileNotPrinted() throws IOException {
+    InputFile inputFile = HadoopInputFile.fromPath(new Path(parquetFile().getAbsolutePath()), new Configuration());
+    ParquetMetadata footer;
+    try (ParquetFileReader reader = ParquetFileReader.open(inputFile)) {
+      footer = reader.getFooter();
+    }
+    assertThat(footer.getInputFile()).isNotNull();
+
+    ObjectMapper mapper = RawUtils.createObjectMapper();
+    mapper.setVisibility(PropertyAccessor.ALL, Visibility.NONE);
+    mapper.setVisibility(PropertyAccessor.FIELD, Visibility.ANY);
+    assertThat(mapper.writeValueAsString(footer)).doesNotContain("inputFile");
   }
 }
