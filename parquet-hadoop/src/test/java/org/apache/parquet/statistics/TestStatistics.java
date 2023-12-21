@@ -71,8 +71,13 @@ import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class TestStatistics {
+
+  private static final Logger LOG = LoggerFactory.getLogger(TestStatistics.class);
+
   private static final int MEGABYTE = 1 << 20;
   private static final long RANDOM_SEED = 1441990701846L; // System.currentTimeMillis();
 
@@ -249,6 +254,10 @@ public class TestStatistics {
       if (stats.isEmpty()) {
         // stats are empty if num nulls = 0 and there are no non-null values
         // this happens if stats are not written (e.g., when stats are too big)
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("No stats written for page={} col={}", page,
+              Arrays.toString(desc.getPath()));
+        }
         return;
       }
 
@@ -264,6 +273,11 @@ public class TestStatistics {
       }
 
       Assert.assertEquals(numNulls, stats.getNumNulls());
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("Validated stats min={} max={} nulls={} for page={} col={}",
+            stats.minAsString(), stats.maxAsString(), stats.getNumNulls(), page,
+            Arrays.toString(desc.getPath()));
+      }
     }
   }
 
@@ -481,7 +495,7 @@ public class TestStatistics {
     File file = folder.newFile("test_file.parquet");
     file.delete();
 
-    System.out.println(String.format("RANDOM SEED: %s", RANDOM_SEED));
+    LOG.debug("RANDOM SEED: {}", RANDOM_SEED);
 
     Random random = new Random(RANDOM_SEED);
 
