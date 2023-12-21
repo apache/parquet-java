@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.apache.hadoop.classification.InterfaceAudience.Private;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.Writable;
@@ -55,6 +56,8 @@ public class ParquetInputSplit extends FileSplit implements Writable {
 
   private long end;
   private long[] rowGroupOffsets;
+
+  @JsonIgnore
   private volatile ParquetMetadata footer;
 
   /**

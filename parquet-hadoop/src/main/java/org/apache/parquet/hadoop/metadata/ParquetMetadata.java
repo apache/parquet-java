@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.hadoop.metadata;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.io.StringReader;
@@ -85,6 +86,7 @@ public class ParquetMetadata {
   private final FileMetaData fileMetaData;
   private final List<BlockMetaData> blocks;
 
+  @JsonIgnore
   private volatile InputFile inputFile;
 
   /**
