@@ -155,8 +155,14 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
     }
 
     // open a reader with the metadata filter
-    ParquetFileReader reader =
-        ParquetFileReader.open(HadoopInputFile.fromPath(path, configuration), optionsBuilder.build());
+    HadoopInputFile inputFile;
+    if (split.getFooter() != null && split.getFooter().getInputFile() != null
+      && split.getFooter().getInputFile() instanceof HadoopInputFile) {
+      inputFile = (HadoopInputFile) split.getFooter().getInputFile();
+    } else {
+      inputFile = HadoopInputFile.fromPath(path, configuration);
+    }
+    ParquetFileReader reader = new ParquetFileReader(inputFile, optionsBuilder.build(), split.getFooter());
 
     if (rowGroupOffsets != null) {
       // verify a row group was found for each offset

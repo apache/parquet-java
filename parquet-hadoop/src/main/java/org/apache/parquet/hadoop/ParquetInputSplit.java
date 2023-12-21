@@ -36,6 +36,7 @@ import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.mapreduce.lib.input.FileSplit;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
+import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
 
@@ -54,6 +55,7 @@ public class ParquetInputSplit extends FileSplit implements Writable {
 
   private long end;
   private long[] rowGroupOffsets;
+  private volatile ParquetMetadata footer;
 
   /**
    * Writables must have a parameterless constructor
@@ -220,6 +222,14 @@ public class ParquetInputSplit extends FileSplit implements Writable {
    */
   public long[] getRowGroupOffsets() {
     return rowGroupOffsets;
+  }
+
+  public ParquetMetadata getFooter() {
+    return footer;
+  }
+
+  public void setFooter(ParquetMetadata footer) {
+    this.footer = footer;
   }
 
   @Override

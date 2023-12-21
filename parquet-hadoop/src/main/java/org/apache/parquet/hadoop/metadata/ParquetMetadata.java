@@ -19,6 +19,7 @@
 package org.apache.parquet.hadoop.metadata;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.parquet.io.InputFile;
 import java.io.IOException;
 import java.io.StringReader;
 import java.io.StringWriter;
@@ -84,6 +85,8 @@ public class ParquetMetadata {
   private final FileMetaData fileMetaData;
   private final List<BlockMetaData> blocks;
 
+  private volatile InputFile inputFile;
+
   /**
    * @param fileMetaData file level metadata
    * @param blocks       block level metadata
@@ -105,6 +108,14 @@ public class ParquetMetadata {
    */
   public FileMetaData getFileMetaData() {
     return fileMetaData;
+  }
+
+  public InputFile getInputFile() {
+    return inputFile;
+  }
+
+  public void setInputFile(InputFile inputFile) {
+    this.inputFile = inputFile;
   }
 
   @Override
