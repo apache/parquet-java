@@ -19,11 +19,11 @@
 package org.apache.parquet.hadoop.metadata;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.parquet.io.InputFile;
 import java.io.IOException;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.util.List;
+import org.apache.parquet.io.InputFile;
 
 /**
  * Meta Data block stored in the footer of the file

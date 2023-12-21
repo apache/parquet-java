@@ -156,8 +156,9 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
 
     // open a reader with the metadata filter
     HadoopInputFile inputFile;
-    if (split.getFooter() != null && split.getFooter().getInputFile() != null
-      && split.getFooter().getInputFile() instanceof HadoopInputFile) {
+    if (split.getFooter() != null
+        && split.getFooter().getInputFile() != null
+        && split.getFooter().getInputFile() instanceof HadoopInputFile) {
       inputFile = (HadoopInputFile) split.getFooter().getInputFile();
     } else {
       inputFile = HadoopInputFile.fromPath(path, configuration);

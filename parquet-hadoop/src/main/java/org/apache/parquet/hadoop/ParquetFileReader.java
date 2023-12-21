@@ -627,7 +627,8 @@ public class ParquetFileReader implements Closeable {
     fileDecryptor.setFileCryptoMetaData(
         fileCryptoMetaData.getEncryption_algorithm(), true, fileCryptoMetaData.getKey_metadata());
     // footer length is required only for signed plaintext footers
-    ParquetMetadata parquetMetadata =converter.readParquetMetadata(footerBytesStream, options.getMetadataFilter(), fileDecryptor, true, 0);
+    ParquetMetadata parquetMetadata =
+        converter.readParquetMetadata(footerBytesStream, options.getMetadataFilter(), fileDecryptor, true, 0);
     parquetMetadata.setInputFile(file);
     return parquetMetadata;
   }
