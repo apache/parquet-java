@@ -46,6 +46,7 @@ import org.apache.parquet.hadoop.metadata.FileMetaData;
 import org.apache.parquet.hadoop.util.ContextUtil;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.hadoop.util.counters.BenchmarkCounter;
+import org.apache.parquet.io.InputFile;
 import org.apache.parquet.io.ParquetDecodingException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -155,11 +156,9 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
     }
 
     // open a reader with the metadata filter
-    HadoopInputFile inputFile;
-    if (split.getFooter() != null
-        && split.getFooter().getInputFile() != null
-        && split.getFooter().getInputFile() instanceof HadoopInputFile) {
-      inputFile = (HadoopInputFile) split.getFooter().getInputFile();
+    InputFile inputFile;
+    if (split.getFooter() != null && split.getFooter().getInputFile() != null) {
+      inputFile = split.getFooter().getInputFile();
     } else {
       inputFile = HadoopInputFile.fromPath(path, configuration);
     }
