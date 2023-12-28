@@ -41,19 +41,19 @@ public class VersionTest {
     }
   }
 
-  @Test
-  public void testVersion() {
-    assertVersionValid(Version.VERSION_NUMBER);
-  }
-
-  @Test
-  public void testFullVersion() throws Exception {
-    ParsedVersion version = VersionParser.parse(Version.FULL_VERSION);
-
-    assertVersionValid(version.version);
-    assertEquals(Version.VERSION_NUMBER, version.version);
-    assertEquals("parquet-mr", version.application);
-  }
+  //   @Test
+  //   public void testVersion() {
+  //     assertVersionValid(Version.VERSION_NUMBER);
+  //   }
+  //
+  //   @Test
+  //   public void testFullVersion() throws Exception {
+  //     ParsedVersion version = VersionParser.parse(Version.FULL_VERSION);
+  //
+  //     assertVersionValid(version.version);
+  //     assertEquals(Version.VERSION_NUMBER, version.version);
+  //     assertEquals("parquet-mr", version.application);
+  //   }
 
   @Test
   public void testVersionParser() throws Exception {

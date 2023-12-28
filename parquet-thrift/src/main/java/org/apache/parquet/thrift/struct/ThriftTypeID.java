@@ -58,6 +58,9 @@ public enum ThriftTypeID {
   static {
     types = new ThriftTypeID[18];
     for (ThriftTypeID t : ThriftTypeID.values()) {
+      // The Thrift Type for Enum is not part of the spec, but is as a Java implementation detail:
+      // https://github.com/apache/thrift/blob/5cf71b2beec3c67a4c8452ddabbbc6ae43fff16f/lib/java/src/main/java/org/apache/thrift/protocol/TType.java#L39-L40
+      // So we put it at the very end
       if (t.thriftType == -1) {
         types[17] = t;
       } else {
