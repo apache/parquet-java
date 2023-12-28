@@ -226,10 +226,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
   public String memUsageString(String prefix) {
     return String.format(
         "%s DictionaryValuesWriter{\n" + "%s\n" + "%s\n" + "%s}\n",
-        prefix,
-        prefix + " dict:" + dictionaryByteSize,
-        prefix + " values:" + String.valueOf(encodedValues.size() * 4),
-        prefix);
+        prefix, prefix + " dict:" + dictionaryByteSize, prefix + " values:" + encodedValues.size() * 4, prefix);
   }
 
   public static class PlainBinaryDictionaryValuesWriter extends DictionaryValuesWriter {

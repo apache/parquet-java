@@ -467,6 +467,13 @@ public class Types {
 
               @Override
               public Optional<Boolean> visit(
+                  LogicalTypeAnnotation.Float16LogicalTypeAnnotation float16LogicalType) {
+                return checkFixedPrimitiveType(
+                    LogicalTypeAnnotation.Float16LogicalTypeAnnotation.BYTES, float16LogicalType);
+              }
+
+              @Override
+              public Optional<Boolean> visit(
                   LogicalTypeAnnotation.DecimalLogicalTypeAnnotation decimalLogicalType) {
                 Preconditions.checkState(
                     (primitiveType == PrimitiveTypeName.INT32)

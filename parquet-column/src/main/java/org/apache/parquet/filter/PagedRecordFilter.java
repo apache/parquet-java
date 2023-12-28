@@ -18,8 +18,6 @@
  */
 package org.apache.parquet.filter;
 
-import org.apache.parquet.column.ColumnReader;
-
 /**
  * Filter which will only materialize a page worth of results.
  */
@@ -36,13 +34,8 @@ public final class PagedRecordFilter implements RecordFilter {
    * @param pageSize The size of the page.
    * @return a paged record filter
    */
-  public static final UnboundRecordFilter page(final long startPos, final long pageSize) {
-    return new UnboundRecordFilter() {
-      @Override
-      public RecordFilter bind(Iterable<ColumnReader> readers) {
-        return new PagedRecordFilter(startPos, pageSize);
-      }
-    };
+  public static UnboundRecordFilter page(final long startPos, final long pageSize) {
+    return readers -> new PagedRecordFilter(startPos, pageSize);
   }
 
   /**

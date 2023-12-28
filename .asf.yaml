@@ -16,5 +16,10 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-* text eol=lf
-core.autocrlf=false
+# https://cwiki.apache.org/confluence/display/INFRA/git+-+.asf.yaml+features
+#
+notifications:
+  commits:      commits@parquet.apache.org
+  issues:       issues@parquet.apache.org
+  pullrequests: issues@parquet.apache.org
+  jira_options: link

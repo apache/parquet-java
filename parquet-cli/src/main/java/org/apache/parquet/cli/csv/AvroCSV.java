@@ -108,7 +108,7 @@ public class AvroCSV {
       Objects.requireNonNull(line, "No content to infer schema");
       header = new String[line.length];
       for (int i = 0; i < line.length; i += 1) {
-        header[i] = "field_" + String.valueOf(i);
+        header[i] = "field_" + i;
       }
     }
 

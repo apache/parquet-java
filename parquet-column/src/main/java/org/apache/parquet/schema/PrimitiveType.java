@@ -23,6 +23,7 @@ import static java.util.Optional.of;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit.MILLIS;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
@@ -398,6 +399,12 @@ public final class PrimitiveType extends Type {
               public Optional<PrimitiveComparator> visit(UUIDLogicalTypeAnnotation uuidLogicalType) {
                 return of(PrimitiveComparator.UNSIGNED_LEXICOGRAPHICAL_BINARY_COMPARATOR);
               }
+
+              @Override
+              public Optional<PrimitiveComparator> visit(
+                  LogicalTypeAnnotation.Float16LogicalTypeAnnotation float16LogicalType) {
+                return of(PrimitiveComparator.BINARY_AS_FLOAT16_COMPARATOR);
+              }
             })
             .orElseThrow(() -> new ShouldNeverHappenException(
                 "No comparator logic implemented for FIXED_LEN_BYTE_ARRAY logical type: "
@@ -605,6 +612,14 @@ public final class PrimitiveType extends Type {
   }
 
   /**
+   * @param logicalType LogicalTypeAnnotation
+   * @return a new PrimitiveType with the same fields and a new id null
+   */
+  public PrimitiveType withLogicalTypeAnnotation(LogicalTypeAnnotation logicalType) {
+    return new PrimitiveType(getRepetition(), primitive, length, getName(), logicalType, getId());
+  }
+
+  /**
    * @return the primitive type
    */
   public PrimitiveTypeName getPrimitiveTypeName() {
@@ -734,7 +749,7 @@ public final class PrimitiveType extends Type {
 
   @Override
   protected List<String[]> getPaths(int depth) {
-    return Arrays.<String[]>asList(new String[depth]);
+    return Collections.singletonList(new String[depth]);
   }
 
   @Override

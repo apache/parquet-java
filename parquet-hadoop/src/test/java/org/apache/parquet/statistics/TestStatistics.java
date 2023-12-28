@@ -57,6 +57,8 @@ import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.PrimitiveConverter;
+import org.apache.parquet.schema.Float16;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.OriginalType;
 import org.apache.parquet.schema.PrimitiveType;
@@ -322,7 +324,8 @@ public class TestStatistics {
           new RandomValues.LongGenerator(random.nextLong()),
           new RandomValues.LongGenerator(random.nextLong()),
           new RandomValues.LongGenerator(random.nextLong()),
-          new RandomValues.FixedGenerator(random.nextLong(), 12));
+          new RandomValues.FixedGenerator(random.nextLong(), 12),
+          new RandomValues.FixedGenerator(random.nextLong(), 2));
     }
 
     private static MessageType buildSchema(long seed) {
@@ -388,7 +391,11 @@ public class TestStatistics {
           Types.optional(FIXED_LEN_BYTE_ARRAY)
               .length(12)
               .as(OriginalType.INTERVAL)
-              .named("interval"));
+              .named("interval"),
+          Types.optional(FIXED_LEN_BYTE_ARRAY)
+              .length(2)
+              .named("float16")
+              .withLogicalTypeAnnotation(LogicalTypeAnnotation.float16Type()));
     }
 
     private static int calculatePrecision(int byteCnt) {
@@ -410,6 +417,16 @@ public class TestStatistics {
           switch (type.asPrimitiveType().getPrimitiveTypeName()) {
             case BINARY:
             case FIXED_LEN_BYTE_ARRAY:
+              if (type.getLogicalTypeAnnotation()
+                  instanceof LogicalTypeAnnotation.Float16LogicalTypeAnnotation) {
+                Binary b = ((RandomBinaryBase<?>) generator).nextBinaryValue();
+                // return smallest negative value a half-precision float when it is NaN
+                Binary v = Float16.isNaN(b.get2BytesLittleEndian())
+                    ? b
+                    : Binary.fromConstantByteArray(new byte[] {(byte) 0xff, (byte) 0xfb});
+                group.append(type.getName(), v);
+                break;
+              }
             case INT96:
               group.append(type.getName(), ((RandomBinaryBase<?>) generator).nextBinaryValue());
               break;

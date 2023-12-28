@@ -441,4 +441,12 @@ public abstract class PrimitiveStringifier {
       }
     }
   };
+
+  static final PrimitiveStringifier FLOAT16_STRINGIFIER = new BinaryStringifierBase("FLOAT16_STRINGIFIER") {
+
+    @Override
+    String stringifyNotNull(Binary value) {
+      return Float16.toFloatString(value);
+    }
+  };
 }
