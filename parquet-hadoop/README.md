@@ -290,20 +290,6 @@ true if the reader is using a `DirectByteBufferAllocator`
 **Description:** Class implementing EncryptionPropertiesFactory.  
 **Default value:** None. If not set, the file won't be encrypted by a crypto factory.  
 
----
-
-**Property:** `parquet.write.metadata.extra`  
-**Description:** Prefix for extra metadata keys to write to the file footer.  
-**Default value:** null  
-**Example:**  
-```java
-// Appends entry {some-key: foo} to file footer metadata
-conf.set("parquet.write.metadata.extra.some-key", "foo");
-
-// Appends entry {nested.some-key: bar} to file footer metadata
-conf.set("parquet.write.metadata.extra.nested.some-key", "bar");
-```
-
 ## Class: ParquetInputFormat
 
 **Property:** `parquet.read.support.class`  
