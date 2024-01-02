@@ -406,25 +406,25 @@ public class ParquetWriter<T> implements Closeable {
     this.codecFactory = codecFactory;
     CompressionCodecFactory.BytesInputCompressor compressor = codecFactory.getCompressor(compressionCodecName);
 
-    final String extraMetadataConfPrefix = ParquetOutputFormat.EXTRA_WRITE_METADATA + ".";
-    final Map<String, String> extraMetadata = new HashMap<>(writeContext.getExtraMetaData());
+    final Map<String, String> extraMetadata;
+    if (encodingProps.getExtraMetaData() == null
+        || encodingProps.getExtraMetaData().isEmpty()) {
+      extraMetadata = writeContext.getExtraMetaData();
+    } else {
+      extraMetadata = new HashMap<>(writeContext.getExtraMetaData());
 
-    conf.iterator().forEachRemaining(entry -> {
-      if (entry.getKey().startsWith(extraMetadataConfPrefix)) {
-        final String metadataKey = entry.getKey().replaceFirst(extraMetadataConfPrefix, "");
-
+      encodingProps.getExtraMetaData().forEach((metadataKey, metadataValue) -> {
         if (metadataKey.equals(OBJECT_MODEL_NAME_PROP)) {
           throw new IllegalArgumentException("Cannot overwrite metadata key " + OBJECT_MODEL_NAME_PROP
               + ". Please use another key name.");
         }
 
-        if (extraMetadata.put(metadataKey, entry.getValue()) != null) {
-          throw new IllegalArgumentException("Extra metadata key " + metadataKey
-              + " conflicts with reserved metadata keys present in "
-              + writeSupport.getClass().getName() + ". Please use another key name.");
+        if (extraMetadata.put(metadataKey, metadataValue) != null) {
+          throw new IllegalArgumentException(
+              "Duplicate metadata key " + metadataKey + ". Please use another key name.");
         }
-      }
-    });
+      });
+    }
 
     this.writer = new InternalParquetRecordWriter<T>(
         fileWriter, writeSupport, schema, extraMetadata, rowGroupSize, compressor, validating, encodingProps);
@@ -862,6 +862,17 @@ public class ParquetWriter<T> implements Closeable {
      */
     public SELF withStatisticsTruncateLength(int length) {
       encodingPropsBuilder.withStatisticsTruncateLength(length);
+      return self();
+    }
+
+    /**
+     * Sets additional metadata entries to be included in the file footer.
+     *
+     * @param extraMetaData a Map of additional stringly-typed metadata entries
+     * @return this builder for method chaining
+     */
+    public SELF withExtraMetaData(Map<String, String> extraMetaData) {
+      encodingPropsBuilder.withExtraMetaData(extraMetaData);
       return self();
     }
 

@@ -411,9 +411,6 @@ public class TestParquetWriter {
   @Test
   public void testExtraMetaData() throws Exception {
     final Configuration conf = new Configuration();
-    conf.set("parquet.write.metadata.extra.simple-key", "some-value-1");
-    conf.set("parquet.write.metadata.extra.nested.key", "some-value-2");
-
     final File testDir = temp.newFile();
     testDir.delete();
 
@@ -425,6 +422,7 @@ public class TestParquetWriter {
       final Path filePath = new Path(testDir.getAbsolutePath(), version.name());
       final ParquetWriter<Group> writer = ExampleParquetWriter.builder(new TestOutputFile(filePath, conf))
           .withConf(conf)
+          .withExtraMetaData(ImmutableMap.of("simple-key", "some-value-1", "nested.key", "some-value-2"))
           .build();
       for (int i = 0; i < 1000; i++) {
         writer.write(f.newGroup().append("int32_field", 32));
@@ -451,8 +449,6 @@ public class TestParquetWriter {
   @Test
   public void testFailsOnConflictingExtraMetaDataKey() throws Exception {
     final Configuration conf = new Configuration();
-    conf.set("parquet.write.metadata.extra.simple.key", "some-value-1");
-
     final File testDir = temp.newFile();
     testDir.delete();
 
@@ -461,10 +457,11 @@ public class TestParquetWriter {
 
     for (WriterVersion version : WriterVersion.values()) {
       final Path filePath = new Path(testDir.getAbsolutePath(), version.name());
+
       Assert.assertThrows(IllegalArgumentException.class, () -> ExampleParquetWriter.builder(
               new TestOutputFile(filePath, conf))
           .withConf(conf)
-          .withExtraMetaData(ImmutableMap.of("simple.key", "some-value-2"))
+          .withExtraMetaData(ImmutableMap.of(ParquetWriter.OBJECT_MODEL_NAME_PROP, "some-value-3"))
           .build());
     }
   }

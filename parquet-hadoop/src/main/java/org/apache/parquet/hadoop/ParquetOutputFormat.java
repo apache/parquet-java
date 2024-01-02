@@ -140,8 +140,6 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   public static final String ENABLE_DICTIONARY = "parquet.enable.dictionary";
   public static final String VALIDATION = "parquet.validation";
   public static final String WRITER_VERSION = "parquet.writer.version";
-
-  public static final String EXTRA_WRITE_METADATA = "parquet.write.metadata.extra";
   public static final String MEMORY_POOL_RATIO = "parquet.memory.pool.ratio";
   public static final String MIN_MEMORY_ALLOCATION = "parquet.memory.min.chunk.size";
   public static final String MAX_PADDING_BYTES = "parquet.writer.max-padding";

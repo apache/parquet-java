@@ -20,6 +20,8 @@ package org.apache.parquet.column;
 
 import static org.apache.parquet.bytes.BytesUtils.getWidthFromMaxInt;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 import java.util.OptionalDouble;
 import java.util.OptionalLong;
@@ -113,6 +115,7 @@ public class ParquetProperties {
   private final int pageRowCountLimit;
   private final boolean pageWriteChecksumEnabled;
   private final boolean enableByteStreamSplit;
+  private final Map<String, String> extraMetaData;
 
   private ParquetProperties(Builder builder) {
     this.pageSizeThreshold = builder.pageSize;
@@ -139,6 +142,7 @@ public class ParquetProperties {
     this.pageRowCountLimit = builder.pageRowCountLimit;
     this.pageWriteChecksumEnabled = builder.pageWriteChecksumEnabled;
     this.enableByteStreamSplit = builder.enableByteStreamSplit;
+    this.extraMetaData = builder.extraMetaData;
   }
 
   public ValuesWriter newRepetitionLevelWriter(ColumnDescriptor path) {
@@ -293,6 +297,10 @@ public class ParquetProperties {
     return numBloomFilterCandidates.getValue(column);
   }
 
+  public Map<String, String> getExtraMetaData() {
+    return extraMetaData;
+  }
+
   public static Builder builder() {
     return new Builder();
   }
@@ -342,6 +350,7 @@ public class ParquetProperties {
     private int pageRowCountLimit = DEFAULT_PAGE_ROW_COUNT_LIMIT;
     private boolean pageWriteChecksumEnabled = DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED;
     private boolean enableByteStreamSplit = DEFAULT_IS_BYTE_STREAM_SPLIT_ENABLED;
+    private Map<String, String> extraMetaData = new HashMap<>();
 
     private Builder() {
       enableDict = ColumnProperty.<Boolean>builder().withDefaultValue(DEFAULT_IS_DICTIONARY_ENABLED);
@@ -373,6 +382,7 @@ public class ParquetProperties {
       this.numBloomFilterCandidates = ColumnProperty.<Integer>builder(toCopy.numBloomFilterCandidates);
       this.maxBloomFilterBytes = toCopy.maxBloomFilterBytes;
       this.enableByteStreamSplit = toCopy.enableByteStreamSplit;
+      this.extraMetaData = toCopy.extraMetaData;
     }
 
     /**
@@ -581,6 +591,11 @@ public class ParquetProperties {
 
     public Builder withPageWriteChecksumEnabled(boolean val) {
       this.pageWriteChecksumEnabled = val;
+      return this;
+    }
+
+    public Builder withExtraMetaData(Map<String, String> extraMetaData) {
+      this.extraMetaData = extraMetaData;
       return this;
     }
 
