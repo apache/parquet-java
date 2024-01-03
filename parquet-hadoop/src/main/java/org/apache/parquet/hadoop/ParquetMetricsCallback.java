@@ -24,12 +24,12 @@ import org.apache.hadoop.classification.InterfaceStability;
  *  A simple interface to pass basic metric values by name to any implementation. Typically, an
  *  implementation of this interface will serve as a bridge to pass metric values on
  *  to the metrics system of a distributed engine (hadoop, spark, etc).
- *  <br/>
+ *  <br>
  *  Development Note: This interface should provide a default implementation for any new metric tracker
  *  added to allow for backward compatibility
- *  <br/>
+ *  <br>
  *   e.g.
- *  <br/>
+ *  <br>
  *  <code>default addMaximum(key, value) { } ; </code>
  */
 @InterfaceStability.Unstable
