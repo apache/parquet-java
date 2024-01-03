@@ -102,9 +102,9 @@
     <jcommander.version>1.82</jcommander.version>
     <tukaani.version>1.9</tukaani.version>
     <zstd-jni.version>1.5.0-1</zstd-jni.version>
-    <commons-text.version>1.8</commons-text.version>
+    <commons-text.version>1.11.0</commons-text.version>
     <jsr305.version>3.0.2</jsr305.version>
-    <commons-lang3.version>3.12.0</commons-lang3.version>
+    <commons-lang3.version>3.14.0</commons-lang3.version>
 
     <!-- properties for the profiles -->
     <surefire.argLine> </surefire.argLine>
@@ -462,7 +462,7 @@
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>buildnumber-maven-plugin</artifactId>
-        <version>3.1.0</version>
+        <version>3.2.0</version>
         <executions>
           <execution>
             <phase>validate</phase>
@@ -510,6 +510,7 @@
             <exclude>thrift-${thrift.version}/**</exclude>
             <exclude>thrift-${thrift.version}.tar.gz</exclude>
             <exclude>**/dependency-reduced-pom.xml</exclude>
+            <exclude>**/*.rej</exclude>
           </excludes>
         </configuration>
       </plugin>
@@ -598,6 +599,9 @@
               <exclude>org.apache.parquet.arrow.schema.SchemaMapping</exclude>
 
               <exclude>org.apache.parquet.hadoop.ParquetFileReader.PARQUET_READ_PARALLELISM</exclude>
+
+              <exclude>org.apache.parquet.io.api.Binary#get2BytesLittleEndian()</exclude>
+              <exclude>org.apache.parquet.schema.LogicalTypeAnnotation$Float16LogicalTypeAnnotation#accept(org.apache.parquet.schema.LogicalTypeAnnotation$LogicalTypeAnnotationVisitor)</exclude>
             </excludes>
           </parameter>
         </configuration>

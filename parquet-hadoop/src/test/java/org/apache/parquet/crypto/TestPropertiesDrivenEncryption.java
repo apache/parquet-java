@@ -158,7 +158,7 @@ public class TestPropertiesDrivenEncryption {
   public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
   @Rule
-  public ErrorCollector errorCollector = new ErrorCollector();
+  public final ErrorCollector errorCollector = new ErrorCollector();
 
   private static final Base64.Encoder encoder = Base64.getEncoder();
   private static final String FOOTER_MASTER_KEY =
@@ -783,9 +783,7 @@ public class TestPropertiesDrivenEncryption {
     String fileNamePrefix = file.replaceFirst("(.*)_[0-9]+.parquet.encrypted", "$1");
     ;
     try {
-      EncryptionConfiguration encryptionConfiguration =
-          EncryptionConfiguration.valueOf(fileNamePrefix.toUpperCase());
-      return encryptionConfiguration;
+      return EncryptionConfiguration.valueOf(fileNamePrefix.toUpperCase());
     } catch (IllegalArgumentException e) {
       LOG.error("File name doesn't match any known encryption configuration: " + file);
       synchronized (errorCollector) {

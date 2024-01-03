@@ -129,9 +129,9 @@ public class TestFileBuilder {
       builder.withBloomFilterEnabled(columnPath, true);
     }
 
-    try (ParquetWriter writer = builder.build()) {
-      for (int i = 0; i < fileContent.length; i++) {
-        writer.write(fileContent[i]);
+    try (ParquetWriter<Group> writer = builder.build()) {
+      for (SimpleGroup simpleGroup : fileContent) {
+        writer.write(simpleGroup);
       }
     }
     return new EncryptionTestFile(fileName, fileContent);
@@ -152,18 +152,7 @@ public class TestFileBuilder {
   private void addValueToSimpleGroup(Group g, Type type) {
     if (type.isPrimitive()) {
       PrimitiveType primitiveType = (PrimitiveType) type;
-      if (primitiveType.getPrimitiveTypeName().equals(INT32)) {
-        g.add(type.getName(), getInt());
-      } else if (primitiveType.getPrimitiveTypeName().equals(INT64)) {
-        g.add(type.getName(), getLong());
-      } else if (primitiveType.getPrimitiveTypeName().equals(BINARY)) {
-        g.add(type.getName(), getString());
-      } else if (primitiveType.getPrimitiveTypeName().equals(FLOAT)) {
-        g.add(type.getName(), getFloat());
-      } else if (primitiveType.getPrimitiveTypeName().equals(DOUBLE)) {
-        g.add(type.getName(), getDouble());
-      }
-      // Only support 5 types now, more can be added later
+      addPrimitiveValueToSimpleGroup(g, primitiveType);
     } else {
       GroupType groupType = (GroupType) type;
       Group parentGroup = g.addGroup(groupType.getName());
@@ -171,6 +160,34 @@ public class TestFileBuilder {
         addValueToSimpleGroup(parentGroup, field);
       }
     }
+  }
+
+  private void addPrimitiveValueToSimpleGroup(Group g, PrimitiveType primitiveType) {
+    if (primitiveType.isRepetition(Type.Repetition.REPEATED)) {
+      int listSize = ThreadLocalRandom.current().nextInt(1, 10);
+      for (int i = 0; i < listSize; i++) {
+        addSinglePrimitiveValueToSimpleGroup(g, primitiveType);
+      }
+    } else {
+      addSinglePrimitiveValueToSimpleGroup(g, primitiveType);
+    }
+  }
+
+  private void addSinglePrimitiveValueToSimpleGroup(Group g, PrimitiveType primitiveType) {
+    if (primitiveType.getPrimitiveTypeName().equals(INT32)) {
+      g.add(primitiveType.getName(), getInt());
+    } else if (primitiveType.getPrimitiveTypeName().equals(INT64)) {
+      g.add(primitiveType.getName(), getLong());
+    } else if (primitiveType.getPrimitiveTypeName().equals(BINARY)) {
+      g.add(primitiveType.getName(), getString());
+    } else if (primitiveType.getPrimitiveTypeName().equals(FLOAT)) {
+      g.add(primitiveType.getName(), getFloat());
+    } else if (primitiveType.getPrimitiveTypeName().equals(DOUBLE)) {
+      g.add(primitiveType.getName(), getDouble());
+    } else {
+      throw new UnsupportedOperationException("Unsupported type: " + primitiveType);
+    }
+    // Only support 5 types now, more can be added later
   }
 
   private static long getInt() {

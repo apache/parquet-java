@@ -155,7 +155,7 @@ public class AvroReadSupport<T> extends ReadSupport<T> {
 
     GenericData model = getDataModel(configuration, avroSchema);
     String compatEnabled = metadata.get(AvroReadSupport.AVRO_COMPATIBILITY);
-    if (compatEnabled != null && Boolean.valueOf(compatEnabled)) {
+    if (Boolean.parseBoolean(compatEnabled)) {
       return newCompatMaterializer(parquetSchema, avroSchema, model);
     }
     return new AvroRecordMaterializer<T>(parquetSchema, avroSchema, model);

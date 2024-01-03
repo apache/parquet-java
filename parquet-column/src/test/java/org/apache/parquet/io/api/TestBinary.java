@@ -22,6 +22,7 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -267,5 +268,50 @@ public class TestBinary {
 
     assertTrue(b1.compareTo(b3) == 0);
     assertTrue(b3.compareTo(b1) == 0);
+  }
+
+  @Test
+  public void testGet2BytesLittleEndian() {
+    // ByteBufferBackedBinary: get2BytesLittleEndian
+    Binary b1 = Binary.fromConstantByteBuffer(ByteBuffer.wrap(new byte[] {0x01, 0x02}));
+    assertEquals((short) 0x0201, b1.get2BytesLittleEndian());
+
+    // ByteArrayBackedBinary: get2BytesLittleEndian
+    Binary b2 = Binary.fromConstantByteArray(new byte[] {0x01, 0x02});
+    assertEquals((short) 0x0201, b2.get2BytesLittleEndian());
+
+    // ByteArraySliceBackedBinary: get2BytesLittleEndian
+    Binary b3 = Binary.fromConstantByteArray(new byte[] {0x00, 0x01, 0x02, 0x03}, 1, 2);
+    assertEquals((short) 0x0201, b3.get2BytesLittleEndian());
+  }
+
+  @Test
+  public void testGet2BytesLittleEndianWrongLength() {
+    // ByteBufferBackedBinary: get2BytesLittleEndian
+    Binary b1 = Binary.fromConstantByteBuffer(ByteBuffer.wrap(new byte[] {0x01, 0x02, 0x03}));
+    try {
+      b1.get2BytesLittleEndian();
+      fail("Should have thrown an exception");
+    } catch (IllegalArgumentException e) {
+      // expected
+    }
+
+    // ByteArrayBackedBinary: get2BytesLittleEndian
+    Binary b2 = Binary.fromConstantByteArray(new byte[] {0x01, 0x02, 0x03});
+    try {
+      b2.get2BytesLittleEndian();
+      fail("Should have thrown an exception");
+    } catch (IllegalArgumentException e) {
+      // expected
+    }
+
+    // ByteArraySliceBackedBinary: get2BytesLittleEndian
+    Binary b3 = Binary.fromConstantByteArray(new byte[] {0x00, 0x01, 0x02, 0x03}, 1, 3);
+    try {
+      b3.get2BytesLittleEndian();
+      fail("Should have thrown an exception");
+    } catch (IllegalArgumentException e) {
+      // expected
+    }
   }
 }

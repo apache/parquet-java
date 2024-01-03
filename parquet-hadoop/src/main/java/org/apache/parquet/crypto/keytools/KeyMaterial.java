@@ -171,7 +171,7 @@ public class KeyMaterial {
       keyMaterialMap.put(KeyMetadata.KEY_MATERIAL_INTERNAL_STORAGE_FIELD, Boolean.TRUE);
     }
     // 2. Write isFooterKey
-    keyMaterialMap.put(IS_FOOTER_KEY_FIELD, Boolean.valueOf(isFooterKey));
+    keyMaterialMap.put(IS_FOOTER_KEY_FIELD, isFooterKey);
     if (isFooterKey) {
       // 3. For footer key, write KMS Instance ID
       keyMaterialMap.put(KMS_INSTANCE_ID_FIELD, kmsInstanceID);
@@ -183,7 +183,7 @@ public class KeyMaterial {
     // 6. Write wrapped DEK
     keyMaterialMap.put(WRAPPED_DEK_FIELD, encodedWrappedDEK);
     // 7. Write isDoubleWrapped
-    keyMaterialMap.put(DOUBLE_WRAPPING_FIELD, Boolean.valueOf(isDoubleWrapped));
+    keyMaterialMap.put(DOUBLE_WRAPPING_FIELD, isDoubleWrapped);
     if (isDoubleWrapped) {
       // 8. In double wrapping mode, write KEK ID
       keyMaterialMap.put(KEK_ID_FIELD, kekID);

@@ -168,7 +168,7 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
       case MAP:
         return new MapConverter(parent, type.asGroupType(), schema, model);
       case RECORD:
-        return new AvroIndexedRecordConverter(parent, type.asGroupType(), schema, model);
+        return new AvroIndexedRecordConverter<>(parent, type.asGroupType(), schema, model);
       case STRING:
         return new AvroConverters.FieldStringConverter(parent);
       case UNION:
@@ -260,7 +260,7 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
     private final ParentValueContainer parent;
     private final Schema avroSchema;
     private final Class<? extends GenericData.Fixed> fixedClass;
-    private final Constructor fixedClassCtor;
+    private final Constructor<? extends Object> fixedClassCtor;
 
     public FieldFixedConverter(ParentValueContainer parent, Schema avroSchema, GenericData model) {
       this.parent = parent;
