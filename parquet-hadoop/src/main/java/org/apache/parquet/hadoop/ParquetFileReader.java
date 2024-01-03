@@ -2012,7 +2012,7 @@ public class ParquetFileReader implements Closeable {
     private void setReadMetrics(long startNs) {
       ParquetMetricsCallback metricsCallback = options.getMetricsCallback();
       if (metricsCallback != null) {
-        long totalFileReadTimeNs = System.nanoTime() - startNs;
+        long totalFileReadTimeNs = Math.max(System.nanoTime() - startNs, 0);
         double sizeInMb = ((double) length) / (1024 * 1024);
         double timeInSec = ((double) totalFileReadTimeNs) / 1000_0000_0000L;
         double throughput = sizeInMb / timeInSec;
@@ -2021,7 +2021,7 @@ public class ParquetFileReader implements Closeable {
             sizeInMb,
             timeInSec,
             throughput);
-        metricsCallback.setValueLong(ParquetFileReaderMetrics.ReadTime.name(), totalFileReadTimeNs);
+        metricsCallback.setDuration(ParquetFileReaderMetrics.ReadTime.name(), totalFileReadTimeNs);
         metricsCallback.setValueLong(ParquetFileReaderMetrics.ReadSize.name(), length);
         metricsCallback.setValueDouble(ParquetFileReaderMetrics.ReadThroughput.name(), throughput);
       }

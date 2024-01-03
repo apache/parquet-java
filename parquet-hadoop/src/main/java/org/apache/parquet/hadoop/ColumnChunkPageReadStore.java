@@ -306,7 +306,7 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
 
     private void setDecompressMetrics(BytesInput bytes, long start) {
       if (metricsCallback != null) {
-        long time = System.nanoTime() - start;
+        long time = Math.max(System.nanoTime() - start, 0);
         long len = bytes.size();
         double throughput = ((double) len / time) * ((double) 1000_000_000L) / (1024 * 1024);
         LOG.debug(
@@ -314,7 +314,7 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
             len / (1024 * 1024),
             time / 1000_000L,
             throughput);
-        metricsCallback.setValueLong(ParquetFileReaderMetrics.DecompressTime.name(), time);
+        metricsCallback.setDuration(ParquetFileReaderMetrics.DecompressTime.name(), time);
         metricsCallback.setValueLong(ParquetFileReaderMetrics.DecompressSize.name(), len);
         metricsCallback.setValueDouble(ParquetFileReaderMetrics.DecompressThroughput.name(), throughput);
       }

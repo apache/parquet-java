@@ -18,11 +18,21 @@
  */
 package org.apache.parquet.hadoop;
 
+import org.apache.hadoop.classification.InterfaceStability;
+
 /**
- *  a simple interface to pass basic metric values by name to any implementation. Typically an
+ *  A simple interface to pass basic metric values by name to any implementation. Typically, an
  *  implementation of this interface will serve as a bridge to pass metric values on
  *  to the metrics system of a distributed engine (hadoop, spark, etc).
+ *  <br/>
+ *  Development Note: This interface should provide a default implementation for any new metric tracker
+ *  added to allow for backward compatibility
+ *  <br/>
+ *   e.g.
+ *  <br/>
+ *  <code>default addMaximum(key, value) { } ; </code>
  */
+@InterfaceStability.Unstable
 public interface ParquetMetricsCallback {
   void setValueInt(String name, int value);
 
@@ -31,4 +41,6 @@ public interface ParquetMetricsCallback {
   void setValueFloat(String name, float value);
 
   void setValueDouble(String name, double value);
+
+  void setDuration(String name, long value);
 }
