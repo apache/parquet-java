@@ -1809,8 +1809,7 @@ public class ParquetFileReader implements Closeable {
           aadPrefix,
           rowGroupOrdinal,
           columnOrdinal,
-          options,
-          options.getMetricsCallback());
+          options);
     }
 
     private boolean hasMorePages(long valuesCountReadSoFar, int dataPageCountReadSoFar) {
