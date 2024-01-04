@@ -827,8 +827,8 @@ public class ParquetFileReader implements Closeable {
    * @param conf   the Hadoop Configuration
    * @param file   Path to a parquet file
    * @param footer a {@link ParquetMetadata} footer already read from the file
+   * @param options {@link ParquetReadOptions}
    * @throws IOException if the file can not be opened
-   * @deprecated will be removed in 2.0.0.
    */
   public ParquetFileReader(Configuration conf, Path file, ParquetMetadata footer, ParquetReadOptions options)
       throws IOException {

@@ -77,7 +77,7 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
     private final BlockCipher.Decryptor blockDecryptor;
     private final byte[] dataPageAAD;
     private final byte[] dictionaryPageAAD;
-    private final ParquetMetricsCallback metricsCallback;
+//     private final ParquetMetricsCallback metricsCallback;
 
     ColumnChunkPageReader(
         BytesInputDecompressor decompressor,
@@ -89,8 +89,7 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
         byte[] fileAAD,
         int rowGroupOrdinal,
         int columnOrdinal,
-        ParquetReadOptions options,
-        ParquetMetricsCallback callback) {
+        ParquetReadOptions options) {
       this.decompressor = decompressor;
       this.compressedPages = new ArrayDeque<DataPage>(compressedPages);
       this.compressedDictionaryPage = compressedDictionaryPage;
@@ -112,7 +111,6 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
         dataPageAAD = null;
         dictionaryPageAAD = null;
       }
-      this.metricsCallback = callback;
     }
 
     private int getPageOrdinal(int currentPageIndex) {
@@ -305,6 +303,7 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
     }
 
     private void setDecompressMetrics(BytesInput bytes, long start) {
+      final ParquetMetricsCallback metricsCallback = options.getMetricsCallback();
       if (metricsCallback != null) {
         long time = Math.max(System.nanoTime() - start, 0);
         long len = bytes.size();
