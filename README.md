@@ -40,7 +40,7 @@ tar xzf thrift-0.16.0.tar.gz
 cd thrift-0.16.0
 chmod +x ./configure
 ./configure --disable-libs
-sudo make install
+sudo make install -j
 ```
 
 If you're on OSX and use homebrew, you can instead install Thrift 0.16.0 with `brew` and ensure that it comes first in your `PATH`.
