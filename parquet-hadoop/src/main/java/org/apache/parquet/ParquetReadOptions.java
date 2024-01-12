@@ -43,6 +43,7 @@ import org.apache.parquet.conf.ParquetConfiguration;
 import org.apache.parquet.crypto.FileDecryptionProperties;
 import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.format.converter.ParquetMetadataConverter;
+import org.apache.parquet.hadoop.ParquetMetricsCallback;
 import org.apache.parquet.hadoop.util.HadoopCodecs;
 
 // Internal use only
@@ -75,6 +76,7 @@ public class ParquetReadOptions {
   private final Map<String, String> properties;
   private final FileDecryptionProperties fileDecryptionProperties;
   private final ParquetConfiguration conf;
+  private final ParquetMetricsCallback metricsCallback;
 
   ParquetReadOptions(
       boolean useSignedStringMinMax,
@@ -91,7 +93,8 @@ public class ParquetReadOptions {
       ByteBufferAllocator allocator,
       int maxAllocationSize,
       Map<String, String> properties,
-      FileDecryptionProperties fileDecryptionProperties) {
+      FileDecryptionProperties fileDecryptionProperties,
+      ParquetMetricsCallback metricsCallback) {
     this(
         useSignedStringMinMax,
         useStatsFilter,
@@ -108,6 +111,7 @@ public class ParquetReadOptions {
         maxAllocationSize,
         properties,
         fileDecryptionProperties,
+        metricsCallback,
         new HadoopParquetConfiguration());
   }
 
@@ -127,6 +131,7 @@ public class ParquetReadOptions {
       int maxAllocationSize,
       Map<String, String> properties,
       FileDecryptionProperties fileDecryptionProperties,
+      ParquetMetricsCallback metricsCallback,
       ParquetConfiguration conf) {
     this.useSignedStringMinMax = useSignedStringMinMax;
     this.useStatsFilter = useStatsFilter;
@@ -143,6 +148,7 @@ public class ParquetReadOptions {
     this.maxAllocationSize = maxAllocationSize;
     this.properties = Collections.unmodifiableMap(properties);
     this.fileDecryptionProperties = fileDecryptionProperties;
+    this.metricsCallback = metricsCallback;
     this.conf = conf;
   }
 
@@ -210,6 +216,10 @@ public class ParquetReadOptions {
     return fileDecryptionProperties;
   }
 
+  public ParquetMetricsCallback getMetricsCallback() {
+    return metricsCallback;
+  }
+
   public boolean isEnabled(String property, boolean defaultValue) {
     Optional<String> propValue = Optional.ofNullable(properties.get(property));
     return propValue.map(Boolean::parseBoolean).orElse(defaultValue);
@@ -245,6 +255,7 @@ public class ParquetReadOptions {
     protected Map<String, String> properties = new HashMap<>();
     protected FileDecryptionProperties fileDecryptionProperties = null;
     protected ParquetConfiguration conf;
+    protected ParquetMetricsCallback metricsCallback;
 
     public Builder() {
       this(new HadoopParquetConfiguration());
@@ -391,6 +402,11 @@ public class ParquetReadOptions {
       return this;
     }
 
+    public Builder withMetricsCallback(ParquetMetricsCallback metricsCallback) {
+      this.metricsCallback = metricsCallback;
+      return this;
+    }
+
     public Builder set(String key, String value) {
       properties.put(key, value);
       return this;
@@ -407,6 +423,7 @@ public class ParquetReadOptions {
       withAllocator(options.allocator);
       withPageChecksumVerification(options.usePageChecksumVerification);
       withDecryption(options.fileDecryptionProperties);
+      withMetricsCallback(options.metricsCallback);
       conf = options.conf;
       for (Map.Entry<String, String> keyValue : options.properties.entrySet()) {
         set(keyValue.getKey(), keyValue.getValue());
@@ -439,6 +456,7 @@ public class ParquetReadOptions {
           maxAllocationSize,
           properties,
           fileDecryptionProperties,
+          metricsCallback,
           conf);
     }
   }

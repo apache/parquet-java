@@ -823,6 +823,38 @@ public class ParquetFileReader implements Closeable {
     this.crc = options.usePageChecksumVerification() ? new CRC32() : null;
   }
 
+  /**
+   * @param conf   the Hadoop Configuration
+   * @param file   Path to a parquet file
+   * @param footer a {@link ParquetMetadata} footer already read from the file
+   * @param options {@link ParquetReadOptions}
+   * @throws IOException if the file can not be opened
+   */
+  public ParquetFileReader(Configuration conf, Path file, ParquetMetadata footer, ParquetReadOptions options)
+      throws IOException {
+    this.converter = new ParquetMetadataConverter(conf);
+    this.file = HadoopInputFile.fromPath(file, conf);
+    this.f = this.file.newStream();
+    this.fileMetaData = footer.getFileMetaData();
+    this.fileDecryptor = fileMetaData.getFileDecryptor();
+    this.options = options;
+    this.footer = footer;
+    try {
+      this.blocks = filterRowGroups(footer.getBlocks());
+    } catch (Exception e) {
+      // In case that filterRowGroups throws an exception in the constructor, the new stream
+      // should be closed. Otherwise, there's no way to close this outside.
+      f.close();
+      throw e;
+    }
+    this.blockIndexStores = listWithNulls(this.blocks.size());
+    this.blockRowRanges = listWithNulls(this.blocks.size());
+    for (ColumnDescriptor col : footer.getFileMetaData().getSchema().getColumns()) {
+      paths.put(ColumnPath.get(col.getPath()), col);
+    }
+    this.crc = options.usePageChecksumVerification() ? new CRC32() : null;
+  }
+
   public ParquetFileReader(InputFile file, ParquetReadOptions options) throws IOException {
     this.converter = new ParquetMetadataConverter(options);
     this.file = file;
@@ -1003,7 +1035,7 @@ public class ParquetFileReader implements Closeable {
     ColumnChunkPageReadStore rowGroup =
         new ColumnChunkPageReadStore(block.getRowCount(), block.getRowIndexOffset());
     // prepare the list of consecutive parts to read them in one scan
-    List<ConsecutivePartList> allParts = new ArrayList<ConsecutivePartList>();
+    List<ConsecutivePartList> allParts = new ArrayList<>();
     ConsecutivePartList currentParts = null;
     for (ColumnChunkMetaData mc : block.getColumns()) {
       ColumnPath pathKey = mc.getPath();
@@ -1961,16 +1993,36 @@ public class ParquetFileReader implements Closeable {
         buffers.add(options.getAllocator().allocate(lastAllocationSize));
       }
 
+      long readStart = System.nanoTime();
       for (ByteBuffer buffer : buffers) {
         f.readFully(buffer);
         buffer.flip();
       }
+      setReadMetrics(readStart);
 
       // report in a counter the data we just scanned
       BenchmarkCounter.incrementBytesRead(length);
       ByteBufferInputStream stream = ByteBufferInputStream.wrap(buffers);
       for (final ChunkDescriptor descriptor : chunks) {
         builder.add(descriptor, stream.sliceBuffers(descriptor.size), f);
+      }
+    }
+
+    private void setReadMetrics(long startNs) {
+      ParquetMetricsCallback metricsCallback = options.getMetricsCallback();
+      if (metricsCallback != null) {
+        long totalFileReadTimeNs = Math.max(System.nanoTime() - startNs, 0);
+        double sizeInMb = ((double) length) / (1024 * 1024);
+        double timeInSec = ((double) totalFileReadTimeNs) / 1000_0000_0000L;
+        double throughput = sizeInMb / timeInSec;
+        LOG.debug(
+            "Parquet: File Read stats:  Length: {} MB, Time: {} secs, throughput: {} MB/sec ",
+            sizeInMb,
+            timeInSec,
+            throughput);
+        metricsCallback.setDuration(ParquetFileReaderMetrics.ReadTime.name(), totalFileReadTimeNs);
+        metricsCallback.setValueLong(ParquetFileReaderMetrics.ReadSize.name(), length);
+        metricsCallback.setValueDouble(ParquetFileReaderMetrics.ReadThroughput.name(), throughput);
       }
     }
 

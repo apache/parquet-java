@@ -156,11 +156,13 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
 
               ByteBuffer decompressedBuffer =
                   options.getAllocator().allocate(dataPageV1.getUncompressedSize());
+              long start = System.nanoTime();
               decompressor.decompress(
                   byteBuffer,
                   (int) compressedSize,
                   decompressedBuffer,
                   dataPageV1.getUncompressedSize());
+              setDecompressMetrics(bytes, start);
 
               // HACKY: sometimes we need to do `flip` because the position of output bytebuffer is
               // not reset.
@@ -172,7 +174,9 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
               if (null != blockDecryptor) {
                 bytes = BytesInput.from(blockDecryptor.decrypt(bytes.toByteArray(), dataPageAAD));
               }
+              long start = System.nanoTime();
               decompressed = decompressor.decompress(bytes, dataPageV1.getUncompressedSize());
+              setDecompressMetrics(bytes, start);
             }
 
             final DataPageV1 decompressedPage;
@@ -234,8 +238,10 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
                     - dataPageV2.getRepetitionLevels().size());
                 ByteBuffer decompressedBuffer =
                     options.getAllocator().allocate(uncompressedSize);
+                long start = System.nanoTime();
                 decompressor.decompress(
                     byteBuffer, (int) compressedSize, decompressedBuffer, uncompressedSize);
+                setDecompressMetrics(pageBytes, start);
 
                 // HACKY: sometimes we need to do `flip` because the position of output bytebuffer is
                 // not reset.
@@ -255,7 +261,9 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
                 int uncompressedSize = Math.toIntExact(dataPageV2.getUncompressedSize()
                     - dataPageV2.getDefinitionLevels().size()
                     - dataPageV2.getRepetitionLevels().size());
+                long start = System.nanoTime();
                 pageBytes = decompressor.decompress(pageBytes, uncompressedSize);
+                setDecompressMetrics(pageBytes, start);
               }
             }
           } catch (IOException e) {
@@ -293,6 +301,23 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
       });
     }
 
+    private void setDecompressMetrics(BytesInput bytes, long start) {
+      final ParquetMetricsCallback metricsCallback = options.getMetricsCallback();
+      if (metricsCallback != null) {
+        long time = Math.max(System.nanoTime() - start, 0);
+        long len = bytes.size();
+        double throughput = ((double) len / time) * ((double) 1000_000_000L) / (1024 * 1024);
+        LOG.debug(
+            "Decompress block: Length: {} MB, Time: {} msecs, throughput: {} MB/s",
+            len / (1024 * 1024),
+            time / 1000_000L,
+            throughput);
+        metricsCallback.setDuration(ParquetFileReaderMetrics.DecompressTime.name(), time);
+        metricsCallback.setValueLong(ParquetFileReaderMetrics.DecompressSize.name(), len);
+        metricsCallback.setValueDouble(ParquetFileReaderMetrics.DecompressThroughput.name(), throughput);
+      }
+    }
+
     @Override
     public DictionaryPage readDictionaryPage() {
       if (compressedDictionaryPage == null) {
@@ -303,6 +328,10 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
         if (null != blockDecryptor) {
           bytes = BytesInput.from(blockDecryptor.decrypt(bytes.toByteArray(), dictionaryPageAAD));
         }
+        long start = System.nanoTime();
+        BytesInput decompressed =
+            decompressor.decompress(bytes, compressedDictionaryPage.getUncompressedSize());
+        setDecompressMetrics(bytes, start);
         DictionaryPage decompressedPage = new DictionaryPage(
             decompressor.decompress(bytes, compressedDictionaryPage.getUncompressedSize()),
             compressedDictionaryPage.getDictionarySize(),
