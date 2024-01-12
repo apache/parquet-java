@@ -600,6 +600,7 @@
 
               <exclude>org.apache.parquet.io.api.Binary#get2BytesLittleEndian()</exclude>
               <exclude>org.apache.parquet.schema.LogicalTypeAnnotation$Float16LogicalTypeAnnotation#accept(org.apache.parquet.schema.LogicalTypeAnnotation$LogicalTypeAnnotationVisitor)</exclude>
+              <exclude>org.apache.parquet.hadoop.example.ExampleParquetWriter$Builder#withExtraMetaData(java.util.Map)</exclude>
             </excludes>
           </parameter>
         </configuration>
