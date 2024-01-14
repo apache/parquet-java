@@ -107,10 +107,8 @@
     <commons-lang3.version>3.14.0</commons-lang3.version>
 
     <!-- properties for the profiles -->
-    <surefire.argLine> </surefire.argLine>
-    <surefire.logLevel>INFO</surefire.logLevel>
-
-    <ci-test-profile>true</ci-test-profile>
+    <surefire.argLine>-XX:MaxJavaStackTraceDepth=8</surefire.argLine>
+    <surefire.logLevel>ERROR</surefire.logLevel>
 
     <!-- Resource intesive tests are enabled by default but disabled in the CI envrionment -->
     <enableResourceIntensiveTests>true</enableResourceIntensiveTests>
@@ -715,18 +713,12 @@
       </build>
     </profile>
 
-    <!-- Profile for CI tests to have less output -->
+    <!-- Profile for tests to have more output -->
     <profile>
-      <id>ci-test</id>
-      <activation>
-        <property>
-          <name>ci-test-profile</name>
-        </property>
-      </activation>
+      <id>verbose-test</id>
       <properties>
-        <surefire.logLevel>ERROR</surefire.logLevel>
-        <surefire.argLine>-XX:MaxJavaStackTraceDepth=10</surefire.argLine>
-        <enableResourceIntensiveTests>false</enableResourceIntensiveTests>
+        <surefire.logLevel>INFO</surefire.logLevel>
+        <surefire.argLine>-XX:MaxJavaStackTraceDepth=1024</surefire.argLine>
       </properties>
     </profile>
 
