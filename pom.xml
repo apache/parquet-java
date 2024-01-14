@@ -68,7 +68,7 @@
     <jackson.datatype.groupId>com.fasterxml.jackson.datatype</jackson.datatype.groupId>
     <jackson.package>com.fasterxml.jackson</jackson.package>
     <jackson.version>2.16.0</jackson.version>
-    <jackson-databind.version>2.16.0</jackson-databind.version>
+    <jackson-databind.version>2.16.1</jackson-databind.version>
     <japicmp.version>0.18.2</japicmp.version>
     <spotless.version>2.30.0</spotless.version>
     <shade.prefix>shaded.parquet</shade.prefix>
