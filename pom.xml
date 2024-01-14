@@ -110,6 +110,8 @@
     <surefire.argLine> </surefire.argLine>
     <surefire.logLevel>INFO</surefire.logLevel>
 
+    <ci-test-profile>true</ci-test-profile>
+
     <!-- Resource intesive tests are enabled by default but disabled in the CI envrionment -->
     <enableResourceIntensiveTests>true</enableResourceIntensiveTests>
 
@@ -716,8 +718,13 @@
     <!-- Profile for CI tests to have less output -->
     <profile>
       <id>ci-test</id>
+      <activation>
+        <property>
+          <name>ci-test-profile</name>
+        </property>
+      </activation>
       <properties>
-        <surefire.logLevel>WARN</surefire.logLevel>
+        <surefire.logLevel>ERROR</surefire.logLevel>
         <surefire.argLine>-XX:MaxJavaStackTraceDepth=10</surefire.argLine>
         <enableResourceIntensiveTests>false</enableResourceIntensiveTests>
       </properties>

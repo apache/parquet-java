@@ -66,12 +66,17 @@ import org.apache.parquet.hadoop.util.ContextUtil;
 import org.apache.parquet.schema.MessageTypeParser;
 import org.junit.Before;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * DeprecatedParquetInputFormat is used by cascading. It initializes the recordReader using an initialize method with
  * different parameters than ParquetInputFormat
  */
 public class DeprecatedInputFormatTest {
+
+  private static final Logger LOG = LoggerFactory.getLogger(DeprecatedInputFormatTest.class);
+
   final Path parquetPath = new Path("target/test/example/TestInputOutputFormat/parquet");
   final Path inputPath = new Path("src/test/java/org/apache/parquet/hadoop/example/TestInputOutputFormat.java");
   final Path outputPath = new Path("target/test/example/TestInputOutputFormat/out");
@@ -317,10 +322,10 @@ public class DeprecatedInputFormatTest {
 
   private void waitForJob(Job job) throws InterruptedException, IOException {
     while (!job.isComplete()) {
-      System.out.println("waiting for job " + job.getJobName());
+      LOG.info("waiting for job " + job.getJobName());
       sleep(100);
     }
-    System.out.println("status for job " + job.getJobName() + ": " + (job.isSuccessful() ? "SUCCESS" : "FAILURE"));
+    LOG.info("status for job " + job.getJobName() + ": " + (job.isSuccessful() ? "SUCCESS" : "FAILURE"));
     if (!job.isSuccessful()) {
       throw new RuntimeException("job failed " + job.getJobName());
     }
