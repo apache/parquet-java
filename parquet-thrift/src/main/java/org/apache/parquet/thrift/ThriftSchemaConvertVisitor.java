@@ -362,7 +362,7 @@ class ThriftSchemaConvertVisitor implements ThriftType.StateVisitor<ConvertedFie
 
   @Override
   public ConvertedField visit(ByteType byteType, State state) {
-    return visitPrimitiveType(INT32, state);
+    return visitPrimitiveType(INT32, LogicalTypeAnnotation.intType(8, true), state);
   }
 
   @Override

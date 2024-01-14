@@ -376,7 +376,9 @@ public class TestThriftSchemaConverter {
 
   @Test
   public void testLogicalTypeConvertion() throws Exception {
-    String expected = "message ParquetSchema {\n" + "  required int32 test_i16 (INTEGER(16,true)) = 1;" + "}";
+    String expected = "message ParquetSchema {\n" + "  required int32 test_i16 (INTEGER(16,true)) = 1;\n"
+        + "  required int32 test_i8 (INTEGER(8,true)) = 2;\n"
+        + "}\n";
     ThriftSchemaConverter schemaConverter = new ThriftSchemaConverter();
     final MessageType converted = schemaConverter.convert(TestLogicalType.class);
     assertEquals(MessageTypeParser.parseMessageType(expected), converted);
