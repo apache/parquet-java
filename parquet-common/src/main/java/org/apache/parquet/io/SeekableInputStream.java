@@ -111,8 +111,7 @@ public abstract class SeekableInputStream extends InputStream {
    * Read a set of file ranges in a vectored manner.
    * @throws UnsupportedOperationException if not available in this class/runtime.
    */
-  public void readVectored(List<ParquetFileRange> ranges,
-    IntFunction<ByteBuffer> allocate) throws IOException {
+  public void readVectored(List<ParquetFileRange> ranges, IntFunction<ByteBuffer> allocate) throws IOException {
 
     throw new UnsupportedOperationException("Vectored IO is not supported for " + this);
   }
@@ -123,5 +122,4 @@ public abstract class SeekableInputStream extends InputStream {
   public boolean readVectoredAvailable() {
     return false;
   }
-
 }

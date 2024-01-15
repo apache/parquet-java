@@ -24,9 +24,10 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.function.IntFunction;
-import org.apache.parquet.hadoop.util.vectorio.VectorIOBridge;
 import org.apache.hadoop.fs.FSDataInputStream;
+import org.apache.parquet.hadoop.util.vectorio.VectorIOBridge;
 import org.apache.parquet.io.DelegatingSeekableInputStream;
+import org.apache.parquet.io.ParquetFileRange;
 
 /**
  * SeekableInputStream implementation for FSDataInputStream that implements

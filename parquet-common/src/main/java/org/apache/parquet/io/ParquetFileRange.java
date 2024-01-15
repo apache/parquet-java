@@ -66,6 +66,6 @@ public class ParquetFileRange {
 
   @Override
   public String toString() {
-    return "range[" + this.offset + "," + (this.offset + (long)this.length) + ")";
+    return "range[" + this.offset + "," + (this.offset + (long) this.length) + ")";
   }
 }

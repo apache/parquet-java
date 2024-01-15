@@ -26,11 +26,9 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-
+import org.apache.parquet.util.DynMethods;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import org.apache.parquet.util.DynMethods;
 
 /**
  * Binding utils.
@@ -38,9 +36,7 @@ import org.apache.parquet.util.DynMethods;
 public final class BindingUtils {
   private static final Logger LOG = LoggerFactory.getLogger(BindingUtils.class);
 
-
-  private BindingUtils() {
-  }
+  private BindingUtils() {}
 
   /**
    * Given a future, evaluate it.
@@ -61,17 +57,13 @@ public final class BindingUtils {
    * @throws RuntimeException any nested RTE thrown
    * @throws TimeoutException the future timed out.
    */
-  public static <T> T awaitFuture(final Future<T> future,
-    final long timeout,
-    final TimeUnit unit)
-    throws InterruptedIOException, IOException, RuntimeException,
-    TimeoutException {
+  public static <T> T awaitFuture(final Future<T> future, final long timeout, final TimeUnit unit)
+      throws InterruptedIOException, IOException, RuntimeException, TimeoutException {
     try {
       LOG.debug("Awaiting future");
       return future.get(timeout, unit);
     } catch (InterruptedException e) {
-      throw (InterruptedIOException) new InterruptedIOException(e.toString())
-        .initCause(e);
+      throw (InterruptedIOException) new InterruptedIOException(e.toString()).initCause(e);
     } catch (ExecutionException e) {
       return raiseInnerCause(e);
     }
@@ -93,8 +85,7 @@ public final class BindingUtils {
    * any non-Runtime-Exception
    * @throws RuntimeException if that is the inner cause.
    */
-  public static <T> T raiseInnerCause(final ExecutionException e)
-    throws IOException {
+  public static <T> T raiseInnerCause(final ExecutionException e) throws IOException {
     throw unwrapInnerException(e);
   }
 
@@ -155,16 +146,13 @@ public final class BindingUtils {
    * @return the method or "unavailable"
    */
   static <T> DynMethods.UnboundMethod loadInvocation(
-    Class<?> source,
-    Class<? extends T> returnType, String name,
-    Class<?>... parameterTypes) {
+      Class<?> source, Class<? extends T> returnType, String name, Class<?>... parameterTypes) {
 
     if (source != null) {
-      final DynMethods.UnboundMethod m = new DynMethods
-        .Builder(name)
-        .impl(source, name, parameterTypes)
-        .orNoop()
-        .build();
+      final DynMethods.UnboundMethod m = new DynMethods.Builder(name)
+          .impl(source, name, parameterTypes)
+          .orNoop()
+          .build();
       if (m.isNoop()) {
         // this is a sign of a mismatch between this class's expected
         // signatures and actual ones.
@@ -187,8 +175,7 @@ public final class BindingUtils {
    * @return a no-op method.
    */
   static DynMethods.UnboundMethod noop(final String name) {
-    return new DynMethods.Builder(name)
-      .orNoop().build();
+    return new DynMethods.Builder(name).orNoop().build();
   }
 
   /**

@@ -18,6 +18,15 @@
 
 package org.apache.parquet.hadoop.util.vectorio;
 
+import static org.apache.parquet.hadoop.util.vectorio.BindingUtils.awaitFuture;
+import static org.apache.parquet.hadoop.util.vectorio.VectorIOBridge.VECTOREDIO_CAPABILITY;
+import static org.apache.parquet.hadoop.util.vectorio.VectorIOBridge.instance;
+import static org.apache.parquet.hadoop.util.vectorio.VectorIOBridge.readVectoredRanges;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+import static org.junit.Assume.assumeTrue;
+
 import java.io.EOFException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -27,30 +36,18 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.IntFunction;
-
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.LocalFileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.ByteBufferPool;
 import org.apache.hadoop.io.ElasticByteBufferPool;
 import org.apache.parquet.bytes.HeapByteBufferAllocator;
 import org.apache.parquet.io.ParquetFileRange;
-
-import static org.apache.parquet.hadoop.util.vectorio.BindingUtils.awaitFuture;
-import static org.apache.parquet.hadoop.util.vectorio.VectorIOBridge.VECTOREDIO_CAPABILITY;
-import static org.apache.parquet.hadoop.util.vectorio.VectorIOBridge.instance;
-import static org.apache.parquet.hadoop.util.vectorio.VectorIOBridge.readVectoredRanges;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-import static org.junit.Assume.assumeTrue;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
 
 /**
  * Test the vector IO bridge.
@@ -75,8 +72,7 @@ public class TestVectorIOBridge {
   private final Path vectoredPath = new Path("target/test/vectored");
 
   private final HeapByteBufferAllocator bufferAllocator = new HeapByteBufferAllocator();
-  private final ElasticByteBufferPool pool =
-    new ElasticByteBufferPool();
+  private final ElasticByteBufferPool pool = new ElasticByteBufferPool();
 
   private final IntFunction<ByteBuffer> allocate = value -> {
     return pool.getBuffer(false, value);
@@ -85,9 +81,7 @@ public class TestVectorIOBridge {
   private FileSystem fileSystem;
   private Path testFilePath;
 
-  public TestVectorIOBridge() {
-
-  }
+  public TestVectorIOBridge() {}
 
   @Before
   public void setUp() throws IOException {
@@ -146,13 +140,11 @@ public class TestVectorIOBridge {
    * @throws IOException any IOE
    * @throws TimeoutException ideally this should never occur.
    */
-  public static void returnBuffersToPoolPostRead(List<ParquetFileRange> fileRanges,
-    ByteBufferPool pool)
-    throws IOException, TimeoutException {
+  public static void returnBuffersToPoolPostRead(List<ParquetFileRange> fileRanges, ByteBufferPool pool)
+      throws IOException, TimeoutException {
     for (ParquetFileRange range : fileRanges) {
-      ByteBuffer buffer = awaitFuture(range.getDataReadFuture(),
-        VECTORED_READ_OPERATION_TEST_TIMEOUT_SECONDS,
-        TimeUnit.SECONDS);
+      ByteBuffer buffer = awaitFuture(
+          range.getDataReadFuture(), VECTORED_READ_OPERATION_TEST_TIMEOUT_SECONDS, TimeUnit.SECONDS);
       pool.putBuffer(buffer);
     }
   }
@@ -166,9 +158,7 @@ public class TestVectorIOBridge {
    *
    * @throws IOException on any problem
    */
-  public static void createFile(FileSystem fs,
-    Path path,
-    byte[] data) throws IOException {
+  public static void createFile(FileSystem fs, Path path, byte[] data) throws IOException {
     try (FSDataOutputStream stream = fs.create(path, true)) {
       if (data != null && data.length > 0) {
         stream.write(data);
@@ -223,12 +213,13 @@ public class TestVectorIOBridge {
       readVectoredRanges(in, fileRanges, allocate);
       byte[] readFullRes = new byte[length];
       in.readFully(offset, readFullRes);
-      ByteBuffer vecRes = awaitFuture(fileRanges.get(0).getDataReadFuture(),
-        VECTORED_READ_OPERATION_TEST_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+      ByteBuffer vecRes = awaitFuture(
+          fileRanges.get(0).getDataReadFuture(),
+          VECTORED_READ_OPERATION_TEST_TIMEOUT_SECONDS,
+          TimeUnit.SECONDS);
 
       final byte[] array = vecRes.array();
-      assertDatasetEquals(0, "readFully",
-        vecRes, length, readFullRes);
+      assertDatasetEquals(0, "readFully", vecRes, length, readFullRes);
     } finally {
       returnBuffersToPoolPostRead(fileRanges, pool);
     }
@@ -240,10 +231,7 @@ public class TestVectorIOBridge {
    */
   @Test
   public void testDisjointRanges() throws Exception {
-    List<ParquetFileRange> fileRanges = ranges(
-      0, 100,
-      4_000 + 101, 100,
-      16_000 + 101, 100);
+    List<ParquetFileRange> fileRanges = ranges(0, 100, 4_000 + 101, 100, 16_000 + 101, 100);
 
     try (FSDataInputStream in = openTestFile()) {
       readVectoredRanges(in, fileRanges, allocate);
@@ -260,11 +248,8 @@ public class TestVectorIOBridge {
   public void testStreamImplementsReadVectored() throws Exception {
 
     try (FSDataInputStream in = openTestFile()) {
-      final boolean streamDoesNativeVectorIO = instance().hasCapability(
-        in,
-        VECTOREDIO_CAPABILITY);
-      assertTrue("capability " + VECTOREDIO_CAPABILITY + " not supported by " + in,
-        streamDoesNativeVectorIO);
+      final boolean streamDoesNativeVectorIO = instance().hasCapability(in, VECTOREDIO_CAPABILITY);
+      assertTrue("capability " + VECTOREDIO_CAPABILITY + " not supported by " + in, streamDoesNativeVectorIO);
     }
   }
 
@@ -274,10 +259,7 @@ public class TestVectorIOBridge {
    */
   @Test
   public void testAllRangesMergedIntoOne() throws Exception {
-    List<ParquetFileRange> fileRanges = ranges(
-      0, 100,
-      4_000 + 101, 100,
-      16_000 + 101, 100);
+    List<ParquetFileRange> fileRanges = ranges(0, 100, 4_000 + 101, 100, 16_000 + 101, 100);
     try (FSDataInputStream in = openTestFile()) {
       readVectoredRanges(in, fileRanges, allocate);
       validateVectoredReadResult(fileRanges, DATASET);
@@ -291,12 +273,8 @@ public class TestVectorIOBridge {
    */
   @Test
   public void testSomeRangesMergedSomeUnmerged() throws Exception {
-    List<ParquetFileRange> fileRanges = ranges(
-      8 * 1024, 100,
-      14 * 1024, 100,
-      10 * 1024, 100,
-      2 * 1024 - 101, 100,
-      40 * 1024, 1024);
+    List<ParquetFileRange> fileRanges =
+        ranges(8 * 1024, 100, 14 * 1024, 100, 10 * 1024, 100, 2 * 1024 - 101, 100, 40 * 1024, 1024);
     try (FSDataInputStream in = openTestFile()) {
       readVectoredRanges(in, fileRanges, allocate);
       validateVectoredReadResult(fileRanges, DATASET);
@@ -329,10 +307,10 @@ public class TestVectorIOBridge {
   @Test
   public void testSomeRandomNonOverlappingRanges() throws Exception {
     List<ParquetFileRange> fileRanges = ranges(
-      500, 100,
-      1000, 200,
-      50, 10,
-      10, 5);
+        500, 100,
+        1000, 200,
+        50, 10,
+        10, 5);
     try (FSDataInputStream in = openTestFile()) {
       readVectoredRanges(in, fileRanges, allocate);
       validateVectoredReadResult(fileRanges, DATASET);
@@ -343,9 +321,9 @@ public class TestVectorIOBridge {
   @Test
   public void testConsecutiveRanges() throws Exception {
     List<ParquetFileRange> fileRanges = ranges(
-      500, 100,
-      600, 200,
-      800, 100);
+        500, 100,
+        600, 200,
+        800, 100);
     try (FSDataInputStream in = openTestFile()) {
       readVectoredRanges(in, fileRanges, allocate);
       validateVectoredReadResult(fileRanges, DATASET);
@@ -355,8 +333,7 @@ public class TestVectorIOBridge {
 
   @Test
   public void testNegativeLengthRange() throws Exception {
-    verifyExceptionalVectoredRead(getFileSystem(), ranges(1, -50),
-      IllegalArgumentException.class);
+    verifyExceptionalVectoredRead(getFileSystem(), ranges(1, -50), IllegalArgumentException.class);
   }
 
   /**
@@ -365,9 +342,8 @@ public class TestVectorIOBridge {
    */
   @Test
   public void testNegativeOffsetRange() throws Exception {
-    final RuntimeException ex = verifyExceptionalVectoredRead(
-      getFileSystem(), ranges(-1, 50),
-      RuntimeException.class);
+    final RuntimeException ex =
+        verifyExceptionalVectoredRead(getFileSystem(), ranges(-1, 50), RuntimeException.class);
     if (!(ex.getCause() instanceof EOFException)) {
       throw ex;
     }
@@ -431,32 +407,6 @@ public class TestVectorIOBridge {
   }
 
   /**
-   * Test to validate EOF ranges. Default implementation fails with EOFException
-   * while reading the ranges. Some implementation like s3, checksum fs fail fast
-   * as they already have the file length calculated.
-   *
-   * @throws Exception
-   */
-/*
-@Test
-public void testEOFRanges()  throws Exception {
-  FileSystem fs = getFileSystem();
-  List<ParquetFileRange> fileRanges = ranges(DATASET_LEN, 100);
-  try (FSDataInputStream in = fs.open(testFilePath)) {
-    in.readVectored(fileRanges, allocate);
-    readVectoredRanges(in, fileRanges, allocate);
-    for (FileRange res : fileRanges) {
-      CompletableFuture<ByteBuffer> data = res.getData();
-      interceptFuture(EOFException.class,
-              "",
-              VECTORED_READ_OPERATION_TEST_TIMEOUT_SECONDS,
-              TimeUnit.SECONDS,
-              data);
-    }
-  }
-}*/
-
-  /**
    * Create a ParquetFileRange instance.
    * @param offset offset in file
    * @param length range length
@@ -474,8 +424,7 @@ public void testEOFRanges()  throws Exception {
    */
   private List<ParquetFileRange> ranges(int... args) {
     final int len = args.length;
-    assertTrue("range argument length of " + len + " is not even",
-      (len % 1) == 0);
+    assertTrue("range argument length of " + len + " is not even", (len % 1) == 0);
     List<ParquetFileRange> fileRanges = new ArrayList<>();
     for (int i = 0; i < len; i += 2) {
       fileRanges.add(range(args[i], args[i + 1]));
@@ -489,21 +438,21 @@ public void testEOFRanges()  throws Exception {
 
   protected List<ParquetFileRange> getSampleOverlappingRanges() {
     return ranges(
-      100, 500,
-      400, 500);
+        100, 500,
+        400, 500);
   }
 
   protected List<ParquetFileRange> getConsecutiveRanges() {
     return ranges(
-      100, 500,
-      600, 500);
+        100, 500,
+        600, 500);
   }
 
   protected List<ParquetFileRange> getSampleSameRanges() {
     return ranges(
-      8_000, 1000,
-      8_000, 1000,
-      8_000, 1000);
+        8_000, 1000,
+        8_000, 1000,
+        8_000, 1000);
   }
 
   /**
@@ -518,15 +467,13 @@ public void testEOFRanges()  throws Exception {
    * @param originalData original data.
    */
   public static void assertDatasetEquals(
-    final int readOffset,
-    final String operation,
-    final ByteBuffer data,
-    int length, byte[] originalData) {
+      final int readOffset, final String operation, final ByteBuffer data, int length, byte[] originalData) {
     for (int i = 0; i < length; i++) {
       int o = readOffset + i;
-      assertEquals(operation + " with read offset " + readOffset
-          + ": data[" + i + "] != DATASET[" + o + "]",
-        originalData[o], data.get());
+      assertEquals(
+          operation + " with read offset " + readOffset + ": data[" + i + "] != DATASET[" + o + "]",
+          originalData[o],
+          data.get());
     }
   }
 
@@ -538,26 +485,20 @@ public void testEOFRanges()  throws Exception {
    *
    * @throws IOException any ioe.
    */
-  public static void validateVectoredReadResult(List<ParquetFileRange> fileRanges,
-    byte[] originalData)
-    throws IOException, TimeoutException {
+  public static void validateVectoredReadResult(List<ParquetFileRange> fileRanges, byte[] originalData)
+      throws IOException, TimeoutException {
     CompletableFuture<?>[] completableFutures = new CompletableFuture<?>[fileRanges.size()];
     int i = 0;
     for (ParquetFileRange res : fileRanges) {
       completableFutures[i++] = res.getDataReadFuture();
     }
     CompletableFuture<Void> combinedFuture = CompletableFuture.allOf(completableFutures);
-    awaitFuture(combinedFuture,
-      VECTORED_READ_OPERATION_TEST_TIMEOUT_SECONDS,
-      TimeUnit.SECONDS);
+    awaitFuture(combinedFuture, VECTORED_READ_OPERATION_TEST_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
     for (ParquetFileRange res : fileRanges) {
       CompletableFuture<ByteBuffer> data = res.getDataReadFuture();
-      ByteBuffer buffer = awaitFuture(data,
-        VECTORED_READ_OPERATION_TEST_TIMEOUT_SECONDS,
-        TimeUnit.SECONDS);
-      assertDatasetEquals((int) res.getOffset(), "vecRead",
-        buffer, res.getLength(), originalData);
+      ByteBuffer buffer = awaitFuture(data, VECTORED_READ_OPERATION_TEST_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+      assertDatasetEquals((int) res.getOffset(), "vecRead", buffer, res.getLength(), originalData);
     }
   }
 
@@ -572,9 +513,7 @@ public void testEOFRanges()  throws Exception {
    * @throws Exception any other IOE.
    */
   protected <T extends Throwable> T verifyExceptionalVectoredRead(
-    FileSystem fs,
-    List<ParquetFileRange> fileRanges,
-    Class<T> clazz) throws Exception {
+      FileSystem fs, List<ParquetFileRange> fileRanges, Class<T> clazz) throws Exception {
 
     try (FSDataInputStream in = fs.open(testFilePath)) {
       readVectoredRanges(in, fileRanges, allocate);

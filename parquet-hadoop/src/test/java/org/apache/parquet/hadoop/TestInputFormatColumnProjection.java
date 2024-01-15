@@ -55,10 +55,10 @@ import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
-import static java.lang.Thread.sleep;
-import static org.apache.parquet.schema.OriginalType.UTF8;
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
-
+/**
+ * Parameterized on Vectored IO enabled/disabled so can verify that
+ * ranged reads work through the bridge on compatible hadoop versions.
+ */
 @RunWith(Parameterized.class)
 public class TestInputFormatColumnProjection {
   public static final String FILE_CONTENT = "" + "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ,"
@@ -107,6 +107,7 @@ public class TestInputFormatColumnProjection {
 
   @Rule
   public TemporaryFolder temp = new TemporaryFolder();
+
   @Parameterized.Parameters(name = "vectored : {0}")
   public static List<Boolean> params() {
     return Arrays.asList(true, false);
@@ -120,6 +121,7 @@ public class TestInputFormatColumnProjection {
   public TestInputFormatColumnProjection(boolean readType) {
     this.readType = readType;
   }
+
   @Test
   public void testProjectionSize() throws Exception {
     Assume.assumeTrue( // only run this test for Hadoop 2
@@ -194,8 +196,9 @@ public class TestInputFormatColumnProjection {
       bytesRead = Reader.bytesReadCounter.getValue();
     }
 
-    Assert.assertTrue("Should read (" + bytesRead + " bytes)"
-        + " less than 10% of the input file size (" + bytesWritten + ")",
+    Assert.assertTrue(
+        "Should read (" + bytesRead + " bytes)" + " less than 10% of the input file size (" + bytesWritten
+            + ")",
         bytesRead < (bytesWritten / 10));
   }
 

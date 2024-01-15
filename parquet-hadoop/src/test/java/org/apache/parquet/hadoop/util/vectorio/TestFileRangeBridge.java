@@ -18,17 +18,17 @@
 
 package org.apache.parquet.hadoop.util.vectorio;
 
-import org.junit.Before;
-import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assume.assumeNoException;
+
+import org.junit.Before;
+import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Test the {@link FileRangeBridge} class; requires
@@ -81,8 +81,7 @@ public class TestFileRangeBridge {
   @Test
   public void testCreateFileRange() {
     Object reference = "backref";
-    FileRangeBridge.WrappedFileRange range = FileRangeBridge.instance()
-      .createFileRange(512L, 16384, reference);
+    FileRangeBridge.WrappedFileRange range = FileRangeBridge.instance().createFileRange(512L, 16384, reference);
     LOG.info("created range {}", range);
     assertNotNull("null range", range);
     assertNotNull("null range instance", range.getFileRange());
@@ -99,7 +98,6 @@ public class TestFileRangeBridge {
    */
   @Test
   public void testCreateInvalidRange() {
-    FileRangeBridge.instance()
-      .createFileRange(-1, -1, null);
+    FileRangeBridge.instance().createFileRange(-1, -1, null);
   }
 }

@@ -1145,11 +1145,9 @@ public class ParquetFileReader implements Closeable {
    * @throws IOException any IOE.
    */
   private void readAllPartsVectoredOrNormal(List<ConsecutivePartList> allParts, ChunkListBuilder builder)
-    throws IOException {
-    boolean isVectoredIO = options.useHadoopVectoredIO()
-      && f.readVectoredAvailable()
-      && partsLengthValidForVectoredIO(allParts);
-    if (isVectoredIO) {
+      throws IOException {
+
+    if (shouldUseVectoredIO(allParts)) {
       readVectored(allParts, builder);
     } else {
       for (ConsecutivePartList consecutiveChunks : allParts) {
@@ -1159,15 +1157,33 @@ public class ParquetFileReader implements Closeable {
   }
 
   /**
+   * Should the read use vectored IO?
+   * <p>
+   * This returns true if all necessary conditions are met:
+   * <ol>
+   *   <li> The option is enabled</li>
+   *   <li> The Hadoop version supports vectored IO</li>
+   *   <li> Thfe part lengths are all valid for vectored IO</li>
+   * </ol>
+   * @param allParts all parts to read.
+   * @return true or false.
+   */
+  private boolean shouldUseVectoredIO(final List<ConsecutivePartList> allParts) {
+    return options.useHadoopVectoredIO() && f.readVectoredAvailable() && arePartLengthsValidForVectoredIO(allParts);
+  }
+
+  /**
    * Vectored IO doesn't support reading ranges of size greater than
    * Integer.MAX_VALUE.
    * @param allParts all parts to read.
    * @return true or false.
    */
-  private boolean partsLengthValidForVectoredIO(List<ConsecutivePartList> allParts) {
-    for (ConsecutivePartList consecutivePart :  allParts) {
+  private boolean arePartLengthsValidForVectoredIO(List<ConsecutivePartList> allParts) {
+    for (ConsecutivePartList consecutivePart : allParts) {
       if (consecutivePart.length >= Integer.MAX_VALUE) {
-        LOG.debug("Part length {} greater than Integer.MAX_VALUE thus disabling vectored IO", consecutivePart.length);
+        LOG.debug(
+            "Part length {} greater than Integer.MAX_VALUE thus disabling vectored IO",
+            consecutivePart.length);
         return false;
       }
     }
@@ -1176,26 +1192,36 @@ public class ParquetFileReader implements Closeable {
 
   /**
    * Read all parts through vectored IO.
+   * <p>
+   * The API is available in recent hadoop builds for all implementations of PositionedReadable;
+   * the default implementation simply does a sequence of reads at different offsets.
+   * <p>
+   * If directly implemented by a Filesystem then it is likely to be a more efficient
+   * operation such as a scatter-gather read (native IO) or set of parallel
+   * GET requests against an object store.
    * @param allParts all parts to be read.
    * @param builder used to build chunk list to read the pages for the different columns.
    * @throws IOException any IOE.
    */
-  private void readVectored(List<ConsecutivePartList> allParts,
-    ChunkListBuilder builder) throws IOException {
+  private void readVectored(List<ConsecutivePartList> allParts, ChunkListBuilder builder) throws IOException {
 
     List<ParquetFileRange> ranges = new ArrayList<>(allParts.size());
+    long totalSize = 0;
     for (ConsecutivePartList consecutiveChunks : allParts) {
-      Preconditions.checkArgument(consecutiveChunks.length < Integer.MAX_VALUE,
-        "Invalid length %s for vectored read operation. It must be less than max integer value.",
-        consecutiveChunks.length);
-      ranges.add(new ParquetFileRange(consecutiveChunks.offset, (int) consecutiveChunks.length));
+      final long len = consecutiveChunks.length;
+      Preconditions.checkArgument(
+          len < Integer.MAX_VALUE,
+          "Invalid length %s for vectored read operation. It must be less than max integer value.",
+          len);
+      ranges.add(new ParquetFileRange(consecutiveChunks.offset, (int) len));
+      totalSize += len;
     }
-    LOG.debug("Doing vectored IO for ranges {}", ranges);
+    LOG.info("Reading {} bytes of data with vectored IO in {} ranges", totalSize, ranges.size());
     ByteBufferAllocator allocator = options.getAllocator();
-    //blocking or asynchronous vectored read.
+    // Request a vectored read;
     f.readVectored(ranges, allocator::allocate);
     int k = 0;
-    for (ConsecutivePartList consecutivePart :  allParts) {
+    for (ConsecutivePartList consecutivePart : allParts) {
       ParquetFileRange currRange = ranges.get(k++);
       consecutivePart.readFromVectoredRange(currRange, builder);
     }
@@ -2093,22 +2119,26 @@ public class ParquetFileReader implements Closeable {
     }
 
     /**
-     * Populate data in a parquet file range from vectored range.
+     * Populate data in a parquet file range from a vectored range; will block for up
+     * to {@link #HADOOP_VECTORED_READ_TIMEOUT_SECONDS} seconds.
      * @param currRange range to populated.
      * @param builder used to build chunk list to read the pages for the different columns.
-     * @throws IOException if there is an error while reading from the stream.
+     * @throws IOException if there is an error while reading from the stream, including a timeout.
      */
-    public void readFromVectoredRange(ParquetFileRange currRange,
-                                      ChunkListBuilder builder) throws IOException {
+    public void readFromVectoredRange(ParquetFileRange currRange, ChunkListBuilder builder) throws IOException {
       ByteBuffer buffer;
+      final long timeoutSeconds = HADOOP_VECTORED_READ_TIMEOUT_SECONDS;
       try {
-        LOG.debug("Waiting for vectored read to finish for range {} ", currRange);
-        buffer = BindingUtils.awaitFuture(currRange.getDataReadFuture(),
-          HADOOP_VECTORED_READ_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+        LOG.debug(
+            "Waiting for vectored read to finish for range {} with timeout {} seconds",
+            currRange,
+            timeoutSeconds);
+        buffer = BindingUtils.awaitFuture(currRange.getDataReadFuture(), timeoutSeconds, TimeUnit.SECONDS);
         // report in a counter the data we just scanned
         BenchmarkCounter.incrementBytesRead(currRange.getLength());
       } catch (TimeoutException e) {
-        String error = String.format("Timeout while fetching result for %s", currRange);
+        String error = String.format(
+            "Timeout while fetching result for %s with time limit %d seconds", currRange, timeoutSeconds);
         LOG.error(error, e);
         throw new IOException(error, e);
       }

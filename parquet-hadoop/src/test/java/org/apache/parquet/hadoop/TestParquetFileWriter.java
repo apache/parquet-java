@@ -567,7 +567,6 @@ public class TestParquetFileWriter {
     // Disable writing out checksums as hardcoded byte offsets in assertions below expect it
     conf.setBoolean(ParquetOutputFormat.PAGE_WRITE_CHECKSUM_ENABLED, false);
 
-
     // uses the test constructor
     ParquetFileWriter w = new ParquetFileWriter(conf, SCHEMA, path, 120, 60);
 

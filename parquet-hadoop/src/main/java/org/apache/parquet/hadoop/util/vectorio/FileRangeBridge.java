@@ -18,18 +18,16 @@
 
 package org.apache.parquet.hadoop.util.vectorio;
 
-import java.nio.ByteBuffer;
-import java.util.concurrent.CompletableFuture;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import org.apache.parquet.io.ParquetFileRange;
-import org.apache.parquet.util.DynMethods;
-
 import static java.util.Objects.requireNonNull;
 import static org.apache.parquet.hadoop.util.vectorio.BindingUtils.implemented;
 import static org.apache.parquet.hadoop.util.vectorio.BindingUtils.loadInvocation;
+
+import java.nio.ByteBuffer;
+import java.util.concurrent.CompletableFuture;
+import org.apache.parquet.io.ParquetFileRange;
+import org.apache.parquet.util.DynMethods;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Class to bridge to the FileRange class through reflection.
@@ -55,6 +53,7 @@ final class FileRangeBridge {
    * Is the bridge available?
    */
   private final boolean available;
+
   private final Class<?> fileRangeInterface;
   private final DynMethods.UnboundMethod _getData;
   private final DynMethods.UnboundMethod _setData;
@@ -88,22 +87,13 @@ final class FileRangeBridge {
     _setData = loadInvocation(loadedClass, void.class, "setData", CompletableFuture.class);
     _getReference = loadInvocation(loadedClass, Object.class, "getReference");
     // static interface method to create an instance.
-    createFileRange = loadInvocation(fileRangeInterface,
-      Object.class, "createFileRange",
-      long.class,
-      int.class,
-      Object.class);
+    createFileRange = loadInvocation(
+        fileRangeInterface, Object.class, "createFileRange", long.class, int.class, Object.class);
 
     // we are available only if the class is present and all methods are found
     // the checks for the method are extra paranoia, but harmless
     available = loadedClass != null
-      && implemented(
-        createFileRange,
-        _getOffset,
-        _getLength,
-        _getData,
-        _setData,
-        _getReference);
+        && implemented(createFileRange, _getOffset, _getLength, _getData, _setData, _getReference);
 
     LOG.debug("FileRangeBridge availability: {}", available);
   }
@@ -149,10 +139,7 @@ final class FileRangeBridge {
    * @throws RuntimeException if the range cannot be instantiated
    * @throws IllegalStateException if the API is not available.
    */
-  public WrappedFileRange createFileRange(
-    final long offset,
-    final int length,
-    final Object reference) {
+  public WrappedFileRange createFileRange(final long offset, final int length, final Object reference) {
 
     checkAvailable();
     return new WrappedFileRange(createFileRange.invoke(null, offset, length, reference));
@@ -176,15 +163,15 @@ final class FileRangeBridge {
   @Override
   public String toString() {
     return "FileRangeBridge{"
-      + "available=" + available
-      + ", fileRangeInterface=" + fileRangeInterface
-      + ", _getOffset=" + _getOffset
-      + ", _getLength=" + _getLength
-      + ", _getData=" + _getData
-      + ", _setData=" + _setData
-      + ", _getReference=" + _getReference
-      + ", createFileRange=" + createFileRange
-      + '}';
+        + "available=" + available
+        + ", fileRangeInterface=" + fileRangeInterface
+        + ", _getOffset=" + _getOffset
+        + ", _getLength=" + _getLength
+        + ", _getData=" + _getData
+        + ", _setData=" + _setData
+        + ", _getReference=" + _getReference
+        + ", createFileRange=" + createFileRange
+        + '}';
   }
 
   /**
@@ -255,10 +242,7 @@ final class FileRangeBridge {
 
     @Override
     public String toString() {
-      return "WrappedFileRange{"
-        + "fileRange=" + fileRange
-        + '}';
+      return "WrappedFileRange{fileRange=" + fileRange + '}';
     }
   }
-
 }

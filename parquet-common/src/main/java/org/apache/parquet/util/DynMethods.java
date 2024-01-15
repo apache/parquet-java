@@ -31,8 +31,6 @@ import org.apache.parquet.Preconditions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static org.apache.parquet.Exceptions.throwIfInstance;
-
 public class DynMethods {
 
   private static final Logger LOG = LoggerFactory.getLogger(DynMethods.class);
@@ -315,8 +313,7 @@ public class DynMethods {
             .buildChecked();
       } catch (NoSuchMethodException e) {
         // not the right implementation
-        LOG.debug("failed to load constructor arity {} from class {}",
-          argClasses.length, targetClass, e);
+        LOG.debug("failed to load constructor arity {} from class {}", argClasses.length, targetClass, e);
       }
       return this;
     }
@@ -333,9 +330,7 @@ public class DynMethods {
             .buildChecked();
       } catch (NoSuchMethodException e) {
         // not the right implementation
-        LOG.debug("failed to load constructor arity {} from class {}",
-          argClasses.length, className, e);
-
+        LOG.debug("failed to load constructor arity {} from class {}", argClasses.length, className, e);
       }
       return this;
     }

@@ -68,6 +68,10 @@ import org.junit.runners.Parameterized;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Parameterized on Vectored IO enabled/disabled so can verify that
+ * ranged reads work through the bridge on compatible hadoop versions.
+ */
 @RunWith(Parameterized.class)
 public class TestInputOutputFormat {
   private static final Logger LOG = LoggerFactory.getLogger(TestInputOutputFormat.class);
@@ -98,6 +102,7 @@ public class TestInputOutputFormat {
   public TestInputOutputFormat(boolean readType) {
     this.readType = readType;
   }
+
   @Before
   public void setUp() {
     conf = new Configuration();
@@ -361,9 +366,10 @@ public class TestInputOutputFormat {
 
     assertTrue(value(readJob, "parquet", "bytesread") > 0L);
     assertTrue(value(readJob, "parquet", "bytestotal") > 0L);
-    assertEquals("bytestotal != bytesread",
-      value(readJob, "parquet", "bytestotal"),
-      value(readJob, "parquet", "bytesread"));
+    assertEquals(
+        "bytestotal != bytesread",
+        value(readJob, "parquet", "bytestotal"),
+        value(readJob, "parquet", "bytesread"));
     // not testing the time read counter since it could be zero due to the size of data is too small
   }
 
