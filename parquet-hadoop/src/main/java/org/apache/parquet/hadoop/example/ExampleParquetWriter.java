@@ -19,6 +19,7 @@
 package org.apache.parquet.hadoop.example;
 
 import java.io.IOException;
+import java.util.Map;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.column.ParquetProperties;
@@ -123,6 +124,11 @@ public class ExampleParquetWriter extends ParquetWriter<Group> {
     @Override
     protected WriteSupport<Group> getWriteSupport(ParquetConfiguration conf) {
       return new GroupWriteSupport(type);
+    }
+
+    @Override
+    public Builder withExtraMetaData(Map<String, String> extraMetaData) {
+      return super.withExtraMetaData(extraMetaData);
     }
   }
 }
