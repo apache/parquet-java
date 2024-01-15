@@ -100,4 +100,3 @@ struct TestLogicalType {
   1: required i16 test_i16,
   2: required i8 test_i8
 }
-
