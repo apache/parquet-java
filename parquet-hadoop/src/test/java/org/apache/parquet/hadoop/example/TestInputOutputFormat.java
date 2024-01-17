@@ -212,7 +212,7 @@ public class TestInputOutputFormat {
   private void testReadWrite(CompressionCodecName codec, Map<String, String> conf)
       throws IOException, ClassNotFoundException, InterruptedException {
     runMapReduceJob(codec, conf);
-    final BufferedReader in = new BufferedReader(new FileReader(new File(inputPath.toString())));
+    final BufferedReader in = new BufferedReader(new FileReader(inputPath.toString()));
     final BufferedReader out = new BufferedReader(new FileReader(new File(outputPath.toString(), "part-m-00000")));
     String lineIn;
     String lineOut = null;

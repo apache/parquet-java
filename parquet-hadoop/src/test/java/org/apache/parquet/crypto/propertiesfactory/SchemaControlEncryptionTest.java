@@ -27,8 +27,8 @@ import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 
+import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -52,7 +52,9 @@ import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -68,6 +70,9 @@ public class SchemaControlEncryptionTest {
   // store in HMS, or other metastore.
   private Map<String, Map<String, Object>> cryptoMetadata = new HashMap<>();
   private Map<String, Object[]> testData = new HashMap<>();
+
+  @Rule
+  public TemporaryFolder tempFolder = new TemporaryFolder();
 
   @Before
   public void generateTestData() {
@@ -119,10 +124,12 @@ public class SchemaControlEncryptionTest {
     conf.set(
         EncryptionPropertiesFactory.CRYPTO_FACTORY_CLASS_PROPERTY_NAME,
         SchemaCryptoPropertiesFactory.class.getName());
-    String file = createTempFile("test");
+    File file = tempFolder.newFile();
+    file.delete();
+    String path = file.getAbsolutePath();
     markEncryptColumns();
-    encryptParquetFile(file, conf);
-    decryptParquetFileAndValid(file, conf);
+    encryptParquetFile(path, conf);
+    decryptParquetFileAndValid(path, conf);
   }
 
   private void markEncryptColumns() {
@@ -182,14 +189,6 @@ public class SchemaControlEncryptionTest {
           subGroup.getBinary("Twitter", 0).getBytes(), ((String) testData.get("Twitter")[i]).getBytes());
     }
     reader.close();
-  }
-
-  private static String createTempFile(String prefix) {
-    try {
-      return Files.createTempDirectory(prefix).toAbsolutePath().toString() + "/test.parquet";
-    } catch (IOException e) {
-      throw new AssertionError("Unable to create temporary file", e);
-    }
   }
 
   private static long getLong() {

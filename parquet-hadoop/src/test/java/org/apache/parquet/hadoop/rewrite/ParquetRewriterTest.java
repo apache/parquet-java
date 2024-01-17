@@ -35,6 +35,7 @@ import static org.junit.Assert.assertTrue;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -93,7 +94,9 @@ import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
@@ -110,6 +113,9 @@ public class ParquetRewriterTest {
   private List<EncryptionTestFile> inputFiles = null;
   private String outputFile = null;
   private ParquetRewriter rewriter = null;
+
+  @Rule
+  public TemporaryFolder tempFolder = new TemporaryFolder();
 
   @Parameterized.Parameters(name = "WriterVersion = {0}, IndexCacheStrategy = {1}, UsingHadoop = {2}")
   public static Object[][] parameters() {
@@ -177,8 +183,8 @@ public class ParquetRewriterTest {
   }
 
   @Before
-  public void setUp() {
-    outputFile = TestFileBuilder.createTempFile("test");
+  public void setUp() throws IOException {
+    outputFile = newTempFile();
   }
 
   @Test
@@ -598,12 +604,14 @@ public class ParquetRewriterTest {
         .withCodec("UNCOMPRESSED")
         .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
         .withWriterVersion(writerVersion)
+        .withPath(newTempFile())
         .build());
     inputFiles.add(new TestFileBuilder(conf, schema2)
         .withNumRecord(numRecord)
         .withCodec("UNCOMPRESSED")
         .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
         .withWriterVersion(writerVersion)
+        .withPath(newTempFile())
         .build());
 
     List<Path> inputPaths = new ArrayList<>();
@@ -709,6 +717,7 @@ public class ParquetRewriterTest {
         .withRowGroupSize(rowGroupSize)
         .withBloomFilterEnabled(bloomFilterEnabledColumns)
         .withWriterVersion(writerVersion)
+        .withPath(newTempFile())
         .build());
   }
 
@@ -720,12 +729,14 @@ public class ParquetRewriterTest {
         .withCodec("GZIP")
         .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
         .withWriterVersion(writerVersion)
+        .withPath(newTempFile())
         .build());
     inputFiles.add(new TestFileBuilder(conf, schema)
         .withNumRecord(numRecord)
         .withCodec("UNCOMPRESSED")
         .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
         .withWriterVersion(writerVersion)
+        .withPath(newTempFile())
         .build());
   }
 
@@ -1058,6 +1069,12 @@ public class ParquetRewriterTest {
       builder = new RewriteOptions.Builder(parquetConf, inputs, outputPath);
     }
     return builder;
+  }
+
+  private String newTempFile() throws IOException {
+    File file = tempFolder.newFile();
+    file.delete();
+    return file.getAbsolutePath();
   }
 
   private void validateSchema() throws IOException {

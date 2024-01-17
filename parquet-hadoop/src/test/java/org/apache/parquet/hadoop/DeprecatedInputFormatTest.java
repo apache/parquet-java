@@ -65,7 +65,9 @@ import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.util.ContextUtil;
 import org.apache.parquet.schema.MessageTypeParser;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
 /**
  * DeprecatedParquetInputFormat is used by cascading. It initializes the recordReader using an initialize method with
@@ -81,6 +83,9 @@ public class DeprecatedInputFormatTest {
   private String writeSchema;
   private String readSchema;
   private Configuration conf;
+
+  @Rule
+  public TemporaryFolder tempFolder = new TemporaryFolder();
 
   @Before
   public void setUp() {
@@ -195,8 +200,8 @@ public class DeprecatedInputFormatTest {
   }
 
   private File createParquetFile(String content) throws IOException, ClassNotFoundException, InterruptedException {
-    File inputFile = File.createTempFile("temp", null);
-    File outputFile = File.createTempFile("temp", null);
+    File inputFile = tempFolder.newFile();
+    File outputFile = tempFolder.newFile();
     outputFile.delete();
     PrintWriter pw = new PrintWriter(new FileWriter(inputFile));
     if (content != null) {
@@ -221,7 +226,7 @@ public class DeprecatedInputFormatTest {
 
   @Test
   public void testCombineParquetInputFormat() throws Exception {
-    File inputDir = File.createTempFile("temp", null);
+    File inputDir = tempFolder.newFile();
     inputDir.delete();
     inputDir.mkdirs();
     File parquetFile1 = createParquetFile(null);
@@ -231,7 +236,7 @@ public class DeprecatedInputFormatTest {
     Files.move(parquetFile2.toPath(), new File(inputDir, "2").toPath());
     Files.move(parquetFile3.toPath(), new File(inputDir, "3").toPath());
 
-    File outputDir = File.createTempFile("temp", null);
+    File outputDir = tempFolder.newFile();
     outputDir.delete();
     org.apache.hadoop.mapred.JobConf conf = new org.apache.hadoop.mapred.JobConf(DeprecatedInputFormatTest.class);
     conf.setInputFormat(CombinedInputFormat.class);

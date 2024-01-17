@@ -27,8 +27,8 @@ import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
 import static org.junit.Assert.assertArrayEquals;
 
 import com.google.common.collect.ImmutableMap;
+import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -54,7 +54,9 @@ import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
 public class ColumnMaskerTest {
 
@@ -67,6 +69,15 @@ public class ColumnMaskerTest {
   private String outputFile = null;
   private TestDocs testDocs = null;
 
+  @Rule
+  public TemporaryFolder tempFolder = new TemporaryFolder();
+
+  private String newTempFile() throws IOException {
+    File file = tempFolder.newFile();
+    file.delete();
+    return file.getAbsolutePath();
+  }
+
   @Before
   public void testSetup() throws Exception {
     testDocs = new TestDocs(numRecord);
@@ -74,12 +85,11 @@ public class ColumnMaskerTest {
         conf,
         extraMeta,
         numRecord,
-        "input",
         "GZIP",
         ParquetProperties.WriterVersion.PARQUET_1_0,
         ParquetProperties.DEFAULT_PAGE_SIZE,
         testDocs);
-    outputFile = createTempFile("test");
+    outputFile = newTempFile();
     nullifyColumns(conf, inputFile, outputFile);
   }
 
@@ -144,7 +154,6 @@ public class ColumnMaskerTest {
       Configuration conf,
       Map<String, String> extraMeta,
       int numRecord,
-      String prefix,
       String codec,
       ParquetProperties.WriterVersion writerVersion,
       int pageSize,
@@ -163,7 +172,7 @@ public class ColumnMaskerTest {
 
     conf.set(GroupWriteSupport.PARQUET_EXAMPLE_SCHEMA, schema.toString());
 
-    String file = createTempFile(prefix);
+    String file = newTempFile();
     ExampleParquetWriter.Builder builder = ExampleParquetWriter.builder(new Path(file))
         .withConf(conf)
         .withWriterVersion(writerVersion)
@@ -201,14 +210,6 @@ public class ColumnMaskerTest {
       sb.append(chars[rnd.nextInt(10)]);
     }
     return sb.toString();
-  }
-
-  private String createTempFile(String prefix) {
-    try {
-      return Files.createTempDirectory(prefix).toAbsolutePath().toString() + "/test.parquet";
-    } catch (IOException e) {
-      throw new AssertionError("Unable to create temporary file", e);
-    }
   }
 
   private class TestDocs {

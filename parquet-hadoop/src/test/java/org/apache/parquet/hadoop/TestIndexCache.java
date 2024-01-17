@@ -24,6 +24,7 @@ import static org.apache.parquet.schema.Type.Repetition.OPTIONAL;
 import static org.apache.parquet.schema.Type.Repetition.REPEATED;
 import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.HashSet;
@@ -43,7 +44,9 @@ import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
 import org.junit.Assert;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
@@ -68,6 +71,9 @@ public class TestIndexCache {
   public static Object[] parameters() {
     return new Object[] {"v1", "v2"};
   }
+
+  @Rule
+  public TemporaryFolder tempFolder = new TemporaryFolder();
 
   public TestIndexCache(String writerVersion) {
     this.writerVersion = ParquetProperties.WriterVersion.fromString(writerVersion);
@@ -119,12 +125,16 @@ public class TestIndexCache {
   }
 
   private String createTestFile(String... bloomFilterEnabledColumns) throws IOException {
+    File file = tempFolder.newFile();
+    file.delete();
+    String path = file.getAbsolutePath();
     return new TestFileBuilder(conf, schema)
         .withNumRecord(numRecords)
         .withCodec("ZSTD")
         .withRowGroupSize(8L * 1024 * 1024)
         .withBloomFilterEnabled(bloomFilterEnabledColumns)
         .withWriterVersion(writerVersion)
+        .withPath(path)
         .build()
         .getFileName();
   }

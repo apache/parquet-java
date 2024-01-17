@@ -33,7 +33,6 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.Mockito.mock;
 
-import com.google.common.io.Files;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -73,7 +72,9 @@ import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
 public class TestInputFormat {
 
@@ -82,6 +83,9 @@ public class TestInputFormat {
   FileStatus fileStatus;
   MessageType schema;
   FileMetaData fileMetaData;
+
+  @Rule
+  public TemporaryFolder tempFolder = new TemporaryFolder();
 
   /*
   The test File contains 2-3 hdfs blocks based on the setting of each test, when hdfsBlock size is set to 50: [0-49][50-99]
@@ -398,8 +402,7 @@ public class TestInputFormat {
 
   @Test
   public void testGetFootersReturnsInPredictableOrder() throws IOException {
-    File tempDir = Files.createTempDir();
-    tempDir.deleteOnExit();
+    File tempDir = tempFolder.newFolder();
     int numFiles =
         10; // create a nontrivial number of files so that it actually tests getFooters() returns files in the
     // correct order
@@ -452,9 +455,7 @@ public class TestInputFormat {
   }
 
   private File getTempFile() throws IOException {
-    File tempFile = File.createTempFile("footer_", ".txt");
-    tempFile.deleteOnExit();
-    return tempFile;
+    return tempFolder.newFile();
   }
 
   private ParquetInputFormat.FootersCacheValue getDummyCacheValue(File file, FileSystem fs) throws IOException {
@@ -471,7 +472,7 @@ public class TestInputFormat {
   private static final Map<String, String> extramd;
 
   static {
-    Map<String, String> md = new HashMap<String, String>();
+    Map<String, String> md = new HashMap<>();
     md.put("specific", "foo");
     extramd = unmodifiableMap(md);
   }

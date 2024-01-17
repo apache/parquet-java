@@ -33,6 +33,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 public class CodecConfigTest {
+
   @Test
   public void testReadingCodecs() throws IOException {
     shouldUseParquetFlagToSetCodec("gzip", CompressionCodecName.GZIP);

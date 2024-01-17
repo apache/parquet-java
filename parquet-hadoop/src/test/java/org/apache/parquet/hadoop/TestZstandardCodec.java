@@ -21,7 +21,6 @@ package org.apache.parquet.hadoop;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.file.Files;
 import java.util.Random;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
@@ -45,12 +44,17 @@ import org.apache.parquet.hadoop.mapred.DeprecatedParquetOutputFormat;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.schema.MessageTypeParser;
 import org.junit.Assert;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
 public class TestZstandardCodec {
 
   private final Path inputPath =
       new Path("src/test/java/org/apache/parquet/hadoop/example/TestInputOutputFormat.java");
+
+  @Rule
+  public TemporaryFolder tempFolder = new TemporaryFolder();
 
   @Test
   public void testZstdCodec() throws IOException {
@@ -112,8 +116,7 @@ public class TestZstandardCodec {
     Configuration conf = new Configuration();
     jobConf.setInt(ZstandardCodec.PARQUET_COMPRESS_ZSTD_LEVEL, level);
     jobConf.setInt(ZstandardCodec.PARQUET_COMPRESS_ZSTD_WORKERS, 4);
-    Path path = new Path(
-        Files.createTempDirectory("zstd" + level).toAbsolutePath().toString());
+    Path path = new Path(tempFolder.newFile("zstd" + level).getAbsolutePath());
     RunningJob mapRedJob = runMapReduceJob(CompressionCodecName.ZSTD, jobConf, conf, path);
     Assert.assertTrue(mapRedJob.isSuccessful());
     return getFileSize(path, conf);

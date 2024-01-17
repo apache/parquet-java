@@ -28,8 +28,8 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertTrue;
 
 import com.google.common.collect.ImmutableMap;
+import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -62,7 +62,9 @@ import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
 import org.junit.Assert;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
 public class CompressionConverterTest {
 
@@ -70,6 +72,15 @@ public class CompressionConverterTest {
   private Map<String, String> extraMeta = ImmutableMap.of("key1", "value1", "key2", "value2");
   private CompressionConverter compressionConverter = new CompressionConverter();
   private Random rnd = new Random(5);
+
+  @Rule
+  public TemporaryFolder tempFolder = new TemporaryFolder();
+
+  private String newTempFile() throws IOException {
+    File file = tempFolder.newFile();
+    file.delete();
+    return file.getAbsolutePath();
+  }
 
   @Test
   public void testTransCompression() throws Exception {
@@ -102,9 +113,8 @@ public class CompressionConverterTest {
       throws Exception {
     int numRecord = 1000;
     TestDocs testDocs = new TestDocs(numRecord);
-    String inputFile =
-        createParquetFile(conf, extraMeta, numRecord, "input", srcCodec, writerVersion, pageSize, testDocs);
-    String outputFile = createTempFile("output_trans");
+    String inputFile = createParquetFile(conf, extraMeta, numRecord, srcCodec, writerVersion, pageSize, testDocs);
+    String outputFile = newTempFile();
 
     convertCompression(conf, inputFile, outputFile, destCodec);
 
@@ -251,7 +261,6 @@ public class CompressionConverterTest {
       Configuration conf,
       Map<String, String> extraMeta,
       int numRecord,
-      String prefix,
       String codec,
       ParquetProperties.WriterVersion writerVersion,
       int pageSize,
@@ -270,7 +279,7 @@ public class CompressionConverterTest {
 
     conf.set(GroupWriteSupport.PARQUET_EXAMPLE_SCHEMA, schema.toString());
 
-    String file = createTempFile(prefix);
+    String file = newTempFile();
     ExampleParquetWriter.Builder builder = ExampleParquetWriter.builder(new Path(file))
         .withConf(conf)
         .withWriterVersion(writerVersion)
@@ -307,14 +316,6 @@ public class CompressionConverterTest {
       sb.append(chars[rnd.nextInt(10)]);
     }
     return sb.toString();
-  }
-
-  private String createTempFile(String prefix) {
-    try {
-      return Files.createTempDirectory(prefix).toAbsolutePath().toString() + "/test.parquet";
-    } catch (IOException e) {
-      throw new AssertionError("Unable to create temporary file", e);
-    }
   }
 
   private class TestDocs {

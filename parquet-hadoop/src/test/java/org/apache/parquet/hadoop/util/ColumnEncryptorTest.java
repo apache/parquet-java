@@ -28,6 +28,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
@@ -58,7 +59,9 @@ import org.apache.parquet.io.SeekableInputStream;
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
 public class ColumnEncryptorTest {
 
@@ -68,6 +71,15 @@ public class ColumnEncryptorTest {
   private EncryptionTestFile inputFile = null;
   private String outputFile = null;
 
+  @Rule
+  public TemporaryFolder tempFolder = new TemporaryFolder();
+
+  private String newTempFile() throws IOException {
+    File file = tempFolder.newFile();
+    file.delete();
+    return file.getAbsolutePath();
+  }
+
   private void testSetup(String compression) throws IOException {
     MessageType schema = createSchema();
     columnEncryptor = new ColumnEncryptor(conf);
@@ -75,8 +87,9 @@ public class ColumnEncryptorTest {
         .withNumRecord(numRecord)
         .withCodec(compression)
         .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
+        .withPath(newTempFile())
         .build();
-    outputFile = TestFileBuilder.createTempFile("test");
+    outputFile = newTempFile();
   }
 
   @Test

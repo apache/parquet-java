@@ -20,7 +20,6 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
 
 import java.io.IOException;
-import java.nio.file.Files;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
@@ -53,6 +52,7 @@ public class TestFileBuilder {
   private Boolean footerEncryption = false;
   private long rowGroupSize = ParquetWriter.DEFAULT_BLOCK_SIZE;
   private String[] bloomFilterEnabled = {};
+  private String path;
 
   public TestFileBuilder(Configuration conf, MessageType schema) {
     this.conf = conf;
@@ -90,6 +90,11 @@ public class TestFileBuilder {
     return this;
   }
 
+  public TestFileBuilder withPath(String path) {
+    this.path = path;
+    return this;
+  }
+
   public TestFileBuilder withEncryptColumns(String[] encryptColumns) {
     this.encryptColumns = encryptColumns;
     return this;
@@ -111,11 +116,10 @@ public class TestFileBuilder {
   }
 
   public EncryptionTestFile build() throws IOException {
-    String fileName = createTempFile("test");
     SimpleGroup[] fileContent = createFileContent(schema);
     FileEncryptionProperties encryptionProperties =
         EncDecProperties.getFileEncryptionProperties(encryptColumns, cipher, footerEncryption);
-    ExampleParquetWriter.Builder builder = ExampleParquetWriter.builder(new Path(fileName))
+    ExampleParquetWriter.Builder builder = ExampleParquetWriter.builder(new Path(path))
         .withConf(conf)
         .withWriterVersion(writerVersion)
         .withExtraMetaData(extraMeta)
@@ -134,7 +138,7 @@ public class TestFileBuilder {
         writer.write(simpleGroup);
       }
     }
-    return new EncryptionTestFile(fileName, fileContent);
+    return new EncryptionTestFile(path, fileContent);
   }
 
   private SimpleGroup[] createFileContent(MessageType schema) {
@@ -219,13 +223,5 @@ public class TestFileBuilder {
       return Double.NaN;
     }
     return ThreadLocalRandom.current().nextDouble();
-  }
-
-  public static String createTempFile(String prefix) {
-    try {
-      return Files.createTempDirectory(prefix).toAbsolutePath().toString() + "/test.parquet";
-    } catch (IOException e) {
-      throw new AssertionError("Unable to create temporary file", e);
-    }
   }
 }
