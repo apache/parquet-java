@@ -19,17 +19,10 @@
 
 package org.apache.parquet.hadoop;
 
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 
 import java.io.IOException;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.Response;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FSDataOutputStream;
-import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.hadoop.example.GroupReadSupport;
@@ -37,26 +30,18 @@ import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.io.api.Binary;
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class TestInterOpReadFloat16 {
-
-  // The link includes a reference to a specific commit. To take a newer version - update this link.
-  private static final String PARQUET_TESTING_REPO = "https://github.com/apache/parquet-testing/raw/da467da/data/";
-  private static String PARQUET_TESTING_PATH = "target/parquet-testing/data";
   private static String FLOAT16_NONZEROS_NANS_FILE = "float16_nonzeros_and_nans.parquet";
   private static String FLOAT16_ZEROS_NANS_FILE = "float16_zeros_and_nans.parquet";
+  private static final String CHANGESET = "da467da";
 
-  private static final Logger LOG = LoggerFactory.getLogger(TestInterOpReadFloat16.class);
-  private OkHttpClient httpClient = new OkHttpClient();
+  private InterOpTester interop = new InterOpTester();
 
   @Test
   public void testInterOpReadFloat16NonZerosAndNansParquetFiles() throws IOException {
-    Path rootPath = new Path(PARQUET_TESTING_PATH);
-    LOG.info("======== testInterOpReadFloat16NonZerosAndNansParquetFiles {} ========", rootPath);
+    Path filePath = interop.GetInterOpFile(FLOAT16_NONZEROS_NANS_FILE, CHANGESET);
 
-    Path filePath = downloadInterOpFiles(rootPath, FLOAT16_NONZEROS_NANS_FILE, httpClient);
     final int expectRows = 8;
     Binary[] c0ExpectValues = {
       null,
@@ -100,10 +85,8 @@ public class TestInterOpReadFloat16 {
 
   @Test
   public void testInterOpReadFloat16ZerosAndNansParquetFiles() throws IOException {
-    Path rootPath = new Path(PARQUET_TESTING_PATH);
-    LOG.info("======== testInterOpReadFloat16ZerosAndNansParquetFiles {} ========", rootPath);
+    Path filePath = interop.GetInterOpFile(FLOAT16_ZEROS_NANS_FILE, "da467da");
 
-    Path filePath = downloadInterOpFiles(rootPath, FLOAT16_ZEROS_NANS_FILE, httpClient);
     final int expectRows = 3;
     Binary[] c0ExpectValues = {
       null,
@@ -137,33 +120,5 @@ public class TestInterOpReadFloat16 {
         }
       }
     }
-  }
-
-  private Path downloadInterOpFiles(Path rootPath, String fileName, OkHttpClient httpClient) throws IOException {
-    LOG.info("Download interOp files if needed");
-    Configuration conf = new Configuration();
-    FileSystem fs = rootPath.getFileSystem(conf);
-    LOG.info(rootPath + " exists?: " + fs.exists(rootPath));
-    if (!fs.exists(rootPath)) {
-      LOG.info("Create folder for interOp files: " + rootPath);
-      if (!fs.mkdirs(rootPath)) {
-        throw new IOException("Cannot create path " + rootPath);
-      }
-    }
-
-    Path file = new Path(rootPath, fileName);
-    if (!fs.exists(file)) {
-      String downloadUrl = PARQUET_TESTING_REPO + fileName;
-      LOG.info("Download interOp file: " + downloadUrl);
-      Request request = new Request.Builder().url(downloadUrl).build();
-      Response response = httpClient.newCall(request).execute();
-      if (!response.isSuccessful()) {
-        throw new IOException("Failed to download file: " + response);
-      }
-      try (FSDataOutputStream fdos = fs.create(file)) {
-        fdos.write(response.body().bytes());
-      }
-    }
-    return file;
   }
 }
