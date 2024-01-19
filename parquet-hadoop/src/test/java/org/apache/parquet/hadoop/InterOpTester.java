@@ -33,7 +33,7 @@ import org.slf4j.LoggerFactory;
 public class InterOpTester {
   private static final String PARQUET_TESTING_REPO = "https://github.com/apache/parquet-testing/raw/";
   private static final String PARQUET_TESTING_PATH = "target/parquet-testing/";
-  private static final Logger LOG = LoggerFactory.getLogger(TestInterOpReadByteStreamSplit.class);
+  private static final Logger LOG = LoggerFactory.getLogger(InterOpTester.class);
   private OkHttpClient httpClient = new OkHttpClient();
 
   public Path GetInterOpFile(String fileName, String changeset) throws IOException {
