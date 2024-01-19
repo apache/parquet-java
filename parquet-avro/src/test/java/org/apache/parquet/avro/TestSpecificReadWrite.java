@@ -43,7 +43,9 @@ import org.apache.hadoop.fs.Path;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
@@ -62,6 +64,9 @@ public class TestSpecificReadWrite {
     }; // use the old converters
     return Arrays.asList(data);
   }
+
+  @Rule
+  public TemporaryFolder tempFolder = new TemporaryFolder();
 
   private final Configuration testConf = new Configuration(false);
 
@@ -294,10 +299,9 @@ public class TestSpecificReadWrite {
   private Path writeCarsToParquetFile(
       int num, CompressionCodecName compression, boolean enableDictionary, int blockSize, int pageSize)
       throws IOException {
-    File tmp = File.createTempFile(getClass().getSimpleName(), ".tmp");
-    tmp.deleteOnExit();
+    File tmp = tempFolder.newFile();
     tmp.delete();
-    Path path = new Path(tmp.getPath());
+    Path path = new Path(tmp.getAbsolutePath());
 
     Car vwPolo = getVwPolo();
     Car vwPassat = getVwPassat();

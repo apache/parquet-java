@@ -74,12 +74,12 @@ public class WriteUsingMR {
     }
   }
 
-  public Path write(Message... messages) throws Exception {
+  public Path write(String input, String output, Message... messages) throws Exception {
 
     synchronized (WriteUsingMR.class) {
-      outputPath = TestUtils.someTemporaryFilePath();
+      outputPath = new Path(output);
 
-      Path inputPath = TestUtils.someTemporaryFilePath();
+      Path inputPath = new Path(input);
       FileSystem fileSystem = inputPath.getFileSystem(conf);
       fileSystem.create(inputPath);
 
