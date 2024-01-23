@@ -112,10 +112,18 @@ public class ParquetMetadata {
     return fileMetaData;
   }
 
+  /**
+   * Reuse the inputFile in ParquetFileReader if it is not null
+   * @return
+   */
   public InputFile getInputFile() {
     return inputFile;
   }
 
+  /**
+   *
+   * @param inputFile Cache the inputFile in readFooter method and reuse it in ParquetFileReader
+   */
   public void setInputFile(InputFile inputFile) {
     this.inputFile = inputFile;
   }
