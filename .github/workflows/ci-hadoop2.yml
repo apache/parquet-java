@@ -53,4 +53,4 @@ jobs:
         run: |
           EXTRA_JAVA_TEST_ARGS=$(mvn help:evaluate -Dexpression=extraJavaTestArgs -q -DforceStdout)
           export MAVEN_OPTS="$MAVEN_OPTS $EXTRA_JAVA_TEST_ARGS"
-          mvn verify --batch-mode -P hadoop2 javadoc:javadoc -Pci-test
+          mvn verify --batch-mode -P hadoop2 javadoc:javadoc

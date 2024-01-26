@@ -36,8 +36,12 @@ import org.apache.parquet.compression.CompressionCodecFactory.BytesInputDecompre
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.junit.Assert;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class TestDirectCodecFactory {
+
+  private static final Logger LOG = LoggerFactory.getLogger(TestDirectCodecFactory.class);
 
   private enum Decompression {
     ON_HEAP,
@@ -121,7 +125,7 @@ public class TestDirectCodecFactory {
       final String msg = String.format(
           "Failure while testing Codec: %s, OnHeapCompressionInput: %s, Decompression Mode: %s, Data Size: %d",
           codec.name(), useOnHeapCompression, decomp.name(), size);
-      System.out.println(msg);
+      LOG.error(msg);
       throw new RuntimeException(msg, e);
     } finally {
       if (rawBuf != null) {

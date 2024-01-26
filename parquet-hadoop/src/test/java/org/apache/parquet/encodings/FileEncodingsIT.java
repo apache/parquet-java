@@ -64,6 +64,8 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * This class contains test cases to validate each data type encoding.
@@ -72,6 +74,9 @@ import org.junit.runners.Parameterized;
  */
 @RunWith(Parameterized.class)
 public class FileEncodingsIT {
+
+  private static final Logger LOG = LoggerFactory.getLogger(FileEncodingsIT.class);
+
   private static final int RANDOM_SEED = 1;
   private static final int RECORD_COUNT = 2000000;
   private static final int FIXED_LENGTH = 60;
@@ -156,7 +161,7 @@ public class FileEncodingsIT {
      * This loop will make sure to test future writer versions added to WriterVersion enum.
      */
     for (WriterVersion writerVersion : WriterVersion.values()) {
-      System.out.println(String.format(
+      LOG.info(String.format(
           "Testing %s/%s/%s encodings using ROW_GROUP_SIZE=%d PAGE_SIZE=%d",
           writerVersion, this.paramTypeName, this.compression, TEST_ROW_GROUP_SIZE, TEST_PAGE_SIZE));
 
@@ -182,7 +187,7 @@ public class FileEncodingsIT {
      * This loop will make sure to test future writer versions added to WriterVersion enum.
      */
     for (WriterVersion writerVersion : WriterVersion.values()) {
-      System.out.println(String.format(
+      LOG.info(String.format(
           "Testing %s/%s/%s + DICTIONARY encodings using ROW_GROUP_SIZE=%d PAGE_SIZE=%d",
           writerVersion, this.paramTypeName, this.compression, TEST_ROW_GROUP_SIZE, TEST_PAGE_SIZE));
 

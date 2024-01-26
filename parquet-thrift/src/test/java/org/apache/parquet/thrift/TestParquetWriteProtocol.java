@@ -65,6 +65,7 @@ import org.slf4j.LoggerFactory;
 import thrift.test.OneOfEach;
 
 public class TestParquetWriteProtocol {
+
   private static final Logger LOG = LoggerFactory.getLogger(TestParquetWriteProtocol.class);
 
   @Test
@@ -697,7 +698,6 @@ public class TestParquetWriteProtocol {
 
   private void validateThrift(Configuration configuration, String[] expectations, TBase<?, ?> a) throws TException {
     final ThriftSchemaConverter thriftSchemaConverter = new ThriftSchemaConverter(configuration);
-    //      System.out.println(a);
     final Class<TBase<?, ?>> class1 = (Class<TBase<?, ?>>) a.getClass();
     final MessageType schema = thriftSchemaConverter.convert(class1);
     LOG.info("{}", schema);

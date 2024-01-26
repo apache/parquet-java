@@ -46,8 +46,13 @@ import org.apache.pig.data.Tuple;
 import org.apache.pig.impl.logicalLayer.FrontendException;
 import org.junit.Assert;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class TestParquetLoader {
+
+  private static final Logger LOG = LoggerFactory.getLogger(TestParquetLoader.class);
+
   @Test
   public void testSchema() throws Exception {
     String location = "garbage";
@@ -243,7 +248,7 @@ public class TestParquetLoader {
           + DataType.findTypeName(types[(i + 4) % types.length]) + "," + "  b:"
           + DataType.findTypeName(types[(i + 5) % types.length]) + "');";
 
-      System.out.println("Query: " + query);
+      LOG.info("Query: " + query);
       pigServer.registerQuery(query);
       pigServer.registerQuery("STORE B into 'out" + i + "' using mock.Storage();");
       pigServer.executeBatch();
