@@ -51,8 +51,9 @@ public class NonBlockedDecompressorStream extends DecompressorStream {
     int decompressedBytes = decompressor.decompress(b, off, len);
     if (decompressor.finished()) {
       decompressor.reset();
-    } else if (decompressedBytes == 0) {
-      throw new IOException("Zero bytes read during decompression, suggesting a potential file corruption.");
+    }
+    if (decompressedBytes == 0) {
+      throw new IOException("Corrupt file: Zero bytes read during decompression.");
     }
 
     return decompressedBytes;
