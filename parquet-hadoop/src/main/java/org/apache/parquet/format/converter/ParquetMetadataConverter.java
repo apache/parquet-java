@@ -563,6 +563,10 @@ public class ParquetMetadataConverter {
       if (bloomFilterOffset >= 0) {
         metaData.setBloom_filter_offset(bloomFilterOffset);
       }
+      int bloomFilterLength = columnMetaData.getBloomFilterLength();
+      if (bloomFilterLength >= 0) {
+        metaData.setBloom_filter_length(bloomFilterLength);
+      }
       if (columnMetaData.getStatistics() != null
           && !columnMetaData.getStatistics().isEmpty()) {
         metaData.setStatistics(
@@ -1688,6 +1692,9 @@ public class ParquetMetadataConverter {
             column.setRowGroupOrdinal(rowGroup.getOrdinal());
             if (metaData.isSetBloom_filter_offset()) {
               column.setBloomFilterOffset(metaData.getBloom_filter_offset());
+            }
+            if (metaData.isSetBloom_filter_length()) {
+              column.setBloomFilterLength(metaData.getBloom_filter_length());
             }
           } else { // column encrypted with column key
             // Metadata will be decrypted later, if this column is accessed

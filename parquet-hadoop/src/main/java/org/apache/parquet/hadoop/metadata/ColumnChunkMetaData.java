@@ -260,6 +260,7 @@ public abstract class ColumnChunkMetaData {
   private IndexReference offsetIndexReference;
 
   private long bloomFilterOffset = -1;
+  private int bloomFilterLength = -1;
 
   protected ColumnChunkMetaData(ColumnChunkProperties columnChunkProperties) {
     this(null, columnChunkProperties);
@@ -383,13 +384,27 @@ public abstract class ColumnChunkMetaData {
   }
 
   /**
-   * Method should be considered private
-   *
+   * @param bloomFilterLength
+   *          the reference to the Bloom filter
+   */
+  public void setBloomFilterLength(int bloomFilterLength) {
+    this.bloomFilterLength = bloomFilterLength;
+  }
+
+  /**
    * @return the offset to the Bloom filter or {@code -1} if there is no bloom filter for this column chunk
    */
   public long getBloomFilterOffset() {
     decryptIfNeeded();
     return bloomFilterOffset;
+  }
+
+  /**
+   * @return the length to the Bloom filter or {@code -1} if there is no bloom filter length for this column chunk
+   */
+  public int getBloomFilterLength() {
+    decryptIfNeeded();
+    return bloomFilterLength;
   }
 
   /**
@@ -692,6 +707,9 @@ class EncryptedColumnChunkMetaData extends ColumnChunkMetaData {
     this.properties = shadowColumnChunkMetaData.properties;
     if (metaData.isSetBloom_filter_offset()) {
       setBloomFilterOffset(metaData.getBloom_filter_offset());
+    }
+    if (metaData.isSetBloom_filter_length()) {
+      setBloomFilterLength(metaData.getBloom_filter_length());
     }
   }
 
