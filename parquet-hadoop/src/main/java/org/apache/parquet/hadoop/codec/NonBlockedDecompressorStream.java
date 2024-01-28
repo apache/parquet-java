@@ -55,8 +55,8 @@ public class NonBlockedDecompressorStream extends DecompressorStream {
 
     // Decompress is called after reading all the compressed input data. The decompressor also
     // decompresses the data all at once. If the decompressor returns 0, it does not have any input
-    // data to decompress, and neither does it have any decompressed data to return. This is an invalid
-    // state and we error out here.
+    // data to decompress, and neither does it have any decompressed data to return. This is an
+    // invalid state and we error out here.
     if (decompressedBytes == 0) {
       throw new IOException("Corrupt file: Zero bytes read during decompression.");
     }
