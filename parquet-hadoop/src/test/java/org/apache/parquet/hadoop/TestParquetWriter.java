@@ -36,6 +36,7 @@ import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import com.google.common.collect.ImmutableMap;
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
@@ -405,6 +406,64 @@ public class TestParquetWriter {
         ParquetProperties.DEFAULT_MAXIMUM_RECORD_COUNT_FOR_CHECK,
         1);
     testParquetFileNumberOfBlocks(1, 1, 3);
+  }
+
+  @Test
+  public void testExtraMetaData() throws Exception {
+    final Configuration conf = new Configuration();
+    final File testDir = temp.newFile();
+    testDir.delete();
+
+    final MessageType schema = parseMessageType("message test { required int32 int32_field; }");
+    GroupWriteSupport.setSchema(schema, conf);
+    final SimpleGroupFactory f = new SimpleGroupFactory(schema);
+
+    for (WriterVersion version : WriterVersion.values()) {
+      final Path filePath = new Path(testDir.getAbsolutePath(), version.name());
+      final ParquetWriter<Group> writer = ExampleParquetWriter.builder(new TestOutputFile(filePath, conf))
+          .withConf(conf)
+          .withExtraMetaData(ImmutableMap.of("simple-key", "some-value-1", "nested.key", "some-value-2"))
+          .build();
+      for (int i = 0; i < 1000; i++) {
+        writer.write(f.newGroup().append("int32_field", 32));
+      }
+      writer.close();
+
+      final ParquetFileReader reader =
+          ParquetFileReader.open(HadoopInputFile.fromPath(filePath, new Configuration()));
+      assertEquals(1000, reader.readNextRowGroup().getRowCount());
+      assertEquals(
+          ImmutableMap.of(
+              "simple-key",
+              "some-value-1",
+              "nested.key",
+              "some-value-2",
+              ParquetWriter.OBJECT_MODEL_NAME_PROP,
+              "example"),
+          reader.getFileMetaData().getKeyValueMetaData());
+
+      reader.close();
+    }
+  }
+
+  @Test
+  public void testFailsOnConflictingExtraMetaDataKey() throws Exception {
+    final Configuration conf = new Configuration();
+    final File testDir = temp.newFile();
+    testDir.delete();
+
+    final MessageType schema = parseMessageType("message test { required int32 int32_field; }");
+    GroupWriteSupport.setSchema(schema, conf);
+
+    for (WriterVersion version : WriterVersion.values()) {
+      final Path filePath = new Path(testDir.getAbsolutePath(), version.name());
+
+      Assert.assertThrows(IllegalArgumentException.class, () -> ExampleParquetWriter.builder(
+              new TestOutputFile(filePath, conf))
+          .withConf(conf)
+          .withExtraMetaData(ImmutableMap.of(ParquetWriter.OBJECT_MODEL_NAME_PROP, "some-value-3"))
+          .build());
+    }
   }
 
   private void testParquetFileNumberOfBlocks(
