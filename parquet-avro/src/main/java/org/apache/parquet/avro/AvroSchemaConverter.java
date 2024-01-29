@@ -300,9 +300,8 @@ public class AvroSchemaConverter {
     Integer nameCount = names.merge(name, 1, (oldValue, value) -> oldValue + 1);
     for (Type parquetType : parquetFields) {
       Schema fieldSchema = convertField(parquetType, names);
-      if (parquetType.isRepetition(REPEATED)) {
-        throw new UnsupportedOperationException(
-            "REPEATED not supported outside LIST or MAP. Type: " + parquetType);
+      if (parquetType.isRepetition(REPEATED)) { // If a repeated field is ungrouped, treat as REQUIRED per spec
+        fields.add(new Schema.Field(parquetType.getName(), Schema.createArray(fieldSchema)));
       } else if (parquetType.isRepetition(Type.Repetition.OPTIONAL)) {
         fields.add(new Schema.Field(parquetType.getName(), optional(fieldSchema), null, NULL_VALUE));
       } else { // REQUIRED
