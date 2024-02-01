@@ -302,6 +302,7 @@ public class ParquetJoiner implements Closeable {
       int numBlocksRewritten)
       throws IOException {
 
+    int dMax = descriptor.getMaxDefinitionLevel();
     ParquetProperties.WriterVersion writerVersion = chunk.getEncodingStats().usesV2Pages()
         ? ParquetProperties.WriterVersion.PARQUET_2_0
         : ParquetProperties.WriterVersion.PARQUET_1_0;
@@ -335,7 +336,9 @@ public class ParquetJoiner implements Closeable {
         }
         rowCount++;
       }
-      if (columnType == Integer.TYPE) {
+      if (dlvl < dMax) {
+        cWriter.writeNull(rlvl, dlvl);
+      } else if (columnType == Integer.TYPE) {
         cWriter.write(cReader.getInteger(), rlvl, dlvl);
       } else if (columnType == Long.TYPE) {
         cWriter.write(cReader.getLong(), rlvl, dlvl);
@@ -396,7 +399,7 @@ public class ParquetJoiner implements Closeable {
       } else {
         Type tempField = extractField(field.asGroupType(), targetField);
         if (tempField != null) {
-          return tempField;
+          return new GroupType(candidate.getRepetition(), candidate.getName(), tempField);
         }
       }
     }
