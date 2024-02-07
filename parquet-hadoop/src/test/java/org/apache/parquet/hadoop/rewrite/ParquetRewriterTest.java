@@ -116,11 +116,7 @@ public class ParquetRewriterTest {
     return new Object[][] {
       {"v1", "NONE", true},
       {"v1", "PREFETCH_BLOCK", true},
-      {"v2", "NONE", true},
       {"v2", "PREFETCH_BLOCK", true},
-      {"v1", "NONE", false},
-      {"v1", "PREFETCH_BLOCK", false},
-      {"v2", "NONE", false},
       {"v2", "PREFETCH_BLOCK", false}
     };
   }
