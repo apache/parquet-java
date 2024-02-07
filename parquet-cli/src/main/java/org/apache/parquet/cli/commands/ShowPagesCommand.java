@@ -83,7 +83,7 @@ public class ShowPagesCommand extends BaseCommand {
     // command.
     if (raw) {
       try (RawPagesReader reader =
-          new RawPagesReader(HadoopInputFile.fromPath(qualifiedPath(targets.get(0)), getConf()))) {
+          new RawPagesReader(HadoopInputFile.fromPath(qualifiedPath(targets.get(0)), getConf()), columns)) {
         reader.listPages(console);
       }
       return 0;

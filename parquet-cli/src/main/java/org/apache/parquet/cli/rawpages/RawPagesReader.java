@@ -21,6 +21,9 @@ package org.apache.parquet.cli.rawpages;
 import static org.apache.parquet.hadoop.ParquetFileWriter.MAGIC;
 
 import java.io.IOException;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import org.apache.parquet.cli.util.RawUtils;
 import org.apache.parquet.format.CliUtils;
 import org.apache.parquet.format.ColumnChunk;
@@ -37,8 +40,13 @@ public class RawPagesReader implements AutoCloseable {
 
   private final SeekableInputStream input;
   private final FileMetaData footer;
+  private final Set<String> columns;
 
   public RawPagesReader(InputFile file) throws IOException {
+    this(file, null);
+  }
+
+  public RawPagesReader(InputFile file, List<String> cols) throws IOException {
     long fileLen = file.getLength();
 
     if (fileLen < MAGIC.length + 4 + MAGIC.length) {
@@ -47,6 +55,7 @@ public class RawPagesReader implements AutoCloseable {
 
     input = file.newStream();
     footer = RawUtils.readFooter(input, fileLen);
+    columns = cols == null || cols.isEmpty() ? null : new HashSet<>(cols);
   }
 
   public void listPages(Logger console) throws IOException {
@@ -55,6 +64,10 @@ public class RawPagesReader implements AutoCloseable {
       for (ColumnChunk columnChunk : rowGroup.getColumns()) {
         ColumnMetaData metaData = columnChunk.getMeta_data();
         String path = String.join(".", metaData.getPath_in_schema());
+        if (columns != null && !columns.contains(path)) {
+          continue;
+        }
+
         long totalSize = metaData.getTotal_compressed_size();
         long dictOffset = metaData.getDictionary_page_offset();
         long seekTo = metaData.getData_page_offset();
