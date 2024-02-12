@@ -20,7 +20,10 @@ package org.apache.parquet.hadoop.codec;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
+import static org.mockito.Mockito.when;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -34,6 +37,7 @@ import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.junit.Assert;
 import org.junit.Test;
+import org.mockito.Mockito;
 
 public class TestCompressionCodec {
 
@@ -171,5 +175,22 @@ public class TestCompressionCodec {
         // Not implemented yet
         return null;
     }
+  }
+
+  @Test
+  public void TestDecompressorInvalidState() throws IOException {
+    // Create a mock Decompressor that returns 0 when decompress is called.
+    Decompressor mockDecompressor = Mockito.mock(Decompressor.class);
+    when(mockDecompressor.decompress(Mockito.any(byte[].class), Mockito.anyInt(), Mockito.anyInt()))
+        .thenReturn(0);
+
+    // Create a NonBlockedDecompressorStream with the mock Decompressor.
+    NonBlockedDecompressorStream decompressorStream =
+        new NonBlockedDecompressorStream(new ByteArrayInputStream(new byte[0]), mockDecompressor, 1024);
+
+    assertThrows(IOException.class, () -> {
+      // Attempt to read from the stream, which should trigger the IOException.
+      decompressorStream.read(new byte[1024], 0, 1024);
+    });
   }
 }

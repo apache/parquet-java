@@ -427,6 +427,9 @@ public class Types {
 
     @Override
     protected PrimitiveType build(String name) {
+      if (length == 0 && logicalTypeAnnotation instanceof LogicalTypeAnnotation.UUIDLogicalTypeAnnotation) {
+        length = LogicalTypeAnnotation.UUIDLogicalTypeAnnotation.BYTES;
+      }
       if (PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY == primitiveType) {
         Preconditions.checkArgument(length > 0, "Invalid FIXED_LEN_BYTE_ARRAY length: %s", length);
       }

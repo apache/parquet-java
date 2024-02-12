@@ -30,6 +30,7 @@ import org.apache.parquet.thrift.struct.ThriftType.MapType;
 import org.apache.parquet.thrift.struct.ThriftType.SetType;
 import org.apache.parquet.thrift.struct.ThriftType.StringType;
 import org.apache.parquet.thrift.struct.ThriftType.StructType;
+import org.apache.parquet.thrift.struct.ThriftType.UUIDType;
 import org.apache.thrift.protocol.TType;
 
 /**
@@ -49,13 +50,22 @@ public enum ThriftTypeID {
   MAP(TType.MAP, true, MapType.class),
   SET(TType.SET, true, SetType.class),
   LIST(TType.LIST, true, ListType.class),
-  ENUM(TType.ENUM, TType.I32, EnumType.class);
+  ENUM(TType.ENUM, TType.I32, EnumType.class),
+  UUID(TType.UUID, UUIDType.class);
 
-  private static ThriftTypeID[] types = new ThriftTypeID[17];
+  private static final ThriftTypeID[] types;
 
   static {
+    types = new ThriftTypeID[18];
     for (ThriftTypeID t : ThriftTypeID.values()) {
-      types[t.thriftType] = t;
+      // The Thrift Type for Enum is not part of the spec, but is as a Java implementation detail:
+      // https://github.com/apache/thrift/blob/5cf71b2beec3c67a4c8452ddabbbc6ae43fff16f/lib/java/src/main/java/org/apache/thrift/protocol/TType.java#L39-L40
+      // So we put it at the very end
+      if (t.thriftType == -1) {
+        types[17] = t;
+      } else {
+        types[t.thriftType] = t;
+      }
     }
   }
 

@@ -21,6 +21,7 @@ package org.apache.parquet.thrift.projection.amend;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import org.apache.parquet.thrift.ParquetProtocol;
 import org.apache.parquet.thrift.struct.ThriftField;
 import org.apache.parquet.thrift.struct.ThriftType;
@@ -181,6 +182,19 @@ class DefaultEventsVisitor implements ThriftType.StateVisitor<Void, Void> {
   @Override
   public Void visit(ThriftType.StringType stringType, Void v) {
     dummyEvents.add(new StringProtocol(""));
+    return null;
+  }
+
+  private final UUID zeroUuid = UUID.fromString("00000000-0000-0000-0000-000000000000");
+
+  @Override
+  public Void visit(ThriftType.UUIDType uuidType, Void state) {
+    dummyEvents.add(new ParquetProtocol("readUuid()") {
+      @Override
+      public UUID readUuid() throws TException {
+        return zeroUuid;
+      }
+    });
     return null;
   }
 
