@@ -31,6 +31,8 @@ import java.util.List;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.ParquetReadOptions;
+import org.apache.parquet.bytes.HeapByteBufferAllocator;
+import org.apache.parquet.bytes.TrackingByteBufferAllocator;
 import org.apache.parquet.column.EncodingStats;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.filter2.recordlevel.PhoneBookWriter;
@@ -77,27 +79,29 @@ public class TestStoreBloomFilter {
 
   @Test
   public void testStoreBloomFilter() throws IOException {
-    ParquetFileReader reader = new ParquetFileReader(
-        HadoopInputFile.fromPath(file, new Configuration()),
-        ParquetReadOptions.builder().build());
-    List<BlockMetaData> blocks = reader.getRowGroups();
-    blocks.forEach(block -> {
-      try {
-        // column `id` isn't fully encoded in dictionary, it will generate `BloomFilter`
-        ColumnChunkMetaData idMeta = block.getColumns().get(0);
-        EncodingStats idEncoding = idMeta.getEncodingStats();
-        Assert.assertTrue(idEncoding.hasNonDictionaryEncodedPages());
-        Assert.assertNotNull(reader.readBloomFilter(idMeta));
+    try (TrackingByteBufferAllocator allocator = TrackingByteBufferAllocator.wrap(new HeapByteBufferAllocator());
+        ParquetFileReader reader = new ParquetFileReader(
+            HadoopInputFile.fromPath(file, new Configuration()),
+            ParquetReadOptions.builder().withAllocator(allocator).build())) {
+      List<BlockMetaData> blocks = reader.getRowGroups();
+      blocks.forEach(block -> {
+        try {
+          // column `id` isn't fully encoded in dictionary, it will generate `BloomFilter`
+          ColumnChunkMetaData idMeta = block.getColumns().get(0);
+          EncodingStats idEncoding = idMeta.getEncodingStats();
+          Assert.assertTrue(idEncoding.hasNonDictionaryEncodedPages());
+          Assert.assertNotNull(reader.readBloomFilter(idMeta));
 
-        // column `name` is fully encoded in dictionary, it won't generate `BloomFilter`
-        ColumnChunkMetaData nameMeta = block.getColumns().get(1);
-        EncodingStats nameEncoding = nameMeta.getEncodingStats();
-        Assert.assertFalse(nameEncoding.hasNonDictionaryEncodedPages());
-        Assert.assertNull(reader.readBloomFilter(nameMeta));
-      } catch (IOException e) {
-        e.printStackTrace();
-      }
-    });
+          // column `name` is fully encoded in dictionary, it won't generate `BloomFilter`
+          ColumnChunkMetaData nameMeta = block.getColumns().get(1);
+          EncodingStats nameEncoding = nameMeta.getEncodingStats();
+          Assert.assertFalse(nameEncoding.hasNonDictionaryEncodedPages());
+          Assert.assertNull(reader.readBloomFilter(nameMeta));
+        } catch (IOException e) {
+          e.printStackTrace();
+        }
+      });
+    }
   }
 
   private static Path createTempFile(String version) {
@@ -118,14 +122,17 @@ public class TestStoreBloomFilter {
       throws IOException {
     int pageSize = DATA.size() / 100; // Ensure that several pages will be created
     int rowGroupSize = pageSize * 4; // Ensure that there are more row-groups created
-    PhoneBookWriter.write(
-        ExampleParquetWriter.builder(file)
-            .withWriteMode(OVERWRITE)
-            .withRowGroupSize(rowGroupSize)
-            .withPageSize(pageSize)
-            .withBloomFilterNDV("id", 10000L)
-            .withBloomFilterNDV("name", 10000L)
-            .withWriterVersion(parquetVersion),
-        DATA);
+    try (TrackingByteBufferAllocator allocator = TrackingByteBufferAllocator.wrap(new HeapByteBufferAllocator())) {
+      PhoneBookWriter.write(
+          ExampleParquetWriter.builder(file)
+              .withAllocator(allocator)
+              .withWriteMode(OVERWRITE)
+              .withRowGroupSize(rowGroupSize)
+              .withPageSize(pageSize)
+              .withBloomFilterNDV("id", 10000L)
+              .withBloomFilterNDV("name", 10000L)
+              .withWriterVersion(parquetVersion),
+          DATA);
+    }
   }
 }

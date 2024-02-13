@@ -82,6 +82,7 @@ class InternalParquetRecordReader<T> {
   private long totalCountLoadedSoFar = 0;
 
   private UnmaterializableRecordCounter unmaterializableRecordCounter;
+  private PageReadStore currentRowGroup;
 
   /**
    * @param readSupport Object which helps reads files of the given type, e.g. Thrift, Avro.
@@ -130,29 +131,40 @@ class InternalParquetRecordReader<T> {
         }
       }
 
+      if (currentRowGroup != null) {
+        currentRowGroup.close();
+      }
+
       LOG.info("at row " + current + ". reading next block");
       long t0 = System.currentTimeMillis();
-      PageReadStore pages = reader.readNextFilteredRowGroup();
-      if (pages == null) {
+      currentRowGroup = reader.readNextFilteredRowGroup();
+      if (currentRowGroup == null) {
         throw new IOException(
             "expecting more rows but reached last block. Read " + current + " out of " + total);
       }
-      resetRowIndexIterator(pages);
+      resetRowIndexIterator(currentRowGroup);
       long timeSpentReading = System.currentTimeMillis() - t0;
       totalTimeSpentReadingBytes += timeSpentReading;
       BenchmarkCounter.incrementTime(timeSpentReading);
       if (LOG.isInfoEnabled())
-        LOG.info("block read in memory in {} ms. row count = {}", timeSpentReading, pages.getRowCount());
+        LOG.info(
+            "block read in memory in {} ms. row count = {}",
+            timeSpentReading,
+            currentRowGroup.getRowCount());
       LOG.debug("initializing Record assembly with requested schema {}", requestedSchema);
       MessageColumnIO columnIO = columnIOFactory.getColumnIO(requestedSchema, fileSchema, strictTypeChecking);
-      recordReader = columnIO.getRecordReader(pages, recordConverter, filterRecords ? filter : FilterCompat.NOOP);
+      recordReader = columnIO.getRecordReader(
+          currentRowGroup, recordConverter, filterRecords ? filter : FilterCompat.NOOP);
       startedAssemblingCurrentBlockAt = System.currentTimeMillis();
-      totalCountLoadedSoFar += pages.getRowCount();
+      totalCountLoadedSoFar += currentRowGroup.getRowCount();
       ++currentBlock;
     }
   }
 
   public void close() throws IOException {
+    if (currentRowGroup != null) {
+      currentRowGroup.close();
+    }
     if (reader != null) {
       reader.close();
     }

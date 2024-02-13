@@ -334,6 +334,7 @@ public class CapacityByteArrayOutputStream extends OutputStream {
     for (ByteBuffer slab : slabs) {
       allocator.release(slab);
     }
+    slabs.clear();
     try {
       super.close();
     } catch (IOException e) {

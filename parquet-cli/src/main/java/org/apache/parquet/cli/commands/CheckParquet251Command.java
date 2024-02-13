@@ -113,6 +113,7 @@ public class CheckParquet251Command extends BaseCommand {
             pages != null;
             pages = reader.readNextRowGroup()) {
           validator.validate(columns, pages);
+          pages.close();
         }
       } catch (BadStatsException e) {
         return e.getMessage();

@@ -26,7 +26,7 @@ import org.apache.parquet.io.api.Binary;
 /**
  * base class to implement an encoding for a given column
  */
-public abstract class ValuesWriter {
+public abstract class ValuesWriter implements AutoCloseable {
 
   /**
    * used to decide if we want to work to the next page
@@ -58,6 +58,7 @@ public abstract class ValuesWriter {
    * Called to close the values writer. Any output stream is closed and can no longer be used.
    * All resources are released.
    */
+  @Override
   public void close() {}
 
   /**
