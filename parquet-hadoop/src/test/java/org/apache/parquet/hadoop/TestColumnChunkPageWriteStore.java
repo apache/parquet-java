@@ -53,6 +53,7 @@ import org.apache.parquet.bytes.LittleEndianDataInputStream;
 import org.apache.parquet.bytes.TrackingByteBufferAllocator;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.Encoding;
+import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.page.DataPageV2;
 import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.page.PageReadStore;
@@ -187,13 +188,17 @@ public class TestColumnChunkPageWriteStore {
           schema,
           Mode.CREATE,
           ParquetWriter.DEFAULT_BLOCK_SIZE,
-          ParquetWriter.MAX_PADDING_SIZE_DEFAULT);
+          ParquetWriter.MAX_PADDING_SIZE_DEFAULT,
+          ParquetProperties.DEFAULT_COLUMN_INDEX_TRUNCATE_LENGTH,
+          ParquetProperties.DEFAULT_STATISTICS_TRUNCATE_LENGTH,
+          ParquetProperties.DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED,
+          null,
+          allocator);
       writer.start();
       writer.startBlock(rowCount);
       pageOffset = outputFile.out().getPos();
-      {
-        ColumnChunkPageWriteStore store =
-            new ColumnChunkPageWriteStore(compressor(GZIP), schema, allocator, Integer.MAX_VALUE);
+      try (ColumnChunkPageWriteStore store =
+          new ColumnChunkPageWriteStore(compressor(GZIP), schema, allocator, Integer.MAX_VALUE)) {
         PageWriter pageWriter = store.getPageWriter(col);
         pageWriter.writePageV2(
             rowCount,
@@ -277,19 +282,20 @@ public class TestColumnChunkPageWriteStore {
     int fakeCount = 3;
     BinaryStatistics fakeStats = new BinaryStatistics();
 
-    ColumnChunkPageWriteStore store = new ColumnChunkPageWriteStore(
+    try (ColumnChunkPageWriteStore store = new ColumnChunkPageWriteStore(
         compressor(UNCOMPRESSED),
         schema,
         allocator = TrackingByteBufferAllocator.wrap(new HeapByteBufferAllocator()),
-        Integer.MAX_VALUE);
+        Integer.MAX_VALUE)) {
 
-    for (ColumnDescriptor col : schema.getColumns()) {
-      PageWriter pageWriter = store.getPageWriter(col);
-      pageWriter.writePage(fakeData, fakeCount, fakeStats, RLE, RLE, PLAIN);
+      for (ColumnDescriptor col : schema.getColumns()) {
+        PageWriter pageWriter = store.getPageWriter(col);
+        pageWriter.writePage(fakeData, fakeCount, fakeStats, RLE, RLE, PLAIN);
+      }
+
+      // flush to the mock writer
+      store.flushToFileWriter(mockFileWriter);
     }
-
-    // flush to the mock writer
-    store.flushToFileWriter(mockFileWriter);
 
     for (ColumnDescriptor col : schema.getColumns()) {
       inOrder.verify(mockFileWriter)

@@ -37,6 +37,7 @@ import org.apache.parquet.io.ColumnIOFactory;
 import org.apache.parquet.io.MessageColumnIO;
 import org.apache.parquet.io.api.RecordConsumer;
 import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.util.AutoCloseables;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -197,10 +198,10 @@ class InternalParquetRecordWriter<T> {
       parquetFileWriter.endBlock();
       this.nextRowGroupSize = Math.min(parquetFileWriter.getNextRowGroupSize(), rowGroupSizeThreshold);
     }
-
-    columnStore.close();
+    AutoCloseables.uncheckedClose(columnStore, pageStore, bloomFilterWriteStore);
     columnStore = null;
     pageStore = null;
+    bloomFilterWriteStore = null;
   }
 
   long getRowGroupSizeThreshold() {

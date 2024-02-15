@@ -22,10 +22,18 @@ import static java.lang.String.format;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Used for collecting the content of {@link BytesInput} objects.
+ *
+ * @deprecated Use {@link ConcatenatingByteBufferCollector} instead.
+ */
+@Deprecated
 public class ConcatenatingByteArrayCollector extends BytesInput {
+
   private final List<byte[]> slabs = new ArrayList<byte[]>();
   private long size = 0;
 
@@ -44,6 +52,13 @@ public class ConcatenatingByteArrayCollector extends BytesInput {
   public void writeAllTo(OutputStream out) throws IOException {
     for (byte[] slab : slabs) {
       out.write(slab);
+    }
+  }
+
+  @Override
+  public void writeInto(ByteBuffer buffer) {
+    for (byte[] slab : slabs) {
+      buffer.put(slab);
     }
   }
 

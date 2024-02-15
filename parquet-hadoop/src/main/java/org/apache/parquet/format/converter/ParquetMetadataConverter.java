@@ -46,7 +46,6 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.CorruptStatistics;
 import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.Preconditions;
-import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.column.EncodingStats;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.statistics.BinaryStatistics;
@@ -1450,10 +1449,11 @@ public class ParquetMetadataConverter {
 
     AesGcmEncryptor footerSigner = fileDecryptor.createSignedFooterEncryptor();
 
-    byte[] footerAndSignature = ((ByteBufferInputStream) from).slice(0).array();
     int footerSignatureLength = AesCipher.NONCE_LENGTH + AesCipher.GCM_TAG_LENGTH;
     byte[] serializedFooter = new byte[combinedFooterLength - footerSignatureLength];
-    System.arraycopy(footerAndSignature, 0, serializedFooter, 0, serializedFooter.length);
+    // Resetting to the beginning of the footer
+    from.reset();
+    from.read(serializedFooter);
 
     byte[] signedFooterAAD = AesCipher.createFooterAAD(fileDecryptor.getFileAAD());
     byte[] encryptedFooterBytes = footerSigner.encrypt(false, serializedFooter, nonce, signedFooterAAD);
@@ -1511,6 +1511,9 @@ public class ParquetMetadataConverter {
     final BlockCipher.Decryptor footerDecryptor = (encryptedFooter ? fileDecryptor.fetchFooterDecryptor() : null);
     final byte[] encryptedFooterAAD =
         (encryptedFooter ? AesCipher.createFooterAAD(fileDecryptor.getFileAAD()) : null);
+
+    // Mark the beginning of the footer for verifyFooterIntegrity
+    from.mark(combinedFooterLength);
 
     FileMetaDataAndRowGroupOffsetInfo fileMetaDataAndRowGroupInfo =
         filter.accept(new MetadataFilterVisitor<FileMetaDataAndRowGroupOffsetInfo, IOException>() {

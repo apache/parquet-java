@@ -24,10 +24,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.channels.Channels;
 import java.nio.channels.WritableByteChannel;
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.Consumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -194,7 +196,9 @@ public abstract class BytesInput {
    * @param bytesInput a BytesInput
    * @return a copy of the BytesInput
    * @throws IOException if there is an exception when reading bytes from the BytesInput
+   * @deprecated Use {@link #copy(ByteBufferAllocator, Consumer)} instead
    */
+  @Deprecated
   public static BytesInput copy(BytesInput bytesInput) throws IOException {
     return from(bytesInput.toByteArray());
   }
@@ -208,9 +212,17 @@ public abstract class BytesInput {
   public abstract void writeAllTo(OutputStream out) throws IOException;
 
   /**
+   * For internal use only. It is expected that the buffer is large enough to fit the content of this {@link BytesInput}
+   * object.
+   */
+  abstract void writeInto(ByteBuffer buffer);
+
+  /**
    * @return a new byte array materializing the contents of this input
    * @throws IOException if there is an exception reading
+   * @deprecated Use {@link #toByteBuffer(ByteBufferAllocator, Consumer)}
    */
+  @Deprecated
   public byte[] toByteArray() throws IOException {
     long size = size();
     if (size > Integer.MAX_VALUE) {
@@ -229,9 +241,83 @@ public abstract class BytesInput {
   /**
    * @return a new ByteBuffer materializing the contents of this input
    * @throws IOException if there is an exception reading
+   * @deprecated Use {@link #toByteBuffer(ByteBufferAllocator, Consumer)}
    */
+  @Deprecated
   public ByteBuffer toByteBuffer() throws IOException {
     return ByteBuffer.wrap(toByteArray());
+  }
+
+  /**
+   * Copies the content of this {@link BytesInput} object to a newly created {@link ByteBuffer} and returns it wrapped
+   * in a {@link BytesInput} object. <strong>The data content shall be able to be fit in a {@link ByteBuffer}
+   * object!</strong>
+   *
+   * @param allocator the allocator to be used for creating the new {@link ByteBuffer} object
+   * @param callback  the callback called with the newly created {@link ByteBuffer} object; to be used for make it
+   *                  released at the proper time
+   * @return the newly created {@link BytesInput} object wrapping the copied content of the specified one
+   */
+  public BytesInput copy(ByteBufferAllocator allocator, Consumer<ByteBuffer> callback) {
+    ByteBuffer buf = allocator.allocate(Math.toIntExact(size()));
+    callback.accept(buf);
+    writeInto(buf);
+    buf.flip();
+    return BytesInput.from(buf);
+  }
+
+  /**
+   * Similar to {@link #copy(ByteBufferAllocator, Consumer)} where the allocator and the callback are in the specified
+   * {@link ByteBufferReleaser}.
+   */
+  public BytesInput copy(ByteBufferReleaser releaser) {
+    return copy(releaser.allocator, releaser::releaseLater);
+  }
+
+  /**
+   * Returns a {@link ByteBuffer} object referencing the data behind this {@link BytesInput} object. It may create a new
+   * {@link ByteBuffer} object if this {@link BytesInput} is not backed by a single {@link ByteBuffer}. In the latter
+   * case the specified {@link ByteBufferAllocator} object will be used. In case of allocation the specified callback
+   * will be invoked so the release of the newly allocated {@link ByteBuffer} object can be released at a proper time.
+   * <strong>The data content shall be able to be fit in a {@link ByteBuffer} object!</strong>
+   *
+   * @param allocator the {@link ByteBufferAllocator} to be used for potentially allocating a new {@link ByteBuffer}
+   *                  object
+   * @param callback  the callback to be called with the new {@link ByteBuffer} object potentially allocated
+   * @return the {@link ByteBuffer} object with the data content of this {@link BytesInput} object. (Might be a copy of
+   * the content or directly referencing the same memory as this {@link BytesInput} object.)
+   */
+  public ByteBuffer toByteBuffer(ByteBufferAllocator allocator, Consumer<ByteBuffer> callback) {
+    ByteBuffer buf = getInternalByteBuffer();
+    // The internal buffer should be direct iff the allocator is direct as well but let's be sure
+    if (buf == null || buf.isDirect() != allocator.isDirect()) {
+      buf = allocator.allocate(Math.toIntExact(size()));
+      callback.accept(buf);
+      writeInto(buf);
+      buf.flip();
+    }
+    return buf;
+  }
+
+  /**
+   * Similar to {@link #toByteBuffer(ByteBufferAllocator, Consumer)} where the allocator and the callback are in the
+   * specified {@link ByteBufferReleaser}.
+   */
+  public ByteBuffer toByteBuffer(ByteBufferReleaser releaser) {
+    return toByteBuffer(releaser.allocator, releaser::releaseLater);
+  }
+
+  /**
+   * For internal use only.
+   * <p>
+   * Returns a {@link ByteBuffer} object referencing to the internal data of this {@link BytesInput} without copying if
+   * applicable. If it is not possible (because there are multiple {@link ByteBuffer}s internally or cannot be
+   * referenced as a {@link ByteBuffer}), {@code null} value will be returned.
+   *
+   * @return the internal data of this {@link BytesInput} or {@code null}
+   */
+  ByteBuffer getInternalByteBuffer() {
+    return null;
   }
 
   /**
@@ -275,6 +361,20 @@ public abstract class BytesInput {
       out.write(this.toByteArray());
     }
 
+    @Override
+    void writeInto(ByteBuffer buffer) {
+      try {
+        // Needs a duplicate buffer to set the correct limit (we do not want to over-read the stream)
+        ByteBuffer workBuf = buffer.duplicate();
+        int pos = buffer.position();
+        workBuf.limit(pos + byteCount);
+        Channels.newChannel(in).read(workBuf);
+        buffer.position(pos + byteCount);
+      } catch (IOException e) {
+        new RuntimeException("Exception occurred during reading input stream", e);
+      }
+    }
+
     public byte[] toByteArray() throws IOException {
       LOG.debug("read all {} bytes", byteCount);
       byte[] buf = new byte[byteCount];
@@ -316,6 +416,18 @@ public abstract class BytesInput {
     }
 
     @Override
+    void writeInto(ByteBuffer buffer) {
+      for (BytesInput input : inputs) {
+        input.writeInto(buffer);
+      }
+    }
+
+    @Override
+    ByteBuffer getInternalByteBuffer() {
+      return inputs.size() == 1 ? inputs.get(0).getInternalByteBuffer() : null;
+    }
+
+    @Override
     public long size() {
       return size;
     }
@@ -334,8 +446,16 @@ public abstract class BytesInput {
       BytesUtils.writeIntLittleEndian(out, intValue);
     }
 
-    public ByteBuffer toByteBuffer() throws IOException {
-      return ByteBuffer.allocate(4).putInt(0, intValue);
+    @Override
+    void writeInto(ByteBuffer buffer) {
+      buffer.order(ByteOrder.LITTLE_ENDIAN).putInt(intValue);
+    }
+
+    public ByteBuffer toByteBuffer() {
+      ByteBuffer buf = ByteBuffer.allocate(4);
+      writeInto(buf);
+      buf.flip();
+      return buf;
     }
 
     @Override
@@ -357,9 +477,20 @@ public abstract class BytesInput {
       BytesUtils.writeUnsignedVarInt(intValue, out);
     }
 
-    public ByteBuffer toByteBuffer() throws IOException {
+    @Override
+    void writeInto(ByteBuffer buffer) {
+      try {
+        BytesUtils.writeUnsignedVarInt(intValue, buffer);
+      } catch (IOException e) {
+        // It does not actually throw an I/O exception, but we cannot remove throws for compatibility
+        throw new RuntimeException(e);
+      }
+    }
+
+    public ByteBuffer toByteBuffer() {
       ByteBuffer ret = ByteBuffer.allocate((int) size());
-      BytesUtils.writeUnsignedVarInt(intValue, ret);
+      writeInto(ret);
+      ret.flip();
       return ret;
     }
 
@@ -384,6 +515,11 @@ public abstract class BytesInput {
     }
 
     @Override
+    void writeInto(ByteBuffer buffer) {
+      BytesUtils.writeUnsignedVarLong(longValue, buffer);
+    }
+
+    @Override
     public long size() {
       int s = (70 - Long.numberOfLeadingZeros(longValue)) / 7;
       return s == 0 ? 1 : s;
@@ -394,6 +530,11 @@ public abstract class BytesInput {
 
     @Override
     public void writeAllTo(OutputStream out) throws IOException {}
+
+    @Override
+    void writeInto(ByteBuffer buffer) {
+      // no-op
+    }
 
     @Override
     public long size() {
@@ -419,6 +560,16 @@ public abstract class BytesInput {
     }
 
     @Override
+    void writeInto(ByteBuffer buffer) {
+      arrayOut.writeInto(buffer);
+    }
+
+    @Override
+    ByteBuffer getInternalByteBuffer() {
+      return arrayOut.getInternalByteBuffer();
+    }
+
+    @Override
     public long size() {
       return arrayOut.size();
     }
@@ -435,6 +586,11 @@ public abstract class BytesInput {
     @Override
     public void writeAllTo(OutputStream out) throws IOException {
       arrayOut.writeTo(out);
+    }
+
+    @Override
+    void writeInto(ByteBuffer buffer) {
+      buffer.put(arrayOut.toByteArray());
     }
 
     @Override
@@ -458,6 +614,11 @@ public abstract class BytesInput {
     @Override
     public void writeAllTo(OutputStream out) throws IOException {
       out.write(in, offset, length);
+    }
+
+    @Override
+    void writeInto(ByteBuffer buffer) {
+      buffer.put(in, offset, length);
     }
 
     public ByteBuffer toByteBuffer() throws IOException {
@@ -492,6 +653,13 @@ public abstract class BytesInput {
     }
 
     @Override
+    void writeInto(ByteBuffer target) {
+      for (ByteBuffer buffer : buffers) {
+        target.put(buffer.duplicate());
+      }
+    }
+
+    @Override
     public ByteBufferInputStream toInputStream() {
       return ByteBufferInputStream.wrap(buffers);
     }
@@ -512,6 +680,16 @@ public abstract class BytesInput {
     @Override
     public void writeAllTo(OutputStream out) throws IOException {
       Channels.newChannel(out).write(buffer.duplicate());
+    }
+
+    @Override
+    void writeInto(ByteBuffer target) {
+      target.put(buffer.duplicate());
+    }
+
+    @Override
+    ByteBuffer getInternalByteBuffer() {
+      return buffer.slice();
     }
 
     @Override
