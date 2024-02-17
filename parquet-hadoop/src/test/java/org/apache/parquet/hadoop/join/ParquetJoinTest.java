@@ -18,54 +18,43 @@
  */
 package org.apache.parquet.hadoop.join;
 
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.*;
+import static org.apache.parquet.schema.Type.Repetition.*;
+import static org.junit.Assert.*;
+
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
-import org.apache.parquet.HadoopReadOptions;
-import org.apache.parquet.ParquetReadOptions;
-import org.apache.parquet.Version;
 import org.apache.parquet.column.ParquetProperties;
-import org.apache.parquet.column.values.bloomfilter.BloomFilter;
 import org.apache.parquet.conf.ParquetConfiguration;
 import org.apache.parquet.conf.PlainParquetConfiguration;
 import org.apache.parquet.crypto.FileDecryptionProperties;
-import org.apache.parquet.crypto.FileEncryptionProperties;
-import org.apache.parquet.crypto.ParquetCipher;
-import org.apache.parquet.crypto.ParquetCryptoRuntimeException;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroup;
-import org.apache.parquet.format.DataPageHeader;
-import org.apache.parquet.format.DataPageHeaderV2;
-import org.apache.parquet.format.PageHeader;
 import org.apache.parquet.format.converter.ParquetMetadataConverter;
 import org.apache.parquet.hadoop.IndexCache;
 import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.ParquetReader;
-import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.example.GroupReadSupport;
-import org.apache.parquet.hadoop.metadata.*;
-import org.apache.parquet.hadoop.rewrite.MaskMode;
-import org.apache.parquet.hadoop.util.CompressionConverter.TransParquetFileReader;
-import org.apache.parquet.hadoop.util.*;
-import org.apache.parquet.internal.column.columnindex.ColumnIndex;
-import org.apache.parquet.internal.column.columnindex.OffsetIndex;
+import org.apache.parquet.hadoop.metadata.ParquetMetadata;
+import org.apache.parquet.hadoop.util.EncryptionTestFile;
+import org.apache.parquet.hadoop.util.HadoopInputFile;
+import org.apache.parquet.hadoop.util.HadoopOutputFile;
+import org.apache.parquet.hadoop.util.TestFileBuilder;
 import org.apache.parquet.io.InputFile;
-import org.apache.parquet.io.InvalidRecordException;
 import org.apache.parquet.io.OutputFile;
-import org.apache.parquet.io.SeekableInputStream;
-import org.apache.parquet.schema.*;
+import org.apache.parquet.schema.GroupType;
+import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.schema.PrimitiveType;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
-import java.io.IOException;
-import java.util.*;
-import java.util.stream.Collectors;
-
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.*;
-import static org.apache.parquet.schema.Type.Repetition.*;
-import static org.junit.Assert.*;
 
 @RunWith(Parameterized.class)
 public class ParquetJoinTest {
@@ -120,7 +109,7 @@ public class ParquetJoinTest {
     for (EncryptionTestFile inputFile : inputFilesR) {
       inputPathsR.add(new Path(inputFile.getFileName()));
     }
-    JoinOptions.Builder builder = createBuilder(inputPathsL, inputPathsR);
+    JoinOptions.Builder builder = createBuilder(inputPathsL, ImmutableList.of(inputPathsR));
     JoinOptions options = builder.indexCacheStrategy(indexCacheStrategy).build();
 
     joiner = new ParquetJoiner(options);
@@ -225,9 +214,7 @@ public class ParquetJoinTest {
   }
 
 
-
-
-  private JoinOptions.Builder createBuilder(List<Path> inputPathsL, List<Path> inputPathsR) throws IOException {
+  private JoinOptions.Builder createBuilder(List<Path> inputPathsL, List<List<Path>> inputPathsR) throws IOException {
     JoinOptions.Builder builder;
     if (usingHadoop) {
       Path outputPath = new Path(outputFile);
@@ -237,8 +224,9 @@ public class ParquetJoinTest {
       List<InputFile> inputsL = inputPathsL.stream()
           .map(p -> HadoopInputFile.fromPathUnchecked(p, conf))
           .collect(Collectors.toList());
-      List<InputFile> inputsR = inputPathsR.stream()
-          .map(p -> HadoopInputFile.fromPathUnchecked(p, conf))
+      List<List<InputFile>> inputsR = inputPathsR
+          .stream()
+          .map(x -> x.stream().map(y -> (InputFile) HadoopInputFile.fromPathUnchecked(y, conf)).collect(Collectors.toList()))
           .collect(Collectors.toList());
       builder = new JoinOptions.Builder(parquetConf, inputsL, inputsR, outputPath);
     }

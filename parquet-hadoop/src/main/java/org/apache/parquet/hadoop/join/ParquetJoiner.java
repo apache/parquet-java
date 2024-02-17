@@ -18,10 +18,10 @@
  */
 package org.apache.parquet.hadoop.join;
 
+import org.apache.curator.shaded.com.google.common.collect.ImmutableMap;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.Preconditions;
-import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.column.*;
 import org.apache.parquet.column.impl.ColumnReadStoreImpl;
 import org.apache.parquet.column.page.PageReadStore;
@@ -59,8 +59,6 @@ public class ParquetJoiner implements Closeable {
   // Key to store original writer version in the file key-value metadata
   public static final String ORIGINAL_CREATED_BY_KEY = "original.created.by";
   private static final Logger LOG = LoggerFactory.getLogger(ParquetJoiner.class);
-  private final int pageBufferSize = ParquetProperties.DEFAULT_PAGE_SIZE * 2;
-  private final byte[] pageBuffer = new byte[pageBufferSize];
 
   // Configurations for the new file
   private final Map<String, String> extraMetaData;
@@ -69,65 +67,61 @@ public class ParquetJoiner implements Closeable {
 
   // Reader and relevant states of the in-processing input file
   private final Queue<TransParquetFileReader> inputFilesL;
-  private final Queue<TransParquetFileReader> inputFilesR;
-  // Schema of input files (should be the same) and to write to the output file
-  private final MessageType schema;
-  private final MessageType schemaL;
-  private final MessageType schemaR;
+  private final List<RightColumnWriter> columnWritersR = new ArrayList<>();
   private final Map<ColumnPath, ColumnDescriptor> descriptorsMapL;
-  private final Map<ColumnPath, ColumnDescriptor> descriptorsMapR;
-  // created_by information of current reader being processed
-  private String originalCreatedBy = "";
-  // Unique created_by information from all input files
-//   private final Set<String> allOriginalCreatedBys = new HashSet<>();
   // The index cache strategy
   private final IndexCache.CacheStrategy indexCacheStrategy;
 
   public ParquetJoiner(JoinOptions options) throws IOException {
     ParquetConfiguration conf = options.getParquetConfiguration();
     OutputFile outFile = options.getParquetOutputFile();
-    this.inputFilesL = getFileReader(options.getParquetInputFilesL(), conf);
-    this.inputFilesR = getFileReader(options.getParquetInputFilesR(), conf);
+    this.inputFilesL = getFileReaders(options.getParquetInputFilesL(), conf);
+    List<Queue<TransParquetFileReader>> inputFilesR = options.getParquetInputFilesR()
+        .stream()
+        .map(x -> getFileReaders(x, conf))
+        .collect(Collectors.toList());
+    ensureSameSchema(inputFilesL);
+    inputFilesR.forEach(this::ensureSameSchema);
+    LOG.info("Start rewriting {} input file(s) {} to {}", inputFilesL.size(), options.getParquetInputFilesL(), outFile); // TODO add logging for all the files
 
-    Map<String, String> map = new HashMap<>();
-    map.put(
-      ORIGINAL_CREATED_BY_KEY,
-      String.join(
-        "\n",
-        Stream.concat(inputFilesL.stream(), inputFilesR.stream())
-          .map(x -> x.getFooter().getFileMetaData().getCreatedBy())
-          .collect(Collectors.toSet())
-      )
+    this.extraMetaData = ImmutableMap.of(
+        ORIGINAL_CREATED_BY_KEY,
+        Stream.concat(inputFilesL.stream(), inputFilesR.stream().flatMap(Collection::stream))
+            .map(x -> x.getFooter().getFileMetaData().getCreatedBy())
+            .reduce((a, b) -> a + "\n" + b)
+            .orElse("")
     );
-    this.extraMetaData = Collections.unmodifiableMap(map);
 
-    LOG.info("Start rewriting {} input file(s) {} to {}", inputFilesL.size(), options.getParquetInputFilesL(), outFile); // TODO
+    // TODO check that schema on the left and on the right is not identical
+    MessageType schemaL = inputFilesL.peek().getFooter().getFileMetaData().getSchema();
+    List<MessageType> schemaR = inputFilesR
+        .stream()
+        .map(x -> x.peek().getFooter().getFileMetaData().getSchema())
+        .collect(Collectors.toList());
 
-    this.schemaL = getInputFilesSchema(inputFilesL);
-    this.schemaR = getInputFilesSchema(inputFilesR);
-
-    Set<String> fieldNamesR = schemaR.getFields().stream().map(Type::getName).collect(Collectors.toSet());
+    // TODO check that there is no overlap of fields on the right
+    Map<String, Type> fieldNamesL = schemaL.getFields().stream().collect(Collectors.toMap(Type::getName, x -> x));
+    Map<String, Type> fieldNamesR = schemaR.stream().flatMap(x -> x.getFields().stream()).collect(Collectors.toMap(Type::getName, x -> x));
     List<Type> fields = Stream.concat(
-        schemaL.getFields().stream().filter(x -> !fieldNamesR.contains(x.getName())),
-        schemaR.getFields().stream()
+        fieldNamesL.values().stream().map(x -> fieldNamesR.getOrDefault(x.getName(), x)), // take a field on the right if we can
+        fieldNamesR.values().stream().filter(x -> !fieldNamesL.containsKey(x.getName())) // takes fields on the right if it was not present on the left
     ).collect(Collectors.toList());
-    this.schema = new MessageType(schemaL.getName(), fields);
+    // Schema of input files (should be the same) and to write to the output file
+    MessageType schema = new MessageType(schemaL.getName(), fields);
 
     this.descriptorsMapL = schemaL.getColumns().stream()
-        .filter(x -> x.getPath().length == 0 || !fieldNamesR.contains(x.getPath()[0]))
-        .collect(Collectors.toMap(x -> ColumnPath.get(x.getPath()), x -> x));
-    this.descriptorsMapR = schemaR.getColumns().stream()
+        .filter(x -> x.getPath().length == 0 || !fieldNamesR.containsKey(x.getPath()[0]))
         .collect(Collectors.toMap(x -> ColumnPath.get(x.getPath()), x -> x));
     this.indexCacheStrategy = options.getIndexCacheStrategy();
 
     long rowCountL = inputFilesL.stream().mapToLong(ParquetFileReader::getRecordCount).sum();
-    long rowCountR = inputFilesR.stream().mapToLong(ParquetFileReader::getRecordCount).sum();
+    long rowCountR = inputFilesR.stream().flatMap(Collection::stream).mapToLong(ParquetFileReader::getRecordCount).sum();
     if (rowCountL != rowCountR) {
       throw new IllegalArgumentException("The number of records on the left and on the right don't match!");
     }
 
     ParquetFileWriter.Mode writerMode = ParquetFileWriter.Mode.CREATE;
-    writer = new ParquetFileWriter(
+    this.writer = new ParquetFileWriter(
         outFile,
         schema,
         writerMode,
@@ -136,11 +130,15 @@ public class ParquetJoiner implements Closeable {
         DEFAULT_COLUMN_INDEX_TRUNCATE_LENGTH,
         DEFAULT_STATISTICS_TRUNCATE_LENGTH,
         ParquetProperties.DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED);
-    writer.start();
+    this.writer.start();
+
+    for (Queue<TransParquetFileReader> inFiles: inputFilesR) {
+      this.columnWritersR.add(new RightColumnWriter(inFiles, writer));
+    }
   }
 
   // Open all input files to validate their schemas are compatible to merge
-  private Queue<TransParquetFileReader> getFileReader(List<InputFile> inputFiles, ParquetConfiguration conf) {
+  private Queue<TransParquetFileReader> getFileReaders(List<InputFile> inputFiles, ParquetConfiguration conf) {
     Preconditions.checkArgument(inputFiles != null && !inputFiles.isEmpty(), "No input files");
     LinkedList<TransParquetFileReader> inputFileReaders = new LinkedList<>();
     for (InputFile inputFile : inputFiles) {
@@ -155,7 +153,7 @@ public class ParquetJoiner implements Closeable {
     return inputFileReaders;
   }
 
-  private MessageType getInputFilesSchema(Queue<TransParquetFileReader> inputFileReaders) {
+  private void ensureSameSchema(Queue<TransParquetFileReader> inputFileReaders) {
     MessageType schema = null;
     for (TransParquetFileReader reader : inputFileReaders) {
       MessageType newSchema = reader.getFooter().getFileMetaData().getSchema();
@@ -175,7 +173,6 @@ public class ParquetJoiner implements Closeable {
         }
       }
     }
-    return schema;
   }
 
   @Override
@@ -183,248 +180,241 @@ public class ParquetJoiner implements Closeable {
     writer.end(extraMetaData);
   }
 
-//   private static class ColumnReaderIterator implements Iterator<ColumnReader> {
-//
-//     @Override
-//     public boolean hasNext() {
-//       return false;
-//     }
-//
-//     @Override
-//     public ColumnReader next() {
-//       return null;
-//     }
-//   }
-
+  // TODO add the test for empty files joins, it should merge schemas
   public void processBlocks() throws IOException {
-    int numBlocksRewritten = 0;
-//     new ColumnReaderIterator();
-    Map<ColumnDescriptor, ColumnReader> colReadersR = new HashMap<>();
-    int blockIdR = 0;
-    int writtenInBlock = 0;
+    int rowGroupIdx = 0;
     while (!inputFilesL.isEmpty()) {
+      TransParquetFileReader reader = inputFilesL.poll();
+      IndexCache indexCache = IndexCache.create(reader, descriptorsMapL.keySet(), indexCacheStrategy, true);
+      LOG.info("Rewriting input fileLeft: {}, remaining filesLeft: {}", reader.getFile(), inputFilesL.size());
+      List<BlockMetaData> blocks = reader.getFooter().getBlocks();
+      for (BlockMetaData blockMetaData: blocks) {
+        writer.startBlock(blockMetaData.getRowCount());
 
-
-      TransParquetFileReader readerL = inputFilesL.poll();
-      IndexCache indexCacheL = IndexCache.create(readerL, descriptorsMapL.keySet(), indexCacheStrategy, true);
-      LOG.info("Rewriting input fileLeft: {}, remaining filesLeft: {}", readerL.getFile(), inputFilesL.size());
-      ParquetMetadata metaL = readerL.getFooter();
-      for (int blockId = 0; blockId < metaL.getBlocks().size(); blockId++) {
-        BlockMetaData blockMetaDataL = metaL.getBlocks().get(blockId);
-        writer.startBlock(blockMetaDataL.getRowCount());
-
-
-        indexCacheL.setBlockMetadata(blockMetaDataL);
-        List<ColumnChunkMetaData> chunksL = blockMetaDataL.getColumns();
+        // Writing the left side
+        indexCache.setBlockMetadata(blockMetaData);
+        List<ColumnChunkMetaData> chunksL = blockMetaData.getColumns();
         for (ColumnChunkMetaData chunk : chunksL) {
-          // TODO add that detail to docs
-          if (chunk.isEncrypted()) { // If a column is encrypted we simply throw exception.
+          if (chunk.isEncrypted()) { // TODO add that detail to docs
             throw new IOException("Column " + chunk.getPath().toDotString() + " is encrypted");
           }
           ColumnDescriptor descriptorL = descriptorsMapL.get(chunk.getPath());
           if (descriptorL != null) { // descriptorL might be NULL if a column is from the right side of a join
-            readerL.setStreamPosition(chunk.getStartingPos());
-            BloomFilter bloomFilter = indexCacheL.getBloomFilter(chunk);
-            ColumnIndex columnIndex = indexCacheL.getColumnIndex(chunk);
-            OffsetIndex offsetIndex = indexCacheL.getOffsetIndex(chunk);
-            writer.appendColumnChunk(descriptorL, readerL.getStream(), chunk, bloomFilter, columnIndex, offsetIndex);
+            reader.setStreamPosition(chunk.getStartingPos());
+            BloomFilter bloomFilter = indexCache.getBloomFilter(chunk);
+            ColumnIndex columnIndex = indexCache.getColumnIndex(chunk);
+            OffsetIndex offsetIndex = indexCache.getOffsetIndex(chunk);
+            writer.appendColumnChunk(descriptorL, reader.getStream(), chunk, bloomFilter, columnIndex, offsetIndex);
           }
         }
 
-        // TODO < ------------- Left and Right descriptorL must be alligned?
-
-        if (inputFilesR.isEmpty()) {
-          throw new RuntimeException(""); // TODO
+        // Writing the right side
+        for (RightColumnWriter writer: columnWritersR) {
+          writer.writeRows(rowGroupIdx, blockMetaData.getRowCount());
         }
-        ParquetMetadata metaR = inputFilesR.peek().getFooter();
-        long writeLeft = blockMetaDataL.getRowCount();
-        while (writeLeft > 0) {
-  //         LOG.info("Rewriting input fileRight: {}, remaining fileRight: {}", readerR.getFile(), inputFilesR.size());
-          BlockMetaData blockMetaDataR = metaR.getBlocks().get(blockIdR);
-          List<ColumnChunkMetaData> chunksR = blockMetaDataR.getColumns();
-          long leftInBlock = blockMetaDataR.getRowCount() - writtenInBlock;
-          long writeFromBlock = Math.min(writeLeft, leftInBlock);
-          for (ColumnChunkMetaData chunkR : chunksR) {
-            // If a column is encrypted we simply throw exception. // TODO add that detail to docs
-            if (chunkR.isEncrypted()) {
-              throw new IOException("Column " + chunkR.getPath().toDotString() + " is encrypted");
-            }
-            // This column has been pruned.
-            ColumnDescriptor descriptorR = descriptorsMapR.get(chunkR.getPath());
-            TransParquetFileReader readerR = inputFilesR.peek();
-            if (!colReadersR.containsKey(descriptorR)) {
-              PageReadStore pageReadStore = readerR.readRowGroup(blockIdR);
-              ColumnReadStoreImpl crStore =
-                  new ColumnReadStoreImpl(pageReadStore, new DummyGroupConverter(), schema, originalCreatedBy);
-              ColumnReader cReader = crStore.getColumnReader(descriptorR);
-              colReadersR.put(descriptorR, cReader);
-            }
-            ColumnReader colReaderR = colReadersR.get(descriptorR);
-            buildChunks(descriptorR, chunkR, colReaderR, writer, schemaR, writeFromBlock, numBlocksRewritten);
-          }
-          writeLeft -= Math.min(writeLeft, blockMetaDataR.getRowCount()); // TODO add exception for empty right schema so we don't fall with exception here?
-          writtenInBlock += writeFromBlock;
-          if (writeLeft > 0) {
-            blockIdR++;
-          }
-          if (blockIdR == metaR.getBlocks().size()) {
-            inputFilesR.poll();
-            blockIdR = 0;
-            writtenInBlock = 0;
-          }
-        }
-
 
         writer.endBlock();
-        numBlocksRewritten++;
+        rowGroupIdx++;
       }
     }
   }
 
-  public BytesInput readBlock(int length, TransParquetFileReader reader) throws IOException {
-    byte[] data;
-    if (length > pageBufferSize) {
-      data = new byte[length];
-    } else {
-      data = pageBuffer;
+  private static class RightColumnWriter {
+    private final Queue<TransParquetFileReader> inputFiles;
+    private final ParquetFileWriter writer;
+    private final MessageType schema;
+    private final Map<ColumnPath, ColumnDescriptor> descriptorsMapR;
+    private final Map<ColumnDescriptor, ColumnReader> colReadersR = new HashMap<>();
+    private int rowGroupIdxR = 0;
+    private int writtenFromBlock = 0;
+
+    public RightColumnWriter(Queue<TransParquetFileReader> inputFiles, ParquetFileWriter writer) throws IOException {
+      this.inputFiles = inputFiles;
+      this.writer = writer;
+      this.schema = inputFiles.peek().getFooter().getFileMetaData().getSchema();
+      this.descriptorsMapR =
+          this.schema.getColumns().stream().collect(Collectors.toMap(x -> ColumnPath.get(x.getPath()), x -> x));
+      initColumnReaders();
     }
-    reader.blockRead(data, 0, length);
-    return BytesInput.from(data, 0, length);
-  }
 
-  private void buildChunks(
-      ColumnDescriptor descriptor,
-      ColumnChunkMetaData chunk,
-      ColumnReader cReader,
-      ParquetFileWriter writer,
-      MessageType schema,
-      long rowsToWrite,
-      int numBlocksRewritten)
-      throws IOException {
-
-    int dMax = descriptor.getMaxDefinitionLevel();
-    ParquetProperties.WriterVersion writerVersion = chunk.getEncodingStats().usesV2Pages()
-        ? ParquetProperties.WriterVersion.PARQUET_2_0
-        : ParquetProperties.WriterVersion.PARQUET_1_0;
-    ParquetProperties props =
-        ParquetProperties.builder().withWriterVersion(writerVersion).build();
-    CodecFactory codecFactory = new CodecFactory(new Configuration(), props.getPageSizeThreshold());
-    CompressionCodecFactory.BytesInputCompressor compressor = codecFactory.getCompressor(chunk.getCodec());
-
-    // Create new schema that only has the current column
-    MessageType newSchema = newSchema(schema, descriptor);
-    ColumnChunkPageWriteStore cPageStore = new ColumnChunkPageWriteStore(
-        compressor,
-        newSchema,
-        props.getAllocator(),
-        props.getColumnIndexTruncateLength(),
-        props.getPageWriteChecksumEnabled(),
-        writer.getEncryptor(),
-        numBlocksRewritten);
-    ColumnWriteStore cStore = props.newColumnWriteStore(newSchema, cPageStore);
-    ColumnWriter cWriter = cStore.getColumnWriter(descriptor);
-    Class<?> columnType = descriptor.getPrimitiveType().getPrimitiveTypeName().javaType;
-
-    int rowCount = 0;
-    while (rowCount < rowsToWrite) {
-//     for (int i = 0; i < rowsToWrite; i++) {
-      int rlvl = cReader.getCurrentRepetitionLevel();
-      int dlvl = cReader.getCurrentDefinitionLevel();
-      if (rlvl == 0) {
-        if (rowCount > 0) {
-          cStore.endRecord();
+    public void writeRows(int rowGroupIdx, long rowsToWrite) throws IOException {
+//       LOG.info("Rewriting input fileRight: {}, remaining fileRight: {}", readerR.getFile(), inputFilesR.size());
+      while (rowsToWrite > 0) {
+        List<BlockMetaData> blocks = inputFiles.peek().getFooter().getBlocks();
+        BlockMetaData block = blocks.get(rowGroupIdxR);
+        List<ColumnChunkMetaData> chunksR = block.getColumns();
+        long leftInBlock = block.getRowCount() - writtenFromBlock;
+        long writeFromBlock = Math.min(rowsToWrite, leftInBlock);
+        for (ColumnChunkMetaData chunkR : chunksR) {
+          if (chunkR.isEncrypted()) {
+            throw new IOException("Column " + chunkR.getPath().toDotString() + " is encrypted"); // TODO add that detail to docs
+          }
+          ColumnDescriptor descriptorR = descriptorsMapR.get(chunkR.getPath());
+          ColumnReader colReaderR = colReadersR.get(descriptorR);
+          MessageType columnSchema = newSchema(schema, descriptorR);
+          writeRows(colReaderR, writer, descriptorR, chunkR, columnSchema, writeFromBlock, rowGroupIdx);
         }
-        rowCount++;
+        rowsToWrite -= writeFromBlock;
+        writtenFromBlock += writeFromBlock;
+        if (rowsToWrite > 0) {
+          rowGroupIdxR++;
+        }
+        if (rowGroupIdxR == blocks.size()) {
+          inputFiles.poll();
+          rowGroupIdxR = 0;
+          writtenFromBlock = 0;
+        }
+        initColumnReaders();
       }
-      if (dlvl < dMax) {
-        cWriter.writeNull(rlvl, dlvl);
-      } else if (columnType == Integer.TYPE) {
-        cWriter.write(cReader.getInteger(), rlvl, dlvl);
-      } else if (columnType == Long.TYPE) {
-        cWriter.write(cReader.getLong(), rlvl, dlvl);
-      } else if (columnType == Float.TYPE) {
-        cWriter.write(cReader.getFloat(), rlvl, dlvl);
-      } else if (columnType == Double.TYPE) {
-        cWriter.write(cReader.getDouble(), rlvl, dlvl);
-      } else if (columnType == Binary.class) {
-        cWriter.write(cReader.getBinary(), rlvl, dlvl);
-      } else if (columnType == Boolean.TYPE) {
-        cWriter.write(cReader.getBoolean(), rlvl, dlvl);
-      } else {
+    }
+
+    private void initColumnReaders() throws IOException {
+      if (!inputFiles.isEmpty()) {
+        for (ColumnDescriptor descriptorR : descriptorsMapR.values()) {
+          TransParquetFileReader readerR = inputFiles.peek();
+          PageReadStore pageReadStore = readerR.readRowGroup(rowGroupIdxR);
+          String createdBy = readerR.getFooter().getFileMetaData().getCreatedBy();
+          ColumnReadStoreImpl crStore =
+              new ColumnReadStoreImpl(pageReadStore, new DummyGroupConverter(), schema, createdBy);
+          ColumnReader cReader = crStore.getColumnReader(descriptorR);
+          colReadersR.put(descriptorR, cReader);
+        }
+      }
+    }
+
+    private void writeRows(
+        ColumnReader reader,
+        ParquetFileWriter writer,
+        ColumnDescriptor descriptor,
+        ColumnChunkMetaData chunk,
+        MessageType columnSchema,
+        long rowsToWrite,
+        int rowGroupIdx)
+        throws IOException {
+
+      int dMax = descriptor.getMaxDefinitionLevel();
+      ParquetProperties.WriterVersion writerVersion = chunk.getEncodingStats().usesV2Pages()
+          ? ParquetProperties.WriterVersion.PARQUET_2_0
+          : ParquetProperties.WriterVersion.PARQUET_1_0;
+      ParquetProperties props =
+          ParquetProperties.builder().withWriterVersion(writerVersion).build();
+      CodecFactory codecFactory = new CodecFactory(new Configuration(), props.getPageSizeThreshold());
+      CompressionCodecFactory.BytesInputCompressor compressor = codecFactory.getCompressor(chunk.getCodec());
+
+      // Create new schema that only has the current column
+      ColumnChunkPageWriteStore cPageStore = new ColumnChunkPageWriteStore(
+          compressor,
+          columnSchema,
+          props.getAllocator(),
+          props.getColumnIndexTruncateLength(),
+          props.getPageWriteChecksumEnabled(),
+          writer.getEncryptor(),
+          rowGroupIdx);
+      ColumnWriteStore cStore = props.newColumnWriteStore(columnSchema, cPageStore);
+      ColumnWriter cWriter = cStore.getColumnWriter(descriptor);
+      Class<?> columnType = descriptor.getPrimitiveType().getPrimitiveTypeName().javaType;
+
+      int rowCount = 0;
+      while (rowCount < rowsToWrite) {
+        int rlvl = reader.getCurrentRepetitionLevel();
+        int dlvl = reader.getCurrentDefinitionLevel();
+        if (rlvl == 0) {
+          if (rowCount > 0) {
+            cStore.endRecord();
+          }
+          rowCount++;
+        }
+        if (dlvl < dMax) {
+          cWriter.writeNull(rlvl, dlvl);
+        } else if (columnType == Integer.TYPE) {
+          cWriter.write(reader.getInteger(), rlvl, dlvl);
+        } else if (columnType == Long.TYPE) {
+          cWriter.write(reader.getLong(), rlvl, dlvl);
+        } else if (columnType == Float.TYPE) {
+          cWriter.write(reader.getFloat(), rlvl, dlvl);
+        } else if (columnType == Double.TYPE) {
+          cWriter.write(reader.getDouble(), rlvl, dlvl);
+        } else if (columnType == Binary.class) {
+          cWriter.write(reader.getBinary(), rlvl, dlvl);
+        } else if (columnType == Boolean.TYPE) {
+          cWriter.write(reader.getBoolean(), rlvl, dlvl);
+        } else {
           throw new UnsupportedOperationException(
               String.format("Unsupported column java class: %s", columnType.toString()));
+        }
+        reader.consume();
       }
-      cReader.consume();
-    }
-    cStore.endRecord();
+      cStore.endRecord();
 
-    cStore.flush();
-    cPageStore.flushToFileWriter(writer);
+      cStore.flush();
+      cPageStore.flushToFileWriter(writer);
 
-    cStore.close();
-    cWriter.close();
-  }
-
-  private MessageType newSchema(MessageType schema, ColumnDescriptor descriptor) {
-    String[] path = descriptor.getPath();
-    Type type = schema.getType(path);
-    if (path.length == 1) {
-      return new MessageType(schema.getName(), type);
+      cStore.close();
+      cWriter.close();
     }
 
-    for (Type field : schema.getFields()) {
-      if (!field.isPrimitive()) {
-        Type newType = extractField(field.asGroupType(), type);
-        if (newType != null) {
-          return new MessageType(schema.getName(), newType);
+    private MessageType newSchema(MessageType schema, ColumnDescriptor descriptor) {
+      String[] path = descriptor.getPath();
+      Type type = schema.getType(path);
+      if (path.length == 1) {
+        return new MessageType(schema.getName(), type);
+      }
+
+      for (Type field : schema.getFields()) {
+        if (!field.isPrimitive()) {
+          Type newType = extractField(field.asGroupType(), type);
+          if (newType != null) {
+            return new MessageType(schema.getName(), newType);
+          }
         }
       }
+
+      // We should never hit this because 'type' is returned by schema.getType().
+      throw new RuntimeException("No field is found");
     }
 
-    // We should never hit this because 'type' is returned by schema.getType().
-    throw new RuntimeException("No field is found");
-  }
+    private Type extractField(GroupType candidate, Type targetField) {
+      if (targetField.equals(candidate)) {
+        return targetField;
+      }
 
-  private Type extractField(GroupType candidate, Type targetField) {
-    if (targetField.equals(candidate)) {
-      return targetField;
+      // In case 'type' is a descendants of candidate
+      for (Type field : candidate.asGroupType().getFields()) {
+        if (field.isPrimitive()) {
+          if (field.equals(targetField)) {
+            return new GroupType(candidate.getRepetition(), candidate.getName(), targetField);
+          }
+        } else {
+          Type tempField = extractField(field.asGroupType(), targetField);
+          if (tempField != null) {
+            return new GroupType(candidate.getRepetition(), candidate.getName(), tempField);
+          }
+        }
+      }
+
+      return null;
     }
 
-    // In case 'type' is a descendants of candidate
-    for (Type field : candidate.asGroupType().getFields()) {
-      if (field.isPrimitive()) {
-        if (field.equals(targetField)) {
-          return new GroupType(candidate.getRepetition(), candidate.getName(), targetField);
-        }
-      } else {
-        Type tempField = extractField(field.asGroupType(), targetField);
-        if (tempField != null) {
-          return new GroupType(candidate.getRepetition(), candidate.getName(), tempField);
-        }
+    private static final class DummyGroupConverter extends GroupConverter {
+      @Override
+      public void start() {}
+
+      @Override
+      public void end() {}
+
+      @Override
+      public Converter getConverter(int fieldIndex) {
+        return new DummyConverter();
       }
     }
 
-    return null;
-  }
-
-  private static final class DummyGroupConverter extends GroupConverter {
-    @Override
-    public void start() {}
-
-    @Override
-    public void end() {}
-
-    @Override
-    public Converter getConverter(int fieldIndex) {
-      return new DummyConverter();
+    private static final class DummyConverter extends PrimitiveConverter {
+      @Override
+      public GroupConverter asGroupConverter() {
+        return new DummyGroupConverter();
+      }
     }
-  }
 
-  private static final class DummyConverter extends PrimitiveConverter {
-    @Override
-    public GroupConverter asGroupConverter() {
-      return new DummyGroupConverter();
-    }
   }
 
 }
