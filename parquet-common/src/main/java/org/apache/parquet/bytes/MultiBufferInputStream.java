@@ -31,6 +31,7 @@ import java.util.NoSuchElementException;
 class MultiBufferInputStream extends ByteBufferInputStream {
   private static final ByteBuffer EMPTY = ByteBuffer.allocate(0);
 
+  private final List<ByteBuffer> buffers;
   private final long length;
 
   private Iterator<ByteBuffer> iterator;
@@ -42,15 +43,15 @@ class MultiBufferInputStream extends ByteBufferInputStream {
   private List<ByteBuffer> markBuffers = new ArrayList<>();
 
   MultiBufferInputStream(List<ByteBuffer> buffers) {
-    List<ByteBuffer> buffersCopy = new ArrayList<>(buffers);
+    this.buffers = buffers;
 
     long totalLen = 0;
-    for (ByteBuffer buffer : buffersCopy) {
+    for (ByteBuffer buffer : buffers) {
       totalLen += buffer.remaining();
     }
     this.length = totalLen;
 
-    this.iterator = buffersCopy.iterator();
+    this.iterator = buffers.iterator();
 
     nextBuffer();
   }
