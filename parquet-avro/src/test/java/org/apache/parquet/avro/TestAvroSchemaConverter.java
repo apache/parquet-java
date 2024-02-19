@@ -423,6 +423,21 @@ public class TestAvroSchemaConverter {
   }
 
   @Test
+  public void testConvertUngroupedRepeatedField() throws Exception {
+    testParquetToAvroConversion(
+        NEW_BEHAVIOR,
+        new Schema.Parser()
+            .parse("{\"type\": \"record\","
+                + "  \"name\": \"SchemaWithRepeatedField\","
+                + "  \"fields\": [{"
+                + "    \"name\": \"repeatedField\","
+                + "    \"type\": {\"type\": \"array\",\"items\": \"int\"}"
+                + "  }]"
+                + "}"),
+        "message SchemaWithRepeatedField { repeated int32 repeatedField; }");
+  }
+
+  @Test
   public void testOldThriftListOfLists() throws Exception {
     Schema listOfLists = optional(Schema.createArray(Schema.createArray(Schema.create(INT))));
     Schema schema = Schema.createRecord("ThriftCompatListInList", null, null, false);
