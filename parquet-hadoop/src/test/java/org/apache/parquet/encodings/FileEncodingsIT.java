@@ -31,6 +31,8 @@ import java.util.Random;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.bytes.BytesInput;
+import org.apache.parquet.bytes.HeapByteBufferAllocator;
+import org.apache.parquet.bytes.TrackingByteBufferAllocator;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
 import org.apache.parquet.column.impl.ColumnReaderImpl;
@@ -58,6 +60,8 @@ import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Types;
 import org.apache.parquet.statistics.RandomValues;
 import org.apache.parquet.statistics.TestStatistics;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
@@ -97,6 +101,7 @@ public class FileEncodingsIT {
   // Parameters
   private PrimitiveTypeName paramTypeName;
   private CompressionCodecName compression;
+  private TrackingByteBufferAllocator allocator;
 
   @Parameterized.Parameters
   public static Collection<Object[]> getParameters() {
@@ -149,6 +154,16 @@ public class FileEncodingsIT {
     doubleGenerator = new RandomValues.DoubleGenerator(random.nextLong());
     binaryGenerator = new RandomValues.BinaryGenerator(random.nextLong());
     fixedBinaryGenerator = new RandomValues.FixedGenerator(random.nextLong(), FIXED_LENGTH);
+  }
+
+  @Before
+  public void initAllocator() {
+    allocator = TrackingByteBufferAllocator.wrap(new HeapByteBufferAllocator());
+  }
+
+  @After
+  public void closeAllocator() {
+    allocator.close();
   }
 
   @Test
@@ -241,6 +256,7 @@ public class FileEncodingsIT {
     GroupWriteSupport.setSchema(schema, configuration);
 
     ParquetWriter<Group> writer = ExampleParquetWriter.builder(file)
+        .withAllocator(allocator)
         .withCompressionCodec(compression)
         .withRowGroupSize(rowGroupSize)
         .withPageSize(pageSize)

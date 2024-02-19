@@ -131,6 +131,7 @@ public class ShowPagesCommand extends BaseCommand {
           }
         }
         rowGroupNum += 1;
+        pageStore.close();
       }
 
       // TODO: Show total column size and overall size per value in the column summary line

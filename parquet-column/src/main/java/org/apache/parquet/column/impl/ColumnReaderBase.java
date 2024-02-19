@@ -729,7 +729,7 @@ abstract class ColumnReaderBase implements ColumnReader {
 
     if (CorruptDeltaByteArrays.requiresSequentialReads(writerVersion, dataEncoding)
         && previousReader != null
-        && previousReader instanceof RequiresPreviousReader) {
+        && dataColumn instanceof RequiresPreviousReader) {
       // previous reader can only be set if reading sequentially
       ((RequiresPreviousReader) dataColumn).setPreviousReader(previousReader);
     }

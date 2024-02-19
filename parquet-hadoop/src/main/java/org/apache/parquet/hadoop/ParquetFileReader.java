@@ -1057,6 +1057,7 @@ public class ParquetFileReader implements Closeable {
     for (ConsecutivePartList consecutiveChunks : allParts) {
       consecutiveChunks.readAll(f, builder);
     }
+    rowGroup.setBuffersToRelease(options.getAllocator(), builder.toRelease);
     for (Chunk chunk : builder.build()) {
       readChunkPages(chunk, block, rowGroup);
     }
@@ -1214,6 +1215,7 @@ public class ParquetFileReader implements Closeable {
     for (ConsecutivePartList consecutiveChunks : allParts) {
       consecutiveChunks.readAll(f, builder);
     }
+    rowGroup.setBuffersToRelease(options.getAllocator(), builder.toRelease);
     for (Chunk chunk : builder.build()) {
       readChunkPages(chunk, block, rowGroup);
     }
@@ -1585,6 +1587,7 @@ public class ParquetFileReader implements Closeable {
     private ChunkDescriptor lastDescriptor;
     private final long rowCount;
     private SeekableInputStream f;
+    private List<ByteBuffer> toRelease = new ArrayList<>();
 
     public ChunkListBuilder(long rowCount) {
       this.rowCount = rowCount;
@@ -1594,6 +1597,10 @@ public class ParquetFileReader implements Closeable {
       map.computeIfAbsent(descriptor, d -> new ChunkData()).buffers.addAll(buffers);
       lastDescriptor = descriptor;
       this.f = f;
+    }
+
+    void addBuffersToRelease(List<ByteBuffer> toRelease) {
+      this.toRelease.addAll(toRelease);
     }
 
     void setOffsetIndex(ChunkDescriptor descriptor, OffsetIndex offsetIndex) {
@@ -2006,6 +2013,7 @@ public class ParquetFileReader implements Closeable {
       if (lastAllocationSize > 0) {
         buffers.add(options.getAllocator().allocate(lastAllocationSize));
       }
+      builder.addBuffersToRelease(buffers);
 
       long readStart = System.nanoTime();
       for (ByteBuffer buffer : buffers) {

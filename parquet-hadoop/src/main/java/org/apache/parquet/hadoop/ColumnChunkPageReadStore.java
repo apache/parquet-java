@@ -21,6 +21,7 @@ package org.apache.parquet.hadoop;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -28,6 +29,7 @@ import java.util.Optional;
 import java.util.PrimitiveIterator;
 import java.util.Queue;
 import org.apache.parquet.ParquetReadOptions;
+import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.page.DataPage;
@@ -77,6 +79,7 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
     private final BlockCipher.Decryptor blockDecryptor;
     private final byte[] dataPageAAD;
     private final byte[] dictionaryPageAAD;
+    private final List<ByteBuffer> toRelease = new ArrayList<>();
 
     ColumnChunkPageReader(
         BytesInputDecompressor decompressor,
@@ -156,6 +159,7 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
 
               ByteBuffer decompressedBuffer =
                   options.getAllocator().allocate(dataPageV1.getUncompressedSize());
+              toRelease.add(decompressedBuffer);
               long start = System.nanoTime();
               decompressor.decompress(
                   byteBuffer,
@@ -238,6 +242,7 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
                     - dataPageV2.getRepetitionLevels().size());
                 ByteBuffer decompressedBuffer =
                     options.getAllocator().allocate(uncompressedSize);
+                toRelease.add(decompressedBuffer);
                 long start = System.nanoTime();
                 decompressor.decompress(
                     byteBuffer, (int) compressedSize, decompressedBuffer, uncompressedSize);
@@ -344,6 +349,14 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
         throw new ParquetDecodingException("Could not decompress dictionary page", e);
       }
     }
+
+    private void releaseBuffers() {
+      ByteBufferAllocator allocator = options.getAllocator();
+      for (ByteBuffer buffer : toRelease) {
+        allocator.release(buffer);
+      }
+      toRelease.clear();
+    }
   }
 
   private final Map<ColumnDescriptor, ColumnChunkPageReader> readers =
@@ -351,6 +364,8 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
   private final long rowCount;
   private final long rowIndexOffset;
   private final RowRanges rowRanges;
+  private ByteBufferAllocator allocator;
+  private List<ByteBuffer> toRelease;
 
   public ColumnChunkPageReadStore(long rowCount) {
     this(rowCount, -1);
@@ -404,6 +419,21 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
   void addColumn(ColumnDescriptor path, ColumnChunkPageReader reader) {
     if (readers.put(path, reader) != null) {
       throw new RuntimeException(path + " was added twice");
+    }
+  }
+
+  void setBuffersToRelease(ByteBufferAllocator allocator, List<ByteBuffer> toRelease) {
+    this.allocator = allocator;
+    this.toRelease = toRelease;
+  }
+
+  @Override
+  public void close() {
+    for (ColumnChunkPageReader reader : readers.values()) {
+      reader.releaseBuffers();
+    }
+    for (ByteBuffer buffer : toRelease) {
+      allocator.release(buffer);
     }
   }
 }

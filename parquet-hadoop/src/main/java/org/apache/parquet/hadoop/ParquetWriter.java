@@ -24,6 +24,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
+import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
 import org.apache.parquet.compression.CompressionCodecFactory;
@@ -873,6 +874,17 @@ public class ParquetWriter<T> implements Closeable {
      */
     public SELF withExtraMetaData(Map<String, String> extraMetaData) {
       encodingPropsBuilder.withExtraMetaData(extraMetaData);
+      return self();
+    }
+
+    /**
+     * Sets the ByteBuffer allocator instance to be used for allocating memory for writing.
+     *
+     * @param allocator the allocator instance
+     * @return this builder for method chaining
+     */
+    public SELF withAllocator(ByteBufferAllocator allocator) {
+      encodingPropsBuilder.withAllocator(allocator);
       return self();
     }
 
