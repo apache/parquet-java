@@ -614,8 +614,10 @@ public class ParquetFileReader implements Closeable {
 
     // Regular file, or encrypted file with plaintext footer
     if (!encryptedFooterMode) {
-      return converter.readParquetMetadata(
+      ParquetMetadata parquetMetadata = converter.readParquetMetadata(
           footerBytesStream, options.getMetadataFilter(), fileDecryptor, false, fileMetadataLength);
+      parquetMetadata.setInputFile(file);
+      return parquetMetadata;
     }
 
     // Encrypted file with encrypted footer
@@ -626,7 +628,10 @@ public class ParquetFileReader implements Closeable {
     fileDecryptor.setFileCryptoMetaData(
         fileCryptoMetaData.getEncryption_algorithm(), true, fileCryptoMetaData.getKey_metadata());
     // footer length is required only for signed plaintext footers
-    return converter.readParquetMetadata(footerBytesStream, options.getMetadataFilter(), fileDecryptor, true, 0);
+    ParquetMetadata parquetMetadata =
+        converter.readParquetMetadata(footerBytesStream, options.getMetadataFilter(), fileDecryptor, true, 0);
+    parquetMetadata.setInputFile(file);
+    return parquetMetadata;
   }
 
   /**
@@ -857,12 +862,19 @@ public class ParquetFileReader implements Closeable {
   }
 
   public ParquetFileReader(InputFile file, ParquetReadOptions options) throws IOException {
+    this(file, options, null);
+  }
+
+  public ParquetFileReader(InputFile file, ParquetReadOptions options, ParquetMetadata footer) throws IOException {
     this.converter = new ParquetMetadataConverter(options);
     this.file = file;
     this.f = file.newStream();
     this.options = options;
     try {
-      this.footer = readFooter(file, options, f, converter);
+      if (footer == null) {
+        footer = readFooter(file, options, f, converter);
+      }
+      this.footer = footer;
     } catch (Exception e) {
       // In case that reading footer throws an exception in the constructor, the new stream
       // should be closed. Otherwise, there's no way to close this outside.

@@ -24,6 +24,7 @@ import static org.apache.parquet.hadoop.ParquetFileWriter.MAGIC;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
 import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -64,6 +65,11 @@ public class ShowFooterCommand extends BaseCommand {
     return 0;
   }
 
+  abstract class MixIn {
+    @JsonIgnore
+    abstract int getInputFile();
+  }
+
   private String readFooter(InputFile inputFile) throws JsonProcessingException, IOException {
     String json;
     try (ParquetFileReader reader = ParquetFileReader.open(inputFile)) {
@@ -71,6 +77,7 @@ public class ShowFooterCommand extends BaseCommand {
       ObjectMapper mapper = RawUtils.createObjectMapper();
       mapper.setVisibility(PropertyAccessor.ALL, Visibility.NONE);
       mapper.setVisibility(PropertyAccessor.FIELD, Visibility.ANY);
+      mapper.addMixIn(ParquetMetadata.class, MixIn.class);
       json = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(footer);
     }
     return json;

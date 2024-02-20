@@ -18,11 +18,13 @@
  */
 package org.apache.parquet.hadoop.metadata;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.util.List;
+import org.apache.parquet.io.InputFile;
 
 /**
  * Meta Data block stored in the footer of the file
@@ -84,6 +86,9 @@ public class ParquetMetadata {
   private final FileMetaData fileMetaData;
   private final List<BlockMetaData> blocks;
 
+  @JsonIgnore
+  private volatile InputFile inputFile;
+
   /**
    * @param fileMetaData file level metadata
    * @param blocks       block level metadata
@@ -105,6 +110,22 @@ public class ParquetMetadata {
    */
   public FileMetaData getFileMetaData() {
     return fileMetaData;
+  }
+
+  /**
+   * Reuse the inputFile in ParquetFileReader if it is not null
+   * @return
+   */
+  public InputFile getInputFile() {
+    return inputFile;
+  }
+
+  /**
+   *
+   * @param inputFile Cache the inputFile in readFooter method and reuse it in ParquetFileReader
+   */
+  public void setInputFile(InputFile inputFile) {
+    this.inputFile = inputFile;
   }
 
   @Override
