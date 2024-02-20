@@ -100,8 +100,10 @@ public class ParquetJoiner implements Closeable {
         .collect(Collectors.toList());
 
     // TODO check that there is no overlap of fields on the right
-    Map<String, Type> fieldNamesL = schemaL.getFields().stream().collect(Collectors.toMap(Type::getName, x -> x));
-    Map<String, Type> fieldNamesR = schemaR.stream().flatMap(x -> x.getFields().stream()).collect(Collectors.toMap(Type::getName, x -> x));
+    Map<String, Type> fieldNamesL = new LinkedHashMap<>();
+    schemaL.getFields().forEach(x -> fieldNamesL.put(x.getName(), x));
+    Map<String, Type> fieldNamesR = new LinkedHashMap<>();
+    schemaR.stream().flatMap(x -> x.getFields().stream()).forEach(x -> fieldNamesR.put(x.getName(), x));
     List<Type> fields = Stream.concat(
         fieldNamesL.values().stream().map(x -> fieldNamesR.getOrDefault(x.getName(), x)), // take a field on the right if we can
         fieldNamesR.values().stream().filter(x -> !fieldNamesL.containsKey(x.getName())) // takes fields on the right if it was not present on the left
@@ -115,10 +117,13 @@ public class ParquetJoiner implements Closeable {
     this.indexCacheStrategy = options.getIndexCacheStrategy();
 
     long rowCountL = inputFilesL.stream().mapToLong(ParquetFileReader::getRecordCount).sum();
-    long rowCountR = inputFilesR.stream().flatMap(Collection::stream).mapToLong(ParquetFileReader::getRecordCount).sum();
-    if (rowCountL != rowCountR) {
-      throw new IllegalArgumentException("The number of records on the left and on the right don't match!");
-    }
+    inputFilesR.stream()
+      .map(x -> x.stream().mapToLong(ParquetFileReader::getRecordCount).sum())
+      .forEach(rowCountR -> {
+        if (rowCountL != rowCountR) {
+          throw new IllegalArgumentException("The number of records on the left and on the right don't match!");
+        }
+      });
 
     ParquetFileWriter.Mode writerMode = ParquetFileWriter.Mode.CREATE;
     this.writer = new ParquetFileWriter(

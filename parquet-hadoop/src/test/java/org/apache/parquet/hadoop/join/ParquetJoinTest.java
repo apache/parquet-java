@@ -67,20 +67,20 @@ public class ParquetJoinTest {
   private final boolean usingHadoop;
 
   private List<EncryptionTestFile> inputFilesL = null;
-  private List<EncryptionTestFile> inputFilesR = null;
+  private List<List<EncryptionTestFile>> inputFilesR = null;
   private String outputFile = null;
   private ParquetJoiner joiner = null;
 
   @Parameterized.Parameters(name = "WriterVersion = {0}, IndexCacheStrategy = {1}, UsingHadoop = {2}")
   public static Object[][] parameters() {
     return new Object[][] {
-//       {"v1", "NONE", true},
-//       {"v1", "PREFETCH_BLOCK", true},
-//       {"v2", "NONE", true},
-//       {"v2", "PREFETCH_BLOCK", true},
-//       {"v1", "NONE", false},
-//       {"v1", "PREFETCH_BLOCK", false},
-//       {"v2", "NONE", false},
+      {"v1", "NONE", true},
+      {"v1", "PREFETCH_BLOCK", true},
+      {"v2", "NONE", true},
+      {"v2", "PREFETCH_BLOCK", true},
+      {"v1", "NONE", false},
+      {"v1", "PREFETCH_BLOCK", false},
+      {"v2", "NONE", false},
       {"v2", "PREFETCH_BLOCK", false}
     };
   }
@@ -98,18 +98,16 @@ public class ParquetJoinTest {
 
   @Test
   public void testMergeTwoFilesOnly() throws Exception {
-    testMultipleInputFilesSetup();
+    testSingleInputFileSetup();
 
     // Only merge two files but do not change anything.
-    List<Path> inputPathsL = new ArrayList<>();
-    for (EncryptionTestFile inputFile : inputFilesL) {
-      inputPathsL.add(new Path(inputFile.getFileName()));
-    }
-    List<Path> inputPathsR = new ArrayList<>();
-    for (EncryptionTestFile inputFile : inputFilesR) {
-      inputPathsR.add(new Path(inputFile.getFileName()));
-    }
-    JoinOptions.Builder builder = createBuilder(inputPathsL, ImmutableList.of(inputPathsR));
+    List<Path> inputPathsL = inputFilesL.stream()
+        .map(x -> new Path(x.getFileName()))
+        .collect(Collectors.toList());
+    List<List<Path>> inputPathsR = inputFilesR.stream()
+        .map(x -> x.stream().map(y -> new Path(y.getFileName())).collect(Collectors.toList()))
+        .collect(Collectors.toList());
+    JoinOptions.Builder builder = createBuilder(inputPathsL, inputPathsR);
     JoinOptions options = builder.indexCacheStrategy(indexCacheStrategy).build();
 
     joiner = new ParquetJoiner(options);
@@ -120,28 +118,55 @@ public class ParquetJoinTest {
     ParquetMetadata pmd =
         ParquetFileReader.readFooter(conf, new Path(outputFile), ParquetMetadataConverter.NO_FILTER);
     MessageType schema = pmd.getFileMetaData().getSchema();
-    MessageType expectSchema = createSchemaL();
-//     assertEquals(expectSchema, schema);
+    MessageType expectSchema = createSchema();
+    assertEquals(expectSchema, schema);
 
     // Verify the merged data are not changed
     validateColumnData(null);
   }
 
-  private void testMultipleInputFilesSetup() throws IOException {
-    inputFilesL = Lists.newArrayList();
-    inputFilesL.add(new TestFileBuilder(conf, createSchemaL())
+  private void testSingleInputFileSetup() throws IOException {
+    inputFilesL = Lists.newArrayList(
+      new TestFileBuilder(conf, createSchemaL())
         .withNumRecord(numRecord)
         .withCodec("GZIP")
         .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
         .withWriterVersion(writerVersion)
-        .build());
-    inputFilesR = Lists.newArrayList();
-    inputFilesR.add(new TestFileBuilder(conf, createSchemaR())
-        .withNumRecord(numRecord)
-        .withCodec("UNCOMPRESSED")
-        .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
-        .withWriterVersion(writerVersion)
-        .build());
+        .build()
+    );
+    inputFilesR = Lists.newArrayList(
+        Lists.newArrayList(
+            new TestFileBuilder(conf, createSchemaR1())
+                .withNumRecord(numRecord)
+                .withCodec("UNCOMPRESSED")
+                .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
+                .withWriterVersion(writerVersion)
+                .build()
+        ),
+        Lists.newArrayList(
+            new TestFileBuilder(conf, createSchemaR2())
+                .withNumRecord(numRecord)
+                .withCodec("UNCOMPRESSED")
+                .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
+                .withWriterVersion(writerVersion)
+                .build()
+        )
+    );
+  }
+
+  private MessageType createSchema() {
+    return new MessageType(
+        "schema",
+        new PrimitiveType(OPTIONAL, INT64, "DocId"),
+        new PrimitiveType(REQUIRED, BINARY, "Name"),
+        new PrimitiveType(OPTIONAL, BINARY, "Gender"),
+        new PrimitiveType(REPEATED, FLOAT, "FloatFraction"),
+        new PrimitiveType(OPTIONAL, DOUBLE, "DoubleFraction"),
+            new GroupType(
+                OPTIONAL,
+                "Links",
+                new PrimitiveType(REPEATED, BINARY, "Backward"),
+                new PrimitiveType(REPEATED, BINARY, "Forward")));
   }
 
   private MessageType createSchemaL() {
@@ -150,19 +175,35 @@ public class ParquetJoinTest {
         new PrimitiveType(OPTIONAL, INT64, "DocId"),
         new PrimitiveType(REQUIRED, BINARY, "Name"),
         new PrimitiveType(OPTIONAL, BINARY, "Gender"),
-        new PrimitiveType(REPEATED, FLOAT, "FloatFraction"));
+        new PrimitiveType(REPEATED, FLOAT, "FloatFraction"),
+        new PrimitiveType(OPTIONAL, DOUBLE, "DoubleFraction"));
   }
-
 
   private MessageType createSchemaR() {
     return new MessageType(
         "schema",
-        new PrimitiveType(OPTIONAL, DOUBLE, "DoubleFraction"),
+        new PrimitiveType(REPEATED, FLOAT, "FloatFraction"),
         new GroupType(
             OPTIONAL,
             "Links",
             new PrimitiveType(REPEATED, BINARY, "Backward"),
             new PrimitiveType(REPEATED, BINARY, "Forward")));
+  }
+
+  private MessageType createSchemaR1() {
+    return new MessageType(
+        "schema",
+        new GroupType(
+            OPTIONAL,
+            "Links",
+            new PrimitiveType(REPEATED, BINARY, "Backward"),
+            new PrimitiveType(REPEATED, BINARY, "Forward")));
+  }
+
+  private MessageType createSchemaR2() {
+    return new MessageType(
+        "schema",
+        new PrimitiveType(REPEATED, FLOAT, "FloatFraction"));
   }
 
   private void validateColumnData(
@@ -184,7 +225,8 @@ public class ParquetJoinTest {
       assertNotNull(group);
 
       SimpleGroup expectGroupL = inputFilesL.get(i / numRecord).getFileContent()[i % numRecord];
-      SimpleGroup expectGroupR = inputFilesR.get(i / numRecord).getFileContent()[i % numRecord];
+      SimpleGroup expectGroupR1 = inputFilesR.get(0).get(i / numRecord).getFileContent()[i % numRecord];
+      SimpleGroup expectGroupR2 = inputFilesR.get(1).get(i / numRecord).getFileContent()[i % numRecord];
 
       assertEquals(group.getLong("DocId", 0), expectGroupL.getLong("DocId", 0));
       assertArrayEquals(
@@ -193,18 +235,18 @@ public class ParquetJoinTest {
       assertArrayEquals(
           group.getBinary("Gender", 0).getBytes(),
           expectGroupL.getBinary("Gender", 0).getBytes());
-      assertEquals(group.getFloat("FloatFraction", 0), expectGroupL.getFloat("FloatFraction", 0), 0);
-      assertEquals(group.getDouble("DoubleFraction", 0), expectGroupR.getDouble("DoubleFraction", 0), 0);
+      assertEquals(group.getFloat("FloatFraction", 0), expectGroupR2.getFloat("FloatFraction", 0), 0);
+      assertEquals(group.getDouble("DoubleFraction", 0), expectGroupL.getDouble("DoubleFraction", 0), 0);
       Group subGroup = group.getGroup("Links", 0);
         assertArrayEquals(
             subGroup.getBinary("Backward", 0).getBytes(),
-            expectGroupR
+            expectGroupR1
                 .getGroup("Links", 0)
                 .getBinary("Backward", 0)
                 .getBytes());
       assertArrayEquals(
           subGroup.getBinary("Forward", 0).getBytes(),
-          expectGroupR
+          expectGroupR1
               .getGroup("Links", 0)
               .getBinary("Forward", 0)
               .getBytes());
