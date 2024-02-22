@@ -65,6 +65,7 @@ import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.bytes.ByteBufferReleaser;
 import org.apache.parquet.bytes.BytesInput;
+import org.apache.parquet.bytes.ReusingByteBufferAllocator;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.page.DataPage;
 import org.apache.parquet.column.page.DataPageV1;
@@ -113,6 +114,7 @@ import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.io.SeekableInputStream;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
+import org.apache.parquet.util.AutoCloseables;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -128,6 +130,7 @@ public class ParquetFileReader implements Closeable {
   private final ParquetMetadataConverter converter;
 
   private final CRC32 crc;
+  private final ReusingByteBufferAllocator crcAllocator;
 
   /**
    * for files provided, check if there's a summary file.
@@ -775,7 +778,14 @@ public class ParquetFileReader implements Closeable {
     for (ColumnDescriptor col : columns) {
       paths.put(ColumnPath.get(col.getPath()), col);
     }
-    this.crc = options.usePageChecksumVerification() ? new CRC32() : null;
+
+    if (options.usePageChecksumVerification()) {
+      this.crc = new CRC32();
+      this.crcAllocator = new ReusingByteBufferAllocator(options.getAllocator());
+    } else {
+      this.crc = null;
+      this.crcAllocator = null;
+    }
   }
 
   /**
@@ -827,7 +837,14 @@ public class ParquetFileReader implements Closeable {
     for (ColumnDescriptor col : footer.getFileMetaData().getSchema().getColumns()) {
       paths.put(ColumnPath.get(col.getPath()), col);
     }
-    this.crc = options.usePageChecksumVerification() ? new CRC32() : null;
+
+    if (options.usePageChecksumVerification()) {
+      this.crc = new CRC32();
+      this.crcAllocator = new ReusingByteBufferAllocator(options.getAllocator());
+    } else {
+      this.crc = null;
+      this.crcAllocator = null;
+    }
   }
 
   /**
@@ -859,7 +876,14 @@ public class ParquetFileReader implements Closeable {
     for (ColumnDescriptor col : footer.getFileMetaData().getSchema().getColumns()) {
       paths.put(ColumnPath.get(col.getPath()), col);
     }
-    this.crc = options.usePageChecksumVerification() ? new CRC32() : null;
+
+    if (options.usePageChecksumVerification()) {
+      this.crc = new CRC32();
+      this.crcAllocator = new ReusingByteBufferAllocator(options.getAllocator());
+    } else {
+      this.crc = null;
+      this.crcAllocator = null;
+    }
   }
 
   public ParquetFileReader(InputFile file, ParquetReadOptions options) throws IOException {
@@ -894,7 +918,14 @@ public class ParquetFileReader implements Closeable {
     for (ColumnDescriptor col : footer.getFileMetaData().getSchema().getColumns()) {
       paths.put(ColumnPath.get(col.getPath()), col);
     }
-    this.crc = options.usePageChecksumVerification() ? new CRC32() : null;
+
+    if (options.usePageChecksumVerification()) {
+      this.crc = new CRC32();
+      this.crcAllocator = new ReusingByteBufferAllocator(options.getAllocator());
+    } else {
+      this.crc = null;
+      this.crcAllocator = null;
+    }
   }
 
   private static <T> List<T> listWithNulls(int size) {
@@ -1576,9 +1607,7 @@ public class ParquetFileReader implements Closeable {
         f.close();
       }
     } finally {
-      if (nextDictionaryReader != null) {
-        nextDictionaryReader.close();
-      }
+      AutoCloseables.uncheckedClose(nextDictionaryReader, crcAllocator);
       options.getCodecFactory().release();
     }
   }
@@ -1671,7 +1700,7 @@ public class ParquetFileReader implements Closeable {
      */
     private void verifyCrc(int referenceCrc, BytesInput bytes, String exceptionMsg) {
       crc.reset();
-      try (ByteBufferReleaser releaser = new ByteBufferReleaser(options.getAllocator())) {
+      try (ByteBufferReleaser releaser = crcAllocator.getReleaser()) {
         crc.update(bytes.toByteBuffer(releaser));
       }
       if (crc.getValue() != ((long) referenceCrc & 0xffffffffL)) {

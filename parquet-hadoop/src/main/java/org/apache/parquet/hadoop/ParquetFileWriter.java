@@ -47,6 +47,7 @@ import org.apache.parquet.bytes.ByteBufferReleaser;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.bytes.HeapByteBufferAllocator;
+import org.apache.parquet.bytes.ReusingByteBufferAllocator;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.EncodingStats;
@@ -96,7 +97,7 @@ import org.slf4j.LoggerFactory;
 /**
  * Internal implementation of the Parquet file writer as a block container
  */
-public class ParquetFileWriter {
+public class ParquetFileWriter implements AutoCloseable {
   private static final Logger LOG = LoggerFactory.getLogger(ParquetFileWriter.class);
 
   private final ParquetMetadataConverter metadataConverter;
@@ -168,8 +169,8 @@ public class ParquetFileWriter {
   private ParquetMetadata footer = null;
 
   private final CRC32 crc;
+  private final ReusingByteBufferAllocator crcAllocator;
   private final boolean pageWriteChecksumEnabled;
-  private final ByteBufferAllocator allocator;
 
   /**
    * Captures the order in which methods should be called
@@ -472,9 +473,11 @@ public class ParquetFileWriter {
     this.columnIndexTruncateLength = columnIndexTruncateLength;
     this.pageWriteChecksumEnabled = pageWriteChecksumEnabled;
     this.crc = pageWriteChecksumEnabled ? new CRC32() : null;
+    this.crcAllocator = pageWriteChecksumEnabled
+        ? new ReusingByteBufferAllocator(allocator == null ? new HeapByteBufferAllocator() : allocator)
+        : null;
 
     this.metadataConverter = new ParquetMetadataConverter(statisticsTruncateLength);
-    this.allocator = allocator == null ? new HeapByteBufferAllocator() : allocator;
 
     if (null == encryptionProperties && null == encryptor) {
       this.fileEncryptor = null;
@@ -542,9 +545,11 @@ public class ParquetFileWriter {
     this.columnIndexTruncateLength = Integer.MAX_VALUE;
     this.pageWriteChecksumEnabled = ParquetOutputFormat.getPageWriteChecksumEnabled(configuration);
     this.crc = pageWriteChecksumEnabled ? new CRC32() : null;
+    this.crcAllocator = pageWriteChecksumEnabled
+        ? new ReusingByteBufferAllocator(allocator == null ? new HeapByteBufferAllocator() : allocator)
+        : null;
     this.metadataConverter = new ParquetMetadataConverter(ParquetProperties.DEFAULT_STATISTICS_TRUNCATE_LENGTH);
     this.fileEncryptor = null;
-    this.allocator = allocator;
   }
 
   /**
@@ -633,19 +638,17 @@ public class ParquetFileWriter {
     int uncompressedSize = dictionaryPage.getUncompressedSize();
     int compressedPageSize = Math.toIntExact(dictionaryPage.getBytes().size());
     if (pageWriteChecksumEnabled) {
-      try (ByteBufferReleaser releaser = new ByteBufferReleaser(allocator)) {
-        crc.reset();
-        crc.update(dictionaryPage.getBytes().toByteBuffer(releaser));
-        metadataConverter.writeDictionaryPageHeader(
-            uncompressedSize,
-            compressedPageSize,
-            dictionaryPage.getDictionarySize(),
-            dictionaryPage.getEncoding(),
-            (int) crc.getValue(),
-            out,
-            headerBlockEncryptor,
-            AAD);
-      }
+      crc.reset();
+      crcUpdate(dictionaryPage.getBytes());
+      metadataConverter.writeDictionaryPageHeader(
+          uncompressedSize,
+          compressedPageSize,
+          dictionaryPage.getDictionarySize(),
+          dictionaryPage.getEncoding(),
+          (int) crc.getValue(),
+          out,
+          headerBlockEncryptor,
+          AAD);
     } else {
       metadataConverter.writeDictionaryPageHeader(
           uncompressedSize,
@@ -880,21 +883,19 @@ public class ParquetFileWriter {
     LOG.debug("{}: write data page: {} values", beforeHeader, valueCount);
     int compressedPageSize = (int) bytes.size();
     if (pageWriteChecksumEnabled) {
-      try (ByteBufferReleaser releaser = new ByteBufferReleaser(allocator)) {
-        crc.reset();
-        crc.update(bytes.toByteBuffer(releaser));
-        metadataConverter.writeDataPageV1Header(
-            uncompressedPageSize,
-            compressedPageSize,
-            valueCount,
-            rlEncoding,
-            dlEncoding,
-            valuesEncoding,
-            (int) crc.getValue(),
-            out,
-            metadataBlockEncryptor,
-            pageHeaderAAD);
-      }
+      crc.reset();
+      crcUpdate(bytes);
+      metadataConverter.writeDataPageV1Header(
+          uncompressedPageSize,
+          compressedPageSize,
+          valueCount,
+          rlEncoding,
+          dlEncoding,
+          valuesEncoding,
+          (int) crc.getValue(),
+          out,
+          metadataBlockEncryptor,
+          pageHeaderAAD);
     } else {
       metadataConverter.writeDataPageV1Header(
           uncompressedPageSize,
@@ -1013,17 +1014,15 @@ public class ParquetFileWriter {
     }
 
     if (pageWriteChecksumEnabled) {
-      try (ByteBufferReleaser releaser = new ByteBufferReleaser(allocator)) {
-        crc.reset();
-        if (repetitionLevels.size() > 0) {
-          crc.update(repetitionLevels.toByteBuffer(releaser));
-        }
-        if (definitionLevels.size() > 0) {
-          crc.update(definitionLevels.toByteBuffer(releaser));
-        }
-        if (compressedData.size() > 0) {
-          crc.update(compressedData.toByteBuffer(releaser));
-        }
+      crc.reset();
+      if (repetitionLevels.size() > 0) {
+        crcUpdate(repetitionLevels);
+      }
+      if (definitionLevels.size() > 0) {
+        crcUpdate(definitionLevels);
+      }
+      if (compressedData.size() > 0) {
+        crcUpdate(compressedData);
       }
       metadataConverter.writeDataPageV2Header(
           uncompressedSize,
@@ -1065,6 +1064,12 @@ public class ParquetFileWriter {
     BytesInput.concat(repetitionLevels, definitionLevels, compressedData).writeAllTo(out);
 
     offsetIndexBuilder.add((int) (out.getPos() - beforeHeader), rowCount);
+  }
+
+  private void crcUpdate(BytesInput bytes) {
+    try (ByteBufferReleaser releaser = crcAllocator.getReleaser()) {
+      crc.update(bytes.toByteBuffer(releaser));
+    }
   }
 
   /**
@@ -1493,7 +1498,18 @@ public class ParquetFileWriter {
     LOG.debug("{}: end", out.getPos());
     this.footer = new ParquetMetadata(new FileMetaData(schema, extraMetaData, Version.FULL_VERSION), blocks);
     serializeFooter(footer, out, fileEncryptor, metadataConverter);
-    out.close();
+    close();
+  }
+
+  @Override
+  public void close() throws IOException {
+    try {
+      out.close();
+    } finally {
+      if (crcAllocator != null) {
+        crcAllocator.close();
+      }
+    }
   }
 
   private static void serializeColumnIndexes(
