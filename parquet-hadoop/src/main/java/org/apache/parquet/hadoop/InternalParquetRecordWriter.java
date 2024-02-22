@@ -198,6 +198,7 @@ class InternalParquetRecordWriter<T> {
       this.nextRowGroupSize = Math.min(parquetFileWriter.getNextRowGroupSize(), rowGroupSizeThreshold);
     }
 
+    columnStore.close();
     columnStore = null;
     pageStore = null;
   }

@@ -52,6 +52,7 @@ import org.apache.parquet.column.values.plain.PlainValuesWriter;
 import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridEncoder;
 import org.apache.parquet.io.ParquetEncodingException;
 import org.apache.parquet.io.api.Binary;
+import org.apache.parquet.util.AutoCloseables;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -98,7 +99,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
   protected ByteBufferAllocator allocator;
   /* Track the list of writers used so they can be appropriately closed when necessary
   (currently used for off-heap memory which is not garbage collected) */
-  private List<RunLengthBitPackingHybridEncoder> encoders = new ArrayList<>();
+  private List<AutoCloseable> toClose = new ArrayList<>();
 
   protected DictionaryValuesWriter(
       int maxDictionaryByteSize,
@@ -114,7 +115,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
   protected DictionaryPage dictPage(ValuesWriter dictPageWriter) {
     DictionaryPage ret =
         new DictionaryPage(dictPageWriter.getBytes(), lastUsedDictionarySize, encodingForDictionaryPage);
-    dictPageWriter.close();
+    toClose.add(dictPageWriter);
     return ret;
   }
 
@@ -164,7 +165,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
 
     RunLengthBitPackingHybridEncoder encoder =
         new RunLengthBitPackingHybridEncoder(bitWidth, initialSlabSize, maxDictionaryByteSize, this.allocator);
-    encoders.add(encoder);
+    toClose.add(encoder);
     IntIterator iterator = encodedValues.iterator();
     try {
       while (iterator.hasNext()) {
@@ -198,10 +199,8 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
   @Override
   public void close() {
     encodedValues = null;
-    for (RunLengthBitPackingHybridEncoder encoder : encoders) {
-      encoder.close();
-    }
-    encoders.clear();
+    AutoCloseables.uncheckedClose(toClose);
+    toClose.clear();
   }
 
   @Override

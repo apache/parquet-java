@@ -55,7 +55,7 @@ import org.slf4j.LoggerFactory;
  * <p>
  * Only supports positive values (including 0) // TODO: is that ok? Should we make a signed version?
  */
-public class RunLengthBitPackingHybridEncoder {
+public class RunLengthBitPackingHybridEncoder implements AutoCloseable {
   private static final Logger LOG = LoggerFactory.getLogger(RunLengthBitPackingHybridEncoder.class);
 
   private final BytePacker packer;
@@ -279,6 +279,7 @@ public class RunLengthBitPackingHybridEncoder {
     reset(true);
   }
 
+  @Override
   public void close() {
     reset(false);
     baos.close();

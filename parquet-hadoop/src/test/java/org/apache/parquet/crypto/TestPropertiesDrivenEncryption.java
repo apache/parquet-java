@@ -42,9 +42,9 @@ import java.util.concurrent.TimeUnit;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.DirectByteBufferAllocator;
 import org.apache.parquet.bytes.HeapByteBufferAllocator;
+import org.apache.parquet.bytes.TrackingByteBufferAllocator;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
 import org.apache.parquet.crypto.keytools.KeyToolkit;
 import org.apache.parquet.crypto.keytools.PropertiesDrivenCryptoFactory;
@@ -675,13 +675,15 @@ public class TestPropertiesDrivenEncryption {
     }
 
     int rowNum = 0;
-    final ByteBufferAllocator allocator =
-        this.isDecryptionDirectMemory ? new DirectByteBufferAllocator() : new HeapByteBufferAllocator();
-    try (ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), file)
-        .withConf(hadoopConfig)
-        .withAllocator(allocator)
-        .withDecryption(fileDecryptionProperties)
-        .build()) {
+    try (TrackingByteBufferAllocator allocator = TrackingByteBufferAllocator.wrap(
+            this.isDecryptionDirectMemory
+                ? new DirectByteBufferAllocator()
+                : new HeapByteBufferAllocator());
+        ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), file)
+            .withConf(hadoopConfig)
+            .withAllocator(allocator)
+            .withDecryption(fileDecryptionProperties)
+            .build()) {
       for (Group group = reader.read(); group != null; group = reader.read()) {
         SingleRow rowExpected = data.get(rowNum++);
 
