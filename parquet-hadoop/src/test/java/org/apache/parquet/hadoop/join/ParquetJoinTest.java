@@ -22,7 +22,6 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.*;
 import static org.apache.parquet.schema.Type.Repetition.*;
 import static org.junit.Assert.*;
 
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -59,7 +58,7 @@ import org.junit.runners.Parameterized;
 @RunWith(Parameterized.class)
 public class ParquetJoinTest {
 
-  private final int numRecord = 100000;
+  private final int numRecord = 100_000;
   private final Configuration conf = new Configuration();
   private final ParquetConfiguration parquetConf = new PlainParquetConfiguration();
   private final ParquetProperties.WriterVersion writerVersion;
@@ -98,7 +97,7 @@ public class ParquetJoinTest {
 
   @Test
   public void testMergeTwoFilesOnly() throws Exception {
-    testSingleInputFileSetup();
+    testMultiInputFileSetup();
 
     // Only merge two files but do not change anything.
     List<Path> inputPathsL = inputFilesL.stream()
@@ -125,10 +124,18 @@ public class ParquetJoinTest {
     validateColumnData(null);
   }
 
-  private void testSingleInputFileSetup() throws IOException {
+  private void testMultiInputFileSetup() throws IOException {
     inputFilesL = Lists.newArrayList(
       new TestFileBuilder(conf, createSchemaL())
-        .withNumRecord(numRecord)
+          .withNumRecord(numRecord / 2)
+          .withRowGroupSize(5_000_000)
+          .withCodec("GZIP")
+          .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
+          .withWriterVersion(writerVersion)
+          .build(),
+      new TestFileBuilder(conf, createSchemaL())
+        .withNumRecord(numRecord - (numRecord / 2))
+        .withRowGroupSize(6_000_000)
         .withCodec("GZIP")
         .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
         .withWriterVersion(writerVersion)
@@ -136,20 +143,38 @@ public class ParquetJoinTest {
     );
     inputFilesR = Lists.newArrayList(
         Lists.newArrayList(
-            new TestFileBuilder(conf, createSchemaR1())
-                .withNumRecord(numRecord)
-                .withCodec("UNCOMPRESSED")
-                .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
-                .withWriterVersion(writerVersion)
-                .build()
-        ),
-        Lists.newArrayList(
-            new TestFileBuilder(conf, createSchemaR2())
-                .withNumRecord(numRecord)
-                .withCodec("UNCOMPRESSED")
-                .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
-                .withWriterVersion(writerVersion)
-                .build()
+            Lists.newArrayList(
+                new TestFileBuilder(conf, createSchemaR1())
+                    .withNumRecord(numRecord)
+                    .withRowGroupSize(7_000_000)
+                    .withCodec("UNCOMPRESSED")
+                    .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
+                    .withWriterVersion(writerVersion)
+                    .build()
+            ),
+          Lists.newArrayList(
+              new TestFileBuilder(conf, createSchemaR2())
+                  .withNumRecord(numRecord / 3)
+                  .withRowGroupSize(200_000)
+                  .withCodec("UNCOMPRESSED")
+                  .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
+                  .withWriterVersion(writerVersion)
+                  .build(),
+              new TestFileBuilder(conf, createSchemaR2())
+                  .withNumRecord(numRecord / 3)
+                  .withRowGroupSize(300_000)
+                  .withCodec("UNCOMPRESSED")
+                  .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
+                  .withWriterVersion(writerVersion)
+                  .build(),
+              new TestFileBuilder(conf, createSchemaR2())
+                  .withNumRecord(numRecord - 2 * (numRecord / 3))
+                  .withRowGroupSize(400_000)
+                  .withCodec("UNCOMPRESSED")
+                  .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
+                  .withWriterVersion(writerVersion)
+                  .build()
+          )
         )
     );
   }
@@ -177,17 +202,6 @@ public class ParquetJoinTest {
         new PrimitiveType(OPTIONAL, BINARY, "Gender"),
         new PrimitiveType(REPEATED, FLOAT, "FloatFraction"),
         new PrimitiveType(OPTIONAL, DOUBLE, "DoubleFraction"));
-  }
-
-  private MessageType createSchemaR() {
-    return new MessageType(
-        "schema",
-        new PrimitiveType(REPEATED, FLOAT, "FloatFraction"),
-        new GroupType(
-            OPTIONAL,
-            "Links",
-            new PrimitiveType(REPEATED, BINARY, "Backward"),
-            new PrimitiveType(REPEATED, BINARY, "Forward")));
   }
 
   private MessageType createSchemaR1() {
@@ -220,13 +234,22 @@ public class ParquetJoinTest {
       totalRows += inputFile.getFileContent().length;
     }
 
+    int idxFileL = 0;
+    int idxFileR1 = 0;
+    int idxFileR2 = 0;
+    int idxRowL = 0;
+    int idxRowR1 = 0;
+    int idxRowR2 = 0;
     for (int i = 0; i < totalRows; i++) {
       Group group = reader.read();
       assertNotNull(group);
 
-      SimpleGroup expectGroupL = inputFilesL.get(i / numRecord).getFileContent()[i % numRecord];
-      SimpleGroup expectGroupR1 = inputFilesR.get(0).get(i / numRecord).getFileContent()[i % numRecord];
-      SimpleGroup expectGroupR2 = inputFilesR.get(1).get(i / numRecord).getFileContent()[i % numRecord];
+      if (idxRowL >= inputFilesL.get(idxFileL).getFileContent().length) { idxFileL++; idxRowL = 0; }
+      if (idxRowR1 >= inputFilesR.get(0).get(idxFileR1).getFileContent().length) { idxFileR1++; idxRowR1 = 0; }
+      if (idxRowR2 >= inputFilesR.get(1).get(idxFileR2).getFileContent().length) { idxFileR2++; idxRowR2 = 0; }
+      SimpleGroup expectGroupL = inputFilesL.get(idxFileL).getFileContent()[idxRowL++];
+      SimpleGroup expectGroupR1 = inputFilesR.get(0).get(idxFileR1).getFileContent()[idxRowR1++];
+      SimpleGroup expectGroupR2 = inputFilesR.get(1).get(idxFileR2).getFileContent()[idxRowR2++];
 
       assertEquals(group.getLong("DocId", 0), expectGroupL.getLong("DocId", 0));
       assertArrayEquals(
@@ -235,7 +258,7 @@ public class ParquetJoinTest {
       assertArrayEquals(
           group.getBinary("Gender", 0).getBytes(),
           expectGroupL.getBinary("Gender", 0).getBytes());
-      assertEquals(group.getFloat("FloatFraction", 0), expectGroupR2.getFloat("FloatFraction", 0), 0);
+      assertEquals(expectGroupR2.getFloat("FloatFraction", 0), expectGroupR2.getFloat("FloatFraction", 0), 0);
       assertEquals(group.getDouble("DoubleFraction", 0), expectGroupL.getDouble("DoubleFraction", 0), 0);
       Group subGroup = group.getGroup("Links", 0);
         assertArrayEquals(
