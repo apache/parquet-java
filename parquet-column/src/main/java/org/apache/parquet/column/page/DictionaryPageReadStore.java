@@ -23,7 +23,7 @@ import org.apache.parquet.column.ColumnDescriptor;
 /**
  * Interface to read dictionary pages for all the columns of a row group
  */
-public interface DictionaryPageReadStore {
+public interface DictionaryPageReadStore extends AutoCloseable {
 
   /**
    * Returns a {@link DictionaryPage} for the given column descriptor.
@@ -33,4 +33,9 @@ public interface DictionaryPageReadStore {
    * @return the DictionaryPage for that column, or null if there isn't one
    */
   DictionaryPage readDictionaryPage(ColumnDescriptor descriptor);
+
+  @Override
+  default void close() {
+    // No-op default implementation for compatibility
+  }
 }

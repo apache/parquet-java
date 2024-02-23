@@ -21,6 +21,7 @@ package org.apache.parquet.bytes;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * A wrapper {@link ByteBufferAllocator} implementation that tracks whether all allocated buffers are released. It
@@ -138,6 +139,7 @@ public final class TrackingByteBufferAllocator implements ByteBufferAllocator, A
 
   @Override
   public void release(ByteBuffer b) throws ReleasingUnallocatedByteBufferException {
+    Objects.requireNonNull(b);
     if (allocated.remove(new Key(b)) == null) {
       throw new ReleasingUnallocatedByteBufferException();
     }

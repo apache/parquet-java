@@ -28,8 +28,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.zip.CRC32;
 import org.apache.parquet.bytes.ByteBufferAllocator;
+import org.apache.parquet.bytes.ByteBufferReleaser;
 import org.apache.parquet.bytes.BytesInput;
-import org.apache.parquet.bytes.ConcatenatingByteArrayCollector;
+import org.apache.parquet.bytes.ConcatenatingByteBufferCollector;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.ParquetProperties;
@@ -52,6 +53,7 @@ import org.apache.parquet.internal.column.columnindex.ColumnIndexBuilder;
 import org.apache.parquet.internal.column.columnindex.OffsetIndexBuilder;
 import org.apache.parquet.io.ParquetEncodingException;
 import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.util.AutoCloseables;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -69,7 +71,7 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
     private final BytesInputCompressor compressor;
 
     private final ByteArrayOutputStream tempOutputStream = new ByteArrayOutputStream();
-    private final ConcatenatingByteArrayCollector buf;
+    private final ConcatenatingByteBufferCollector buf;
     private DictionaryPage dictionaryPage;
 
     private long uncompressedLength;
@@ -86,7 +88,7 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
     private ColumnIndexBuilder columnIndexBuilder;
     private OffsetIndexBuilder offsetIndexBuilder;
     private Statistics totalStatistics;
-    private final ByteBufferAllocator allocator;
+    private final ByteBufferReleaser releaser;
 
     private final CRC32 crc;
     boolean pageWriteChecksumEnabled;
@@ -113,8 +115,8 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
         int columnOrdinal) {
       this.path = path;
       this.compressor = compressor;
-      this.allocator = allocator;
-      this.buf = new ConcatenatingByteArrayCollector();
+      this.releaser = new ByteBufferReleaser(allocator);
+      this.buf = new ConcatenatingByteBufferCollector(allocator);
       this.columnIndexBuilder = ColumnIndexBuilder.getBuilder(path.getPrimitiveType(), columnIndexTruncateLength);
       this.offsetIndexBuilder = OffsetIndexBuilder.getBuilder();
       this.pageWriteChecksumEnabled = pageWriteChecksumEnabled;
@@ -428,7 +430,7 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
             BytesInput.from(pageBlockEncryptor.encrypt(compressedBytes.toByteArray(), dictonaryPageAAD));
       }
       this.dictionaryPage = new DictionaryPage(
-          BytesInput.copy(compressedBytes),
+          compressedBytes.copy(releaser),
           uncompressedSize,
           dictionaryPage.getDictionarySize(),
           dictionaryPage.getEncoding());
@@ -437,6 +439,11 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
     @Override
     public String memUsageString(String prefix) {
       return buf.memUsageString(prefix + " ColumnChunkPageWriter");
+    }
+
+    @Override
+    public void close() {
+      AutoCloseables.uncheckedClose(buf, releaser);
     }
 
     @Override
@@ -548,6 +555,12 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
   @Override
   public PageWriter getPageWriter(ColumnDescriptor path) {
     return writers.get(path);
+  }
+
+  @Override
+  public void close() {
+    AutoCloseables.uncheckedClose(writers.values());
+    writers.clear();
   }
 
   @Override

@@ -37,6 +37,7 @@ import org.apache.parquet.io.ColumnIOFactory;
 import org.apache.parquet.io.MessageColumnIO;
 import org.apache.parquet.io.api.RecordConsumer;
 import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.util.AutoCloseables;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -125,16 +126,20 @@ class InternalParquetRecordWriter<T> {
 
   public void close() throws IOException, InterruptedException {
     if (!closed) {
-      flushRowGroupToStore();
-      FinalizedWriteContext finalWriteContext = writeSupport.finalizeWrite();
-      Map<String, String> finalMetadata = new HashMap<String, String>(extraMetaData);
-      String modelName = writeSupport.getName();
-      if (modelName != null) {
-        finalMetadata.put(ParquetWriter.OBJECT_MODEL_NAME_PROP, modelName);
+      try {
+        flushRowGroupToStore();
+        FinalizedWriteContext finalWriteContext = writeSupport.finalizeWrite();
+        Map<String, String> finalMetadata = new HashMap<String, String>(extraMetaData);
+        String modelName = writeSupport.getName();
+        if (modelName != null) {
+          finalMetadata.put(ParquetWriter.OBJECT_MODEL_NAME_PROP, modelName);
+        }
+        finalMetadata.putAll(finalWriteContext.getExtraMetaData());
+        parquetFileWriter.end(finalMetadata);
+      } finally {
+        AutoCloseables.uncheckedClose(columnStore, pageStore, bloomFilterWriteStore, parquetFileWriter);
+        closed = true;
       }
-      finalMetadata.putAll(finalWriteContext.getExtraMetaData());
-      parquetFileWriter.end(finalMetadata);
-      closed = true;
     }
   }
 
@@ -197,10 +202,10 @@ class InternalParquetRecordWriter<T> {
       parquetFileWriter.endBlock();
       this.nextRowGroupSize = Math.min(parquetFileWriter.getNextRowGroupSize(), rowGroupSizeThreshold);
     }
-
-    columnStore.close();
+    AutoCloseables.uncheckedClose(columnStore, pageStore, bloomFilterWriteStore);
     columnStore = null;
     pageStore = null;
+    bloomFilterWriteStore = null;
   }
 
   long getRowGroupSizeThreshold() {

@@ -23,7 +23,7 @@ import org.apache.parquet.io.api.Binary;
 /**
  * writer for (repetition level, definition level, values) triplets
  */
-public interface ColumnWriter {
+public interface ColumnWriter extends AutoCloseable {
 
   /**
    * writes the current value
@@ -91,6 +91,7 @@ public interface ColumnWriter {
    * Close the underlying store. This should be called when there are no
    * more data to be written.
    */
+  @Override
   void close();
 
   /**

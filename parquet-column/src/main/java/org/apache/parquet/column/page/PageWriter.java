@@ -26,7 +26,7 @@ import org.apache.parquet.column.statistics.Statistics;
 /**
  * a writer for all the pages of a given column chunk
  */
-public interface PageWriter {
+public interface PageWriter extends AutoCloseable {
 
   /**
    * writes a single page
@@ -120,4 +120,9 @@ public interface PageWriter {
    * @return a string presenting a summary of how memory is used
    */
   String memUsageString(String prefix);
+
+  @Override
+  default void close() {
+    // No-op default implementation for compatibility
+  }
 }

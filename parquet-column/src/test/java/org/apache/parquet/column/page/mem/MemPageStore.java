@@ -70,6 +70,11 @@ public class MemPageStore implements PageReadStore, PageWriteStore {
     return rowCount;
   }
 
+  @Override
+  public void close() {
+    // no-op
+  }
+
   public void addRowCount(long count) {
     rowCount += count;
   }

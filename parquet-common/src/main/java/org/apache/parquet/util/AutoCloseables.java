@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.util;
 
+import java.util.Arrays;
 import org.apache.parquet.ParquetRuntimeException;
 
 /**
@@ -27,24 +28,27 @@ public final class AutoCloseables {
 
   public static class ParquetCloseResourceException extends ParquetRuntimeException {
 
-    private ParquetCloseResourceException(Exception e) {
+    private ParquetCloseResourceException(Throwable e) {
       super("Unable to close resource", e);
     }
   }
 
   /**
    * Invokes the {@link AutoCloseable#close()} method of each specified objects in a way that guarantees that all the
-   * methods will be invoked even if an exception is occurred before.
+   * methods will be invoked even if an exception is occurred before. It also gracefully handles {@code null}
+   * {@link AutoCloseable} instances by skipping them.
    *
    * @param autoCloseables the objects to be closed
    * @throws Exception the compound exception built from the exceptions thrown by the close methods
    */
-  public static void close(Iterable<AutoCloseable> autoCloseables) throws Exception {
-    Exception root = null;
+  public static void close(Iterable<? extends AutoCloseable> autoCloseables) throws Throwable {
+    Throwable root = null;
     for (AutoCloseable autoCloseable : autoCloseables) {
       try {
-        autoCloseable.close();
-      } catch (Exception e) {
+        if (autoCloseable != null) {
+          autoCloseable.close();
+        }
+      } catch (Throwable e) {
         if (root == null) {
           root = e;
         } else {
@@ -58,15 +62,36 @@ public final class AutoCloseables {
   }
 
   /**
+   * Invokes the {@link AutoCloseable#close()} method of each specified objects in a way that guarantees that all the
+   * methods will be invoked even if an exception is occurred before. It also gracefully handles {@code null}
+   * {@link AutoCloseable} instances by skipping them.
+   *
+   * @param autoCloseables the objects to be closed
+   * @throws Exception the compound exception built from the exceptions thrown by the close methods
+   */
+  public static void close(AutoCloseable... autoCloseables) throws Throwable {
+    close(Arrays.asList(autoCloseables));
+  }
+
+  /**
    * Works similarly to {@link #close(Iterable)} but it wraps the thrown exception (if any) into a
    * {@link ParquetCloseResourceException}.
    */
-  public static void uncheckedClose(Iterable<AutoCloseable> autoCloseables) throws ParquetCloseResourceException {
+  public static void uncheckedClose(Iterable<? extends AutoCloseable> autoCloseables)
+      throws ParquetCloseResourceException {
     try {
       close(autoCloseables);
-    } catch (Exception e) {
+    } catch (Throwable e) {
       throw new ParquetCloseResourceException(e);
     }
+  }
+
+  /**
+   * Works similarly to {@link #close(Iterable)} but it wraps the thrown exception (if any) into a
+   * {@link ParquetCloseResourceException}.
+   */
+  public static void uncheckedClose(AutoCloseable... autoCloseables) {
+    uncheckedClose(Arrays.asList(autoCloseables));
   }
 
   private AutoCloseables() {}

@@ -233,10 +233,10 @@ public class BytesUtils {
 
   public static void writeUnsignedVarInt(int value, ByteBuffer dest) throws IOException {
     while ((value & 0xFFFFFF80) != 0L) {
-      dest.putInt((value & 0x7F) | 0x80);
+      dest.put((byte) ((value & 0x7F) | 0x80));
       value >>>= 7;
     }
-    dest.putInt(value & 0x7F);
+    dest.put((byte) (value & 0x7F));
   }
 
   public static void writeZigZagVarInt(int intValue, OutputStream out) throws IOException {
@@ -274,6 +274,14 @@ public class BytesUtils {
       value >>>= 7;
     }
     out.write((int) (value & 0x7F));
+  }
+
+  public static void writeUnsignedVarLong(long value, ByteBuffer out) {
+    while ((value & 0xFFFFFFFFFFFFFF80L) != 0L) {
+      out.put((byte) ((value & 0x7F) | 0x80));
+      value >>>= 7;
+    }
+    out.put((byte) (value & 0x7F));
   }
 
   public static void writeZigZagVarLong(long longValue, OutputStream out) throws IOException {
