@@ -24,7 +24,6 @@ import static org.junit.Assert.*;
 
 import com.google.common.collect.Lists;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.apache.hadoop.conf.Configuration;
@@ -41,6 +40,8 @@ import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.hadoop.example.GroupReadSupport;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
+import org.apache.parquet.hadoop.rewrite.ParquetRewriter;
+import org.apache.parquet.hadoop.rewrite.RewriteOptions;
 import org.apache.parquet.hadoop.util.EncryptionTestFile;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.hadoop.util.HadoopOutputFile;
@@ -55,6 +56,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+// TODO move logic to ParquetRewriterTest
 @RunWith(Parameterized.class)
 public class ParquetJoinTest {
 
@@ -68,7 +70,7 @@ public class ParquetJoinTest {
   private List<EncryptionTestFile> inputFilesL = null;
   private List<List<EncryptionTestFile>> inputFilesR = null;
   private String outputFile = null;
-  private ParquetJoiner joiner = null;
+  private ParquetRewriter rewriter = null;
 
   @Parameterized.Parameters(name = "WriterVersion = {0}, IndexCacheStrategy = {1}, UsingHadoop = {2}")
   public static Object[][] parameters() {
@@ -106,12 +108,12 @@ public class ParquetJoinTest {
     List<List<Path>> inputPathsR = inputFilesR.stream()
         .map(x -> x.stream().map(y -> new Path(y.getFileName())).collect(Collectors.toList()))
         .collect(Collectors.toList());
-    JoinOptions.Builder builder = createBuilder(inputPathsL, inputPathsR);
-    JoinOptions options = builder.indexCacheStrategy(indexCacheStrategy).build();
+    RewriteOptions.Builder builder = createBuilder(inputPathsL, inputPathsR);
+    RewriteOptions options = builder.indexCacheStrategy(indexCacheStrategy).build();
 
-    joiner = new ParquetJoiner(options);
-    joiner.processBlocks();
-    joiner.close();
+    rewriter = new ParquetRewriter(options, true);
+    rewriter.processBlocks();
+    rewriter.close();
 
     // Verify the schema are not changed
     ParquetMetadata pmd =
@@ -279,11 +281,12 @@ public class ParquetJoinTest {
   }
 
 
-  private JoinOptions.Builder createBuilder(List<Path> inputPathsL, List<List<Path>> inputPathsR) throws IOException {
-    JoinOptions.Builder builder;
+  private RewriteOptions.Builder createBuilder(List<Path> inputPathsL, List<List<Path>> inputPathsR) throws IOException {
+    RewriteOptions.Builder builder;
     if (usingHadoop) {
       Path outputPath = new Path(outputFile);
-      builder = new JoinOptions.Builder(conf, inputPathsL, inputPathsR, outputPath);
+      builder = new RewriteOptions.Builder(conf, inputPathsL, outputPath);
+      inputPathsR.forEach(builder::addInputPathsR);
     } else {
       OutputFile outputPath = HadoopOutputFile.fromPath(new Path(outputFile), conf);
       List<InputFile> inputsL = inputPathsL.stream()
@@ -293,7 +296,8 @@ public class ParquetJoinTest {
           .stream()
           .map(x -> x.stream().map(y -> (InputFile) HadoopInputFile.fromPathUnchecked(y, conf)).collect(Collectors.toList()))
           .collect(Collectors.toList());
-      builder = new JoinOptions.Builder(parquetConf, inputsL, inputsR, outputPath);
+      builder = new RewriteOptions.Builder(parquetConf, inputsL, outputPath);
+      inputPathsR.forEach(builder::addInputPathsR);
     }
     return builder;
   }
