@@ -21,7 +21,7 @@ package org.apache.parquet.bytes;
 import java.nio.ByteBuffer;
 
 /**
- * A special {@link ByteBufferAllocator} implementation that keeps one {@link ByteBuffer} object and reuse it at the
+ * A special {@link ByteBufferAllocator} implementation that keeps one {@link ByteBuffer} object and reuses it at the
  * next {@link #allocate(int)} call. The {@link #close()} shall be called when this allocator is not needed anymore to
  * really release the one buffer.
  */

@@ -359,6 +359,7 @@ public class ParquetFileWriter implements AutoCloseable {
         statisticsTruncateLength,
         pageWriteChecksumEnabled,
         null,
+        null,
         null);
   }
 
@@ -383,6 +384,7 @@ public class ParquetFileWriter implements AutoCloseable {
         statisticsTruncateLength,
         pageWriteChecksumEnabled,
         encryptionProperties,
+        null,
         null);
   }
 
@@ -392,11 +394,8 @@ public class ParquetFileWriter implements AutoCloseable {
       Mode mode,
       long rowGroupSize,
       int maxPaddingSize,
-      int columnIndexTruncateLength,
-      int statisticsTruncateLength,
-      boolean pageWriteChecksumEnabled,
       FileEncryptionProperties encryptionProperties,
-      ByteBufferAllocator allocator)
+      ParquetProperties props)
       throws IOException {
     this(
         file,
@@ -404,12 +403,12 @@ public class ParquetFileWriter implements AutoCloseable {
         mode,
         rowGroupSize,
         maxPaddingSize,
-        columnIndexTruncateLength,
-        statisticsTruncateLength,
-        pageWriteChecksumEnabled,
+        props.getColumnIndexTruncateLength(),
+        props.getStatisticsTruncateLength(),
+        props.getPageWriteChecksumEnabled(),
         encryptionProperties,
         null,
-        allocator);
+        props.getAllocator());
   }
 
   @Deprecated

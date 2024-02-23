@@ -250,8 +250,12 @@ public abstract class BytesInput {
 
   /**
    * Copies the content of this {@link BytesInput} object to a newly created {@link ByteBuffer} and returns it wrapped
-   * in a {@link BytesInput} object. <strong>The data content shall be able to be fit in a {@link ByteBuffer}
-   * object!</strong>
+   * in a {@link BytesInput} object.
+   *
+   * <strong>The data content shall be able to be fit in a {@link ByteBuffer} object!</strong> (In case of the size of
+   * this {@link BytesInput} object cannot fit in an {@code int}, an {@link ArithmeticException} will be thrown. The
+   * {@code allocator} might throw an {@link OutOfMemoryError} if it is unable to allocate the required
+   * {@link ByteBuffer}.)
    *
    * @param allocator the allocator to be used for creating the new {@link ByteBuffer} object
    * @param callback  the callback called with the newly created {@link ByteBuffer} object; to be used for make it
@@ -279,7 +283,11 @@ public abstract class BytesInput {
    * {@link ByteBuffer} object if this {@link BytesInput} is not backed by a single {@link ByteBuffer}. In the latter
    * case the specified {@link ByteBufferAllocator} object will be used. In case of allocation the specified callback
    * will be invoked so the release of the newly allocated {@link ByteBuffer} object can be released at a proper time.
-   * <strong>The data content shall be able to be fit in a {@link ByteBuffer} object!</strong>
+   *
+   * <strong>The data content shall be able to be fit in a {@link ByteBuffer} object!</strong> (In case of the size of
+   * this {@link BytesInput} object cannot fit in an {@code int}, an {@link ArithmeticException} will be thrown. The
+   * {@code allocator} might throw an {@link OutOfMemoryError} if it is unable to allocate the required
+   * {@link ByteBuffer}.)
    *
    * @param allocator the {@link ByteBufferAllocator} to be used for potentially allocating a new {@link ByteBuffer}
    *                  object

@@ -505,11 +505,8 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
         mode,
         blockSize,
         maxPaddingSize,
-        props.getColumnIndexTruncateLength(),
-        props.getStatisticsTruncateLength(),
-        props.getPageWriteChecksumEnabled(),
         encryptionProperties,
-        props.getAllocator());
+        props);
     w.start();
 
     float maxLoad = conf.getFloat(ParquetOutputFormat.MEMORY_POOL_RATIO, MemoryManager.DEFAULT_MEMORY_POOL_RATIO);

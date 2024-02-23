@@ -25,6 +25,7 @@ import static org.apache.parquet.format.Util.readFileMetaData;
 import static org.apache.parquet.format.Util.writeColumnMetaData;
 import static org.apache.parquet.format.Util.writePageHeader;
 
+import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -1501,7 +1502,7 @@ public class ParquetMetadataConverter {
   }
 
   public ParquetMetadata readParquetMetadata(
-      final InputStream from,
+      final InputStream fromInputStream,
       MetadataFilter filter,
       final InternalFileDecryptor fileDecryptor,
       final boolean encryptedFooter,
@@ -1513,7 +1514,18 @@ public class ParquetMetadataConverter {
         (encryptedFooter ? AesCipher.createFooterAAD(fileDecryptor.getFileAAD()) : null);
 
     // Mark the beginning of the footer for verifyFooterIntegrity
-    from.mark(combinedFooterLength);
+    final InputStream from;
+    if (fileDecryptor.checkFooterIntegrity()) {
+      // fromInputStream should already support marking but let's be on the safe side
+      if (!fromInputStream.markSupported()) {
+        from = new BufferedInputStream(fromInputStream, combinedFooterLength);
+      } else {
+        from = fromInputStream;
+      }
+      from.mark(combinedFooterLength);
+    } else {
+      from = fromInputStream;
+    }
 
     FileMetaDataAndRowGroupOffsetInfo fileMetaDataAndRowGroupInfo =
         filter.accept(new MetadataFilterVisitor<FileMetaDataAndRowGroupOffsetInfo, IOException>() {

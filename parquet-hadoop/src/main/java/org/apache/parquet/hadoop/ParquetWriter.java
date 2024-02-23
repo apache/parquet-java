@@ -398,11 +398,8 @@ public class ParquetWriter<T> implements Closeable {
         mode,
         rowGroupSize,
         maxPaddingSize,
-        encodingProps.getColumnIndexTruncateLength(),
-        encodingProps.getStatisticsTruncateLength(),
-        encodingProps.getPageWriteChecksumEnabled(),
         encryptionProperties,
-        encodingProps.getAllocator());
+        encodingProps);
     fileWriter.start();
 
     this.codecFactory = codecFactory;
