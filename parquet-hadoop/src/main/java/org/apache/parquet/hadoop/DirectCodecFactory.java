@@ -17,6 +17,9 @@
  */
 package org.apache.parquet.hadoop;
 
+import com.github.luben.zstd.Zstd;
+import com.github.luben.zstd.ZstdCompressCtx;
+import com.github.luben.zstd.ZstdDecompressCtx;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -34,8 +37,12 @@ import org.apache.hadoop.io.compress.Decompressor;
 import org.apache.parquet.ParquetRuntimeException;
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.bytes.ByteBufferAllocator;
+import org.apache.parquet.bytes.ByteBufferReleaser;
 import org.apache.parquet.bytes.BytesInput;
+import org.apache.parquet.bytes.ReusingByteBufferAllocator;
+import org.apache.parquet.hadoop.codec.ZstandardCodec;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
+import org.apache.parquet.util.AutoCloseables;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xerial.snappy.Snappy;
@@ -87,25 +94,6 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
         getClass().getSimpleName());
   }
 
-  private ByteBuffer ensure(ByteBuffer buffer, int size) {
-    if (buffer == null) {
-      buffer = allocator.allocate(size);
-    } else if (buffer.capacity() >= size) {
-      buffer.clear();
-    } else {
-      release(buffer);
-      buffer = allocator.allocate(size);
-    }
-    return buffer;
-  }
-
-  ByteBuffer release(ByteBuffer buffer) {
-    if (buffer != null) {
-      allocator.release(buffer);
-    }
-    return null;
-  }
-
   @Override
   protected BytesCompressor createCompressor(final CompressionCodecName codecName) {
 
@@ -116,7 +104,7 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
       // avoid using the default Snappy codec since it allocates direct buffers at awkward spots.
       return new SnappyCompressor();
     } else if (codecName == CompressionCodecName.ZSTD) {
-      return DirectZstd.createCompressor(configuration, pageSize);
+      return new ZstdCompressor();
     } else {
       // todo: create class similar to the SnappyCompressor for zlib and exclude it as
       // snappy is above since it also generates allocateDirect calls.
@@ -132,7 +120,7 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
     } else if (codecName == CompressionCodecName.SNAPPY) {
       return new SnappyDecompressor();
     } else if (codecName == CompressionCodecName.ZSTD) {
-      return DirectZstd.createDecompressor(configuration);
+      return new ZstdDecompressor();
     } else if (DirectCodecPool.INSTANCE.codec(codec).supportsDirectDecompression()) {
       return new FullDirectDecompressor(codecName);
     } else {
@@ -186,6 +174,100 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
     }
   }
 
+  private abstract class BaseDecompressor extends BytesDecompressor {
+    private final ReusingByteBufferAllocator inputAllocator;
+    private final ReusingByteBufferAllocator outputAllocator;
+
+    BaseDecompressor() {
+      inputAllocator = ReusingByteBufferAllocator.strict(allocator);
+      // Using unsafe reusing allocator because we give out the output ByteBuffer wrapped in a BytesInput. But
+      // that's what BytesInputs are for. It is expected to copy the data from the returned BytesInput before
+      // using this decompressor again.
+      outputAllocator = ReusingByteBufferAllocator.unsafe(allocator);
+    }
+
+    @Override
+    public BytesInput decompress(BytesInput bytes, int uncompressedSize) throws IOException {
+      try (ByteBufferReleaser releaser = inputAllocator.getReleaser()) {
+        ByteBuffer input = bytes.toByteBuffer(releaser);
+        ByteBuffer output = outputAllocator.allocate(uncompressedSize);
+        int size = decompress(input.slice(), output.slice());
+        if (size != uncompressedSize) {
+          throw new DirectCodecPool.ParquetCompressionCodecException(
+              "Unexpected decompressed size: " + size + " != " + uncompressedSize);
+        }
+        output.limit(size);
+        return BytesInput.from(output);
+      }
+    }
+
+    abstract int decompress(ByteBuffer input, ByteBuffer output) throws IOException;
+
+    @Override
+    public void decompress(ByteBuffer input, int compressedSize, ByteBuffer output, int uncompressedSize)
+        throws IOException {
+      input.limit(input.position() + compressedSize);
+      output.limit(output.position() + uncompressedSize);
+      int size = decompress(input.slice(), output.slice());
+      if (size != uncompressedSize) {
+        throw new DirectCodecPool.ParquetCompressionCodecException(
+            "Unexpected decompressed size: " + size + " != " + uncompressedSize);
+      }
+      input.position(input.limit());
+      output.position(output.position() + uncompressedSize);
+    }
+
+    @Override
+    public void release() {
+      try {
+        AutoCloseables.uncheckedClose(outputAllocator, inputAllocator);
+      } finally {
+        closeDecompressor();
+      }
+    }
+
+    abstract void closeDecompressor();
+  }
+
+  private abstract class BaseCompressor extends BytesCompressor {
+    private final ReusingByteBufferAllocator inputAllocator;
+    private final ReusingByteBufferAllocator outputAllocator;
+
+    BaseCompressor() {
+      inputAllocator = ReusingByteBufferAllocator.strict(allocator);
+      // Using unsafe reusing allocator because we give out the output ByteBuffer wrapped in a BytesInput. But
+      // that's what BytesInputs are for. It is expected to copy the data from the returned BytesInput before
+      // using this compressor again.
+      outputAllocator = ReusingByteBufferAllocator.unsafe(allocator);
+    }
+
+    @Override
+    public BytesInput compress(BytesInput bytes) throws IOException {
+      try (ByteBufferReleaser releaser = inputAllocator.getReleaser()) {
+        ByteBuffer input = bytes.toByteBuffer(releaser);
+        ByteBuffer output = outputAllocator.allocate(maxCompressedSize(Math.toIntExact(bytes.size())));
+        int size = compress(input.slice(), output.slice());
+        output.limit(size);
+        return BytesInput.from(output);
+      }
+    }
+
+    abstract int maxCompressedSize(int size);
+
+    abstract int compress(ByteBuffer input, ByteBuffer output) throws IOException;
+
+    @Override
+    public void release() {
+      try {
+        AutoCloseables.uncheckedClose(outputAllocator, inputAllocator);
+      } finally {
+        closeCompressor();
+      }
+    }
+
+    abstract void closeCompressor();
+  }
+
   /**
    * Wrapper around new Hadoop compressors that implement a direct memory
    * based version of a particular decompression algorithm. To maintain
@@ -194,38 +276,47 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
    * are currently retrieved and have their decompression method invoked
    * with reflection.
    */
-  public class FullDirectDecompressor extends BytesDecompressor {
+  public class FullDirectDecompressor extends BaseDecompressor {
     private final Object decompressor;
-    private HeapBytesDecompressor extraDecompressor;
 
     public FullDirectDecompressor(CompressionCodecName codecName) {
       CompressionCodec codec = getCodec(codecName);
       this.decompressor = DirectCodecPool.INSTANCE.codec(codec).borrowDirectDecompressor();
-      this.extraDecompressor = new HeapBytesDecompressor(codecName);
     }
 
     @Override
     public BytesInput decompress(BytesInput compressedBytes, int uncompressedSize) throws IOException {
-      return extraDecompressor.decompress(compressedBytes, uncompressedSize);
+      // Similarly to non-direct decompressors, we reset before use, if possible (see HeapBytesDecompressor)
+      if (decompressor instanceof Decompressor) {
+        ((Decompressor) decompressor).reset();
+      }
+      return super.decompress(compressedBytes, uncompressedSize);
     }
 
     @Override
     public void decompress(ByteBuffer input, int compressedSize, ByteBuffer output, int uncompressedSize)
         throws IOException {
-      output.clear();
-      try {
-        DECOMPRESS_METHOD.invoke(decompressor, (ByteBuffer) input.limit(compressedSize), (ByteBuffer)
-            output.limit(uncompressedSize));
-      } catch (IllegalAccessException | InvocationTargetException e) {
-        throw new DirectCodecPool.ParquetCompressionCodecException(e);
+      // Similarly to non-direct decompressors, we reset before use, if possible (see HeapBytesDecompressor)
+      if (decompressor instanceof Decompressor) {
+        ((Decompressor) decompressor).reset();
       }
-      output.position(uncompressedSize);
+      super.decompress(input, compressedSize, output, uncompressedSize);
     }
 
     @Override
-    public void release() {
+    int decompress(ByteBuffer input, ByteBuffer output) {
+      int startPos = output.position();
+      try {
+        DECOMPRESS_METHOD.invoke(decompressor, input, output);
+      } catch (IllegalAccessException | InvocationTargetException e) {
+        throw new DirectCodecPool.ParquetCompressionCodecException(e);
+      }
+      return output.position() - startPos;
+    }
+
+    @Override
+    void closeDecompressor() {
       DirectCodecPool.INSTANCE.returnDirectDecompressor(decompressor);
-      extraDecompressor.release();
     }
   }
 
@@ -250,64 +341,28 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
     public void release() {}
   }
 
-  public class SnappyDecompressor extends BytesDecompressor {
-
-    private HeapBytesDecompressor extraDecompressor;
-
-    public SnappyDecompressor() {
-      this.extraDecompressor = new HeapBytesDecompressor(CompressionCodecName.SNAPPY);
+  public class SnappyDecompressor extends BaseDecompressor {
+    @Override
+    int decompress(ByteBuffer input, ByteBuffer output) throws IOException {
+      return Snappy.uncompress(input, output);
     }
 
     @Override
-    public BytesInput decompress(BytesInput bytes, int uncompressedSize) throws IOException {
-      return extraDecompressor.decompress(bytes, uncompressedSize);
+    void closeDecompressor() {
+      // no-op
     }
-
-    @Override
-    public void decompress(ByteBuffer src, int compressedSize, ByteBuffer dst, int uncompressedSize)
-        throws IOException {
-      dst.clear();
-      int size = Snappy.uncompress(src, dst);
-      dst.limit(size);
-    }
-
-    @Override
-    public void release() {}
   }
 
-  public class SnappyCompressor extends BytesCompressor {
+  public class SnappyCompressor extends BaseCompressor {
 
-    // TODO - this outgoing buffer might be better off not being shared, this seems to
-    // only work because of an extra copy currently happening where this interface is
-    // be consumed
-    private ByteBuffer incoming;
-    private ByteBuffer outgoing;
-
-    /**
-     * Compress a given buffer of bytes
-     * @param bytes
-     * @return
-     * @throws IOException
-     */
     @Override
-    public BytesInput compress(BytesInput bytes) throws IOException {
-      int maxOutputSize = Snappy.maxCompressedLength((int) bytes.size());
-      ByteBuffer bufferIn = bytes.toByteBuffer();
-      outgoing = ensure(outgoing, maxOutputSize);
-      final int size;
-      if (bufferIn.isDirect()) {
-        size = Snappy.compress(bufferIn, outgoing);
-      } else {
-        // Snappy library requires buffers be direct
-        this.incoming = ensure(this.incoming, (int) bytes.size());
-        this.incoming.put(bufferIn);
-        this.incoming.flip();
-        size = Snappy.compress(this.incoming, outgoing);
-      }
+    int compress(ByteBuffer input, ByteBuffer output) throws IOException {
+      return Snappy.compress(input, output);
+    }
 
-      outgoing.limit(size);
-
-      return BytesInput.from(outgoing);
+    @Override
+    int maxCompressedSize(int size) {
+      return Snappy.maxCompressedLength(size);
     }
 
     @Override
@@ -316,9 +371,56 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
     }
 
     @Override
-    public void release() {
-      outgoing = DirectCodecFactory.this.release(outgoing);
-      incoming = DirectCodecFactory.this.release(incoming);
+    void closeCompressor() {
+      // no-op
+    }
+  }
+
+  private class ZstdDecompressor extends BaseDecompressor {
+    private final ZstdDecompressCtx context;
+
+    ZstdDecompressor() {
+      context = new ZstdDecompressCtx();
+    }
+
+    @Override
+    int decompress(ByteBuffer input, ByteBuffer output) {
+      return context.decompress(output, input);
+    }
+
+    @Override
+    void closeDecompressor() {
+      context.close();
+    }
+  }
+
+  private class ZstdCompressor extends BaseCompressor {
+    private final ZstdCompressCtx context;
+
+    ZstdCompressor() {
+      context = new ZstdCompressCtx();
+      context.setLevel(configuration.getInt(
+          ZstandardCodec.PARQUET_COMPRESS_ZSTD_LEVEL, ZstandardCodec.DEFAULT_PARQUET_COMPRESS_ZSTD_LEVEL));
+    }
+
+    @Override
+    public CompressionCodecName getCodecName() {
+      return CompressionCodecName.ZSTD;
+    }
+
+    @Override
+    int maxCompressedSize(int size) {
+      return Math.toIntExact(Zstd.compressBound(size));
+    }
+
+    @Override
+    int compress(ByteBuffer input, ByteBuffer output) {
+      return context.compress(output, input);
+    }
+
+    @Override
+    void closeCompressor() {
+      context.close();
     }
   }
 
