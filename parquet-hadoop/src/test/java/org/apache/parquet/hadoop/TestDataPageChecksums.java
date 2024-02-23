@@ -136,6 +136,7 @@ public class TestDataPageChecksums {
         path,
         ParquetWriter.DEFAULT_BLOCK_SIZE,
         ParquetWriter.MAX_PADDING_SIZE_DEFAULT,
+        Integer.MAX_VALUE,
         allocator);
 
     writer.start();

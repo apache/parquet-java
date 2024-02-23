@@ -446,6 +446,11 @@ public abstract class ColumnIndexBuilder {
     int sizeOf(Object value) {
       return 0;
     }
+
+    @Override
+    public long getMinMaxSize() {
+      return 0;
+    }
   };
 
   private PrimitiveType type;
@@ -667,6 +672,6 @@ public abstract class ColumnIndexBuilder {
    * @return the sum of size in bytes of the min/max values added so far to this builder
    */
   public long getMinMaxSize() {
-    return 0;
+    throw new UnsupportedOperationException("Not implemented");
   }
 }
