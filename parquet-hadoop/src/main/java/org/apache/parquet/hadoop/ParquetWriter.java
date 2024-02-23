@@ -393,13 +393,7 @@ public class ParquetWriter<T> implements Closeable {
     }
 
     ParquetFileWriter fileWriter = new ParquetFileWriter(
-        file,
-        schema,
-        mode,
-        rowGroupSize,
-        maxPaddingSize,
-        encryptionProperties,
-        encodingProps);
+        file, schema, mode, rowGroupSize, maxPaddingSize, encryptionProperties, encodingProps);
     fileWriter.start();
 
     this.codecFactory = codecFactory;

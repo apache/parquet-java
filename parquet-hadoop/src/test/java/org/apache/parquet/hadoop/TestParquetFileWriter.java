@@ -174,11 +174,8 @@ public class TestParquetFileWriter {
         mode,
         DEFAULT_BLOCK_SIZE,
         MAX_PADDING_SIZE_DEFAULT,
-        ParquetProperties.DEFAULT_COLUMN_INDEX_TRUNCATE_LENGTH,
-        ParquetProperties.DEFAULT_STATISTICS_TRUNCATE_LENGTH,
-        ParquetProperties.DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED,
         null,
-        allocator);
+        ParquetProperties.builder().withAllocator(allocator).build());
   }
 
   private ParquetFileWriter createWriter(

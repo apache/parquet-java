@@ -1515,7 +1515,7 @@ public class ParquetMetadataConverter {
 
     // Mark the beginning of the footer for verifyFooterIntegrity
     final InputStream from;
-    if (fileDecryptor.checkFooterIntegrity()) {
+    if (fileDecryptor != null && fileDecryptor.checkFooterIntegrity()) {
       // fromInputStream should already support marking but let's be on the safe side
       if (!fromInputStream.markSupported()) {
         from = new BufferedInputStream(fromInputStream, combinedFooterLength);

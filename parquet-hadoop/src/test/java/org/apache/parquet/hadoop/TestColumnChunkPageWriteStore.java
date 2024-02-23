@@ -189,11 +189,8 @@ public class TestColumnChunkPageWriteStore {
           Mode.CREATE,
           ParquetWriter.DEFAULT_BLOCK_SIZE,
           ParquetWriter.MAX_PADDING_SIZE_DEFAULT,
-          ParquetProperties.DEFAULT_COLUMN_INDEX_TRUNCATE_LENGTH,
-          ParquetProperties.DEFAULT_STATISTICS_TRUNCATE_LENGTH,
-          ParquetProperties.DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED,
           null,
-          allocator);
+          ParquetProperties.builder().withAllocator(allocator).build());
       writer.start();
       writer.startBlock(rowCount);
       pageOffset = outputFile.out().getPos();
