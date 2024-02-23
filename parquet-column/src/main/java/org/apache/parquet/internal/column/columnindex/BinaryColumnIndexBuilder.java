@@ -136,4 +136,11 @@ class BinaryColumnIndexBuilder extends ColumnIndexBuilder {
   int sizeOf(Object value) {
     return ((Binary) value).length();
   }
+
+  @Override
+  public long getMinMaxSize() {
+    long minSizesSum = minValues.stream().mapToLong(Binary::length).sum();
+    long maxSizesSum = maxValues.stream().mapToLong(Binary::length).sum();
+    return minSizesSum + maxSizesSum;
+  }
 }

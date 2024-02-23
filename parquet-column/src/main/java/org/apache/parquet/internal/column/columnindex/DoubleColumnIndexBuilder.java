@@ -150,4 +150,9 @@ class DoubleColumnIndexBuilder extends ColumnIndexBuilder {
   int sizeOf(Object value) {
     return Double.BYTES;
   }
+
+  @Override
+  public long getMinMaxSize() {
+    return (long) minValues.size() * Double.BYTES + (long) maxValues.size() * Double.BYTES;
+  }
 }

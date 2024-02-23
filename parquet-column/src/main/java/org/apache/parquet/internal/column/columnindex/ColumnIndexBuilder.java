@@ -451,7 +451,6 @@ public abstract class ColumnIndexBuilder {
   private PrimitiveType type;
   private final BooleanList nullPages = new BooleanArrayList();
   private final LongList nullCounts = new LongArrayList();
-  private long minMaxSize;
   private final IntList pageIndexes = new IntArrayList();
   private int nextPageIndex;
 
@@ -537,8 +536,6 @@ public abstract class ColumnIndexBuilder {
       Object max = stats.genericGetMax();
       addMinMax(min, max);
       pageIndexes.add(nextPageIndex);
-      minMaxSize += sizeOf(min);
-      minMaxSize += sizeOf(max);
     } else {
       nullPages.add(true);
     }
@@ -576,8 +573,6 @@ public abstract class ColumnIndexBuilder {
         ByteBuffer max = maxValues.get(i);
         addMinMaxFromBytes(min, max);
         pageIndexes.add(i);
-        minMaxSize += min.remaining();
-        minMaxSize += max.remaining();
       }
     }
   }
@@ -651,7 +646,6 @@ public abstract class ColumnIndexBuilder {
     nullPages.clear();
     nullCounts.clear();
     clearMinMax();
-    minMaxSize = 0;
     nextPageIndex = 0;
     pageIndexes.clear();
   }
@@ -673,6 +667,6 @@ public abstract class ColumnIndexBuilder {
    * @return the sum of size in bytes of the min/max values added so far to this builder
    */
   public long getMinMaxSize() {
-    return minMaxSize;
+    return 0;
   }
 }
