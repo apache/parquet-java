@@ -2292,19 +2292,19 @@ public class ParquetMetadataConverter {
   public static OffsetIndex toParquetOffsetIndex(
       org.apache.parquet.internal.column.columnindex.OffsetIndex offsetIndex) {
     List<PageLocation> pageLocations = new ArrayList<>(offsetIndex.getPageCount());
-    List<Long> unencodedByteArrayDataTypes = new ArrayList<>(offsetIndex.getPageCount());
+    List<Long> unencodedByteArrayDataBytes = new ArrayList<>(offsetIndex.getPageCount());
     for (int i = 0, n = offsetIndex.getPageCount(); i < n; ++i) {
       pageLocations.add(new PageLocation(
           offsetIndex.getOffset(i), offsetIndex.getCompressedPageSize(i), offsetIndex.getFirstRowIndex(i)));
       Optional<Long> unencodedByteArrayDataType = offsetIndex.getUnencodedByteArrayDataBytes(i);
-      if (unencodedByteArrayDataType.isPresent() && unencodedByteArrayDataTypes.size() == i) {
-        unencodedByteArrayDataTypes.add(unencodedByteArrayDataType.get());
+      if (unencodedByteArrayDataType.isPresent() && unencodedByteArrayDataBytes.size() == i) {
+        unencodedByteArrayDataBytes.add(unencodedByteArrayDataType.get());
       }
     }
     OffsetIndex parquetOffsetIndex = new OffsetIndex(pageLocations);
-    if (unencodedByteArrayDataTypes.size() == pageLocations.size()) {
+    if (unencodedByteArrayDataBytes.size() == pageLocations.size()) {
       // Do not add the field if we are missing that from any page.
-      parquetOffsetIndex.setUnencoded_byte_array_data_bytes(unencodedByteArrayDataTypes);
+      parquetOffsetIndex.setUnencoded_byte_array_data_bytes(unencodedByteArrayDataBytes);
     }
     return parquetOffsetIndex;
   }

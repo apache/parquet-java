@@ -87,18 +87,6 @@ final class ColumnWriterV2 extends ColumnWriterBase {
       int rowCount,
       int valueCount,
       Statistics<?> statistics,
-      ValuesWriter repetitionLevels,
-      ValuesWriter definitionLevels,
-      ValuesWriter values)
-      throws IOException {
-    writePage(rowCount, valueCount, statistics, null, repetitionLevels, definitionLevels, values);
-  }
-
-  @Override
-  void writePage(
-      int rowCount,
-      int valueCount,
-      Statistics<?> statistics,
       SizeStatistics sizeStatistics,
       ValuesWriter repetitionLevels,
       ValuesWriter definitionLevels,

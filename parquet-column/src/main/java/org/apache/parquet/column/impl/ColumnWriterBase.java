@@ -114,7 +114,7 @@ abstract class ColumnWriterBase implements ColumnWriter {
 
   private void resetStatistics() {
     this.statistics = Statistics.createStats(path.getPrimitiveType());
-    this.sizeStatisticsBuilder = new SizeStatistics.Builder(
+    this.sizeStatisticsBuilder = SizeStatistics.newBuilder(
         path.getPrimitiveType(), path.getMaxRepetitionLevel(), path.getMaxDefinitionLevel());
   }
 
@@ -419,15 +419,6 @@ abstract class ColumnWriterBase implements ColumnWriter {
     resetStatistics();
     pageRowCount = 0;
   }
-
-  abstract void writePage(
-      int rowCount,
-      int valueCount,
-      Statistics<?> statistics,
-      ValuesWriter repetitionLevels,
-      ValuesWriter definitionLevels,
-      ValuesWriter values)
-      throws IOException;
 
   abstract void writePage(
       int rowCount,
