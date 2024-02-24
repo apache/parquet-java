@@ -19,8 +19,6 @@
 package org.apache.parquet.column.impl;
 
 import java.io.IOException;
-import java.util.OptionalDouble;
-import java.util.OptionalLong;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.ColumnWriter;
 import org.apache.parquet.column.ParquetProperties;
@@ -29,9 +27,6 @@ import org.apache.parquet.column.page.PageWriter;
 import org.apache.parquet.column.statistics.SizeStatistics;
 import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.column.values.ValuesWriter;
-import org.apache.parquet.column.values.bloomfilter.AdaptiveBlockSplitBloomFilter;
-import org.apache.parquet.column.values.bloomfilter.BlockSplitBloomFilter;
-import org.apache.parquet.column.values.bloomfilter.BloomFilter;
 import org.apache.parquet.column.values.bloomfilter.BloomFilterWriter;
 import org.apache.parquet.io.ParquetEncodingException;
 import org.apache.parquet.io.api.Binary;
@@ -55,13 +50,10 @@ abstract class ColumnWriterBase implements ColumnWriter {
   private ValuesWriter dataColumn;
   private int valueCount;
 
-  private Statistics<?> statistics;
-  private SizeStatistics.Builder sizeStatisticsBuilder;
   private long rowsWrittenSoFar = 0;
   private int pageRowCount;
 
-  private final BloomFilterWriter bloomFilterWriter;
-  private final BloomFilter bloomFilter;
+  private final ColumnValueCollector collector;
 
   ColumnWriterBase(ColumnDescriptor path, PageWriter pageWriter, ParquetProperties props) {
     this(path, pageWriter, null, props);
@@ -74,34 +66,12 @@ abstract class ColumnWriterBase implements ColumnWriter {
       ParquetProperties props) {
     this.path = path;
     this.pageWriter = pageWriter;
-    resetStatistics();
 
     this.repetitionLevelColumn = createRLWriter(props, path);
     this.definitionLevelColumn = createDLWriter(props, path);
     this.dataColumn = props.newValuesWriter(path);
 
-    this.bloomFilterWriter = bloomFilterWriter;
-    if (bloomFilterWriter == null) {
-      this.bloomFilter = null;
-      return;
-    }
-    int maxBloomFilterSize = props.getMaxBloomFilterBytes();
-
-    OptionalLong ndv = props.getBloomFilterNDV(path);
-    OptionalDouble fpp = props.getBloomFilterFPP(path);
-    // If user specify the column NDV, we construct Bloom filter from it.
-    if (ndv.isPresent()) {
-      int optimalNumOfBits = BlockSplitBloomFilter.optimalNumOfBits(ndv.getAsLong(), fpp.getAsDouble());
-      this.bloomFilter = new BlockSplitBloomFilter(optimalNumOfBits / 8, maxBloomFilterSize);
-    } else {
-      if (props.getAdaptiveBloomFilterEnabled(path)) {
-        int numCandidates = props.getBloomFilterCandidatesCount(path);
-        this.bloomFilter =
-            new AdaptiveBlockSplitBloomFilter(maxBloomFilterSize, numCandidates, fpp.getAsDouble(), path);
-      } else {
-        this.bloomFilter = new BlockSplitBloomFilter(maxBloomFilterSize, maxBloomFilterSize);
-      }
-    }
+    this.collector = new ColumnValueCollector(path, bloomFilterWriter, props);
   }
 
   abstract ValuesWriter createRLWriter(ParquetProperties props, ColumnDescriptor path);
@@ -110,12 +80,6 @@ abstract class ColumnWriterBase implements ColumnWriter {
 
   private void log(Object value, int r, int d) {
     LOG.debug("{} {} r:{} d:{}", path, value, r, d);
-  }
-
-  private void resetStatistics() {
-    this.statistics = Statistics.createStats(path.getPrimitiveType());
-    this.sizeStatisticsBuilder = SizeStatistics.newBuilder(
-        path.getPrimitiveType(), path.getMaxRepetitionLevel(), path.getMaxDefinitionLevel());
   }
 
   private void definitionLevel(int definitionLevel) {
@@ -141,8 +105,7 @@ abstract class ColumnWriterBase implements ColumnWriter {
     if (DEBUG) log(null, repetitionLevel, definitionLevel);
     repetitionLevel(repetitionLevel);
     definitionLevel(definitionLevel);
-    statistics.incrementNumNulls();
-    sizeStatisticsBuilder.add(repetitionLevel, definitionLevel);
+    collector.writeNull(repetitionLevel, definitionLevel);
     ++valueCount;
   }
 
@@ -162,36 +125,6 @@ abstract class ColumnWriterBase implements ColumnWriter {
         + pageWriter.getMemSize();
   }
 
-  private void updateBloomFilter(int value) {
-    if (bloomFilter != null) {
-      bloomFilter.insertHash(bloomFilter.hash(value));
-    }
-  }
-
-  private void updateBloomFilter(long value) {
-    if (bloomFilter != null) {
-      bloomFilter.insertHash(bloomFilter.hash(value));
-    }
-  }
-
-  private void updateBloomFilter(double value) {
-    if (bloomFilter != null) {
-      bloomFilter.insertHash(bloomFilter.hash(value));
-    }
-  }
-
-  private void updateBloomFilter(float value) {
-    if (bloomFilter != null) {
-      bloomFilter.insertHash(bloomFilter.hash(value));
-    }
-  }
-
-  private void updateBloomFilter(Binary value) {
-    if (bloomFilter != null) {
-      bloomFilter.insertHash(bloomFilter.hash(value));
-    }
-  }
-
   /**
    * Writes the current value
    *
@@ -205,9 +138,7 @@ abstract class ColumnWriterBase implements ColumnWriter {
     repetitionLevel(repetitionLevel);
     definitionLevel(definitionLevel);
     dataColumn.writeDouble(value);
-    statistics.updateStats(value);
-    sizeStatisticsBuilder.add(repetitionLevel, definitionLevel);
-    updateBloomFilter(value);
+    collector.write(value, repetitionLevel, definitionLevel);
     ++valueCount;
   }
 
@@ -224,9 +155,7 @@ abstract class ColumnWriterBase implements ColumnWriter {
     repetitionLevel(repetitionLevel);
     definitionLevel(definitionLevel);
     dataColumn.writeFloat(value);
-    statistics.updateStats(value);
-    sizeStatisticsBuilder.add(repetitionLevel, definitionLevel);
-    updateBloomFilter(value);
+    collector.write(value, repetitionLevel, definitionLevel);
     ++valueCount;
   }
 
@@ -243,9 +172,7 @@ abstract class ColumnWriterBase implements ColumnWriter {
     repetitionLevel(repetitionLevel);
     definitionLevel(definitionLevel);
     dataColumn.writeBytes(value);
-    statistics.updateStats(value);
-    sizeStatisticsBuilder.add(repetitionLevel, definitionLevel, value);
-    updateBloomFilter(value);
+    collector.write(value, repetitionLevel, definitionLevel);
     ++valueCount;
   }
 
@@ -262,8 +189,7 @@ abstract class ColumnWriterBase implements ColumnWriter {
     repetitionLevel(repetitionLevel);
     definitionLevel(definitionLevel);
     dataColumn.writeBoolean(value);
-    statistics.updateStats(value);
-    sizeStatisticsBuilder.add(repetitionLevel, definitionLevel);
+    collector.write(value, repetitionLevel, definitionLevel);
     ++valueCount;
   }
 
@@ -280,9 +206,7 @@ abstract class ColumnWriterBase implements ColumnWriter {
     repetitionLevel(repetitionLevel);
     definitionLevel(definitionLevel);
     dataColumn.writeInteger(value);
-    statistics.updateStats(value);
-    sizeStatisticsBuilder.add(repetitionLevel, definitionLevel);
-    updateBloomFilter(value);
+    collector.write(value, repetitionLevel, definitionLevel);
     ++valueCount;
   }
 
@@ -299,9 +223,7 @@ abstract class ColumnWriterBase implements ColumnWriter {
     repetitionLevel(repetitionLevel);
     definitionLevel(definitionLevel);
     dataColumn.writeLong(value);
-    statistics.updateStats(value);
-    sizeStatisticsBuilder.add(repetitionLevel, definitionLevel);
-    updateBloomFilter(value);
+    collector.write(value, repetitionLevel, definitionLevel);
     ++valueCount;
   }
 
@@ -321,9 +243,7 @@ abstract class ColumnWriterBase implements ColumnWriter {
       dataColumn.resetDictionary();
     }
 
-    if (bloomFilterWriter != null && bloomFilter != null) {
-      bloomFilterWriter.writeBloomFilter(bloomFilter);
-    }
+    collector.finalizeColumnChunk();
   }
 
   /**
@@ -400,12 +320,11 @@ abstract class ColumnWriterBase implements ColumnWriter {
     this.rowsWrittenSoFar += pageRowCount;
     if (DEBUG) LOG.debug("write page");
     try {
-      SizeStatistics sizeStatistics = sizeStatisticsBuilder.build();
       writePage(
           pageRowCount,
           valueCount,
-          statistics,
-          sizeStatistics,
+          collector.getStatistics(),
+          collector.getSizeStatistics(),
           repetitionLevelColumn,
           definitionLevelColumn,
           dataColumn);
@@ -416,7 +335,7 @@ abstract class ColumnWriterBase implements ColumnWriter {
     definitionLevelColumn.reset();
     dataColumn.reset();
     valueCount = 0;
-    resetStatistics();
+    collector.resetPageStatistics();
     pageRowCount = 0;
   }
 
