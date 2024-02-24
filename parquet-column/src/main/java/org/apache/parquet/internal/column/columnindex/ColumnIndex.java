@@ -60,11 +60,15 @@ public interface ColumnIndex extends Visitor<PrimitiveIterator.OfInt> {
    * @return the unmodifiable list of the repetition level histograms for each page concatenated together; used for
    * converting to the related thrift object
    */
-  public List<Long> getRepetitionLevelHistogram();
+  default List<Long> getRepetitionLevelHistogram() {
+    throw new UnsupportedOperationException("Repetition level histogram is not implemented");
+  }
 
   /**
    * @return the unmodifiable list of the definition level histograms for each page concatenated together; used for
    * converting to the related thrift object
    */
-  public List<Long> getDefinitionLevelHistogram();
+  default List<Long> getDefinitionLevelHistogram() {
+    throw new UnsupportedOperationException("Definition level histogram is not implemented");
+  }
 }

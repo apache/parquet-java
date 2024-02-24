@@ -73,5 +73,7 @@ public interface OffsetIndex {
    * @return unencoded/uncompressed size for BYTE_ARRAY types; or empty for other types.
    *    Please note that even for BYTE_ARRAY types, this value might not have been written.
    */
-  public Optional<Long> getUnencodedByteArrayDataBytes(int pageIndex);
+  default Optional<Long> getUnencodedByteArrayDataBytes(int pageIndex) {
+    throw new UnsupportedOperationException("Un-encoded byte array data bytes is not implemented");
+  }
 }

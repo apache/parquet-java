@@ -387,7 +387,9 @@ public abstract class ColumnChunkMetaData {
    *
    * @return the size stats for this column
    */
-  public abstract SizeStatistics getSizeStatistics();
+  public SizeStatistics getSizeStatistics() {
+    throw new UnsupportedOperationException("SizeStatistics is not implemented");
+  }
 
   /**
    * Method should be considered private

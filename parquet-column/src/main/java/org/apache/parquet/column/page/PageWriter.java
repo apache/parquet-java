@@ -86,7 +86,7 @@ public interface PageWriter extends AutoCloseable {
    * @param valuesEncoding values encoding
    * @throws IOException
    */
-  void writePage(
+  default void writePage(
       BytesInput bytesInput,
       int valueCount,
       int rowCount,
@@ -95,7 +95,9 @@ public interface PageWriter extends AutoCloseable {
       Encoding rlEncoding,
       Encoding dlEncoding,
       Encoding valuesEncoding)
-      throws IOException;
+      throws IOException {
+    throw new UnsupportedOperationException("writePage with SizeStatistics is not implemented");
+  }
 
   /**
    * writes a single page in the new format
@@ -134,7 +136,7 @@ public interface PageWriter extends AutoCloseable {
    * @param sizeStatistics optional size stats for this page
    * @throws IOException if there is an exception while writing page data
    */
-  void writePageV2(
+  default void writePageV2(
       int rowCount,
       int nullCount,
       int valueCount,
@@ -144,7 +146,9 @@ public interface PageWriter extends AutoCloseable {
       BytesInput data,
       Statistics<?> statistics,
       SizeStatistics sizeStatistics)
-      throws IOException;
+      throws IOException {
+    throw new UnsupportedOperationException("writePageV2 with SizeStatistics is not implemented");
+  }
 
   /**
    * @return the current size used in the memory buffer for that column chunk
