@@ -94,7 +94,7 @@ public class SizeStatistics {
     public void add(int repetitionLevel, int definitionLevel, Binary value) {
       add(repetitionLevel, definitionLevel);
       if (type.getPrimitiveTypeName() == PrimitiveType.PrimitiveTypeName.BINARY && value != null) {
-        unencodedByteArrayDataBytes = Math.addExact(unencodedByteArrayDataBytes, value.length());
+        unencodedByteArrayDataBytes += value.length();
       }
     }
 

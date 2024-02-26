@@ -18,6 +18,8 @@
  */
 package org.apache.parquet.column.impl;
 
+import java.io.IOException;
+import java.io.OutputStream;
 import java.util.OptionalDouble;
 import java.util.OptionalLong;
 import org.apache.parquet.column.ColumnDescriptor;
@@ -34,37 +36,15 @@ import org.apache.parquet.io.api.Binary;
 class ColumnValueCollector {
 
   private final ColumnDescriptor path;
-  private final BloomFilterWriter bloomFilterWriter;
-  private final BloomFilter bloomFilter;
+  private BloomFilterWriter bloomFilterWriter;
+  private BloomFilter bloomFilter;
   private Statistics<?> statistics;
   private SizeStatistics.Builder sizeStatisticsBuilder;
 
   ColumnValueCollector(ColumnDescriptor path, BloomFilterWriter bloomFilterWriter, ParquetProperties props) {
     this.path = path;
     resetPageStatistics();
-
-    this.bloomFilterWriter = bloomFilterWriter;
-    if (bloomFilterWriter == null) {
-      this.bloomFilter = null;
-      return;
-    }
-    int maxBloomFilterSize = props.getMaxBloomFilterBytes();
-
-    OptionalLong ndv = props.getBloomFilterNDV(path);
-    OptionalDouble fpp = props.getBloomFilterFPP(path);
-    // If user specify the column NDV, we construct Bloom filter from it.
-    if (ndv.isPresent()) {
-      int optimalNumOfBits = BlockSplitBloomFilter.optimalNumOfBits(ndv.getAsLong(), fpp.getAsDouble());
-      this.bloomFilter = new BlockSplitBloomFilter(optimalNumOfBits / 8, maxBloomFilterSize);
-    } else {
-      if (props.getAdaptiveBloomFilterEnabled(path)) {
-        int numCandidates = props.getBloomFilterCandidatesCount(path);
-        this.bloomFilter =
-            new AdaptiveBlockSplitBloomFilter(maxBloomFilterSize, numCandidates, fpp.getAsDouble(), path);
-      } else {
-        this.bloomFilter = new BlockSplitBloomFilter(maxBloomFilterSize, maxBloomFilterSize);
-      }
-    }
+    initBloomFilter(bloomFilterWriter, props);
   }
 
   void resetPageStatistics() {
@@ -86,45 +66,119 @@ class ColumnValueCollector {
   void write(int value, int repetitionLevel, int definitionLevel) {
     statistics.updateStats(value);
     sizeStatisticsBuilder.add(repetitionLevel, definitionLevel);
-    if (bloomFilter != null) {
-      bloomFilter.insertHash(bloomFilter.hash(value));
-    }
+    bloomFilter.insertHash(bloomFilter.hash(value));
   }
 
   void write(long value, int repetitionLevel, int definitionLevel) {
     statistics.updateStats(value);
     sizeStatisticsBuilder.add(repetitionLevel, definitionLevel);
-    if (bloomFilter != null) {
-      bloomFilter.insertHash(bloomFilter.hash(value));
-    }
+    bloomFilter.insertHash(bloomFilter.hash(value));
   }
 
   void write(float value, int repetitionLevel, int definitionLevel) {
     statistics.updateStats(value);
     sizeStatisticsBuilder.add(repetitionLevel, definitionLevel);
-    if (bloomFilter != null) {
-      bloomFilter.insertHash(bloomFilter.hash(value));
-    }
+    bloomFilter.insertHash(bloomFilter.hash(value));
   }
 
   void write(double value, int repetitionLevel, int definitionLevel) {
     statistics.updateStats(value);
     sizeStatisticsBuilder.add(repetitionLevel, definitionLevel);
-    if (bloomFilter != null) {
-      bloomFilter.insertHash(bloomFilter.hash(value));
-    }
+    bloomFilter.insertHash(bloomFilter.hash(value));
   }
 
   void write(Binary value, int repetitionLevel, int definitionLevel) {
     statistics.updateStats(value);
     sizeStatisticsBuilder.add(repetitionLevel, definitionLevel, value);
-    if (bloomFilter != null) {
-      bloomFilter.insertHash(bloomFilter.hash(value));
+    bloomFilter.insertHash(bloomFilter.hash(value));
+  }
+
+  void initBloomFilter(BloomFilterWriter bloomFilterWriter, ParquetProperties props) {
+    this.bloomFilterWriter = bloomFilterWriter;
+    if (bloomFilterWriter == null) {
+      this.bloomFilter = new BloomFilter() {
+        @Override
+        public void writeTo(OutputStream out) throws IOException {}
+
+        @Override
+        public void insertHash(long hash) {}
+
+        @Override
+        public boolean findHash(long hash) {
+          return false;
+        }
+
+        @Override
+        public int getBitsetSize() {
+          return 0;
+        }
+
+        @Override
+        public long hash(int value) {
+          return 0;
+        }
+
+        @Override
+        public long hash(long value) {
+          return 0;
+        }
+
+        @Override
+        public long hash(double value) {
+          return 0;
+        }
+
+        @Override
+        public long hash(float value) {
+          return 0;
+        }
+
+        @Override
+        public long hash(Binary value) {
+          return 0;
+        }
+
+        @Override
+        public long hash(Object value) {
+          return 0;
+        }
+
+        @Override
+        public HashStrategy getHashStrategy() {
+          return null;
+        }
+
+        @Override
+        public Algorithm getAlgorithm() {
+          return null;
+        }
+
+        @Override
+        public Compression getCompression() {
+          return null;
+        }
+      };
+      return;
+    }
+
+    int maxBloomFilterSize = props.getMaxBloomFilterBytes();
+    OptionalLong ndv = props.getBloomFilterNDV(path);
+    OptionalDouble fpp = props.getBloomFilterFPP(path);
+    // If user specify the column NDV, we construct Bloom filter from it.
+    if (ndv.isPresent()) {
+      int optimalNumOfBits = BlockSplitBloomFilter.optimalNumOfBits(ndv.getAsLong(), fpp.getAsDouble());
+      this.bloomFilter = new BlockSplitBloomFilter(optimalNumOfBits / 8, maxBloomFilterSize);
+    } else if (props.getAdaptiveBloomFilterEnabled(path)) {
+      int numCandidates = props.getBloomFilterCandidatesCount(path);
+      this.bloomFilter =
+          new AdaptiveBlockSplitBloomFilter(maxBloomFilterSize, numCandidates, fpp.getAsDouble(), path);
+    } else {
+      this.bloomFilter = new BlockSplitBloomFilter(maxBloomFilterSize, maxBloomFilterSize);
     }
   }
 
   void finalizeColumnChunk() {
-    if (bloomFilterWriter != null && bloomFilter != null) {
+    if (bloomFilterWriter != null) {
       bloomFilterWriter.writeBloomFilter(bloomFilter);
     }
   }
