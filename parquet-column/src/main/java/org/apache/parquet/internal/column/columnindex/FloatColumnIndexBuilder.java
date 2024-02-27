@@ -150,4 +150,9 @@ class FloatColumnIndexBuilder extends ColumnIndexBuilder {
   int sizeOf(Object value) {
     return Float.BYTES;
   }
+
+  @Override
+  public long getMinMaxSize() {
+    return (long) minValues.size() * Float.BYTES + (long) maxValues.size() * Float.BYTES;
+  }
 }

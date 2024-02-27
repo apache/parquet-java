@@ -129,4 +129,9 @@ class BooleanColumnIndexBuilder extends ColumnIndexBuilder {
   int sizeOf(Object value) {
     return 1;
   }
+
+  @Override
+  public long getMinMaxSize() {
+    return minValues.size() + maxValues.size();
+  }
 }

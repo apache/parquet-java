@@ -580,6 +580,53 @@ public class TestColumnIndexBuilder {
   }
 
   @Test
+  public void testBinaryWithTruncate() {
+    PrimitiveType type = Types.required(BINARY).as(UTF8).named("test_binary_utf8");
+    int truncateLen = 5;
+    ColumnIndexBuilder builder = ColumnIndexBuilder.getBuilder(type, truncateLen);
+    assertThat(builder, instanceOf(BinaryColumnIndexBuilder.class));
+    assertNull(builder.build());
+
+    StatsBuilder sb = new StatsBuilder();
+    builder.add(sb.stats(type, null, null));
+    builder.add(sb.stats(type, stringBinary("Jeltz"), stringBinary("Slartibartfast"), null, null));
+    builder.add(sb.stats(type, null, null, null, null, null));
+    builder.add(sb.stats(type, null, null));
+    builder.add(sb.stats(type, stringBinary("Beeblebrox"), stringBinary("Prefect")));
+    builder.add(sb.stats(type, stringBinary("Dent"), stringBinary("Trilian"), null));
+    builder.add(sb.stats(type, stringBinary("Beeblebrox")));
+    builder.add(sb.stats(type, null, null));
+    assertEquals(8, builder.getPageCount());
+    assertEquals(39, builder.getMinMaxSize());
+    ColumnIndex columnIndex = builder.build();
+    assertEquals(BoundaryOrder.UNORDERED, columnIndex.getBoundaryOrder());
+    assertCorrectNullCounts(columnIndex, 2, 2, 5, 2, 0, 1, 0, 2);
+    assertCorrectNullPages(columnIndex, true, false, true, true, false, false, false, true);
+
+    BinaryTruncator truncator = BinaryTruncator.getTruncator(type);
+    assertCorrectValues(
+        columnIndex.getMaxValues(),
+        null,
+        truncator.truncateMax(stringBinary("Slartibartfast"), truncateLen),
+        null,
+        null,
+        truncator.truncateMax(stringBinary("Prefect"), truncateLen),
+        truncator.truncateMax(stringBinary("Trilian"), truncateLen),
+        truncator.truncateMax(stringBinary("Beeblebrox"), truncateLen),
+        null);
+    assertCorrectValues(
+        columnIndex.getMinValues(),
+        null,
+        truncator.truncateMin(stringBinary("Jeltz"), truncateLen),
+        null,
+        null,
+        truncator.truncateMin(stringBinary("Beeblebrox"), truncateLen),
+        truncator.truncateMin(stringBinary("Dent"), truncateLen),
+        truncator.truncateMin(stringBinary("Beeblebrox"), truncateLen),
+        null);
+  }
+
+  @Test
   public void testStaticBuildBinary() {
     ColumnIndex columnIndex = ColumnIndexBuilder.build(
         Types.required(BINARY).as(UTF8).named("test_binary_utf8"),

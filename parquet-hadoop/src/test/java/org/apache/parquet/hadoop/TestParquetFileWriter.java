@@ -36,6 +36,7 @@ import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -97,6 +98,7 @@ import org.apache.parquet.hadoop.util.ContextUtil;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.hadoop.util.HadoopOutputFile;
 import org.apache.parquet.hadoop.util.HiddenFileFilter;
+import org.apache.parquet.internal.column.columnindex.BinaryTruncator;
 import org.apache.parquet.internal.column.columnindex.BoundaryOrder;
 import org.apache.parquet.internal.column.columnindex.ColumnIndex;
 import org.apache.parquet.internal.column.columnindex.OffsetIndex;
@@ -180,7 +182,7 @@ public class TestParquetFileWriter {
 
   private ParquetFileWriter createWriter(
       Configuration conf, MessageType schema, Path path, long blockSize, int maxPaddingSize) throws IOException {
-    return new ParquetFileWriter(conf, schema, path, blockSize, maxPaddingSize, allocator);
+    return new ParquetFileWriter(conf, schema, path, blockSize, maxPaddingSize, Integer.MAX_VALUE, allocator);
   }
 
   @Test
@@ -1206,13 +1208,27 @@ public class TestParquetFileWriter {
 
   @Test
   public void testColumnIndexWriteRead() throws Exception {
+    // Don't truncate
+    testColumnIndexWriteRead(Integer.MAX_VALUE);
+    // Truncate to DEFAULT_COLUMN_INDEX_TRUNCATE_LENGTH
+    testColumnIndexWriteRead(ParquetProperties.DEFAULT_COLUMN_INDEX_TRUNCATE_LENGTH);
+  }
+
+  private void testColumnIndexWriteRead(int columnIndexTruncateLen) throws Exception {
     File testFile = temp.newFile();
     testFile.delete();
 
     Path path = new Path(testFile.toURI());
     Configuration configuration = new Configuration();
 
-    ParquetFileWriter w = createWriter(configuration, SCHEMA, path);
+    ParquetFileWriter w = new ParquetFileWriter(
+        configuration,
+        SCHEMA,
+        path,
+        DEFAULT_BLOCK_SIZE,
+        MAX_PADDING_SIZE_DEFAULT,
+        columnIndexTruncateLen,
+        allocator);
     w.start();
     w.startBlock(4);
     w.startColumn(C1, 7, CODEC);
@@ -1336,8 +1352,36 @@ public class TestParquetFileWriter {
       assertEquals(1, offsetIndex.getFirstRowIndex(1));
       assertEquals(3, offsetIndex.getFirstRowIndex(2));
 
-      assertNull(reader.readColumnIndex(
-          footer.getBlocks().get(2).getColumns().get(0)));
+      if (columnIndexTruncateLen == Integer.MAX_VALUE) {
+        assertNull(reader.readColumnIndex(
+            footer.getBlocks().get(2).getColumns().get(0)));
+      } else {
+        blockMeta = footer.getBlocks().get(2);
+        assertNotNull(reader.readColumnIndex(blockMeta.getColumns().get(0)));
+        columnIndex = reader.readColumnIndex(blockMeta.getColumns().get(0));
+        assertEquals(BoundaryOrder.ASCENDING, columnIndex.getBoundaryOrder());
+        assertTrue(Arrays.asList(0l).equals(columnIndex.getNullCounts()));
+        assertTrue(Arrays.asList(false).equals(columnIndex.getNullPages()));
+        minValues = columnIndex.getMinValues();
+        assertEquals(1, minValues.size());
+        maxValues = columnIndex.getMaxValues();
+        assertEquals(1, maxValues.size());
+
+        BinaryTruncator truncator =
+            BinaryTruncator.getTruncator(SCHEMA.getType(PATH1).asPrimitiveType());
+        assertEquals(
+            new String(new byte[1], StandardCharsets.UTF_8),
+            new String(minValues.get(0).array(), StandardCharsets.UTF_8));
+        byte[] truncatedMaxValue = truncator
+            .truncateMax(
+                Binary.fromConstantByteArray(new byte[(int) MAX_STATS_SIZE]), columnIndexTruncateLen)
+            .getBytes();
+        assertEquals(
+            new String(truncatedMaxValue, StandardCharsets.UTF_8),
+            new String(maxValues.get(0).array(), StandardCharsets.UTF_8));
+
+        assertNull(reader.readColumnIndex(blockMeta.getColumns().get(1)));
+      }
     }
   }
 

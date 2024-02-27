@@ -131,4 +131,9 @@ class IntColumnIndexBuilder extends ColumnIndexBuilder {
   int sizeOf(Object value) {
     return Integer.BYTES;
   }
+
+  @Override
+  public long getMinMaxSize() {
+    return (long) minValues.size() * Integer.BYTES + (long) maxValues.size() * Integer.BYTES;
+  }
 }

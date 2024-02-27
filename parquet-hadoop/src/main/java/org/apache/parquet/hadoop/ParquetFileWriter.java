@@ -524,6 +524,7 @@ public class ParquetFileWriter implements AutoCloseable {
    * @param file            the file to write to
    * @param rowAndBlockSize the row group size
    * @param maxPaddingSize  the maximum padding
+   * @param columnIndexTruncateLength  the length which the min/max values in column indexes tried to be truncated to
    * @param allocator       allocator to potentially allocate {@link java.nio.ByteBuffer} objects
    * @throws IOException if the file can not be created
    */
@@ -533,6 +534,7 @@ public class ParquetFileWriter implements AutoCloseable {
       Path file,
       long rowAndBlockSize,
       int maxPaddingSize,
+      int columnIndexTruncateLength,
       ByteBufferAllocator allocator)
       throws IOException {
     FileSystem fs = file.getFileSystem(configuration);
@@ -540,8 +542,7 @@ public class ParquetFileWriter implements AutoCloseable {
     this.alignment = PaddingAlignment.get(rowAndBlockSize, rowAndBlockSize, maxPaddingSize);
     this.out = HadoopStreams.wrap(fs.create(file, true, 8192, fs.getDefaultReplication(file), rowAndBlockSize));
     this.encodingStatsBuilder = new EncodingStats.Builder();
-    // no truncation is needed for testing
-    this.columnIndexTruncateLength = Integer.MAX_VALUE;
+    this.columnIndexTruncateLength = columnIndexTruncateLength;
     this.pageWriteChecksumEnabled = ParquetOutputFormat.getPageWriteChecksumEnabled(configuration);
     this.crc = pageWriteChecksumEnabled ? new CRC32() : null;
     this.crcAllocator = pageWriteChecksumEnabled
