@@ -101,6 +101,7 @@ import org.apache.parquet.format.PageLocation;
 import org.apache.parquet.format.PageType;
 import org.apache.parquet.format.RowGroup;
 import org.apache.parquet.format.SchemaElement;
+import org.apache.parquet.format.SizeStatistics;
 import org.apache.parquet.format.SplitBlockAlgorithm;
 import org.apache.parquet.format.Statistics;
 import org.apache.parquet.format.StringType;
@@ -574,6 +575,10 @@ public class ParquetMetadataConverter {
       }
       if (columnMetaData.getEncodingStats() != null) {
         metaData.setEncoding_stats(convertEncodingStats(columnMetaData.getEncodingStats()));
+      }
+      if (columnMetaData.getSizeStatistics() != null
+          && columnMetaData.getSizeStatistics().isValid()) {
+        metaData.setSize_statistics(toParquetSizeStatistics(columnMetaData.getSizeStatistics()));
       }
 
       if (!encryptMetaData) {
@@ -1601,7 +1606,8 @@ public class ParquetMetadataConverter {
         metaData.dictionary_page_offset,
         metaData.num_values,
         metaData.total_compressed_size,
-        metaData.total_uncompressed_size);
+        metaData.total_uncompressed_size,
+        fromParquetSizeStatistics(metaData.size_statistics, type));
   }
 
   public ParquetMetadata fromParquetMetadata(FileMetaData parquetMetadata) throws IOException {
@@ -2256,6 +2262,14 @@ public class ParquetMetadataConverter {
         columnIndex.getMaxValues(),
         toParquetBoundaryOrder(columnIndex.getBoundaryOrder()));
     parquetColumnIndex.setNull_counts(columnIndex.getNullCounts());
+    List<Long> repLevelHistogram = columnIndex.getRepetitionLevelHistogram();
+    if (repLevelHistogram != null && !repLevelHistogram.isEmpty()) {
+      parquetColumnIndex.setRepetition_level_histograms(repLevelHistogram);
+    }
+    List<Long> defLevelHistogram = columnIndex.getDefinitionLevelHistogram();
+    if (defLevelHistogram != null && !defLevelHistogram.isEmpty()) {
+      parquetColumnIndex.setDefinition_level_histograms(defLevelHistogram);
+    }
     return parquetColumnIndex;
   }
 
@@ -2270,27 +2284,47 @@ public class ParquetMetadataConverter {
         parquetColumnIndex.getNull_pages(),
         parquetColumnIndex.getNull_counts(),
         parquetColumnIndex.getMin_values(),
-        parquetColumnIndex.getMax_values());
+        parquetColumnIndex.getMax_values(),
+        parquetColumnIndex.getRepetition_level_histograms(),
+        parquetColumnIndex.getDefinition_level_histograms());
   }
 
   public static OffsetIndex toParquetOffsetIndex(
       org.apache.parquet.internal.column.columnindex.OffsetIndex offsetIndex) {
     List<PageLocation> pageLocations = new ArrayList<>(offsetIndex.getPageCount());
+    List<Long> unencodedByteArrayDataBytes = new ArrayList<>(offsetIndex.getPageCount());
     for (int i = 0, n = offsetIndex.getPageCount(); i < n; ++i) {
       pageLocations.add(new PageLocation(
           offsetIndex.getOffset(i), offsetIndex.getCompressedPageSize(i), offsetIndex.getFirstRowIndex(i)));
+      Optional<Long> unencodedByteArrayDataType = offsetIndex.getUnencodedByteArrayDataBytes(i);
+      if (unencodedByteArrayDataType.isPresent() && unencodedByteArrayDataBytes.size() == i) {
+        unencodedByteArrayDataBytes.add(unencodedByteArrayDataType.get());
+      }
     }
-    return new OffsetIndex(pageLocations);
+    OffsetIndex parquetOffsetIndex = new OffsetIndex(pageLocations);
+    if (unencodedByteArrayDataBytes.size() == pageLocations.size()) {
+      // Do not add the field if we are missing that from any page.
+      parquetOffsetIndex.setUnencoded_byte_array_data_bytes(unencodedByteArrayDataBytes);
+    }
+    return parquetOffsetIndex;
   }
 
   public static org.apache.parquet.internal.column.columnindex.OffsetIndex fromParquetOffsetIndex(
       OffsetIndex parquetOffsetIndex) {
+    boolean hasUnencodedByteArrayDataBytes = parquetOffsetIndex.isSetUnencoded_byte_array_data_bytes()
+        && parquetOffsetIndex.unencoded_byte_array_data_bytes.size()
+            == parquetOffsetIndex.page_locations.size();
     OffsetIndexBuilder builder = OffsetIndexBuilder.getBuilder();
-    for (PageLocation pageLocation : parquetOffsetIndex.getPage_locations()) {
+    for (int i = 0; i < parquetOffsetIndex.page_locations.size(); ++i) {
+      PageLocation pageLocation = parquetOffsetIndex.page_locations.get(i);
+      Optional<Long> unencodedByteArrayDataBytes = hasUnencodedByteArrayDataBytes
+          ? Optional.of(parquetOffsetIndex.unencoded_byte_array_data_bytes.get(i))
+          : Optional.empty();
       builder.add(
           pageLocation.getOffset(),
           pageLocation.getCompressed_page_size(),
-          pageLocation.getFirst_row_index());
+          pageLocation.getFirst_row_index(),
+          unencodedByteArrayDataBytes);
     }
     return builder.build();
   }
@@ -2321,5 +2355,31 @@ public class ParquetMetadataConverter {
           "Failed to build thrift structure for BloomFilterHeader," + "algorithm=%s, hash=%s, compression=%s",
           bloomFilter.getAlgorithm(), bloomFilter.getHashStrategy(), bloomFilter.getCompression()));
     }
+  }
+
+  public static org.apache.parquet.column.statistics.SizeStatistics fromParquetSizeStatistics(
+      SizeStatistics statistics, PrimitiveType type) {
+    if (statistics == null) {
+      return null;
+    }
+    return new org.apache.parquet.column.statistics.SizeStatistics(
+        type,
+        statistics.getUnencoded_byte_array_data_bytes(),
+        statistics.getRepetition_level_histogram(),
+        statistics.getDefinition_level_histogram());
+  }
+
+  public static SizeStatistics toParquetSizeStatistics(org.apache.parquet.column.statistics.SizeStatistics stats) {
+    if (stats == null) {
+      return null;
+    }
+    SizeStatistics formatStats = new SizeStatistics();
+    if (stats.getUnencodedByteArrayDataBytes().isPresent()) {
+      formatStats.setUnencoded_byte_array_data_bytes(
+          stats.getUnencodedByteArrayDataBytes().get());
+    }
+    formatStats.setRepetition_level_histogram(stats.getRepetitionLevelHistogram());
+    formatStats.setDefinition_level_histogram(stats.getDefinitionLevelHistogram());
+    return formatStats;
   }
 }

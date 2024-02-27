@@ -305,6 +305,7 @@ public class TestColumnChunkPageWriteStore {
               eq(fakeData.size()),
               eq(fakeData.size()),
               eq(fakeStats),
+              any(),
               same(ColumnIndexBuilder.getNoOpBuilder()), // Deprecated writePage -> no column index
               same(OffsetIndexBuilder.getNoOpBuilder()), // Deprecated writePage -> no offset index
               any(),
