@@ -23,7 +23,10 @@ import static org.junit.Assert.assertThrows;
 
 import java.nio.ByteBuffer;
 import java.nio.InvalidMarkException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
+import java.util.function.Function;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -35,6 +38,20 @@ import org.junit.runners.Parameterized.Parameters;
 @RunWith(Parameterized.class)
 public class TestReusingByteBufferAllocator {
 
+  private enum AllocatorType {
+    STRICT(ReusingByteBufferAllocator::strict),
+    UNSAFE(ReusingByteBufferAllocator::unsafe);
+    private final Function<ByteBufferAllocator, ReusingByteBufferAllocator> factory;
+
+    AllocatorType(Function<ByteBufferAllocator, ReusingByteBufferAllocator> factory) {
+      this.factory = factory;
+    }
+
+    public ReusingByteBufferAllocator create(ByteBufferAllocator allocator) {
+      return factory.apply(allocator);
+    }
+  }
+
   private static final Random RANDOM = new Random(2024_02_22_09_51L);
 
   private TrackingByteBufferAllocator allocator;
@@ -42,26 +59,31 @@ public class TestReusingByteBufferAllocator {
   @Parameter
   public ByteBufferAllocator innerAllocator;
 
-  @Parameters(name = "{0}")
-  public static Object[][] parameters() {
-    return new Object[][] {
-      {
-        new HeapByteBufferAllocator() {
-          @Override
-          public String toString() {
-            return "HEAP";
-          }
+  @Parameter(1)
+  public AllocatorType type;
+
+  @Parameters(name = "{0} {1}")
+  public static List<Object[]> parameters() {
+    List<Object[]> params = new ArrayList<>();
+    for (Object allocator : new Object[] {
+      new HeapByteBufferAllocator() {
+        @Override
+        public String toString() {
+          return "HEAP";
         }
       },
-      {
-        new DirectByteBufferAllocator() {
-          @Override
-          public String toString() {
-            return "DIRECT";
-          }
+      new DirectByteBufferAllocator() {
+        @Override
+        public String toString() {
+          return "DIRECT";
         }
       }
-    };
+    }) {
+      for (Object type : AllocatorType.values()) {
+        params.add(new Object[] {allocator, type});
+      }
+    }
+    return params;
   }
 
   @Before
@@ -76,7 +98,7 @@ public class TestReusingByteBufferAllocator {
 
   @Test
   public void normalUseCase() {
-    try (ReusingByteBufferAllocator reusingAllocator = new ReusingByteBufferAllocator(allocator)) {
+    try (ReusingByteBufferAllocator reusingAllocator = type.create(allocator)) {
       assertEquals(innerAllocator.isDirect(), reusingAllocator.isDirect());
       for (int i = 0; i < 10; ++i) {
         try (ByteBufferReleaser releaser = reusingAllocator.getReleaser()) {
@@ -84,11 +106,7 @@ public class TestReusingByteBufferAllocator {
           ByteBuffer buf = reusingAllocator.allocate(size);
           releaser.releaseLater(buf);
 
-          assertEquals(0, buf.position());
-          assertEquals(size, buf.capacity());
-          assertEquals(size, buf.remaining());
-          assertEquals(allocator.isDirect(), buf.isDirect());
-          assertThrows(InvalidMarkException.class, buf::reset);
+          validateBuffer(buf, size);
 
           // Let's see if the next allocate would clear the buffer
           buf.position(buf.capacity() / 2);
@@ -102,10 +120,18 @@ public class TestReusingByteBufferAllocator {
     }
   }
 
+  private void validateBuffer(ByteBuffer buf, int size) {
+    assertEquals(0, buf.position());
+    assertEquals(size, buf.capacity());
+    assertEquals(size, buf.remaining());
+    assertEquals(allocator.isDirect(), buf.isDirect());
+    assertThrows(InvalidMarkException.class, buf::reset);
+  }
+
   @Test
   public void validateExceptions() {
     try (ByteBufferReleaser releaser = new ByteBufferReleaser(allocator);
-        ReusingByteBufferAllocator reusingAllocator = new ReusingByteBufferAllocator(allocator)) {
+        ReusingByteBufferAllocator reusingAllocator = type.create(allocator)) {
       ByteBuffer fromOther = allocator.allocate(10);
       releaser.releaseLater(fromOther);
 
@@ -114,11 +140,20 @@ public class TestReusingByteBufferAllocator {
       ByteBuffer fromReusing = reusingAllocator.allocate(10);
 
       assertThrows(IllegalArgumentException.class, () -> reusingAllocator.release(fromOther));
-      assertThrows(IllegalStateException.class, () -> reusingAllocator.allocate(10));
+      switch (type) {
+        case STRICT:
+          assertThrows(IllegalStateException.class, () -> reusingAllocator.allocate(5));
+          break;
+        case UNSAFE:
+          fromReusing = reusingAllocator.allocate(5);
+          validateBuffer(fromReusing, 5);
+          break;
+      }
 
       reusingAllocator.release(fromReusing);
+      ByteBuffer fromReusingFinal = fromReusing;
       assertThrows(IllegalStateException.class, () -> reusingAllocator.release(fromOther));
-      assertThrows(IllegalStateException.class, () -> reusingAllocator.release(fromReusing));
+      assertThrows(IllegalStateException.class, () -> reusingAllocator.release(fromReusingFinal));
     }
   }
 }

@@ -27,10 +27,11 @@ import java.util.Random;
 import java.util.Set;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.compress.CompressionCodec;
-import org.apache.parquet.bytes.ByteBufferAllocator;
+import org.apache.parquet.bytes.ByteBufferReleaser;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.DirectByteBufferAllocator;
 import org.apache.parquet.bytes.HeapByteBufferAllocator;
+import org.apache.parquet.bytes.TrackingByteBufferAllocator;
 import org.apache.parquet.compression.CompressionCodecFactory.BytesInputCompressor;
 import org.apache.parquet.compression.CompressionCodecFactory.BytesInputDecompressor;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
@@ -52,16 +53,15 @@ public class TestDirectCodecFactory {
   private final int pageSize = 64 * 1024;
 
   private void test(int size, CompressionCodecName codec, boolean useOnHeapCompression, Decompression decomp) {
-    ByteBuffer rawBuf = null;
-    ByteBuffer outBuf = null;
-    ByteBufferAllocator allocator = null;
-    try {
-      allocator = new DirectByteBufferAllocator();
+    try (TrackingByteBufferAllocator allocator = TrackingByteBufferAllocator.wrap(new DirectByteBufferAllocator());
+        ByteBufferReleaser releaser = new ByteBufferReleaser(allocator)) {
       final CodecFactory codecFactory =
           CodecFactory.createDirectCodecFactory(new Configuration(), allocator, pageSize);
-      rawBuf = allocator.allocate(size);
+      ByteBuffer rawBuf = allocator.allocate(size);
+      releaser.releaseLater(rawBuf);
       final byte[] rawArr = new byte[size];
-      outBuf = allocator.allocate(size * 2);
+      ByteBuffer outBuf = allocator.allocate(size * 2);
+      releaser.releaseLater(outBuf);
       final Random r = new Random();
       final byte[] random = new byte[1024];
       int pos = 0;
@@ -121,19 +121,14 @@ public class TestDirectCodecFactory {
           break;
         }
       }
+      c.release();
+      d.release();
     } catch (Exception e) {
       final String msg = String.format(
           "Failure while testing Codec: %s, OnHeapCompressionInput: %s, Decompression Mode: %s, Data Size: %d",
           codec.name(), useOnHeapCompression, decomp.name(), size);
       LOG.error(msg);
       throw new RuntimeException(msg, e);
-    } finally {
-      if (rawBuf != null) {
-        allocator.release(rawBuf);
-      }
-      if (outBuf != null) {
-        allocator.release(rawBuf);
-      }
     }
   }
 

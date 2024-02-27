@@ -781,7 +781,7 @@ public class ParquetFileReader implements Closeable {
 
     if (options.usePageChecksumVerification()) {
       this.crc = new CRC32();
-      this.crcAllocator = new ReusingByteBufferAllocator(options.getAllocator());
+      this.crcAllocator = ReusingByteBufferAllocator.strict(options.getAllocator());
     } else {
       this.crc = null;
       this.crcAllocator = null;
@@ -840,7 +840,7 @@ public class ParquetFileReader implements Closeable {
 
     if (options.usePageChecksumVerification()) {
       this.crc = new CRC32();
-      this.crcAllocator = new ReusingByteBufferAllocator(options.getAllocator());
+      this.crcAllocator = ReusingByteBufferAllocator.strict(options.getAllocator());
     } else {
       this.crc = null;
       this.crcAllocator = null;
@@ -879,7 +879,7 @@ public class ParquetFileReader implements Closeable {
 
     if (options.usePageChecksumVerification()) {
       this.crc = new CRC32();
-      this.crcAllocator = new ReusingByteBufferAllocator(options.getAllocator());
+      this.crcAllocator = ReusingByteBufferAllocator.strict(options.getAllocator());
     } else {
       this.crc = null;
       this.crcAllocator = null;
@@ -921,7 +921,7 @@ public class ParquetFileReader implements Closeable {
 
     if (options.usePageChecksumVerification()) {
       this.crc = new CRC32();
-      this.crcAllocator = new ReusingByteBufferAllocator(options.getAllocator());
+      this.crcAllocator = ReusingByteBufferAllocator.strict(options.getAllocator());
     } else {
       this.crc = null;
       this.crcAllocator = null;

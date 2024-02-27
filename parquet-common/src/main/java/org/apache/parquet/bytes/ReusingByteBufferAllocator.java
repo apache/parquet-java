@@ -25,7 +25,7 @@ import java.nio.ByteBuffer;
  * next {@link #allocate(int)} call. The {@link #close()} shall be called when this allocator is not needed anymore to
  * really release the one buffer.
  */
-public class ReusingByteBufferAllocator implements ByteBufferAllocator, AutoCloseable {
+public abstract class ReusingByteBufferAllocator implements ByteBufferAllocator, AutoCloseable {
 
   private final ByteBufferAllocator allocator;
   private final ByteBufferReleaser releaser = new ByteBufferReleaser(this);
@@ -33,12 +33,46 @@ public class ReusingByteBufferAllocator implements ByteBufferAllocator, AutoClos
   private ByteBuffer bufferOut;
 
   /**
-   * Constructs a new {@link ReusingByteBufferAllocator} object with the specified "parent" allocator to be used for
+   * Creates a new strict {@link ReusingByteBufferAllocator} object with the specified "parent" allocator to be used for
    * allocating/releasing the one buffer.
+   * <p>
+   * Strict means it is enforced that {@link #release(ByteBuffer)} is invoked before a new {@link #allocate(int)} can be
+   * called.
    *
    * @param allocator the allocator to be used for allocating/releasing the one buffer
+   * @return a new strict {@link ReusingByteBufferAllocator} object
    */
-  public ReusingByteBufferAllocator(ByteBufferAllocator allocator) {
+  public static ReusingByteBufferAllocator strict(ByteBufferAllocator allocator) {
+    return new ReusingByteBufferAllocator(allocator) {
+      @Override
+      void allocateCheck(ByteBuffer bufferOut) {
+        if (bufferOut != null) {
+          throw new IllegalStateException("The single buffer is not yet released");
+        }
+      }
+    };
+  }
+
+  /**
+   * Creates a new unsafe {@link ReusingByteBufferAllocator} object with the specified "parent" allocator to be used for
+   * allocating/releasing the one buffer.
+   * <p>
+   * Unsafe means it is not enforced that {@link #release(ByteBuffer)} is invoked before a new {@link #allocate(int)}
+   * can be called, i.e. no exceptions will be thrown at {@link #allocate(int)}.
+   *
+   * @param allocator the allocator to be used for allocating/releasing the one buffer
+   * @return a new unsafe {@link ReusingByteBufferAllocator} object
+   */
+  public static ReusingByteBufferAllocator unsafe(ByteBufferAllocator allocator) {
+    return new ReusingByteBufferAllocator(allocator) {
+      @Override
+      void allocateCheck(ByteBuffer bufferOut) {
+        // no-op
+      }
+    };
+  }
+
+  private ReusingByteBufferAllocator(ByteBufferAllocator allocator) {
     this.allocator = allocator;
   }
 
@@ -54,13 +88,13 @@ public class ReusingByteBufferAllocator implements ByteBufferAllocator, AutoClos
   /**
    * {@inheritDoc}
    *
-   * @throws IllegalStateException if the one buffer was not released yet
+   * @throws IllegalStateException if strict and the one buffer was not released yet
+   * @see #strict(ByteBufferAllocator)
+   * @see #unsafe(ByteBufferAllocator)
    */
   @Override
   public ByteBuffer allocate(int size) {
-    if (bufferOut != null) {
-      throw new IllegalStateException("The single buffer is not yet released");
-    }
+    allocateCheck(bufferOut);
     if (buffer == null) {
       bufferOut = buffer = allocator.allocate(size);
     } else if (buffer.capacity() < size) {
@@ -74,10 +108,12 @@ public class ReusingByteBufferAllocator implements ByteBufferAllocator, AutoClos
     return bufferOut;
   }
 
+  abstract void allocateCheck(ByteBuffer bufferOut);
+
   /**
    * {@inheritDoc}
    *
-   * @throws IllegalStateException    if the one has already been released or never allocated
+   * @throws IllegalStateException    if the one buffer has already been released or never allocated
    * @throws IllegalArgumentException if the specified buffer is not the one allocated by this allocator
    */
   @Override
