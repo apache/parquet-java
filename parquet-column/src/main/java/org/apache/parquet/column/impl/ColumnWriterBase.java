@@ -19,6 +19,7 @@
 package org.apache.parquet.column.impl;
 
 import java.io.IOException;
+import java.util.Objects;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.ColumnWriter;
 import org.apache.parquet.column.ParquetProperties;
@@ -52,6 +53,7 @@ abstract class ColumnWriterBase implements ColumnWriter {
 
   private long rowsWrittenSoFar = 0;
   private int pageRowCount;
+  private StatusManager statusManager = StatusManager.create();
 
   private final ColumnValueCollector collector;
 
@@ -72,6 +74,10 @@ abstract class ColumnWriterBase implements ColumnWriter {
     this.dataColumn = props.newValuesWriter(path);
 
     this.collector = new ColumnValueCollector(path, bloomFilterWriter, props);
+  }
+
+  void initStatusManager(StatusManager statusManager) {
+    this.statusManager = Objects.requireNonNull(statusManager);
   }
 
   abstract ValuesWriter createRLWriter(ParquetProperties props, ColumnDescriptor path);
@@ -103,10 +109,15 @@ abstract class ColumnWriterBase implements ColumnWriter {
   @Override
   public void writeNull(int repetitionLevel, int definitionLevel) {
     if (DEBUG) log(null, repetitionLevel, definitionLevel);
-    repetitionLevel(repetitionLevel);
-    definitionLevel(definitionLevel);
-    collector.writeNull(repetitionLevel, definitionLevel);
-    ++valueCount;
+    try {
+      repetitionLevel(repetitionLevel);
+      definitionLevel(definitionLevel);
+      collector.writeNull(repetitionLevel, definitionLevel);
+      ++valueCount;
+    } catch (Throwable e) {
+      statusManager.abort();
+      throw e;
+    }
   }
 
   @Override
@@ -135,11 +146,16 @@ abstract class ColumnWriterBase implements ColumnWriter {
   @Override
   public void write(double value, int repetitionLevel, int definitionLevel) {
     if (DEBUG) log(value, repetitionLevel, definitionLevel);
-    repetitionLevel(repetitionLevel);
-    definitionLevel(definitionLevel);
-    dataColumn.writeDouble(value);
-    collector.write(value, repetitionLevel, definitionLevel);
-    ++valueCount;
+    try {
+      repetitionLevel(repetitionLevel);
+      definitionLevel(definitionLevel);
+      dataColumn.writeDouble(value);
+      collector.write(value, repetitionLevel, definitionLevel);
+      ++valueCount;
+    } catch (Throwable e) {
+      statusManager.abort();
+      throw e;
+    }
   }
 
   /**
@@ -152,11 +168,16 @@ abstract class ColumnWriterBase implements ColumnWriter {
   @Override
   public void write(float value, int repetitionLevel, int definitionLevel) {
     if (DEBUG) log(value, repetitionLevel, definitionLevel);
-    repetitionLevel(repetitionLevel);
-    definitionLevel(definitionLevel);
-    dataColumn.writeFloat(value);
-    collector.write(value, repetitionLevel, definitionLevel);
-    ++valueCount;
+    try {
+      repetitionLevel(repetitionLevel);
+      definitionLevel(definitionLevel);
+      dataColumn.writeFloat(value);
+      collector.write(value, repetitionLevel, definitionLevel);
+      ++valueCount;
+    } catch (Throwable e) {
+      statusManager.abort();
+      throw e;
+    }
   }
 
   /**
@@ -169,11 +190,16 @@ abstract class ColumnWriterBase implements ColumnWriter {
   @Override
   public void write(Binary value, int repetitionLevel, int definitionLevel) {
     if (DEBUG) log(value, repetitionLevel, definitionLevel);
-    repetitionLevel(repetitionLevel);
-    definitionLevel(definitionLevel);
-    dataColumn.writeBytes(value);
-    collector.write(value, repetitionLevel, definitionLevel);
-    ++valueCount;
+    try {
+      repetitionLevel(repetitionLevel);
+      definitionLevel(definitionLevel);
+      dataColumn.writeBytes(value);
+      collector.write(value, repetitionLevel, definitionLevel);
+      ++valueCount;
+    } catch (Throwable e) {
+      statusManager.abort();
+      throw e;
+    }
   }
 
   /**
@@ -186,11 +212,16 @@ abstract class ColumnWriterBase implements ColumnWriter {
   @Override
   public void write(boolean value, int repetitionLevel, int definitionLevel) {
     if (DEBUG) log(value, repetitionLevel, definitionLevel);
-    repetitionLevel(repetitionLevel);
-    definitionLevel(definitionLevel);
-    dataColumn.writeBoolean(value);
-    collector.write(value, repetitionLevel, definitionLevel);
-    ++valueCount;
+    try {
+      repetitionLevel(repetitionLevel);
+      definitionLevel(definitionLevel);
+      dataColumn.writeBoolean(value);
+      collector.write(value, repetitionLevel, definitionLevel);
+      ++valueCount;
+    } catch (Throwable e) {
+      statusManager.abort();
+      throw e;
+    }
   }
 
   /**
@@ -203,11 +234,16 @@ abstract class ColumnWriterBase implements ColumnWriter {
   @Override
   public void write(int value, int repetitionLevel, int definitionLevel) {
     if (DEBUG) log(value, repetitionLevel, definitionLevel);
-    repetitionLevel(repetitionLevel);
-    definitionLevel(definitionLevel);
-    dataColumn.writeInteger(value);
-    collector.write(value, repetitionLevel, definitionLevel);
-    ++valueCount;
+    try {
+      repetitionLevel(repetitionLevel);
+      definitionLevel(definitionLevel);
+      dataColumn.writeInteger(value);
+      collector.write(value, repetitionLevel, definitionLevel);
+      ++valueCount;
+    } catch (Throwable e) {
+      statusManager.abort();
+      throw e;
+    }
   }
 
   /**
@@ -220,11 +256,16 @@ abstract class ColumnWriterBase implements ColumnWriter {
   @Override
   public void write(long value, int repetitionLevel, int definitionLevel) {
     if (DEBUG) log(value, repetitionLevel, definitionLevel);
-    repetitionLevel(repetitionLevel);
-    definitionLevel(definitionLevel);
-    dataColumn.writeLong(value);
-    collector.write(value, repetitionLevel, definitionLevel);
-    ++valueCount;
+    try {
+      repetitionLevel(repetitionLevel);
+      definitionLevel(definitionLevel);
+      dataColumn.writeLong(value);
+      collector.write(value, repetitionLevel, definitionLevel);
+      ++valueCount;
+    } catch (Throwable e) {
+      statusManager.abort();
+      throw e;
+    }
   }
 
   /**
@@ -232,18 +273,27 @@ abstract class ColumnWriterBase implements ColumnWriter {
    * Is called right after writePage
    */
   void finalizeColumnChunk() {
-    final DictionaryPage dictionaryPage = dataColumn.toDictPageAndClose();
-    if (dictionaryPage != null) {
-      if (DEBUG) LOG.debug("write dictionary");
-      try {
-        pageWriter.writeDictionaryPage(dictionaryPage);
-      } catch (IOException e) {
-        throw new ParquetEncodingException("could not write dictionary page for " + path, e);
-      }
-      dataColumn.resetDictionary();
+    if (statusManager.isAborted()) {
+      // We are aborting -> nothing to be done
+      return;
     }
+    try {
+      final DictionaryPage dictionaryPage = dataColumn.toDictPageAndClose();
+      if (dictionaryPage != null) {
+        if (DEBUG) LOG.debug("write dictionary");
+        try {
+          pageWriter.writeDictionaryPage(dictionaryPage);
+        } catch (IOException e) {
+          throw new ParquetEncodingException("could not write dictionary page for " + path, e);
+        }
+        dataColumn.resetDictionary();
+      }
 
-    collector.finalizeColumnChunk();
+      collector.finalizeColumnChunk();
+    } catch (Throwable t) {
+      statusManager.abort();
+      throw t;
+    }
   }
 
   /**
@@ -317,26 +367,36 @@ abstract class ColumnWriterBase implements ColumnWriter {
     if (valueCount == 0) {
       throw new ParquetEncodingException("writing empty page");
     }
-    this.rowsWrittenSoFar += pageRowCount;
-    if (DEBUG) LOG.debug("write page");
-    try {
-      writePage(
-          pageRowCount,
-          valueCount,
-          collector.getStatistics(),
-          collector.getSizeStatistics(),
-          repetitionLevelColumn,
-          definitionLevelColumn,
-          dataColumn);
-    } catch (IOException e) {
-      throw new ParquetEncodingException("could not write page for " + path, e);
+    if (statusManager.isAborted()) {
+      // We are aborting -> nothing to be done
+      return;
     }
-    repetitionLevelColumn.reset();
-    definitionLevelColumn.reset();
-    dataColumn.reset();
-    valueCount = 0;
-    collector.resetPageStatistics();
-    pageRowCount = 0;
+    try {
+      this.rowsWrittenSoFar += pageRowCount;
+      if (DEBUG)
+        LOG.debug("write page");
+      try {
+        writePage(
+            pageRowCount,
+            valueCount,
+            collector.getStatistics(),
+            collector.getSizeStatistics(),
+            repetitionLevelColumn,
+            definitionLevelColumn,
+            dataColumn);
+      } catch (IOException e) {
+        throw new ParquetEncodingException("could not write page for " + path, e);
+      }
+      repetitionLevelColumn.reset();
+      definitionLevelColumn.reset();
+      dataColumn.reset();
+      valueCount = 0;
+      collector.resetPageStatistics();
+      pageRowCount = 0;
+    } catch(Throwable t) {
+      statusManager.abort();
+      throw t;
+    }
   }
 
   abstract void writePage(

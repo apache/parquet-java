@@ -25,6 +25,7 @@ import static java.util.Collections.unmodifiableMap;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
 import org.apache.parquet.column.ColumnDescriptor;
@@ -57,6 +58,7 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
   private final long thresholdTolerance;
   private long rowCount;
   private long rowCountForNextSizeCheck;
+  private StatusManager statusManager = StatusManager.create();
 
   // To be used by the deprecated constructor of ColumnWriteStoreV1
   @Deprecated
@@ -73,7 +75,7 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
       public ColumnWriter getColumnWriter(ColumnDescriptor path) {
         ColumnWriterBase column = columns.get(path);
         if (column == null) {
-          column = createColumnWriter(path, pageWriteStore.getPageWriter(path), null, props);
+          column = createColumnWriterBase(path, pageWriteStore.getPageWriter(path), null, props);
           columns.put(path, column);
         }
         return column;
@@ -87,7 +89,7 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
     Map<ColumnDescriptor, ColumnWriterBase> mcolumns = new TreeMap<>();
     for (ColumnDescriptor path : schema.getColumns()) {
       PageWriter pageWriter = pageWriteStore.getPageWriter(path);
-      mcolumns.put(path, createColumnWriter(path, pageWriter, null, props));
+      mcolumns.put(path, createColumnWriterBase(path, pageWriter, null, props));
     }
     this.columns = unmodifiableMap(mcolumns);
 
@@ -114,9 +116,9 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
       PageWriter pageWriter = pageWriteStore.getPageWriter(path);
       if (props.isBloomFilterEnabled(path)) {
         BloomFilterWriter bloomFilterWriter = bloomFilterWriteStore.getBloomFilterWriter(path);
-        mcolumns.put(path, createColumnWriter(path, pageWriter, bloomFilterWriter, props));
+        mcolumns.put(path, createColumnWriterBase(path, pageWriter, bloomFilterWriter, props));
       } else {
-        mcolumns.put(path, createColumnWriter(path, pageWriter, null, props));
+        mcolumns.put(path, createColumnWriterBase(path, pageWriter, null, props));
       }
     }
     this.columns = unmodifiableMap(mcolumns);
@@ -129,6 +131,13 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
         return columns.get(path);
       }
     };
+  }
+
+  private ColumnWriterBase createColumnWriterBase(
+      ColumnDescriptor path, PageWriter pageWriter, BloomFilterWriter bloomFilterWriter, ParquetProperties props) {
+    ColumnWriterBase columnWriterBase = createColumnWriter(path, pageWriter, bloomFilterWriter, props);
+    columnWriterBase.initStatusManager(statusManager);
+    return columnWriterBase;
   }
 
   abstract ColumnWriterBase createColumnWriter(
