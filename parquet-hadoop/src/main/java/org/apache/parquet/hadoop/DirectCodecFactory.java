@@ -96,35 +96,37 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
 
   @Override
   protected BytesCompressor createCompressor(final CompressionCodecName codecName) {
-
-    CompressionCodec codec = getCodec(codecName);
-    if (codec == null) {
-      return new NoopCompressor();
-    } else if (codecName == CompressionCodecName.SNAPPY) {
-      // avoid using the default Snappy codec since it allocates direct buffers at awkward spots.
-      return new SnappyCompressor();
-    } else if (codecName == CompressionCodecName.ZSTD) {
-      return new ZstdCompressor();
-    } else {
-      // todo: create class similar to the SnappyCompressor for zlib and exclude it as
-      // snappy is above since it also generates allocateDirect calls.
-      return new HeapBytesCompressor(codecName);
+    switch (codecName) {
+      case SNAPPY:
+        // avoid using the default Snappy codec since it allocates direct buffers at awkward spots.
+        return new SnappyCompressor();
+      case ZSTD:
+        return new ZstdCompressor();
+        // todo: create class similar to the SnappyCompressor for zlib and exclude it as
+        // snappy is above since it also generates allocateDirect calls.
+      default:
+        return super.createCompressor(codecName);
     }
   }
 
   @Override
   protected BytesDecompressor createDecompressor(final CompressionCodecName codecName) {
-    CompressionCodec codec = getCodec(codecName);
-    if (codec == null) {
-      return new NoopDecompressor();
-    } else if (codecName == CompressionCodecName.SNAPPY) {
-      return new SnappyDecompressor();
-    } else if (codecName == CompressionCodecName.ZSTD) {
-      return new ZstdDecompressor();
-    } else if (DirectCodecPool.INSTANCE.codec(codec).supportsDirectDecompression()) {
-      return new FullDirectDecompressor(codecName);
-    } else {
-      return new IndirectDecompressor(codec);
+    switch (codecName) {
+      case SNAPPY:
+        return new SnappyDecompressor();
+      case ZSTD:
+        return new ZstdDecompressor();
+      default:
+        CompressionCodec codec = getCodec(codecName);
+        if (codec == null) {
+          return NO_OP_DECOMPRESSOR;
+        }
+        DirectCodecPool.CodecPool pool = DirectCodecPool.INSTANCE.codec(codec);
+        if (pool.supportsDirectDecompression()) {
+          return new FullDirectDecompressor(pool.borrowDirectDecompressor());
+        } else {
+          return new IndirectDecompressor(pool.borrowDecompressor());
+        }
     }
   }
 
@@ -140,7 +142,11 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
     private final Decompressor decompressor;
 
     public IndirectDecompressor(CompressionCodec codec) {
-      this.decompressor = DirectCodecPool.INSTANCE.codec(codec).borrowDecompressor();
+      this(DirectCodecPool.INSTANCE.codec(codec).borrowDecompressor());
+    }
+
+    private IndirectDecompressor(Decompressor decompressor) {
+      this.decompressor = decompressor;
     }
 
     @Override
@@ -280,8 +286,13 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
     private final Object decompressor;
 
     public FullDirectDecompressor(CompressionCodecName codecName) {
-      CompressionCodec codec = getCodec(codecName);
-      this.decompressor = DirectCodecPool.INSTANCE.codec(codec).borrowDirectDecompressor();
+      this(DirectCodecPool.INSTANCE
+          .codec(Objects.requireNonNull(getCodec(codecName)))
+          .borrowDirectDecompressor());
+    }
+
+    private FullDirectDecompressor(Object decompressor) {
+      this.decompressor = decompressor;
     }
 
     @Override
@@ -320,6 +331,10 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
     }
   }
 
+  /**
+   * @deprecated Use {@link CodecFactory#NO_OP_DECOMPRESSOR} instead
+   */
+  @Deprecated
   public class NoopDecompressor extends BytesDecompressor {
 
     @Override
@@ -424,6 +439,10 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
     }
   }
 
+  /**
+   * @deprecated Use {@link CodecFactory#NO_OP_COMPRESSOR} instead
+   */
+  @Deprecated
   public static class NoopCompressor extends BytesCompressor {
 
     public NoopCompressor() {}
