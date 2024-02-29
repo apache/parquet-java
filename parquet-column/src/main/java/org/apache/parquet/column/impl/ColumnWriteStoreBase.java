@@ -25,7 +25,6 @@ import static java.util.Collections.unmodifiableMap;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
 import org.apache.parquet.column.ColumnDescriptor;
@@ -134,7 +133,10 @@ abstract class ColumnWriteStoreBase implements ColumnWriteStore {
   }
 
   private ColumnWriterBase createColumnWriterBase(
-      ColumnDescriptor path, PageWriter pageWriter, BloomFilterWriter bloomFilterWriter, ParquetProperties props) {
+      ColumnDescriptor path,
+      PageWriter pageWriter,
+      BloomFilterWriter bloomFilterWriter,
+      ParquetProperties props) {
     ColumnWriterBase columnWriterBase = createColumnWriter(path, pageWriter, bloomFilterWriter, props);
     columnWriterBase.initStatusManager(statusManager);
     return columnWriterBase;

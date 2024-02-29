@@ -1,3 +1,21 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.apache.parquet.hadoop;
 
 import java.io.IOException;
@@ -43,18 +61,17 @@ public class TestParquetWriterError {
     String outputFile = tmpFolder.newFile("out.parquet").toString();
 
     String classpath = System.getProperty("java.class.path");
-    String javaPath = Paths.get(System.getProperty("java.home"), "bin", "java").toAbsolutePath().toString();
+    String javaPath = Paths.get(System.getProperty("java.home"), "bin", "java")
+        .toAbsolutePath()
+        .toString();
     Process process = new ProcessBuilder()
-        .command(
-            javaPath,
-            "-cp",
-            classpath,
-            Main.class.getName(),
-            outputFile)
+        .command(javaPath, "-cp", classpath, Main.class.getName(), outputFile)
         .redirectError(ProcessBuilder.Redirect.INHERIT)
         .redirectOutput(ProcessBuilder.Redirect.INHERIT)
         .start();
-    Assert.assertEquals("Test process exited with a non-zero return code. See previous logs for details.", 0,
+    Assert.assertEquals(
+        "Test process exited with a non-zero return code. See previous logs for details.",
+        0,
         process.waitFor());
   }
 
@@ -111,7 +128,8 @@ public class TestParquetWriterError {
         @Override
         public ByteBuffer allocate(int size) {
           if (++counter >= oomAt) {
-            Assert.assertEquals("There should not be any additional allocations after an OOM", oomAt, counter);
+            Assert.assertEquals(
+                "There should not be any additional allocations after an OOM", oomAt, counter);
             throw new OutOfMemoryError("Artificial OOM to fail write");
           }
           return super.allocate(size);
@@ -121,8 +139,10 @@ public class TestParquetWriterError {
         public void release(ByteBuffer b) {
           CleanUtil.cleanDirectBuffer(b);
 
-          // It seems, if the size of the buffers are small, the related memory space is not given back to the OS, so
-          // writing to them after release does not cause any identifiable issue. Therefore, we explicitly zero the
+          // It seems, if the size of the buffers are small, the related memory space is not given back to the
+          // OS, so
+          // writing to them after release does not cause any identifiable issue. Therefore, we explicitly
+          // zero the
           // address, so the jvm crashes for a subsequent access.
           try {
             BUFFER_ADDRESS.setLong(b, 0L);
@@ -135,21 +155,21 @@ public class TestParquetWriterError {
 
     public static void main(String[] args) throws Throwable {
       CompressionCodecName[] codecs = {
-          CompressionCodecName.UNCOMPRESSED,
-          CompressionCodecName.GZIP,
-          CompressionCodecName.SNAPPY,
-          CompressionCodecName.ZSTD,
-          CompressionCodecName.LZ4_RAW};
+        CompressionCodecName.UNCOMPRESSED,
+        CompressionCodecName.GZIP,
+        CompressionCodecName.SNAPPY,
+        CompressionCodecName.ZSTD,
+        CompressionCodecName.LZ4_RAW
+      };
       for (int cycle = 0; cycle < 50; ++cycle) {
         try (TrackingByteBufferAllocator allocator = createAllocator(RANDOM.nextInt(100) + 1);
-            ParquetWriter<Group> writer = ExampleParquetWriter.builder(new LocalOutputFile(Paths.get(args[0])))
+            ParquetWriter<Group> writer = ExampleParquetWriter.builder(
+                    new LocalOutputFile(Paths.get(args[0])))
                 .withWriteMode(ParquetFileWriter.Mode.OVERWRITE)
                 .withType(PhoneBookWriter.getSchema())
                 .withAllocator(allocator)
                 .withCodecFactory(CodecFactory.createDirectCodecFactory(
-                    new Configuration(),
-                    allocator,
-                    ParquetProperties.DEFAULT_PAGE_SIZE))
+                    new Configuration(), allocator, ParquetProperties.DEFAULT_PAGE_SIZE))
                 .withCompressionCodec(codecs[RANDOM.nextInt(codecs.length)])
                 .build()) {
           for (int i = 0; i < 100_000; ++i) {

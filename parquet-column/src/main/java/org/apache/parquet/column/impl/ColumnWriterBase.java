@@ -373,8 +373,7 @@ abstract class ColumnWriterBase implements ColumnWriter {
     }
     try {
       this.rowsWrittenSoFar += pageRowCount;
-      if (DEBUG)
-        LOG.debug("write page");
+      if (DEBUG) LOG.debug("write page");
       try {
         writePage(
             pageRowCount,
@@ -393,7 +392,7 @@ abstract class ColumnWriterBase implements ColumnWriter {
       valueCount = 0;
       collector.resetPageStatistics();
       pageRowCount = 0;
-    } catch(Throwable t) {
+    } catch (Throwable t) {
       statusManager.abort();
       throw t;
     }
