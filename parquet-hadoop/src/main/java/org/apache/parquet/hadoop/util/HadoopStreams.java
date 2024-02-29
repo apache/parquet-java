@@ -21,6 +21,7 @@ package org.apache.parquet.hadoop.util;
 
 import java.io.InputStream;
 import java.util.Objects;
+import java.util.function.Function;
 import org.apache.hadoop.fs.ByteBufferReadable;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
@@ -64,7 +65,7 @@ public class HadoopStreams {
       }
     }
 
-    return unwrapByteBufferReadableLegacy(stream);
+    return unwrapByteBufferReadableLegacy(stream).apply(stream);
   }
 
   /**
@@ -77,16 +78,17 @@ public class HadoopStreams {
    * @param stream stream to probe
    * @return A H2SeekableInputStream to access, or H1SeekableInputStream if the stream is not seekable
    */
-  private static SeekableInputStream unwrapByteBufferReadableLegacy(FSDataInputStream stream) {
+  private static Function<FSDataInputStream, SeekableInputStream> unwrapByteBufferReadableLegacy(
+      FSDataInputStream stream) {
     InputStream wrapped = stream.getWrappedStream();
     if (wrapped instanceof FSDataInputStream) {
       LOG.debug("Checking on wrapped stream {} of {} whether is ByteBufferReadable", wrapped, stream);
       return unwrapByteBufferReadableLegacy(((FSDataInputStream) wrapped));
     }
     if (stream.getWrappedStream() instanceof ByteBufferReadable) {
-      return new H2SeekableInputStream(stream);
+      return H2SeekableInputStream::new;
     } else {
-      return new H1SeekableInputStream(stream);
+      return H1SeekableInputStream::new;
     }
   }
 
