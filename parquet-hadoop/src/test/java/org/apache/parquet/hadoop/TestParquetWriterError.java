@@ -86,13 +86,16 @@ public class TestParquetWriterError {
     private static final Field BUFFER_ADDRESS;
 
     static {
+      Field bufferAddress;
       try {
         Class<?> bufferClass = Class.forName("java.nio.Buffer");
-        BUFFER_ADDRESS = bufferClass.getDeclaredField("address");
-        BUFFER_ADDRESS.setAccessible(true);
-      } catch (ClassNotFoundException | NoSuchFieldException e) {
-        throw new RuntimeException(e);
+        bufferAddress = bufferClass.getDeclaredField("address");
+        bufferAddress.setAccessible(true);
+      } catch (Exception e) {
+        // From java 17 it does not work, but we still test on earlier ones, so we are fine
+        bufferAddress = null;
       }
+      BUFFER_ADDRESS = bufferAddress;
     }
 
     private static Group generateNext() {
@@ -140,12 +143,12 @@ public class TestParquetWriterError {
           CleanUtil.cleanDirectBuffer(b);
 
           // It seems, if the size of the buffers are small, the related memory space is not given back to the
-          // OS, so
-          // writing to them after release does not cause any identifiable issue. Therefore, we explicitly
-          // zero the
-          // address, so the jvm crashes for a subsequent access.
+          // OS, so writing to them after release does not cause any identifiable issue. Therefore, we
+          // try to explicitly zero the address, so the jvm crashes for a subsequent access.
           try {
-            BUFFER_ADDRESS.setLong(b, 0L);
+            if (BUFFER_ADDRESS != null) {
+              BUFFER_ADDRESS.setLong(b, 0L);
+            }
           } catch (IllegalAccessException e) {
             throw new RuntimeException("Unable to zero direct ByteBuffer address", e);
           }
