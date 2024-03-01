@@ -24,7 +24,11 @@ import java.nio.ByteBuffer;
 
 public class Lz4RawDecompressor extends NonBlockedDecompressor {
 
-  private Lz4Decompressor decompressor = new Lz4Decompressor();
+  private final Lz4Decompressor decompressor = new Lz4Decompressor();
+
+  public Lz4RawDecompressor(int initialInputBufferSize) {
+    super(initialInputBufferSize);
+  }
 
   @Override
   protected int maxUncompressedLength(ByteBuffer compressed, int maxUncompressedLength) throws IOException {

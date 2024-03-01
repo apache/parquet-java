@@ -24,7 +24,11 @@ import java.nio.ByteBuffer;
 
 public class Lz4RawCompressor extends NonBlockedCompressor {
 
-  private Lz4Compressor compressor = new Lz4Compressor();
+  private final Lz4Compressor compressor = new Lz4Compressor();
+
+  public Lz4RawCompressor(int initialInputBufferSize) {
+    super(initialInputBufferSize);
+  }
 
   @Override
   protected int maxCompressedLength(int byteSize) {

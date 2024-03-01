@@ -25,15 +25,20 @@ import org.apache.parquet.Preconditions;
 
 public abstract class NonBlockedDecompressor implements Decompressor {
 
-  private static final int INITIAL_INPUT_BUFFER_SIZE = 4096;
-
   // Buffer for uncompressed output. This buffer grows as necessary.
   private ByteBuffer outputBuffer = ByteBuffer.allocateDirect(0);
 
   // Buffer for compressed input. This buffer grows as necessary.
   private ByteBuffer inputBuffer = ByteBuffer.allocateDirect(0);
 
+  // Initial size of "inputBuffer".
+  private final int initialInputBufferSize;
+
   private boolean finished;
+
+  protected NonBlockedDecompressor(int initialInputBufferSize) {
+    this.initialInputBufferSize = initialInputBufferSize;
+  }
 
   /**
    * Fills specified buffer with uncompressed data. Returns actual number
@@ -109,7 +114,7 @@ public abstract class NonBlockedDecompressor implements Decompressor {
     if (inputBuffer.capacity() - inputBuffer.position() < len) {
       final int newBufferSize;
       if (inputBuffer.capacity() == 0) {
-        newBufferSize = Math.max(INITIAL_INPUT_BUFFER_SIZE, len);
+        newBufferSize = Math.max(initialInputBufferSize, len);
       } else {
         newBufferSize = Math.max(inputBuffer.position() + len, inputBuffer.capacity() * 2);
       }

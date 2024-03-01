@@ -24,6 +24,10 @@ import org.xerial.snappy.Snappy;
 
 public class SnappyDecompressor extends NonBlockedDecompressor {
 
+  public SnappyDecompressor(int initialInputBufferSize) {
+    super(initialInputBufferSize);
+  }
+
   @Override
   protected int uncompress(ByteBuffer compressed, ByteBuffer uncompressed) throws IOException {
     return Snappy.uncompress(compressed, uncompressed);
