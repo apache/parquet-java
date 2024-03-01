@@ -216,6 +216,8 @@ public class ParquetRewriter implements Closeable {
         ORIGINAL_CREATED_BY_KEY,
         Stream.concat(inputFiles.stream(), inputFilesR.stream().flatMap(Collection::stream))
             .map(x -> x.getFooter().getFileMetaData().getCreatedBy())
+            .collect(Collectors.toSet())
+            .stream()
             .reduce((a, b) -> a + "\n" + b)
             .orElse("")
     );
@@ -1082,13 +1084,13 @@ public class ParquetRewriter implements Closeable {
     public void writeRows(int rowGroupIdx, long rowsToWrite) throws IOException {
       //       LOG.info("Rewriting input fileRight: {}, remaining fileRight: {}", readerR.getFile(), inputFilesR.size());
       if (rowGroupIdxIn != rowGroupIdx) {
-        this.rowGroupIdxIn = rowGroupIdx;
+        rowGroupIdxIn = rowGroupIdx;
         flushWriters();
         initWriters();
       }
       while (rowsToWrite > 0) {
         List<BlockMetaData> blocks = inputFiles.peek().getFooter().getBlocks();
-        BlockMetaData block = blocks.get(this.rowGroupIdxOut);
+        BlockMetaData block = blocks.get(rowGroupIdxOut);
         List<ColumnChunkMetaData> chunks = block.getColumns();
         long leftInBlock = block.getRowCount() - writtenFromBlock;
         long writeFromBlock = Math.min(rowsToWrite, leftInBlock);
@@ -1102,10 +1104,10 @@ public class ParquetRewriter implements Closeable {
         rowsToWrite -= writeFromBlock;
         writtenFromBlock += writeFromBlock;
         if (rowsToWrite > 0 || (block.getRowCount() == writtenFromBlock)) {
-          this.rowGroupIdxOut++;
-          if (this.rowGroupIdxOut == blocks.size()) {
+          rowGroupIdxOut++;
+          if (rowGroupIdxOut == blocks.size()) {
             inputFiles.poll();
-            this.rowGroupIdxOut = 0;
+            rowGroupIdxOut = 0;
           }
           writtenFromBlock = 0;
           // this is called after all rows are processed
@@ -1133,16 +1135,23 @@ public class ParquetRewriter implements Closeable {
     private void initWriters() {
       if (!inputFiles.isEmpty()) {
         List<BlockMetaData> blocks = inputFiles.peek().getFooter().getBlocks();
-        BlockMetaData block = blocks.get(this.rowGroupIdxOut);
-        ColumnChunkMetaData chunk = block.getColumns().get(0); // TODO use to current chunk idx?
-        ParquetProperties.WriterVersion writerVersion = chunk.getEncodingStats().usesV2Pages()
-            ? ParquetProperties.WriterVersion.PARQUET_2_0
-            : ParquetProperties.WriterVersion.PARQUET_1_0;
-        ParquetProperties props =
-            ParquetProperties.builder().withWriterVersion(writerVersion).build();
-        CodecFactory codecFactory = new CodecFactory(new Configuration(), props.getPageSizeThreshold());
-        CompressionCodecFactory.BytesInputCompressor compressor = codecFactory.getCompressor(chunk.getCodec());
-        for (ColumnDescriptor descriptor : descriptorsMap.values()) {
+        descriptorsMap.forEach((columnPath, descriptor) -> {
+          ColumnChunkMetaData chunk = blocks.get(rowGroupIdxOut).getColumns().stream()
+              .filter(x -> x.getPath() == columnPath)
+              .findFirst()
+              .orElseThrow(() -> new IllegalStateException("Could not find column [" + columnPath.toDotString() + "]."));
+          int bloomFilterLength = chunk.getBloomFilterLength();
+          ParquetProperties.WriterVersion writerVersion = chunk.getEncodingStats().usesV2Pages()
+              ? ParquetProperties.WriterVersion.PARQUET_2_0
+              : ParquetProperties.WriterVersion.PARQUET_1_0;
+          ParquetProperties props =
+              ParquetProperties.builder()
+                  .withWriterVersion(writerVersion)
+                  .withBloomFilterEnabled(bloomFilterLength > 0)
+                  .build();
+          CodecFactory codecFactory = new CodecFactory(new Configuration(), props.getPageSizeThreshold());
+          CompressionCodecFactory.BytesInputCompressor compressor = codecFactory.getCompressor(chunk.getCodec());
+
           MessageType columnSchema = parquetRewriter.newSchema(schema, descriptor);
           ColumnChunkPageWriteStore cPageStore = new ColumnChunkPageWriteStore(
               compressor,
@@ -1152,12 +1161,12 @@ public class ParquetRewriter implements Closeable {
               props.getPageWriteChecksumEnabled(),
               writer.getEncryptor(),
               rowGroupIdxIn);
-          ColumnWriteStore cwStore = props.newColumnWriteStore(columnSchema, cPageStore);
+          ColumnWriteStore cwStore = props.newColumnWriteStore(columnSchema, cPageStore, cPageStore);
           ColumnWriter cWriter = cwStore.getColumnWriter(descriptor);
           cPageStores.put(descriptor, cPageStore);
           cStores.put(descriptor, cwStore);
           cWriters.put(descriptor, cWriter);
-        }
+        });
       }
     }
 

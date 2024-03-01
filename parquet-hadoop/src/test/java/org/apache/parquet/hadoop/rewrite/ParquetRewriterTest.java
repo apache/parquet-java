@@ -42,6 +42,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.thirdparty.com.google.common.collect.Sets;
 import org.apache.parquet.HadoopReadOptions;
 import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.Version;
@@ -726,7 +727,6 @@ public class ParquetRewriterTest {
   public void testStitchThreeInputsDifferentRowGroupSize() throws Exception {
     testThreeInputsDifferentRowGroupSize();
 
-    // Only merge two files but do not change anything.
     List<Path> inputPathsL = inputFiles.stream()
         .map(x -> new Path(x.getFileName()))
         .collect(Collectors.toList());
@@ -739,16 +739,46 @@ public class ParquetRewriterTest {
     rewriter = new ParquetRewriter(options, true);
     rewriter.processBlocks();
     rewriter.close();
-
-    // Verify the schema are not changed
-    ParquetMetadata pmd =
-        ParquetFileReader.readFooter(conf, new Path(outputFile), ParquetMetadataConverter.NO_FILTER);
-    MessageType schema = pmd.getFileMetaData().getSchema();
+    MessageType actualSchema =
+        ParquetFileReader.readFooter(conf, new Path(outputFile), ParquetMetadataConverter.NO_FILTER)
+            .getFileMetaData()
+            .getSchema();
     MessageType expectSchema = createSchema();
-    assertEquals(expectSchema, schema);
 
-    // Verify the merged data are not changed
-    validateColumnData(Collections.emptySet(), Collections.emptySet(), null);
+    Map<ColumnPath, List<BloomFilter>> inputBloomFilters = allInputBloomFilters(null);
+    Map<ColumnPath, List<BloomFilter>> outputBloomFilters = allOutputBloomFilters(null);
+    Set<ColumnPath> schemaR1Columns = createSchemaR1().getColumns().stream().map(x -> ColumnPath.get(x.getPath())).collect(Collectors.toSet());
+    Set<ColumnPath> schemaR2Columns = createSchemaR2().getColumns().stream().map(x -> ColumnPath.get(x.getPath())).collect(Collectors.toSet());
+    Set<ColumnPath> r1BloomFilters = outputBloomFilters.keySet().stream().filter(schemaR1Columns::contains).collect(Collectors.toSet());
+    Set<ColumnPath> r2withBloomFilters = outputBloomFilters.keySet().stream().filter(schemaR2Columns::contains).collect(Collectors.toSet());
+    Set<ColumnPath> rBloomFilters = Stream.concat(
+        r1BloomFilters.stream(),
+        r2withBloomFilters.stream()
+    ).collect(Collectors.toSet());
+
+    // TODO potentially too many checks, might need to be split into multiple tests
+    validateColumnData(Collections.emptySet(), Collections.emptySet(), null); // Verify data
+    assertEquals(expectSchema, actualSchema); // Verify schema
+    validateCreatedBy(); // Verify original.created.by
+    assertEquals(inputBloomFilters.keySet(), rBloomFilters); // Verify bloom filters
+    verifyCodec( // Verify codec
+        outputFile,
+        new HashSet<CompressionCodecName>() {
+          {
+            add(CompressionCodecName.GZIP);
+            add(CompressionCodecName.UNCOMPRESSED);
+            add(CompressionCodecName.ZSTD);
+          }
+        },
+        null);
+    validatePageIndex(new HashMap<Integer, Integer>() { // Verify page index
+      { // verifying only left side input columns
+        put(0, 0);
+        put(1, 1);
+        put(2, 2);
+        put(3, 4);
+      }
+    });
   }
 
   private void testThreeInputsDifferentRowGroupSize() throws IOException {
@@ -774,9 +804,10 @@ public class ParquetRewriterTest {
                 new TestFileBuilder(conf, createSchemaR1())
                     .withNumRecord(numRecord)
                     .withRowGroupSize(7_000_000)
-                    .withCodec("UNCOMPRESSED")
+                    .withCodec("ZSTD")
                     .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
                     .withWriterVersion(writerVersion)
+                    .withBloomFilterEnabled(new String[]{"Links.Forward"})
                     .build()
             ),
             Lists.newArrayList(
@@ -1076,7 +1107,11 @@ public class ParquetRewriterTest {
 
   private void validateCreatedBy() throws Exception {
     Set<String> createdBySet = new HashSet<>();
-    for (EncryptionTestFile inputFile : inputFiles) {
+    List<EncryptionTestFile> inFiles =  Stream.concat(
+        inputFiles.stream(),
+        inputFilesR.stream().flatMap(Collection::stream)
+    ).collect(Collectors.toList());
+    for (EncryptionTestFile inputFile : inFiles) {
       ParquetMetadata pmd = getFileMetaData(inputFile.getFileName(), null);
       createdBySet.add(pmd.getFileMetaData().getCreatedBy());
       assertNull(pmd.getFileMetaData().getKeyValueMetaData().get(ParquetRewriter.ORIGINAL_CREATED_BY_KEY));
@@ -1119,7 +1154,11 @@ public class ParquetRewriterTest {
   private Map<ColumnPath, List<BloomFilter>> allInputBloomFilters(FileDecryptionProperties fileDecryptionProperties)
       throws Exception {
     Map<ColumnPath, List<BloomFilter>> inputBloomFilters = new HashMap<>();
-    for (EncryptionTestFile inputFile : inputFiles) {
+    List<EncryptionTestFile> files = Stream.concat(
+        Stream.of(inputFiles),
+        inputFilesR.stream()
+    ).flatMap(Collection::stream).collect(Collectors.toList());
+    for (EncryptionTestFile inputFile : files) {
       Map<ColumnPath, List<BloomFilter>> bloomFilters =
           allBloomFilters(inputFile.getFileName(), fileDecryptionProperties);
       for (Map.Entry<ColumnPath, List<BloomFilter>> entry : bloomFilters.entrySet()) {
