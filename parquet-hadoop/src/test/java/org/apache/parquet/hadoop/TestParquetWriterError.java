@@ -157,6 +157,7 @@ public class TestParquetWriterError {
     }
 
     public static void main(String[] args) throws Throwable {
+      // Codecs supported by the direct codec factory by default (without specific hadoop native libs)
       CompressionCodecName[] codecs = {
         CompressionCodecName.UNCOMPRESSED,
         CompressionCodecName.GZIP,
@@ -173,6 +174,7 @@ public class TestParquetWriterError {
                 .withAllocator(allocator)
                 .withCodecFactory(CodecFactory.createDirectCodecFactory(
                     new Configuration(), allocator, ParquetProperties.DEFAULT_PAGE_SIZE))
+                // Also validating the different direct codecs which might also have issues if an OOM happens
                 .withCompressionCodec(codecs[RANDOM.nextInt(codecs.length)])
                 .build()) {
           for (int i = 0; i < 100_000; ++i) {
