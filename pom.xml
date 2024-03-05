@@ -657,68 +657,6 @@
       </properties>
     </profile>
 
-    <profile>
-      <id>update-github-site</id>
-      <reporting>
-        <plugins>
-          <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-project-info-reports-plugin</artifactId>
-            <reportSets>
-              <reportSet>
-                <reports>
-                  <report>index</report>
-                  <report>mailing-list</report>
-                  <report>dependency-info</report>
-                  <report>project-team</report>
-                  <report>dependencies</report>
-                  <report>license</report>
-                  <report>scm</report>
-                </reports>
-              </reportSet>
-            </reportSets>
-          </plugin>
-        </plugins>
-      </reporting>
-      <distributionManagement>
-        <site>
-          <id>github-pages-site</id>
-          <name>Deployment through GitHub's site deployment plugin</name>
-          <url>site/${project.version}</url>
-        </site>
-      </distributionManagement>
-      <build>
-        <plugins>
-          <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-site-plugin</artifactId>
-            <configuration>
-              <skipDeploy>true</skipDeploy>
-            </configuration>
-          </plugin>
-          <plugin>
-            <groupId>com.github.github</groupId>
-            <artifactId>site-maven-plugin</artifactId>
-            <version>0.12</version>
-            <configuration>
-              <message>Creating site for ${project.version}</message>
-              <path>${project.distributionManagement.site.url}</path>
-              <merge>true</merge>
-            </configuration>
-            <executions>
-              <execution>
-                <id>github-site</id>
-                <goals>
-                  <goal>site</goal>
-                </goals>
-                <phase>site-deploy</phase>
-              </execution>
-            </executions>
-          </plugin>
-        </plugins>
-      </build>
-    </profile>
-
     <!-- Profile for tests to have more output -->
     <profile>
       <id>verbose-test</id>
