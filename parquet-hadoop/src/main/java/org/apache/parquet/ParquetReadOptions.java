@@ -23,6 +23,7 @@ import static org.apache.parquet.format.converter.ParquetMetadataConverter.NO_FI
 import static org.apache.parquet.hadoop.ParquetInputFormat.BLOOM_FILTERING_ENABLED;
 import static org.apache.parquet.hadoop.ParquetInputFormat.COLUMN_INDEX_FILTERING_ENABLED;
 import static org.apache.parquet.hadoop.ParquetInputFormat.DICTIONARY_FILTERING_ENABLED;
+import static org.apache.parquet.hadoop.ParquetInputFormat.EAGERLY_READ_FULL_ROW_GROUP;
 import static org.apache.parquet.hadoop.ParquetInputFormat.OFF_HEAP_DECRYPT_BUFFER_ENABLED;
 import static org.apache.parquet.hadoop.ParquetInputFormat.PAGE_VERIFY_CHECKSUM_ENABLED;
 import static org.apache.parquet.hadoop.ParquetInputFormat.RECORD_FILTERING_ENABLED;
@@ -60,6 +61,8 @@ public class ParquetReadOptions {
   private static final boolean BLOOM_FILTER_ENABLED_DEFAULT = true;
   private static final boolean USE_OFF_HEAP_DECRYPT_BUFFER_DEFAULT = false;
 
+  private static final boolean EAGERLY_READ_FULL_ROW_GROUP_DEFAULT = true;
+
   private final boolean useSignedStringMinMax;
   private final boolean useStatsFilter;
   private final boolean useDictionaryFilter;
@@ -68,6 +71,8 @@ public class ParquetReadOptions {
   private final boolean usePageChecksumVerification;
   private final boolean useBloomFilter;
   private final boolean useOffHeapDecryptBuffer;
+
+  private final boolean eagerlyReadFullRowGroup;
   private final FilterCompat.Filter recordFilter;
   private final ParquetMetadataConverter.MetadataFilter metadataFilter;
   private final CompressionCodecFactory codecFactory;
@@ -87,6 +92,7 @@ public class ParquetReadOptions {
       boolean usePageChecksumVerification,
       boolean useBloomFilter,
       boolean useOffHeapDecryptBuffer,
+      boolean eagerlyReadFullRowGroup,
       FilterCompat.Filter recordFilter,
       ParquetMetadataConverter.MetadataFilter metadataFilter,
       CompressionCodecFactory codecFactory,
@@ -104,6 +110,7 @@ public class ParquetReadOptions {
         usePageChecksumVerification,
         useBloomFilter,
         useOffHeapDecryptBuffer,
+        eagerlyReadFullRowGroup,
         recordFilter,
         metadataFilter,
         codecFactory,
@@ -124,6 +131,7 @@ public class ParquetReadOptions {
       boolean usePageChecksumVerification,
       boolean useBloomFilter,
       boolean useOffHeapDecryptBuffer,
+      boolean eagerlyReadFullRowGroup,
       FilterCompat.Filter recordFilter,
       ParquetMetadataConverter.MetadataFilter metadataFilter,
       CompressionCodecFactory codecFactory,
@@ -141,6 +149,7 @@ public class ParquetReadOptions {
     this.usePageChecksumVerification = usePageChecksumVerification;
     this.useBloomFilter = useBloomFilter;
     this.useOffHeapDecryptBuffer = useOffHeapDecryptBuffer;
+    this.eagerlyReadFullRowGroup = eagerlyReadFullRowGroup;
     this.recordFilter = recordFilter;
     this.metadataFilter = metadataFilter;
     this.codecFactory = codecFactory;
@@ -182,6 +191,10 @@ public class ParquetReadOptions {
 
   public boolean usePageChecksumVerification() {
     return usePageChecksumVerification;
+  }
+
+  public boolean eagerlyReadFullRowGroup() {
+    return eagerlyReadFullRowGroup;
   }
 
   public FilterCompat.Filter getRecordFilter() {
@@ -246,6 +259,7 @@ public class ParquetReadOptions {
     protected boolean usePageChecksumVerification = PAGE_VERIFY_CHECKSUM_ENABLED_DEFAULT;
     protected boolean useBloomFilter = BLOOM_FILTER_ENABLED_DEFAULT;
     protected boolean useOffHeapDecryptBuffer = USE_OFF_HEAP_DECRYPT_BUFFER_DEFAULT;
+    protected boolean eagerlyReadFullRowGroup = EAGERLY_READ_FULL_ROW_GROUP_DEFAULT;
     protected FilterCompat.Filter recordFilter = null;
     protected ParquetMetadataConverter.MetadataFilter metadataFilter = NO_FILTER;
     // the page size parameter isn't used when only using the codec factory to get decompressors
@@ -271,6 +285,7 @@ public class ParquetReadOptions {
       usePageChecksumVerification(conf.getBoolean(PAGE_VERIFY_CHECKSUM_ENABLED, usePageChecksumVerification));
       useBloomFilter(conf.getBoolean(BLOOM_FILTERING_ENABLED, true));
       useOffHeapDecryptBuffer(conf.getBoolean(OFF_HEAP_DECRYPT_BUFFER_ENABLED, false));
+      eagerlyReadFullRowGroup(conf.getBoolean(EAGERLY_READ_FULL_ROW_GROUP, true));
       withCodecFactory(HadoopCodecs.newFactory(conf, 0));
       withRecordFilter(getFilter(conf));
       withMaxAllocationInBytes(conf.getInt(ALLOCATION_SIZE, 8388608));
@@ -349,6 +364,15 @@ public class ParquetReadOptions {
 
     public Builder useOffHeapDecryptBuffer(boolean useOffHeapDecryptBuffer) {
       this.useOffHeapDecryptBuffer = useOffHeapDecryptBuffer;
+      return this;
+    }
+
+    public Builder eagerlyReadFullRowGroup() {
+      return eagerlyReadFullRowGroup(true);
+    }
+
+    public Builder eagerlyReadFullRowGroup(boolean eagerlyReadFullRowGroup) {
+      this.eagerlyReadFullRowGroup = eagerlyReadFullRowGroup;
       return this;
     }
 
@@ -449,6 +473,7 @@ public class ParquetReadOptions {
           usePageChecksumVerification,
           useBloomFilter,
           useOffHeapDecryptBuffer,
+          eagerlyReadFullRowGroup,
           recordFilter,
           metadataFilter,
           codecFactory,

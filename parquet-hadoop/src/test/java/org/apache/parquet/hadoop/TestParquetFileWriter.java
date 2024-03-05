@@ -312,6 +312,92 @@ public class TestParquetFileWriter {
   }
 
   @Test
+  public void testWriteReadLazy() throws Exception {
+    File testFile = temp.newFile();
+    testFile.delete();
+
+    Path path = new Path(testFile.toURI());
+    Configuration configuration = new Configuration();
+
+    ParquetFileWriter w = createWriter(configuration, SCHEMA, path);
+    w.start();
+    w.startBlock(3);
+    w.startColumn(C1, 5, CODEC);
+    long c1Starts = w.getPos();
+    long c1p1Starts = w.getPos();
+    w.writeDataPage(2, 4, BytesInput.from(BYTES1), EMPTY_STATS, BIT_PACKED, BIT_PACKED, PLAIN);
+    w.writeDataPage(3, 4, BytesInput.from(BYTES1), EMPTY_STATS, BIT_PACKED, BIT_PACKED, PLAIN);
+    w.endColumn();
+    long c1Ends = w.getPos();
+    w.startColumn(C2, 6, CODEC);
+    long c2Starts = w.getPos();
+    w.writeDictionaryPage(new DictionaryPage(BytesInput.from(BYTES2), 4, RLE_DICTIONARY));
+    long c2p1Starts = w.getPos();
+    w.writeDataPage(2, 4, BytesInput.from(BYTES2), EMPTY_STATS, BIT_PACKED, BIT_PACKED, PLAIN);
+    w.writeDataPage(3, 4, BytesInput.from(BYTES2), EMPTY_STATS, BIT_PACKED, BIT_PACKED, PLAIN);
+    w.writeDataPage(1, 4, BytesInput.from(BYTES2), EMPTY_STATS, BIT_PACKED, BIT_PACKED, PLAIN);
+    w.endColumn();
+    long c2Ends = w.getPos();
+    w.endBlock();
+    w.startBlock(4);
+    w.startColumn(C1, 7, CODEC);
+    w.writeDataPage(7, 4, BytesInput.from(BYTES3), EMPTY_STATS, BIT_PACKED, BIT_PACKED, PLAIN);
+    w.endColumn();
+    w.startColumn(C2, 8, CODEC);
+    w.writeDataPage(8, 4, BytesInput.from(BYTES4), EMPTY_STATS, BIT_PACKED, BIT_PACKED, PLAIN);
+    w.endColumn();
+    w.endBlock();
+    w.end(new HashMap<String, String>());
+
+    final ParquetMetadata readFooter = ParquetFileReader.readFooter(configuration, path);
+    final BlockMetaData rowGroup = readFooter.getBlocks().get(0);
+
+    configuration.setBoolean(ParquetInputFormat.EAGERLY_READ_FULL_ROW_GROUP, false);
+
+    { // read first block of col #1
+      try (ParquetFileReader r = new ParquetFileReader(
+          configuration,
+          readFooter.getFileMetaData(),
+          path,
+          Arrays.asList(rowGroup),
+          Arrays.asList(SCHEMA.getColumnDescription(PATH1)))) {
+        PageReadStore pages = r.readNextRowGroup();
+        assertEquals(3, pages.getRowCount());
+        validateContains(SCHEMA, pages, PATH1, 2, BytesInput.from(BYTES1));
+        validateContains(SCHEMA, pages, PATH1, 3, BytesInput.from(BYTES1));
+        assertNull(r.readNextRowGroup());
+      }
+    }
+
+    { // read all blocks of col #1 and #2
+      try (ParquetFileReader r = new ParquetFileReader(
+          configuration,
+          readFooter.getFileMetaData(),
+          path,
+          readFooter.getBlocks(),
+          Arrays.asList(SCHEMA.getColumnDescription(PATH1), SCHEMA.getColumnDescription(PATH2)))) {
+
+        PageReadStore pages = r.readNextRowGroup();
+        assertEquals(3, pages.getRowCount());
+        validateContains(SCHEMA, pages, PATH1, 2, BytesInput.from(BYTES1));
+        validateContains(SCHEMA, pages, PATH1, 3, BytesInput.from(BYTES1));
+        validateContains(SCHEMA, pages, PATH2, 2, BytesInput.from(BYTES2));
+        validateContains(SCHEMA, pages, PATH2, 3, BytesInput.from(BYTES2));
+        validateContains(SCHEMA, pages, PATH2, 1, BytesInput.from(BYTES2));
+
+        pages = r.readNextRowGroup();
+        assertEquals(4, pages.getRowCount());
+
+        validateContains(SCHEMA, pages, PATH1, 7, BytesInput.from(BYTES3));
+        validateContains(SCHEMA, pages, PATH2, 8, BytesInput.from(BYTES4));
+
+        assertNull(r.readNextRowGroup());
+      }
+    }
+    PrintFooter.main(new String[] {path.toString()});
+  }
+
+  @Test
   public void testWriteReadWithRecordReader() throws Exception {
     File testFile = temp.newFile();
     testFile.delete();
