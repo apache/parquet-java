@@ -47,6 +47,11 @@ public class MemPageReader implements PageReader {
   }
 
   @Override
+  public boolean isFullyMaterialized() {
+    return true;
+  }
+
+  @Override
   public DataPage readPage() {
     if (pages.hasNext()) {
       DataPage next = pages.next();

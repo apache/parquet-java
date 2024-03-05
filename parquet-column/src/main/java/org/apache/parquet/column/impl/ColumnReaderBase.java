@@ -135,7 +135,6 @@ abstract class ColumnReaderBase implements ColumnReader {
 
   private final ParsedVersion writerVersion;
   private final ColumnDescriptor path;
-  private final long totalValueCount;
   private final PageReader pageReader;
   private final Dictionary dictionary;
 
@@ -465,14 +464,15 @@ abstract class ColumnReaderBase implements ColumnReader {
     } else {
       this.dictionary = null;
     }
-    this.totalValueCount = pageReader.getTotalValueCount();
-    if (totalValueCount <= 0) {
-      throw new ParquetDecodingException("totalValueCount '" + totalValueCount + "' <= 0");
+    if (pageReader.isFullyMaterialized()) {
+      if (pageReader.getTotalValueCount() <= 0) {
+        throw new ParquetDecodingException("totalValueCount '" + pageReader.getTotalValueCount() + "' <= 0");
+      }
     }
   }
 
   boolean isFullyConsumed() {
-    return readValues >= totalValueCount;
+    return pageReader.isFullyMaterialized() && readValues >= pageReader.getTotalValueCount();
   }
 
   /**
@@ -601,7 +601,7 @@ abstract class ColumnReaderBase implements ColumnReader {
                         + "%d, definition level: %d",
                     path,
                     readValues,
-                    totalValueCount,
+                    pageReader.isFullyMaterialized() ? pageReader.getTotalValueCount() : -1,
                     readValues - (endOfPageValueCount - pageValueCount),
                     pageValueCount,
                     repetitionLevel,
@@ -615,7 +615,7 @@ abstract class ColumnReaderBase implements ColumnReader {
                   + "%d, definition level: %d",
               path,
               readValues,
-              totalValueCount,
+              pageReader.isFullyMaterialized() ? pageReader.getTotalValueCount() : -1,
               readValues - (endOfPageValueCount - pageValueCount),
               pageValueCount,
               repetitionLevel,
@@ -811,7 +811,7 @@ abstract class ColumnReaderBase implements ColumnReader {
   @Deprecated
   @Override
   public long getTotalValueCount() {
-    return totalValueCount;
+    return pageReader.isFullyMaterialized() ? pageReader.getTotalValueCount() : 0; // @Todo should be -1?
   }
 
   abstract static class IntIterator {

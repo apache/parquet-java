@@ -154,6 +154,11 @@ public class CheckParquet251Command extends BaseCommand {
     }
 
     @Override
+    public boolean isFullyMaterialized() {
+      return true;
+    }
+
+    @Override
     public DataPage readPage() {
       return data;
     }

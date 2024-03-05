@@ -1743,17 +1743,25 @@ public class ParquetFileReader implements Closeable {
         private DictionaryPage dictionaryPage = null;
         private PageHeader currentPageHeader = null;
 
+        private boolean exhausted = false;
+
         @Override
-        DictionaryPage getDictionaryPage() {
+        DictionaryPage getDictionaryPage() throws IOException {
+          if (currentPageHeader == null) {
+            seekToNextDataPage();
+          }
           return dictionaryPage;
         }
 
         @Override
         boolean hasNextDataPage() throws IOException {
-          if (currentPageHeader == null) {
-            return seekToNextDataPage();
+          if (exhausted) {
+            return false;
           }
-          return true;
+          if (currentPageHeader == null) {
+            seekToNextDataPage();
+          }
+          return !exhausted;
         }
 
         private BytesInput readAsBytesInput(int size) throws IOException {
@@ -1768,7 +1776,8 @@ public class ParquetFileReader implements Closeable {
         private boolean seekToNextDataPage() throws IOException {
           while (true) {
             if (!hasMorePages(valuesCountReadSoFar, dataPageCountReadSoFar)) {
-              currentPageHeader = null;
+              this.currentPageHeader = null;
+              this.exhausted = true;
               // Done reading, validate all bytes have been read
               if (offsetIndex == null && valuesCountReadSoFar != descriptor.metadata.getValueCount()) {
                 // Would be nice to have a CorruptParquetFileException or something as a subclass?
@@ -1821,7 +1830,7 @@ public class ParquetFileReader implements Closeable {
                     "could not verify dictionary page integrity, CRC checksum verification failed");
               }
               DictionaryPageHeader dicHeader = currentPageHeader.getDictionary_page_header();
-              dictionaryPage = new DictionaryPage(
+              this.dictionaryPage = new DictionaryPage(
                   pageBytes,
                   uncompressedPageSize,
                   dicHeader.getNum_values(),
@@ -1931,7 +1940,6 @@ public class ParquetFileReader implements Closeable {
           options.getCodecFactory().getDecompressor(descriptor.metadata.getCodec());
 
       if (options.eagerlyReadFullRowGroup()) {
-        LOG.info("Using EagerColumnChunkPageReader for page reads");
         final List<DataPage> pagesInChunk = new ArrayList<>();
         iterator.forEachRemaining(pagesInChunk::add);
 
@@ -1947,11 +1955,9 @@ public class ParquetFileReader implements Closeable {
             columnOrdinal,
             options);
       } else {
-        LOG.info("Using LazyColumnChunkPageReader for page reads");
         return new ColumnChunkPageReadStore.LazyColumnChunkPageReader(
             decompressor,
             iterator,
-            iterator.getDictionaryPage(),
             offsetIndex,
             rowCount,
             pageBlockDecryptor,
@@ -1997,7 +2003,7 @@ public class ParquetFileReader implements Closeable {
 
     abstract DataPage nextDataPage() throws IOException;
 
-    abstract DictionaryPage getDictionaryPage();
+    abstract DictionaryPage getDictionaryPage() throws IOException;
 
     @Override
     public boolean hasNext() {

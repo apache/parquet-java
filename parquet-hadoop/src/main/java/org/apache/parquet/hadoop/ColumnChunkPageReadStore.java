@@ -133,6 +133,11 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
     }
 
     @Override
+    public boolean isFullyMaterialized() {
+      return true;
+    }
+
+    @Override
     public DataPage readPage() {
       final DataPage compressedPage = compressedPages.poll();
       if (compressedPage == null) {
@@ -381,7 +386,6 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
     LazyColumnChunkPageReader(
         BytesInputDecompressor decompressor,
         ParquetFileReader.PageIterator compressedPages,
-        DictionaryPage compressedDictionaryPage,
         OffsetIndex offsetIndex,
         long rowCount,
         BlockCipher.Decryptor blockDecryptor,
@@ -391,7 +395,11 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
         ParquetReadOptions options) {
       this.decompressor = decompressor;
       this.compressedPages = compressedPages;
-      this.compressedDictionaryPage = compressedDictionaryPage;
+      try {
+        this.compressedDictionaryPage = compressedPages.getDictionaryPage();
+      } catch (IOException e) {
+        throw new ParquetDecodingException("Failed to buffer to first data page", e);
+      }
       this.runningValueCount = 0;
       this.offsetIndex = offsetIndex;
       this.rowCount = rowCount;
@@ -427,11 +435,15 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
     }
 
     @Override
+    public boolean isFullyMaterialized() {
+      return !compressedPages.hasNext();
+    }
+
+    @Override
     public DataPage readPage() {
       if (!compressedPages.hasNext()) {
         return null;
       }
-      LOG.info("Invoking lazy iterator#next");
       final DataPage compressedPage = compressedPages.next();
       final int currentPageIndex = pageIndex++;
 
@@ -624,7 +636,7 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
 
     @Override
     public DictionaryPage readDictionaryPage() {
-      if (compressedDictionaryPage == null) {
+      if (this.compressedDictionaryPage == null) {
         return null;
       }
       try {
