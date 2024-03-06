@@ -135,9 +135,6 @@ public class ParquetRewriter implements Closeable {
     Stream.concat(inputFiles.stream(), inputFilesR.stream().flatMap(Collection::stream))
         .forEach(x -> extraMetaData.putAll(x.getFileMetaData().getKeyValueMetaData()));
 
-    // Init reader of the first input file
-//     initNextReader();
-
     // TODO check that schema on the left and on the right is not identical
     MessageType schemaL = inputFiles.peek().getFooter().getFileMetaData().getSchema();
     List<MessageType> schemaR = inputFilesR
@@ -248,83 +245,6 @@ public class ParquetRewriter implements Closeable {
       }
     }
     this.indexCacheStrategy = IndexCache.CacheStrategy.NONE;
-  }
-
-  // TODO converge with the main class constructor
-  public ParquetRewriter(RewriteOptions options, boolean dummy) throws IOException {
-    newCodecName = options.getNewCodecName();
-    ParquetConfiguration conf = options.getParquetConfiguration();
-    OutputFile outFile = options.getParquetOutputFile();
-    inputFiles.addAll(getFileReaders(options.getParquetInputFiles(), conf));
-    List<Queue<TransParquetFileReader>> inputFilesR = options.getParquetInputFilesR()
-        .stream()
-        .map(x -> getFileReaders(x, conf))
-        .collect(Collectors.toList());
-    ensureSameSchema(inputFiles);
-    inputFilesR.forEach(this::ensureSameSchema);
-    LOG.info("Start rewriting {} input file(s) {} to {}", inputFiles.size(), options.getParquetInputFiles(), outFile); // TODO add logging for all the files
-
-    extraMetaData.put(
-        ORIGINAL_CREATED_BY_KEY,
-        Stream.concat(inputFiles.stream(), inputFilesR.stream().flatMap(Collection::stream))
-            .map(x -> x.getFooter().getFileMetaData().getCreatedBy())
-            .collect(Collectors.toSet())
-            .stream()
-            .reduce((a, b) -> a + "\n" + b)
-            .orElse("")
-    );
-    Stream.concat(inputFiles.stream(), inputFilesR.stream().flatMap(Collection::stream))
-        .forEach(x -> extraMetaData.putAll(x.getFileMetaData().getKeyValueMetaData()));
-
-    // TODO check that schema on the left and on the right is not identical
-    MessageType schemaL = inputFiles.peek().getFooter().getFileMetaData().getSchema();
-    List<MessageType> schemaR = inputFilesR
-        .stream()
-        .map(x -> x.peek().getFooter().getFileMetaData().getSchema())
-        .collect(Collectors.toList());
-
-    // TODO check that there is no overlap of fields on the right
-    Map<String, Type> fieldNamesL = new LinkedHashMap<>();
-    schemaL.getFields().forEach(x -> fieldNamesL.put(x.getName(), x));
-    Map<String, Type> fieldNamesR = new LinkedHashMap<>();
-    schemaR.stream().flatMap(x -> x.getFields().stream()).forEach(x -> fieldNamesR.put(x.getName(), x));
-    List<Type> fields = Stream.concat(
-        fieldNamesL.values().stream().map(x -> fieldNamesR.getOrDefault(x.getName(), x)), // take a field on the right if we can
-        fieldNamesR.values().stream().filter(x -> !fieldNamesL.containsKey(x.getName())) // takes fields on the right if it was not present on the left
-    ).collect(Collectors.toList());
-    // Schema of input files (should be the same) and to write to the output file
-    MessageType schema = new MessageType(schemaL.getName(), fields);
-
-    this.descriptorsMap = schemaL.getColumns().stream()
-        .filter(x -> x.getPath().length == 0 || !fieldNamesR.containsKey(x.getPath()[0]))
-        .collect(Collectors.toMap(x -> ColumnPath.get(x.getPath()), x -> x));
-
-    long rowCountL = inputFiles.stream().mapToLong(ParquetFileReader::getRecordCount).sum();
-    inputFilesR.stream()
-        .map(x -> x.stream().mapToLong(ParquetFileReader::getRecordCount).sum())
-        .forEach(rowCountR -> {
-          if (rowCountL != rowCountR) {
-            throw new IllegalArgumentException("The number of records on the left and on the right don't match!");
-          }
-        });
-
-    this.indexCacheStrategy = options.getIndexCacheStrategy();
-
-    ParquetFileWriter.Mode writerMode = ParquetFileWriter.Mode.CREATE;
-    writer = new ParquetFileWriter(
-        outFile,
-        schema,
-        writerMode,
-        DEFAULT_BLOCK_SIZE,
-        MAX_PADDING_SIZE_DEFAULT,
-        DEFAULT_COLUMN_INDEX_TRUNCATE_LENGTH,
-        DEFAULT_STATISTICS_TRUNCATE_LENGTH,
-        ParquetProperties.DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED);
-    writer.start();
-
-    for (Queue<TransParquetFileReader> inFiles: inputFilesR) {
-      this.columnWritersR.add(new RightColumnWriter(inFiles, this));
-    }
   }
 
   private Queue<TransParquetFileReader> getFileReaders(List<InputFile> inputFiles, ParquetConfiguration conf) {
