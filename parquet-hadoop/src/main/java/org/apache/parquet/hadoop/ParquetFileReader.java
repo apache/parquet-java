@@ -1743,52 +1743,65 @@ public class ParquetFileReader implements Closeable {
         private DictionaryPage dictionaryPage = null;
         private PageHeader currentPageHeader = null;
 
-        private boolean exhausted = false;
+        private boolean bufferedToFirstDataPage = false;
 
         @Override
-        DictionaryPage getDictionaryPage() throws IOException {
-          if (currentPageHeader == null) {
-            seekToNextDataPage();
+        DictionaryPage getDictionaryPage() {
+          if (!bufferedToFirstDataPage) {
+            bufferToFirstDataPage();
           }
           return dictionaryPage;
         }
 
         @Override
-        boolean hasNextDataPage() throws IOException {
-          if (exhausted) {
-            return false;
+        public boolean hasNext() {
+          if (!bufferedToFirstDataPage) {
+            bufferToFirstDataPage();
           }
-          if (currentPageHeader == null) {
-            seekToNextDataPage();
-          }
-          return !exhausted;
+          return hasMorePages();
         }
 
-        private BytesInput readAsBytesInput(int size) throws IOException {
-          return BytesInput.from(stream.sliceBuffers(size));
+        private BytesInput readAsBytesInput(int size) {
+          try {
+            return BytesInput.from(stream.sliceBuffers(size));
+          } catch (IOException e) {
+            throw new ParquetDecodingException("Failed to read page bytes", e);
+          }
+        }
+
+        private boolean hasMorePages() {
+          return offsetIndex == null
+              ? valuesCountReadSoFar < descriptor.metadata.getValueCount()
+              : dataPageCountReadSoFar < offsetIndex.getPageCount();
         }
 
         /**
-         * Seeks to next Data page in the chunk, parsing any Dictionary pages and skipping other non-data page types
-         * @return true if another data page is available in the chunk, or false if all data pages are exhausted
-         * @throws IOException
+         * Seeks to first Data page in the chunk, parsing any Dictionary pages and skipping other non-data page types
          */
-        private boolean seekToNextDataPage() throws IOException {
+        @Override
+        void bufferToFirstDataPage() {
+          if (!bufferedToFirstDataPage) {
+            bufferNextDataPage();
+            bufferedToFirstDataPage = true;
+          }
+        }
+
+        private void bufferNextDataPage() {
           while (true) {
-            if (!hasMorePages(valuesCountReadSoFar, dataPageCountReadSoFar)) {
+            if (!hasMorePages()) {
               this.currentPageHeader = null;
-              this.exhausted = true;
               // Done reading, validate all bytes have been read
               if (offsetIndex == null && valuesCountReadSoFar != descriptor.metadata.getValueCount()) {
                 // Would be nice to have a CorruptParquetFileException or something as a subclass?
-                throw new IOException("Expected " + descriptor.metadata.getValueCount()
+                throw new ParquetDecodingException(new IOException("Expected "
+                    + descriptor.metadata.getValueCount()
                     + " values in column chunk at " + getPath()
                     + " offset " + descriptor.metadata.getFirstDataPageOffset() + " but got "
                     + valuesCountReadSoFar + " values instead over " + dataPageCountReadSoFar
                     + " pages ending at file offset "
-                    + (descriptor.fileOffset + stream.position()));
+                    + (descriptor.fileOffset + stream.position())));
               }
-              return false;
+              return;
             }
 
             try {
@@ -1817,7 +1830,7 @@ public class ParquetFileReader implements Closeable {
             final int compressedPageSize = currentPageHeader.getCompressed_page_size();
             final PageType pageType = currentPageHeader.type;
             if (pageType == PageType.DATA_PAGE || pageType == PageType.DATA_PAGE_V2) {
-              return true;
+              return;
             }
 
             final int uncompressedPageSize = currentPageHeader.getUncompressed_page_size();
@@ -1844,15 +1857,19 @@ public class ParquetFileReader implements Closeable {
                   "skipping page of type {} of size {}",
                   currentPageHeader.getType(),
                   compressedPageSize);
-              stream.skipFully(compressedPageSize);
+              try {
+                stream.skipFully(compressedPageSize);
+              } catch (IOException e) {
+                throw new ParquetDecodingException(e);
+              }
             }
           }
         }
 
         @Override
-        DataPage nextDataPage() throws IOException {
-          if (!hasNextDataPage()) {
-            return null; // @Todo should throw NoSuchElementException?
+        public DataPage next() {
+          if (currentPageHeader == null) {
+            bufferNextDataPage();
           }
 
           int uncompressedPageSize = currentPageHeader.getUncompressed_page_size();
@@ -1968,12 +1985,6 @@ public class ParquetFileReader implements Closeable {
       }
     }
 
-    private boolean hasMorePages(long valuesCountReadSoFar, int dataPageCountReadSoFar) {
-      return offsetIndex == null
-          ? valuesCountReadSoFar < descriptor.metadata.getValueCount()
-          : dataPageCountReadSoFar < offsetIndex.getPageCount();
-    }
-
     private int getPageOrdinal(int dataPageCountReadSoFar) {
       if (null == offsetIndex) {
         return dataPageCountReadSoFar;
@@ -1999,29 +2010,12 @@ public class ParquetFileReader implements Closeable {
       this.dataPageHeaderAAD = dataPageHeaderAAD;
     }
 
-    abstract boolean hasNextDataPage() throws IOException;
+    /**
+     * Read the chunk up to the first data page so that its DictionaryPage, if exists, is materialized.
+     */
+    abstract void bufferToFirstDataPage();
 
-    abstract DataPage nextDataPage() throws IOException;
-
-    abstract DictionaryPage getDictionaryPage() throws IOException;
-
-    @Override
-    public boolean hasNext() {
-      try {
-        return hasNextDataPage();
-      } catch (IOException e) {
-        throw new ParquetDecodingException(e);
-      }
-    }
-
-    @Override
-    public DataPage next() {
-      try {
-        return nextDataPage();
-      } catch (IOException e) {
-        throw new ParquetDecodingException(e);
-      }
-    }
+    abstract DictionaryPage getDictionaryPage();
   }
 
   /**

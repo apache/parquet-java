@@ -395,11 +395,7 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
         ParquetReadOptions options) {
       this.decompressor = decompressor;
       this.compressedPages = compressedPages;
-      try {
-        this.compressedDictionaryPage = compressedPages.getDictionaryPage();
-      } catch (IOException e) {
-        throw new ParquetDecodingException("Failed to buffer to first data page", e);
-      }
+      this.compressedDictionaryPage = compressedPages.getDictionaryPage();
       this.runningValueCount = 0;
       this.offsetIndex = offsetIndex;
       this.rowCount = rowCount;
