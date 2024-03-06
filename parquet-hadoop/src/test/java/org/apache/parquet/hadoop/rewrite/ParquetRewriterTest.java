@@ -42,7 +42,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.thirdparty.com.google.common.collect.Sets;
 import org.apache.parquet.HadoopReadOptions;
 import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.Version;
@@ -736,7 +735,7 @@ public class ParquetRewriterTest {
     RewriteOptions.Builder builder = createBuilder(inputPathsL, inputPathsR);
     RewriteOptions options = builder.indexCacheStrategy(indexCacheStrategy).build();
 
-    rewriter = new ParquetRewriter(options, true);
+    rewriter = new ParquetRewriter(options);
     rewriter.processBlocks();
     rewriter.close();
     MessageType actualSchema =
