@@ -647,7 +647,10 @@ abstract class ColumnReaderBase implements ColumnReader {
     return definitionLevel;
   }
 
-  private void checkRead() {
+  private int skipValues = 0;
+
+  /** Reads all pages. */
+  private void consumeAllPages() {
     int rl, dl;
     int skipValues = 0;
     for (; ; ) {
@@ -673,6 +676,35 @@ abstract class ColumnReaderBase implements ColumnReader {
     binding.skip(skipValues);
     repetitionLevel = rl;
     definitionLevel = dl;
+  }
+
+  /**
+   * Reads the next page.
+   */
+  private void consumePage() {
+    int rl, dl;
+    if (isPageFullyConsumed()) {
+      skipValues = 0;
+      if (isFullyConsumed()) {
+        LOG.debug("end reached");
+        repetitionLevel = 0; // the next repetition level
+        return;
+      }
+      readPage();
+    }
+    rl = repetitionLevelColumn.nextInt();
+    dl = definitionLevelColumn.nextInt();
+    ++readValues;
+
+    if (skipRL(rl)) {
+      if (dl == maxDefinitionLevel) {
+        ++skipValues;
+      }
+    } else {
+      repetitionLevel = rl;
+      definitionLevel = dl;
+      binding.skip(skipValues);
+    }
   }
 
   /*
@@ -799,7 +831,11 @@ abstract class ColumnReaderBase implements ColumnReader {
    */
   @Override
   public void consume() {
-    checkRead();
+    if (pageReader.isFullyMaterialized()) {
+      consumeAllPages();
+    } else {
+      consumePage();
+    }
     valueRead = false;
   }
 

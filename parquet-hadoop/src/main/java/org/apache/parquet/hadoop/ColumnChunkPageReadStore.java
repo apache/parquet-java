@@ -441,6 +441,7 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
         return null;
       }
       final DataPage compressedPage = compressedPages.next();
+      runningValueCount += compressedPage.getValueCount();
       final int currentPageIndex = pageIndex++;
 
       if (null != blockDecryptor) {

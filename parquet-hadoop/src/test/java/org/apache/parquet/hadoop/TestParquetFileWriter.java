@@ -317,9 +317,12 @@ public class TestParquetFileWriter {
     testFile.delete();
 
     Path path = new Path(testFile.toURI());
-    Configuration configuration = new Configuration();
+    Configuration writeConfiguration = new Configuration();
+    // Set small row group/page sizes so we have multiple per file
+    writeConfiguration.setInt(ParquetOutputFormat.PAGE_SIZE, 8);
+    writeConfiguration.setInt(ParquetOutputFormat.BLOCK_SIZE, 16);
 
-    ParquetFileWriter w = createWriter(configuration, SCHEMA, path);
+    ParquetFileWriter w = createWriter(writeConfiguration, SCHEMA, path);
     w.start();
     w.startBlock(3);
     w.startColumn(C1, 5, CODEC);
@@ -347,16 +350,17 @@ public class TestParquetFileWriter {
     w.writeDataPage(8, 4, BytesInput.from(BYTES4), EMPTY_STATS, BIT_PACKED, BIT_PACKED, PLAIN);
     w.endColumn();
     w.endBlock();
-    w.end(new HashMap<String, String>());
+    w.end(new HashMap<>());
 
-    final ParquetMetadata readFooter = ParquetFileReader.readFooter(configuration, path);
+    Configuration readConfiguration = new Configuration();
+    final ParquetMetadata readFooter = ParquetFileReader.readFooter(readConfiguration, path);
     final BlockMetaData rowGroup = readFooter.getBlocks().get(0);
 
-    configuration.setBoolean(ParquetInputFormat.EAGERLY_READ_FULL_ROW_GROUP, false);
+    readConfiguration.setBoolean(ParquetInputFormat.EAGERLY_READ_FULL_ROW_GROUP, false);
 
     { // read first block of col #1
       try (ParquetFileReader r = new ParquetFileReader(
-          configuration,
+          readConfiguration,
           readFooter.getFileMetaData(),
           path,
           Arrays.asList(rowGroup),
@@ -371,7 +375,7 @@ public class TestParquetFileWriter {
 
     { // read all blocks of col #1 and #2
       try (ParquetFileReader r = new ParquetFileReader(
-          configuration,
+          readConfiguration,
           readFooter.getFileMetaData(),
           path,
           readFooter.getBlocks(),

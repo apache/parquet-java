@@ -1782,11 +1782,12 @@ public class ParquetFileReader implements Closeable {
         void bufferToFirstDataPage() {
           if (!bufferedToFirstDataPage) {
             bufferNextDataPage();
-            bufferedToFirstDataPage = true;
           }
         }
 
         private void bufferNextDataPage() {
+          bufferedToFirstDataPage = true;
+
           while (true) {
             if (!hasMorePages()) {
               this.currentPageHeader = null;
