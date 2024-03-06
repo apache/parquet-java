@@ -464,10 +464,8 @@ abstract class ColumnReaderBase implements ColumnReader {
     } else {
       this.dictionary = null;
     }
-    if (pageReader.isFullyMaterialized()) {
-      if (pageReader.getTotalValueCount() <= 0) {
-        throw new ParquetDecodingException("totalValueCount '" + pageReader.getTotalValueCount() + "' <= 0");
-      }
+    if (pageReader.isFullyMaterialized() && pageReader.getTotalValueCount() <= 0) {
+      throw new ParquetDecodingException("totalValueCount '" + pageReader.getTotalValueCount() + "' <= 0");
     }
   }
 
@@ -601,7 +599,9 @@ abstract class ColumnReaderBase implements ColumnReader {
                         + "%d, definition level: %d",
                     path,
                     readValues,
-                    pageReader.isFullyMaterialized() ? pageReader.getTotalValueCount() : -1,
+                    pageReader.isFullyMaterialized()
+                        ? pageReader.getTotalValueCount()
+                        : -1, // @Todo print something else?
                     readValues - (endOfPageValueCount - pageValueCount),
                     pageValueCount,
                     repetitionLevel,
@@ -615,7 +615,9 @@ abstract class ColumnReaderBase implements ColumnReader {
                   + "%d, definition level: %d",
               path,
               readValues,
-              pageReader.isFullyMaterialized() ? pageReader.getTotalValueCount() : -1,
+              pageReader.isFullyMaterialized()
+                  ? pageReader.getTotalValueCount()
+                  : -1, // @Todo print something else?
               readValues - (endOfPageValueCount - pageValueCount),
               pageValueCount,
               repetitionLevel,

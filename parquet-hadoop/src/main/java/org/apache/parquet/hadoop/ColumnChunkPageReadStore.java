@@ -20,13 +20,13 @@ package org.apache.parquet.hadoop;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.PrimitiveIterator;
-import java.util.Queue;
 import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.ByteBufferReleaser;
@@ -64,14 +64,10 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
    * This implementation is provided with a list of pages, each of which
    * is decompressed and passed through.
    */
-  abstract static class ColumnChunkPageReader implements PageReader {
-    abstract void releaseBuffers();
-  }
+  static final class ColumnChunkPageReader implements PageReader {
 
-  static final class EagerColumnChunkPageReader extends ColumnChunkPageReader {
     private final BytesInputDecompressor decompressor;
-    private final long valueCount;
-    private final Queue<DataPage> compressedPages;
+    private final Iterator<DataPage> compressedPages;
     private final DictionaryPage compressedDictionaryPage;
     // null means no page synchronization is required; firstRowIndex will not be returned by the pages
     private final OffsetIndex offsetIndex;
@@ -84,9 +80,12 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
     private final byte[] dictionaryPageAAD;
     private final ByteBufferReleaser releaser;
 
-    EagerColumnChunkPageReader(
+    private final boolean pagesFullyMaterialized;
+    private long valueCount;
+
+    ColumnChunkPageReader(
         BytesInputDecompressor decompressor,
-        List<DataPage> compressedPages,
+        Iterator<DataPage> compressedPages,
         DictionaryPage compressedDictionaryPage,
         OffsetIndex offsetIndex,
         long rowCount,
@@ -94,15 +93,23 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
         byte[] fileAAD,
         int rowGroupOrdinal,
         int columnOrdinal,
-        ParquetReadOptions options) {
+        ParquetReadOptions options,
+        boolean pagesFullyMaterialized) {
       this.decompressor = decompressor;
-      this.compressedPages = new ArrayDeque<DataPage>(compressedPages);
+      this.pagesFullyMaterialized = pagesFullyMaterialized;
       this.compressedDictionaryPage = compressedDictionaryPage;
-      long count = 0;
-      for (DataPage p : compressedPages) {
-        count += p.getValueCount();
+      this.valueCount = 0;
+      if (pagesFullyMaterialized) {
+        final List<DataPage> materializedPages = new ArrayList<>();
+        for (Iterator<DataPage> it = compressedPages; it.hasNext(); ) {
+          final DataPage next = it.next();
+          this.valueCount += next.getValueCount();
+          materializedPages.add(next);
+        }
+        this.compressedPages = materializedPages.iterator();
+      } else {
+        this.compressedPages = compressedPages;
       }
-      this.valueCount = count;
       this.offsetIndex = offsetIndex;
       this.rowCount = rowCount;
       this.options = options;
@@ -129,19 +136,30 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
 
     @Override
     public long getTotalValueCount() {
+      if (!isFullyMaterialized()) {
+        throw new IllegalStateException(
+            "Cannot compute totalValueCount before underlying iterator has been exhausted");
+      }
       return valueCount;
     }
 
     @Override
     public boolean isFullyMaterialized() {
-      return true;
+      return pagesFullyMaterialized || !compressedPages.hasNext();
     }
 
     @Override
     public DataPage readPage() {
-      final DataPage compressedPage = compressedPages.poll();
+      if (!compressedPages.hasNext()) {
+        return null;
+      }
+      final DataPage compressedPage = compressedPages.next();
       if (compressedPage == null) {
         return null;
+      }
+
+      if (!pagesFullyMaterialized) {
+        valueCount += compressedPage.getValueCount();
       }
       final int currentPageIndex = pageIndex++;
 
@@ -357,307 +375,7 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
       }
     }
 
-    @Override
-    void releaseBuffers() {
-      releaser.close();
-    }
-  }
-
-  /**
-   * An implementation of ColumnChunkPageReader that only materializes pages on an as-needed basis
-   */
-  static final class LazyColumnChunkPageReader extends ColumnChunkPageReader {
-
-    private final BytesInputDecompressor decompressor;
-    private long runningValueCount;
-    private long rowCount;
-    private final ParquetFileReader.PageIterator compressedPages;
-    private final DictionaryPage compressedDictionaryPage;
-    // null means no page synchronization is required; firstRowIndex will not be returned by the pages
-    private final OffsetIndex offsetIndex;
-    private final ParquetReadOptions options;
-    private int pageIndex = 0;
-
-    private final BlockCipher.Decryptor blockDecryptor;
-    private final byte[] dataPageAAD;
-    private final byte[] dictionaryPageAAD;
-    private final ByteBufferReleaser releaser;
-
-    LazyColumnChunkPageReader(
-        BytesInputDecompressor decompressor,
-        ParquetFileReader.PageIterator compressedPages,
-        OffsetIndex offsetIndex,
-        long rowCount,
-        BlockCipher.Decryptor blockDecryptor,
-        byte[] fileAAD,
-        int rowGroupOrdinal,
-        int columnOrdinal,
-        ParquetReadOptions options) {
-      this.decompressor = decompressor;
-      this.compressedPages = compressedPages;
-      this.compressedDictionaryPage = compressedPages.getDictionaryPage();
-      this.runningValueCount = 0;
-      this.offsetIndex = offsetIndex;
-      this.rowCount = rowCount;
-      this.options = options;
-      this.releaser = new ByteBufferReleaser(options.getAllocator());
-      this.blockDecryptor = blockDecryptor;
-      if (null != blockDecryptor) {
-        dataPageAAD =
-            AesCipher.createModuleAAD(fileAAD, ModuleType.DataPage, rowGroupOrdinal, columnOrdinal, 0);
-        dictionaryPageAAD = AesCipher.createModuleAAD(
-            fileAAD, ModuleType.DictionaryPage, rowGroupOrdinal, columnOrdinal, -1);
-      } else {
-        dataPageAAD = null;
-        dictionaryPageAAD = null;
-      }
-    }
-
-    private int getPageOrdinal(int currentPageIndex) {
-      if (null == offsetIndex) {
-        return currentPageIndex;
-      }
-
-      return offsetIndex.getPageOrdinal(currentPageIndex);
-    }
-
-    @Override
-    public long getTotalValueCount() {
-      if (compressedPages.hasNext()) {
-        throw new IllegalStateException(
-            "Can't compute total value count before lazy iterator has been fully materialized");
-      }
-      return runningValueCount;
-    }
-
-    @Override
-    public boolean isFullyMaterialized() {
-      return !compressedPages.hasNext();
-    }
-
-    @Override
-    public DataPage readPage() {
-      if (!compressedPages.hasNext()) {
-        return null;
-      }
-      final DataPage compressedPage = compressedPages.next();
-      runningValueCount += compressedPage.getValueCount();
-      final int currentPageIndex = pageIndex++;
-
-      if (null != blockDecryptor) {
-        AesCipher.quickUpdatePageAAD(dataPageAAD, getPageOrdinal(currentPageIndex));
-      }
-
-      return compressedPage.accept(new DataPage.Visitor<DataPage>() {
-        @Override
-        public DataPage visit(DataPageV1 dataPageV1) {
-          try {
-            BytesInput bytes = dataPageV1.getBytes();
-            BytesInput decompressed;
-
-            if (options.getAllocator().isDirect() && options.useOffHeapDecryptBuffer()) {
-              ByteBuffer byteBuffer = bytes.toByteBuffer(releaser);
-              if (!byteBuffer.isDirect()) {
-                throw new ParquetDecodingException("Expected a direct buffer");
-              }
-              if (blockDecryptor != null) {
-                byteBuffer = blockDecryptor.decrypt(byteBuffer, dataPageAAD);
-              }
-              long compressedSize = byteBuffer.limit();
-
-              ByteBuffer decompressedBuffer =
-                  options.getAllocator().allocate(dataPageV1.getUncompressedSize());
-              releaser.releaseLater(decompressedBuffer);
-              long start = System.nanoTime();
-              decompressor.decompress(
-                  byteBuffer,
-                  (int) compressedSize,
-                  decompressedBuffer,
-                  dataPageV1.getUncompressedSize());
-              setDecompressMetrics(bytes, start);
-
-              // HACKY: sometimes we need to do `flip` because the position of output bytebuffer is
-              // not reset.
-              if (decompressedBuffer.position() != 0) {
-                decompressedBuffer.flip();
-              }
-              decompressed = BytesInput.from(decompressedBuffer);
-            } else { // use on-heap buffer
-              if (null != blockDecryptor) {
-                bytes = BytesInput.from(blockDecryptor.decrypt(bytes.toByteArray(), dataPageAAD));
-              }
-              long start = System.nanoTime();
-              decompressed = decompressor.decompress(bytes, dataPageV1.getUncompressedSize());
-              setDecompressMetrics(bytes, start);
-            }
-
-            final DataPageV1 decompressedPage;
-            if (offsetIndex == null) {
-              decompressedPage = new DataPageV1(
-                  decompressed,
-                  dataPageV1.getValueCount(),
-                  dataPageV1.getUncompressedSize(),
-                  dataPageV1.getStatistics(),
-                  dataPageV1.getRlEncoding(),
-                  dataPageV1.getDlEncoding(),
-                  dataPageV1.getValueEncoding());
-            } else {
-              long firstRowIndex = offsetIndex.getFirstRowIndex(currentPageIndex);
-              decompressedPage = new DataPageV1(
-                  decompressed,
-                  dataPageV1.getValueCount(),
-                  dataPageV1.getUncompressedSize(),
-                  firstRowIndex,
-                  Math.toIntExact(offsetIndex.getLastRowIndex(currentPageIndex, rowCount)
-                      - firstRowIndex
-                      + 1),
-                  dataPageV1.getStatistics(),
-                  dataPageV1.getRlEncoding(),
-                  dataPageV1.getDlEncoding(),
-                  dataPageV1.getValueEncoding());
-            }
-            if (dataPageV1.getCrc().isPresent()) {
-              decompressedPage.setCrc(dataPageV1.getCrc().getAsInt());
-            }
-            return decompressedPage;
-          } catch (IOException e) {
-            throw new ParquetDecodingException("could not decompress page", e);
-          }
-        }
-
-        @Override
-        public DataPage visit(DataPageV2 dataPageV2) {
-          if (!dataPageV2.isCompressed() && offsetIndex == null && null == blockDecryptor) {
-            return dataPageV2;
-          }
-          BytesInput pageBytes = dataPageV2.getData();
-          try {
-            BytesInput decompressed;
-            long compressedSize;
-
-            if (options.getAllocator().isDirect() && options.useOffHeapDecryptBuffer()) {
-              ByteBuffer byteBuffer = pageBytes.toByteBuffer(releaser);
-              if (!byteBuffer.isDirect()) {
-                throw new ParquetDecodingException("Expected a direct buffer");
-              }
-              if (blockDecryptor != null) {
-                byteBuffer = blockDecryptor.decrypt(byteBuffer, dataPageAAD);
-              }
-              compressedSize = byteBuffer.limit();
-              if (dataPageV2.isCompressed()) {
-                int uncompressedSize = Math.toIntExact(dataPageV2.getUncompressedSize()
-                    - dataPageV2.getDefinitionLevels().size()
-                    - dataPageV2.getRepetitionLevels().size());
-                ByteBuffer decompressedBuffer =
-                    options.getAllocator().allocate(uncompressedSize);
-                releaser.releaseLater(decompressedBuffer);
-                long start = System.nanoTime();
-                decompressor.decompress(
-                    byteBuffer, (int) compressedSize, decompressedBuffer, uncompressedSize);
-                setDecompressMetrics(pageBytes, start);
-
-                // HACKY: sometimes we need to do `flip` because the position of output bytebuffer is
-                // not reset.
-                if (decompressedBuffer.position() != 0) {
-                  decompressedBuffer.flip();
-                }
-                pageBytes = BytesInput.from(decompressedBuffer);
-              } else {
-                pageBytes = BytesInput.from(byteBuffer);
-              }
-            } else {
-              if (null != blockDecryptor) {
-                pageBytes =
-                    BytesInput.from(blockDecryptor.decrypt(pageBytes.toByteArray(), dataPageAAD));
-              }
-              if (dataPageV2.isCompressed()) {
-                int uncompressedSize = Math.toIntExact(dataPageV2.getUncompressedSize()
-                    - dataPageV2.getDefinitionLevels().size()
-                    - dataPageV2.getRepetitionLevels().size());
-                long start = System.nanoTime();
-                pageBytes = decompressor.decompress(pageBytes, uncompressedSize);
-                setDecompressMetrics(pageBytes, start);
-              }
-            }
-          } catch (IOException e) {
-            throw new ParquetDecodingException("could not decompress page", e);
-          }
-
-          final DataPageV2 decompressedPage;
-          if (offsetIndex == null) {
-            decompressedPage = DataPageV2.uncompressed(
-                dataPageV2.getRowCount(),
-                dataPageV2.getNullCount(),
-                dataPageV2.getValueCount(),
-                dataPageV2.getRepetitionLevels(),
-                dataPageV2.getDefinitionLevels(),
-                dataPageV2.getDataEncoding(),
-                pageBytes,
-                dataPageV2.getStatistics());
-          } else {
-            decompressedPage = DataPageV2.uncompressed(
-                dataPageV2.getRowCount(),
-                dataPageV2.getNullCount(),
-                dataPageV2.getValueCount(),
-                offsetIndex.getFirstRowIndex(currentPageIndex),
-                dataPageV2.getRepetitionLevels(),
-                dataPageV2.getDefinitionLevels(),
-                dataPageV2.getDataEncoding(),
-                pageBytes,
-                dataPageV2.getStatistics());
-          }
-          if (dataPageV2.getCrc().isPresent()) {
-            decompressedPage.setCrc(dataPageV2.getCrc().getAsInt());
-          }
-          return decompressedPage;
-        }
-      });
-    }
-
-    private void setDecompressMetrics(BytesInput bytes, long start) {
-      final ParquetMetricsCallback metricsCallback = options.getMetricsCallback();
-      if (metricsCallback != null) {
-        long time = Math.max(System.nanoTime() - start, 0);
-        long len = bytes.size();
-        double throughput = ((double) len / time) * ((double) 1000_000_000L) / (1024 * 1024);
-        LOG.debug(
-            "Decompress block: Length: {} MB, Time: {} msecs, throughput: {} MB/s",
-            len / (1024 * 1024),
-            time / 1000_000L,
-            throughput);
-        metricsCallback.setDuration(ParquetFileReaderMetrics.DecompressTime.name(), time);
-        metricsCallback.setValueLong(ParquetFileReaderMetrics.DecompressSize.name(), len);
-        metricsCallback.setValueDouble(ParquetFileReaderMetrics.DecompressThroughput.name(), throughput);
-      }
-    }
-
-    @Override
-    public DictionaryPage readDictionaryPage() {
-      if (this.compressedDictionaryPage == null) {
-        return null;
-      }
-      try {
-        BytesInput bytes = compressedDictionaryPage.getBytes();
-        if (null != blockDecryptor) {
-          bytes = BytesInput.from(blockDecryptor.decrypt(bytes.toByteArray(), dictionaryPageAAD));
-        }
-        long start = System.nanoTime();
-        setDecompressMetrics(bytes, start);
-        DictionaryPage decompressedPage = new DictionaryPage(
-            decompressor.decompress(bytes, compressedDictionaryPage.getUncompressedSize()),
-            compressedDictionaryPage.getDictionarySize(),
-            compressedDictionaryPage.getEncoding());
-        if (compressedDictionaryPage.getCrc().isPresent()) {
-          decompressedPage.setCrc(compressedDictionaryPage.getCrc().getAsInt());
-        }
-        return decompressedPage;
-      } catch (IOException e) {
-        throw new ParquetDecodingException("Could not decompress dictionary page", e);
-      }
-    }
-
-    @Override
-    void releaseBuffers() {
+    private void releaseBuffers() {
       releaser.close();
     }
   }

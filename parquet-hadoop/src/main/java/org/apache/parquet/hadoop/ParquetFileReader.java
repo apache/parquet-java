@@ -1748,7 +1748,7 @@ public class ParquetFileReader implements Closeable {
         @Override
         DictionaryPage getDictionaryPage() {
           if (!bufferedToFirstDataPage) {
-            bufferToFirstDataPage();
+            bufferNextDataPage();
           }
           return dictionaryPage;
         }
@@ -1756,7 +1756,7 @@ public class ParquetFileReader implements Closeable {
         @Override
         public boolean hasNext() {
           if (!bufferedToFirstDataPage) {
-            bufferToFirstDataPage();
+            bufferNextDataPage();
           }
           return hasMorePages();
         }
@@ -1773,16 +1773,6 @@ public class ParquetFileReader implements Closeable {
           return offsetIndex == null
               ? valuesCountReadSoFar < descriptor.metadata.getValueCount()
               : dataPageCountReadSoFar < offsetIndex.getPageCount();
-        }
-
-        /**
-         * Seeks to first Data page in the chunk, parsing any Dictionary pages and skipping other non-data page types
-         */
-        @Override
-        void bufferToFirstDataPage() {
-          if (!bufferedToFirstDataPage) {
-            bufferNextDataPage();
-          }
         }
 
         private void bufferNextDataPage() {
@@ -1957,33 +1947,18 @@ public class ParquetFileReader implements Closeable {
       BytesInputDecompressor decompressor =
           options.getCodecFactory().getDecompressor(descriptor.metadata.getCodec());
 
-      if (options.eagerlyReadFullRowGroup()) {
-        final List<DataPage> pagesInChunk = new ArrayList<>();
-        iterator.forEachRemaining(pagesInChunk::add);
-
-        return new ColumnChunkPageReadStore.EagerColumnChunkPageReader(
-            decompressor,
-            pagesInChunk,
-            iterator.getDictionaryPage(),
-            offsetIndex,
-            rowCount,
-            pageBlockDecryptor,
-            aadPrefix,
-            rowGroupOrdinal,
-            columnOrdinal,
-            options);
-      } else {
-        return new ColumnChunkPageReadStore.LazyColumnChunkPageReader(
-            decompressor,
-            iterator,
-            offsetIndex,
-            rowCount,
-            pageBlockDecryptor,
-            aadPrefix,
-            rowGroupOrdinal,
-            columnOrdinal,
-            options);
-      }
+      return new ColumnChunkPageReader(
+          decompressor,
+          iterator,
+          iterator.getDictionaryPage(),
+          offsetIndex,
+          rowCount,
+          pageBlockDecryptor,
+          aadPrefix,
+          rowGroupOrdinal,
+          columnOrdinal,
+          options,
+          options.eagerlyReadFullRowGroup());
     }
 
     private int getPageOrdinal(int dataPageCountReadSoFar) {
@@ -2010,11 +1985,6 @@ public class ParquetFileReader implements Closeable {
     PageIterator(byte[] dataPageHeaderAAD) {
       this.dataPageHeaderAAD = dataPageHeaderAAD;
     }
-
-    /**
-     * Read the chunk up to the first data page so that its DictionaryPage, if exists, is materialized.
-     */
-    abstract void bufferToFirstDataPage();
 
     abstract DictionaryPage getDictionaryPage();
   }
