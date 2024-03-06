@@ -109,7 +109,8 @@ public abstract class SeekableInputStream extends InputStream {
 
   /**
    * Read a set of file ranges in a vectored manner.
-   * @throws UnsupportedOperationException if not available in this class/runtime.
+   *
+   * @throws UnsupportedOperationException if not available in this class/runtime (default)
    */
   public void readVectored(List<ParquetFileRange> ranges, IntFunction<ByteBuffer> allocate) throws IOException {
 
@@ -117,7 +118,9 @@ public abstract class SeekableInputStream extends InputStream {
   }
 
   /**
-   * Is the {@link #readVectored(List, IntFunction)} method available.
+   * Is the {@link #readVectored(List, IntFunction)} method available?
+   * True if the method is implemented in the implementation class and
+   * the Hadoop runtime supports vectored IO.
    */
   public boolean readVectoredAvailable() {
     return false;

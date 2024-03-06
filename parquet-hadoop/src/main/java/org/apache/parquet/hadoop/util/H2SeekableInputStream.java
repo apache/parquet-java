@@ -93,7 +93,7 @@ class H2SeekableInputStream extends DelegatingSeekableInputStream {
 
   @Override
   public boolean readVectoredAvailable() {
-    return VectorIOBridge.bridgeAvailable();
+    return VectorIOBridge.instance().readVectoredAvailable(stream);
   }
 
   @Override

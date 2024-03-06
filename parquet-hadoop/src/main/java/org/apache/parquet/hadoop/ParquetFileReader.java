@@ -1148,11 +1148,16 @@ public class ParquetFileReader implements Closeable {
       throws IOException {
 
     if (shouldUseVectoredIO(allParts)) {
-      readVectored(allParts, builder);
-    } else {
-      for (ConsecutivePartList consecutiveChunks : allParts) {
-        consecutiveChunks.readAll(f, builder);
+      try {
+        readVectored(allParts, builder);
+        return;
+      } catch (IOException | IllegalArgumentException | UnsupportedOperationException e) {
+        // possible failure modes.
+        LOG.warn("readVectored() failed; falling back to normal IO", e);
       }
+    }
+    for (ConsecutivePartList consecutiveChunks : allParts) {
+      consecutiveChunks.readAll(f, builder);
     }
   }
 
@@ -1163,22 +1168,29 @@ public class ParquetFileReader implements Closeable {
    * <ol>
    *   <li> The option is enabled</li>
    *   <li> The Hadoop version supports vectored IO</li>
-   *   <li> Thfe part lengths are all valid for vectored IO</li>
+   *   <li> The part lengths are all valid for vectored IO</li>
+   *   <li> The stream implementation explicitly supports the API; for other streams the classic
+   *         API is always used.</li>
+   *   <li> The allocator is not direct. This is to avoid HADOOP-19101 surfacing.
    * </ol>
    * @param allParts all parts to read.
    * @return true or false.
    */
   private boolean shouldUseVectoredIO(final List<ConsecutivePartList> allParts) {
-    return options.useHadoopVectoredIO() && f.readVectoredAvailable() && arePartLengthsValidForVectoredIO(allParts);
+    return options.useHadoopVectoredIO()
+        && !options.getAllocator().isDirect()
+        && f.readVectoredAvailable()
+        && arePartsValidForVectoredIO(allParts);
   }
 
   /**
+   * Validated the parts for vectored IO.
    * Vectored IO doesn't support reading ranges of size greater than
    * Integer.MAX_VALUE.
    * @param allParts all parts to read.
    * @return true or false.
    */
-  private boolean arePartLengthsValidForVectoredIO(List<ConsecutivePartList> allParts) {
+  private boolean arePartsValidForVectoredIO(List<ConsecutivePartList> allParts) {
     for (ConsecutivePartList consecutivePart : allParts) {
       if (consecutivePart.length >= Integer.MAX_VALUE) {
         LOG.debug(
@@ -1202,6 +1214,8 @@ public class ParquetFileReader implements Closeable {
    * @param allParts all parts to be read.
    * @param builder used to build chunk list to read the pages for the different columns.
    * @throws IOException any IOE.
+   * @throws IllegalArgumentException arguments are invalid.
+   * @throws UnsupportedOperationException if the filesystem does not support vectored IO.
    */
   private void readVectored(List<ConsecutivePartList> allParts, ChunkListBuilder builder) throws IOException {
 

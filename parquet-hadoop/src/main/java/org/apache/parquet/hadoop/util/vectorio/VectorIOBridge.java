@@ -18,9 +18,14 @@
 
 package org.apache.parquet.hadoop.util.vectorio;
 
+import static org.apache.parquet.Exceptions.throwIfInstance;
 import static org.apache.parquet.hadoop.util.vectorio.BindingUtils.loadInvocation;
 
+import java.io.EOFException;
+import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.IntFunction;
@@ -103,10 +108,19 @@ public final class VectorIOBridge {
 
     readVectored =
         loadInvocation(PositionedReadable.class, Void.TYPE, READ_VECTORED, List.class, IntFunction.class);
-    LOG.debug("Vector IO availability; ", available());
+    LOG.debug("Vector IO availability: {}", available());
 
     // if readVectored is present, so is hasCapabilities().
     hasCapabilityMethod = loadInvocation(FSDataInputStream.class, boolean.class, HAS_CAPABILITY, String.class);
+  }
+
+  /**
+   * Is the vectored IO API available?
+   * @param stream input stream to query.
+   * @return true if the stream declares the capability is available.
+   */
+  public boolean readVectoredAvailable(final FSDataInputStream stream) {
+    return available() && hasCapability(stream, VECTOREDIO_CAPABILITY);
   }
 
   /**
@@ -130,25 +144,47 @@ public final class VectorIOBridge {
   }
 
   /**
-   * Read data in a list of file ranges.
-   * Returns when the data reads are active; possibly executed
-   * in a blocking sequence of reads, possibly scheduled on different
-   * threads.
+   * Read fully a list of file ranges asynchronously from this file.
+   * The default iterates through the ranges to read each synchronously, but
+   * the intent is that FSDataInputStream subclasses can make more efficient
+   * readers.
    * The {@link ParquetFileRange} parameters all have their
    * data read futures set to the range reads of the associated
    * operations; callers must await these to complete.
-   *
+   * <p>
+   * As a result of the call, each range will have FileRange.setData(CompletableFuture)
+   * called with a future that when complete will have a ByteBuffer with the
+   * data from the file's range.
+   * <p>
+   *   The position returned by getPos() after readVectored() is undefined.
+   * </p>
+   * <p>
+   *   If a file is changed while the readVectored() operation is in progress, the output is
+   *   undefined. Some ranges may have old data, some may have new and some may have both.
+   * </p>
+   * <p>
+   *   While a readVectored() operation is in progress, normal read api calls may block.
+   * </p>
    * @param stream stream from where the data has to be read.
    * @param ranges parquet file ranges.
    * @param allocate allocate function to allocate memory to hold data.
    * @throws UnsupportedOperationException if the API is not available.
+   * @throws EOFException if a range is past the end of the file.
+   * @throws IOException other IO problem initiating the read operations.
    */
   public static void readVectoredRanges(
-      final FSDataInputStream stream,
-      final List<ParquetFileRange> ranges,
-      final IntFunction<ByteBuffer> allocate) {
+      final FSDataInputStream stream, final List<ParquetFileRange> ranges, final IntFunction<ByteBuffer> allocate)
+      throws IOException {
 
     final VectorIOBridge bridge = availableInstance();
+    if (!bridge.readVectoredAvailable(stream)) {
+      throw new UnsupportedOperationException("Vectored IO not available on stream " + stream);
+    }
+    // Sort the ranges by offset and then validate for overlaps.
+    // This ensures consistent behavior with all filesystems
+    // across all implementations of Hadoop (specifically those without HADOOP-19098)
+    Collections.sort(ranges, Comparator.comparingLong(ParquetFileRange::getOffset));
+
     final FileRangeBridge rangeBridge = FileRangeBridge.instance();
     // Setting the parquet range as a reference.
     List<FileRangeBridge.WrappedFileRange> fileRanges =
@@ -174,11 +210,14 @@ public final class VectorIOBridge {
    * @param stream stream from where the data has to be read.
    * @param ranges wrapped file ranges.
    * @param allocate allocate function to allocate memory to hold data.
+   * @throws EOFException if a range is past the end of the file.
+   * @throws IOException other IO problem initiating the read operations.
    */
   private void readWrappedRanges(
       final PositionedReadable stream,
       final List<FileRangeBridge.WrappedFileRange> ranges,
-      final IntFunction<ByteBuffer> allocate) {
+      final IntFunction<ByteBuffer> allocate)
+      throws IOException {
 
     // update the counters.
     vectorReads.incrementAndGet();
@@ -192,7 +231,13 @@ public final class VectorIOBridge {
         })
         .collect(Collectors.toList());
     LOG.debug("readVectored with {} ranges on stream {}", ranges.size(), stream);
-    readVectored.invoke(stream, instances, allocate);
+    try {
+      readVectored.invokeChecked(stream, instances, allocate);
+    } catch (Exception e) {
+      throwIfInstance(e, IOException.class);
+      throwIfInstance(e, RuntimeException.class);
+      throw new RuntimeException(e);
+    }
   }
 
   @Override
@@ -208,7 +253,14 @@ public final class VectorIOBridge {
   /**
    * Does a stream implement StreamCapability and, if so, is the capability
    * available.
-   * If the method is not found, this predicate will return false.
+   * The call will return false if
+   * <ol>
+   *   <li>The method is not found</li>
+   *   <li>The method is found but throws an exception when invoked</li>
+   *   <li>The method is found, invoked and returns false</li>
+   * </ol>
+   * Put differently: it will only return true if the method
+   * probe returned true.
    * @param stream input stream to query.
    * @param capability the capability to look for.
    * @return true if the stream declares the capability is available.
@@ -218,7 +270,11 @@ public final class VectorIOBridge {
     if (hasCapabilityMethod.isNoop()) {
       return false;
     } else {
-      return hasCapabilityMethod.invoke(stream, capability);
+      try {
+        return hasCapabilityMethod.invoke(stream, capability);
+      } catch (RuntimeException e) {
+        return false;
+      }
     }
   }
 
