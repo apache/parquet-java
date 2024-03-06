@@ -81,7 +81,7 @@ public class TestColumnReaderImpl {
     }
     assertEquals(rows, rowCount);
     assertEquals(rows, valueCount);
-    MemPageReader pageReader = new MemPageReader(rows, pages.iterator(), pageWriter.getDictionaryPage(), false);
+    MemPageReader pageReader = new MemPageReader(rows, pages.iterator(), pageWriter.getDictionaryPage(), true);
     ValidatingConverter converter = new ValidatingConverter();
     ColumnReader columnReader =
         new ColumnReaderImpl(col, pageReader, converter, VersionParser.parse(Version.FULL_VERSION));
@@ -127,7 +127,7 @@ public class TestColumnReaderImpl {
     assertEquals(rows, valueCount);
 
     // Read lazily
-    MemPageReader pageReader = new MemPageReader(rows, pages.iterator(), pageWriter.getDictionaryPage(), true);
+    MemPageReader pageReader = new MemPageReader(rows, pages.iterator(), pageWriter.getDictionaryPage(), false);
     ValidatingConverter converter = new ValidatingConverter();
     ColumnReader columnReader =
         new ColumnReaderImpl(col, pageReader, converter, VersionParser.parse(Version.FULL_VERSION));
@@ -170,7 +170,7 @@ public class TestColumnReaderImpl {
     }
     assertEquals(rows, rowCount);
     assertEquals(rows, valueCount);
-    MemPageReader pageReader = new MemPageReader(rows, pages.iterator(), pageWriter.getDictionaryPage(), false);
+    MemPageReader pageReader = new MemPageReader(rows, pages.iterator(), pageWriter.getDictionaryPage(), true);
     ValidatingConverter converter = new ValidatingConverter();
     ColumnReader columnReader =
         new ColumnReaderImpl(col, pageReader, converter, VersionParser.parse(Version.FULL_VERSION));

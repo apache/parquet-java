@@ -1276,7 +1276,7 @@ public class ParquetFileReader implements Closeable {
     } else { // encrypted column
       rowGroup.addColumn(
           chunk.descriptor.col,
-          chunk.readAllPages(
+          chunk.readAllPages( // @Todo this must be made lazy too?
               columnDecryptionSetup.getMetaDataDecryptor(),
               columnDecryptionSetup.getDataDecryptor(),
               fileDecryptor.getFileAAD(),

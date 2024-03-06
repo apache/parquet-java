@@ -154,7 +154,7 @@ public class CheckParquet251Command extends BaseCommand {
     }
 
     @Override
-    public boolean isFullyMaterialized() {
+    public boolean isEager() {
       return true;
     }
 

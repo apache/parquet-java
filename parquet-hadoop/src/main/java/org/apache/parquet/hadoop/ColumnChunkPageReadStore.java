@@ -80,7 +80,7 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
     private final byte[] dictionaryPageAAD;
     private final ByteBufferReleaser releaser;
 
-    private final boolean pagesFullyMaterialized;
+    private final boolean isEager;
     private long valueCount;
 
     ColumnChunkPageReader(
@@ -94,12 +94,12 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
         int rowGroupOrdinal,
         int columnOrdinal,
         ParquetReadOptions options,
-        boolean pagesFullyMaterialized) {
+        boolean isEager) {
       this.decompressor = decompressor;
-      this.pagesFullyMaterialized = pagesFullyMaterialized;
+      this.isEager = isEager;
       this.compressedDictionaryPage = compressedDictionaryPage;
       this.valueCount = 0;
-      if (pagesFullyMaterialized) {
+      if (isEager) {
         final List<DataPage> materializedPages = new ArrayList<>();
         for (Iterator<DataPage> it = compressedPages; it.hasNext(); ) {
           final DataPage next = it.next();
@@ -136,7 +136,7 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
 
     @Override
     public long getTotalValueCount() {
-      if (!isFullyMaterialized()) {
+      if (!isEager()) {
         throw new IllegalStateException(
             "Cannot compute totalValueCount before underlying iterator has been exhausted");
       }
@@ -144,8 +144,8 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
     }
 
     @Override
-    public boolean isFullyMaterialized() {
-      return pagesFullyMaterialized || !compressedPages.hasNext();
+    public boolean isEager() {
+      return isEager || !compressedPages.hasNext();
     }
 
     @Override
@@ -158,7 +158,7 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
         return null;
       }
 
-      if (!pagesFullyMaterialized) {
+      if (!isEager) {
         valueCount += compressedPage.getValueCount();
       }
       final int currentPageIndex = pageIndex++;

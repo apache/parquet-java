@@ -464,13 +464,13 @@ abstract class ColumnReaderBase implements ColumnReader {
     } else {
       this.dictionary = null;
     }
-    if (pageReader.isFullyMaterialized() && pageReader.getTotalValueCount() <= 0) {
+    if (pageReader.isEager() && pageReader.getTotalValueCount() <= 0) {
       throw new ParquetDecodingException("totalValueCount '" + pageReader.getTotalValueCount() + "' <= 0");
     }
   }
 
   boolean isFullyConsumed() {
-    return pageReader.isFullyMaterialized() && readValues >= pageReader.getTotalValueCount();
+    return pageReader.isEager() && readValues >= pageReader.getTotalValueCount();
   }
 
   /**
@@ -599,7 +599,7 @@ abstract class ColumnReaderBase implements ColumnReader {
                         + "%d, definition level: %d",
                     path,
                     readValues,
-                    pageReader.isFullyMaterialized()
+                    pageReader.isEager()
                         ? pageReader.getTotalValueCount()
                         : -1, // @Todo print something else?
                     readValues - (endOfPageValueCount - pageValueCount),
@@ -615,9 +615,7 @@ abstract class ColumnReaderBase implements ColumnReader {
                   + "%d, definition level: %d",
               path,
               readValues,
-              pageReader.isFullyMaterialized()
-                  ? pageReader.getTotalValueCount()
-                  : -1, // @Todo print something else?
+              pageReader.isEager() ? pageReader.getTotalValueCount() : -1, // @Todo print something else?
               readValues - (endOfPageValueCount - pageValueCount),
               pageValueCount,
               repetitionLevel,
@@ -833,7 +831,7 @@ abstract class ColumnReaderBase implements ColumnReader {
    */
   @Override
   public void consume() {
-    if (pageReader.isFullyMaterialized()) {
+    if (pageReader.isEager()) {
       consumeAllPages();
     } else {
       consumePage();
@@ -849,7 +847,7 @@ abstract class ColumnReaderBase implements ColumnReader {
   @Deprecated
   @Override
   public long getTotalValueCount() {
-    return pageReader.isFullyMaterialized() ? pageReader.getTotalValueCount() : 0; // @Todo should be -1?
+    return pageReader.isEager() ? pageReader.getTotalValueCount() : 0; // @Todo should be -1?
   }
 
   abstract static class IntIterator {

@@ -39,16 +39,16 @@ public class MemPageStore implements PageReadStore, PageWriteStore {
 
   private long rowCount;
 
-  private boolean isReadLazy;
+  private boolean isReadEager;
 
   public MemPageStore(long rowCount) {
-    this(rowCount, false);
+    this(rowCount, true);
   }
 
-  public MemPageStore(long rowCount, boolean isReadLazy) {
+  public MemPageStore(long rowCount, boolean isReadEager) {
     super();
     this.rowCount = rowCount;
-    this.isReadLazy = isReadLazy;
+    this.isReadEager = isReadEager;
   }
 
   @Override
@@ -70,7 +70,7 @@ public class MemPageStore implements PageReadStore, PageWriteStore {
     List<DataPage> pages = new ArrayList<>(pageWriter.getPages());
     LOG.debug("initialize page reader with {} values and {} pages", pageWriter.getTotalValueCount(), pages.size());
     return new MemPageReader(
-        pageWriter.getTotalValueCount(), pages.iterator(), pageWriter.getDictionaryPage(), isReadLazy);
+        pageWriter.getTotalValueCount(), pages.iterator(), pageWriter.getDictionaryPage(), isReadEager);
   }
 
   @Override

@@ -101,7 +101,7 @@ public class TestStatistics {
     }
 
     @Override
-    public boolean isFullyMaterialized() {
+    public boolean isEager() {
       return false;
     }
 
