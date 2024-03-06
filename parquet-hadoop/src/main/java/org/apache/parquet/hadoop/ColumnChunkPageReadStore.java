@@ -168,12 +168,7 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
                   decompressedBuffer,
                   dataPageV1.getUncompressedSize());
               setDecompressMetrics(bytes, start);
-
-              // HACKY: sometimes we need to do `flip` because the position of output bytebuffer is
-              // not reset.
-              if (decompressedBuffer.position() != 0) {
-                decompressedBuffer.flip();
-              }
+              decompressedBuffer.flip();
               decompressed = BytesInput.from(decompressedBuffer);
             } else { // use on-heap buffer
               if (null != blockDecryptor) {
@@ -225,9 +220,6 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
           }
           BytesInput pageBytes = dataPageV2.getData();
           try {
-            BytesInput decompressed;
-            long compressedSize;
-
             if (options.getAllocator().isDirect() && options.useOffHeapDecryptBuffer()) {
               ByteBuffer byteBuffer = pageBytes.toByteBuffer(releaser);
               if (!byteBuffer.isDirect()) {
@@ -236,7 +228,7 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
               if (blockDecryptor != null) {
                 byteBuffer = blockDecryptor.decrypt(byteBuffer, dataPageAAD);
               }
-              compressedSize = byteBuffer.limit();
+              long compressedSize = byteBuffer.limit();
               if (dataPageV2.isCompressed()) {
                 int uncompressedSize = Math.toIntExact(dataPageV2.getUncompressedSize()
                     - dataPageV2.getDefinitionLevels().size()
@@ -248,12 +240,7 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
                 decompressor.decompress(
                     byteBuffer, (int) compressedSize, decompressedBuffer, uncompressedSize);
                 setDecompressMetrics(pageBytes, start);
-
-                // HACKY: sometimes we need to do `flip` because the position of output bytebuffer is
-                // not reset.
-                if (decompressedBuffer.position() != 0) {
-                  decompressedBuffer.flip();
-                }
+                decompressedBuffer.flip();
                 pageBytes = BytesInput.from(decompressedBuffer);
               } else {
                 pageBytes = BytesInput.from(byteBuffer);

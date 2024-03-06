@@ -21,8 +21,9 @@ package org.apache.parquet.hadoop.codec;
 import io.airlift.compress.lz4.Lz4Decompressor;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import org.apache.hadoop.io.compress.DirectDecompressor;
 
-public class Lz4RawDecompressor extends NonBlockedDecompressor {
+public class Lz4RawDecompressor extends NonBlockedDecompressor implements DirectDecompressor {
 
   private Lz4Decompressor decompressor = new Lz4Decompressor();
 
@@ -40,5 +41,10 @@ public class Lz4RawDecompressor extends NonBlockedDecompressor {
     uncompressed.limit(uncompressedSize);
     uncompressed.rewind();
     return uncompressedSize;
+  }
+
+  @Override
+  public void decompress(ByteBuffer compressed, ByteBuffer uncompressed) throws IOException {
+    uncompress(compressed, uncompressed);
   }
 }

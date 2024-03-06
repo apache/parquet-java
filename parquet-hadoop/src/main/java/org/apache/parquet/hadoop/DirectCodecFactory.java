@@ -68,7 +68,8 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
     try {
       tempClass = Class.forName("org.apache.hadoop.io.compress.DirectDecompressionCodec");
       tempCreateMethod = tempClass.getMethod("createDirectDecompressor");
-      tempDecompressMethod = tempClass.getMethod("decompress", ByteBuffer.class, ByteBuffer.class);
+      Class<?> tempClass2 = Class.forName("org.apache.hadoop.io.compress.DirectDecompressor");
+      tempDecompressMethod = tempClass2.getMethod("decompress", ByteBuffer.class, ByteBuffer.class);
     } catch (ClassNotFoundException | NoSuchMethodException e) {
       // do nothing, the class will just be assigned null
     }
@@ -150,27 +151,25 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
     }
 
     @Override
-    public BytesInput decompress(BytesInput bytes, int uncompressedSize) throws IOException {
+    public BytesInput decompress(BytesInput bytes, int decompressedSize) throws IOException {
       decompressor.reset();
       byte[] inputBytes = bytes.toByteArray();
       decompressor.setInput(inputBytes, 0, inputBytes.length);
-      byte[] output = new byte[uncompressedSize];
-      decompressor.decompress(output, 0, uncompressedSize);
+      byte[] output = new byte[decompressedSize];
+      decompressor.decompress(output, 0, decompressedSize);
       return BytesInput.from(output);
     }
 
     @Override
-    public void decompress(ByteBuffer input, int compressedSize, ByteBuffer output, int uncompressedSize)
+    public void decompress(ByteBuffer input, int compressedSize, ByteBuffer output, int decompressedSize)
         throws IOException {
 
       decompressor.reset();
       byte[] inputBytes = new byte[compressedSize];
-      input.position(0);
       input.get(inputBytes);
       decompressor.setInput(inputBytes, 0, inputBytes.length);
-      byte[] outputBytes = new byte[uncompressedSize];
-      decompressor.decompress(outputBytes, 0, uncompressedSize);
-      output.clear();
+      byte[] outputBytes = new byte[decompressedSize];
+      decompressor.decompress(outputBytes, 0, decompressedSize);
       output.put(outputBytes);
     }
 
@@ -193,14 +192,14 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
     }
 
     @Override
-    public BytesInput decompress(BytesInput bytes, int uncompressedSize) throws IOException {
+    public BytesInput decompress(BytesInput bytes, int decompressedSize) throws IOException {
       try (ByteBufferReleaser releaser = inputAllocator.getReleaser()) {
         ByteBuffer input = bytes.toByteBuffer(releaser);
-        ByteBuffer output = outputAllocator.allocate(uncompressedSize);
+        ByteBuffer output = outputAllocator.allocate(decompressedSize);
         int size = decompress(input.slice(), output.slice());
-        if (size != uncompressedSize) {
+        if (size != decompressedSize) {
           throw new DirectCodecPool.ParquetCompressionCodecException(
-              "Unexpected decompressed size: " + size + " != " + uncompressedSize);
+              "Unexpected decompressed size: " + size + " != " + decompressedSize);
         }
         output.limit(size);
         return BytesInput.from(output);
@@ -210,26 +209,26 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
     abstract int decompress(ByteBuffer input, ByteBuffer output) throws IOException;
 
     @Override
-    public void decompress(ByteBuffer input, int compressedSize, ByteBuffer output, int uncompressedSize)
+    public void decompress(ByteBuffer input, int compressedSize, ByteBuffer output, int decompressedSize)
         throws IOException {
+      int origInputLimit = input.limit();
       input.limit(input.position() + compressedSize);
-      output.limit(output.position() + uncompressedSize);
+      int origOutputLimit = output.limit();
+      output.limit(output.position() + decompressedSize);
       int size = decompress(input.slice(), output.slice());
-      if (size != uncompressedSize) {
+      if (size != decompressedSize) {
         throw new DirectCodecPool.ParquetCompressionCodecException(
-            "Unexpected decompressed size: " + size + " != " + uncompressedSize);
+            "Unexpected decompressed size: " + size + " != " + decompressedSize);
       }
       input.position(input.limit());
-      output.position(output.position() + uncompressedSize);
+      input.limit(origInputLimit);
+      output.position(output.limit());
+      output.limit(origOutputLimit);
     }
 
     @Override
     public void release() {
-      try {
-        AutoCloseables.uncheckedClose(outputAllocator, inputAllocator);
-      } finally {
-        closeDecompressor();
-      }
+      AutoCloseables.uncheckedClose(outputAllocator, inputAllocator, this::closeDecompressor);
     }
 
     abstract void closeDecompressor();
@@ -264,11 +263,7 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
 
     @Override
     public void release() {
-      try {
-        AutoCloseables.uncheckedClose(outputAllocator, inputAllocator);
-      } finally {
-        closeCompressor();
-      }
+      AutoCloseables.uncheckedClose(outputAllocator, inputAllocator, this::closeCompressor);
     }
 
     abstract void closeCompressor();
@@ -296,22 +291,22 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
     }
 
     @Override
-    public BytesInput decompress(BytesInput compressedBytes, int uncompressedSize) throws IOException {
+    public BytesInput decompress(BytesInput compressedBytes, int decompressedSize) throws IOException {
       // Similarly to non-direct decompressors, we reset before use, if possible (see HeapBytesDecompressor)
       if (decompressor instanceof Decompressor) {
         ((Decompressor) decompressor).reset();
       }
-      return super.decompress(compressedBytes, uncompressedSize);
+      return super.decompress(compressedBytes, decompressedSize);
     }
 
     @Override
-    public void decompress(ByteBuffer input, int compressedSize, ByteBuffer output, int uncompressedSize)
+    public void decompress(ByteBuffer input, int compressedSize, ByteBuffer output, int decompressedSize)
         throws IOException {
       // Similarly to non-direct decompressors, we reset before use, if possible (see HeapBytesDecompressor)
       if (decompressor instanceof Decompressor) {
         ((Decompressor) decompressor).reset();
       }
-      super.decompress(input, compressedSize, output, uncompressedSize);
+      super.decompress(input, compressedSize, output, decompressedSize);
     }
 
     @Override
@@ -322,7 +317,10 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
       } catch (IllegalAccessException | InvocationTargetException e) {
         throw new DirectCodecPool.ParquetCompressionCodecException(e);
       }
-      return output.position() - startPos;
+      int size = output.position() - startPos;
+      // Some decompressors flip the output buffer, some don't:
+      // Let's rely on the limit if the position did not change
+      return size == 0 ? output.limit() : size;
     }
 
     @Override
@@ -338,22 +336,20 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
   public class NoopDecompressor extends BytesDecompressor {
 
     @Override
-    public void decompress(ByteBuffer input, int compressedSize, ByteBuffer output, int uncompressedSize)
+    public void decompress(ByteBuffer input, int compressedSize, ByteBuffer output, int decompressedSize)
         throws IOException {
-      Preconditions.checkArgument(
-          compressedSize == uncompressedSize,
-          "Non-compressed data did not have matching compressed and uncompressed sizes.");
-      output.clear();
-      output.put((ByteBuffer) input.duplicate().position(0).limit(compressedSize));
+      NO_OP_DECOMPRESSOR.decompress(input, compressedSize, output, decompressedSize);
     }
 
     @Override
-    public BytesInput decompress(BytesInput bytes, int uncompressedSize) throws IOException {
-      return bytes;
+    public BytesInput decompress(BytesInput bytes, int decompressedSize) throws IOException {
+      return NO_OP_DECOMPRESSOR.decompress(bytes, decompressedSize);
     }
 
     @Override
-    public void release() {}
+    public void release() {
+      NO_OP_DECOMPRESSOR.release();
+    }
   }
 
   public class SnappyDecompressor extends BaseDecompressor {
@@ -416,6 +412,8 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
       context = new ZstdCompressCtx();
       context.setLevel(configuration.getInt(
           ZstandardCodec.PARQUET_COMPRESS_ZSTD_LEVEL, ZstandardCodec.DEFAULT_PARQUET_COMPRESS_ZSTD_LEVEL));
+      context.setWorkers(configuration.getInt(
+          ZstandardCodec.PARQUET_COMPRESS_ZSTD_WORKERS, ZstandardCodec.DEFAULTPARQUET_COMPRESS_ZSTD_WORKERS));
     }
 
     @Override
@@ -449,16 +447,18 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
 
     @Override
     public BytesInput compress(BytesInput bytes) throws IOException {
-      return bytes;
+      return NO_OP_COMPRESSOR.compress(bytes);
     }
 
     @Override
     public CompressionCodecName getCodecName() {
-      return CompressionCodecName.UNCOMPRESSED;
+      return NO_OP_COMPRESSOR.getCodecName();
     }
 
     @Override
-    public void release() {}
+    public void release() {
+      NO_OP_COMPRESSOR.release();
+    }
   }
 
   static class DirectCodecPool {
@@ -486,7 +486,8 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
 
       private CodecPool(final CompressionCodec codec) {
         try {
-          boolean supportDirectDecompressor = codec.getClass() == DIRECT_DECOMPRESSION_CODEC_CLASS;
+          boolean supportDirectDecompressor = DIRECT_DECOMPRESSION_CODEC_CLASS != null
+              && DIRECT_DECOMPRESSION_CODEC_CLASS.isAssignableFrom(codec.getClass());
           compressorPool = new GenericObjectPool(
               new BasePoolableObjectFactory() {
                 public Object makeObject() throws Exception {
@@ -533,8 +534,7 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
             directDecompressorPool = new GenericObjectPool(
                 new BasePoolableObjectFactory() {
                   public Object makeObject() throws Exception {
-                    return CREATE_DIRECT_DECOMPRESSOR_METHOD.invoke(
-                        DIRECT_DECOMPRESSION_CODEC_CLASS);
+                    return CREATE_DIRECT_DECOMPRESSOR_METHOD.invoke(codec);
                   }
                 },
                 Integer.MAX_VALUE);
