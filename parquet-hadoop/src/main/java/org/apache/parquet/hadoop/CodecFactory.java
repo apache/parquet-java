@@ -56,16 +56,20 @@ public class CodecFactory implements CompressionCodecFactory {
 
   static final BytesDecompressor NO_OP_DECOMPRESSOR = new BytesDecompressor() {
     @Override
-    public void decompress(ByteBuffer input, int compressedSize, ByteBuffer output, int uncompressedSize) {
+    public void decompress(ByteBuffer input, int compressedSize, ByteBuffer output, int decompressedSize) {
       Preconditions.checkArgument(
-          compressedSize == uncompressedSize,
-          "Non-compressed data did not have matching compressed and uncompressed sizes.");
-      output.clear();
-      output.put((ByteBuffer) input.duplicate().position(0).limit(compressedSize));
+          compressedSize == decompressedSize,
+          "Non-compressed data did not have matching compressed and decompressed sizes.");
+      Preconditions.checkArgument(
+          input.remaining() >= compressedSize, "Not enough bytes available in the input buffer");
+      int origLimit = input.limit();
+      input.limit(input.position() + compressedSize);
+      output.put(input);
+      input.limit(origLimit);
     }
 
     @Override
-    public BytesInput decompress(BytesInput bytes, int uncompressedSize) {
+    public BytesInput decompress(BytesInput bytes, int decompressedSize) {
       return bytes;
     }
 
@@ -150,7 +154,7 @@ public class CodecFactory implements CompressionCodecFactory {
     }
 
     @Override
-    public BytesInput decompress(BytesInput bytes, int uncompressedSize) throws IOException {
+    public BytesInput decompress(BytesInput bytes, int decompressedSize) throws IOException {
       final BytesInput decompressed;
       if (decompressor != null) {
         decompressor.reset();
@@ -162,20 +166,27 @@ public class CodecFactory implements CompressionCodecFactory {
       // This change will load the decompressor stream into heap a little earlier, since the problem it solves
       // only happens in the ZSTD codec, so this modification is only made for ZSTD streams.
       if (codec instanceof ZstandardCodec) {
-        decompressed = BytesInput.copy(BytesInput.from(is, uncompressedSize));
+        decompressed = BytesInput.copy(BytesInput.from(is, decompressedSize));
         is.close();
       } else {
-        decompressed = BytesInput.from(is, uncompressedSize);
+        decompressed = BytesInput.from(is, decompressedSize);
       }
       return decompressed;
     }
 
     @Override
-    public void decompress(ByteBuffer input, int compressedSize, ByteBuffer output, int uncompressedSize)
+    public void decompress(ByteBuffer input, int compressedSize, ByteBuffer output, int decompressedSize)
         throws IOException {
+      Preconditions.checkArgument(
+          input.remaining() >= compressedSize, "Not enough bytes available in the input buffer");
+      int origLimit = input.limit();
+      int origPosition = input.position();
+      input.limit(origPosition + compressedSize);
       ByteBuffer decompressed =
-          decompress(BytesInput.from(input), uncompressedSize).toByteBuffer();
+          decompress(BytesInput.from(input), decompressedSize).toByteBuffer();
       output.put(decompressed);
+      input.limit(origLimit);
+      input.position(origPosition + compressedSize);
     }
 
     public void release() {
@@ -338,9 +349,9 @@ public class CodecFactory implements CompressionCodecFactory {
    */
   @Deprecated
   public abstract static class BytesDecompressor implements CompressionCodecFactory.BytesInputDecompressor {
-    public abstract BytesInput decompress(BytesInput bytes, int uncompressedSize) throws IOException;
+    public abstract BytesInput decompress(BytesInput bytes, int decompressedSize) throws IOException;
 
-    public abstract void decompress(ByteBuffer input, int compressedSize, ByteBuffer output, int uncompressedSize)
+    public abstract void decompress(ByteBuffer input, int compressedSize, ByteBuffer output, int decompressedSize)
         throws IOException;
 
     public abstract void release();
