@@ -31,6 +31,8 @@ import com.google.common.collect.ImmutableList;
 import java.io.File;
 import java.io.IOException;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -256,6 +258,10 @@ public class TestSpecificReadWrite {
     List<LogicalTypesTest> records = IntStream.range(0, 25)
         .mapToObj(i -> LogicalTypesTest.newBuilder()
             .setTimestamp(Instant.now())
+            .setLocalDateTime(LocalDateTimeTest.newBuilder()
+                .setDate(LocalDate.now())
+                .setTime(LocalTime.now())
+                .build())
             .build())
         .collect(Collectors.toList());
 
@@ -266,7 +272,7 @@ public class TestSpecificReadWrite {
     Path path = new Path(tmp.getPath());
 
     try (ParquetWriter<LogicalTypesTest> writer = AvroParquetWriter.<LogicalTypesTest>builder(path)
-        .withSchema(LogicalTypesTest.SCHEMA$)
+        .withSchema(LogicalTypesTest.getClassSchema())
         .withConf(new Configuration(false))
         .withCompressionCodec(CompressionCodecName.UNCOMPRESSED)
         .build()) {

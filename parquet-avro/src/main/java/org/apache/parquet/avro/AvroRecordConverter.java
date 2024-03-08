@@ -38,9 +38,11 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.apache.avro.AvroTypeException;
 import org.apache.avro.Conversion;
 import org.apache.avro.LogicalType;
@@ -172,6 +174,52 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
     }
   }
 
+  private static void addLogicalTypeConversion(SpecificData model, Schema schema, Set<Schema> seenSchemas) {
+    if (seenSchemas.contains(schema)) {
+      return;
+    }
+    seenSchemas.add(schema);
+
+    switch (schema.getType()) {
+      case RECORD:
+        final Class<?> clazz = model.getClass(schema);
+        if (clazz != null) {
+          try {
+            final Field conversionsField = clazz.getDeclaredField("conversions");
+            conversionsField.setAccessible(true);
+            final Conversion<?>[] conversions = (Conversion<?>[]) conversionsField.get(null);
+            for (Conversion<?> conversion : conversions) {
+              if (conversion != null) {
+                model.addLogicalTypeConversion(conversion);
+              }
+            }
+
+            for (Schema.Field field : schema.getFields()) {
+              addLogicalTypeConversion(model, field.schema(), seenSchemas);
+            }
+          } catch (NoSuchFieldException e) {
+            // Avro classes without logical types (denoted by the "conversions" field)
+          } catch (IllegalAccessException e) {
+            LOG.warn("Field `conversions` in class {} was inaccessible", schema.getName());
+          }
+        }
+        break;
+      case MAP:
+        addLogicalTypeConversion(model, schema.getValueType(), seenSchemas);
+        break;
+      case ARRAY:
+        addLogicalTypeConversion(model, schema.getElementType(), seenSchemas);
+        break;
+      case UNION:
+        for (Schema type : schema.getTypes()) {
+          addLogicalTypeConversion(model, type, seenSchemas);
+        }
+        break;
+      default:
+        break;
+    }
+  }
+
   /**
    * Returns the specific data model for a given SpecificRecord schema by reflecting the underlying
    * Avro class's `MODEL$` field, or Null if the class is not on the classpath or reflection fails.
@@ -215,31 +263,7 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
     final String avroVersion = getRuntimeAvroVersion();
     // Avro 1.7 and 1.8 don't include conversions in the MODEL$ field by default
     if (avroVersion != null && (avroVersion.startsWith("1.8.") || avroVersion.startsWith("1.7."))) {
-      final Field conversionsField;
-      try {
-        conversionsField = clazz.getDeclaredField("conversions");
-      } catch (NoSuchFieldException e) {
-        // Avro classes without logical types (denoted by the "conversions" field) can be returned as-is
-        return model;
-      }
-
-      final Conversion<?>[] conversions;
-      try {
-        conversionsField.setAccessible(true);
-        conversions = (Conversion<?>[]) conversionsField.get(null);
-      } catch (IllegalAccessException e) {
-        LOG.warn(String.format(
-            "Field `conversions` in class %s was inaccessible. Parquet will use default "
-                + "SpecificData model for reading and writing.",
-            clazz));
-        return null;
-      }
-
-      for (int i = 0; i < conversions.length; i++) {
-        if (conversions[i] != null) {
-          model.addLogicalTypeConversion(conversions[i]);
-        }
-      }
+      addLogicalTypeConversion(model, schema, new HashSet<>());
     }
 
     return model;

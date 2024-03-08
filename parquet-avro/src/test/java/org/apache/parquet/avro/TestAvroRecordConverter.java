@@ -18,18 +18,18 @@
  */
 package org.apache.parquet.avro;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
 
 import com.google.common.collect.Lists;
-import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.Collection;
 import org.apache.avro.Conversion;
-import org.apache.avro.Conversions;
+import org.apache.avro.LogicalTypes;
 import org.apache.avro.Schema;
-import org.apache.avro.data.TimeConversions;
+import org.apache.avro.SchemaBuilder;
 import org.apache.avro.specific.SpecificData;
 import org.junit.Before;
 import org.junit.Test;
@@ -54,14 +54,16 @@ public class TestAvroRecordConverter {
     SpecificData model = AvroRecordConverter.getModelForSchema(LogicalTypesTest.SCHEMA$);
 
     // Test that model is generated correctly
-    Conversion<?> conversion = model.getConversionByClass(Instant.class);
-    assertEquals(TimeConversions.TimestampMillisConversion.class, conversion.getClass());
+    Collection<Conversion<?>> conversions = model.getConversions();
+    assertEquals(conversions.size(), 3);
+    assertNotNull(model.getConversionByClass(Instant.class));
+    assertNotNull(model.getConversionByClass(LocalDate.class));
+    assertNotNull(model.getConversionByClass(LocalTime.class));
   }
 
   @Test
   public void testModelForSpecificRecordWithoutLogicalTypes() {
     SpecificData model = AvroRecordConverter.getModelForSchema(Car.SCHEMA$);
-
     assertTrue(model.getConversions().isEmpty());
   }
 
@@ -80,129 +82,74 @@ public class TestAvroRecordConverter {
 
   // Test logical type support for older Avro versions
   @Test
-  public void testGetModelAvro1_7() {
-    Mockito.when(AvroRecordConverter.getRuntimeAvroVersion()).thenReturn("1.7.7");
-
-    // Test that model is generated correctly
-    final SpecificData model = AvroRecordConverter.getModelForSchema(Avro17GeneratedClass.SCHEMA$);
-    Conversion<?> conversion = model.getConversionByClass(BigDecimal.class);
-    assertEquals(Conversions.DecimalConversion.class, conversion.getClass());
-  }
-
-  @Test
-  public void testGetModelAvro1_8() {
+  public void testModelForSpecificRecordWithLogicalTypesWithDeprecatedAvro() {
     Mockito.when(AvroRecordConverter.getRuntimeAvroVersion()).thenReturn("1.8.2");
 
     // Test that model is generated correctly
-    final SpecificData model = AvroRecordConverter.getModelForSchema(Avro18GeneratedClass.SCHEMA$);
-    Conversion<?> conversion = model.getConversionByClass(BigDecimal.class);
-    assertEquals(Conversions.DecimalConversion.class, conversion.getClass());
-  }
-
-  @Test
-  public void testGetModelAvro1_9() {
-    Mockito.when(AvroRecordConverter.getRuntimeAvroVersion()).thenReturn("1.9.2");
-
+    final SpecificData model = AvroRecordConverter.getModelForSchema(LogicalTypesTestDeprecated.SCHEMA$);
     // Test that model is generated correctly
-    final SpecificData model = AvroRecordConverter.getModelForSchema(Avro19GeneratedClass.SCHEMA$);
-    Conversion<?> conversion = model.getConversionByClass(BigDecimal.class);
-    assertEquals(Conversions.DecimalConversion.class, conversion.getClass());
+    Collection<Conversion<?>> conversions = model.getConversions();
+    assertEquals(conversions.size(), 3);
+    assertNotNull(model.getConversionByClass(Instant.class));
+    assertNotNull(model.getConversionByClass(LocalDate.class));
+    assertNotNull(model.getConversionByClass(LocalTime.class));
   }
 
-  @Test
-  public void testGetModelAvro1_10() {
-    Mockito.when(AvroRecordConverter.getRuntimeAvroVersion()).thenReturn("1.10.2");
-
-    // Test that model is generated correctly
-    final SpecificData model = AvroRecordConverter.getModelForSchema(Avro110GeneratedClass.SCHEMA$);
-    Conversion<?> conversion = model.getConversionByClass(BigDecimal.class);
-    assertEquals(Conversions.DecimalConversion.class, conversion.getClass());
-  }
-
-  // Test Avro record class stubs, generated using different versions of the Avro compiler
-  public abstract static class Avro110GeneratedClass extends org.apache.avro.specific.SpecificRecordBase
-      implements org.apache.avro.specific.SpecificRecord {
-    private static final long serialVersionUID = 5558880508010468207L;
-    public static final org.apache.avro.Schema SCHEMA$ = new org.apache.avro.Schema.Parser()
-        .parse(
-            "{\"type\":\"record\",\"name\":\"Avro110GeneratedClass\",\"namespace\":\"org.apache.parquet.avro.TestAvroRecordConverter\",\"doc\":\"\",\"fields\":[{\"name\":\"decimal\",\"type\":{\"type\":\"bytes\",\"logicalType\":\"decimal\",\"precision\":4,\"scale\":2}}]}");
-
+  // Pseudo generated code with bug from avro compiler < 1.8
+  @org.apache.avro.specific.AvroGenerated
+  public abstract static class LocalDateTimeTestDeprecated extends org.apache.avro.specific.SpecificRecordBase implements org.apache.avro.specific.SpecificRecord {
+    public static final org.apache.avro.Schema SCHEMA$ = SchemaBuilder.builder()
+        .record("LocalDateTimeTestDeprecated")
+        .namespace("org.apache.parquet.avro.TestAvroRecordConverter")
+        .fields()
+        .name("date").type(LogicalTypes.date().addToSchema(SchemaBuilder.builder().intType())).noDefault()
+        .name("time").type(LogicalTypes.timeMillis().addToSchema(SchemaBuilder.builder().intType())).noDefault()
+        .endRecord();
     public static org.apache.avro.Schema getClassSchema() {
       return SCHEMA$;
     }
 
     private static SpecificData MODEL$ = new SpecificData();
-
-    static {
-      MODEL$.addLogicalTypeConversion(new org.apache.avro.Conversions.DecimalConversion());
-    }
-  }
-
-  public abstract static class Avro19GeneratedClass extends org.apache.avro.specific.SpecificRecordBase
-      implements org.apache.avro.specific.SpecificRecord {
-    private static final long serialVersionUID = 5558880508010468207L;
-    public static final org.apache.avro.Schema SCHEMA$ = new org.apache.avro.Schema.Parser()
-        .parse(
-            "{\"type\":\"record\",\"name\":\"Avro19GeneratedClass\",\"namespace\":\"org.apache.parquet.avro.TestAvroRecordConverter\",\"doc\":\"\",\"fields\":[{\"name\":\"decimal\",\"type\":{\"type\":\"bytes\",\"logicalType\":\"decimal\",\"precision\":4,\"scale\":2}}]}");
-
-    public static org.apache.avro.Schema getClassSchema() {
-      return SCHEMA$;
-    }
-
-    private static SpecificData MODEL$ = new SpecificData();
-
-    static {
-      MODEL$.addLogicalTypeConversion(new org.apache.avro.Conversions.DecimalConversion());
-    }
-  }
-
-  public abstract static class Avro18GeneratedClass extends org.apache.avro.specific.SpecificRecordBase
-      implements org.apache.avro.specific.SpecificRecord {
-    private static final long serialVersionUID = 5558880508010468207L;
-    public static final org.apache.avro.Schema SCHEMA$ = new org.apache.avro.Schema.Parser()
-        .parse(
-            "{\"type\":\"record\",\"name\":\"Avro18GeneratedClass\",\"namespace\":\"org.apache.parquet.avro.TestAvroRecordConverter\",\"doc\":\"\",\"fields\":[{\"name\":\"decimal\",\"type\":{\"type\":\"bytes\",\"logicalType\":\"decimal\",\"precision\":4,\"scale\":2}}]}");
-
-    public static org.apache.avro.Schema getClassSchema() {
-      return SCHEMA$;
-    }
-
-    private static SpecificData MODEL$ = new SpecificData();
-
-    protected static final org.apache.avro.Conversions.DecimalConversion DECIMAL_CONVERSION =
-        new org.apache.avro.Conversions.DecimalConversion();
+    // this part is missing in the generated code
+    // static {
+    //   MODEL$.addLogicalTypeConversion(new org.apache.avro.data.TimeConversions.TimestampMillisConversion());
+    //   MODEL$.addLogicalTypeConversion(new org.apache.avro.data.TimeConversions.TimeMillisConversion());
+    // }
 
     private static final org.apache.avro.Conversion<?>[] conversions =
-        new org.apache.avro.Conversion<?>[] {DECIMAL_CONVERSION, null};
-
-    @Override
-    public org.apache.avro.Conversion<?> getConversion(int field) {
-      return conversions[field];
-    }
+        new org.apache.avro.Conversion<?>[] {
+            new org.apache.avro.data.TimeConversions.DateConversion(),
+            new org.apache.avro.data.TimeConversions.TimeMillisConversion(),
+            null
+        };
   }
 
-  public abstract static class Avro17GeneratedClass extends org.apache.avro.specific.SpecificRecordBase
-      implements org.apache.avro.specific.SpecificRecord {
-    private static final long serialVersionUID = 5558880508010468207L;
-    public static final org.apache.avro.Schema SCHEMA$ = new org.apache.avro.Schema.Parser()
-        .parse(
-            "{\"type\":\"record\",\"name\":\"Avro17GeneratedClass\",\"namespace\":\"org.apache.parquet.avro.TestAvroRecordConverter\",\"doc\":\"\",\"fields\":[{\"name\":\"decimal\",\"type\":{\"type\":\"bytes\",\"logicalType\":\"decimal\",\"precision\":4,\"scale\":2}}]}");
-
+  @org.apache.avro.specific.AvroGenerated
+  public abstract static class LogicalTypesTestDeprecated extends org.apache.avro.specific.SpecificRecordBase implements org.apache.avro.specific.SpecificRecord {
+    public static final org.apache.avro.Schema SCHEMA$ = SchemaBuilder.builder()
+        .record("LogicalTypesTestDeprecated")
+        .namespace("org.apache.parquet.avro.TestAvroRecordConverter")
+        .fields()
+        .name("timestamp").type(LogicalTypes.timestampMillis().addToSchema(SchemaBuilder.builder().longType())).noDefault()
+        .name("local_date_time").type(LocalDateTimeTestDeprecated.getClassSchema()).noDefault()
+        .endRecord();
     public static org.apache.avro.Schema getClassSchema() {
       return SCHEMA$;
     }
 
     private static SpecificData MODEL$ = new SpecificData();
-
-    protected static final org.apache.avro.Conversions.DecimalConversion DECIMAL_CONVERSION =
-        new org.apache.avro.Conversions.DecimalConversion();
+    // this part is missing in the generated code
+    // {
+    // MODEL$.addLogicalTypeConversion(new org.apache.avro.data.TimeConversions.DateConversion());
+    // MODEL$.addLogicalTypeConversion(new org.apache.avro.data.TimeConversions.TimestampMillisConversion());
+    // MODEL$.addLogicalTypeConversion(new org.apache.avro.data.TimeConversions.TimeMillisConversion());
+    // }
 
     private static final org.apache.avro.Conversion<?>[] conversions =
-        new org.apache.avro.Conversion<?>[] {DECIMAL_CONVERSION, null};
-
-    @Override
-    public org.apache.avro.Conversion<?> getConversion(int field) {
-      return conversions[field];
-    }
+        new org.apache.avro.Conversion<?>[] {
+            new org.apache.avro.data.TimeConversions.TimestampMillisConversion(),
+            null,
+            null
+        };
   }
 }
