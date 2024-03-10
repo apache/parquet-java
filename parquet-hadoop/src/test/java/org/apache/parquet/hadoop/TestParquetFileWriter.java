@@ -356,7 +356,7 @@ public class TestParquetFileWriter {
     final ParquetMetadata readFooter = ParquetFileReader.readFooter(readConfiguration, path);
     final BlockMetaData rowGroup = readFooter.getBlocks().get(0);
 
-    readConfiguration.setBoolean(ParquetInputFormat.EAGERLY_READ_FULL_ROW_GROUP, false);
+    readConfiguration.setInt(ParquetInputFormat.COLUMN_CHUNK_BUFFER_SIZE, 25);
 
     { // read first block of col #1
       try (ParquetFileReader r = new ParquetFileReader(
@@ -1197,7 +1197,9 @@ public class TestParquetFileWriter {
     PageReader pageReader = pages.getPageReader(schema.getColumnDescription(path));
     DataPage page = pageReader.readPage();
     assertEquals(values, page.getValueCount());
-    assertArrayEquals(bytes.toByteArray(), ((DataPageV1) page).getBytes().toByteArray());
+    byte[] expected = bytes.toByteArray();
+    byte[] actual = ((DataPageV1) page).getBytes().toByteArray();
+    assertArrayEquals(expected, actual);
   }
 
   @Test

@@ -159,7 +159,10 @@ public class TestParquetReader {
       long rangeEnd)
       throws IOException {
     Configuration conf = new Configuration();
-    conf.setBoolean(ParquetInputFormat.EAGERLY_READ_FULL_ROW_GROUP, materializeRowGroup);
+    if (!materializeRowGroup) {
+      // @Todo parameterize this value?
+      conf.setInt(ParquetInputFormat.COLUMN_CHUNK_BUFFER_SIZE, 25);
+    }
     return PhoneBookWriter.readUsers(
         ParquetReader.builder(new GroupReadSupport(), file)
             .withAllocator(allocator)

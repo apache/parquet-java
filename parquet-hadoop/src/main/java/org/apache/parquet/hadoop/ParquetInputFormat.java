@@ -147,7 +147,7 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
    */
   public static final String OFF_HEAP_DECRYPT_BUFFER_ENABLED = "parquet.decrypt.off-heap.buffer.enabled";
 
-  public static final String EAGERLY_READ_FULL_ROW_GROUP = "parquet.read.materializerowgroup";
+  public static final String COLUMN_CHUNK_BUFFER_SIZE = "parquet.read.column-chunk-buffer-size";
 
   /**
    * key to turn on or off task side metadata loading (default true)
