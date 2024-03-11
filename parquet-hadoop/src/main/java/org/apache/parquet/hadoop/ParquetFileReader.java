@@ -64,7 +64,6 @@ import org.apache.hadoop.fs.Path;
 import org.apache.parquet.HadoopReadOptions;
 import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.Preconditions;
-import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.column.ColumnDescriptor;
@@ -1178,8 +1177,7 @@ public class ParquetFileReader implements Closeable {
    */
   private boolean shouldUseVectoredIO(final List<ConsecutivePartList> allParts) {
     return options.useHadoopVectoredIO()
-        && !options.getAllocator().isDirect()
-        && f.readVectoredAvailable()
+        && f.readVectoredAvailable(options.getAllocator())
         && arePartsValidForVectoredIO(allParts);
   }
 
@@ -1231,9 +1229,8 @@ public class ParquetFileReader implements Closeable {
       totalSize += len;
     }
     LOG.info("Reading {} bytes of data with vectored IO in {} ranges", totalSize, ranges.size());
-    ByteBufferAllocator allocator = options.getAllocator();
     // Request a vectored read;
-    f.readVectored(ranges, allocator::allocate);
+    f.readVectored(ranges, options.getAllocator());
     int k = 0;
     for (ConsecutivePartList consecutivePart : allParts) {
       ParquetFileRange currRange = ranges.get(k++);

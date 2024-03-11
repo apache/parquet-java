@@ -32,6 +32,7 @@ import java.util.function.IntFunction;
 import java.util.stream.Collectors;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.PositionedReadable;
+import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.io.ParquetFileRange;
 import org.apache.parquet.util.DynMethods;
 import org.slf4j.Logger;
@@ -115,16 +116,20 @@ public final class VectorIOBridge {
   }
 
   /**
-   * Is the vectored IO API available?
+   * Is the vectored IO API available for the given stream
+   * and allocator in this Hadoop runtime?
+   *
    * @param stream input stream to query.
+   * @param allocator allocator to be used.
+   *
    * @return true if the stream declares the capability is available.
    */
-  public boolean readVectoredAvailable(final FSDataInputStream stream) {
-    return available() && hasCapability(stream, VECTOREDIO_CAPABILITY);
+  public boolean readVectoredAvailable(final FSDataInputStream stream, final ByteBufferAllocator allocator) {
+    return available() && !allocator.isDirect();
   }
 
   /**
-   * Is the bridge available.
+   * Is the bridge available?
    *
    * @return true if readVectored() is available.
    */
@@ -167,17 +172,17 @@ public final class VectorIOBridge {
    * </p>
    * @param stream stream from where the data has to be read.
    * @param ranges parquet file ranges.
-   * @param allocate allocate function to allocate memory to hold data.
+   * @param allocator buffer allocator.
    * @throws UnsupportedOperationException if the API is not available.
    * @throws EOFException if a range is past the end of the file.
    * @throws IOException other IO problem initiating the read operations.
    */
   public static void readVectoredRanges(
-      final FSDataInputStream stream, final List<ParquetFileRange> ranges, final IntFunction<ByteBuffer> allocate)
+      final FSDataInputStream stream, final List<ParquetFileRange> ranges, final ByteBufferAllocator allocator)
       throws IOException {
 
     final VectorIOBridge bridge = availableInstance();
-    if (!bridge.readVectoredAvailable(stream)) {
+    if (!bridge.readVectoredAvailable(stream, allocator)) {
       throw new UnsupportedOperationException("Vectored IO not available on stream " + stream);
     }
     // Sort the ranges by offset and then validate for overlaps.
@@ -189,7 +194,7 @@ public final class VectorIOBridge {
     // Setting the parquet range as a reference.
     List<FileRangeBridge.WrappedFileRange> fileRanges =
         ranges.stream().map(rangeBridge::toFileRange).collect(Collectors.toList());
-    bridge.readWrappedRanges(stream, fileRanges, allocate);
+    bridge.readWrappedRanges(stream, fileRanges, allocator::allocate);
 
     // copy back the completable futures from the scheduled
     // vector reads to the ParquetFileRange entries passed in.

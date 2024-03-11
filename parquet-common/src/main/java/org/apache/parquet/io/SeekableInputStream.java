@@ -24,7 +24,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.List;
-import java.util.function.IntFunction;
+import org.apache.parquet.bytes.ByteBufferAllocator;
 
 /**
  * {@code SeekableInputStream} is an interface with the methods needed by
@@ -110,19 +110,21 @@ public abstract class SeekableInputStream extends InputStream {
   /**
    * Read a set of file ranges in a vectored manner.
    *
+   * @param ranges the list of file ranges to read
+   * @param allocator the allocator to use for allocating ByteBuffers
    * @throws UnsupportedOperationException if not available in this class/runtime (default)
    */
-  public void readVectored(List<ParquetFileRange> ranges, IntFunction<ByteBuffer> allocate) throws IOException {
+  public void readVectored(List<ParquetFileRange> ranges, final ByteBufferAllocator allocator) throws IOException {
 
     throw new UnsupportedOperationException("Vectored IO is not supported for " + this);
   }
 
   /**
-   * Is the {@link #readVectored(List, IntFunction)} method available?
-   * True if the method is implemented in the implementation class and
-   * the Hadoop runtime supports vectored IO.
+   * Is the {@link #readVectored(List, ByteBufferAllocator)} method available?
+   * @param allocator the allocator to use for allocating ByteBuffers
+   * @return True if the operation is considered available for this allocator in the hadoop runtime.
    */
-  public boolean readVectoredAvailable() {
+  public boolean readVectoredAvailable(final ByteBufferAllocator allocator) {
     return false;
   }
 }

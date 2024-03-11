@@ -23,8 +23,8 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.List;
-import java.util.function.IntFunction;
 import org.apache.hadoop.fs.FSDataInputStream;
+import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.hadoop.util.vectorio.VectorIOBridge;
 import org.apache.parquet.io.DelegatingSeekableInputStream;
 import org.apache.parquet.io.ParquetFileRange;
@@ -32,11 +32,10 @@ import org.apache.parquet.io.ParquetFileRange;
 /**
  * SeekableInputStream implementation for FSDataInputStream that implements
  * ByteBufferReadable in Hadoop 2.
- * It implements {@link #readVectored(List, IntFunction)}) by
- * handing off to VectorIOBridge which uses reflection to offer the API if it is
- * found.
- * The return value of {@link #readVectoredAvailable()} reflects the availability of the
- * API.
+ * It implements {@link #readVectored(List, ByteBufferAllocator)}) by
+ * handing off to VectorIOBridge which uses reflection to offer the API if it is found.
+ * The return value of {@link #readVectoredAvailable(ByteBufferAllocator)}
+ * reflects the availability of the API.
  */
 class H2SeekableInputStream extends DelegatingSeekableInputStream {
 
@@ -92,13 +91,13 @@ class H2SeekableInputStream extends DelegatingSeekableInputStream {
   }
 
   @Override
-  public boolean readVectoredAvailable() {
-    return VectorIOBridge.instance().readVectoredAvailable(stream);
+  public boolean readVectoredAvailable(final ByteBufferAllocator allocator) {
+    return VectorIOBridge.instance().readVectoredAvailable(stream, allocator);
   }
 
   @Override
-  public void readVectored(List<ParquetFileRange> ranges, IntFunction<ByteBuffer> allocate) throws IOException {
-    VectorIOBridge.readVectoredRanges(stream, ranges, allocate);
+  public void readVectored(List<ParquetFileRange> ranges, ByteBufferAllocator allocator) throws IOException {
+    VectorIOBridge.readVectoredRanges(stream, ranges, allocator);
   }
 
   public static void readFully(Reader reader, ByteBuffer buf) throws IOException {
