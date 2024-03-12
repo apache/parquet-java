@@ -297,7 +297,7 @@ public class ParquetRewriter implements Closeable {
       LOG.info("Rewriting input file: {}, remaining files: {}", reader.getFile(), inputFiles.size());
       IndexCache indexCache = IndexCache.create(reader, descriptorsMap.keySet(), indexCacheStrategy, true);
       if (columnWritersR.isEmpty()) processBlocksFromReader(indexCache);
-      else processBlocksWithJoin(indexCache);
+      else processBlocksFromReaderWithStitching(indexCache);
       indexCache.clean();
       LOG.info("Finish rewriting input file: {}", reader.getFile());
     }
@@ -933,7 +933,7 @@ public class ParquetRewriter implements Closeable {
     }
   }
 
-  private void processBlocksWithJoin(IndexCache indexCache) throws IOException {
+  private void processBlocksFromReaderWithStitching(IndexCache indexCache) throws IOException {
     // TODO add the test for empty files joins, it should merge schemas
     LOG.info("Rewriting input fileLeft: {}, remaining filesLeft: {}", reader.getFile(), inputFiles.size());
     int rowGroupIdx = 0;
