@@ -38,6 +38,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.parquet.DirectWriterTest;
 import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.schema.MessageTypeParser;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
@@ -603,7 +604,7 @@ public class TestArrayCompatibility extends DirectWriterTest {
   public void testAvroCompatOptionalGroupInListWithSchema() throws Exception {
     Path test = writeDirect(
         "message AvroCompatOptionalGroupInListWithSchema {" + "  optional group locations (LIST) {"
-            + "    repeated group array {"
+            + "    repeated group my_list {"
             + "      optional group element {"
             + "        required double latitude;"
             + "        required double longitude;"
@@ -616,7 +617,7 @@ public class TestArrayCompatibility extends DirectWriterTest {
           rc.startField("locations", 0);
 
           rc.startGroup();
-          rc.startField("array", 0); // start writing array contents
+          rc.startField("my_list", 0); // start writing array contents
 
           // write a non-null element
           rc.startGroup(); // array level
@@ -1101,6 +1102,68 @@ public class TestArrayCompatibility extends DirectWriterTest {
             instance(structWithDoubleElementField, "element", 33.0),
             instance(structWithDoubleElementField, "element", 34.0)));
     assertReaderContains(newBehaviorReader(test, newDoubleSchema), newDoubleSchema, newDoubleRecord);
+  }
+
+  @Test
+  public void testIsElementTypeRequiredRepeatedRecord() throws Exception {
+    // Test `_tuple` style naming
+    MessageType parquetSchema = MessageTypeParser.parseMessageType("message SchemaWithList {\n"
+        + "  required group list_field (LIST) {\n"
+        + "    repeated group list_field_tuple (LIST) {\n"
+        + "      repeated int32 int_field;\n"
+        + "    }\n"
+        + "  }\n"
+        + "}");
+    Schema avroSchema = new AvroSchemaConverter().convert(parquetSchema);
+
+    Assert.assertTrue(AvroRecordConverter.isElementType(
+        parquetSchema.getType("list_field").asGroupType().getType("list_field_tuple"),
+        avroSchema.getFields().get(0).schema()));
+
+    // Test `array` style naming
+    parquetSchema = MessageTypeParser.parseMessageType("message SchemaWithList {\n"
+        + "  required group list_field (LIST) {\n"
+        + "    repeated group array {\n"
+        + "      required int32 a;\n"
+        + "    }\n"
+        + "  }\n"
+        + "}");
+    avroSchema = new AvroSchemaConverter().convert(parquetSchema);
+
+    Assert.assertTrue(AvroRecordConverter.isElementType(
+        parquetSchema.getType("list_field"),
+        avroSchema.getFields().get(0).schema()));
+  }
+
+  @Test
+  public void testIsElementTypeOptionalRepeatedRecord() throws Exception {
+    // Test `_tuple` style naming
+    MessageType parquetSchema = MessageTypeParser.parseMessageType("message SchemaWithList {\n"
+        + "  optional group list_field (LIST) {\n"
+        + "    repeated group list_field_tuple (LIST) {\n"
+        + "      repeated int32 int_field;\n"
+        + "    }\n"
+        + "  }\n"
+        + "}");
+    Schema avroSchema = new AvroSchemaConverter().convert(parquetSchema);
+
+    Assert.assertTrue(AvroRecordConverter.isElementType(
+        parquetSchema.getType("list_field").asGroupType().getType("list_field_tuple"),
+        avroSchema.getFields().get(0).schema()));
+
+    // Test `array` style naming
+    parquetSchema = MessageTypeParser.parseMessageType("message SchemaWithList {\n"
+        + "  optional group list_field (LIST) {\n"
+        + "    repeated group array {\n"
+        + "      required int32 a;\n"
+        + "    }\n"
+        + "  }\n"
+        + "}");
+    avroSchema = new AvroSchemaConverter().convert(parquetSchema);
+
+    Assert.assertTrue(AvroRecordConverter.isElementType(
+        parquetSchema.getType("list_field"),
+        avroSchema.getFields().get(0).schema()));
   }
 
   public <T extends IndexedRecord> AvroParquetReader<T> oldBehaviorReader(Path path) throws IOException {
