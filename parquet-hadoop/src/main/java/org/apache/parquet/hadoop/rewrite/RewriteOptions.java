@@ -18,7 +18,10 @@
  */
 package org.apache.parquet.hadoop.rewrite;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -100,46 +103,6 @@ public class RewriteOptions {
   }
 
   /**
-   * Gets the input {@link Path}s for the rewrite if they exist for all input files,
-   * otherwise throws a {@link RuntimeException}.
-   *
-   * @return a {@link List} of the associated input {@link Path}s
-   */
-  public List<Path> getInputFiles() {
-    return inputFiles.stream()
-        .map(f -> {
-          if (f instanceof HadoopOutputFile) {
-            HadoopOutputFile hadoopOutputFile = (HadoopOutputFile) f;
-            return new Path(hadoopOutputFile.getPath());
-          } else {
-            throw new RuntimeException("The input files do not all have an associated Hadoop Path.");
-          }
-        })
-        .collect(Collectors.toList());
-  }
-
-  /** TODO fix documentation after addition of inputFilesR
-   * Gets the right input {@link Path}s for the rewrite if they exist for all input files,
-   * otherwise throws a {@link RuntimeException}.
-   *
-   * @return a {@link List} of the associated right input {@link Path}s
-   */
-  public List<List<Path>> getInputFilesR() {
-    return inputFilesR.stream()
-        .map(x -> x.stream()
-          .map(y -> {
-            if (y instanceof HadoopOutputFile) {
-              HadoopOutputFile hadoopOutputFile = (HadoopOutputFile) y;
-              return new Path(hadoopOutputFile.getPath());
-            } else {
-              throw new RuntimeException("The input files do not all have an associated Hadoop Path.");
-            }
-          }).collect(Collectors.toList())
-        )
-        .collect(Collectors.toList());
-  }
-
-  /**
    * Gets the {@link InputFile}s for the rewrite.
    *
    * @return a {@link List} of the associated {@link InputFile}s
@@ -147,7 +110,6 @@ public class RewriteOptions {
   public List<InputFile> getParquetInputFiles() {
     return inputFiles;
   }
-
 
   /** TODO fix documentation after addition of inputFilesR
    * Gets the right {@link InputFile}s for the rewrite.
@@ -372,11 +334,9 @@ public class RewriteOptions {
      * @return self
      */
     public Builder addInputPathsR(List<Path> paths) {
-      this.inputFilesR.add(
-          paths.stream()
-              .map(x -> HadoopInputFile.fromPathUnchecked(x, ConfigurationUtil.createHadoopConfiguration(conf)))
-              .collect(Collectors.toList())
-      );
+      this.inputFilesR.add(paths.stream()
+          .map(x -> HadoopInputFile.fromPathUnchecked(x, ConfigurationUtil.createHadoopConfiguration(conf)))
+          .collect(Collectors.toList()));
       return this;
     }
 
@@ -424,15 +384,20 @@ public class RewriteOptions {
     public RewriteOptions build() {
       Preconditions.checkArgument(inputFiles != null && !inputFiles.isEmpty(), "Input file is required");
       Preconditions.checkArgument(outputFile != null, "Output file is required");
-      Preconditions.checkArgument(inputFilesR.stream().allMatch(x -> x != null && !x.isEmpty()),
+      Preconditions.checkArgument(
+          inputFilesR.stream().allMatch(x -> x != null && !x.isEmpty()),
           "Right side Input files can't be empty, if you don't need a join functionality then use other builders");
-      Preconditions.checkArgument(inputFilesR.isEmpty() || pruneColumns == null,
+      Preconditions.checkArgument(
+          inputFilesR.isEmpty() || pruneColumns == null,
           "Right side Input files join functionality does not yet support column pruning");
-      Preconditions.checkArgument(inputFilesR.isEmpty() || maskColumns == null,
+      Preconditions.checkArgument(
+          inputFilesR.isEmpty() || maskColumns == null,
           "Right side Input files join functionality does not yet support column masking");
-      Preconditions.checkArgument(inputFilesR.isEmpty() || encryptColumns == null,
+      Preconditions.checkArgument(
+          inputFilesR.isEmpty() || encryptColumns == null,
           "Right side Input files join functionality does not yet support column encryption");
-      Preconditions.checkArgument(inputFilesR.isEmpty() || newCodecName == null,
+      Preconditions.checkArgument(
+          inputFilesR.isEmpty() || newCodecName == null,
           "Right side Input files join functionality does not yet support codec changing");
 
       if (pruneColumns != null) {

@@ -26,7 +26,16 @@ import static org.apache.parquet.hadoop.ParquetWriter.MAX_PADDING_SIZE_DEFAULT;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Queue;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.hadoop.conf.Configuration;
@@ -115,8 +124,7 @@ public class ParquetRewriter implements Closeable {
     ParquetConfiguration conf = options.getParquetConfiguration();
     OutputFile out = options.getParquetOutputFile();
     inputFiles.addAll(getFileReaders(options.getParquetInputFiles(), conf));
-    List<Queue<TransParquetFileReader>> inputFilesR = options.getParquetInputFilesR()
-        .stream()
+    List<Queue<TransParquetFileReader>> inputFilesR = options.getParquetInputFilesR().stream()
         .map(x -> getFileReaders(x, conf))
         .collect(Collectors.toList());
     ensureSameSchema(inputFiles);
@@ -130,15 +138,13 @@ public class ParquetRewriter implements Closeable {
             .collect(Collectors.toSet())
             .stream()
             .reduce((a, b) -> a + "\n" + b)
-            .orElse("")
-    );
+            .orElse(""));
     Stream.concat(inputFiles.stream(), inputFilesR.stream().flatMap(Collection::stream))
         .forEach(x -> extraMetaData.putAll(x.getFileMetaData().getKeyValueMetaData()));
 
     // TODO check that schema on the left and on the right is not identical
     MessageType schemaL = inputFiles.peek().getFooter().getFileMetaData().getSchema();
-    List<MessageType> schemaR = inputFilesR
-        .stream()
+    List<MessageType> schemaR = inputFilesR.stream()
         .map(x -> x.peek().getFooter().getFileMetaData().getSchema())
         .collect(Collectors.toList());
     // TODO check that there is no overlap of fields on the right
@@ -147,9 +153,14 @@ public class ParquetRewriter implements Closeable {
     Map<String, Type> fieldNamesR = new LinkedHashMap<>();
     schemaR.stream().flatMap(x -> x.getFields().stream()).forEach(x -> fieldNamesR.put(x.getName(), x));
     List<Type> fields = Stream.concat(
-        fieldNamesL.values().stream().map(x -> fieldNamesR.getOrDefault(x.getName(), x)), // take a field on the right if we can
-        fieldNamesR.values().stream().filter(x -> !fieldNamesL.containsKey(x.getName())) // takes fields on the right if it was not present on the left
-    ).collect(Collectors.toList());
+            fieldNamesL.values().stream()
+                .map(x -> fieldNamesR.getOrDefault(
+                    x.getName(), x)), // take a field on the right if we can
+            fieldNamesR.values().stream()
+                .filter(x -> !fieldNamesL.containsKey(
+                    x.getName())) // takes fields on the right if it was not present on the left
+            )
+        .collect(Collectors.toList());
     schema = new MessageType(schemaL.getName(), fields);
 
     newCodecName = options.getNewCodecName();
@@ -173,16 +184,19 @@ public class ParquetRewriter implements Closeable {
           schema.getColumns().stream().collect(Collectors.toMap(x -> ColumnPath.get(x.getPath()), x -> x));
     } else {
       this.descriptorsMap = schemaL.getColumns().stream()
-        .filter(x -> x.getPath().length == 0 || !fieldNamesR.containsKey(x.getPath()[0]))
+          .filter(x -> x.getPath().length == 0 || !fieldNamesR.containsKey(x.getPath()[0]))
           .collect(Collectors.toMap(x -> ColumnPath.get(x.getPath()), x -> x));
     }
 
-    long rowCountL = inputFiles.stream().mapToLong(ParquetFileReader::getRecordCount).sum();
+    long rowCountL =
+        inputFiles.stream().mapToLong(ParquetFileReader::getRecordCount).sum();
     inputFilesR.stream()
-        .map(x -> x.stream().mapToLong(ParquetFileReader::getRecordCount).sum())
+        .map(x ->
+            x.stream().mapToLong(ParquetFileReader::getRecordCount).sum())
         .forEach(rowCountR -> {
           if (rowCountL != rowCountR) {
-            throw new IllegalArgumentException("The number of records on the left and on the right don't match!");
+            throw new IllegalArgumentException("The number of records on the left(" + rowCountL
+                + ") and on the right(" + rowCountR + ") don't match!");
           }
         });
 
@@ -213,7 +227,7 @@ public class ParquetRewriter implements Closeable {
         options.getFileEncryptionProperties());
     writer.start();
 
-    for (Queue<TransParquetFileReader> inFiles: inputFilesR) {
+    for (Queue<TransParquetFileReader> inFiles : inputFilesR) {
       this.columnWritersR.add(new RightColumnWriter(inFiles, this));
     }
   }
@@ -248,7 +262,8 @@ public class ParquetRewriter implements Closeable {
   }
 
   private Queue<TransParquetFileReader> getFileReaders(List<InputFile> inputFiles, ParquetConfiguration conf) {
-    // Preconditions.checkArgument(inputFiles != null && !inputFiles.isEmpty(), "No input files"); // TODO: remove, this is already checked in RewriteOptions
+    // Preconditions.checkArgument(inputFiles != null && !inputFiles.isEmpty(), "No input files"); // TODO: remove,
+    // this is already checked in RewriteOptions
     LinkedList<TransParquetFileReader> inputFileReaders = new LinkedList<>();
     for (InputFile inputFile : inputFiles) {
       try {
@@ -277,8 +292,7 @@ public class ParquetRewriter implements Closeable {
               schema,
               newSchema,
               file);
-          throw new InvalidSchemaException(
-              "Input files have different schemas, current file: " + file);
+          throw new InvalidSchemaException("Input files have different schemas, current file: " + file);
         }
       }
     }
@@ -938,7 +952,7 @@ public class ParquetRewriter implements Closeable {
     LOG.info("Rewriting input fileLeft: {}, remaining filesLeft: {}", reader.getFile(), inputFiles.size());
     int rowGroupIdx = 0;
     List<BlockMetaData> blocks = reader.getFooter().getBlocks();
-    for (BlockMetaData blockMetaData: blocks) {
+    for (BlockMetaData blockMetaData : blocks) {
       writer.startBlock(blockMetaData.getRowCount());
 
       // Writing the left side
@@ -954,12 +968,13 @@ public class ParquetRewriter implements Closeable {
           BloomFilter bloomFilter = indexCache.getBloomFilter(chunk);
           ColumnIndex columnIndex = indexCache.getColumnIndex(chunk);
           OffsetIndex offsetIndex = indexCache.getOffsetIndex(chunk);
-          writer.appendColumnChunk(descriptorL, reader.getStream(), chunk, bloomFilter, columnIndex, offsetIndex);
+          writer.appendColumnChunk(
+              descriptorL, reader.getStream(), chunk, bloomFilter, columnIndex, offsetIndex);
         }
       }
 
       // Writing the right side
-      for (RightColumnWriter writer: columnWritersR) {
+      for (RightColumnWriter writer : columnWritersR) {
         writer.writeRows(rowGroupIdx, blockMetaData.getRowCount());
       }
 
@@ -982,19 +997,21 @@ public class ParquetRewriter implements Closeable {
     private int rowGroupIdxOut = 0;
     private int writtenFromBlock = 0;
 
-    public RightColumnWriter(Queue<TransParquetFileReader> inputFiles, ParquetRewriter parquetRewriter) throws IOException {
+    public RightColumnWriter(Queue<TransParquetFileReader> inputFiles, ParquetRewriter parquetRewriter)
+        throws IOException {
       this.inputFiles = inputFiles;
       this.parquetRewriter = parquetRewriter;
       this.writer = parquetRewriter.writer;
       this.schema = inputFiles.peek().getFooter().getFileMetaData().getSchema();
-      this.descriptorsMap =
-          this.schema.getColumns().stream().collect(Collectors.toMap(x -> ColumnPath.get(x.getPath()), x -> x));
+      this.descriptorsMap = this.schema.getColumns().stream()
+          .collect(Collectors.toMap(x -> ColumnPath.get(x.getPath()), x -> x));
       initReaders();
       initWriters();
     }
 
     public void writeRows(int rowGroupIdx, long rowsToWrite) throws IOException {
-      //       LOG.info("Rewriting input fileRight: {}, remaining fileRight: {}", readerR.getFile(), inputFilesR.size());
+      //       LOG.info("Rewriting input fileRight: {}, remaining fileRight: {}", readerR.getFile(),
+      // inputFilesR.size());
       if (rowGroupIdxIn != rowGroupIdx) {
         rowGroupIdxIn = rowGroupIdx;
         flushWriters();
@@ -1008,7 +1025,8 @@ public class ParquetRewriter implements Closeable {
         long writeFromBlock = Math.min(rowsToWrite, leftInBlock);
         for (ColumnChunkMetaData chunk : chunks) {
           if (chunk.isEncrypted()) { // TODO check this during construction?
-            throw new IOException("Column " + chunk.getPath().toDotString() + " is encrypted"); // TODO add that detail to docs
+            throw new IOException("Column " + chunk.getPath().toDotString()
+                + " is encrypted"); // TODO add that detail to docs
           }
           ColumnDescriptor descriptor = descriptorsMap.get(chunk.getPath());
           copyValues(descriptor, writeFromBlock);
@@ -1051,18 +1069,20 @@ public class ParquetRewriter implements Closeable {
           ColumnChunkMetaData chunk = blocks.get(rowGroupIdxOut).getColumns().stream()
               .filter(x -> x.getPath() == columnPath)
               .findFirst()
-              .orElseThrow(() -> new IllegalStateException("Could not find column [" + columnPath.toDotString() + "]."));
+              .orElseThrow(() -> new IllegalStateException(
+                  "Could not find column [" + columnPath.toDotString() + "]."));
           int bloomFilterLength = chunk.getBloomFilterLength();
-          ParquetProperties.WriterVersion writerVersion = chunk.getEncodingStats().usesV2Pages()
-              ? ParquetProperties.WriterVersion.PARQUET_2_0
-              : ParquetProperties.WriterVersion.PARQUET_1_0;
-          ParquetProperties props =
-              ParquetProperties.builder()
-                  .withWriterVersion(writerVersion)
-                  .withBloomFilterEnabled(bloomFilterLength > 0)
-                  .build();
+          ParquetProperties.WriterVersion writerVersion =
+              chunk.getEncodingStats().usesV2Pages()
+                  ? ParquetProperties.WriterVersion.PARQUET_2_0
+                  : ParquetProperties.WriterVersion.PARQUET_1_0;
+          ParquetProperties props = ParquetProperties.builder()
+              .withWriterVersion(writerVersion)
+              .withBloomFilterEnabled(bloomFilterLength > 0)
+              .build();
           CodecFactory codecFactory = new CodecFactory(new Configuration(), props.getPageSizeThreshold());
-          CompressionCodecFactory.BytesInputCompressor compressor = codecFactory.getCompressor(chunk.getCodec());
+          CompressionCodecFactory.BytesInputCompressor compressor =
+              codecFactory.getCompressor(chunk.getCodec());
 
           MessageType columnSchema = parquetRewriter.newSchema(schema, descriptor);
           ColumnChunkPageWriteStore cPageStore = new ColumnChunkPageWriteStore(
@@ -1087,8 +1107,8 @@ public class ParquetRewriter implements Closeable {
         TransParquetFileReader reader = inputFiles.peek();
         PageReadStore pageReadStore = reader.readRowGroup(rowGroupIdxOut);
         String createdBy = reader.getFooter().getFileMetaData().getCreatedBy();
-        ColumnReadStoreImpl crStore =
-            new ColumnReadStoreImpl(pageReadStore, new ParquetRewriter.DummyGroupConverter(), schema, createdBy);
+        ColumnReadStoreImpl crStore = new ColumnReadStoreImpl(
+            pageReadStore, new ParquetRewriter.DummyGroupConverter(), schema, createdBy);
         for (ColumnDescriptor descriptor : descriptorsMap.values()) {
           ColumnReader cReader = crStore.getColumnReader(descriptor);
           colReaders.put(descriptor, cReader);
@@ -1096,9 +1116,7 @@ public class ParquetRewriter implements Closeable {
       }
     }
 
-    private void copyValues(
-        ColumnDescriptor descriptor,
-        long rowsToWrite) {
+    private void copyValues(ColumnDescriptor descriptor, long rowsToWrite) {
       ColumnWriteStore cStore = cStores.get(descriptor);
       ColumnWriter cWriter = cWriters.get(descriptor);
       int dMax = descriptor.getMaxDefinitionLevel();
@@ -1133,7 +1151,5 @@ public class ParquetRewriter implements Closeable {
         cStore.endRecord();
       }
     }
-
   }
-
 }
