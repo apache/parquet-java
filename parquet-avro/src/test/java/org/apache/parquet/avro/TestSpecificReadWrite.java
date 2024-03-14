@@ -263,7 +263,10 @@ public class TestSpecificReadWrite {
     try (ParquetReader<Car> reader = new AvroParquetReader<>(conf, path)) {
       for (Car car = reader.read(); car != null; car = reader.read()) {
         assertNotNull(car.getServiceHistory());
-        car.getServiceHistory().forEach(service -> assertNotNull(service.getMechanic()));
+        car.getServiceHistory().forEach(service -> {
+          assertNotNull(service.getMechanic());
+          assertEquals(0L, service.getDate());
+        });
       }
     }
   }
