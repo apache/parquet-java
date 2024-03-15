@@ -37,6 +37,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.DirectWriterTest;
 import org.apache.parquet.hadoop.ParquetFileReader;
+import org.apache.parquet.io.InvalidRecordException;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
 import org.junit.Assert;
@@ -1105,7 +1106,7 @@ public class TestArrayCompatibility extends DirectWriterTest {
   }
 
   @Test
-  public void testIsElementTypeRequiredRepeatedRecord() throws Exception {
+  public void testIsElementTypeRequiredRepeatedRecord() {
     // Test `_tuple` style naming
     MessageType parquetSchema = MessageTypeParser.parseMessageType("message SchemaWithList {\n"
         + "  required group list_field (LIST) {\n"
@@ -1136,7 +1137,7 @@ public class TestArrayCompatibility extends DirectWriterTest {
   }
 
   @Test
-  public void testIsElementTypeOptionalRepeatedRecord() throws Exception {
+  public void testIsElementTypeOptionalRepeatedRecord() {
     // Test `_tuple` style naming
     MessageType parquetSchema = MessageTypeParser.parseMessageType("message SchemaWithList {\n"
         + "  optional group list_field (LIST) {\n"
@@ -1164,6 +1165,68 @@ public class TestArrayCompatibility extends DirectWriterTest {
     Assert.assertTrue(AvroRecordConverter.isElementType(
         parquetSchema.getType("list_field"),
         avroSchema.getFields().get(0).schema()));
+  }
+
+  @Test
+  public void testIsElementTypeFailsInvalidSchema() throws Exception {
+    Path test = writeDirect(
+        "message MessageWithInvalidArraySchema {"
+            + "  optional group locations (LIST) {"
+            + "    repeated group array {"
+            + "      optional group element {"
+            + "        required double latitude;"
+            + "        required double longitude;"
+            + "      }"
+            + "    }"
+            + "  }"
+            + "}",
+        rc -> {
+          rc.startMessage();
+          rc.startField("locations", 0);
+
+          rc.startGroup();
+          rc.startField("array", 0); // start writing array contents
+
+          // write a non-null element
+          rc.startGroup(); // array level
+          rc.startField("element", 0);
+          rc.startGroup();
+          rc.startField("latitude", 0);
+          rc.addDouble(0.0);
+          rc.endField("latitude", 0);
+          rc.startField("longitude", 1);
+          rc.addDouble(180.0);
+          rc.endField("longitude", 1);
+          rc.endGroup();
+          rc.endField("element", 0);
+          rc.endGroup(); // array level
+
+          rc.endField("array", 0); // finished writing array contents
+          rc.endGroup();
+
+          rc.endField("locations", 0);
+          rc.endMessage();
+        });
+
+    Schema location = record(
+        "element",
+        field("latitude", primitive(Schema.Type.DOUBLE)),
+        field("longitude", primitive(Schema.Type.DOUBLE)));
+
+    Schema newSchema =
+        record("MessageWithInvalidArraySchema", optionalField("locations", array(optional(location))));
+    GenericRecord newRecord = instance(
+        newSchema,
+        "locations",
+        Arrays.asList(
+            instance(location, "latitude", 0.0, "longitude", 180.0),
+            instance(location, "latitude", 0.0, "longitude", 0.0)));
+
+    Configuration oldConfWithSchema = new Configuration();
+    AvroReadSupport.setAvroReadSchema(oldConfWithSchema, newSchema);
+
+    AvroParquetReader<GenericRecord> reader = new AvroParquetReader<>(oldConfWithSchema, test);
+    Assert.assertThrows(InvalidRecordException.class, reader::read);
   }
 
   public <T extends IndexedRecord> AvroParquetReader<T> oldBehaviorReader(Path path) throws IOException {
