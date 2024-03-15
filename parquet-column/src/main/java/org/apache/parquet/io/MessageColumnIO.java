@@ -268,7 +268,11 @@ public class MessageColumnIO extends GroupColumnIO {
         for (int i = 0; i < currentLevel; ++i) {
           indent.append("  ");
         }
-        LOG.debug(indent.toString() + message, parameters);
+        if (parameters.length == 0) {
+          LOG.debug(indent.toString() + message);
+        } else {
+          LOG.debug(indent.toString() + message, parameters);
+        }
       }
     }
 
