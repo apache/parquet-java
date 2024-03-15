@@ -310,14 +310,14 @@ public class ParquetRewriter implements Closeable {
       originalCreatedBy = meta.getFileMetaData().getCreatedBy();
       LOG.info("Rewriting input file: {}, remaining files: {}", reader.getFile(), inputFiles.size());
       IndexCache indexCache = IndexCache.create(reader, descriptorsMap.keySet(), indexCacheStrategy, true);
-      if (columnWritersR.isEmpty()) processBlocksFromReader(indexCache);
-      else processBlocksFromReaderWithStitching(indexCache);
+      processBlocksFromReader(indexCache);
       indexCache.clean();
       LOG.info("Finish rewriting input file: {}", reader.getFile());
     }
   }
 
   private void processBlocksFromReader(IndexCache indexCache) throws IOException {
+    int rowGroupIdx = 0;
     for (int blockId = 0; blockId < meta.getBlocks().size(); blockId++) {
       BlockMetaData blockMetaData = meta.getBlocks().get(blockId);
       writer.startBlock(blockMetaData.getRowCount());
@@ -389,8 +389,14 @@ public class ParquetRewriter implements Closeable {
         columnId++;
       }
 
+      // Writing extra columns
+      for (RightColumnWriter writer : columnWritersR) {
+        writer.writeRows(rowGroupIdx, blockMetaData.getRowCount());
+      }
+
       writer.endBlock();
       numBlocksRewritten++;
+      rowGroupIdx++;
     }
   }
 
@@ -944,42 +950,6 @@ public class ParquetRewriter implements Closeable {
 
     public byte[] getDictPageAAD() {
       return this.dictPageAAD;
-    }
-  }
-
-  private void processBlocksFromReaderWithStitching(IndexCache indexCache) throws IOException {
-    // TODO add the test for empty files joins, it should merge schemas
-    LOG.info("Rewriting input fileLeft: {}, remaining filesLeft: {}", reader.getFile(), inputFiles.size());
-    int rowGroupIdx = 0;
-    List<BlockMetaData> blocks = reader.getFooter().getBlocks();
-    for (BlockMetaData blockMetaData : blocks) {
-      writer.startBlock(blockMetaData.getRowCount());
-
-      // Writing the left side
-      indexCache.setBlockMetadata(blockMetaData);
-      List<ColumnChunkMetaData> chunksL = blockMetaData.getColumns();
-      for (ColumnChunkMetaData chunk : chunksL) {
-        if (chunk.isEncrypted()) { // TODO add that detail to docs
-          throw new IOException("Column " + chunk.getPath().toDotString() + " is encrypted");
-        }
-        ColumnDescriptor descriptorL = descriptorsMap.get(chunk.getPath());
-        if (descriptorL != null) { // descriptorL might be NULL if a column is from the right side of a join
-          reader.setStreamPosition(chunk.getStartingPos());
-          BloomFilter bloomFilter = indexCache.getBloomFilter(chunk);
-          ColumnIndex columnIndex = indexCache.getColumnIndex(chunk);
-          OffsetIndex offsetIndex = indexCache.getOffsetIndex(chunk);
-          writer.appendColumnChunk(
-              descriptorL, reader.getStream(), chunk, bloomFilter, columnIndex, offsetIndex);
-        }
-      }
-
-      // Writing the right side
-      for (RightColumnWriter writer : columnWritersR) {
-        writer.writeRows(rowGroupIdx, blockMetaData.getRowCount());
-      }
-
-      writer.endBlock();
-      rowGroupIdx++;
     }
   }
 
