@@ -21,7 +21,6 @@ package org.apache.parquet.hadoop;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -30,6 +29,7 @@ import java.util.PrimitiveIterator;
 import java.util.Queue;
 import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.bytes.ByteBufferAllocator;
+import org.apache.parquet.bytes.ByteBufferReleaser;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.page.DataPage;
@@ -79,7 +79,7 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
     private final BlockCipher.Decryptor blockDecryptor;
     private final byte[] dataPageAAD;
     private final byte[] dictionaryPageAAD;
-    private final List<ByteBuffer> toRelease = new ArrayList<>();
+    private final ByteBufferReleaser releaser;
 
     ColumnChunkPageReader(
         BytesInputDecompressor decompressor,
@@ -103,6 +103,7 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
       this.offsetIndex = offsetIndex;
       this.rowCount = rowCount;
       this.options = options;
+      this.releaser = new ByteBufferReleaser(options.getAllocator());
       this.blockDecryptor = blockDecryptor;
       if (null != blockDecryptor) {
         dataPageAAD =
@@ -148,7 +149,7 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
             BytesInput decompressed;
 
             if (options.getAllocator().isDirect() && options.useOffHeapDecryptBuffer()) {
-              ByteBuffer byteBuffer = bytes.toByteBuffer();
+              ByteBuffer byteBuffer = bytes.toByteBuffer(releaser);
               if (!byteBuffer.isDirect()) {
                 throw new ParquetDecodingException("Expected a direct buffer");
               }
@@ -159,7 +160,7 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
 
               ByteBuffer decompressedBuffer =
                   options.getAllocator().allocate(dataPageV1.getUncompressedSize());
-              toRelease.add(decompressedBuffer);
+              releaser.releaseLater(decompressedBuffer);
               long start = System.nanoTime();
               decompressor.decompress(
                   byteBuffer,
@@ -167,12 +168,7 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
                   decompressedBuffer,
                   dataPageV1.getUncompressedSize());
               setDecompressMetrics(bytes, start);
-
-              // HACKY: sometimes we need to do `flip` because the position of output bytebuffer is
-              // not reset.
-              if (decompressedBuffer.position() != 0) {
-                decompressedBuffer.flip();
-              }
+              decompressedBuffer.flip();
               decompressed = BytesInput.from(decompressedBuffer);
             } else { // use on-heap buffer
               if (null != blockDecryptor) {
@@ -224,35 +220,27 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
           }
           BytesInput pageBytes = dataPageV2.getData();
           try {
-            BytesInput decompressed;
-            long compressedSize;
-
             if (options.getAllocator().isDirect() && options.useOffHeapDecryptBuffer()) {
-              ByteBuffer byteBuffer = pageBytes.toByteBuffer();
+              ByteBuffer byteBuffer = pageBytes.toByteBuffer(releaser);
               if (!byteBuffer.isDirect()) {
                 throw new ParquetDecodingException("Expected a direct buffer");
               }
               if (blockDecryptor != null) {
                 byteBuffer = blockDecryptor.decrypt(byteBuffer, dataPageAAD);
               }
-              compressedSize = byteBuffer.limit();
+              long compressedSize = byteBuffer.limit();
               if (dataPageV2.isCompressed()) {
                 int uncompressedSize = Math.toIntExact(dataPageV2.getUncompressedSize()
                     - dataPageV2.getDefinitionLevels().size()
                     - dataPageV2.getRepetitionLevels().size());
                 ByteBuffer decompressedBuffer =
                     options.getAllocator().allocate(uncompressedSize);
-                toRelease.add(decompressedBuffer);
+                releaser.releaseLater(decompressedBuffer);
                 long start = System.nanoTime();
                 decompressor.decompress(
                     byteBuffer, (int) compressedSize, decompressedBuffer, uncompressedSize);
                 setDecompressMetrics(pageBytes, start);
-
-                // HACKY: sometimes we need to do `flip` because the position of output bytebuffer is
-                // not reset.
-                if (decompressedBuffer.position() != 0) {
-                  decompressedBuffer.flip();
-                }
+                decompressedBuffer.flip();
                 pageBytes = BytesInput.from(decompressedBuffer);
               } else {
                 pageBytes = BytesInput.from(byteBuffer);
@@ -334,8 +322,6 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
           bytes = BytesInput.from(blockDecryptor.decrypt(bytes.toByteArray(), dictionaryPageAAD));
         }
         long start = System.nanoTime();
-        BytesInput decompressed =
-            decompressor.decompress(bytes, compressedDictionaryPage.getUncompressedSize());
         setDecompressMetrics(bytes, start);
         DictionaryPage decompressedPage = new DictionaryPage(
             decompressor.decompress(bytes, compressedDictionaryPage.getUncompressedSize()),
@@ -351,11 +337,7 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
     }
 
     private void releaseBuffers() {
-      ByteBufferAllocator allocator = options.getAllocator();
-      for (ByteBuffer buffer : toRelease) {
-        allocator.release(buffer);
-      }
-      toRelease.clear();
+      releaser.close();
     }
   }
 
@@ -365,7 +347,7 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
   private final long rowIndexOffset;
   private final RowRanges rowRanges;
   private ByteBufferAllocator allocator;
-  private List<ByteBuffer> toRelease;
+  private ByteBufferReleaser releaser;
 
   public ColumnChunkPageReadStore(long rowCount) {
     this(rowCount, -1);
@@ -422,9 +404,8 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
     }
   }
 
-  void setBuffersToRelease(ByteBufferAllocator allocator, List<ByteBuffer> toRelease) {
-    this.allocator = allocator;
-    this.toRelease = toRelease;
+  void setReleaser(ByteBufferReleaser releaser) {
+    this.releaser = releaser;
   }
 
   @Override
@@ -432,8 +413,6 @@ class ColumnChunkPageReadStore implements PageReadStore, DictionaryPageReadStore
     for (ColumnChunkPageReader reader : readers.values()) {
       reader.releaseBuffers();
     }
-    for (ByteBuffer buffer : toRelease) {
-      allocator.release(buffer);
-    }
+    releaser.close();
   }
 }

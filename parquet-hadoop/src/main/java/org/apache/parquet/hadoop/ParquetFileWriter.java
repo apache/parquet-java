@@ -34,6 +34,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Optional;
 import java.util.Set;
 import java.util.zip.CRC32;
 import org.apache.hadoop.conf.Configuration;
@@ -42,13 +43,18 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.Version;
+import org.apache.parquet.bytes.ByteBufferAllocator;
+import org.apache.parquet.bytes.ByteBufferReleaser;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.BytesUtils;
+import org.apache.parquet.bytes.HeapByteBufferAllocator;
+import org.apache.parquet.bytes.ReusingByteBufferAllocator;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.EncodingStats;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.page.DictionaryPage;
+import org.apache.parquet.column.statistics.SizeStatistics;
 import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.column.values.bloomfilter.BloomFilter;
 import org.apache.parquet.crypto.AesCipher;
@@ -93,7 +99,7 @@ import org.slf4j.LoggerFactory;
 /**
  * Internal implementation of the Parquet file writer as a block container
  */
-public class ParquetFileWriter {
+public class ParquetFileWriter implements AutoCloseable {
   private static final Logger LOG = LoggerFactory.getLogger(ParquetFileWriter.class);
 
   private final ParquetMetadataConverter metadataConverter;
@@ -150,6 +156,7 @@ public class ParquetFileWriter {
   private long uncompressedLength;
   private long compressedLength;
   private Statistics<?> currentStatistics; // accumulated in writePage(s)
+  private SizeStatistics currentSizeStatistics; // accumulated in writePage(s)
   private ColumnIndexBuilder columnIndexBuilder;
   private OffsetIndexBuilder offsetIndexBuilder;
 
@@ -165,6 +172,7 @@ public class ParquetFileWriter {
   private ParquetMetadata footer = null;
 
   private final CRC32 crc;
+  private final ReusingByteBufferAllocator crcAllocator;
   private final boolean pageWriteChecksumEnabled;
 
   /**
@@ -354,6 +362,7 @@ public class ParquetFileWriter {
         statisticsTruncateLength,
         pageWriteChecksumEnabled,
         null,
+        null,
         null);
   }
 
@@ -378,9 +387,34 @@ public class ParquetFileWriter {
         statisticsTruncateLength,
         pageWriteChecksumEnabled,
         encryptionProperties,
+        null,
         null);
   }
 
+  public ParquetFileWriter(
+      OutputFile file,
+      MessageType schema,
+      Mode mode,
+      long rowGroupSize,
+      int maxPaddingSize,
+      FileEncryptionProperties encryptionProperties,
+      ParquetProperties props)
+      throws IOException {
+    this(
+        file,
+        schema,
+        mode,
+        rowGroupSize,
+        maxPaddingSize,
+        props.getColumnIndexTruncateLength(),
+        props.getStatisticsTruncateLength(),
+        props.getPageWriteChecksumEnabled(),
+        encryptionProperties,
+        null,
+        props.getAllocator());
+  }
+
+  @Deprecated
   public ParquetFileWriter(
       OutputFile file,
       MessageType schema,
@@ -402,7 +436,8 @@ public class ParquetFileWriter {
         statisticsTruncateLength,
         pageWriteChecksumEnabled,
         null,
-        encryptor);
+        encryptor,
+        null);
   }
 
   private ParquetFileWriter(
@@ -415,7 +450,8 @@ public class ParquetFileWriter {
       int statisticsTruncateLength,
       boolean pageWriteChecksumEnabled,
       FileEncryptionProperties encryptionProperties,
-      InternalFileEncryptor encryptor)
+      InternalFileEncryptor encryptor,
+      ByteBufferAllocator allocator)
       throws IOException {
     TypeUtil.checkValidWriteSchema(schema);
 
@@ -439,6 +475,9 @@ public class ParquetFileWriter {
     this.columnIndexTruncateLength = columnIndexTruncateLength;
     this.pageWriteChecksumEnabled = pageWriteChecksumEnabled;
     this.crc = pageWriteChecksumEnabled ? new CRC32() : null;
+    this.crcAllocator = pageWriteChecksumEnabled
+        ? ReusingByteBufferAllocator.strict(allocator == null ? new HeapByteBufferAllocator() : allocator)
+        : null;
 
     this.metadataConverter = new ParquetMetadataConverter(statisticsTruncateLength);
 
@@ -488,20 +527,30 @@ public class ParquetFileWriter {
    * @param file            the file to write to
    * @param rowAndBlockSize the row group size
    * @param maxPaddingSize  the maximum padding
+   * @param columnIndexTruncateLength  the length which the min/max values in column indexes tried to be truncated to
+   * @param allocator       allocator to potentially allocate {@link java.nio.ByteBuffer} objects
    * @throws IOException if the file can not be created
    */
   ParquetFileWriter(
-      Configuration configuration, MessageType schema, Path file, long rowAndBlockSize, int maxPaddingSize)
+      Configuration configuration,
+      MessageType schema,
+      Path file,
+      long rowAndBlockSize,
+      int maxPaddingSize,
+      int columnIndexTruncateLength,
+      ByteBufferAllocator allocator)
       throws IOException {
     FileSystem fs = file.getFileSystem(configuration);
     this.schema = schema;
     this.alignment = PaddingAlignment.get(rowAndBlockSize, rowAndBlockSize, maxPaddingSize);
     this.out = HadoopStreams.wrap(fs.create(file, true, 8192, fs.getDefaultReplication(file), rowAndBlockSize));
     this.encodingStatsBuilder = new EncodingStats.Builder();
-    // no truncation is needed for testing
-    this.columnIndexTruncateLength = Integer.MAX_VALUE;
+    this.columnIndexTruncateLength = columnIndexTruncateLength;
     this.pageWriteChecksumEnabled = ParquetOutputFormat.getPageWriteChecksumEnabled(configuration);
     this.crc = pageWriteChecksumEnabled ? new CRC32() : null;
+    this.crcAllocator = pageWriteChecksumEnabled
+        ? ReusingByteBufferAllocator.strict(allocator == null ? new HeapByteBufferAllocator() : allocator)
+        : null;
     this.metadataConverter = new ParquetMetadataConverter(ParquetProperties.DEFAULT_STATISTICS_TRUNCATE_LENGTH);
     this.fileEncryptor = null;
   }
@@ -569,6 +618,11 @@ public class ParquetFileWriter {
     uncompressedLength = 0;
     // The statistics will be copied from the first one added at writeDataPage(s) so we have the correct typed one
     currentStatistics = null;
+    currentSizeStatistics = SizeStatistics.newBuilder(
+            descriptor.getPrimitiveType(),
+            descriptor.getMaxRepetitionLevel(),
+            descriptor.getMaxDefinitionLevel())
+        .build();
 
     columnIndexBuilder = ColumnIndexBuilder.getBuilder(currentChunkType, columnIndexTruncateLength);
     offsetIndexBuilder = OffsetIndexBuilder.getBuilder();
@@ -590,10 +644,10 @@ public class ParquetFileWriter {
     LOG.debug("{}: write dictionary page: {} values", out.getPos(), dictionaryPage.getDictionarySize());
     currentChunkDictionaryPageOffset = out.getPos();
     int uncompressedSize = dictionaryPage.getUncompressedSize();
-    int compressedPageSize = (int) dictionaryPage.getBytes().size(); // TODO: fix casts
+    int compressedPageSize = Math.toIntExact(dictionaryPage.getBytes().size());
     if (pageWriteChecksumEnabled) {
       crc.reset();
-      crc.update(dictionaryPage.getBytes().toByteArray());
+      crcUpdate(dictionaryPage.getBytes());
       metadataConverter.writeDictionaryPageHeader(
           uncompressedSize,
           compressedPageSize,
@@ -701,6 +755,7 @@ public class ParquetFileWriter {
         dlEncoding,
         valuesEncoding,
         null,
+        null,
         null);
   }
 
@@ -737,6 +792,47 @@ public class ParquetFileWriter {
         dlEncoding,
         valuesEncoding,
         null,
+        null,
+        null);
+  }
+
+  /**
+   * Writes a single page
+   * @param valueCount count of values
+   * @param uncompressedPageSize the size of the data once uncompressed
+   * @param bytes the compressed data for the page without header
+   * @param statistics the statistics of the page
+   * @param rowCount the number of rows in the page
+   * @param rlEncoding encoding of the repetition level
+   * @param dlEncoding encoding of the definition level
+   * @param valuesEncoding encoding of values
+   * @param metadataBlockEncryptor encryptor for block data
+   * @param pageHeaderAAD pageHeader AAD
+   * @throws IOException if any I/O error occurs during writing the file
+   */
+  public void writeDataPage(
+      int valueCount,
+      int uncompressedPageSize,
+      BytesInput bytes,
+      Statistics<?> statistics,
+      long rowCount,
+      Encoding rlEncoding,
+      Encoding dlEncoding,
+      Encoding valuesEncoding,
+      BlockCipher.Encryptor metadataBlockEncryptor,
+      byte[] pageHeaderAAD)
+      throws IOException {
+    writeDataPage(
+        valueCount,
+        uncompressedPageSize,
+        bytes,
+        statistics,
+        rowCount,
+        rlEncoding,
+        dlEncoding,
+        valuesEncoding,
+        metadataBlockEncryptor,
+        pageHeaderAAD,
         null);
   }
 
@@ -752,7 +848,8 @@ public class ParquetFileWriter {
    * @param dlEncoding             encoding of the definition level
    * @param valuesEncoding         encoding of values
    * @param metadataBlockEncryptor encryptor for block data
-   * @param pageHeaderAAD          pageHeader AAD
+   * @param pageHeaderAAD pageHeader AAD
+   * @param sizeStatistics size statistics for the page
    * @throws IOException if any I/O error occurs during writing the file
    */
   public void writeDataPage(
@@ -765,7 +862,8 @@ public class ParquetFileWriter {
       Encoding dlEncoding,
       Encoding valuesEncoding,
       BlockCipher.Encryptor metadataBlockEncryptor,
-      byte[] pageHeaderAAD)
+      byte[] pageHeaderAAD,
+      SizeStatistics sizeStatistics)
       throws IOException {
     long beforeHeader = out.getPos();
     innerWriteDataPage(
@@ -777,8 +875,12 @@ public class ParquetFileWriter {
         dlEncoding,
         valuesEncoding,
         metadataBlockEncryptor,
-        pageHeaderAAD);
-    offsetIndexBuilder.add((int) (out.getPos() - beforeHeader), rowCount);
+        pageHeaderAAD,
+        sizeStatistics);
+    offsetIndexBuilder.add(
+        (int) (out.getPos() - beforeHeader),
+        rowCount,
+        sizeStatistics != null ? sizeStatistics.getUnencodedByteArrayDataBytes() : Optional.empty());
   }
 
   private void innerWriteDataPage(
@@ -790,7 +892,8 @@ public class ParquetFileWriter {
       Encoding dlEncoding,
       Encoding valuesEncoding,
       BlockCipher.Encryptor metadataBlockEncryptor,
-      byte[] pageHeaderAAD)
+      byte[] pageHeaderAAD,
+      SizeStatistics sizeStatistics)
       throws IOException {
     writeDataPage(
         valueCount,
@@ -801,7 +904,8 @@ public class ParquetFileWriter {
         dlEncoding,
         valuesEncoding,
         metadataBlockEncryptor,
-        pageHeaderAAD);
+        pageHeaderAAD,
+        sizeStatistics);
   }
 
   /**
@@ -829,6 +933,45 @@ public class ParquetFileWriter {
       BlockCipher.Encryptor metadataBlockEncryptor,
       byte[] pageHeaderAAD)
       throws IOException {
+    writeDataPage(
+        valueCount,
+        uncompressedPageSize,
+        bytes,
+        statistics,
+        rlEncoding,
+        dlEncoding,
+        valuesEncoding,
+        metadataBlockEncryptor,
+        pageHeaderAAD,
+        null);
+  }
+
+  /**
+   * writes a single page
+   * @param valueCount count of values
+   * @param uncompressedPageSize the size of the data once uncompressed
+   * @param bytes the compressed data for the page without header
+   * @param statistics statistics for the page
+   * @param rlEncoding encoding of the repetition level
+   * @param dlEncoding encoding of the definition level
+   * @param valuesEncoding encoding of values
+   * @param metadataBlockEncryptor encryptor for block data
+   * @param pageHeaderAAD pageHeader AAD
+   * @param sizeStatistics size statistics for the page
+   * @throws IOException if there is an error while writing
+   */
+  public void writeDataPage(
+      int valueCount,
+      int uncompressedPageSize,
+      BytesInput bytes,
+      Statistics<?> statistics,
+      Encoding rlEncoding,
+      Encoding dlEncoding,
+      Encoding valuesEncoding,
+      BlockCipher.Encryptor metadataBlockEncryptor,
+      byte[] pageHeaderAAD,
+      SizeStatistics sizeStatistics)
+      throws IOException {
     state = state.write();
     long beforeHeader = out.getPos();
     if (currentChunkFirstDataPage < 0) {
@@ -838,7 +981,7 @@ public class ParquetFileWriter {
     int compressedPageSize = (int) bytes.size();
     if (pageWriteChecksumEnabled) {
       crc.reset();
-      crc.update(bytes.toByteArray());
+      crcUpdate(bytes);
       metadataConverter.writeDataPageV1Header(
           uncompressedPageSize,
           compressedPageSize,
@@ -868,7 +1011,7 @@ public class ParquetFileWriter {
     LOG.debug("{}: write data page content {}", out.getPos(), compressedPageSize);
     bytes.writeAllTo(out);
 
-    mergeColumnStatistics(statistics);
+    mergeColumnStatistics(statistics, sizeStatistics);
 
     encodingStatsBuilder.addDataEncoding(valuesEncoding);
     currentEncodings.add(rlEncoding);
@@ -922,6 +1065,7 @@ public class ParquetFileWriter {
         uncompressedDataSize,
         statistics,
         null,
+        null,
         null);
   }
 
@@ -954,6 +1098,52 @@ public class ParquetFileWriter {
       BlockCipher.Encryptor metadataBlockEncryptor,
       byte[] pageHeaderAAD)
       throws IOException {
+    writeDataPageV2(
+        rowCount,
+        nullCount,
+        valueCount,
+        repetitionLevels,
+        definitionLevels,
+        dataEncoding,
+        compressedData,
+        uncompressedDataSize,
+        statistics,
+        metadataBlockEncryptor,
+        pageHeaderAAD,
+        null);
+  }
+
+  /**
+   * Writes a single v2 data page
+   *
+   * @param rowCount count of rows
+   * @param nullCount count of nulls
+   * @param valueCount count of values
+   * @param repetitionLevels repetition level bytes
+   * @param definitionLevels definition level bytes
+   * @param dataEncoding encoding for data
+   * @param compressedData compressed data bytes
+   * @param uncompressedDataSize the size of uncompressed data
+   * @param statistics the statistics of the page
+   * @param metadataBlockEncryptor encryptor for block data
+   * @param pageHeaderAAD pageHeader AAD
+   * @param sizeStatistics size statistics for the page
+   * @throws IOException if any I/O error occurs during writing the file
+   */
+  public void writeDataPageV2(
+      int rowCount,
+      int nullCount,
+      int valueCount,
+      BytesInput repetitionLevels,
+      BytesInput definitionLevels,
+      Encoding dataEncoding,
+      BytesInput compressedData,
+      int uncompressedDataSize,
+      Statistics<?> statistics,
+      BlockCipher.Encryptor metadataBlockEncryptor,
+      byte[] pageHeaderAAD,
+      SizeStatistics sizeStatistics)
+      throws IOException {
     state = state.write();
     int rlByteLength = toIntWithCheck(repetitionLevels.size());
     int dlByteLength = toIntWithCheck(definitionLevels.size());
@@ -970,13 +1160,13 @@ public class ParquetFileWriter {
     if (pageWriteChecksumEnabled) {
       crc.reset();
       if (repetitionLevels.size() > 0) {
-        crc.update(repetitionLevels.toByteArray());
+        crcUpdate(repetitionLevels);
       }
       if (definitionLevels.size() > 0) {
-        crc.update(definitionLevels.toByteArray());
+        crcUpdate(definitionLevels);
       }
       if (compressedData.size() > 0) {
-        crc.update(compressedData.toByteArray());
+        crcUpdate(compressedData);
       }
       metadataConverter.writeDataPageV2Header(
           uncompressedSize,
@@ -1010,14 +1200,23 @@ public class ParquetFileWriter {
     this.uncompressedLength += uncompressedSize + headersSize;
     this.compressedLength += compressedSize + headersSize;
 
-    mergeColumnStatistics(statistics);
+    mergeColumnStatistics(statistics, sizeStatistics);
 
     currentEncodings.add(dataEncoding);
     encodingStatsBuilder.addDataEncoding(dataEncoding);
 
     BytesInput.concat(repetitionLevels, definitionLevels, compressedData).writeAllTo(out);
 
-    offsetIndexBuilder.add((int) (out.getPos() - beforeHeader), rowCount);
+    offsetIndexBuilder.add(
+        (int) (out.getPos() - beforeHeader),
+        rowCount,
+        sizeStatistics != null ? sizeStatistics.getUnencodedByteArrayDataBytes() : Optional.empty());
+  }
+
+  private void crcUpdate(BytesInput bytes) {
+    try (ByteBufferReleaser releaser = crcAllocator.getReleaser()) {
+      crc.update(bytes.toByteBuffer(releaser));
+    }
   }
 
   /**
@@ -1048,6 +1247,7 @@ public class ParquetFileWriter {
       long uncompressedTotalPageSize,
       long compressedTotalPageSize,
       Statistics<?> totalStats,
+      SizeStatistics totalSizeStats,
       ColumnIndexBuilder columnIndexBuilder,
       OffsetIndexBuilder offsetIndexBuilder,
       BloomFilter bloomFilter,
@@ -1064,6 +1264,7 @@ public class ParquetFileWriter {
         uncompressedTotalPageSize,
         compressedTotalPageSize,
         totalStats,
+        totalSizeStats,
         columnIndexBuilder,
         offsetIndexBuilder,
         bloomFilter,
@@ -1085,6 +1286,7 @@ public class ParquetFileWriter {
       long uncompressedTotalPageSize,
       long compressedTotalPageSize,
       Statistics<?> totalStats,
+      SizeStatistics totalSizeStats,
       ColumnIndexBuilder columnIndexBuilder,
       OffsetIndexBuilder offsetIndexBuilder,
       BloomFilter bloomFilter,
@@ -1141,6 +1343,7 @@ public class ParquetFileWriter {
     currentEncodings.addAll(dlEncodings);
     currentEncodings.addAll(dataEncodings);
     currentStatistics = totalStats;
+    currentSizeStatistics = totalSizeStats;
 
     this.columnIndexBuilder = columnIndexBuilder;
     this.offsetIndexBuilder = offsetIndexBuilder;
@@ -1186,7 +1389,8 @@ public class ParquetFileWriter {
         currentChunkDictionaryPageOffset,
         currentChunkValueCount,
         compressedLength,
-        uncompressedLength));
+        uncompressedLength,
+        currentSizeStatistics));
     this.currentBlock.setTotalByteSize(currentBlock.getTotalByteSize() + uncompressedLength);
     this.uncompressedLength = 0;
     this.compressedLength = 0;
@@ -1446,7 +1650,18 @@ public class ParquetFileWriter {
     LOG.debug("{}: end", out.getPos());
     this.footer = new ParquetMetadata(new FileMetaData(schema, extraMetaData, Version.FULL_VERSION), blocks);
     serializeFooter(footer, out, fileEncryptor, metadataConverter);
-    out.close();
+    close();
+  }
+
+  @Override
+  public void close() throws IOException {
+    try {
+      out.close();
+    } finally {
+      if (crcAllocator != null) {
+        crcAllocator.close();
+      }
+    }
   }
 
   private static void serializeColumnIndexes(
@@ -1497,7 +1712,15 @@ public class ParquetFileWriter {
     return (int) size;
   }
 
-  private void mergeColumnStatistics(Statistics<?> statistics) {
+  private void mergeColumnStatistics(Statistics<?> statistics, SizeStatistics sizeStatistics) {
+    Preconditions.checkState(currentSizeStatistics != null, "Aggregate size statistics should not be null");
+    currentSizeStatistics.mergeStatistics(sizeStatistics);
+    if (!currentSizeStatistics.isValid()) {
+      // Set page size statistics to null to clear state in the ColumnIndexBuilder.
+      sizeStatistics = null;
+    }
+
+    // Do not merge statistics and build column index if any page statistics is invalid.
     if (currentStatistics != null && currentStatistics.isEmpty()) {
       return;
     }
@@ -1511,10 +1734,10 @@ public class ParquetFileWriter {
     } else if (currentStatistics == null) {
       // Copying the statistics if it is not initialized yet, so we have the correct typed one
       currentStatistics = statistics.copy();
-      columnIndexBuilder.add(statistics);
+      columnIndexBuilder.add(statistics, sizeStatistics);
     } else {
       currentStatistics.mergeStatistics(statistics);
-      columnIndexBuilder.add(statistics);
+      columnIndexBuilder.add(statistics, sizeStatistics);
     }
   }
 

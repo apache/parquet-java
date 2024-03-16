@@ -87,7 +87,7 @@
     <thrift-maven-plugin.version>0.10.0</thrift-maven-plugin.version>
     <thrift.version>0.19.0</thrift.version>
     <format.thrift.version>${thrift.version}</format.thrift.version>
-    <fastutil.version>8.5.12</fastutil.version>
+    <fastutil.version>8.5.13</fastutil.version>
     <semver.api.version>0.9.33</semver.api.version>
     <slf4j.version>1.7.33</slf4j.version>
     <avro.version>1.11.3</avro.version>
@@ -102,7 +102,7 @@
     <opencsv.version>2.3</opencsv.version>
     <jcommander.version>1.82</jcommander.version>
     <tukaani.version>1.9</tukaani.version>
-    <zstd-jni.version>1.5.0-1</zstd-jni.version>
+    <zstd-jni.version>1.5.5-11</zstd-jni.version>
     <commons-text.version>1.11.0</commons-text.version>
     <jsr305.version>3.0.2</jsr305.version>
     <commons-lang3.version>3.14.0</commons-lang3.version>
@@ -655,68 +655,6 @@
       <properties>
         <hadoop.version>2.7.3</hadoop.version>
       </properties>
-    </profile>
-
-    <profile>
-      <id>update-github-site</id>
-      <reporting>
-        <plugins>
-          <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-project-info-reports-plugin</artifactId>
-            <reportSets>
-              <reportSet>
-                <reports>
-                  <report>index</report>
-                  <report>mailing-list</report>
-                  <report>dependency-info</report>
-                  <report>project-team</report>
-                  <report>dependencies</report>
-                  <report>license</report>
-                  <report>scm</report>
-                </reports>
-              </reportSet>
-            </reportSets>
-          </plugin>
-        </plugins>
-      </reporting>
-      <distributionManagement>
-        <site>
-          <id>github-pages-site</id>
-          <name>Deployment through GitHub's site deployment plugin</name>
-          <url>site/${project.version}</url>
-        </site>
-      </distributionManagement>
-      <build>
-        <plugins>
-          <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-site-plugin</artifactId>
-            <configuration>
-              <skipDeploy>true</skipDeploy>
-            </configuration>
-          </plugin>
-          <plugin>
-            <groupId>com.github.github</groupId>
-            <artifactId>site-maven-plugin</artifactId>
-            <version>0.12</version>
-            <configuration>
-              <message>Creating site for ${project.version}</message>
-              <path>${project.distributionManagement.site.url}</path>
-              <merge>true</merge>
-            </configuration>
-            <executions>
-              <execution>
-                <id>github-site</id>
-                <goals>
-                  <goal>site</goal>
-                </goals>
-                <phase>site-deploy</phase>
-              </execution>
-            </executions>
-          </plugin>
-        </plugins>
-      </build>
     </profile>
 
     <!-- Profile for tests to have more output -->

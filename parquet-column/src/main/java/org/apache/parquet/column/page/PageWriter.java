@@ -21,12 +21,13 @@ package org.apache.parquet.column.page;
 import java.io.IOException;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.column.Encoding;
+import org.apache.parquet.column.statistics.SizeStatistics;
 import org.apache.parquet.column.statistics.Statistics;
 
 /**
  * a writer for all the pages of a given column chunk
  */
-public interface PageWriter {
+public interface PageWriter extends AutoCloseable {
 
   /**
    * writes a single page
@@ -74,6 +75,31 @@ public interface PageWriter {
       throws IOException;
 
   /**
+   * writes a single page
+   * @param bytesInput the bytes for the page
+   * @param valueCount the number of values in that page
+   * @param rowCount the number of rows in that page
+   * @param statistics the statistics for that page
+   * @param sizeStatistics the size statistics for that page
+   * @param rlEncoding repetition level encoding
+   * @param dlEncoding definition level encoding
+   * @param valuesEncoding values encoding
+   * @throws IOException
+   */
+  default void writePage(
+      BytesInput bytesInput,
+      int valueCount,
+      int rowCount,
+      Statistics<?> statistics,
+      SizeStatistics sizeStatistics,
+      Encoding rlEncoding,
+      Encoding dlEncoding,
+      Encoding valuesEncoding)
+      throws IOException {
+    throw new UnsupportedOperationException("writePage with SizeStatistics is not implemented");
+  }
+
+  /**
    * writes a single page in the new format
    *
    * @param rowCount         the number of rows in this page
@@ -98,6 +124,33 @@ public interface PageWriter {
       throws IOException;
 
   /**
+   * writes a single page in the new format
+   * @param rowCount the number of rows in this page
+   * @param nullCount the number of null values (out of valueCount)
+   * @param valueCount the number of values in that page (there could be multiple values per row for repeated fields)
+   * @param repetitionLevels the repetition levels encoded in RLE without any size header
+   * @param definitionLevels the definition levels encoded in RLE without any size header
+   * @param dataEncoding the encoding for the data
+   * @param data the data encoded with dataEncoding
+   * @param statistics optional stats for this page
+   * @param sizeStatistics optional size stats for this page
+   * @throws IOException if there is an exception while writing page data
+   */
+  default void writePageV2(
+      int rowCount,
+      int nullCount,
+      int valueCount,
+      BytesInput repetitionLevels,
+      BytesInput definitionLevels,
+      Encoding dataEncoding,
+      BytesInput data,
+      Statistics<?> statistics,
+      SizeStatistics sizeStatistics)
+      throws IOException {
+    throw new UnsupportedOperationException("writePageV2 with SizeStatistics is not implemented");
+  }
+
+  /**
    * @return the current size used in the memory buffer for that column chunk
    */
   long getMemSize();
@@ -120,4 +173,9 @@ public interface PageWriter {
    * @return a string presenting a summary of how memory is used
    */
   String memUsageString(String prefix);
+
+  @Override
+  default void close() {
+    // No-op default implementation for compatibility
+  }
 }

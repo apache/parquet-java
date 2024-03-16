@@ -56,7 +56,11 @@ public class PhoneBookWriter {
       + "  }\n"
       + "}\n";
 
-  private static final MessageType schema = MessageTypeParser.parseMessageType(schemaString);
+  private static final MessageType schema = getSchema();
+
+  public static MessageType getSchema() {
+    return MessageTypeParser.parseMessageType(schemaString);
+  }
 
   public static class Location {
     private final Double lon;

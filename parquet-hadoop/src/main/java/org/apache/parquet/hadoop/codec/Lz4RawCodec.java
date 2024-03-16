@@ -28,6 +28,8 @@ import org.apache.hadoop.io.compress.CompressionInputStream;
 import org.apache.hadoop.io.compress.CompressionOutputStream;
 import org.apache.hadoop.io.compress.Compressor;
 import org.apache.hadoop.io.compress.Decompressor;
+import org.apache.hadoop.io.compress.DirectDecompressionCodec;
+import org.apache.hadoop.io.compress.DirectDecompressor;
 
 /**
  * Lz4 raw compression codec for Parquet. This codec type has been introduced
@@ -39,7 +41,7 @@ import org.apache.hadoop.io.compress.Decompressor;
  * below for reference.
  * https://github.com/apache/parquet-format/blob/master/Compression.md
  */
-public class Lz4RawCodec implements Configurable, CompressionCodec {
+public class Lz4RawCodec implements Configurable, CompressionCodec, DirectDecompressionCodec {
 
   private Configuration conf;
 
@@ -65,6 +67,11 @@ public class Lz4RawCodec implements Configurable, CompressionCodec {
 
   @Override
   public Decompressor createDecompressor() {
+    return new Lz4RawDecompressor();
+  }
+
+  @Override
+  public DirectDecompressor createDirectDecompressor() {
     return new Lz4RawDecompressor();
   }
 

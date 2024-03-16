@@ -18,6 +18,8 @@
  */
 package org.apache.parquet.internal.column.columnindex;
 
+import java.util.Optional;
+
 /**
  * Offset index containing the offset and size of the page and the index of the first row in the page.
  *
@@ -63,5 +65,15 @@ public interface OffsetIndex {
   public default long getLastRowIndex(int pageIndex, long rowGroupRowCount) {
     int nextPageIndex = pageIndex + 1;
     return (nextPageIndex >= getPageCount() ? rowGroupRowCount : getFirstRowIndex(nextPageIndex)) - 1;
+  }
+
+  /**
+   * @param pageIndex
+   *          the index of the page
+   * @return unencoded/uncompressed size for BYTE_ARRAY types; or empty for other types.
+   *    Please note that even for BYTE_ARRAY types, this value might not have been written.
+   */
+  default Optional<Long> getUnencodedByteArrayDataBytes(int pageIndex) {
+    throw new UnsupportedOperationException("Un-encoded byte array data bytes is not implemented");
   }
 }

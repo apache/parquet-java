@@ -19,8 +19,10 @@ package org.apache.parquet.hadoop;
 
 import static org.apache.parquet.hadoop.metadata.CompressionCodecName.BROTLI;
 import static org.apache.parquet.hadoop.metadata.CompressionCodecName.LZ4;
+import static org.apache.parquet.hadoop.metadata.CompressionCodecName.LZ4_RAW;
 import static org.apache.parquet.hadoop.metadata.CompressionCodecName.LZO;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.HashSet;
 import java.util.Random;
@@ -28,9 +30,11 @@ import java.util.Set;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.compress.CompressionCodec;
 import org.apache.parquet.bytes.ByteBufferAllocator;
+import org.apache.parquet.bytes.ByteBufferReleaser;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.DirectByteBufferAllocator;
 import org.apache.parquet.bytes.HeapByteBufferAllocator;
+import org.apache.parquet.bytes.TrackingByteBufferAllocator;
 import org.apache.parquet.compression.CompressionCodecFactory.BytesInputCompressor;
 import org.apache.parquet.compression.CompressionCodecFactory.BytesInputDecompressor;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
@@ -52,16 +56,14 @@ public class TestDirectCodecFactory {
   private final int pageSize = 64 * 1024;
 
   private void test(int size, CompressionCodecName codec, boolean useOnHeapCompression, Decompression decomp) {
-    ByteBuffer rawBuf = null;
-    ByteBuffer outBuf = null;
-    ByteBufferAllocator allocator = null;
-    try {
-      allocator = new DirectByteBufferAllocator();
-      final CodecFactory codecFactory =
+    try (TrackingByteBufferAllocator allocator = TrackingByteBufferAllocator.wrap(new DirectByteBufferAllocator());
+        ByteBufferReleaser releaser = new ByteBufferReleaser(allocator)) {
+      final CodecFactory directCodecFactory =
           CodecFactory.createDirectCodecFactory(new Configuration(), allocator, pageSize);
-      rawBuf = allocator.allocate(size);
+      final CodecFactory heapCodecFactory = new CodecFactory(new Configuration(), pageSize);
+      ByteBuffer rawBuf = allocator.allocate(size);
+      releaser.releaseLater(rawBuf);
       final byte[] rawArr = new byte[size];
-      outBuf = allocator.allocate(size * 2);
       final Random r = new Random();
       final byte[] random = new byte[1024];
       int pos = 0;
@@ -73,66 +75,119 @@ public class TestDirectCodecFactory {
       }
       rawBuf.flip();
 
-      final BytesInputCompressor c = codecFactory.getCompressor(codec);
-      final BytesInputDecompressor d = codecFactory.getDecompressor(codec);
+      final BytesInputCompressor directCompressor = directCodecFactory.getCompressor(codec);
+      final BytesInputDecompressor directDecompressor = directCodecFactory.getDecompressor(codec);
+      final BytesInputCompressor heapCompressor = heapCodecFactory.getCompressor(codec);
+      final BytesInputDecompressor heapDecompressor = heapCodecFactory.getDecompressor(codec);
 
-      final BytesInput compressed;
+      if (codec == LZ4_RAW) {
+        // Hadoop codecs support direct decompressors only if the related native libraries are available.
+        // This is not the case for our CI so let's rely on LZ4_RAW where the implementation is our own.
+        Assert.assertTrue(
+            String.format("The hadoop codec %s should support direct decompression", codec),
+            directDecompressor instanceof DirectCodecFactory.FullDirectDecompressor);
+      }
+
+      final BytesInput directCompressed;
       if (useOnHeapCompression) {
-        compressed = c.compress(BytesInput.from(rawArr));
+        directCompressed = directCompressor.compress(BytesInput.from(rawArr));
       } else {
-        compressed = c.compress(BytesInput.from(rawBuf));
+        directCompressed = directCompressor.compress(BytesInput.from(rawBuf));
       }
 
-      switch (decomp) {
-        case OFF_HEAP: {
-          final ByteBuffer buf = compressed.toByteBuffer();
-          final ByteBuffer b = allocator.allocate(buf.capacity());
-          try {
-            b.put(buf);
-            b.flip();
-            d.decompress(b, (int) compressed.size(), outBuf, size);
-            for (int i = 0; i < size; i++) {
-              Assert.assertTrue("Data didn't match at " + i, outBuf.get(i) == rawBuf.get(i));
-            }
-          } finally {
-            allocator.release(b);
-          }
-          break;
-        }
+      BytesInput heapCompressed = heapCompressor.compress(BytesInput.from(rawArr));
 
-        case OFF_HEAP_BYTES_INPUT: {
-          final ByteBuffer buf = compressed.toByteBuffer();
-          final ByteBuffer b = allocator.allocate(buf.limit());
-          try {
-            b.put(buf);
-            b.flip();
-            final BytesInput input = d.decompress(BytesInput.from(b), size);
-            Assert.assertArrayEquals(
-                String.format("While testing codec %s", codec), input.toByteArray(), rawArr);
-          } finally {
-            allocator.release(b);
-          }
-          break;
-        }
-        case ON_HEAP: {
-          final byte[] buf = compressed.toByteArray();
-          final BytesInput input = d.decompress(BytesInput.from(buf), size);
-          Assert.assertArrayEquals(input.toByteArray(), rawArr);
-          break;
-        }
-      }
+      // Validate direct => direct
+      validateDecompress(
+          size,
+          codec,
+          decomp,
+          directCompressed.copy(releaser),
+          allocator,
+          directDecompressor,
+          rawBuf,
+          rawArr);
+
+      // Validate heap => direct
+      validateDecompress(size, codec, decomp, heapCompressed, allocator, directDecompressor, rawBuf, rawArr);
+
+      // Validate direct => heap
+      validateDecompress(size, codec, decomp, directCompressed, allocator, heapDecompressor, rawBuf, rawArr);
+
+      directCompressor.release();
+      directDecompressor.release();
+      directCodecFactory.release();
+      heapCompressor.release();
+      heapDecompressor.release();
+      heapCodecFactory.release();
     } catch (Exception e) {
       final String msg = String.format(
           "Failure while testing Codec: %s, OnHeapCompressionInput: %s, Decompression Mode: %s, Data Size: %d",
           codec.name(), useOnHeapCompression, decomp.name(), size);
       LOG.error(msg);
       throw new RuntimeException(msg, e);
-    } finally {
-      if (rawBuf != null) {
-        allocator.release(rawBuf);
+    }
+  }
+
+  private static void validateDecompress(
+      int size,
+      CompressionCodecName codec,
+      Decompression decomp,
+      BytesInput compressed,
+      ByteBufferAllocator allocator,
+      BytesInputDecompressor d,
+      ByteBuffer rawBuf,
+      byte[] rawArr)
+      throws IOException {
+    switch (decomp) {
+      case OFF_HEAP: {
+        final ByteBuffer buf = compressed.toByteBuffer();
+        final ByteBuffer b = allocator.allocate(buf.capacity() + 20);
+        final ByteBuffer outBuf = allocator.allocate(size + 20);
+        final int shift = 10;
+        try {
+          b.position(shift);
+          b.put(buf);
+          b.position(shift);
+          outBuf.position(shift);
+          d.decompress(b, (int) compressed.size(), outBuf, size);
+          Assert.assertEquals(
+              "Input buffer position mismatch for codec " + codec,
+              compressed.size() + shift,
+              b.position());
+          Assert.assertEquals(
+              "Output buffer position mismatch for codec " + codec, size + shift, outBuf.position());
+          for (int i = 0; i < size; i++) {
+            Assert.assertTrue(
+                String.format("Data didn't match at %d, while testing codec %s", i, codec),
+                outBuf.get(shift + i) == rawBuf.get(i));
+          }
+        } finally {
+          allocator.release(b);
+          allocator.release(outBuf);
+        }
+        break;
       }
-      if (outBuf != null) {
-        allocator.release(rawBuf);
+
+      case OFF_HEAP_BYTES_INPUT: {
+        final ByteBuffer buf = compressed.toByteBuffer();
+        final ByteBuffer b = allocator.allocate(buf.limit());
+        try {
+          b.put(buf);
+          b.flip();
+          final BytesInput input = d.decompress(BytesInput.from(b), size);
+          Assert.assertArrayEquals(
+              String.format("While testing codec %s", codec), input.toByteArray(), rawArr);
+        } finally {
+          allocator.release(b);
+        }
+        break;
+      }
+      case ON_HEAP: {
+        final byte[] buf = compressed.toByteArray();
+        final BytesInput input = d.decompress(BytesInput.from(buf), size);
+        Assert.assertArrayEquals(String.format("While testing codec %s", codec), input.toByteArray(), rawArr);
+        break;
       }
     }
   }
