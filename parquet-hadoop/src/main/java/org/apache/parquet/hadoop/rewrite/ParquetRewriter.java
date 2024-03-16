@@ -242,9 +242,7 @@ public class ParquetRewriter implements Closeable {
       CompressionCodecName codecName,
       List<String> maskColumns,
       MaskMode maskMode) {
-    this.reader = reader;
     this.writer = writer;
-    this.meta = meta;
     this.schema = schema;
     this.descriptorsMap =
         schema.getColumns().stream().collect(Collectors.toMap(x -> ColumnPath.get(x.getPath()), x -> x));
@@ -258,6 +256,7 @@ public class ParquetRewriter implements Closeable {
         this.maskColumns.put(ColumnPath.fromDotString(col), maskMode);
       }
     }
+    this.inputFiles.add(reader);
     this.indexCacheStrategy = IndexCache.CacheStrategy.NONE;
   }
 
