@@ -85,8 +85,22 @@ public class TestAvroRecordConverter {
 
   // Test logical type support for older Avro versions
   @Test
-  public void testModelForSpecificRecordWithLogicalTypesWithDeprecatedAvro() {
+  public void testModelForSpecificRecordWithLogicalTypesWithDeprecatedAvro1_8() {
     Mockito.when(AvroRecordConverter.getRuntimeAvroVersion()).thenReturn("1.8.2");
+
+    // Test that model is generated correctly
+    final SpecificData model = AvroRecordConverter.getModelForSchema(LogicalTypesTestDeprecated.SCHEMA$);
+    // Test that model is generated correctly
+    Collection<Conversion<?>> conversions = model.getConversions();
+    assertEquals(conversions.size(), 3);
+    assertNotNull(model.getConversionByClass(Instant.class));
+    assertNotNull(model.getConversionByClass(LocalDate.class));
+    assertNotNull(model.getConversionByClass(LocalTime.class));
+  }
+
+  @Test
+  public void testModelForSpecificRecordWithLogicalTypesWithDeprecatedAvro1_7() {
+    Mockito.when(AvroRecordConverter.getRuntimeAvroVersion()).thenReturn("1.7.7");
 
     // Test that model is generated correctly
     final SpecificData model = AvroRecordConverter.getModelForSchema(LogicalTypesTestDeprecated.SCHEMA$);
