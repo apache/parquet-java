@@ -97,14 +97,21 @@ public class TestAvroRecordConverter {
 
   // Pseudo generated code with bug from avro compiler < 1.8
   @org.apache.avro.specific.AvroGenerated
-  public abstract static class LocalDateTimeTestDeprecated extends org.apache.avro.specific.SpecificRecordBase implements org.apache.avro.specific.SpecificRecord {
+  public abstract static class LocalDateTimeTestDeprecated extends org.apache.avro.specific.SpecificRecordBase
+      implements org.apache.avro.specific.SpecificRecord {
     public static final org.apache.avro.Schema SCHEMA$ = SchemaBuilder.builder()
         .record("LocalDateTimeTestDeprecated")
         .namespace("org.apache.parquet.avro.TestAvroRecordConverter")
         .fields()
-        .name("date").type(LogicalTypes.date().addToSchema(SchemaBuilder.builder().intType())).noDefault()
-        .name("time").type(LogicalTypes.timeMillis().addToSchema(SchemaBuilder.builder().intType())).noDefault()
+        .name("date")
+        .type(LogicalTypes.date().addToSchema(SchemaBuilder.builder().intType()))
+        .noDefault()
+        .name("time")
+        .type(LogicalTypes.timeMillis()
+            .addToSchema(SchemaBuilder.builder().intType()))
+        .noDefault()
         .endRecord();
+
     public static org.apache.avro.Schema getClassSchema() {
       return SCHEMA$;
     }
@@ -116,23 +123,29 @@ public class TestAvroRecordConverter {
     //   MODEL$.addLogicalTypeConversion(new org.apache.avro.data.TimeConversions.TimeMillisConversion());
     // }
 
-    private static final org.apache.avro.Conversion<?>[] conversions =
-        new org.apache.avro.Conversion<?>[] {
-            new org.apache.avro.data.TimeConversions.DateConversion(),
-            new org.apache.avro.data.TimeConversions.TimeMillisConversion(),
-            null
-        };
+    private static final org.apache.avro.Conversion<?>[] conversions = new org.apache.avro.Conversion<?>[] {
+      new org.apache.avro.data.TimeConversions.DateConversion(),
+      new org.apache.avro.data.TimeConversions.TimeMillisConversion(),
+      null
+    };
   }
 
   @org.apache.avro.specific.AvroGenerated
-  public abstract static class LogicalTypesTestDeprecated extends org.apache.avro.specific.SpecificRecordBase implements org.apache.avro.specific.SpecificRecord {
+  public abstract static class LogicalTypesTestDeprecated extends org.apache.avro.specific.SpecificRecordBase
+      implements org.apache.avro.specific.SpecificRecord {
     public static final org.apache.avro.Schema SCHEMA$ = SchemaBuilder.builder()
         .record("LogicalTypesTestDeprecated")
         .namespace("org.apache.parquet.avro.TestAvroRecordConverter")
         .fields()
-        .name("timestamp").type(LogicalTypes.timestampMillis().addToSchema(SchemaBuilder.builder().longType())).noDefault()
-        .name("local_date_time").type(LocalDateTimeTestDeprecated.getClassSchema()).noDefault()
+        .name("timestamp")
+        .type(LogicalTypes.timestampMillis()
+            .addToSchema(SchemaBuilder.builder().longType()))
+        .noDefault()
+        .name("local_date_time")
+        .type(LocalDateTimeTestDeprecated.getClassSchema())
+        .noDefault()
         .endRecord();
+
     public static org.apache.avro.Schema getClassSchema() {
       return SCHEMA$;
     }
@@ -145,11 +158,8 @@ public class TestAvroRecordConverter {
     // MODEL$.addLogicalTypeConversion(new org.apache.avro.data.TimeConversions.TimeMillisConversion());
     // }
 
-    private static final org.apache.avro.Conversion<?>[] conversions =
-        new org.apache.avro.Conversion<?>[] {
-            new org.apache.avro.data.TimeConversions.TimestampMillisConversion(),
-            null,
-            null
-        };
+    private static final org.apache.avro.Conversion<?>[] conversions = new org.apache.avro.Conversion<?>[] {
+      new org.apache.avro.data.TimeConversions.TimestampMillisConversion(), null, null
+    };
   }
 }
