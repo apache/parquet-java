@@ -174,7 +174,8 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
     }
   }
 
-  private static void addLogicalTypeConversion(SpecificData model, Schema schema, Set<Schema> seenSchemas) {
+  private static void addLogicalTypeConversion(SpecificData model, Schema schema, Set<Schema> seenSchemas)
+      throws IllegalAccessException {
     if (seenSchemas.contains(schema)) {
       return;
     }
@@ -199,8 +200,6 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
             }
           } catch (NoSuchFieldException e) {
             // Avro classes without logical types (denoted by the "conversions" field)
-          } catch (IllegalAccessException e) {
-            LOG.warn("Field `conversions` in class {} was inaccessible", schema.getName());
           }
         }
         break;
@@ -245,17 +244,13 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
 
       model = (SpecificData) modelField.get(null);
     } catch (NoSuchFieldException e) {
-      LOG.info(String.format(
-          "Generated Avro class %s did not contain a MODEL$ field. Parquet will use default SpecificData model for "
-              + "reading and writing.",
-          clazz));
+      LOG.info(String.format("Generated Avro class %s did not contain a MODEL$ field. ", clazz)
+          + "Parquet will use default SpecificData model for reading and writing.");
       return null;
     } catch (IllegalAccessException e) {
       LOG.warn(
-          String.format(
-              "Field `MODEL$` in class %s was inaccessible. Parquet will use default SpecificData model for "
-                  + "reading and writing.",
-              clazz),
+          String.format("Field `MODEL$` in class %s was inaccessible. ", clazz)
+              + "Parquet will use default SpecificData model for reading and writing.",
           e);
       return null;
     }
@@ -263,7 +258,15 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
     final String avroVersion = getRuntimeAvroVersion();
     // Avro 1.7 and 1.8 don't include conversions in the MODEL$ field by default
     if (avroVersion != null && (avroVersion.startsWith("1.8.") || avroVersion.startsWith("1.7."))) {
-      addLogicalTypeConversion(model, schema, new HashSet<>());
+      try {
+        addLogicalTypeConversion(model, schema, new HashSet<>());
+      } catch (IllegalAccessException e) {
+        LOG.warn(
+            String.format("Logical-type conversions were inaccessible for %s", clazz)
+                + "Parquet will use default SpecificData model for reading and writing.",
+            e);
+        return null;
+      }
     }
 
     return model;
