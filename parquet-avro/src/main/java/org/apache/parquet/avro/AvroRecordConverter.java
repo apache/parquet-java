@@ -930,6 +930,7 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
   static boolean isElementType(Type repeatedType, Schema elementSchema) {
     if (repeatedType.isPrimitive()
         || repeatedType.asGroupType().getFieldCount() > 1
+        || repeatedType.getName().equals("array")
         || repeatedType.asGroupType().getType(0).isRepetition(REPEATED)) {
       // The repeated type must be the element type because it is an invalid
       // synthetic wrapper. Must be a group with one optional or required field
