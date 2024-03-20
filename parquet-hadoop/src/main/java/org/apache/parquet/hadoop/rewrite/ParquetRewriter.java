@@ -142,16 +142,20 @@ public class ParquetRewriter implements Closeable {
     Stream.concat(inputFiles.stream(), inputFilesR.stream().flatMap(Collection::stream))
         .forEach(x -> extraMetaData.putAll(x.getFileMetaData().getKeyValueMetaData()));
 
-    // TODO check that schema on the left and on the right is not identical
     MessageType schemaL = inputFiles.peek().getFooter().getFileMetaData().getSchema();
     List<MessageType> schemaR = inputFilesR.stream()
         .map(x -> x.peek().getFooter().getFileMetaData().getSchema())
         .collect(Collectors.toList());
-    // TODO check that there is no overlap of fields on the right
     Map<String, Type> fieldNamesL = new LinkedHashMap<>();
     schemaL.getFields().forEach(x -> fieldNamesL.put(x.getName(), x));
     Map<String, Type> fieldNamesR = new LinkedHashMap<>();
-    schemaR.stream().flatMap(x -> x.getFields().stream()).forEach(x -> fieldNamesR.put(x.getName(), x));
+    schemaR.stream().flatMap(x -> x.getFields().stream()).forEach(x -> {
+      if (fieldNamesR.containsKey(x.getName())) {
+        throw new IllegalArgumentException(
+            "Found a duplicated field `" + x.getName() + "` in the right side file groups!");
+      }
+      fieldNamesR.put(x.getName(), x);
+    });
     List<Type> fields = Stream.concat(
             fieldNamesL.values().stream()
                 .map(x -> fieldNamesR.getOrDefault(
@@ -179,10 +183,10 @@ public class ParquetRewriter implements Closeable {
       schema = pruneColumnsInSchema(schema, prunePaths);
     }
 
-    if (inputFilesR.isEmpty()) { // TODO: find a more suitable solution
+    if (inputFilesR.isEmpty()) {
       this.descriptorsMap =
           schema.getColumns().stream().collect(Collectors.toMap(x -> ColumnPath.get(x.getPath()), x -> x));
-    } else {
+    } else { // TODO: describe in documentation that only top level column can be overwritten
       this.descriptorsMap = schemaL.getColumns().stream()
           .filter(x -> x.getPath().length == 0 || !fieldNamesR.containsKey(x.getPath()[0]))
           .collect(Collectors.toMap(x -> ColumnPath.get(x.getPath()), x -> x));
@@ -261,8 +265,6 @@ public class ParquetRewriter implements Closeable {
   }
 
   private Queue<TransParquetFileReader> getFileReaders(List<InputFile> inputFiles, ParquetConfiguration conf) {
-    // Preconditions.checkArgument(inputFiles != null && !inputFiles.isEmpty(), "No input files"); // TODO: remove,
-    // this is already checked in RewriteOptions
     LinkedList<TransParquetFileReader> inputFileReaders = new LinkedList<>();
     for (InputFile inputFile : inputFiles) {
       try {
@@ -979,8 +981,6 @@ public class ParquetRewriter implements Closeable {
     }
 
     public void writeRows(int rowGroupIdx, long rowsToWrite) throws IOException {
-      //       LOG.info("Rewriting input fileRight: {}, remaining fileRight: {}", readerR.getFile(),
-      // inputFilesR.size());
       if (rowGroupIdxIn != rowGroupIdx) {
         rowGroupIdxIn = rowGroupIdx;
         flushWriters();
@@ -993,9 +993,8 @@ public class ParquetRewriter implements Closeable {
         long leftInBlock = block.getRowCount() - writtenFromBlock;
         long writeFromBlock = Math.min(rowsToWrite, leftInBlock);
         for (ColumnChunkMetaData chunk : chunks) {
-          if (chunk.isEncrypted()) { // TODO check this during construction?
-            throw new IOException("Column " + chunk.getPath().toDotString()
-                + " is encrypted"); // TODO add that detail to docs
+          if (chunk.isEncrypted()) {
+            throw new IOException("Column " + chunk.getPath().toDotString() + " is encrypted");
           }
           ColumnDescriptor descriptor = descriptorsMap.get(chunk.getPath());
           copyValues(descriptor, writeFromBlock);
