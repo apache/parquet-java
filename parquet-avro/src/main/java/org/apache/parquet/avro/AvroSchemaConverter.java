@@ -88,6 +88,8 @@ public class AvroSchemaConverter {
   private final boolean readInt96AsFixed;
   private final Set<String> pathsToInt96;
 
+  private int fixedTypeIndex = 0;
+
   public AvroSchemaConverter() {
     this(ADD_LIST_ELEMENT_RECORDS_DEFAULT);
   }
@@ -288,6 +290,7 @@ public class AvroSchemaConverter {
   }
 
   public Schema convert(MessageType parquetSchema) {
+    fixedTypeIndex = 0;
     return convertFields(parquetSchema.getName(), parquetSchema.getFields(), new HashMap<>());
   }
 
@@ -360,7 +363,8 @@ public class AvroSchemaConverter {
                 return Schema.create(Schema.Type.STRING);
               } else {
                 int size = parquetType.asPrimitiveType().getTypeLength();
-                return Schema.createFixed(parquetType.getName(), null, null, size);
+                // artificial type created by parquet-avro. Use library namespace
+                return Schema.createFixed(fixedTypeName(), null, "org.apache.parquet.avro", size);
               }
             }
 
@@ -558,6 +562,10 @@ public class AvroSchemaConverter {
           }
         })
         .orElse(null);
+  }
+
+  private String fixedTypeName() {
+    return "Fixed_" + fixedTypeIndex++;
   }
 
   /**

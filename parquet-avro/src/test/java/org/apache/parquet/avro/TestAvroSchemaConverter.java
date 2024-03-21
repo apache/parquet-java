@@ -51,6 +51,7 @@ import java.util.Collections;
 import org.apache.avro.JsonProperties;
 import org.apache.avro.LogicalTypes;
 import org.apache.avro.Schema;
+import org.apache.avro.SchemaBuilder;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
@@ -527,7 +528,8 @@ public class TestAvroSchemaConverter {
   @Test
   public void testDecimalFixedType() throws Exception {
     Schema schema = Schema.createRecord("myrecord", null, null, false);
-    Schema decimal = LogicalTypes.decimal(9, 2).addToSchema(Schema.createFixed("dec", null, null, 8));
+    Schema decimal = LogicalTypes.decimal(9, 2)
+        .addToSchema(Schema.createFixed("Fixed_0", null, "org.apache.parquet.avro", 8));
     schema.setFields(Collections.singletonList(new Schema.Field("dec", decimal, null, null)));
 
     testRoundTripConversion(
@@ -875,6 +877,61 @@ public class TestAvroSchemaConverter {
         "Exception should be thrown for fixed types to be converted to INT96 where the size is not 12 bytes",
         IllegalArgumentException.class,
         () -> new AvroSchemaConverter(conf).convert(schema));
+  }
+
+  @Test
+  public void testAvroRepeatedFixedAsParquet() throws Exception {
+    Schema avroSchema = SchemaBuilder.record("TestRepeatedFixed")
+        .namespace("org.apache.parquet.avro")
+        .fields()
+        .name("repeated_fixed1")
+        .type()
+        .array()
+        .items()
+        .fixed("Type1")
+        .size(1)
+        .noDefault()
+        .name("repeated_fixed2")
+        .type()
+        .array()
+        .items()
+        .fixed("Type2")
+        .size(1)
+        .noDefault()
+        .endRecord();
+
+    String parquetSchema = "message org.apache.parquet.avro.TestRepeatedFixed {\n"
+        + "  required group repeated_fixed1 (LIST) {\n"
+        + "    repeated fixed_len_byte_array(1) array;\n"
+        + "  }\n"
+        + "  required group repeated_fixed2 (LIST) {\n"
+        + "    repeated fixed_len_byte_array(1) array;\n"
+        + "  }\n"
+        + "}\n";
+
+    testAvroToParquetConversion(avroSchema, parquetSchema);
+
+    Schema readSchema = SchemaBuilder.record("TestRepeatedFixed")
+        .namespace("org.apache.parquet.avro")
+        .fields()
+        .name("repeated_fixed1")
+        .type()
+        .array()
+        .items()
+        .fixed("Fixed_0")
+        .namespace("org.apache.parquet.avro")
+        .size(1)
+        .noDefault()
+        .name("repeated_fixed2")
+        .type()
+        .array()
+        .items()
+        .fixed("Fixed_1")
+        .namespace("org.apache.parquet.avro")
+        .size(1)
+        .noDefault()
+        .endRecord();
+    testParquetToAvroConversion(readSchema, parquetSchema);
   }
 
   public static Schema optional(Schema original) {
