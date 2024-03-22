@@ -88,8 +88,6 @@ public class AvroSchemaConverter {
   private final boolean readInt96AsFixed;
   private final Set<String> pathsToInt96;
 
-  private int fixedTypeIndex = 0;
-
   public AvroSchemaConverter() {
     this(ADD_LIST_ELEMENT_RECORDS_DEFAULT);
   }
@@ -290,7 +288,6 @@ public class AvroSchemaConverter {
   }
 
   public Schema convert(MessageType parquetSchema) {
-    fixedTypeIndex = 0;
     return convertFields(parquetSchema.getName(), parquetSchema.getFields(), new HashMap<>());
   }
 
@@ -301,6 +298,7 @@ public class AvroSchemaConverter {
   private Schema convertFields(String name, List<Type> parquetFields, Map<String, Integer> names) {
     List<Schema.Field> fields = new ArrayList<Schema.Field>();
     Integer nameCount = names.merge(name, 1, (oldValue, value) -> oldValue + 1);
+    String namespace = nameCount > 1 ? name + nameCount : null;
     for (Type parquetType : parquetFields) {
       Schema fieldSchema = convertField(parquetType, names);
       if (parquetType.isRepetition(REPEATED)) { // If a repeated field is ungrouped, treat as REQUIRED per spec
@@ -311,7 +309,7 @@ public class AvroSchemaConverter {
         fields.add(new Schema.Field(parquetType.getName(), fieldSchema, null, (Object) null));
       }
     }
-    Schema schema = Schema.createRecord(name, null, nameCount > 1 ? name + nameCount : null, false);
+    Schema schema = Schema.createRecord(name, null, namespace, false);
     schema.setFields(fields);
     return schema;
   }
@@ -363,8 +361,10 @@ public class AvroSchemaConverter {
                 return Schema.create(Schema.Type.STRING);
               } else {
                 int size = parquetType.asPrimitiveType().getTypeLength();
-                // artificial type created by parquet-avro. Use library namespace
-                return Schema.createFixed(fixedTypeName(), null, "org.apache.parquet.avro", size);
+                String name = parquetType.getName();
+                Integer nameCount = names.merge(name, 1, (oldValue, value) -> oldValue + 1);
+                String namespace = nameCount > 1 ? name + nameCount : null;
+                return Schema.createFixed(name, null, namespace, size);
               }
             }
 
@@ -562,10 +562,6 @@ public class AvroSchemaConverter {
           }
         })
         .orElse(null);
-  }
-
-  private String fixedTypeName() {
-    return "Fixed_" + fixedTypeIndex++;
   }
 
   /**

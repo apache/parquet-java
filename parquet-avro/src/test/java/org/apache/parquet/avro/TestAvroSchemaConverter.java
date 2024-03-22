@@ -528,8 +528,7 @@ public class TestAvroSchemaConverter {
   @Test
   public void testDecimalFixedType() throws Exception {
     Schema schema = Schema.createRecord("myrecord", null, null, false);
-    Schema decimal = LogicalTypes.decimal(9, 2)
-        .addToSchema(Schema.createFixed("Fixed_0", null, "org.apache.parquet.avro", 8));
+    Schema decimal = LogicalTypes.decimal(9, 2).addToSchema(Schema.createFixed("dec", null, null, 8));
     schema.setFields(Collections.singletonList(new Schema.Field("dec", decimal, null, null)));
 
     testRoundTripConversion(
@@ -763,7 +762,8 @@ public class TestAvroSchemaConverter {
     Schema outerA1 = record("a1", field("a2", primitive(Schema.Type.FLOAT)), optionalField("a1", innerA1));
     Schema schema = record("Message", optionalField("a1", outerA1));
 
-    String parquetSchema = "message Message {\n" + "      optional group a1 {\n"
+    String parquetSchema = "message Message {\n"
+        + "      optional group a1 {\n"
         + "        required float a2;\n"
         + "        optional group a1 {\n"
         + "          required float a4;\n"
@@ -918,19 +918,20 @@ public class TestAvroSchemaConverter {
         .type()
         .array()
         .items()
-        .fixed("Fixed_0")
-        .namespace("org.apache.parquet.avro")
+        .fixed("array")
+        .namespace("")
         .size(1)
         .noDefault()
         .name("repeated_fixed2")
         .type()
         .array()
         .items()
-        .fixed("Fixed_1")
-        .namespace("org.apache.parquet.avro")
+        .fixed("array")
+        .namespace("array2")
         .size(1)
         .noDefault()
         .endRecord();
+
     testParquetToAvroConversion(readSchema, parquetSchema);
   }
 

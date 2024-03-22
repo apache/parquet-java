@@ -92,8 +92,8 @@
     "name" : "myfixed",
     "type" : {
       "type" : "fixed",
-      "name" : "Fixed_0",
-      "namespace" : "org.apache.parquet.avro",
+      "name" : "myfixed",
+      "namespace" : "",
       "size" : 1
     }
   } ]
