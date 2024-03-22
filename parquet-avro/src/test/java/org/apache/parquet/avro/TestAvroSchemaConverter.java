@@ -23,6 +23,7 @@ import static org.apache.avro.Schema.Type.LONG;
 import static org.apache.avro.Schema.Type.STRING;
 import static org.apache.avro.SchemaCompatibility.SchemaCompatibilityType.COMPATIBLE;
 import static org.apache.avro.SchemaCompatibility.checkReaderWriterCompatibility;
+import static org.apache.parquet.avro.AvroTestUtil.array;
 import static org.apache.parquet.avro.AvroTestUtil.field;
 import static org.apache.parquet.avro.AvroTestUtil.optionalField;
 import static org.apache.parquet.avro.AvroTestUtil.primitive;
@@ -51,7 +52,6 @@ import java.util.Collections;
 import org.apache.avro.JsonProperties;
 import org.apache.avro.LogicalTypes;
 import org.apache.avro.Schema;
-import org.apache.avro.SchemaBuilder;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
@@ -763,12 +763,12 @@ public class TestAvroSchemaConverter {
     Schema schema = record("Message", optionalField("a1", outerA1));
 
     String parquetSchema = "message Message {\n"
-        + "      optional group a1 {\n"
-        + "        required float a2;\n"
-        + "        optional group a1 {\n"
-        + "          required float a4;\n"
-        + "         }\n"
-        + "      }\n"
+        + "  optional group a1 {\n"
+        + "    required float a2;\n"
+        + "    optional group a1 {\n"
+        + "      required float a4;\n"
+        + "     }\n"
+        + "  }\n"
         + "}\n";
 
     testParquetToAvroConversion(schema, parquetSchema);
@@ -786,17 +786,43 @@ public class TestAvroSchemaConverter {
 
     Schema schema = record("Message", optionalField("a1", a1), optionalField("a3", a3));
 
-    String parquetSchema = "message Message {\n" + "      optional group a1 {\n"
-        + "        optional group a2 {\n"
-        + "          required float a4;\n"
-        + "         }\n"
-        + "      }\n"
-        + "      optional group a3 {\n"
-        + "        optional group a2 {\n"
-        + "          required float a4;\n"
-        + "          required float a5;\n"
-        + "         }\n"
-        + "      }\n"
+    String parquetSchema = "message Message {\n"
+        + "  optional group a1 {\n"
+        + "    optional group a2 {\n"
+        + "      required float a4;\n"
+        + "     }\n"
+        + "  }\n"
+        + "  optional group a3 {\n"
+        + "    optional group a2 {\n"
+        + "      required float a4;\n"
+        + "      required float a5;\n"
+        + "     }\n"
+        + "  }\n"
+        + "}\n";
+
+    testParquetToAvroConversion(schema, parquetSchema);
+    testParquetToAvroConversion(NEW_BEHAVIOR, schema, parquetSchema);
+  }
+
+  @Test
+  public void testReuseNamesArrays() throws Exception {
+    Schema a1 = record("array", field("a4", primitive(Schema.Type.FLOAT)));
+    Schema a2 = Schema.createFixed("array", null, "array2", 1);
+    Schema a3 = Schema.createFixed("array", null, "array3", 1);
+    Schema schema = record("Message", field("a1", array(a1)), field("a2", array(a2)), field("a3", array(a3)));
+
+    String parquetSchema = "message Message {\n"
+        + "  required group a1 (LIST) {\n"
+        + "    repeated group array {\n"
+        + "      required float a4;\n"
+        + "    }\n"
+        + "  }\n"
+        + "  required group a2 (LIST) {\n"
+        + "    repeated fixed_len_byte_array(1) array;\n"
+        + "  }\n"
+        + "  required group a3 (LIST) {\n"
+        + "    repeated fixed_len_byte_array(1) array;\n"
+        + "  }\n"
         + "}\n";
 
     testParquetToAvroConversion(schema, parquetSchema);
@@ -877,62 +903,6 @@ public class TestAvroSchemaConverter {
         "Exception should be thrown for fixed types to be converted to INT96 where the size is not 12 bytes",
         IllegalArgumentException.class,
         () -> new AvroSchemaConverter(conf).convert(schema));
-  }
-
-  @Test
-  public void testAvroRepeatedFixedAsParquet() throws Exception {
-    Schema avroSchema = SchemaBuilder.record("TestRepeatedFixed")
-        .namespace("org.apache.parquet.avro")
-        .fields()
-        .name("repeated_fixed1")
-        .type()
-        .array()
-        .items()
-        .fixed("Type1")
-        .size(1)
-        .noDefault()
-        .name("repeated_fixed2")
-        .type()
-        .array()
-        .items()
-        .fixed("Type2")
-        .size(1)
-        .noDefault()
-        .endRecord();
-
-    String parquetSchema = "message org.apache.parquet.avro.TestRepeatedFixed {\n"
-        + "  required group repeated_fixed1 (LIST) {\n"
-        + "    repeated fixed_len_byte_array(1) array;\n"
-        + "  }\n"
-        + "  required group repeated_fixed2 (LIST) {\n"
-        + "    repeated fixed_len_byte_array(1) array;\n"
-        + "  }\n"
-        + "}\n";
-
-    testAvroToParquetConversion(avroSchema, parquetSchema);
-
-    Schema readSchema = SchemaBuilder.record("TestRepeatedFixed")
-        .namespace("org.apache.parquet.avro")
-        .fields()
-        .name("repeated_fixed1")
-        .type()
-        .array()
-        .items()
-        .fixed("array")
-        .namespace("")
-        .size(1)
-        .noDefault()
-        .name("repeated_fixed2")
-        .type()
-        .array()
-        .items()
-        .fixed("array")
-        .namespace("array2")
-        .size(1)
-        .noDefault()
-        .endRecord();
-
-    testParquetToAvroConversion(readSchema, parquetSchema);
   }
 
   public static Schema optional(Schema original) {
