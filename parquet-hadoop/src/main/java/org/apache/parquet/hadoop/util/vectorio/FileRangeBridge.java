@@ -54,7 +54,11 @@ final class FileRangeBridge {
    */
   private final boolean available;
 
+  /**
+   * The Hadoop FileRange interface class.
+   */
   private final Class<?> fileRangeInterface;
+
   private final DynMethods.UnboundMethod _getData;
   private final DynMethods.UnboundMethod _setData;
   private final DynMethods.UnboundMethod _getLength;
@@ -73,7 +77,11 @@ final class FileRangeBridge {
     try {
       loadedClass = this.getClass().getClassLoader().loadClass(CLASSNAME);
     } catch (ReflectiveOperationException e) {
+      // failure.
       LOG.debug("No {}", CLASSNAME, e);
+
+      // set the loaded class to null so that the loadInvocation calls generate
+      // no-op invocations.
       loadedClass = null;
     }
     fileRangeInterface = loadedClass;
@@ -90,7 +98,7 @@ final class FileRangeBridge {
     createFileRange = loadInvocation(
         fileRangeInterface, Object.class, "createFileRange", long.class, int.class, Object.class);
 
-    // we are available only if the class is present and all methods are found
+    // the bridge is available only if the class is present and all methods are found
     // the checks for the method are extra paranoia, but harmless
     available = loadedClass != null
         && implemented(createFileRange, _getOffset, _getLength, _getData, _setData, _getReference);
@@ -211,22 +219,47 @@ final class FileRangeBridge {
       this.fileRange = requireNonNull(fileRange);
     }
 
+    /**
+     * Get the range offset.
+     *
+     * @return the offset.
+     */
     public long getOffset() {
       return _getOffset.invoke(fileRange);
     }
 
+    /**
+     * Get the range length.
+     *
+     * @return the length.
+     */
     public int getLength() {
       return _getLength.invoke(fileRange);
     }
 
+    /**
+     * Get the future of the data; only valid
+     * after a read has commenced.
+     * @return the future to wait on.
+     */
     public CompletableFuture<ByteBuffer> getData() {
       return _getData.invoke(fileRange);
     }
 
+    /**
+     * Set the data field.
+     *
+     * @param data future to set.
+     */
     public void setData(final CompletableFuture<ByteBuffer> data) {
       _setData.invoke(fileRange, data);
     }
 
+    /**
+     * Get the reference field.
+     *
+     * @return the reference.
+     */
     public Object getReference() {
       return _getReference.invoke(fileRange);
     }

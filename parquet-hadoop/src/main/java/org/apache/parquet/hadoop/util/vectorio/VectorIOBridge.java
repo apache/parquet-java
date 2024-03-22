@@ -18,13 +18,15 @@
 
 package org.apache.parquet.hadoop.util.vectorio;
 
+import static java.util.Objects.requireNonNull;
+import static org.apache.hadoop.util.Preconditions.checkArgument;
 import static org.apache.parquet.Exceptions.throwIfInstance;
 import static org.apache.parquet.hadoop.util.vectorio.BindingUtils.loadInvocation;
 
 import java.io.EOFException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Collections;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
@@ -185,15 +187,16 @@ public final class VectorIOBridge {
     if (!bridge.readVectoredAvailable(stream, allocator)) {
       throw new UnsupportedOperationException("Vectored IO not available on stream " + stream);
     }
+
     // Sort the ranges by offset and then validate for overlaps.
     // This ensures consistent behavior with all filesystems
     // across all implementations of Hadoop (specifically those without HADOOP-19098)
-    Collections.sort(ranges, Comparator.comparingLong(ParquetFileRange::getOffset));
+    final List<ParquetFileRange> sorted = validateAndSortRanges(ranges);
 
     final FileRangeBridge rangeBridge = FileRangeBridge.instance();
     // Setting the parquet range as a reference.
     List<FileRangeBridge.WrappedFileRange> fileRanges =
-        ranges.stream().map(rangeBridge::toFileRange).collect(Collectors.toList());
+        sorted.stream().map(rangeBridge::toFileRange).collect(Collectors.toList());
     bridge.readWrappedRanges(stream, fileRanges, allocator::allocate);
 
     // copy back the completable futures from the scheduled
@@ -316,7 +319,75 @@ public final class VectorIOBridge {
     blocksRead.set(0);
     bytesRead.set(0);
   }
+  /**
+   * Sort the input ranges by offset; no validation is done.
+   * @param input input ranges.
+   * @return a new list of the ranges, sorted by offset.
+   */
+  public static List<ParquetFileRange> sortRanges(List<ParquetFileRange> input) {
+    final List<ParquetFileRange> l = new ArrayList<>(input);
+    l.sort(Comparator.comparingLong(ParquetFileRange::getOffset));
+    return l;
+  }
+  /**
+   * Validate a single range.
+   * @param range range to validate.
+   * @return the range.
+   * @throws IllegalArgumentException the range length is negative or other invalid condition
+   * is met other than the those which raise EOFException or NullPointerException.
+   * @throws EOFException the range offset is negative
+   * @throws NullPointerException if the range is null.
+   */
+  public static ParquetFileRange validateRangeRequest(ParquetFileRange range) throws EOFException {
 
+    requireNonNull(range, "range is null");
+
+    checkArgument(range.getLength() >= 0, "length is negative in %s", range);
+    if (range.getOffset() < 0) {
+      throw new EOFException("position is negative in range " + range);
+    }
+    return range;
+  }
+
+  /**
+   * Validate a list of ranges (including overlapping checks) and
+   * return the sorted list.
+   * <p>
+   * Two ranges overlap when the start offset
+   * of second is less than the end offset of first.
+   * End offset is calculated as start offset + length.
+   * @param input input list
+   * @return a new sorted list.
+   * @throws IllegalArgumentException if there are overlapping ranges or
+   * a range element is invalid
+   */
+  public static List<ParquetFileRange> validateAndSortRanges(final List<ParquetFileRange> input) throws EOFException {
+
+    requireNonNull(input, "Null input list");
+    checkArgument(!input.isEmpty(), "Empty input list");
+    final List<ParquetFileRange> sortedRanges;
+
+    if (input.size() == 1) {
+      validateRangeRequest(input.get(0));
+      sortedRanges = input;
+    } else {
+      sortedRanges = sortRanges(input);
+      ParquetFileRange prev = null;
+      for (final ParquetFileRange current : sortedRanges) {
+        validateRangeRequest(current);
+        if (prev != null) {
+          checkArgument(
+              current.getOffset() >= prev.getOffset() + prev.getLength(),
+              "Overlapping ranges %s and %s",
+              prev,
+              current);
+        }
+        prev = current;
+      }
+    }
+
+    return sortedRanges;
+  }
   /**
    * Get the singleton instance.
    *

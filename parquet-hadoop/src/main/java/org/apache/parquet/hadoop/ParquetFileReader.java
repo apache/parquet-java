@@ -1150,9 +1150,10 @@ public class ParquetFileReader implements Closeable {
       try {
         readVectored(allParts, builder);
         return;
-      } catch (IOException | IllegalArgumentException | UnsupportedOperationException e) {
-        // possible failure modes.
-        LOG.warn("readVectored() failed; falling back to normal IO", e);
+      } catch (IllegalArgumentException | UnsupportedOperationException e) {
+        // Either the arguments are wrong or somehow this is being invoked against
+        // a hadoop release which doesn't have the API and yet somehow it got here.
+        LOG.warn("readVectored() failed; falling back to normal IO against {}", f, e);
       }
     }
     for (ConsecutivePartList consecutiveChunks : allParts) {
@@ -1228,7 +1229,7 @@ public class ParquetFileReader implements Closeable {
       ranges.add(new ParquetFileRange(consecutiveChunks.offset, (int) len));
       totalSize += len;
     }
-    LOG.info("Reading {} bytes of data with vectored IO in {} ranges", totalSize, ranges.size());
+    LOG.debug("Reading {} bytes of data with vectored IO in {} ranges", totalSize, ranges.size());
     // Request a vectored read;
     f.readVectored(ranges, options.getAllocator());
     int k = 0;

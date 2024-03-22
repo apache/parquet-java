@@ -17,8 +17,8 @@
  */
 
 /**
- * Vector IO support for Hadoop 3.3.5 runtimes.
- * Uses reflect so will compile against older versions,
+ * Vector IO support for Hadoop 3.3.5+ runtimes.
+ * Uses reflection so will compile against older versions,
  * but will not actually work.
  */
 package org.apache.parquet.hadoop.util.vectorio;

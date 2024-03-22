@@ -23,6 +23,7 @@ import static org.apache.parquet.hadoop.util.vectorio.VectorIOBridge.VECTOREDIO_
 import static org.apache.parquet.hadoop.util.vectorio.VectorIOBridge.instance;
 import static org.apache.parquet.hadoop.util.vectorio.VectorIOBridge.readVectoredRanges;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.junit.Assume.assumeTrue;
@@ -43,6 +44,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.ByteBufferPool;
 import org.apache.hadoop.io.ElasticByteBufferPool;
 import org.apache.parquet.bytes.ByteBufferAllocator;
+import org.apache.parquet.bytes.DirectByteBufferAllocator;
 import org.apache.parquet.io.ParquetFileRange;
 import org.junit.After;
 import org.junit.Before;
@@ -50,6 +52,7 @@ import org.junit.Test;
 
 /**
  * Test the vector IO bridge.
+ * <p>
  * Much of this is lifted from hadoop-common test
  * {@code AbstractContractVectoredReadTest};
  * with other utility methods from
@@ -102,7 +105,7 @@ public class TestVectorIOBridge {
 
   @Before
   public void setUp() throws IOException {
-    // skip the tests if the FileRangeBridge goes not load.
+    // skip the tests if the VectorIOBridge is unavailable
     assumeTrue("Bridge not available", VectorIOBridge.instance().available());
 
     fileSystem = FileSystem.getLocal(new Configuration());
@@ -178,12 +181,12 @@ public class TestVectorIOBridge {
    */
   @Test
   public void testVectoredReadMultipleRanges() throws Exception {
-    FileSystem fs = getFileSystem();
+
     List<ParquetFileRange> fileRanges = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
       fileRanges.add(range(i * 100, 100));
     }
-    try (FSDataInputStream in = fs.open(testFilePath)) {
+    try (FSDataInputStream in = openTestFile()) {
       readVectored(in, fileRanges);
       CompletableFuture<?>[] completableFutures = new CompletableFuture<?>[fileRanges.size()];
       int i = 0;
@@ -273,24 +276,27 @@ public class TestVectorIOBridge {
     }
   }
 
+  /**
+   * Overlapping is not allowed.
+   * This validation is done in the parquet library, so consistent with hadoop releases where
+   * only some of the filesystems reject overlapping ranges.
+   */
   @Test
   public void testOverlappingRanges() throws Exception {
-    List<ParquetFileRange> fileRanges = getSampleOverlappingRanges();
-    try (FSDataInputStream in = openTestFile()) {
-      readVectored(in, fileRanges);
-      validateVectoredReadResult(fileRanges, DATASET);
-    }
+    verifyExceptionalVectoredRead(getSampleOverlappingRanges(), IllegalArgumentException.class);
   }
 
   @Test
   public void testSameRanges() throws Exception {
     // Same ranges are special case of overlapping only.
-    List<ParquetFileRange> fileRanges = getSampleSameRanges();
-
-    try (FSDataInputStream in = openTestFile()) {
-      readVectored(in, fileRanges);
-      validateVectoredReadResult(fileRanges, DATASET);
-    }
+    verifyExceptionalVectoredRead(getSampleSameRanges(), IllegalArgumentException.class);
+  }
+  /**
+   * A null range is not permitted.
+   */
+  @Test
+  public void testNullRangeList() throws Exception {
+    verifyExceptionalVectoredRead(null, NullPointerException.class);
   }
 
   @Test
@@ -308,10 +314,7 @@ public class TestVectorIOBridge {
 
   @Test
   public void testConsecutiveRanges() throws Exception {
-    List<ParquetFileRange> fileRanges = ranges(
-        500, 100,
-        600, 200,
-        800, 100);
+    List<ParquetFileRange> fileRanges = getConsecutiveRanges();
     try (FSDataInputStream in = openTestFile()) {
       readVectored(in, fileRanges);
       validateVectoredReadResult(fileRanges, DATASET);
@@ -320,7 +323,7 @@ public class TestVectorIOBridge {
 
   @Test
   public void testNegativeLengthRange() throws Exception {
-    verifyExceptionalVectoredRead(getFileSystem(), ranges(1, -50), IllegalArgumentException.class);
+    verifyExceptionalVectoredRead(ranges(1, -50), IllegalArgumentException.class);
   }
 
   /**
@@ -329,7 +332,7 @@ public class TestVectorIOBridge {
    */
   @Test
   public void testNegativeOffsetRange() throws Exception {
-    verifyExceptionalVectoredRead(getFileSystem(), ranges(-1, 50), EOFException.class);
+    verifyExceptionalVectoredRead(ranges(-1, 50), EOFException.class);
   }
 
   /**
@@ -382,6 +385,29 @@ public class TestVectorIOBridge {
 
       validateVectoredReadResult(fileRanges2, DATASET);
       validateVectoredReadResult(fileRanges1, DATASET);
+    }
+  }
+
+  /**
+   * Direct buffer read is not supported.
+   */
+  @Test
+  public void testDirectBufferReadRejected() throws Exception {
+    verifyExceptionalVectoredRead(
+        getSampleNonOverlappingRanges(),
+        DirectByteBufferAllocator.getInstance(),
+        UnsupportedOperationException.class);
+  }
+
+  /**
+   * Direct buffer read is not supported for an open stream.
+   */
+  @Test
+  public void testDirectBufferReadReportedAsUnavailable() throws Exception {
+    try (FSDataInputStream in = openTestFile()) {
+      assertFalse(
+          "Direct buffer read should not be available",
+          instance().readVectoredAvailable(in, DirectByteBufferAllocator.getInstance()));
     }
   }
 
@@ -498,20 +524,35 @@ public class TestVectorIOBridge {
   }
 
   /**
-   * Validate that exceptions must be thrown during a vectored
+   * Validate that a specific exception is be thrown during a vectored
    * read operation with specific input ranges.
    *
-   * @param fs FileSystem instance.
    * @param fileRanges input file ranges.
    * @param clazz type of exception expected.
    *
-   * @throws Exception any other IOE.
+   * @throws IOException any IOE raised during the read.
    */
-  protected <T extends Throwable> T verifyExceptionalVectoredRead(
-      FileSystem fs, List<ParquetFileRange> fileRanges, Class<T> clazz) throws Exception {
+  protected <T extends Throwable> T verifyExceptionalVectoredRead(List<ParquetFileRange> fileRanges, Class<T> clazz)
+      throws IOException {
 
-    try (FSDataInputStream in = fs.open(testFilePath)) {
-      readVectored(in, fileRanges);
+    return verifyExceptionalVectoredRead(fileRanges, allocate, clazz);
+  }
+
+  /**
+   * Validate that a specific exception is be thrown during a vectored
+   * read operation with specific input ranges, passing
+   * in a specific allocator.
+   *
+   * @param fileRanges input file ranges.
+   * @param allocator  allocator to use.
+   * @param clazz type of exception expected.
+   *
+   * @throws IOException any IOE raised during the read.
+   */
+  private <T extends Throwable> T verifyExceptionalVectoredRead(
+      List<ParquetFileRange> fileRanges, ByteBufferAllocator allocator, Class<T> clazz) throws IOException {
+    try (FSDataInputStream in = openTestFile()) {
+      readVectoredRanges(in, fileRanges, allocator);
       fail("expected error reading " + in);
       // for the compiler
       return null;
