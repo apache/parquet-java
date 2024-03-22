@@ -27,7 +27,7 @@ import org.apache.parquet.column.ColumnDescriptor;
  * <p>
  * TODO: rename to RowGroup?
  */
-public interface PageReadStore {
+public interface PageReadStore extends AutoCloseable {
 
   /**
    * @param descriptor the descriptor of the column
@@ -57,5 +57,10 @@ public interface PageReadStore {
    */
   default Optional<PrimitiveIterator.OfLong> getRowIndexes() {
     return Optional.empty();
+  }
+
+  @Override
+  default void close() {
+    // No-op default implementation for compatibility
   }
 }

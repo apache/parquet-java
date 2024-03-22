@@ -31,6 +31,8 @@ import com.google.common.collect.ImmutableList;
 import java.io.File;
 import java.io.IOException;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -38,6 +40,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.apache.avro.Schema;
+import org.apache.avro.SchemaBuilder;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.hadoop.ParquetReader;
@@ -233,6 +236,44 @@ public class TestSpecificReadWrite {
   }
 
   @Test
+  public void testRepeatedRecordProjection() throws IOException {
+    Path path = writeCarsToParquetFile(1, CompressionCodecName.UNCOMPRESSED, false);
+    Configuration conf = new Configuration(testConf);
+    Schema schema = Car.getClassSchema();
+
+    // Project a single field from repeated record schema
+    final Schema projectedSchema = SchemaBuilder.builder(schema.getNamespace())
+        .record("Car")
+        .fields()
+        .name("serviceHistory")
+        .type(SchemaBuilder.unionOf()
+            .nullBuilder()
+            .endNull()
+            .and()
+            .array()
+            .items(SchemaBuilder.builder(schema.getNamespace())
+                .record("Service")
+                .fields()
+                .requiredString("mechanic")
+                .endRecord())
+            .endUnion())
+        .noDefault()
+        .endRecord();
+
+    AvroReadSupport.setRequestedProjection(conf, projectedSchema);
+
+    try (ParquetReader<Car> reader = new AvroParquetReader<>(conf, path)) {
+      for (Car car = reader.read(); car != null; car = reader.read()) {
+        assertNotNull(car.getServiceHistory());
+        car.getServiceHistory().forEach(service -> {
+          assertNotNull(service.getMechanic());
+          assertEquals(0L, service.getDate());
+        });
+      }
+    }
+  }
+
+  @Test
   public void testAvroReadSchema() throws IOException {
     Path path = writeCarsToParquetFile(1, CompressionCodecName.UNCOMPRESSED, false);
     Configuration conf = new Configuration(testConf);
@@ -256,6 +297,10 @@ public class TestSpecificReadWrite {
     List<LogicalTypesTest> records = IntStream.range(0, 25)
         .mapToObj(i -> LogicalTypesTest.newBuilder()
             .setTimestamp(Instant.now())
+            .setLocalDateTime(LocalDateTimeTest.newBuilder()
+                .setDate(LocalDate.now())
+                .setTime(LocalTime.now())
+                .build())
             .build())
         .collect(Collectors.toList());
 
@@ -266,7 +311,7 @@ public class TestSpecificReadWrite {
     Path path = new Path(tmp.getPath());
 
     try (ParquetWriter<LogicalTypesTest> writer = AvroParquetWriter.<LogicalTypesTest>builder(path)
-        .withSchema(LogicalTypesTest.SCHEMA$)
+        .withSchema(LogicalTypesTest.getClassSchema())
         .withConf(new Configuration(false))
         .withCompressionCodec(CompressionCodecName.UNCOMPRESSED)
         .build()) {

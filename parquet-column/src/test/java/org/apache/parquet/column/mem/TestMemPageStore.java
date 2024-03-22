@@ -31,8 +31,12 @@ import org.apache.parquet.column.page.mem.MemPageStore;
 import org.apache.parquet.column.statistics.LongStatistics;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class TestMemPageStore {
+
+  private static final Logger LOG = LoggerFactory.getLogger(TestMemPageStore.class);
 
   private String[] path = {"foo", "bar"};
 
@@ -48,12 +52,12 @@ public class TestMemPageStore {
     pageWriter.writePage(BytesInput.from(new byte[735]), 209, stats, BIT_PACKED, BIT_PACKED, PLAIN);
     PageReader pageReader = memPageStore.getPageReader(col);
     long totalValueCount = pageReader.getTotalValueCount();
-    System.out.println(totalValueCount);
+    LOG.info(String.valueOf(totalValueCount));
     int total = 0;
     do {
       DataPage readPage = pageReader.readPage();
       total += readPage.getValueCount();
-      System.out.println(readPage);
+      LOG.info(readPage.toString());
       // TODO: assert
     } while (total < totalValueCount);
   }

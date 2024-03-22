@@ -19,7 +19,6 @@
 package org.apache.parquet.hadoop;
 
 import java.io.IOException;
-import okhttp3.OkHttpClient;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ErrorCollector;
@@ -37,10 +36,8 @@ public class ITTestEncryptionOptions {
 
   TestEncryptionOptions test = new TestEncryptionOptions();
 
-  OkHttpClient httpClient = new OkHttpClient();
-
   @Test
   public void testInteropReadEncryptedParquetFiles() throws IOException {
-    test.testInteropReadEncryptedParquetFiles(errorCollector, httpClient);
+    test.testInteropReadEncryptedParquetFiles(errorCollector);
   }
 }

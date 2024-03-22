@@ -24,6 +24,7 @@ import static org.apache.parquet.schema.ConversionPatterns.mapType;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BOOLEAN;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.DOUBLE;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
 import static org.apache.parquet.schema.Type.Repetition.OPTIONAL;
@@ -362,7 +363,7 @@ class ThriftSchemaConvertVisitor implements ThriftType.StateVisitor<ConvertedFie
 
   @Override
   public ConvertedField visit(ByteType byteType, State state) {
-    return visitPrimitiveType(INT32, state);
+    return visitPrimitiveType(INT32, LogicalTypeAnnotation.intType(8, true), state);
   }
 
   @Override
@@ -398,6 +399,11 @@ class ThriftSchemaConvertVisitor implements ThriftType.StateVisitor<ConvertedFie
     } else {
       return visitPrimitiveType(BINARY, LogicalTypeAnnotation.stringType(), state);
     }
+  }
+
+  @Override
+  public ConvertedField visit(ThriftType.UUIDType uuidType, State state) {
+    return visitPrimitiveType(FIXED_LEN_BYTE_ARRAY, LogicalTypeAnnotation.uuidType(), state);
   }
 
   private static boolean isUnion(StructOrUnionType s) {

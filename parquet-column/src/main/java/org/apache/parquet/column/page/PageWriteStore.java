@@ -23,11 +23,16 @@ import org.apache.parquet.column.ColumnDescriptor;
 /**
  * contains all the writers for the columns in the corresponding row group
  */
-public interface PageWriteStore {
+public interface PageWriteStore extends AutoCloseable {
 
   /**
    * @param path the descriptor for the column
    * @return the corresponding page writer
    */
   PageWriter getPageWriter(ColumnDescriptor path);
+
+  @Override
+  default void close() {
+    // No-op default implementation for compatibility
+  }
 }

@@ -71,8 +71,13 @@ import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class TestStatistics {
+
+  private static final Logger LOG = LoggerFactory.getLogger(TestStatistics.class);
+
   private static final int MEGABYTE = 1 << 20;
   private static final long RANDOM_SEED = 1441990701846L; // System.currentTimeMillis();
 
@@ -481,7 +486,7 @@ public class TestStatistics {
     File file = folder.newFile("test_file.parquet");
     file.delete();
 
-    System.out.println(String.format("RANDOM SEED: %s", RANDOM_SEED));
+    LOG.info(String.format("RANDOM SEED: %s", RANDOM_SEED));
 
     Random random = new Random(RANDOM_SEED);
 

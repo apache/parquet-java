@@ -31,6 +31,8 @@ import java.util.Random;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.bytes.BytesInput;
+import org.apache.parquet.bytes.HeapByteBufferAllocator;
+import org.apache.parquet.bytes.TrackingByteBufferAllocator;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
 import org.apache.parquet.column.impl.ColumnReaderImpl;
@@ -58,12 +60,16 @@ import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Types;
 import org.apache.parquet.statistics.RandomValues;
 import org.apache.parquet.statistics.TestStatistics;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * This class contains test cases to validate each data type encoding.
@@ -72,6 +78,9 @@ import org.junit.runners.Parameterized;
  */
 @RunWith(Parameterized.class)
 public class FileEncodingsIT {
+
+  private static final Logger LOG = LoggerFactory.getLogger(FileEncodingsIT.class);
+
   private static final int RANDOM_SEED = 1;
   private static final int RECORD_COUNT = 2000000;
   private static final int FIXED_LENGTH = 60;
@@ -92,6 +101,7 @@ public class FileEncodingsIT {
   // Parameters
   private PrimitiveTypeName paramTypeName;
   private CompressionCodecName compression;
+  private TrackingByteBufferAllocator allocator;
 
   @Parameterized.Parameters
   public static Collection<Object[]> getParameters() {
@@ -146,6 +156,16 @@ public class FileEncodingsIT {
     fixedBinaryGenerator = new RandomValues.FixedGenerator(random.nextLong(), FIXED_LENGTH);
   }
 
+  @Before
+  public void initAllocator() {
+    allocator = TrackingByteBufferAllocator.wrap(new HeapByteBufferAllocator());
+  }
+
+  @After
+  public void closeAllocator() {
+    allocator.close();
+  }
+
   @Test
   public void testFileEncodingsWithoutDictionary() throws Exception {
     final boolean DISABLE_DICTIONARY = false;
@@ -156,7 +176,7 @@ public class FileEncodingsIT {
      * This loop will make sure to test future writer versions added to WriterVersion enum.
      */
     for (WriterVersion writerVersion : WriterVersion.values()) {
-      System.out.println(String.format(
+      LOG.info(String.format(
           "Testing %s/%s/%s encodings using ROW_GROUP_SIZE=%d PAGE_SIZE=%d",
           writerVersion, this.paramTypeName, this.compression, TEST_ROW_GROUP_SIZE, TEST_PAGE_SIZE));
 
@@ -182,7 +202,7 @@ public class FileEncodingsIT {
      * This loop will make sure to test future writer versions added to WriterVersion enum.
      */
     for (WriterVersion writerVersion : WriterVersion.values()) {
-      System.out.println(String.format(
+      LOG.info(String.format(
           "Testing %s/%s/%s + DICTIONARY encodings using ROW_GROUP_SIZE=%d PAGE_SIZE=%d",
           writerVersion, this.paramTypeName, this.compression, TEST_ROW_GROUP_SIZE, TEST_PAGE_SIZE));
 
@@ -236,6 +256,7 @@ public class FileEncodingsIT {
     GroupWriteSupport.setSchema(schema, configuration);
 
     ParquetWriter<Group> writer = ExampleParquetWriter.builder(file)
+        .withAllocator(allocator)
         .withCompressionCodec(compression)
         .withRowGroupSize(rowGroupSize)
         .withPageSize(pageSize)

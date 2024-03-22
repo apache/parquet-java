@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.proto;
 
+import com.google.protobuf.Descriptors;
 import com.google.protobuf.Message;
 import com.google.protobuf.MessageOrBuilder;
 import java.io.IOException;
@@ -115,8 +116,14 @@ public class ProtoParquetWriter<T extends MessageOrBuilder> extends ParquetWrite
     return new ProtoWriteSupport<>(protoMessage);
   }
 
+  private static <T extends MessageOrBuilder> WriteSupport<T> writeSupport(Descriptors.Descriptor descriptor) {
+    return new ProtoWriteSupport<>(descriptor);
+  }
+
   public static class Builder<T> extends ParquetWriter.Builder<T, Builder<T>> {
     Class<? extends Message> protoMessage = null;
+
+    private Descriptors.Descriptor descriptor = null;
 
     private Builder(Path file) {
       super(file);
@@ -135,6 +142,11 @@ public class ProtoParquetWriter<T extends MessageOrBuilder> extends ParquetWrite
       return this;
     }
 
+    public Builder<T> withDescriptor(Descriptors.Descriptor descriptor) {
+      this.descriptor = descriptor;
+      return this;
+    }
+
     @Override
     protected WriteSupport<T> getWriteSupport(Configuration conf) {
       return getWriteSupport((ParquetConfiguration) null);
@@ -143,6 +155,9 @@ public class ProtoParquetWriter<T extends MessageOrBuilder> extends ParquetWrite
     @Override
     @SuppressWarnings("unchecked")
     protected WriteSupport<T> getWriteSupport(ParquetConfiguration conf) {
+      if (this.descriptor != null) {
+        return (WriteSupport<T>) ProtoParquetWriter.writeSupport(descriptor);
+      }
       return (WriteSupport<T>) ProtoParquetWriter.writeSupport(protoMessage);
     }
   }

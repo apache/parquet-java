@@ -33,7 +33,6 @@ public final class ExpectationValidatingRecordConsumer extends RecordConsumer {
   }
 
   private void validate(String got) {
-    //    System.out.println("  \"" + got + "\";");
     assertEquals("event #" + count, expectations.pop(), got);
     ++count;
   }

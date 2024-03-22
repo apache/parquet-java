@@ -5,7 +5,7 @@
   <parent>
     <groupId>org.apache</groupId>
     <artifactId>apache</artifactId>
-    <version>29</version>
+    <version>31</version>
   </parent>
 
   <groupId>org.apache.parquet</groupId>
@@ -67,9 +67,10 @@
     <jackson.groupId>com.fasterxml.jackson.core</jackson.groupId>
     <jackson.datatype.groupId>com.fasterxml.jackson.datatype</jackson.datatype.groupId>
     <jackson.package>com.fasterxml.jackson</jackson.package>
-    <jackson.version>2.16.0</jackson.version>
-    <jackson-databind.version>2.16.0</jackson-databind.version>
+    <jackson.version>2.17.0</jackson.version>
+    <jackson-databind.version>2.17.0</jackson-databind.version>
     <japicmp.version>0.18.2</japicmp.version>
+    <javax.annotation.version>1.3.2</javax.annotation.version>
     <spotless.version>2.30.0</spotless.version>
     <shade.prefix>shaded.parquet</shade.prefix>
     <hadoop.version>3.3.6</hadoop.version>
@@ -84,13 +85,13 @@
     <pig.version>0.16.0</pig.version>
     <pig.classifier>h2</pig.classifier>
     <thrift-maven-plugin.version>0.10.0</thrift-maven-plugin.version>
-    <thrift.version>0.16.0</thrift.version>
+    <thrift.version>0.19.0</thrift.version>
     <format.thrift.version>${thrift.version}</format.thrift.version>
-    <fastutil.version>8.5.12</fastutil.version>
+    <fastutil.version>8.5.13</fastutil.version>
     <semver.api.version>0.9.33</semver.api.version>
     <slf4j.version>1.7.33</slf4j.version>
     <avro.version>1.11.3</avro.version>
-    <guava.version>32.1.3-jre</guava.version>
+    <guava.version>33.0.0-jre</guava.version>
     <brotli-codec.version>0.1.1</brotli-codec.version>
     <mockito.version>1.10.19</mockito.version>
     <powermock.version>2.0.9</powermock.version>
@@ -101,14 +102,14 @@
     <opencsv.version>2.3</opencsv.version>
     <jcommander.version>1.82</jcommander.version>
     <tukaani.version>1.9</tukaani.version>
-    <zstd-jni.version>1.5.0-1</zstd-jni.version>
+    <zstd-jni.version>1.5.5-11</zstd-jni.version>
     <commons-text.version>1.11.0</commons-text.version>
     <jsr305.version>3.0.2</jsr305.version>
     <commons-lang3.version>3.14.0</commons-lang3.version>
 
     <!-- properties for the profiles -->
-    <surefire.argLine> </surefire.argLine>
-    <surefire.logLevel>INFO</surefire.logLevel>
+    <surefire.argLine>-XX:MaxJavaStackTraceDepth=8</surefire.argLine>
+    <surefire.logLevel>ERROR</surefire.logLevel>
 
     <!-- Resource intesive tests are enabled by default but disabled in the CI envrionment -->
     <enableResourceIntensiveTests>true</enableResourceIntensiveTests>
@@ -600,6 +601,8 @@
               <!-- Due to the removal of deprecated methods -->
               <exclude>org.apache.parquet.arrow.schema.SchemaMapping</exclude>
 
+              <exclude>org.apache.parquet.thrift.struct.ThriftType</exclude>
+
               <exclude>org.apache.parquet.io.api.Binary#get2BytesLittleEndian()</exclude>
               <exclude>org.apache.parquet.schema.LogicalTypeAnnotation$Float16LogicalTypeAnnotation#accept(org.apache.parquet.schema.LogicalTypeAnnotation$LogicalTypeAnnotationVisitor)</exclude>
             </excludes>
@@ -625,6 +628,9 @@
             <configuration>
               <failOnWarning>true</failOnWarning>
               <ignoreNonCompile>true</ignoreNonCompile>
+              <ignoredDependencies>
+                <dependency>javax.annotation:javax.annotation-api:jar:1.3.2</dependency>
+              </ignoredDependencies>
             </configuration>
           </execution>
         </executions>
@@ -632,7 +638,7 @@
       <plugin>
         <groupId>org.cyclonedx</groupId>
         <artifactId>cyclonedx-maven-plugin</artifactId>
-        <version>2.7.10</version>
+        <version>2.7.11</version>
         <executions>
           <execution>
             <phase>package</phase>
@@ -653,75 +659,12 @@
       </properties>
     </profile>
 
+    <!-- Profile for tests to have more output -->
     <profile>
-      <id>update-github-site</id>
-      <reporting>
-        <plugins>
-          <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-project-info-reports-plugin</artifactId>
-            <reportSets>
-              <reportSet>
-                <reports>
-                  <report>index</report>
-                  <report>mailing-list</report>
-                  <report>dependency-info</report>
-                  <report>project-team</report>
-                  <report>dependencies</report>
-                  <report>license</report>
-                  <report>scm</report>
-                </reports>
-              </reportSet>
-            </reportSets>
-          </plugin>
-        </plugins>
-      </reporting>
-      <distributionManagement>
-        <site>
-          <id>github-pages-site</id>
-          <name>Deployment through GitHub's site deployment plugin</name>
-          <url>site/${project.version}</url>
-        </site>
-      </distributionManagement>
-      <build>
-        <plugins>
-          <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-site-plugin</artifactId>
-            <configuration>
-              <skipDeploy>true</skipDeploy>
-            </configuration>
-          </plugin>
-          <plugin>
-            <groupId>com.github.github</groupId>
-            <artifactId>site-maven-plugin</artifactId>
-            <version>0.12</version>
-            <configuration>
-              <message>Creating site for ${project.version}</message>
-              <path>${project.distributionManagement.site.url}</path>
-              <merge>true</merge>
-            </configuration>
-            <executions>
-              <execution>
-                <id>github-site</id>
-                <goals>
-                  <goal>site</goal>
-                </goals>
-                <phase>site-deploy</phase>
-              </execution>
-            </executions>
-          </plugin>
-        </plugins>
-      </build>
-    </profile>
-
-    <!-- Profile for CI tests to have less output -->
-    <profile>
-      <id>ci-test</id>
+      <id>verbose-test</id>
       <properties>
-        <surefire.logLevel>WARN</surefire.logLevel>
-        <surefire.argLine>-XX:MaxJavaStackTraceDepth=10</surefire.argLine>
-        <enableResourceIntensiveTests>false</enableResourceIntensiveTests>
+        <surefire.logLevel>INFO</surefire.logLevel>
+        <surefire.argLine>-XX:MaxJavaStackTraceDepth=1024</surefire.argLine>
       </properties>
     </profile>
 

@@ -65,6 +65,8 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
+import org.apache.parquet.bytes.HeapByteBufferAllocator;
+import org.apache.parquet.bytes.TrackingByteBufferAllocator;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
 import org.apache.parquet.crypto.ColumnEncryptionProperties;
@@ -87,7 +89,9 @@ import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Types;
+import org.junit.After;
 import org.junit.AfterClass;
+import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -142,6 +146,17 @@ public class TestColumnIndexFiltering {
 
   private final Path file;
   private final boolean isEncrypted;
+  private TrackingByteBufferAllocator allocator;
+
+  @Before
+  public void initAllocator() {
+    allocator = TrackingByteBufferAllocator.wrap(new HeapByteBufferAllocator());
+  }
+
+  @After
+  public void closeAllocator() {
+    allocator.close();
+  }
 
   public TestColumnIndexFiltering(Path file, boolean isEncrypted) {
     this.file = file;
@@ -245,6 +260,7 @@ public class TestColumnIndexFiltering {
     FileDecryptionProperties decryptionProperties = getFileDecryptionProperties();
     return PhoneBookWriter.readUsers(
         ParquetReader.builder(new GroupReadSupport(), file)
+            .withAllocator(allocator)
             .withFilter(filter)
             .withDecryption(decryptionProperties)
             .useDictionaryFilter(useOtherFiltering)
@@ -336,14 +352,17 @@ public class TestColumnIndexFiltering {
     int pageSize = DATA.size() / 10; // Ensure that several pages will be created
     int rowGroupSize = pageSize * 6 * 5; // Ensure that there are more row-groups created
 
-    PhoneBookWriter.write(
-        ExampleParquetWriter.builder(file)
-            .withWriteMode(OVERWRITE)
-            .withRowGroupSize(rowGroupSize)
-            .withPageSize(pageSize)
-            .withEncryption(encryptionProperties)
-            .withWriterVersion(parquetVersion),
-        DATA);
+    try (TrackingByteBufferAllocator allocator = TrackingByteBufferAllocator.wrap(new HeapByteBufferAllocator())) {
+      PhoneBookWriter.write(
+          ExampleParquetWriter.builder(file)
+              .withAllocator(allocator)
+              .withWriteMode(OVERWRITE)
+              .withRowGroupSize(rowGroupSize)
+              .withPageSize(pageSize)
+              .withEncryption(encryptionProperties)
+              .withWriterVersion(parquetVersion),
+          DATA);
+    }
   }
 
   private static FileEncryptionProperties getFileEncryptionProperties() {

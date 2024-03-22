@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import org.apache.parquet.column.page.DictionaryPageReadStore;
 import org.apache.parquet.filter2.bloomfilterlevel.BloomFilterImpl;
 import org.apache.parquet.filter2.compat.FilterCompat.Filter;
 import org.apache.parquet.filter2.compat.FilterCompat.NoOpFilter;
@@ -102,7 +103,9 @@ public class RowGroupFilter implements Visitor<List<BlockMetaData>> {
       }
 
       if (!drop && levels.contains(FilterLevel.DICTIONARY)) {
-        drop = DictionaryFilter.canDrop(filterPredicate, block.getColumns(), reader.getDictionaryReader(block));
+        try (DictionaryPageReadStore dictionaryPageReadStore = reader.getDictionaryReader(block)) {
+          drop = DictionaryFilter.canDrop(filterPredicate, block.getColumns(), dictionaryPageReadStore);
+        }
       }
 
       if (!drop && levels.contains(FilterLevel.BLOOMFILTER)) {

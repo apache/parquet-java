@@ -252,6 +252,16 @@ public class CapacityByteArrayOutputStream extends OutputStream {
   }
 
   /**
+   * It is expected that the buffer is large enough to fit the content of this.
+   */
+  void writeInto(ByteBuffer buffer) {
+    for (ByteBuffer slab : slabs) {
+      slab.flip();
+      buffer.put(slab);
+    }
+  }
+
+  /**
    * @return The total size in bytes of data written to this stream.
    */
   public long size() {
@@ -329,11 +339,21 @@ public class CapacityByteArrayOutputStream extends OutputStream {
     return slabs.size();
   }
 
+  ByteBuffer getInternalByteBuffer() {
+    if (slabs.size() == 1) {
+      ByteBuffer buf = slabs.get(0).duplicate();
+      buf.flip();
+      return buf.slice();
+    }
+    return null;
+  }
+
   @Override
   public void close() {
     for (ByteBuffer slab : slabs) {
       allocator.release(slab);
     }
+    slabs.clear();
     try {
       super.close();
     } catch (IOException e) {

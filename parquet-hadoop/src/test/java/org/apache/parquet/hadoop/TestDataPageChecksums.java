@@ -38,6 +38,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.HeapByteBufferAllocator;
+import org.apache.parquet.bytes.TrackingByteBufferAllocator;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.ParquetProperties;
@@ -67,6 +68,8 @@ import org.apache.parquet.io.SeekableInputStream;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
 import org.apache.parquet.schema.Types;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -78,6 +81,18 @@ import org.junit.rules.TemporaryFolder;
 public class TestDataPageChecksums {
   @Rule
   public final TemporaryFolder tempFolder = new TemporaryFolder();
+
+  private TrackingByteBufferAllocator allocator;
+
+  @Before
+  public void initAllocator() {
+    allocator = TrackingByteBufferAllocator.wrap(new HeapByteBufferAllocator());
+  }
+
+  @After
+  public void closeAllocator() {
+    allocator.close();
+  }
 
   private static final Statistics<?> EMPTY_STATS_INT32 =
       Statistics.getBuilderForReading(Types.required(INT32).named("a")).build();
@@ -116,7 +131,13 @@ public class TestDataPageChecksums {
     }
 
     ParquetFileWriter writer = new ParquetFileWriter(
-        conf, schemaSimple, path, ParquetWriter.DEFAULT_BLOCK_SIZE, ParquetWriter.MAX_PADDING_SIZE_DEFAULT);
+        conf,
+        schemaSimple,
+        path,
+        ParquetWriter.DEFAULT_BLOCK_SIZE,
+        ParquetWriter.MAX_PADDING_SIZE_DEFAULT,
+        Integer.MAX_VALUE,
+        allocator);
 
     writer.start();
     writer.startBlock(numRecordsLargeFile);
@@ -251,6 +272,7 @@ public class TestDataPageChecksums {
 
     try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(path)
         .withConf(conf)
+        .withAllocator(allocator)
         .withWriteMode(ParquetFileWriter.Mode.OVERWRITE)
         .withCompressionCodec(compression)
         .withDictionaryEncoding(dictionaryEncoding)

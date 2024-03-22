@@ -81,7 +81,7 @@ If this value is too small, the compression will deteriorate.
 
 **Property:** `parquet.compression`  
 **Description:** The compression algorithm used to compress pages. This property supersedes `mapred.output.compress*`.  
-It can be `uncompressed`, `snappy`, `gzip` or `lzo`, `brotli`,`lz4` and `zstd`.  
+It can be `uncompressed`, `snappy`, `gzip`, `lzo`, `brotli`, `lz4`, `zstd` and `lz4_raw`.  
 If `parquet.compression` is not set, the following properties are checked:
  * mapred.output.compress=true
  * mapred.output.compression.codec=org.apache.hadoop.io.compress.SomeCodec

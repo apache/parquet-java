@@ -252,4 +252,9 @@ class CompatibleCheckerVisitor implements ThriftType.StateVisitor<Void, State> {
   public Void visit(StringType stringType, State state) {
     return null;
   }
+
+  @Override
+  public Void visit(ThriftType.UUIDType uuidType, State state) {
+    return null;
+  }
 }

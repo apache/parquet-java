@@ -175,5 +175,10 @@ public class TestFieldsPath {
     public List<String> visit(StringType stringType, FieldsPath path) {
       return visitPrimitive(path);
     }
+
+    @Override
+    public List<String> visit(ThriftType.UUIDType uuidType, FieldsPath path) {
+      return visitPrimitive(path);
+    }
   }
 }

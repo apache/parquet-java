@@ -30,6 +30,7 @@ import static org.apache.parquet.thrift.struct.ThriftTypeID.MAP;
 import static org.apache.parquet.thrift.struct.ThriftTypeID.SET;
 import static org.apache.parquet.thrift.struct.ThriftTypeID.STRING;
 import static org.apache.parquet.thrift.struct.ThriftTypeID.STRUCT;
+import static org.apache.parquet.thrift.struct.ThriftTypeID.UUID;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -60,7 +61,8 @@ import org.apache.parquet.schema.LogicalTypeAnnotation;
   @JsonSubTypes.Type(value = ThriftType.MapType.class, name = "MAP"),
   @JsonSubTypes.Type(value = ThriftType.SetType.class, name = "SET"),
   @JsonSubTypes.Type(value = ThriftType.StringType.class, name = "STRING"),
-  @JsonSubTypes.Type(value = ThriftType.StructType.class, name = "STRUCT")
+  @JsonSubTypes.Type(value = ThriftType.StructType.class, name = "STRUCT"),
+  @JsonSubTypes.Type(value = ThriftType.UUIDType.class, name = "UUID"),
 })
 public abstract class ThriftType {
   private LogicalTypeAnnotation logicalTypeAnnotation;
@@ -131,6 +133,8 @@ public abstract class ThriftType {
     R visit(I64Type i64Type, S state);
 
     R visit(StringType stringType, S state);
+
+    R visit(UUIDType uuidType, S state);
   }
 
   /**
@@ -161,6 +165,8 @@ public abstract class ThriftType {
     void visit(I64Type i64Type);
 
     void visit(StringType stringType);
+
+    void visit(UUIDType uuidType);
   }
 
   /**
@@ -644,6 +650,25 @@ public abstract class ThriftType {
 
     @Override
     public <R, S> R accept(StateVisitor<R, S> visitor, S state) {
+      return visitor.visit(this, state);
+    }
+
+    @Override
+    public void accept(TypeVisitor visitor) {
+      visitor.visit(this);
+    }
+  }
+
+  public static class UUIDType extends ThriftType {
+
+    @JsonCreator
+    public UUIDType() {
+      super(UUID);
+    }
+
+    @Override
+    public <R, S> R accept(StateVisitor<R, S> visitor, S state) {
+      this.setLogicalTypeAnnotation(LogicalTypeAnnotation.uuidType());
       return visitor.visit(this, state);
     }
 

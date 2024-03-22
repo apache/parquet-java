@@ -153,24 +153,22 @@
         <version>${avro.version}</version>
         <executions>
           <execution>
+            <id>compile-idl</id>
+            <phase>generate-test-sources</phase>
+            <goals>
+              <goal>idl-protocol</goal>
+            </goals>
+            <configuration>
+              <stringType>String</stringType>
+            </configuration>
+          </execution>
+          <execution>
             <id>compile-avsc</id>
             <phase>generate-test-sources</phase>
             <goals>
               <goal>schema</goal>
             </goals>
           </execution>
-            <execution>
-                <id>compile-idl</id>
-                <phase>generate-test-sources</phase>
-                <goals>
-                    <goal>idl-protocol</goal>
-                </goals>
-                <configuration>
-                    <sourceDirectory>${project.basedir}/src/test/resources</sourceDirectory>
-                    <outputDirectory>${project.build.directory}/generated-test-sources</outputDirectory>
-                    <stringType>String</stringType>
-                </configuration>
-            </execution>
         </executions>
       </plugin>
       <plugin>
@@ -187,7 +185,7 @@
             </goals>
             <configuration>
               <sources>
-                <source>${project.build.directory}/generated-test-sources</source>
+                <source>${project.build.directory}/generated-test-sources/avro</source>
               </sources>
             </configuration>
           </execution>
