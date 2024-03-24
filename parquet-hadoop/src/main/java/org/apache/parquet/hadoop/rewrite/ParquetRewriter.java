@@ -63,7 +63,11 @@ import org.apache.parquet.format.DataPageHeaderV2;
 import org.apache.parquet.format.DictionaryPageHeader;
 import org.apache.parquet.format.PageHeader;
 import org.apache.parquet.format.converter.ParquetMetadataConverter;
-import org.apache.parquet.hadoop.*;
+import org.apache.parquet.hadoop.CodecFactory;
+import org.apache.parquet.hadoop.ColumnChunkPageWriteStore;
+import org.apache.parquet.hadoop.IndexCache;
+import org.apache.parquet.hadoop.ParquetFileReader;
+import org.apache.parquet.hadoop.ParquetFileWriter;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
@@ -318,7 +322,6 @@ public class ParquetRewriter implements Closeable {
   }
 
   private void processBlocksFromReader(IndexCache indexCache) throws IOException {
-    int rowGroupIdx = 0;
     for (int blockId = 0; blockId < meta.getBlocks().size(); blockId++) {
       BlockMetaData blockMetaData = meta.getBlocks().get(blockId);
       writer.startBlock(blockMetaData.getRowCount());
@@ -391,13 +394,12 @@ public class ParquetRewriter implements Closeable {
       }
 
       // Writing extra columns
-      for (RightColumnWriter writer : columnWritersR) {
-        writer.writeRows(rowGroupIdx, blockMetaData.getRowCount());
+      for (RightColumnWriter columnWriter : columnWritersR) {
+        columnWriter.writeRows(numBlocksRewritten, blockMetaData.getRowCount());
       }
 
       writer.endBlock();
       numBlocksRewritten++;
-      rowGroupIdx++;
     }
   }
 
@@ -964,8 +966,8 @@ public class ParquetRewriter implements Closeable {
     private final Map<ColumnDescriptor, ColumnChunkPageWriteStore> cPageStores = new HashMap<>();
     private final Map<ColumnDescriptor, ColumnWriteStore> cStores = new HashMap<>();
     private final Map<ColumnDescriptor, ColumnWriter> cWriters = new HashMap<>();
-    private int rowGroupIdxIn = 0;
-    private int rowGroupIdxOut = 0;
+    private int rowGroupIdxL = 0; // index of the rowGroup of the current file on the left
+    private int rowGroupIdxR = 0; // index of the rowGroup of the current file on the right
     private int writtenFromBlock = 0;
 
     public RightColumnWriter(Queue<TransParquetFileReader> inputFiles, ParquetRewriter parquetRewriter)
@@ -981,14 +983,18 @@ public class ParquetRewriter implements Closeable {
     }
 
     public void writeRows(int rowGroupIdx, long rowsToWrite) throws IOException {
-      if (rowGroupIdxIn != rowGroupIdx) {
-        rowGroupIdxIn = rowGroupIdx;
+      if (rowGroupIdxL > rowGroupIdx) {
+        throw new IOException("A row group index decrease is determined in RightColumnWriter! Current index: "
+            + rowGroupIdxL + ", new index: " + rowGroupIdx);
+      }
+      if (rowGroupIdxL != rowGroupIdx) {
+        rowGroupIdxL = rowGroupIdx;
         flushWriters();
         initWriters();
       }
       while (rowsToWrite > 0) {
         List<BlockMetaData> blocks = inputFiles.peek().getFooter().getBlocks();
-        BlockMetaData block = blocks.get(rowGroupIdxOut);
+        BlockMetaData block = blocks.get(rowGroupIdxR);
         List<ColumnChunkMetaData> chunks = block.getColumns();
         long leftInBlock = block.getRowCount() - writtenFromBlock;
         long writeFromBlock = Math.min(rowsToWrite, leftInBlock);
@@ -1002,10 +1008,10 @@ public class ParquetRewriter implements Closeable {
         rowsToWrite -= writeFromBlock;
         writtenFromBlock += writeFromBlock;
         if (rowsToWrite > 0 || (block.getRowCount() == writtenFromBlock)) {
-          rowGroupIdxOut++;
-          if (rowGroupIdxOut == blocks.size()) {
+          rowGroupIdxR++;
+          if (rowGroupIdxR == blocks.size()) {
             inputFiles.poll();
-            rowGroupIdxOut = 0;
+            rowGroupIdxR = 0;
           }
           writtenFromBlock = 0;
           // this is called after all rows are processed
@@ -1034,7 +1040,7 @@ public class ParquetRewriter implements Closeable {
       if (!inputFiles.isEmpty()) {
         List<BlockMetaData> blocks = inputFiles.peek().getFooter().getBlocks();
         descriptorsMap.forEach((columnPath, descriptor) -> {
-          ColumnChunkMetaData chunk = blocks.get(rowGroupIdxOut).getColumns().stream()
+          ColumnChunkMetaData chunk = blocks.get(rowGroupIdxR).getColumns().stream()
               .filter(x -> x.getPath() == columnPath)
               .findFirst()
               .orElseThrow(() -> new IllegalStateException(
@@ -1060,7 +1066,7 @@ public class ParquetRewriter implements Closeable {
               props.getColumnIndexTruncateLength(),
               props.getPageWriteChecksumEnabled(),
               writer.getEncryptor(),
-              rowGroupIdxIn);
+              rowGroupIdxL);
           ColumnWriteStore cwStore = props.newColumnWriteStore(columnSchema, cPageStore, cPageStore);
           ColumnWriter cWriter = cwStore.getColumnWriter(descriptor);
           cPageStores.put(descriptor, cPageStore);
@@ -1073,7 +1079,7 @@ public class ParquetRewriter implements Closeable {
     private void initReaders() throws IOException {
       if (!inputFiles.isEmpty()) {
         TransParquetFileReader reader = inputFiles.peek();
-        PageReadStore pageReadStore = reader.readRowGroup(rowGroupIdxOut);
+        PageReadStore pageReadStore = reader.readRowGroup(rowGroupIdxR);
         String createdBy = reader.getFooter().getFileMetaData().getCreatedBy();
         ColumnReadStoreImpl crStore = new ColumnReadStoreImpl(
             pageReadStore, new ParquetRewriter.DummyGroupConverter(), schema, createdBy);
