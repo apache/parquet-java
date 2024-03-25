@@ -1098,11 +1098,7 @@ public class ParquetFileReader implements Closeable {
     }
     // actually read all the chunks
     ChunkListBuilder builder = new ChunkListBuilder(block.getRowCount());
-    // HERE
     readAllPartsVectoredOrNormal(allParts, builder);
-    for (ConsecutivePartList consecutiveChunks : allParts) {
-      consecutiveChunks.readAll(f, builder);
-    }
     rowGroup.setReleaser(builder.releaser);
     for (Chunk chunk : builder.build()) {
       readChunkPages(chunk, block, rowGroup);
@@ -1359,13 +1355,7 @@ public class ParquetFileReader implements Closeable {
         }
       }
     }
-
-    // HERE
     readAllPartsVectoredOrNormal(allParts, builder);
-    // actually read all the chunks
-    for (ConsecutivePartList consecutiveChunks : allParts) {
-      consecutiveChunks.readAll(f, builder);
-    }
     rowGroup.setReleaser(builder.releaser);
     for (Chunk chunk : builder.build()) {
       readChunkPages(chunk, block, rowGroup);
