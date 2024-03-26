@@ -41,7 +41,6 @@ public class SchemaConverterConfigBuilder {
    * This builds the {@link SchemaConverterConfig} from the provided params.
    */
   public SchemaConverterConfig build() {
-    return new SchemaConverterConfig(
-        this.convertInt96ToArrowTimestamp);
+    return new SchemaConverterConfig(this.convertInt96ToArrowTimestamp);
   }
 }
