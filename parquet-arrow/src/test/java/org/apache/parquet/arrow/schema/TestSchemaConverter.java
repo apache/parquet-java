@@ -572,7 +572,9 @@ public class TestSchemaConverter {
 
   @Test
   public void testParquetInt96ToArrowTimestamp() {
-    final SchemaConverter converterInt96ToTimestamp = new SchemaConverter(true);
+    final SchemaConverterConfigBuilder builder = new SchemaConverterConfigBuilder();
+    final SchemaConverter converterInt96ToTimestamp = new SchemaConverter(
+        builder.setConvertInt96ToArrowTimestamp(true).build());
     MessageType parquet =
         Types.buildMessage().addField(Types.optional(INT96).named("a")).named("root");
     Schema expected = new Schema(asList(field("a", new ArrowType.Timestamp(TimeUnit.NANOSECOND, null))));

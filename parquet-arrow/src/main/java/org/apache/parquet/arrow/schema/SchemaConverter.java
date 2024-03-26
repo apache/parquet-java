@@ -87,19 +87,17 @@ import org.apache.parquet.schema.Types.GroupBuilder;
  */
 public class SchemaConverter {
 
-  // Indicates if Int96 should be converted to Arrow Timestamp
-  private final boolean convertInt96ToArrowTimestamp;
+  private final SchemaConverterConfig converterConfig;
 
   /**
    * For when we'll need this to be configurable
    */
   public SchemaConverter() {
-    this(false);
+    this(new SchemaConverterConfigBuilder().build());
   }
 
-  // TODO(PARQUET-1511): pass the parameters in a configuration object
-  public SchemaConverter(final boolean convertInt96ToArrowTimestamp) {
-    this.convertInt96ToArrowTimestamp = convertInt96ToArrowTimestamp;
+  public SchemaConverter(SchemaConverterConfig converterConfig) {
+    this.converterConfig = converterConfig;
   }
 
   /**
@@ -620,7 +618,7 @@ public class SchemaConverter {
 
           @Override
           public TypeMapping convertINT96(PrimitiveTypeName primitiveTypeName) throws RuntimeException {
-            if (convertInt96ToArrowTimestamp) {
+            if (converterConfig.getConvertInt96ToArrowTimestamp()) {
               return field(new ArrowType.Timestamp(TimeUnit.NANOSECOND, null));
             } else {
               return field(new ArrowType.Binary());
