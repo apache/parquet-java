@@ -37,8 +37,8 @@ public class TestSnappyCodec {
   @Test
   public void TestSnappy() throws IOException {
     // Reuse the snappy objects between test cases
-    SnappyCompressor compressor = new SnappyCompressor(4096);
-    SnappyDecompressor decompressor = new SnappyDecompressor(4096);
+    SnappyCompressor compressor = new SnappyCompressor();
+    SnappyDecompressor decompressor = new SnappyDecompressor();
 
     TestSnappy(compressor, decompressor, "");
     TestSnappy(compressor, decompressor, "FooBar");

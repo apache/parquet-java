@@ -39,8 +39,7 @@ import org.apache.hadoop.io.compress.Decompressor;
 public class SnappyCodec implements Configurable, CompressionCodec {
   private Configuration conf;
   // Hadoop config for how big to make intermediate buffers.
-  private static final String BUFFER_SIZE_CONFIG = "io.file.buffer.size";
-  private static final int DEFAULT_BUFFER_SIZE_CONFIG = 4 * 1024;
+  private final String BUFFER_SIZE_CONFIG = "io.file.buffer.size";
 
   @Override
   public void setConf(Configuration conf) {
@@ -54,12 +53,12 @@ public class SnappyCodec implements Configurable, CompressionCodec {
 
   @Override
   public Compressor createCompressor() {
-    return new SnappyCompressor(getBufferSize());
+    return new SnappyCompressor();
   }
 
   @Override
   public Decompressor createDecompressor() {
-    return new SnappyDecompressor(getBufferSize());
+    return new SnappyDecompressor();
   }
 
   @Override
@@ -69,7 +68,7 @@ public class SnappyCodec implements Configurable, CompressionCodec {
 
   @Override
   public CompressionInputStream createInputStream(InputStream stream, Decompressor decompressor) throws IOException {
-    return new NonBlockedDecompressorStream(stream, decompressor, getBufferSize());
+    return new NonBlockedDecompressorStream(stream, decompressor, conf.getInt(BUFFER_SIZE_CONFIG, 4 * 1024));
   }
 
   @Override
@@ -79,7 +78,7 @@ public class SnappyCodec implements Configurable, CompressionCodec {
 
   @Override
   public CompressionOutputStream createOutputStream(OutputStream stream, Compressor compressor) throws IOException {
-    return new NonBlockedCompressorStream(stream, compressor, getBufferSize());
+    return new NonBlockedCompressorStream(stream, compressor, conf.getInt(BUFFER_SIZE_CONFIG, 4 * 1024));
   }
 
   @Override
@@ -95,10 +94,5 @@ public class SnappyCodec implements Configurable, CompressionCodec {
   @Override
   public String getDefaultExtension() {
     return ".snappy";
-  }
-
-  private int getBufferSize()
-  {
-    return conf.getInt(BUFFER_SIZE_CONFIG, DEFAULT_BUFFER_SIZE_CONFIG);
   }
 }

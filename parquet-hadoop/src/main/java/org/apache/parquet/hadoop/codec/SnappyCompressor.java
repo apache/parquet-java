@@ -24,10 +24,6 @@ import org.xerial.snappy.Snappy;
 
 public class SnappyCompressor extends NonBlockedCompressor {
 
-  public SnappyCompressor(int initialInputBufferSize) {
-    super(initialInputBufferSize);
-  }
-
   @Override
   protected int maxCompressedLength(int byteSize) {
     return Snappy.maxCompressedLength(byteSize);

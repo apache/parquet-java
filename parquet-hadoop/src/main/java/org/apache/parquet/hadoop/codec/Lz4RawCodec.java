@@ -60,12 +60,12 @@ public class Lz4RawCodec implements Configurable, CompressionCodec {
 
   @Override
   public Compressor createCompressor() {
-    return new Lz4RawCompressor(getBufferSize());
+    return new Lz4RawCompressor();
   }
 
   @Override
   public Decompressor createDecompressor() {
-    return new Lz4RawDecompressor(getBufferSize());
+    return new Lz4RawDecompressor();
   }
 
   @Override
@@ -75,7 +75,8 @@ public class Lz4RawCodec implements Configurable, CompressionCodec {
 
   @Override
   public CompressionInputStream createInputStream(InputStream stream, Decompressor decompressor) throws IOException {
-    return new NonBlockedDecompressorStream(stream, decompressor, getBufferSize());
+    return new NonBlockedDecompressorStream(
+        stream, decompressor, conf.getInt(BUFFER_SIZE_CONFIG, DEFAULT_BUFFER_SIZE_CONFIG));
   }
 
   @Override
@@ -85,7 +86,8 @@ public class Lz4RawCodec implements Configurable, CompressionCodec {
 
   @Override
   public CompressionOutputStream createOutputStream(OutputStream stream, Compressor compressor) throws IOException {
-    return new NonBlockedCompressorStream(stream, compressor, getBufferSize());
+    return new NonBlockedCompressorStream(
+        stream, compressor, conf.getInt(BUFFER_SIZE_CONFIG, DEFAULT_BUFFER_SIZE_CONFIG));
   }
 
   @Override
@@ -101,10 +103,5 @@ public class Lz4RawCodec implements Configurable, CompressionCodec {
   @Override
   public String getDefaultExtension() {
     return ".lz4";
-  }
-
-  private int getBufferSize()
-  {
-    return conf.getInt(BUFFER_SIZE_CONFIG, DEFAULT_BUFFER_SIZE_CONFIG);
   }
 }
