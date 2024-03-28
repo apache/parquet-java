@@ -19,8 +19,8 @@
 package org.apache.parquet.hadoop.util.vectorio;
 
 import static java.util.Objects.requireNonNull;
-import static org.apache.hadoop.util.Preconditions.checkArgument;
 import static org.apache.parquet.Exceptions.throwIfInstance;
+import static org.apache.parquet.Preconditions.checkArgument;
 import static org.apache.parquet.hadoop.util.vectorio.BindingUtils.loadInvocation;
 
 import java.io.EOFException;
@@ -251,7 +251,8 @@ public final class VectorIOBridge {
   @Override
   public String toString() {
     return "VectorIOBridge{"
-        + "readVectored=" + readVectored
+        + "available=" + available()
+        + ", readVectored=" + readVectored
         + ", vectorReads=" + vectorReads.get()
         + ", blocksRead=" + blocksRead.get()
         + ", bytesRead=" + bytesRead.get()
@@ -324,7 +325,7 @@ public final class VectorIOBridge {
    * @param input input ranges.
    * @return a new list of the ranges, sorted by offset.
    */
-  public static List<ParquetFileRange> sortRanges(List<ParquetFileRange> input) {
+  private static List<ParquetFileRange> sortRanges(List<ParquetFileRange> input) {
     final List<ParquetFileRange> l = new ArrayList<>(input);
     l.sort(Comparator.comparingLong(ParquetFileRange::getOffset));
     return l;
@@ -338,7 +339,7 @@ public final class VectorIOBridge {
    * @throws EOFException the range offset is negative
    * @throws NullPointerException if the range is null.
    */
-  public static ParquetFileRange validateRangeRequest(ParquetFileRange range) throws EOFException {
+  private static ParquetFileRange validateRangeRequest(ParquetFileRange range) throws EOFException {
 
     requireNonNull(range, "range is null");
 
@@ -361,7 +362,8 @@ public final class VectorIOBridge {
    * @throws IllegalArgumentException if there are overlapping ranges or
    * a range element is invalid
    */
-  public static List<ParquetFileRange> validateAndSortRanges(final List<ParquetFileRange> input) throws EOFException {
+  private static List<ParquetFileRange> validateAndSortRanges(final List<ParquetFileRange> input)
+      throws EOFException {
 
     requireNonNull(input, "Null input list");
     checkArgument(!input.isEmpty(), "Empty input list");
@@ -388,6 +390,7 @@ public final class VectorIOBridge {
 
     return sortedRanges;
   }
+
   /**
    * Get the singleton instance.
    *

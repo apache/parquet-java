@@ -100,6 +100,10 @@ public class TestVectorIOBridge {
 
   private FileSystem fileSystem;
   private Path testFilePath;
+  private VectorIOBridge vectorIOBridge;
+  private long initialVectorReadCount;
+  private long initialBlocksRead;
+  private long initialBytesRead;
 
   public TestVectorIOBridge() {}
 
@@ -111,6 +115,10 @@ public class TestVectorIOBridge {
     fileSystem = FileSystem.getLocal(new Configuration());
     testFilePath = fileSystem.makeQualified(vectoredPath);
     createFile(fileSystem, testFilePath, DATASET);
+    vectorIOBridge = VectorIOBridge.availableInstance();
+    initialVectorReadCount = vectorIOBridge.getVectorReads();
+    initialBlocksRead = vectorIOBridge.getBlocksRead();
+    initialBytesRead = vectorIOBridge.getBytesRead();
   }
 
   @After
