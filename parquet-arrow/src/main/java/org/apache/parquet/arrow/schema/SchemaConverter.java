@@ -66,6 +66,7 @@ import org.apache.arrow.vector.types.pojo.ArrowType.Utf8;
 import org.apache.arrow.vector.types.pojo.Field;
 import org.apache.arrow.vector.types.pojo.FieldType;
 import org.apache.arrow.vector.types.pojo.Schema;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.arrow.schema.SchemaMapping.ListTypeMapping;
 import org.apache.parquet.arrow.schema.SchemaMapping.PrimitiveTypeMapping;
 import org.apache.parquet.arrow.schema.SchemaMapping.RepeatedTypeMapping;
@@ -87,17 +88,21 @@ import org.apache.parquet.schema.Types.GroupBuilder;
  */
 public class SchemaConverter {
 
-  private final SchemaConverterConfig converterConfig;
+  public static final String CONVERT_INT96_TO_ARROW_TIMESTAMP = "parquet.arrow.convertInt96AsTimestamp";
+
+  private final Configuration configuration;
 
   /**
    * For when we'll need this to be configurable
    */
   public SchemaConverter() {
-    this(new SchemaConverterConfigBuilder().build());
+    Configuration conf = new Configuration(false);
+    conf.setBoolean(CONVERT_INT96_TO_ARROW_TIMESTAMP, false);
+    this.configuration = conf;
   }
 
-  public SchemaConverter(SchemaConverterConfig converterConfig) {
-    this.converterConfig = converterConfig;
+  public SchemaConverter(Configuration configuration) {
+    this.configuration = configuration;
   }
 
   /**
@@ -618,7 +623,7 @@ public class SchemaConverter {
 
           @Override
           public TypeMapping convertINT96(PrimitiveTypeName primitiveTypeName) throws RuntimeException {
-            if (converterConfig.getConvertInt96ToArrowTimestamp()) {
+            if (configuration.getBoolean(CONVERT_INT96_TO_ARROW_TIMESTAMP, false)) {
               return field(new ArrowType.Timestamp(TimeUnit.NANOSECOND, null));
             } else {
               return field(new ArrowType.Binary());
