@@ -27,6 +27,13 @@ public abstract class NonBlockedDecompressor implements Decompressor {
 
   private static final int INITIAL_INPUT_BUFFER_SIZE = 4096;
 
+  /**
+   * Input buffer starts at {@link #INITIAL_INPUT_BUFFER_SIZE} and then grows by this factor every time it needs
+   * additional space. This factor is chosen to balance the time to reach the target size against the excess peak
+   * memory usage due to overshooting the target.
+   */
+  private static final double INPUT_BUFFER_GROWTH_FACTOR = 1.2;
+
   // Buffer for uncompressed output. This buffer grows as necessary.
   private ByteBuffer outputBuffer = ByteBuffer.allocateDirect(0);
 
@@ -111,7 +118,10 @@ public abstract class NonBlockedDecompressor implements Decompressor {
       if (inputBuffer.capacity() == 0) {
         newBufferSize = Math.max(INITIAL_INPUT_BUFFER_SIZE, len);
       } else {
-        newBufferSize = Math.max(inputBuffer.position() + len, inputBuffer.capacity() * 2);
+        newBufferSize = Math.max(
+            inputBuffer.position() + len,
+            (int) (inputBuffer.capacity() * INPUT_BUFFER_GROWTH_FACTOR)
+        );
       }
       final ByteBuffer newBuffer = ByteBuffer.allocateDirect(newBufferSize);
       newBuffer.limit(inputBuffer.position() + len);
