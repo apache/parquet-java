@@ -35,6 +35,7 @@
   <url>https://parquet.apache.org</url>
 
   <properties>
+    <maven.compiler.release>17</maven.compiler.release>
     <extraJavaVectorArgs>
       --add-modules=jdk.incubator.vector
     </extraJavaVectorArgs>
@@ -73,7 +74,6 @@
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
         <configuration>
-          <release>17</release>
           <compilerArgs combine.children="append">
             <compilerArg>${extraJavaVectorArgs}</compilerArg>
           </compilerArgs>
