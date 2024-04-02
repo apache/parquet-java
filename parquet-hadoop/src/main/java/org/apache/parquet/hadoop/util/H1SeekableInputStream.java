@@ -23,7 +23,7 @@ import java.io.IOException;
 import java.util.List;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.parquet.bytes.ByteBufferAllocator;
-import org.apache.parquet.hadoop.util.vectorio.VectorIOBridge;
+import org.apache.parquet.hadoop.util.wrappedio.VectorIOBridge;
 import org.apache.parquet.io.DelegatingSeekableInputStream;
 import org.apache.parquet.io.ParquetFileRange;
 

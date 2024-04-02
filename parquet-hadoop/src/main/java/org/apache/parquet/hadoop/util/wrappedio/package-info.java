@@ -17,8 +17,9 @@
  */
 
 /**
- * Vector IO support for Hadoop 3.3.5+ runtimes.
+ * Wrapped IO APIs for Hadoop runtimes with methods/APIs
+ * that are not available in older versions of Hadoop.
  * Uses reflection so will compile against older versions,
  * but will not actually work.
  */
-package org.apache.parquet.hadoop.util.vectorio;
+package org.apache.parquet.hadoop.util.wrappedio;

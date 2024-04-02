@@ -106,7 +106,7 @@ import org.apache.parquet.hadoop.metadata.FileMetaData;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.hadoop.util.counters.BenchmarkCounter;
-import org.apache.parquet.hadoop.util.vectorio.BindingUtils;
+import org.apache.parquet.hadoop.util.wrappedio.FutureIO;
 import org.apache.parquet.internal.column.columnindex.ColumnIndex;
 import org.apache.parquet.internal.column.columnindex.OffsetIndex;
 import org.apache.parquet.internal.filter2.columnindex.ColumnIndexFilter;
@@ -2208,7 +2208,7 @@ public class ParquetFileReader implements Closeable {
             "Waiting for vectored read to finish for range {} with timeout {} seconds",
             currRange,
             timeoutSeconds);
-        buffer = BindingUtils.awaitFuture(currRange.getDataReadFuture(), timeoutSeconds, TimeUnit.SECONDS);
+        buffer = FutureIO.awaitFuture(currRange.getDataReadFuture(), timeoutSeconds, TimeUnit.SECONDS);
         // report in a counter the data we just scanned
         BenchmarkCounter.incrementBytesRead(currRange.getLength());
       } catch (TimeoutException e) {

@@ -16,11 +16,11 @@
  * limitations under the License.
  */
 
-package org.apache.parquet.hadoop.util.vectorio;
+package org.apache.parquet.hadoop.util.wrappedio;
 
 import static java.util.Objects.requireNonNull;
-import static org.apache.parquet.hadoop.util.vectorio.BindingUtils.implemented;
-import static org.apache.parquet.hadoop.util.vectorio.BindingUtils.loadInvocation;
+import static org.apache.parquet.hadoop.util.wrappedio.BindingUtils.implemented;
+import static org.apache.parquet.hadoop.util.wrappedio.BindingUtils.loadInvocation;
 
 import java.nio.ByteBuffer;
 import java.util.concurrent.CompletableFuture;

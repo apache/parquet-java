@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package org.apache.parquet.hadoop.util.vectorio;
+package org.apache.parquet.hadoop.util.wrappedio;
 
 import java.io.IOException;
 import java.io.InterruptedIOException;
@@ -26,17 +26,18 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import org.apache.parquet.util.DynMethods;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Binding utils.
+ * Methods to work with futures, based on.
+ * {@code org.apache.hadoop.util.functional.FutureIO}.
+ *
+ * These methods are used in production code.
  */
-public final class BindingUtils {
-  private static final Logger LOG = LoggerFactory.getLogger(BindingUtils.class);
+public final class FutureIO {
 
-  private BindingUtils() {}
+  private static final Logger LOG = LoggerFactory.getLogger(FutureIO.class);
 
   /**
    * Given a future, evaluate it.
@@ -131,66 +132,5 @@ public final class BindingUtils {
       // this only happens if there was no cause.
       return new IOException(e);
     }
-  }
-
-  /**
-   * Get an invocation from the source class, which will be unavailable() if
-   * the class is null or the method isn't found.
-   *
-   * @param <T> return type
-   * @param source source. If null, the method is a no-op.
-   * @param returnType return type class (unused)
-   * @param name method name
-   * @param parameterTypes parameters
-   *
-   * @return the method or "unavailable"
-   */
-  static <T> DynMethods.UnboundMethod loadInvocation(
-      Class<?> source, Class<? extends T> returnType, String name, Class<?>... parameterTypes) {
-
-    if (source != null) {
-      final DynMethods.UnboundMethod m = new DynMethods.Builder(name)
-          .impl(source, name, parameterTypes)
-          .orNoop()
-          .build();
-      if (m.isNoop()) {
-        // this is a sign of a mismatch between this class's expected
-        // signatures and actual ones.
-        // log at debug.
-        LOG.debug("Failed to load method {} from {}", name, source);
-      } else {
-        LOG.debug("Found method {} from {}", name, source);
-      }
-      return m;
-    } else {
-      return noop(name);
-    }
-  }
-
-  /**
-   * Create a no-op method.
-   *
-   * @param name method name
-   *
-   * @return a no-op method.
-   */
-  static DynMethods.UnboundMethod noop(final String name) {
-    return new DynMethods.Builder(name).orNoop().build();
-  }
-
-  /**
-   * Given a sequence of methods, verify that they are all available.
-   *
-   * @param methods methods
-   *
-   * @return true if they are all implemented
-   */
-  static boolean implemented(DynMethods.UnboundMethod... methods) {
-    for (DynMethods.UnboundMethod method : methods) {
-      if (method.isNoop()) {
-        return false;
-      }
-    }
-    return true;
   }
 }

@@ -16,12 +16,12 @@
  * limitations under the License.
  */
 
-package org.apache.parquet.hadoop.util.vectorio;
+package org.apache.parquet.hadoop.util.wrappedio;
 
-import static org.apache.parquet.hadoop.util.vectorio.BindingUtils.awaitFuture;
-import static org.apache.parquet.hadoop.util.vectorio.VectorIOBridge.VECTOREDIO_CAPABILITY;
-import static org.apache.parquet.hadoop.util.vectorio.VectorIOBridge.instance;
-import static org.apache.parquet.hadoop.util.vectorio.VectorIOBridge.readVectoredRanges;
+import static org.apache.parquet.hadoop.util.wrappedio.FutureIO.awaitFuture;
+import static org.apache.parquet.hadoop.util.wrappedio.VectorIOBridge.VECTOREDIO_CAPABILITY;
+import static org.apache.parquet.hadoop.util.wrappedio.VectorIOBridge.instance;
+import static org.apache.parquet.hadoop.util.wrappedio.VectorIOBridge.readVectoredRanges;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
