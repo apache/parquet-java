@@ -114,9 +114,7 @@ public abstract class NonBlockedCompressor implements Compressor {
         newBufferSize = Math.max(INITIAL_INPUT_BUFFER_SIZE, len);
       } else {
         newBufferSize = Math.max(
-            inputBuffer.position() + len,
-            (int) (inputBuffer.capacity() * INPUT_BUFFER_GROWTH_FACTOR)
-        );
+            inputBuffer.position() + len, (int) (inputBuffer.capacity() * INPUT_BUFFER_GROWTH_FACTOR));
       }
       ByteBuffer tmp = ByteBuffer.allocateDirect(newBufferSize);
       tmp.limit(inputBuffer.position() + len);

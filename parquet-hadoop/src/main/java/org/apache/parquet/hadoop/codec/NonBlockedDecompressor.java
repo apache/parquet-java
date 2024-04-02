@@ -119,9 +119,7 @@ public abstract class NonBlockedDecompressor implements Decompressor {
         newBufferSize = Math.max(INITIAL_INPUT_BUFFER_SIZE, len);
       } else {
         newBufferSize = Math.max(
-            inputBuffer.position() + len,
-            (int) (inputBuffer.capacity() * INPUT_BUFFER_GROWTH_FACTOR)
-        );
+            inputBuffer.position() + len, (int) (inputBuffer.capacity() * INPUT_BUFFER_GROWTH_FACTOR));
       }
       final ByteBuffer newBuffer = ByteBuffer.allocateDirect(newBufferSize);
       newBuffer.limit(inputBuffer.position() + len);
