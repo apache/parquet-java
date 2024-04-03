@@ -34,7 +34,6 @@ import org.junit.Test;
 public class TestInterOpReadByteStreamSplit {
   private static final String FLOATS_FILE = "byte_stream_split.zstd.parquet";
   private static final String EXTENDED_FILE = "byte_stream_split_extended.gzip.parquet";
-  // FIXME after https://github.com/apache/parquet-testing/pull/46 is merged
   private static final String CHANGESET = "74278bc";
   private final InterOpTester interop = new InterOpTester();
 

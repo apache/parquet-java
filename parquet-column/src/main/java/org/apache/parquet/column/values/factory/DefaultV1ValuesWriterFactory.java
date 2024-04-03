@@ -77,15 +77,15 @@ public class DefaultV1ValuesWriterFactory implements ValuesWriterFactory {
 
   private ValuesWriter getFixedLenByteArrayValuesWriter(ColumnDescriptor path) {
     // dictionary encoding was not enabled in PARQUET 1.0
-    if (parquetProperties.isExtendedByteStreamSplitEnabled()) {
+    if (parquetProperties.isByteStreamSplitEnabled(path)) {
       return new ByteStreamSplitValuesWriter.FixedLenByteArrayByteStreamSplitValuesWriter(
-          path.getTypeLength(),
+          path.getPrimitiveType().getTypeLength(),
           parquetProperties.getInitialSlabSize(),
           parquetProperties.getPageSizeThreshold(),
           parquetProperties.getAllocator());
     } else {
       return new FixedLenByteArrayPlainValuesWriter(
-          path.getTypeLength(),
+          path.getPrimitiveType().getTypeLength(),
           parquetProperties.getInitialSlabSize(),
           parquetProperties.getPageSizeThreshold(),
           parquetProperties.getAllocator());
@@ -103,7 +103,7 @@ public class DefaultV1ValuesWriterFactory implements ValuesWriterFactory {
 
   private ValuesWriter getInt32ValuesWriter(ColumnDescriptor path) {
     final ValuesWriter fallbackWriter;
-    if (parquetProperties.isExtendedByteStreamSplitEnabled()) {
+    if (parquetProperties.isByteStreamSplitEnabled(path)) {
       fallbackWriter = new ByteStreamSplitValuesWriter.IntegerByteStreamSplitValuesWriter(
           parquetProperties.getInitialSlabSize(),
           parquetProperties.getPageSizeThreshold(),
@@ -120,7 +120,7 @@ public class DefaultV1ValuesWriterFactory implements ValuesWriterFactory {
 
   private ValuesWriter getInt64ValuesWriter(ColumnDescriptor path) {
     final ValuesWriter fallbackWriter;
-    if (parquetProperties.isExtendedByteStreamSplitEnabled()) {
+    if (parquetProperties.isByteStreamSplitEnabled(path)) {
       fallbackWriter = new ByteStreamSplitValuesWriter.LongByteStreamSplitValuesWriter(
           parquetProperties.getInitialSlabSize(),
           parquetProperties.getPageSizeThreshold(),
@@ -147,7 +147,7 @@ public class DefaultV1ValuesWriterFactory implements ValuesWriterFactory {
 
   private ValuesWriter getDoubleValuesWriter(ColumnDescriptor path) {
     final ValuesWriter fallbackWriter;
-    if (this.parquetProperties.isByteStreamSplitEnabled()) {
+    if (this.parquetProperties.isByteStreamSplitEnabled(path)) {
       fallbackWriter = new ByteStreamSplitValuesWriter.DoubleByteStreamSplitValuesWriter(
           parquetProperties.getInitialSlabSize(),
           parquetProperties.getPageSizeThreshold(),
@@ -164,7 +164,7 @@ public class DefaultV1ValuesWriterFactory implements ValuesWriterFactory {
 
   private ValuesWriter getFloatValuesWriter(ColumnDescriptor path) {
     final ValuesWriter fallbackWriter;
-    if (this.parquetProperties.isByteStreamSplitEnabled()) {
+    if (this.parquetProperties.isByteStreamSplitEnabled(path)) {
       fallbackWriter = new ByteStreamSplitValuesWriter.FloatByteStreamSplitValuesWriter(
           parquetProperties.getInitialSlabSize(),
           parquetProperties.getPageSizeThreshold(),

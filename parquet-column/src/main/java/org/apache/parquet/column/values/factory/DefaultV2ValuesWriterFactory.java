@@ -32,18 +32,10 @@ import org.apache.parquet.column.values.deltastrings.DeltaByteArrayWriter;
 import org.apache.parquet.column.values.plain.FixedLenByteArrayPlainValuesWriter;
 import org.apache.parquet.column.values.plain.PlainValuesWriter;
 import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridValuesWriter;
-import org.apache.parquet.schema.LogicalTypeAnnotation;
 
 public class DefaultV2ValuesWriterFactory implements ValuesWriterFactory {
 
   private ParquetProperties parquetProperties;
-
-  private static boolean logicalTypeMatches(ColumnDescriptor descriptor, Class<?>... classes) {
-    for (Class cls : classes) {
-      if (cls.isInstance(descriptor.getPrimitiveType().getLogicalTypeAnnotation())) return true;
-    }
-    return false;
-  }
 
   @Override
   public void initialize(ParquetProperties properties) {
@@ -93,13 +85,10 @@ public class DefaultV2ValuesWriterFactory implements ValuesWriterFactory {
 
   private ValuesWriter getFixedLenByteArrayValuesWriter(ColumnDescriptor path) {
     final ValuesWriter fallbackWriter;
-    // Heuristic: enable BYTE_STREAM_SPLIT for DECIMAL and FLOAT16 columns.
-    final boolean useByteStreamSplit = parquetProperties.isExtendedByteStreamSplitEnabled()
-        && logicalTypeMatches(
-            path,
-            LogicalTypeAnnotation.DecimalLogicalTypeAnnotation.class,
-            LogicalTypeAnnotation.Float16LogicalTypeAnnotation.class);
-    if (useByteStreamSplit) {
+    // TODO:
+    //  Ideally we should only enable BYTE_STREAM_SPLIT if compression is enabled for a column.
+    //  However, this information is not available here.
+    if (parquetProperties.isByteStreamSplitEnabled(path)) {
       fallbackWriter = new ByteStreamSplitValuesWriter.FixedLenByteArrayByteStreamSplitValuesWriter(
           path.getTypeLength(),
           parquetProperties.getInitialSlabSize(),
@@ -126,9 +115,7 @@ public class DefaultV2ValuesWriterFactory implements ValuesWriterFactory {
 
   private ValuesWriter getInt32ValuesWriter(ColumnDescriptor path) {
     final ValuesWriter fallbackWriter;
-    // Ideally we should only enable BYTE_STREAM_SPLIT if compression is enabled for this column.
-    // However, this information is not available here.
-    if (parquetProperties.isExtendedByteStreamSplitEnabled()) {
+    if (parquetProperties.isByteStreamSplitEnabled(path)) {
       fallbackWriter = new ByteStreamSplitValuesWriter.IntegerByteStreamSplitValuesWriter(
           parquetProperties.getInitialSlabSize(),
           parquetProperties.getPageSizeThreshold(),
@@ -145,9 +132,7 @@ public class DefaultV2ValuesWriterFactory implements ValuesWriterFactory {
 
   private ValuesWriter getInt64ValuesWriter(ColumnDescriptor path) {
     final ValuesWriter fallbackWriter;
-    // Ideally we should only enable BYTE_STREAM_SPLIT if compression is enabled for this column.
-    // However, this information is not available here.
-    if (parquetProperties.isExtendedByteStreamSplitEnabled()) {
+    if (parquetProperties.isByteStreamSplitEnabled(path)) {
       fallbackWriter = new ByteStreamSplitValuesWriter.LongByteStreamSplitValuesWriter(
           parquetProperties.getInitialSlabSize(),
           parquetProperties.getPageSizeThreshold(),
@@ -174,7 +159,7 @@ public class DefaultV2ValuesWriterFactory implements ValuesWriterFactory {
 
   private ValuesWriter getDoubleValuesWriter(ColumnDescriptor path) {
     final ValuesWriter fallbackWriter;
-    if (this.parquetProperties.isByteStreamSplitEnabled()) {
+    if (this.parquetProperties.isByteStreamSplitEnabled(path)) {
       fallbackWriter = new ByteStreamSplitValuesWriter.DoubleByteStreamSplitValuesWriter(
           parquetProperties.getInitialSlabSize(),
           parquetProperties.getPageSizeThreshold(),
@@ -191,7 +176,7 @@ public class DefaultV2ValuesWriterFactory implements ValuesWriterFactory {
 
   private ValuesWriter getFloatValuesWriter(ColumnDescriptor path) {
     final ValuesWriter fallbackWriter;
-    if (this.parquetProperties.isByteStreamSplitEnabled()) {
+    if (this.parquetProperties.isByteStreamSplitEnabled(path)) {
       fallbackWriter = new ByteStreamSplitValuesWriter.FloatByteStreamSplitValuesWriter(
           parquetProperties.getInitialSlabSize(),
           parquetProperties.getPageSizeThreshold(),

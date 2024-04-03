@@ -118,22 +118,7 @@ public class DefaultValuesWriterFactoryTest {
         false,
         true,
         DictionaryValuesWriter.class,
-        DeltaByteArrayWriter.class);
-    // Some logical types select BYTE_STREAM_SPLIT as a heuristic
-    LogicalTypeAnnotation[] logicalTypes = {
-      LogicalTypeAnnotation.float16Type(), LogicalTypeAnnotation.decimalType(4, 18)
-    };
-    for (LogicalTypeAnnotation logicalType : logicalTypes) {
-      ColumnDescriptor path = createColumnDescriptor(PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY, logicalType);
-      doTestValueWriter(
-          path,
-          WriterVersion.PARQUET_2_0,
-          true,
-          false,
-          true,
-          DictionaryValuesWriter.class,
-          ByteStreamSplitValuesWriter.FixedLenByteArrayByteStreamSplitValuesWriter.class);
-    }
+        ByteStreamSplitValuesWriter.class);
   }
 
   public void testFixedLenByteArray_V2_WithByteStreamSplit_NoDict() {
@@ -497,96 +482,108 @@ public class DefaultValuesWriterFactoryTest {
         PrimitiveTypeName.FLOAT, WriterVersion.PARQUET_2_0, false, false, false, PlainValuesWriter.class);
   }
 
+  private void testFloatingPoint_WithByteStreamSplit(PrimitiveTypeName typeName, WriterVersion writerVersion) {
+    // With cross-column settings
+    doTestValueWriter(
+        createColumnDescriptor(typeName),
+        ParquetProperties.builder()
+            .withWriterVersion(writerVersion)
+            .withDictionaryEncoding(false)
+            .withByteStreamSplitEncoding(true)
+            .build(),
+        ByteStreamSplitValuesWriter.class);
+    doTestValueWriter(
+        createColumnDescriptor(typeName),
+        ParquetProperties.builder()
+            .withWriterVersion(writerVersion)
+            .withDictionaryEncoding(false)
+            .withExtendedByteStreamSplitEncoding(true)
+            .build(),
+        ByteStreamSplitValuesWriter.class);
+    // With per-column settings
+    ParquetProperties properties = ParquetProperties.builder()
+        .withWriterVersion(writerVersion)
+        .withDictionaryEncoding(false)
+        .withByteStreamSplitEncoding("colA", true)
+        .build();
+    doTestValueWriter(createColumnDescriptor(typeName, "colA"), properties, ByteStreamSplitValuesWriter.class);
+    doTestValueWriter(createColumnDescriptor(typeName, "colB"), properties, PlainValuesWriter.class);
+  }
+
+  private void testFloatingPoint_WithByteStreamSplitAndDictionary(
+      PrimitiveTypeName typeName, WriterVersion writerVersion) {
+    // With cross-column settings
+    doTestValueWriter(
+        createColumnDescriptor(typeName),
+        ParquetProperties.builder()
+            .withWriterVersion(writerVersion)
+            .withByteStreamSplitEncoding(true)
+            .build(),
+        DictionaryValuesWriter.class,
+        ByteStreamSplitValuesWriter.class);
+    doTestValueWriter(
+        createColumnDescriptor(typeName),
+        ParquetProperties.builder()
+            .withWriterVersion(writerVersion)
+            .withExtendedByteStreamSplitEncoding(true)
+            .build(),
+        DictionaryValuesWriter.class,
+        ByteStreamSplitValuesWriter.class);
+    // With per-column settings
+    ParquetProperties properties = ParquetProperties.builder()
+        .withWriterVersion(writerVersion)
+        .withByteStreamSplitEncoding("colA", true)
+        .build();
+    doTestValueWriter(
+        createColumnDescriptor(typeName, "colA"),
+        properties,
+        DictionaryValuesWriter.class,
+        ByteStreamSplitValuesWriter.class);
+    doTestValueWriter(
+        createColumnDescriptor(typeName, "colB"),
+        properties,
+        DictionaryValuesWriter.class,
+        PlainValuesWriter.class);
+  }
+
   @Test
   public void testFloat_V1_WithByteStreamSplit() {
-    doTestValueWriter(
-        PrimitiveTypeName.FLOAT,
-        WriterVersion.PARQUET_1_0,
-        false,
-        true,
-        false,
-        ByteStreamSplitValuesWriter.class);
+    testFloatingPoint_WithByteStreamSplit(PrimitiveTypeName.FLOAT, WriterVersion.PARQUET_1_0);
   }
 
   @Test
   public void testDouble_V1_WithByteStreamSplit() {
-    doTestValueWriter(
-        PrimitiveTypeName.DOUBLE,
-        WriterVersion.PARQUET_1_0,
-        false,
-        true,
-        false,
-        ByteStreamSplitValuesWriter.class);
+    testFloatingPoint_WithByteStreamSplit(PrimitiveTypeName.DOUBLE, WriterVersion.PARQUET_1_0);
   }
 
   @Test
   public void testFloat_V2_WithByteStreamSplit() {
-    doTestValueWriter(
-        PrimitiveTypeName.FLOAT,
-        WriterVersion.PARQUET_2_0,
-        false,
-        true,
-        false,
-        ByteStreamSplitValuesWriter.class);
+    testFloatingPoint_WithByteStreamSplit(PrimitiveTypeName.FLOAT, WriterVersion.PARQUET_2_0);
   }
 
   @Test
   public void testDouble_V2_WithByteStreamSplit() {
-    doTestValueWriter(
-        PrimitiveTypeName.DOUBLE,
-        WriterVersion.PARQUET_2_0,
-        false,
-        true,
-        false,
-        ByteStreamSplitValuesWriter.class);
+    testFloatingPoint_WithByteStreamSplit(PrimitiveTypeName.DOUBLE, WriterVersion.PARQUET_2_0);
   }
 
   @Test
   public void testFloat_V1_WithByteStreamSplitAndDictionary() {
-    doTestValueWriter(
-        PrimitiveTypeName.FLOAT,
-        WriterVersion.PARQUET_1_0,
-        true,
-        true,
-        false,
-        PlainFloatDictionaryValuesWriter.class,
-        ByteStreamSplitValuesWriter.class);
+    testFloatingPoint_WithByteStreamSplit(PrimitiveTypeName.FLOAT, WriterVersion.PARQUET_1_0);
   }
 
   @Test
   public void testDouble_V1_WithByteStreamSplitAndDictionary() {
-    doTestValueWriter(
-        PrimitiveTypeName.DOUBLE,
-        WriterVersion.PARQUET_1_0,
-        true,
-        true,
-        false,
-        PlainDoubleDictionaryValuesWriter.class,
-        ByteStreamSplitValuesWriter.class);
+    testFloatingPoint_WithByteStreamSplit(PrimitiveTypeName.DOUBLE, WriterVersion.PARQUET_1_0);
   }
 
   @Test
   public void testFloat_V2_WithByteStreamSplitAndDictionary() {
-    doTestValueWriter(
-        PrimitiveTypeName.FLOAT,
-        WriterVersion.PARQUET_2_0,
-        true,
-        true,
-        false,
-        PlainFloatDictionaryValuesWriter.class,
-        ByteStreamSplitValuesWriter.class);
+    testFloatingPoint_WithByteStreamSplit(PrimitiveTypeName.FLOAT, WriterVersion.PARQUET_2_0);
   }
 
   @Test
   public void testDouble_V2_WithByteStreamSplitAndDictionary() {
-    doTestValueWriter(
-        PrimitiveTypeName.DOUBLE,
-        WriterVersion.PARQUET_2_0,
-        true,
-        true,
-        false,
-        PlainDoubleDictionaryValuesWriter.class,
-        ByteStreamSplitValuesWriter.class);
+    testFloatingPoint_WithByteStreamSplit(PrimitiveTypeName.DOUBLE, WriterVersion.PARQUET_2_0);
   }
 
   @Test
@@ -715,6 +712,25 @@ public class DefaultValuesWriterFactoryTest {
     validateFallbackWriter(writer, initialValueWriterClass, fallbackValueWriterClass);
   }
 
+  private void doTestValueWriter(
+      ColumnDescriptor path,
+      ParquetProperties properties,
+      Class<? extends ValuesWriter> initialValueWriterClass,
+      Class<? extends ValuesWriter> fallbackValueWriterClass) {
+    ValuesWriterFactory factory = getDefaultFactory(properties);
+    ValuesWriter writer = factory.newValuesWriter(path);
+    validateFallbackWriter(writer, initialValueWriterClass, fallbackValueWriterClass);
+  }
+
+  private void doTestValueWriter(
+      ColumnDescriptor path,
+      ParquetProperties properties,
+      Class<? extends ValuesWriter> expectedValueWriterClass) {
+    ValuesWriterFactory factory = getDefaultFactory(properties);
+    ValuesWriter writer = factory.newValuesWriter(path);
+    validateWriterType(writer, expectedValueWriterClass);
+  }
+
   private ColumnDescriptor createColumnDescriptor(PrimitiveTypeName typeName) {
     return createColumnDescriptor(typeName, (LogicalTypeAnnotation) null);
   }
@@ -739,6 +755,7 @@ public class DefaultValuesWriterFactoryTest {
       boolean enableByteStreamSplit,
       boolean enableExtendedByteStreamSplit) {
     ValuesWriterFactory factory = new DefaultValuesWriterFactory();
+    // Initialize factory with the given properties
     ParquetProperties.builder()
         .withDictionaryEncoding(enableDictionary)
         .withByteStreamSplitEncoding(enableByteStreamSplit)
@@ -747,6 +764,12 @@ public class DefaultValuesWriterFactoryTest {
         .withValuesWriterFactory(factory)
         .build();
 
+    return factory;
+  }
+
+  private ValuesWriterFactory getDefaultFactory(ParquetProperties properties) {
+    ValuesWriterFactory factory = new DefaultValuesWriterFactory();
+    factory.initialize(properties);
     return factory;
   }
 
