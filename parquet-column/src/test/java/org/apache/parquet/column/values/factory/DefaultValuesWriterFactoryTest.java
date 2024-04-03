@@ -87,13 +87,21 @@ public class DefaultValuesWriterFactoryTest {
 
   @Test
   public void testFixedLenByteArray_WithByteStreamSplit() {
+    // No dictionary encoding for FLBA in Parquet 1.0
     doTestValueWriter(
         PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY,
         WriterVersion.PARQUET_1_0,
         true,
         false,
         true,
-        ByteStreamSplitValuesWriter.FixedLenByteArrayByteStreamSplitValuesWriter.class);
+        ByteStreamSplitValuesWriter.class);
+    doTestValueWriter(
+        PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY,
+        WriterVersion.PARQUET_1_0,
+        true,
+        true,
+        false,
+        FixedLenByteArrayPlainValuesWriter.class);
   }
 
   @Test
@@ -110,38 +118,14 @@ public class DefaultValuesWriterFactoryTest {
 
   @Test
   public void testFixedLenByteArray_V2_WithByteStreamSplit() {
-    // DELTA_BYTE_ARRAY still selected by default
-    doTestValueWriter(
-        PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY,
-        WriterVersion.PARQUET_2_0,
-        true,
-        false,
-        true,
-        DictionaryValuesWriter.class,
-        ByteStreamSplitValuesWriter.class);
+    testExtendedByteStreamSplit(
+        PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY, WriterVersion.PARQUET_2_0, DeltaByteArrayWriter.class);
   }
 
+  @Test
   public void testFixedLenByteArray_V2_WithByteStreamSplit_NoDict() {
-    doTestValueWriter(
-        PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY,
-        WriterVersion.PARQUET_2_0,
-        false,
-        false,
-        true,
-        DeltaByteArrayWriter.class);
-    LogicalTypeAnnotation[] logicalTypes = {
-      LogicalTypeAnnotation.float16Type(), LogicalTypeAnnotation.decimalType(4, 18)
-    };
-    for (LogicalTypeAnnotation logicalType : logicalTypes) {
-      ColumnDescriptor path = createColumnDescriptor(PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY, logicalType);
-      doTestValueWriter(
-          path,
-          WriterVersion.PARQUET_2_0,
-          false,
-          false,
-          true,
-          ByteStreamSplitValuesWriter.FixedLenByteArrayByteStreamSplitValuesWriter.class);
-    }
+    testExtendedByteStreamSplit_NoDict(
+        PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY, WriterVersion.PARQUET_2_0, DeltaByteArrayWriter.class);
   }
 
   @Test
@@ -211,25 +195,12 @@ public class DefaultValuesWriterFactoryTest {
 
   @Test
   public void testInt32_ByteStreamSplit() {
-    doTestValueWriter(
-        PrimitiveTypeName.INT32,
-        WriterVersion.PARQUET_1_0,
-        true,
-        false,
-        true,
-        PlainIntegerDictionaryValuesWriter.class,
-        ByteStreamSplitValuesWriter.IntegerByteStreamSplitValuesWriter.class);
+    testExtendedByteStreamSplit(PrimitiveTypeName.INT32, WriterVersion.PARQUET_1_0, PlainValuesWriter.class);
   }
 
   @Test
   public void testInt32_ByteStreamSplit_NoDict() {
-    doTestValueWriter(
-        PrimitiveTypeName.INT32,
-        WriterVersion.PARQUET_1_0,
-        false,
-        false,
-        true,
-        ByteStreamSplitValuesWriter.IntegerByteStreamSplitValuesWriter.class);
+    testExtendedByteStreamSplit_NoDict(PrimitiveTypeName.INT32, WriterVersion.PARQUET_1_0, PlainValuesWriter.class);
   }
 
   @Test
@@ -255,26 +226,14 @@ public class DefaultValuesWriterFactoryTest {
         DeltaBinaryPackingValuesWriter.class);
   }
 
+  @Test
   public void testInt32_V2_ByteStreamSplit() {
-    doTestValueWriter(
-        PrimitiveTypeName.INT32,
-        WriterVersion.PARQUET_2_0,
-        true,
-        false,
-        true,
-        PlainIntegerDictionaryValuesWriter.class,
-        ByteStreamSplitValuesWriter.IntegerByteStreamSplitValuesWriter.class);
+    testExtendedByteStreamSplit(INT32, WriterVersion.PARQUET_2_0, DeltaBinaryPackingValuesWriter.class);
   }
 
   @Test
   public void testInt32_V2_ByteStreamSplit_NoDict() {
-    doTestValueWriter(
-        PrimitiveTypeName.INT32,
-        WriterVersion.PARQUET_2_0,
-        false,
-        false,
-        true,
-        ByteStreamSplitValuesWriter.IntegerByteStreamSplitValuesWriter.class);
+    testExtendedByteStreamSplit_NoDict(INT32, WriterVersion.PARQUET_2_0, DeltaBinaryPackingValuesWriter.class);
   }
 
   @Test
@@ -297,25 +256,12 @@ public class DefaultValuesWriterFactoryTest {
 
   @Test
   public void testInt64_ByteStreamSplit() {
-    doTestValueWriter(
-        PrimitiveTypeName.INT64,
-        WriterVersion.PARQUET_1_0,
-        true,
-        false,
-        true,
-        PlainLongDictionaryValuesWriter.class,
-        ByteStreamSplitValuesWriter.LongByteStreamSplitValuesWriter.class);
+    testExtendedByteStreamSplit(PrimitiveTypeName.INT64, WriterVersion.PARQUET_1_0, PlainValuesWriter.class);
   }
 
   @Test
   public void testInt64_ByteStreamSplit_NoDict() {
-    doTestValueWriter(
-        PrimitiveTypeName.INT64,
-        WriterVersion.PARQUET_1_0,
-        false,
-        false,
-        true,
-        ByteStreamSplitValuesWriter.LongByteStreamSplitValuesWriter.class);
+    testExtendedByteStreamSplit_NoDict(PrimitiveTypeName.INT64, WriterVersion.PARQUET_1_0, PlainValuesWriter.class);
   }
 
   @Test
@@ -343,25 +289,14 @@ public class DefaultValuesWriterFactoryTest {
 
   @Test
   public void testInt64_V2_ByteStreamSplit() {
-    doTestValueWriter(
-        PrimitiveTypeName.INT64,
-        WriterVersion.PARQUET_2_0,
-        true,
-        false,
-        true,
-        PlainLongDictionaryValuesWriter.class,
-        ByteStreamSplitValuesWriter.LongByteStreamSplitValuesWriter.class);
+    testExtendedByteStreamSplit(
+        PrimitiveTypeName.INT64, WriterVersion.PARQUET_2_0, DeltaBinaryPackingValuesWriter.class);
   }
 
   @Test
   public void testInt64_V2_ByteStreamSplit_NoDict() {
-    doTestValueWriter(
-        PrimitiveTypeName.INT64,
-        WriterVersion.PARQUET_1_0,
-        false,
-        false,
-        true,
-        ByteStreamSplitValuesWriter.LongByteStreamSplitValuesWriter.class);
+    testExtendedByteStreamSplit_NoDict(
+        PrimitiveTypeName.INT64, WriterVersion.PARQUET_2_0, DeltaBinaryPackingValuesWriter.class);
   }
 
   @Test
@@ -482,6 +417,153 @@ public class DefaultValuesWriterFactoryTest {
         PrimitiveTypeName.FLOAT, WriterVersion.PARQUET_2_0, false, false, false, PlainValuesWriter.class);
   }
 
+  @Test
+  public void testFloat_V1_WithByteStreamSplit() {
+    testFloatingPoint_WithByteStreamSplit(PrimitiveTypeName.FLOAT, WriterVersion.PARQUET_1_0);
+  }
+
+  @Test
+  public void testDouble_V1_WithByteStreamSplit() {
+    testFloatingPoint_WithByteStreamSplit(PrimitiveTypeName.DOUBLE, WriterVersion.PARQUET_1_0);
+  }
+
+  @Test
+  public void testFloat_V2_WithByteStreamSplit() {
+    testFloatingPoint_WithByteStreamSplit(PrimitiveTypeName.FLOAT, WriterVersion.PARQUET_2_0);
+  }
+
+  @Test
+  public void testDouble_V2_WithByteStreamSplit() {
+    testFloatingPoint_WithByteStreamSplit(PrimitiveTypeName.DOUBLE, WriterVersion.PARQUET_2_0);
+  }
+
+  @Test
+  public void testFloat_V1_WithByteStreamSplitAndDictionary() {
+    testFloatingPoint_WithByteStreamSplitAndDictionary(PrimitiveTypeName.FLOAT, WriterVersion.PARQUET_1_0);
+  }
+
+  @Test
+  public void testDouble_V1_WithByteStreamSplitAndDictionary() {
+    testFloatingPoint_WithByteStreamSplitAndDictionary(PrimitiveTypeName.DOUBLE, WriterVersion.PARQUET_1_0);
+  }
+
+  @Test
+  public void testFloat_V2_WithByteStreamSplitAndDictionary() {
+    testFloatingPoint_WithByteStreamSplitAndDictionary(PrimitiveTypeName.FLOAT, WriterVersion.PARQUET_2_0);
+  }
+
+  @Test
+  public void testDouble_V2_WithByteStreamSplitAndDictionary() {
+    testFloatingPoint_WithByteStreamSplitAndDictionary(PrimitiveTypeName.DOUBLE, WriterVersion.PARQUET_2_0);
+  }
+
+  @Test
+  public void testColumnWiseDictionaryWithFalseDefault() {
+    ValuesWriterFactory factory = getDefaultFactory(
+        WriterVersion.PARQUET_2_0, false, "binary_dict", "boolean_dict", "float_dict", "int32_dict");
+    validateFactory(
+        factory, BINARY, "binary_dict", PlainBinaryDictionaryValuesWriter.class, DeltaByteArrayWriter.class);
+    validateFactory(factory, BINARY, "binary_no_dict", DeltaByteArrayWriter.class);
+    validateFactory(factory, BOOLEAN, "boolean_dict", RunLengthBitPackingHybridValuesWriter.class);
+    validateFactory(factory, BOOLEAN, "boolean_no_dict", RunLengthBitPackingHybridValuesWriter.class);
+    validateFactory(factory, FLOAT, "float_dict", PlainFloatDictionaryValuesWriter.class, PlainValuesWriter.class);
+    validateFactory(factory, FLOAT, "float_no_dict", PlainValuesWriter.class);
+    validateFactory(
+        factory,
+        INT32,
+        "int32_dict",
+        PlainIntegerDictionaryValuesWriter.class,
+        DeltaBinaryPackingValuesWriter.class);
+    validateFactory(factory, INT32, "int32_no_dict", DeltaBinaryPackingValuesWriter.class);
+  }
+
+  @Test
+  public void testColumnWiseDictionaryWithTrueDefault() {
+    ValuesWriterFactory factory = getDefaultFactory(
+        WriterVersion.PARQUET_2_0, true, "binary_no_dict", "boolean_no_dict", "float_no_dict", "int32_no_dict");
+    validateFactory(
+        factory, BINARY, "binary_dict", PlainBinaryDictionaryValuesWriter.class, DeltaByteArrayWriter.class);
+    validateFactory(factory, BINARY, "binary_no_dict", DeltaByteArrayWriter.class);
+    validateFactory(factory, BOOLEAN, "boolean_dict", RunLengthBitPackingHybridValuesWriter.class);
+    validateFactory(factory, BOOLEAN, "boolean_no_dict", RunLengthBitPackingHybridValuesWriter.class);
+    validateFactory(factory, FLOAT, "float_dict", PlainFloatDictionaryValuesWriter.class, PlainValuesWriter.class);
+    validateFactory(factory, FLOAT, "float_no_dict", PlainValuesWriter.class);
+    validateFactory(
+        factory,
+        INT32,
+        "int32_dict",
+        PlainIntegerDictionaryValuesWriter.class,
+        DeltaBinaryPackingValuesWriter.class);
+    validateFactory(factory, INT32, "int32_no_dict", DeltaBinaryPackingValuesWriter.class);
+  }
+
+  private void testExtendedByteStreamSplit(
+      PrimitiveTypeName typeName,
+      WriterVersion writerVersion,
+      Class<? extends ValuesWriter> defaultFallbackWriterClass) {
+    // cross-column settings
+    doTestValueWriter(
+        createColumnDescriptor(typeName),
+        ParquetProperties.builder()
+            .withWriterVersion(writerVersion)
+            .withExtendedByteStreamSplitEncoding(true)
+            .build(),
+        DictionaryValuesWriter.class,
+        ByteStreamSplitValuesWriter.class);
+    doTestValueWriter(
+        createColumnDescriptor(typeName),
+        ParquetProperties.builder()
+            .withWriterVersion(writerVersion)
+            .withByteStreamSplitEncoding(true)
+            .build(),
+        DictionaryValuesWriter.class,
+        defaultFallbackWriterClass);
+    // per-column settings
+    ParquetProperties properties = ParquetProperties.builder()
+        .withWriterVersion(writerVersion)
+        .withByteStreamSplitEncoding("colA", true)
+        .build();
+    doTestValueWriter(
+        createColumnDescriptor(typeName, "colA"),
+        properties,
+        DictionaryValuesWriter.class,
+        ByteStreamSplitValuesWriter.class);
+    doTestValueWriter(
+        createColumnDescriptor(typeName, "colB"),
+        properties,
+        DictionaryValuesWriter.class,
+        defaultFallbackWriterClass);
+  }
+
+  private void testExtendedByteStreamSplit_NoDict(
+      PrimitiveTypeName typeName, WriterVersion writerVersion, Class<? extends ValuesWriter> defaultWriterClass) {
+    // cross-column settings
+    doTestValueWriter(
+        createColumnDescriptor(typeName),
+        ParquetProperties.builder()
+            .withWriterVersion(writerVersion)
+            .withDictionaryEncoding(false)
+            .withExtendedByteStreamSplitEncoding(true)
+            .build(),
+        ByteStreamSplitValuesWriter.class);
+    doTestValueWriter(
+        createColumnDescriptor(typeName),
+        ParquetProperties.builder()
+            .withWriterVersion(writerVersion)
+            .withDictionaryEncoding(false)
+            .withByteStreamSplitEncoding(true)
+            .build(),
+        defaultWriterClass);
+    // per-column settings
+    ParquetProperties properties = ParquetProperties.builder()
+        .withWriterVersion(writerVersion)
+        .withDictionaryEncoding(false)
+        .withByteStreamSplitEncoding("colA", true)
+        .build();
+    doTestValueWriter(createColumnDescriptor(typeName, "colA"), properties, ByteStreamSplitValuesWriter.class);
+    doTestValueWriter(createColumnDescriptor(typeName, "colB"), properties, defaultWriterClass);
+  }
+
   private void testFloatingPoint_WithByteStreamSplit(PrimitiveTypeName typeName, WriterVersion writerVersion) {
     // With cross-column settings
     doTestValueWriter(
@@ -544,86 +626,6 @@ public class DefaultValuesWriterFactoryTest {
         properties,
         DictionaryValuesWriter.class,
         PlainValuesWriter.class);
-  }
-
-  @Test
-  public void testFloat_V1_WithByteStreamSplit() {
-    testFloatingPoint_WithByteStreamSplit(PrimitiveTypeName.FLOAT, WriterVersion.PARQUET_1_0);
-  }
-
-  @Test
-  public void testDouble_V1_WithByteStreamSplit() {
-    testFloatingPoint_WithByteStreamSplit(PrimitiveTypeName.DOUBLE, WriterVersion.PARQUET_1_0);
-  }
-
-  @Test
-  public void testFloat_V2_WithByteStreamSplit() {
-    testFloatingPoint_WithByteStreamSplit(PrimitiveTypeName.FLOAT, WriterVersion.PARQUET_2_0);
-  }
-
-  @Test
-  public void testDouble_V2_WithByteStreamSplit() {
-    testFloatingPoint_WithByteStreamSplit(PrimitiveTypeName.DOUBLE, WriterVersion.PARQUET_2_0);
-  }
-
-  @Test
-  public void testFloat_V1_WithByteStreamSplitAndDictionary() {
-    testFloatingPoint_WithByteStreamSplit(PrimitiveTypeName.FLOAT, WriterVersion.PARQUET_1_0);
-  }
-
-  @Test
-  public void testDouble_V1_WithByteStreamSplitAndDictionary() {
-    testFloatingPoint_WithByteStreamSplit(PrimitiveTypeName.DOUBLE, WriterVersion.PARQUET_1_0);
-  }
-
-  @Test
-  public void testFloat_V2_WithByteStreamSplitAndDictionary() {
-    testFloatingPoint_WithByteStreamSplit(PrimitiveTypeName.FLOAT, WriterVersion.PARQUET_2_0);
-  }
-
-  @Test
-  public void testDouble_V2_WithByteStreamSplitAndDictionary() {
-    testFloatingPoint_WithByteStreamSplit(PrimitiveTypeName.DOUBLE, WriterVersion.PARQUET_2_0);
-  }
-
-  @Test
-  public void testColumnWiseDictionaryWithFalseDefault() {
-    ValuesWriterFactory factory = getDefaultFactory(
-        WriterVersion.PARQUET_2_0, false, "binary_dict", "boolean_dict", "float_dict", "int32_dict");
-    validateFactory(
-        factory, BINARY, "binary_dict", PlainBinaryDictionaryValuesWriter.class, DeltaByteArrayWriter.class);
-    validateFactory(factory, BINARY, "binary_no_dict", DeltaByteArrayWriter.class);
-    validateFactory(factory, BOOLEAN, "boolean_dict", RunLengthBitPackingHybridValuesWriter.class);
-    validateFactory(factory, BOOLEAN, "boolean_no_dict", RunLengthBitPackingHybridValuesWriter.class);
-    validateFactory(factory, FLOAT, "float_dict", PlainFloatDictionaryValuesWriter.class, PlainValuesWriter.class);
-    validateFactory(factory, FLOAT, "float_no_dict", PlainValuesWriter.class);
-    validateFactory(
-        factory,
-        INT32,
-        "int32_dict",
-        PlainIntegerDictionaryValuesWriter.class,
-        DeltaBinaryPackingValuesWriter.class);
-    validateFactory(factory, INT32, "int32_no_dict", DeltaBinaryPackingValuesWriter.class);
-  }
-
-  @Test
-  public void testColumnWiseDictionaryWithTrueDefault() {
-    ValuesWriterFactory factory = getDefaultFactory(
-        WriterVersion.PARQUET_2_0, true, "binary_no_dict", "boolean_no_dict", "float_no_dict", "int32_no_dict");
-    validateFactory(
-        factory, BINARY, "binary_dict", PlainBinaryDictionaryValuesWriter.class, DeltaByteArrayWriter.class);
-    validateFactory(factory, BINARY, "binary_no_dict", DeltaByteArrayWriter.class);
-    validateFactory(factory, BOOLEAN, "boolean_dict", RunLengthBitPackingHybridValuesWriter.class);
-    validateFactory(factory, BOOLEAN, "boolean_no_dict", RunLengthBitPackingHybridValuesWriter.class);
-    validateFactory(factory, FLOAT, "float_dict", PlainFloatDictionaryValuesWriter.class, PlainValuesWriter.class);
-    validateFactory(factory, FLOAT, "float_no_dict", PlainValuesWriter.class);
-    validateFactory(
-        factory,
-        INT32,
-        "int32_dict",
-        PlainIntegerDictionaryValuesWriter.class,
-        DeltaBinaryPackingValuesWriter.class);
-    validateFactory(factory, INT32, "int32_no_dict", DeltaBinaryPackingValuesWriter.class);
   }
 
   private void validateFactory(
@@ -789,7 +791,10 @@ public class DefaultValuesWriterFactoryTest {
   }
 
   private void validateWriterType(ValuesWriter writer, Class<? extends ValuesWriter> valuesWriterClass) {
-    assertTrue("Not instance of: " + valuesWriterClass.getName(), valuesWriterClass.isInstance(writer));
+    assertTrue(
+        "Not instance of " + valuesWriterClass.getName() + ": actual class is "
+            + writer.getClass().getName(),
+        valuesWriterClass.isInstance(writer));
   }
 
   private void validateFallbackWriter(
