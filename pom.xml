@@ -61,8 +61,6 @@
   </repositories>
 
   <properties>
-    <!-- release takes precedence over source/target if java version is 9 or higher -->
-    <maven.compiler.release>8</maven.compiler.release>
     <maven.compiler.source>1.8</maven.compiler.source>
     <maven.compiler.target>1.8</maven.compiler.target>
     <github.global.server>github</github.global.server>
@@ -649,6 +647,17 @@
   </build>
 
   <profiles>
+    <profile>
+      <id>jdk9+</id>
+      <activation>
+        <jdk>[9,)</jdk>
+      </activation>
+      <properties>
+        <!-- release takes precedence over source/target if java version is 9 or higher -->
+        <maven.compiler.release>8</maven.compiler.release>
+      </properties>
+    </profile>
+
     <profile>
       <id>hadoop2</id>
       <properties>
