@@ -35,10 +35,9 @@
   <url>https://parquet.apache.org</url>
 
   <properties>
-    <maven.compiler.release>17</maven.compiler.release>
-    <extraJavaVectorArgs>
-      --add-modules=jdk.incubator.vector
-    </extraJavaVectorArgs>
+    <!-- Those properties prevent java 8 to try and compile this code -->
+    <maven.compiler.source>17</maven.compiler.source>
+    <maven.compiler.target>17</maven.compiler.target>
   </properties>
 
   <dependencies>
@@ -124,4 +123,19 @@
     </plugins>
   </build>
 
+  <profiles>
+    <profile>
+      <id>jdk9+</id>
+      <activation>
+        <jdk>[9,)</jdk>
+      </activation>
+      <properties>
+        <!-- release takes precedence over source/target if java version is 9 or higher -->
+        <maven.compiler.release>17</maven.compiler.release>
+        <extraJavaVectorArgs>
+          --add-modules=jdk.incubator.vector
+        </extraJavaVectorArgs>
+      </properties>
+    </profile>
+  </profiles>
 </project>
