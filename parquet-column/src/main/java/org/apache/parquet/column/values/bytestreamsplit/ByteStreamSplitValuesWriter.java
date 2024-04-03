@@ -89,7 +89,8 @@ public abstract class ByteStreamSplitValuesWriter extends ValuesWriter {
       for (CapacityByteArrayOutputStream stream : byteStreams) {
         try {
           stream.flush();
-        } catch (IOException ignore1) {}
+        } catch (IOException ignore1) {
+        }
       }
     } catch (Exception e) {
       throw new OutputStreamCloseException(e);

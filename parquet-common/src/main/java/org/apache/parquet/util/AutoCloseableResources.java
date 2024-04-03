@@ -23,6 +23,7 @@ import java.io.IOException;
 
 public class AutoCloseableResources implements AutoCloseable {
   private final AutoCloseable[] autoCloseables;
+
   public AutoCloseableResources(AutoCloseable... autoCloseables) {
     this.autoCloseables = autoCloseables;
   }
@@ -31,7 +32,7 @@ public class AutoCloseableResources implements AutoCloseable {
   public void close() throws IOException {
     try {
       AutoCloseables.close(autoCloseables);
-    } catch(Throwable th) {
+    } catch (Throwable th) {
       if (th instanceof IOException) {
         throw (IOException) th;
       } else {
