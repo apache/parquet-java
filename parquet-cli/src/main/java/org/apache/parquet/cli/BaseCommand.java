@@ -99,7 +99,7 @@ public abstract class BaseCommand implements Command, Configurable {
     } else {
       try (FSDataOutputStream outgoing = create(filename)) {
         outgoing.write(content.getBytes(StandardCharsets.UTF_8));
-        outgoing.hflush();
+        outgoing.flush();
       }
     }
   }

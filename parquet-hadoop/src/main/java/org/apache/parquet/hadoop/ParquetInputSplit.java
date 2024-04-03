@@ -277,8 +277,8 @@ public class ParquetInputSplit extends FileSplit implements Writable {
         }
       }
       out.flush();
-      writeArray(hout, baos.toByteArray());
     }
+    writeArray(hout, baos.toByteArray());
   }
 
   private static void writeArray(DataOutput out, byte[] bytes) throws IOException {
