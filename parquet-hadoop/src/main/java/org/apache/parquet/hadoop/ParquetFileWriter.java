@@ -93,6 +93,7 @@ import org.apache.parquet.io.SeekableInputStream;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.TypeUtil;
+import org.apache.parquet.util.AutoCloseableResources;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -1655,13 +1656,8 @@ public class ParquetFileWriter implements AutoCloseable {
 
   @Override
   public void close() throws IOException {
-    try {
+    try(AutoCloseableResources ignored = new AutoCloseableResources(out, crcAllocator)) {
       out.flush();
-      out.close();
-    } finally {
-      if (crcAllocator != null) {
-        crcAllocator.close();
-      }
     }
   }
 
@@ -2050,10 +2046,11 @@ public class ParquetFileWriter implements AutoCloseable {
   @Deprecated
   private static void writeMetadataFile(Path outputPath, ParquetMetadata metadataFooter, FileSystem fs)
       throws IOException {
-    PositionOutputStream metadata = HadoopStreams.wrap(fs.create(outputPath));
-    metadata.write(MAGIC);
-    serializeFooter(metadataFooter, metadata, null, new ParquetMetadataConverter());
-    metadata.close();
+    try (PositionOutputStream metadata = HadoopStreams.wrap(fs.create(outputPath)) ) {
+      metadata.write(MAGIC);
+      serializeFooter(metadataFooter, metadata, null, new ParquetMetadataConverter());
+      metadata.flush();
+    }
   }
 
   /**

@@ -64,6 +64,8 @@ public class ZstdCompressorStream extends CompressionOutputStream {
 
   @Override
   public void close() throws IOException {
-    zstdOutputStream.close();
+    try (ZstdOutputStream zos = this.zstdOutputStream) {
+      zos.flush();
+    }
   }
 }

@@ -97,11 +97,9 @@ public abstract class BaseCommand implements Command, Configurable {
     if (filename == null || "-".equals(filename)) {
       console.info(content);
     } else {
-      FSDataOutputStream outgoing = create(filename);
-      try {
+      try (FSDataOutputStream outgoing = create(filename)) {
         outgoing.write(content.getBytes(StandardCharsets.UTF_8));
-      } finally {
-        outgoing.close();
+        outgoing.hflush();
       }
     }
   }

@@ -20,6 +20,7 @@ package org.apache.parquet.column.values.plain;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
+import org.apache.parquet.OutputStreamCloseException;
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.CapacityByteArrayOutputStream;
@@ -28,6 +29,7 @@ import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.values.ValuesWriter;
 import org.apache.parquet.io.ParquetEncodingException;
 import org.apache.parquet.io.api.Binary;
+import org.apache.parquet.util.AutoCloseableResources;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -126,8 +128,18 @@ public class PlainValuesWriter extends ValuesWriter {
 
   @Override
   public void close() {
-    arrayOut.close();
-    out.close();
+    try (AutoCloseableResources ignored = new AutoCloseableResources(arrayOut, out)) {
+      try {
+        arrayOut.flush();
+      } catch (IOException ignore) {
+      }
+      try {
+        out.flush();
+      } catch (IOException ignore) {
+      }
+    } catch (Exception e) {
+      throw new OutputStreamCloseException(e);
+    }
   }
 
   @Override

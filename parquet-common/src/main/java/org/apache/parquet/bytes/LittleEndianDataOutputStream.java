@@ -208,9 +208,9 @@ public class LittleEndianDataOutputStream extends OutputStream {
   }
 
   public void close() {
-    try {
-      out.close();
-    } catch (IOException e) {
+    try (OutputStream os = this.out) {
+      os.flush();
+    } catch (Exception e) {
       // swallow exception
     }
   }
