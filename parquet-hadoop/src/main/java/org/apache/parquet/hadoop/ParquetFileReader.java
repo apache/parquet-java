@@ -1222,7 +1222,7 @@ public class ParquetFileReader implements Closeable {
   }
 
   /**
-   * Validated the parts for vectored IO.
+   * Validate the parts for vectored IO.
    * Vectored IO doesn't support reading ranges of size greater than
    * Integer.MAX_VALUE.
    * @param allParts all parts to read.
