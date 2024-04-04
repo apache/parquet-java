@@ -22,4 +22,4 @@
  * Uses reflection so will compile against older versions,
  * but will not actually work.
  */
-package org.apache.parquet.hadoop.util.wrappedio;
+package org.apache.parquet.hadoop.util.wrapped.io;

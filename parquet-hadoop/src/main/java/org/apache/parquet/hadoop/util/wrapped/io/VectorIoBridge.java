@@ -16,12 +16,11 @@
  * limitations under the License.
  */
 
-package org.apache.parquet.hadoop.util.wrappedio;
+package org.apache.parquet.hadoop.util.wrapped.io;
 
 import static java.util.Objects.requireNonNull;
 import static org.apache.parquet.Exceptions.throwIfInstance;
 import static org.apache.parquet.Preconditions.checkArgument;
-import static org.apache.parquet.hadoop.util.wrappedio.BindingUtils.loadInvocation;
 
 import java.io.EOFException;
 import java.io.IOException;
@@ -54,9 +53,9 @@ import org.slf4j.LoggerFactory;
  * There are some counters to aid in testing; the {@link #toString()} method
  * will print them and the loaded method, for use in tests and debug logs.
  */
-public final class VectorIOBridge {
+public final class VectorIoBridge {
 
-  private static final Logger LOG = LoggerFactory.getLogger(VectorIOBridge.class);
+  private static final Logger LOG = LoggerFactory.getLogger(VectorIoBridge.class);
 
   /**
    * readVectored Method to look for.
@@ -77,7 +76,7 @@ public final class VectorIOBridge {
   /**
    * The singleton instance of the bridge.
    */
-  private static final VectorIOBridge INSTANCE = new VectorIOBridge();
+  private static final VectorIoBridge INSTANCE = new VectorIoBridge();
 
   /**
    * readVectored() method.
@@ -107,14 +106,15 @@ public final class VectorIOBridge {
   /**
    * Constructor. package private for testing.
    */
-  private VectorIOBridge() {
+  private VectorIoBridge() {
 
-    readVectored =
-        loadInvocation(PositionedReadable.class, Void.TYPE, READ_VECTORED, List.class, IntFunction.class);
+    readVectored = BindingUtils.loadInvocation(
+        PositionedReadable.class, Void.TYPE, READ_VECTORED, List.class, IntFunction.class);
     LOG.debug("Vector IO availability: {}", available());
 
     // if readVectored is present, so is hasCapabilities().
-    hasCapabilityMethod = loadInvocation(FSDataInputStream.class, boolean.class, HAS_CAPABILITY, String.class);
+    hasCapabilityMethod =
+        BindingUtils.loadInvocation(FSDataInputStream.class, boolean.class, HAS_CAPABILITY, String.class);
   }
 
   /**
@@ -183,7 +183,7 @@ public final class VectorIOBridge {
       final FSDataInputStream stream, final List<ParquetFileRange> ranges, final ByteBufferAllocator allocator)
       throws IOException {
 
-    final VectorIOBridge bridge = availableInstance();
+    final VectorIoBridge bridge = availableInstance();
     if (!bridge.readVectoredAvailable(stream, allocator)) {
       throw new UnsupportedOperationException("Vectored IO not available on stream " + stream);
     }
@@ -250,7 +250,7 @@ public final class VectorIOBridge {
 
   @Override
   public String toString() {
-    return "VectorIOBridge{"
+    return "VectorIoBridge{"
         + "available=" + available()
         + ", readVectored=" + readVectored
         + ", vectorReads=" + vectorReads.get()
@@ -396,7 +396,7 @@ public final class VectorIOBridge {
    *
    * @return instance.
    */
-  public static VectorIOBridge instance() {
+  public static VectorIoBridge instance() {
     return INSTANCE;
   }
 
@@ -414,8 +414,8 @@ public final class VectorIOBridge {
    * @return an available instance, always
    * @throws UnsupportedOperationException if it is not.
    */
-  public static VectorIOBridge availableInstance() {
-    final VectorIOBridge bridge = instance();
+  public static VectorIoBridge availableInstance() {
+    final VectorIoBridge bridge = instance();
     bridge.checkAvailable();
     return bridge;
   }

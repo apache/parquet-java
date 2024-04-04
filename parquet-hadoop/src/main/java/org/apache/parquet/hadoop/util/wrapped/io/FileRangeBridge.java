@@ -16,11 +16,9 @@
  * limitations under the License.
  */
 
-package org.apache.parquet.hadoop.util.wrappedio;
+package org.apache.parquet.hadoop.util.wrapped.io;
 
 import static java.util.Objects.requireNonNull;
-import static org.apache.parquet.hadoop.util.wrappedio.BindingUtils.implemented;
-import static org.apache.parquet.hadoop.util.wrappedio.BindingUtils.loadInvocation;
 
 import java.nio.ByteBuffer;
 import java.util.concurrent.CompletableFuture;
@@ -30,12 +28,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Class to bridge to the FileRange class through reflection.
+ * Class to bridge to {@code org.apache.hadoop.fs.FileRange} through reflection.
+ * <p>
  * A singleton is created when the class is loaded, so there is no need
  * to repeat the reflection process on every API call.
  * <p>
  * The Hadoop FileRange class is an interface with getters and setters;
- * to instantiate the static method {@code createFileRange()} is used.
+ * to instantiate its static method {@code createFileRange()} is used.
  */
 final class FileRangeBridge {
 
@@ -89,19 +88,19 @@ final class FileRangeBridge {
     // as loadInvocation returns a no-op if the class is null, this sequence
     // will either construct in the list of operations or leave them with no-ops
 
-    _getOffset = loadInvocation(loadedClass, long.class, "getOffset");
-    _getLength = loadInvocation(loadedClass, int.class, "getLength");
-    _getData = loadInvocation(loadedClass, null, "getData");
-    _setData = loadInvocation(loadedClass, void.class, "setData", CompletableFuture.class);
-    _getReference = loadInvocation(loadedClass, Object.class, "getReference");
+    _getOffset = BindingUtils.loadInvocation(loadedClass, long.class, "getOffset");
+    _getLength = BindingUtils.loadInvocation(loadedClass, int.class, "getLength");
+    _getData = BindingUtils.loadInvocation(loadedClass, null, "getData");
+    _setData = BindingUtils.loadInvocation(loadedClass, void.class, "setData", CompletableFuture.class);
+    _getReference = BindingUtils.loadInvocation(loadedClass, Object.class, "getReference");
     // static interface method to create an instance.
-    createFileRange = loadInvocation(
+    createFileRange = BindingUtils.loadInvocation(
         fileRangeInterface, Object.class, "createFileRange", long.class, int.class, Object.class);
 
     // the bridge is available only if the class is present and all methods are found
     // the checks for the method are extra paranoia, but harmless
     available = loadedClass != null
-        && implemented(createFileRange, _getOffset, _getLength, _getData, _setData, _getReference);
+        && BindingUtils.implemented(createFileRange, _getOffset, _getLength, _getData, _setData, _getReference);
 
     LOG.debug("FileRangeBridge availability: {}", available);
   }

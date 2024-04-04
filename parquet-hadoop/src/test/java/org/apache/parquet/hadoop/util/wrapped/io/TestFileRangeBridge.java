@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package org.apache.parquet.hadoop.util.wrappedio;
+package org.apache.parquet.hadoop.util.wrapped.io;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;

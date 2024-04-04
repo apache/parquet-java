@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package org.apache.parquet.hadoop.util.wrappedio;
+package org.apache.parquet.hadoop.util.wrapped.io;
 
 import org.apache.parquet.util.DynMethods;
 import org.slf4j.Logger;
@@ -25,7 +25,7 @@ import org.slf4j.LoggerFactory;
 /**
  * Utility methods to assist binding to Hadoop APIs through reflection.
  */
-public final class BindingUtils {
+final class BindingUtils {
 
   private static final Logger LOG = LoggerFactory.getLogger(BindingUtils.class);
 

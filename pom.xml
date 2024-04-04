@@ -590,8 +590,9 @@
               <exclude>org.apache.parquet.conf.PlainParquetConfiguration#getClass(java.lang.String,java.lang.Class,java.lang.Class)</exclude>
               <exclude>org.apache.parquet.conf.ParquetConfiguration#getClass(java.lang.String,java.lang.Class,java.lang.Class)</exclude>
               <exclude>org.apache.parquet.hadoop.util.SerializationUtil#readObjectFromConfAsBase64(java.lang.String,org.apache.parquet.conf.ParquetConfiguration)</exclude>
-              <exclude>org.apache.parquet.hadoop.util.wrappedio.FutureIO#awaitFuture(java.util.concurrent.Future,long,java.util.concurrent.TimeUnit)</exclude>
-              <exclude>org.apache.parquet.hadoop.util.wrappedio.FutureIO#raiseInnerCause(java.util.concurrent.ExecutionException)</exclude>
+              <!-- The two lines below are not part of the API but japicmp reports errors unless excluded -->
+              <exclude>org.apache.parquet.hadoop.util.wrapped.io.FutureIO#awaitFuture(java.util.concurrent.Future,long,java.util.concurrent.TimeUnit)</exclude>
+              <exclude>org.apache.parquet.hadoop.util.wrapped.io.FutureIO#raiseInnerCause(java.util.concurrent.ExecutionException)</exclude>
               <exclude>org.apache.parquet.conf.HadoopParquetConfiguration#getClass(java.lang.String,java.lang.Class,java.lang.Class)</exclude>
               <exclude>org.apache.parquet.avro.AvroParquetReader#builder(org.apache.parquet.io.InputFile,org.apache.parquet.conf.ParquetConfiguration)</exclude>
               <exclude>org.apache.parquet.hadoop.thrift.TBaseWriteSupport#setThriftClass(org.apache.parquet.conf.ParquetConfiguration,java.lang.Class)</exclude>

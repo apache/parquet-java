@@ -106,7 +106,7 @@ import org.apache.parquet.hadoop.metadata.FileMetaData;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.hadoop.util.counters.BenchmarkCounter;
-import org.apache.parquet.hadoop.util.wrappedio.FutureIO;
+import org.apache.parquet.hadoop.util.wrapped.io.FutureIO;
 import org.apache.parquet.internal.column.columnindex.ColumnIndex;
 import org.apache.parquet.internal.column.columnindex.OffsetIndex;
 import org.apache.parquet.internal.filter2.columnindex.ColumnIndexFilter;
@@ -1185,7 +1185,7 @@ public class ParquetFileReader implements Closeable {
   private void readAllPartsVectoredOrNormal(List<ConsecutivePartList> allParts, ChunkListBuilder builder)
       throws IOException {
 
-    if (shouldUseVectoredIO(allParts)) {
+    if (shouldUseVectoredIo(allParts)) {
       try {
         readVectored(allParts, builder);
         return;
@@ -1215,10 +1215,10 @@ public class ParquetFileReader implements Closeable {
    * @param allParts all parts to read.
    * @return true or false.
    */
-  private boolean shouldUseVectoredIO(final List<ConsecutivePartList> allParts) {
-    return options.useHadoopVectoredIO()
+  private boolean shouldUseVectoredIo(final List<ConsecutivePartList> allParts) {
+    return options.useHadoopVectoredIo()
         && f.readVectoredAvailable(options.getAllocator())
-        && arePartsValidForVectoredIO(allParts);
+        && arePartsValidForVectoredIo(allParts);
   }
 
   /**
@@ -1228,7 +1228,7 @@ public class ParquetFileReader implements Closeable {
    * @param allParts all parts to read.
    * @return true or false.
    */
-  private boolean arePartsValidForVectoredIO(List<ConsecutivePartList> allParts) {
+  private boolean arePartsValidForVectoredIo(List<ConsecutivePartList> allParts) {
     for (ConsecutivePartList consecutivePart : allParts) {
       if (consecutivePart.length >= Integer.MAX_VALUE) {
         LOG.debug(

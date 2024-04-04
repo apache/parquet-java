@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package org.apache.parquet.hadoop.util.wrappedio;
+package org.apache.parquet.hadoop.util.wrapped.io;
 
 import java.io.IOException;
 import java.io.InterruptedIOException;
@@ -65,40 +65,21 @@ public final class FutureIO {
       return future.get(timeout, unit);
     } catch (InterruptedException e) {
       throw (InterruptedIOException) new InterruptedIOException(e.toString()).initCause(e);
-    } catch (ExecutionException e) {
-      return raiseInnerCause(e);
+    } catch (ExecutionException | CompletionException e) {
+      throw unwrapInnerException(e);
     }
   }
 
   /**
    * From the inner cause of an execution exception, extract the inner cause
-   * if it is an IOE or RTE.
-   * This will always raise an exception, either the inner IOException,
-   * an inner RuntimeException, or a new IOException wrapping the raised
-   * exception.
-   *
-   * @param e exception.
-   * @param <T> type of return value.
-   *
-   * @return nothing, ever.
-   *
-   * @throws IOException either the inner IOException, or a wrapper around
-   * any non-Runtime-Exception
-   * @throws RuntimeException if that is the inner cause.
-   */
-  public static <T> T raiseInnerCause(final ExecutionException e) throws IOException {
-    throw unwrapInnerException(e);
-  }
-
-  /**
-   * From the inner cause of an execution exception, extract the inner cause
-   * to an IOException, raising RuntimeExceptions and Errors immediately.
+   * to an IOException, raising Errors immediately.
    * <ol>
    *   <li> If it is an IOE: Return.</li>
    *   <li> If it is a {@link UncheckedIOException}: return the cause</li>
    *   <li> Completion/Execution Exceptions: extract and repeat</li>
    *   <li> If it is an RTE or Error: throw.</li>
    *   <li> Any other type: wrap in an IOE</li>
+   *   <li> If there is no cause: wrap the passed exception by an IOE</li>
    * </ol>
    *
    * Recursively handles wrapped Execution and Completion Exceptions in

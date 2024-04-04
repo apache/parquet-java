@@ -16,12 +16,8 @@
  * limitations under the License.
  */
 
-package org.apache.parquet.hadoop.util.wrappedio;
+package org.apache.parquet.hadoop.util.wrapped.io;
 
-import static org.apache.parquet.hadoop.util.wrappedio.FutureIO.awaitFuture;
-import static org.apache.parquet.hadoop.util.wrappedio.VectorIOBridge.VECTOREDIO_CAPABILITY;
-import static org.apache.parquet.hadoop.util.wrappedio.VectorIOBridge.instance;
-import static org.apache.parquet.hadoop.util.wrappedio.VectorIOBridge.readVectoredRanges;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -58,7 +54,7 @@ import org.junit.Test;
  * with other utility methods from
  * {@code org.apache.hadoop.fs.contract.ContractTestUtils}.
  */
-public class TestVectorIOBridge {
+public class TestVectorIoBridge {
   private static final int DATASET_LEN = 64 * 1024;
   private static final byte[] DATASET = dataset(DATASET_LEN, 'a', 32);
   private static final String VECTORED_READ_FILE_NAME = "target/test/vectored_file.txt";
@@ -100,22 +96,22 @@ public class TestVectorIOBridge {
 
   private FileSystem fileSystem;
   private Path testFilePath;
-  private VectorIOBridge vectorIOBridge;
+  private VectorIoBridge vectorIOBridge;
   private long initialVectorReadCount;
   private long initialBlocksRead;
   private long initialBytesRead;
 
-  public TestVectorIOBridge() {}
+  public TestVectorIoBridge() {}
 
   @Before
   public void setUp() throws IOException {
-    // skip the tests if the VectorIOBridge is unavailable
-    assumeTrue("Bridge not available", VectorIOBridge.instance().available());
+    // skip the tests if the VectorIoBridge is unavailable
+    assumeTrue("Bridge not available", VectorIoBridge.instance().available());
 
     fileSystem = FileSystem.getLocal(new Configuration());
     testFilePath = fileSystem.makeQualified(vectoredPath);
     createFile(fileSystem, testFilePath, DATASET);
-    vectorIOBridge = VectorIOBridge.availableInstance();
+    vectorIOBridge = VectorIoBridge.availableInstance();
     initialVectorReadCount = vectorIOBridge.getVectorReads();
     initialBlocksRead = vectorIOBridge.getBlocksRead();
     initialBytesRead = vectorIOBridge.getBytesRead();
@@ -137,7 +133,7 @@ public class TestVectorIOBridge {
    */
   @Test
   public void testVectorIOBridgeAvailable() throws Throwable {
-    assertTrue("VectorIOBridge not available", VectorIOBridge.bridgeAvailable());
+    assertTrue("VectorIoBridge not available", VectorIoBridge.bridgeAvailable());
   }
 
   /**
@@ -221,7 +217,7 @@ public class TestVectorIOBridge {
       readVectored(in, fileRanges);
       byte[] readFullRes = new byte[length];
       in.readFully(offset, readFullRes);
-      ByteBuffer vecRes = awaitFuture(
+      ByteBuffer vecRes = FutureIO.awaitFuture(
           fileRanges.get(0).getDataReadFuture(),
           VECTORED_READ_OPERATION_TEST_TIMEOUT_SECONDS,
           TimeUnit.SECONDS);
@@ -252,8 +248,11 @@ public class TestVectorIOBridge {
   public void testStreamImplementsReadVectored() throws Exception {
 
     try (FSDataInputStream in = openTestFile()) {
-      final boolean streamDoesNativeVectorIO = instance().hasCapability(in, VECTOREDIO_CAPABILITY);
-      assertTrue("capability " + VECTOREDIO_CAPABILITY + " not supported by " + in, streamDoesNativeVectorIO);
+      final boolean streamDoesNativeVectorIo =
+          VectorIoBridge.instance().hasCapability(in, VectorIoBridge.VECTOREDIO_CAPABILITY);
+      assertTrue(
+          "capability " + VectorIoBridge.VECTOREDIO_CAPABILITY + " not supported by " + in,
+          streamDoesNativeVectorIo);
     }
   }
 
@@ -415,7 +414,7 @@ public class TestVectorIOBridge {
     try (FSDataInputStream in = openTestFile()) {
       assertFalse(
           "Direct buffer read should not be available",
-          instance().readVectoredAvailable(in, DirectByteBufferAllocator.getInstance()));
+          VectorIoBridge.instance().readVectoredAvailable(in, DirectByteBufferAllocator.getInstance()));
     }
   }
 
@@ -426,7 +425,7 @@ public class TestVectorIOBridge {
    * @throws IOException IO failure.[
    */
   private void readVectored(final FSDataInputStream in, final List<ParquetFileRange> fileRanges) throws IOException {
-    readVectoredRanges(in, fileRanges, allocate);
+    VectorIoBridge.readVectoredRanges(in, fileRanges, allocate);
   }
 
   /**
@@ -518,11 +517,12 @@ public class TestVectorIOBridge {
       completableFutures[i++] = res.getDataReadFuture();
     }
     CompletableFuture<Void> combinedFuture = CompletableFuture.allOf(completableFutures);
-    awaitFuture(combinedFuture, VECTORED_READ_OPERATION_TEST_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    FutureIO.awaitFuture(combinedFuture, VECTORED_READ_OPERATION_TEST_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 
     for (ParquetFileRange res : fileRanges) {
       CompletableFuture<ByteBuffer> data = res.getDataReadFuture();
-      ByteBuffer buffer = awaitFuture(data, VECTORED_READ_OPERATION_TEST_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+      ByteBuffer buffer =
+          FutureIO.awaitFuture(data, VECTORED_READ_OPERATION_TEST_TIMEOUT_SECONDS, TimeUnit.SECONDS);
       try {
         assertDatasetEquals((int) res.getOffset(), "vecRead", buffer, res.getLength(), originalData);
       } finally {
@@ -560,7 +560,7 @@ public class TestVectorIOBridge {
   private <T extends Throwable> T verifyExceptionalVectoredRead(
       List<ParquetFileRange> fileRanges, ByteBufferAllocator allocator, Class<T> clazz) throws IOException {
     try (FSDataInputStream in = openTestFile()) {
-      readVectoredRanges(in, fileRanges, allocator);
+      VectorIoBridge.readVectoredRanges(in, fileRanges, allocator);
       fail("expected error reading " + in);
       // for the compiler
       return null;

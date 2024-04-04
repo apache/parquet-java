@@ -69,7 +69,7 @@ public class ParquetReadOptions {
   private final boolean usePageChecksumVerification;
   private final boolean useBloomFilter;
   private final boolean useOffHeapDecryptBuffer;
-  private final boolean useHadoopVectoredIO;
+  private final boolean useHadoopVectoredIo;
   private final FilterCompat.Filter recordFilter;
   private final ParquetMetadataConverter.MetadataFilter metadataFilter;
   private final CompressionCodecFactory codecFactory;
@@ -89,7 +89,7 @@ public class ParquetReadOptions {
       boolean usePageChecksumVerification,
       boolean useBloomFilter,
       boolean useOffHeapDecryptBuffer,
-      boolean useHadoopVectoredIO,
+      boolean useHadoopVectoredIo,
       FilterCompat.Filter recordFilter,
       ParquetMetadataConverter.MetadataFilter metadataFilter,
       CompressionCodecFactory codecFactory,
@@ -107,7 +107,7 @@ public class ParquetReadOptions {
         usePageChecksumVerification,
         useBloomFilter,
         useOffHeapDecryptBuffer,
-        useHadoopVectoredIO,
+        useHadoopVectoredIo,
         recordFilter,
         metadataFilter,
         codecFactory,
@@ -128,7 +128,7 @@ public class ParquetReadOptions {
       boolean usePageChecksumVerification,
       boolean useBloomFilter,
       boolean useOffHeapDecryptBuffer,
-      boolean useHadoopVectoredIO,
+      boolean useHadoopVectoredIo,
       FilterCompat.Filter recordFilter,
       ParquetMetadataConverter.MetadataFilter metadataFilter,
       CompressionCodecFactory codecFactory,
@@ -146,7 +146,7 @@ public class ParquetReadOptions {
     this.usePageChecksumVerification = usePageChecksumVerification;
     this.useBloomFilter = useBloomFilter;
     this.useOffHeapDecryptBuffer = useOffHeapDecryptBuffer;
-    this.useHadoopVectoredIO = useHadoopVectoredIO;
+    this.useHadoopVectoredIo = useHadoopVectoredIo;
     this.recordFilter = recordFilter;
     this.metadataFilter = metadataFilter;
     this.codecFactory = codecFactory;
@@ -190,8 +190,8 @@ public class ParquetReadOptions {
     return usePageChecksumVerification;
   }
 
-  public boolean useHadoopVectoredIO() {
-    return useHadoopVectoredIO;
+  public boolean useHadoopVectoredIo() {
+    return useHadoopVectoredIo;
   }
 
   public FilterCompat.Filter getRecordFilter() {
@@ -331,7 +331,7 @@ public class ParquetReadOptions {
       return this;
     }
 
-    public Builder useHadoopVectoredIo(boolean useHadoopVectoredIo) {
+    public Builder withUseHadoopVectoredIo(boolean useHadoopVectoredIo) {
       this.useHadoopVectoredIo = useHadoopVectoredIo;
       return this;
     }
@@ -434,7 +434,7 @@ public class ParquetReadOptions {
       useDictionaryFilter(options.useDictionaryFilter);
       useRecordFilter(options.useRecordFilter);
       withRecordFilter(options.recordFilter);
-      useHadoopVectoredIo(options.useHadoopVectoredIO);
+      withUseHadoopVectoredIo(options.useHadoopVectoredIo);
       withMetadataFilter(options.metadataFilter);
       withCodecFactory(options.codecFactory);
       withAllocator(options.allocator);
