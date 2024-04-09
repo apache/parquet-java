@@ -179,12 +179,11 @@ public final class VectorIoBridge {
    * @throws EOFException if a range is past the end of the file.
    * @throws IOException other IO problem initiating the read operations.
    */
-  public static void readVectoredRanges(
+  public void readVectoredRanges(
       final FSDataInputStream stream, final List<ParquetFileRange> ranges, final ByteBufferAllocator allocator)
       throws IOException {
 
-    final VectorIoBridge bridge = availableInstance();
-    if (!bridge.readVectoredAvailable(stream, allocator)) {
+    if (!readVectoredAvailable(stream, allocator)) {
       throw new UnsupportedOperationException("Vectored IO not available on stream " + stream);
     }
 
@@ -197,7 +196,7 @@ public final class VectorIoBridge {
     // Setting the parquet range as a reference.
     List<FileRangeBridge.WrappedFileRange> fileRanges =
         sorted.stream().map(rangeBridge::toFileRange).collect(Collectors.toList());
-    bridge.readWrappedRanges(stream, fileRanges, allocator::allocate);
+    readWrappedRanges(stream, fileRanges, allocator::allocate);
 
     // copy back the completable futures from the scheduled
     // vector reads to the ParquetFileRange entries passed in.

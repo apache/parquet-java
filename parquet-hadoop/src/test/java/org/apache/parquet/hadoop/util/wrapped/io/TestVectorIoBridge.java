@@ -425,7 +425,7 @@ public class TestVectorIoBridge {
    * @throws IOException IO failure.[
    */
   private void readVectored(final FSDataInputStream in, final List<ParquetFileRange> fileRanges) throws IOException {
-    VectorIoBridge.readVectoredRanges(in, fileRanges, allocate);
+    VectorIoBridge.instance().readVectoredRanges(in, fileRanges, allocate);
   }
 
   /**
@@ -560,7 +560,7 @@ public class TestVectorIoBridge {
   private <T extends Throwable> T verifyExceptionalVectoredRead(
       List<ParquetFileRange> fileRanges, ByteBufferAllocator allocator, Class<T> clazz) throws IOException {
     try (FSDataInputStream in = openTestFile()) {
-      VectorIoBridge.readVectoredRanges(in, fileRanges, allocator);
+      VectorIoBridge.instance().readVectoredRanges(in, fileRanges, allocator);
       fail("expected error reading " + in);
       // for the compiler
       return null;

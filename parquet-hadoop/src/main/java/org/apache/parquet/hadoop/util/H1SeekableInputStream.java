@@ -72,6 +72,6 @@ class H1SeekableInputStream extends DelegatingSeekableInputStream {
 
   @Override
   public void readVectored(List<ParquetFileRange> ranges, ByteBufferAllocator allocator) throws IOException {
-    VectorIoBridge.readVectoredRanges(stream, ranges, allocator);
+    VectorIoBridge.instance().readVectoredRanges(stream, ranges, allocator);
   }
 }
