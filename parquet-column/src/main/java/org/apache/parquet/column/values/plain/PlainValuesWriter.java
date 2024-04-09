@@ -132,10 +132,12 @@ public class PlainValuesWriter extends ValuesWriter {
       try {
         arrayOut.flush();
       } catch (IOException ignore) {
+        if (LOG.isDebugEnabled()) LOG.debug("Exception in flushing arrayOut before close", ignore);
       }
       try {
         out.flush();
       } catch (IOException ignore) {
+        if (LOG.isDebugEnabled()) LOG.debug("Exception in flushing out before close", ignore);
       }
     } catch (Exception e) {
       throw new OutputStreamCloseException(e);
