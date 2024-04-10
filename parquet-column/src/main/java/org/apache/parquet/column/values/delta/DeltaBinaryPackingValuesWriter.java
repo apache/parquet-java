@@ -19,7 +19,6 @@
 package org.apache.parquet.column.values.delta;
 
 import java.io.IOException;
-import org.apache.parquet.OutputStreamCloseException;
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.bytes.CapacityByteArrayOutputStream;
@@ -121,12 +120,8 @@ public abstract class DeltaBinaryPackingValuesWriter extends ValuesWriter {
   @Override
   public void close() {
     this.totalValueCount = 0;
-    try (CapacityByteArrayOutputStream cbaos = this.baos) {
-      cbaos.flush();
-      this.deltaValuesToFlush = 0;
-    } catch (Exception e) {
-      throw new OutputStreamCloseException(e);
-    }
+    this.baos.close();
+    this.deltaValuesToFlush = 0;
   }
 
   @Override

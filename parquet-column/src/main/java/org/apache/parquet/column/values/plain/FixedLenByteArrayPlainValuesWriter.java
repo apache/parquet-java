@@ -19,7 +19,6 @@
 package org.apache.parquet.column.values.plain;
 
 import java.io.IOException;
-import org.apache.parquet.OutputStreamCloseException;
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.CapacityByteArrayOutputStream;
@@ -86,11 +85,7 @@ public class FixedLenByteArrayPlainValuesWriter extends ValuesWriter {
 
   @Override
   public void close() {
-    try (CapacityByteArrayOutputStream ignore = this.arrayOut) {
-      this.arrayOut.flush();
-    } catch (Exception e) {
-      throw new OutputStreamCloseException(e);
-    }
+    arrayOut.close();
   }
 
   @Override

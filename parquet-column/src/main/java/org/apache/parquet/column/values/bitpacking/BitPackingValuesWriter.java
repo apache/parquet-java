@@ -23,7 +23,6 @@ import static org.apache.parquet.column.Encoding.BIT_PACKED;
 import static org.apache.parquet.column.values.bitpacking.BitPacking.getBitPackingWriter;
 
 import java.io.IOException;
-import org.apache.parquet.OutputStreamCloseException;
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.CapacityByteArrayOutputStream;
@@ -109,11 +108,7 @@ public class BitPackingValuesWriter extends ValuesWriter {
 
   @Override
   public void close() {
-    try (CapacityByteArrayOutputStream cbaos = out) {
-      cbaos.flush();
-    } catch (Exception e) {
-      throw new OutputStreamCloseException(e);
-    }
+    out.close();
   }
 
   /**

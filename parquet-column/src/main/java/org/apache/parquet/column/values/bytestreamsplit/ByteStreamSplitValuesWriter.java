@@ -18,8 +18,6 @@
  */
 package org.apache.parquet.column.values.bytestreamsplit;
 
-import java.io.IOException;
-import org.apache.parquet.OutputStreamCloseException;
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.BytesUtils;
@@ -27,7 +25,6 @@ import org.apache.parquet.bytes.CapacityByteArrayOutputStream;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.values.ValuesWriter;
 import org.apache.parquet.io.ParquetEncodingException;
-import org.apache.parquet.util.AutoCloseableResources;
 
 public abstract class ByteStreamSplitValuesWriter extends ValuesWriter {
 
@@ -85,15 +82,8 @@ public abstract class ByteStreamSplitValuesWriter extends ValuesWriter {
 
   @Override
   public void close() {
-    try (AutoCloseableResources ignore = new AutoCloseableResources(byteStreams)) {
-      for (CapacityByteArrayOutputStream stream : byteStreams) {
-        try {
-          stream.flush();
-        } catch (IOException ignore1) {
-        }
-      }
-    } catch (Exception e) {
-      throw new OutputStreamCloseException(e);
+    for (CapacityByteArrayOutputStream stream : byteStreams) {
+      stream.close();
     }
   }
 
