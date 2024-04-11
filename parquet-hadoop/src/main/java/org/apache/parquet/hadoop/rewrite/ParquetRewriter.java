@@ -128,7 +128,7 @@ public class ParquetRewriter implements Closeable {
     ParquetConfiguration conf = options.getParquetConfiguration();
     OutputFile out = options.getParquetOutputFile();
     inputFiles.addAll(getFileReaders(options.getParquetInputFiles(), conf));
-    List<Queue<TransParquetFileReader>> inputFilesToJoin = options.getParquetInputFilesToJoin().stream()
+    List<Queue<TransParquetFileReader>> inputFilesToJoin = options.getParquetInputFilesToJoinColumns().stream()
         .map(x -> getFileReaders(x, conf))
         .collect(Collectors.toList());
     ensureSameSchema(inputFiles);

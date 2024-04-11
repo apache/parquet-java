@@ -52,7 +52,7 @@ public class RewriteOptions {
 
   private final ParquetConfiguration conf;
   private final List<InputFile> inputFiles;
-  private final List<List<InputFile>> inputFilesToJoin;
+  private final List<List<InputFile>> inputFilesToJoinColumns;
   private final OutputFile outputFile;
   private final List<String> pruneColumns;
   private final CompressionCodecName newCodecName;
@@ -64,7 +64,7 @@ public class RewriteOptions {
   private RewriteOptions(
       ParquetConfiguration conf,
       List<InputFile> inputFiles,
-      List<List<InputFile>> inputFilesToJoin,
+      List<List<InputFile>> inputFilesToJoinColumns,
       OutputFile outputFile,
       List<String> pruneColumns,
       CompressionCodecName newCodecName,
@@ -74,7 +74,7 @@ public class RewriteOptions {
       IndexCache.CacheStrategy indexCacheStrategy) {
     this.conf = conf;
     this.inputFiles = inputFiles;
-    this.inputFilesToJoin = inputFilesToJoin;
+    this.inputFilesToJoinColumns = inputFilesToJoinColumns;
     this.outputFile = outputFile;
     this.pruneColumns = pruneColumns;
     this.newCodecName = newCodecName;
@@ -130,13 +130,13 @@ public class RewriteOptions {
     return inputFiles;
   }
 
-  /** TODO fix documentation after addition of InputFilesToJoin
+  /** TODO fix documentation after addition of InputFilesToJoinColumns
    * Gets the right {@link InputFile}s for the rewrite.
    *
    * @return a {@link List} of the associated right {@link InputFile}s
    */
-  public List<List<InputFile>> getParquetInputFilesToJoin() {
-    return inputFilesToJoin;
+  public List<List<InputFile>> getParquetInputFilesToJoinColumns() {
+    return inputFilesToJoinColumns;
   }
 
   /**
@@ -190,7 +190,7 @@ public class RewriteOptions {
   public static class Builder {
     private final ParquetConfiguration conf;
     private final List<InputFile> inputFiles;
-    private final List<List<InputFile>> inputFilesToJoin = new ArrayList<>();
+    private final List<List<InputFile>> inputFilesToJoinColumns = new ArrayList<>();
     private final OutputFile outputFile;
     private List<String> pruneColumns;
     private CompressionCodecName newCodecName;
@@ -346,14 +346,14 @@ public class RewriteOptions {
       return this;
     }
 
-    /** TODO fix documentation after addition of InputFilesToJoin
+    /** TODO fix documentation after addition of InputFilesToJoinColumns
      * Add an input file to read from.
      *
      * @param paths input file path to read from
      * @return self
      */
     public Builder addInputPathsR(List<Path> paths) {
-      this.inputFilesToJoin.add(paths.stream()
+      this.inputFilesToJoinColumns.add(paths.stream()
           .map(x -> HadoopInputFile.fromPathUnchecked(x, ConfigurationUtil.createHadoopConfiguration(conf)))
           .collect(Collectors.toList()));
       return this;
@@ -370,14 +370,14 @@ public class RewriteOptions {
       return this;
     }
 
-    /** TODO fix documentation after addition of InputFilesToJoin
+    /** TODO fix documentation after addition of InputFilesToJoinColumns
      * Add an input file to read from.
      *
      * @param inputFiles input file to read from
      * @return self
      */
-    public Builder addInputFilesToJoin(List<InputFile> inputFiles) {
-      this.inputFilesToJoin.add(inputFiles);
+    public Builder addInputFilesToJoinColumns(List<InputFile> inputFiles) {
+      this.inputFilesToJoinColumns.add(inputFiles);
       return this;
     }
 
@@ -404,19 +404,19 @@ public class RewriteOptions {
       Preconditions.checkArgument(inputFiles != null && !inputFiles.isEmpty(), "Input file is required");
       Preconditions.checkArgument(outputFile != null, "Output file is required");
       Preconditions.checkArgument(
-          inputFilesToJoin.stream().allMatch(x -> x != null && !x.isEmpty()),
+          inputFilesToJoinColumns.stream().allMatch(x -> x != null && !x.isEmpty()),
           "Right side Input files can't be empty, if you don't need a join functionality then use other builders");
       Preconditions.checkArgument(
-          inputFilesToJoin.isEmpty() || pruneColumns == null,
+          inputFilesToJoinColumns.isEmpty() || pruneColumns == null,
           "Right side Input files join functionality does not yet support column pruning");
       Preconditions.checkArgument(
-          inputFilesToJoin.isEmpty() || maskColumns == null,
+          inputFilesToJoinColumns.isEmpty() || maskColumns == null,
           "Right side Input files join functionality does not yet support column masking");
       Preconditions.checkArgument(
-          inputFilesToJoin.isEmpty() || encryptColumns == null,
+          inputFilesToJoinColumns.isEmpty() || encryptColumns == null,
           "Right side Input files join functionality does not yet support column encryption");
       Preconditions.checkArgument(
-          inputFilesToJoin.isEmpty() || newCodecName == null,
+          inputFilesToJoinColumns.isEmpty() || newCodecName == null,
           "Right side Input files join functionality does not yet support codec changing");
 
       if (pruneColumns != null) {
@@ -450,7 +450,7 @@ public class RewriteOptions {
       return new RewriteOptions(
           conf,
           inputFiles,
-          inputFilesToJoin,
+          inputFilesToJoinColumns,
           outputFile,
           pruneColumns,
           newCodecName,
