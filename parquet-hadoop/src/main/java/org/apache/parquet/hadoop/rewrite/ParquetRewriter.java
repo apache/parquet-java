@@ -128,26 +128,26 @@ public class ParquetRewriter implements Closeable {
     ParquetConfiguration conf = options.getParquetConfiguration();
     OutputFile out = options.getParquetOutputFile();
     inputFiles.addAll(getFileReaders(options.getParquetInputFiles(), conf));
-    List<Queue<TransParquetFileReader>> inputFilesR = options.getParquetInputFilesR().stream()
+    List<Queue<TransParquetFileReader>> inputFilesToJoin = options.getParquetInputFilesToJoin().stream()
         .map(x -> getFileReaders(x, conf))
         .collect(Collectors.toList());
     ensureSameSchema(inputFiles);
-    inputFilesR.forEach(this::ensureSameSchema);
+    inputFilesToJoin.forEach(this::ensureSameSchema);
     LOG.info("Start rewriting {} input file(s) {} to {}", inputFiles.size(), options.getParquetInputFiles(), out);
 
     extraMetaData.put(
         ORIGINAL_CREATED_BY_KEY,
-        Stream.concat(inputFiles.stream(), inputFilesR.stream().flatMap(Collection::stream))
+        Stream.concat(inputFiles.stream(), inputFilesToJoin.stream().flatMap(Collection::stream))
             .map(x -> x.getFooter().getFileMetaData().getCreatedBy())
             .collect(Collectors.toSet())
             .stream()
             .reduce((a, b) -> a + "\n" + b)
             .orElse(""));
-    Stream.concat(inputFiles.stream(), inputFilesR.stream().flatMap(Collection::stream))
+    Stream.concat(inputFiles.stream(), inputFilesToJoin.stream().flatMap(Collection::stream))
         .forEach(x -> extraMetaData.putAll(x.getFileMetaData().getKeyValueMetaData()));
 
     MessageType schemaL = inputFiles.peek().getFooter().getFileMetaData().getSchema();
-    List<MessageType> schemaR = inputFilesR.stream()
+    List<MessageType> schemaR = inputFilesToJoin.stream()
         .map(x -> x.peek().getFooter().getFileMetaData().getSchema())
         .collect(Collectors.toList());
     Map<String, Type> fieldNamesL = new LinkedHashMap<>();
@@ -187,7 +187,7 @@ public class ParquetRewriter implements Closeable {
       schema = pruneColumnsInSchema(schema, prunePaths);
     }
 
-    if (inputFilesR.isEmpty()) {
+    if (inputFilesToJoin.isEmpty()) {
       this.descriptorsMap =
           schema.getColumns().stream().collect(Collectors.toMap(x -> ColumnPath.get(x.getPath()), x -> x));
     } else { // TODO: describe in documentation that only top level column can be overwritten
@@ -198,7 +198,7 @@ public class ParquetRewriter implements Closeable {
 
     long rowCountL =
         inputFiles.stream().mapToLong(ParquetFileReader::getRecordCount).sum();
-    inputFilesR.stream()
+    inputFilesToJoin.stream()
         .map(x ->
             x.stream().mapToLong(ParquetFileReader::getRecordCount).sum())
         .forEach(rowCountR -> {
@@ -235,7 +235,7 @@ public class ParquetRewriter implements Closeable {
         options.getFileEncryptionProperties());
     writer.start();
 
-    for (Queue<TransParquetFileReader> inFiles : inputFilesR) {
+    for (Queue<TransParquetFileReader> inFiles : inputFilesToJoin) {
       this.columnWritersR.add(new RightColumnWriter(inFiles, this));
     }
   }

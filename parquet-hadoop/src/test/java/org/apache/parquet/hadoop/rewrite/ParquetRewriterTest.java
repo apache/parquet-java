@@ -111,7 +111,7 @@ public class ParquetRewriterTest {
   private final boolean usingHadoop;
 
   private List<EncryptionTestFile> inputFiles = null;
-  private List<List<EncryptionTestFile>> inputFilesR = null;
+  private List<List<EncryptionTestFile>> inputFilesToJoin = null;
   private String outputFile = null;
   private ParquetRewriter rewriter = null;
 
@@ -179,7 +179,7 @@ public class ParquetRewriterTest {
   @Before
   public void setUp() {
     outputFile = TestFileBuilder.createTempFile("test");
-    inputFilesR = new ArrayList<>();
+    inputFilesToJoin = new ArrayList<>();
   }
 
   @Test
@@ -736,7 +736,7 @@ public class ParquetRewriterTest {
 
     List<Path> inputPathsL =
         inputFiles.stream().map(x -> new Path(x.getFileName())).collect(Collectors.toList());
-    List<List<Path>> inputPathsR = inputFilesR.stream()
+    List<List<Path>> inputPathsR = inputFilesToJoin.stream()
         .map(x -> x.stream().map(y -> new Path(y.getFileName())).collect(Collectors.toList()))
         .collect(Collectors.toList());
     RewriteOptions.Builder builder = createBuilder(inputPathsL, inputPathsR);
@@ -810,7 +810,7 @@ public class ParquetRewriterTest {
             .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
             .withWriterVersion(writerVersion)
             .build());
-    inputFilesR = Lists.newArrayList(Lists.newArrayList(
+    inputFilesToJoin = Lists.newArrayList(Lists.newArrayList(
         Lists.newArrayList(new TestFileBuilder(conf, createSchemaR1())
             .withNumRecord(numRecord)
             .withRowGroupSize(7_000_000)
@@ -896,7 +896,7 @@ public class ParquetRewriterTest {
       totalRows += inputFile.getFileContent().length;
     }
 
-    List<List<SimpleGroup>> fileContents = Stream.concat(Stream.of(inputFiles), inputFilesR.stream())
+    List<List<SimpleGroup>> fileContents = Stream.concat(Stream.of(inputFiles), inputFilesToJoin.stream())
         .map(x -> x.stream()
             .flatMap(y -> Arrays.stream(y.getFileContent()))
             .collect(Collectors.toList()))
@@ -1119,7 +1119,7 @@ public class ParquetRewriterTest {
   private void validateCreatedBy() throws Exception {
     Set<String> createdBySet = new HashSet<>();
     List<EncryptionTestFile> inFiles = Stream.concat(
-            inputFiles.stream(), inputFilesR.stream().flatMap(Collection::stream))
+            inputFiles.stream(), inputFilesToJoin.stream().flatMap(Collection::stream))
         .collect(Collectors.toList());
     for (EncryptionTestFile inputFile : inFiles) {
       ParquetMetadata pmd = getFileMetaData(inputFile.getFileName(), null);
@@ -1164,7 +1164,7 @@ public class ParquetRewriterTest {
   private Map<ColumnPath, List<BloomFilter>> allInputBloomFilters(FileDecryptionProperties fileDecryptionProperties)
       throws Exception {
     Map<ColumnPath, List<BloomFilter>> inputBloomFilters = new HashMap<>();
-    List<EncryptionTestFile> files = Stream.concat(Stream.of(inputFiles), inputFilesR.stream())
+    List<EncryptionTestFile> files = Stream.concat(Stream.of(inputFiles), inputFilesToJoin.stream())
         .flatMap(Collection::stream)
         .collect(Collectors.toList());
     for (EncryptionTestFile inputFile : files) {
