@@ -133,7 +133,13 @@ public class ParquetRewriter implements Closeable {
         .collect(Collectors.toList());
     ensureSameSchema(inputFiles);
     inputFilesToJoin.forEach(this::ensureSameSchema);
-    LOG.info("Start rewriting {} input file(s) {} to {}", inputFiles.size(), options.getParquetInputFiles(), out);
+    LOG.info(
+        "Start rewriting {} input file(s) {} with {} groups of input file(s) to join {} to {}",
+        inputFilesToJoin.size(),
+        options.getParquetInputFilesToJoinColumns(),
+        inputFiles.size(),
+        options.getParquetInputFiles(),
+        out);
 
     extraMetaData.put(
         ORIGINAL_CREATED_BY_KEY,
