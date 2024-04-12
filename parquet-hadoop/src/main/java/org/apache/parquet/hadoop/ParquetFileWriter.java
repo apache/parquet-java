@@ -1657,7 +1657,9 @@ public class ParquetFileWriter implements AutoCloseable {
   public void close() throws IOException {
     try (PositionOutputStream temp = out) {
       temp.flush();
-      crcAllocator.close();
+      if (crcAllocator != null) {
+        crcAllocator.close();
+      }
     }
   }
 
