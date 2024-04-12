@@ -93,7 +93,6 @@ import org.apache.parquet.io.SeekableInputStream;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.TypeUtil;
-import org.apache.parquet.util.AutoCloseableResources;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
