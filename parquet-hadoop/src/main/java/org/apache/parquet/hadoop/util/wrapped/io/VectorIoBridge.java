@@ -335,19 +335,15 @@ public final class VectorIoBridge {
    * Validate a single range.
    * @param range range to validate.
    * @return the range.
-   * @throws IllegalArgumentException the range length is negative or other invalid condition
-   * is met other than the those which raise EOFException or NullPointerException.
-   * @throws EOFException the range offset is negative
+   * @throws IllegalArgumentException the range length or offset is invalid
    * @throws NullPointerException if the range is null.
    */
-  private static ParquetFileRange validateRangeRequest(ParquetFileRange range) throws EOFException {
+  private static ParquetFileRange validateRangeRequest(ParquetFileRange range) {
 
     requireNonNull(range, "range is null");
 
     checkArgument(range.getLength() >= 0, "length is negative in %s", range);
-    if (range.getOffset() < 0) {
-      throw new EOFException("position is negative in range " + range);
-    }
+    checkArgument(range.getOffset() >= 0, "offset is negative in %s", range);
     return range;
   }
 
@@ -363,8 +359,7 @@ public final class VectorIoBridge {
    * @throws IllegalArgumentException if there are overlapping ranges or
    * a range element is invalid
    */
-  private static List<ParquetFileRange> validateAndSortRanges(final List<ParquetFileRange> input)
-      throws EOFException {
+  private static List<ParquetFileRange> validateAndSortRanges(final List<ParquetFileRange> input) {
 
     requireNonNull(input, "Null input list");
     checkArgument(!input.isEmpty(), "Empty input list");

@@ -339,7 +339,7 @@ public class TestVectorIoBridge {
    */
   @Test
   public void testNegativeOffsetRange() throws Exception {
-    verifyExceptionalVectoredRead(ranges(-1, 50), EOFException.class);
+    verifyExceptionalVectoredRead(ranges(-1, 50), IllegalArgumentException.class);
   }
 
   /**
