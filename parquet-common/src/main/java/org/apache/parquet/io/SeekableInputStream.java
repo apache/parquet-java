@@ -108,11 +108,15 @@ public abstract class SeekableInputStream extends InputStream {
   public abstract void readFully(ByteBuffer buf) throws IOException;
 
   /**
-   * Read a set of file ranges in a vectored manner.
+   * Read a set of disjoint file ranges in a vectored manner.
    *
-   * @param ranges the list of file ranges to read
+   * @param ranges a list of non-overlapping file ranges to read
    * @param allocator the allocator to use for allocating ByteBuffers
    * @throws UnsupportedOperationException if not available in this class/runtime (default)
+   * @throws EOFException if a range is past the known end of the file.
+   * @throws IOException any IO problem initiating the read operations.
+   * @throws IllegalArgumentException if there are overlapping ranges or
+   * a range element is invalid
    */
   public void readVectored(List<ParquetFileRange> ranges, final ByteBufferAllocator allocator) throws IOException {
 

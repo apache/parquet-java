@@ -176,8 +176,10 @@ public final class VectorIoBridge {
    * @param ranges parquet file ranges.
    * @param allocator buffer allocator.
    * @throws UnsupportedOperationException if the API is not available.
-   * @throws EOFException if a range is past the end of the file.
-   * @throws IOException other IO problem initiating the read operations.
+   * @throws EOFException if a range is past the known end of the file.
+   * @throws IOException any IO problem initiating the read operations.
+   * @throws IllegalArgumentException if there are overlapping ranges or
+   * a range element is invalid
    */
   public void readVectoredRanges(
       final FSDataInputStream stream, final List<ParquetFileRange> ranges, final ByteBufferAllocator allocator)
