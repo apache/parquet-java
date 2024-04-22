@@ -23,7 +23,10 @@ import static org.apache.parquet.column.ParquetProperties.WriterVersion.PARQUET_
 import static org.apache.parquet.column.ParquetProperties.WriterVersion.PARQUET_2_0;
 import static org.apache.parquet.filter2.dictionarylevel.DictionaryFilter.canDrop;
 import static org.apache.parquet.filter2.predicate.FilterApi.and;
+import static org.apache.parquet.filter2.predicate.FilterApi.arrayColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.binaryColumn;
+import static org.apache.parquet.filter2.predicate.FilterApi.contains;
+import static org.apache.parquet.filter2.predicate.FilterApi.doesNotContain;
 import static org.apache.parquet.filter2.predicate.FilterApi.doubleColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.eq;
 import static org.apache.parquet.filter2.predicate.FilterApi.floatColumn;
@@ -69,6 +72,7 @@ import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroupFactory;
 import org.apache.parquet.filter2.predicate.FilterPredicate;
 import org.apache.parquet.filter2.predicate.LogicalInverseRewriter;
+import org.apache.parquet.filter2.predicate.Operators.ArrayColumn;
 import org.apache.parquet.filter2.predicate.Operators.BinaryColumn;
 import org.apache.parquet.filter2.predicate.Operators.DoubleColumn;
 import org.apache.parquet.filter2.predicate.Operators.FloatColumn;
@@ -112,6 +116,7 @@ public class DictionaryFilterTest {
       + "required int32 plain_int32_field; "
       + "required binary fallback_binary_field; "
       + "required int96 int96_field; "
+      + "repeated binary repeated_binary_field;"
       + "} ");
 
   private static final String ALPHABET = "abcdefghijklmnopqrstuvwxyz";
@@ -177,7 +182,16 @@ public class DictionaryFilterTest {
               i < (nElements / 2)
                   ? ALPHABET.substring(index, index + 1)
                   : UUID.randomUUID().toString())
-          .append("int96_field", INT96_VALUES[i % INT96_VALUES.length]);
+          .append("int96_field", INT96_VALUES[i % INT96_VALUES.length])
+          .append("repeated_binary_field", ALPHABET.substring(index, index + 1));
+
+      if (index + 1 < 26) {
+        group = group.append("repeated_binary_field", ALPHABET.substring(index + 1, index + 2));
+      }
+
+      if (index + 2 < 26) {
+        group = group.append("repeated_binary_field", ALPHABET.substring(index + 2, index + 3));
+      }
 
       // 10% of the time, leave the field null
       if (index % 10 > 0) {
@@ -282,7 +296,8 @@ public class DictionaryFilterTest {
         "int64_field",
         "double_field",
         "float_field",
-        "int96_field"));
+        "int96_field",
+        "repeated_binary_field"));
     for (ColumnChunkMetaData column : ccmd) {
       String name = column.getPath().toDotString();
       if (dictionaryEncodedColumns.contains(name)) {
@@ -319,7 +334,8 @@ public class DictionaryFilterTest {
         "int64_field",
         "double_field",
         "float_field",
-        "int96_field"));
+        "int96_field",
+        "repeated_binary_field"));
     for (ColumnChunkMetaData column : ccmd) {
       EncodingStats encStats = column.getEncodingStats();
       String name = column.getPath().toDotString();
@@ -812,6 +828,21 @@ public class DictionaryFilterTest {
     assertFalse(
         "Should not drop block for null rejecting udp",
         canDrop(LogicalInverseRewriter.rewrite(not(userDefined(fake, nullRejecting))), ccmd, dictionaries));
+  }
+
+  @Test
+  public void testContainsBinary() throws Exception {
+    ArrayColumn b = arrayColumn(binaryColumn("repeated_binary_field"));
+
+    FilterPredicate predContains1 = contains(b, Binary.fromString("b"));
+    FilterPredicate predDoesNotContain1 = doesNotContain(b, Binary.fromString("B"));
+    assertFalse("Should not drop block", canDrop(predContains1, ccmd, dictionaries));
+    assertFalse("Should not drop block", canDrop(predDoesNotContain1, ccmd, dictionaries));
+
+    FilterPredicate predContains2 = contains(b, Binary.fromString("B"));
+    FilterPredicate predDoesNotContain2 = doesNotContain(b, Binary.fromString("b"));
+    assertTrue("Should drop block", canDrop(predContains2, ccmd, dictionaries));
+    assertTrue("Should drop block", canDrop(predDoesNotContain2, ccmd, dictionaries));
   }
 
   private static final class InInt32UDP extends UserDefinedPredicate<Integer> implements Serializable {

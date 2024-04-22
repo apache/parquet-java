@@ -577,6 +577,37 @@
               <exclude>org.apache.parquet.avro.AvroReadSupport#AVRO_REQUESTED_PROJECTION</exclude>
               <exclude>org.apache.parquet.avro.AvroReadSupport#AVRO_DATA_SUPPLIER</exclude>
               <exclude>org.apache.parquet.hadoop.ParquetFileReader#PARQUET_READ_PARALLELISM</exclude>
+              <exclude>org.apache.parquet.filter2.predicate.FilterApi#arrayColumn(org.apache.parquet.filter2.predicate.Operators$Column)</exclude>
+              <exclude>org.apache.parquet.filter2.predicate.FilterApi#contains(org.apache.parquet.filter2.predicate.Operators$Column,
+                java.lang.Comparable)</exclude>
+              <exclude>org.apache.parquet.filter2.predicate.FilterApi#doesNotContain(org.apache.parquet.filter2.predicate.Operators$Column,
+                java.lang.Comparable)</exclude>
+              <exclude>org.apache.parquet.filter2.predicate.FilterPredicate$Visitor#visit(org.apache.parquet.filter2.predicate.Operators$Contains)</exclude>
+              <exclude>org.apache.parquet.filter2.predicate.FilterPredicate$Visitor#visit(org.apache.parquet.filter2.predicate.Operators$Contains)</exclude>
+              <exclude>org.apache.parquet.filter2.predicate.FilterPredicate$Visitor#visit(org.apache.parquet.filter2.predicate.Operators$Contains)</exclude>
+              <exclude>org.apache.parquet.filter2.predicate.FilterPredicate$Visitor#visit(org.apache.parquet.filter2.predicate.Operators$Contains)</exclude>
+              <exclude>org.apache.parquet.filter2.predicate.FilterPredicate$Visitor#visit(org.apache.parquet.filter2.predicate.Operators$Contains)</exclude>
+              <exclude>org.apache.parquet.filter2.predicate.FilterPredicate$Visitor#visit(org.apache.parquet.filter2.predicate.Operators$Contains)</exclude>
+              <exclude>org.apache.parquet.filter2.predicate.FilterPredicate$Visitor#visit(org.apache.parquet.filter2.predicate.Operators$Contains)</exclude>
+              <exclude>org.apache.parquet.filter2.predicate.FilterPredicate$Visitor#visit(org.apache.parquet.filter2.predicate.Operators$Contains)</exclude>
+              <exclude>org.apache.parquet.filter2.predicate.FilterPredicate$Visitor#visit(org.apache.parquet.filter2.predicate.Operators$DoesNotContain)</exclude>
+              <exclude>org.apache.parquet.filter2.predicate.FilterPredicate$Visitor#visit(org.apache.parquet.filter2.predicate.Operators$DoesNotContain)</exclude>
+              <exclude>org.apache.parquet.filter2.predicate.FilterPredicate$Visitor#visit(org.apache.parquet.filter2.predicate.Operators$DoesNotContain)</exclude>
+              <exclude>org.apache.parquet.filter2.predicate.FilterPredicate$Visitor#visit(org.apache.parquet.filter2.predicate.Operators$DoesNotContain)</exclude>
+              <exclude>org.apache.parquet.filter2.predicate.FilterPredicate$Visitor#visit(org.apache.parquet.filter2.predicate.Operators$DoesNotContain)</exclude>
+              <exclude>org.apache.parquet.filter2.predicate.FilterPredicate$Visitor#visit(org.apache.parquet.filter2.predicate.Operators$DoesNotContain)</exclude>
+              <exclude>org.apache.parquet.filter2.predicate.FilterPredicate$Visitor#visit(org.apache.parquet.filter2.predicate.Operators$DoesNotContain)</exclude>
+              <exclude>org.apache.parquet.filter2.predicate.FilterPredicate$Visitor#visit(org.apache.parquet.filter2.predicate.Operators$DoesNotContain)</exclude>
+              <exclude>org.apache.parquet.filter2.predicate.LogicalInverseRewriter#visit(org.apache.parquet.filter2.predicate.Operators$Contains)</exclude>
+              <exclude>org.apache.parquet.filter2.predicate.LogicalInverseRewriter#visit(org.apache.parquet.filter2.predicate.Operators$DoesNotContain)</exclude>
+              <exclude>org.apache.parquet.filter2.predicate.LogicalInverter#visit(org.apache.parquet.filter2.predicate.Operators$Contains)</exclude>
+              <exclude>org.apache.parquet.filter2.predicate.LogicalInverter#visit(org.apache.parquet.filter2.predicate.Operators$DoesNotContain)</exclude>
+              <exclude>org.apache.parquet.filter2.predicate.SchemaCompatibilityValidator#visit(org.apache.parquet.filter2.predicate.Operators$Contains)</exclude>
+              <exclude>org.apache.parquet.filter2.predicate.SchemaCompatibilityValidator#visit(org.apache.parquet.filter2.predicate.Operators$DoesNotContain)</exclude>
+              <exclude>org.apache.parquet.filter2.recordlevel.IncrementallyUpdatedFilterPredicateBuilder#visit(org.apache.parquet.filter2.predicate.Operators$Contains)</exclude>
+              <exclude>org.apache.parquet.filter2.recordlevel.IncrementallyUpdatedFilterPredicateBuilder#visit(org.apache.parquet.filter2.predicate.Operators$DoesNotContain)</exclude>
+              <exclude>org.apache.parquet.internal.filter2.columnindex.ColumnIndexFilter#visit(org.apache.parquet.filter2.predicate.Operators$Contains)</exclude>
+              <exclude>org.apache.parquet.internal.filter2.columnindex.ColumnIndexFilter#visit(org.apache.parquet.filter2.predicate.Operators$DoesNotContain)</exclude>
             </excludes>
           </parameter>
         </configuration>

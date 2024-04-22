@@ -23,8 +23,11 @@ import java.util.Map;
 import java.util.Objects;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.filter2.predicate.Operators.And;
+import org.apache.parquet.filter2.predicate.Operators.ArrayContainsFilterPredicate;
 import org.apache.parquet.filter2.predicate.Operators.Column;
 import org.apache.parquet.filter2.predicate.Operators.ColumnFilterPredicate;
+import org.apache.parquet.filter2.predicate.Operators.Contains;
+import org.apache.parquet.filter2.predicate.Operators.DoesNotContain;
 import org.apache.parquet.filter2.predicate.Operators.Eq;
 import org.apache.parquet.filter2.predicate.Operators.Gt;
 import org.apache.parquet.filter2.predicate.Operators.GtEq;
@@ -129,6 +132,18 @@ public class SchemaCompatibilityValidator implements FilterPredicate.Visitor<Voi
   }
 
   @Override
+  public <T extends Comparable<T>> Void visit(Contains<T> pred) {
+    validateColumnFilterPredicate(pred);
+    return null;
+  }
+
+  @Override
+  public <T extends Comparable<T>> Void visit(DoesNotContain<T> pred) {
+    validateColumnFilterPredicate(pred);
+    return null;
+  }
+
+  @Override
   public Void visit(And and) {
     and.getLeft().accept(this);
     and.getRight().accept(this);
@@ -167,7 +182,15 @@ public class SchemaCompatibilityValidator implements FilterPredicate.Visitor<Voi
     validateColumn(pred.getColumn());
   }
 
+  private <T extends Comparable<T>> void validateColumnFilterPredicate(ArrayContainsFilterPredicate<T> pred) {
+    validateColumn(pred.getColumn(), true);
+  }
+
   private <T extends Comparable<T>> void validateColumn(Column<T> column) {
+    validateColumn(column, false);
+  }
+
+  private <T extends Comparable<T>> void validateColumn(Column<T> column, boolean shouldBeRepeated) {
     ColumnPath path = column.getColumnPath();
 
     Class<?> alreadySeen = columnTypesEncountered.get(path);
@@ -189,7 +212,11 @@ public class SchemaCompatibilityValidator implements FilterPredicate.Visitor<Voi
       return;
     }
 
-    if (descriptor.getMaxRepetitionLevel() > 0) {
+    if (shouldBeRepeated && descriptor.getMaxRepetitionLevel() == 0) {
+      throw new IllegalArgumentException(
+          "FilterPredicate for column " + path.toDotString() + " requires a repeated "
+              + "schema, but found max repetition level " + descriptor.getMaxRepetitionLevel());
+    } else if (!shouldBeRepeated && descriptor.getMaxRepetitionLevel() > 0) {
       throw new IllegalArgumentException("FilterPredicates do not currently support repeated columns. "
           + "Column " + path.toDotString() + " is repeated.");
     }

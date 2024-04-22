@@ -40,9 +40,7 @@ public final class Operators {
 
     protected Column(ColumnPath columnPath, Class<T> columnType) {
       this.columnPath = Objects.requireNonNull(columnPath, "columnPath cannot be null");
-      ;
       this.columnType = Objects.requireNonNull(columnType, "columnType cannot be null");
-      ;
     }
 
     public Class<T> getColumnType() {
@@ -78,6 +76,8 @@ public final class Operators {
       return result;
     }
   }
+
+  public static interface SupportsContains {}
 
   public static interface SupportsEqNotEq {} // marker for columns that can be used with eq() and notEq()
 
@@ -117,6 +117,12 @@ public final class Operators {
   public static final class BinaryColumn extends Column<Binary> implements SupportsLtGt {
     BinaryColumn(ColumnPath columnPath) {
       super(columnPath, Binary.class);
+    }
+  }
+
+  public static final class ArrayColumn<T extends Comparable<T>> extends Column<T> implements SupportsContains {
+    ArrayColumn(Column<T> elementColumn) {
+      super(elementColumn.getColumnPath(), elementColumn.getColumnType());
     }
   }
 
@@ -307,6 +313,66 @@ public final class Operators {
 
     public In(Column<T> column, Set<T> values) {
       super(column, values);
+    }
+
+    @Override
+    public <R> R accept(Visitor<R> visitor) {
+      return visitor.visit(this);
+    }
+  }
+
+  public abstract static class ArrayContainsFilterPredicate<T extends Comparable<T>>
+      implements FilterPredicate, Serializable {
+    private final Column<T> elementColumn;
+    private final T value;
+
+    protected ArrayContainsFilterPredicate(Column<T> elementColumn, T value) {
+      this.elementColumn = Objects.requireNonNull(elementColumn, "elementColumn cannot be null");
+      this.value = value;
+    }
+
+    public Column<T> getColumn() {
+      return elementColumn;
+    }
+
+    public T getValue() {
+      return value;
+    }
+
+    @Override
+    public String toString() {
+      String name = getClass().getSimpleName().toLowerCase(Locale.ENGLISH);
+      return name + "(" + elementColumn.getColumnPath().toDotString() + ", " + value + ")";
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
+      ArrayContainsFilterPredicate<?> that = (ArrayContainsFilterPredicate<?>) o;
+      return elementColumn.equals(that.elementColumn) && value.equals(that.value);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(elementColumn, value);
+    }
+  }
+
+  public static final class Contains<T extends Comparable<T>> extends ArrayContainsFilterPredicate<T> {
+    public Contains(Column<T> column, T value) {
+      super(column, value);
+    }
+
+    @Override
+    public <R> R accept(Visitor<R> visitor) {
+      return visitor.visit(this);
+    }
+  }
+
+  public static final class DoesNotContain<T extends Comparable<T>> extends ArrayContainsFilterPredicate<T> {
+    public DoesNotContain(Column<T> column, T value) {
+      super(column, value);
     }
 
     @Override

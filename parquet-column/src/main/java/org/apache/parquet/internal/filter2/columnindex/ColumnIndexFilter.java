@@ -29,6 +29,8 @@ import org.apache.parquet.filter2.predicate.FilterPredicate.Visitor;
 import org.apache.parquet.filter2.predicate.Operators;
 import org.apache.parquet.filter2.predicate.Operators.And;
 import org.apache.parquet.filter2.predicate.Operators.Column;
+import org.apache.parquet.filter2.predicate.Operators.Contains;
+import org.apache.parquet.filter2.predicate.Operators.DoesNotContain;
 import org.apache.parquet.filter2.predicate.Operators.Eq;
 import org.apache.parquet.filter2.predicate.Operators.Gt;
 import org.apache.parquet.filter2.predicate.Operators.GtEq;
@@ -153,6 +155,19 @@ public class ColumnIndexFilter implements Visitor<RowRanges> {
   public <T extends Comparable<T>> RowRanges visit(Operators.NotIn<T> notIn) {
     boolean isNull = notIn.getValues().contains(null);
     return applyPredicate(notIn.getColumn(), ci -> ci.visit(notIn), isNull ? RowRanges.EMPTY : allRows());
+  }
+
+  @Override
+  public <T extends Comparable<T>> RowRanges visit(Contains<T> contains) {
+    boolean isNull = contains.getValue() == null;
+    return applyPredicate(contains.getColumn(), ci -> ci.visit(contains), isNull ? allRows() : RowRanges.EMPTY);
+  }
+
+  @Override
+  public <T extends Comparable<T>> RowRanges visit(DoesNotContain<T> doesNotContain) {
+    boolean isNull = doesNotContain.getValue() == null;
+    return applyPredicate(
+        doesNotContain.getColumn(), ci -> ci.visit(doesNotContain), isNull ? RowRanges.EMPTY : allRows());
   }
 
   @Override

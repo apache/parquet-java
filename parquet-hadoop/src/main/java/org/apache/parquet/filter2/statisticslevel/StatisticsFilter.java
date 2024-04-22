@@ -28,6 +28,8 @@ import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.filter2.predicate.FilterPredicate;
 import org.apache.parquet.filter2.predicate.Operators.And;
 import org.apache.parquet.filter2.predicate.Operators.Column;
+import org.apache.parquet.filter2.predicate.Operators.Contains;
+import org.apache.parquet.filter2.predicate.Operators.DoesNotContain;
 import org.apache.parquet.filter2.predicate.Operators.Eq;
 import org.apache.parquet.filter2.predicate.Operators.Gt;
 import org.apache.parquet.filter2.predicate.Operators.GtEq;
@@ -209,6 +211,107 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
   @Override
   public <T extends Comparable<T>> Boolean visit(NotIn<T> notIn) {
     return BLOCK_MIGHT_MATCH;
+  }
+
+  @Override
+  public <T extends Comparable<T>> Boolean visit(Contains<T> contains) {
+    Column<T> filterColumn = contains.getColumn();
+    ColumnChunkMetaData meta = getColumnChunk(filterColumn.getColumnPath());
+
+    T value = contains.getValue();
+
+    final boolean valueIsNull = value == null;
+
+    if (meta == null) {
+      if (!valueIsNull) {
+        return BLOCK_CANNOT_MATCH;
+      }
+      return BLOCK_MIGHT_MATCH;
+    }
+
+    Statistics<T> stats = meta.getStatistics();
+
+    if (stats.isEmpty()) {
+      // we have no statistics available, we cannot drop any chunks
+      return BLOCK_MIGHT_MATCH;
+    }
+
+    if (isAllNulls(meta)) {
+      // we are looking for records where v in(someNonNull)
+      // and this is a column of all nulls, so drop it unless in set contains null.
+      if (valueIsNull) {
+        return BLOCK_MIGHT_MATCH;
+      } else {
+        return BLOCK_CANNOT_MATCH;
+      }
+    }
+
+    if (!stats.hasNonNullValue()) {
+      // stats does not contain min/max values, we cannot drop any chunks
+      return BLOCK_MIGHT_MATCH;
+    }
+
+    if (stats.isNumNullsSet()) {
+      if (stats.getNumNulls() == 0 && valueIsNull) {
+        return BLOCK_CANNOT_MATCH;
+      } else if (valueIsNull) {
+        return BLOCK_MIGHT_MATCH;
+      }
+    }
+
+    // If the value is between block's min and max range, keep it
+    if (stats.compareMinToValue(value) <= 0 && stats.compareMaxToValue(value) >= 0) {
+      return BLOCK_MIGHT_MATCH;
+    } else {
+      return BLOCK_CANNOT_MATCH;
+    }
+  }
+
+  @Override
+  public <T extends Comparable<T>> Boolean visit(DoesNotContain<T> doesNotContain) {
+    Column<T> filterColumn = doesNotContain.getColumn();
+    ColumnChunkMetaData meta = getColumnChunk(filterColumn.getColumnPath());
+
+    T value = doesNotContain.getValue();
+
+    if (meta == null) {
+      if (value == null) {
+        // null is always equal to null
+        return BLOCK_CANNOT_MATCH;
+      }
+      return BLOCK_MIGHT_MATCH;
+    }
+
+    Statistics<T> stats = meta.getStatistics();
+
+    if (stats.isEmpty()) {
+      // we have no statistics available, we cannot drop any chunks
+      return BLOCK_MIGHT_MATCH;
+    }
+
+    if (value == null) {
+      // we are looking for records where v notEq(null)
+      // so, if this is a column of all nulls, we can drop it
+      return isAllNulls(meta);
+    }
+
+    if (stats.isNumNullsSet() && hasNulls(meta)) {
+      // we are looking for records where v notEq(someNonNull)
+      // but this chunk contains nulls, we cannot drop it
+      return BLOCK_MIGHT_MATCH;
+    }
+
+    if (!stats.hasNonNullValue()) {
+      // stats does not contain min/max values, we cannot drop any chunks
+      return BLOCK_MIGHT_MATCH;
+    }
+
+    // If the value is between block's min and max range, keep it
+    if (stats.compareMinToValue(value) > 0 || stats.compareMaxToValue(value) < 0) {
+      return BLOCK_MIGHT_MATCH;
+    } else {
+      return BLOCK_CANNOT_MATCH;
+    }
   }
 
   @Override

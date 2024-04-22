@@ -19,7 +19,9 @@
 package org.apache.parquet.filter2.predicate;
 
 import static org.apache.parquet.filter2.predicate.FilterApi.and;
+import static org.apache.parquet.filter2.predicate.FilterApi.arrayColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.binaryColumn;
+import static org.apache.parquet.filter2.predicate.FilterApi.contains;
 import static org.apache.parquet.filter2.predicate.FilterApi.eq;
 import static org.apache.parquet.filter2.predicate.FilterApi.gt;
 import static org.apache.parquet.filter2.predicate.FilterApi.intColumn;
@@ -126,7 +128,7 @@ public class TestSchemaCompatibilityValidator {
   }
 
   @Test
-  public void testRepeatedNotSupported() {
+  public void testRepeatedNotSupportedForPrimitivePredicates() {
     try {
       validate(eq(lotsOfLongs, 10l), schema);
       fail("this should throw");
@@ -134,6 +136,15 @@ public class TestSchemaCompatibilityValidator {
       assertEquals(
           "FilterPredicates do not currently support repeated columns. Column lotsOfLongs is repeated.",
           e.getMessage());
+    }
+  }
+
+  @Test
+  public void testRepeatedSupportedForArrayPredicates() {
+    try {
+      validate(contains(arrayColumn(lotsOfLongs), 10l), schema);
+    } catch (IllegalArgumentException e) {
+      fail("Valid repeated column predicates should not throw exceptions");
     }
   }
 }

@@ -120,6 +120,16 @@ public class BloomFilterImpl implements FilterPredicate.Visitor<Boolean> {
   }
 
   @Override
+  public <T extends Comparable<T>> Boolean visit(Operators.Contains<T> contains) {
+    return BLOCK_MIGHT_MATCH;
+  }
+
+  @Override
+  public <T extends Comparable<T>> Boolean visit(Operators.DoesNotContain<T> doesNotContain) {
+    return BLOCK_MIGHT_MATCH;
+  }
+
+  @Override
   public <T extends Comparable<T>> Boolean visit(Operators.In<T> in) {
     Set<T> values = in.getValues();
 

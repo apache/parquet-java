@@ -70,6 +70,8 @@ public class IncrementallyUpdatedFilterPredicateGenerator {
         + "import java.util.Set;\n"
         + "\n"
         + "import org.apache.parquet.hadoop.metadata.ColumnPath;\n"
+        + "import org.apache.parquet.filter2.predicate.Operators.Contains;\n"
+        + "import org.apache.parquet.filter2.predicate.Operators.DoesNotContain;\n"
         + "import org.apache.parquet.filter2.predicate.Operators.Eq;\n"
         + "import org.apache.parquet.filter2.predicate.Operators.Gt;\n"
         + "import org.apache.parquet.filter2.predicate.Operators.GtEq;\n"
@@ -119,6 +121,18 @@ public class IncrementallyUpdatedFilterPredicateGenerator {
     addVisitBegin("NotIn");
     for (TypeInfo info : TYPES) {
       addInNotInCase(info, false);
+    }
+    addVisitEnd();
+
+    addVisitBegin("Contains");
+    for (TypeInfo info : TYPES) {
+      addContainsDoesNotContainCase(info, true);
+    }
+    addVisitEnd();
+
+    addVisitBegin("DoesNotContain");
+    for (TypeInfo info : TYPES) {
+      addContainsDoesNotContainCase(info, false);
     }
     addVisitEnd();
 
@@ -302,6 +316,40 @@ public class IncrementallyUpdatedFilterPredicateGenerator {
         + "\n"
         + "    final U udp = pred.getUserDefinedPredicate();\n"
         + "\n");
+  }
+
+  private void addContainsDoesNotContainCase(TypeInfo info, boolean isContains) throws IOException {
+    add("    if (clazz.equals(" + info.className + ".class)) {\n" + "      if (pred.getValue() == null) {\n"
+        + "        valueInspector = new ValueInspector() {\n"
+        + "          @Override\n"
+        + "          public void updateNull() {\n"
+        + "            setResult("
+        + isContains + ");\n" + "          }\n"
+        + "\n"
+        + "          @Override\n"
+        + "          public void update("
+        + info.primitiveName + " value) {\n" + "            setResult("
+        + !isContains + ");\n" + "          }\n"
+        + "        };\n"
+        + "      } else {\n"
+        + "        final "
+        + info.primitiveName + " target = (" + info.className + ") (Object) pred.getValue();\n"
+        + "        final PrimitiveComparator<"
+        + info.className + "> comparator = getComparator(columnPath);\n" + "\n"
+        + "        valueInspector = new ValueInspector() {\n"
+        + "          @Override\n"
+        + "          public void updateNull() {\n"
+        + "            setResult("
+        + !isContains + ");\n" + "          }\n"
+        + "\n"
+        + "          @Override\n"
+        + "          public void update("
+        + info.primitiveName + " value) {\n");
+
+    add("            if (" + compareEquality("value", "target", true) + ") {\n" + "              setResult("
+        + isContains + ");\n" + "            }\n");
+
+    add("          }\n" + "        };\n" + "      }\n" + "    }\n\n");
   }
 
   private void addUdpCase(TypeInfo info, boolean invert) throws IOException {

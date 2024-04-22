@@ -41,6 +41,8 @@ import org.apache.parquet.column.MinMax;
 import org.apache.parquet.column.statistics.SizeStatistics;
 import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.filter2.predicate.Operators.And;
+import org.apache.parquet.filter2.predicate.Operators.Contains;
+import org.apache.parquet.filter2.predicate.Operators.DoesNotContain;
 import org.apache.parquet.filter2.predicate.Operators.Eq;
 import org.apache.parquet.filter2.predicate.Operators.Gt;
 import org.apache.parquet.filter2.predicate.Operators.GtEq;
@@ -366,6 +368,60 @@ public abstract class ColumnIndexBuilder {
     @Override
     public <T extends Comparable<T>> PrimitiveIterator.OfInt visit(NotIn<T> notIn) {
       return IndexIterator.all(getPageCount());
+    }
+
+    @Override
+    public <T extends Comparable<T>> PrimitiveIterator.OfInt visit(Contains<T> contains) {
+      T value = contains.getValue();
+      IntSet matchingIndexesForNull = new IntOpenHashSet(); // for null
+      if (value == null) {
+        if (nullCounts == null) {
+          // Searching for nulls so if we don't have null related statistics we have to return all pages
+          return IndexIterator.all(getPageCount());
+        } else {
+          for (int i = 0; i < nullCounts.length; i++) {
+            if (nullCounts[i] > 0) {
+              matchingIndexesForNull.add(i);
+            }
+          }
+          return IndexIterator.filter(getPageCount(), matchingIndexesForNull::contains);
+        }
+      }
+      IntSet matchingIndexesLessThanMax = new IntOpenHashSet();
+      IntSet matchingIndexesGreaterThanMin = new IntOpenHashSet();
+      ValueComparator valueComparator = createValueComparator(value);
+
+      getBoundaryOrder()
+          .ltEq(valueComparator)
+          .forEachRemaining((int index) -> matchingIndexesLessThanMax.add(index));
+      getBoundaryOrder()
+          .gtEq(valueComparator)
+          .forEachRemaining((int index) -> matchingIndexesGreaterThanMin.add(index));
+      matchingIndexesLessThanMax.retainAll(matchingIndexesGreaterThanMin);
+      IntSet matchingIndex = matchingIndexesLessThanMax;
+      matchingIndex.addAll(matchingIndexesForNull); // add the matching null pages
+      return IndexIterator.filter(getPageCount(), matchingIndex::contains);
+    }
+
+    @Override
+    public <T extends Comparable<T>> PrimitiveIterator.OfInt visit(DoesNotContain<T> doesNotContain) {
+      T value = doesNotContain.getValue();
+      if (value == null) {
+        return IndexIterator.filter(getPageCount(), pageIndex -> !nullPages[pageIndex]);
+      }
+
+      if (nullCounts == null) {
+        // Nulls match so if we don't have null related statistics we have to return all pages
+        return IndexIterator.all(getPageCount());
+      }
+
+      // Merging value filtering with pages containing nulls
+      IntSet matchingIndexes = new IntOpenHashSet();
+      getBoundaryOrder()
+          .notEq(createValueComparator(value))
+          .forEachRemaining((int index) -> matchingIndexes.add(index));
+      return IndexIterator.filter(
+          getPageCount(), pageIndex -> nullCounts[pageIndex] > 0 || matchingIndexes.contains(pageIndex));
     }
 
     @Override
