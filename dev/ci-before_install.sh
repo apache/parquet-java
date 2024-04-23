@@ -20,7 +20,7 @@
 # This script gets invoked by the CI system in a "before install" step
 ################################################################################
 
-export THRIFT_VERSION=0.19.0
+export THRIFT_VERSION=0.20.0
 
 set -e
 date
