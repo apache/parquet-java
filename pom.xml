@@ -608,6 +608,13 @@
               <exclude>org.apache.parquet.filter2.recordlevel.IncrementallyUpdatedFilterPredicateBuilder#visit(org.apache.parquet.filter2.predicate.Operators$DoesNotContain)</exclude>
               <exclude>org.apache.parquet.internal.filter2.columnindex.ColumnIndexFilter#visit(org.apache.parquet.filter2.predicate.Operators$Contains)</exclude>
               <exclude>org.apache.parquet.internal.filter2.columnindex.ColumnIndexFilter#visit(org.apache.parquet.filter2.predicate.Operators$DoesNotContain)</exclude>
+              <exclude>org.apache.parquet.filter2.bloomfilterlevel.BloomFilterImpl#visit(org.apache.parquet.filter2.predicate.Operators$Contains)</exclude>
+              <exclude>org.apache.parquet.filter2.bloomfilterlevel.BloomFilterImpl#visit(org.apache.parquet.filter2.predicate.Operators$DoesNotContain)</exclude>
+              <exclude>org.apache.parquet.filter2.dictionarylevel.DictionaryFilter#visit(org.apache.parquet.filter2.predicate.Operators$Contains)</exclude>
+              <exclude>org.apache.parquet.filter2.dictionarylevel.DictionaryFilter#visit(org.apache.parquet.filter2.predicate.Operators$DoesNotContain)</exclude>
+              <exclude>org.apache.parquet.filter2.statisticslevel.StatisticsFilter#visit(org.apache.parquet.filter2.predicate.Operators$Contains)</exclude>
+              <exclude>org.apache.parquet.filter2.statisticslevel.StatisticsFilter#visit(org.apache.parquet.filter2.predicate.Operators$DoesNotContain)</exclude>
+
             </excludes>
           </parameter>
         </configuration>
