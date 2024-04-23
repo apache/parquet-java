@@ -19,7 +19,6 @@
 package org.apache.parquet.hadoop.example;
 
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.Map;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -98,7 +97,6 @@ public class ExampleParquetWriter extends ParquetWriter<Group> {
 
   public static class Builder extends ParquetWriter.Builder<Group, Builder> {
     private MessageType type = null;
-    private Map<String, String> extraMetaData = new HashMap<String, String>();
 
     private Builder(Path file) {
       super(file);
@@ -110,11 +108,6 @@ public class ExampleParquetWriter extends ParquetWriter<Group> {
 
     public Builder withType(MessageType type) {
       this.type = type;
-      return this;
-    }
-
-    public Builder withExtraMetaData(Map<String, String> extraMetaData) {
-      this.extraMetaData = extraMetaData;
       return this;
     }
 
@@ -130,7 +123,12 @@ public class ExampleParquetWriter extends ParquetWriter<Group> {
 
     @Override
     protected WriteSupport<Group> getWriteSupport(ParquetConfiguration conf) {
-      return new GroupWriteSupport(type, extraMetaData);
+      return new GroupWriteSupport(type);
+    }
+
+    @Override
+    public Builder withExtraMetaData(Map<String, String> extraMetaData) {
+      return super.withExtraMetaData(extraMetaData);
     }
   }
 }

@@ -50,8 +50,10 @@ import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.DirectByteBufferAllocator;
 import org.apache.parquet.bytes.HeapByteBufferAllocator;
 import org.apache.parquet.bytes.LittleEndianDataInputStream;
+import org.apache.parquet.bytes.TrackingByteBufferAllocator;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.Encoding;
+import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.page.DataPageV2;
 import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.page.PageReadStore;
@@ -75,6 +77,7 @@ import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Types;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.InOrder;
@@ -124,15 +127,21 @@ public class TestColumnChunkPageWriteStore {
   private int pageSize = 1024;
   private int initialSize = 1024;
   private Configuration conf;
+  private TrackingByteBufferAllocator allocator;
 
   @Before
   public void initConfiguration() {
     this.conf = new Configuration();
   }
 
+  @After
+  public void closeAllocator() {
+    allocator.close();
+  }
+
   @Test
   public void test() throws Exception {
-    test(conf, new HeapByteBufferAllocator());
+    test(conf, allocator = TrackingByteBufferAllocator.wrap(new HeapByteBufferAllocator()));
   }
 
   @Test
@@ -141,7 +150,7 @@ public class TestColumnChunkPageWriteStore {
     // we want to test the path with direct buffers so we need to enable this config as well
     // even though this file is not encrypted
     config.set(ParquetInputFormat.OFF_HEAP_DECRYPT_BUFFER_ENABLED, "true");
-    test(config, new DirectByteBufferAllocator());
+    test(config, allocator = TrackingByteBufferAllocator.wrap(new DirectByteBufferAllocator()));
   }
 
   public void test(Configuration config, ByteBufferAllocator allocator) throws Exception {
@@ -179,13 +188,14 @@ public class TestColumnChunkPageWriteStore {
           schema,
           Mode.CREATE,
           ParquetWriter.DEFAULT_BLOCK_SIZE,
-          ParquetWriter.MAX_PADDING_SIZE_DEFAULT);
+          ParquetWriter.MAX_PADDING_SIZE_DEFAULT,
+          null,
+          ParquetProperties.builder().withAllocator(allocator).build());
       writer.start();
       writer.startBlock(rowCount);
       pageOffset = outputFile.out().getPos();
-      {
-        ColumnChunkPageWriteStore store =
-            new ColumnChunkPageWriteStore(compressor(GZIP), schema, allocator, Integer.MAX_VALUE);
+      try (ColumnChunkPageWriteStore store =
+          new ColumnChunkPageWriteStore(compressor(GZIP), schema, allocator, Integer.MAX_VALUE)) {
         PageWriter pageWriter = store.getPageWriter(col);
         pageWriter.writePageV2(
             rowCount,
@@ -269,18 +279,20 @@ public class TestColumnChunkPageWriteStore {
     int fakeCount = 3;
     BinaryStatistics fakeStats = new BinaryStatistics();
 
-    // TODO - look back at this, an allocator was being passed here in the ByteBuffer changes
-    // see comment at this constructor
-    ColumnChunkPageWriteStore store = new ColumnChunkPageWriteStore(
-        compressor(UNCOMPRESSED), schema, new HeapByteBufferAllocator(), Integer.MAX_VALUE);
+    try (ColumnChunkPageWriteStore store = new ColumnChunkPageWriteStore(
+        compressor(UNCOMPRESSED),
+        schema,
+        allocator = TrackingByteBufferAllocator.wrap(new HeapByteBufferAllocator()),
+        Integer.MAX_VALUE)) {
 
-    for (ColumnDescriptor col : schema.getColumns()) {
-      PageWriter pageWriter = store.getPageWriter(col);
-      pageWriter.writePage(fakeData, fakeCount, fakeStats, RLE, RLE, PLAIN);
+      for (ColumnDescriptor col : schema.getColumns()) {
+        PageWriter pageWriter = store.getPageWriter(col);
+        pageWriter.writePage(fakeData, fakeCount, fakeStats, RLE, RLE, PLAIN);
+      }
+
+      // flush to the mock writer
+      store.flushToFileWriter(mockFileWriter);
     }
-
-    // flush to the mock writer
-    store.flushToFileWriter(mockFileWriter);
 
     for (ColumnDescriptor col : schema.getColumns()) {
       inOrder.verify(mockFileWriter)
@@ -293,6 +305,7 @@ public class TestColumnChunkPageWriteStore {
               eq(fakeData.size()),
               eq(fakeData.size()),
               eq(fakeStats),
+              any(),
               same(ColumnIndexBuilder.getNoOpBuilder()), // Deprecated writePage -> no column index
               same(OffsetIndexBuilder.getNoOpBuilder()), // Deprecated writePage -> no offset index
               any(),

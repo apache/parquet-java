@@ -35,8 +35,12 @@ import org.apache.pig.data.DataBag;
 import org.apache.pig.data.Tuple;
 import org.apache.pig.data.TupleFactory;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class TestSummary {
+
+  private static final Logger LOG = LoggerFactory.getLogger(TestSummary.class);
 
   private static final TupleFactory tf = TupleFactory.getInstance();
   private static final BagFactory bf = BagFactory.getInstance();
@@ -103,9 +107,8 @@ public class TestSummary {
 
   private void validate(String result, int factor) throws IOException {
     TupleSummaryData s = SummaryData.fromJSON(result, TupleSummaryData.class);
-    //          System.out.println(SummaryData.toPrettyJSON(s));
     assertEquals(9 * factor, s.getCount());
-    assertEquals(1 * factor, s.getFields().get(0).getNull().longValue());
+    assertEquals(factor, s.getFields().get(0).getNull().longValue());
     assertEquals(7 * factor, s.getFields().get(0).getBag().getCount());
     assertEquals(
         18 * factor,
@@ -141,10 +144,10 @@ public class TestSummary {
     pigServer.registerQuery("A = LOAD 'in' USING mock.Storage();");
     pigServer.registerQuery("B = FOREACH (GROUP A ALL) GENERATE " + Summary.class.getName() + "(A);");
     pigServer.registerQuery("STORE B INTO 'out' USING mock.Storage();");
-    System.out.println(data.get("out").get(0).get(0));
+    LOG.info(String.valueOf(data.get("out").get(0).get(0)));
     TupleSummaryData s =
         SummaryData.fromJSON((String) data.get("out").get(0).get(0), TupleSummaryData.class);
-    System.out.println(s);
+    LOG.info(String.valueOf(s));
   }
 
   @Test
@@ -163,7 +166,7 @@ public class TestSummary {
     pigServer.registerQuery("STORE B INTO 'out' USING mock.Storage();");
     TupleSummaryData s =
         SummaryData.fromJSON((String) data.get("out").get(0).get(0), TupleSummaryData.class);
-    System.out.println(s);
+    LOG.info(String.valueOf(s));
     assertEquals(0, s.getFields().get(1).getNumber().getValue().getMax(), 0);
   }
 }

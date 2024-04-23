@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Formatter;
 import java.util.List;
+import java.util.Optional;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.internal.column.columnindex.OffsetIndex;
 import org.apache.parquet.internal.filter2.columnindex.RowRanges;
@@ -98,6 +99,11 @@ class ColumnIndexFilterUtils {
       int nextIndex = indexMap[pageIndex] + 1;
       return (nextIndex >= offsetIndex.getPageCount() ? totalRowCount : offsetIndex.getFirstRowIndex(nextIndex))
           - 1;
+    }
+
+    @Override
+    public Optional<Long> getUnencodedByteArrayDataBytes(int pageIndex) {
+      return offsetIndex.getUnencodedByteArrayDataBytes(indexMap[pageIndex]);
     }
 
     @Override

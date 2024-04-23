@@ -19,11 +19,16 @@
 
 package org.apache.parquet.column.values.bloomfilter;
 
-public interface BloomFilterWriter {
+public interface BloomFilterWriter extends AutoCloseable {
   /**
    * Write a Bloom filter
    *
    * @param bloomFilter the Bloom filter to write
    */
   void writeBloomFilter(BloomFilter bloomFilter);
+
+  @Override
+  default void close() {
+    // No-op default implementation for compatibility
+  }
 }

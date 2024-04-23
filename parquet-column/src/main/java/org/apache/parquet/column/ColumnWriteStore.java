@@ -22,7 +22,7 @@ package org.apache.parquet.column;
  * Container which can construct writers for multiple columns to be stored
  * together.
  */
-public interface ColumnWriteStore {
+public interface ColumnWriteStore extends AutoCloseable {
   /**
    * @param path the column for which to create a writer
    * @return the column writer for the given column
@@ -63,6 +63,7 @@ public interface ColumnWriteStore {
   /**
    * Close the related output stream and release any resources
    */
+  @Override
   public abstract void close();
 
   /**

@@ -26,6 +26,9 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
+import org.apache.parquet.bytes.ByteBufferAllocator;
+import org.apache.parquet.bytes.HeapByteBufferAllocator;
+import org.apache.parquet.bytes.TrackingByteBufferAllocator;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroup;
 import org.apache.parquet.filter2.compat.FilterCompat.Filter;
@@ -53,7 +56,11 @@ public class PhoneBookWriter {
       + "  }\n"
       + "}\n";
 
-  private static final MessageType schema = MessageTypeParser.parseMessageType(schemaString);
+  private static final MessageType schema = getSchema();
+
+  public static MessageType getSchema() {
+    return MessageTypeParser.parseMessageType(schemaString);
+  }
 
   public static class Location {
     private final Double lon;
@@ -320,29 +327,33 @@ public class PhoneBookWriter {
     }
   }
 
-  public static ParquetReader<Group> createReader(Path file, Filter filter) throws IOException {
+  public static ParquetReader<Group> createReader(Path file, Filter filter, ByteBufferAllocator allocator)
+      throws IOException {
     Configuration conf = new Configuration();
     GroupWriteSupport.setSchema(schema, conf);
 
     return ParquetReader.builder(new GroupReadSupport(), file)
         .withConf(conf)
         .withFilter(filter)
+        .withAllocator(allocator)
         .build();
   }
 
   public static List<Group> readFile(File f, Filter filter) throws IOException {
-    ParquetReader<Group> reader = createReader(new Path(f.getAbsolutePath()), filter);
+    try (TrackingByteBufferAllocator allocator = TrackingByteBufferAllocator.wrap(new HeapByteBufferAllocator());
+        ParquetReader<Group> reader = createReader(new Path(f.getAbsolutePath()), filter, allocator)) {
 
-    Group current;
-    List<Group> users = new ArrayList<Group>();
+      Group current;
+      List<Group> users = new ArrayList<Group>();
 
-    current = reader.read();
-    while (current != null) {
-      users.add(current);
       current = reader.read();
-    }
+      while (current != null) {
+        users.add(current);
+        current = reader.read();
+      }
 
-    return users;
+      return users;
+    }
   }
 
   public static List<User> readUsers(ParquetReader.Builder<Group> builder) throws IOException {
@@ -356,18 +367,18 @@ public class PhoneBookWriter {
    */
   public static List<User> readUsers(ParquetReader.Builder<Group> builder, boolean validateRowIndexes)
       throws IOException {
-    ParquetReader<Group> reader = builder.set(GroupWriteSupport.PARQUET_EXAMPLE_SCHEMA, schema.toString())
-        .build();
-
-    List<User> users = new ArrayList<>();
-    for (Group group = reader.read(); group != null; group = reader.read()) {
-      User u = userFromGroup(group);
-      users.add(u);
-      if (validateRowIndexes) {
-        assertEquals("Row index should be equal to User id", u.id, reader.getCurrentRowIndex());
+    try (ParquetReader<Group> reader = builder.set(GroupWriteSupport.PARQUET_EXAMPLE_SCHEMA, schema.toString())
+        .build()) {
+      List<User> users = new ArrayList<>();
+      for (Group group = reader.read(); group != null; group = reader.read()) {
+        User u = userFromGroup(group);
+        users.add(u);
+        if (validateRowIndexes) {
+          assertEquals("Row index should be equal to User id", u.id, reader.getCurrentRowIndex());
+        }
       }
+      return users;
     }
-    return users;
   }
 
   public static void main(String[] args) throws IOException {

@@ -24,7 +24,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
-import org.apache.parquet.bytes.BytesInput;
+import org.apache.parquet.bytes.ByteBufferAllocator;
+import org.apache.parquet.bytes.ByteBufferReleaser;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.page.DictionaryPageReadStore;
@@ -46,19 +47,21 @@ class DictionaryPageReader implements DictionaryPageReadStore {
   private final Map<String, ColumnChunkMetaData> columns;
   private final Map<String, Optional<DictionaryPage>> dictionaryPageCache;
   private ColumnChunkPageReadStore rowGroup = null;
+  private ByteBufferReleaser releaser;
 
   /**
    * Instantiate a new DictionaryPageReader.
    *
-   * @param reader The target ParquetFileReader
-   * @param block  The target BlockMetaData
-   * @throws NullPointerException if {@code reader} or {@code block} is
-   *                              {@code null}
+   * @param reader    The target ParquetFileReader
+   * @param block     The target BlockMetaData
+   * @param allocator The allocator to be used for potentially allocating {@link java.nio.ByteBuffer} objects
+   * @throws NullPointerException if {@code reader} or {@code block} is {@code null}
    */
-  DictionaryPageReader(ParquetFileReader reader, BlockMetaData block) {
+  DictionaryPageReader(ParquetFileReader reader, BlockMetaData block, ByteBufferAllocator allocator) {
     this.reader = Objects.requireNonNull(reader);
     this.columns = new HashMap<>();
     this.dictionaryPageCache = new ConcurrentHashMap<>();
+    releaser = new ByteBufferReleaser(allocator);
 
     for (ColumnChunkMetaData column : block.getColumns()) {
       columns.put(column.getPath().toDotString(), column);
@@ -106,8 +109,12 @@ class DictionaryPageReader implements DictionaryPageReadStore {
         .orElse(null);
   }
 
-  private static DictionaryPage reusableCopy(DictionaryPage dict) throws IOException {
-    return new DictionaryPage(
-        BytesInput.from(dict.getBytes().toByteArray()), dict.getDictionarySize(), dict.getEncoding());
+  private DictionaryPage reusableCopy(DictionaryPage dict) throws IOException {
+    return new DictionaryPage(dict.getBytes().copy(releaser), dict.getDictionarySize(), dict.getEncoding());
+  }
+
+  @Override
+  public void close() {
+    releaser.close();
   }
 }

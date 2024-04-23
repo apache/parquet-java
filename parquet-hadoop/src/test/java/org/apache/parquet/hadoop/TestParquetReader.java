@@ -35,13 +35,17 @@ import java.util.List;
 import java.util.Set;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
+import org.apache.parquet.bytes.HeapByteBufferAllocator;
+import org.apache.parquet.bytes.TrackingByteBufferAllocator;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.filter2.recordlevel.PhoneBookWriter;
 import org.apache.parquet.hadoop.example.ExampleParquetWriter;
 import org.apache.parquet.hadoop.example.GroupReadSupport;
+import org.junit.After;
 import org.junit.AfterClass;
+import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -58,6 +62,7 @@ public class TestParquetReader {
 
   private final Path file;
   private final long fileSize;
+  private TrackingByteBufferAllocator allocator;
 
   private static Path createPathFromCP(String path) {
     try {
@@ -150,6 +155,7 @@ public class TestParquetReader {
       throws IOException {
     return PhoneBookWriter.readUsers(
         ParquetReader.builder(new GroupReadSupport(), file)
+            .withAllocator(allocator)
             .withFilter(filter)
             .useDictionaryFilter(useOtherFiltering)
             .useStatsFilter(useOtherFiltering)
@@ -159,9 +165,19 @@ public class TestParquetReader {
         true);
   }
 
+  @Before
+  public void initAllocator() {
+    allocator = TrackingByteBufferAllocator.wrap(new HeapByteBufferAllocator());
+  }
+
+  @After
+  public void closeAllocator() {
+    allocator.close();
+  }
+
   @Test
   public void testCurrentRowIndex() throws Exception {
-    ParquetReader<Group> reader = PhoneBookWriter.createReader(file, FilterCompat.NOOP);
+    ParquetReader<Group> reader = PhoneBookWriter.createReader(file, FilterCompat.NOOP, allocator);
     // Fetch row index without processing any row.
     assertEquals(reader.getCurrentRowIndex(), -1);
     reader.read();

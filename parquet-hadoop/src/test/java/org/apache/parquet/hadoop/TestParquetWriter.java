@@ -36,6 +36,7 @@ import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import com.google.common.collect.ImmutableMap;
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
@@ -47,6 +48,8 @@ import net.openhft.hashing.LongHashFunction;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
+import org.apache.parquet.bytes.HeapByteBufferAllocator;
+import org.apache.parquet.bytes.TrackingByteBufferAllocator;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
@@ -69,7 +72,9 @@ import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.InvalidSchemaException;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Types;
+import org.junit.After;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -108,6 +113,18 @@ public class TestParquetWriter {
     }
   }
 
+  private TrackingByteBufferAllocator allocator;
+
+  @Before
+  public void initAllocator() {
+    allocator = TrackingByteBufferAllocator.wrap(new HeapByteBufferAllocator());
+  }
+
+  @After
+  public void closeAllocator() {
+    allocator.close();
+  }
+
   @Test
   public void test() throws Exception {
     Configuration conf = new Configuration();
@@ -134,6 +151,7 @@ public class TestParquetWriter {
       for (WriterVersion version : WriterVersion.values()) {
         Path file = new Path(root, version.name() + "_" + modulo);
         ParquetWriter<Group> writer = ExampleParquetWriter.builder(new TestOutputFile(file, conf))
+            .withAllocator(allocator)
             .withCompressionCodec(UNCOMPRESSED)
             .withRowGroupSize(1024)
             .withPageSize(1024)
@@ -203,6 +221,7 @@ public class TestParquetWriter {
     TestUtils.assertThrows(
         "Should reject a schema with an empty group", InvalidSchemaException.class, (Callable<Void>) () -> {
           ExampleParquetWriter.builder(new Path(file.toString()))
+              .withAllocator(allocator)
               .withType(Types.buildMessage()
                   .addField(new GroupType(REQUIRED, "invalid_group"))
                   .named("invalid_message"))
@@ -234,6 +253,7 @@ public class TestParquetWriter {
     file.delete();
     Path path = new Path(file.getAbsolutePath());
     try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(path)
+        .withAllocator(allocator)
         .withPageRowCountLimit(10)
         .withConf(conf)
         .build()) {
@@ -270,6 +290,7 @@ public class TestParquetWriter {
     file.delete();
     Path path = new Path(file.getAbsolutePath());
     try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(path)
+        .withAllocator(allocator)
         .withPageRowCountLimit(10)
         .withConf(conf)
         .withDictionaryEncoding(false)
@@ -320,6 +341,7 @@ public class TestParquetWriter {
       file.delete();
       Path path = new Path(file.getAbsolutePath());
       try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(path)
+          .withAllocator(allocator)
           .withPageRowCountLimit(10)
           .withConf(conf)
           .withDictionaryEncoding(false)
@@ -380,6 +402,7 @@ public class TestParquetWriter {
     file.delete();
     Path path = new Path(file.getAbsolutePath());
     try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(path)
+        .withAllocator(allocator)
         .withConf(conf)
         .withDictionaryEncoding(false)
         .withBloomFilterEnabled("name", true)
@@ -407,6 +430,64 @@ public class TestParquetWriter {
     testParquetFileNumberOfBlocks(1, 1, 3);
   }
 
+  @Test
+  public void testExtraMetaData() throws Exception {
+    final Configuration conf = new Configuration();
+    final File testDir = temp.newFile();
+    testDir.delete();
+
+    final MessageType schema = parseMessageType("message test { required int32 int32_field; }");
+    GroupWriteSupport.setSchema(schema, conf);
+    final SimpleGroupFactory f = new SimpleGroupFactory(schema);
+
+    for (WriterVersion version : WriterVersion.values()) {
+      final Path filePath = new Path(testDir.getAbsolutePath(), version.name());
+      final ParquetWriter<Group> writer = ExampleParquetWriter.builder(new TestOutputFile(filePath, conf))
+          .withConf(conf)
+          .withExtraMetaData(ImmutableMap.of("simple-key", "some-value-1", "nested.key", "some-value-2"))
+          .build();
+      for (int i = 0; i < 1000; i++) {
+        writer.write(f.newGroup().append("int32_field", 32));
+      }
+      writer.close();
+
+      final ParquetFileReader reader =
+          ParquetFileReader.open(HadoopInputFile.fromPath(filePath, new Configuration()));
+      assertEquals(1000, reader.readNextRowGroup().getRowCount());
+      assertEquals(
+          ImmutableMap.of(
+              "simple-key",
+              "some-value-1",
+              "nested.key",
+              "some-value-2",
+              ParquetWriter.OBJECT_MODEL_NAME_PROP,
+              "example"),
+          reader.getFileMetaData().getKeyValueMetaData());
+
+      reader.close();
+    }
+  }
+
+  @Test
+  public void testFailsOnConflictingExtraMetaDataKey() throws Exception {
+    final Configuration conf = new Configuration();
+    final File testDir = temp.newFile();
+    testDir.delete();
+
+    final MessageType schema = parseMessageType("message test { required int32 int32_field; }");
+    GroupWriteSupport.setSchema(schema, conf);
+
+    for (WriterVersion version : WriterVersion.values()) {
+      final Path filePath = new Path(testDir.getAbsolutePath(), version.name());
+
+      Assert.assertThrows(IllegalArgumentException.class, () -> ExampleParquetWriter.builder(
+              new TestOutputFile(filePath, conf))
+          .withConf(conf)
+          .withExtraMetaData(ImmutableMap.of(ParquetWriter.OBJECT_MODEL_NAME_PROP, "some-value-3"))
+          .build());
+    }
+  }
+
   private void testParquetFileNumberOfBlocks(
       int minRowCountForPageSizeCheck, int maxRowCountForPageSizeCheck, int expectedNumberOfBlocks)
       throws IOException {
@@ -423,6 +504,7 @@ public class TestParquetWriter {
     temp.delete();
     Path path = new Path(file.getAbsolutePath());
     try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(path)
+        .withAllocator(allocator)
         .withConf(conf)
         // Set row group size to 1, to make sure we flush every time
         // minRowCountForPageSizeCheck or maxRowCountForPageSizeCheck is exceeded

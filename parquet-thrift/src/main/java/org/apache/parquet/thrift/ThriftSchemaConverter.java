@@ -225,14 +225,18 @@ public class ThriftSchemaConverter {
         final Field listElemField = field.getListElemField();
         type = new ThriftType.ListType(toThriftField(listElemField.getName(), listElemField, requirement));
         break;
+      case UUID:
       case ENUM:
-        Collection<TEnum> enumValues = field.getEnumValues();
-        List<EnumValue> values = new ArrayList<ThriftType.EnumValue>();
-        for (TEnum tEnum : enumValues) {
-          values.add(new EnumValue(tEnum.getValue(), tEnum.toString()));
+        if (field.isEnum()) {
+          Collection<TEnum> enumValues = field.getEnumValues();
+          List<ThriftType.EnumValue> values = new ArrayList<>();
+          for (TEnum tEnum : enumValues) {
+            values.add(new EnumValue(tEnum.getValue(), tEnum.toString()));
+          }
+          type = new EnumType(values);
+        } else {
+          type = new ThriftType.UUIDType();
         }
-        type = new EnumType(values);
-        break;
     }
     return new ThriftField(name, field.getId(), requirement, type);
   }

@@ -20,6 +20,7 @@ package org.apache.parquet.io;
 
 import java.io.BufferedOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
@@ -29,6 +30,8 @@ import java.nio.file.StandardOpenOption;
  * to local data files using {@link PositionOutputStream} instances.
  */
 public class LocalOutputFile implements OutputFile {
+
+  private static final int BUFFER_SIZE_DEFAULT = 4096;
 
   private class LocalPositionOutputStream extends PositionOutputStream {
 
@@ -69,7 +72,11 @@ public class LocalOutputFile implements OutputFile {
 
     @Override
     public void close() throws IOException {
-      stream.close();
+      try (OutputStream os = this.stream) {
+        os.flush();
+      } catch (Exception e) {
+        throw new IOException(e);
+      }
     }
   }
 
@@ -80,24 +87,24 @@ public class LocalOutputFile implements OutputFile {
   }
 
   @Override
-  public PositionOutputStream create(long buffer) throws IOException {
-    return new LocalPositionOutputStream((int) buffer, StandardOpenOption.CREATE_NEW);
+  public PositionOutputStream create(long blockSize) throws IOException {
+    return new LocalPositionOutputStream(BUFFER_SIZE_DEFAULT, StandardOpenOption.CREATE_NEW);
   }
 
   @Override
-  public PositionOutputStream createOrOverwrite(long buffer) throws IOException {
+  public PositionOutputStream createOrOverwrite(long blockSize) throws IOException {
     return new LocalPositionOutputStream(
-        (int) buffer, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+        BUFFER_SIZE_DEFAULT, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
   }
 
   @Override
   public boolean supportsBlockSize() {
-    return true;
+    return false;
   }
 
   @Override
   public long defaultBlockSize() {
-    return 512;
+    return -1;
   }
 
   @Override

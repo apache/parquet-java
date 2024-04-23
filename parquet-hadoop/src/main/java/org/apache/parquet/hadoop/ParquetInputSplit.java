@@ -266,17 +266,18 @@ public class ParquetInputSplit extends FileSplit implements Writable {
   @Override
   public void write(DataOutput hout) throws IOException {
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
-    DataOutputStream out = new DataOutputStream(new GZIPOutputStream(baos));
-    super.write(out);
-    out.writeLong(end);
-    out.writeBoolean(rowGroupOffsets != null);
-    if (rowGroupOffsets != null) {
-      out.writeInt(rowGroupOffsets.length);
-      for (long o : rowGroupOffsets) {
-        out.writeLong(o);
+    try (DataOutputStream out = new DataOutputStream(new GZIPOutputStream(baos))) {
+      super.write(out);
+      out.writeLong(end);
+      out.writeBoolean(rowGroupOffsets != null);
+      if (rowGroupOffsets != null) {
+        out.writeInt(rowGroupOffsets.length);
+        for (long o : rowGroupOffsets) {
+          out.writeLong(o);
+        }
       }
+      out.flush();
     }
-    out.close();
     writeArray(hout, baos.toByteArray());
   }
 

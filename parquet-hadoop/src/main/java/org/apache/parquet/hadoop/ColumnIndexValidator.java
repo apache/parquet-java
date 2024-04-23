@@ -616,6 +616,7 @@ public class ColumnIndexValidator {
             pageValidator.finishPage();
           }
         }
+        rowGroup.close();
         rowGroup = reader.readNextRowGroup();
         rowGroupNumber++;
       }

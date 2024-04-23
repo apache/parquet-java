@@ -23,38 +23,24 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.Response;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FSDataOutputStream;
-import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.example.data.Group;
+import org.apache.parquet.hadoop.InterOpTester;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.hadoop.example.GroupReadSupport;
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class TestInteropReadLz4RawCodec {
-
-  // The link includes a reference to a specific commit. To take a newer version - update this link.
-  private static final String PARQUET_TESTING_REPO = "https://github.com/apache/parquet-testing/raw/19fcd4d/data/";
-  private static String PARQUET_TESTING_PATH = "target/parquet-testing/data";
+  private static final String CHANGESET = "19fcd4d";
   private static String SIMPLE_FILE = "lz4_raw_compressed.parquet";
   private static String LARGER_FILE = "lz4_raw_compressed_larger.parquet";
 
-  private static final Logger LOG = LoggerFactory.getLogger(TestInteropReadLz4RawCodec.class);
-  private OkHttpClient httpClient = new OkHttpClient();
+  private InterOpTester interop = new InterOpTester();
 
   @Test
   public void testInteropReadLz4RawSimpleParquetFiles() throws IOException {
-    Path rootPath = new Path(PARQUET_TESTING_PATH);
-    LOG.info("======== testInteropReadLz4RawSimpleParquetFiles {} ========", rootPath.toString());
-
     // Test simple parquet file with lz4 raw compressed
-    Path simpleFile = downloadInteropFiles(rootPath, SIMPLE_FILE, httpClient);
+    Path simpleFile = interop.GetInterOpFile(SIMPLE_FILE, CHANGESET);
     final int expectRows = 4;
     long[] c0ExpectValues = {1593604800, 1593604800, 1593604801, 1593604801};
     String[] c1ExpectValues = {"abc", "def", "abc", "def"};
@@ -75,12 +61,9 @@ public class TestInteropReadLz4RawCodec {
 
   @Test
   public void testInteropReadLz4RawLargerParquetFiles() throws IOException {
-    Path rootPath = new Path(PARQUET_TESTING_PATH);
-    LOG.info("======== testInteropReadLz4RawLargerParquetFiles {} ========", rootPath.toString());
-
     // Test larger parquet file with lz4 raw compressed
     final int expectRows = 10000;
-    Path largerFile = downloadInteropFiles(rootPath, LARGER_FILE, httpClient);
+    Path largerFile = interop.GetInterOpFile(LARGER_FILE, CHANGESET);
     String[] c0ExpectValues = {
       "c7ce6bef-d5b0-4863-b199-8ea8c7fb117b",
       "e8fb9197-cb9f-4118-b67f-fbfa65f61843",
@@ -101,33 +84,5 @@ public class TestInteropReadLz4RawCodec {
       }
       assertTrue(reader.read() == null);
     }
-  }
-
-  private Path downloadInteropFiles(Path rootPath, String fileName, OkHttpClient httpClient) throws IOException {
-    LOG.info("Download interop files if needed");
-    Configuration conf = new Configuration();
-    FileSystem fs = rootPath.getFileSystem(conf);
-    LOG.info(rootPath + " exists?: " + fs.exists(rootPath));
-    if (!fs.exists(rootPath)) {
-      LOG.info("Create folder for interop files: " + rootPath);
-      if (!fs.mkdirs(rootPath)) {
-        throw new IOException("Cannot create path " + rootPath);
-      }
-    }
-
-    Path file = new Path(rootPath, fileName);
-    if (!fs.exists(file)) {
-      String downloadUrl = PARQUET_TESTING_REPO + fileName;
-      LOG.info("Download interop file: " + downloadUrl);
-      Request request = new Request.Builder().url(downloadUrl).build();
-      Response response = httpClient.newCall(request).execute();
-      if (!response.isSuccessful()) {
-        throw new IOException("Failed to download file: " + response);
-      }
-      try (FSDataOutputStream fdos = fs.create(file)) {
-        fdos.write(response.body().bytes());
-      }
-    }
-    return file;
   }
 }

@@ -54,6 +54,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class TestInputOutputFormat {
+
   private static final Logger LOG = LoggerFactory.getLogger(TestInputOutputFormat.class);
 
   public static AddressBook nextAddressbook(int i) {
@@ -244,11 +245,11 @@ public class TestInputOutputFormat {
 
   private void read(String outputPath, int expected) throws FileNotFoundException, IOException {
     final BufferedReader out = new BufferedReader(new FileReader(new File(outputPath.toString())));
-    String lineOut = null;
+    String lineOut;
     int lineNumber = 0;
     while ((lineOut = out.readLine()) != null) {
       lineOut = lineOut.substring(lineOut.indexOf("\t") + 1);
-      System.out.println(lineOut);
+      LOG.info(lineOut);
       ++lineNumber;
     }
     out.close();

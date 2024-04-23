@@ -771,6 +771,7 @@ public class ParquetRewriter implements Closeable {
       cStore.endRecord();
     }
 
+    pageReadStore.close();
     cStore.flush();
     cPageStore.flushToFileWriter(writer);
 

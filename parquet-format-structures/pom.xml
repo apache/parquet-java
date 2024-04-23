@@ -156,6 +156,11 @@
       <artifactId>libthrift</artifactId>
       <version>${format.thrift.version}</version>
     </dependency>
+    <dependency>
+      <groupId>javax.annotation</groupId>
+      <artifactId>javax.annotation-api</artifactId>
+      <version>${javax.annotation.version}</version>
+    </dependency>
   </dependencies>
 
   <profiles>
@@ -171,7 +176,7 @@
           <plugin>
             <groupId>org.codehaus.mojo</groupId>
             <artifactId>exec-maven-plugin</artifactId>
-            <version>3.1.1</version>
+            <version>3.2.0</version>
             <executions>
               <execution>
                 <id>check-thrift-version</id>

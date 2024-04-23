@@ -83,7 +83,7 @@ public class ShowPagesCommand extends BaseCommand {
     // command.
     if (raw) {
       try (RawPagesReader reader =
-          new RawPagesReader(HadoopInputFile.fromPath(qualifiedPath(targets.get(0)), getConf()))) {
+          new RawPagesReader(HadoopInputFile.fromPath(qualifiedPath(targets.get(0)), getConf()), columns)) {
         reader.listPages(console);
       }
       return 0;
@@ -131,6 +131,7 @@ public class ShowPagesCommand extends BaseCommand {
           }
         }
         rowGroupNum += 1;
+        pageStore.close();
       }
 
       // TODO: Show total column size and overall size per value in the column summary line

@@ -25,6 +25,7 @@ import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.compress.CodecPool;
 import org.apache.hadoop.io.compress.CompressionCodec;
@@ -32,6 +33,7 @@ import org.apache.hadoop.io.compress.CompressionOutputStream;
 import org.apache.hadoop.io.compress.Compressor;
 import org.apache.hadoop.io.compress.Decompressor;
 import org.apache.hadoop.util.ReflectionUtils;
+import org.apache.parquet.Preconditions;
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.compression.CompressionCodecFactory;
@@ -51,6 +53,44 @@ public class CodecFactory implements CompressionCodecFactory {
 
   protected final ParquetConfiguration configuration;
   protected final int pageSize;
+
+  static final BytesDecompressor NO_OP_DECOMPRESSOR = new BytesDecompressor() {
+    @Override
+    public void decompress(ByteBuffer input, int compressedSize, ByteBuffer output, int decompressedSize) {
+      Preconditions.checkArgument(
+          compressedSize == decompressedSize,
+          "Non-compressed data did not have matching compressed and decompressed sizes.");
+      Preconditions.checkArgument(
+          input.remaining() >= compressedSize, "Not enough bytes available in the input buffer");
+      int origLimit = input.limit();
+      input.limit(input.position() + compressedSize);
+      output.put(input);
+      input.limit(origLimit);
+    }
+
+    @Override
+    public BytesInput decompress(BytesInput bytes, int decompressedSize) {
+      return bytes;
+    }
+
+    @Override
+    public void release() {}
+  };
+
+  static final BytesCompressor NO_OP_COMPRESSOR = new BytesCompressor() {
+    @Override
+    public BytesInput compress(BytesInput bytes) {
+      return bytes;
+    }
+
+    @Override
+    public CompressionCodecName getCodecName() {
+      return CompressionCodecName.UNCOMPRESSED;
+    }
+
+    @Override
+    public void release() {}
+  };
 
   /**
    * Create a new codec factory.
@@ -108,47 +148,45 @@ public class CodecFactory implements CompressionCodecFactory {
     private final CompressionCodec codec;
     private final Decompressor decompressor;
 
-    HeapBytesDecompressor(CompressionCodecName codecName) {
-      this.codec = getCodec(codecName);
-      if (codec != null) {
-        decompressor = CodecPool.getDecompressor(codec);
-      } else {
-        decompressor = null;
-      }
+    HeapBytesDecompressor(CompressionCodec codec) {
+      this.codec = Objects.requireNonNull(codec);
+      decompressor = CodecPool.getDecompressor(codec);
     }
 
     @Override
-    public BytesInput decompress(BytesInput bytes, int uncompressedSize) throws IOException {
+    public BytesInput decompress(BytesInput bytes, int decompressedSize) throws IOException {
       final BytesInput decompressed;
-      if (codec != null) {
-        if (decompressor != null) {
-          decompressor.reset();
-        }
-        InputStream is = codec.createInputStream(bytes.toInputStream(), decompressor);
+      if (decompressor != null) {
+        decompressor.reset();
+      }
+      InputStream is = codec.createInputStream(bytes.toInputStream(), decompressor);
 
-        // We need to explicitly close the ZstdDecompressorStream here to release the resources it holds to
-        // avoid
-        // off-heap memory fragmentation issue, see https://issues.apache.org/jira/browse/PARQUET-2160.
-        // This change will load the decompressor stream into heap a little earlier, since the problem it solves
-        // only happens in the ZSTD codec, so this modification is only made for ZSTD streams.
-        if (codec instanceof ZstandardCodec) {
-          decompressed = BytesInput.copy(BytesInput.from(is, uncompressedSize));
-          is.close();
-        } else {
-          decompressed = BytesInput.from(is, uncompressedSize);
-        }
+      // We need to explicitly close the ZstdDecompressorStream here to release the resources it holds to
+      // avoid off-heap memory fragmentation issue, see https://issues.apache.org/jira/browse/PARQUET-2160.
+      // This change will load the decompressor stream into heap a little earlier, since the problem it solves
+      // only happens in the ZSTD codec, so this modification is only made for ZSTD streams.
+      if (codec instanceof ZstandardCodec) {
+        decompressed = BytesInput.copy(BytesInput.from(is, decompressedSize));
+        is.close();
       } else {
-        decompressed = bytes;
+        decompressed = BytesInput.from(is, decompressedSize);
       }
       return decompressed;
     }
 
     @Override
-    public void decompress(ByteBuffer input, int compressedSize, ByteBuffer output, int uncompressedSize)
+    public void decompress(ByteBuffer input, int compressedSize, ByteBuffer output, int decompressedSize)
         throws IOException {
+      Preconditions.checkArgument(
+          input.remaining() >= compressedSize, "Not enough bytes available in the input buffer");
+      int origLimit = input.limit();
+      int origPosition = input.position();
+      input.limit(origPosition + compressedSize);
       ByteBuffer decompressed =
-          decompress(BytesInput.from(input), uncompressedSize).toByteBuffer();
+          decompress(BytesInput.from(input), decompressedSize).toByteBuffer();
       output.put(decompressed);
+      input.limit(origLimit);
+      input.position(origPosition + compressedSize);
     }
 
     public void release() {
@@ -168,36 +206,25 @@ public class CodecFactory implements CompressionCodecFactory {
     private final ByteArrayOutputStream compressedOutBuffer;
     private final CompressionCodecName codecName;
 
-    HeapBytesCompressor(CompressionCodecName codecName) {
+    HeapBytesCompressor(CompressionCodecName codecName, CompressionCodec codec) {
       this.codecName = codecName;
-      this.codec = getCodec(codecName);
-      if (codec != null) {
-        this.compressor = CodecPool.getCompressor(codec);
-        this.compressedOutBuffer = new ByteArrayOutputStream(pageSize);
-      } else {
-        this.compressor = null;
-        this.compressedOutBuffer = null;
-      }
+      this.codec = Objects.requireNonNull(codec);
+      this.compressor = CodecPool.getCompressor(codec);
+      this.compressedOutBuffer = new ByteArrayOutputStream(pageSize);
     }
 
     @Override
     public BytesInput compress(BytesInput bytes) throws IOException {
-      final BytesInput compressedBytes;
-      if (codec == null) {
-        compressedBytes = bytes;
-      } else {
-        compressedOutBuffer.reset();
-        if (compressor != null) {
-          // null compressor for non-native gzip
-          compressor.reset();
-        }
-        try (CompressionOutputStream cos = codec.createOutputStream(compressedOutBuffer, compressor)) {
-          bytes.writeAllTo(cos);
-          cos.finish();
-        }
-        compressedBytes = BytesInput.from(compressedOutBuffer);
+      compressedOutBuffer.reset();
+      if (compressor != null) {
+        // null compressor for non-native gzip
+        compressor.reset();
       }
-      return compressedBytes;
+      try (CompressionOutputStream cos = codec.createOutputStream(compressedOutBuffer, compressor)) {
+        bytes.writeAllTo(cos);
+        cos.finish();
+      }
+      return BytesInput.from(compressedOutBuffer);
     }
 
     @Override
@@ -233,11 +260,13 @@ public class CodecFactory implements CompressionCodecFactory {
   }
 
   protected BytesCompressor createCompressor(CompressionCodecName codecName) {
-    return new HeapBytesCompressor(codecName);
+    CompressionCodec codec = getCodec(codecName);
+    return codec == null ? NO_OP_COMPRESSOR : new HeapBytesCompressor(codecName, codec);
   }
 
   protected BytesDecompressor createDecompressor(CompressionCodecName codecName) {
-    return new HeapBytesDecompressor(codecName);
+    CompressionCodec codec = getCodec(codecName);
+    return codec == null ? NO_OP_DECOMPRESSOR : new HeapBytesDecompressor(codec);
   }
 
   /**
@@ -320,9 +349,9 @@ public class CodecFactory implements CompressionCodecFactory {
    */
   @Deprecated
   public abstract static class BytesDecompressor implements CompressionCodecFactory.BytesInputDecompressor {
-    public abstract BytesInput decompress(BytesInput bytes, int uncompressedSize) throws IOException;
+    public abstract BytesInput decompress(BytesInput bytes, int decompressedSize) throws IOException;
 
-    public abstract void decompress(ByteBuffer input, int compressedSize, ByteBuffer output, int uncompressedSize)
+    public abstract void decompress(ByteBuffer input, int compressedSize, ByteBuffer output, int decompressedSize)
         throws IOException;
 
     public abstract void release();
