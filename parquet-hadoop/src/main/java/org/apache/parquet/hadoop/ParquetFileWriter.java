@@ -1655,9 +1655,8 @@ public class ParquetFileWriter implements AutoCloseable {
 
   @Override
   public void close() throws IOException {
-    try {
-      out.close();
-    } finally {
+    try (PositionOutputStream temp = out) {
+      temp.flush();
       if (crcAllocator != null) {
         crcAllocator.close();
       }
@@ -2049,10 +2048,11 @@ public class ParquetFileWriter implements AutoCloseable {
   @Deprecated
   private static void writeMetadataFile(Path outputPath, ParquetMetadata metadataFooter, FileSystem fs)
       throws IOException {
-    PositionOutputStream metadata = HadoopStreams.wrap(fs.create(outputPath));
-    metadata.write(MAGIC);
-    serializeFooter(metadataFooter, metadata, null, new ParquetMetadataConverter());
-    metadata.close();
+    try (PositionOutputStream metadata = HadoopStreams.wrap(fs.create(outputPath))) {
+      metadata.write(MAGIC);
+      serializeFooter(metadataFooter, metadata, null, new ParquetMetadataConverter());
+      metadata.flush();
+    }
   }
 
   /**

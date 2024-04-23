@@ -61,6 +61,8 @@ public class HadoopPositionOutputStream extends PositionOutputStream {
 
   @Override
   public void close() throws IOException {
-    wrapped.close();
+    try (FSDataOutputStream fdos = wrapped) {
+      fdos.hflush();
+    }
   }
 }

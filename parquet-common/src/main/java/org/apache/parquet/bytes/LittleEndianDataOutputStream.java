@@ -20,12 +20,15 @@ package org.apache.parquet.bytes;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Based on DataOutputStream but in little endian and without the String/char methods
  */
 public class LittleEndianDataOutputStream extends OutputStream {
 
+  private static final Logger LOG = LoggerFactory.getLogger(LittleEndianDataOutputStream.class);
   private final OutputStream out;
 
   /**
@@ -208,10 +211,10 @@ public class LittleEndianDataOutputStream extends OutputStream {
   }
 
   public void close() {
-    try {
-      out.close();
-    } catch (IOException e) {
-      // swallow exception
+    try (OutputStream os = this.out) {
+      os.flush();
+    } catch (Exception e) {
+      if (LOG.isDebugEnabled()) LOG.debug("Exception in flushing arrayOut before close", e);
     }
   }
 }
