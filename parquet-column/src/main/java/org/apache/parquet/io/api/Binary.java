@@ -86,7 +86,9 @@ public abstract class Binary implements Comparable<Binary>, Serializable {
 
   public abstract ByteBuffer toByteBuffer();
 
-  public abstract short get2BytesLittleEndian();
+  public short get2BytesLittleEndian() {
+    throw new UnsupportedOperationException("Not implemented");
+  }
 
   @Override
   public boolean equals(Object obj) {

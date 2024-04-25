@@ -134,7 +134,9 @@ public abstract class ThriftType {
 
     R visit(StringType stringType, S state);
 
-    R visit(UUIDType uuidType, S state);
+    default R visit(UUIDType uuidType, S state) {
+      throw new UnsupportedOperationException("Not implemented");
+    }
   }
 
   /**
@@ -166,7 +168,9 @@ public abstract class ThriftType {
 
     void visit(StringType stringType);
 
-    void visit(UUIDType uuidType);
+    default void visit(UUIDType uuidType) {
+      throw new UnsupportedOperationException("Not implemented");
+    }
   }
 
   /**

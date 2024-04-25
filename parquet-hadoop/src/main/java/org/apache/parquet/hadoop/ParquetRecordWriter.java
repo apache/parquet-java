@@ -27,6 +27,7 @@ import org.apache.hadoop.mapreduce.TaskAttemptContext;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
 import org.apache.parquet.compression.CompressionCodecFactory.BytesInputCompressor;
+import org.apache.parquet.hadoop.CodecFactory.BytesCompressor;
 import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.schema.MessageType;
@@ -42,6 +43,33 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
   private final InternalParquetRecordWriter<T> internalWriter;
   private final MemoryManager memoryManager;
   private final CodecFactory codecFactory;
+
+  @Deprecated
+  public ParquetRecordWriter(
+      ParquetFileWriter w,
+      WriteSupport<T> writeSupport,
+      MessageType schema,
+      Map<String, String> extraMetaData,
+      int blockSize,
+      int pageSize,
+      BytesCompressor compressor,
+      int dictionaryPageSize,
+      boolean enableDictionary,
+      boolean validating,
+      WriterVersion writerVersion) {
+    this(
+        w,
+        writeSupport,
+        schema,
+        extraMetaData,
+        blockSize,
+        pageSize,
+        (BytesInputCompressor) compressor,
+        dictionaryPageSize,
+        enableDictionary,
+        validating,
+        writerVersion);
+  }
 
   /**
    * @param w                  the file to write to
@@ -79,6 +107,35 @@ public class ParquetRecordWriter<T> extends RecordWriter<Void, T> {
         w, writeSupport, schema, extraMetaData, blockSize, compressor, validating, props);
     this.memoryManager = null;
     this.codecFactory = null;
+  }
+
+  @Deprecated
+  public ParquetRecordWriter(
+      ParquetFileWriter w,
+      WriteSupport<T> writeSupport,
+      MessageType schema,
+      Map<String, String> extraMetaData,
+      long blockSize,
+      int pageSize,
+      BytesCompressor compressor,
+      int dictionaryPageSize,
+      boolean enableDictionary,
+      boolean validating,
+      WriterVersion writerVersion,
+      MemoryManager memoryManager) {
+    this(
+        w,
+        writeSupport,
+        schema,
+        extraMetaData,
+        blockSize,
+        pageSize,
+        (BytesInputCompressor) compressor,
+        dictionaryPageSize,
+        enableDictionary,
+        validating,
+        writerVersion,
+        memoryManager);
   }
 
   /**
