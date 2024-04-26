@@ -577,13 +577,10 @@
             </excludeModules>
             <excludes>
               <exclude>${shade.prefix}</exclude>
-              <!-- Due to protected field type change from Configuration to ParquetConfiguration -->
-              <exclude>org.apache.parquet.hadoop.CodecFactory#configuration</exclude>
-              <exclude>org.apache.parquet.hadoop.ParquetReader$Builder#conf</exclude>
               <!-- Removal of a protected method in a class that's not supposed to be subclassed by third-party code -->
               <exclude>org.apache.parquet.column.values.bytestreamsplit.ByteStreamSplitValuesReader#gatherElementDataFromStreams(byte[])</exclude>
               <!-- Due to the removal of deprecated methods -->
-              <exclude>org.apache.parquet.arrow.schema.SchemaMapping</exclude>
+              <exclude>org.apache.parquet.arrow.schema.SchemaMapping$TypeMappingVisitor#visit(org.apache.parquet.arrow.schema.SchemaMapping$MapTypeMapping)</exclude>
               <!-- Make static variables final -->
               <exclude>org.apache.parquet.avro.AvroReadSupport#AVRO_REQUESTED_PROJECTION</exclude>
               <exclude>org.apache.parquet.avro.AvroReadSupport#AVRO_DATA_SUPPLIER</exclude>

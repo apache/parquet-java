@@ -51,8 +51,12 @@ public class CodecFactory implements CompressionCodecFactory {
   private final Map<CompressionCodecName, BytesCompressor> compressors = new HashMap<>();
   private final Map<CompressionCodecName, BytesDecompressor> decompressors = new HashMap<>();
 
-  protected final ParquetConfiguration configuration;
+  protected final ParquetConfiguration conf;
   protected final int pageSize;
+
+  // May be null if parquetConfiguration is not an instance of org.apache.parquet.conf.HadoopParquetConfiguration
+  @Deprecated
+  protected final Configuration configuration;
 
   static final BytesDecompressor NO_OP_DECOMPRESSOR = new BytesDecompressor() {
     @Override
@@ -115,7 +119,12 @@ public class CodecFactory implements CompressionCodecFactory {
    *                      decompressors this parameter has no impact on the function of the factory
    */
   public CodecFactory(ParquetConfiguration configuration, int pageSize) {
-    this.configuration = configuration;
+    if (configuration instanceof HadoopParquetConfiguration) {
+      this.configuration = ((HadoopParquetConfiguration) configuration).getConfiguration();
+    } else {
+      this.configuration = null;
+    }
+    this.conf = configuration;
     this.pageSize = pageSize;
   }
 
@@ -293,7 +302,7 @@ public class CodecFactory implements CompressionCodecFactory {
         codecClass = new Configuration(false).getClassLoader().loadClass(codecClassName);
       }
       codec = (CompressionCodec)
-          ReflectionUtils.newInstance(codecClass, ConfigurationUtil.createHadoopConfiguration(configuration));
+          ReflectionUtils.newInstance(codecClass, ConfigurationUtil.createHadoopConfiguration(conf));
       CODEC_BY_NAME.put(codecCacheKey, codec);
       return codec;
     } catch (ClassNotFoundException e) {
@@ -305,13 +314,13 @@ public class CodecFactory implements CompressionCodecFactory {
     String level = null;
     switch (codecName) {
       case GZIP:
-        level = configuration.get("zlib.compress.level");
+        level = conf.get("zlib.compress.level");
         break;
       case BROTLI:
-        level = configuration.get("compression.brotli.quality");
+        level = conf.get("compression.brotli.quality");
         break;
       case ZSTD:
-        level = configuration.get("parquet.compression.codec.zstd.level");
+        level = conf.get("parquet.compression.codec.zstd.level");
         break;
       default:
         // compression level is not supported; ignore it
