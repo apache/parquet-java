@@ -599,6 +599,11 @@
               <!-- Due to the removal of deprecated methods -->
               <exclude>org.apache.parquet.arrow.schema.SchemaMapping</exclude>
 
+              <!-- Make static variables final -->
+              <exclude>org.apache.parquet.avro.AvroReadSupport#AVRO_REQUESTED_PROJECTION</exclude>
+              <exclude>org.apache.parquet.avro.AvroReadSupport#AVRO_DATA_SUPPLIER</exclude>
+              <exclude>org.apache.parquet.hadoop.ParquetFileReader#PARQUET_READ_PARALLELISM</exclude>
+
               <exclude>org.apache.parquet.thrift.struct.ThriftType</exclude>
 
               <exclude>org.apache.parquet.io.api.Binary#get2BytesLittleEndian()</exclude>

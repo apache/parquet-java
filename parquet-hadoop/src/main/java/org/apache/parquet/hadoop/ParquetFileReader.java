@@ -130,7 +130,7 @@ public class ParquetFileReader implements Closeable {
 
   private static final Logger LOG = LoggerFactory.getLogger(ParquetFileReader.class);
 
-  public static String PARQUET_READ_PARALLELISM = "parquet.metadata.read.parallelism";
+  public static final String PARQUET_READ_PARALLELISM = "parquet.metadata.read.parallelism";
 
   public static final long HADOOP_VECTORED_READ_TIMEOUT_SECONDS = 300;
 
