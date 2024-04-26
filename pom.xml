@@ -97,6 +97,8 @@
     <powermock.version>2.0.9</powermock.version>
     <net.openhft.version>0.16</net.openhft.version>
     <exec-maven-plugin.version>1.6.0</exec-maven-plugin.version>
+    <!-- override org.apache:apache version -->
+    <version.maven-compiler-plugin>3.13.0</version.maven-compiler-plugin>
 
     <!-- parquet-cli dependencies -->
     <opencsv.version>2.3</opencsv.version>
@@ -412,11 +414,6 @@
         <!-- Override source and target from the ASF parent -->
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
-        <configuration>
-          <argLine>-XX:MaxPermSize=256m</argLine>
-          <source>${maven.compiler.source}</source>
-          <target>${maven.compiler.target}</target>
-        </configuration>
       </plugin>
 
       <plugin>
@@ -654,6 +651,17 @@
 
   <profiles>
     <profile>
+      <id>jdk9+</id>
+      <activation>
+        <jdk>[9,)</jdk>
+      </activation>
+      <properties>
+        <!-- release takes precedence over source/target if java version is 9 or higher -->
+        <maven.compiler.release>8</maven.compiler.release>
+      </properties>
+    </profile>
+
+    <profile>
       <id>hadoop2</id>
       <properties>
         <hadoop.version>2.7.3</hadoop.version>
@@ -667,21 +675,6 @@
         <surefire.logLevel>INFO</surefire.logLevel>
         <surefire.argLine>-XX:MaxJavaStackTraceDepth=1024</surefire.argLine>
       </properties>
-    </profile>
-
-    <profile>
-      <id>jdk9+</id>
-      <activation>
-        <jdk>[1.9,)</jdk>
-      </activation>
-      <build>
-        <plugins>
-          <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-compiler-plugin</artifactId>
-          </plugin>
-        </plugins>
-      </build>
     </profile>
 
     <profile>
