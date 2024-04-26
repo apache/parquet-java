@@ -77,11 +77,19 @@ public class DefaultV1ValuesWriterFactory implements ValuesWriterFactory {
 
   private ValuesWriter getFixedLenByteArrayValuesWriter(ColumnDescriptor path) {
     // dictionary encoding was not enabled in PARQUET 1.0
-    return new FixedLenByteArrayPlainValuesWriter(
-        path.getTypeLength(),
-        parquetProperties.getInitialSlabSize(),
-        parquetProperties.getPageSizeThreshold(),
-        parquetProperties.getAllocator());
+    if (parquetProperties.isByteStreamSplitEnabled(path)) {
+      return new ByteStreamSplitValuesWriter.FixedLenByteArrayByteStreamSplitValuesWriter(
+          path.getPrimitiveType().getTypeLength(),
+          parquetProperties.getInitialSlabSize(),
+          parquetProperties.getPageSizeThreshold(),
+          parquetProperties.getAllocator());
+    } else {
+      return new FixedLenByteArrayPlainValuesWriter(
+          path.getPrimitiveType().getTypeLength(),
+          parquetProperties.getInitialSlabSize(),
+          parquetProperties.getPageSizeThreshold(),
+          parquetProperties.getAllocator());
+    }
   }
 
   private ValuesWriter getBinaryValuesWriter(ColumnDescriptor path) {
@@ -94,19 +102,35 @@ public class DefaultV1ValuesWriterFactory implements ValuesWriterFactory {
   }
 
   private ValuesWriter getInt32ValuesWriter(ColumnDescriptor path) {
-    ValuesWriter fallbackWriter = new PlainValuesWriter(
-        parquetProperties.getInitialSlabSize(),
-        parquetProperties.getPageSizeThreshold(),
-        parquetProperties.getAllocator());
+    final ValuesWriter fallbackWriter;
+    if (parquetProperties.isByteStreamSplitEnabled(path)) {
+      fallbackWriter = new ByteStreamSplitValuesWriter.IntegerByteStreamSplitValuesWriter(
+          parquetProperties.getInitialSlabSize(),
+          parquetProperties.getPageSizeThreshold(),
+          parquetProperties.getAllocator());
+    } else {
+      fallbackWriter = new PlainValuesWriter(
+          parquetProperties.getInitialSlabSize(),
+          parquetProperties.getPageSizeThreshold(),
+          parquetProperties.getAllocator());
+    }
     return DefaultValuesWriterFactory.dictWriterWithFallBack(
         path, parquetProperties, getEncodingForDictionaryPage(), getEncodingForDataPage(), fallbackWriter);
   }
 
   private ValuesWriter getInt64ValuesWriter(ColumnDescriptor path) {
-    ValuesWriter fallbackWriter = new PlainValuesWriter(
-        parquetProperties.getInitialSlabSize(),
-        parquetProperties.getPageSizeThreshold(),
-        parquetProperties.getAllocator());
+    final ValuesWriter fallbackWriter;
+    if (parquetProperties.isByteStreamSplitEnabled(path)) {
+      fallbackWriter = new ByteStreamSplitValuesWriter.LongByteStreamSplitValuesWriter(
+          parquetProperties.getInitialSlabSize(),
+          parquetProperties.getPageSizeThreshold(),
+          parquetProperties.getAllocator());
+    } else {
+      fallbackWriter = new PlainValuesWriter(
+          parquetProperties.getInitialSlabSize(),
+          parquetProperties.getPageSizeThreshold(),
+          parquetProperties.getAllocator());
+    }
     return DefaultValuesWriterFactory.dictWriterWithFallBack(
         path, parquetProperties, getEncodingForDictionaryPage(), getEncodingForDataPage(), fallbackWriter);
   }
@@ -123,7 +147,7 @@ public class DefaultV1ValuesWriterFactory implements ValuesWriterFactory {
 
   private ValuesWriter getDoubleValuesWriter(ColumnDescriptor path) {
     final ValuesWriter fallbackWriter;
-    if (this.parquetProperties.isByteStreamSplitEnabled()) {
+    if (this.parquetProperties.isByteStreamSplitEnabled(path)) {
       fallbackWriter = new ByteStreamSplitValuesWriter.DoubleByteStreamSplitValuesWriter(
           parquetProperties.getInitialSlabSize(),
           parquetProperties.getPageSizeThreshold(),
@@ -140,7 +164,7 @@ public class DefaultV1ValuesWriterFactory implements ValuesWriterFactory {
 
   private ValuesWriter getFloatValuesWriter(ColumnDescriptor path) {
     final ValuesWriter fallbackWriter;
-    if (this.parquetProperties.isByteStreamSplitEnabled()) {
+    if (this.parquetProperties.isByteStreamSplitEnabled(path)) {
       fallbackWriter = new ByteStreamSplitValuesWriter.FloatByteStreamSplitValuesWriter(
           parquetProperties.getInitialSlabSize(),
           parquetProperties.getPageSizeThreshold(),
