@@ -2165,7 +2165,7 @@ public class ParquetFileReader implements Closeable {
         f.readFully(buffer);
         buffer.flip();
       }
-      setReadMetrics(readStart);
+      setReadMetrics(readStart, length);
 
       // report in a counter the data we just scanned
       BenchmarkCounter.incrementBytesRead(length);
@@ -2175,11 +2175,11 @@ public class ParquetFileReader implements Closeable {
       }
     }
 
-    private void setReadMetrics(long startNs) {
+    private void setReadMetrics(long startNs, long len) {
       ParquetMetricsCallback metricsCallback = options.getMetricsCallback();
       if (metricsCallback != null) {
         long totalFileReadTimeNs = Math.max(System.nanoTime() - startNs, 0);
-        double sizeInMb = ((double) length) / (1024 * 1024);
+        double sizeInMb = ((double) len) / (1024 * 1024);
         double timeInSec = ((double) totalFileReadTimeNs) / 1000_0000_0000L;
         double throughput = sizeInMb / timeInSec;
         LOG.debug(
@@ -2203,12 +2203,14 @@ public class ParquetFileReader implements Closeable {
     public void readFromVectoredRange(ParquetFileRange currRange, ChunkListBuilder builder) throws IOException {
       ByteBuffer buffer;
       final long timeoutSeconds = HADOOP_VECTORED_READ_TIMEOUT_SECONDS;
+      long readStart = System.nanoTime();
       try {
         LOG.debug(
             "Waiting for vectored read to finish for range {} with timeout {} seconds",
             currRange,
             timeoutSeconds);
         buffer = FutureIO.awaitFuture(currRange.getDataReadFuture(), timeoutSeconds, TimeUnit.SECONDS);
+        setReadMetrics(readStart, currRange.getLength());
         // report in a counter the data we just scanned
         BenchmarkCounter.incrementBytesRead(currRange.getLength());
       } catch (TimeoutException e) {

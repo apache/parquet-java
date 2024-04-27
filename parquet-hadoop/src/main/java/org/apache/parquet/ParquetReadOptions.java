@@ -23,6 +23,7 @@ import static org.apache.parquet.format.converter.ParquetMetadataConverter.NO_FI
 import static org.apache.parquet.hadoop.ParquetInputFormat.BLOOM_FILTERING_ENABLED;
 import static org.apache.parquet.hadoop.ParquetInputFormat.COLUMN_INDEX_FILTERING_ENABLED;
 import static org.apache.parquet.hadoop.ParquetInputFormat.DICTIONARY_FILTERING_ENABLED;
+import static org.apache.parquet.hadoop.ParquetInputFormat.HADOOP_VECTORED_IO_ENABLED;
 import static org.apache.parquet.hadoop.ParquetInputFormat.OFF_HEAP_DECRYPT_BUFFER_ENABLED;
 import static org.apache.parquet.hadoop.ParquetInputFormat.PAGE_VERIFY_CHECKSUM_ENABLED;
 import static org.apache.parquet.hadoop.ParquetInputFormat.RECORD_FILTERING_ENABLED;
@@ -285,6 +286,7 @@ public class ParquetReadOptions {
       withCodecFactory(HadoopCodecs.newFactory(conf, 0));
       withRecordFilter(getFilter(conf));
       withMaxAllocationInBytes(conf.getInt(ALLOCATION_SIZE, 8388608));
+      withUseHadoopVectoredIo(conf.getBoolean(HADOOP_VECTORED_IO_ENABLED, HADOOP_VECTORED_IO_ENABLED_DEFAULT));
       String badRecordThresh = conf.get(BAD_RECORD_THRESHOLD_CONF_KEY);
       if (badRecordThresh != null) {
         set(BAD_RECORD_THRESHOLD_CONF_KEY, badRecordThresh);
