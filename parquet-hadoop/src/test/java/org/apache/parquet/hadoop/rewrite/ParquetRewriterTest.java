@@ -38,7 +38,6 @@ import com.google.common.collect.Maps;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -731,14 +730,14 @@ public class ParquetRewriterTest {
   }
 
   @Test
-  public void testStitchThreeInputsDifferentRowGroupSize() throws Exception {
-    testThreeInputsDifferentRowGroupSize();
+  public void testStitchTwoInputs() throws Exception {
+    testTwoInputFileGroups();
 
     List<Path> inputPathsL =
         inputFiles.stream().map(x -> new Path(x.getFileName())).collect(Collectors.toList());
     List<Path> inputPathsR = inputFilesToJoinColumns.stream().map(y -> new Path(y.getFileName()))
         .collect(Collectors.toList());
-    RewriteOptions.Builder builder = createBuilder(inputPathsL, inputPathsR);
+    RewriteOptions.Builder builder = createBuilder(inputPathsL, inputPathsR, true);
     RewriteOptions options = builder.indexCacheStrategy(indexCacheStrategy).build();
 
     rewriter = new ParquetRewriter(options);
@@ -770,7 +769,6 @@ public class ParquetRewriterTest {
           {
             add(CompressionCodecName.GZIP);
             add(CompressionCodecName.UNCOMPRESSED);
-            add(CompressionCodecName.ZSTD);
           }
         },
         null);
@@ -785,15 +783,25 @@ public class ParquetRewriterTest {
         });
   }
 
-  private void testThreeInputsDifferentRowGroupSize() throws IOException {
+  private void testTwoInputFileGroups() throws IOException {
     inputFiles = Lists.newArrayList(
         new TestFileBuilder(conf, createSchemaL())
             .withCodec("GZIP")
+            .withRowGroupSize(numRecord / 2)
             .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
             .withWriterVersion(writerVersion)
             .build());
     inputFilesToJoinColumns = Lists.newArrayList(
         new TestFileBuilder(conf, createSchemaR())
+            .withRowGroupSize(numRecord / 2)
+            .withNumRecord(numRecord / 2)
+            .withCodec("UNCOMPRESSED")
+            .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
+            .withWriterVersion(writerVersion)
+            .build(),
+        new TestFileBuilder(conf, createSchemaR())
+            .withRowGroupSize(numRecord / 2)
+            .withNumRecord(numRecord / 2)
             .withCodec("UNCOMPRESSED")
             .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
             .withWriterVersion(writerVersion)
@@ -851,8 +859,7 @@ public class ParquetRewriterTest {
     }
 
     List<List<SimpleGroup>> fileContents = Stream.concat(inputFiles.stream(), inputFilesToJoinColumns.stream())
-        .map(x -> Arrays.stream(x.getFileContent())
-            .collect(Collectors.toList()))
+        .map(x -> Arrays.stream(x.getFileContent()).collect(Collectors.toList()))
         .collect(Collectors.toList());
     BiFunction<String, Integer, Group> groups = (name, rowIdx) -> {
       for (int i = fileContents.size() - 1; i >= 0; i--) {
@@ -1163,10 +1170,10 @@ public class ParquetRewriterTest {
   }
 
   private RewriteOptions.Builder createBuilder(List<Path> inputPaths) throws IOException {
-    return createBuilder(inputPaths, new ArrayList<>());
+    return createBuilder(inputPaths, new ArrayList<>(), false);
   }
 
-  private RewriteOptions.Builder createBuilder(List<Path> inputPathsL, List<Path> inputPathsR)
+  private RewriteOptions.Builder createBuilder(List<Path> inputPathsL, List<Path> inputPathsR, boolean joinColumnsOverwrite)
       throws IOException {
     RewriteOptions.Builder builder;
     if (usingHadoop) {
@@ -1181,6 +1188,7 @@ public class ParquetRewriterTest {
           .map(p -> HadoopInputFile.fromPathUnchecked(p, conf))
           .collect(Collectors.toList());
       builder = new RewriteOptions.Builder(parquetConf, inputsL, inputsR, outputPath);
+      builder.joinColumnsOverwrite(joinColumnsOverwrite);
     }
     return builder;
   }
