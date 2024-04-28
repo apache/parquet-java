@@ -27,7 +27,6 @@ import org.apache.parquet.filter2.predicate.Operators.Column;
 import org.apache.parquet.filter2.predicate.Operators.ColumnFilterPredicate;
 import org.apache.parquet.filter2.predicate.Operators.ContainsAnd;
 import org.apache.parquet.filter2.predicate.Operators.ContainsEq;
-import org.apache.parquet.filter2.predicate.Operators.ContainsNotEq;
 import org.apache.parquet.filter2.predicate.Operators.ContainsOr;
 import org.apache.parquet.filter2.predicate.Operators.Eq;
 import org.apache.parquet.filter2.predicate.Operators.Gt;
@@ -134,12 +133,6 @@ public class SchemaCompatibilityValidator implements FilterPredicate.Visitor<Voi
 
   @Override
   public <T extends Comparable<T>> Void visit(ContainsEq<T> pred) {
-    validateColumnFilterPredicate(pred);
-    return null;
-  }
-
-  @Override
-  public <T extends Comparable<T>> Void visit(ContainsNotEq<T> pred) {
     validateColumnFilterPredicate(pred);
     return null;
   }

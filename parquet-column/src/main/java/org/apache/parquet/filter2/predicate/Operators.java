@@ -356,18 +356,18 @@ public final class Operators {
       this.right = right;
     }
 
-    public List<ContainsColumnPredicate<T>> getComponentPredicates() {
-      final List<ContainsColumnPredicate<T>> components = new ArrayList<>();
+    public List<ContainsColumnPredicate<T, ?>> getComponentPredicates() {
+      final List<ContainsColumnPredicate<T, ?>> components = new ArrayList<>();
       if (left instanceof ContainsComposedPredicate) {
         components.addAll(((ContainsComposedPredicate<T>) left).getComponentPredicates());
       } else {
-        components.add((ContainsColumnPredicate<T>) left);
+        components.add((ContainsColumnPredicate<T, ?>) left);
       }
 
       if (right instanceof ContainsComposedPredicate) {
         components.addAll(((ContainsComposedPredicate<T>) right).getComponentPredicates());
       } else {
-        components.add((ContainsColumnPredicate<T>) right);
+        components.add((ContainsColumnPredicate<T, ?>) right);
       }
 
       return components;
@@ -401,17 +401,21 @@ public final class Operators {
     }
   }
 
-  public abstract static class ContainsColumnPredicate<T extends Comparable<T>> extends ContainsPredicate<T> {
+  public abstract static class ContainsColumnPredicate<T extends Comparable<T>, U extends ColumnFilterPredicate<T>>
+      extends ContainsPredicate<T> {
+    private final U underlying;
 
-    private final T value;
-
-    ContainsColumnPredicate(Column<T> column, T value) {
-      super(column);
-      this.value = value;
+    ContainsColumnPredicate(U underlying) {
+      super(underlying.getColumn());
+      this.underlying = underlying;
     }
 
     public T getValue() {
-      return value;
+      return underlying.getValue();
+    }
+
+    public U getUnderlying() {
+      return underlying;
     }
 
     /**
@@ -423,47 +427,31 @@ public final class Operators {
     @Override
     public String toString() {
       String name = getClass().getSimpleName().toLowerCase(Locale.ENGLISH);
-      return name + "(" + getColumn() + "," + value + ")";
+      return name + "(" + getColumn() + "," + getValue() + ")";
     }
 
     @Override
     public boolean equals(Object o) {
       if (this == o) return true;
       if (o == null || getClass() != o.getClass()) return false;
-      ContainsColumnPredicate<T> that = (ContainsColumnPredicate<T>) o;
-      return getColumn().equals(that.getColumn()) && value.equals(that.value);
+      ContainsColumnPredicate<T, U> that = (ContainsColumnPredicate<T, U>) o;
+      return underlying.equals(that.underlying);
     }
 
     @Override
     public int hashCode() {
-      return Objects.hash(getClass().getName(), getColumn(), value);
+      return Objects.hash(getClass().getName(), getColumn(), getValue());
     }
   }
 
-  public static class ContainsEq<T extends Comparable<T>> extends ContainsColumnPredicate<T> {
+  public static class ContainsEq<T extends Comparable<T>> extends ContainsColumnPredicate<T, Eq<T>> {
     ContainsEq(Column<T> column, T value) {
-      super(column, value);
+      super(new Eq<>(column, value));
     }
 
     @Override
     public <R> boolean accept(Comparator<R> comparator, R newValue) {
       return comparator.compare((R) getValue(), newValue) == 0;
-    }
-
-    @Override
-    public <R> R accept(Visitor<R> visitor) {
-      return visitor.visit(this);
-    }
-  }
-
-  public static class ContainsNotEq<T extends Comparable<T>> extends ContainsColumnPredicate<T> {
-    ContainsNotEq(Column<T> column, T value) {
-      super(column, value);
-    }
-
-    @Override
-    public <R> boolean accept(Comparator<R> comparator, R newValue) {
-      return comparator.compare((R) getValue(), newValue) != 0;
     }
 
     @Override

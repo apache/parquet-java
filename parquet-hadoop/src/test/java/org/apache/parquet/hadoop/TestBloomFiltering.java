@@ -322,7 +322,10 @@ public class TestBloomFiltering {
           .withBloomFilterEnabled("name", true)
           .withBloomFilterCandidateNumber("name", 10)
           .withBloomFilterEnabled("id", true)
-          .withBloomFilterCandidateNumber("id", 10);
+          .withBloomFilterCandidateNumber("id", 10)
+          .withDictionaryEncoding("phoneNumbers.phone.number", false)
+          .withBloomFilterEnabled("phoneNumbers.phone.number", true)
+          .withBloomFilterCandidateNumber("phoneNumbers.phone.number", 10);
     } else {
       writeBuilder
           .withBloomFilterNDV("location.lat", 10000L)

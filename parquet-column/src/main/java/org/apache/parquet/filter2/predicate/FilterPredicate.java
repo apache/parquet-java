@@ -21,7 +21,6 @@ package org.apache.parquet.filter2.predicate;
 import org.apache.parquet.filter2.predicate.Operators.And;
 import org.apache.parquet.filter2.predicate.Operators.ContainsAnd;
 import org.apache.parquet.filter2.predicate.Operators.ContainsEq;
-import org.apache.parquet.filter2.predicate.Operators.ContainsNotEq;
 import org.apache.parquet.filter2.predicate.Operators.ContainsOr;
 import org.apache.parquet.filter2.predicate.Operators.Eq;
 import org.apache.parquet.filter2.predicate.Operators.Gt;
@@ -90,10 +89,6 @@ public interface FilterPredicate {
 
     default <T extends Comparable<T>> R visit(ContainsEq<T> containsEq) {
       throw new UnsupportedOperationException("visit ContainsEq is not supported.");
-    }
-
-    default <T extends Comparable<T>> R visit(ContainsNotEq<T> containsNotEq) {
-      throw new UnsupportedOperationException("visit ContainsNotEq is not supported.");
     }
 
     default <T extends Comparable<T>> R visit(ContainsAnd<T> containsAnd) {

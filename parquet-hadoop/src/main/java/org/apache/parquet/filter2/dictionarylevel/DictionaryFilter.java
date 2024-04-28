@@ -491,40 +491,8 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
   }
 
   @Override
-  public <T extends Comparable<T>> Boolean visit(ContainsEq<T> contains) {
-    T value = contains.getValue();
-
-    // Dictionary only contains non-null values, so we can't use it to filter here
-    if (value == null) {
-      return BLOCK_MIGHT_MATCH;
-    }
-
-    Column<T> filterColumn = contains.getColumn();
-    ColumnChunkMetaData meta = getColumnChunk(filterColumn.getColumnPath());
-
-    if (meta == null) {
-      // the column isn't in this file so all values are null, but the value
-      // must be non-null because of the above check.
-      return BLOCK_CANNOT_MATCH;
-    }
-
-    // if the chunk has non-dictionary pages, don't bother decoding the
-    // dictionary because the row group can't be eliminated.
-    if (hasNonDictionaryPages(meta)) {
-      return BLOCK_MIGHT_MATCH;
-    }
-
-    try {
-      Set<T> dictSet = expandDictionary(meta);
-      if (dictSet != null && dictSet.contains(value)) {
-        return BLOCK_MIGHT_MATCH;
-      } else {
-        return BLOCK_CANNOT_MATCH;
-      }
-    } catch (IOException e) {
-      LOG.warn("Failed to process dictionary for filter evaluation.", e);
-    }
-    return BLOCK_MIGHT_MATCH; // cannot drop the row group based on this dictionary
+  public <T extends Comparable<T>> Boolean visit(ContainsEq<T> containsEq) {
+    return visit(containsEq.getUnderlying());
   }
 
   @Override

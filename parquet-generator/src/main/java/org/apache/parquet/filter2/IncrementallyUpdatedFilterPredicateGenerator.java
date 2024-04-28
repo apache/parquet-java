@@ -134,14 +134,14 @@ public class IncrementallyUpdatedFilterPredicateGenerator {
     addVisitEnd();
 
     addVisitBegin("ContainsAnd");
-    add("    final List<ContainsColumnPredicate<T>> componentPredicates = pred.getComponentPredicates();\n");
+    add("    final List<ContainsColumnPredicate<T, ?>> componentPredicates = pred.getComponentPredicates();\n");
     for (TypeInfo info : TYPES) {
       addContainsComposedCase(info, "&&");
     }
     addVisitEnd();
 
     addVisitBegin("ContainsOr");
-    add("    final List<ContainsColumnPredicate<T>> componentPredicates = pred.getComponentPredicates();\n");
+    add("    final List<ContainsColumnPredicate<T, ?>> componentPredicates = pred.getComponentPredicates();\n");
     for (TypeInfo info : TYPES) {
       addContainsComposedCase(info, "||");
     }
@@ -377,7 +377,7 @@ public class IncrementallyUpdatedFilterPredicateGenerator {
         + "          public void update("
         + info.primitiveName + " value) {\n");
 
-    add("            final Iterator<ContainsColumnPredicate<T>> it = componentPredicates.iterator();\n"
+    add("            final Iterator<ContainsColumnPredicate<T, ?>> it = componentPredicates.iterator();\n"
         + "            while (it.hasNext()) {\n"
         + "              if (it.next().accept(comparator, value)) {\n");
     switch (operator) {
