@@ -20,6 +20,7 @@ package org.apache.parquet.io;
 
 import java.io.BufferedOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
@@ -71,7 +72,11 @@ public class LocalOutputFile implements OutputFile {
 
     @Override
     public void close() throws IOException {
-      stream.close();
+      try (OutputStream os = this.stream) {
+        os.flush();
+      } catch (Exception e) {
+        throw new IOException(e);
+      }
     }
   }
 

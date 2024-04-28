@@ -50,6 +50,7 @@ import org.apache.parquet.crypto.InternalFileEncryptor;
 import org.apache.parquet.crypto.ModuleCipherFactory.ModuleType;
 import org.apache.parquet.format.BlockCipher;
 import org.apache.parquet.format.converter.ParquetMetadataConverter;
+import org.apache.parquet.hadoop.CodecFactory.BytesCompressor;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.internal.column.columnindex.ColumnIndexBuilder;
 import org.apache.parquet.internal.column.columnindex.OffsetIndexBuilder;
@@ -513,6 +514,20 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
       new HashMap<ColumnDescriptor, ColumnChunkPageWriter>();
   private final MessageType schema;
 
+  @Deprecated
+  public ColumnChunkPageWriteStore(
+      BytesCompressor compressor,
+      MessageType schema,
+      ByteBufferAllocator allocator,
+      int columnIndexTruncateLength) {
+    this(
+        (BytesInputCompressor) compressor,
+        schema,
+        allocator,
+        columnIndexTruncateLength,
+        ParquetProperties.DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED);
+  }
+
   public ColumnChunkPageWriteStore(
       BytesInputCompressor compressor,
       MessageType schema,
@@ -524,6 +539,16 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
         allocator,
         columnIndexTruncateLength,
         ParquetProperties.DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED);
+  }
+
+  @Deprecated
+  public ColumnChunkPageWriteStore(
+      BytesCompressor compressor,
+      MessageType schema,
+      ByteBufferAllocator allocator,
+      int columnIndexTruncateLength,
+      boolean pageWriteChecksumEnabled) {
+    this((BytesInputCompressor) compressor, schema, allocator, columnIndexTruncateLength, pageWriteChecksumEnabled);
   }
 
   public ColumnChunkPageWriteStore(
@@ -548,6 +573,25 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
               -1,
               -1));
     }
+  }
+
+  @Deprecated
+  public ColumnChunkPageWriteStore(
+      BytesCompressor compressor,
+      MessageType schema,
+      ByteBufferAllocator allocator,
+      int columnIndexTruncateLength,
+      boolean pageWriteChecksumEnabled,
+      InternalFileEncryptor fileEncryptor,
+      int rowGroupOrdinal) {
+    this(
+        (BytesInputCompressor) compressor,
+        schema,
+        allocator,
+        columnIndexTruncateLength,
+        pageWriteChecksumEnabled,
+        fileEncryptor,
+        rowGroupOrdinal);
   }
 
   public ColumnChunkPageWriteStore(

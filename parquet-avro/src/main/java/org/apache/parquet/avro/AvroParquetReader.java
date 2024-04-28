@@ -192,9 +192,9 @@ public class AvroParquetReader<T> extends ParquetReader<T> {
     @Override
     protected ReadSupport<T> getReadSupport() {
       if (isReflect) {
-        conf.setBoolean(AvroReadSupport.AVRO_COMPATIBILITY, false);
+        configuration.setBoolean(AvroReadSupport.AVRO_COMPATIBILITY, false);
       } else {
-        conf.setBoolean(AvroReadSupport.AVRO_COMPATIBILITY, enableCompatibility);
+        configuration.setBoolean(AvroReadSupport.AVRO_COMPATIBILITY, enableCompatibility);
       }
       return new AvroReadSupport<T>(model);
     }

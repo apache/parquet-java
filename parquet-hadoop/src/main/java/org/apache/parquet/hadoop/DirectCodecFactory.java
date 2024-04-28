@@ -410,9 +410,9 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
 
     ZstdCompressor() {
       context = new ZstdCompressCtx();
-      context.setLevel(configuration.getInt(
+      context.setLevel(conf.getInt(
           ZstandardCodec.PARQUET_COMPRESS_ZSTD_LEVEL, ZstandardCodec.DEFAULT_PARQUET_COMPRESS_ZSTD_LEVEL));
-      context.setWorkers(configuration.getInt(
+      context.setWorkers(conf.getInt(
           ZstandardCodec.PARQUET_COMPRESS_ZSTD_WORKERS, ZstandardCodec.DEFAULTPARQUET_COMPRESS_ZSTD_WORKERS));
     }
 
