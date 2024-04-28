@@ -26,7 +26,6 @@ import static org.apache.parquet.hadoop.ParquetWriter.MAX_PADDING_SIZE_DEFAULT;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.util.Optional;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -34,6 +33,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Queue;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -147,15 +147,16 @@ public class ParquetRewriter implements Closeable {
         .forEach(x -> extraMetaData.putAll(x.getFileMetaData().getKeyValueMetaData()));
 
     if (!inputFilesToJoin.isEmpty()) {
-      List<Long> blocksRowCountsL = inputFiles.stream().flatMap(x ->
-          x.getFooter().getBlocks().stream().map(BlockMetaData::getRowCount)
-      ).collect(Collectors.toList());
-      List<Long> blocksRowCountsR = inputFilesToJoin.stream().flatMap(x ->
-          x.getFooter().getBlocks().stream().map(BlockMetaData::getRowCount)
-      ).collect(Collectors.toList());
+      List<Long> blocksRowCountsL = inputFiles.stream()
+          .flatMap(x -> x.getFooter().getBlocks().stream().map(BlockMetaData::getRowCount))
+          .collect(Collectors.toList());
+      List<Long> blocksRowCountsR = inputFilesToJoin.stream()
+          .flatMap(x -> x.getFooter().getBlocks().stream().map(BlockMetaData::getRowCount))
+          .collect(Collectors.toList());
       if (!blocksRowCountsL.equals(blocksRowCountsR)) {
-        throw new IllegalArgumentException("The number of rows in each block must match! Left blocks row counts: "
-            + blocksRowCountsL + ", right blocks row counts" + blocksRowCountsR + ".");
+        throw new IllegalArgumentException(
+            "The number of rows in each block must match! Left blocks row counts: " + blocksRowCountsL
+                + ", right blocks row counts" + blocksRowCountsR + ".");
       }
     }
 
@@ -183,7 +184,6 @@ public class ParquetRewriter implements Closeable {
         ParquetProperties.DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED,
         options.getFileEncryptionProperties());
     writer.start();
-
   }
 
   private MessageType getSchema() {
@@ -193,15 +193,18 @@ public class ParquetRewriter implements Closeable {
     } else {
       Map<String, Type> fieldNames = new LinkedHashMap<>();
       schemaMain.getFields().forEach(x -> fieldNames.put(x.getName(), x));
-      inputFilesToJoin.peek().getFooter().getFileMetaData().getSchema().getFields().forEach(x -> {
-        if (!fieldNames.containsKey(x.getName()) || joinColumnsOverwrite) {
-          fieldNames.put(x.getName(), x);
-        }
-      });
-      return new MessageType(
-          schemaMain.getName(),
-          new ArrayList<>(fieldNames.values())
-      );
+      inputFilesToJoin
+          .peek()
+          .getFooter()
+          .getFileMetaData()
+          .getSchema()
+          .getFields()
+          .forEach(x -> {
+            if (!fieldNames.containsKey(x.getName()) || joinColumnsOverwrite) {
+              fieldNames.put(x.getName(), x);
+            }
+          });
+      return new MessageType(schemaMain.getName(), new ArrayList<>(fieldNames.values()));
     }
   }
 
@@ -282,21 +285,26 @@ public class ParquetRewriter implements Closeable {
       LOG.info("Rewriting input file: {}, remaining files: {}", reader.getFile(), inputFiles.size());
       ParquetMetadata meta = reader.getFooter();
       Set<ColumnPath> columnPaths = meta.getFileMetaData().getSchema().getColumns().stream()
-          .map(x -> ColumnPath.get(x.getPath())).collect(Collectors.toSet());
+          .map(x -> ColumnPath.get(x.getPath()))
+          .collect(Collectors.toSet());
       IndexCache indexCache = IndexCache.create(reader, columnPaths, indexCacheStrategy, true);
 
       for (int blockIdx = 0; blockIdx < meta.getBlocks().size(); blockIdx++) {
         BlockMetaData blockMetaData = meta.getBlocks().get(blockIdx);
         writer.startBlock(blockMetaData.getRowCount());
         indexCache.setBlockMetadata(blockMetaData);
-        Map<ColumnPath, ColumnChunkMetaData> pathToChunk = blockMetaData.getColumns().stream()
-            .collect(Collectors.toMap(x -> x.getPath(), x -> x));
+        Map<ColumnPath, ColumnChunkMetaData> pathToChunk =
+            blockMetaData.getColumns().stream().collect(Collectors.toMap(x -> x.getPath(), x -> x));
 
-        if (readerR != null && (blockIdxR == -1 || ++blockIdxR == readerR.getFooter().getBlocks().size())) {
+        if (readerR != null
+            && (blockIdxR == -1
+                || ++blockIdxR
+                    == readerR.getFooter().getBlocks().size())) {
           blockIdxR = 0;
           readerR = inputFilesToJoin.poll();
           Set<ColumnPath> columnPathsR = readerR.getFileMetaData().getSchema().getColumns().stream()
-              .map(x -> ColumnPath.get(x.getPath())).collect(Collectors.toSet());
+              .map(x -> ColumnPath.get(x.getPath()))
+              .collect(Collectors.toSet());
           if (indexCacheR != null) {
             indexCacheR.clean();
           }
@@ -307,22 +315,21 @@ public class ParquetRewriter implements Closeable {
         }
 
         for (int outColumnIdx = 0; outColumnIdx < outSchema.getColumns().size(); outColumnIdx++) {
-          ColumnDescriptor descriptor = outSchema.getColumns().get(outColumnIdx);
-          ColumnPath colPath = ColumnPath.get(descriptor.getPath());
-          ColumnChunkMetaData chunk = pathToChunk.get(colPath);
-
+          ColumnPath colPath = ColumnPath.get(
+              outSchema.getColumns().get(outColumnIdx).getPath());
           if (readerR != null) {
-            Optional<ColumnChunkMetaData> chunkR = readerR.getFooter().getBlocks().get(blockIdxR).getColumns()
-                .stream().filter(x -> x.getPath().equals(colPath)).findFirst();
+            Optional<ColumnChunkMetaData> chunkR =
+                readerR.getFooter().getBlocks().get(blockIdxR).getColumns().stream()
+                    .filter(x -> x.getPath().equals(colPath))
+                    .findFirst();
             if (chunkR.isPresent() && (joinColumnsOverwrite || !columnPaths.contains(colPath))) {
               processBlock(readerR, blockIdxR, outColumnIdx, indexCacheR, chunkR.get());
             } else {
-              processBlock(reader, blockIdx, outColumnIdx, indexCache, chunk);
+              processBlock(reader, blockIdx, outColumnIdx, indexCache, pathToChunk.get(colPath));
             }
           } else {
-            processBlock(reader, blockIdx, outColumnIdx, indexCache, chunk);
+            processBlock(reader, blockIdx, outColumnIdx, indexCache, pathToChunk.get(colPath));
           }
-
         }
 
         writer.endBlock();
@@ -332,19 +339,18 @@ public class ParquetRewriter implements Closeable {
 
       indexCache.clean();
       LOG.info("Finish rewriting input file: {}", reader.getFile());
-
     }
   }
 
-  private void processBlocksFromReader(TransParquetFileReader reader) throws IOException {
-  }
+  private void processBlocksFromReader(TransParquetFileReader reader) throws IOException {}
 
   private void processBlock(
       TransParquetFileReader reader,
       int blockIdx,
       int outColumnIdx,
       IndexCache indexCache,
-      ColumnChunkMetaData chunk) throws IOException {
+      ColumnChunkMetaData chunk)
+      throws IOException {
     if (chunk.isEncrypted()) {
       throw new IOException("Column " + chunk.getPath().toDotString() + " is already encrypted");
     }
@@ -354,20 +360,27 @@ public class ParquetRewriter implements Closeable {
 
     reader.setStreamPosition(chunk.getStartingPos());
     CompressionCodecName newCodecName = this.newCodecName == null ? chunk.getCodec() : this.newCodecName;
-    boolean encryptColumn =
-        encryptMode && encryptColumns != null && encryptColumns.contains(chunk.getPath());
+    boolean encryptColumn = encryptMode && encryptColumns != null && encryptColumns.contains(chunk.getPath());
 
     if (maskColumns != null && maskColumns.containsKey(chunk.getPath())) {
       // Mask column and compress it again.
       MaskMode maskMode = maskColumns.get(chunk.getPath());
       if (maskMode.equals(MaskMode.NULLIFY)) {
-        Type.Repetition repetition =
-            descriptor.getPrimitiveType().getRepetition();
+        Type.Repetition repetition = descriptor.getPrimitiveType().getRepetition();
         if (repetition.equals(Type.Repetition.REQUIRED)) {
-          throw new IOException("Required column ["
-              + descriptor.getPrimitiveType().getName() + "] cannot be nullified");
+          throw new IOException(
+              "Required column [" + descriptor.getPrimitiveType().getName() + "] cannot be nullified");
         }
-        nullifyColumn(reader, blockIdx, descriptor, chunk, writer, outSchema, newCodecName, encryptColumn, originalCreatedBy);
+        nullifyColumn(
+            reader,
+            blockIdx,
+            descriptor,
+            chunk,
+            writer,
+            outSchema,
+            newCodecName,
+            encryptColumn,
+            originalCreatedBy);
       } else {
         throw new UnsupportedOperationException("Only nullify is supported for now");
       }
@@ -375,8 +388,8 @@ public class ParquetRewriter implements Closeable {
       // Prepare encryption context
       ColumnChunkEncryptorRunTime columnChunkEncryptorRunTime = null;
       if (encryptMode) {
-        columnChunkEncryptorRunTime = new ColumnChunkEncryptorRunTime(
-            writer.getEncryptor(), chunk, numBlocksRewritten, outColumnIdx);
+        columnChunkEncryptorRunTime =
+            new ColumnChunkEncryptorRunTime(writer.getEncryptor(), chunk, numBlocksRewritten, outColumnIdx);
       }
 
       // Translate compression and/or encryption
@@ -398,8 +411,7 @@ public class ParquetRewriter implements Closeable {
       BloomFilter bloomFilter = indexCache.getBloomFilter(chunk);
       ColumnIndex columnIndex = indexCache.getColumnIndex(chunk);
       OffsetIndex offsetIndex = indexCache.getOffsetIndex(chunk);
-      writer.appendColumnChunk(
-          descriptor, reader.getStream(), chunk, bloomFilter, columnIndex, offsetIndex);
+      writer.appendColumnChunk(descriptor, reader.getStream(), chunk, bloomFilter, columnIndex, offsetIndex);
     }
   }
 
@@ -972,5 +984,4 @@ public class ParquetRewriter implements Closeable {
       return this.dictPageAAD;
     }
   }
-
 }

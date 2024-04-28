@@ -731,11 +731,15 @@ public class ParquetRewriterTest {
 
   @Test
   public void testStitchTwoInputs() throws Exception {
+    // todo add a case when a number of main input files and joined input files do not match
+    //  for that we need to have a capability of specifying the number of rows in the output file
+    //  right now a withRowGroupSize doesn't allow to strictly set a number of rows in a group
     testTwoInputFileGroups();
 
     List<Path> inputPathsL =
         inputFiles.stream().map(x -> new Path(x.getFileName())).collect(Collectors.toList());
-    List<Path> inputPathsR = inputFilesToJoinColumns.stream().map(y -> new Path(y.getFileName()))
+    List<Path> inputPathsR = inputFilesToJoinColumns.stream()
+        .map(y -> new Path(y.getFileName()))
         .collect(Collectors.toList());
     RewriteOptions.Builder builder = createBuilder(inputPathsL, inputPathsR, true);
     RewriteOptions options = builder.indexCacheStrategy(indexCacheStrategy).build();
@@ -784,28 +788,16 @@ public class ParquetRewriterTest {
   }
 
   private void testTwoInputFileGroups() throws IOException {
-    inputFiles = Lists.newArrayList(
-        new TestFileBuilder(conf, createSchemaL())
-            .withCodec("GZIP")
-            .withRowGroupSize(numRecord / 2)
-            .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
-            .withWriterVersion(writerVersion)
-            .build());
-    inputFilesToJoinColumns = Lists.newArrayList(
-        new TestFileBuilder(conf, createSchemaR())
-            .withRowGroupSize(numRecord / 2)
-            .withNumRecord(numRecord / 2)
-            .withCodec("UNCOMPRESSED")
-            .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
-            .withWriterVersion(writerVersion)
-            .build(),
-        new TestFileBuilder(conf, createSchemaR())
-            .withRowGroupSize(numRecord / 2)
-            .withNumRecord(numRecord / 2)
-            .withCodec("UNCOMPRESSED")
-            .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
-            .withWriterVersion(writerVersion)
-            .build());
+    inputFiles = Lists.newArrayList(new TestFileBuilder(conf, createSchemaL())
+        .withCodec("GZIP")
+        .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
+        .withWriterVersion(writerVersion)
+        .build());
+    inputFilesToJoinColumns = Lists.newArrayList(new TestFileBuilder(conf, createSchemaR())
+        .withCodec("UNCOMPRESSED")
+        .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
+        .withWriterVersion(writerVersion)
+        .build());
   }
 
   private MessageType createSchema() {
@@ -852,26 +844,37 @@ public class ParquetRewriterTest {
         .withDecryption(fileDecryptionProperties)
         .build();
 
-    // Get total number of rows from input files
-    int totalRows = 0;
-    for (EncryptionTestFile inputFile : inputFiles) {
-      totalRows += inputFile.getFileContent().length;
-    }
-
-    List<List<SimpleGroup>> fileContents = Stream.concat(inputFiles.stream(), inputFilesToJoinColumns.stream())
+    List<List<SimpleGroup>> fileContents = inputFiles.stream()
+        .map(x -> Arrays.stream(x.getFileContent()).collect(Collectors.toList()))
+        .collect(Collectors.toList());
+    List<List<SimpleGroup>> fileContentsJoined = inputFilesToJoinColumns.stream()
         .map(x -> Arrays.stream(x.getFileContent()).collect(Collectors.toList()))
         .collect(Collectors.toList());
     BiFunction<String, Integer, Group> groups = (name, rowIdx) -> {
-      for (int i = fileContents.size() - 1; i >= 0; i--) {
-        SimpleGroup expGroup = fileContents.get(i).get(rowIdx);
-        GroupType fileSchema = expGroup.getType();
-        if (fileSchema.containsField(name)) {
-          return expGroup;
+      for (int i = 0; i < fileContents.size(); i++) {
+        if (rowIdx >= fileContents.get(i).size()) {
+          rowIdx -= fileContents.get(i).size();
+        } else {
+          if (!fileContentsJoined.isEmpty()) { // todo check if joinColumnsOverwrite = true
+            SimpleGroup expGroup = fileContentsJoined.get(i).get(rowIdx);
+            GroupType fileSchema = expGroup.getType();
+            if (fileSchema.containsField(name)) {
+              return expGroup;
+            }
+          }
+          SimpleGroup expGroup = fileContents.get(i).get(rowIdx);
+          GroupType fileSchema = expGroup.getType();
+          if (fileSchema.containsField(name)) {
+            return expGroup;
+          }
         }
       }
       throw new IllegalStateException(
           "Group '" + name + "' at position " + rowIdx + " was not found in input files!");
     };
+
+    int totalRows =
+        inputFiles.stream().mapToInt(x -> x.getFileContent().length).sum();
     for (int i = 0; i < totalRows; i++) {
       Group group = reader.read();
       assertNotNull(group);
@@ -1078,8 +1081,7 @@ public class ParquetRewriterTest {
 
   private void validateCreatedBy() throws Exception {
     Set<String> createdBySet = new HashSet<>();
-    List<EncryptionTestFile> inFiles = Stream.concat(
-            inputFiles.stream(), inputFilesToJoinColumns.stream())
+    List<EncryptionTestFile> inFiles = Stream.concat(inputFiles.stream(), inputFilesToJoinColumns.stream())
         .collect(Collectors.toList());
     for (EncryptionTestFile inputFile : inFiles) {
       ParquetMetadata pmd = getFileMetaData(inputFile.getFileName(), null);
@@ -1173,8 +1175,8 @@ public class ParquetRewriterTest {
     return createBuilder(inputPaths, new ArrayList<>(), false);
   }
 
-  private RewriteOptions.Builder createBuilder(List<Path> inputPathsL, List<Path> inputPathsR, boolean joinColumnsOverwrite)
-      throws IOException {
+  private RewriteOptions.Builder createBuilder(
+      List<Path> inputPathsL, List<Path> inputPathsR, boolean joinColumnsOverwrite) throws IOException {
     RewriteOptions.Builder builder;
     if (usingHadoop) {
       Path outputPath = new Path(outputFile);

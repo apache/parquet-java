@@ -292,7 +292,11 @@ public class RewriteOptions {
       this.outputFile = HadoopOutputFile.fromPathUnchecked(outputFile, conf);
     }
 
-    public Builder(ParquetConfiguration conf, List<InputFile> inputFiles, List<InputFile> inputFilesToJoinColumns, OutputFile outputFile) {
+    public Builder(
+        ParquetConfiguration conf,
+        List<InputFile> inputFiles,
+        List<InputFile> inputFilesToJoinColumns,
+        OutputFile outputFile) {
       this.conf = conf;
       this.inputFiles = inputFiles;
       this.inputFilesToJoinColumns = inputFilesToJoinColumns;
@@ -423,7 +427,6 @@ public class RewriteOptions {
       this.indexCacheStrategy = cacheStrategy;
       return this;
     }
-
 
     /** TODO fix documentation after addition of InputFilesToJoinColumns
      */
