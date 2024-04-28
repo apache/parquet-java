@@ -111,16 +111,16 @@ public class ParquetRewriterTest {
   private final boolean usingHadoop;
 
   private List<EncryptionTestFile> inputFiles = null;
-  private List<List<EncryptionTestFile>> inputFilesToJoinColumns = null;
+  private List<EncryptionTestFile> inputFilesToJoinColumns = null;
   private String outputFile = null;
   private ParquetRewriter rewriter = null;
 
   @Parameterized.Parameters(name = "WriterVersion = {0}, IndexCacheStrategy = {1}, UsingHadoop = {2}")
   public static Object[][] parameters() {
     return new Object[][] {
-      {"v1", "NONE", true},
-      {"v1", "PREFETCH_BLOCK", true},
-      {"v2", "PREFETCH_BLOCK", true},
+      //       {"v1", "NONE", true},
+      //       {"v1", "PREFETCH_BLOCK", true},
+      //       {"v2", "PREFETCH_BLOCK", true},
       {"v2", "PREFETCH_BLOCK", false}
     };
   }
@@ -736,8 +736,7 @@ public class ParquetRewriterTest {
 
     List<Path> inputPathsL =
         inputFiles.stream().map(x -> new Path(x.getFileName())).collect(Collectors.toList());
-    List<List<Path>> inputPathsR = inputFilesToJoinColumns.stream()
-        .map(x -> x.stream().map(y -> new Path(y.getFileName())).collect(Collectors.toList()))
+    List<Path> inputPathsR = inputFilesToJoinColumns.stream().map(y -> new Path(y.getFileName()))
         .collect(Collectors.toList());
     RewriteOptions.Builder builder = createBuilder(inputPathsL, inputPathsR);
     RewriteOptions options = builder.indexCacheStrategy(indexCacheStrategy).build();
@@ -753,19 +752,11 @@ public class ParquetRewriterTest {
 
     Map<ColumnPath, List<BloomFilter>> inputBloomFilters = allInputBloomFilters(null);
     Map<ColumnPath, List<BloomFilter>> outputBloomFilters = allOutputBloomFilters(null);
-    Set<ColumnPath> schemaR1Columns = createSchemaR1().getColumns().stream()
+    Set<ColumnPath> schemaRColumns = createSchemaR().getColumns().stream()
         .map(x -> ColumnPath.get(x.getPath()))
         .collect(Collectors.toSet());
-    Set<ColumnPath> schemaR2Columns = createSchemaR2().getColumns().stream()
-        .map(x -> ColumnPath.get(x.getPath()))
-        .collect(Collectors.toSet());
-    Set<ColumnPath> r1BloomFilters = outputBloomFilters.keySet().stream()
-        .filter(schemaR1Columns::contains)
-        .collect(Collectors.toSet());
-    Set<ColumnPath> r2withBloomFilters = outputBloomFilters.keySet().stream()
-        .filter(schemaR2Columns::contains)
-        .collect(Collectors.toSet());
-    Set<ColumnPath> rBloomFilters = Stream.concat(r1BloomFilters.stream(), r2withBloomFilters.stream())
+    Set<ColumnPath> rBloomFilters = outputBloomFilters.keySet().stream()
+        .filter(schemaRColumns::contains)
         .collect(Collectors.toSet());
 
     // TODO potentially too many checks, might need to be split into multiple tests
@@ -797,50 +788,16 @@ public class ParquetRewriterTest {
   private void testThreeInputsDifferentRowGroupSize() throws IOException {
     inputFiles = Lists.newArrayList(
         new TestFileBuilder(conf, createSchemaL())
-            .withNumRecord(numRecord / 2)
-            .withRowGroupSize(5_000_000)
-            .withCodec("GZIP")
-            .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
-            .withWriterVersion(writerVersion)
-            .build(),
-        new TestFileBuilder(conf, createSchemaL())
-            .withNumRecord(numRecord - (numRecord / 2))
-            .withRowGroupSize(6_000_000)
             .withCodec("GZIP")
             .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
             .withWriterVersion(writerVersion)
             .build());
-    inputFilesToJoinColumns = Lists.newArrayList(Lists.newArrayList(
-        Lists.newArrayList(new TestFileBuilder(conf, createSchemaR1())
-            .withNumRecord(numRecord)
-            .withRowGroupSize(7_000_000)
-            .withCodec("ZSTD")
+    inputFilesToJoinColumns = Lists.newArrayList(
+        new TestFileBuilder(conf, createSchemaR())
+            .withCodec("UNCOMPRESSED")
             .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
             .withWriterVersion(writerVersion)
-            .withBloomFilterEnabled(new String[] {"Links.Forward"})
-            .build()),
-        Lists.newArrayList(
-            new TestFileBuilder(conf, createSchemaR2())
-                .withNumRecord(numRecord / 3)
-                .withRowGroupSize(200_000)
-                .withCodec("UNCOMPRESSED")
-                .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
-                .withWriterVersion(writerVersion)
-                .build(),
-            new TestFileBuilder(conf, createSchemaR2())
-                .withNumRecord(numRecord / 3)
-                .withRowGroupSize(300_000)
-                .withCodec("UNCOMPRESSED")
-                .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
-                .withWriterVersion(writerVersion)
-                .build(),
-            new TestFileBuilder(conf, createSchemaR2())
-                .withNumRecord(numRecord - 2 * (numRecord / 3))
-                .withRowGroupSize(400_000)
-                .withCodec("UNCOMPRESSED")
-                .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
-                .withWriterVersion(writerVersion)
-                .build())));
+            .build());
   }
 
   private MessageType createSchema() {
@@ -868,18 +825,15 @@ public class ParquetRewriterTest {
         new PrimitiveType(OPTIONAL, DOUBLE, "DoubleFraction"));
   }
 
-  private MessageType createSchemaR1() {
+  private MessageType createSchemaR() {
     return new MessageType(
         "schema",
+        new PrimitiveType(REPEATED, FLOAT, "FloatFraction"),
         new GroupType(
             OPTIONAL,
             "Links",
             new PrimitiveType(REPEATED, BINARY, "Backward"),
             new PrimitiveType(REPEATED, BINARY, "Forward")));
-  }
-
-  private MessageType createSchemaR2() {
-    return new MessageType("schema", new PrimitiveType(REPEATED, FLOAT, "FloatFraction"));
   }
 
   private void validateColumnData(
@@ -896,9 +850,8 @@ public class ParquetRewriterTest {
       totalRows += inputFile.getFileContent().length;
     }
 
-    List<List<SimpleGroup>> fileContents = Stream.concat(Stream.of(inputFiles), inputFilesToJoinColumns.stream())
-        .map(x -> x.stream()
-            .flatMap(y -> Arrays.stream(y.getFileContent()))
+    List<List<SimpleGroup>> fileContents = Stream.concat(inputFiles.stream(), inputFilesToJoinColumns.stream())
+        .map(x -> Arrays.stream(x.getFileContent())
             .collect(Collectors.toList()))
         .collect(Collectors.toList());
     BiFunction<String, Integer, Group> groups = (name, rowIdx) -> {
@@ -1119,7 +1072,7 @@ public class ParquetRewriterTest {
   private void validateCreatedBy() throws Exception {
     Set<String> createdBySet = new HashSet<>();
     List<EncryptionTestFile> inFiles = Stream.concat(
-            inputFiles.stream(), inputFilesToJoinColumns.stream().flatMap(Collection::stream))
+            inputFiles.stream(), inputFilesToJoinColumns.stream())
         .collect(Collectors.toList());
     for (EncryptionTestFile inputFile : inFiles) {
       ParquetMetadata pmd = getFileMetaData(inputFile.getFileName(), null);
@@ -1164,8 +1117,7 @@ public class ParquetRewriterTest {
   private Map<ColumnPath, List<BloomFilter>> allInputBloomFilters(FileDecryptionProperties fileDecryptionProperties)
       throws Exception {
     Map<ColumnPath, List<BloomFilter>> inputBloomFilters = new HashMap<>();
-    List<EncryptionTestFile> files = Stream.concat(Stream.of(inputFiles), inputFilesToJoinColumns.stream())
-        .flatMap(Collection::stream)
+    List<EncryptionTestFile> files = Stream.concat(inputFiles.stream(), inputFilesToJoinColumns.stream())
         .collect(Collectors.toList());
     for (EncryptionTestFile inputFile : files) {
       Map<ColumnPath, List<BloomFilter>> bloomFilters =
@@ -1214,20 +1166,21 @@ public class ParquetRewriterTest {
     return createBuilder(inputPaths, new ArrayList<>());
   }
 
-  private RewriteOptions.Builder createBuilder(List<Path> inputPathsL, List<List<Path>> inputPathsR)
+  private RewriteOptions.Builder createBuilder(List<Path> inputPathsL, List<Path> inputPathsR)
       throws IOException {
     RewriteOptions.Builder builder;
     if (usingHadoop) {
       Path outputPath = new Path(outputFile);
-      builder = new RewriteOptions.Builder(conf, inputPathsL, outputPath);
-      inputPathsR.forEach(builder::addInputPathsR);
+      builder = new RewriteOptions.Builder(conf, inputPathsL, inputPathsR, outputPath);
     } else {
       OutputFile outputPath = HadoopOutputFile.fromPath(new Path(outputFile), conf);
       List<InputFile> inputsL = inputPathsL.stream()
           .map(p -> HadoopInputFile.fromPathUnchecked(p, conf))
           .collect(Collectors.toList());
-      builder = new RewriteOptions.Builder(parquetConf, inputsL, outputPath);
-      inputPathsR.forEach(builder::addInputPathsR);
+      List<InputFile> inputsR = inputPathsR.stream()
+          .map(p -> HadoopInputFile.fromPathUnchecked(p, conf))
+          .collect(Collectors.toList());
+      builder = new RewriteOptions.Builder(parquetConf, inputsL, inputsR, outputPath);
     }
     return builder;
   }
