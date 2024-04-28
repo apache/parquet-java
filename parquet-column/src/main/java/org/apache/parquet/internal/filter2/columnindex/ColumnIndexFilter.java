@@ -29,8 +29,9 @@ import org.apache.parquet.filter2.predicate.FilterPredicate.Visitor;
 import org.apache.parquet.filter2.predicate.Operators;
 import org.apache.parquet.filter2.predicate.Operators.And;
 import org.apache.parquet.filter2.predicate.Operators.Column;
-import org.apache.parquet.filter2.predicate.Operators.Contains;
-import org.apache.parquet.filter2.predicate.Operators.DoesNotContain;
+import org.apache.parquet.filter2.predicate.Operators.ContainsAnd;
+import org.apache.parquet.filter2.predicate.Operators.ContainsEq;
+import org.apache.parquet.filter2.predicate.Operators.ContainsOr;
 import org.apache.parquet.filter2.predicate.Operators.Eq;
 import org.apache.parquet.filter2.predicate.Operators.Gt;
 import org.apache.parquet.filter2.predicate.Operators.GtEq;
@@ -158,16 +159,29 @@ public class ColumnIndexFilter implements Visitor<RowRanges> {
   }
 
   @Override
-  public <T extends Comparable<T>> RowRanges visit(Contains<T> contains) {
+  public <T extends Comparable<T>> RowRanges visit(ContainsEq<T> contains) {
     boolean isNull = contains.getValue() == null;
     return applyPredicate(contains.getColumn(), ci -> ci.visit(contains), isNull ? allRows() : RowRanges.EMPTY);
   }
 
   @Override
-  public <T extends Comparable<T>> RowRanges visit(DoesNotContain<T> doesNotContain) {
-    boolean isNull = doesNotContain.getValue() == null;
-    return applyPredicate(
-        doesNotContain.getColumn(), ci -> ci.visit(doesNotContain), isNull ? RowRanges.EMPTY : allRows());
+  public <T extends Comparable<T>> RowRanges visit(ContainsAnd<T> containsAnd) {
+    RowRanges leftResult = containsAnd.getLeft().accept(this);
+    if (leftResult.getRanges().isEmpty()) {
+      return leftResult;
+    }
+
+    return RowRanges.intersection(leftResult, containsAnd.getRight().accept(this));
+  }
+
+  @Override
+  public <T extends Comparable<T>> RowRanges visit(ContainsOr<T> containsOr) {
+    RowRanges leftResult = containsOr.getLeft().accept(this);
+    if (leftResult.getRanges().size() == 1 && leftResult.rowCount() == rowCount) {
+      return leftResult;
+    }
+
+    return RowRanges.union(leftResult, containsOr.getRight().accept(this));
   }
 
   @Override

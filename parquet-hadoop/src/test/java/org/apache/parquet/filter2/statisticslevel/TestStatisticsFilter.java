@@ -19,10 +19,10 @@
 package org.apache.parquet.filter2.statisticslevel;
 
 import static org.apache.parquet.filter2.predicate.FilterApi.and;
-import static org.apache.parquet.filter2.predicate.FilterApi.arrayColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.binaryColumn;
-import static org.apache.parquet.filter2.predicate.FilterApi.contains;
-import static org.apache.parquet.filter2.predicate.FilterApi.doesNotContain;
+import static org.apache.parquet.filter2.predicate.FilterApi.containsAnd;
+import static org.apache.parquet.filter2.predicate.FilterApi.containsEq;
+import static org.apache.parquet.filter2.predicate.FilterApi.containsOr;
 import static org.apache.parquet.filter2.predicate.FilterApi.doubleColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.eq;
 import static org.apache.parquet.filter2.predicate.FilterApi.gt;
@@ -52,7 +52,7 @@ import org.apache.parquet.column.statistics.DoubleStatistics;
 import org.apache.parquet.column.statistics.IntStatistics;
 import org.apache.parquet.filter2.predicate.FilterPredicate;
 import org.apache.parquet.filter2.predicate.LogicalInverseRewriter;
-import org.apache.parquet.filter2.predicate.Operators.ArrayColumn;
+import org.apache.parquet.filter2.predicate.Operators;
 import org.apache.parquet.filter2.predicate.Operators.BinaryColumn;
 import org.apache.parquet.filter2.predicate.Operators.DoubleColumn;
 import org.apache.parquet.filter2.predicate.Operators.IntColumn;
@@ -99,12 +99,8 @@ public class TestStatisticsFilter {
   }
 
   private static final IntColumn intColumn = intColumn("int.column");
-
-  private static final ArrayColumn<Integer> repeatedIntColumn = arrayColumn(intColumn);
   private static final DoubleColumn doubleColumn = doubleColumn("double.column");
   private static final BinaryColumn missingColumn = binaryColumn("missing");
-
-  private static final ArrayColumn<Binary> missingRepeatedColumn = arrayColumn(missingColumn);
   private static final IntColumn missingColumn2 = intColumn("missing.int");
 
   private static final IntStatistics intStats = new IntStatistics();
@@ -390,19 +386,19 @@ public class TestStatisticsFilter {
   }
 
   @Test
-  public void testContainsNonNull() {
-    assertTrue(canDrop(contains(repeatedIntColumn, 9), columnMetas));
-    assertFalse(canDrop(contains(repeatedIntColumn, 10), columnMetas));
-    assertFalse(canDrop(contains(repeatedIntColumn, 100), columnMetas));
-    assertTrue(canDrop(contains(repeatedIntColumn, 101), columnMetas));
+  public void testContainsEqNonNull() {
+    assertTrue(canDrop(containsEq(intColumn, 9), columnMetas));
+    assertFalse(canDrop(containsEq(intColumn, 10), columnMetas));
+    assertFalse(canDrop(containsEq(intColumn, 100), columnMetas));
+    assertTrue(canDrop(containsEq(intColumn, 101), columnMetas));
 
     // drop columns of all nulls when looking for non-null value
-    assertTrue(canDrop(contains(repeatedIntColumn, 0), nullColumnMetas));
-    assertFalse(canDrop(contains(repeatedIntColumn, 50), missingMinMaxColumnMetas));
+    assertTrue(canDrop(containsEq(intColumn, 0), nullColumnMetas));
+    assertFalse(canDrop(containsEq(intColumn, 50), missingMinMaxColumnMetas));
   }
 
   @Test
-  public void testContainsNull() {
+  public void testContainsEqNull() {
     IntStatistics statsNoNulls = new IntStatistics();
     statsNoNulls.setMinMax(10, 100);
     statsNoNulls.setNumNulls(0);
@@ -412,57 +408,35 @@ public class TestStatisticsFilter {
     statsSomeNulls.setNumNulls(3);
 
     assertTrue(canDrop(
-        contains(repeatedIntColumn, null),
+        containsEq(intColumn, null),
         Arrays.asList(getIntColumnMeta(statsNoNulls, 177L), getDoubleColumnMeta(doubleStats, 177L))));
 
     assertFalse(canDrop(
-        contains(repeatedIntColumn, null),
+        containsEq(intColumn, null),
         Arrays.asList(getIntColumnMeta(statsSomeNulls, 177L), getDoubleColumnMeta(doubleStats, 177L))));
 
-    assertFalse(canDrop(contains(missingRepeatedColumn, null), columnMetas));
-    assertFalse(canDrop(contains(repeatedIntColumn, null), missingMinMaxColumnMetas));
+    assertFalse(canDrop(eq(missingColumn, null), columnMetas));
+    assertFalse(canDrop(eq(intColumn, null), missingMinMaxColumnMetas));
   }
 
   @Test
-  public void testDoesNotContainNonNull() {
-    assertFalse(canDrop(doesNotContain(repeatedIntColumn, 9), columnMetas));
-    assertTrue(canDrop(doesNotContain(repeatedIntColumn, 10), columnMetas));
-    assertTrue(canDrop(doesNotContain(repeatedIntColumn, 100), columnMetas));
-    assertFalse(canDrop(doesNotContain(repeatedIntColumn, 101), columnMetas));
-
-    assertFalse(canDrop(doesNotContain(missingRepeatedColumn, fromString("any")), columnMetas));
-    assertFalse(canDrop(doesNotContain(repeatedIntColumn, 50), missingMinMaxColumnMetas));
+  public void testContainsAnd() {
+    Operators.ContainsPredicate<Integer> yes = containsEq(intColumn, 9);
+    Operators.ContainsPredicate<Double> no = containsEq(doubleColumn, 50D);
+    assertTrue(canDrop(containsAnd(yes, yes), columnMetas));
+    assertTrue(canDrop(and(yes, no), columnMetas));
+    assertTrue(canDrop(and(no, yes), columnMetas));
+    assertFalse(canDrop(and(no, no), columnMetas));
   }
 
   @Test
-  public void testDoesNotContainNull() {
-    IntStatistics statsNoNulls = new IntStatistics();
-    statsNoNulls.setMinMax(10, 100);
-    statsNoNulls.setNumNulls(0);
-
-    IntStatistics statsSomeNulls = new IntStatistics();
-    statsSomeNulls.setMinMax(10, 100);
-    statsSomeNulls.setNumNulls(3);
-
-    IntStatistics statsAllNulls = new IntStatistics();
-    statsAllNulls.setMinMax(0, 0);
-    statsAllNulls.setNumNulls(177);
-
-    assertFalse(canDrop(
-        doesNotContain(repeatedIntColumn, null),
-        Arrays.asList(getIntColumnMeta(statsNoNulls, 177L), getDoubleColumnMeta(doubleStats, 177L))));
-
-    assertFalse(canDrop(
-        doesNotContain(repeatedIntColumn, null),
-        Arrays.asList(getIntColumnMeta(statsSomeNulls, 177L), getDoubleColumnMeta(doubleStats, 177L))));
-
-    assertTrue(canDrop(
-        doesNotContain(repeatedIntColumn, null),
-        Arrays.asList(getIntColumnMeta(statsAllNulls, 177L), getDoubleColumnMeta(doubleStats, 177L))));
-
-    assertTrue(canDrop(doesNotContain(missingRepeatedColumn, null), columnMetas));
-
-    assertFalse(canDrop(doesNotContain(repeatedIntColumn, null), missingMinMaxColumnMetas));
+  public void testContainsOr() {
+    Operators.ContainsPredicate<Integer> yes = containsEq(intColumn, 9);
+    Operators.ContainsPredicate<Double> no = containsEq(doubleColumn, 50D);
+    assertTrue(canDrop(containsOr(yes, yes), columnMetas));
+    assertFalse(canDrop(or(yes, no), columnMetas));
+    assertFalse(canDrop(or(no, yes), columnMetas));
+    assertFalse(canDrop(or(no, no), columnMetas));
   }
 
   @Test

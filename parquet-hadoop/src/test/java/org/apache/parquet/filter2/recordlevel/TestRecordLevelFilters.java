@@ -19,10 +19,10 @@
 package org.apache.parquet.filter2.recordlevel;
 
 import static org.apache.parquet.filter2.predicate.FilterApi.and;
-import static org.apache.parquet.filter2.predicate.FilterApi.arrayColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.binaryColumn;
-import static org.apache.parquet.filter2.predicate.FilterApi.contains;
-import static org.apache.parquet.filter2.predicate.FilterApi.doesNotContain;
+import static org.apache.parquet.filter2.predicate.FilterApi.containsAnd;
+import static org.apache.parquet.filter2.predicate.FilterApi.containsEq;
+import static org.apache.parquet.filter2.predicate.FilterApi.containsOr;
 import static org.apache.parquet.filter2.predicate.FilterApi.doubleColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.eq;
 import static org.apache.parquet.filter2.predicate.FilterApi.gt;
@@ -44,7 +44,6 @@ import java.util.Iterator;
 import java.util.List;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.filter2.compat.FilterCompat;
-import org.apache.parquet.filter2.predicate.FilterApi;
 import org.apache.parquet.filter2.predicate.FilterPredicate;
 import org.apache.parquet.filter2.predicate.Operators.BinaryColumn;
 import org.apache.parquet.filter2.predicate.Operators.DoubleColumn;
@@ -190,9 +189,8 @@ public class TestRecordLevelFilters {
   }
 
   @Test
-  public void testArrayContainsFilter() throws Exception {
-    FilterPredicate pred =
-        contains(arrayColumn(FilterApi.binaryColumn("phoneNumbers.phone.kind")), Binary.fromString("home"));
+  public void testArrayContainsEqFilter() throws Exception {
+    FilterPredicate pred = containsEq(binaryColumn("phoneNumbers.phone.kind"), Binary.fromString("home"));
     List<Group> found = PhoneBookWriter.readFile(phonebookFile, FilterCompat.get(pred));
 
     assertEquals(3, found.size());
@@ -202,18 +200,31 @@ public class TestRecordLevelFilters {
   }
 
   @Test
-  public void testArrayDoesNotContainFilter() throws Exception {
-    FilterPredicate pred = doesNotContain(
-        arrayColumn(FilterApi.binaryColumn("phoneNumbers.phone.kind")), Binary.fromString("cell"));
+  public void testArrayContainsAndFilter() throws Exception {
+    FilterPredicate pred = containsAnd(
+        containsEq(longColumn("phoneNumbers.phone.number"), 1111111111L),
+        containsAnd(
+            containsEq(longColumn("phoneNumbers.phone.number"), 2222222222L),
+            containsEq(longColumn("phoneNumbers.phone.number"), 3333333333L)));
     List<Group> found = PhoneBookWriter.readFile(phonebookFile, FilterCompat.get(pred));
 
-    assertEquals(6L, found.size());
-    assertEquals(17L, ((Group) found.get(0)).getLong("id", 0));
-    assertEquals(18L, ((Group) found.get(1)).getLong("id", 0));
-    assertEquals(19L, ((Group) found.get(2)).getLong("id", 0));
-    assertEquals(20L, ((Group) found.get(3)).getLong("id", 0));
-    assertEquals(28L, ((Group) found.get(4)).getLong("id", 0));
-    assertEquals(30L, ((Group) found.get(5)).getLong("id", 0));
+    assertEquals(1, found.size());
+    assertEquals(28L, ((Group) found.get(0)).getLong("id", 0));
+  }
+
+  @Test
+  public void testArrayContainsOrFilter() throws Exception {
+    FilterPredicate pred = containsOr(
+        containsEq(longColumn("phoneNumbers.phone.number"), 5555555555L),
+        containsOr(
+            containsEq(longColumn("phoneNumbers.phone.number"), -10000000L), // Won't be matched
+            containsEq(longColumn("phoneNumbers.phone.number"), 2222222222L)));
+    List<Group> found = PhoneBookWriter.readFile(phonebookFile, FilterCompat.get(pred));
+
+    assertEquals(3, found.size());
+    assertEquals(20L, ((Group) found.get(0)).getLong("id", 0));
+    assertEquals(27L, ((Group) found.get(1)).getLong("id", 0));
+    assertEquals(28L, ((Group) found.get(2)).getLong("id", 0));
   }
 
   @Test

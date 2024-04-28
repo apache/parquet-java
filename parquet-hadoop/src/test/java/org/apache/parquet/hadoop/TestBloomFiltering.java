@@ -20,6 +20,7 @@
 package org.apache.parquet.hadoop;
 
 import static org.apache.parquet.filter2.predicate.FilterApi.binaryColumn;
+import static org.apache.parquet.filter2.predicate.FilterApi.containsEq;
 import static org.apache.parquet.filter2.predicate.FilterApi.doubleColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.eq;
 import static org.apache.parquet.filter2.predicate.FilterApi.in;
@@ -40,6 +41,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Random;
 import java.util.Set;
 import java.util.function.Predicate;
@@ -120,7 +122,8 @@ public class TestBloomFiltering {
     List<PhoneBookWriter.User> users = new ArrayList<>();
     List<String> names = generateNames(rowCount);
     for (int i = 0; i < rowCount; ++i) {
-      users.add(new PhoneBookWriter.User(i, names.get(i), generatePhoneNumbers(), generateLocation(i, rowCount)));
+      users.add(
+          new PhoneBookWriter.User(i, names.get(i), generatePhoneNumbers(i), generateLocation(i, rowCount)));
     }
     return users;
   }
@@ -171,12 +174,13 @@ public class TestBloomFiltering {
       names.add("len");
     }
     for (int i = 0; i < rowCount; ++i) {
-      users.add(new PhoneBookWriter.User(i, names.get(i), generatePhoneNumbers(), generateLocation(i, rowCount)));
+      users.add(
+          new PhoneBookWriter.User(i, names.get(i), generatePhoneNumbers(i), generateLocation(i, rowCount)));
     }
     return users;
   }
 
-  private static List<PhoneBookWriter.PhoneNumber> generatePhoneNumbers() {
+  private static List<PhoneBookWriter.PhoneNumber> generatePhoneNumbers(int index) {
     int length = RANDOM.nextInt(5) - 1;
     if (length < 0) {
       return null;
@@ -184,7 +188,7 @@ public class TestBloomFiltering {
     List<PhoneBookWriter.PhoneNumber> phoneNumbers = new ArrayList<>(length);
     for (int i = 0; i < length; ++i) {
       // 6 digits numbers
-      long number = Math.abs(RANDOM.nextLong() % 900000) + 100000;
+      long number = 500L % index;
       phoneNumbers.add(new PhoneBookWriter.PhoneNumber(number, PHONE_KINDS[RANDOM.nextInt(PHONE_KINDS.length)]));
     }
     return phoneNumbers;
@@ -323,7 +327,9 @@ public class TestBloomFiltering {
       writeBuilder
           .withBloomFilterNDV("location.lat", 10000L)
           .withBloomFilterNDV("name", 10000L)
-          .withBloomFilterNDV("id", 10000L);
+          .withBloomFilterNDV("id", 10000L)
+          .withDictionaryEncoding("phoneNumbers.phone.number", false)
+          .withBloomFilterNDV("phoneNumbers.phone.number", 10000L);
     }
     PhoneBookWriter.write(writeBuilder, DATA);
   }
@@ -396,6 +402,15 @@ public class TestBloomFiltering {
           return location != null && location.getLat() != null && location.getLat() == 99.9;
         },
         eq(doubleColumn("location.lat"), 99.9));
+  }
+
+  @Test
+  public void testContainsEqFiltering() throws IOException {
+    assertCorrectFiltering(
+        record -> Optional.ofNullable(record.getPhoneNumbers())
+            .map(numbers -> numbers.stream().anyMatch(n -> n.getNumber() == 250L))
+            .orElse(false),
+        containsEq(longColumn("phoneNumbers.phone.number"), 250L));
   }
 
   @Test

@@ -20,11 +20,9 @@ package org.apache.parquet.internal.filter2.columnindex;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.parquet.filter2.predicate.FilterApi.and;
-import static org.apache.parquet.filter2.predicate.FilterApi.arrayColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.binaryColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.booleanColumn;
-import static org.apache.parquet.filter2.predicate.FilterApi.contains;
-import static org.apache.parquet.filter2.predicate.FilterApi.doesNotContain;
+import static org.apache.parquet.filter2.predicate.FilterApi.containsEq;
 import static org.apache.parquet.filter2.predicate.FilterApi.doubleColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.eq;
 import static org.apache.parquet.filter2.predicate.FilterApi.gt;
@@ -394,10 +392,7 @@ public class TestColumnIndexFilter {
 
     assertRows(
         calculateRowRanges(
-            FilterCompat.get(contains(arrayColumn(intColumn("column6")), 7)),
-            STORE,
-            paths,
-            TOTAL_ROW_COUNT),
+            FilterCompat.get(containsEq(intColumn("column6"), 7)), STORE, paths, TOTAL_ROW_COUNT),
         7,
         8,
         9,
@@ -405,40 +400,6 @@ public class TestColumnIndexFilter {
         11,
         12,
         13);
-    assertRows(
-        calculateRowRanges(
-            FilterCompat.get(doesNotContain(arrayColumn(intColumn("column6")), 7)),
-            STORE,
-            paths,
-            TOTAL_ROW_COUNT),
-        0,
-        1,
-        2,
-        3,
-        4,
-        5,
-        6,
-        9,
-        10,
-        11,
-        12,
-        13,
-        14,
-        15,
-        16,
-        17,
-        18,
-        19,
-        20,
-        21,
-        22,
-        23,
-        24,
-        25,
-        26,
-        27,
-        28,
-        29);
     Set<Integer> set1 = new HashSet<>();
     set1.add(7);
     assertRows(

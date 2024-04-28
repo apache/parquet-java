@@ -21,8 +21,10 @@ package org.apache.parquet.filter2.predicate;
 import java.util.Objects;
 import org.apache.parquet.filter2.predicate.FilterPredicate.Visitor;
 import org.apache.parquet.filter2.predicate.Operators.And;
-import org.apache.parquet.filter2.predicate.Operators.Contains;
-import org.apache.parquet.filter2.predicate.Operators.DoesNotContain;
+import org.apache.parquet.filter2.predicate.Operators.ContainsAnd;
+import org.apache.parquet.filter2.predicate.Operators.ContainsEq;
+import org.apache.parquet.filter2.predicate.Operators.ContainsNotEq;
+import org.apache.parquet.filter2.predicate.Operators.ContainsOr;
 import org.apache.parquet.filter2.predicate.Operators.Eq;
 import org.apache.parquet.filter2.predicate.Operators.Gt;
 import org.apache.parquet.filter2.predicate.Operators.GtEq;
@@ -95,13 +97,23 @@ public final class LogicalInverter implements Visitor<FilterPredicate> {
   }
 
   @Override
-  public <T extends Comparable<T>> FilterPredicate visit(Contains<T> contains) {
-    return new DoesNotContain<>(contains.getColumn(), contains.getValue());
+  public <T extends Comparable<T>> FilterPredicate visit(ContainsEq<T> contains) {
+    throw new UnsupportedOperationException("DoesNotContain not supported yet");
   }
 
   @Override
-  public <T extends Comparable<T>> FilterPredicate visit(DoesNotContain<T> doesNotContain) {
-    return new Contains<>(doesNotContain.getColumn(), doesNotContain.getValue());
+  public <T extends Comparable<T>> FilterPredicate visit(ContainsNotEq<T> contains) {
+    throw new UnsupportedOperationException("DoesNotContainNotEq not supported yet!");
+  }
+
+  @Override
+  public <T extends Comparable<T>> FilterPredicate visit(ContainsAnd<T> containsAnd) {
+    return new ContainsOr<>(containsAnd.getLeft(), containsAnd.getRight());
+  }
+
+  @Override
+  public <T extends Comparable<T>> FilterPredicate visit(ContainsOr<T> containsOr) {
+    return new ContainsAnd<>(containsOr.getLeft(), containsOr.getRight());
   }
 
   @Override

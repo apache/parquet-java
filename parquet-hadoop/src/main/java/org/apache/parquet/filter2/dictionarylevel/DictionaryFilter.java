@@ -36,8 +36,9 @@ import org.apache.parquet.column.page.DictionaryPageReadStore;
 import org.apache.parquet.filter2.predicate.FilterPredicate;
 import org.apache.parquet.filter2.predicate.Operators.And;
 import org.apache.parquet.filter2.predicate.Operators.Column;
-import org.apache.parquet.filter2.predicate.Operators.Contains;
-import org.apache.parquet.filter2.predicate.Operators.DoesNotContain;
+import org.apache.parquet.filter2.predicate.Operators.ContainsAnd;
+import org.apache.parquet.filter2.predicate.Operators.ContainsEq;
+import org.apache.parquet.filter2.predicate.Operators.ContainsOr;
 import org.apache.parquet.filter2.predicate.Operators.Eq;
 import org.apache.parquet.filter2.predicate.Operators.Gt;
 import org.apache.parquet.filter2.predicate.Operators.GtEq;
@@ -490,7 +491,7 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
   }
 
   @Override
-  public <T extends Comparable<T>> Boolean visit(Contains<T> contains) {
+  public <T extends Comparable<T>> Boolean visit(ContainsEq<T> contains) {
     T value = contains.getValue();
 
     // Dictionary only contains non-null values, so we can't use it to filter here
@@ -527,61 +528,22 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
   }
 
   @Override
-  public <T extends Comparable<T>> Boolean visit(DoesNotContain<T> doesNotContain) {
-    T value = doesNotContain.getValue();
-
-    Column<T> filterColumn = doesNotContain.getColumn();
-    ColumnChunkMetaData meta = getColumnChunk(filterColumn.getColumnPath());
-
-    if (value == null) {
-      if (meta == null) {
-        // @Todo ??
-        return BLOCK_CANNOT_MATCH;
-      }
-      // the dictionary contains only non-null values so isn't helpful. this
-      // could check the column stats, but the StatisticsFilter is responsible
-      return BLOCK_MIGHT_MATCH;
-    }
-
-    if (meta == null) {
-      // the column isn't in this file so all values are null, but the value
-      // must be non-null because of the above check.
-      return BLOCK_MIGHT_MATCH;
-    }
-
-    boolean mayContainNull = (meta.getStatistics() == null
-        || !meta.getStatistics().isNumNullsSet()
-        || meta.getStatistics().getNumNulls() > 0);
-    // The column may contain nulls and the values set contains no null, so the row group cannot be eliminated.
-    if (mayContainNull) {
-      return BLOCK_MIGHT_MATCH;
-    }
-
-    // if the chunk has non-dictionary pages, don't bother decoding the
-    // dictionary because the row group can't be eliminated.
-    if (hasNonDictionaryPages(meta)) {
-      return BLOCK_MIGHT_MATCH;
-    }
-
-    try {
-      Set<T> dictSet = expandDictionary(meta);
-      if (dictSet != null) {
-        // ROWS_CANNOT_MATCH if no values in the dictionary that are not also in the set
-        return dictSet.contains(value) ? BLOCK_CANNOT_MATCH : BLOCK_MIGHT_MATCH;
-      }
-    } catch (IOException e) {
-      LOG.warn("Failed to process dictionary for filter evaluation.", e);
-    }
-    return BLOCK_MIGHT_MATCH;
-  }
-
-  @Override
   public Boolean visit(And and) {
     return and.getLeft().accept(this) || and.getRight().accept(this);
   }
 
   @Override
   public Boolean visit(Or or) {
+    return or.getLeft().accept(this) && or.getRight().accept(this);
+  }
+
+  @Override
+  public <T extends Comparable<T>> Boolean visit(ContainsAnd<T> and) {
+    return and.getLeft().accept(this) || and.getRight().accept(this);
+  }
+
+  @Override
+  public <T extends Comparable<T>> Boolean visit(ContainsOr<T> or) {
     return or.getLeft().accept(this) && or.getRight().accept(this);
   }
 

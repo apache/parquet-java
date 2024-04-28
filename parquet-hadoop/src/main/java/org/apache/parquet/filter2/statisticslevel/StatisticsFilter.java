@@ -28,8 +28,10 @@ import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.filter2.predicate.FilterPredicate;
 import org.apache.parquet.filter2.predicate.Operators.And;
 import org.apache.parquet.filter2.predicate.Operators.Column;
-import org.apache.parquet.filter2.predicate.Operators.Contains;
-import org.apache.parquet.filter2.predicate.Operators.DoesNotContain;
+import org.apache.parquet.filter2.predicate.Operators.ContainsAnd;
+import org.apache.parquet.filter2.predicate.Operators.ContainsEq;
+import org.apache.parquet.filter2.predicate.Operators.ContainsNotEq;
+import org.apache.parquet.filter2.predicate.Operators.ContainsOr;
 import org.apache.parquet.filter2.predicate.Operators.Eq;
 import org.apache.parquet.filter2.predicate.Operators.Gt;
 import org.apache.parquet.filter2.predicate.Operators.GtEq;
@@ -214,7 +216,7 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
   }
 
   @Override
-  public <T extends Comparable<T>> Boolean visit(Contains<T> contains) {
+  public <T extends Comparable<T>> Boolean visit(ContainsEq<T> contains) {
     Column<T> filterColumn = contains.getColumn();
     ColumnChunkMetaData meta = getColumnChunk(filterColumn.getColumnPath());
 
@@ -268,15 +270,16 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
   }
 
   @Override
-  public <T extends Comparable<T>> Boolean visit(DoesNotContain<T> doesNotContain) {
-    Column<T> filterColumn = doesNotContain.getColumn();
+  public <T extends Comparable<T>> Boolean visit(ContainsNotEq<T> contains) {
+    Column<T> filterColumn = contains.getColumn();
     ColumnChunkMetaData meta = getColumnChunk(filterColumn.getColumnPath());
 
-    T value = doesNotContain.getValue();
+    T value = contains.getValue();
+
+    final boolean valueIsNull = value == null;
 
     if (meta == null) {
-      if (value == null) {
-        // null is always equal to null
+      if (!valueIsNull) {
         return BLOCK_CANNOT_MATCH;
       }
       return BLOCK_MIGHT_MATCH;
@@ -289,16 +292,12 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
       return BLOCK_MIGHT_MATCH;
     }
 
-    if (value == null) {
-      // we are looking for records where v notEq(null)
-      // so, if this is a column of all nulls, we can drop it
-      return isAllNulls(meta);
-    }
-
-    if (stats.isNumNullsSet() && hasNulls(meta)) {
-      // we are looking for records where v notEq(someNonNull)
-      // but this chunk contains nulls, we cannot drop it
-      return BLOCK_MIGHT_MATCH;
+    if (isAllNulls(meta)) {
+      if (valueIsNull) {
+        return BLOCK_CANNOT_MATCH;
+      } else {
+        return BLOCK_MIGHT_MATCH;
+      }
     }
 
     if (!stats.hasNonNullValue()) {
@@ -306,7 +305,13 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
       return BLOCK_MIGHT_MATCH;
     }
 
-    // If the value is between block's min and max range, keep it
+    if (stats.isNumNullsSet()) {
+      if (stats.getNumNulls() == 0 && valueIsNull) {
+        return BLOCK_MIGHT_MATCH;
+      }
+    }
+
+    // If the value is outside block's min and max range, keep it
     if (stats.compareMinToValue(value) > 0 || stats.compareMaxToValue(value) < 0) {
       return BLOCK_MIGHT_MATCH;
     } else {
@@ -518,6 +523,17 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
     // both the left and right predicates agree that no matter what
     // we don't need this chunk.
     return or.getLeft().accept(this) && or.getRight().accept(this);
+  }
+
+  @Override
+  public <T extends Comparable<T>> Boolean visit(ContainsAnd<T> containsAnd) {
+    return containsAnd.getLeft().accept(this) || containsAnd.getRight().accept(this);
+  }
+
+  @Override
+  public <T extends Comparable<T>> Boolean visit(ContainsOr<T> containsOr) {
+    // If either left or right predicate can't be dropped, keep the whole block
+    return containsOr.getLeft().accept(this) && containsOr.getRight().accept(this);
   }
 
   @Override

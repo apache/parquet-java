@@ -120,12 +120,33 @@ public class BloomFilterImpl implements FilterPredicate.Visitor<Boolean> {
   }
 
   @Override
-  public <T extends Comparable<T>> Boolean visit(Operators.Contains<T> contains) {
-    return BLOCK_MIGHT_MATCH;
-  }
+  public <T extends Comparable<T>> Boolean visit(Operators.ContainsEq<T> containsEq) {
+    T value = containsEq.getValue();
 
-  @Override
-  public <T extends Comparable<T>> Boolean visit(Operators.DoesNotContain<T> doesNotContain) {
+    if (value == null) {
+      // the bloom filter bitset contains only non-null values so isn't helpful. this
+      // could check the column stats, but the StatisticsFilter is responsible
+      return BLOCK_MIGHT_MATCH;
+    }
+
+    Operators.Column<T> filterColumn = containsEq.getColumn();
+    ColumnChunkMetaData meta = getColumnChunk(filterColumn.getColumnPath());
+    if (meta == null) {
+      // the column isn't in this file so all values are null, but the value
+      // must be non-null because of the above check.
+      return BLOCK_CANNOT_MATCH;
+    }
+
+    try {
+      BloomFilter bloomFilter = bloomFilterReader.readBloomFilter(meta);
+      if (bloomFilter != null && !bloomFilter.findHash(bloomFilter.hash(value))) {
+        return BLOCK_CANNOT_MATCH;
+      }
+    } catch (RuntimeException e) {
+      LOG.warn(e.getMessage());
+      return BLOCK_MIGHT_MATCH;
+    }
+
     return BLOCK_MIGHT_MATCH;
   }
 
@@ -171,6 +192,16 @@ public class BloomFilterImpl implements FilterPredicate.Visitor<Boolean> {
 
   @Override
   public Boolean visit(Operators.Or or) {
+    return or.getLeft().accept(this) && or.getRight().accept(this);
+  }
+
+  @Override
+  public <T extends Comparable<T>> Boolean visit(Operators.ContainsAnd<T> and) {
+    return and.getLeft().accept(this) || and.getRight().accept(this);
+  }
+
+  @Override
+  public <T extends Comparable<T>> Boolean visit(Operators.ContainsOr<T> or) {
     return or.getLeft().accept(this) && or.getRight().accept(this);
   }
 

@@ -21,6 +21,9 @@ package org.apache.parquet.filter2.predicate;
 import static org.apache.parquet.Preconditions.checkArgument;
 
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
@@ -40,7 +43,9 @@ public final class Operators {
 
     protected Column(ColumnPath columnPath, Class<T> columnType) {
       this.columnPath = Objects.requireNonNull(columnPath, "columnPath cannot be null");
+      ;
       this.columnType = Objects.requireNonNull(columnType, "columnType cannot be null");
+      ;
     }
 
     public Class<T> getColumnType() {
@@ -76,8 +81,6 @@ public final class Operators {
       return result;
     }
   }
-
-  public static interface SupportsContains {}
 
   public static interface SupportsEqNotEq {} // marker for columns that can be used with eq() and notEq()
 
@@ -117,12 +120,6 @@ public final class Operators {
   public static final class BinaryColumn extends Column<Binary> implements SupportsLtGt {
     BinaryColumn(ColumnPath columnPath) {
       super(columnPath, Binary.class);
-    }
-  }
-
-  public static final class ArrayColumn<T extends Comparable<T>> extends Column<T> implements SupportsContains {
-    ArrayColumn(Column<T> elementColumn) {
-      super(elementColumn.getColumnPath(), elementColumn.getColumnType());
     }
   }
 
@@ -321,47 +318,136 @@ public final class Operators {
     }
   }
 
-  public abstract static class ArrayContainsFilterPredicate<T extends Comparable<T>>
-      implements FilterPredicate, Serializable {
-    private final Column<T> elementColumn;
-    private final T value;
+  public abstract static class ContainsPredicate<T extends Comparable<T>> implements FilterPredicate, Serializable {
+    private final Column<T> column;
 
-    protected ArrayContainsFilterPredicate(Column<T> elementColumn, T value) {
-      this.elementColumn = Objects.requireNonNull(elementColumn, "elementColumn cannot be null");
-      this.value = value;
+    protected ContainsPredicate(Column<T> column) {
+      this.column = Objects.requireNonNull(column, "column cannot be null");
     }
 
     public Column<T> getColumn() {
-      return elementColumn;
+      return column;
     }
 
-    public T getValue() {
-      return value;
+    @Override
+    public <R> R accept(Visitor<R> visitor) {
+      return null;
+    }
+  }
+
+  abstract static class ContainsComposedPredicate<T extends Comparable<T>> extends ContainsPredicate<T> {
+    private final ContainsPredicate<T> left;
+    private final ContainsPredicate<T> right;
+
+    ContainsComposedPredicate(ContainsPredicate<T> left, ContainsPredicate<T> right) {
+      super(Objects.requireNonNull(left, "left predicate cannot be null").getColumn());
+
+      if (!left.getColumn()
+          .columnPath
+          .toDotString()
+          .equals(Objects.requireNonNull(right, "right predicate cannot be null")
+              .getColumn()
+              .columnPath
+              .toDotString())) {
+        throw new IllegalArgumentException("Composed contains() predicates must use the same column");
+      }
+
+      this.left = left;
+      this.right = right;
+    }
+
+    public List<ContainsColumnPredicate<T>> getComponentPredicates() {
+      final List<ContainsColumnPredicate<T>> components = new ArrayList<>();
+      if (left instanceof ContainsComposedPredicate) {
+        components.addAll(((ContainsComposedPredicate<T>) left).getComponentPredicates());
+      } else {
+        components.add((ContainsColumnPredicate<T>) left);
+      }
+
+      if (right instanceof ContainsComposedPredicate) {
+        components.addAll(((ContainsComposedPredicate<T>) right).getComponentPredicates());
+      } else {
+        components.add((ContainsColumnPredicate<T>) right);
+      }
+
+      return components;
+    }
+
+    public ContainsPredicate<T> getLeft() {
+      return left;
+    }
+
+    public ContainsPredicate<T> getRight() {
+      return right;
     }
 
     @Override
     public String toString() {
       String name = getClass().getSimpleName().toLowerCase(Locale.ENGLISH);
-      return name + "(" + elementColumn.getColumnPath().toDotString() + ", " + value + ")";
+      return name + "(" + getLeft() + "," + getRight() + ")";
     }
 
     @Override
     public boolean equals(Object o) {
       if (this == o) return true;
       if (o == null || getClass() != o.getClass()) return false;
-      ArrayContainsFilterPredicate<?> that = (ArrayContainsFilterPredicate<?>) o;
-      return elementColumn.equals(that.elementColumn) && value.equals(that.value);
+      ContainsComposedPredicate<T> that = (ContainsComposedPredicate<T>) o;
+      return getLeft().equals(that.getLeft()) && getRight().equals(that.getRight());
     }
 
     @Override
     public int hashCode() {
-      return Objects.hash(elementColumn, value);
+      return Objects.hash(getClass().getName(), getLeft(), getRight());
     }
   }
 
-  public static final class Contains<T extends Comparable<T>> extends ArrayContainsFilterPredicate<T> {
-    public Contains(Column<T> column, T value) {
+  public abstract static class ContainsColumnPredicate<T extends Comparable<T>> extends ContainsPredicate<T> {
+
+    private final T value;
+
+    ContainsColumnPredicate(Column<T> column, T value) {
+      super(column);
+      this.value = value;
+    }
+
+    public T getValue() {
+      return value;
+    }
+
+    /**
+     * Given a type comparator and proposed record value, return whether the value should be accepted
+     * by the predicate or not.
+     */
+    public abstract <R> boolean accept(Comparator<R> comparator, R newValue);
+
+    @Override
+    public String toString() {
+      String name = getClass().getSimpleName().toLowerCase(Locale.ENGLISH);
+      return name + "(" + getColumn() + "," + value + ")";
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
+      ContainsColumnPredicate<T> that = (ContainsColumnPredicate<T>) o;
+      return getColumn().equals(that.getColumn()) && value.equals(that.value);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(getClass().getName(), getColumn(), value);
+    }
+  }
+
+  public static class ContainsEq<T extends Comparable<T>> extends ContainsColumnPredicate<T> {
+    ContainsEq(Column<T> column, T value) {
       super(column, value);
+    }
+
+    @Override
+    public <R> boolean accept(Comparator<R> comparator, R newValue) {
+      return comparator.compare((R) getValue(), newValue) == 0;
     }
 
     @Override
@@ -370,9 +456,36 @@ public final class Operators {
     }
   }
 
-  public static final class DoesNotContain<T extends Comparable<T>> extends ArrayContainsFilterPredicate<T> {
-    public DoesNotContain(Column<T> column, T value) {
+  public static class ContainsNotEq<T extends Comparable<T>> extends ContainsColumnPredicate<T> {
+    ContainsNotEq(Column<T> column, T value) {
       super(column, value);
+    }
+
+    @Override
+    public <R> boolean accept(Comparator<R> comparator, R newValue) {
+      return comparator.compare((R) getValue(), newValue) != 0;
+    }
+
+    @Override
+    public <R> R accept(Visitor<R> visitor) {
+      return visitor.visit(this);
+    }
+  }
+
+  public static final class ContainsAnd<T extends Comparable<T>> extends ContainsComposedPredicate<T> {
+    ContainsAnd(ContainsPredicate<T> left, ContainsPredicate<T> right) {
+      super(left, right);
+    }
+
+    @Override
+    public <R> R accept(Visitor<R> visitor) {
+      return visitor.visit(this);
+    }
+  }
+
+  public static final class ContainsOr<T extends Comparable<T>> extends ContainsComposedPredicate<T> {
+    ContainsOr(ContainsPredicate<T> left, ContainsPredicate<T> right) {
+      super(left, right);
     }
 
     @Override

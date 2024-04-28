@@ -23,11 +23,12 @@ import java.util.Map;
 import java.util.Objects;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.filter2.predicate.Operators.And;
-import org.apache.parquet.filter2.predicate.Operators.ArrayContainsFilterPredicate;
 import org.apache.parquet.filter2.predicate.Operators.Column;
 import org.apache.parquet.filter2.predicate.Operators.ColumnFilterPredicate;
-import org.apache.parquet.filter2.predicate.Operators.Contains;
-import org.apache.parquet.filter2.predicate.Operators.DoesNotContain;
+import org.apache.parquet.filter2.predicate.Operators.ContainsAnd;
+import org.apache.parquet.filter2.predicate.Operators.ContainsEq;
+import org.apache.parquet.filter2.predicate.Operators.ContainsNotEq;
+import org.apache.parquet.filter2.predicate.Operators.ContainsOr;
 import org.apache.parquet.filter2.predicate.Operators.Eq;
 import org.apache.parquet.filter2.predicate.Operators.Gt;
 import org.apache.parquet.filter2.predicate.Operators.GtEq;
@@ -132,14 +133,28 @@ public class SchemaCompatibilityValidator implements FilterPredicate.Visitor<Voi
   }
 
   @Override
-  public <T extends Comparable<T>> Void visit(Contains<T> pred) {
+  public <T extends Comparable<T>> Void visit(ContainsEq<T> pred) {
     validateColumnFilterPredicate(pred);
     return null;
   }
 
   @Override
-  public <T extends Comparable<T>> Void visit(DoesNotContain<T> pred) {
+  public <T extends Comparable<T>> Void visit(ContainsNotEq<T> pred) {
     validateColumnFilterPredicate(pred);
+    return null;
+  }
+
+  @Override
+  public <T extends Comparable<T>> Void visit(ContainsAnd<T> and) {
+    and.getLeft().accept(this);
+    and.getRight().accept(this);
+    return null;
+  }
+
+  @Override
+  public <T extends Comparable<T>> Void visit(ContainsOr<T> or) {
+    or.getLeft().accept(this);
+    or.getRight().accept(this);
     return null;
   }
 
@@ -182,7 +197,7 @@ public class SchemaCompatibilityValidator implements FilterPredicate.Visitor<Voi
     validateColumn(pred.getColumn());
   }
 
-  private <T extends Comparable<T>> void validateColumnFilterPredicate(ArrayContainsFilterPredicate<T> pred) {
+  private <T extends Comparable<T>> void validateColumnFilterPredicate(Operators.ContainsPredicate<T> pred) {
     validateColumn(pred.getColumn(), true);
   }
 

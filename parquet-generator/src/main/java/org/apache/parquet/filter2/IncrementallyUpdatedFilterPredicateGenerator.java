@@ -67,11 +67,14 @@ public class IncrementallyUpdatedFilterPredicateGenerator {
   public void run() throws IOException {
     add("package org.apache.parquet.filter2.recordlevel;\n" + "\n"
         + "import java.util.List;\n"
+        + "import java.util.Iterator;\n"
         + "import java.util.Set;\n"
         + "\n"
         + "import org.apache.parquet.hadoop.metadata.ColumnPath;\n"
-        + "import org.apache.parquet.filter2.predicate.Operators.Contains;\n"
-        + "import org.apache.parquet.filter2.predicate.Operators.DoesNotContain;\n"
+        + "import org.apache.parquet.filter2.predicate.Operators.ContainsColumnPredicate;\n"
+        + "import org.apache.parquet.filter2.predicate.Operators.ContainsEq;\n"
+        + "import org.apache.parquet.filter2.predicate.Operators.ContainsAnd;\n"
+        + "import org.apache.parquet.filter2.predicate.Operators.ContainsOr;\n"
         + "import org.apache.parquet.filter2.predicate.Operators.Eq;\n"
         + "import org.apache.parquet.filter2.predicate.Operators.Gt;\n"
         + "import org.apache.parquet.filter2.predicate.Operators.GtEq;\n"
@@ -124,15 +127,23 @@ public class IncrementallyUpdatedFilterPredicateGenerator {
     }
     addVisitEnd();
 
-    addVisitBegin("Contains");
+    addVisitBegin("ContainsEq");
     for (TypeInfo info : TYPES) {
-      addContainsDoesNotContainCase(info, true);
+      addContainsEqDoesNotContainCase(info, true);
     }
     addVisitEnd();
 
-    addVisitBegin("DoesNotContain");
+    addVisitBegin("ContainsAnd");
+    add("    final List<ContainsColumnPredicate<T>> componentPredicates = pred.getComponentPredicates();\n");
     for (TypeInfo info : TYPES) {
-      addContainsDoesNotContainCase(info, false);
+      addContainsComposedCase(info, "&&");
+    }
+    addVisitEnd();
+
+    addVisitBegin("ContainsOr");
+    add("    final List<ContainsColumnPredicate<T>> componentPredicates = pred.getComponentPredicates();\n");
+    for (TypeInfo info : TYPES) {
+      addContainsComposedCase(info, "||");
     }
     addVisitEnd();
 
@@ -318,7 +329,7 @@ public class IncrementallyUpdatedFilterPredicateGenerator {
         + "\n");
   }
 
-  private void addContainsDoesNotContainCase(TypeInfo info, boolean isContains) throws IOException {
+  private void addContainsEqDoesNotContainCase(TypeInfo info, boolean isContains) throws IOException {
     add("    if (clazz.equals(" + info.className + ".class)) {\n" + "      if (pred.getValue() == null) {\n"
         + "        valueInspector = new ValueInspector() {\n"
         + "          @Override\n"
@@ -350,6 +361,40 @@ public class IncrementallyUpdatedFilterPredicateGenerator {
         + isContains + ");\n" + "            }\n");
 
     add("          }\n" + "        };\n" + "      }\n" + "    }\n\n");
+  }
+
+  private void addContainsComposedCase(TypeInfo info, String operator) throws IOException {
+    add("    if (clazz.equals(" + info.className + ".class)) {\n"
+        + "        final PrimitiveComparator<" + info.className
+        + "> comparator = getComparator(columnPath);\n\n"
+        + "        valueInspector = new ValueInspector() {\n"
+        + "          @Override\n"
+        + "          public void updateNull() {\n"
+        + "            setResult(false);\n"
+        + "          }\n"
+        + "\n"
+        + "          @Override\n"
+        + "          public void update("
+        + info.primitiveName + " value) {\n");
+
+    add("            final Iterator<ContainsColumnPredicate<T>> it = componentPredicates.iterator();\n"
+        + "            while (it.hasNext()) {\n"
+        + "              if (it.next().accept(comparator, value)) {\n");
+    switch (operator) {
+      case "&&":
+        add("                it.remove();\n"
+            + "                // If all predicates have been matched, set result to True\n"
+            + "                if (!it.hasNext()) {\n"
+            + "                  setResult(true);\n"
+            + "                }\n");
+        break;
+      case "||":
+        add("                setResult(true);\n");
+        break;
+      default:
+        throw new UnsupportedOperationException("Unsupported Contains operator " + operator);
+    }
+    add("              }\n" + "            }\n" + "        }\n" + "      };\n" + "    }\n\n");
   }
 
   private void addUdpCase(TypeInfo info, boolean invert) throws IOException {

@@ -19,8 +19,10 @@
 package org.apache.parquet.filter2.predicate;
 
 import org.apache.parquet.filter2.predicate.Operators.And;
-import org.apache.parquet.filter2.predicate.Operators.Contains;
-import org.apache.parquet.filter2.predicate.Operators.DoesNotContain;
+import org.apache.parquet.filter2.predicate.Operators.ContainsAnd;
+import org.apache.parquet.filter2.predicate.Operators.ContainsEq;
+import org.apache.parquet.filter2.predicate.Operators.ContainsNotEq;
+import org.apache.parquet.filter2.predicate.Operators.ContainsOr;
 import org.apache.parquet.filter2.predicate.Operators.Eq;
 import org.apache.parquet.filter2.predicate.Operators.Gt;
 import org.apache.parquet.filter2.predicate.Operators.GtEq;
@@ -86,12 +88,20 @@ public interface FilterPredicate {
       throw new UnsupportedOperationException("visit NotIn is not supported.");
     }
 
-    default <T extends Comparable<T>> R visit(Contains<T> contains) {
-      throw new UnsupportedOperationException("visit Contains is not supported.");
+    default <T extends Comparable<T>> R visit(ContainsEq<T> containsEq) {
+      throw new UnsupportedOperationException("visit ContainsEq is not supported.");
     }
 
-    default <T extends Comparable<T>> R visit(DoesNotContain<T> doesNotContain) {
-      throw new UnsupportedOperationException("visit DoesNotContain is not supported.");
+    default <T extends Comparable<T>> R visit(ContainsNotEq<T> containsNotEq) {
+      throw new UnsupportedOperationException("visit ContainsNotEq is not supported.");
+    }
+
+    default <T extends Comparable<T>> R visit(ContainsAnd<T> containsAnd) {
+      throw new UnsupportedOperationException("visit ContainsAnd is not supported.");
+    }
+
+    default <T extends Comparable<T>> R visit(ContainsOr<T> containsOr) {
+      throw new UnsupportedOperationException("visit ContainsOr is not supported.");
     }
 
     R visit(And and);

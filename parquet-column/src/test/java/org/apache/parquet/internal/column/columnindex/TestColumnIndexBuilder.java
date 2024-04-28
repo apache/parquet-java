@@ -19,11 +19,9 @@
 package org.apache.parquet.internal.column.columnindex;
 
 import static java.util.Arrays.asList;
-import static org.apache.parquet.filter2.predicate.FilterApi.arrayColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.binaryColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.booleanColumn;
-import static org.apache.parquet.filter2.predicate.FilterApi.contains;
-import static org.apache.parquet.filter2.predicate.FilterApi.doesNotContain;
+import static org.apache.parquet.filter2.predicate.FilterApi.containsEq;
 import static org.apache.parquet.filter2.predicate.FilterApi.doubleColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.eq;
 import static org.apache.parquet.filter2.predicate.FilterApi.floatColumn;
@@ -289,9 +287,7 @@ public class TestColumnIndexBuilder {
     set1.add(Binary.fromString("0.0"));
     assertCorrectFiltering(columnIndex, in(col, set1), 1, 4);
     assertCorrectFiltering(columnIndex, notIn(col, set1), 0, 1, 2, 3, 4, 5, 6, 7);
-    assertCorrectFiltering(columnIndex, contains(arrayColumn(col), decimalBinary("0.0")), 1, 4);
-    assertCorrectFiltering(
-        columnIndex, doesNotContain(arrayColumn(col), decimalBinary("0.0")), 0, 1, 2, 3, 4, 5, 6, 7);
+    assertCorrectFiltering(columnIndex, containsEq(col, decimalBinary("0.0")), 1, 4);
     set1.add(null);
     assertCorrectFiltering(columnIndex, in(col, set1), 0, 1, 2, 3, 4, 5, 6);
     assertCorrectFiltering(columnIndex, notIn(col, set1), 0, 1, 2, 3, 4, 5, 6, 7);

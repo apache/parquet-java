@@ -41,8 +41,7 @@ import org.apache.parquet.column.MinMax;
 import org.apache.parquet.column.statistics.SizeStatistics;
 import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.filter2.predicate.Operators.And;
-import org.apache.parquet.filter2.predicate.Operators.Contains;
-import org.apache.parquet.filter2.predicate.Operators.DoesNotContain;
+import org.apache.parquet.filter2.predicate.Operators.ContainsEq;
 import org.apache.parquet.filter2.predicate.Operators.Eq;
 import org.apache.parquet.filter2.predicate.Operators.Gt;
 import org.apache.parquet.filter2.predicate.Operators.GtEq;
@@ -371,8 +370,8 @@ public abstract class ColumnIndexBuilder {
     }
 
     @Override
-    public <T extends Comparable<T>> PrimitiveIterator.OfInt visit(Contains<T> contains) {
-      T value = contains.getValue();
+    public <T extends Comparable<T>> PrimitiveIterator.OfInt visit(ContainsEq<T> containsEq) {
+      T value = containsEq.getValue();
       IntSet matchingIndexesForNull = new IntOpenHashSet(); // for null
       if (value == null) {
         if (nullCounts == null) {
@@ -401,27 +400,6 @@ public abstract class ColumnIndexBuilder {
       IntSet matchingIndex = matchingIndexesLessThanMax;
       matchingIndex.addAll(matchingIndexesForNull); // add the matching null pages
       return IndexIterator.filter(getPageCount(), matchingIndex::contains);
-    }
-
-    @Override
-    public <T extends Comparable<T>> PrimitiveIterator.OfInt visit(DoesNotContain<T> doesNotContain) {
-      T value = doesNotContain.getValue();
-      if (value == null) {
-        return IndexIterator.filter(getPageCount(), pageIndex -> !nullPages[pageIndex]);
-      }
-
-      if (nullCounts == null) {
-        // Nulls match so if we don't have null related statistics we have to return all pages
-        return IndexIterator.all(getPageCount());
-      }
-
-      // Merging value filtering with pages containing nulls
-      IntSet matchingIndexes = new IntOpenHashSet();
-      getBoundaryOrder()
-          .notEq(createValueComparator(value))
-          .forEachRemaining((int index) -> matchingIndexes.add(index));
-      return IndexIterator.filter(
-          getPageCount(), pageIndex -> nullCounts[pageIndex] > 0 || matchingIndexes.contains(pageIndex));
     }
 
     @Override

@@ -23,10 +23,10 @@ import static org.apache.parquet.column.ParquetProperties.WriterVersion.PARQUET_
 import static org.apache.parquet.column.ParquetProperties.WriterVersion.PARQUET_2_0;
 import static org.apache.parquet.filter2.dictionarylevel.DictionaryFilter.canDrop;
 import static org.apache.parquet.filter2.predicate.FilterApi.and;
-import static org.apache.parquet.filter2.predicate.FilterApi.arrayColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.binaryColumn;
-import static org.apache.parquet.filter2.predicate.FilterApi.contains;
-import static org.apache.parquet.filter2.predicate.FilterApi.doesNotContain;
+import static org.apache.parquet.filter2.predicate.FilterApi.containsAnd;
+import static org.apache.parquet.filter2.predicate.FilterApi.containsEq;
+import static org.apache.parquet.filter2.predicate.FilterApi.containsOr;
 import static org.apache.parquet.filter2.predicate.FilterApi.doubleColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.eq;
 import static org.apache.parquet.filter2.predicate.FilterApi.floatColumn;
@@ -72,7 +72,7 @@ import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroupFactory;
 import org.apache.parquet.filter2.predicate.FilterPredicate;
 import org.apache.parquet.filter2.predicate.LogicalInverseRewriter;
-import org.apache.parquet.filter2.predicate.Operators.ArrayColumn;
+import org.apache.parquet.filter2.predicate.Operators;
 import org.apache.parquet.filter2.predicate.Operators.BinaryColumn;
 import org.apache.parquet.filter2.predicate.Operators.DoubleColumn;
 import org.apache.parquet.filter2.predicate.Operators.FloatColumn;
@@ -831,18 +831,40 @@ public class DictionaryFilterTest {
   }
 
   @Test
-  public void testContainsBinary() throws Exception {
-    ArrayColumn b = arrayColumn(binaryColumn("repeated_binary_field"));
+  public void testContainsAnd() throws Exception {
+    BinaryColumn col = binaryColumn("binary_field");
 
-    FilterPredicate predContains1 = contains(b, Binary.fromString("b"));
-    FilterPredicate predDoesNotContain1 = doesNotContain(b, Binary.fromString("B"));
-    assertFalse("Should not drop block", canDrop(predContains1, ccmd, dictionaries));
-    assertFalse("Should not drop block", canDrop(predDoesNotContain1, ccmd, dictionaries));
+    // both evaluate to false (no upper-case letters are in the dictionary)
+    Operators.ContainsPredicate<Binary> B = containsEq(col, Binary.fromString("B"));
+    Operators.ContainsPredicate<Binary> C = containsEq(col, Binary.fromString("C"));
 
-    FilterPredicate predContains2 = contains(b, Binary.fromString("B"));
-    FilterPredicate predDoesNotContain2 = doesNotContain(b, Binary.fromString("b"));
-    assertTrue("Should drop block", canDrop(predContains2, ccmd, dictionaries));
-    assertTrue("Should drop block", canDrop(predDoesNotContain2, ccmd, dictionaries));
+    // both evaluate to true (all lower-case letters are in the dictionary)
+    Operators.ContainsPredicate<Binary> x = containsEq(col, Binary.fromString("x"));
+    Operators.ContainsPredicate<Binary> y = containsEq(col, Binary.fromString("y"));
+
+    assertTrue("Should drop when either predicate must be false", canDrop(containsAnd(B, y), ccmd, dictionaries));
+    assertTrue("Should drop when either predicate must be false", canDrop(containsAnd(x, C), ccmd, dictionaries));
+    assertTrue("Should drop when either predicate must be false", canDrop(containsAnd(B, C), ccmd, dictionaries));
+    assertFalse(
+        "Should not drop when either predicate could be true", canDrop(containsAnd(x, y), ccmd, dictionaries));
+  }
+
+  @Test
+  public void testContainsOr() throws Exception {
+    BinaryColumn col = binaryColumn("binary_field");
+
+    // both evaluate to false (no upper-case letters are in the dictionary)
+    Operators.ContainsPredicate<Binary> B = containsEq(col, Binary.fromString("B"));
+    Operators.ContainsPredicate<Binary> C = containsEq(col, Binary.fromString("C"));
+
+    // both evaluate to true (all lower-case letters are in the dictionary)
+    Operators.ContainsPredicate<Binary> x = containsEq(col, Binary.fromString("x"));
+    Operators.ContainsPredicate<Binary> y = containsEq(col, Binary.fromString("y"));
+
+    assertFalse("Should not drop when one predicate could be true", canDrop(containsOr(B, y), ccmd, dictionaries));
+    assertFalse("Should not drop when one predicate could be true", canDrop(containsOr(x, C), ccmd, dictionaries));
+    assertTrue("Should drop when both predicates must be false", canDrop(containsOr(B, C), ccmd, dictionaries));
+    assertFalse("Should not drop when one predicate could be true", canDrop(containsOr(x, y), ccmd, dictionaries));
   }
 
   private static final class InInt32UDP extends UserDefinedPredicate<Integer> implements Serializable {
