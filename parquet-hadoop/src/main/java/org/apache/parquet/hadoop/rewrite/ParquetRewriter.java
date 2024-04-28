@@ -276,9 +276,9 @@ public class ParquetRewriter implements Closeable {
   }
 
   public void processBlocks() throws IOException {
-    TransParquetFileReader readerR = inputFilesToJoin.peek();
-    IndexCache indexCacheR = null;
-    int blockIdxR = -1;
+    TransParquetFileReader readerJoin = inputFilesToJoin.peek();
+    IndexCache indexCacheJoin = null;
+    int blockIdxJoin = -1;
 
     while (!inputFiles.isEmpty()) {
       TransParquetFileReader reader = inputFiles.poll();
@@ -296,34 +296,35 @@ public class ParquetRewriter implements Closeable {
         Map<ColumnPath, ColumnChunkMetaData> pathToChunk =
             blockMetaData.getColumns().stream().collect(Collectors.toMap(x -> x.getPath(), x -> x));
 
-        if (readerR != null
-            && (blockIdxR == -1
-                || ++blockIdxR
-                    == readerR.getFooter().getBlocks().size())) {
-          blockIdxR = 0;
-          readerR = inputFilesToJoin.poll();
-          Set<ColumnPath> columnPathsR = readerR.getFileMetaData().getSchema().getColumns().stream()
+        if (readerJoin != null
+            && (blockIdxJoin == -1
+                || ++blockIdxJoin
+                    == readerJoin.getFooter().getBlocks().size())) {
+          blockIdxJoin = 0;
+          readerJoin = inputFilesToJoin.poll();
+          Set<ColumnPath> columnPathsJoin = readerJoin.getFileMetaData().getSchema().getColumns().stream()
               .map(x -> ColumnPath.get(x.getPath()))
               .collect(Collectors.toSet());
-          if (indexCacheR != null) {
-            indexCacheR.clean();
+          if (indexCacheJoin != null) {
+            indexCacheJoin.clean();
           }
-          indexCacheR = IndexCache.create(readerR, columnPathsR, indexCacheStrategy, true);
-          indexCacheR.setBlockMetadata(readerR.getFooter().getBlocks().get(blockIdxR));
+          indexCacheJoin = IndexCache.create(readerJoin, columnPathsJoin, indexCacheStrategy, true);
+          indexCacheJoin.setBlockMetadata(
+              readerJoin.getFooter().getBlocks().get(blockIdxJoin));
         } else {
-          blockIdxR++;
+          blockIdxJoin++;
         }
 
         for (int outColumnIdx = 0; outColumnIdx < outSchema.getColumns().size(); outColumnIdx++) {
           ColumnPath colPath = ColumnPath.get(
               outSchema.getColumns().get(outColumnIdx).getPath());
-          if (readerR != null) {
-            Optional<ColumnChunkMetaData> chunkR =
-                readerR.getFooter().getBlocks().get(blockIdxR).getColumns().stream()
+          if (readerJoin != null) {
+            Optional<ColumnChunkMetaData> chunkJoin =
+                readerJoin.getFooter().getBlocks().get(blockIdxJoin).getColumns().stream()
                     .filter(x -> x.getPath().equals(colPath))
                     .findFirst();
-            if (chunkR.isPresent() && (joinColumnsOverwrite || !columnPaths.contains(colPath))) {
-              processBlock(readerR, blockIdxR, outColumnIdx, indexCacheR, chunkR.get());
+            if (chunkJoin.isPresent() && (joinColumnsOverwrite || !columnPaths.contains(colPath))) {
+              processBlock(readerJoin, blockIdxJoin, outColumnIdx, indexCacheJoin, chunkJoin.get());
             } else {
               processBlock(reader, blockIdx, outColumnIdx, indexCache, pathToChunk.get(colPath));
             }
@@ -341,8 +342,6 @@ public class ParquetRewriter implements Closeable {
       LOG.info("Finish rewriting input file: {}", reader.getFile());
     }
   }
-
-  private void processBlocksFromReader(TransParquetFileReader reader) throws IOException {}
 
   private void processBlock(
       TransParquetFileReader reader,
