@@ -117,9 +117,9 @@ public class ParquetRewriterTest {
   @Parameterized.Parameters(name = "WriterVersion = {0}, IndexCacheStrategy = {1}, UsingHadoop = {2}")
   public static Object[][] parameters() {
     return new Object[][] {
-      //       {"v1", "NONE", true},
-      //       {"v1", "PREFETCH_BLOCK", true},
-      //       {"v2", "PREFETCH_BLOCK", true},
+      {"v1", "NONE", true},
+      {"v1", "PREFETCH_BLOCK", true},
+      {"v2", "PREFETCH_BLOCK", true},
       {"v2", "PREFETCH_BLOCK", false}
     };
   }
