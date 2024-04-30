@@ -1,5 +1,4 @@
-<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
   <parent>
@@ -10,7 +9,7 @@
 
   <groupId>org.apache.parquet</groupId>
   <artifactId>parquet</artifactId>
-  <version>1.14.0-SNAPSHOT</version>
+  <version>1.14.0</version>
   <packaging>pom</packaging>
 
   <name>Apache Parquet MR</name>
@@ -21,7 +20,7 @@
     <connection>scm:git:git@github.com:apache/parquet-mr.git</connection>
     <url>scm:git:git@github.com:apache/parquet-mr.git</url>
     <developerConnection>scm:git:git@github.com:apache/parquet-mr.git</developerConnection>
-    <tag>HEAD</tag>
+    <tag>apache-parquet-1.14.0-rc0</tag>
   </scm>
 
   <licenses>
@@ -523,13 +522,13 @@
             <excludes>
               <exclude>**/generated-sources/**</exclude>
             </excludes>
-            <toggleOffOn/>
-            <removeUnusedImports/>
-            <importOrder/>
-            <trimTrailingWhitespace/>
-            <palantirJavaFormat/>
-            <endWithNewline/>
-            <formatAnnotations/>
+            <toggleOffOn />
+            <removeUnusedImports />
+            <importOrder />
+            <trimTrailingWhitespace />
+            <palantirJavaFormat />
+            <endWithNewline />
+            <formatAnnotations />
             <indent>
               <tabs>true</tabs>
               <spacesPerTab>4</spacesPerTab>
