@@ -24,6 +24,7 @@ import java.util.Map;
 import java.util.Objects;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.conf.ParquetConfiguration;
+import org.apache.parquet.hadoop.util.ConfigurationUtil;
 import org.apache.parquet.io.api.RecordConsumer;
 import org.apache.parquet.schema.MessageType;
 
@@ -99,7 +100,9 @@ public abstract class WriteSupport<T> {
    *
    * @param configuration the job's configuration
    * @return the information needed to write the file
+   * @deprecated override {@link #init(ParquetConfiguration)} instead
    */
+  @Deprecated
   public abstract WriteContext init(Configuration configuration);
 
   /**
@@ -109,7 +112,7 @@ public abstract class WriteSupport<T> {
    * @return the information needed to write the file
    */
   public WriteContext init(ParquetConfiguration configuration) {
-    throw new UnsupportedOperationException("Override WriteSupport#init(ParquetConfiguration)");
+    return init(ConfigurationUtil.createHadoopConfiguration(configuration));
   }
 
   /**

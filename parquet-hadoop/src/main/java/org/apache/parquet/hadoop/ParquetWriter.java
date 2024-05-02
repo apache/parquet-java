@@ -495,7 +495,9 @@ public class ParquetWriter<T> implements Closeable {
     /**
      * @param conf a configuration
      * @return an appropriate WriteSupport for the object model.
+     * @deprecated Use {@link #getWriteSupport(ParquetConfiguration)} instead
      */
+    @Deprecated
     protected abstract WriteSupport<T> getWriteSupport(Configuration conf);
 
     /**
@@ -503,8 +505,7 @@ public class ParquetWriter<T> implements Closeable {
      * @return an appropriate WriteSupport for the object model.
      */
     protected WriteSupport<T> getWriteSupport(ParquetConfiguration conf) {
-      throw new UnsupportedOperationException(
-          "Override ParquetWriter$Builder#getWriteSupport(ParquetConfiguration)");
+      return getWriteSupport(ConfigurationUtil.createHadoopConfiguration(conf));
     }
 
     /**
