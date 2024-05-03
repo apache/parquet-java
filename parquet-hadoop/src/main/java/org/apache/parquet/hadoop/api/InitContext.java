@@ -79,7 +79,9 @@ public class InitContext {
 
   /**
    * @return the configuration for this job
+   * @deprecated Use {@link #getParquetConfiguration()} instead
    */
+  @Deprecated
   public Configuration getConfiguration() {
     return ConfigurationUtil.createHadoopConfiguration(configuration);
   }
