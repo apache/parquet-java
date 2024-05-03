@@ -22,7 +22,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.parquet.filter2.predicate.FilterApi.and;
 import static org.apache.parquet.filter2.predicate.FilterApi.binaryColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.booleanColumn;
-import static org.apache.parquet.filter2.predicate.FilterApi.containsEq;
+import static org.apache.parquet.filter2.predicate.FilterApi.contains;
 import static org.apache.parquet.filter2.predicate.FilterApi.doubleColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.eq;
 import static org.apache.parquet.filter2.predicate.FilterApi.gt;
@@ -392,7 +392,7 @@ public class TestColumnIndexFilter {
 
     assertRows(
         calculateRowRanges(
-            FilterCompat.get(containsEq(intColumn("column6"), 7)), STORE, paths, TOTAL_ROW_COUNT),
+            FilterCompat.get(contains(eq(intColumn("column6"), 7))), STORE, paths, TOTAL_ROW_COUNT),
         7,
         8,
         9,
@@ -400,6 +400,38 @@ public class TestColumnIndexFilter {
         11,
         12,
         13);
+    assertRows(
+        calculateRowRanges(
+            FilterCompat.get(
+                and(contains(eq(intColumn("column6"), 7)), contains(eq(intColumn("column6"), 10)))),
+            STORE,
+            paths,
+            TOTAL_ROW_COUNT),
+        9,
+        10,
+        11,
+        12,
+        13);
+    assertRows(
+        calculateRowRanges(
+            FilterCompat.get(
+                or(contains(eq(intColumn("column6"), 7)), contains(eq(intColumn("column6"), 20)))),
+            STORE,
+            paths,
+            TOTAL_ROW_COUNT),
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26);
     Set<Integer> set1 = new HashSet<>();
     set1.add(7);
     assertRows(

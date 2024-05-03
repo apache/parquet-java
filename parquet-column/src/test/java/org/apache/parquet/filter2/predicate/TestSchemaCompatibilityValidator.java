@@ -20,9 +20,7 @@ package org.apache.parquet.filter2.predicate;
 
 import static org.apache.parquet.filter2.predicate.FilterApi.and;
 import static org.apache.parquet.filter2.predicate.FilterApi.binaryColumn;
-import static org.apache.parquet.filter2.predicate.FilterApi.containsAnd;
-import static org.apache.parquet.filter2.predicate.FilterApi.containsEq;
-import static org.apache.parquet.filter2.predicate.FilterApi.containsOr;
+import static org.apache.parquet.filter2.predicate.FilterApi.contains;
 import static org.apache.parquet.filter2.predicate.FilterApi.eq;
 import static org.apache.parquet.filter2.predicate.FilterApi.gt;
 import static org.apache.parquet.filter2.predicate.FilterApi.intColumn;
@@ -143,9 +141,9 @@ public class TestSchemaCompatibilityValidator {
   @Test
   public void testRepeatedSupportedForContainsPredicates() {
     try {
-      validate(containsEq(lotsOfLongs, 10L), schema);
-      validate(containsAnd(containsEq(lotsOfLongs, 10L), containsEq(lotsOfLongs, 5l)), schema);
-      validate(containsOr(containsEq(lotsOfLongs, 10L), containsEq(lotsOfLongs, 5l)), schema);
+      validate(contains(eq(lotsOfLongs, 10L)), schema);
+      validate(and(contains(eq(lotsOfLongs, 10L)), contains(eq(lotsOfLongs, 5l))), schema);
+      validate(or(contains(eq(lotsOfLongs, 10L)), contains(eq(lotsOfLongs, 5l))), schema);
     } catch (IllegalArgumentException e) {
       fail("Valid repeated column predicates should not throw exceptions");
     }
@@ -154,7 +152,7 @@ public class TestSchemaCompatibilityValidator {
   @Test
   public void testNonRepeatedNotSupportedForContainsPredicates() {
     try {
-      validate(containsEq(longBar, 10L), schema);
+      validate(contains(eq(longBar, 10L)), schema);
       fail("Non-repeated field " + longBar + " should fail to validate a containsEq() predicate");
     } catch (IllegalArgumentException e) {
       assertEquals(

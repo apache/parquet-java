@@ -24,9 +24,7 @@ import static org.apache.parquet.column.ParquetProperties.WriterVersion.PARQUET_
 import static org.apache.parquet.filter2.dictionarylevel.DictionaryFilter.canDrop;
 import static org.apache.parquet.filter2.predicate.FilterApi.and;
 import static org.apache.parquet.filter2.predicate.FilterApi.binaryColumn;
-import static org.apache.parquet.filter2.predicate.FilterApi.containsAnd;
-import static org.apache.parquet.filter2.predicate.FilterApi.containsEq;
-import static org.apache.parquet.filter2.predicate.FilterApi.containsOr;
+import static org.apache.parquet.filter2.predicate.FilterApi.contains;
 import static org.apache.parquet.filter2.predicate.FilterApi.doubleColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.eq;
 import static org.apache.parquet.filter2.predicate.FilterApi.floatColumn;
@@ -835,18 +833,17 @@ public class DictionaryFilterTest {
     BinaryColumn col = binaryColumn("binary_field");
 
     // both evaluate to false (no upper-case letters are in the dictionary)
-    Operators.ContainsPredicate<Binary> B = containsEq(col, Binary.fromString("B"));
-    Operators.ContainsPredicate<Binary> C = containsEq(col, Binary.fromString("C"));
+    Operators.Contains<Binary> B = contains(eq(col, Binary.fromString("B")));
+    Operators.Contains<Binary> C = contains(eq(col, Binary.fromString("C")));
 
     // both evaluate to true (all lower-case letters are in the dictionary)
-    Operators.ContainsPredicate<Binary> x = containsEq(col, Binary.fromString("x"));
-    Operators.ContainsPredicate<Binary> y = containsEq(col, Binary.fromString("y"));
+    Operators.Contains<Binary> x = contains(eq(col, Binary.fromString("x")));
+    Operators.Contains<Binary> y = contains(eq(col, Binary.fromString("y")));
 
-    assertTrue("Should drop when either predicate must be false", canDrop(containsAnd(B, y), ccmd, dictionaries));
-    assertTrue("Should drop when either predicate must be false", canDrop(containsAnd(x, C), ccmd, dictionaries));
-    assertTrue("Should drop when either predicate must be false", canDrop(containsAnd(B, C), ccmd, dictionaries));
-    assertFalse(
-        "Should not drop when either predicate could be true", canDrop(containsAnd(x, y), ccmd, dictionaries));
+    assertTrue("Should drop when either predicate must be false", canDrop(and(B, y), ccmd, dictionaries));
+    assertTrue("Should drop when either predicate must be false", canDrop(and(x, C), ccmd, dictionaries));
+    assertTrue("Should drop when either predicate must be false", canDrop(and(B, C), ccmd, dictionaries));
+    assertFalse("Should not drop when either predicate could be true", canDrop(and(x, y), ccmd, dictionaries));
   }
 
   @Test
@@ -854,17 +851,17 @@ public class DictionaryFilterTest {
     BinaryColumn col = binaryColumn("binary_field");
 
     // both evaluate to false (no upper-case letters are in the dictionary)
-    Operators.ContainsPredicate<Binary> B = containsEq(col, Binary.fromString("B"));
-    Operators.ContainsPredicate<Binary> C = containsEq(col, Binary.fromString("C"));
+    Operators.Contains<Binary> B = contains(eq(col, Binary.fromString("B")));
+    Operators.Contains<Binary> C = contains(eq(col, Binary.fromString("C")));
 
     // both evaluate to true (all lower-case letters are in the dictionary)
-    Operators.ContainsPredicate<Binary> x = containsEq(col, Binary.fromString("x"));
-    Operators.ContainsPredicate<Binary> y = containsEq(col, Binary.fromString("y"));
+    Operators.Contains<Binary> x = contains(eq(col, Binary.fromString("x")));
+    Operators.Contains<Binary> y = contains(eq(col, Binary.fromString("y")));
 
-    assertFalse("Should not drop when one predicate could be true", canDrop(containsOr(B, y), ccmd, dictionaries));
-    assertFalse("Should not drop when one predicate could be true", canDrop(containsOr(x, C), ccmd, dictionaries));
-    assertTrue("Should drop when both predicates must be false", canDrop(containsOr(B, C), ccmd, dictionaries));
-    assertFalse("Should not drop when one predicate could be true", canDrop(containsOr(x, y), ccmd, dictionaries));
+    assertFalse("Should not drop when one predicate could be true", canDrop(or(B, y), ccmd, dictionaries));
+    assertFalse("Should not drop when one predicate could be true", canDrop(or(x, C), ccmd, dictionaries));
+    assertTrue("Should drop when both predicates must be false", canDrop(or(B, C), ccmd, dictionaries));
+    assertFalse("Should not drop when one predicate could be true", canDrop(or(x, y), ccmd, dictionaries));
   }
 
   private static final class InInt32UDP extends UserDefinedPredicate<Integer> implements Serializable {

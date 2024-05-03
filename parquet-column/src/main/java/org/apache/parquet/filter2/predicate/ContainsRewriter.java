@@ -36,91 +36,150 @@ import org.apache.parquet.filter2.predicate.Operators.Or;
 import org.apache.parquet.filter2.predicate.Operators.UserDefined;
 
 /**
- * Converts a {@link FilterPredicate} to its logical inverse.
- * The returned predicate should be equivalent to not(p), but without
- * the use of a not() operator.
- * <p>
- * See also {@link LogicalInverseRewriter}, which can remove the use
- * of all not() operators without inverting the overall predicate.
+ * Recursively rewrites Contains predicates composed using And or Or into a single Contains predicate
+ * containing all predicate assertions.
+ *
+ * This is a performance optimization, as all composed Contains sub-predicates must share the same column, and
+ * can therefore can be applied efficiently as a single predicate pass.
  */
-public final class LogicalInverter implements Visitor<FilterPredicate> {
-  private static final LogicalInverter INSTANCE = new LogicalInverter();
+public final class ContainsRewriter implements Visitor<FilterPredicate> {
+  private static final ContainsRewriter INSTANCE = new ContainsRewriter();
 
-  public static FilterPredicate invert(FilterPredicate pred) {
+  public static FilterPredicate rewrite(FilterPredicate pred) {
     Objects.requireNonNull(pred, "pred cannot be null");
     return pred.accept(INSTANCE);
   }
 
-  private LogicalInverter() {}
+  private ContainsRewriter() {}
 
   @Override
   public <T extends Comparable<T>> FilterPredicate visit(Eq<T> eq) {
-    return new NotEq<>(eq.getColumn(), eq.getValue());
+    return eq;
   }
 
   @Override
   public <T extends Comparable<T>> FilterPredicate visit(NotEq<T> notEq) {
-    return new Eq<>(notEq.getColumn(), notEq.getValue());
+    return notEq;
   }
 
   @Override
   public <T extends Comparable<T>> FilterPredicate visit(Lt<T> lt) {
-    return new GtEq<>(lt.getColumn(), lt.getValue());
+    return lt;
   }
 
   @Override
   public <T extends Comparable<T>> FilterPredicate visit(LtEq<T> ltEq) {
-    return new Gt<>(ltEq.getColumn(), ltEq.getValue());
+    return ltEq;
   }
 
   @Override
   public <T extends Comparable<T>> FilterPredicate visit(Gt<T> gt) {
-    return new LtEq<>(gt.getColumn(), gt.getValue());
+    return gt;
   }
 
   @Override
   public <T extends Comparable<T>> FilterPredicate visit(GtEq<T> gtEq) {
-    return new Lt<>(gtEq.getColumn(), gtEq.getValue());
+    return gtEq;
   }
 
   @Override
   public <T extends Comparable<T>> FilterPredicate visit(In<T> in) {
-    return new NotIn<>(in.getColumn(), in.getValues());
+    return in;
   }
 
   @Override
   public <T extends Comparable<T>> FilterPredicate visit(NotIn<T> notIn) {
-    return new In<>(notIn.getColumn(), notIn.getValues());
+    return notIn;
   }
 
   @Override
   public <T extends Comparable<T>> FilterPredicate visit(Contains<T> contains) {
-    throw new UnsupportedOperationException("Contains not supported yet");
+    return contains;
   }
 
   @Override
   public FilterPredicate visit(And and) {
-    return new Or(and.getLeft().accept(this), and.getRight().accept(this));
+    final FilterPredicate left;
+    if (and.getLeft() instanceof And) {
+      left = visit((And) and.getLeft());
+    } else if (and.getLeft() instanceof Or) {
+      left = visit((Or) and.getLeft());
+    } else if (and.getLeft() instanceof Contains) {
+      left = and.getLeft();
+    } else {
+      return and;
+    }
+
+    final FilterPredicate right;
+    if (and.getRight() instanceof And) {
+      right = visit((And) and.getRight());
+    } else if (and.getRight() instanceof Or) {
+      right = visit((Or) and.getRight());
+    } else if (and.getRight() instanceof Contains) {
+      right = and.getRight();
+    } else {
+      return and;
+    }
+
+    if (left instanceof Contains) {
+      if (!(right instanceof Contains)) {
+        throw new UnsupportedOperationException(
+            "Contains predicates cannot be composed with non-Contains predicates");
+      }
+      return ((Contains) left).and(right);
+    } else {
+      return and;
+    }
   }
 
   @Override
   public FilterPredicate visit(Or or) {
-    return new And(or.getLeft().accept(this), or.getRight().accept(this));
+    final FilterPredicate left;
+    if (or.getLeft() instanceof And) {
+      left = visit((And) or.getLeft());
+    } else if (or.getLeft() instanceof Or) {
+      left = visit((Or) or.getLeft());
+    } else if (or.getLeft() instanceof Contains) {
+      left = or.getLeft();
+    } else {
+      return or;
+    }
+
+    final FilterPredicate right;
+    if (or.getRight() instanceof And) {
+      right = visit((And) or.getRight());
+    } else if (or.getRight() instanceof Or) {
+      right = visit((Or) or.getRight());
+    } else if (or.getRight() instanceof Contains) {
+      right = or.getRight();
+    } else {
+      return or;
+    }
+
+    if (left instanceof Contains) {
+      if (!(right instanceof Contains)) {
+        throw new UnsupportedOperationException(
+            "Contains predicates cannot be composed with non-Contains predicates");
+      }
+      return ((Contains) left).or(right);
+    } else {
+      return or;
+    }
   }
 
   @Override
   public FilterPredicate visit(Not not) {
-    return not.getPredicate();
+    return not;
   }
 
   @Override
   public <T extends Comparable<T>, U extends UserDefinedPredicate<T>> FilterPredicate visit(UserDefined<T, U> udp) {
-    return new LogicalNotUserDefined<>(udp);
+    return udp;
   }
 
   @Override
   public <T extends Comparable<T>, U extends UserDefinedPredicate<T>> FilterPredicate visit(
       LogicalNotUserDefined<T, U> udp) {
-    return udp.getUserDefined();
+    return udp;
   }
 }

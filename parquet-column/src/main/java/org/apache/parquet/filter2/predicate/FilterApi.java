@@ -24,10 +24,7 @@ import org.apache.parquet.filter2.predicate.Operators.And;
 import org.apache.parquet.filter2.predicate.Operators.BinaryColumn;
 import org.apache.parquet.filter2.predicate.Operators.BooleanColumn;
 import org.apache.parquet.filter2.predicate.Operators.Column;
-import org.apache.parquet.filter2.predicate.Operators.ContainsAnd;
-import org.apache.parquet.filter2.predicate.Operators.ContainsEq;
-import org.apache.parquet.filter2.predicate.Operators.ContainsOr;
-import org.apache.parquet.filter2.predicate.Operators.ContainsPredicate;
+import org.apache.parquet.filter2.predicate.Operators.Contains;
 import org.apache.parquet.filter2.predicate.Operators.DoubleColumn;
 import org.apache.parquet.filter2.predicate.Operators.Eq;
 import org.apache.parquet.filter2.predicate.Operators.FloatColumn;
@@ -42,6 +39,7 @@ import org.apache.parquet.filter2.predicate.Operators.Not;
 import org.apache.parquet.filter2.predicate.Operators.NotEq;
 import org.apache.parquet.filter2.predicate.Operators.NotIn;
 import org.apache.parquet.filter2.predicate.Operators.Or;
+import org.apache.parquet.filter2.predicate.Operators.SupportsContains;
 import org.apache.parquet.filter2.predicate.Operators.SupportsEqNotEq;
 import org.apache.parquet.filter2.predicate.Operators.SupportsLtGt;
 import org.apache.parquet.filter2.predicate.Operators.UserDefined;
@@ -261,18 +259,9 @@ public final class FilterApi {
     return new NotIn<>(column, values);
   }
 
-  public static <T extends Comparable<T>, C extends Column<T>> ContainsEq<T> containsEq(C column, T value) {
-    return new ContainsEq<>(column, value);
-  }
-
-  public static <T extends Comparable<T>, C extends Column<T>> ContainsAnd<T> containsAnd(
-      ContainsPredicate<T> left, ContainsPredicate<T> right) {
-    return new ContainsAnd<>(left, right);
-  }
-
-  public static <T extends Comparable<T>, C extends Column<T>> ContainsOr<T> containsOr(
-      ContainsPredicate<T> left, ContainsPredicate<T> right) {
-    return new ContainsOr<>(left, right);
+  public static <T extends Comparable<T>, C extends Operators.ColumnFilterPredicate<T> & SupportsContains>
+      Contains<T> contains(C pred) {
+    return Contains.of(pred);
   }
 
   /**

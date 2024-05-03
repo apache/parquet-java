@@ -41,7 +41,7 @@ import org.apache.parquet.column.MinMax;
 import org.apache.parquet.column.statistics.SizeStatistics;
 import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.filter2.predicate.Operators.And;
-import org.apache.parquet.filter2.predicate.Operators.ContainsEq;
+import org.apache.parquet.filter2.predicate.Operators.Contains;
 import org.apache.parquet.filter2.predicate.Operators.Eq;
 import org.apache.parquet.filter2.predicate.Operators.Gt;
 import org.apache.parquet.filter2.predicate.Operators.GtEq;
@@ -370,36 +370,17 @@ public abstract class ColumnIndexBuilder {
     }
 
     @Override
-    public <T extends Comparable<T>> PrimitiveIterator.OfInt visit(ContainsEq<T> containsEq) {
-      T value = containsEq.getValue();
-      IntSet matchingIndexesForNull = new IntOpenHashSet(); // for null
-      if (value == null) {
-        if (nullCounts == null) {
-          // Searching for nulls so if we don't have null related statistics we have to return all pages
-          return IndexIterator.all(getPageCount());
-        } else {
-          for (int i = 0; i < nullCounts.length; i++) {
-            if (nullCounts[i] > 0) {
-              matchingIndexesForNull.add(i);
-            }
-          }
-          return IndexIterator.filter(getPageCount(), matchingIndexesForNull::contains);
-        }
-      }
-      IntSet matchingIndexesLessThanMax = new IntOpenHashSet();
-      IntSet matchingIndexesGreaterThanMin = new IntOpenHashSet();
-      ValueComparator valueComparator = createValueComparator(value);
-
-      getBoundaryOrder()
-          .ltEq(valueComparator)
-          .forEachRemaining((int index) -> matchingIndexesLessThanMax.add(index));
-      getBoundaryOrder()
-          .gtEq(valueComparator)
-          .forEachRemaining((int index) -> matchingIndexesGreaterThanMin.add(index));
-      matchingIndexesLessThanMax.retainAll(matchingIndexesGreaterThanMin);
-      IntSet matchingIndex = matchingIndexesLessThanMax;
-      matchingIndex.addAll(matchingIndexesForNull); // add the matching null pages
-      return IndexIterator.filter(getPageCount(), matchingIndex::contains);
+    public <T extends Comparable<T>> PrimitiveIterator.OfInt visit(Contains<T> contains) {
+      return contains.filter(
+          this,
+          (l, r) -> {
+            throw new UnsupportedOperationException(
+                "Contains AND predicate cannot be used on column index directly");
+          },
+          (l, r) -> {
+            throw new UnsupportedOperationException(
+                "Contains OR predicate cannot be used on column index directly");
+          });
     }
 
     @Override

@@ -21,12 +21,10 @@ package org.apache.parquet.filter2.predicate;
 import static org.apache.parquet.Preconditions.checkArgument;
 
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.BiFunction;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.io.api.Binary;
 
@@ -86,6 +84,8 @@ public final class Operators {
 
   public static interface SupportsLtGt
       extends SupportsEqNotEq {} // marker for columns that can be used with lt(), ltEq(), gt(), gtEq()
+
+  public static interface SupportsContains {}
 
   public static final class IntColumn extends Column<Integer> implements SupportsLtGt {
     IntColumn(ColumnPath columnPath) {
@@ -172,7 +172,7 @@ public final class Operators {
     }
   }
 
-  public static final class Eq<T extends Comparable<T>> extends ColumnFilterPredicate<T> {
+  public static final class Eq<T extends Comparable<T>> extends ColumnFilterPredicate<T> implements SupportsContains {
 
     // value can be null
     public Eq(Column<T> column, T value) {
@@ -318,11 +318,16 @@ public final class Operators {
     }
   }
 
-  public abstract static class ContainsPredicate<T extends Comparable<T>> implements FilterPredicate, Serializable {
+  public abstract static class Contains<T extends Comparable<T>> implements FilterPredicate, Serializable {
     private final Column<T> column;
 
-    protected ContainsPredicate(Column<T> column) {
+    protected Contains(Column<T> column) {
       this.column = Objects.requireNonNull(column, "column cannot be null");
+    }
+
+    static <ColumnT extends Comparable<ColumnT>, C extends ColumnFilterPredicate<ColumnT> & SupportsContains>
+        Contains<ColumnT> of(C pred) {
+      return new ContainsColumnPredicate<>(pred);
     }
 
     public Column<T> getColumn() {
@@ -331,15 +336,37 @@ public final class Operators {
 
     @Override
     public <R> R accept(Visitor<R> visitor) {
-      return null;
+      return visitor.visit(this);
+    }
+
+    /**
+     * Applies a filtering Vistitor to the Contains predicate, traversing any composed And or Or clauses,
+     * and finally delegating to the underlying ColumnFilterPredicate.
+     */
+    public abstract <R> R filter(
+        Visitor<R> visitor, BiFunction<R, R, R> andBehavior, BiFunction<R, R, R> orBehavior);
+
+    Contains<T> and(FilterPredicate other) {
+      return new ContainsComposedPredicate<>(this, (Contains<T>) other, ContainsComposedPredicate.Combinator.AND);
+    }
+
+    Contains<T> or(FilterPredicate other) {
+      return new ContainsComposedPredicate<>(this, (Contains<T>) other, ContainsComposedPredicate.Combinator.OR);
     }
   }
 
-  abstract static class ContainsComposedPredicate<T extends Comparable<T>> extends ContainsPredicate<T> {
-    private final ContainsPredicate<T> left;
-    private final ContainsPredicate<T> right;
+  private static class ContainsComposedPredicate<T extends Comparable<T>> extends Contains<T> {
+    private final Contains<T> left;
+    private final Contains<T> right;
 
-    ContainsComposedPredicate(ContainsPredicate<T> left, ContainsPredicate<T> right) {
+    private final Combinator combinator;
+
+    private enum Combinator {
+      AND,
+      OR
+    }
+
+    ContainsComposedPredicate(Contains<T> left, Contains<T> right, Combinator combinator) {
       super(Objects.requireNonNull(left, "left predicate cannot be null").getColumn());
 
       if (!left.getColumn()
@@ -354,37 +381,25 @@ public final class Operators {
 
       this.left = left;
       this.right = right;
+      this.combinator = combinator;
     }
 
-    public List<ContainsColumnPredicate<T, ?>> getComponentPredicates() {
-      final List<ContainsColumnPredicate<T, ?>> components = new ArrayList<>();
-      if (left instanceof ContainsComposedPredicate) {
-        components.addAll(((ContainsComposedPredicate<T>) left).getComponentPredicates());
+    @Override
+    public <R> R filter(Visitor<R> visitor, BiFunction<R, R, R> andBehavior, BiFunction<R, R, R> orBehavior) {
+      final R filterLeft = left.filter(visitor, andBehavior, orBehavior);
+      final R filterRight = right.filter(visitor, andBehavior, orBehavior);
+
+      if (combinator == Combinator.AND) {
+        return andBehavior.apply(filterLeft, filterRight);
       } else {
-        components.add((ContainsColumnPredicate<T, ?>) left);
+        return orBehavior.apply(filterLeft, filterRight);
       }
-
-      if (right instanceof ContainsComposedPredicate) {
-        components.addAll(((ContainsComposedPredicate<T>) right).getComponentPredicates());
-      } else {
-        components.add((ContainsColumnPredicate<T, ?>) right);
-      }
-
-      return components;
-    }
-
-    public ContainsPredicate<T> getLeft() {
-      return left;
-    }
-
-    public ContainsPredicate<T> getRight() {
-      return right;
     }
 
     @Override
     public String toString() {
       String name = getClass().getSimpleName().toLowerCase(Locale.ENGLISH);
-      return name + "(" + getLeft() + "," + getRight() + ")";
+      return name + "(" + left + "," + right + ")";
     }
 
     @Override
@@ -392,17 +407,17 @@ public final class Operators {
       if (this == o) return true;
       if (o == null || getClass() != o.getClass()) return false;
       ContainsComposedPredicate<T> that = (ContainsComposedPredicate<T>) o;
-      return getLeft().equals(that.getLeft()) && getRight().equals(that.getRight());
+      return left.equals(that.left) && right.equals(that.right);
     }
 
     @Override
     public int hashCode() {
-      return Objects.hash(getClass().getName(), getLeft(), getRight());
+      return Objects.hash(getClass().getName(), left, right);
     }
   }
 
-  public abstract static class ContainsColumnPredicate<T extends Comparable<T>, U extends ColumnFilterPredicate<T>>
-      extends ContainsPredicate<T> {
+  private static class ContainsColumnPredicate<T extends Comparable<T>, U extends ColumnFilterPredicate<T>>
+      extends Contains<T> {
     private final U underlying;
 
     ContainsColumnPredicate(U underlying) {
@@ -410,24 +425,10 @@ public final class Operators {
       this.underlying = underlying;
     }
 
-    public T getValue() {
-      return underlying.getValue();
-    }
-
-    public U getUnderlying() {
-      return underlying;
-    }
-
-    /**
-     * Given a type comparator and proposed record value, return whether the value should be accepted
-     * by the predicate or not.
-     */
-    public abstract <R> boolean accept(Comparator<R> comparator, R newValue);
-
     @Override
     public String toString() {
       String name = getClass().getSimpleName().toLowerCase(Locale.ENGLISH);
-      return name + "(" + getColumn() + "," + getValue() + ")";
+      return name + "(" + underlying.toString() + ")";
     }
 
     @Override
@@ -440,45 +441,12 @@ public final class Operators {
 
     @Override
     public int hashCode() {
-      return Objects.hash(getClass().getName(), getColumn(), getValue());
-    }
-  }
-
-  public static class ContainsEq<T extends Comparable<T>> extends ContainsColumnPredicate<T, Eq<T>> {
-    ContainsEq(Column<T> column, T value) {
-      super(new Eq<>(column, value));
+      return Objects.hash(getClass().getName(), underlying);
     }
 
     @Override
-    public <R> boolean accept(Comparator<R> comparator, R newValue) {
-      return comparator.compare((R) getValue(), newValue) == 0;
-    }
-
-    @Override
-    public <R> R accept(Visitor<R> visitor) {
-      return visitor.visit(this);
-    }
-  }
-
-  public static final class ContainsAnd<T extends Comparable<T>> extends ContainsComposedPredicate<T> {
-    ContainsAnd(ContainsPredicate<T> left, ContainsPredicate<T> right) {
-      super(left, right);
-    }
-
-    @Override
-    public <R> R accept(Visitor<R> visitor) {
-      return visitor.visit(this);
-    }
-  }
-
-  public static final class ContainsOr<T extends Comparable<T>> extends ContainsComposedPredicate<T> {
-    ContainsOr(ContainsPredicate<T> left, ContainsPredicate<T> right) {
-      super(left, right);
-    }
-
-    @Override
-    public <R> R accept(Visitor<R> visitor) {
-      return visitor.visit(this);
+    public <R> R filter(Visitor<R> visitor, BiFunction<R, R, R> andBehavior, BiFunction<R, R, R> orBehavior) {
+      return underlying.accept(visitor);
     }
   }
 

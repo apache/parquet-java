@@ -66,15 +66,15 @@ public class IncrementallyUpdatedFilterPredicateGenerator {
 
   public void run() throws IOException {
     add("package org.apache.parquet.filter2.recordlevel;\n" + "\n"
+        + "import java.util.function.Function;\n"
+        + "import java.util.function.BiFunction;\n"
         + "import java.util.List;\n"
-        + "import java.util.Iterator;\n"
         + "import java.util.Set;\n"
         + "\n"
         + "import org.apache.parquet.hadoop.metadata.ColumnPath;\n"
-        + "import org.apache.parquet.filter2.predicate.Operators.ContainsColumnPredicate;\n"
-        + "import org.apache.parquet.filter2.predicate.Operators.ContainsEq;\n"
-        + "import org.apache.parquet.filter2.predicate.Operators.ContainsAnd;\n"
-        + "import org.apache.parquet.filter2.predicate.Operators.ContainsOr;\n"
+        + "import org.apache.parquet.filter2.predicate.FilterPredicate;\n"
+        + "import org.apache.parquet.filter2.predicate.Operators;\n"
+        + "import org.apache.parquet.filter2.predicate.Operators.Contains;\n"
         + "import org.apache.parquet.filter2.predicate.Operators.Eq;\n"
         + "import org.apache.parquet.filter2.predicate.Operators.Gt;\n"
         + "import org.apache.parquet.filter2.predicate.Operators.GtEq;\n"
@@ -105,13 +105,13 @@ public class IncrementallyUpdatedFilterPredicateGenerator {
 
     addVisitBegin("Eq");
     for (TypeInfo info : TYPES) {
-      addEqNotEqCase(info, true);
+      addEqNotEqCase(info, true, false);
     }
     addVisitEnd();
 
     addVisitBegin("NotEq");
     for (TypeInfo info : TYPES) {
-      addEqNotEqCase(info, false);
+      addEqNotEqCase(info, false, false);
     }
     addVisitEnd();
 
@@ -127,24 +127,9 @@ public class IncrementallyUpdatedFilterPredicateGenerator {
     }
     addVisitEnd();
 
-    addVisitBegin("ContainsEq");
-    for (TypeInfo info : TYPES) {
-      addContainsEqDoesNotContainCase(info, true);
-    }
-    addVisitEnd();
-
-    addVisitBegin("ContainsAnd");
-    add("    final List<ContainsColumnPredicate<T, ?>> componentPredicates = pred.getComponentPredicates();\n");
-    for (TypeInfo info : TYPES) {
-      addContainsComposedCase(info, "&&");
-    }
-    addVisitEnd();
-
-    addVisitBegin("ContainsOr");
-    add("    final List<ContainsColumnPredicate<T, ?>> componentPredicates = pred.getComponentPredicates();\n");
-    for (TypeInfo info : TYPES) {
-      addContainsComposedCase(info, "||");
-    }
+    addContainsBegin();
+    addVisitBegin("Contains");
+    addContainsCase();
     addVisitEnd();
 
     addVisitBegin("Lt");
@@ -211,7 +196,7 @@ public class IncrementallyUpdatedFilterPredicateGenerator {
         + "  }\n\n");
   }
 
-  private void addEqNotEqCase(TypeInfo info, boolean isEq) throws IOException {
+  private void addEqNotEqCase(TypeInfo info, boolean isEq, boolean expectMultipleResults) throws IOException {
     add("    if (clazz.equals(" + info.className + ".class)) {\n" + "      if (pred.getValue() == null) {\n"
         + "        valueInspector = new ValueInspector() {\n"
         + "          @Override\n"
@@ -239,7 +224,12 @@ public class IncrementallyUpdatedFilterPredicateGenerator {
         + "          public void update("
         + info.primitiveName + " value) {\n");
 
-    add("            setResult(" + compareEquality("value", "target", isEq) + ");\n");
+    if (!expectMultipleResults) {
+      add("            setResult(" + compareEquality("value", "target", isEq) + ");\n");
+    } else {
+      add("            if (!isKnown() && " + compareEquality("value", "target", isEq)
+          + ") { setResult(true); }\n");
+    }
 
     add("          }\n" + "        };\n" + "      }\n" + "    }\n\n");
   }
@@ -329,72 +319,190 @@ public class IncrementallyUpdatedFilterPredicateGenerator {
         + "\n");
   }
 
-  private void addContainsEqDoesNotContainCase(TypeInfo info, boolean isContains) throws IOException {
-    add("    if (clazz.equals(" + info.className + ".class)) {\n" + "      if (pred.getValue() == null) {\n"
-        + "        valueInspector = new ValueInspector() {\n"
-        + "          @Override\n"
-        + "          public void updateNull() {\n"
-        + "            setResult("
-        + isContains + ");\n" + "          }\n"
-        + "\n"
-        + "          @Override\n"
-        + "          public void update("
-        + info.primitiveName + " value) {\n" + "            setResult("
-        + !isContains + ");\n" + "          }\n"
-        + "        };\n"
-        + "      } else {\n"
-        + "        final "
-        + info.primitiveName + " target = (" + info.className + ") (Object) pred.getValue();\n"
-        + "        final PrimitiveComparator<"
-        + info.className + "> comparator = getComparator(columnPath);\n" + "\n"
-        + "        valueInspector = new ValueInspector() {\n"
-        + "          @Override\n"
-        + "          public void updateNull() {\n"
-        + "            setResult("
-        + !isContains + ");\n" + "          }\n"
-        + "\n"
-        + "          @Override\n"
-        + "          public void update("
-        + info.primitiveName + " value) {\n");
-
-    add("            if (" + compareEquality("value", "target", true) + ") {\n" + "              setResult("
-        + isContains + ");\n" + "            }\n");
-
-    add("          }\n" + "        };\n" + "      }\n" + "    }\n\n");
+  private void addContainsUpdateCase(TypeInfo info, String... inspectors) throws IOException {
+    add("    @Override\n" + "    public void update(" + info.primitiveName + " value) {\n");
+    for (String inspector : inspectors) {
+      add("      " + inspector + ".update(value);\n");
+    }
+    add("      checkSatisfied();\n" + "    }\n");
   }
 
-  private void addContainsComposedCase(TypeInfo info, String operator) throws IOException {
-    add("    if (clazz.equals(" + info.className + ".class)) {\n"
-        + "        final PrimitiveComparator<" + info.className
-        + "> comparator = getComparator(columnPath);\n\n"
-        + "        valueInspector = new ValueInspector() {\n"
-        + "          @Override\n"
-        + "          public void updateNull() {\n"
-        + "            setResult(false);\n"
-        + "          }\n"
-        + "\n"
-        + "          @Override\n"
-        + "          public void update("
-        + info.primitiveName + " value) {\n");
+  private void addContainsInspectorVisitor(String op, boolean isSupported) throws IOException {
+    if (isSupported) {
+      add("    @Override\n"
+          + "    public <T extends Comparable<T>> ValueInspector visit(" + op + "<T> pred) {\n"
+          + "      ColumnPath columnPath = pred.getColumn().getColumnPath();\n"
+          + "      Class<T> clazz = pred.getColumn().getColumnType();\n"
+          + "      ValueInspector valueInspector = null;\n");
 
-    add("            final Iterator<ContainsColumnPredicate<T, ?>> it = componentPredicates.iterator();\n"
-        + "            while (it.hasNext()) {\n"
-        + "              if (it.next().accept(comparator, value)) {\n");
-    switch (operator) {
-      case "&&":
-        add("                it.remove();\n"
-            + "                // If all predicates have been matched, set result to True\n"
-            + "                if (!it.hasNext()) {\n"
-            + "                  setResult(true);\n"
-            + "                }\n");
-        break;
-      case "||":
-        add("                setResult(true);\n");
-        break;
-      default:
-        throw new UnsupportedOperationException("Unsupported Contains operator " + operator);
+      for (TypeInfo info : TYPES) {
+        switch (op) {
+          case "Eq":
+            addEqNotEqCase(info, true, true);
+            break;
+          default:
+            throw new UnsupportedOperationException("Op " + op + " not implemented for Contains filter");
+        }
+      }
+
+      add("      return valueInspector;" + "    }\n");
+    } else {
+      add("    @Override\n"
+          + "    public <T extends Comparable<T>> ValueInspector visit(" + op + "<T> pred) {\n"
+          + "      throw new UnsupportedOperationException(\"" + op
+          + " not supported for Contains predicate\");\n"
+          + "    }\n"
+          + "\n");
     }
-    add("              }\n" + "            }\n" + "        }\n" + "      };\n" + "    }\n\n");
+  }
+
+  private void addContainsBegin() throws IOException {
+    add("  private static class ContainsPredicate extends ValueInspector {\n"
+        + "    private final ValueInspector inspector;\n"
+        + "\n"
+        + "    private ContainsPredicate(ValueInspector inspector) {\n"
+        + "      this.inspector = inspector;\n"
+        + "    }\n"
+        + "\n"
+        + "    private void checkSatisfied() {\n"
+        + "      if (!isKnown() && inspector.isKnown() && inspector.getResult()) {\n"
+        + "        setResult(true);\n"
+        + "      }\n"
+        + "    }\n"
+        + "\n"
+        + "    @Override\n"
+        + "    public void updateNull() {\n"
+        + "      setResult(false);\n"
+        + "    }\n");
+
+    for (TypeInfo info : TYPES) {
+      addContainsUpdateCase(info, "inspector");
+    }
+
+    add("    @Override\n" + "    public void reset() {\n"
+        + "      super.reset();\n"
+        + "      inspector.reset();\n"
+        + "    }\n"
+        + "  }\n");
+
+    add("  private static class ContainsAndPredicate extends ValueInspector {\n"
+        + "    private final ValueInspector left;\n"
+        + "    private final ValueInspector right;\n"
+        + "\n"
+        + "    private ContainsAndPredicate(ValueInspector left, ValueInspector right) {\n"
+        + "      this.left = left;\n"
+        + "      this.right = right;\n"
+        + "    }\n"
+        + "\n"
+        + "    private void checkSatisfied() {\n"
+        + "      if (isKnown()) { return; }\n"
+        + "      if (left.isKnown() && right.isKnown() && left.getResult() && right.getResult()) {\n"
+        + "        setResult(true);\n"
+        + "      }\n"
+        + "    }\n"
+        + " \n"
+        + "    @Override\n"
+        + "    public void updateNull() {\n"
+        + "      setResult(false);\n"
+        + "    }\n\n");
+
+    for (TypeInfo info : TYPES) {
+      addContainsUpdateCase(info, "left", "right");
+    }
+
+    add("    @Override\n"
+        + "    public void reset() {\n"
+        + "      super.reset();\n"
+        + "      left.reset();\n"
+        + "      right.reset();\n"
+        + "    }\n"
+        + "  }\n");
+
+    add("  private static class ContainsOrPredicate extends ValueInspector {\n"
+        + "    private final ValueInspector left;\n"
+        + "    private final ValueInspector right;\n"
+        + "\n"
+        + "    private ContainsOrPredicate(ValueInspector left, ValueInspector right) {\n"
+        + "      this.left = left;\n"
+        + "      this.right = right;\n"
+        + "    }\n"
+        + "\n"
+        + "    private void checkSatisfied() {\n"
+        + "      if (isKnown()) { return; }\n"
+        + "      if (left.isKnown() && left.getResult()) {\n"
+        + "        setResult(true);\n"
+        + "          return;\n"
+        + "      }\n"
+        + "      if (right.isKnown() && right.getResult()) {\n"
+        + "        setResult(true);\n"
+        + "      }\n"
+        + "    }\n"
+        + " \n"
+        + "    @Override\n"
+        + "    public void updateNull() {\n"
+        + "      setResult(false);\n"
+        + "    }\n");
+
+    for (TypeInfo info : TYPES) {
+      addContainsUpdateCase(info, "left", "right");
+    }
+
+    add("    @Override\n"
+        + "    public void reset() {\n"
+        + "      super.reset();\n"
+        + "      left.reset();\n"
+        + "      right.reset();\n"
+        + "    }\n"
+        + "  }\n");
+
+    add("  private class ContainsInspectorVisitor implements FilterPredicate.Visitor<ValueInspector> {\n\n"
+        + "    @Override\n"
+        + "    public <T extends Comparable<T>> ValueInspector visit(Contains<T> contains) {\n"
+        + "      return contains.filter(\n"
+        + "          this,\n"
+        + "          (l, r) -> new ContainsAndPredicate(l, r),\n"
+        + "          (l, r) -> new ContainsOrPredicate(l, r)\n"
+        + "      );\n"
+        + "    }\n");
+
+    addContainsInspectorVisitor("Eq", true);
+    addContainsInspectorVisitor("NotEq", false);
+    addContainsInspectorVisitor("Lt", false);
+    addContainsInspectorVisitor("LtEq", false);
+    addContainsInspectorVisitor("Gt", false);
+    addContainsInspectorVisitor("GtEq", false);
+
+    add("    @Override\n"
+        + "    public ValueInspector visit(Operators.And pred) {\n"
+        + "      throw new UnsupportedOperationException(\"Operators.And not supported for Contains predicate\");\n"
+        + "    }\n"
+        + "\n"
+        + "    @Override\n"
+        + "    public ValueInspector visit(Operators.Or pred) {\n"
+        + "      throw new UnsupportedOperationException(\"Operators.Or not supported for Contains predicate\");\n"
+        + "    }\n"
+        + "\n"
+        + "    @Override\n"
+        + "    public ValueInspector visit(Operators.Not pred) {\n"
+        + "      throw new UnsupportedOperationException(\"Operators.Not not supported for Contains predicate\");\n"
+        + "    }"
+        + "    @Override\n"
+        + "    public <T extends Comparable<T>, U extends UserDefinedPredicate<T>> ValueInspector visit(\n"
+        + "        UserDefined<T, U> pred) {\n"
+        + "      throw new UnsupportedOperationException(\"UserDefinedPredicate not supported for Contains predicate\");\n"
+        + "    }\n"
+        + "\n"
+        + "    @Override\n"
+        + "    public <T extends Comparable<T>, U extends UserDefinedPredicate<T>> ValueInspector visit(\n"
+        + "        LogicalNotUserDefined<T, U> pred) {\n"
+        + "      throw new UnsupportedOperationException(\"LogicalNotUserDefined not supported for Contains predicate\");\n"
+        + "    }\n"
+        + "  }\n"
+        + "\n");
+  }
+
+  private void addContainsCase() throws IOException {
+    add("    valueInspector = new ContainsPredicate(new ContainsInspectorVisitor().visit(pred));\n");
   }
 
   private void addUdpCase(TypeInfo info, boolean invert) throws IOException {

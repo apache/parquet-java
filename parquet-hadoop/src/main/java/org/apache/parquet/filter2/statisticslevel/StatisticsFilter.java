@@ -28,9 +28,7 @@ import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.filter2.predicate.FilterPredicate;
 import org.apache.parquet.filter2.predicate.Operators.And;
 import org.apache.parquet.filter2.predicate.Operators.Column;
-import org.apache.parquet.filter2.predicate.Operators.ContainsAnd;
-import org.apache.parquet.filter2.predicate.Operators.ContainsEq;
-import org.apache.parquet.filter2.predicate.Operators.ContainsOr;
+import org.apache.parquet.filter2.predicate.Operators.Contains;
 import org.apache.parquet.filter2.predicate.Operators.Eq;
 import org.apache.parquet.filter2.predicate.Operators.Gt;
 import org.apache.parquet.filter2.predicate.Operators.GtEq;
@@ -215,8 +213,8 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
   }
 
   @Override
-  public <T extends Comparable<T>> Boolean visit(ContainsEq<T> containsEq) {
-    return visit(containsEq.getUnderlying());
+  public <T extends Comparable<T>> Boolean visit(Contains<T> contains) {
+    return contains.filter(this, (l, r) -> l || r, (l, r) -> l && r);
   }
 
   @Override
@@ -423,17 +421,6 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
     // both the left and right predicates agree that no matter what
     // we don't need this chunk.
     return or.getLeft().accept(this) && or.getRight().accept(this);
-  }
-
-  @Override
-  public <T extends Comparable<T>> Boolean visit(ContainsAnd<T> containsAnd) {
-    return containsAnd.getLeft().accept(this) || containsAnd.getRight().accept(this);
-  }
-
-  @Override
-  public <T extends Comparable<T>> Boolean visit(ContainsOr<T> containsOr) {
-    // If either left or right predicate can't be dropped, keep the whole block
-    return containsOr.getLeft().accept(this) && containsOr.getRight().accept(this);
   }
 
   @Override

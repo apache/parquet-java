@@ -120,8 +120,8 @@ public class BloomFilterImpl implements FilterPredicate.Visitor<Boolean> {
   }
 
   @Override
-  public <T extends Comparable<T>> Boolean visit(Operators.ContainsEq<T> containsEq) {
-    return visit(containsEq.getUnderlying());
+  public <T extends Comparable<T>> Boolean visit(Operators.Contains<T> contains) {
+    return contains.filter(this, (l, r) -> l || r, (l, r) -> l && r);
   }
 
   @Override
@@ -166,16 +166,6 @@ public class BloomFilterImpl implements FilterPredicate.Visitor<Boolean> {
 
   @Override
   public Boolean visit(Operators.Or or) {
-    return or.getLeft().accept(this) && or.getRight().accept(this);
-  }
-
-  @Override
-  public <T extends Comparable<T>> Boolean visit(Operators.ContainsAnd<T> and) {
-    return and.getLeft().accept(this) || and.getRight().accept(this);
-  }
-
-  @Override
-  public <T extends Comparable<T>> Boolean visit(Operators.ContainsOr<T> or) {
     return or.getLeft().accept(this) && or.getRight().accept(this);
   }
 

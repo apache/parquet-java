@@ -22,6 +22,7 @@ import static org.apache.parquet.Preconditions.checkArgument;
 
 import java.util.Objects;
 import org.apache.parquet.filter.UnboundRecordFilter;
+import org.apache.parquet.filter2.predicate.ContainsRewriter;
 import org.apache.parquet.filter2.predicate.FilterPredicate;
 import org.apache.parquet.filter2.predicate.LogicalInverseRewriter;
 import org.slf4j.Logger;
@@ -82,7 +83,12 @@ public class FilterCompat {
       LOG.info("Predicate has been collapsed to: {}", collapsedPredicate);
     }
 
-    return new FilterPredicateCompat(collapsedPredicate);
+    FilterPredicate rewrittenContainsPredicate = ContainsRewriter.rewrite(collapsedPredicate);
+    if (!collapsedPredicate.equals(rewrittenContainsPredicate)) {
+      LOG.info("Contains() Predicate has been rewritten to: {}", rewrittenContainsPredicate);
+    }
+
+    return new FilterPredicateCompat(rewrittenContainsPredicate);
   }
 
   /**

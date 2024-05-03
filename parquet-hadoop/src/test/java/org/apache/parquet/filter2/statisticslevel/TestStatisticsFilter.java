@@ -20,9 +20,7 @@ package org.apache.parquet.filter2.statisticslevel;
 
 import static org.apache.parquet.filter2.predicate.FilterApi.and;
 import static org.apache.parquet.filter2.predicate.FilterApi.binaryColumn;
-import static org.apache.parquet.filter2.predicate.FilterApi.containsAnd;
-import static org.apache.parquet.filter2.predicate.FilterApi.containsEq;
-import static org.apache.parquet.filter2.predicate.FilterApi.containsOr;
+import static org.apache.parquet.filter2.predicate.FilterApi.contains;
 import static org.apache.parquet.filter2.predicate.FilterApi.doubleColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.eq;
 import static org.apache.parquet.filter2.predicate.FilterApi.gt;
@@ -387,14 +385,14 @@ public class TestStatisticsFilter {
 
   @Test
   public void testContainsEqNonNull() {
-    assertTrue(canDrop(containsEq(intColumn, 9), columnMetas));
-    assertFalse(canDrop(containsEq(intColumn, 10), columnMetas));
-    assertFalse(canDrop(containsEq(intColumn, 100), columnMetas));
-    assertTrue(canDrop(containsEq(intColumn, 101), columnMetas));
+    assertTrue(canDrop(contains(eq(intColumn, 9)), columnMetas));
+    assertFalse(canDrop(contains(eq(intColumn, 10)), columnMetas));
+    assertFalse(canDrop(contains(eq(intColumn, 100)), columnMetas));
+    assertTrue(canDrop(contains(eq(intColumn, 101)), columnMetas));
 
     // drop columns of all nulls when looking for non-null value
-    assertTrue(canDrop(containsEq(intColumn, 0), nullColumnMetas));
-    assertFalse(canDrop(containsEq(intColumn, 50), missingMinMaxColumnMetas));
+    assertTrue(canDrop(contains(eq(intColumn, 0)), nullColumnMetas));
+    assertFalse(canDrop(contains(eq(intColumn, 50)), missingMinMaxColumnMetas));
   }
 
   @Test
@@ -408,22 +406,22 @@ public class TestStatisticsFilter {
     statsSomeNulls.setNumNulls(3);
 
     assertTrue(canDrop(
-        containsEq(intColumn, null),
+        contains(eq(intColumn, null)),
         Arrays.asList(getIntColumnMeta(statsNoNulls, 177L), getDoubleColumnMeta(doubleStats, 177L))));
 
     assertFalse(canDrop(
-        containsEq(intColumn, null),
+        contains(eq(intColumn, null)),
         Arrays.asList(getIntColumnMeta(statsSomeNulls, 177L), getDoubleColumnMeta(doubleStats, 177L))));
 
-    assertFalse(canDrop(eq(missingColumn, null), columnMetas));
-    assertFalse(canDrop(eq(intColumn, null), missingMinMaxColumnMetas));
+    assertFalse(canDrop(contains(eq(missingColumn, null)), columnMetas));
+    assertFalse(canDrop(contains(eq(intColumn, null)), missingMinMaxColumnMetas));
   }
 
   @Test
   public void testContainsAnd() {
-    Operators.ContainsPredicate<Integer> yes = containsEq(intColumn, 9);
-    Operators.ContainsPredicate<Double> no = containsEq(doubleColumn, 50D);
-    assertTrue(canDrop(containsAnd(yes, yes), columnMetas));
+    Operators.Contains<Integer> yes = contains(eq(intColumn, 9));
+    Operators.Contains<Double> no = contains(eq(doubleColumn, 50D));
+    assertTrue(canDrop(and(yes, yes), columnMetas));
     assertTrue(canDrop(and(yes, no), columnMetas));
     assertTrue(canDrop(and(no, yes), columnMetas));
     assertFalse(canDrop(and(no, no), columnMetas));
@@ -431,9 +429,9 @@ public class TestStatisticsFilter {
 
   @Test
   public void testContainsOr() {
-    Operators.ContainsPredicate<Integer> yes = containsEq(intColumn, 9);
-    Operators.ContainsPredicate<Double> no = containsEq(doubleColumn, 50D);
-    assertTrue(canDrop(containsOr(yes, yes), columnMetas));
+    Operators.Contains<Integer> yes = contains(eq(intColumn, 9));
+    Operators.Contains<Double> no = contains(eq(doubleColumn, 50D));
+    assertTrue(canDrop(or(yes, yes), columnMetas));
     assertFalse(canDrop(or(yes, no), columnMetas));
     assertFalse(canDrop(or(no, yes), columnMetas));
     assertFalse(canDrop(or(no, no), columnMetas));

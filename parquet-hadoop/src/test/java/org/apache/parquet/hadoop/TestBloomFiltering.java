@@ -19,12 +19,14 @@
 
 package org.apache.parquet.hadoop;
 
+import static org.apache.parquet.filter2.predicate.FilterApi.and;
 import static org.apache.parquet.filter2.predicate.FilterApi.binaryColumn;
-import static org.apache.parquet.filter2.predicate.FilterApi.containsEq;
+import static org.apache.parquet.filter2.predicate.FilterApi.contains;
 import static org.apache.parquet.filter2.predicate.FilterApi.doubleColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.eq;
 import static org.apache.parquet.filter2.predicate.FilterApi.in;
 import static org.apache.parquet.filter2.predicate.FilterApi.longColumn;
+import static org.apache.parquet.filter2.predicate.FilterApi.or;
 import static org.apache.parquet.hadoop.ParquetFileWriter.Mode.OVERWRITE;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -188,8 +190,8 @@ public class TestBloomFiltering {
     List<PhoneBookWriter.PhoneNumber> phoneNumbers = new ArrayList<>(length);
     for (int i = 0; i < length; ++i) {
       // 6 digits numbers
-      long number = 500L % index;
-      phoneNumbers.add(new PhoneBookWriter.PhoneNumber(number, PHONE_KINDS[RANDOM.nextInt(PHONE_KINDS.length)]));
+      phoneNumbers.add(
+          new PhoneBookWriter.PhoneNumber(500L % index, PHONE_KINDS[RANDOM.nextInt(PHONE_KINDS.length)]));
     }
     return phoneNumbers;
   }
@@ -413,7 +415,30 @@ public class TestBloomFiltering {
         record -> Optional.ofNullable(record.getPhoneNumbers())
             .map(numbers -> numbers.stream().anyMatch(n -> n.getNumber() == 250L))
             .orElse(false),
-        containsEq(longColumn("phoneNumbers.phone.number"), 250L));
+        contains(eq(longColumn("phoneNumbers.phone.number"), 250L)));
+  }
+
+  @Test
+  public void testContainsOrFiltering() throws IOException {
+    assertCorrectFiltering(
+        record -> Optional.ofNullable(record.getPhoneNumbers())
+            .map(numbers -> numbers.stream().anyMatch(n -> n.getNumber() == 250L || n.getNumber() == 50L))
+            .orElse(false),
+        or(
+            contains(eq(longColumn("phoneNumbers.phone.number"), 250L)),
+            contains(eq(longColumn("phoneNumbers.phone.number"), 50L))));
+  }
+
+  @Test
+  public void testContainsAndFiltering() throws IOException {
+    assertCorrectFiltering(
+        record -> Optional.ofNullable(record.getPhoneNumbers())
+            .map(numbers -> numbers.stream().anyMatch(n -> n.getNumber() == 10L)
+                && numbers.stream().anyMatch(n -> n.getNumber() == 5L))
+            .orElse(false),
+        and(
+            contains(eq(longColumn("phoneNumbers.phone.number"), 10L)),
+            contains(eq(longColumn("phoneNumbers.phone.number"), 5L))));
   }
 
   @Test

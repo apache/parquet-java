@@ -36,9 +36,7 @@ import org.apache.parquet.column.page.DictionaryPageReadStore;
 import org.apache.parquet.filter2.predicate.FilterPredicate;
 import org.apache.parquet.filter2.predicate.Operators.And;
 import org.apache.parquet.filter2.predicate.Operators.Column;
-import org.apache.parquet.filter2.predicate.Operators.ContainsAnd;
-import org.apache.parquet.filter2.predicate.Operators.ContainsEq;
-import org.apache.parquet.filter2.predicate.Operators.ContainsOr;
+import org.apache.parquet.filter2.predicate.Operators.Contains;
 import org.apache.parquet.filter2.predicate.Operators.Eq;
 import org.apache.parquet.filter2.predicate.Operators.Gt;
 import org.apache.parquet.filter2.predicate.Operators.GtEq;
@@ -491,8 +489,8 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
   }
 
   @Override
-  public <T extends Comparable<T>> Boolean visit(ContainsEq<T> containsEq) {
-    return visit(containsEq.getUnderlying());
+  public <T extends Comparable<T>> Boolean visit(Contains<T> contains) {
+    return contains.filter(this, (l, r) -> l || r, (l, r) -> l && r);
   }
 
   @Override
@@ -502,16 +500,6 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
 
   @Override
   public Boolean visit(Or or) {
-    return or.getLeft().accept(this) && or.getRight().accept(this);
-  }
-
-  @Override
-  public <T extends Comparable<T>> Boolean visit(ContainsAnd<T> and) {
-    return and.getLeft().accept(this) || and.getRight().accept(this);
-  }
-
-  @Override
-  public <T extends Comparable<T>> Boolean visit(ContainsOr<T> or) {
     return or.getLeft().accept(this) && or.getRight().accept(this);
   }
 
