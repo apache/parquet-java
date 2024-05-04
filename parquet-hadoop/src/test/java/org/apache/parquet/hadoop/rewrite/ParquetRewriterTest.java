@@ -763,7 +763,7 @@ public class ParquetRewriterTest {
         .collect(Collectors.toSet());
 
     // TODO potentially too many checks, might need to be split into multiple tests
-    validateColumnData(Collections.emptySet(), Collections.emptySet(), null); // Verify data
+    validateColumnData(Collections.emptySet(), Collections.emptySet(), null, true); // Verify data
     assertEquals(expectSchema, actualSchema); // Verify schema
     validateCreatedBy(); // Verify original.created.by
     assertEquals(inputBloomFilters.keySet(), rBloomFilters); // Verify bloom filters
@@ -839,38 +839,34 @@ public class ParquetRewriterTest {
   private void validateColumnData(
       Set<String> prunePaths, Set<String> nullifiedPaths, FileDecryptionProperties fileDecryptionProperties)
       throws IOException {
+    validateColumnData(prunePaths, nullifiedPaths, fileDecryptionProperties, false);
+  }
+
+  private void validateColumnData(
+      Set<String> prunePaths,
+      Set<String> nullifiedPaths,
+      FileDecryptionProperties fileDecryptionProperties,
+      Boolean joinColumnsOverwrite)
+      throws IOException {
     ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), new Path(outputFile))
         .withConf(conf)
         .withDecryption(fileDecryptionProperties)
         .build();
 
-    List<List<SimpleGroup>> fileContents = inputFiles.stream()
-        .map(x -> Arrays.stream(x.getFileContent()).collect(Collectors.toList()))
+    List<SimpleGroup> filesMain = inputFiles.stream()
+        .flatMap(x -> Arrays.stream(x.getFileContent()))
         .collect(Collectors.toList());
-    List<List<SimpleGroup>> fileContentsJoined = inputFilesToJoinColumns.stream()
-        .map(x -> Arrays.stream(x.getFileContent()).collect(Collectors.toList()))
+    List<SimpleGroup> filesJoined = inputFilesToJoinColumns.stream()
+        .flatMap(x -> Arrays.stream(x.getFileContent()))
         .collect(Collectors.toList());
     BiFunction<String, Integer, Group> groups = (name, rowIdx) -> {
-      for (int i = 0; i < fileContents.size(); i++) {
-        if (rowIdx >= fileContents.get(i).size()) {
-          rowIdx -= fileContents.get(i).size();
-        } else {
-          if (!fileContentsJoined.isEmpty()) { // todo check if joinColumnsOverwrite = true
-            SimpleGroup expGroup = fileContentsJoined.get(i).get(rowIdx);
-            GroupType fileSchema = expGroup.getType();
-            if (fileSchema.containsField(name)) {
-              return expGroup;
-            }
-          }
-          SimpleGroup expGroup = fileContents.get(i).get(rowIdx);
-          GroupType fileSchema = expGroup.getType();
-          if (fileSchema.containsField(name)) {
-            return expGroup;
-          }
-        }
+      if (joinColumnsOverwrite
+          && !filesJoined.isEmpty()
+          && filesJoined.get(0).getType().containsField(name)) {
+        return filesJoined.get(rowIdx);
+      } else {
+        return filesMain.get(rowIdx);
       }
-      throw new IllegalStateException(
-          "Group '" + name + "' at position " + rowIdx + " was not found in input files!");
     };
 
     int totalRows =
@@ -1190,8 +1186,8 @@ public class ParquetRewriterTest {
           .map(p -> HadoopInputFile.fromPathUnchecked(p, conf))
           .collect(Collectors.toList());
       builder = new RewriteOptions.Builder(parquetConf, inputsL, inputsR, outputPath);
-      builder.joinColumnsOverwrite(joinColumnsOverwrite);
     }
+    builder.joinColumnsOverwrite(joinColumnsOverwrite);
     return builder;
   }
 
