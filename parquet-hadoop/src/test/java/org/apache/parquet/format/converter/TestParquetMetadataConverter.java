@@ -1277,9 +1277,8 @@ public class TestParquetMetadataConverter {
     return createParquetMetaData(dicEncoding, dataEncoding, true);
   }
 
-
-  private static ParquetMetadata createParquetMetaData(Encoding dicEncoding, Encoding dataEncoding,
-                                                       boolean includeDicStats) {
+  private static ParquetMetadata createParquetMetaData(
+      Encoding dicEncoding, Encoding dataEncoding, boolean includeDicStats) {
     MessageType schema = parseMessageType("message schema { optional int32 col (INT_32); }");
     org.apache.parquet.hadoop.metadata.FileMetaData fileMetaData =
         new org.apache.parquet.hadoop.metadata.FileMetaData(schema, new HashMap<String, String>(), null);
