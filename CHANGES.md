@@ -51,6 +51,7 @@ Release Notes - Parquet - Version 1.14.0
 *   [PARQUET-2456](https://issues.apache.org/jira/browse/PARQUET-2456) - avro schema conversion may fail with name conflict when using fixed types
 *   [PARQUET-2457](https://issues.apache.org/jira/browse/PARQUET-2457) - Missing maven-scala-plugin version
 *   [PARQUET-2458](https://issues.apache.org/jira/browse/PARQUET-2458) - Java compiler should use release instead of source/target
+*   [PARQUET-2465](https://issues.apache.org/jira/browse/PARQUET-2465) - Fall back to Hadoop Configuration
 
 #### New Feature
 
