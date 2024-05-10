@@ -43,6 +43,11 @@
       <artifactId>jackson-databind</artifactId>
       <version>${jackson-databind.version}</version>
     </dependency>
+    <dependency>
+      <groupId>com.fasterxml.jackson.datatype</groupId>
+      <artifactId>jackson-datatype-jdk8</artifactId>
+      <version>${jackson-modules-java8.version}</version>
+    </dependency>
   </dependencies>
 
   <properties>
@@ -70,11 +75,18 @@
               <artifactSet>
                 <includes>
                   <include>${jackson.groupId}:*</include>
+                  <include>${jackson.datatype.groupId}:*</include>
                 </includes>
               </artifactSet>
               <filters>
                 <filter>
                   <artifact>${jackson.groupId}:*</artifact>
+                  <includes>
+                    <include>**</include>
+                  </includes>
+                </filter>
+                <filter>
+                  <artifact>${jackson.datatype.groupId}:*</artifact>
                   <includes>
                     <include>**</include>
                   </includes>

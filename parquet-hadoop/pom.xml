@@ -119,6 +119,11 @@
       <version>${jackson.version}</version>
     </dependency>
     <dependency>
+      <groupId>${jackson.datatype.groupId}</groupId>
+      <artifactId>jackson-datatype-jdk8</artifactId>
+      <version>${jackson-modules-java8.version}</version>
+    </dependency>
+    <dependency>
       <groupId>${jackson.groupId}</groupId>
       <artifactId>jackson-databind</artifactId>
       <version>${jackson-databind.version}</version>

@@ -22,6 +22,7 @@ import static org.apache.parquet.column.Encoding.PLAIN_DICTIONARY;
 import static org.apache.parquet.column.Encoding.RLE_DICTIONARY;
 import static org.apache.parquet.format.Util.readColumnMetaData;
 
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.util.Set;
@@ -380,6 +381,7 @@ public abstract class ColumnChunkMetaData {
   /**
    * @return the stats for this column
    */
+  @JsonSerialize(using = StatisticsSerializer.class)
   public abstract Statistics getStatistics();
 
   /**

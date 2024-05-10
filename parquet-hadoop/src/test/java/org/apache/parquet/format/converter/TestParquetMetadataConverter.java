@@ -638,7 +638,12 @@ public class TestParquetMetadataConverter {
   public void testNullFieldMetadataDebugLogging() {
     MessageType schema = parseMessageType("message test { optional binary some_null_field; }");
     org.apache.parquet.hadoop.metadata.FileMetaData fileMetaData =
-        new org.apache.parquet.hadoop.metadata.FileMetaData(schema, new HashMap<String, String>(), null);
+        new org.apache.parquet.hadoop.metadata.FileMetaData(
+            schema,
+            new HashMap<>(),
+            null,
+            org.apache.parquet.hadoop.metadata.FileMetaData.EncryptionType.UNENCRYPTED,
+            null);
     List<BlockMetaData> blockMetaDataList = new ArrayList<BlockMetaData>();
     BlockMetaData blockMetaData = new BlockMetaData();
     blockMetaData.addColumn(createColumnChunkMetaData());
@@ -662,7 +667,13 @@ public class TestParquetMetadataConverter {
     PrimitiveTypeName t = PrimitiveTypeName.BINARY;
     ColumnPath p = ColumnPath.get("foo");
     CompressionCodecName c = CompressionCodecName.GZIP;
-    BinaryStatistics s = new BinaryStatistics();
+    Statistics<?> s = Statistics.createStats(Types.required(PrimitiveTypeName.BINARY)
+        .as(LogicalTypeAnnotation.stringType())
+        .named("str"));
+    byte[] min = new byte[904];
+    byte[] max = new byte[2388];
+    s.updateStats(Binary.fromConstantByteArray(min));
+    s.updateStats(Binary.fromConstantByteArray(max));
     ColumnChunkMetaData md = ColumnChunkMetaData.get(p, t, c, e, s, 0, 0, 0, 0, 0);
     return md;
   }
