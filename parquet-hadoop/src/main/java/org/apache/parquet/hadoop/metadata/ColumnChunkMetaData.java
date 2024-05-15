@@ -381,7 +381,7 @@ public abstract class ColumnChunkMetaData {
   /**
    * @return the stats for this column
    */
-  @JsonSerialize(using = StatisticsSerializer.class)
+  @JsonIgnore
   public abstract Statistics getStatistics();
 
   /**
@@ -389,6 +389,7 @@ public abstract class ColumnChunkMetaData {
    *
    * @return the size stats for this column
    */
+  @JsonIgnore
   public SizeStatistics getSizeStatistics() {
     throw new UnsupportedOperationException("SizeStatistics is not implemented");
   }
