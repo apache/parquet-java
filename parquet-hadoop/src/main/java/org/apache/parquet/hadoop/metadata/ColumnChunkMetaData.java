@@ -22,7 +22,7 @@ import static org.apache.parquet.column.Encoding.PLAIN_DICTIONARY;
 import static org.apache.parquet.column.Encoding.RLE_DICTIONARY;
 import static org.apache.parquet.format.Util.readColumnMetaData;
 
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.util.Set;
@@ -339,6 +339,7 @@ public abstract class ColumnChunkMetaData {
    * @deprecated will be removed in 2.0.0. Use {@link #getPrimitiveType()} instead.
    */
   @Deprecated
+  @JsonIgnore
   public PrimitiveTypeName getType() {
     decryptIfNeeded();
     return properties.getType();
