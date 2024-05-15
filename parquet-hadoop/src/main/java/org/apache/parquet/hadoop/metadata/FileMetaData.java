@@ -20,6 +20,7 @@ package org.apache.parquet.hadoop.metadata;
 
 import static java.util.Collections.unmodifiableMap;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.io.Serializable;
 import java.util.Map;
 import java.util.Objects;
@@ -109,6 +110,7 @@ public final class FileMetaData implements Serializable {
     return createdBy;
   }
 
+  @JsonIgnore
   public InternalFileDecryptor getFileDecryptor() {
     return fileDecryptor;
   }
