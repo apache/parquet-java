@@ -35,10 +35,11 @@ public class ParquetMetadata {
 
   private static final ObjectMapper objectMapper = new ObjectMapper();
 
-  // Enable FAIL_ON_EMPTY_BEANS on objectmapper. Without this feature parquet-casdacing tests fail,
-  // because LogicalTypeAnnotation implementations are classes without any property.
   static {
+    // Enable FAIL_ON_EMPTY_BEANS on objectmapper. Without this feature parquet-casdacing tests fail,
+    // because LogicalTypeAnnotation implementations are classes without any property.
     objectMapper.disable(SerializationFeature.FAIL_ON_EMPTY_BEANS);
+    // Add support for Java 8 Optional
     objectMapper.registerModule(new Jdk8Module());
   }
 
