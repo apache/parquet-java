@@ -68,7 +68,7 @@
     <jackson.datatype.groupId>com.fasterxml.jackson.datatype</jackson.datatype.groupId>
     <jackson.package>com.fasterxml.jackson</jackson.package>
     <jackson.version>2.17.0</jackson.version>
-    <jackson-databind.version>2.17.0</jackson-databind.version>
+    <jackson-databind.version>2.17.1</jackson-databind.version>
     <jackson-modules-java8.version>2.17.0</jackson-modules-java8.version>
     <japicmp.version>0.21.0</japicmp.version>
     <javax.annotation.version>1.3.2</javax.annotation.version>
@@ -92,14 +92,12 @@
     <semver.api.version>0.9.33</semver.api.version>
     <slf4j.version>1.7.33</slf4j.version>
     <avro.version>1.11.3</avro.version>
-    <guava.version>33.1.0-jre</guava.version>
+    <guava.version>33.2.0-jre</guava.version>
     <brotli-codec.version>0.1.1</brotli-codec.version>
     <mockito.version>1.10.19</mockito.version>
     <powermock.version>2.0.9</powermock.version>
     <net.openhft.version>0.16</net.openhft.version>
     <exec-maven-plugin.version>1.6.0</exec-maven-plugin.version>
-    <!-- override org.apache:apache version -->
-    <version.maven-compiler-plugin>3.13.0</version.maven-compiler-plugin>
 
     <!-- parquet-cli dependencies -->
     <opencsv.version>2.3</opencsv.version>
@@ -409,12 +407,6 @@
         <configuration>
           <skip>true</skip>
         </configuration>
-      </plugin>
-
-      <plugin>
-        <!-- Override source and target from the ASF parent -->
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-compiler-plugin</artifactId>
       </plugin>
 
       <plugin>
