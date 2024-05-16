@@ -67,9 +67,9 @@
     <jackson.groupId>com.fasterxml.jackson.core</jackson.groupId>
     <jackson.datatype.groupId>com.fasterxml.jackson.datatype</jackson.datatype.groupId>
     <jackson.package>com.fasterxml.jackson</jackson.package>
-    <jackson.version>2.17.0</jackson.version>
+    <jackson.version>2.17.1</jackson.version>
     <jackson-databind.version>2.17.1</jackson-databind.version>
-    <jackson-modules-java8.version>2.17.0</jackson-modules-java8.version>
+    <jackson-modules-java8.version>2.17.1</jackson-modules-java8.version>
     <japicmp.version>0.21.0</japicmp.version>
     <javax.annotation.version>1.3.2</javax.annotation.version>
     <spotless.version>2.30.0</spotless.version>
