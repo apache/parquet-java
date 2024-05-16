@@ -97,8 +97,6 @@
     <powermock.version>2.0.9</powermock.version>
     <net.openhft.version>0.16</net.openhft.version>
     <exec-maven-plugin.version>1.6.0</exec-maven-plugin.version>
-    <!-- override org.apache:apache version -->
-    <version.maven-compiler-plugin>3.13.0</version.maven-compiler-plugin>
 
     <!-- parquet-cli dependencies -->
     <opencsv.version>2.3</opencsv.version>
@@ -408,12 +406,6 @@
         <configuration>
           <skip>true</skip>
         </configuration>
-      </plugin>
-
-      <plugin>
-        <!-- Override source and target from the ASF parent -->
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-compiler-plugin</artifactId>
       </plugin>
 
       <plugin>
