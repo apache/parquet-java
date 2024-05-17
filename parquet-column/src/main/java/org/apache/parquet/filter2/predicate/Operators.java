@@ -398,8 +398,8 @@ public final class Operators {
 
     @Override
     public String toString() {
-      String name = getClass().getSimpleName().toLowerCase(Locale.ENGLISH);
-      return name + "(" + left + "," + right + ")";
+      String name = Contains.class.getSimpleName().toLowerCase(Locale.ENGLISH);
+      return name + "(" + left + " " + combinator + " " + right + ")";
     }
 
     @Override
@@ -427,7 +427,7 @@ public final class Operators {
 
     @Override
     public String toString() {
-      String name = getClass().getSimpleName().toLowerCase(Locale.ENGLISH);
+      String name = Contains.class.getSimpleName().toLowerCase(Locale.ENGLISH);
       return name + "(" + underlying.toString() + ")";
     }
 
