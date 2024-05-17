@@ -32,6 +32,7 @@ import static org.apache.parquet.filter2.predicate.FilterApi.or;
 import static org.apache.parquet.filter2.predicate.FilterApi.userDefined;
 import static org.junit.Assert.assertEquals;
 
+import com.google.common.collect.ImmutableMap;
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
@@ -60,11 +61,25 @@ public class TestRecordLevelFilters {
   public static List<User> makeUsers() {
     List<User> users = new ArrayList<User>();
 
-    users.add(new User(17, null, null, null));
+    users.add(new User(
+        17,
+        null,
+        null,
+        null,
+        ImmutableMap.of(
+            "business", 1000.0D,
+            "personal", 500.0D)));
 
     users.add(new User(18, "bob", null, null));
 
-    users.add(new User(19, "alice", new ArrayList<PhoneNumber>(), null));
+    users.add(new User(
+        19,
+        "alice",
+        new ArrayList<PhoneNumber>(),
+        null,
+        ImmutableMap.of(
+            "business", 2000.0D,
+            "retirement", 1000.0D)));
 
     users.add(new User(20, "thing1", Arrays.asList(new PhoneNumber(5555555555L, null)), null));
 
@@ -133,6 +148,15 @@ public class TestRecordLevelFilters {
     }
   }
 
+  private static void assertPredicate(FilterPredicate predicate, long... expectedIds) throws IOException {
+    List<Group> found = PhoneBookWriter.readFile(phonebookFile, FilterCompat.get(predicate));
+
+    assertEquals(expectedIds.length, found.size());
+    for (int i = 0; i < expectedIds.length; i++) {
+      assertEquals(expectedIds[i], found.get(i).getLong("id", 0));
+    }
+  }
+
   @Test
   public void testNoFilter() throws Exception {
     List<Group> found = PhoneBookWriter.readFile(phonebookFile, FilterCompat.NOOP);
@@ -189,80 +213,73 @@ public class TestRecordLevelFilters {
 
   @Test
   public void testArrayContains() throws Exception {
-    FilterPredicate pred = contains(eq(binaryColumn("phoneNumbers.phone.kind"), Binary.fromString("home")));
-    List<Group> found = PhoneBookWriter.readFile(phonebookFile, FilterCompat.get(pred));
-
-    assertEquals(3, found.size());
-    assertEquals(27L, ((Group) found.get(0)).getLong("id", 0));
-    assertEquals(28L, ((Group) found.get(1)).getLong("id", 0));
-    assertEquals(30L, ((Group) found.get(2)).getLong("id", 0));
+    assertPredicate(
+        contains(eq(binaryColumn("phoneNumbers.phone.kind"), Binary.fromString("home"))), 27L, 28L, 30L);
   }
 
   @Test
   public void testArrayContainsSimpleAndFilter() throws Exception {
-    FilterPredicate pred1 = and(
-        contains(eq(longColumn("phoneNumbers.phone.number"), 1111111111L)),
-        contains(eq(longColumn("phoneNumbers.phone.number"), 3333333333L)));
-    List<Group> found = PhoneBookWriter.readFile(phonebookFile, FilterCompat.get(pred1));
+    assertPredicate(
+        and(
+            contains(eq(longColumn("phoneNumbers.phone.number"), 1111111111L)),
+            contains(eq(longColumn("phoneNumbers.phone.number"), 3333333333L))),
+        28L);
 
-    assertEquals(1, found.size());
-    assertEquals(28L, ((Group) found.get(0)).getLong("id", 0));
-
-    FilterPredicate pred2 = and(
-        contains(eq(longColumn("phoneNumbers.phone.number"), 1111111111L)),
-        contains(eq(longColumn("phoneNumbers.phone.number"), -123L))); // Won't match
-    found = PhoneBookWriter.readFile(phonebookFile, FilterCompat.get(pred2));
-
-    assertEquals(0, found.size());
+    assertPredicate(
+        and(
+            contains(eq(longColumn("phoneNumbers.phone.number"), 1111111111L)),
+            contains(eq(longColumn("phoneNumbers.phone.number"), -123L))) // Won't match
+        );
   }
 
   @Test
   public void testArrayContainsNestedAndFilter() throws Exception {
-    FilterPredicate pred = and(
-        contains(eq(longColumn("phoneNumbers.phone.number"), 1111111111L)),
+    assertPredicate(
         and(
-            contains(eq(longColumn("phoneNumbers.phone.number"), 2222222222L)),
-            contains(eq(longColumn("phoneNumbers.phone.number"), 3333333333L))));
-    List<Group> found = PhoneBookWriter.readFile(phonebookFile, FilterCompat.get(pred));
-
-    assertEquals(1, found.size());
-    assertEquals(28L, ((Group) found.get(0)).getLong("id", 0));
+            contains(eq(longColumn("phoneNumbers.phone.number"), 1111111111L)),
+            and(
+                contains(eq(longColumn("phoneNumbers.phone.number"), 2222222222L)),
+                contains(eq(longColumn("phoneNumbers.phone.number"), 3333333333L)))),
+        28L);
   }
 
   @Test
   public void testArrayContainsSimpleOrFilter() throws Exception {
-    FilterPredicate pred1 = or(
-        contains(eq(longColumn("phoneNumbers.phone.number"), 5555555555L)),
-        contains(eq(longColumn("phoneNumbers.phone.number"), 2222222222L)));
-    List<Group> found = PhoneBookWriter.readFile(phonebookFile, FilterCompat.get(pred1));
+    assertPredicate(
+        or(
+            contains(eq(longColumn("phoneNumbers.phone.number"), 5555555555L)),
+            contains(eq(longColumn("phoneNumbers.phone.number"), 2222222222L))),
+        20L,
+        27L,
+        28L);
 
-    assertEquals(3, found.size());
-    assertEquals(20L, ((Group) found.get(0)).getLong("id", 0));
-    assertEquals(27L, ((Group) found.get(1)).getLong("id", 0));
-    assertEquals(28L, ((Group) found.get(2)).getLong("id", 0));
-
-    FilterPredicate pred2 = or(
-        contains(eq(longColumn("phoneNumbers.phone.number"), 5555555555L)),
-        contains(eq(longColumn("phoneNumbers.phone.number"), -123L))); // Won't match
-    found = PhoneBookWriter.readFile(phonebookFile, FilterCompat.get(pred2));
-
-    assertEquals(1, found.size());
-    assertEquals(20L, ((Group) found.get(0)).getLong("id", 0));
+    assertPredicate(
+        or(
+            contains(eq(longColumn("phoneNumbers.phone.number"), 5555555555L)),
+            contains(eq(longColumn("phoneNumbers.phone.number"), -123L))), // Won't match
+        20L);
   }
 
   @Test
   public void testArrayContainsNestedOrFilter() throws Exception {
-    FilterPredicate pred = or(
-        contains(eq(longColumn("phoneNumbers.phone.number"), 5555555555L)),
+    assertPredicate(
         or(
-            contains(eq(longColumn("phoneNumbers.phone.number"), -10000000L)), // Won't be matched
-            contains(eq(longColumn("phoneNumbers.phone.number"), 2222222222L))));
-    List<Group> found = PhoneBookWriter.readFile(phonebookFile, FilterCompat.get(pred));
+            contains(eq(longColumn("phoneNumbers.phone.number"), 5555555555L)),
+            or(
+                contains(eq(longColumn("phoneNumbers.phone.number"), -10000000L)), // Won't be matched
+                contains(eq(longColumn("phoneNumbers.phone.number"), 2222222222L)))),
+        20L,
+        27L,
+        28L);
+  }
 
-    assertEquals(3, found.size());
-    assertEquals(20L, ((Group) found.get(0)).getLong("id", 0));
-    assertEquals(27L, ((Group) found.get(1)).getLong("id", 0));
-    assertEquals(28L, ((Group) found.get(2)).getLong("id", 0));
+  @Test
+  public void testMapContains() throws Exception {
+    // Test key predicate
+    assertPredicate(contains(eq(binaryColumn("accounts.key_value.key"), Binary.fromString("business"))), 17L, 19L);
+
+    // Test value predicate
+    assertPredicate(contains(eq(doubleColumn("accounts.key_value.value"), 1000.0D)), 17L, 19L);
   }
 
   @Test

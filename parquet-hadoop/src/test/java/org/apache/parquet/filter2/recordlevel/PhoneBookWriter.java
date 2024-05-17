@@ -23,7 +23,9 @@ import static org.junit.Assert.assertEquals;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.bytes.ByteBufferAllocator;
@@ -52,6 +54,12 @@ public class PhoneBookWriter {
       + "    repeated group phone {\n"
       + "      required int64 number;\n"
       + "      optional binary kind (UTF8);\n"
+      + "    }\n"
+      + "  }\n"
+      + "  optional group accounts {\n"
+      + "    repeated group key_value {\n"
+      + "      required binary key;\n"
+      + "      required double value;\n"
       + "    }\n"
       + "  }\n"
       + "}\n";
@@ -154,11 +162,19 @@ public class PhoneBookWriter {
     private final List<PhoneNumber> phoneNumbers;
     private final Location location;
 
+    private final Map<String, Double> accounts;
+
     public User(long id, String name, List<PhoneNumber> phoneNumbers, Location location) {
+      this(id, name, phoneNumbers, location, null);
+    }
+
+    public User(
+        long id, String name, List<PhoneNumber> phoneNumbers, Location location, Map<String, Double> accounts) {
       this.id = id;
       this.name = name;
       this.phoneNumbers = phoneNumbers;
       this.location = location;
+      this.accounts = accounts;
     }
 
     public long getId() {
@@ -175,6 +191,10 @@ public class PhoneBookWriter {
 
     public Location getLocation() {
       return location;
+    }
+
+    public Map<String, Double> getAccounts() {
+      return accounts;
     }
 
     @Override
@@ -205,11 +225,11 @@ public class PhoneBookWriter {
     @Override
     public String toString() {
       return "User [id=" + id + ", name=" + name + ", phoneNumbers=" + phoneNumbers + ", location=" + location
-          + "]";
+          + ", accounts=" + accounts + "]";
     }
 
     public User cloneWithName(String name) {
-      return new User(id, name, phoneNumbers, location);
+      return new User(id, name, phoneNumbers, location, accounts);
     }
   }
 
@@ -241,6 +261,16 @@ public class PhoneBookWriter {
         location.append("lat", user.getLocation().getLat());
       }
     }
+
+    if (user.getAccounts() != null) {
+      Group accounts = root.addGroup("accounts");
+      for (Map.Entry<String, Double> account : user.getAccounts().entrySet()) {
+        Group kv = accounts.addGroup("key_value");
+        kv.append("key", account.getKey());
+        kv.append("value", account.getValue());
+      }
+    }
+
     return root;
   }
 
@@ -249,7 +279,8 @@ public class PhoneBookWriter {
         getLong(root, "id"),
         getString(root, "name"),
         getPhoneNumbers(getGroup(root, "phoneNumbers")),
-        getLocation(getGroup(root, "location")));
+        getLocation(getGroup(root, "location")),
+        getAccounts(getGroup(root, "accounts")));
   }
 
   private static List<PhoneNumber> getPhoneNumbers(Group phoneNumbers) {
@@ -269,6 +300,19 @@ public class PhoneBookWriter {
       return null;
     }
     return new Location(getDouble(location, "lon"), getDouble(location, "lat"));
+  }
+
+  private static Map<String, Double> getAccounts(Group accounts) {
+    if (accounts == null) {
+      return null;
+    }
+    Map<String, Double> map = new HashMap<>();
+    for (int i = 0, n = accounts.getFieldRepetitionCount("key_value"); i < n; ++i) {
+      Group kv = accounts.getGroup("key_value", i);
+
+      map.put(getString(kv, "key"), getDouble(kv, "value"));
+    }
+    return map;
   }
 
   private static boolean isNull(Group group, String field) {
