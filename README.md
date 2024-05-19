@@ -20,11 +20,19 @@
 Parquet MR [![Build Status](https://github.com/apache/parquet-mr/workflows/Test/badge.svg)](https://github.com/apache/parquet-mr/actions)
 ======
 
-Parquet-MR contains the java implementation of the [Parquet format](https://github.com/apache/parquet-format).
-Parquet is a columnar storage format for Hadoop; it provides efficient storage and encoding of data.
-Parquet uses the [record shredding and assembly algorithm](https://github.com/julienledem/redelm/wiki/The-striping-and-assembly-algorithms-from-the-Dremel-paper) described in the Dremel paper to represent nested structures.
+This repository contains a Java implementation of [Apache Parquet](https://parquet.apache.org/)
 
-You can find some details about the format and intended use cases in our [Hadoop Summit 2013 presentation](http://www.slideshare.net/julienledem/parquet-hadoop-summit-2013)
+Apache Parquet is an open source, column-oriented data file format
+designed for efficient data storage and retrieval. It provides high
+performance compression and encoding schemes to handle complex data in
+bulk and is supported in many programming language and analytics
+tools.
+
+The [parquet-format](https://github.com/apache/parquet-format)
+repository contains the file format specificiation.
+
+Parquet uses the [record shredding and assembly algorithm](https://github.com/julienledem/redelm/wiki/The-striping-and-assembly-algorithms-from-the-Dremel-paper) described in the Dremel paper to represent nested structures.
+You can find additional details about the format and intended use cases in our [Hadoop Summit 2013 presentation](http://www.slideshare.net/julienledem/parquet-hadoop-summit-2013)
 
 ## Building
 
