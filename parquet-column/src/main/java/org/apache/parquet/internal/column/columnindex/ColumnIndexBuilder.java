@@ -373,13 +373,95 @@ public abstract class ColumnIndexBuilder {
     public <T extends Comparable<T>> PrimitiveIterator.OfInt visit(Contains<T> contains) {
       return contains.filter(
           this,
-          (l, r) -> {
-            throw new UnsupportedOperationException(
-                "Contains AND predicate cannot be used on column index directly");
+          // For Contains.And, compute the intersection of the int ranges
+          (l, r) -> new PrimitiveIterator.OfInt() {
+            private Integer next = null;
+
+            @Override
+            public int nextInt() {
+              int result = next;
+              next = null;
+              return result;
+            }
+
+            @Override
+            public boolean hasNext() {
+              if (next != null) {
+                return true;
+              }
+              if (!l.hasNext() || !r.hasNext()) {
+                return false;
+              }
+              // Since we know both iterators are in sorted order, we can iterate linearly through until
+              // we find the next value that belongs to both iterators, or terminate if none exist
+              int nextL = l.next();
+              int nextR = r.next();
+              while (nextL < nextR && l.hasNext()) {
+                nextL = l.next();
+              }
+              if (nextL == nextR) {
+                next = nextL;
+                return true;
+              }
+              while (nextR < nextL && r.hasNext()) {
+                nextR = r.next();
+              }
+              if (nextL == nextR) {
+                next = nextL;
+                return true;
+              }
+              return false;
+            }
           },
-          (l, r) -> {
-            throw new UnsupportedOperationException(
-                "Contains OR predicate cannot be used on column index directly");
+          // For Contains.Or, compute the deduplicated union of the int ranges
+          (l, r) -> new PrimitiveIterator.OfInt() {
+            private Integer next = null;
+            private Integer peekL = null;
+            private Integer peekR = null;
+
+            @Override
+            public int nextInt() {
+              int result = next;
+              next = null;
+              return result;
+            }
+
+            @Override
+            public boolean hasNext() {
+              if (next != null) {
+                return true;
+              }
+              if ((peekL == null && peekR == null) && (!l.hasNext() && !r.hasNext())) {
+                return false;
+              }
+              if (peekL == null && l.hasNext()) {
+                peekL = l.next();
+              }
+              if (peekR == null && r.hasNext()) {
+                peekR = r.next();
+              }
+
+              // Return the smaller of the two next iterator values
+              if (peekL != null && (peekL.equals(peekR) || peekR == null)) {
+                // If r.next() == l.next(), return l and throw away r to avoid duplicates
+                next = peekL;
+                peekL = null;
+                peekR = null;
+                return true;
+              } else if (peekL == null && peekR != null) {
+                next = peekR;
+                peekR = null;
+                return true;
+              } else if (peekL < peekR) {
+                next = peekL;
+                peekL = null;
+                return true;
+              } else {
+                next = peekR;
+                peekR = null;
+                return true;
+              }
+            }
           });
     }
 
