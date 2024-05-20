@@ -209,6 +209,7 @@ public class PhoneBookWriter {
       if (name != null ? !name.equals(user.name) : user.name != null) return false;
       if (phoneNumbers != null ? !phoneNumbers.equals(user.phoneNumbers) : user.phoneNumbers != null)
         return false;
+      if (accounts != null ? !accounts.equals(user.accounts) : user.accounts != null) return false;
 
       return true;
     }
@@ -219,6 +220,7 @@ public class PhoneBookWriter {
       result = 31 * result + (name != null ? name.hashCode() : 0);
       result = 31 * result + (phoneNumbers != null ? phoneNumbers.hashCode() : 0);
       result = 31 * result + (location != null ? location.hashCode() : 0);
+      result = 31 * result + (accounts != null ? accounts.hashCode() : 0);
       return result;
     }
 
