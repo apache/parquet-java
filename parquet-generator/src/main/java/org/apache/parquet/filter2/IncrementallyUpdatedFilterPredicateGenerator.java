@@ -130,6 +130,7 @@ public class IncrementallyUpdatedFilterPredicateGenerator {
     addContainsBegin();
     addVisitBegin("Contains");
     addContainsCase();
+    addContainsEnd();
     addVisitEnd();
 
     addVisitBegin("Lt");
@@ -503,6 +504,10 @@ public class IncrementallyUpdatedFilterPredicateGenerator {
 
   private void addContainsCase() throws IOException {
     add("    valueInspector = new ContainsPredicate(new ContainsInspectorVisitor().visit(pred));\n");
+  }
+
+  private void addContainsEnd() {
+    // No-op
   }
 
   private void addUdpCase(TypeInfo info, boolean invert) throws IOException {
