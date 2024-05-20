@@ -169,7 +169,7 @@ public final class ContainsRewriter implements Visitor<FilterPredicate> {
 
   @Override
   public FilterPredicate visit(Not not) {
-    return not;
+    throw new IllegalStateException("Not predicate should be rewritten before being evaluated by ContainsRewriter");
   }
 
   @Override
