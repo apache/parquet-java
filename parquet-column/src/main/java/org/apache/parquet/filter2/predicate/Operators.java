@@ -371,12 +371,12 @@ public final class Operators {
 
       if (!left.getColumn()
           .columnPath
-          .toDotString()
           .equals(Objects.requireNonNull(right, "right predicate cannot be null")
               .getColumn()
-              .columnPath
-              .toDotString())) {
-        throw new IllegalArgumentException("Composed Contains predicates must use the same column");
+              .columnPath)) {
+        throw new IllegalArgumentException("Composed Contains predicates must reference the same column name; "
+            + "found [" + left.getColumn().columnPath.toDotString() + ", "
+            + right.getColumn().columnPath.toDotString() + "]");
       }
 
       this.left = left;
@@ -398,8 +398,7 @@ public final class Operators {
 
     @Override
     public String toString() {
-      String name = Contains.class.getSimpleName().toLowerCase(Locale.ENGLISH);
-      return name + "(" + left + " " + combinator + " " + right + ")";
+      return combinator.toString().toLowerCase() + "(" + left + ", " + right + ")";
     }
 
     @Override
@@ -423,7 +422,7 @@ public final class Operators {
     ContainsColumnPredicate(U underlying) {
       super(underlying.getColumn());
       if (underlying.getValue() == null) {
-        throw new IllegalArgumentException("Contains predicate does not support null element values");
+        throw new IllegalArgumentException("Contains predicate does not support null element value");
       }
       this.underlying = underlying;
     }

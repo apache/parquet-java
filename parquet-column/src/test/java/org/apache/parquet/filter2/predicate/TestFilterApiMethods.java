@@ -20,6 +20,7 @@ package org.apache.parquet.filter2.predicate;
 
 import static org.apache.parquet.filter2.predicate.FilterApi.and;
 import static org.apache.parquet.filter2.predicate.FilterApi.binaryColumn;
+import static org.apache.parquet.filter2.predicate.FilterApi.contains;
 import static org.apache.parquet.filter2.predicate.FilterApi.doubleColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.eq;
 import static org.apache.parquet.filter2.predicate.FilterApi.gt;
@@ -32,6 +33,7 @@ import static org.apache.parquet.filter2.predicate.FilterApi.userDefined;
 import static org.apache.parquet.filter2.predicate.Operators.NotEq;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -92,11 +94,44 @@ public class TestFilterApiMethods {
   }
 
   @Test
+  public void testInvalidContainsCreation() {
+    FilterPredicate pred;
+    try {
+      pred = contains(eq(binColumn, null));
+      fail("Contains predicate with null element value should fail");
+    } catch (IllegalArgumentException e) {
+      assertEquals("Contains predicate does not support null element value", e.getMessage());
+    }
+
+    try {
+      pred = ContainsRewriter.rewrite(or(
+          contains(eq(binaryColumn("a.b.c"), Binary.fromString("foo"))),
+          and(
+              contains(eq(binaryColumn("b.c.d"), Binary.fromString("bar"))),
+              contains(eq(binaryColumn("b.c.d"), Binary.fromString("bar"))))));
+      fail("Composed Contains predicate referencing multiple different columns should fail");
+    } catch (IllegalArgumentException e) {
+      assertEquals(
+          "Composed Contains predicates must reference the same column name; found [a.b.c, b.c.d]",
+          e.getMessage());
+    }
+  }
+
+  @Test
   public void testToString() {
     FilterPredicate pred = or(predicate, notEq(binColumn, Binary.fromString("foobarbaz")));
     assertEquals(
         "or(and(not(or(eq(a.b.c, 7), noteq(a.b.c, 17))), gt(x.y.z, 100.0)), "
             + "noteq(a.string.column, Binary{\"foobarbaz\"}))",
+        pred.toString());
+
+    pred = ContainsRewriter.rewrite(or(
+        contains(eq(binColumn, Binary.fromString("foo"))),
+        and(
+            contains(eq(binColumn, Binary.fromString("bar"))),
+            contains(eq(binColumn, Binary.fromString("baz"))))));
+    assertEquals(
+        "or(contains(eq(a.string.column, Binary{\"foo\"})), and(contains(eq(a.string.column, Binary{\"bar\"})), contains(eq(a.string.column, Binary{\"baz\"}))))",
         pred.toString());
   }
 
