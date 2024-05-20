@@ -376,7 +376,7 @@ public final class Operators {
               .getColumn()
               .columnPath
               .toDotString())) {
-        throw new IllegalArgumentException("Composed contains() predicates must use the same column");
+        throw new IllegalArgumentException("Composed Contains predicates must use the same column");
       }
 
       this.left = left;
@@ -422,6 +422,9 @@ public final class Operators {
 
     ContainsColumnPredicate(U underlying) {
       super(underlying.getColumn());
+      if (underlying.getValue() == null) {
+        throw new IllegalArgumentException("Contains predicate does not support null element values");
+      }
       this.underlying = underlying;
     }
 

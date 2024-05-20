@@ -66,8 +66,6 @@ public class IncrementallyUpdatedFilterPredicateGenerator {
 
   public void run() throws IOException {
     add("package org.apache.parquet.filter2.recordlevel;\n" + "\n"
-        + "import java.util.function.Function;\n"
-        + "import java.util.function.BiFunction;\n"
         + "import java.util.List;\n"
         + "import java.util.Set;\n"
         + "\n"
@@ -198,20 +196,26 @@ public class IncrementallyUpdatedFilterPredicateGenerator {
   }
 
   private void addEqNotEqCase(TypeInfo info, boolean isEq, boolean expectMultipleResults) throws IOException {
-    add("    if (clazz.equals(" + info.className + ".class)) {\n" + "      if (pred.getValue() == null) {\n"
-        + "        valueInspector = new ValueInspector() {\n"
-        + "          @Override\n"
-        + "          public void updateNull() {\n"
-        + "            setResult("
-        + isEq + ");\n" + "          }\n"
-        + "\n"
-        + "          @Override\n"
-        + "          public void update("
-        + info.primitiveName + " value) {\n" + "            setResult("
-        + !isEq + ");\n" + "          }\n"
-        + "        };\n"
-        + "      } else {\n"
-        + "        final "
+    add("    if (clazz.equals(" + info.className + ".class)) {\n");
+
+    // Predicates for repeated fields don't need to support null values
+    if (!expectMultipleResults) {
+      add("      if (pred.getValue() == null) {\n"
+          + "        valueInspector = new ValueInspector() {\n"
+          + "          @Override\n"
+          + "          public void updateNull() {\n"
+          + "            setResult("
+          + isEq + ");\n" + "          }\n"
+          + "\n"
+          + "          @Override\n"
+          + "          public void update("
+          + info.primitiveName + " value) {\n" + "            setResult("
+          + !isEq + ");\n" + "          }\n"
+          + "        };\n"
+          + "      } else {\n");
+    }
+
+    add("        final "
         + info.primitiveName + " target = (" + info.className + ") (Object) pred.getValue();\n"
         + "        final PrimitiveComparator<"
         + info.className + "> comparator = getComparator(columnPath);\n" + "\n"
@@ -232,7 +236,13 @@ public class IncrementallyUpdatedFilterPredicateGenerator {
           + ") { setResult(true); }\n");
     }
 
-    add("          }\n" + "        };\n" + "      }\n" + "    }\n\n");
+    add("          }\n        };\n");
+
+    if (!expectMultipleResults) {
+      add("      }\n");
+    }
+
+    add("    }\n\n");
   }
 
   private void addInequalityCase(TypeInfo info, String op) throws IOException {

@@ -396,28 +396,6 @@ public class TestStatisticsFilter {
   }
 
   @Test
-  public void testContainsEqNull() {
-    IntStatistics statsNoNulls = new IntStatistics();
-    statsNoNulls.setMinMax(10, 100);
-    statsNoNulls.setNumNulls(0);
-
-    IntStatistics statsSomeNulls = new IntStatistics();
-    statsSomeNulls.setMinMax(10, 100);
-    statsSomeNulls.setNumNulls(3);
-
-    assertTrue(canDrop(
-        contains(eq(intColumn, null)),
-        Arrays.asList(getIntColumnMeta(statsNoNulls, 177L), getDoubleColumnMeta(doubleStats, 177L))));
-
-    assertFalse(canDrop(
-        contains(eq(intColumn, null)),
-        Arrays.asList(getIntColumnMeta(statsSomeNulls, 177L), getDoubleColumnMeta(doubleStats, 177L))));
-
-    assertFalse(canDrop(contains(eq(missingColumn, null)), columnMetas));
-    assertFalse(canDrop(contains(eq(intColumn, null)), missingMinMaxColumnMetas));
-  }
-
-  @Test
   public void testContainsAnd() {
     Operators.Contains<Integer> yes = contains(eq(intColumn, 9));
     Operators.Contains<Double> no = contains(eq(doubleColumn, 50D));
