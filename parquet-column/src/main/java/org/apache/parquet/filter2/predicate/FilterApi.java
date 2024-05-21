@@ -39,7 +39,6 @@ import org.apache.parquet.filter2.predicate.Operators.Not;
 import org.apache.parquet.filter2.predicate.Operators.NotEq;
 import org.apache.parquet.filter2.predicate.Operators.NotIn;
 import org.apache.parquet.filter2.predicate.Operators.Or;
-import org.apache.parquet.filter2.predicate.Operators.SupportsContains;
 import org.apache.parquet.filter2.predicate.Operators.SupportsEqNotEq;
 import org.apache.parquet.filter2.predicate.Operators.SupportsLtGt;
 import org.apache.parquet.filter2.predicate.Operators.UserDefined;
@@ -259,8 +258,7 @@ public final class FilterApi {
     return new NotIn<>(column, values);
   }
 
-  public static <T extends Comparable<T>, C extends Operators.ColumnFilterPredicate<T> & SupportsContains>
-      Contains<T> contains(C pred) {
+  public static <T extends Comparable<T>> Contains<T> contains(Eq<T> pred) {
     return Contains.of(pred);
   }
 
