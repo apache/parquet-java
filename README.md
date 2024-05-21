@@ -158,29 +158,29 @@ The build runs in [GitHub Actions](https://github.com/apache/parquet-mr/actions)
 
 ## Add Parquet as a dependency in Maven
 
-The current release is version `1.13.0`
+The current release is version `1.14.0`
 
 ```xml
   <dependencies>
     <dependency>
       <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-common</artifactId>
-      <version>1.13.0</version>
+      <version>1.14.0</version>
     </dependency>
     <dependency>
       <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-encoding</artifactId>
-      <version>1.13.0</version>
+      <version>1.14.0</version>
     </dependency>
     <dependency>
       <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-column</artifactId>
-      <version>1.13.0</version>
+      <version>1.14.0</version>
     </dependency>
     <dependency>
       <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-hadoop</artifactId>
-      <version>1.13.0</version>
+      <version>1.14.0</version>
     </dependency>
   </dependencies>
 ```
