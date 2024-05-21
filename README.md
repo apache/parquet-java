@@ -17,10 +17,10 @@
   ~ under the License.
   -->
 
-Parquet MR [![Build Status](https://github.com/apache/parquet-mr/workflows/Test/badge.svg)](https://github.com/apache/parquet-mr/actions)
+Parquet MR [![Build Status](https://github.com/apache/parquet-java/workflows/Test/badge.svg)](https://github.com/apache/parquet-java/actions)
 ======
 
-Parquet-MR contains the java implementation of the [Parquet format](https://github.com/apache/parquet-format).
+Parquet-java contains the java implementation of the [Parquet format](https://github.com/apache/parquet-format).
 Parquet is a columnar storage format for Hadoop; it provides efficient storage and encoding of data.
 Parquet uses the [record shredding and assembly algorithm](https://github.com/julienledem/redelm/wiki/The-striping-and-assembly-algorithms-from-the-Dremel-paper) described in the Dremel paper to represent nested structures.
 
@@ -28,7 +28,7 @@ You can find some details about the format and intended use cases in our [Hadoop
 
 ## Building
 
-Parquet-MR uses Maven to build and depends on the thrift compiler (protoc is now managed by maven plugin).
+Parquet-java uses Maven to build and depends on the thrift compiler (protoc is now managed by maven plugin).
 
 ### Install Thrift
 
@@ -212,7 +212,7 @@ Thank you for getting involved!
 
 ## Authors and contributors
 
-* [Contributors](https://github.com/apache/parquet-mr/graphs/contributors)
+* [Contributors](https://github.com/apache/parquet-java/graphs/contributors)
 * [Committers](dev/COMMITTERS.md)
 
 ## Code of Conduct
