@@ -382,6 +382,10 @@ public class PhoneBookWriter {
         .withConf(conf)
         .withFilter(filter)
         .withAllocator(allocator)
+        .useBloomFilter(false)
+        .useDictionaryFilter(false)
+        .useStatsFilter(false)
+        .useColumnIndexFilter(false)
         .build();
   }
 
