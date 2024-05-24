@@ -17,7 +17,7 @@
   ~ under the License.
   -->
 
-Parquet MR [![Build Status](https://github.com/apache/parquet-mr/workflows/Test/badge.svg)](https://github.com/apache/parquet-mr/actions)
+Parquet MR [![Build Status](https://github.com/apache/parquet-java/workflows/Test/badge.svg)](https://github.com/apache/parquet-mr/actions)
 ======
 
 This repository contains a Java implementation of [Apache Parquet](https://parquet.apache.org/)
@@ -36,7 +36,7 @@ You can find additional details about the format and intended use cases in our [
 
 ## Building
 
-Parquet-MR uses Maven to build and depends on the thrift compiler (protoc is now managed by maven plugin).
+Parquet-java uses Maven to build and depends on the thrift compiler (protoc is now managed by maven plugin).
 
 ### Install Thrift
 
@@ -95,7 +95,7 @@ Parquet is a very active project, and new features are being added quickly. Here
 
 ## Java Vector API support
 `The feature is experimental and is currently not part of the parquet distribution`.
-Parquet-MR has supported Java Vector API to speed up reading, to enable this feature:
+Parquet-Java has supported Java Vector API to speed up reading, to enable this feature:
 * Java 17+, 64-bit
 * Requiring the CPU to support instruction sets:
   * avx512vbmi
@@ -109,30 +109,30 @@ Parquet-MR has supported Java Vector API to speed up reading, to enable this fea
 
 ## Map/Reduce integration
 
-[Input](https://github.com/apache/parquet-mr/blob/master/parquet-hadoop/src/main/java/org/apache/parquet/hadoop/ParquetInputFormat.java) and [Output](https://github.com/apache/parquet-mr/blob/master/parquet-hadoop/src/main/java/org/apache/parquet/hadoop/ParquetOutputFormat.java) formats.
+[Input](https://github.com/apache/parquet-java/blob/master/parquet-hadoop/src/main/java/org/apache/parquet/hadoop/ParquetInputFormat.java) and [Output](https://github.com/apache/parquet-java/blob/master/parquet-hadoop/src/main/java/org/apache/parquet/hadoop/ParquetOutputFormat.java) formats.
 Note that to use an Input or Output format, you need to implement a WriteSupport or ReadSupport class, which will implement the conversion of your object to and from a Parquet schema.
 
 We've implemented this for 2 popular data formats to provide a clean migration path as well:
 
 ### Thrift
-Thrift integration is provided by the [parquet-thrift](https://github.com/apache/parquet-mr/tree/master/parquet-thrift) sub-project.
+Thrift integration is provided by the [parquet-thrift](https://github.com/apache/parquet-java/tree/master/parquet-thrift) sub-project.
 
 ### Avro
-Avro conversion is implemented via the [parquet-avro](https://github.com/apache/parquet-mr/tree/master/parquet-avro) sub-project.
+Avro conversion is implemented via the [parquet-avro](https://github.com/apache/parquet-java/tree/master/parquet-avro) sub-project.
 
 ### Protobuf
-Protobuf conversion is implemented via the [parquet-protobuf](https://github.com/apache/parquet-mr/tree/master/parquet-protobuf) sub-project.
+Protobuf conversion is implemented via the [parquet-protobuf](https://github.com/apache/parquet-java/tree/master/parquet-protobuf) sub-project.
 
 ### Create your own objects
 * The ParquetOutputFormat can be provided a WriteSupport to write your own objects to an event based RecordConsumer.
 * the ParquetInputFormat can be provided a ReadSupport to materialize your own objects by implementing a RecordMaterializer
 
 See the APIs:
-* [Record conversion API](https://github.com/apache/parquet-mr/tree/master/parquet-column/src/main/java/org/apache/parquet/io/api)
-* [Hadoop API](https://github.com/apache/parquet-mr/tree/master/parquet-hadoop/src/main/java/org/apache/parquet/hadoop/api)
+* [Record conversion API](https://github.com/apache/parquet-java/tree/master/parquet-column/src/main/java/org/apache/parquet/io/api)
+* [Hadoop API](https://github.com/apache/parquet-java/tree/master/parquet-hadoop/src/main/java/org/apache/parquet/hadoop/api)
 
 ## Apache Pig integration
-A [Loader](https://github.com/apache/parquet-mr/blob/master/parquet-pig/src/main/java/org/apache/parquet/pig/ParquetLoader.java) and a [Storer](https://github.com/apache/parquet-mr/blob/master/parquet-pig/src/main/java/org/apache/parquet/pig/ParquetStorer.java) are provided to read and write Parquet files with Apache Pig
+A [Loader](https://github.com/apache/parquet-java/blob/master/parquet-pig/src/main/java/org/apache/parquet/pig/ParquetLoader.java) and a [Storer](https://github.com/apache/parquet-java/blob/master/parquet-pig/src/main/java/org/apache/parquet/pig/ParquetStorer.java) are provided to read and write Parquet files with Apache Pig
 
 Storing data into Parquet in Pig is simple:
 ```
@@ -151,7 +151,7 @@ If the data was stored using Pig, things will "just work". If the data was store
 
 ## Hive integration
 
-Hive integration is provided via the [parquet-hive](https://github.com/apache/parquet-mr/tree/master/parquet-hive) sub-project.
+Hive integration is provided via the [parquet-hive](https://github.com/apache/parquet-java/tree/master/parquet-hive) sub-project.
 
 Hive integration is now deprecated within the Parquet project. It is now maintained by Apache Hive.
 
@@ -161,8 +161,8 @@ To run the unit tests: `mvn test`
 
 To build the jars: `mvn package`
 
-The build runs in [GitHub Actions](https://github.com/apache/parquet-mr/actions):
-[![Build Status](https://github.com/apache/parquet-mr/workflows/Test/badge.svg)](https://github.com/apache/parquet-mr/actions)
+The build runs in [GitHub Actions](https://github.com/apache/parquet-java/actions):
+[![Build Status](https://github.com/apache/parquet-java/workflows/Test/badge.svg)](https://github.com/apache/parquet-java/actions)
 
 ## Add Parquet as a dependency in Maven
 
@@ -195,7 +195,7 @@ The current release is version `1.14.0`
 
 ### How To Contribute
 
-We prefer to receive contributions in the form of GitHub pull requests. Please send pull requests against the [parquet-mr](https://github.com/apache/parquet-mr) Git repository. If you've previously forked Parquet from its old location, you will need to add a remote or update your origin remote to https://github.com/apache/parquet-mr.git
+We prefer to receive contributions in the form of GitHub pull requests. Please send pull requests against the [parquet-mr](https://github.com/apache/parquet-java) Git repository. If you've previously forked Parquet from its old location, you will need to add a remote or update your origin remote to https://github.com/apache/parquet-java.git
 
 If you are looking for some ideas on what to contribute, check out jira issues for this project labeled ["pick-me-up"](https://issues.apache.org/jira/browse/PARQUET-5?jql=project%20%3D%20PARQUET%20and%20labels%20%3D%20pick-me-up%20and%20status%20%3D%20open).
 Comment on the issue and/or contact [dev@parquet.apache.org](http://mail-archives.apache.org/mod_mbox/parquet-dev/) with your questions and ideas.
@@ -206,7 +206,7 @@ To contribute a patch:
 
   1. Break your work into small, single-purpose patches if possible. It’s much harder to merge in a large change with a lot of disjoint features.
   2. Create a JIRA for your patch on the [Parquet Project JIRA](https://issues.apache.org/jira/browse/PARQUET).
-  3. Submit the patch as a GitHub pull request against the master branch. For a tutorial, see the GitHub guides on forking a repo and sending a pull request. Prefix your pull request name with the JIRA name (ex: https://github.com/apache/parquet-mr/pull/240).
+  3. Submit the patch as a GitHub pull request against the master branch. For a tutorial, see the GitHub guides on forking a repo and sending a pull request. Prefix your pull request name with the JIRA name (ex: https://github.com/apache/parquet-java/pull/240).
   4. Make sure that your code passes the unit tests. You can run the tests with `mvn test` in the root directory.
   5. Add new unit tests for your code.
 
@@ -220,7 +220,7 @@ Thank you for getting involved!
 
 ## Authors and contributors
 
-* [Contributors](https://github.com/apache/parquet-mr/graphs/contributors)
+* [Contributors](https://github.com/apache/parquet-java/graphs/contributors)
 * [Committers](dev/COMMITTERS.md)
 
 ## Code of Conduct
