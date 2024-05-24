@@ -56,7 +56,7 @@ public class PhoneBookWriter {
       + "      optional binary kind (UTF8);\n"
       + "    }\n"
       + "  }\n"
-      + "  optional group accounts {\n"
+      + "  optional group accounts (MAP) {\n"
       + "    repeated group key_value {\n"
       + "      required binary key;\n"
       + "      required double value;\n"
