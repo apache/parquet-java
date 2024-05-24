@@ -40,7 +40,7 @@ import org.apache.parquet.filter2.predicate.Operators.UserDefined;
  * containing all predicate assertions.
  *
  * This is a performance optimization, as all composed Contains sub-predicates must share the same column, and
- * can therefore can be applied efficiently as a single predicate pass.
+ * can therefore be applied efficiently as a single predicate pass.
  */
 public final class ContainsRewriter implements Visitor<FilterPredicate> {
   private static final ContainsRewriter INSTANCE = new ContainsRewriter();
