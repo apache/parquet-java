@@ -32,8 +32,8 @@ import static org.apache.parquet.filter2.predicate.FilterApi.or;
 import static org.apache.parquet.filter2.predicate.FilterApi.userDefined;
 import static org.apache.parquet.filter2.predicate.Operators.NotEq;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -95,26 +95,19 @@ public class TestFilterApiMethods {
 
   @Test
   public void testInvalidContainsCreation() {
-    FilterPredicate pred;
-    try {
-      pred = contains(eq(binColumn, null));
-      fail("Contains predicate with null element value should fail");
-    } catch (IllegalArgumentException e) {
-      assertEquals("Contains predicate does not support null element value", e.getMessage());
-    }
+    assertThrows(
+        "Contains predicate does not support null element value",
+        IllegalArgumentException.class,
+        () -> contains(eq(binColumn, null)));
 
-    try {
-      pred = ContainsRewriter.rewrite(or(
-          contains(eq(binaryColumn("a.b.c"), Binary.fromString("foo"))),
-          and(
-              contains(eq(binaryColumn("b.c.d"), Binary.fromString("bar"))),
-              contains(eq(binaryColumn("b.c.d"), Binary.fromString("bar"))))));
-      fail("Composed Contains predicate referencing multiple different columns should fail");
-    } catch (IllegalArgumentException e) {
-      assertEquals(
-          "Composed Contains predicates must reference the same column name; found [a.b.c, b.c.d]",
-          e.getMessage());
-    }
+    assertThrows(
+        "Composed Contains predicates must reference the same column name; found [a.b.c, b.c.d]",
+        IllegalArgumentException.class,
+        () -> ContainsRewriter.rewrite(or(
+            contains(eq(binaryColumn("a.b.c"), Binary.fromString("foo"))),
+            and(
+                contains(eq(binaryColumn("b.c.d"), Binary.fromString("bar"))),
+                contains(eq(binaryColumn("b.c.d"), Binary.fromString("bar")))))));
   }
 
   @Test
