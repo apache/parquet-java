@@ -50,6 +50,77 @@ public class TestIndexIterator {
     assertEquals(IndexIterator.rangeTranslate(11, 18, i -> i - 10), 1, 2, 3, 4, 5, 6, 7, 8);
   }
 
+  @Test
+  public void testUnion() {
+    // Test deduplication of intersecting ranges
+    assertEquals(
+        IndexIterator.union(
+            IndexIterator.rangeTranslate(0, 7, i -> i), IndexIterator.rangeTranslate(4, 10, i -> i)),
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10);
+
+    // Test inversion of LHS and RHS
+    assertEquals(
+        IndexIterator.union(
+            IndexIterator.rangeTranslate(4, 10, i -> i), IndexIterator.rangeTranslate(0, 7, i -> i)),
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10);
+
+    // Test non-intersecting ranges
+    assertEquals(
+        IndexIterator.union(
+            IndexIterator.rangeTranslate(2, 5, i -> i), IndexIterator.rangeTranslate(8, 10, i -> i)),
+        2,
+        3,
+        4,
+        5,
+        8,
+        9,
+        10);
+  }
+
+  @Test
+  public void testIntersection() {
+    assertEquals(
+        IndexIterator.intersection(
+            IndexIterator.rangeTranslate(0, 7, i -> i), IndexIterator.rangeTranslate(4, 10, i -> i)),
+        4,
+        5,
+        6,
+        7);
+
+    // Test inversion of LHS and RHS
+    assertEquals(
+        IndexIterator.intersection(
+            IndexIterator.rangeTranslate(4, 10, i -> i), IndexIterator.rangeTranslate(0, 7, i -> i)),
+        4,
+        5,
+        6,
+        7);
+
+    // Test no intersection between ranges
+    assertEquals(IndexIterator.intersection(
+        IndexIterator.rangeTranslate(2, 5, i -> i), IndexIterator.rangeTranslate(8, 10, i -> i)));
+  }
+
   static void assertEquals(PrimitiveIterator.OfInt actualIt, int... expectedValues) {
     IntList actualList = new IntArrayList();
     actualIt.forEachRemaining((int value) -> actualList.add(value));
