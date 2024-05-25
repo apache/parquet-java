@@ -17,7 +17,7 @@
   ~ under the License.
   -->
 
-Parquet MR [![Build Status](https://github.com/apache/parquet-java/workflows/Test/badge.svg)](https://github.com/apache/parquet-mr/actions)
+Parquet Java (formerly Parquet MR) [![Build Status](https://github.com/apache/parquet-java/workflows/Test/badge.svg)](https://github.com/apache/parquet-java/actions)
 ======
 
 This repository contains a Java implementation of [Apache Parquet](https://parquet.apache.org/)
@@ -195,7 +195,7 @@ The current release is version `1.14.0`
 
 ### How To Contribute
 
-We prefer to receive contributions in the form of GitHub pull requests. Please send pull requests against the [parquet-mr](https://github.com/apache/parquet-java) Git repository. If you've previously forked Parquet from its old location, you will need to add a remote or update your origin remote to https://github.com/apache/parquet-java.git
+We prefer to receive contributions in the form of GitHub pull requests. Please send pull requests against the [parquet-java](https://github.com/apache/parquet-java) Git repository. If you've previously forked Parquet from its old location, you will need to add a remote or update your origin remote to https://github.com/apache/parquet-java.git
 
 If you are looking for some ideas on what to contribute, check out jira issues for this project labeled ["pick-me-up"](https://issues.apache.org/jira/browse/PARQUET-5?jql=project%20%3D%20PARQUET%20and%20labels%20%3D%20pick-me-up%20and%20status%20%3D%20open).
 Comment on the issue and/or contact [dev@parquet.apache.org](http://mail-archives.apache.org/mod_mbox/parquet-dev/) with your questions and ideas.
