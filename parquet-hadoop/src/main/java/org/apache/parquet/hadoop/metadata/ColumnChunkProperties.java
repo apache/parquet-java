@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.hadoop.metadata;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.util.Arrays;
 import java.util.Set;
 import org.apache.parquet.column.Encoding;
@@ -76,6 +77,7 @@ public class ColumnChunkProperties {
    * @deprecated will be removed in 2.0.0. Use {@link #getPrimitiveType()} instead.
    */
   @Deprecated
+  @JsonIgnore
   public PrimitiveTypeName getType() {
     return type.getPrimitiveTypeName();
   }
