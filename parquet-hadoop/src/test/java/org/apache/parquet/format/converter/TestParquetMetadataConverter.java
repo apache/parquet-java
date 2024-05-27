@@ -87,6 +87,10 @@ import org.apache.parquet.column.statistics.IntStatistics;
 import org.apache.parquet.column.statistics.LongStatistics;
 import org.apache.parquet.column.statistics.SizeStatistics;
 import org.apache.parquet.column.statistics.Statistics;
+import org.apache.parquet.crypto.DecryptionPropertiesFactory;
+import org.apache.parquet.crypto.EncryptionPropertiesFactory;
+import org.apache.parquet.crypto.FileDecryptionProperties;
+import org.apache.parquet.crypto.InternalFileDecryptor;
 import org.apache.parquet.example.Paper;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroup;
@@ -635,16 +639,47 @@ public class TestParquetMetadataConverter {
   }
 
   @Test
-  public void testNullFieldMetadataDebugLogging() {
+  public void testFieldMetadataDebugLogging() {
     MessageType schema = parseMessageType("message test { optional binary some_null_field; }");
     org.apache.parquet.hadoop.metadata.FileMetaData fileMetaData =
-        new org.apache.parquet.hadoop.metadata.FileMetaData(schema, new HashMap<String, String>(), null);
-    List<BlockMetaData> blockMetaDataList = new ArrayList<BlockMetaData>();
+        new org.apache.parquet.hadoop.metadata.FileMetaData(
+            schema,
+            new HashMap<>(),
+            null,
+            org.apache.parquet.hadoop.metadata.FileMetaData.EncryptionType.UNENCRYPTED,
+            null);
+    List<BlockMetaData> blockMetaDataList = new ArrayList<>();
     BlockMetaData blockMetaData = new BlockMetaData();
     blockMetaData.addColumn(createColumnChunkMetaData());
     blockMetaDataList.add(blockMetaData);
     ParquetMetadata metadata = new ParquetMetadata(fileMetaData, blockMetaDataList);
     ParquetMetadata.toJSON(metadata);
+  }
+
+  @Test
+  public void testEncryptedFieldMetadataDebugLogging() {
+    Configuration conf = new Configuration();
+    conf.set(
+        EncryptionPropertiesFactory.CRYPTO_FACTORY_CLASS_PROPERTY_NAME,
+        "org.apache.parquet.crypto.SampleDecryptionPropertiesFactory");
+    DecryptionPropertiesFactory decryptionPropertiesFactory = DecryptionPropertiesFactory.loadFactory(conf);
+    FileDecryptionProperties decryptionProperties =
+        decryptionPropertiesFactory.getFileDecryptionProperties(conf, null);
+
+    MessageType schema = parseMessageType("message test { optional binary some_null_field; }");
+
+    org.apache.parquet.hadoop.metadata.FileMetaData fileMetaData =
+        new org.apache.parquet.hadoop.metadata.FileMetaData(
+            schema,
+            new HashMap<>(),
+            null,
+            org.apache.parquet.hadoop.metadata.FileMetaData.EncryptionType.ENCRYPTED_FOOTER,
+            new InternalFileDecryptor(decryptionProperties));
+
+    List<BlockMetaData> blockMetaDataList = new ArrayList<>();
+    ParquetMetadata metadata = new ParquetMetadata(fileMetaData, blockMetaDataList);
+    ParquetMetadata.toJSON(metadata);
+    System.out.println(ParquetMetadata.toPrettyJSON(metadata));
   }
 
   @Test

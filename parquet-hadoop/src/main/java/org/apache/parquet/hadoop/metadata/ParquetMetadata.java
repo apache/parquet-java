@@ -19,6 +19,9 @@
 package org.apache.parquet.hadoop.metadata;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectWriter;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import java.io.IOException;
 import java.io.StringReader;
 import java.io.StringWriter;
@@ -31,6 +34,14 @@ import java.util.List;
 public class ParquetMetadata {
 
   private static final ObjectMapper objectMapper = new ObjectMapper();
+
+  static {
+    // Enable FAIL_ON_EMPTY_BEANS on objectmapper. Without this feature parquet-casdacing tests fail,
+    // because LogicalTypeAnnotation implementations are classes without any property.
+    objectMapper.disable(SerializationFeature.FAIL_ON_EMPTY_BEANS);
+    // Add support for Java 8 Optional
+    objectMapper.registerModule(new Jdk8Module());
+  }
 
   /**
    * @param parquetMetaData an instance of parquet metadata to convert
@@ -50,19 +61,23 @@ public class ParquetMetadata {
 
   private static String toJSON(ParquetMetadata parquetMetaData, boolean isPrettyPrint) {
     try (StringWriter stringWriter = new StringWriter()) {
-      if (isPrettyPrint) {
-        Object objectToPrint;
-        if (parquetMetaData.getFileMetaData() == null
-            || parquetMetaData.getFileMetaData().getEncryptionType()
-                == FileMetaData.EncryptionType.UNENCRYPTED) {
-          objectToPrint = parquetMetaData;
-        } else {
-          objectToPrint = parquetMetaData.getFileMetaData();
-        }
-        objectMapper.writerWithDefaultPrettyPrinter().writeValue(stringWriter, objectToPrint);
+      Object objectToPrint;
+      if (parquetMetaData.getFileMetaData() == null
+          || parquetMetaData.getFileMetaData().getEncryptionType()
+              == FileMetaData.EncryptionType.UNENCRYPTED) {
+        objectToPrint = parquetMetaData;
       } else {
-        objectMapper.writeValue(stringWriter, parquetMetaData);
+        objectToPrint = parquetMetaData.getFileMetaData();
       }
+
+      ObjectWriter writer;
+      if (isPrettyPrint) {
+        writer = objectMapper.writerWithDefaultPrettyPrinter();
+      } else {
+        writer = objectMapper.writer();
+      }
+
+      writer.writeValue(stringWriter, objectToPrint);
       return stringWriter.toString();
     } catch (IOException e) {
       throw new RuntimeException(e);
