@@ -22,6 +22,7 @@ import static org.apache.parquet.column.Encoding.PLAIN_DICTIONARY;
 import static org.apache.parquet.column.Encoding.RLE_DICTIONARY;
 import static org.apache.parquet.format.Util.readColumnMetaData;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.util.Set;
@@ -338,6 +339,7 @@ public abstract class ColumnChunkMetaData {
    * @deprecated will be removed in 2.0.0. Use {@link #getPrimitiveType()} instead.
    */
   @Deprecated
+  @JsonIgnore
   public PrimitiveTypeName getType() {
     decryptIfNeeded();
     return properties.getType();
@@ -380,6 +382,7 @@ public abstract class ColumnChunkMetaData {
   /**
    * @return the stats for this column
    */
+  @JsonIgnore
   public abstract Statistics getStatistics();
 
   /**
@@ -387,6 +390,7 @@ public abstract class ColumnChunkMetaData {
    *
    * @return the size stats for this column
    */
+  @JsonIgnore
   public SizeStatistics getSizeStatistics() {
     throw new UnsupportedOperationException("SizeStatistics is not implemented");
   }
