@@ -83,17 +83,26 @@ public class IndexIterator implements PrimitiveIterator.OfInt {
         // we find the next value that belongs to both iterators, or terminate if none exist
         int nextL = lhs.next();
         int nextR = rhs.next();
-        while (nextL < nextR && lhs.hasNext()) {
-          nextL = lhs.next();
-        }
-        if (nextL == nextR) {
-          return nextL;
-        }
-        while (nextR < nextL && rhs.hasNext()) {
-          nextR = rhs.next();
-        }
-        if (nextL == nextR) {
-          return nextL;
+
+        while (true) {
+          // Try to iterate LHS and RHS to the next intersecting value
+          while (nextL < nextR && lhs.hasNext()) {
+            nextL = lhs.next();
+          }
+          while (nextL > nextR && rhs.hasNext()) {
+            nextR = rhs.next();
+          }
+          if (nextL == nextR) {
+            return nextL;
+          }
+
+          // No intersection found; we know current RHS > LHS, so advance LHS to then next element and try
+          // again
+          if (lhs.hasNext()) {
+            nextL = lhs.next();
+          } else {
+            break;
+          }
         }
 
         return -1;
