@@ -89,16 +89,15 @@ public class IndexIterator implements PrimitiveIterator.OfInt {
           while (nextL < nextR && lhs.hasNext()) {
             nextL = lhs.next();
           }
-          while (nextL > nextR && rhs.hasNext()) {
+          while (nextR < nextL && rhs.hasNext()) {
             nextR = rhs.next();
           }
           if (nextL == nextR) {
             return nextL;
           }
 
-          // No intersection found; we know current RHS > LHS, so advance LHS to then next element and try
-          // again
-          if (lhs.hasNext()) {
+          // No intersection found; advance LHS to the next element and retry loop
+          if (nextL < nextR && lhs.hasNext()) {
             nextL = lhs.next();
           } else {
             break;
