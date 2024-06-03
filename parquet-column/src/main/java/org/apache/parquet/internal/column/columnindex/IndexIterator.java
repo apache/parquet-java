@@ -61,6 +61,9 @@ public class IndexIterator implements PrimitiveIterator.OfInt {
 
       @Override
       public int nextInt() {
+        if (!hasNext()) {
+          throw new NoSuchElementException();
+        }
         int result = next;
         next = fetchNext();
         return result;
@@ -106,6 +109,9 @@ public class IndexIterator implements PrimitiveIterator.OfInt {
 
       @Override
       public int nextInt() {
+        if (!hasNext()) {
+          throw new NoSuchElementException();
+        }
         int result = next;
         next = fetchNext();
         return result;
