@@ -85,8 +85,6 @@ public final class Operators {
   public static interface SupportsLtGt
       extends SupportsEqNotEq {} // marker for columns that can be used with lt(), ltEq(), gt(), gtEq()
 
-  public static interface SupportsContains {}
-
   public static final class IntColumn extends Column<Integer> implements SupportsLtGt {
     IntColumn(ColumnPath columnPath) {
       super(columnPath, Integer.class);
@@ -123,8 +121,13 @@ public final class Operators {
     }
   }
 
+  abstract static class SingleColumnFilterPredicate<T extends Comparable<T>>
+      implements FilterPredicate, Serializable {
+    abstract Column<T> getColumn();
+  }
+
   // base class for Eq, NotEq, Lt, Gt, LtEq, GtEq
-  abstract static class ColumnFilterPredicate<T extends Comparable<T>> implements FilterPredicate, Serializable {
+  abstract static class ColumnFilterPredicate<T extends Comparable<T>> extends SingleColumnFilterPredicate<T> {
     private final Column<T> column;
     private final T value;
 
@@ -136,6 +139,7 @@ public final class Operators {
       this.value = value;
     }
 
+    @Override
     public Column<T> getColumn() {
       return column;
     }
@@ -172,7 +176,7 @@ public final class Operators {
     }
   }
 
-  public static final class Eq<T extends Comparable<T>> extends ColumnFilterPredicate<T> implements SupportsContains {
+  public static final class Eq<T extends Comparable<T>> extends ColumnFilterPredicate<T> {
 
     // value can be null
     public Eq(Column<T> column, T value) {
@@ -255,7 +259,7 @@ public final class Operators {
    * {@link NotIn} is used to filter data that are not in the list of values.
    */
   public abstract static class SetColumnFilterPredicate<T extends Comparable<T>>
-      implements FilterPredicate, Serializable {
+      extends SingleColumnFilterPredicate<T> {
     private final Column<T> column;
     private final Set<T> values;
 
@@ -265,6 +269,7 @@ public final class Operators {
       checkArgument(!values.isEmpty(), "values in SetColumnFilterPredicate shouldn't be empty!");
     }
 
+    @Override
     public Column<T> getColumn() {
       return column;
     }
@@ -325,7 +330,7 @@ public final class Operators {
       this.column = Objects.requireNonNull(column, "column cannot be null");
     }
 
-    static <ColumnT extends Comparable<ColumnT>, C extends ColumnFilterPredicate<ColumnT> & SupportsContains>
+    static <ColumnT extends Comparable<ColumnT>, C extends SingleColumnFilterPredicate<ColumnT>>
         Contains<ColumnT> of(C pred) {
       return new ContainsColumnPredicate<>(pred);
     }
@@ -415,14 +420,18 @@ public final class Operators {
     }
   }
 
-  private static class ContainsColumnPredicate<T extends Comparable<T>, U extends ColumnFilterPredicate<T>>
+  private static class ContainsColumnPredicate<T extends Comparable<T>, U extends SingleColumnFilterPredicate<T>>
       extends Contains<T> {
     private final U underlying;
 
     ContainsColumnPredicate(U underlying) {
       super(underlying.getColumn());
-      if (underlying.getValue() == null) {
-        throw new IllegalArgumentException("Contains predicate does not support null element value");
+      if ((underlying instanceof ColumnFilterPredicate && ((ColumnFilterPredicate) underlying).getValue() == null)
+          || underlying instanceof SetColumnFilterPredicate
+              && ((SetColumnFilterPredicate) underlying)
+                  .getValues()
+                  .contains(null)) {
+        throw new IllegalArgumentException("Contains predicate does not support null element value(s)");
       }
       this.underlying = underlying;
     }
