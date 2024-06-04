@@ -98,7 +98,7 @@ public interface IncrementallyUpdatedFilterPredicate {
     /**
      * Reset to clear state and begin evaluating the next record.
      */
-    public final void reset() {
+    public void reset() {
       isKnown = false;
       result = false;
     }

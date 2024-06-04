@@ -20,6 +20,7 @@ package org.apache.parquet.filter2.predicate;
 
 import static org.apache.parquet.filter2.predicate.FilterApi.and;
 import static org.apache.parquet.filter2.predicate.FilterApi.binaryColumn;
+import static org.apache.parquet.filter2.predicate.FilterApi.contains;
 import static org.apache.parquet.filter2.predicate.FilterApi.eq;
 import static org.apache.parquet.filter2.predicate.FilterApi.gt;
 import static org.apache.parquet.filter2.predicate.FilterApi.intColumn;
@@ -126,13 +127,36 @@ public class TestSchemaCompatibilityValidator {
   }
 
   @Test
-  public void testRepeatedNotSupported() {
+  public void testRepeatedNotSupportedForPrimitivePredicates() {
     try {
       validate(eq(lotsOfLongs, 10l), schema);
       fail("this should throw");
     } catch (IllegalArgumentException e) {
       assertEquals(
           "FilterPredicates do not currently support repeated columns. Column lotsOfLongs is repeated.",
+          e.getMessage());
+    }
+  }
+
+  @Test
+  public void testRepeatedSupportedForContainsPredicates() {
+    try {
+      validate(contains(eq(lotsOfLongs, 10L)), schema);
+      validate(and(contains(eq(lotsOfLongs, 10L)), contains(eq(lotsOfLongs, 5l))), schema);
+      validate(or(contains(eq(lotsOfLongs, 10L)), contains(eq(lotsOfLongs, 5l))), schema);
+    } catch (IllegalArgumentException e) {
+      fail("Valid repeated column predicates should not throw exceptions");
+    }
+  }
+
+  @Test
+  public void testNonRepeatedNotSupportedForContainsPredicates() {
+    try {
+      validate(contains(eq(longBar, 10L)), schema);
+      fail("Non-repeated field " + longBar + " should fail to validate a containsEq() predicate");
+    } catch (IllegalArgumentException e) {
+      assertEquals(
+          "FilterPredicate for column x.bar requires a repeated schema, but found max repetition level 0",
           e.getMessage());
     }
   }

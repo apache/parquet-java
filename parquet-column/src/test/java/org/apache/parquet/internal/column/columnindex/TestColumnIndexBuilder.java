@@ -19,8 +19,10 @@
 package org.apache.parquet.internal.column.columnindex;
 
 import static java.util.Arrays.asList;
+import static org.apache.parquet.filter2.predicate.FilterApi.and;
 import static org.apache.parquet.filter2.predicate.FilterApi.binaryColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.booleanColumn;
+import static org.apache.parquet.filter2.predicate.FilterApi.contains;
 import static org.apache.parquet.filter2.predicate.FilterApi.doubleColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.eq;
 import static org.apache.parquet.filter2.predicate.FilterApi.floatColumn;
@@ -33,6 +35,7 @@ import static org.apache.parquet.filter2.predicate.FilterApi.lt;
 import static org.apache.parquet.filter2.predicate.FilterApi.ltEq;
 import static org.apache.parquet.filter2.predicate.FilterApi.notEq;
 import static org.apache.parquet.filter2.predicate.FilterApi.notIn;
+import static org.apache.parquet.filter2.predicate.FilterApi.or;
 import static org.apache.parquet.filter2.predicate.FilterApi.userDefined;
 import static org.apache.parquet.filter2.predicate.LogicalInverter.invert;
 import static org.apache.parquet.schema.OriginalType.DECIMAL;
@@ -62,6 +65,7 @@ import java.util.List;
 import java.util.Set;
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.column.statistics.Statistics;
+import org.apache.parquet.filter2.predicate.ContainsRewriter;
 import org.apache.parquet.filter2.predicate.FilterPredicate;
 import org.apache.parquet.filter2.predicate.Operators.BinaryColumn;
 import org.apache.parquet.filter2.predicate.Operators.BooleanColumn;
@@ -237,6 +241,58 @@ public class TestColumnIndexBuilder {
   }
 
   @Test
+  public void testArrayContainsDouble() {
+    PrimitiveType type = Types.required(DOUBLE).named("test_double");
+    ColumnIndexBuilder builder = ColumnIndexBuilder.getBuilder(type, Integer.MAX_VALUE);
+    assertThat(builder, instanceOf(DoubleColumnIndexBuilder.class));
+    assertNull(builder.build());
+    DoubleColumn col = doubleColumn("test_col");
+
+    StatsBuilder sb = new StatsBuilder();
+    builder.add(sb.stats(type, -4.2, -4.1));
+    builder.add(sb.stats(type, -11.7, 7.0, null));
+    builder.add(sb.stats(type, 2.2, 2.2, null, null));
+    builder.add(sb.stats(type, null, null, null));
+    builder.add(sb.stats(type, 1.9, 2.32));
+    builder.add(sb.stats(type, -21.0, 8.1));
+    builder.add(sb.stats(type, 10.0, 25.0));
+    assertEquals(7, builder.getPageCount());
+    assertEquals(sb.getMinMaxSize(), builder.getMinMaxSize());
+    ColumnIndex columnIndex = builder.build();
+    assertEquals(BoundaryOrder.UNORDERED, columnIndex.getBoundaryOrder());
+    assertCorrectNullCounts(columnIndex, 0, 1, 2, 3, 0, 0, 0);
+    assertCorrectNullPages(columnIndex, false, false, false, true, false, false, false);
+    assertCorrectValues(columnIndex.getMaxValues(), -4.1, 7.0, 2.2, null, 2.32, 8.1, 25.0);
+    assertCorrectValues(columnIndex.getMinValues(), -4.2, -11.7, 2.2, null, 1.9, -21.0, 10.0);
+
+    // Validate that contains(eq()) matches eq() when not combined using or() and and()
+    assertCorrectFiltering(columnIndex, eq(col, 0.0), 1, 5);
+    assertCorrectFiltering(columnIndex, contains(eq(col, 0.0)), 1, 5);
+
+    assertCorrectFiltering(columnIndex, eq(col, 2.2), 1, 2, 4, 5);
+    assertCorrectFiltering(columnIndex, contains(eq(col, 2.2)), 1, 2, 4, 5);
+
+    assertCorrectFiltering(columnIndex, eq(col, 25.0), 6);
+    assertCorrectFiltering(columnIndex, contains(eq(col, 25.0)), 6);
+
+    // Should equal intersection of [1, 5] and [1, 2, 4, 5] --> [1, 5]
+    assertCorrectFiltering(
+        columnIndex, ContainsRewriter.rewrite(and(contains(eq(col, 0.0)), contains(eq(col, 2.2)))), 1, 5);
+
+    // Should equal intersection of [6] and [1, 5] --> []
+    assertCorrectFiltering(
+        columnIndex, ContainsRewriter.rewrite(and(contains(eq(col, 25.0)), contains(eq(col, 0.0)))));
+
+    // Should equal union of [6] and [1, 5] --> [1, 5, 6]
+    assertCorrectFiltering(
+        columnIndex, ContainsRewriter.rewrite(or(contains(eq(col, 25.0)), contains(eq(col, 0.0)))), 1, 5, 6);
+
+    // Should equal de-duplicated union of [1, 5] and [1, 2, 4, 5] --> [1, 2, 4, 5]
+    assertCorrectFiltering(
+        columnIndex, ContainsRewriter.rewrite(or(contains(eq(col, 0.0)), contains(eq(col, 2.2)))), 1, 2, 4, 5);
+  }
+
+  @Test
   public void testBuildBinaryDecimal() {
     PrimitiveType type =
         Types.required(BINARY).as(DECIMAL).precision(12).scale(2).named("test_binary_decimal");
@@ -286,6 +342,7 @@ public class TestColumnIndexBuilder {
     set1.add(Binary.fromString("0.0"));
     assertCorrectFiltering(columnIndex, in(col, set1), 1, 4);
     assertCorrectFiltering(columnIndex, notIn(col, set1), 0, 1, 2, 3, 4, 5, 6, 7);
+
     set1.add(null);
     assertCorrectFiltering(columnIndex, in(col, set1), 0, 1, 2, 3, 4, 5, 6);
     assertCorrectFiltering(columnIndex, notIn(col, set1), 0, 1, 2, 3, 4, 5, 6, 7);

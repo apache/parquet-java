@@ -22,6 +22,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.parquet.filter2.predicate.FilterApi.and;
 import static org.apache.parquet.filter2.predicate.FilterApi.binaryColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.booleanColumn;
+import static org.apache.parquet.filter2.predicate.FilterApi.contains;
 import static org.apache.parquet.filter2.predicate.FilterApi.doubleColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.eq;
 import static org.apache.parquet.filter2.predicate.FilterApi.gt;
@@ -47,6 +48,7 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.DOUBLE;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
 import static org.apache.parquet.schema.Types.optional;
+import static org.apache.parquet.schema.Types.repeated;
 import static org.junit.Assert.assertArrayEquals;
 
 import it.unimi.dsi.fastutil.longs.LongArrayList;
@@ -292,6 +294,26 @@ public class TestColumnIndexFilter {
       .build();
   private static final OffsetIndex COLUMN5_OI =
       new OIBuilder().addPage(1).addPage(29).build();
+
+  private static final ColumnIndex COLUMN6_CI = new CIBuilder(repeated(INT32).named("column6"), ASCENDING)
+      .addPage(0, 1, 1)
+      .addPage(1, 2, 6)
+      .addPage(0, 7, 7)
+      .addPage(1, 7, 10)
+      .addPage(0, 11, 17)
+      .addPage(0, 18, 23)
+      .addPage(0, 24, 26)
+      .build();
+  private static final OffsetIndex COLUMN6_OI = new OIBuilder()
+      .addPage(1)
+      .addPage(6)
+      .addPage(2)
+      .addPage(5)
+      .addPage(7)
+      .addPage(6)
+      .addPage(3)
+      .build();
+
   private static final ColumnIndexStore STORE = new ColumnIndexStore() {
     @Override
     public ColumnIndex getColumnIndex(ColumnPath column) {
@@ -306,6 +328,8 @@ public class TestColumnIndexFilter {
           return COLUMN4_CI;
         case "column5":
           return COLUMN5_CI;
+        case "column6":
+          return COLUMN6_CI;
         default:
           return null;
       }
@@ -324,6 +348,8 @@ public class TestColumnIndexFilter {
           return COLUMN4_OI;
         case "column5":
           return COLUMN5_OI;
+        case "column6":
+          return COLUMN6_OI;
         default:
           throw new MissingOffsetIndexException(column);
       }
@@ -354,7 +380,7 @@ public class TestColumnIndexFilter {
 
   @Test
   public void testFiltering() {
-    Set<ColumnPath> paths = paths("column1", "column2", "column3", "column4");
+    Set<ColumnPath> paths = paths("column1", "column2", "column3", "column4", "column6");
 
     assertAllRows(
         calculateRowRanges(
@@ -364,6 +390,48 @@ public class TestColumnIndexFilter {
             TOTAL_ROW_COUNT),
         TOTAL_ROW_COUNT);
 
+    assertRows(
+        calculateRowRanges(
+            FilterCompat.get(contains(eq(intColumn("column6"), 7))), STORE, paths, TOTAL_ROW_COUNT),
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13);
+    assertRows(
+        calculateRowRanges(
+            FilterCompat.get(
+                and(contains(eq(intColumn("column6"), 7)), contains(eq(intColumn("column6"), 10)))),
+            STORE,
+            paths,
+            TOTAL_ROW_COUNT),
+        9,
+        10,
+        11,
+        12,
+        13);
+    assertRows(
+        calculateRowRanges(
+            FilterCompat.get(
+                or(contains(eq(intColumn("column6"), 7)), contains(eq(intColumn("column6"), 20)))),
+            STORE,
+            paths,
+            TOTAL_ROW_COUNT),
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26);
     Set<Integer> set1 = new HashSet<>();
     set1.add(7);
     assertRows(

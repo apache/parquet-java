@@ -23,7 +23,9 @@ import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.bytes.DirectByteBufferAllocator;
@@ -109,18 +111,23 @@ public class TestParquetWriterError {
         location = null;
       }
       List<PhoneBookWriter.PhoneNumber> phoneNumbers;
+      Map<String, Double> accounts;
       if (RANDOM.nextDouble() < .1) {
         phoneNumbers = null;
+        accounts = null;
       } else {
         int n = RANDOM.nextInt(4);
         phoneNumbers = new ArrayList<>(n);
+        accounts = new HashMap<>();
         for (int i = 0; i < n; ++i) {
           String kind = RANDOM.nextDouble() < .1 ? null : "kind" + RANDOM.nextInt(5);
           phoneNumbers.add(new PhoneBookWriter.PhoneNumber(RANDOM.nextInt(), kind));
+          accounts.put("Account " + i, (double) i);
         }
       }
       String name = RANDOM.nextDouble() < .1 ? null : "name" + RANDOM.nextLong();
-      PhoneBookWriter.User user = new PhoneBookWriter.User(RANDOM.nextLong(), name, phoneNumbers, location);
+      PhoneBookWriter.User user =
+          new PhoneBookWriter.User(RANDOM.nextLong(), name, phoneNumbers, location, accounts);
       return PhoneBookWriter.groupFromUser(user);
     }
 

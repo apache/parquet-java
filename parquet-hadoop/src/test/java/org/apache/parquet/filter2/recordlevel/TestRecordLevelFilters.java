@@ -20,6 +20,7 @@ package org.apache.parquet.filter2.recordlevel;
 
 import static org.apache.parquet.filter2.predicate.FilterApi.and;
 import static org.apache.parquet.filter2.predicate.FilterApi.binaryColumn;
+import static org.apache.parquet.filter2.predicate.FilterApi.contains;
 import static org.apache.parquet.filter2.predicate.FilterApi.doubleColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.eq;
 import static org.apache.parquet.filter2.predicate.FilterApi.gt;
@@ -31,6 +32,7 @@ import static org.apache.parquet.filter2.predicate.FilterApi.or;
 import static org.apache.parquet.filter2.predicate.FilterApi.userDefined;
 import static org.junit.Assert.assertEquals;
 
+import com.google.common.collect.ImmutableMap;
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
@@ -59,21 +61,40 @@ public class TestRecordLevelFilters {
   public static List<User> makeUsers() {
     List<User> users = new ArrayList<User>();
 
-    users.add(new User(17, null, null, null));
+    users.add(new User(
+        17,
+        null,
+        null,
+        null,
+        ImmutableMap.of(
+            "business", 1000.0D,
+            "personal", 500.0D)));
 
     users.add(new User(18, "bob", null, null));
 
-    users.add(new User(19, "alice", new ArrayList<PhoneNumber>(), null));
+    users.add(new User(
+        19,
+        "alice",
+        new ArrayList<PhoneNumber>(),
+        null,
+        ImmutableMap.of(
+            "business", 2000.0D,
+            "retirement", 1000.0D)));
 
     users.add(new User(20, "thing1", Arrays.asList(new PhoneNumber(5555555555L, null)), null));
 
-    users.add(new User(27, "thing2", Arrays.asList(new PhoneNumber(1111111111L, "home")), null));
+    users.add(new User(
+        27,
+        "thing2",
+        Arrays.asList(new PhoneNumber(1111111111L, "home"), new PhoneNumber(2222222222L, "cell")),
+        null));
 
     users.add(new User(
         28,
         "popular",
         Arrays.asList(
             new PhoneNumber(1111111111L, "home"),
+            new PhoneNumber(1111111111L, "apartment"),
             new PhoneNumber(2222222222L, null),
             new PhoneNumber(3333333333L, "mobile")),
         null));
@@ -124,6 +145,15 @@ public class TestRecordLevelFilters {
     Iterator<Group> foundIter = found.iterator();
     while (expectedIter.hasNext()) {
       assertEquals(expectedIter.next().toString(), foundIter.next().toString());
+    }
+  }
+
+  private static void assertPredicate(FilterPredicate predicate, long... expectedIds) throws IOException {
+    List<Group> found = PhoneBookWriter.readFile(phonebookFile, FilterCompat.get(predicate));
+
+    assertEquals(expectedIds.length, found.size());
+    for (int i = 0; i < expectedIds.length; i++) {
+      assertEquals(expectedIds[i], found.get(i).getLong("id", 0));
     }
   }
 
@@ -179,6 +209,77 @@ public class TestRecordLevelFilters {
       assertEquals(expectedNames.get(i), ((Group) (found.get(i))).getString("name", 0));
     }
     assert (found.size() == 102);
+  }
+
+  @Test
+  public void testArrayContains() throws Exception {
+    assertPredicate(
+        contains(eq(binaryColumn("phoneNumbers.phone.kind"), Binary.fromString("home"))), 27L, 28L, 30L);
+  }
+
+  @Test
+  public void testArrayContainsSimpleAndFilter() throws Exception {
+    assertPredicate(
+        and(
+            contains(eq(longColumn("phoneNumbers.phone.number"), 1111111111L)),
+            contains(eq(longColumn("phoneNumbers.phone.number"), 3333333333L))),
+        28L);
+
+    assertPredicate(
+        and(
+            contains(eq(longColumn("phoneNumbers.phone.number"), 1111111111L)),
+            contains(eq(longColumn("phoneNumbers.phone.number"), -123L))) // Won't match
+        );
+  }
+
+  @Test
+  public void testArrayContainsNestedAndFilter() throws Exception {
+    assertPredicate(
+        and(
+            contains(eq(longColumn("phoneNumbers.phone.number"), 1111111111L)),
+            and(
+                contains(eq(longColumn("phoneNumbers.phone.number"), 2222222222L)),
+                contains(eq(longColumn("phoneNumbers.phone.number"), 3333333333L)))),
+        28L);
+  }
+
+  @Test
+  public void testArrayContainsSimpleOrFilter() throws Exception {
+    assertPredicate(
+        or(
+            contains(eq(longColumn("phoneNumbers.phone.number"), 5555555555L)),
+            contains(eq(longColumn("phoneNumbers.phone.number"), 2222222222L))),
+        20L,
+        27L,
+        28L);
+
+    assertPredicate(
+        or(
+            contains(eq(longColumn("phoneNumbers.phone.number"), 5555555555L)),
+            contains(eq(longColumn("phoneNumbers.phone.number"), -123L))), // Won't match
+        20L);
+  }
+
+  @Test
+  public void testArrayContainsNestedOrFilter() throws Exception {
+    assertPredicate(
+        or(
+            contains(eq(longColumn("phoneNumbers.phone.number"), 5555555555L)),
+            or(
+                contains(eq(longColumn("phoneNumbers.phone.number"), -10000000L)), // Won't be matched
+                contains(eq(longColumn("phoneNumbers.phone.number"), 2222222222L)))),
+        20L,
+        27L,
+        28L);
+  }
+
+  @Test
+  public void testMapContains() throws Exception {
+    // Test key predicate
+    assertPredicate(contains(eq(binaryColumn("accounts.key_value.key"), Binary.fromString("business"))), 17L, 19L);
+
+    // Test value predicate
+    assertPredicate(contains(eq(doubleColumn("accounts.key_value.value"), 1000.0D)), 17L, 19L);
   }
 
   @Test

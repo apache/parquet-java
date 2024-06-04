@@ -41,6 +41,7 @@ import org.apache.parquet.column.MinMax;
 import org.apache.parquet.column.statistics.SizeStatistics;
 import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.filter2.predicate.Operators.And;
+import org.apache.parquet.filter2.predicate.Operators.Contains;
 import org.apache.parquet.filter2.predicate.Operators.Eq;
 import org.apache.parquet.filter2.predicate.Operators.Gt;
 import org.apache.parquet.filter2.predicate.Operators.GtEq;
@@ -366,6 +367,11 @@ public abstract class ColumnIndexBuilder {
     @Override
     public <T extends Comparable<T>> PrimitiveIterator.OfInt visit(NotIn<T> notIn) {
       return IndexIterator.all(getPageCount());
+    }
+
+    @Override
+    public <T extends Comparable<T>> PrimitiveIterator.OfInt visit(Contains<T> contains) {
+      return contains.filter(this, IndexIterator::intersection, IndexIterator::union);
     }
 
     @Override

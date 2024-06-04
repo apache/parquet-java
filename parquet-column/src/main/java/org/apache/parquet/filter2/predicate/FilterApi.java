@@ -24,6 +24,7 @@ import org.apache.parquet.filter2.predicate.Operators.And;
 import org.apache.parquet.filter2.predicate.Operators.BinaryColumn;
 import org.apache.parquet.filter2.predicate.Operators.BooleanColumn;
 import org.apache.parquet.filter2.predicate.Operators.Column;
+import org.apache.parquet.filter2.predicate.Operators.Contains;
 import org.apache.parquet.filter2.predicate.Operators.DoubleColumn;
 import org.apache.parquet.filter2.predicate.Operators.Eq;
 import org.apache.parquet.filter2.predicate.Operators.FloatColumn;
@@ -255,6 +256,10 @@ public final class FilterApi {
   public static <T extends Comparable<T>, C extends Column<T> & SupportsEqNotEq> NotIn<T> notIn(
       C column, Set<T> values) {
     return new NotIn<>(column, values);
+  }
+
+  public static <T extends Comparable<T>> Contains<T> contains(Eq<T> pred) {
+    return Contains.of(pred);
   }
 
   /**

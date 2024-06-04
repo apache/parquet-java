@@ -120,6 +120,11 @@ public class BloomFilterImpl implements FilterPredicate.Visitor<Boolean> {
   }
 
   @Override
+  public <T extends Comparable<T>> Boolean visit(Operators.Contains<T> contains) {
+    return contains.filter(this, (l, r) -> l || r, (l, r) -> l && r);
+  }
+
+  @Override
   public <T extends Comparable<T>> Boolean visit(Operators.In<T> in) {
     Set<T> values = in.getValues();
 
