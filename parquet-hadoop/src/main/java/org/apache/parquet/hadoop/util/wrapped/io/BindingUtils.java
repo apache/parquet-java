@@ -18,6 +18,11 @@
 
 package org.apache.parquet.hadoop.util.wrapped.io;
 
+import static org.apache.parquet.Preconditions.checkState;
+
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.util.function.Supplier;
 import org.apache.parquet.util.DynMethods;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,6 +35,35 @@ final class BindingUtils {
   private static final Logger LOG = LoggerFactory.getLogger(BindingUtils.class);
 
   private BindingUtils() {}
+
+  /**
+   * Load a class by name.
+   * @param cl classloader to use.
+   * @param className classname
+   * @return the class or null if it could not be loaded.
+   */
+  public static Class<?> loadClass(ClassLoader cl, String className) {
+    try {
+      return cl.loadClass(className);
+    } catch (ClassNotFoundException e) {
+      LOG.debug("No class {}", className, e);
+      return null;
+    }
+  }
+
+  /**
+   * Load a class by name.
+   * @param className classname
+   * @return the class or null if it could not be loaded.
+   */
+  public static Class<?> loadClass(String className) {
+    try {
+      return Class.forName(className);
+    } catch (ClassNotFoundException e) {
+      LOG.debug("No class {}", className, e);
+      return null;
+    }
+  }
 
   /**
    * Get an invocation from the source class, which will be unavailable() if
@@ -66,6 +100,30 @@ final class BindingUtils {
   }
 
   /**
+   * Load a static method from the source class, which will be a noop() if
+   * the class is null or the method isn't found.
+   * If the class and method are not found, then an {@code IllegalStateException}
+   * is raised on the basis that this means that the binding class is broken,
+   * rather than missing/out of date.
+   *
+   * @param <T> return type
+   * @param source source. If null, the method is a no-op.
+   * @param returnType return type class (unused)
+   * @param name method name
+   * @param parameterTypes parameters
+   *
+   * @return the method or a no-op.
+   * @throws IllegalStateException if the method is not static.
+   */
+  public static <T> DynMethods.UnboundMethod loadStaticMethod(
+      Class<?> source, Class<? extends T> returnType, String name, Class<?>... parameterTypes) {
+
+    final DynMethods.UnboundMethod method = loadInvocation(source, returnType, name, parameterTypes);
+    checkState(method.isStatic(), "Method is not static %s", method);
+    return method;
+  }
+
+  /**
    * Create a no-op method.
    *
    * @param name method name
@@ -90,5 +148,41 @@ final class BindingUtils {
       }
     }
     return true;
+  }
+
+  /**
+   * Require a method to be available.
+   * @param method method to probe
+   * @throws UnsupportedOperationException if the method was not found.
+   */
+  static void checkAvailable(DynMethods.UnboundMethod method) throws UnsupportedOperationException {
+    if (method.isNoop()) {
+      throw new UnsupportedOperationException("Unbound " + method);
+    }
+  }
+
+  /**
+   * Is a method available?
+   * @param method method to probe
+   * @return true iff the method is found and loaded.
+   */
+  static boolean available(DynMethods.UnboundMethod method) {
+    return !method.isNoop();
+  }
+
+  /**
+   * Invoke the supplier, catching any {@code UncheckedIOException} raised,
+   * extracting the inner IOException and rethrowing it.
+   * @param call call to invoke
+   * @return result
+   * @param <T> type of result
+   * @throws IOException if the call raised an IOException wrapped by an UncheckedIOException.
+   */
+  static <T> T extractIOEs(Supplier<T> call) throws IOException {
+    try {
+      return call.get();
+    } catch (UncheckedIOException e) {
+      throw e.getCause();
+    }
   }
 }

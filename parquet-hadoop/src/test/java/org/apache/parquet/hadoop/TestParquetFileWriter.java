@@ -98,6 +98,7 @@ import org.apache.parquet.hadoop.util.ContextUtil;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.hadoop.util.HadoopOutputFile;
 import org.apache.parquet.hadoop.util.HiddenFileFilter;
+import org.apache.parquet.hadoop.util.wrapped.io.DynamicWrappedIO;
 import org.apache.parquet.internal.column.columnindex.BinaryTruncator;
 import org.apache.parquet.internal.column.columnindex.BoundaryOrder;
 import org.apache.parquet.internal.column.columnindex.ColumnIndex;
@@ -647,10 +648,11 @@ public class TestParquetFileWriter {
     w.end(new HashMap<String, String>());
 
     FileSystem fs = path.getFileSystem(conf);
-    long fileLen = fs.getFileStatus(path).getLen();
+    final FileStatus stat = fs.getFileStatus(path);
+    long fileLen = stat.getLen();
 
     long footerLen;
-    try (FSDataInputStream data = fs.open(path)) {
+    try (FSDataInputStream data = DynamicWrappedIO.openFile(fs, stat)) {
       data.seek(fileLen - 8); // 4-byte offset + "PAR1"
       footerLen = BytesUtils.readIntLittleEndian(data);
     }
