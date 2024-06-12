@@ -362,7 +362,12 @@ public final class VectorIoBridge {
   private static List<ParquetFileRange> validateAndSortRanges(final List<ParquetFileRange> input) {
 
     requireNonNull(input, "Null input list");
-    checkArgument(!input.isEmpty(), "Empty input list");
+    if (input.isEmpty()) {
+      // this may seem a pathological case, but it
+      // has surfaced during testing.
+      LOG.debug("Empty input list");
+      return input;
+    }
     final List<ParquetFileRange> sortedRanges;
 
     if (input.size() == 1) {
