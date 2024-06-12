@@ -17,4 +17,5 @@
 # under the License.
 #
 * text eol=lf
+*.png binary
 core.autocrlf=false
