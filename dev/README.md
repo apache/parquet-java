@@ -26,8 +26,8 @@ Merging a pull request requires being a committer on the project.
 * How to merge a Pull request:
 have an apache and apache-github remote setup
 ```
-git remote add apache-github https://github.com/apache/parquet-mr.git
-git remote add apache https://gitbox.apache.org/repos/asf?p=parquet-mr.git
+git remote add apache-github https://github.com/apache/parquet-java.git
+git remote add apache https://gitbox.apache.org/repos/asf?p=parquet-java.git
 ```
 run the following command
 ```
@@ -35,26 +35,26 @@ dev/merge_parquet_pr.py
 ```
 
 Note:
-* The parent directory of your parquet repository must be called parquet-mr
+* The parent directory of your parquet repository must be called parquet-java
 * Without jira-python installed you'll have to close the JIRA manually
 
 example output:
 ```
 Which pull request would you like to merge? (e.g. 34):
 ```
-Type the pull request number (from https://github.com/apache/parquet-mr/pulls) and hit enter.
+Type the pull request number (from https://github.com/apache/parquet-java/pulls) and hit enter.
 ```
 === Pull Request #X ===
 title	Blah Blah Blah
 source	repo/branch
 target	master
-url	https://api.github.com/repos/apache/parquet-mr/pulls/X
+url	https://api.github.com/repos/apache/parquet-java/pulls/X
 
 Proceed with merging pull request #3? (y/n):
 ```
 If this looks good, type y and hit enter.
 ```
-From git-wip-us.apache.org:/repos/asf/parquet-mr.git
+From git-wip-us.apache.org:/repos/asf/parquet-java.git
  * [new branch]      master     -> PR_TOOL_MERGE_PR_3_MASTER
 Switched to branch 'PR_TOOL_MERGE_PR_3_MASTER'
 
@@ -68,7 +68,7 @@ Delta compression using up to 4 threads.
 Compressing objects: 100% (26/26), done.
 Writing objects: 100% (36/36), 5.32 KiB, done.
 Total 36 (delta 17), reused 0 (delta 0)
-To git-wip-us.apache.org:/repos/asf/parquet-mr.git
+To git-wip-us.apache.org:/repos/asf/parquet-java.git
    b767ac4..485658a  PR_TOOL_MERGE_PR_X_MASTER -> master
 Restoring head pointer to b767ac4e
 Note: checking out 'b767ac4e'.
