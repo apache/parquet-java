@@ -73,7 +73,7 @@ public class HadoopInputFile implements InputFile {
 
   @Override
   public SeekableInputStream newStream() throws IOException {
-    return HadoopStreams.wrap(DynamicWrappedIO.openFile(fs, stat));
+    return HadoopStreams.wrap(DynamicWrappedIO.openFile(fs, stat, DynamicWrappedIO.PARQUET_READ_POLICIES));
   }
 
   @Override

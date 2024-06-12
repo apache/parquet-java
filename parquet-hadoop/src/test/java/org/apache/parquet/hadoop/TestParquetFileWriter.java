@@ -652,7 +652,7 @@ public class TestParquetFileWriter {
     long fileLen = stat.getLen();
 
     long footerLen;
-    try (FSDataInputStream data = DynamicWrappedIO.openFile(fs, stat)) {
+    try (FSDataInputStream data = DynamicWrappedIO.openFile(fs, stat, DynamicWrappedIO.PARQUET_READ_POLICIES)) {
       data.seek(fileLen - 8); // 4-byte offset + "PAR1"
       footerLen = BytesUtils.readIntLittleEndian(data);
     }

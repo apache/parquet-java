@@ -374,15 +374,16 @@ public final class DynamicWrappedIO {
    * <p>
    * If the WrappedIO class is found, uses
    * {@link #fileSystem_openFile(FileSystem, Path, String, FileStatus, Long, Map)} with
-   * {@link #PARQUET_READ_POLICIES} as the list of read policies and passing down
+   * the supplied list of read policies and passing down
    * the file status.
    * <p>
    * If not, falls back to the classic {@code fs.open(Path)} call.
    * @param fs filesystem
    * @param status file status
+   * @param policy  read policy
    * @throws IOException any IO failure.
    */
-  public static FSDataInputStream openFile(FileSystem fs, FileStatus status) throws IOException {
+  public static FSDataInputStream openFile(FileSystem fs, FileStatus status, String policy) throws IOException {
     final DynamicWrappedIO instance = DynamicWrappedIO.instance();
     FSDataInputStream stream;
     if (instance.fileSystem_openFile_available()) {
@@ -392,8 +393,8 @@ public final class DynamicWrappedIO {
       // in open and choosing the range for GET requests.
       // For other stores, it ultimately invokes the classic open(Path)
       // call so is no more expensive than before.
-      LOG.debug("Opening file {} through fileSystem_openFile", status);
-      stream = instance.fileSystem_openFile(fs, status.getPath(), PARQUET_READ_POLICIES, status, null, null);
+      LOG.debug("Opening file {} through fileSystem_openFile() with policy {}", status, policy);
+      stream = instance.fileSystem_openFile(fs, status.getPath(), policy, status, null, null);
     } else {
       LOG.debug("Opening file {} through open()", status);
       stream = fs.open(status.getPath());
