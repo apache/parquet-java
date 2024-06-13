@@ -427,10 +427,10 @@ public final class Operators {
     ContainsColumnPredicate(U underlying) {
       super(underlying.getColumn());
       if ((underlying instanceof ColumnFilterPredicate && ((ColumnFilterPredicate) underlying).getValue() == null)
-          || underlying instanceof SetColumnFilterPredicate
+          || (underlying instanceof SetColumnFilterPredicate
               && ((SetColumnFilterPredicate) underlying)
                   .getValues()
-                  .contains(null)) {
+                  .contains(null))) {
         throw new IllegalArgumentException("Contains predicate does not support null element value(s)");
       }
       this.underlying = underlying;
