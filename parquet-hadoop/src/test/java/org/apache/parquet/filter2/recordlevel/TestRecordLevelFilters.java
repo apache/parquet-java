@@ -24,15 +24,20 @@ import static org.apache.parquet.filter2.predicate.FilterApi.contains;
 import static org.apache.parquet.filter2.predicate.FilterApi.doubleColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.eq;
 import static org.apache.parquet.filter2.predicate.FilterApi.gt;
+import static org.apache.parquet.filter2.predicate.FilterApi.gtEq;
 import static org.apache.parquet.filter2.predicate.FilterApi.in;
 import static org.apache.parquet.filter2.predicate.FilterApi.longColumn;
+import static org.apache.parquet.filter2.predicate.FilterApi.lt;
+import static org.apache.parquet.filter2.predicate.FilterApi.ltEq;
 import static org.apache.parquet.filter2.predicate.FilterApi.not;
 import static org.apache.parquet.filter2.predicate.FilterApi.notEq;
+import static org.apache.parquet.filter2.predicate.FilterApi.notIn;
 import static org.apache.parquet.filter2.predicate.FilterApi.or;
 import static org.apache.parquet.filter2.predicate.FilterApi.userDefined;
 import static org.junit.Assert.assertEquals;
 
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
@@ -215,6 +220,32 @@ public class TestRecordLevelFilters {
   public void testArrayContains() throws Exception {
     assertPredicate(
         contains(eq(binaryColumn("phoneNumbers.phone.kind"), Binary.fromString("home"))), 27L, 28L, 30L);
+
+    assertPredicate(
+        contains(notEq(binaryColumn("phoneNumbers.phone.kind"), Binary.fromString("cell"))), 27L, 28L, 30L);
+
+    assertPredicate(contains(gt(longColumn("phoneNumbers.phone.number"), 1111111111L)), 20L, 27L, 28L);
+
+    assertPredicate(contains(gtEq(longColumn("phoneNumbers.phone.number"), 1111111111L)), 20L, 27L, 28L, 30L);
+
+    assertPredicate(contains(lt(longColumn("phoneNumbers.phone.number"), 105L)), 100L, 101L, 102L, 103L, 104L);
+
+    assertPredicate(
+        contains(ltEq(longColumn("phoneNumbers.phone.number"), 105L)), 100L, 101L, 102L, 103L, 104L, 105L);
+
+    assertPredicate(
+        contains(in(
+            binaryColumn("phoneNumbers.phone.kind"),
+            ImmutableSet.of(Binary.fromString("apartment"), Binary.fromString("home")))),
+        27L,
+        28L,
+        30L);
+
+    assertPredicate(
+        contains(notIn(binaryColumn("phoneNumbers.phone.kind"), ImmutableSet.of(Binary.fromString("cell")))),
+        27L,
+        28L,
+        30L);
   }
 
   @Test
