@@ -19,6 +19,15 @@
 
 # Parquet #
 
+### Version 1.14.1 ###
+
+Release Notes - Parquet - Version 1.14.1
+
+#### Bug
+
+*   [PARQUET-2468](https://issues.apache.org/jira/browse/PARQUET-2468) - ParquetMetadata.toPrettyJSON throws exception on file read when LOG.isDebugEnabled()
+*   [PARQUET-2498](https://issues.apache.org/jira/browse/PARQUET-2498) - Hadoop vector IO API doesn't handle empty list of ranges
+
 ### Version 1.14.0 ###
 
 Release Notes - Parquet - Version 1.14.0
