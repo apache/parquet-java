@@ -271,6 +271,13 @@ public final class PrimitiveType extends Type {
                   LogicalTypeAnnotation.BsonLogicalTypeAnnotation bsonLogicalType) {
                 return of(PrimitiveComparator.UNSIGNED_LEXICOGRAPHICAL_BINARY_COMPARATOR);
               }
+
+              @Override
+              public Optional<PrimitiveComparator> visit(
+                  LogicalTypeAnnotation.GeometryLogicalTypeAnnotation geometryLogicalType) {
+                // TODO: implement a custom comparator for geometries
+                return of(PrimitiveComparator.UNSIGNED_LEXICOGRAPHICAL_BINARY_COMPARATOR);
+              }
             })
             .orElseThrow(() -> new ShouldNeverHappenException(
                 "No comparator logic implemented for BINARY logical type: " + logicalType));

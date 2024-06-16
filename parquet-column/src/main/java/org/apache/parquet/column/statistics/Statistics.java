@@ -64,6 +64,10 @@ public abstract class Statistics<T extends Comparable<T>> {
       return this;
     }
 
+    public Builder withGeometryStatistics(GeometryStatistics geometryStatistics) {
+      throw new UnsupportedOperationException("Please use the GeometryBuilder");
+    }
+
     public Statistics<?> build() {
       Statistics<?> stats = createStats(type);
       if (min != null && max != null) {
@@ -178,6 +182,30 @@ public abstract class Statistics<T extends Comparable<T>> {
     }
   }
 
+  // Builder for GEOMETRY type to handle GeometryStatistics
+  private static class GeometryBuilder extends Builder {
+
+    private GeometryStatistics geometryStatistics;
+
+    public GeometryBuilder(PrimitiveType type) {
+      super(type);
+      assert type.getPrimitiveTypeName() == PrimitiveTypeName.BINARY;
+    }
+
+    @Override
+    public Builder withGeometryStatistics(GeometryStatistics geometryStatistics) {
+      this.geometryStatistics = geometryStatistics;
+      return this;
+    }
+
+    @Override
+    public Statistics<?> build() {
+      BinaryStatistics stats = (BinaryStatistics) super.build();
+      stats.setGeometryStatistics(geometryStatistics);
+      return stats;
+    }
+  }
+
   private final PrimitiveType type;
   private final PrimitiveComparator<T> comparator;
   private boolean hasNonNullValue;
@@ -268,6 +296,11 @@ public abstract class Statistics<T extends Comparable<T>> {
         LogicalTypeAnnotation logicalTypeAnnotation = type.getLogicalTypeAnnotation();
         if (logicalTypeAnnotation instanceof LogicalTypeAnnotation.Float16LogicalTypeAnnotation) {
           return new Float16Builder(type);
+        }
+        return new Builder(type);
+      case BINARY:
+        if (type.getLogicalTypeAnnotation() instanceof LogicalTypeAnnotation.GeometryLogicalTypeAnnotation) {
+          return new GeometryBuilder(type);
         }
       default:
         return new Builder(type);
