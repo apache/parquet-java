@@ -37,7 +37,7 @@ final class EncryptionPropertiesHelper {
 
     Configuration hadoopConf = ConfigurationUtil.createHadoopConfiguration(fileParquetConfig);
     URI path = tempFilePath == null ? null : tempFilePath.toUri();
-    return createEncryptionProperties(
+    return cryptoFactory.getFileEncryptionProperties(
         hadoopConf, path == null ? null : new org.apache.hadoop.fs.Path(path), fileWriteContext);
   }
 
