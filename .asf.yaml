@@ -18,6 +18,24 @@
 #
 # https://cwiki.apache.org/confluence/display/INFRA/git+-+.asf.yaml+features
 #
+github:
+  description: "Apache Parquet Java"
+  homepage: https://parquet.apache.org/
+  labels:
+    - apache
+    - parquet
+    - parquet-java
+  
+  enabled_merge_buttons:
+    merge: false
+    squash: true
+    rebase: false
+  
+  features:
+    wiki: false
+    issues: true
+    projects: false
+
 notifications:
   commits:      commits@parquet.apache.org
   issues:       issues@parquet.apache.org
