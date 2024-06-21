@@ -822,7 +822,7 @@ public class ParquetMetadataConverter {
   }
 
   private static GeometryStatistics toParquetStatistics(
-      org.apache.parquet.column.statistics.GeometryStatistics stats) {
+      org.apache.parquet.column.statistics.geometry.GeometryStatistics stats) {
     GeometryStatistics formatStats = new GeometryStatistics();
 
     formatStats.setBbox(toParquetBoundingBox(stats.getBoundingBox()));
@@ -978,8 +978,9 @@ public class ParquetMetadataConverter {
         if (formatGeomStats.isSetGeometry_types()) {
           geometryTypes = new GeometryTypes(new HashSet<>(formatGeomStats.getGeometry_types()));
         }
-        org.apache.parquet.column.statistics.GeometryStatistics geomStats =
-            new org.apache.parquet.column.statistics.GeometryStatistics(bbox, covering, geometryTypes);
+        org.apache.parquet.column.statistics.geometry.GeometryStatistics geomStats =
+            new org.apache.parquet.column.statistics.geometry.GeometryStatistics(
+                bbox, covering, geometryTypes);
         statsBuilder.withGeometryStatistics(geomStats);
       }
     }

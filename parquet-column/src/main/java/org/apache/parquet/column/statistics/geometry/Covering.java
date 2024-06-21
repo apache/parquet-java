@@ -46,7 +46,7 @@ public class Covering {
     return edges;
   }
 
-  public void update(Geometry geom) {
+  void update(Geometry geom) {
     geometry = ByteBuffer.wrap(new WKBWriter().write(geom));
   }
 

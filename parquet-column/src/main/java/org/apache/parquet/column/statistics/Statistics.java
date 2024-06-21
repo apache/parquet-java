@@ -20,6 +20,7 @@ package org.apache.parquet.column.statistics;
 
 import java.util.Arrays;
 import org.apache.parquet.column.UnknownColumnTypeException;
+import org.apache.parquet.column.statistics.geometry.GeometryStatistics;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.Float16;
 import org.apache.parquet.schema.LogicalTypeAnnotation;

@@ -27,7 +27,7 @@ import java.nio.file.Path;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.column.statistics.BinaryStatistics;
-import org.apache.parquet.column.statistics.GeometryStatistics;
+import org.apache.parquet.column.statistics.geometry.GeometryStatistics;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.GroupFactory;
 import org.apache.parquet.example.data.simple.SimpleGroupFactory;

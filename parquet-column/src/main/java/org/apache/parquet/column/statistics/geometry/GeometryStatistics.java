@@ -16,13 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.parquet.column.statistics;
+package org.apache.parquet.column.statistics.geometry;
 
 import org.apache.parquet.Preconditions;
-import org.apache.parquet.column.statistics.geometry.BoundingBox;
-import org.apache.parquet.column.statistics.geometry.Covering;
-import org.apache.parquet.column.statistics.geometry.EnvelopeCovering;
-import org.apache.parquet.column.statistics.geometry.GeometryTypes;
 import org.apache.parquet.io.api.Binary;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.io.ParseException;
@@ -69,7 +65,7 @@ public class GeometryStatistics {
     }
   }
 
-  public void update(Geometry geom) {
+  private void update(Geometry geom) {
     boundingBox.update(geom);
     covering.update(geom);
     geometryTypes.update(geom);

@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.column.statistics;
 
+import org.apache.parquet.column.statistics.geometry.GeometryStatistics;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.PrimitiveType;

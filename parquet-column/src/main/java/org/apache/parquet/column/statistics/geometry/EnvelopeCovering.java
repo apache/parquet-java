@@ -36,7 +36,7 @@ public class EnvelopeCovering extends Covering {
   }
 
   @Override
-  public void update(Geometry geom) {
+  void update(Geometry geom) {
     if (geometry == null) {
       return;
     }

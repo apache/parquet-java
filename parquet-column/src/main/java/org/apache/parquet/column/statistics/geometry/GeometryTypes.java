@@ -40,7 +40,7 @@ public class GeometryTypes {
     return types;
   }
 
-  public void update(Geometry geometry) {
+  void update(Geometry geometry) {
     if (!valid) {
       return;
     }
