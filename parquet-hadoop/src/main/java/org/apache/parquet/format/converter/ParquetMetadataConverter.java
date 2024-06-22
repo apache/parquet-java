@@ -834,8 +834,9 @@ public class ParquetMetadataConverter {
       formatStats.setCovering(formatCovering);
     }
 
-    formatStats.setGeometry_types(
-        new ArrayList<Integer>(stats.getGeometryTypes().getTypes()));
+    List<Integer> geometryTypes = new ArrayList<>(stats.getGeometryTypes().getTypes());
+    Collections.sort(geometryTypes);
+    formatStats.setGeometry_types(geometryTypes);
 
     return formatStats;
   }
