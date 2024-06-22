@@ -24,6 +24,7 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.List;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.column.statistics.BinaryStatistics;
@@ -36,6 +37,7 @@ import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.example.ExampleParquetWriter;
 import org.apache.parquet.hadoop.example.GroupWriteSupport;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
+import org.apache.parquet.internal.column.columnindex.ColumnIndex;
 import org.apache.parquet.io.LocalInputFile;
 import org.apache.parquet.io.LocalOutputFile;
 import org.apache.parquet.io.api.Binary;
@@ -109,6 +111,15 @@ public class TestGeometryTypeRoundTrip {
       System.out.println("GeometryStatistics");
       System.out.println(geometryStatistics);
       System.out.println();
+
+      ColumnIndex columnIndex = reader.readColumnIndex(columnChunkMetaData);
+      System.out.println("ColumnIndex");
+      System.out.println(columnIndex);
+
+      List<GeometryStatistics> pageGeometryStatistics = columnIndex.getGeometryStatistics();
+      Assert.assertNotNull(pageGeometryStatistics);
+      System.out.println("Page GeometryStatistics");
+      System.out.println(pageGeometryStatistics);
     }
   }
 }

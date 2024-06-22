@@ -24,7 +24,6 @@ import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.io.ParseException;
 import org.locationtech.jts.io.WKBReader;
-import org.locationtech.jts.io.WKBWriter;
 
 public class Covering {
 
@@ -47,7 +46,8 @@ public class Covering {
   }
 
   void update(Geometry geom) {
-    geometry = ByteBuffer.wrap(new WKBWriter().write(geom));
+    throw new UnsupportedOperationException(
+        "Update is not supported for " + this.getClass().getSimpleName());
   }
 
   public void merge(Covering other) {
@@ -66,8 +66,7 @@ public class Covering {
   }
 
   public Covering copy() {
-    throw new UnsupportedOperationException(
-        "Copy is not supported for " + this.getClass().getSimpleName());
+    return new Covering(geometry.duplicate(), edges);
   }
 
   @Override

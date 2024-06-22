@@ -20,7 +20,10 @@ package org.apache.parquet.column.statistics.geometry;
 
 import java.nio.ByteBuffer;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.io.ParseException;
 import org.locationtech.jts.io.WKBReader;
 import org.locationtech.jts.io.WKBWriter;
@@ -30,6 +33,7 @@ public class EnvelopeCovering extends Covering {
   private static final ByteBuffer EMPTY = ByteBuffer.wrap(new byte[0]);
   private final WKBReader reader = new WKBReader();
   private final WKBWriter writer = new WKBWriter();
+  private final GeometryFactory factory = new GeometryFactory();
 
   public EnvelopeCovering() {
     super(EMPTY, LogicalTypeAnnotation.Edges.PLANAR);
@@ -42,8 +46,16 @@ public class EnvelopeCovering extends Covering {
     }
     try {
       if (geometry != EMPTY) {
-        Geometry envelope = reader.read(geometry.array());
-        geometry = ByteBuffer.wrap(writer.write(envelope.union(geom).getEnvelope()));
+        Envelope envelope = reader.read(geometry.array()).getEnvelopeInternal();
+        envelope.expandToInclude(geom.getEnvelopeInternal());
+        Geometry polygon = factory.createPolygon(new Coordinate[] {
+          new Coordinate(envelope.getMinX(), envelope.getMinY()),
+          new Coordinate(envelope.getMinX(), envelope.getMaxY()),
+          new Coordinate(envelope.getMaxX(), envelope.getMaxY()),
+          new Coordinate(envelope.getMaxX(), envelope.getMinY()),
+          new Coordinate(envelope.getMinX(), envelope.getMinY())
+        });
+        geometry = ByteBuffer.wrap(writer.write(polygon));
       } else {
         geometry = ByteBuffer.wrap(writer.write(geom.getEnvelope()));
       }

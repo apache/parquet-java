@@ -79,7 +79,7 @@ public class BoundingBox {
     return mMax;
   }
 
-  public void update(Geometry geom) {
+  void update(Geometry geom) {
     if (geom == null || geom.isEmpty()) {
       return;
     }

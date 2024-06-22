@@ -275,7 +275,8 @@ public final class PrimitiveType extends Type {
               @Override
               public Optional<PrimitiveComparator> visit(
                   LogicalTypeAnnotation.GeometryLogicalTypeAnnotation geometryLogicalType) {
-                // TODO: implement a custom comparator for geometries
+                // ColumnOrder is undefined for GEOMETRY logical type. Use the default comparator for
+                // now.
                 return of(PrimitiveComparator.UNSIGNED_LEXICOGRAPHICAL_BINARY_COMPARATOR);
               }
             })

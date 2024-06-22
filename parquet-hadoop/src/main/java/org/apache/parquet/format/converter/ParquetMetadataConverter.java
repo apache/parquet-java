@@ -954,34 +954,7 @@ public class ParquetMetadataConverter {
       }
 
       if (formatStats.isSetGeometry_stats()) {
-        GeometryStatistics formatGeomStats = formatStats.getGeometry_stats();
-        org.apache.parquet.column.statistics.geometry.BoundingBox bbox = null;
-        if (formatGeomStats.isSetBbox()) {
-          BoundingBox formatBbox = formatGeomStats.getBbox();
-          bbox = new org.apache.parquet.column.statistics.geometry.BoundingBox(
-              formatBbox.getXmin(),
-              formatBbox.getXmax(),
-              formatBbox.getYmin(),
-              formatBbox.getYmax(),
-              formatBbox.isSetZmin() ? formatBbox.getZmin() : Double.NaN,
-              formatBbox.isSetZmax() ? formatBbox.getZmax() : Double.NaN,
-              formatBbox.isSetMmin() ? formatBbox.getMmin() : Double.NaN,
-              formatBbox.isSetMmax() ? formatBbox.getMmax() : Double.NaN);
-        }
-        org.apache.parquet.column.statistics.geometry.Covering covering = null;
-        if (formatGeomStats.isSetCovering()) {
-          Covering formatCovering = formatGeomStats.getCovering();
-          covering = new org.apache.parquet.column.statistics.geometry.Covering(
-              ByteBuffer.wrap(formatCovering.getGeometry()), convertEdges(formatCovering.getEdges()));
-        }
-        org.apache.parquet.column.statistics.geometry.GeometryTypes geometryTypes = null;
-        if (formatGeomStats.isSetGeometry_types()) {
-          geometryTypes = new GeometryTypes(new HashSet<>(formatGeomStats.getGeometry_types()));
-        }
-        org.apache.parquet.column.statistics.geometry.GeometryStatistics geomStats =
-            new org.apache.parquet.column.statistics.geometry.GeometryStatistics(
-                bbox, covering, geometryTypes);
-        statsBuilder.withGeometryStatistics(geomStats);
+        statsBuilder.withGeometryStatistics(fromParquetStatistics(formatStats.getGeometry_stats()));
       }
     }
     return statsBuilder.build();
@@ -991,6 +964,34 @@ public class ParquetMetadataConverter {
       String createdBy, Statistics statistics, PrimitiveType type) {
     SortOrder expectedOrder = overrideSortOrderToSigned(type) ? SortOrder.SIGNED : sortOrder(type);
     return fromParquetStatisticsInternal(createdBy, statistics, type, expectedOrder);
+  }
+
+  static org.apache.parquet.column.statistics.geometry.GeometryStatistics fromParquetStatistics(
+      GeometryStatistics formatGeomStats) {
+    org.apache.parquet.column.statistics.geometry.BoundingBox bbox = null;
+    if (formatGeomStats.isSetBbox()) {
+      BoundingBox formatBbox = formatGeomStats.getBbox();
+      bbox = new org.apache.parquet.column.statistics.geometry.BoundingBox(
+          formatBbox.getXmin(),
+          formatBbox.getXmax(),
+          formatBbox.getYmin(),
+          formatBbox.getYmax(),
+          formatBbox.isSetZmin() ? formatBbox.getZmin() : Double.NaN,
+          formatBbox.isSetZmax() ? formatBbox.getZmax() : Double.NaN,
+          formatBbox.isSetMmin() ? formatBbox.getMmin() : Double.NaN,
+          formatBbox.isSetMmax() ? formatBbox.getMmax() : Double.NaN);
+    }
+    org.apache.parquet.column.statistics.geometry.Covering covering = null;
+    if (formatGeomStats.isSetCovering()) {
+      Covering formatCovering = formatGeomStats.getCovering();
+      covering = new org.apache.parquet.column.statistics.geometry.Covering(
+          ByteBuffer.wrap(formatCovering.getGeometry()), convertEdges(formatCovering.getEdges()));
+    }
+    org.apache.parquet.column.statistics.geometry.GeometryTypes geometryTypes = null;
+    if (formatGeomStats.isSetGeometry_types()) {
+      geometryTypes = new GeometryTypes(new HashSet<>(formatGeomStats.getGeometry_types()));
+    }
+    return new org.apache.parquet.column.statistics.geometry.GeometryStatistics(bbox, covering, geometryTypes);
   }
 
   /**
@@ -2429,6 +2430,13 @@ public class ParquetMetadataConverter {
     if (defLevelHistogram != null && !defLevelHistogram.isEmpty()) {
       parquetColumnIndex.setDefinition_level_histograms(defLevelHistogram);
     }
+    if (columnIndex.getGeometryStatistics() != null
+        && !columnIndex.getGeometryStatistics().isEmpty()) {
+      columnIndex.getGeometryStatistics().forEach(geomStats -> {
+        parquetColumnIndex.addToGeometry_stats(toParquetStatistics(geomStats));
+      });
+    }
+
     return parquetColumnIndex;
   }
 
@@ -2436,6 +2444,15 @@ public class ParquetMetadataConverter {
       PrimitiveType type, ColumnIndex parquetColumnIndex) {
     if (!isMinMaxStatsSupported(type)) {
       return null;
+    }
+    List<org.apache.parquet.column.statistics.geometry.GeometryStatistics> geometryStatistics = null;
+    if (parquetColumnIndex.isSetGeometry_stats()
+        && !parquetColumnIndex.getGeometry_stats().isEmpty()) {
+      geometryStatistics =
+          new ArrayList<>(parquetColumnIndex.getGeometry_stats().size());
+      parquetColumnIndex.getGeometry_stats().stream()
+          .map(ParquetMetadataConverter::fromParquetStatistics)
+          .forEach(geometryStatistics::add);
     }
     return ColumnIndexBuilder.build(
         type,
@@ -2445,7 +2462,8 @@ public class ParquetMetadataConverter {
         parquetColumnIndex.getMin_values(),
         parquetColumnIndex.getMax_values(),
         parquetColumnIndex.getRepetition_level_histograms(),
-        parquetColumnIndex.getDefinition_level_histograms());
+        parquetColumnIndex.getDefinition_level_histograms(),
+        geometryStatistics);
   }
 
   public static OffsetIndex toParquetOffsetIndex(
