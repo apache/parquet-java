@@ -56,12 +56,16 @@ body:
       label: Component(s)
       multiple: true
       options:
-        - Java
         - Release
-        - Benchmarking
-        - Documentation
         - Continuous Integration
-        - Packaging
+        - Arrow
+        - Avro
+        - Pig
+        - Protobuf
+        - Scala
+        - Thrift
+        - CLI
+        - Benchmarking
         - Other
     validations:
       required: true
