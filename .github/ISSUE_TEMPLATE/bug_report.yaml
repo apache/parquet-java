@@ -33,8 +33,8 @@ body:
       label: Component(s)
       multiple: true
       options:
-        - Release
-        - Continuous Integration
+        - Core
+        - Build
         - Arrow
         - Avro
         - Pig
@@ -43,6 +43,5 @@ body:
         - Thrift
         - CLI
         - Benchmarking
-        - Other
     validations:
-      required: true
+      required: false
