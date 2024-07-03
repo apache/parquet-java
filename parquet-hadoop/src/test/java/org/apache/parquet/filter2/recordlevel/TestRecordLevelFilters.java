@@ -402,6 +402,15 @@ public class TestRecordLevelFilters {
   }
 
   @Test
+  public void testArrayContainsMixedColumns() throws Exception {
+    assertPredicate(
+        and(
+            contains(eq(binaryColumn("phoneNumbers.phone.kind"), Binary.fromString("home"))),
+            not(contains(eq(longColumn("phoneNumbers.phone.number"), 2222222222L)))),
+        30L);
+  }
+
+  @Test
   public void testNameNotNull() throws Exception {
     BinaryColumn name = binaryColumn("name");
 
