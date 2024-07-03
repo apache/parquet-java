@@ -65,6 +65,6 @@ body:
         - Scala
         - Thrift
         - CLI
-        - Benchmarking
+        - Benchmark
     validations:
       required: false
