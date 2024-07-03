@@ -371,7 +371,11 @@ public abstract class ColumnIndexBuilder {
 
     @Override
     public <T extends Comparable<T>> PrimitiveIterator.OfInt visit(Contains<T> contains) {
-      return contains.filter(this, IndexIterator::intersection, IndexIterator::union);
+      return contains.filter(
+          this,
+          IndexIterator::intersection,
+          IndexIterator::union,
+          indices -> IndexIterator.all(getPageCount()));
     }
 
     @Override

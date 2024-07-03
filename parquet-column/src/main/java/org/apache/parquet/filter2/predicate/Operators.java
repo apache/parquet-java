@@ -25,6 +25,7 @@ import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiFunction;
+import java.util.function.Function;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.io.api.Binary;
 
@@ -323,6 +324,38 @@ public final class Operators {
     }
   }
 
+  static class DoesNotContain<T extends Comparable<T>> extends Contains<T> {
+    Contains<T> underlying;
+
+    protected DoesNotContain(Contains<T> underlying) {
+      super(underlying.getColumn());
+      this.underlying = underlying;
+    }
+
+    public Contains<T> getUnderlying() {
+      return underlying;
+    }
+
+    @Override
+    public <R> R accept(Visitor<R> visitor) {
+      return visitor.visit(this);
+    }
+
+    @Override
+    public <R> R filter(
+        Visitor<R> visitor,
+        BiFunction<R, R, R> andBehavior,
+        BiFunction<R, R, R> orBehavior,
+        Function<R, R> notBehavior) {
+      return notBehavior.apply(visitor.visit(underlying));
+    }
+
+    @Override
+    public String toString() {
+      return "not(" + underlying.toString() + ")";
+    }
+  }
+
   public abstract static class Contains<T extends Comparable<T>> implements FilterPredicate, Serializable {
     private final Column<T> column;
 
@@ -345,11 +378,14 @@ public final class Operators {
     }
 
     /**
-     * Applies a filtering Vistitor to the Contains predicate, traversing any composed And or Or clauses,
-     * and finally delegating to the underlying ColumnFilterPredicate.
+     * Applies a filtering Visitor to the Contains predicate, traversing any composed And or Or clauses,
+     * and finally delegating to the underlying column predicate.
      */
     public abstract <R> R filter(
-        Visitor<R> visitor, BiFunction<R, R, R> andBehavior, BiFunction<R, R, R> orBehavior);
+        Visitor<R> visitor,
+        BiFunction<R, R, R> andBehavior,
+        BiFunction<R, R, R> orBehavior,
+        Function<R, R> notBehavior);
 
     Contains<T> and(FilterPredicate other) {
       return new ContainsComposedPredicate<>(this, (Contains<T>) other, ContainsComposedPredicate.Combinator.AND);
@@ -357,6 +393,10 @@ public final class Operators {
 
     Contains<T> or(FilterPredicate other) {
       return new ContainsComposedPredicate<>(this, (Contains<T>) other, ContainsComposedPredicate.Combinator.OR);
+    }
+
+    Contains<T> not() {
+      return new DoesNotContain<>(this);
     }
   }
 
@@ -390,9 +430,13 @@ public final class Operators {
     }
 
     @Override
-    public <R> R filter(Visitor<R> visitor, BiFunction<R, R, R> andBehavior, BiFunction<R, R, R> orBehavior) {
-      final R filterLeft = left.filter(visitor, andBehavior, orBehavior);
-      final R filterRight = right.filter(visitor, andBehavior, orBehavior);
+    public <R> R filter(
+        Visitor<R> visitor,
+        BiFunction<R, R, R> andBehavior,
+        BiFunction<R, R, R> orBehavior,
+        Function<R, R> notBehavior) {
+      final R filterLeft = left.filter(visitor, andBehavior, orBehavior, notBehavior);
+      final R filterRight = right.filter(visitor, andBehavior, orBehavior, notBehavior);
 
       if (combinator == Combinator.AND) {
         return andBehavior.apply(filterLeft, filterRight);
@@ -456,7 +500,11 @@ public final class Operators {
     }
 
     @Override
-    public <R> R filter(Visitor<R> visitor, BiFunction<R, R, R> andBehavior, BiFunction<R, R, R> orBehavior) {
+    public <R> R filter(
+        Visitor<R> visitor,
+        BiFunction<R, R, R> andBehavior,
+        BiFunction<R, R, R> orBehavior,
+        Function<R, R> notBehavior) {
       return underlying.accept(visitor);
     }
   }

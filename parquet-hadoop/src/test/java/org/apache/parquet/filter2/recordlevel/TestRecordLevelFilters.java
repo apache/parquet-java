@@ -46,6 +46,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.stream.LongStream;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.filter2.predicate.FilterPredicate;
@@ -105,6 +106,8 @@ public class TestRecordLevelFilters {
         null));
 
     users.add(new User(30, null, Arrays.asList(new PhoneNumber(1111111111L, "home")), null));
+
+    users.add(new User(31, null, Arrays.asList(new PhoneNumber(2222222222L, "business")), null));
 
     for (int i = 100; i < 200; i++) {
       Location location = null;
@@ -222,11 +225,15 @@ public class TestRecordLevelFilters {
         contains(eq(binaryColumn("phoneNumbers.phone.kind"), Binary.fromString("home"))), 27L, 28L, 30L);
 
     assertPredicate(
-        contains(notEq(binaryColumn("phoneNumbers.phone.kind"), Binary.fromString("cell"))), 27L, 28L, 30L);
+        contains(notEq(binaryColumn("phoneNumbers.phone.kind"), Binary.fromString("cell"))),
+        27L,
+        28L,
+        30L,
+        31L);
 
-    assertPredicate(contains(gt(longColumn("phoneNumbers.phone.number"), 1111111111L)), 20L, 27L, 28L);
+    assertPredicate(contains(gt(longColumn("phoneNumbers.phone.number"), 1111111111L)), 20L, 27L, 28L, 31L);
 
-    assertPredicate(contains(gtEq(longColumn("phoneNumbers.phone.number"), 1111111111L)), 20L, 27L, 28L, 30L);
+    assertPredicate(contains(gtEq(longColumn("phoneNumbers.phone.number"), 1111111111L)), 20L, 27L, 28L, 30L, 31L);
 
     assertPredicate(contains(lt(longColumn("phoneNumbers.phone.number"), 105L)), 100L, 101L, 102L, 103L, 104L);
 
@@ -245,7 +252,86 @@ public class TestRecordLevelFilters {
         contains(notIn(binaryColumn("phoneNumbers.phone.kind"), ImmutableSet.of(Binary.fromString("cell")))),
         27L,
         28L,
-        30L);
+        30L,
+        31L);
+  }
+
+  @Test
+  public void testArrayDoesNotContains() throws Exception {
+    assertPredicate(
+        not(contains(eq(binaryColumn("phoneNumbers.phone.kind"), Binary.fromString("cell")))),
+        17L,
+        18L,
+        19L,
+        20L,
+        28L,
+        30L,
+        31L);
+
+    // test composed not(contains())
+    assertPredicate(
+        and(
+            not(contains(eq(binaryColumn("phoneNumbers.phone.kind"), Binary.fromString("cell")))),
+            not(contains(eq(binaryColumn("phoneNumbers.phone.kind"), Binary.fromString("home"))))),
+        17L,
+        18L,
+        19L,
+        20L,
+        31L);
+
+    assertPredicate(
+        and(
+            not(contains(eq(binaryColumn("phoneNumbers.phone.kind"), Binary.fromString("cell")))),
+            and(
+                not(contains(eq(binaryColumn("phoneNumbers.phone.kind"), Binary.fromString("home")))),
+                not(contains(
+                    eq(binaryColumn("phoneNumbers.phone.kind"), Binary.fromString("business")))))),
+        17L,
+        18L,
+        19L,
+        20L);
+
+    assertPredicate(
+        or(
+            not(contains(eq(binaryColumn("phoneNumbers.phone.kind"), Binary.fromString("cell")))),
+            not(contains(eq(binaryColumn("phoneNumbers.phone.kind"), Binary.fromString("home"))))),
+        LongStream.concat(LongStream.of(17L, 18L, 19L, 20L, 28L, 30L, 31L), LongStream.range(100L, 200L))
+            .toArray());
+
+    assertPredicate(
+        or(
+            not(contains(eq(binaryColumn("phoneNumbers.phone.kind"), Binary.fromString("cell")))),
+            and(
+                not(contains(eq(binaryColumn("phoneNumbers.phone.kind"), Binary.fromString("home")))),
+                not(contains(
+                    eq(binaryColumn("phoneNumbers.phone.kind"), Binary.fromString("mobile")))))),
+        LongStream.concat(LongStream.of(17L, 18L, 19L, 20L, 28L, 30L, 31L), LongStream.range(100L, 200L))
+            .toArray());
+
+    // Test composed contains() with not(contains())
+    assertPredicate(
+        and(
+            not(contains(eq(binaryColumn("phoneNumbers.phone.kind"), Binary.fromString("cell")))),
+            or(
+                contains(eq(binaryColumn("phoneNumbers.phone.kind"), Binary.fromString("home"))),
+                contains(eq(binaryColumn("phoneNumbers.phone.kind"), Binary.fromString("business"))))),
+        28L,
+        30L,
+        31L);
+
+    assertPredicate(
+        or(
+            not(contains(eq(binaryColumn("phoneNumbers.phone.kind"), Binary.fromString("cell")))),
+            and(
+                contains(eq(binaryColumn("phoneNumbers.phone.kind"), Binary.fromString("home"))),
+                contains(eq(binaryColumn("phoneNumbers.phone.kind"), Binary.fromString("apartment"))))),
+        17L,
+        18L,
+        19L,
+        20L,
+        28L,
+        30L,
+        31L);
   }
 
   @Test
@@ -282,7 +368,8 @@ public class TestRecordLevelFilters {
             contains(eq(longColumn("phoneNumbers.phone.number"), 2222222222L))),
         20L,
         27L,
-        28L);
+        28L,
+        31L);
 
     assertPredicate(
         or(
@@ -301,7 +388,8 @@ public class TestRecordLevelFilters {
                 contains(eq(longColumn("phoneNumbers.phone.number"), 2222222222L)))),
         20L,
         27L,
-        28L);
+        28L,
+        31L);
   }
 
   @Test

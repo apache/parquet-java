@@ -214,7 +214,7 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
 
   @Override
   public <T extends Comparable<T>> Boolean visit(Contains<T> contains) {
-    return contains.filter(this, (l, r) -> l || r, (l, r) -> l && r);
+    return contains.filter(this, (l, r) -> l || r, (l, r) -> l && r, b -> BLOCK_MIGHT_MATCH);
   }
 
   @Override
