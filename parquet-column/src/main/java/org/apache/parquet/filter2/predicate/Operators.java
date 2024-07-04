@@ -324,16 +324,12 @@ public final class Operators {
     }
   }
 
-  static class DoesNotContain<T extends Comparable<T>> extends Contains<T> {
+  private static class DoesNotContain<T extends Comparable<T>> extends Contains<T> {
     Contains<T> underlying;
 
     protected DoesNotContain(Contains<T> underlying) {
       super(underlying.getColumn());
       this.underlying = underlying;
-    }
-
-    public Contains<T> getUnderlying() {
-      return underlying;
     }
 
     @Override
