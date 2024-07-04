@@ -116,6 +116,8 @@ public class TestFilterApiMethods {
             contains(eq(binaryColumn("b.c.d"), Binary.fromString("baz"))))));
     assertTrue(rewritten instanceof Or);
 
+    // Assert that the predicates for column b.c.d have been combined into a single Contains predicate,
+    // while the predicate for column a.b.c is separate
     final Or or = (Or) rewritten;
     assertEquals(binaryColumn("a.b.c"), ((Operators.Contains) or.getLeft()).getColumn());
     assertEquals(binaryColumn("b.c.d"), ((Operators.Contains) or.getRight()).getColumn());
@@ -133,9 +135,9 @@ public class TestFilterApiMethods {
         contains(eq(binColumn, Binary.fromString("foo"))),
         and(
             contains(eq(binColumn, Binary.fromString("bar"))),
-            contains(eq(binColumn, Binary.fromString("baz"))))));
+            not(contains(eq(binColumn, Binary.fromString("baz")))))));
     assertEquals(
-        "or(contains(eq(a.string.column, Binary{\"foo\"})), and(contains(eq(a.string.column, Binary{\"bar\"})), contains(eq(a.string.column, Binary{\"baz\"}))))",
+        "or(contains(eq(a.string.column, Binary{\"foo\"})), and(contains(eq(a.string.column, Binary{\"bar\"})), not(contains(eq(a.string.column, Binary{\"baz\"})))))",
         pred.toString());
   }
 
