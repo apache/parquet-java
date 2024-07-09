@@ -19,7 +19,6 @@
 
 package org.apache.parquet.crypto;
 
-import java.util.Arrays;
 import org.apache.parquet.format.BlockCipher;
 import org.apache.parquet.format.ColumnCryptoMetaData;
 import org.apache.parquet.format.EncryptionWithColumnKey;
@@ -48,7 +47,7 @@ public class InternalColumnEncryptionSetup {
         columnCryptoMetaData = ColumnCryptoMetaData.ENCRYPTION_WITH_FOOTER_KEY(new EncryptionWithFooterKey());
       } else {
         EncryptionWithColumnKey withColumnKeyStruct = new EncryptionWithColumnKey(
-            Arrays.asList(encryptionProperties.getPath().toArray()));
+            encryptionProperties.getPath().toList());
         if (null != encryptionProperties.getKeyMetaData()) {
           withColumnKeyStruct.setKey_metadata(encryptionProperties.getKeyMetaData());
         }
