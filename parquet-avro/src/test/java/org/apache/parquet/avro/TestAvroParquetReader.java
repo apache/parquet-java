@@ -18,7 +18,11 @@
  */
 package org.apache.parquet.avro;
 
-import org.apache.avro.generic.GenericRecord;
+import static org.apache.parquet.hadoop.TestParquetReader.FILE_V1;
+import static org.junit.Assert.assertNotNull;
+
+import java.io.IOException;
+import java.nio.file.Paths;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.conf.HadoopParquetConfiguration;
@@ -28,24 +32,23 @@ import org.apache.parquet.hadoop.example.GroupReadSupport;
 import org.apache.parquet.io.InputFile;
 import org.apache.parquet.io.LocalInputFile;
 import org.junit.Test;
-import java.io.IOException;
-import java.nio.file.Paths;
-
-import static org.apache.parquet.hadoop.TestParquetReader.FILE_V1;
-import static org.junit.Assert.assertNotNull;
 
 public class TestAvroParquetReader {
 
   @Test
   public void testConstructor() throws IOException {
     InputFile inputFile = new LocalInputFile(Paths.get(FILE_V1.toUri().getRawPath()));
-    ParquetReader<Group> reader =  AvroParquetReader.<Group>builder(inputFile).build();
+    ParquetReader<Group> reader =
+        AvroParquetReader.<Group>builder(inputFile).build();
     assertNotNull(reader);
 
-    reader = AvroParquetReader.<Group>builder(inputFile,  new HadoopParquetConfiguration(new Configuration())).build();
+    reader = AvroParquetReader.<Group>builder(inputFile, new HadoopParquetConfiguration(new Configuration()))
+        .build();
     assertNotNull(reader);
 
-    reader = AvroParquetReader.builder(new GroupReadSupport(), new Path(FILE_V1.toUri().getRawPath())).build();
+    reader = AvroParquetReader.builder(
+            new GroupReadSupport(), new Path(FILE_V1.toUri().getRawPath()))
+        .build();
     assertNotNull(reader);
   }
 }
