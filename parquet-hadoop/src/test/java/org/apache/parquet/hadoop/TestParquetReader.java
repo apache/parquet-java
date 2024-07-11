@@ -54,8 +54,8 @@ import org.junit.runners.Parameterized;
 @RunWith(Parameterized.class)
 public class TestParquetReader {
 
-  private static final Path FILE_V1 = createTempFile();
-  private static final Path FILE_V2 = createTempFile();
+  public static final Path FILE_V1 = createTempFile();
+  public static final Path FILE_V2 = createTempFile();
   private static final Path STATIC_FILE_WITHOUT_COL_INDEXES =
       createPathFromCP("/test-file-with-no-column-indexes-1.parquet");
   private static final List<PhoneBookWriter.User> DATA = Collections.unmodifiableList(makeUsers(1000));
