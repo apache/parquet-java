@@ -229,8 +229,7 @@ public class ParquetReader<T> implements Closeable {
       this.path = null;
       if (file instanceof HadoopInputFile) {
         HadoopInputFile hadoopFile = (HadoopInputFile) file;
-        this.conf = hadoopFile.getConfiguration();
-        this.configuration = new HadoopParquetConfiguration(this.conf);
+        this.configuration = new HadoopParquetConfiguration(hadoopFile.getConfiguration());
       } else {
         this.configuration = new HadoopParquetConfiguration();
       }
