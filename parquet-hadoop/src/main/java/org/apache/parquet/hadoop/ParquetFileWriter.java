@@ -1667,6 +1667,7 @@ public class ParquetFileWriter implements AutoCloseable {
       if (crcAllocator != null) {
         crcAllocator.close();
       }
+    } finally {
       closed = true;
     }
   }
