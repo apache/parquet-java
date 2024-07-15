@@ -104,6 +104,11 @@ public final class DynamicWrappedIO {
   public static final String PARQUET_READ_POLICIES = "parquet, columnar, vector, random";
 
   /**
+   * Read policy for sequential files: {@value}.
+   */
+  public static final String SEQUENTIAL_READ_POLICIES = "sequential";
+
+  /**
    * Was wrapped IO loaded?
    * In the hadoop codebase, this is true.
    * But in other libraries it may not always be true...this
@@ -378,12 +383,17 @@ public final class DynamicWrappedIO {
    * the file status.
    * <p>
    * If not, falls back to the classic {@code fs.open(Path)} call.
-   * @param fs filesystem
+   * <p>
+   * Note that for filesystems with lazy IO, existence checks may be delayed until
+   * the first read() operation.
+   * @param fileSystem FileSystem to use
    * @param status file status
    * @param policy  read policy
    * @throws IOException any IO failure.
    */
-  public static FSDataInputStream openFile(FileSystem fs, FileStatus status, String policy) throws IOException {
+  public static FSDataInputStream openFile(
+      FileSystem fileSystem, Path path, @Nullable FileStatus status, String policy) throws IOException {
+
     final DynamicWrappedIO instance = DynamicWrappedIO.instance();
     FSDataInputStream stream;
     if (instance.fileSystem_openFile_available()) {
@@ -394,10 +404,10 @@ public final class DynamicWrappedIO {
       // For other stores, it ultimately invokes the classic open(Path)
       // call so is no more expensive than before.
       LOG.debug("Opening file {} through fileSystem_openFile() with policy {}", status, policy);
-      stream = instance.fileSystem_openFile(fs, status.getPath(), policy, status, null, null);
+      stream = instance.fileSystem_openFile(fileSystem, path, policy, status, null, null);
     } else {
       LOG.debug("Opening file {} through open()", status);
-      stream = fs.open(status.getPath());
+      stream = fileSystem.open(path);
     }
     return stream;
   }

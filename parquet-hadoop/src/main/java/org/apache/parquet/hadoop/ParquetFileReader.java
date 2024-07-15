@@ -104,6 +104,7 @@ import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.hadoop.metadata.FileMetaData;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
+import org.apache.parquet.hadoop.util.HadoopFileIO;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.hadoop.util.counters.BenchmarkCounter;
 import org.apache.parquet.hadoop.util.wrapped.io.FutureIO;
@@ -438,19 +439,37 @@ public class ParquetFileReader implements Closeable {
     return footersFromSummaryFile(parent, mergedFooters);
   }
 
+  /**
+   * Read the summary metadata for a path, first looking for {@code basePath/_common_metadata}
+   * if {@code skipRowGroups} is true.
+   * If row groups are not to be skipped, or the common file was not found, look for  {@code basePath/_metadata},
+   * @param configuration configuration to use
+   * @param basePath parent path
+   * @param skipRowGroups should row groups be excluded from the summary
+   * @return the metadata or null if no summary was found.
+   * @throws IOException failure to load a summary.
+   */
   static ParquetMetadata readSummaryMetadata(Configuration configuration, Path basePath, boolean skipRowGroups)
       throws IOException {
     Path metadataFile = new Path(basePath, PARQUET_METADATA_FILE);
     Path commonMetaDataFile = new Path(basePath, PARQUET_COMMON_METADATA_FILE);
     FileSystem fileSystem = basePath.getFileSystem(configuration);
-    if (skipRowGroups && fileSystem.exists(commonMetaDataFile)) {
+    if (skipRowGroups) {
       // reading the summary file that does not contain the row groups
-      LOG.info("reading summary file: {}", commonMetaDataFile);
-      return readFooter(configuration, commonMetaDataFile, filter(skipRowGroups));
-    } else if (fileSystem.exists(metadataFile)) {
+      // fetch the file status to save another probe when opening the file
+      FileStatus commonFileStatus = HadoopFileIO.getFileStatusOrNull(fileSystem, commonMetaDataFile);
+      if (commonFileStatus != null) {
+        LOG.info("reading summary file: {}", commonMetaDataFile);
+        return readFooter(configuration, commonFileStatus, filter(true));
+      }
+    }
+    // row groups required of the common medata data not found: try to read the file specific metadata;
+    FileStatus metadataFileStatus = HadoopFileIO.getFileStatusOrNull(fileSystem, metadataFile);
+    if (metadataFileStatus != null) {
       LOG.info("reading summary file: {}", metadataFile);
-      return readFooter(configuration, metadataFile, filter(skipRowGroups));
+      return readFooter(configuration, metadataFileStatus, filter(skipRowGroups));
     } else {
+      // no metadata files found
       return null;
     }
   }

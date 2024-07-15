@@ -40,6 +40,7 @@ import org.apache.hadoop.io.ByteBufferPool;
 import org.apache.hadoop.io.ElasticByteBufferPool;
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.DirectByteBufferAllocator;
+import org.apache.parquet.hadoop.util.HadoopFileIO;
 import org.apache.parquet.io.ParquetFileRange;
 import org.junit.After;
 import org.junit.Before;
@@ -176,7 +177,7 @@ public class TestVectorIoBridge {
    * @throws IOException failure to open
    */
   private FSDataInputStream openTestFile() throws IOException {
-    return getFileSystem().open(testFilePath);
+    return HadoopFileIO.openFile(getFileSystem(), testFilePath, true);
   }
 
   /**

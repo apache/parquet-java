@@ -29,6 +29,7 @@ import static org.apache.parquet.hadoop.ParquetInputFormat.READ_SUPPORT_CLASS;
 import static org.apache.parquet.hadoop.ParquetWriter.DEFAULT_BLOCK_SIZE;
 import static org.apache.parquet.hadoop.ParquetWriter.MAX_PADDING_SIZE_DEFAULT;
 import static org.apache.parquet.hadoop.TestUtils.enforceEmptyDir;
+import static org.apache.parquet.hadoop.util.HadoopFileIO.openFile;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static org.apache.parquet.schema.Type.Repetition.OPTIONAL;
 import static org.apache.parquet.schema.Type.Repetition.REPEATED;
@@ -98,7 +99,6 @@ import org.apache.parquet.hadoop.util.ContextUtil;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.hadoop.util.HadoopOutputFile;
 import org.apache.parquet.hadoop.util.HiddenFileFilter;
-import org.apache.parquet.hadoop.util.wrapped.io.DynamicWrappedIO;
 import org.apache.parquet.internal.column.columnindex.BinaryTruncator;
 import org.apache.parquet.internal.column.columnindex.BoundaryOrder;
 import org.apache.parquet.internal.column.columnindex.ColumnIndex;
@@ -652,7 +652,7 @@ public class TestParquetFileWriter {
     long fileLen = stat.getLen();
 
     long footerLen;
-    try (FSDataInputStream data = DynamicWrappedIO.openFile(fs, stat, DynamicWrappedIO.PARQUET_READ_POLICIES)) {
+    try (FSDataInputStream data = openFile(fs, stat, true)) {
       data.seek(fileLen - 8); // 4-byte offset + "PAR1"
       footerLen = BytesUtils.readIntLittleEndian(data);
     }

@@ -33,6 +33,7 @@ import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.crypto.ParquetCryptoRuntimeException;
+import org.apache.parquet.hadoop.util.HadoopFileIO;
 
 public class HadoopFSKeyMaterialStore implements FileKeyMaterialStore {
   public static final String KEY_MATERIAL_FILE_PREFIX = "_KEY_MATERIAL_FOR_";
@@ -73,7 +74,7 @@ public class HadoopFSKeyMaterialStore implements FileKeyMaterialStore {
   }
 
   private void loadKeyMaterialMap() {
-    try (FSDataInputStream keyMaterialStream = hadoopFileSystem.open(keyMaterialFile)) {
+    try (FSDataInputStream keyMaterialStream = HadoopFileIO.openFile(hadoopFileSystem, keyMaterialFile, false)) {
       JsonNode keyMaterialJson = objectMapper.readTree(keyMaterialStream);
       keyMaterialMap =
           objectMapper.readValue(keyMaterialJson.traverse(), new TypeReference<Map<String, String>>() {});
