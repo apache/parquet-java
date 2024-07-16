@@ -296,14 +296,17 @@ public class AvroSchemaConverter {
   }
 
   private Schema convertFields(String name, List<Type> parquetFields, Map<String, Integer> names) {
-    SchemaBuilder.FieldAssembler<Schema> builder = SchemaBuilder
-        .builder(namespace(name, names))
-        .record(name)
-        .fields();
+    SchemaBuilder.FieldAssembler<Schema> builder =
+        SchemaBuilder.builder(namespace(name, names)).record(name).fields();
     for (Type parquetType : parquetFields) {
       Schema fieldSchema = convertField(parquetType, names);
       if (parquetType.isRepetition(REPEATED)) { // If a repeated field is ungrouped, treat as REQUIRED per spec
-        builder.name(parquetType.getName()).type().array().items().type(fieldSchema).arrayDefault(new ArrayList<>());
+        builder.name(parquetType.getName())
+            .type()
+            .array()
+            .items()
+            .type(fieldSchema)
+            .arrayDefault(new ArrayList<>());
       } else if (parquetType.isRepetition(Type.Repetition.OPTIONAL)) {
         builder.name(parquetType.getName()).type().optional().type(fieldSchema);
       } else { // REQUIRED
