@@ -73,7 +73,8 @@ public class TestAvroSchemaConverter {
   }
 
   public static final String ALL_PARQUET_SCHEMA =
-      "message org.apache.parquet.avro.myrecord {\n" + "  required boolean myboolean;\n"
+      "message org.apache.parquet.avro.myrecord {\n"
+          + "  required boolean myboolean;\n"
           + "  required int32 myint;\n"
           + "  required int64 mylong;\n"
           + "  required float myfloat;\n"
@@ -432,7 +433,8 @@ public class TestAvroSchemaConverter {
                 + "  \"name\": \"SchemaWithRepeatedField\","
                 + "  \"fields\": [{"
                 + "    \"name\": \"repeatedField\","
-                + "    \"type\": {\"type\": \"array\",\"items\": \"int\"}"
+                + "    \"type\": {\"type\": \"array\",\"items\": \"int\"},"
+                + "    \"default\": []"
                 + "  }]"
                 + "}"),
         "message SchemaWithRepeatedField { repeated int32 repeatedField; }");
