@@ -98,4 +98,20 @@ public class HadoopFileIO {
   private static String readPolicies(final boolean randomIO) {
     return randomIO ? DynamicWrappedIO.PARQUET_READ_POLICIES : DynamicWrappedIO.SEQUENTIAL_READ_POLICIES;
   }
+
+  /**
+   * Does a path have a given capability?
+   * Calls {@code PathCapabilities#hasPathCapability(Path, String)},
+   * mapping IOExceptions to false.
+   * @param fs filesystem
+   * @param path path to query the capability of.
+   * @param capability non-null, non-empty string to query the path for support.
+   * @return true if the capability is supported
+   * under that part of the FS
+   * false if the method is not loaded or the path lacks the capability.
+   * @throws IllegalArgumentException invalid arguments
+   */
+  public boolean hasPathCapability(Object fs, Path path, String capability) {
+    return DynamicWrappedIO.instance().pathCapabilities_hasPathCapability(fs, path, capability);
+  }
 }

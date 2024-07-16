@@ -175,9 +175,9 @@ public final class DynamicWrappedIO {
     // path and stream capabilities
     pathCapabilitiesHasPathCapabilityMethod = loadStaticMethod(
         wrappedClass,
-        Boolean.class,
+        boolean.class,
         PATH_CAPABILITIES_HAS_PATH_CAPABILITY,
-        FileSystem.class,
+        Object.class,
         Path.class,
         String.class);
 
