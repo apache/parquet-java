@@ -29,6 +29,7 @@ import java.io.File;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
@@ -59,10 +60,13 @@ import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.conf.HadoopParquetConfiguration;
 import org.apache.parquet.conf.ParquetConfiguration;
 import org.apache.parquet.conf.PlainParquetConfiguration;
+import org.apache.parquet.example.data.Group;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.api.WriteSupport;
+import org.apache.parquet.hadoop.example.GroupReadSupport;
 import org.apache.parquet.hadoop.util.HadoopCodecs;
+import org.apache.parquet.io.InputFile;
 import org.apache.parquet.io.LocalInputFile;
 import org.apache.parquet.io.LocalOutputFile;
 import org.apache.parquet.io.api.Binary;
@@ -917,6 +921,24 @@ public class TestReadWrite {
     Assert.assertTrue(
         "date field should be a LocalDate instance", records.get(0).get("date") instanceof LocalDate);
     Assert.assertEquals("Content should match", expected, records);
+  }
+
+  @Test
+  public void testConstructor() throws IOException {
+    String testFile =
+        URI.create(Resources.getResource("strings-2.parquet").getFile()).getRawPath();
+    InputFile inputFile = new LocalInputFile(Paths.get(testFile));
+    ParquetReader<Group> reader =
+        AvroParquetReader.<Group>builder(inputFile).build();
+    assertNotNull(reader);
+
+    reader = AvroParquetReader.<Group>builder(inputFile, new HadoopParquetConfiguration(new Configuration()))
+        .build();
+    assertNotNull(reader);
+
+    reader = AvroParquetReader.builder(new GroupReadSupport(), new Path(testFile))
+        .build();
+    assertNotNull(reader);
   }
 
   private File createTempFile() throws IOException {
