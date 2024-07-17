@@ -175,6 +175,9 @@ public class ParquetFileWriter implements AutoCloseable {
   private final ReusingByteBufferAllocator crcAllocator;
   private final boolean pageWriteChecksumEnabled;
 
+  // set when PositionOutputStream is closed
+  private boolean closed;
+
   /**
    * Captures the order in which methods should be called
    */
@@ -1658,11 +1661,17 @@ public class ParquetFileWriter implements AutoCloseable {
 
   @Override
   public void close() throws IOException {
+    if (closed) {
+      return;
+    }
+
     try (PositionOutputStream temp = out) {
       temp.flush();
       if (crcAllocator != null) {
         crcAllocator.close();
       }
+    } finally {
+      closed = true;
     }
   }
 
