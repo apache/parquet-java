@@ -1026,12 +1026,10 @@ public class ParquetRewriterTest {
     assertEquals(inputRowCounts, outputRowCounts);
   }
 
-  private Map<ColumnPath, List<BloomFilter>> allInputBloomFilters()
-      throws Exception {
+  private Map<ColumnPath, List<BloomFilter>> allInputBloomFilters() throws Exception {
     Map<ColumnPath, List<BloomFilter>> inputBloomFilters = new HashMap<>();
     for (EncryptionTestFile inputFile : inputFiles) {
-      Map<ColumnPath, List<BloomFilter>> bloomFilters =
-          allBloomFilters(inputFile.getFileName(), null);
+      Map<ColumnPath, List<BloomFilter>> bloomFilters = allBloomFilters(inputFile.getFileName(), null);
       for (Map.Entry<ColumnPath, List<BloomFilter>> entry : bloomFilters.entrySet()) {
         List<BloomFilter> bloomFilterList = inputBloomFilters.getOrDefault(entry.getKey(), new ArrayList<>());
         bloomFilterList.addAll(entry.getValue());
