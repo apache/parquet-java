@@ -198,9 +198,7 @@ public class ParquetRewriterTest {
 
   @Test
   public void testPruneSingleColumnTranslateCodecSingleFile() throws Exception {
-    if (!inputFiles.contains(gzipEncryptionTestFileWithoutBloomFilterColumn)) {
-      inputFiles.add(this.gzipEncryptionTestFileWithoutBloomFilterColumn);
-    }
+    ensureContainsGzipFile();
     List<Path> inputPaths = new ArrayList<Path>() {
       {
         add(new Path(inputFiles.get(0).getFileName()));
@@ -211,12 +209,8 @@ public class ParquetRewriterTest {
 
   @Test
   public void testPruneSingleColumnTranslateCodecTwoFiles() throws Exception {
-    if (!inputFiles.contains(gzipEncryptionTestFileWithoutBloomFilterColumn)) {
-      inputFiles.add(gzipEncryptionTestFileWithoutBloomFilterColumn);
-    }
-    if (!inputFiles.contains(uncompressedEncryptionTestFileWithoutBloomFilterColumn)) {
-      inputFiles.add(uncompressedEncryptionTestFileWithoutBloomFilterColumn);
-    }
+    ensureContainsGzipFile();
+    ensureContainsUncompressedFile();
     List<Path> inputPaths = new ArrayList<Path>() {
       {
         add(new Path(inputFiles.get(0).getFileName()));
@@ -275,9 +269,8 @@ public class ParquetRewriterTest {
 
   @Test
   public void testPruneNullifyTranslateCodecSingleFile() throws Exception {
-    if (!inputFiles.contains(gzipEncryptionTestFileWithoutBloomFilterColumn)) {
-      inputFiles.add(this.gzipEncryptionTestFileWithoutBloomFilterColumn);
-    }
+    ensureContainsGzipFile();
+
     List<Path> inputPaths = new ArrayList<Path>() {
       {
         add(new Path(inputFiles.get(0).getFileName()));
@@ -288,12 +281,9 @@ public class ParquetRewriterTest {
 
   @Test
   public void testPruneNullifyTranslateCodecTwoFiles() throws Exception {
-    if (!inputFiles.contains(gzipEncryptionTestFileWithoutBloomFilterColumn)) {
-      inputFiles.add(gzipEncryptionTestFileWithoutBloomFilterColumn);
-    }
-    if (!inputFiles.contains(uncompressedEncryptionTestFileWithoutBloomFilterColumn)) {
-      inputFiles.add(uncompressedEncryptionTestFileWithoutBloomFilterColumn);
-    }
+    ensureContainsGzipFile();
+    ensureContainsUncompressedFile();
+
     List<Path> inputPaths = new ArrayList<Path>() {
       {
         add(new Path(inputFiles.get(0).getFileName()));
@@ -327,7 +317,7 @@ public class ParquetRewriterTest {
     rewriter.processBlocks();
     rewriter.close();
 
-    // Verify the schema are not changed for the columns not pruned
+    // Verify the schema is not changed for the columns not pruned
     validateSchema();
 
     // Verify codec has been translated
@@ -364,9 +354,8 @@ public class ParquetRewriterTest {
 
   @Test
   public void testPruneEncryptTranslateCodecSingleFile() throws Exception {
-    if (!inputFiles.contains(gzipEncryptionTestFileWithoutBloomFilterColumn)) {
-      inputFiles.add(gzipEncryptionTestFileWithoutBloomFilterColumn);
-    }
+    ensureContainsGzipFile();
+
     List<Path> inputPaths = new ArrayList<Path>() {
       {
         add(new Path(inputFiles.get(0).getFileName()));
@@ -377,12 +366,9 @@ public class ParquetRewriterTest {
 
   @Test
   public void testPruneEncryptTranslateCodecTwoFiles() throws Exception {
-    if (!inputFiles.contains(gzipEncryptionTestFileWithoutBloomFilterColumn)) {
-      inputFiles.add(gzipEncryptionTestFileWithoutBloomFilterColumn);
-    }
-    if (!inputFiles.contains(uncompressedEncryptionTestFileWithoutBloomFilterColumn)) {
-      inputFiles.add(uncompressedEncryptionTestFileWithoutBloomFilterColumn);
-    }
+    ensureContainsGzipFile();
+    ensureContainsUncompressedFile();
+
     List<Path> inputPaths = new ArrayList<Path>() {
       {
         add(new Path(inputFiles.get(0).getFileName()));
@@ -423,7 +409,7 @@ public class ParquetRewriterTest {
     rewriter.processBlocks();
     rewriter.close();
 
-    // Verify the schema are not changed for the columns not pruned
+    // Verify the schema is not changed for the columns not pruned
     ParquetMetadata pmd =
         ParquetFileReader.readFooter(conf, new Path(outputFile), ParquetMetadataConverter.NO_FILTER);
     MessageType schema = pmd.getFileMetaData().getSchema();
@@ -453,7 +439,7 @@ public class ParquetRewriterTest {
         assertEquals(inRead.getLong("id", 0), outRead.getLong("id", 0));
         assertEquals(inRead.getString("name", 0), outRead.getString("name", 0));
 
-        // location was nulled
+        // location was null
         Group finalOutRead = outRead;
         assertThrows(
             RuntimeException.class,
@@ -462,7 +448,7 @@ public class ParquetRewriterTest {
             RuntimeException.class,
             () -> finalOutRead.getGroup("location", 0).getDouble("lon", 0));
 
-        // phonenumbers was pruned
+        // phone numbers was pruned
         assertThrows(InvalidRecordException.class, () -> finalOutRead.getGroup("phoneNumbers", 0));
       }
     }
@@ -537,9 +523,8 @@ public class ParquetRewriterTest {
 
   @Test
   public void testNullifyEncryptSingleFile() throws Exception {
-    if (!inputFiles.contains(gzipEncryptionTestFileWithoutBloomFilterColumn)) {
-      inputFiles.add(gzipEncryptionTestFileWithoutBloomFilterColumn);
-    }
+    ensureContainsGzipFile();
+
     List<Path> inputPaths = new ArrayList<Path>() {
       {
         add(new Path(inputFiles.get(0).getFileName()));
@@ -550,12 +535,9 @@ public class ParquetRewriterTest {
 
   @Test
   public void testNullifyEncryptTwoFiles() throws Exception {
-    if (!inputFiles.contains(gzipEncryptionTestFileWithoutBloomFilterColumn)) {
-      inputFiles.add(gzipEncryptionTestFileWithoutBloomFilterColumn);
-    }
-    if (!inputFiles.contains(uncompressedEncryptionTestFileWithoutBloomFilterColumn)) {
-      inputFiles.add(uncompressedEncryptionTestFileWithoutBloomFilterColumn);
-    }
+    ensureContainsGzipFile();
+    ensureContainsUncompressedFile();
+
     List<Path> inputPaths = new ArrayList<Path>() {
       {
         add(new Path(inputFiles.get(0).getFileName()));
@@ -567,12 +549,8 @@ public class ParquetRewriterTest {
 
   @Test
   public void testMergeTwoFilesOnly() throws Exception {
-    if (!inputFiles.contains(gzipEncryptionTestFileWithoutBloomFilterColumn)) {
-      inputFiles.add(gzipEncryptionTestFileWithoutBloomFilterColumn);
-    }
-    if (!inputFiles.contains(uncompressedEncryptionTestFileWithoutBloomFilterColumn)) {
-      inputFiles.add(uncompressedEncryptionTestFileWithoutBloomFilterColumn);
-    }
+    ensureContainsGzipFile();
+    ensureContainsUncompressedFile();
 
     // Only merge two files but do not change anything.
     List<Path> inputPaths = new ArrayList<>();
@@ -667,9 +645,8 @@ public class ParquetRewriterTest {
 
   @Test
   public void testRewriteFileWithMultipleBlocks() throws Exception {
-    if (!inputFiles.contains(gzipEncryptionTestFileWithoutBloomFilterColumn)) {
-      inputFiles.add(this.gzipEncryptionTestFileWithoutBloomFilterColumn);
-    }
+    ensureContainsGzipFile();
+
     List<Path> inputPaths = new ArrayList<Path>() {
       {
         add(new Path(inputFiles.get(0).getFileName()));
@@ -1100,5 +1077,17 @@ public class ParquetRewriterTest {
     assertEquals(subFields.size(), 2);
     assertEquals(subFields.get(0).getName(), "Backward");
     assertEquals(subFields.get(1).getName(), "Forward");
+  }
+
+  private void ensureContainsGzipFile() {
+    if (!inputFiles.contains(gzipEncryptionTestFileWithoutBloomFilterColumn)) {
+      inputFiles.add(this.gzipEncryptionTestFileWithoutBloomFilterColumn);
+    }
+  }
+
+  private void ensureContainsUncompressedFile() {
+    if (!inputFiles.contains(uncompressedEncryptionTestFileWithoutBloomFilterColumn)) {
+      inputFiles.add(uncompressedEncryptionTestFileWithoutBloomFilterColumn);
+    }
   }
 }
