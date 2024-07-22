@@ -170,6 +170,7 @@ public class ParquetFileWriter implements AutoCloseable {
 
   // set when end is called
   private ParquetMetadata footer = null;
+  private boolean closed;
 
   private final CRC32 crc;
   private final ReusingByteBufferAllocator crcAllocator;
@@ -1658,11 +1659,16 @@ public class ParquetFileWriter implements AutoCloseable {
 
   @Override
   public void close() throws IOException {
+    if (closed) {
+      return;
+    }
     try (PositionOutputStream temp = out) {
       temp.flush();
       if (crcAllocator != null) {
         crcAllocator.close();
       }
+    } finally {
+      closed = true;
     }
   }
 

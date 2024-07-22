@@ -286,6 +286,9 @@ public class TestParquetFileWriter {
     w.endColumn();
     w.endBlock();
     w.end(new HashMap<String, String>());
+    // Although writer is already closed in previous end(),
+    // explicitly close it again to verify double close behavior.
+    w.close();
 
     ParquetMetadata readFooter = ParquetFileReader.readFooter(configuration, path);
     assertEquals("footer: " + readFooter, 2, readFooter.getBlocks().size());
