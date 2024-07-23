@@ -20,18 +20,19 @@ package org.apache.parquet.column.statistics.geometry;
 
 import org.apache.parquet.Preconditions;
 import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.Geometry;
 
 public class BoundingBox {
 
-  private double xMin = Double.MAX_VALUE;
-  private double xMax = Double.MIN_VALUE;
-  private double yMin = Double.MAX_VALUE;
-  private double yMax = Double.MIN_VALUE;
-  private double zMin = Double.MAX_VALUE;
-  private double zMax = Double.MIN_VALUE;
-  private double mMin = Double.MAX_VALUE;
-  private double mMax = Double.MIN_VALUE;
+  private double xMin = Double.POSITIVE_INFINITY;
+  private double xMax = Double.NEGATIVE_INFINITY;
+  private double yMin = Double.POSITIVE_INFINITY;
+  private double yMax = Double.NEGATIVE_INFINITY;
+  private double zMin = Double.POSITIVE_INFINITY;
+  private double zMax = Double.NEGATIVE_INFINITY;
+  private double mMin = Double.POSITIVE_INFINITY;
+  private double mMax = Double.NEGATIVE_INFINITY;
 
   public BoundingBox(
       double xMin, double xMax, double yMin, double yMax, double zMin, double zMax, double mMin, double mMax) {
@@ -79,25 +80,45 @@ public class BoundingBox {
     return mMax;
   }
 
-  void update(Geometry geom) {
-    if (geom == null || geom.isEmpty()) {
-      return;
-    }
-    Coordinate[] coordinates = geom.getCoordinates();
-    for (Coordinate coordinate : coordinates) {
-      update(coordinate.getX(), coordinate.getY(), coordinate.getZ(), coordinate.getM());
-    }
+  void update(double minX, double maxX, double minY, double maxY, double minZ, double maxZ) {
+    xMin = Math.min(xMin, minX);
+    yMin = Math.min(yMin, minY);
+    xMax = Math.max(xMax, maxX);
+    yMax = Math.max(yMax, maxY);
+    zMin = Math.min(zMin, minZ);
+    zMax = Math.max(zMax, maxZ);
   }
 
-  public void update(double x, double y, double z, double m) {
-    xMin = Math.min(xMin, x);
-    xMax = Math.max(xMax, x);
-    yMin = Math.min(yMin, y);
-    yMax = Math.max(yMax, y);
-    zMin = Math.min(zMin, z);
-    zMax = Math.max(zMax, z);
-    mMin = Math.min(mMin, m);
-    mMax = Math.max(mMax, m);
+  void update(Geometry geometry) {
+    GeometryUtils.normalizeLongitude(geometry);
+    Envelope envelope = geometry.getEnvelopeInternal();
+    double minX = envelope.getMinX();
+    double minY = envelope.getMinY();
+    double maxX = envelope.getMaxX();
+    double maxY = envelope.getMaxY();
+
+    // JTS (Java Topology Suite) does not handle Z-coordinates directly in the Envelope class
+    // because it's primarily used for 2D geometries. However, we can iterate through the
+    // coordinates of the geometry to find the minimum and maximum Z values.
+    double minZ = Double.POSITIVE_INFINITY;
+    double maxZ = Double.NEGATIVE_INFINITY;
+
+    Coordinate[] coordinates = geometry.getCoordinates();
+    for (Coordinate coord : coordinates) {
+      if (!Double.isNaN(coord.getZ())) {
+        // Update zMin and zMax by iterating through the coordinates.
+        minZ = Math.min(minZ, coord.getZ());
+        maxZ = Math.max(maxZ, coord.getZ());
+      }
+    }
+
+    update(minX, maxX, minY, maxY, minZ, maxZ);
+  }
+
+  // Method to merge a Geometry object into this bounding box
+  public void merge(Geometry geometry) {
+    Preconditions.checkArgument(geometry != null, "Cannot merge with null geometry");
+    update(geometry);
   }
 
   public void merge(BoundingBox other) {

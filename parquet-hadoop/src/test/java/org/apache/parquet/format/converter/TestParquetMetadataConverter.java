@@ -72,7 +72,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
-import org.apache.parquet.FixedBinaryTestUtils;
+import org.apache.parquet.FixedBinaryTestGeometryUtils;
 import org.apache.parquet.Version;
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.column.ColumnDescriptor;
@@ -1273,8 +1273,8 @@ public class TestParquetMetadataConverter {
 
   private static Statistics<?> createStatsTyped(PrimitiveType type, BigInteger min, BigInteger max) {
     Statistics<?> stats = Statistics.createStats(type);
-    Binary minBinary = FixedBinaryTestUtils.getFixedBinary(type, min);
-    Binary maxBinary = FixedBinaryTestUtils.getFixedBinary(type, max);
+    Binary minBinary = FixedBinaryTestGeometryUtils.getFixedBinary(type, min);
+    Binary maxBinary = FixedBinaryTestGeometryUtils.getFixedBinary(type, max);
     stats.updateStats(maxBinary);
     stats.updateStats(minBinary);
     assertEquals(minBinary, stats.genericGetMin());
