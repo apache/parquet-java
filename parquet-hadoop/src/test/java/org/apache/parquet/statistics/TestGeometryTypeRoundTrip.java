@@ -65,14 +65,26 @@ public class TestGeometryTypeRoundTrip {
   }
 
   @Test
-  public void testBasicReadWriteGeometryValue() throws IOException {
+  public void testEPSG4326BasicReadWriteGeometryValue() throws IOException {
     GeometryFactory geomFactory = new GeometryFactory();
+
+    // A class to convert JTS Geometry objects to and from Well-Known Binary (WKB) format.
     WKBWriter wkbWriter = new WKBWriter();
+
+    // EPSG:4326: Also known as WGS 84, it uses latitude and longitude coordinates.
+    // This CRS is a global standard and is suitable for most geospatial applications.
+    // The use of "EPSG:4326" indicates that the geometries are expected to be in this CRS,
+    // which impacts how coordinates are interpreted. WGS 84 is a geographic coordinate system where:
+    //
+    // Latitude ranges from -90 to 90 degrees.
+    // Longitude ranges from -180 to 180 degrees.
+    // Using Edges.PLANAR implies that any subsequent spatial operations will treat the space as flat.
     Binary[] points = {
       Binary.fromConstantByteArray(wkbWriter.write(geomFactory.createPoint(new Coordinate(1.0, 1.0)))),
       Binary.fromConstantByteArray(wkbWriter.write(geomFactory.createPoint(new Coordinate(2.0, 2.0))))
     };
 
+    // A message type that represents a message with a geometry column.
     MessageType schema = Types.buildMessage()
         .required(BINARY)
         .as(geometryType(GeometryEncoding.WKB, Edges.PLANAR, "EPSG:4326", null))

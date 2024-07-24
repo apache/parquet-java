@@ -955,7 +955,7 @@ public class ParquetMetadataConverter {
       }
 
       if (formatStats.isSetGeometry_stats()) {
-        statsBuilder.withGeometryStatistics(fromParquetStatistics(formatStats.getGeometry_stats()));
+        statsBuilder.withGeometryStatistics(fromParquetStatistics(formatStats.getGeometry_stats(), type));
       }
     }
     return statsBuilder.build();
@@ -968,7 +968,7 @@ public class ParquetMetadataConverter {
   }
 
   static org.apache.parquet.column.statistics.geometry.GeometryStatistics fromParquetStatistics(
-      GeometryStatistics formatGeomStats) {
+      GeometryStatistics formatGeomStats, PrimitiveType type) {
     org.apache.parquet.column.statistics.geometry.BoundingBox bbox = null;
     if (formatGeomStats.isSetBbox()) {
       BoundingBox formatBbox = formatGeomStats.getBbox();
@@ -992,7 +992,23 @@ public class ParquetMetadataConverter {
     if (formatGeomStats.isSetGeometry_types()) {
       geometryTypes = new GeometryTypes(new HashSet<>(formatGeomStats.getGeometry_types()));
     }
-    return new org.apache.parquet.column.statistics.geometry.GeometryStatistics(bbox, covering, geometryTypes);
+
+    // get the logical type annotation data from the type
+    LogicalTypeAnnotation logicalType = type.getLogicalTypeAnnotation();
+    if (logicalType instanceof LogicalTypeAnnotation.GeometryLogicalTypeAnnotation) {
+      LogicalTypeAnnotation.GeometryLogicalTypeAnnotation geometryLogicalType =
+          (LogicalTypeAnnotation.GeometryLogicalTypeAnnotation) logicalType;
+      return new org.apache.parquet.column.statistics.geometry.GeometryStatistics(
+          geometryLogicalType.getEdges(),
+          geometryLogicalType.getCrs(),
+          geometryLogicalType.getMetadata(),
+          bbox,
+          covering,
+          geometryTypes);
+    }
+    return new org.apache.parquet.column.statistics.geometry.GeometryStatistics(
+        // this case should not happen in normal cases
+        null, null, null, bbox, covering, geometryTypes);
   }
 
   /**
@@ -2452,7 +2468,7 @@ public class ParquetMetadataConverter {
       geometryStatistics =
           new ArrayList<>(parquetColumnIndex.getGeometry_stats().size());
       parquetColumnIndex.getGeometry_stats().stream()
-          .map(ParquetMetadataConverter::fromParquetStatistics)
+          .map(stat -> ParquetMetadataConverter.fromParquetStatistics(stat, type))
           .forEach(geometryStatistics::add);
     }
     return ColumnIndexBuilder.build(

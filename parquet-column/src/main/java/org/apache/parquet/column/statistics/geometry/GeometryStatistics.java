@@ -18,27 +18,43 @@
  */
 package org.apache.parquet.column.statistics.geometry;
 
+import java.nio.ByteBuffer;
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.io.api.Binary;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.io.ParseException;
 import org.locationtech.jts.io.WKBReader;
 
 public class GeometryStatistics {
 
+  // Metadata that may impact the statistics calculation
+  private final LogicalTypeAnnotation.Edges edges;
+  private final String crs;
+  private final ByteBuffer metadata;
+
   private final BoundingBox boundingBox;
   private final Covering covering;
   private final GeometryTypes geometryTypes;
   private final WKBReader reader = new WKBReader();
 
-  public GeometryStatistics(BoundingBox boundingBox, Covering covering, GeometryTypes geometryTypes) {
+  public GeometryStatistics(
+      LogicalTypeAnnotation.Edges edges,
+      String crs,
+      ByteBuffer metadata,
+      BoundingBox boundingBox,
+      Covering covering,
+      GeometryTypes geometryTypes) {
+    this.edges = edges;
+    this.crs = crs;
+    this.metadata = metadata;
     this.boundingBox = boundingBox;
     this.covering = covering;
     this.geometryTypes = geometryTypes;
   }
 
-  public GeometryStatistics() {
-    this(new BoundingBox(), new EnvelopeCovering(), new GeometryTypes());
+  public GeometryStatistics(LogicalTypeAnnotation.Edges edges, String crs, ByteBuffer metadata) {
+    this(edges, crs, metadata, new BoundingBox(), new EnvelopeCovering(), new GeometryTypes());
   }
 
   public BoundingBox getBoundingBox() {
@@ -91,7 +107,7 @@ public class GeometryStatistics {
   }
 
   public GeometryStatistics copy() {
-    return new GeometryStatistics(boundingBox.copy(), covering.copy(), geometryTypes.copy());
+    return new GeometryStatistics(edges, crs, metadata, boundingBox.copy(), covering.copy(), geometryTypes.copy());
   }
 
   @Override
