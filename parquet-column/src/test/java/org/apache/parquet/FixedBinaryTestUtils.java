@@ -31,7 +31,7 @@ import org.junit.Test;
 /**
  * Some utility methods for generating Binary values that length if fixed (e.g. for FIXED_LEN_BYTE_ARRAY or INT96).
  */
-public class FixedBinaryTestGeometryUtils {
+public class FixedBinaryTestUtils {
   public static Binary getFixedBinary(int length, BigInteger bigInt) {
     byte[] array = bigInt.toByteArray();
     if (array.length == length) {

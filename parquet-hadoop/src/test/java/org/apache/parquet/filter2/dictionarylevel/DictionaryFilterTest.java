@@ -61,7 +61,7 @@ import java.util.UUID;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.parquet.FixedBinaryTestGeometryUtils;
+import org.apache.parquet.FixedBinaryTestUtils;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.EncodingStats;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
@@ -159,7 +159,7 @@ public class DictionaryFilterTest {
   }
 
   private static Binary toBinary(BigInteger decimalWithoutScale, int byteCount) {
-    return FixedBinaryTestGeometryUtils.getFixedBinary(byteCount, decimalWithoutScale);
+    return FixedBinaryTestUtils.getFixedBinary(byteCount, decimalWithoutScale);
   }
 
   private static void writeData(SimpleGroupFactory f, ParquetWriter<Group> writer) throws IOException {

@@ -1112,10 +1112,26 @@ public abstract class LogicalTypeAnnotation {
     }
   }
 
+  /**
+   * Allowed for physical type: BYTE_ARRAY.
+   *
+   * Well-known binary (WKB) representations of geometries. It supports 2D or
+   * 3D geometries of the standard geometry types (Point, LineString, Polygon,
+   * MultiPoint, MultiLineString, MultiPolygon, and GeometryCollection). This
+   * is the preferred option for maximum portability.
+   *
+   * This encoding enables GeometryStatistics to be set in the column chunk
+   * and page index.
+   */
   public enum GeometryEncoding {
     WKB
   }
 
+  /**
+   * Interpretation for edges of GEOMETRY logical type, i.e. whether the edge
+   * between points represent a straight cartesian line or the shortest line on
+   * the sphere. Please note that it only applies to polygons.
+   */
   public enum Edges {
     PLANAR,
     SPHERICAL
