@@ -26,7 +26,7 @@ import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.pig.convert.DecimalUtils;
 import org.junit.Test;
 
-  public class TestDecimalUtils {
+public class TestDecimalUtils {
 
   private void testDecimalConversion(double value, int precision, int scale, String stringValue) {
     String originalString = Double.toString(value);
