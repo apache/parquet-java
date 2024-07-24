@@ -118,6 +118,7 @@ public class BoundingBox {
   // Method to merge a Geometry object into this bounding box
   public void merge(Geometry geometry) {
     Preconditions.checkArgument(geometry != null, "Cannot merge with null geometry");
+    GeometryUtils.normalizeLongitude(geometry);
     update(geometry);
   }
 

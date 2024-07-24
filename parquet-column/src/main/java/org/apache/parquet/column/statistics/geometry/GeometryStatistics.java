@@ -48,8 +48,8 @@ public class GeometryStatistics {
     this.edges = edges;
     this.crs = crs;
     this.metadata = metadata;
-    this.boundingBox = boundingBox;
-    this.covering = covering;
+    this.boundingBox = supportsBoundingBox() ? boundingBox : null;
+    this.covering = supportsCovering() ? covering : null;
     this.geometryTypes = geometryTypes;
   }
 
@@ -82,9 +82,32 @@ public class GeometryStatistics {
   }
 
   private void update(Geometry geom) {
-    boundingBox.update(geom);
-    covering.update(geom);
+    if (supportsBoundingBox()) {
+      boundingBox.update(geom);
+    }
+    if (supportsCovering()) {
+      covering.update(geom);
+    }
     geometryTypes.update(geom);
+  }
+
+  private boolean supportsBoundingBox() {
+    // Only planar geometries can have a bounding box
+    // based on the current specification
+    return edges == LogicalTypeAnnotation.Edges.PLANAR;
+  }
+
+  /**
+   * A custom WKB-encoded polygon or multi-polygon to represent a covering of
+   * geometries. For example, it may be a bounding box, or an evelope of geometries
+   * when a bounding box cannot be built (e.g. a geometry has spherical edges, or if
+   * an edge of geographic coordinates crosses the antimeridian). In addition, it can
+   * also be used to provide vendor-agnostic coverings like S2 or H3 grids.
+   */
+  private boolean supportsCovering() {
+    // This POC assumes only build coverings for spherical edges
+    // In case of planar edges, the bounding box is built instead
+    return edges == LogicalTypeAnnotation.Edges.SPHERICAL;
   }
 
   public void merge(GeometryStatistics other) {

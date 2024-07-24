@@ -36,32 +36,42 @@ public class EnvelopeCovering extends Covering {
   private final GeometryFactory factory = new GeometryFactory();
 
   public EnvelopeCovering() {
-    super(EMPTY, LogicalTypeAnnotation.Edges.PLANAR);
+    super(EMPTY, LogicalTypeAnnotation.Edges.SPHERICAL);
   }
 
   @Override
   void update(Geometry geom) {
-    if (geometry == null) {
+    if (geom == null) {
       return;
     }
     try {
       if (geometry != EMPTY) {
-        Envelope envelope = reader.read(geometry.array()).getEnvelopeInternal();
-        envelope.expandToInclude(geom.getEnvelopeInternal());
-        Geometry polygon = factory.createPolygon(new Coordinate[] {
-          new Coordinate(envelope.getMinX(), envelope.getMinY()),
-          new Coordinate(envelope.getMinX(), envelope.getMaxY()),
-          new Coordinate(envelope.getMaxX(), envelope.getMaxY()),
-          new Coordinate(envelope.getMaxX(), envelope.getMinY()),
-          new Coordinate(envelope.getMinX(), envelope.getMinY())
-        });
-        geometry = ByteBuffer.wrap(writer.write(polygon));
+        GeometryUtils.normalizeLongitude(geom);
+        Geometry existingGeometry = reader.read(geometry.array());
+        Envelope existingEnvelope = existingGeometry.getEnvelopeInternal();
+        Envelope newEnvelope = geom.getEnvelopeInternal();
+        existingEnvelope.expandToInclude(newEnvelope);
+
+        Geometry envelopePolygon = createPolygonFromEnvelope(existingEnvelope);
+
+        geometry = ByteBuffer.wrap(writer.write(envelopePolygon));
       } else {
-        geometry = ByteBuffer.wrap(writer.write(geom.getEnvelope()));
+        Geometry envelopePolygon = createPolygonFromEnvelope(geom.getEnvelopeInternal());
+        geometry = ByteBuffer.wrap(writer.write(envelopePolygon));
       }
     } catch (ParseException e) {
       geometry = null;
     }
+  }
+
+  private Geometry createPolygonFromEnvelope(Envelope envelope) {
+    return factory.createPolygon(new Coordinate[] {
+      new Coordinate(envelope.getMinX(), envelope.getMinY()),
+      new Coordinate(envelope.getMinX(), envelope.getMaxY()),
+      new Coordinate(envelope.getMaxX(), envelope.getMaxY()),
+      new Coordinate(envelope.getMaxX(), envelope.getMinY()),
+      new Coordinate(envelope.getMinX(), envelope.getMinY())
+    });
   }
 
   @Override
