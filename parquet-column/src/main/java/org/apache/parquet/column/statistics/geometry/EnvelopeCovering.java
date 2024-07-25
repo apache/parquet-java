@@ -63,6 +63,10 @@ public class EnvelopeCovering extends Covering {
     }
   }
 
+  // Create a polygon from an envelope
+  // Assume we are using the Standard WKB format, that no Z and M dimension is supported
+  // https://libgeos.org/specifications/wkb/#standard-wkb
+  // Enhancement is to do post POC phase to support Z and M dimension.
   private Geometry createPolygonFromEnvelope(Envelope envelope) {
     return factory.createPolygon(new Coordinate[] {
       new Coordinate(envelope.getMinX(), envelope.getMinY()),
