@@ -129,8 +129,15 @@ public class GeometryStatistics {
     geometryTypes.abort();
   }
 
+  // Copy the statistics
   public GeometryStatistics copy() {
-    return new GeometryStatistics(edges, crs, metadata, boundingBox.copy(), covering.copy(), geometryTypes.copy());
+    return new GeometryStatistics(
+        edges,
+        crs,
+        metadata,
+        boundingBox != null ? boundingBox.copy() : null,
+        covering != null ? covering.copy() : null,
+        geometryTypes != null ? geometryTypes.copy() : null);
   }
 
   @Override

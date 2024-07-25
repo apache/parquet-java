@@ -825,13 +825,12 @@ public class ParquetMetadataConverter {
       org.apache.parquet.column.statistics.geometry.GeometryStatistics stats) {
     GeometryStatistics formatStats = new GeometryStatistics();
 
-    formatStats.setBbox(toParquetBoundingBox(stats.getBoundingBox()));
+    if (stats.getBoundingBox() != null) {
+      formatStats.setBbox(toParquetBoundingBox(stats.getBoundingBox()));
+    }
 
-    if (stats.getCovering().getGeometry() != null) {
-      Covering formatCovering = new Covering();
-      formatCovering.setGeometry(stats.getCovering().getGeometry());
-      formatCovering.setEdges(convertEdges(stats.getCovering().getEdges()));
-      formatStats.setCovering(formatCovering);
+    if (stats.getCovering() != null && stats.getCovering().getGeometry() != null) {
+      setCovering(stats, formatStats);
     }
 
     List<Integer> geometryTypes = new ArrayList<>(stats.getGeometryTypes().getTypes());
@@ -839,6 +838,14 @@ public class ParquetMetadataConverter {
     formatStats.setGeometry_types(geometryTypes);
 
     return formatStats;
+  }
+
+  private static void setCovering(
+      org.apache.parquet.column.statistics.geometry.GeometryStatistics stats, GeometryStatistics formatStats) {
+    Covering formatCovering = new Covering();
+    formatCovering.setGeometry(stats.getCovering().getGeometry());
+    formatCovering.setEdges(convertEdges(stats.getCovering().getEdges()));
+    formatStats.setCovering(formatCovering);
   }
 
   private static BoundingBox toParquetBoundingBox(org.apache.parquet.column.statistics.geometry.BoundingBox bbox) {

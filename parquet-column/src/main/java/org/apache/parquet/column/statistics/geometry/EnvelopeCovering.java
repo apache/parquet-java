@@ -46,7 +46,6 @@ public class EnvelopeCovering extends Covering {
     }
     try {
       if (geometry != EMPTY) {
-        GeometryUtils.normalizeLongitude(geom);
         Geometry existingGeometry = reader.read(geometry.array());
         Envelope existingEnvelope = existingGeometry.getEnvelopeInternal();
         Envelope newEnvelope = geom.getEnvelopeInternal();

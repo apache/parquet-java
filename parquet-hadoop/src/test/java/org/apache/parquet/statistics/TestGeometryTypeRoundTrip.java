@@ -37,6 +37,7 @@ import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.example.ExampleParquetWriter;
 import org.apache.parquet.hadoop.example.GroupWriteSupport;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
+import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.internal.column.columnindex.ColumnIndex;
 import org.apache.parquet.io.LocalInputFile;
 import org.apache.parquet.io.LocalOutputFile;
@@ -72,13 +73,6 @@ public class TestGeometryTypeRoundTrip {
     WKBWriter wkbWriter = new WKBWriter();
 
     // EPSG:4326: Also known as WGS 84, it uses latitude and longitude coordinates.
-    // This CRS is a global standard and is suitable for most geospatial applications.
-    // The use of "EPSG:4326" indicates that the geometries are expected to be in this CRS,
-    // which impacts how coordinates are interpreted. WGS 84 is a geographic coordinate system where:
-    //
-    // Latitude ranges from -90 to 90 degrees.
-    // Longitude ranges from -180 to 180 degrees.
-    // Using Edges.PLANAR implies that any subsequent spatial operations will treat the space as flat.
     Binary[] points = {
       Binary.fromConstantByteArray(wkbWriter.write(geomFactory.createPoint(new Coordinate(1.0, 1.0)))),
       Binary.fromConstantByteArray(wkbWriter.write(geomFactory.createPoint(new Coordinate(2.0, 2.0))))
@@ -107,31 +101,165 @@ public class TestGeometryTypeRoundTrip {
     try (ParquetFileReader reader = ParquetFileReader.open(new LocalInputFile(path))) {
       Assert.assertEquals(2, reader.getRecordCount());
 
-      System.out.println("Footer");
-      System.out.println(reader.getFooter().toString());
-      System.out.println();
+      ParquetMetadata footer = reader.getFooter();
+      Assert.assertNotNull(footer);
+      Assert.assertEquals(
+          "message msg {\n  required binary col_geom (GEOMETRY(WKB,PLANAR,EPSG:4326));\n}\n",
+          footer.getFileMetaData().getSchema().toString());
 
       ColumnChunkMetaData columnChunkMetaData =
           reader.getRowGroups().get(0).getColumns().get(0);
-      System.out.println("Statistics");
-      System.out.println(columnChunkMetaData.getStatistics().toString());
-      System.out.println();
+      Assert.assertNotNull(columnChunkMetaData);
 
-      GeometryStatistics geometryStatistics =
-          ((BinaryStatistics) columnChunkMetaData.getStatistics()).getGeometryStatistics();
+      BinaryStatistics binaryStatistics = (BinaryStatistics) columnChunkMetaData.getStatistics();
+      GeometryStatistics geometryStatistics = binaryStatistics.getGeometryStatistics();
       Assert.assertNotNull(geometryStatistics);
-      System.out.println("GeometryStatistics");
-      System.out.println(geometryStatistics);
-      System.out.println();
+      Assert.assertEquals(1.0, geometryStatistics.getBoundingBox().getXMin(), 0.0);
+      Assert.assertEquals(2.0, geometryStatistics.getBoundingBox().getXMax(), 0.0);
+      Assert.assertEquals(1.0, geometryStatistics.getBoundingBox().getYMin(), 0.0);
+      Assert.assertEquals(2.0, geometryStatistics.getBoundingBox().getYMax(), 0.0);
+      Assert.assertNull(geometryStatistics.getCovering());
 
       ColumnIndex columnIndex = reader.readColumnIndex(columnChunkMetaData);
-      System.out.println("ColumnIndex");
-      System.out.println(columnIndex);
+      Assert.assertNotNull(columnIndex);
 
       List<GeometryStatistics> pageGeometryStatistics = columnIndex.getGeometryStatistics();
       Assert.assertNotNull(pageGeometryStatistics);
-      System.out.println("Page GeometryStatistics");
-      System.out.println(pageGeometryStatistics);
+      Assert.assertEquals(
+          1.0, pageGeometryStatistics.get(0).getBoundingBox().getXMin(), 0.0);
+      Assert.assertEquals(
+          2.0, pageGeometryStatistics.get(0).getBoundingBox().getXMax(), 0.0);
+      Assert.assertEquals(
+          1.0, pageGeometryStatistics.get(0).getBoundingBox().getYMin(), 0.0);
+      Assert.assertEquals(
+          2.0, pageGeometryStatistics.get(0).getBoundingBox().getYMax(), 0.0);
+      Assert.assertNull(pageGeometryStatistics.get(0).getCovering());
+    }
+  }
+
+  @Test
+  public void testEPSG4326BasicReadWriteGeometryValueWithCovering() throws IOException {
+    GeometryFactory geomFactory = new GeometryFactory();
+
+    // A class to convert JTS Geometry objects to and from Well-Known Binary (WKB) format.
+    WKBWriter wkbWriter = new WKBWriter();
+
+    // EPSG:4326: Also known as WGS 84, it uses latitude and longitude coordinates.
+    Binary[] points = {
+      Binary.fromConstantByteArray(wkbWriter.write(geomFactory.createPoint(new Coordinate(1.0, 1.0)))),
+      Binary.fromConstantByteArray(wkbWriter.write(geomFactory.createPoint(new Coordinate(2.0, 2.0))))
+    };
+
+    // A message type that represents a message with a geometry column.
+    MessageType schema = Types.buildMessage()
+        .required(BINARY)
+        .as(geometryType(GeometryEncoding.WKB, Edges.SPHERICAL, "EPSG:4326", null))
+        .named("col_geom")
+        .named("msg");
+
+    Configuration conf = new Configuration();
+    GroupWriteSupport.setSchema(schema, conf);
+    GroupFactory factory = new SimpleGroupFactory(schema);
+    Path path = newTempPath();
+    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(new LocalOutputFile(path))
+        .withConf(conf)
+        .withDictionaryEncoding(false)
+        .build()) {
+      for (Binary value : points) {
+        writer.write(factory.newGroup().append("col_geom", value));
+      }
+    }
+
+    try (ParquetFileReader reader = ParquetFileReader.open(new LocalInputFile(path))) {
+      Assert.assertEquals(2, reader.getRecordCount());
+
+      ParquetMetadata footer = reader.getFooter();
+      Assert.assertNotNull(footer);
+      Assert.assertEquals(
+          "message msg {\n  required binary col_geom (GEOMETRY(WKB,SPHERICAL,EPSG:4326));\n}\n",
+          footer.getFileMetaData().getSchema().toString());
+
+      ColumnChunkMetaData columnChunkMetaData =
+          reader.getRowGroups().get(0).getColumns().get(0);
+      Assert.assertNotNull(columnChunkMetaData);
+
+      BinaryStatistics binaryStatistics = (BinaryStatistics) columnChunkMetaData.getStatistics();
+      GeometryStatistics geometryStatistics = binaryStatistics.getGeometryStatistics();
+      Assert.assertNotNull(geometryStatistics);
+
+      Assert.assertNotNull(geometryStatistics.getCovering());
+      Assert.assertEquals(
+          "Covering{geometry=POLYGON ((1 1, 1 2, 2 2, 2 1, 1 1)), edges=SPHERICAL}",
+          geometryStatistics.getCovering().toString());
+
+      ColumnIndex columnIndex = reader.readColumnIndex(columnChunkMetaData);
+      Assert.assertNotNull(columnIndex);
+    }
+  }
+
+  @Test
+  public void testEPSG3857BasicReadWriteGeometryValue() throws IOException {
+    GeometryFactory geomFactory = new GeometryFactory();
+
+    // A class to convert JTS Geometry objects to and from Well-Known Binary (WKB) format.
+    WKBWriter wkbWriter = new WKBWriter();
+
+    // EPSG:3857: Web Mercator projection, commonly used by web mapping applications.
+    Binary[] points = {
+      Binary.fromConstantByteArray(
+          wkbWriter.write(geomFactory.createPoint(new Coordinate(-8237491.37, 4974209.75)))),
+      Binary.fromConstantByteArray(
+          wkbWriter.write(geomFactory.createPoint(new Coordinate(-8237491.37, 4974249.75)))),
+      Binary.fromConstantByteArray(
+          wkbWriter.write(geomFactory.createPoint(new Coordinate(-8237531.37, 4974209.75)))),
+      Binary.fromConstantByteArray(
+          wkbWriter.write(geomFactory.createPoint(new Coordinate(-8237531.37, 4974249.75))))
+    };
+
+    // A message type that represents a message with a geometry column.
+    MessageType schema = Types.buildMessage()
+        .required(BINARY)
+        .as(geometryType(GeometryEncoding.WKB, Edges.SPHERICAL, "EPSG:3857", null))
+        .named("col_geom")
+        .named("msg");
+
+    Configuration conf = new Configuration();
+    GroupWriteSupport.setSchema(schema, conf);
+    GroupFactory factory = new SimpleGroupFactory(schema);
+    Path path = newTempPath();
+    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(new LocalOutputFile(path))
+        .withConf(conf)
+        .withDictionaryEncoding(false)
+        .build()) {
+      for (Binary value : points) {
+        writer.write(factory.newGroup().append("col_geom", value));
+      }
+    }
+
+    try (ParquetFileReader reader = ParquetFileReader.open(new LocalInputFile(path))) {
+      Assert.assertEquals(4, reader.getRecordCount());
+
+      ParquetMetadata footer = reader.getFooter();
+      Assert.assertNotNull(footer);
+      Assert.assertEquals(
+          "message msg {\n  required binary col_geom (GEOMETRY(WKB,SPHERICAL,EPSG:3857));\n}\n",
+          footer.getFileMetaData().getSchema().toString());
+
+      ColumnChunkMetaData columnChunkMetaData =
+          reader.getRowGroups().get(0).getColumns().get(0);
+      Assert.assertNotNull(columnChunkMetaData);
+
+      BinaryStatistics binaryStatistics = (BinaryStatistics) columnChunkMetaData.getStatistics();
+      GeometryStatistics geometryStatistics = binaryStatistics.getGeometryStatistics();
+      Assert.assertNotNull(geometryStatistics);
+
+      Assert.assertNotNull(geometryStatistics.getCovering());
+      Assert.assertEquals(
+          "Covering{geometry=POLYGON ((-8237531.37 4974209.75, -8237531.37 4974249.75, -8237491.37 4974249.75, -8237491.37 4974209.75, -8237531.37 4974209.75)), edges=SPHERICAL}",
+          geometryStatistics.getCovering().toString());
+
+      ColumnIndex columnIndex = reader.readColumnIndex(columnChunkMetaData);
+      Assert.assertNotNull(columnIndex);
     }
   }
 }
