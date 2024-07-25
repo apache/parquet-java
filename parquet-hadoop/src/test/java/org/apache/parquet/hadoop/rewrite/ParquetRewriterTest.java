@@ -761,7 +761,7 @@ public class ParquetRewriterTest {
         .getSchema();
     MessageType expectSchema = createSchema();
 
-    Map<ColumnPath, List<BloomFilter>> inputBloomFilters = allInputBloomFilters(null);
+    Map<ColumnPath, List<BloomFilter>> inputBloomFilters = allInputBloomFilters();
     Map<ColumnPath, List<BloomFilter>> outputBloomFilters = allOutputBloomFilters(null);
     Set<ColumnPath> schemaRColumns = createSchemaR().getColumns().stream()
         .map(x -> ColumnPath.get(x.getPath()))
