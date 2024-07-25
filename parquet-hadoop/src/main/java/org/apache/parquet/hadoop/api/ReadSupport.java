@@ -21,6 +21,7 @@ package org.apache.parquet.hadoop.api;
 import java.util.Map;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.conf.ParquetConfiguration;
+import org.apache.parquet.hadoop.util.ConfigurationUtil;
 import org.apache.parquet.io.api.RecordMaterializer;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
@@ -76,12 +77,12 @@ public abstract class ReadSupport<T> {
    * @param keyValueMetaData the app specific metadata from the file
    * @param fileSchema       the schema of the file
    * @return the readContext that defines how to read the file
-   * @deprecated override {@link ReadSupport#init(InitContext)} instead
+   * @deprecated override {@link #init(InitContext)} instead
    */
   @Deprecated
   public ReadContext init(
       ParquetConfiguration configuration, Map<String, String> keyValueMetaData, MessageType fileSchema) {
-    throw new UnsupportedOperationException("Override ReadSupport.init(InitContext)");
+    return init(ConfigurationUtil.createHadoopConfiguration(configuration), keyValueMetaData, fileSchema);
   }
 
   /**
@@ -103,7 +104,9 @@ public abstract class ReadSupport<T> {
    * @param fileSchema       the schema of the file
    * @param readContext      returned by the init method
    * @return the recordMaterializer that will materialize the records
+   * @deprecated override {@link #prepareForRead(ParquetConfiguration,Map,MessageType,ReadContext)} instead
    */
+  @Deprecated
   public abstract RecordMaterializer<T> prepareForRead(
       Configuration configuration,
       Map<String, String> keyValueMetaData,
@@ -125,8 +128,8 @@ public abstract class ReadSupport<T> {
       Map<String, String> keyValueMetaData,
       MessageType fileSchema,
       ReadContext readContext) {
-    throw new UnsupportedOperationException(
-        "Override ReadSupport.prepareForRead(ParquetConfiguration, Map<String, String>, MessageType, ReadContext)");
+    return prepareForRead(
+        ConfigurationUtil.createHadoopConfiguration(configuration), keyValueMetaData, fileSchema, readContext);
   }
 
   /**

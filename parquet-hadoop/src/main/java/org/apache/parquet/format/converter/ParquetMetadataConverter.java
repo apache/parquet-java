@@ -534,8 +534,9 @@ public class ParquetMetadataConverter {
     int columnOrdinal = -1;
     ByteArrayOutputStream tempOutStream = null;
     for (ColumnChunkMetaData columnMetaData : columns) {
-      ColumnChunk columnChunk =
-          new ColumnChunk(columnMetaData.getFirstDataPageOffset()); // verify this is the right offset
+      // There is no ColumnMetaData written after the chunk data, so set the ColumnChunk
+      // file_offset to 0
+      ColumnChunk columnChunk = new ColumnChunk(0);
       columnChunk.file_path = block.getPath(); // they are in the same file for now
       InternalColumnEncryptionSetup columnSetup = null;
       boolean writeCryptoMetadata = false;
@@ -550,7 +551,7 @@ public class ParquetMetadataConverter {
       ColumnMetaData metaData = new ColumnMetaData(
           getType(columnMetaData.getType()),
           toFormatEncodings(columnMetaData.getEncodings()),
-          Arrays.asList(columnMetaData.getPath().toArray()),
+          columnMetaData.getPath().toList(),
           toFormatCodec(columnMetaData.getCodec()),
           columnMetaData.getValueCount(),
           columnMetaData.getTotalUncompressedSize(),

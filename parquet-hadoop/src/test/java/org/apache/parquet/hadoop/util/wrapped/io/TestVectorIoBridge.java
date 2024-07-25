@@ -305,6 +305,17 @@ public class TestVectorIoBridge {
     verifyExceptionalVectoredRead(null, NullPointerException.class);
   }
 
+  /**
+   * An empty range list is permitted.
+   */
+  @Test
+  public void testEmptyRangeList() throws Exception {
+    List<ParquetFileRange> fileRanges = new ArrayList<>();
+    try (FSDataInputStream in = openTestFile()) {
+      readVectored(in, fileRanges);
+    }
+  }
+
   @Test
   public void testSomeRandomNonOverlappingRanges() throws Exception {
     List<ParquetFileRange> fileRanges = ranges(

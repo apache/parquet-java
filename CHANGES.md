@@ -19,6 +19,167 @@
 
 # Parquet #
 
+### Version 1.14.1 ###
+
+Release Notes - Parquet - Version 1.14.1
+
+#### Bug
+
+*   [PARQUET-2468](https://issues.apache.org/jira/browse/PARQUET-2468) - ParquetMetadata.toPrettyJSON throws exception on file read when LOG.isDebugEnabled()
+*   [PARQUET-2498](https://issues.apache.org/jira/browse/PARQUET-2498) - Hadoop vector IO API doesn't handle empty list of ranges
+
+### Version 1.14.0 ###
+
+Release Notes - Parquet - Version 1.14.0
+
+#### Bug
+
+*   [PARQUET-2260](https://issues.apache.org/jira/browse/PARQUET-2260) - Bloom filter bytes size shouldn't be larger than maxBytes size in the configuration
+*   [PARQUET-2266](https://issues.apache.org/jira/browse/PARQUET-2266) - Fix support for files without ColumnIndexes
+*   [PARQUET-2276](https://issues.apache.org/jira/browse/PARQUET-2276) - ParquetReader reads do not work with Hadoop version 2.8.5
+*   [PARQUET-2300](https://issues.apache.org/jira/browse/PARQUET-2300) - Update jackson-core 2.13.4 to a version without CVE PRISMA-2023-0067
+*   [PARQUET-2325](https://issues.apache.org/jira/browse/PARQUET-2325) - Fix parquet-cli's dictionary subcommand to work with FIXED_LEN_BYTE_ARRAY
+*   [PARQUET-2329](https://issues.apache.org/jira/browse/PARQUET-2329) - Fix wrong help messages of parquet-cli subcommands
+*   [PARQUET-2330](https://issues.apache.org/jira/browse/PARQUET-2330) - Fix convert-csv to show the correct position of the invalid record
+*   [PARQUET-2332](https://issues.apache.org/jira/browse/PARQUET-2332) - Fix unexpectedly disabled tests to be executed
+*   [PARQUET-2336](https://issues.apache.org/jira/browse/PARQUET-2336) - Add caching key to CodecFactory
+*   [PARQUET-2342](https://issues.apache.org/jira/browse/PARQUET-2342) - Parquet writer produced a corrupted file due to page value count overflow
+*   [PARQUET-2343](https://issues.apache.org/jira/browse/PARQUET-2343) - Fixes NPE when rewriting file with multiple rowgroups
+*   [PARQUET-2348](https://issues.apache.org/jira/browse/PARQUET-2348) - Recompression/Re-encrypt should rewrite bloomfilter
+*   [PARQUET-2354](https://issues.apache.org/jira/browse/PARQUET-2354) - Apparent race condition in CharsetValidator
+*   [PARQUET-2363](https://issues.apache.org/jira/browse/PARQUET-2363) - ParquetRewriter should encrypt the V2 page header
+*   [PARQUET-2365](https://issues.apache.org/jira/browse/PARQUET-2365) - Fixes NPE when rewriting column without column index
+*   [PARQUET-2408](https://issues.apache.org/jira/browse/PARQUET-2408) - Fix license header in .gitattributes
+*   [PARQUET-2420](https://issues.apache.org/jira/browse/PARQUET-2420) - ThriftParquetWriter converts thrift byte to int32 without adding logical type
+*   [PARQUET-2429](https://issues.apache.org/jira/browse/PARQUET-2429) - Direct buffer churn in NonBlockedDecompressor
+*   [PARQUET-2438](https://issues.apache.org/jira/browse/PARQUET-2438) - Fixes minMaxSize for BinaryColumnIndexBuilder
+*   [PARQUET-2442](https://issues.apache.org/jira/browse/PARQUET-2442) - Remove Parquet Site from parquet-mr
+*   [PARQUET-2448](https://issues.apache.org/jira/browse/PARQUET-2448) - parquet-avro does not support nested logical-type for avro <= 1.8
+*   [PARQUET-2449](https://issues.apache.org/jira/browse/PARQUET-2449) - Writing using LocalOutputFile creates a large buffer
+*   [PARQUET-2450](https://issues.apache.org/jira/browse/PARQUET-2450) - ParquetAvroReader throws exception projecting a single field of a repeated record type
+*   [PARQUET-2456](https://issues.apache.org/jira/browse/PARQUET-2456) - avro schema conversion may fail with name conflict when using fixed types
+*   [PARQUET-2457](https://issues.apache.org/jira/browse/PARQUET-2457) - Missing maven-scala-plugin version
+*   [PARQUET-2458](https://issues.apache.org/jira/browse/PARQUET-2458) - Java compiler should use release instead of source/target
+*   [PARQUET-2465](https://issues.apache.org/jira/browse/PARQUET-2465) - Fall back to Hadoop Configuration
+
+#### New Feature
+
+*   [PARQUET-1647](https://issues.apache.org/jira/browse/PARQUET-1647) - Java support for Arrow's float16
+*   [PARQUET-2171](https://issues.apache.org/jira/browse/PARQUET-2171) - Implement vectored IO in parquet file format
+*   [PARQUET-2318](https://issues.apache.org/jira/browse/PARQUET-2318) - Implement a tool to list page headers
+
+#### Improvement
+
+*   [PARQUET-1629](https://issues.apache.org/jira/browse/PARQUET-1629) - Page-level CRC checksum verification for DataPageV2
+*   [PARQUET-1822](https://issues.apache.org/jira/browse/PARQUET-1822) - Parquet without Hadoop dependencies
+*   [PARQUET-1942](https://issues.apache.org/jira/browse/PARQUET-1942) - Bump Apache Arrow 2.0.0
+*   [PARQUET-2060](https://issues.apache.org/jira/browse/PARQUET-2060) - Parquet corruption can cause infinite loop with Snappy
+*   [PARQUET-2212](https://issues.apache.org/jira/browse/PARQUET-2212) - Add ByteBuffer api for decryptors to allow direct memory to be decrypted
+*   [PARQUET-2254](https://issues.apache.org/jira/browse/PARQUET-2254) - Build a BloomFilter with a more precise size
+*   [PARQUET-2263](https://issues.apache.org/jira/browse/PARQUET-2263) - Upgrade maven-shade-plugin to 3.4.1
+*   [PARQUET-2265](https://issues.apache.org/jira/browse/PARQUET-2265) - AvroParquetWriter should default to data supplier model from Configuration
+*   [PARQUET-2267](https://issues.apache.org/jira/browse/PARQUET-2267) - Add dependabot to update dependencies
+*   [PARQUET-2268](https://issues.apache.org/jira/browse/PARQUET-2268) - Bump Thrift to 0.18.1
+*   [PARQUET-2272](https://issues.apache.org/jira/browse/PARQUET-2272) - Bump protobuf-java from 3.17.3 to 3.19.6
+*   [PARQUET-2273](https://issues.apache.org/jira/browse/PARQUET-2273) - Remove Travis from the repository
+*   [PARQUET-2274](https://issues.apache.org/jira/browse/PARQUET-2274) - Remove Yetus
+*   [PARQUET-2275](https://issues.apache.org/jira/browse/PARQUET-2275) - Upgrade `cyclonedx-maven-plugin` to 2.7.6
+*   [PARQUET-2277](https://issues.apache.org/jira/browse/PARQUET-2277) - Bump hadoop.version from 3.2.3 to 3.3.5
+*   [PARQUET-2278](https://issues.apache.org/jira/browse/PARQUET-2278) - Bump re2j from 1.1 to 1.7
+*   [PARQUET-2279](https://issues.apache.org/jira/browse/PARQUET-2279) - Bump slf4j.version from 1.7.22 to 1.7.33
+*   [PARQUET-2280](https://issues.apache.org/jira/browse/PARQUET-2280) - Bump h2 from 2.1.210 to 2.1.214
+*   [PARQUET-2282](https://issues.apache.org/jira/browse/PARQUET-2282) - Dont initialize HadoopCodec
+*   [PARQUET-2283](https://issues.apache.org/jira/browse/PARQUET-2283) - Remove Hadoop HiddenFileFilter
+*   [PARQUET-2290](https://issues.apache.org/jira/browse/PARQUET-2290) - Add CI for Hadoop 2
+*   [PARQUET-2291](https://issues.apache.org/jira/browse/PARQUET-2291) - Remove lingering japicmp exclusions
+*   [PARQUET-2292](https://issues.apache.org/jira/browse/PARQUET-2292) - Improve default SpecificRecord model selection for Avro{Write,Read}Support
+*   [PARQUET-2293](https://issues.apache.org/jira/browse/PARQUET-2293) - Bump guava from 27.0.1-jre to 31.1-jre
+*   [PARQUET-2294](https://issues.apache.org/jira/browse/PARQUET-2294) - Bump fastutil from 8.4.2 to 8.5.12
+*   [PARQUET-2295](https://issues.apache.org/jira/browse/PARQUET-2295) - Bump truth-proto-extension from 1.0 to 1.1.3
+*   [PARQUET-2296](https://issues.apache.org/jira/browse/PARQUET-2296) - Bump easymock from 3.4 to 5.1.0
+*   [PARQUET-2297](https://issues.apache.org/jira/browse/PARQUET-2297) - Encrypted files should not be checked for delta encoding problem
+*   [PARQUET-2301](https://issues.apache.org/jira/browse/PARQUET-2301) - Add missing argument in ParquetRewriter logging
+*   [PARQUET-2302](https://issues.apache.org/jira/browse/PARQUET-2302) - Bump joda-time from 2.9.7 to 2.12.5
+*   [PARQUET-2303](https://issues.apache.org/jira/browse/PARQUET-2303) - Bump cyclonedx-maven-plugin from 2.7.6 to 2.7.9
+*   [PARQUET-2304](https://issues.apache.org/jira/browse/PARQUET-2304) - Bump buildnumber-maven-plugin from 1.1 to 3.1.0
+*   [PARQUET-2305](https://issues.apache.org/jira/browse/PARQUET-2305) - Allow Parquet to Proto conversion even though Target Schema has less fields
+*   [PARQUET-2307](https://issues.apache.org/jira/browse/PARQUET-2307) - Bump zero-allocation-hashing from 0.9 to 0.16
+*   [PARQUET-2308](https://issues.apache.org/jira/browse/PARQUET-2308) - Bump powermock.version from 2.0.2 to 2.0.9
+*   [PARQUET-2309](https://issues.apache.org/jira/browse/PARQUET-2309) - Bump site-maven-plugin from 0.8 to 0.12
+*   [PARQUET-2312](https://issues.apache.org/jira/browse/PARQUET-2312) - Bump snappy-java from 1.1.8.3 to 1.1.10.1 in /parquet-hadoop
+*   [PARQUET-2314](https://issues.apache.org/jira/browse/PARQUET-2314) - Bump jackson.version from 2.15.0 to 2.15.2
+*   [PARQUET-2319](https://issues.apache.org/jira/browse/PARQUET-2319) - Upgrade Avro to version 1.11.2
+*   [PARQUET-2320](https://issues.apache.org/jira/browse/PARQUET-2320) - Bump jackson-databind from 2.14.2 to 2.15.2
+*   [PARQUET-2322](https://issues.apache.org/jira/browse/PARQUET-2322) - Bump h2 from 2.1.214 to 2.2.220 in /parquet-column
+*   [PARQUET-2324](https://issues.apache.org/jira/browse/PARQUET-2324) - Bump cobertura-maven-plugin from 2.5.2 to 2.7
+*   [PARQUET-2326](https://issues.apache.org/jira/browse/PARQUET-2326) - Bump jcommander from 1.72 to 1.82
+*   [PARQUET-2328](https://issues.apache.org/jira/browse/PARQUET-2328) - Add overwrite option to the parquet-cli's rewrite subcommand
+*   [PARQUET-2331](https://issues.apache.org/jira/browse/PARQUET-2331) - Allow convert-csv to take multiple input files
+*   [PARQUET-2333](https://issues.apache.org/jira/browse/PARQUET-2333) - Support bzip2 and xz compressions in the to-avro subcommand
+*   [PARQUET-2334](https://issues.apache.org/jira/browse/PARQUET-2334) - Allow the cat subcommand to take multiple files
+*   [PARQUET-2335](https://issues.apache.org/jira/browse/PARQUET-2335) - Allow the scan subcommand to take multiple files
+*   [PARQUET-2347](https://issues.apache.org/jira/browse/PARQUET-2347) - Add interface layer between Parquet and Hadoop Configuration
+*   [PARQUET-2349](https://issues.apache.org/jira/browse/PARQUET-2349) - Move from deprecated BytesCompressor/Decompressor to BytesInputCompressor/Decompressor
+*   [PARQUET-2357](https://issues.apache.org/jira/browse/PARQUET-2357) - Modest refactor of CapacityByteArrayOutputStream
+*   [PARQUET-2359](https://issues.apache.org/jira/browse/PARQUET-2359) - Simple Parquet Configuration implementation
+*   [PARQUET-2364](https://issues.apache.org/jira/browse/PARQUET-2364) - Encrypt all columns option
+*   [PARQUET-2366](https://issues.apache.org/jira/browse/PARQUET-2366) - Optimize random seek during rewriting
+*   [PARQUET-2368](https://issues.apache.org/jira/browse/PARQUET-2368) - Update japicmp to 1.18.1
+*   [PARQUET-2370](https://issues.apache.org/jira/browse/PARQUET-2370) - Crypto factory activation of "all column encryption" mode
+*   [PARQUET-2371](https://issues.apache.org/jira/browse/PARQUET-2371) - Resolve japicmp failure for CI
+*   [PARQUET-2372](https://issues.apache.org/jira/browse/PARQUET-2372) - Avoid unnecessary reading of RowGroup data during rewriting
+*   [PARQUET-2373](https://issues.apache.org/jira/browse/PARQUET-2373) - Improve I/O performance with bloom_filter_length
+*   [PARQUET-2374](https://issues.apache.org/jira/browse/PARQUET-2374) - Add metrics support for parquet file reader
+*   [PARQUET-2375](https://issues.apache.org/jira/browse/PARQUET-2375) - Extend vectorized bit unpacking benchmark for various bit sizes.
+*   [PARQUET-2380](https://issues.apache.org/jira/browse/PARQUET-2380) - Decouple RewriteOptions from Hadoop classes
+*   [PARQUET-2383](https://issues.apache.org/jira/browse/PARQUET-2383) - Bump parquet-format to 2.10.0
+*   [PARQUET-2384](https://issues.apache.org/jira/browse/PARQUET-2384) - Mark toOriginalType as deprecated
+*   [PARQUET-2385](https://issues.apache.org/jira/browse/PARQUET-2385) - Don't initialize CodecFactory in ParquetWriter
+*   [PARQUET-2386](https://issues.apache.org/jira/browse/PARQUET-2386) - More consistent code style in parquet-mr
+*   [PARQUET-2387](https://issues.apache.org/jira/browse/PARQUET-2387) - Simplify `hasFieldsIgnored` expression
+*   [PARQUET-2388](https://issues.apache.org/jira/browse/PARQUET-2388) - Deprecate `CHARSETS` on `PlainValuesWriter`
+*   [PARQUET-2389](https://issues.apache.org/jira/browse/PARQUET-2389) - Remove redundant initializers
+*   [PARQUET-2390](https://issues.apache.org/jira/browse/PARQUET-2390) - Replace anonymouse functions with lambda's
+*   [PARQUET-2391](https://issues.apache.org/jira/browse/PARQUET-2391) - Remove unnecessary unboxing
+*   [PARQUET-2392](https://issues.apache.org/jira/browse/PARQUET-2392) - Remove StringBuilder in `LogicalTypeAnnotation`
+*   [PARQUET-2393](https://issues.apache.org/jira/browse/PARQUET-2393) - Make `ColumnIOCreatorVisitor` static
+*   [PARQUET-2394](https://issues.apache.org/jira/browse/PARQUET-2394) - Use `computeIfAbsent` in `MessageColumnIO`
+*   [PARQUET-2395](https://issues.apache.org/jira/browse/PARQUET-2395) - Prefer `singletonList` over `asList`
+*   [PARQUET-2396](https://issues.apache.org/jira/browse/PARQUET-2396) - Refactor `ColumnIndexBuilder`
+*   [PARQUET-2397](https://issues.apache.org/jira/browse/PARQUET-2397) - Make use of `isEmpty`
+*   [PARQUET-2398](https://issues.apache.org/jira/browse/PARQUET-2398) - Make static variables final
+*   [PARQUET-2399](https://issues.apache.org/jira/browse/PARQUET-2399) - Use deprecated tag in Javadoc
+*   [PARQUET-2400](https://issues.apache.org/jira/browse/PARQUET-2400) - Update Spotless command in PR prompt to include vector plugins
+*   [PARQUET-2401](https://issues.apache.org/jira/browse/PARQUET-2401) - Synchronize on final fields
+*   [PARQUET-2406](https://issues.apache.org/jira/browse/PARQUET-2406) - Remove redundant valueOf calls
+*   [PARQUET-2407](https://issues.apache.org/jira/browse/PARQUET-2407) - Add custom .asf.yaml for finer-grained control of email notifications
+*   [PARQUET-2410](https://issues.apache.org/jira/browse/PARQUET-2410) - Use row count instead of value count to get row count from OffsetIndex
+*   [PARQUET-2413](https://issues.apache.org/jira/browse/PARQUET-2413) - Support custom file footer metadata via ParquetWriter
+*   [PARQUET-2417](https://issues.apache.org/jira/browse/PARQUET-2417) - Update NOTICE
+*   [PARQUET-2419](https://issues.apache.org/jira/browse/PARQUET-2419) - Reduce noisy logging when running test suite
+*   [PARQUET-2422](https://issues.apache.org/jira/browse/PARQUET-2422) - Prevent unwrapping of Hadoop filestreams
+*   [PARQUET-2425](https://issues.apache.org/jira/browse/PARQUET-2425) - AvroSchemaConverter doesn't support non-grouped repeated fields
+*   [PARQUET-2426](https://issues.apache.org/jira/browse/PARQUET-2426) - Add lz4_raw compression to README
+*   [PARQUET-2428](https://issues.apache.org/jira/browse/PARQUET-2428) - Make RawPagesReader support specified columns
+*   [PARQUET-2432](https://issues.apache.org/jira/browse/PARQUET-2432) - Use ByteBufferAllocator instead of hardcoded heap allocation
+*   [PARQUET-2436](https://issues.apache.org/jira/browse/PARQUET-2436) - More optimal memory usage in compression codecs
+*   [PARQUET-2437](https://issues.apache.org/jira/browse/PARQUET-2437) - Avoid flushing at Parquet writes after an exception
+*   [PARQUET-2439](https://issues.apache.org/jira/browse/PARQUET-2439) - Upgrade ZSTD-JNI to 1.5.5-11
+*   [PARQUET-2445](https://issues.apache.org/jira/browse/PARQUET-2445) - Fix log exception when FieldsMarker.visitedIndexes is empty
+*   [PARQUET-2446](https://issues.apache.org/jira/browse/PARQUET-2446) - ProtoParquetWriter Not Support DynamicMessage
+*   [PARQUET-2451](https://issues.apache.org/jira/browse/PARQUET-2451) - Add BYTE_STREAM_SPLIT support for FIXED_LEN_BYTE_ARRAY, INT32 and INT64
+*   [PARQUET-2453](https://issues.apache.org/jira/browse/PARQUET-2453) - Add build-helper-maven-plugin for parquet-column/common module
+*   [PARQUET-2454](https://issues.apache.org/jira/browse/PARQUET-2454) - Invoking flush before closing the output stream in ParquetFileWriter
+*   [PARQUET-2463](https://issues.apache.org/jira/browse/PARQUET-2463) - Bump japicmp to 0.21.0
+
+#### Test
+
+*   [PARQUET-2361](https://issues.apache.org/jira/browse/PARQUET-2361) - Reduce failure rate of unit test testParquetFileWithBloomFilterWithFpp
+
+#### Task
+
+*   [PARQUET-2418](https://issues.apache.org/jira/browse/PARQUET-2418) - Add integration test for BYTE_STREAM_SPLIT
+
 ### Version 1.13.1 ###
 
 Release Notes - Parquet - Version 1.13.1

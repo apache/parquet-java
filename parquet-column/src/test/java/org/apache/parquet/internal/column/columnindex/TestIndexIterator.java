@@ -50,6 +50,97 @@ public class TestIndexIterator {
     assertEquals(IndexIterator.rangeTranslate(11, 18, i -> i - 10), 1, 2, 3, 4, 5, 6, 7, 8);
   }
 
+  @Test
+  public void testUnion() {
+    // Test deduplication of intersecting ranges
+    assertEquals(
+        IndexIterator.union(
+            IndexIterator.rangeTranslate(0, 7, i -> i), IndexIterator.rangeTranslate(4, 10, i -> i)),
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10);
+
+    // Test inversion of LHS and RHS
+    assertEquals(
+        IndexIterator.union(
+            IndexIterator.rangeTranslate(4, 10, i -> i), IndexIterator.rangeTranslate(0, 7, i -> i)),
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10);
+
+    // Test non-intersecting ranges
+    assertEquals(
+        IndexIterator.union(
+            IndexIterator.rangeTranslate(2, 5, i -> i), IndexIterator.rangeTranslate(8, 10, i -> i)),
+        2,
+        3,
+        4,
+        5,
+        8,
+        9,
+        10);
+  }
+
+  @Test
+  public void testIntersection() {
+    // Case 1: some overlap between LHS and RHS
+    // LHS: [0, 1, 2, 3, 4, 5, 6, 7], RHS: [4, 5, 6, 7, 8, 9, 10]
+    assertEquals(
+        IndexIterator.intersection(
+            IndexIterator.rangeTranslate(0, 7, i -> i), IndexIterator.rangeTranslate(4, 10, i -> i)),
+        4,
+        5,
+        6,
+        7);
+
+    // Test inversion of LHS and RHS
+    assertEquals(
+        IndexIterator.intersection(
+            IndexIterator.rangeTranslate(4, 10, i -> i), IndexIterator.rangeTranslate(0, 7, i -> i)),
+        4,
+        5,
+        6,
+        7);
+
+    // Case 2: Single point of overlap at end of iterator
+    // LHS: [1, 3, 5, 7], RHS: [0, 2, 4, 6, 7]
+    assertEquals(
+        IndexIterator.intersection(
+            IndexIterator.filter(8, i -> i % 2 == 1), IndexIterator.filter(8, i -> i % 2 == 0 || i == 7)),
+        7);
+
+    // Test inversion of LHS and RHS
+    assertEquals(
+        IndexIterator.intersection(
+            IndexIterator.filter(8, i -> i % 2 == 0 || i == 7), IndexIterator.filter(8, i -> i % 2 == 1)),
+        7);
+
+    // Test no intersection between ranges
+    // LHS: [2, 3, 4, 5], RHS: [8, 9, 10]
+    assertEquals(IndexIterator.intersection(
+        IndexIterator.rangeTranslate(2, 5, i -> i), IndexIterator.rangeTranslate(8, 10, i -> i)));
+
+    // Test inversion of LHS and RHS
+    assertEquals(IndexIterator.intersection(
+        IndexIterator.rangeTranslate(8, 10, i -> i), IndexIterator.rangeTranslate(2, 5, i -> i)));
+  }
+
   static void assertEquals(PrimitiveIterator.OfInt actualIt, int... expectedValues) {
     IntList actualList = new IntArrayList();
     actualIt.forEachRemaining((int value) -> actualList.add(value));

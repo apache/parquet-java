@@ -55,6 +55,119 @@ public class IndexIterator implements PrimitiveIterator.OfInt {
     return new IndexIterator(from, to + 1, i -> true, translator);
   }
 
+  static PrimitiveIterator.OfInt intersection(PrimitiveIterator.OfInt lhs, PrimitiveIterator.OfInt rhs) {
+    return new PrimitiveIterator.OfInt() {
+      private int next = fetchNext();
+
+      @Override
+      public int nextInt() {
+        if (!hasNext()) {
+          throw new NoSuchElementException();
+        }
+        int result = next;
+        next = fetchNext();
+        return result;
+      }
+
+      @Override
+      public boolean hasNext() {
+        return next != -1;
+      }
+
+      private int fetchNext() {
+        if (!lhs.hasNext() || !rhs.hasNext()) {
+          return -1;
+        }
+
+        // Since we know both iterators are in sorted order, we can iterate linearly through until
+        // we find the next value that belongs to both iterators, or terminate if none exist
+        int nextL = lhs.next();
+        int nextR = rhs.next();
+
+        while (true) {
+          // Try to iterate LHS and RHS to the next intersecting value
+          while (nextL < nextR && lhs.hasNext()) {
+            nextL = lhs.next();
+          }
+          while (nextR < nextL && rhs.hasNext()) {
+            nextR = rhs.next();
+          }
+          if (nextL == nextR) {
+            return nextL;
+          }
+
+          // No intersection found; advance LHS to the next element and retry loop
+          if (nextL < nextR && lhs.hasNext()) {
+            nextL = lhs.next();
+          } else {
+            break;
+          }
+        }
+
+        return -1;
+      }
+    };
+  }
+
+  static PrimitiveIterator.OfInt union(PrimitiveIterator.OfInt lhs, PrimitiveIterator.OfInt rhs) {
+    return new PrimitiveIterator.OfInt() {
+      private int peekL = -1;
+      private int peekR = -1;
+      private int next = fetchNext();
+
+      @Override
+      public int nextInt() {
+        if (!hasNext()) {
+          throw new NoSuchElementException();
+        }
+        int result = next;
+        next = fetchNext();
+        return result;
+      }
+
+      @Override
+      public boolean hasNext() {
+        return next != -1;
+      }
+
+      private int fetchNext() {
+        if ((peekL == -1 && peekR == -1) && (!lhs.hasNext() && !rhs.hasNext())) {
+          return -1;
+        }
+
+        if (peekL == -1 && lhs.hasNext()) {
+          peekL = lhs.next();
+        }
+
+        if (peekR == -1 && rhs.hasNext()) {
+          peekR = rhs.next();
+        }
+
+        // Return the smaller of the two next iterator values
+        int result;
+        if (peekL != -1 && (peekL == peekR || peekR == -1)) {
+          // If RHS is exhausted or intersects with LHS, return l and throw away r to avoid duplicates
+          result = peekL;
+          peekL = -1;
+          peekR = -1;
+        } else if (peekL == -1 && peekR != -1) {
+          // If LHS is exhausted, return RHS
+          result = peekR;
+          peekR = -1;
+        } else if (peekL < peekR) {
+          // If LHS value is smaller than RHS value, return LHS
+          result = peekL;
+          peekL = -1;
+        } else {
+          // If RHS value is smaller than LHS value, return RHS
+          result = peekR;
+          peekR = -1;
+        }
+        return result;
+      }
+    };
+  }
+
   private IndexIterator(int startIndex, int endIndex, IntPredicate filter, IntUnaryOperator translator) {
     this.endIndex = endIndex;
     this.filter = filter;

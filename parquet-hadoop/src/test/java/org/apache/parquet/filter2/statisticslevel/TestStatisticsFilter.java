@@ -20,6 +20,7 @@ package org.apache.parquet.filter2.statisticslevel;
 
 import static org.apache.parquet.filter2.predicate.FilterApi.and;
 import static org.apache.parquet.filter2.predicate.FilterApi.binaryColumn;
+import static org.apache.parquet.filter2.predicate.FilterApi.contains;
 import static org.apache.parquet.filter2.predicate.FilterApi.doubleColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.eq;
 import static org.apache.parquet.filter2.predicate.FilterApi.gt;
@@ -49,6 +50,7 @@ import org.apache.parquet.column.statistics.DoubleStatistics;
 import org.apache.parquet.column.statistics.IntStatistics;
 import org.apache.parquet.filter2.predicate.FilterPredicate;
 import org.apache.parquet.filter2.predicate.LogicalInverseRewriter;
+import org.apache.parquet.filter2.predicate.Operators;
 import org.apache.parquet.filter2.predicate.Operators.BinaryColumn;
 import org.apache.parquet.filter2.predicate.Operators.DoubleColumn;
 import org.apache.parquet.filter2.predicate.Operators.IntColumn;
@@ -379,6 +381,38 @@ public class TestStatisticsFilter {
     assertFalse(canDrop(
         notIn(intColumn, values9),
         Arrays.asList(getIntColumnMeta(statsSomeNulls, 177L), getDoubleColumnMeta(doubleStats, 177L))));
+  }
+
+  @Test
+  public void testContainsEqNonNull() {
+    assertTrue(canDrop(contains(eq(intColumn, 9)), columnMetas));
+    assertFalse(canDrop(contains(eq(intColumn, 10)), columnMetas));
+    assertFalse(canDrop(contains(eq(intColumn, 100)), columnMetas));
+    assertTrue(canDrop(contains(eq(intColumn, 101)), columnMetas));
+
+    // drop columns of all nulls when looking for non-null value
+    assertTrue(canDrop(contains(eq(intColumn, 0)), nullColumnMetas));
+    assertFalse(canDrop(contains(eq(intColumn, 50)), missingMinMaxColumnMetas));
+  }
+
+  @Test
+  public void testContainsAnd() {
+    Operators.Contains<Integer> yes = contains(eq(intColumn, 9));
+    Operators.Contains<Double> no = contains(eq(doubleColumn, 50D));
+    assertTrue(canDrop(and(yes, yes), columnMetas));
+    assertTrue(canDrop(and(yes, no), columnMetas));
+    assertTrue(canDrop(and(no, yes), columnMetas));
+    assertFalse(canDrop(and(no, no), columnMetas));
+  }
+
+  @Test
+  public void testContainsOr() {
+    Operators.Contains<Integer> yes = contains(eq(intColumn, 9));
+    Operators.Contains<Double> no = contains(eq(doubleColumn, 50D));
+    assertTrue(canDrop(or(yes, yes), columnMetas));
+    assertFalse(canDrop(or(yes, no), columnMetas));
+    assertFalse(canDrop(or(no, yes), columnMetas));
+    assertFalse(canDrop(or(no, no), columnMetas));
   }
 
   @Test

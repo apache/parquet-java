@@ -28,6 +28,7 @@ import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.filter2.predicate.FilterPredicate;
 import org.apache.parquet.filter2.predicate.Operators.And;
 import org.apache.parquet.filter2.predicate.Operators.Column;
+import org.apache.parquet.filter2.predicate.Operators.Contains;
 import org.apache.parquet.filter2.predicate.Operators.Eq;
 import org.apache.parquet.filter2.predicate.Operators.Gt;
 import org.apache.parquet.filter2.predicate.Operators.GtEq;
@@ -209,6 +210,11 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
   @Override
   public <T extends Comparable<T>> Boolean visit(NotIn<T> notIn) {
     return BLOCK_MIGHT_MATCH;
+  }
+
+  @Override
+  public <T extends Comparable<T>> Boolean visit(Contains<T> contains) {
+    return contains.filter(this, (l, r) -> l || r, (l, r) -> l && r);
   }
 
   @Override

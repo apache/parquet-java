@@ -1,4 +1,3 @@
-#
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -15,29 +14,37 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
-#
-# https://cwiki.apache.org/confluence/display/INFRA/git+-+.asf.yaml+features
-#
-github:
-  description: "Apache Parquet Java"
-  homepage: https://parquet.apache.org/
-  labels:
-    - apache
-    - parquet
-    - parquet-java
-  
-  enabled_merge_buttons:
-    merge: false
-    squash: true
-    rebase: false
-  
-  features:
-    wiki: false
-    issues: true
-    projects: false
 
-notifications:
-  commits:      commits@parquet.apache.org
-  issues:       issues@parquet.apache.org
-  pullrequests: issues@parquet.apache.org
-  jira_options: link
+name: Enhancement Request
+description: Request an enhancement to the project
+labels: ["Type: enhancement"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to share your feedback on ways Apache Parquet can be improved!
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the enhancement requested
+    validations:
+      required: true
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component(s)
+      multiple: true
+      options:
+        - Core
+        - Build
+        - Arrow
+        - Avro
+        - Pig
+        - Protobuf
+        - Scala
+        - Thrift
+        - CLI
+        - Benchmark
+    validations:
+      required: false

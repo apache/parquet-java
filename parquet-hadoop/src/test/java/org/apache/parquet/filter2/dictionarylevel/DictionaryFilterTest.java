@@ -24,6 +24,7 @@ import static org.apache.parquet.column.ParquetProperties.WriterVersion.PARQUET_
 import static org.apache.parquet.filter2.dictionarylevel.DictionaryFilter.canDrop;
 import static org.apache.parquet.filter2.predicate.FilterApi.and;
 import static org.apache.parquet.filter2.predicate.FilterApi.binaryColumn;
+import static org.apache.parquet.filter2.predicate.FilterApi.contains;
 import static org.apache.parquet.filter2.predicate.FilterApi.doubleColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.eq;
 import static org.apache.parquet.filter2.predicate.FilterApi.floatColumn;
@@ -69,6 +70,7 @@ import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroupFactory;
 import org.apache.parquet.filter2.predicate.FilterPredicate;
 import org.apache.parquet.filter2.predicate.LogicalInverseRewriter;
+import org.apache.parquet.filter2.predicate.Operators;
 import org.apache.parquet.filter2.predicate.Operators.BinaryColumn;
 import org.apache.parquet.filter2.predicate.Operators.DoubleColumn;
 import org.apache.parquet.filter2.predicate.Operators.FloatColumn;
@@ -112,6 +114,7 @@ public class DictionaryFilterTest {
       + "required int32 plain_int32_field; "
       + "required binary fallback_binary_field; "
       + "required int96 int96_field; "
+      + "repeated binary repeated_binary_field;"
       + "} ");
 
   private static final String ALPHABET = "abcdefghijklmnopqrstuvwxyz";
@@ -177,7 +180,16 @@ public class DictionaryFilterTest {
               i < (nElements / 2)
                   ? ALPHABET.substring(index, index + 1)
                   : UUID.randomUUID().toString())
-          .append("int96_field", INT96_VALUES[i % INT96_VALUES.length]);
+          .append("int96_field", INT96_VALUES[i % INT96_VALUES.length])
+          .append("repeated_binary_field", ALPHABET.substring(index, index + 1));
+
+      if (index + 1 < 26) {
+        group = group.append("repeated_binary_field", ALPHABET.substring(index + 1, index + 2));
+      }
+
+      if (index + 2 < 26) {
+        group = group.append("repeated_binary_field", ALPHABET.substring(index + 2, index + 3));
+      }
 
       // 10% of the time, leave the field null
       if (index % 10 > 0) {
@@ -282,7 +294,8 @@ public class DictionaryFilterTest {
         "int64_field",
         "double_field",
         "float_field",
-        "int96_field"));
+        "int96_field",
+        "repeated_binary_field"));
     for (ColumnChunkMetaData column : ccmd) {
       String name = column.getPath().toDotString();
       if (dictionaryEncodedColumns.contains(name)) {
@@ -319,7 +332,8 @@ public class DictionaryFilterTest {
         "int64_field",
         "double_field",
         "float_field",
-        "int96_field"));
+        "int96_field",
+        "repeated_binary_field"));
     for (ColumnChunkMetaData column : ccmd) {
       EncodingStats encStats = column.getEncodingStats();
       String name = column.getPath().toDotString();
@@ -812,6 +826,42 @@ public class DictionaryFilterTest {
     assertFalse(
         "Should not drop block for null rejecting udp",
         canDrop(LogicalInverseRewriter.rewrite(not(userDefined(fake, nullRejecting))), ccmd, dictionaries));
+  }
+
+  @Test
+  public void testContainsAnd() throws Exception {
+    BinaryColumn col = binaryColumn("binary_field");
+
+    // both evaluate to false (no upper-case letters are in the dictionary)
+    Operators.Contains<Binary> B = contains(eq(col, Binary.fromString("B")));
+    Operators.Contains<Binary> C = contains(eq(col, Binary.fromString("C")));
+
+    // both evaluate to true (all lower-case letters are in the dictionary)
+    Operators.Contains<Binary> x = contains(eq(col, Binary.fromString("x")));
+    Operators.Contains<Binary> y = contains(eq(col, Binary.fromString("y")));
+
+    assertTrue("Should drop when either predicate must be false", canDrop(and(B, y), ccmd, dictionaries));
+    assertTrue("Should drop when either predicate must be false", canDrop(and(x, C), ccmd, dictionaries));
+    assertTrue("Should drop when either predicate must be false", canDrop(and(B, C), ccmd, dictionaries));
+    assertFalse("Should not drop when either predicate could be true", canDrop(and(x, y), ccmd, dictionaries));
+  }
+
+  @Test
+  public void testContainsOr() throws Exception {
+    BinaryColumn col = binaryColumn("binary_field");
+
+    // both evaluate to false (no upper-case letters are in the dictionary)
+    Operators.Contains<Binary> B = contains(eq(col, Binary.fromString("B")));
+    Operators.Contains<Binary> C = contains(eq(col, Binary.fromString("C")));
+
+    // both evaluate to true (all lower-case letters are in the dictionary)
+    Operators.Contains<Binary> x = contains(eq(col, Binary.fromString("x")));
+    Operators.Contains<Binary> y = contains(eq(col, Binary.fromString("y")));
+
+    assertFalse("Should not drop when one predicate could be true", canDrop(or(B, y), ccmd, dictionaries));
+    assertFalse("Should not drop when one predicate could be true", canDrop(or(x, C), ccmd, dictionaries));
+    assertTrue("Should drop when both predicates must be false", canDrop(or(B, C), ccmd, dictionaries));
+    assertFalse("Should not drop when one predicate could be true", canDrop(or(x, y), ccmd, dictionaries));
   }
 
   private static final class InInt32UDP extends UserDefinedPredicate<Integer> implements Serializable {

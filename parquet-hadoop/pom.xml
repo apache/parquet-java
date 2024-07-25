@@ -21,7 +21,7 @@
     <groupId>org.apache.parquet</groupId>
     <artifactId>parquet</artifactId>
     <relativePath>../pom.xml</relativePath>
-    <version>1.14.0-SNAPSHOT</version>
+    <version>1.15.0-SNAPSHOT</version>
   </parent>
 
   <modelVersion>4.0.0</modelVersion>
@@ -120,8 +120,18 @@
     </dependency>
     <dependency>
       <groupId>${jackson.groupId}</groupId>
+      <artifactId>jackson-annotations</artifactId>
+      <version>${jackson.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>${jackson.groupId}</groupId>
       <artifactId>jackson-databind</artifactId>
       <version>${jackson-databind.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>${jackson.datatype.groupId}</groupId>
+      <artifactId>jackson-datatype-jdk8</artifactId>
+      <version>${jackson-modules-java8.version}</version>
     </dependency>
     <dependency>
       <groupId>org.xerial.snappy</groupId>
@@ -133,7 +143,7 @@
     <dependency>
       <groupId>io.airlift</groupId>
       <artifactId>aircompressor</artifactId>
-      <version>0.26</version>
+      <version>0.27</version>
     </dependency>
     <dependency>
       <groupId>commons-pool</groupId>

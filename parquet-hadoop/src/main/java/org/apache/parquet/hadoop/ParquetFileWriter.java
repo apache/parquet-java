@@ -170,6 +170,7 @@ public class ParquetFileWriter implements AutoCloseable {
 
   // set when end is called
   private ParquetMetadata footer = null;
+  private boolean closed;
 
   private final CRC32 crc;
   private final ReusingByteBufferAllocator crcAllocator;
@@ -1643,23 +1644,31 @@ public class ParquetFileWriter implements AutoCloseable {
    * @throws IOException if there is an error while writing
    */
   public void end(Map<String, String> extraMetaData) throws IOException {
-    state = state.end();
-    serializeColumnIndexes(columnIndexes, blocks, out, fileEncryptor);
-    serializeOffsetIndexes(offsetIndexes, blocks, out, fileEncryptor);
-    serializeBloomFilters(bloomFilters, blocks, out, fileEncryptor);
-    LOG.debug("{}: end", out.getPos());
-    this.footer = new ParquetMetadata(new FileMetaData(schema, extraMetaData, Version.FULL_VERSION), blocks);
-    serializeFooter(footer, out, fileEncryptor, metadataConverter);
-    close();
+    try {
+      state = state.end();
+      serializeColumnIndexes(columnIndexes, blocks, out, fileEncryptor);
+      serializeOffsetIndexes(offsetIndexes, blocks, out, fileEncryptor);
+      serializeBloomFilters(bloomFilters, blocks, out, fileEncryptor);
+      LOG.debug("{}: end", out.getPos());
+      this.footer = new ParquetMetadata(new FileMetaData(schema, extraMetaData, Version.FULL_VERSION), blocks);
+      serializeFooter(footer, out, fileEncryptor, metadataConverter);
+    } finally {
+      close();
+    }
   }
 
   @Override
   public void close() throws IOException {
+    if (closed) {
+      return;
+    }
     try (PositionOutputStream temp = out) {
       temp.flush();
       if (crcAllocator != null) {
         crcAllocator.close();
       }
+    } finally {
+      closed = true;
     }
   }
 
