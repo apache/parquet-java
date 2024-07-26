@@ -49,7 +49,16 @@ public class EnvelopeCovering extends Covering {
         Geometry existingGeometry = reader.read(geometry.array());
         Envelope existingEnvelope = existingGeometry.getEnvelopeInternal();
         Envelope newEnvelope = geom.getEnvelopeInternal();
+
+        // The following expandToInclude method works correctly for planar coordinate systems.
+        // It simply extends the existing envelope to include the new envelope by adjusting
+        // the min and max values of x and y coordinates.
         existingEnvelope.expandToInclude(newEnvelope);
+
+        // However, this approach is not accurate for spherical coordinate systems.
+        // In spherical coordinates, the Earth's curvature needs to be taken into account,
+        // and simple min/max bounds may not correctly represent the spatial extent.
+        // More sophisticated geodetic calculations are required for spherical envelopes.
 
         Geometry envelopePolygon = createPolygonFromEnvelope(existingEnvelope);
 
