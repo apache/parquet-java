@@ -135,14 +135,14 @@ public class BoundingBox {
   }
 
   public void reset() {
-    xMin = Double.MAX_VALUE;
-    xMax = Double.MIN_VALUE;
-    yMin = Double.MAX_VALUE;
-    yMax = Double.MIN_VALUE;
-    zMin = Double.MAX_VALUE;
-    zMax = Double.MIN_VALUE;
-    mMin = Double.MAX_VALUE;
-    mMax = Double.MIN_VALUE;
+    xMin = Double.POSITIVE_INFINITY;
+    xMax = Double.NEGATIVE_INFINITY;
+    yMin = Double.POSITIVE_INFINITY;
+    yMax = Double.NEGATIVE_INFINITY;
+    zMin = Double.POSITIVE_INFINITY;
+    zMax = Double.NEGATIVE_INFINITY;
+    mMin = Double.POSITIVE_INFINITY;
+    mMax = Double.NEGATIVE_INFINITY;
   }
 
   public void abort() {
