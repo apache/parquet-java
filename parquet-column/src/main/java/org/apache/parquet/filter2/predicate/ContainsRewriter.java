@@ -107,7 +107,7 @@ public final class ContainsRewriter implements Visitor<FilterPredicate> {
     } else if (and.getLeft() instanceof Contains) {
       left = and.getLeft();
     } else {
-      return and;
+      left = and.getLeft();
     }
 
     final FilterPredicate right;
@@ -118,15 +118,18 @@ public final class ContainsRewriter implements Visitor<FilterPredicate> {
     } else if (and.getRight() instanceof Contains) {
       right = and.getRight();
     } else {
-      return and;
+      right = and.getRight();
     }
 
-    if (left instanceof Contains) {
-      if (!(right instanceof Contains)) {
-        throw new UnsupportedOperationException(
-            "Contains predicates cannot be composed with non-Contains predicates");
-      }
+    // If two Contains predicates refer to the same column, optimize by combining into a single predicate
+    if ((left instanceof Contains && right instanceof Contains)
+        && ((Contains<?>) left)
+            .getColumn()
+            .getColumnPath()
+            .equals(((Contains<?>) right).getColumn().getColumnPath())) {
       return ((Contains) left).and(right);
+    } else if (left != and.getLeft() || right != and.getRight()) {
+      return new And(left, right);
     } else {
       return and;
     }
@@ -142,7 +145,7 @@ public final class ContainsRewriter implements Visitor<FilterPredicate> {
     } else if (or.getLeft() instanceof Contains) {
       left = or.getLeft();
     } else {
-      return or;
+      left = or.getLeft();
     }
 
     final FilterPredicate right;
@@ -153,15 +156,18 @@ public final class ContainsRewriter implements Visitor<FilterPredicate> {
     } else if (or.getRight() instanceof Contains) {
       right = or.getRight();
     } else {
-      return or;
+      right = or.getRight();
     }
 
-    if (left instanceof Contains) {
-      if (!(right instanceof Contains)) {
-        throw new UnsupportedOperationException(
-            "Contains predicates cannot be composed with non-Contains predicates");
-      }
+    // If two Contains predicates refer to the same column, optimize by combining into a single predicate
+    if ((left instanceof Contains && right instanceof Contains)
+        && ((Contains<?>) left)
+            .getColumn()
+            .getColumnPath()
+            .equals(((Contains<?>) right).getColumn().getColumnPath())) {
       return ((Contains) left).or(right);
+    } else if (left != or.getLeft() || right != or.getRight()) {
+      return new Or(left, right);
     } else {
       return or;
     }

@@ -95,7 +95,7 @@ public final class LogicalInverter implements Visitor<FilterPredicate> {
 
   @Override
   public <T extends Comparable<T>> FilterPredicate visit(Contains<T> contains) {
-    throw new UnsupportedOperationException("Contains not supported yet");
+    return contains.not();
   }
 
   @Override
