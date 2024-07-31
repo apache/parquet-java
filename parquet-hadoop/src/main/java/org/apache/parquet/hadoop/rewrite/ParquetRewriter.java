@@ -113,38 +113,44 @@ public class ParquetRewriter implements Closeable {
   private MessageType outSchema;
   // The index cache strategy
   private final IndexCache.CacheStrategy indexCacheStrategy;
-  private final boolean joinColumnsOverwrite;
+  private final boolean overwriteInputWithJoinColumns;
 
   public ParquetRewriter(RewriteOptions options) throws IOException {
     this.newCodecName = options.getNewCodecName();
     this.indexCacheStrategy = options.getIndexCacheStrategy();
-    this.joinColumnsOverwrite = options.getJoinColumnsOverwrite();
+    this.overwriteInputWithJoinColumns = options.getOverwriteInputWithJoinColumns();
     ParquetConfiguration conf = options.getParquetConfiguration();
     OutputFile out = options.getParquetOutputFile();
     inputFiles.addAll(getFileReaders(options.getParquetInputFiles(), conf));
-    inputFilesToJoin.addAll(getFileReaders(options.getParquetInputFilesToJoinColumns(), conf));
+    inputFilesToJoin.addAll(getFileReaders(options.getParquetInputFilesToJoin(), conf));
     ensureSameSchema(inputFiles);
     ensureSameSchema(inputFilesToJoin);
     LOG.info(
-        "Start rewriting {} input file(s) {} with {} groups of input file(s) to join {} to {}",
-        inputFilesToJoin.size(),
-        options.getParquetInputFilesToJoinColumns(),
-        inputFiles.size(),
-        options.getParquetInputFiles(),
+        "Start rewriting {} input file(s) {} to {}",
+        inputFiles.size() + inputFilesToJoin.size(),
+        Stream.concat(options.getParquetInputFiles().stream(), options.getParquetInputFilesToJoin().stream())
+            .collect(Collectors.toList()),
         out);
 
     this.outSchema = getSchema();
     this.outSchema = pruneColumnsInSchema(outSchema, options.getPruneColumns());
+
+    List<TransParquetFileReader> allFiles;
+    if (options.getIgnoreJoinFilesMetadata()) {
+      allFiles = new ArrayList<>(inputFiles);
+    } else {
+      allFiles = Stream.concat(inputFiles.stream(), inputFilesToJoin.stream())
+          .collect(Collectors.toList());
+    }
     extraMetaData.put(
         ORIGINAL_CREATED_BY_KEY,
-        Stream.concat(inputFiles.stream(), inputFilesToJoin.stream())
+        allFiles.stream()
             .map(x -> x.getFooter().getFileMetaData().getCreatedBy())
             .collect(Collectors.toSet())
             .stream()
             .reduce((a, b) -> a + "\n" + b)
             .orElse(""));
-    Stream.concat(inputFiles.stream(), inputFilesToJoin.stream())
-        .forEach(x -> extraMetaData.putAll(x.getFileMetaData().getKeyValueMetaData()));
+    allFiles.forEach(x -> extraMetaData.putAll(x.getFileMetaData().getKeyValueMetaData()));
 
     if (!inputFilesToJoin.isEmpty()) {
       List<Long> blocksRowCountsL = inputFiles.stream()
@@ -200,7 +206,7 @@ public class ParquetRewriter implements Closeable {
           .getSchema()
           .getFields()
           .forEach(x -> {
-            if (!fieldNames.containsKey(x.getName()) || joinColumnsOverwrite) {
+            if (!fieldNames.containsKey(x.getName()) || overwriteInputWithJoinColumns) {
               fieldNames.put(x.getName(), x);
             }
           });
@@ -232,7 +238,7 @@ public class ParquetRewriter implements Closeable {
     }
     this.inputFiles.add(reader);
     this.indexCacheStrategy = IndexCache.CacheStrategy.NONE;
-    this.joinColumnsOverwrite = false;
+    this.overwriteInputWithJoinColumns = false;
   }
 
   private Queue<TransParquetFileReader> getFileReaders(List<InputFile> inputFiles, ParquetConfiguration conf) {
@@ -279,6 +285,7 @@ public class ParquetRewriter implements Closeable {
     TransParquetFileReader readerJoin = inputFilesToJoin.peek();
     IndexCache indexCacheJoin = null;
     int blockIdxJoin = -1;
+    List<ColumnDescriptor> outColumns = outSchema.getColumns();
 
     while (!inputFiles.isEmpty()) {
       TransParquetFileReader reader = inputFiles.poll();
@@ -315,15 +322,16 @@ public class ParquetRewriter implements Closeable {
           blockIdxJoin++;
         }
 
-        for (int outColumnIdx = 0; outColumnIdx < outSchema.getColumns().size(); outColumnIdx++) {
-          ColumnPath colPath = ColumnPath.get(
-              outSchema.getColumns().get(outColumnIdx).getPath());
+        for (int outColumnIdx = 0; outColumnIdx < outColumns.size(); outColumnIdx++) {
+          ColumnPath colPath =
+              ColumnPath.get(outColumns.get(outColumnIdx).getPath());
           if (readerJoin != null) {
             Optional<ColumnChunkMetaData> chunkJoin =
                 readerJoin.getFooter().getBlocks().get(blockIdxJoin).getColumns().stream()
                     .filter(x -> x.getPath().equals(colPath))
                     .findFirst();
-            if (chunkJoin.isPresent() && (joinColumnsOverwrite || !columnPaths.contains(colPath))) {
+            if (chunkJoin.isPresent()
+                && (overwriteInputWithJoinColumns || !columnPaths.contains(colPath))) {
               processBlock(readerJoin, blockIdxJoin, outColumnIdx, indexCacheJoin, chunkJoin.get());
             } else {
               processBlock(reader, blockIdx, outColumnIdx, indexCache, pathToChunk.get(colPath));
