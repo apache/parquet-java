@@ -17,14 +17,14 @@
   ~ under the License.
   -->
 
-Parquet Jackson 
+Parquet Jackson
 ======
 
 Parquet-Jackson is just a dummy module to shade [Jackson](https://github.com/FasterXML/jackson/) artifacts.
 
 ## Rationale
 
-Parquet internally uses the well-known JSON processor Jackson. Because Apache Hadoop (amongst others) sometimes uses an older version of Jackson, Parquet "shades" its copy of Jackson to prevent any side-effect. 
+Parquet internally uses the well-known JSON processor Jackson. Because Apache Hadoop (amongst others) sometimes uses an older version of Jackson, Parquet "shades" its copy of Jackson to prevent any side-effect.
 Originally a copy of Jackson was embedded in each Parquet artifact requiring Jackson, but to prevent duplication, a shared module "Parquet-Jackson" has been created.
 
 Note that this is not a fork of Jackson but the same classes as provided by Jackson artifacts, relocated under the *parquet.com.fasterxml.jackson.core* namespace.
@@ -39,5 +39,5 @@ Other Parquet modules which requires Jackson are configured to depend on parquet
 
 ### Why still referring directly to com.fasterxml.jackson:\* in Parquet modules
 
-Because of the way Maven handles multi-modules project. Let's assume that parquet-foo module uses Jackson. When executing *mvn package*, parquet-jackson module will be built first and artifact will be packaged, and a new pom.xml without Jackson dependency is created and used by parquet-foo module. Since Jackson dependencies have been removed by the shade plugin, compilation of parquet-foo will fail.
+Because of the way Maven handles multi-modules project. Let's assume that parquet-foo module uses Jackson. When executing *./mvnw package*, parquet-jackson module will be built first and artifact will be packaged, and a new pom.xml without Jackson dependency is created and used by parquet-foo module. Since Jackson dependencies have been removed by the shade plugin, compilation of parquet-foo will fail.
 

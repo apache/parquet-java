@@ -77,7 +77,7 @@ import org.slf4j.LoggerFactory;
  * <a href="https://jmh.morethan.io">https://jmh.morethan.io</a>.
  *
  * <pre>
- * mvn clean package &amp;&amp; java -jar target/parquet-benchmarks.jar org.apache.parquet.benchmarks.FilteringBenchmarks -rf json
+ * ./mvnw clean package &amp;&amp; java -jar target/parquet-benchmarks.jar org.apache.parquet.benchmarks.FilteringBenchmarks -rf json
  * </pre>
  */
 @BenchmarkMode(SingleShotTime)

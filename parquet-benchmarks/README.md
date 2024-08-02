@@ -16,21 +16,21 @@
   ~ specific language governing permissions and limitations
   ~ under the License.
   -->
-  
+
 # Running Parquet Benchmarks
 
-The Parquet benchmarks in this module are run using the 
+The Parquet benchmarks in this module are run using the
 [OpenJDK Java Microbenchmarking Harness](http://openjdk.java.net/projects/code-tools/jmh/).
 
 First, building the `parquet-benchmarks` module creates an uber-jar including the Parquet
 classes and all dependencies, and a main class to launch the JMH tool.
 
 ```
-mvn --projects parquet-benchmarks -amd -DskipTests -Denforcer.skip=true clean package
+./mvnw --projects parquet-benchmarks -amd -DskipTests -Denforcer.skip=true clean package
 ```
 
-JMH doesn't have the notion of "benchmark suites", but there are certain benchmarks that 
-make sense to group together or to run in isolation during development.  The 
+JMH doesn't have the notion of "benchmark suites", but there are certain benchmarks that
+make sense to group together or to run in isolation during development.  The
 `./parquet-benchmarks/run.sh` script can be used to launch all or some benchmarks:
 
 ```
