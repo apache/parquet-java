@@ -437,7 +437,7 @@ public class RewriteOptions {
     }
 
     /**
-     * Set a flag weather columns from join files need to overwrite columns from input files.
+     * Set a flag whether columns from join files need to overwrite columns from input files.
      *
      * @param joinColumnsOverwrite
      * @return self
