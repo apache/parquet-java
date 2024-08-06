@@ -1178,7 +1178,7 @@ public class ParquetRewriterTest {
   }
 
   private RewriteOptions.Builder createBuilder(
-      List<Path> inputPathsL, List<Path> inputPathsR, boolean joinColumnsOverwrite) throws IOException {
+      List<Path> inputPathsL, List<Path> inputPathsR, boolean overwriteInputWithJoinColumns) throws IOException {
     RewriteOptions.Builder builder;
     if (usingHadoop) {
       Path outputPath = new Path(outputFile);
@@ -1193,7 +1193,7 @@ public class ParquetRewriterTest {
           .collect(Collectors.toList());
       builder = new RewriteOptions.Builder(parquetConf, inputsL, inputsR, outputPath);
     }
-    builder.joinColumnsOverwrite(joinColumnsOverwrite);
+    builder.overwriteInputWithJoinColumns(overwriteInputWithJoinColumns);
     return builder;
   }
 
