@@ -448,7 +448,7 @@ public class RewriteOptions {
     }
 
     /**
-     * Set a flag weather metadata from join files should be ignored.
+     * Set a flag whether metadata from join files should be ignored.
      *
      * @param ignoreJoinFilesMetadata
      * @return self
