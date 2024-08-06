@@ -212,7 +212,7 @@ public class RewriteOptions {
     private List<String> encryptColumns;
     private FileEncryptionProperties fileEncryptionProperties;
     private IndexCache.CacheStrategy indexCacheStrategy = IndexCache.CacheStrategy.NONE;
-    private boolean joinColumnsOverwrite = false;
+    private boolean overwriteInputWithJoinColumns = false;
     private boolean ignoreJoinFilesMetadata = false;
 
     /**
@@ -439,11 +439,11 @@ public class RewriteOptions {
     /**
      * Set a flag whether columns from join files need to overwrite columns from input files.
      *
-     * @param joinColumnsOverwrite
+     * @param overwriteInputWithJoinColumns
      * @return self
      */
-    public Builder joinColumnsOverwrite(boolean joinColumnsOverwrite) {
-      this.joinColumnsOverwrite = joinColumnsOverwrite;
+    public Builder overwriteInputWithJoinColumns(boolean overwriteInputWithJoinColumns) {
+      this.overwriteInputWithJoinColumns = overwriteInputWithJoinColumns;
       return this;
     }
 
@@ -509,7 +509,7 @@ public class RewriteOptions {
           encryptColumns,
           fileEncryptionProperties,
           indexCacheStrategy,
-          joinColumnsOverwrite,
+          overwriteInputWithJoinColumns,
           ignoreJoinFilesMetadata);
     }
   }
