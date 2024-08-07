@@ -125,6 +125,7 @@ public class ParquetRewriter implements Closeable {
     inputFilesToJoin.addAll(getFileReaders(options.getParquetInputFilesToJoin(), conf));
     ensureSameSchema(inputFiles);
     ensureSameSchema(inputFilesToJoin);
+    ensureRowCount();
     LOG.info(
         "Start rewriting {} input file(s) {} to {}",
         inputFiles.size() + inputFilesToJoin.size(),
@@ -135,20 +136,6 @@ public class ParquetRewriter implements Closeable {
     this.outSchema = getSchema();
     this.outSchema = pruneColumnsInSchema(outSchema, options.getPruneColumns());
     this.extraMetaData = getExtraMetadata(options);
-
-    if (!inputFilesToJoin.isEmpty()) {
-      List<Long> blocksRowCountsL = inputFiles.stream()
-          .flatMap(x -> x.getFooter().getBlocks().stream().map(BlockMetaData::getRowCount))
-          .collect(Collectors.toList());
-      List<Long> blocksRowCountsR = inputFilesToJoin.stream()
-          .flatMap(x -> x.getFooter().getBlocks().stream().map(BlockMetaData::getRowCount))
-          .collect(Collectors.toList());
-      if (!blocksRowCountsL.equals(blocksRowCountsR)) {
-        throw new IllegalArgumentException(
-            "The number of rows in each block must match! Left blocks row counts: " + blocksRowCountsL
-                + ", right blocks row counts" + blocksRowCountsR + ".");
-      }
-    }
 
     if (options.getMaskColumns() != null) {
       this.maskColumns = new HashMap<>();
@@ -175,6 +162,35 @@ public class ParquetRewriter implements Closeable {
         options.getFileEncryptionProperties());
     writer.start();
   }
+
+
+  // Ctor for legacy CompressionConverter and ColumnMasker
+  public ParquetRewriter(
+      TransParquetFileReader reader,
+      ParquetFileWriter writer,
+      ParquetMetadata meta,
+      MessageType outSchema,
+      String originalCreatedBy,
+      CompressionCodecName codecName,
+      List<String> maskColumns,
+      MaskMode maskMode) {
+    this.writer = writer;
+    this.outSchema = outSchema;
+    this.newCodecName = codecName;
+    originalCreatedBy = originalCreatedBy == null ? meta.getFileMetaData().getCreatedBy() : originalCreatedBy;
+    extraMetaData = meta.getFileMetaData().getKeyValueMetaData();
+    extraMetaData.put(ORIGINAL_CREATED_BY_KEY, originalCreatedBy);
+    if (maskColumns != null && maskMode != null) {
+      this.maskColumns = new HashMap<>();
+      for (String col : maskColumns) {
+        this.maskColumns.put(ColumnPath.fromDotString(col), maskMode);
+      }
+    }
+    this.inputFiles.add(reader);
+    this.indexCacheStrategy = IndexCache.CacheStrategy.NONE;
+    this.overwriteInputWithJoinColumns = false;
+  }
+
 
   private MessageType getSchema() {
     MessageType schemaMain = inputFiles.peek().getFooter().getFileMetaData().getSchema();
@@ -219,31 +235,20 @@ public class ParquetRewriter implements Closeable {
     return result;
   }
 
-  // Ctor for legacy CompressionConverter and ColumnMasker
-  public ParquetRewriter(
-      TransParquetFileReader reader,
-      ParquetFileWriter writer,
-      ParquetMetadata meta,
-      MessageType outSchema,
-      String originalCreatedBy,
-      CompressionCodecName codecName,
-      List<String> maskColumns,
-      MaskMode maskMode) {
-    this.writer = writer;
-    this.outSchema = outSchema;
-    this.newCodecName = codecName;
-    originalCreatedBy = originalCreatedBy == null ? meta.getFileMetaData().getCreatedBy() : originalCreatedBy;
-    extraMetaData = meta.getFileMetaData().getKeyValueMetaData();
-    extraMetaData.put(ORIGINAL_CREATED_BY_KEY, originalCreatedBy);
-    if (maskColumns != null && maskMode != null) {
-      this.maskColumns = new HashMap<>();
-      for (String col : maskColumns) {
-        this.maskColumns.put(ColumnPath.fromDotString(col), maskMode);
+  private void ensureRowCount() {
+    if (!inputFilesToJoin.isEmpty()) {
+      List<Long> blocksRowCountsL = inputFiles.stream()
+          .flatMap(x -> x.getFooter().getBlocks().stream().map(BlockMetaData::getRowCount))
+          .collect(Collectors.toList());
+      List<Long> blocksRowCountsR = inputFilesToJoin.stream()
+          .flatMap(x -> x.getFooter().getBlocks().stream().map(BlockMetaData::getRowCount))
+          .collect(Collectors.toList());
+      if (!blocksRowCountsL.equals(blocksRowCountsR)) {
+        throw new IllegalArgumentException(
+            "The number of rows in each block must match! Left blocks row counts: " + blocksRowCountsL
+                + ", right blocks row counts" + blocksRowCountsR + ".");
       }
     }
-    this.inputFiles.add(reader);
-    this.indexCacheStrategy = IndexCache.CacheStrategy.NONE;
-    this.overwriteInputWithJoinColumns = false;
   }
 
   private Queue<TransParquetFileReader> getFileReaders(List<InputFile> inputFiles, ParquetConfiguration conf) {
