@@ -336,13 +336,13 @@ public class ParquetRewriter implements Closeable {
           ColumnPath colPath =
               ColumnPath.get(outColumns.get(outColumnIdx).getPath());
           if (readerJoin != null) {
-            Optional<ColumnChunkMetaData> chunkJoin =
+            Optional<ColumnChunkMetaData> chunkToJoin =
                 readerJoin.getFooter().getBlocks().get(blockIdxJoin).getColumns().stream()
                     .filter(x -> x.getPath().equals(colPath))
                     .findFirst();
-            if (chunkJoin.isPresent()
+            if (chunkToJoin.isPresent()
                 && (overwriteInputWithJoinColumns || !columnPaths.contains(colPath))) {
-              processBlock(readerJoin, blockIdxJoin, outColumnIdx, indexCacheJoin, chunkJoin.get());
+              processBlock(readerJoin, blockIdxJoin, outColumnIdx, indexCacheJoin, chunkToJoin.get());
             } else {
               processBlock(reader, blockIdx, outColumnIdx, indexCache, pathToChunk.get(colPath));
             }
