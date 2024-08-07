@@ -27,17 +27,37 @@ import org.apache.hadoop.fs.Path;
 import org.apache.parquet.io.InputFile;
 import org.apache.parquet.io.SeekableInputStream;
 
+/**
+ * Create a Hadoop input file.
+ */
 public class HadoopInputFile implements InputFile {
 
   private final FileSystem fs;
   private final FileStatus stat;
   private final Configuration conf;
 
+  /**
+   * Open from a path.
+   * <p>
+   * Includes a {@code getFileStatus()} call to fill in {@link #stat}.
+   * @param path path of the file
+   * @param conf configuration.
+   * @return the input file
+   * @throws IOException IO failure creating the FS or retrieving the FileStatus
+   */
   public static HadoopInputFile fromPath(Path path, Configuration conf) throws IOException {
     FileSystem fs = path.getFileSystem(conf);
     return new HadoopInputFile(fs, fs.getFileStatus(path), conf);
   }
 
+  /**
+   * Create from path raising an RTE on any IO failure.
+   * See {@link #fromPath(Path, Configuration)}
+   * @param path path of the file
+   * @param conf configuration.
+   * @return the input file
+   * @throws RuntimeException IO failure creating the FS or retrieving the FileStatus
+   */
   public static HadoopInputFile fromPathUnchecked(Path path, Configuration conf) {
     try {
       return fromPath(path, conf);
@@ -46,6 +66,16 @@ public class HadoopInputFile implements InputFile {
     }
   }
 
+  /**
+   * Create from a file status; determing both the path and the file length.
+   * <p>
+   * When opening a file from an object store, this may eliminate the overhead
+   * of a HEAD request when later opening the file.
+   * @param stat status of the file
+   * @param conf configuration
+   * @return the input file
+   * @throws IOException IO failure creating the FS or retrieving the FileStatus
+   */
   public static HadoopInputFile fromStatus(FileStatus stat, Configuration conf) throws IOException {
     FileSystem fs = stat.getPath().getFileSystem(conf);
     return new HadoopInputFile(fs, stat, conf);
@@ -72,7 +102,7 @@ public class HadoopInputFile implements InputFile {
 
   @Override
   public SeekableInputStream newStream() throws IOException {
-    return HadoopStreams.wrap(fs.open(stat.getPath()));
+    return HadoopStreams.wrap(HadoopFileIO.openFile(fs, stat, true));
   }
 
   @Override
