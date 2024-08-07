@@ -466,9 +466,6 @@ public class RewriteOptions {
     public RewriteOptions build() {
       Preconditions.checkArgument(inputFiles != null && !inputFiles.isEmpty(), "Input file is required");
       Preconditions.checkArgument(outputFile != null, "Output file is required");
-      Preconditions.checkArgument(
-          inputFilesToJoin == null || !inputFilesToJoin.isEmpty(),
-          "Input files to join must be non-empty list or it can be left unset, it can't be an empty list");
 
       if (pruneColumns != null) {
         if (maskColumns != null) {
@@ -501,7 +498,7 @@ public class RewriteOptions {
       return new RewriteOptions(
           conf,
           inputFiles,
-          inputFilesToJoin,
+          (inputFilesToJoin != null ? inputFilesToJoin : new ArrayList<>()),
           outputFile,
           pruneColumns,
           newCodecName,
