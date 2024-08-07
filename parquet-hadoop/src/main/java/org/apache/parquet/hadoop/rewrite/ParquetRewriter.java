@@ -102,7 +102,7 @@ public class ParquetRewriter implements Closeable {
   private Map<ColumnPath, MaskMode> maskColumns = null;
   private Set<ColumnPath> encryptColumns = null;
   private boolean encryptMode = false;
-  private final Map<String, String> extraMetaData = new HashMap<>();
+  private final Map<String, String> extraMetaData;
   // Writer to rewrite the input files
   private final ParquetFileWriter writer;
   // Number of blocks written which is used to keep track of the actual row group ordinal
@@ -134,23 +134,7 @@ public class ParquetRewriter implements Closeable {
 
     this.outSchema = getSchema();
     this.outSchema = pruneColumnsInSchema(outSchema, options.getPruneColumns());
-
-    List<TransParquetFileReader> allFiles;
-    if (options.getIgnoreJoinFilesMetadata()) {
-      allFiles = new ArrayList<>(inputFiles);
-    } else {
-      allFiles = Stream.concat(inputFiles.stream(), inputFilesToJoin.stream())
-          .collect(Collectors.toList());
-    }
-    extraMetaData.put(
-        ORIGINAL_CREATED_BY_KEY,
-        allFiles.stream()
-            .map(x -> x.getFooter().getFileMetaData().getCreatedBy())
-            .collect(Collectors.toSet())
-            .stream()
-            .reduce((a, b) -> a + "\n" + b)
-            .orElse(""));
-    allFiles.forEach(x -> extraMetaData.putAll(x.getFileMetaData().getKeyValueMetaData()));
+    this.extraMetaData = getExtraMetadata(options);
 
     if (!inputFilesToJoin.isEmpty()) {
       List<Long> blocksRowCountsL = inputFiles.stream()
@@ -214,6 +198,27 @@ public class ParquetRewriter implements Closeable {
     }
   }
 
+  private Map<String, String> getExtraMetadata(RewriteOptions options) {
+    List<TransParquetFileReader> allFiles;
+    if (options.getIgnoreJoinFilesMetadata()) {
+      allFiles = new ArrayList<>(inputFiles);
+    } else {
+      allFiles = Stream.concat(inputFiles.stream(), inputFilesToJoin.stream())
+          .collect(Collectors.toList());
+    }
+    Map<String, String> result = new HashMap<>();
+    result.put(
+        ORIGINAL_CREATED_BY_KEY,
+        allFiles.stream()
+            .map(x -> x.getFooter().getFileMetaData().getCreatedBy())
+            .collect(Collectors.toSet())
+            .stream()
+            .reduce((a, b) -> a + "\n" + b)
+            .orElse(""));
+    allFiles.forEach(x -> result.putAll(x.getFileMetaData().getKeyValueMetaData()));
+    return result;
+  }
+
   // Ctor for legacy CompressionConverter and ColumnMasker
   public ParquetRewriter(
       TransParquetFileReader reader,
@@ -228,7 +233,7 @@ public class ParquetRewriter implements Closeable {
     this.outSchema = outSchema;
     this.newCodecName = codecName;
     originalCreatedBy = originalCreatedBy == null ? meta.getFileMetaData().getCreatedBy() : originalCreatedBy;
-    extraMetaData.putAll(meta.getFileMetaData().getKeyValueMetaData());
+    extraMetaData = meta.getFileMetaData().getKeyValueMetaData();
     extraMetaData.put(ORIGINAL_CREATED_BY_KEY, originalCreatedBy);
     if (maskColumns != null && maskMode != null) {
       this.maskColumns = new HashMap<>();
