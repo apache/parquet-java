@@ -39,11 +39,20 @@ import org.apache.parquet.io.OutputFile;
 
 /**
  * A set of options to create a ParquetRewriter.
+ *
+ * TODO find a place where to put a proper description of functionality as it is not trivial:
+ * ParquetRewriter allows to stitch files with the same schema into a single file.
+ * Note that ParquetRewriter also can be used for effectively stitch/joining multiple parquet files with
+ * different schemas.
+ * You can provide the main input file group and multiple right side ones. That is possible when:
+ * 1) the number of rows in the main and extra input groups are the same,
+ * 2) the ordering of rows in the main and extra input groups is the same.
  */
 public class RewriteOptions {
 
   private final ParquetConfiguration conf;
   private final List<InputFile> inputFiles;
+  private final List<InputFile> inputFilesToJoin;
   private final OutputFile outputFile;
   private final List<String> pruneColumns;
   private final CompressionCodecName newCodecName;
@@ -51,19 +60,25 @@ public class RewriteOptions {
   private final List<String> encryptColumns;
   private final FileEncryptionProperties fileEncryptionProperties;
   private final IndexCache.CacheStrategy indexCacheStrategy;
+  private final boolean overwriteInputWithJoinColumns;
+  private final boolean ignoreJoinFilesMetadata;
 
   private RewriteOptions(
       ParquetConfiguration conf,
       List<InputFile> inputFiles,
+      List<InputFile> inputFilesToJoin,
       OutputFile outputFile,
       List<String> pruneColumns,
       CompressionCodecName newCodecName,
       Map<String, MaskMode> maskColumns,
       List<String> encryptColumns,
       FileEncryptionProperties fileEncryptionProperties,
-      IndexCache.CacheStrategy indexCacheStrategy) {
+      IndexCache.CacheStrategy indexCacheStrategy,
+      boolean overwriteInputWithJoinColumns,
+      boolean ignoreJoinFilesMetadata) {
     this.conf = conf;
     this.inputFiles = inputFiles;
+    this.inputFilesToJoin = inputFilesToJoin;
     this.outputFile = outputFile;
     this.pruneColumns = pruneColumns;
     this.newCodecName = newCodecName;
@@ -71,6 +86,8 @@ public class RewriteOptions {
     this.encryptColumns = encryptColumns;
     this.fileEncryptionProperties = fileEncryptionProperties;
     this.indexCacheStrategy = indexCacheStrategy;
+    this.overwriteInputWithJoinColumns = overwriteInputWithJoinColumns;
+    this.ignoreJoinFilesMetadata = ignoreJoinFilesMetadata;
   }
 
   /**
@@ -117,6 +134,15 @@ public class RewriteOptions {
    */
   public List<InputFile> getParquetInputFiles() {
     return inputFiles;
+  }
+
+  /** TODO fix documentation after addition of InputFilesToJoin
+   * Gets the right {@link InputFile}s for the rewrite.
+   *
+   * @return a {@link List} of the associated right {@link InputFile}s
+   */
+  public List<InputFile> getParquetInputFilesToJoin() {
+    return inputFilesToJoin;
   }
 
   /**
@@ -166,10 +192,19 @@ public class RewriteOptions {
     return indexCacheStrategy;
   }
 
+  public boolean getOverwriteInputWithJoinColumns() {
+    return overwriteInputWithJoinColumns;
+  }
+
+  public boolean getIgnoreJoinFilesMetadata() {
+    return ignoreJoinFilesMetadata;
+  }
+
   // Builder to create a RewriterOptions.
   public static class Builder {
     private final ParquetConfiguration conf;
     private final List<InputFile> inputFiles;
+    private final List<InputFile> inputFilesToJoin;
     private final OutputFile outputFile;
     private List<String> pruneColumns;
     private CompressionCodecName newCodecName;
@@ -177,6 +212,8 @@ public class RewriteOptions {
     private List<String> encryptColumns;
     private FileEncryptionProperties fileEncryptionProperties;
     private IndexCache.CacheStrategy indexCacheStrategy = IndexCache.CacheStrategy.NONE;
+    private boolean overwriteInputWithJoinColumns = false;
+    private boolean ignoreJoinFilesMetadata = false;
 
     /**
      * Create a builder to create a RewriterOptions.
@@ -224,6 +261,7 @@ public class RewriteOptions {
       for (Path inputFile : inputFiles) {
         this.inputFiles.add(HadoopInputFile.fromPathUnchecked(inputFile, conf));
       }
+      this.inputFilesToJoin = new ArrayList<>();
       this.outputFile = HadoopOutputFile.fromPathUnchecked(outputFile, conf);
     }
 
@@ -245,6 +283,31 @@ public class RewriteOptions {
     public Builder(ParquetConfiguration conf, List<InputFile> inputFiles, OutputFile outputFile) {
       this.conf = conf;
       this.inputFiles = inputFiles;
+      this.inputFilesToJoin = new ArrayList<>();
+      this.outputFile = outputFile;
+    }
+
+    public Builder(Configuration conf, List<Path> inputFiles, List<Path> inputFilesToJoin, Path outputFile) {
+      this.conf = new HadoopParquetConfiguration(conf);
+      this.inputFiles = new ArrayList<>(inputFiles.size());
+      for (Path inputFile : inputFiles) {
+        this.inputFiles.add(HadoopInputFile.fromPathUnchecked(inputFile, conf));
+      }
+      this.inputFilesToJoin = new ArrayList<>(inputFilesToJoin.size());
+      for (Path inputFile : inputFilesToJoin) {
+        this.inputFilesToJoin.add(HadoopInputFile.fromPathUnchecked(inputFile, conf));
+      }
+      this.outputFile = HadoopOutputFile.fromPathUnchecked(outputFile, conf);
+    }
+
+    public Builder(
+        ParquetConfiguration conf,
+        List<InputFile> inputFiles,
+        List<InputFile> inputFilesToJoin,
+        OutputFile outputFile) {
+      this.conf = conf;
+      this.inputFiles = inputFiles;
+      this.inputFilesToJoin = inputFilesToJoin;
       this.outputFile = outputFile;
     }
 
@@ -325,6 +388,18 @@ public class RewriteOptions {
       return this;
     }
 
+    /** TODO fix documentation after addition of InputFilesToJoin
+     * Add an input file to read from.
+     *
+     * @param path input file path to read from
+     * @return self
+     */
+    public Builder addInputFileToJoinColumns(Path path) {
+      this.inputFilesToJoin.add(
+          HadoopInputFile.fromPathUnchecked(path, ConfigurationUtil.createHadoopConfiguration(conf)));
+      return this;
+    }
+
     /**
      * Add an input file to read from.
      *
@@ -333,6 +408,17 @@ public class RewriteOptions {
      */
     public Builder addInputFile(InputFile inputFile) {
       this.inputFiles.add(inputFile);
+      return this;
+    }
+
+    /**
+     * Add a file to join to other input files.
+     *
+     * @param fileToJoin input file to join
+     * @return self
+     */
+    public Builder addInputFilesToJoin(InputFile fileToJoin) {
+      this.inputFilesToJoin.add(fileToJoin);
       return this;
     }
 
@@ -347,6 +433,28 @@ public class RewriteOptions {
      */
     public Builder indexCacheStrategy(IndexCache.CacheStrategy cacheStrategy) {
       this.indexCacheStrategy = cacheStrategy;
+      return this;
+    }
+
+    /**
+     * Set a flag whether columns from join files need to overwrite columns from input files.
+     *
+     * @param overwriteInputWithJoinColumns
+     * @return self
+     */
+    public Builder overwriteInputWithJoinColumns(boolean overwriteInputWithJoinColumns) {
+      this.overwriteInputWithJoinColumns = overwriteInputWithJoinColumns;
+      return this;
+    }
+
+    /**
+     * Set a flag whether metadata from join files should be ignored.
+     *
+     * @param ignoreJoinFilesMetadata
+     * @return self
+     */
+    public Builder ignoreJoinFilesMetadata(boolean ignoreJoinFilesMetadata) {
+      this.ignoreJoinFilesMetadata = ignoreJoinFilesMetadata;
       return this;
     }
 
@@ -390,13 +498,16 @@ public class RewriteOptions {
       return new RewriteOptions(
           conf,
           inputFiles,
+          (inputFilesToJoin != null ? inputFilesToJoin : new ArrayList<>()),
           outputFile,
           pruneColumns,
           newCodecName,
           maskColumns,
           encryptColumns,
           fileEncryptionProperties,
-          indexCacheStrategy);
+          indexCacheStrategy,
+          overwriteInputWithJoinColumns,
+          ignoreJoinFilesMetadata);
     }
   }
 }
