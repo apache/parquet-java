@@ -292,9 +292,9 @@ public class ParquetRewriter implements Closeable {
   }
 
   public void processBlocks() throws IOException {
-    TransParquetFileReader readerJoin = inputFilesToJoin.peek();
-    IndexCache indexCacheJoin = null;
-    int blockIdxJoin = -1;
+    TransParquetFileReader readerToJoin = inputFilesToJoin.peek();
+    IndexCache indexCacheToJoin = null;
+    int blockIdxToJoin = -1;
     List<ColumnDescriptor> outColumns = outSchema.getColumns();
 
     while (!inputFiles.isEmpty()) {
@@ -313,36 +313,36 @@ public class ParquetRewriter implements Closeable {
         Map<ColumnPath, ColumnChunkMetaData> pathToChunk =
             blockMetaData.getColumns().stream().collect(Collectors.toMap(x -> x.getPath(), x -> x));
 
-        if (readerJoin != null
-            && (blockIdxJoin == -1
-                || ++blockIdxJoin
-                    == readerJoin.getFooter().getBlocks().size())) {
-          blockIdxJoin = 0;
-          readerJoin = inputFilesToJoin.poll();
-          Set<ColumnPath> columnPathsJoin = readerJoin.getFileMetaData().getSchema().getColumns().stream()
+        if (readerToJoin != null
+            && (blockIdxToJoin == -1
+                || ++blockIdxToJoin
+                    == readerToJoin.getFooter().getBlocks().size())) {
+          blockIdxToJoin = 0;
+          readerToJoin = inputFilesToJoin.poll();
+          Set<ColumnPath> columnPathsToJoin = readerToJoin.getFileMetaData().getSchema().getColumns().stream()
               .map(x -> ColumnPath.get(x.getPath()))
               .collect(Collectors.toSet());
-          if (indexCacheJoin != null) {
-            indexCacheJoin.clean();
+          if (indexCacheToJoin != null) {
+            indexCacheToJoin.clean();
           }
-          indexCacheJoin = IndexCache.create(readerJoin, columnPathsJoin, indexCacheStrategy, true);
-          indexCacheJoin.setBlockMetadata(
-              readerJoin.getFooter().getBlocks().get(blockIdxJoin));
+          indexCacheToJoin = IndexCache.create(readerToJoin, columnPathsToJoin, indexCacheStrategy, true);
+          indexCacheToJoin.setBlockMetadata(
+              readerToJoin.getFooter().getBlocks().get(blockIdxToJoin));
         } else {
-          blockIdxJoin++;
+          blockIdxToJoin++;
         }
 
         for (int outColumnIdx = 0; outColumnIdx < outColumns.size(); outColumnIdx++) {
           ColumnPath colPath =
               ColumnPath.get(outColumns.get(outColumnIdx).getPath());
-          if (readerJoin != null) {
+          if (readerToJoin != null) {
             Optional<ColumnChunkMetaData> chunkToJoin =
-                readerJoin.getFooter().getBlocks().get(blockIdxJoin).getColumns().stream()
+                readerToJoin.getFooter().getBlocks().get(blockIdxToJoin).getColumns().stream()
                     .filter(x -> x.getPath().equals(colPath))
                     .findFirst();
             if (chunkToJoin.isPresent()
                 && (overwriteInputWithJoinColumns || !columnPaths.contains(colPath))) {
-              processBlock(readerJoin, blockIdxJoin, outColumnIdx, indexCacheJoin, chunkToJoin.get());
+              processBlock(readerToJoin, blockIdxToJoin, outColumnIdx, indexCacheToJoin, chunkToJoin.get());
             } else {
               processBlock(reader, blockIdx, outColumnIdx, indexCache, pathToChunk.get(colPath));
             }
