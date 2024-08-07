@@ -490,7 +490,7 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
 
   @Override
   public <T extends Comparable<T>> Boolean visit(Contains<T> contains) {
-    return contains.filter(this, (l, r) -> l || r, (l, r) -> l && r);
+    return contains.filter(this, (l, r) -> l || r, (l, r) -> l && r, v -> BLOCK_MIGHT_MATCH);
   }
 
   @Override

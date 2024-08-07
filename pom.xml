@@ -67,9 +67,8 @@
     <jackson.groupId>com.fasterxml.jackson.core</jackson.groupId>
     <jackson.datatype.groupId>com.fasterxml.jackson.datatype</jackson.datatype.groupId>
     <jackson.package>com.fasterxml.jackson</jackson.package>
-    <jackson.version>2.17.1</jackson.version>
-    <jackson-databind.version>2.17.1</jackson-databind.version>
-    <jackson-modules-java8.version>2.17.1</jackson-modules-java8.version>
+    <jackson.version>2.17.2</jackson.version>
+    <jackson-databind.version>2.17.2</jackson-databind.version>
     <japicmp.version>0.21.0</japicmp.version>
     <javax.annotation.version>1.3.2</javax.annotation.version>
     <spotless.version>2.30.0</spotless.version>
@@ -103,10 +102,10 @@
     <opencsv.version>2.3</opencsv.version>
     <jcommander.version>1.82</jcommander.version>
     <tukaani.version>1.9</tukaani.version>
-    <zstd-jni.version>1.5.6-2</zstd-jni.version>
+    <zstd-jni.version>1.5.6-3</zstd-jni.version>
     <commons-text.version>1.12.0</commons-text.version>
     <jsr305.version>3.0.2</jsr305.version>
-    <commons-lang3.version>3.14.0</commons-lang3.version>
+    <commons-lang3.version>3.15.0</commons-lang3.version>
 
     <!-- properties for the profiles -->
     <surefire.argLine>-XX:MaxJavaStackTraceDepth=8</surefire.argLine>
@@ -163,7 +162,7 @@
     <dependency>
       <groupId>org.easymock</groupId>
       <artifactId>easymock</artifactId>
-      <version>5.3.0</version>
+      <version>5.4.0</version>
       <scope>test</scope>
     </dependency>
   </dependencies>
