@@ -30,6 +30,7 @@ import java.util.Map;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.cli.BaseCommand;
+import org.apache.parquet.cli.util.Codecs;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.rewrite.MaskMode;
 import org.apache.parquet.hadoop.rewrite.ParquetRewriter;
@@ -114,7 +115,7 @@ public class RewriteCommand extends BaseCommand {
     }
 
     if (codec != null) {
-      CompressionCodecName codecName = CompressionCodecName.valueOf(codec);
+      CompressionCodecName codecName = Codecs.parquetCodec(codec);
       builder.transform(codecName);
     }
 

@@ -30,6 +30,7 @@ import java.util.List;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.HadoopReadOptions;
 import org.apache.parquet.cli.BaseCommand;
+import org.apache.parquet.cli.util.Codecs;
 import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.ParquetFileWriter;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
@@ -76,7 +77,7 @@ public class TransCompressionCommand extends BaseCommand {
 
     Path inPath = new Path(input);
     Path outPath = new Path(output);
-    CompressionCodecName codecName = CompressionCodecName.valueOf(codec);
+    CompressionCodecName codecName = Codecs.parquetCodec(codec);
 
     ParquetMetadata metaData = ParquetFileReader.readFooter(getConf(), inPath, NO_FILTER);
     MessageType schema = metaData.getFileMetaData().getSchema();

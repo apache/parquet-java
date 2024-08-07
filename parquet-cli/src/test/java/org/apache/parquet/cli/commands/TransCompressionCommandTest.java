@@ -27,14 +27,29 @@ import org.junit.Test;
 public class TransCompressionCommandTest extends ParquetFileTest {
 
   @Test
-  public void testTransCompressionCommand() throws IOException {
+  public void testTransCompressionCommand_ZSTD() throws IOException {
     TransCompressionCommand command = new TransCompressionCommand(createLogger());
 
     command.input = parquetFile().getAbsolutePath();
 
-    File output = new File(getTempFolder(), getClass().getSimpleName() + ".converted.parquet");
+    File output = new File(getTempFolder(), getClass().getSimpleName() + ".converted-1.ZSTD.parquet");
     command.output = output.getAbsolutePath();
     command.codec = "ZSTD";
+    command.setConf(new Configuration());
+
+    Assert.assertEquals(0, command.run());
+    Assert.assertTrue(output.exists());
+  }
+
+  @Test
+  public void testTransCompressionCommand_zstd() throws IOException {
+    TransCompressionCommand command = new TransCompressionCommand(createLogger());
+
+    command.input = parquetFile().getAbsolutePath();
+
+    File output = new File(getTempFolder(), getClass().getSimpleName() + ".converted-2.zstd.parquet");
+    command.output = output.getAbsolutePath();
+    command.codec = "zstd";
     command.setConf(new Configuration());
 
     Assert.assertEquals(0, command.run());
