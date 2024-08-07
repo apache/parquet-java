@@ -158,9 +158,10 @@ public abstract class LogicalTypeAnnotation {
         GeometryEncoding encoding = GeometryEncoding.valueOf(params.get(0));
         Edges edges = Edges.valueOf(params.get(1));
         String crs = params.size() > 2 ? params.get(2) : null;
+        String crs_encoding = params.size() > 3 ? params.get(3) : null;
         ByteBuffer metadata =
-            params.size() > 3 ? ByteBuffer.wrap(params.get(3).getBytes()) : null;
-        return geometryType(encoding, edges, crs, metadata);
+            params.size() > 4 ? ByteBuffer.wrap(params.get(4).getBytes()) : null;
+        return geometryType(encoding, edges, crs, crs_encoding, metadata);
       }
     };
 
@@ -333,8 +334,8 @@ public abstract class LogicalTypeAnnotation {
   }
 
   public static GeometryLogicalTypeAnnotation geometryType(
-      GeometryEncoding encoding, Edges edges, String crs, ByteBuffer metadata) {
-    return new GeometryLogicalTypeAnnotation(encoding, edges, crs, metadata);
+      GeometryEncoding encoding, Edges edges, String crs, String crs_encoding, ByteBuffer metadata) {
+    return new GeometryLogicalTypeAnnotation(encoding, edges, crs, crs_encoding, metadata);
   }
 
   public static class StringLogicalTypeAnnotation extends LogicalTypeAnnotation {
@@ -1138,17 +1139,21 @@ public abstract class LogicalTypeAnnotation {
   }
 
   public static class GeometryLogicalTypeAnnotation extends LogicalTypeAnnotation {
+    public static final String CRS_ENCODING_DEFAULT = "PROJJSON";
     private final GeometryEncoding encoding;
     private final Edges edges;
     private final String crs;
+    private final String crs_encoding;
     private final ByteBuffer metadata;
 
-    private GeometryLogicalTypeAnnotation(GeometryEncoding encoding, Edges edges, String crs, ByteBuffer metadata) {
+    private GeometryLogicalTypeAnnotation(
+        GeometryEncoding encoding, Edges edges, String crs, String crs_encoding, ByteBuffer metadata) {
       Preconditions.checkArgument(encoding != null, "Geometry encoding is required");
       Preconditions.checkArgument(edges != null, "Geometry edges is required");
       this.encoding = encoding;
       this.edges = edges;
       this.crs = crs;
+      this.crs_encoding = crs_encoding;
       this.metadata = metadata;
     }
 
@@ -1197,6 +1202,10 @@ public abstract class LogicalTypeAnnotation {
 
     public String getCrs() {
       return crs;
+    }
+
+    public String getCrs_encoding() {
+      return crs_encoding;
     }
 
     public ByteBuffer getMetadata() {

@@ -558,6 +558,9 @@ public class ParquetMetadataConverter {
       if (geometryLogicalType.getCrs() != null) {
         geometryType.setCrs(geometryLogicalType.getCrs());
       }
+      if (geometryLogicalType.getCrs_encoding() != null) {
+        geometryType.setCrs_encoding(geometryLogicalType.getCrs_encoding());
+      }
       if (geometryLogicalType.getEdges() != null) {
         geometryType.setEdges(convertEdges(geometryLogicalType.getEdges()));
       }
@@ -829,8 +832,8 @@ public class ParquetMetadataConverter {
       formatStats.setBbox(toParquetBoundingBox(stats.getBoundingBox()));
     }
 
-    if (stats.getCovering() != null && stats.getCovering().getGeometry() != null) {
-      setCovering(stats, formatStats);
+    if (stats.getCoverings() != null && !stats.getCoverings().isEmpty()) {
+      setCoverings(stats, formatStats);
     }
 
     List<Integer> geometryTypes = new ArrayList<>(stats.getGeometryTypes().getTypes());
@@ -840,12 +843,19 @@ public class ParquetMetadataConverter {
     return formatStats;
   }
 
-  private static void setCovering(
+  private static void setCoverings(
       org.apache.parquet.column.statistics.geometry.GeometryStatistics stats, GeometryStatistics formatStats) {
-    Covering formatCovering = new Covering();
-    formatCovering.setGeometry(stats.getCovering().getGeometry());
-    formatCovering.setEdges(convertEdges(stats.getCovering().getEdges()));
-    formatStats.setCovering(formatCovering);
+    List<Covering> formatCoverings = new ArrayList<>();
+
+    List<org.apache.parquet.column.statistics.geometry.Covering> statCoverings = stats.getCoverings();
+
+    for (org.apache.parquet.column.statistics.geometry.Covering statCovering : statCoverings) {
+      Covering formatCovering = new Covering();
+      formatCovering.setKind(statCovering.getKind());
+      formatCovering.setValue(statCovering.getValue());
+      formatCoverings.add(formatCovering);
+    }
+    formatStats.setCoverings(formatCoverings);
   }
 
   private static BoundingBox toParquetBoundingBox(org.apache.parquet.column.statistics.geometry.BoundingBox bbox) {
@@ -989,11 +999,13 @@ public class ParquetMetadataConverter {
           formatBbox.isSetMmin() ? formatBbox.getMmin() : Double.NaN,
           formatBbox.isSetMmax() ? formatBbox.getMmax() : Double.NaN);
     }
-    org.apache.parquet.column.statistics.geometry.Covering covering = null;
-    if (formatGeomStats.isSetCovering()) {
-      Covering formatCovering = formatGeomStats.getCovering();
-      covering = new org.apache.parquet.column.statistics.geometry.Covering(
-          ByteBuffer.wrap(formatCovering.getGeometry()), convertEdges(formatCovering.getEdges()));
+    List<org.apache.parquet.column.statistics.geometry.Covering> coverings = new ArrayList<>();
+    if (formatGeomStats.isSetCoverings()) {
+      List<Covering> formatCoverings = formatGeomStats.getCoverings();
+      for (Covering formatCovering : formatCoverings) {
+        coverings.add(new org.apache.parquet.column.statistics.geometry.Covering(
+            ByteBuffer.wrap(formatCovering.getValue()), formatCovering.getKind()));
+      }
     }
     org.apache.parquet.column.statistics.geometry.GeometryTypes geometryTypes = null;
     if (formatGeomStats.isSetGeometry_types()) {
@@ -1010,12 +1022,12 @@ public class ParquetMetadataConverter {
           geometryLogicalType.getCrs(),
           geometryLogicalType.getMetadata(),
           bbox,
-          covering,
+          coverings,
           geometryTypes);
     }
     return new org.apache.parquet.column.statistics.geometry.GeometryStatistics(
         // this case should not happen in normal cases
-        null, null, null, bbox, covering, geometryTypes);
+        null, null, null, bbox, coverings, geometryTypes);
   }
 
   /**
@@ -1330,6 +1342,7 @@ public class ParquetMetadataConverter {
             convertGeometryEncoding(geometry.getEncoding()),
             convertEdges(geometry.getEdges()),
             geometry.getCrs(),
+            geometry.getCrs_encoding(),
             geometry.getMetadata() != null ? ByteBuffer.wrap(geometry.getMetadata()) : null);
       default:
         throw new RuntimeException("Unknown logical type " + type);

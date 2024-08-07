@@ -19,6 +19,8 @@
 package org.apache.parquet.column.statistics.geometry;
 
 import java.nio.ByteBuffer;
+import java.util.Arrays;
+import java.util.List;
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
@@ -34,7 +36,7 @@ public class GeometryStatistics {
   private final ByteBuffer metadata;
 
   private final BoundingBox boundingBox;
-  private final Covering covering;
+  private final List<Covering> coverings;
   private final GeometryTypes geometryTypes;
   private final WKBReader reader = new WKBReader();
 
@@ -43,26 +45,26 @@ public class GeometryStatistics {
       String crs,
       ByteBuffer metadata,
       BoundingBox boundingBox,
-      Covering covering,
+      List<Covering> coverings,
       GeometryTypes geometryTypes) {
     this.edges = edges;
     this.crs = crs;
     this.metadata = metadata;
     this.boundingBox = supportsBoundingBox() ? boundingBox : null;
-    this.covering = supportsCovering() ? covering : null;
+    this.coverings = supportsCovering() ? coverings : null;
     this.geometryTypes = geometryTypes;
   }
 
   public GeometryStatistics(LogicalTypeAnnotation.Edges edges, String crs, ByteBuffer metadata) {
-    this(edges, crs, metadata, new BoundingBox(), new EnvelopeCovering(), new GeometryTypes());
+    this(edges, crs, metadata, new BoundingBox(), Arrays.asList(new EnvelopeCovering()), new GeometryTypes());
   }
 
   public BoundingBox getBoundingBox() {
     return boundingBox;
   }
 
-  public Covering getCovering() {
-    return covering;
+  public List<Covering> getCoverings() {
+    return coverings;
   }
 
   public GeometryTypes getGeometryTypes() {
@@ -86,7 +88,7 @@ public class GeometryStatistics {
       boundingBox.update(geom);
     }
     if (supportsCovering()) {
-      covering.update(geom);
+      coverings.stream().forEach(c -> c.update(geom));
     }
     geometryTypes.update(geom);
   }
@@ -112,20 +114,24 @@ public class GeometryStatistics {
 
   public void merge(GeometryStatistics other) {
     Preconditions.checkArgument(other != null, "Cannot merge with null GeometryStatistics");
+    Preconditions.checkArgument(coverings.size() == other.coverings.size(), "Coverings size must be the same");
+
     boundingBox.merge(other.boundingBox);
-    covering.merge(other.covering);
+    for (int i = 0; i < coverings.size(); i++) {
+      coverings.get(i).merge(other.coverings.get(i));
+    }
     geometryTypes.merge(other.geometryTypes);
   }
 
   public void reset() {
     boundingBox.reset();
-    covering.reset();
+    coverings.stream().forEach(c -> c.reset());
     geometryTypes.reset();
   }
 
   public void abort() {
     boundingBox.abort();
-    covering.abort();
+    coverings.stream().forEach(c -> c.abort());
     geometryTypes.abort();
   }
 
@@ -136,15 +142,15 @@ public class GeometryStatistics {
         crs,
         metadata,
         boundingBox != null ? boundingBox.copy() : null,
-        covering != null ? covering.copy() : null,
+        coverings != null ? coverings : null,
         geometryTypes != null ? geometryTypes.copy() : null);
   }
 
   @Override
   public String toString() {
     return "GeometryStatistics{" + "boundingBox="
-        + boundingBox + ", covering="
-        + covering + ", geometryTypes="
+        + boundingBox + ", coverings="
+        + coverings + ", geometryTypes="
         + geometryTypes + '}';
   }
 }

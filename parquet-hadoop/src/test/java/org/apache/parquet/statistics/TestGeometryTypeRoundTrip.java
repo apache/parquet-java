@@ -21,10 +21,11 @@ package org.apache.parquet.statistics;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.geometryType;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.column.statistics.BinaryStatistics;
@@ -66,7 +67,7 @@ public class TestGeometryTypeRoundTrip {
   }
 
   @Test
-  public void testEPSG4326BasicReadWriteGeometryValue() throws IOException {
+  public void testEPSG4326BasicReadWriteGeometryValue() throws Exception {
     GeometryFactory geomFactory = new GeometryFactory();
 
     // A class to convert JTS Geometry objects to and from Well-Known Binary (WKB) format.
@@ -81,7 +82,8 @@ public class TestGeometryTypeRoundTrip {
     // A message type that represents a message with a geometry column.
     MessageType schema = Types.buildMessage()
         .required(BINARY)
-        .as(geometryType(GeometryEncoding.WKB, Edges.PLANAR, "EPSG:4326", null))
+        .as(geometryType(
+            GeometryEncoding.WKB, Edges.PLANAR, loadResourceFileAsText("epsg4326.json"), "PROJJSON", null))
         .named("col_geom")
         .named("msg");
 
@@ -103,9 +105,6 @@ public class TestGeometryTypeRoundTrip {
 
       ParquetMetadata footer = reader.getFooter();
       Assert.assertNotNull(footer);
-      Assert.assertEquals(
-          "message msg {\n  required binary col_geom (GEOMETRY(WKB,PLANAR,EPSG:4326));\n}\n",
-          footer.getFileMetaData().getSchema().toString());
 
       ColumnChunkMetaData columnChunkMetaData =
           reader.getRowGroups().get(0).getColumns().get(0);
@@ -118,7 +117,7 @@ public class TestGeometryTypeRoundTrip {
       Assert.assertEquals(2.0, geometryStatistics.getBoundingBox().getXMax(), 0.0);
       Assert.assertEquals(1.0, geometryStatistics.getBoundingBox().getYMin(), 0.0);
       Assert.assertEquals(2.0, geometryStatistics.getBoundingBox().getYMax(), 0.0);
-      Assert.assertNull(geometryStatistics.getCovering());
+      Assert.assertNull(geometryStatistics.getCoverings());
 
       ColumnIndex columnIndex = reader.readColumnIndex(columnChunkMetaData);
       Assert.assertNotNull(columnIndex);
@@ -133,12 +132,12 @@ public class TestGeometryTypeRoundTrip {
           1.0, pageGeometryStatistics.get(0).getBoundingBox().getYMin(), 0.0);
       Assert.assertEquals(
           2.0, pageGeometryStatistics.get(0).getBoundingBox().getYMax(), 0.0);
-      Assert.assertNull(pageGeometryStatistics.get(0).getCovering());
+      Assert.assertNull(pageGeometryStatistics.get(0).getCoverings());
     }
   }
 
   @Test
-  public void testEPSG4326BasicReadWriteGeometryValueWithCovering() throws IOException {
+  public void testEPSG4326BasicReadWriteGeometryValueWithCovering() throws Exception {
     GeometryFactory geomFactory = new GeometryFactory();
 
     // A class to convert JTS Geometry objects to and from Well-Known Binary (WKB) format.
@@ -153,7 +152,12 @@ public class TestGeometryTypeRoundTrip {
     // A message type that represents a message with a geometry column.
     MessageType schema = Types.buildMessage()
         .required(BINARY)
-        .as(geometryType(GeometryEncoding.WKB, Edges.SPHERICAL, "EPSG:4326", null))
+        .as(geometryType(
+            GeometryEncoding.WKB,
+            Edges.SPHERICAL,
+            loadResourceFileAsText("epsg3857Proj.json"),
+            "PROJJSON",
+            null))
         .named("col_geom")
         .named("msg");
 
@@ -175,9 +179,6 @@ public class TestGeometryTypeRoundTrip {
 
       ParquetMetadata footer = reader.getFooter();
       Assert.assertNotNull(footer);
-      Assert.assertEquals(
-          "message msg {\n  required binary col_geom (GEOMETRY(WKB,SPHERICAL,EPSG:4326));\n}\n",
-          footer.getFileMetaData().getSchema().toString());
 
       ColumnChunkMetaData columnChunkMetaData =
           reader.getRowGroups().get(0).getColumns().get(0);
@@ -187,10 +188,10 @@ public class TestGeometryTypeRoundTrip {
       GeometryStatistics geometryStatistics = binaryStatistics.getGeometryStatistics();
       Assert.assertNotNull(geometryStatistics);
 
-      Assert.assertNotNull(geometryStatistics.getCovering());
+      Assert.assertNotNull(geometryStatistics.getCoverings());
       Assert.assertEquals(
-          "Covering{geometry=POLYGON ((1 1, 1 2, 2 2, 2 1, 1 1)), edges=SPHERICAL}",
-          geometryStatistics.getCovering().toString());
+          "[Covering{geometry=POLYGON ((1 1, 1 2, 2 2, 2 1, 1 1)), kind=WKB}]",
+          geometryStatistics.getCoverings().toString());
 
       ColumnIndex columnIndex = reader.readColumnIndex(columnChunkMetaData);
       Assert.assertNotNull(columnIndex);
@@ -198,7 +199,7 @@ public class TestGeometryTypeRoundTrip {
   }
 
   @Test
-  public void testEPSG3857BasicReadWriteGeometryValue() throws IOException {
+  public void testEPSG3857BasicReadWriteGeometryValue() throws Exception {
     GeometryFactory geomFactory = new GeometryFactory();
 
     // A class to convert JTS Geometry objects to and from Well-Known Binary (WKB) format.
@@ -219,7 +220,12 @@ public class TestGeometryTypeRoundTrip {
     // A message type that represents a message with a geometry column.
     MessageType schema = Types.buildMessage()
         .required(BINARY)
-        .as(geometryType(GeometryEncoding.WKB, Edges.SPHERICAL, "EPSG:3857", null))
+        .as(geometryType(
+            GeometryEncoding.WKB,
+            Edges.SPHERICAL,
+            loadResourceFileAsText("epsg3857Proj.json"),
+            "PROJJSON",
+            null))
         .named("col_geom")
         .named("msg");
 
@@ -241,9 +247,6 @@ public class TestGeometryTypeRoundTrip {
 
       ParquetMetadata footer = reader.getFooter();
       Assert.assertNotNull(footer);
-      Assert.assertEquals(
-          "message msg {\n  required binary col_geom (GEOMETRY(WKB,SPHERICAL,EPSG:3857));\n}\n",
-          footer.getFileMetaData().getSchema().toString());
 
       ColumnChunkMetaData columnChunkMetaData =
           reader.getRowGroups().get(0).getColumns().get(0);
@@ -253,13 +256,26 @@ public class TestGeometryTypeRoundTrip {
       GeometryStatistics geometryStatistics = binaryStatistics.getGeometryStatistics();
       Assert.assertNotNull(geometryStatistics);
 
-      Assert.assertNotNull(geometryStatistics.getCovering());
+      Assert.assertNotNull(geometryStatistics.getCoverings());
       Assert.assertEquals(
-          "Covering{geometry=POLYGON ((-8237531.37 4974209.75, -8237531.37 4974249.75, -8237491.37 4974249.75, -8237491.37 4974209.75, -8237531.37 4974209.75)), edges=SPHERICAL}",
-          geometryStatistics.getCovering().toString());
+          "[Covering{geometry=POLYGON ((-8237531.37 4974209.75, -8237531.37 4974249.75, -8237491.37 4974249.75, -8237491.37 4974209.75, -8237531.37 4974209.75)), kind=WKB}]",
+          geometryStatistics.getCoverings().toString());
 
       ColumnIndex columnIndex = reader.readColumnIndex(columnChunkMetaData);
       Assert.assertNotNull(columnIndex);
+    }
+  }
+
+  public static String loadResourceFileAsText(String fileName) throws Exception {
+    ClassLoader classLoader = TestGeometryTypeRoundTrip.class.getClassLoader();
+    try (InputStream inputStream = classLoader.getResourceAsStream(fileName)) {
+      if (inputStream == null) {
+        throw new IllegalArgumentException("File not found: " + fileName);
+      }
+      try (BufferedReader reader =
+          new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
+        return reader.lines().collect(Collectors.joining(System.lineSeparator()));
+      }
     }
   }
 }

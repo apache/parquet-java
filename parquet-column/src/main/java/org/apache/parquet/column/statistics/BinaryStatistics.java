@@ -62,6 +62,7 @@ public class BinaryStatistics extends Statistics<Binary> {
     if (other.geometryStatistics != null) {
       geometryStatistics = other.geometryStatistics.copy();
     }
+    System.out.println("BinaryStatistics.BinaryStatistics");
   }
 
   @Override

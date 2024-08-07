@@ -19,7 +19,6 @@
 package org.apache.parquet.column.statistics.geometry;
 
 import java.nio.ByteBuffer;
-import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.Geometry;
@@ -36,7 +35,7 @@ public class EnvelopeCovering extends Covering {
   private final GeometryFactory factory = new GeometryFactory();
 
   public EnvelopeCovering() {
-    super(EMPTY, LogicalTypeAnnotation.Edges.SPHERICAL);
+    super(EMPTY, DEFAULT_COVERING_KIND);
   }
 
   @Override
@@ -45,8 +44,8 @@ public class EnvelopeCovering extends Covering {
       return;
     }
     try {
-      if (geometry != EMPTY) {
-        Geometry existingGeometry = reader.read(geometry.array());
+      if (value != EMPTY) {
+        Geometry existingGeometry = reader.read(value.array());
         Envelope existingEnvelope = existingGeometry.getEnvelopeInternal();
         Envelope newEnvelope = geom.getEnvelopeInternal();
 
@@ -62,19 +61,19 @@ public class EnvelopeCovering extends Covering {
 
         Geometry envelopePolygon = createPolygonFromEnvelope(existingEnvelope);
 
-        geometry = ByteBuffer.wrap(writer.write(envelopePolygon));
+        value = ByteBuffer.wrap(writer.write(envelopePolygon));
       } else {
         Geometry envelopePolygon = createPolygonFromEnvelope(geom.getEnvelopeInternal());
-        geometry = ByteBuffer.wrap(writer.write(envelopePolygon));
+        value = ByteBuffer.wrap(writer.write(envelopePolygon));
       }
     } catch (ParseException e) {
-      geometry = null;
+      value = null;
     }
   }
 
   // Create a polygon from an envelope
-  // Assume we are using the Standard WKB format, that no Z and M dimension is supported
-  // https://libgeos.org/specifications/wkb/#standard-wkb
+  // We only supports WKB as covering kind and WKB polygon can only safely represent
+  // a covering in 2 dimension.
   // Enhancement is to do post POC phase to support Z and M dimension.
   private Geometry createPolygonFromEnvelope(Envelope envelope) {
     return factory.createPolygon(new Coordinate[] {
@@ -90,9 +89,9 @@ public class EnvelopeCovering extends Covering {
   public void merge(Covering other) {
     if (other instanceof EnvelopeCovering) {
       try {
-        update(reader.read(other.geometry.array()));
+        update(reader.read(other.value.array()));
       } catch (ParseException e) {
-        geometry = null;
+        value = null;
       }
     } else {
       throw new UnsupportedOperationException("Cannot merge " + this.getClass() + " with "
@@ -102,18 +101,18 @@ public class EnvelopeCovering extends Covering {
 
   @Override
   public void reset() {
-    geometry = EMPTY;
+    value = EMPTY;
   }
 
   @Override
   public void abort() {
-    geometry = null;
+    value = null;
   }
 
   @Override
   public EnvelopeCovering copy() {
     EnvelopeCovering copy = new EnvelopeCovering();
-    copy.geometry = geometry == null ? null : ByteBuffer.wrap(geometry.array());
+    copy.value = value == null ? null : ByteBuffer.wrap(value.array());
     return copy;
   }
 }

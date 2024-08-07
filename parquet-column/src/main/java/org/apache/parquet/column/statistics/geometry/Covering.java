@@ -20,29 +20,30 @@ package org.apache.parquet.column.statistics.geometry;
 
 import java.nio.ByteBuffer;
 import org.apache.parquet.Preconditions;
-import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.io.ParseException;
 import org.locationtech.jts.io.WKBReader;
 
 public class Covering {
+  public static final String DEFAULT_COVERING_KIND = "WKB";
 
-  protected final LogicalTypeAnnotation.Edges edges;
-  protected ByteBuffer geometry;
+  protected final String kind;
+  protected ByteBuffer value;
 
-  public Covering(ByteBuffer geometry, LogicalTypeAnnotation.Edges edges) {
-    Preconditions.checkArgument(geometry != null, "Geometry cannot be null");
-    Preconditions.checkArgument(edges != null, "Edges cannot be null");
-    this.geometry = geometry;
-    this.edges = edges;
+  public Covering(ByteBuffer value, String kind) {
+    Preconditions.checkArgument(kind != null, "kind cannot be null");
+    Preconditions.checkArgument(kind.equalsIgnoreCase(DEFAULT_COVERING_KIND), "kind only accepts WKB");
+    Preconditions.checkArgument(value != null, "value cannot be null");
+    this.value = value;
+    this.kind = kind;
   }
 
-  public ByteBuffer getGeometry() {
-    return geometry;
+  public ByteBuffer getValue() {
+    return value;
   }
 
-  public LogicalTypeAnnotation.Edges getEdges() {
-    return edges;
+  public String getKind() {
+    return kind;
   }
 
   void update(Geometry geom) {
@@ -66,18 +67,18 @@ public class Covering {
   }
 
   public Covering copy() {
-    return new Covering(geometry.duplicate(), edges);
+    return new Covering(value.duplicate(), kind);
   }
 
   @Override
   public String toString() {
     String geomText;
     try {
-      geomText = new WKBReader().read(geometry.array()).toText();
+      geomText = new WKBReader().read(value.array()).toText();
     } catch (ParseException e) {
       geomText = "Invalid Geometry";
     }
 
-    return "Covering{" + "geometry=" + geomText + ", edges=" + edges + '}';
+    return "Covering{" + "geometry=" + geomText + ", kind=" + kind + '}';
   }
 }
