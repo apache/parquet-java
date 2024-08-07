@@ -163,7 +163,6 @@ public class ParquetRewriter implements Closeable {
     writer.start();
   }
 
-
   // Ctor for legacy CompressionConverter and ColumnMasker
   public ParquetRewriter(
       TransParquetFileReader reader,
@@ -191,7 +190,6 @@ public class ParquetRewriter implements Closeable {
     this.overwriteInputWithJoinColumns = false;
   }
 
-
   private MessageType getSchema() {
     MessageType schemaMain = inputFiles.peek().getFooter().getFileMetaData().getSchema();
     if (inputFilesToJoin.isEmpty()) {
@@ -206,7 +204,11 @@ public class ParquetRewriter implements Closeable {
           .getSchema()
           .getFields()
           .forEach(x -> {
-            if (!fieldNames.containsKey(x.getName()) || overwriteInputWithJoinColumns) {
+            if (!fieldNames.containsKey(x.getName())) {
+              LOG.info("Column {} is added to the output from inputFilesToJoin side", x.getName());
+              fieldNames.put(x.getName(), x);
+            } else if (overwriteInputWithJoinColumns) {
+              LOG.info("Column {} in inputFiles is overwritten by inputFilesToJoin side", x.getName());
               fieldNames.put(x.getName(), x);
             }
           });
@@ -342,7 +344,8 @@ public class ParquetRewriter implements Closeable {
                     .findFirst();
             if (chunkToJoin.isPresent()
                 && (overwriteInputWithJoinColumns || !columnPaths.contains(colPath))) {
-              processBlock(readerToJoin, blockIdxToJoin, outColumnIdx, indexCacheToJoin, chunkToJoin.get());
+              processBlock(
+                  readerToJoin, blockIdxToJoin, outColumnIdx, indexCacheToJoin, chunkToJoin.get());
             } else {
               processBlock(reader, blockIdx, outColumnIdx, indexCache, pathToChunk.get(colPath));
             }
