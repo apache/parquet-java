@@ -83,6 +83,12 @@
     </dependency>
 
     <dependency>
+      <groupId>net.sf.geographiclib</groupId>
+      <artifactId>GeographicLib-Java</artifactId>
+      <version>1.50</version>
+    </dependency>
+
+    <dependency>
       <groupId>com.carrotsearch</groupId>
       <artifactId>junit-benchmarks</artifactId>
       <version>0.7.2</version>

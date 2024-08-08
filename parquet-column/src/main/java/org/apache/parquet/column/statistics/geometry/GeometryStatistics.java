@@ -56,7 +56,13 @@ public class GeometryStatistics {
   }
 
   public GeometryStatistics(LogicalTypeAnnotation.Edges edges, String crs, ByteBuffer metadata) {
-    this(edges, crs, metadata, new BoundingBox(), Arrays.asList(new EnvelopeCovering()), new GeometryTypes());
+    this(
+        edges,
+        crs,
+        metadata,
+        new BoundingBox(),
+        Arrays.asList(new EnvelopeCovering(edges, crs)),
+        new GeometryTypes());
   }
 
   public BoundingBox getBoundingBox() {
@@ -93,6 +99,11 @@ public class GeometryStatistics {
     geometryTypes.update(geom);
   }
 
+  /**
+   * A bounding box is a rectangular region defined by two points, the lower left
+   * and upper right corners. It is used to represent the minimum and maximum
+   * coordinates of a geometry. Only planar geometries can have a bounding box.
+   */
   private boolean supportsBoundingBox() {
     // Only planar geometries can have a bounding box
     // based on the current specification
@@ -101,15 +112,16 @@ public class GeometryStatistics {
 
   /**
    * A custom WKB-encoded polygon or multi-polygon to represent a covering of
-   * geometries. For example, it may be a bounding box, or an evelope of geometries
+   * geometries. For example, it may be a bounding box, or an envelope of geometries
    * when a bounding box cannot be built (e.g. a geometry has spherical edges, or if
    * an edge of geographic coordinates crosses the antimeridian). In addition, it can
    * also be used to provide vendor-agnostic coverings like S2 or H3 grids.
    */
   private boolean supportsCovering() {
-    // This POC assumes only build coverings for spherical edges
-    // In case of planar edges, the bounding box is built instead
-    return edges == LogicalTypeAnnotation.Edges.SPHERICAL;
+    // This version (POC) assumes only build coverings for planar edges
+    // In case of spherical edges, no coverings are built
+    //     return edges == LogicalTypeAnnotation.Edges.PLANAR;
+    return true;
   }
 
   public void merge(GeometryStatistics other) {

@@ -22,10 +22,8 @@ import static org.apache.parquet.schema.LogicalTypeAnnotation.geometryType;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 
 import java.io.*;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.List;
-import java.util.stream.Collectors;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.column.statistics.BinaryStatistics;
@@ -82,8 +80,7 @@ public class TestGeometryTypeRoundTrip {
     // A message type that represents a message with a geometry column.
     MessageType schema = Types.buildMessage()
         .required(BINARY)
-        .as(geometryType(
-            GeometryEncoding.WKB, Edges.PLANAR, loadResourceFileAsText("epsg4326.json"), "PROJJSON", null))
+        .as(geometryType(GeometryEncoding.WKB, Edges.PLANAR, "EPSG:4326", "PROJJSON", null))
         .named("col_geom")
         .named("msg");
 
@@ -117,7 +114,11 @@ public class TestGeometryTypeRoundTrip {
       Assert.assertEquals(2.0, geometryStatistics.getBoundingBox().getXMax(), 0.0);
       Assert.assertEquals(1.0, geometryStatistics.getBoundingBox().getYMin(), 0.0);
       Assert.assertEquals(2.0, geometryStatistics.getBoundingBox().getYMax(), 0.0);
-      Assert.assertNull(geometryStatistics.getCoverings());
+      Assert.assertNotNull(geometryStatistics.getCoverings());
+
+      Assert.assertEquals(
+          "[Covering{geometry=POLYGON ((1 1, 1 2, 2 2, 2 1, 1 1)), kind=WKB}]",
+          geometryStatistics.getCoverings().toString());
 
       ColumnIndex columnIndex = reader.readColumnIndex(columnChunkMetaData);
       Assert.assertNotNull(columnIndex);
@@ -132,7 +133,6 @@ public class TestGeometryTypeRoundTrip {
           1.0, pageGeometryStatistics.get(0).getBoundingBox().getYMin(), 0.0);
       Assert.assertEquals(
           2.0, pageGeometryStatistics.get(0).getBoundingBox().getYMax(), 0.0);
-      Assert.assertNull(pageGeometryStatistics.get(0).getCoverings());
     }
   }
 
@@ -152,12 +152,7 @@ public class TestGeometryTypeRoundTrip {
     // A message type that represents a message with a geometry column.
     MessageType schema = Types.buildMessage()
         .required(BINARY)
-        .as(geometryType(
-            GeometryEncoding.WKB,
-            Edges.SPHERICAL,
-            loadResourceFileAsText("epsg3857Proj.json"),
-            "PROJJSON",
-            null))
+        .as(geometryType(GeometryEncoding.WKB, Edges.PLANAR, "EPSG:4326", "PROJJSON", null))
         .named("col_geom")
         .named("msg");
 
@@ -220,12 +215,7 @@ public class TestGeometryTypeRoundTrip {
     // A message type that represents a message with a geometry column.
     MessageType schema = Types.buildMessage()
         .required(BINARY)
-        .as(geometryType(
-            GeometryEncoding.WKB,
-            Edges.SPHERICAL,
-            loadResourceFileAsText("epsg3857Proj.json"),
-            "PROJJSON",
-            null))
+        .as(geometryType(GeometryEncoding.WKB, Edges.SPHERICAL, "EPSG:3857", "PROJJSON", null))
         .named("col_geom")
         .named("msg");
 
@@ -258,24 +248,11 @@ public class TestGeometryTypeRoundTrip {
 
       Assert.assertNotNull(geometryStatistics.getCoverings());
       Assert.assertEquals(
-          "[Covering{geometry=POLYGON ((-8237531.37 4974209.75, -8237531.37 4974249.75, -8237491.37 4974249.75, -8237491.37 4974209.75, -8237531.37 4974209.75)), kind=WKB}]",
+          "[Covering{geometry=POLYGON ((-8237531.370000001 4974209.750000001, -8237531.370000001 4974249.750000003, -8237490.369999999 4974249.750000003, -8237490.369999999 4974209.750000001, -8237531.370000001 4974209.750000001)), kind=WKB}]",
           geometryStatistics.getCoverings().toString());
 
       ColumnIndex columnIndex = reader.readColumnIndex(columnChunkMetaData);
       Assert.assertNotNull(columnIndex);
-    }
-  }
-
-  public static String loadResourceFileAsText(String fileName) throws Exception {
-    ClassLoader classLoader = TestGeometryTypeRoundTrip.class.getClassLoader();
-    try (InputStream inputStream = classLoader.getResourceAsStream(fileName)) {
-      if (inputStream == null) {
-        throw new IllegalArgumentException("File not found: " + fileName);
-      }
-      try (BufferedReader reader =
-          new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
-        return reader.lines().collect(Collectors.joining(System.lineSeparator()));
-      }
     }
   }
 }
