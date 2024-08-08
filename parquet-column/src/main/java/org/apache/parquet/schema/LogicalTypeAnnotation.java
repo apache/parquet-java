@@ -33,6 +33,7 @@ import static org.apache.parquet.schema.PrimitiveStringifier.TIME_NANOS_UTC_STRI
 import static org.apache.parquet.schema.PrimitiveStringifier.TIME_STRINGIFIER;
 import static org.apache.parquet.schema.PrimitiveStringifier.TIME_UTC_STRINGIFIER;
 
+import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -145,6 +146,22 @@ public abstract class LogicalTypeAnnotation {
       @Override
       protected LogicalTypeAnnotation fromString(List<String> params) {
         return float16Type();
+      }
+    },
+    GEOMETRY {
+      @Override
+      protected LogicalTypeAnnotation fromString(List<String> params) {
+        if (params.size() < 2) {
+          throw new RuntimeException(
+              "Expecting at least 2 parameters for geometry logical type, got " + params.size());
+        }
+        GeometryEncoding encoding = GeometryEncoding.valueOf(params.get(0));
+        Edges edges = Edges.valueOf(params.get(1));
+        String crs = params.size() > 2 ? params.get(2) : null;
+        String crs_encoding = params.size() > 3 ? params.get(3) : null;
+        ByteBuffer metadata =
+            params.size() > 4 ? ByteBuffer.wrap(params.get(4).getBytes()) : null;
+        return geometryType(encoding, edges, crs, crs_encoding, metadata);
       }
     };
 
@@ -314,6 +331,11 @@ public abstract class LogicalTypeAnnotation {
 
   public static Float16LogicalTypeAnnotation float16Type() {
     return Float16LogicalTypeAnnotation.INSTANCE;
+  }
+
+  public static GeometryLogicalTypeAnnotation geometryType(
+      GeometryEncoding encoding, Edges edges, String crs, String crs_encoding, ByteBuffer metadata) {
+    return new GeometryLogicalTypeAnnotation(encoding, edges, crs, crs_encoding, metadata);
   }
 
   public static class StringLogicalTypeAnnotation extends LogicalTypeAnnotation {
@@ -1092,6 +1114,128 @@ public abstract class LogicalTypeAnnotation {
   }
 
   /**
+   * Allowed for physical type: BYTE_ARRAY.
+   *
+   * Well-known binary (WKB) representations of geometries. It supports 2D or
+   * 3D geometries of the standard geometry types (Point, LineString, Polygon,
+   * MultiPoint, MultiLineString, MultiPolygon, and GeometryCollection). This
+   * is the preferred option for maximum portability.
+   *
+   * This encoding enables GeometryStatistics to be set in the column chunk
+   * and page index.
+   */
+  public enum GeometryEncoding {
+    WKB
+  }
+
+  /**
+   * Interpretation for edges of GEOMETRY logical type, i.e. whether the edge
+   * between points represent a straight cartesian line or the shortest line on
+   * the sphere. Please note that it only applies to polygons.
+   */
+  public enum Edges {
+    PLANAR,
+    SPHERICAL
+  }
+
+  public static class GeometryLogicalTypeAnnotation extends LogicalTypeAnnotation {
+    public static final String CRS_ENCODING_DEFAULT = "PROJJSON";
+    private final GeometryEncoding encoding;
+    private final Edges edges;
+    private final String crs;
+    private final String crs_encoding;
+    private final ByteBuffer metadata;
+
+    private GeometryLogicalTypeAnnotation(
+        GeometryEncoding encoding, Edges edges, String crs, String crs_encoding, ByteBuffer metadata) {
+      Preconditions.checkArgument(encoding != null, "Geometry encoding is required");
+      Preconditions.checkArgument(edges != null, "Geometry edges is required");
+      this.encoding = encoding;
+      this.edges = edges;
+      this.crs = crs;
+      this.crs_encoding = crs_encoding;
+      this.metadata = metadata;
+    }
+
+    @Override
+    @Deprecated
+    public OriginalType toOriginalType() {
+      return null;
+    }
+
+    @Override
+    public <T> Optional<T> accept(LogicalTypeAnnotationVisitor<T> logicalTypeAnnotationVisitor) {
+      return logicalTypeAnnotationVisitor.visit(this);
+    }
+
+    @Override
+    LogicalTypeToken getType() {
+      return LogicalTypeToken.GEOMETRY;
+    }
+
+    @Override
+    protected String typeParametersAsString() {
+      StringBuilder sb = new StringBuilder();
+      sb.append("(");
+      sb.append(encoding);
+      sb.append(",");
+      sb.append(edges);
+      if (crs != null && !crs.isEmpty()) {
+        sb.append(",");
+        sb.append(crs);
+      }
+      if (metadata != null) {
+        sb.append(",");
+        sb.append(metadata);
+      }
+      sb.append(")");
+      return sb.toString();
+    }
+
+    public GeometryEncoding getEncoding() {
+      return encoding;
+    }
+
+    public Edges getEdges() {
+      return edges;
+    }
+
+    public String getCrs() {
+      return crs;
+    }
+
+    public String getCrs_encoding() {
+      return crs_encoding;
+    }
+
+    public ByteBuffer getMetadata() {
+      return metadata;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      if (!(obj instanceof GeometryLogicalTypeAnnotation)) {
+        return false;
+      }
+      GeometryLogicalTypeAnnotation other = (GeometryLogicalTypeAnnotation) obj;
+      return (encoding == other.encoding) && (edges == other.edges) && crs.equals(other.crs);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(encoding, crs, edges);
+    }
+
+    @Override
+    PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
+      if (encoding == GeometryEncoding.WKB) {
+        return PrimitiveStringifier.WKB_STRINGIFIER;
+      }
+      return super.valueStringifier(primitiveType);
+    }
+  }
+
+  /**
    * Implement this interface to visit a logical type annotation in the schema.
    * The default implementation for each logical type specific visitor method is empty.
    * <p>
@@ -1160,6 +1304,10 @@ public abstract class LogicalTypeAnnotation {
     }
 
     default Optional<T> visit(Float16LogicalTypeAnnotation float16LogicalType) {
+      return empty();
+    }
+
+    default Optional<T> visit(GeometryLogicalTypeAnnotation geometryLogicalType) {
       return empty();
     }
   }
