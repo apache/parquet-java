@@ -101,70 +101,145 @@ System.out.println(record.get("email"));
 // Close the reader
 reader.close();
 
+## major aspects of Apache Parquet-Avro:
+
+**Writing Data**
+
+**Python**
+
+import pyarrow.parquet as pq
+import avro.schema
+from avro.datafile import DataFileWriter
+from (link unavailable) import DatumWriter
+
+# Create an Avro schema
+schema = avro.schema.Parse(json.dumps({
+    "type": "record",
+    "name": "example",
+    "fields": [
+        {"name": "numbers", "type": "array", "items": "int"}
+    ]
+}))
+
+# Create an Avro data file
+with open("example.avro", "wb") as f:
+    writer = DataFileWriter(f, DatumWriter(), schema)
+    writer.append({"numbers": [1, 2, 3, 4, 5]})
+    writer.close()
+
+# Create a Parquet file from the Avro data file
+table = pq.read_table("example.avro")
+pq.write_table(table, "example.parquet")
 
 
-## Major aspects of Apache Parquet-Avro:
+**C++**
 
-**Parquet aspects**:
+#include <parquet/arrow/writer.h>
+#include <parquet/arrow/reader.h>
+#include <avro/Writer.hh>
+#include <avro/Reader.hh>
 
-1. **Columnar storage**: Stores data in columns instead of rows, reducing storage and improving query performance.
-2. **Efficient compression**: Supports various compression algorithms, reducing storage and improving data transfer.
-3. **Schema evolution**: Allows for schema changes without rewriting existing data.
-4. **High-performance querying**: Optimized for fast querying and data retrieval.
+int main() {
+    // Create an Avro schema
+    avro::ValidSchema schema = avro::parseJsonSchema(
+        "{\"type\": \"record\", \"name\": \"example\", \"fields\": [{\"name\": \"numbers\", \"type\": {\"type\": \"array\", \"items\": \"int\"}}]}");
 
-**Avro aspects**:
+    // Create an Avro data file
+    std::ofstream f("example.avro", std::ios::binary);
+    avro::DataFileWriter<avro::OutputStream> writer(f, schema);
+    writer.write({"numbers", {1, 2, 3, 4, 5}});
+    writer.close();
 
-1. **Data serialization**: Provides a compact, fast, and efficient way to serialize and deserialize data.
-2. **Schema-based**: Uses a schema to define data structures, ensuring data consistency and compatibility.
-3. **Language-independent**: Supports multiple programming languages, including Java, Python, and C++.
-4. **Rich data structures**: Supports complex data structures, including records, enums, and arrays.
-
-## Parquet-Avro integration:
-
-1. **Avro schema integration**: Uses Avro schemas to define Parquet data structures.
-2. **Efficient Avro data storage**: Stores Avro data in Parquet files, leveraging Parquet's columnar storage and compression.
-3. **Seamless data exchange**: Enables easy data exchange between Avro and Parquet formats.
-
-By combining Parquet's columnar storage and Avro's data serialization, Parquet-Avro provides a powerful and efficient way to store and query large datasets.
-
-## Specific  and practical applications of Apache Parquet-Avro
-
-1. **Data ingestion and processing**: Using Parquet-Avro to efficiently store and process large amounts of data from various sources, like logs, sensors, or social media.
-
-2. **Data transformation and aggregation**: Leveraging Parquet-Avro's columnar storage to perform fast data transformations and aggregations, like data warehousing or business intelligence workloads.
-
-3. **Real-time data analytics**: Utilizing Parquet-Avro's efficient storage and querying capabilities to power real-time data analytics, like fraud detection or live dashboards.
-
-4. **Machine learning data preparation**: Using Parquet-Avro to store and prepare large datasets for machine learning model training, feature engineering, and data augmentation.
-
-5. **Data archiving and compliance**: Employing Parquet-Avro's compression and encryption features to archive large datasets for long-term storage and compliance purposes.
-
-6. **Cloud data migration**: Migrating large datasets to cloud storage services, like Amazon S3 or Google Cloud Storage, using Parquet-Avro for efficient data transfer and storage.
-
-7. **Data integration and ETL**: Using Parquet-Avro as a common format for data integration and ETL (Extract, Transform, Load) processes, ensuring data consistency and compatibility.
-
-8. **IoT data processing and analytics**: Storing and processing large amounts of IoT sensor data using Parquet-Avro, enabling efficient data analytics and insights.
+    // Create a Parquet file from the Avro data file
+    parquet::arrow::WriterProperties writer_properties;
+    parquet::arrow::WriteTable(table, "example.parquet", writer_properties);
+}
 
 
-## Writing Avro Data to Parquet Files
+**Reading Data**
 
-- Use `AvroParquetWriter` to write Avro data to Parquet files.
-- Set the Avro schema using `writer.setSchema(AvroSchema)`.
+**Python**
 
-## Reading Avro Data from Parquet Files
+import pyarrow.parquet as pq
+import avro.schema
+from avro.datafile import DataFileReader
 
-- Use `AvroParquetReader` to read Avro data from Parquet files.
-- Get the Avro schema using `reader.getSchema()`.
+# Read the Avro data file
+with open("example.avro", "rb") as f:
+    reader = DataFileReader(f)
+    for record in reader:
+        print(record)
 
-## Converting Avro Schemas to Parquet Schemas
+# Read the Parquet file
+table = pq.read_table("example.parquet")
+print(table)
 
-- Use `AvroSchemaConverter` to convert Avro schemas to Parquet schemas.
-- Convert an Avro schema to a Parquet schema using `converter.convert(AvroSchema)`.
 
-## Additional API Classes and Methods
+**C++**
 
-- `org.apache.parquet.hadoop.ParquetWriter`: Writes Parquet files.
-- `org.apache.parquet.hadoop.ParquetReader`: Reads Parquet files.
-- `org.apache.avro.Schema`: Represents an Avro schema.
-- `org.apache.parquet.schema.MessageType`: Represents a Parquet schema.
+int main() {
+    // Read the Avro data file
+    std::ifstream f("example.avro", std::ios::binary);
+    avro::DataFileReader<avro::InputStream> reader(f);
+    avro::GenericDatum datum;
+    while (reader.read(datum)) {
+        std::cout << datum << std::endl;
+    }
+
+    // Read the Parquet file
+    parquet::arrow::ReaderProperties reader_properties;
+    std::shared_ptr<arrow::Table> table = parquet::arrow::OpenFile("example.parquet", reader_properties);
+    std::cout << table->ToString() << std::endl;
+}
+
+
+**Schema Evolution**
+
+**Python**
+
+import avro.schema
+
+# Create an initial Avro schema
+initial_schema = avro.schema.Parse(json.dumps({
+    "type": "record",
+    "name": "example",
+    "fields": [
+        {"name": "numbers", "type": "array", "items": "int"}
+    ]
+}))
+
+# Create a new Avro schema with an added field
+new_schema = avro.schema.Parse(json.dumps({
+    "type": "record",
+    "name": "example",
+    "fields": [
+        {"name": "numbers", "type": "array", "items": "int"},
+        {"name": "strings", "type": "array", "items": "string"}
+    ]
+}))
+
+# Check if the new schema is compatible with the initial schema
+if avro.schema.can_read(initial_schema, new_schema):
+    print("Schemas are compatible")
+else:
+    print("Schemas are not compatible")
+
+
+**C++**
+
+int main() {
+    // Create an initial Avro schema
+    avro::ValidSchema initial_schema = avro::parseJsonSchema(
+        "{\"type\": \"record\", \"name\": \"example\", \"fields\": [{\"name\": \"numbers\", \"type\": {\"type\": \"array\", \"items\": \"int\"}}]}");
+
+    // Create a new Avro schema with an added field
+    avro::ValidSchema new_schema = avro::parseJsonSchema(
+        "{\"type\": \"record\", \"name\": \"example\", \"fields\": [{\"name\": \"numbers\", \"type\": {\"type\": \"array\", \"items\": \"int\"}}, {\"name\": \"
+
+
+
+
+
+
+
 
