@@ -45,11 +45,63 @@ Apache Avro integration
 | `parquet.avro.write-parquet-uuid`       | `boolean` | Flag whether to write the [Parquet UUID logical type](https://github.com/apache/parquet-format/blob/master/LogicalTypes.md#uuid) in case of an [Avro UUID type](https://avro.apache.org/docs/current/spec.html#UUID) is present.<br/>The default value is `false`. |
 | `parquet.avro.writeFixedAsInt96`    | `String` | Comma separated list of paths pointing to Avro schema elements which are to be converted to `INT96` Parquet types.<br/>The path is a `'.'` separated list of field names and does not contain the name of the schema nor the namespace. The type of the referenced schema elements must be `fixed` with the size of 12 bytes.<br/>**NOTE: The `INT96` Parquet type is deprecated. This option is only to support old data.** |
 
-## Apache Parquet-Avro is a combination of two technologies:
+## Writing Data
 
-1. **Apache Parquet**: A columnar storage format for Hadoop and other big data platforms, optimized for querying large datasets.
+**To write data using Parquet-Avro, follow these steps**:
 
-2. **Apache Avro**: A data serialization system that provides a compact, fast, and efficient way to serialize and deserialize data.
+1. **Create an Avro schema**: Define the structure of your data using an Avro schema file (.avsc).
+2. **Create a Parquet writer**: Use the AvroParquetWriter class to create a writer with the Avro schema.
+3. **Write records**: Create Avro records and write them to the Parquet file using the writer.
+
+**Example**
+
+// Create an Avro schema
+Schema schema = new Schema.Parser().parse(new File("user.avsc"));
+
+// Create a Parquet writer
+ParquetWriter<GenericRecord> writer = AvroParquetWriter.<GenericRecord>builder(new File("data.parquet"))
+    .withSchema(schema)
+    .withConf(new Configuration())
+    .withCompressionCodec(CompressionCodecName.SNAPPY)
+    .build();
+
+// Create an Avro record
+GenericRecord record = new GenericData.Record(schema);
+record.put("id", 1);
+record.put("name", "John Doe");
+record.put("email", "john.doe@example.com");
+
+// Write the record to Parquet
+writer.write(record);
+writer.close();
+
+
+**Reading Data**
+
+To read data using Parquet-Avro, follow these steps:
+
+1. **Create a Parquet reader**: Use the AvroParquetReader class to create a reader with the Avro schema.
+2. **Read records**: Read Avro records from the Parquet file using the reader.
+
+**Example**
+
+// Create a Parquet reader
+ParquetReader<GenericRecord> reader = AvroParquetReader.<GenericRecord>builder(new File("data.parquet"))
+    .withSchema(schema)
+    .build();
+
+// Read a record from Parquet
+GenericRecord record = reader.read();
+
+// Print the record
+System.out.println(record.get("id"));
+System.out.println(record.get("name"));
+System.out.println(record.get("email"));
+
+// Close the reader
+reader.close();
+
+
 
 ## Major aspects of Apache Parquet-Avro:
 
@@ -93,11 +145,6 @@ By combining Parquet's columnar storage and Avro's data serialization, Parquet-A
 
 8. **IoT data processing and analytics**: Storing and processing large amounts of IoT sensor data using Parquet-Avro, enabling efficient data analytics and insights.
 
-## Parquet-Avro API Overview
-
-- `org.apache.parquet.avro.AvroParquetWriter`: Writes Avro data to Parquet files.
-- `org.apache.parquet.avro.AvroParquetReader`: Reads Avro data from Parquet files.
-- `org.apache.parquet.avro.AvroSchemaConverter`: Converts Avro schemas to Parquet schemas.
 
 ## Writing Avro Data to Parquet Files
 
