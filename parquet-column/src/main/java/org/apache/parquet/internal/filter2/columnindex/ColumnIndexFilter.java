@@ -158,7 +158,7 @@ public class ColumnIndexFilter implements Visitor<RowRanges> {
 
   @Override
   public <T extends Comparable<T>> RowRanges visit(Contains<T> contains) {
-    return contains.filter(this, RowRanges::intersection, RowRanges::union);
+    return contains.filter(this, RowRanges::intersection, RowRanges::union, ranges -> allRows());
   }
 
   @Override

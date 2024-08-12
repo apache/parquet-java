@@ -41,8 +41,10 @@ import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
 
 public class TestFileBuilder {
-  private MessageType schema;
-  private Configuration conf;
+  private static final char[] chars = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'x', 'z', 'y'};
+  private static final ThreadLocalRandom random = ThreadLocalRandom.current();
+  private final MessageType schema;
+  private final Configuration conf;
   private Map<String, String> extraMeta = new HashMap<>();
   private int numRecord = 100000;
   private ParquetProperties.WriterVersion writerVersion = ParquetProperties.WriterVersion.PARQUET_1_0;
@@ -164,7 +166,7 @@ public class TestFileBuilder {
 
   private void addPrimitiveValueToSimpleGroup(Group g, PrimitiveType primitiveType) {
     if (primitiveType.isRepetition(Type.Repetition.REPEATED)) {
-      int listSize = ThreadLocalRandom.current().nextInt(1, 10);
+      int listSize = random.nextInt(1, 10);
       for (int i = 0; i < listSize; i++) {
         addSinglePrimitiveValueToSimpleGroup(g, primitiveType);
       }
@@ -191,39 +193,39 @@ public class TestFileBuilder {
   }
 
   private static long getInt() {
-    return ThreadLocalRandom.current().nextInt(10000);
+    return random.nextInt(10000);
   }
 
   private static long getLong() {
-    return ThreadLocalRandom.current().nextLong(100000);
+    return random.nextLong(100000);
   }
 
   private static String getString() {
-    char[] chars = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'x', 'z', 'y'};
+
     StringBuilder sb = new StringBuilder();
-    for (int i = 0; i < 100; i++) {
-      sb.append(chars[ThreadLocalRandom.current().nextInt(10)]);
+    for (int i = 0; i < random.nextInt(100); i++) {
+      sb.append(chars[random.nextInt(10)]);
     }
     return sb.toString();
   }
 
   private static float getFloat() {
-    if (ThreadLocalRandom.current().nextBoolean()) {
+    if (random.nextBoolean()) {
       return Float.NaN;
     }
-    return ThreadLocalRandom.current().nextFloat();
+    return random.nextFloat();
   }
 
   private static double getDouble() {
-    if (ThreadLocalRandom.current().nextBoolean()) {
+    if (random.nextBoolean()) {
       return Double.NaN;
     }
-    return ThreadLocalRandom.current().nextDouble();
+    return random.nextDouble();
   }
 
   public static String createTempFile(String prefix) {
     try {
-      return Files.createTempDirectory(prefix).toAbsolutePath().toString() + "/test.parquet";
+      return Files.createTempDirectory(prefix).toAbsolutePath() + "/test.parquet";
     } catch (IOException e) {
       throw new AssertionError("Unable to create temporary file", e);
     }

@@ -67,4 +67,32 @@ public class RewriteCommandTest extends ParquetFileTest {
     Assert.assertEquals(0, command.run());
     Assert.assertTrue(output.exists());
   }
+
+  @Test
+  public void testRewriteCommandWithCompression_GZIP() throws IOException {
+    File file = parquetFile();
+    RewriteCommand command = new RewriteCommand(createLogger());
+    command.inputs = Arrays.asList(file.getAbsolutePath());
+    File output = new File(getTempFolder(), "converted-1.GZIP.parquet");
+    command.output = output.getAbsolutePath();
+    command.codec = "GZIP";
+    command.setConf(new Configuration());
+
+    Assert.assertEquals(0, command.run());
+    Assert.assertTrue(output.exists());
+  }
+
+  @Test
+  public void testRewriteCommandWithCompression_gzip() throws IOException {
+    File file = parquetFile();
+    RewriteCommand command = new RewriteCommand(createLogger());
+    command.inputs = Arrays.asList(file.getAbsolutePath());
+    File output = new File(getTempFolder(), "converted-2.gzip.parquet");
+    command.output = output.getAbsolutePath();
+    command.codec = "gzip";
+    command.setConf(new Configuration());
+
+    Assert.assertEquals(0, command.run());
+    Assert.assertTrue(output.exists());
+  }
 }
