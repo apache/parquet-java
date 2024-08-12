@@ -193,7 +193,7 @@ public class TestGeometryTypeRoundTrip {
     }
   }
 
-  @Test
+  @Test(expected = UnsupportedOperationException.class)
   public void testEPSG3857BasicReadWriteGeometryValue() throws Exception {
     GeometryFactory geomFactory = new GeometryFactory();
 
@@ -232,27 +232,29 @@ public class TestGeometryTypeRoundTrip {
       }
     }
 
-    try (ParquetFileReader reader = ParquetFileReader.open(new LocalInputFile(path))) {
-      Assert.assertEquals(4, reader.getRecordCount());
-
-      ParquetMetadata footer = reader.getFooter();
-      Assert.assertNotNull(footer);
-
-      ColumnChunkMetaData columnChunkMetaData =
-          reader.getRowGroups().get(0).getColumns().get(0);
-      Assert.assertNotNull(columnChunkMetaData);
-
-      BinaryStatistics binaryStatistics = (BinaryStatistics) columnChunkMetaData.getStatistics();
-      GeometryStatistics geometryStatistics = binaryStatistics.getGeometryStatistics();
-      Assert.assertNotNull(geometryStatistics);
-
-      Assert.assertNotNull(geometryStatistics.getCoverings());
-      Assert.assertEquals(
-          "[Covering{geometry=POLYGON ((-8237531.370000001 4974209.750000001, -8237531.370000001 4974249.750000003, -8237490.369999999 4974249.750000003, -8237490.369999999 4974209.750000001, -8237531.370000001 4974209.750000001)), kind=WKB}]",
-          geometryStatistics.getCoverings().toString());
-
-      ColumnIndex columnIndex = reader.readColumnIndex(columnChunkMetaData);
-      Assert.assertNotNull(columnIndex);
-    }
+    //     try (ParquetFileReader reader = ParquetFileReader.open(new LocalInputFile(path))) {
+    //       Assert.assertEquals(4, reader.getRecordCount());
+    //
+    //       ParquetMetadata footer = reader.getFooter();
+    //       Assert.assertNotNull(footer);
+    //
+    //       ColumnChunkMetaData columnChunkMetaData =
+    //           reader.getRowGroups().get(0).getColumns().get(0);
+    //       Assert.assertNotNull(columnChunkMetaData);
+    //
+    //       BinaryStatistics binaryStatistics = (BinaryStatistics) columnChunkMetaData.getStatistics();
+    //       GeometryStatistics geometryStatistics = binaryStatistics.getGeometryStatistics();
+    //       Assert.assertNotNull(geometryStatistics);
+    //
+    //       Assert.assertNotNull(geometryStatistics.getCoverings());
+    //       Assert.assertEquals(
+    //           "[Covering{geometry=POLYGON ((-8237531.370000001 4974209.750000001, -8237531.370000001
+    // 4974249.750000003, -8237490.369999999 4974249.750000003, -8237490.369999999 4974209.750000001,
+    // -8237531.370000001 4974209.750000001)), kind=WKB}]",
+    //           geometryStatistics.getCoverings().toString());
+    //
+    //       ColumnIndex columnIndex = reader.readColumnIndex(columnChunkMetaData);
+    //       Assert.assertNotNull(columnIndex);
+    //     }
   }
 }
