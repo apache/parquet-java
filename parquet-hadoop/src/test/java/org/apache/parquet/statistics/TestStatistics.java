@@ -501,7 +501,8 @@ public class TestStatistics {
 
         PageReadStore pageReadStore;
         while ((pageReadStore = reader.readNextRowGroup()) != null) {
-          validator.validate(metadata.getFileMetaData().getSchema(), pageReadStore);
+          validator.validate(
+              metadata.getFileMetaData().getSchema(), pageReadStore, this.disableColumnStatistics);
         }
       }
     }
