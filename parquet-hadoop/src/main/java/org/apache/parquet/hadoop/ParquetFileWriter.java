@@ -1723,7 +1723,7 @@ public class ParquetFileWriter implements AutoCloseable {
   private static int footerSizeToInt(long size) {
     if ((int) size != size) {
       throw new ParquetFileWriteException(
-          "Cannot footer size larger than " + Integer.MAX_VALUE + " bytes: " + size);
+          "Cannot write footer larger than " + Integer.MAX_VALUE + " bytes: " + size);
     }
     return (int) size;
   }
