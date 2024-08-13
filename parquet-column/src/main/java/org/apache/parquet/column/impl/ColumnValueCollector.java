@@ -36,6 +36,7 @@ import org.apache.parquet.io.api.Binary;
 class ColumnValueCollector {
 
   private final ColumnDescriptor path;
+  private final boolean statisticsEnabled;
   private BloomFilterWriter bloomFilterWriter;
   private BloomFilter bloomFilter;
   private Statistics<?> statistics;
@@ -43,52 +44,67 @@ class ColumnValueCollector {
 
   ColumnValueCollector(ColumnDescriptor path, BloomFilterWriter bloomFilterWriter, ParquetProperties props) {
     this.path = path;
+    this.statisticsEnabled = props.getStatisticsEnabled(path);
     resetPageStatistics();
     initBloomFilter(bloomFilterWriter, props);
   }
 
   void resetPageStatistics() {
-    this.statistics = Statistics.createStats(path.getPrimitiveType());
+    this.statistics = statisticsEnabled ? Statistics.createStats(path.getPrimitiveType()) : null;
     this.sizeStatisticsBuilder = SizeStatistics.newBuilder(
         path.getPrimitiveType(), path.getMaxRepetitionLevel(), path.getMaxDefinitionLevel());
   }
 
   void writeNull(int repetitionLevel, int definitionLevel) {
-    statistics.incrementNumNulls();
+    if (statistics != null) {
+      statistics.incrementNumNulls();
+    }
     sizeStatisticsBuilder.add(repetitionLevel, definitionLevel);
   }
 
   void write(boolean value, int repetitionLevel, int definitionLevel) {
-    statistics.updateStats(value);
+    if (statistics != null) {
+      statistics.updateStats(value);
+    }
     sizeStatisticsBuilder.add(repetitionLevel, definitionLevel);
   }
 
   void write(int value, int repetitionLevel, int definitionLevel) {
-    statistics.updateStats(value);
+    if (statistics != null) {
+      statistics.updateStats(value);
+    }
     sizeStatisticsBuilder.add(repetitionLevel, definitionLevel);
     bloomFilter.insertHash(bloomFilter.hash(value));
   }
 
   void write(long value, int repetitionLevel, int definitionLevel) {
-    statistics.updateStats(value);
+    if (statistics != null) {
+      statistics.updateStats(value);
+    }
     sizeStatisticsBuilder.add(repetitionLevel, definitionLevel);
     bloomFilter.insertHash(bloomFilter.hash(value));
   }
 
   void write(float value, int repetitionLevel, int definitionLevel) {
-    statistics.updateStats(value);
+    if (statistics != null) {
+      statistics.updateStats(value);
+    }
     sizeStatisticsBuilder.add(repetitionLevel, definitionLevel);
     bloomFilter.insertHash(bloomFilter.hash(value));
   }
 
   void write(double value, int repetitionLevel, int definitionLevel) {
-    statistics.updateStats(value);
+    if (statistics != null) {
+      statistics.updateStats(value);
+    }
     sizeStatisticsBuilder.add(repetitionLevel, definitionLevel);
     bloomFilter.insertHash(bloomFilter.hash(value));
   }
 
   void write(Binary value, int repetitionLevel, int definitionLevel) {
-    statistics.updateStats(value);
+    if (statistics != null) {
+      statistics.updateStats(value);
+    }
     sizeStatisticsBuilder.add(repetitionLevel, definitionLevel, value);
     bloomFilter.insertHash(bloomFilter.hash(value));
   }
