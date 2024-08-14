@@ -802,24 +802,19 @@ public class ParquetRewriterTest {
         .build());
 
     List<Long> rowGroupRowCounts = ParquetFileReader.readFooter(
-            conf,
-            new Path(inputFiles.get(0).getFileName()),
-            ParquetMetadataConverter.NO_FILTER
-        )
+            conf, new Path(inputFiles.get(0).getFileName()), ParquetMetadataConverter.NO_FILTER)
         .getBlocks()
         .stream()
         .map(BlockMetaData::getRowCount)
         .collect(Collectors.toList());
 
-    for (long count: rowGroupRowCounts) {
-      inputFilesToJoinColumns.add(
-          new TestFileBuilder(conf, createSchemaR())
-            .withNumRecord((int)count)
-            .withCodec("UNCOMPRESSED")
-            .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
-            .withWriterVersion(writerVersion)
-            .build()
-      );
+    for (long count : rowGroupRowCounts) {
+      inputFilesToJoinColumns.add(new TestFileBuilder(conf, createSchemaR())
+          .withNumRecord((int) count)
+          .withCodec("UNCOMPRESSED")
+          .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
+          .withWriterVersion(writerVersion)
+          .build());
     }
   }
 
