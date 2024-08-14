@@ -739,10 +739,7 @@ public class ParquetRewriterTest {
 
   @Test
   public void testStitchTwoInputs() throws Exception {
-    // todo add a case when a number of main input files and joined input files do not match
-    //  for that we need to have a capability of specifying the number of rows in the output file
-    //  right now a withRowGroupSize doesn't allow to strictly set a number of rows in a group
-    testTwoInputFileGroups();
+    testOneInputFileManyInputFilesToJoin();
 
     List<Path> inputPathsL =
         inputFiles.stream().map(x -> new Path(x.getFileName())).collect(Collectors.toList());
@@ -795,17 +792,35 @@ public class ParquetRewriterTest {
         });
   }
 
-  private void testTwoInputFileGroups() throws IOException {
+  private void testOneInputFileManyInputFilesToJoin() throws IOException {
     inputFiles = Lists.newArrayList(new TestFileBuilder(conf, createSchemaL())
+        .withNumRecord(numRecord)
+        .withRowGroupSize(1 * 1024 * 1024)
         .withCodec("GZIP")
         .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
         .withWriterVersion(writerVersion)
         .build());
-    inputFilesToJoinColumns = Lists.newArrayList(new TestFileBuilder(conf, createSchemaR())
-        .withCodec("UNCOMPRESSED")
-        .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
-        .withWriterVersion(writerVersion)
-        .build());
+
+    List<Long> rowGroupRowCounts = ParquetFileReader.readFooter(
+            conf,
+            new Path(inputFiles.get(0).getFileName()),
+            ParquetMetadataConverter.NO_FILTER
+        )
+        .getBlocks()
+        .stream()
+        .map(BlockMetaData::getRowCount)
+        .collect(Collectors.toList());
+
+    for (long count: rowGroupRowCounts) {
+      inputFilesToJoinColumns.add(
+          new TestFileBuilder(conf, createSchemaR())
+            .withNumRecord((int)count)
+            .withCodec("UNCOMPRESSED")
+            .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
+            .withWriterVersion(writerVersion)
+            .build()
+      );
+    }
   }
 
   private MessageType createSchema() {
