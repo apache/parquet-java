@@ -177,7 +177,7 @@ public class ParquetRewriterTest {
         null);
 
     // Verify the data are not changed for the columns not pruned
-    validateColumnData(new HashSet<>(pruneColumns), Collections.emptySet(), null);
+    validateColumnData(new HashSet<>(pruneColumns), Collections.emptySet(), null, false);
 
     // Verify the page index
     validatePageIndex(new HashMap<Integer, Integer>() {
@@ -255,7 +255,7 @@ public class ParquetRewriterTest {
         null);
 
     // Verify the data are not changed for the columns not pruned
-    validateColumnData(new HashSet<>(pruneColumns), maskColumns.keySet(), null);
+    validateColumnData(new HashSet<>(pruneColumns), maskColumns.keySet(), null, false);
 
     // Verify the page index
     validatePageIndex(new HashMap<Integer, Integer>() {
@@ -336,7 +336,7 @@ public class ParquetRewriterTest {
         fileDecryptionProperties);
 
     // Verify the data are not changed for the columns not pruned
-    validateColumnData(new HashSet<>(pruneColumns), Collections.emptySet(), fileDecryptionProperties);
+    validateColumnData(new HashSet<>(pruneColumns), Collections.emptySet(), fileDecryptionProperties, false);
 
     // Verify column encryption
     ParquetMetadata metaData = getFileMetaData(outputFile, fileDecryptionProperties);
@@ -497,7 +497,7 @@ public class ParquetRewriterTest {
 
     // Verify the data are not changed for non-encrypted and non-masked columns.
     // Also make sure the masked column is nullified.
-    validateColumnData(Collections.emptySet(), maskColumns.keySet(), fileDecryptionProperties);
+    validateColumnData(Collections.emptySet(), maskColumns.keySet(), fileDecryptionProperties, false);
 
     // Verify the page index
     validatePageIndex(new HashMap<Integer, Integer>() {
@@ -587,7 +587,7 @@ public class ParquetRewriterTest {
         null);
 
     // Verify the merged data are not changed
-    validateColumnData(Collections.emptySet(), Collections.emptySet(), null);
+    validateColumnData(Collections.emptySet(), Collections.emptySet(), null, false);
 
     // Verify the page index
     validatePageIndex(new HashMap<Integer, Integer>() {
@@ -738,8 +738,8 @@ public class ParquetRewriterTest {
   }
 
   @Test
-  public void testStitchTwoInputs() throws Exception {
-    testOneInputFileManyInputFilesToJoin();
+  public void testOneInputFileManyInputFilesToJoin() throws Exception {
+    testOneInputFileManyInputFilesToJoinSetup();
 
     List<Path> inputPathsL =
         inputFiles.stream().map(x -> new Path(x.getFileName())).collect(Collectors.toList());
@@ -792,7 +792,7 @@ public class ParquetRewriterTest {
         });
   }
 
-  private void testOneInputFileManyInputFilesToJoin() throws IOException {
+  private void testOneInputFileManyInputFilesToJoinSetup() throws IOException {
     inputFiles = Lists.newArrayList(new TestFileBuilder(conf, createSchemaL())
         .withNumRecord(numRecord)
         .withRowGroupSize(1 * 1024 * 1024)
@@ -852,12 +852,6 @@ public class ParquetRewriterTest {
             "Links",
             new PrimitiveType(REPEATED, BINARY, "Backward"),
             new PrimitiveType(REPEATED, BINARY, "Forward")));
-  }
-
-  private void validateColumnData(
-      Set<String> prunePaths, Set<String> nullifiedPaths, FileDecryptionProperties fileDecryptionProperties)
-      throws IOException {
-    validateColumnData(prunePaths, nullifiedPaths, fileDecryptionProperties, false);
   }
 
   private void validateColumnData(
