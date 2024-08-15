@@ -16,17 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.parquet.hadoop;
-
-import org.apache.parquet.ParquetRuntimeException;
+package org.apache.parquet;
 
 /**
- * RuntimeException occurs when parquet file writing.
+ * RuntimeException occurs when size overflow.
  */
-public class ParquetFileWriteException extends ParquetRuntimeException {
+public class ParquetSizeOverflowException extends ParquetRuntimeException {
   private static final long serialVersionUID = 1L;
 
-  public ParquetFileWriteException(String message) {
+  public ParquetSizeOverflowException() {
+    super();
+  }
+
+  public ParquetSizeOverflowException(String message) {
     super(message);
   }
 }
