@@ -110,7 +110,7 @@ public class ParquetRewriterTest {
   private final boolean usingHadoop;
 
   private List<EncryptionTestFile> inputFiles = Lists.newArrayList();
-  private List<EncryptionTestFile> inputFilesToJoinColumns = Lists.newArrayList();
+  private List<EncryptionTestFile> inputFilesToJoin = Lists.newArrayList();
   private String outputFile = null;
   private ParquetRewriter rewriter = null;
 
@@ -197,7 +197,7 @@ public class ParquetRewriterTest {
   @Before
   public void setUp() {
     outputFile = TestFileBuilder.createTempFile("test");
-    inputFilesToJoinColumns = new ArrayList<>();
+    inputFilesToJoin = new ArrayList<>();
   }
 
   @Test
@@ -607,6 +607,15 @@ public class ParquetRewriterTest {
 
   @Test(expected = InvalidSchemaException.class)
   public void testMergeTwoFilesWithDifferentSchema() throws Exception {
+    testMergeTwoFilesWithDifferentSchemaSetup(true);
+  }
+
+  @Test(expected = InvalidSchemaException.class)
+  public void testMergeTwoFilesToJoinWithDifferentSchema() throws Exception {
+    testMergeTwoFilesWithDifferentSchemaSetup(false);
+  }
+
+  public void testMergeTwoFilesWithDifferentSchemaSetup(boolean wrongSchemaInInputFile) throws Exception {
     MessageType schema1 = new MessageType(
         "schema",
         new PrimitiveType(OPTIONAL, INT64, "DocId"),
@@ -629,18 +638,32 @@ public class ParquetRewriterTest {
         .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
         .withWriterVersion(writerVersion)
         .build());
-    inputFiles.add(new TestFileBuilder(conf, schema2)
+    inputFilesToJoin.add(new TestFileBuilder(conf, schema1)
         .withNumRecord(numRecord)
         .withCodec("UNCOMPRESSED")
         .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
         .withWriterVersion(writerVersion)
         .build());
-
-    List<Path> inputPaths = new ArrayList<>();
-    for (EncryptionTestFile inputFile : inputFiles) {
-      inputPaths.add(new Path(inputFile.getFileName()));
+    if (wrongSchemaInInputFile) {
+      inputFiles.add(new TestFileBuilder(conf, schema2)
+          .withNumRecord(numRecord)
+          .withCodec("UNCOMPRESSED")
+          .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
+          .withWriterVersion(writerVersion)
+          .build());
+    } else {
+      inputFilesToJoin.add(new TestFileBuilder(conf, schema2)
+          .withNumRecord(numRecord)
+          .withCodec("UNCOMPRESSED")
+          .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
+          .withWriterVersion(writerVersion)
+          .build());
     }
-    RewriteOptions.Builder builder = createBuilder(inputPaths);
+
+    RewriteOptions.Builder builder = createBuilder(
+        inputFiles.stream().map(x -> new Path(x.getFileName())).collect(Collectors.toList()),
+        inputFilesToJoin.stream().map(x -> new Path(x.getFileName())).collect(Collectors.toList()),
+        false);
     RewriteOptions options = builder.indexCacheStrategy(indexCacheStrategy).build();
 
     // This should throw an exception because the schemas are different
@@ -743,9 +766,8 @@ public class ParquetRewriterTest {
 
     List<Path> inputPathsL =
         inputFiles.stream().map(x -> new Path(x.getFileName())).collect(Collectors.toList());
-    List<Path> inputPathsR = inputFilesToJoinColumns.stream()
-        .map(y -> new Path(y.getFileName()))
-        .collect(Collectors.toList());
+    List<Path> inputPathsR =
+        inputFilesToJoin.stream().map(y -> new Path(y.getFileName())).collect(Collectors.toList());
     RewriteOptions.Builder builder = createBuilder(inputPathsL, inputPathsR, true);
     RewriteOptions options = builder.indexCacheStrategy(indexCacheStrategy).build();
 
@@ -809,7 +831,7 @@ public class ParquetRewriterTest {
         .collect(Collectors.toList());
 
     for (long count : rowGroupRowCounts) {
-      inputFilesToJoinColumns.add(new TestFileBuilder(conf, createSchemaR())
+      inputFilesToJoin.add(new TestFileBuilder(conf, createSchemaR())
           .withNumRecord((int) count)
           .withCodec("UNCOMPRESSED")
           .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
@@ -868,7 +890,7 @@ public class ParquetRewriterTest {
     List<SimpleGroup> filesMain = inputFiles.stream()
         .flatMap(x -> Arrays.stream(x.getFileContent()))
         .collect(Collectors.toList());
-    List<SimpleGroup> filesJoined = inputFilesToJoinColumns.stream()
+    List<SimpleGroup> filesJoined = inputFilesToJoin.stream()
         .flatMap(x -> Arrays.stream(x.getFileContent()))
         .collect(Collectors.toList());
     BiFunction<String, Integer, Group> groups = (name, rowIdx) -> {
@@ -1089,8 +1111,8 @@ public class ParquetRewriterTest {
 
   private void validateCreatedBy() throws Exception {
     Set<String> createdBySet = new HashSet<>();
-    List<EncryptionTestFile> inFiles = Stream.concat(inputFiles.stream(), inputFilesToJoinColumns.stream())
-        .collect(Collectors.toList());
+    List<EncryptionTestFile> inFiles =
+        Stream.concat(inputFiles.stream(), inputFilesToJoin.stream()).collect(Collectors.toList());
     for (EncryptionTestFile inputFile : inFiles) {
       ParquetMetadata pmd = getFileMetaData(inputFile.getFileName(), null);
       createdBySet.add(pmd.getFileMetaData().getCreatedBy());
@@ -1133,8 +1155,8 @@ public class ParquetRewriterTest {
 
   private Map<ColumnPath, List<BloomFilter>> allInputBloomFilters() throws Exception {
     Map<ColumnPath, List<BloomFilter>> inputBloomFilters = new HashMap<>();
-    List<EncryptionTestFile> files = Stream.concat(inputFiles.stream(), inputFilesToJoinColumns.stream())
-        .collect(Collectors.toList());
+    List<EncryptionTestFile> files =
+        Stream.concat(inputFiles.stream(), inputFilesToJoin.stream()).collect(Collectors.toList());
     for (EncryptionTestFile inputFile : files) {
       Map<ColumnPath, List<BloomFilter>> bloomFilters = allBloomFilters(inputFile.getFileName(), null);
       for (Map.Entry<ColumnPath, List<BloomFilter>> entry : bloomFilters.entrySet()) {
