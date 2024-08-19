@@ -408,7 +408,7 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
     } else if (value instanceof CharSequence) {
       return Binary.fromCharSequence((CharSequence) value);
     }
-    return Binary.fromCharSequence(value.toString());
+    return Binary.fromString(value.toString());
   }
 
   private static GenericData getDataModel(ParquetConfiguration conf, Schema schema) {
