@@ -96,10 +96,9 @@ final class ColumnWriterV2 extends ColumnWriterBase {
     // otherwise)
     BytesInput bytes = values.getBytes();
     Encoding encoding = values.getEncoding();
-    int numNulls = statistics == null ? -1 : Math.toIntExact(statistics.getNumNulls());
     pageWriter.writePageV2(
         rowCount,
-        numNulls,
+        Math.toIntExact(statistics.getNumNulls()),
         valueCount,
         repetitionLevels.getBytes(),
         definitionLevels.getBytes(),
