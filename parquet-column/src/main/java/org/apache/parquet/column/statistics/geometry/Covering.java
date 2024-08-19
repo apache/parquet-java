@@ -21,18 +21,15 @@ package org.apache.parquet.column.statistics.geometry;
 import java.nio.ByteBuffer;
 import org.apache.parquet.Preconditions;
 import org.locationtech.jts.geom.Geometry;
-import org.locationtech.jts.io.ParseException;
-import org.locationtech.jts.io.WKBReader;
 
-public class Covering {
+public abstract class Covering {
   public static final String DEFAULT_COVERING_KIND = "WKB";
 
-  protected final String kind;
+  protected String kind;
   protected ByteBuffer value;
 
   public Covering(ByteBuffer value, String kind) {
     Preconditions.checkArgument(kind != null, "kind cannot be null");
-    Preconditions.checkArgument(kind.equalsIgnoreCase(DEFAULT_COVERING_KIND), "kind only accepts WKB");
     Preconditions.checkArgument(value != null, "value cannot be null");
     this.value = value;
     this.kind = kind;
@@ -42,8 +39,17 @@ public class Covering {
     return value;
   }
 
+  public void setValue(ByteBuffer value) {
+    this.value = value;
+  }
+
   public String getKind() {
     return kind;
+  }
+
+  public void setKind(String kind) {
+    Preconditions.checkArgument(kind != null, "kind cannot be null");
+    this.kind = kind;
   }
 
   void update(Geometry geom) {
@@ -66,19 +72,5 @@ public class Covering {
         "Abort is not supported for " + this.getClass().getSimpleName());
   }
 
-  public Covering copy() {
-    return new Covering(value.duplicate(), kind);
-  }
-
-  @Override
-  public String toString() {
-    String geomText;
-    try {
-      geomText = new WKBReader().read(value.array()).toText();
-    } catch (ParseException e) {
-      geomText = "Invalid Geometry";
-    }
-
-    return "Covering{" + "geometry=" + geomText + ", kind=" + kind + '}';
-  }
+  public abstract Covering copy();
 }

@@ -89,6 +89,8 @@ public class BoundingBox {
     zMax = Math.max(zMax, maxZ);
   }
 
+  // Method to update the bounding box with the coordinates of a Geometry object
+  // geometry can be changed by this method
   void update(Geometry geometry) {
     GeometryUtils.normalizeLongitude(geometry);
     Envelope envelope = geometry.getEnvelopeInternal();
@@ -115,14 +117,7 @@ public class BoundingBox {
     update(minX, maxX, minY, maxY, minZ, maxZ);
   }
 
-  // Method to merge a Geometry object into this bounding box
-  public void merge(Geometry geometry) {
-    Preconditions.checkArgument(geometry != null, "Cannot merge with null geometry");
-    GeometryUtils.normalizeLongitude(geometry);
-    update(geometry);
-  }
-
-  public void merge(BoundingBox other) {
+  void merge(BoundingBox other) {
     Preconditions.checkArgument(other != null, "Cannot merge with null bounding box");
     xMin = Math.min(xMin, other.xMin);
     xMax = Math.max(xMax, other.xMax);

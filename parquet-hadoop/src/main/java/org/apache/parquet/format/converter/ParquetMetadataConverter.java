@@ -24,6 +24,7 @@ import static org.apache.parquet.format.Util.readColumnMetaData;
 import static org.apache.parquet.format.Util.readFileMetaData;
 import static org.apache.parquet.format.Util.writeColumnMetaData;
 import static org.apache.parquet.format.Util.writePageHeader;
+import static org.apache.parquet.schema.LogicalTypeAnnotation.Edges.PLANAR;
 
 import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
@@ -51,6 +52,7 @@ import org.apache.parquet.Preconditions;
 import org.apache.parquet.column.EncodingStats;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.statistics.BinaryStatistics;
+import org.apache.parquet.column.statistics.geometry.EnvelopeCovering;
 import org.apache.parquet.column.statistics.geometry.GeometryTypes;
 import org.apache.parquet.column.values.bloomfilter.BloomFilter;
 import org.apache.parquet.crypto.AesCipher;
@@ -1003,8 +1005,10 @@ public class ParquetMetadataConverter {
     if (formatGeomStats.isSetCoverings()) {
       List<Covering> formatCoverings = formatGeomStats.getCoverings();
       for (Covering formatCovering : formatCoverings) {
-        coverings.add(new org.apache.parquet.column.statistics.geometry.Covering(
-            ByteBuffer.wrap(formatCovering.getValue()), formatCovering.getKind()));
+        EnvelopeCovering envelopeCovering = new EnvelopeCovering();
+        envelopeCovering.setKind(formatCovering.getKind());
+        envelopeCovering.setValue(ByteBuffer.wrap(formatCovering.getValue()));
+        coverings.add(envelopeCovering);
       }
     }
     org.apache.parquet.column.statistics.geometry.GeometryTypes geometryTypes = null;
@@ -1380,7 +1384,7 @@ public class ParquetMetadataConverter {
     }
     switch (edge) {
       case PLANAR:
-        return LogicalTypeAnnotation.Edges.PLANAR;
+        return PLANAR;
       case SPHERICAL:
         return LogicalTypeAnnotation.Edges.SPHERICAL;
       default:

@@ -21,6 +21,7 @@ package org.apache.parquet.column.statistics.geometry;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.List;
+import org.apache.parquet.Preconditions;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Envelope;
@@ -29,8 +30,12 @@ import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.io.ParseException;
 import org.locationtech.jts.io.WKBReader;
 import org.locationtech.jts.io.WKBWriter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class EnvelopeCovering extends Covering {
+
+  private static final Logger LOG = LoggerFactory.getLogger(EnvelopeCovering.class);
 
   // The POC only supports EPSG:3857 and EPSG:4326 at the moment
   private static final List<String> SUPPORTED_CRS = Arrays.asList("EPSG:3857", "EPSG:4326");
@@ -39,20 +44,58 @@ public class EnvelopeCovering extends Covering {
   private final WKBReader reader = new WKBReader();
   private final WKBWriter writer = new WKBWriter();
   private final GeometryFactory factory = new GeometryFactory();
-  private final LogicalTypeAnnotation.Edges edges;
-  private final String crs;
+  private LogicalTypeAnnotation.Edges edges;
+  private String crs;
 
   public EnvelopeCovering(LogicalTypeAnnotation.Edges edges, String crs) {
     super(EMPTY, DEFAULT_COVERING_KIND);
     this.edges = edges;
     this.crs = crs;
-    validateSupportedCrs(crs);
+    validateSupportedCrs(this.crs);
+    validateKind(this.kind);
   }
 
-  private void validateSupportedCrs(String crs) {
+  public EnvelopeCovering() {
+    super(EMPTY, DEFAULT_COVERING_KIND);
+  }
+
+  private static void validateKind(String kind) {
+    Preconditions.checkArgument(kind.equalsIgnoreCase(DEFAULT_COVERING_KIND), "kind only accepts WKB");
+  }
+
+  private static void validateSupportedCrs(String crs) {
     if (!SUPPORTED_CRS.contains(crs)) {
-      throw new IllegalArgumentException(
-          "Unsupported CRS: " + crs + ". Supported CRS are EPSG:3857 and EPSG:4326.");
+      LOG.warn("Unsupported CRS: {}. Supported CRS are EPSG:3857 and EPSG:4326.", crs);
+    }
+  }
+
+  @Override
+  public String getKind() {
+    return kind + "|" + crs + "|" + edges;
+  }
+
+  @Override
+  public void setKind(String kind) {
+    if (kind == null || kind.isEmpty()) {
+      throw new IllegalArgumentException("Kind cannot be null or empty");
+    }
+
+    // Split the input string by the "|" delimiter
+    String[] parts = kind.split("\\|");
+
+    // Ensure we have exactly 3 parts: kind, crs, and edges
+    if (parts.length != 3) {
+      throw new IllegalArgumentException("Invalid kind format. Expected format: 'kind|crs|edges'");
+    }
+
+    // Assign the values to the respective fields
+    this.kind = parts[0];
+    this.crs = parts[1];
+
+    try {
+      this.edges = LogicalTypeAnnotation.Edges.valueOf(parts[2]);
+    } catch (IllegalArgumentException e) {
+      throw new IllegalArgumentException("Invalid edges value: " + parts[2], e);
     }
   }
 
@@ -166,5 +209,17 @@ public class EnvelopeCovering extends Covering {
     EnvelopeCovering copy = new EnvelopeCovering(edges, crs);
     copy.value = value == null ? null : ByteBuffer.wrap(value.array());
     return copy;
+  }
+
+  @Override
+  public String toString() {
+    String geomText;
+    try {
+      geomText = new WKBReader().read(value.array()).toText();
+    } catch (ParseException e) {
+      geomText = "Invalid Geometry";
+    }
+
+    return "Covering{" + "geometry=" + geomText + ", kind=" + kind + '}';
   }
 }

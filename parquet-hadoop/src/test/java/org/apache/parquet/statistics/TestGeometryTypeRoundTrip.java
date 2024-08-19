@@ -21,7 +21,8 @@ package org.apache.parquet.statistics;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.geometryType;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 
-import java.io.*;
+import java.io.File;
+import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
 import org.apache.hadoop.conf.Configuration;
@@ -193,7 +194,7 @@ public class TestGeometryTypeRoundTrip {
     }
   }
 
-  @Test(expected = UnsupportedOperationException.class)
+  @Test
   public void testEPSG3857BasicReadWriteGeometryValue() throws Exception {
     GeometryFactory geomFactory = new GeometryFactory();
 

@@ -23,7 +23,7 @@ import org.locationtech.jts.geom.CoordinateSequence;
 import org.locationtech.jts.geom.CoordinateSequenceFilter;
 import org.locationtech.jts.geom.Geometry;
 
-public class GeometryUtils {
+class GeometryUtils {
 
   public static void normalizeLongitude(Geometry geometry) {
     if (geometry == null || geometry.isEmpty()) {

@@ -120,8 +120,7 @@ public class GeometryStatistics {
   private boolean supportsCovering() {
     // This version (POC) assumes only build coverings for planar edges
     // In case of spherical edges, no coverings are built
-    //     return edges == LogicalTypeAnnotation.Edges.PLANAR;
-    return true;
+    return edges == LogicalTypeAnnotation.Edges.PLANAR;
   }
 
   public void merge(GeometryStatistics other) {

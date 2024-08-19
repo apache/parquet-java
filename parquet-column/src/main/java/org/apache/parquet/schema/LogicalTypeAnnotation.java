@@ -1184,6 +1184,8 @@ public abstract class LogicalTypeAnnotation {
         sb.append(",");
         sb.append(crs);
       }
+      // TODO: Fix it: there's a high probability that crs itself contains comma,
+      //  so this may introduce ambiguity to the generated type parameters.
       if (metadata != null) {
         sb.append(",");
         sb.append(metadata);
