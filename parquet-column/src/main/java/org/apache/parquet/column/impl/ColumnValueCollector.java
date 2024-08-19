@@ -50,61 +50,49 @@ class ColumnValueCollector {
   }
 
   void resetPageStatistics() {
-    this.statistics = statisticsEnabled ? Statistics.createStats(path.getPrimitiveType()) : null;
+    this.statistics = statisticsEnabled
+        ? Statistics.createStats(path.getPrimitiveType())
+        : Statistics.noopStats(path.getPrimitiveType());
     this.sizeStatisticsBuilder = SizeStatistics.newBuilder(
         path.getPrimitiveType(), path.getMaxRepetitionLevel(), path.getMaxDefinitionLevel());
   }
 
   void writeNull(int repetitionLevel, int definitionLevel) {
-    if (statistics != null) {
-      statistics.incrementNumNulls();
-    }
+    statistics.incrementNumNulls();
     sizeStatisticsBuilder.add(repetitionLevel, definitionLevel);
   }
 
   void write(boolean value, int repetitionLevel, int definitionLevel) {
-    if (statistics != null) {
-      statistics.updateStats(value);
-    }
+    statistics.updateStats(value);
     sizeStatisticsBuilder.add(repetitionLevel, definitionLevel);
   }
 
   void write(int value, int repetitionLevel, int definitionLevel) {
-    if (statistics != null) {
-      statistics.updateStats(value);
-    }
+    statistics.updateStats(value);
     sizeStatisticsBuilder.add(repetitionLevel, definitionLevel);
     bloomFilter.insertHash(bloomFilter.hash(value));
   }
 
   void write(long value, int repetitionLevel, int definitionLevel) {
-    if (statistics != null) {
-      statistics.updateStats(value);
-    }
+    statistics.updateStats(value);
     sizeStatisticsBuilder.add(repetitionLevel, definitionLevel);
     bloomFilter.insertHash(bloomFilter.hash(value));
   }
 
   void write(float value, int repetitionLevel, int definitionLevel) {
-    if (statistics != null) {
-      statistics.updateStats(value);
-    }
+    statistics.updateStats(value);
     sizeStatisticsBuilder.add(repetitionLevel, definitionLevel);
     bloomFilter.insertHash(bloomFilter.hash(value));
   }
 
   void write(double value, int repetitionLevel, int definitionLevel) {
-    if (statistics != null) {
-      statistics.updateStats(value);
-    }
+    statistics.updateStats(value);
     sizeStatisticsBuilder.add(repetitionLevel, definitionLevel);
     bloomFilter.insertHash(bloomFilter.hash(value));
   }
 
   void write(Binary value, int repetitionLevel, int definitionLevel) {
-    if (statistics != null) {
-      statistics.updateStats(value);
-    }
+    statistics.updateStats(value);
     sizeStatisticsBuilder.add(repetitionLevel, definitionLevel, value);
     bloomFilter.insertHash(bloomFilter.hash(value));
   }
