@@ -139,7 +139,6 @@
       <groupId>org.locationtech.jts</groupId>
       <artifactId>jts-core</artifactId>
       <version>${jts.version}</version>
-      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>io.airlift</groupId>

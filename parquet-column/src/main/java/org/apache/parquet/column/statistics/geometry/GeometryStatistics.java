@@ -159,9 +159,23 @@ public class GeometryStatistics {
 
   @Override
   public String toString() {
+    StringBuilder coveringsString = new StringBuilder();
+    if (coverings != null && !coverings.isEmpty()) {
+      coveringsString.append("[");
+      for (Covering covering : coverings) {
+        coveringsString.append(covering.toString()).append(", ");
+      }
+      if (coveringsString.length() > 1) {
+        coveringsString.setLength(coveringsString.length() - 2); // Remove the last ", "
+      }
+      coveringsString.append("]");
+    } else {
+      coveringsString.append("[]"); // Handle empty coverings case
+    }
+
     return "GeometryStatistics{" + "boundingBox="
         + boundingBox + ", coverings="
-        + coverings + ", geometryTypes="
+        + coveringsString + ", geometryTypes="
         + geometryTypes + '}';
   }
 }
