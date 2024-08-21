@@ -74,7 +74,7 @@
     <javax.annotation.version>1.3.2</javax.annotation.version>
     <spotless.version>2.30.0</spotless.version>
     <shade.prefix>shaded.parquet</shade.prefix>
-    <hadoop.version>3.3.6</hadoop.version>
+    <hadoop.version>3.4.1</hadoop.version>
     <parquet.format.version>2.10.0</parquet.format.version>
     <previous.version>1.13.1</previous.version>
     <thrift.executable>thrift</thrift.executable>
@@ -658,6 +658,58 @@
         <module>parquet-plugins/parquet-encoding-vector</module>
         <module>parquet-plugins/parquet-plugins-benchmarks</module>
       </modules>
+    </profile>
+
+    <profile>
+      <id>asf-staging</id>
+      <activation>
+         <activeByDefault>true</activeByDefault>
+      </activation>
+      <properties>
+        <!-- override point for ASF staging/snapshot repos -->
+        <asf.staging>https://repository.apache.org/content/groups/staging/</asf.staging>
+        <asf.snapshots>https://repository.apache.org/content/repositories/snapshots/</asf.snapshots>
+      </properties>
+
+      <pluginRepositories>
+        <pluginRepository>
+          <id>ASF Staging</id>
+          <url>${asf.staging}</url>
+        </pluginRepository>
+        <pluginRepository>
+          <id>ASF Snapshots</id>
+          <url>${asf.snapshots}</url>
+          <snapshots>
+            <enabled>true</enabled>
+          </snapshots>
+          <releases>
+            <enabled>false</enabled>
+          </releases>
+        </pluginRepository>
+
+      </pluginRepositories>
+      <repositories>
+        <repository>
+          <id>ASF Staging</id>
+          <url>${asf.staging}</url>
+          <snapshots>
+            <enabled>true</enabled>
+          </snapshots>
+          <releases>
+            <enabled>true</enabled>
+          </releases>
+        </repository>
+        <repository>
+          <id>ASF Snapshots</id>
+          <url>${asf.snapshots}</url>
+          <snapshots>
+            <enabled>true</enabled>
+          </snapshots>
+          <releases>
+            <enabled>true</enabled>
+          </releases>
+        </repository>
+      </repositories>
     </profile>
   </profiles>
 </project>
