@@ -22,6 +22,7 @@ import static java.util.Optional.empty;
 import static java.util.Optional.of;
 import static org.apache.parquet.avro.AvroReadSupport.READ_INT96_AS_FIXED;
 import static org.apache.parquet.avro.AvroReadSupport.READ_INT96_AS_FIXED_DEFAULT;
+import static org.apache.parquet.avro.AvroRecordConverter.getRuntimeAvroVersion;
 import static org.apache.parquet.avro.AvroWriteSupport.WRITE_FIXED_AS_INT96;
 import static org.apache.parquet.avro.AvroWriteSupport.WRITE_OLD_LIST_STRUCTURE;
 import static org.apache.parquet.avro.AvroWriteSupport.WRITE_OLD_LIST_STRUCTURE_DEFAULT;
@@ -488,15 +489,20 @@ public class AvroSchemaConverter {
       return timeType(true, MICROS);
     } else if (logicalType instanceof LogicalTypes.TimestampMillis) {
       return timestampType(true, MILLIS);
-    } else if (logicalType instanceof LogicalTypes.LocalTimestampMillis) {
-      return timestampType(false, MILLIS);
     } else if (logicalType instanceof LogicalTypes.TimestampMicros) {
       return timestampType(true, MICROS);
-    } else if (logicalType instanceof LogicalTypes.LocalTimestampMicros) {
-      return timestampType(false, MICROS);
     } else if (logicalType.getName().equals(LogicalTypes.uuid().getName()) && writeParquetUUID) {
       return uuidType();
     }
+
+    if (avroVersionSupportsLocalTimestampTypes()) {
+      if (logicalType instanceof LogicalTypes.LocalTimestampMillis) {
+        return timestampType(false, MILLIS);
+      } else if (logicalType instanceof LogicalTypes.LocalTimestampMicros) {
+        return timestampType(false, MICROS);
+      }
+    }
+
     return null;
   }
 
@@ -538,7 +544,7 @@ public class AvroSchemaConverter {
             LogicalTypeAnnotation.TimeUnit unit = timestampLogicalType.getUnit();
             boolean isAdjustedToUTC = timestampLogicalType.isAdjustedToUTC();
 
-            if (isAdjustedToUTC) {
+            if (isAdjustedToUTC || !avroVersionSupportsLocalTimestampTypes()) {
               switch (unit) {
                 case MILLIS:
                   return of(LogicalTypes.timestampMillis());
@@ -604,5 +610,15 @@ public class AvroSchemaConverter {
   private static String namespace(String name, Map<String, Integer> names) {
     Integer nameCount = names.merge(name, 1, (oldValue, value) -> oldValue + 1);
     return nameCount > 1 ? name + nameCount : null;
+  }
+
+  /* Avro <= 1.9 does not support conversions to LocalTimestamp{Micros, Millis} classes */
+  private static boolean avroVersionSupportsLocalTimestampTypes() {
+    final String avroVersion = getRuntimeAvroVersion();
+
+    return avroVersion == null
+        || !(avroVersion.startsWith("1.7.")
+            || avroVersion.startsWith("1.8.")
+            || avroVersion.startsWith("1.9."));
   }
 }

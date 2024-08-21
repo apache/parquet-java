@@ -44,7 +44,9 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT96;
 import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
 import static org.junit.Assert.assertEquals;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
 
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import com.google.common.io.Resources;
 import java.util.Arrays;
@@ -53,18 +55,33 @@ import org.apache.avro.JsonProperties;
 import org.apache.avro.LogicalTypes;
 import org.apache.avro.Schema;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
+import org.apache.parquet.schema.Type;
 import org.apache.parquet.schema.Types;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.Mockito;
+import org.powermock.api.mockito.PowerMockito;
+import org.powermock.core.classloader.annotations.PrepareForTest;
+import org.powermock.modules.junit4.PowerMockRunner;
 
+@RunWith(PowerMockRunner.class)
+@PrepareForTest(AvroRecordConverter.class)
 public class TestAvroSchemaConverter {
 
   private static final Configuration NEW_BEHAVIOR = new Configuration(false);
+
+  @Before
+  public void setupMockito() {
+    PowerMockito.mockStatic(AvroRecordConverter.class, CALLS_REAL_METHODS);
+  }
 
   @BeforeClass
   public static void setupConf() {
@@ -665,6 +682,27 @@ public class TestAvroSchemaConverter {
     testRoundTripConversion(
         expected, "message myrecord {\n" + "  required int64 timestamp (TIMESTAMP(MILLIS,true));\n" + "}\n");
 
+    // Test that conversions for timestamp types only use APIs that are available in the user's Avro version
+    for (String avroVersion : ImmutableSet.of("1.7.0", "1.8.0", "1.9.0", "1.10.0", "1.11.0")) {
+      Mockito.when(AvroRecordConverter.getRuntimeAvroVersion()).thenReturn(avroVersion);
+      final Schema converted = new AvroSchemaConverter()
+          .convert(Types.buildMessage()
+              .addField(Types.primitive(INT64, Type.Repetition.REQUIRED)
+                  .as(LogicalTypeAnnotation.timestampType(
+                      false, LogicalTypeAnnotation.TimeUnit.MILLIS))
+                  .length(1)
+                  .named("timestamp_type"))
+              .named("TestAvro"));
+
+      assertEquals(
+          avroVersion.matches("1\\.[789]\\.\\d+") ? "timestamp-millis" : "local-timestamp-millis",
+          converted
+              .getField("timestamp_type")
+              .schema()
+              .getLogicalType()
+              .getName());
+    }
+
     for (PrimitiveTypeName primitive :
         new PrimitiveTypeName[] {INT32, INT96, FLOAT, DOUBLE, BOOLEAN, BINARY, FIXED_LEN_BYTE_ARRAY}) {
       final PrimitiveType type;
@@ -728,6 +766,27 @@ public class TestAvroSchemaConverter {
           "Should not allow TIMESTAMP_MICROS with " + primitive,
           IllegalArgumentException.class,
           () -> new AvroSchemaConverter().convert(message(type)));
+    }
+
+    // Test that conversions for timestamp types only use APIs that are available in the user's Avro version
+    for (String avroVersion : ImmutableSet.of("1.7.0", "1.8.0", "1.9.0", "1.10.0", "1.11.0")) {
+      Mockito.when(AvroRecordConverter.getRuntimeAvroVersion()).thenReturn(avroVersion);
+      final Schema converted = new AvroSchemaConverter()
+          .convert(Types.buildMessage()
+              .addField(Types.primitive(INT64, Type.Repetition.REQUIRED)
+                  .as(LogicalTypeAnnotation.timestampType(
+                      false, LogicalTypeAnnotation.TimeUnit.MICROS))
+                  .length(1)
+                  .named("timestamp_type"))
+              .named("TestAvro"));
+
+      assertEquals(
+          avroVersion.matches("1\\.[789]\\.\\d+") ? "timestamp-micros" : "local-timestamp-micros",
+          converted
+              .getField("timestamp_type")
+              .schema()
+              .getLogicalType()
+              .getName());
     }
   }
 
