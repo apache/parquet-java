@@ -58,6 +58,16 @@
       <name>Jitpack.io repository</name>
       <!-- needed for brotli-codec -->
     </repository>
+    <repository>
+      <id>ASF Staging</id>
+      <url>https://repository.apache.org/content/groups/staging/</url>
+      <snapshots>
+        <enabled>true</enabled>
+      </snapshots>
+      <releases>
+        <enabled>true</enabled>
+      </releases>
+    </repository>
   </repositories>
 
   <properties>
@@ -658,58 +668,6 @@
         <module>parquet-plugins/parquet-encoding-vector</module>
         <module>parquet-plugins/parquet-plugins-benchmarks</module>
       </modules>
-    </profile>
-
-    <profile>
-      <id>asf-staging</id>
-      <activation>
-         <activeByDefault>true</activeByDefault>
-      </activation>
-      <properties>
-        <!-- override point for ASF staging/snapshot repos -->
-        <asf.staging>https://repository.apache.org/content/groups/staging/</asf.staging>
-        <asf.snapshots>https://repository.apache.org/content/repositories/snapshots/</asf.snapshots>
-      </properties>
-
-      <pluginRepositories>
-        <pluginRepository>
-          <id>ASF Staging</id>
-          <url>${asf.staging}</url>
-        </pluginRepository>
-        <pluginRepository>
-          <id>ASF Snapshots</id>
-          <url>${asf.snapshots}</url>
-          <snapshots>
-            <enabled>true</enabled>
-          </snapshots>
-          <releases>
-            <enabled>false</enabled>
-          </releases>
-        </pluginRepository>
-
-      </pluginRepositories>
-      <repositories>
-        <repository>
-          <id>ASF Staging</id>
-          <url>${asf.staging}</url>
-          <snapshots>
-            <enabled>true</enabled>
-          </snapshots>
-          <releases>
-            <enabled>true</enabled>
-          </releases>
-        </repository>
-        <repository>
-          <id>ASF Snapshots</id>
-          <url>${asf.snapshots}</url>
-          <snapshots>
-            <enabled>true</enabled>
-          </snapshots>
-          <releases>
-            <enabled>true</enabled>
-          </releases>
-        </repository>
-      </repositories>
     </profile>
   </profiles>
 </project>
