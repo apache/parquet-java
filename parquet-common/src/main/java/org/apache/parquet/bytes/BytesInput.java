@@ -126,6 +126,25 @@ public abstract class BytesInput {
   }
 
   /**
+   * @param intValues the ints to write
+   * @return a BytesInput that will write 4 * number of intValues bytes in little endian
+   */
+  public static BytesInput fromInts(int... intValues) {
+    int bytesLen = 4 * intValues.length;
+    CapacityByteArrayOutputStream out = CapacityByteArrayOutputStream.withTargetNumSlabs(bytesLen, bytesLen, 0);
+    try {
+      for (int i : intValues) {
+        BytesUtils.writeIntLittleEndian(out, i);
+      }
+    } catch (IOException e) {
+      // this can't happen, because CapacityByteArrayOutputStream won't throw exception
+      out.close();
+      throw new RuntimeException(e);
+    }
+    return from(out);
+  }
+
+  /**
    * @param intValue the int to write
    * @return a BytesInput that will write 4 bytes in little endian
    */
