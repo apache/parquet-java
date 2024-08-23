@@ -850,7 +850,8 @@ public class ParquetMetadataConverter {
       org.apache.parquet.column.statistics.geometry.GeometryStatistics stats, GeometryStatistics formatStats) {
     List<Covering> formatCoverings = new ArrayList<>();
 
-    List<org.apache.parquet.column.statistics.geometry.Covering> statCoverings = stats.getCoverings();
+    List<org.apache.parquet.column.statistics.geometry.Covering> statCoverings =
+        new ArrayList<>(stats.getCoverings().values());
 
     for (org.apache.parquet.column.statistics.geometry.Covering statCovering : statCoverings) {
       Covering formatCovering = new Covering();
