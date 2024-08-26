@@ -33,18 +33,15 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.function.BiFunction;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.hadoop.conf.Configuration;
@@ -164,7 +161,7 @@ public class ParquetRewriterTest {
     rewriter.close();
 
     // Verify the schema is not changed for the columns not pruned
-    validateSchema();
+    validateSchemaWithGenderColumnPruned();
 
     // Verify codec has been translated
     verifyCodec(
@@ -180,14 +177,7 @@ public class ParquetRewriterTest {
     validateColumnData(new HashSet<>(pruneColumns), Collections.emptySet(), null, false);
 
     // Verify the page index
-    validatePageIndex(new HashMap<Integer, Integer>() {
-      {
-        put(0, 0);
-        put(1, 1);
-        put(2, 3);
-        put(3, 4);
-      }
-    });
+    validatePageIndex(new HashSet<>(), false);
 
     // Verify original.created.by is preserved
     validateCreatedBy();
@@ -242,7 +232,7 @@ public class ParquetRewriterTest {
     rewriter.close();
 
     // Verify the schema are not changed for the columns not pruned
-    validateSchema();
+    validateSchemaWithGenderColumnPruned();
 
     // Verify codec has been translated
     verifyCodec(
@@ -258,13 +248,7 @@ public class ParquetRewriterTest {
     validateColumnData(new HashSet<>(pruneColumns), maskColumns.keySet(), null, false);
 
     // Verify the page index
-    validatePageIndex(new HashMap<Integer, Integer>() {
-      {
-        put(0, 0);
-        put(1, 1);
-        put(2, 3);
-      }
-    });
+    validatePageIndex(ImmutableSet.of("Links.Forward"), false);
 
     // Verify original.created.by is preserved
     validateCreatedBy();
@@ -322,7 +306,7 @@ public class ParquetRewriterTest {
     rewriter.close();
 
     // Verify the schema is not changed for the columns not pruned
-    validateSchema();
+    validateSchemaWithGenderColumnPruned();
 
     // Verify codec has been translated
     FileDecryptionProperties fileDecryptionProperties = EncDecProperties.getFileDecryptionProperties();
@@ -500,14 +484,7 @@ public class ParquetRewriterTest {
     validateColumnData(Collections.emptySet(), maskColumns.keySet(), fileDecryptionProperties, false);
 
     // Verify the page index
-    validatePageIndex(new HashMap<Integer, Integer>() {
-      {
-        put(1, 1);
-        put(2, 2);
-        put(3, 3);
-        put(4, 4);
-      }
-    });
+    validatePageIndex(ImmutableSet.of("DocId"), false);
 
     // Verify the column is encrypted
     ParquetMetadata metaData = getFileMetaData(outputFile, fileDecryptionProperties);
@@ -590,15 +567,7 @@ public class ParquetRewriterTest {
     validateColumnData(Collections.emptySet(), Collections.emptySet(), null, false);
 
     // Verify the page index
-    validatePageIndex(new HashMap<Integer, Integer>() {
-      {
-        put(0, 0);
-        put(1, 1);
-        put(2, 2);
-        put(3, 3);
-        put(4, 4);
-      }
-    });
+    validatePageIndex(new HashSet<>(), false);
 
     // Verify original.created.by is preserved
     validateCreatedBy();
@@ -768,21 +737,23 @@ public class ParquetRewriterTest {
         inputFiles.stream().map(x -> new Path(x.getFileName())).collect(Collectors.toList());
     List<Path> inputPathsR =
         inputFilesToJoin.stream().map(y -> new Path(y.getFileName())).collect(Collectors.toList());
-    RewriteOptions.Builder builder = createBuilder(inputPathsL, inputPathsR, true);
-    RewriteOptions options = builder.indexCacheStrategy(indexCacheStrategy).build();
+    List<String> pruneColumns = Collections.singletonList("Gender");
+    Map<String, MaskMode> maskColumns = ImmutableMap.of("Links.Forward", MaskMode.NULLIFY);
+    RewriteOptions options = createBuilder(inputPathsL, inputPathsR, true)
+        .prune(pruneColumns)
+        .mask(maskColumns)
+        .transform(CompressionCodecName.ZSTD)
+        .indexCacheStrategy(indexCacheStrategy)
+        .overwriteInputWithJoinColumns(true)
+        .build();
 
     rewriter = new ParquetRewriter(options);
     rewriter.processBlocks();
     rewriter.close();
-    MessageType actualSchema = ParquetFileReader.readFooter(
-            conf, new Path(outputFile), ParquetMetadataConverter.NO_FILTER)
-        .getFileMetaData()
-        .getSchema();
-    MessageType expectSchema = createSchema();
 
     Map<ColumnPath, List<BloomFilter>> inputBloomFilters = allInputBloomFilters();
     Map<ColumnPath, List<BloomFilter>> outputBloomFilters = allOutputBloomFilters(null);
-    Set<ColumnPath> schemaRColumns = createSchemaR().getColumns().stream()
+    Set<ColumnPath> schemaRColumns = createSchemaRight().getColumns().stream()
         .map(x -> ColumnPath.get(x.getPath()))
         .collect(Collectors.toSet());
     Set<ColumnPath> rBloomFilters = outputBloomFilters.keySet().stream()
@@ -790,32 +761,16 @@ public class ParquetRewriterTest {
         .collect(Collectors.toSet());
 
     // TODO potentially too many checks, might need to be split into multiple tests
-    validateColumnData(Collections.emptySet(), Collections.emptySet(), null, true); // Verify data
-    assertEquals(expectSchema, actualSchema); // Verify schema
+    validateColumnData(new HashSet<>(pruneColumns), maskColumns.keySet(), null, true); // Verify data
+    validateSchemaWithGenderColumnPruned(); // Verify schema
     validateCreatedBy(); // Verify original.created.by
     assertEquals(inputBloomFilters.keySet(), rBloomFilters); // Verify bloom filters
-    verifyCodec( // Verify codec
-        outputFile,
-        new HashSet<CompressionCodecName>() {
-          {
-            add(CompressionCodecName.GZIP);
-            add(CompressionCodecName.UNCOMPRESSED);
-          }
-        },
-        null);
-    validatePageIndex(
-        new HashMap<Integer, Integer>() { // Verify page index
-          { // verifying only left side input columns
-            put(0, 0);
-            put(1, 1);
-            put(2, 2);
-            put(3, 4);
-          }
-        });
+    verifyCodec(outputFile, ImmutableSet.of(CompressionCodecName.ZSTD), null); // Verify codec
+    validatePageIndex(ImmutableSet.of("Links.Forward"), true);
   }
 
   private void testOneInputFileManyInputFilesToJoinSetup() throws IOException {
-    inputFiles = Lists.newArrayList(new TestFileBuilder(conf, createSchemaL())
+    inputFiles = Lists.newArrayList(new TestFileBuilder(conf, createSchemaLeft())
         .withNumRecord(numRecord)
         .withRowGroupSize(1 * 1024 * 1024)
         .withCodec("GZIP")
@@ -831,7 +786,7 @@ public class ParquetRewriterTest {
         .collect(Collectors.toList());
 
     for (long count : rowGroupRowCounts) {
-      inputFilesToJoin.add(new TestFileBuilder(conf, createSchemaR())
+      inputFilesToJoin.add(new TestFileBuilder(conf, createSchemaRight())
           .withNumRecord((int) count)
           .withCodec("UNCOMPRESSED")
           .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
@@ -855,7 +810,7 @@ public class ParquetRewriterTest {
             new PrimitiveType(REPEATED, BINARY, "Forward")));
   }
 
-  private MessageType createSchemaL() {
+  private MessageType createSchemaLeft() {
     return new MessageType(
         "schema",
         new PrimitiveType(OPTIONAL, INT64, "DocId"),
@@ -865,7 +820,7 @@ public class ParquetRewriterTest {
         new PrimitiveType(OPTIONAL, DOUBLE, "DoubleFraction"));
   }
 
-  private MessageType createSchemaR() {
+  private MessageType createSchemaRight() {
     return new MessageType(
         "schema",
         new PrimitiveType(REPEATED, FLOAT, "FloatFraction"),
@@ -1000,77 +955,108 @@ public class ParquetRewriterTest {
     assertEquals(expectedCodecs, codecs);
   }
 
+  @FunctionalInterface
+  interface CheckedFunction<T, R> {
+    R apply(T t) throws IOException;
+  }
+
   /**
    * Verify the page index is correct.
    *
-   * @param outFileColumnMapping the column mapping from the output file to the input file.
+   * @param exclude the columns to exclude from comparison, for example because they were nullified.
+   * @param joinColumnsOverwrite whether a join columns overwrote existing overlapping columns.
    */
-  private void validatePageIndex(Map<Integer, Integer> outFileColumnMapping) throws Exception {
-    ParquetMetadata outMetaData = getFileMetaData(outputFile, null);
+  private void validatePageIndex(Set<String> exclude, boolean joinColumnsOverwrite) throws Exception {
+    class BlockMeta {
+      final TransParquetFileReader reader;
+      final BlockMetaData blockMeta;
+      final Map<ColumnPath, ColumnChunkMetaData> colPathToMeta;
 
-    int inputFileIndex = 0;
-    TransParquetFileReader inReader = new TransParquetFileReader(
-        HadoopInputFile.fromPath(new Path(inputFiles.get(inputFileIndex).getFileName()), conf),
-        HadoopReadOptions.builder(conf).build());
-    ParquetMetadata inMetaData = inReader.getFooter();
+      BlockMeta(
+          TransParquetFileReader reader,
+          BlockMetaData blockMeta,
+          Map<ColumnPath, ColumnChunkMetaData> colPathToMeta) {
+        this.reader = reader;
+        this.blockMeta = blockMeta;
+        this.colPathToMeta = colPathToMeta;
+      }
+    }
 
-    try (TransParquetFileReader outReader = new TransParquetFileReader(
-        HadoopInputFile.fromPath(new Path(outputFile), conf),
-        HadoopReadOptions.builder(conf).build())) {
+    CheckedFunction<List<String>, List<BlockMeta>> blockMetaExtractor = files -> {
+      List<BlockMeta> result = new ArrayList<>();
+      for (String inputFile : files) {
+        TransParquetFileReader reader = new TransParquetFileReader(
+            HadoopInputFile.fromPath(new Path(inputFile), conf),
+            HadoopReadOptions.builder(conf).build());
+        reader.getFooter()
+            .getBlocks()
+            .forEach(x -> result.add(new BlockMeta(
+                reader,
+                x,
+                x.getColumns().stream()
+                    .collect(
+                        Collectors.toMap(ColumnChunkMetaData::getPath, Function.identity())))));
+      }
+      return result;
+    };
 
-      for (int outBlockId = 0, inBlockId = 0;
-          outBlockId < outMetaData.getBlocks().size();
-          ++outBlockId, ++inBlockId) {
-        // Refresh reader of input file
-        if (inBlockId == inMetaData.getBlocks().size()) {
-          inReader = new TransParquetFileReader(
-              HadoopInputFile.fromPath(
-                  new Path(inputFiles.get(++inputFileIndex).getFileName()), conf),
-              HadoopReadOptions.builder(conf).build());
-          inMetaData = inReader.getFooter();
-          inBlockId = 0;
+    List<BlockMeta> inBlocksMain = blockMetaExtractor.apply(
+        inputFiles.stream().map(EncryptionTestFile::getFileName).collect(Collectors.toList()));
+    List<BlockMeta> inBlocksJoined = blockMetaExtractor.apply(
+        inputFilesToJoin.stream().map(EncryptionTestFile::getFileName).collect(Collectors.toList()));
+    List<BlockMeta> outBlocks = blockMetaExtractor.apply(ImmutableList.of(outputFile));
+
+    for (int blockIdx = 0; blockIdx < outBlocks.size(); blockIdx++) {
+      BlockMetaData outBlockMeta = outBlocks.get(blockIdx).blockMeta;
+      TransParquetFileReader outReader = outBlocks.get(blockIdx).reader;
+      for (ColumnChunkMetaData outChunk : outBlockMeta.getColumns()) {
+        if (exclude.contains(outChunk.getPath().toDotString())) continue;
+        TransParquetFileReader inReader;
+        BlockMetaData inBlockMeta;
+        ColumnChunkMetaData inChunk;
+        if (joinColumnsOverwrite
+            && !inBlocksJoined.isEmpty()
+            && inBlocksJoined.get(blockIdx).colPathToMeta.containsKey(outChunk.getPath())) {
+          inReader = inBlocksJoined.get(blockIdx).reader;
+          inBlockMeta = inBlocksJoined.get(blockIdx).blockMeta;
+          inChunk = inBlocksJoined.get(blockIdx).colPathToMeta.get(outChunk.getPath());
+        } else {
+          inReader = inBlocksMain.get(blockIdx).reader;
+          inBlockMeta = inBlocksMain.get(blockIdx).blockMeta;
+          inChunk = inBlocksMain.get(blockIdx).colPathToMeta.get(outChunk.getPath());
         }
 
-        BlockMetaData inBlockMetaData = inMetaData.getBlocks().get(inBlockId);
-        BlockMetaData outBlockMetaData = outMetaData.getBlocks().get(outBlockId);
-
-        assertEquals(inBlockMetaData.getRowCount(), outBlockMetaData.getRowCount());
-
-        for (int j = 0; j < outBlockMetaData.getColumns().size(); j++) {
-          if (!outFileColumnMapping.containsKey(j)) {
-            continue;
-          }
-          int columnIdFromInputFile = outFileColumnMapping.get(j);
-          ColumnChunkMetaData inChunk = inBlockMetaData.getColumns().get(columnIdFromInputFile);
-          ColumnIndex inColumnIndex = inReader.readColumnIndex(inChunk);
-          OffsetIndex inOffsetIndex = inReader.readOffsetIndex(inChunk);
-          ColumnChunkMetaData outChunk = outBlockMetaData.getColumns().get(j);
-          ColumnIndex outColumnIndex = outReader.readColumnIndex(outChunk);
-          OffsetIndex outOffsetIndex = outReader.readOffsetIndex(outChunk);
-          if (inColumnIndex != null) {
-            assertEquals(inColumnIndex.getBoundaryOrder(), outColumnIndex.getBoundaryOrder());
-            assertEquals(inColumnIndex.getMaxValues(), outColumnIndex.getMaxValues());
-            assertEquals(inColumnIndex.getMinValues(), outColumnIndex.getMinValues());
-            assertEquals(inColumnIndex.getNullCounts(), outColumnIndex.getNullCounts());
-          }
-          if (inOffsetIndex != null) {
-            List<Long> inOffsets = getOffsets(inReader, inChunk);
-            List<Long> outOffsets = getOffsets(outReader, outChunk);
-            assertEquals(inOffsets.size(), outOffsets.size());
-            assertEquals(inOffsets.size(), inOffsetIndex.getPageCount());
-            assertEquals(inOffsetIndex.getPageCount(), outOffsetIndex.getPageCount());
-            for (int k = 0; k < inOffsetIndex.getPageCount(); k++) {
-              assertEquals(inOffsetIndex.getFirstRowIndex(k), outOffsetIndex.getFirstRowIndex(k));
-              assertEquals(
-                  inOffsetIndex.getLastRowIndex(k, inBlockMetaData.getRowCount()),
-                  outOffsetIndex.getLastRowIndex(k, outBlockMetaData.getRowCount()));
-              assertEquals(inOffsetIndex.getOffset(k), (long) inOffsets.get(k));
-              assertEquals(outOffsetIndex.getOffset(k), (long) outOffsets.get(k));
-            }
+        ColumnIndex inColumnIndex = inReader.readColumnIndex(inChunk);
+        OffsetIndex inOffsetIndex = inReader.readOffsetIndex(inChunk);
+        ColumnIndex outColumnIndex = outReader.readColumnIndex(outChunk);
+        OffsetIndex outOffsetIndex = outReader.readOffsetIndex(outChunk);
+        if (inColumnIndex != null) {
+          assertEquals(inColumnIndex.getBoundaryOrder(), outColumnIndex.getBoundaryOrder());
+          assertEquals(inColumnIndex.getMaxValues(), outColumnIndex.getMaxValues());
+          assertEquals(inColumnIndex.getMinValues(), outColumnIndex.getMinValues());
+          assertEquals(inColumnIndex.getNullCounts(), outColumnIndex.getNullCounts());
+        }
+        if (inOffsetIndex != null) {
+          List<Long> inOffsets = getOffsets(inReader, inChunk);
+          List<Long> outOffsets = getOffsets(outReader, outChunk);
+          assertEquals(inOffsets.size(), outOffsets.size());
+          assertEquals(inOffsets.size(), inOffsetIndex.getPageCount());
+          assertEquals(inOffsetIndex.getPageCount(), outOffsetIndex.getPageCount());
+          for (int k = 0; k < inOffsetIndex.getPageCount(); k++) {
+            assertEquals(inOffsetIndex.getFirstRowIndex(k), outOffsetIndex.getFirstRowIndex(k));
+            assertEquals(
+                inOffsetIndex.getLastRowIndex(k, inBlockMeta.getRowCount()),
+                outOffsetIndex.getLastRowIndex(k, outBlockMeta.getRowCount()));
+            assertEquals(inOffsetIndex.getOffset(k), (long) inOffsets.get(k));
+            assertEquals(outOffsetIndex.getOffset(k), (long) outOffsets.get(k));
           }
         }
       }
     }
+
+    for (BlockMeta t3 : inBlocksMain) t3.reader.close();
+    for (BlockMeta t3 : inBlocksJoined) t3.reader.close();
+    for (BlockMeta t3 : outBlocks) t3.reader.close();
   }
 
   private List<Long> getOffsets(TransParquetFileReader reader, ColumnChunkMetaData chunk) throws IOException {
@@ -1223,21 +1209,23 @@ public class ParquetRewriterTest {
     return builder;
   }
 
-  private void validateSchema() throws IOException {
-    ParquetMetadata pmd =
-        ParquetFileReader.readFooter(conf, new Path(outputFile), ParquetMetadataConverter.NO_FILTER);
-    MessageType schema = pmd.getFileMetaData().getSchema();
-    List<Type> fields = schema.getFields();
-    assertEquals(fields.size(), 5);
-    assertEquals(fields.get(0).getName(), "DocId");
-    assertEquals(fields.get(1).getName(), "Name");
-    assertEquals(fields.get(2).getName(), "FloatFraction");
-    assertEquals(fields.get(3).getName(), "DoubleFraction");
-    assertEquals(fields.get(4).getName(), "Links");
-    List<Type> subFields = fields.get(4).asGroupType().getFields();
-    assertEquals(subFields.size(), 2);
-    assertEquals(subFields.get(0).getName(), "Backward");
-    assertEquals(subFields.get(1).getName(), "Forward");
+  private void validateSchemaWithGenderColumnPruned() throws IOException {
+    MessageType expectSchema = new MessageType(
+        "schema",
+        new PrimitiveType(OPTIONAL, INT64, "DocId"),
+        new PrimitiveType(REQUIRED, BINARY, "Name"),
+        new PrimitiveType(REPEATED, FLOAT, "FloatFraction"),
+        new PrimitiveType(OPTIONAL, DOUBLE, "DoubleFraction"),
+        new GroupType(
+            OPTIONAL,
+            "Links",
+            new PrimitiveType(REPEATED, BINARY, "Backward"),
+            new PrimitiveType(REPEATED, BINARY, "Forward")));
+    MessageType actualSchema = ParquetFileReader.readFooter(
+            conf, new Path(outputFile), ParquetMetadataConverter.NO_FILTER)
+        .getFileMetaData()
+        .getSchema();
+    assertEquals(expectSchema, actualSchema);
   }
 
   private void ensureContainsGzipFile() {

@@ -337,6 +337,8 @@ public class ParquetRewriter implements Closeable {
                 readerToJoin.getFooter().getBlocks().get(blockIdxToJoin));
           } else {
             blockIdxToJoin++;
+            indexCacheToJoin.setBlockMetadata(
+                readerToJoin.getFooter().getBlocks().get(blockIdxToJoin));
           }
         }
 
