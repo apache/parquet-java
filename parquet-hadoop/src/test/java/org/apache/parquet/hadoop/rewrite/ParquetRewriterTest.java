@@ -730,6 +730,27 @@ public class ParquetRewriterTest {
   }
 
   @Test
+  public void testMergeFilesToJoinWithDifferentRowCount() throws Exception {
+    MessageType schema1 = new MessageType("schema", new PrimitiveType(OPTIONAL, INT64, "DocId"));
+    MessageType schema2 = new MessageType("schema", new PrimitiveType(REQUIRED, BINARY, "Name"));
+    inputFiles = ImmutableList.of(
+        new TestFileBuilder(conf, schema1).withNumRecord(numRecord).build());
+    inputFilesToJoin = ImmutableList.of(
+        new TestFileBuilder(conf, schema2).withNumRecord(numRecord / 2).build());
+    RewriteOptions.Builder builder = createBuilder(
+        inputFiles.stream().map(x -> new Path(x.getFileName())).collect(Collectors.toList()),
+        inputFilesToJoin.stream().map(x -> new Path(x.getFileName())).collect(Collectors.toList()),
+        true);
+    RewriteOptions options = builder.build();
+    try {
+      rewriter =
+          new ParquetRewriter(options); // This should throw an exception because the row count is different
+    } catch (RuntimeException e) {
+      assertTrue(e.getMessage().contains("The number of rows in each block must match"));
+    }
+  }
+
+  @Test
   public void testOneInputFileManyInputFilesToJoin() throws Exception {
     testOneInputFileManyInputFilesToJoinSetup();
 
@@ -981,7 +1002,6 @@ public class ParquetRewriterTest {
         this.colPathToMeta = colPathToMeta;
       }
     }
-
     CheckedFunction<List<String>, List<BlockMeta>> blockMetaExtractor = files -> {
       List<BlockMeta> result = new ArrayList<>();
       for (String inputFile : files) {
@@ -990,10 +1010,10 @@ public class ParquetRewriterTest {
             HadoopReadOptions.builder(conf).build());
         reader.getFooter()
             .getBlocks()
-            .forEach(x -> result.add(new BlockMeta(
+            .forEach(blockMetaData -> result.add(new BlockMeta(
                 reader,
-                x,
-                x.getColumns().stream()
+                blockMetaData,
+                blockMetaData.getColumns().stream()
                     .collect(
                         Collectors.toMap(ColumnChunkMetaData::getPath, Function.identity())))));
       }
@@ -1005,7 +1025,6 @@ public class ParquetRewriterTest {
     List<BlockMeta> inBlocksJoined = blockMetaExtractor.apply(
         inputFilesToJoin.stream().map(EncryptionTestFile::getFileName).collect(Collectors.toList()));
     List<BlockMeta> outBlocks = blockMetaExtractor.apply(ImmutableList.of(outputFile));
-
     for (int blockIdx = 0; blockIdx < outBlocks.size(); blockIdx++) {
       BlockMetaData outBlockMeta = outBlocks.get(blockIdx).blockMeta;
       TransParquetFileReader outReader = outBlocks.get(blockIdx).reader;
