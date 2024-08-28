@@ -69,7 +69,7 @@ EOF
 elif [ "$BENCHMARK" == "build" ]; then
 
   # Shortcut utility to rebuild the benchmark module only.
-  ( cd $SCRIPT_PATH && mvn -amd -DskipTests -Denforcer.skip=true clean package )
+  ( cd $SCRIPT_PATH && ./mvnw -amd -DskipTests -Denforcer.skip=true clean package )
 
 elif [ "$BENCHMARK" == "clean" ]; then
 
