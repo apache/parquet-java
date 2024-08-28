@@ -252,8 +252,8 @@ public class ParquetRewriter implements Closeable {
       originalCreatedBy = null;
       return;
     }
-
-    reader.close();
+    if(reader != null)
+      reader.close();
     reader = inputFiles.poll();
     meta = reader.getFooter();
     originalCreatedBy = meta.getFileMetaData().getCreatedBy();
