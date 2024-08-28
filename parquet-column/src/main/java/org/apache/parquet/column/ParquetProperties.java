@@ -63,6 +63,7 @@ public class ParquetProperties {
   public static final double DEFAULT_BLOOM_FILTER_FPP = 0.01;
   public static final boolean DEFAULT_ADAPTIVE_BLOOM_FILTER_ENABLED = false;
   public static final int DEFAULT_BLOOM_FILTER_CANDIDATES_NUMBER = 5;
+  public static final boolean DEFAULT_STATISTICS_ENABLED = true;
 
   public static final boolean DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED = true;
 
@@ -122,6 +123,7 @@ public class ParquetProperties {
   private final boolean pageWriteChecksumEnabled;
   private final ColumnProperty<ByteStreamSplitMode> byteStreamSplitEnabled;
   private final Map<String, String> extraMetaData;
+  private final ColumnProperty<Boolean> statistics;
 
   private ParquetProperties(Builder builder) {
     this.pageSizeThreshold = builder.pageSize;
@@ -149,6 +151,7 @@ public class ParquetProperties {
     this.pageWriteChecksumEnabled = builder.pageWriteChecksumEnabled;
     this.byteStreamSplitEnabled = builder.byteStreamSplitEnabled.build();
     this.extraMetaData = builder.extraMetaData;
+    this.statistics = builder.statistics.build();
   }
 
   public static Builder builder() {
@@ -330,6 +333,10 @@ public class ParquetProperties {
     return extraMetaData;
   }
 
+  public boolean getStatisticsEnabled(ColumnDescriptor column) {
+    return statistics.getValue(column);
+  }
+
   @Override
   public String toString() {
     return "Parquet page size to " + getPageSizeThreshold() + '\n'
@@ -372,6 +379,7 @@ public class ParquetProperties {
     private boolean pageWriteChecksumEnabled = DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED;
     private final ColumnProperty.Builder<ByteStreamSplitMode> byteStreamSplitEnabled;
     private Map<String, String> extraMetaData = new HashMap<>();
+    private final ColumnProperty.Builder<Boolean> statistics;
 
     private Builder() {
       enableDict = ColumnProperty.<Boolean>builder().withDefaultValue(DEFAULT_IS_DICTIONARY_ENABLED);
@@ -387,6 +395,7 @@ public class ParquetProperties {
           ColumnProperty.<Boolean>builder().withDefaultValue(DEFAULT_ADAPTIVE_BLOOM_FILTER_ENABLED);
       numBloomFilterCandidates =
           ColumnProperty.<Integer>builder().withDefaultValue(DEFAULT_BLOOM_FILTER_CANDIDATES_NUMBER);
+      statistics = ColumnProperty.<Boolean>builder().withDefaultValue(DEFAULT_STATISTICS_ENABLED);
     }
 
     private Builder(ParquetProperties toCopy) {
@@ -409,6 +418,7 @@ public class ParquetProperties {
       this.maxBloomFilterBytes = toCopy.maxBloomFilterBytes;
       this.byteStreamSplitEnabled = ColumnProperty.builder(toCopy.byteStreamSplitEnabled);
       this.extraMetaData = toCopy.extraMetaData;
+      this.statistics = ColumnProperty.builder(toCopy.statistics);
     }
 
     /**
@@ -654,6 +664,18 @@ public class ParquetProperties {
 
     public Builder withExtraMetaData(Map<String, String> extraMetaData) {
       this.extraMetaData = extraMetaData;
+      return this;
+    }
+
+    /**
+     * Enable or disable the statistics for given column. All column statistics are enabled by default.
+     *
+     * @param columnPath the given column
+     * @param enabled enable or disable
+     * @return this builder for method chaining
+     */
+    public Builder withStatisticsEnabled(String columnPath, boolean enabled) {
+      this.statistics.withValue(columnPath, enabled);
       return this;
     }
 

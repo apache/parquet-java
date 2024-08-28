@@ -898,6 +898,18 @@ public class ParquetWriter<T> implements Closeable {
     }
 
     /**
+     * Sets the statistics enabled/disabled for the specified column. All column statistics are enabled by default.
+     *
+     * @param columnPath the path of the column (dot-string)
+     * @param enabled    whether to write calculate statistics for the column
+     * @return this builder for method chaining
+     */
+    public SELF withStatisticsEnabled(String columnPath, boolean enabled) {
+      encodingPropsBuilder.withStatisticsEnabled(columnPath, enabled);
+      return self();
+    }
+
+    /**
      * Build a {@link ParquetWriter} with the accumulated configuration.
      *
      * @return a configured {@code ParquetWriter} instance.
