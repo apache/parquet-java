@@ -252,7 +252,7 @@ public class ParquetRewriter implements Closeable {
       originalCreatedBy = null;
       return;
     }
-    if(reader != null) reader.close();
+    if (reader != null) reader.close();
     reader = inputFiles.poll();
     meta = reader.getFooter();
     originalCreatedBy = meta.getFileMetaData().getCreatedBy();
@@ -823,10 +823,12 @@ public class ParquetRewriter implements Closeable {
 
   private static final class DummyGroupConverter extends GroupConverter {
     @Override
-    public void start() {}
+    public void start() {
+    }
 
     @Override
-    public void end() {}
+    public void end() {
+    }
 
     @Override
     public Converter getConverter(int fieldIndex) {
