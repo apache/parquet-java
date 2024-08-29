@@ -18,10 +18,7 @@
  */
 package org.apache.parquet.hadoop.rewrite;
 
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.DOUBLE;
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FLOAT;
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.*;
 import static org.apache.parquet.schema.Type.Repetition.OPTIONAL;
 import static org.apache.parquet.schema.Type.Repetition.REPEATED;
 import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
@@ -161,7 +158,7 @@ public class ParquetRewriterTest {
     rewriter.close();
 
     // Verify the schema is not changed for the columns not pruned
-    validateSchemaWithGenderColumnPruned();
+    validateSchemaWithGenderColumnPruned(false);
 
     // Verify codec has been translated
     verifyCodec(
@@ -232,7 +229,7 @@ public class ParquetRewriterTest {
     rewriter.close();
 
     // Verify the schema are not changed for the columns not pruned
-    validateSchemaWithGenderColumnPruned();
+    validateSchemaWithGenderColumnPruned(false);
 
     // Verify codec has been translated
     verifyCodec(
@@ -306,7 +303,7 @@ public class ParquetRewriterTest {
     rewriter.close();
 
     // Verify the schema is not changed for the columns not pruned
-    validateSchemaWithGenderColumnPruned();
+    validateSchemaWithGenderColumnPruned(false);
 
     // Verify codec has been translated
     FileDecryptionProperties fileDecryptionProperties = EncDecProperties.getFileDecryptionProperties();
@@ -730,7 +727,7 @@ public class ParquetRewriterTest {
   }
 
   @Test
-  public void testMergeFilesToJoinWithDifferentRowCount() throws Exception {
+  public void testFilesToJoinHaveDifferentRowCount() throws Exception {
     MessageType schema1 = new MessageType("schema", new PrimitiveType(OPTIONAL, INT64, "DocId"));
     MessageType schema2 = new MessageType("schema", new PrimitiveType(REQUIRED, BINARY, "Name"));
     inputFiles = ImmutableList.of(
@@ -751,7 +748,16 @@ public class ParquetRewriterTest {
   }
 
   @Test
-  public void testOneInputFileManyInputFilesToJoin() throws Exception {
+  public void testOneInputFileManyInputFilesToJoinWithJoinColumnsOverwrite() throws Exception {
+    testOneInputFileManyInputFilesToJoinSetup(true);
+  }
+
+  @Test
+  public void testOneInputFileManyInputFilesToJoinWithoutJoinColumnsOverwrite() throws Exception {
+    testOneInputFileManyInputFilesToJoinSetup(false);
+  }
+
+  public void testOneInputFileManyInputFilesToJoinSetup(boolean joinColumnsOverwrite) throws Exception {
     testOneInputFileManyInputFilesToJoinSetup();
 
     List<Path> inputPathsL =
@@ -765,7 +771,7 @@ public class ParquetRewriterTest {
         .mask(maskColumns)
         .transform(CompressionCodecName.ZSTD)
         .indexCacheStrategy(indexCacheStrategy)
-        .overwriteInputWithJoinColumns(true)
+        .overwriteInputWithJoinColumns(joinColumnsOverwrite)
         .build();
 
     rewriter = new ParquetRewriter(options);
@@ -774,24 +780,24 @@ public class ParquetRewriterTest {
 
     Map<ColumnPath, List<BloomFilter>> inputBloomFilters = allInputBloomFilters();
     Map<ColumnPath, List<BloomFilter>> outputBloomFilters = allOutputBloomFilters(null);
-    Set<ColumnPath> schemaRColumns = createSchemaRight().getColumns().stream()
+    Set<ColumnPath> schemaRColumns = createSchemaToJoin().getColumns().stream()
         .map(x -> ColumnPath.get(x.getPath()))
         .collect(Collectors.toSet());
     Set<ColumnPath> rBloomFilters = outputBloomFilters.keySet().stream()
         .filter(schemaRColumns::contains)
         .collect(Collectors.toSet());
 
-    // TODO potentially too many checks, might need to be split into multiple tests
-    validateColumnData(new HashSet<>(pruneColumns), maskColumns.keySet(), null, true); // Verify data
-    validateSchemaWithGenderColumnPruned(); // Verify schema
+    validateColumnData(
+        new HashSet<>(pruneColumns), maskColumns.keySet(), null, joinColumnsOverwrite); // Verify data
+    validateSchemaWithGenderColumnPruned(true); // Verify schema
     validateCreatedBy(); // Verify original.created.by
     assertEquals(inputBloomFilters.keySet(), rBloomFilters); // Verify bloom filters
     verifyCodec(outputFile, ImmutableSet.of(CompressionCodecName.ZSTD), null); // Verify codec
-    validatePageIndex(ImmutableSet.of("Links.Forward"), true);
+    validatePageIndex(ImmutableSet.of("Links.Forward"), joinColumnsOverwrite);
   }
 
   private void testOneInputFileManyInputFilesToJoinSetup() throws IOException {
-    inputFiles = Lists.newArrayList(new TestFileBuilder(conf, createSchemaLeft())
+    inputFiles = Lists.newArrayList(new TestFileBuilder(conf, createSchema())
         .withNumRecord(numRecord)
         .withRowGroupSize(1 * 1024 * 1024)
         .withCodec("GZIP")
@@ -807,7 +813,7 @@ public class ParquetRewriterTest {
         .collect(Collectors.toList());
 
     for (long count : rowGroupRowCounts) {
-      inputFilesToJoin.add(new TestFileBuilder(conf, createSchemaRight())
+      inputFilesToJoin.add(new TestFileBuilder(conf, createSchemaToJoin())
           .withNumRecord((int) count)
           .withCodec("UNCOMPRESSED")
           .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
@@ -831,20 +837,11 @@ public class ParquetRewriterTest {
             new PrimitiveType(REPEATED, BINARY, "Forward")));
   }
 
-  private MessageType createSchemaLeft() {
-    return new MessageType(
-        "schema",
-        new PrimitiveType(OPTIONAL, INT64, "DocId"),
-        new PrimitiveType(REQUIRED, BINARY, "Name"),
-        new PrimitiveType(OPTIONAL, BINARY, "Gender"),
-        new PrimitiveType(REPEATED, FLOAT, "FloatFraction"),
-        new PrimitiveType(OPTIONAL, DOUBLE, "DoubleFraction"));
-  }
-
-  private MessageType createSchemaRight() {
+  private MessageType createSchemaToJoin() {
     return new MessageType(
         "schema",
         new PrimitiveType(REPEATED, FLOAT, "FloatFraction"),
+        new PrimitiveType(OPTIONAL, INT64, "Age"),
         new GroupType(
             OPTIONAL,
             "Links",
@@ -870,9 +867,10 @@ public class ParquetRewriterTest {
         .flatMap(x -> Arrays.stream(x.getFileContent()))
         .collect(Collectors.toList());
     BiFunction<String, Integer, Group> groups = (name, rowIdx) -> {
-      if (joinColumnsOverwrite
-          && !filesJoined.isEmpty()
-          && filesJoined.get(0).getType().containsField(name)) {
+      if (!filesMain.get(0).getType().containsField(name)
+          || joinColumnsOverwrite
+              && !filesJoined.isEmpty()
+              && filesJoined.get(0).getType().containsField(name)) {
         return filesJoined.get(rowIdx);
       } else {
         return filesMain.get(rowIdx);
@@ -1033,9 +1031,10 @@ public class ParquetRewriterTest {
         TransParquetFileReader inReader;
         BlockMetaData inBlockMeta;
         ColumnChunkMetaData inChunk;
-        if (joinColumnsOverwrite
-            && !inBlocksJoined.isEmpty()
-            && inBlocksJoined.get(blockIdx).colPathToMeta.containsKey(outChunk.getPath())) {
+        if (!inBlocksMain.get(blockIdx).colPathToMeta.containsKey(outChunk.getPath())
+            || joinColumnsOverwrite
+                && !inBlocksJoined.isEmpty()
+                && inBlocksJoined.get(blockIdx).colPathToMeta.containsKey(outChunk.getPath())) {
           inReader = inBlocksJoined.get(blockIdx).reader;
           inBlockMeta = inBlocksJoined.get(blockIdx).blockMeta;
           inChunk = inBlocksJoined.get(blockIdx).colPathToMeta.get(outChunk.getPath());
@@ -1228,7 +1227,7 @@ public class ParquetRewriterTest {
     return builder;
   }
 
-  private void validateSchemaWithGenderColumnPruned() throws IOException {
+  private void validateSchemaWithGenderColumnPruned(boolean addJoinedColumn) throws IOException {
     MessageType expectSchema = new MessageType(
         "schema",
         new PrimitiveType(OPTIONAL, INT64, "DocId"),
@@ -1240,6 +1239,9 @@ public class ParquetRewriterTest {
             "Links",
             new PrimitiveType(REPEATED, BINARY, "Backward"),
             new PrimitiveType(REPEATED, BINARY, "Forward")));
+    if (addJoinedColumn) {
+      expectSchema = expectSchema.union(new MessageType("schema", new PrimitiveType(OPTIONAL, INT64, "Age")));
+    }
     MessageType actualSchema = ParquetFileReader.readFooter(
             conf, new Path(outputFile), ParquetMetadataConverter.NO_FILTER)
         .getFileMetaData()
