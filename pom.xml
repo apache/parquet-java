@@ -150,6 +150,7 @@
     <module>parquet-scala</module>
     <module>parquet-thrift</module>
     <module>parquet-hadoop-bundle</module>
+    <module>parquet-bom</module>
   </modules>
 
   <dependencies>
