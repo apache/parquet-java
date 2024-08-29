@@ -823,12 +823,10 @@ public class ParquetRewriter implements Closeable {
 
   private static final class DummyGroupConverter extends GroupConverter {
     @Override
-    public void start() {
-    }
+    public void start() {}
 
     @Override
-    public void end() {
-    }
+    public void end() {}
 
     @Override
     public Converter getConverter(int fieldIndex) {
