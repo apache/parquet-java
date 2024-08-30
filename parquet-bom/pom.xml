@@ -28,7 +28,7 @@
     <groupId>org.apache.parquet</groupId>
     <artifactId>parquet-bom</artifactId>
     <version>1.15.0-SNAPSHOT</version>
-
+    <packaging>pom</packaging>
     <name>Apache Parquet Bill Of Materials</name>
     <url>https://parquet.apache.org</url>
     <description>Parquet is a columnar storage format that supports nested data. This provides the java implementation.</description>
