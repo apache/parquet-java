@@ -241,7 +241,7 @@ public class ParquetRewriter implements Closeable {
   }
 
   // Routines to get reader of next input file and set up relevant states
-  private void initNextReader() {
+  private void initNextReader() throws IOException {
     if (reader != null) {
       LOG.info("Finish rewriting input file: {}", reader.getFile());
     }
@@ -252,7 +252,7 @@ public class ParquetRewriter implements Closeable {
       originalCreatedBy = null;
       return;
     }
-
+    if (reader != null) reader.close();
     reader = inputFiles.poll();
     meta = reader.getFooter();
     originalCreatedBy = meta.getFileMetaData().getCreatedBy();
