@@ -760,18 +760,27 @@ public class ParquetRewriterTest {
   public void testOneInputFileManyInputFilesToJoinSetup(boolean joinColumnsOverwrite) throws Exception {
     testOneInputFileManyInputFilesToJoinSetup();
 
+    String encryptColumn = "DocId";
+    String pruneColumn = "Gender";
+
+    FileEncryptionProperties fileEncryptionProperties = EncDecProperties.getFileEncryptionProperties(
+        new String[] {encryptColumn}, ParquetCipher.AES_GCM_CTR_V1, false);
+    FileDecryptionProperties fileDecryptionProperties = EncDecProperties.getFileDecryptionProperties();
+
     List<Path> inputPathsL =
         inputFiles.stream().map(x -> new Path(x.getFileName())).collect(Collectors.toList());
     List<Path> inputPathsR =
         inputFilesToJoin.stream().map(y -> new Path(y.getFileName())).collect(Collectors.toList());
-    List<String> pruneColumns = Collections.singletonList("Gender");
-    Map<String, MaskMode> maskColumns = ImmutableMap.of("Links.Forward", MaskMode.NULLIFY);
+    List<String> pruneColumns = ImmutableList.of(pruneColumn);
+    Map<String, MaskMode> maskColumns = ImmutableMap.of(encryptColumn, MaskMode.NULLIFY);
     RewriteOptions options = createBuilder(inputPathsL, inputPathsR, true)
         .prune(pruneColumns)
         .mask(maskColumns)
         .transform(CompressionCodecName.ZSTD)
         .indexCacheStrategy(indexCacheStrategy)
         .overwriteInputWithJoinColumns(joinColumnsOverwrite)
+        .encrypt(ImmutableList.of(encryptColumn))
+        .encryptionProperties(fileEncryptionProperties)
         .build();
 
     rewriter = new ParquetRewriter(options);
@@ -779,7 +788,7 @@ public class ParquetRewriterTest {
     rewriter.close();
 
     Map<ColumnPath, List<BloomFilter>> inputBloomFilters = allInputBloomFilters();
-    Map<ColumnPath, List<BloomFilter>> outputBloomFilters = allOutputBloomFilters(null);
+    Map<ColumnPath, List<BloomFilter>> outputBloomFilters = allOutputBloomFilters(fileDecryptionProperties);
     Set<ColumnPath> schemaRColumns = createSchemaToJoin().getColumns().stream()
         .map(x -> ColumnPath.get(x.getPath()))
         .collect(Collectors.toSet());
@@ -787,13 +796,29 @@ public class ParquetRewriterTest {
         .filter(schemaRColumns::contains)
         .collect(Collectors.toSet());
 
+    // Verify column encryption
+    ParquetMetadata metaData = getFileMetaData(outputFile, fileDecryptionProperties);
+    assertFalse(metaData.getBlocks().isEmpty());
+    List<ColumnChunkMetaData> columns = metaData.getBlocks().get(0).getColumns();
+    Set<String> set = ImmutableSet.of(encryptColumn);
+    for (ColumnChunkMetaData column : columns) {
+      if (set.contains(column.getPath().toDotString())) {
+        assertTrue(column.isEncrypted());
+      } else {
+        assertFalse(column.isEncrypted());
+      }
+    }
+
     validateColumnData(
-        new HashSet<>(pruneColumns), maskColumns.keySet(), null, joinColumnsOverwrite); // Verify data
+        new HashSet<>(pruneColumns),
+        maskColumns.keySet(),
+        fileDecryptionProperties,
+        joinColumnsOverwrite); // Verify data
     validateSchemaWithGenderColumnPruned(true); // Verify schema
     validateCreatedBy(); // Verify original.created.by
     assertEquals(inputBloomFilters.keySet(), rBloomFilters); // Verify bloom filters
-    verifyCodec(outputFile, ImmutableSet.of(CompressionCodecName.ZSTD), null); // Verify codec
-    validatePageIndex(ImmutableSet.of("Links.Forward"), joinColumnsOverwrite);
+    verifyCodec(outputFile, ImmutableSet.of(CompressionCodecName.ZSTD), fileDecryptionProperties); // Verify codec
+    validatePageIndex(ImmutableSet.of(encryptColumn), joinColumnsOverwrite);
   }
 
   private void testOneInputFileManyInputFilesToJoinSetup() throws IOException {
