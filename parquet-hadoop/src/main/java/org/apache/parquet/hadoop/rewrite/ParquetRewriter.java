@@ -133,8 +133,7 @@ public class ParquetRewriter implements Closeable {
             .collect(Collectors.toList()),
         out);
 
-    this.outSchema = getSchema();
-    this.outSchema = pruneColumnsInSchema(outSchema, options.getPruneColumns());
+    this.outSchema = pruneColumnsInSchema(getSchema(), options.getPruneColumns());
     this.extraMetaData = getExtraMetadata(options);
 
     if (options.getMaskColumns() != null) {
@@ -208,7 +207,6 @@ public class ParquetRewriter implements Closeable {
           .getFields()
           .forEach(x -> {
             if (!fieldNames.containsKey(x.getName())) {
-              LOG.info("Column {} is added to the output from inputFilesToJoin side", x.getName());
               fieldNames.put(x.getName(), x);
             } else if (overwriteInputWithJoinColumns) {
               LOG.info("Column {} in inputFiles is overwritten by inputFilesToJoin side", x.getName());
