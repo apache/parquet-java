@@ -97,6 +97,18 @@
                   <pattern>${jackson.package}</pattern>
                   <shadedPattern>${shade.prefix}.${jackson.package}</shadedPattern>
                 </relocation>
+                <relocation>
+                  <pattern>META-INF.versions.11.${jackson.package}</pattern>
+                  <shadedPattern>META-INF.versions.11.${shade.prefix}.${jackson.package}</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>META-INF.versions.17.${jackson.package}</pattern>
+                  <shadedPattern>META-INF.versions.17.${shade.prefix}.${jackson.package}</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>META-INF.versions.21.${jackson.package}</pattern>
+                  <shadedPattern>META-INF.versions.21.${shade.prefix}.${jackson.package}</shadedPattern>
+                </relocation>
               </relocations>
             </configuration>
           </execution>
