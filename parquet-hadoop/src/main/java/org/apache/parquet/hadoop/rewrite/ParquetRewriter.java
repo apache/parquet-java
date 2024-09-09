@@ -90,6 +90,20 @@ import org.apache.parquet.schema.Type;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Rewrites multiple input files with the same schema into a single output file. Optionally allows to: 1) apply
+ * column transformations; 2) <i>join</i> with extra files with a different schema.
+ * <p>
+ * Some supported column transformations: pruning, masking, encrypting, changing a codec.
+ * See {@link RewriteOptions} and {@link RewriteOptions.Builder} for the full list with description.
+ * <p>
+ * Requirements for a <i>joining</i> the main input files(left) and extra input files(right):
+ * 1) the number of files might be different on the left and right,
+ * 2) the schema might be different on the left and right,
+ * 3) the total number of row groups must be the same on the left and right,
+ * 4) the total number of rows must be the same on the left and right,
+ * 5) the global ordering of rows must be the same on the left and right.
+ */
 public class ParquetRewriter implements Closeable {
 
   // Key to store original writer version in the file key-value metadata
@@ -162,6 +176,8 @@ public class ParquetRewriter implements Closeable {
     writer.start();
   }
 
+  // TODO: Should we mark it as deprecated to encourage the main constructor usage? it is also used only from
+  // deprecated classes atm
   // Ctor for legacy CompressionConverter and ColumnMasker
   public ParquetRewriter(
       TransParquetFileReader reader,

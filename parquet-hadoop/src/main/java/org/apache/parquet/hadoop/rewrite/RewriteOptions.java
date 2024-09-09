@@ -38,15 +38,7 @@ import org.apache.parquet.io.InputFile;
 import org.apache.parquet.io.OutputFile;
 
 /**
- * A set of options to create a ParquetRewriter.
- *
- * TODO find a place where to put a proper description of functionality as it is not trivial:
- * ParquetRewriter allows to stitch files with the same schema into a single file.
- * Note that ParquetRewriter also can be used for effectively stitch/joining multiple parquet files with
- * different schemas.
- * You can provide the main input file group and multiple right side ones. That is possible when:
- * 1) the number of rows in the main and extra input groups are the same,
- * 2) the ordering of rows in the main and extra input groups is the same.
+ * A set of options to create a {@link ParquetRewriter}. See {@link RewriteOptions.Builder} for options description.
  */
 public class RewriteOptions {
 
@@ -128,6 +120,26 @@ public class RewriteOptions {
   }
 
   /**
+   * Gets the input {@link Path}s for the rewrite if they exist for all input files to join,
+   * otherwise throws a {@link RuntimeException}.
+   *
+   * @return a {@link List} of the associated input {@link Path}s to join
+   */
+  public List<Path> getInputFilesToJoin() {
+    return inputFilesToJoin.stream()
+        .map(f -> {
+          if (f instanceof HadoopOutputFile) {
+            HadoopOutputFile hadoopOutputFile = (HadoopOutputFile) f;
+            return new Path(hadoopOutputFile.getPath());
+          } else {
+            throw new RuntimeException(
+                "The input files to join do not all have an associated Hadoop Path.");
+          }
+        })
+        .collect(Collectors.toList());
+  }
+
+  /**
    * Gets the {@link InputFile}s for the rewrite.
    *
    * @return a {@link List} of the associated {@link InputFile}s
@@ -136,10 +148,10 @@ public class RewriteOptions {
     return inputFiles;
   }
 
-  /** TODO fix documentation after addition of InputFilesToJoin
-   * Gets the right {@link InputFile}s for the rewrite.
+  /**
+   * Gets the right {@link InputFile}s to join during the rewrite.
    *
-   * @return a {@link List} of the associated right {@link InputFile}s
+   * @return a {@link List} of the associated {@link InputFile}s to join
    */
   public List<InputFile> getParquetInputFilesToJoin() {
     return inputFilesToJoin;
@@ -200,7 +212,7 @@ public class RewriteOptions {
     return ignoreJoinFilesMetadata;
   }
 
-  // Builder to create a RewriterOptions.
+  /** Builder for {@link RewriteOptions} which in turn is used in {@link ParquetRewriter}'s constructor. */
   public static class Builder {
     private final ParquetConfiguration conf;
     private final List<InputFile> inputFiles;
@@ -412,7 +424,7 @@ public class RewriteOptions {
     }
 
     /**
-     * Add a file to join to other input files.
+     * Add an input file to join.
      *
      * @param fileToJoin input file to join
      * @return self
@@ -437,7 +449,7 @@ public class RewriteOptions {
     }
 
     /**
-     * Set a flag whether columns from join files need to overwrite columns from input files.
+     * Set a flag whether columns from join files need to overwrite columns from the main input files.
      *
      * @param overwriteInputWithJoinColumns
      * @return self
@@ -448,7 +460,7 @@ public class RewriteOptions {
     }
 
     /**
-     * Set a flag whether metadata from join files should be ignored.
+     * Set a flag whether metadata from join files should be ignored, false by default.
      *
      * @param ignoreJoinFilesMetadata
      * @return self
