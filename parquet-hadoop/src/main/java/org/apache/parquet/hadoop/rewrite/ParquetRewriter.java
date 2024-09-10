@@ -91,18 +91,38 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Rewrites multiple input files with the same schema into a single output file. Optionally allows to: 1) apply
- * column transformations; 2) <i>join</i> with extra files with a different schema.
+ * Rewrites multiple input files into a single output file.
  * <p>
+ * Supported functionality:
+ * <ul>
+ * <li>Merging multiple files into a single one</li>
+ * <li>Applying column transformations</li>
+ * <li><i>Joining</i> with extra files with a different schema</li>
+ * </ul>
+ * <p>
+ * Note that the total number of row groups from all input files is preserved in the output file.
+ * This may not be optimal if row groups are very small and will not solve small file problems. Instead, it will
+ * make it worse to have a large file footer in the output file.
+ * <p>
+ * <h3>Merging multiple files into a single output files</h3>
+ * Use {@link RewriteOptions.Builder}'s constructor or methods to provide <code>inputFiles</code>.
+ * Please note the schema of all <code>inputFiles</code> must be the same, otherwise the rewrite will fail.
+ * <p>
+ * <h3>Applying column transformations</h3>
  * Some supported column transformations: pruning, masking, encrypting, changing a codec.
  * See {@link RewriteOptions} and {@link RewriteOptions.Builder} for the full list with description.
  * <p>
- * Requirements for a <i>joining</i> the main input files(left) and extra input files(right):
- * 1) the number of files might be different on the left and right,
- * 2) the schema might be different on the left and right,
- * 3) the total number of row groups must be the same on the left and right,
- * 4) the total number of rows must be the same on the left and right,
- * 5) the global ordering of rows must be the same on the left and right.
+ * <h3><i>Joining</i> with extra files with a different schema.</h3>
+ * Use {@link RewriteOptions.Builder}'s constructor or methods to provide <code>inputFilesToJoin</code>.
+ * Please note the schema of all <code>inputFilesToJoin</code> must be the same, otherwise the rewrite will fail.
+ * Requirements for a <i>joining</i> the main <code>inputFiles</code>(left) and <code>inputFilesToJoin</code>(right):
+ * <ul>
+ * <li>the number of files might be different on the left and right,</li>
+ * <li>the schema of files inside of each group(left/right) must be the same, but those two schemas not necessarily should be equal,</li>
+ * <li>the total number of row groups must be the same on the left and right,</li>
+ * <li>the total number of rows must be the same on the left and right,</li>
+ * <li>the global ordering of rows must be the same on the left and right.</li>
+ * </ul>
  */
 public class ParquetRewriter implements Closeable {
 
