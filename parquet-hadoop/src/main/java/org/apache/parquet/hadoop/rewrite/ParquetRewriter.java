@@ -92,7 +92,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Rewrites multiple input files into a single output file.
- * <p>
+ * </p>
  * Supported functionality:
  * <ul>
  * <li>Merging multiple files into a single one</li>
@@ -104,15 +104,15 @@ import org.slf4j.LoggerFactory;
  * This may not be optimal if row groups are very small and will not solve small file problems. Instead, it will
  * make it worse to have a large file footer in the output file.
  * <p>
- * <h3>Merging multiple files into a single output files</h3>
+ * <h1>Merging multiple files into a single output files</h1>
  * Use {@link RewriteOptions.Builder}'s constructor or methods to provide <code>inputFiles</code>.
  * Please note the schema of all <code>inputFiles</code> must be the same, otherwise the rewrite will fail.
  * <p>
- * <h3>Applying column transformations</h3>
+ * <h1>Applying column transformations</h1>
  * Some supported column transformations: pruning, masking, encrypting, changing a codec.
  * See {@link RewriteOptions} and {@link RewriteOptions.Builder} for the full list with description.
  * <p>
- * <h3><i>Joining</i> with extra files with a different schema.</h3>
+ * <h1><i>Joining</i> with extra files with a different schema</h1>
  * Use {@link RewriteOptions.Builder}'s constructor or methods to provide <code>inputFilesToJoin</code>.
  * Please note the schema of all <code>inputFilesToJoin</code> must be the same, otherwise the rewrite will fail.
  * Requirements for a <i>joining</i> the main <code>inputFiles</code>(left) and <code>inputFilesToJoin</code>(right):
