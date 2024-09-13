@@ -104,15 +104,15 @@ import org.slf4j.LoggerFactory;
  * This may not be optimal if row groups are very small and will not solve small file problems. Instead, it will
  * make it worse to have a large file footer in the output file.
  * <p>
- * <h1>Merging multiple files into a single output files</h1>
+ * <h2>Merging multiple files into a single output files</h2>
  * Use {@link RewriteOptions.Builder}'s constructor or methods to provide <code>inputFiles</code>.
  * Please note the schema of all <code>inputFiles</code> must be the same, otherwise the rewrite will fail.
  * <p>
- * <h1>Applying column transformations</h1>
+ * <h2>Applying column transformations</h2>
  * Some supported column transformations: pruning, masking, encrypting, changing a codec.
  * See {@link RewriteOptions} and {@link RewriteOptions.Builder} for the full list with description.
  * <p>
- * <h1><i>Joining</i> with extra files with a different schema</h1>
+ * <h2><i>Joining</i> with extra files with a different schema</h2>
  * Use {@link RewriteOptions.Builder}'s constructor or methods to provide <code>inputFilesToJoin</code>.
  * Please note the schema of all <code>inputFilesToJoin</code> must be the same, otherwise the rewrite will fail.
  * Requirements for a <i>joining</i> the main <code>inputFiles</code>(left) and <code>inputFilesToJoin</code>(right):
