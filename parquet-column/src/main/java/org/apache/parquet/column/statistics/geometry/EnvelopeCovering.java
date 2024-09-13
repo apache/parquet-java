@@ -68,7 +68,9 @@ public class EnvelopeCovering extends Covering {
   private static void validateSupportedCrs(String crs) {
     if (!SUPPORTED_CRS.contains(crs)) {
       LOG.error("Unsupported CRS: {}. Supported CRS are EPSG:3857 and EPSG:4326.", crs);
-      throw new UnsupportedOperationException("Unsupported CRS: " + crs + ". Supported CRS are EPSG:3857 and EPSG:4326.");    }
+      throw new UnsupportedOperationException(
+          "Unsupported CRS: " + crs + ". Supported CRS are EPSG:3857 and EPSG:4326.");
+    }
   }
 
   @Override
