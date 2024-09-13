@@ -23,7 +23,6 @@ import org.apache.parquet.Preconditions;
 import org.locationtech.jts.geom.Geometry;
 
 public abstract class Covering {
-  public static final String DEFAULT_COVERING_KIND = "WKB";
 
   protected String kind;
   protected ByteBuffer value;

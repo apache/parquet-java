@@ -37,6 +37,8 @@ public class EnvelopeCovering extends Covering {
 
   private static final Logger LOG = LoggerFactory.getLogger(EnvelopeCovering.class);
 
+  private static final String DEFAULT_COVERING_KIND = "WKB";
+
   // The POC only supports EPSG:3857 and EPSG:4326 at the moment
   private static final List<String> SUPPORTED_CRS = Arrays.asList("EPSG:3857", "EPSG:4326");
 
@@ -65,8 +67,8 @@ public class EnvelopeCovering extends Covering {
 
   private static void validateSupportedCrs(String crs) {
     if (!SUPPORTED_CRS.contains(crs)) {
-      LOG.warn("Unsupported CRS: {}. Supported CRS are EPSG:3857 and EPSG:4326.", crs);
-    }
+      LOG.error("Unsupported CRS: {}. Supported CRS are EPSG:3857 and EPSG:4326.", crs);
+      throw new UnsupportedOperationException("Unsupported CRS: " + crs + ". Supported CRS are EPSG:3857 and EPSG:4326.");    }
   }
 
   @Override
@@ -121,7 +123,8 @@ public class EnvelopeCovering extends Covering {
         Geometry envelopePolygon = createPolygonFromEnvelope(geom.getEnvelopeInternal());
         value = ByteBuffer.wrap(writer.write(envelopePolygon));
       }
-    } catch (ParseException e) {
+    } catch (Exception e) {
+      LOG.error("Failed to update geometry: {}", e.getMessage());
       value = null;
     }
   }
@@ -185,7 +188,8 @@ public class EnvelopeCovering extends Covering {
     if (other instanceof EnvelopeCovering) {
       try {
         update(reader.read(other.value.array()));
-      } catch (ParseException e) {
+      } catch (Exception e) {
+        LOG.error("Failed to merge geometry: {}", e.getMessage());
         value = null;
       }
     } else {

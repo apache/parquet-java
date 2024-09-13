@@ -19,7 +19,11 @@
 package org.apache.parquet.column.statistics.geometry;
 
 import java.nio.ByteBuffer;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
@@ -28,6 +32,8 @@ import org.locationtech.jts.io.ParseException;
 import org.locationtech.jts.io.WKBReader;
 
 public class GeometryStatistics {
+
+  private static final BoundingBox DUMMY_BOUNDING_BOX = new DummyBoundingBox();
 
   // Metadata that may impact the statistics calculation
   private final LogicalTypeAnnotation.Edges edges;
@@ -49,11 +55,11 @@ public class GeometryStatistics {
     this.edges = edges;
     this.crs = crs;
     this.metadata = metadata;
-    this.boundingBox = supportsBoundingBox() ? boundingBox : null;
-    this.coverings = supportsCovering() ? new HashMap<>() : null;
+    this.boundingBox = supportsBoundingBox() ? boundingBox : DUMMY_BOUNDING_BOX;
+    this.coverings = new HashMap<>();
     this.geometryTypes = geometryTypes;
 
-    if (this.coverings != null && coverings != null) {
+    if (supportsCovering() && coverings != null) {
       for (Covering covering : coverings) {
         // Assuming each Covering has a unique identifier (kind) or property that can be used as a key
         String key = covering.getKind(); // Assume kind is unique
@@ -125,7 +131,7 @@ public class GeometryStatistics {
    * also be used to provide vendor-agnostic coverings like S2 or H3 grids.
    */
   private boolean supportsCovering() {
-    // This version (POC) assumes only build coverings for planar edges
+    // This version assumes only build coverings for planar edges
     // In case of spherical edges, no coverings are built
     return edges == LogicalTypeAnnotation.Edges.PLANAR;
   }
