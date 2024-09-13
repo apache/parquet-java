@@ -92,7 +92,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Rewrites multiple input files into a single output file.
- * </p>
+ * <p>
  * Supported functionality:
  * <ul>
  * <li>Merging multiple files into a single one</li>
