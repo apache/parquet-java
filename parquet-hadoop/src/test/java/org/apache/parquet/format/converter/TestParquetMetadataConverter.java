@@ -206,7 +206,16 @@ public class TestParquetMetadataConverter {
   @Test
   public void testParquetMetadataConverterWithDictionary() throws IOException {
     ParquetMetadata parquetMetaData = createParquetMetaData(Encoding.PLAIN_DICTIONARY, Encoding.PLAIN);
+    testParquetMetadataConverterWithDictionary(parquetMetaData);
+  }
 
+  @Test
+  public void testParquetMetadataConverterWithDictionaryAndWithoutEncodingStats() throws IOException {
+    ParquetMetadata parquetMetaData = createParquetMetaData(Encoding.PLAIN_DICTIONARY, Encoding.PLAIN, false);
+    testParquetMetadataConverterWithDictionary(parquetMetaData);
+  }
+
+  private void testParquetMetadataConverterWithDictionary(ParquetMetadata parquetMetaData) throws IOException {
     ParquetMetadataConverter converter = new ParquetMetadataConverter();
     FileMetaData fmd1 = converter.toParquetMetadata(1, parquetMetaData);
 
@@ -1283,18 +1292,32 @@ public class TestParquetMetadataConverter {
   }
 
   private static ParquetMetadata createParquetMetaData(Encoding dicEncoding, Encoding dataEncoding) {
+    return createParquetMetaData(dicEncoding, dataEncoding, true);
+  }
+
+  private static ParquetMetadata createParquetMetaData(
+      Encoding dicEncoding, Encoding dataEncoding, boolean includeEncodingStats) {
     MessageType schema = parseMessageType("message schema { optional int32 col (INT_32); }");
     org.apache.parquet.hadoop.metadata.FileMetaData fileMetaData =
         new org.apache.parquet.hadoop.metadata.FileMetaData(schema, new HashMap<String, String>(), null);
     List<BlockMetaData> blockMetaDataList = new ArrayList<BlockMetaData>();
     BlockMetaData blockMetaData = new BlockMetaData();
-    EncodingStats.Builder builder = new EncodingStats.Builder();
-    if (dicEncoding != null) {
-      builder.addDictEncoding(dicEncoding).build();
+    EncodingStats es = null;
+    if (includeEncodingStats) {
+      EncodingStats.Builder builder = new EncodingStats.Builder();
+      if (dicEncoding != null) {
+        builder.addDictEncoding(dicEncoding).build();
+      }
+      builder.addDataEncoding(dataEncoding);
+      es = builder.build();
     }
-    builder.addDataEncoding(dataEncoding);
-    EncodingStats es = builder.build();
     Set<org.apache.parquet.column.Encoding> e = new HashSet<org.apache.parquet.column.Encoding>();
+    if (!includeEncodingStats) {
+      if (dicEncoding != null) {
+        e.add(dicEncoding);
+      }
+      e.add(dataEncoding);
+    }
     PrimitiveTypeName t = PrimitiveTypeName.INT32;
     ColumnPath p = ColumnPath.get("col");
     CompressionCodecName c = CompressionCodecName.UNCOMPRESSED;
