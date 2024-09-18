@@ -43,7 +43,7 @@ Parquet-Java uses Maven to build and depends on the thrift compiler (protoc is n
 To build and install the thrift compiler, run:
 
 ```
-wget -nv http://archive.apache.org/dist/thrift/0.20.0/thrift-0.20.0.tar.gz
+wget -nv https://archive.apache.org/dist/thrift/0.20.0/thrift-0.20.0.tar.gz
 tar xzf thrift-0.20.0.tar.gz
 cd thrift-0.20.0
 chmod +x ./configure

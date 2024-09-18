@@ -239,6 +239,7 @@
               <goal>shade</goal>
             </goals>
             <configuration>
+              <createDependencyReducedPom>false</createDependencyReducedPom>
               <shadedArtifactAttached>true</shadedArtifactAttached>
               <shadedClassifierName>runtime</shadedClassifierName>
               <minimizeJar>false</minimizeJar>
