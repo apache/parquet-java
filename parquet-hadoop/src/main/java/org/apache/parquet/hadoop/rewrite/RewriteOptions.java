@@ -38,12 +38,13 @@ import org.apache.parquet.io.InputFile;
 import org.apache.parquet.io.OutputFile;
 
 /**
- * A set of options to create a ParquetRewriter.
+ * A set of options to create a {@link ParquetRewriter}. See {@link RewriteOptions.Builder} for options description.
  */
 public class RewriteOptions {
 
   private final ParquetConfiguration conf;
   private final List<InputFile> inputFiles;
+  private final List<InputFile> inputFilesToJoin;
   private final OutputFile outputFile;
   private final List<String> pruneColumns;
   private final CompressionCodecName newCodecName;
@@ -51,19 +52,25 @@ public class RewriteOptions {
   private final List<String> encryptColumns;
   private final FileEncryptionProperties fileEncryptionProperties;
   private final IndexCache.CacheStrategy indexCacheStrategy;
+  private final boolean overwriteInputWithJoinColumns;
+  private final boolean ignoreJoinFilesMetadata;
 
   private RewriteOptions(
       ParquetConfiguration conf,
       List<InputFile> inputFiles,
+      List<InputFile> inputFilesToJoin,
       OutputFile outputFile,
       List<String> pruneColumns,
       CompressionCodecName newCodecName,
       Map<String, MaskMode> maskColumns,
       List<String> encryptColumns,
       FileEncryptionProperties fileEncryptionProperties,
-      IndexCache.CacheStrategy indexCacheStrategy) {
+      IndexCache.CacheStrategy indexCacheStrategy,
+      boolean overwriteInputWithJoinColumns,
+      boolean ignoreJoinFilesMetadata) {
     this.conf = conf;
     this.inputFiles = inputFiles;
+    this.inputFilesToJoin = inputFilesToJoin;
     this.outputFile = outputFile;
     this.pruneColumns = pruneColumns;
     this.newCodecName = newCodecName;
@@ -71,6 +78,8 @@ public class RewriteOptions {
     this.encryptColumns = encryptColumns;
     this.fileEncryptionProperties = fileEncryptionProperties;
     this.indexCacheStrategy = indexCacheStrategy;
+    this.overwriteInputWithJoinColumns = overwriteInputWithJoinColumns;
+    this.ignoreJoinFilesMetadata = ignoreJoinFilesMetadata;
   }
 
   /**
@@ -111,12 +120,41 @@ public class RewriteOptions {
   }
 
   /**
+   * Gets the input {@link Path}s for the rewrite if they exist for all input files to join,
+   * otherwise throws a {@link RuntimeException}.
+   *
+   * @return a {@link List} of the associated input {@link Path}s to join
+   */
+  public List<Path> getInputFilesToJoin() {
+    return inputFilesToJoin.stream()
+        .map(f -> {
+          if (f instanceof HadoopOutputFile) {
+            HadoopOutputFile hadoopOutputFile = (HadoopOutputFile) f;
+            return new Path(hadoopOutputFile.getPath());
+          } else {
+            throw new RuntimeException(
+                "The input files to join do not all have an associated Hadoop Path.");
+          }
+        })
+        .collect(Collectors.toList());
+  }
+
+  /**
    * Gets the {@link InputFile}s for the rewrite.
    *
    * @return a {@link List} of the associated {@link InputFile}s
    */
   public List<InputFile> getParquetInputFiles() {
     return inputFiles;
+  }
+
+  /**
+   * Gets the right {@link InputFile}s to join during the rewrite.
+   *
+   * @return a {@link List} of the associated {@link InputFile}s to join
+   */
+  public List<InputFile> getParquetInputFilesToJoin() {
+    return inputFilesToJoin;
   }
 
   /**
@@ -166,10 +204,19 @@ public class RewriteOptions {
     return indexCacheStrategy;
   }
 
-  // Builder to create a RewriterOptions.
+  public boolean getOverwriteInputWithJoinColumns() {
+    return overwriteInputWithJoinColumns;
+  }
+
+  public boolean getIgnoreJoinFilesMetadata() {
+    return ignoreJoinFilesMetadata;
+  }
+
+  /** Builder for {@link RewriteOptions} which is used for constructing {@link ParquetRewriter}.*/
   public static class Builder {
     private final ParquetConfiguration conf;
     private final List<InputFile> inputFiles;
+    private final List<InputFile> inputFilesToJoin;
     private final OutputFile outputFile;
     private List<String> pruneColumns;
     private CompressionCodecName newCodecName;
@@ -177,6 +224,24 @@ public class RewriteOptions {
     private List<String> encryptColumns;
     private FileEncryptionProperties fileEncryptionProperties;
     private IndexCache.CacheStrategy indexCacheStrategy = IndexCache.CacheStrategy.NONE;
+    private boolean overwriteInputWithJoinColumns = false;
+    private boolean ignoreJoinFilesMetadata = false;
+
+    /**
+     * Create a builder to create a RewriterOptions.
+     *
+     * @param conf              configuration for reading from input files and writing to output file
+     * @param inputFile         input file path to read from
+     * @param inputFileToJoin   input join file path to read from
+     * @param outputFile        output file path to rewrite to
+     */
+    public Builder(Configuration conf, Path inputFile, Path inputFileToJoin, Path outputFile) {
+      this(
+          new HadoopParquetConfiguration(conf),
+          HadoopInputFile.fromPathUnchecked(inputFile, conf),
+          HadoopInputFile.fromPathUnchecked(inputFileToJoin, conf),
+          HadoopOutputFile.fromPathUnchecked(outputFile, conf));
+    }
 
     /**
      * Create a builder to create a RewriterOptions.
@@ -200,7 +265,20 @@ public class RewriteOptions {
      * @param outputFile output file to rewrite to
      */
     public Builder(ParquetConfiguration conf, InputFile inputFile, OutputFile outputFile) {
-      this(conf, Collections.singletonList(inputFile), outputFile);
+      this(conf, Collections.singletonList(inputFile), null, outputFile);
+    }
+
+    /**
+     * Create a builder to create a RewriterOptions.
+     *
+     * @param conf              configuration for reading from input files and writing to output file
+     * @param inputFile         input file to read from
+     * @param inputFileToJoin   input join file to read from
+     * @param outputFile        output file to rewrite to
+     */
+    public Builder(
+        ParquetConfiguration conf, InputFile inputFile, InputFile inputFileToJoin, OutputFile outputFile) {
+      this(conf, Collections.singletonList(inputFile), Collections.singletonList(inputFileToJoin), outputFile);
     }
 
     /**
@@ -213,6 +291,8 @@ public class RewriteOptions {
      * if row groups are very small and will not solve small file problems. Instead, it will
      * make it worse to have a large file footer in the output file.
      * TODO: support rewrite by record to break the original row groups into reasonable ones.
+     * <p>
+     * See {@link ParquetRewriter} for more details.
      *
      * @param conf       configuration for reading from input files and writing to output file
      * @param inputFiles list of input file paths to read from
@@ -224,6 +304,7 @@ public class RewriteOptions {
       for (Path inputFile : inputFiles) {
         this.inputFiles.add(HadoopInputFile.fromPathUnchecked(inputFile, conf));
       }
+      this.inputFilesToJoin = new ArrayList<>();
       this.outputFile = HadoopOutputFile.fromPathUnchecked(outputFile, conf);
     }
 
@@ -237,6 +318,8 @@ public class RewriteOptions {
      * if row groups are very small and will not solve small file problems. Instead, it will
      * make it worse to have a large file footer in the output file.
      * TODO: support rewrite by record to break the original row groups into reasonable ones.
+     * <p>
+     * See {@link ParquetRewriter} for more details.
      *
      * @param conf       configuration for reading from input files and writing to output file
      * @param inputFiles list of input file paths to read from
@@ -245,6 +328,68 @@ public class RewriteOptions {
     public Builder(ParquetConfiguration conf, List<InputFile> inputFiles, OutputFile outputFile) {
       this.conf = conf;
       this.inputFiles = inputFiles;
+      this.inputFilesToJoin = new ArrayList<>();
+      this.outputFile = outputFile;
+    }
+
+    /**
+     * Create a builder to create a RewriterOptions.
+     * <p>
+     * Please note the schema of all files in each file group <code>inputFiles</code> and <code>inputFilesToJoin</code>
+     * must be the same while those two schemas can be different in comparison with each other.
+     * Otherwise, the rewrite will fail.
+     * <p>
+     * The rewrite will keep original row groups from all input files. This may not be optimal
+     * if row groups are very small and will not solve small file problems. Instead, it will
+     * make it worse to have a large file footer in the output file.
+     * TODO: support rewrite by record to break the original row groups into reasonable ones.
+     * <p>
+     * See {@link ParquetRewriter} for more details.
+     *
+     * @param conf               configuration for reading from input files and writing to output file
+     * @param inputFiles        list of input file paths to read from
+     * @param inputFilesToJoin  list of input join file paths to read from
+     * @param outputFile        output file path to rewrite to
+     */
+    public Builder(Configuration conf, List<Path> inputFiles, List<Path> inputFilesToJoin, Path outputFile) {
+      this.conf = new HadoopParquetConfiguration(conf);
+      this.inputFiles = new ArrayList<>(inputFiles.size());
+      for (Path inputFile : inputFiles) {
+        this.inputFiles.add(HadoopInputFile.fromPathUnchecked(inputFile, conf));
+      }
+      this.inputFilesToJoin = new ArrayList<>(inputFilesToJoin.size());
+      for (Path inputFile : inputFilesToJoin) {
+        this.inputFilesToJoin.add(HadoopInputFile.fromPathUnchecked(inputFile, conf));
+      }
+      this.outputFile = HadoopOutputFile.fromPathUnchecked(outputFile, conf);
+    }
+
+    /**
+     * Create a builder to create a RewriterOptions.
+     * <p>
+     * Please note the schema of all files in each file group <code>inputFiles</code> and <code>inputFilesToJoin</code>
+     * must be the same while those two schemas can be different in comparison with each other.
+     * Otherwise, the rewrite will fail.
+     * <p>
+     * The rewrite will keep original row groups from all input files. This may not be optimal
+     * if row groups are very small and will not solve small file problems. Instead, it will
+     * make it worse to have a large file footer in the output file.
+     * <p>
+     * See {@link ParquetRewriter} for more details.
+     *
+     * @param conf              configuration for reading from input files and writing to output file
+     * @param inputFiles        list of input file paths to read from
+     * @param inputFilesToJoin  list of input join file paths to read from
+     * @param outputFile        output file path to rewrite to
+     */
+    public Builder(
+        ParquetConfiguration conf,
+        List<InputFile> inputFiles,
+        List<InputFile> inputFilesToJoin,
+        OutputFile outputFile) {
+      this.conf = conf;
+      this.inputFiles = inputFiles;
+      this.inputFilesToJoin = inputFilesToJoin;
       this.outputFile = outputFile;
     }
 
@@ -326,6 +471,18 @@ public class RewriteOptions {
     }
 
     /**
+     * Add an input join file to read from.
+     *
+     * @param path input file path to read from
+     * @return self
+     */
+    public Builder addInputFileToJoinColumns(Path path) {
+      this.inputFilesToJoin.add(
+          HadoopInputFile.fromPathUnchecked(path, ConfigurationUtil.createHadoopConfiguration(conf)));
+      return this;
+    }
+
+    /**
      * Add an input file to read from.
      *
      * @param inputFile input file to read from
@@ -333,6 +490,17 @@ public class RewriteOptions {
      */
     public Builder addInputFile(InputFile inputFile) {
       this.inputFiles.add(inputFile);
+      return this;
+    }
+
+    /**
+     * Add an input file to join.
+     *
+     * @param fileToJoin input file to join
+     * @return self
+     */
+    public Builder addInputFilesToJoin(InputFile fileToJoin) {
+      this.inputFilesToJoin.add(fileToJoin);
       return this;
     }
 
@@ -347,6 +515,33 @@ public class RewriteOptions {
      */
     public Builder indexCacheStrategy(IndexCache.CacheStrategy cacheStrategy) {
       this.indexCacheStrategy = cacheStrategy;
+      return this;
+    }
+
+    /**
+     * Set a flag whether columns from join files need to overwrite columns from the main input files.
+     * <p>
+     * By default, join files columns do not overwrite the main input file columns.
+     *
+     * @param overwriteInputWithJoinColumns a flag if columns from join files should overwrite columns
+     *                                      from the main input files
+     * @return self
+     */
+    public Builder overwriteInputWithJoinColumns(boolean overwriteInputWithJoinColumns) {
+      this.overwriteInputWithJoinColumns = overwriteInputWithJoinColumns;
+      return this;
+    }
+
+    /**
+     * Set a flag whether metadata from join files should be ignored.
+     * <p>
+     * By default, metadata is not ignored.
+     *
+     * @param ignoreJoinFilesMetadata a flag if metadata from join files should be ignored
+     * @return self
+     */
+    public Builder ignoreJoinFilesMetadata(boolean ignoreJoinFilesMetadata) {
+      this.ignoreJoinFilesMetadata = ignoreJoinFilesMetadata;
       return this;
     }
 
@@ -390,13 +585,16 @@ public class RewriteOptions {
       return new RewriteOptions(
           conf,
           inputFiles,
+          (inputFilesToJoin != null ? inputFilesToJoin : new ArrayList<>()),
           outputFile,
           pruneColumns,
           newCodecName,
           maskColumns,
           encryptColumns,
           fileEncryptionProperties,
-          indexCacheStrategy);
+          indexCacheStrategy,
+          overwriteInputWithJoinColumns,
+          ignoreJoinFilesMetadata);
     }
   }
 }
