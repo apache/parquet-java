@@ -34,6 +34,7 @@
 
   <dependencies>
     <dependency>
+      <!-- Shade jackson package names to prevent classpath duplicates  -->
       <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-core</artifactId>
       <version>${jackson.version}</version>
