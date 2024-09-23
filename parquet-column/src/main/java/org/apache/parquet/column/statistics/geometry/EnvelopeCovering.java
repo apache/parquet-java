@@ -75,7 +75,7 @@ public class EnvelopeCovering extends Covering {
 
   @Override
   public String getKind() {
-    return kind + "|" + crs + "|" + edges;
+    return kind;
   }
 
   @Override
@@ -83,24 +83,7 @@ public class EnvelopeCovering extends Covering {
     if (kind == null || kind.isEmpty()) {
       throw new IllegalArgumentException("Kind cannot be null or empty");
     }
-
-    // Split the input string by the "|" delimiter
-    String[] parts = kind.split("\\|");
-
-    // Ensure we have exactly 3 parts: kind, crs, and edges
-    if (parts.length != 3) {
-      throw new IllegalArgumentException("Invalid kind format. Expected format: 'kind|crs|edges'");
-    }
-
-    // Assign the values to the respective fields
-    this.kind = parts[0];
-    this.crs = parts[1];
-
-    try {
-      this.edges = LogicalTypeAnnotation.Edges.valueOf(parts[2]);
-    } catch (IllegalArgumentException e) {
-      throw new IllegalArgumentException("Invalid edges value: " + parts[2], e);
-    }
+    this.kind = kind;
   }
 
   @Override
