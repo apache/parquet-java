@@ -43,7 +43,7 @@ Parquet-Java uses Maven to build and depends on the thrift compiler (protoc is n
 To build and install the thrift compiler, run:
 
 ```
-wget -nv http://archive.apache.org/dist/thrift/0.20.0/thrift-0.20.0.tar.gz
+wget -nv https://archive.apache.org/dist/thrift/0.20.0/thrift-0.20.0.tar.gz
 tar xzf thrift-0.20.0.tar.gz
 cd thrift-0.20.0
 chmod +x ./configure
@@ -63,7 +63,7 @@ export PATH="/usr/local/opt/thrift@0.20.0/bin:$PATH"
 Once protobuf and thrift are available in your path, you can build the project by running:
 
 ```
-LC_ALL=C mvn clean install
+LC_ALL=C ./mvnw clean install
 ```
 
 ## Features
@@ -100,7 +100,7 @@ Parquet-Java has supported Java Vector API to speed up reading, to enable this f
 * Requiring the CPU to support instruction sets:
   * avx512vbmi
   * avx512_vbmi2
-* To build the jars: `mvn clean package -P vector-plugins`
+* To build the jars: `./mvnw clean package -P vector-plugins`
 * For Apache Spark to enable this feature:
   * Build parquet and replace the parquet-encoding-{VERSION}.jar on the spark jars folder
   * Build parquet-encoding-vector and copy parquet-encoding-vector-{VERSION}.jar to the spark jars folder
@@ -157,9 +157,9 @@ Hive integration is now deprecated within the Parquet project. It is now maintai
 
 ## Build
 
-To run the unit tests: `mvn test`
+To run the unit tests: `./mvnw test`
 
-To build the jars: `mvn package`
+To build the jars: `./mvnw package`
 
 The build runs in [GitHub Actions](https://github.com/apache/parquet-java/actions):
 [![Build Status](https://github.com/apache/parquet-java/workflows/Test/badge.svg)](https://github.com/apache/parquet-java/actions)
@@ -207,7 +207,7 @@ To contribute a patch:
   1. Break your work into small, single-purpose patches if possible. It’s much harder to merge in a large change with a lot of disjoint features.
   2. Create a JIRA for your patch on the [Parquet Project JIRA](https://issues.apache.org/jira/browse/PARQUET).
   3. Submit the patch as a GitHub pull request against the master branch. For a tutorial, see the GitHub guides on forking a repo and sending a pull request. Prefix your pull request name with the JIRA name (ex: https://github.com/apache/parquet-java/pull/240).
-  4. Make sure that your code passes the unit tests. You can run the tests with `mvn test` in the root directory.
+  4. Make sure that your code passes the unit tests. You can run the tests with `./mvnw test` in the root directory.
   5. Add new unit tests for your code.
 
 We tend to do fairly close readings of pull requests, and you may get a lot of comments. Some common issues that are not code structure related, but still important:

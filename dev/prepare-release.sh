@@ -7,9 +7,9 @@
 # to you under the Apache License, Version 2.0 (the
 # "License"); you may not use this file except in compliance
 # with the License.  You may obtain a copy of the License at
-# 
+#
 #   http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
 # "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -38,7 +38,7 @@ new_development_version="$release_version-SNAPSHOT"
 
 tag="apache-parquet-$release_version-rc$2"
 
-mvn release:clean
-mvn release:prepare -DskipTests -Darguments=-DskipTests -Dtag="$tag" "-DreleaseVersion=$release_version" -DdevelopmentVersion="$new_development_version"
+./mvnw release:clean
+./mvnw release:prepare -DskipTests -Darguments=-DskipTests -Dtag="$tag" "-DreleaseVersion=$release_version" -DdevelopmentVersion="$new_development_version"
 
-echo "Finish staging binary artifacts by running: mvn release:perform"
+echo "Finish staging binary artifacts by running: ./mvnw release:perform"

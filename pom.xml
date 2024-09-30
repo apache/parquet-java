@@ -67,6 +67,7 @@
     <jackson.groupId>com.fasterxml.jackson.core</jackson.groupId>
     <jackson.datatype.groupId>com.fasterxml.jackson.datatype</jackson.datatype.groupId>
     <jackson.package>com.fasterxml.jackson</jackson.package>
+    <!-- To upgrade jackson, check the jdk versions inside the jar and include any new versions in the shading in parquet-jackson. -->
     <jackson.version>2.17.2</jackson.version>
     <jackson-databind.version>2.17.2</jackson-databind.version>
     <japicmp.version>0.21.0</japicmp.version>
@@ -102,7 +103,7 @@
     <opencsv.version>2.3</opencsv.version>
     <jcommander.version>1.82</jcommander.version>
     <tukaani.version>1.9</tukaani.version>
-    <zstd-jni.version>1.5.6-3</zstd-jni.version>
+    <zstd-jni.version>1.5.6-6</zstd-jni.version>
     <commons-text.version>1.12.0</commons-text.version>
     <jsr305.version>3.0.2</jsr305.version>
     <commons-lang3.version>3.15.0</commons-lang3.version>

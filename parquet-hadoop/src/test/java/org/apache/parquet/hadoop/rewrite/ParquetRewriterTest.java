@@ -33,6 +33,9 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import java.io.IOException;
@@ -44,7 +47,10 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.HadoopReadOptions;
@@ -108,6 +114,7 @@ public class ParquetRewriterTest {
   private final boolean usingHadoop;
 
   private List<EncryptionTestFile> inputFiles = Lists.newArrayList();
+  private List<EncryptionTestFile> inputFilesToJoin = Lists.newArrayList();
   private String outputFile = null;
   private ParquetRewriter rewriter = null;
 
@@ -161,7 +168,7 @@ public class ParquetRewriterTest {
     rewriter.close();
 
     // Verify the schema is not changed for the columns not pruned
-    validateSchema();
+    validateSchemaWithGenderColumnPruned(false);
 
     // Verify codec has been translated
     verifyCodec(
@@ -174,17 +181,10 @@ public class ParquetRewriterTest {
         null);
 
     // Verify the data are not changed for the columns not pruned
-    validateColumnData(new HashSet<>(pruneColumns), Collections.emptySet(), null);
+    validateColumnData(new HashSet<>(pruneColumns), Collections.emptySet(), null, false);
 
     // Verify the page index
-    validatePageIndex(new HashMap<Integer, Integer>() {
-      {
-        put(0, 0);
-        put(1, 1);
-        put(2, 3);
-        put(3, 4);
-      }
-    });
+    validatePageIndex(new HashSet<>(), false);
 
     // Verify original.created.by is preserved
     validateCreatedBy();
@@ -194,6 +194,7 @@ public class ParquetRewriterTest {
   @Before
   public void setUp() {
     outputFile = TestFileBuilder.createTempFile("test");
+    inputFilesToJoin = new ArrayList<>();
   }
 
   @Test
@@ -238,7 +239,7 @@ public class ParquetRewriterTest {
     rewriter.close();
 
     // Verify the schema are not changed for the columns not pruned
-    validateSchema();
+    validateSchemaWithGenderColumnPruned(false);
 
     // Verify codec has been translated
     verifyCodec(
@@ -251,16 +252,10 @@ public class ParquetRewriterTest {
         null);
 
     // Verify the data are not changed for the columns not pruned
-    validateColumnData(new HashSet<>(pruneColumns), maskColumns.keySet(), null);
+    validateColumnData(new HashSet<>(pruneColumns), maskColumns.keySet(), null, false);
 
     // Verify the page index
-    validatePageIndex(new HashMap<Integer, Integer>() {
-      {
-        put(0, 0);
-        put(1, 1);
-        put(2, 3);
-      }
-    });
+    validatePageIndex(ImmutableSet.of("Links.Forward"), false);
 
     // Verify original.created.by is preserved
     validateCreatedBy();
@@ -318,7 +313,7 @@ public class ParquetRewriterTest {
     rewriter.close();
 
     // Verify the schema is not changed for the columns not pruned
-    validateSchema();
+    validateSchemaWithGenderColumnPruned(false);
 
     // Verify codec has been translated
     FileDecryptionProperties fileDecryptionProperties = EncDecProperties.getFileDecryptionProperties();
@@ -332,7 +327,7 @@ public class ParquetRewriterTest {
         fileDecryptionProperties);
 
     // Verify the data are not changed for the columns not pruned
-    validateColumnData(new HashSet<>(pruneColumns), Collections.emptySet(), fileDecryptionProperties);
+    validateColumnData(new HashSet<>(pruneColumns), Collections.emptySet(), fileDecryptionProperties, false);
 
     // Verify column encryption
     ParquetMetadata metaData = getFileMetaData(outputFile, fileDecryptionProperties);
@@ -493,17 +488,10 @@ public class ParquetRewriterTest {
 
     // Verify the data are not changed for non-encrypted and non-masked columns.
     // Also make sure the masked column is nullified.
-    validateColumnData(Collections.emptySet(), maskColumns.keySet(), fileDecryptionProperties);
+    validateColumnData(Collections.emptySet(), maskColumns.keySet(), fileDecryptionProperties, false);
 
     // Verify the page index
-    validatePageIndex(new HashMap<Integer, Integer>() {
-      {
-        put(1, 1);
-        put(2, 2);
-        put(3, 3);
-        put(4, 4);
-      }
-    });
+    validatePageIndex(ImmutableSet.of("DocId"), false);
 
     // Verify the column is encrypted
     ParquetMetadata metaData = getFileMetaData(outputFile, fileDecryptionProperties);
@@ -583,18 +571,10 @@ public class ParquetRewriterTest {
         null);
 
     // Verify the merged data are not changed
-    validateColumnData(Collections.emptySet(), Collections.emptySet(), null);
+    validateColumnData(Collections.emptySet(), Collections.emptySet(), null, false);
 
     // Verify the page index
-    validatePageIndex(new HashMap<Integer, Integer>() {
-      {
-        put(0, 0);
-        put(1, 1);
-        put(2, 2);
-        put(3, 3);
-        put(4, 4);
-      }
-    });
+    validatePageIndex(new HashSet<>(), false);
 
     // Verify original.created.by is preserved
     validateCreatedBy();
@@ -603,6 +583,15 @@ public class ParquetRewriterTest {
 
   @Test(expected = InvalidSchemaException.class)
   public void testMergeTwoFilesWithDifferentSchema() throws Exception {
+    testMergeTwoFilesWithDifferentSchemaSetup(true);
+  }
+
+  @Test(expected = InvalidSchemaException.class)
+  public void testMergeTwoFilesToJoinWithDifferentSchema() throws Exception {
+    testMergeTwoFilesWithDifferentSchemaSetup(false);
+  }
+
+  public void testMergeTwoFilesWithDifferentSchemaSetup(boolean wrongSchemaInInputFile) throws Exception {
     MessageType schema1 = new MessageType(
         "schema",
         new PrimitiveType(OPTIONAL, INT64, "DocId"),
@@ -625,18 +614,32 @@ public class ParquetRewriterTest {
         .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
         .withWriterVersion(writerVersion)
         .build());
-    inputFiles.add(new TestFileBuilder(conf, schema2)
+    inputFilesToJoin.add(new TestFileBuilder(conf, schema1)
         .withNumRecord(numRecord)
         .withCodec("UNCOMPRESSED")
         .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
         .withWriterVersion(writerVersion)
         .build());
-
-    List<Path> inputPaths = new ArrayList<>();
-    for (EncryptionTestFile inputFile : inputFiles) {
-      inputPaths.add(new Path(inputFile.getFileName()));
+    if (wrongSchemaInInputFile) {
+      inputFiles.add(new TestFileBuilder(conf, schema2)
+          .withNumRecord(numRecord)
+          .withCodec("UNCOMPRESSED")
+          .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
+          .withWriterVersion(writerVersion)
+          .build());
+    } else {
+      inputFilesToJoin.add(new TestFileBuilder(conf, schema2)
+          .withNumRecord(numRecord)
+          .withCodec("UNCOMPRESSED")
+          .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
+          .withWriterVersion(writerVersion)
+          .build());
     }
-    RewriteOptions.Builder builder = createBuilder(inputPaths);
+
+    RewriteOptions.Builder builder = createBuilder(
+        inputFiles.stream().map(x -> new Path(x.getFileName())).collect(Collectors.toList()),
+        inputFilesToJoin.stream().map(x -> new Path(x.getFileName())).collect(Collectors.toList()),
+        false);
     RewriteOptions options = builder.indexCacheStrategy(indexCacheStrategy).build();
 
     // This should throw an exception because the schemas are different
@@ -733,6 +736,127 @@ public class ParquetRewriterTest {
         .build());
   }
 
+  @Test
+  public void testFilesToJoinHaveDifferentRowCount() throws Exception {
+    MessageType schema1 = new MessageType("schema", new PrimitiveType(OPTIONAL, INT64, "DocId"));
+    MessageType schema2 = new MessageType("schema", new PrimitiveType(REQUIRED, BINARY, "Name"));
+    inputFiles = ImmutableList.of(
+        new TestFileBuilder(conf, schema1).withNumRecord(numRecord).build());
+    inputFilesToJoin = ImmutableList.of(
+        new TestFileBuilder(conf, schema2).withNumRecord(numRecord / 2).build());
+    RewriteOptions.Builder builder = createBuilder(
+        inputFiles.stream().map(x -> new Path(x.getFileName())).collect(Collectors.toList()),
+        inputFilesToJoin.stream().map(x -> new Path(x.getFileName())).collect(Collectors.toList()),
+        true);
+    RewriteOptions options = builder.build();
+    try {
+      rewriter =
+          new ParquetRewriter(options); // This should throw an exception because the row count is different
+    } catch (RuntimeException e) {
+      assertTrue(e.getMessage().contains("The number of rows in each block must match"));
+    }
+  }
+
+  @Test
+  public void testOneInputFileManyInputFilesToJoinWithJoinColumnsOverwrite() throws Exception {
+    testOneInputFileManyInputFilesToJoinSetup(true);
+  }
+
+  @Test
+  public void testOneInputFileManyInputFilesToJoinWithoutJoinColumnsOverwrite() throws Exception {
+    testOneInputFileManyInputFilesToJoinSetup(false);
+  }
+
+  public void testOneInputFileManyInputFilesToJoinSetup(boolean joinColumnsOverwrite) throws Exception {
+    testOneInputFileManyInputFilesToJoinSetup();
+
+    String encryptColumn = "DocId";
+    String pruneColumn = "Gender";
+
+    FileEncryptionProperties fileEncryptionProperties = EncDecProperties.getFileEncryptionProperties(
+        new String[] {encryptColumn}, ParquetCipher.AES_GCM_CTR_V1, false);
+    FileDecryptionProperties fileDecryptionProperties = EncDecProperties.getFileDecryptionProperties();
+
+    List<Path> inputPathsL =
+        inputFiles.stream().map(x -> new Path(x.getFileName())).collect(Collectors.toList());
+    List<Path> inputPathsR =
+        inputFilesToJoin.stream().map(y -> new Path(y.getFileName())).collect(Collectors.toList());
+    List<String> pruneColumns = ImmutableList.of(pruneColumn);
+    Map<String, MaskMode> maskColumns = ImmutableMap.of(encryptColumn, MaskMode.NULLIFY);
+    RewriteOptions options = createBuilder(inputPathsL, inputPathsR, true)
+        .prune(pruneColumns)
+        .mask(maskColumns)
+        .transform(CompressionCodecName.ZSTD)
+        .indexCacheStrategy(indexCacheStrategy)
+        .overwriteInputWithJoinColumns(joinColumnsOverwrite)
+        .encrypt(ImmutableList.of(encryptColumn))
+        .encryptionProperties(fileEncryptionProperties)
+        .build();
+
+    rewriter = new ParquetRewriter(options);
+    rewriter.processBlocks();
+    rewriter.close();
+
+    Map<ColumnPath, List<BloomFilter>> inputBloomFilters = allInputBloomFilters();
+    Map<ColumnPath, List<BloomFilter>> outputBloomFilters = allOutputBloomFilters(fileDecryptionProperties);
+    Set<ColumnPath> schemaRColumns = createSchemaToJoin().getColumns().stream()
+        .map(x -> ColumnPath.get(x.getPath()))
+        .collect(Collectors.toSet());
+    Set<ColumnPath> rBloomFilters = outputBloomFilters.keySet().stream()
+        .filter(schemaRColumns::contains)
+        .collect(Collectors.toSet());
+
+    // Verify column encryption
+    ParquetMetadata metaData = getFileMetaData(outputFile, fileDecryptionProperties);
+    assertFalse(metaData.getBlocks().isEmpty());
+    List<ColumnChunkMetaData> columns = metaData.getBlocks().get(0).getColumns();
+    Set<String> set = ImmutableSet.of(encryptColumn);
+    for (ColumnChunkMetaData column : columns) {
+      if (set.contains(column.getPath().toDotString())) {
+        assertTrue(column.isEncrypted());
+      } else {
+        assertFalse(column.isEncrypted());
+      }
+    }
+
+    validateColumnData(
+        new HashSet<>(pruneColumns),
+        maskColumns.keySet(),
+        fileDecryptionProperties,
+        joinColumnsOverwrite); // Verify data
+    validateSchemaWithGenderColumnPruned(true); // Verify schema
+    validateCreatedBy(); // Verify original.created.by
+    assertEquals(inputBloomFilters.keySet(), rBloomFilters); // Verify bloom filters
+    verifyCodec(outputFile, ImmutableSet.of(CompressionCodecName.ZSTD), fileDecryptionProperties); // Verify codec
+    validatePageIndex(ImmutableSet.of(encryptColumn), joinColumnsOverwrite);
+  }
+
+  private void testOneInputFileManyInputFilesToJoinSetup() throws IOException {
+    inputFiles = Lists.newArrayList(new TestFileBuilder(conf, createSchema())
+        .withNumRecord(numRecord)
+        .withRowGroupSize(1 * 1024 * 1024)
+        .withCodec("GZIP")
+        .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
+        .withWriterVersion(writerVersion)
+        .build());
+
+    List<Long> rowGroupRowCounts = ParquetFileReader.readFooter(
+            conf, new Path(inputFiles.get(0).getFileName()), ParquetMetadataConverter.NO_FILTER)
+        .getBlocks()
+        .stream()
+        .map(BlockMetaData::getRowCount)
+        .collect(Collectors.toList());
+
+    for (long count : rowGroupRowCounts) {
+      inputFilesToJoin.add(new TestFileBuilder(conf, createSchemaToJoin())
+          .withNumRecord((int) count)
+          .withCodec("UNCOMPRESSED")
+          .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
+          .withWriterVersion(writerVersion)
+          .build());
+    }
+  }
+
   private MessageType createSchema() {
     return new MessageType(
         "schema",
@@ -748,52 +872,85 @@ public class ParquetRewriterTest {
             new PrimitiveType(REPEATED, BINARY, "Forward")));
   }
 
+  private MessageType createSchemaToJoin() {
+    return new MessageType(
+        "schema",
+        new PrimitiveType(REPEATED, FLOAT, "FloatFraction"),
+        new PrimitiveType(OPTIONAL, INT64, "Age"),
+        new GroupType(
+            OPTIONAL,
+            "Links",
+            new PrimitiveType(REPEATED, BINARY, "Backward"),
+            new PrimitiveType(REPEATED, BINARY, "Forward")));
+  }
+
   private void validateColumnData(
-      Set<String> prunePaths, Set<String> nullifiedPaths, FileDecryptionProperties fileDecryptionProperties)
+      Set<String> prunePaths,
+      Set<String> nullifiedPaths,
+      FileDecryptionProperties fileDecryptionProperties,
+      Boolean joinColumnsOverwrite)
       throws IOException {
     ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), new Path(outputFile))
         .withConf(conf)
         .withDecryption(fileDecryptionProperties)
         .build();
 
-    // Get the total number of rows from input files
-    int totalRows = 0;
-    for (EncryptionTestFile inputFile : inputFiles) {
-      totalRows += inputFile.getFileContent().length;
-    }
+    List<SimpleGroup> filesMain = inputFiles.stream()
+        .flatMap(x -> Arrays.stream(x.getFileContent()))
+        .collect(Collectors.toList());
+    List<SimpleGroup> filesJoined = inputFilesToJoin.stream()
+        .flatMap(x -> Arrays.stream(x.getFileContent()))
+        .collect(Collectors.toList());
+    BiFunction<String, Integer, Group> groups = (name, rowIdx) -> {
+      if (!filesMain.get(0).getType().containsField(name)
+          || joinColumnsOverwrite
+              && !filesJoined.isEmpty()
+              && filesJoined.get(0).getType().containsField(name)) {
+        return filesJoined.get(rowIdx);
+      } else {
+        return filesMain.get(rowIdx);
+      }
+    };
 
+    int totalRows =
+        inputFiles.stream().mapToInt(x -> x.getFileContent().length).sum();
     for (int i = 0; i < totalRows; i++) {
       Group group = reader.read();
       assertNotNull(group);
-
-      SimpleGroup expectGroup = inputFiles.get(i / numRecord).getFileContent()[i % numRecord];
 
       if (!prunePaths.contains("DocId")) {
         if (nullifiedPaths.contains("DocId")) {
           assertThrows(RuntimeException.class, () -> group.getLong("DocId", 0));
         } else {
-          assertEquals(group.getLong("DocId", 0), expectGroup.getLong("DocId", 0));
+          assertEquals(
+              group.getLong("DocId", 0), groups.apply("DocId", i).getLong("DocId", 0));
         }
       }
 
       if (!prunePaths.contains("Name") && !nullifiedPaths.contains("Name")) {
         assertArrayEquals(
             group.getBinary("Name", 0).getBytes(),
-            expectGroup.getBinary("Name", 0).getBytes());
+            groups.apply("Name", i).getBinary("Name", 0).getBytes());
       }
 
       if (!prunePaths.contains("Gender") && !nullifiedPaths.contains("Gender")) {
         assertArrayEquals(
             group.getBinary("Gender", 0).getBytes(),
-            expectGroup.getBinary("Gender", 0).getBytes());
+            groups.apply("Gender", i).getBinary("Gender", 0).getBytes());
       }
 
       if (!prunePaths.contains("FloatFraction") && !nullifiedPaths.contains("FloatFraction")) {
-        assertEquals(group.getFloat("FloatFraction", 0), expectGroup.getFloat("FloatFraction", 0), 0);
+        assertEquals(
+            group.getFloat("FloatFraction", 0),
+            groups.apply("FloatFraction", i).getFloat("FloatFraction", 0),
+            0);
       }
 
       if (!prunePaths.contains("DoubleFraction") && !nullifiedPaths.contains("DoubleFraction")) {
-        assertEquals(group.getDouble("DoubleFraction", 0), expectGroup.getDouble("DoubleFraction", 0), 0);
+        assertEquals(
+            group.getDouble("DoubleFraction", 0),
+            groups.apply("DoubleFraction", i).getDouble("DoubleFraction", 0),
+            0);
       }
 
       Group subGroup = group.getGroup("Links", 0);
@@ -801,7 +958,7 @@ public class ParquetRewriterTest {
       if (!prunePaths.contains("Links.Backward") && !nullifiedPaths.contains("Links.Backward")) {
         assertArrayEquals(
             subGroup.getBinary("Backward", 0).getBytes(),
-            expectGroup
+            groups.apply("Links", i)
                 .getGroup("Links", 0)
                 .getBinary("Backward", 0)
                 .getBytes());
@@ -813,7 +970,7 @@ public class ParquetRewriterTest {
         } else {
           assertArrayEquals(
               subGroup.getBinary("Forward", 0).getBytes(),
-              expectGroup
+              groups.apply("Links", i)
                   .getGroup("Links", 0)
                   .getBinary("Forward", 0)
                   .getBytes());
@@ -852,77 +1009,107 @@ public class ParquetRewriterTest {
     assertEquals(expectedCodecs, codecs);
   }
 
+  @FunctionalInterface
+  interface CheckedFunction<T, R> {
+    R apply(T t) throws IOException;
+  }
+
   /**
    * Verify the page index is correct.
    *
-   * @param outFileColumnMapping the column mapping from the output file to the input file.
+   * @param exclude the columns to exclude from comparison, for example because they were nullified.
+   * @param joinColumnsOverwrite whether a join columns overwrote existing overlapping columns.
    */
-  private void validatePageIndex(Map<Integer, Integer> outFileColumnMapping) throws Exception {
-    ParquetMetadata outMetaData = getFileMetaData(outputFile, null);
+  private void validatePageIndex(Set<String> exclude, boolean joinColumnsOverwrite) throws Exception {
+    class BlockMeta {
+      final TransParquetFileReader reader;
+      final BlockMetaData blockMeta;
+      final Map<ColumnPath, ColumnChunkMetaData> colPathToMeta;
 
-    int inputFileIndex = 0;
-    TransParquetFileReader inReader = new TransParquetFileReader(
-        HadoopInputFile.fromPath(new Path(inputFiles.get(inputFileIndex).getFileName()), conf),
-        HadoopReadOptions.builder(conf).build());
-    ParquetMetadata inMetaData = inReader.getFooter();
+      BlockMeta(
+          TransParquetFileReader reader,
+          BlockMetaData blockMeta,
+          Map<ColumnPath, ColumnChunkMetaData> colPathToMeta) {
+        this.reader = reader;
+        this.blockMeta = blockMeta;
+        this.colPathToMeta = colPathToMeta;
+      }
+    }
+    CheckedFunction<List<String>, List<BlockMeta>> blockMetaExtractor = files -> {
+      List<BlockMeta> result = new ArrayList<>();
+      for (String inputFile : files) {
+        TransParquetFileReader reader = new TransParquetFileReader(
+            HadoopInputFile.fromPath(new Path(inputFile), conf),
+            HadoopReadOptions.builder(conf).build());
+        reader.getFooter()
+            .getBlocks()
+            .forEach(blockMetaData -> result.add(new BlockMeta(
+                reader,
+                blockMetaData,
+                blockMetaData.getColumns().stream()
+                    .collect(
+                        Collectors.toMap(ColumnChunkMetaData::getPath, Function.identity())))));
+      }
+      return result;
+    };
 
-    try (TransParquetFileReader outReader = new TransParquetFileReader(
-        HadoopInputFile.fromPath(new Path(outputFile), conf),
-        HadoopReadOptions.builder(conf).build())) {
-
-      for (int outBlockId = 0, inBlockId = 0;
-          outBlockId < outMetaData.getBlocks().size();
-          ++outBlockId, ++inBlockId) {
-        // Refresh reader of input file
-        if (inBlockId == inMetaData.getBlocks().size()) {
-          inReader = new TransParquetFileReader(
-              HadoopInputFile.fromPath(
-                  new Path(inputFiles.get(++inputFileIndex).getFileName()), conf),
-              HadoopReadOptions.builder(conf).build());
-          inMetaData = inReader.getFooter();
-          inBlockId = 0;
+    List<BlockMeta> inBlocksMain = blockMetaExtractor.apply(
+        inputFiles.stream().map(EncryptionTestFile::getFileName).collect(Collectors.toList()));
+    List<BlockMeta> inBlocksJoined = blockMetaExtractor.apply(
+        inputFilesToJoin.stream().map(EncryptionTestFile::getFileName).collect(Collectors.toList()));
+    List<BlockMeta> outBlocks = blockMetaExtractor.apply(ImmutableList.of(outputFile));
+    for (int blockIdx = 0; blockIdx < outBlocks.size(); blockIdx++) {
+      BlockMetaData outBlockMeta = outBlocks.get(blockIdx).blockMeta;
+      TransParquetFileReader outReader = outBlocks.get(blockIdx).reader;
+      for (ColumnChunkMetaData outChunk : outBlockMeta.getColumns()) {
+        if (exclude.contains(outChunk.getPath().toDotString())) continue;
+        TransParquetFileReader inReader;
+        BlockMetaData inBlockMeta;
+        ColumnChunkMetaData inChunk;
+        if (!inBlocksMain.get(blockIdx).colPathToMeta.containsKey(outChunk.getPath())
+            || joinColumnsOverwrite
+                && !inBlocksJoined.isEmpty()
+                && inBlocksJoined.get(blockIdx).colPathToMeta.containsKey(outChunk.getPath())) {
+          inReader = inBlocksJoined.get(blockIdx).reader;
+          inBlockMeta = inBlocksJoined.get(blockIdx).blockMeta;
+          inChunk = inBlocksJoined.get(blockIdx).colPathToMeta.get(outChunk.getPath());
+        } else {
+          inReader = inBlocksMain.get(blockIdx).reader;
+          inBlockMeta = inBlocksMain.get(blockIdx).blockMeta;
+          inChunk = inBlocksMain.get(blockIdx).colPathToMeta.get(outChunk.getPath());
         }
 
-        BlockMetaData inBlockMetaData = inMetaData.getBlocks().get(inBlockId);
-        BlockMetaData outBlockMetaData = outMetaData.getBlocks().get(outBlockId);
-
-        assertEquals(inBlockMetaData.getRowCount(), outBlockMetaData.getRowCount());
-
-        for (int j = 0; j < outBlockMetaData.getColumns().size(); j++) {
-          if (!outFileColumnMapping.containsKey(j)) {
-            continue;
-          }
-          int columnIdFromInputFile = outFileColumnMapping.get(j);
-          ColumnChunkMetaData inChunk = inBlockMetaData.getColumns().get(columnIdFromInputFile);
-          ColumnIndex inColumnIndex = inReader.readColumnIndex(inChunk);
-          OffsetIndex inOffsetIndex = inReader.readOffsetIndex(inChunk);
-          ColumnChunkMetaData outChunk = outBlockMetaData.getColumns().get(j);
-          ColumnIndex outColumnIndex = outReader.readColumnIndex(outChunk);
-          OffsetIndex outOffsetIndex = outReader.readOffsetIndex(outChunk);
-          if (inColumnIndex != null) {
-            assertEquals(inColumnIndex.getBoundaryOrder(), outColumnIndex.getBoundaryOrder());
-            assertEquals(inColumnIndex.getMaxValues(), outColumnIndex.getMaxValues());
-            assertEquals(inColumnIndex.getMinValues(), outColumnIndex.getMinValues());
-            assertEquals(inColumnIndex.getNullCounts(), outColumnIndex.getNullCounts());
-          }
-          if (inOffsetIndex != null) {
-            List<Long> inOffsets = getOffsets(inReader, inChunk);
-            List<Long> outOffsets = getOffsets(outReader, outChunk);
-            assertEquals(inOffsets.size(), outOffsets.size());
-            assertEquals(inOffsets.size(), inOffsetIndex.getPageCount());
-            assertEquals(inOffsetIndex.getPageCount(), outOffsetIndex.getPageCount());
-            for (int k = 0; k < inOffsetIndex.getPageCount(); k++) {
-              assertEquals(inOffsetIndex.getFirstRowIndex(k), outOffsetIndex.getFirstRowIndex(k));
-              assertEquals(
-                  inOffsetIndex.getLastRowIndex(k, inBlockMetaData.getRowCount()),
-                  outOffsetIndex.getLastRowIndex(k, outBlockMetaData.getRowCount()));
-              assertEquals(inOffsetIndex.getOffset(k), (long) inOffsets.get(k));
-              assertEquals(outOffsetIndex.getOffset(k), (long) outOffsets.get(k));
-            }
+        ColumnIndex inColumnIndex = inReader.readColumnIndex(inChunk);
+        OffsetIndex inOffsetIndex = inReader.readOffsetIndex(inChunk);
+        ColumnIndex outColumnIndex = outReader.readColumnIndex(outChunk);
+        OffsetIndex outOffsetIndex = outReader.readOffsetIndex(outChunk);
+        if (inColumnIndex != null) {
+          assertEquals(inColumnIndex.getBoundaryOrder(), outColumnIndex.getBoundaryOrder());
+          assertEquals(inColumnIndex.getMaxValues(), outColumnIndex.getMaxValues());
+          assertEquals(inColumnIndex.getMinValues(), outColumnIndex.getMinValues());
+          assertEquals(inColumnIndex.getNullCounts(), outColumnIndex.getNullCounts());
+        }
+        if (inOffsetIndex != null) {
+          List<Long> inOffsets = getOffsets(inReader, inChunk);
+          List<Long> outOffsets = getOffsets(outReader, outChunk);
+          assertEquals(inOffsets.size(), outOffsets.size());
+          assertEquals(inOffsets.size(), inOffsetIndex.getPageCount());
+          assertEquals(inOffsetIndex.getPageCount(), outOffsetIndex.getPageCount());
+          for (int k = 0; k < inOffsetIndex.getPageCount(); k++) {
+            assertEquals(inOffsetIndex.getFirstRowIndex(k), outOffsetIndex.getFirstRowIndex(k));
+            assertEquals(
+                inOffsetIndex.getLastRowIndex(k, inBlockMeta.getRowCount()),
+                outOffsetIndex.getLastRowIndex(k, outBlockMeta.getRowCount()));
+            assertEquals(inOffsetIndex.getOffset(k), (long) inOffsets.get(k));
+            assertEquals(outOffsetIndex.getOffset(k), (long) outOffsets.get(k));
           }
         }
       }
     }
+
+    for (BlockMeta t3 : inBlocksMain) t3.reader.close();
+    for (BlockMeta t3 : inBlocksJoined) t3.reader.close();
+    for (BlockMeta t3 : outBlocks) t3.reader.close();
   }
 
   private List<Long> getOffsets(TransParquetFileReader reader, ColumnChunkMetaData chunk) throws IOException {
@@ -963,7 +1150,9 @@ public class ParquetRewriterTest {
 
   private void validateCreatedBy() throws Exception {
     Set<String> createdBySet = new HashSet<>();
-    for (EncryptionTestFile inputFile : inputFiles) {
+    List<EncryptionTestFile> inFiles =
+        Stream.concat(inputFiles.stream(), inputFilesToJoin.stream()).collect(Collectors.toList());
+    for (EncryptionTestFile inputFile : inFiles) {
       ParquetMetadata pmd = getFileMetaData(inputFile.getFileName(), null);
       createdBySet.add(pmd.getFileMetaData().getCreatedBy());
       assertNull(pmd.getFileMetaData().getKeyValueMetaData().get(ParquetRewriter.ORIGINAL_CREATED_BY_KEY));
@@ -1005,7 +1194,9 @@ public class ParquetRewriterTest {
 
   private Map<ColumnPath, List<BloomFilter>> allInputBloomFilters() throws Exception {
     Map<ColumnPath, List<BloomFilter>> inputBloomFilters = new HashMap<>();
-    for (EncryptionTestFile inputFile : inputFiles) {
+    List<EncryptionTestFile> files =
+        Stream.concat(inputFiles.stream(), inputFilesToJoin.stream()).collect(Collectors.toList());
+    for (EncryptionTestFile inputFile : files) {
       Map<ColumnPath, List<BloomFilter>> bloomFilters = allBloomFilters(inputFile.getFileName(), null);
       for (Map.Entry<ColumnPath, List<BloomFilter>> entry : bloomFilters.entrySet()) {
         List<BloomFilter> bloomFilterList = inputBloomFilters.getOrDefault(entry.getKey(), new ArrayList<>());
@@ -1048,35 +1239,49 @@ public class ParquetRewriterTest {
   }
 
   private RewriteOptions.Builder createBuilder(List<Path> inputPaths) throws IOException {
+    return createBuilder(inputPaths, new ArrayList<>(), false);
+  }
+
+  private RewriteOptions.Builder createBuilder(
+      List<Path> inputPathsL, List<Path> inputPathsR, boolean overwriteInputWithJoinColumns) throws IOException {
     RewriteOptions.Builder builder;
     if (usingHadoop) {
       Path outputPath = new Path(outputFile);
-      builder = new RewriteOptions.Builder(conf, inputPaths, outputPath);
+      builder = new RewriteOptions.Builder(conf, inputPathsL, inputPathsR, outputPath);
     } else {
       OutputFile outputPath = HadoopOutputFile.fromPath(new Path(outputFile), conf);
-      List<InputFile> inputs = inputPaths.stream()
+      List<InputFile> inputsL = inputPathsL.stream()
           .map(p -> HadoopInputFile.fromPathUnchecked(p, conf))
           .collect(Collectors.toList());
-      builder = new RewriteOptions.Builder(parquetConf, inputs, outputPath);
+      List<InputFile> inputsR = inputPathsR.stream()
+          .map(p -> HadoopInputFile.fromPathUnchecked(p, conf))
+          .collect(Collectors.toList());
+      builder = new RewriteOptions.Builder(parquetConf, inputsL, inputsR, outputPath);
     }
+    builder.overwriteInputWithJoinColumns(overwriteInputWithJoinColumns);
     return builder;
   }
 
-  private void validateSchema() throws IOException {
-    ParquetMetadata pmd =
-        ParquetFileReader.readFooter(conf, new Path(outputFile), ParquetMetadataConverter.NO_FILTER);
-    MessageType schema = pmd.getFileMetaData().getSchema();
-    List<Type> fields = schema.getFields();
-    assertEquals(fields.size(), 5);
-    assertEquals(fields.get(0).getName(), "DocId");
-    assertEquals(fields.get(1).getName(), "Name");
-    assertEquals(fields.get(2).getName(), "FloatFraction");
-    assertEquals(fields.get(3).getName(), "DoubleFraction");
-    assertEquals(fields.get(4).getName(), "Links");
-    List<Type> subFields = fields.get(4).asGroupType().getFields();
-    assertEquals(subFields.size(), 2);
-    assertEquals(subFields.get(0).getName(), "Backward");
-    assertEquals(subFields.get(1).getName(), "Forward");
+  private void validateSchemaWithGenderColumnPruned(boolean addJoinedColumn) throws IOException {
+    MessageType expectSchema = new MessageType(
+        "schema",
+        new PrimitiveType(OPTIONAL, INT64, "DocId"),
+        new PrimitiveType(REQUIRED, BINARY, "Name"),
+        new PrimitiveType(REPEATED, FLOAT, "FloatFraction"),
+        new PrimitiveType(OPTIONAL, DOUBLE, "DoubleFraction"),
+        new GroupType(
+            OPTIONAL,
+            "Links",
+            new PrimitiveType(REPEATED, BINARY, "Backward"),
+            new PrimitiveType(REPEATED, BINARY, "Forward")));
+    if (addJoinedColumn) {
+      expectSchema = expectSchema.union(new MessageType("schema", new PrimitiveType(OPTIONAL, INT64, "Age")));
+    }
+    MessageType actualSchema = ParquetFileReader.readFooter(
+            conf, new Path(outputFile), ParquetMetadataConverter.NO_FILTER)
+        .getFileMetaData()
+        .getSchema();
+    assertEquals(expectSchema, actualSchema);
   }
 
   private void ensureContainsGzipFile() {
