@@ -9,7 +9,7 @@
 
   <groupId>org.apache.parquet</groupId>
   <artifactId>parquet</artifactId>
-  <version>1.14.3-SNAPSHOT</version>
+  <version>1.14.3</version>
   <packaging>pom</packaging>
 
   <name>Apache Parquet MR</name>
@@ -20,7 +20,7 @@
     <connection>scm:git:git@github.com:apache/parquet-mr.git</connection>
     <url>scm:git:git@github.com:apache/parquet-mr.git</url>
     <developerConnection>scm:git:git@github.com:apache/parquet-mr.git</developerConnection>
-    <tag>HEAD</tag>
+    <tag>apache-parquet-1.14.3-rc2</tag>
   </scm>
 
   <licenses>
