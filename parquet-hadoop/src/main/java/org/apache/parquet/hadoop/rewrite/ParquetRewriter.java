@@ -144,10 +144,11 @@ public class ParquetRewriter implements Closeable {
   // Reader and relevant states of the in-processing input file
   private final Queue<TransParquetFileReader> inputFiles = new LinkedList<>();
   private final Queue<TransParquetFileReader> inputFilesToJoin = new LinkedList<>();
-  private MessageType outSchema;
+  private final MessageType outSchema;
   // The index cache strategy
   private final IndexCache.CacheStrategy indexCacheStrategy;
   private final boolean overwriteInputWithJoinColumns;
+  private final InternalFileEncryptor nullColumnEncryptor;
 
   public ParquetRewriter(RewriteOptions options) throws IOException {
     this.newCodecName = options.getNewCodecName();
@@ -194,6 +195,17 @@ public class ParquetRewriter implements Closeable {
         ParquetProperties.DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED,
         options.getFileEncryptionProperties());
     writer.start();
+    // column nullification requires a separate encryptor and forcing other columns encryption initialization
+    if (options.getFileEncryptionProperties() == null) {
+      this.nullColumnEncryptor = null;
+    } else {
+      this.nullColumnEncryptor = new InternalFileEncryptor(options.getFileEncryptionProperties());
+      List<ColumnDescriptor> columns = outSchema.getColumns();
+      for (int i = 0; i < columns.size(); i++) {
+        writer.getEncryptor()
+            .getColumnSetup(ColumnPath.get(columns.get(i).getPath()), true, i);
+      }
+    }
   }
 
   // TODO: Should we mark it as deprecated to encourage the main constructor usage? it is also used only from
@@ -226,6 +238,7 @@ public class ParquetRewriter implements Closeable {
     this.inputFiles.add(reader);
     this.indexCacheStrategy = IndexCache.CacheStrategy.NONE;
     this.overwriteInputWithJoinColumns = false;
+    this.nullColumnEncryptor = null;
   }
 
   private MessageType getSchema() {
@@ -436,15 +449,7 @@ public class ParquetRewriter implements Closeable {
               "Required column [" + descriptor.getPrimitiveType().getName() + "] cannot be nullified");
         }
         nullifyColumn(
-            reader,
-            blockIdx,
-            descriptor,
-            chunk,
-            writer,
-            outSchema,
-            newCodecName,
-            encryptColumn,
-            originalCreatedBy);
+            reader, blockIdx, descriptor, chunk, writer, newCodecName, encryptColumn, originalCreatedBy);
       } else {
         throw new UnsupportedOperationException("Only nullify is supported for now");
       }
@@ -858,7 +863,6 @@ public class ParquetRewriter implements Closeable {
       ColumnDescriptor descriptor,
       ColumnChunkMetaData chunk,
       ParquetFileWriter writer,
-      MessageType schema,
       CompressionCodecName newCodecName,
       boolean encryptColumn,
       String originalCreatedBy)
@@ -871,7 +875,7 @@ public class ParquetRewriter implements Closeable {
     int dMax = descriptor.getMaxDefinitionLevel();
     PageReadStore pageReadStore = reader.readRowGroup(blockIndex);
     ColumnReadStoreImpl crStore =
-        new ColumnReadStoreImpl(pageReadStore, new DummyGroupConverter(), schema, originalCreatedBy);
+        new ColumnReadStoreImpl(pageReadStore, new DummyGroupConverter(), outSchema, originalCreatedBy);
     ColumnReader cReader = crStore.getColumnReader(descriptor);
 
     ParquetProperties.WriterVersion writerVersion = chunk.getEncodingStats().usesV2Pages()
@@ -883,14 +887,14 @@ public class ParquetRewriter implements Closeable {
     CompressionCodecFactory.BytesInputCompressor compressor = codecFactory.getCompressor(newCodecName);
 
     // Create new schema that only has the current column
-    MessageType newSchema = newSchema(schema, descriptor);
+    MessageType newSchema = newSchema(outSchema, descriptor);
     ColumnChunkPageWriteStore cPageStore = new ColumnChunkPageWriteStore(
         compressor,
         newSchema,
         props.getAllocator(),
         props.getColumnIndexTruncateLength(),
         props.getPageWriteChecksumEnabled(),
-        writer.getEncryptor(),
+        nullColumnEncryptor,
         numBlocksRewritten);
     ColumnWriteStore cStore = props.newColumnWriteStore(newSchema, cPageStore);
     ColumnWriter cWriter = cStore.getColumnWriter(descriptor);

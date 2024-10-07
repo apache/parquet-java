@@ -455,7 +455,7 @@ public class ParquetRewriterTest {
 
   private void testNullifyAndEncryptColumn(List<Path> inputPaths) throws Exception {
     Map<String, MaskMode> maskColumns = new HashMap<>();
-    maskColumns.put("DocId", MaskMode.NULLIFY);
+    maskColumns.put("Links.Forward", MaskMode.NULLIFY);
 
     String[] encryptColumns = {"DocId"};
     FileEncryptionProperties fileEncryptionProperties =
@@ -491,7 +491,7 @@ public class ParquetRewriterTest {
     validateColumnData(Collections.emptySet(), maskColumns.keySet(), fileDecryptionProperties, false);
 
     // Verify the page index
-    validatePageIndex(ImmutableSet.of("DocId"), false);
+    validatePageIndex(ImmutableSet.of("DocId", "Links.Forward"), false);
 
     // Verify the column is encrypted
     ParquetMetadata metaData = getFileMetaData(outputFile, fileDecryptionProperties);
