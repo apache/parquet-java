@@ -18,7 +18,9 @@
  */
 package org.apache.parquet.column.statistics;
 
+import org.apache.parquet.column.statistics.geometry.GeometryStatistics;
 import org.apache.parquet.io.api.Binary;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Types;
 
@@ -30,6 +32,7 @@ public class BinaryStatistics extends Statistics<Binary> {
 
   private Binary max;
   private Binary min;
+  private GeometryStatistics geometryStatistics = null;
 
   /**
    * @deprecated will be removed in 2.0.0. Use {@link Statistics#createStats(org.apache.parquet.schema.Type)} instead
@@ -41,6 +44,13 @@ public class BinaryStatistics extends Statistics<Binary> {
 
   BinaryStatistics(PrimitiveType type) {
     super(type);
+    LogicalTypeAnnotation logicalType = type.getLogicalTypeAnnotation();
+    if (logicalType instanceof LogicalTypeAnnotation.GeometryLogicalTypeAnnotation) {
+      LogicalTypeAnnotation.GeometryLogicalTypeAnnotation geometryLogicalType =
+          (LogicalTypeAnnotation.GeometryLogicalTypeAnnotation) logicalType;
+      geometryStatistics = new GeometryStatistics(
+          geometryLogicalType.getEdges(), geometryLogicalType.getCrs(), geometryLogicalType.getMetadata());
+    }
   }
 
   private BinaryStatistics(BinaryStatistics other) {
@@ -49,6 +59,9 @@ public class BinaryStatistics extends Statistics<Binary> {
       initializeStats(other.min, other.max);
     }
     setNumNulls(other.getNumNulls());
+    if (other.geometryStatistics != null) {
+      geometryStatistics = other.geometryStatistics.copy();
+    }
   }
 
   @Override
@@ -62,6 +75,9 @@ public class BinaryStatistics extends Statistics<Binary> {
     } else if (comparator().compare(max, value) < 0) {
       max = value.copy();
     }
+    if (geometryStatistics != null) {
+      geometryStatistics.update(value);
+    }
   }
 
   @Override
@@ -71,6 +87,9 @@ public class BinaryStatistics extends Statistics<Binary> {
       initializeStats(binaryStats.getMin(), binaryStats.getMax());
     } else {
       updateStats(binaryStats.getMin(), binaryStats.getMax());
+    }
+    if (geometryStatistics != null) {
+      geometryStatistics.merge(binaryStats.geometryStatistics);
     }
   }
 
@@ -189,5 +208,13 @@ public class BinaryStatistics extends Statistics<Binary> {
   @Override
   public BinaryStatistics copy() {
     return new BinaryStatistics(this);
+  }
+
+  public void setGeometryStatistics(GeometryStatistics geometryStatistics) {
+    this.geometryStatistics = geometryStatistics;
+  }
+
+  public GeometryStatistics getGeometryStatistics() {
+    return geometryStatistics;
   }
 }
