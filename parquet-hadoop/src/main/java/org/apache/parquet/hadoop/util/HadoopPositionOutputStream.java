@@ -51,7 +51,9 @@ public class HadoopPositionOutputStream extends PositionOutputStream {
   }
 
   public void sync() throws IOException {
-    wrapped.hsync();
+    if (wrapped.hasCapability("hsync")) {
+      wrapped.hsync();
+    }
   }
 
   @Override
@@ -62,7 +64,9 @@ public class HadoopPositionOutputStream extends PositionOutputStream {
   @Override
   public void close() throws IOException {
     try (FSDataOutputStream fdos = wrapped) {
-      fdos.hflush();
+      if (fdos.hasCapability("hflush")) {
+        fdos.hflush();
+      }
     }
   }
 }
