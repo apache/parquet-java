@@ -719,7 +719,8 @@ public class ParquetFileReader implements Closeable {
    * @return an open ParquetFileReader
    * @throws IOException if there is an error while opening the file
    */
-  public static ParquetFileReader open(InputFile file, ParquetReadOptions options, SeekableInputStream f) throws IOException {
+  public static ParquetFileReader open(InputFile file, ParquetReadOptions options, SeekableInputStream f)
+      throws IOException {
     return new ParquetFileReader(file, options, f);
   }
 
