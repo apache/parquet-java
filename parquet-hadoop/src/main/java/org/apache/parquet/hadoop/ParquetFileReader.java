@@ -710,6 +710,19 @@ public class ParquetFileReader implements Closeable {
     return new ParquetFileReader(file, options);
   }
 
+  /**
+   * Open a {@link InputFile file} with {@link ParquetReadOptions options}.
+   *
+   * @param file    an input file
+   * @param options parquet read options
+   * @param f       the input stream for the file
+   * @return an open ParquetFileReader
+   * @throws IOException if there is an error while opening the file
+   */
+  public static ParquetFileReader open(InputFile file, ParquetReadOptions options, SeekableInputStream f) throws IOException {
+    return new ParquetFileReader(file, options, f);
+  }
+
   protected final SeekableInputStream f;
   private final InputFile file;
   private final ParquetReadOptions options;
@@ -908,9 +921,13 @@ public class ParquetFileReader implements Closeable {
   }
 
   public ParquetFileReader(InputFile file, ParquetReadOptions options) throws IOException {
+    this(file, options, null);
+  }
+
+  public ParquetFileReader(InputFile file, ParquetReadOptions options, SeekableInputStream f) throws IOException {
     this.converter = new ParquetMetadataConverter(options);
     this.file = file;
-    this.f = file.newStream();
+    this.f = (null != f ? f : file.newStream());
     this.options = options;
     try {
       this.footer = readFooter(file, options, f, converter);
