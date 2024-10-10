@@ -863,9 +863,23 @@ public class ParquetFileReader implements Closeable {
    */
   public ParquetFileReader(Configuration conf, Path file, ParquetMetadata footer, ParquetReadOptions options)
       throws IOException {
+    this(conf, file, footer, null, options);
+  }
+
+  /**
+   * @param conf   the Hadoop Configuration
+   * @param file   Path to a parquet file
+   * @param footer a {@link ParquetMetadata} footer already read from the file
+   * @param f      a {@link SeekableInputStream} for the parquet file
+   * @param options {@link ParquetReadOptions}
+   * @throws IOException if the file can not be opened
+   */
+  public ParquetFileReader(
+      Configuration conf, Path file, ParquetMetadata footer, SeekableInputStream f, ParquetReadOptions options)
+      throws IOException {
     this.converter = new ParquetMetadataConverter(conf);
     this.file = HadoopInputFile.fromPath(file, conf);
-    this.f = this.file.newStream();
+    this.f = (null != f ? f : this.file.newStream());
     this.fileMetaData = footer.getFileMetaData();
     this.fileDecryptor = fileMetaData.getFileDecryptor();
     this.options = options;
