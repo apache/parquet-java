@@ -877,7 +877,7 @@ public class ParquetFileReader implements Closeable {
    */
   public ParquetFileReader(Configuration conf, Path file, ParquetMetadata footer, ParquetReadOptions options)
       throws IOException {
-    this(conf, file, footer, options, null);
+    this(conf, file, footer, options, HadoopInputFile.fromPath(file, conf).newStream());
   }
 
   /**
@@ -893,7 +893,7 @@ public class ParquetFileReader implements Closeable {
       throws IOException {
     this.converter = new ParquetMetadataConverter(conf);
     this.file = HadoopInputFile.fromPath(file, conf);
-    this.f = (null != f ? f : this.file.newStream());
+    this.f = f;
     this.fileMetaData = footer.getFileMetaData();
     this.fileDecryptor = fileMetaData.getFileDecryptor();
     this.options = options;
@@ -928,7 +928,7 @@ public class ParquetFileReader implements Closeable {
   public ParquetFileReader(InputFile file, ParquetReadOptions options, SeekableInputStream f) throws IOException {
     this.converter = new ParquetMetadataConverter(options);
     this.file = file;
-    this.f = (null != f ? f : file.newStream());
+    this.f = f;
     this.options = options;
     try {
       this.footer = readFooter(file, options, f, converter);
