@@ -31,6 +31,7 @@ import org.apache.parquet.column.EncodingStats;
 import org.apache.parquet.column.statistics.BooleanStatistics;
 import org.apache.parquet.column.statistics.SizeStatistics;
 import org.apache.parquet.column.statistics.Statistics;
+import org.apache.parquet.column.statistics.geometry.GeometryStatistics;
 import org.apache.parquet.crypto.AesCipher;
 import org.apache.parquet.crypto.InternalColumnDecryptionSetup;
 import org.apache.parquet.crypto.InternalFileDecryptor;
@@ -39,6 +40,7 @@ import org.apache.parquet.crypto.ParquetCryptoRuntimeException;
 import org.apache.parquet.format.ColumnMetaData;
 import org.apache.parquet.format.converter.ParquetMetadataConverter;
 import org.apache.parquet.internal.hadoop.metadata.IndexReference;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Types;
@@ -114,7 +116,7 @@ public abstract class ColumnChunkMetaData {
    * @param totalUncompressedSize uncompressed data size
    * @return a column chunk metadata instance
    * @deprecated will be removed in 2.0.0. Use
-   * {@link #get(ColumnPath, PrimitiveType, CompressionCodecName, EncodingStats, Set, Statistics, long, long, long, long, long)}
+   * {@link #get(ColumnPath, PrimitiveType, CompressionCodecName, EncodingStats, Set, Statistics, long, long, long, long, long, SizeStatistics, org.apache.parquet.format.GeometryStatistics)}
    * instead.
    */
   @Deprecated
@@ -169,6 +171,7 @@ public abstract class ColumnChunkMetaData {
         valueCount,
         totalSize,
         totalUncompressedSize,
+        null,
         null);
   }
 
@@ -199,7 +202,25 @@ public abstract class ColumnChunkMetaData {
       long valueCount,
       long totalSize,
       long totalUncompressedSize,
-      SizeStatistics sizeStatistics) {
+      SizeStatistics sizeStatistics,
+      GeometryStatistics geometryStats) {
+
+    LogicalTypeAnnotation logicalType = type.getLogicalTypeAnnotation();
+    if (logicalType instanceof LogicalTypeAnnotation.GeometryLogicalTypeAnnotation) {
+      return new GeometryColumnChunkMetaData(
+          path,
+          type,
+          codec,
+          encodingStats,
+          encodings,
+          statistics,
+          firstDataPage,
+          dictionaryPageOffset,
+          valueCount,
+          totalSize,
+          totalUncompressedSize,
+          geometryStats);
+    }
 
     // to save space we store those always positive longs in ints when they fit.
     if (positiveLongFitsInAnInt(firstDataPage)
@@ -849,5 +870,98 @@ class EncryptedColumnChunkMetaData extends ColumnChunkMetaData {
   @Override
   public boolean isEncrypted() {
     return true;
+  }
+}
+
+class GeometryColumnChunkMetaData extends ColumnChunkMetaData {
+
+  private final long firstDataPageOffset;
+  private final long dictionaryPageOffset;
+  private final long valueCount;
+  private final long totalSize;
+  private final long totalUncompressedSize;
+  private final Statistics statistics;
+  private final GeometryStatistics geometryStatistics;
+
+  /**
+   * @param path                  column identifier
+   * @param type                  type of the column
+   * @param codec
+   * @param encodings
+   * @param statistics
+   * @param firstDataPageOffset
+   * @param dictionaryPageOffset
+   * @param valueCount
+   * @param totalSize
+   * @param totalUncompressedSize
+   * @param geometryStatistics
+   */
+  GeometryColumnChunkMetaData(
+      ColumnPath path,
+      PrimitiveType type,
+      CompressionCodecName codec,
+      EncodingStats encodingStats,
+      Set<Encoding> encodings,
+      Statistics statistics,
+      long firstDataPageOffset,
+      long dictionaryPageOffset,
+      long valueCount,
+      long totalSize,
+      long totalUncompressedSize,
+      GeometryStatistics geometryStatistics) {
+    super(encodingStats, ColumnChunkProperties.get(path, type, codec, encodings));
+    this.statistics = statistics;
+    this.firstDataPageOffset = firstDataPageOffset;
+    this.dictionaryPageOffset = dictionaryPageOffset;
+    this.valueCount = valueCount;
+    this.totalSize = totalSize;
+    this.totalUncompressedSize = totalUncompressedSize;
+    this.geometryStatistics = geometryStatistics;
+  }
+
+  /**
+   * @return start of the column data offset
+   */
+  public long getFirstDataPageOffset() {
+    return firstDataPageOffset;
+  }
+
+  /**
+   * @return the location of the dictionary page if any
+   */
+  public long getDictionaryPageOffset() {
+    return dictionaryPageOffset;
+  }
+
+  /**
+   * @return count of values in this block of the column
+   */
+  public long getValueCount() {
+    return valueCount;
+  }
+
+  /**
+   * @return the totalUncompressedSize
+   */
+  public long getTotalUncompressedSize() {
+    return totalUncompressedSize;
+  }
+
+  /**
+   * @return the totalSize
+   */
+  public long getTotalSize() {
+    return totalSize;
+  }
+
+  /**
+   * @return the stats for this column
+   */
+  public Statistics getStatistics() {
+    return statistics;
+  }
+
+  public GeometryStatistics getGeometryStatistics() {
+    return geometryStatistics;
   }
 }

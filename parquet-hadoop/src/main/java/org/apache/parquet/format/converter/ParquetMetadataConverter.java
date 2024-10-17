@@ -1765,7 +1765,8 @@ public class ParquetMetadataConverter {
         metaData.num_values,
         metaData.total_compressed_size,
         metaData.total_uncompressed_size,
-        fromParquetSizeStatistics(metaData.size_statistics, type));
+        fromParquetSizeStatistics(metaData.size_statistics, type),
+        fromParquetStatistics(metaData.geometry_stats, type));
   }
 
   public ParquetMetadata fromParquetMetadata(FileMetaData parquetMetadata) throws IOException {

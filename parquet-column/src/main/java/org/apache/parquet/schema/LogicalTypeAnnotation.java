@@ -1139,7 +1139,6 @@ public abstract class LogicalTypeAnnotation {
   }
 
   public static class GeometryLogicalTypeAnnotation extends LogicalTypeAnnotation {
-    public static final String CRS_ENCODING_DEFAULT = "PROJJSON";
     private final GeometryEncoding encoding;
     private final Edges edges;
     private final String crs;

@@ -54,8 +54,10 @@ import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.EncodingStats;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.page.DictionaryPage;
+import org.apache.parquet.column.statistics.BinaryStatistics;
 import org.apache.parquet.column.statistics.SizeStatistics;
 import org.apache.parquet.column.statistics.Statistics;
+import org.apache.parquet.column.statistics.geometry.GeometryStatistics;
 import org.apache.parquet.column.values.bloomfilter.BloomFilter;
 import org.apache.parquet.crypto.AesCipher;
 import org.apache.parquet.crypto.ColumnEncryptionProperties;
@@ -1379,6 +1381,11 @@ public class ParquetFileWriter implements AutoCloseable {
       currentColumnIndexes.add(columnIndexBuilder.build());
     }
     currentOffsetIndexes.add(offsetIndexBuilder.build(currentChunkFirstDataPage));
+    // calculate the geometryStatistics from the BinaryStatistics
+    GeometryStatistics geometryStatistics = null;
+    if (currentStatistics instanceof BinaryStatistics)
+      geometryStatistics = ((BinaryStatistics) currentStatistics).getGeometryStatistics();
+
     currentBlock.addColumn(ColumnChunkMetaData.get(
         currentChunkPath,
         currentChunkType,
@@ -1391,7 +1398,8 @@ public class ParquetFileWriter implements AutoCloseable {
         currentChunkValueCount,
         compressedLength,
         uncompressedLength,
-        currentSizeStatistics));
+        currentSizeStatistics,
+        geometryStatistics));
     this.currentBlock.setTotalByteSize(currentBlock.getTotalByteSize() + uncompressedLength);
     this.uncompressedLength = 0;
     this.compressedLength = 0;
