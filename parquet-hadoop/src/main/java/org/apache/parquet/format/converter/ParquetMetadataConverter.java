@@ -968,7 +968,6 @@ public class ParquetMetadataConverter {
           formatBbox.isSetMmin() ? formatBbox.getMmin() : Double.NaN,
           formatBbox.isSetMmax() ? formatBbox.getMmax() : Double.NaN);
     }
-    List<org.apache.parquet.column.statistics.geometry.Covering> coverings = new ArrayList<>();
     org.apache.parquet.column.statistics.geometry.GeometryTypes geometryTypes = null;
     if (formatGeomStats.isSetGeometry_types()) {
       geometryTypes = new GeometryTypes(new HashSet<>(formatGeomStats.getGeometry_types()));
