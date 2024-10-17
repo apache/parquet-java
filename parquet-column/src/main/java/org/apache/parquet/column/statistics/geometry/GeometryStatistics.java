@@ -19,11 +19,6 @@
 package org.apache.parquet.column.statistics.geometry;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
@@ -41,7 +36,6 @@ public class GeometryStatistics {
   private final ByteBuffer metadata;
 
   private final BoundingBox boundingBox;
-  private final Map<String, Covering> coverings;
   private final GeometryTypes geometryTypes;
   private final WKBReader reader = new WKBReader();
 
@@ -50,41 +44,25 @@ public class GeometryStatistics {
       String crs,
       ByteBuffer metadata,
       BoundingBox boundingBox,
-      List<Covering> coverings,
       GeometryTypes geometryTypes) {
     this.edges = edges;
     this.crs = crs;
     this.metadata = metadata;
     this.boundingBox = supportsBoundingBox() ? boundingBox : DUMMY_BOUNDING_BOX;
-    this.coverings = new HashMap<>();
     this.geometryTypes = geometryTypes;
-
-    if (supportsCovering() && coverings != null) {
-      for (Covering covering : coverings) {
-        // Assuming each Covering has a unique identifier (kind) or property that can be used as a key
-        String key = covering.getKind(); // Assume kind is unique
-        this.coverings.put(key, covering);
-      }
-    }
   }
 
   public GeometryStatistics(LogicalTypeAnnotation.Edges edges, String crs, ByteBuffer metadata) {
-    this(
-        edges,
-        crs,
-        metadata,
-        new BoundingBox(),
-        Arrays.asList(new EnvelopeCovering(edges, crs)),
-        new GeometryTypes());
+    this(edges, crs, metadata, new BoundingBox(), new GeometryTypes());
   }
 
   public BoundingBox getBoundingBox() {
     return boundingBox;
   }
 
-  public Map<String, Covering> getCoverings() {
-    return coverings;
-  }
+  //   public Map<String, Covering> getCoverings() {
+  //     return coverings;
+  //   }
 
   public GeometryTypes getGeometryTypes() {
     return geometryTypes;
@@ -105,9 +83,6 @@ public class GeometryStatistics {
   private void update(Geometry geom) {
     if (supportsBoundingBox()) {
       boundingBox.update(geom);
-    }
-    if (supportsCovering()) {
-      coverings.values().stream().forEach(c -> c.update(geom));
     }
     geometryTypes.update(geom);
   }
@@ -138,20 +113,9 @@ public class GeometryStatistics {
 
   public void merge(GeometryStatistics other) {
     Preconditions.checkArgument(other != null, "Cannot merge with null GeometryStatistics");
-    Preconditions.checkArgument(coverings.size() == other.coverings.size(), "Coverings size must be the same");
 
     if (boundingBox != null && other.boundingBox != null) {
       boundingBox.merge(other.boundingBox);
-    }
-
-    for (Map.Entry<String, Covering> entry : coverings.entrySet()) {
-      String key = entry.getKey();
-      Covering thisCovering = entry.getValue();
-      Covering otherCovering = other.coverings.get(key);
-
-      Preconditions.checkArgument(
-          otherCovering != null, "Covering for key '" + key + "' is missing in the other GeometryStatistics");
-      thisCovering.merge(otherCovering);
     }
 
     if (geometryTypes != null && other.geometryTypes != null) {
@@ -161,13 +125,11 @@ public class GeometryStatistics {
 
   public void reset() {
     boundingBox.reset();
-    coverings.values().stream().forEach(c -> c.reset());
     geometryTypes.reset();
   }
 
   public void abort() {
     boundingBox.abort();
-    coverings.values().stream().forEach(c -> c.abort());
     geometryTypes.abort();
   }
 
@@ -178,29 +140,11 @@ public class GeometryStatistics {
         crs,
         metadata,
         boundingBox != null ? boundingBox.copy() : null,
-        coverings != null ? new ArrayList<>(coverings.values()) : null,
         geometryTypes != null ? geometryTypes.copy() : null);
   }
 
   @Override
   public String toString() {
-    StringBuilder coveringsString = new StringBuilder();
-    if (coverings != null && !coverings.isEmpty()) {
-      coveringsString.append("[");
-      for (Covering covering : coverings.values()) {
-        coveringsString.append(covering.toString()).append(", ");
-      }
-      if (coveringsString.length() > 1) {
-        coveringsString.setLength(coveringsString.length() - 2); // Remove the last ", "
-      }
-      coveringsString.append("]");
-    } else {
-      coveringsString.append("[]"); // Handle empty coverings case
-    }
-
-    return "GeometryStatistics{" + "boundingBox="
-        + boundingBox + ", coverings="
-        + coveringsString + ", geometryTypes="
-        + geometryTypes + '}';
+    return "GeometryStatistics{" + "boundingBox=" + boundingBox + ", coverings=" + geometryTypes + '}';
   }
 }

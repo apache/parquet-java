@@ -984,12 +984,11 @@ public class ParquetMetadataConverter {
           geometryLogicalType.getCrs(),
           geometryLogicalType.getMetadata(),
           bbox,
-          coverings,
           geometryTypes);
     }
     return new org.apache.parquet.column.statistics.geometry.GeometryStatistics(
         // this case should not happen in normal cases
-        null, null, null, bbox, coverings, geometryTypes);
+        null, null, null, bbox, geometryTypes);
   }
 
   /**

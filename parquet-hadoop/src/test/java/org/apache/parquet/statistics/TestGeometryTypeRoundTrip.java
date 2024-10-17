@@ -115,11 +115,6 @@ public class TestGeometryTypeRoundTrip {
       Assert.assertEquals(2.0, geometryStatistics.getBoundingBox().getXMax(), 0.0);
       Assert.assertEquals(1.0, geometryStatistics.getBoundingBox().getYMin(), 0.0);
       Assert.assertEquals(2.0, geometryStatistics.getBoundingBox().getYMax(), 0.0);
-      Assert.assertNotNull(geometryStatistics.getCoverings());
-
-      Assert.assertEquals(
-          "[Covering{geometry=POLYGON ((1 1, 1 2, 2 2, 2 1, 1 1)), kind=WKB}]",
-          geometryStatistics.getCoverings().values().toString());
 
       ColumnIndex columnIndex = reader.readColumnIndex(columnChunkMetaData);
       Assert.assertNotNull(columnIndex);
@@ -183,11 +178,6 @@ public class TestGeometryTypeRoundTrip {
       BinaryStatistics binaryStatistics = (BinaryStatistics) columnChunkMetaData.getStatistics();
       GeometryStatistics geometryStatistics = binaryStatistics.getGeometryStatistics();
       Assert.assertNotNull(geometryStatistics);
-
-      Assert.assertNotNull(geometryStatistics.getCoverings());
-      Assert.assertEquals(
-          "[Covering{geometry=POLYGON ((1 1, 1 2, 2 2, 2 1, 1 1)), kind=WKB}]",
-          geometryStatistics.getCoverings().values().toString());
 
       ColumnIndex columnIndex = reader.readColumnIndex(columnChunkMetaData);
       Assert.assertNotNull(columnIndex);
