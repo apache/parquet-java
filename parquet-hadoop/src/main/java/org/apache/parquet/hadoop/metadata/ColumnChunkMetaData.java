@@ -416,6 +416,10 @@ public abstract class ColumnChunkMetaData {
     throw new UnsupportedOperationException("SizeStatistics is not implemented");
   }
 
+  /** @return the geometry stats for this column */
+  @JsonIgnore
+  public abstract GeometryStatistics getGeometryStatistics();
+
   /**
    * Method should be considered private
    *
@@ -645,6 +649,10 @@ class IntColumnChunkMetaData extends ColumnChunkMetaData {
   public SizeStatistics getSizeStatistics() {
     return sizeStatistics;
   }
+
+  public GeometryStatistics getGeometryStatistics() {
+    return null;
+  }
 }
 
 class LongColumnChunkMetaData extends ColumnChunkMetaData {
@@ -741,6 +749,10 @@ class LongColumnChunkMetaData extends ColumnChunkMetaData {
   @Override
   public SizeStatistics getSizeStatistics() {
     return sizeStatistics;
+  }
+
+  public GeometryStatistics getGeometryStatistics() {
+    return null;
   }
 }
 
@@ -871,6 +883,10 @@ class EncryptedColumnChunkMetaData extends ColumnChunkMetaData {
   public boolean isEncrypted() {
     return true;
   }
+
+  public GeometryStatistics getGeometryStatistics() {
+    return shadowColumnChunkMetaData.getGeometryStatistics();
+  }
 }
 
 class GeometryColumnChunkMetaData extends ColumnChunkMetaData {
@@ -952,6 +968,10 @@ class GeometryColumnChunkMetaData extends ColumnChunkMetaData {
    */
   public long getTotalSize() {
     return totalSize;
+  }
+
+  public SizeStatistics getSizeStatistics() {
+    return null;
   }
 
   /**

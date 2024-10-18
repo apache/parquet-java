@@ -592,7 +592,7 @@ public class ParquetRewriter implements Closeable {
       }
       return statsBuilder.build();
     } else if (pageStatistics != null) {
-      return converter.fromParquetStatistics(createdBy, pageStatistics, type);
+      return converter.fromParquetGeometryStatistics(createdBy, pageStatistics, type);
     } else {
       return null;
     }
