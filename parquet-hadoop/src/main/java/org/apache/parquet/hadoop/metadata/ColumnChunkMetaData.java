@@ -418,7 +418,9 @@ public abstract class ColumnChunkMetaData {
 
   /** @return the geometry stats for this column */
   @JsonIgnore
-  public abstract GeometryStatistics getGeometryStatistics();
+  public GeometryStatistics getGeometryStatistics() {
+    return null;
+  }
 
   /**
    * Method should be considered private
@@ -649,10 +651,6 @@ class IntColumnChunkMetaData extends ColumnChunkMetaData {
   public SizeStatistics getSizeStatistics() {
     return sizeStatistics;
   }
-
-  public GeometryStatistics getGeometryStatistics() {
-    return null;
-  }
 }
 
 class LongColumnChunkMetaData extends ColumnChunkMetaData {
@@ -749,10 +747,6 @@ class LongColumnChunkMetaData extends ColumnChunkMetaData {
   @Override
   public SizeStatistics getSizeStatistics() {
     return sizeStatistics;
-  }
-
-  public GeometryStatistics getGeometryStatistics() {
-    return null;
   }
 }
 

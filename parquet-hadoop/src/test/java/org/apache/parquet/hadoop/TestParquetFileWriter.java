@@ -871,8 +871,8 @@ public class TestParquetFileWriter {
     final String createdBy = "parquet-mr version 1.8.0 (build d4d5a07ec9bd262ca1e93c309f1d7d4a74ebda4c)";
     Statistics thriftStats =
         org.apache.parquet.format.converter.ParquetMetadataConverter.toParquetStatistics(parquetMRstats);
-    LongStatistics convertedBackStats = (LongStatistics)
-        org.apache.parquet.format.converter.ParquetMetadataConverter.fromParquetGeometryStatistics(
+    LongStatistics convertedBackStats =
+        (LongStatistics) org.apache.parquet.format.converter.ParquetMetadataConverter.fromParquetStatistics(
             createdBy, thriftStats, PrimitiveTypeName.INT64);
 
     assertEquals(parquetMRstats.getMax(), convertedBackStats.getMax());

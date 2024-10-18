@@ -1005,7 +1005,7 @@ public class TestParquetMetadataConverter {
 
     PrimitiveType binaryType =
         Types.required(PrimitiveTypeName.BINARY).as(OriginalType.UTF8).named("b");
-    Statistics convertedStats = converter.fromParquetGeometryStatistics(
+    Statistics convertedStats = converter.fromParquetStatistics(
         Version.FULL_VERSION, StatsHelper.V1.toParquetStatistics(stats), binaryType);
 
     Assert.assertFalse("Stats should not include min/max: " + convertedStats, convertedStats.hasNonNullValue());
@@ -1034,7 +1034,7 @@ public class TestParquetMetadataConverter {
 
     PrimitiveType binaryType =
         Types.required(PrimitiveTypeName.BINARY).as(OriginalType.UTF8).named("b");
-    Statistics convertedStats = converter.fromParquetGeometryStatistics(
+    Statistics convertedStats = converter.fromParquetStatistics(
         Version.FULL_VERSION, ParquetMetadataConverter.toParquetStatistics(stats), binaryType);
 
     Assert.assertFalse("Stats should not be empty: " + convertedStats, convertedStats.isEmpty());
@@ -1067,8 +1067,8 @@ public class TestParquetMetadataConverter {
 
     PrimitiveType binaryType =
         Types.required(PrimitiveTypeName.BINARY).as(OriginalType.UTF8).named("b");
-    Statistics convertedStats = converter.fromParquetGeometryStatistics(
-        Version.FULL_VERSION, helper.toParquetStatistics(stats), binaryType);
+    Statistics convertedStats =
+        converter.fromParquetStatistics(Version.FULL_VERSION, helper.toParquetStatistics(stats), binaryType);
 
     Assert.assertFalse("Stats should not be empty", convertedStats.isEmpty());
     Assert.assertTrue(convertedStats.isNumNullsSet());
@@ -1110,7 +1110,7 @@ public class TestParquetMetadataConverter {
     PrimitiveType type = Types.required(PrimitiveTypeName.INT32).named("test_int32");
 
     org.apache.parquet.format.Statistics formatStats = new org.apache.parquet.format.Statistics();
-    Statistics<?> stats = converter.fromParquetGeometryStatistics(Version.FULL_VERSION, formatStats, type);
+    Statistics<?> stats = converter.fromParquetStatistics(Version.FULL_VERSION, formatStats, type);
     assertFalse(stats.isNumNullsSet());
     assertFalse(stats.hasNonNullValue());
     assertTrue(stats.isEmpty());
@@ -1119,7 +1119,7 @@ public class TestParquetMetadataConverter {
     formatStats.clear();
     formatStats.setMin(BytesUtils.intToBytes(-100));
     formatStats.setMax(BytesUtils.intToBytes(100));
-    stats = converter.fromParquetGeometryStatistics(Version.FULL_VERSION, formatStats, type);
+    stats = converter.fromParquetStatistics(Version.FULL_VERSION, formatStats, type);
     assertFalse(stats.isNumNullsSet());
     assertTrue(stats.hasNonNullValue());
     assertFalse(stats.isEmpty());
@@ -1129,7 +1129,7 @@ public class TestParquetMetadataConverter {
 
     formatStats.clear();
     formatStats.setNull_count(2000);
-    stats = converter.fromParquetGeometryStatistics(Version.FULL_VERSION, formatStats, type);
+    stats = converter.fromParquetStatistics(Version.FULL_VERSION, formatStats, type);
     assertTrue(stats.isNumNullsSet());
     assertFalse(stats.hasNonNullValue());
     assertFalse(stats.isEmpty());

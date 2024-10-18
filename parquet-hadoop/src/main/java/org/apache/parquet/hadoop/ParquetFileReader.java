@@ -1899,7 +1899,7 @@ public class ParquetFileReader implements Closeable {
                 pageBytes,
                 dataHeaderV1.getNum_values(),
                 uncompressedPageSize,
-                converter.fromParquetGeometryStatistics(
+                converter.fromParquetStatistics(
                     getFileMetaData().getCreatedBy(), dataHeaderV1.getStatistics(), type),
                 converter.getEncoding(dataHeaderV1.getRepetition_level_encoding()),
                 converter.getEncoding(dataHeaderV1.getDefinition_level_encoding()),
@@ -1938,7 +1938,7 @@ public class ParquetFileReader implements Closeable {
                 converter.getEncoding(dataHeaderV2.getEncoding()),
                 values,
                 uncompressedPageSize,
-                converter.fromParquetGeometryStatistics(
+                converter.fromParquetStatistics(
                     getFileMetaData().getCreatedBy(), dataHeaderV2.getStatistics(), type),
                 dataHeaderV2.isIs_compressed());
             // Copy crc to new page, used for testing

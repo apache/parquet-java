@@ -626,8 +626,7 @@ public class ParquetMetadataConverter {
         metaData.setSize_statistics(toParquetSizeStatistics(columnMetaData.getSizeStatistics()));
       }
 
-      if (columnMetaData.getSizeStatistics() != null
-          && columnMetaData.getSizeStatistics().isValid()) {
+      if (columnMetaData.getGeometryStatistics() != null) {
         metaData.setGeometry_stats(toParquetGeometryStatistics(columnMetaData.getGeometryStatistics()));
       }
 
@@ -885,9 +884,9 @@ public class ParquetMetadataConverter {
    * @deprecated will be removed in 2.0.0.
    */
   @Deprecated
-  public static org.apache.parquet.column.statistics.Statistics fromParquetGeometryStatistics(
+  public static org.apache.parquet.column.statistics.Statistics fromParquetStatistics(
       Statistics statistics, PrimitiveTypeName type) {
-    return fromParquetGeometryStatistics(null, statistics, type);
+    return fromParquetStatistics(null, statistics, type);
   }
 
   /**
@@ -898,7 +897,7 @@ public class ParquetMetadataConverter {
    * @deprecated will be removed in 2.0.0.
    */
   @Deprecated
-  public static org.apache.parquet.column.statistics.Statistics fromParquetGeometryStatistics(
+  public static org.apache.parquet.column.statistics.Statistics fromParquetStatistics(
       String createdBy, Statistics statistics, PrimitiveTypeName type) {
     return fromParquetStatisticsInternal(
         createdBy,
@@ -948,7 +947,7 @@ public class ParquetMetadataConverter {
     return statsBuilder.build();
   }
 
-  public org.apache.parquet.column.statistics.Statistics fromParquetGeometryStatistics(
+  public org.apache.parquet.column.statistics.Statistics fromParquetStatistics(
       String createdBy, Statistics statistics, PrimitiveType type) {
     SortOrder expectedOrder = overrideSortOrderToSigned(type) ? SortOrder.SIGNED : sortOrder(type);
     return fromParquetStatisticsInternal(createdBy, statistics, type, expectedOrder);
@@ -976,7 +975,7 @@ public class ParquetMetadataConverter {
     return formatStats;
   }
 
-  static org.apache.parquet.column.statistics.geometry.GeometryStatistics fromParquetGeometryStatistics(
+  static org.apache.parquet.column.statistics.geometry.GeometryStatistics fromParquetStatistics(
       GeometryStatistics formatGeomStats, PrimitiveType type) {
     org.apache.parquet.column.statistics.geometry.BoundingBox bbox = null;
     if (formatGeomStats.isSetBbox()) {
@@ -1781,14 +1780,14 @@ public class ParquetMetadataConverter {
         fromFormatCodec(metaData.codec),
         convertEncodingStats(metaData.getEncoding_stats()),
         fromFormatEncodings(metaData.encodings),
-        fromParquetGeometryStatistics(createdBy, metaData.statistics, type),
+        fromParquetStatistics(createdBy, metaData.statistics, type),
         metaData.data_page_offset,
         metaData.dictionary_page_offset,
         metaData.num_values,
         metaData.total_compressed_size,
         metaData.total_uncompressed_size,
         fromParquetSizeStatistics(metaData.size_statistics, type),
-        fromParquetGeometryStatistics(metaData.geometry_stats, type));
+        fromParquetStatistics(metaData.geometry_stats, type));
   }
 
   public ParquetMetadata fromParquetMetadata(FileMetaData parquetMetadata) throws IOException {

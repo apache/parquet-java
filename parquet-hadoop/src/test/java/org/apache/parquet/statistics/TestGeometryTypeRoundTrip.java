@@ -24,10 +24,8 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.List;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.Preconditions;
-import org.apache.parquet.column.statistics.BinaryStatistics;
 import org.apache.parquet.column.statistics.geometry.GeometryStatistics;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.GroupFactory;
@@ -108,9 +106,9 @@ public class TestGeometryTypeRoundTrip {
           reader.getRowGroups().get(0).getColumns().get(0);
       Assert.assertNotNull(columnChunkMetaData);
 
-      BinaryStatistics binaryStatistics = (BinaryStatistics) columnChunkMetaData.getStatistics();
-      GeometryStatistics geometryStatistics = binaryStatistics.getGeometryStatistics();
+      GeometryStatistics geometryStatistics = columnChunkMetaData.getGeometryStatistics();
       Assert.assertNotNull(geometryStatistics);
+
       Assert.assertEquals(1.0, geometryStatistics.getBoundingBox().getXMin(), 0.0);
       Assert.assertEquals(2.0, geometryStatistics.getBoundingBox().getXMax(), 0.0);
       Assert.assertEquals(1.0, geometryStatistics.getBoundingBox().getYMin(), 0.0);
@@ -118,17 +116,6 @@ public class TestGeometryTypeRoundTrip {
 
       ColumnIndex columnIndex = reader.readColumnIndex(columnChunkMetaData);
       Assert.assertNotNull(columnIndex);
-
-      List<GeometryStatistics> pageGeometryStatistics = columnIndex.getGeometryStatistics();
-      Assert.assertNotNull(pageGeometryStatistics);
-      Assert.assertEquals(
-          1.0, pageGeometryStatistics.get(0).getBoundingBox().getXMin(), 0.0);
-      Assert.assertEquals(
-          2.0, pageGeometryStatistics.get(0).getBoundingBox().getXMax(), 0.0);
-      Assert.assertEquals(
-          1.0, pageGeometryStatistics.get(0).getBoundingBox().getYMin(), 0.0);
-      Assert.assertEquals(
-          2.0, pageGeometryStatistics.get(0).getBoundingBox().getYMax(), 0.0);
     }
   }
 
@@ -175,8 +162,7 @@ public class TestGeometryTypeRoundTrip {
           reader.getRowGroups().get(0).getColumns().get(0);
       Assert.assertNotNull(columnChunkMetaData);
 
-      BinaryStatistics binaryStatistics = (BinaryStatistics) columnChunkMetaData.getStatistics();
-      GeometryStatistics geometryStatistics = binaryStatistics.getGeometryStatistics();
+      GeometryStatistics geometryStatistics = columnChunkMetaData.getGeometryStatistics();
       Assert.assertNotNull(geometryStatistics);
 
       ColumnIndex columnIndex = reader.readColumnIndex(columnChunkMetaData);
