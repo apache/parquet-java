@@ -227,7 +227,7 @@ public class ParquetRewriter implements Closeable {
       MaskMode maskMode) {
     this.writer = writer;
     this.outSchema = outSchema;
-    this.outSchemaWithRenamedColumns = null;
+    this.outSchemaWithRenamedColumns = outSchema;
     this.newCodecName = codecName;
     extraMetaData = new HashMap<>(meta.getFileMetaData().getKeyValueMetaData());
     extraMetaData.put(
