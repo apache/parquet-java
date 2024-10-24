@@ -162,11 +162,11 @@ public class PrintFooter {
             schema.getColumnDescription(columnMetaData.getPath().toArray());
         add(
             desc,
-            columnMetaData.getValueCount(),
-            columnMetaData.getTotalSize(),
-            columnMetaData.getTotalUncompressedSize(),
+            columnMetaData.getValueCountWithDecrypt(),
+            columnMetaData.getTotalSizeWithDecrypt(),
+            columnMetaData.getTotalUncompressedSizeWithDecrypt(),
             columnMetaData.getEncodings(),
-            columnMetaData.getStatistics());
+            columnMetaData.getStatisticsWithDecrypt());
       }
     }
   }

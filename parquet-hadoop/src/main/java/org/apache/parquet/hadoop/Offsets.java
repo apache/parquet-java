@@ -47,8 +47,8 @@ class Offsets {
     long dictionaryPageOffset;
     if (chunk.hasDictionaryPage()) {
       long dictionaryPageSize;
-      if (chunk.getDictionaryPageOffset() == 0
-          || chunk.getFirstDataPageOffset() <= chunk.getDictionaryPageOffset()) {
+      if (chunk.getDictionaryPageOffsetWithDecrypt() == 0
+          || chunk.getFirstDataPageOffsetWithDecrypt() <= chunk.getDictionaryPageOffsetWithDecrypt()) {
         /*
          * The offsets might not contain the proper values (so we need to read the dictionary page header):
          * - The dictionaryPageOffset might not be set; in this case 0 is returned
@@ -57,7 +57,8 @@ class Offsets {
          */
         dictionaryPageSize = readDictionaryPageSize(input, chunk);
       } else {
-        dictionaryPageSize = chunk.getFirstDataPageOffset() - chunk.getDictionaryPageOffset();
+        dictionaryPageSize =
+            chunk.getFirstDataPageOffsetWithDecrypt() - chunk.getDictionaryPageOffsetWithDecrypt();
       }
       firstDataPageOffset = newChunkStart + dictionaryPageSize;
       dictionaryPageOffset = newChunkStart;

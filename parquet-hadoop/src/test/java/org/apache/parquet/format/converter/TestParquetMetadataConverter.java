@@ -231,9 +231,9 @@ public class TestParquetMetadataConverter {
     ParquetMetadata parquetMetaDataConverted = converter.fromParquetMetadata(fmd2);
 
     long dicOffsetOriginal =
-        parquetMetaData.getBlocks().get(0).getColumns().get(0).getDictionaryPageOffset();
+        parquetMetaData.getBlocks().get(0).getColumns().get(0).getDictionaryPageOffsetWithDecrypt();
     long dicOffsetConverted =
-        parquetMetaDataConverted.getBlocks().get(0).getColumns().get(0).getDictionaryPageOffset();
+        parquetMetaDataConverted.getBlocks().get(0).getColumns().get(0).getDictionaryPageOffsetWithDecrypt();
 
     Assert.assertEquals(dicOffsetOriginal, dicOffsetConverted);
   }
@@ -256,7 +256,7 @@ public class TestParquetMetadataConverter {
     FileMetaData fmd2 = Util.readFileMetaData(metaDataInputStream);
     ParquetMetadata pmd2 = converter.fromParquetMetadata(fmd2);
 
-    long dicOffsetConverted = pmd2.getBlocks().get(0).getColumns().get(0).getDictionaryPageOffset();
+    long dicOffsetConverted = pmd2.getBlocks().get(0).getColumns().get(0).getDictionaryPageOffsetWithDecrypt();
 
     Assert.assertEquals(0, dicOffsetConverted);
   }

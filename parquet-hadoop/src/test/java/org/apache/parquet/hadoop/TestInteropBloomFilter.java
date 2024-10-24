@@ -115,8 +115,8 @@ public class TestInteropBloomFilter {
         for (int i = 0; i < unexpectedValues.length; ++i) {
           assertFalse(bloomFilter.findHash(bloomFilter.hash(Binary.fromString(unexpectedValues[i]))));
         }
-        assertEquals(152, idMeta.getTotalSize());
-        assertEquals(163, idMeta.getTotalUncompressedSize());
+        assertEquals(152, idMeta.getTotalSizeWithDecrypt());
+        assertEquals(163, idMeta.getTotalUncompressedSizeWithDecrypt());
         assertEquals(181, idMeta.getOffsetIndexReference().getOffset());
         assertEquals(11, idMeta.getOffsetIndexReference().getLength());
         assertEquals(156, idMeta.getColumnIndexReference().getOffset());
@@ -183,8 +183,8 @@ public class TestInteropBloomFilter {
         for (int i = 0; i < unexpectedValues.length; ++i) {
           assertFalse(bloomFilter.findHash(bloomFilter.hash(Binary.fromString(unexpectedValues[i]))));
         }
-        assertEquals(199, idMeta.getTotalSize());
-        assertEquals(199, idMeta.getTotalUncompressedSize());
+        assertEquals(199, idMeta.getTotalSizeWithDecrypt());
+        assertEquals(199, idMeta.getTotalUncompressedSizeWithDecrypt());
         assertEquals(2342, idMeta.getOffsetIndexReference().getOffset());
         assertEquals(11, idMeta.getOffsetIndexReference().getLength());
         assertEquals(2317, idMeta.getColumnIndexReference().getOffset());

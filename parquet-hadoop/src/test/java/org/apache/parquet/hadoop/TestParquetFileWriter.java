@@ -293,16 +293,16 @@ public class TestParquetFileWriter {
     ParquetMetadata readFooter = ParquetFileReader.readFooter(configuration, path);
     assertEquals("footer: " + readFooter, 2, readFooter.getBlocks().size());
     BlockMetaData rowGroup = readFooter.getBlocks().get(0);
-    assertEquals(c1Ends - c1Starts, rowGroup.getColumns().get(0).getTotalSize());
-    assertEquals(c2Ends - c2Starts, rowGroup.getColumns().get(1).getTotalSize());
+    assertEquals(c1Ends - c1Starts, rowGroup.getColumns().get(0).getTotalSizeWithDecrypt());
+    assertEquals(c2Ends - c2Starts, rowGroup.getColumns().get(1).getTotalSizeWithDecrypt());
     assertEquals(c2Ends - c1Starts, rowGroup.getTotalByteSize());
 
     assertEquals(c1Starts, rowGroup.getColumns().get(0).getStartingPos());
-    assertEquals(0, rowGroup.getColumns().get(0).getDictionaryPageOffset());
-    assertEquals(c1p1Starts, rowGroup.getColumns().get(0).getFirstDataPageOffset());
+    assertEquals(0, rowGroup.getColumns().get(0).getDictionaryPageOffsetWithDecrypt());
+    assertEquals(c1p1Starts, rowGroup.getColumns().get(0).getFirstDataPageOffsetWithDecrypt());
     assertEquals(c2Starts, rowGroup.getColumns().get(1).getStartingPos());
-    assertEquals(c2Starts, rowGroup.getColumns().get(1).getDictionaryPageOffset());
-    assertEquals(c2p1Starts, rowGroup.getColumns().get(1).getFirstDataPageOffset());
+    assertEquals(c2Starts, rowGroup.getColumns().get(1).getDictionaryPageOffsetWithDecrypt());
+    assertEquals(c2p1Starts, rowGroup.getColumns().get(1).getFirstDataPageOffsetWithDecrypt());
 
     HashSet<Encoding> expectedEncoding = new HashSet<Encoding>();
     expectedEncoding.add(PLAIN);
@@ -393,18 +393,18 @@ public class TestParquetFileWriter {
     ParquetMetadata readFooter = ParquetFileReader.readFooter(configuration, path);
     assertEquals("footer: " + readFooter, 2, readFooter.getBlocks().size());
     BlockMetaData rowGroup = readFooter.getBlocks().get(0);
-    assertEquals(c2Ends - c2Starts, rowGroup.getColumns().get(1).getTotalSize());
+    assertEquals(c2Ends - c2Starts, rowGroup.getColumns().get(1).getTotalSizeWithDecrypt());
 
-    assertEquals(0, rowGroup.getColumns().get(0).getDictionaryPageOffset());
+    assertEquals(0, rowGroup.getColumns().get(0).getDictionaryPageOffsetWithDecrypt());
     assertEquals(c2Starts, rowGroup.getColumns().get(1).getStartingPos());
-    assertEquals(c2Starts, rowGroup.getColumns().get(1).getDictionaryPageOffset());
-    assertEquals(c2p1Starts, rowGroup.getColumns().get(1).getFirstDataPageOffset());
+    assertEquals(c2Starts, rowGroup.getColumns().get(1).getDictionaryPageOffsetWithDecrypt());
+    assertEquals(c2p1Starts, rowGroup.getColumns().get(1).getFirstDataPageOffsetWithDecrypt());
 
     BlockMetaData rowGroup2 = readFooter.getBlocks().get(1);
-    assertEquals(0, rowGroup2.getColumns().get(0).getDictionaryPageOffset());
+    assertEquals(0, rowGroup2.getColumns().get(0).getDictionaryPageOffsetWithDecrypt());
     assertEquals(c1Bock2Starts, rowGroup2.getColumns().get(0).getStartingPos());
-    assertEquals(c1p1Bock2Starts, rowGroup2.getColumns().get(0).getFirstDataPageOffset());
-    assertEquals(c1Block2Ends - c1Bock2Starts, rowGroup2.getColumns().get(0).getTotalSize());
+    assertEquals(c1p1Bock2Starts, rowGroup2.getColumns().get(0).getFirstDataPageOffsetWithDecrypt());
+    assertEquals(c1Block2Ends - c1Bock2Starts, rowGroup2.getColumns().get(0).getTotalSizeWithDecrypt());
 
     HashSet<Encoding> expectedEncoding = new HashSet<Encoding>();
     expectedEncoding.add(PLAIN);
@@ -532,16 +532,16 @@ public class TestParquetFileWriter {
     assertEquals("footer: " + readFooter, 1, readFooter.getBlocks().size());
     assertEquals(
         c1Ends - c1Starts,
-        readFooter.getBlocks().get(0).getColumns().get(0).getTotalSize());
+        readFooter.getBlocks().get(0).getColumns().get(0).getTotalSizeWithDecrypt());
     assertEquals(
         c2Ends - c2Starts,
-        readFooter.getBlocks().get(0).getColumns().get(1).getTotalSize());
+        readFooter.getBlocks().get(0).getColumns().get(1).getTotalSizeWithDecrypt());
     assertEquals(c2Ends - c1Starts, readFooter.getBlocks().get(0).getTotalByteSize());
 
     // check for stats
     org.apache.parquet.column.statistics.Statistics<?> expectedStats = createStatistics("b", "z", C1);
     TestUtils.assertStatsValuesEqual(
-        expectedStats, readFooter.getBlocks().get(0).getColumns().get(0).getStatistics());
+        expectedStats, readFooter.getBlocks().get(0).getColumns().get(0).getStatisticsWithDecrypt());
 
     HashSet<Encoding> expectedEncoding = new HashSet<Encoding>();
     expectedEncoding.add(PLAIN);
@@ -665,10 +665,10 @@ public class TestParquetFileWriter {
     assertEquals("footer: " + readFooter, 2, readFooter.getBlocks().size());
     assertEquals(
         c1Ends - c1Starts,
-        readFooter.getBlocks().get(0).getColumns().get(0).getTotalSize());
+        readFooter.getBlocks().get(0).getColumns().get(0).getTotalSizeWithDecrypt());
     assertEquals(
         c2Ends - c2Starts,
-        readFooter.getBlocks().get(0).getColumns().get(1).getTotalSize());
+        readFooter.getBlocks().get(0).getColumns().get(1).getTotalSizeWithDecrypt());
     assertEquals(c2Ends - c1Starts, readFooter.getBlocks().get(0).getTotalByteSize());
     HashSet<Encoding> expectedEncoding = new HashSet<Encoding>();
     expectedEncoding.add(PLAIN);
@@ -793,10 +793,10 @@ public class TestParquetFileWriter {
     assertEquals("footer: " + readFooter, 2, readFooter.getBlocks().size());
     assertEquals(
         c1Ends - c1Starts,
-        readFooter.getBlocks().get(0).getColumns().get(0).getTotalSize());
+        readFooter.getBlocks().get(0).getColumns().get(0).getTotalSizeWithDecrypt());
     assertEquals(
         c2Ends - c2Starts,
-        readFooter.getBlocks().get(0).getColumns().get(1).getTotalSize());
+        readFooter.getBlocks().get(0).getColumns().get(1).getTotalSizeWithDecrypt());
     assertEquals(c2Ends - c1Starts, readFooter.getBlocks().get(0).getTotalByteSize());
     HashSet<Encoding> expectedEncoding = new HashSet<Encoding>();
     expectedEncoding.add(PLAIN);
@@ -960,20 +960,20 @@ public class TestParquetFileWriter {
 
     { // assert stats are correct for the first block
       BinaryStatistics bsout = (BinaryStatistics)
-          readFooter.getBlocks().get(0).getColumns().get(0).getStatistics();
+          readFooter.getBlocks().get(0).getColumns().get(0).getStatisticsWithDecrypt();
       String str = new String(bsout.getMaxBytes());
       String str2 = new String(bsout.getMinBytes());
 
       TestUtils.assertStatsValuesEqual(
-          bs1, readFooter.getBlocks().get(0).getColumns().get(0).getStatistics());
+          bs1, readFooter.getBlocks().get(0).getColumns().get(0).getStatisticsWithDecrypt());
       TestUtils.assertStatsValuesEqual(
-          ls1, readFooter.getBlocks().get(0).getColumns().get(1).getStatistics());
+          ls1, readFooter.getBlocks().get(0).getColumns().get(1).getStatisticsWithDecrypt());
     }
     { // assert stats are correct for the second block
       TestUtils.assertStatsValuesEqual(
-          bs2, readFooter.getBlocks().get(1).getColumns().get(0).getStatistics());
+          bs2, readFooter.getBlocks().get(1).getColumns().get(0).getStatisticsWithDecrypt());
       TestUtils.assertStatsValuesEqual(
-          ls2, readFooter.getBlocks().get(1).getColumns().get(1).getStatistics());
+          ls2, readFooter.getBlocks().get(1).getColumns().get(1).getStatisticsWithDecrypt());
     }
   }
 
@@ -1053,7 +1053,7 @@ public class TestParquetFileWriter {
 
     // assert the statistics object is not empty
     org.apache.parquet.column.statistics.Statistics stats =
-        readFooter.getBlocks().get(0).getColumns().get(0).getStatistics();
+        readFooter.getBlocks().get(0).getColumns().get(0).getStatisticsWithDecrypt();
     assertFalse("is empty: " + stats, stats.isEmpty());
     // assert the number of nulls are correct for the first block
     assertEquals("nulls: " + stats, 1, stats.getNumNulls());

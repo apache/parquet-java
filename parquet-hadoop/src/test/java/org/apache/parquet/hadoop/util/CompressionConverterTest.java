@@ -200,8 +200,8 @@ public class CompressionConverterTest {
             for (int k = 0; k < inOffsetIndex.getPageCount(); k++) {
               Assert.assertEquals(inOffsetIndex.getFirstRowIndex(k), outOffsetIndex.getFirstRowIndex(k));
               Assert.assertEquals(
-                  inOffsetIndex.getLastRowIndex(k, inChunk.getValueCount()),
-                  outOffsetIndex.getLastRowIndex(k, outChunk.getValueCount()));
+                  inOffsetIndex.getLastRowIndex(k, inChunk.getValueCountWithDecrypt()),
+                  outOffsetIndex.getLastRowIndex(k, outChunk.getValueCountWithDecrypt()));
               Assert.assertEquals(inOffsetIndex.getOffset(k), (long) inOffsets.get(k));
               Assert.assertEquals(outOffsetIndex.getOffset(k), (long) outOffsets.get(k));
             }
@@ -215,7 +215,7 @@ public class CompressionConverterTest {
     List<Long> offsets = new ArrayList<>();
     reader.setStreamPosition(chunk.getStartingPos());
     long readValues = 0;
-    long totalChunkValues = chunk.getValueCount();
+    long totalChunkValues = chunk.getValueCountWithDecrypt();
     while (readValues < totalChunkValues) {
       long curOffset = reader.getPos();
       PageHeader pageHeader = reader.readPageHeader();

@@ -462,7 +462,7 @@ public class ParquetRewriter implements Closeable {
       }
 
       // Translate compression and/or encryption
-      writer.startColumn(descriptor, chunk.getValueCount(), newCodecName);
+      writer.startColumn(descriptor, chunk.getValueCountWithDecrypt(), newCodecName);
       processChunk(
           reader,
           blockMetaData.getRowCount(),
@@ -533,7 +533,7 @@ public class ParquetRewriter implements Closeable {
     boolean isColumnStatisticsMalformed = false;
     ParquetMetadataConverter converter = new ParquetMetadataConverter();
     int pageOrdinal = 0;
-    long totalChunkValues = chunk.getValueCount();
+    long totalChunkValues = chunk.getValueCountWithDecrypt();
     while (readValues < totalChunkValues) {
       PageHeader pageHeader = reader.readPageHeader();
       int compressedPageSize = pageHeader.getCompressed_page_size();
@@ -691,7 +691,7 @@ public class ParquetRewriter implements Closeable {
 
     if (isColumnStatisticsMalformed) {
       // All the column statistics are invalid, so we need to overwrite the column statistics
-      writer.invalidateStatistics(chunk.getStatistics());
+      writer.invalidateStatistics(chunk.getStatisticsWithDecrypt());
     }
   }
 
@@ -871,7 +871,7 @@ public class ParquetRewriter implements Closeable {
       Preconditions.checkArgument(writer.getEncryptor() != null, "Missing encryptor");
     }
 
-    long totalChunkValues = chunk.getValueCount();
+    long totalChunkValues = chunk.getValueCountWithDecrypt();
     int dMax = descriptor.getMaxDefinitionLevel();
     PageReadStore pageReadStore = reader.readRowGroup(blockIndex);
     ColumnReadStoreImpl crStore =

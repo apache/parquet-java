@@ -183,7 +183,7 @@ public class TestFloat16Statistics {
           ParquetFileReader.open(HadoopInputFile.fromPath(path, new Configuration()))) {
         ColumnChunkMetaData column =
             reader.getFooter().getBlocks().get(0).getColumns().get(0);
-        Statistics<?> statistics = column.getStatistics();
+        Statistics<?> statistics = column.getStatisticsWithDecrypt();
 
         assertArrayEquals(expectedValues.get(i)[0].getBytes(), statistics.getMinBytes());
         assertArrayEquals(expectedValues.get(i)[1].getBytes(), statistics.getMaxBytes());
@@ -238,7 +238,7 @@ public class TestFloat16Statistics {
             ParquetFileReader.open(HadoopInputFile.fromPath(path, new Configuration()))) {
           ColumnChunkMetaData column =
               reader.getFooter().getBlocks().get(0).getColumns().get(0);
-          Statistics<?> statistics = column.getStatistics();
+          Statistics<?> statistics = column.getStatisticsWithDecrypt();
 
           assertArrayEquals(valuesInAscendingOrder[minIndex].getBytes(), statistics.getMinBytes());
           assertArrayEquals(valuesInAscendingOrder[maxIndex].getBytes(), statistics.getMaxBytes());

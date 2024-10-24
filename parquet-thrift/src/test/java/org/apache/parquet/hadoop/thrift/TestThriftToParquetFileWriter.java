@@ -124,21 +124,21 @@ public class TestThriftToParquetFileWriter {
       for (ColumnChunkMetaData cmd : bmd.getColumns()) {
         switch (cmd.getType()) {
           case INT32:
-            TestUtils.assertStatsValuesEqual(intStatsSmall, cmd.getStatistics());
+            TestUtils.assertStatsValuesEqual(intStatsSmall, cmd.getStatisticsWithDecrypt());
             break;
           case INT64:
-            TestUtils.assertStatsValuesEqual(longStatsSmall, cmd.getStatistics());
+            TestUtils.assertStatsValuesEqual(longStatsSmall, cmd.getStatisticsWithDecrypt());
             break;
           case DOUBLE:
-            TestUtils.assertStatsValuesEqual(doubleStatsSmall, cmd.getStatistics());
+            TestUtils.assertStatsValuesEqual(doubleStatsSmall, cmd.getStatisticsWithDecrypt());
             break;
           case BOOLEAN:
-            TestUtils.assertStatsValuesEqual(boolStats, cmd.getStatistics());
+            TestUtils.assertStatsValuesEqual(boolStats, cmd.getStatisticsWithDecrypt());
             break;
           case BINARY:
             // there is also info_string that has no statistics
             if (cmd.getPath().toString() == "[test_string]")
-              TestUtils.assertStatsValuesEqual(binaryStatsSmall, cmd.getStatistics());
+              TestUtils.assertStatsValuesEqual(binaryStatsSmall, cmd.getStatisticsWithDecrypt());
             break;
         }
       }
@@ -187,21 +187,21 @@ public class TestThriftToParquetFileWriter {
           case INT32:
             // testing the correct limits of an int32, there are also byte and short, tested earlier
             if (cmd.getPath().toString() == "[test_i32]")
-              TestUtils.assertStatsValuesEqual(intStatsLarge, cmd.getStatistics());
+              TestUtils.assertStatsValuesEqual(intStatsLarge, cmd.getStatisticsWithDecrypt());
             break;
           case INT64:
-            TestUtils.assertStatsValuesEqual(longStatsLarge, cmd.getStatistics());
+            TestUtils.assertStatsValuesEqual(longStatsLarge, cmd.getStatisticsWithDecrypt());
             break;
           case DOUBLE:
-            TestUtils.assertStatsValuesEqual(doubleStatsLarge, cmd.getStatistics());
+            TestUtils.assertStatsValuesEqual(doubleStatsLarge, cmd.getStatisticsWithDecrypt());
             break;
           case BOOLEAN:
-            TestUtils.assertStatsValuesEqual(boolStats, cmd.getStatistics());
+            TestUtils.assertStatsValuesEqual(boolStats, cmd.getStatisticsWithDecrypt());
             break;
           case BINARY:
             // there is also info_string that has no statistics
             if (cmd.getPath().toString() == "[test_string]")
-              TestUtils.assertStatsValuesEqual(binaryStatsLarge, cmd.getStatistics());
+              TestUtils.assertStatsValuesEqual(binaryStatsLarge, cmd.getStatisticsWithDecrypt());
             break;
         }
       }

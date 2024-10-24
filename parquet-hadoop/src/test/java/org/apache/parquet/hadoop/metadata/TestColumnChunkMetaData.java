@@ -37,7 +37,7 @@ public class TestColumnChunkMetaData {
 
     ColumnChunkMetaData md = newMD(big);
     assertTrue(md instanceof IntColumnChunkMetaData);
-    assertEquals(big, md.getFirstDataPageOffset());
+    assertEquals(big, md.getFirstDataPageOffsetWithDecrypt());
   }
 
   @Test
@@ -46,7 +46,7 @@ public class TestColumnChunkMetaData {
 
     ColumnChunkMetaData md = newMD(small);
     assertTrue(md instanceof IntColumnChunkMetaData);
-    assertEquals(small, md.getFirstDataPageOffset());
+    assertEquals(small, md.getFirstDataPageOffsetWithDecrypt());
   }
 
   @Test
@@ -55,7 +55,7 @@ public class TestColumnChunkMetaData {
 
     ColumnChunkMetaData md = newMD(veryBig);
     assertTrue(md instanceof LongColumnChunkMetaData);
-    assertEquals(veryBig, md.getFirstDataPageOffset());
+    assertEquals(veryBig, md.getFirstDataPageOffsetWithDecrypt());
   }
 
   @Test
@@ -64,7 +64,7 @@ public class TestColumnChunkMetaData {
 
     ColumnChunkMetaData md = newMD(neg);
     assertTrue(md instanceof LongColumnChunkMetaData);
-    assertEquals(neg, md.getFirstDataPageOffset());
+    assertEquals(neg, md.getFirstDataPageOffsetWithDecrypt());
   }
 
   private ColumnChunkMetaData newMD(long big) {

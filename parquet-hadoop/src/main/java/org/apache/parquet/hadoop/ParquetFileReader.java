@@ -1086,14 +1086,15 @@ public class ParquetFileReader implements Closeable {
       ColumnPath pathKey = mc.getPath();
       ColumnDescriptor columnDescriptor = paths.get(pathKey);
       if (columnDescriptor != null) {
-        BenchmarkCounter.incrementTotalBytes(mc.getTotalSize());
+        BenchmarkCounter.incrementTotalBytes(mc.getTotalSizeWithDecrypt());
         long startingPos = mc.getStartingPos();
         // first part or not consecutive => new list
         if (currentParts == null || currentParts.endPos() != startingPos) {
           currentParts = new ConsecutivePartList(startingPos);
           allParts.add(currentParts);
         }
-        currentParts.addChunk(new ChunkDescriptor(columnDescriptor, mc, startingPos, mc.getTotalSize()));
+        currentParts.addChunk(
+            new ChunkDescriptor(columnDescriptor, mc, startingPos, mc.getTotalSizeWithDecrypt()));
       }
     }
     // actually read all the chunks
@@ -1955,13 +1956,13 @@ public class ParquetFileReader implements Closeable {
             break;
         }
       }
-      if (offsetIndex == null && valuesCountReadSoFar != descriptor.metadata.getValueCount()) {
+      if (offsetIndex == null && valuesCountReadSoFar != descriptor.metadata.getValueCountWithDecrypt()) {
         // Would be nice to have a CorruptParquetFileException or something as a subclass?
-        throw new IOException(
-            "Expected " + descriptor.metadata.getValueCount() + " values in column chunk at " + getPath()
-                + " offset " + descriptor.metadata.getFirstDataPageOffset() + " but got "
-                + valuesCountReadSoFar + " values instead over " + pagesInChunk.size()
-                + " pages ending at file offset " + (descriptor.fileOffset + stream.position()));
+        throw new IOException("Expected " + descriptor.metadata.getValueCountWithDecrypt()
+            + " values in column chunk at " + getPath()
+            + " offset " + descriptor.metadata.getFirstDataPageOffsetWithDecrypt() + " but got "
+            + valuesCountReadSoFar + " values instead over " + pagesInChunk.size()
+            + " pages ending at file offset " + (descriptor.fileOffset + stream.position()));
       }
       BytesInputDecompressor decompressor =
           options.getCodecFactory().getDecompressor(descriptor.metadata.getCodec());
@@ -1980,7 +1981,7 @@ public class ParquetFileReader implements Closeable {
 
     private boolean hasMorePages(long valuesCountReadSoFar, int dataPageCountReadSoFar) {
       return offsetIndex == null
-          ? valuesCountReadSoFar < descriptor.metadata.getValueCount()
+          ? valuesCountReadSoFar < descriptor.metadata.getValueCountWithDecrypt()
           : dataPageCountReadSoFar < offsetIndex.getPageCount();
     }
 

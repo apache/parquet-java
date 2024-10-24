@@ -98,7 +98,7 @@ public class ParquetInputSplit extends FileSplit implements Writable {
       List<ColumnChunkMetaData> columns = block.getColumns();
       for (ColumnChunkMetaData column : columns) {
         if (requested.containsPath(column.getPath().toArray())) {
-          length += column.getTotalSize();
+          length += column.getTotalSizeWithDecrypt();
         }
       }
     }

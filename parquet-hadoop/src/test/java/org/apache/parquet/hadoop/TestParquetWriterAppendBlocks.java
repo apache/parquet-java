@@ -225,7 +225,7 @@ public class TestParquetWriterAppendBlocks {
       ColumnChunkMetaData current = actual.get(i);
       if (i != 0) {
         ColumnChunkMetaData previous = actual.get(i - 1);
-        long expectedStart = previous.getStartingPos() + previous.getTotalSize();
+        long expectedStart = previous.getStartingPos() + previous.getTotalSizeWithDecrypt();
         Assert.assertEquals("Should start after the previous column", expectedStart, current.getStartingPos());
       }
 
@@ -238,13 +238,20 @@ public class TestParquetWriterAppendBlocks {
     Assert.assertEquals("Primitive type should not change", expected.getType(), actual.getType());
     Assert.assertEquals("Compression codec should not change", expected.getCodec(), actual.getCodec());
     Assert.assertEquals("Data encodings should not change", expected.getEncodings(), actual.getEncodings());
-    Assert.assertEquals("Statistics should not change", expected.getStatistics(), actual.getStatistics());
+    Assert.assertEquals(
+        "Statistics should not change", expected.getStatisticsWithDecrypt(), actual.getStatisticsWithDecrypt());
     Assert.assertEquals(
         "Uncompressed size should not change",
-        expected.getTotalUncompressedSize(),
-        actual.getTotalUncompressedSize());
-    Assert.assertEquals("Compressed size should not change", expected.getTotalSize(), actual.getTotalSize());
-    Assert.assertEquals("Number of values should not change", expected.getValueCount(), actual.getValueCount());
+        expected.getTotalUncompressedSizeWithDecrypt(),
+        actual.getTotalUncompressedSizeWithDecrypt());
+    Assert.assertEquals(
+        "Compressed size should not change",
+        expected.getTotalSizeWithDecrypt(),
+        actual.getTotalSizeWithDecrypt());
+    Assert.assertEquals(
+        "Number of values should not change",
+        expected.getValueCountWithDecrypt(),
+        actual.getValueCountWithDecrypt());
   }
 
   @Test
