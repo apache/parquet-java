@@ -504,6 +504,29 @@ public abstract class ColumnChunkMetaData {
   public boolean isEncrypted() {
     return false;
   }
+
+  /**
+   * Copies this ColumnChunkMetaData with path and type changed to provided ones.
+   *
+   * @param path a new ColumnPath of a chunk
+   * @param type a new PrimitiveType of a chunk
+   * @return resulting chunk
+   */
+  public ColumnChunkMetaData copy(ColumnPath path, PrimitiveType type) {
+    return ColumnChunkMetaData.get(
+        path,
+        type,
+        this.getCodec(),
+        this.getEncodingStats(),
+        this.getEncodings(),
+        this.getStatistics(),
+        this.getFirstDataPageOffset(),
+        this.getDictionaryPageOffset(),
+        this.getValueCount(),
+        this.getTotalSize(),
+        this.getTotalUncompressedSize(),
+        this.getSizeStatistics());
+  }
 }
 
 class IntColumnChunkMetaData extends ColumnChunkMetaData {
@@ -623,29 +646,6 @@ class IntColumnChunkMetaData extends ColumnChunkMetaData {
   @Override
   public SizeStatistics getSizeStatistics() {
     return sizeStatistics;
-  }
-
-  /**
-   * Copies this ColumnChunkMetaData with chunk's path and type changed to provided ones.
-   *
-   * @param path ColumnPath of resulting chunk
-   * @param type PrimitiveType of resulting chunk
-   * @return resulting chunk
-   */
-  public ColumnChunkMetaData copy(ColumnPath path, PrimitiveType type) {
-    return ColumnChunkMetaData.get(
-        path,
-        type,
-        this.getCodec(),
-        this.getEncodingStats(),
-        this.getEncodings(),
-        this.getStatistics(),
-        this.getFirstDataPageOffset(),
-        this.getDictionaryPageOffset(),
-        this.getValueCount(),
-        this.getTotalSize(),
-        this.getTotalUncompressedSize(),
-        this.getSizeStatistics());
   }
 }
 
