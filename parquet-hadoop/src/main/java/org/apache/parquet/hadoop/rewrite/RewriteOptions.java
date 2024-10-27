@@ -18,11 +18,11 @@
  */
 package org.apache.parquet.hadoop.rewrite;
 
-import java.util.Collections;
-import java.util.List;
 import java.util.ArrayList;
-import java.util.Map;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -589,15 +589,15 @@ public class RewriteOptions {
                 !encryptColumns.contains(pruneColumn), "Cannot prune and encrypt same column");
           }
         }
-        if (renameColumns != null) {
+      }
+
+      if (renameColumns != null && !renameColumns.isEmpty()) {
+        if (encryptColumns != null && !encryptColumns.isEmpty()) {
           for (Map.Entry<String, String> entry : renameColumns.entrySet()) {
             Preconditions.checkArgument(
                 !encryptColumns.contains(entry.getKey()), "Cannot prune and rename same column");
           }
         }
-      }
-
-      if (renameColumns != null && !renameColumns.isEmpty()) {
         for (Map.Entry<String, String> entry : renameColumns.entrySet()) {
           Preconditions.checkArgument(
               entry.getValue() != null && !entry.getValue().trim().isEmpty(),
