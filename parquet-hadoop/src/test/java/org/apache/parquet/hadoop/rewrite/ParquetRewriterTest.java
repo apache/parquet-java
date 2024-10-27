@@ -1086,7 +1086,7 @@ public class ParquetRewriterTest {
     R apply(T t) throws IOException;
   }
 
-  private ColumnPath renameFieldsInPath(ColumnPath path, Map<String, String> renameColumns) {
+  private ColumnPath normalizeFieldsInPath(ColumnPath path, Map<String, String> renameColumns) {
     String[] pathArray = path.toArray();
     if (renameColumns != null) {
       pathArray[0] = renameColumns.getOrDefault(pathArray[0], pathArray[0]);
@@ -1149,7 +1149,7 @@ public class ParquetRewriterTest {
         TransParquetFileReader inReader;
         BlockMetaData inBlockMeta;
         ColumnChunkMetaData inChunk;
-        ColumnPath colPath = renameFieldsInPath(outChunk.getPath(), renameColumnsInverted);
+        ColumnPath colPath = normalizeFieldsInPath(outChunk.getPath(), renameColumnsInverted);
         if (!inBlocksMain.get(blockIdx).colPathToMeta.containsKey(colPath)
             || joinColumnsOverwrite
                 && !inBlocksJoined.isEmpty()

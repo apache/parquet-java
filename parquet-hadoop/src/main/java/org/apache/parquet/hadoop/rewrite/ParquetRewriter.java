@@ -464,7 +464,7 @@ public class ParquetRewriter implements Closeable {
     if (readerToJoin != null) readerToJoin.close();
   }
 
-  private ColumnPath renameFieldsInPath(ColumnPath path) {
+  private ColumnPath normalizeFieldsInPath(ColumnPath path) {
     if (renamedColumns.isEmpty()) {
       return path;
     } else {
@@ -474,7 +474,7 @@ public class ParquetRewriter implements Closeable {
     }
   }
 
-  private PrimitiveType renameNameInType(PrimitiveType type) {
+  private PrimitiveType normalizeNameInType(PrimitiveType type) {
     if (renamedColumns.isEmpty()) {
       return type;
     } else {
@@ -496,11 +496,11 @@ public class ParquetRewriter implements Closeable {
       throw new IOException("Column " + chunk.getPath().toDotString() + " is already encrypted");
     }
 
-    ColumnChunkMetaData chunkColumnsRenamed = chunk;
+    ColumnChunkMetaData chunkColumnsNormalized = chunk;
     if (!renamedColumns.isEmpty()) {
-      chunkColumnsRenamed = ColumnChunkMetaData.get(
-          renameFieldsInPath(chunk.getPath()),
-          renameNameInType(chunk.getPrimitiveType()),
+      chunkColumnsNormalized = ColumnChunkMetaData.get(
+          normalizeFieldsInPath(chunk.getPath()),
+          normalizeNameInType(chunk.getPrimitiveType()),
           chunk.getCodec(),
           chunk.getEncodingStats(),
           chunk.getEncodings(),
@@ -573,7 +573,12 @@ public class ParquetRewriter implements Closeable {
       ColumnIndex columnIndex = indexCache.getColumnIndex(chunk);
       OffsetIndex offsetIndex = indexCache.getOffsetIndex(chunk);
       writer.appendColumnChunk(
-          descriptorRenamed, reader.getStream(), chunkColumnsRenamed, bloomFilter, columnIndex, offsetIndex);
+          descriptorRenamed,
+          reader.getStream(),
+          chunkColumnsNormalized,
+          bloomFilter,
+          columnIndex,
+          offsetIndex);
     }
   }
 
@@ -615,7 +620,7 @@ public class ParquetRewriter implements Closeable {
     }
 
     if (bloomFilter != null) {
-      writer.addBloomFilter(renameFieldsInPath(chunk.getPath()).toDotString(), bloomFilter);
+      writer.addBloomFilter(normalizeFieldsInPath(chunk.getPath()).toDotString(), bloomFilter);
     }
 
     reader.setStreamPosition(chunk.getStartingPos());
@@ -673,7 +678,7 @@ public class ParquetRewriter implements Closeable {
               dataPageAAD);
           statistics = convertStatistics(
               originalCreatedBy,
-              renameNameInType(chunk.getPrimitiveType()),
+              normalizeNameInType(chunk.getPrimitiveType()),
               headerV1.getStatistics(),
               columnIndex,
               pageOrdinal,
@@ -741,7 +746,7 @@ public class ParquetRewriter implements Closeable {
               dataPageAAD);
           statistics = convertStatistics(
               originalCreatedBy,
-              renameNameInType(chunk.getPrimitiveType()),
+              normalizeNameInType(chunk.getPrimitiveType()),
               headerV2.getStatistics(),
               columnIndex,
               pageOrdinal,
