@@ -498,19 +498,8 @@ public class ParquetRewriter implements Closeable {
 
     ColumnChunkMetaData chunkColumnsNormalized = chunk;
     if (!renamedColumns.isEmpty()) {
-      chunkColumnsNormalized = ColumnChunkMetaData.get(
-          normalizeFieldsInPath(chunk.getPath()),
-          normalizeNameInType(chunk.getPrimitiveType()),
-          chunk.getCodec(),
-          chunk.getEncodingStats(),
-          chunk.getEncodings(),
-          chunk.getStatistics(),
-          chunk.getFirstDataPageOffset(),
-          chunk.getDictionaryPageOffset(),
-          chunk.getValueCount(),
-          chunk.getTotalSize(),
-          chunk.getTotalUncompressedSize(),
-          chunk.getSizeStatistics());
+      chunkColumnsNormalized =
+          chunk.copy(normalizeFieldsInPath(chunk.getPath()), normalizeNameInType(chunk.getPrimitiveType()));
     }
 
     ColumnDescriptor descriptorOriginal = outSchema.getColumns().get(outColumnIdx);

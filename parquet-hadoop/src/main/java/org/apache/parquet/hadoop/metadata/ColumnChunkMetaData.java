@@ -624,6 +624,29 @@ class IntColumnChunkMetaData extends ColumnChunkMetaData {
   public SizeStatistics getSizeStatistics() {
     return sizeStatistics;
   }
+
+  /**
+   * Copies this ColumnChunkMetaData with chunk's path and type changed to provided ones.
+   *
+   * @param path ColumnPath of resulting chunk
+   * @param type PrimitiveType of resulting chunk
+   * @return resulting chunk
+   */
+  public ColumnChunkMetaData copy(ColumnPath path, PrimitiveType type) {
+    return ColumnChunkMetaData.get(
+        path,
+        type,
+        this.getCodec(),
+        this.getEncodingStats(),
+        this.getEncodings(),
+        this.getStatistics(),
+        this.getFirstDataPageOffset(),
+        this.getDictionaryPageOffset(),
+        this.getValueCount(),
+        this.getTotalSize(),
+        this.getTotalUncompressedSize(),
+        this.getSizeStatistics());
+  }
 }
 
 class LongColumnChunkMetaData extends ColumnChunkMetaData {
