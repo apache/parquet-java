@@ -172,7 +172,7 @@ public class ParquetRewriter implements Closeable {
         out);
 
     this.outSchema = pruneColumnsInSchema(getSchema(), options.getPruneColumns());
-    // TODO check a requirement that all renamed column should be present in outSchema
+    ensureRenamedColumnsCorrectness(outSchema, renamedColumns);
     this.outSchemaWithRenamedColumns = getSchemaWithRenamedColumns(this.outSchema);
     this.extraMetaData = getExtraMetadata(options);
 
@@ -276,7 +276,7 @@ public class ParquetRewriter implements Closeable {
   private MessageType getSchemaWithRenamedColumns(MessageType schema) {
     List<Type> fields = schema.getFields().stream()
         .map(type -> {
-          if (renamedColumns == null || !renamedColumns.containsKey(type.getName())) {
+          if (!renamedColumns.containsKey(type.getName())) {
             return type;
           } else if (type.isPrimitive()) {
             return new PrimitiveType(
@@ -366,6 +366,21 @@ public class ParquetRewriter implements Closeable {
     }
   }
 
+  private void ensureRenamedColumnsCorrectness(MessageType schema, Map<String, String> renameMap) {
+    Set<String> columns = schema.getFields().stream().map(Type::getName).collect(Collectors.toSet());
+    renameMap.forEach((src, dst) -> {
+      if (!columns.contains(src)) {
+        String msg = String.format("Column to rename '%s' is not found in input files schema", src);
+        LOG.error(msg);
+        throw new IllegalArgumentException(msg);
+      } else if (columns.contains(dst)) {
+        String msg = String.format("Renamed column target name '%s' is already present in a schema", dst);
+        LOG.error(msg);
+        throw new IllegalArgumentException(msg);
+      }
+    });
+  }
+
   @Override
   public void close() throws IOException {
     writer.end(extraMetaData);
@@ -450,7 +465,7 @@ public class ParquetRewriter implements Closeable {
   }
 
   private ColumnPath renameFieldsInPath(ColumnPath path) {
-    if (renamedColumns == null) {
+    if (renamedColumns.isEmpty()) {
       return path;
     } else {
       String[] pathArray = path.toArray();
@@ -460,7 +475,7 @@ public class ParquetRewriter implements Closeable {
   }
 
   private PrimitiveType renameNameInType(PrimitiveType type) {
-    if (renamedColumns == null) {
+    if (renamedColumns.isEmpty()) {
       return type;
     } else {
       return new PrimitiveType(
@@ -482,7 +497,7 @@ public class ParquetRewriter implements Closeable {
     }
 
     ColumnChunkMetaData chunkColumnsRenamed = chunk;
-    if (renamedColumns != null && !renamedColumns.isEmpty()) {
+    if (!renamedColumns.isEmpty()) {
       chunkColumnsRenamed = ColumnChunkMetaData.get(
           renameFieldsInPath(chunk.getPath()),
           renameNameInType(chunk.getPrimitiveType()),

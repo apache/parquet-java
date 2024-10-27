@@ -23,6 +23,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.apache.curator.shaded.com.google.common.collect.ImmutableMap;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.Preconditions;
@@ -627,7 +628,11 @@ public class RewriteOptions {
           pruneColumns,
           newCodecName,
           maskColumns,
-          renameColumns,
+          (renameColumns == null
+              ? ImmutableMap.of()
+              : renameColumns.entrySet().stream()
+                  .collect(Collectors.toMap(
+                      Map.Entry::getKey, x -> x.getValue().trim()))),
           encryptColumns,
           fileEncryptionProperties,
           indexCacheStrategy,
