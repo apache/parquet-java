@@ -573,6 +573,28 @@ public class RewriteOptions {
      * @return a RewriterOptions
      */
     public RewriteOptions build() {
+      checkPreconditions();
+      return new RewriteOptions(
+          conf,
+          inputFiles,
+          (inputFilesToJoin != null ? inputFilesToJoin : new ArrayList<>()),
+          outputFile,
+          pruneColumns,
+          newCodecName,
+          maskColumns,
+          (renameColumns == null
+              ? new HashMap<>()
+              : renameColumns.entrySet().stream()
+                  .collect(Collectors.toMap(
+                      Map.Entry::getKey, x -> x.getValue().trim()))),
+          encryptColumns,
+          fileEncryptionProperties,
+          indexCacheStrategy,
+          overwriteInputWithJoinColumns,
+          ignoreJoinFilesMetadata);
+    }
+
+    private void checkPreconditions() {
       Preconditions.checkArgument(inputFiles != null && !inputFiles.isEmpty(), "Input file is required");
       Preconditions.checkArgument(outputFile != null, "Output file is required");
 
@@ -619,25 +641,6 @@ public class RewriteOptions {
             encryptColumns != null && !encryptColumns.isEmpty(),
             "Encrypt columns is required when FileEncryptionProperties is set");
       }
-
-      return new RewriteOptions(
-          conf,
-          inputFiles,
-          (inputFilesToJoin != null ? inputFilesToJoin : new ArrayList<>()),
-          outputFile,
-          pruneColumns,
-          newCodecName,
-          maskColumns,
-          (renameColumns == null
-              ? new HashMap<>()
-              : renameColumns.entrySet().stream()
-                  .collect(Collectors.toMap(
-                      Map.Entry::getKey, x -> x.getValue().trim()))),
-          encryptColumns,
-          fileEncryptionProperties,
-          indexCacheStrategy,
-          overwriteInputWithJoinColumns,
-          ignoreJoinFilesMetadata);
     }
   }
 }

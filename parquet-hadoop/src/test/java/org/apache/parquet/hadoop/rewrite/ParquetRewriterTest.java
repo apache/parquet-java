@@ -588,15 +588,14 @@ public class ParquetRewriterTest {
     addGzipInputFile();
     addUncompressedInputFile();
 
-    // Only merge two files but do not change anything.
-    List<Path> inputPaths = new ArrayList<>();
-    for (EncryptionTestFile inputFile : inputFiles) {
-      inputPaths.add(new Path(inputFile.getFileName()));
-    }
     Map<String, String> renameColumns = ImmutableMap.of("Name", "NameRenamed");
+    List<String> pruneColumns = ImmutableList.of("Gender");
+    List<Path> inputPaths =
+        inputFiles.stream().map(x -> new Path(x.getFileName())).collect(Collectors.toList());
     RewriteOptions.Builder builder = createBuilder(inputPaths);
     RewriteOptions options = builder.indexCacheStrategy(indexCacheStrategy)
         .renameColumns(ImmutableMap.of("Name", "NameRenamed"))
+        .prune(pruneColumns)
         .build();
 
     rewriter = new ParquetRewriter(options);
@@ -622,7 +621,7 @@ public class ParquetRewriterTest {
         null);
 
     // Verify the merged data are not changed
-    validateColumnData(Collections.emptySet(), Collections.emptySet(), null, false, renameColumns);
+    validateColumnData(new HashSet<>(pruneColumns), Collections.emptySet(), null, false, renameColumns);
 
     // Verify the page index
     validatePageIndex(new HashSet<>(), false, renameColumns);
@@ -941,7 +940,6 @@ public class ParquetRewriterTest {
         "schema",
         new PrimitiveType(OPTIONAL, INT64, "DocId"),
         new PrimitiveType(REQUIRED, BINARY, "NameRenamed"),
-        new PrimitiveType(OPTIONAL, BINARY, "Gender"),
         new PrimitiveType(REPEATED, FLOAT, "FloatFraction"),
         new PrimitiveType(OPTIONAL, DOUBLE, "DoubleFraction"),
         new GroupType(

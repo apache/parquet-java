@@ -145,7 +145,6 @@ public class ParquetRewriter implements Closeable {
   private final Queue<TransParquetFileReader> inputFiles = new LinkedList<>();
   private final Queue<TransParquetFileReader> inputFilesToJoin = new LinkedList<>();
   private final MessageType outSchema;
-  private final MessageType outSchemaWithRenamedColumns;
   // The index cache strategy
   private final IndexCache.CacheStrategy indexCacheStrategy;
   private final boolean overwriteInputWithJoinColumns;
@@ -158,23 +157,21 @@ public class ParquetRewriter implements Closeable {
     this.overwriteInputWithJoinColumns = options.getOverwriteInputWithJoinColumns();
     this.renamedColumns = options.gerRenameColumns();
     ParquetConfiguration conf = options.getParquetConfiguration();
-    OutputFile out = options.getParquetOutputFile();
     inputFiles.addAll(getFileReaders(options.getParquetInputFiles(), conf));
     inputFilesToJoin.addAll(getFileReaders(options.getParquetInputFilesToJoin(), conf));
+    this.outSchema = pruneColumnsInSchema(getSchema(), options.getPruneColumns());
+    this.extraMetaData = getExtraMetadata(options);
     ensureSameSchema(inputFiles);
     ensureSameSchema(inputFilesToJoin);
     ensureRowCount();
+    ensureRenamingCorrectness(outSchema, renamedColumns);
+    OutputFile out = options.getParquetOutputFile();
     LOG.info(
         "Start rewriting {} input file(s) {} to {}",
         inputFiles.size() + inputFilesToJoin.size(),
         Stream.concat(options.getParquetInputFiles().stream(), options.getParquetInputFilesToJoin().stream())
             .collect(Collectors.toList()),
-        out);
-
-    this.outSchema = pruneColumnsInSchema(getSchema(), options.getPruneColumns());
-    ensureRenamedColumnsCorrectness(outSchema, renamedColumns);
-    this.outSchemaWithRenamedColumns = getSchemaWithRenamedColumns(this.outSchema);
-    this.extraMetaData = getExtraMetadata(options);
+        options.getParquetOutputFile());
 
     if (options.getMaskColumns() != null) {
       this.maskColumns = new HashMap<>();
@@ -191,7 +188,7 @@ public class ParquetRewriter implements Closeable {
     ParquetFileWriter.Mode writerMode = ParquetFileWriter.Mode.CREATE;
     writer = new ParquetFileWriter(
         out,
-        outSchemaWithRenamedColumns != null ? outSchemaWithRenamedColumns : outSchema,
+        renamedColumns.isEmpty() ? outSchema : getSchemaWithRenamedColumns(this.outSchema),
         writerMode,
         DEFAULT_BLOCK_SIZE,
         MAX_PADDING_SIZE_DEFAULT,
@@ -227,7 +224,6 @@ public class ParquetRewriter implements Closeable {
       MaskMode maskMode) {
     this.writer = writer;
     this.outSchema = outSchema;
-    this.outSchemaWithRenamedColumns = outSchema;
     this.newCodecName = codecName;
     extraMetaData = new HashMap<>(meta.getFileMetaData().getKeyValueMetaData());
     extraMetaData.put(
@@ -366,7 +362,7 @@ public class ParquetRewriter implements Closeable {
     }
   }
 
-  private void ensureRenamedColumnsCorrectness(MessageType schema, Map<String, String> renameMap) {
+  private void ensureRenamingCorrectness(MessageType schema, Map<String, String> renameMap) {
     Set<String> columns = schema.getFields().stream().map(Type::getName).collect(Collectors.toSet());
     renameMap.forEach((src, dst) -> {
       if (!columns.contains(src)) {
@@ -504,7 +500,7 @@ public class ParquetRewriter implements Closeable {
 
     ColumnDescriptor descriptorOriginal = outSchema.getColumns().get(outColumnIdx);
     ColumnDescriptor descriptorRenamed =
-        outSchemaWithRenamedColumns.getColumns().get(outColumnIdx);
+        getSchemaWithRenamedColumns(outSchema).getColumns().get(outColumnIdx);
     BlockMetaData blockMetaData = reader.getFooter().getBlocks().get(blockIdx);
     String originalCreatedBy = reader.getFileMetaData().getCreatedBy();
 
