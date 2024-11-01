@@ -158,15 +158,15 @@ public class ParquetMetadataCommand extends BaseCommand {
     Preconditions.checkNotNull(type);
 
     ColumnDescriptor desc = schema.getColumnDescription(path);
-    long size = column.getTotalSize();
-    long count = column.getValueCount();
+    long size = column.getTotalSizeWithDecrypt();
+    long count = column.getValueCountWithDecrypt();
     float perValue = ((float) size) / count;
     CompressionCodecName codec = column.getCodec();
     Set<Encoding> encodings = column.getEncodings();
     EncodingStats encodingStats = column.getEncodingStats();
     String encodingSummary =
         encodingStats == null ? encodingsAsString(encodings, desc) : encodingStatsAsString(encodingStats);
-    Statistics stats = column.getStatistics();
+    Statistics stats = column.getStatisticsWithDecrypt();
 
     String name = column.getPath().toDotString();
 

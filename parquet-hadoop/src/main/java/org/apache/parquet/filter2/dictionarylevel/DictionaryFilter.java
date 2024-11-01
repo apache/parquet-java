@@ -201,9 +201,9 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
 
     try {
       Set<T> dictSet = expandDictionary(meta);
-      boolean mayContainNull = (meta.getStatistics() == null
-          || !meta.getStatistics().isNumNullsSet()
-          || meta.getStatistics().getNumNulls() > 0);
+      boolean mayContainNull = (meta.getStatisticsWithDecrypt() == null
+          || !meta.getStatisticsWithDecrypt().isNumNullsSet()
+          || meta.getStatisticsWithDecrypt().getNumNulls() > 0);
       if (dictSet != null && dictSet.size() == 1 && dictSet.contains(value) && !mayContainNull) {
         return BLOCK_CANNOT_MATCH;
       }
@@ -461,9 +461,9 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
       return BLOCK_MIGHT_MATCH;
     }
 
-    boolean mayContainNull = (meta.getStatistics() == null
-        || !meta.getStatistics().isNumNullsSet()
-        || meta.getStatistics().getNumNulls() > 0);
+    boolean mayContainNull = (meta.getStatisticsWithDecrypt() == null
+        || !meta.getStatisticsWithDecrypt().isNumNullsSet()
+        || meta.getStatisticsWithDecrypt().getNumNulls() > 0);
     // The column may contain nulls and the values set contains no null, so the row group cannot be eliminated.
     if (mayContainNull) {
       return BLOCK_MIGHT_MATCH;

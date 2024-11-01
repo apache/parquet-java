@@ -80,7 +80,7 @@ public class TestSizeStatisticsRoundTrip {
       ParquetMetadata footer = reader.getFooter();
       ColumnChunkMetaData column = footer.getBlocks().get(0).getColumns().get(0);
 
-      SizeStatistics sizeStatistics = column.getSizeStatistics();
+      SizeStatistics sizeStatistics = column.getSizeStatisticsWithDecrypt();
       Assert.assertEquals(Optional.of(4L), sizeStatistics.getUnencodedByteArrayDataBytes());
       Assert.assertEquals(Arrays.asList(4L), sizeStatistics.getRepetitionLevelHistogram());
       Assert.assertEquals(Arrays.asList(0L, 4L), sizeStatistics.getDefinitionLevelHistogram());

@@ -128,7 +128,7 @@ public class BlockMetaData {
   public long getCompressedSize() {
     long totalSize = 0;
     for (ColumnChunkMetaData col : getColumns()) {
-      totalSize += col.getTotalSize();
+      totalSize += col.getTotalSizeWithDecrypt();
     }
     return totalSize;
   }

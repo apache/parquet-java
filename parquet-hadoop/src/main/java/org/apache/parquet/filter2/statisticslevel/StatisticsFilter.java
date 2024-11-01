@@ -90,13 +90,13 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
   // is this column chunk composed entirely of nulls?
   // assumes the column chunk's statistics is not empty
   private boolean isAllNulls(ColumnChunkMetaData column) {
-    return column.getStatistics().getNumNulls() == column.getValueCount();
+    return column.getStatisticsWithDecrypt().getNumNulls() == column.getValueCountWithDecrypt();
   }
 
   // are there any nulls in this column chunk?
   // assumes the column chunk's statistics is not empty
   private boolean hasNulls(ColumnChunkMetaData column) {
-    return column.getStatistics().getNumNulls() > 0;
+    return column.getStatisticsWithDecrypt().getNumNulls() > 0;
   }
 
   @Override
@@ -116,7 +116,7 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
       return BLOCK_MIGHT_MATCH;
     }
 
-    Statistics<T> stats = meta.getStatistics();
+    Statistics<T> stats = meta.getStatisticsWithDecrypt();
 
     if (stats.isEmpty()) {
       // we have no statistics available, we cannot drop any chunks
@@ -165,7 +165,7 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
       return BLOCK_MIGHT_MATCH;
     }
 
-    Statistics<T> stats = meta.getStatistics();
+    Statistics<T> stats = meta.getStatisticsWithDecrypt();
 
     if (stats.isEmpty()) {
       // we have no statistics available, we cannot drop any chunks
@@ -233,7 +233,7 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
       return BLOCK_MIGHT_MATCH;
     }
 
-    Statistics<T> stats = meta.getStatistics();
+    Statistics<T> stats = meta.getStatisticsWithDecrypt();
 
     if (stats.isEmpty()) {
       // we have no statistics available, we cannot drop any chunks
@@ -273,7 +273,7 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
       return BLOCK_CANNOT_MATCH;
     }
 
-    Statistics<T> stats = meta.getStatistics();
+    Statistics<T> stats = meta.getStatisticsWithDecrypt();
 
     if (stats.isEmpty()) {
       // we have no statistics available, we cannot drop any chunks
@@ -309,7 +309,7 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
       return BLOCK_CANNOT_MATCH;
     }
 
-    Statistics<T> stats = meta.getStatistics();
+    Statistics<T> stats = meta.getStatisticsWithDecrypt();
 
     if (stats.isEmpty()) {
       // we have no statistics available, we cannot drop any chunks
@@ -345,7 +345,7 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
       return BLOCK_CANNOT_MATCH;
     }
 
-    Statistics<T> stats = meta.getStatistics();
+    Statistics<T> stats = meta.getStatisticsWithDecrypt();
 
     if (stats.isEmpty()) {
       // we have no statistics available, we cannot drop any chunks
@@ -381,7 +381,7 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
       return BLOCK_CANNOT_MATCH;
     }
 
-    Statistics<T> stats = meta.getStatistics();
+    Statistics<T> stats = meta.getStatisticsWithDecrypt();
 
     if (stats.isEmpty()) {
       // we have no statistics available, we cannot drop any chunks
@@ -446,7 +446,7 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
       }
     }
 
-    Statistics<T> stats = columnChunk.getStatistics();
+    Statistics<T> stats = columnChunk.getStatisticsWithDecrypt();
 
     if (stats.isEmpty()) {
       // we have no statistics available, we cannot drop any chunks

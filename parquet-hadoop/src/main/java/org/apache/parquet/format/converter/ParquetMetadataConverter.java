@@ -553,14 +553,14 @@ public class ParquetMetadataConverter {
           toFormatEncodings(columnMetaData.getEncodings()),
           columnMetaData.getPath().toList(),
           toFormatCodec(columnMetaData.getCodec()),
-          columnMetaData.getValueCount(),
-          columnMetaData.getTotalUncompressedSize(),
-          columnMetaData.getTotalSize(),
-          columnMetaData.getFirstDataPageOffset());
+          columnMetaData.getValueCountWithDecrypt(),
+          columnMetaData.getTotalUncompressedSizeWithDecrypt(),
+          columnMetaData.getTotalSizeWithDecrypt(),
+          columnMetaData.getFirstDataPageOffsetWithDecrypt());
       if ((columnMetaData.getEncodingStats() != null
               && columnMetaData.getEncodingStats().hasDictionaryPages())
           || columnMetaData.hasDictionaryPage()) {
-        metaData.setDictionary_page_offset(columnMetaData.getDictionaryPageOffset());
+        metaData.setDictionary_page_offset(columnMetaData.getDictionaryPageOffsetWithDecrypt());
       }
       long bloomFilterOffset = columnMetaData.getBloomFilterOffset();
       if (bloomFilterOffset >= 0) {
@@ -570,17 +570,17 @@ public class ParquetMetadataConverter {
       if (bloomFilterLength >= 0) {
         metaData.setBloom_filter_length(bloomFilterLength);
       }
-      if (columnMetaData.getStatistics() != null
-          && !columnMetaData.getStatistics().isEmpty()) {
+      if (columnMetaData.getStatisticsWithDecrypt() != null
+          && !columnMetaData.getStatisticsWithDecrypt().isEmpty()) {
         metaData.setStatistics(
-            toParquetStatistics(columnMetaData.getStatistics(), this.statisticsTruncateLength));
+            toParquetStatistics(columnMetaData.getStatisticsWithDecrypt(), this.statisticsTruncateLength));
       }
       if (columnMetaData.getEncodingStats() != null) {
         metaData.setEncoding_stats(convertEncodingStats(columnMetaData.getEncodingStats()));
       }
-      if (columnMetaData.getSizeStatistics() != null
-          && columnMetaData.getSizeStatistics().isValid()) {
-        metaData.setSize_statistics(toParquetSizeStatistics(columnMetaData.getSizeStatistics()));
+      if (columnMetaData.getSizeStatisticsWithDecrypt() != null
+          && columnMetaData.getSizeStatisticsWithDecrypt().isValid()) {
+        metaData.setSize_statistics(toParquetSizeStatistics(columnMetaData.getSizeStatisticsWithDecrypt()));
       }
 
       if (!encryptMetaData) {
