@@ -174,6 +174,11 @@ public class SchemaConverter {
         return createListTypeMapping();
       }
 
+      @Override
+      public TypeMapping visit(ArrowType.ListView type) {
+        return createListTypeMapping();
+      }
+
       private ListTypeMapping createListTypeMapping() {
         if (children.size() != 1) {
           throw new IllegalArgumentException("list fields must have exactly one child: " + field);
@@ -250,7 +255,17 @@ public class SchemaConverter {
       }
 
       @Override
+      public TypeMapping visit(ArrowType.Utf8View type) {
+        return primitive(BINARY, stringType());
+      }
+
+      @Override
       public TypeMapping visit(Binary type) {
+        return primitive(BINARY);
+      }
+
+      @Override
+      public TypeMapping visit(ArrowType.BinaryView type) {
         return primitive(BINARY);
       }
 
@@ -749,6 +764,11 @@ public class SchemaConverter {
         return createListTypeMapping(type);
       }
 
+      @Override
+      public TypeMapping visit(ArrowType.ListView type) {
+        return createListTypeMapping(type);
+      }
+
       private TypeMapping createListTypeMapping(ArrowType.ComplexType type) {
         if (arrowField.getChildren().size() != 1) {
           throw new IllegalArgumentException("Invalid list type: " + type);
@@ -819,12 +839,22 @@ public class SchemaConverter {
       }
 
       @Override
+      public TypeMapping visit(ArrowType.Utf8View type) {
+        return primitive();
+      }
+
+      @Override
       public TypeMapping visit(Binary type) {
         return primitive();
       }
 
       @Override
       public TypeMapping visit(ArrowType.LargeBinary largeBinary) {
+        return primitive();
+      }
+
+      @Override
+      public TypeMapping visit(ArrowType.BinaryView type) {
         return primitive();
       }
 
