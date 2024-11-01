@@ -20,6 +20,7 @@ package org.apache.parquet.hadoop.rewrite;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -49,6 +50,7 @@ public class RewriteOptions {
   private final List<String> pruneColumns;
   private final CompressionCodecName newCodecName;
   private final Map<String, MaskMode> maskColumns;
+  private final Map<String, String> renameColumns;
   private final List<String> encryptColumns;
   private final FileEncryptionProperties fileEncryptionProperties;
   private final IndexCache.CacheStrategy indexCacheStrategy;
@@ -63,6 +65,7 @@ public class RewriteOptions {
       List<String> pruneColumns,
       CompressionCodecName newCodecName,
       Map<String, MaskMode> maskColumns,
+      Map<String, String> renameColumns,
       List<String> encryptColumns,
       FileEncryptionProperties fileEncryptionProperties,
       IndexCache.CacheStrategy indexCacheStrategy,
@@ -75,6 +78,7 @@ public class RewriteOptions {
     this.pruneColumns = pruneColumns;
     this.newCodecName = newCodecName;
     this.maskColumns = maskColumns;
+    this.renameColumns = renameColumns;
     this.encryptColumns = encryptColumns;
     this.fileEncryptionProperties = fileEncryptionProperties;
     this.indexCacheStrategy = indexCacheStrategy;
@@ -192,6 +196,10 @@ public class RewriteOptions {
     return maskColumns;
   }
 
+  public Map<String, String> gerRenameColumns() {
+    return renameColumns;
+  }
+
   public List<String> getEncryptColumns() {
     return encryptColumns;
   }
@@ -221,6 +229,7 @@ public class RewriteOptions {
     private List<String> pruneColumns;
     private CompressionCodecName newCodecName;
     private Map<String, MaskMode> maskColumns;
+    private Map<String, String> renameColumns;
     private List<String> encryptColumns;
     private FileEncryptionProperties fileEncryptionProperties;
     private IndexCache.CacheStrategy indexCacheStrategy = IndexCache.CacheStrategy.NONE;
@@ -433,6 +442,19 @@ public class RewriteOptions {
     }
 
     /**
+     * Set the columns to be renamed.
+     * <p>
+     * Note that nested columns can't be renamed, in case of GroupType column only top level column can be renamed.
+     *
+     * @param renameColumns map where keys are original names and values are new names
+     * @return self
+     */
+    public Builder renameColumns(Map<String, String> renameColumns) {
+      this.renameColumns = renameColumns;
+      return this;
+    }
+
+    /**
      * Set the columns to encrypt.
      * <p>
      * By default, no columns are encrypted.
@@ -551,6 +573,28 @@ public class RewriteOptions {
      * @return a RewriterOptions
      */
     public RewriteOptions build() {
+      checkPreconditions();
+      return new RewriteOptions(
+          conf,
+          inputFiles,
+          (inputFilesToJoin != null ? inputFilesToJoin : new ArrayList<>()),
+          outputFile,
+          pruneColumns,
+          newCodecName,
+          maskColumns,
+          (renameColumns == null
+              ? new HashMap<>()
+              : renameColumns.entrySet().stream()
+                  .collect(Collectors.toMap(
+                      Map.Entry::getKey, x -> x.getValue().trim()))),
+          encryptColumns,
+          fileEncryptionProperties,
+          indexCacheStrategy,
+          overwriteInputWithJoinColumns,
+          ignoreJoinFilesMetadata);
+    }
+
+    private void checkPreconditions() {
       Preconditions.checkArgument(inputFiles != null && !inputFiles.isEmpty(), "Input file is required");
       Preconditions.checkArgument(outputFile != null, "Output file is required");
 
@@ -561,12 +605,28 @@ public class RewriteOptions {
                 !maskColumns.containsKey(pruneColumn), "Cannot prune and mask same column");
           }
         }
-
         if (encryptColumns != null) {
           for (String pruneColumn : pruneColumns) {
             Preconditions.checkArgument(
                 !encryptColumns.contains(pruneColumn), "Cannot prune and encrypt same column");
           }
+        }
+      }
+
+      if (renameColumns != null && !renameColumns.isEmpty()) {
+        if (encryptColumns != null && !encryptColumns.isEmpty()) {
+          for (Map.Entry<String, String> entry : renameColumns.entrySet()) {
+            Preconditions.checkArgument(
+                !encryptColumns.contains(entry.getKey()), "Cannot prune and rename same column");
+          }
+        }
+        for (Map.Entry<String, String> entry : renameColumns.entrySet()) {
+          Preconditions.checkArgument(
+              entry.getValue() != null && !entry.getValue().trim().isEmpty(),
+              "Renamed column target name can't be empty");
+          Preconditions.checkArgument(
+              !entry.getKey().contains(".") && !entry.getValue().contains("."),
+              "Renamed column name can't be nested, in case of GroupType column only a top level column can be renamed");
         }
       }
 
@@ -581,20 +641,6 @@ public class RewriteOptions {
             encryptColumns != null && !encryptColumns.isEmpty(),
             "Encrypt columns is required when FileEncryptionProperties is set");
       }
-
-      return new RewriteOptions(
-          conf,
-          inputFiles,
-          (inputFilesToJoin != null ? inputFilesToJoin : new ArrayList<>()),
-          outputFile,
-          pruneColumns,
-          newCodecName,
-          maskColumns,
-          encryptColumns,
-          fileEncryptionProperties,
-          indexCacheStrategy,
-          overwriteInputWithJoinColumns,
-          ignoreJoinFilesMetadata);
     }
   }
 }
