@@ -37,6 +37,7 @@ import java.util.List;
 import java.util.Random;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
+import org.apache.parquet.io.DelegatingSeekableInputStream;
 import org.apache.parquet.util.AutoCloseables;
 import org.junit.After;
 import org.junit.Before;
@@ -136,6 +137,20 @@ public class TestBytesInput {
     RANDOM.nextBytes(input);
     System.arraycopy(data, 0, input, 0, data.length);
     Supplier<BytesInput> factory = () -> BytesInput.from(new ByteArrayInputStream(input), 1000);
+
+    validate(data, factory);
+  }
+
+  @Test
+  public void testFromLargeAvailableAgnosticInputStream() throws IOException {
+    // allocate a bytes that large than
+    // java.nio.channel.Channels.ReadableByteChannelImpl.TRANSFER_SIZE = 8192
+    byte[] data = new byte[9 * 1024];
+    RANDOM.nextBytes(data);
+    byte[] input = new byte[data.length + 10];
+    RANDOM.nextBytes(input);
+    System.arraycopy(data, 0, input, 0, data.length);
+    Supplier<BytesInput> factory = () -> BytesInput.from(new AvailableAgnosticInputStream(input), 9 * 1024);
 
     validate(data, factory);
   }
