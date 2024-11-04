@@ -379,7 +379,7 @@ public abstract class BytesInput {
         Channels.newChannel(in).read(workBuf);
         buffer.position(pos + byteCount);
       } catch (IOException e) {
-        new RuntimeException("Exception occurred during reading input stream", e);
+        throw new RuntimeException("Exception occurred during reading input stream", e);
       }
     }
 
