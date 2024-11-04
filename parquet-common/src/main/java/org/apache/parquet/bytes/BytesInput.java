@@ -18,11 +18,7 @@
  */
 package org.apache.parquet.bytes;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.*;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.channels.Channels;
@@ -380,7 +376,11 @@ public abstract class BytesInput {
         ReadableByteChannel channel = Channels.newChannel(in);
         int remaining = byteCount;
         while (remaining > 0) {
-          remaining -= channel.read(workBuf);
+          int bytesRead = channel.read(workBuf);
+          if (bytesRead < 0) {
+            throw new EOFException("Reached the end of stream with " + remaining + " bytes left to read");
+          }
+          remaining -= bytesRead;
         }
         buffer.position(pos + byteCount);
       } catch (IOException e) {
