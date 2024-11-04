@@ -22,7 +22,7 @@
     limitations under the License.
 -->
   <Project rdf:about="https://parquet.apache.org">
-    <created>2024-08-28</created>
+    <created>2015-04-22</created>
     <license rdf:resource="https://spdx.org/licenses/Apache-2.0" />
     <name>Apache Parquet</name>
     <homepage rdf:resource="https://parquet.apache.org" />
