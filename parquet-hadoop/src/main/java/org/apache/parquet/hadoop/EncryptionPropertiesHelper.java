@@ -18,27 +18,25 @@
  */
 package org.apache.parquet.hadoop;
 
-import java.net.URI;
-import java.nio.file.Path;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.conf.ParquetConfiguration;
 import org.apache.parquet.crypto.EncryptionPropertiesFactory;
 import org.apache.parquet.crypto.FileEncryptionProperties;
 import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.hadoop.util.ConfigurationUtil;
+import org.apache.parquet.io.OutputFile;
 
 final class EncryptionPropertiesHelper {
   static FileEncryptionProperties createEncryptionProperties(
-      ParquetConfiguration fileParquetConfig, Path tempFilePath, WriteSupport.WriteContext fileWriteContext) {
+      ParquetConfiguration fileParquetConfig, OutputFile file, WriteSupport.WriteContext fileWriteContext) {
     EncryptionPropertiesFactory cryptoFactory = EncryptionPropertiesFactory.loadFactory(fileParquetConfig);
     if (null == cryptoFactory) {
       return null;
     }
 
     Configuration hadoopConf = ConfigurationUtil.createHadoopConfiguration(fileParquetConfig);
-    URI path = tempFilePath == null ? null : tempFilePath.toUri();
     return cryptoFactory.getFileEncryptionProperties(
-        hadoopConf, path == null ? null : new org.apache.hadoop.fs.Path(path), fileWriteContext);
+        hadoopConf, file == null ? null : new org.apache.hadoop.fs.Path(file.getPath()), fileWriteContext);
   }
 
   static FileEncryptionProperties createEncryptionProperties(
