@@ -21,11 +21,11 @@ package org.apache.parquet.hadoop.rewrite;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
-import org.apache.curator.shaded.com.google.common.collect.ImmutableSet;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.Preconditions;
@@ -617,7 +617,7 @@ public class RewriteOptions {
 
       if (renameColumns != null) {
         Set<String> nullifiedColumns = maskColumns == null
-            ? ImmutableSet.of()
+            ? new HashSet<>()
             : maskColumns.entrySet().stream()
                 .filter(x -> x.getValue() == MaskMode.NULLIFY)
                 .map(Map.Entry::getKey)
