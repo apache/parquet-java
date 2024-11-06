@@ -62,9 +62,11 @@ public class TestInterOpReadFloat16 {
           reader.getFooter().getBlocks().get(0).getColumns().get(0);
 
       assertArrayEquals(
-          new byte[] {0x00, (byte) 0xc0}, column.getStatistics().getMinBytes());
+          new byte[] {0x00, (byte) 0xc0},
+          column.getStatisticsWithDecrypt().getMinBytes());
       // 0x40 equals @ in ASCII
-      assertArrayEquals(new byte[] {0x00, 0x40}, column.getStatistics().getMaxBytes());
+      assertArrayEquals(
+          new byte[] {0x00, 0x40}, column.getStatisticsWithDecrypt().getMaxBytes());
     }
 
     try (ParquetReader<Group> reader =
@@ -102,8 +104,10 @@ public class TestInterOpReadFloat16 {
           reader.getFooter().getBlocks().get(0).getColumns().get(0);
 
       assertArrayEquals(
-          new byte[] {0x00, (byte) 0x80}, column.getStatistics().getMinBytes());
-      assertArrayEquals(new byte[] {0x00, 0x00}, column.getStatistics().getMaxBytes());
+          new byte[] {0x00, (byte) 0x80},
+          column.getStatisticsWithDecrypt().getMinBytes());
+      assertArrayEquals(
+          new byte[] {0x00, 0x00}, column.getStatisticsWithDecrypt().getMaxBytes());
     }
 
     try (ParquetReader<Group> reader =

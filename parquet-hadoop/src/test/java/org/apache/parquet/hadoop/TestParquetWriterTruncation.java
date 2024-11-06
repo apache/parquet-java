@@ -111,7 +111,7 @@ public class TestParquetWriterTruncation {
 
       ColumnChunkMetaData column =
           reader.getFooter().getBlocks().get(0).getColumns().get(0);
-      Statistics<?> statistics = column.getStatistics();
+      Statistics<?> statistics = column.getStatisticsWithDecrypt();
       assertEquals("1234567890", new String(statistics.getMinBytes()));
       assertEquals("1234567891", new String(statistics.getMaxBytes()));
     }

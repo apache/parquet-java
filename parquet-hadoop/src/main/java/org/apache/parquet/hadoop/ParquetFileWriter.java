@@ -1524,7 +1524,7 @@ public class ParquetFileWriter implements AutoCloseable {
         // no previous chunk included, start at this chunk's starting pos
         start = chunk.getStartingPos();
       }
-      length += chunk.getTotalSize();
+      length += chunk.getTotalSizeWithDecrypt();
 
       if ((i + 1) == columnsInOrder.size() || columnsInOrder.get(i + 1).getStartingPos() != (start + length)) {
         // not contiguous. do the copy now.
@@ -1546,14 +1546,14 @@ public class ParquetFileWriter implements AutoCloseable {
           chunk.getCodec(),
           chunk.getEncodingStats(),
           chunk.getEncodings(),
-          chunk.getStatistics(),
+          chunk.getStatisticsWithDecrypt(),
           offsets.firstDataPageOffset,
           offsets.dictionaryPageOffset,
-          chunk.getValueCount(),
-          chunk.getTotalSize(),
-          chunk.getTotalUncompressedSize()));
+          chunk.getValueCountWithDecrypt(),
+          chunk.getTotalSizeWithDecrypt(),
+          chunk.getTotalUncompressedSizeWithDecrypt()));
 
-      blockUncompressedSize += chunk.getTotalUncompressedSize();
+      blockUncompressedSize += chunk.getTotalUncompressedSizeWithDecrypt();
     }
 
     currentBlock.setTotalByteSize(blockUncompressedSize);
@@ -1579,7 +1579,7 @@ public class ParquetFileWriter implements AutoCloseable {
       OffsetIndex offsetIndex)
       throws IOException {
     long start = chunk.getStartingPos();
-    long length = chunk.getTotalSize();
+    long length = chunk.getTotalSizeWithDecrypt();
     long newChunkStart = out.getPos();
 
     if (offsetIndex != null && newChunkStart != start) {
@@ -1600,14 +1600,14 @@ public class ParquetFileWriter implements AutoCloseable {
         chunk.getCodec(),
         chunk.getEncodingStats(),
         chunk.getEncodings(),
-        chunk.getStatistics(),
+        chunk.getStatisticsWithDecrypt(),
         offsets.firstDataPageOffset,
         offsets.dictionaryPageOffset,
-        chunk.getValueCount(),
-        chunk.getTotalSize(),
-        chunk.getTotalUncompressedSize()));
+        chunk.getValueCountWithDecrypt(),
+        chunk.getTotalSizeWithDecrypt(),
+        chunk.getTotalUncompressedSizeWithDecrypt()));
 
-    currentBlock.setTotalByteSize(currentBlock.getTotalByteSize() + chunk.getTotalUncompressedSize());
+    currentBlock.setTotalByteSize(currentBlock.getTotalByteSize() + chunk.getTotalUncompressedSizeWithDecrypt());
   }
 
   // Buffers for the copy function.

@@ -108,7 +108,7 @@ public class ColumnSizeCommand extends BaseCommand {
     for (BlockMetaData block : pmd.getBlocks()) {
       for (ColumnChunkMetaData column : block.getColumns()) {
         String colName = column.getPath().toDotString();
-        colSizes.put(colName, column.getTotalSize() + colSizes.getOrDefault(colName, 0L));
+        colSizes.put(colName, column.getTotalSizeWithDecrypt() + colSizes.getOrDefault(colName, 0L));
       }
     }
 

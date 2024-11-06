@@ -1116,7 +1116,7 @@ public class ParquetRewriterTest {
     List<Long> offsets = new ArrayList<>();
     reader.setStreamPosition(chunk.getStartingPos());
     long readValues = 0;
-    long totalChunkValues = chunk.getValueCount();
+    long totalChunkValues = chunk.getValueCountWithDecrypt();
     while (readValues < totalChunkValues) {
       long curOffset = reader.getPos();
       PageHeader pageHeader = reader.readPageHeader();
