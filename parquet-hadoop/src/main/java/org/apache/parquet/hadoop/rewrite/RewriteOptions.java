@@ -23,7 +23,9 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
+import org.apache.curator.shaded.com.google.common.collect.ImmutableSet;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.Preconditions;
@@ -582,11 +584,11 @@ public class RewriteOptions {
           pruneColumns,
           newCodecName,
           maskColumns,
-          (renameColumns == null
+          renameColumns == null
               ? new HashMap<>()
               : renameColumns.entrySet().stream()
-                  .collect(Collectors.toMap(
-                      Map.Entry::getKey, x -> x.getValue().trim()))),
+                  .collect(Collectors.toMap(x -> x.getKey().trim(), x -> x.getValue()
+                      .trim())),
           encryptColumns,
           fileEncryptionProperties,
           indexCacheStrategy,
@@ -613,21 +615,24 @@ public class RewriteOptions {
         }
       }
 
-      if (renameColumns != null && !renameColumns.isEmpty()) {
-        if (encryptColumns != null && !encryptColumns.isEmpty()) {
-          for (Map.Entry<String, String> entry : renameColumns.entrySet()) {
-            Preconditions.checkArgument(
-                !encryptColumns.contains(entry.getKey()), "Cannot prune and rename same column");
-          }
-        }
-        for (Map.Entry<String, String> entry : renameColumns.entrySet()) {
+      if (renameColumns != null) {
+        Set<String> nullifiedColumns = maskColumns == null
+            ? ImmutableSet.of()
+            : maskColumns.entrySet().stream()
+                .filter(x -> x.getValue() == MaskMode.NULLIFY)
+                .map(Map.Entry::getKey)
+                .collect(Collectors.toSet());
+        renameColumns.forEach((colSrc, colDst) -> {
           Preconditions.checkArgument(
-              entry.getValue() != null && !entry.getValue().trim().isEmpty(),
-              "Renamed column target name can't be empty");
+              colSrc != null && !colSrc.trim().isEmpty(), "Renamed column source name can't be empty");
           Preconditions.checkArgument(
-              !entry.getKey().contains(".") && !entry.getValue().contains("."),
-              "Renamed column name can't be nested, in case of GroupType column only a top level column can be renamed");
-        }
+              colDst != null && !colDst.trim().isEmpty(), "Renamed column target name can't be empty");
+          Preconditions.checkArgument(
+              !nullifiedColumns.contains(colSrc), "Cannot nullify and rename the same column");
+          Preconditions.checkArgument(
+              !colSrc.contains(".") && !colDst.contains("."),
+              "Renamed column can't be nested, in case of GroupType column only a top level column can be renamed");
+        });
       }
 
       if (encryptColumns != null && !encryptColumns.isEmpty()) {

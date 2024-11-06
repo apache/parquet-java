@@ -590,17 +590,25 @@ public class ParquetRewriterTest {
 
     Map<String, String> renameColumns = ImmutableMap.of("Name", "NameRenamed");
     List<String> pruneColumns = ImmutableList.of("Gender");
+    String[] encryptColumns = {"DocId"};
+    FileEncryptionProperties fileEncryptionProperties =
+        EncDecProperties.getFileEncryptionProperties(encryptColumns, ParquetCipher.AES_GCM_CTR_V1, false);
     List<Path> inputPaths =
         inputFiles.stream().map(x -> new Path(x.getFileName())).collect(Collectors.toList());
     RewriteOptions.Builder builder = createBuilder(inputPaths);
     RewriteOptions options = builder.indexCacheStrategy(indexCacheStrategy)
         .renameColumns(ImmutableMap.of("Name", "NameRenamed"))
         .prune(pruneColumns)
+        .transform(CompressionCodecName.SNAPPY)
+        .encrypt(Arrays.asList(encryptColumns))
+        .encryptionProperties(fileEncryptionProperties)
         .build();
 
     rewriter = new ParquetRewriter(options);
     rewriter.processBlocks();
     rewriter.close();
+
+    FileDecryptionProperties fileDecryptionProperties = EncDecProperties.getFileDecryptionProperties();
 
     // Verify the schema is not changed
     ParquetMetadata pmd =
@@ -609,39 +617,59 @@ public class ParquetRewriterTest {
     MessageType expectSchema = createSchemaWithRenamed();
     assertEquals(expectSchema, schema);
 
-    // Verify codec has not been translated
-    verifyCodec(
-        outputFile,
-        new HashSet<CompressionCodecName>() {
-          {
-            add(CompressionCodecName.GZIP);
-            add(CompressionCodecName.UNCOMPRESSED);
-          }
-        },
-        null);
-
+    verifyCodec(outputFile, ImmutableSet.of(CompressionCodecName.SNAPPY), fileDecryptionProperties); // Verify codec
     // Verify the merged data are not changed
-    validateColumnData(new HashSet<>(pruneColumns), Collections.emptySet(), null, false, renameColumns);
-
-    // Verify the page index
-    validatePageIndex(new HashSet<>(), false, renameColumns);
-
-    // Verify original.created.by is preserved
-    validateCreatedBy();
+    validateColumnData(
+        new HashSet<>(pruneColumns), Collections.emptySet(), fileDecryptionProperties, false, renameColumns);
+    validatePageIndex(ImmutableSet.of("DocId"), false, renameColumns); // Verify the page index
+    validateCreatedBy(); // Verify original.created.by is preserved
     validateRowGroupRowCount();
+
+    ParquetMetadata metaData = getFileMetaData(outputFile, fileDecryptionProperties);
+    assertFalse(metaData.getBlocks().isEmpty());
+    Set<String> encryptedColumns = new HashSet<>(Arrays.asList(encryptColumns));
+    for (BlockMetaData blockMetaData : metaData.getBlocks()) {
+      List<ColumnChunkMetaData> columns = blockMetaData.getColumns();
+      for (ColumnChunkMetaData column : columns) {
+        if (encryptedColumns.contains(column.getPath().toDotString())) {
+          assertTrue(column.isEncrypted());
+        } else {
+          assertFalse(column.isEncrypted());
+        }
+      }
+    }
   }
 
   @Test(expected = InvalidSchemaException.class)
   public void testMergeTwoFilesWithDifferentSchema() throws Exception {
-    testMergeTwoFilesWithDifferentSchemaSetup(true);
+    testMergeTwoFilesWithDifferentSchemaSetup(true, null, null);
   }
 
   @Test(expected = InvalidSchemaException.class)
   public void testMergeTwoFilesToJoinWithDifferentSchema() throws Exception {
-    testMergeTwoFilesWithDifferentSchemaSetup(false);
+    testMergeTwoFilesWithDifferentSchemaSetup(false, null, null);
   }
 
-  public void testMergeTwoFilesWithDifferentSchemaSetup(boolean wrongSchemaInInputFile) throws Exception {
+  @Test(expected = IllegalArgumentException.class)
+  public void testMergeTwoFilesWithWrongDestinationRenamedColumn() throws Exception {
+    testMergeTwoFilesWithDifferentSchemaSetup(
+        null, ImmutableMap.of("WrongColumnName", "WrongColumnNameRenamed"), null);
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void testMergeTwoFilesWithWrongSourceRenamedColumn() throws Exception {
+    testMergeTwoFilesWithDifferentSchemaSetup(null, ImmutableMap.of("Name", "DocId"), null);
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void testMergeTwoFilesNullifyAndRenamedSameColumn() throws Exception {
+    testMergeTwoFilesWithDifferentSchemaSetup(
+        null, ImmutableMap.of("Name", "NameRenamed"), ImmutableMap.of("Name", MaskMode.NULLIFY));
+  }
+
+  public void testMergeTwoFilesWithDifferentSchemaSetup(
+      Boolean wrongSchemaInInputFile, Map<String, String> renameColumns, Map<String, MaskMode> maskColumns)
+      throws Exception {
     MessageType schema1 = new MessageType(
         "schema",
         new PrimitiveType(OPTIONAL, INT64, "DocId"),
@@ -670,27 +698,32 @@ public class ParquetRewriterTest {
         .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
         .withWriterVersion(writerVersion)
         .build());
-    if (wrongSchemaInInputFile) {
-      inputFiles.add(new TestFileBuilder(conf, schema2)
-          .withNumRecord(numRecord)
-          .withCodec("UNCOMPRESSED")
-          .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
-          .withWriterVersion(writerVersion)
-          .build());
-    } else {
-      inputFilesToJoin.add(new TestFileBuilder(conf, schema2)
-          .withNumRecord(numRecord)
-          .withCodec("UNCOMPRESSED")
-          .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
-          .withWriterVersion(writerVersion)
-          .build());
+    if (wrongSchemaInInputFile != null) {
+      if (wrongSchemaInInputFile) {
+        inputFiles.add(new TestFileBuilder(conf, schema2)
+            .withNumRecord(numRecord)
+            .withCodec("UNCOMPRESSED")
+            .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
+            .withWriterVersion(writerVersion)
+            .build());
+      } else {
+        inputFilesToJoin.add(new TestFileBuilder(conf, schema2)
+            .withNumRecord(numRecord)
+            .withCodec("UNCOMPRESSED")
+            .withPageSize(ParquetProperties.DEFAULT_PAGE_SIZE)
+            .withWriterVersion(writerVersion)
+            .build());
+      }
     }
 
     RewriteOptions.Builder builder = createBuilder(
         inputFiles.stream().map(x -> new Path(x.getFileName())).collect(Collectors.toList()),
         inputFilesToJoin.stream().map(x -> new Path(x.getFileName())).collect(Collectors.toList()),
         false);
-    RewriteOptions options = builder.indexCacheStrategy(indexCacheStrategy).build();
+    RewriteOptions options = builder.indexCacheStrategy(indexCacheStrategy)
+        .renameColumns(renameColumns)
+        .mask(maskColumns)
+        .build();
 
     // This should throw an exception because the schemas are different
     rewriter = new ParquetRewriter(options);

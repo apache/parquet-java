@@ -157,8 +157,8 @@ public class ParquetRewriter implements Closeable {
     this.overwriteInputWithJoinColumns = options.getOverwriteInputWithJoinColumns();
     this.renamedColumns = options.gerRenameColumns();
     ParquetConfiguration conf = options.getParquetConfiguration();
-    inputFiles.addAll(getFileReaders(options.getParquetInputFiles(), conf));
-    inputFilesToJoin.addAll(getFileReaders(options.getParquetInputFilesToJoin(), conf));
+    this.inputFiles.addAll(getFileReaders(options.getParquetInputFiles(), conf));
+    this.inputFilesToJoin.addAll(getFileReaders(options.getParquetInputFilesToJoin(), conf));
     this.outSchema = pruneColumnsInSchema(getSchema(), options.getPruneColumns());
     this.extraMetaData = getExtraMetadata(options);
     ensureSameSchema(inputFiles);
@@ -186,7 +186,7 @@ public class ParquetRewriter implements Closeable {
     }
 
     ParquetFileWriter.Mode writerMode = ParquetFileWriter.Mode.CREATE;
-    writer = new ParquetFileWriter(
+    this.writer = new ParquetFileWriter(
         out,
         renamedColumns.isEmpty() ? outSchema : getSchemaWithRenamedColumns(this.outSchema),
         writerMode,
@@ -202,7 +202,8 @@ public class ParquetRewriter implements Closeable {
       this.nullColumnEncryptor = null;
     } else {
       this.nullColumnEncryptor = new InternalFileEncryptor(options.getFileEncryptionProperties());
-      List<ColumnDescriptor> columns = outSchema.getColumns();
+      List<ColumnDescriptor> columns =
+          getSchemaWithRenamedColumns(this.outSchema).getColumns();
       for (int i = 0; i < columns.size(); i++) {
         writer.getEncryptor()
             .getColumnSetup(ColumnPath.get(columns.get(i).getPath()), true, i);
@@ -225,8 +226,8 @@ public class ParquetRewriter implements Closeable {
     this.writer = writer;
     this.outSchema = outSchema;
     this.newCodecName = codecName;
-    extraMetaData = new HashMap<>(meta.getFileMetaData().getKeyValueMetaData());
-    extraMetaData.put(
+    this.extraMetaData = new HashMap<>(meta.getFileMetaData().getKeyValueMetaData());
+    this.extraMetaData.put(
         ORIGINAL_CREATED_BY_KEY,
         originalCreatedBy != null
             ? originalCreatedBy
@@ -492,9 +493,9 @@ public class ParquetRewriter implements Closeable {
       throw new IOException("Column " + chunk.getPath().toDotString() + " is already encrypted");
     }
 
-    ColumnChunkMetaData chunkColumnsNormalized = chunk;
+    ColumnChunkMetaData chunkNormalized = chunk;
     if (!renamedColumns.isEmpty()) {
-      chunkColumnsNormalized =
+      chunkNormalized =
           chunk.copy(normalizeFieldsInPath(chunk.getPath()), normalizeNameInType(chunk.getPrimitiveType()));
     }
 
@@ -558,12 +559,7 @@ public class ParquetRewriter implements Closeable {
       ColumnIndex columnIndex = indexCache.getColumnIndex(chunk);
       OffsetIndex offsetIndex = indexCache.getOffsetIndex(chunk);
       writer.appendColumnChunk(
-          descriptorRenamed,
-          reader.getStream(),
-          chunkColumnsNormalized,
-          bloomFilter,
-          columnIndex,
-          offsetIndex);
+          descriptorRenamed, reader.getStream(), chunkNormalized, bloomFilter, columnIndex, offsetIndex);
     }
   }
 
