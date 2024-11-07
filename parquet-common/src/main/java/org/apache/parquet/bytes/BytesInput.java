@@ -389,7 +389,7 @@ public abstract class BytesInput {
         }
         buffer.position(pos + byteCount);
       } catch (IOException e) {
-        new RuntimeException("Exception occurred during reading input stream", e);
+        throw new RuntimeException("Exception occurred during reading input stream", e);
       }
     }
 
