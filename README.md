@@ -125,7 +125,7 @@ Protobuf conversion is implemented via the [parquet-protobuf](https://github.com
 
 ### Create your own objects
 * The ParquetOutputFormat can be provided a WriteSupport to write your own objects to an event based RecordConsumer.
-* the ParquetInputFormat can be provided a ReadSupport to materialize your own objects by implementing a RecordMaterializer
+* The ParquetInputFormat can be provided a ReadSupport to materialize your own objects by implementing a RecordMaterializer
 
 See the APIs:
 * [Record conversion API](https://github.com/apache/parquet-java/tree/master/parquet-column/src/main/java/org/apache/parquet/io/api)
@@ -166,29 +166,29 @@ The build runs in [GitHub Actions](https://github.com/apache/parquet-java/action
 
 ## Add Parquet as a dependency in Maven
 
-The current release is version `1.14.1`
+The current release is version `1.14.3`.
 
 ```xml
   <dependencies>
     <dependency>
       <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-common</artifactId>
-      <version>1.14.1</version>
+      <version>1.14.3</version>
     </dependency>
     <dependency>
       <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-encoding</artifactId>
-      <version>1.14.1</version>
+      <version>1.14.3</version>
     </dependency>
     <dependency>
       <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-column</artifactId>
-      <version>1.14.1</version>
+      <version>1.14.3</version>
     </dependency>
     <dependency>
       <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-hadoop</artifactId>
-      <version>1.14.1</version>
+      <version>1.14.3</version>
     </dependency>
   </dependencies>
 ```
