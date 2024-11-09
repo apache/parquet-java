@@ -655,6 +655,11 @@ class ProtoMessageConverter extends GroupConverter {
     }
 
     @Override
+    public void addInt(int value) {
+      addLong(value);
+    }
+
+    @Override
     public void addLong(long value) {
       LocalTime localTime;
       switch (logicalTypeAnnotation.getUnit()) {

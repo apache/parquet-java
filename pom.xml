@@ -5,7 +5,7 @@
   <parent>
     <groupId>org.apache</groupId>
     <artifactId>apache</artifactId>
-    <version>32</version>
+    <version>33</version>
   </parent>
 
   <groupId>org.apache.parquet</groupId>
@@ -27,13 +27,13 @@
   <licenses>
     <license>
       <name>The Apache Software License, Version 2.0</name>
-      <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+      <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
     </license>
   </licenses>
 
   <issueManagement>
-    <system>JIRA</system>
-    <url>https://issues.apache.org/jira/browse/PARQUET</url>
+    <system>GitHub</system>
+    <url>https://github.com/apache/parquet-java/issues</url>
   </issueManagement>
 
   <mailingLists>
@@ -86,7 +86,7 @@
     <pig.version>0.16.0</pig.version>
     <pig.classifier>h2</pig.classifier>
     <thrift-maven-plugin.version>0.10.0</thrift-maven-plugin.version>
-    <thrift.version>0.20.0</thrift.version>
+    <thrift.version>0.21.0</thrift.version>
     <format.thrift.version>${thrift.version}</format.thrift.version>
     <fastutil.version>8.5.13</fastutil.version>
     <semver.api.version>0.9.33</semver.api.version>
