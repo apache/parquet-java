@@ -907,6 +907,18 @@ public class ParquetWriter<T> implements Closeable {
     }
 
     /**
+     * Sets whether statistics are enabled globally. When disabled, statistics will not be collected
+     * for any column unless explicitly enabled for specific columns.
+     *
+     * @param enabled whether to collect statistics globally
+     * @return this builder for method chaining
+     */
+    public SELF withStatisticsEnabled(boolean enabled) {
+      encodingPropsBuilder.withStatisticsEnabled(enabled);
+      return self();
+    }
+
+    /**
      * Build a {@link ParquetWriter} with the accumulated configuration.
      *
      * @return a configured {@code ParquetWriter} instance.
