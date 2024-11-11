@@ -155,7 +155,7 @@ public class ParquetRewriter implements Closeable {
     this.newCodecName = options.getNewCodecName();
     this.indexCacheStrategy = options.getIndexCacheStrategy();
     this.overwriteInputWithJoinColumns = options.getOverwriteInputWithJoinColumns();
-    this.renamedColumns = options.gerRenameColumns();
+    this.renamedColumns = options.getRenameColumns();
     ParquetConfiguration conf = options.getParquetConfiguration();
     this.inputFiles.addAll(getFileReaders(options.getParquetInputFiles(), conf));
     this.inputFilesToJoin.addAll(getFileReaders(options.getParquetInputFilesToJoin(), conf));
@@ -495,8 +495,19 @@ public class ParquetRewriter implements Closeable {
 
     ColumnChunkMetaData chunkNormalized = chunk;
     if (!renamedColumns.isEmpty()) {
-      chunkNormalized =
-          chunk.copy(normalizeFieldsInPath(chunk.getPath()), normalizeNameInType(chunk.getPrimitiveType()));
+      chunkNormalized = ColumnChunkMetaData.get(
+          normalizeFieldsInPath(chunk.getPath()),
+          normalizeNameInType(chunk.getPrimitiveType()),
+          chunk.getCodec(),
+          chunk.getEncodingStats(),
+          chunk.getEncodings(),
+          chunk.getStatistics(),
+          chunk.getFirstDataPageOffset(),
+          chunk.getDictionaryPageOffset(),
+          chunk.getValueCount(),
+          chunk.getTotalSize(),
+          chunk.getTotalUncompressedSize(),
+          chunk.getSizeStatistics());
     }
 
     ColumnDescriptor descriptorOriginal = outSchema.getColumns().get(outColumnIdx);

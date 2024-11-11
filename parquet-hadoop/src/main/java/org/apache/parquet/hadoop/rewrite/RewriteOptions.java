@@ -198,7 +198,7 @@ public class RewriteOptions {
     return maskColumns;
   }
 
-  public Map<String, String> gerRenameColumns() {
+  public Map<String, String> getRenameColumns() {
     return renameColumns;
   }
 
