@@ -17,7 +17,7 @@
   ~ under the License.
   -->
 
-Parquet Java (formerly Parquet MR) [![Build Status](https://github.com/apache/parquet-java/workflows/Test/badge.svg)](https://github.com/apache/parquet-java/actions)
+Parquet Java (formerly Parquet MR) [![CI Hadoop 3](https://github.com/apache/parquet-java/actions/workflows/ci-hadoop3.yml/badge.svg)](https://github.com/apache/parquet-java/actions/workflows/ci-hadoop3.yml)
 ======
 
 This repository contains a Java implementation of [Apache Parquet](https://parquet.apache.org/)
@@ -25,11 +25,11 @@ This repository contains a Java implementation of [Apache Parquet](https://parqu
 Apache Parquet is an open source, column-oriented data file format
 designed for efficient data storage and retrieval. It provides high
 performance compression and encoding schemes to handle complex data in
-bulk and is supported in many programming language and analytics
+bulk and is supported in many programming languages and analytics
 tools.
 
 The [parquet-format](https://github.com/apache/parquet-format)
-repository contains the file format specificiation.
+repository contains the file format specification.
 
 Parquet uses the [record shredding and assembly algorithm](https://github.com/julienledem/redelm/wiki/The-striping-and-assembly-algorithms-from-the-Dremel-paper) described in the Dremel paper to represent nested structures.
 You can find additional details about the format and intended use cases in our [Hadoop Summit 2013 presentation](http://www.slideshare.net/julienledem/parquet-hadoop-summit-2013)
@@ -166,29 +166,29 @@ The build runs in [GitHub Actions](https://github.com/apache/parquet-java/action
 
 ## Add Parquet as a dependency in Maven
 
-The current release is version `1.14.3`.
+The current release is version `1.14.4`.
 
 ```xml
   <dependencies>
     <dependency>
       <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-common</artifactId>
-      <version>1.14.3</version>
+      <version>1.14.4</version>
     </dependency>
     <dependency>
       <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-encoding</artifactId>
-      <version>1.14.3</version>
+      <version>1.14.4</version>
     </dependency>
     <dependency>
       <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-column</artifactId>
-      <version>1.14.3</version>
+      <version>1.14.4</version>
     </dependency>
     <dependency>
       <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-hadoop</artifactId>
-      <version>1.14.3</version>
+      <version>1.14.4</version>
     </dependency>
   </dependencies>
 ```
