@@ -171,7 +171,7 @@ public class ParquetRewriter implements Closeable {
         inputFiles.size() + inputFilesToJoin.size(),
         Stream.concat(options.getParquetInputFiles().stream(), options.getParquetInputFilesToJoin().stream())
             .collect(Collectors.toList()),
-        options.getParquetOutputFile());
+        out);
 
     if (options.getMaskColumns() != null) {
       this.maskColumns = new HashMap<>();
