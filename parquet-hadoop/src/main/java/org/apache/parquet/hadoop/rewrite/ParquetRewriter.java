@@ -495,6 +495,7 @@ public class ParquetRewriter implements Closeable {
 
     ColumnChunkMetaData chunkNormalized = chunk;
     if (!renamedColumns.isEmpty()) {
+      // Keep an eye if this get stale because of ColumnChunkMetaData change
       chunkNormalized = ColumnChunkMetaData.get(
           normalizeFieldsInPath(chunk.getPath()),
           normalizeNameInType(chunk.getPrimitiveType()),
