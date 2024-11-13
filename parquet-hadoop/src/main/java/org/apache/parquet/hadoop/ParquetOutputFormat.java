@@ -397,6 +397,18 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     return conf.getBoolean(STATISTICS_ENABLED, ParquetProperties.DEFAULT_STATISTICS_ENABLED);
   }
 
+  public static void setStatisticsEnabled(JobContext jobContext, String columnPath, boolean enabled) {
+    getConfiguration(jobContext).set(STATISTICS_ENABLED + "#" + columnPath, String.valueOf(enabled));
+  }
+
+  public static boolean getStatisticsEnabled(Configuration conf, String columnPath) {
+    String columnSpecific = conf.get(STATISTICS_ENABLED + "#" + columnPath);
+    if (columnSpecific != null) {
+      return Boolean.parseBoolean(columnSpecific);
+    }
+    return conf.getBoolean(STATISTICS_ENABLED, ParquetProperties.DEFAULT_STATISTICS_ENABLED);
+  }
+
   private WriteSupport<T> writeSupport;
   private ParquetOutputCommitter committer;
 
@@ -489,6 +501,10 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
             BLOOM_FILTER_CANDIDATES_NUMBER,
             key -> conf.getInt(key, ParquetProperties.DEFAULT_BLOOM_FILTER_CANDIDATES_NUMBER),
             propsBuilder::withBloomFilterCandidatesNumber)
+        .withColumnConfig(
+            STATISTICS_ENABLED,
+            key -> conf.getBoolean(key, ParquetProperties.DEFAULT_STATISTICS_ENABLED),
+            propsBuilder::withStatisticsEnabled)
         .parseConfig(conf);
 
     ParquetProperties props = propsBuilder.build();

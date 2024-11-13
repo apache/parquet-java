@@ -515,4 +515,13 @@ if not found then the library will use the classic non-vectored reads: it is saf
 **Description:** Whether to enable column statistics collection.
 If `true`, statistics will be collected for all columns unless explicitly disabled for specific columns.
 If `false`, statistics will be disabled for all columns regardless of column-specific settings.
+It is possible to enable or disable statistics for specific columns by appending `#` followed by the column path.
 **Default value:** `true`
+**Example:**
+```java
+// Enable statistics for all columns
+conf.set("parquet.column.statistics.enabled", true);
+// Disable statistics for 'column.path'
+conf.set("parquet.column.statistics.enabled#column.path", false);
+// The final configuration will be: Enable statistics for all columns except 'column.path'
+```
