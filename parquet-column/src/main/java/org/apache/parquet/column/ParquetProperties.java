@@ -111,6 +111,7 @@ public class ParquetProperties {
   private final ValuesWriterFactory valuesWriterFactory;
   private final int columnIndexTruncateLength;
   private final int statisticsTruncateLength;
+  private final boolean statisticsEnabled;
 
   // The expected NDV (number of distinct values) for each columns
   private final ColumnProperty<Long> bloomFilterNDVs;
@@ -141,6 +142,7 @@ public class ParquetProperties {
     this.valuesWriterFactory = builder.valuesWriterFactory;
     this.columnIndexTruncateLength = builder.columnIndexTruncateLength;
     this.statisticsTruncateLength = builder.statisticsTruncateLength;
+    this.statisticsEnabled = builder.statisticsEnabled;
     this.bloomFilterNDVs = builder.bloomFilterNDVs.build();
     this.bloomFilterFPPs = builder.bloomFilterFPPs.build();
     this.bloomFilterEnabled = builder.bloomFilterEnabled.build();
@@ -334,7 +336,13 @@ public class ParquetProperties {
   }
 
   public boolean getStatisticsEnabled(ColumnDescriptor column) {
-    return statistics.getValue(column);
+    // First check column-specific setting
+    Boolean columnSetting = statistics.getValue(column);
+    if (columnSetting != null) {
+      return columnSetting;
+    }
+    // Fall back to global setting
+    return statisticsEnabled;
   }
 
   @Override
@@ -369,6 +377,7 @@ public class ParquetProperties {
     private ValuesWriterFactory valuesWriterFactory = DEFAULT_VALUES_WRITER_FACTORY;
     private int columnIndexTruncateLength = DEFAULT_COLUMN_INDEX_TRUNCATE_LENGTH;
     private int statisticsTruncateLength = DEFAULT_STATISTICS_TRUNCATE_LENGTH;
+    private boolean statisticsEnabled = DEFAULT_STATISTICS_ENABLED;
     private final ColumnProperty.Builder<Long> bloomFilterNDVs;
     private final ColumnProperty.Builder<Double> bloomFilterFPPs;
     private int maxBloomFilterBytes = DEFAULT_MAX_BLOOM_FILTER_BYTES;
@@ -676,6 +685,11 @@ public class ParquetProperties {
      */
     public Builder withStatisticsEnabled(String columnPath, boolean enabled) {
       this.statistics.withValue(columnPath, enabled);
+      return this;
+    }
+
+    public Builder withStatisticsEnabled(boolean enabled) {
+      this.statisticsEnabled = enabled;
       return this;
     }
 

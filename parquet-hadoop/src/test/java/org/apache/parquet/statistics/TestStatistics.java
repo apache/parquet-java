@@ -317,7 +317,29 @@ public class TestStatistics {
         ParquetProperties.WriterVersion version,
         Set<String> disableColumnStatistics)
         throws IOException {
-      super(path, buildSchema(seed), blockSize, pageSize, enableDictionary, true, version);
+      this(seed, path, blockSize, pageSize, enableDictionary, version, disableColumnStatistics, false);
+    }
+
+    public DataContext(
+        long seed,
+        File path,
+        int blockSize,
+        int pageSize,
+        boolean enableDictionary,
+        ParquetProperties.WriterVersion version,
+        Set<String> disableColumnStatistics,
+        boolean disableAllStatistics)
+        throws IOException {
+      super(
+          path,
+          buildSchema(seed),
+          blockSize,
+          pageSize,
+          enableDictionary,
+          true,
+          version,
+          disableColumnStatistics,
+          disableAllStatistics);
 
       this.random = new Random(seed);
       this.recordCount = random.nextInt(MAX_TOTAL_ROWS);
@@ -642,5 +664,30 @@ public class TestStatistics {
     for (DataContext test : contexts) {
       DataGenerationContext.writeAndTest(test);
     }
+  }
+
+  @Test
+  public void testGlobalStatisticsDisabled() throws IOException {
+    File file = folder.newFile("test_file_global_stats_disabled.parquet");
+    file.delete();
+
+    LOG.info(String.format("RANDOM SEED: %s", RANDOM_SEED));
+    Random random = new Random(RANDOM_SEED);
+
+    int blockSize = (random.nextInt(54) + 10) * MEGABYTE;
+    int pageSize = (random.nextInt(10) + 1) * MEGABYTE;
+
+    // Create context with global statistics disabled
+    DataContext context = new DataContext(
+        random.nextLong(),
+        file,
+        blockSize,
+        pageSize,
+        true, // enable dictionary
+        ParquetProperties.WriterVersion.PARQUET_2_0,
+        ImmutableSet.of(), // no specific column statistics disabled
+        true); // disable all statistics globally
+
+    DataGenerationContext.writeAndTest(context);
   }
 }

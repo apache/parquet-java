@@ -42,6 +42,30 @@ public class DataGenerationContext {
     protected final boolean enableValidation;
     protected final ParquetProperties.WriterVersion version;
     protected final Set<String> disableColumnStatistics;
+    protected final boolean disableAllStatistics;
+
+    public WriteContext(
+        File path,
+        MessageType schema,
+        int blockSize,
+        int pageSize,
+        boolean enableDictionary,
+        boolean enableValidation,
+        ParquetProperties.WriterVersion version,
+        Set<String> disableColumnStatistics,
+        boolean disableAllStatistics)
+        throws IOException {
+      this.path = path;
+      this.fsPath = new Path(path.toString());
+      this.schema = schema;
+      this.blockSize = blockSize;
+      this.pageSize = pageSize;
+      this.enableDictionary = enableDictionary;
+      this.enableValidation = enableValidation;
+      this.version = version;
+      this.disableColumnStatistics = disableColumnStatistics;
+      this.disableAllStatistics = disableAllStatistics;
+    }
 
     public WriteContext(
         File path,
@@ -52,7 +76,16 @@ public class DataGenerationContext {
         boolean enableValidation,
         ParquetProperties.WriterVersion version)
         throws IOException {
-      this(path, schema, blockSize, pageSize, enableDictionary, enableValidation, version, ImmutableSet.of());
+      this(
+          path,
+          schema,
+          blockSize,
+          pageSize,
+          enableDictionary,
+          enableValidation,
+          version,
+          ImmutableSet.of(),
+          false);
     }
 
     public WriteContext(
@@ -65,15 +98,16 @@ public class DataGenerationContext {
         ParquetProperties.WriterVersion version,
         Set<String> disableColumnStatistics)
         throws IOException {
-      this.path = path;
-      this.fsPath = new Path(path.toString());
-      this.schema = schema;
-      this.blockSize = blockSize;
-      this.pageSize = pageSize;
-      this.enableDictionary = enableDictionary;
-      this.enableValidation = enableValidation;
-      this.version = version;
-      this.disableColumnStatistics = disableColumnStatistics;
+      this(
+          path,
+          schema,
+          blockSize,
+          pageSize,
+          enableDictionary,
+          enableValidation,
+          version,
+          disableColumnStatistics,
+          false);
     }
 
     public abstract void write(ParquetWriter<Group> writer) throws IOException;
