@@ -20,12 +20,14 @@ package org.apache.parquet.bytes;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
+import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.channels.Channels;
+import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.WritableByteChannel;
 import java.util.Arrays;
 import java.util.List;
@@ -376,10 +378,18 @@ public abstract class BytesInput {
         ByteBuffer workBuf = buffer.duplicate();
         int pos = buffer.position();
         workBuf.limit(pos + byteCount);
-        Channels.newChannel(in).read(workBuf);
+        ReadableByteChannel channel = Channels.newChannel(in);
+        int remaining = byteCount;
+        while (remaining > 0) {
+          int bytesRead = channel.read(workBuf);
+          if (bytesRead < 0) {
+            throw new EOFException("Reached the end of stream with " + remaining + " bytes left to read");
+          }
+          remaining -= bytesRead;
+        }
         buffer.position(pos + byteCount);
       } catch (IOException e) {
-        new RuntimeException("Exception occurred during reading input stream", e);
+        throw new RuntimeException("Exception occurred during reading input stream", e);
       }
     }
 

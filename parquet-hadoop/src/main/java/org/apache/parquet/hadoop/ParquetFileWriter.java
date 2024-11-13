@@ -41,6 +41,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.parquet.ParquetSizeOverflowException;
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.Version;
 import org.apache.parquet.bytes.ByteBufferAllocator;
@@ -705,7 +706,7 @@ public class ParquetFileWriter implements AutoCloseable {
     columnIndexBuilder = ColumnIndexBuilder.getNoOpBuilder();
     long beforeHeader = out.getPos();
     LOG.debug("{}: write data page: {} values", beforeHeader, valueCount);
-    int compressedPageSize = (int) bytes.size();
+    int compressedPageSize = toIntWithCheck(bytes.size(), "page");
     metadataConverter.writeDataPageV1Header(
         uncompressedPageSize, compressedPageSize, valueCount, rlEncoding, dlEncoding, valuesEncoding, out);
     long headerSize = out.getPos() - beforeHeader;
@@ -881,7 +882,7 @@ public class ParquetFileWriter implements AutoCloseable {
         pageHeaderAAD,
         sizeStatistics);
     offsetIndexBuilder.add(
-        (int) (out.getPos() - beforeHeader),
+        toIntWithCheck(out.getPos() - beforeHeader, "page"),
         rowCount,
         sizeStatistics != null ? sizeStatistics.getUnencodedByteArrayDataBytes() : Optional.empty());
   }
@@ -981,7 +982,7 @@ public class ParquetFileWriter implements AutoCloseable {
       currentChunkFirstDataPage = beforeHeader;
     }
     LOG.debug("{}: write data page: {} values", beforeHeader, valueCount);
-    int compressedPageSize = (int) bytes.size();
+    int compressedPageSize = toIntWithCheck(bytes.size(), "page");
     if (pageWriteChecksumEnabled) {
       crc.reset();
       crcUpdate(bytes);
@@ -1148,12 +1149,14 @@ public class ParquetFileWriter implements AutoCloseable {
       SizeStatistics sizeStatistics)
       throws IOException {
     state = state.write();
-    int rlByteLength = toIntWithCheck(repetitionLevels.size());
-    int dlByteLength = toIntWithCheck(definitionLevels.size());
+    int rlByteLength = toIntWithCheck(repetitionLevels.size(), "page repetition levels");
+    int dlByteLength = toIntWithCheck(definitionLevels.size(), "page definition levels");
 
-    int compressedSize = toIntWithCheck(compressedData.size() + repetitionLevels.size() + definitionLevels.size());
+    int compressedSize =
+        toIntWithCheck(compressedData.size() + repetitionLevels.size() + definitionLevels.size(), "page");
 
-    int uncompressedSize = toIntWithCheck(uncompressedDataSize + repetitionLevels.size() + definitionLevels.size());
+    int uncompressedSize =
+        toIntWithCheck(uncompressedDataSize + repetitionLevels.size() + definitionLevels.size(), "page");
 
     long beforeHeader = out.getPos();
     if (currentChunkFirstDataPage < 0) {
@@ -1211,7 +1214,7 @@ public class ParquetFileWriter implements AutoCloseable {
     BytesInput.concat(repetitionLevels, definitionLevels, compressedData).writeAllTo(out);
 
     offsetIndexBuilder.add(
-        (int) (out.getPos() - beforeHeader),
+        toIntWithCheck(out.getPos() - beforeHeader, "page"),
         rowCount,
         sizeStatistics != null ? sizeStatistics.getUnencodedByteArrayDataBytes() : Optional.empty());
   }
@@ -1634,8 +1637,8 @@ public class ParquetFileWriter implements AutoCloseable {
     long bytesCopied = 0;
     byte[] buffer = COPY_BUFFER.get();
     while (bytesCopied < length) {
-      long bytesLeft = length - bytesCopied;
-      int bytesRead = from.read(buffer, 0, (buffer.length < bytesLeft ? buffer.length : (int) bytesLeft));
+      int bytesLeft = Math.toIntExact(length - bytesCopied);
+      int bytesRead = from.read(buffer, 0, (Math.min(buffer.length, bytesLeft)));
       if (bytesRead < 0) {
         throw new IllegalArgumentException("Unexpected end of input file at " + start + bytesCopied);
       }
@@ -1715,15 +1718,16 @@ public class ParquetFileWriter implements AutoCloseable {
         }
         long offset = out.getPos();
         Util.writeColumnIndex(columnIndex, out, columnIndexEncryptor, columnIndexAAD);
-        column.setColumnIndexReference(new IndexReference(offset, (int) (out.getPos() - offset)));
+        column.setColumnIndexReference(
+            new IndexReference(offset, toIntWithCheck(out.getPos() - offset, "page")));
       }
     }
   }
 
-  private int toIntWithCheck(long size) {
+  private static int toIntWithCheck(long size, String obj) {
     if ((int) size != size) {
-      throw new ParquetEncodingException(
-          "Cannot write page larger than " + Integer.MAX_VALUE + " bytes: " + size);
+      throw new ParquetSizeOverflowException(
+          String.format("Cannot write %s larger than %s bytes: %s", obj, Integer.MAX_VALUE, size));
     }
     return (int) size;
   }
@@ -1795,7 +1799,8 @@ public class ParquetFileWriter implements AutoCloseable {
             out,
             offsetIndexEncryptor,
             offsetIndexAAD);
-        column.setOffsetIndexReference(new IndexReference(offset, (int) (out.getPos() - offset)));
+        column.setOffsetIndexReference(
+            new IndexReference(offset, toIntWithCheck(out.getPos() - offset, "page")));
       }
     }
   }
@@ -1860,7 +1865,7 @@ public class ParquetFileWriter implements AutoCloseable {
         }
         out.write(serializedBitset);
 
-        int length = (int) (out.getPos() - offset);
+        int length = Math.toIntExact(out.getPos() - offset);
         column.setBloomFilterLength(length);
       }
     }
@@ -1880,7 +1885,7 @@ public class ParquetFileWriter implements AutoCloseable {
           metadataConverter.toParquetMetadata(CURRENT_VERSION, footer);
       writeFileMetaData(parquetMetadata, out);
       LOG.debug("{}: footer length = {}", out.getPos(), (out.getPos() - footerIndex));
-      BytesUtils.writeIntLittleEndian(out, (int) (out.getPos() - footerIndex));
+      BytesUtils.writeIntLittleEndian(out, toIntWithCheck(out.getPos() - footerIndex, "footer"));
       out.write(MAGIC);
       return;
     }
@@ -1918,7 +1923,7 @@ public class ParquetFileWriter implements AutoCloseable {
       out.write(serializedFooter);
       out.write(signature);
       LOG.debug("{}: footer and signature length = {}", out.getPos(), (out.getPos() - footerIndex));
-      BytesUtils.writeIntLittleEndian(out, (int) (out.getPos() - footerIndex));
+      BytesUtils.writeIntLittleEndian(out, toIntWithCheck(out.getPos() - footerIndex, "page"));
       out.write(MAGIC);
       return;
     }
@@ -1928,7 +1933,7 @@ public class ParquetFileWriter implements AutoCloseable {
     writeFileCryptoMetaData(fileEncryptor.getFileCryptoMetaData(), out);
     byte[] footerAAD = AesCipher.createFooterAAD(fileEncryptor.getFileAAD());
     writeFileMetaData(parquetMetadata, out, fileEncryptor.getFooterEncryptor(), footerAAD);
-    int combinedMetaDataLength = (int) (out.getPos() - cryptoFooterIndex);
+    int combinedMetaDataLength = toIntWithCheck(out.getPos() - cryptoFooterIndex, "page");
     LOG.debug("{}: crypto metadata and footer length = {}", out.getPos(), combinedMetaDataLength);
     BytesUtils.writeIntLittleEndian(out, combinedMetaDataLength);
     out.write(EFMAGIC);

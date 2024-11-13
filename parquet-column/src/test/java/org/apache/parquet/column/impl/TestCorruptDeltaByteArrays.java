@@ -20,6 +20,7 @@ package org.apache.parquet.column.impl;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -42,15 +43,17 @@ import org.apache.parquet.column.statistics.BinaryStatistics;
 import org.apache.parquet.column.values.ValuesWriter;
 import org.apache.parquet.column.values.deltastrings.DeltaByteArrayReader;
 import org.apache.parquet.column.values.deltastrings.DeltaByteArrayWriter;
+import org.apache.parquet.column.values.dictionary.DictionaryValuesReader;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.PrimitiveConverter;
 import org.apache.parquet.schema.PrimitiveType;
 import org.junit.Assert;
 import org.junit.Test;
+import org.mockito.Mockito;
 
 public class TestCorruptDeltaByteArrays {
   @Test
-  public void testCorruptDeltaByteArrayVerisons() {
+  public void testCorruptDeltaByteArrayVersions() {
     assertTrue(CorruptDeltaByteArrays.requiresSequentialReads(
         "parquet-mr version 1.6.0 (build abcd)", Encoding.DELTA_BYTE_ARRAY));
     assertTrue(CorruptDeltaByteArrays.requiresSequentialReads((String) null, Encoding.DELTA_BYTE_ARRAY));
@@ -74,7 +77,7 @@ public class TestCorruptDeltaByteArrays {
   }
 
   @Test
-  public void testEncodingRequiresSequentailRead() {
+  public void testEncodingRequiresSequentialRead() {
     ParsedVersion impala = new ParsedVersion("impala", "1.2.0", "abcd");
     assertFalse(CorruptDeltaByteArrays.requiresSequentialReads(impala, Encoding.DELTA_BYTE_ARRAY));
     ParsedVersion broken = new ParsedVersion("parquet-mr", "1.8.0-SNAPSHOT", "abcd");
@@ -260,6 +263,43 @@ public class TestCorruptDeltaByteArrays {
     }
 
     Assert.assertEquals(values, actualValues);
+  }
+
+  @Test
+  public void testPreviousReaderSetting() {
+    Binary previous = Binary.fromString("<<<PREVIOUS>>>");
+    DeltaByteArrayReader previousReader = new DeltaByteArrayReader();
+    setPrevious(previousReader, previous);
+
+    DeltaByteArrayReader reader = new DeltaByteArrayReader();
+    reader.setPreviousReader(previousReader);
+    assertSame(previous, getPrevious(reader));
+
+    reader.setPreviousReader(null);
+    assertSame("The previous field should have not changed", previous, getPrevious(reader));
+
+    reader.setPreviousReader(Mockito.mock(DictionaryValuesReader.class));
+    assertSame("The previous field should have not changed", previous, getPrevious(reader));
+  }
+
+  private Binary getPrevious(DeltaByteArrayReader reader) {
+    try {
+      Field previousField = reader.getClass().getDeclaredField("previous");
+      previousField.setAccessible(true);
+      return (Binary) previousField.get(reader);
+    } catch (NoSuchFieldException | IllegalAccessException e) {
+      throw new AssertionError("Unable to get the private field \"previous\" of the reader" + reader, e);
+    }
+  }
+
+  private void setPrevious(DeltaByteArrayReader reader, Binary previous) {
+    try {
+      Field previousField = reader.getClass().getDeclaredField("previous");
+      previousField.setAccessible(true);
+      previousField.set(reader, previous);
+    } catch (NoSuchFieldException | IllegalAccessException e) {
+      throw new AssertionError("Unable to set the private field \"previous\" of the reader" + reader, e);
+    }
   }
 
   public void corruptWriter(DeltaByteArrayWriter writer, String data) throws Exception {

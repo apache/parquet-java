@@ -88,7 +88,7 @@ public class DeltaByteArrayReader extends ValuesReader implements RequiresPrevio
    */
   @Override
   public void setPreviousReader(ValuesReader reader) {
-    if (reader != null) {
+    if (reader instanceof DeltaByteArrayReader) {
       this.previous = ((DeltaByteArrayReader) reader).previous;
     }
   }

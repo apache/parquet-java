@@ -156,6 +156,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   public static final String BLOOM_FILTER_CANDIDATES_NUMBER = "parquet.bloom.filter.candidates.number";
   public static final String PAGE_ROW_COUNT_LIMIT = "parquet.page.row.count.limit";
   public static final String PAGE_WRITE_CHECKSUM_ENABLED = "parquet.page.write-checksum.enabled";
+  public static final String STATISTICS_ENABLED = "parquet.column.statistics.enabled";
 
   public static JobSummaryLevel getJobSummaryLevel(Configuration conf) {
     String level = conf.get(JOB_SUMMARY_LEVEL);
@@ -388,6 +389,26 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     return conf.getBoolean(PAGE_WRITE_CHECKSUM_ENABLED, ParquetProperties.DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED);
   }
 
+  public static void setStatisticsEnabled(JobContext jobContext, boolean enabled) {
+    getConfiguration(jobContext).setBoolean(STATISTICS_ENABLED, enabled);
+  }
+
+  public static boolean getStatisticsEnabled(Configuration conf) {
+    return conf.getBoolean(STATISTICS_ENABLED, ParquetProperties.DEFAULT_STATISTICS_ENABLED);
+  }
+
+  public static void setStatisticsEnabled(JobContext jobContext, String columnPath, boolean enabled) {
+    getConfiguration(jobContext).set(STATISTICS_ENABLED + "#" + columnPath, String.valueOf(enabled));
+  }
+
+  public static boolean getStatisticsEnabled(Configuration conf, String columnPath) {
+    String columnSpecific = conf.get(STATISTICS_ENABLED + "#" + columnPath);
+    if (columnSpecific != null) {
+      return Boolean.parseBoolean(columnSpecific);
+    }
+    return conf.getBoolean(STATISTICS_ENABLED, ParquetProperties.DEFAULT_STATISTICS_ENABLED);
+  }
+
   private WriteSupport<T> writeSupport;
   private ParquetOutputCommitter committer;
 
@@ -463,7 +484,8 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
         .withBloomFilterEnabled(getBloomFilterEnabled(conf))
         .withAdaptiveBloomFilterEnabled(getAdaptiveBloomFilterEnabled(conf))
         .withPageRowCountLimit(getPageRowCountLimit(conf))
-        .withPageWriteChecksumEnabled(getPageWriteChecksumEnabled(conf));
+        .withPageWriteChecksumEnabled(getPageWriteChecksumEnabled(conf))
+        .withStatisticsEnabled(getStatisticsEnabled(conf));
     new ColumnConfigParser()
         .withColumnConfig(
             ENABLE_DICTIONARY, key -> conf.getBoolean(key, false), propsBuilder::withDictionaryEncoding)
@@ -479,6 +501,10 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
             BLOOM_FILTER_CANDIDATES_NUMBER,
             key -> conf.getInt(key, ParquetProperties.DEFAULT_BLOOM_FILTER_CANDIDATES_NUMBER),
             propsBuilder::withBloomFilterCandidatesNumber)
+        .withColumnConfig(
+            STATISTICS_ENABLED,
+            key -> conf.getBoolean(key, ParquetProperties.DEFAULT_STATISTICS_ENABLED),
+            propsBuilder::withStatisticsEnabled)
         .parseConfig(conf);
 
     ParquetProperties props = propsBuilder.build();

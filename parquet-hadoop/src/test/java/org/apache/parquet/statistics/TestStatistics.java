@@ -31,6 +31,7 @@ import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import com.google.common.collect.ImmutableSet;
 import java.io.File;
 import java.io.IOException;
 import java.math.BigInteger;
@@ -38,6 +39,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Random;
+import java.util.Set;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.ParquetProperties;
@@ -231,17 +233,28 @@ public class TestStatistics {
 
   public static class PageStatsValidator {
     public void validate(MessageType schema, PageReadStore store) {
+      validate(schema, store, null);
+    }
+
+    public void validate(MessageType schema, PageReadStore store, Set<String> statisticsDisabledSet) {
       for (ColumnDescriptor desc : schema.getColumns()) {
+        boolean statisticsDisabled = false;
+        if (statisticsDisabledSet != null) {
+          String dotPath = String.join(".", desc.getPath());
+          statisticsDisabled = statisticsDisabledSet.contains(dotPath);
+        }
+
         PageReader reader = store.getPageReader(desc);
         DictionaryPage dict = reader.readDictionaryPage();
         DataPage page;
         while ((page = reader.readPage()) != null) {
-          validateStatsForPage(page, dict, desc);
+          validateStatsForPage(page, dict, desc, statisticsDisabled);
         }
       }
     }
 
-    private void validateStatsForPage(DataPage page, DictionaryPage dict, ColumnDescriptor desc) {
+    private void validateStatsForPage(
+        DataPage page, DictionaryPage dict, ColumnDescriptor desc, boolean statisticsDisabled) {
       SingletonPageReader reader = new SingletonPageReader(dict, page);
       PrimitiveConverter converter = getValidatingConverter(page, desc.getType());
       Statistics<?> stats = getStatisticsFromPageHeader(page);
@@ -250,6 +263,10 @@ public class TestStatistics {
           "Statistics does not use the proper comparator",
           desc.getPrimitiveType().comparator().getClass(),
           stats.comparator().getClass());
+
+      if (statisticsDisabled) {
+        Assert.assertTrue(stats.isEmpty());
+      }
 
       if (stats.isEmpty()) {
         // stats are empty if num nulls = 0 and there are no non-null values
@@ -288,7 +305,41 @@ public class TestStatistics {
         boolean enableDictionary,
         ParquetProperties.WriterVersion version)
         throws IOException {
-      super(path, buildSchema(seed), blockSize, pageSize, enableDictionary, true, version);
+      this(seed, path, blockSize, pageSize, enableDictionary, version, ImmutableSet.of());
+    }
+
+    public DataContext(
+        long seed,
+        File path,
+        int blockSize,
+        int pageSize,
+        boolean enableDictionary,
+        ParquetProperties.WriterVersion version,
+        Set<String> disableColumnStatistics)
+        throws IOException {
+      this(seed, path, blockSize, pageSize, enableDictionary, version, disableColumnStatistics, false);
+    }
+
+    public DataContext(
+        long seed,
+        File path,
+        int blockSize,
+        int pageSize,
+        boolean enableDictionary,
+        ParquetProperties.WriterVersion version,
+        Set<String> disableColumnStatistics,
+        boolean disableAllStatistics)
+        throws IOException {
+      super(
+          path,
+          buildSchema(seed),
+          blockSize,
+          pageSize,
+          enableDictionary,
+          true,
+          version,
+          disableColumnStatistics,
+          disableAllStatistics);
 
       this.random = new Random(seed);
       this.recordCount = random.nextInt(MAX_TOTAL_ROWS);
@@ -472,7 +523,8 @@ public class TestStatistics {
 
         PageReadStore pageReadStore;
         while ((pageReadStore = reader.readNextRowGroup()) != null) {
-          validator.validate(metadata.getFileMetaData().getSchema(), pageReadStore);
+          validator.validate(
+              metadata.getFileMetaData().getSchema(), pageReadStore, this.disableColumnStatistics);
         }
       }
     }
@@ -526,5 +578,116 @@ public class TestStatistics {
     for (DataContext test : contexts) {
       DataGenerationContext.writeAndTest(test);
     }
+  }
+
+  @Test
+  public void testDisableStatistics() throws IOException {
+    File file = folder.newFile("test_file.parquet");
+    file.delete();
+
+    LOG.info(String.format("RANDOM SEED: %s", RANDOM_SEED));
+
+    Random random = new Random(RANDOM_SEED);
+
+    int blockSize = (random.nextInt(54) + 10) * MEGABYTE;
+    int pageSize = (random.nextInt(10) + 1) * MEGABYTE;
+
+    List<DataContext> contexts = Arrays.asList(
+        new DataContext(
+            random.nextLong(),
+            file,
+            blockSize,
+            pageSize,
+            false,
+            ParquetProperties.WriterVersion.PARQUET_1_0,
+            ImmutableSet.of(
+                "i32",
+                "i64",
+                "i96",
+                "sngl",
+                "dbl",
+                "strings",
+                "binary",
+                "fixed-binary",
+                "unconstrained-i32")),
+        new DataContext(
+            random.nextLong(),
+            file,
+            blockSize,
+            pageSize,
+            true,
+            ParquetProperties.WriterVersion.PARQUET_1_0,
+            ImmutableSet.of(
+                "unconstrained-i64",
+                "unconstrained-sngl",
+                "unconstrained-dbl",
+                "int8",
+                "uint8",
+                "int16",
+                "uint16",
+                "int32",
+                "uint32")),
+        new DataContext(
+            random.nextLong(),
+            file,
+            blockSize,
+            pageSize,
+            false,
+            ParquetProperties.WriterVersion.PARQUET_2_0,
+            ImmutableSet.of(
+                "int64",
+                "uint64",
+                "decimal-int32",
+                "decimal-int64",
+                "decimal-fixed",
+                "decimal-binary",
+                "utf8",
+                "enum",
+                "json")),
+        new DataContext(
+            random.nextLong(),
+            file,
+            blockSize,
+            pageSize,
+            true,
+            ParquetProperties.WriterVersion.PARQUET_2_0,
+            ImmutableSet.of(
+                "bson",
+                "date",
+                "time-millis",
+                "time-micros",
+                "timestamp-millis",
+                "timestamp-micros",
+                "interval",
+                "float16")));
+
+    for (DataContext test : contexts) {
+      DataGenerationContext.writeAndTest(test);
+    }
+  }
+
+  @Test
+  public void testGlobalStatisticsDisabled() throws IOException {
+    File file = folder.newFile("test_file_global_stats_disabled.parquet");
+    file.delete();
+
+    LOG.info(String.format("RANDOM SEED: %s", RANDOM_SEED));
+    Random random = new Random(RANDOM_SEED);
+
+    int blockSize = (random.nextInt(54) + 10) * MEGABYTE;
+    int pageSize = (random.nextInt(10) + 1) * MEGABYTE;
+
+    // Create context with global statistics disabled
+    DataContext context = new DataContext(
+        random.nextLong(),
+        file,
+        blockSize,
+        pageSize,
+        true, // enable dictionary
+        ParquetProperties.WriterVersion.PARQUET_2_0,
+        ImmutableSet.of(), // no specific column statistics disabled
+        true); // disable all statistics globally
+
+    DataGenerationContext.writeAndTest(context);
   }
 }
