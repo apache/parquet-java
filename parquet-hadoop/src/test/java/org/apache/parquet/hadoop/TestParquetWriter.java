@@ -32,8 +32,11 @@ import static org.apache.parquet.hadoop.metadata.CompressionCodecName.UNCOMPRESS
 import static org.apache.parquet.schema.LogicalTypeAnnotation.stringType;
 import static org.apache.parquet.schema.MessageTypeParser.parseMessageType;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BOOLEAN;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import com.google.common.collect.ImmutableMap;
@@ -522,6 +525,73 @@ public class TestParquetWriter {
     try (ParquetFileReader reader = ParquetFileReader.open(HadoopInputFile.fromPath(path, conf))) {
       ParquetMetadata footer = reader.getFooter();
       assertEquals(expectedNumberOfBlocks, footer.getBlocks().size());
+    }
+  }
+
+  @Test
+  public void testSizeStatisticsControl() throws Exception {
+    MessageType schema = Types.buildMessage()
+        .required(BINARY)
+        .named("string_field")
+        .required(BOOLEAN)
+        .named("boolean_field")
+        .required(INT32)
+        .named("int32_field")
+        .named("test_schema");
+
+    SimpleGroupFactory factory = new SimpleGroupFactory(schema);
+
+    // Create test data
+    Group group = factory.newGroup()
+        .append("string_field", "test")
+        .append("boolean_field", true)
+        .append("int32_field", 42);
+
+    // Test global disable
+    File file = temp.newFile();
+    temp.delete();
+    Path path = new Path(file.getAbsolutePath());
+    ParquetWriter<Group> writer = ExampleParquetWriter.builder(path)
+        .withType(schema)
+        .withSizeStatisticsEnabled(false)
+        .build();
+    writer.write(group);
+    writer.close();
+
+    ParquetFileReader reader = ParquetFileReader.open(HadoopInputFile.fromPath(path, new Configuration()));
+    ParquetMetadata footer = reader.getFooter();
+    reader.close();
+    // Verify size statistics are disabled globally
+    for (BlockMetaData block : footer.getBlocks()) {
+      for (ColumnChunkMetaData column : block.getColumns()) {
+        assertNull(column.getSizeStatistics());
+      }
+    }
+
+    // Test column-specific control
+    file = temp.newFile();
+    temp.delete();
+    path = new Path(file.getAbsolutePath());
+    writer = ExampleParquetWriter.builder(path)
+        .withType(schema)
+        .withSizeStatisticsEnabled(true) // enable globally
+        .withSizeStatisticsEnabled("boolean_field", false) // disable for specific column
+        .build();
+    writer.write(group);
+    writer.close();
+
+    reader = ParquetFileReader.open(HadoopInputFile.fromPath(path, new Configuration()));
+    footer = reader.getFooter();
+    reader.close();
+    // Verify size statistics are enabled for all columns except boolean_field
+    for (BlockMetaData block : footer.getBlocks()) {
+      for (ColumnChunkMetaData column : block.getColumns()) {
+        if (column.getPath().toDotString().equals("boolean_field")) {
+          assertNull(column.getSizeStatistics());
+        } else {
+          assertTrue(column.getSizeStatistics().isValid());
+        }
+      }
     }
   }
 }

@@ -52,7 +52,7 @@ public class SizeStatistics {
    * Builder to create a SizeStatistics.
    */
   public static class Builder {
-    private final PrimitiveType type;
+    protected final PrimitiveType type;
     private long unencodedByteArrayDataBytes;
     private final long[] repetitionLevelHistogram;
     private final long[] definitionLevelHistogram;
@@ -256,5 +256,39 @@ public class SizeStatistics {
    */
   public boolean isValid() {
     return valid;
+  }
+
+  /**
+   * Creates a no-op size statistics builder that collects no data.
+   * Used when size statistics collection is disabled.
+   */
+  private static class NoopBuilder extends Builder {
+    private NoopBuilder(PrimitiveType type, int maxRepetitionLevel, int maxDefinitionLevel) {
+      super(type, maxRepetitionLevel, maxDefinitionLevel);
+    }
+
+    @Override
+    public void add(int repetitionLevel, int definitionLevel) {
+      // Do nothing
+    }
+
+    @Override
+    public void add(int repetitionLevel, int definitionLevel, Binary value) {
+      // Do nothing
+    }
+
+    @Override
+    public SizeStatistics build() {
+      SizeStatistics stats = new SizeStatistics(type, 0L, Collections.emptyList(), Collections.emptyList());
+      stats.valid = false; // Mark as invalid since this is a noop builder
+      return stats;
+    }
+  }
+
+  /**
+   * Creates a builder that doesn't collect any statistics.
+   */
+  public static Builder noopBuilder(PrimitiveType type, int maxRepetitionLevel, int maxDefinitionLevel) {
+    return new NoopBuilder(type, maxRepetitionLevel, maxDefinitionLevel);
   }
 }

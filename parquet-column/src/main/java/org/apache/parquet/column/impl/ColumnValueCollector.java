@@ -37,6 +37,7 @@ class ColumnValueCollector {
 
   private final ColumnDescriptor path;
   private final boolean statisticsEnabled;
+  private final boolean sizeStatisticsEnabled;
   private BloomFilterWriter bloomFilterWriter;
   private BloomFilter bloomFilter;
   private Statistics<?> statistics;
@@ -45,6 +46,7 @@ class ColumnValueCollector {
   ColumnValueCollector(ColumnDescriptor path, BloomFilterWriter bloomFilterWriter, ParquetProperties props) {
     this.path = path;
     this.statisticsEnabled = props.getStatisticsEnabled(path);
+    this.sizeStatisticsEnabled = props.getSizeStatisticsEnabled(path);
     resetPageStatistics();
     initBloomFilter(bloomFilterWriter, props);
   }
@@ -53,8 +55,11 @@ class ColumnValueCollector {
     this.statistics = statisticsEnabled
         ? Statistics.createStats(path.getPrimitiveType())
         : Statistics.noopStats(path.getPrimitiveType());
-    this.sizeStatisticsBuilder = SizeStatistics.newBuilder(
-        path.getPrimitiveType(), path.getMaxRepetitionLevel(), path.getMaxDefinitionLevel());
+    this.sizeStatisticsBuilder = sizeStatisticsEnabled
+        ? SizeStatistics.newBuilder(
+            path.getPrimitiveType(), path.getMaxRepetitionLevel(), path.getMaxDefinitionLevel())
+        : SizeStatistics.noopBuilder(
+            path.getPrimitiveType(), path.getMaxRepetitionLevel(), path.getMaxDefinitionLevel());
   }
 
   void writeNull(int repetitionLevel, int definitionLevel) {
