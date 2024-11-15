@@ -1652,7 +1652,7 @@ public abstract class ByteBitPacking512VectorLE {
     private static final VectorSpecies<Integer> I512 = IntVector.SPECIES_512;
     private static final VectorMask<Byte> inp_mask = VectorMask.fromLong(B512, 0xffffffffffffffffL);
 
-    private int unpackCount = 16;
+    private int unpackCount = 32;
 
     public int getUnpackCount() {
       return unpackCount;
