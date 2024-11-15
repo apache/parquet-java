@@ -551,20 +551,19 @@ public class TestParquetWriter {
     File file = temp.newFile();
     temp.delete();
     Path path = new Path(file.getAbsolutePath());
-    ParquetWriter<Group> writer = ExampleParquetWriter.builder(path)
+    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(path)
         .withType(schema)
         .withSizeStatisticsEnabled(false)
-        .build();
-    writer.write(group);
-    writer.close();
+        .build()) {
+      writer.write(group);
+    }
 
-    ParquetFileReader reader = ParquetFileReader.open(HadoopInputFile.fromPath(path, new Configuration()));
-    ParquetMetadata footer = reader.getFooter();
-    reader.close();
-    // Verify size statistics are disabled globally
-    for (BlockMetaData block : footer.getBlocks()) {
-      for (ColumnChunkMetaData column : block.getColumns()) {
-        assertNull(column.getSizeStatistics());
+    try (ParquetFileReader reader = ParquetFileReader.open(HadoopInputFile.fromPath(path, new Configuration()))) {
+      // Verify size statistics are disabled globally
+      for (BlockMetaData block : reader.getFooter().getBlocks()) {
+        for (ColumnChunkMetaData column : block.getColumns()) {
+          assertNull(column.getSizeStatistics());
+        }
       }
     }
 
@@ -572,24 +571,23 @@ public class TestParquetWriter {
     file = temp.newFile();
     temp.delete();
     path = new Path(file.getAbsolutePath());
-    writer = ExampleParquetWriter.builder(path)
+    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(path)
         .withType(schema)
         .withSizeStatisticsEnabled(true) // enable globally
         .withSizeStatisticsEnabled("boolean_field", false) // disable for specific column
-        .build();
-    writer.write(group);
-    writer.close();
+        .build()) {
+      writer.write(group);
+    }
 
-    reader = ParquetFileReader.open(HadoopInputFile.fromPath(path, new Configuration()));
-    footer = reader.getFooter();
-    reader.close();
-    // Verify size statistics are enabled for all columns except boolean_field
-    for (BlockMetaData block : footer.getBlocks()) {
-      for (ColumnChunkMetaData column : block.getColumns()) {
-        if (column.getPath().toDotString().equals("boolean_field")) {
-          assertNull(column.getSizeStatistics());
-        } else {
-          assertTrue(column.getSizeStatistics().isValid());
+    try (ParquetFileReader reader = ParquetFileReader.open(HadoopInputFile.fromPath(path, new Configuration()))) {
+      // Verify size statistics are enabled for all columns except boolean_field
+      for (BlockMetaData block : reader.getFooter().getBlocks()) {
+        for (ColumnChunkMetaData column : block.getColumns()) {
+          if (column.getPath().toDotString().equals("boolean_field")) {
+            assertNull(column.getSizeStatistics());
+          } else {
+            assertTrue(column.getSizeStatistics().isValid());
+          }
         }
       }
     }
