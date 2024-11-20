@@ -62,7 +62,6 @@ body:
         - Avro
         - Pig
         - Protobuf
-        - Scala
         - Thrift
         - CLI
         - Benchmark

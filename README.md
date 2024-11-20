@@ -91,6 +91,7 @@ Parquet is a very active project, and new features are being added quickly. Here
 * Column stats
 * Delta encoding
 * Index pages
+* Scala DSL (deprecated)
 * Java Vector API support (experimental)
 
 ## Java Vector API support
