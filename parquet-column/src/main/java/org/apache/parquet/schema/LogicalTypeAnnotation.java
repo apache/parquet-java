@@ -56,6 +56,12 @@ public abstract class LogicalTypeAnnotation {
         return listType();
       }
     },
+    VARIANT {
+      @Override
+      protected LogicalTypeAnnotation fromString(List<String> params) {
+        return variantType();
+      }
+    },
     STRING {
       @Override
       protected LogicalTypeAnnotation fromString(List<String> params) {
@@ -267,6 +273,10 @@ public abstract class LogicalTypeAnnotation {
 
   public static ListLogicalTypeAnnotation listType() {
     return ListLogicalTypeAnnotation.INSTANCE;
+  }
+
+  public static VariantLogicalTypeAnnotation variantType() {
+    return VariantLogicalTypeAnnotation.INSTANCE;
   }
 
   public static EnumLogicalTypeAnnotation enumType() {
@@ -1128,6 +1138,28 @@ public abstract class LogicalTypeAnnotation {
     }
   }
 
+  public static class VariantLogicalTypeAnnotation extends LogicalTypeAnnotation {
+    private static final VariantLogicalTypeAnnotation INSTANCE = new VariantLogicalTypeAnnotation();
+
+    private VariantLogicalTypeAnnotation() {}
+
+    @Override
+    public OriginalType toOriginalType() {
+      // No OriginalType for Variant
+      return null;
+    }
+
+    @Override
+    public <T> Optional<T> accept(LogicalTypeAnnotationVisitor<T> logicalTypeAnnotationVisitor) {
+      return logicalTypeAnnotationVisitor.visit(this);
+    }
+
+    @Override
+    LogicalTypeToken getType() {
+      return LogicalTypeToken.VARIANT;
+    }
+  }
+
   /**
    * Implement this interface to visit a logical type annotation in the schema.
    * The default implementation for each logical type specific visitor method is empty.
@@ -1149,6 +1181,10 @@ public abstract class LogicalTypeAnnotation {
     }
 
     default Optional<T> visit(ListLogicalTypeAnnotation listLogicalType) {
+      return empty();
+    }
+
+    default Optional<T> visit(VariantLogicalTypeAnnotation variantLogicalType) {
       return empty();
     }
 
