@@ -585,14 +585,19 @@ public class ParquetFileReader implements Closeable {
     }
 
     // Read footer length and magic string - with a single seek
-    byte[] magic = new byte[MAGIC.length];
-    long fileMetadataLengthIndex = fileLen - magic.length - FOOTER_LENGTH_SIZE;
+    long fileMetadataLengthIndex = fileLen - MAGIC.length - FOOTER_LENGTH_SIZE;
     LOG.debug("reading footer index at {}", fileMetadataLengthIndex);
     f.seek(fileMetadataLengthIndex);
-    int fileMetadataLength = readIntLittleEndian(f);
-    f.readFully(magic);
+    byte[] magicAndLengthBytes = new byte[FOOTER_LENGTH_SIZE + MAGIC.length];
+    f.readFully(magicAndLengthBytes);
+    int fileMetadataLength = readIntLittleEndian(magicAndLengthBytes, 0);
 
     boolean encryptedFooterMode;
+    // using JDK >= 9: if (Arrays.equals(MAGIC, 0, MAGIC.length,
+    //    magicAndLengthBytes, FOOTER_LENGTH_SIZE, FOOTER_LENGTH_SIZE + MAGIC.length)) {
+    // using JDK <= 8: need extract sub array then compare
+    byte[] magic = new byte[MAGIC.length];
+    System.arraycopy(magicAndLengthBytes, FOOTER_LENGTH_SIZE, magic, 0, MAGIC.length);
     if (Arrays.equals(MAGIC, magic)) {
       encryptedFooterMode = false;
     } else if (Arrays.equals(EFMAGIC, magic)) {
