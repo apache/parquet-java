@@ -273,7 +273,7 @@
               </relocations>
               <transformers>
                 <!-- Needs to merge Hadoop's FileSystem plugin manifest -->
-                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer" />
+                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
               </transformers>
             </configuration>
           </execution>
