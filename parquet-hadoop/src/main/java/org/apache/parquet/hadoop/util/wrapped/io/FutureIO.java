@@ -71,6 +71,29 @@ public final class FutureIO {
   }
 
   /**
+   * Given a future, evaluate it.
+   * <p>
+   * Any exception generated in the future is
+   * extracted and rethrown.
+   * </p>
+   * @param future future to evaluate
+   * @param <T> type of the result.
+   * @return the result, if all went well.
+   * @throws InterruptedIOException future was interrupted
+   * @throws IOException if something went wrong
+   * @throws RuntimeException any nested RTE thrown
+   */
+  public static <T> T awaitFuture(final Future<T> future)
+      throws InterruptedIOException, IOException, RuntimeException {
+    try {
+      return future.get();
+    } catch (InterruptedException e) {
+      throw (InterruptedIOException) new InterruptedIOException(e.toString()).initCause(e);
+    } catch (ExecutionException e) {
+      throw unwrapInnerException(e);
+    }
+  }
+  /**
    * From the inner cause of an execution exception, extract the inner cause
    * to an IOException, raising Errors immediately.
    * <ol>
