@@ -10,7 +10,7 @@
 
   <groupId>org.apache.parquet</groupId>
   <artifactId>parquet</artifactId>
-  <version>1.15.0-SNAPSHOT</version>
+  <version>1.15.0</version>
   <packaging>pom</packaging>
 
   <name>Apache Parquet Java</name>
@@ -21,7 +21,7 @@
     <connection>scm:git:git@github.com:apache/parquet-mr.git</connection>
     <url>scm:git:git@github.com:apache/parquet-mr.git</url>
     <developerConnection>scm:git:git@github.com:apache/parquet-mr.git</developerConnection>
-    <tag>HEAD</tag>
+    <tag>apache-parquet-1.15.0-rc1</tag>
   </scm>
 
   <licenses>
