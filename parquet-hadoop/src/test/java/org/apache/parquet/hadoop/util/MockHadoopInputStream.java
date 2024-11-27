@@ -109,5 +109,4 @@ class MockHadoopInputStream extends ByteArrayInputStream implements Seekable, Po
       throw new EOFException("Seek before file start: " + pos);
     }
   }
-
 }
