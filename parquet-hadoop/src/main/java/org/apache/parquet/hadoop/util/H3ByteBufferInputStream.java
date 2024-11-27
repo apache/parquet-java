@@ -54,8 +54,19 @@ class H3ByteBufferInputStream extends H2SeekableInputStream {
    */
   @Override
   public void readFully(final ByteBuffer buf) throws EOFException, IOException {
-    // use ByteBufferPositionedReadable.readFully()
-    final FSDataInputStream stream = getStream();
+    performRead(getStream(), buf);
+  }
+
+  /**
+   * Read the buffer fully through use of {@code ByteBufferPositionedReadable.readFully()}
+   * at the current location.
+   *
+   * @param buf a byte buffer to fill with data from the stream
+   * @throws EOFException the buffer length is greater than the file length
+   * @throws IOException other IO problems.
+   */
+  // Visible for testing
+  static void performRead(final FSDataInputStream stream, final ByteBuffer buf) throws IOException {
     // remember the current position
     final long pos = stream.getPos();
     final int size = buf.remaining();
