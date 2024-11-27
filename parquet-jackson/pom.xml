@@ -117,6 +117,10 @@
                   <pattern>META-INF.versions.21.${jackson.package}</pattern>
                   <shadedPattern>META-INF.versions.21.${shade.prefix}.${jackson.package}</shadedPattern>
                 </relocation>
+                <relocation>
+                  <pattern>META-INF.versions.22.${jackson.package}</pattern>
+                  <shadedPattern>META-INF.versions.22.${shade.prefix}.${jackson.package}</shadedPattern>
+                </relocation>
               </relocations>
             </configuration>
           </execution>
