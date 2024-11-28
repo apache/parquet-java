@@ -20,6 +20,7 @@ package org.apache.parquet.hadoop.metadata;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import java.io.IOException;
 import java.io.StringReader;
 import java.io.StringWriter;
@@ -27,11 +28,12 @@ import java.util.List;
 
 /**
  * Metadata block stored in the footer of the file
- * contains file level (Codec, Schema, ...) and block level (location, columns, record count, ...) meta data
+ * contains file level (Codec, Schema, ...) and block level (location, columns, record count, ...) metadata
  */
 public class ParquetMetadata {
 
-  private static final ObjectMapper objectMapper = new ObjectMapper();
+  private static final ObjectMapper objectMapper =
+      new ObjectMapper().configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
 
   /**
    * @param parquetMetaData an instance of parquet metadata to convert
