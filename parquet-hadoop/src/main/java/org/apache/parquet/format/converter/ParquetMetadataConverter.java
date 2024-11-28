@@ -1591,7 +1591,9 @@ public class ParquetMetadataConverter {
 
     ParquetMetadata parquetMetadata =
         fromParquetMetadata(fileMetaData, fileDecryptor, encryptedFooter, rowGroupToRowIndexOffsetMap);
-    if (LOG.isDebugEnabled()) LOG.debug(ParquetMetadata.toPrettyJSON(parquetMetadata));
+    if (LOG.isDebugEnabled()) {
+      LOG.debug(ParquetMetadata.toPrettyJSON(parquetMetadata));
+    }
     return parquetMetadata;
   }
 
