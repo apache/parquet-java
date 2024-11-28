@@ -25,6 +25,7 @@ import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.values.ValuesWriter;
 import org.apache.parquet.column.values.bytestreamsplit.ByteStreamSplitValuesWriter;
+import org.apache.parquet.column.values.deltalengthbytearray.DeltaLengthByteArrayValuesWriter;
 import org.apache.parquet.column.values.plain.BooleanPlainValuesWriter;
 import org.apache.parquet.column.values.plain.FixedLenByteArrayPlainValuesWriter;
 import org.apache.parquet.column.values.plain.PlainValuesWriter;
@@ -93,10 +94,18 @@ public class DefaultV1ValuesWriterFactory implements ValuesWriterFactory {
   }
 
   private ValuesWriter getBinaryValuesWriter(ColumnDescriptor path) {
-    ValuesWriter fallbackWriter = new PlainValuesWriter(
-        parquetProperties.getInitialSlabSize(),
-        parquetProperties.getPageSizeThreshold(),
-        parquetProperties.getAllocator());
+    final ValuesWriter fallbackWriter;
+    if (parquetProperties.isDeltaLengthByteArrayForBinaryEnabled()) {
+      fallbackWriter = new DeltaLengthByteArrayValuesWriter(
+          parquetProperties.getInitialSlabSize(),
+          parquetProperties.getPageSizeThreshold(),
+          parquetProperties.getAllocator());
+    } else {
+      fallbackWriter = new PlainValuesWriter(
+          parquetProperties.getInitialSlabSize(),
+          parquetProperties.getPageSizeThreshold(),
+          parquetProperties.getAllocator());
+    }
     return DefaultValuesWriterFactory.dictWriterWithFallBack(
         path, parquetProperties, getEncodingForDictionaryPage(), getEncodingForDataPage(), fallbackWriter);
   }

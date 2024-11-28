@@ -19,7 +19,7 @@
 package org.apache.parquet.hadoop;
 
 import static org.apache.parquet.column.Encoding.DELTA_BYTE_ARRAY;
-import static org.apache.parquet.column.Encoding.PLAIN;
+import static org.apache.parquet.column.Encoding.DELTA_LENGTH_BYTE_ARRAY;
 import static org.apache.parquet.column.Encoding.PLAIN_DICTIONARY;
 import static org.apache.parquet.column.Encoding.RLE_DICTIONARY;
 import static org.apache.parquet.column.ParquetProperties.WriterVersion.PARQUET_1_0;
@@ -174,7 +174,7 @@ public class TestParquetWriter {
     SimpleGroupFactory f = new SimpleGroupFactory(schema);
     Map<String, Encoding> expected = new HashMap<String, Encoding>();
     expected.put("10-" + PARQUET_1_0, PLAIN_DICTIONARY);
-    expected.put("1000-" + PARQUET_1_0, PLAIN);
+    expected.put("1000-" + PARQUET_1_0, DELTA_LENGTH_BYTE_ARRAY);
     expected.put("10-" + PARQUET_2_0, RLE_DICTIONARY);
     expected.put("1000-" + PARQUET_2_0, DELTA_BYTE_ARRAY);
     for (int modulo : List.of(10, 1000)) {

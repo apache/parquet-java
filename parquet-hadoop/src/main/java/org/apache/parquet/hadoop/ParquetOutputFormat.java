@@ -157,6 +157,8 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   public static final String BLOOM_FILTER_MAX_BYTES = "parquet.bloom.filter.max.bytes";
   public static final String BLOOM_FILTER_FPP = "parquet.bloom.filter.fpp";
   public static final String ADAPTIVE_BLOOM_FILTER_ENABLED = "parquet.bloom.filter.adaptive.enabled";
+  public static final String ENABLE_DELTA_LENGTH_BYTE_ARRAY_FOR_BINARY =
+      "parquet.enable.delta-length-byte-array-for-binary";
   public static final String BLOOM_FILTER_CANDIDATES_NUMBER = "parquet.bloom.filter.candidates.number";
   public static final String BLOCK_ROW_COUNT_LIMIT = "parquet.block.row.count.limit";
   public static final String PAGE_ROW_COUNT_LIMIT = "parquet.page.row.count.limit";
@@ -286,6 +288,12 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   public static boolean getByteStreamSplitEnabled(Configuration configuration) {
     return configuration.getBoolean(
         ENABLE_BYTE_STREAM_SPLIT, ParquetProperties.DEFAULT_IS_BYTE_STREAM_SPLIT_ENABLED);
+  }
+
+  public static boolean getDeltaLengthByteArrayForBinaryEnabled(Configuration configuration) {
+    return configuration.getBoolean(
+        ENABLE_DELTA_LENGTH_BYTE_ARRAY_FOR_BINARY,
+        ParquetProperties.DEFAULT_DELTA_LENGTH_BYTE_ARRAY_FOR_BINARY);
   }
 
   public static int getMinRowCountForPageSizeCheck(Configuration configuration) {
@@ -522,6 +530,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
         .withDictionaryPageSize(getDictionaryPageSize(conf))
         .withDictionaryEncoding(getEnableDictionary(conf))
         .withByteStreamSplitEncoding(getByteStreamSplitEnabled(conf))
+        .withDeltaLengthByteArrayForBinary(getDeltaLengthByteArrayForBinaryEnabled(conf))
         .withWriterVersion(getWriterVersion(conf))
         .estimateRowCountForPageSizeCheck(getEstimatePageSizeCheck(conf))
         .withMinRowCountForPageSizeCheck(getMinRowCountForPageSizeCheck(conf))
