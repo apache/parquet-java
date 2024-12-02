@@ -110,7 +110,7 @@ public class HadoopInputFile implements InputFile {
     FSDataInputStream stream;
     try {
       // this method is async so that implementations may do async HEAD head
-      // requests. Not done in S3A/ABFS when a file status passed down (as is done here)
+      // requests, such as S3A/ABFS when a file status is passed down.
       final CompletableFuture<FSDataInputStream> future = fs.openFile(stat.getPath())
           .withFileStatus(stat)
           .opt(OPENFILE_READ_POLICY_KEY, PARQUET_READ_POLICY)
@@ -121,7 +121,14 @@ public class HadoopInputFile implements InputFile {
       // equal the path in the FileStatus; Hive virtual FS could create this condition.
       // As the path to open is derived from stat.getPath(), this condition seems
       // near-impossible to create -but is handled here for due diligence.
-      stream = fs.open(stat.getPath());
+      try {
+        stream = fs.open(stat.getPath());
+      } catch (IOException | RuntimeException ex) {
+        // failure on this attempt attaches the failure of the openFile() call
+        // so the stack trace is preserved.
+        ex.addSuppressed(e);
+        throw ex;
+      }
     }
 
     return HadoopStreams.wrap(stream);
