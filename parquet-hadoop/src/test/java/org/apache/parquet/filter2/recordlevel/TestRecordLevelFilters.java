@@ -441,6 +441,13 @@ public class TestRecordLevelFilters {
         19L,
         27L,
         28L);
+
+    assertPredicate(
+        and(
+            size(longColumn("phoneNumbers.phone.number"), Operators.Size.Operator.EQ, 0),
+            size(binaryColumn("accounts.key_value.key"), Operators.Size.Operator.GT, 1)),
+        17L,
+        19L);
   }
 
   @Test

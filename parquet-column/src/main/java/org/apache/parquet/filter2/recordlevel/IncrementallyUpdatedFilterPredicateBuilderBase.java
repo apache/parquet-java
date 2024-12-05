@@ -60,7 +60,7 @@ import org.apache.parquet.schema.Type;
  */
 public abstract class IncrementallyUpdatedFilterPredicateBuilderBase
     implements Visitor<IncrementallyUpdatedFilterPredicate> {
-  static final Operators.LongColumn SIZE_PSUEDOCOLUMN = FilterApi.longColumn("SIZE");
+  static final Operators.LongColumn SIZE_PSUEDOCOLUMN = FilterApi.longColumn("$SIZE");
 
   private boolean built = false;
   private final Map<ColumnPath, List<ValueInspector>> valueInspectorsByColumn = new HashMap<>();
