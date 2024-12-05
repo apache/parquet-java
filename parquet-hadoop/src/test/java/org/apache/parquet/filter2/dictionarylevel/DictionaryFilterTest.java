@@ -39,6 +39,7 @@ import static org.apache.parquet.filter2.predicate.FilterApi.not;
 import static org.apache.parquet.filter2.predicate.FilterApi.notEq;
 import static org.apache.parquet.filter2.predicate.FilterApi.notIn;
 import static org.apache.parquet.filter2.predicate.FilterApi.or;
+import static org.apache.parquet.filter2.predicate.FilterApi.size;
 import static org.apache.parquet.filter2.predicate.FilterApi.userDefined;
 import static org.apache.parquet.hadoop.metadata.CompressionCodecName.GZIP;
 import static org.apache.parquet.schema.MessageTypeParser.parseMessageType;
@@ -504,6 +505,31 @@ public class DictionaryFilterTest {
 
     assertFalse(
         "Should not drop: contains matching values", canDrop(gtEq(d, Double.MIN_VALUE), ccmd, dictionaries));
+  }
+
+  @Test
+  public void testSizeBinary() throws Exception {
+    BinaryColumn b = binaryColumn("repeated_binary_field");
+
+    // DictionaryFilter knows that `repeated_binary_field` column has at most 26 element values
+    assertTrue(canDrop(size(b, Operators.Size.Operator.GT, 26), ccmd, dictionaries));
+    assertTrue(canDrop(size(b, Operators.Size.Operator.GTE, 27), ccmd, dictionaries));
+    assertTrue(canDrop(size(b, Operators.Size.Operator.EQ, 27), ccmd, dictionaries));
+
+    assertFalse(canDrop(size(b, Operators.Size.Operator.LT, 27), ccmd, dictionaries));
+    assertFalse(canDrop(size(b, Operators.Size.Operator.LTE, 26), ccmd, dictionaries));
+    assertFalse(canDrop(size(b, Operators.Size.Operator.EQ, 26), ccmd, dictionaries));
+
+    // If column doesn't exist in meta, it should be treated as having size 0
+    BinaryColumn nonExistentColumn = binaryColumn("nonexistant_col");
+
+    assertTrue(canDrop(size(nonExistentColumn, Operators.Size.Operator.GT, 0), ccmd, dictionaries));
+    assertTrue(canDrop(size(nonExistentColumn, Operators.Size.Operator.GTE, 1), ccmd, dictionaries));
+    assertTrue(canDrop(size(nonExistentColumn, Operators.Size.Operator.EQ, 1), ccmd, dictionaries));
+
+    assertFalse(canDrop(size(nonExistentColumn, Operators.Size.Operator.LT, 1), ccmd, dictionaries));
+    assertFalse(canDrop(size(nonExistentColumn, Operators.Size.Operator.LTE, 0), ccmd, dictionaries));
+    assertFalse(canDrop(size(nonExistentColumn, Operators.Size.Operator.EQ, 0), ccmd, dictionaries));
   }
 
   @Test

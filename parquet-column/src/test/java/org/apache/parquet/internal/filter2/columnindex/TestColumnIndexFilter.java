@@ -35,6 +35,7 @@ import static org.apache.parquet.filter2.predicate.FilterApi.ltEq;
 import static org.apache.parquet.filter2.predicate.FilterApi.notEq;
 import static org.apache.parquet.filter2.predicate.FilterApi.notIn;
 import static org.apache.parquet.filter2.predicate.FilterApi.or;
+import static org.apache.parquet.filter2.predicate.FilterApi.size;
 import static org.apache.parquet.filter2.predicate.FilterApi.userDefined;
 import static org.apache.parquet.filter2.predicate.LogicalInverter.invert;
 import static org.apache.parquet.internal.column.columnindex.BoundaryOrder.ASCENDING;
@@ -62,6 +63,7 @@ import java.util.Set;
 import java.util.stream.LongStream;
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.filter2.compat.FilterCompat;
+import org.apache.parquet.filter2.predicate.Operators;
 import org.apache.parquet.filter2.predicate.Statistics;
 import org.apache.parquet.filter2.predicate.UserDefinedPredicate;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
@@ -970,6 +972,13 @@ public class TestColumnIndexFilter {
         11,
         12,
         13);
+    assertRows(
+        calculateRowRanges(
+            FilterCompat.get(size(intColumn("column6"), Operators.Size.Operator.GT, 5)),
+            STORE,
+            paths,
+            TOTAL_ROW_COUNT),
+        LongStream.range(0, 30).toArray());
   }
 
   @Test

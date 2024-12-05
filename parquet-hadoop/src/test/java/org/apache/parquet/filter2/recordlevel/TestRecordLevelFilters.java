@@ -33,7 +33,9 @@ import static org.apache.parquet.filter2.predicate.FilterApi.not;
 import static org.apache.parquet.filter2.predicate.FilterApi.notEq;
 import static org.apache.parquet.filter2.predicate.FilterApi.notIn;
 import static org.apache.parquet.filter2.predicate.FilterApi.or;
+import static org.apache.parquet.filter2.predicate.FilterApi.size;
 import static org.apache.parquet.filter2.predicate.FilterApi.userDefined;
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 
 import com.google.common.collect.ImmutableMap;
@@ -50,6 +52,7 @@ import java.util.stream.LongStream;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.filter2.predicate.FilterPredicate;
+import org.apache.parquet.filter2.predicate.Operators;
 import org.apache.parquet.filter2.predicate.Operators.BinaryColumn;
 import org.apache.parquet.filter2.predicate.Operators.DoubleColumn;
 import org.apache.parquet.filter2.predicate.Operators.LongColumn;
@@ -159,10 +162,9 @@ public class TestRecordLevelFilters {
   private static void assertPredicate(FilterPredicate predicate, long... expectedIds) throws IOException {
     List<Group> found = PhoneBookWriter.readFile(phonebookFile, FilterCompat.get(predicate));
 
-    assertEquals(expectedIds.length, found.size());
-    for (int i = 0; i < expectedIds.length; i++) {
-      assertEquals(expectedIds[i], found.get(i).getLong("id", 0));
-    }
+    assertArrayEquals(
+        Arrays.stream(expectedIds).boxed().toArray(),
+        found.stream().map(f -> f.getLong("id", 0)).toArray(Long[]::new));
   }
 
   @Test
@@ -408,6 +410,37 @@ public class TestRecordLevelFilters {
             contains(eq(binaryColumn("phoneNumbers.phone.kind"), Binary.fromString("home"))),
             not(contains(eq(longColumn("phoneNumbers.phone.number"), 2222222222L)))),
         30L);
+  }
+
+  @Test
+  public void testArraySizeRequiredColumn() throws Exception {
+    assertPredicate(size(longColumn("phoneNumbers.phone.number"), Operators.Size.Operator.EQ, 2), 27L);
+
+    assertPredicate(size(longColumn("phoneNumbers.phone.number"), Operators.Size.Operator.EQ, 4), 28L);
+
+    assertPredicate(size(longColumn("phoneNumbers.phone.number"), Operators.Size.Operator.GT, 1), 27L, 28L);
+
+    assertPredicate(size(longColumn("phoneNumbers.phone.number"), Operators.Size.Operator.GTE, 4), 28L);
+
+    assertPredicate(size(longColumn("phoneNumbers.phone.number"), Operators.Size.Operator.EQ, 0), 17L, 18L, 19L);
+
+    assertPredicate(
+        size(longColumn("phoneNumbers.phone.number"), Operators.Size.Operator.LT, 2),
+        LongStream.concat(LongStream.of(17L, 18L, 19L, 20L, 30L, 31L), LongStream.range(100, 200))
+            .toArray());
+
+    assertPredicate(
+        size(longColumn("phoneNumbers.phone.number"), Operators.Size.Operator.LTE, 2),
+        LongStream.concat(LongStream.of(17L, 18L, 19L, 20L, 27L, 30L, 31L), LongStream.range(100, 200))
+            .toArray());
+
+    assertPredicate(
+        not(size(longColumn("phoneNumbers.phone.number"), Operators.Size.Operator.EQ, 1)),
+        17L,
+        18L,
+        19L,
+        27L,
+        28L);
   }
 
   @Test
