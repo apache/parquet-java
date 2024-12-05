@@ -29,8 +29,10 @@ import static org.apache.parquet.filter2.predicate.FilterApi.ltEq;
 import static org.apache.parquet.filter2.predicate.FilterApi.not;
 import static org.apache.parquet.filter2.predicate.FilterApi.notEq;
 import static org.apache.parquet.filter2.predicate.FilterApi.or;
+import static org.apache.parquet.filter2.predicate.FilterApi.size;
 import static org.apache.parquet.filter2.predicate.FilterApi.userDefined;
 import static org.apache.parquet.filter2.predicate.LogicalInverter.invert;
+import static org.apache.parquet.filter2.predicate.Operators.Size.Operator;
 import static org.junit.Assert.assertEquals;
 
 import org.apache.parquet.filter2.predicate.Operators.DoubleColumn;
@@ -87,5 +89,13 @@ public class TestLogicalInverter {
   @Test
   public void testComplex() {
     assertEquals(complexInverse, invert(complex));
+
+    assertEquals(
+        or(size(intColumn, Operator.LT, 5), size(intColumn, Operator.GT, 5)),
+        invert(size(intColumn, Operator.EQ, 5)));
+    assertEquals(size(intColumn, Operator.GTE, 5), invert(size(intColumn, Operator.LT, 5)));
+    assertEquals(size(intColumn, Operator.GT, 5), invert(size(intColumn, Operator.LTE, 5)));
+    assertEquals(size(intColumn, Operator.LTE, 5), invert(size(intColumn, Operator.GT, 5)));
+    assertEquals(size(intColumn, Operator.LT, 5), invert(size(intColumn, Operator.GTE, 5)));
   }
 }

@@ -38,9 +38,11 @@ import org.apache.parquet.filter2.predicate.Operators.NotEq;
 import org.apache.parquet.filter2.predicate.Operators.NotIn;
 import org.apache.parquet.filter2.predicate.Operators.Or;
 import org.apache.parquet.filter2.predicate.Operators.SetColumnFilterPredicate;
+import org.apache.parquet.filter2.predicate.Operators.Size;
 import org.apache.parquet.filter2.predicate.Operators.UserDefined;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.schema.Type;
 
 /**
  * Inspects the column types found in the provided {@link FilterPredicate} and compares them
@@ -136,6 +138,12 @@ public class SchemaCompatibilityValidator implements FilterPredicate.Visitor<Voi
   }
 
   @Override
+  public Void visit(Size size) {
+    validateColumn(size.getColumn(), true, true);
+    return null;
+  }
+
+  @Override
   public Void visit(And and) {
     and.getLeft().accept(this);
     and.getRight().accept(this);
@@ -175,14 +183,15 @@ public class SchemaCompatibilityValidator implements FilterPredicate.Visitor<Voi
   }
 
   private <T extends Comparable<T>> void validateColumnFilterPredicate(Contains<T> pred) {
-    validateColumn(pred.getColumn(), true);
+    validateColumn(pred.getColumn(), true, false);
   }
 
   private <T extends Comparable<T>> void validateColumn(Column<T> column) {
-    validateColumn(column, false);
+    validateColumn(column, false, false);
   }
 
-  private <T extends Comparable<T>> void validateColumn(Column<T> column, boolean shouldBeRepeated) {
+  private <T extends Comparable<T>> void validateColumn(
+      Column<T> column, boolean isRepeatedColumn, boolean mustBeRequired) {
     ColumnPath path = column.getColumnPath();
 
     Class<?> alreadySeen = columnTypesEncountered.get(path);
@@ -204,13 +213,19 @@ public class SchemaCompatibilityValidator implements FilterPredicate.Visitor<Voi
       return;
     }
 
-    if (shouldBeRepeated && descriptor.getMaxRepetitionLevel() == 0) {
+    if (isRepeatedColumn && descriptor.getMaxRepetitionLevel() == 0) {
       throw new IllegalArgumentException(
           "FilterPredicate for column " + path.toDotString() + " requires a repeated "
               + "schema, but found max repetition level " + descriptor.getMaxRepetitionLevel());
-    } else if (!shouldBeRepeated && descriptor.getMaxRepetitionLevel() > 0) {
+    } else if (!isRepeatedColumn && descriptor.getMaxRepetitionLevel() > 0) {
       throw new IllegalArgumentException("FilterPredicates do not currently support repeated columns. "
           + "Column " + path.toDotString() + " is repeated.");
+    }
+
+    if (mustBeRequired && descriptor.getPrimitiveType().isRepetition(Type.Repetition.OPTIONAL)) {
+      throw new IllegalArgumentException("FilterPredicate for column " + path.toDotString()
+          + " requires schema to have repetition REQUIRED, but found "
+          + descriptor.getPrimitiveType().getRepetition() + ".");
     }
 
     ValidTypeMap.assertTypeValid(column, descriptor.getType());

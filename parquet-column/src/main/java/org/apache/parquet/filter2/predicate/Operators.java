@@ -505,6 +505,82 @@ public final class Operators {
     }
   }
 
+  public static final class Size implements FilterPredicate, Serializable {
+    public enum Operator {
+      EQ,
+      LT,
+      LTE,
+      GT,
+      GTE
+    }
+
+    private final Column<?> column;
+    private final Operator operator;
+    private final long value;
+
+    Size(Column<?> column, Operator operator, long value) {
+      this.column = column;
+      this.operator = operator;
+      if (value < 0) {
+        throw new IllegalArgumentException("Argument to size() operator cannot be negative: " + value);
+      }
+      this.value = value;
+    }
+
+    @Override
+    public <R> R accept(Visitor<R> visitor) {
+      return visitor.visit(this);
+    }
+
+    public long getValue() {
+      return value;
+    }
+
+    public Column<?> getColumn() {
+      return column;
+    }
+
+    public <R> R filter(
+        Function<Long, R> onEq,
+        Function<Long, R> onLt,
+        Function<Long, R> onLtEq,
+        Function<Long, R> onGt,
+        Function<Long, R> onGtEq) {
+      if (operator == Operator.EQ) {
+        return onEq.apply(value);
+      } else if (operator == Operator.LT) {
+        return onLt.apply(value);
+      } else if (operator == Operator.LTE) {
+        return onLtEq.apply(value);
+      } else if (operator == Operator.GT) {
+        return onGt.apply(value);
+      } else if (operator == Operator.GTE) {
+        return onGtEq.apply(value);
+      } else {
+        throw new UnsupportedOperationException("Operator " + operator + " cannot be used with size() filter");
+      }
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
+
+      return column.equals(((Size) o).column) && operator == ((Size) o).operator && value == ((Size) o).value;
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(column, operator, value);
+    }
+
+    @Override
+    public String toString() {
+      String name = Size.class.getSimpleName().toLowerCase(Locale.ENGLISH);
+      return name + "(" + operator.toString().toLowerCase() + " " + value + ")";
+    }
+  }
+
   public static final class NotIn<T extends Comparable<T>> extends SetColumnFilterPredicate<T> {
 
     NotIn(Column<T> column, Set<T> values) {
