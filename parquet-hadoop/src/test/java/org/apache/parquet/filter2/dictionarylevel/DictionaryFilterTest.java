@@ -511,14 +511,14 @@ public class DictionaryFilterTest {
   public void testSizeBinary() throws Exception {
     BinaryColumn b = binaryColumn("repeated_binary_field");
 
-    // DictionaryFilter knows that `repeated_binary_field` column has at most 26 element values
-    assertTrue(canDrop(size(b, Operators.Size.Operator.GT, 26), ccmd, dictionaries));
-    assertTrue(canDrop(size(b, Operators.Size.Operator.GTE, 27), ccmd, dictionaries));
-    assertTrue(canDrop(size(b, Operators.Size.Operator.EQ, 27), ccmd, dictionaries));
+    // DictionaryFilter knows that `repeated_binary_field` column has at least 26 element values
+    assertFalse(canDrop(size(b, Operators.Size.Operator.GT, 26), ccmd, dictionaries));
+    assertFalse(canDrop(size(b, Operators.Size.Operator.GTE, 27), ccmd, dictionaries));
+    assertFalse(canDrop(size(b, Operators.Size.Operator.EQ, 27), ccmd, dictionaries));
 
-    assertFalse(canDrop(size(b, Operators.Size.Operator.LT, 27), ccmd, dictionaries));
-    assertFalse(canDrop(size(b, Operators.Size.Operator.LTE, 26), ccmd, dictionaries));
-    assertFalse(canDrop(size(b, Operators.Size.Operator.EQ, 26), ccmd, dictionaries));
+    assertTrue(canDrop(size(b, Operators.Size.Operator.LT, 26), ccmd, dictionaries));
+    assertTrue(canDrop(size(b, Operators.Size.Operator.LTE, 25), ccmd, dictionaries));
+    assertTrue(canDrop(size(b, Operators.Size.Operator.EQ, 25), ccmd, dictionaries));
 
     // If column doesn't exist in meta, it should be treated as having size 0
     BinaryColumn nonExistentColumn = binaryColumn("nonexistant_col");
