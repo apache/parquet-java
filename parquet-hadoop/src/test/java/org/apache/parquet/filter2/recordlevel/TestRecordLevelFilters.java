@@ -63,6 +63,7 @@ import org.apache.parquet.filter2.recordlevel.PhoneBookWriter.PhoneNumber;
 import org.apache.parquet.filter2.recordlevel.PhoneBookWriter.User;
 import org.apache.parquet.io.api.Binary;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 
 public class TestRecordLevelFilters {
@@ -448,6 +449,12 @@ public class TestRecordLevelFilters {
             size(binaryColumn("accounts.key_value.key"), Operators.Size.Operator.GT, 1)),
         17L,
         19L);
+  }
+
+  @Ignore(value = "Not yet supported")
+  @Test
+  public void testArraySizeOptionalColumn() throws Exception {
+    assertPredicate(size(binaryColumn("phoneNumbers.phone.kind"), Operators.Size.Operator.EQ, 4), 28L);
   }
 
   @Test
