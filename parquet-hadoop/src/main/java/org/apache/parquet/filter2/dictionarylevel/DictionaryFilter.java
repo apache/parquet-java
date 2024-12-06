@@ -506,18 +506,19 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
     }
 
     try {
-      // We know the block has at most `dictSize` array element values
+      // We know the block has at least as many array elements as the dictionary sizes
       final Set<?> dict = expandDictionary(meta);
       if (dict == null) {
         return BLOCK_MIGHT_MATCH;
       }
-      int dictSize = dict.size();
+      int numDistinctValues = dict.size();
       final boolean blockCannotMatch = size.filter(
-          (eq) -> eq > dictSize,
-          (lt) -> false,
-          (lte) -> false,
-          (gt) -> gt >= dictSize,
-          (gte) -> gte > dictSize);
+          (eq) -> eq < numDistinctValues,
+          (lt) -> lt <= numDistinctValues,
+          (lte) -> lte < numDistinctValues,
+          (gt) -> false,
+          (gte) -> false);
+
       return blockCannotMatch ? BLOCK_CANNOT_MATCH : BLOCK_MIGHT_MATCH;
     } catch (IOException e) {
       LOG.warn("Failed to process dictionary for filter evaluation.", e);
