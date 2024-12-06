@@ -53,6 +53,7 @@ import org.apache.parquet.filter2.predicate.Operators.Not;
 import org.apache.parquet.filter2.predicate.Operators.NotEq;
 import org.apache.parquet.filter2.predicate.Operators.NotIn;
 import org.apache.parquet.filter2.predicate.Operators.Or;
+import org.apache.parquet.filter2.predicate.Operators.Size;
 import org.apache.parquet.filter2.predicate.Operators.UserDefined;
 import org.apache.parquet.filter2.predicate.UserDefinedPredicate;
 import org.apache.parquet.io.api.Binary;
@@ -376,6 +377,11 @@ public abstract class ColumnIndexBuilder {
           IndexIterator::intersection,
           IndexIterator::union,
           indices -> IndexIterator.all(getPageCount()));
+    }
+
+    @Override
+    public PrimitiveIterator.OfInt visit(Size size) {
+      return IndexIterator.all(getPageCount());
     }
 
     @Override

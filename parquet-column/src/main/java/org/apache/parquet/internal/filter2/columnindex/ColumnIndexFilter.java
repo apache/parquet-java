@@ -39,6 +39,7 @@ import org.apache.parquet.filter2.predicate.Operators.LtEq;
 import org.apache.parquet.filter2.predicate.Operators.Not;
 import org.apache.parquet.filter2.predicate.Operators.NotEq;
 import org.apache.parquet.filter2.predicate.Operators.Or;
+import org.apache.parquet.filter2.predicate.Operators.Size;
 import org.apache.parquet.filter2.predicate.Operators.UserDefined;
 import org.apache.parquet.filter2.predicate.UserDefinedPredicate;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
@@ -159,6 +160,11 @@ public class ColumnIndexFilter implements Visitor<RowRanges> {
   @Override
   public <T extends Comparable<T>> RowRanges visit(Contains<T> contains) {
     return contains.filter(this, RowRanges::intersection, RowRanges::union, ranges -> allRows());
+  }
+
+  @Override
+  public RowRanges visit(Size size) {
+    return applyPredicate(size.getColumn(), ci -> ci.visit(size), allRows());
   }
 
   @Override
