@@ -91,3 +91,57 @@ Merge hash: 485658a5
 Would you like to pick 485658a5 into another branch? (y/n):
 ```
 For now just say n as we have 1 branch
+
+# Release Verification
+
+The Apache Arrow Release Approval process follows the guidelines defined at the
+`Apache Software Foundation Release Approval <https://www.apache.org/legal/release-policy.html#release-approval>`_.
+
+For a release vote to pass, a minimum of three positive binding votes and more
+positive binding votes than negative binding votes MUST be cast.
+Releases may not be vetoed. Votes cast by PMC members are binding, however,
+non-binding votes are greatly encouraged and a sign of a healthy project.
+
+In order to cast a vote individuals are expected to follow the following steps.
+
+## Download source package, signature file, hash file and KEYS
+
+The Release candidate will be present at `https://dist.apache.org/repos/dist/dev/parquet/`.
+The RC folder will depend on the version and the release candidate id. See the following example files for
+Apache Parquet 1.15.0 RC 1:
+```
+wget https://dist.apache.org/repos/dist/dev/parquet/apache-parquet-1.15.0-rc1/apache-parquet-1.15.0.tar.gz
+wget https://dist.apache.org/repos/dist/dev/parquet/apache-parquet-1.15.0-rc1/apache-parquet-1.15.0.tar.gz.asc
+wget https://dist.apache.org/repos/dist/dev/parquet/apache-parquet-1.15.0-rc1/apache-parquet-1.15.0.tar.gz.sha512
+wget https://dist.apache.org/repos/dist/release/parquet/KEYS
+```
+
+## Verify signature and hash
+
+GnuPG is recommended, which can install by yum install gnupg or apt-get install gnupg.
+
+```
+gpg --import KEYS
+gpg --verify apache-parquet-1.15.0.tar.gz.asc apache-parquet-1.15.0.tar.gz
+sha512sum --check apache-parquet-1.15.0.tar.gz.sha512
+```
+
+## Verify license header
+
+Apache RAT is recommended to verify license header, which can dowload as following command.
+
+```
+wget https://archive.apache.org/dist/creadur/apache-rat-0.16.1/apache-rat-0.16.1-bin.tar.gz
+tar zxvf apache-rat-0.16.1-bin.tar.gz
+```
+
+You can check with following command. It will output a file list which don't include ASF license header, and these files used other licenses.
+Please substitute `$PARQUET_SRC_FOLDER` with your `parquet-java` source folder.
+
+```
+java  -jar apache-rat-0.16.1/apache-rat-0.16.1.jar -a -d apache-parquet-1.15.0.tar.gz -E $PARQUET_SRC_FOLDER/.rat-excludes.txt
+```
+
+## Verify building and tests
+
+Check the [building section](../README.md#building)

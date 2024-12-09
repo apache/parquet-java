@@ -1,0 +1,15 @@
+.gitignore
+.rat-excludes.txt
+PULL_REQUEST_TEMPLATE.md
+strings-2.parquet$
+nested_array.avsc$
+map_with_nulls.avsc$
+map.avsc$
+list_with_nulls.avsc$
+fixedToInt96.avsc$
+array.avsc$
+allFromParquetOldBehavior.avsc$
+allFromParquetNewBehavior.avsc$
+all.avsc$
+stringBehavior.avsc$
+logicalType.avsc$
