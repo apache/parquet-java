@@ -498,6 +498,7 @@
           <consoleOutput>true</consoleOutput>
           <excludes>
             <exclude>.github/PULL_REQUEST_TEMPLATE.md</exclude>
+            <exclude>.rat-excludes.txt</exclude>
             <exclude>**/*.parquet</exclude>
             <exclude>**/*.avro</exclude>
             <exclude>**/*.json</exclude>
