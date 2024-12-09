@@ -118,7 +118,10 @@ wget https://dist.apache.org/repos/dist/release/parquet/KEYS
 
 ## Verify signature and hash
 
-GnuPG is recommended, which can install by yum install gnupg or apt-get install gnupg.
+GnuPG is recommended, which can be install by:
+- `yum install gnupg`, `apt-get install gnupg` on Linux based environments.
+- `brew install gnupg` on macOS environments.
+
 
 ```
 gpg --import KEYS
@@ -128,15 +131,16 @@ sha512sum --check apache-parquet-1.15.0.tar.gz.sha512
 
 ## Verify license header
 
-Apache RAT is recommended to verify license header, which can dowload as following command.
+Apache RAT is recommended to verify the license header, which can be dowload with the following command.
 
 ```
 wget https://archive.apache.org/dist/creadur/apache-rat-0.16.1/apache-rat-0.16.1-bin.tar.gz
 tar zxvf apache-rat-0.16.1-bin.tar.gz
 ```
 
-You can check with following command. It will output a file list which don't include ASF license header, and these files used other licenses.
-Please substitute `$PARQUET_SRC_FOLDER` with your `parquet-java` source folder.
+You can check with the following command.
+It will output a file list which doesn't include ASF license headers.
+Please substitute `$PARQUET_SRC_FOLDER` with your `parquet-java` source folder from the following command.
 
 ```
 java  -jar apache-rat-0.16.1/apache-rat-0.16.1.jar -a -d apache-parquet-1.15.0.tar.gz -E $PARQUET_SRC_FOLDER/.rat-excludes.txt
