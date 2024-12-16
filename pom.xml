@@ -115,7 +115,7 @@
     <brotli-codec.version>0.1.1</brotli-codec.version>
     <mockito.version>1.10.19</mockito.version>
     <powermock.version>2.0.9</powermock.version>
-    <net.openhft.version>0.26ea0</net.openhft.version>
+    <net.openhft.version>0.27ea0</net.openhft.version>
     <exec-maven-plugin.version>3.5.0</exec-maven-plugin.version>
 
     <!-- parquet-cli dependencies -->
