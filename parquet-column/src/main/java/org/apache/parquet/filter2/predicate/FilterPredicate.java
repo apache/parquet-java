@@ -31,6 +31,7 @@ import org.apache.parquet.filter2.predicate.Operators.Not;
 import org.apache.parquet.filter2.predicate.Operators.NotEq;
 import org.apache.parquet.filter2.predicate.Operators.NotIn;
 import org.apache.parquet.filter2.predicate.Operators.Or;
+import org.apache.parquet.filter2.predicate.Operators.Size;
 import org.apache.parquet.filter2.predicate.Operators.UserDefined;
 
 /**
@@ -87,6 +88,10 @@ public interface FilterPredicate {
 
     default <T extends Comparable<T>> R visit(Contains<T> contains) {
       throw new UnsupportedOperationException("visit Contains is not supported.");
+    }
+
+    default R visit(Size size) {
+      throw new UnsupportedOperationException("visit Size is not supported.");
     }
 
     R visit(And and);

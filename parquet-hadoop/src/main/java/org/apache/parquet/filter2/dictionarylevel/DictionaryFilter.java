@@ -48,6 +48,7 @@ import org.apache.parquet.filter2.predicate.Operators.Not;
 import org.apache.parquet.filter2.predicate.Operators.NotEq;
 import org.apache.parquet.filter2.predicate.Operators.NotIn;
 import org.apache.parquet.filter2.predicate.Operators.Or;
+import org.apache.parquet.filter2.predicate.Operators.Size;
 import org.apache.parquet.filter2.predicate.Operators.UserDefined;
 import org.apache.parquet.filter2.predicate.UserDefinedPredicate;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
@@ -491,6 +492,39 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
   @Override
   public <T extends Comparable<T>> Boolean visit(Contains<T> contains) {
     return contains.filter(this, (l, r) -> l || r, (l, r) -> l && r, v -> BLOCK_MIGHT_MATCH);
+  }
+
+  @Override
+  public Boolean visit(Size size) {
+    ColumnChunkMetaData meta = getColumnChunk(size.getColumn().getColumnPath());
+
+    if (meta == null) {
+      // the column isn't in this file, so fail eq/gt/gte targeting size > 0
+      final boolean blockCannotMatch =
+          size.filter((eq) -> eq > 0, (lt) -> false, (lte) -> false, (gt) -> gt >= 0, (gte) -> gte > 0);
+      return blockCannotMatch ? BLOCK_CANNOT_MATCH : BLOCK_MIGHT_MATCH;
+    }
+
+    try {
+      // We know the block has at least as many array elements as the dictionary sizes
+      final Set<?> dict = expandDictionary(meta);
+      if (dict == null) {
+        return BLOCK_MIGHT_MATCH;
+      }
+      int numDistinctValues = dict.size();
+      final boolean blockCannotMatch = size.filter(
+          (eq) -> eq < numDistinctValues,
+          (lt) -> lt <= numDistinctValues,
+          (lte) -> lte < numDistinctValues,
+          (gt) -> false,
+          (gte) -> false);
+
+      return blockCannotMatch ? BLOCK_CANNOT_MATCH : BLOCK_MIGHT_MATCH;
+    } catch (IOException e) {
+      LOG.warn("Failed to process dictionary for filter evaluation.", e);
+    }
+
+    return BLOCK_MIGHT_MATCH;
   }
 
   @Override
