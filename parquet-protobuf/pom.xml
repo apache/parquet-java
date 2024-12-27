@@ -34,6 +34,7 @@
     <protobuf.version>3.25.5</protobuf.version>
     <common-protos.version>2.50.0</common-protos.version>  <!-- make sure it's compatible with protobuf.version -->
     <truth-proto-extension.version>1.4.3</truth-proto-extension.version>
+    <byte-buddy.version>1.14.18</byte-buddy.version>
   </properties>
 
 
@@ -41,6 +42,13 @@
   <url>https://parquet.apache.org</url>
 
   <dependencies>
+    <dependency>
+      <groupId>net.bytebuddy</groupId>
+      <artifactId>byte-buddy</artifactId>
+      <version>${byte-buddy.version}</version>
+      <scope>compile</scope>
+      <optional>true</optional>
+    </dependency>
     <dependency>
       <groupId>org.mockito</groupId>
       <artifactId>mockito-core</artifactId>
