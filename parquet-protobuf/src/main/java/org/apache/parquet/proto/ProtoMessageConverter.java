@@ -763,6 +763,13 @@ class ProtoMessageConverter extends GroupConverter {
       this.parent = parent;
     }
 
+
+    @Override
+    public void addInt(int value) {
+      parent.add(UInt32Value.of(value));
+    }
+
+    // This is left for backward compatibility with the old implementation which used int64 for uint32
     @Override
     public void addLong(long value) {
       parent.add(UInt32Value.of(Math.toIntExact(value)));
