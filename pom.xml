@@ -98,10 +98,6 @@
     <previous.version>1.15.0</previous.version>
     <thrift.executable>thrift</thrift.executable>
     <format.thrift.executable>${thrift.executable}</format.thrift.executable>
-    <scala.version>2.12.17</scala.version>
-    <!-- scala.binary.version is used for projects that fetch dependencies that are in scala -->
-    <scala.binary.version>2.12</scala.binary.version>
-    <scala.maven.test.skip>false</scala.maven.test.skip>
     <pig.version>0.16.0</pig.version>
     <pig.classifier>h2</pig.classifier>
     <thrift-maven-plugin.version>0.10.0</thrift-maven-plugin.version>
