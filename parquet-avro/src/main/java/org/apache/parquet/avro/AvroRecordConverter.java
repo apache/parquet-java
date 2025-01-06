@@ -196,10 +196,10 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
             }
           } catch (NoSuchFieldException e) {
             // Avro classes without logical types (denoted by the "conversions" field)
-          } finally {
-            for (Schema.Field field : schema.getFields()) {
-              addLogicalTypeConversion(model, field.schema(), seenSchemas);
-            }
+          }
+
+          for (Schema.Field field : schema.getFields()) {
+            addLogicalTypeConversion(model, field.schema(), seenSchemas);
           }
         }
         break;
