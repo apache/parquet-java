@@ -763,7 +763,6 @@ class ProtoMessageConverter extends GroupConverter {
       this.parent = parent;
     }
 
-
     @Override
     public void addInt(int value) {
       parent.add(UInt32Value.of(value));

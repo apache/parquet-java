@@ -1374,8 +1374,12 @@ public class ProtoWriteSupportTest {
 
   @Test
   public void testProto3WrappedMessageUnwrappedRoundTripUint32() throws Exception {
-    TestProto3.WrappedMessage msgMin = TestProto3.WrappedMessage.newBuilder().setWrappedUInt32(UInt32Value.of(Integer.MAX_VALUE)).build();
-    TestProto3.WrappedMessage msgMax = TestProto3.WrappedMessage.newBuilder().setWrappedUInt32(UInt32Value.of(Integer.MIN_VALUE)).build();
+    TestProto3.WrappedMessage msgMin = TestProto3.WrappedMessage.newBuilder()
+        .setWrappedUInt32(UInt32Value.of(Integer.MAX_VALUE))
+        .build();
+    TestProto3.WrappedMessage msgMax = TestProto3.WrappedMessage.newBuilder()
+        .setWrappedUInt32(UInt32Value.of(Integer.MIN_VALUE))
+        .build();
 
     Path tmpFilePath = TestUtils.someTemporaryFilePath();
     ParquetWriter<MessageOrBuilder> writer = ProtoParquetWriter.<MessageOrBuilder>builder(tmpFilePath)
@@ -1389,7 +1393,6 @@ public class ProtoWriteSupportTest {
 
     assertEquals(msgMin, gotBack.get(0));
     assertEquals(msgMax, gotBack.get(1));
-
   }
 
   @Test
