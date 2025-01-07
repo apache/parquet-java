@@ -301,8 +301,6 @@ public final class Variant {
     }
   }
 
-  // A simplified and more performant version of `sb.append(escapeJson(str))`. It is used when we
-  // know `str` doesn't contain any special character that needs escaping.
   /**
    * Appends a quoted string to a StringBuilder. It is used when we know `str` doesn't contain any
    * special characters that needs escaping. This is more performant than
