@@ -320,11 +320,7 @@ public final class Variant {
   private static final DateTimeFormatter TIMESTAMP_NTZ_FORMATTER = new DateTimeFormatterBuilder()
       .append(DateTimeFormatter.ISO_LOCAL_DATE)
       .appendLiteral('T')
-      .appendValue(HOUR_OF_DAY, 2)
-      .appendLiteral(':')
-      .appendValue(MINUTE_OF_HOUR, 2)
-      .appendLiteral(':')
-      .appendValue(SECOND_OF_MINUTE, 2)
+      .appendPattern("HH:mm:ss")
       .appendFraction(MICRO_OF_SECOND, 6, 6, true)
       .toFormatter(Locale.US);
 
@@ -339,13 +335,10 @@ public final class Variant {
       new DateTimeFormatterBuilder()
           .append(DateTimeFormatter.ISO_LOCAL_DATE)
           .appendLiteral('T')
-          .appendValue(HOUR_OF_DAY, 2)
-          .appendLiteral(':')
-          .appendValue(MINUTE_OF_HOUR, 2)
-          .appendLiteral(':')
-          .appendValue(SECOND_OF_MINUTE, 2)
+          .appendPattern("HH:mm:ss")
           .optionalStart()
           .appendFraction(MICRO_OF_SECOND, 0, 6, true)
+          .optionalEnd()
           .toFormatter(Locale.US);
 
   /** The format for a timestamp with time zone, truncating trailing microsecond zeros. */
@@ -354,8 +347,8 @@ public final class Variant {
       .appendOffset("+HH:MM", "+00:00")
       .toFormatter(Locale.US);
 
-  private static Instant microsToInstant(long timestamp) {
-    return Instant.EPOCH.plus(timestamp, ChronoUnit.MICROS);
+  private static Instant microsToInstant(long microsSinceEpoch) {
+    return Instant.EPOCH.plus(microsSinceEpoch, ChronoUnit.MICROS);
   }
 
   private static void toJsonImpl(byte[] value, byte[] metadata, int pos, StringBuilder sb,
