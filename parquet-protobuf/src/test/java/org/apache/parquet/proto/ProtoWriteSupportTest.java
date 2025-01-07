@@ -1343,7 +1343,7 @@ public class ProtoWriteSupportTest {
     msg.setWrappedInt64(Int64Value.of(1_000_000_000L * 4));
     msg.setWrappedUInt64(UInt64Value.of(1_000_000_000L * 9));
     msg.setWrappedInt32(Int32Value.of(1_000_000 * 3));
-    msg.setWrappedUInt32(UInt32Value.of(1_000_000 * 8));
+    msg.setWrappedUInt32(UInt32Value.of(Integer.MIN_VALUE));
     msg.setWrappedBool(BoolValue.of(true));
     msg.setWrappedString(StringValue.of("Good Will Hunting"));
     msg.setWrappedBytes(BytesValue.of(ByteString.copyFrom("someText", "UTF-8")));
@@ -1364,12 +1364,32 @@ public class ProtoWriteSupportTest {
     assertEquals(1_000_000_000L * 4, gotBackFirst.getWrappedInt64().getValue());
     assertEquals(1_000_000_000L * 9, gotBackFirst.getWrappedUInt64().getValue());
     assertEquals(1_000_000 * 3, gotBackFirst.getWrappedInt32().getValue());
-    assertEquals(1_000_000 * 8, gotBackFirst.getWrappedUInt32().getValue());
+    assertEquals(Integer.MIN_VALUE, gotBackFirst.getWrappedUInt32().getValue());
     assertEquals(BoolValue.of(true), gotBackFirst.getWrappedBool());
     assertEquals("Good Will Hunting", gotBackFirst.getWrappedString().getValue());
     assertEquals(
         ByteString.copyFrom("someText", "UTF-8"),
         gotBackFirst.getWrappedBytes().getValue());
+  }
+
+  @Test
+  public void testProto3WrappedMessageUnwrappedRoundTripUint32() throws Exception {
+    TestProto3.WrappedMessage msgMin = TestProto3.WrappedMessage.newBuilder().setWrappedUInt32(UInt32Value.of(Integer.MAX_VALUE)).build();
+    TestProto3.WrappedMessage msgMax = TestProto3.WrappedMessage.newBuilder().setWrappedUInt32(UInt32Value.of(Integer.MIN_VALUE)).build();
+
+    Path tmpFilePath = TestUtils.someTemporaryFilePath();
+    ParquetWriter<MessageOrBuilder> writer = ProtoParquetWriter.<MessageOrBuilder>builder(tmpFilePath)
+        .withMessage(TestProto3.WrappedMessage.class)
+        .config(ProtoWriteSupport.PB_UNWRAP_PROTO_WRAPPERS, "true")
+        .build();
+    writer.write(msgMin);
+    writer.write(msgMax);
+    writer.close();
+    List<TestProto3.WrappedMessage> gotBack = TestUtils.readMessages(tmpFilePath, TestProto3.WrappedMessage.class);
+
+    assertEquals(msgMin, gotBack.get(0));
+    assertEquals(msgMax, gotBack.get(1));
+
   }
 
   @Test
