@@ -452,7 +452,6 @@ public class TestVariantEncoding {
 
   @Test
   public void testTruncateTrailingZeroTimestamp() {
-    // timestamp
     for (String[] strings : Arrays.asList(
         // truncate all trailing zeros
         new String[] {"2024-12-16T10:23:45.000000-08:00", "2024-12-16T10:23:45-08:00"},
@@ -467,8 +466,10 @@ public class TestVariantEncoding {
       Assert.assertEquals(String.format("\"%s\"", strings[0]), v.toJson(ZoneId.of("-08:00")));
       Assert.assertEquals(String.format("\"%s\"", strings[1]), v.toJson(ZoneId.of("-08:00"), true));
     }
+  }
 
-    // timestampNTZ
+  @Test
+  public void testTruncateTrailingZeroTimestampNtz() {
     DateTimeFormatter dtf = DateTimeFormatter.ISO_DATE_TIME;
     for (String[] strings : Arrays.asList(
         // truncate all trailing zeros
