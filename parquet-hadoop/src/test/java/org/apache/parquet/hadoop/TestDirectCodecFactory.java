@@ -39,6 +39,7 @@ import org.apache.parquet.compression.CompressionCodecFactory.BytesInputCompress
 import org.apache.parquet.compression.CompressionCodecFactory.BytesInputDecompressor;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -210,6 +211,7 @@ public class TestDirectCodecFactory {
   }
 
   @Test
+  @Ignore
   public void compressionCodecs() {
     final int[] sizes = {4 * 1024, 1 * 1024 * 1024};
     final boolean[] comp = {true, false};

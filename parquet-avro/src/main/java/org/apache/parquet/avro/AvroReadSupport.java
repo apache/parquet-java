@@ -156,15 +156,15 @@ public class AvroReadSupport<T> extends ReadSupport<T> {
     GenericData model = getDataModel(configuration, avroSchema);
     String compatEnabled = metadata.get(AvroReadSupport.AVRO_COMPATIBILITY);
     if (Boolean.parseBoolean(compatEnabled)) {
-      return newCompatMaterializer(parquetSchema, avroSchema, model);
+      return newCompatMaterializer(parquetSchema, avroSchema, model, configuration);
     }
-    return new AvroRecordMaterializer<T>(parquetSchema, avroSchema, model);
+    return new AvroRecordMaterializer<T>(parquetSchema, avroSchema, model, configuration);
   }
 
   @SuppressWarnings("unchecked")
   private static <T> RecordMaterializer<T> newCompatMaterializer(
-      MessageType parquetSchema, Schema avroSchema, GenericData model) {
-    return (RecordMaterializer<T>) new AvroCompatRecordMaterializer(parquetSchema, avroSchema, model);
+      MessageType parquetSchema, Schema avroSchema, GenericData model, ParquetConfiguration conf) {
+    return (RecordMaterializer<T>) new AvroCompatRecordMaterializer(parquetSchema, avroSchema, model, conf);
   }
 
   private GenericData getDataModel(ParquetConfiguration conf, Schema schema) {

@@ -20,6 +20,7 @@ package org.apache.parquet.avro;
 
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
+import org.apache.parquet.conf.ParquetConfiguration;
 import org.apache.parquet.io.api.GroupConverter;
 import org.apache.parquet.io.api.RecordMaterializer;
 import org.apache.parquet.schema.MessageType;
@@ -28,8 +29,9 @@ class AvroRecordMaterializer<T> extends RecordMaterializer<T> {
 
   private AvroRecordConverter<T> root;
 
-  public AvroRecordMaterializer(MessageType requestedSchema, Schema avroSchema, GenericData baseModel) {
-    this.root = new AvroRecordConverter<T>(requestedSchema, avroSchema, baseModel);
+  public AvroRecordMaterializer(
+      MessageType requestedSchema, Schema avroSchema, GenericData baseModel, ParquetConfiguration configuration) {
+    this.root = new AvroRecordConverter<T>(requestedSchema, avroSchema, baseModel, configuration);
   }
 
   @Override
