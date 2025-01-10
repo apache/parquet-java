@@ -65,7 +65,6 @@ import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.util.ContextUtil;
 import org.apache.parquet.schema.MessageTypeParser;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -74,7 +73,6 @@ import org.slf4j.LoggerFactory;
  * DeprecatedParquetInputFormat is used by cascading. It initializes the recordReader using an initialize method with
  * different parameters than ParquetInputFormat
  */
-@Ignore
 public class DeprecatedInputFormatTest {
 
   private static final Logger LOG = LoggerFactory.getLogger(DeprecatedInputFormatTest.class);
