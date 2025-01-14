@@ -42,6 +42,10 @@ import com.google.protobuf.util.Timestamps;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.EnumSet;
 import java.util.List;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -52,14 +56,45 @@ import org.apache.parquet.proto.test.TestProto3;
 import org.apache.parquet.proto.test.TestProtobuf;
 import org.apache.parquet.proto.test.Trees;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 import org.mockito.InOrder;
 import org.mockito.Mockito;
 
+@RunWith(Parameterized.class)
 public class ProtoWriteSupportTest {
+
+  @Parameterized.Parameters(name = "codegenMode: {0}")
+  public static Collection<Object[]> data() {
+    List<Object[]> data = new ArrayList<>();
+
+    List<ProtoWriteSupport.CodegenMode> codegenModes =
+        new ArrayList<>(Arrays.asList(ProtoWriteSupport.CodegenMode.values()));
+    codegenModes.add(null);
+
+    for (ProtoWriteSupport.CodegenMode codegenMode : codegenModes) {
+      data.add(new Object[] {codegenMode});
+    }
+
+    return data;
+  }
+
+  private final ProtoWriteSupport.CodegenMode codegenMode;
+
+  public ProtoWriteSupportTest(ProtoWriteSupport.CodegenMode codegenMode) {
+    this.codegenMode = codegenMode;
+  }
 
   private <T extends Message> ProtoWriteSupport<T> createReadConsumerInstance(
       Class<T> cls, RecordConsumer readConsumerMock) {
-    return createReadConsumerInstance(cls, readConsumerMock, new Configuration());
+    return createReadConsumerInstance(cls, readConsumerMock, updateConfiguration(new Configuration()));
+  }
+
+  private Configuration updateConfiguration(Configuration configuration) {
+    if (codegenMode != null) {
+      ProtoWriteSupport.setCodegenMode(configuration, codegenMode);
+    }
+    return configuration;
   }
 
   private <T extends Message> ProtoWriteSupport<T> createReadConsumerInstance(
@@ -126,7 +161,19 @@ public class ProtoWriteSupportTest {
     Descriptors.Descriptor descriptor = TestProto3.InnerMessage.getDescriptor();
 
     ProtoWriteSupport instance = new ProtoWriteSupport(descriptor);
-    instance.init(new Configuration());
+
+    Configuration configuration = updateConfiguration(new Configuration());
+
+    ProtoWriteSupport.CodegenMode codegenModeOrDefault = ProtoWriteSupport.CodegenMode.orDefault(codegenMode);
+    EnumSet<ProtoWriteSupport.CodegenMode> failingModes = EnumSet.of(ProtoWriteSupport.CodegenMode.REQUIRED_ALL);
+
+    try {
+      instance.init(configuration);
+    } catch (UnsupportedOperationException e) {
+      assertTrue("codegenMode: " + codegenMode, failingModes.contains(codegenModeOrDefault));
+      return;
+    }
+    assertFalse("codegenMode: " + codegenMode, failingModes.contains(codegenModeOrDefault));
     instance.prepareForWrite(readConsumerMock);
 
     TestProto3.InnerMessage.Builder msg = TestProto3.InnerMessage.newBuilder();
@@ -219,7 +266,7 @@ public class ProtoWriteSupportTest {
   @Test
   public void testRepeatedIntMessageEmptySpecsCompliant() throws Exception {
     RecordConsumer readConsumerMock = Mockito.mock(RecordConsumer.class);
-    Configuration conf = new Configuration();
+    Configuration conf = updateConfiguration(new Configuration());
     ProtoWriteSupport.setWriteSpecsCompliant(conf, true);
     ProtoWriteSupport<TestProtobuf.RepeatedIntMessage> instance =
         createReadConsumerInstance(TestProtobuf.RepeatedIntMessage.class, readConsumerMock, conf);
@@ -255,7 +302,7 @@ public class ProtoWriteSupportTest {
   @Test
   public void testProto3RepeatedIntMessageSpecsCompliant() throws Exception {
     RecordConsumer readConsumerMock = Mockito.mock(RecordConsumer.class);
-    Configuration conf = new Configuration();
+    Configuration conf = updateConfiguration(new Configuration());
     ProtoWriteSupport.setWriteSpecsCompliant(conf, true);
     ProtoWriteSupport<TestProto3.RepeatedIntMessage> instance =
         createReadConsumerInstance(TestProto3.RepeatedIntMessage.class, readConsumerMock, conf);
@@ -318,7 +365,7 @@ public class ProtoWriteSupportTest {
   @Test
   public void testProto3RepeatedIntMessageEmptySpecsCompliant() throws Exception {
     RecordConsumer readConsumerMock = Mockito.mock(RecordConsumer.class);
-    Configuration conf = new Configuration();
+    Configuration conf = updateConfiguration(new Configuration());
     ProtoWriteSupport.setWriteSpecsCompliant(conf, true);
     ProtoWriteSupport<TestProto3.RepeatedIntMessage> instance =
         createReadConsumerInstance(TestProto3.RepeatedIntMessage.class, readConsumerMock, conf);
@@ -354,7 +401,7 @@ public class ProtoWriteSupportTest {
   @Test
   public void testMapIntMessageSpecsCompliant() throws Exception {
     RecordConsumer readConsumerMock = Mockito.mock(RecordConsumer.class);
-    Configuration conf = new Configuration();
+    Configuration conf = updateConfiguration(new Configuration());
     ProtoWriteSupport.setWriteSpecsCompliant(conf, true);
     ProtoWriteSupport<TestProtobuf.MapIntMessage> instance =
         createReadConsumerInstance(TestProtobuf.MapIntMessage.class, readConsumerMock, conf);
@@ -438,7 +485,7 @@ public class ProtoWriteSupportTest {
   @Test
   public void testMapIntMessageEmptySpecsCompliant() throws Exception {
     RecordConsumer readConsumerMock = Mockito.mock(RecordConsumer.class);
-    Configuration conf = new Configuration();
+    Configuration conf = updateConfiguration(new Configuration());
     ProtoWriteSupport.setWriteSpecsCompliant(conf, true);
     ProtoWriteSupport<TestProtobuf.MapIntMessage> instance =
         createReadConsumerInstance(TestProtobuf.MapIntMessage.class, readConsumerMock, conf);
@@ -472,7 +519,7 @@ public class ProtoWriteSupportTest {
   @Test
   public void testProto3MapIntMessageSpecsCompliant() throws Exception {
     RecordConsumer readConsumerMock = Mockito.mock(RecordConsumer.class);
-    Configuration conf = new Configuration();
+    Configuration conf = updateConfiguration(new Configuration());
     ProtoWriteSupport.setWriteSpecsCompliant(conf, true);
     ProtoWriteSupport<TestProto3.MapIntMessage> instance =
         createReadConsumerInstance(TestProto3.MapIntMessage.class, readConsumerMock, conf);
@@ -556,7 +603,7 @@ public class ProtoWriteSupportTest {
   @Test
   public void testProto3MapIntMessageEmptySpecsCompliant() throws Exception {
     RecordConsumer readConsumerMock = Mockito.mock(RecordConsumer.class);
-    Configuration conf = new Configuration();
+    Configuration conf = updateConfiguration(new Configuration());
     ProtoWriteSupport.setWriteSpecsCompliant(conf, true);
     ProtoWriteSupport<TestProto3.MapIntMessage> instance =
         createReadConsumerInstance(TestProto3.MapIntMessage.class, readConsumerMock, conf);
@@ -620,7 +667,7 @@ public class ProtoWriteSupportTest {
   @Test
   public void testRepeatedInnerMessageSpecsCompliantMessage_message() throws Exception {
     RecordConsumer readConsumerMock = Mockito.mock(RecordConsumer.class);
-    Configuration conf = new Configuration();
+    Configuration conf = updateConfiguration(new Configuration());
     ProtoWriteSupport.setWriteSpecsCompliant(conf, true);
     ProtoWriteSupport<TestProtobuf.TopMessage> instance =
         createReadConsumerInstance(TestProtobuf.TopMessage.class, readConsumerMock, conf);
@@ -694,7 +741,7 @@ public class ProtoWriteSupportTest {
   @Test
   public void testProto3RepeatedInnerMessageSpecsCompliantMessage_message() throws Exception {
     RecordConsumer readConsumerMock = Mockito.mock(RecordConsumer.class);
-    Configuration conf = new Configuration();
+    Configuration conf = updateConfiguration(new Configuration());
     ProtoWriteSupport.setWriteSpecsCompliant(conf, true);
     ProtoWriteSupport<TestProto3.TopMessage> instance =
         createReadConsumerInstance(TestProto3.TopMessage.class, readConsumerMock, conf);
@@ -737,7 +784,7 @@ public class ProtoWriteSupportTest {
   @Test
   public void testRepeatedInnerMessageSpecsCompliantMessage_scalar() throws Exception {
     RecordConsumer readConsumerMock = Mockito.mock(RecordConsumer.class);
-    Configuration conf = new Configuration();
+    Configuration conf = updateConfiguration(new Configuration());
     ProtoWriteSupport.setWriteSpecsCompliant(conf, true);
     ProtoWriteSupport<TestProtobuf.TopMessage> instance =
         createReadConsumerInstance(TestProtobuf.TopMessage.class, readConsumerMock, conf);
@@ -871,7 +918,7 @@ public class ProtoWriteSupportTest {
   @Test
   public void testProto3RepeatedInnerMessageSpecsCompliantMessage_scalar() throws Exception {
     RecordConsumer readConsumerMock = Mockito.mock(RecordConsumer.class);
-    Configuration conf = new Configuration();
+    Configuration conf = updateConfiguration(new Configuration());
     ProtoWriteSupport.setWriteSpecsCompliant(conf, true);
     ProtoWriteSupport<TestProto3.TopMessage> instance =
         createReadConsumerInstance(TestProto3.TopMessage.class, readConsumerMock, conf);
@@ -990,7 +1037,7 @@ public class ProtoWriteSupportTest {
     Mockito.verifyNoMoreInteractions(readConsumerMock);
   }
 
-  @Test(expected = UnsupportedOperationException.class)
+  @Test
   public void testMessageWithExtensions() throws Exception {
     RecordConsumer readConsumerMock = Mockito.mock(RecordConsumer.class);
     ProtoWriteSupport<TestProtobuf.Vehicle> instance =
@@ -1002,7 +1049,16 @@ public class ProtoWriteSupportTest {
     // will cause an exception.
     msg.setExtension(TestProtobuf.Airplane.wingSpan, 50);
 
-    instance.write(msg.build());
+    ProtoWriteSupport.CodegenMode codegenModeOrDefault = ProtoWriteSupport.CodegenMode.orDefault(codegenMode);
+    EnumSet<ProtoWriteSupport.CodegenMode> failingModes =
+        EnumSet.of(ProtoWriteSupport.CodegenMode.OFF, ProtoWriteSupport.CodegenMode.SUPPORT_COMPATIBLE);
+    try {
+      instance.write(msg.build());
+    } catch (UnsupportedOperationException e) {
+      assertTrue("codegenMode: " + codegenMode, failingModes.contains(codegenModeOrDefault));
+      return;
+    }
+    assertFalse("codegenMode: " + codegenMode, failingModes.contains(codegenModeOrDefault));
   }
 
   @Test
@@ -1066,7 +1122,7 @@ public class ProtoWriteSupportTest {
   @Test
   public void testMessageRecursion() {
     RecordConsumer readConsumerMock = Mockito.mock(RecordConsumer.class);
-    Configuration conf = new Configuration();
+    Configuration conf = updateConfiguration(new Configuration());
     ProtoSchemaConverter.setMaxRecursion(conf, 1);
     ProtoWriteSupport<Trees.BinaryTree> spyWriter =
         createReadConsumerInstance(Trees.BinaryTree.class, readConsumerMock, conf);
@@ -1120,7 +1176,7 @@ public class ProtoWriteSupportTest {
   @Test
   public void testRepeatedRecursion() {
     RecordConsumer readConsumerMock = Mockito.mock(RecordConsumer.class);
-    Configuration conf = new Configuration();
+    Configuration conf = updateConfiguration(new Configuration());
     ProtoSchemaConverter.setMaxRecursion(conf, 1);
     ProtoWriteSupport<Trees.WideTree> spyWriter =
         createReadConsumerInstance(Trees.WideTree.class, readConsumerMock, conf);
@@ -1175,7 +1231,7 @@ public class ProtoWriteSupportTest {
   @Test
   public void testMapRecursion() {
     RecordConsumer readConsumerMock = Mockito.mock(RecordConsumer.class);
-    Configuration conf = new Configuration();
+    Configuration conf = updateConfiguration(new Configuration());
     ProtoSchemaConverter.setMaxRecursion(conf, 1);
     ProtoWriteSupport<Value> spyWriter = createReadConsumerInstance(Value.class, readConsumerMock, conf);
 
@@ -1238,7 +1294,7 @@ public class ProtoWriteSupportTest {
     LocalTime time = LocalTime.of(15, 4, 3, 748_000_000);
 
     RecordConsumer readConsumerMock = Mockito.mock(RecordConsumer.class);
-    Configuration conf = new Configuration();
+    Configuration conf = updateConfiguration(new Configuration());
     ProtoWriteSupport.setUnwrapProtoWrappers(conf, true);
     ProtoWriteSupport<TestProto3.DateTimeMessage> instance =
         createReadConsumerInstance(TestProto3.DateTimeMessage.class, readConsumerMock, conf);
@@ -1315,7 +1371,7 @@ public class ProtoWriteSupportTest {
   @Test
   public void testProto3WrappedMessageUnwrapped() throws Exception {
     RecordConsumer readConsumerMock = Mockito.mock(RecordConsumer.class);
-    Configuration conf = new Configuration();
+    Configuration conf = updateConfiguration(new Configuration());
     ProtoWriteSupport.setUnwrapProtoWrappers(conf, true);
     ProtoWriteSupport<TestProto3.WrappedMessage> instance =
         createReadConsumerInstance(TestProto3.WrappedMessage.class, readConsumerMock, conf);

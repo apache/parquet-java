@@ -21,9 +21,15 @@ package org.apache.parquet.proto;
 import static org.apache.parquet.proto.TestUtils.readMessages;
 import static org.apache.parquet.proto.TestUtils.someTemporaryFilePath;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import com.google.protobuf.Descriptors;
 import com.google.protobuf.DynamicMessage;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.EnumSet;
 import java.util.List;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -31,8 +37,33 @@ import org.apache.parquet.hadoop.ParquetFileWriter;
 import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.proto.test.TestProto3;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 
+@RunWith(Parameterized.class)
 public class ProtoParquetWriterTest {
+
+  @Parameterized.Parameters(name = "codegenMode: {0}")
+  public static Collection<Object[]> data() {
+    List<Object[]> data = new ArrayList<>();
+
+    List<ProtoWriteSupport.CodegenMode> codegenModes =
+        new ArrayList<>(Arrays.asList(ProtoWriteSupport.CodegenMode.values()));
+    codegenModes.add(null);
+
+    for (ProtoWriteSupport.CodegenMode codegenMode : codegenModes) {
+      data.add(new Object[] {codegenMode});
+    }
+
+    return data;
+  }
+
+  private final ProtoWriteSupport.CodegenMode codegenMode;
+
+  public ProtoParquetWriterTest(ProtoWriteSupport.CodegenMode codegenMode) {
+    this.codegenMode = codegenMode;
+  }
+
   @Test
   public void testProtoParquetWriterWithDynamicMessage() throws Exception {
     Path file = someTemporaryFilePath();
@@ -41,12 +72,23 @@ public class ProtoParquetWriterTest {
     msg.setOne("oneValue");
     DynamicMessage dynamicMessage = DynamicMessage.newBuilder(msg.build()).build();
 
-    Configuration conf = new Configuration();
-    ParquetWriter<DynamicMessage> writer = ProtoParquetWriter.<DynamicMessage>builder(file)
-        .withDescriptor(descriptor)
-        .withConf(conf)
-        .withWriteMode(ParquetFileWriter.Mode.OVERWRITE)
-        .build();
+    Configuration conf = updateConfiguration(new Configuration());
+
+    ProtoWriteSupport.CodegenMode codegenModeOrDefault = ProtoWriteSupport.CodegenMode.orDefault(codegenMode);
+    EnumSet<ProtoWriteSupport.CodegenMode> failingModes = EnumSet.of(ProtoWriteSupport.CodegenMode.REQUIRED_ALL);
+
+    ParquetWriter<DynamicMessage> writer;
+    try {
+      writer = ProtoParquetWriter.<DynamicMessage>builder(file)
+          .withDescriptor(descriptor)
+          .withConf(conf)
+          .withWriteMode(ParquetFileWriter.Mode.OVERWRITE)
+          .build();
+    } catch (UnsupportedOperationException e) {
+      assertTrue("codegenMode: " + codegenMode, failingModes.contains(codegenModeOrDefault));
+      return;
+    }
+    assertFalse("codegenMode: " + codegenMode, failingModes.contains(codegenModeOrDefault));
     writer.write(dynamicMessage);
     writer.close();
 
@@ -57,5 +99,12 @@ public class ProtoParquetWriterTest {
     assertEquals(getFirst.getOne(), "oneValue");
     assertEquals(getFirst.getTwo(), "");
     assertEquals(getFirst.getThree(), "");
+  }
+
+  private Configuration updateConfiguration(Configuration configuration) {
+    if (codegenMode != null) {
+      ProtoWriteSupport.setCodegenMode(configuration, codegenMode);
+    }
+    return configuration;
   }
 }

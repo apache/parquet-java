@@ -83,8 +83,11 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
 
   public static final String PB_UNWRAP_PROTO_WRAPPERS = "parquet.proto.unwrapProtoWrappers";
 
+  public static final String PB_CODEGEN = "parquet.proto.codegen";
+
   private boolean writeSpecsCompliant = false;
   private boolean unwrapProtoWrappers = false;
+  private CodegenMode codegenMode = CodegenMode.DEFAULT;
   private RecordConsumer recordConsumer;
   private Class<? extends Message> protoMessage;
   private Descriptor descriptor;
@@ -125,6 +128,104 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
 
   public static void setUnwrapProtoWrappers(Configuration configuration, boolean unwrapProtoWrappers) {
     configuration.setBoolean(PB_UNWRAP_PROTO_WRAPPERS, unwrapProtoWrappers);
+  }
+
+  public static void setCodegenMode(Configuration configuration, CodegenMode codegenMode) {
+    configuration.setEnum(PB_CODEGEN, codegenMode);
+  }
+
+  /**
+   * OFF - avoid any code generation
+   * SUPPORT - attempt to use code generation where available
+   * REQUIRED - must use code generation and fail for codegen errors (bugs)
+   */
+  public enum CodegenMode {
+    OFF {
+      @Override
+      public boolean ignoreCodeGenException() {
+        throw new UnsupportedOperationException();
+      }
+
+      @Override
+      public boolean protobufReflectionForExtensions() {
+        throw new UnsupportedOperationException();
+      }
+
+      @Override
+      public boolean tryCodeGen(Class<? extends Message> protoClass) {
+        return false;
+      }
+    },
+
+    // use Protobuf reflection for Extendable protos in order to throw UnsupportedOperationException if there is an
+    // extension field set.
+    SUPPORT_COMPATIBLE {
+      @Override
+      public boolean ignoreCodeGenException() {
+        return true;
+      }
+
+      @Override
+      public boolean protobufReflectionForExtensions() {
+        return true;
+      }
+
+      @Override
+      public boolean tryCodeGen(Class<? extends Message> protoClass) {
+        return ByteBuddyCodeGen.isGeneratedMessage(protoClass) && ByteBuddyCodeGen.isByteBuddyAvailable(false);
+      }
+    },
+
+    // include code generation for Extendable protos, though without writing extension fields and without reporting
+    // errors.
+    SUPPORT_ALL {
+      @Override
+      public boolean ignoreCodeGenException() {
+        return SUPPORT_COMPATIBLE.ignoreCodeGenException();
+      }
+
+      @Override
+      public boolean protobufReflectionForExtensions() {
+        return false;
+      }
+
+      @Override
+      public boolean tryCodeGen(Class<? extends Message> protoClass) {
+        return SUPPORT_COMPATIBLE.tryCodeGen(protoClass);
+      }
+    },
+
+    REQUIRED_ALL {
+      @Override
+      public boolean ignoreCodeGenException() {
+        return false;
+      }
+
+      @Override
+      public boolean protobufReflectionForExtensions() {
+        return false;
+      }
+
+      @Override
+      public boolean tryCodeGen(Class<? extends Message> protoClass) {
+        if (!ByteBuddyCodeGen.isGeneratedMessage(protoClass)) {
+          throw new UnsupportedOperationException("protoClass is not a GeneratedMessage: " + protoClass);
+        }
+        return ByteBuddyCodeGen.isByteBuddyAvailable(true);
+      }
+    };
+
+    public static final CodegenMode DEFAULT = CodegenMode.SUPPORT_COMPATIBLE;
+
+    public static CodegenMode orDefault(CodegenMode codegenMode) {
+      return codegenMode == null ? DEFAULT : codegenMode;
+    }
+
+    public abstract boolean ignoreCodeGenException();
+
+    public abstract boolean protobufReflectionForExtensions();
+
+    public abstract boolean tryCodeGen(Class<? extends Message> protoClass);
   }
 
   /**
@@ -180,10 +281,14 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
 
     unwrapProtoWrappers = configuration.getBoolean(PB_UNWRAP_PROTO_WRAPPERS, unwrapProtoWrappers);
     writeSpecsCompliant = configuration.getBoolean(PB_SPECS_COMPLIANT_WRITE, writeSpecsCompliant);
+    codegenMode = CodegenMode.valueOf(configuration.get(PB_CODEGEN, codegenMode.name()));
     MessageType rootSchema = new ProtoSchemaConverter(configuration).convert(descriptor);
     validatedMapping(descriptor, rootSchema);
 
     this.messageWriter = new MessageWriter(descriptor, rootSchema);
+
+    ByteBuddyCodeGen.WriteSupport.tryApplyAlternativeMessageFieldsWriters(
+        messageWriter, rootSchema, protoMessage, descriptor, codegenMode);
 
     extraMetaData.put(ProtoReadSupport.PB_DESCRIPTOR, descriptor.toProto().toString());
     extraMetaData.put(PB_SPECS_COMPLIANT_WRITE, String.valueOf(writeSpecsCompliant));
@@ -260,6 +365,8 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
 
     final FieldWriter[] fieldWriters;
 
+    MessageFieldsWriter alternativeMessageWriter = MessageFieldsWriter.NOOP;
+
     @SuppressWarnings("unchecked")
     MessageWriter(Descriptor descriptor, GroupType schema) {
       List<FieldDescriptor> fields = descriptor.getFields();
@@ -282,6 +389,10 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
 
         fieldWriters[fieldDescriptor.getIndex()] = writer;
       }
+    }
+
+    ProtoWriteSupport<T> getProtoWriteSupport() {
+      return ProtoWriteSupport.this;
     }
 
     private FieldWriter createWriter(FieldDescriptor fieldDescriptor, Type type) {
@@ -444,6 +555,10 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
     }
 
     private void writeAllFields(MessageOrBuilder pb) {
+      if (alternativeMessageWriter.writeAllFields(pb)) {
+        return;
+      }
+
       Descriptor messageDescriptor = pb.getDescriptorForType();
       Descriptors.FileDescriptor.Syntax syntax =
           messageDescriptor.getFile().getSyntax();
@@ -484,6 +599,10 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
           fieldWriter.writeField(pb.getField(fieldDescriptor));
         }
       }
+    }
+
+    void setAlternativeMessageWriter(MessageFieldsWriter alternativeMessageWriter) {
+      this.alternativeMessageWriter = alternativeMessageWriter;
     }
   }
 
@@ -601,8 +720,8 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
 
   class MapWriter extends FieldWriter {
 
-    private final FieldWriter keyWriter;
-    private final FieldWriter valueWriter;
+    final FieldWriter keyWriter;
+    final FieldWriter valueWriter;
 
     public MapWriter(FieldWriter keyWriter, FieldWriter valueWriter) {
       super();
@@ -795,5 +914,34 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
     String exceptionMsg = "Unknown type with descriptor \"" + fieldDescriptor + "\" and type \""
         + fieldDescriptor.getJavaType() + "\".";
     throw new InvalidRecordException(exceptionMsg);
+  }
+
+  /**
+   * A plugin for {@link MessageWriter#writeAllFields(MessageOrBuilder)} that is potentially
+   * capable to write MessageOrBuilder fields faster.
+   */
+  public interface MessageFieldsWriter {
+    MessageFieldsWriter NOOP = messageOrBuilder -> false;
+
+    /**
+     * Performs all the steps that {@link MessageWriter#writeAllFields(MessageOrBuilder)}
+     * would normally do, but faster.
+     * @param messageOrBuilder
+     * @return true if this writer has written fields of the passed messageOrBuilder
+     *         false otherwise
+     */
+    boolean writeAllFields(MessageOrBuilder messageOrBuilder);
+  }
+
+  RecordConsumer getRecordConsumer() {
+    return recordConsumer;
+  }
+
+  Map<String, Map<String, Integer>> getProtoEnumBookKeeper() {
+    return protoEnumBookKeeper;
+  }
+
+  boolean isWriteSpecsCompliant() {
+    return writeSpecsCompliant;
   }
 }
