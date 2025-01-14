@@ -174,7 +174,7 @@ class ByteBuddyCodeGen {
       return true;
     } catch (ClassNotFoundException e) {
       if (failIfNot) {
-        throw new IllegalStateException("ByteBuddy is not available", e);
+        throw new UnsupportedOperationException("ByteBuddy is not available", e);
       }
       return false;
     }
@@ -1197,6 +1197,10 @@ class ByteBuddyCodeGen {
               fieldDescriptor,
               fieldWriter);
         } else {
+          if (!Objects.equals(parquetFieldInfo.fieldName, fieldDescriptor.getName())) {
+            throw new CodeGenException("fields mismatch: parquetFieldInfo: " + parquetFieldInfo.fieldName
+                + ", fieldDescriptor: " + fieldDescriptor);
+          }
           return new Field(
               fieldScanner,
               this,

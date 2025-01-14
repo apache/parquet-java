@@ -28,6 +28,9 @@ import com.google.protobuf.DoubleValue;
 import com.google.protobuf.Message;
 import com.google.protobuf.Timestamp;
 import com.google.protobuf.util.Timestamps;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -38,8 +41,32 @@ import org.apache.parquet.proto.test.TestProtobuf.SecondCustomClassMessage;
 import org.apache.parquet.proto.utils.ReadUsingMR;
 import org.apache.parquet.proto.utils.WriteUsingMR;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 
+@RunWith(Parameterized.class)
 public class ProtoInputOutputFormatTest {
+
+  @Parameterized.Parameters(name = "codegenMode: {0}")
+  public static Collection<Object[]> data() {
+    List<Object[]> data = new ArrayList<>();
+
+    List<ProtoWriteSupport.CodegenMode> codegenModes =
+        new ArrayList<>(Arrays.asList(ProtoWriteSupport.CodegenMode.values()));
+    codegenModes.add(null);
+
+    for (ProtoWriteSupport.CodegenMode codegenMode : codegenModes) {
+      data.add(new Object[] {codegenMode});
+    }
+
+    return data;
+  }
+
+  private final ProtoWriteSupport.CodegenMode codegenMode;
+
+  public ProtoInputOutputFormatTest(ProtoWriteSupport.CodegenMode codegenMode) {
+    this.codegenMode = codegenMode;
+  }
 
   /**
    * Writes Protocol Buffer using first MR job, reads written file using
@@ -241,7 +268,7 @@ public class ProtoInputOutputFormatTest {
         .addRepeatedInt(2)
         .build();
 
-    Configuration conf = new Configuration();
+    Configuration conf = updateConfiguration(new Configuration());
     ProtoWriteSupport.setWriteSpecsCompliant(conf, true);
 
     Path outputPath = new WriteUsingMR(conf).write(msgEmpty, msgNonEmpty);
@@ -264,7 +291,7 @@ public class ProtoInputOutputFormatTest {
         .addRepeatedInt(2)
         .build();
 
-    Configuration conf = new Configuration();
+    Configuration conf = updateConfiguration(new Configuration());
     ProtoWriteSupport.setWriteSpecsCompliant(conf, true);
 
     Path outputPath = new WriteUsingMR(conf).write(msgEmpty, msgNonEmpty);
@@ -327,7 +354,7 @@ public class ProtoInputOutputFormatTest {
         .putMapInt(2, 234)
         .build();
 
-    Configuration conf = new Configuration();
+    Configuration conf = updateConfiguration(new Configuration());
     ProtoWriteSupport.setWriteSpecsCompliant(conf, true);
 
     Path outputPath = new WriteUsingMR(conf).write(msgEmpty, msgNonEmpty);
@@ -350,7 +377,7 @@ public class ProtoInputOutputFormatTest {
         .putMapInt(2, 234)
         .build();
 
-    Configuration conf = new Configuration();
+    Configuration conf = updateConfiguration(new Configuration());
     ProtoWriteSupport.setWriteSpecsCompliant(conf, true);
 
     Path outputPath = new WriteUsingMR(conf).write(msgEmpty, msgNonEmpty);
@@ -419,7 +446,7 @@ public class ProtoInputOutputFormatTest {
             TestProtobuf.InnerMessage.newBuilder().setTwo("two").build())
         .build();
 
-    Configuration conf = new Configuration();
+    Configuration conf = updateConfiguration(new Configuration());
     ProtoWriteSupport.setWriteSpecsCompliant(conf, true);
 
     Path outputPath = new WriteUsingMR(conf).write(msgEmpty, msgNonEmpty);
@@ -444,7 +471,7 @@ public class ProtoInputOutputFormatTest {
             TestProto3.InnerMessage.newBuilder().setTwo("two").build())
         .build();
 
-    Configuration conf = new Configuration();
+    Configuration conf = updateConfiguration(new Configuration());
     ProtoWriteSupport.setWriteSpecsCompliant(conf, true);
 
     Path outputPath = new WriteUsingMR(conf).write(msgEmpty, msgNonEmpty);
@@ -463,7 +490,7 @@ public class ProtoInputOutputFormatTest {
     TestProto3.SchemaConverterAllDatatypes msgEmpty =
         TestProto3.SchemaConverterAllDatatypes.newBuilder().build();
 
-    Configuration conf = new Configuration();
+    Configuration conf = updateConfiguration(new Configuration());
     ProtoWriteSupport.setWriteSpecsCompliant(conf, true);
 
     Path outputPath = new WriteUsingMR(conf).write(msgEmpty);
@@ -508,7 +535,7 @@ public class ProtoInputOutputFormatTest {
 
     TestProto3.SchemaConverterAllDatatypes dataBuilt = data.build();
 
-    Configuration conf = new Configuration();
+    Configuration conf = updateConfiguration(new Configuration());
     ProtoWriteSupport.setWriteSpecsCompliant(conf, true);
 
     Path outputPath = new WriteUsingMR(conf).write(dataBuilt);
@@ -574,7 +601,7 @@ public class ProtoInputOutputFormatTest {
       input[i] = d.build();
     }
 
-    Configuration conf = new Configuration();
+    Configuration conf = updateConfiguration(new Configuration());
     ProtoWriteSupport.setWriteSpecsCompliant(conf, true);
 
     Path outputPath = new WriteUsingMR(conf).write(input);
@@ -606,7 +633,7 @@ public class ProtoInputOutputFormatTest {
     top.addInnerBuilder().setTwo("Second inner");
     top.addInnerBuilder().setThree("Third inner");
 
-    Configuration conf = new Configuration();
+    Configuration conf = updateConfiguration(new Configuration());
     ProtoWriteSupport.setWriteSpecsCompliant(conf, true);
 
     Path outputPath = new WriteUsingMR(conf).write(top.build());
@@ -643,7 +670,7 @@ public class ProtoInputOutputFormatTest {
     TestProto3.DateTimeMessage msgNonEmpty =
         TestProto3.DateTimeMessage.newBuilder().setTimestamp(timestamp).build();
 
-    Configuration conf = new Configuration();
+    Configuration conf = updateConfiguration(new Configuration());
     conf.setBoolean(ProtoWriteSupport.PB_UNWRAP_PROTO_WRAPPERS, true);
     Path outputPath = new WriteUsingMR(conf).write(msgEmpty, msgNonEmpty);
     ReadUsingMR readUsingMR = new ReadUsingMR();
@@ -665,7 +692,7 @@ public class ProtoInputOutputFormatTest {
         .setWrappedBool(BoolValue.of(true))
         .build();
 
-    Configuration conf = new Configuration();
+    Configuration conf = updateConfiguration(new Configuration());
     conf.setBoolean(ProtoWriteSupport.PB_UNWRAP_PROTO_WRAPPERS, true);
     Path outputPath = new WriteUsingMR(conf).write(msgEmpty, msgNonEmpty);
     ReadUsingMR readUsingMR = new ReadUsingMR();
@@ -681,9 +708,16 @@ public class ProtoInputOutputFormatTest {
   /**
    * Runs job that writes input to file and then job reading data back.
    */
-  public static List<Message> runMRJobs(Message... messages) throws Exception {
-    Path outputPath = new WriteUsingMR().write(messages);
+  public List<Message> runMRJobs(Message... messages) throws Exception {
+    Path outputPath = new WriteUsingMR(updateConfiguration(new Configuration())).write(messages);
     List<Message> result = new ReadUsingMR().read(outputPath);
     return result;
+  }
+
+  private Configuration updateConfiguration(Configuration configuration) {
+    if (codegenMode != null) {
+      ProtoWriteSupport.setCodegenMode(configuration, codegenMode);
+    }
+    return configuration;
   }
 }

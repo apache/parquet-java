@@ -87,7 +87,7 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
 
   private boolean writeSpecsCompliant = false;
   private boolean unwrapProtoWrappers = false;
-  private CodegenMode codegenMode = CodegenMode.SUPPORT_COMPATIBLE;
+  private CodegenMode codegenMode = CodegenMode.DEFAULT;
   private RecordConsumer recordConsumer;
   private Class<? extends Message> protoMessage;
   private Descriptor descriptor;
@@ -209,11 +209,17 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
       @Override
       public boolean tryCodeGen(Class<? extends Message> protoClass) {
         if (!ByteBuddyCodeGen.isGeneratedMessage(protoClass)) {
-          throw new IllegalStateException("protoClass is a GeneratedMessage: " + protoClass);
+          throw new UnsupportedOperationException("protoClass is not a GeneratedMessage: " + protoClass);
         }
         return ByteBuddyCodeGen.isByteBuddyAvailable(true);
       }
     };
+
+    public static final CodegenMode DEFAULT = CodegenMode.SUPPORT_COMPATIBLE;
+
+    public static CodegenMode orDefault(CodegenMode codegenMode) {
+      return codegenMode == null ? DEFAULT : codegenMode;
+    }
 
     public abstract boolean ignoreCodeGenException();
 
