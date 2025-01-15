@@ -22,22 +22,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-import com.google.protobuf.BoolValue;
-import com.google.protobuf.ByteString;
-import com.google.protobuf.BytesValue;
-import com.google.protobuf.Descriptors;
-import com.google.protobuf.DoubleValue;
-import com.google.protobuf.DynamicMessage;
-import com.google.protobuf.FloatValue;
-import com.google.protobuf.Int32Value;
-import com.google.protobuf.Int64Value;
-import com.google.protobuf.Message;
-import com.google.protobuf.MessageOrBuilder;
-import com.google.protobuf.StringValue;
-import com.google.protobuf.Timestamp;
-import com.google.protobuf.UInt32Value;
-import com.google.protobuf.UInt64Value;
-import com.google.protobuf.Value;
+import com.google.protobuf.*;
 import com.google.protobuf.util.Timestamps;
 import java.io.IOException;
 import java.time.LocalDate;
@@ -1374,12 +1359,21 @@ public class ProtoWriteSupportTest {
 
   @Test
   public void testProto3WrappedMessageUnwrappedRoundTripUint32() throws Exception {
+
     TestProto3.WrappedMessage msgMin = TestProto3.WrappedMessage.newBuilder()
-        .setWrappedUInt32(UInt32Value.of(Integer.MAX_VALUE))
-        .build();
-    TestProto3.WrappedMessage msgMax = TestProto3.WrappedMessage.newBuilder()
         .setWrappedUInt32(UInt32Value.of(Integer.MIN_VALUE))
         .build();
+    assertEquals(TextFormat.shortDebugString(msgMin), "wrappedUInt32 { value: 2147483648 }");
+
+    TestProto3.WrappedMessage msgMax = TestProto3.WrappedMessage.newBuilder()
+        .setWrappedUInt32(UInt32Value.of(Integer.MAX_VALUE))
+        .build();
+    assertEquals(TextFormat.shortDebugString(msgMax), "wrappedUInt32 { value: 2147483647 }");
+
+    TestProto3.WrappedMessage msgMinusOne = TestProto3.WrappedMessage.newBuilder()
+        .setWrappedUInt32(UInt32Value.of(-1))
+        .build();
+    assertEquals(TextFormat.shortDebugString(msgMinusOne), "wrappedUInt32 { value: 4294967295 }");
 
     Path tmpFilePath = TestUtils.someTemporaryFilePath();
     ParquetWriter<MessageOrBuilder> writer = ProtoParquetWriter.<MessageOrBuilder>builder(tmpFilePath)
@@ -1388,11 +1382,13 @@ public class ProtoWriteSupportTest {
         .build();
     writer.write(msgMin);
     writer.write(msgMax);
+    writer.write(msgMinusOne);
     writer.close();
     List<TestProto3.WrappedMessage> gotBack = TestUtils.readMessages(tmpFilePath, TestProto3.WrappedMessage.class);
 
     assertEquals(msgMin, gotBack.get(0));
     assertEquals(msgMax, gotBack.get(1));
+    assertEquals(msgMinusOne, gotBack.get(2));
   }
 
   @Test

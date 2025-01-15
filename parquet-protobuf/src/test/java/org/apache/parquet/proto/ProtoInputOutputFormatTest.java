@@ -678,6 +678,34 @@ public class ProtoInputOutputFormatTest {
     assertEquals(msgNonEmpty, result.get(1));
   }
 
+  @Test
+  public void testProto3Uint32Behaviour() throws Exception {
+
+    TestProto3.SchemaConverterAllDatatypes intMin = TestProto3.SchemaConverterAllDatatypes.newBuilder()
+        .setOptionalUInt32(Integer.MIN_VALUE)
+        .build();
+    assertEquals(intMin.toString(), "optionalUInt32: 2147483648\n");
+    TestProto3.SchemaConverterAllDatatypes uintMin = TestProto3.SchemaConverterAllDatatypes.newBuilder()
+        .setOptionalUInt32(-1)
+        .build();
+    assertEquals(uintMin.toString(), "optionalUInt32: 4294967295\n");
+    TestProto3.SchemaConverterAllDatatypes uintMax = TestProto3.SchemaConverterAllDatatypes.newBuilder()
+        .setOptionalUInt32(Integer.MAX_VALUE)
+        .build();
+    assertEquals(uintMax.toString(), "optionalUInt32: 2147483647\n");
+
+    Configuration conf = new Configuration();
+    Path outputPath = new WriteUsingMR(conf).write(intMin, uintMin, uintMax);
+    ReadUsingMR readUsingMR = new ReadUsingMR(conf);
+    String customClass = TestProto3.SchemaConverterAllDatatypes.class.getName();
+    ProtoReadSupport.setProtobufClass(readUsingMR.getConfiguration(), customClass);
+    List<Message> result = readUsingMR.read(outputPath);
+
+    assertEquals(result.get(0), intMin);
+    assertEquals(result.get(1), uintMin);
+    assertEquals(result.get(2), uintMax);
+  }
+
   /**
    * Runs job that writes input to file and then job reading data back.
    */
