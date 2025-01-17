@@ -508,16 +508,16 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
     try {
       // We know the block has at least as many array elements as the dictionary sizes
       final Set<?> dict = expandDictionary(meta);
-      if (dict == null) {
+
+      // If the column doesn't have a dictionary encoding, we can't infer anything about its size
+      if (dict == null || dict.isEmpty()) {
         return BLOCK_MIGHT_MATCH;
       }
-      int numDistinctValues = dict.size();
-      final boolean blockCannotMatch = size.filter(
-          (eq) -> eq < numDistinctValues,
-          (lt) -> lt <= numDistinctValues,
-          (lte) -> lte < numDistinctValues,
-          (gt) -> false,
-          (gte) -> false);
+
+      // Column has at least (nonempty) dict.size() values spread across over all records;
+      // predicates that match empty arrays cannot match
+      final boolean blockCannotMatch =
+          size.filter((eq) -> eq == 0, (lt) -> lt == 1, (lte) -> lte <= 1, (gt) -> false, (gte) -> false);
 
       return blockCannotMatch ? BLOCK_CANNOT_MATCH : BLOCK_MIGHT_MATCH;
     } catch (IOException e) {
