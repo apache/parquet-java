@@ -227,6 +227,15 @@ public interface IncrementallyUpdatedFilterPredicate {
   class CountingValueInspector extends ValueInspector {
     private long observedValueCount;
     private final ValueInspector delegate;
+
+    /**
+     * Triggering function to update the underlying delegate. We want to be careful not to trigger before
+     * all relevant column values have been considered.
+     *
+     * For example, given the predicate `size(col, LT, 3)` and a record with 4 array values, we don't want the
+     * underlying `lt(3)` predicate to be evaluated on the first or second elements of the array, since it would
+     * return a premature True value.
+     */
     private final Function<Long, Boolean> shouldUpdateDelegate;
 
     public CountingValueInspector(ValueInspector delegate, Function<Long, Boolean> shouldUpdateDelegate) {
