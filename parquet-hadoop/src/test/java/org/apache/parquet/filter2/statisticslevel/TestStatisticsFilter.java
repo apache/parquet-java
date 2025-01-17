@@ -568,10 +568,12 @@ public class TestStatisticsFilter {
     assertFalse(canDrop(size(nestedListColumn, Operators.Size.Operator.EQ, 5), columnMeta));
 
     // Case 2: List is null
+    final List<List<Integer>> listWithNull = new ArrayList<>();
+    listWithNull.add(null);
     columnMeta = Collections.singletonList(getIntColumnMeta(
         nestedListColumn.getColumnPath(),
         minMaxStats,
-        createSizeStatisticsForRepeatedField(true, ImmutableList.of()),
+        createSizeStatisticsForRepeatedField(true, listWithNull),
         5));
 
     // These predicates should be able to filter out the page
@@ -610,10 +612,10 @@ public class TestStatisticsFilter {
         .config(GroupWriteSupport.PARQUET_EXAMPLE_SCHEMA, messageSchema.toString())
         .build()) {
 
-      final SimpleGroup record = new SimpleGroup(messageSchema);
-      final Group nestedGroup = record.addGroup("nestedGroup");
-
       for (List<Integer> arrayValue : arrayValues) {
+        final SimpleGroup record = new SimpleGroup(messageSchema);
+        final Group nestedGroup = record.addGroup("nestedGroup");
+
         if (arrayValue != null) {
           Group listField = nestedGroup.addGroup("listField");
           for (Integer value : arrayValue) {
@@ -623,9 +625,9 @@ public class TestStatisticsFilter {
             }
           }
         }
-      }
 
-      writer.write(record);
+        writer.write(record);
+      }
     }
 
     // Read size statistics
