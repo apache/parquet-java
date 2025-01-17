@@ -116,6 +116,7 @@ public class DictionaryFilterTest {
       + "required binary fallback_binary_field; "
       + "required int96 int96_field; "
       + "repeated binary repeated_binary_field;"
+      + "repeated binary repeated_binary_field_high_cardinality;" // high cardinality, no dict encoding produced
       + "} ");
 
   private static final String ALPHABET = "abcdefghijklmnopqrstuvwxyz";
@@ -197,6 +198,10 @@ public class DictionaryFilterTest {
         group.append("optional_single_value_field", "sharp");
       }
 
+      for (char letter : ALPHABET.toCharArray()) {
+        group = group.append("repeated_binary_field_high_cardinality", String.valueOf(letter));
+      }
+
       writer.write(group);
     }
     writer.close();
@@ -218,6 +223,7 @@ public class DictionaryFilterTest {
         .withRowGroupSize(1024 * 1024)
         .withPageSize(1024)
         .enableDictionaryEncoding()
+        .withDictionaryEncoding("repeated_binary_field_high_cardinality", false)
         .withDictionaryPageSize(2 * 1024)
         .withConf(conf)
         .build();
@@ -510,10 +516,9 @@ public class DictionaryFilterTest {
   @Test
   public void testSizeBinary() throws Exception {
     // repeated_binary_field dict has 26 distinct values
-    BinaryColumn b = binaryColumn("repeated_binary_field");
+    final BinaryColumn b = binaryColumn("repeated_binary_field");
 
-    // DictionaryFilter knows that `repeated_binary_field` column has at least 26 element values spread across
-    // records
+    // DictionaryFilter infers that col `repeated_binary_field` has >= 26 values spread across row group
     assertTrue(canDrop(size(b, Operators.Size.Operator.EQ, 0), ccmd, dictionaries));
     assertTrue(canDrop(size(b, Operators.Size.Operator.LT, 1), ccmd, dictionaries));
     assertTrue(canDrop(size(b, Operators.Size.Operator.LTE, 0), ccmd, dictionaries));
@@ -522,8 +527,8 @@ public class DictionaryFilterTest {
     assertFalse(canDrop(size(b, Operators.Size.Operator.GT, 0), ccmd, dictionaries));
     assertFalse(canDrop(size(b, Operators.Size.Operator.GTE, 1), ccmd, dictionaries));
 
-    // If column doesn't exist in meta, it should be treated as having size 0
-    BinaryColumn nonExistentColumn = binaryColumn("nonexistant_col");
+    // If column doesn't exist in meta, it has no values and can be treated as having size 0
+    final BinaryColumn nonExistentColumn = binaryColumn("nonexistant_col");
 
     assertTrue(canDrop(size(nonExistentColumn, Operators.Size.Operator.GT, 0), ccmd, dictionaries));
     assertTrue(canDrop(size(nonExistentColumn, Operators.Size.Operator.GTE, 1), ccmd, dictionaries));
@@ -532,6 +537,16 @@ public class DictionaryFilterTest {
     assertFalse(canDrop(size(nonExistentColumn, Operators.Size.Operator.LT, 1), ccmd, dictionaries));
     assertFalse(canDrop(size(nonExistentColumn, Operators.Size.Operator.LTE, 0), ccmd, dictionaries));
     assertFalse(canDrop(size(nonExistentColumn, Operators.Size.Operator.EQ, 0), ccmd, dictionaries));
+
+    // If column exists but doesn't have a dict, we cannot infer anything about its size
+    final BinaryColumn noDictColumn = binaryColumn("repeated_binary_field_high_cardinality");
+
+    assertFalse(canDrop(size(noDictColumn, Operators.Size.Operator.GT, 0), ccmd, dictionaries));
+    assertFalse(canDrop(size(noDictColumn, Operators.Size.Operator.GTE, 0), ccmd, dictionaries));
+    assertFalse(canDrop(size(noDictColumn, Operators.Size.Operator.EQ, 1), ccmd, dictionaries));
+    assertFalse(canDrop(size(noDictColumn, Operators.Size.Operator.LT, 1), ccmd, dictionaries));
+    assertFalse(canDrop(size(noDictColumn, Operators.Size.Operator.LTE, 0), ccmd, dictionaries));
+    assertFalse(canDrop(size(noDictColumn, Operators.Size.Operator.EQ, 0), ccmd, dictionaries));
   }
 
   @Test
