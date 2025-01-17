@@ -576,8 +576,8 @@ public final class Operators {
 
     @Override
     public String toString() {
-      String name = Size.class.getSimpleName().toLowerCase(Locale.ENGLISH);
-      return name + "(" + operator.toString().toLowerCase() + " " + value + ")";
+      return "size(" + column.getColumnPath().toDotString() + " "
+          + operator.toString().toLowerCase() + " " + value + ")";
     }
   }
 
