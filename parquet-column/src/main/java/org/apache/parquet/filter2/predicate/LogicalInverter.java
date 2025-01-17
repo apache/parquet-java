@@ -101,7 +101,7 @@ public final class LogicalInverter implements Visitor<FilterPredicate> {
 
   @Override
   public FilterPredicate visit(Size size) {
-    final long value = size.getValue();
+    final int value = size.getValue();
     final Operators.Column<?> column = size.getColumn();
 
     return size.filter(

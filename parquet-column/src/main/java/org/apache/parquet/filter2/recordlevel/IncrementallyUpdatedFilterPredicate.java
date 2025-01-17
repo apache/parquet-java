@@ -225,7 +225,7 @@ public interface IncrementallyUpdatedFilterPredicate {
   }
 
   class CountingValueInspector extends ValueInspector {
-    private long observedValueCount;
+    private int observedValueCount;
     private final ValueInspector delegate;
 
     /**
@@ -236,9 +236,9 @@ public interface IncrementallyUpdatedFilterPredicate {
      * underlying `lt(3)` predicate to be evaluated on the first or second elements of the array, since it would
      * return a premature True value.
      */
-    private final Function<Long, Boolean> shouldUpdateDelegate;
+    private final Function<Integer, Boolean> shouldUpdateDelegate;
 
-    public CountingValueInspector(ValueInspector delegate, Function<Long, Boolean> shouldUpdateDelegate) {
+    public CountingValueInspector(ValueInspector delegate, Function<Integer, Boolean> shouldUpdateDelegate) {
       this.observedValueCount = 0;
       this.delegate = delegate;
       this.shouldUpdateDelegate = shouldUpdateDelegate;

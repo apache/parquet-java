@@ -264,7 +264,7 @@ public final class FilterApi {
     return Contains.of(pred);
   }
 
-  public static Size size(Column<?> column, Size.Operator operator, long value) {
+  public static Size size(Column<?> column, Size.Operator operator, int value) {
     return new Size(column, operator, value);
   }
 

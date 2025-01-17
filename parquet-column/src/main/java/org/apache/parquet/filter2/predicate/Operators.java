@@ -516,9 +516,9 @@ public final class Operators {
 
     private final Column<?> column;
     private final Operator operator;
-    private final long value;
+    private final int value;
 
-    Size(Column<?> column, Operator operator, long value) {
+    Size(Column<?> column, Operator operator, int value) {
       this.column = column;
       this.operator = operator;
       if (value < 0) {
@@ -532,7 +532,7 @@ public final class Operators {
       return visitor.visit(this);
     }
 
-    public long getValue() {
+    public int getValue() {
       return value;
     }
 
@@ -541,11 +541,11 @@ public final class Operators {
     }
 
     public <R> R filter(
-        Function<Long, R> onEq,
-        Function<Long, R> onLt,
-        Function<Long, R> onLtEq,
-        Function<Long, R> onGt,
-        Function<Long, R> onGtEq) {
+        Function<Integer, R> onEq,
+        Function<Integer, R> onLt,
+        Function<Integer, R> onLtEq,
+        Function<Integer, R> onGt,
+        Function<Integer, R> onGtEq) {
       if (operator == Operator.EQ) {
         return onEq.apply(value);
       } else if (operator == Operator.LT) {
