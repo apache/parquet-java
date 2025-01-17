@@ -521,8 +521,8 @@ public final class Operators {
     Size(Column<?> column, Operator operator, int value) {
       this.column = column;
       this.operator = operator;
-      if (value < 0) {
-        throw new IllegalArgumentException("Argument to size() operator cannot be negative: " + value);
+      if (value < 0 || (operator == Operator.LT && value == 0)) {
+        throw new IllegalArgumentException("Invalid predicate " + this + ": array size can never be negative");
       }
       this.value = value;
     }
