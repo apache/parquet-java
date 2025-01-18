@@ -39,10 +39,17 @@ public class OffsetIndexBuilder {
     @Override
     public String toString() {
       try (Formatter formatter = new Formatter()) {
-        formatter.format("%-10s  %20s  %16s  %20s\n", "", "offset", "compressed size", "first row index");
+        formatter.format(
+            "%-10s  %20s  %20s  %20s  %20s\n",
+            "", "offset", "compressed size", "first row index", "unencoded bytes");
         for (int i = 0, n = offsets.length; i < n; ++i) {
+          String unencodedBytes =
+              (unencodedByteArrayDataBytes != null && unencodedByteArrayDataBytes.length > 0)
+                  ? String.valueOf(unencodedByteArrayDataBytes[i])
+                  : "-";
           formatter.format(
-              "page-%-5d  %20d  %16d  %20d\n", i, offsets[i], compressedPageSizes[i], firstRowIndexes[i]);
+              "page-%-5d  %20d  %20d  %20d  %20s\n",
+              i, offsets[i], compressedPageSizes[i], firstRowIndexes[i], unencodedBytes);
         }
         return formatter.toString();
       }
