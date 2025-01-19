@@ -507,7 +507,7 @@ If `false`, key material is stored in separate new files, created in the same fo
 **Description:** Flag to enable use of the FileSystem Vector IO API on Hadoop releases which support the feature.
 If `true` then an attempt will be made to dynamically load the relevant classes; 
 if not found then the library will use the classic non-vectored reads: it is safe to enable this option on older releases. 
-**Default value:** `false`
+**Default value:** `true`
 
 ---
 
