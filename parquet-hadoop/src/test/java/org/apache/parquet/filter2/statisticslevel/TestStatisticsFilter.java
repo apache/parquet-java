@@ -513,6 +513,23 @@ public class TestStatisticsFilter {
     assertFalse(canDrop(size(nestedListColumn, Operators.Size.Operator.LTE, 1), columnMeta));
     assertFalse(canDrop(size(nestedListColumn, Operators.Size.Operator.LT, 1), columnMeta));
     assertFalse(canDrop(size(nestedListColumn, Operators.Size.Operator.EQ, 0), columnMeta));
+
+    // Case 3: all lists have size 1
+    columnMeta = Collections.singletonList(getIntColumnMeta(
+        nestedListColumn.getColumnPath(),
+        minMaxStats,
+        createSizeStatisticsForRepeatedField(true, ImmutableList.of(ImmutableList.of(1), ImmutableList.of(1))),
+        2));
+
+    // We know that records have max array size 1
+    assertTrue(canDrop(size(nestedListColumn, Operators.Size.Operator.GTE, 2), columnMeta));
+    assertTrue(canDrop(size(nestedListColumn, Operators.Size.Operator.GT, 1), columnMeta));
+    assertTrue(canDrop(size(nestedListColumn, Operators.Size.Operator.EQ, 2), columnMeta));
+
+    // These predicates should not be able to filter out the page
+    assertFalse(canDrop(size(nestedListColumn, Operators.Size.Operator.LT, 2), columnMeta));
+    assertFalse(canDrop(size(nestedListColumn, Operators.Size.Operator.LTE, 1), columnMeta));
+    assertFalse(canDrop(size(nestedListColumn, Operators.Size.Operator.EQ, 1), columnMeta));
   }
 
   @Test
@@ -563,18 +580,21 @@ public class TestStatisticsFilter {
     assertTrue(canDrop(size(nestedListColumn, Operators.Size.Operator.EQ, 6), columnMeta));
 
     // These predicates should not be able to filter out the page
+    assertFalse(canDrop(size(nestedListColumn, Operators.Size.Operator.GTE, 3), columnMeta));
+    assertFalse(canDrop(size(nestedListColumn, Operators.Size.Operator.GT, 2), columnMeta));
     assertFalse(canDrop(size(nestedListColumn, Operators.Size.Operator.LT, 5), columnMeta));
     assertFalse(canDrop(size(nestedListColumn, Operators.Size.Operator.LTE, 3), columnMeta));
     assertFalse(canDrop(size(nestedListColumn, Operators.Size.Operator.EQ, 5), columnMeta));
 
-    // Case 2: List is null
+    // Case 2: Lists are null
     final List<List<Integer>> listWithNull = new ArrayList<>();
+    listWithNull.add(null);
     listWithNull.add(null);
     columnMeta = Collections.singletonList(getIntColumnMeta(
         nestedListColumn.getColumnPath(),
         minMaxStats,
         createSizeStatisticsForRepeatedField(true, listWithNull),
-        5));
+        2));
 
     // These predicates should be able to filter out the page
     assertTrue(canDrop(size(nestedListColumn, Operators.Size.Operator.GT, 0), columnMeta));
@@ -582,6 +602,25 @@ public class TestStatisticsFilter {
     assertTrue(canDrop(size(nestedListColumn, Operators.Size.Operator.EQ, 5), columnMeta));
 
     // These predicates should not be able to filter out the page
+    assertFalse(canDrop(size(nestedListColumn, Operators.Size.Operator.LTE, 1), columnMeta));
+    assertFalse(canDrop(size(nestedListColumn, Operators.Size.Operator.LT, 1), columnMeta));
+    assertFalse(canDrop(size(nestedListColumn, Operators.Size.Operator.EQ, 0), columnMeta));
+    assertFalse(canDrop(size(nestedListColumn, Operators.Size.Operator.GTE, 0), columnMeta));
+
+    // Case 3: lists are empty
+    columnMeta = Collections.singletonList(getIntColumnMeta(
+        nestedListColumn.getColumnPath(),
+        minMaxStats,
+        createSizeStatisticsForRepeatedField(true, ImmutableList.of(ImmutableList.of(), ImmutableList.of())),
+        2));
+
+    // These predicates should be able to filter out the page
+    assertTrue(canDrop(size(nestedListColumn, Operators.Size.Operator.GT, 0), columnMeta));
+    assertTrue(canDrop(size(nestedListColumn, Operators.Size.Operator.GTE, 1), columnMeta));
+    assertTrue(canDrop(size(nestedListColumn, Operators.Size.Operator.EQ, 5), columnMeta));
+
+    // These predicates should not be able to filter out the page
+    assertFalse(canDrop(size(nestedListColumn, Operators.Size.Operator.GTE, 0), columnMeta));
     assertFalse(canDrop(size(nestedListColumn, Operators.Size.Operator.LTE, 1), columnMeta));
     assertFalse(canDrop(size(nestedListColumn, Operators.Size.Operator.LT, 1), columnMeta));
     assertFalse(canDrop(size(nestedListColumn, Operators.Size.Operator.EQ, 0), columnMeta));
@@ -615,7 +654,6 @@ public class TestStatisticsFilter {
       for (List<Integer> arrayValue : arrayValues) {
         final SimpleGroup record = new SimpleGroup(messageSchema);
         final Group nestedGroup = record.addGroup("nestedGroup");
-
         if (arrayValue != null) {
           Group listField = nestedGroup.addGroup("listField");
           for (Integer value : arrayValue) {

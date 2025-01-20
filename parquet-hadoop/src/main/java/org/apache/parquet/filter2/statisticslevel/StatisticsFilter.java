@@ -219,6 +219,10 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
     return contains.filter(this, (l, r) -> l || r, (l, r) -> l && r, v -> BLOCK_MIGHT_MATCH);
   }
 
+  /**
+   * Logically equivalent to {@link org.apache.parquet.internal.column.columnindex.ColumnIndexBuilder},
+   * but for block granularity
+   **/
   @Override
   public Boolean visit(Size size) {
     final ColumnChunkMetaData metadata = getColumnChunk(size.getColumn().getColumnPath());
@@ -239,40 +243,37 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
 
     // If all values have repetition level 0, then no array has more than 1 element
     if (repetitionLevelHistogram.size() == 1
-        || repetitionLevelHistogram.subList(1, repetitionLevelHistogram.size()).stream()
-            .allMatch(l -> l == 0)) {
+        || (repetitionLevelHistogram.get(0) > 0
+            && repetitionLevelHistogram.subList(1, repetitionLevelHistogram.size()).stream()
+                .allMatch(l -> l == 0))) {
 
-      // Null list fields are treated as having size 0
-      if (( // all lists are nulls
-          definitionLevelHistogram.subList(1, definitionLevelHistogram.size()).stream()
-              .allMatch(l -> l == 0))
-          || // all lists are size 0
-          (definitionLevelHistogram.get(0) == 0
-              && definitionLevelHistogram.subList(2, definitionLevelHistogram.size()).stream()
-                  .allMatch(l -> l == 0))) {
+      // All lists are null or empty
+      if ((definitionLevelHistogram.subList(1, definitionLevelHistogram.size()).stream()
+          .allMatch(l -> l == 0))) {
 
         final boolean blockCannotMatch =
             size.filter((eq) -> eq > 0, (lt) -> false, (lte) -> false, (gt) -> gt >= 0, (gte) -> gte > 0);
         return blockCannotMatch ? BLOCK_CANNOT_MATCH : BLOCK_MIGHT_MATCH;
       }
 
-      long maxDefinitionLevel = definitionLevelHistogram.get(definitionLevelHistogram.size() - 1);
+      final int maxDefinitionLevel = definitionLevelHistogram.size() - 1;
 
-      // If all repetition levels are zero and all definitions level are > MAX_DEFINITION_LEVEL - 1, all lists
+      // If all repetition levels are zero and all definition levels are > MAX_DEFINITION_LEVEL - 1, all lists
       // are of size 1
-      if (definitionLevelHistogram.stream().allMatch(l -> l > maxDefinitionLevel - 1)) {
+      if (definitionLevelHistogram.subList(0, maxDefinitionLevel - 1).stream()
+          .allMatch(l -> l == 0)) {
         final boolean blockCannotMatch = size.filter(
             (eq) -> eq != 1, (lt) -> lt <= 1, (lte) -> lte < 1, (gt) -> gt >= 1, (gte) -> gte > 1);
 
         return blockCannotMatch ? BLOCK_CANNOT_MATCH : BLOCK_MIGHT_MATCH;
       }
     }
-    long nonNullElementCount =
+    final long nonNullElementCount =
         repetitionLevelHistogram.stream().mapToLong(l -> l).sum() - definitionLevelHistogram.get(0);
-    long numNonNullRecords = repetitionLevelHistogram.get(0) - definitionLevelHistogram.get(0);
+    final long numNonNullRecords = repetitionLevelHistogram.get(0) - definitionLevelHistogram.get(0);
 
     // Given the total number of elements and non-null fields, we can compute the max size of any array field
-    long maxArrayElementCount = 1 + (nonNullElementCount - numNonNullRecords);
+    final long maxArrayElementCount = 1 + (nonNullElementCount - numNonNullRecords);
     final boolean blockCannotMatch = size.filter(
         (eq) -> eq > maxArrayElementCount,
         (lt) -> false,
