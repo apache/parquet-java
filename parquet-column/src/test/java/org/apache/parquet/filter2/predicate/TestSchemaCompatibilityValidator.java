@@ -29,6 +29,7 @@ import static org.apache.parquet.filter2.predicate.FilterApi.ltEq;
 import static org.apache.parquet.filter2.predicate.FilterApi.not;
 import static org.apache.parquet.filter2.predicate.FilterApi.notEq;
 import static org.apache.parquet.filter2.predicate.FilterApi.or;
+import static org.apache.parquet.filter2.predicate.FilterApi.size;
 import static org.apache.parquet.filter2.predicate.FilterApi.userDefined;
 import static org.apache.parquet.filter2.predicate.SchemaCompatibilityValidator.validate;
 import static org.junit.Assert.assertEquals;
@@ -47,6 +48,8 @@ public class TestSchemaCompatibilityValidator {
   private static final LongColumn longBar = longColumn("x.bar");
   private static final IntColumn intBar = intColumn("x.bar");
   private static final LongColumn lotsOfLongs = longColumn("lotsOfLongs");
+  private static final BinaryColumn threeLevelList = binaryColumn("nestedGroup.threeLevelList.list.element");
+  private static final BinaryColumn listOfOptionals = binaryColumn("listOfOptionals.list.element");
 
   private static final String schemaString = "message Document {\n"
       + "  required int32 a;\n"
@@ -54,6 +57,18 @@ public class TestSchemaCompatibilityValidator {
       + "  required binary c (UTF8);\n"
       + "  required group x { required int32 bar; }\n"
       + "  repeated int64 lotsOfLongs;\n"
+      + "  optional group nestedGroup {\n"
+      + "    required group threeLevelList (LIST) {\n"
+      + "      repeated group list {\n"
+      + "        required binary element (STRING);\n"
+      + "      }\n"
+      + "    }\n"
+      + "  }\n"
+      + "  required group listOfOptionals (LIST) {\n"
+      + "    repeated group list {\n"
+      + "      optional binary element (STRING);\n"
+      + "    }\n"
+      + "  }\n"
       + "}\n";
 
   private static final MessageType schema = MessageTypeParser.parseMessageType(schemaString);
@@ -157,6 +172,34 @@ public class TestSchemaCompatibilityValidator {
     } catch (IllegalArgumentException e) {
       assertEquals(
           "FilterPredicate for column x.bar requires a repeated schema, but found max repetition level 0",
+          e.getMessage());
+    }
+  }
+
+  @Test
+  public void testSizePredicate() {
+    // Size predicate should succeed on repeated columns
+    try {
+      validate(size(lotsOfLongs, Operators.Size.Operator.LT, 10), schema);
+      validate(size(threeLevelList, Operators.Size.Operator.LT, 10), schema);
+    } catch (IllegalArgumentException e) {
+      fail("Valid repeated column predicates should not throw exceptions, but threw " + e);
+    }
+
+    // Size predicate should fail on non-repeated columns and on non-optional list element types
+    try {
+      validate(size(intBar, Operators.Size.Operator.LT, 10), schema);
+    } catch (IllegalArgumentException e) {
+      assertEquals(
+          "FilterPredicate for column x.bar requires a repeated schema, but found max repetition level 0",
+          e.getMessage());
+    }
+
+    try {
+      validate(size(listOfOptionals, Operators.Size.Operator.LT, 10), schema);
+    } catch (IllegalArgumentException e) {
+      assertEquals(
+          "FilterPredicate for column listOfOptionals.list.element requires schema to have repetition REQUIRED, but found OPTIONAL.",
           e.getMessage());
     }
   }

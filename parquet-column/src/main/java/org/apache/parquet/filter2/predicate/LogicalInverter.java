@@ -33,6 +33,7 @@ import org.apache.parquet.filter2.predicate.Operators.Not;
 import org.apache.parquet.filter2.predicate.Operators.NotEq;
 import org.apache.parquet.filter2.predicate.Operators.NotIn;
 import org.apache.parquet.filter2.predicate.Operators.Or;
+import org.apache.parquet.filter2.predicate.Operators.Size;
 import org.apache.parquet.filter2.predicate.Operators.UserDefined;
 
 /**
@@ -96,6 +97,19 @@ public final class LogicalInverter implements Visitor<FilterPredicate> {
   @Override
   public <T extends Comparable<T>> FilterPredicate visit(Contains<T> contains) {
     return contains.not();
+  }
+
+  @Override
+  public FilterPredicate visit(Size size) {
+    final int value = size.getValue();
+    final Operators.Column<?> column = size.getColumn();
+
+    return size.filter(
+        (eq) -> new Or(new Size(column, Size.Operator.LT, value), new Size(column, Size.Operator.GT, value)),
+        (lt) -> new Size(column, Size.Operator.GTE, value),
+        (ltEq) -> new Size(column, Size.Operator.GT, value),
+        (gt) -> new Size(column, Size.Operator.LTE, value),
+        (gtEq) -> new Size(column, Size.Operator.LT, value));
   }
 
   @Override

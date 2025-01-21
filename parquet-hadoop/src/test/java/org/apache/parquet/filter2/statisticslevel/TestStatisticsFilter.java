@@ -33,21 +33,37 @@ import static org.apache.parquet.filter2.predicate.FilterApi.not;
 import static org.apache.parquet.filter2.predicate.FilterApi.notEq;
 import static org.apache.parquet.filter2.predicate.FilterApi.notIn;
 import static org.apache.parquet.filter2.predicate.FilterApi.or;
+import static org.apache.parquet.filter2.predicate.FilterApi.size;
 import static org.apache.parquet.filter2.predicate.FilterApi.userDefined;
 import static org.apache.parquet.filter2.statisticslevel.StatisticsFilter.canDrop;
+import static org.apache.parquet.format.converter.ParquetMetadataConverter.NO_FILTER;
+import static org.apache.parquet.hadoop.ParquetFileReader.readFooter;
 import static org.apache.parquet.io.api.Binary.fromString;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
+import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import com.google.common.collect.ImmutableList;
+import java.io.File;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.statistics.DoubleStatistics;
 import org.apache.parquet.column.statistics.IntStatistics;
+import org.apache.parquet.column.statistics.SizeStatistics;
+import org.apache.parquet.example.data.Group;
+import org.apache.parquet.example.data.simple.SimpleGroup;
 import org.apache.parquet.filter2.predicate.FilterPredicate;
 import org.apache.parquet.filter2.predicate.LogicalInverseRewriter;
 import org.apache.parquet.filter2.predicate.Operators;
@@ -56,10 +72,19 @@ import org.apache.parquet.filter2.predicate.Operators.DoubleColumn;
 import org.apache.parquet.filter2.predicate.Operators.IntColumn;
 import org.apache.parquet.filter2.predicate.Statistics;
 import org.apache.parquet.filter2.predicate.UserDefinedPredicate;
+import org.apache.parquet.hadoop.ParquetWriter;
+import org.apache.parquet.hadoop.example.ExampleParquetWriter;
+import org.apache.parquet.hadoop.example.GroupWriteSupport;
+import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
+import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.io.api.Binary;
+import org.apache.parquet.schema.GroupType;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
+import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Types;
 import org.junit.Test;
@@ -68,17 +93,27 @@ public class TestStatisticsFilter {
 
   private static ColumnChunkMetaData getIntColumnMeta(
       org.apache.parquet.column.statistics.Statistics<?> stats, long valueCount) {
+    return getIntColumnMeta(ColumnPath.get("int", "column"), stats, null, valueCount);
+  }
+
+  private static ColumnChunkMetaData getIntColumnMeta(
+      ColumnPath columnPath,
+      org.apache.parquet.column.statistics.Statistics<?> stats,
+      SizeStatistics sizeStatistics,
+      long valueCount) {
     return ColumnChunkMetaData.get(
-        ColumnPath.get("int", "column"),
-        PrimitiveTypeName.INT32,
+        columnPath,
+        new PrimitiveType(REQUIRED, INT32, columnPath.toDotString()),
         CompressionCodecName.GZIP,
+        null,
         new HashSet<Encoding>(Arrays.asList(Encoding.PLAIN)),
         stats,
         0L,
         0L,
         valueCount,
         0L,
-        0L);
+        0L,
+        sizeStatistics);
   }
 
   private static ColumnChunkMetaData getDoubleColumnMeta(
@@ -100,6 +135,7 @@ public class TestStatisticsFilter {
   private static final DoubleColumn doubleColumn = doubleColumn("double.column");
   private static final BinaryColumn missingColumn = binaryColumn("missing");
   private static final IntColumn missingColumn2 = intColumn("missing.int");
+  private static final IntColumn nestedListColumn = intColumn("nestedGroup.listField.element");
 
   private static final IntStatistics intStats = new IntStatistics();
   private static final IntStatistics nullIntStats = new IntStatistics();
@@ -433,6 +469,256 @@ public class TestStatisticsFilter {
     assertFalse(canDrop(or(yes, no), columnMetas));
     assertFalse(canDrop(or(no, yes), columnMetas));
     assertFalse(canDrop(or(no, no), columnMetas));
+  }
+
+  @Test
+  public void testSizeFilterRequiredGroupRequiredElements() throws Exception {
+    for (int nestingLevel = 0; nestingLevel < 3; nestingLevel++) {
+      final String nestingPrefix = IntStream.range(0, nestingLevel)
+          .mapToObj(l -> "NestedGroup" + l)
+          .collect(Collectors.joining("."));
+      final IntColumn columnName =
+          intColumn(((nestingPrefix.isEmpty() ? "" : nestingPrefix + ".") + "nestedGroup.listField.element"));
+
+      final IntStatistics minMaxStats = new IntStatistics();
+
+      // Case 1: Lists are populated
+      List<ColumnChunkMetaData> columnMeta = Collections.singletonList(getIntColumnMeta(
+          columnName.getColumnPath(),
+          minMaxStats,
+          createSizeStatisticsForRepeatedField(
+              nestingLevel,
+              true,
+              ImmutableList.of(
+                  ImmutableList.of(1, 2, 3),
+                  ImmutableList.of(1),
+                  ImmutableList.of(1, 2, 3),
+                  ImmutableList.of())),
+          4));
+
+      // SizeStats tells us that there are 7 total array elements spread across 3 non-empty list_fields,
+      // so the max size any single list_field could have is 5
+      assertTrue(canDrop(size(columnName, Operators.Size.Operator.GTE, 6), columnMeta));
+      assertTrue(canDrop(size(columnName, Operators.Size.Operator.GT, 5), columnMeta));
+      assertTrue(canDrop(size(columnName, Operators.Size.Operator.EQ, 6), columnMeta));
+
+      // These predicates should not be able to filter out the page
+      assertFalse(canDrop(size(columnName, Operators.Size.Operator.LT, 5), columnMeta));
+      assertFalse(canDrop(size(columnName, Operators.Size.Operator.LTE, 3), columnMeta));
+      assertFalse(canDrop(size(columnName, Operators.Size.Operator.EQ, 5), columnMeta));
+
+      // Case 2: All lists are empty
+      columnMeta = Collections.singletonList(getIntColumnMeta(
+          columnName.getColumnPath(),
+          minMaxStats,
+          createSizeStatisticsForRepeatedField(
+              nestingLevel,
+              true,
+              ImmutableList.of(ImmutableList.of(), ImmutableList.of(), ImmutableList.of())),
+          3));
+
+      // These predicates should be able to filter out the page
+      assertTrue(canDrop(size(columnName, Operators.Size.Operator.GT, 0), columnMeta));
+      assertTrue(canDrop(size(columnName, Operators.Size.Operator.GTE, 1), columnMeta));
+      assertTrue(canDrop(size(columnName, Operators.Size.Operator.EQ, 5), columnMeta));
+
+      // These predicates should not be able to filter out the page
+      assertFalse(canDrop(size(columnName, Operators.Size.Operator.LTE, 1), columnMeta));
+      assertFalse(canDrop(size(columnName, Operators.Size.Operator.LT, 1), columnMeta));
+      assertFalse(canDrop(size(columnName, Operators.Size.Operator.EQ, 0), columnMeta));
+
+      // Case 3: all lists have size 1
+      columnMeta = Collections.singletonList(getIntColumnMeta(
+          columnName.getColumnPath(),
+          minMaxStats,
+          createSizeStatisticsForRepeatedField(
+              nestingLevel, true, ImmutableList.of(ImmutableList.of(1), ImmutableList.of(1))),
+          2));
+
+      // We know that records have max array size 1
+      assertTrue(canDrop(size(columnName, Operators.Size.Operator.GTE, 2), columnMeta));
+      assertTrue(canDrop(size(columnName, Operators.Size.Operator.GT, 1), columnMeta));
+      assertTrue(canDrop(size(columnName, Operators.Size.Operator.EQ, 2), columnMeta));
+
+      // These predicates should not be able to filter out the page
+      assertFalse(canDrop(size(columnName, Operators.Size.Operator.LT, 2), columnMeta));
+      assertFalse(canDrop(size(columnName, Operators.Size.Operator.LTE, 1), columnMeta));
+      assertFalse(canDrop(size(columnName, Operators.Size.Operator.EQ, 1), columnMeta));
+    }
+  }
+
+  @Test
+  public void testSizeFilterRequiredGroupOptionalElements() throws Exception {
+    for (int nestingLevel = 0; nestingLevel < 3; nestingLevel++) {
+      final String nestingPrefix = IntStream.range(0, nestingLevel)
+          .mapToObj(l -> "NestedGroup" + l)
+          .collect(Collectors.joining("."));
+      final IntColumn columnName =
+          intColumn(((nestingPrefix.isEmpty() ? "" : nestingPrefix + ".") + "nestedGroup.listField.element"));
+
+      final IntStatistics minMaxStats = new IntStatistics();
+
+      // Case 1: List is non-empty
+      List<Integer> listWithNulls = new ArrayList<>();
+      listWithNulls.add(1);
+      listWithNulls.add(null);
+      listWithNulls.add(null);
+      List<ColumnChunkMetaData> columnMeta = Collections.singletonList(getIntColumnMeta(
+          columnName.getColumnPath(),
+          minMaxStats,
+          createSizeStatisticsForRepeatedField(
+              nestingLevel,
+              true,
+              ImmutableList.of(
+                  listWithNulls, ImmutableList.of(1), ImmutableList.of(1, 2, 3), ImmutableList.of())),
+          4));
+
+      // These predicates should be able to filter out the page
+      assertTrue(canDrop(size(columnName, Operators.Size.Operator.GTE, 6), columnMeta));
+      assertTrue(canDrop(size(columnName, Operators.Size.Operator.GT, 5), columnMeta));
+      assertTrue(canDrop(size(columnName, Operators.Size.Operator.EQ, 6), columnMeta));
+
+      // These predicates should not be able to filter out the page
+      assertFalse(canDrop(size(columnName, Operators.Size.Operator.LT, 5), columnMeta));
+      assertFalse(canDrop(size(columnName, Operators.Size.Operator.LTE, 3), columnMeta));
+      assertFalse(canDrop(size(columnName, Operators.Size.Operator.EQ, 5), columnMeta));
+    }
+  }
+
+  @Test
+  public void testSizeFilterOptionalGroup() throws Exception {
+    for (int nestingLevel = 0; nestingLevel < 3; nestingLevel++) {
+      final String nestingPrefix = IntStream.range(0, nestingLevel)
+          .mapToObj(l -> "NestedGroup" + l)
+          .collect(Collectors.joining("."));
+      final IntColumn columnName =
+          intColumn(((nestingPrefix.isEmpty() ? "" : nestingPrefix + ".") + "nestedGroup.listField.element"));
+
+      final IntStatistics minMaxStats = new IntStatistics();
+
+      // Case 1: List is non-null
+      List<ColumnChunkMetaData> columnMeta = Collections.singletonList(getIntColumnMeta(
+          columnName.getColumnPath(),
+          minMaxStats,
+          createSizeStatisticsForRepeatedField(
+              nestingLevel,
+              false,
+              ImmutableList.of(
+                  ImmutableList.of(1, 2, 3), ImmutableList.of(1), ImmutableList.of(1, 2, 3))),
+          3));
+
+      // These predicates should be able to filter out the page
+      assertTrue(canDrop(size(columnName, Operators.Size.Operator.GTE, 6), columnMeta));
+      assertTrue(canDrop(size(columnName, Operators.Size.Operator.GT, 5), columnMeta));
+      assertTrue(canDrop(size(columnName, Operators.Size.Operator.EQ, 6), columnMeta));
+
+      // These predicates should not be able to filter out the page
+      assertFalse(canDrop(size(columnName, Operators.Size.Operator.GTE, 3), columnMeta));
+      assertFalse(canDrop(size(columnName, Operators.Size.Operator.GT, 2), columnMeta));
+      assertFalse(canDrop(size(columnName, Operators.Size.Operator.LT, 5), columnMeta));
+      assertFalse(canDrop(size(columnName, Operators.Size.Operator.LTE, 3), columnMeta));
+      assertFalse(canDrop(size(columnName, Operators.Size.Operator.EQ, 5), columnMeta));
+
+      // Case 2: Lists are null
+      final List<List<Integer>> listWithNull = new ArrayList<>();
+      listWithNull.add(null);
+      listWithNull.add(null);
+      columnMeta = Collections.singletonList(getIntColumnMeta(
+          columnName.getColumnPath(),
+          minMaxStats,
+          createSizeStatisticsForRepeatedField(nestingLevel, true, listWithNull),
+          2));
+
+      // These predicates should be able to filter out the page
+      assertTrue(canDrop(size(columnName, Operators.Size.Operator.GT, 0), columnMeta));
+      assertTrue(canDrop(size(columnName, Operators.Size.Operator.GTE, 1), columnMeta));
+      assertTrue(canDrop(size(columnName, Operators.Size.Operator.EQ, 5), columnMeta));
+
+      // These predicates should not be able to filter out the page
+      assertFalse(canDrop(size(columnName, Operators.Size.Operator.LTE, 1), columnMeta));
+      assertFalse(canDrop(size(columnName, Operators.Size.Operator.LT, 1), columnMeta));
+      assertFalse(canDrop(size(columnName, Operators.Size.Operator.EQ, 0), columnMeta));
+      assertFalse(canDrop(size(columnName, Operators.Size.Operator.GTE, 0), columnMeta));
+
+      // Case 3: lists are empty
+      columnMeta = Collections.singletonList(getIntColumnMeta(
+          columnName.getColumnPath(),
+          minMaxStats,
+          createSizeStatisticsForRepeatedField(
+              nestingLevel, true, ImmutableList.of(ImmutableList.of(), ImmutableList.of())),
+          2));
+
+      // These predicates should be able to filter out the page
+      assertTrue(canDrop(size(columnName, Operators.Size.Operator.GT, 0), columnMeta));
+      assertTrue(canDrop(size(columnName, Operators.Size.Operator.GTE, 1), columnMeta));
+      assertTrue(canDrop(size(columnName, Operators.Size.Operator.EQ, 5), columnMeta));
+
+      // These predicates should not be able to filter out the page
+      assertFalse(canDrop(size(columnName, Operators.Size.Operator.GTE, 0), columnMeta));
+      assertFalse(canDrop(size(columnName, Operators.Size.Operator.LTE, 1), columnMeta));
+      assertFalse(canDrop(size(columnName, Operators.Size.Operator.LT, 1), columnMeta));
+      assertFalse(canDrop(size(columnName, Operators.Size.Operator.EQ, 0), columnMeta));
+    }
+  }
+
+  private static SizeStatistics createSizeStatisticsForRepeatedField(
+      int nestingLevel, boolean arrayGroupRequired, List<List<Integer>> arrayValues) throws Exception {
+
+    GroupType groupSchema = Types.requiredGroup()
+        .addField((arrayGroupRequired ? Types.requiredGroup() : Types.optionalGroup())
+            .as(LogicalTypeAnnotation.listType())
+            .addField(Types.repeatedGroup()
+                .addField(Types.primitive(INT32, REQUIRED).named("element"))
+                .named("list"))
+            .named("listField"))
+        .named("nestedGroup");
+
+    for (int i = 0; i < nestingLevel; i++) {
+      groupSchema = Types.requiredGroup().addField(groupSchema).named("NestedGroup" + i);
+    }
+
+    final MessageType messageSchema =
+        Types.buildMessage().addField(groupSchema).named("MyRecord");
+
+    // Write data
+    final File tmp = File.createTempFile(TestStatisticsFilter.class.getSimpleName(), ".tmp");
+    tmp.deleteOnExit();
+    tmp.delete();
+    final Path file = new Path(tmp.getPath());
+
+    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(file)
+        .config(GroupWriteSupport.PARQUET_EXAMPLE_SCHEMA, messageSchema.toString())
+        .build()) {
+
+      for (List<Integer> arrayValue : arrayValues) {
+        final SimpleGroup record = new SimpleGroup(messageSchema);
+
+        Group group = record;
+        for (int i = nestingLevel - 1; i >= 0; i--) {
+          group = group.addGroup("NestedGroup" + i);
+        }
+
+        final Group nestedGroup = group.addGroup("nestedGroup");
+        if (arrayValue != null) {
+          Group listField = nestedGroup.addGroup("listField");
+          for (Integer value : arrayValue) {
+            Group list = listField.addGroup("list");
+            if (value != null) {
+              list.append("element", value);
+            }
+          }
+        }
+
+        writer.write(record);
+      }
+    }
+
+    // Read size statistics
+    final ParquetMetadata footer = readFooter(new Configuration(), file, NO_FILTER);
+    assert (footer.getBlocks().size() == 1);
+    final BlockMetaData blockMetaData = footer.getBlocks().get(0);
+    assert (blockMetaData.getColumns().size() == 1);
+    return blockMetaData.getColumns().get(0).getSizeStatistics();
   }
 
   public static class SevensAndEightsUdp extends UserDefinedPredicate<Integer> {

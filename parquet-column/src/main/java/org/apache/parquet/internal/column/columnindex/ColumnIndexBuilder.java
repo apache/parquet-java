@@ -53,6 +53,7 @@ import org.apache.parquet.filter2.predicate.Operators.Not;
 import org.apache.parquet.filter2.predicate.Operators.NotEq;
 import org.apache.parquet.filter2.predicate.Operators.NotIn;
 import org.apache.parquet.filter2.predicate.Operators.Or;
+import org.apache.parquet.filter2.predicate.Operators.Size;
 import org.apache.parquet.filter2.predicate.Operators.UserDefined;
 import org.apache.parquet.filter2.predicate.UserDefinedPredicate;
 import org.apache.parquet.io.api.Binary;
@@ -406,6 +407,73 @@ public abstract class ColumnIndexBuilder {
     }
 
     @Override
+    public PrimitiveIterator.OfInt visit(Size size) {
+      if (repLevelHistogram == null || defLevelHistogram == null) {
+        return IndexIterator.all(getPageCount());
+      }
+
+      final int[] repLevelOffsets = calculateOffsetsForHistogram(repLevelHistogram, nullPages);
+      final int[] defLevelOffsets = calculateOffsetsForHistogram(defLevelHistogram, nullPages);
+
+      return IndexIterator.filter(getPageCount(), pageIndex -> {
+        final boolean isFinalPage = pageIndex + 1 == nullPages.length;
+        final List<Long> pageRepLevelHistogram = getRepetitionLevelHistogram()
+            .subList(
+                repLevelOffsets[pageIndex],
+                isFinalPage ? repLevelHistogram.length : repLevelOffsets[pageIndex + 1]);
+        final List<Long> pageDefLevelHistogram = getDefinitionLevelHistogram()
+            .subList(
+                defLevelOffsets[pageIndex],
+                isFinalPage ? defLevelHistogram.length : defLevelOffsets[pageIndex + 1]);
+
+        if (pageRepLevelHistogram.isEmpty() || pageDefLevelHistogram.isEmpty()) {
+          // Page might match; cannot be filtered out
+          return true;
+        }
+
+        final int defLevelCount = pageDefLevelHistogram.size();
+
+        // If all values have repetition level 0, then no array has more than 1 element
+        if (pageRepLevelHistogram.size() == 1
+            || (pageRepLevelHistogram.get(0) > 0
+                && pageRepLevelHistogram.subList(1, pageRepLevelHistogram.size()).stream()
+                    .allMatch(l -> l == 0))) {
+
+          if (
+          // all lists are null or empty
+          (pageDefLevelHistogram.subList(1, defLevelCount).stream().allMatch(l -> l == 0))) {
+            return size.filter(
+                (eq) -> eq <= 0, (lt) -> true, (lte) -> true, (gt) -> gt < 0, (gte) -> gte <= 0);
+          }
+
+          final int maxDefinitionLevel = defLevelCount - 1;
+
+          // If all repetition levels are zero and all definition levels are > MAX_DEFINITION_LEVEL - 1, all
+          // lists are of size 1
+          if (pageDefLevelHistogram.subList(0, maxDefinitionLevel - 1).stream()
+              .allMatch(l -> l == 0)) {
+            return size.filter(
+                (eq) -> eq == 1, (lt) -> lt > 1, (lte) -> lte >= 1, (gt) -> gt < 1, (gte) -> gte <= 1);
+          }
+        }
+
+        final long nonNullElementCount =
+            pageRepLevelHistogram.stream().mapToLong(l -> l).sum() - pageDefLevelHistogram.get(0);
+        final long numNonNullRecords = pageRepLevelHistogram.get(0) - pageDefLevelHistogram.get(0);
+
+        // Given the total number of elements and non-null fields, we can compute the max size of any array
+        // field
+        final long maxArrayElementCount = 1 + (nonNullElementCount - numNonNullRecords);
+        return size.filter(
+            (eq) -> eq <= maxArrayElementCount,
+            (lt) -> true,
+            (lte) -> true,
+            (gt) -> gt < maxArrayElementCount,
+            (gte) -> gte <= maxArrayElementCount);
+      });
+    }
+
+    @Override
     public <T extends Comparable<T>, U extends UserDefinedPredicate<T>> PrimitiveIterator.OfInt visit(
         UserDefined<T, U> udp) {
       final UserDefinedPredicate<T> predicate = udp.getUserDefinedPredicate();
@@ -464,6 +532,23 @@ public abstract class ColumnIndexBuilder {
           }
         }
       });
+    }
+
+    // Calculates each page's starting offset in a concatenated histogram
+    private static int[] calculateOffsetsForHistogram(long[] histogram, boolean[] nullPages) {
+      final int numNullPages =
+          (int) BooleanList.of(nullPages).stream().filter(p -> p).count();
+      final int numNonNullPages = nullPages.length - numNullPages;
+      final int numLevelsPerNonNullPage = (histogram.length - numNullPages) / numNonNullPages;
+
+      int[] offsets = new int[nullPages.length];
+      int currOffset = 0;
+      for (int i = 0; i < nullPages.length; ++i) {
+        offsets[i] = currOffset;
+        currOffset += (nullPages[i] ? 1 : numLevelsPerNonNullPage);
+      }
+
+      return offsets;
     }
   }
 

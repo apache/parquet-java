@@ -40,6 +40,7 @@ import org.apache.parquet.filter2.predicate.Operators.NotEq;
 import org.apache.parquet.filter2.predicate.Operators.NotIn;
 import org.apache.parquet.filter2.predicate.Operators.Or;
 import org.apache.parquet.filter2.predicate.Operators.SingleColumnFilterPredicate;
+import org.apache.parquet.filter2.predicate.Operators.Size;
 import org.apache.parquet.filter2.predicate.Operators.SupportsEqNotEq;
 import org.apache.parquet.filter2.predicate.Operators.SupportsLtGt;
 import org.apache.parquet.filter2.predicate.Operators.UserDefined;
@@ -261,6 +262,10 @@ public final class FilterApi {
 
   public static <T extends Comparable<T>, P extends SingleColumnFilterPredicate<T>> Contains<T> contains(P pred) {
     return Contains.of(pred);
+  }
+
+  public static Size size(Column<?> column, Size.Operator operator, int value) {
+    return new Size(column, operator, value);
   }
 
   /**
