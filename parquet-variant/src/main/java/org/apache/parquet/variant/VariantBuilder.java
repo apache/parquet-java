@@ -16,19 +16,18 @@
  */
 package org.apache.parquet.variant;
 
+import static org.apache.parquet.variant.VariantUtil.*;
+
+import com.fasterxml.jackson.core.JsonFactory;
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonToken;
+import com.fasterxml.jackson.core.exc.InputCoercionException;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
-
-import com.fasterxml.jackson.core.JsonFactory;
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.core.JsonToken;
-import com.fasterxml.jackson.core.exc.InputCoercionException;
-
-import static org.apache.parquet.variant.VariantUtil.*;
 
 /**
  * Builder for creating Variant value and metadata.
@@ -80,8 +79,7 @@ public class VariantBuilder {
    * @throws VariantSizeLimitException if the resulting variant value or metadata would exceed
    * the size limit
    */
-  public static Variant parseJson(JsonParser parser, VariantBuilder builder)
-      throws IOException {
+  public static Variant parseJson(JsonParser parser, VariantBuilder builder) throws IOException {
     builder.buildFromJsonParser(parser);
     return builder.result();
   }
@@ -106,7 +104,7 @@ public class VariantBuilder {
     if (maxSize > sizeLimitBytes) {
       throw new VariantSizeLimitException();
     }
-    int offsetSize = getMinIntegerSize((int)maxSize);
+    int offsetSize = getMinIntegerSize((int) maxSize);
 
     int offsetStart = 1 + offsetSize;
     int stringStart = offsetStart + (numKeys + 1) * offsetSize;
@@ -346,8 +344,7 @@ public class VariantBuilder {
         for (int i = 0; i < size; ++i) {
           int oldOffset = fields.get(i).offset;
           int fieldSize = VariantUtil.valueSize(writeBuffer, start + oldOffset);
-          System.arraycopy(writeBuffer, start + oldOffset,
-              writeBuffer, start + currentOffset, fieldSize);
+          System.arraycopy(writeBuffer, start + oldOffset, writeBuffer, start + currentOffset, fieldSize);
           fields.set(i, fields.get(i).withNewOffset(currentOffset));
           currentOffset += fieldSize;
         }
@@ -620,6 +617,7 @@ public class VariantBuilder {
 
   /** The buffer for building the Variant value. The first `writePos` bytes have been written. */
   private byte[] writeBuffer = new byte[128];
+
   private int writePos = 0;
   /** The dictionary for mapping keys to monotonically increasing ids. */
   private final HashMap<String, Integer> dictionary = new HashMap<>();

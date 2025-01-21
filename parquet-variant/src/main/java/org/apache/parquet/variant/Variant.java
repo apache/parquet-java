@@ -18,9 +18,11 @@
  */
 package org.apache.parquet.variant;
 
+import static java.time.temporal.ChronoField.*;
+import static org.apache.parquet.variant.VariantUtil.*;
+
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerator;
-
 import java.io.CharArrayWriter;
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -34,10 +36,6 @@ import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.Locale;
-
-import static java.time.temporal.ChronoField.*;
-import static java.time.temporal.ChronoField.SECOND_OF_MINUTE;
-import static org.apache.parquet.variant.VariantUtil.*;
 
 /**
  * This Variant class holds the Variant-encoded value and metadata binary values.
@@ -143,8 +141,7 @@ public final class Variant {
    * @return the number of object fields in the variant. `getType()` must be `Type.OBJECT`.
    */
   public int objectSize() {
-    return handleObject(value, pos,
-        (size, idSize, offsetSize, idStart, offsetStart, dataStart) -> size);
+    return handleObject(value, pos, (size, idSize, offsetSize, idStart, offsetStart, dataStart) -> size);
   }
 
   // Find the field value whose key is equal to `key`. Return null if the key is not found.
@@ -292,7 +289,7 @@ public final class Variant {
    */
   private static String escapeJson(String str) {
     try (CharArrayWriter writer = new CharArrayWriter();
-         JsonGenerator gen = new JsonFactory().createGenerator(writer)) {
+        JsonGenerator gen = new JsonFactory().createGenerator(writer)) {
       gen.writeString(str);
       gen.flush();
       return writer.toString();
@@ -329,15 +326,14 @@ public final class Variant {
       .toFormatter(Locale.US);
 
   /** The format for a timestamp without time zone, truncating trailing microsecond zeros. */
-  private static final DateTimeFormatter TIMESTAMP_NTZ_TRUNC_FORMATTER =
-      new DateTimeFormatterBuilder()
-          .append(DateTimeFormatter.ISO_LOCAL_DATE)
-          .appendLiteral('T')
-          .appendPattern("HH:mm:ss")
-          .optionalStart()
-          .appendFraction(MICRO_OF_SECOND, 0, 6, true)
-          .optionalEnd()
-          .toFormatter(Locale.US);
+  private static final DateTimeFormatter TIMESTAMP_NTZ_TRUNC_FORMATTER = new DateTimeFormatterBuilder()
+      .append(DateTimeFormatter.ISO_LOCAL_DATE)
+      .appendLiteral('T')
+      .appendPattern("HH:mm:ss")
+      .optionalStart()
+      .appendFraction(MICRO_OF_SECOND, 0, 6, true)
+      .optionalEnd()
+      .toFormatter(Locale.US);
 
   /** The format for a timestamp with time zone, truncating trailing microsecond zeros. */
   private static final DateTimeFormatter TIMESTAMP_TRUNC_FORMATTER = new DateTimeFormatterBuilder()
@@ -349,8 +345,8 @@ public final class Variant {
     return Instant.EPOCH.plus(microsSinceEpoch, ChronoUnit.MICROS);
   }
 
-  private static void toJsonImpl(byte[] value, byte[] metadata, int pos, StringBuilder sb,
-                                 ZoneId zoneId, boolean truncateTrailingZeros) {
+  private static void toJsonImpl(
+      byte[] value, byte[] metadata, int pos, StringBuilder sb, ZoneId zoneId, boolean truncateTrailingZeros) {
     switch (VariantUtil.getType(value, pos)) {
       case OBJECT:
         handleObject(value, pos, (size, idSize, offsetSize, idStart, offsetStart, dataStart) -> {
@@ -398,30 +394,43 @@ public final class Variant {
         break;
       case DECIMAL:
         if (truncateTrailingZeros) {
-          sb.append(VariantUtil.getDecimal(value, pos).stripTrailingZeros().toPlainString());
+          sb.append(VariantUtil.getDecimal(value, pos)
+              .stripTrailingZeros()
+              .toPlainString());
         } else {
           sb.append(VariantUtil.getDecimal(value, pos).toPlainString());
         }
         break;
       case DATE:
-        appendQuoted(sb, LocalDate.ofEpochDay((int) VariantUtil.getLong(value, pos)).toString());
+        appendQuoted(
+            sb,
+            LocalDate.ofEpochDay((int) VariantUtil.getLong(value, pos))
+                .toString());
         break;
       case TIMESTAMP:
         if (truncateTrailingZeros) {
-          appendQuoted(sb, TIMESTAMP_TRUNC_FORMATTER.format(
-              microsToInstant(VariantUtil.getLong(value, pos)).atZone(zoneId)));
+          appendQuoted(
+              sb,
+              TIMESTAMP_TRUNC_FORMATTER.format(microsToInstant(VariantUtil.getLong(value, pos))
+                  .atZone(zoneId)));
         } else {
-          appendQuoted(sb, TIMESTAMP_FORMATTER.format(
-              microsToInstant(VariantUtil.getLong(value, pos)).atZone(zoneId)));
+          appendQuoted(
+              sb,
+              TIMESTAMP_FORMATTER.format(microsToInstant(VariantUtil.getLong(value, pos))
+                  .atZone(zoneId)));
         }
         break;
       case TIMESTAMP_NTZ:
         if (truncateTrailingZeros) {
-          appendQuoted(sb, TIMESTAMP_NTZ_TRUNC_FORMATTER.format(
-              microsToInstant(VariantUtil.getLong(value, pos)).atZone(ZoneOffset.UTC)));
+          appendQuoted(
+              sb,
+              TIMESTAMP_NTZ_TRUNC_FORMATTER.format(microsToInstant(VariantUtil.getLong(value, pos))
+                  .atZone(ZoneOffset.UTC)));
         } else {
-          appendQuoted(sb, TIMESTAMP_NTZ_FORMATTER.format(
-              microsToInstant(VariantUtil.getLong(value, pos)).atZone(ZoneOffset.UTC)));
+          appendQuoted(
+              sb,
+              TIMESTAMP_NTZ_FORMATTER.format(microsToInstant(VariantUtil.getLong(value, pos))
+                  .atZone(ZoneOffset.UTC)));
         }
         break;
       case FLOAT:

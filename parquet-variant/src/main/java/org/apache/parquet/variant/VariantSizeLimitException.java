@@ -20,5 +20,4 @@ package org.apache.parquet.variant;
  * An exception indicating that the metadata or data size of the Variant exceeds the
  * configured size limit.
  */
-public class VariantSizeLimitException extends RuntimeException {
-}
+public class VariantSizeLimitException extends RuntimeException {}

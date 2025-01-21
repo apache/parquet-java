@@ -23,12 +23,12 @@ import java.util.Arrays;
 /**
  * This class defines constants related to the Variant format and provides functions for
  * manipulating Variant binaries.
-
+ *
  * A Variant is made up of 2 binaries: value and metadata. A Variant value consists of a one-byte
  * header and a number of content bytes (can be zero). The header byte is divided into upper 6 bits
  * (called "type info") and lower 2 bits (called "basic type"). The content format is explained in
  * the below constants for all possible basic type and type info values.
-
+ *
  * The Variant metadata includes a version id and a dictionary of distinct strings (case-sensitive).
  * Its binary format is:
  * - Version: 1-byte unsigned integer. The only acceptable value is 1 currently.
@@ -184,14 +184,14 @@ public class VariantUtil {
   }
 
   public static byte objectHeader(boolean largeSize, int idSize, int offsetSize) {
-    return (byte) (((largeSize ? 1 : 0) << (BASIC_TYPE_BITS + 4)) |
-        ((idSize - 1) << (BASIC_TYPE_BITS + 2)) |
-        ((offsetSize - 1) << BASIC_TYPE_BITS) | OBJECT);
+    return (byte) (((largeSize ? 1 : 0) << (BASIC_TYPE_BITS + 4))
+        | ((idSize - 1) << (BASIC_TYPE_BITS + 2))
+        | ((offsetSize - 1) << BASIC_TYPE_BITS)
+        | OBJECT);
   }
 
   public static byte arrayHeader(boolean largeSize, int offsetSize) {
-    return (byte) (((largeSize ? 1 : 0) << (BASIC_TYPE_BITS + 2)) |
-        ((offsetSize - 1) << BASIC_TYPE_BITS) | ARRAY);
+    return (byte) (((largeSize ? 1 : 0) << (BASIC_TYPE_BITS + 2)) | ((offsetSize - 1) << BASIC_TYPE_BITS) | ARRAY);
   }
 
   public static MalformedVariantException malformedVariant() {
@@ -348,12 +348,17 @@ public class VariantUtil {
       case SHORT_STR:
         return 1 + typeInfo;
       case OBJECT:
-        return handleObject(value, pos,
+        return handleObject(
+            value,
+            pos,
             (size, idSize, offsetSize, idStart, offsetStart, dataStart) ->
                 dataStart - pos + readUnsigned(value, offsetStart + size * offsetSize, offsetSize));
       case ARRAY:
-        return handleArray(value, pos, (size, offsetSize, offsetStart, dataStart) ->
-            dataStart - pos + readUnsigned(value, offsetStart + size * offsetSize, offsetSize));
+        return handleArray(
+            value,
+            pos,
+            (size, offsetSize, offsetStart, dataStart) ->
+                dataStart - pos + readUnsigned(value, offsetStart + size * offsetSize, offsetSize));
       default:
         switch (typeInfo) {
           case NULL:
