@@ -19,6 +19,7 @@
 package org.apache.parquet.column.statistics;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Optional;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
