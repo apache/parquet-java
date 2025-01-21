@@ -125,4 +125,20 @@ public class TestSizeStatistics {
     Assert.assertEquals(Arrays.asList(1L, 1L, 1L), copy.getRepetitionLevelHistogram());
     Assert.assertEquals(Arrays.asList(1L, 1L, 1L), copy.getDefinitionLevelHistogram());
   }
+
+  @Test
+  public void testOmittedHistogram() {
+    PrimitiveType type = Types.optional(PrimitiveType.PrimitiveTypeName.BINARY)
+        .as(LogicalTypeAnnotation.stringType())
+        .named("a");
+    SizeStatistics statistics = new SizeStatistics(type, 1024L, null, null);
+    Assert.assertEquals(Optional.of(1024L), statistics.getUnencodedByteArrayDataBytes());
+    Assert.assertEquals(Collections.emptyList(), statistics.getRepetitionLevelHistogram());
+    Assert.assertEquals(Collections.emptyList(), statistics.getDefinitionLevelHistogram());
+
+    SizeStatistics copy = statistics.copy();
+    Assert.assertEquals(Optional.of(1024L), copy.getUnencodedByteArrayDataBytes());
+    Assert.assertEquals(Collections.emptyList(), copy.getRepetitionLevelHistogram());
+    Assert.assertEquals(Collections.emptyList(), copy.getDefinitionLevelHistogram());
+  }
 }
