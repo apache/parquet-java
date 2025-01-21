@@ -262,8 +262,9 @@ public class TestVariantEncoding {
 
   @Test
   public void testTimestamp() {
+    DateTimeFormatter dtf = DateTimeFormatter.ISO_DATE_TIME;
     VariantBuilder vb = new VariantBuilder(false);
-    long micros = microsSinceEpoch(Instant.parse("2024-12-16T10:23:45.321456-08:00"));
+    long micros = microsSinceEpoch(Instant.from(dtf.parse("2024-12-16T10:23:45.321456-08:00")));
     vb.appendTimestamp(micros);
     Assert.assertEquals("\"2024-12-16T10:23:45.321456-08:00\"", vb.result().toJson(ZoneId.of("-08:00")));
     Assert.assertEquals("\"2024-12-16T19:23:45.321456+01:00\"", vb.result().toJson(ZoneId.of("+01:00")));
@@ -317,7 +318,7 @@ public class TestVariantEncoding {
     // deep object
     sb = new StringBuilder();
     // Jackson object mapper hit a stack overflow if json is too deep
-    for (int i = 0; i < 1000; i++) {
+    for (int i = 0; i < 500; i++) {
       sb.append("{").append("\"field" + i + "\": ");
     }
     sb.append("{");
@@ -326,7 +327,7 @@ public class TestVariantEncoding {
       sb.append("\"field" + i + "\": ").append(SAMPLE_JSON_VALUES.get(i));
     }
     sb.append("}");
-    for (int i = 0; i < 1000; i++) {
+    for (int i = 0; i < 500; i++) {
       sb.append("}");
     }
     checkJson(sb.toString());
@@ -445,6 +446,7 @@ public class TestVariantEncoding {
 
   @Test
   public void testTruncateTrailingZeroTimestamp() {
+    DateTimeFormatter dtf = DateTimeFormatter.ISO_DATE_TIME;
     for (String[] strings : Arrays.asList(
         // truncate all trailing zeros
         new String[] {"2024-12-16T10:23:45.000000-08:00", "2024-12-16T10:23:45-08:00"},
@@ -453,7 +455,7 @@ public class TestVariantEncoding {
         // truncate no trailing zeros
         new String[] {"2024-12-16T10:23:45.123456-08:00", "2024-12-16T10:23:45.123456-08:00"})) {
       VariantBuilder vb = new VariantBuilder(false);
-      long micros = microsSinceEpoch(Instant.parse(strings[0]));
+      long micros = microsSinceEpoch(Instant.from(dtf.parse(strings[0])));
       vb.appendTimestamp(micros);
       Variant v = vb.result();
       Assert.assertEquals(String.format("\"%s\"", strings[0]), v.toJson(ZoneId.of("-08:00")));
