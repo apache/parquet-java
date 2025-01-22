@@ -327,7 +327,7 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
     return enumMetadata;
   }
 
-  class FieldWriter {
+  public class FieldWriter {
     String fieldName;
     int index = -1;
 
@@ -345,7 +345,7 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
     /**
      * Used for writing repeated fields
      */
-    void writeRawValue(Object value) {}
+    public void writeRawValue(Object value) {}
 
     /**
      * Used for writing nonrepeated (optional, required) fields
@@ -538,7 +538,7 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
      * Writes message as part of repeated field. It cannot start field
      */
     @Override
-    final void writeRawValue(Object value) {
+    public final void writeRawValue(Object value) {
       recordConsumer.startGroup();
       writeAllFields((MessageOrBuilder) value);
       recordConsumer.endGroup();
@@ -614,7 +614,7 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
     }
 
     @Override
-    final void writeRawValue(Object value) {
+    public final void writeRawValue(Object value) {
       throw new UnsupportedOperationException("Array has no raw value");
     }
 
@@ -657,7 +657,7 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
     }
 
     @Override
-    final void writeRawValue(Object value) {
+    public final void writeRawValue(Object value) {
       throw new UnsupportedOperationException("Array has no raw value");
     }
 
@@ -697,7 +697,7 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
 
   class StringWriter extends FieldWriter {
     @Override
-    final void writeRawValue(Object value) {
+    public final void writeRawValue(Object value) {
       Binary binaryString = Binary.fromString((String) value);
       recordConsumer.addBinary(binaryString);
     }
@@ -705,7 +705,7 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
 
   class IntWriter extends FieldWriter {
     @Override
-    final void writeRawValue(Object value) {
+    public final void writeRawValue(Object value) {
       recordConsumer.addInteger((Integer) value);
     }
   }
@@ -713,7 +713,7 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
   class LongWriter extends FieldWriter {
 
     @Override
-    final void writeRawValue(Object value) {
+    public final void writeRawValue(Object value) {
       recordConsumer.addLong((Long) value);
     }
   }
@@ -730,7 +730,7 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
     }
 
     @Override
-    final void writeRawValue(Object value) {
+    public final void writeRawValue(Object value) {
       Collection<Message> collection = (Collection<Message>) value;
       if (collection.isEmpty()) {
         return;
@@ -761,14 +761,14 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
 
   class FloatWriter extends FieldWriter {
     @Override
-    final void writeRawValue(Object value) {
+    public final void writeRawValue(Object value) {
       recordConsumer.addFloat((Float) value);
     }
   }
 
   class DoubleWriter extends FieldWriter {
     @Override
-    final void writeRawValue(Object value) {
+    public final void writeRawValue(Object value) {
       recordConsumer.addDouble((Double) value);
     }
   }
@@ -786,7 +786,7 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
     }
 
     @Override
-    final void writeRawValue(Object value) {
+    public final void writeRawValue(Object value) {
       Descriptors.EnumValueDescriptor enumValueDesc = (Descriptors.EnumValueDescriptor) value;
       Binary binary = Binary.fromString(enumValueDesc.getName());
       recordConsumer.addBinary(binary);
@@ -796,14 +796,14 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
 
   class BooleanWriter extends FieldWriter {
     @Override
-    final void writeRawValue(Object value) {
+    public final void writeRawValue(Object value) {
       recordConsumer.addBoolean((Boolean) value);
     }
   }
 
   class BinaryWriter extends FieldWriter {
     @Override
-    final void writeRawValue(Object value) {
+    public final void writeRawValue(Object value) {
       // Non-ByteString values can happen when recursions gets truncated.
       ByteString byteString = value instanceof ByteString
           ? (ByteString) value
@@ -819,7 +819,7 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
 
   class TimestampWriter extends FieldWriter {
     @Override
-    void writeRawValue(Object value) {
+    public void writeRawValue(Object value) {
       Timestamp timestamp = (Timestamp) value;
       recordConsumer.addLong(Timestamps.toNanos(timestamp));
     }
@@ -827,7 +827,7 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
 
   class DateWriter extends FieldWriter {
     @Override
-    void writeRawValue(Object value) {
+    public void writeRawValue(Object value) {
       Date date = (Date) value;
       LocalDate localDate = LocalDate.of(date.getYear(), date.getMonth(), date.getDay());
       recordConsumer.addInteger((int) localDate.toEpochDay());
@@ -836,7 +836,7 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
 
   class TimeWriter extends FieldWriter {
     @Override
-    void writeRawValue(Object value) {
+    public void writeRawValue(Object value) {
       com.google.type.TimeOfDay timeOfDay = (com.google.type.TimeOfDay) value;
       LocalTime localTime = LocalTime.of(
           timeOfDay.getHours(), timeOfDay.getMinutes(), timeOfDay.getSeconds(), timeOfDay.getNanos());
@@ -846,56 +846,56 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
 
   class DoubleValueWriter extends FieldWriter {
     @Override
-    void writeRawValue(Object value) {
+    public void writeRawValue(Object value) {
       recordConsumer.addDouble(((DoubleValue) value).getValue());
     }
   }
 
   class FloatValueWriter extends FieldWriter {
     @Override
-    void writeRawValue(Object value) {
+    public void writeRawValue(Object value) {
       recordConsumer.addFloat(((FloatValue) value).getValue());
     }
   }
 
   class Int64ValueWriter extends FieldWriter {
     @Override
-    void writeRawValue(Object value) {
+    public void writeRawValue(Object value) {
       recordConsumer.addLong(((Int64Value) value).getValue());
     }
   }
 
   class UInt64ValueWriter extends FieldWriter {
     @Override
-    void writeRawValue(Object value) {
+    public void writeRawValue(Object value) {
       recordConsumer.addLong(((UInt64Value) value).getValue());
     }
   }
 
   class Int32ValueWriter extends FieldWriter {
     @Override
-    void writeRawValue(Object value) {
+    public void writeRawValue(Object value) {
       recordConsumer.addInteger(((Int32Value) value).getValue());
     }
   }
 
   class UInt32ValueWriter extends FieldWriter {
     @Override
-    void writeRawValue(Object value) {
+    public void writeRawValue(Object value) {
       recordConsumer.addLong(((UInt32Value) value).getValue());
     }
   }
 
   class BoolValueWriter extends FieldWriter {
     @Override
-    void writeRawValue(Object value) {
+    public void writeRawValue(Object value) {
       recordConsumer.addBoolean(((BoolValue) value).getValue());
     }
   }
 
   class StringValueWriter extends FieldWriter {
     @Override
-    void writeRawValue(Object value) {
+    public void writeRawValue(Object value) {
       Binary binaryString = Binary.fromString(((StringValue) value).getValue());
       recordConsumer.addBinary(binaryString);
     }
@@ -903,7 +903,7 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
 
   class BytesValueWriter extends FieldWriter {
     @Override
-    void writeRawValue(Object value) {
+    public void writeRawValue(Object value) {
       byte[] byteArray = ((BytesValue) value).getValue().toByteArray();
       Binary binary = Binary.fromConstantByteArray(byteArray);
       recordConsumer.addBinary(binary);

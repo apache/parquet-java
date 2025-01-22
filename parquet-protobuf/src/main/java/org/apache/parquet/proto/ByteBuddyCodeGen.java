@@ -73,6 +73,7 @@ import net.bytebuddy.dynamic.DynamicType;
 import net.bytebuddy.dynamic.loading.ClassLoadingStrategy;
 import net.bytebuddy.dynamic.scaffold.InstrumentedType;
 import net.bytebuddy.implementation.Implementation;
+import net.bytebuddy.implementation.MethodCall;
 import net.bytebuddy.implementation.SuperMethodCall;
 import net.bytebuddy.implementation.bytecode.ByteCodeAppender;
 import net.bytebuddy.implementation.bytecode.Removal;
@@ -101,7 +102,7 @@ import org.apache.parquet.proto.ByteBuddyCodeGen.CodeGenUtils.Implementations;
 import org.apache.parquet.proto.ByteBuddyCodeGen.CodeGenUtils.LocalVar;
 import org.apache.parquet.schema.MessageType;
 
-class ByteBuddyCodeGen {
+public class ByteBuddyCodeGen {
   private static final AtomicLong BYTE_BUDDY_CLASS_SEQUENCE = new AtomicLong();
 
   private static final GenerateMessageClasses GeneratedMessageV3 =
@@ -185,6 +186,7 @@ class ByteBuddyCodeGen {
     static final ResolvedReflection Reflection = new ResolvedReflection();
 
     static class ResolvedReflection {
+      final Method MethodHandles_lookup = ReflectionUtil.getDeclaredMethod(MethodHandles.class, "lookup");
 
       final RecordConsumerMethods RecordConsumer = new RecordConsumerMethods();
       final ByteBuddyMessageWritersMethods ByteBuddyProto3FastMessageWriter =
@@ -741,7 +743,7 @@ class ByteBuddyCodeGen {
     }
   }
 
-  static class WriteSupport {
+  public static class WriteSupport {
     // in order to avoid class generation for the same proto descriptors, cache implementations.
     private static final Map<MessageFieldsWritersCacheKey, Consumer<ProtoWriteSupport<?>.MessageWriter>>
         WRITERS_CACHE = new MapMaker().weakValues().makeMap();
@@ -1390,6 +1392,7 @@ class ByteBuddyCodeGen {
 
         classBuilder = new ByteBuddy()
             .subclass(ByteBuddyMessageWriters.class)
+            .modifiers(Visibility.PUBLIC)
             .name(ByteBuddyMessageWriters.class.getName() + "$Generated$"
                 + BYTE_BUDDY_CLASS_SEQUENCE.incrementAndGet());
 
@@ -1398,6 +1401,7 @@ class ByteBuddyCodeGen {
         generateConstructor();
         generateMethods();
         overrideSetFallbackFieldWriters();
+        overrideGetLookup();
 
         DynamicType.Unloaded<ByteBuddyMessageWriters> unloaded = classBuilder.make();
 
@@ -1408,8 +1412,14 @@ class ByteBuddyCodeGen {
         //         }
 
         byteBuddyMessageWritersClass = unloaded.load(
-                null, ClassLoadingStrategy.UsingLookup.of(MethodHandles.lookup()))
+                this.getClass().getClassLoader(), ClassLoadingStrategy.Default.WRAPPER)
             .getLoaded();
+      }
+
+      private void overrideGetLookup() {
+        classBuilder = classBuilder
+            .method(ElementMatchers.named("getLookup"))
+            .intercept(MethodCall.invoke(Reflection.MethodHandles_lookup));
       }
 
       private void registerFallbackFieldWriterFields() {
@@ -1465,7 +1475,8 @@ class ByteBuddyCodeGen {
       private void generateConstructor() {
         classBuilder = classBuilder
             .constructor(ElementMatchers.any())
-            .intercept(SuperMethodCall.INSTANCE.andThen(new ByteBuddyMessageWritersConstructor()));
+            .intercept(SuperMethodCall.INSTANCE.andThen(new ByteBuddyMessageWritersConstructor()))
+            .modifiers(Visibility.PUBLIC);
       }
 
       private void registerEnumFields() {
@@ -2645,14 +2656,16 @@ class ByteBuddyCodeGen {
 
     // this is subclassed with ByteBuddy, overriding the constructor, setProtoReflectionMessageWriters and adding
     // new fields and methods
-    abstract static class ByteBuddyMessageWriters {
+    public abstract static class ByteBuddyMessageWriters {
       private final ProtoWriteSupport<?> protoWriteSupport;
       private final Map<Method, ProtoWriteSupport.MessageFieldsWriter> fastMessageWriters = new LinkedHashMap<>();
+      private final MethodHandles.Lookup lookup;
 
       public ByteBuddyMessageWriters(
           ProtoWriteSupport<?>.MessageWriter rootMessageWriter,
           ByteBuddyMessageWritersCodeGen.GeneratedElementsInfo generatedElementsInfo) {
         this.protoWriteSupport = rootMessageWriter.getProtoWriteSupport();
+        this.lookup = getLookup();
         final ProtoWriteSupport<?>.FieldWriter[] fallbackFieldWriters =
             new ProtoWriteSupport<?>.FieldWriter[generatedElementsInfo.fallbackFieldWriters.size()];
 
@@ -2699,7 +2712,6 @@ class ByteBuddyCodeGen {
 
       public ProtoWriteSupport.MessageFieldsWriter getFastMessageWriter(Method method) {
         return fastMessageWriters.computeIfAbsent(method, k -> {
-          MethodHandles.Lookup lookup = MethodHandles.lookup();
           Class<?> messageOrBuilderInterface = method.getParameterTypes()[0];
           try {
             Consumer<MessageOrBuilder> consumer =
@@ -2728,6 +2740,8 @@ class ByteBuddyCodeGen {
           }
         });
       }
+
+      protected abstract MethodHandles.Lookup getLookup();
     }
   }
 }
