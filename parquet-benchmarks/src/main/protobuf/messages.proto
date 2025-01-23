@@ -1,0 +1,216 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+syntax = "proto3";
+
+package Benchmarks;
+
+option java_package = "org.apache.parquet.benchmarks";
+
+// more or less mimics the data structure defined in the original DataGenerator
+message Test1 {
+      bytes binary_field = 1;
+      int32 int32_field = 2;
+      int64 int64_field = 3;
+      bool boolean_field = 4;
+      float float_field = 5;
+      double double_field = 6;
+      string string_field = 7;
+}
+
+message Test30Int32 {
+  int32 field1 = 1;
+  int32 field2 = 2;
+  int32 field3 = 3;
+  int32 field4 = 4;
+  int32 field5 = 5;
+  int32 field6 = 6;
+  int32 field7 = 7;
+  int32 field8 = 8;
+  int32 field9 = 9;
+  int32 field10 = 10;
+
+  int32 field11 = 11;
+  int32 field12 = 12;
+  int32 field13 = 13;
+  int32 field14 = 14;
+  int32 field15 = 15;
+  int32 field16 = 16;
+  int32 field17 = 17;
+  int32 field18 = 18;
+  int32 field19 = 19;
+  int32 field20 = 20;
+
+  int32 field21 = 21;
+  int32 field22 = 22;
+  int32 field23 = 23;
+  int32 field24 = 24;
+  int32 field25 = 25;
+  int32 field26 = 26;
+  int32 field27 = 27;
+  int32 field28 = 28;
+  int32 field29 = 29;
+  int32 field30 = 30;
+}
+
+message Test30String {
+  string field1 = 1;
+  string field2 = 2;
+  string field3 = 3;
+  string field4 = 4;
+  string field5 = 5;
+  string field6 = 6;
+  string field7 = 7;
+  string field8 = 8;
+  string field9 = 9;
+  string field10 = 10;
+
+  string field11 = 11;
+  string field12 = 12;
+  string field13 = 13;
+  string field14 = 14;
+  string field15 = 15;
+  string field16 = 16;
+  string field17 = 17;
+  string field18 = 18;
+  string field19 = 19;
+  string field20 = 20;
+
+  string field21 = 21;
+  string field22 = 22;
+  string field23 = 23;
+  string field24 = 24;
+  string field25 = 25;
+  string field26 = 26;
+  string field27 = 27;
+  string field28 = 28;
+  string field29 = 29;
+  string field30 = 30;
+}
+
+message Test100Int32 {
+  int32 f1 = 1;
+  int32 f2 = 2;
+  int32 f3 = 3;
+  int32 f4 = 4;
+  int32 f5 = 5;
+  int32 f6 = 6;
+  int32 f7 = 7;
+  int32 f8 = 8;
+  int32 f9 = 9;
+  int32 f10 = 10;
+
+  int32 f11 = 11;
+  int32 f12 = 12;
+  int32 f13 = 13;
+  int32 f14 = 14;
+  int32 f15 = 15;
+  int32 f16 = 16;
+  int32 f17 = 17;
+  int32 f18 = 18;
+  int32 f19 = 19;
+  int32 f20 = 20;
+
+  int32 f21 = 21;
+  int32 f22 = 22;
+  int32 f23 = 23;
+  int32 f24 = 24;
+  int32 f25 = 25;
+  int32 f26 = 26;
+  int32 f27 = 27;
+  int32 f28 = 28;
+  int32 f29 = 29;
+  int32 f30 = 30;
+
+  int32 f31 = 31;
+  int32 f32 = 32;
+  int32 f33 = 33;
+  int32 f34 = 34;
+  int32 f35 = 35;
+  int32 f36 = 36;
+  int32 f37 = 37;
+  int32 f38 = 38;
+  int32 f39 = 39;
+  int32 f40 = 40;
+
+  int32 f41 = 41;
+  int32 f42 = 42;
+  int32 f43 = 43;
+  int32 f44 = 44;
+  int32 f45 = 45;
+  int32 f46 = 46;
+  int32 f47 = 47;
+  int32 f48 = 48;
+  int32 f49 = 49;
+  int32 f50 = 50;
+
+  int32 f51 = 51;
+  int32 f52 = 52;
+  int32 f53 = 53;
+  int32 f54 = 54;
+  int32 f55 = 55;
+  int32 f56 = 56;
+  int32 f57 = 57;
+  int32 f58 = 58;
+  int32 f59 = 59;
+  int32 f60 = 60;
+
+  int32 f61 = 61;
+  int32 f62 = 62;
+  int32 f63 = 63;
+  int32 f64 = 64;
+  int32 f65 = 65;
+  int32 f66 = 66;
+  int32 f67 = 67;
+  int32 f68 = 68;
+  int32 f69 = 69;
+  int32 f70 = 70;
+
+  int32 f71 = 71;
+  int32 f72 = 72;
+  int32 f73 = 73;
+  int32 f74 = 74;
+  int32 f75 = 75;
+  int32 f76 = 76;
+  int32 f77 = 77;
+  int32 f78 = 78;
+  int32 f79 = 79;
+  int32 f80 = 80;
+
+  int32 f81 = 81;
+  int32 f82 = 82;
+  int32 f83 = 83;
+  int32 f84 = 84;
+  int32 f85 = 85;
+  int32 f86 = 86;
+  int32 f87 = 87;
+  int32 f88 = 88;
+  int32 f89 = 89;
+  int32 f90 = 90;
+
+  int32 f91 = 91;
+  int32 f92 = 92;
+  int32 f93 = 93;
+  int32 f94 = 94;
+  int32 f95 = 95;
+  int32 f96 = 96;
+  int32 f97 = 97;
+  int32 f98 = 98;
+  int32 f99 = 99;
+  int32 f100 = 100;
+}

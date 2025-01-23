@@ -50,10 +50,11 @@ import org.openjdk.jmh.annotations.State;
 
 @State(Thread)
 public class WriteBenchmarks {
-  private DataGenerator dataGenerator = new DataGenerator();
+  protected DataGenerator dataGenerator;
 
   @Setup(Level.Iteration)
   public void setup() {
+    dataGenerator = new DataGenerator();
     // clean existing test data at the beginning of each iteration
     dataGenerator.cleanup();
   }
