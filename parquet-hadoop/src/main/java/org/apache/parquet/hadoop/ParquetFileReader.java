@@ -589,7 +589,12 @@ public class ParquetFileReader implements Closeable {
     long fileMetadataLengthIndex = fileLen - magic.length - FOOTER_LENGTH_SIZE;
     LOG.debug("reading footer index at {}", fileMetadataLengthIndex);
     f.seek(fileMetadataLengthIndex);
-    int fileMetadataLength = readIntLittleEndian(f);
+    long readFileMetadataLength = readIntLittleEndian(f) & 0xFFFFFFFFL;
+    if (readFileMetadataLength > Integer.MAX_VALUE) {
+      throw new RuntimeException("footer is too large: " + readFileMetadataLength + "to be read");
+    }
+    int fileMetadataLength = (int) readFileMetadataLength;
+
     f.readFully(magic);
 
     boolean encryptedFooterMode;
