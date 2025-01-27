@@ -37,8 +37,6 @@ import org.apache.avro.generic.IndexedRecord;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.DirectWriterTest;
-import org.apache.parquet.conf.HadoopParquetConfiguration;
-import org.apache.parquet.conf.ParquetConfiguration;
 import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.io.InvalidRecordException;
 import org.apache.parquet.schema.MessageType;
@@ -62,7 +60,6 @@ public class TestArrayCompatibility extends DirectWriterTest {
   @Test
   @Ignore(value = "Not yet supported")
   public void testUnannotatedListOfPrimitives() throws Exception {
-
     Path test =
         writeDirect("message UnannotatedListOfPrimitives {" + "  repeated int32 list_of_ints;" + "}", rc -> {
           rc.startMessage();
@@ -1120,12 +1117,10 @@ public class TestArrayCompatibility extends DirectWriterTest {
         + "  }\n"
         + "}");
     Schema avroSchema = new AvroSchemaConverter().convert(parquetSchema);
-    ParquetConfiguration conf = new HadoopParquetConfiguration();
 
     Assert.assertTrue(AvroRecordConverter.isElementType(
         parquetSchema.getType("list_field").asGroupType().getType("list_field_tuple"),
-        avroSchema.getFields().get(0).schema(),
-        conf));
+        avroSchema.getFields().get(0).schema()));
 
     // Test `array` style naming
     parquetSchema = MessageTypeParser.parseMessageType("message SchemaWithList {\n"
@@ -1139,8 +1134,7 @@ public class TestArrayCompatibility extends DirectWriterTest {
 
     Assert.assertTrue(AvroRecordConverter.isElementType(
         parquetSchema.getType("list_field"),
-        avroSchema.getFields().get(0).schema(),
-        conf));
+        avroSchema.getFields().get(0).schema()));
   }
 
   @Test
@@ -1159,8 +1153,7 @@ public class TestArrayCompatibility extends DirectWriterTest {
     Assert.assertTrue(AvroRecordConverter.isElementType(
         parquetSchema.getType("list").asGroupType().getType("list"),
         AvroSchemaConverter.getNonNull(avroSchema.getFields().get(0).schema())
-            .getElementType(),
-        new HadoopParquetConfiguration(configuration)));
+            .getElementType()));
   }
 
   @Test
@@ -1174,11 +1167,10 @@ public class TestArrayCompatibility extends DirectWriterTest {
         + "  }\n"
         + "}");
     Schema avroSchema = new AvroSchemaConverter().convert(parquetSchema);
-    final HadoopParquetConfiguration conf = new HadoopParquetConfiguration();
+
     Assert.assertTrue(AvroRecordConverter.isElementType(
         parquetSchema.getType("list_field").asGroupType().getType("list_field_tuple"),
-        avroSchema.getFields().get(0).schema(),
-        conf));
+        avroSchema.getFields().get(0).schema()));
 
     // Test `array` style naming
     parquetSchema = MessageTypeParser.parseMessageType("message SchemaWithList {\n"
@@ -1192,8 +1184,7 @@ public class TestArrayCompatibility extends DirectWriterTest {
 
     Assert.assertTrue(AvroRecordConverter.isElementType(
         parquetSchema.getType("list_field"),
-        avroSchema.getFields().get(0).schema(),
-        conf));
+        avroSchema.getFields().get(0).schema()));
   }
 
   @Test
