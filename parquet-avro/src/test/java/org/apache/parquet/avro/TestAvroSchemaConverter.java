@@ -145,7 +145,7 @@ public class TestAvroSchemaConverter {
 
   private void testParquetToAvroConversion(Configuration conf, Schema avroSchema, String schemaString)
       throws Exception {
-    AvroSchemaConverter avroSchemaConverter = conf == null ? new AvroSchemaConverter() : new AvroSchemaConverter(conf);
+    AvroSchemaConverter avroSchemaConverter = new AvroSchemaConverter(conf);
     Schema schema = avroSchemaConverter.convert(MessageTypeParser.parseMessageType(schemaString));
     assertEquals("converting " + schemaString + " to " + avroSchema, avroSchema.toString(), schema.toString());
   }
@@ -587,12 +587,16 @@ public class TestAvroSchemaConverter {
   }
 
   @Test
-  public void testParquetInt96DefaultPass() throws Exception {
+  public void testParquetInt96DefaultFail() throws Exception {
     Schema schema = Schema.createRecord("myrecord", null, null, false);
-    Schema int96schema = Schema.createFixed("INT96", "INT96 represented as byte[12]", null, 12);
-    schema.setFields(Collections.singletonList(new Schema.Field("int96_field", int96schema, null, null)));
 
-    testParquetToAvroConversion(null, schema, "message myrecord {\n  required int96 int96_field;\n}\n");
+    MessageType parquetSchemaWithInt96 =
+        MessageTypeParser.parseMessageType("message myrecord {\n  required int96 int96_field;\n}\n");
+
+    assertThrows(
+        "INT96 is deprecated. As interim enable READ_INT96_AS_FIXED  flag to read as byte array.",
+        IllegalArgumentException.class,
+        () -> new AvroSchemaConverter().convert(parquetSchemaWithInt96));
   }
 
   @Test
