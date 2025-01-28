@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.avro;
 
+import static org.apache.parquet.avro.AvroReadSupport.READ_INT96_AS_FIXED;
 import static org.apache.parquet.avro.AvroTestUtil.array;
 import static org.apache.parquet.avro.AvroTestUtil.field;
 import static org.apache.parquet.avro.AvroTestUtil.instance;
@@ -1134,6 +1135,25 @@ public class TestArrayCompatibility extends DirectWriterTest {
     Assert.assertTrue(AvroRecordConverter.isElementType(
         parquetSchema.getType("list_field"),
         avroSchema.getFields().get(0).schema()));
+  }
+
+  @Test
+  public void testIsElementTypeInt96Element() {
+    Configuration configuration = new Configuration();
+    configuration.setBoolean(READ_INT96_AS_FIXED, true);
+
+    MessageType parquetSchema = MessageTypeParser.parseMessageType("message SchemaWithInt96 {\n"
+        + "  optional group list (LIST) {\n"
+        + "    repeated group list {\n"
+        + "      optional int96 a_timestamp;\n"
+        + "    }\n"
+        + "  }\n"
+        + "}");
+    Schema avroSchema = new AvroSchemaConverter(configuration).convert(parquetSchema);
+    Assert.assertTrue(AvroRecordConverter.isElementType(
+        parquetSchema.getType("list").asGroupType().getType("list"),
+        AvroSchemaConverter.getNonNull(avroSchema.getFields().get(0).schema())
+            .getElementType()));
   }
 
   @Test

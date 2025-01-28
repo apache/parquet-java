@@ -103,7 +103,7 @@ public class AvroSchemaConverter {
     this.assumeRepeatedIsListElement = assumeRepeatedIsListElement;
     this.writeOldListStructure = WRITE_OLD_LIST_STRUCTURE_DEFAULT;
     this.writeParquetUUID = WRITE_PARQUET_UUID_DEFAULT;
-    this.readInt96AsFixed = READ_INT96_AS_FIXED_DEFAULT;
+    this.readInt96AsFixed = true;
     this.pathsToInt96 = Collections.emptySet();
   }
 
