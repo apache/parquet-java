@@ -931,18 +931,16 @@ public class ParquetFileReader implements Closeable {
   }
 
   public ParquetFileReader(InputFile file, ParquetReadOptions options, SeekableInputStream f) throws IOException {
+    this(file, readFooter(file, options, f, new ParquetMetadataConverter(options)), options, f);
+  }
+
+  public ParquetFileReader(InputFile file, ParquetMetadata footer,ParquetReadOptions options, SeekableInputStream f) throws IOException {
     this.converter = new ParquetMetadataConverter(options);
     this.file = file;
     this.f = f;
     this.options = options;
-    try {
-      this.footer = readFooter(file, options, f, converter);
-    } catch (Exception e) {
-      // In case that reading footer throws an exception in the constructor, the new stream
-      // should be closed. Otherwise, there's no way to close this outside.
-      f.close();
-      throw e;
-    }
+    this.footer = footer;
+
     this.fileMetaData = footer.getFileMetaData();
     this.fileDecryptor = fileMetaData.getFileDecryptor(); // must be called before filterRowGroups!
     if (null != fileDecryptor && fileDecryptor.plaintextFile()) {
