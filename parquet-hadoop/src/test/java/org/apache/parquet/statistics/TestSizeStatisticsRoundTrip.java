@@ -18,26 +18,38 @@
  */
 package org.apache.parquet.statistics;
 
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
+import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
+
+import com.google.common.collect.ImmutableList;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Optional;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.column.statistics.SizeStatistics;
+import org.apache.parquet.conf.ParquetConfiguration;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.GroupFactory;
+import org.apache.parquet.example.data.simple.SimpleGroup;
 import org.apache.parquet.example.data.simple.SimpleGroupFactory;
+import org.apache.parquet.format.converter.ParquetMetadataConverter;
 import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.ParquetWriter;
+import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.hadoop.example.ExampleParquetWriter;
 import org.apache.parquet.hadoop.example.GroupWriteSupport;
+import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.internal.column.columnindex.ColumnIndex;
 import org.apache.parquet.internal.column.columnindex.OffsetIndex;
+import org.apache.parquet.io.api.RecordConsumer;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
@@ -94,6 +106,125 @@ public class TestSizeStatisticsRoundTrip {
       Assert.assertEquals(Optional.of(2L), offsetIndex.getUnencodedByteArrayDataBytes(0));
       Assert.assertEquals(Optional.of(2L), offsetIndex.getUnencodedByteArrayDataBytes(1));
     }
+  }
+
+  private static final List<List<Integer>> REPEATED_RECORD_VALUES = ImmutableList.of(
+      ImmutableList.of(1, 2, 3), ImmutableList.of(1), ImmutableList.of(1, 2), ImmutableList.of());
+
+  private static final MessageType MESSAGE_SCHEMA_REPEATED_FIELD = Types.buildMessage()
+      .addField(Types.requiredGroup()
+          .as(LogicalTypeAnnotation.listType())
+          .addField(Types.repeatedGroup()
+              .addField(Types.primitive(INT32, REQUIRED).named("element"))
+              .named("list"))
+          .named("my_list"))
+      .named("MyRecord");
+
+  @Test
+  public void testSizeStatsWrittenWithExampleWriter() throws Exception {
+    final File tmp = File.createTempFile(TestSizeStatisticsRoundTrip.class.getSimpleName(), ".parquet");
+    tmp.deleteOnExit();
+    tmp.delete();
+    final Path file = new Path(tmp.getPath());
+
+    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(file)
+        .config(GroupWriteSupport.PARQUET_EXAMPLE_SCHEMA, MESSAGE_SCHEMA_REPEATED_FIELD.toString())
+        .build()) {
+
+      for (List<Integer> arrayValue : REPEATED_RECORD_VALUES) {
+        final SimpleGroup record = new SimpleGroup(MESSAGE_SCHEMA_REPEATED_FIELD);
+
+        Group listField = record.addGroup("my_list");
+        for (Integer value : arrayValue) {
+          Group list = listField.addGroup("list");
+          if (value != null) {
+            list.append("element", value);
+          }
+        }
+        writer.write(record);
+      }
+    }
+
+    final SizeStatistics stats = getSizeStatisticsFromFile(file);
+
+    Assert.assertEquals(ImmutableList.of(1L, 6L), stats.getDefinitionLevelHistogram());
+    Assert.assertEquals(ImmutableList.of(4L, 3L), stats.getRepetitionLevelHistogram());
+  }
+
+  @Test
+  public void testSizeStatsWrittenWithRecordConsumer() throws Exception {
+    final File tmp = File.createTempFile(TestSizeStatisticsRoundTrip.class.getSimpleName(), ".parquet");
+    tmp.deleteOnExit();
+    tmp.delete();
+    final Path file = new Path(tmp.getPath());
+
+    ParquetWriter<List<Integer>> writer = new ParquetWriter<>(file, new WriteSupport<List<Integer>>() {
+      RecordConsumer rc = null;
+
+      @Override
+      public WriteSupport.WriteContext init(Configuration configuration) {
+        return init((ParquetConfiguration) null);
+      }
+
+      @Override
+      public WriteContext init(ParquetConfiguration configuration) {
+        return new WriteContext(MESSAGE_SCHEMA_REPEATED_FIELD, new HashMap<>());
+      }
+
+      @Override
+      public void prepareForWrite(RecordConsumer recordConsumer) {
+        this.rc = recordConsumer;
+      }
+
+      @Override
+      public void write(List<Integer> arrayValue) {
+        rc.startMessage();
+
+        rc.startField("my_list", 0);
+        rc.startGroup();
+        if (arrayValue != null) {
+          for (int i = 0; i < arrayValue.size(); i++) {
+            rc.startField("list", 0);
+            rc.startGroup();
+
+            rc.startField("element", 0);
+            rc.addInteger(arrayValue.get(i));
+            rc.endField("element", 0);
+
+            rc.endGroup();
+            rc.endField("list", 0);
+          }
+        }
+        rc.endGroup();
+        rc.endField("my_list", 0);
+        rc.endMessage();
+      }
+    });
+
+    for (List<Integer> recordArrayValue : REPEATED_RECORD_VALUES) {
+      writer.write(recordArrayValue);
+    }
+
+    writer.close();
+
+    final SizeStatistics stats = getSizeStatisticsFromFile(file);
+
+    // Assert that these records have the same rep- and def-level histograms as the ExampleParquetWriter test
+
+    // this assertion passes
+    Assert.assertEquals(ImmutableList.of(1L, 6L), stats.getDefinitionLevelHistogram());
+
+    // this assertion FAILS, actual repetition list is [7, 0]
+    Assert.assertEquals(ImmutableList.of(4L, 3L), stats.getRepetitionLevelHistogram());
+  }
+
+  private static SizeStatistics getSizeStatisticsFromFile(Path file) throws IOException {
+    final ParquetMetadata footer =
+        ParquetFileReader.readFooter(new Configuration(), file, ParquetMetadataConverter.NO_FILTER);
+    assert (footer.getBlocks().size() == 1);
+    final BlockMetaData blockMetaData = footer.getBlocks().get(0);
+    assert (blockMetaData.getColumns().size() == 1);
+    return blockMetaData.getColumns().get(0).getSizeStatistics();
   }
 
   private Path newTempPath() throws IOException {
