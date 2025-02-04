@@ -36,6 +36,7 @@ import static org.apache.parquet.filter2.predicate.FilterApi.ltEq;
 import static org.apache.parquet.filter2.predicate.FilterApi.notEq;
 import static org.apache.parquet.filter2.predicate.FilterApi.notIn;
 import static org.apache.parquet.filter2.predicate.FilterApi.or;
+import static org.apache.parquet.filter2.predicate.FilterApi.size;
 import static org.apache.parquet.filter2.predicate.FilterApi.userDefined;
 import static org.apache.parquet.filter2.predicate.LogicalInverter.invert;
 import static org.apache.parquet.schema.OriginalType.DECIMAL;
@@ -56,6 +57,7 @@ import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import com.google.common.collect.ImmutableList;
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -64,9 +66,11 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import org.apache.parquet.bytes.BytesUtils;
+import org.apache.parquet.column.statistics.SizeStatistics;
 import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.filter2.predicate.ContainsRewriter;
 import org.apache.parquet.filter2.predicate.FilterPredicate;
+import org.apache.parquet.filter2.predicate.Operators;
 import org.apache.parquet.filter2.predicate.Operators.BinaryColumn;
 import org.apache.parquet.filter2.predicate.Operators.BooleanColumn;
 import org.apache.parquet.filter2.predicate.Operators.DoubleColumn;
@@ -1625,6 +1629,99 @@ public class TestColumnIndexBuilder {
     assertEquals(0, builder.getPageCount());
     assertEquals(0, builder.getMinMaxSize());
     assertNull(builder.build());
+  }
+
+  @Test
+  public void testSizeRequiredElements() {
+    final PrimitiveType type = Types.required(DOUBLE).named("element");
+    final DoubleColumn col = doubleColumn(type.getName());
+
+    final List<List<Double>> pageValueList = new ArrayList<>();
+    pageValueList.add(ImmutableList.of(1.0, 2.0, 3.0));
+    pageValueList.add(ImmutableList.of(1.0, 2.0, 3.0, 4.0, 5.0));
+    pageValueList.add(ImmutableList.of(-1.0));
+    pageValueList.add(ImmutableList.of());
+    pageValueList.add(null);
+
+    final ColumnIndex columnIndex = createArrayColumnIndex(type, pageValueList);
+
+    assertEquals(BoundaryOrder.UNORDERED, columnIndex.getBoundaryOrder());
+    assertCorrectNullCounts(columnIndex, 0, 0, 0, 0, 0);
+    assertCorrectNullPages(columnIndex, false, false, false, true, true);
+    assertCorrectValues(columnIndex.getMaxValues(), 3.0, 5.0, -1.0, null, null);
+    assertCorrectValues(columnIndex.getMinValues(), 1.0, 1.0, -1.0, null, null);
+
+    // we know max array size is 5; all elements of page 2 have size 1; and page 3 and 4 are null or empty
+    assertCorrectFiltering(columnIndex, size(col, Operators.Size.Operator.EQ, 0), 0, 1, 3, 4);
+    assertCorrectFiltering(columnIndex, size(col, Operators.Size.Operator.EQ, 4), 1);
+    assertCorrectFiltering(columnIndex, size(col, Operators.Size.Operator.EQ, 3), 0, 1);
+    assertCorrectFiltering(columnIndex, size(col, Operators.Size.Operator.LT, 2), 0, 1, 2, 3, 4);
+    assertCorrectFiltering(columnIndex, size(col, Operators.Size.Operator.LTE, 1), 0, 1, 2, 3, 4);
+    assertCorrectFiltering(columnIndex, size(col, Operators.Size.Operator.GT, 0), 0, 1, 2);
+    assertCorrectFiltering(columnIndex, size(col, Operators.Size.Operator.GTE, 0), 0, 1, 2, 3, 4);
+  }
+
+  @Test
+  public void testSizeOptionalElements() {
+    final PrimitiveType type = Types.optional(DOUBLE).named("element");
+    final DoubleColumn col = doubleColumn(type.getName());
+
+    final List<Double> listWithNulls = new ArrayList<>();
+    listWithNulls.add(null);
+    listWithNulls.add(3.0);
+    listWithNulls.add(null);
+
+    final List<List<Double>> pageValueList = new ArrayList<>();
+    pageValueList.add(listWithNulls);
+
+    final ColumnIndex columnIndex = createArrayColumnIndex(type, pageValueList);
+
+    assertCorrectNullCounts(columnIndex, 2);
+    assertCorrectNullPages(columnIndex, false);
+    assertCorrectValues(columnIndex.getMaxValues(), 3.0);
+    assertCorrectValues(columnIndex.getMinValues(), 3.0);
+
+    // We know that the array values for the page have min size 0 and max size 3
+    assertCorrectFiltering(columnIndex, size(col, Operators.Size.Operator.EQ, 0), 0);
+    assertCorrectFiltering(columnIndex, size(col, Operators.Size.Operator.EQ, 5));
+    assertCorrectFiltering(columnIndex, size(col, Operators.Size.Operator.LT, 4), 0);
+    assertCorrectFiltering(columnIndex, size(col, Operators.Size.Operator.LTE, 3), 0);
+    assertCorrectFiltering(columnIndex, size(col, Operators.Size.Operator.GT, 0), 0);
+    assertCorrectFiltering(columnIndex, size(col, Operators.Size.Operator.GT, 3));
+    assertCorrectFiltering(columnIndex, size(col, Operators.Size.Operator.GTE, 3), 0);
+    assertCorrectFiltering(columnIndex, size(col, Operators.Size.Operator.GTE, 4));
+  }
+
+  private static ColumnIndex createArrayColumnIndex(PrimitiveType type, List<List<Double>> pageValueList) {
+    final ColumnIndexBuilder builder = ColumnIndexBuilder.getBuilder(type, Integer.MAX_VALUE);
+
+    for (List<Double> pageValues : pageValueList) {
+      final StatsBuilder sb = new StatsBuilder();
+      boolean isNullOrEmpty = pageValues == null || pageValues.isEmpty();
+
+      final SizeStatistics.Builder sizeStatistics =
+          SizeStatistics.newBuilder(type, isNullOrEmpty ? 0 : 1, isNullOrEmpty ? 0 : 1);
+
+      if (isNullOrEmpty) sizeStatistics.add(0, 0);
+
+      if (pageValues != null) {
+        for (int i = 0; i < pageValues.size(); i++) {
+          if (i == 0) {
+            sizeStatistics.add(0, 1);
+          } else {
+            sizeStatistics.add(1, 1);
+          }
+        }
+      }
+
+      if (pageValues == null) {
+        builder.add(sb.stats(type), sizeStatistics.build());
+      } else {
+        builder.add(sb.stats(type, pageValues.toArray(new Double[0])), sizeStatistics.build());
+      }
+    }
+
+    return builder.build();
   }
 
   private static List<ByteBuffer> toBBList(Binary... values) {

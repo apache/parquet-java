@@ -36,6 +36,7 @@ import org.apache.parquet.filter2.predicate.Operators.Not;
 import org.apache.parquet.filter2.predicate.Operators.NotEq;
 import org.apache.parquet.filter2.predicate.Operators.NotIn;
 import org.apache.parquet.filter2.predicate.Operators.Or;
+import org.apache.parquet.filter2.predicate.Operators.Size;
 import org.apache.parquet.filter2.predicate.Operators.UserDefined;
 
 /**
@@ -102,6 +103,11 @@ public final class LogicalInverseRewriter implements Visitor<FilterPredicate> {
   @Override
   public <T extends Comparable<T>> FilterPredicate visit(Contains<T> contains) {
     return contains;
+  }
+
+  @Override
+  public FilterPredicate visit(Size size) {
+    return size;
   }
 
   @Override

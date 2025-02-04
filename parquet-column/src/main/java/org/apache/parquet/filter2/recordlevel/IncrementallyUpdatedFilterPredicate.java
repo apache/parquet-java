@@ -20,6 +20,7 @@ package org.apache.parquet.filter2.recordlevel;
 
 import java.util.Arrays;
 import java.util.Objects;
+import java.util.function.Function;
 import org.apache.parquet.io.api.Binary;
 
 /**
@@ -220,6 +221,83 @@ public interface IncrementallyUpdatedFilterPredicate {
     public void reset() {
       delegates.forEach(ValueInspector::reset);
       super.reset();
+    }
+  }
+
+  class CountingValueInspector extends ValueInspector {
+    private int observedValueCount;
+    private final ValueInspector delegate;
+
+    /**
+     * Triggering function to update the underlying delegate. We want to be careful not to trigger before
+     * all relevant column values have been considered.
+     *
+     * For example, given the predicate `size(col, LT, 3)` and a record with 4 array values, we don't want the
+     * underlying `lt(3)` predicate to be evaluated on the first or second elements of the array, since it would
+     * return a premature True value.
+     */
+    private final Function<Integer, Boolean> shouldUpdateDelegate;
+
+    public CountingValueInspector(ValueInspector delegate, Function<Integer, Boolean> shouldUpdateDelegate) {
+      this.observedValueCount = 0;
+      this.delegate = delegate;
+      this.shouldUpdateDelegate = shouldUpdateDelegate;
+    }
+
+    @Override
+    public void updateNull() {
+      delegate.update(observedValueCount);
+      if (!delegate.isKnown()) {
+        delegate.updateNull();
+      }
+      setResult(delegate.getResult());
+    }
+
+    @Override
+    public void update(int value) {
+      incrementCount();
+    }
+
+    @Override
+    public void update(long value) {
+      incrementCount();
+    }
+
+    @Override
+    public void update(double value) {
+      incrementCount();
+    }
+
+    @Override
+    public void update(float value) {
+      incrementCount();
+    }
+
+    @Override
+    public void update(boolean value) {
+      incrementCount();
+    }
+
+    @Override
+    public void update(Binary value) {
+      incrementCount();
+    }
+
+    @Override
+    public void reset() {
+      super.reset();
+      delegate.reset();
+      observedValueCount = 0;
+    }
+
+    private void incrementCount() {
+      observedValueCount++;
+      if (!delegate.isKnown() && shouldUpdateDelegate.apply(observedValueCount)) {
+        delegate.update(observedValueCount);
+        if (delegate.isKnown()) {
+          setResult(delegate.getResult());
+        }
+      }
     }
   }
 

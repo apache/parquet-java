@@ -125,6 +125,11 @@ public class BloomFilterImpl implements FilterPredicate.Visitor<Boolean> {
   }
 
   @Override
+  public Boolean visit(Operators.Size size) {
+    return BLOCK_MIGHT_MATCH;
+  }
+
+  @Override
   public <T extends Comparable<T>> Boolean visit(Operators.In<T> in) {
     Set<T> values = in.getValues();
 

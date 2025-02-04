@@ -71,6 +71,7 @@ public class IncrementallyUpdatedFilterPredicateGenerator {
         + "import java.util.Set;\n"
         + "\n"
         + "import org.apache.parquet.hadoop.metadata.ColumnPath;\n"
+        + "import org.apache.parquet.filter2.predicate.FilterApi;\n"
         + "import org.apache.parquet.filter2.predicate.FilterPredicate;\n"
         + "import org.apache.parquet.filter2.predicate.Operators;\n"
         + "import org.apache.parquet.filter2.predicate.Operators.Contains;\n"
@@ -83,6 +84,7 @@ public class IncrementallyUpdatedFilterPredicateGenerator {
         + "import org.apache.parquet.filter2.predicate.Operators.LtEq;\n"
         + "import org.apache.parquet.filter2.predicate.Operators.NotEq;\n"
         + "import org.apache.parquet.filter2.predicate.Operators.NotIn;\n"
+        + "import org.apache.parquet.filter2.predicate.Operators.Size;\n"
         + "import org.apache.parquet.filter2.predicate.Operators.UserDefined;\n"
         + "import org.apache.parquet.filter2.predicate.UserDefinedPredicate;\n"
         + "import org.apache.parquet.filter2.recordlevel.IncrementallyUpdatedFilterPredicate.ValueInspector;\n"
@@ -132,6 +134,8 @@ public class IncrementallyUpdatedFilterPredicateGenerator {
     addContainsCase();
     addContainsEnd();
     addVisitEnd();
+
+    addSizeCase();
 
     addVisitBegin("Lt");
     for (TypeInfo info : TYPES) {
@@ -338,6 +342,30 @@ public class IncrementallyUpdatedFilterPredicateGenerator {
         + "\n");
   }
 
+  private void addSizeCase() throws IOException {
+    add("  @Override\n" + "  public IncrementallyUpdatedFilterPredicate visit(Size size) {\n"
+        + "        final ValueInspector delegate = (ValueInspector) size.filter(\n"
+        + "        (onEq) -> visit(FilterApi.eq(SIZE_PSUEDOCOLUMN, onEq)),\n"
+        + "        (lt) -> visit(FilterApi.lt(SIZE_PSUEDOCOLUMN, lt)),\n"
+        + "        (lte) -> visit(FilterApi.ltEq(SIZE_PSUEDOCOLUMN, lte)),\n"
+        + "        (gt) -> visit(FilterApi.gt(SIZE_PSUEDOCOLUMN, gt)),\n"
+        + "        (gte) -> visit(FilterApi.gtEq(SIZE_PSUEDOCOLUMN, gte)));\n"
+        + "\n"
+        + "    final ValueInspector valueInspector = new IncrementallyUpdatedFilterPredicate.CountingValueInspector(\n"
+        + "      delegate,\n"
+        + "      size.filter(\n"
+        + "          (eqValue) -> (count) -> count > eqValue,\n"
+        + "          (ltValue) -> (count) -> count >= ltValue,\n"
+        + "          (lteValue) -> (count) -> count > lteValue,\n"
+        + "          (gtValue) -> (count) -> count > gtValue,\n"
+        + "          (gteValue) -> (count) -> count >= gteValue)\n"
+        + "      );\n"
+        + "\n"
+        + "    addValueInspector(size.getColumn().getColumnPath(), valueInspector);\n"
+        + "    return valueInspector;\n"
+        + "  }\n");
+  }
+
   private void addContainsInspectorVisitor(String op) throws IOException {
     add("    @Override\n"
         + "    public <T extends Comparable<T>> ContainsPredicate visit(" + op + "<T> pred) {\n"
@@ -499,6 +527,10 @@ public class IncrementallyUpdatedFilterPredicateGenerator {
         + "    @Override\n"
         + "    public <T extends Comparable<T>> ContainsPredicate visit(Contains<T> contains) {\n"
         + "      return contains.filter(this, ContainsAndPredicate::new, ContainsOrPredicate::new, ContainsPredicate::not);\n"
+        + "    }\n" + "\n"
+        + "    @Override\n"
+        + "    public ContainsPredicate visit(Size size) {\n"
+        + "      throw new UnsupportedOperationException(\"Unsupported predicate \" + size + \" cannot be used with contains()\");\n"
         + "    }\n");
 
     addContainsInspectorVisitor("Eq");

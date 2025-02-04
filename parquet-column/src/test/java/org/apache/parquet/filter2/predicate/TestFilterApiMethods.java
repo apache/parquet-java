@@ -29,6 +29,7 @@ import static org.apache.parquet.filter2.predicate.FilterApi.longColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.not;
 import static org.apache.parquet.filter2.predicate.FilterApi.notEq;
 import static org.apache.parquet.filter2.predicate.FilterApi.or;
+import static org.apache.parquet.filter2.predicate.FilterApi.size;
 import static org.apache.parquet.filter2.predicate.FilterApi.userDefined;
 import static org.apache.parquet.filter2.predicate.Operators.NotEq;
 import static org.junit.Assert.assertEquals;
@@ -139,6 +140,9 @@ public class TestFilterApiMethods {
     assertEquals(
         "or(contains(eq(a.string.column, Binary{\"foo\"})), and(contains(eq(a.string.column, Binary{\"bar\"})), not(contains(eq(a.string.column, Binary{\"baz\"})))))",
         pred.toString());
+
+    pred = size(binColumn, Operators.Size.Operator.GTE, 5);
+    assertEquals("size(a.string.column gte 5)", pred.toString());
   }
 
   @Test
