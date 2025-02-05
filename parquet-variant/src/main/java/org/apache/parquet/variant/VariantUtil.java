@@ -140,6 +140,28 @@ public class VariantUtil {
    * string size) + (size bytes of string content).
    */
   public static final int LONG_STR = 16;
+  /**
+   * Time value. Values can be from 00:00:00 to 23:59:59.999999.
+   * Content is 8-byte little-endian unsigned integer that represents the number of microseconds
+   * since midnight.
+   */
+  public static final int TIME = 17;
+  /**
+   * Timestamp nanos value. Similar to `TIMESTAMP`, but represents the number of nanoseconds
+   * elapsed since the Unix epoch, 1970-01-01 00:00:00 UTC.
+   */
+  public static final int TIMESTAMP_NANOS = 18;
+  /**
+   * Timestamp nanos (without timestamp) value. It has the same content as `TIMESTAMP_NANOS` but
+   * should always be interpreted as if the local time zone is UTC.
+   */
+  public static final int TIMESTAMP_NANOS_NTZ = 19;
+  /**
+   * UUID value. The content is a 16-byte binary, encoded using big-endian.
+   * For example, UUID 00112233-4455-6677-8899-aabbccddeeff is encoded as the bytes
+   * 00 11 22 33 44 55 66 77 88 99 aa bb cc dd ee ff.
+   */
+  public static final int UUID = 20;
 
   // The metadata version.
   public static final byte VERSION = 1;
@@ -159,6 +181,9 @@ public class VariantUtil {
   public static final int MAX_DECIMAL4_PRECISION = 9;
   public static final int MAX_DECIMAL8_PRECISION = 18;
   public static final int MAX_DECIMAL16_PRECISION = 38;
+
+  // The size (in bytes) of a UUID.
+  public static final int UUID_SIZE = 16;
 
   // Default size limit for both variant value and variant metadata.
   public static final int DEFAULT_SIZE_LIMIT = U24_MAX + 1;
@@ -276,6 +301,10 @@ public class VariantUtil {
     TIMESTAMP_NTZ,
     FLOAT,
     BINARY,
+    TIME,
+    TIMESTAMP_NANOS,
+    TIMESTAMP_NANOS_NTZ,
+    UUID
   }
 
   public static int getPrimitiveTypeId(byte[] value, int pos) {
@@ -332,6 +361,14 @@ public class VariantUtil {
             return Type.BINARY;
           case LONG_STR:
             return Type.STRING;
+          case TIME:
+            return Type.TIME;
+          case TIMESTAMP_NANOS:
+            return Type.TIMESTAMP_NANOS;
+          case TIMESTAMP_NANOS_NTZ:
+            return Type.TIMESTAMP_NANOS_NTZ;
+          case UUID:
+            return Type.UUID;
           default:
             throw unknownPrimitiveTypeInVariant(typeInfo);
         }
@@ -383,6 +420,9 @@ public class VariantUtil {
           case DOUBLE:
           case TIMESTAMP:
           case TIMESTAMP_NTZ:
+          case TIME:
+          case TIMESTAMP_NANOS:
+          case TIMESTAMP_NANOS_NTZ:
             return 9;
           case DECIMAL4:
             return 6;
@@ -393,6 +433,8 @@ public class VariantUtil {
           case BINARY:
           case LONG_STR:
             return 1 + U32_SIZE + readUnsigned(value, pos + 1, U32_SIZE);
+          case UUID:
+            return 1 + UUID_SIZE;
           default:
             throw unknownPrimitiveTypeInVariant(typeInfo);
         }
@@ -416,11 +458,14 @@ public class VariantUtil {
   /**
    * Returns a long value from Variant value `value[pos...]`.
    * It is only legal to call it if `getType` returns one of Type.LONG, DATE, TIMESTAMP,
-   * TIMESTAMP_NTZ.
+   * TIMESTAMP_NTZ, TIME, TIMESTAMP_NANOS, TIMESTAMP_NANOS_NTZ.
    * If the type is `DATE`, the return value is guaranteed to fit into an int and
    * represents the number of days from the Unix epoch.
    * If the type is `TIMESTAMP/TIMESTAMP_NTZ`, the return value represents the number of
    * microseconds from the Unix epoch.
+   * If the type is `TIME`, the return value represents the number of microseconds since midnight.
+   * If the type is `TIMESTAMP_NANOS/TIMESTAMP_NANOS_NTZ`, the return value represents the number of
+   * nanoseconds from the Unix epoch.
    * @param value The Variant value
    * @param pos The starting index of the Variant value
    * @return The long value
@@ -442,6 +487,9 @@ public class VariantUtil {
       case INT8:
       case TIMESTAMP:
       case TIMESTAMP_NTZ:
+      case TIME:
+      case TIMESTAMP_NANOS:
+      case TIMESTAMP_NANOS_NTZ:
         return readLong(value, pos + 1, 8);
       default:
         throw new IllegalStateException(exceptionMessage);
@@ -544,6 +592,16 @@ public class VariantUtil {
       return new String(value, start, length);
     }
     throw unexpectedType(Type.STRING);
+  }
+
+  public static byte[] getUUID(byte[] value, int pos) {
+    checkIndex(pos, value.length);
+    int basicType = value[pos] & BASIC_TYPE_MASK;
+    int typeInfo = (value[pos] >> BASIC_TYPE_BITS) & PRIMITIVE_TYPE_MASK;
+    if (basicType != PRIMITIVE || typeInfo != UUID) throw unexpectedType(Type.UUID);
+    int start = pos + 1;
+    checkIndex(start + UUID_SIZE - 1, value.length);
+    return Arrays.copyOfRange(value, start, start + UUID_SIZE);
   }
 
   /**

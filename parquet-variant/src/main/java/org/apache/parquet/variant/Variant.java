@@ -23,10 +23,9 @@ import com.fasterxml.jackson.core.JsonGenerator;
 import java.io.CharArrayWriter;
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.ZoneId;
-import java.time.ZoneOffset;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoField;
@@ -53,6 +52,7 @@ public final class Variant {
    * short list.
    */
   static final int BINARY_SEARCH_THRESHOLD = 32;
+
   static final ZoneId UTC = ZoneId.of("UTC");
 
   public Variant(byte[] value, byte[] metadata) {
@@ -124,6 +124,13 @@ public final class Variant {
    */
   public byte[] getBinary() {
     return VariantUtil.getBinary(value, pos);
+  }
+
+  /**
+   * @return the UUID value
+   */
+  public byte[] getUUID() {
+    return VariantUtil.getUUID(value, pos);
   }
 
   /**
@@ -327,10 +334,30 @@ public final class Variant {
       .appendFraction(ChronoField.MICRO_OF_SECOND, 6, 6, true)
       .toFormatter(Locale.US);
 
+  /** The format for a timestamp without time zone, with nanosecond precision. */
+  private static final DateTimeFormatter TIMESTAMP_NANOS_NTZ_FORMATTER = new DateTimeFormatterBuilder()
+      .append(DateTimeFormatter.ISO_LOCAL_DATE)
+      .appendLiteral('T')
+      .appendPattern("HH:mm:ss")
+      .appendFraction(ChronoField.NANO_OF_SECOND, 9, 9, true)
+      .toFormatter(Locale.US);
+
   /** The format for a timestamp with time zone. */
   private static final DateTimeFormatter TIMESTAMP_FORMATTER = new DateTimeFormatterBuilder()
       .append(TIMESTAMP_NTZ_FORMATTER)
       .appendOffset("+HH:MM", "+00:00")
+      .toFormatter(Locale.US);
+
+  /** The format for a timestamp with time zone, with nanosecond precision. */
+  private static final DateTimeFormatter TIMESTAMP_NANOS_FORMATTER = new DateTimeFormatterBuilder()
+      .append(TIMESTAMP_NANOS_NTZ_FORMATTER)
+      .appendOffset("+HH:MM", "+00:00")
+      .toFormatter(Locale.US);
+
+  /** The format for a time. */
+  private static final DateTimeFormatter TIME_FORMATTER = new DateTimeFormatterBuilder()
+      .appendPattern("HH:mm:ss")
+      .appendFraction(ChronoField.MICRO_OF_SECOND, 6, 6, true)
       .toFormatter(Locale.US);
 
   /** The format for a timestamp without time zone, truncating trailing microsecond zeros. */
@@ -343,14 +370,48 @@ public final class Variant {
       .optionalEnd()
       .toFormatter(Locale.US);
 
+  /**
+   * The format for a timestamp without time zone, with nanosecond precision, truncating
+   * trailing nanosecond zeros.
+   */
+  private static final DateTimeFormatter TIMESTAMP_NANOS_NTZ_TRUNC_FORMATTER = new DateTimeFormatterBuilder()
+      .append(DateTimeFormatter.ISO_LOCAL_DATE)
+      .appendLiteral('T')
+      .appendPattern("HH:mm:ss")
+      .optionalStart()
+      .appendFraction(ChronoField.NANO_OF_SECOND, 0, 9, true)
+      .optionalEnd()
+      .toFormatter(Locale.US);
+
   /** The format for a timestamp with time zone, truncating trailing microsecond zeros. */
   private static final DateTimeFormatter TIMESTAMP_TRUNC_FORMATTER = new DateTimeFormatterBuilder()
       .append(TIMESTAMP_NTZ_TRUNC_FORMATTER)
       .appendOffset("+HH:MM", "+00:00")
       .toFormatter(Locale.US);
 
+  /**
+   * The format for a timestamp with time zone, with nanosecond precision, truncating trailing
+   * nanosecond zeros.
+   */
+  private static final DateTimeFormatter TIMESTAMP_NANOS_TRUNC_FORMATTER = new DateTimeFormatterBuilder()
+      .append(TIMESTAMP_NANOS_NTZ_TRUNC_FORMATTER)
+      .appendOffset("+HH:MM", "+00:00")
+      .toFormatter(Locale.US);
+
+  /** The format for a time, truncating trailing microsecond zeros. */
+  private static final DateTimeFormatter TIME_TRUNC_FORMATTER = new DateTimeFormatterBuilder()
+      .appendPattern("HH:mm:ss")
+      .optionalStart()
+      .appendFraction(ChronoField.MICRO_OF_SECOND, 0, 6, true)
+      .optionalEnd()
+      .toFormatter(Locale.US);
+
   private static Instant microsToInstant(long microsSinceEpoch) {
     return Instant.EPOCH.plus(microsSinceEpoch, ChronoUnit.MICROS);
+  }
+
+  private static Instant nanosToInstant(long timestampNanos) {
+    return Instant.EPOCH.plus(timestampNanos, ChronoUnit.NANOS);
   }
 
   private static void toJsonImpl(
@@ -446,6 +507,37 @@ public final class Variant {
         break;
       case BINARY:
         gen.writeString(Base64.getEncoder().encodeToString(VariantUtil.getBinary(value, pos)));
+        break;
+      case TIME:
+        if (truncateTrailingZeros) {
+          gen.writeString(TIME_TRUNC_FORMATTER.format(
+              LocalTime.ofNanoOfDay(VariantUtil.getLong(value, pos) * 1_000)));
+        } else {
+          gen.writeString(
+              TIME_FORMATTER.format(LocalTime.ofNanoOfDay(VariantUtil.getLong(value, pos) * 1_000)));
+        }
+        break;
+      case TIMESTAMP_NANOS:
+        if (truncateTrailingZeros) {
+          gen.writeString(TIMESTAMP_NANOS_TRUNC_FORMATTER.format(
+              nanosToInstant(VariantUtil.getLong(value, pos)).atZone(zoneId)));
+        } else {
+          gen.writeString(TIMESTAMP_NANOS_FORMATTER.format(
+              nanosToInstant(VariantUtil.getLong(value, pos)).atZone(zoneId)));
+        }
+        break;
+      case TIMESTAMP_NANOS_NTZ:
+        if (truncateTrailingZeros) {
+          gen.writeString(TIMESTAMP_NANOS_NTZ_TRUNC_FORMATTER.format(
+              nanosToInstant(VariantUtil.getLong(value, pos)).atZone(ZoneOffset.UTC)));
+        } else {
+          gen.writeString(TIMESTAMP_NANOS_NTZ_FORMATTER.format(
+              nanosToInstant(VariantUtil.getLong(value, pos)).atZone(ZoneOffset.UTC)));
+        }
+        break;
+      case UUID:
+        ByteBuffer bb = ByteBuffer.wrap(VariantUtil.getUUID(value, pos)).order(ByteOrder.BIG_ENDIAN);
+        gen.writeString(new java.util.UUID(bb.getLong(), bb.getLong()).toString());
         break;
       default:
         throw new IllegalArgumentException("Unsupported type: " + VariantUtil.getType(value, pos));

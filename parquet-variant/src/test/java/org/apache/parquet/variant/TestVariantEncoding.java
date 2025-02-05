@@ -25,6 +25,7 @@ import java.math.BigDecimal;
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
@@ -77,6 +78,10 @@ public class TestVariantEncoding {
 
   private long microsSinceEpoch(Instant instant) {
     return TimeUnit.SECONDS.toMicros(instant.getEpochSecond()) + instant.getNano() / 1000;
+  }
+
+  private long nanosSinceEpoch(Instant instant) {
+    return TimeUnit.SECONDS.toNanos(instant.getEpochSecond()) + instant.getNano();
   }
 
   private String randomString(int len) {
@@ -285,13 +290,62 @@ public class TestVariantEncoding {
   }
 
   @Test
+  public void testTime() {
+    for (String timeStr : Arrays.asList(
+        "00:00:00.000000", "00:00:00.000120", "12:00:00.000000", "12:00:00.002300", "23:59:59.999999")) {
+      VariantBuilder vb = new VariantBuilder(false);
+      long micros = LocalTime.parse(timeStr).toNanoOfDay() / 1_000;
+      vb.appendTime(micros);
+      Assert.assertEquals(String.format("\"%s\"", timeStr), vb.result().toJson());
+      Assert.assertEquals(micros, vb.result().getLong());
+    }
+  }
+
+  @Test
+  public void testTimestampNanos() {
+    VariantBuilder vb = new VariantBuilder(false);
+    long nanos = nanosSinceEpoch(Instant.parse("2024-12-16T10:23:45.321456987-08:00"));
+    vb.appendTimestampNanos(nanos);
+    Assert.assertEquals(
+        "\"2024-12-16T18:23:45.321456987+00:00\"", vb.result().toJson());
+    Assert.assertEquals(
+        "\"2024-12-16T10:23:45.321456987-08:00\"", vb.result().toJson(ZoneId.of("-08:00")));
+    Assert.assertEquals(
+        "\"2024-12-16T19:23:45.321456987+01:00\"", vb.result().toJson(ZoneId.of("+01:00")));
+    Assert.assertEquals(nanos, vb.result().getLong());
+  }
+
+  @Test
+  public void testTimestampNanosNtz() {
+    DateTimeFormatter dtf = DateTimeFormatter.ISO_DATE_TIME;
+    VariantBuilder vb = new VariantBuilder(false);
+    long nanos = nanosSinceEpoch(Instant.from(dtf.parse("2024-01-01T23:00:00.839280983Z")));
+    vb.appendTimestampNanosNtz(nanos);
+    Assert.assertEquals("\"2024-01-01T23:00:00.839280983\"", vb.result().toJson());
+    Assert.assertEquals("\"2024-01-01T23:00:00.839280983\"", vb.result().toJson(ZoneId.of("-08:00")));
+    Assert.assertEquals(vb.result().toJson(ZoneId.of("-08:00")), vb.result().toJson(ZoneId.of("+02:00")));
+    Assert.assertEquals(nanos, vb.result().getLong());
+  }
+
+  @Test
   public void testBinary() {
     VariantBuilder vb = new VariantBuilder(false);
     byte[] binary = new byte[] {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
     vb.appendBinary(binary);
     Assert.assertEquals(
-        "\"" + Base64.getEncoder().encodeToString(binary) + "\"", vb.result().toJson());
+        "\"" + Base64.getEncoder().encodeToString(binary) + "\"",
+        vb.result().toJson());
     Assert.assertArrayEquals(binary, vb.result().getBinary());
+  }
+
+  @Test
+  public void testUUID() {
+    VariantBuilder vb = new VariantBuilder(false);
+    byte[] uuid = new byte[] {0, 17, 34, 51, 68, 85, 102, 119, -120, -103, -86, -69, -52, -35, -18, -1};
+    vb.appendUUID(uuid);
+    Assert.assertEquals(
+        "\"00112233-4455-6677-8899-aabbccddeeff\"", vb.result().toJson());
+    Assert.assertArrayEquals(uuid, vb.result().getUUID());
   }
 
   @Test
@@ -523,6 +577,65 @@ public class TestVariantEncoding {
       Assert.assertEquals(String.format("\"%s\"", strings[0]), v.toJson(ZoneId.of("-08:00")));
       Assert.assertEquals(String.format("\"%s\"", strings[1]), v.toJson(ZoneId.of("-08:00"), true));
       Assert.assertEquals(micros, vb.result().getLong());
+    }
+  }
+
+  @Test
+  public void testTruncateTrailingZeroTime() {
+    for (String[] strings : Arrays.asList(
+        // truncate all trailing zeros
+        new String[] {"10:23:45.000000", "10:23:45"},
+        // truncate some trailing zeros
+        new String[] {"10:23:45.123000", "10:23:45.123"},
+        // truncate no trailing zeros
+        new String[] {"10:23:45.123456", "10:23:45.123456"})) {
+      VariantBuilder vb = new VariantBuilder(false);
+
+      long micros = LocalTime.parse(strings[0]).toNanoOfDay() / 1_000;
+      vb.appendTime(micros);
+      Variant v = vb.result();
+      Assert.assertEquals(String.format("\"%s\"", strings[0]), v.toJson(ZoneId.of("-08:00")));
+      Assert.assertEquals(String.format("\"%s\"", strings[1]), v.toJson(ZoneId.of("-08:00"), true));
+      Assert.assertEquals(micros, vb.result().getLong());
+    }
+  }
+
+  @Test
+  public void testTruncateTrailingZeroTimestampNanos() {
+    for (String[] strings : Arrays.asList(
+        // truncate all trailing zeros
+        new String[] {"2024-12-16T10:23:45.000000000-08:00", "2024-12-16T10:23:45-08:00"},
+        // truncate some trailing zeros
+        new String[] {"2024-12-16T10:23:45.123450000-08:00", "2024-12-16T10:23:45.12345-08:00"},
+        // truncate no trailing zeros
+        new String[] {"2024-12-16T10:23:45.123456789-08:00", "2024-12-16T10:23:45.123456789-08:00"})) {
+      VariantBuilder vb = new VariantBuilder(false);
+      long nanos = nanosSinceEpoch(Instant.parse(strings[0]));
+      vb.appendTimestampNanos(nanos);
+      Variant v = vb.result();
+      Assert.assertEquals(String.format("\"%s\"", strings[0]), v.toJson(ZoneId.of("-08:00")));
+      Assert.assertEquals(String.format("\"%s\"", strings[1]), v.toJson(ZoneId.of("-08:00"), true));
+    }
+  }
+
+  @Test
+  public void testTruncateTrailingZeroTimestampNanosNtz() {
+    DateTimeFormatter dtf = DateTimeFormatter.ISO_DATE_TIME;
+    for (String[] strings : Arrays.asList(
+        // truncate all trailing zeros
+        new String[] {"2024-12-16T10:23:45.000000000", "2024-12-16T10:23:45"},
+        // truncate some trailing zeros
+        new String[] {"2024-12-16T10:23:45.123450000", "2024-12-16T10:23:45.12345"},
+        // truncate no trailing zeros
+        new String[] {"2024-12-16T10:23:45.123456789", "2024-12-16T10:23:45.123456789"})) {
+      VariantBuilder vb = new VariantBuilder(false);
+
+      long nanos = nanosSinceEpoch(Instant.from(dtf.parse(String.format("%sZ", strings[0]))));
+      vb.appendTimestampNanosNtz(nanos);
+      Variant v = vb.result();
+      Assert.assertEquals(String.format("\"%s\"", strings[0]), v.toJson(ZoneId.of("-08:00")));
+      Assert.assertEquals(String.format("\"%s\"", strings[1]), v.toJson(ZoneId.of("-08:00"), true));
+      Assert.assertEquals(nanos, vb.result().getLong());
     }
   }
 }

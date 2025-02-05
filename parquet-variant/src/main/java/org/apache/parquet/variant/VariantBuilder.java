@@ -263,6 +263,27 @@ public class VariantBuilder {
     writePos += 8;
   }
 
+  public void appendTime(long microsSinceMidnight) {
+    checkCapacity(1 + 8);
+    writeBuffer[writePos++] = VariantUtil.primitiveHeader(VariantUtil.TIME);
+    VariantUtil.writeLong(writeBuffer, writePos, microsSinceMidnight, 8);
+    writePos += 8;
+  }
+
+  public void appendTimestampNanos(long nanosSinceEpoch) {
+    checkCapacity(1 + 8);
+    writeBuffer[writePos++] = VariantUtil.primitiveHeader(VariantUtil.TIMESTAMP_NANOS);
+    VariantUtil.writeLong(writeBuffer, writePos, nanosSinceEpoch, 8);
+    writePos += 8;
+  }
+
+  public void appendTimestampNanosNtz(long nanosSinceEpoch) {
+    checkCapacity(1 + 8);
+    writeBuffer[writePos++] = VariantUtil.primitiveHeader(VariantUtil.TIMESTAMP_NANOS_NTZ);
+    VariantUtil.writeLong(writeBuffer, writePos, nanosSinceEpoch, 8);
+    writePos += 8;
+  }
+
   public void appendFloat(float f) {
     checkCapacity(1 + 4);
     writeBuffer[writePos++] = VariantUtil.primitiveHeader(VariantUtil.FLOAT);
@@ -277,6 +298,14 @@ public class VariantBuilder {
     writePos += VariantUtil.U32_SIZE;
     System.arraycopy(binary, 0, writeBuffer, writePos, binary.length);
     writePos += binary.length;
+  }
+
+  public void appendUUID(byte[] uuid) {
+    assert uuid.length == VariantUtil.UUID_SIZE;
+    checkCapacity(1 + VariantUtil.UUID_SIZE);
+    writeBuffer[writePos++] = VariantUtil.primitiveHeader(VariantUtil.UUID);
+    System.arraycopy(uuid, 0, writeBuffer, writePos, uuid.length);
+    writePos += uuid.length;
   }
 
   /**
