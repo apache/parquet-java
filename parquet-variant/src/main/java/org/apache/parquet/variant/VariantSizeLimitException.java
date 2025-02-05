@@ -20,4 +20,10 @@ package org.apache.parquet.variant;
  * An exception indicating that the metadata or data size of the Variant exceeds the
  * configured size limit.
  */
-public class VariantSizeLimitException extends RuntimeException {}
+public class VariantSizeLimitException extends RuntimeException {
+  public VariantSizeLimitException(long sizeLimitBytes, long estimatedSizeBytes) {
+    super(String.format(
+        "Variant size exceeds the limit of %d bytes. Estimated size: %d bytes",
+        sizeLimitBytes, estimatedSizeBytes));
+  }
+}

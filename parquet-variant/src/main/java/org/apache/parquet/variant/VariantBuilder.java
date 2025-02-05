@@ -16,8 +16,6 @@
  */
 package org.apache.parquet.variant;
 
-import static org.apache.parquet.variant.VariantUtil.*;
-
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonParser;
@@ -27,16 +25,31 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
 
 /**
  * Builder for creating Variant value and metadata.
  */
 public class VariantBuilder {
+  /**
+   * Creates a VariantBuilder.
+   * @param allowDuplicateKeys if true, only the last occurrence of a duplicate key will be kept.
+   *                           Otherwise, an exception will be thrown.
+   */
   public VariantBuilder(boolean allowDuplicateKeys) {
-    this(allowDuplicateKeys, DEFAULT_SIZE_LIMIT);
+    this(allowDuplicateKeys, VariantUtil.DEFAULT_SIZE_LIMIT);
   }
 
+  /**
+   * Creates a VariantBuilder.
+   * @param allowDuplicateKeys if true, only the last occurrence of a duplicate key will be kept.
+   *                           Otherwise, an exception will be thrown.
+   * @param sizeLimitBytes the maximum size (in bytes) of the resulting Variant value or metadata
+   */
   public VariantBuilder(boolean allowDuplicateKeys, int sizeLimitBytes) {
     this.allowDuplicateKeys = allowDuplicateKeys;
     this.sizeLimitBytes = sizeLimitBytes;
@@ -102,7 +115,7 @@ public class VariantBuilder {
     // in case of pathological data.
     long maxSize = Math.max(dictionaryStringSize, numKeys);
     if (maxSize > sizeLimitBytes) {
-      throw new VariantSizeLimitException();
+      throw new VariantSizeLimitException(sizeLimitBytes, maxSize);
     }
     int offsetSize = getMinIntegerSize((int) maxSize);
 
@@ -111,33 +124,33 @@ public class VariantBuilder {
     long metadataSize = stringStart + dictionaryStringSize;
 
     if (metadataSize > sizeLimitBytes) {
-      throw new VariantSizeLimitException();
+      throw new VariantSizeLimitException(sizeLimitBytes, metadataSize);
     }
     byte[] metadata = new byte[(int) metadataSize];
-    int headerByte = VERSION | ((offsetSize - 1) << 6);
-    writeLong(metadata, 0, headerByte, 1);
-    writeLong(metadata, 1, numKeys, offsetSize);
+    int headerByte = VariantUtil.VERSION | ((offsetSize - 1) << 6);
+    VariantUtil.writeLong(metadata, 0, headerByte, 1);
+    VariantUtil.writeLong(metadata, 1, numKeys, offsetSize);
     int currentOffset = 0;
     for (int i = 0; i < numKeys; ++i) {
-      writeLong(metadata, offsetStart + i * offsetSize, currentOffset, offsetSize);
+      VariantUtil.writeLong(metadata, offsetStart + i * offsetSize, currentOffset, offsetSize);
       byte[] key = dictionaryKeys.get(i);
       System.arraycopy(key, 0, metadata, stringStart + currentOffset, key.length);
       currentOffset += key.length;
     }
-    writeLong(metadata, offsetStart + numKeys * offsetSize, currentOffset, offsetSize);
+    VariantUtil.writeLong(metadata, offsetStart + numKeys * offsetSize, currentOffset, offsetSize);
     return new Variant(Arrays.copyOfRange(writeBuffer, 0, writePos), metadata);
   }
 
   public void appendString(String str) {
     byte[] text = str.getBytes(StandardCharsets.UTF_8);
-    boolean longStr = text.length > MAX_SHORT_STR_SIZE;
-    checkCapacity((longStr ? 1 + U32_SIZE : 1) + text.length);
+    boolean longStr = text.length > VariantUtil.MAX_SHORT_STR_SIZE;
+    checkCapacity((longStr ? 1 + VariantUtil.U32_SIZE : 1) + text.length);
     if (longStr) {
-      writeBuffer[writePos++] = primitiveHeader(LONG_STR);
-      writeLong(writeBuffer, writePos, text.length, U32_SIZE);
-      writePos += U32_SIZE;
+      writeBuffer[writePos++] = VariantUtil.primitiveHeader(VariantUtil.LONG_STR);
+      VariantUtil.writeLong(writeBuffer, writePos, text.length, VariantUtil.U32_SIZE);
+      writePos += VariantUtil.U32_SIZE;
     } else {
-      writeBuffer[writePos++] = shortStrHeader(text.length);
+      writeBuffer[writePos++] = VariantUtil.shortStrHeader(text.length);
     }
     System.arraycopy(text, 0, writeBuffer, writePos, text.length);
     writePos += text.length;
@@ -145,12 +158,12 @@ public class VariantBuilder {
 
   public void appendNull() {
     checkCapacity(1);
-    writeBuffer[writePos++] = primitiveHeader(NULL);
+    writeBuffer[writePos++] = VariantUtil.primitiveHeader(VariantUtil.NULL);
   }
 
   public void appendBoolean(boolean b) {
     checkCapacity(1);
-    writeBuffer[writePos++] = primitiveHeader(b ? TRUE : FALSE);
+    writeBuffer[writePos++] = VariantUtil.primitiveHeader(b ? VariantUtil.TRUE : VariantUtil.FALSE);
   }
 
   /**
@@ -159,30 +172,33 @@ public class VariantBuilder {
    * @param l the long value to append
    */
   public void appendLong(long l) {
-    checkCapacity(1 + 8);
     if (l == (byte) l) {
-      writeBuffer[writePos++] = primitiveHeader(INT1);
-      writeLong(writeBuffer, writePos, l, 1);
+      checkCapacity(1 + 1);
+      writeBuffer[writePos++] = VariantUtil.primitiveHeader(VariantUtil.INT1);
+      VariantUtil.writeLong(writeBuffer, writePos, l, 1);
       writePos += 1;
     } else if (l == (short) l) {
-      writeBuffer[writePos++] = primitiveHeader(INT2);
-      writeLong(writeBuffer, writePos, l, 2);
+      checkCapacity(1 + 2);
+      writeBuffer[writePos++] = VariantUtil.primitiveHeader(VariantUtil.INT2);
+      VariantUtil.writeLong(writeBuffer, writePos, l, 2);
       writePos += 2;
     } else if (l == (int) l) {
-      writeBuffer[writePos++] = primitiveHeader(INT4);
-      writeLong(writeBuffer, writePos, l, 4);
+      checkCapacity(1 + 4);
+      writeBuffer[writePos++] = VariantUtil.primitiveHeader(VariantUtil.INT4);
+      VariantUtil.writeLong(writeBuffer, writePos, l, 4);
       writePos += 4;
     } else {
-      writeBuffer[writePos++] = primitiveHeader(INT8);
-      writeLong(writeBuffer, writePos, l, 8);
+      checkCapacity(1 + 8);
+      writeBuffer[writePos++] = VariantUtil.primitiveHeader(VariantUtil.INT8);
+      VariantUtil.writeLong(writeBuffer, writePos, l, 8);
       writePos += 8;
     }
   }
 
   public void appendDouble(double d) {
     checkCapacity(1 + 8);
-    writeBuffer[writePos++] = primitiveHeader(DOUBLE);
-    writeLong(writeBuffer, writePos, Double.doubleToLongBits(d), 8);
+    writeBuffer[writePos++] = VariantUtil.primitiveHeader(VariantUtil.DOUBLE);
+    VariantUtil.writeLong(writeBuffer, writePos, Double.doubleToLongBits(d), 8);
     writePos += 8;
   }
 
@@ -192,21 +208,25 @@ public class VariantBuilder {
    * @param d the decimal value to append
    */
   public void appendDecimal(BigDecimal d) {
-    checkCapacity(2 + 16);
     BigInteger unscaled = d.unscaledValue();
-    if (d.scale() <= MAX_DECIMAL4_PRECISION && d.precision() <= MAX_DECIMAL4_PRECISION) {
-      writeBuffer[writePos++] = primitiveHeader(DECIMAL4);
+    if (d.scale() <= VariantUtil.MAX_DECIMAL4_PRECISION && d.precision() <= VariantUtil.MAX_DECIMAL4_PRECISION) {
+      checkCapacity(2 + 4);
+      writeBuffer[writePos++] = VariantUtil.primitiveHeader(VariantUtil.DECIMAL4);
       writeBuffer[writePos++] = (byte) d.scale();
-      writeLong(writeBuffer, writePos, unscaled.intValueExact(), 4);
+      VariantUtil.writeLong(writeBuffer, writePos, unscaled.intValueExact(), 4);
       writePos += 4;
-    } else if (d.scale() <= MAX_DECIMAL8_PRECISION && d.precision() <= MAX_DECIMAL8_PRECISION) {
-      writeBuffer[writePos++] = primitiveHeader(DECIMAL8);
+    } else if (d.scale() <= VariantUtil.MAX_DECIMAL8_PRECISION
+        && d.precision() <= VariantUtil.MAX_DECIMAL8_PRECISION) {
+      checkCapacity(2 + 8);
+      writeBuffer[writePos++] = VariantUtil.primitiveHeader(VariantUtil.DECIMAL8);
       writeBuffer[writePos++] = (byte) d.scale();
-      writeLong(writeBuffer, writePos, unscaled.longValueExact(), 8);
+      VariantUtil.writeLong(writeBuffer, writePos, unscaled.longValueExact(), 8);
       writePos += 8;
     } else {
-      assert d.scale() <= MAX_DECIMAL16_PRECISION && d.precision() <= MAX_DECIMAL16_PRECISION;
-      writeBuffer[writePos++] = primitiveHeader(DECIMAL16);
+      assert d.scale() <= VariantUtil.MAX_DECIMAL16_PRECISION
+          && d.precision() <= VariantUtil.MAX_DECIMAL16_PRECISION;
+      checkCapacity(2 + 16);
+      writeBuffer[writePos++] = VariantUtil.primitiveHeader(VariantUtil.DECIMAL16);
       writeBuffer[writePos++] = (byte) d.scale();
       // `toByteArray` returns a big-endian representation. We need to copy it reversely and sign
       // extend it to 16 bytes.
@@ -224,37 +244,37 @@ public class VariantBuilder {
 
   public void appendDate(int daysSinceEpoch) {
     checkCapacity(1 + 4);
-    writeBuffer[writePos++] = primitiveHeader(DATE);
-    writeLong(writeBuffer, writePos, daysSinceEpoch, 4);
+    writeBuffer[writePos++] = VariantUtil.primitiveHeader(VariantUtil.DATE);
+    VariantUtil.writeLong(writeBuffer, writePos, daysSinceEpoch, 4);
     writePos += 4;
   }
 
   public void appendTimestamp(long microsSinceEpoch) {
     checkCapacity(1 + 8);
-    writeBuffer[writePos++] = primitiveHeader(TIMESTAMP);
-    writeLong(writeBuffer, writePos, microsSinceEpoch, 8);
+    writeBuffer[writePos++] = VariantUtil.primitiveHeader(VariantUtil.TIMESTAMP);
+    VariantUtil.writeLong(writeBuffer, writePos, microsSinceEpoch, 8);
     writePos += 8;
   }
 
   public void appendTimestampNtz(long microsSinceEpoch) {
     checkCapacity(1 + 8);
-    writeBuffer[writePos++] = primitiveHeader(TIMESTAMP_NTZ);
-    writeLong(writeBuffer, writePos, microsSinceEpoch, 8);
+    writeBuffer[writePos++] = VariantUtil.primitiveHeader(VariantUtil.TIMESTAMP_NTZ);
+    VariantUtil.writeLong(writeBuffer, writePos, microsSinceEpoch, 8);
     writePos += 8;
   }
 
   public void appendFloat(float f) {
     checkCapacity(1 + 4);
-    writeBuffer[writePos++] = primitiveHeader(FLOAT);
-    writeLong(writeBuffer, writePos, Float.floatToIntBits(f), 8);
+    writeBuffer[writePos++] = VariantUtil.primitiveHeader(VariantUtil.FLOAT);
+    VariantUtil.writeLong(writeBuffer, writePos, Float.floatToIntBits(f), 8);
     writePos += 4;
   }
 
   public void appendBinary(byte[] binary) {
-    checkCapacity(1 + U32_SIZE + binary.length);
-    writeBuffer[writePos++] = primitiveHeader(BINARY);
-    writeLong(writeBuffer, writePos, binary.length, U32_SIZE);
-    writePos += U32_SIZE;
+    checkCapacity(1 + VariantUtil.U32_SIZE + binary.length);
+    writeBuffer[writePos++] = VariantUtil.primitiveHeader(VariantUtil.BINARY);
+    VariantUtil.writeLong(writeBuffer, writePos, binary.length, VariantUtil.U32_SIZE);
+    writePos += VariantUtil.U32_SIZE;
     System.arraycopy(binary, 0, writeBuffer, writePos, binary.length);
     writePos += binary.length;
   }
@@ -265,15 +285,11 @@ public class VariantBuilder {
    * @return the id of the key
    */
   public int addKey(String key) {
-    int id;
-    if (dictionary.containsKey(key)) {
-      id = dictionary.get(key);
-    } else {
-      id = dictionaryKeys.size();
-      dictionary.put(key, id);
-      dictionaryKeys.add(key.getBytes(StandardCharsets.UTF_8));
-    }
-    return id;
+    return dictionary.computeIfAbsent(key, newKey -> {
+      int id = dictionaryKeys.size();
+      dictionaryKeys.add(newKey.getBytes(StandardCharsets.UTF_8));
+      return id;
+    });
   }
 
   /**
@@ -283,18 +299,6 @@ public class VariantBuilder {
     return writePos;
   }
 
-  // Finish writing a variant object after all of its fields have already been written. The process
-  // is as follows:
-  // 1. The caller calls `getWritePos` before writing any fields to obtain the `start` parameter.
-  // 2. The caller appends all the object fields to the builder. In the meantime, it should maintain
-  // the `fields` parameter. Before appending each field, it should append an entry to `fields` to
-  // record the offset of the field. The offset is computed as `getWritePos() - start`.
-  // 3. The caller calls `finishWritingObject` to finish writing a variant object.
-  //
-  // This function is responsible to sort the fields by key. If there are duplicate field keys:
-  // - when `allowDuplicateKeys` is true, the field with the greatest offset value (the last
-  // appended one) is kept.
-  // - otherwise, throw an exception.
   /**
    * Finish writing a Variant object after all of its fields have already been written. The process
    * is as follows:
@@ -362,8 +366,8 @@ public class VariantBuilder {
       }
     }
     int dataSize = writePos - start;
-    boolean largeSize = size > U8_MAX;
-    int sizeBytes = largeSize ? U32_SIZE : 1;
+    boolean largeSize = size > VariantUtil.U8_MAX;
+    int sizeBytes = largeSize ? VariantUtil.U32_SIZE : 1;
     int idSize = getMinIntegerSize(maxId);
     int offsetSize = getMinIntegerSize(dataSize);
     // The space for header byte, object size, id list, and offset list.
@@ -372,15 +376,15 @@ public class VariantBuilder {
     // Shift the just-written field data to make room for the object header section.
     System.arraycopy(writeBuffer, start, writeBuffer, start + headerSize, dataSize);
     writePos += headerSize;
-    writeBuffer[start] = objectHeader(largeSize, idSize, offsetSize);
-    writeLong(writeBuffer, start + 1, size, sizeBytes);
+    writeBuffer[start] = VariantUtil.objectHeader(largeSize, idSize, offsetSize);
+    VariantUtil.writeLong(writeBuffer, start + 1, size, sizeBytes);
     int idStart = start + 1 + sizeBytes;
     int offsetStart = idStart + size * idSize;
     for (int i = 0; i < size; ++i) {
-      writeLong(writeBuffer, idStart + i * idSize, fields.get(i).id, idSize);
-      writeLong(writeBuffer, offsetStart + i * offsetSize, fields.get(i).offset, offsetSize);
+      VariantUtil.writeLong(writeBuffer, idStart + i * idSize, fields.get(i).id, idSize);
+      VariantUtil.writeLong(writeBuffer, offsetStart + i * offsetSize, fields.get(i).offset, offsetSize);
     }
-    writeLong(writeBuffer, offsetStart + size * offsetSize, dataSize, offsetSize);
+    VariantUtil.writeLong(writeBuffer, offsetStart + size * offsetSize, dataSize, offsetSize);
   }
 
   /**
@@ -392,8 +396,8 @@ public class VariantBuilder {
   public void finishWritingArray(int start, ArrayList<Integer> offsets) {
     int dataSize = writePos - start;
     int size = offsets.size();
-    boolean largeSize = size > U8_MAX;
-    int sizeBytes = largeSize ? U32_SIZE : 1;
+    boolean largeSize = size > VariantUtil.U8_MAX;
+    int sizeBytes = largeSize ? VariantUtil.U32_SIZE : 1;
     int offsetSize = getMinIntegerSize(dataSize);
     // The space for header byte, object size, and offset list.
     int headerSize = 1 + sizeBytes + (size + 1) * offsetSize;
@@ -401,13 +405,13 @@ public class VariantBuilder {
     // Shift the just-written field data to make room for the header section.
     System.arraycopy(writeBuffer, start, writeBuffer, start + headerSize, dataSize);
     writePos += headerSize;
-    writeBuffer[start] = arrayHeader(largeSize, offsetSize);
-    writeLong(writeBuffer, start + 1, size, sizeBytes);
+    writeBuffer[start] = VariantUtil.arrayHeader(largeSize, offsetSize);
+    VariantUtil.writeLong(writeBuffer, start + 1, size, sizeBytes);
     int offsetStart = start + 1 + sizeBytes;
     for (int i = 0; i < size; ++i) {
-      writeLong(writeBuffer, offsetStart + i * offsetSize, offsets.get(i), offsetSize);
+      VariantUtil.writeLong(writeBuffer, offsetStart + i * offsetSize, offsets.get(i), offsetSize);
     }
-    writeLong(writeBuffer, offsetStart + size * offsetSize, dataSize, offsetSize);
+    VariantUtil.writeLong(writeBuffer, offsetStart + size * offsetSize, dataSize, offsetSize);
   }
 
   /**
@@ -421,18 +425,18 @@ public class VariantBuilder {
   }
 
   private void appendVariantImpl(byte[] value, byte[] metadata, int pos) {
-    checkIndex(pos, value.length);
-    int basicType = value[pos] & BASIC_TYPE_MASK;
+    VariantUtil.checkIndex(pos, value.length);
+    int basicType = value[pos] & VariantUtil.BASIC_TYPE_MASK;
     switch (basicType) {
-      case OBJECT:
-        handleObject(value, pos, (size, idSize, offsetSize, idStart, offsetStart, dataStart) -> {
+      case VariantUtil.OBJECT:
+        VariantUtil.handleObject(value, pos, (size, idSize, offsetSize, idStart, offsetStart, dataStart) -> {
           ArrayList<FieldEntry> fields = new ArrayList<>(size);
           int start = writePos;
           for (int i = 0; i < size; ++i) {
-            int id = readUnsigned(value, idStart + idSize * i, idSize);
-            int offset = readUnsigned(value, offsetStart + offsetSize * i, offsetSize);
+            int id = VariantUtil.readUnsigned(value, idStart + idSize * i, idSize);
+            int offset = VariantUtil.readUnsigned(value, offsetStart + offsetSize * i, offsetSize);
             int elementPos = dataStart + offset;
-            String key = getMetadataKey(metadata, id);
+            String key = VariantUtil.getMetadataKey(metadata, id);
             int newId = addKey(key);
             fields.add(new FieldEntry(key, newId, writePos - start));
             appendVariantImpl(value, metadata, elementPos);
@@ -441,12 +445,12 @@ public class VariantBuilder {
           return null;
         });
         break;
-      case ARRAY:
-        handleArray(value, pos, (size, offsetSize, offsetStart, dataStart) -> {
+      case VariantUtil.ARRAY:
+        VariantUtil.handleArray(value, pos, (size, offsetSize, offsetStart, dataStart) -> {
           ArrayList<Integer> offsets = new ArrayList<>(size);
           int start = writePos;
           for (int i = 0; i < size; ++i) {
-            int offset = readUnsigned(value, offsetStart + offsetSize * i, offsetSize);
+            int offset = VariantUtil.readUnsigned(value, offsetStart + offsetSize * i, offsetSize);
             int elementPos = dataStart + offset;
             offsets.add(writePos - start);
             appendVariantImpl(value, metadata, elementPos);
@@ -462,8 +466,8 @@ public class VariantBuilder {
   }
 
   private void shallowAppendVariantImpl(byte[] value, int pos) {
-    int size = valueSize(value, pos);
-    checkIndex(pos + size - 1, value.length);
+    int size = VariantUtil.valueSize(value, pos);
+    VariantUtil.checkIndex(pos + size - 1, value.length);
     checkCapacity(size);
     System.arraycopy(value, pos, writeBuffer, writePos, size);
     writePos += size;
@@ -476,16 +480,13 @@ public class VariantBuilder {
       int newCapacity = Integer.highestOneBit(requiredBytes);
       newCapacity = newCapacity < requiredBytes ? newCapacity * 2 : newCapacity;
       if (newCapacity > sizeLimitBytes) {
-        throw new VariantSizeLimitException();
+        throw new VariantSizeLimitException(sizeLimitBytes, newCapacity);
       }
       byte[] newValue = new byte[newCapacity];
       System.arraycopy(writeBuffer, 0, newValue, 0, writePos);
       writeBuffer = newValue;
     }
   }
-
-  // Temporarily store the information of a field. We need to collect all fields in an JSON object,
-  // sort them by their keys, and build the variant object in sorted order.
 
   /**
    * Class to store the information of a Variant object field. We need to collect all fields of
@@ -576,10 +577,14 @@ public class VariantBuilder {
    * @return the size (number of bytes) of the smallest unsigned integer type that can store `value`
    */
   private int getMinIntegerSize(int value) {
-    assert value >= 0 && value <= U24_MAX;
-    if (value <= U8_MAX) return 1;
-    if (value <= U16_MAX) return 2;
-    return U24_SIZE;
+    assert value >= 0 && value <= VariantUtil.U24_MAX;
+    if (value <= VariantUtil.U8_MAX) {
+      return VariantUtil.U8_SIZE;
+    }
+    if (value <= VariantUtil.U16_MAX) {
+      return VariantUtil.U16_SIZE;
+    }
+    return VariantUtil.U24_SIZE;
   }
 
   /**
@@ -608,7 +613,7 @@ public class VariantBuilder {
       }
     }
     BigDecimal d = new BigDecimal(input);
-    if (d.scale() <= MAX_DECIMAL16_PRECISION && d.precision() <= MAX_DECIMAL16_PRECISION) {
+    if (d.scale() <= VariantUtil.MAX_DECIMAL16_PRECISION && d.precision() <= VariantUtil.MAX_DECIMAL16_PRECISION) {
       appendDecimal(d);
       return true;
     }

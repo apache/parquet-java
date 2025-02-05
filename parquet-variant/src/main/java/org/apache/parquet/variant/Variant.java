@@ -18,9 +18,6 @@
  */
 package org.apache.parquet.variant;
 
-import static java.time.temporal.ChronoField.*;
-import static org.apache.parquet.variant.VariantUtil.*;
-
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerator;
 import java.io.CharArrayWriter;
@@ -32,6 +29,7 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
+import java.time.temporal.ChronoField;
 import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.Base64;
@@ -49,6 +47,14 @@ public final class Variant {
    */
   final int pos;
 
+  /**
+   * The threshold to switch from linear search to binary search when looking up a field by key in
+   * an object. This is a performance optimization to avoid the overhead of binary search for a
+   * short list.
+   */
+  static final int BINARY_SEARCH_THRESHOLD = 32;
+  static final ZoneId UTC = ZoneId.of("UTC");
+
   public Variant(byte[] value, byte[] metadata) {
     this(value, metadata, 0);
   }
@@ -58,15 +64,19 @@ public final class Variant {
     this.metadata = metadata;
     this.pos = pos;
     // There is currently only one allowed version.
-    if (metadata.length < 1 || (metadata[0] & VERSION_MASK) != VERSION) {
-      throw malformedVariant();
+    if (metadata.length < 1 || (metadata[0] & VariantUtil.VERSION_MASK) != VariantUtil.VERSION) {
+      throw VariantUtil.malformedVariant(String.format(
+          "Unsupported variant metadata version: %02X", metadata[0] & VariantUtil.VERSION_MASK));
     }
   }
 
   public byte[] getValue() {
-    if (pos == 0) return value;
-    int size = valueSize(value, pos);
-    checkIndex(pos + size - 1, value.length);
+    if (pos == 0) {
+      // Position 0 means the entire value is used. Return the original value.
+      return value;
+    }
+    int size = VariantUtil.valueSize(value, pos);
+    VariantUtil.checkIndex(pos + size - 1, value.length);
     return Arrays.copyOfRange(value, pos, pos + size);
   }
 
@@ -124,16 +134,16 @@ public final class Variant {
   }
 
   /**
-   * @return the type info bits from a variant value
+   * @return the primitive type id from a variant value
    */
-  public int getTypeInfo() {
-    return VariantUtil.getTypeInfo(value, pos);
+  public int getPrimitiveTypeId() {
+    return VariantUtil.getPrimitiveTypeId(value, pos);
   }
 
   /**
    * @return the type of the variant value
    */
-  public Type getType() {
+  public VariantUtil.Type getType() {
     return VariantUtil.getType(value, pos);
   }
 
@@ -141,11 +151,9 @@ public final class Variant {
    * @return the number of object fields in the variant. `getType()` must be `Type.OBJECT`.
    */
   public int objectSize() {
-    return handleObject(value, pos, (size, idSize, offsetSize, idStart, offsetStart, dataStart) -> size);
+    return VariantUtil.handleObject(
+        value, pos, (size, idSize, offsetSize, idStart, offsetStart, dataStart) -> size);
   }
-
-  // Find the field value whose key is equal to `key`. Return null if the key is not found.
-  // It is only legal to call it when `getType()` is `Type.OBJECT`.
 
   /**
    * Returns the object field Variant value whose key is equal to `key`.
@@ -154,16 +162,15 @@ public final class Variant {
    * @return the field value whose key is equal to `key`, or null if key is not found
    */
   public Variant getFieldByKey(String key) {
-    return handleObject(value, pos, (size, idSize, offsetSize, idStart, offsetStart, dataStart) -> {
+    return VariantUtil.handleObject(value, pos, (size, idSize, offsetSize, idStart, offsetStart, dataStart) -> {
       // Use linear search for a short list. Switch to binary search when the length reaches
       // `BINARY_SEARCH_THRESHOLD`.
-      final int BINARY_SEARCH_THRESHOLD = 32;
       if (size < BINARY_SEARCH_THRESHOLD) {
         for (int i = 0; i < size; ++i) {
-          int id = readUnsigned(value, idStart + idSize * i, idSize);
-          if (key.equals(getMetadataKey(metadata, id))) {
-            int offset = readUnsigned(value, offsetStart + offsetSize * i, offsetSize);
-            return new Variant(value, metadata, dataStart + offset);
+          ObjectField field =
+              getFieldAtIndex(i, value, metadata, idSize, offsetSize, idStart, offsetStart, dataStart);
+          if (field.key.equals(key)) {
+            return field.value;
           }
         }
       } else {
@@ -174,15 +181,15 @@ public final class Variant {
           // performance optimization, because it can properly handle the case where `low + high`
           // overflows int.
           int mid = (low + high) >>> 1;
-          int id = readUnsigned(value, idStart + idSize * mid, idSize);
-          int cmp = getMetadataKey(metadata, id).compareTo(key);
+          ObjectField field =
+              getFieldAtIndex(mid, value, metadata, idSize, offsetSize, idStart, offsetStart, dataStart);
+          int cmp = field.key.compareTo(key);
           if (cmp < 0) {
             low = mid + 1;
           } else if (cmp > 0) {
             high = mid - 1;
           } else {
-            int offset = readUnsigned(value, offsetStart + offsetSize * mid, offsetSize);
-            return new Variant(value, metadata, dataStart + offset);
+            return field.value;
           }
         }
       }
@@ -203,24 +210,35 @@ public final class Variant {
     }
   }
 
-  // Get the object field at the `index` slot. Return null if `index` is out of the bound of
-  // `[0, objectSize())`.
-  // It is only legal to call it when `getType()` is `Type.OBJECT`.
   /**
-   * Returns the object field at the `index` slot. Return null if `index` is out of the bound of
+   * Returns the ObjectField at the `index` slot. Return null if `index` is out of the bound of
    * `[0, objectSize())`. `getType()` must be `Type.OBJECT`.
    * @param index the index of the object field to get
    * @return the Objectfield at the `index` slot, or null if `index` is out of bounds
    */
   public ObjectField getFieldAtIndex(int index) {
-    return handleObject(value, pos, (size, idSize, offsetSize, idStart, offsetStart, dataStart) -> {
-      if (index < 0 || index >= size) return null;
-      int id = readUnsigned(value, idStart + idSize * index, idSize);
-      int offset = readUnsigned(value, offsetStart + offsetSize * index, offsetSize);
-      String key = getMetadataKey(metadata, id);
-      Variant v = new Variant(value, metadata, dataStart + offset);
-      return new ObjectField(key, v);
+    return VariantUtil.handleObject(value, pos, (size, idSize, offsetSize, idStart, offsetStart, dataStart) -> {
+      if (index < 0 || index >= size) {
+        return null;
+      }
+      return getFieldAtIndex(index, value, metadata, idSize, offsetSize, idStart, offsetStart, dataStart);
     });
+  }
+
+  private static ObjectField getFieldAtIndex(
+      int index,
+      byte[] value,
+      byte[] metadata,
+      int idSize,
+      int offsetSize,
+      int idStart,
+      int offsetStart,
+      int dataStart) {
+    int id = VariantUtil.readUnsigned(value, idStart + idSize * index, idSize);
+    int offset = VariantUtil.readUnsigned(value, offsetStart + offsetSize * index, offsetSize);
+    String key = VariantUtil.getMetadataKey(metadata, id);
+    Variant v = new Variant(value, metadata, dataStart + offset);
+    return new ObjectField(key, v);
   }
 
   /**
@@ -231,11 +249,11 @@ public final class Variant {
    * @throws MalformedVariantException if `index` is out of bounds
    */
   public int getDictionaryIdAtIndex(int index) {
-    return handleObject(value, pos, (size, idSize, offsetSize, idStart, offsetStart, dataStart) -> {
+    return VariantUtil.handleObject(value, pos, (size, idSize, offsetSize, idStart, offsetStart, dataStart) -> {
       if (index < 0 || index >= size) {
-        throw malformedVariant();
+        throw VariantUtil.malformedVariant();
       }
-      return readUnsigned(value, idStart + idSize * index, idSize);
+      return VariantUtil.readUnsigned(value, idStart + idSize * index, idSize);
     });
   }
 
@@ -243,7 +261,7 @@ public final class Variant {
    * @return the number of array elements. `getType()` must be `Type.ARRAY`.
    */
   public int arraySize() {
-    return handleArray(value, pos, (size, offsetSize, offsetStart, dataStart) -> size);
+    return VariantUtil.handleArray(value, pos, (size, offsetSize, offsetStart, dataStart) -> size);
   }
 
   /**
@@ -253,11 +271,26 @@ public final class Variant {
    * @return the array element Variant at the `index` slot, or null if `index` is out of bounds
    */
   public Variant getElementAtIndex(int index) {
-    return handleArray(value, pos, (size, offsetSize, offsetStart, dataStart) -> {
-      if (index < 0 || index >= size) return null;
-      int offset = readUnsigned(value, offsetStart + offsetSize * index, offsetSize);
-      return new Variant(value, metadata, dataStart + offset);
+    return VariantUtil.handleArray(value, pos, (size, offsetSize, offsetStart, dataStart) -> {
+      if (index < 0 || index >= size) {
+        return null;
+      }
+      return getElementAtIndex(index, value, metadata, offsetSize, offsetStart, dataStart);
     });
+  }
+
+  private static Variant getElementAtIndex(
+      int index, byte[] value, byte[] metadata, int offsetSize, int offsetStart, int dataStart) {
+    int offset = VariantUtil.readUnsigned(value, offsetStart + offsetSize * index, offsetSize);
+    return new Variant(value, metadata, dataStart + offset);
+  }
+
+  /**
+   * @return the JSON representation of the variant
+   * @throws MalformedVariantException if the variant is malformed
+   */
+  public String toJson() {
+    return toJson(UTC, false);
   }
 
   /**
@@ -276,21 +309,9 @@ public final class Variant {
    * @throws MalformedVariantException if the variant is malformed
    */
   public String toJson(ZoneId zoneId, boolean truncateTrailingZeros) {
-    StringBuilder sb = new StringBuilder();
-    toJsonImpl(value, metadata, pos, sb, zoneId, truncateTrailingZeros);
-    return sb.toString();
-  }
-
-  /**
-   * Escapes a string so that it can be pasted into a JSON structure. For example, if `str`
-   * only contains a new-line character, then the result is "\n" (4 characters)
-   * @param str the string to escape
-   * @return the escaped string
-   */
-  private static String escapeJson(String str) {
     try (CharArrayWriter writer = new CharArrayWriter();
         JsonGenerator gen = new JsonFactory().createGenerator(writer)) {
-      gen.writeString(str);
+      toJsonImpl(value, metadata, pos, gen, zoneId, truncateTrailingZeros);
       gen.flush();
       return writer.toString();
     } catch (IOException e) {
@@ -298,25 +319,12 @@ public final class Variant {
     }
   }
 
-  /**
-   * Appends a quoted string to a StringBuilder. It is used when we know `str` doesn't contain any
-   * special characters that needs escaping. This is more performant than
-   * `sb.append(escapeJson(str))`.
-   * @param sb the StringBuilder to append to
-   * @param str the string to append
-   */
-  private static void appendQuoted(StringBuilder sb, String str) {
-    sb.append('"');
-    sb.append(str);
-    sb.append('"');
-  }
-
   /** The format for a timestamp without time zone. */
   private static final DateTimeFormatter TIMESTAMP_NTZ_FORMATTER = new DateTimeFormatterBuilder()
       .append(DateTimeFormatter.ISO_LOCAL_DATE)
       .appendLiteral('T')
       .appendPattern("HH:mm:ss")
-      .appendFraction(MICRO_OF_SECOND, 6, 6, true)
+      .appendFraction(ChronoField.MICRO_OF_SECOND, 6, 6, true)
       .toFormatter(Locale.US);
 
   /** The format for a timestamp with time zone. */
@@ -331,7 +339,7 @@ public final class Variant {
       .appendLiteral('T')
       .appendPattern("HH:mm:ss")
       .optionalStart()
-      .appendFraction(MICRO_OF_SECOND, 0, 6, true)
+      .appendFraction(ChronoField.MICRO_OF_SECOND, 0, 6, true)
       .optionalEnd()
       .toFormatter(Locale.US);
 
@@ -346,99 +354,101 @@ public final class Variant {
   }
 
   private static void toJsonImpl(
-      byte[] value, byte[] metadata, int pos, StringBuilder sb, ZoneId zoneId, boolean truncateTrailingZeros) {
+      byte[] value, byte[] metadata, int pos, JsonGenerator gen, ZoneId zoneId, boolean truncateTrailingZeros)
+      throws IOException {
     switch (VariantUtil.getType(value, pos)) {
       case OBJECT:
-        handleObject(value, pos, (size, idSize, offsetSize, idStart, offsetStart, dataStart) -> {
-          sb.append('{');
-          for (int i = 0; i < size; ++i) {
-            int id = readUnsigned(value, idStart + idSize * i, idSize);
-            int offset = readUnsigned(value, offsetStart + offsetSize * i, offsetSize);
-            int elementPos = dataStart + offset;
-            if (i != 0) sb.append(',');
-            sb.append(escapeJson(getMetadataKey(metadata, id)));
-            sb.append(':');
-            toJsonImpl(value, metadata, elementPos, sb, zoneId, truncateTrailingZeros);
+        VariantUtil.handleObject(value, pos, (size, idSize, offsetSize, idStart, offsetStart, dataStart) -> {
+          try {
+            gen.writeStartObject();
+            for (int i = 0; i < size; ++i) {
+              ObjectField field = getFieldAtIndex(
+                  i, value, metadata, idSize, offsetSize, idStart, offsetStart, dataStart);
+              gen.writeFieldName(field.key);
+              toJsonImpl(
+                  field.value.value,
+                  field.value.metadata,
+                  field.value.pos,
+                  gen,
+                  zoneId,
+                  truncateTrailingZeros);
+            }
+            gen.writeEndObject();
+          } catch (IOException e) {
+            throw new RuntimeException(e);
           }
-          sb.append('}');
           return null;
         });
         break;
       case ARRAY:
-        handleArray(value, pos, (size, offsetSize, offsetStart, dataStart) -> {
-          sb.append('[');
-          for (int i = 0; i < size; ++i) {
-            int offset = readUnsigned(value, offsetStart + offsetSize * i, offsetSize);
-            int elementPos = dataStart + offset;
-            if (i != 0) sb.append(',');
-            toJsonImpl(value, metadata, elementPos, sb, zoneId, truncateTrailingZeros);
+        VariantUtil.handleArray(value, pos, (size, offsetSize, offsetStart, dataStart) -> {
+          try {
+            gen.writeStartArray();
+            for (int i = 0; i < size; ++i) {
+              Variant v = getElementAtIndex(i, value, metadata, offsetSize, offsetStart, dataStart);
+              toJsonImpl(v.value, v.metadata, v.pos, gen, zoneId, truncateTrailingZeros);
+            }
+            gen.writeEndArray();
+          } catch (IOException e) {
+            throw new RuntimeException(e);
           }
-          sb.append(']');
           return null;
         });
         break;
       case NULL:
-        sb.append("null");
+        gen.writeNull();
         break;
       case BOOLEAN:
-        sb.append(VariantUtil.getBoolean(value, pos));
+        gen.writeBoolean(VariantUtil.getBoolean(value, pos));
         break;
       case LONG:
-        sb.append(VariantUtil.getLong(value, pos));
+        gen.writeNumber(VariantUtil.getLong(value, pos));
         break;
       case STRING:
-        sb.append(escapeJson(VariantUtil.getString(value, pos)));
+        gen.writeString(VariantUtil.getString(value, pos));
         break;
       case DOUBLE:
-        sb.append(VariantUtil.getDouble(value, pos));
+        gen.writeNumber(VariantUtil.getDouble(value, pos));
         break;
       case DECIMAL:
         if (truncateTrailingZeros) {
-          sb.append(VariantUtil.getDecimal(value, pos)
+          gen.writeNumber(VariantUtil.getDecimal(value, pos)
               .stripTrailingZeros()
               .toPlainString());
         } else {
-          sb.append(VariantUtil.getDecimal(value, pos).toPlainString());
+          gen.writeNumber(VariantUtil.getDecimal(value, pos).toPlainString());
         }
         break;
       case DATE:
-        appendQuoted(
-            sb,
-            LocalDate.ofEpochDay((int) VariantUtil.getLong(value, pos))
-                .toString());
+        gen.writeString(LocalDate.ofEpochDay((int) VariantUtil.getLong(value, pos))
+            .toString());
         break;
       case TIMESTAMP:
         if (truncateTrailingZeros) {
-          appendQuoted(
-              sb,
-              TIMESTAMP_TRUNC_FORMATTER.format(microsToInstant(VariantUtil.getLong(value, pos))
-                  .atZone(zoneId)));
+          gen.writeString(TIMESTAMP_TRUNC_FORMATTER.format(
+              microsToInstant(VariantUtil.getLong(value, pos)).atZone(zoneId)));
         } else {
-          appendQuoted(
-              sb,
-              TIMESTAMP_FORMATTER.format(microsToInstant(VariantUtil.getLong(value, pos))
-                  .atZone(zoneId)));
+          gen.writeString(TIMESTAMP_FORMATTER.format(
+              microsToInstant(VariantUtil.getLong(value, pos)).atZone(zoneId)));
         }
         break;
       case TIMESTAMP_NTZ:
         if (truncateTrailingZeros) {
-          appendQuoted(
-              sb,
-              TIMESTAMP_NTZ_TRUNC_FORMATTER.format(microsToInstant(VariantUtil.getLong(value, pos))
-                  .atZone(ZoneOffset.UTC)));
+          gen.writeString(TIMESTAMP_NTZ_TRUNC_FORMATTER.format(
+              microsToInstant(VariantUtil.getLong(value, pos)).atZone(ZoneOffset.UTC)));
         } else {
-          appendQuoted(
-              sb,
-              TIMESTAMP_NTZ_FORMATTER.format(microsToInstant(VariantUtil.getLong(value, pos))
-                  .atZone(ZoneOffset.UTC)));
+          gen.writeString(TIMESTAMP_NTZ_FORMATTER.format(
+              microsToInstant(VariantUtil.getLong(value, pos)).atZone(ZoneOffset.UTC)));
         }
         break;
       case FLOAT:
-        sb.append(VariantUtil.getFloat(value, pos));
+        gen.writeNumber(VariantUtil.getFloat(value, pos));
         break;
       case BINARY:
-        appendQuoted(sb, Base64.getEncoder().encodeToString(VariantUtil.getBinary(value, pos)));
+        gen.writeString(Base64.getEncoder().encodeToString(VariantUtil.getBinary(value, pos)));
         break;
+      default:
+        throw new IllegalArgumentException("Unsupported type: " + VariantUtil.getType(value, pos));
     }
   }
 }

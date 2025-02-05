@@ -64,15 +64,15 @@ public class TestVariantEncoding {
       StreamReadConstraints.overrideDefaultStreamReadConstraints(
           StreamReadConstraints.builder().maxNestingDepth(100000).build());
       Variant v = VariantBuilder.parseJson(jsonValue);
-      Assert.assertEquals(mapper.readTree(jsonValue), mapper.readTree(v.toJson(ZoneId.systemDefault())));
+      Assert.assertEquals(mapper.readTree(jsonValue), mapper.readTree(v.toJson()));
     } catch (IOException e) {
       Assert.fail("Failed to parse json: " + jsonValue + " " + e);
     }
   }
 
-  private void checkType(Variant v, int expectedBasicType, int expectedTypeInfo) {
+  private void checkType(Variant v, int expectedBasicType, int expectedPrimitiveTypeId) {
     Assert.assertEquals(expectedBasicType, v.value[v.pos] & VariantUtil.BASIC_TYPE_MASK);
-    Assert.assertEquals(expectedTypeInfo, v.getTypeInfo());
+    Assert.assertEquals(expectedPrimitiveTypeId, v.getPrimitiveTypeId());
   }
 
   private long microsSinceEpoch(Instant instant) {
@@ -256,7 +256,7 @@ public class TestVariantEncoding {
     VariantBuilder vb = new VariantBuilder(false);
     int days = Math.toIntExact(LocalDate.of(2024, 12, 16).toEpochDay());
     vb.appendDate(days);
-    Assert.assertEquals("\"2024-12-16\"", vb.result().toJson(ZoneId.systemDefault()));
+    Assert.assertEquals("\"2024-12-16\"", vb.result().toJson());
     Assert.assertEquals(days, vb.result().getLong());
   }
 
@@ -266,6 +266,7 @@ public class TestVariantEncoding {
     VariantBuilder vb = new VariantBuilder(false);
     long micros = microsSinceEpoch(Instant.from(dtf.parse("2024-12-16T10:23:45.321456-08:00")));
     vb.appendTimestamp(micros);
+    Assert.assertEquals("\"2024-12-16T18:23:45.321456+00:00\"", vb.result().toJson());
     Assert.assertEquals("\"2024-12-16T10:23:45.321456-08:00\"", vb.result().toJson(ZoneId.of("-08:00")));
     Assert.assertEquals("\"2024-12-16T19:23:45.321456+01:00\"", vb.result().toJson(ZoneId.of("+01:00")));
     Assert.assertEquals(micros, vb.result().getLong());
@@ -277,6 +278,7 @@ public class TestVariantEncoding {
     VariantBuilder vb = new VariantBuilder(false);
     long micros = microsSinceEpoch(Instant.from(dtf.parse("2024-01-01T23:00:00.000001Z")));
     vb.appendTimestampNtz(micros);
+    Assert.assertEquals("\"2024-01-01T23:00:00.000001\"", vb.result().toJson());
     Assert.assertEquals("\"2024-01-01T23:00:00.000001\"", vb.result().toJson(ZoneId.of("-08:00")));
     Assert.assertEquals(vb.result().toJson(ZoneId.of("-08:00")), vb.result().toJson(ZoneId.of("+02:00")));
     Assert.assertEquals(micros, vb.result().getLong());
@@ -288,8 +290,7 @@ public class TestVariantEncoding {
     byte[] binary = new byte[] {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
     vb.appendBinary(binary);
     Assert.assertEquals(
-        "\"" + Base64.getEncoder().encodeToString(binary) + "\"",
-        vb.result().toJson(ZoneId.systemDefault()));
+        "\"" + Base64.getEncoder().encodeToString(binary) + "\"", vb.result().toJson());
     Assert.assertArrayEquals(binary, vb.result().getBinary());
   }
 
@@ -331,6 +332,47 @@ public class TestVariantEncoding {
       sb.append("}");
     }
     checkJson(sb.toString());
+  }
+
+  @Test
+  public void testGetObjectFields() throws IOException {
+    // Create small object for linear search
+    StringBuilder sb = new StringBuilder();
+    sb.append("{");
+    for (int i = 0; i < Variant.BINARY_SEARCH_THRESHOLD / 2; i++) {
+      if (i > 0) sb.append(", ");
+      sb.append("\"field" + i + "\": ").append(i);
+    }
+    sb.append("}");
+    Variant v = VariantBuilder.parseJson(sb.toString());
+    Assert.assertEquals(Variant.BINARY_SEARCH_THRESHOLD / 2, v.objectSize());
+    for (int i = 0; i < Variant.BINARY_SEARCH_THRESHOLD / 2; i++) {
+      String actual = v.getFieldByKey("field" + i).toJson();
+      Assert.assertEquals(String.valueOf(i), actual);
+      // check by index
+      Variant.ObjectField field = v.getFieldAtIndex(i);
+      Assert.assertTrue(field.key.startsWith("field"));
+      Assert.assertEquals(field.key.substring("field".length()), field.value.toJson());
+    }
+
+    // Create larger object for binary search
+    sb = new StringBuilder();
+    sb.append("{");
+    for (int i = 0; i < 2 * Variant.BINARY_SEARCH_THRESHOLD; i++) {
+      if (i > 0) sb.append(", ");
+      sb.append("\"field" + i + "\": ").append(i);
+    }
+    sb.append("}");
+    v = VariantBuilder.parseJson(sb.toString());
+    Assert.assertEquals(2 * Variant.BINARY_SEARCH_THRESHOLD, v.objectSize());
+    for (int i = 0; i < 2 * Variant.BINARY_SEARCH_THRESHOLD; i++) {
+      String actual = v.getFieldByKey("field" + i).toJson();
+      Assert.assertEquals(String.valueOf(i), actual);
+      // check by index
+      Variant.ObjectField field = v.getFieldAtIndex(i);
+      Assert.assertTrue(field.key.startsWith("field"));
+      Assert.assertEquals(field.key.substring("field".length()), field.value.toJson());
+    }
   }
 
   @Test
@@ -378,7 +420,7 @@ public class TestVariantEncoding {
         sb.append("{\"a\":1}");
       }
       sb.append("]");
-      VariantBuilder.parseJson(sb.toString(), new VariantBuilder(false, 20));
+      VariantBuilder.parseJson(sb.toString(), new VariantBuilder(false, 100));
       Assert.fail("Expected VariantSizeLimitException with large data");
     } catch (IOException e) {
       Assert.fail("Expected VariantSizeLimitException with large data");
@@ -439,8 +481,8 @@ public class TestVariantEncoding {
       BigDecimal d = new BigDecimal(strings[0]);
       vb.appendDecimal(d);
       Variant v = vb.result();
-      Assert.assertEquals(strings[0], v.toJson(ZoneId.of("-08:00")));
-      Assert.assertEquals(strings[1], v.toJson(ZoneId.of("-08:00"), true));
+      Assert.assertEquals(strings[0], v.toJson());
+      Assert.assertEquals(strings[1], v.toJson(ZoneId.of("UTC"), true));
     }
   }
 

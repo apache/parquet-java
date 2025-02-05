@@ -43,7 +43,7 @@ import java.util.Arrays;
 public class VariantUtil {
   public static final int BASIC_TYPE_BITS = 2;
   public static final int BASIC_TYPE_MASK = 0x3;
-  public static final int TYPE_INFO_MASK = 0x3F;
+  public static final int PRIMITIVE_TYPE_MASK = 0x3F;
   /** The inclusive maximum value of the type info value. It is the size limit of `SHORT_STR`. */
   public static final int MAX_SHORT_STR_SIZE = 0x3F;
 
@@ -150,6 +150,8 @@ public class VariantUtil {
   public static final int U8_MAX = 0xFF;
   public static final int U16_MAX = 0xFFFF;
   public static final int U24_MAX = 0xFFFFFF;
+  public static final int U8_SIZE = 1;
+  public static final int U16_SIZE = 2;
   public static final int U24_SIZE = 3;
   public static final int U32_SIZE = 4;
 
@@ -192,6 +194,10 @@ public class VariantUtil {
 
   public static byte arrayHeader(boolean largeSize, int offsetSize) {
     return (byte) (((largeSize ? 1 : 0) << (BASIC_TYPE_BITS + 2)) | ((offsetSize - 1) << BASIC_TYPE_BITS) | ARRAY);
+  }
+
+  public static MalformedVariantException malformedVariant(String message) {
+    return new MalformedVariantException(message);
   }
 
   public static MalformedVariantException malformedVariant() {
@@ -272,9 +278,9 @@ public class VariantUtil {
     BINARY,
   }
 
-  public static int getTypeInfo(byte[] value, int pos) {
+  public static int getPrimitiveTypeId(byte[] value, int pos) {
     checkIndex(pos, value.length);
-    return (value[pos] >> BASIC_TYPE_BITS) & TYPE_INFO_MASK;
+    return (value[pos] >> BASIC_TYPE_BITS) & PRIMITIVE_TYPE_MASK;
   }
 
   /**
@@ -288,7 +294,7 @@ public class VariantUtil {
   public static Type getType(byte[] value, int pos) {
     checkIndex(pos, value.length);
     int basicType = value[pos] & BASIC_TYPE_MASK;
-    int typeInfo = (value[pos] >> BASIC_TYPE_BITS) & TYPE_INFO_MASK;
+    int typeInfo = (value[pos] >> BASIC_TYPE_BITS) & PRIMITIVE_TYPE_MASK;
     switch (basicType) {
       case SHORT_STR:
         return Type.STRING;
@@ -343,7 +349,7 @@ public class VariantUtil {
   public static int valueSize(byte[] value, int pos) {
     checkIndex(pos, value.length);
     int basicType = value[pos] & BASIC_TYPE_MASK;
-    int typeInfo = (value[pos] >> BASIC_TYPE_BITS) & TYPE_INFO_MASK;
+    int typeInfo = (value[pos] >> BASIC_TYPE_BITS) & PRIMITIVE_TYPE_MASK;
     switch (basicType) {
       case SHORT_STR:
         return 1 + typeInfo;
@@ -400,7 +406,7 @@ public class VariantUtil {
   public static boolean getBoolean(byte[] value, int pos) {
     checkIndex(pos, value.length);
     int basicType = value[pos] & BASIC_TYPE_MASK;
-    int typeInfo = (value[pos] >> BASIC_TYPE_BITS) & TYPE_INFO_MASK;
+    int typeInfo = (value[pos] >> BASIC_TYPE_BITS) & PRIMITIVE_TYPE_MASK;
     if (basicType != PRIMITIVE || (typeInfo != TRUE && typeInfo != FALSE)) {
       throw unexpectedType(Type.BOOLEAN);
     }
@@ -422,7 +428,7 @@ public class VariantUtil {
   public static long getLong(byte[] value, int pos) {
     checkIndex(pos, value.length);
     int basicType = value[pos] & BASIC_TYPE_MASK;
-    int typeInfo = (value[pos] >> BASIC_TYPE_BITS) & TYPE_INFO_MASK;
+    int typeInfo = (value[pos] >> BASIC_TYPE_BITS) & PRIMITIVE_TYPE_MASK;
     String exceptionMessage = "Expect type to be LONG/DATE/TIMESTAMP/TIMESTAMP_NTZ";
     if (basicType != PRIMITIVE) throw new IllegalStateException(exceptionMessage);
     switch (typeInfo) {
@@ -445,7 +451,7 @@ public class VariantUtil {
   public static double getDouble(byte[] value, int pos) {
     checkIndex(pos, value.length);
     int basicType = value[pos] & BASIC_TYPE_MASK;
-    int typeInfo = (value[pos] >> BASIC_TYPE_BITS) & TYPE_INFO_MASK;
+    int typeInfo = (value[pos] >> BASIC_TYPE_BITS) & PRIMITIVE_TYPE_MASK;
     if (basicType != PRIMITIVE || typeInfo != DOUBLE) throw unexpectedType(Type.DOUBLE);
     return Double.longBitsToDouble(readLong(value, pos + 1, 8));
   }
@@ -465,7 +471,7 @@ public class VariantUtil {
   public static BigDecimal getDecimalWithOriginalScale(byte[] value, int pos) {
     checkIndex(pos, value.length);
     int basicType = value[pos] & BASIC_TYPE_MASK;
-    int typeInfo = (value[pos] >> BASIC_TYPE_BITS) & TYPE_INFO_MASK;
+    int typeInfo = (value[pos] >> BASIC_TYPE_BITS) & PRIMITIVE_TYPE_MASK;
     if (basicType != PRIMITIVE) throw unexpectedType(Type.DECIMAL);
     // Interpret the scale byte as unsigned. If it is a negative byte, the unsigned value must be
     // greater than `MAX_DECIMAL16_PRECISION` and will trigger an error in `checkDecimal`.
@@ -504,7 +510,7 @@ public class VariantUtil {
   public static float getFloat(byte[] value, int pos) {
     checkIndex(pos, value.length);
     int basicType = value[pos] & BASIC_TYPE_MASK;
-    int typeInfo = (value[pos] >> BASIC_TYPE_BITS) & TYPE_INFO_MASK;
+    int typeInfo = (value[pos] >> BASIC_TYPE_BITS) & PRIMITIVE_TYPE_MASK;
     if (basicType != PRIMITIVE || typeInfo != FLOAT) throw unexpectedType(Type.FLOAT);
     return Float.intBitsToFloat((int) readLong(value, pos + 1, 4));
   }
@@ -512,7 +518,7 @@ public class VariantUtil {
   public static byte[] getBinary(byte[] value, int pos) {
     checkIndex(pos, value.length);
     int basicType = value[pos] & BASIC_TYPE_MASK;
-    int typeInfo = (value[pos] >> BASIC_TYPE_BITS) & TYPE_INFO_MASK;
+    int typeInfo = (value[pos] >> BASIC_TYPE_BITS) & PRIMITIVE_TYPE_MASK;
     if (basicType != PRIMITIVE || typeInfo != BINARY) throw unexpectedType(Type.BINARY);
     int start = pos + 1 + U32_SIZE;
     int length = readUnsigned(value, pos + 1, U32_SIZE);
@@ -523,7 +529,7 @@ public class VariantUtil {
   public static String getString(byte[] value, int pos) {
     checkIndex(pos, value.length);
     int basicType = value[pos] & BASIC_TYPE_MASK;
-    int typeInfo = (value[pos] >> BASIC_TYPE_BITS) & TYPE_INFO_MASK;
+    int typeInfo = (value[pos] >> BASIC_TYPE_BITS) & PRIMITIVE_TYPE_MASK;
     if (basicType == SHORT_STR || (basicType == PRIMITIVE && typeInfo == LONG_STR)) {
       int start;
       int length;
@@ -567,7 +573,7 @@ public class VariantUtil {
   public static <T> T handleObject(byte[] value, int pos, ObjectHandler<T> handler) {
     checkIndex(pos, value.length);
     int basicType = value[pos] & BASIC_TYPE_MASK;
-    int typeInfo = (value[pos] >> BASIC_TYPE_BITS) & TYPE_INFO_MASK;
+    int typeInfo = (value[pos] >> BASIC_TYPE_BITS) & PRIMITIVE_TYPE_MASK;
     if (basicType != OBJECT) throw unexpectedType(Type.OBJECT);
     // Refer to the comment of the `OBJECT` constant for the details of the object header encoding.
     // Suppose `typeInfo` has a bit representation of 0_b4_b3b2_b1b0, the following line extracts
@@ -610,7 +616,7 @@ public class VariantUtil {
   public static <T> T handleArray(byte[] value, int pos, ArrayHandler<T> handler) {
     checkIndex(pos, value.length);
     int basicType = value[pos] & BASIC_TYPE_MASK;
-    int typeInfo = (value[pos] >> BASIC_TYPE_BITS) & TYPE_INFO_MASK;
+    int typeInfo = (value[pos] >> BASIC_TYPE_BITS) & PRIMITIVE_TYPE_MASK;
     if (basicType != ARRAY) throw unexpectedType(Type.ARRAY);
     // Refer to the comment of the `ARRAY` constant for the details of the object header encoding.
     // Suppose `typeInfo` has a bit representation of 000_b2_b1b0, the following line extracts
