@@ -33,9 +33,11 @@ import static org.apache.parquet.schema.LogicalTypeAnnotation.stringType;
 import static org.apache.parquet.schema.MessageTypeParser.parseMessageType;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BOOLEAN;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FLOAT;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
@@ -60,6 +62,8 @@ import org.apache.parquet.column.values.bloomfilter.BloomFilter;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.GroupFactory;
 import org.apache.parquet.example.data.simple.SimpleGroupFactory;
+import org.apache.parquet.format.PageHeader;
+import org.apache.parquet.format.Util;
 import org.apache.parquet.hadoop.example.ExampleParquetWriter;
 import org.apache.parquet.hadoop.example.GroupReadSupport;
 import org.apache.parquet.hadoop.example.GroupWriteSupport;
@@ -590,6 +594,51 @@ public class TestParquetWriter {
           }
         }
       }
+    }
+  }
+
+  @Test
+  public void testV2WriteAllNullValues() throws Exception {
+    MessageType schema = Types.buildMessage().optional(FLOAT).named("float").named("msg");
+
+    Configuration conf = new Configuration();
+    GroupWriteSupport.setSchema(schema, conf);
+
+    File file = temp.newFile();
+    temp.delete();
+    Path path = new Path(file.getAbsolutePath());
+
+    SimpleGroupFactory factory = new SimpleGroupFactory(schema);
+    Group nullValue = factory.newGroup();
+    int recordCount = 10;
+
+    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(path)
+        .withAllocator(allocator)
+        .withConf(conf)
+        .withWriterVersion(WriterVersion.PARQUET_2_0)
+        .withDictionaryEncoding(false)
+        .build()) {
+      for (int i = 0; i < recordCount; i++) {
+        writer.write(nullValue);
+      }
+    }
+
+    try (ParquetReader<Group> reader =
+        ParquetReader.builder(new GroupReadSupport(), path).build()) {
+      int readRecordCount = 0;
+      for (Group group = reader.read(); group != null; group = reader.read()) {
+        assertEquals(nullValue.toString(), group.toString());
+        ++readRecordCount;
+      }
+      assertEquals("Number of written records should be equal to the read one", recordCount, readRecordCount);
+    }
+
+    try (ParquetFileReader reader = ParquetFileReader.open(HadoopInputFile.fromPath(path, conf))) {
+      BlockMetaData blockMetaData = reader.getFooter().getBlocks().get(0);
+      reader.f.seek(blockMetaData.getStartingPos());
+      PageHeader pageHeader = Util.readPageHeader(reader.f);
+      assertFalse(pageHeader.getData_page_header_v2().isIs_compressed());
+      assertEquals(0, pageHeader.getCompressed_page_size());
     }
   }
 }

@@ -1969,6 +1969,7 @@ public class ParquetFileReader implements Closeable {
                 definitionLevels,
                 converter.getEncoding(dataHeaderV2.getEncoding()),
                 values,
+                dataHeaderV2.isIs_compressed() ? compressedPageSize : 0,
                 uncompressedPageSize,
                 converter.fromParquetStatistics(
                     getFileMetaData().getCreatedBy(), dataHeaderV2.getStatistics(), type),

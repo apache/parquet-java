@@ -295,14 +295,19 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
       int rlByteLength = toIntWithCheck(repetitionLevels.size());
       int dlByteLength = toIntWithCheck(definitionLevels.size());
       int uncompressedSize = toIntWithCheck(data.size() + repetitionLevels.size() + definitionLevels.size());
-      // TODO: decide if we compress
-      BytesInput compressedData = compressor.compress(data);
-      if (null != pageBlockEncryptor) {
-        AesCipher.quickUpdatePageAAD(dataPageAAD, pageOrdinal);
-        compressedData = BytesInput.from(pageBlockEncryptor.encrypt(compressedData.toByteArray(), dataPageAAD));
+      BytesInput compressedData = BytesInput.empty();
+      int compressedSize = 0;
+      if (data.size() > 0) {
+        // TODO: decide if we compress
+        compressedData = compressor.compress(data);
+        if (null != pageBlockEncryptor) {
+          AesCipher.quickUpdatePageAAD(dataPageAAD, pageOrdinal);
+          compressedData =
+              BytesInput.from(pageBlockEncryptor.encrypt(compressedData.toByteArray(), dataPageAAD));
+        }
+        compressedSize =
+            toIntWithCheck(compressedData.size() + repetitionLevels.size() + definitionLevels.size());
       }
-      int compressedSize =
-          toIntWithCheck(compressedData.size() + repetitionLevels.size() + definitionLevels.size());
       tempOutputStream.reset();
       if (null != headerBlockEncryptor) {
         AesCipher.quickUpdatePageAAD(dataPageHeaderAAD, pageOrdinal);

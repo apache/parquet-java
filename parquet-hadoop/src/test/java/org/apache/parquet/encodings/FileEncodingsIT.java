@@ -452,6 +452,7 @@ public class FileEncodingsIT {
                 BytesInput.from(data.getDefinitionLevels().toByteArray()),
                 data.getDataEncoding(),
                 BytesInput.from(data.getData().toByteArray()),
+                data.isCompressed() ? data.getCompressedSize() : 0,
                 data.getUncompressedSize(),
                 data.getStatistics(),
                 data.isCompressed());
