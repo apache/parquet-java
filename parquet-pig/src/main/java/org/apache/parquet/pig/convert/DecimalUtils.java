@@ -19,8 +19,6 @@
 
 package org.apache.parquet.pig.convert;
 
-import static java.lang.Math.pow;
-
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
@@ -53,11 +51,7 @@ public class DecimalUtils {
       }
       int bits = 8 * (end - start);
       long unscaledNew = (unscaled << (64 - bits)) >> (64 - bits);
-      if (unscaledNew <= -pow(10, 18) || unscaledNew >= pow(10, 18)) {
-        return new BigDecimal(unscaledNew);
-      } else {
-        return BigDecimal.valueOf(unscaledNew / pow(10, scale));
-      }
+      return BigDecimal.valueOf(unscaledNew, scale);
     } else {
       return new BigDecimal(new BigInteger(value.getBytes()), scale);
     }
