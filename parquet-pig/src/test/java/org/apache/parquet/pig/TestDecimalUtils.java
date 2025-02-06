@@ -60,12 +60,12 @@ public class TestDecimalUtils {
     // Test LONG
     testDecimalConversion(Long.MAX_VALUE, 19, 0, "9223372036854775807");
     testDecimalConversion(Long.MIN_VALUE, 19, 0, "-9223372036854775808");
-    testDecimalConversion(0L, 0, 0, "0.0");
+    testDecimalConversion(0L, 0, 0, "0");
 
     // Test INTEGER
     testDecimalConversion(Integer.MAX_VALUE, 10, 0, "2147483647");
     testDecimalConversion(Integer.MIN_VALUE, 10, 0, "-2147483648");
-    testDecimalConversion(0, 0, 0, "0.0");
+    testDecimalConversion(0, 0, 0, "0");
 
     // Test DOUBLE
     testDecimalConversion(12345678912345678d, 17, 0, "12345678912345678");
