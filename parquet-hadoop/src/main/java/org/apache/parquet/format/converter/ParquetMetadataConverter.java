@@ -2123,6 +2123,9 @@ public class ParquetMetadataConverter {
       int dlByteLength) {
     DataPageHeaderV2 dataPageHeaderV2 = new DataPageHeaderV2(
         valueCount, nullCount, rowCount, getEncoding(dataEncoding), dlByteLength, rlByteLength);
+    if (compressedSize == 0) {
+      dataPageHeaderV2.setIs_compressed(false);
+    }
     PageHeader pageHeader = new PageHeader(PageType.DATA_PAGE_V2, uncompressedSize, compressedSize);
     pageHeader.setData_page_header_v2(dataPageHeaderV2);
     return pageHeader;
@@ -2142,38 +2145,18 @@ public class ParquetMetadataConverter {
       BlockCipher.Encryptor blockEncryptor,
       byte[] pageHeaderAAD)
       throws IOException {
-    writePageHeader(
-        newDataPageV2Header(
-            uncompressedSize,
-            compressedSize,
-            valueCount,
-            nullCount,
-            rowCount,
-            dataEncoding,
-            rlByteLength,
-            dlByteLength,
-            crc),
-        to,
-        blockEncryptor,
-        pageHeaderAAD);
-  }
-
-  private PageHeader newDataPageV2Header(
-      int uncompressedSize,
-      int compressedSize,
-      int valueCount,
-      int nullCount,
-      int rowCount,
-      org.apache.parquet.column.Encoding dataEncoding,
-      int rlByteLength,
-      int dlByteLength,
-      int crc) {
-    DataPageHeaderV2 dataPageHeaderV2 = new DataPageHeaderV2(
-        valueCount, nullCount, rowCount, getEncoding(dataEncoding), dlByteLength, rlByteLength);
-    PageHeader pageHeader = new PageHeader(PageType.DATA_PAGE_V2, uncompressedSize, compressedSize);
-    pageHeader.setData_page_header_v2(dataPageHeaderV2);
+    PageHeader pageHeader = newDataPageV2Header(
+        uncompressedSize,
+        compressedSize,
+        valueCount,
+        nullCount,
+        rowCount,
+        dataEncoding,
+        rlByteLength,
+        dlByteLength);
     pageHeader.setCrc(crc);
-    return pageHeader;
+
+    writePageHeader(pageHeader, to, blockEncryptor, pageHeaderAAD);
   }
 
   public void writeDictionaryPageHeader(

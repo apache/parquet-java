@@ -1150,8 +1150,11 @@ public class ParquetFileWriter implements AutoCloseable {
     int rlByteLength = toIntWithCheck(repetitionLevels.size(), "page repetition levels");
     int dlByteLength = toIntWithCheck(definitionLevels.size(), "page definition levels");
 
-    int compressedSize =
-        toIntWithCheck(compressedData.size() + repetitionLevels.size() + definitionLevels.size(), "page");
+    int compressedSize = 0;
+    if (compressedData.size() > 0) {
+      compressedSize =
+          toIntWithCheck(compressedData.size() + repetitionLevels.size() + definitionLevels.size(), "page");
+    }
 
     int uncompressedSize =
         toIntWithCheck(uncompressedDataSize + repetitionLevels.size() + definitionLevels.size(), "page");

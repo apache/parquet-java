@@ -53,6 +53,7 @@ public class DataPageV2 extends DataPage {
         definitionLevels,
         dataEncoding,
         data,
+        0,
         Math.toIntExact(repetitionLevels.size() + definitionLevels.size() + data.size()),
         statistics,
         false);
@@ -89,6 +90,7 @@ public class DataPageV2 extends DataPage {
         definitionLevels,
         dataEncoding,
         data,
+        0,
         Math.toIntExact(repetitionLevels.size() + definitionLevels.size() + data.size()),
         statistics,
         false);
@@ -124,6 +126,7 @@ public class DataPageV2 extends DataPage {
         definitionLevels,
         dataEncoding,
         data,
+        Math.toIntExact(repetitionLevels.size() + definitionLevels.size() + data.size()),
         uncompressedSize,
         statistics,
         true);
@@ -138,6 +141,10 @@ public class DataPageV2 extends DataPage {
   private final Statistics<?> statistics;
   private final boolean isCompressed;
 
+  /**
+   * @deprecated will be removed in 2.0.0. Use {@link DataPageV2#DataPageV2(int, int, int, long, BytesInput, BytesInput, Encoding, BytesInput, int, int, Statistics, boolean)}  instead
+   */
+  @Deprecated
   public DataPageV2(
       int rowCount,
       int nullCount,
@@ -163,6 +170,33 @@ public class DataPageV2 extends DataPage {
     this.isCompressed = isCompressed;
   }
 
+  public DataPageV2(
+      int rowCount,
+      int nullCount,
+      int valueCount,
+      BytesInput repetitionLevels,
+      BytesInput definitionLevels,
+      Encoding dataEncoding,
+      BytesInput data,
+      int compressedSize,
+      int uncompressedSize,
+      Statistics<?> statistics,
+      boolean isCompressed) {
+    super(compressedSize, uncompressedSize, valueCount);
+    if (!isCompressed && compressedSize != 0) {
+      throw new IllegalArgumentException("compressedSize must be 0 if page is not compressed");
+    }
+
+    this.rowCount = rowCount;
+    this.nullCount = nullCount;
+    this.repetitionLevels = repetitionLevels;
+    this.definitionLevels = definitionLevels;
+    this.dataEncoding = dataEncoding;
+    this.data = data;
+    this.statistics = statistics;
+    this.isCompressed = isCompressed;
+  }
+
   private DataPageV2(
       int rowCount,
       int nullCount,
@@ -172,14 +206,11 @@ public class DataPageV2 extends DataPage {
       BytesInput definitionLevels,
       Encoding dataEncoding,
       BytesInput data,
+      int compressedSize,
       int uncompressedSize,
       Statistics<?> statistics,
       boolean isCompressed) {
-    super(
-        Math.toIntExact(repetitionLevels.size() + definitionLevels.size() + data.size()),
-        uncompressedSize,
-        valueCount,
-        firstRowIndex);
+    super(compressedSize, uncompressedSize, valueCount, firstRowIndex);
     this.rowCount = rowCount;
     this.nullCount = nullCount;
     this.repetitionLevels = repetitionLevels;
@@ -188,6 +219,11 @@ public class DataPageV2 extends DataPage {
     this.data = data;
     this.statistics = statistics;
     this.isCompressed = isCompressed;
+  }
+
+  @Override
+  public int getCompressedSize() {
+    return isCompressed ? super.getCompressedSize() : 0;
   }
 
   public int getRowCount() {

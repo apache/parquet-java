@@ -34,6 +34,9 @@ public abstract class Page {
     this.uncompressedSize = uncompressedSize;
   }
 
+  /**
+   * @return the compressed size of the page when the bytes are compressed, otherwise return 0
+   */
   public int getCompressedSize() {
     return compressedSize;
   }

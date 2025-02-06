@@ -19,6 +19,7 @@
 package org.apache.parquet.column.impl;
 
 import static junit.framework.Assert.assertEquals;
+import static junit.framework.Assert.assertFalse;
 import static org.apache.parquet.column.ParquetProperties.WriterVersion.PARQUET_2_0;
 
 import java.util.List;
@@ -121,6 +122,48 @@ public class TestColumnReaderImpl {
     for (DataPage dataPage : pages) {
       valueCount += dataPage.getValueCount();
       rowCount += ((DataPageV2) dataPage).getRowCount();
+    }
+    assertEquals(rows, rowCount);
+    assertEquals(rows, valueCount);
+    MemPageReader pageReader = new MemPageReader(rows, pages.iterator(), pageWriter.getDictionaryPage());
+    ValidatingConverter converter = new ValidatingConverter();
+    ColumnReader columnReader =
+        new ColumnReaderImpl(col, pageReader, converter, VersionParser.parse(Version.FULL_VERSION));
+    for (int i = 0; i < rows; i++) {
+      assertEquals(0, columnReader.getCurrentRepetitionLevel());
+      assertEquals(0, columnReader.getCurrentDefinitionLevel());
+      columnReader.consume();
+    }
+    assertEquals(0, converter.count);
+  }
+
+  @Test
+  public void testV2AllNullValues() throws Exception {
+    MessageType schema = MessageTypeParser.parseMessageType("message test { optional binary foo; }");
+    ColumnDescriptor col = schema.getColumns().get(0);
+    MemPageWriter pageWriter = new MemPageWriter();
+    ColumnWriterV2 columnWriterV2 = new ColumnWriterV2(
+        col,
+        pageWriter,
+        ParquetProperties.builder()
+            .withDictionaryPageSize(1024)
+            .withWriterVersion(PARQUET_2_0)
+            .withPageSize(2048)
+            .build());
+    for (int i = 0; i < rows; i++) {
+      columnWriterV2.writeNull(0, 0);
+    }
+    columnWriterV2.writePage();
+    columnWriterV2.finalizeColumnChunk();
+    List<DataPage> pages = pageWriter.getPages();
+    int valueCount = 0;
+    int rowCount = 0;
+    for (DataPage dataPage : pages) {
+      DataPageV2 page = (DataPageV2) dataPage;
+      valueCount += page.getValueCount();
+      rowCount += page.getRowCount();
+      assertFalse(page.isCompressed());
+      assertEquals(0, page.getCompressedSize());
     }
     assertEquals(rows, rowCount);
     assertEquals(rows, valueCount);
