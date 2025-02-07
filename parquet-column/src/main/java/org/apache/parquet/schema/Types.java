@@ -574,9 +574,6 @@ public class Types {
               @Override
               public Optional<Boolean> visit(
                   LogicalTypeAnnotation.GeometryLogicalTypeAnnotation geometryLogicalType) {
-                if (geometryLogicalType.getEncoding() != LogicalTypeAnnotation.GeometryEncoding.WKB) {
-                  throw new RuntimeException("Only WKB geometry encoding is supported for now");
-                }
                 return checkBinaryPrimitiveType(geometryLogicalType);
               }
 

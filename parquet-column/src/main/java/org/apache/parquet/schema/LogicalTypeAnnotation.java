@@ -155,13 +155,10 @@ public abstract class LogicalTypeAnnotation {
           throw new RuntimeException(
               "Expecting at least 2 parameters for geometry logical type, got " + params.size());
         }
-        GeometryEncoding encoding = GeometryEncoding.valueOf(params.get(0));
-        Edges edges = Edges.valueOf(params.get(1));
-        String crs = params.size() > 2 ? params.get(2) : null;
-        String crs_encoding = params.size() > 3 ? params.get(3) : null;
+        String crs = params.size() > 0 ? params.get(0) : null;
         ByteBuffer metadata =
             params.size() > 4 ? ByteBuffer.wrap(params.get(4).getBytes()) : null;
-        return geometryType(encoding, edges, crs, crs_encoding, metadata);
+        return geometryType(crs, metadata);
       }
     };
 
@@ -333,9 +330,8 @@ public abstract class LogicalTypeAnnotation {
     return Float16LogicalTypeAnnotation.INSTANCE;
   }
 
-  public static GeometryLogicalTypeAnnotation geometryType(
-      GeometryEncoding encoding, Edges edges, String crs, String crs_encoding, ByteBuffer metadata) {
-    return new GeometryLogicalTypeAnnotation(encoding, edges, crs, crs_encoding, metadata);
+  public static GeometryLogicalTypeAnnotation geometryType(String crs, ByteBuffer metadata) {
+    return new GeometryLogicalTypeAnnotation(crs, metadata);
   }
 
   public static class StringLogicalTypeAnnotation extends LogicalTypeAnnotation {
@@ -1113,46 +1109,12 @@ public abstract class LogicalTypeAnnotation {
     }
   }
 
-  /**
-   * Allowed for physical type: BYTE_ARRAY.
-   *
-   * Well-known binary (WKB) representations of geometries. It supports 2D or
-   * 3D geometries of the standard geometry types (Point, LineString, Polygon,
-   * MultiPoint, MultiLineString, MultiPolygon, and GeometryCollection). This
-   * is the preferred option for maximum portability.
-   *
-   * This encoding enables GeometryStatistics to be set in the column chunk
-   * and page index.
-   */
-  public enum GeometryEncoding {
-    WKB
-  }
-
-  /**
-   * Interpretation for edges of GEOMETRY logical type, i.e. whether the edge
-   * between points represent a straight cartesian line or the shortest line on
-   * the sphere. Please note that it only applies to polygons.
-   */
-  public enum Edges {
-    PLANAR,
-    SPHERICAL
-  }
-
   public static class GeometryLogicalTypeAnnotation extends LogicalTypeAnnotation {
-    private final GeometryEncoding encoding;
-    private final Edges edges;
     private final String crs;
-    private final String crs_encoding;
     private final ByteBuffer metadata;
 
-    private GeometryLogicalTypeAnnotation(
-        GeometryEncoding encoding, Edges edges, String crs, String crs_encoding, ByteBuffer metadata) {
-      Preconditions.checkArgument(encoding != null, "Geometry encoding is required");
-      Preconditions.checkArgument(edges != null, "Geometry edges is required");
-      this.encoding = encoding;
-      this.edges = edges;
+    private GeometryLogicalTypeAnnotation(String crs, ByteBuffer metadata) {
       this.crs = crs;
-      this.crs_encoding = crs_encoding;
       this.metadata = metadata;
     }
 
@@ -1176,9 +1138,7 @@ public abstract class LogicalTypeAnnotation {
     protected String typeParametersAsString() {
       StringBuilder sb = new StringBuilder();
       sb.append("(");
-      sb.append(encoding);
       sb.append(",");
-      sb.append(edges);
       if (crs != null && !crs.isEmpty()) {
         sb.append(",");
         sb.append(crs);
@@ -1193,20 +1153,8 @@ public abstract class LogicalTypeAnnotation {
       return sb.toString();
     }
 
-    public GeometryEncoding getEncoding() {
-      return encoding;
-    }
-
-    public Edges getEdges() {
-      return edges;
-    }
-
     public String getCrs() {
       return crs;
-    }
-
-    public String getCrs_encoding() {
-      return crs_encoding;
     }
 
     public ByteBuffer getMetadata() {
@@ -1219,19 +1167,16 @@ public abstract class LogicalTypeAnnotation {
         return false;
       }
       GeometryLogicalTypeAnnotation other = (GeometryLogicalTypeAnnotation) obj;
-      return (encoding == other.encoding) && (edges == other.edges) && crs.equals(other.crs);
+      return crs.equals(other.crs);
     }
 
     @Override
     public int hashCode() {
-      return Objects.hash(encoding, crs, edges);
+      return Objects.hash(crs);
     }
 
     @Override
     PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
-      if (encoding == GeometryEncoding.WKB) {
-        return PrimitiveStringifier.WKB_STRINGIFIER;
-      }
       return super.valueStringifier(primitiveType);
     }
   }

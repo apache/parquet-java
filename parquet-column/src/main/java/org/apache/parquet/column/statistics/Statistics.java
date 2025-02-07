@@ -20,7 +20,7 @@ package org.apache.parquet.column.statistics;
 
 import java.util.Arrays;
 import org.apache.parquet.column.UnknownColumnTypeException;
-import org.apache.parquet.column.statistics.geometry.GeometryStatistics;
+import org.apache.parquet.column.statistics.geometry.GeospatialStatistics;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.Float16;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
@@ -65,7 +65,7 @@ public abstract class Statistics<T extends Comparable<T>> {
       return this;
     }
 
-    public Builder withGeometryStatistics(GeometryStatistics geometryStatistics) {
+    public Builder withGeometryStatistics(GeospatialStatistics geospatialStatistics) {
       throw new UnsupportedOperationException("Please use the GeometryBuilder");
     }
 
@@ -186,7 +186,7 @@ public abstract class Statistics<T extends Comparable<T>> {
   // Builder for GEOMETRY type to handle GeometryStatistics
   private static class GeometryBuilder extends Builder {
 
-    private GeometryStatistics geometryStatistics;
+    private GeospatialStatistics geospatialStatistics;
 
     public GeometryBuilder(PrimitiveType type) {
       super(type);
@@ -194,15 +194,15 @@ public abstract class Statistics<T extends Comparable<T>> {
     }
 
     @Override
-    public Builder withGeometryStatistics(GeometryStatistics geometryStatistics) {
-      this.geometryStatistics = geometryStatistics;
+    public Builder withGeometryStatistics(GeospatialStatistics geospatialStatistics) {
+      this.geospatialStatistics = geospatialStatistics;
       return this;
     }
 
     @Override
     public Statistics<?> build() {
       BinaryStatistics stats = (BinaryStatistics) super.build();
-      stats.setGeometryStatistics(geometryStatistics);
+      stats.setGeometryStatistics(geospatialStatistics);
       return stats;
     }
   }

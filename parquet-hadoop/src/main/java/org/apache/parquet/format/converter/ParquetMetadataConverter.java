@@ -24,7 +24,6 @@ import static org.apache.parquet.format.Util.readColumnMetaData;
 import static org.apache.parquet.format.Util.readFileMetaData;
 import static org.apache.parquet.format.Util.writeColumnMetaData;
 import static org.apache.parquet.format.Util.writePageHeader;
-import static org.apache.parquet.schema.LogicalTypeAnnotation.Edges.PLANAR;
 
 import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
@@ -81,16 +80,14 @@ import org.apache.parquet.format.DataPageHeaderV2;
 import org.apache.parquet.format.DateType;
 import org.apache.parquet.format.DecimalType;
 import org.apache.parquet.format.DictionaryPageHeader;
-import org.apache.parquet.format.Edges;
 import org.apache.parquet.format.Encoding;
 import org.apache.parquet.format.EncryptionWithColumnKey;
 import org.apache.parquet.format.EnumType;
 import org.apache.parquet.format.FieldRepetitionType;
 import org.apache.parquet.format.FileMetaData;
 import org.apache.parquet.format.Float16Type;
-import org.apache.parquet.format.GeometryEncoding;
-import org.apache.parquet.format.GeometryStatistics;
 import org.apache.parquet.format.GeometryType;
+import org.apache.parquet.format.GeospatialStatistics;
 import org.apache.parquet.format.IntType;
 import org.apache.parquet.format.JsonType;
 import org.apache.parquet.format.KeyValue;
@@ -349,27 +346,6 @@ public class ParquetMetadataConverter {
     }
   }
 
-  static org.apache.parquet.format.GeometryEncoding convertGeometryEncoding(
-      LogicalTypeAnnotation.GeometryEncoding encoding) {
-    switch (encoding) {
-      case WKB:
-        return org.apache.parquet.format.GeometryEncoding.WKB;
-      default:
-        throw new RuntimeException("Unknown geometry encoding " + encoding);
-    }
-  }
-
-  static org.apache.parquet.format.Edges convertEdges(LogicalTypeAnnotation.Edges edges) {
-    switch (edges) {
-      case PLANAR:
-        return org.apache.parquet.format.Edges.PLANAR;
-      case SPHERICAL:
-        return org.apache.parquet.format.Edges.SPHERICAL;
-      default:
-        throw new RuntimeException("Unknown edges " + edges);
-    }
-  }
-
   private static class ConvertedTypeConverterVisitor
       implements LogicalTypeAnnotation.LogicalTypeAnnotationVisitor<ConvertedType> {
     @Override
@@ -547,19 +523,8 @@ public class ParquetMetadataConverter {
     @Override
     public Optional<LogicalType> visit(LogicalTypeAnnotation.GeometryLogicalTypeAnnotation geometryLogicalType) {
       GeometryType geometryType = new GeometryType();
-      if (geometryLogicalType.getEncoding() != null) {
-        geometryType.setEncoding(convertGeometryEncoding(geometryLogicalType.getEncoding()));
-      }
       if (geometryLogicalType.getCrs() != null) {
         geometryType.setCrs(geometryLogicalType.getCrs());
-      }
-      if (geometryLogicalType.getCrs_encoding() != null) {
-        if (geometryLogicalType.getCrs_encoding().equalsIgnoreCase("WKB")) {
-          geometryType.setEncoding(GeometryEncoding.WKB);
-        }
-      }
-      if (geometryLogicalType.getEdges() != null) {
-        geometryType.setEdges(convertEdges(geometryLogicalType.getEdges()));
       }
       return of(LogicalType.GEOMETRY(geometryType));
     }
@@ -627,8 +592,9 @@ public class ParquetMetadataConverter {
         metaData.setSize_statistics(toParquetSizeStatistics(columnMetaData.getSizeStatistics()));
       }
 
-      if (columnMetaData.getGeometryStatistics() != null) {
-        metaData.setGeometry_stats(toParquetGeometryStatistics(columnMetaData.getGeometryStatistics()));
+      if (columnMetaData.getGeospatialStatistics() != null) {
+        metaData.setGeospatial_statistics(
+            toParquetGeometryStatistics(columnMetaData.getGeospatialStatistics()));
       }
 
       if (!encryptMetaData) {
@@ -818,16 +784,16 @@ public class ParquetMetadataConverter {
     return formatStats;
   }
 
-  private static GeometryStatistics toParquetStatistics(
-      org.apache.parquet.column.statistics.geometry.GeometryStatistics stats) {
-    GeometryStatistics formatStats = new GeometryStatistics();
+  private static GeospatialStatistics toParquetStatistics(
+      org.apache.parquet.column.statistics.geometry.GeospatialStatistics stats) {
+    GeospatialStatistics formatStats = new GeospatialStatistics();
 
     if (stats.getBoundingBox() != null) {
       formatStats.setBbox(toParquetBoundingBox(stats.getBoundingBox()));
     }
     List<Integer> geometryTypes = new ArrayList<>(stats.getGeometryTypes().getTypes());
     Collections.sort(geometryTypes);
-    formatStats.setGeometry_types(geometryTypes);
+    formatStats.setGeospatial_types(geometryTypes);
 
     return formatStats;
   }
@@ -954,30 +920,30 @@ public class ParquetMetadataConverter {
     return fromParquetStatisticsInternal(createdBy, statistics, type, expectedOrder);
   }
 
-  private GeometryStatistics toParquetGeometryStatistics(
-      org.apache.parquet.column.statistics.geometry.GeometryStatistics geometryStatistics) {
-    if (geometryStatistics == null) {
+  private GeospatialStatistics toParquetGeometryStatistics(
+      org.apache.parquet.column.statistics.geometry.GeospatialStatistics geospatialStatistics) {
+    if (geospatialStatistics == null) {
       return null;
     }
 
-    GeometryStatistics formatStats = new GeometryStatistics();
+    GeospatialStatistics formatStats = new GeospatialStatistics();
 
-    if (geometryStatistics.getBoundingBox() != null) {
-      formatStats.setBbox(toParquetBoundingBox(geometryStatistics.getBoundingBox()));
+    if (geospatialStatistics.getBoundingBox() != null) {
+      formatStats.setBbox(toParquetBoundingBox(geospatialStatistics.getBoundingBox()));
     }
 
-    if (geometryStatistics.getGeometryTypes() != null) {
+    if (geospatialStatistics.getGeometryTypes() != null) {
       List<Integer> geometryTypes =
-          new ArrayList<>(geometryStatistics.getGeometryTypes().getTypes());
+          new ArrayList<>(geospatialStatistics.getGeometryTypes().getTypes());
       Collections.sort(geometryTypes);
-      formatStats.setGeometry_types(geometryTypes);
+      formatStats.setGeospatial_types(geometryTypes);
     }
 
     return formatStats;
   }
 
-  static org.apache.parquet.column.statistics.geometry.GeometryStatistics fromParquetStatistics(
-      GeometryStatistics formatGeomStats, PrimitiveType type) {
+  static org.apache.parquet.column.statistics.geometry.GeospatialStatistics fromParquetStatistics(
+      GeospatialStatistics formatGeomStats, PrimitiveType type) {
     org.apache.parquet.column.statistics.geometry.BoundingBox bbox = null;
     if (formatGeomStats.isSetBbox()) {
       BoundingBox formatBbox = formatGeomStats.getBbox();
@@ -992,8 +958,8 @@ public class ParquetMetadataConverter {
           formatBbox.isSetMmax() ? formatBbox.getMmax() : Double.NaN);
     }
     org.apache.parquet.column.statistics.geometry.GeometryTypes geometryTypes = null;
-    if (formatGeomStats.isSetGeometry_types()) {
-      geometryTypes = new GeometryTypes(new HashSet<>(formatGeomStats.getGeometry_types()));
+    if (formatGeomStats.isSetGeospatial_types()) {
+      geometryTypes = new GeometryTypes(new HashSet<>(formatGeomStats.getGeospatial_types()));
     }
 
     // get the logical type annotation data from the type
@@ -1001,16 +967,12 @@ public class ParquetMetadataConverter {
     if (logicalType instanceof LogicalTypeAnnotation.GeometryLogicalTypeAnnotation) {
       LogicalTypeAnnotation.GeometryLogicalTypeAnnotation geometryLogicalType =
           (LogicalTypeAnnotation.GeometryLogicalTypeAnnotation) logicalType;
-      return new org.apache.parquet.column.statistics.geometry.GeometryStatistics(
-          geometryLogicalType.getEdges(),
-          geometryLogicalType.getCrs(),
-          geometryLogicalType.getMetadata(),
-          bbox,
-          geometryTypes);
+      return new org.apache.parquet.column.statistics.geometry.GeospatialStatistics(
+          geometryLogicalType.getCrs(), geometryLogicalType.getMetadata(), bbox, geometryTypes);
     }
-    return new org.apache.parquet.column.statistics.geometry.GeometryStatistics(
+    return new org.apache.parquet.column.statistics.geometry.GeospatialStatistics(
         // this case should not happen in normal cases
-        null, null, null, bbox, geometryTypes);
+        null, null, bbox, geometryTypes);
   }
 
   /**
@@ -1321,12 +1283,7 @@ public class ParquetMetadataConverter {
         return LogicalTypeAnnotation.float16Type();
       case GEOMETRY:
         GeometryType geometry = type.getGEOMETRY();
-        return LogicalTypeAnnotation.geometryType(
-            convertGeometryEncoding(geometry.getEncoding()),
-            convertEdges(geometry.getEdges()),
-            geometry.getCrs(),
-            geometry.getEncoding().name(),
-            null);
+        return LogicalTypeAnnotation.geometryType(geometry.getCrs(), null);
       default:
         throw new RuntimeException("Unknown logical type " + type);
     }
@@ -1342,32 +1299,6 @@ public class ParquetMetadataConverter {
         return LogicalTypeAnnotation.TimeUnit.NANOS;
       default:
         throw new RuntimeException("Unknown time unit " + unit);
-    }
-  }
-
-  private LogicalTypeAnnotation.GeometryEncoding convertGeometryEncoding(GeometryEncoding encoding) {
-    if (encoding == null) {
-      return null;
-    }
-    switch (encoding) {
-      case WKB:
-        return LogicalTypeAnnotation.GeometryEncoding.WKB;
-      default:
-        throw new RuntimeException("Unknown geometry encoding " + encoding);
-    }
-  }
-
-  private static LogicalTypeAnnotation.Edges convertEdges(Edges edge) {
-    if (edge == null) {
-      return null;
-    }
-    switch (edge) {
-      case PLANAR:
-        return PLANAR;
-      case SPHERICAL:
-        return LogicalTypeAnnotation.Edges.SPHERICAL;
-      default:
-        throw new RuntimeException("Unknown geometry edge " + edge);
     }
   }
 
@@ -1790,7 +1721,7 @@ public class ParquetMetadataConverter {
         metaData.total_compressed_size,
         metaData.total_uncompressed_size,
         fromParquetSizeStatistics(metaData.size_statistics, type),
-        fromParquetStatistics(metaData.geometry_stats, type));
+        fromParquetStatistics(metaData.geospatial_statistics, type));
   }
 
   public ParquetMetadata fromParquetMetadata(FileMetaData parquetMetadata) throws IOException {

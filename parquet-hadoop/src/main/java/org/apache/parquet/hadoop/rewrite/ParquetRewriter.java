@@ -508,7 +508,8 @@ public class ParquetRewriter implements Closeable {
           chunk.getValueCount(),
           chunk.getTotalSize(),
           chunk.getTotalUncompressedSize(),
-          chunk.getSizeStatistics());
+          chunk.getSizeStatistics(),
+          null);
     }
 
     ColumnDescriptor descriptorOriginal = outSchema.getColumns().get(outColumnIdx);

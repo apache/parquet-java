@@ -21,7 +21,7 @@ package org.apache.parquet.internal.column.columnindex;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.PrimitiveIterator;
-import org.apache.parquet.column.statistics.geometry.GeometryStatistics;
+import org.apache.parquet.column.statistics.geometry.GeospatialStatistics;
 import org.apache.parquet.filter2.predicate.FilterPredicate.Visitor;
 import org.apache.parquet.internal.filter2.columnindex.ColumnIndexFilter;
 
@@ -77,7 +77,7 @@ public interface ColumnIndex extends Visitor<PrimitiveIterator.OfInt> {
    * @return the unmodifiable list of the geometry statistics for each page;
    * used for converting to the related thrift object
    */
-  default List<GeometryStatistics> getGeometryStatistics() {
+  default List<GeospatialStatistics> getGeometryStatistics() {
     throw new UnsupportedOperationException("Geometry statistics is not implemented");
   }
 }

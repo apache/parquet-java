@@ -26,7 +26,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.Preconditions;
-import org.apache.parquet.column.statistics.geometry.GeometryStatistics;
+import org.apache.parquet.column.statistics.geometry.GeospatialStatistics;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.GroupFactory;
 import org.apache.parquet.example.data.simple.SimpleGroupFactory;
@@ -40,8 +40,6 @@ import org.apache.parquet.internal.column.columnindex.ColumnIndex;
 import org.apache.parquet.io.LocalInputFile;
 import org.apache.parquet.io.LocalOutputFile;
 import org.apache.parquet.io.api.Binary;
-import org.apache.parquet.schema.LogicalTypeAnnotation.Edges;
-import org.apache.parquet.schema.LogicalTypeAnnotation.GeometryEncoding;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Types;
 import org.junit.Assert;
@@ -79,7 +77,7 @@ public class TestGeometryTypeRoundTrip {
     // A message type that represents a message with a geometry column.
     MessageType schema = Types.buildMessage()
         .required(BINARY)
-        .as(geometryType(GeometryEncoding.WKB, Edges.PLANAR, "EPSG:4326", "PROJJSON", null))
+        .as(geometryType("EPSG:4326", null))
         .named("col_geom")
         .named("msg");
 
@@ -106,13 +104,13 @@ public class TestGeometryTypeRoundTrip {
           reader.getRowGroups().get(0).getColumns().get(0);
       Assert.assertNotNull(columnChunkMetaData);
 
-      GeometryStatistics geometryStatistics = columnChunkMetaData.getGeometryStatistics();
-      Assert.assertNotNull(geometryStatistics);
+      GeospatialStatistics geospatialStatistics = columnChunkMetaData.getGeospatialStatistics();
+      Assert.assertNotNull(geospatialStatistics);
 
-      Assert.assertEquals(1.0, geometryStatistics.getBoundingBox().getXMin(), 0.0);
-      Assert.assertEquals(2.0, geometryStatistics.getBoundingBox().getXMax(), 0.0);
-      Assert.assertEquals(1.0, geometryStatistics.getBoundingBox().getYMin(), 0.0);
-      Assert.assertEquals(2.0, geometryStatistics.getBoundingBox().getYMax(), 0.0);
+      Assert.assertEquals(1.0, geospatialStatistics.getBoundingBox().getXMin(), 0.0);
+      Assert.assertEquals(2.0, geospatialStatistics.getBoundingBox().getXMax(), 0.0);
+      Assert.assertEquals(1.0, geospatialStatistics.getBoundingBox().getYMin(), 0.0);
+      Assert.assertEquals(2.0, geospatialStatistics.getBoundingBox().getYMax(), 0.0);
 
       ColumnIndex columnIndex = reader.readColumnIndex(columnChunkMetaData);
       Assert.assertNotNull(columnIndex);
@@ -135,7 +133,7 @@ public class TestGeometryTypeRoundTrip {
     // A message type that represents a message with a geometry column.
     MessageType schema = Types.buildMessage()
         .required(BINARY)
-        .as(geometryType(GeometryEncoding.WKB, Edges.PLANAR, "EPSG:4326", "PROJJSON", null))
+        .as(geometryType("EPSG:4326", null))
         .named("col_geom")
         .named("msg");
 
@@ -162,8 +160,8 @@ public class TestGeometryTypeRoundTrip {
           reader.getRowGroups().get(0).getColumns().get(0);
       Assert.assertNotNull(columnChunkMetaData);
 
-      GeometryStatistics geometryStatistics = columnChunkMetaData.getGeometryStatistics();
-      Assert.assertNotNull(geometryStatistics);
+      GeospatialStatistics geospatialStatistics = columnChunkMetaData.getGeospatialStatistics();
+      Assert.assertNotNull(geospatialStatistics);
 
       ColumnIndex columnIndex = reader.readColumnIndex(columnChunkMetaData);
       Assert.assertNotNull(columnIndex);
@@ -192,7 +190,7 @@ public class TestGeometryTypeRoundTrip {
     // A message type that represents a message with a geometry column.
     MessageType schema = Types.buildMessage()
         .required(BINARY)
-        .as(geometryType(GeometryEncoding.WKB, Edges.SPHERICAL, "EPSG:3857", "PROJJSON", null))
+        .as(geometryType("EPSG:3857", null))
         .named("col_geom")
         .named("msg");
 

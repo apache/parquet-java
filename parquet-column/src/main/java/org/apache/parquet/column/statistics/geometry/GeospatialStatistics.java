@@ -21,17 +21,15 @@ package org.apache.parquet.column.statistics.geometry;
 import java.nio.ByteBuffer;
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.io.api.Binary;
-import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.io.ParseException;
 import org.locationtech.jts.io.WKBReader;
 
-public class GeometryStatistics {
+public class GeospatialStatistics {
 
   private static final BoundingBox DUMMY_BOUNDING_BOX = new DummyBoundingBox();
 
   // Metadata that may impact the statistics calculation
-  private final LogicalTypeAnnotation.Edges edges;
   private final String crs;
   private final ByteBuffer metadata;
 
@@ -39,30 +37,20 @@ public class GeometryStatistics {
   private final GeometryTypes geometryTypes;
   private final WKBReader reader = new WKBReader();
 
-  public GeometryStatistics(
-      LogicalTypeAnnotation.Edges edges,
-      String crs,
-      ByteBuffer metadata,
-      BoundingBox boundingBox,
-      GeometryTypes geometryTypes) {
-    this.edges = edges;
+  public GeospatialStatistics(String crs, ByteBuffer metadata, BoundingBox boundingBox, GeometryTypes geometryTypes) {
     this.crs = crs;
     this.metadata = metadata;
     this.boundingBox = supportsBoundingBox() ? boundingBox : DUMMY_BOUNDING_BOX;
     this.geometryTypes = geometryTypes;
   }
 
-  public GeometryStatistics(LogicalTypeAnnotation.Edges edges, String crs, ByteBuffer metadata) {
-    this(edges, crs, metadata, new BoundingBox(), new GeometryTypes());
+  public GeospatialStatistics(String crs, ByteBuffer metadata) {
+    this(crs, metadata, new BoundingBox(), new GeometryTypes());
   }
 
   public BoundingBox getBoundingBox() {
     return boundingBox;
   }
-
-  //   public Map<String, Covering> getCoverings() {
-  //     return coverings;
-  //   }
 
   public GeometryTypes getGeometryTypes() {
     return geometryTypes;
@@ -95,23 +83,10 @@ public class GeometryStatistics {
   private boolean supportsBoundingBox() {
     // Only planar geometries can have a bounding box
     // based on the current specification
-    return edges == LogicalTypeAnnotation.Edges.PLANAR;
+    return true;
   }
 
-  /**
-   * A custom WKB-encoded polygon or multi-polygon to represent a covering of
-   * geometries. For example, it may be a bounding box, or an envelope of geometries
-   * when a bounding box cannot be built (e.g. a geometry has spherical edges, or if
-   * an edge of geographic coordinates crosses the antimeridian). In addition, it can
-   * also be used to provide vendor-agnostic coverings like S2 or H3 grids.
-   */
-  private boolean supportsCovering() {
-    // This version assumes only build coverings for planar edges
-    // In case of spherical edges, no coverings are built
-    return edges == LogicalTypeAnnotation.Edges.PLANAR;
-  }
-
-  public void merge(GeometryStatistics other) {
+  public void merge(GeospatialStatistics other) {
     Preconditions.checkArgument(other != null, "Cannot merge with null GeometryStatistics");
 
     if (boundingBox != null && other.boundingBox != null) {
@@ -134,9 +109,8 @@ public class GeometryStatistics {
   }
 
   // Copy the statistics
-  public GeometryStatistics copy() {
-    return new GeometryStatistics(
-        edges,
+  public GeospatialStatistics copy() {
+    return new GeospatialStatistics(
         crs,
         metadata,
         boundingBox != null ? boundingBox.copy() : null,
