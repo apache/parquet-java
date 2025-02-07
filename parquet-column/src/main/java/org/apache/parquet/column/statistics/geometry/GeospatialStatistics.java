@@ -119,6 +119,6 @@ public class GeospatialStatistics {
 
   @Override
   public String toString() {
-    return "GeometryStatistics{" + "boundingBox=" + boundingBox + ", coverings=" + geometryTypes + '}';
+    return "GeospatialStatistics{" + "boundingBox=" + boundingBox + ", coverings=" + geometryTypes + '}';
   }
 }

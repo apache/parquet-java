@@ -151,13 +151,13 @@ public abstract class LogicalTypeAnnotation {
     GEOMETRY {
       @Override
       protected LogicalTypeAnnotation fromString(List<String> params) {
-        if (params.size() < 2) {
+        if (params.size() < 1) {
           throw new RuntimeException(
-              "Expecting at least 2 parameters for geometry logical type, got " + params.size());
+              "Expecting at least 1 parameter for geometry logical type, got " + params.size());
         }
         String crs = params.size() > 0 ? params.get(0) : null;
         ByteBuffer metadata =
-            params.size() > 4 ? ByteBuffer.wrap(params.get(4).getBytes()) : null;
+            params.size() > 2 ? ByteBuffer.wrap(params.get(2).getBytes()) : null;
         return geometryType(crs, metadata);
       }
     };
@@ -1177,7 +1177,7 @@ public abstract class LogicalTypeAnnotation {
 
     @Override
     PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
-      return super.valueStringifier(primitiveType);
+      return PrimitiveStringifier.WKB_STRINGIFIER;
     }
   }
 

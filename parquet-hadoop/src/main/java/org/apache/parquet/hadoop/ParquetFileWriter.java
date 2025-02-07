@@ -1387,7 +1387,7 @@ public class ParquetFileWriter implements AutoCloseable {
     // calculate the geometryStatistics from the BinaryStatistics
     GeospatialStatistics geospatialStatistics = null;
     if (currentStatistics instanceof BinaryStatistics)
-      geospatialStatistics = ((BinaryStatistics) currentStatistics).getGeometryStatistics();
+      geospatialStatistics = ((BinaryStatistics) currentStatistics).getGeospatialStatistics();
 
     currentBlock.addColumn(ColumnChunkMetaData.get(
         currentChunkPath,

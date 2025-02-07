@@ -724,8 +724,8 @@ public abstract class ColumnIndexBuilder {
     if (type.getLogicalTypeAnnotation() instanceof LogicalTypeAnnotation.GeometryLogicalTypeAnnotation) {
       assert stats instanceof BinaryStatistics;
       BinaryStatistics binaryStats = (BinaryStatistics) stats;
-      if (geospatialStatistics != null && binaryStats.getGeometryStatistics() != null) {
-        geospatialStatistics.add(binaryStats.getGeometryStatistics());
+      if (geospatialStatistics != null && binaryStats.getGeospatialStatistics() != null) {
+        geospatialStatistics.add(binaryStats.getGeospatialStatistics());
       } else {
         geospatialStatistics = null;
       }
