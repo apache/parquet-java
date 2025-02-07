@@ -55,7 +55,11 @@ public class AesCtrDecryptor extends AesCipher implements BlockCipher.Decryptor 
   public byte[] decrypt(byte[] ciphertext, int cipherTextOffset, int cipherTextLength, byte[] AAD) {
 
     int plainTextLength = cipherTextLength - NONCE_LENGTH;
-    if (plainTextLength < 1) {
+    if (plainTextLength == 0) {
+      return new byte[0];
+    }
+
+    if (plainTextLength < 0) {
       throw new ParquetCryptoRuntimeException("Wrong input length " + plainTextLength);
     }
 
@@ -91,7 +95,11 @@ public class AesCtrDecryptor extends AesCipher implements BlockCipher.Decryptor 
     int cipherTextLength = ciphertext.limit() - ciphertext.position() - SIZE_LENGTH;
 
     int plainTextLength = cipherTextLength - NONCE_LENGTH;
-    if (plainTextLength < 1) {
+    if (plainTextLength == 0) {
+      return ByteBuffer.allocate(0);
+    }
+
+    if (plainTextLength < 0) {
       throw new ParquetCryptoRuntimeException("Wrong input length " + plainTextLength);
     }
 
