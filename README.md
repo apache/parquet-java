@@ -91,6 +91,7 @@ Parquet is a very active project, and new features are being added quickly. Here
 * Column stats
 * Delta encoding
 * Index pages
+* Scala DSL (deprecated)
 * Java Vector API support (experimental)
 
 ## Java Vector API support
@@ -166,29 +167,29 @@ The build runs in [GitHub Actions](https://github.com/apache/parquet-java/action
 
 ## Add Parquet as a dependency in Maven
 
-The current release is version `1.14.4`.
+The current release is version `1.15.0`.
 
 ```xml
   <dependencies>
     <dependency>
       <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-common</artifactId>
-      <version>1.14.4</version>
+      <version>1.15.0</version>
     </dependency>
     <dependency>
       <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-encoding</artifactId>
-      <version>1.14.4</version>
+      <version>1.15.0</version>
     </dependency>
     <dependency>
       <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-column</artifactId>
-      <version>1.14.4</version>
+      <version>1.15.0</version>
     </dependency>
     <dependency>
       <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-hadoop</artifactId>
-      <version>1.14.4</version>
+      <version>1.15.0</version>
     </dependency>
   </dependencies>
 ```

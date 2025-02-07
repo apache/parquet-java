@@ -90,20 +90,21 @@ public class AvroSchemaConverter {
   private final Set<String> pathsToInt96;
 
   public AvroSchemaConverter() {
-    this(ADD_LIST_ELEMENT_RECORDS_DEFAULT);
+    this(ADD_LIST_ELEMENT_RECORDS_DEFAULT, READ_INT96_AS_FIXED_DEFAULT);
   }
 
   /**
    * Constructor used by {@link AvroRecordConverter#isElementType}, which always
-   * uses the 2-level list conversion.
+   * uses the 2-level list conversion and reads INT96 as 12 byte array.
    *
    * @param assumeRepeatedIsListElement whether to assume 2-level lists
+   * @param readInt96AsFixed whether to read Parquet INT96 as 12 byte array.
    */
-  AvroSchemaConverter(boolean assumeRepeatedIsListElement) {
+  AvroSchemaConverter(boolean assumeRepeatedIsListElement, boolean readInt96AsFixed) {
     this.assumeRepeatedIsListElement = assumeRepeatedIsListElement;
     this.writeOldListStructure = WRITE_OLD_LIST_STRUCTURE_DEFAULT;
     this.writeParquetUUID = WRITE_PARQUET_UUID_DEFAULT;
-    this.readInt96AsFixed = READ_INT96_AS_FIXED_DEFAULT;
+    this.readInt96AsFixed = readInt96AsFixed;
     this.pathsToInt96 = Collections.emptySet();
   }
 

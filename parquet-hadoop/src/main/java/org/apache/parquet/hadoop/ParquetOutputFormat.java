@@ -157,6 +157,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   public static final String PAGE_ROW_COUNT_LIMIT = "parquet.page.row.count.limit";
   public static final String PAGE_WRITE_CHECKSUM_ENABLED = "parquet.page.write-checksum.enabled";
   public static final String STATISTICS_ENABLED = "parquet.column.statistics.enabled";
+  public static final String SIZE_STATISTICS_ENABLED = "parquet.size.statistics.enabled";
 
   public static JobSummaryLevel getJobSummaryLevel(Configuration conf) {
     String level = conf.get(JOB_SUMMARY_LEVEL);
@@ -407,6 +408,22 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
       return Boolean.parseBoolean(columnSpecific);
     }
     return conf.getBoolean(STATISTICS_ENABLED, ParquetProperties.DEFAULT_STATISTICS_ENABLED);
+  }
+
+  public static void setSizeStatisticsEnabled(Configuration conf, boolean enabled) {
+    conf.setBoolean(SIZE_STATISTICS_ENABLED, enabled);
+  }
+
+  public static void setSizeStatisticsEnabled(Configuration conf, String path, boolean enabled) {
+    conf.setBoolean(SIZE_STATISTICS_ENABLED + "#" + path, enabled);
+  }
+
+  public static boolean getSizeStatisticsEnabled(Configuration conf) {
+    return conf.getBoolean(SIZE_STATISTICS_ENABLED, ParquetProperties.DEFAULT_SIZE_STATISTICS_ENABLED);
+  }
+
+  public static boolean getSizeStatisticsEnabled(Configuration conf, String path) {
+    return conf.getBoolean(SIZE_STATISTICS_ENABLED + "#" + path, getSizeStatisticsEnabled(conf));
   }
 
   private WriteSupport<T> writeSupport;

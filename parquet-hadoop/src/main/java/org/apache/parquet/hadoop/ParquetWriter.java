@@ -919,6 +919,30 @@ public class ParquetWriter<T> implements Closeable {
     }
 
     /**
+     * Sets the size statistics enabled/disabled for the specified column. All column size statistics are enabled by default.
+     *
+     * @param columnPath the path of the column (dot-string)
+     * @param enabled    whether to collect size statistics for the column
+     * @return this builder for method chaining
+     */
+    public SELF withSizeStatisticsEnabled(String columnPath, boolean enabled) {
+      encodingPropsBuilder.withSizeStatisticsEnabled(columnPath, enabled);
+      return self();
+    }
+
+    /**
+     * Sets whether size statistics are enabled globally. When disabled, size statistics will not be collected
+     * for any column unless explicitly enabled for specific columns.
+     *
+     * @param enabled whether to collect size statistics globally
+     * @return this builder for method chaining
+     */
+    public SELF withSizeStatisticsEnabled(boolean enabled) {
+      encodingPropsBuilder.withSizeStatisticsEnabled(enabled);
+      return self();
+    }
+
+    /**
      * Build a {@link ParquetWriter} with the accumulated configuration.
      *
      * @return a configured {@code ParquetWriter} instance.

@@ -21,7 +21,7 @@
     <groupId>org.apache.parquet</groupId>
     <artifactId>parquet</artifactId>
     <relativePath>../pom.xml</relativePath>
-    <version>1.15.0-SNAPSHOT</version>
+    <version>1.16.0-SNAPSHOT</version>
   </parent>
 
   <modelVersion>4.0.0</modelVersion>
@@ -116,6 +116,10 @@
                 <relocation>
                   <pattern>META-INF.versions.21.${jackson.package}</pattern>
                   <shadedPattern>META-INF.versions.21.${shade.prefix}.${jackson.package}</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>META-INF.versions.22.${jackson.package}</pattern>
+                  <shadedPattern>META-INF.versions.22.${shade.prefix}.${jackson.package}</shadedPattern>
                 </relocation>
               </relocations>
             </configuration>

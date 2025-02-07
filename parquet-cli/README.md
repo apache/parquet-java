@@ -119,6 +119,8 @@ Usage: parquet [options] [command] [command options]
         Scan all records from a file
     rewrite
         Rewrite one or more Parquet files to a new Parquet file
+    size-stats
+        Print size statistics for a Parquet file
 
   Examples:
 

@@ -194,12 +194,12 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
                 model.addLogicalTypeConversion(conversion);
               }
             }
-
-            for (Schema.Field field : schema.getFields()) {
-              addLogicalTypeConversion(model, field.schema(), seenSchemas);
-            }
           } catch (NoSuchFieldException e) {
             // Avro classes without logical types (denoted by the "conversions" field)
+          }
+
+          for (Schema.Field field : schema.getFields()) {
+            addLogicalTypeConversion(model, field.schema(), seenSchemas);
           }
         }
         break;
@@ -939,7 +939,7 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
   // 2-level lists and the result is checked to see if it matches the requested
   // element type. This should always convert assuming 2-level lists because
   // 2-level and 3-level can't be mixed.
-  private static final AvroSchemaConverter CONVERTER = new AvroSchemaConverter(true);
+  private static final AvroSchemaConverter CONVERTER = new AvroSchemaConverter(true, true);
 
   /**
    * Returns whether the given type is the element type of a list or is a

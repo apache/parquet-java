@@ -1769,7 +1769,9 @@ public class ParquetMetadataConverter {
 
     ParquetMetadata parquetMetadata =
         fromParquetMetadata(fileMetaData, fileDecryptor, encryptedFooter, rowGroupToRowIndexOffsetMap);
-    if (LOG.isDebugEnabled()) LOG.debug(ParquetMetadata.toPrettyJSON(parquetMetadata));
+    if (LOG.isDebugEnabled()) {
+      LOG.debug(ParquetMetadata.toPrettyJSON(parquetMetadata));
+    }
     return parquetMetadata;
   }
 
@@ -2561,8 +2563,14 @@ public class ParquetMetadataConverter {
       formatStats.setUnencoded_byte_array_data_bytes(
           stats.getUnencodedByteArrayDataBytes().get());
     }
-    formatStats.setRepetition_level_histogram(stats.getRepetitionLevelHistogram());
-    formatStats.setDefinition_level_histogram(stats.getDefinitionLevelHistogram());
+    List<Long> repLevelHistogram = stats.getRepetitionLevelHistogram();
+    if (repLevelHistogram != null && !repLevelHistogram.isEmpty()) {
+      formatStats.setRepetition_level_histogram(repLevelHistogram);
+    }
+    List<Long> defLevelHistogram = stats.getDefinitionLevelHistogram();
+    if (defLevelHistogram != null && !defLevelHistogram.isEmpty()) {
+      formatStats.setDefinition_level_histogram(defLevelHistogram);
+    }
     return formatStats;
   }
 }
