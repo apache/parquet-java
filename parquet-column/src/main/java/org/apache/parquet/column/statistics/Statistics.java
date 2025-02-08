@@ -202,7 +202,7 @@ public abstract class Statistics<T extends Comparable<T>> {
     @Override
     public Statistics<?> build() {
       BinaryStatistics stats = (BinaryStatistics) super.build();
-      stats.setGeospatialStatistics(geospatialStatistics);
+      stats.setGeometryStatistics(geospatialStatistics);
       return stats;
     }
   }

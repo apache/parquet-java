@@ -22,13 +22,9 @@ import org.locationtech.jts.geom.Geometry;
 
 // Immutable dummy BoundingBox class
 class DummyBoundingBox extends BoundingBox {
-  @Override
-  public void update(double minX, double maxX, double minY, double maxY, double minZ, double maxZ) {
-    // No-op
-  }
 
   @Override
-  public void update(Geometry geometry) {
+  public void update(Geometry geometry, String crs) {
     // No-op
   }
 

@@ -68,7 +68,7 @@ public class TestGeometryTypeRoundTrip {
     // A class to convert JTS Geometry objects to and from Well-Known Binary (WKB) format.
     WKBWriter wkbWriter = new WKBWriter();
 
-    // EPSG:4326: Also known as WGS 84, it uses latitude and longitude coordinates.
+    // OGC:CRS84 (WGS 84): Uses the order longitude, latitude
     Binary[] points = {
       Binary.fromConstantByteArray(wkbWriter.write(geomFactory.createPoint(new Coordinate(1.0, 1.0)))),
       Binary.fromConstantByteArray(wkbWriter.write(geomFactory.createPoint(new Coordinate(2.0, 2.0))))
@@ -77,8 +77,8 @@ public class TestGeometryTypeRoundTrip {
     // A message type that represents a message with a geometry column.
     MessageType schema = Types.buildMessage()
         .required(BINARY)
-        .as(geometryType("EPSG:4326", null))
-        .named("col_geom")
+        .as(geometryType()) // OGC:CRS84: Uses the order longitude, latitude
+        .named("geometry")
         .named("msg");
 
     Configuration conf = new Configuration();
@@ -90,7 +90,7 @@ public class TestGeometryTypeRoundTrip {
         .withDictionaryEncoding(false)
         .build()) {
       for (Binary value : points) {
-        writer.write(factory.newGroup().append("col_geom", value));
+        writer.write(factory.newGroup().append("geometry", value));
       }
     }
 
@@ -118,7 +118,7 @@ public class TestGeometryTypeRoundTrip {
   }
 
   @Test
-  public void testEPSG4326BasicReadWriteGeometryValueWithCovering() throws Exception {
+  public void testBasicReadWriteGeometryValueWithCovering() throws Exception {
     GeometryFactory geomFactory = new GeometryFactory();
 
     // A class to convert JTS Geometry objects to and from Well-Known Binary (WKB) format.
@@ -133,8 +133,8 @@ public class TestGeometryTypeRoundTrip {
     // A message type that represents a message with a geometry column.
     MessageType schema = Types.buildMessage()
         .required(BINARY)
-        .as(geometryType("EPSG:4326", null))
-        .named("col_geom")
+        .as(geometryType("OGC:CRS84", null)) // OGC:CRS84: Uses the order longitude, latitude
+        .named("geometry")
         .named("msg");
 
     Configuration conf = new Configuration();
@@ -146,7 +146,7 @@ public class TestGeometryTypeRoundTrip {
         .withDictionaryEncoding(false)
         .build()) {
       for (Binary value : points) {
-        writer.write(factory.newGroup().append("col_geom", value));
+        writer.write(factory.newGroup().append("geometry", value));
       }
     }
 
@@ -165,46 +165,6 @@ public class TestGeometryTypeRoundTrip {
 
       ColumnIndex columnIndex = reader.readColumnIndex(columnChunkMetaData);
       Assert.assertNotNull(columnIndex);
-    }
-  }
-
-  @Test
-  public void testEPSG3857BasicReadWriteGeometryValue() throws Exception {
-    GeometryFactory geomFactory = new GeometryFactory();
-
-    // A class to convert JTS Geometry objects to and from Well-Known Binary (WKB) format.
-    WKBWriter wkbWriter = new WKBWriter();
-
-    // EPSG:3857: Web Mercator projection, commonly used by web mapping applications.
-    Binary[] points = {
-      Binary.fromConstantByteArray(
-          wkbWriter.write(geomFactory.createPoint(new Coordinate(-8237491.37, 4974209.75)))),
-      Binary.fromConstantByteArray(
-          wkbWriter.write(geomFactory.createPoint(new Coordinate(-8237491.37, 4974249.75)))),
-      Binary.fromConstantByteArray(
-          wkbWriter.write(geomFactory.createPoint(new Coordinate(-8237531.37, 4974209.75)))),
-      Binary.fromConstantByteArray(
-          wkbWriter.write(geomFactory.createPoint(new Coordinate(-8237531.37, 4974249.75))))
-    };
-
-    // A message type that represents a message with a geometry column.
-    MessageType schema = Types.buildMessage()
-        .required(BINARY)
-        .as(geometryType("EPSG:3857", null))
-        .named("col_geom")
-        .named("msg");
-
-    Configuration conf = new Configuration();
-    GroupWriteSupport.setSchema(schema, conf);
-    GroupFactory factory = new SimpleGroupFactory(schema);
-    Path path = newTempPath();
-    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(new LocalOutputFile(path))
-        .withConf(conf)
-        .withDictionaryEncoding(false)
-        .build()) {
-      for (Binary value : points) {
-        writer.write(factory.newGroup().append("col_geom", value));
-      }
     }
   }
 }

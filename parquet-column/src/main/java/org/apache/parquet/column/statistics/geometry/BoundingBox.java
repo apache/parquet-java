@@ -80,18 +80,9 @@ public class BoundingBox {
     return mMax;
   }
 
-  void update(double minX, double maxX, double minY, double maxY, double minZ, double maxZ) {
-    xMin = Math.min(xMin, minX);
-    yMin = Math.min(yMin, minY);
-    xMax = Math.max(xMax, maxX);
-    yMax = Math.max(yMax, maxY);
-    zMin = Math.min(zMin, minZ);
-    zMax = Math.max(zMax, maxZ);
-  }
-
   // Method to update the bounding box with the coordinates of a Geometry object
   // geometry can be changed by this method
-  void update(Geometry geometry) {
+  void update(Geometry geometry, String crs) {
     GeometryUtils.normalizeLongitude(geometry);
     Envelope envelope = geometry.getEnvelopeInternal();
     double minX = envelope.getMinX();
@@ -99,28 +90,85 @@ public class BoundingBox {
     double maxX = envelope.getMaxX();
     double maxY = envelope.getMaxY();
 
-    // JTS (Java Topology Suite) does not handle Z-coordinates directly in the Envelope class
-    // because it's primarily used for 2D geometries. However, we can iterate through the
-    // coordinates of the geometry to find the minimum and maximum Z values.
+    // Initialize Z and M values
     double minZ = Double.POSITIVE_INFINITY;
     double maxZ = Double.NEGATIVE_INFINITY;
+    double minM = Double.POSITIVE_INFINITY;
+    double maxM = Double.NEGATIVE_INFINITY;
 
     Coordinate[] coordinates = geometry.getCoordinates();
     for (Coordinate coord : coordinates) {
       if (!Double.isNaN(coord.getZ())) {
-        // Update zMin and zMax by iterating through the coordinates.
         minZ = Math.min(minZ, coord.getZ());
         maxZ = Math.max(maxZ, coord.getZ());
       }
+      if (!Double.isNaN(coord.getM())) {
+        minM = Math.min(minM, coord.getM());
+        maxM = Math.max(maxM, coord.getM());
+      }
     }
 
-    update(minX, maxX, minY, maxY, minZ, maxZ);
+    if (xMin == Double.POSITIVE_INFINITY || xMax == Double.NEGATIVE_INFINITY) {
+      xMin = minX;
+      xMax = maxX;
+    } else {
+      // Handle the wraparound case for X values
+      if (!isCrossingAntiMeridian(xMax, xMin)) { // current bounding box is NOT wrapped around
+        if (!isCrossingAntiMeridian(maxX, minX)) { // new bounding box is NOT wrapped around
+          xMin = Math.min(xMin, minX);
+          xMax = Math.max(xMax, maxX);
+        } else { // new bounding box is wrapped around
+          xMin = Math.max(xMin, maxX);
+          xMax = Math.min(xMax, minX);
+        }
+      } else { // current bounding box is wrapped around
+        if (!isCrossingAntiMeridian(maxX, minX)) { // new bounding box is NOT wrapped around
+          xMin = Math.max(xMin, minX);
+          xMax = Math.min(xMax, maxX);
+        } else { // new bounding box is wrapped around
+          xMin = Math.max(xMin, maxX);
+          xMax = Math.min(xMax, minX);
+        }
+      }
+    }
+
+    yMin = Math.min(yMin, minY);
+    yMax = Math.max(yMax, maxY);
+    zMin = Math.min(zMin, minZ);
+    zMax = Math.max(zMax, maxZ);
+    mMin = Math.min(mMin, minM);
+    mMax = Math.max(mMax, maxM);
   }
 
   void merge(BoundingBox other) {
     Preconditions.checkArgument(other != null, "Cannot merge with null bounding box");
-    xMin = Math.min(xMin, other.xMin);
-    xMax = Math.max(xMax, other.xMax);
+    double minX = other.xMin;
+    double maxX = other.xMax;
+
+    if (xMin == Double.POSITIVE_INFINITY || xMax == Double.NEGATIVE_INFINITY) {
+      xMin = minX;
+      xMax = maxX;
+    } else {
+      // Handle the wraparound case for X values
+      if (!isCrossingAntiMeridian(xMax, xMin)) { // current bounding box is NOT wrapped around
+        if (!isCrossingAntiMeridian(maxX, minX)) { // new bounding box is NOT wrapped around
+          xMin = Math.min(xMin, minX);
+          xMax = Math.max(xMax, maxX);
+        } else { // new bounding box is wrapped around
+          xMin = Math.max(xMin, maxX);
+          xMax = Math.min(xMax, minX);
+        }
+      } else { // current bounding box is wrapped around
+        if (!isCrossingAntiMeridian(maxX, minX)) { // new bounding box is NOT wrapped around
+          xMin = Math.max(xMin, minX);
+          xMax = Math.min(xMax, maxX);
+        } else { // new bounding box is wrapped around
+          xMin = Math.max(xMin, minX);
+          xMax = Math.min(xMax, maxX);
+        }
+      }
+    }
+
     yMin = Math.min(yMin, other.yMin);
     yMax = Math.max(yMax, other.yMax);
     zMin = Math.min(zMin, other.zMin);
@@ -149,6 +197,10 @@ public class BoundingBox {
     zMax = Double.NaN;
     mMin = Double.NaN;
     mMax = Double.NaN;
+  }
+
+  private boolean isCrossingAntiMeridian(double x1, double x2) {
+    return Math.abs(x1 - x2) > 180;
   }
 
   public BoundingBox copy() {

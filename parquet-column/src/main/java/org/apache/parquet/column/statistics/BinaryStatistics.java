@@ -210,7 +210,7 @@ public class BinaryStatistics extends Statistics<Binary> {
     return new BinaryStatistics(this);
   }
 
-  public void setGeospatialStatistics(GeospatialStatistics geospatialStatistics) {
+  public void setGeometryStatistics(GeospatialStatistics geospatialStatistics) {
     this.geospatialStatistics = geospatialStatistics;
   }
 

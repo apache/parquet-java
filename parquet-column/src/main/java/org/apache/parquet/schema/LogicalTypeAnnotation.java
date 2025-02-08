@@ -44,6 +44,10 @@ import java.util.function.Supplier;
 import org.apache.parquet.Preconditions;
 
 public abstract class LogicalTypeAnnotation {
+
+  // TODO: Move this to an external configuration
+  public static final String DEFAULT_GEOMETRY_CRS = "OGC:CRS84";
+
   enum LogicalTypeToken {
     MAP {
       @Override
@@ -332,6 +336,14 @@ public abstract class LogicalTypeAnnotation {
 
   public static GeometryLogicalTypeAnnotation geometryType(String crs, ByteBuffer metadata) {
     return new GeometryLogicalTypeAnnotation(crs, metadata);
+  }
+
+  public static GeometryLogicalTypeAnnotation geometryType(ByteBuffer metadata) {
+    return new GeometryLogicalTypeAnnotation(DEFAULT_GEOMETRY_CRS, metadata);
+  }
+
+  public static GeometryLogicalTypeAnnotation geometryType() {
+    return new GeometryLogicalTypeAnnotation(DEFAULT_GEOMETRY_CRS, null);
   }
 
   public static class StringLogicalTypeAnnotation extends LogicalTypeAnnotation {

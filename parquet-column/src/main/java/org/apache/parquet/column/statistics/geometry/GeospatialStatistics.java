@@ -70,7 +70,7 @@ public class GeospatialStatistics {
 
   private void update(Geometry geom) {
     if (supportsBoundingBox()) {
-      boundingBox.update(geom);
+      boundingBox.update(geom, crs);
     }
     geometryTypes.update(geom);
   }
