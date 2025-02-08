@@ -78,6 +78,6 @@ public interface ColumnIndex extends Visitor<PrimitiveIterator.OfInt> {
    * used for converting to the related thrift object
    */
   default List<GeospatialStatistics> getGeometryStatistics() {
-    throw new UnsupportedOperationException("Geometry statistics is not implemented");
+    throw new UnsupportedOperationException("Geospatial statistics is not implemented");
   }
 }

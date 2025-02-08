@@ -164,6 +164,20 @@ public abstract class LogicalTypeAnnotation {
             params.size() > 2 ? ByteBuffer.wrap(params.get(2).getBytes()) : null;
         return geometryType(crs, metadata);
       }
+    },
+    GEOGRAPHY {
+      @Override
+      protected LogicalTypeAnnotation fromString(List<String> params) {
+        if (params.size() < 1) {
+          throw new RuntimeException(
+              "Expecting at least 1 parameter for geography logical type, got " + params.size());
+        }
+        String crs = params.size() > 0 ? params.get(0) : null;
+        String edgeAlgorithm = params.size() > 1 ? params.get(1) : null;
+        ByteBuffer metadata =
+            params.size() > 2 ? ByteBuffer.wrap(params.get(2).getBytes()) : null;
+        return geographyType(crs, edgeAlgorithm, metadata);
+      }
     };
 
     protected abstract LogicalTypeAnnotation fromString(List<String> params);
@@ -344,6 +358,10 @@ public abstract class LogicalTypeAnnotation {
 
   public static GeometryLogicalTypeAnnotation geometryType() {
     return new GeometryLogicalTypeAnnotation(DEFAULT_GEOMETRY_CRS, null);
+  }
+
+  public static GeographyLogicalTypeAnnotation geographyType(String crs, String edgeAlgorithm, ByteBuffer metadata) {
+    return new GeographyLogicalTypeAnnotation(crs, edgeAlgorithm, metadata);
   }
 
   public static class StringLogicalTypeAnnotation extends LogicalTypeAnnotation {
@@ -1155,8 +1173,6 @@ public abstract class LogicalTypeAnnotation {
         sb.append(",");
         sb.append(crs);
       }
-      // TODO: Fix it: there's a high probability that crs itself contains comma,
-      //  so this may introduce ambiguity to the generated type parameters.
       if (metadata != null) {
         sb.append(",");
         sb.append(metadata);
@@ -1167,6 +1183,86 @@ public abstract class LogicalTypeAnnotation {
 
     public String getCrs() {
       return crs;
+    }
+
+    public ByteBuffer getMetadata() {
+      return metadata;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      if (!(obj instanceof GeometryLogicalTypeAnnotation)) {
+        return false;
+      }
+      GeometryLogicalTypeAnnotation other = (GeometryLogicalTypeAnnotation) obj;
+      return crs.equals(other.crs);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(crs);
+    }
+
+    @Override
+    PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
+      return PrimitiveStringifier.WKB_STRINGIFIER;
+    }
+  }
+
+  public static class GeographyLogicalTypeAnnotation extends LogicalTypeAnnotation {
+    private final String crs;
+    private final String edgeAlgorithm;
+    private final ByteBuffer metadata;
+
+    private GeographyLogicalTypeAnnotation(String crs, String edgeAlgorithm, ByteBuffer metadata) {
+      this.crs = crs;
+      this.edgeAlgorithm = edgeAlgorithm;
+      this.metadata = metadata;
+    }
+
+    @Override
+    @Deprecated
+    public OriginalType toOriginalType() {
+      return null;
+    }
+
+    @Override
+    public <T> Optional<T> accept(LogicalTypeAnnotationVisitor<T> logicalTypeAnnotationVisitor) {
+      return logicalTypeAnnotationVisitor.visit(this);
+    }
+
+    @Override
+    LogicalTypeToken getType() {
+      return LogicalTypeToken.GEOMETRY;
+    }
+
+    @Override
+    protected String typeParametersAsString() {
+      StringBuilder sb = new StringBuilder();
+      sb.append("(");
+      sb.append(",");
+      if (crs != null && !crs.isEmpty()) {
+        sb.append(",");
+        sb.append(crs);
+      }
+      if (edgeAlgorithm != null) {
+        sb.append(",");
+        sb.append(edgeAlgorithm);
+      }
+      if (metadata != null) {
+        sb.append(",");
+        sb.append(metadata);
+      }
+      sb.append(")");
+      return sb.toString();
+    }
+
+    public String getCrs() {
+      return crs;
+    }
+
+    public String getEdgeAlgorithm() {
+      return edgeAlgorithm;
     }
 
     public ByteBuffer getMetadata() {
@@ -1266,6 +1362,10 @@ public abstract class LogicalTypeAnnotation {
     }
 
     default Optional<T> visit(GeometryLogicalTypeAnnotation geometryLogicalType) {
+      return empty();
+    }
+
+    default Optional<T> visit(GeographyLogicalTypeAnnotation geographyLogicalType) {
       return empty();
     }
   }
