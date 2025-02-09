@@ -467,8 +467,8 @@
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>buildnumber-maven-plugin</artifactId>
-        <!-- Warning! 3.2.1 caused issues during verification, 3.2.0 is known to work correctly. -->
-        <version>3.2.0</version>
+        <!-- Warning! 3.2.1 caused issues during verification, 3.2.1 is known to work correctly. -->
+        <version>3.2.1</version>
         <executions>
           <execution>
             <phase>validate</phase>
