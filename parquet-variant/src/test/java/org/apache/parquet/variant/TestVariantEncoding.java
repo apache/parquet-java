@@ -303,8 +303,9 @@ public class TestVariantEncoding {
 
   @Test
   public void testTimestampNanos() {
+    DateTimeFormatter dtf = DateTimeFormatter.ISO_DATE_TIME;
     VariantBuilder vb = new VariantBuilder(false);
-    long nanos = nanosSinceEpoch(Instant.parse("2024-12-16T10:23:45.321456987-08:00"));
+    long nanos = nanosSinceEpoch(Instant.from(dtf.parse("2024-12-16T10:23:45.321456987-08:00")));
     vb.appendTimestampNanos(nanos);
     Assert.assertEquals(
         "\"2024-12-16T18:23:45.321456987+00:00\"", vb.result().toJson());
@@ -602,6 +603,7 @@ public class TestVariantEncoding {
 
   @Test
   public void testTruncateTrailingZeroTimestampNanos() {
+    DateTimeFormatter dtf = DateTimeFormatter.ISO_DATE_TIME;
     for (String[] strings : Arrays.asList(
         // truncate all trailing zeros
         new String[] {"2024-12-16T10:23:45.000000000-08:00", "2024-12-16T10:23:45-08:00"},
@@ -610,7 +612,7 @@ public class TestVariantEncoding {
         // truncate no trailing zeros
         new String[] {"2024-12-16T10:23:45.123456789-08:00", "2024-12-16T10:23:45.123456789-08:00"})) {
       VariantBuilder vb = new VariantBuilder(false);
-      long nanos = nanosSinceEpoch(Instant.parse(strings[0]));
+      long nanos = nanosSinceEpoch(Instant.from(dtf.parse(strings[0])));
       vb.appendTimestampNanos(nanos);
       Variant v = vb.result();
       Assert.assertEquals(String.format("\"%s\"", strings[0]), v.toJson(ZoneId.of("-08:00")));
