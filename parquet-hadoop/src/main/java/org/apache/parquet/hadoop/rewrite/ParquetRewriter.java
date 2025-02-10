@@ -737,7 +737,7 @@ public class ParquetRewriter implements Closeable {
               encryptColumn,
               dataEncryptor,
               dataPageAAD);
-          boolean compressed = compressor != null;
+          boolean compressed = compressor != null || headerV2.is_compressed;
           statistics = convertStatistics(
               originalCreatedBy,
               normalizeNameInType(chunk.getPrimitiveType()),
