@@ -160,8 +160,6 @@
     <module>parquet-generator</module>
     <module>parquet-hadoop</module>
     <module>parquet-jackson</module>
-    <module>parquet-pig</module>
-    <module>parquet-pig-bundle</module>
     <module>parquet-protobuf</module>
     <module>parquet-thrift</module>
     <module>parquet-hadoop-bundle</module>
@@ -581,7 +579,6 @@
               <!-- Excluding the following modules because bundles do not contain any java classes while they still fail the
                 compatibility check because of missing dependencies -->
               <excludeModule>parquet-hadoop-bundle</excludeModule>
-              <excludeModule>parquet-pig-bundle</excludeModule>
             </excludeModules>
             <excludes>
               <exclude>${shade.prefix}</exclude>

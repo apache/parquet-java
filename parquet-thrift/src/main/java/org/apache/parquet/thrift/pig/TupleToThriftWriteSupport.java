@@ -31,7 +31,10 @@ import org.apache.thrift.TBase;
 
 /**
  * Stores Pig tuples as Thrift objects
+ *
+ * @deprecated will be removed in 1.17.0 or 2.0.0
  */
+@Deprecated
 public class TupleToThriftWriteSupport extends WriteSupport<Tuple> {
 
   private final String className;
