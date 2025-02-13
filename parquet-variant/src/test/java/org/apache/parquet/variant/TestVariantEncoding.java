@@ -22,6 +22,8 @@ import com.fasterxml.jackson.core.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -31,6 +33,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
 import org.junit.Assert;
@@ -346,7 +349,10 @@ public class TestVariantEncoding {
     vb.appendUUID(uuid);
     Assert.assertEquals(
         "\"00112233-4455-6677-8899-aabbccddeeff\"", vb.result().toJson());
-    Assert.assertArrayEquals(uuid, vb.result().getUUID());
+    long msb = ByteBuffer.wrap(uuid, 0, 8).order(ByteOrder.BIG_ENDIAN).getLong();
+    long lsb = ByteBuffer.wrap(uuid, 8, 8).order(ByteOrder.BIG_ENDIAN).getLong();
+    UUID expected = new UUID(msb, lsb);
+    Assert.assertEquals(expected, vb.result().getUUID());
   }
 
   @Test

@@ -33,6 +33,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.Locale;
+import java.util.UUID;
 
 /**
  * This Variant class holds the Variant-encoded value and metadata binary values.
@@ -129,8 +130,11 @@ public final class Variant {
   /**
    * @return the UUID value
    */
-  public byte[] getUUID() {
-    return VariantUtil.getUUID(value, pos);
+  public UUID getUUID() {
+    byte[] uuidBytes = VariantUtil.getUUID(value, pos);
+    long msb = ByteBuffer.wrap(uuidBytes, 0, 8).order(ByteOrder.BIG_ENDIAN).getLong();
+    long lsb = ByteBuffer.wrap(uuidBytes, 8, 8).order(ByteOrder.BIG_ENDIAN).getLong();
+    return new UUID(msb, lsb);
   }
 
   /**
