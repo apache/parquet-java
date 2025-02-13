@@ -33,9 +33,11 @@ import static org.apache.parquet.schema.LogicalTypeAnnotation.stringType;
 import static org.apache.parquet.schema.MessageTypeParser.parseMessageType;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BOOLEAN;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FLOAT;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
@@ -51,20 +53,32 @@ import net.openhft.hashing.LongHashFunction;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
+import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.bytes.HeapByteBufferAllocator;
 import org.apache.parquet.bytes.TrackingByteBufferAllocator;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
 import org.apache.parquet.column.values.bloomfilter.BloomFilter;
+import org.apache.parquet.crypto.AesCipher;
+import org.apache.parquet.crypto.ColumnEncryptionProperties;
+import org.apache.parquet.crypto.DecryptionKeyRetrieverMock;
+import org.apache.parquet.crypto.FileDecryptionProperties;
+import org.apache.parquet.crypto.FileEncryptionProperties;
+import org.apache.parquet.crypto.InternalColumnDecryptionSetup;
+import org.apache.parquet.crypto.InternalFileDecryptor;
+import org.apache.parquet.crypto.ModuleCipherFactory;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.GroupFactory;
 import org.apache.parquet.example.data.simple.SimpleGroupFactory;
+import org.apache.parquet.format.PageHeader;
+import org.apache.parquet.format.Util;
 import org.apache.parquet.hadoop.example.ExampleParquetWriter;
 import org.apache.parquet.hadoop.example.GroupReadSupport;
 import org.apache.parquet.hadoop.example.GroupWriteSupport;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
+import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.hadoop.util.HadoopOutputFile;
@@ -232,7 +246,7 @@ public class TestParquetWriter {
           return null;
         });
 
-    Assert.assertFalse("Should not create a file when schema is rejected", file.exists());
+    assertFalse("Should not create a file when schema is rejected", file.exists());
   }
 
   // Testing the issue of PARQUET-1531 where writing null nested rows leads to empty pages if the page row count limit
@@ -589,6 +603,105 @@ public class TestParquetWriter {
             assertTrue(column.getSizeStatistics().isValid());
           }
         }
+      }
+    }
+  }
+
+  @Test
+  public void testV2WriteAllNullValues() throws Exception {
+    testV2WriteAllNullValues(null, null);
+  }
+
+  @Test
+  public void testV2WriteAllNullValuesWithEncrypted() throws Exception {
+    byte[] footerEncryptionKey = "0123456789012345".getBytes();
+    byte[] columnEncryptionKey = "1234567890123450".getBytes();
+
+    String footerEncryptionKeyID = "kf";
+    String columnEncryptionKeyID = "kc";
+
+    ColumnEncryptionProperties columnProperties = ColumnEncryptionProperties.builder("float")
+        .withKey(columnEncryptionKey)
+        .withKeyID(columnEncryptionKeyID)
+        .build();
+
+    Map<ColumnPath, ColumnEncryptionProperties> columnPropertiesMap = new HashMap<>();
+    columnPropertiesMap.put(columnProperties.getPath(), columnProperties);
+
+    FileEncryptionProperties encryptionProperties = FileEncryptionProperties.builder(footerEncryptionKey)
+        .withFooterKeyID(footerEncryptionKeyID)
+        .withEncryptedColumns(columnPropertiesMap)
+        .build();
+
+    DecryptionKeyRetrieverMock decryptionKeyRetrieverMock = new DecryptionKeyRetrieverMock()
+        .putKey(footerEncryptionKeyID, footerEncryptionKey)
+        .putKey(columnEncryptionKeyID, columnEncryptionKey);
+    FileDecryptionProperties decryptionProperties = FileDecryptionProperties.builder()
+        .withKeyRetriever(decryptionKeyRetrieverMock)
+        .build();
+
+    testV2WriteAllNullValues(encryptionProperties, decryptionProperties);
+  }
+
+  private void testV2WriteAllNullValues(
+      FileEncryptionProperties encryptionProperties, FileDecryptionProperties decryptionProperties)
+      throws Exception {
+    MessageType schema = Types.buildMessage().optional(FLOAT).named("float").named("msg");
+
+    Configuration conf = new Configuration();
+    GroupWriteSupport.setSchema(schema, conf);
+
+    File file = temp.newFile();
+    temp.delete();
+    Path path = new Path(file.getAbsolutePath());
+
+    SimpleGroupFactory factory = new SimpleGroupFactory(schema);
+    Group nullValue = factory.newGroup();
+    int recordCount = 10;
+
+    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(path)
+        .withAllocator(allocator)
+        .withConf(conf)
+        .withWriterVersion(WriterVersion.PARQUET_2_0)
+        .withDictionaryEncoding(false)
+        .withEncryption(encryptionProperties)
+        .build()) {
+      for (int i = 0; i < recordCount; i++) {
+        writer.write(nullValue);
+      }
+    }
+
+    try (ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), path)
+        .withDecryption(decryptionProperties)
+        .build()) {
+      int readRecordCount = 0;
+      for (Group group = reader.read(); group != null; group = reader.read()) {
+        assertEquals(nullValue.toString(), group.toString());
+        ++readRecordCount;
+      }
+      assertEquals("Number of written records should be equal to the read one", recordCount, readRecordCount);
+    }
+
+    ParquetReadOptions options = ParquetReadOptions.builder()
+        .withDecryption(decryptionProperties)
+        .build();
+    try (ParquetFileReader reader = ParquetFileReader.open(HadoopInputFile.fromPath(path, conf), options)) {
+      BlockMetaData blockMetaData = reader.getFooter().getBlocks().get(0);
+      reader.f.seek(blockMetaData.getStartingPos());
+
+      if (decryptionProperties != null) {
+        InternalFileDecryptor fileDecryptor =
+            reader.getFooter().getFileMetaData().getFileDecryptor();
+        InternalColumnDecryptionSetup columnDecryptionSetup =
+            fileDecryptor.getColumnSetup(ColumnPath.fromDotString("float"));
+        byte[] dataPageHeaderAAD = AesCipher.createModuleAAD(
+            fileDecryptor.getFileAAD(), ModuleCipherFactory.ModuleType.DataPageHeader, 0, 0, 0);
+        PageHeader pageHeader =
+            Util.readPageHeader(reader.f, columnDecryptionSetup.getMetaDataDecryptor(), dataPageHeaderAAD);
+        assertFalse(pageHeader.getData_page_header_v2().isIs_compressed());
+      } else {
+        PageHeader pageHeader = Util.readPageHeader(reader.f);
+        assertFalse(pageHeader.getData_page_header_v2().isIs_compressed());
       }
     }
   }
