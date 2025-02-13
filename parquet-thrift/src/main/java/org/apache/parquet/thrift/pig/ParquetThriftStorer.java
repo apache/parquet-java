@@ -34,7 +34,10 @@ import org.apache.pig.data.Tuple;
  * To store in Pig using a thrift class
  * usage:
  * STORE 'foo' USING parquet.thrift.pig.ParquetThriftStorer('my.thrift.Class');
+ *
+ * @deprecated will be removed in 1.17.0 or 2.0.0
  */
+@Deprecated
 public class ParquetThriftStorer extends StoreFunc {
 
   private RecordWriter<Void, Tuple> recordWriter;

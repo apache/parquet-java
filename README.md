@@ -73,7 +73,7 @@ Parquet is a very active project, and new features are being added quickly. Here
 
 * Type-specific encoding
 * Hive integration (deprecated)
-* Pig integration
+* Pig integration (deprecated)
 * Cascading integration (deprecated)
 * Crunch integration
 * Apache Arrow integration
@@ -131,24 +131,6 @@ Protobuf conversion is implemented via the [parquet-protobuf](https://github.com
 See the APIs:
 * [Record conversion API](https://github.com/apache/parquet-java/tree/master/parquet-column/src/main/java/org/apache/parquet/io/api)
 * [Hadoop API](https://github.com/apache/parquet-java/tree/master/parquet-hadoop/src/main/java/org/apache/parquet/hadoop/api)
-
-## Apache Pig integration
-A [Loader](https://github.com/apache/parquet-java/blob/master/parquet-pig/src/main/java/org/apache/parquet/pig/ParquetLoader.java) and a [Storer](https://github.com/apache/parquet-java/blob/master/parquet-pig/src/main/java/org/apache/parquet/pig/ParquetStorer.java) are provided to read and write Parquet files with Apache Pig
-
-Storing data into Parquet in Pig is simple:
-```
--- options you might want to fiddle with
-SET parquet.page.size 1048576 -- default. this is your min read/write unit.
-SET parquet.block.size 134217728 -- default. your memory budget for buffering data
-SET parquet.compression lzo -- or you can use none, gzip, snappy
-STORE mydata into '/some/path' USING parquet.pig.ParquetStorer;
-```
-Reading in Pig is also simple:
-```
-mydata = LOAD '/some/path' USING parquet.pig.ParquetLoader();
-```
-
-If the data was stored using Pig, things will "just work". If the data was stored using another method, you will need to provide the Pig schema equivalent to the data you stored (you can also write the schema to the file footer while writing it -- but that's pretty advanced). We will provide a basic automatic schema conversion soon.
 
 ## Hive integration
 
