@@ -400,7 +400,7 @@ public class ProtoSchemaConverterTest {
         + "  optional int64 wrappedInt64 = 3;\n"
         + "  optional int64 wrappedUInt64 = 4;\n"
         + "  optional int32 wrappedInt32 = 5;\n"
-        + "  optional int64 wrappedUInt32 = 6;\n"
+        + "  optional int32 wrappedUInt32 = 6;\n"
         + "  optional boolean wrappedBool = 7;\n"
         + "  optional binary wrappedString (UTF8) = 8;\n"
         + "  optional binary wrappedBytes = 9;\n"
