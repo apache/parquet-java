@@ -146,6 +146,12 @@ public abstract class LogicalTypeAnnotation {
       protected LogicalTypeAnnotation fromString(List<String> params) {
         return float16Type();
       }
+    },
+    UNKNOWN {
+      @Override
+      protected LogicalTypeAnnotation fromString(List<String> params) {
+        return unknownType();
+      }
     };
 
     protected abstract LogicalTypeAnnotation fromString(List<String> params);
@@ -314,6 +320,10 @@ public abstract class LogicalTypeAnnotation {
 
   public static Float16LogicalTypeAnnotation float16Type() {
     return Float16LogicalTypeAnnotation.INSTANCE;
+  }
+
+  public static UnknownLogicalTypeAnnotation unknownType() {
+    return UnknownLogicalTypeAnnotation.INSTANCE;
   }
 
   public static class StringLogicalTypeAnnotation extends LogicalTypeAnnotation {
@@ -989,6 +999,33 @@ public abstract class LogicalTypeAnnotation {
     }
   }
 
+  public static class UnknownLogicalTypeAnnotation extends LogicalTypeAnnotation {
+    private static final UnknownLogicalTypeAnnotation INSTANCE = new UnknownLogicalTypeAnnotation();
+
+    private UnknownLogicalTypeAnnotation() {}
+
+    @Override
+    public OriginalType toOriginalType() {
+      // No OriginalType for UknownType
+      return null;
+    }
+
+    @Override
+    public <T> Optional<T> accept(LogicalTypeAnnotationVisitor<T> logicalTypeAnnotationVisitor) {
+      return logicalTypeAnnotationVisitor.visit(this);
+    }
+
+    @Override
+    LogicalTypeToken getType() {
+      return LogicalTypeToken.UNKNOWN;
+    }
+
+    @Override
+    PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
+      return PrimitiveStringifier.UNKNOWN_STRINGIFIER;
+    }
+  }
+
   // This logical type annotation is implemented to support backward compatibility with ConvertedType.
   // The new logical type representation in parquet-format doesn't have any interval type,
   // thus this annotation is mapped to UNKNOWN.
@@ -1160,6 +1197,10 @@ public abstract class LogicalTypeAnnotation {
     }
 
     default Optional<T> visit(Float16LogicalTypeAnnotation float16LogicalType) {
+      return empty();
+    }
+
+    default Optional<T> visit(UnknownLogicalTypeAnnotation unknownLogicalTypeAnnotation) {
       return empty();
     }
   }

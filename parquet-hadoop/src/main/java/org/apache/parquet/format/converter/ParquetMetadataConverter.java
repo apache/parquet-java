@@ -516,6 +516,11 @@ public class ParquetMetadataConverter {
     }
 
     @Override
+    public Optional<LogicalType> visit(LogicalTypeAnnotation.UnknownLogicalTypeAnnotation intervalLogicalType) {
+      return of(LogicalType.UNKNOWN(new NullType()));
+    }
+
+    @Override
     public Optional<LogicalType> visit(LogicalTypeAnnotation.IntervalLogicalTypeAnnotation intervalLogicalType) {
       return of(LogicalType.UNKNOWN(new NullType()));
     }
@@ -894,7 +899,8 @@ public class ParquetMetadataConverter {
       LogicalTypeAnnotation.StringLogicalTypeAnnotation.class,
       LogicalTypeAnnotation.EnumLogicalTypeAnnotation.class,
       LogicalTypeAnnotation.JsonLogicalTypeAnnotation.class,
-      LogicalTypeAnnotation.Float16LogicalTypeAnnotation.class)));
+      LogicalTypeAnnotation.Float16LogicalTypeAnnotation.class,
+      LogicalTypeAnnotation.UnknownLogicalTypeAnnotation.class)));
 
   /**
    * Returns whether to use signed order min and max with a type. It is safe to
@@ -995,6 +1001,12 @@ public class ParquetMetadataConverter {
             public Optional<SortOrder> visit(
                 LogicalTypeAnnotation.Float16LogicalTypeAnnotation float16LogicalType) {
               return of(SortOrder.SIGNED);
+            }
+
+            @Override
+            public Optional<SortOrder> visit(
+                LogicalTypeAnnotation.UnknownLogicalTypeAnnotation unknownLogicalTypeAnnotation) {
+              return of(SortOrder.UNKNOWN);
             }
 
             @Override
@@ -1167,7 +1179,7 @@ public class ParquetMetadataConverter {
         IntType integer = type.getINTEGER();
         return LogicalTypeAnnotation.intType(integer.bitWidth, integer.isSigned);
       case UNKNOWN:
-        return null;
+        return LogicalTypeAnnotation.unknownType();
       case TIMESTAMP:
         TimestampType timestamp = type.getTIMESTAMP();
         return LogicalTypeAnnotation.timestampType(timestamp.isAdjustedToUTC, convertTimeUnit(timestamp.unit));
