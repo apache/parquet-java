@@ -33,6 +33,7 @@ import static org.apache.parquet.schema.PrimitiveStringifier.TIME_NANOS_UTC_STRI
 import static org.apache.parquet.schema.PrimitiveStringifier.TIME_STRINGIFIER;
 import static org.apache.parquet.schema.PrimitiveStringifier.TIME_UTC_STRINGIFIER;
 
+import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -43,6 +44,10 @@ import java.util.function.Supplier;
 import org.apache.parquet.Preconditions;
 
 public abstract class LogicalTypeAnnotation {
+
+  // TODO: Move this to an external configuration
+  public static final String DEFAULT_GEOMETRY_CRS = "OGC:CRS84";
+
   enum LogicalTypeToken {
     MAP {
       @Override
@@ -145,6 +150,33 @@ public abstract class LogicalTypeAnnotation {
       @Override
       protected LogicalTypeAnnotation fromString(List<String> params) {
         return float16Type();
+      }
+    },
+    GEOMETRY {
+      @Override
+      protected LogicalTypeAnnotation fromString(List<String> params) {
+        if (params.size() < 1) {
+          throw new RuntimeException(
+              "Expecting at least 1 parameter for geometry logical type, got " + params.size());
+        }
+        String crs = params.size() > 0 ? params.get(0) : null;
+        ByteBuffer metadata =
+            params.size() > 2 ? ByteBuffer.wrap(params.get(2).getBytes()) : null;
+        return geometryType(crs, metadata);
+      }
+    },
+    GEOGRAPHY {
+      @Override
+      protected LogicalTypeAnnotation fromString(List<String> params) {
+        if (params.size() < 1) {
+          throw new RuntimeException(
+              "Expecting at least 1 parameter for geography logical type, got " + params.size());
+        }
+        String crs = params.size() > 0 ? params.get(0) : null;
+        String edgeAlgorithm = params.size() > 1 ? params.get(1) : null;
+        ByteBuffer metadata =
+            params.size() > 2 ? ByteBuffer.wrap(params.get(2).getBytes()) : null;
+        return geographyType(crs, edgeAlgorithm, metadata);
       }
     };
 
@@ -314,6 +346,22 @@ public abstract class LogicalTypeAnnotation {
 
   public static Float16LogicalTypeAnnotation float16Type() {
     return Float16LogicalTypeAnnotation.INSTANCE;
+  }
+
+  public static GeometryLogicalTypeAnnotation geometryType(String crs, ByteBuffer metadata) {
+    return new GeometryLogicalTypeAnnotation(crs, metadata);
+  }
+
+  public static GeometryLogicalTypeAnnotation geometryType(ByteBuffer metadata) {
+    return new GeometryLogicalTypeAnnotation(DEFAULT_GEOMETRY_CRS, metadata);
+  }
+
+  public static GeometryLogicalTypeAnnotation geometryType() {
+    return new GeometryLogicalTypeAnnotation(DEFAULT_GEOMETRY_CRS, null);
+  }
+
+  public static GeographyLogicalTypeAnnotation geographyType(String crs, String edgeAlgorithm, ByteBuffer metadata) {
+    return new GeographyLogicalTypeAnnotation(crs, edgeAlgorithm, metadata);
   }
 
   public static class StringLogicalTypeAnnotation extends LogicalTypeAnnotation {
@@ -1091,6 +1139,156 @@ public abstract class LogicalTypeAnnotation {
     }
   }
 
+  public static class GeometryLogicalTypeAnnotation extends LogicalTypeAnnotation {
+    private final String crs;
+    private final ByteBuffer metadata;
+
+    private GeometryLogicalTypeAnnotation(String crs, ByteBuffer metadata) {
+      this.crs = crs;
+      this.metadata = metadata;
+    }
+
+    @Override
+    @Deprecated
+    public OriginalType toOriginalType() {
+      return null;
+    }
+
+    @Override
+    public <T> Optional<T> accept(LogicalTypeAnnotationVisitor<T> logicalTypeAnnotationVisitor) {
+      return logicalTypeAnnotationVisitor.visit(this);
+    }
+
+    @Override
+    LogicalTypeToken getType() {
+      return LogicalTypeToken.GEOMETRY;
+    }
+
+    @Override
+    protected String typeParametersAsString() {
+      StringBuilder sb = new StringBuilder();
+      sb.append("(");
+      sb.append(",");
+      if (crs != null && !crs.isEmpty()) {
+        sb.append(",");
+        sb.append(crs);
+      }
+      if (metadata != null) {
+        sb.append(",");
+        sb.append(metadata);
+      }
+      sb.append(")");
+      return sb.toString();
+    }
+
+    public String getCrs() {
+      return crs;
+    }
+
+    public ByteBuffer getMetadata() {
+      return metadata;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      if (!(obj instanceof GeometryLogicalTypeAnnotation)) {
+        return false;
+      }
+      GeometryLogicalTypeAnnotation other = (GeometryLogicalTypeAnnotation) obj;
+      return crs.equals(other.crs);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(crs);
+    }
+
+    @Override
+    PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
+      return PrimitiveStringifier.WKB_STRINGIFIER;
+    }
+  }
+
+  public static class GeographyLogicalTypeAnnotation extends LogicalTypeAnnotation {
+    private final String crs;
+    private final String edgeAlgorithm;
+    private final ByteBuffer metadata;
+
+    private GeographyLogicalTypeAnnotation(String crs, String edgeAlgorithm, ByteBuffer metadata) {
+      this.crs = crs;
+      this.edgeAlgorithm = edgeAlgorithm;
+      this.metadata = metadata;
+    }
+
+    @Override
+    @Deprecated
+    public OriginalType toOriginalType() {
+      return null;
+    }
+
+    @Override
+    public <T> Optional<T> accept(LogicalTypeAnnotationVisitor<T> logicalTypeAnnotationVisitor) {
+      return logicalTypeAnnotationVisitor.visit(this);
+    }
+
+    @Override
+    LogicalTypeToken getType() {
+      return LogicalTypeToken.GEOMETRY;
+    }
+
+    @Override
+    protected String typeParametersAsString() {
+      StringBuilder sb = new StringBuilder();
+      sb.append("(");
+      sb.append(",");
+      if (crs != null && !crs.isEmpty()) {
+        sb.append(",");
+        sb.append(crs);
+      }
+      if (edgeAlgorithm != null) {
+        sb.append(",");
+        sb.append(edgeAlgorithm);
+      }
+      if (metadata != null) {
+        sb.append(",");
+        sb.append(metadata);
+      }
+      sb.append(")");
+      return sb.toString();
+    }
+
+    public String getCrs() {
+      return crs;
+    }
+
+    public String getEdgeAlgorithm() {
+      return edgeAlgorithm;
+    }
+
+    public ByteBuffer getMetadata() {
+      return metadata;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      if (!(obj instanceof GeometryLogicalTypeAnnotation)) {
+        return false;
+      }
+      GeometryLogicalTypeAnnotation other = (GeometryLogicalTypeAnnotation) obj;
+      return crs.equals(other.crs);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(crs);
+    }
+
+    @Override
+    PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
+      return PrimitiveStringifier.WKB_STRINGIFIER;
+    }
+  }
+
   /**
    * Implement this interface to visit a logical type annotation in the schema.
    * The default implementation for each logical type specific visitor method is empty.
@@ -1160,6 +1358,14 @@ public abstract class LogicalTypeAnnotation {
     }
 
     default Optional<T> visit(Float16LogicalTypeAnnotation float16LogicalType) {
+      return empty();
+    }
+
+    default Optional<T> visit(GeometryLogicalTypeAnnotation geometryLogicalType) {
+      return empty();
+    }
+
+    default Optional<T> visit(GeographyLogicalTypeAnnotation geographyLogicalType) {
       return empty();
     }
   }

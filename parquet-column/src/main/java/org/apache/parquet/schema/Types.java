@@ -571,6 +571,18 @@ public class Types {
                 return checkBinaryPrimitiveType(enumLogicalType);
               }
 
+              @Override
+              public Optional<Boolean> visit(
+                  LogicalTypeAnnotation.GeometryLogicalTypeAnnotation geometryLogicalType) {
+                return checkBinaryPrimitiveType(geometryLogicalType);
+              }
+
+              @Override
+              public Optional<Boolean> visit(
+                  LogicalTypeAnnotation.GeographyLogicalTypeAnnotation geographyLogicalType) {
+                return checkBinaryPrimitiveType(geographyLogicalType);
+              }
+
               private Optional<Boolean> checkFixedPrimitiveType(
                   int l, LogicalTypeAnnotation logicalTypeAnnotation) {
                 Preconditions.checkState(
