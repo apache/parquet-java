@@ -131,10 +131,7 @@ public final class Variant {
    * @return the UUID value
    */
   public UUID getUUID() {
-    byte[] uuidBytes = VariantUtil.getUUID(value, pos);
-    long msb = ByteBuffer.wrap(uuidBytes, 0, 8).order(ByteOrder.BIG_ENDIAN).getLong();
-    long lsb = ByteBuffer.wrap(uuidBytes, 8, 8).order(ByteOrder.BIG_ENDIAN).getLong();
-    return new UUID(msb, lsb);
+    return VariantUtil.getUUID(value, pos);
   }
 
   /**
@@ -540,8 +537,7 @@ public final class Variant {
         }
         break;
       case UUID:
-        ByteBuffer bb = ByteBuffer.wrap(VariantUtil.getUUID(value, pos)).order(ByteOrder.BIG_ENDIAN);
-        gen.writeString(new java.util.UUID(bb.getLong(), bb.getLong()).toString());
+        gen.writeString(VariantUtil.getUUID(value, pos).toString());
         break;
       default:
         throw new IllegalArgumentException("Unsupported type: " + VariantUtil.getType(value, pos));

@@ -18,6 +18,8 @@ package org.apache.parquet.variant;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.Arrays;
 
 /**
@@ -594,14 +596,15 @@ public class VariantUtil {
     throw unexpectedType(Type.STRING);
   }
 
-  public static byte[] getUUID(byte[] value, int pos) {
+  public static java.util.UUID getUUID(byte[] value, int pos) {
     checkIndex(pos, value.length);
     int basicType = value[pos] & BASIC_TYPE_MASK;
     int typeInfo = (value[pos] >> BASIC_TYPE_BITS) & PRIMITIVE_TYPE_MASK;
     if (basicType != PRIMITIVE || typeInfo != UUID) throw unexpectedType(Type.UUID);
     int start = pos + 1;
     checkIndex(start + UUID_SIZE - 1, value.length);
-    return Arrays.copyOfRange(value, start, start + UUID_SIZE);
+    ByteBuffer bb = ByteBuffer.wrap(value, start, UUID_SIZE).order(ByteOrder.BIG_ENDIAN);
+    return new java.util.UUID(bb.getLong(), bb.getLong());
   }
 
   /**
