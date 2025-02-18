@@ -1044,7 +1044,9 @@ public class ParquetFileWriter implements AutoCloseable {
    * @param uncompressedDataSize the size of uncompressed data
    * @param statistics           the statistics of the page
    * @throws IOException if any I/O error occurs during writing the file
+   * @deprecated will be removed in 2.0.0. Use {@link ParquetFileWriter#writeDataPageV2(int, int, int, BytesInput, BytesInput, Encoding, BytesInput, boolean, int, Statistics)} instead
    */
+  @Deprecated
   public void writeDataPageV2(
       int rowCount,
       int nullCount,
@@ -1064,6 +1066,50 @@ public class ParquetFileWriter implements AutoCloseable {
         definitionLevels,
         dataEncoding,
         compressedData,
+        true, /* compressed by default */
+        uncompressedDataSize,
+        statistics,
+        null,
+        null,
+        null);
+  }
+
+  /**
+   * Writes a single v2 data page
+   *
+   * @param rowCount             count of rows
+   * @param nullCount            count of nulls
+   * @param valueCount           count of values
+   * @param repetitionLevels     repetition level bytes
+   * @param definitionLevels     definition level bytes
+   * @param dataEncoding         encoding for data
+   * @param bytes                data bytes
+   * @param compressed           whether the data bytes is compressed
+   * @param uncompressedDataSize the size of uncompressed data
+   * @param statistics           the statistics of the page
+   * @throws IOException if any I/O error occurs during writing the file
+   */
+  public void writeDataPageV2(
+      int rowCount,
+      int nullCount,
+      int valueCount,
+      BytesInput repetitionLevels,
+      BytesInput definitionLevels,
+      Encoding dataEncoding,
+      BytesInput bytes,
+      boolean compressed,
+      int uncompressedDataSize,
+      Statistics<?> statistics)
+      throws IOException {
+    writeDataPageV2(
+        rowCount,
+        nullCount,
+        valueCount,
+        repetitionLevels,
+        definitionLevels,
+        dataEncoding,
+        bytes,
+        compressed,
         uncompressedDataSize,
         statistics,
         null,
@@ -1086,7 +1132,9 @@ public class ParquetFileWriter implements AutoCloseable {
    * @param metadataBlockEncryptor encryptor for block data
    * @param pageHeaderAAD          pageHeader AAD
    * @throws IOException if any I/O error occurs during writing the file
+   * @deprecated will be removed in 2.0.0. Use {@link ParquetFileWriter#writeDataPageV2(int, int, int, BytesInput, BytesInput, Encoding, BytesInput, boolean, int, Statistics, BlockCipher.Encryptor, byte[])} instead
    */
+  @Deprecated
   public void writeDataPageV2(
       int rowCount,
       int nullCount,
@@ -1108,6 +1156,54 @@ public class ParquetFileWriter implements AutoCloseable {
         definitionLevels,
         dataEncoding,
         compressedData,
+        true, /* compressed by default */
+        uncompressedDataSize,
+        statistics,
+        metadataBlockEncryptor,
+        pageHeaderAAD,
+        null);
+  }
+
+  /**
+   * Writes a single v2 data page
+   *
+   * @param rowCount               count of rows
+   * @param nullCount              count of nulls
+   * @param valueCount             count of values
+   * @param repetitionLevels       repetition level bytes
+   * @param definitionLevels       definition level bytes
+   * @param dataEncoding           encoding for data
+   * @param bytes                  data bytes
+   * @param compressed             whether the data bytes is compressed
+   * @param uncompressedDataSize   the size of uncompressed data
+   * @param statistics             the statistics of the page
+   * @param metadataBlockEncryptor encryptor for block data
+   * @param pageHeaderAAD          pageHeader AAD
+   * @throws IOException if any I/O error occurs during writing the file
+   */
+  public void writeDataPageV2(
+      int rowCount,
+      int nullCount,
+      int valueCount,
+      BytesInput repetitionLevels,
+      BytesInput definitionLevels,
+      Encoding dataEncoding,
+      BytesInput bytes,
+      boolean compressed,
+      int uncompressedDataSize,
+      Statistics<?> statistics,
+      BlockCipher.Encryptor metadataBlockEncryptor,
+      byte[] pageHeaderAAD)
+      throws IOException {
+    writeDataPageV2(
+        rowCount,
+        nullCount,
+        valueCount,
+        repetitionLevels,
+        definitionLevels,
+        dataEncoding,
+        bytes,
+        compressed,
         uncompressedDataSize,
         statistics,
         metadataBlockEncryptor,
@@ -1131,7 +1227,9 @@ public class ParquetFileWriter implements AutoCloseable {
    * @param pageHeaderAAD pageHeader AAD
    * @param sizeStatistics size statistics for the page
    * @throws IOException if any I/O error occurs during writing the file
+   * @deprecated will be removed in 2.0.0. Use {@link ParquetFileWriter#writeDataPageV2(int, int, int, BytesInput, BytesInput, Encoding, BytesInput, boolean, int, Statistics, BlockCipher.Encryptor, byte[], SizeStatistics)} instead
    */
+  @Deprecated
   public void writeDataPageV2(
       int rowCount,
       int nullCount,
@@ -1146,12 +1244,60 @@ public class ParquetFileWriter implements AutoCloseable {
       byte[] pageHeaderAAD,
       SizeStatistics sizeStatistics)
       throws IOException {
+    writeDataPageV2(
+        rowCount,
+        nullCount,
+        valueCount,
+        repetitionLevels,
+        definitionLevels,
+        dataEncoding,
+        compressedData,
+        true, /* compressed by default */
+        uncompressedDataSize,
+        statistics,
+        metadataBlockEncryptor,
+        pageHeaderAAD,
+        sizeStatistics);
+  }
+
+  /**
+   * Writes a single v2 data page
+   *
+   * @param rowCount count of rows
+   * @param nullCount count of nulls
+   * @param valueCount count of values
+   * @param repetitionLevels repetition level bytes
+   * @param definitionLevels definition level bytes
+   * @param dataEncoding encoding for data
+   * @param bytes data bytes
+   * @param compressed whether the data bytes is compressed
+   * @param uncompressedDataSize the size of uncompressed data
+   * @param statistics the statistics of the page
+   * @param metadataBlockEncryptor encryptor for block data
+   * @param pageHeaderAAD pageHeader AAD
+   * @param sizeStatistics size statistics for the page
+   * @throws IOException if any I/O error occurs during writing the file
+   */
+  public void writeDataPageV2(
+      int rowCount,
+      int nullCount,
+      int valueCount,
+      BytesInput repetitionLevels,
+      BytesInput definitionLevels,
+      Encoding dataEncoding,
+      BytesInput bytes,
+      boolean compressed,
+      int uncompressedDataSize,
+      Statistics<?> statistics,
+      BlockCipher.Encryptor metadataBlockEncryptor,
+      byte[] pageHeaderAAD,
+      SizeStatistics sizeStatistics)
+      throws IOException {
     state = state.write();
     int rlByteLength = toIntWithCheck(repetitionLevels.size(), "page repetition levels");
     int dlByteLength = toIntWithCheck(definitionLevels.size(), "page definition levels");
 
-    int compressedSize =
-        toIntWithCheck(compressedData.size() + repetitionLevels.size() + definitionLevels.size(), "page");
+    int compressedSize = toIntWithCheck(bytes.size() + repetitionLevels.size() + definitionLevels.size(), "page");
 
     int uncompressedSize =
         toIntWithCheck(uncompressedDataSize + repetitionLevels.size() + definitionLevels.size(), "page");
@@ -1169,8 +1315,8 @@ public class ParquetFileWriter implements AutoCloseable {
       if (definitionLevels.size() > 0) {
         crcUpdate(definitionLevels);
       }
-      if (compressedData.size() > 0) {
-        crcUpdate(compressedData);
+      if (bytes.size() > 0) {
+        crcUpdate(bytes);
       }
       metadataConverter.writeDataPageV2Header(
           uncompressedSize,
@@ -1181,6 +1327,7 @@ public class ParquetFileWriter implements AutoCloseable {
           dataEncoding,
           rlByteLength,
           dlByteLength,
+          compressed,
           (int) crc.getValue(),
           out,
           metadataBlockEncryptor,
@@ -1195,6 +1342,7 @@ public class ParquetFileWriter implements AutoCloseable {
           dataEncoding,
           rlByteLength,
           dlByteLength,
+          compressed,
           out,
           metadataBlockEncryptor,
           pageHeaderAAD);
@@ -1209,7 +1357,7 @@ public class ParquetFileWriter implements AutoCloseable {
     currentEncodings.add(dataEncoding);
     encodingStatsBuilder.addDataEncoding(dataEncoding);
 
-    BytesInput.concat(repetitionLevels, definitionLevels, compressedData).writeAllTo(out);
+    BytesInput.concat(repetitionLevels, definitionLevels, bytes).writeAllTo(out);
 
     offsetIndexBuilder.add(
         toIntWithCheck(out.getPos() - beforeHeader, "page"),
