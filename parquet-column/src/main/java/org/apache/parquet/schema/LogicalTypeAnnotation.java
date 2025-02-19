@@ -33,7 +33,6 @@ import static org.apache.parquet.schema.PrimitiveStringifier.TIME_NANOS_UTC_STRI
 import static org.apache.parquet.schema.PrimitiveStringifier.TIME_STRINGIFIER;
 import static org.apache.parquet.schema.PrimitiveStringifier.TIME_UTC_STRINGIFIER;
 
-import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;

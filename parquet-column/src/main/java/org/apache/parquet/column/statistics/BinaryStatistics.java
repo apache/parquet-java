@@ -48,8 +48,7 @@ public class BinaryStatistics extends Statistics<Binary> {
     if (logicalType instanceof LogicalTypeAnnotation.GeometryLogicalTypeAnnotation) {
       LogicalTypeAnnotation.GeometryLogicalTypeAnnotation geometryLogicalType =
           (LogicalTypeAnnotation.GeometryLogicalTypeAnnotation) logicalType;
-      geospatialStatistics =
-          new GeospatialStatistics(geometryLogicalType.getCrs());
+      geospatialStatistics = new GeospatialStatistics(geometryLogicalType.getCrs());
     }
   }
 

@@ -18,7 +18,6 @@
  */
 package org.apache.parquet.column.statistics.geometry;
 
-import java.nio.ByteBuffer;
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.io.api.Binary;
 import org.locationtech.jts.geom.Geometry;
