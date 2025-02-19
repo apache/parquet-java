@@ -49,7 +49,7 @@ public class BinaryStatistics extends Statistics<Binary> {
       LogicalTypeAnnotation.GeometryLogicalTypeAnnotation geometryLogicalType =
           (LogicalTypeAnnotation.GeometryLogicalTypeAnnotation) logicalType;
       geospatialStatistics =
-          new GeospatialStatistics(geometryLogicalType.getCrs(), geometryLogicalType.getMetadata());
+          new GeospatialStatistics(geometryLogicalType.getCrs());
     }
   }
 
@@ -210,7 +210,7 @@ public class BinaryStatistics extends Statistics<Binary> {
     return new BinaryStatistics(this);
   }
 
-  public void setGeometryStatistics(GeospatialStatistics geospatialStatistics) {
+  public void setGeospatialStatistics(GeospatialStatistics geospatialStatistics) {
     this.geospatialStatistics = geospatialStatistics;
   }
 

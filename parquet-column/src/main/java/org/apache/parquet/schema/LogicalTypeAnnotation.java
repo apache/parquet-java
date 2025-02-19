@@ -160,9 +160,7 @@ public abstract class LogicalTypeAnnotation {
               "Expecting at least 1 parameter for geometry logical type, got " + params.size());
         }
         String crs = params.size() > 0 ? params.get(0) : null;
-        ByteBuffer metadata =
-            params.size() > 2 ? ByteBuffer.wrap(params.get(2).getBytes()) : null;
-        return geometryType(crs, metadata);
+        return geometryType(crs);
       }
     },
     GEOGRAPHY {
@@ -174,9 +172,7 @@ public abstract class LogicalTypeAnnotation {
         }
         String crs = params.size() > 0 ? params.get(0) : null;
         String edgeAlgorithm = params.size() > 1 ? params.get(1) : null;
-        ByteBuffer metadata =
-            params.size() > 2 ? ByteBuffer.wrap(params.get(2).getBytes()) : null;
-        return geographyType(crs, edgeAlgorithm, metadata);
+        return geographyType(crs, edgeAlgorithm);
       }
     };
 
@@ -348,20 +344,16 @@ public abstract class LogicalTypeAnnotation {
     return Float16LogicalTypeAnnotation.INSTANCE;
   }
 
-  public static GeometryLogicalTypeAnnotation geometryType(String crs, ByteBuffer metadata) {
-    return new GeometryLogicalTypeAnnotation(crs, metadata);
-  }
-
-  public static GeometryLogicalTypeAnnotation geometryType(ByteBuffer metadata) {
-    return new GeometryLogicalTypeAnnotation(DEFAULT_GEOMETRY_CRS, metadata);
+  public static GeometryLogicalTypeAnnotation geometryType(String crs) {
+    return new GeometryLogicalTypeAnnotation(crs);
   }
 
   public static GeometryLogicalTypeAnnotation geometryType() {
-    return new GeometryLogicalTypeAnnotation(DEFAULT_GEOMETRY_CRS, null);
+    return new GeometryLogicalTypeAnnotation(DEFAULT_GEOMETRY_CRS);
   }
 
-  public static GeographyLogicalTypeAnnotation geographyType(String crs, String edgeAlgorithm, ByteBuffer metadata) {
-    return new GeographyLogicalTypeAnnotation(crs, edgeAlgorithm, metadata);
+  public static GeographyLogicalTypeAnnotation geographyType(String crs, String edgeAlgorithm) {
+    return new GeographyLogicalTypeAnnotation(crs, edgeAlgorithm);
   }
 
   public static class StringLogicalTypeAnnotation extends LogicalTypeAnnotation {
@@ -1141,11 +1133,9 @@ public abstract class LogicalTypeAnnotation {
 
   public static class GeometryLogicalTypeAnnotation extends LogicalTypeAnnotation {
     private final String crs;
-    private final ByteBuffer metadata;
 
-    private GeometryLogicalTypeAnnotation(String crs, ByteBuffer metadata) {
+    private GeometryLogicalTypeAnnotation(String crs) {
       this.crs = crs;
-      this.metadata = metadata;
     }
 
     @Override
@@ -1173,20 +1163,12 @@ public abstract class LogicalTypeAnnotation {
         sb.append(",");
         sb.append(crs);
       }
-      if (metadata != null) {
-        sb.append(",");
-        sb.append(metadata);
-      }
       sb.append(")");
       return sb.toString();
     }
 
     public String getCrs() {
       return crs;
-    }
-
-    public ByteBuffer getMetadata() {
-      return metadata;
     }
 
     @Override
@@ -1212,12 +1194,10 @@ public abstract class LogicalTypeAnnotation {
   public static class GeographyLogicalTypeAnnotation extends LogicalTypeAnnotation {
     private final String crs;
     private final String edgeAlgorithm;
-    private final ByteBuffer metadata;
 
-    private GeographyLogicalTypeAnnotation(String crs, String edgeAlgorithm, ByteBuffer metadata) {
+    private GeographyLogicalTypeAnnotation(String crs, String edgeAlgorithm) {
       this.crs = crs;
       this.edgeAlgorithm = edgeAlgorithm;
-      this.metadata = metadata;
     }
 
     @Override
@@ -1233,7 +1213,7 @@ public abstract class LogicalTypeAnnotation {
 
     @Override
     LogicalTypeToken getType() {
-      return LogicalTypeToken.GEOMETRY;
+      return LogicalTypeToken.GEOGRAPHY;
     }
 
     @Override
@@ -1249,10 +1229,6 @@ public abstract class LogicalTypeAnnotation {
         sb.append(",");
         sb.append(edgeAlgorithm);
       }
-      if (metadata != null) {
-        sb.append(",");
-        sb.append(metadata);
-      }
       sb.append(")");
       return sb.toString();
     }
@@ -1263,10 +1239,6 @@ public abstract class LogicalTypeAnnotation {
 
     public String getEdgeAlgorithm() {
       return edgeAlgorithm;
-    }
-
-    public ByteBuffer getMetadata() {
-      return metadata;
     }
 
     @Override

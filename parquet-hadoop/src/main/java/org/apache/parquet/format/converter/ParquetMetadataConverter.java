@@ -537,7 +537,7 @@ public class ParquetMetadataConverter {
       if (geographyLogicalType.getCrs() != null) {
         geographyType.setCrs(geographyLogicalType.getCrs());
       }
-      if (geographyType.getAlgorithm() != null) {
+      if (geographyLogicalType.getEdgeAlgorithm() != null) {
         String algorithm = geographyLogicalType.getEdgeAlgorithm();
         if (algorithm != null) {
           geographyType.setAlgorithm(EdgeInterpolationAlgorithm.valueOf(algorithm));
@@ -962,6 +962,9 @@ public class ParquetMetadataConverter {
   static org.apache.parquet.column.statistics.geometry.GeospatialStatistics fromParquetStatistics(
       GeospatialStatistics formatGeomStats, PrimitiveType type) {
     org.apache.parquet.column.statistics.geometry.BoundingBox bbox = null;
+    if (formatGeomStats == null) {
+      return null;
+    }
     if (formatGeomStats.isSetBbox()) {
       BoundingBox formatBbox = formatGeomStats.getBbox();
       bbox = new org.apache.parquet.column.statistics.geometry.BoundingBox(
@@ -985,11 +988,11 @@ public class ParquetMetadataConverter {
       LogicalTypeAnnotation.GeometryLogicalTypeAnnotation geometryLogicalType =
           (LogicalTypeAnnotation.GeometryLogicalTypeAnnotation) logicalType;
       return new org.apache.parquet.column.statistics.geometry.GeospatialStatistics(
-          geometryLogicalType.getCrs(), geometryLogicalType.getMetadata(), bbox, geometryTypes);
+          geometryLogicalType.getCrs(), bbox, geometryTypes);
     }
     return new org.apache.parquet.column.statistics.geometry.GeospatialStatistics(
         // this case should not happen in normal cases
-        null, null, bbox, geometryTypes);
+        null, bbox, geometryTypes);
   }
 
   /**
@@ -1301,14 +1304,14 @@ public class ParquetMetadataConverter {
         return LogicalTypeAnnotation.float16Type();
       case GEOMETRY:
         GeometryType geometry = type.getGEOMETRY();
-        return LogicalTypeAnnotation.geometryType(geometry.getCrs(), null);
+        return LogicalTypeAnnotation.geometryType(geometry.getCrs());
       case GEOGRAPHY:
         GeographyType geography = type.getGEOGRAPHY();
         if (geography.getAlgorithm() != null) {
           return LogicalTypeAnnotation.geographyType(
-              geography.getCrs(), geography.getAlgorithm().name(), null);
+              geography.getCrs(), geography.getAlgorithm().name());
         } else {
-          return LogicalTypeAnnotation.geographyType(geography.getCrs(), null, null);
+          return LogicalTypeAnnotation.geographyType(geography.getCrs(), null);
         }
       default:
         throw new RuntimeException("Unknown logical type " + type);

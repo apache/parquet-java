@@ -31,21 +31,19 @@ public class GeospatialStatistics {
 
   // Metadata that may impact the statistics calculation
   private final String crs;
-  private final ByteBuffer metadata;
 
   private final BoundingBox boundingBox;
   private final GeometryTypes geometryTypes;
   private final WKBReader reader = new WKBReader();
 
-  public GeospatialStatistics(String crs, ByteBuffer metadata, BoundingBox boundingBox, GeometryTypes geometryTypes) {
+  public GeospatialStatistics(String crs, BoundingBox boundingBox, GeometryTypes geometryTypes) {
     this.crs = crs;
-    this.metadata = metadata;
     this.boundingBox = supportsBoundingBox() ? boundingBox : DUMMY_BOUNDING_BOX;
     this.geometryTypes = geometryTypes;
   }
 
-  public GeospatialStatistics(String crs, ByteBuffer metadata) {
-    this(crs, metadata, new BoundingBox(), new GeometryTypes());
+  public GeospatialStatistics(String crs) {
+    this(crs, new BoundingBox(), new GeometryTypes());
   }
 
   public BoundingBox getBoundingBox() {
@@ -112,7 +110,6 @@ public class GeospatialStatistics {
   public GeospatialStatistics copy() {
     return new GeospatialStatistics(
         crs,
-        metadata,
         boundingBox != null ? boundingBox.copy() : null,
         geometryTypes != null ? geometryTypes.copy() : null);
   }

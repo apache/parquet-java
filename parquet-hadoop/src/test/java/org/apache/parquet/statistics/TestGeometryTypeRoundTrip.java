@@ -133,7 +133,7 @@ public class TestGeometryTypeRoundTrip {
     // A message type that represents a message with a geometry column.
     MessageType schema = Types.buildMessage()
         .required(BINARY)
-        .as(geometryType("OGC:CRS84", null)) // OGC:CRS84: Uses the order longitude, latitude
+        .as(geometryType("OGC:CRS84")) // OGC:CRS84: Uses the order longitude, latitude
         .named("geometry")
         .named("msg");
 
