@@ -19,6 +19,7 @@
 package org.apache.parquet.column.statistics.geometry;
 
 import org.apache.parquet.Preconditions;
+import org.apache.parquet.format.EdgeInterpolationAlgorithm;
 import org.apache.parquet.io.api.Binary;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.io.ParseException;
@@ -32,6 +33,7 @@ public class GeospatialStatistics {
   private final String crs;
 
   private final BoundingBox boundingBox;
+  private final EdgeInterpolationAlgorithm edgeAlgorithm;
   private final GeometryTypes geometryTypes;
   private final WKBReader reader = new WKBReader();
 
@@ -39,10 +41,18 @@ public class GeospatialStatistics {
     this.crs = crs;
     this.boundingBox = supportsBoundingBox() ? boundingBox : DUMMY_BOUNDING_BOX;
     this.geometryTypes = geometryTypes;
+    this.edgeAlgorithm = null;
   }
 
   public GeospatialStatistics(String crs) {
     this(crs, new BoundingBox(), new GeometryTypes());
+  }
+
+  public GeospatialStatistics(String crs, EdgeInterpolationAlgorithm edgeAlgorithm) {
+    this.crs = crs;
+    this.boundingBox = DUMMY_BOUNDING_BOX;
+    this.geometryTypes = new GeometryTypes();
+    this.edgeAlgorithm = edgeAlgorithm;
   }
 
   public BoundingBox getBoundingBox() {

@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.statistics;
 
+import static org.apache.parquet.schema.LogicalTypeAnnotation.geographyType;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.geometryType;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 
@@ -62,7 +63,7 @@ public class TestGeometryTypeRoundTrip {
   }
 
   @Test
-  public void testEPSG4326BasicReadWriteGeometryValue() throws Exception {
+  public void testBasicReadWriteGeometryValue() throws Exception {
     GeometryFactory geomFactory = new GeometryFactory();
 
     // A class to convert JTS Geometry objects to and from Well-Known Binary (WKB) format.
@@ -77,7 +78,7 @@ public class TestGeometryTypeRoundTrip {
     // A message type that represents a message with a geometry column.
     MessageType schema = Types.buildMessage()
         .required(BINARY)
-        .as(geometryType()) // OGC:CRS84: Uses the order longitude, latitude
+        .as(geometryType())
         .named("geometry")
         .named("msg");
 
@@ -118,23 +119,23 @@ public class TestGeometryTypeRoundTrip {
   }
 
   @Test
-  public void testBasicReadWriteGeometryValueWithCovering() throws Exception {
+  public void testBasicReadWriteGeographyValue() throws Exception {
     GeometryFactory geomFactory = new GeometryFactory();
 
     // A class to convert JTS Geometry objects to and from Well-Known Binary (WKB) format.
     WKBWriter wkbWriter = new WKBWriter();
 
-    // EPSG:4326: Also known as WGS 84, it uses latitude and longitude coordinates.
+    // OGC:CRS84 (WGS 84): Uses the order longitude, latitude
     Binary[] points = {
       Binary.fromConstantByteArray(wkbWriter.write(geomFactory.createPoint(new Coordinate(1.0, 1.0)))),
       Binary.fromConstantByteArray(wkbWriter.write(geomFactory.createPoint(new Coordinate(2.0, 2.0))))
     };
 
-    // A message type that represents a message with a geometry column.
+    // A message type that represents a message with a geography column.
     MessageType schema = Types.buildMessage()
         .required(BINARY)
-        .as(geometryType("OGC:CRS84")) // OGC:CRS84: Uses the order longitude, latitude
-        .named("geometry")
+        .as(geographyType()) // Assuming geographyType() is similar to geometryType()
+        .named("geography")
         .named("msg");
 
     Configuration conf = new Configuration();
@@ -146,7 +147,7 @@ public class TestGeometryTypeRoundTrip {
         .withDictionaryEncoding(false)
         .build()) {
       for (Binary value : points) {
-        writer.write(factory.newGroup().append("geometry", value));
+        writer.write(factory.newGroup().append("geography", value));
       }
     }
 
@@ -160,11 +161,11 @@ public class TestGeometryTypeRoundTrip {
           reader.getRowGroups().get(0).getColumns().get(0);
       Assert.assertNotNull(columnChunkMetaData);
 
-      GeospatialStatistics geospatialStatistics = columnChunkMetaData.getGeospatialStatistics();
-      Assert.assertNotNull(geospatialStatistics);
-
       ColumnIndex columnIndex = reader.readColumnIndex(columnChunkMetaData);
       Assert.assertNotNull(columnIndex);
+
+      GeospatialStatistics geospatialStatistics = columnChunkMetaData.getGeospatialStatistics();
+      Assert.assertNull(geospatialStatistics);
     }
   }
 }

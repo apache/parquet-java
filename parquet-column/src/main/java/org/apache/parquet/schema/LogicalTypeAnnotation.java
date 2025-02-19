@@ -41,6 +41,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Supplier;
 import org.apache.parquet.Preconditions;
+import org.apache.parquet.format.EdgeInterpolationAlgorithm;
 
 public abstract class LogicalTypeAnnotation {
 
@@ -170,7 +171,8 @@ public abstract class LogicalTypeAnnotation {
               "Expecting at least 1 parameter for geography logical type, got " + params.size());
         }
         String crs = params.size() > 0 ? params.get(0) : null;
-        String edgeAlgorithm = params.size() > 1 ? params.get(1) : null;
+        EdgeInterpolationAlgorithm edgeAlgorithm =
+            params.size() > 1 ? EdgeInterpolationAlgorithm.valueOf(params.get(1)) : null;
         return geographyType(crs, edgeAlgorithm);
       }
     };
@@ -351,7 +353,11 @@ public abstract class LogicalTypeAnnotation {
     return new GeometryLogicalTypeAnnotation(DEFAULT_GEOMETRY_CRS);
   }
 
-  public static GeographyLogicalTypeAnnotation geographyType(String crs, String edgeAlgorithm) {
+  public static GeographyLogicalTypeAnnotation geographyType() {
+    return new GeographyLogicalTypeAnnotation(DEFAULT_GEOMETRY_CRS, null);
+  }
+
+  public static GeographyLogicalTypeAnnotation geographyType(String crs, EdgeInterpolationAlgorithm edgeAlgorithm) {
     return new GeographyLogicalTypeAnnotation(crs, edgeAlgorithm);
   }
 
@@ -1192,9 +1198,9 @@ public abstract class LogicalTypeAnnotation {
 
   public static class GeographyLogicalTypeAnnotation extends LogicalTypeAnnotation {
     private final String crs;
-    private final String edgeAlgorithm;
+    private final EdgeInterpolationAlgorithm edgeAlgorithm;
 
-    private GeographyLogicalTypeAnnotation(String crs, String edgeAlgorithm) {
+    private GeographyLogicalTypeAnnotation(String crs, EdgeInterpolationAlgorithm edgeAlgorithm) {
       this.crs = crs;
       this.edgeAlgorithm = edgeAlgorithm;
     }
@@ -1236,17 +1242,17 @@ public abstract class LogicalTypeAnnotation {
       return crs;
     }
 
-    public String getEdgeAlgorithm() {
+    public EdgeInterpolationAlgorithm getEdgeAlgorithm() {
       return edgeAlgorithm;
     }
 
     @Override
     public boolean equals(Object obj) {
-      if (!(obj instanceof GeometryLogicalTypeAnnotation)) {
+      if (!(obj instanceof GeographyLogicalTypeAnnotation)) {
         return false;
       }
-      GeometryLogicalTypeAnnotation other = (GeometryLogicalTypeAnnotation) obj;
-      return crs.equals(other.crs);
+      GeographyLogicalTypeAnnotation other = (GeographyLogicalTypeAnnotation) obj;
+      return crs.equals(other.crs) && edgeAlgorithm == other.edgeAlgorithm;
     }
 
     @Override

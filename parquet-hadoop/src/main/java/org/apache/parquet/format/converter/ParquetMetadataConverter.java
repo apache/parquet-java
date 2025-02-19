@@ -538,9 +538,9 @@ public class ParquetMetadataConverter {
         geographyType.setCrs(geographyLogicalType.getCrs());
       }
       if (geographyLogicalType.getEdgeAlgorithm() != null) {
-        String algorithm = geographyLogicalType.getEdgeAlgorithm();
+        EdgeInterpolationAlgorithm algorithm = geographyLogicalType.getEdgeAlgorithm();
         if (algorithm != null) {
-          geographyType.setAlgorithm(EdgeInterpolationAlgorithm.valueOf(algorithm));
+          geographyType.setAlgorithm(algorithm);
         }
       }
       return of(LogicalType.GEOGRAPHY(geographyType));
@@ -1308,8 +1308,7 @@ public class ParquetMetadataConverter {
       case GEOGRAPHY:
         GeographyType geography = type.getGEOGRAPHY();
         if (geography.getAlgorithm() != null) {
-          return LogicalTypeAnnotation.geographyType(
-              geography.getCrs(), geography.getAlgorithm().name());
+          return LogicalTypeAnnotation.geographyType(geography.getCrs(), geography.getAlgorithm());
         } else {
           return LogicalTypeAnnotation.geographyType(geography.getCrs(), null);
         }
