@@ -41,7 +41,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Supplier;
 import org.apache.parquet.Preconditions;
-import org.apache.parquet.format.EdgeInterpolationAlgorithm;
+// import org.apache.parquet.format.EdgeInterpolationAlgorithm;
 
 public abstract class LogicalTypeAnnotation {
 
@@ -171,8 +171,7 @@ public abstract class LogicalTypeAnnotation {
               "Expecting at least 1 parameter for geography logical type, got " + params.size());
         }
         String crs = params.size() > 0 ? params.get(0) : null;
-        EdgeInterpolationAlgorithm edgeAlgorithm =
-            params.size() > 1 ? EdgeInterpolationAlgorithm.valueOf(params.get(1)) : null;
+        String edgeAlgorithm = params.size() > 1 ? params.get(1) : null;
         return geographyType(crs, edgeAlgorithm);
       }
     };
@@ -357,7 +356,7 @@ public abstract class LogicalTypeAnnotation {
     return new GeographyLogicalTypeAnnotation(DEFAULT_GEOMETRY_CRS, null);
   }
 
-  public static GeographyLogicalTypeAnnotation geographyType(String crs, EdgeInterpolationAlgorithm edgeAlgorithm) {
+  public static GeographyLogicalTypeAnnotation geographyType(String crs, String edgeAlgorithm) {
     return new GeographyLogicalTypeAnnotation(crs, edgeAlgorithm);
   }
 
@@ -1198,9 +1197,9 @@ public abstract class LogicalTypeAnnotation {
 
   public static class GeographyLogicalTypeAnnotation extends LogicalTypeAnnotation {
     private final String crs;
-    private final EdgeInterpolationAlgorithm edgeAlgorithm;
+    private final String edgeAlgorithm;
 
-    private GeographyLogicalTypeAnnotation(String crs, EdgeInterpolationAlgorithm edgeAlgorithm) {
+    private GeographyLogicalTypeAnnotation(String crs, String edgeAlgorithm) {
       this.crs = crs;
       this.edgeAlgorithm = edgeAlgorithm;
     }
@@ -1242,7 +1241,7 @@ public abstract class LogicalTypeAnnotation {
       return crs;
     }
 
-    public EdgeInterpolationAlgorithm getEdgeAlgorithm() {
+    public String getEdgeAlgorithm() {
       return edgeAlgorithm;
     }
 
