@@ -38,7 +38,7 @@ public class GeospatialStatistics {
 
   public GeospatialStatistics(String crs, BoundingBox boundingBox, GeospatialTypes geospatialTypes) {
     this.crs = crs;
-    this.boundingBox = supportsBoundingBox() ? boundingBox : DUMMY_BOUNDING_BOX;
+    this.boundingBox = boundingBox;
     this.geospatialTypes = geospatialTypes;
     this.edgeAlgorithm = null;
   }
@@ -75,21 +75,8 @@ public class GeospatialStatistics {
   }
 
   private void update(Geometry geom) {
-    if (supportsBoundingBox()) {
-      boundingBox.update(geom, crs);
-    }
+    boundingBox.update(geom, crs);
     geospatialTypes.update(geom);
-  }
-
-  /**
-   * A bounding box is a rectangular region defined by two points, the lower left
-   * and upper right corners. It is used to represent the minimum and maximum
-   * coordinates of a geometry. Only planar geometries can have a bounding box.
-   */
-  private boolean supportsBoundingBox() {
-    // Only planar geometries can have a bounding box
-    // based on the current specification
-    return true;
   }
 
   public void merge(GeospatialStatistics other) {

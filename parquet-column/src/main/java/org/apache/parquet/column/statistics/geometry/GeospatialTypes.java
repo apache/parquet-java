@@ -109,13 +109,8 @@ public class GeospatialTypes {
   }
 
   /**
-   * This is from the following spec proposed:
-   * <p>
-   * The geometry types of all geometries, or an empty array if they are not
-   * known. This is borrowed from `geometry_types` column metadata of GeoParquet [1]
-   * except that values in the list are WKB (ISO variant) integer codes [2]. Table
-   * below shows the most common geometry types and their codes:
-   * <p>
+   * Geospatial type codes:
+   *
    * | Type               | XY   | XYZ  | XYM  | XYZM |
    * | :----------------- | :--- | :--- | :--- | :--: |
    * | Point              | 0001 | 1001 | 2001 | 3001 |
@@ -125,17 +120,8 @@ public class GeospatialTypes {
    * | MultiLineString    | 0005 | 1005 | 2005 | 3005 |
    * | MultiPolygon       | 0006 | 1006 | 2006 | 3006 |
    * | GeometryCollection | 0007 | 1007 | 2007 | 3007 |
-   * <p>
-   * In addition, the following rules are used:
-   * - A list of multiple values indicates that multiple geometry types are
-   * present (e.g. `[0003, 0006]`).
-   * - An empty array explicitly signals that the geometry types are not known.
-   * - The geometry types in the list must be unique (e.g. `[0001, 0001]`
-   * is not valid).
-   * <p>
-   * Please refer to links below for more detail:
-   * [1] https://en.wikipedia.org/wiki/Well-known_text_representation_of_geometry#Well-known_binary
-   * [2] https://github.com/opengeospatial/geoparquet/blob/v1.0.0/format-specs/geoparquet.md?plain=1#L91
+   *
+   * See https://github.com/apache/parquet-format/blob/master/Geospatial.md#geospatial-types
    */
   private int getGeometryTypeCode(Geometry geometry) {
     int typeId = getGeometryTypeId(geometry);

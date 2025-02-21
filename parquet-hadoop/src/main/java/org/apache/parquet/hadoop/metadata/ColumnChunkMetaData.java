@@ -445,7 +445,7 @@ public abstract class ColumnChunkMetaData {
     throw new UnsupportedOperationException("SizeStatistics is not implemented");
   }
 
-  /** @return the geometry stats for this column */
+  /** @return the geospatial stats for this column */
   @JsonIgnore
   public GeospatialStatistics getGeospatialStatistics() {
     return null;

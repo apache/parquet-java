@@ -119,8 +119,12 @@ import org.apache.parquet.format.TypeDefinedOrder;
 import org.apache.parquet.format.UUIDType;
 import org.apache.parquet.format.Uncompressed;
 import org.apache.parquet.format.XxHash;
-import org.apache.parquet.hadoop.metadata.*;
+import org.apache.parquet.hadoop.metadata.BlockMetaData;
+import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
+import org.apache.parquet.hadoop.metadata.ColumnPath;
+import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.metadata.FileMetaData.EncryptionType;
+import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.internal.column.columnindex.BinaryTruncator;
 import org.apache.parquet.internal.column.columnindex.ColumnIndexBuilder;
 import org.apache.parquet.internal.column.columnindex.OffsetIndexBuilder;
@@ -612,7 +616,7 @@ public class ParquetMetadataConverter {
 
       if (columnMetaData.getGeospatialStatistics() != null) {
         metaData.setGeospatial_statistics(
-            toParquetGeometryStatistics(columnMetaData.getGeospatialStatistics()));
+            toParquetGeospatialStatistics(columnMetaData.getGeospatialStatistics()));
       }
 
       if (!encryptMetaData) {
@@ -802,20 +806,6 @@ public class ParquetMetadataConverter {
     return formatStats;
   }
 
-  private static GeospatialStatistics toParquetStatistics(
-      org.apache.parquet.column.statistics.geometry.GeospatialStatistics stats) {
-    GeospatialStatistics formatStats = new GeospatialStatistics();
-
-    if (stats.getBoundingBox() != null) {
-      formatStats.setBbox(toParquetBoundingBox(stats.getBoundingBox()));
-    }
-    List<Integer> geometryTypes = new ArrayList<>(stats.getGeospatialTypes().getTypes());
-    Collections.sort(geometryTypes);
-    formatStats.setGeospatial_types(geometryTypes);
-
-    return formatStats;
-  }
-
   private static BoundingBox toParquetBoundingBox(org.apache.parquet.column.statistics.geometry.BoundingBox bbox) {
     BoundingBox formatBbox = new BoundingBox();
     formatBbox.setXmin(bbox.getXMin());
@@ -938,7 +928,7 @@ public class ParquetMetadataConverter {
     return fromParquetStatisticsInternal(createdBy, statistics, type, expectedOrder);
   }
 
-  private GeospatialStatistics toParquetGeometryStatistics(
+  private GeospatialStatistics toParquetGeospatialStatistics(
       org.apache.parquet.column.statistics.geometry.GeospatialStatistics geospatialStatistics) {
     if (geospatialStatistics == null) {
       return null;
@@ -1269,8 +1259,7 @@ public class ParquetMetadataConverter {
   }
 
   LogicalTypeAnnotation getLogicalTypeAnnotation(LogicalType type) {
-    LogicalType._Fields setField = type.getSetField();
-    switch (setField) {
+    switch (type.getSetField()) {
       case MAP:
         return LogicalTypeAnnotation.mapType();
       case BSON:
