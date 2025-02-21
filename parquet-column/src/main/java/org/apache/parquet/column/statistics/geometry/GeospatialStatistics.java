@@ -58,7 +58,7 @@ public class GeospatialStatistics {
     return boundingBox;
   }
 
-  public GeospatialTypes getGeometryTypes() {
+  public GeospatialTypes getGeospatialTypes() {
     return geospatialTypes;
   }
 

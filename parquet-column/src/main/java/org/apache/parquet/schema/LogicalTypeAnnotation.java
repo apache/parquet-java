@@ -42,7 +42,6 @@ import java.util.Set;
 import java.util.function.Supplier;
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.column.statistics.geometry.EdgeInterpolationAlgorithm;
-// import org.apache.parquet.format.EdgeInterpolationAlgorithm;
 
 public abstract class LogicalTypeAnnotation {
 

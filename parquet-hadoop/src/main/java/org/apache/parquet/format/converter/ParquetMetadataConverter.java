@@ -809,7 +809,7 @@ public class ParquetMetadataConverter {
     if (stats.getBoundingBox() != null) {
       formatStats.setBbox(toParquetBoundingBox(stats.getBoundingBox()));
     }
-    List<Integer> geometryTypes = new ArrayList<>(stats.getGeometryTypes().getTypes());
+    List<Integer> geometryTypes = new ArrayList<>(stats.getGeospatialTypes().getTypes());
     Collections.sort(geometryTypes);
     formatStats.setGeospatial_types(geometryTypes);
 
@@ -950,9 +950,9 @@ public class ParquetMetadataConverter {
       formatStats.setBbox(toParquetBoundingBox(geospatialStatistics.getBoundingBox()));
     }
 
-    if (geospatialStatistics.getGeometryTypes() != null) {
+    if (geospatialStatistics.getGeospatialTypes() != null) {
       List<Integer> geometryTypes =
-          new ArrayList<>(geospatialStatistics.getGeometryTypes().getTypes());
+          new ArrayList<>(geospatialStatistics.getGeospatialTypes().getTypes());
       Collections.sort(geometryTypes);
       formatStats.setGeospatial_types(geometryTypes);
     }
@@ -2433,8 +2433,7 @@ public class ParquetMetadataConverter {
         parquetColumnIndex.getMin_values(),
         parquetColumnIndex.getMax_values(),
         parquetColumnIndex.getRepetition_level_histograms(),
-        parquetColumnIndex.getDefinition_level_histograms(),
-        null);
+        parquetColumnIndex.getDefinition_level_histograms());
   }
 
   public static OffsetIndex toParquetOffsetIndex(

@@ -21,7 +21,6 @@ package org.apache.parquet.internal.column.columnindex;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.PrimitiveIterator;
-import org.apache.parquet.column.statistics.geometry.GeospatialStatistics;
 import org.apache.parquet.filter2.predicate.FilterPredicate.Visitor;
 import org.apache.parquet.internal.filter2.columnindex.ColumnIndexFilter;
 
@@ -71,13 +70,5 @@ public interface ColumnIndex extends Visitor<PrimitiveIterator.OfInt> {
    */
   default List<Long> getDefinitionLevelHistogram() {
     throw new UnsupportedOperationException("Definition level histogram is not implemented");
-  }
-
-  /**
-   * @return the unmodifiable list of the geometry statistics for each page;
-   * used for converting to the related thrift object
-   */
-  default List<GeospatialStatistics> getGeometryStatistics() {
-    throw new UnsupportedOperationException("Geospatial statistics is not implemented");
   }
 }

@@ -55,7 +55,7 @@ public class GeospatialTypes {
   }
 
   public void merge(GeospatialTypes other) {
-    Preconditions.checkArgument(other != null, "Cannot merge with null GeometryTypes");
+    Preconditions.checkArgument(other != null, "Cannot merge with null GeospatialTypes");
     if (!valid) {
       return;
     }
@@ -83,7 +83,7 @@ public class GeospatialTypes {
 
   @Override
   public String toString() {
-    return "GeometryTypes{" + "types="
+    return "GeospatialTypes{" + "types="
         + types.stream().map(this::typeIdToString).collect(Collectors.toSet()) + '}';
   }
 

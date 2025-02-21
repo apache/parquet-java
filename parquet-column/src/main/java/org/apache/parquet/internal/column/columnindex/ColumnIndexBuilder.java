@@ -38,10 +38,8 @@ import java.util.PrimitiveIterator;
 import java.util.Set;
 import java.util.function.IntPredicate;
 import org.apache.parquet.column.MinMax;
-import org.apache.parquet.column.statistics.BinaryStatistics;
 import org.apache.parquet.column.statistics.SizeStatistics;
 import org.apache.parquet.column.statistics.Statistics;
-import org.apache.parquet.column.statistics.geometry.GeospatialStatistics;
 import org.apache.parquet.filter2.predicate.Operators.And;
 import org.apache.parquet.filter2.predicate.Operators.Contains;
 import org.apache.parquet.filter2.predicate.Operators.Eq;
@@ -58,7 +56,6 @@ import org.apache.parquet.filter2.predicate.Operators.Or;
 import org.apache.parquet.filter2.predicate.Operators.UserDefined;
 import org.apache.parquet.filter2.predicate.UserDefinedPredicate;
 import org.apache.parquet.io.api.Binary;
-import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.PrimitiveComparator;
 import org.apache.parquet.schema.PrimitiveStringifier;
 import org.apache.parquet.schema.PrimitiveType;
@@ -108,8 +105,6 @@ public abstract class ColumnIndexBuilder {
     private long[] repLevelHistogram;
     // might be null
     private long[] defLevelHistogram;
-    // might be null
-    private GeospatialStatistics[] geospatialStatistics;
 
     static String truncate(String str) {
       if (str.length() <= MAX_VALUE_LENGTH_FOR_TOSTRING) {
@@ -203,17 +198,6 @@ public abstract class ColumnIndexBuilder {
         return sb.toString();
       }
       return TOSTRING_MISSING_VALUE_MARKER;
-    }
-
-    @Override
-    public List<GeospatialStatistics> getGeometryStatistics() {
-      List<GeospatialStatistics> geomStats = new ArrayList<>();
-      if (geospatialStatistics != null) {
-        for (GeospatialStatistics stats : geospatialStatistics) {
-          geomStats.add(stats.copy());
-        }
-      }
-      return geomStats;
     }
 
     @Override
@@ -537,7 +521,6 @@ public abstract class ColumnIndexBuilder {
   private int nextPageIndex;
   private LongList repLevelHistogram = new LongArrayList();
   private LongList defLevelHistogram = new LongArrayList();
-  private List<GeospatialStatistics> geospatialStatistics = new ArrayList<>();
 
   /**
    * @return a no-op builder that does not collect statistics objects and therefore returns {@code null} at
@@ -628,52 +611,10 @@ public abstract class ColumnIndexBuilder {
       List<ByteBuffer> maxValues,
       List<Long> repLevelHistogram,
       List<Long> defLevelHistogram) {
-    return build(type, boundaryOrder, nullPages, nullCounts, minValues, maxValues, null, null, null);
-  }
-
-  /**
-   * @param type
-   *          the primitive type
-   * @param boundaryOrder
-   *          the boundary order of the min/max values
-   * @param nullPages
-   *          the null pages (one boolean value for each page that signifies whether the page consists of nulls
-   *          entirely)
-   * @param nullCounts
-   *          the number of null values for each page
-   * @param minValues
-   *          the min values for each page
-   * @param maxValues
-   *          the max values for each page
-   * @param repLevelHistogram
-   *          the repetition level histogram for all levels of each page
-   * @param defLevelHistogram
-   *          the definition level histogram for all levels of each page
-   * @param geospatialStatistics
-   *          the geometry statistics for each page (apply to GEOMETRY logical type only)
-   * @return the newly created {@link ColumnIndex} object based on the specified arguments
-   */
-  public static ColumnIndex build(
-      PrimitiveType type,
-      BoundaryOrder boundaryOrder,
-      List<Boolean> nullPages,
-      List<Long> nullCounts,
-      List<ByteBuffer> minValues,
-      List<ByteBuffer> maxValues,
-      List<Long> repLevelHistogram,
-      List<Long> defLevelHistogram,
-      List<GeospatialStatistics> geospatialStatistics) {
 
     ColumnIndexBuilder builder = createNewBuilder(type, Integer.MAX_VALUE);
 
-    builder.fill(
-        nullPages,
-        nullCounts,
-        minValues,
-        maxValues,
-        repLevelHistogram,
-        defLevelHistogram,
-        geospatialStatistics);
+    builder.fill(nullPages, nullCounts, minValues, maxValues, repLevelHistogram, defLevelHistogram);
     ColumnIndexBase<?> columnIndex = builder.build(type);
     columnIndex.boundaryOrder = requireNonNull(boundaryOrder);
     return columnIndex;
@@ -721,16 +662,6 @@ public abstract class ColumnIndexBuilder {
       defLevelHistogram = null;
     }
 
-    if (type.getLogicalTypeAnnotation() instanceof LogicalTypeAnnotation.GeometryLogicalTypeAnnotation) {
-      assert stats instanceof BinaryStatistics;
-      BinaryStatistics binaryStats = (BinaryStatistics) stats;
-      if (geospatialStatistics != null && binaryStats.getGeospatialStatistics() != null) {
-        geospatialStatistics.add(binaryStats.getGeospatialStatistics());
-      } else {
-        geospatialStatistics = null;
-      }
-    }
-
     ++nextPageIndex;
   }
 
@@ -744,8 +675,7 @@ public abstract class ColumnIndexBuilder {
       List<ByteBuffer> minValues,
       List<ByteBuffer> maxValues,
       List<Long> repLevelHistogram,
-      List<Long> defLevelHistogram,
-      List<GeospatialStatistics> geospatialStatistics) {
+      List<Long> defLevelHistogram) {
     clear();
     int pageCount = nullPages.size();
     if ((nullCounts != null && nullCounts.size() != pageCount)
@@ -792,9 +722,6 @@ public abstract class ColumnIndexBuilder {
     if (defLevelHistogram != null) {
       this.defLevelHistogram.addAll(defLevelHistogram);
     }
-    if (geospatialStatistics != null) {
-      this.geospatialStatistics.addAll(geospatialStatistics);
-    }
   }
 
   /**
@@ -830,10 +757,6 @@ public abstract class ColumnIndexBuilder {
     }
     if (defLevelHistogram != null && !defLevelHistogram.isEmpty()) {
       columnIndex.defLevelHistogram = defLevelHistogram.toLongArray();
-    }
-    if (geospatialStatistics != null && !geospatialStatistics.isEmpty()) {
-      columnIndex.geospatialStatistics = new GeospatialStatistics[geospatialStatistics.size()];
-      geospatialStatistics.toArray(columnIndex.geospatialStatistics);
     }
 
     return columnIndex;
@@ -881,7 +804,6 @@ public abstract class ColumnIndexBuilder {
     pageIndexes.clear();
     repLevelHistogram.clear();
     defLevelHistogram.clear();
-    geospatialStatistics.clear();
   }
 
   abstract void clearMinMax();
