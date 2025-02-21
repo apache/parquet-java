@@ -41,6 +41,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Supplier;
 import org.apache.parquet.Preconditions;
+import org.apache.parquet.column.statistics.geometry.EdgeInterpolationAlgorithm;
 // import org.apache.parquet.format.EdgeInterpolationAlgorithm;
 
 public abstract class LogicalTypeAnnotation {
@@ -172,7 +173,8 @@ public abstract class LogicalTypeAnnotation {
         }
         String crs = params.size() > 0 ? params.get(0) : null;
         String edgeAlgorithm = params.size() > 1 ? params.get(1) : null;
-        return geographyType(crs, edgeAlgorithm);
+        return geographyType(
+            crs, edgeAlgorithm != null ? EdgeInterpolationAlgorithm.valueOf(edgeAlgorithm) : null);
       }
     };
 
@@ -356,7 +358,7 @@ public abstract class LogicalTypeAnnotation {
     return new GeographyLogicalTypeAnnotation(DEFAULT_GEOMETRY_CRS, null);
   }
 
-  public static GeographyLogicalTypeAnnotation geographyType(String crs, String edgeAlgorithm) {
+  public static GeographyLogicalTypeAnnotation geographyType(String crs, EdgeInterpolationAlgorithm edgeAlgorithm) {
     return new GeographyLogicalTypeAnnotation(crs, edgeAlgorithm);
   }
 
@@ -1197,9 +1199,9 @@ public abstract class LogicalTypeAnnotation {
 
   public static class GeographyLogicalTypeAnnotation extends LogicalTypeAnnotation {
     private final String crs;
-    private final String edgeAlgorithm;
+    private final EdgeInterpolationAlgorithm edgeAlgorithm;
 
-    private GeographyLogicalTypeAnnotation(String crs, String edgeAlgorithm) {
+    private GeographyLogicalTypeAnnotation(String crs, EdgeInterpolationAlgorithm edgeAlgorithm) {
       this.crs = crs;
       this.edgeAlgorithm = edgeAlgorithm;
     }
@@ -1241,7 +1243,7 @@ public abstract class LogicalTypeAnnotation {
       return crs;
     }
 
-    public String getEdgeAlgorithm() {
+    public EdgeInterpolationAlgorithm getEdgeAlgorithm() {
       return edgeAlgorithm;
     }
 

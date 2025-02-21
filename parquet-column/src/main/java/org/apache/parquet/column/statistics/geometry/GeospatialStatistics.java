@@ -32,7 +32,7 @@ public class GeospatialStatistics {
   private final String crs;
 
   private final BoundingBox boundingBox;
-  private final String edgeAlgorithm;
+  private final EdgeInterpolationAlgorithm edgeAlgorithm;
   private final GeometryTypes geometryTypes;
   private final WKBReader reader = new WKBReader();
 
@@ -47,7 +47,7 @@ public class GeospatialStatistics {
     this(crs, new BoundingBox(), new GeometryTypes());
   }
 
-  public GeospatialStatistics(String crs, String edgeAlgorithm) {
+  public GeospatialStatistics(String crs, EdgeInterpolationAlgorithm edgeAlgorithm) {
     this.crs = crs;
     this.boundingBox = DUMMY_BOUNDING_BOX;
     this.geometryTypes = new GeometryTypes();
