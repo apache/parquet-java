@@ -33,24 +33,24 @@ public class GeospatialStatistics {
 
   private final BoundingBox boundingBox;
   private final EdgeInterpolationAlgorithm edgeAlgorithm;
-  private final GeometryTypes geometryTypes;
+  private final GeospatialTypes geospatialTypes;
   private final WKBReader reader = new WKBReader();
 
-  public GeospatialStatistics(String crs, BoundingBox boundingBox, GeometryTypes geometryTypes) {
+  public GeospatialStatistics(String crs, BoundingBox boundingBox, GeospatialTypes geospatialTypes) {
     this.crs = crs;
     this.boundingBox = supportsBoundingBox() ? boundingBox : DUMMY_BOUNDING_BOX;
-    this.geometryTypes = geometryTypes;
+    this.geospatialTypes = geospatialTypes;
     this.edgeAlgorithm = null;
   }
 
   public GeospatialStatistics(String crs) {
-    this(crs, new BoundingBox(), new GeometryTypes());
+    this(crs, new BoundingBox(), new GeospatialTypes());
   }
 
   public GeospatialStatistics(String crs, EdgeInterpolationAlgorithm edgeAlgorithm) {
     this.crs = crs;
     this.boundingBox = DUMMY_BOUNDING_BOX;
-    this.geometryTypes = new GeometryTypes();
+    this.geospatialTypes = new GeospatialTypes();
     this.edgeAlgorithm = edgeAlgorithm;
   }
 
@@ -58,8 +58,8 @@ public class GeospatialStatistics {
     return boundingBox;
   }
 
-  public GeometryTypes getGeometryTypes() {
-    return geometryTypes;
+  public GeospatialTypes getGeometryTypes() {
+    return geospatialTypes;
   }
 
   public void update(Binary value) {
@@ -78,7 +78,7 @@ public class GeospatialStatistics {
     if (supportsBoundingBox()) {
       boundingBox.update(geom, crs);
     }
-    geometryTypes.update(geom);
+    geospatialTypes.update(geom);
   }
 
   /**
@@ -99,19 +99,19 @@ public class GeospatialStatistics {
       boundingBox.merge(other.boundingBox);
     }
 
-    if (geometryTypes != null && other.geometryTypes != null) {
-      geometryTypes.merge(other.geometryTypes);
+    if (geospatialTypes != null && other.geospatialTypes != null) {
+      geospatialTypes.merge(other.geospatialTypes);
     }
   }
 
   public void reset() {
     boundingBox.reset();
-    geometryTypes.reset();
+    geospatialTypes.reset();
   }
 
   public void abort() {
     boundingBox.abort();
-    geometryTypes.abort();
+    geospatialTypes.abort();
   }
 
   // Copy the statistics
@@ -119,11 +119,11 @@ public class GeospatialStatistics {
     return new GeospatialStatistics(
         crs,
         boundingBox != null ? boundingBox.copy() : null,
-        geometryTypes != null ? geometryTypes.copy() : null);
+        geospatialTypes != null ? geospatialTypes.copy() : null);
   }
 
   @Override
   public String toString() {
-    return "GeospatialStatistics{" + "boundingBox=" + boundingBox + ", coverings=" + geometryTypes + '}';
+    return "GeospatialStatistics{" + "boundingBox=" + boundingBox + ", coverings=" + geospatialTypes + '}';
   }
 }

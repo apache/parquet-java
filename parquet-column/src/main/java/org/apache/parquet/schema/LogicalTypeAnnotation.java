@@ -1253,12 +1253,16 @@ public abstract class LogicalTypeAnnotation {
         return false;
       }
       GeographyLogicalTypeAnnotation other = (GeographyLogicalTypeAnnotation) obj;
-      return crs.equals(other.crs) && edgeAlgorithm == other.edgeAlgorithm;
+      return crs != null
+          && crs.equals(other.crs)
+          && (edgeAlgorithm != null
+              ? edgeAlgorithm.equals(other.edgeAlgorithm)
+              : other.edgeAlgorithm == null);
     }
 
     @Override
     public int hashCode() {
-      return Objects.hash(crs);
+      return Objects.hash(crs, edgeAlgorithm);
     }
 
     @Override

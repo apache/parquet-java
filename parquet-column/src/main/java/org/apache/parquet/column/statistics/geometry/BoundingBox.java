@@ -83,7 +83,7 @@ public class BoundingBox {
   // Method to update the bounding box with the coordinates of a Geometry object
   // geometry can be changed by this method
   void update(Geometry geometry, String crs) {
-    GeometryUtils.normalizeLongitude(geometry);
+    GeospatialUtils.normalizeLongitude(geometry);
     Envelope envelope = geometry.getEnvelopeInternal();
     double minX = envelope.getMinX();
     double minY = envelope.getMinY();
@@ -108,29 +108,7 @@ public class BoundingBox {
       }
     }
 
-    if (xMin == Double.POSITIVE_INFINITY || xMax == Double.NEGATIVE_INFINITY) {
-      xMin = minX;
-      xMax = maxX;
-    } else {
-      // Handle the wraparound case for X values
-      if (!isCrossingAntiMeridian(xMax, xMin)) { // current bounding box is NOT wrapped around
-        if (!isCrossingAntiMeridian(maxX, minX)) { // new bounding box is NOT wrapped around
-          xMin = Math.min(xMin, minX);
-          xMax = Math.max(xMax, maxX);
-        } else { // new bounding box is wrapped around
-          xMin = Math.max(xMin, maxX);
-          xMax = Math.min(xMax, minX);
-        }
-      } else { // current bounding box is wrapped around
-        if (!isCrossingAntiMeridian(maxX, minX)) { // new bounding box is NOT wrapped around
-          xMin = Math.max(xMin, minX);
-          xMax = Math.min(xMax, maxX);
-        } else { // new bounding box is wrapped around
-          xMin = Math.max(xMin, maxX);
-          xMax = Math.min(xMax, minX);
-        }
-      }
-    }
+    updateXBounds(minX, maxX);
 
     yMin = Math.min(yMin, minY);
     yMax = Math.max(yMax, maxY);
@@ -145,29 +123,7 @@ public class BoundingBox {
     double minX = other.xMin;
     double maxX = other.xMax;
 
-    if (xMin == Double.POSITIVE_INFINITY || xMax == Double.NEGATIVE_INFINITY) {
-      xMin = minX;
-      xMax = maxX;
-    } else {
-      // Handle the wraparound case for X values
-      if (!isCrossingAntiMeridian(xMax, xMin)) { // current bounding box is NOT wrapped around
-        if (!isCrossingAntiMeridian(maxX, minX)) { // new bounding box is NOT wrapped around
-          xMin = Math.min(xMin, minX);
-          xMax = Math.max(xMax, maxX);
-        } else { // new bounding box is wrapped around
-          xMin = Math.max(xMin, maxX);
-          xMax = Math.min(xMax, minX);
-        }
-      } else { // current bounding box is wrapped around
-        if (!isCrossingAntiMeridian(maxX, minX)) { // new bounding box is NOT wrapped around
-          xMin = Math.max(xMin, minX);
-          xMax = Math.min(xMax, maxX);
-        } else { // new bounding box is wrapped around
-          xMin = Math.max(xMin, minX);
-          xMax = Math.min(xMax, maxX);
-        }
-      }
-    }
+    updateXBounds(minX, maxX);
 
     yMin = Math.min(yMin, other.yMin);
     yMax = Math.max(yMax, other.yMax);
@@ -201,6 +157,31 @@ public class BoundingBox {
 
   private boolean isCrossingAntiMeridian(double x1, double x2) {
     return Math.abs(x1 - x2) > 180;
+  }
+
+  private void updateXBounds(double minX, double maxX) {
+    if (xMin == Double.POSITIVE_INFINITY || xMax == Double.NEGATIVE_INFINITY) {
+      xMin = minX;
+      xMax = maxX;
+    } else {
+      if (!isCrossingAntiMeridian(xMax, xMin)) {
+        if (!isCrossingAntiMeridian(maxX, minX)) {
+          xMin = Math.min(xMin, minX);
+          xMax = Math.max(xMax, maxX);
+        } else {
+          xMin = Math.max(xMin, maxX);
+          xMax = Math.min(xMax, minX);
+        }
+      } else {
+        if (!isCrossingAntiMeridian(maxX, minX)) {
+          xMin = Math.max(xMin, minX);
+          xMax = Math.min(xMax, maxX);
+        } else {
+          xMin = Math.max(xMin, maxX);
+          xMax = Math.min(xMax, minX);
+        }
+      }
+    }
   }
 
   public BoundingBox copy() {

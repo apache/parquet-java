@@ -50,7 +50,7 @@ import org.apache.parquet.Preconditions;
 import org.apache.parquet.column.EncodingStats;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.statistics.BinaryStatistics;
-import org.apache.parquet.column.statistics.geometry.GeometryTypes;
+import org.apache.parquet.column.statistics.geometry.GeospatialTypes;
 import org.apache.parquet.column.values.bloomfilter.BloomFilter;
 import org.apache.parquet.crypto.AesCipher;
 import org.apache.parquet.crypto.AesGcmEncryptor;
@@ -978,9 +978,9 @@ public class ParquetMetadataConverter {
           formatBbox.isSetMmin() ? formatBbox.getMmin() : Double.NaN,
           formatBbox.isSetMmax() ? formatBbox.getMmax() : Double.NaN);
     }
-    org.apache.parquet.column.statistics.geometry.GeometryTypes geometryTypes = null;
+    GeospatialTypes geospatialTypes = null;
     if (formatGeomStats.isSetGeospatial_types()) {
-      geometryTypes = new GeometryTypes(new HashSet<>(formatGeomStats.getGeospatial_types()));
+      geospatialTypes = new GeospatialTypes(new HashSet<>(formatGeomStats.getGeospatial_types()));
     }
 
     // get the logical type annotation data from the type
@@ -989,11 +989,11 @@ public class ParquetMetadataConverter {
       LogicalTypeAnnotation.GeometryLogicalTypeAnnotation geometryLogicalType =
           (LogicalTypeAnnotation.GeometryLogicalTypeAnnotation) logicalType;
       return new org.apache.parquet.column.statistics.geometry.GeospatialStatistics(
-          geometryLogicalType.getCrs(), bbox, geometryTypes);
+          geometryLogicalType.getCrs(), bbox, geospatialTypes);
     }
     return new org.apache.parquet.column.statistics.geometry.GeospatialStatistics(
         // this case should not happen in normal cases
-        null, bbox, geometryTypes);
+        null, bbox, geospatialTypes);
   }
 
   /**

@@ -25,17 +25,17 @@ import org.apache.parquet.Preconditions;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 
-public class GeometryTypes {
+public class GeospatialTypes {
 
   private static final int UNKNOWN_TYPE_ID = -1;
   private Set<Integer> types = new HashSet<>();
   private boolean valid = true;
 
-  public GeometryTypes(Set<Integer> types) {
+  public GeospatialTypes(Set<Integer> types) {
     this.types = types;
   }
 
-  public GeometryTypes() {}
+  public GeospatialTypes() {}
 
   public Set<Integer> getTypes() {
     return types;
@@ -54,7 +54,7 @@ public class GeometryTypes {
     }
   }
 
-  public void merge(GeometryTypes other) {
+  public void merge(GeospatialTypes other) {
     Preconditions.checkArgument(other != null, "Cannot merge with null GeometryTypes");
     if (!valid) {
       return;
@@ -77,8 +77,8 @@ public class GeometryTypes {
     types.clear();
   }
 
-  public GeometryTypes copy() {
-    return new GeometryTypes(new HashSet<>(types));
+  public GeospatialTypes copy() {
+    return new GeospatialTypes(new HashSet<>(types));
   }
 
   @Override
