@@ -145,6 +145,7 @@ class RecordBuilder<E> {
     try {
       switch (schema.getType()) {
         case BOOLEAN:
+          if (string.isEmpty()) return null;
           return Boolean.valueOf(string);
         case STRING:
           return string;
