@@ -1259,8 +1259,7 @@ public class ParquetMetadataConverter {
   }
 
   LogicalTypeAnnotation getLogicalTypeAnnotation(LogicalType type) {
-    LogicalType._Fields setField = type.getSetField();
-    switch (setField) {
+    switch (type.getSetField()) {
       case MAP:
         return LogicalTypeAnnotation.mapType();
       case BSON:
