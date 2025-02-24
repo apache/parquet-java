@@ -25,7 +25,7 @@ import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
 
-public class BoundingBoxTest {
+public class TestBoundingBox {
 
   @Test
   public void testUpdate() {

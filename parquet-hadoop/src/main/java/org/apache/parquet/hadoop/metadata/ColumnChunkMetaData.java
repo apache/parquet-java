@@ -235,8 +235,9 @@ public abstract class ColumnChunkMetaData {
       GeospatialStatistics geospatialStats) {
 
     LogicalTypeAnnotation logicalType = type.getLogicalTypeAnnotation();
-    if (logicalType instanceof LogicalTypeAnnotation.GeometryLogicalTypeAnnotation) {
-      return new GeometryColumnChunkMetaData(
+    if (logicalType instanceof LogicalTypeAnnotation.GeometryLogicalTypeAnnotation
+        || logicalType instanceof LogicalTypeAnnotation.GeographyLogicalTypeAnnotation) {
+      return new GeospatialColumnChunkMetaData(
           path,
           type,
           codec,
@@ -912,7 +913,7 @@ class EncryptedColumnChunkMetaData extends ColumnChunkMetaData {
   }
 }
 
-class GeometryColumnChunkMetaData extends ColumnChunkMetaData {
+class GeospatialColumnChunkMetaData extends ColumnChunkMetaData {
 
   private final long firstDataPageOffset;
   private final long dictionaryPageOffset;
@@ -935,7 +936,7 @@ class GeometryColumnChunkMetaData extends ColumnChunkMetaData {
    * @param totalUncompressedSize
    * @param geospatialStatistics
    */
-  GeometryColumnChunkMetaData(
+  GeospatialColumnChunkMetaData(
       ColumnPath path,
       PrimitiveType type,
       CompressionCodecName codec,

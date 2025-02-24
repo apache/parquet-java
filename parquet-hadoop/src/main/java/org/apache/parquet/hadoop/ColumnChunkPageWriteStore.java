@@ -40,6 +40,7 @@ import org.apache.parquet.column.page.PageWriteStore;
 import org.apache.parquet.column.page.PageWriter;
 import org.apache.parquet.column.statistics.SizeStatistics;
 import org.apache.parquet.column.statistics.Statistics;
+import org.apache.parquet.column.statistics.geometry.GeospatialStatistics;
 import org.apache.parquet.column.values.bloomfilter.BloomFilter;
 import org.apache.parquet.column.values.bloomfilter.BloomFilterWriteStore;
 import org.apache.parquet.column.values.bloomfilter.BloomFilterWriter;
@@ -92,6 +93,7 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
     private OffsetIndexBuilder offsetIndexBuilder;
     private Statistics totalStatistics;
     private final SizeStatistics totalSizeStatistics;
+    private final GeospatialStatistics totalGeospatialStatistics;
     private final ByteBufferReleaser releaser;
 
     private final CRC32 crc;
@@ -126,6 +128,8 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
       this.totalSizeStatistics = SizeStatistics.newBuilder(
               path.getPrimitiveType(), path.getMaxRepetitionLevel(), path.getMaxDefinitionLevel())
           .build();
+      this.totalGeospatialStatistics =
+          GeospatialStatistics.newBuilder(path.getPrimitiveType()).build();
       this.pageWriteChecksumEnabled = pageWriteChecksumEnabled;
       this.crc = pageWriteChecksumEnabled ? new CRC32() : null;
       this.headerBlockEncryptor = headerBlockEncryptor;
@@ -175,7 +179,7 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
         Encoding dlEncoding,
         Encoding valuesEncoding)
         throws IOException {
-      writePage(bytes, valueCount, rowCount, statistics, null, rlEncoding, dlEncoding, valuesEncoding);
+      writePage(bytes, valueCount, rowCount, statistics, null, null, rlEncoding, dlEncoding, valuesEncoding);
     }
 
     @Override
@@ -185,6 +189,7 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
         int rowCount,
         Statistics<?> statistics,
         SizeStatistics sizeStatistics,
+        GeospatialStatistics geospatialStatistics,
         Encoding rlEncoding,
         Encoding dlEncoding,
         Encoding valuesEncoding)
@@ -241,7 +246,7 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
       this.totalValueCount += valueCount;
       this.pageCount += 1;
 
-      mergeColumnStatistics(statistics, sizeStatistics);
+      mergeColumnStatistics(statistics, sizeStatistics, geospatialStatistics);
       offsetIndexBuilder.add(
           toIntWithCheck(tempOutputStream.size() + compressedSize),
           rowCount,
@@ -275,7 +280,8 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
           dataEncoding,
           data,
           statistics,
-          /*size_statistics=*/ null);
+          /*size_statistics=*/ null,
+          /*geospatial_statistics=*/ null);
     }
 
     @Override
@@ -288,7 +294,8 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
         Encoding dataEncoding,
         BytesInput data,
         Statistics<?> statistics,
-        SizeStatistics sizeStatistics)
+        SizeStatistics sizeStatistics,
+        GeospatialStatistics geospatialStatistics)
         throws IOException {
       pageOrdinal++;
 
@@ -350,7 +357,7 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
       this.totalValueCount += valueCount;
       this.pageCount += 1;
 
-      mergeColumnStatistics(statistics, sizeStatistics);
+      mergeColumnStatistics(statistics, sizeStatistics, geospatialStatistics);
       offsetIndexBuilder.add(
           toIntWithCheck((long) tempOutputStream.size() + compressedSize),
           rowCount,
@@ -371,12 +378,15 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
       return (int) size;
     }
 
-    private void mergeColumnStatistics(Statistics<?> statistics, SizeStatistics sizeStatistics) {
+    private void mergeColumnStatistics(
+        Statistics<?> statistics, SizeStatistics sizeStatistics, GeospatialStatistics geospatialStatistics) {
       totalSizeStatistics.mergeStatistics(sizeStatistics);
       if (!totalSizeStatistics.isValid()) {
         // Set page size statistics to null to clear state in the ColumnIndexBuilder.
         sizeStatistics = null;
       }
+
+      totalGeospatialStatistics.mergeStatistics(geospatialStatistics);
 
       if (totalStatistics != null && totalStatistics.isEmpty()) {
         return;

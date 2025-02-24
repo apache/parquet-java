@@ -20,6 +20,8 @@ package org.apache.parquet.column.statistics.geometry;
 
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.io.api.Binary;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
+import org.apache.parquet.schema.PrimitiveType;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.io.ParseException;
 import org.locationtech.jts.io.WKBReader;
@@ -48,6 +50,14 @@ public class GeospatialStatistics {
    */
   private boolean valid = true;
 
+  public void mergeStatistics(GeospatialStatistics other) {
+    if (other == null) {
+      return;
+    }
+    this.boundingBox.merge(other.boundingBox);
+    this.geospatialTypes.merge(other.geospatialTypes);
+  }
+
   /**
    * Builder to create a GeospatialStatistics.
    */
@@ -55,9 +65,11 @@ public class GeospatialStatistics {
     private final String crs;
     private BoundingBox boundingBox;
     private GeospatialTypes geospatialTypes;
+    private EdgeInterpolationAlgorithm edgeAlgorithm;
 
     /**
      * Create a builder to create a GeospatialStatistics.
+     * For Geometry type, edgeAlgorithm is not required.
      *
      * @param crs the coordinate reference system
      */
@@ -65,28 +77,20 @@ public class GeospatialStatistics {
       this.crs = crs;
       this.boundingBox = new BoundingBox();
       this.geospatialTypes = new GeospatialTypes();
+      this.edgeAlgorithm = null;
     }
 
     /**
-     * Set the bounding box for the geospatial data.
+     * Create a builder to create a GeospatialStatistics.
+     * For Geography type, optional edgeAlgorithm can be set.
      *
-     * @param boundingBox the bounding box
-     * @return the builder
+     * @param crs the coordinate reference system
      */
-    public Builder withBoundingBox(BoundingBox boundingBox) {
-      this.boundingBox = boundingBox;
-      return this;
-    }
-
-    /**
-     * Set the geospatial types.
-     *
-     * @param geospatialTypes the geospatial types
-     * @return the builder
-     */
-    public Builder withGeospatialTypes(GeospatialTypes geospatialTypes) {
-      this.geospatialTypes = geospatialTypes;
-      return this;
+    public Builder(String crs, EdgeInterpolationAlgorithm edgeAlgorithm) {
+      this.crs = crs;
+      this.boundingBox = new BoundingBox();
+      this.geospatialTypes = new GeospatialTypes();
+      this.edgeAlgorithm = edgeAlgorithm;
     }
 
     /**
@@ -95,22 +99,30 @@ public class GeospatialStatistics {
      * @return a new GeospatialStatistics object
      */
     public GeospatialStatistics build() {
-      return new GeospatialStatistics(crs, boundingBox, geospatialTypes);
+      return new GeospatialStatistics(crs, boundingBox, geospatialTypes, edgeAlgorithm);
     }
   }
 
-  /** Create a new GeospatialStatistics builder with the specified CRS. */
-  public static GeospatialStatistics.Builder newBuilder(String crs) {
-    return new GeospatialStatistics.Builder(crs);
-  }
-
   /**
-   * Create a new GeospatialStatistics builder with the default CRS.
+   * Create a new GeospatialStatistics builder with the specified CRS.
    *
+   * @param type the primitive type
    * @return a new GeospatialStatistics builder
    */
-  public static GeospatialStatistics.Builder newBuilder() {
-    return new GeospatialStatistics.Builder(DEFAULT_GEOSPATIAL_STAT_CRS);
+  public static GeospatialStatistics.Builder newBuilder(PrimitiveType type) {
+    LogicalTypeAnnotation logicalTypeAnnotation = type.getLogicalTypeAnnotation();
+    if (logicalTypeAnnotation instanceof LogicalTypeAnnotation.GeometryLogicalTypeAnnotation) {
+      String crs = ((LogicalTypeAnnotation.GeometryLogicalTypeAnnotation) logicalTypeAnnotation).getCrs();
+      return new GeospatialStatistics.Builder(crs);
+    } else if (logicalTypeAnnotation instanceof LogicalTypeAnnotation.GeographyLogicalTypeAnnotation) {
+      String crs = ((LogicalTypeAnnotation.GeographyLogicalTypeAnnotation) logicalTypeAnnotation).getCrs();
+      EdgeInterpolationAlgorithm edgeAlgorithm =
+          ((LogicalTypeAnnotation.GeographyLogicalTypeAnnotation) logicalTypeAnnotation).getEdgeAlgorithm();
+      return new GeospatialStatistics.Builder(crs, edgeAlgorithm);
+    } else {
+      throw new IllegalArgumentException(
+          "Unsupported logical type annotation for enabled geospatial statistics: " + logicalTypeAnnotation);
+    }
   }
 
   /**
@@ -120,11 +132,15 @@ public class GeospatialStatistics {
    * @param boundingBox the bounding box for the geospatial data
    * @param geospatialTypes the geospatial types
    */
-  public GeospatialStatistics(String crs, BoundingBox boundingBox, GeospatialTypes geospatialTypes) {
+  public GeospatialStatistics(
+      String crs,
+      BoundingBox boundingBox,
+      GeospatialTypes geospatialTypes,
+      EdgeInterpolationAlgorithm edgeAlgorithm) {
     this.crs = crs;
     this.boundingBox = boundingBox;
     this.geospatialTypes = geospatialTypes;
-    this.edgeAlgorithm = null;
+    this.edgeAlgorithm = edgeAlgorithm;
   }
 
   /**
@@ -133,7 +149,7 @@ public class GeospatialStatistics {
    * @param crs the coordinate reference system
    */
   public GeospatialStatistics(String crs) {
-    this(crs, new BoundingBox(), new GeospatialTypes());
+    this(crs, new BoundingBox(), new GeospatialTypes(), null);
   }
 
   /**
@@ -214,7 +230,8 @@ public class GeospatialStatistics {
     return new GeospatialStatistics(
         crs,
         boundingBox != null ? boundingBox.copy() : null,
-        geospatialTypes != null ? geospatialTypes.copy() : null);
+        geospatialTypes != null ? geospatialTypes.copy() : null,
+        null);
   }
 
   @Override
@@ -235,18 +252,8 @@ public class GeospatialStatistics {
     }
 
     @Override
-    public Builder withBoundingBox(BoundingBox boundingBox) {
-      return this;
-    }
-
-    @Override
-    public Builder withGeospatialTypes(GeospatialTypes geospatialTypes) {
-      return this;
-    }
-
-    @Override
     public GeospatialStatistics build() {
-      GeospatialStatistics stats = new GeospatialStatistics(crs, null, null);
+      GeospatialStatistics stats = new GeospatialStatistics(crs, null, null, null);
       stats.valid = false; // Mark as invalid since this is a noop builder
       return stats;
     }

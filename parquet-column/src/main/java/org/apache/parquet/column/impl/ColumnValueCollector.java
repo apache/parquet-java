@@ -64,8 +64,9 @@ class ColumnValueCollector {
             path.getPrimitiveType(), path.getMaxRepetitionLevel(), path.getMaxDefinitionLevel())
         : SizeStatistics.noopBuilder(
             path.getPrimitiveType(), path.getMaxRepetitionLevel(), path.getMaxDefinitionLevel());
-    this.geospatialStatisticsBuilder =
-        geospatialStatisticsEnabled ? GeospatialStatistics.newBuilder() : GeospatialStatistics.noopBuilder();
+    this.geospatialStatisticsBuilder = geospatialStatisticsEnabled
+        ? GeospatialStatistics.newBuilder(path.getPrimitiveType())
+        : GeospatialStatistics.noopBuilder();
   }
 
   void writeNull(int repetitionLevel, int definitionLevel) {
