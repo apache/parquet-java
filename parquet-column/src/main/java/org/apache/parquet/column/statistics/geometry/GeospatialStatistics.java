@@ -41,7 +41,7 @@ public class GeospatialStatistics {
   private final BoundingBox boundingBox;
   private final EdgeInterpolationAlgorithm edgeAlgorithm;
   private final GeospatialTypes geospatialTypes;
-  private final WKBReader reader = new WKBReader();
+  //   private final WKBReader reader = new WKBReader();
 
   /**
    * Whether the statistics has valid value.
@@ -66,6 +66,7 @@ public class GeospatialStatistics {
     private BoundingBox boundingBox;
     private GeospatialTypes geospatialTypes;
     private EdgeInterpolationAlgorithm edgeAlgorithm;
+    private final WKBReader reader = new WKBReader();
 
     /**
      * Create a builder to create a GeospatialStatistics.
@@ -91,6 +92,28 @@ public class GeospatialStatistics {
       this.boundingBox = new BoundingBox();
       this.geospatialTypes = new GeospatialTypes();
       this.edgeAlgorithm = edgeAlgorithm;
+    }
+
+    public void update(Binary value) {
+      if (value == null) {
+        return;
+      }
+      try {
+        Geometry geom = reader.read(value.getBytes());
+        update(geom);
+      } catch (ParseException e) {
+        abort();
+      }
+    }
+
+    private void update(Geometry geom) {
+      boundingBox.update(geom, crs);
+      geospatialTypes.update(geom);
+    }
+
+    public void abort() {
+      boundingBox.abort();
+      geospatialTypes.abort();
     }
 
     /**
@@ -182,24 +205,6 @@ public class GeospatialStatistics {
     return valid;
   }
 
-  public void update(Binary value) {
-    if (value == null) {
-      return;
-    }
-    try {
-      Geometry geom = reader.read(value.getBytes());
-      update(geom);
-    } catch (ParseException e) {
-      abort();
-    }
-  }
-
-  private void update(Geometry geom) {
-    if (!valid) return;
-    boundingBox.update(geom, crs);
-    geospatialTypes.update(geom);
-  }
-
   public void merge(GeospatialStatistics other) {
     if (!valid) return;
     Preconditions.checkArgument(other != null, "Cannot merge with null GeometryStatistics");
@@ -211,18 +216,6 @@ public class GeospatialStatistics {
     if (geospatialTypes != null && other.geospatialTypes != null) {
       geospatialTypes.merge(other.geospatialTypes);
     }
-  }
-
-  public void reset() {
-    if (!valid) return;
-    boundingBox.reset();
-    geospatialTypes.reset();
-  }
-
-  public void abort() {
-    if (!valid) return;
-    boundingBox.abort();
-    geospatialTypes.abort();
   }
 
   // Copy the statistics

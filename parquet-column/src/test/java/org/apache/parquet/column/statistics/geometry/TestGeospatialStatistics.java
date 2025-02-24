@@ -34,9 +34,9 @@ public class TestGeospatialStatistics {
         .as(LogicalTypeAnnotation.geometryType())
         .named("a");
     GeospatialStatistics.Builder builder = GeospatialStatistics.newBuilder(type);
+    builder.update(Binary.fromString("POINT (1 1)"));
+    builder.update(Binary.fromString("POINT (2 2)"));
     GeospatialStatistics statistics = builder.build();
-    statistics.update(Binary.fromString("POINT (1 1)"));
-    statistics.update(Binary.fromString("POINT (2 2)"));
     Assert.assertTrue(statistics.isValid());
     Assert.assertNotNull(statistics.getBoundingBox());
     Assert.assertNotNull(statistics.getGeospatialTypes());
@@ -48,12 +48,12 @@ public class TestGeospatialStatistics {
         .as(LogicalTypeAnnotation.geometryType())
         .named("a");
     GeospatialStatistics.Builder builder1 = GeospatialStatistics.newBuilder(type);
+    builder1.update(Binary.fromString("POINT (1 1)"));
     GeospatialStatistics statistics1 = builder1.build();
-    statistics1.update(Binary.fromString("POINT (1 1)"));
 
     GeospatialStatistics.Builder builder2 = GeospatialStatistics.newBuilder(type);
+    builder2.update(Binary.fromString("POINT (2 2)"));
     GeospatialStatistics statistics2 = builder2.build();
-    statistics2.update(Binary.fromString("POINT (2 2)"));
 
     statistics1.merge(statistics2);
     Assert.assertTrue(statistics1.isValid());
@@ -67,8 +67,8 @@ public class TestGeospatialStatistics {
         .as(LogicalTypeAnnotation.geometryType())
         .named("a");
     GeospatialStatistics.Builder builder = GeospatialStatistics.newBuilder(type);
+    builder.update(Binary.fromString("POINT (1 1)"));
     GeospatialStatistics statistics = builder.build();
-    statistics.update(Binary.fromString("POINT (1 1)"));
     GeospatialStatistics copy = statistics.copy();
     Assert.assertTrue(copy.isValid());
     Assert.assertNotNull(copy.getBoundingBox());

@@ -40,7 +40,6 @@ import org.apache.parquet.crypto.ParquetCryptoRuntimeException;
 import org.apache.parquet.format.ColumnMetaData;
 import org.apache.parquet.format.converter.ParquetMetadataConverter;
 import org.apache.parquet.internal.hadoop.metadata.IndexReference;
-import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Types;
@@ -234,24 +233,6 @@ public abstract class ColumnChunkMetaData {
       SizeStatistics sizeStatistics,
       GeospatialStatistics geospatialStats) {
 
-    LogicalTypeAnnotation logicalType = type.getLogicalTypeAnnotation();
-    if (logicalType instanceof LogicalTypeAnnotation.GeometryLogicalTypeAnnotation
-        || logicalType instanceof LogicalTypeAnnotation.GeographyLogicalTypeAnnotation) {
-      return new GeospatialColumnChunkMetaData(
-          path,
-          type,
-          codec,
-          encodingStats,
-          encodings,
-          statistics,
-          firstDataPage,
-          dictionaryPageOffset,
-          valueCount,
-          totalSize,
-          totalUncompressedSize,
-          geospatialStats);
-    }
-
     // to save space we store those always positive longs in ints when they fit.
     if (positiveLongFitsInAnInt(firstDataPage)
         && positiveLongFitsInAnInt(dictionaryPageOffset)
@@ -270,7 +251,8 @@ public abstract class ColumnChunkMetaData {
           valueCount,
           totalSize,
           totalUncompressedSize,
-          sizeStatistics);
+          sizeStatistics,
+          geospatialStats);
     } else {
       return new LongColumnChunkMetaData(
           path,
@@ -284,7 +266,8 @@ public abstract class ColumnChunkMetaData {
           valueCount,
           totalSize,
           totalUncompressedSize,
-          sizeStatistics);
+          sizeStatistics,
+          geospatialStats);
     }
   }
 
@@ -449,7 +432,7 @@ public abstract class ColumnChunkMetaData {
   /** @return the geospatial stats for this column */
   @JsonIgnore
   public GeospatialStatistics getGeospatialStatistics() {
-    return null;
+    throw new UnsupportedOperationException("GeospatialStatistics is not implemented");
   }
 
   /**
@@ -572,6 +555,7 @@ class IntColumnChunkMetaData extends ColumnChunkMetaData {
   private final int totalUncompressedSize;
   private final Statistics statistics;
   private final SizeStatistics sizeStatistics;
+  private final GeospatialStatistics geospatialStatistics;
 
   /**
    * @param path                  column identifier
@@ -585,6 +569,7 @@ class IntColumnChunkMetaData extends ColumnChunkMetaData {
    * @param totalSize
    * @param totalUncompressedSize
    * @param sizeStatistics
+   * @param geospatialStatistics
    */
   IntColumnChunkMetaData(
       ColumnPath path,
@@ -598,7 +583,8 @@ class IntColumnChunkMetaData extends ColumnChunkMetaData {
       long valueCount,
       long totalSize,
       long totalUncompressedSize,
-      SizeStatistics sizeStatistics) {
+      SizeStatistics sizeStatistics,
+      GeospatialStatistics geospatialStatistics) {
     super(encodingStats, ColumnChunkProperties.get(path, type, codec, encodings));
     this.firstDataPage = positiveLongToInt(firstDataPage);
     this.dictionaryPageOffset = positiveLongToInt(dictionaryPageOffset);
@@ -607,6 +593,7 @@ class IntColumnChunkMetaData extends ColumnChunkMetaData {
     this.totalUncompressedSize = positiveLongToInt(totalUncompressedSize);
     this.statistics = statistics;
     this.sizeStatistics = sizeStatistics;
+    this.geospatialStatistics = geospatialStatistics;
   }
 
   /**
@@ -681,6 +668,11 @@ class IntColumnChunkMetaData extends ColumnChunkMetaData {
   public SizeStatistics getSizeStatistics() {
     return sizeStatistics;
   }
+
+  @Override
+  public GeospatialStatistics getGeospatialStatistics() {
+    return geospatialStatistics;
+  }
 }
 
 class LongColumnChunkMetaData extends ColumnChunkMetaData {
@@ -692,6 +684,7 @@ class LongColumnChunkMetaData extends ColumnChunkMetaData {
   private final long totalUncompressedSize;
   private final Statistics statistics;
   private final SizeStatistics sizeStatistics;
+  private final GeospatialStatistics geospatialStatistics;
 
   /**
    * @param path                  column identifier
@@ -705,6 +698,7 @@ class LongColumnChunkMetaData extends ColumnChunkMetaData {
    * @param totalSize
    * @param totalUncompressedSize
    * @param sizeStatistics
+   * @param geospatialStatistics
    */
   LongColumnChunkMetaData(
       ColumnPath path,
@@ -718,7 +712,8 @@ class LongColumnChunkMetaData extends ColumnChunkMetaData {
       long valueCount,
       long totalSize,
       long totalUncompressedSize,
-      SizeStatistics sizeStatistics) {
+      SizeStatistics sizeStatistics,
+      GeospatialStatistics geospatialStatistics) {
     super(encodingStats, ColumnChunkProperties.get(path, type, codec, encodings));
     this.firstDataPageOffset = firstDataPageOffset;
     this.dictionaryPageOffset = dictionaryPageOffset;
@@ -727,6 +722,7 @@ class LongColumnChunkMetaData extends ColumnChunkMetaData {
     this.totalUncompressedSize = totalUncompressedSize;
     this.statistics = statistics;
     this.sizeStatistics = sizeStatistics;
+    this.geospatialStatistics = geospatialStatistics;
   }
 
   /**
@@ -777,6 +773,11 @@ class LongColumnChunkMetaData extends ColumnChunkMetaData {
   @Override
   public SizeStatistics getSizeStatistics() {
     return sizeStatistics;
+  }
+
+  @Override
+  public GeospatialStatistics getGeospatialStatistics() {
+    return geospatialStatistics;
   }
 }
 
@@ -910,102 +911,5 @@ class EncryptedColumnChunkMetaData extends ColumnChunkMetaData {
 
   public GeospatialStatistics getGeospatialStatistics() {
     return shadowColumnChunkMetaData.getGeospatialStatistics();
-  }
-}
-
-class GeospatialColumnChunkMetaData extends ColumnChunkMetaData {
-
-  private final long firstDataPageOffset;
-  private final long dictionaryPageOffset;
-  private final long valueCount;
-  private final long totalSize;
-  private final long totalUncompressedSize;
-  private final Statistics statistics;
-  private final GeospatialStatistics geospatialStatistics;
-
-  /**
-   * @param path                  column identifier
-   * @param type                  type of the column
-   * @param codec
-   * @param encodings
-   * @param statistics
-   * @param firstDataPageOffset
-   * @param dictionaryPageOffset
-   * @param valueCount
-   * @param totalSize
-   * @param totalUncompressedSize
-   * @param geospatialStatistics
-   */
-  GeospatialColumnChunkMetaData(
-      ColumnPath path,
-      PrimitiveType type,
-      CompressionCodecName codec,
-      EncodingStats encodingStats,
-      Set<Encoding> encodings,
-      Statistics statistics,
-      long firstDataPageOffset,
-      long dictionaryPageOffset,
-      long valueCount,
-      long totalSize,
-      long totalUncompressedSize,
-      GeospatialStatistics geospatialStatistics) {
-    super(encodingStats, ColumnChunkProperties.get(path, type, codec, encodings));
-    this.statistics = statistics;
-    this.firstDataPageOffset = firstDataPageOffset;
-    this.dictionaryPageOffset = dictionaryPageOffset;
-    this.valueCount = valueCount;
-    this.totalSize = totalSize;
-    this.totalUncompressedSize = totalUncompressedSize;
-    this.geospatialStatistics = geospatialStatistics;
-  }
-
-  /**
-   * @return start of the column data offset
-   */
-  public long getFirstDataPageOffset() {
-    return firstDataPageOffset;
-  }
-
-  /**
-   * @return the location of the dictionary page if any
-   */
-  public long getDictionaryPageOffset() {
-    return dictionaryPageOffset;
-  }
-
-  /**
-   * @return count of values in this block of the column
-   */
-  public long getValueCount() {
-    return valueCount;
-  }
-
-  /**
-   * @return the totalUncompressedSize
-   */
-  public long getTotalUncompressedSize() {
-    return totalUncompressedSize;
-  }
-
-  /**
-   * @return the totalSize
-   */
-  public long getTotalSize() {
-    return totalSize;
-  }
-
-  public SizeStatistics getSizeStatistics() {
-    return null;
-  }
-
-  /**
-   * @return the stats for this column
-   */
-  public Statistics getStatistics() {
-    return statistics;
-  }
-
-  public GeospatialStatistics getGeospatialStatistics() {
-    return geospatialStatistics;
   }
 }

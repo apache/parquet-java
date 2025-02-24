@@ -18,9 +18,7 @@
  */
 package org.apache.parquet.column.statistics;
 
-import org.apache.parquet.column.statistics.geometry.GeospatialStatistics;
 import org.apache.parquet.io.api.Binary;
-import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Types;
 
@@ -32,7 +30,6 @@ public class BinaryStatistics extends Statistics<Binary> {
 
   private Binary max;
   private Binary min;
-  private GeospatialStatistics geospatialStatistics = null;
 
   /**
    * @deprecated will be removed in 2.0.0. Use {@link Statistics#createStats(org.apache.parquet.schema.Type)} instead
@@ -44,17 +41,6 @@ public class BinaryStatistics extends Statistics<Binary> {
 
   BinaryStatistics(PrimitiveType type) {
     super(type);
-    LogicalTypeAnnotation logicalType = type.getLogicalTypeAnnotation();
-    if (logicalType instanceof LogicalTypeAnnotation.GeometryLogicalTypeAnnotation) {
-      LogicalTypeAnnotation.GeometryLogicalTypeAnnotation geometryLogicalType =
-          (LogicalTypeAnnotation.GeometryLogicalTypeAnnotation) logicalType;
-      geospatialStatistics = new GeospatialStatistics(geometryLogicalType.getCrs());
-    } else if (logicalType instanceof LogicalTypeAnnotation.GeographyLogicalTypeAnnotation) {
-      LogicalTypeAnnotation.GeographyLogicalTypeAnnotation geographyLogicalType =
-          (LogicalTypeAnnotation.GeographyLogicalTypeAnnotation) logicalType;
-      geospatialStatistics =
-          new GeospatialStatistics(geographyLogicalType.getCrs(), geographyLogicalType.getEdgeAlgorithm());
-    }
   }
 
   private BinaryStatistics(BinaryStatistics other) {
@@ -63,9 +49,6 @@ public class BinaryStatistics extends Statistics<Binary> {
       initializeStats(other.min, other.max);
     }
     setNumNulls(other.getNumNulls());
-    if (other.geospatialStatistics != null) {
-      geospatialStatistics = other.geospatialStatistics.copy();
-    }
   }
 
   @Override
@@ -79,9 +62,6 @@ public class BinaryStatistics extends Statistics<Binary> {
     } else if (comparator().compare(max, value) < 0) {
       max = value.copy();
     }
-    if (geospatialStatistics != null) {
-      geospatialStatistics.update(value);
-    }
   }
 
   @Override
@@ -91,9 +71,6 @@ public class BinaryStatistics extends Statistics<Binary> {
       initializeStats(binaryStats.getMin(), binaryStats.getMax());
     } else {
       updateStats(binaryStats.getMin(), binaryStats.getMax());
-    }
-    if (geospatialStatistics != null) {
-      geospatialStatistics.merge(binaryStats.geospatialStatistics);
     }
   }
 
@@ -212,13 +189,5 @@ public class BinaryStatistics extends Statistics<Binary> {
   @Override
   public BinaryStatistics copy() {
     return new BinaryStatistics(this);
-  }
-
-  public void setGeospatialStatistics(GeospatialStatistics geospatialStatistics) {
-    this.geospatialStatistics = geospatialStatistics;
-  }
-
-  public GeospatialStatistics getGeospatialStatistics() {
-    return geospatialStatistics;
   }
 }

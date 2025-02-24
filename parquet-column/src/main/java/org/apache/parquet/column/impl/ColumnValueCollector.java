@@ -106,6 +106,7 @@ class ColumnValueCollector {
   void write(Binary value, int repetitionLevel, int definitionLevel) {
     statistics.updateStats(value);
     sizeStatisticsBuilder.add(repetitionLevel, definitionLevel, value);
+    geospatialStatisticsBuilder.update(value);
     bloomFilter.insertHash(bloomFilter.hash(value));
   }
 
