@@ -26,6 +26,7 @@ import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.statistics.SizeStatistics;
 import org.apache.parquet.column.statistics.Statistics;
+import org.apache.parquet.column.statistics.geometry.GeospatialStatistics;
 import org.apache.parquet.column.values.bloomfilter.AdaptiveBlockSplitBloomFilter;
 import org.apache.parquet.column.values.bloomfilter.BlockSplitBloomFilter;
 import org.apache.parquet.column.values.bloomfilter.BloomFilter;
@@ -38,15 +39,18 @@ class ColumnValueCollector {
   private final ColumnDescriptor path;
   private final boolean statisticsEnabled;
   private final boolean sizeStatisticsEnabled;
+  private final boolean geospatialStatisticsEnabled;
   private BloomFilterWriter bloomFilterWriter;
   private BloomFilter bloomFilter;
   private Statistics<?> statistics;
   private SizeStatistics.Builder sizeStatisticsBuilder;
+  private GeospatialStatistics.Builder geospatialStatisticsBuilder;
 
   ColumnValueCollector(ColumnDescriptor path, BloomFilterWriter bloomFilterWriter, ParquetProperties props) {
     this.path = path;
     this.statisticsEnabled = props.getStatisticsEnabled(path);
     this.sizeStatisticsEnabled = props.getSizeStatisticsEnabled(path);
+    this.geospatialStatisticsEnabled = props.getGeoSpatialStatisticsEnabled(path);
     resetPageStatistics();
     initBloomFilter(bloomFilterWriter, props);
   }
@@ -60,6 +64,8 @@ class ColumnValueCollector {
             path.getPrimitiveType(), path.getMaxRepetitionLevel(), path.getMaxDefinitionLevel())
         : SizeStatistics.noopBuilder(
             path.getPrimitiveType(), path.getMaxRepetitionLevel(), path.getMaxDefinitionLevel());
+    this.geospatialStatisticsBuilder =
+        geospatialStatisticsEnabled ? GeospatialStatistics.newBuilder() : GeospatialStatistics.noopBuilder();
   }
 
   void writeNull(int repetitionLevel, int definitionLevel) {
@@ -198,5 +204,9 @@ class ColumnValueCollector {
 
   SizeStatistics getSizeStatistics() {
     return sizeStatisticsBuilder.build();
+  }
+
+  GeospatialStatistics getGeospatialStatistics() {
+    return geospatialStatisticsBuilder.build();
   }
 }
