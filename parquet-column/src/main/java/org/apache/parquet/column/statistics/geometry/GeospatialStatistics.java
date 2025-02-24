@@ -33,11 +33,9 @@ import org.locationtech.jts.io.WKBReader;
 public class GeospatialStatistics {
 
   public static final String DEFAULT_GEOSPATIAL_STAT_CRS = "OGC:CRS84";
-  private static final BoundingBox DUMMY_BOUNDING_BOX = new DummyBoundingBox();
 
   // Metadata that may impact the statistics calculation
   private final String crs;
-
   private final BoundingBox boundingBox;
   private final EdgeInterpolationAlgorithm edgeAlgorithm;
   private final GeospatialTypes geospatialTypes;
@@ -182,7 +180,7 @@ public class GeospatialStatistics {
    */
   public GeospatialStatistics(String crs, EdgeInterpolationAlgorithm edgeAlgorithm) {
     this.crs = crs;
-    this.boundingBox = DUMMY_BOUNDING_BOX;
+    this.boundingBox = new BoundingBox();
     this.geospatialTypes = new GeospatialTypes();
     this.edgeAlgorithm = edgeAlgorithm;
   }
