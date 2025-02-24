@@ -143,8 +143,7 @@ public class GeospatialStatistics {
           ((LogicalTypeAnnotation.GeographyLogicalTypeAnnotation) logicalTypeAnnotation).getEdgeAlgorithm();
       return new GeospatialStatistics.Builder(crs, edgeAlgorithm);
     } else {
-      throw new IllegalArgumentException(
-          "Unsupported logical type annotation for enabled geospatial statistics: " + logicalTypeAnnotation);
+      return noopBuilder();
     }
   }
 
