@@ -34,9 +34,7 @@ class GeospatialUtils {
       @Override
       public void filter(CoordinateSequence seq, int i) {
         double x = seq.getX(i);
-        // Normalize the longitude to be within -180 to 180 range
-        while (x > 180) x -= 360;
-        while (x < -180) x += 360;
+        x = normalizeLongitude(x);
         seq.setOrdinate(i, CoordinateSequence.X, x);
       }
 
@@ -52,5 +50,15 @@ class GeospatialUtils {
     });
 
     geometry.geometryChanged(); // Notify the geometry that its coordinates have been changed
+  }
+
+  private static double normalizeLongitude(double lon) {
+    if (lon >= -180.0 && lon <= 180.0) {
+      return lon;
+    } else if (lon > 180) {
+      return (lon + 180.0) % 360.0 - 180.0;
+    } else {
+      return 180.0 - (180.0 - lon) % 360.0;
+    }
   }
 }
