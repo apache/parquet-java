@@ -48,12 +48,23 @@ public class GeospatialStatistics {
    */
   private boolean valid = true;
 
+  /**
+   * Merge the statistics from another GeospatialStatistics object.
+   *
+   * @param other the other GeospatialStatistics object
+   */
   public void mergeStatistics(GeospatialStatistics other) {
+    if (!valid) return;
+
     if (other == null) {
       return;
     }
-    this.boundingBox.merge(other.boundingBox);
-    this.geospatialTypes.merge(other.geospatialTypes);
+    if (this.boundingBox != null && other.boundingBox != null) {
+      this.boundingBox.merge(other.boundingBox);
+    }
+    if (this.geospatialTypes != null && other.geospatialTypes != null) {
+      this.geospatialTypes.merge(other.geospatialTypes);
+    }
   }
 
   /**
@@ -246,6 +257,16 @@ public class GeospatialStatistics {
       GeospatialStatistics stats = new GeospatialStatistics(crs, null, null, null);
       stats.valid = false; // Mark as invalid since this is a noop builder
       return stats;
+    }
+
+    @Override
+    public void update(Binary value) {
+      // do nothing
+    }
+
+    @Override
+    public void abort() {
+      // do nothing
     }
   }
 
