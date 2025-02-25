@@ -1182,7 +1182,7 @@ public abstract class LogicalTypeAnnotation {
         return false;
       }
       GeometryLogicalTypeAnnotation other = (GeometryLogicalTypeAnnotation) obj;
-      return crs.equals(other.crs);
+      return Objects.equals(crs, other.crs);
     }
 
     @Override
