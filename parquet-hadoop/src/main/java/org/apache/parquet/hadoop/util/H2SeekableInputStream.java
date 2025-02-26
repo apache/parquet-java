@@ -100,6 +100,10 @@ class H2SeekableInputStream extends DelegatingSeekableInputStream {
     VectorIoBridge.instance().readVectoredRanges(stream, ranges, allocator);
   }
 
+  protected Reader getReader() {
+    return reader;
+  }
+
   public static void readFully(Reader reader, ByteBuffer buf) throws IOException {
     // unfortunately the Hadoop 2 APIs do not have a 'readFully' equivalent for the byteBuffer read
     // calls. The read(ByteBuffer) call might read fewer than byteBuffer.hasRemaining() bytes. Thus we
