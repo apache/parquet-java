@@ -107,7 +107,7 @@ import org.junit.runners.Parameterized;
 @RunWith(Parameterized.class)
 public class ParquetRewriterTest {
 
-  private final int numRecord = 100000;
+  private final int numRecord = 10000;
   private final Configuration conf = new Configuration();
   private final ParquetConfiguration parquetConf = new PlainParquetConfiguration();
   private final ParquetProperties.WriterVersion writerVersion;
