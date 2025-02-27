@@ -20,10 +20,6 @@ package org.apache.parquet.variant;
  * An exception indicating that the Variant is malformed.
  */
 public class MalformedVariantException extends RuntimeException {
-  public MalformedVariantException() {
-    super();
-  }
-
   public MalformedVariantException(String message) {
     super(message);
   }

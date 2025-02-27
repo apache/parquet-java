@@ -16,6 +16,7 @@
  */
 package org.apache.parquet.variant;
 
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
@@ -44,10 +45,10 @@ import java.util.Arrays;
  */
 public class VariantUtil {
   public static final int BASIC_TYPE_BITS = 2;
-  public static final int BASIC_TYPE_MASK = 0x3;
-  public static final int PRIMITIVE_TYPE_MASK = 0x3F;
+  public static final int BASIC_TYPE_MASK = 0b00000011;
+  public static final int PRIMITIVE_TYPE_MASK = 0b00111111;
   /** The inclusive maximum value of the type info value. It is the size limit of `SHORT_STR`. */
-  public static final int MAX_SHORT_STR_SIZE = 0x3F;
+  public static final int MAX_SHORT_STR_SIZE = 0b00111111;
 
   // The basic types
 
@@ -99,13 +100,13 @@ public class VariantUtil {
   /** False value. Empty content. */
   public static final int FALSE = 2;
   /** 1-byte little-endian signed integer. */
-  public static final int INT1 = 3;
+  public static final int INT8 = 3;
   /** 2-byte little-endian signed integer. */
-  public static final int INT2 = 4;
+  public static final int INT16 = 4;
   /** 4-byte little-endian signed integer. */
-  public static final int INT4 = 5;
+  public static final int INT32 = 5;
   /** 4-byte little-endian signed integer. */
-  public static final int INT8 = 6;
+  public static final int INT64 = 6;
   /** 8-byte IEEE double. */
   public static final int DOUBLE = 7;
   /** 4-byte decimal. Content is 1-byte scale + 4-byte little-endian signed integer. */
@@ -223,18 +224,6 @@ public class VariantUtil {
     return (byte) (((largeSize ? 1 : 0) << (BASIC_TYPE_BITS + 2)) | ((offsetSize - 1) << BASIC_TYPE_BITS) | ARRAY);
   }
 
-  public static MalformedVariantException malformedVariant(String message) {
-    return new MalformedVariantException(message);
-  }
-
-  public static MalformedVariantException malformedVariant() {
-    return new MalformedVariantException();
-  }
-
-  public static UnknownVariantTypeException unknownPrimitiveTypeInVariant(int id) {
-    return new UnknownVariantTypeException(id);
-  }
-
   /**
    * Check the validity of an array index `pos`.
    * @param pos The index to check
@@ -242,7 +231,10 @@ public class VariantUtil {
    * @throws MalformedVariantException if the index is out of bound
    */
   public static void checkIndex(int pos, int length) {
-    if (pos < 0 || pos >= length) throw malformedVariant();
+    if (pos < 0 || pos >= length) {
+      throw new IllegalArgumentException(
+          String.format("Invalid byte-array offset (%d). length: %d", pos, length));
+    }
   }
 
   /**
@@ -281,7 +273,9 @@ public class VariantUtil {
       int unsignedByteValue = bytes[pos + i] & 0xFF;
       result |= unsignedByteValue << (8 * i);
     }
-    if (result < 0) throw malformedVariant();
+    if (result < 0) {
+      throw new MalformedVariantException(String.format("Failed to read unsigned int. numBytes: %d", numBytes));
+    }
     return result;
   }
 
@@ -294,6 +288,9 @@ public class VariantUtil {
     ARRAY,
     NULL,
     BOOLEAN,
+    BYTE,
+    SHORT,
+    INT,
     LONG,
     STRING,
     DOUBLE,
@@ -340,10 +337,13 @@ public class VariantUtil {
           case TRUE:
           case FALSE:
             return Type.BOOLEAN;
-          case INT1:
-          case INT2:
-          case INT4:
           case INT8:
+            return Type.BYTE;
+          case INT16:
+            return Type.SHORT;
+          case INT32:
+            return Type.INT;
+          case INT64:
             return Type.LONG;
           case DOUBLE:
             return Type.DOUBLE;
@@ -372,7 +372,7 @@ public class VariantUtil {
           case UUID:
             return Type.UUID;
           default:
-            throw unknownPrimitiveTypeInVariant(typeInfo);
+            throw new UnknownVariantTypeException(typeInfo);
         }
     }
   }
@@ -396,29 +396,33 @@ public class VariantUtil {
         return handleObject(
             value,
             pos,
-            (size, idSize, offsetSize, idStart, offsetStart, dataStart) ->
-                dataStart - pos + readUnsigned(value, offsetStart + size * offsetSize, offsetSize));
+            (info) -> info.dataStart
+                - pos
+                + readUnsigned(
+                    value, info.offsetStart + info.numElements * info.offsetSize, info.offsetSize));
       case ARRAY:
         return handleArray(
             value,
             pos,
-            (size, offsetSize, offsetStart, dataStart) ->
-                dataStart - pos + readUnsigned(value, offsetStart + size * offsetSize, offsetSize));
+            (info) -> info.dataStart
+                - pos
+                + readUnsigned(
+                    value, info.offsetStart + info.numElements * info.offsetSize, info.offsetSize));
       default:
         switch (typeInfo) {
           case NULL:
           case TRUE:
           case FALSE:
             return 1;
-          case INT1:
+          case INT8:
             return 2;
-          case INT2:
+          case INT16:
             return 3;
-          case INT4:
+          case INT32:
           case DATE:
           case FLOAT:
             return 5;
-          case INT8:
+          case INT64:
           case DOUBLE:
           case TIMESTAMP:
           case TIMESTAMP_NTZ:
@@ -438,13 +442,13 @@ public class VariantUtil {
           case UUID:
             return 1 + UUID_SIZE;
           default:
-            throw unknownPrimitiveTypeInVariant(typeInfo);
+            throw new UnknownVariantTypeException(typeInfo);
         }
     }
   }
 
-  private static IllegalStateException unexpectedType(Type type) {
-    return new IllegalStateException("Expect type to be " + type);
+  private static MalformedVariantException unexpectedType(Type type) {
+    return new MalformedVariantException("Expected type to be " + type);
   }
 
   public static boolean getBoolean(byte[] value, int pos) {
@@ -459,8 +463,8 @@ public class VariantUtil {
 
   /**
    * Returns a long value from Variant value `value[pos...]`.
-   * It is only legal to call it if `getType` returns one of Type.LONG, DATE, TIMESTAMP,
-   * TIMESTAMP_NTZ, TIME, TIMESTAMP_NANOS, TIMESTAMP_NANOS_NTZ.
+   * It is only legal to call it if `getType` returns one of Type.BYTE, SHORT, INT, LONG,
+   * DATE, TIMESTAMP, TIMESTAMP_NTZ, TIME, TIMESTAMP_NANOS, TIMESTAMP_NANOS_NTZ.
    * If the type is `DATE`, the return value is guaranteed to fit into an int and
    * represents the number of days from the Unix epoch.
    * If the type is `TIMESTAMP/TIMESTAMP_NTZ`, the return value represents the number of
@@ -476,17 +480,20 @@ public class VariantUtil {
     checkIndex(pos, value.length);
     int basicType = value[pos] & BASIC_TYPE_MASK;
     int typeInfo = (value[pos] >> BASIC_TYPE_BITS) & PRIMITIVE_TYPE_MASK;
-    String exceptionMessage = "Expect type to be LONG/DATE/TIMESTAMP/TIMESTAMP_NTZ";
-    if (basicType != PRIMITIVE) throw new IllegalStateException(exceptionMessage);
+    String exceptionMessage =
+        "Expect type to be one of: BYTE, SHORT, INT, LONG, TIMESTAMP, TIMESTAMP_NTZ, TIME, TIMESTAMP_NANOS, TIMESTAMP_NANOS_NTZ";
+    if (basicType != PRIMITIVE) {
+      throw new IllegalStateException(exceptionMessage);
+    }
     switch (typeInfo) {
-      case INT1:
+      case INT8:
         return readLong(value, pos + 1, 1);
-      case INT2:
+      case INT16:
         return readLong(value, pos + 1, 2);
-      case INT4:
+      case INT32:
       case DATE:
         return readLong(value, pos + 1, 4);
-      case INT8:
+      case INT64:
       case TIMESTAMP:
       case TIMESTAMP_NTZ:
       case TIME:
@@ -502,7 +509,9 @@ public class VariantUtil {
     checkIndex(pos, value.length);
     int basicType = value[pos] & BASIC_TYPE_MASK;
     int typeInfo = (value[pos] >> BASIC_TYPE_BITS) & PRIMITIVE_TYPE_MASK;
-    if (basicType != PRIMITIVE || typeInfo != DOUBLE) throw unexpectedType(Type.DOUBLE);
+    if (basicType != PRIMITIVE || typeInfo != DOUBLE) {
+      throw unexpectedType(Type.DOUBLE);
+    }
     return Double.longBitsToDouble(readLong(value, pos + 1, 8));
   }
 
@@ -514,7 +523,9 @@ public class VariantUtil {
    */
   private static void checkDecimal(BigDecimal d, int maxPrecision) {
     if (d.precision() > maxPrecision || d.scale() > maxPrecision) {
-      throw malformedVariant();
+      throw new MalformedVariantException(String.format(
+          "Decimal (precision: %d, scale: %d) exceeds max precision %d",
+          d.precision(), d.scale(), maxPrecision));
     }
   }
 
@@ -522,7 +533,9 @@ public class VariantUtil {
     checkIndex(pos, value.length);
     int basicType = value[pos] & BASIC_TYPE_MASK;
     int typeInfo = (value[pos] >> BASIC_TYPE_BITS) & PRIMITIVE_TYPE_MASK;
-    if (basicType != PRIMITIVE) throw unexpectedType(Type.DECIMAL);
+    if (basicType != PRIMITIVE) {
+      throw unexpectedType(Type.DECIMAL);
+    }
     // Interpret the scale byte as unsigned. If it is a negative byte, the unsigned value must be
     // greater than `MAX_DECIMAL16_PRECISION` and will trigger an error in `checkDecimal`.
     int scale = value[pos + 1] & 0xFF;
@@ -561,7 +574,9 @@ public class VariantUtil {
     checkIndex(pos, value.length);
     int basicType = value[pos] & BASIC_TYPE_MASK;
     int typeInfo = (value[pos] >> BASIC_TYPE_BITS) & PRIMITIVE_TYPE_MASK;
-    if (basicType != PRIMITIVE || typeInfo != FLOAT) throw unexpectedType(Type.FLOAT);
+    if (basicType != PRIMITIVE || typeInfo != FLOAT) {
+      throw unexpectedType(Type.FLOAT);
+    }
     return Float.intBitsToFloat((int) readLong(value, pos + 1, 4));
   }
 
@@ -569,7 +584,9 @@ public class VariantUtil {
     checkIndex(pos, value.length);
     int basicType = value[pos] & BASIC_TYPE_MASK;
     int typeInfo = (value[pos] >> BASIC_TYPE_BITS) & PRIMITIVE_TYPE_MASK;
-    if (basicType != PRIMITIVE || typeInfo != BINARY) throw unexpectedType(Type.BINARY);
+    if (basicType != PRIMITIVE || typeInfo != BINARY) {
+      throw unexpectedType(Type.BINARY);
+    }
     int start = pos + 1 + U32_SIZE;
     int length = readUnsigned(value, pos + 1, U32_SIZE);
     checkIndex(start + length - 1, value.length);
@@ -600,11 +617,40 @@ public class VariantUtil {
     checkIndex(pos, value.length);
     int basicType = value[pos] & BASIC_TYPE_MASK;
     int typeInfo = (value[pos] >> BASIC_TYPE_BITS) & PRIMITIVE_TYPE_MASK;
-    if (basicType != PRIMITIVE || typeInfo != UUID) throw unexpectedType(Type.UUID);
+    if (basicType != PRIMITIVE || typeInfo != UUID) {
+      throw unexpectedType(Type.UUID);
+    }
     int start = pos + 1;
     checkIndex(start + UUID_SIZE - 1, value.length);
     ByteBuffer bb = ByteBuffer.wrap(value, start, UUID_SIZE).order(ByteOrder.BIG_ENDIAN);
     return new java.util.UUID(bb.getLong(), bb.getLong());
+  }
+
+  /**
+   * A helper class representing the details of a Variant object, used for `ObjectHandler`.
+   */
+  public static class ObjectInfo {
+    /** Number of object fields. */
+    public final int numElements;
+    /** The integer size of the field id list. */
+    public final int idSize;
+    /** The integer size of the offset list. */
+    public final int offsetSize;
+    /** The starting index of the field id list in the variant value array. */
+    public final int idStart;
+    /** The starting index of the offset list in the variant value array. */
+    public final int offsetStart;
+    /** The starting index of field data in the variant value array. */
+    public final int dataStart;
+
+    public ObjectInfo(int numElements, int idSize, int offsetSize, int idStart, int offsetStart, int dataStart) {
+      this.numElements = numElements;
+      this.idSize = idSize;
+      this.offsetSize = offsetSize;
+      this.idStart = idStart;
+      this.offsetStart = offsetStart;
+      this.dataStart = dataStart;
+    }
   }
 
   /**
@@ -613,14 +659,20 @@ public class VariantUtil {
    */
   public interface ObjectHandler<T> {
     /**
-     * @param size Number of object fields.
-     * @param idSize The integer size of the field id list.
-     * @param offsetSize The integer size of the offset list.
-     * @param idStart The starting index of the field id list in the variant value array.
-     * @param offsetStart The starting index of the offset list in the variant value array.
-     * @param dataStart The starting index of field data in the variant value array.
+     * @param objectInfo The details of the Variant object
      */
-    T apply(int size, int idSize, int offsetSize, int idStart, int offsetStart, int dataStart);
+    T apply(ObjectInfo objectInfo);
+  }
+
+  /**
+   * An interface for the Variant object handler.
+   * @param <T> The return type of the handler
+   */
+  public interface ObjectHandlerException<T> {
+    /**
+     * @param objectInfo The details of the Variant object
+     */
+    T apply(ObjectInfo objectInfo) throws IOException;
   }
 
   /**
@@ -632,24 +684,64 @@ public class VariantUtil {
    * @param <T> The return type of the handler
    */
   public static <T> T handleObject(byte[] value, int pos, ObjectHandler<T> handler) {
+    ObjectInfo info = parseObject(value, pos);
+    return handler.apply(info);
+  }
+
+  /**
+   * Same as `handleObject` but handler can throw IOException.
+   */
+  public static <T> T handleObjectException(byte[] value, int pos, ObjectHandlerException<T> handler)
+      throws IOException {
+    ObjectInfo info = parseObject(value, pos);
+    return handler.apply(info);
+  }
+
+  /**
+   * Parses the object at `value[pos...]`, and returns the object details.
+   */
+  private static ObjectInfo parseObject(byte[] value, int pos) {
     checkIndex(pos, value.length);
     int basicType = value[pos] & BASIC_TYPE_MASK;
     int typeInfo = (value[pos] >> BASIC_TYPE_BITS) & PRIMITIVE_TYPE_MASK;
-    if (basicType != OBJECT) throw unexpectedType(Type.OBJECT);
+    if (basicType != OBJECT) {
+      throw unexpectedType(Type.OBJECT);
+    }
     // Refer to the comment of the `OBJECT` constant for the details of the object header encoding.
     // Suppose `typeInfo` has a bit representation of 0_b4_b3b2_b1b0, the following line extracts
     // b4 to determine whether the object uses a 1/4-byte size.
     boolean largeSize = ((typeInfo >> 4) & 0x1) != 0;
     int sizeBytes = (largeSize ? U32_SIZE : 1);
-    int size = readUnsigned(value, pos + 1, sizeBytes);
+    int numElements = readUnsigned(value, pos + 1, sizeBytes);
     // Extracts b3b2 to determine the integer size of the field id list.
     int idSize = ((typeInfo >> 2) & 0x3) + 1;
     // Extracts b1b0 to determine the integer size of the offset list.
     int offsetSize = (typeInfo & 0x3) + 1;
     int idStart = pos + 1 + sizeBytes;
-    int offsetStart = idStart + size * idSize;
-    int dataStart = offsetStart + (size + 1) * offsetSize;
-    return handler.apply(size, idSize, offsetSize, idStart, offsetStart, dataStart);
+    int offsetStart = idStart + numElements * idSize;
+    int dataStart = offsetStart + (numElements + 1) * offsetSize;
+    return new ObjectInfo(numElements, idSize, offsetSize, idStart, offsetStart, dataStart);
+  }
+
+  /**
+   * A helper class representing the details of a Variant array, used for `ArrayHandler`.
+   */
+  public static class ArrayInfo {
+    /** Number of object fields. */
+    public final int numElements;
+    /** The integer size of the offset list. */
+    public final int offsetSize;
+    /** The starting index of the offset list in the variant value array. */
+    public final int offsetStart;
+    /** The starting index of field data in the variant value array. */
+    public final int dataStart;
+
+    public ArrayInfo(int numElements, int offsetSize, int offsetStart, int dataStart) {
+      this.numElements = numElements;
+      this.offsetSize = offsetSize;
+      this.offsetStart = offsetStart;
+      this.dataStart = dataStart;
+    }
   }
 
   /**
@@ -658,12 +750,20 @@ public class VariantUtil {
    */
   public interface ArrayHandler<T> {
     /**
-     * @param size Number of array elements.
-     * @param offsetSize The integer size of the offset list.
-     * @param offsetStart The starting index of the offset list in the variant value array.
-     * @param dataStart The starting index of element data in the variant value array.
+     * @param arrayInfo The details of the Variant array
      */
-    T apply(int size, int offsetSize, int offsetStart, int dataStart);
+    T apply(ArrayInfo arrayInfo);
+  }
+
+  /**
+   * An interface for the Variant array handler.
+   * @param <T> The return type of the handler
+   */
+  public interface ArrayHandlerException<T> {
+    /**
+     * @param arrayInfo The details of the Variant array
+     */
+    T apply(ArrayInfo arrayInfo) throws IOException;
   }
 
   /**
@@ -675,21 +775,40 @@ public class VariantUtil {
    * @param <T> The return type of the handler
    */
   public static <T> T handleArray(byte[] value, int pos, ArrayHandler<T> handler) {
+    ArrayInfo info = parseArray(value, pos);
+    return handler.apply(info);
+  }
+
+  /**
+   * Same as `handleArray` but handler can throw IOException.
+   */
+  public static <T> T handleArrayException(byte[] value, int pos, ArrayHandlerException<T> handler)
+      throws IOException {
+    ArrayInfo info = parseArray(value, pos);
+    return handler.apply(info);
+  }
+
+  /**
+   * Parses the array at `value[pos...]`, and returns the array details.
+   */
+  private static ArrayInfo parseArray(byte[] value, int pos) {
     checkIndex(pos, value.length);
     int basicType = value[pos] & BASIC_TYPE_MASK;
     int typeInfo = (value[pos] >> BASIC_TYPE_BITS) & PRIMITIVE_TYPE_MASK;
-    if (basicType != ARRAY) throw unexpectedType(Type.ARRAY);
+    if (basicType != ARRAY) {
+      throw unexpectedType(Type.ARRAY);
+    }
     // Refer to the comment of the `ARRAY` constant for the details of the object header encoding.
     // Suppose `typeInfo` has a bit representation of 000_b2_b1b0, the following line extracts
     // b2 to determine whether the object uses a 1/4-byte size.
     boolean largeSize = ((typeInfo >> 2) & 0x1) != 0;
     int sizeBytes = (largeSize ? U32_SIZE : 1);
-    int size = readUnsigned(value, pos + 1, sizeBytes);
+    int numElements = readUnsigned(value, pos + 1, sizeBytes);
     // Extracts b1b0 to determine the integer size of the offset list.
     int offsetSize = (typeInfo & 0x3) + 1;
     int offsetStart = pos + 1 + sizeBytes;
-    int dataStart = offsetStart + (size + 1) * offsetSize;
-    return handler.apply(size, offsetSize, offsetStart, dataStart);
+    int dataStart = offsetStart + (numElements + 1) * offsetSize;
+    return new ArrayInfo(numElements, offsetSize, offsetStart, dataStart);
   }
 
   /**
@@ -705,13 +824,19 @@ public class VariantUtil {
     // offset list.
     int offsetSize = ((metadata[0] >> 6) & 0x3) + 1;
     int dictSize = readUnsigned(metadata, 1, offsetSize);
-    if (id >= dictSize) throw malformedVariant();
+    if (id >= dictSize) {
+      throw new MalformedVariantException(
+          String.format("Invalid dictionary id: %d. dictionary size: %d", id, dictSize));
+    }
     // There are a header byte, a `dictSize` with `offsetSize` bytes, and `(dictSize + 1)` offsets
     // before the string data.
     int stringStart = 1 + (dictSize + 2) * offsetSize;
     int offset = readUnsigned(metadata, 1 + (id + 1) * offsetSize, offsetSize);
     int nextOffset = readUnsigned(metadata, 1 + (id + 2) * offsetSize, offsetSize);
-    if (offset > nextOffset) throw malformedVariant();
+    if (offset > nextOffset) {
+      throw new MalformedVariantException(
+          String.format("Invalid offset: %d. next offset: %d", offset, nextOffset));
+    }
     checkIndex(stringStart + nextOffset - 1, metadata.length);
     return new String(metadata, stringStart + offset, nextOffset - offset);
   }

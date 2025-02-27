@@ -33,7 +33,7 @@ public class UnknownVariantTypeException extends RuntimeException {
   /**
    * @return the type id that was unknown
    */
-  public int getTypeId() {
+  public int typeId() {
     return typeId;
   }
 }

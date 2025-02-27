@@ -24,6 +24,8 @@ import com.fasterxml.jackson.core.exc.InputCoercionException;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -174,22 +176,22 @@ public class VariantBuilder {
   public void appendLong(long l) {
     if (l == (byte) l) {
       checkCapacity(1 + 1);
-      writeBuffer[writePos++] = VariantUtil.primitiveHeader(VariantUtil.INT1);
+      writeBuffer[writePos++] = VariantUtil.primitiveHeader(VariantUtil.INT8);
       VariantUtil.writeLong(writeBuffer, writePos, l, 1);
       writePos += 1;
     } else if (l == (short) l) {
       checkCapacity(1 + 2);
-      writeBuffer[writePos++] = VariantUtil.primitiveHeader(VariantUtil.INT2);
+      writeBuffer[writePos++] = VariantUtil.primitiveHeader(VariantUtil.INT16);
       VariantUtil.writeLong(writeBuffer, writePos, l, 2);
       writePos += 2;
     } else if (l == (int) l) {
       checkCapacity(1 + 4);
-      writeBuffer[writePos++] = VariantUtil.primitiveHeader(VariantUtil.INT4);
+      writeBuffer[writePos++] = VariantUtil.primitiveHeader(VariantUtil.INT32);
       VariantUtil.writeLong(writeBuffer, writePos, l, 4);
       writePos += 4;
     } else {
       checkCapacity(1 + 8);
-      writeBuffer[writePos++] = VariantUtil.primitiveHeader(VariantUtil.INT8);
+      writeBuffer[writePos++] = VariantUtil.primitiveHeader(VariantUtil.INT64);
       VariantUtil.writeLong(writeBuffer, writePos, l, 8);
       writePos += 8;
     }
@@ -300,12 +302,15 @@ public class VariantBuilder {
     writePos += binary.length;
   }
 
-  public void appendUUID(byte[] uuid) {
-    assert uuid.length == VariantUtil.UUID_SIZE;
+  public void appendUUID(java.util.UUID uuid) {
     checkCapacity(1 + VariantUtil.UUID_SIZE);
     writeBuffer[writePos++] = VariantUtil.primitiveHeader(VariantUtil.UUID);
-    System.arraycopy(uuid, 0, writeBuffer, writePos, uuid.length);
-    writePos += uuid.length;
+
+    ByteBuffer bb =
+        ByteBuffer.wrap(writeBuffer, writePos, VariantUtil.UUID_SIZE).order(ByteOrder.BIG_ENDIAN);
+    bb.putLong(uuid.getMostSignificantBits());
+    bb.putLong(uuid.getLeastSignificantBits());
+    writePos += VariantUtil.UUID_SIZE;
   }
 
   /**
@@ -458,13 +463,14 @@ public class VariantBuilder {
     int basicType = value[pos] & VariantUtil.BASIC_TYPE_MASK;
     switch (basicType) {
       case VariantUtil.OBJECT:
-        VariantUtil.handleObject(value, pos, (size, idSize, offsetSize, idStart, offsetStart, dataStart) -> {
-          ArrayList<FieldEntry> fields = new ArrayList<>(size);
+        VariantUtil.handleObject(value, pos, (info) -> {
+          ArrayList<FieldEntry> fields = new ArrayList<>(info.numElements);
           int start = writePos;
-          for (int i = 0; i < size; ++i) {
-            int id = VariantUtil.readUnsigned(value, idStart + idSize * i, idSize);
-            int offset = VariantUtil.readUnsigned(value, offsetStart + offsetSize * i, offsetSize);
-            int elementPos = dataStart + offset;
+          for (int i = 0; i < info.numElements; ++i) {
+            int id = VariantUtil.readUnsigned(value, info.idStart + info.idSize * i, info.idSize);
+            int offset = VariantUtil.readUnsigned(
+                value, info.offsetStart + info.offsetSize * i, info.offsetSize);
+            int elementPos = info.dataStart + offset;
             String key = VariantUtil.getMetadataKey(metadata, id);
             int newId = addKey(key);
             fields.add(new FieldEntry(key, newId, writePos - start));
@@ -475,12 +481,13 @@ public class VariantBuilder {
         });
         break;
       case VariantUtil.ARRAY:
-        VariantUtil.handleArray(value, pos, (size, offsetSize, offsetStart, dataStart) -> {
-          ArrayList<Integer> offsets = new ArrayList<>(size);
+        VariantUtil.handleArray(value, pos, (info) -> {
+          ArrayList<Integer> offsets = new ArrayList<>(info.numElements);
           int start = writePos;
-          for (int i = 0; i < size; ++i) {
-            int offset = VariantUtil.readUnsigned(value, offsetStart + offsetSize * i, offsetSize);
-            int elementPos = dataStart + offset;
+          for (int i = 0; i < info.numElements; ++i) {
+            int offset = VariantUtil.readUnsigned(
+                value, info.offsetStart + info.offsetSize * i, info.offsetSize);
+            int elementPos = info.dataStart + offset;
             offsets.add(writePos - start);
             appendVariantImpl(value, metadata, elementPos);
           }

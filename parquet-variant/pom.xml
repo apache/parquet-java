@@ -38,6 +38,11 @@
   <dependencies>
     <dependency>
       <groupId>org.apache.parquet</groupId>
+      <artifactId>parquet-cli</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-jackson</artifactId>
       <version>${project.version}</version>
       <scope>runtime</scope>
