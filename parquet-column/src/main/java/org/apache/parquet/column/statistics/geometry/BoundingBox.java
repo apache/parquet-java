@@ -83,7 +83,9 @@ public class BoundingBox {
   // Method to update the bounding box with the coordinates of a Geometry object
   // geometry can be changed by this method
   void update(Geometry geometry, String crs) {
-    GeospatialUtils.normalizeLongitude(geometry);
+    if (shouldNormalizeLongitude(crs)) {
+      GeospatialUtils.normalizeLongitude(geometry);
+    }
     Envelope envelope = geometry.getEnvelopeInternal();
     double minX = envelope.getMinX();
     double minY = envelope.getMinY();
@@ -182,6 +184,21 @@ public class BoundingBox {
         }
       }
     }
+  }
+
+  /**
+   * Determines if the longitude should be normalized based on the given CRS (Coordinate Reference System).
+   * Normalization is required only when the CRS is set to OGC:CRS84, EPSG:4326, or SRID:4326 (case insensitive).
+   *
+   * @param crs the Coordinate Reference System string
+   * @return true if the longitude should be normalized, false otherwise
+   */
+  private boolean shouldNormalizeLongitude(String crs) {
+    if (crs == null) {
+      return false;
+    }
+    String normalizedCrs = crs.trim().toUpperCase();
+    return "OGC:CRS84".equals(normalizedCrs) || "EPSG:4326".equals(normalizedCrs) || "SRID:4326".equals(normalizedCrs);
   }
 
   public BoundingBox copy() {
