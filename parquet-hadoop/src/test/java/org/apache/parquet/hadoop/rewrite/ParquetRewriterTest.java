@@ -107,8 +107,8 @@ import org.junit.runners.Parameterized;
 @RunWith(Parameterized.class)
 public class ParquetRewriterTest {
 
-  private final int numRecord = 10000;
-  private final Configuration conf = new Configuration();
+  private final int numRecord;
+  private final Configuration conf;
   private final ParquetConfiguration parquetConf = new PlainParquetConfiguration();
   private final ParquetProperties.WriterVersion writerVersion;
   private final IndexCache.CacheStrategy indexCacheStrategy;
@@ -122,21 +122,28 @@ public class ParquetRewriterTest {
   private final EncryptionTestFile gzipEncryptionTestFileWithoutBloomFilterColumn;
   private final EncryptionTestFile uncompressedEncryptionTestFileWithoutBloomFilterColumn;
 
-  @Parameterized.Parameters(name = "WriterVersion = {0}, IndexCacheStrategy = {1}, UsingHadoop = {2}")
+  @Parameterized.Parameters(name = "WriterVersion = {0}, IndexCacheStrategy = {1}, UsingHadoop = {2}, numRecord = {3}, rowsPerPage = {4}")
   public static Object[][] parameters() {
+    final int DefaultNumRecord = 10000;
+    final int DefaultRowsPerPage = DefaultNumRecord / 5;
     return new Object[][] {
-      {"v1", "NONE", true},
-      {"v1", "PREFETCH_BLOCK", true},
-      {"v2", "PREFETCH_BLOCK", true},
-      {"v2", "PREFETCH_BLOCK", false}
+      {"v1", "NONE", true, DefaultNumRecord, DefaultRowsPerPage},
+      {"v1", "PREFETCH_BLOCK", true, DefaultNumRecord, DefaultRowsPerPage},
+      {"v2", "PREFETCH_BLOCK", true, DefaultNumRecord, DefaultRowsPerPage},
+      {"v2", "PREFETCH_BLOCK", false, DefaultNumRecord, DefaultRowsPerPage}
     };
   }
 
-  public ParquetRewriterTest(String writerVersion, String indexCacheStrategy, boolean usingHadoop)
+  public ParquetRewriterTest(String writerVersion, String indexCacheStrategy, boolean _usingHadoop, int _numRecord, int rowsPerPage)
       throws IOException {
     this.writerVersion = ParquetProperties.WriterVersion.fromString(writerVersion);
     this.indexCacheStrategy = IndexCache.CacheStrategy.valueOf(indexCacheStrategy);
-    this.usingHadoop = usingHadoop;
+    this.usingHadoop = _usingHadoop;
+    this.numRecord = _numRecord;
+
+    Configuration _conf = new Configuration();
+    _conf.set("parquet.page.row.count.limit", Integer.toString(rowsPerPage));
+    this.conf = _conf;
 
     MessageType testSchema = createSchema();
     this.gzipEncryptionTestFileWithoutBloomFilterColumn = new TestFileBuilder(conf, testSchema)
