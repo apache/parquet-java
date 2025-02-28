@@ -931,10 +931,48 @@ public class ParquetFileReader implements Closeable {
   }
 
   public ParquetFileReader(InputFile file, ParquetReadOptions options, SeekableInputStream f) throws IOException {
-    this(file, readFooter(file, options, f, new ParquetMetadataConverter(options)), options, f);
+    this.converter = new ParquetMetadataConverter(options);
+    this.file = file;
+    this.f = f;
+    this.options = options;
+    try {
+      this.footer = readFooter(file, options, f, converter);
+    } catch (IOException e) {
+      f.close();
+      throw e;
+    }
+
+    this.fileMetaData = footer.getFileMetaData();
+    this.fileDecryptor = fileMetaData.getFileDecryptor(); // must be called before filterRowGroups!
+    if (null != fileDecryptor && fileDecryptor.plaintextFile()) {
+      this.fileDecryptor = null; // Plaintext file. No need in decryptor
+    }
+
+    try {
+      this.blocks = filterRowGroups(footer.getBlocks());
+    } catch (Exception e) {
+      // In case that filterRowGroups throws an exception in the constructor, the new stream
+      // should be closed. Otherwise, there's no way to close this outside.
+      f.close();
+      throw e;
+    }
+    this.blockIndexStores = listWithNulls(this.blocks.size());
+    this.blockRowRanges = listWithNulls(this.blocks.size());
+    for (ColumnDescriptor col : footer.getFileMetaData().getSchema().getColumns()) {
+      paths.put(ColumnPath.get(col.getPath()), col);
+    }
+
+    if (options.usePageChecksumVerification()) {
+      this.crc = new CRC32();
+      this.crcAllocator = ReusingByteBufferAllocator.strict(options.getAllocator());
+    } else {
+      this.crc = null;
+      this.crcAllocator = null;
+    }
   }
 
-  public ParquetFileReader(InputFile file, ParquetMetadata footer,ParquetReadOptions options, SeekableInputStream f) throws IOException {
+  public ParquetFileReader(InputFile file, ParquetMetadata footer, ParquetReadOptions options, SeekableInputStream f)
+      throws IOException {
     this.converter = new ParquetMetadataConverter(options);
     this.file = file;
     this.f = f;
