@@ -25,6 +25,8 @@ import org.locationtech.jts.geom.Geometry;
 
 public class BoundingBox {
 
+  boolean allowWraparound = Boolean.parseBoolean(System.getenv().getOrDefault("ALLOW_BBOX_WRAPAROUND", "true"));
+
   private double xMin = Double.POSITIVE_INFINITY;
   private double xMax = Double.NEGATIVE_INFINITY;
   private double yMin = Double.POSITIVE_INFINITY;
@@ -110,7 +112,7 @@ public class BoundingBox {
       }
     }
 
-    updateXBounds(minX, maxX);
+    updateXBounds(minX, maxX, allowWraparound);
 
     yMin = Math.min(yMin, minY);
     yMax = Math.max(yMax, maxY);
@@ -125,7 +127,7 @@ public class BoundingBox {
     double minX = other.xMin;
     double maxX = other.xMax;
 
-    updateXBounds(minX, maxX);
+    updateXBounds(minX, maxX, allowWraparound);
 
     yMin = Math.min(yMin, other.yMin);
     yMax = Math.max(yMax, other.yMax);
@@ -161,26 +163,31 @@ public class BoundingBox {
     return Math.abs(x1 - x2) > 180;
   }
 
-  private void updateXBounds(double minX, double maxX) {
-    if (xMin == Double.POSITIVE_INFINITY || xMax == Double.NEGATIVE_INFINITY) {
-      xMin = minX;
-      xMax = maxX;
+  private void updateXBounds(double minX, double maxX, boolean allowWraparound) {
+    if (!allowWraparound) {
+      xMin = Math.min(xMin, minX);
+      xMax = Math.max(xMax, maxX);
     } else {
-      if (!isCrossingAntiMeridian(xMax, xMin)) {
-        if (!isCrossingAntiMeridian(maxX, minX)) {
-          xMin = Math.min(xMin, minX);
-          xMax = Math.max(xMax, maxX);
-        } else {
-          xMin = Math.max(xMin, maxX);
-          xMax = Math.min(xMax, minX);
-        }
+      if (xMin == Double.POSITIVE_INFINITY || xMax == Double.NEGATIVE_INFINITY) {
+        xMin = minX;
+        xMax = maxX;
       } else {
-        if (!isCrossingAntiMeridian(maxX, minX)) {
-          xMin = Math.max(xMin, minX);
-          xMax = Math.min(xMax, maxX);
+        if (!isCrossingAntiMeridian(xMax, xMin)) {
+          if (!isCrossingAntiMeridian(maxX, minX)) {
+            xMin = Math.min(xMin, minX);
+            xMax = Math.max(xMax, maxX);
+          } else {
+            xMin = Math.max(xMin, maxX);
+            xMax = Math.min(xMax, minX);
+          }
         } else {
-          xMin = Math.max(xMin, maxX);
-          xMax = Math.min(xMax, minX);
+          if (!isCrossingAntiMeridian(maxX, minX)) {
+            xMin = Math.max(xMin, minX);
+            xMax = Math.min(xMax, maxX);
+          } else {
+            xMin = Math.max(xMin, maxX);
+            xMax = Math.min(xMax, minX);
+          }
         }
       }
     }
@@ -198,7 +205,9 @@ public class BoundingBox {
       return false;
     }
     String normalizedCrs = crs.trim().toUpperCase();
-    return "OGC:CRS84".equals(normalizedCrs) || "EPSG:4326".equals(normalizedCrs) || "SRID:4326".equals(normalizedCrs);
+    return "OGC:CRS84".equals(normalizedCrs)
+        || "EPSG:4326".equals(normalizedCrs)
+        || "SRID:4326".equals(normalizedCrs);
   }
 
   public BoundingBox copy() {

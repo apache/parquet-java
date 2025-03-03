@@ -39,7 +39,6 @@ public class GeospatialStatistics {
   private final BoundingBox boundingBox;
   private final EdgeInterpolationAlgorithm edgeAlgorithm;
   private final GeospatialTypes geospatialTypes;
-  //   private final WKBReader reader = new WKBReader();
 
   /**
    * Whether the statistics has valid value.
