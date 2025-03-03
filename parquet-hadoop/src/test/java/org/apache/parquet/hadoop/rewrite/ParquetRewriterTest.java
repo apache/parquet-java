@@ -122,7 +122,9 @@ public class ParquetRewriterTest {
   private final EncryptionTestFile gzipEncryptionTestFileWithoutBloomFilterColumn;
   private final EncryptionTestFile uncompressedEncryptionTestFileWithoutBloomFilterColumn;
 
-  @Parameterized.Parameters(name = "WriterVersion = {0}, IndexCacheStrategy = {1}, UsingHadoop = {2}, numRecord = {3}, rowsPerPage = {4}")
+  @Parameterized.Parameters(
+      name =
+          "WriterVersion = {0}, IndexCacheStrategy = {1}, UsingHadoop = {2}, numRecord = {3}, rowsPerPage = {4}")
   public static Object[][] parameters() {
     final int DefaultNumRecord = 10000;
     final int DefaultRowsPerPage = DefaultNumRecord / 5;
@@ -134,7 +136,8 @@ public class ParquetRewriterTest {
     };
   }
 
-  public ParquetRewriterTest(String writerVersion, String indexCacheStrategy, boolean _usingHadoop, int _numRecord, int rowsPerPage)
+  public ParquetRewriterTest(
+      String writerVersion, String indexCacheStrategy, boolean _usingHadoop, int _numRecord, int rowsPerPage)
       throws IOException {
     this.writerVersion = ParquetProperties.WriterVersion.fromString(writerVersion);
     this.indexCacheStrategy = IndexCache.CacheStrategy.valueOf(indexCacheStrategy);
