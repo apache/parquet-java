@@ -19,8 +19,13 @@
 
 package org.apache.parquet.hadoop.util;
 
+import static org.apache.parquet.hadoop.util.wrapped.io.FutureIO.awaitFuture;
+
 import java.io.IOException;
+import java.io.InterruptedIOException;
+import java.util.concurrent.CompletableFuture;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -28,6 +33,24 @@ import org.apache.parquet.io.InputFile;
 import org.apache.parquet.io.SeekableInputStream;
 
 public class HadoopInputFile implements InputFile {
+
+  /**
+   * openFile() option name for setting the read policy: {@value}.
+   */
+  private static final String OPENFILE_READ_POLICY_KEY = "fs.option.openfile.read.policy";
+
+  /**
+   * Read policy when opening parquet files: {@value}.
+   * <p>Policy-aware stores pick the first policy they recognize in the list.
+   * everything recognizes "random";
+   * "vector" came in with 3.4.0, while "parquet" came with Hadoop 3.4.1
+   * parquet means "this is a Parquet file, so be clever about footers, prefetch,
+   * and expect vector and/or random IO".
+   * <p>In Hadoop 3.4.1, "parquet" and "vector" are both mapped to "random" for the
+   * S3A connector, but as the ABFS and GCS connectors do footer caching, they
+   * may use it as a hint to say "fetch the footer and keep it in memory"
+   */
+  private static final String PARQUET_READ_POLICY = "parquet, vector, random, adaptive";
 
   private final FileSystem fs;
   private final FileStatus stat;
@@ -70,9 +93,45 @@ public class HadoopInputFile implements InputFile {
     return stat.getLen();
   }
 
+  /**
+   * Open the file.
+   * <p>Uses {@code FileSystem.openFile()} so that
+   * the existing FileStatus can be passed down: saves a HEAD request on cloud storage.
+   * and ignored everywhere else.
+   *
+   * @return the input stream.
+   *
+   * @throws InterruptedIOException future was interrupted
+   * @throws IOException if something went wrong
+   * @throws RuntimeException any nested RTE thrown
+   */
   @Override
   public SeekableInputStream newStream() throws IOException {
-    return HadoopStreams.wrap(fs.open(stat.getPath()));
+    FSDataInputStream stream;
+    try {
+      // this method is async so that implementations may do async HEAD head
+      // requests, such as S3A/ABFS when a file status is passed down.
+      final CompletableFuture<FSDataInputStream> future = fs.openFile(stat.getPath())
+          .withFileStatus(stat)
+          .opt(OPENFILE_READ_POLICY_KEY, PARQUET_READ_POLICY)
+          .build();
+      stream = awaitFuture(future);
+    } catch (RuntimeException e) {
+      // S3A < 3.3.5 would raise illegal path exception if the openFile path didn't
+      // equal the path in the FileStatus; Hive virtual FS could create this condition.
+      // As the path to open is derived from stat.getPath(), this condition seems
+      // near-impossible to create -but is handled here for due diligence.
+      try {
+        stream = fs.open(stat.getPath());
+      } catch (IOException | RuntimeException ex) {
+        // failure on this attempt attaches the failure of the openFile() call
+        // so the stack trace is preserved.
+        ex.addSuppressed(e);
+        throw ex;
+      }
+    }
+
+    return HadoopStreams.wrap(stream);
   }
 
   @Override

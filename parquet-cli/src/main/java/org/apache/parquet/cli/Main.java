@@ -51,6 +51,7 @@ import org.apache.parquet.cli.commands.ShowColumnIndexCommand;
 import org.apache.parquet.cli.commands.ShowDictionaryCommand;
 import org.apache.parquet.cli.commands.ShowFooterCommand;
 import org.apache.parquet.cli.commands.ShowPagesCommand;
+import org.apache.parquet.cli.commands.ShowSizeStatisticsCommand;
 import org.apache.parquet.cli.commands.ToAvroCommand;
 import org.apache.parquet.cli.commands.TransCompressionCommand;
 import org.slf4j.Logger;
@@ -105,6 +106,7 @@ public class Main extends Configured implements Tool {
     jc.addCommand("bloom-filter", new ShowBloomFilterCommand(console));
     jc.addCommand("scan", new ScanCommand(console));
     jc.addCommand("rewrite", new RewriteCommand(console));
+    jc.addCommand("size-stats", new ShowSizeStatisticsCommand(console));
   }
 
   @Override

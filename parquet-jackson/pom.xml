@@ -21,7 +21,7 @@
     <groupId>org.apache.parquet</groupId>
     <artifactId>parquet</artifactId>
     <relativePath>../pom.xml</relativePath>
-    <version>1.15.0-SNAPSHOT</version>
+    <version>1.16.0-SNAPSHOT</version>
   </parent>
 
   <modelVersion>4.0.0</modelVersion>
@@ -47,12 +47,6 @@
       <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-databind</artifactId>
       <version>${jackson-databind.version}</version>
-    </dependency>
-    <!-- Add support for Java 8 Optional -->
-    <dependency>
-      <groupId>com.fasterxml.jackson.datatype</groupId>
-      <artifactId>jackson-datatype-jdk8</artifactId>
-      <version>${jackson-modules-java8.version}</version>
     </dependency>
   </dependencies>
 
@@ -102,6 +96,30 @@
                 <relocation>
                   <pattern>${jackson.package}</pattern>
                   <shadedPattern>${shade.prefix}.${jackson.package}</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>META-INF.versions.9.${jackson.package}</pattern>
+                  <shadedPattern>META-INF.versions.9.${shade.prefix}.${jackson.package}</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>META-INF.versions.11.${jackson.package}</pattern>
+                  <shadedPattern>META-INF.versions.11.${shade.prefix}.${jackson.package}</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>META-INF.versions.17.${jackson.package}</pattern>
+                  <shadedPattern>META-INF.versions.17.${shade.prefix}.${jackson.package}</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>META-INF.versions.19.${jackson.package}</pattern>
+                  <shadedPattern>META-INF.versions.19.${shade.prefix}.${jackson.package}</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>META-INF.versions.21.${jackson.package}</pattern>
+                  <shadedPattern>META-INF.versions.21.${shade.prefix}.${jackson.package}</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>META-INF.versions.22.${jackson.package}</pattern>
+                  <shadedPattern>META-INF.versions.22.${shade.prefix}.${jackson.package}</shadedPattern>
                 </relocation>
               </relocations>
             </configuration>

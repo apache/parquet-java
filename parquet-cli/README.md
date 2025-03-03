@@ -22,7 +22,7 @@
 You can build this project using maven:
 
 ```
-mvn clean install -DskipTests
+./mvnw clean install -DskipTests
 ```
 
 
@@ -45,7 +45,7 @@ alias parquet="hadoop jar /path/to/parquet-cli-1.12.3-runtime.jar org.apache.par
 To run from the target directory instead of using the `hadoop` command, first copy the dependencies to a folder:
 
 ```
-mvn dependency:copy-dependencies
+./mvnw dependency:copy-dependencies
 ```
 
 Then, run the command-line and add `target/dependencies/*` to the classpath:
@@ -119,6 +119,8 @@ Usage: parquet [options] [command] [command options]
         Scan all records from a file
     rewrite
         Rewrite one or more Parquet files to a new Parquet file
+    size-stats
+        Print size statistics for a Parquet file
 
   Examples:
 

@@ -386,10 +386,7 @@ public class ParquetWriter<T> implements Closeable {
     // encryptionProperties could be built from the implementation of EncryptionPropertiesFactory when it is
     // attached.
     if (encryptionProperties == null) {
-      String path = file == null ? null : file.getPath();
-      Configuration hadoopConf = ConfigurationUtil.createHadoopConfiguration(conf);
-      encryptionProperties = ParquetOutputFormat.createEncryptionProperties(
-          hadoopConf, path == null ? null : new Path(path), writeContext);
+      encryptionProperties = EncryptionPropertiesHelper.createEncryptionProperties(conf, file, writeContext);
     }
 
     ParquetFileWriter fileWriter = new ParquetFileWriter(
@@ -894,6 +891,54 @@ public class ParquetWriter<T> implements Closeable {
         conf = new HadoopParquetConfiguration();
       }
       conf.set(property, value);
+      return self();
+    }
+
+    /**
+     * Sets the statistics enabled/disabled for the specified column. All column statistics are enabled by default.
+     *
+     * @param columnPath the path of the column (dot-string)
+     * @param enabled    whether to write calculate statistics for the column
+     * @return this builder for method chaining
+     */
+    public SELF withStatisticsEnabled(String columnPath, boolean enabled) {
+      encodingPropsBuilder.withStatisticsEnabled(columnPath, enabled);
+      return self();
+    }
+
+    /**
+     * Sets whether statistics are enabled globally. When disabled, statistics will not be collected
+     * for any column unless explicitly enabled for specific columns.
+     *
+     * @param enabled whether to collect statistics globally
+     * @return this builder for method chaining
+     */
+    public SELF withStatisticsEnabled(boolean enabled) {
+      encodingPropsBuilder.withStatisticsEnabled(enabled);
+      return self();
+    }
+
+    /**
+     * Sets the size statistics enabled/disabled for the specified column. All column size statistics are enabled by default.
+     *
+     * @param columnPath the path of the column (dot-string)
+     * @param enabled    whether to collect size statistics for the column
+     * @return this builder for method chaining
+     */
+    public SELF withSizeStatisticsEnabled(String columnPath, boolean enabled) {
+      encodingPropsBuilder.withSizeStatisticsEnabled(columnPath, enabled);
+      return self();
+    }
+
+    /**
+     * Sets whether size statistics are enabled globally. When disabled, size statistics will not be collected
+     * for any column unless explicitly enabled for specific columns.
+     *
+     * @param enabled whether to collect size statistics globally
+     * @return this builder for method chaining
+     */
+    public SELF withSizeStatisticsEnabled(boolean enabled) {
+      encodingPropsBuilder.withSizeStatisticsEnabled(enabled);
       return self();
     }
 

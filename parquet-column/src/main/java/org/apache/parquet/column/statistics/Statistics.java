@@ -253,6 +253,15 @@ public abstract class Statistics<T extends Comparable<T>> {
   }
 
   /**
+   * Creates a noop {@code NoopStatistics} statistics instance. This is only used when the user disables statistics for the specified column.
+   * @param type type of the column
+   * @return a noop statistics
+   */
+  public static Statistics<?> noopStats(Type type) {
+    return new NoopStatistics<>(type.asPrimitiveType());
+  }
+
+  /**
    * Returns a builder to create new statistics object. Used to read the statistics from the parquet file.
    *
    * @param type type of the column

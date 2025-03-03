@@ -403,10 +403,12 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
     if (value instanceof Utf8) {
       Utf8 utf8 = (Utf8) value;
       return Binary.fromReusedByteArray(utf8.getBytes(), 0, utf8.getByteLength());
+    } else if (value instanceof String) {
+      return Binary.fromString((String) value);
     } else if (value instanceof CharSequence) {
       return Binary.fromCharSequence((CharSequence) value);
     }
-    return Binary.fromCharSequence(value.toString());
+    return Binary.fromString(value.toString());
   }
 
   private static GenericData getDataModel(ParquetConfiguration conf, Schema schema) {

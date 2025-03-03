@@ -182,14 +182,39 @@ public abstract class ColumnIndexBuilder {
       return LongLists.unmodifiable(LongArrayList.wrap(defLevelHistogram));
     }
 
+    private String formatHistogram(long[] histogram, int pageIndex) {
+      if (histogram != null && histogram.length > 0) {
+        int numLevelsPerPage = histogram.length / nullPages.length;
+        int offset = pageIndex * numLevelsPerPage;
+        StringBuilder sb = new StringBuilder();
+        sb.append('[');
+        for (int j = 0; j < numLevelsPerPage; j++) {
+          if (j > 0) {
+            sb.append(",");
+          }
+          sb.append(histogram[offset + j]);
+        }
+        sb.append(']');
+        return sb.toString();
+      }
+      return TOSTRING_MISSING_VALUE_MARKER;
+    }
+
     @Override
     public String toString() {
       try (Formatter formatter = new Formatter()) {
         formatter.format("Boundary order: %s\n", boundaryOrder);
         String minMaxPart =
-            "  %-" + MAX_VALUE_LENGTH_FOR_TOSTRING + "s  %-" + MAX_VALUE_LENGTH_FOR_TOSTRING + "s\n";
-        formatter.format("%-10s  %20s" + minMaxPart, "", "null count", "min", "max");
-        String format = "page-%-5d  %20s" + minMaxPart;
+            "  %-" + MAX_VALUE_LENGTH_FOR_TOSTRING + "s  %-" + MAX_VALUE_LENGTH_FOR_TOSTRING + "s";
+        formatter.format(
+            "%-10s  %20s" + minMaxPart + "  %20s  %20s\n",
+            "",
+            "null count",
+            "min",
+            "max",
+            "rep level histogram",
+            "def level histogram");
+        String format = "page-%-5d  %20s" + minMaxPart + "  %20s  %20s\n";
         int arrayIndex = 0;
         for (int i = 0, n = nullPages.length; i < n; ++i) {
           String nullCount =
@@ -201,7 +226,9 @@ public abstract class ColumnIndexBuilder {
             min = truncate(getMinValueAsString(arrayIndex));
             max = truncate(getMaxValueAsString(arrayIndex++));
           }
-          formatter.format(format, i, nullCount, min, max);
+          String repLevelHist = formatHistogram(repLevelHistogram, i);
+          String defLevelHist = formatHistogram(defLevelHistogram, i);
+          formatter.format(format, i, nullCount, min, max, repLevelHist, defLevelHist);
         }
         return formatter.toString();
       }
@@ -371,7 +398,11 @@ public abstract class ColumnIndexBuilder {
 
     @Override
     public <T extends Comparable<T>> PrimitiveIterator.OfInt visit(Contains<T> contains) {
-      return contains.filter(this, IndexIterator::intersection, IndexIterator::union);
+      return contains.filter(
+          this,
+          IndexIterator::intersection,
+          IndexIterator::union,
+          indices -> IndexIterator.all(getPageCount()));
     }
 
     @Override

@@ -20,9 +20,9 @@ package org.apache.parquet.avro;
 
 import static java.util.Optional.empty;
 import static java.util.Optional.of;
-import static org.apache.avro.JsonProperties.NULL_VALUE;
 import static org.apache.parquet.avro.AvroReadSupport.READ_INT96_AS_FIXED;
 import static org.apache.parquet.avro.AvroReadSupport.READ_INT96_AS_FIXED_DEFAULT;
+import static org.apache.parquet.avro.AvroRecordConverter.getRuntimeAvroVersion;
 import static org.apache.parquet.avro.AvroWriteSupport.WRITE_FIXED_AS_INT96;
 import static org.apache.parquet.avro.AvroWriteSupport.WRITE_OLD_LIST_STRUCTURE;
 import static org.apache.parquet.avro.AvroWriteSupport.WRITE_OLD_LIST_STRUCTURE_DEFAULT;
@@ -58,6 +58,7 @@ import java.util.Set;
 import org.apache.avro.LogicalType;
 import org.apache.avro.LogicalTypes;
 import org.apache.avro.Schema;
+import org.apache.avro.SchemaBuilder;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.conf.HadoopParquetConfiguration;
 import org.apache.parquet.conf.ParquetConfiguration;
@@ -89,20 +90,21 @@ public class AvroSchemaConverter {
   private final Set<String> pathsToInt96;
 
   public AvroSchemaConverter() {
-    this(ADD_LIST_ELEMENT_RECORDS_DEFAULT);
+    this(ADD_LIST_ELEMENT_RECORDS_DEFAULT, READ_INT96_AS_FIXED_DEFAULT);
   }
 
   /**
    * Constructor used by {@link AvroRecordConverter#isElementType}, which always
-   * uses the 2-level list conversion.
+   * uses the 2-level list conversion and reads INT96 as 12 byte array.
    *
    * @param assumeRepeatedIsListElement whether to assume 2-level lists
+   * @param readInt96AsFixed whether to read Parquet INT96 as 12 byte array.
    */
-  AvroSchemaConverter(boolean assumeRepeatedIsListElement) {
+  AvroSchemaConverter(boolean assumeRepeatedIsListElement, boolean readInt96AsFixed) {
     this.assumeRepeatedIsListElement = assumeRepeatedIsListElement;
     this.writeOldListStructure = WRITE_OLD_LIST_STRUCTURE_DEFAULT;
     this.writeParquetUUID = WRITE_PARQUET_UUID_DEFAULT;
-    this.readInt96AsFixed = READ_INT96_AS_FIXED_DEFAULT;
+    this.readInt96AsFixed = readInt96AsFixed;
     this.pathsToInt96 = Collections.emptySet();
   }
 
@@ -296,21 +298,24 @@ public class AvroSchemaConverter {
   }
 
   private Schema convertFields(String name, List<Type> parquetFields, Map<String, Integer> names) {
-    String ns = namespace(name, names);
-    List<Schema.Field> fields = new ArrayList<Schema.Field>();
+    SchemaBuilder.FieldAssembler<Schema> builder =
+        SchemaBuilder.builder(namespace(name, names)).record(name).fields();
     for (Type parquetType : parquetFields) {
       Schema fieldSchema = convertField(parquetType, names);
       if (parquetType.isRepetition(REPEATED)) { // If a repeated field is ungrouped, treat as REQUIRED per spec
-        fields.add(new Schema.Field(parquetType.getName(), Schema.createArray(fieldSchema)));
+        builder.name(parquetType.getName())
+            .type()
+            .array()
+            .items()
+            .type(fieldSchema)
+            .arrayDefault(new ArrayList<>());
       } else if (parquetType.isRepetition(Type.Repetition.OPTIONAL)) {
-        fields.add(new Schema.Field(parquetType.getName(), optional(fieldSchema), null, NULL_VALUE));
+        builder.name(parquetType.getName()).type().optional().type(fieldSchema);
       } else { // REQUIRED
-        fields.add(new Schema.Field(parquetType.getName(), fieldSchema, null, (Object) null));
+        builder.name(parquetType.getName()).type(fieldSchema).noDefault();
       }
     }
-    Schema schema = Schema.createRecord(name, null, ns, false);
-    schema.setFields(fields);
-    return schema;
+    return builder.endRecord();
   }
 
   private Schema convertField(final Type parquetType, Map<String, Integer> names) {
@@ -485,15 +490,20 @@ public class AvroSchemaConverter {
       return timeType(true, MICROS);
     } else if (logicalType instanceof LogicalTypes.TimestampMillis) {
       return timestampType(true, MILLIS);
-    } else if (logicalType instanceof LogicalTypes.LocalTimestampMillis) {
-      return timestampType(false, MILLIS);
     } else if (logicalType instanceof LogicalTypes.TimestampMicros) {
       return timestampType(true, MICROS);
-    } else if (logicalType instanceof LogicalTypes.LocalTimestampMicros) {
-      return timestampType(false, MICROS);
     } else if (logicalType.getName().equals(LogicalTypes.uuid().getName()) && writeParquetUUID) {
       return uuidType();
     }
+
+    if (avroVersionSupportsLocalTimestampTypes()) {
+      if (logicalType instanceof LogicalTypes.LocalTimestampMillis) {
+        return timestampType(false, MILLIS);
+      } else if (logicalType instanceof LogicalTypes.LocalTimestampMicros) {
+        return timestampType(false, MICROS);
+      }
+    }
+
     return null;
   }
 
@@ -535,7 +545,7 @@ public class AvroSchemaConverter {
             LogicalTypeAnnotation.TimeUnit unit = timestampLogicalType.getUnit();
             boolean isAdjustedToUTC = timestampLogicalType.isAdjustedToUTC();
 
-            if (isAdjustedToUTC) {
+            if (isAdjustedToUTC || !avroVersionSupportsLocalTimestampTypes()) {
               switch (unit) {
                 case MILLIS:
                   return of(LogicalTypes.timestampMillis());
@@ -601,5 +611,15 @@ public class AvroSchemaConverter {
   private static String namespace(String name, Map<String, Integer> names) {
     Integer nameCount = names.merge(name, 1, (oldValue, value) -> oldValue + 1);
     return nameCount > 1 ? name + nameCount : null;
+  }
+
+  /* Avro <= 1.9 does not support conversions to LocalTimestamp{Micros, Millis} classes */
+  private static boolean avroVersionSupportsLocalTimestampTypes() {
+    final String avroVersion = getRuntimeAvroVersion();
+
+    return avroVersion == null
+        || !(avroVersion.startsWith("1.7.")
+            || avroVersion.startsWith("1.8.")
+            || avroVersion.startsWith("1.9."));
   }
 }

@@ -516,6 +516,11 @@ public class ParquetMetadataConverter {
     }
 
     @Override
+    public Optional<LogicalType> visit(LogicalTypeAnnotation.UnknownLogicalTypeAnnotation intervalLogicalType) {
+      return of(LogicalType.UNKNOWN(new NullType()));
+    }
+
+    @Override
     public Optional<LogicalType> visit(LogicalTypeAnnotation.IntervalLogicalTypeAnnotation intervalLogicalType) {
       return of(LogicalType.UNKNOWN(new NullType()));
     }
@@ -534,8 +539,9 @@ public class ParquetMetadataConverter {
     int columnOrdinal = -1;
     ByteArrayOutputStream tempOutStream = null;
     for (ColumnChunkMetaData columnMetaData : columns) {
-      ColumnChunk columnChunk =
-          new ColumnChunk(columnMetaData.getFirstDataPageOffset()); // verify this is the right offset
+      // There is no ColumnMetaData written after the chunk data, so set the ColumnChunk
+      // file_offset to 0
+      ColumnChunk columnChunk = new ColumnChunk(0);
       columnChunk.file_path = block.getPath(); // they are in the same file for now
       InternalColumnEncryptionSetup columnSetup = null;
       boolean writeCryptoMetadata = false;
@@ -550,14 +556,15 @@ public class ParquetMetadataConverter {
       ColumnMetaData metaData = new ColumnMetaData(
           getType(columnMetaData.getType()),
           toFormatEncodings(columnMetaData.getEncodings()),
-          Arrays.asList(columnMetaData.getPath().toArray()),
+          columnMetaData.getPath().toList(),
           toFormatCodec(columnMetaData.getCodec()),
           columnMetaData.getValueCount(),
           columnMetaData.getTotalUncompressedSize(),
           columnMetaData.getTotalSize(),
           columnMetaData.getFirstDataPageOffset());
-      if (columnMetaData.getEncodingStats() != null
-          && columnMetaData.getEncodingStats().hasDictionaryPages()) {
+      if ((columnMetaData.getEncodingStats() != null
+              && columnMetaData.getEncodingStats().hasDictionaryPages())
+          || columnMetaData.hasDictionaryPage()) {
         metaData.setDictionary_page_offset(columnMetaData.getDictionaryPageOffset());
       }
       long bloomFilterOffset = columnMetaData.getBloomFilterOffset();
@@ -892,7 +899,8 @@ public class ParquetMetadataConverter {
       LogicalTypeAnnotation.StringLogicalTypeAnnotation.class,
       LogicalTypeAnnotation.EnumLogicalTypeAnnotation.class,
       LogicalTypeAnnotation.JsonLogicalTypeAnnotation.class,
-      LogicalTypeAnnotation.Float16LogicalTypeAnnotation.class)));
+      LogicalTypeAnnotation.Float16LogicalTypeAnnotation.class,
+      LogicalTypeAnnotation.UnknownLogicalTypeAnnotation.class)));
 
   /**
    * Returns whether to use signed order min and max with a type. It is safe to
@@ -993,6 +1001,12 @@ public class ParquetMetadataConverter {
             public Optional<SortOrder> visit(
                 LogicalTypeAnnotation.Float16LogicalTypeAnnotation float16LogicalType) {
               return of(SortOrder.SIGNED);
+            }
+
+            @Override
+            public Optional<SortOrder> visit(
+                LogicalTypeAnnotation.UnknownLogicalTypeAnnotation unknownLogicalTypeAnnotation) {
+              return of(SortOrder.UNKNOWN);
             }
 
             @Override
@@ -1165,7 +1179,7 @@ public class ParquetMetadataConverter {
         IntType integer = type.getINTEGER();
         return LogicalTypeAnnotation.intType(integer.bitWidth, integer.isSigned);
       case UNKNOWN:
-        return null;
+        return LogicalTypeAnnotation.unknownType();
       case TIMESTAMP:
         TimestampType timestamp = type.getTIMESTAMP();
         return LogicalTypeAnnotation.timestampType(timestamp.isAdjustedToUTC, convertTimeUnit(timestamp.unit));
@@ -1589,7 +1603,9 @@ public class ParquetMetadataConverter {
 
     ParquetMetadata parquetMetadata =
         fromParquetMetadata(fileMetaData, fileDecryptor, encryptedFooter, rowGroupToRowIndexOffsetMap);
-    if (LOG.isDebugEnabled()) LOG.debug(ParquetMetadata.toPrettyJSON(parquetMetadata));
+    if (LOG.isDebugEnabled()) {
+      LOG.debug(ParquetMetadata.toPrettyJSON(parquetMetadata));
+    }
     return parquetMetadata;
   }
 
@@ -2378,8 +2394,14 @@ public class ParquetMetadataConverter {
       formatStats.setUnencoded_byte_array_data_bytes(
           stats.getUnencodedByteArrayDataBytes().get());
     }
-    formatStats.setRepetition_level_histogram(stats.getRepetitionLevelHistogram());
-    formatStats.setDefinition_level_histogram(stats.getDefinitionLevelHistogram());
+    List<Long> repLevelHistogram = stats.getRepetitionLevelHistogram();
+    if (repLevelHistogram != null && !repLevelHistogram.isEmpty()) {
+      formatStats.setRepetition_level_histogram(repLevelHistogram);
+    }
+    List<Long> defLevelHistogram = stats.getDefinitionLevelHistogram();
+    if (defLevelHistogram != null && !defLevelHistogram.isEmpty()) {
+      formatStats.setDefinition_level_histogram(defLevelHistogram);
+    }
     return formatStats;
   }
 }

@@ -19,6 +19,7 @@
 package org.apache.parquet.column.statistics;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Optional;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
@@ -67,7 +68,7 @@ public class TestSizeStatistics {
     SizeStatistics statistics = builder.build();
     Assert.assertEquals(Optional.empty(), statistics.getUnencodedByteArrayDataBytes());
     Assert.assertEquals(Arrays.asList(2L, 4L), statistics.getRepetitionLevelHistogram());
-    Assert.assertEquals(Arrays.asList(3L, 3L), statistics.getDefinitionLevelHistogram());
+    Assert.assertEquals(Collections.emptyList(), statistics.getDefinitionLevelHistogram());
   }
 
   @Test
@@ -123,5 +124,21 @@ public class TestSizeStatistics {
     Assert.assertEquals(Optional.of(3L), copy.getUnencodedByteArrayDataBytes());
     Assert.assertEquals(Arrays.asList(1L, 1L, 1L), copy.getRepetitionLevelHistogram());
     Assert.assertEquals(Arrays.asList(1L, 1L, 1L), copy.getDefinitionLevelHistogram());
+  }
+
+  @Test
+  public void testOmittedHistogram() {
+    PrimitiveType type = Types.optional(PrimitiveType.PrimitiveTypeName.BINARY)
+        .as(LogicalTypeAnnotation.stringType())
+        .named("a");
+    SizeStatistics statistics = new SizeStatistics(type, 1024L, null, null);
+    Assert.assertEquals(Optional.of(1024L), statistics.getUnencodedByteArrayDataBytes());
+    Assert.assertEquals(Collections.emptyList(), statistics.getRepetitionLevelHistogram());
+    Assert.assertEquals(Collections.emptyList(), statistics.getDefinitionLevelHistogram());
+
+    SizeStatistics copy = statistics.copy();
+    Assert.assertEquals(Optional.of(1024L), copy.getUnencodedByteArrayDataBytes());
+    Assert.assertEquals(Collections.emptyList(), copy.getRepetitionLevelHistogram());
+    Assert.assertEquals(Collections.emptyList(), copy.getDefinitionLevelHistogram());
   }
 }

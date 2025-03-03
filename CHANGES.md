@@ -19,6 +19,8 @@
 
 # Parquet #
 
+From 1.14.2 onwards, the Parquet project has migrated from Jira to GitHub, and the changelogs are now [published under Releases](https://github.com/apache/parquet-java/releases).
+
 ### Version 1.14.1 ###
 
 Release Notes - Parquet - Version 1.14.1

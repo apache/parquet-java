@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.filter2.recordlevel;
 
+import java.util.Arrays;
 import java.util.Objects;
 import org.apache.parquet.io.api.Binary;
 
@@ -142,6 +143,83 @@ public interface IncrementallyUpdatedFilterPredicate {
     @Override
     public boolean accept(Visitor visitor) {
       return visitor.visit(this);
+    }
+  }
+
+  /**
+   * A ValueInspector implementation that keeps state for one or more delegate inspectors.
+   */
+  abstract static class DelegatingValueInspector extends ValueInspector {
+    private final Iterable<ValueInspector> delegates;
+
+    DelegatingValueInspector(ValueInspector... delegates) {
+      this.delegates = Arrays.asList(delegates);
+    }
+
+    /**
+     * Hook called after every value update. Can update state and set result on this ValueInspector.
+     */
+    abstract void onUpdate();
+
+    /**
+     * Hook called after updateNull(), if no values have been recorded for the delegate inspectors.
+     */
+    abstract void onNull();
+
+    Iterable<ValueInspector> getDelegates() {
+      return delegates;
+    }
+
+    @Override
+    public void updateNull() {
+      for (ValueInspector delegate : delegates) {
+        if (!delegate.isKnown()) {
+          delegate.updateNull();
+        }
+      }
+      onNull();
+    }
+
+    @Override
+    public void update(int value) {
+      delegates.forEach(d -> d.update(value));
+      onUpdate();
+    }
+
+    @Override
+    public void update(long value) {
+      delegates.forEach(d -> d.update(value));
+      onUpdate();
+    }
+
+    @Override
+    public void update(boolean value) {
+      delegates.forEach(d -> d.update(value));
+      onUpdate();
+    }
+
+    @Override
+    public void update(float value) {
+      delegates.forEach(d -> d.update(value));
+      onUpdate();
+    }
+
+    @Override
+    public void update(double value) {
+      delegates.forEach(d -> d.update(value));
+      onUpdate();
+    }
+
+    @Override
+    public void update(Binary value) {
+      delegates.forEach(d -> d.update(value));
+      onUpdate();
+    }
+
+    @Override
+    public void reset() {
+      delegates.forEach(ValueInspector::reset);
+      super.reset();
     }
   }
 

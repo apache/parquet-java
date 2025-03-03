@@ -52,7 +52,7 @@ public class SizeStatistics {
    * Builder to create a SizeStatistics.
    */
   public static class Builder {
-    private final PrimitiveType type;
+    protected final PrimitiveType type;
     private long unencodedByteArrayDataBytes;
     private final long[] repetitionLevelHistogram;
     private final long[] definitionLevelHistogram;
@@ -67,8 +67,16 @@ public class SizeStatistics {
     private Builder(PrimitiveType type, int maxRepetitionLevel, int maxDefinitionLevel) {
       this.type = type;
       this.unencodedByteArrayDataBytes = 0L;
-      repetitionLevelHistogram = new long[maxRepetitionLevel + 1];
-      definitionLevelHistogram = new long[maxDefinitionLevel + 1];
+      if (maxRepetitionLevel > 0) {
+        repetitionLevelHistogram = new long[maxRepetitionLevel + 1];
+      } else {
+        repetitionLevelHistogram = new long[0]; // omitted
+      }
+      if (maxDefinitionLevel > 1) {
+        definitionLevelHistogram = new long[maxDefinitionLevel + 1];
+      } else {
+        definitionLevelHistogram = new long[0]; // omitted
+      }
     }
 
     /**
@@ -79,8 +87,12 @@ public class SizeStatistics {
      * @param definitionLevel definition level of the value
      */
     public void add(int repetitionLevel, int definitionLevel) {
-      repetitionLevelHistogram[repetitionLevel]++;
-      definitionLevelHistogram[definitionLevel]++;
+      if (repetitionLevelHistogram.length > 0) {
+        repetitionLevelHistogram[repetitionLevel]++;
+      }
+      if (definitionLevelHistogram.length > 0) {
+        definitionLevelHistogram[definitionLevel]++;
+      }
     }
 
     /**
@@ -136,8 +148,10 @@ public class SizeStatistics {
       List<Long> definitionLevelHistogram) {
     this.type = type;
     this.unencodedByteArrayDataBytes = unencodedByteArrayDataBytes;
-    this.repetitionLevelHistogram = repetitionLevelHistogram;
-    this.definitionLevelHistogram = definitionLevelHistogram;
+    this.repetitionLevelHistogram =
+        repetitionLevelHistogram == null ? Collections.emptyList() : repetitionLevelHistogram;
+    this.definitionLevelHistogram =
+        definitionLevelHistogram == null ? Collections.emptyList() : definitionLevelHistogram;
   }
 
   /**
@@ -160,16 +174,29 @@ public class SizeStatistics {
 
     Preconditions.checkArgument(type.equals(other.type), "Cannot merge SizeStatistics of different types");
     unencodedByteArrayDataBytes = Math.addExact(unencodedByteArrayDataBytes, other.unencodedByteArrayDataBytes);
-    for (int i = 0; i < repetitionLevelHistogram.size(); i++) {
-      repetitionLevelHistogram.set(
-          i, Math.addExact(repetitionLevelHistogram.get(i), other.repetitionLevelHistogram.get(i)));
+
+    if (other.repetitionLevelHistogram.isEmpty()) {
+      repetitionLevelHistogram.clear();
+    } else {
+      Preconditions.checkArgument(
+          repetitionLevelHistogram.size() == other.repetitionLevelHistogram.size(),
+          "Cannot merge SizeStatistics with different repetition level histogram size");
+      for (int i = 0; i < repetitionLevelHistogram.size(); i++) {
+        repetitionLevelHistogram.set(
+            i, Math.addExact(repetitionLevelHistogram.get(i), other.repetitionLevelHistogram.get(i)));
+      }
     }
-    for (int i = 0; i < definitionLevelHistogram.size(); i++) {
-      definitionLevelHistogram.set(
-          i,
-          Math.addExact(
-              definitionLevelHistogram.get(i),
-              other.getDefinitionLevelHistogram().get(i)));
+
+    if (other.definitionLevelHistogram.isEmpty()) {
+      definitionLevelHistogram.clear();
+    } else {
+      Preconditions.checkArgument(
+          definitionLevelHistogram.size() == other.definitionLevelHistogram.size(),
+          "Cannot merge SizeStatistics with different definition level histogram size");
+      for (int i = 0; i < definitionLevelHistogram.size(); i++) {
+        definitionLevelHistogram.set(
+            i, Math.addExact(definitionLevelHistogram.get(i), other.definitionLevelHistogram.get(i)));
+      }
     }
   }
 
@@ -256,5 +283,39 @@ public class SizeStatistics {
    */
   public boolean isValid() {
     return valid;
+  }
+
+  /**
+   * Creates a no-op size statistics builder that collects no data.
+   * Used when size statistics collection is disabled.
+   */
+  private static class NoopBuilder extends Builder {
+    private NoopBuilder(PrimitiveType type, int maxRepetitionLevel, int maxDefinitionLevel) {
+      super(type, maxRepetitionLevel, maxDefinitionLevel);
+    }
+
+    @Override
+    public void add(int repetitionLevel, int definitionLevel) {
+      // Do nothing
+    }
+
+    @Override
+    public void add(int repetitionLevel, int definitionLevel, Binary value) {
+      // Do nothing
+    }
+
+    @Override
+    public SizeStatistics build() {
+      SizeStatistics stats = new SizeStatistics(type, 0L, Collections.emptyList(), Collections.emptyList());
+      stats.valid = false; // Mark as invalid since this is a noop builder
+      return stats;
+    }
+  }
+
+  /**
+   * Creates a builder that doesn't collect any statistics.
+   */
+  public static Builder noopBuilder(PrimitiveType type, int maxRepetitionLevel, int maxDefinitionLevel) {
+    return new NoopBuilder(type, maxRepetitionLevel, maxDefinitionLevel);
   }
 }

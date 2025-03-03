@@ -18,14 +18,16 @@
  */
 package org.apache.parquet.statistics;
 
+import com.google.common.collect.ImmutableSet;
 import java.io.File;
 import java.io.IOException;
+import java.util.Set;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.hadoop.ParquetWriter;
-import org.apache.parquet.hadoop.example.GroupWriteSupport;
+import org.apache.parquet.hadoop.example.ExampleParquetWriter;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.schema.MessageType;
 
@@ -39,6 +41,31 @@ public class DataGenerationContext {
     protected final boolean enableDictionary;
     protected final boolean enableValidation;
     protected final ParquetProperties.WriterVersion version;
+    protected final Set<String> disableColumnStatistics;
+    protected final boolean disableAllStatistics;
+
+    public WriteContext(
+        File path,
+        MessageType schema,
+        int blockSize,
+        int pageSize,
+        boolean enableDictionary,
+        boolean enableValidation,
+        ParquetProperties.WriterVersion version,
+        Set<String> disableColumnStatistics,
+        boolean disableAllStatistics)
+        throws IOException {
+      this.path = path;
+      this.fsPath = new Path(path.toString());
+      this.schema = schema;
+      this.blockSize = blockSize;
+      this.pageSize = pageSize;
+      this.enableDictionary = enableDictionary;
+      this.enableValidation = enableValidation;
+      this.version = version;
+      this.disableColumnStatistics = disableColumnStatistics;
+      this.disableAllStatistics = disableAllStatistics;
+    }
 
     public WriteContext(
         File path,
@@ -49,14 +76,38 @@ public class DataGenerationContext {
         boolean enableValidation,
         ParquetProperties.WriterVersion version)
         throws IOException {
-      this.path = path;
-      this.fsPath = new Path(path.toString());
-      this.schema = schema;
-      this.blockSize = blockSize;
-      this.pageSize = pageSize;
-      this.enableDictionary = enableDictionary;
-      this.enableValidation = enableValidation;
-      this.version = version;
+      this(
+          path,
+          schema,
+          blockSize,
+          pageSize,
+          enableDictionary,
+          enableValidation,
+          version,
+          ImmutableSet.of(),
+          false);
+    }
+
+    public WriteContext(
+        File path,
+        MessageType schema,
+        int blockSize,
+        int pageSize,
+        boolean enableDictionary,
+        boolean enableValidation,
+        ParquetProperties.WriterVersion version,
+        Set<String> disableColumnStatistics)
+        throws IOException {
+      this(
+          path,
+          schema,
+          blockSize,
+          pageSize,
+          enableDictionary,
+          enableValidation,
+          version,
+          disableColumnStatistics,
+          false);
     }
 
     public abstract void write(ParquetWriter<Group> writer) throws IOException;
@@ -67,8 +118,6 @@ public class DataGenerationContext {
   public static void writeAndTest(WriteContext context) throws IOException {
     // Create the configuration, and then apply the schema to our configuration.
     Configuration configuration = new Configuration();
-    GroupWriteSupport.setSchema(context.schema, configuration);
-    GroupWriteSupport groupWriteSupport = new GroupWriteSupport();
 
     // Create the writer properties
     final int blockSize = context.blockSize;
@@ -79,17 +128,17 @@ public class DataGenerationContext {
     ParquetProperties.WriterVersion writerVersion = context.version;
     CompressionCodecName codec = CompressionCodecName.UNCOMPRESSED;
 
-    try (ParquetWriter<Group> writer = new ParquetWriter<Group>(
-        context.fsPath,
-        groupWriteSupport,
-        codec,
-        blockSize,
-        pageSize,
-        dictionaryPageSize,
-        enableDictionary,
-        enableValidation,
-        writerVersion,
-        configuration)) {
+    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(context.fsPath)
+        .withType(context.schema)
+        .withCompressionCodec(codec)
+        .withRowGroupSize(blockSize)
+        .withPageSize(pageSize)
+        .withDictionaryPageSize(dictionaryPageSize)
+        .withDictionaryEncoding(enableDictionary)
+        .withValidation(enableValidation)
+        .withWriterVersion(writerVersion)
+        .withConf(configuration)
+        .build()) {
       context.write(writer);
     }
 

@@ -88,12 +88,20 @@ public class TestAvroRecordConverter {
   public void testModelForSpecificRecordWithLogicalTypesWithDeprecatedAvro1_8() {
     Mockito.when(AvroRecordConverter.getRuntimeAvroVersion()).thenReturn("1.8.2");
 
-    // Test that model is generated correctly
-    final SpecificData model = AvroRecordConverter.getModelForSchema(LogicalTypesTestDeprecated.SCHEMA$);
+    // Test that model is generated correctly when record contains both top-level and nested logical types
+    SpecificData model = AvroRecordConverter.getModelForSchema(LogicalTypesTestDeprecated.SCHEMA$);
     // Test that model is generated correctly
     Collection<Conversion<?>> conversions = model.getConversions();
-    assertEquals(conversions.size(), 3);
+    assertEquals(3, conversions.size());
     assertNotNull(model.getConversionByClass(Instant.class));
+    assertNotNull(model.getConversionByClass(LocalDate.class));
+    assertNotNull(model.getConversionByClass(LocalTime.class));
+
+    // Test that model is generated correctly when record contains only nested logical types
+    model = AvroRecordConverter.getModelForSchema(NestedOnlyLogicalTypesDeprecated.SCHEMA$);
+    // Test that model is generated correctly
+    conversions = model.getConversions();
+    assertEquals(2, conversions.size());
     assertNotNull(model.getConversionByClass(LocalDate.class));
     assertNotNull(model.getConversionByClass(LocalTime.class));
   }
@@ -147,6 +155,7 @@ public class TestAvroRecordConverter {
     };
   }
 
+  // An Avro class generated from Avro 1.8 that contains both nested and top-level logical type fields
   @org.apache.avro.specific.AvroGenerated
   public abstract static class LogicalTypesTestDeprecated extends org.apache.avro.specific.SpecificRecordBase
       implements org.apache.avro.specific.SpecificRecord {
@@ -178,5 +187,27 @@ public class TestAvroRecordConverter {
     private static final org.apache.avro.Conversion<?>[] conversions = new org.apache.avro.Conversion<?>[] {
       new org.apache.avro.data.TimeConversions.TimestampMillisConversion(), null, null
     };
+  }
+
+  // An Avro class generated from Avro 1.8 that contains only nested logical type fields
+  @org.apache.avro.specific.AvroGenerated
+  public abstract static class NestedOnlyLogicalTypesDeprecated extends org.apache.avro.specific.SpecificRecordBase
+      implements org.apache.avro.specific.SpecificRecord {
+    public static final org.apache.avro.Schema SCHEMA$ = SchemaBuilder.builder()
+        .record("NestedOnlyLogicalTypesDeprecated")
+        .namespace("org.apache.parquet.avro.TestAvroRecordConverter")
+        .fields()
+        .name("local_date_time")
+        .type(LocalDateTimeTestDeprecated.getClassSchema())
+        .noDefault()
+        .endRecord();
+
+    public static org.apache.avro.Schema getClassSchema() {
+      return SCHEMA$;
+    }
+
+    private static SpecificData MODEL$ = new SpecificData();
+
+    // No top-level conversions field, since logical types are all nested
   }
 }

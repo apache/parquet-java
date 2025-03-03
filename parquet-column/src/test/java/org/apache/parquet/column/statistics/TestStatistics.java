@@ -30,9 +30,11 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FLOAT;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT96;
+import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import java.nio.ByteBuffer;
@@ -899,5 +901,30 @@ public class TestStatistics {
         .build();
     assertEquals(0, Double.compare(-0.0, (Double) stats.genericGetMin()));
     assertEquals(0, Double.compare(0.0, (Double) stats.genericGetMax()));
+  }
+
+  @Test
+  public void testNoopStatistics() {
+    // Test basic max/min
+    integerArray = new int[] {1, 3, 14, 54, 66, 8, 0, 23, 54};
+    Statistics<?> stats = Statistics.noopStats(new PrimitiveType(REQUIRED, INT32, "int32"));
+    assertTrue(stats.isEmpty());
+
+    for (int i : integerArray) {
+      stats.updateStats(i);
+    }
+
+    assertEquals(stats.getNumNulls(), -1);
+    assertFalse(stats.hasNonNullValue());
+    assertFalse(stats.isNumNullsSet());
+    assertTrue(stats.isEmpty());
+
+    assertThrows(UnsupportedOperationException.class, stats::genericGetMax);
+    assertThrows(UnsupportedOperationException.class, stats::genericGetMin);
+    assertThrows(UnsupportedOperationException.class, stats::getMaxBytes);
+    assertThrows(UnsupportedOperationException.class, stats::getMinBytes);
+    assertThrows(UnsupportedOperationException.class, stats::maxAsString);
+    assertThrows(UnsupportedOperationException.class, stats::minAsString);
+    assertThrows(UnsupportedOperationException.class, () -> stats.isSmallerThan(0));
   }
 }

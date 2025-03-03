@@ -21,7 +21,7 @@
     <groupId>org.apache.parquet</groupId>
     <artifactId>parquet</artifactId>
     <relativePath>../pom.xml</relativePath>
-    <version>1.15.0-SNAPSHOT</version>
+    <version>1.16.0-SNAPSHOT</version>
   </parent>
 
   <modelVersion>4.0.0</modelVersion>
@@ -33,7 +33,7 @@
   <url>https://parquet.apache.org</url>
 
   <properties>
-    <arrow.version>16.1.0</arrow.version>
+    <arrow.version>17.0.0</arrow.version>
   </properties>
 
   <dependencies>
