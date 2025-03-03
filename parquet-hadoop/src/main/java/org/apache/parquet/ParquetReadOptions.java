@@ -23,6 +23,7 @@ import static org.apache.parquet.format.converter.ParquetMetadataConverter.NO_FI
 import static org.apache.parquet.hadoop.ParquetInputFormat.BLOOM_FILTERING_ENABLED;
 import static org.apache.parquet.hadoop.ParquetInputFormat.COLUMN_INDEX_FILTERING_ENABLED;
 import static org.apache.parquet.hadoop.ParquetInputFormat.DICTIONARY_FILTERING_ENABLED;
+import static org.apache.parquet.hadoop.ParquetInputFormat.HADOOP_VECTORED_IO_DEFAULT;
 import static org.apache.parquet.hadoop.ParquetInputFormat.HADOOP_VECTORED_IO_ENABLED;
 import static org.apache.parquet.hadoop.ParquetInputFormat.OFF_HEAP_DECRYPT_BUFFER_ENABLED;
 import static org.apache.parquet.hadoop.ParquetInputFormat.PAGE_VERIFY_CHECKSUM_ENABLED;
@@ -56,7 +57,6 @@ public class ParquetReadOptions {
   private static final boolean STATS_FILTERING_ENABLED_DEFAULT = true;
   private static final boolean DICTIONARY_FILTERING_ENABLED_DEFAULT = true;
   private static final boolean COLUMN_INDEX_FILTERING_ENABLED_DEFAULT = true;
-  private static final boolean HADOOP_VECTORED_IO_ENABLED_DEFAULT = false;
   private static final int ALLOCATION_SIZE_DEFAULT = 8388608; // 8MB
   private static final boolean PAGE_VERIFY_CHECKSUM_ENABLED_DEFAULT = false;
   private static final boolean BLOOM_FILTER_ENABLED_DEFAULT = true;
@@ -253,7 +253,7 @@ public class ParquetReadOptions {
     protected boolean useStatsFilter = STATS_FILTERING_ENABLED_DEFAULT;
     protected boolean useDictionaryFilter = DICTIONARY_FILTERING_ENABLED_DEFAULT;
     protected boolean useRecordFilter = RECORD_FILTERING_ENABLED_DEFAULT;
-    protected boolean useHadoopVectoredIo = HADOOP_VECTORED_IO_ENABLED_DEFAULT;
+    protected boolean useHadoopVectoredIo = HADOOP_VECTORED_IO_DEFAULT;
     protected boolean useColumnIndexFilter = COLUMN_INDEX_FILTERING_ENABLED_DEFAULT;
     protected boolean usePageChecksumVerification = PAGE_VERIFY_CHECKSUM_ENABLED_DEFAULT;
     protected boolean useBloomFilter = BLOOM_FILTER_ENABLED_DEFAULT;
@@ -286,7 +286,7 @@ public class ParquetReadOptions {
       withCodecFactory(HadoopCodecs.newFactory(conf, 0));
       withRecordFilter(getFilter(conf));
       withMaxAllocationInBytes(conf.getInt(ALLOCATION_SIZE, 8388608));
-      withUseHadoopVectoredIo(conf.getBoolean(HADOOP_VECTORED_IO_ENABLED, HADOOP_VECTORED_IO_ENABLED_DEFAULT));
+      withUseHadoopVectoredIo(conf.getBoolean(HADOOP_VECTORED_IO_ENABLED, HADOOP_VECTORED_IO_DEFAULT));
       String badRecordThresh = conf.get(BAD_RECORD_THRESHOLD_CONF_KEY);
       if (badRecordThresh != null) {
         set(BAD_RECORD_THRESHOLD_CONF_KEY, badRecordThresh);
