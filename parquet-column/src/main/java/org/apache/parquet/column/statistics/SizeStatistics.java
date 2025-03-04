@@ -136,8 +136,10 @@ public class SizeStatistics {
       List<Long> definitionLevelHistogram) {
     this.type = type;
     this.unencodedByteArrayDataBytes = unencodedByteArrayDataBytes;
-    this.repetitionLevelHistogram = repetitionLevelHistogram;
-    this.definitionLevelHistogram = definitionLevelHistogram;
+    this.repetitionLevelHistogram =
+        repetitionLevelHistogram == null ? Collections.emptyList() : repetitionLevelHistogram;
+    this.definitionLevelHistogram =
+        definitionLevelHistogram == null ? Collections.emptyList() : definitionLevelHistogram;
   }
 
   /**
