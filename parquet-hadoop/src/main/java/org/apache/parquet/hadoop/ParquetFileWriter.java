@@ -2063,7 +2063,7 @@ public class ParquetFileWriter implements AutoCloseable {
       out.write(serializedFooter);
       out.write(signature);
       LOG.debug("{}: footer and signature length = {}", out.getPos(), (out.getPos() - footerIndex));
-      BytesUtils.writeIntLittleEndian(out, toIntWithCheck(out.getPos() - footerIndex, "page"));
+      BytesUtils.writeIntLittleEndian(out, toIntWithCheck(out.getPos() - footerIndex, "footer"));
       out.write(MAGIC);
       return;
     }
@@ -2073,7 +2073,7 @@ public class ParquetFileWriter implements AutoCloseable {
     writeFileCryptoMetaData(fileEncryptor.getFileCryptoMetaData(), out);
     byte[] footerAAD = AesCipher.createFooterAAD(fileEncryptor.getFileAAD());
     writeFileMetaData(parquetMetadata, out, fileEncryptor.getFooterEncryptor(), footerAAD);
-    int combinedMetaDataLength = toIntWithCheck(out.getPos() - cryptoFooterIndex, "page");
+    int combinedMetaDataLength = toIntWithCheck(out.getPos() - cryptoFooterIndex, "footer");
     LOG.debug("{}: crypto metadata and footer length = {}", out.getPos(), combinedMetaDataLength);
     BytesUtils.writeIntLittleEndian(out, combinedMetaDataLength);
     out.write(EFMAGIC);
