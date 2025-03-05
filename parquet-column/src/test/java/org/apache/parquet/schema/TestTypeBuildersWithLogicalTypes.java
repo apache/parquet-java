@@ -41,6 +41,8 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT96;
 import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 import java.util.concurrent.Callable;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
@@ -471,6 +473,29 @@ public class TestTypeBuildersWithLogicalTypes {
         .as(float16Type())
         .named("float16_field")
         .toString());
+  }
+
+  @Test
+  public void testVariantLogicalType() {
+    String name = "variant_field";
+    GroupType variant = new GroupType(
+        REQUIRED,
+        name,
+        LogicalTypeAnnotation.variantType(),
+        Types.required(BINARY).named("metadata"),
+        Types.required(BINARY).named("value"));
+
+    assertEquals(
+        "required group variant_field (VARIANT) {\n"
+            + "  required binary metadata;\n"
+            + "  required binary value;\n"
+            + "}",
+        variant.toString());
+
+    LogicalTypeAnnotation annotation = variant.getLogicalTypeAnnotation();
+    assertEquals(LogicalTypeAnnotation.LogicalTypeToken.VARIANT, annotation.getType());
+    assertNull(annotation.toOriginalType());
+    assertTrue(annotation instanceof LogicalTypeAnnotation.VariantLogicalTypeAnnotation);
   }
 
   /**
