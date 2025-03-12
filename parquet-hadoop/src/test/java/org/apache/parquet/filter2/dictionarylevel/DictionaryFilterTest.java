@@ -120,39 +120,39 @@ public class DictionaryFilterTest {
 
   private static final String ALPHABET = "abcdefghijklmnopqrstuvwxyz";
   private static final int[] intValues = new int[] {
-      -100, 302, 3333333, 7654321, 1234567, -2000, -77775, 0, 75, 22223,
-      77, 22221, -444443, 205, 12, 44444, 889, 66665, -777889, -7,
-      52, 33, -257, 1111, 775, 26
+    -100, 302, 3333333, 7654321, 1234567, -2000, -77775, 0, 75, 22223,
+    77, 22221, -444443, 205, 12, 44444, 889, 66665, -777889, -7,
+    52, 33, -257, 1111, 775, 26
   };
   private static final long[] longValues = new long[] {
-      -100L, 302L, 3333333L, 7654321L, 1234567L, -2000L, -77775L, 0L, 75L, 22223L, 77L, 22221L, -444443L, 205L, 12L,
-      44444L, 889L, 66665L, -777889L, -7L, 52L, 33L, -257L, 1111L, 775L, 26L
+    -100L, 302L, 3333333L, 7654321L, 1234567L, -2000L, -77775L, 0L, 75L, 22223L, 77L, 22221L, -444443L, 205L, 12L,
+    44444L, 889L, 66665L, -777889L, -7L, 52L, 33L, -257L, 1111L, 775L, 26L
   };
   private static final Binary[] DECIMAL_VALUES = new Binary[] {
-      toBinary("-9999999999999999999999999999999999999999", 17),
-      toBinary("-9999999999999999999999999999999999999998", 17),
-      toBinary(BigInteger.valueOf(Long.MIN_VALUE).subtract(BigInteger.ONE), 17),
-      toBinary(BigInteger.valueOf(Long.MIN_VALUE), 17),
-      toBinary(BigInteger.valueOf(Long.MIN_VALUE).add(BigInteger.ONE), 17),
-      toBinary("-1", 17),
-      toBinary("0", 17),
-      toBinary(BigInteger.valueOf(Long.MAX_VALUE).subtract(BigInteger.ONE), 17),
-      toBinary(BigInteger.valueOf(Long.MAX_VALUE), 17),
-      toBinary(BigInteger.valueOf(Long.MAX_VALUE).add(BigInteger.ONE), 17),
-      toBinary("999999999999999999999999999999999999999", 17),
-      toBinary("9999999999999999999999999999999999999998", 17),
-      toBinary("9999999999999999999999999999999999999999", 17)
+    toBinary("-9999999999999999999999999999999999999999", 17),
+    toBinary("-9999999999999999999999999999999999999998", 17),
+    toBinary(BigInteger.valueOf(Long.MIN_VALUE).subtract(BigInteger.ONE), 17),
+    toBinary(BigInteger.valueOf(Long.MIN_VALUE), 17),
+    toBinary(BigInteger.valueOf(Long.MIN_VALUE).add(BigInteger.ONE), 17),
+    toBinary("-1", 17),
+    toBinary("0", 17),
+    toBinary(BigInteger.valueOf(Long.MAX_VALUE).subtract(BigInteger.ONE), 17),
+    toBinary(BigInteger.valueOf(Long.MAX_VALUE), 17),
+    toBinary(BigInteger.valueOf(Long.MAX_VALUE).add(BigInteger.ONE), 17),
+    toBinary("999999999999999999999999999999999999999", 17),
+    toBinary("9999999999999999999999999999999999999998", 17),
+    toBinary("9999999999999999999999999999999999999999", 17)
   };
   private static final Binary[] INT96_VALUES = new Binary[] {
-      toBinary("-9999999999999999999999999999", 12),
-      toBinary("-9999999999999999999999999998", 12),
-      toBinary("-1234567890", 12),
-      toBinary("-1", 12),
-      toBinary("-0", 12),
-      toBinary("1", 12),
-      toBinary("1234567890", 12),
-      toBinary("-9999999999999999999999999998", 12),
-      toBinary("9999999999999999999999999999", 12)
+    toBinary("-9999999999999999999999999999", 12),
+    toBinary("-9999999999999999999999999998", 12),
+    toBinary("-1234567890", 12),
+    toBinary("-1", 12),
+    toBinary("-0", 12),
+    toBinary("1", 12),
+    toBinary("1234567890", 12),
+    toBinary("-9999999999999999999999999998", 12),
+    toBinary("9999999999999999999999999999", 12)
   };
 
   private static Binary toBinary(String decimalWithoutScale, int byteCount) {
