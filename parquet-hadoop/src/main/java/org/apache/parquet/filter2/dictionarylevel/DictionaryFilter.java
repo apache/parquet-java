@@ -529,6 +529,10 @@ public class DictionaryFilter implements FilterPredicate.Visitor<Boolean> {
       return BLOCK_MIGHT_MATCH;
     }
 
+    if (udp.acceptsNullValue()) {
+      return BLOCK_MIGHT_MATCH;
+    }
+
     try {
       Set<T> dictSet = expandDictionary(meta);
       if (dictSet == null) {

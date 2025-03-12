@@ -106,6 +106,7 @@ public class DictionaryFilterTest {
       + "required binary binary_field; "
       + "required binary single_value_field; "
       + "optional binary optional_single_value_field; "
+      + "optional int32 optional_single_value_int32_field;"
       + "required fixed_len_byte_array(17) fixed_field (DECIMAL(40,4)); "
       + "required int32 int32_field; "
       + "required int64 int64_field; "
@@ -119,39 +120,39 @@ public class DictionaryFilterTest {
 
   private static final String ALPHABET = "abcdefghijklmnopqrstuvwxyz";
   private static final int[] intValues = new int[] {
-    -100, 302, 3333333, 7654321, 1234567, -2000, -77775, 0, 75, 22223,
-    77, 22221, -444443, 205, 12, 44444, 889, 66665, -777889, -7,
-    52, 33, -257, 1111, 775, 26
+      -100, 302, 3333333, 7654321, 1234567, -2000, -77775, 0, 75, 22223,
+      77, 22221, -444443, 205, 12, 44444, 889, 66665, -777889, -7,
+      52, 33, -257, 1111, 775, 26
   };
   private static final long[] longValues = new long[] {
-    -100L, 302L, 3333333L, 7654321L, 1234567L, -2000L, -77775L, 0L, 75L, 22223L, 77L, 22221L, -444443L, 205L, 12L,
-    44444L, 889L, 66665L, -777889L, -7L, 52L, 33L, -257L, 1111L, 775L, 26L
+      -100L, 302L, 3333333L, 7654321L, 1234567L, -2000L, -77775L, 0L, 75L, 22223L, 77L, 22221L, -444443L, 205L, 12L,
+      44444L, 889L, 66665L, -777889L, -7L, 52L, 33L, -257L, 1111L, 775L, 26L
   };
   private static final Binary[] DECIMAL_VALUES = new Binary[] {
-    toBinary("-9999999999999999999999999999999999999999", 17),
-    toBinary("-9999999999999999999999999999999999999998", 17),
-    toBinary(BigInteger.valueOf(Long.MIN_VALUE).subtract(BigInteger.ONE), 17),
-    toBinary(BigInteger.valueOf(Long.MIN_VALUE), 17),
-    toBinary(BigInteger.valueOf(Long.MIN_VALUE).add(BigInteger.ONE), 17),
-    toBinary("-1", 17),
-    toBinary("0", 17),
-    toBinary(BigInteger.valueOf(Long.MAX_VALUE).subtract(BigInteger.ONE), 17),
-    toBinary(BigInteger.valueOf(Long.MAX_VALUE), 17),
-    toBinary(BigInteger.valueOf(Long.MAX_VALUE).add(BigInteger.ONE), 17),
-    toBinary("999999999999999999999999999999999999999", 17),
-    toBinary("9999999999999999999999999999999999999998", 17),
-    toBinary("9999999999999999999999999999999999999999", 17)
+      toBinary("-9999999999999999999999999999999999999999", 17),
+      toBinary("-9999999999999999999999999999999999999998", 17),
+      toBinary(BigInteger.valueOf(Long.MIN_VALUE).subtract(BigInteger.ONE), 17),
+      toBinary(BigInteger.valueOf(Long.MIN_VALUE), 17),
+      toBinary(BigInteger.valueOf(Long.MIN_VALUE).add(BigInteger.ONE), 17),
+      toBinary("-1", 17),
+      toBinary("0", 17),
+      toBinary(BigInteger.valueOf(Long.MAX_VALUE).subtract(BigInteger.ONE), 17),
+      toBinary(BigInteger.valueOf(Long.MAX_VALUE), 17),
+      toBinary(BigInteger.valueOf(Long.MAX_VALUE).add(BigInteger.ONE), 17),
+      toBinary("999999999999999999999999999999999999999", 17),
+      toBinary("9999999999999999999999999999999999999998", 17),
+      toBinary("9999999999999999999999999999999999999999", 17)
   };
   private static final Binary[] INT96_VALUES = new Binary[] {
-    toBinary("-9999999999999999999999999999", 12),
-    toBinary("-9999999999999999999999999998", 12),
-    toBinary("-1234567890", 12),
-    toBinary("-1", 12),
-    toBinary("-0", 12),
-    toBinary("1", 12),
-    toBinary("1234567890", 12),
-    toBinary("-9999999999999999999999999998", 12),
-    toBinary("9999999999999999999999999999", 12)
+      toBinary("-9999999999999999999999999999", 12),
+      toBinary("-9999999999999999999999999998", 12),
+      toBinary("-1234567890", 12),
+      toBinary("-1", 12),
+      toBinary("-0", 12),
+      toBinary("1", 12),
+      toBinary("1234567890", 12),
+      toBinary("-9999999999999999999999999998", 12),
+      toBinary("9999999999999999999999999999", 12)
   };
 
   private static Binary toBinary(String decimalWithoutScale, int byteCount) {
@@ -194,6 +195,7 @@ public class DictionaryFilterTest {
       // 10% of the time, leave the field null
       if (index % 10 > 0) {
         group.append("optional_single_value_field", "sharp");
+        group.append("optional_single_value_int32_field", 42);
       }
 
       writer.write(group);
@@ -290,6 +292,7 @@ public class DictionaryFilterTest {
         "binary_field",
         "single_value_field",
         "optional_single_value_field",
+        "optional_single_value_int32_field",
         "int32_field",
         "int64_field",
         "double_field",
@@ -327,6 +330,7 @@ public class DictionaryFilterTest {
         "binary_field",
         "single_value_field",
         "optional_single_value_field",
+        "optional_single_value_int32_field",
         "fixed_field",
         "int32_field",
         "int64_field",
@@ -668,6 +672,22 @@ public class DictionaryFilterTest {
     assertFalse(
         "Should not drop block for matching UDP",
         canDrop(userDefined(intColumn("int32_field"), undroppable), ccmd, dictionaries));
+  }
+
+  @Test
+  public void testNullAcceptingUdp() throws Exception {
+    InInt32UDP drop42DenyNulls = new InInt32UDP(Sets.newHashSet( 205));
+    InInt32UDP drop42AcceptNulls = new InInt32UDP(Sets.newHashSet(null, 205));
+
+    // A column with value 42 and 10% nulls
+    IntColumn intColumnWithNulls = intColumn("optional_single_value_int32_field");
+
+    assertTrue(
+        "Should drop block",
+        canDrop(userDefined(intColumnWithNulls, drop42DenyNulls), ccmd, dictionaries));
+    assertFalse(
+        "Should not drop block for null accepting udp",
+        canDrop(userDefined(intColumnWithNulls, drop42AcceptNulls), ccmd, dictionaries));
   }
 
   @Test
