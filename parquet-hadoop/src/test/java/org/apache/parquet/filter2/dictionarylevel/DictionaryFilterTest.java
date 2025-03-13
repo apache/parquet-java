@@ -676,15 +676,13 @@ public class DictionaryFilterTest {
 
   @Test
   public void testNullAcceptingUdp() throws Exception {
-    InInt32UDP drop42DenyNulls = new InInt32UDP(Sets.newHashSet( 205));
+    InInt32UDP drop42DenyNulls = new InInt32UDP(Sets.newHashSet(205));
     InInt32UDP drop42AcceptNulls = new InInt32UDP(Sets.newHashSet(null, 205));
 
     // A column with value 42 and 10% nulls
     IntColumn intColumnWithNulls = intColumn("optional_single_value_int32_field");
 
-    assertTrue(
-        "Should drop block",
-        canDrop(userDefined(intColumnWithNulls, drop42DenyNulls), ccmd, dictionaries));
+    assertTrue("Should drop block", canDrop(userDefined(intColumnWithNulls, drop42DenyNulls), ccmd, dictionaries));
     assertFalse(
         "Should not drop block for null accepting udp",
         canDrop(userDefined(intColumnWithNulls, drop42AcceptNulls), ccmd, dictionaries));
