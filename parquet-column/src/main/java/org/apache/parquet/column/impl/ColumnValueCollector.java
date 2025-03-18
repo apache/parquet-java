@@ -40,6 +40,7 @@ class ColumnValueCollector {
   private final boolean statisticsEnabled;
   private final boolean sizeStatisticsEnabled;
   private final boolean geospatialStatisticsEnabled;
+  private final boolean geospatialStatisticsBBoxWraparoundEnabled;
   private BloomFilterWriter bloomFilterWriter;
   private BloomFilter bloomFilter;
   private Statistics<?> statistics;
@@ -51,6 +52,7 @@ class ColumnValueCollector {
     this.statisticsEnabled = props.getStatisticsEnabled(path);
     this.sizeStatisticsEnabled = props.getSizeStatisticsEnabled(path);
     this.geospatialStatisticsEnabled = props.getGeoSpatialStatisticsEnabled(path);
+    this.geospatialStatisticsBBoxWraparoundEnabled = props.getGeoSpatialStatisticsBBoxWraparoundEnabled(path);
     resetPageStatistics();
     initBloomFilter(bloomFilterWriter, props);
   }
@@ -65,7 +67,7 @@ class ColumnValueCollector {
         : SizeStatistics.noopBuilder(
             path.getPrimitiveType(), path.getMaxRepetitionLevel(), path.getMaxDefinitionLevel());
     this.geospatialStatisticsBuilder = geospatialStatisticsEnabled
-        ? GeospatialStatistics.newBuilder(path.getPrimitiveType())
+        ? GeospatialStatistics.newBuilder(path.getPrimitiveType(), geospatialStatisticsBBoxWraparoundEnabled)
         : GeospatialStatistics.noopBuilder();
   }
 

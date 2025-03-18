@@ -65,7 +65,9 @@ public class ParquetProperties {
   public static final int DEFAULT_BLOOM_FILTER_CANDIDATES_NUMBER = 5;
   public static final boolean DEFAULT_STATISTICS_ENABLED = true;
   public static final boolean DEFAULT_SIZE_STATISTICS_ENABLED = true;
+  public static final boolean DEFAULT_GEO_STATISTICS_ENABLED = true;
   public static final boolean DEFAULT_GEOSPATIAL_STATISTICS_ENABLED = true;
+  public static final boolean DEFAULT_GEO_STATISTICS_WRAPAROUNDENABLED = true;
 
   public static final boolean DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED = true;
 
@@ -116,6 +118,7 @@ public class ParquetProperties {
   private final boolean statisticsEnabled;
   private final boolean sizeStatisticsEnabled;
   private final boolean geospatialStatisticsEnabled;
+  private final boolean geospatialStatisticsBBoxWraparoundEnabled;
 
   // The expected NDV (number of distinct values) for each columns
   private final ColumnProperty<Long> bloomFilterNDVs;
@@ -131,6 +134,7 @@ public class ParquetProperties {
   private final ColumnProperty<Boolean> statistics;
   private final ColumnProperty<Boolean> sizeStatistics;
   private final ColumnProperty<Boolean> geospatialStatistics;
+  private final ColumnProperty<Boolean> geospatialStatisticsBBoxWraparound;
 
   private ParquetProperties(Builder builder) {
     this.pageSizeThreshold = builder.pageSize;
@@ -151,6 +155,7 @@ public class ParquetProperties {
     this.statisticsEnabled = builder.statisticsEnabled;
     this.sizeStatisticsEnabled = builder.sizeStatisticsEnabled;
     this.geospatialStatisticsEnabled = builder.geospatialStatisticsEnabled;
+    this.geospatialStatisticsBBoxWraparoundEnabled = builder.geospatialStatisticsBBoxWraparoundEnable;
     this.bloomFilterNDVs = builder.bloomFilterNDVs.build();
     this.bloomFilterFPPs = builder.bloomFilterFPPs.build();
     this.bloomFilterEnabled = builder.bloomFilterEnabled.build();
@@ -164,6 +169,7 @@ public class ParquetProperties {
     this.statistics = builder.statistics.build();
     this.sizeStatistics = builder.sizeStatistics.build();
     this.geospatialStatistics = builder.geospatialStatistics.build();
+    this.geospatialStatisticsBBoxWraparound = builder.geospatialStatisticsBBoxWraparound.build();
   }
 
   public static Builder builder() {
@@ -371,6 +377,10 @@ public class ParquetProperties {
     return geospatialStatisticsEnabled;
   }
 
+  public boolean getGeoSpatialStatisticsBBoxWraparoundEnabled(ColumnDescriptor column) {
+    return geospatialStatisticsBBoxWraparoundEnabled;
+  }
+
   @Override
   public String toString() {
     return "Parquet page size to " + getPageSizeThreshold() + '\n'
@@ -389,7 +399,8 @@ public class ParquetProperties {
         + "Page row count limit to " + getPageRowCountLimit() + '\n'
         + "Writing page checksums is: " + (getPageWriteChecksumEnabled() ? "on" : "off") + '\n'
         + "Statistics enabled: " + statisticsEnabled + '\n'
-        + "Size statistics enabled: " + sizeStatisticsEnabled;
+        + "Size statistics enabled: " + sizeStatisticsEnabled + '\n'
+        + "Geospatial statistics enabled: " + geospatialStatisticsEnabled;
   }
 
   public static class Builder {
@@ -407,7 +418,8 @@ public class ParquetProperties {
     private int statisticsTruncateLength = DEFAULT_STATISTICS_TRUNCATE_LENGTH;
     private boolean statisticsEnabled = DEFAULT_STATISTICS_ENABLED;
     private boolean sizeStatisticsEnabled = DEFAULT_SIZE_STATISTICS_ENABLED;
-    private boolean geospatialStatisticsEnabled = DEFAULT_SIZE_STATISTICS_ENABLED;
+    private boolean geospatialStatisticsEnabled = DEFAULT_GEO_STATISTICS_ENABLED;
+    private boolean geospatialStatisticsBBoxWraparoundEnable = DEFAULT_GEO_STATISTICS_WRAPAROUNDENABLED;
     private final ColumnProperty.Builder<Long> bloomFilterNDVs;
     private final ColumnProperty.Builder<Double> bloomFilterFPPs;
     private int maxBloomFilterBytes = DEFAULT_MAX_BLOOM_FILTER_BYTES;
@@ -421,6 +433,7 @@ public class ParquetProperties {
     private final ColumnProperty.Builder<Boolean> statistics;
     private final ColumnProperty.Builder<Boolean> sizeStatistics;
     private final ColumnProperty.Builder<Boolean> geospatialStatistics;
+    private final ColumnProperty.Builder<Boolean> geospatialStatisticsBBoxWraparound;
 
     private Builder() {
       enableDict = ColumnProperty.<Boolean>builder().withDefaultValue(DEFAULT_IS_DICTIONARY_ENABLED);
@@ -440,6 +453,8 @@ public class ParquetProperties {
       sizeStatistics = ColumnProperty.<Boolean>builder().withDefaultValue(DEFAULT_SIZE_STATISTICS_ENABLED);
       geospatialStatistics =
           ColumnProperty.<Boolean>builder().withDefaultValue(DEFAULT_GEOSPATIAL_STATISTICS_ENABLED);
+      geospatialStatisticsBBoxWraparound =
+          ColumnProperty.<Boolean>builder().withDefaultValue(DEFAULT_GEO_STATISTICS_WRAPAROUNDENABLED);
     }
 
     private Builder(ParquetProperties toCopy) {
@@ -465,6 +480,7 @@ public class ParquetProperties {
       this.statistics = ColumnProperty.builder(toCopy.statistics);
       this.sizeStatistics = ColumnProperty.builder(toCopy.sizeStatistics);
       this.geospatialStatistics = ColumnProperty.builder(toCopy.geospatialStatistics);
+      this.geospatialStatisticsBBoxWraparound = ColumnProperty.builder(toCopy.geospatialStatisticsBBoxWraparound);
     }
 
     /**

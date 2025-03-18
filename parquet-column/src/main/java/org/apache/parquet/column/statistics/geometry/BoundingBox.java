@@ -25,7 +25,7 @@ import org.locationtech.jts.geom.Geometry;
 
 public class BoundingBox {
 
-  boolean allowWraparound = Boolean.parseBoolean(System.getenv().getOrDefault("ALLOW_BBOX_WRAPAROUND", "true"));
+  private boolean allowWraparound = true;
 
   private double xMin = Double.POSITIVE_INFINITY;
   private double xMax = Double.NEGATIVE_INFINITY;
@@ -49,6 +49,10 @@ public class BoundingBox {
   }
 
   public BoundingBox() {}
+
+  void enableWraparound(boolean enable) {
+    allowWraparound = enable;
+  }
 
   public double getXMin() {
     return xMin;
@@ -216,7 +220,8 @@ public class BoundingBox {
 
   @Override
   public String toString() {
-    return "BoundingBox{" + "xMin="
+    return "BoundingBox{" + "allowWraparound="
+        + allowWraparound + ", xMin="
         + xMin + ", xMax="
         + xMax + ", yMin="
         + yMin + ", yMax="
