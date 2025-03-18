@@ -16,26 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.parquet.pig;
+package org.apache.parquet.cli.commands;
 
-import org.apache.parquet.ParquetRuntimeException;
+import java.io.File;
+import java.io.IOException;
+import java.util.Arrays;
+import org.apache.hadoop.conf.Configuration;
+import org.junit.Assert;
+import org.junit.Test;
 
-public class TupleConversionException extends ParquetRuntimeException {
-  private static final long serialVersionUID = 1L;
-
-  public TupleConversionException() {
-    super();
-  }
-
-  public TupleConversionException(String message, Throwable cause) {
-    super(message, cause);
-  }
-
-  public TupleConversionException(String message) {
-    super(message);
-  }
-
-  public TupleConversionException(Throwable cause) {
-    super(cause);
+public class ShowSizeStatisticsCommandTest extends ParquetFileTest {
+  @Test
+  public void testShowSizeStatisticsCommand() throws IOException {
+    File file = parquetFile();
+    ShowSizeStatisticsCommand command = new ShowSizeStatisticsCommand(createLogger());
+    command.targets = Arrays.asList(file.getAbsolutePath());
+    command.setConf(new Configuration());
+    Assert.assertEquals(0, command.run());
   }
 }

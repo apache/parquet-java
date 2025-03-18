@@ -232,7 +232,7 @@ public class InternalFileDecryptor {
               "Re-use: wrong encryption key (column vs footer). Column: " + path);
         }
         if (!encryptedWithFooterKey && !Arrays.equals(columnDecryptionSetup.getKeyMetadata(), keyMetadata)) {
-          throw new ParquetCryptoRuntimeException("Decryptor re-use: Different footer key metadata ");
+          throw new ParquetCryptoRuntimeException("Decryptor re-use: Different footer key metadata");
         }
       }
       return columnDecryptionSetup;
@@ -244,7 +244,8 @@ public class InternalFileDecryptor {
     } else {
       if (encryptedWithFooterKey) {
         if (null == footerKey) {
-          throw new ParquetCryptoRuntimeException("Column " + path + " is encrypted with NULL footer key");
+          throw new ParquetCryptoRuntimeException(
+              "Column " + path + " is encrypted with footer key, but the provided footer key is NULL");
         }
         columnDecryptionSetup = new InternalColumnDecryptionSetup(
             path,
@@ -269,7 +270,8 @@ public class InternalFileDecryptor {
           }
         }
         if (null == columnKeyBytes) {
-          throw new ParquetCryptoRuntimeException("Column " + path + "is encrypted with NULL column key");
+          throw new ParquetCryptoRuntimeException("Column " + path
+              + " is encrypted with column-specific key, but the provided column key is NULL");
         }
         columnDecryptionSetup = new InternalColumnDecryptionSetup(
             path,
