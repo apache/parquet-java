@@ -513,15 +513,15 @@ public class TestParquetFileWriter {
 
     w.startColumn(C1, 6, CODEC);
     long c1Starts = w.getPos();
-    w.writeDataPageV2(4, 1, 3, repLevels, defLevels, PLAIN, data, 4, statsC1P1);
-    w.writeDataPageV2(3, 0, 3, repLevels, defLevels, PLAIN, data, 4, statsC1P2);
+    w.writeDataPageV2(4, 1, 3, repLevels, defLevels, PLAIN, data, false, 4, statsC1P1);
+    w.writeDataPageV2(3, 0, 3, repLevels, defLevels, PLAIN, data, false, 4, statsC1P2);
     w.endColumn();
     long c1Ends = w.getPos();
 
     w.startColumn(C2, 5, CODEC);
     long c2Starts = w.getPos();
-    w.writeDataPageV2(5, 2, 3, repLevels, defLevels, PLAIN, data2, 4, EMPTY_STATS);
-    w.writeDataPageV2(2, 0, 2, repLevels, defLevels, PLAIN, data2, 4, EMPTY_STATS);
+    w.writeDataPageV2(5, 2, 3, repLevels, defLevels, PLAIN, data2, false, 4, EMPTY_STATS);
+    w.writeDataPageV2(2, 0, 2, repLevels, defLevels, PLAIN, data2, false, 4, EMPTY_STATS);
     w.endColumn();
     long c2Ends = w.getPos();
 

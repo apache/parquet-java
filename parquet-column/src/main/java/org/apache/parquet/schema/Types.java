@@ -474,6 +474,12 @@ public class Types {
 
               @Override
               public Optional<Boolean> visit(
+                  LogicalTypeAnnotation.UnknownLogicalTypeAnnotation unknownLogicalType) {
+                return Optional.of(true);
+              }
+
+              @Override
+              public Optional<Boolean> visit(
                   LogicalTypeAnnotation.DecimalLogicalTypeAnnotation decimalLogicalType) {
                 Preconditions.checkState(
                     (primitiveType == PrimitiveTypeName.INT32)

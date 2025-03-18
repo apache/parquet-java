@@ -468,4 +468,11 @@ public abstract class PrimitiveStringifier {
       }
     }
   };
+
+  static final PrimitiveStringifier UNKNOWN_STRINGIFIER = new PrimitiveStringifier("UNKNOWN_STRINGIFIER") {
+
+    public String stringify(Binary ignored) {
+      return "UNKNOWN";
+    }
+  };
 }

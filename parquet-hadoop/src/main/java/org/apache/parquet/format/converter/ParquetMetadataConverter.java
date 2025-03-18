@@ -522,6 +522,11 @@ public class ParquetMetadataConverter {
     }
 
     @Override
+    public Optional<LogicalType> visit(LogicalTypeAnnotation.UnknownLogicalTypeAnnotation intervalLogicalType) {
+      return of(LogicalType.UNKNOWN(new NullType()));
+    }
+
+    @Override
     public Optional<LogicalType> visit(LogicalTypeAnnotation.IntervalLogicalTypeAnnotation intervalLogicalType) {
       return of(LogicalType.UNKNOWN(new NullType()));
     }
@@ -1005,7 +1010,8 @@ public class ParquetMetadataConverter {
       LogicalTypeAnnotation.StringLogicalTypeAnnotation.class,
       LogicalTypeAnnotation.EnumLogicalTypeAnnotation.class,
       LogicalTypeAnnotation.JsonLogicalTypeAnnotation.class,
-      LogicalTypeAnnotation.Float16LogicalTypeAnnotation.class)));
+      LogicalTypeAnnotation.Float16LogicalTypeAnnotation.class,
+      LogicalTypeAnnotation.UnknownLogicalTypeAnnotation.class)));
 
   /**
    * Returns whether to use signed order min and max with a type. It is safe to
@@ -1106,6 +1112,12 @@ public class ParquetMetadataConverter {
             public Optional<SortOrder> visit(
                 LogicalTypeAnnotation.Float16LogicalTypeAnnotation float16LogicalType) {
               return of(SortOrder.SIGNED);
+            }
+
+            @Override
+            public Optional<SortOrder> visit(
+                LogicalTypeAnnotation.UnknownLogicalTypeAnnotation unknownLogicalTypeAnnotation) {
+              return of(SortOrder.UNKNOWN);
             }
 
             @Override
@@ -1284,7 +1296,7 @@ public class ParquetMetadataConverter {
         IntType integer = type.getINTEGER();
         return LogicalTypeAnnotation.intType(integer.bitWidth, integer.isSigned);
       case UNKNOWN:
-        return null;
+        return LogicalTypeAnnotation.unknownType();
       case TIMESTAMP:
         TimestampType timestamp = type.getTIMESTAMP();
         return LogicalTypeAnnotation.timestampType(timestamp.isAdjustedToUTC, convertTimeUnit(timestamp.unit));
@@ -2112,7 +2124,8 @@ public class ParquetMetadataConverter {
             rowCount,
             dataEncoding,
             rlByteLength,
-            dlByteLength),
+            dlByteLength,
+            true /* compressed by default */),
         to);
   }
 
@@ -2190,6 +2203,10 @@ public class ParquetMetadataConverter {
         pageHeaderAAD);
   }
 
+  /**
+   * @deprecated will be removed in 2.0.0. Use {@link ParquetMetadataConverter#writeDataPageV2Header(int, int, int, int, int, org.apache.parquet.column.Encoding, int, int, boolean, OutputStream)} instead
+   */
+  @Deprecated
   public void writeDataPageV2Header(
       int uncompressedSize,
       int compressedSize,
@@ -2210,11 +2227,16 @@ public class ParquetMetadataConverter {
         dataEncoding,
         rlByteLength,
         dlByteLength,
+        true, /* compressed by default */
         to,
         null,
         null);
   }
 
+  /**
+   * @deprecated will be removed in 2.0.0. Use {@link ParquetMetadataConverter#writeDataPageV2Header(int, int, int, int, int, org.apache.parquet.column.Encoding, int, int, boolean, OutputStream, BlockCipher.Encryptor, byte[])} instead
+   */
+  @Deprecated
   public void writeDataPageV2Header(
       int uncompressedSize,
       int compressedSize,
@@ -2228,37 +2250,25 @@ public class ParquetMetadataConverter {
       BlockCipher.Encryptor blockEncryptor,
       byte[] pageHeaderAAD)
       throws IOException {
-    writePageHeader(
-        newDataPageV2Header(
-            uncompressedSize,
-            compressedSize,
-            valueCount,
-            nullCount,
-            rowCount,
-            dataEncoding,
-            rlByteLength,
-            dlByteLength),
+    writeDataPageV2Header(
+        uncompressedSize,
+        compressedSize,
+        valueCount,
+        nullCount,
+        rowCount,
+        dataEncoding,
+        rlByteLength,
+        dlByteLength,
+        true, /* compressed by default */
         to,
         blockEncryptor,
         pageHeaderAAD);
   }
 
-  private PageHeader newDataPageV2Header(
-      int uncompressedSize,
-      int compressedSize,
-      int valueCount,
-      int nullCount,
-      int rowCount,
-      org.apache.parquet.column.Encoding dataEncoding,
-      int rlByteLength,
-      int dlByteLength) {
-    DataPageHeaderV2 dataPageHeaderV2 = new DataPageHeaderV2(
-        valueCount, nullCount, rowCount, getEncoding(dataEncoding), dlByteLength, rlByteLength);
-    PageHeader pageHeader = new PageHeader(PageType.DATA_PAGE_V2, uncompressedSize, compressedSize);
-    pageHeader.setData_page_header_v2(dataPageHeaderV2);
-    return pageHeader;
-  }
-
+  /**
+   * @deprecated will be removed in 2.0.0. Use {@link ParquetMetadataConverter#writeDataPageV2Header(int, int, int, int, int, org.apache.parquet.column.Encoding, int, int, boolean, int, OutputStream, BlockCipher.Encryptor, byte[])} instead
+   */
+  @Deprecated
   public void writeDataPageV2Header(
       int uncompressedSize,
       int compressedSize,
@@ -2273,6 +2283,63 @@ public class ParquetMetadataConverter {
       BlockCipher.Encryptor blockEncryptor,
       byte[] pageHeaderAAD)
       throws IOException {
+    writeDataPageV2Header(
+        uncompressedSize,
+        compressedSize,
+        valueCount,
+        nullCount,
+        rowCount,
+        dataEncoding,
+        rlByteLength,
+        dlByteLength,
+        true, /* compressed by default */
+        crc,
+        to,
+        blockEncryptor,
+        pageHeaderAAD);
+  }
+
+  public void writeDataPageV2Header(
+      int uncompressedSize,
+      int compressedSize,
+      int valueCount,
+      int nullCount,
+      int rowCount,
+      org.apache.parquet.column.Encoding dataEncoding,
+      int rlByteLength,
+      int dlByteLength,
+      boolean compressed,
+      OutputStream to)
+      throws IOException {
+    writeDataPageV2Header(
+        uncompressedSize,
+        compressedSize,
+        valueCount,
+        nullCount,
+        rowCount,
+        dataEncoding,
+        rlByteLength,
+        dlByteLength,
+        compressed,
+        to,
+        null,
+        null);
+  }
+
+  public void writeDataPageV2Header(
+      int uncompressedSize,
+      int compressedSize,
+      int valueCount,
+      int nullCount,
+      int rowCount,
+      org.apache.parquet.column.Encoding dataEncoding,
+      int rlByteLength,
+      int dlByteLength,
+      boolean compressed,
+      OutputStream to,
+      BlockCipher.Encryptor blockEncryptor,
+      byte[] pageHeaderAAD)
+      throws IOException {
     writePageHeader(
         newDataPageV2Header(
             uncompressedSize,
@@ -2283,10 +2350,41 @@ public class ParquetMetadataConverter {
             dataEncoding,
             rlByteLength,
             dlByteLength,
-            crc),
+            compressed),
         to,
         blockEncryptor,
         pageHeaderAAD);
+  }
+
+  public void writeDataPageV2Header(
+      int uncompressedSize,
+      int compressedSize,
+      int valueCount,
+      int nullCount,
+      int rowCount,
+      org.apache.parquet.column.Encoding dataEncoding,
+      int rlByteLength,
+      int dlByteLength,
+      boolean compressed,
+      int crc,
+      OutputStream to,
+      BlockCipher.Encryptor blockEncryptor,
+      byte[] pageHeaderAAD)
+      throws IOException {
+    PageHeader pageHeader = newDataPageV2Header(
+        uncompressedSize,
+        compressedSize,
+        valueCount,
+        nullCount,
+        rowCount,
+        dataEncoding,
+        rlByteLength,
+        dlByteLength,
+        compressed);
+
+    pageHeader.setCrc(crc);
+
+    writePageHeader(pageHeader, to, blockEncryptor, pageHeaderAAD);
   }
 
   private PageHeader newDataPageV2Header(
@@ -2298,12 +2396,13 @@ public class ParquetMetadataConverter {
       org.apache.parquet.column.Encoding dataEncoding,
       int rlByteLength,
       int dlByteLength,
-      int crc) {
+      boolean compressed) {
     DataPageHeaderV2 dataPageHeaderV2 = new DataPageHeaderV2(
         valueCount, nullCount, rowCount, getEncoding(dataEncoding), dlByteLength, rlByteLength);
+    dataPageHeaderV2.setIs_compressed(compressed);
+
     PageHeader pageHeader = new PageHeader(PageType.DATA_PAGE_V2, uncompressedSize, compressedSize);
     pageHeader.setData_page_header_v2(dataPageHeaderV2);
-    pageHeader.setCrc(crc);
     return pageHeader;
   }
 

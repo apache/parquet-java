@@ -763,6 +763,7 @@ public class ParquetRewriter implements Closeable {
               dlLevels,
               converter.getEncoding(headerV2.getEncoding()),
               BytesInput.from(pageLoad),
+              headerV2.is_compressed,
               rawDataLength,
               statistics,
               metaEncryptor,
