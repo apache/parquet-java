@@ -84,9 +84,9 @@ public class TestVariantEncoding {
     }
   }
 
-  private void checkType(Variant v, int expectedBasicType, int expectedPrimitiveTypeId) {
+  private void checkType(Variant v, int expectedBasicType, VariantUtil.Type expectedType) {
     Assert.assertEquals(expectedBasicType, v.value[v.pos] & VariantUtil.BASIC_TYPE_MASK);
-    Assert.assertEquals(expectedPrimitiveTypeId, v.getPrimitiveTypeId());
+    Assert.assertEquals(expectedType, v.getType());
   }
 
   private long microsSinceEpoch(Instant instant) {
@@ -157,7 +157,7 @@ public class TestVariantEncoding {
   public void testNullBuilder() {
     VariantBuilder vb = new VariantBuilder(false);
     vb.appendNull();
-    checkType(vb.result(), VariantUtil.NULL, 0);
+    checkType(vb.result(), VariantUtil.NULL, VariantUtil.Type.NULL);
   }
 
   @Test
@@ -165,7 +165,7 @@ public class TestVariantEncoding {
     Arrays.asList(true, false).forEach(b -> {
       VariantBuilder vb2 = new VariantBuilder(false);
       vb2.appendBoolean(b);
-      checkType(vb2.result(), VariantUtil.PRIMITIVE, b ? VariantUtil.TRUE : VariantUtil.FALSE);
+      checkType(vb2.result(), VariantUtil.PRIMITIVE, VariantUtil.Type.BOOLEAN);
     });
   }
 
@@ -186,13 +186,13 @@ public class TestVariantEncoding {
           vb2.appendLong(l);
           Variant v = vb2.result();
           if (Byte.MIN_VALUE <= l && l <= Byte.MAX_VALUE) {
-            checkType(v, VariantUtil.PRIMITIVE, VariantUtil.INT8);
+            checkType(v, VariantUtil.PRIMITIVE, VariantUtil.Type.BYTE);
           } else if (Short.MIN_VALUE <= l && l <= Short.MAX_VALUE) {
-            checkType(v, VariantUtil.PRIMITIVE, VariantUtil.INT16);
+            checkType(v, VariantUtil.PRIMITIVE, VariantUtil.Type.SHORT);
           } else if (Integer.MIN_VALUE <= l && l <= Integer.MAX_VALUE) {
-            checkType(v, VariantUtil.PRIMITIVE, VariantUtil.INT32);
+            checkType(v, VariantUtil.PRIMITIVE, VariantUtil.Type.INT);
           } else {
-            checkType(v, VariantUtil.PRIMITIVE, VariantUtil.INT64);
+            checkType(v, VariantUtil.PRIMITIVE, VariantUtil.Type.LONG);
           }
           Assert.assertEquals((long) l, v.getLong());
         });
@@ -210,11 +210,11 @@ public class TestVariantEncoding {
           vb2.appendLong((long) i);
           Variant v = vb2.result();
           if (Byte.MIN_VALUE <= i && i <= Byte.MAX_VALUE) {
-            checkType(v, VariantUtil.PRIMITIVE, VariantUtil.INT8);
+            checkType(v, VariantUtil.PRIMITIVE, VariantUtil.Type.BYTE);
           } else if (Short.MIN_VALUE <= i && i <= Short.MAX_VALUE) {
-            checkType(v, VariantUtil.PRIMITIVE, VariantUtil.INT16);
+            checkType(v, VariantUtil.PRIMITIVE, VariantUtil.Type.SHORT);
           } else {
-            checkType(v, VariantUtil.PRIMITIVE, VariantUtil.INT32);
+            checkType(v, VariantUtil.PRIMITIVE, VariantUtil.Type.INT);
           }
           Assert.assertEquals((int) i, v.getInt());
         });
@@ -225,9 +225,9 @@ public class TestVariantEncoding {
           vb2.appendLong(s);
           Variant v = vb2.result();
           if (Byte.MIN_VALUE <= s && s <= Byte.MAX_VALUE) {
-            checkType(v, VariantUtil.PRIMITIVE, VariantUtil.INT8);
+            checkType(v, VariantUtil.PRIMITIVE, VariantUtil.Type.BYTE);
           } else {
-            checkType(v, VariantUtil.PRIMITIVE, VariantUtil.INT16);
+            checkType(v, VariantUtil.PRIMITIVE, VariantUtil.Type.SHORT);
           }
           Assert.assertEquals((short) s, v.getShort());
         });
@@ -236,7 +236,7 @@ public class TestVariantEncoding {
       VariantBuilder vb2 = new VariantBuilder(false);
       vb2.appendLong(b);
       Variant v = vb2.result();
-      checkType(v, VariantUtil.PRIMITIVE, VariantUtil.INT8);
+      checkType(v, VariantUtil.PRIMITIVE, VariantUtil.Type.BYTE);
       Assert.assertEquals((byte) b, v.getByte());
     });
   }
@@ -247,7 +247,7 @@ public class TestVariantEncoding {
       VariantBuilder vb2 = new VariantBuilder(false);
       vb2.appendFloat(f);
       Variant v = vb2.result();
-      checkType(v, VariantUtil.PRIMITIVE, VariantUtil.FLOAT);
+      checkType(v, VariantUtil.PRIMITIVE, VariantUtil.Type.FLOAT);
       Assert.assertEquals(f, v.getFloat(), 0.000001);
     });
   }
@@ -258,7 +258,7 @@ public class TestVariantEncoding {
       VariantBuilder vb2 = new VariantBuilder(false);
       vb2.appendDouble(d);
       Variant v = vb2.result();
-      checkType(v, VariantUtil.PRIMITIVE, VariantUtil.DOUBLE);
+      checkType(v, VariantUtil.PRIMITIVE, VariantUtil.Type.DOUBLE);
       Assert.assertEquals(d, v.getDouble(), 0.000001);
     });
   }
@@ -272,9 +272,9 @@ public class TestVariantEncoding {
           vb2.appendString(s);
           Variant v = vb2.result();
           if (len <= VariantUtil.MAX_SHORT_STR_SIZE) {
-            checkType(v, VariantUtil.SHORT_STR, len);
+            checkType(v, VariantUtil.SHORT_STR, VariantUtil.Type.STRING);
           } else {
-            checkType(v, VariantUtil.PRIMITIVE, VariantUtil.LONG_STR);
+            checkType(v, VariantUtil.PRIMITIVE, VariantUtil.Type.STRING);
           }
           Assert.assertEquals(s, v.getString());
         });
@@ -287,7 +287,7 @@ public class TestVariantEncoding {
       VariantBuilder vb2 = new VariantBuilder(false);
       vb2.appendDecimal(d);
       Variant v = vb2.result();
-      checkType(v, VariantUtil.PRIMITIVE, VariantUtil.DECIMAL4);
+      checkType(v, VariantUtil.PRIMITIVE, VariantUtil.Type.DECIMAL4);
       Assert.assertEquals(d, v.getDecimal());
     });
 
@@ -297,7 +297,7 @@ public class TestVariantEncoding {
           VariantBuilder vb2 = new VariantBuilder(false);
           vb2.appendDecimal(d);
           Variant v = vb2.result();
-          checkType(v, VariantUtil.PRIMITIVE, VariantUtil.DECIMAL8);
+          checkType(v, VariantUtil.PRIMITIVE, VariantUtil.Type.DECIMAL8);
           Assert.assertEquals(d, v.getDecimal());
         });
 
@@ -307,7 +307,7 @@ public class TestVariantEncoding {
           VariantBuilder vb2 = new VariantBuilder(false);
           vb2.appendDecimal(d);
           Variant v = vb2.result();
-          checkType(v, VariantUtil.PRIMITIVE, VariantUtil.DECIMAL16);
+          checkType(v, VariantUtil.PRIMITIVE, VariantUtil.Type.DECIMAL16);
           Assert.assertEquals(d, v.getDecimal());
         });
   }
@@ -524,37 +524,6 @@ public class TestVariantEncoding {
     for (int i = 0; i < 50000; i++) {
       String actual = v.getElementAtIndex(i).toJson();
       checkJson(SAMPLE_JSON_VALUES.get(i % SAMPLE_JSON_VALUES.size()), actual);
-    }
-  }
-
-  @Test
-  public void testSizeLimit() {
-    // large metadata size
-    try {
-      VariantBuilder.parseJson(
-          "{\"12345678901234567890\": 1, \"123456789012345678901\": 2}", new VariantBuilder(false, 20));
-      Assert.fail("Expected VariantSizeLimitException with large metadata");
-    } catch (IOException e) {
-      Assert.fail("Expected VariantSizeLimitException with large metadata");
-    } catch (VariantSizeLimitException e) {
-      // Expected
-    }
-
-    // large data size
-    try {
-      StringBuilder sb = new StringBuilder();
-      sb.append("[");
-      for (int i = 0; i < 100; i++) {
-        if (i > 0) sb.append(", ");
-        sb.append("{\"a\":1}");
-      }
-      sb.append("]");
-      VariantBuilder.parseJson(sb.toString(), new VariantBuilder(false, 100));
-      Assert.fail("Expected VariantSizeLimitException with large data");
-    } catch (IOException e) {
-      Assert.fail("Expected VariantSizeLimitException with large data");
-    } catch (VariantSizeLimitException e) {
-      // Expected
     }
   }
 

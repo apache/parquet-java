@@ -62,7 +62,6 @@ public class VariantBuilder {
    * @param json the JSON string to parse
    * @return the Variant value
    * @throws IOException if any JSON parsing error happens
-   * @throws VariantSizeLimitException if the resulting variant value or metadata would exceed
    * the size limit
    */
   public static Variant parseJson(String json) throws IOException {
@@ -75,8 +74,6 @@ public class VariantBuilder {
    * @param builder the VariantBuilder to use for building the Variant
    * @return the Variant value
    * @throws IOException if any JSON parsing error happens
-   * @throws VariantSizeLimitException if the resulting variant value or metadata would exceed
-   * the size limit
    */
   public static Variant parseJson(String json, VariantBuilder builder) throws IOException {
     try (JsonParser parser = new JsonFactory().createParser(json)) {
@@ -91,8 +88,6 @@ public class VariantBuilder {
    * @param builder the VariantBuilder to use for building the Variant
    * @return the Variant value
    * @throws IOException if any JSON parsing error happens
-   * @throws VariantSizeLimitException if the resulting variant value or metadata would exceed
-   * the size limit
    */
   public static Variant parseJson(JsonParser parser, VariantBuilder builder) throws IOException {
     builder.buildFromJsonParser(parser);
@@ -101,8 +96,6 @@ public class VariantBuilder {
 
   /**
    * @return the Variant value
-   * @throws VariantSizeLimitException if the resulting variant value or metadata would exceed
-   * the size limit
    */
   public Variant result() {
     int numKeys = dictionaryKeys.size();
@@ -116,18 +109,12 @@ public class VariantBuilder {
     // unlikely that the number of keys could be larger, but incorporate that into the calculation
     // in case of pathological data.
     long maxSize = Math.max(dictionaryStringSize, numKeys);
-    if (maxSize > sizeLimitBytes) {
-      throw new VariantSizeLimitException(sizeLimitBytes, maxSize);
-    }
     int offsetSize = getMinIntegerSize((int) maxSize);
 
     int offsetStart = 1 + offsetSize;
     int stringStart = offsetStart + (numKeys + 1) * offsetSize;
     long metadataSize = stringStart + dictionaryStringSize;
 
-    if (metadataSize > sizeLimitBytes) {
-      throw new VariantSizeLimitException(sizeLimitBytes, metadataSize);
-    }
     byte[] metadata = new byte[(int) metadataSize];
     int headerByte = VariantUtil.VERSION | ((offsetSize - 1) << 6);
     VariantUtil.writeLong(metadata, 0, headerByte, 1);
@@ -462,39 +449,37 @@ public class VariantBuilder {
     VariantUtil.checkIndex(pos, value.length);
     int basicType = value[pos] & VariantUtil.BASIC_TYPE_MASK;
     switch (basicType) {
-      case VariantUtil.OBJECT:
-        VariantUtil.handleObject(value, pos, (info) -> {
-          ArrayList<FieldEntry> fields = new ArrayList<>(info.numElements);
-          int start = writePos;
-          for (int i = 0; i < info.numElements; ++i) {
-            int id = VariantUtil.readUnsigned(value, info.idStart + info.idSize * i, info.idSize);
-            int offset = VariantUtil.readUnsigned(
-                value, info.offsetStart + info.offsetSize * i, info.offsetSize);
-            int elementPos = info.dataStart + offset;
-            String key = VariantUtil.getMetadataKey(metadata, id);
-            int newId = addKey(key);
-            fields.add(new FieldEntry(key, newId, writePos - start));
-            appendVariantImpl(value, metadata, elementPos);
-          }
-          finishWritingObject(start, fields);
-          return null;
-        });
+      case VariantUtil.OBJECT: {
+        VariantUtil.ObjectInfo info = VariantUtil.getObjectInfo(value, pos);
+        ArrayList<FieldEntry> fields = new ArrayList<>(info.numElements);
+        int start = writePos;
+        for (int i = 0; i < info.numElements; ++i) {
+          int id = VariantUtil.readUnsigned(value, pos + info.idStartOffset + info.idSize * i, info.idSize);
+          int offset = VariantUtil.readUnsigned(
+              value, pos + info.offsetStartOffset + info.offsetSize * i, info.offsetSize);
+          int elementPos = pos + info.dataStartOffset + offset;
+          String key = VariantUtil.getMetadataKey(metadata, id);
+          int newId = addKey(key);
+          fields.add(new FieldEntry(key, newId, writePos - start));
+          appendVariantImpl(value, metadata, elementPos);
+        }
+        finishWritingObject(start, fields);
         break;
-      case VariantUtil.ARRAY:
-        VariantUtil.handleArray(value, pos, (info) -> {
-          ArrayList<Integer> offsets = new ArrayList<>(info.numElements);
-          int start = writePos;
-          for (int i = 0; i < info.numElements; ++i) {
-            int offset = VariantUtil.readUnsigned(
-                value, info.offsetStart + info.offsetSize * i, info.offsetSize);
-            int elementPos = info.dataStart + offset;
-            offsets.add(writePos - start);
-            appendVariantImpl(value, metadata, elementPos);
-          }
-          finishWritingArray(start, offsets);
-          return null;
-        });
+      }
+      case VariantUtil.ARRAY: {
+        VariantUtil.ArrayInfo info = VariantUtil.getArrayInfo(value, pos);
+        ArrayList<Integer> offsets = new ArrayList<>(info.numElements);
+        int start = writePos;
+        for (int i = 0; i < info.numElements; ++i) {
+          int offset = VariantUtil.readUnsigned(
+              value, pos + info.offsetStartOffset + info.offsetSize * i, info.offsetSize);
+          int elementPos = pos + info.dataStartOffset + offset;
+          offsets.add(writePos - start);
+          appendVariantImpl(value, metadata, elementPos);
+        }
+        finishWritingArray(start, offsets);
         break;
+      }
       default:
         shallowAppendVariantImpl(value, pos);
         break;
@@ -515,9 +500,6 @@ public class VariantBuilder {
       // Allocate a new buffer with a capacity of the next power of 2 of `requiredBytes`.
       int newCapacity = Integer.highestOneBit(requiredBytes);
       newCapacity = newCapacity < requiredBytes ? newCapacity * 2 : newCapacity;
-      if (newCapacity > sizeLimitBytes) {
-        throw new VariantSizeLimitException(sizeLimitBytes, newCapacity);
-      }
       byte[] newValue = new byte[newCapacity];
       System.arraycopy(writeBuffer, 0, newValue, 0, writePos);
       writeBuffer = newValue;
@@ -585,8 +567,10 @@ public class VariantBuilder {
         try {
           appendLong(parser.getLongValue());
         } catch (InputCoercionException ignored) {
-          // If the value doesn't fit any integer type, parse it as decimal or floating instead.
-          parseAndAppendFloatingPoint(parser);
+          // If the value doesn't fit any integer type, try to parse it as decimal instead.
+          if (!tryParseDecimal(parser.getText())) {
+            throw new JsonParseException(parser, "Cannot parse token as int/decimal. token: " + token);
+          }
         }
         break;
       case VALUE_NUMBER_FLOAT:

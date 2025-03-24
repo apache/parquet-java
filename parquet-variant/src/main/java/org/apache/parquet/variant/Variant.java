@@ -65,7 +65,7 @@ public final class Variant {
     this.pos = pos;
     // There is currently only one allowed version.
     if (metadata.length < 1 || (metadata[0] & VariantUtil.VERSION_MASK) != VariantUtil.VERSION) {
-      throw new MalformedVariantException(String.format(
+      throw new UnsupportedOperationException(String.format(
           "Unsupported variant metadata version: %02X", metadata[0] & VariantUtil.VERSION_MASK));
     }
   }
@@ -174,13 +174,6 @@ public final class Variant {
   }
 
   /**
-   * @return the primitive type id from a variant value
-   */
-  public int getPrimitiveTypeId() {
-    return VariantUtil.getPrimitiveTypeId(value, pos);
-  }
-
-  /**
    * @return the type of the variant value
    */
   public VariantUtil.Type getType() {
@@ -191,7 +184,7 @@ public final class Variant {
    * @return the number of object fields in the variant. `getType()` must be `Type.OBJECT`.
    */
   public int numObjectElements() {
-    return VariantUtil.handleObject(value, pos, (info) -> info.numElements);
+    return VariantUtil.getObjectInfo(value, pos).numElements;
   }
 
   /**
@@ -201,53 +194,52 @@ public final class Variant {
    * @return the field value whose key is equal to `key`, or null if key is not found
    */
   public Variant getFieldByKey(String key) {
-    return VariantUtil.handleObject(value, pos, (info) -> {
-      // Use linear search for a short list. Switch to binary search when the length reaches
-      // `BINARY_SEARCH_THRESHOLD`.
-      if (info.numElements < BINARY_SEARCH_THRESHOLD) {
-        for (int i = 0; i < info.numElements; ++i) {
-          ObjectField field = getFieldAtIndex(
-              i,
-              value,
-              metadata,
-              info.idSize,
-              info.offsetSize,
-              info.idStart,
-              info.offsetStart,
-              info.dataStart);
-          if (field.key.equals(key)) {
-            return field.value;
-          }
-        }
-      } else {
-        int low = 0;
-        int high = info.numElements - 1;
-        while (low <= high) {
-          // Use unsigned right shift to compute the middle of `low` and `high`. This is not only a
-          // performance optimization, because it can properly handle the case where `low + high`
-          // overflows int.
-          int mid = (low + high) >>> 1;
-          ObjectField field = getFieldAtIndex(
-              mid,
-              value,
-              metadata,
-              info.idSize,
-              info.offsetSize,
-              info.idStart,
-              info.offsetStart,
-              info.dataStart);
-          int cmp = field.key.compareTo(key);
-          if (cmp < 0) {
-            low = mid + 1;
-          } else if (cmp > 0) {
-            high = mid - 1;
-          } else {
-            return field.value;
-          }
+    VariantUtil.ObjectInfo info = VariantUtil.getObjectInfo(value, pos);
+    // Use linear search for a short list. Switch to binary search when the length reaches
+    // `BINARY_SEARCH_THRESHOLD`.
+    if (info.numElements < BINARY_SEARCH_THRESHOLD) {
+      for (int i = 0; i < info.numElements; ++i) {
+        ObjectField field = getFieldAtIndex(
+            i,
+            value,
+            metadata,
+            info.idSize,
+            info.offsetSize,
+            pos + info.idStartOffset,
+            pos + info.offsetStartOffset,
+            pos + info.dataStartOffset);
+        if (field.key.equals(key)) {
+          return field.value;
         }
       }
-      return null;
-    });
+    } else {
+      int low = 0;
+      int high = info.numElements - 1;
+      while (low <= high) {
+        // Use unsigned right shift to compute the middle of `low` and `high`. This is not only a
+        // performance optimization, because it can properly handle the case where `low + high`
+        // overflows int.
+        int mid = (low + high) >>> 1;
+        ObjectField field = getFieldAtIndex(
+            mid,
+            value,
+            metadata,
+            info.idSize,
+            info.offsetSize,
+            pos + info.idStartOffset,
+            pos + info.offsetStartOffset,
+            pos + info.dataStartOffset);
+        int cmp = field.key.compareTo(key);
+        if (cmp < 0) {
+          low = mid + 1;
+        } else if (cmp > 0) {
+          high = mid - 1;
+        } else {
+          return field.value;
+        }
+      }
+    }
+    return null;
   }
 
   /**
@@ -270,20 +262,19 @@ public final class Variant {
    * @return the ObjectField at the `index` slot, or null if `index` is out of bounds
    */
   public ObjectField getFieldAtIndex(int index) {
-    return VariantUtil.handleObject(value, pos, (info) -> {
-      if (index < 0 || index >= info.numElements) {
-        return null;
-      }
-      return getFieldAtIndex(
-          index,
-          value,
-          metadata,
-          info.idSize,
-          info.offsetSize,
-          info.idStart,
-          info.offsetStart,
-          info.dataStart);
-    });
+    VariantUtil.ObjectInfo info = VariantUtil.getObjectInfo(value, pos);
+    if (index < 0 || index >= info.numElements) {
+      return null;
+    }
+    return getFieldAtIndex(
+        index,
+        value,
+        metadata,
+        info.idSize,
+        info.offsetSize,
+        pos + info.idStartOffset,
+        pos + info.offsetStartOffset,
+        pos + info.dataStartOffset);
   }
 
   private static ObjectField getFieldAtIndex(
@@ -306,7 +297,7 @@ public final class Variant {
    * @return the number of array elements. `getType()` must be `Type.ARRAY`.
    */
   public int numArrayElements() {
-    return VariantUtil.handleArray(value, pos, (info) -> info.numElements);
+    return VariantUtil.getArrayInfo(value, pos).numElements;
   }
 
   /**
@@ -316,12 +307,12 @@ public final class Variant {
    * @return the array element Variant at the `index` slot, or null if `index` is out of bounds
    */
   public Variant getElementAtIndex(int index) {
-    return VariantUtil.handleArray(value, pos, (info) -> {
-      if (index < 0 || index >= info.numElements) {
-        return null;
-      }
-      return getElementAtIndex(index, value, metadata, info.offsetSize, info.offsetStart, info.dataStart);
-    });
+    VariantUtil.ArrayInfo info = VariantUtil.getArrayInfo(value, pos);
+    if (index < 0 || index >= info.numElements) {
+      return null;
+    }
+    return getElementAtIndex(
+        index, value, metadata, info.offsetSize, pos + info.offsetStartOffset, pos + info.dataStartOffset);
   }
 
   private static Variant getElementAtIndex(
@@ -456,44 +447,47 @@ public final class Variant {
       byte[] value, byte[] metadata, int pos, JsonGenerator gen, ZoneId zoneId, boolean truncateTrailingZeros)
       throws IOException {
     switch (VariantUtil.getType(value, pos)) {
-      case OBJECT:
-        VariantUtil.handleObjectException(value, pos, (info) -> {
-          gen.writeStartObject();
-          for (int i = 0; i < info.numElements; ++i) {
-            ObjectField field = getFieldAtIndex(
-                i,
-                value,
-                metadata,
-                info.idSize,
-                info.offsetSize,
-                info.idStart,
-                info.offsetStart,
-                info.dataStart);
-            gen.writeFieldName(field.key);
-            toJsonImpl(
-                field.value.value,
-                field.value.metadata,
-                field.value.pos,
-                gen,
-                zoneId,
-                truncateTrailingZeros);
-          }
-          gen.writeEndObject();
-          return null;
-        });
+      case OBJECT: {
+        VariantUtil.ObjectInfo info = VariantUtil.getObjectInfo(value, pos);
+        gen.writeStartObject();
+        for (int i = 0; i < info.numElements; ++i) {
+          ObjectField field = getFieldAtIndex(
+              i,
+              value,
+              metadata,
+              info.idSize,
+              info.offsetSize,
+              pos + info.idStartOffset,
+              pos + info.offsetStartOffset,
+              pos + info.dataStartOffset);
+          gen.writeFieldName(field.key);
+          toJsonImpl(
+              field.value.value,
+              field.value.metadata,
+              field.value.pos,
+              gen,
+              zoneId,
+              truncateTrailingZeros);
+        }
+        gen.writeEndObject();
         break;
-      case ARRAY:
-        VariantUtil.handleArrayException(value, pos, (info) -> {
-          gen.writeStartArray();
-          for (int i = 0; i < info.numElements; ++i) {
-            Variant v = getElementAtIndex(
-                i, value, metadata, info.offsetSize, info.offsetStart, info.dataStart);
-            toJsonImpl(v.value, v.metadata, v.pos, gen, zoneId, truncateTrailingZeros);
-          }
-          gen.writeEndArray();
-          return null;
-        });
+      }
+      case ARRAY: {
+        VariantUtil.ArrayInfo info = VariantUtil.getArrayInfo(value, pos);
+        gen.writeStartArray();
+        for (int i = 0; i < info.numElements; ++i) {
+          Variant v = getElementAtIndex(
+              i,
+              value,
+              metadata,
+              info.offsetSize,
+              pos + info.offsetStartOffset,
+              pos + info.dataStartOffset);
+          toJsonImpl(v.value, v.metadata, v.pos, gen, zoneId, truncateTrailingZeros);
+        }
+        gen.writeEndArray();
         break;
+      }
       case NULL:
         gen.writeNull();
         break;
@@ -512,7 +506,9 @@ public final class Variant {
       case DOUBLE:
         gen.writeNumber(VariantUtil.getDouble(value, pos));
         break;
-      case DECIMAL:
+      case DECIMAL4:
+      case DECIMAL8:
+      case DECIMAL16:
         if (truncateTrailingZeros) {
           gen.writeNumber(VariantUtil.getDecimal(value, pos)
               .stripTrailingZeros()
