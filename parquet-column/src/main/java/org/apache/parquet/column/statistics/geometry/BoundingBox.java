@@ -89,9 +89,20 @@ public class BoundingBox {
   // Method to update the bounding box with the coordinates of a Geometry object
   // geometry can be changed by this method
   void update(Geometry geometry, String crs) {
+    if (geometry == null) {
+      // If geometry is null, abort
+      abort();
+      return;
+    }
+    if (geometry.isEmpty()) {
+      // For empty geometries, keep track of the geometry type but set bounds to empty interval
+      return; // Keep the initial -Inf/Inf state for bounds
+    }
+
     if (shouldNormalizeLongitude(crs)) {
       GeospatialUtils.normalizeLongitude(geometry);
     }
+
     Envelope envelope = geometry.getEnvelopeInternal();
     double minX = envelope.getMinX();
     double minY = envelope.getMinY();
@@ -106,24 +117,43 @@ public class BoundingBox {
 
     Coordinate[] coordinates = geometry.getCoordinates();
     for (Coordinate coord : coordinates) {
-      if (!Double.isNaN(coord.getZ())) {
-        minZ = Math.min(minZ, coord.getZ());
-        maxZ = Math.max(maxZ, coord.getZ());
-      }
-      if (!Double.isNaN(coord.getM())) {
-        minM = Math.min(minM, coord.getM());
-        maxM = Math.max(maxM, coord.getM());
+      // Skip NaN values
+      if (!Double.isNaN(coord.x) && !Double.isNaN(coord.y)) {
+        if (!Double.isNaN(coord.getZ())) {
+          minZ = Math.min(minZ, coord.getZ());
+          maxZ = Math.max(maxZ, coord.getZ());
+        }
+        if (!Double.isNaN(coord.getM())) {
+          minM = Math.min(minM, coord.getM());
+          maxM = Math.max(maxM, coord.getM());
+        }
       }
     }
+    // Only update bounds if we have valid coordinates
+    if (!Double.isNaN(minX) && !Double.isNaN(maxX)) {
+      updateXBounds(minX, maxX, allowWraparound);
+    }
 
-    updateXBounds(minX, maxX, allowWraparound);
+    if (!Double.isNaN(minY)) {
+      yMin = Math.min(yMin, minY);
+    }
+    if (!Double.isNaN(maxY)) {
+      yMax = Math.max(yMax, maxY);
+    }
 
-    yMin = Math.min(yMin, minY);
-    yMax = Math.max(yMax, maxY);
-    zMin = Math.min(zMin, minZ);
-    zMax = Math.max(zMax, maxZ);
-    mMin = Math.min(mMin, minM);
-    mMax = Math.max(mMax, maxM);
+    if (minZ != Double.POSITIVE_INFINITY) {
+      zMin = Math.min(zMin, minZ);
+    }
+    if (maxZ != Double.NEGATIVE_INFINITY) {
+      zMax = Math.max(zMax, maxZ);
+    }
+
+    if (minM != Double.POSITIVE_INFINITY) {
+      mMin = Math.min(mMin, minM);
+    }
+    if (maxM != Double.NEGATIVE_INFINITY) {
+      mMax = Math.max(mMax, maxM);
+    }
   }
 
   void merge(BoundingBox other) {
