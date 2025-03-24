@@ -230,6 +230,13 @@
           <arch>!aarch64</arch>
         </os>
       </activation>
+      <repositories>
+        <repository>
+          <id>jitpack.io</id>
+          <url>https://jitpack.io</url>
+          <name>Jitpack.io repository</name>
+        </repository>
+      </repositories>
       <dependencies>
         <dependency>
           <groupId>com.github.rdblue</groupId>
