@@ -43,18 +43,7 @@ public class VariantBuilder {
    *                           Otherwise, an exception will be thrown.
    */
   public VariantBuilder(boolean allowDuplicateKeys) {
-    this(allowDuplicateKeys, VariantUtil.DEFAULT_SIZE_LIMIT);
-  }
-
-  /**
-   * Creates a VariantBuilder.
-   * @param allowDuplicateKeys if true, only the last occurrence of a duplicate key will be kept.
-   *                           Otherwise, an exception will be thrown.
-   * @param sizeLimitBytes the maximum size (in bytes) of the resulting Variant value or metadata
-   */
-  public VariantBuilder(boolean allowDuplicateKeys, int sizeLimitBytes) {
     this.allowDuplicateKeys = allowDuplicateKeys;
-    this.sizeLimitBytes = sizeLimitBytes;
   }
 
   /**
@@ -650,5 +639,4 @@ public class VariantBuilder {
   private final ArrayList<byte[]> dictionaryKeys = new ArrayList<>();
 
   private final boolean allowDuplicateKeys;
-  private final int sizeLimitBytes;
 }

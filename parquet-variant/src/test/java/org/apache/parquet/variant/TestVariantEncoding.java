@@ -541,8 +541,7 @@ public class TestVariantEncoding {
 
     // allow duplicate keys
     try {
-      Variant v = VariantBuilder.parseJson(
-          "{\"a\": 1, \"a\": 2}", new VariantBuilder(true, VariantUtil.DEFAULT_SIZE_LIMIT));
+      Variant v = VariantBuilder.parseJson("{\"a\": 1, \"a\": 2}", new VariantBuilder(true));
       Assert.assertEquals(1, v.numObjectElements());
       Assert.assertEquals(VariantUtil.Type.BYTE, v.getFieldByKey("a").getType());
       Assert.assertEquals(2, v.getFieldByKey("a").getLong());
