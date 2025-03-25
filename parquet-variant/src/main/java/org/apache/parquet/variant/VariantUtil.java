@@ -720,33 +720,35 @@ public class VariantUtil {
 
   /**
    * Returns a key at `id` in the Variant metadata.
+   *
    * @param metadata The Variant metadata
+   * @param metadataPos the position of the metadata in the byte array
    * @param id The key id
    * @return The key
    * @throws MalformedVariantException if the Variant is malformed
-   * @throws IllegalArgumentException the id is out of bounds
+   * @throws IllegalArgumentException  the id is out of bounds
    */
-  public static String getMetadataKey(byte[] metadata, int id) {
-    checkIndex(0, metadata.length);
+  public static String getMetadataKey(byte[] metadata, int metadataPos, int id) {
+    checkIndex(metadataPos, metadata.length);
     // Extracts the highest 2 bits in the metadata header to determine the integer size of the
     // offset list.
-    int offsetSize = ((metadata[0] >> 6) & 0x3) + 1;
-    int dictSize = readUnsigned(metadata, 1, offsetSize);
+    int offsetSize = ((metadata[metadataPos] >> 6) & 0x3) + 1;
+    int dictSize = readUnsigned(metadata, metadataPos + 1, offsetSize);
     if (id >= dictSize) {
       throw new IllegalArgumentException(
           String.format("Invalid dictionary id: %d. dictionary size: %d", id, dictSize));
     }
     // The offset list after the header byte, and a `dictSize` with `offsetSize` bytes.
-    int offsetListOffset = 1 + offsetSize;
+    int offsetListPos = metadataPos + 1 + offsetSize;
     // The data starts after the offset list, and `(dictSize + 1)` offset values.
-    int dataOffset = offsetListOffset + (dictSize + 1) * offsetSize;
-    int offset = readUnsigned(metadata, 1 + (id + 1) * offsetSize, offsetSize);
-    int nextOffset = readUnsigned(metadata, 1 + (id + 2) * offsetSize, offsetSize);
+    int dataPos = offsetListPos + (dictSize + 1) * offsetSize;
+    int offset = readUnsigned(metadata, offsetListPos + (id) * offsetSize, offsetSize);
+    int nextOffset = readUnsigned(metadata, offsetListPos + (id + 1) * offsetSize, offsetSize);
     if (offset > nextOffset) {
       throw new MalformedVariantException(
           String.format("Invalid offset: %d. next offset: %d", offset, nextOffset));
     }
-    checkIndex(dataOffset + nextOffset - 1, metadata.length);
-    return new String(metadata, dataOffset + offset, nextOffset - offset);
+    checkIndex(dataPos + nextOffset - 1, metadata.length);
+    return new String(metadata, dataPos + offset, nextOffset - offset);
   }
 }

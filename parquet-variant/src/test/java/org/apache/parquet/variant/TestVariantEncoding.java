@@ -35,6 +35,7 @@ import java.util.Base64;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 import java.util.stream.IntStream;
 import org.junit.Assert;
 import org.junit.Test;
@@ -85,7 +86,7 @@ public class TestVariantEncoding {
   }
 
   private void checkType(Variant v, int expectedBasicType, VariantUtil.Type expectedType) {
-    Assert.assertEquals(expectedBasicType, v.value[v.pos] & VariantUtil.BASIC_TYPE_MASK);
+    Assert.assertEquals(expectedBasicType, v.value[v.valuePos] & VariantUtil.BASIC_TYPE_MASK);
     Assert.assertEquals(expectedType, v.getType());
   }
 
@@ -103,6 +104,19 @@ public class TestVariantEncoding {
       sb.append(RANDOM_CHARS.charAt(random.nextInt(RANDOM_CHARS.length())));
     }
     return sb.toString();
+  }
+
+  private void testVariant(Variant v, Consumer<Variant> consumer) {
+    consumer.accept(v);
+    // Create new Variant with different byte offsets
+    byte[] newValue = new byte[v.value.length + 50];
+    byte[] newMetadata = new byte[v.metadata.length + 50];
+    Arrays.fill(newValue, (byte) 0xFF);
+    Arrays.fill(newMetadata, (byte) 0xFF);
+    System.arraycopy(v.value, 0, newValue, 25, v.value.length);
+    System.arraycopy(v.metadata, 0, newMetadata, 25, v.metadata.length);
+    Variant v2 = new Variant(newValue, 25 + v.valuePos, newMetadata, 25 + v.metadataPos);
+    consumer.accept(v2);
   }
 
   @Test
@@ -157,15 +171,18 @@ public class TestVariantEncoding {
   public void testNullBuilder() {
     VariantBuilder vb = new VariantBuilder(false);
     vb.appendNull();
-    checkType(vb.result(), VariantUtil.NULL, VariantUtil.Type.NULL);
+    testVariant(vb.result(), v -> checkType(v, VariantUtil.NULL, VariantUtil.Type.NULL));
   }
 
   @Test
   public void testBooleanBuilder() {
     Arrays.asList(true, false).forEach(b -> {
-      VariantBuilder vb2 = new VariantBuilder(false);
-      vb2.appendBoolean(b);
-      checkType(vb2.result(), VariantUtil.PRIMITIVE, VariantUtil.Type.BOOLEAN);
+      VariantBuilder vb = new VariantBuilder(false);
+      vb.appendBoolean(b);
+      testVariant(vb.result(), v -> {
+        checkType(v, VariantUtil.PRIMITIVE, VariantUtil.Type.BOOLEAN);
+        Assert.assertEquals(b, v.getBoolean());
+      });
     });
   }
 
@@ -184,17 +201,18 @@ public class TestVariantEncoding {
         .forEach(l -> {
           VariantBuilder vb2 = new VariantBuilder(false);
           vb2.appendLong(l);
-          Variant v = vb2.result();
-          if (Byte.MIN_VALUE <= l && l <= Byte.MAX_VALUE) {
-            checkType(v, VariantUtil.PRIMITIVE, VariantUtil.Type.BYTE);
-          } else if (Short.MIN_VALUE <= l && l <= Short.MAX_VALUE) {
-            checkType(v, VariantUtil.PRIMITIVE, VariantUtil.Type.SHORT);
-          } else if (Integer.MIN_VALUE <= l && l <= Integer.MAX_VALUE) {
-            checkType(v, VariantUtil.PRIMITIVE, VariantUtil.Type.INT);
-          } else {
-            checkType(v, VariantUtil.PRIMITIVE, VariantUtil.Type.LONG);
-          }
-          Assert.assertEquals((long) l, v.getLong());
+          testVariant(vb2.result(), v -> {
+            if (Byte.MIN_VALUE <= l && l <= Byte.MAX_VALUE) {
+              checkType(v, VariantUtil.PRIMITIVE, VariantUtil.Type.BYTE);
+            } else if (Short.MIN_VALUE <= l && l <= Short.MAX_VALUE) {
+              checkType(v, VariantUtil.PRIMITIVE, VariantUtil.Type.SHORT);
+            } else if (Integer.MIN_VALUE <= l && l <= Integer.MAX_VALUE) {
+              checkType(v, VariantUtil.PRIMITIVE, VariantUtil.Type.INT);
+            } else {
+              checkType(v, VariantUtil.PRIMITIVE, VariantUtil.Type.LONG);
+            }
+            Assert.assertEquals((long) l, v.getLong());
+          });
         });
 
     Arrays.asList(
@@ -208,58 +226,63 @@ public class TestVariantEncoding {
         .forEach(i -> {
           VariantBuilder vb2 = new VariantBuilder(false);
           vb2.appendLong((long) i);
-          Variant v = vb2.result();
-          if (Byte.MIN_VALUE <= i && i <= Byte.MAX_VALUE) {
-            checkType(v, VariantUtil.PRIMITIVE, VariantUtil.Type.BYTE);
-          } else if (Short.MIN_VALUE <= i && i <= Short.MAX_VALUE) {
-            checkType(v, VariantUtil.PRIMITIVE, VariantUtil.Type.SHORT);
-          } else {
-            checkType(v, VariantUtil.PRIMITIVE, VariantUtil.Type.INT);
-          }
-          Assert.assertEquals((int) i, v.getInt());
+          testVariant(vb2.result(), v -> {
+            if (Byte.MIN_VALUE <= i && i <= Byte.MAX_VALUE) {
+              checkType(v, VariantUtil.PRIMITIVE, VariantUtil.Type.BYTE);
+            } else if (Short.MIN_VALUE <= i && i <= Short.MAX_VALUE) {
+              checkType(v, VariantUtil.PRIMITIVE, VariantUtil.Type.SHORT);
+            } else {
+              checkType(v, VariantUtil.PRIMITIVE, VariantUtil.Type.INT);
+            }
+            Assert.assertEquals((int) i, v.getInt());
+          });
         });
 
     Arrays.asList((short) 0, (short) Byte.MIN_VALUE, (short) Byte.MAX_VALUE, Short.MIN_VALUE, Short.MAX_VALUE)
         .forEach(s -> {
           VariantBuilder vb2 = new VariantBuilder(false);
           vb2.appendLong(s);
-          Variant v = vb2.result();
-          if (Byte.MIN_VALUE <= s && s <= Byte.MAX_VALUE) {
-            checkType(v, VariantUtil.PRIMITIVE, VariantUtil.Type.BYTE);
-          } else {
-            checkType(v, VariantUtil.PRIMITIVE, VariantUtil.Type.SHORT);
-          }
-          Assert.assertEquals((short) s, v.getShort());
+          testVariant(vb2.result(), v -> {
+            if (Byte.MIN_VALUE <= s && s <= Byte.MAX_VALUE) {
+              checkType(v, VariantUtil.PRIMITIVE, VariantUtil.Type.BYTE);
+            } else {
+              checkType(v, VariantUtil.PRIMITIVE, VariantUtil.Type.SHORT);
+            }
+            Assert.assertEquals((short) s, v.getShort());
+          });
         });
 
     Arrays.asList((byte) 0, Byte.MIN_VALUE, Byte.MAX_VALUE).forEach(b -> {
       VariantBuilder vb2 = new VariantBuilder(false);
       vb2.appendLong(b);
-      Variant v = vb2.result();
-      checkType(v, VariantUtil.PRIMITIVE, VariantUtil.Type.BYTE);
-      Assert.assertEquals((byte) b, v.getByte());
+      testVariant(vb2.result(), v -> {
+        checkType(v, VariantUtil.PRIMITIVE, VariantUtil.Type.BYTE);
+        Assert.assertEquals((byte) b, v.getByte());
+      });
     });
   }
 
   @Test
   public void testFloatBuilder() {
-    Arrays.asList(Float.MIN_VALUE, Float.MAX_VALUE).forEach(f -> {
+    Arrays.asList(Float.MIN_VALUE, 0f, Float.MAX_VALUE).forEach(f -> {
       VariantBuilder vb2 = new VariantBuilder(false);
       vb2.appendFloat(f);
-      Variant v = vb2.result();
-      checkType(v, VariantUtil.PRIMITIVE, VariantUtil.Type.FLOAT);
-      Assert.assertEquals(f, v.getFloat(), 0.000001);
+      testVariant(vb2.result(), v -> {
+        checkType(v, VariantUtil.PRIMITIVE, VariantUtil.Type.FLOAT);
+        Assert.assertEquals(f, v.getFloat(), 0.000001);
+      });
     });
   }
 
   @Test
   public void testDoubleBuilder() {
-    Arrays.asList(Double.MIN_VALUE, Double.MAX_VALUE).forEach(d -> {
+    Arrays.asList(Double.MIN_VALUE, 0d, Double.MAX_VALUE).forEach(d -> {
       VariantBuilder vb2 = new VariantBuilder(false);
       vb2.appendDouble(d);
-      Variant v = vb2.result();
-      checkType(v, VariantUtil.PRIMITIVE, VariantUtil.Type.DOUBLE);
-      Assert.assertEquals(d, v.getDouble(), 0.000001);
+      testVariant(vb2.result(), v -> {
+        checkType(v, VariantUtil.PRIMITIVE, VariantUtil.Type.DOUBLE);
+        Assert.assertEquals(d, v.getDouble(), 0.000001);
+      });
     });
   }
 
@@ -270,13 +293,14 @@ public class TestVariantEncoding {
           VariantBuilder vb2 = new VariantBuilder(false);
           String s = randomString(len);
           vb2.appendString(s);
-          Variant v = vb2.result();
-          if (len <= VariantUtil.MAX_SHORT_STR_SIZE) {
-            checkType(v, VariantUtil.SHORT_STR, VariantUtil.Type.STRING);
-          } else {
-            checkType(v, VariantUtil.PRIMITIVE, VariantUtil.Type.STRING);
-          }
-          Assert.assertEquals(s, v.getString());
+          testVariant(vb2.result(), v -> {
+            if (len <= VariantUtil.MAX_SHORT_STR_SIZE) {
+              checkType(v, VariantUtil.SHORT_STR, VariantUtil.Type.STRING);
+            } else {
+              checkType(v, VariantUtil.PRIMITIVE, VariantUtil.Type.STRING);
+            }
+            Assert.assertEquals(s, v.getString());
+          });
         });
   }
 
@@ -286,9 +310,10 @@ public class TestVariantEncoding {
     Arrays.asList(new BigDecimal("123.456"), new BigDecimal("-987.654")).forEach(d -> {
       VariantBuilder vb2 = new VariantBuilder(false);
       vb2.appendDecimal(d);
-      Variant v = vb2.result();
-      checkType(v, VariantUtil.PRIMITIVE, VariantUtil.Type.DECIMAL4);
-      Assert.assertEquals(d, v.getDecimal());
+      testVariant(vb2.result(), v -> {
+        checkType(v, VariantUtil.PRIMITIVE, VariantUtil.Type.DECIMAL4);
+        Assert.assertEquals(d, v.getDecimal());
+      });
     });
 
     // decimal8
@@ -296,9 +321,10 @@ public class TestVariantEncoding {
         .forEach(d -> {
           VariantBuilder vb2 = new VariantBuilder(false);
           vb2.appendDecimal(d);
-          Variant v = vb2.result();
-          checkType(v, VariantUtil.PRIMITIVE, VariantUtil.Type.DECIMAL8);
-          Assert.assertEquals(d, v.getDecimal());
+          testVariant(vb2.result(), v -> {
+            checkType(v, VariantUtil.PRIMITIVE, VariantUtil.Type.DECIMAL8);
+            Assert.assertEquals(d, v.getDecimal());
+          });
         });
 
     // decimal16
@@ -306,10 +332,25 @@ public class TestVariantEncoding {
         .forEach(d -> {
           VariantBuilder vb2 = new VariantBuilder(false);
           vb2.appendDecimal(d);
-          Variant v = vb2.result();
-          checkType(v, VariantUtil.PRIMITIVE, VariantUtil.Type.DECIMAL16);
-          Assert.assertEquals(d, v.getDecimal());
+          testVariant(vb2.result(), v -> {
+            checkType(v, VariantUtil.PRIMITIVE, VariantUtil.Type.DECIMAL16);
+            Assert.assertEquals(d, v.getDecimal());
+          });
         });
+  }
+
+  @Test
+  public void testVariantBuilder() throws IOException {
+    Variant subV =
+        VariantBuilder.parseJson("{\"a\": 1.1, \"b\": {\"d\": [[1], \"foo\"]}, \"c\": [true, {\"a\": 2}]}");
+    testVariant(subV, v -> {
+      VariantBuilder vb = new VariantBuilder(false);
+      vb.appendVariant(v);
+      testVariant(vb.result(), v2 -> {
+        checkType(v2, VariantUtil.OBJECT, VariantUtil.Type.OBJECT);
+        checkJson(v.toJson(), v2.toJson());
+      });
+    });
   }
 
   @Test
@@ -317,8 +358,10 @@ public class TestVariantEncoding {
     VariantBuilder vb = new VariantBuilder(false);
     int days = Math.toIntExact(LocalDate.of(2024, 12, 16).toEpochDay());
     vb.appendDate(days);
-    Assert.assertEquals("\"2024-12-16\"", vb.result().toJson());
-    Assert.assertEquals(days, vb.result().getInt());
+    testVariant(vb.result(), v -> {
+      Assert.assertEquals("\"2024-12-16\"", v.toJson());
+      Assert.assertEquals(days, v.getInt());
+    });
   }
 
   @Test
@@ -327,10 +370,12 @@ public class TestVariantEncoding {
     VariantBuilder vb = new VariantBuilder(false);
     long micros = microsSinceEpoch(Instant.from(dtf.parse("2024-12-16T10:23:45.321456-08:00")));
     vb.appendTimestamp(micros);
-    Assert.assertEquals("\"2024-12-16T18:23:45.321456+00:00\"", vb.result().toJson());
-    Assert.assertEquals("\"2024-12-16T10:23:45.321456-08:00\"", vb.result().toJson(ZoneId.of("-08:00")));
-    Assert.assertEquals("\"2024-12-16T19:23:45.321456+01:00\"", vb.result().toJson(ZoneId.of("+01:00")));
-    Assert.assertEquals(micros, vb.result().getLong());
+    testVariant(vb.result(), v -> {
+      Assert.assertEquals("\"2024-12-16T18:23:45.321456+00:00\"", v.toJson());
+      Assert.assertEquals("\"2024-12-16T10:23:45.321456-08:00\"", v.toJson(ZoneId.of("-08:00")));
+      Assert.assertEquals("\"2024-12-16T19:23:45.321456+01:00\"", v.toJson(ZoneId.of("+01:00")));
+      Assert.assertEquals(micros, v.getLong());
+    });
   }
 
   @Test
@@ -339,10 +384,12 @@ public class TestVariantEncoding {
     VariantBuilder vb = new VariantBuilder(false);
     long micros = microsSinceEpoch(Instant.from(dtf.parse("2024-01-01T23:00:00.000001Z")));
     vb.appendTimestampNtz(micros);
-    Assert.assertEquals("\"2024-01-01T23:00:00.000001\"", vb.result().toJson());
-    Assert.assertEquals("\"2024-01-01T23:00:00.000001\"", vb.result().toJson(ZoneId.of("-08:00")));
-    Assert.assertEquals(vb.result().toJson(ZoneId.of("-08:00")), vb.result().toJson(ZoneId.of("+02:00")));
-    Assert.assertEquals(micros, vb.result().getLong());
+    testVariant(vb.result(), v -> {
+      Assert.assertEquals("\"2024-01-01T23:00:00.000001\"", v.toJson());
+      Assert.assertEquals("\"2024-01-01T23:00:00.000001\"", v.toJson(ZoneId.of("-08:00")));
+      Assert.assertEquals(v.toJson(ZoneId.of("-08:00")), v.toJson(ZoneId.of("+02:00")));
+      Assert.assertEquals(micros, v.getLong());
+    });
   }
 
   @Test
@@ -352,8 +399,10 @@ public class TestVariantEncoding {
       VariantBuilder vb = new VariantBuilder(false);
       long micros = LocalTime.parse(timeStr).toNanoOfDay() / 1_000;
       vb.appendTime(micros);
-      Assert.assertEquals(String.format("\"%s\"", timeStr), vb.result().toJson());
-      Assert.assertEquals(micros, vb.result().getLong());
+      testVariant(vb.result(), v -> {
+        Assert.assertEquals(String.format("\"%s\"", timeStr), v.toJson());
+        Assert.assertEquals(micros, v.getLong());
+      });
     }
   }
 
@@ -363,13 +412,12 @@ public class TestVariantEncoding {
     VariantBuilder vb = new VariantBuilder(false);
     long nanos = nanosSinceEpoch(Instant.from(dtf.parse("2024-12-16T10:23:45.321456987-08:00")));
     vb.appendTimestampNanos(nanos);
-    Assert.assertEquals(
-        "\"2024-12-16T18:23:45.321456987+00:00\"", vb.result().toJson());
-    Assert.assertEquals(
-        "\"2024-12-16T10:23:45.321456987-08:00\"", vb.result().toJson(ZoneId.of("-08:00")));
-    Assert.assertEquals(
-        "\"2024-12-16T19:23:45.321456987+01:00\"", vb.result().toJson(ZoneId.of("+01:00")));
-    Assert.assertEquals(nanos, vb.result().getLong());
+    testVariant(vb.result(), v -> {
+      Assert.assertEquals("\"2024-12-16T18:23:45.321456987+00:00\"", v.toJson());
+      Assert.assertEquals("\"2024-12-16T10:23:45.321456987-08:00\"", v.toJson(ZoneId.of("-08:00")));
+      Assert.assertEquals("\"2024-12-16T19:23:45.321456987+01:00\"", v.toJson(ZoneId.of("+01:00")));
+      Assert.assertEquals(nanos, v.getLong());
+    });
   }
 
   @Test
@@ -378,10 +426,12 @@ public class TestVariantEncoding {
     VariantBuilder vb = new VariantBuilder(false);
     long nanos = nanosSinceEpoch(Instant.from(dtf.parse("2024-01-01T23:00:00.839280983Z")));
     vb.appendTimestampNanosNtz(nanos);
-    Assert.assertEquals("\"2024-01-01T23:00:00.839280983\"", vb.result().toJson());
-    Assert.assertEquals("\"2024-01-01T23:00:00.839280983\"", vb.result().toJson(ZoneId.of("-08:00")));
-    Assert.assertEquals(vb.result().toJson(ZoneId.of("-08:00")), vb.result().toJson(ZoneId.of("+02:00")));
-    Assert.assertEquals(nanos, vb.result().getLong());
+    testVariant(vb.result(), v -> {
+      Assert.assertEquals("\"2024-01-01T23:00:00.839280983\"", v.toJson());
+      Assert.assertEquals("\"2024-01-01T23:00:00.839280983\"", v.toJson(ZoneId.of("-08:00")));
+      Assert.assertEquals(v.toJson(ZoneId.of("-08:00")), v.toJson(ZoneId.of("+02:00")));
+      Assert.assertEquals(nanos, v.getLong());
+    });
   }
 
   @Test
@@ -389,10 +439,10 @@ public class TestVariantEncoding {
     VariantBuilder vb = new VariantBuilder(false);
     byte[] binary = new byte[] {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
     vb.appendBinary(binary);
-    Assert.assertEquals(
-        "\"" + Base64.getEncoder().encodeToString(binary) + "\"",
-        vb.result().toJson());
-    Assert.assertArrayEquals(binary, vb.result().getBinary());
+    testVariant(vb.result(), v -> {
+      Assert.assertEquals("\"" + Base64.getEncoder().encodeToString(binary) + "\"", v.toJson());
+      Assert.assertArrayEquals(binary, v.getBinary());
+    });
   }
 
   @Test
@@ -404,9 +454,10 @@ public class TestVariantEncoding {
     UUID expected = new UUID(msb, lsb);
 
     vb.appendUUID(expected);
-    Assert.assertEquals(
-        "\"00112233-4455-6677-8899-aabbccddeeff\"", vb.result().toJson());
-    Assert.assertEquals(expected, vb.result().getUUID());
+    testVariant(vb.result(), v -> {
+      Assert.assertEquals("\"00112233-4455-6677-8899-aabbccddeeff\"", v.toJson());
+      Assert.assertEquals(expected, v.getUUID());
+    });
   }
 
   @Test
@@ -459,16 +510,17 @@ public class TestVariantEncoding {
       sb.append("\"field" + i + "\": ").append(i);
     }
     sb.append("}");
-    Variant v = VariantBuilder.parseJson(sb.toString());
-    Assert.assertEquals(Variant.BINARY_SEARCH_THRESHOLD / 2, v.numObjectElements());
-    for (int i = 0; i < Variant.BINARY_SEARCH_THRESHOLD / 2; i++) {
-      String actual = v.getFieldByKey("field" + i).toJson();
-      Assert.assertEquals(String.valueOf(i), actual);
-      // check by index
-      Variant.ObjectField field = v.getFieldAtIndex(i);
-      Assert.assertTrue(field.key.startsWith("field"));
-      Assert.assertEquals(field.key.substring("field".length()), field.value.toJson());
-    }
+    testVariant(VariantBuilder.parseJson(sb.toString()), v -> {
+      Assert.assertEquals(Variant.BINARY_SEARCH_THRESHOLD / 2, v.numObjectElements());
+      for (int i = 0; i < Variant.BINARY_SEARCH_THRESHOLD / 2; i++) {
+        String actual = v.getFieldByKey("field" + i).toJson();
+        Assert.assertEquals(String.valueOf(i), actual);
+        // check by index
+        Variant.ObjectField field = v.getFieldAtIndex(i);
+        Assert.assertTrue(field.key.startsWith("field"));
+        Assert.assertEquals(field.key.substring("field".length()), field.value.toJson());
+      }
+    });
 
     // Create larger object for binary search
     sb = new StringBuilder();
@@ -478,16 +530,17 @@ public class TestVariantEncoding {
       sb.append("\"field" + i + "\": ").append(i);
     }
     sb.append("}");
-    v = VariantBuilder.parseJson(sb.toString());
-    Assert.assertEquals(2 * Variant.BINARY_SEARCH_THRESHOLD, v.numObjectElements());
-    for (int i = 0; i < 2 * Variant.BINARY_SEARCH_THRESHOLD; i++) {
-      String actual = v.getFieldByKey("field" + i).toJson();
-      Assert.assertEquals(String.valueOf(i), actual);
-      // check by index
-      Variant.ObjectField field = v.getFieldAtIndex(i);
-      Assert.assertTrue(field.key.startsWith("field"));
-      Assert.assertEquals(field.key.substring("field".length()), field.value.toJson());
-    }
+    testVariant(VariantBuilder.parseJson(sb.toString()), v -> {
+      Assert.assertEquals(2 * Variant.BINARY_SEARCH_THRESHOLD, v.numObjectElements());
+      for (int i = 0; i < 2 * Variant.BINARY_SEARCH_THRESHOLD; i++) {
+        String actual = v.getFieldByKey("field" + i).toJson();
+        Assert.assertEquals(String.valueOf(i), actual);
+        // check by index
+        Variant.ObjectField field = v.getFieldAtIndex(i);
+        Assert.assertTrue(field.key.startsWith("field"));
+        Assert.assertEquals(field.key.substring("field".length()), field.value.toJson());
+      }
+    });
   }
 
   @Test
@@ -502,12 +555,13 @@ public class TestVariantEncoding {
     sb.append("]");
     checkJson(sb.toString());
     // Check array elements
-    Variant v = VariantBuilder.parseJson(sb.toString());
-    Assert.assertEquals(SAMPLE_JSON_VALUES.size(), v.numArrayElements());
-    for (int i = 0; i < SAMPLE_JSON_VALUES.size(); i++) {
-      String actual = v.getElementAtIndex(i).toJson();
-      checkJson(SAMPLE_JSON_VALUES.get(i), actual);
-    }
+    testVariant(VariantBuilder.parseJson(sb.toString()), v -> {
+      Assert.assertEquals(SAMPLE_JSON_VALUES.size(), v.numArrayElements());
+      for (int i = 0; i < SAMPLE_JSON_VALUES.size(); i++) {
+        String actual = v.getElementAtIndex(i).toJson();
+        checkJson(SAMPLE_JSON_VALUES.get(i), actual);
+      }
+    });
 
     // large array
     sb = new StringBuilder();
@@ -519,12 +573,13 @@ public class TestVariantEncoding {
     sb.append("]");
     checkJson(sb.toString());
     // Check array elements
-    v = VariantBuilder.parseJson(sb.toString());
-    Assert.assertEquals(50000, v.numArrayElements());
-    for (int i = 0; i < 50000; i++) {
-      String actual = v.getElementAtIndex(i).toJson();
-      checkJson(SAMPLE_JSON_VALUES.get(i % SAMPLE_JSON_VALUES.size()), actual);
-    }
+    testVariant(VariantBuilder.parseJson(sb.toString()), v -> {
+      Assert.assertEquals(50000, v.numArrayElements());
+      for (int i = 0; i < 50000; i++) {
+        String actual = v.getElementAtIndex(i).toJson();
+        checkJson(SAMPLE_JSON_VALUES.get(i % SAMPLE_JSON_VALUES.size()), actual);
+      }
+    });
   }
 
   @Test
@@ -577,9 +632,10 @@ public class TestVariantEncoding {
       VariantBuilder vb = new VariantBuilder(false);
       BigDecimal d = new BigDecimal(strings[0]);
       vb.appendDecimal(d);
-      Variant v = vb.result();
-      Assert.assertEquals(strings[0], v.toJson());
-      Assert.assertEquals(strings[1], v.toJson(ZoneId.of("UTC"), true));
+      testVariant(vb.result(), v -> {
+        Assert.assertEquals(strings[0], v.toJson());
+        Assert.assertEquals(strings[1], v.toJson(ZoneId.of("UTC"), true));
+      });
     }
   }
 
@@ -596,9 +652,10 @@ public class TestVariantEncoding {
       VariantBuilder vb = new VariantBuilder(false);
       long micros = microsSinceEpoch(Instant.from(dtf.parse(strings[0])));
       vb.appendTimestamp(micros);
-      Variant v = vb.result();
-      Assert.assertEquals(String.format("\"%s\"", strings[0]), v.toJson(ZoneId.of("-08:00")));
-      Assert.assertEquals(String.format("\"%s\"", strings[1]), v.toJson(ZoneId.of("-08:00"), true));
+      testVariant(vb.result(), v -> {
+        Assert.assertEquals(String.format("\"%s\"", strings[0]), v.toJson(ZoneId.of("-08:00")));
+        Assert.assertEquals(String.format("\"%s\"", strings[1]), v.toJson(ZoneId.of("-08:00"), true));
+      });
     }
   }
 
@@ -616,10 +673,11 @@ public class TestVariantEncoding {
 
       long micros = microsSinceEpoch(Instant.from(dtf.parse(String.format("%sZ", strings[0]))));
       vb.appendTimestampNtz(micros);
-      Variant v = vb.result();
-      Assert.assertEquals(String.format("\"%s\"", strings[0]), v.toJson(ZoneId.of("-08:00")));
-      Assert.assertEquals(String.format("\"%s\"", strings[1]), v.toJson(ZoneId.of("-08:00"), true));
-      Assert.assertEquals(micros, vb.result().getLong());
+      testVariant(vb.result(), v -> {
+        Assert.assertEquals(String.format("\"%s\"", strings[0]), v.toJson(ZoneId.of("-08:00")));
+        Assert.assertEquals(String.format("\"%s\"", strings[1]), v.toJson(ZoneId.of("-08:00"), true));
+        Assert.assertEquals(micros, v.getLong());
+      });
     }
   }
 
@@ -636,10 +694,11 @@ public class TestVariantEncoding {
 
       long micros = LocalTime.parse(strings[0]).toNanoOfDay() / 1_000;
       vb.appendTime(micros);
-      Variant v = vb.result();
-      Assert.assertEquals(String.format("\"%s\"", strings[0]), v.toJson(ZoneId.of("-08:00")));
-      Assert.assertEquals(String.format("\"%s\"", strings[1]), v.toJson(ZoneId.of("-08:00"), true));
-      Assert.assertEquals(micros, vb.result().getLong());
+      testVariant(vb.result(), v -> {
+        Assert.assertEquals(String.format("\"%s\"", strings[0]), v.toJson(ZoneId.of("-08:00")));
+        Assert.assertEquals(String.format("\"%s\"", strings[1]), v.toJson(ZoneId.of("-08:00"), true));
+        Assert.assertEquals(micros, v.getLong());
+      });
     }
   }
 
@@ -656,9 +715,10 @@ public class TestVariantEncoding {
       VariantBuilder vb = new VariantBuilder(false);
       long nanos = nanosSinceEpoch(Instant.from(dtf.parse(strings[0])));
       vb.appendTimestampNanos(nanos);
-      Variant v = vb.result();
-      Assert.assertEquals(String.format("\"%s\"", strings[0]), v.toJson(ZoneId.of("-08:00")));
-      Assert.assertEquals(String.format("\"%s\"", strings[1]), v.toJson(ZoneId.of("-08:00"), true));
+      testVariant(vb.result(), v -> {
+        Assert.assertEquals(String.format("\"%s\"", strings[0]), v.toJson(ZoneId.of("-08:00")));
+        Assert.assertEquals(String.format("\"%s\"", strings[1]), v.toJson(ZoneId.of("-08:00"), true));
+      });
     }
   }
 
@@ -676,10 +736,11 @@ public class TestVariantEncoding {
 
       long nanos = nanosSinceEpoch(Instant.from(dtf.parse(String.format("%sZ", strings[0]))));
       vb.appendTimestampNanosNtz(nanos);
-      Variant v = vb.result();
-      Assert.assertEquals(String.format("\"%s\"", strings[0]), v.toJson(ZoneId.of("-08:00")));
-      Assert.assertEquals(String.format("\"%s\"", strings[1]), v.toJson(ZoneId.of("-08:00"), true));
-      Assert.assertEquals(nanos, vb.result().getLong());
+      testVariant(vb.result(), v -> {
+        Assert.assertEquals(String.format("\"%s\"", strings[0]), v.toJson(ZoneId.of("-08:00")));
+        Assert.assertEquals(String.format("\"%s\"", strings[1]), v.toJson(ZoneId.of("-08:00"), true));
+        Assert.assertEquals(nanos, vb.result().getLong());
+      });
     }
   }
 }

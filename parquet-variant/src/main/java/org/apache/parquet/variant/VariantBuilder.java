@@ -431,46 +431,47 @@ public class VariantBuilder {
    * @param v the Variant value to append
    */
   public void appendVariant(Variant v) {
-    appendVariantImpl(v.value, v.metadata, v.pos);
+    appendVariantImpl(v.value, v.valuePos, v.metadata, v.metadataPos);
   }
 
-  private void appendVariantImpl(byte[] value, byte[] metadata, int pos) {
-    VariantUtil.checkIndex(pos, value.length);
-    int basicType = value[pos] & VariantUtil.BASIC_TYPE_MASK;
+  private void appendVariantImpl(byte[] value, int valuePos, byte[] metadata, int metadataPos) {
+    VariantUtil.checkIndex(valuePos, value.length);
+    int basicType = value[valuePos] & VariantUtil.BASIC_TYPE_MASK;
     switch (basicType) {
       case VariantUtil.OBJECT: {
-        VariantUtil.ObjectInfo info = VariantUtil.getObjectInfo(value, pos);
+        VariantUtil.ObjectInfo info = VariantUtil.getObjectInfo(value, valuePos);
         ArrayList<FieldEntry> fields = new ArrayList<>(info.numElements);
         int start = writePos;
         for (int i = 0; i < info.numElements; ++i) {
-          int id = VariantUtil.readUnsigned(value, pos + info.idStartOffset + info.idSize * i, info.idSize);
+          int id = VariantUtil.readUnsigned(
+              value, valuePos + info.idStartOffset + info.idSize * i, info.idSize);
           int offset = VariantUtil.readUnsigned(
-              value, pos + info.offsetStartOffset + info.offsetSize * i, info.offsetSize);
-          int elementPos = pos + info.dataStartOffset + offset;
-          String key = VariantUtil.getMetadataKey(metadata, id);
+              value, valuePos + info.offsetStartOffset + info.offsetSize * i, info.offsetSize);
+          int elementPos = valuePos + info.dataStartOffset + offset;
+          String key = VariantUtil.getMetadataKey(metadata, metadataPos, id);
           int newId = addKey(key);
           fields.add(new FieldEntry(key, newId, writePos - start));
-          appendVariantImpl(value, metadata, elementPos);
+          appendVariantImpl(value, elementPos, metadata, metadataPos);
         }
         finishWritingObject(start, fields);
         break;
       }
       case VariantUtil.ARRAY: {
-        VariantUtil.ArrayInfo info = VariantUtil.getArrayInfo(value, pos);
+        VariantUtil.ArrayInfo info = VariantUtil.getArrayInfo(value, valuePos);
         ArrayList<Integer> offsets = new ArrayList<>(info.numElements);
         int start = writePos;
         for (int i = 0; i < info.numElements; ++i) {
           int offset = VariantUtil.readUnsigned(
-              value, pos + info.offsetStartOffset + info.offsetSize * i, info.offsetSize);
-          int elementPos = pos + info.dataStartOffset + offset;
+              value, valuePos + info.offsetStartOffset + info.offsetSize * i, info.offsetSize);
+          int elementPos = valuePos + info.dataStartOffset + offset;
           offsets.add(writePos - start);
-          appendVariantImpl(value, metadata, elementPos);
+          appendVariantImpl(value, elementPos, metadata, metadataPos);
         }
         finishWritingArray(start, offsets);
         break;
       }
       default:
-        shallowAppendVariantImpl(value, pos);
+        shallowAppendVariantImpl(value, valuePos);
         break;
     }
   }
