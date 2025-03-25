@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.parser;
 
+import static org.apache.parquet.format.LogicalTypes.VARIANT;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit.MILLIS;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit.NANOS;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.intType;
@@ -55,6 +56,7 @@ import static org.apache.parquet.schema.Types.buildMessage;
 import static org.junit.Assert.assertEquals;
 
 import org.apache.parquet.schema.GroupType;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
 import org.apache.parquet.schema.OriginalType;
@@ -446,5 +448,31 @@ public class TestParquetParser {
     assertEquals(expected, parsed);
     MessageType reparsed = MessageTypeParser.parseMessageType(parsed.toString());
     assertEquals(expected, reparsed);
+  }
+
+  @Test
+  public void testVARIANTAnnotation() {
+      String message = "message Message {\n"
+          + "  required group aVariant (VARIANT) {\n"
+          + "     required binary metadata;\n"
+          + "     required binary value;\n"
+          + "  }\n"
+          + "}\n";
+
+    MessageType expected = buildMessage()
+        .requiredGroup()
+        .as(LogicalTypeAnnotation.variantType())
+        .required(BINARY)
+        .named("metadata")
+        .required(BINARY)
+        .named("value")
+        .named("aVariant")
+        .named("Message");
+
+      MessageType parsed = parseMessageType(message);
+
+      assertEquals(expected, parsed);
+      MessageType reparsed = parseMessageType(parsed.toString());
+      assertEquals(expected, reparsed);
   }
 }

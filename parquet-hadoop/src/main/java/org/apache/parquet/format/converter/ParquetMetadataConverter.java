@@ -112,6 +112,7 @@ import org.apache.parquet.format.Type;
 import org.apache.parquet.format.TypeDefinedOrder;
 import org.apache.parquet.format.UUIDType;
 import org.apache.parquet.format.Uncompressed;
+import org.apache.parquet.format.VariantType;
 import org.apache.parquet.format.XxHash;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
@@ -516,13 +517,18 @@ public class ParquetMetadataConverter {
     }
 
     @Override
-    public Optional<LogicalType> visit(LogicalTypeAnnotation.UnknownLogicalTypeAnnotation intervalLogicalType) {
+    public Optional<LogicalType> visit(LogicalTypeAnnotation.UnknownLogicalTypeAnnotation unknownLogicalType) {
       return of(LogicalType.UNKNOWN(new NullType()));
     }
 
     @Override
     public Optional<LogicalType> visit(LogicalTypeAnnotation.IntervalLogicalTypeAnnotation intervalLogicalType) {
       return of(LogicalType.UNKNOWN(new NullType()));
+    }
+
+    @Override
+    public Optional<LogicalType> visit(LogicalTypeAnnotation.VariantLogicalTypeAnnotation variantLogicalType) {
+      return of(LogicalType.VARIANT(new VariantType()));
     }
   }
 
