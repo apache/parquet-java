@@ -103,6 +103,7 @@ import org.apache.parquet.format.TimestampType;
 import org.apache.parquet.format.Type;
 import org.apache.parquet.format.TypeDefinedOrder;
 import org.apache.parquet.format.Uncompressed;
+import org.apache.parquet.format.VariantType;
 import org.apache.parquet.format.XxHash;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
@@ -513,6 +514,11 @@ public class ParquetMetadataConverter {
     @Override
     public Optional<LogicalType> visit(LogicalTypeAnnotation.IntervalLogicalTypeAnnotation intervalLogicalType) {
       return of(LogicalTypes.UNKNOWN);
+    }
+
+    @Override
+    public Optional<LogicalType> visit(LogicalTypeAnnotation.VariantLogicalTypeAnnotation variantLogicalType) {
+      return of(LogicalTypes.VARIANT);
     }
   }
 

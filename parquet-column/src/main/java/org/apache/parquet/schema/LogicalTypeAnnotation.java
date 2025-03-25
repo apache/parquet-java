@@ -59,6 +59,9 @@ public abstract class LogicalTypeAnnotation {
     VARIANT {
       @Override
       protected LogicalTypeAnnotation fromString(List<String> params) {
+        Preconditions.checkArgument(
+            params.isEmpty(), "Expecting 0 parameter for variant logical type, got %d", params.size());
+
         return variantType();
       }
     },

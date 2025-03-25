@@ -54,4 +54,5 @@ public class LogicalTypes {
   public static final LogicalType BSON = LogicalType.BSON(new BsonType());
   public static final LogicalType FLOAT16 = LogicalType.FLOAT16(new Float16Type());
   public static final LogicalType UUID = LogicalType.UUID(new UUIDType());
+  public static final LogicalType VARIANT = LogicalType.VARIANT(new VariantType());
 }
