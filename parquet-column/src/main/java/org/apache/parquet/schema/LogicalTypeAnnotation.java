@@ -260,8 +260,6 @@ public abstract class LogicalTypeAnnotation {
         return bsonType();
       case MAP_KEY_VALUE:
         return MapKeyValueTypeAnnotation.getInstance();
-      case VARIANT:
-        return variantType();
       default:
         throw new RuntimeException(
             "Can't convert original type to logical type, unknown original type " + originalType);
@@ -1150,7 +1148,8 @@ public abstract class LogicalTypeAnnotation {
 
     @Override
     public OriginalType toOriginalType() {
-      return OriginalType.VARIANT;
+      // No OriginalType for Variant
+      return null;
     }
 
     @Override
