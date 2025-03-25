@@ -44,5 +44,6 @@ public enum OriginalType {
   INT_64,
   JSON,
   BSON,
-  INTERVAL
+  INTERVAL,
+  VARIANT
 }
