@@ -35,6 +35,7 @@ import org.apache.parquet.io.api.Converter;
 import org.apache.parquet.io.api.GroupConverter;
 import org.apache.parquet.io.api.PrimitiveConverter;
 import org.apache.parquet.schema.GroupType;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Type;
 
@@ -168,7 +169,12 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
       case MAP:
         return new MapConverter(parent, type.asGroupType(), schema, model);
       case RECORD:
-        return new AvroIndexedRecordConverter<>(parent, type.asGroupType(), schema, model);
+        if (type.getLogicalTypeAnnotation()
+                instanceof LogicalTypeAnnotation.VariantLogicalTypeAnnotation) {
+          return new AvroConverters.FieldVariantConverter(parent, type.asGroupType(), schema, model);
+        } else {
+          return new AvroIndexedRecordConverter<>(parent, type.asGroupType(), schema, model);
+        }
       case STRING:
         return new AvroConverters.FieldStringConverter(parent);
       case UNION:

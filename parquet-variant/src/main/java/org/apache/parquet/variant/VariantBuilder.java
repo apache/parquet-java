@@ -373,6 +373,16 @@ public class VariantBuilder {
     writePos += VariantUtil.UUID_SIZE;
   }
 
+  // Append raw bytes, already in the form required for storage in Variant.
+  public void appendUUIDBytes(byte[] bytes) {
+    checkCapacity(1 + VariantUtil.UUID_SIZE);
+    writeBuffer[writePos++] = VariantUtil.primitiveHeader(VariantUtil.UUID);
+    // TODO Throw a better exception if this is violated.
+    assert (bytes.length == VariantUtil.UUID_SIZE);
+    System.arraycopy(bytes, 0, writeBuffer, writePos, bytes.length);
+    writePos += bytes.length;
+  }
+
   /**
    * Starts appending an object to this variant builder. The returned VariantObjectBuilder is used
    * to append object keys and values. startObject() must be called before endObject().
@@ -564,6 +574,10 @@ public class VariantBuilder {
    */
   int addDictionaryKey(String key) {
     return dictionary.computeIfAbsent(key, newKey -> {
+      if (fixedMetadata) {
+        // TODO: Better exception.
+        throw new IllegalArgumentException("Value in shredding refers to non-existent metadata string");
+      }
       int id = dictionaryKeys.size();
       dictionaryKeys.add(newKey.getBytes(StandardCharsets.UTF_8));
       return id;

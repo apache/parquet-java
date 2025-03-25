@@ -21,6 +21,7 @@ import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.Arrays;
+import java.util.HashMap;
 
 /**
  * This class defines constants related to the Variant format and provides functions for
@@ -806,5 +807,32 @@ class VariantUtil {
       slice(metadata, dataPos + offset).get(metadataArray);
       return new String(metadataArray);
     }
+  }
+
+  /**
+   * Returns a map from each string to its ID in the Variant metadata.
+   * @param metadata The Variant metadata
+   * @return A map from metadata key to its position.
+   */
+  public static HashMap<String, Integer> getMetadataMap(byte[] metadata) {
+    checkIndex(0, metadata.length);
+    // Extracts the highest 2 bits in the metadata header to determine the integer size of the
+    // offset list.
+    int offsetSize = ((metadata[0] >> 6) & 0x3) + 1;
+    int dictSize = readUnsigned(metadata, 1, offsetSize);
+    HashMap<String, Integer> result = new HashMap<>();
+    int offset = readUnsigned(metadata, 1 + offsetSize, offsetSize);
+    for (int id = 0; id < dictSize; id++) {
+      int stringStart = 1 + (dictSize + 2) * offsetSize;
+      int nextOffset = readUnsigned(metadata, 1 + (id + 2) * offsetSize, offsetSize);
+      if (offset > nextOffset) {
+        throw new MalformedVariantException(
+            String.format("Invalid offset: %d. next offset: %d", offset, nextOffset));
+      }
+      checkIndex(stringStart + nextOffset - 1, metadata.length);
+      result.put(new String(metadata, stringStart + offset, nextOffset - offset), id);
+      offset = nextOffset;
+    }
+    return result;
   }
 }
