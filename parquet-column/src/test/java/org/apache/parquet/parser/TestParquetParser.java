@@ -18,7 +18,6 @@
  */
 package org.apache.parquet.parser;
 
-import static org.apache.parquet.format.LogicalTypes.VARIANT;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit.MILLIS;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit.NANOS;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.intType;
@@ -452,12 +451,12 @@ public class TestParquetParser {
 
   @Test
   public void testVARIANTAnnotation() {
-      String message = "message Message {\n"
-          + "  required group aVariant (VARIANT) {\n"
-          + "     required binary metadata;\n"
-          + "     required binary value;\n"
-          + "  }\n"
-          + "}\n";
+    String message = "message Message {\n"
+        + "  required group aVariant (VARIANT) {\n"
+        + "     required binary metadata;\n"
+        + "     required binary value;\n"
+        + "  }\n"
+        + "}\n";
 
     MessageType expected = buildMessage()
         .requiredGroup()
@@ -469,10 +468,10 @@ public class TestParquetParser {
         .named("aVariant")
         .named("Message");
 
-      MessageType parsed = parseMessageType(message);
+    MessageType parsed = parseMessageType(message);
 
-      assertEquals(expected, parsed);
-      MessageType reparsed = parseMessageType(parsed.toString());
-      assertEquals(expected, reparsed);
+    assertEquals(expected, parsed);
+    MessageType reparsed = parseMessageType(parsed.toString());
+    assertEquals(expected, reparsed);
   }
 }
