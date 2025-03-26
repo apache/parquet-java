@@ -23,13 +23,6 @@ import com.fasterxml.jackson.core.JsonGenerator;
 import java.io.CharArrayWriter;
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.time.*;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeFormatterBuilder;
-import java.time.temporal.ChronoField;
-import java.time.temporal.ChronoUnit;
-import java.util.Base64;
-import java.util.Locale;
 import java.util.UUID;
 import org.apache.parquet.cli.util.RuntimeIOException;
 
@@ -53,8 +46,6 @@ public final class Variant {
    * short list.
    */
   static final int BINARY_SEARCH_THRESHOLD = 32;
-
-  static final ZoneId UTC = ZoneId.of("UTC");
 
   public Variant(byte[] value, byte[] metadata) {
     this(value, 0, metadata, 0);
@@ -331,32 +322,63 @@ public final class Variant {
   }
 
   /**
+   * An interface to write Variant scalar values to a JSON generator.
+   */
+  public interface ScalarToJson {
+    void writeNull(JsonGenerator gen) throws IOException;
+
+    void writeBoolean(JsonGenerator gen, boolean value) throws IOException;
+
+    void writeByte(JsonGenerator gen, byte value) throws IOException;
+
+    void writeShort(JsonGenerator gen, short value) throws IOException;
+
+    void writeInt(JsonGenerator gen, int value) throws IOException;
+
+    void writeLong(JsonGenerator gen, long value) throws IOException;
+
+    void writeFloat(JsonGenerator gen, float value) throws IOException;
+
+    void writeDouble(JsonGenerator gen, double value) throws IOException;
+
+    void writeString(JsonGenerator gen, String value) throws IOException;
+
+    void writeBinary(JsonGenerator gen, byte[] value) throws IOException;
+
+    void writeDecimal(JsonGenerator gen, BigDecimal value) throws IOException;
+
+    void writeUUID(JsonGenerator gen, UUID value) throws IOException;
+
+    void writeDate(JsonGenerator gen, int value) throws IOException;
+
+    void writeTime(JsonGenerator gen, long microsSinceMidnight) throws IOException;
+
+    void writeTimestamp(JsonGenerator gen, long microsSinceEpoch) throws IOException;
+
+    void writeTimestampNtz(JsonGenerator gen, long microsSinceEpoch) throws IOException;
+
+    void writeTimestampNanos(JsonGenerator gen, long nanosSinceEpoch) throws IOException;
+
+    void writeTimestampNanosNtz(JsonGenerator gen, long nanosSinceEpoch) throws IOException;
+  }
+
+  /**
    * @return the JSON representation of the variant
    * @throws MalformedVariantException if the variant is malformed
    */
   public String toJson() {
-    return toJson(UTC, false);
+    return toJson(new DefaultScalarToJson());
   }
 
   /**
-   * @param zoneId The ZoneId to use for formatting timestamps
+   * @param scalarWriter the writer to use for writing scalar values
    * @return the JSON representation of the variant
    * @throws MalformedVariantException if the variant is malformed
    */
-  public String toJson(ZoneId zoneId) {
-    return toJson(zoneId, false);
-  }
-
-  /**
-   * @param zoneId The ZoneId to use for formatting timestamps
-   * @param truncateTrailingZeros Whether to truncate trailing zeros in decimal values or timestamps
-   * @return the JSON representation of the variant
-   * @throws MalformedVariantException if the variant is malformed
-   */
-  public String toJson(ZoneId zoneId, boolean truncateTrailingZeros) {
+  public String toJson(ScalarToJson scalarWriter) {
     try (CharArrayWriter writer = new CharArrayWriter();
         JsonGenerator gen = new JsonFactory().createGenerator(writer)) {
-      toJsonImpl(value, valuePos, metadata, metadataPos, gen, zoneId, truncateTrailingZeros);
+      toJsonImpl(value, valuePos, metadata, metadataPos, gen, scalarWriter);
       gen.flush();
       return writer.toString();
     } catch (IOException e) {
@@ -364,102 +386,8 @@ public final class Variant {
     }
   }
 
-  /** The format for a timestamp without time zone. */
-  private static final DateTimeFormatter TIMESTAMP_NTZ_FORMATTER = new DateTimeFormatterBuilder()
-      .append(DateTimeFormatter.ISO_LOCAL_DATE)
-      .appendLiteral('T')
-      .appendPattern("HH:mm:ss")
-      .appendFraction(ChronoField.MICRO_OF_SECOND, 6, 6, true)
-      .toFormatter(Locale.US);
-
-  /** The format for a timestamp without time zone, with nanosecond precision. */
-  private static final DateTimeFormatter TIMESTAMP_NANOS_NTZ_FORMATTER = new DateTimeFormatterBuilder()
-      .append(DateTimeFormatter.ISO_LOCAL_DATE)
-      .appendLiteral('T')
-      .appendPattern("HH:mm:ss")
-      .appendFraction(ChronoField.NANO_OF_SECOND, 9, 9, true)
-      .toFormatter(Locale.US);
-
-  /** The format for a timestamp with time zone. */
-  private static final DateTimeFormatter TIMESTAMP_FORMATTER = new DateTimeFormatterBuilder()
-      .append(TIMESTAMP_NTZ_FORMATTER)
-      .appendOffset("+HH:MM", "+00:00")
-      .toFormatter(Locale.US);
-
-  /** The format for a timestamp with time zone, with nanosecond precision. */
-  private static final DateTimeFormatter TIMESTAMP_NANOS_FORMATTER = new DateTimeFormatterBuilder()
-      .append(TIMESTAMP_NANOS_NTZ_FORMATTER)
-      .appendOffset("+HH:MM", "+00:00")
-      .toFormatter(Locale.US);
-
-  /** The format for a time. */
-  private static final DateTimeFormatter TIME_FORMATTER = new DateTimeFormatterBuilder()
-      .appendPattern("HH:mm:ss")
-      .appendFraction(ChronoField.MICRO_OF_SECOND, 6, 6, true)
-      .toFormatter(Locale.US);
-
-  /** The format for a timestamp without time zone, truncating trailing microsecond zeros. */
-  private static final DateTimeFormatter TIMESTAMP_NTZ_TRUNC_FORMATTER = new DateTimeFormatterBuilder()
-      .append(DateTimeFormatter.ISO_LOCAL_DATE)
-      .appendLiteral('T')
-      .appendPattern("HH:mm:ss")
-      .optionalStart()
-      .appendFraction(ChronoField.MICRO_OF_SECOND, 0, 6, true)
-      .optionalEnd()
-      .toFormatter(Locale.US);
-
-  /**
-   * The format for a timestamp without time zone, with nanosecond precision, truncating
-   * trailing nanosecond zeros.
-   */
-  private static final DateTimeFormatter TIMESTAMP_NANOS_NTZ_TRUNC_FORMATTER = new DateTimeFormatterBuilder()
-      .append(DateTimeFormatter.ISO_LOCAL_DATE)
-      .appendLiteral('T')
-      .appendPattern("HH:mm:ss")
-      .optionalStart()
-      .appendFraction(ChronoField.NANO_OF_SECOND, 0, 9, true)
-      .optionalEnd()
-      .toFormatter(Locale.US);
-
-  /** The format for a timestamp with time zone, truncating trailing microsecond zeros. */
-  private static final DateTimeFormatter TIMESTAMP_TRUNC_FORMATTER = new DateTimeFormatterBuilder()
-      .append(TIMESTAMP_NTZ_TRUNC_FORMATTER)
-      .appendOffset("+HH:MM", "+00:00")
-      .toFormatter(Locale.US);
-
-  /**
-   * The format for a timestamp with time zone, with nanosecond precision, truncating trailing
-   * nanosecond zeros.
-   */
-  private static final DateTimeFormatter TIMESTAMP_NANOS_TRUNC_FORMATTER = new DateTimeFormatterBuilder()
-      .append(TIMESTAMP_NANOS_NTZ_TRUNC_FORMATTER)
-      .appendOffset("+HH:MM", "+00:00")
-      .toFormatter(Locale.US);
-
-  /** The format for a time, truncating trailing microsecond zeros. */
-  private static final DateTimeFormatter TIME_TRUNC_FORMATTER = new DateTimeFormatterBuilder()
-      .appendPattern("HH:mm:ss")
-      .optionalStart()
-      .appendFraction(ChronoField.MICRO_OF_SECOND, 0, 6, true)
-      .optionalEnd()
-      .toFormatter(Locale.US);
-
-  private static Instant microsToInstant(long microsSinceEpoch) {
-    return Instant.EPOCH.plus(microsSinceEpoch, ChronoUnit.MICROS);
-  }
-
-  private static Instant nanosToInstant(long timestampNanos) {
-    return Instant.EPOCH.plus(timestampNanos, ChronoUnit.NANOS);
-  }
-
   private static void toJsonImpl(
-      byte[] value,
-      int valuePos,
-      byte[] metadata,
-      int metadataPos,
-      JsonGenerator gen,
-      ZoneId zoneId,
-      boolean truncateTrailingZeros)
+      byte[] value, int valuePos, byte[] metadata, int metadataPos, JsonGenerator gen, ScalarToJson scalarWriter)
       throws IOException {
     switch (VariantUtil.getType(value, valuePos)) {
       case OBJECT: {
@@ -483,8 +411,7 @@ public final class Variant {
               field.value.metadata,
               metadataPos,
               gen,
-              zoneId,
-              truncateTrailingZeros);
+              scalarWriter);
         }
         gen.writeEndObject();
         break;
@@ -501,99 +428,66 @@ public final class Variant {
               info.offsetSize,
               valuePos + info.offsetStartOffset,
               valuePos + info.dataStartOffset);
-          toJsonImpl(v.value, v.valuePos, v.metadata, metadataPos, gen, zoneId, truncateTrailingZeros);
+          toJsonImpl(v.value, v.valuePos, v.metadata, metadataPos, gen, scalarWriter);
         }
         gen.writeEndArray();
         break;
       }
       case NULL:
-        gen.writeNull();
+        scalarWriter.writeNull(gen);
         break;
       case BOOLEAN:
-        gen.writeBoolean(VariantUtil.getBoolean(value, valuePos));
+        scalarWriter.writeBoolean(gen, VariantUtil.getBoolean(value, valuePos));
         break;
       case BYTE:
+        scalarWriter.writeByte(gen, (byte) VariantUtil.getLong(value, valuePos));
+        break;
       case SHORT:
+        scalarWriter.writeShort(gen, (short) VariantUtil.getLong(value, valuePos));
+        break;
       case INT:
+        scalarWriter.writeInt(gen, (int) VariantUtil.getLong(value, valuePos));
+        break;
       case LONG:
-        gen.writeNumber(VariantUtil.getLong(value, valuePos));
+        scalarWriter.writeLong(gen, VariantUtil.getLong(value, valuePos));
         break;
       case STRING:
-        gen.writeString(VariantUtil.getString(value, valuePos));
+        scalarWriter.writeString(gen, VariantUtil.getString(value, valuePos));
+        break;
+      case BINARY:
+        scalarWriter.writeBinary(gen, VariantUtil.getBinary(value, valuePos));
+        break;
+      case FLOAT:
+        scalarWriter.writeFloat(gen, VariantUtil.getFloat(value, valuePos));
         break;
       case DOUBLE:
-        gen.writeNumber(VariantUtil.getDouble(value, valuePos));
+        scalarWriter.writeDouble(gen, VariantUtil.getDouble(value, valuePos));
         break;
       case DECIMAL4:
       case DECIMAL8:
       case DECIMAL16:
-        if (truncateTrailingZeros) {
-          gen.writeNumber(VariantUtil.getDecimal(value, valuePos)
-              .stripTrailingZeros()
-              .toPlainString());
-        } else {
-          gen.writeNumber(VariantUtil.getDecimal(value, valuePos).toPlainString());
-        }
+        scalarWriter.writeDecimal(gen, VariantUtil.getDecimal(value, valuePos));
         break;
       case DATE:
-        gen.writeString(LocalDate.ofEpochDay((int) VariantUtil.getLong(value, valuePos))
-            .toString());
+        scalarWriter.writeDate(gen, (int) VariantUtil.getLong(value, valuePos));
         break;
       case TIMESTAMP:
-        if (truncateTrailingZeros) {
-          gen.writeString(
-              TIMESTAMP_TRUNC_FORMATTER.format(microsToInstant(VariantUtil.getLong(value, valuePos))
-                  .atZone(zoneId)));
-        } else {
-          gen.writeString(TIMESTAMP_FORMATTER.format(microsToInstant(VariantUtil.getLong(value, valuePos))
-              .atZone(zoneId)));
-        }
+        scalarWriter.writeTimestamp(gen, VariantUtil.getLong(value, valuePos));
         break;
       case TIMESTAMP_NTZ:
-        if (truncateTrailingZeros) {
-          gen.writeString(
-              TIMESTAMP_NTZ_TRUNC_FORMATTER.format(microsToInstant(VariantUtil.getLong(value, valuePos))
-                  .atZone(ZoneOffset.UTC)));
-        } else {
-          gen.writeString(TIMESTAMP_NTZ_FORMATTER.format(microsToInstant(VariantUtil.getLong(value, valuePos))
-              .atZone(ZoneOffset.UTC)));
-        }
-        break;
-      case FLOAT:
-        gen.writeNumber(VariantUtil.getFloat(value, valuePos));
-        break;
-      case BINARY:
-        gen.writeString(Base64.getEncoder().encodeToString(VariantUtil.getBinary(value, valuePos)));
+        scalarWriter.writeTimestampNtz(gen, VariantUtil.getLong(value, valuePos));
         break;
       case TIME:
-        if (truncateTrailingZeros) {
-          gen.writeString(TIME_TRUNC_FORMATTER.format(
-              LocalTime.ofNanoOfDay(VariantUtil.getLong(value, valuePos) * 1_000)));
-        } else {
-          gen.writeString(
-              TIME_FORMATTER.format(LocalTime.ofNanoOfDay(VariantUtil.getLong(value, valuePos) * 1_000)));
-        }
+        scalarWriter.writeTime(gen, VariantUtil.getLong(value, valuePos));
         break;
       case TIMESTAMP_NANOS:
-        if (truncateTrailingZeros) {
-          gen.writeString(TIMESTAMP_NANOS_TRUNC_FORMATTER.format(
-              nanosToInstant(VariantUtil.getLong(value, valuePos)).atZone(zoneId)));
-        } else {
-          gen.writeString(TIMESTAMP_NANOS_FORMATTER.format(
-              nanosToInstant(VariantUtil.getLong(value, valuePos)).atZone(zoneId)));
-        }
+        scalarWriter.writeTimestampNanos(gen, VariantUtil.getLong(value, valuePos));
         break;
       case TIMESTAMP_NANOS_NTZ:
-        if (truncateTrailingZeros) {
-          gen.writeString(TIMESTAMP_NANOS_NTZ_TRUNC_FORMATTER.format(
-              nanosToInstant(VariantUtil.getLong(value, valuePos)).atZone(ZoneOffset.UTC)));
-        } else {
-          gen.writeString(TIMESTAMP_NANOS_NTZ_FORMATTER.format(
-              nanosToInstant(VariantUtil.getLong(value, valuePos)).atZone(ZoneOffset.UTC)));
-        }
+        scalarWriter.writeTimestampNanosNtz(gen, VariantUtil.getLong(value, valuePos));
         break;
       case UUID:
-        gen.writeString(VariantUtil.getUUID(value, valuePos).toString());
+        scalarWriter.writeUUID(gen, VariantUtil.getUUID(value, valuePos));
         break;
       default:
         throw new IllegalArgumentException("Unsupported type: " + VariantUtil.getType(value, valuePos));
