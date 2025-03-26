@@ -498,6 +498,30 @@ public class TestTypeBuildersWithLogicalTypes {
     assertTrue(annotation instanceof LogicalTypeAnnotation.VariantLogicalTypeAnnotation);
   }
 
+  @Test
+  public void testVariantLogicalTypeWithShredded() {
+    String name = "variant_field";
+    GroupType variant = new GroupType(
+        REQUIRED,
+        name,
+        LogicalTypeAnnotation.variantType(),
+        Types.required(BINARY).named("metadata"),
+        Types.optional(BINARY).named("value"),
+        Types.optional(BINARY).as(LogicalTypeAnnotation.stringType()).named("typed_value"));
+
+    assertEquals(
+        "required group variant_field (VARIANT) {\n"
+            + "  required binary metadata;\n"
+            + "  optional binary value;\n"
+            + "  optional binary typed_value (STRING);\n"
+            + "}",
+        variant.toString());
+
+    LogicalTypeAnnotation annotation = variant.getLogicalTypeAnnotation();
+    assertEquals(LogicalTypeAnnotation.LogicalTypeToken.VARIANT, annotation.getType());
+    assertNull(annotation.toOriginalType());
+    assertTrue(annotation instanceof LogicalTypeAnnotation.VariantLogicalTypeAnnotation);
+  }
   /**
    * A convenience method to avoid a large number of @Test(expected=...) tests
    *

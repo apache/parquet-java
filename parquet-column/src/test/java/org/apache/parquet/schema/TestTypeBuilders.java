@@ -1435,6 +1435,30 @@ public class TestTypeBuilders {
     assertEquals(variantExpected, variantActual);
   }
 
+  @Test
+  public void testVariantLogicalTypeWithShredded() {
+    String name = "variant_field";
+    GroupType variantExpected = new GroupType(
+        REQUIRED,
+        name,
+        LogicalTypeAnnotation.variantType(),
+        new PrimitiveType(REQUIRED, BINARY, "metadata"),
+        new PrimitiveType(OPTIONAL, BINARY, "value"),
+        new PrimitiveType(OPTIONAL, BINARY, "typed_value", LogicalTypeAnnotation.stringType()));
+
+    GroupType variantActual = Types.buildGroup(REQUIRED)
+        .addFields(
+            Types.required(BINARY).named("metadata"),
+            Types.optional(BINARY).named("value"),
+            Types.optional(BINARY)
+                .as(LogicalTypeAnnotation.stringType())
+                .named("typed_value"))
+        .as(LogicalTypeAnnotation.variantType())
+        .named(name);
+
+    assertEquals(variantExpected, variantActual);
+  }
+
   @Test(expected = IllegalArgumentException.class)
   public void testDecimalLogicalTypeWithDeprecatedScaleMismatch() {
     Types.required(BINARY)

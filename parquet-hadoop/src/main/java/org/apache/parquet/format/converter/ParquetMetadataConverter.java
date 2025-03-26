@@ -89,6 +89,7 @@ import org.apache.parquet.format.JsonType;
 import org.apache.parquet.format.KeyValue;
 import org.apache.parquet.format.ListType;
 import org.apache.parquet.format.LogicalType;
+import org.apache.parquet.format.LogicalTypes;
 import org.apache.parquet.format.MapType;
 import org.apache.parquet.format.MicroSeconds;
 import org.apache.parquet.format.MilliSeconds;
@@ -112,7 +113,6 @@ import org.apache.parquet.format.Type;
 import org.apache.parquet.format.TypeDefinedOrder;
 import org.apache.parquet.format.UUIDType;
 import org.apache.parquet.format.Uncompressed;
-import org.apache.parquet.format.VariantType;
 import org.apache.parquet.format.XxHash;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
@@ -517,7 +517,7 @@ public class ParquetMetadataConverter {
     }
 
     @Override
-    public Optional<LogicalType> visit(LogicalTypeAnnotation.UnknownLogicalTypeAnnotation unknownLogicalType) {
+    public Optional<LogicalType> visit(LogicalTypeAnnotation.UnknownLogicalTypeAnnotation intervalLogicalType) {
       return of(LogicalType.UNKNOWN(new NullType()));
     }
 
@@ -528,7 +528,7 @@ public class ParquetMetadataConverter {
 
     @Override
     public Optional<LogicalType> visit(LogicalTypeAnnotation.VariantLogicalTypeAnnotation variantLogicalType) {
-      return of(LogicalType.VARIANT(new VariantType()));
+      return of(LogicalTypes.VARIANT());
     }
   }
 
