@@ -23,7 +23,6 @@ import org.junit.Test;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
-import org.locationtech.jts.geom.Polygon;
 
 public class TestBoundingBox {
 
@@ -39,51 +38,6 @@ public class TestBoundingBox {
     Assert.assertEquals(10.0, boundingBox.getXMax(), 0.0);
     Assert.assertEquals(20.0, boundingBox.getYMin(), 0.0);
     Assert.assertEquals(20.0, boundingBox.getYMax(), 0.0);
-  }
-
-  @Test
-  public void testWraparound() {
-    GeometryFactory geometryFactory = new GeometryFactory();
-    BoundingBox boundingBox = new BoundingBox();
-
-    // Create a polygon near the antimeridian line
-    Coordinate[] coords1 = new Coordinate[] {
-      new Coordinate(170, 10), new Coordinate(175, 15), new Coordinate(170, 15), new Coordinate(170, 10)
-    };
-    Polygon polygon1 = geometryFactory.createPolygon(coords1);
-    boundingBox.update(polygon1, "EPSG:4326");
-    // Check if the wraparound is handled correctly
-    Assert.assertEquals(170.0, boundingBox.getXMin(), 0.0);
-    Assert.assertEquals(175.0, boundingBox.getXMax(), 0.0);
-    Assert.assertEquals(10.0, boundingBox.getYMin(), 0.0);
-    Assert.assertEquals(15.0, boundingBox.getYMax(), 0.0);
-
-    // Create an additional polygon crossing the antimeridian line
-    Coordinate[] coords2 = new Coordinate[] {
-      new Coordinate(175, -10), new Coordinate(-175, -5), new Coordinate(175, -5), new Coordinate(175, -10)
-    };
-    Polygon polygon2 = geometryFactory.createPolygon(coords2);
-
-    boundingBox.update(polygon2, "EPSG:4326");
-    // Check if the wraparound is handled correctly
-    Assert.assertEquals(175.0, boundingBox.getXMin(), 0.0);
-    Assert.assertEquals(-175.0, boundingBox.getXMax(), 0.0);
-    Assert.assertEquals(-10.0, boundingBox.getYMin(), 0.0);
-    Assert.assertEquals(15.0, boundingBox.getYMax(), 0.0);
-
-    // Create another polygon on the other side of the antimeridian line
-    Coordinate[] coords3 = new Coordinate[] {
-      new Coordinate(-170, 20), new Coordinate(-165, 25), new Coordinate(-170, 25), new Coordinate(-170, 20)
-    };
-    // longitude range: [-170, -165]
-    Polygon polygon3 = geometryFactory.createPolygon(coords3);
-    boundingBox.update(polygon3, "EPSG:4326");
-
-    // Check if the wraparound is handled correctly
-    Assert.assertEquals(175.0, boundingBox.getXMin(), 0.0);
-    Assert.assertEquals(-175.0, boundingBox.getXMax(), 0.0);
-    Assert.assertEquals(-10.0, boundingBox.getYMin(), 0.0);
-    Assert.assertEquals(25.0, boundingBox.getYMax(), 0.0);
   }
 
   @Test
@@ -126,31 +80,34 @@ public class TestBoundingBox {
     Point nanPoint = geometryFactory.createPoint(new Coordinate(Double.NaN, Double.NaN));
     boundingBox.update(nanPoint, "EPSG:4326");
 
-    // NaN values should be ignored, maintaining the initial -Inf/Inf state
-    Assert.assertEquals(Double.POSITIVE_INFINITY, boundingBox.getXMin(), 0.0);
-    Assert.assertEquals(Double.NEGATIVE_INFINITY, boundingBox.getXMax(), 0.0);
-    Assert.assertEquals(Double.POSITIVE_INFINITY, boundingBox.getYMin(), 0.0);
-    Assert.assertEquals(Double.NEGATIVE_INFINITY, boundingBox.getYMax(), 0.0);
+    // All values should be NaN after updating with all-NaN coordinates
+    Assert.assertEquals("XMin should be NaN", Double.NaN, boundingBox.getXMin(), 0.0);
+    Assert.assertEquals("XMax should be NaN", Double.NaN, boundingBox.getXMax(), 0.0);
+    Assert.assertEquals("YMin should be NaN", Double.NaN, boundingBox.getYMin(), 0.0);
+    Assert.assertEquals("YMax should be NaN", Double.NaN, boundingBox.getYMax(), 0.0);
+
+    // Reset the bounding box for the next test
+    boundingBox = new BoundingBox();
 
     // Create a mixed point with a valid coordinate and a NaN coordinate
     Point mixedPoint = geometryFactory.createPoint(new Coordinate(15.0, Double.NaN));
     boundingBox.update(mixedPoint, "EPSG:4326");
 
-    // The valid X coordinate should be used, but Y should still be ignored
-    Assert.assertEquals(15.0, boundingBox.getXMin(), 0.0);
-    Assert.assertEquals(15.0, boundingBox.getXMax(), 0.0);
-    Assert.assertEquals(Double.POSITIVE_INFINITY, boundingBox.getYMin(), 0.0);
-    Assert.assertEquals(Double.NEGATIVE_INFINITY, boundingBox.getYMax(), 0.0);
+    // The valid X coordinate should be used, Y should remain at initial values
+    Assert.assertEquals("XMin should be 15.0", 15.0, boundingBox.getXMin(), 0.0);
+    Assert.assertEquals("XMax should be 15.0", 15.0, boundingBox.getXMax(), 0.0);
+    Assert.assertEquals("YMin should be POSITIVE_INFINITY", Double.POSITIVE_INFINITY, boundingBox.getYMin(), 0.0);
+    Assert.assertEquals("YMax should be NEGATIVE_INFINITY", Double.NEGATIVE_INFINITY, boundingBox.getYMax(), 0.0);
 
     // Add a fully valid point
     Point validPoint = geometryFactory.createPoint(new Coordinate(10, 20));
     boundingBox.update(validPoint, "EPSG:4326");
 
     // Both X and Y should now be updated
-    Assert.assertEquals(10.0, boundingBox.getXMin(), 0.0);
-    Assert.assertEquals(15.0, boundingBox.getXMax(), 0.0);
-    Assert.assertEquals(20.0, boundingBox.getYMin(), 0.0);
-    Assert.assertEquals(20.0, boundingBox.getYMax(), 0.0);
+    Assert.assertEquals("XMin should be 10.0", 10.0, boundingBox.getXMin(), 0.0);
+    Assert.assertEquals("XMax should be 15.0", 15.0, boundingBox.getXMax(), 0.0);
+    Assert.assertEquals("YMin should be 20.0", 20.0, boundingBox.getYMin(), 0.0);
+    Assert.assertEquals("YMax should be 20.0", 20.0, boundingBox.getYMax(), 0.0);
   }
 
   @Test

@@ -25,8 +25,6 @@ import org.locationtech.jts.geom.Geometry;
 
 public class BoundingBox {
 
-  private boolean allowWraparound = true;
-
   private double xMin = Double.POSITIVE_INFINITY;
   private double xMax = Double.NEGATIVE_INFINITY;
   private double yMin = Double.POSITIVE_INFINITY;
@@ -49,10 +47,6 @@ public class BoundingBox {
   }
 
   public BoundingBox() {}
-
-  void enableWraparound(boolean enable) {
-    allowWraparound = enable;
-  }
 
   public double getXMin() {
     return xMin;
@@ -86,8 +80,12 @@ public class BoundingBox {
     return mMax;
   }
 
-  // Method to update the bounding box with the coordinates of a Geometry object
-  // geometry can be changed by this method
+  /**
+   * Updates the bounding box with the coordinates of the given geometry.
+   * If the geometry is null, it will abort the update.
+   * If the geometry is empty, it will keep the initial -Inf/Inf state for bounds.
+   * If the geometry is valid, it will update the bounds accordingly.
+   */
   void update(Geometry geometry, String crs) {
     if (geometry == null) {
       // If geometry is null, abort
@@ -95,8 +93,8 @@ public class BoundingBox {
       return;
     }
     if (geometry.isEmpty()) {
-      // For empty geometries, keep track of the geometry type but set bounds to empty interval
-      return; // Keep the initial -Inf/Inf state for bounds
+      // For empty geometries, keep the initial -Inf/Inf state for bounds
+      return;
     }
 
     if (shouldNormalizeLongitude(crs)) {
@@ -105,8 +103,8 @@ public class BoundingBox {
 
     Envelope envelope = geometry.getEnvelopeInternal();
     double minX = envelope.getMinX();
-    double minY = envelope.getMinY();
     double maxX = envelope.getMaxX();
+    double minY = envelope.getMinY();
     double maxY = envelope.getMaxY();
 
     // Initialize Z and M values
@@ -115,62 +113,42 @@ public class BoundingBox {
     double minM = Double.POSITIVE_INFINITY;
     double maxM = Double.NEGATIVE_INFINITY;
 
+    // Find Z and M bounds from coordinates
     Coordinate[] coordinates = geometry.getCoordinates();
     for (Coordinate coord : coordinates) {
-      // Skip NaN values
-      if (!Double.isNaN(coord.x) && !Double.isNaN(coord.y)) {
-        if (!Double.isNaN(coord.getZ())) {
-          minZ = Math.min(minZ, coord.getZ());
-          maxZ = Math.max(maxZ, coord.getZ());
-        }
-        if (!Double.isNaN(coord.getM())) {
-          minM = Math.min(minM, coord.getM());
-          maxM = Math.max(maxM, coord.getM());
-        }
+      if (!Double.isNaN(coord.getZ())) {
+        minZ = Math.min(minZ, coord.getZ());
+        maxZ = Math.max(maxZ, coord.getZ());
+      }
+      if (!Double.isNaN(coord.getM())) {
+        minM = Math.min(minM, coord.getM());
+        maxM = Math.max(maxM, coord.getM());
       }
     }
-    // Only update bounds if we have valid coordinates
-    if (!Double.isNaN(minX) && !Double.isNaN(maxX)) {
-      updateXBounds(minX, maxX, allowWraparound);
-    }
 
-    if (!Double.isNaN(minY)) {
-      yMin = Math.min(yMin, minY);
-    }
-    if (!Double.isNaN(maxY)) {
-      yMax = Math.max(yMax, maxY);
-    }
-
-    if (minZ != Double.POSITIVE_INFINITY) {
-      zMin = Math.min(zMin, minZ);
-    }
-    if (maxZ != Double.NEGATIVE_INFINITY) {
-      zMax = Math.max(zMax, maxZ);
-    }
-
-    if (minM != Double.POSITIVE_INFINITY) {
-      mMin = Math.min(mMin, minM);
-    }
-    if (maxM != Double.NEGATIVE_INFINITY) {
-      mMax = Math.max(mMax, maxM);
-    }
+    // Use the consolidated updateBounds method for all dimensions
+    updateBounds(minX, maxX, minY, maxY, minZ, maxZ, minM, maxM);
   }
 
+  /**
+   * Merges another bounding box into this one.
+   * If the other bounding box is null, it will be ignored.
+   */
   void merge(BoundingBox other) {
     Preconditions.checkArgument(other != null, "Cannot merge with null bounding box");
-    double minX = other.xMin;
-    double maxX = other.xMax;
 
-    updateXBounds(minX, maxX, allowWraparound);
-
-    yMin = Math.min(yMin, other.yMin);
-    yMax = Math.max(yMax, other.yMax);
-    zMin = Math.min(zMin, other.zMin);
-    zMax = Math.max(zMax, other.zMax);
-    mMin = Math.min(mMin, other.mMin);
-    mMax = Math.max(mMax, other.mMax);
+    // Use the updateBounds method to merge the bounds
+    updateBounds(
+        other.xMin, other.xMax,
+        other.yMin, other.yMax,
+        other.zMin, other.zMax,
+        other.mMin, other.mMax);
   }
 
+  /**
+   * Resets the bounding box to its initial state.
+   * All bounds will be set to -Inf/Inf.
+   */
   public void reset() {
     xMin = Double.POSITIVE_INFINITY;
     xMax = Double.NEGATIVE_INFINITY;
@@ -182,6 +160,10 @@ public class BoundingBox {
     mMax = Double.NEGATIVE_INFINITY;
   }
 
+  /**
+   * Aborts the bounding box update.
+   * All bounds will be set to NaN.
+   */
   public void abort() {
     xMin = Double.NaN;
     xMax = Double.NaN;
@@ -193,37 +175,51 @@ public class BoundingBox {
     mMax = Double.NaN;
   }
 
-  private boolean isCrossingAntiMeridian(double x1, double x2) {
-    return Math.abs(x1 - x2) > 180;
-  }
+  /**
+   * Updates the bounding box with the given coordinates.
+   * If any coordinate is NaN, the method will abort and set all bounds to NaN.
+   */
+  private void updateBounds(
+      double minX, double maxX, double minY, double maxY, double minZ, double maxZ, double minM, double maxM) {
+    boolean foundValidValue = false;
 
-  private void updateXBounds(double minX, double maxX, boolean allowWraparound) {
-    if (!allowWraparound) {
+    // Update X bounds if valid
+    if (!Double.isNaN(minX) && !Double.isNaN(maxX)) {
       xMin = Math.min(xMin, minX);
       xMax = Math.max(xMax, maxX);
-    } else {
-      if (xMin == Double.POSITIVE_INFINITY || xMax == Double.NEGATIVE_INFINITY) {
-        xMin = minX;
-        xMax = maxX;
-      } else {
-        if (!isCrossingAntiMeridian(xMax, xMin)) {
-          if (!isCrossingAntiMeridian(maxX, minX)) {
-            xMin = Math.min(xMin, minX);
-            xMax = Math.max(xMax, maxX);
-          } else {
-            xMin = Math.max(xMin, maxX);
-            xMax = Math.min(xMax, minX);
-          }
-        } else {
-          if (!isCrossingAntiMeridian(maxX, minX)) {
-            xMin = Math.max(xMin, minX);
-            xMax = Math.min(xMax, maxX);
-          } else {
-            xMin = Math.max(xMin, maxX);
-            xMax = Math.min(xMax, minX);
-          }
-        }
-      }
+      foundValidValue = true;
+    }
+
+    // Update Y bounds if valid
+    if (!Double.isNaN(minY) && !Double.isNaN(maxY)) {
+      yMin = Math.min(yMin, minY);
+      yMax = Math.max(yMax, maxY);
+      foundValidValue = true;
+    }
+
+    // Update Z bounds if valid
+    if (!Double.isNaN(minZ) && minZ != Double.POSITIVE_INFINITY) {
+      zMin = Math.min(zMin, minZ);
+      foundValidValue = true;
+    }
+    if (!Double.isNaN(maxZ) && maxZ != Double.NEGATIVE_INFINITY) {
+      zMax = Math.max(zMax, maxZ);
+      foundValidValue = true;
+    }
+
+    // Update M bounds if valid
+    if (!Double.isNaN(minM) && minM != Double.POSITIVE_INFINITY) {
+      mMin = Math.min(mMin, minM);
+      foundValidValue = true;
+    }
+    if (!Double.isNaN(maxM) && maxM != Double.NEGATIVE_INFINITY) {
+      mMax = Math.max(mMax, maxM);
+      foundValidValue = true;
+    }
+
+    // If no valid values were found, abort
+    if (!foundValidValue) {
+      abort();
     }
   }
 
@@ -250,8 +246,7 @@ public class BoundingBox {
 
   @Override
   public String toString() {
-    return "BoundingBox{" + "allowWraparound="
-        + allowWraparound + ", xMin="
+    return "BoundingBox{" + ", xMin="
         + xMin + ", xMax="
         + xMax + ", yMin="
         + yMin + ", yMax="

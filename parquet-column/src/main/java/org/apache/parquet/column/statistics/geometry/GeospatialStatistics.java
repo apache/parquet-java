@@ -155,15 +155,6 @@ public class GeospatialStatistics {
     }
   }
 
-  /** Create a new GeospatialStatistics builder with the additional geospatialStatisticsBBoxWraparoundEnabled property */
-  public static Builder newBuilder(PrimitiveType primitiveType, boolean geospatialStatisticsBBoxWraparoundEnabled) {
-    Builder builder = newBuilder(primitiveType);
-    if (geospatialStatisticsBBoxWraparoundEnabled) {
-      builder.boundingBox.enableWraparound(true);
-    }
-    return builder;
-  }
-
   /**
    * Constructs a GeospatialStatistics object with the specified CRS, bounding box, and geospatial types.
    *
