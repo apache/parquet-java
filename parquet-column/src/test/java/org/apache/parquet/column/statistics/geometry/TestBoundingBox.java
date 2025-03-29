@@ -50,10 +50,10 @@ public class TestBoundingBox {
     boundingBox.update(emptyPoint, "EPSG:4326");
 
     // Empty geometry should retain the initial -Inf/Inf state
-    Assert.assertEquals(Double.POSITIVE_INFINITY, boundingBox.getXMin(), 0.0);
-    Assert.assertEquals(Double.NEGATIVE_INFINITY, boundingBox.getXMax(), 0.0);
-    Assert.assertEquals(Double.POSITIVE_INFINITY, boundingBox.getYMin(), 0.0);
-    Assert.assertEquals(Double.NEGATIVE_INFINITY, boundingBox.getYMax(), 0.0);
+    Assert.assertEquals(Double.NaN, boundingBox.getXMin(), 0.0);
+    Assert.assertEquals(Double.NaN, boundingBox.getXMax(), 0.0);
+    Assert.assertEquals(Double.NaN, boundingBox.getYMin(), 0.0);
+    Assert.assertEquals(Double.NaN, boundingBox.getYMax(), 0.0);
 
     // Test that after adding a non-empty geometry, values are updated correctly
     Point point = geometryFactory.createPoint(new Coordinate(10, 20));
@@ -65,10 +65,10 @@ public class TestBoundingBox {
 
     // Update with another empty geometry, should not change the bounds
     boundingBox.update(emptyPoint, "EPSG:4326");
-    Assert.assertEquals(10.0, boundingBox.getXMin(), 0.0);
-    Assert.assertEquals(10.0, boundingBox.getXMax(), 0.0);
-    Assert.assertEquals(20.0, boundingBox.getYMin(), 0.0);
-    Assert.assertEquals(20.0, boundingBox.getYMax(), 0.0);
+    Assert.assertEquals(Double.NaN, boundingBox.getXMin(), 0.0);
+    Assert.assertEquals(Double.NaN, boundingBox.getXMax(), 0.0);
+    Assert.assertEquals(Double.NaN, boundingBox.getYMin(), 0.0);
+    Assert.assertEquals(Double.NaN, boundingBox.getYMax(), 0.0);
   }
 
   @Test
@@ -96,8 +96,8 @@ public class TestBoundingBox {
     // The valid X coordinate should be used, Y should remain at initial values
     Assert.assertEquals("XMin should be 15.0", 15.0, boundingBox.getXMin(), 0.0);
     Assert.assertEquals("XMax should be 15.0", 15.0, boundingBox.getXMax(), 0.0);
-    Assert.assertEquals("YMin should be POSITIVE_INFINITY", Double.POSITIVE_INFINITY, boundingBox.getYMin(), 0.0);
-    Assert.assertEquals("YMax should be NEGATIVE_INFINITY", Double.NEGATIVE_INFINITY, boundingBox.getYMax(), 0.0);
+    Assert.assertEquals("YMin should be NaN", Double.NaN, boundingBox.getYMin(), 0.0);
+    Assert.assertEquals("YMax should be NaN", Double.NaN, boundingBox.getYMax(), 0.0);
 
     // Add a fully valid point
     Point validPoint = geometryFactory.createPoint(new Coordinate(10, 20));
@@ -126,10 +126,10 @@ public class TestBoundingBox {
     Assert.assertEquals(10.0, boundingBox.getXMax(), 0.0);
     Assert.assertEquals(20.0, boundingBox.getYMin(), 0.0);
     Assert.assertEquals(20.0, boundingBox.getYMax(), 0.0);
-    Assert.assertEquals(Double.POSITIVE_INFINITY, boundingBox.getZMin(), 0.0);
-    Assert.assertEquals(Double.NEGATIVE_INFINITY, boundingBox.getZMax(), 0.0);
-    Assert.assertEquals(Double.POSITIVE_INFINITY, boundingBox.getMMin(), 0.0);
-    Assert.assertEquals(Double.NEGATIVE_INFINITY, boundingBox.getMMax(), 0.0);
+    Assert.assertEquals(Double.NaN, boundingBox.getZMin(), 0.0);
+    Assert.assertEquals(Double.NaN, boundingBox.getZMax(), 0.0);
+    Assert.assertEquals(Double.NaN, boundingBox.getMMin(), 0.0);
+    Assert.assertEquals(Double.NaN, boundingBox.getMMax(), 0.0);
 
     // Add a point with valid Z value
     Coordinate coord2 = new Coordinate(15, 25, 30); // Using constructor with Z
@@ -143,7 +143,7 @@ public class TestBoundingBox {
     Assert.assertEquals(25.0, boundingBox.getYMax(), 0.0);
     Assert.assertEquals(30.0, boundingBox.getZMin(), 0.0);
     Assert.assertEquals(30.0, boundingBox.getZMax(), 0.0);
-    Assert.assertEquals(Double.POSITIVE_INFINITY, boundingBox.getMMin(), 0.0);
-    Assert.assertEquals(Double.NEGATIVE_INFINITY, boundingBox.getMMax(), 0.0);
+    Assert.assertEquals(Double.NaN, boundingBox.getMMin(), 0.0);
+    Assert.assertEquals(Double.NaN, boundingBox.getMMax(), 0.0);
   }
 }

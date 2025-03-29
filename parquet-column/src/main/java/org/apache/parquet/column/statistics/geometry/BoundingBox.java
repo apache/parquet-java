@@ -25,14 +25,14 @@ import org.locationtech.jts.geom.Geometry;
 
 public class BoundingBox {
 
-  private double xMin = Double.POSITIVE_INFINITY;
-  private double xMax = Double.NEGATIVE_INFINITY;
-  private double yMin = Double.POSITIVE_INFINITY;
-  private double yMax = Double.NEGATIVE_INFINITY;
-  private double zMin = Double.POSITIVE_INFINITY;
-  private double zMax = Double.NEGATIVE_INFINITY;
-  private double mMin = Double.POSITIVE_INFINITY;
-  private double mMax = Double.NEGATIVE_INFINITY;
+  private double xMin = Double.NaN;
+  private double xMax = Double.NaN;
+  private double yMin = Double.NaN;
+  private double yMax = Double.NaN;
+  private double zMin = Double.NaN;
+  private double zMax = Double.NaN;
+  private double mMin = Double.NaN;
+  private double mMax = Double.NaN;
 
   public BoundingBox(
       double xMin, double xMax, double yMin, double yMax, double zMin, double zMax, double mMin, double mMax) {
@@ -87,18 +87,9 @@ public class BoundingBox {
    * If the geometry is valid, it will update the bounds accordingly.
    */
   void update(Geometry geometry, String crs) {
-    if (geometry == null) {
-      // If geometry is null, abort
+    if (geometry == null || geometry.isEmpty()) {
       abort();
       return;
-    }
-    if (geometry.isEmpty()) {
-      // For empty geometries, keep the initial -Inf/Inf state for bounds
-      return;
-    }
-
-    if (shouldNormalizeLongitude(crs)) {
-      GeospatialUtils.normalizeLongitude(geometry);
     }
 
     Envelope envelope = geometry.getEnvelopeInternal();
@@ -108,21 +99,34 @@ public class BoundingBox {
     double maxY = envelope.getMaxY();
 
     // Initialize Z and M values
-    double minZ = Double.POSITIVE_INFINITY;
-    double maxZ = Double.NEGATIVE_INFINITY;
-    double minM = Double.POSITIVE_INFINITY;
-    double maxM = Double.NEGATIVE_INFINITY;
+    double minZ = Double.NaN;
+    double maxZ = Double.NaN;
+    double minM = Double.NaN;
+    double maxM = Double.NaN;
 
     // Find Z and M bounds from coordinates
     Coordinate[] coordinates = geometry.getCoordinates();
     for (Coordinate coord : coordinates) {
       if (!Double.isNaN(coord.getZ())) {
-        minZ = Math.min(minZ, coord.getZ());
-        maxZ = Math.max(maxZ, coord.getZ());
+        // For the first valid Z value, initialize minZ/maxZ if they're NaN
+        if (Double.isNaN(minZ)) {
+          minZ = coord.getZ();
+          maxZ = coord.getZ();
+        } else {
+          minZ = Math.min(minZ, coord.getZ());
+          maxZ = Math.max(maxZ, coord.getZ());
+        }
       }
+
       if (!Double.isNaN(coord.getM())) {
-        minM = Math.min(minM, coord.getM());
-        maxM = Math.max(maxM, coord.getM());
+        // For the first valid M value, initialize minM/maxM if they're NaN
+        if (Double.isNaN(minM)) {
+          minM = coord.getM();
+          maxM = coord.getM();
+        } else {
+          minM = Math.min(minM, coord.getM());
+          maxM = Math.max(maxM, coord.getM());
+        }
       }
     }
 
@@ -150,21 +154,6 @@ public class BoundingBox {
    * All bounds will be set to -Inf/Inf.
    */
   public void reset() {
-    xMin = Double.POSITIVE_INFINITY;
-    xMax = Double.NEGATIVE_INFINITY;
-    yMin = Double.POSITIVE_INFINITY;
-    yMax = Double.NEGATIVE_INFINITY;
-    zMin = Double.POSITIVE_INFINITY;
-    zMax = Double.NEGATIVE_INFINITY;
-    mMin = Double.POSITIVE_INFINITY;
-    mMax = Double.NEGATIVE_INFINITY;
-  }
-
-  /**
-   * Aborts the bounding box update.
-   * All bounds will be set to NaN.
-   */
-  public void abort() {
     xMin = Double.NaN;
     xMax = Double.NaN;
     yMin = Double.NaN;
@@ -176,68 +165,75 @@ public class BoundingBox {
   }
 
   /**
+   * Aborts the bounding box update.
+   * All bounds will be set to NaN.
+   */
+  public void abort() {
+    reset();
+  }
+
+  /**
    * Updates the bounding box with the given coordinates.
    * If any coordinate is NaN, the method will abort and set all bounds to NaN.
    */
   private void updateBounds(
       double minX, double maxX, double minY, double maxY, double minZ, double maxZ, double minM, double maxM) {
-    boolean foundValidValue = false;
 
     // Update X bounds if valid
     if (!Double.isNaN(minX) && !Double.isNaN(maxX)) {
-      xMin = Math.min(xMin, minX);
-      xMax = Math.max(xMax, maxX);
-      foundValidValue = true;
+      if (Double.isNaN(xMin) || Double.isNaN(xMax)) {
+        // First valid X values
+        xMin = minX;
+        xMax = maxX;
+      } else {
+        xMin = Math.min(xMin, minX);
+        xMax = Math.max(xMax, maxX);
+      }
     }
 
     // Update Y bounds if valid
     if (!Double.isNaN(minY) && !Double.isNaN(maxY)) {
-      yMin = Math.min(yMin, minY);
-      yMax = Math.max(yMax, maxY);
-      foundValidValue = true;
+      if (Double.isNaN(yMin) || Double.isNaN(yMax)) {
+        // First valid Y values
+        yMin = minY;
+        yMax = maxY;
+      } else {
+        yMin = Math.min(yMin, minY);
+        yMax = Math.max(yMax, maxY);
+      }
     }
 
     // Update Z bounds if valid
-    if (!Double.isNaN(minZ) && minZ != Double.POSITIVE_INFINITY) {
-      zMin = Math.min(zMin, minZ);
-      foundValidValue = true;
+    if (!Double.isNaN(minZ)) {
+      if (Double.isNaN(zMin)) {
+        zMin = minZ;
+      } else {
+        zMin = Math.min(zMin, minZ);
+      }
     }
-    if (!Double.isNaN(maxZ) && maxZ != Double.NEGATIVE_INFINITY) {
-      zMax = Math.max(zMax, maxZ);
-      foundValidValue = true;
+    if (!Double.isNaN(maxZ)) {
+      if (Double.isNaN(zMax)) {
+        zMax = maxZ;
+      } else {
+        zMax = Math.max(zMax, maxZ);
+      }
     }
 
     // Update M bounds if valid
-    if (!Double.isNaN(minM) && minM != Double.POSITIVE_INFINITY) {
-      mMin = Math.min(mMin, minM);
-      foundValidValue = true;
+    if (!Double.isNaN(minM)) {
+      if (Double.isNaN(mMin)) {
+        mMin = minM;
+      } else {
+        mMin = Math.min(mMin, minM);
+      }
     }
-    if (!Double.isNaN(maxM) && maxM != Double.NEGATIVE_INFINITY) {
-      mMax = Math.max(mMax, maxM);
-      foundValidValue = true;
+    if (!Double.isNaN(maxM)) {
+      if (Double.isNaN(mMax)) {
+        mMax = maxM;
+      } else {
+        mMax = Math.max(mMax, maxM);
+      }
     }
-
-    // If no valid values were found, abort
-    if (!foundValidValue) {
-      abort();
-    }
-  }
-
-  /**
-   * Determines if the longitude should be normalized based on the given CRS (Coordinate Reference System).
-   * Normalization is required only when the CRS is set to OGC:CRS84, EPSG:4326, or SRID:4326 (case insensitive).
-   *
-   * @param crs the Coordinate Reference System string
-   * @return true if the longitude should be normalized, false otherwise
-   */
-  private boolean shouldNormalizeLongitude(String crs) {
-    if (crs == null) {
-      return false;
-    }
-    String normalizedCrs = crs.trim().toUpperCase();
-    return "OGC:CRS84".equals(normalizedCrs)
-        || "EPSG:4326".equals(normalizedCrs)
-        || "SRID:4326".equals(normalizedCrs);
   }
 
   public BoundingBox copy() {
