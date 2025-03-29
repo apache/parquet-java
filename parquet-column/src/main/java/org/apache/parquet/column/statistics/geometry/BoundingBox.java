@@ -83,11 +83,13 @@ public class BoundingBox {
   /**
    * Updates the bounding box with the coordinates of the given geometry.
    * If the geometry is null, it will abort the update.
-   * If the geometry is empty, it will keep the initial -Inf/Inf state for bounds.
+   * If the geometry is empty, it will keep the initial - all NaN state for bounds.
    * If the geometry is valid, it will update the bounds accordingly.
    */
   void update(Geometry geometry, String crs) {
     if (geometry == null || geometry.isEmpty()) {
+      // Abort if geometry is null or empty
+      // This will keep the bounding box in its initial state (all NaN)
       abort();
       return;
     }
@@ -151,7 +153,7 @@ public class BoundingBox {
 
   /**
    * Resets the bounding box to its initial state.
-   * All bounds will be set to -Inf/Inf.
+   * All bounds will be set to NaN.
    */
   public void reset() {
     xMin = Double.NaN;
