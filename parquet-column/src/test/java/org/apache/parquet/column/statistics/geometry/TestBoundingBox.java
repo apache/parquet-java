@@ -21,6 +21,7 @@ package org.apache.parquet.column.statistics.geometry;
 import org.junit.Assert;
 import org.junit.Test;
 import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.CoordinateXYZM;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
 
@@ -145,5 +146,268 @@ public class TestBoundingBox {
     Assert.assertEquals(30.0, boundingBox.getZMax(), 0.0);
     Assert.assertEquals(Double.NaN, boundingBox.getMMin(), 0.0);
     Assert.assertEquals(Double.NaN, boundingBox.getMMax(), 0.0);
+  }
+
+  @Test
+  public void testAbort() {
+    GeometryFactory geometryFactory = new GeometryFactory();
+    BoundingBox boundingBox = new BoundingBox();
+
+    // Create a valid point
+    Point validPoint = geometryFactory.createPoint(new Coordinate(10, 20));
+    boundingBox.update(validPoint, "EPSG:4326");
+
+    // Check initial values
+    Assert.assertEquals(10.0, boundingBox.getXMin(), 0.0);
+    Assert.assertEquals(10.0, boundingBox.getXMax(), 0.0);
+    Assert.assertEquals(20.0, boundingBox.getYMin(), 0.0);
+    Assert.assertEquals(20.0, boundingBox.getYMax(), 0.0);
+
+    // Abort the update
+    boundingBox.abort();
+
+    // Check that values are reset to initial -Inf/Inf state
+    Assert.assertTrue(Double.isNaN(boundingBox.getXMin()));
+    Assert.assertTrue(Double.isNaN(boundingBox.getXMax()));
+    Assert.assertTrue(Double.isNaN(boundingBox.getYMin()));
+    Assert.assertTrue(Double.isNaN(boundingBox.getYMax()));
+  }
+
+  @Test
+  public void testEmptyBoundingBox() {
+    BoundingBox boundingBox = new BoundingBox();
+    Assert.assertTrue(Double.isNaN(boundingBox.getXMin()));
+    Assert.assertTrue(Double.isNaN(boundingBox.getXMax()));
+    Assert.assertTrue(Double.isNaN(boundingBox.getYMin()));
+    Assert.assertTrue(Double.isNaN(boundingBox.getYMax()));
+    Assert.assertTrue(Double.isNaN(boundingBox.getZMin()));
+    Assert.assertTrue(Double.isNaN(boundingBox.getZMax()));
+    Assert.assertTrue(Double.isNaN(boundingBox.getMMin()));
+    Assert.assertTrue(Double.isNaN(boundingBox.getMMax()));
+  }
+
+  @Test
+  public void testMergeBoundingBoxes() {
+    BoundingBox boundingBox1 = new BoundingBox(0, 10, 0, 20, Double.NaN, Double.NaN, Double.NaN, Double.NaN);
+    BoundingBox boundingBox2 = new BoundingBox(5, 15, 10, 30, Double.NaN, Double.NaN, Double.NaN, Double.NaN);
+
+    boundingBox1.merge(boundingBox2);
+
+    Assert.assertEquals(0.0, boundingBox1.getXMin(), 0.0);
+    Assert.assertEquals(15.0, boundingBox1.getXMax(), 0.0);
+    Assert.assertEquals(0.0, boundingBox1.getYMin(), 0.0);
+    Assert.assertEquals(30.0, boundingBox1.getYMax(), 0.0);
+    Assert.assertTrue(Double.isNaN(boundingBox1.getZMin()));
+    Assert.assertTrue(Double.isNaN(boundingBox1.getZMax()));
+    Assert.assertTrue(Double.isNaN(boundingBox1.getMMin()));
+    Assert.assertTrue(Double.isNaN(boundingBox1.getMMax()));
+  }
+
+  @Test
+  public void testMergeWithEmptyBoundingBox() {
+    BoundingBox boundingBox1 = new BoundingBox(0, 10, 0, 20, Double.NaN, Double.NaN, Double.NaN, Double.NaN);
+    BoundingBox emptyBoundingBox = new BoundingBox();
+
+    boundingBox1.merge(emptyBoundingBox);
+
+    Assert.assertEquals(0.0, boundingBox1.getXMin(), 0.0);
+    Assert.assertEquals(10.0, boundingBox1.getXMax(), 0.0);
+    Assert.assertEquals(0.0, boundingBox1.getYMin(), 0.0);
+    Assert.assertEquals(20.0, boundingBox1.getYMax(), 0.0);
+    Assert.assertTrue(Double.isNaN(boundingBox1.getZMin()));
+    Assert.assertTrue(Double.isNaN(boundingBox1.getZMax()));
+    Assert.assertTrue(Double.isNaN(boundingBox1.getMMin()));
+    Assert.assertTrue(Double.isNaN(boundingBox1.getMMax()));
+  }
+
+  @Test
+  public void testUpdateWithNullGeometry() {
+    BoundingBox boundingBox = new BoundingBox();
+    boundingBox.update(null, "EPSG:4326");
+
+    // Check that the bounding box remains unchanged
+    Assert.assertTrue(Double.isNaN(boundingBox.getXMin()));
+    Assert.assertTrue(Double.isNaN(boundingBox.getXMax()));
+    Assert.assertTrue(Double.isNaN(boundingBox.getYMin()));
+    Assert.assertTrue(Double.isNaN(boundingBox.getYMax()));
+  }
+
+  @Test
+  public void testMergeWithNaNValues() {
+    // Test merging with NaN values in different dimensions
+    BoundingBox box1 = new BoundingBox(0, 10, 0, 10, 0, 10, 0, 10);
+    BoundingBox box2 = new BoundingBox(5, 15, Double.NaN, Double.NaN, 5, 15, Double.NaN, Double.NaN);
+
+    box1.merge(box2);
+
+    Assert.assertEquals(0.0, box1.getXMin(), 0.0);
+    Assert.assertEquals(15.0, box1.getXMax(), 0.0);
+    Assert.assertEquals(0.0, box1.getYMin(), 0.0);
+    Assert.assertEquals(10.0, box1.getYMax(), 0.0);
+    Assert.assertEquals(0.0, box1.getZMin(), 0.0);
+    Assert.assertEquals(15.0, box1.getZMax(), 0.0);
+    Assert.assertEquals(0.0, box1.getMMin(), 0.0);
+    Assert.assertEquals(10.0, box1.getMMax(), 0.0);
+  }
+
+  @Test
+  public void testUpdateWithAllNaNCoordinatesAfterValid() {
+    GeometryFactory gf = new GeometryFactory();
+    BoundingBox box = new BoundingBox();
+
+    // First add a valid point
+    box.update(gf.createPoint(new Coordinate(10, 20)), "EPSG:4326");
+    Assert.assertEquals(10.0, box.getXMin(), 0.0);
+
+    // Then update with all NaN coordinates - should not change valid values
+    Point nanPoint = gf.createPoint(new Coordinate(Double.NaN, Double.NaN));
+    box.update(nanPoint, "EPSG:4326");
+
+    // Values should remain unchanged
+    Assert.assertEquals(10.0, box.getXMin(), 0.0);
+    Assert.assertEquals(10.0, box.getXMax(), 0.0);
+    Assert.assertEquals(20.0, box.getYMin(), 0.0);
+    Assert.assertEquals(20.0, box.getYMax(), 0.0);
+  }
+
+  @Test
+  public void testUpdate3DPoint() {
+    GeometryFactory gf = new GeometryFactory();
+    BoundingBox box = new BoundingBox();
+
+    // Create a 3D point
+    Coordinate coord = new Coordinate(10, 20, 30);
+    Point point3D = gf.createPoint(coord);
+    box.update(point3D, "EPSG:4326");
+
+    Assert.assertEquals(10.0, box.getXMin(), 0.0);
+    Assert.assertEquals(10.0, box.getXMax(), 0.0);
+    Assert.assertEquals(20.0, box.getYMin(), 0.0);
+    Assert.assertEquals(20.0, box.getYMax(), 0.0);
+    Assert.assertEquals(30.0, box.getZMin(), 0.0);
+    Assert.assertEquals(30.0, box.getZMax(), 0.0);
+
+    // Add another 3D point with different Z
+    box.update(gf.createPoint(new Coordinate(15, 25, 10)), "EPSG:4326");
+
+    Assert.assertEquals(10.0, box.getXMin(), 0.0);
+    Assert.assertEquals(15.0, box.getXMax(), 0.0);
+    Assert.assertEquals(20.0, box.getYMin(), 0.0);
+    Assert.assertEquals(25.0, box.getYMax(), 0.0);
+    Assert.assertEquals(10.0, box.getZMin(), 0.0);
+    Assert.assertEquals(30.0, box.getZMax(), 0.0);
+  }
+
+  @Test
+  public void testUpdateWithMeasureValue() {
+    GeometryFactory gf = new GeometryFactory();
+    BoundingBox box = new BoundingBox();
+
+    // Create a point with M value using CoordinateXYZM instead of setM
+    CoordinateXYZM coord = new CoordinateXYZM(10, 20, Double.NaN, 5.0);
+    Point pointWithM = gf.createPoint(coord);
+    box.update(pointWithM, "EPSG:4326");
+
+    Assert.assertEquals(10.0, box.getXMin(), 0.0);
+    Assert.assertEquals(10.0, box.getXMax(), 0.0);
+    Assert.assertEquals(20.0, box.getYMin(), 0.0);
+    Assert.assertEquals(20.0, box.getYMax(), 0.0);
+    Assert.assertEquals(Double.NaN, box.getZMin(), 0.0);
+    Assert.assertEquals(Double.NaN, box.getZMax(), 0.0);
+    Assert.assertEquals(5.0, box.getMMin(), 0.0);
+    Assert.assertEquals(5.0, box.getMMax(), 0.0);
+
+    // Add another point with different M value
+    CoordinateXYZM coord2 = new CoordinateXYZM(15, 25, Double.NaN, 10.0);
+    box.update(gf.createPoint(coord2), "EPSG:4326");
+
+    Assert.assertEquals(10.0, box.getXMin(), 0.0);
+    Assert.assertEquals(15.0, box.getXMax(), 0.0);
+    Assert.assertEquals(20.0, box.getYMin(), 0.0);
+    Assert.assertEquals(25.0, box.getYMax(), 0.0);
+    Assert.assertEquals(Double.NaN, box.getZMin(), 0.0);
+    Assert.assertEquals(Double.NaN, box.getZMax(), 0.0);
+    Assert.assertEquals(5.0, box.getMMin(), 0.0);
+    Assert.assertEquals(10.0, box.getMMax(), 0.0);
+  }
+
+  @Test
+  public void testResetAfterUpdate() {
+    GeometryFactory gf = new GeometryFactory();
+    BoundingBox box = new BoundingBox();
+
+    // Update with valid point
+    box.update(gf.createPoint(new Coordinate(10, 20)), "EPSG:4326");
+    Assert.assertEquals(10.0, box.getXMin(), 0.0);
+
+    // Reset the box
+    box.reset();
+
+    // All values should be NaN
+    Assert.assertEquals(Double.NaN, box.getXMin(), 0.0);
+    Assert.assertEquals(Double.NaN, box.getXMax(), 0.0);
+    Assert.assertEquals(Double.NaN, box.getYMin(), 0.0);
+    Assert.assertEquals(Double.NaN, box.getYMax(), 0.0);
+
+    // Update after reset should work correctly
+    box.update(gf.createPoint(new Coordinate(30, 40)), "EPSG:4326");
+    Assert.assertEquals(30.0, box.getXMin(), 0.0);
+    Assert.assertEquals(30.0, box.getXMax(), 0.0);
+    Assert.assertEquals(40.0, box.getYMin(), 0.0);
+    Assert.assertEquals(40.0, box.getYMax(), 0.0);
+  }
+
+  @Test
+  public void testCopy() {
+    // Create and populate a bounding box
+    BoundingBox original = new BoundingBox(1, 2, 3, 4, 5, 6, 7, 8);
+
+    // Create copy
+    BoundingBox copy = original.copy();
+
+    // Verify all values are copied correctly
+    Assert.assertEquals(original.getXMin(), copy.getXMin(), 0.0);
+    Assert.assertEquals(original.getXMax(), copy.getXMax(), 0.0);
+    Assert.assertEquals(original.getYMin(), copy.getYMin(), 0.0);
+    Assert.assertEquals(original.getYMax(), copy.getYMax(), 0.0);
+    Assert.assertEquals(original.getZMin(), copy.getZMin(), 0.0);
+    Assert.assertEquals(original.getZMax(), copy.getZMax(), 0.0);
+    Assert.assertEquals(original.getMMin(), copy.getMMin(), 0.0);
+    Assert.assertEquals(original.getMMax(), copy.getMMax(), 0.0);
+
+    // Modify the copy and verify original is unchanged
+    copy.reset();
+    Assert.assertEquals(1.0, original.getXMin(), 0.0);
+    Assert.assertEquals(Double.NaN, copy.getXMin(), 0.0);
+  }
+
+  @Test
+  public void testMergeWithAllNaNBox() {
+    // Box with valid values
+    BoundingBox box1 = new BoundingBox(1, 2, 3, 4, 5, 6, 7, 8);
+
+    // Empty box with all NaN values
+    BoundingBox box2 = new BoundingBox();
+
+    // Merge should keep existing values
+    box1.merge(box2);
+
+    Assert.assertEquals(1.0, box1.getXMin(), 0.0);
+    Assert.assertEquals(2.0, box1.getXMax(), 0.0);
+    Assert.assertEquals(3.0, box1.getYMin(), 0.0);
+    Assert.assertEquals(4.0, box1.getYMax(), 0.0);
+    Assert.assertEquals(5.0, box1.getZMin(), 0.0);
+    Assert.assertEquals(6.0, box1.getZMax(), 0.0);
+    Assert.assertEquals(7.0, box1.getMMin(), 0.0);
+    Assert.assertEquals(8.0, box1.getMMax(), 0.0);
+
+    // Test the reverse - NaN box merging with valid box
+    BoundingBox box3 = new BoundingBox();
+    box3.merge(box1);
+
+    Assert.assertEquals(1.0, box3.getXMin(), 0.0);
+    Assert.assertEquals(2.0, box3.getXMax(), 0.0);
+    Assert.assertEquals(3.0, box3.getYMin(), 0.0);
+    Assert.assertEquals(4.0, box3.getYMax(), 0.0);
   }
 }
