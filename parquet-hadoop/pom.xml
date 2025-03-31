@@ -230,6 +230,14 @@
           <arch>!aarch64</arch>
         </os>
       </activation>
+      <repositories>
+        <repository>
+          <id>jitpack.io</id>
+          <url>https://jitpack.io</url>
+          <name>Jitpack.io repository</name>
+          <!-- needed for brotli-codec -->
+        </repository>
+      </repositories>
       <dependencies>
         <dependency>
           <groupId>com.github.rdblue</groupId>
