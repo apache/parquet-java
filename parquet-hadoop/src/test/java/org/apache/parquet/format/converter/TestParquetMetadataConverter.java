@@ -41,6 +41,7 @@ import static org.apache.parquet.schema.LogicalTypeAnnotation.stringType;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.timeType;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.timestampType;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.uuidType;
+import static org.apache.parquet.schema.LogicalTypeAnnotation.variantType;
 import static org.apache.parquet.schema.MessageTypeParser.parseMessageType;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -1587,6 +1588,24 @@ public class TestParquetMetadataConverter {
     MessageType messageType = parquetMetadataConverter.fromParquetSchema(oldConvertedTypeSchemaElements, null);
 
     verifyMapMessageType(messageType, "map");
+  }
+
+  @Test
+  public void testVariantLogicalType() {
+    MessageType expected = Types.buildMessage()
+        .requiredGroup()
+        .as(variantType())
+        .required(PrimitiveTypeName.BINARY)
+        .named("metadata")
+        .required(PrimitiveTypeName.BINARY)
+        .named("value")
+        .named("v")
+        .named("example");
+
+    ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
+    List<SchemaElement> parquetSchema = parquetMetadataConverter.toParquetSchema(expected);
+    MessageType schema = parquetMetadataConverter.fromParquetSchema(parquetSchema, null);
+    assertEquals(expected, schema);
   }
 
   private void verifyMapMessageType(final MessageType messageType, final String keyValueName) throws IOException {

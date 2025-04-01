@@ -25,7 +25,7 @@ import org.junit.Test;
 public class TestLogicalTypes {
   @Test
   public void testVariantLogicalTypeVersion() {
-    LogicalType variant = LogicalTypes.VARIANT();
+    LogicalType variant = LogicalTypes.VARIANT;
     assertEquals(1, (variant.getVARIANT().getSpecification_version()));
   }
 }
