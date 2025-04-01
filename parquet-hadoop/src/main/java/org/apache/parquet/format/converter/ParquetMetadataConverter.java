@@ -1183,6 +1183,8 @@ public class ParquetMetadataConverter {
         return LogicalTypeAnnotation.uuidType();
       case FLOAT16:
         return LogicalTypeAnnotation.float16Type();
+      case VARIANT:
+        return LogicalTypeAnnotation.variantType();
       default:
         throw new RuntimeException("Unknown logical type " + type);
     }
