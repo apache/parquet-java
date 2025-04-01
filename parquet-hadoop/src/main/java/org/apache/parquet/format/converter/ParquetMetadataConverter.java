@@ -84,7 +84,6 @@ import org.apache.parquet.format.IntType;
 import org.apache.parquet.format.KeyValue;
 import org.apache.parquet.format.LogicalType;
 import org.apache.parquet.format.LogicalTypes;
-import org.apache.parquet.format.MapType;
 import org.apache.parquet.format.MicroSeconds;
 import org.apache.parquet.format.MilliSeconds;
 import org.apache.parquet.format.NanoSeconds;
