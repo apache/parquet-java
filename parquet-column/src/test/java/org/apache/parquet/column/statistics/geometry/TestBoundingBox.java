@@ -410,4 +410,83 @@ public class TestBoundingBox {
     Assert.assertEquals(3.0, box3.getYMin(), 0.0);
     Assert.assertEquals(4.0, box3.getYMax(), 0.0);
   }
+
+  @Test
+  public void testLineStringWithNaNCoordinates() {
+    GeometryFactory gf = new GeometryFactory();
+    BoundingBox box = new BoundingBox();
+
+    // Create a LineString with NaN coordinates in the middle
+    Coordinate[] coords =
+        new Coordinate[] {new Coordinate(0, 1), new Coordinate(Double.NaN, Double.NaN), new Coordinate(2, 3)};
+
+    box.update(gf.createLineString(coords), "EPSG:4326");
+
+    // The bounding box should include the valid coordinates and ignore NaN
+    Assert.assertEquals(0.0, box.getXMin(), 0.0);
+    Assert.assertEquals(2.0, box.getXMax(), 0.0);
+    Assert.assertEquals(1.0, box.getYMin(), 0.0);
+    Assert.assertEquals(3.0, box.getYMax(), 0.0);
+
+    // Test with only one valid coordinate
+    BoundingBox box2 = new BoundingBox();
+    Coordinate[] coords2 = new Coordinate[] {
+      new Coordinate(5, 6), new Coordinate(Double.NaN, Double.NaN), new Coordinate(Double.NaN, Double.NaN)
+    };
+
+    box2.update(gf.createLineString(coords2), "EPSG:4326");
+
+    Assert.assertEquals(5.0, box2.getXMin(), 0.0);
+    Assert.assertEquals(5.0, box2.getXMax(), 0.0);
+    Assert.assertEquals(6.0, box2.getYMin(), 0.0);
+    Assert.assertEquals(6.0, box2.getYMax(), 0.0);
+
+    // Test with all NaN coordinates
+    BoundingBox box3 = new BoundingBox();
+    Coordinate[] coords3 =
+        new Coordinate[] {new Coordinate(Double.NaN, Double.NaN), new Coordinate(Double.NaN, Double.NaN)};
+
+    box3.update(gf.createLineString(coords3), "EPSG:4326");
+
+    // Should result in NaN for all values
+    Assert.assertEquals(Double.NaN, box3.getXMin(), 0.0);
+    Assert.assertEquals(Double.NaN, box3.getXMax(), 0.0);
+    Assert.assertEquals(Double.NaN, box3.getYMin(), 0.0);
+    Assert.assertEquals(Double.NaN, box3.getYMax(), 0.0);
+  }
+
+  @Test
+  public void testLineStringWithPartialNaNCoordinates() {
+    GeometryFactory gf = new GeometryFactory();
+    BoundingBox box = new BoundingBox();
+
+    // Create a LineString with partial NaN coordinate in the middle
+    // where only the Y value is NaN: "LINESTRING (0 1, 1 nan, 2 3)"
+    Coordinate[] coords =
+        new Coordinate[] {new Coordinate(0, 1), new Coordinate(1, Double.NaN), new Coordinate(2, 3)};
+
+    box.update(gf.createLineString(coords), "EPSG:4326");
+
+    // The bounding box should include all valid coordinates
+    // X should include all values: 0, 1, 2
+    // Y should only include valid values: 1, 3
+    Assert.assertEquals(0.0, box.getXMin(), 0.0);
+    Assert.assertEquals(2.0, box.getXMax(), 0.0);
+    Assert.assertEquals(1.0, box.getYMin(), 0.0);
+    Assert.assertEquals(3.0, box.getYMax(), 0.0);
+
+    // Test with mixed NaN values in different components
+    BoundingBox box2 = new BoundingBox();
+    Coordinate[] coords2 =
+        new Coordinate[] {new Coordinate(Double.NaN, 5), new Coordinate(6, Double.NaN), new Coordinate(7, 8)};
+
+    box2.update(gf.createLineString(coords2), "EPSG:4326");
+
+    // X should only include valid values: 6, 7
+    // Y should only include valid values: 5, 8
+    Assert.assertEquals(Double.NaN, box2.getXMin(), 0.0);
+    Assert.assertEquals(Double.NaN, box2.getXMax(), 0.0);
+    Assert.assertEquals(5.0, box2.getYMin(), 0.0);
+    Assert.assertEquals(8.0, box2.getYMax(), 0.0);
+  }
 }

@@ -813,18 +813,28 @@ public class ParquetMetadataConverter {
 
   private static BoundingBox toParquetBoundingBox(org.apache.parquet.column.statistics.geometry.BoundingBox bbox) {
     BoundingBox formatBbox = new BoundingBox();
-    formatBbox.setXmin(bbox.getXMin());
-    formatBbox.setXmax(bbox.getXMax());
-    formatBbox.setYmin(bbox.getYMin());
-    formatBbox.setYmax(bbox.getYMax());
-    if (bbox.getZMin() <= bbox.getZMax()) {
+
+    // Use the same NaN check pattern for all coordinates
+    if (!Double.isNaN(bbox.getXMin()) && !Double.isNaN(bbox.getXMax())) {
+      formatBbox.setXmin(bbox.getXMin());
+      formatBbox.setXmax(bbox.getXMax());
+    }
+
+    if (!Double.isNaN(bbox.getYMin()) && !Double.isNaN(bbox.getYMax())) {
+      formatBbox.setYmin(bbox.getYMin());
+      formatBbox.setYmax(bbox.getYMax());
+    }
+
+    if (!Double.isNaN(bbox.getZMin()) && !Double.isNaN(bbox.getZMax())) {
       formatBbox.setZmin(bbox.getZMin());
       formatBbox.setZmax(bbox.getZMax());
     }
-    if (bbox.getMMin() <= bbox.getMMax()) {
+
+    if (!Double.isNaN(bbox.getMMin()) && !Double.isNaN(bbox.getMMax())) {
       formatBbox.setMmin(bbox.getMMin());
       formatBbox.setMmax(bbox.getMMax());
     }
+
     return formatBbox;
   }
 
@@ -964,10 +974,10 @@ public class ParquetMetadataConverter {
     if (formatGeomStats.isSetBbox()) {
       BoundingBox formatBbox = formatGeomStats.getBbox();
       bbox = new org.apache.parquet.column.statistics.geometry.BoundingBox(
-          formatBbox.getXmin(),
-          formatBbox.getXmax(),
-          formatBbox.getYmin(),
-          formatBbox.getYmax(),
+          formatBbox.isSetXmin() ? formatBbox.getXmin() : Double.NaN,
+          formatBbox.isSetXmax() ? formatBbox.getXmax() : Double.NaN,
+          formatBbox.isSetYmin() ? formatBbox.getYmin() : Double.NaN,
+          formatBbox.isSetYmax() ? formatBbox.getYmax() : Double.NaN,
           formatBbox.isSetZmin() ? formatBbox.getZmin() : Double.NaN,
           formatBbox.isSetZmax() ? formatBbox.getZmax() : Double.NaN,
           formatBbox.isSetMmin() ? formatBbox.getMmin() : Double.NaN,
