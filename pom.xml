@@ -113,7 +113,7 @@
     <powermock.version>2.0.9</powermock.version>
     <net.openhft.version>0.27ea0</net.openhft.version>
     <exec-maven-plugin.version>3.5.0</exec-maven-plugin.version>
-    <jts.version>1.19.0</jts.version>
+    <jts.version>1.20.0</jts.version>
 
     <!-- parquet-cli dependencies -->
     <opencsv.version>2.3</opencsv.version>
