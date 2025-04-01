@@ -89,6 +89,7 @@ import org.apache.parquet.format.JsonType;
 import org.apache.parquet.format.KeyValue;
 import org.apache.parquet.format.ListType;
 import org.apache.parquet.format.LogicalType;
+import org.apache.parquet.format.LogicalTypes;
 import org.apache.parquet.format.MapType;
 import org.apache.parquet.format.MicroSeconds;
 import org.apache.parquet.format.MilliSeconds;
@@ -523,6 +524,11 @@ public class ParquetMetadataConverter {
     @Override
     public Optional<LogicalType> visit(LogicalTypeAnnotation.IntervalLogicalTypeAnnotation intervalLogicalType) {
       return of(LogicalType.UNKNOWN(new NullType()));
+    }
+
+    @Override
+    public Optional<LogicalType> visit(LogicalTypeAnnotation.VariantLogicalTypeAnnotation variantLogicalType) {
+      return of(LogicalTypes.VARIANT);
     }
   }
 
@@ -1187,6 +1193,8 @@ public class ParquetMetadataConverter {
         return LogicalTypeAnnotation.uuidType();
       case FLOAT16:
         return LogicalTypeAnnotation.float16Type();
+      case VARIANT:
+        return LogicalTypeAnnotation.variantType();
       default:
         throw new RuntimeException("Unknown logical type " + type);
     }

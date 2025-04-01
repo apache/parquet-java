@@ -118,12 +118,23 @@ public class MessageTypeParser {
     String name = st.nextToken();
 
     // Read annotation, if any.
+    String annotation = null;
     t = st.nextToken();
-    OriginalType originalType = null;
     if (t.equalsIgnoreCase("(")) {
-      originalType = OriginalType.valueOf(st.nextToken());
-      childBuilder.as(originalType);
-      check(st.nextToken(), ")", "original type ended by )", st);
+      t = st.nextToken();
+      if (isLogicalType(t)) {
+        LogicalTypeAnnotation.LogicalTypeToken logicalType = LogicalTypeAnnotation.LogicalTypeToken.valueOf(t);
+        LogicalTypeAnnotation logicalTypeAnnotation = logicalType.fromString(new ArrayList<>());
+        childBuilder.as(logicalTypeAnnotation);
+        annotation = logicalTypeAnnotation.toString();
+      } else {
+        // Try to parse as OriginalType
+        OriginalType originalType = OriginalType.valueOf(t);
+        childBuilder.as(originalType);
+        annotation = originalType.toString();
+      }
+
+      check(st.nextToken(), ")", "logical type ended by )", st);
       t = st.nextToken();
     }
     if (t.equals("=")) {
@@ -134,7 +145,7 @@ public class MessageTypeParser {
       addGroupTypeFields(t, st, childBuilder);
     } catch (IllegalArgumentException e) {
       throw new IllegalArgumentException(
-          "problem reading type: type = group, name = " + name + ", original type = " + originalType, e);
+          "problem reading type: type = group, name = " + name + ", annotation = " + annotation, e);
     }
 
     childBuilder.named(name);
