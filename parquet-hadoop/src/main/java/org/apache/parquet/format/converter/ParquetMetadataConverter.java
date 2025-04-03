@@ -89,6 +89,7 @@ import org.apache.parquet.format.JsonType;
 import org.apache.parquet.format.KeyValue;
 import org.apache.parquet.format.ListType;
 import org.apache.parquet.format.LogicalType;
+import org.apache.parquet.format.LogicalTypes;
 import org.apache.parquet.format.MapType;
 import org.apache.parquet.format.MicroSeconds;
 import org.apache.parquet.format.MilliSeconds;
@@ -449,22 +450,22 @@ public class ParquetMetadataConverter {
       implements LogicalTypeAnnotation.LogicalTypeAnnotationVisitor<LogicalType> {
     @Override
     public Optional<LogicalType> visit(LogicalTypeAnnotation.StringLogicalTypeAnnotation stringLogicalType) {
-      return of(LogicalType.STRING(new StringType()));
+      return of(LogicalTypes.UTF8);
     }
 
     @Override
     public Optional<LogicalType> visit(LogicalTypeAnnotation.MapLogicalTypeAnnotation mapLogicalType) {
-      return of(LogicalType.MAP(new MapType()));
+      return of(LogicalTypes.MAP);
     }
 
     @Override
     public Optional<LogicalType> visit(LogicalTypeAnnotation.ListLogicalTypeAnnotation listLogicalType) {
-      return of(LogicalType.LIST(new ListType()));
+      return of(LogicalTypes.LIST);
     }
 
     @Override
     public Optional<LogicalType> visit(LogicalTypeAnnotation.EnumLogicalTypeAnnotation enumLogicalType) {
-      return of(LogicalType.ENUM(new EnumType()));
+      return of(LogicalTypes.ENUM);
     }
 
     @Override
@@ -475,7 +476,7 @@ public class ParquetMetadataConverter {
 
     @Override
     public Optional<LogicalType> visit(LogicalTypeAnnotation.DateLogicalTypeAnnotation dateLogicalType) {
-      return of(LogicalType.DATE(new DateType()));
+      return of(LogicalTypes.DATE);
     }
 
     @Override
@@ -497,32 +498,32 @@ public class ParquetMetadataConverter {
 
     @Override
     public Optional<LogicalType> visit(LogicalTypeAnnotation.JsonLogicalTypeAnnotation jsonLogicalType) {
-      return of(LogicalType.JSON(new JsonType()));
+      return of(LogicalTypes.JSON);
     }
 
     @Override
     public Optional<LogicalType> visit(LogicalTypeAnnotation.BsonLogicalTypeAnnotation bsonLogicalType) {
-      return of(LogicalType.BSON(new BsonType()));
+      return of(LogicalTypes.BSON);
     }
 
     @Override
     public Optional<LogicalType> visit(UUIDLogicalTypeAnnotation uuidLogicalType) {
-      return of(LogicalType.UUID(new UUIDType()));
+      return of(LogicalTypes.UUID);
     }
 
     @Override
     public Optional<LogicalType> visit(LogicalTypeAnnotation.Float16LogicalTypeAnnotation float16LogicalType) {
-      return of(LogicalType.FLOAT16(new Float16Type()));
+      return of(LogicalTypes.FLOAT16);
     }
 
     @Override
-    public Optional<LogicalType> visit(LogicalTypeAnnotation.UnknownLogicalTypeAnnotation intervalLogicalType) {
-      return of(LogicalType.UNKNOWN(new NullType()));
+    public Optional<LogicalType> visit(LogicalTypeAnnotation.UnknownLogicalTypeAnnotation unknownLogicalType) {
+      return of(LogicalTypes.UNKNOWN);
     }
 
     @Override
     public Optional<LogicalType> visit(LogicalTypeAnnotation.IntervalLogicalTypeAnnotation intervalLogicalType) {
-      return of(LogicalType.UNKNOWN(new NullType()));
+      return of(LogicalTypes.UNKNOWN);
     }
   }
 
