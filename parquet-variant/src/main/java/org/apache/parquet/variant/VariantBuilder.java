@@ -431,15 +431,15 @@ public class VariantBuilder {
    * @param v the Variant value to append
    */
   public void appendVariant(Variant v) {
-    appendVariantImpl(v.value, v.valuePos, v.metadata, v.metadataPos);
+    appendVariantImpl(v.value, v.value.position(), v.metadata);
   }
 
-  private void appendVariantImpl(byte[] value, int valuePos, byte[] metadata, int metadataPos) {
-    VariantUtil.checkIndex(valuePos, value.length);
-    int basicType = value[valuePos] & VariantUtil.BASIC_TYPE_MASK;
+  private void appendVariantImpl(ByteBuffer value, int valuePos, ByteBuffer metadata) {
+    VariantUtil.checkIndex(valuePos, value.limit());
+    int basicType = value.get(valuePos) & VariantUtil.BASIC_TYPE_MASK;
     switch (basicType) {
       case VariantUtil.OBJECT: {
-        VariantUtil.ObjectInfo info = VariantUtil.getObjectInfo(value, valuePos);
+        VariantUtil.ObjectInfo info = VariantUtil.getObjectInfo(VariantUtil.slice(value, valuePos));
         ArrayList<FieldEntry> fields = new ArrayList<>(info.numElements);
         int start = writePos;
         for (int i = 0; i < info.numElements; ++i) {
@@ -448,16 +448,16 @@ public class VariantBuilder {
           int offset = VariantUtil.readUnsigned(
               value, valuePos + info.offsetStartOffset + info.offsetSize * i, info.offsetSize);
           int elementPos = valuePos + info.dataStartOffset + offset;
-          String key = VariantUtil.getMetadataKey(metadata, metadataPos, id);
+          String key = VariantUtil.getMetadataKey(metadata, id);
           int newId = addKey(key);
           fields.add(new FieldEntry(key, newId, writePos - start));
-          appendVariantImpl(value, elementPos, metadata, metadataPos);
+          appendVariantImpl(value, elementPos, metadata);
         }
         finishWritingObject(start, fields);
         break;
       }
       case VariantUtil.ARRAY: {
-        VariantUtil.ArrayInfo info = VariantUtil.getArrayInfo(value, valuePos);
+        VariantUtil.ArrayInfo info = VariantUtil.getArrayInfo(VariantUtil.slice(value, valuePos));
         ArrayList<Integer> offsets = new ArrayList<>(info.numElements);
         int start = writePos;
         for (int i = 0; i < info.numElements; ++i) {
@@ -465,7 +465,7 @@ public class VariantBuilder {
               value, valuePos + info.offsetStartOffset + info.offsetSize * i, info.offsetSize);
           int elementPos = valuePos + info.dataStartOffset + offset;
           offsets.add(writePos - start);
-          appendVariantImpl(value, elementPos, metadata, metadataPos);
+          appendVariantImpl(value, elementPos, metadata);
         }
         finishWritingArray(start, offsets);
         break;
@@ -476,11 +476,11 @@ public class VariantBuilder {
     }
   }
 
-  private void shallowAppendVariantImpl(byte[] value, int pos) {
-    int size = VariantUtil.valueSize(value, pos);
-    VariantUtil.checkIndex(pos + size - 1, value.length);
+  private void shallowAppendVariantImpl(ByteBuffer value, int valuePos) {
+    int size = VariantUtil.valueSize(value, valuePos);
+    VariantUtil.checkIndex(valuePos + size - 1, value.limit());
     checkCapacity(size);
-    System.arraycopy(value, pos, writeBuffer, writePos, size);
+    VariantUtil.slice(value, valuePos).get(writeBuffer, writePos, size);
     writePos += size;
   }
 

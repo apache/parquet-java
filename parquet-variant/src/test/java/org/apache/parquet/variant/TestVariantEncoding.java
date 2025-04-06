@@ -85,7 +85,7 @@ public class TestVariantEncoding {
   }
 
   private void checkType(Variant v, int expectedBasicType, VariantUtil.Type expectedType) {
-    Assert.assertEquals(expectedBasicType, v.value[v.valuePos] & VariantUtil.BASIC_TYPE_MASK);
+    Assert.assertEquals(expectedBasicType, v.value.get(v.value.position()) & VariantUtil.BASIC_TYPE_MASK);
     Assert.assertEquals(expectedType, v.getType());
   }
 
@@ -108,13 +108,19 @@ public class TestVariantEncoding {
   private void testVariant(Variant v, Consumer<Variant> consumer) {
     consumer.accept(v);
     // Create new Variant with different byte offsets
-    byte[] newValue = new byte[v.value.length + 50];
-    byte[] newMetadata = new byte[v.metadata.length + 50];
+    byte[] newValue = new byte[v.value.capacity() + 50];
+    byte[] newMetadata = new byte[v.metadata.capacity() + 50];
     Arrays.fill(newValue, (byte) 0xFF);
     Arrays.fill(newMetadata, (byte) 0xFF);
-    System.arraycopy(v.value, 0, newValue, 25, v.value.length);
-    System.arraycopy(v.metadata, 0, newMetadata, 25, v.metadata.length);
-    Variant v2 = new Variant(newValue, 25 + v.valuePos, newMetadata, 25 + v.metadataPos);
+    v.value.position(0);
+    v.value.get(newValue, 25, v.value.capacity());
+    v.value.position(0);
+    v.metadata.position(0);
+    v.metadata.get(newMetadata, 25, v.metadata.capacity());
+    v.metadata.position(0);
+    Variant v2 = new Variant(
+        ByteBuffer.wrap(newValue, 25, v.value.capacity()),
+        ByteBuffer.wrap(newMetadata, 25, v.metadata.capacity()));
     consumer.accept(v2);
   }
 

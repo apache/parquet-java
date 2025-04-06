@@ -23,6 +23,7 @@ import com.fasterxml.jackson.core.JsonGenerator;
 import java.io.CharArrayWriter;
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.nio.ByteBuffer;
 import java.util.UUID;
 import org.apache.parquet.cli.util.RuntimeIOException;
 
@@ -31,14 +32,10 @@ import org.apache.parquet.cli.util.RuntimeIOException;
  */
 public final class Variant {
   /** The buffer that contains the Variant value. */
-  final byte[] value;
-  /** The starting index into `value` where the Variant value begins. */
-  final int valuePos;
+  final ByteBuffer value;
 
   /** The buffer that contains the Variant metadata. */
-  final byte[] metadata;
-  /** The starting index into `metadata` where the Variant metadata begins. */
-  final int metadataPos;
+  final ByteBuffer metadata;
 
   /**
    * The threshold to switch from linear search to binary search when looking up a field by key in
@@ -52,23 +49,23 @@ public final class Variant {
   }
 
   Variant(byte[] value, int valuePos, byte[] metadata, int metadataPos) {
-    if (valuePos < 0 || valuePos >= value.length) {
-      throw new IllegalArgumentException(
-          String.format("Invalid valuePos: %d. value.length: %d", valuePos, value.length));
-    }
-    if (metadataPos < 0 || metadataPos >= metadata.length) {
-      throw new IllegalArgumentException(
-          String.format("Invalid metadataPos: %d. metadata.length: %d", metadataPos, metadata.length));
-    }
-    this.value = value;
-    this.valuePos = valuePos;
+    this(
+        ByteBuffer.wrap(value, valuePos, value.length - valuePos),
+        ByteBuffer.wrap(metadata, metadataPos, metadata.length - metadataPos));
+  }
 
-    this.metadata = metadata;
-    this.metadataPos = metadataPos;
+  Variant(ByteBuffer value, ByteBuffer metadata) {
+    this.value = value.asReadOnlyBuffer();
+    this.value.mark();
+
+    this.metadata = metadata.asReadOnlyBuffer();
+    this.metadata.mark();
+
     // There is currently only one allowed version.
-    if ((metadata[metadataPos] & VariantUtil.VERSION_MASK) != VariantUtil.VERSION) {
+    if ((metadata.get(metadata.position()) & VariantUtil.VERSION_MASK) != VariantUtil.VERSION) {
       throw new UnsupportedOperationException(String.format(
-          "Unsupported variant metadata version: %02X", metadata[metadataPos] & VariantUtil.VERSION_MASK));
+          "Unsupported variant metadata version: %02X",
+          metadata.get(metadata.position()) & VariantUtil.VERSION_MASK));
     }
   }
 
@@ -76,14 +73,14 @@ public final class Variant {
    * @return the boolean value
    */
   public boolean getBoolean() {
-    return VariantUtil.getBoolean(value, valuePos);
+    return VariantUtil.getBoolean(value);
   }
 
   /**
    * @return the byte value
    */
   public byte getByte() {
-    long longValue = VariantUtil.getLong(value, valuePos);
+    long longValue = VariantUtil.getLong(value);
     if (longValue < Byte.MIN_VALUE || longValue > Byte.MAX_VALUE) {
       throw new IllegalStateException("Value out of range for byte: " + longValue);
     }
@@ -94,7 +91,7 @@ public final class Variant {
    * @return the short value
    */
   public short getShort() {
-    long longValue = VariantUtil.getLong(value, valuePos);
+    long longValue = VariantUtil.getLong(value);
     if (longValue < Short.MIN_VALUE || longValue > Short.MAX_VALUE) {
       throw new IllegalStateException("Value out of range for short: " + longValue);
     }
@@ -105,7 +102,7 @@ public final class Variant {
    * @return the int value
    */
   public int getInt() {
-    long longValue = VariantUtil.getLong(value, valuePos);
+    long longValue = VariantUtil.getLong(value);
     if (longValue < Integer.MIN_VALUE || longValue > Integer.MAX_VALUE) {
       throw new IllegalStateException("Value out of range for int: " + longValue);
     }
@@ -116,63 +113,63 @@ public final class Variant {
    * @return the long value
    */
   public long getLong() {
-    return VariantUtil.getLong(value, valuePos);
+    return VariantUtil.getLong(value);
   }
 
   /**
    * @return the double value
    */
   public double getDouble() {
-    return VariantUtil.getDouble(value, valuePos);
+    return VariantUtil.getDouble(value);
   }
 
   /**
    * @return the decimal value
    */
   public BigDecimal getDecimal() {
-    return VariantUtil.getDecimal(value, valuePos);
+    return VariantUtil.getDecimal(value);
   }
 
   /**
    * @return the float value
    */
   public float getFloat() {
-    return VariantUtil.getFloat(value, valuePos);
+    return VariantUtil.getFloat(value);
   }
 
   /**
    * @return the binary value
    */
   public byte[] getBinary() {
-    return VariantUtil.getBinary(value, valuePos);
+    return VariantUtil.getBinary(value);
   }
 
   /**
    * @return the UUID value
    */
   public UUID getUUID() {
-    return VariantUtil.getUUID(value, valuePos);
+    return VariantUtil.getUUID(value);
   }
 
   /**
    * @return the string value
    */
   public String getString() {
-    return VariantUtil.getString(value, valuePos);
+    return VariantUtil.getString(value);
   }
 
   /**
    * @return the type of the variant value
    */
   public VariantUtil.Type getType() {
-    return VariantUtil.getType(value, valuePos);
+    return VariantUtil.getType(value);
   }
 
   /**
    * @return the number of object fields in the variant. `getType()` must be `Type.OBJECT`.
    */
   public int numObjectElements() {
-    return VariantUtil.getObjectInfo(value, valuePos).numElements;
+    return VariantUtil.getObjectInfo(value).numElements;
   }
 
   /**
@@ -182,7 +179,7 @@ public final class Variant {
    * @return the field value whose key is equal to `key`, or null if key is not found
    */
   public Variant getFieldByKey(String key) {
-    VariantUtil.ObjectInfo info = VariantUtil.getObjectInfo(value, valuePos);
+    VariantUtil.ObjectInfo info = VariantUtil.getObjectInfo(value);
     // Use linear search for a short list. Switch to binary search when the length reaches
     // `BINARY_SEARCH_THRESHOLD`.
     if (info.numElements < BINARY_SEARCH_THRESHOLD) {
@@ -191,12 +188,11 @@ public final class Variant {
             i,
             value,
             metadata,
-            metadataPos,
             info.idSize,
             info.offsetSize,
-            valuePos + info.idStartOffset,
-            valuePos + info.offsetStartOffset,
-            valuePos + info.dataStartOffset);
+            value.position() + info.idStartOffset,
+            value.position() + info.offsetStartOffset,
+            value.position() + info.dataStartOffset);
         if (field.key.equals(key)) {
           return field.value;
         }
@@ -213,12 +209,11 @@ public final class Variant {
             mid,
             value,
             metadata,
-            metadataPos,
             info.idSize,
             info.offsetSize,
-            valuePos + info.idStartOffset,
-            valuePos + info.offsetStartOffset,
-            valuePos + info.dataStartOffset);
+            value.position() + info.idStartOffset,
+            value.position() + info.offsetStartOffset,
+            value.position() + info.dataStartOffset);
         int cmp = field.key.compareTo(key);
         if (cmp < 0) {
           low = mid + 1;
@@ -252,7 +247,7 @@ public final class Variant {
    * @return the ObjectField at the `index` slot, or null if `index` is out of bounds
    */
   public ObjectField getFieldAtIndex(int index) {
-    VariantUtil.ObjectInfo info = VariantUtil.getObjectInfo(value, valuePos);
+    VariantUtil.ObjectInfo info = VariantUtil.getObjectInfo(value);
     if (index < 0 || index >= info.numElements) {
       return null;
     }
@@ -260,19 +255,17 @@ public final class Variant {
         index,
         value,
         metadata,
-        metadataPos,
         info.idSize,
         info.offsetSize,
-        valuePos + info.idStartOffset,
-        valuePos + info.offsetStartOffset,
-        valuePos + info.dataStartOffset);
+        value.position() + info.idStartOffset,
+        value.position() + info.offsetStartOffset,
+        value.position() + info.dataStartOffset);
   }
 
   private static ObjectField getFieldAtIndex(
       int index,
-      byte[] value,
-      byte[] metadata,
-      int metadataPos,
+      ByteBuffer value,
+      ByteBuffer metadata,
       int idSize,
       int offsetSize,
       int idStart,
@@ -281,8 +274,8 @@ public final class Variant {
     // idStart, offsetStart, and dataStart are absolute positions in the `value` buffer.
     int id = VariantUtil.readUnsigned(value, idStart + idSize * index, idSize);
     int offset = VariantUtil.readUnsigned(value, offsetStart + offsetSize * index, offsetSize);
-    String key = VariantUtil.getMetadataKey(metadata, metadataPos, id);
-    Variant v = new Variant(value, dataStart + offset, metadata, metadataPos);
+    String key = VariantUtil.getMetadataKey(metadata, id);
+    Variant v = new Variant(VariantUtil.slice(value, dataStart + offset), metadata);
     return new ObjectField(key, v);
   }
 
@@ -290,7 +283,7 @@ public final class Variant {
    * @return the number of array elements. `getType()` must be `Type.ARRAY`.
    */
   public int numArrayElements() {
-    return VariantUtil.getArrayInfo(value, valuePos).numElements;
+    return VariantUtil.getArrayInfo(value).numElements;
   }
 
   /**
@@ -300,7 +293,7 @@ public final class Variant {
    * @return the array element Variant at the `index` slot, or null if `index` is out of bounds
    */
   public Variant getElementAtIndex(int index) {
-    VariantUtil.ArrayInfo info = VariantUtil.getArrayInfo(value, valuePos);
+    VariantUtil.ArrayInfo info = VariantUtil.getArrayInfo(value);
     if (index < 0 || index >= info.numElements) {
       return null;
     }
@@ -308,17 +301,16 @@ public final class Variant {
         index,
         value,
         metadata,
-        metadataPos,
         info.offsetSize,
-        valuePos + info.offsetStartOffset,
-        valuePos + info.dataStartOffset);
+        value.position() + info.offsetStartOffset,
+        value.position() + info.dataStartOffset);
   }
 
   private static Variant getElementAtIndex(
-      int index, byte[] value, byte[] metadata, int metadataPos, int offsetSize, int offsetStart, int dataStart) {
+      int index, ByteBuffer value, ByteBuffer metadata, int offsetSize, int offsetStart, int dataStart) {
     // offsetStart and dataStart are absolute positions in the `value` buffer.
     int offset = VariantUtil.readUnsigned(value, offsetStart + offsetSize * index, offsetSize);
-    return new Variant(value, dataStart + offset, metadata, metadataPos);
+    return new Variant(VariantUtil.slice(value, dataStart + offset), metadata);
   }
 
   /**
@@ -378,7 +370,7 @@ public final class Variant {
   public String toJson(ScalarToJson scalarWriter) {
     try (CharArrayWriter writer = new CharArrayWriter();
         JsonGenerator gen = new JsonFactory().createGenerator(writer)) {
-      toJsonImpl(value, valuePos, metadata, metadataPos, gen, scalarWriter);
+      toJsonImpl(value, metadata, gen, scalarWriter);
       gen.flush();
       return writer.toString();
     } catch (IOException e) {
@@ -386,49 +378,40 @@ public final class Variant {
     }
   }
 
-  private static void toJsonImpl(
-      byte[] value, int valuePos, byte[] metadata, int metadataPos, JsonGenerator gen, ScalarToJson scalarWriter)
+  private static void toJsonImpl(ByteBuffer value, ByteBuffer metadata, JsonGenerator gen, ScalarToJson scalarWriter)
       throws IOException {
-    switch (VariantUtil.getType(value, valuePos)) {
+    switch (VariantUtil.getType(value)) {
       case OBJECT: {
-        VariantUtil.ObjectInfo info = VariantUtil.getObjectInfo(value, valuePos);
+        VariantUtil.ObjectInfo info = VariantUtil.getObjectInfo(value);
         gen.writeStartObject();
         for (int i = 0; i < info.numElements; ++i) {
           ObjectField field = getFieldAtIndex(
               i,
               value,
               metadata,
-              metadataPos,
               info.idSize,
               info.offsetSize,
-              valuePos + info.idStartOffset,
-              valuePos + info.offsetStartOffset,
-              valuePos + info.dataStartOffset);
+              value.position() + info.idStartOffset,
+              value.position() + info.offsetStartOffset,
+              value.position() + info.dataStartOffset);
           gen.writeFieldName(field.key);
-          toJsonImpl(
-              field.value.value,
-              field.value.valuePos,
-              field.value.metadata,
-              metadataPos,
-              gen,
-              scalarWriter);
+          toJsonImpl(field.value.value, field.value.metadata, gen, scalarWriter);
         }
         gen.writeEndObject();
         break;
       }
       case ARRAY: {
-        VariantUtil.ArrayInfo info = VariantUtil.getArrayInfo(value, valuePos);
+        VariantUtil.ArrayInfo info = VariantUtil.getArrayInfo(value);
         gen.writeStartArray();
         for (int i = 0; i < info.numElements; ++i) {
           Variant v = getElementAtIndex(
               i,
               value,
               metadata,
-              metadataPos,
               info.offsetSize,
-              valuePos + info.offsetStartOffset,
-              valuePos + info.dataStartOffset);
-          toJsonImpl(v.value, v.valuePos, v.metadata, metadataPos, gen, scalarWriter);
+              value.position() + info.offsetStartOffset,
+              value.position() + info.dataStartOffset);
+          toJsonImpl(v.value, v.metadata, gen, scalarWriter);
         }
         gen.writeEndArray();
         break;
@@ -437,60 +420,60 @@ public final class Variant {
         scalarWriter.writeNull(gen);
         break;
       case BOOLEAN:
-        scalarWriter.writeBoolean(gen, VariantUtil.getBoolean(value, valuePos));
+        scalarWriter.writeBoolean(gen, VariantUtil.getBoolean(value));
         break;
       case BYTE:
-        scalarWriter.writeByte(gen, (byte) VariantUtil.getLong(value, valuePos));
+        scalarWriter.writeByte(gen, (byte) VariantUtil.getLong(value));
         break;
       case SHORT:
-        scalarWriter.writeShort(gen, (short) VariantUtil.getLong(value, valuePos));
+        scalarWriter.writeShort(gen, (short) VariantUtil.getLong(value));
         break;
       case INT:
-        scalarWriter.writeInt(gen, (int) VariantUtil.getLong(value, valuePos));
+        scalarWriter.writeInt(gen, (int) VariantUtil.getLong(value));
         break;
       case LONG:
-        scalarWriter.writeLong(gen, VariantUtil.getLong(value, valuePos));
+        scalarWriter.writeLong(gen, VariantUtil.getLong(value));
         break;
       case STRING:
-        scalarWriter.writeString(gen, VariantUtil.getString(value, valuePos));
+        scalarWriter.writeString(gen, VariantUtil.getString(value));
         break;
       case BINARY:
-        scalarWriter.writeBinary(gen, VariantUtil.getBinary(value, valuePos));
+        scalarWriter.writeBinary(gen, VariantUtil.getBinary(value));
         break;
       case FLOAT:
-        scalarWriter.writeFloat(gen, VariantUtil.getFloat(value, valuePos));
+        scalarWriter.writeFloat(gen, VariantUtil.getFloat(value));
         break;
       case DOUBLE:
-        scalarWriter.writeDouble(gen, VariantUtil.getDouble(value, valuePos));
+        scalarWriter.writeDouble(gen, VariantUtil.getDouble(value));
         break;
       case DECIMAL4:
       case DECIMAL8:
       case DECIMAL16:
-        scalarWriter.writeDecimal(gen, VariantUtil.getDecimal(value, valuePos));
+        scalarWriter.writeDecimal(gen, VariantUtil.getDecimal(value));
         break;
       case DATE:
-        scalarWriter.writeDate(gen, (int) VariantUtil.getLong(value, valuePos));
+        scalarWriter.writeDate(gen, (int) VariantUtil.getLong(value));
         break;
       case TIMESTAMP:
-        scalarWriter.writeTimestamp(gen, VariantUtil.getLong(value, valuePos));
+        scalarWriter.writeTimestamp(gen, VariantUtil.getLong(value));
         break;
       case TIMESTAMP_NTZ:
-        scalarWriter.writeTimestampNtz(gen, VariantUtil.getLong(value, valuePos));
+        scalarWriter.writeTimestampNtz(gen, VariantUtil.getLong(value));
         break;
       case TIME:
-        scalarWriter.writeTime(gen, VariantUtil.getLong(value, valuePos));
+        scalarWriter.writeTime(gen, VariantUtil.getLong(value));
         break;
       case TIMESTAMP_NANOS:
-        scalarWriter.writeTimestampNanos(gen, VariantUtil.getLong(value, valuePos));
+        scalarWriter.writeTimestampNanos(gen, VariantUtil.getLong(value));
         break;
       case TIMESTAMP_NANOS_NTZ:
-        scalarWriter.writeTimestampNanosNtz(gen, VariantUtil.getLong(value, valuePos));
+        scalarWriter.writeTimestampNanosNtz(gen, VariantUtil.getLong(value));
         break;
       case UUID:
-        scalarWriter.writeUUID(gen, VariantUtil.getUUID(value, valuePos));
+        scalarWriter.writeUUID(gen, VariantUtil.getUUID(value));
         break;
       default:
-        throw new IllegalArgumentException("Unsupported type: " + VariantUtil.getType(value, valuePos));
+        throw new IllegalArgumentException("Unsupported type: " + VariantUtil.getType(value));
     }
   }
 }
