@@ -103,8 +103,8 @@ public class RawUtils {
   static class LogicalTypeAnnotationJsonSerializer extends JsonSerializer<LogicalTypeAnnotation> {
 
     @Override
-    public void serialize(
-        LogicalTypeAnnotation value, JsonGenerator gen, SerializerProvider serializers) throws IOException {
+    public void serialize(LogicalTypeAnnotation value, JsonGenerator gen, SerializerProvider serializers)
+        throws IOException {
       gen.writeString(value.toString());
     }
   }
