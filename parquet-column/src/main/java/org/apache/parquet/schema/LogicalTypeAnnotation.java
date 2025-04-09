@@ -45,7 +45,6 @@ import org.apache.parquet.column.statistics.geometry.EdgeInterpolationAlgorithm;
 
 public abstract class LogicalTypeAnnotation {
 
-  // TODO: Move this to an external configuration
   public static final String DEFAULT_GEOMETRY_CRS = "OGC:CRS84";
 
   enum LogicalTypeToken {

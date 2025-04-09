@@ -812,18 +812,24 @@ public class ParquetMetadataConverter {
   }
 
   private static BoundingBox toParquetBoundingBox(org.apache.parquet.column.statistics.geometry.BoundingBox bbox) {
+    // Check if any of the required bounding box coordinates (xmin, xmax, ymin, ymax) are NaN.
+    // According to the Thrift-generated class, these fields are marked as required and must be set explicitly.
+    // If any of them is NaN, it indicates the bounding box is invalid or uninitialized,
+    // so we return null to avoid creating a malformed BoundingBox object that would later fail serialization
+    // or validation.
+    if (Double.isNaN(bbox.getXMin())
+        || Double.isNaN(bbox.getXMax())
+        || Double.isNaN(bbox.getYMin())
+        || Double.isNaN(bbox.getYMax())) {
+      return null;
+    }
+
+    // Now we can safely create the BoundingBox object
     BoundingBox formatBbox = new BoundingBox();
-
-    // Use the same NaN check pattern for all coordinates
-    if (!Double.isNaN(bbox.getXMin()) && !Double.isNaN(bbox.getXMax())) {
-      formatBbox.setXmin(bbox.getXMin());
-      formatBbox.setXmax(bbox.getXMax());
-    }
-
-    if (!Double.isNaN(bbox.getYMin()) && !Double.isNaN(bbox.getYMax())) {
-      formatBbox.setYmin(bbox.getYMin());
-      formatBbox.setYmax(bbox.getYMax());
-    }
+    formatBbox.setXmin(bbox.getXMin());
+    formatBbox.setXmax(bbox.getXMax());
+    formatBbox.setYmin(bbox.getYMin());
+    formatBbox.setYmax(bbox.getYMax());
 
     if (!Double.isNaN(bbox.getZMin()) && !Double.isNaN(bbox.getZMax())) {
       formatBbox.setZmin(bbox.getZMin());

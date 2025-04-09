@@ -50,7 +50,7 @@ public class TestBoundingBox {
     Point emptyPoint = geometryFactory.createPoint();
     boundingBox.update(emptyPoint, "EPSG:4326");
 
-    // Empty geometry should retain the initial -Inf/Inf state
+    // Empty geometry should retain the initial NaN state
     Assert.assertEquals(Double.NaN, boundingBox.getXMin(), 0.0);
     Assert.assertEquals(Double.NaN, boundingBox.getXMax(), 0.0);
     Assert.assertEquals(Double.NaN, boundingBox.getYMin(), 0.0);
@@ -122,7 +122,7 @@ public class TestBoundingBox {
     Point nanZPoint = geometryFactory.createPoint(coord);
     boundingBox.update(nanZPoint, "EPSG:4326");
 
-    // X and Y should be updated, but Z should remain -Inf/Inf
+    // X and Y should be updated, but Z should remain NaN
     Assert.assertEquals(10.0, boundingBox.getXMin(), 0.0);
     Assert.assertEquals(10.0, boundingBox.getXMax(), 0.0);
     Assert.assertEquals(20.0, boundingBox.getYMin(), 0.0);
@@ -166,7 +166,7 @@ public class TestBoundingBox {
     // Abort the update
     boundingBox.abort();
 
-    // Check that values are reset to initial -Inf/Inf state
+    // Check that values are reset to initial NaN state
     Assert.assertTrue(Double.isNaN(boundingBox.getXMin()));
     Assert.assertTrue(Double.isNaN(boundingBox.getXMax()));
     Assert.assertTrue(Double.isNaN(boundingBox.getYMin()));

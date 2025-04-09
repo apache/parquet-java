@@ -236,7 +236,7 @@ public class GeospatialStatistics {
 
   @Override
   public String toString() {
-    return "GeospatialStatistics{" + "boundingBox=" + boundingBox + ", coverings=" + geospatialTypes + '}';
+    return "GeospatialStatistics{" + "boundingBox=" + boundingBox + ", geospatialTypes=" + geospatialTypes + '}';
   }
 
   /**
