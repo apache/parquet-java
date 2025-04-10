@@ -23,20 +23,36 @@ import static org.junit.Assert.assertEquals;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Queue;
 import org.apache.hadoop.conf.Configuration;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.event.LoggingEvent;
 
 public class ShowFooterCommandTest extends ParquetFileTest {
+
   @Test
-  public void testShowDirectoryCommand() throws IOException {
+  public void testShowDirectoryCommand() {
+    withLogger(this::testShowDirectoryCommand0);
+  }
+
+  private void testShowDirectoryCommand0(
+      Logger console, Queue<? extends LoggingEvent> loggingEvents) throws IOException {
     File file = parquetFile();
-    ShowFooterCommand command = new ShowFooterCommand(createLogger());
+    ShowFooterCommand command = new ShowFooterCommand(console);
     command.target = file.getAbsolutePath();
     command.raw = false;
     command.setConf(new Configuration());
     assertEquals(0, command.run());
+    assertEquals(1, loggingEvents.size());
+    LoggingEvent loggingEvent = loggingEvents.remove();
+    checkOutput("cli-output/show_footer_command.txt", loggingEvent.getMessage());
+    loggingEvents.clear();
 
     command.raw = true;
     assertEquals(0, command.run());
+    assertEquals(1, loggingEvents.size());
+    loggingEvent = loggingEvents.remove();
+    checkOutput("cli-output/show_footer_command_raw.txt", loggingEvent.getMessage());
   }
 }

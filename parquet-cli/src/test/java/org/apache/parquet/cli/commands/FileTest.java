@@ -19,14 +19,27 @@
 package org.apache.parquet.cli.commands;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.Queue;
+import java.util.concurrent.LinkedBlockingQueue;
+import com.google.common.io.Resources;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.LogFactory;
 import org.apache.log4j.PropertyConfigurator;
+import org.apache.parquet.Version;
 import org.junit.Rule;
 import org.junit.rules.TemporaryFolder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.event.LoggingEvent;
+import org.slf4j.event.SubstituteLoggingEvent;
+import org.slf4j.helpers.SubstituteLoggerFactory;
+
+import static org.junit.Assert.assertEquals;
 
 public abstract class FileTest {
+  static final String MASK = "*****";
 
   static final String INT32_FIELD = "int32_field";
   static final String INT64_FIELD = "int64_field";
@@ -51,5 +64,33 @@ public abstract class FileTest {
     LogFactory.getFactory()
         .setAttribute("org.apache.commons.logging.Log", "org.apache.commons.logging.impl.Log4JLogger");
     return console;
+  }
+
+  @FunctionalInterface
+  public interface ThrowableBiConsumer<T, U> {
+    void accept(T t, U u) throws Exception;
+  }
+
+  protected static void withLogger(ThrowableBiConsumer<Logger, Queue<? extends LoggingEvent>> body) {
+    SubstituteLoggerFactory loggerFactory = new SubstituteLoggerFactory();
+    LinkedBlockingQueue<SubstituteLoggingEvent> loggingEvents = loggerFactory.getEventQueue();
+    Logger console = loggerFactory.getLogger(ParquetFileTest.class.getName());
+    try {
+      body.accept(console, loggingEvents);
+    } catch (RuntimeException rethrow) {
+      throw rethrow;
+    } catch (Exception checkedException) {
+      throw new RuntimeException(checkedException);
+    } finally {
+      loggerFactory.clear();
+    }
+  }
+
+  protected void checkOutput(String expectedFile, String actual) throws IOException {
+    String original = Resources.toString(Resources.getResource(expectedFile), StandardCharsets.UTF_8);
+    String expected = StringUtils.strip(original);
+    assertEquals(
+        expected.replace(Version.FULL_VERSION, MASK),
+        actual.replace(Version.FULL_VERSION, MASK));
   }
 }

@@ -1,0 +1,331 @@
+{
+  "fileMetaData" : {
+    "schema" : {
+      "name" : "schema",
+      "repetition" : "REPEATED",
+      "logicalTypeAnnotation" : null,
+      "id" : null,
+      "fields" : [ {
+        "name" : "int32_field",
+        "repetition" : "REQUIRED",
+        "logicalTypeAnnotation" : null,
+        "id" : null,
+        "primitive" : "INT32",
+        "length" : 0,
+        "decimalMeta" : null,
+        "columnOrder" : {
+          "columnOrderName" : "TYPE_DEFINED_ORDER"
+        }
+      }, {
+        "name" : "int64_field",
+        "repetition" : "REQUIRED",
+        "logicalTypeAnnotation" : null,
+        "id" : null,
+        "primitive" : "INT64",
+        "length" : 0,
+        "decimalMeta" : null,
+        "columnOrder" : {
+          "columnOrderName" : "TYPE_DEFINED_ORDER"
+        }
+      }, {
+        "name" : "float_field",
+        "repetition" : "REQUIRED",
+        "logicalTypeAnnotation" : null,
+        "id" : null,
+        "primitive" : "FLOAT",
+        "length" : 0,
+        "decimalMeta" : null,
+        "columnOrder" : {
+          "columnOrderName" : "TYPE_DEFINED_ORDER"
+        }
+      }, {
+        "name" : "double_field",
+        "repetition" : "REQUIRED",
+        "logicalTypeAnnotation" : null,
+        "id" : null,
+        "primitive" : "DOUBLE",
+        "length" : 0,
+        "decimalMeta" : null,
+        "columnOrder" : {
+          "columnOrderName" : "TYPE_DEFINED_ORDER"
+        }
+      }, {
+        "name" : "binary_field",
+        "repetition" : "REQUIRED",
+        "logicalTypeAnnotation" : null,
+        "id" : null,
+        "primitive" : "BINARY",
+        "length" : 0,
+        "decimalMeta" : null,
+        "columnOrder" : {
+          "columnOrderName" : "TYPE_DEFINED_ORDER"
+        }
+      }, {
+        "name" : "flba_field",
+        "repetition" : "REQUIRED",
+        "logicalTypeAnnotation" : null,
+        "id" : null,
+        "primitive" : "FIXED_LEN_BYTE_ARRAY",
+        "length" : 12,
+        "decimalMeta" : null,
+        "columnOrder" : {
+          "columnOrderName" : "TYPE_DEFINED_ORDER"
+        }
+      }, {
+        "name" : "date_field",
+        "repetition" : "REQUIRED",
+        "logicalTypeAnnotation" : { },
+        "id" : null,
+        "primitive" : "INT32",
+        "length" : 0,
+        "decimalMeta" : null,
+        "columnOrder" : {
+          "columnOrderName" : "TYPE_DEFINED_ORDER"
+        }
+      } ],
+      "indexByName" : {
+        "binary_field" : 4,
+        "date_field" : 6,
+        "double_field" : 3,
+        "flba_field" : 5,
+        "float_field" : 2,
+        "int32_field" : 0,
+        "int64_field" : 1
+      }
+    },
+    "keyValueMetaData" : {
+      "writer.model.name" : "example"
+    },
+    "createdBy" : "*****",
+    "encryptionType" : "UNENCRYPTED"
+  },
+  "blocks" : [ {
+    "columns" : [ {
+      "rowGroupOrdinal" : 0,
+      "encodingStats" : {
+        "dictStats" : { },
+        "dataStats" : {
+          "DELTA_BINARY_PACKED" : 1
+        },
+        "usesV2Pages" : true
+      },
+      "properties" : {
+        "codec" : "UNCOMPRESSED",
+        "path" : {
+          "p" : [ "int32_field" ]
+        },
+        "encodings" : [ "DELTA_BINARY_PACKED" ]
+      },
+      "columnIndexReference" : {
+        "offset" : 573,
+        "length" : 23
+      },
+      "offsetIndexReference" : {
+        "offset" : 768,
+        "length" : 10
+      },
+      "bloomFilterOffset" : -1,
+      "bloomFilterLength" : -1,
+      "firstDataPage" : -2147483644,
+      "dictionaryPageOffset" : -2147483648,
+      "valueCount" : -2147483638,
+      "totalSize" : -2147483610,
+      "totalUncompressedSize" : -2147483610
+    }, {
+      "rowGroupOrdinal" : 0,
+      "encodingStats" : {
+        "dictStats" : { },
+        "dataStats" : {
+          "DELTA_BINARY_PACKED" : 1
+        },
+        "usesV2Pages" : true
+      },
+      "properties" : {
+        "codec" : "UNCOMPRESSED",
+        "path" : {
+          "p" : [ "int64_field" ]
+        },
+        "encodings" : [ "DELTA_BINARY_PACKED" ]
+      },
+      "columnIndexReference" : {
+        "offset" : 596,
+        "length" : 31
+      },
+      "offsetIndexReference" : {
+        "offset" : 778,
+        "length" : 10
+      },
+      "bloomFilterOffset" : -1,
+      "bloomFilterLength" : -1,
+      "firstDataPage" : -2147483606,
+      "dictionaryPageOffset" : -2147483648,
+      "valueCount" : -2147483638,
+      "totalSize" : -2147483610,
+      "totalUncompressedSize" : -2147483610
+    }, {
+      "rowGroupOrdinal" : 0,
+      "encodingStats" : {
+        "dictStats" : { },
+        "dataStats" : {
+          "PLAIN" : 1
+        },
+        "usesV2Pages" : true
+      },
+      "properties" : {
+        "codec" : "UNCOMPRESSED",
+        "path" : {
+          "p" : [ "float_field" ]
+        },
+        "encodings" : [ "PLAIN" ]
+      },
+      "columnIndexReference" : {
+        "offset" : 627,
+        "length" : 23
+      },
+      "offsetIndexReference" : {
+        "offset" : 788,
+        "length" : 12
+      },
+      "bloomFilterOffset" : -1,
+      "bloomFilterLength" : -1,
+      "firstDataPage" : -2147483568,
+      "dictionaryPageOffset" : -2147483648,
+      "valueCount" : -2147483638,
+      "totalSize" : -2147483580,
+      "totalUncompressedSize" : -2147483580
+    }, {
+      "rowGroupOrdinal" : 0,
+      "encodingStats" : {
+        "dictStats" : { },
+        "dataStats" : {
+          "PLAIN" : 1
+        },
+        "usesV2Pages" : true
+      },
+      "properties" : {
+        "codec" : "UNCOMPRESSED",
+        "path" : {
+          "p" : [ "double_field" ]
+        },
+        "encodings" : [ "PLAIN" ]
+      },
+      "columnIndexReference" : {
+        "offset" : 650,
+        "length" : 31
+      },
+      "offsetIndexReference" : {
+        "offset" : 800,
+        "length" : 12
+      },
+      "bloomFilterOffset" : -1,
+      "bloomFilterLength" : -1,
+      "firstDataPage" : -2147483500,
+      "dictionaryPageOffset" : -2147483648,
+      "valueCount" : -2147483638,
+      "totalSize" : -2147483538,
+      "totalUncompressedSize" : -2147483538
+    }, {
+      "rowGroupOrdinal" : 0,
+      "encodingStats" : {
+        "dictStats" : {
+          "PLAIN" : 1
+        },
+        "dataStats" : {
+          "RLE_DICTIONARY" : 1
+        },
+        "usesV2Pages" : true
+      },
+      "properties" : {
+        "codec" : "UNCOMPRESSED",
+        "path" : {
+          "p" : [ "binary_field" ]
+        },
+        "encodings" : [ "PLAIN", "RLE_DICTIONARY" ]
+      },
+      "columnIndexReference" : {
+        "offset" : 681,
+        "length" : 25
+      },
+      "offsetIndexReference" : {
+        "offset" : 812,
+        "length" : 14
+      },
+      "bloomFilterOffset" : -1,
+      "bloomFilterLength" : -1,
+      "firstDataPage" : -2147483328,
+      "dictionaryPageOffset" : -2147483390,
+      "valueCount" : -2147483638,
+      "totalSize" : -2147483550,
+      "totalUncompressedSize" : -2147483550
+    }, {
+      "rowGroupOrdinal" : 0,
+      "encodingStats" : {
+        "dictStats" : {
+          "PLAIN" : 1
+        },
+        "dataStats" : {
+          "RLE_DICTIONARY" : 1
+        },
+        "usesV2Pages" : true
+      },
+      "properties" : {
+        "codec" : "UNCOMPRESSED",
+        "path" : {
+          "p" : [ "flba_field" ]
+        },
+        "encodings" : [ "PLAIN", "RLE_DICTIONARY" ]
+      },
+      "columnIndexReference" : {
+        "offset" : 706,
+        "length" : 39
+      },
+      "offsetIndexReference" : {
+        "offset" : 826,
+        "length" : 11
+      },
+      "bloomFilterOffset" : -1,
+      "bloomFilterLength" : -1,
+      "firstDataPage" : -2147483151,
+      "dictionaryPageOffset" : -2147483292,
+      "valueCount" : -2147483638,
+      "totalSize" : -2147483469,
+      "totalUncompressedSize" : -2147483469
+    }, {
+      "rowGroupOrdinal" : 0,
+      "encodingStats" : {
+        "dictStats" : { },
+        "dataStats" : {
+          "DELTA_BINARY_PACKED" : 1
+        },
+        "usesV2Pages" : true
+      },
+      "properties" : {
+        "codec" : "UNCOMPRESSED",
+        "path" : {
+          "p" : [ "date_field" ]
+        },
+        "encodings" : [ "DELTA_BINARY_PACKED" ]
+      },
+      "columnIndexReference" : {
+        "offset" : 745,
+        "length" : 23
+      },
+      "offsetIndexReference" : {
+        "offset" : 837,
+        "length" : 11
+      },
+      "bloomFilterOffset" : -1,
+      "bloomFilterLength" : -1,
+      "firstDataPage" : -2147483113,
+      "dictionaryPageOffset" : -2147483648,
+      "valueCount" : -2147483638,
+      "totalSize" : -2147483610,
+      "totalUncompressedSize" : -2147483610
+    } ],
+    "rowCount" : 10,
+    "totalByteSize" : 569,
+    "path" : null,
+    "ordinal" : 0,
+    "rowIndexOffset" : 0
+  } ]
+}
