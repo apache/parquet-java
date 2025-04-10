@@ -514,6 +514,11 @@ public class ParquetMetadataConverter {
     public Optional<LogicalType> visit(LogicalTypeAnnotation.IntervalLogicalTypeAnnotation intervalLogicalType) {
       return of(LogicalTypes.UNKNOWN);
     }
+
+    @Override
+    public Optional<LogicalType> visit(LogicalTypeAnnotation.VariantLogicalTypeAnnotation variantLogicalType) {
+      return of(LogicalTypes.VARIANT);
+    }
   }
 
   private void addRowGroup(
@@ -1177,6 +1182,8 @@ public class ParquetMetadataConverter {
         return LogicalTypeAnnotation.uuidType();
       case FLOAT16:
         return LogicalTypeAnnotation.float16Type();
+      case VARIANT:
+        return LogicalTypeAnnotation.variantType();
       default:
         throw new RuntimeException("Unknown logical type " + type);
     }
