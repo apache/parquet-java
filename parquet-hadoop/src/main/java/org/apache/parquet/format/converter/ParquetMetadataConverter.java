@@ -65,7 +65,6 @@ import org.apache.parquet.format.BloomFilterCompression;
 import org.apache.parquet.format.BloomFilterHash;
 import org.apache.parquet.format.BloomFilterHeader;
 import org.apache.parquet.format.BoundaryOrder;
-import org.apache.parquet.format.BsonType;
 import org.apache.parquet.format.ColumnChunk;
 import org.apache.parquet.format.ColumnCryptoMetaData;
 import org.apache.parquet.format.ColumnIndex;
@@ -75,26 +74,19 @@ import org.apache.parquet.format.CompressionCodec;
 import org.apache.parquet.format.ConvertedType;
 import org.apache.parquet.format.DataPageHeader;
 import org.apache.parquet.format.DataPageHeaderV2;
-import org.apache.parquet.format.DateType;
 import org.apache.parquet.format.DecimalType;
 import org.apache.parquet.format.DictionaryPageHeader;
 import org.apache.parquet.format.Encoding;
 import org.apache.parquet.format.EncryptionWithColumnKey;
-import org.apache.parquet.format.EnumType;
 import org.apache.parquet.format.FieldRepetitionType;
 import org.apache.parquet.format.FileMetaData;
-import org.apache.parquet.format.Float16Type;
 import org.apache.parquet.format.IntType;
-import org.apache.parquet.format.JsonType;
 import org.apache.parquet.format.KeyValue;
-import org.apache.parquet.format.ListType;
 import org.apache.parquet.format.LogicalType;
 import org.apache.parquet.format.LogicalTypes;
-import org.apache.parquet.format.MapType;
 import org.apache.parquet.format.MicroSeconds;
 import org.apache.parquet.format.MilliSeconds;
 import org.apache.parquet.format.NanoSeconds;
-import org.apache.parquet.format.NullType;
 import org.apache.parquet.format.OffsetIndex;
 import org.apache.parquet.format.PageEncodingStats;
 import org.apache.parquet.format.PageHeader;
@@ -105,13 +97,11 @@ import org.apache.parquet.format.SchemaElement;
 import org.apache.parquet.format.SizeStatistics;
 import org.apache.parquet.format.SplitBlockAlgorithm;
 import org.apache.parquet.format.Statistics;
-import org.apache.parquet.format.StringType;
 import org.apache.parquet.format.TimeType;
 import org.apache.parquet.format.TimeUnit;
 import org.apache.parquet.format.TimestampType;
 import org.apache.parquet.format.Type;
 import org.apache.parquet.format.TypeDefinedOrder;
-import org.apache.parquet.format.UUIDType;
 import org.apache.parquet.format.Uncompressed;
 import org.apache.parquet.format.XxHash;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
@@ -470,8 +460,7 @@ public class ParquetMetadataConverter {
 
     @Override
     public Optional<LogicalType> visit(LogicalTypeAnnotation.DecimalLogicalTypeAnnotation decimalLogicalType) {
-      return of(LogicalType.DECIMAL(
-          new DecimalType(decimalLogicalType.getScale(), decimalLogicalType.getPrecision())));
+      return of(LogicalTypes.DECIMAL(decimalLogicalType.getScale(), decimalLogicalType.getPrecision()));
     }
 
     @Override
