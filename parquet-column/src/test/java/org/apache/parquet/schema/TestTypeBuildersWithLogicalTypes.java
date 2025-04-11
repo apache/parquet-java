@@ -21,6 +21,7 @@ package org.apache.parquet.schema;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit.MICROS;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit.MILLIS;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit.NANOS;
+import static org.apache.parquet.schema.LogicalTypeAnnotation.VARIANT_SPEC_VERSION;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.bsonType;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.dateType;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.decimalType;
@@ -481,7 +482,7 @@ public class TestTypeBuildersWithLogicalTypes {
     GroupType variant = new GroupType(
         REQUIRED,
         name,
-        LogicalTypeAnnotation.variantType(),
+        LogicalTypeAnnotation.variantType(VARIANT_SPEC_VERSION),
         Types.required(BINARY).named("metadata"),
         Types.required(BINARY).named("value"));
 
@@ -504,7 +505,7 @@ public class TestTypeBuildersWithLogicalTypes {
     GroupType variant = new GroupType(
         REQUIRED,
         name,
-        LogicalTypeAnnotation.variantType(),
+        LogicalTypeAnnotation.variantType(VARIANT_SPEC_VERSION),
         Types.required(BINARY).named("metadata"),
         Types.optional(BINARY).named("value"),
         Types.optional(BINARY).as(LogicalTypeAnnotation.stringType()).named("typed_value"));
@@ -522,6 +523,7 @@ public class TestTypeBuildersWithLogicalTypes {
     assertNull(annotation.toOriginalType());
     assertTrue(annotation instanceof LogicalTypeAnnotation.VariantLogicalTypeAnnotation);
   }
+
   /**
    * A convenience method to avoid a large number of @Test(expected=...) tests
    *

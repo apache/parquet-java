@@ -43,6 +43,8 @@ import java.util.function.Supplier;
 import org.apache.parquet.Preconditions;
 
 public abstract class LogicalTypeAnnotation {
+  public static final byte VARIANT_SPEC_VERSION = 1;
+
   enum LogicalTypeToken {
     MAP {
       @Override
@@ -60,9 +62,8 @@ public abstract class LogicalTypeAnnotation {
       @Override
       protected LogicalTypeAnnotation fromString(List<String> params) {
         Preconditions.checkArgument(
-            params.isEmpty(), "Expecting 0 parameter for variant logical type, got %d", params.size());
-
-        return variantType();
+            params.size() == 1, "Expecting 1 parameter for variant logical type, got %d", params.size());
+        return variantType(Byte.parseByte(params.get(0)));
       }
     },
     STRING {
@@ -278,8 +279,8 @@ public abstract class LogicalTypeAnnotation {
     return ListLogicalTypeAnnotation.INSTANCE;
   }
 
-  public static VariantLogicalTypeAnnotation variantType() {
-    return VariantLogicalTypeAnnotation.INSTANCE;
+  public static VariantLogicalTypeAnnotation variantType(byte specificationVersion) {
+    return new VariantLogicalTypeAnnotation(specificationVersion);
   }
 
   public static EnumLogicalTypeAnnotation enumType() {
@@ -1142,9 +1143,11 @@ public abstract class LogicalTypeAnnotation {
   }
 
   public static class VariantLogicalTypeAnnotation extends LogicalTypeAnnotation {
-    private static final VariantLogicalTypeAnnotation INSTANCE = new VariantLogicalTypeAnnotation();
+    private byte specificationVersion;
 
-    private VariantLogicalTypeAnnotation() {}
+    private VariantLogicalTypeAnnotation(byte specificationVersion) {
+      this.specificationVersion = specificationVersion;
+    }
 
     @Override
     public OriginalType toOriginalType() {
@@ -1160,6 +1163,24 @@ public abstract class LogicalTypeAnnotation {
     @Override
     LogicalTypeToken getType() {
       return LogicalTypeToken.VARIANT;
+    }
+
+    public byte getSpecificationVersion() {
+      return this.specificationVersion;
+    }
+
+    @Override
+    protected String typeParametersAsString() {
+      return "(" + specificationVersion + ")";
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      if (!(obj instanceof VariantLogicalTypeAnnotation)) {
+        return false;
+      }
+      VariantLogicalTypeAnnotation other = (VariantLogicalTypeAnnotation) obj;
+      return specificationVersion == other.specificationVersion;
     }
   }
 

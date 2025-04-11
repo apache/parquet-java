@@ -124,7 +124,19 @@ public class MessageTypeParser {
       t = st.nextToken();
       if (isLogicalType(t)) {
         LogicalTypeAnnotation.LogicalTypeToken logicalType = LogicalTypeAnnotation.LogicalTypeToken.valueOf(t);
-        LogicalTypeAnnotation logicalTypeAnnotation = logicalType.fromString(new ArrayList<>());
+        t = st.nextToken();
+        List<String> tokens = new ArrayList<>();
+        if ("(".equals(t)) {
+          while (!")".equals(t)) {
+            if (!(",".equals(t) || "(".equals(t) || ")".equals(t))) {
+              tokens.add(t);
+            }
+            t = st.nextToken();
+          }
+          t = st.nextToken();
+        }
+
+        LogicalTypeAnnotation logicalTypeAnnotation = logicalType.fromString(tokens);
         childBuilder.as(logicalTypeAnnotation);
         annotation = logicalTypeAnnotation.toString();
       } else {
@@ -132,9 +144,10 @@ public class MessageTypeParser {
         OriginalType originalType = OriginalType.valueOf(t);
         childBuilder.as(originalType);
         annotation = originalType.toString();
+        t = st.nextToken();
       }
 
-      check(st.nextToken(), ")", "logical type ended by )", st);
+      check(t, ")", "logical type ended by )", st);
       t = st.nextToken();
     }
     if (t.equals("=")) {

@@ -452,7 +452,7 @@ public class TestParquetParser {
   @Test
   public void testVARIANTAnnotation() {
     String message = "message Message {\n"
-        + "  required group aVariant (VARIANT) {\n"
+        + "  required group aVariant (VARIANT(2)) {\n"
         + "     required binary metadata;\n"
         + "     required binary value;\n"
         + "  }\n"
@@ -460,7 +460,7 @@ public class TestParquetParser {
 
     MessageType expected = buildMessage()
         .requiredGroup()
-        .as(LogicalTypeAnnotation.variantType())
+        .as(LogicalTypeAnnotation.variantType((byte) 2))
         .required(BINARY)
         .named("metadata")
         .required(BINARY)

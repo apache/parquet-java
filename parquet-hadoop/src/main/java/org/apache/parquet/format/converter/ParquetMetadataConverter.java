@@ -103,6 +103,7 @@ import org.apache.parquet.format.TimestampType;
 import org.apache.parquet.format.Type;
 import org.apache.parquet.format.TypeDefinedOrder;
 import org.apache.parquet.format.Uncompressed;
+import org.apache.parquet.format.VariantType;
 import org.apache.parquet.format.XxHash;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
@@ -517,7 +518,7 @@ public class ParquetMetadataConverter {
 
     @Override
     public Optional<LogicalType> visit(LogicalTypeAnnotation.VariantLogicalTypeAnnotation variantLogicalType) {
-      return of(LogicalTypes.VARIANT);
+      return of(LogicalTypes.VARIANT(variantLogicalType.getSpecificationVersion()));
     }
   }
 
@@ -1183,7 +1184,8 @@ public class ParquetMetadataConverter {
       case FLOAT16:
         return LogicalTypeAnnotation.float16Type();
       case VARIANT:
-        return LogicalTypeAnnotation.variantType();
+        VariantType variant = type.getVARIANT();
+        return LogicalTypeAnnotation.variantType(variant.getSpecification_version());
       default:
         throw new RuntimeException("Unknown logical type " + type);
     }
