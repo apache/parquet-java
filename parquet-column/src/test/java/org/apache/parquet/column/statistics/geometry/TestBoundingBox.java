@@ -34,7 +34,7 @@ public class TestBoundingBox {
 
     // Create a 2D point
     Point point2D = geometryFactory.createPoint(new Coordinate(10, 20));
-    boundingBox.update(point2D, "EPSG:4326");
+    boundingBox.update(point2D);
     Assert.assertEquals(10.0, boundingBox.getXMin(), 0.0);
     Assert.assertEquals(10.0, boundingBox.getXMax(), 0.0);
     Assert.assertEquals(20.0, boundingBox.getYMin(), 0.0);
@@ -48,7 +48,7 @@ public class TestBoundingBox {
 
     // Create an empty point
     Point emptyPoint = geometryFactory.createPoint();
-    boundingBox.update(emptyPoint, "EPSG:4326");
+    boundingBox.update(emptyPoint);
 
     // Empty geometry should retain the initial NaN state
     Assert.assertEquals(Double.NaN, boundingBox.getXMin(), 0.0);
@@ -58,14 +58,14 @@ public class TestBoundingBox {
 
     // Test that after adding a non-empty geometry, values are updated correctly
     Point point = geometryFactory.createPoint(new Coordinate(10, 20));
-    boundingBox.update(point, "EPSG:4326");
+    boundingBox.update(point);
     Assert.assertEquals(10.0, boundingBox.getXMin(), 0.0);
     Assert.assertEquals(10.0, boundingBox.getXMax(), 0.0);
     Assert.assertEquals(20.0, boundingBox.getYMin(), 0.0);
     Assert.assertEquals(20.0, boundingBox.getYMax(), 0.0);
 
     // Update with another empty geometry, should not change the bounds
-    boundingBox.update(emptyPoint, "EPSG:4326");
+    boundingBox.update(emptyPoint);
     Assert.assertEquals(Double.NaN, boundingBox.getXMin(), 0.0);
     Assert.assertEquals(Double.NaN, boundingBox.getXMax(), 0.0);
     Assert.assertEquals(Double.NaN, boundingBox.getYMin(), 0.0);
@@ -79,7 +79,7 @@ public class TestBoundingBox {
 
     // Create a point with NaN coordinates
     Point nanPoint = geometryFactory.createPoint(new Coordinate(Double.NaN, Double.NaN));
-    boundingBox.update(nanPoint, "EPSG:4326");
+    boundingBox.update(nanPoint);
 
     // All values should be NaN after updating with all-NaN coordinates
     Assert.assertEquals("XMin should be NaN", Double.NaN, boundingBox.getXMin(), 0.0);
@@ -92,7 +92,7 @@ public class TestBoundingBox {
 
     // Create a mixed point with a valid coordinate and a NaN coordinate
     Point mixedPoint = geometryFactory.createPoint(new Coordinate(15.0, Double.NaN));
-    boundingBox.update(mixedPoint, "EPSG:4326");
+    boundingBox.update(mixedPoint);
 
     // The valid X coordinate should be used, Y should remain at initial values
     Assert.assertEquals("XMin should be 15.0", 15.0, boundingBox.getXMin(), 0.0);
@@ -102,7 +102,7 @@ public class TestBoundingBox {
 
     // Add a fully valid point
     Point validPoint = geometryFactory.createPoint(new Coordinate(10, 20));
-    boundingBox.update(validPoint, "EPSG:4326");
+    boundingBox.update(validPoint);
 
     // Both X and Y should now be updated
     Assert.assertEquals("XMin should be 10.0", 10.0, boundingBox.getXMin(), 0.0);
@@ -120,7 +120,7 @@ public class TestBoundingBox {
     Coordinate coord = new Coordinate(10, 20);
     coord.setZ(Double.NaN); // Only set Z, not M
     Point nanZPoint = geometryFactory.createPoint(coord);
-    boundingBox.update(nanZPoint, "EPSG:4326");
+    boundingBox.update(nanZPoint);
 
     // X and Y should be updated, but Z should remain NaN
     Assert.assertEquals(10.0, boundingBox.getXMin(), 0.0);
@@ -135,7 +135,7 @@ public class TestBoundingBox {
     // Add a point with valid Z value
     Coordinate coord2 = new Coordinate(15, 25, 30); // Using constructor with Z
     Point validZPoint = geometryFactory.createPoint(coord2);
-    boundingBox.update(validZPoint, "EPSG:4326");
+    boundingBox.update(validZPoint);
 
     // X, Y, and Z values should now be updated
     Assert.assertEquals(10.0, boundingBox.getXMin(), 0.0);
@@ -155,7 +155,7 @@ public class TestBoundingBox {
 
     // Create a valid point
     Point validPoint = geometryFactory.createPoint(new Coordinate(10, 20));
-    boundingBox.update(validPoint, "EPSG:4326");
+    boundingBox.update(validPoint);
 
     // Check initial values
     Assert.assertEquals(10.0, boundingBox.getXMin(), 0.0);
@@ -223,7 +223,7 @@ public class TestBoundingBox {
   @Test
   public void testUpdateWithNullGeometry() {
     BoundingBox boundingBox = new BoundingBox();
-    boundingBox.update(null, "EPSG:4326");
+    boundingBox.update(null);
 
     // Check that the bounding box remains unchanged
     Assert.assertTrue(Double.isNaN(boundingBox.getXMin()));
@@ -256,12 +256,12 @@ public class TestBoundingBox {
     BoundingBox box = new BoundingBox();
 
     // First add a valid point
-    box.update(gf.createPoint(new Coordinate(10, 20)), "EPSG:4326");
+    box.update(gf.createPoint(new Coordinate(10, 20)));
     Assert.assertEquals(10.0, box.getXMin(), 0.0);
 
     // Then update with all NaN coordinates - should not change valid values
     Point nanPoint = gf.createPoint(new Coordinate(Double.NaN, Double.NaN));
-    box.update(nanPoint, "EPSG:4326");
+    box.update(nanPoint);
 
     // Values should remain unchanged
     Assert.assertEquals(10.0, box.getXMin(), 0.0);
@@ -278,7 +278,7 @@ public class TestBoundingBox {
     // Create a 3D point
     Coordinate coord = new Coordinate(10, 20, 30);
     Point point3D = gf.createPoint(coord);
-    box.update(point3D, "EPSG:4326");
+    box.update(point3D);
 
     Assert.assertEquals(10.0, box.getXMin(), 0.0);
     Assert.assertEquals(10.0, box.getXMax(), 0.0);
@@ -288,7 +288,7 @@ public class TestBoundingBox {
     Assert.assertEquals(30.0, box.getZMax(), 0.0);
 
     // Add another 3D point with different Z
-    box.update(gf.createPoint(new Coordinate(15, 25, 10)), "EPSG:4326");
+    box.update(gf.createPoint(new Coordinate(15, 25, 10)));
 
     Assert.assertEquals(10.0, box.getXMin(), 0.0);
     Assert.assertEquals(15.0, box.getXMax(), 0.0);
@@ -306,7 +306,7 @@ public class TestBoundingBox {
     // Create a point with M value using CoordinateXYZM instead of setM
     CoordinateXYZM coord = new CoordinateXYZM(10, 20, Double.NaN, 5.0);
     Point pointWithM = gf.createPoint(coord);
-    box.update(pointWithM, "EPSG:4326");
+    box.update(pointWithM);
 
     Assert.assertEquals(10.0, box.getXMin(), 0.0);
     Assert.assertEquals(10.0, box.getXMax(), 0.0);
@@ -319,7 +319,7 @@ public class TestBoundingBox {
 
     // Add another point with different M value
     CoordinateXYZM coord2 = new CoordinateXYZM(15, 25, Double.NaN, 10.0);
-    box.update(gf.createPoint(coord2), "EPSG:4326");
+    box.update(gf.createPoint(coord2));
 
     Assert.assertEquals(10.0, box.getXMin(), 0.0);
     Assert.assertEquals(15.0, box.getXMax(), 0.0);
@@ -337,7 +337,7 @@ public class TestBoundingBox {
     BoundingBox box = new BoundingBox();
 
     // Update with valid point
-    box.update(gf.createPoint(new Coordinate(10, 20)), "EPSG:4326");
+    box.update(gf.createPoint(new Coordinate(10, 20)));
     Assert.assertEquals(10.0, box.getXMin(), 0.0);
 
     // Reset the box
@@ -350,7 +350,7 @@ public class TestBoundingBox {
     Assert.assertEquals(Double.NaN, box.getYMax(), 0.0);
 
     // Update after reset should work correctly
-    box.update(gf.createPoint(new Coordinate(30, 40)), "EPSG:4326");
+    box.update(gf.createPoint(new Coordinate(30, 40)));
     Assert.assertEquals(30.0, box.getXMin(), 0.0);
     Assert.assertEquals(30.0, box.getXMax(), 0.0);
     Assert.assertEquals(40.0, box.getYMin(), 0.0);
@@ -420,7 +420,7 @@ public class TestBoundingBox {
     Coordinate[] coords =
         new Coordinate[] {new Coordinate(0, 1), new Coordinate(Double.NaN, Double.NaN), new Coordinate(2, 3)};
 
-    box.update(gf.createLineString(coords), "EPSG:4326");
+    box.update(gf.createLineString(coords));
 
     // The bounding box should include the valid coordinates and ignore NaN
     Assert.assertEquals(0.0, box.getXMin(), 0.0);
@@ -434,7 +434,7 @@ public class TestBoundingBox {
       new Coordinate(5, 6), new Coordinate(Double.NaN, Double.NaN), new Coordinate(Double.NaN, Double.NaN)
     };
 
-    box2.update(gf.createLineString(coords2), "EPSG:4326");
+    box2.update(gf.createLineString(coords2));
 
     Assert.assertEquals(5.0, box2.getXMin(), 0.0);
     Assert.assertEquals(5.0, box2.getXMax(), 0.0);
@@ -446,7 +446,7 @@ public class TestBoundingBox {
     Coordinate[] coords3 =
         new Coordinate[] {new Coordinate(Double.NaN, Double.NaN), new Coordinate(Double.NaN, Double.NaN)};
 
-    box3.update(gf.createLineString(coords3), "EPSG:4326");
+    box3.update(gf.createLineString(coords3));
 
     // Should result in NaN for all values
     Assert.assertEquals(Double.NaN, box3.getXMin(), 0.0);
@@ -465,7 +465,7 @@ public class TestBoundingBox {
     Coordinate[] coords =
         new Coordinate[] {new Coordinate(0, 1), new Coordinate(1, Double.NaN), new Coordinate(2, 3)};
 
-    box.update(gf.createLineString(coords), "EPSG:4326");
+    box.update(gf.createLineString(coords));
 
     // The bounding box should include all valid coordinates
     // X should include all values: 0, 1, 2
@@ -480,7 +480,7 @@ public class TestBoundingBox {
     Coordinate[] coords2 =
         new Coordinate[] {new Coordinate(Double.NaN, 5), new Coordinate(6, Double.NaN), new Coordinate(7, 8)};
 
-    box2.update(gf.createLineString(coords2), "EPSG:4326");
+    box2.update(gf.createLineString(coords2));
 
     // X should only include valid values: 6, 7
     // Y should only include valid values: 5, 8

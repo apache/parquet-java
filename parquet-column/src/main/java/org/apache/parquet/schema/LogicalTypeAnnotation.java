@@ -45,7 +45,7 @@ import org.apache.parquet.column.statistics.geometry.EdgeInterpolationAlgorithm;
 
 public abstract class LogicalTypeAnnotation {
 
-  public static final String DEFAULT_GEOMETRY_CRS = "OGC:CRS84";
+  public static final String DEFAULT_CRS = "OGC:CRS84";
 
   enum LogicalTypeToken {
     MAP {
@@ -154,22 +154,14 @@ public abstract class LogicalTypeAnnotation {
     GEOMETRY {
       @Override
       protected LogicalTypeAnnotation fromString(List<String> params) {
-        if (params.size() < 1) {
-          throw new RuntimeException(
-              "Expecting at least 1 parameter for geometry logical type, got " + params.size());
-        }
-        String crs = params.size() > 0 ? params.get(0) : null;
+        String crs = !params.isEmpty() ? params.get(0) : DEFAULT_CRS;
         return geometryType(crs);
       }
     },
     GEOGRAPHY {
       @Override
       protected LogicalTypeAnnotation fromString(List<String> params) {
-        if (params.size() < 1) {
-          throw new RuntimeException(
-              "Expecting at least 1 parameter for geography logical type, got " + params.size());
-        }
-        String crs = params.size() > 0 ? params.get(0) : null;
+        String crs = !params.isEmpty() ? params.get(0) : DEFAULT_CRS;
         String edgeAlgorithm = params.size() > 1 ? params.get(1) : null;
         return geographyType(
             crs, edgeAlgorithm != null ? EdgeInterpolationAlgorithm.valueOf(edgeAlgorithm) : null);
@@ -355,11 +347,11 @@ public abstract class LogicalTypeAnnotation {
   }
 
   public static GeometryLogicalTypeAnnotation geometryType() {
-    return new GeometryLogicalTypeAnnotation(DEFAULT_GEOMETRY_CRS);
+    return new GeometryLogicalTypeAnnotation(DEFAULT_CRS);
   }
 
   public static GeographyLogicalTypeAnnotation geographyType() {
-    return new GeographyLogicalTypeAnnotation(DEFAULT_GEOMETRY_CRS, null);
+    return new GeographyLogicalTypeAnnotation(DEFAULT_CRS, null);
   }
 
   public static GeographyLogicalTypeAnnotation geographyType(String crs, EdgeInterpolationAlgorithm edgeAlgorithm) {
@@ -1198,13 +1190,7 @@ public abstract class LogicalTypeAnnotation {
     @Override
     protected String typeParametersAsString() {
       StringBuilder sb = new StringBuilder();
-      sb.append("(");
-      sb.append(",");
-      if (crs != null && !crs.isEmpty()) {
-        sb.append(",");
-        sb.append(crs);
-      }
-      sb.append(")");
+      sb.append("(").append(crs != null && !crs.isEmpty() ? crs : "").append(")");
       return sb.toString();
     }
 
@@ -1261,13 +1247,11 @@ public abstract class LogicalTypeAnnotation {
     protected String typeParametersAsString() {
       StringBuilder sb = new StringBuilder();
       sb.append("(");
-      sb.append(",");
       if (crs != null && !crs.isEmpty()) {
-        sb.append(",");
         sb.append(crs);
       }
       if (edgeAlgorithm != null) {
-        sb.append(",");
+        if (crs != null && !crs.isEmpty()) sb.append(",");
         sb.append(edgeAlgorithm);
       }
       sb.append(")");
@@ -1288,11 +1272,7 @@ public abstract class LogicalTypeAnnotation {
         return false;
       }
       GeographyLogicalTypeAnnotation other = (GeographyLogicalTypeAnnotation) obj;
-      return crs != null
-          && crs.equals(other.crs)
-          && (edgeAlgorithm != null
-              ? edgeAlgorithm.equals(other.edgeAlgorithm)
-              : other.edgeAlgorithm == null);
+      return Objects.equals(crs, other.crs) && Objects.equals(edgeAlgorithm, other.edgeAlgorithm);
     }
 
     @Override

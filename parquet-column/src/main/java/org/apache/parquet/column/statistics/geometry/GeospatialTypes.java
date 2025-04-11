@@ -77,6 +77,10 @@ public class GeospatialTypes {
     types.clear();
   }
 
+  public boolean isValid() {
+    return valid;
+  }
+
   public GeospatialTypes copy() {
     return new GeospatialTypes(new HashSet<>(types));
   }

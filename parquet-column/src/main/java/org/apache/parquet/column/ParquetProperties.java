@@ -65,8 +65,6 @@ public class ParquetProperties {
   public static final int DEFAULT_BLOOM_FILTER_CANDIDATES_NUMBER = 5;
   public static final boolean DEFAULT_STATISTICS_ENABLED = true;
   public static final boolean DEFAULT_SIZE_STATISTICS_ENABLED = true;
-  public static final boolean DEFAULT_GEO_STATISTICS_ENABLED = true;
-  public static final boolean DEFAULT_GEOSPATIAL_STATISTICS_ENABLED = true;
 
   public static final boolean DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED = true;
 
@@ -116,7 +114,6 @@ public class ParquetProperties {
   private final int statisticsTruncateLength;
   private final boolean statisticsEnabled;
   private final boolean sizeStatisticsEnabled;
-  private final boolean geospatialStatisticsEnabled;
 
   // The expected NDV (number of distinct values) for each columns
   private final ColumnProperty<Long> bloomFilterNDVs;
@@ -131,7 +128,6 @@ public class ParquetProperties {
   private final Map<String, String> extraMetaData;
   private final ColumnProperty<Boolean> statistics;
   private final ColumnProperty<Boolean> sizeStatistics;
-  private final ColumnProperty<Boolean> geospatialStatistics;
 
   private ParquetProperties(Builder builder) {
     this.pageSizeThreshold = builder.pageSize;
@@ -151,7 +147,6 @@ public class ParquetProperties {
     this.statisticsTruncateLength = builder.statisticsTruncateLength;
     this.statisticsEnabled = builder.statisticsEnabled;
     this.sizeStatisticsEnabled = builder.sizeStatisticsEnabled;
-    this.geospatialStatisticsEnabled = builder.geospatialStatisticsEnabled;
     this.bloomFilterNDVs = builder.bloomFilterNDVs.build();
     this.bloomFilterFPPs = builder.bloomFilterFPPs.build();
     this.bloomFilterEnabled = builder.bloomFilterEnabled.build();
@@ -164,7 +159,6 @@ public class ParquetProperties {
     this.extraMetaData = builder.extraMetaData;
     this.statistics = builder.statistics.build();
     this.sizeStatistics = builder.sizeStatistics.build();
-    this.geospatialStatistics = builder.geospatialStatistics.build();
   }
 
   public static Builder builder() {
@@ -364,14 +358,6 @@ public class ParquetProperties {
     return sizeStatisticsEnabled;
   }
 
-  public boolean getGeoSpatialStatisticsEnabled(ColumnDescriptor column) {
-    Boolean columnSetting = geospatialStatistics.getValue(column);
-    if (columnSetting != null) {
-      return columnSetting;
-    }
-    return geospatialStatisticsEnabled;
-  }
-
   @Override
   public String toString() {
     return "Parquet page size to " + getPageSizeThreshold() + '\n'
@@ -390,8 +376,7 @@ public class ParquetProperties {
         + "Page row count limit to " + getPageRowCountLimit() + '\n'
         + "Writing page checksums is: " + (getPageWriteChecksumEnabled() ? "on" : "off") + '\n'
         + "Statistics enabled: " + statisticsEnabled + '\n'
-        + "Size statistics enabled: " + sizeStatisticsEnabled + '\n'
-        + "Geospatial statistics enabled: " + geospatialStatisticsEnabled;
+        + "Size statistics enabled: " + sizeStatisticsEnabled;
   }
 
   public static class Builder {
@@ -409,7 +394,6 @@ public class ParquetProperties {
     private int statisticsTruncateLength = DEFAULT_STATISTICS_TRUNCATE_LENGTH;
     private boolean statisticsEnabled = DEFAULT_STATISTICS_ENABLED;
     private boolean sizeStatisticsEnabled = DEFAULT_SIZE_STATISTICS_ENABLED;
-    private boolean geospatialStatisticsEnabled = DEFAULT_GEO_STATISTICS_ENABLED;
     private final ColumnProperty.Builder<Long> bloomFilterNDVs;
     private final ColumnProperty.Builder<Double> bloomFilterFPPs;
     private int maxBloomFilterBytes = DEFAULT_MAX_BLOOM_FILTER_BYTES;
@@ -422,7 +406,6 @@ public class ParquetProperties {
     private Map<String, String> extraMetaData = new HashMap<>();
     private final ColumnProperty.Builder<Boolean> statistics;
     private final ColumnProperty.Builder<Boolean> sizeStatistics;
-    private final ColumnProperty.Builder<Boolean> geospatialStatistics;
 
     private Builder() {
       enableDict = ColumnProperty.<Boolean>builder().withDefaultValue(DEFAULT_IS_DICTIONARY_ENABLED);
@@ -440,8 +423,6 @@ public class ParquetProperties {
           ColumnProperty.<Integer>builder().withDefaultValue(DEFAULT_BLOOM_FILTER_CANDIDATES_NUMBER);
       statistics = ColumnProperty.<Boolean>builder().withDefaultValue(DEFAULT_STATISTICS_ENABLED);
       sizeStatistics = ColumnProperty.<Boolean>builder().withDefaultValue(DEFAULT_SIZE_STATISTICS_ENABLED);
-      geospatialStatistics =
-          ColumnProperty.<Boolean>builder().withDefaultValue(DEFAULT_GEOSPATIAL_STATISTICS_ENABLED);
     }
 
     private Builder(ParquetProperties toCopy) {
@@ -466,7 +447,6 @@ public class ParquetProperties {
       this.extraMetaData = toCopy.extraMetaData;
       this.statistics = ColumnProperty.builder(toCopy.statistics);
       this.sizeStatistics = ColumnProperty.builder(toCopy.sizeStatistics);
-      this.geospatialStatistics = ColumnProperty.builder(toCopy.geospatialStatistics);
     }
 
     /**
@@ -753,30 +733,6 @@ public class ParquetProperties {
      */
     public Builder withSizeStatisticsEnabled(String columnPath, boolean enabled) {
       this.sizeStatistics.withValue(columnPath, enabled);
-      return this;
-    }
-
-    /**
-     * Sets whether geospatial statistics are enabled globally. When disabled, geospatial statistics will not be collected
-     * for any column unless explicitly enabled for specific columns.
-     *
-     * @param enabled whether to collect geospatial statistics globally
-     * @return this builder for method chaining
-     */
-    public Builder withGeospatialStatisticsEnabled(boolean enabled) {
-      this.geospatialStatistics.withDefaultValue(enabled);
-      return this;
-    }
-
-    /**
-     * Sets the geospatial statistics enabled/disabled for the specified column. All column geospatial statistics are enabled by default.
-     *
-     * @param columnPath the path of the column (dot-string)
-     * @param enabled    whether to collect geospatial statistics for the column
-     * @return this builder for method chaining
-     */
-    public Builder withGeospatialStatisticsEnabled(String columnPath, boolean enabled) {
-      this.geospatialStatistics.withValue(columnPath, enabled);
       return this;
     }
 

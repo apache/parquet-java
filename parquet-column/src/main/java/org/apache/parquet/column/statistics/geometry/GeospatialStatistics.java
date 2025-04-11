@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.column.statistics.geometry;
 
+import java.util.Objects;
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
@@ -32,10 +33,7 @@ import org.locationtech.jts.io.WKBReader;
  */
 public class GeospatialStatistics {
 
-  public static final String DEFAULT_GEOSPATIAL_STAT_CRS = "OGC:CRS84";
-
   // Metadata that may impact the statistics calculation
-  private final String crs;
   private final BoundingBox boundingBox;
   private final EdgeInterpolationAlgorithm edgeAlgorithm;
   private final GeospatialTypes geospatialTypes;
@@ -64,13 +62,18 @@ public class GeospatialStatistics {
     if (this.geospatialTypes != null && other.geospatialTypes != null) {
       this.geospatialTypes.merge(other.geospatialTypes);
     }
+
+    // Update validity after merge
+    valid = this.valid
+        && other.valid
+        && Objects.requireNonNull(this.boundingBox).isValid()
+        && Objects.requireNonNull(other.geospatialTypes).isValid();
   }
 
   /**
    * Builder to create a GeospatialStatistics.
    */
   public static class Builder {
-    private final String crs;
     private BoundingBox boundingBox;
     private GeospatialTypes geospatialTypes;
     private EdgeInterpolationAlgorithm edgeAlgorithm;
@@ -79,11 +82,8 @@ public class GeospatialStatistics {
     /**
      * Create a builder to create a GeospatialStatistics.
      * For Geometry type, edgeAlgorithm is not required.
-     *
-     * @param crs the coordinate reference system
      */
-    public Builder(String crs) {
-      this.crs = crs;
+    public Builder() {
       this.boundingBox = new BoundingBox();
       this.geospatialTypes = new GeospatialTypes();
       this.edgeAlgorithm = null;
@@ -92,11 +92,8 @@ public class GeospatialStatistics {
     /**
      * Create a builder to create a GeospatialStatistics.
      * For Geography type, optional edgeAlgorithm can be set.
-     *
-     * @param crs the coordinate reference system
      */
-    public Builder(String crs, EdgeInterpolationAlgorithm edgeAlgorithm) {
-      this.crs = crs;
+    public Builder(EdgeInterpolationAlgorithm edgeAlgorithm) {
       this.boundingBox = new BoundingBox();
       this.geospatialTypes = new GeospatialTypes();
       this.edgeAlgorithm = edgeAlgorithm;
@@ -115,7 +112,7 @@ public class GeospatialStatistics {
     }
 
     private void update(Geometry geom) {
-      boundingBox.update(geom, crs);
+      boundingBox.update(geom);
       geospatialTypes.update(geom);
     }
 
@@ -130,7 +127,7 @@ public class GeospatialStatistics {
      * @return a new GeospatialStatistics object
      */
     public GeospatialStatistics build() {
-      return new GeospatialStatistics(crs, boundingBox, geospatialTypes, edgeAlgorithm);
+      return new GeospatialStatistics(boundingBox, geospatialTypes, edgeAlgorithm);
     }
   }
 
@@ -143,13 +140,11 @@ public class GeospatialStatistics {
   public static GeospatialStatistics.Builder newBuilder(PrimitiveType type) {
     LogicalTypeAnnotation logicalTypeAnnotation = type.getLogicalTypeAnnotation();
     if (logicalTypeAnnotation instanceof LogicalTypeAnnotation.GeometryLogicalTypeAnnotation) {
-      String crs = ((LogicalTypeAnnotation.GeometryLogicalTypeAnnotation) logicalTypeAnnotation).getCrs();
-      return new GeospatialStatistics.Builder(crs);
+      return new GeospatialStatistics.Builder();
     } else if (logicalTypeAnnotation instanceof LogicalTypeAnnotation.GeographyLogicalTypeAnnotation) {
-      String crs = ((LogicalTypeAnnotation.GeographyLogicalTypeAnnotation) logicalTypeAnnotation).getCrs();
       EdgeInterpolationAlgorithm edgeAlgorithm =
           ((LogicalTypeAnnotation.GeographyLogicalTypeAnnotation) logicalTypeAnnotation).getEdgeAlgorithm();
-      return new GeospatialStatistics.Builder(crs, edgeAlgorithm);
+      return new GeospatialStatistics.Builder(edgeAlgorithm);
     } else {
       return noopBuilder();
     }
@@ -158,16 +153,13 @@ public class GeospatialStatistics {
   /**
    * Constructs a GeospatialStatistics object with the specified CRS, bounding box, and geospatial types.
    *
-   * @param crs the coordinate reference system
-   * @param boundingBox the bounding box for the geospatial data
+   * @param boundingBox the bounding box for the geospatial data, or null if not applicable, note that
+   *    - The bounding box (bbox) is omitted only if there are no X or Y values.
+   *    - The Z and/or M statistics are omitted only if there are no Z and/or M values, respectively.
    * @param geospatialTypes the geospatial types
    */
   public GeospatialStatistics(
-      String crs,
-      BoundingBox boundingBox,
-      GeospatialTypes geospatialTypes,
-      EdgeInterpolationAlgorithm edgeAlgorithm) {
-    this.crs = crs;
+      BoundingBox boundingBox, GeospatialTypes geospatialTypes, EdgeInterpolationAlgorithm edgeAlgorithm) {
     this.boundingBox = boundingBox;
     this.geospatialTypes = geospatialTypes;
     this.edgeAlgorithm = edgeAlgorithm;
@@ -175,11 +167,9 @@ public class GeospatialStatistics {
 
   /**
    * Constructs a GeospatialStatistics object with the specified CRS.
-   *
-   * @param crs the coordinate reference system
    */
-  public GeospatialStatistics(String crs) {
-    this(crs, new BoundingBox(), new GeospatialTypes(), null);
+  public GeospatialStatistics() {
+    this(new BoundingBox(), new GeospatialTypes(), null);
   }
 
   /**
@@ -189,13 +179,12 @@ public class GeospatialStatistics {
    * @param edgeAlgorithm the edge interpolation algorithm
    */
   public GeospatialStatistics(String crs, EdgeInterpolationAlgorithm edgeAlgorithm) {
-    this.crs = crs;
     this.boundingBox = new BoundingBox();
     this.geospatialTypes = new GeospatialTypes();
     this.edgeAlgorithm = edgeAlgorithm;
   }
 
-  /** Returns the coordinate reference system. */
+  /** Returns the bounding box. */
   public BoundingBox getBoundingBox() {
     return boundingBox;
   }
@@ -228,7 +217,6 @@ public class GeospatialStatistics {
   // Copy the statistics
   public GeospatialStatistics copy() {
     return new GeospatialStatistics(
-        crs,
         boundingBox != null ? boundingBox.copy() : null,
         geospatialTypes != null ? geospatialTypes.copy() : null,
         null);
@@ -244,16 +232,11 @@ public class GeospatialStatistics {
    * Used when geospatial statistics collection is disabled.
    */
   private static class NoopBuilder extends Builder {
-    private final String crs;
-
-    private NoopBuilder(String crs) {
-      super(crs);
-      this.crs = crs;
-    }
+    private NoopBuilder() {}
 
     @Override
     public GeospatialStatistics build() {
-      GeospatialStatistics stats = new GeospatialStatistics(crs, null, null, null);
+      GeospatialStatistics stats = new GeospatialStatistics(null, null, null);
       stats.valid = false; // Mark as invalid since this is a noop builder
       return stats;
     }
@@ -272,14 +255,7 @@ public class GeospatialStatistics {
   /**
    * Creates a builder that doesn't collect any statistics.
    */
-  public static Builder noopBuilder(String crs) {
-    return new NoopBuilder(crs);
-  }
-
-  /**
-   * Creates a builder that doesn't collect any statistics.
-   */
   public static Builder noopBuilder() {
-    return new NoopBuilder(DEFAULT_GEOSPATIAL_STAT_CRS);
+    return new NoopBuilder();
   }
 }

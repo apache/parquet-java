@@ -81,12 +81,23 @@ public class BoundingBox {
   }
 
   /**
+   * Checks if the bounding box is valid.
+   * A bounding box is considered valid if all essential bounds (xMin, xMax, yMin, yMax) are not NaN.
+   *
+   * @return true if the bounding box is valid, false otherwise.
+   */
+  public boolean isValid() {
+    // Ensure that all X and Y bounds are defined (not NaN)
+    return !Double.isNaN(xMin) && !Double.isNaN(xMax) && !Double.isNaN(yMin) && !Double.isNaN(yMax);
+  }
+
+  /**
    * Updates the bounding box with the coordinates of the given geometry.
    * If the geometry is null, it will abort the update.
    * If the geometry is empty, it will keep the initial - all NaN state for bounds.
    * If the geometry is valid, it will update the bounds accordingly.
    */
-  void update(Geometry geometry, String crs) {
+  void update(Geometry geometry) {
     if (geometry == null || geometry.isEmpty()) {
       // Abort if geometry is null or empty
       // This will keep the bounding box in its initial state (all NaN)

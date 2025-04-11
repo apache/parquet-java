@@ -77,7 +77,7 @@ public class TestGeospatialStatistics {
 
   @Test
   public void testNoopBuilder() {
-    GeospatialStatistics.Builder builder = GeospatialStatistics.noopBuilder("EPSG:4326");
+    GeospatialStatistics.Builder builder = GeospatialStatistics.noopBuilder();
     GeospatialStatistics statistics = builder.build();
     Assert.assertFalse(statistics.isValid());
   }

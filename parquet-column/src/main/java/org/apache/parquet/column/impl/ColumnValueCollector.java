@@ -50,7 +50,7 @@ class ColumnValueCollector {
     this.path = path;
     this.statisticsEnabled = props.getStatisticsEnabled(path);
     this.sizeStatisticsEnabled = props.getSizeStatisticsEnabled(path);
-    this.geospatialStatisticsEnabled = props.getGeoSpatialStatisticsEnabled(path);
+    this.geospatialStatisticsEnabled = props.getStatisticsEnabled(path);
     resetPageStatistics();
     initBloomFilter(bloomFilterWriter, props);
   }
