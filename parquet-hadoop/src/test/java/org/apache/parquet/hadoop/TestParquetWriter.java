@@ -568,7 +568,7 @@ public class TestParquetWriter {
     try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(path)
         .withType(schema)
         .withSizeStatisticsEnabled(false)
-        .withStatisticsEnabled(false)  // Disable column statistics globally
+        .withStatisticsEnabled(false) // Disable column statistics globally
         .build()) {
       writer.write(group);
     }
@@ -577,7 +577,7 @@ public class TestParquetWriter {
       // Verify size statistics are disabled globally
       for (BlockMetaData block : reader.getFooter().getBlocks()) {
         for (ColumnChunkMetaData column : block.getColumns()) {
-          assertTrue(column.getStatistics().isEmpty());  // Make sure there is no column statistics
+          assertTrue(column.getStatistics().isEmpty()); // Make sure there is no column statistics
           assertNull(column.getSizeStatistics());
         }
       }
@@ -591,7 +591,7 @@ public class TestParquetWriter {
         .withType(schema)
         .withSizeStatisticsEnabled(true) // enable globally
         .withSizeStatisticsEnabled("boolean_field", false) // disable for specific column
-        .withStatisticsEnabled("boolean_field", false)  // disable column statistics
+        .withStatisticsEnabled("boolean_field", false) // disable column statistics
         .build()) {
       writer.write(group);
     }
