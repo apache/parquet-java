@@ -87,14 +87,18 @@ public class BoundingBox {
    * @return true if the bounding box is valid, false otherwise.
    */
   public boolean isValid() {
-    return !(Double.isInfinite(xMin)
-        || Double.isInfinite(xMax)
-        || Double.isInfinite(yMin)
-        || Double.isInfinite(yMax)
-        || Double.isNaN(xMin)
-        || Double.isNaN(xMax)
-        || Double.isNaN(yMin)
-        || Double.isNaN(yMax));
+    return !(Double.isNaN(xMin) || Double.isNaN(xMax) || Double.isNaN(yMin) || Double.isNaN(yMax));
+  }
+
+  /**
+   * Checks if the bounding box is empty.
+   * A bounding box is considered empty if all bounds are in their initial state
+   * (i.e., xMin = +Infinity, xMax = -Infinity, etc.).
+   *
+   * @return true if the bounding box is empty, false otherwise.
+   */
+  public boolean isEmpty() {
+    return Double.isInfinite(xMin) && Double.isInfinite(xMax) && Double.isInfinite(yMin) && Double.isInfinite(yMax);
   }
 
   /**

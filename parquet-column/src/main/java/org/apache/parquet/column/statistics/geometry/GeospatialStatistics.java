@@ -39,20 +39,11 @@ public class GeospatialStatistics {
   private final GeospatialTypes geospatialTypes;
 
   /**
-   * Whether the statistics has valid value.
-   *
-   * It is true by default. Only set to false while it fails to merge statistics.
-   */
-  private boolean valid = true;
-
-  /**
    * Merge the statistics from another GeospatialStatistics object.
    *
    * @param other the other GeospatialStatistics object
    */
   public void mergeStatistics(GeospatialStatistics other) {
-    if (!valid) return;
-
     if (other == null) {
       return;
     }
@@ -62,12 +53,6 @@ public class GeospatialStatistics {
     if (this.geospatialTypes != null && other.geospatialTypes != null) {
       this.geospatialTypes.merge(other.geospatialTypes);
     }
-
-    // Update validity after merge
-    valid = this.valid
-        && other.valid
-        && Objects.requireNonNull(this.boundingBox).isValid()
-        && Objects.requireNonNull(other.geospatialTypes).isValid();
   }
 
   /**
@@ -198,11 +183,11 @@ public class GeospatialStatistics {
    * @return whether the statistics has valid value.
    */
   public boolean isValid() {
-    return valid;
+    return Objects.requireNonNull(this.boundingBox).isValid()
+        && Objects.requireNonNull(this.geospatialTypes).isValid();
   }
 
   public void merge(GeospatialStatistics other) {
-    if (!valid) return;
     Preconditions.checkArgument(other != null, "Cannot merge with null GeometryStatistics");
 
     if (boundingBox != null && other.boundingBox != null) {
@@ -236,9 +221,7 @@ public class GeospatialStatistics {
 
     @Override
     public GeospatialStatistics build() {
-      GeospatialStatistics stats = new GeospatialStatistics(null, null, null);
-      stats.valid = false; // Mark as invalid since this is a noop builder
-      return stats;
+      return new GeospatialStatistics(null, null, null);
     }
 
     @Override
