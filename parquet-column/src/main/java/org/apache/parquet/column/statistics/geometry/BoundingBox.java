@@ -18,21 +18,22 @@
  */
 package org.apache.parquet.column.statistics.geometry;
 
-import org.apache.parquet.Preconditions;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.Geometry;
 
 public class BoundingBox {
 
-  private double xMin = Double.NaN;
-  private double xMax = Double.NaN;
-  private double yMin = Double.NaN;
-  private double yMax = Double.NaN;
-  private double zMin = Double.NaN;
-  private double zMax = Double.NaN;
-  private double mMin = Double.NaN;
-  private double mMax = Double.NaN;
+  private double xMin = Double.POSITIVE_INFINITY;
+  private double xMax = Double.NEGATIVE_INFINITY;
+  private double yMin = Double.POSITIVE_INFINITY;
+  private double yMax = Double.NEGATIVE_INFINITY;
+  private double zMin = Double.POSITIVE_INFINITY;
+  private double zMax = Double.NEGATIVE_INFINITY;
+  private double mMin = Double.POSITIVE_INFINITY;
+  private double mMax = Double.NEGATIVE_INFINITY;
+
+  public BoundingBox() {}
 
   public BoundingBox(
       double xMin, double xMax, double yMin, double yMax, double zMin, double zMax, double mMin, double mMax) {
@@ -45,8 +46,6 @@ public class BoundingBox {
     this.mMin = mMin;
     this.mMax = mMax;
   }
-
-  public BoundingBox() {}
 
   public double getXMin() {
     return xMin;
@@ -82,187 +81,115 @@ public class BoundingBox {
 
   /**
    * Checks if the bounding box is valid.
-   * A bounding box is considered valid if all essential bounds (xMin, xMax, yMin, yMax) are not NaN.
+   * A bounding box is considered valid if none of the bounds are in their initial state
+   * (i.e., xMin = +Infinity, xMax = -Infinity, etc.) and none of the bounds contain NaN.
    *
    * @return true if the bounding box is valid, false otherwise.
    */
   public boolean isValid() {
-    // Ensure that all X and Y bounds are defined (not NaN)
-    return !Double.isNaN(xMin) && !Double.isNaN(xMax) && !Double.isNaN(yMin) && !Double.isNaN(yMax);
+    return !(Double.isInfinite(xMin)
+        || Double.isInfinite(xMax)
+        || Double.isInfinite(yMin)
+        || Double.isInfinite(yMax)
+        || Double.isNaN(xMin)
+        || Double.isNaN(xMax)
+        || Double.isNaN(yMin)
+        || Double.isNaN(yMax));
+  }
+
+  /**
+   * Merges the bounds of another bounding box into this one.
+   *
+   * @param other the other BoundingBox to merge
+   */
+  public void merge(BoundingBox other) {
+    if (other == null) {
+      return;
+    }
+    this.xMin = Math.min(this.xMin, other.xMin);
+    this.xMax = Math.max(this.xMax, other.xMax);
+    this.yMin = Math.min(this.yMin, other.yMin);
+    this.yMax = Math.max(this.yMax, other.yMax);
+    this.zMin = Math.min(this.zMin, other.zMin);
+    this.zMax = Math.max(this.zMax, other.zMax);
+    this.mMin = Math.min(this.mMin, other.mMin);
+    this.mMax = Math.max(this.mMax, other.mMax);
   }
 
   /**
    * Updates the bounding box with the coordinates of the given geometry.
-   * If the geometry is null, it will abort the update.
-   * If the geometry is empty, it will keep the initial - all NaN state for bounds.
-   * If the geometry is valid, it will update the bounds accordingly.
+   * If the geometry is null or empty, the update is aborted.
    */
-  void update(Geometry geometry) {
+  public void update(Geometry geometry) {
     if (geometry == null || geometry.isEmpty()) {
-      // Abort if geometry is null or empty
-      // This will keep the bounding box in its initial state (all NaN)
-      abort();
       return;
     }
 
     Envelope envelope = geometry.getEnvelopeInternal();
-    double minX = envelope.getMinX();
-    double maxX = envelope.getMaxX();
-    double minY = envelope.getMinY();
-    double maxY = envelope.getMaxY();
+    updateBounds(envelope.getMinX(), envelope.getMaxX(), envelope.getMinY(), envelope.getMaxY());
 
-    // Initialize Z and M values
-    double minZ = Double.NaN;
-    double maxZ = Double.NaN;
-    double minM = Double.NaN;
-    double maxM = Double.NaN;
-
-    // Find Z and M bounds from coordinates
-    Coordinate[] coordinates = geometry.getCoordinates();
-    for (Coordinate coord : coordinates) {
+    for (Coordinate coord : geometry.getCoordinates()) {
       if (!Double.isNaN(coord.getZ())) {
-        // For the first valid Z value, initialize minZ/maxZ if they're NaN
-        if (Double.isNaN(minZ)) {
-          minZ = coord.getZ();
-          maxZ = coord.getZ();
-        } else {
-          minZ = Math.min(minZ, coord.getZ());
-          maxZ = Math.max(maxZ, coord.getZ());
-        }
+        zMin = Math.min(zMin, coord.getZ());
+        zMax = Math.max(zMax, coord.getZ());
       }
-
       if (!Double.isNaN(coord.getM())) {
-        // For the first valid M value, initialize minM/maxM if they're NaN
-        if (Double.isNaN(minM)) {
-          minM = coord.getM();
-          maxM = coord.getM();
-        } else {
-          minM = Math.min(minM, coord.getM());
-          maxM = Math.max(maxM, coord.getM());
-        }
+        mMin = Math.min(mMin, coord.getM());
+        mMax = Math.max(mMax, coord.getM());
       }
     }
-
-    // Use the consolidated updateBounds method for all dimensions
-    updateBounds(minX, maxX, minY, maxY, minZ, maxZ, minM, maxM);
   }
 
   /**
-   * Merges another bounding box into this one.
-   * If the other bounding box is null, it will be ignored.
+   * Updates the bounding box with the given bounds.
    */
-  void merge(BoundingBox other) {
-    Preconditions.checkArgument(other != null, "Cannot merge with null bounding box");
-
-    // Use the updateBounds method to merge the bounds
-    updateBounds(
-        other.xMin, other.xMax,
-        other.yMin, other.yMax,
-        other.zMin, other.zMax,
-        other.mMin, other.mMax);
+  private void updateBounds(double minX, double maxX, double minY, double maxY) {
+    xMin = Math.min(xMin, minX);
+    xMax = Math.max(xMax, maxX);
+    yMin = Math.min(yMin, minY);
+    yMax = Math.max(yMax, maxY);
   }
 
   /**
-   * Resets the bounding box to its initial state.
-   * All bounds will be set to NaN.
-   */
-  public void reset() {
-    xMin = Double.NaN;
-    xMax = Double.NaN;
-    yMin = Double.NaN;
-    yMax = Double.NaN;
-    zMin = Double.NaN;
-    zMax = Double.NaN;
-    mMin = Double.NaN;
-    mMax = Double.NaN;
-  }
-
-  /**
-   * Aborts the bounding box update.
-   * All bounds will be set to NaN.
+   * Aborts the bounding box by resetting it to its initial state.
    */
   public void abort() {
     reset();
   }
 
   /**
-   * Updates the bounding box with the given coordinates.
-   * If any coordinate is NaN, the method will abort and set all bounds to NaN.
+   * Resets the bounding box to its initial state.
    */
-  private void updateBounds(
-      double minX, double maxX, double minY, double maxY, double minZ, double maxZ, double minM, double maxM) {
-
-    // Update X bounds if valid
-    if (!Double.isNaN(minX) && !Double.isNaN(maxX)) {
-      if (Double.isNaN(xMin) || Double.isNaN(xMax)) {
-        // First valid X values
-        xMin = minX;
-        xMax = maxX;
-      } else {
-        xMin = Math.min(xMin, minX);
-        xMax = Math.max(xMax, maxX);
-      }
-    }
-
-    // Update Y bounds if valid
-    if (!Double.isNaN(minY) && !Double.isNaN(maxY)) {
-      if (Double.isNaN(yMin) || Double.isNaN(yMax)) {
-        // First valid Y values
-        yMin = minY;
-        yMax = maxY;
-      } else {
-        yMin = Math.min(yMin, minY);
-        yMax = Math.max(yMax, maxY);
-      }
-    }
-
-    // Update Z bounds if valid
-    if (!Double.isNaN(minZ)) {
-      if (Double.isNaN(zMin)) {
-        zMin = minZ;
-      } else {
-        zMin = Math.min(zMin, minZ);
-      }
-    }
-    if (!Double.isNaN(maxZ)) {
-      if (Double.isNaN(zMax)) {
-        zMax = maxZ;
-      } else {
-        zMax = Math.max(zMax, maxZ);
-      }
-    }
-
-    // Update M bounds if valid
-    if (!Double.isNaN(minM)) {
-      if (Double.isNaN(mMin)) {
-        mMin = minM;
-      } else {
-        mMin = Math.min(mMin, minM);
-      }
-    }
-    if (!Double.isNaN(maxM)) {
-      if (Double.isNaN(mMax)) {
-        mMax = maxM;
-      } else {
-        mMax = Math.max(mMax, maxM);
-      }
-    }
+  public void reset() {
+    xMin = Double.POSITIVE_INFINITY;
+    xMax = Double.NEGATIVE_INFINITY;
+    yMin = Double.POSITIVE_INFINITY;
+    yMax = Double.NEGATIVE_INFINITY;
+    zMin = Double.POSITIVE_INFINITY;
+    zMax = Double.NEGATIVE_INFINITY;
+    mMin = Double.POSITIVE_INFINITY;
+    mMax = Double.NEGATIVE_INFINITY;
   }
 
+  /**
+   * Creates a copy of the current bounding box.
+   *
+   * @return a new BoundingBox instance with the same values as this one.
+   */
   public BoundingBox copy() {
-    return new BoundingBox(xMin, xMax, yMin, yMax, zMin, zMax, mMin, mMax);
+    return new BoundingBox(
+        this.xMin, this.xMax,
+        this.yMin, this.yMax,
+        this.zMin, this.zMax,
+        this.mMin, this.mMax);
   }
 
   @Override
   public String toString() {
-    return "BoundingBox{" + ", xMin="
-        + xMin + ", xMax="
-        + xMax + ", yMin="
-        + yMin + ", yMax="
-        + yMax + ", zMin="
-        + zMin + ", zMax="
-        + zMax + ", mMin="
-        + mMin + ", mMax="
-        + mMax + '}';
+    return "BoundingBox{" + "xMin="
+        + xMin + ", xMax=" + xMax + ", yMin="
+        + yMin + ", yMax=" + yMax + ", zMin="
+        + zMin + ", zMax=" + zMax + ", mMin="
+        + mMin + ", mMax=" + mMax + '}';
   }
 }

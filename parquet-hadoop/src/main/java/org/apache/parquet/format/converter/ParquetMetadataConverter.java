@@ -812,15 +812,12 @@ public class ParquetMetadataConverter {
   }
 
   private static BoundingBox toParquetBoundingBox(org.apache.parquet.column.statistics.geometry.BoundingBox bbox) {
-    // Check if any of the required bounding box coordinates (xmin, xmax, ymin, ymax) are NaN.
-    // According to the Thrift-generated class, these fields are marked as required and must be set explicitly.
-    // If any of them is NaN, it indicates the bounding box is invalid or uninitialized,
-    // so we return null to avoid creating a malformed BoundingBox object that would later fail serialization
-    // or validation.
-    if (Double.isNaN(bbox.getXMin())
-        || Double.isNaN(bbox.getXMax())
-        || Double.isNaN(bbox.getYMin())
-        || Double.isNaN(bbox.getYMax())) {
+    // Check if any of the required bounding box is valid.
+    if (!bbox.isValid()) {
+      // According to the Thrift-generated class, these fields are marked as required and must be set explicitly.
+      // If any of them is NaN, it indicates the bounding box is invalid or uninitialized,
+      // so we return null to avoid creating a malformed BoundingBox object that would later fail serialization
+      // or validation.
       return null;
     }
 
