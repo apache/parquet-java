@@ -43,8 +43,6 @@ import java.util.function.Supplier;
 import org.apache.parquet.Preconditions;
 
 public abstract class LogicalTypeAnnotation {
-  public static final byte VARIANT_SPEC_VERSION = 1;
-
   enum LogicalTypeToken {
     MAP {
       @Override
@@ -1177,8 +1175,9 @@ public abstract class LogicalTypeAnnotation {
     @Override
     public boolean equals(Object obj) {
       if (!(obj instanceof VariantLogicalTypeAnnotation)) {
-        return false;
+             return false;
       }
+
       VariantLogicalTypeAnnotation other = (VariantLogicalTypeAnnotation) obj;
       return specificationVersion == other.specificationVersion;
     }

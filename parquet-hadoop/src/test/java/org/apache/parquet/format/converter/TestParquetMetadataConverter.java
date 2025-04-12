@@ -29,7 +29,6 @@ import static org.apache.parquet.format.converter.ParquetMetadataConverter.getOf
 import static org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit.MICROS;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit.MILLIS;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit.NANOS;
-import static org.apache.parquet.schema.LogicalTypeAnnotation.VARIANT_SPEC_VERSION;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.bsonType;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.dateType;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.decimalType;
@@ -1593,9 +1592,10 @@ public class TestParquetMetadataConverter {
 
   @Test
   public void testVariantLogicalType() {
+    byte specVersion = 1;
     MessageType expected = Types.buildMessage()
         .requiredGroup()
-        .as(variantType(VARIANT_SPEC_VERSION))
+        .as(variantType(specVersion))
         .required(PrimitiveTypeName.BINARY)
         .named("metadata")
         .required(PrimitiveTypeName.BINARY)
@@ -1608,8 +1608,10 @@ public class TestParquetMetadataConverter {
     MessageType schema = parquetMetadataConverter.fromParquetSchema(parquetSchema, null);
     assertEquals(expected, schema);
     LogicalTypeAnnotation logicalType = schema.getType("v").getLogicalTypeAnnotation();
-    assertEquals(LogicalTypeAnnotation.variantType(VARIANT_SPEC_VERSION), logicalType);
-    assertEquals(VARIANT_SPEC_VERSION, ((LogicalTypeAnnotation.VariantLogicalTypeAnnotation) logicalType).getSpecificationVersion());
+    assertEquals(LogicalTypeAnnotation.variantType(specVersion), logicalType);
+    assertEquals(
+        specVersion,
+        ((LogicalTypeAnnotation.VariantLogicalTypeAnnotation) logicalType).getSpecificationVersion());
   }
 
   private void verifyMapMessageType(final MessageType messageType, final String keyValueName) throws IOException {

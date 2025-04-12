@@ -21,7 +21,6 @@ package org.apache.parquet.schema;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit.MICROS;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit.MILLIS;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit.NANOS;
-import static org.apache.parquet.schema.LogicalTypeAnnotation.VARIANT_SPEC_VERSION;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.bsonType;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.dateType;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.decimalType;
@@ -478,16 +477,17 @@ public class TestTypeBuildersWithLogicalTypes {
 
   @Test
   public void testVariantLogicalType() {
+    byte specVersion = 1;
     String name = "variant_field";
     GroupType variant = new GroupType(
         REQUIRED,
         name,
-        LogicalTypeAnnotation.variantType(VARIANT_SPEC_VERSION),
+        LogicalTypeAnnotation.variantType(specVersion),
         Types.required(BINARY).named("metadata"),
         Types.required(BINARY).named("value"));
 
     assertEquals(
-        "required group variant_field (VARIANT) {\n"
+        "required group variant_field (VARIANT(1)) {\n"
             + "  required binary metadata;\n"
             + "  required binary value;\n"
             + "}",
@@ -497,21 +497,26 @@ public class TestTypeBuildersWithLogicalTypes {
     assertEquals(LogicalTypeAnnotation.LogicalTypeToken.VARIANT, annotation.getType());
     assertNull(annotation.toOriginalType());
     assertTrue(annotation instanceof LogicalTypeAnnotation.VariantLogicalTypeAnnotation);
+    assertEquals(
+        specVersion,
+        ((LogicalTypeAnnotation.VariantLogicalTypeAnnotation) annotation).getSpecificationVersion());
   }
 
   @Test
   public void testVariantLogicalTypeWithShredded() {
+    byte specVersion = 1;
+
     String name = "variant_field";
     GroupType variant = new GroupType(
         REQUIRED,
         name,
-        LogicalTypeAnnotation.variantType(VARIANT_SPEC_VERSION),
+        LogicalTypeAnnotation.variantType(specVersion),
         Types.required(BINARY).named("metadata"),
         Types.optional(BINARY).named("value"),
         Types.optional(BINARY).as(LogicalTypeAnnotation.stringType()).named("typed_value"));
 
     assertEquals(
-        "required group variant_field (VARIANT) {\n"
+        "required group variant_field (VARIANT(1)) {\n"
             + "  required binary metadata;\n"
             + "  optional binary value;\n"
             + "  optional binary typed_value (STRING);\n"
@@ -522,6 +527,9 @@ public class TestTypeBuildersWithLogicalTypes {
     assertEquals(LogicalTypeAnnotation.LogicalTypeToken.VARIANT, annotation.getType());
     assertNull(annotation.toOriginalType());
     assertTrue(annotation instanceof LogicalTypeAnnotation.VariantLogicalTypeAnnotation);
+    assertEquals(
+        specVersion,
+        ((LogicalTypeAnnotation.VariantLogicalTypeAnnotation) annotation).getSpecificationVersion());
   }
 
   /**

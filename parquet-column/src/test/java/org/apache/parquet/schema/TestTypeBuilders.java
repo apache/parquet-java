@@ -20,7 +20,6 @@ package org.apache.parquet.schema;
 
 import static org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit.MICROS;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit.MILLIS;
-import static org.apache.parquet.schema.LogicalTypeAnnotation.VARIANT_SPEC_VERSION;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.timestampType;
 import static org.apache.parquet.schema.OriginalType.BSON;
 import static org.apache.parquet.schema.OriginalType.DATE;
@@ -1418,11 +1417,12 @@ public class TestTypeBuilders {
 
   @Test
   public void testVariantLogicalType() {
+    byte specVersion = 1;
     String name = "variant_field";
     GroupType variantExpected = new GroupType(
         REQUIRED,
         name,
-        LogicalTypeAnnotation.variantType(VARIANT_SPEC_VERSION),
+        LogicalTypeAnnotation.variantType(specVersion),
         new PrimitiveType(REQUIRED, BINARY, "metadata"),
         new PrimitiveType(REQUIRED, BINARY, "value"));
 
@@ -1430,7 +1430,7 @@ public class TestTypeBuilders {
         .addFields(
             Types.required(BINARY).named("metadata"),
             Types.required(BINARY).named("value"))
-        .as(LogicalTypeAnnotation.variantType(VARIANT_SPEC_VERSION))
+        .as(LogicalTypeAnnotation.variantType(specVersion))
         .named(name);
 
     assertEquals(variantExpected, variantActual);
@@ -1438,11 +1438,12 @@ public class TestTypeBuilders {
 
   @Test
   public void testVariantLogicalTypeWithShredded() {
+    byte specVersion = 1;
     String name = "variant_field";
     GroupType variantExpected = new GroupType(
         REQUIRED,
         name,
-        LogicalTypeAnnotation.variantType(VARIANT_SPEC_VERSION),
+        LogicalTypeAnnotation.variantType(specVersion),
         new PrimitiveType(REQUIRED, BINARY, "metadata"),
         new PrimitiveType(OPTIONAL, BINARY, "value"),
         new PrimitiveType(OPTIONAL, BINARY, "typed_value", LogicalTypeAnnotation.stringType()));
@@ -1454,7 +1455,7 @@ public class TestTypeBuilders {
             Types.optional(BINARY)
                 .as(LogicalTypeAnnotation.stringType())
                 .named("typed_value"))
-        .as(LogicalTypeAnnotation.variantType(VARIANT_SPEC_VERSION))
+        .as(LogicalTypeAnnotation.variantType(specVersion))
         .named(name);
 
     assertEquals(variantExpected, variantActual);
