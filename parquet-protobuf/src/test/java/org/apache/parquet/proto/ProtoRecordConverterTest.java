@@ -27,6 +27,7 @@ import static org.junit.Assert.assertTrue;
 
 import com.google.protobuf.ByteString;
 import java.util.List;
+import org.apache.parquet.proto.test.EnumProto3OuterClass;
 import org.apache.parquet.proto.test.TestProto3;
 import org.apache.parquet.proto.test.TestProtobuf;
 import org.junit.Test;
@@ -56,6 +57,9 @@ public class ProtoRecordConverterTest {
     data.setOptionalUInt64(1000L * 1000 * 1000 * 9);
     data.getOptionalMessageBuilder().setSomeId(1984);
     data.getPbGroupBuilder().setGroupInt(1492);
+    data.setOptionalEnumProto3(EnumProto3OuterClass.EnumProto3.SECOND);
+    data.putOptionalMapEnumProto2(1000, SchemaConverterAllDatatypes.TestEnum.SECOND);
+    data.putOptionalMapEnumProto3(1000, EnumProto3OuterClass.EnumProto3.SECOND);
 
     SchemaConverterAllDatatypes dataBuilt = data.build();
     data.clear();
@@ -84,6 +88,11 @@ public class ProtoRecordConverterTest {
     assertEquals(1000L * 1000 * 1000 * 9, o.getOptionalUInt64());
     assertEquals(1984, o.getOptionalMessage().getSomeId());
     assertEquals(1492, o.getPbGroup().getGroupInt());
+    assertEquals(EnumProto3OuterClass.EnumProto3.SECOND, o.getOptionalEnumProto3());
+    assertEquals(1, o.getOptionalMapEnumProto2Count());
+    assertEquals(SchemaConverterAllDatatypes.TestEnum.SECOND, o.getOptionalMapEnumProto2OrThrow(1000));
+    assertEquals(1, o.getOptionalMapEnumProto3Count());
+    assertEquals(EnumProto3OuterClass.EnumProto3.SECOND, o.getOptionalMapEnumProto3OrThrow(1000));
   }
 
   @Test

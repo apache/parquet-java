@@ -94,6 +94,19 @@ public class ProtoSchemaConverterTest {
         "    optional int32 groupInt = 2;",
         "  }",
         " optional binary optionalEnum (ENUM)  = 18;",
+        " optional binary optionalEnumProto3 (ENUM) = 19;",
+        " optional group optionalMapEnumProto2 (MAP) = 20 {",
+        "   repeated group key_value {",
+        "     required int64 key;",
+        "     optional binary value (ENUM);",
+        "   }",
+        " }",
+        " optional group optionalMapEnumProto3 (MAP) = 21 {",
+        "   repeated group key_value {",
+        "     required int64 key;",
+        "     optional binary value (ENUM);",
+        "   }",
+        " }",
         "}");
 
     testConversion(TestProtobuf.SchemaConverterAllDatatypes.class, expectedSchema);
@@ -133,6 +146,12 @@ public class ProtoSchemaConverterTest {
         "      optional group value {",
         "        optional int32 someId = 3;",
         "      }",
+        "    }",
+        "  }",
+        "  optional group optionalMapEnum (MAP) = 22 {",
+        "    repeated group key_value {",
+        "      required int64 key;",
+        "      optional binary value (ENUM);",
         "    }",
         "  }",
         "}");

@@ -21,6 +21,8 @@ syntax = "proto2";
 
 package TestProtobuf;
 
+import "EnumProto3.proto";
+
 option java_package = "org.apache.parquet.proto.test";
 
 // original Dremel paper structures: Original paper used groups, not internal
@@ -77,6 +79,9 @@ message Links {
         SECOND = 1;
     }
     optional TestEnum optionalEnum = 18;
+    optional EnumProto3.EnumProto3 optionalEnumProto3 = 19;
+    map<int64, TestEnum> optionalMapEnumProto2 = 20;
+    map<int64, EnumProto3.EnumProto3> optionalMapEnumProto3 = 21;
  }
 
  message SchemaConverterRepetition {

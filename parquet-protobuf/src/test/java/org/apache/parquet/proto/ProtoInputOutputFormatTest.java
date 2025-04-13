@@ -532,6 +532,7 @@ public class ProtoInputOutputFormatTest {
     data.setOptionalUInt32(1000 * 1000 * 8);
     data.setOptionalUInt64(1000L * 1000 * 1000 * 9);
     data.getOptionalMessageBuilder().setSomeId(1984);
+    data.putOptionalMapEnum(1000L, TestProto3.SchemaConverterAllDatatypes.TestEnum.SECOND);
 
     TestProto3.SchemaConverterAllDatatypes dataBuilt = data.build();
 
@@ -571,6 +572,8 @@ public class ProtoInputOutputFormatTest {
     assertEquals(1000 * 1000 * 8, o.getOptionalUInt32());
     assertEquals(1000L * 1000 * 1000 * 9, o.getOptionalUInt64());
     assertEquals(1984, o.getOptionalMessage().getSomeId());
+    assertEquals(1, o.getOptionalMapEnumCount());
+    assertEquals(TestProto3.SchemaConverterAllDatatypes.TestEnum.SECOND, o.getOptionalMapEnumOrThrow(1000));
   }
 
   @Test
