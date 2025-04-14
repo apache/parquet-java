@@ -183,6 +183,9 @@ public class GeospatialStatistics {
    * @return whether the statistics has valid value.
    */
   public boolean isValid() {
+    if (boundingBox == null && geospatialTypes == null) {
+      return false;
+    }
     return Objects.requireNonNull(this.boundingBox).isValid()
         && Objects.requireNonNull(this.geospatialTypes).isValid();
   }

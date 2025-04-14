@@ -25,17 +25,23 @@ import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Types;
 import org.junit.Assert;
 import org.junit.Test;
+import org.locationtech.jts.io.ParseException;
+import org.locationtech.jts.io.WKBWriter;
+import org.locationtech.jts.io.WKTReader;
 
 public class TestGeospatialStatistics {
 
   @Test
-  public void testAddGeospatialData() {
+  public void testAddGeospatialData() throws ParseException {
     PrimitiveType type = Types.optional(PrimitiveType.PrimitiveTypeName.BINARY)
         .as(LogicalTypeAnnotation.geometryType())
         .named("a");
     GeospatialStatistics.Builder builder = GeospatialStatistics.newBuilder(type);
-    builder.update(Binary.fromString("POINT (1 1)"));
-    builder.update(Binary.fromString("POINT (2 2)"));
+    WKTReader wktReader = new WKTReader();
+    WKBWriter wkbWriter = new WKBWriter();
+    // Convert Geometry to WKB and update the builder
+    builder.update(Binary.fromConstantByteArray(wkbWriter.write(wktReader.read("POINT (1 1)"))));
+    builder.update(Binary.fromConstantByteArray(wkbWriter.write(wktReader.read("POINT (2 2)"))));
     GeospatialStatistics statistics = builder.build();
     Assert.assertTrue(statistics.isValid());
     Assert.assertNotNull(statistics.getBoundingBox());
@@ -43,16 +49,20 @@ public class TestGeospatialStatistics {
   }
 
   @Test
-  public void testMergeGeospatialStatistics() {
+  public void testMergeGeospatialStatistics() throws ParseException {
     PrimitiveType type = Types.optional(PrimitiveType.PrimitiveTypeName.BINARY)
         .as(LogicalTypeAnnotation.geometryType())
         .named("a");
+
+    WKTReader wktReader = new WKTReader();
+    WKBWriter wkbWriter = new WKBWriter();
+
     GeospatialStatistics.Builder builder1 = GeospatialStatistics.newBuilder(type);
-    builder1.update(Binary.fromString("POINT (1 1)"));
+    builder1.update(Binary.fromConstantByteArray(wkbWriter.write(wktReader.read("POINT (1 1)"))));
     GeospatialStatistics statistics1 = builder1.build();
 
     GeospatialStatistics.Builder builder2 = GeospatialStatistics.newBuilder(type);
-    builder2.update(Binary.fromString("POINT (2 2)"));
+    builder2.update(Binary.fromConstantByteArray(wkbWriter.write(wktReader.read("POINT (2 2)"))));
     GeospatialStatistics statistics2 = builder2.build();
 
     statistics1.merge(statistics2);
