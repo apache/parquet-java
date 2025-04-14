@@ -763,7 +763,7 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
   class UInt32ValueWriter extends FieldWriter {
     @Override
     void writeRawValue(Object value) {
-      recordConsumer.addLong(((UInt32Value) value).getValue());
+      recordConsumer.addInteger(((UInt32Value) value).getValue());
     }
   }
 
