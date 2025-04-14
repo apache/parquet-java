@@ -82,10 +82,7 @@ public class TestBoundingBox {
     boundingBox.update(nanPoint);
 
     // All values should be NaN after updating with all-NaN coordinates
-    Assert.assertEquals("XMin should be NaN", Double.NaN, boundingBox.getXMin(), 0.0);
-    Assert.assertEquals("XMax should be NaN", Double.NaN, boundingBox.getXMax(), 0.0);
-    Assert.assertEquals("YMin should be NaN", Double.NaN, boundingBox.getYMin(), 0.0);
-    Assert.assertEquals("YMax should be NaN", Double.NaN, boundingBox.getYMax(), 0.0);
+    Assert.assertTrue(boundingBox.isEmpty());
 
     // Reset the bounding box for the next test
     boundingBox = new BoundingBox();
@@ -95,10 +92,7 @@ public class TestBoundingBox {
     boundingBox.update(mixedPoint);
 
     // The valid X coordinate should be used, Y should remain at initial values
-    Assert.assertEquals("XMin should be 15.0", 15.0, boundingBox.getXMin(), 0.0);
-    Assert.assertEquals("XMax should be 15.0", 15.0, boundingBox.getXMax(), 0.0);
-    Assert.assertEquals("YMin should be NaN", Double.NaN, boundingBox.getYMin(), 0.0);
-    Assert.assertEquals("YMax should be NaN", Double.NaN, boundingBox.getYMax(), 0.0);
+    Assert.assertTrue(boundingBox.isEmpty());
   }
 
   @Test
@@ -254,8 +248,8 @@ public class TestBoundingBox {
     Point nanPoint = gf.createPoint(new Coordinate(Double.NaN, Double.NaN));
     box.update(nanPoint);
 
-    // Check that box1 is invalid after the merge
-    Assert.assertFalse("Box should be invalid after the merge", box.isValid());
+    Assert.assertFalse("Box should be empty after the merge", box.isEmpty());
+    Assert.assertTrue("Box should be valid after the merge", box.isValid());
   }
 
   @Test
@@ -435,11 +429,8 @@ public class TestBoundingBox {
 
     box3.update(gf.createLineString(coords3));
 
-    // Should result in NaN for all values
-    Assert.assertEquals(Double.NaN, box3.getXMin(), 0.0);
-    Assert.assertEquals(Double.NaN, box3.getXMax(), 0.0);
-    Assert.assertEquals(Double.NaN, box3.getYMin(), 0.0);
-    Assert.assertEquals(Double.NaN, box3.getYMax(), 0.0);
+    // The bounding box should remain empty
+    Assert.assertTrue(box3.isEmpty());
   }
 
   @Test
@@ -466,10 +457,130 @@ public class TestBoundingBox {
         new Coordinate[] {new Coordinate(Double.NaN, 5), new Coordinate(6, Double.NaN), new Coordinate(7, 8)};
 
     box2.update(gf.createLineString(coords2));
+    Assert.assertTrue(box2.isEmpty());
+  }
 
-    Assert.assertEquals(Double.NaN, box2.getXMin(), 0.0);
-    Assert.assertEquals(Double.NaN, box2.getXMax(), 0.0);
-    Assert.assertEquals(5.0, box2.getYMin(), 0.0);
-    Assert.assertEquals(8.0, box2.getYMax(), 0.0);
+  /**
+   * Tests the end-to-end case for updating and merging bounding boxes with mixed valid and NaN coordinates.
+   *
+   * Scenario - Parquet file with multiple row groups:
+   * file-level bbox: [1, 8, 100, 800]
+   *
+   * Row group 1: [1, 2, 100, 100]
+   * - POINT (1, 100)
+   * - POINT (2, NaN)
+   *
+   * Row group 2: [3, 3, 300, 300]
+   * - POINT (3, 300)
+   * - POINT (NaN, NaN)
+   *
+   * Row group 3: no valid bbox
+   * - POINT (5, NaN)
+   * - POINT (6, NaN)
+   *
+   * Row group 4: [7, 8, 700, 800]
+   * - POINT (7, 700)
+   * - POINT (8, 800)
+   *
+   * Row group 5: no valid bbox
+   * - POINT (NaN, NaN)
+   * - POINT (NaN, NaN)
+   *
+   * The test verifies that:
+   * 1. Individual row group bounding boxes correctly handle NaN coordinates
+   * 2. The merge operation correctly combines valid bounding boxes and ignores invalid ones
+   * 3. The resulting file-level bounding box correctly represents the overall spatial extent [1, 8, 100, 800]
+   * 4. The merge operation is commutative - the order of merging does not affect the result
+   */
+  @Test
+  public void testMergingRowGroupBoundingBoxes() {
+    GeometryFactory gf = new GeometryFactory();
+
+    // File-level bounding box (to be computed by merging row group boxes)
+    BoundingBox fileBBox = new BoundingBox();
+
+    // Row Group 1: [1, 2, 100, 100]
+    BoundingBox rowGroup1 = new BoundingBox();
+    rowGroup1.update(gf.createPoint(new Coordinate(1, 100)));
+    // Point with NaN Y-coordinate
+    rowGroup1.update(gf.createPoint(new Coordinate(2, Double.NaN)));
+
+    // Verify Row Group 1
+    Assert.assertEquals(1.0, rowGroup1.getXMin(), 0.0);
+    Assert.assertEquals(2.0, rowGroup1.getXMax(), 0.0);
+    Assert.assertEquals(100.0, rowGroup1.getYMin(), 0.0);
+    Assert.assertEquals(100.0, rowGroup1.getYMax(), 0.0);
+    Assert.assertTrue(rowGroup1.isValid());
+
+    // Row Group 2: [3, 3, 300, 300]
+    BoundingBox rowGroup2 = new BoundingBox();
+    rowGroup2.update(gf.createPoint(new Coordinate(3, 300)));
+    // Point with all NaN coordinates
+    Coordinate nanCoord = new Coordinate(Double.NaN, Double.NaN);
+    rowGroup2.update(gf.createPoint(nanCoord));
+
+    // Verify Row Group 2
+    Assert.assertEquals(3.0, rowGroup2.getXMin(), 0.0);
+    Assert.assertEquals(3.0, rowGroup2.getXMax(), 0.0);
+    Assert.assertEquals(300.0, rowGroup2.getYMin(), 0.0);
+    Assert.assertEquals(300.0, rowGroup2.getYMax(), 0.0);
+    Assert.assertTrue(rowGroup2.isValid());
+
+    // Row Group 3: No defined bbox due to NaN Y-coordinates
+    BoundingBox rowGroup3 = new BoundingBox();
+    rowGroup3.update(gf.createPoint(new Coordinate(5, Double.NaN)));
+    rowGroup3.update(gf.createPoint(new Coordinate(6, Double.NaN)));
+
+    // Verify Row Group 3
+    Assert.assertTrue(rowGroup3.isEmpty());
+
+    // Row Group 4: [7, 8, 700, 800]
+    BoundingBox rowGroup4 = new BoundingBox();
+    rowGroup4.update(gf.createPoint(new Coordinate(7, 700)));
+    rowGroup4.update(gf.createPoint(new Coordinate(8, 800)));
+
+    // Verify Row Group 4
+    Assert.assertEquals(7.0, rowGroup4.getXMin(), 0.0);
+    Assert.assertEquals(8.0, rowGroup4.getXMax(), 0.0);
+    Assert.assertEquals(700.0, rowGroup4.getYMin(), 0.0);
+    Assert.assertEquals(800.0, rowGroup4.getYMax(), 0.0);
+    Assert.assertTrue(rowGroup4.isValid());
+
+    // Row Group 5: No defined bbox due to all NaN coordinates
+    BoundingBox rowGroup5 = new BoundingBox();
+    rowGroup5.update(gf.createPoint(nanCoord));
+    rowGroup5.update(gf.createPoint(nanCoord));
+
+    // Verify Row Group 5
+    Assert.assertTrue(rowGroup5.isEmpty());
+
+    // Merge row group boxes into file-level box
+    fileBBox.merge(rowGroup1);
+    fileBBox.merge(rowGroup2);
+    fileBBox.merge(rowGroup3);
+    fileBBox.merge(rowGroup4);
+    fileBBox.merge(rowGroup5);
+
+    // Verify file-level bounding box
+    // Expected: [1, 8, 100, 800] from valid coordinates
+    Assert.assertEquals(1.0, fileBBox.getXMin(), 0.0);
+    Assert.assertEquals(8.0, fileBBox.getXMax(), 0.0);
+    Assert.assertEquals(100.0, fileBBox.getYMin(), 0.0);
+    Assert.assertEquals(800.0, fileBBox.getYMax(), 0.0);
+    Assert.assertTrue(fileBBox.isValid());
+
+    // Test merging in reverse order to ensure commutativity
+    BoundingBox reverseMergeBox = new BoundingBox();
+    reverseMergeBox.merge(rowGroup5);
+    reverseMergeBox.merge(rowGroup4);
+    reverseMergeBox.merge(rowGroup3);
+    reverseMergeBox.merge(rowGroup2);
+    reverseMergeBox.merge(rowGroup1);
+
+    Assert.assertEquals(1.0, reverseMergeBox.getXMin(), 0.0);
+    Assert.assertEquals(8.0, reverseMergeBox.getXMax(), 0.0);
+    Assert.assertEquals(100.0, reverseMergeBox.getYMin(), 0.0);
+    Assert.assertEquals(800.0, reverseMergeBox.getYMax(), 0.0);
+    Assert.assertTrue(reverseMergeBox.isValid());
   }
 }

@@ -92,13 +92,13 @@ public class BoundingBox {
 
   /**
    * Checks if the bounding box is empty.
-   * A bounding box is considered empty if all bounds are in their initial state
-   * (i.e., xMin = +Infinity, xMax = -Infinity, etc.).
+   * A bounding box is considered empty if any bounds are in their initial state
    *
    * @return true if the bounding box is empty, false otherwise.
    */
   public boolean isEmpty() {
-    return Double.isInfinite(xMin) && Double.isInfinite(xMax) && Double.isInfinite(yMin) && Double.isInfinite(yMax);
+    return (Double.isInfinite(xMin) && Double.isInfinite(xMax))
+        || (Double.isInfinite(yMin) && Double.isInfinite(yMax));
   }
 
   /**
@@ -107,7 +107,7 @@ public class BoundingBox {
    * @param other the other BoundingBox to merge
    */
   public void merge(BoundingBox other) {
-    if (other == null) {
+    if (other == null || other.isEmpty()) {
       return;
     }
     this.xMin = Math.min(this.xMin, other.xMin);
@@ -146,12 +146,19 @@ public class BoundingBox {
 
   /**
    * Updates the bounding box with the given bounds.
+   * Only updates X bounds if both minX and maxX are not NaN.
+   * Only updates Y bounds if both minY and maxY are not NaN.
    */
   private void updateBounds(double minX, double maxX, double minY, double maxY) {
-    xMin = Math.min(xMin, minX);
-    xMax = Math.max(xMax, maxX);
-    yMin = Math.min(yMin, minY);
-    yMax = Math.max(yMax, maxY);
+    if (!Double.isNaN(minX) && !Double.isNaN(maxX)) {
+      xMin = Math.min(xMin, minX);
+      xMax = Math.max(xMax, maxX);
+    }
+
+    if (!Double.isNaN(minY) && !Double.isNaN(maxY)) {
+      yMin = Math.min(yMin, minY);
+      yMax = Math.max(yMax, maxY);
+    }
   }
 
   /**
