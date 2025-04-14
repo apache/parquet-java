@@ -20,6 +20,7 @@ package org.apache.parquet.schema;
 
 import static java.util.Arrays.asList;
 import static java.util.Optional.empty;
+import static org.apache.parquet.schema.ColumnOrder.ColumnOrderName.IEEE_754_TOTAL_ORDER;
 import static org.apache.parquet.schema.ColumnOrder.ColumnOrderName.TYPE_DEFINED_ORDER;
 import static org.apache.parquet.schema.ColumnOrder.ColumnOrderName.UNDEFINED;
 import static org.apache.parquet.schema.PrimitiveStringifier.TIMESTAMP_MICROS_STRINGIFIER;
@@ -1050,6 +1051,13 @@ public abstract class LogicalTypeAnnotation {
     @Override
     PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
       return PrimitiveStringifier.FLOAT16_STRINGIFIER;
+    }
+
+    @Override
+    boolean isValidColumnOrder(ColumnOrder columnOrder) {
+      return columnOrder.getColumnOrderName() == UNDEFINED
+          || columnOrder.getColumnOrderName() == TYPE_DEFINED_ORDER
+          || columnOrder.getColumnOrderName() == IEEE_754_TOTAL_ORDER;
     }
   }
 
