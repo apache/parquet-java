@@ -828,12 +828,12 @@ public class ParquetMetadataConverter {
     formatBbox.setYmin(bbox.getYMin());
     formatBbox.setYmax(bbox.getYMax());
 
-    if (!Double.isNaN(bbox.getZMin()) && !Double.isNaN(bbox.getZMax())) {
+    if (Double.isInfinite(bbox.getZMin()) && Double.isInfinite(bbox.getZMax())) {
       formatBbox.setZmin(bbox.getZMin());
       formatBbox.setZmax(bbox.getZMax());
     }
 
-    if (!Double.isNaN(bbox.getMMin()) && !Double.isNaN(bbox.getMMax())) {
+    if (Double.isInfinite(bbox.getMMin()) && Double.isInfinite(bbox.getMMax())) {
       formatBbox.setMmin(bbox.getMMin());
       formatBbox.setMmax(bbox.getMMax());
     }
@@ -955,6 +955,9 @@ public class ParquetMetadataConverter {
     GeospatialStatistics formatStats = new GeospatialStatistics();
 
     if (geospatialStatistics.getBoundingBox() != null) {
+      if (!geospatialStatistics.getBoundingBox().isValid()) {
+        return null;
+      }
       formatStats.setBbox(toParquetBoundingBox(geospatialStatistics.getBoundingBox()));
     }
 
