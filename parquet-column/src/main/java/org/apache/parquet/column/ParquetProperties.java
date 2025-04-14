@@ -708,6 +708,7 @@ public class ParquetProperties {
     }
 
     public Builder withStatisticsEnabled(boolean enabled) {
+      this.statistics.withDefaultValue(enabled);
       this.statisticsEnabled = enabled;
       return this;
     }

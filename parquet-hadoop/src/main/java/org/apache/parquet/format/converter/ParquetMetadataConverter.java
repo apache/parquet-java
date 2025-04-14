@@ -67,7 +67,6 @@ import org.apache.parquet.format.BloomFilterHash;
 import org.apache.parquet.format.BloomFilterHeader;
 import org.apache.parquet.format.BoundaryOrder;
 import org.apache.parquet.format.BoundingBox;
-import org.apache.parquet.format.BsonType;
 import org.apache.parquet.format.ColumnChunk;
 import org.apache.parquet.format.ColumnCryptoMetaData;
 import org.apache.parquet.format.ColumnIndex;
@@ -77,29 +76,23 @@ import org.apache.parquet.format.CompressionCodec;
 import org.apache.parquet.format.ConvertedType;
 import org.apache.parquet.format.DataPageHeader;
 import org.apache.parquet.format.DataPageHeaderV2;
-import org.apache.parquet.format.DateType;
 import org.apache.parquet.format.DecimalType;
 import org.apache.parquet.format.DictionaryPageHeader;
 import org.apache.parquet.format.EdgeInterpolationAlgorithm;
 import org.apache.parquet.format.Encoding;
 import org.apache.parquet.format.EncryptionWithColumnKey;
-import org.apache.parquet.format.EnumType;
 import org.apache.parquet.format.FieldRepetitionType;
 import org.apache.parquet.format.FileMetaData;
-import org.apache.parquet.format.Float16Type;
 import org.apache.parquet.format.GeographyType;
 import org.apache.parquet.format.GeometryType;
 import org.apache.parquet.format.GeospatialStatistics;
 import org.apache.parquet.format.IntType;
-import org.apache.parquet.format.JsonType;
 import org.apache.parquet.format.KeyValue;
-import org.apache.parquet.format.ListType;
 import org.apache.parquet.format.LogicalType;
-import org.apache.parquet.format.MapType;
+import org.apache.parquet.format.LogicalTypes;
 import org.apache.parquet.format.MicroSeconds;
 import org.apache.parquet.format.MilliSeconds;
 import org.apache.parquet.format.NanoSeconds;
-import org.apache.parquet.format.NullType;
 import org.apache.parquet.format.OffsetIndex;
 import org.apache.parquet.format.PageEncodingStats;
 import org.apache.parquet.format.PageHeader;
@@ -110,13 +103,11 @@ import org.apache.parquet.format.SchemaElement;
 import org.apache.parquet.format.SizeStatistics;
 import org.apache.parquet.format.SplitBlockAlgorithm;
 import org.apache.parquet.format.Statistics;
-import org.apache.parquet.format.StringType;
 import org.apache.parquet.format.TimeType;
 import org.apache.parquet.format.TimeUnit;
 import org.apache.parquet.format.TimestampType;
 import org.apache.parquet.format.Type;
 import org.apache.parquet.format.TypeDefinedOrder;
-import org.apache.parquet.format.UUIDType;
 import org.apache.parquet.format.Uncompressed;
 import org.apache.parquet.format.XxHash;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
@@ -455,33 +446,32 @@ public class ParquetMetadataConverter {
       implements LogicalTypeAnnotation.LogicalTypeAnnotationVisitor<LogicalType> {
     @Override
     public Optional<LogicalType> visit(LogicalTypeAnnotation.StringLogicalTypeAnnotation stringLogicalType) {
-      return of(LogicalType.STRING(new StringType()));
+      return of(LogicalTypes.UTF8);
     }
 
     @Override
     public Optional<LogicalType> visit(LogicalTypeAnnotation.MapLogicalTypeAnnotation mapLogicalType) {
-      return of(LogicalType.MAP(new MapType()));
+      return of(LogicalTypes.MAP);
     }
 
     @Override
     public Optional<LogicalType> visit(LogicalTypeAnnotation.ListLogicalTypeAnnotation listLogicalType) {
-      return of(LogicalType.LIST(new ListType()));
+      return of(LogicalTypes.LIST);
     }
 
     @Override
     public Optional<LogicalType> visit(LogicalTypeAnnotation.EnumLogicalTypeAnnotation enumLogicalType) {
-      return of(LogicalType.ENUM(new EnumType()));
+      return of(LogicalTypes.ENUM);
     }
 
     @Override
     public Optional<LogicalType> visit(LogicalTypeAnnotation.DecimalLogicalTypeAnnotation decimalLogicalType) {
-      return of(LogicalType.DECIMAL(
-          new DecimalType(decimalLogicalType.getScale(), decimalLogicalType.getPrecision())));
+      return of(LogicalTypes.DECIMAL(decimalLogicalType.getScale(), decimalLogicalType.getPrecision()));
     }
 
     @Override
     public Optional<LogicalType> visit(LogicalTypeAnnotation.DateLogicalTypeAnnotation dateLogicalType) {
-      return of(LogicalType.DATE(new DateType()));
+      return of(LogicalTypes.DATE);
     }
 
     @Override
@@ -503,32 +493,32 @@ public class ParquetMetadataConverter {
 
     @Override
     public Optional<LogicalType> visit(LogicalTypeAnnotation.JsonLogicalTypeAnnotation jsonLogicalType) {
-      return of(LogicalType.JSON(new JsonType()));
+      return of(LogicalTypes.JSON);
     }
 
     @Override
     public Optional<LogicalType> visit(LogicalTypeAnnotation.BsonLogicalTypeAnnotation bsonLogicalType) {
-      return of(LogicalType.BSON(new BsonType()));
+      return of(LogicalTypes.BSON);
     }
 
     @Override
     public Optional<LogicalType> visit(UUIDLogicalTypeAnnotation uuidLogicalType) {
-      return of(LogicalType.UUID(new UUIDType()));
+      return of(LogicalTypes.UUID);
     }
 
     @Override
     public Optional<LogicalType> visit(LogicalTypeAnnotation.Float16LogicalTypeAnnotation float16LogicalType) {
-      return of(LogicalType.FLOAT16(new Float16Type()));
+      return of(LogicalTypes.FLOAT16);
     }
 
     @Override
-    public Optional<LogicalType> visit(LogicalTypeAnnotation.UnknownLogicalTypeAnnotation intervalLogicalType) {
-      return of(LogicalType.UNKNOWN(new NullType()));
+    public Optional<LogicalType> visit(LogicalTypeAnnotation.UnknownLogicalTypeAnnotation unknownLogicalType) {
+      return of(LogicalTypes.UNKNOWN);
     }
 
     @Override
     public Optional<LogicalType> visit(LogicalTypeAnnotation.IntervalLogicalTypeAnnotation intervalLogicalType) {
-      return of(LogicalType.UNKNOWN(new NullType()));
+      return of(LogicalTypes.UNKNOWN);
     }
 
     @Override
