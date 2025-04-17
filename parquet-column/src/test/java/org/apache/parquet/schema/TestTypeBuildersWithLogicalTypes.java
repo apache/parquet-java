@@ -497,9 +497,7 @@ public class TestTypeBuildersWithLogicalTypes {
     assertEquals(LogicalTypeAnnotation.LogicalTypeToken.VARIANT, annotation.getType());
     assertNull(annotation.toOriginalType());
     assertTrue(annotation instanceof LogicalTypeAnnotation.VariantLogicalTypeAnnotation);
-    assertEquals(
-        specVersion,
-        ((LogicalTypeAnnotation.VariantLogicalTypeAnnotation) annotation).getSpecificationVersion());
+    assertEquals(specVersion, ((LogicalTypeAnnotation.VariantLogicalTypeAnnotation) annotation).getSpecVersion());
   }
 
   @Test
@@ -527,9 +525,7 @@ public class TestTypeBuildersWithLogicalTypes {
     assertEquals(LogicalTypeAnnotation.LogicalTypeToken.VARIANT, annotation.getType());
     assertNull(annotation.toOriginalType());
     assertTrue(annotation instanceof LogicalTypeAnnotation.VariantLogicalTypeAnnotation);
-    assertEquals(
-        specVersion,
-        ((LogicalTypeAnnotation.VariantLogicalTypeAnnotation) annotation).getSpecificationVersion());
+    assertEquals(specVersion, ((LogicalTypeAnnotation.VariantLogicalTypeAnnotation) annotation).getSpecVersion());
   }
 
   /**

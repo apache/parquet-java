@@ -60,7 +60,7 @@ public abstract class LogicalTypeAnnotation {
       @Override
       protected LogicalTypeAnnotation fromString(List<String> params) {
         Preconditions.checkArgument(
-            params.size() == 1, "Expecting 1 parameter for variant logical type, got %d", params.size());
+            params.size() == 1, "Expecting only spec version for variant annotation args: %s", params);
         return variantType(Byte.parseByte(params.get(0)));
       }
     },
@@ -277,8 +277,8 @@ public abstract class LogicalTypeAnnotation {
     return ListLogicalTypeAnnotation.INSTANCE;
   }
 
-  public static VariantLogicalTypeAnnotation variantType(byte specificationVersion) {
-    return new VariantLogicalTypeAnnotation(specificationVersion);
+  public static VariantLogicalTypeAnnotation variantType(byte specVersion) {
+    return new VariantLogicalTypeAnnotation(specVersion);
   }
 
   public static EnumLogicalTypeAnnotation enumType() {
@@ -1141,10 +1141,10 @@ public abstract class LogicalTypeAnnotation {
   }
 
   public static class VariantLogicalTypeAnnotation extends LogicalTypeAnnotation {
-    private byte specificationVersion;
+    private byte specVersion;
 
-    private VariantLogicalTypeAnnotation(byte specificationVersion) {
-      this.specificationVersion = specificationVersion;
+    private VariantLogicalTypeAnnotation(byte specVersion) {
+      this.specVersion = specVersion;
     }
 
     @Override
@@ -1163,23 +1163,23 @@ public abstract class LogicalTypeAnnotation {
       return LogicalTypeToken.VARIANT;
     }
 
-    public byte getSpecificationVersion() {
-      return this.specificationVersion;
+    public byte getSpecVersion() {
+      return this.specVersion;
     }
 
     @Override
     protected String typeParametersAsString() {
-      return "(" + specificationVersion + ")";
+      return "(" + specVersion + ")";
     }
 
     @Override
     public boolean equals(Object obj) {
       if (!(obj instanceof VariantLogicalTypeAnnotation)) {
-             return false;
+        return false;
       }
 
       VariantLogicalTypeAnnotation other = (VariantLogicalTypeAnnotation) obj;
-      return specificationVersion == other.specificationVersion;
+      return specVersion == other.specVersion;
     }
   }
 

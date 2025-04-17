@@ -1609,9 +1609,7 @@ public class TestParquetMetadataConverter {
     assertEquals(expected, schema);
     LogicalTypeAnnotation logicalType = schema.getType("v").getLogicalTypeAnnotation();
     assertEquals(LogicalTypeAnnotation.variantType(specVersion), logicalType);
-    assertEquals(
-        specVersion,
-        ((LogicalTypeAnnotation.VariantLogicalTypeAnnotation) logicalType).getSpecificationVersion());
+    assertEquals(specVersion, ((LogicalTypeAnnotation.VariantLogicalTypeAnnotation) logicalType).getSpecVersion());
   }
 
   private void verifyMapMessageType(final MessageType messageType, final String keyValueName) throws IOException {

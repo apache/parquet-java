@@ -518,7 +518,7 @@ public class ParquetMetadataConverter {
 
     @Override
     public Optional<LogicalType> visit(LogicalTypeAnnotation.VariantLogicalTypeAnnotation variantLogicalType) {
-      return of(LogicalTypes.VARIANT(variantLogicalType.getSpecificationVersion()));
+      return of(LogicalTypes.VARIANT(variantLogicalType.getSpecVersion()));
     }
   }
 
