@@ -50,6 +50,7 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT96;
 import static org.apache.parquet.schema.Type.Repetition.OPTIONAL;
 import static org.apache.parquet.schema.Type.Repetition.REPEATED;
 import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
+import static org.junit.Assert.assertEquals;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -1412,6 +1413,52 @@ public class TestTypeBuilders {
     Assert.assertEquals(nonUtcMillisExpected, nonUtcMillisActual);
     Assert.assertEquals(utcMicrosExpected, utcMicrosActual);
     Assert.assertEquals(nonUtcMicrosExpected, nonUtcMicrosActual);
+  }
+
+  @Test
+  public void testVariantLogicalType() {
+    byte specVersion = 1;
+    String name = "variant_field";
+    GroupType variantExpected = new GroupType(
+        REQUIRED,
+        name,
+        LogicalTypeAnnotation.variantType(specVersion),
+        new PrimitiveType(REQUIRED, BINARY, "metadata"),
+        new PrimitiveType(REQUIRED, BINARY, "value"));
+
+    GroupType variantActual = Types.buildGroup(REQUIRED)
+        .addFields(
+            Types.required(BINARY).named("metadata"),
+            Types.required(BINARY).named("value"))
+        .as(LogicalTypeAnnotation.variantType(specVersion))
+        .named(name);
+
+    assertEquals(variantExpected, variantActual);
+  }
+
+  @Test
+  public void testVariantLogicalTypeWithShredded() {
+    byte specVersion = 1;
+    String name = "variant_field";
+    GroupType variantExpected = new GroupType(
+        REQUIRED,
+        name,
+        LogicalTypeAnnotation.variantType(specVersion),
+        new PrimitiveType(REQUIRED, BINARY, "metadata"),
+        new PrimitiveType(OPTIONAL, BINARY, "value"),
+        new PrimitiveType(OPTIONAL, BINARY, "typed_value", LogicalTypeAnnotation.stringType()));
+
+    GroupType variantActual = Types.buildGroup(REQUIRED)
+        .addFields(
+            Types.required(BINARY).named("metadata"),
+            Types.optional(BINARY).named("value"),
+            Types.optional(BINARY)
+                .as(LogicalTypeAnnotation.stringType())
+                .named("typed_value"))
+        .as(LogicalTypeAnnotation.variantType(specVersion))
+        .named(name);
+
+    assertEquals(variantExpected, variantActual);
   }
 
   @Test(expected = IllegalArgumentException.class)
