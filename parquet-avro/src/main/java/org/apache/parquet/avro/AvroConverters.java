@@ -18,16 +18,11 @@
  */
 package org.apache.parquet.avro;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
 import java.nio.ByteBuffer;
-import java.util.Arrays;
-import java.util.List;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.util.Utf8;
 import org.apache.parquet.column.Dictionary;
-import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.GroupConverter;
 import org.apache.parquet.io.api.PrimitiveConverter;
@@ -263,58 +258,6 @@ public class AvroConverters {
     @Override
     public Utf8 convert(Binary binary) {
       return new Utf8(binary.getBytes());
-    }
-  }
-
-  static final class FieldStringableConverter extends BinaryConverter<Object> {
-    private final String stringableName;
-    private final Constructor<?> ctor;
-
-    public FieldStringableConverter(ParentValueContainer parent, Class<?> stringableClass) {
-      super(parent);
-      checkSecurity(stringableClass);
-      stringableName = stringableClass.getName();
-      try {
-        this.ctor = stringableClass.getConstructor(String.class);
-      } catch (NoSuchMethodException e) {
-        throw new ParquetDecodingException("Unable to get String constructor for " + stringableName, e);
-      }
-    }
-
-    @Override
-    public Object convert(Binary binary) {
-      try {
-        return ctor.newInstance(binary.toStringUsingUTF8());
-      } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
-        throw new ParquetDecodingException("Cannot convert binary to " + stringableName, e);
-      }
-    }
-
-    private void checkSecurity(Class<?> clazz) throws SecurityException {
-      List<String> trustedPackages = Arrays.asList(SERIALIZABLE_PACKAGES);
-
-      boolean trustAllPackages = trustedPackages.size() == 1 && "*".equals(trustedPackages.get(0));
-      if (trustAllPackages || clazz.isPrimitive()) {
-        return;
-      }
-
-      boolean found = false;
-      Package thePackage = clazz.getPackage();
-      if (thePackage != null) {
-        for (String trustedPackage : trustedPackages) {
-          if (thePackage.getName().equals(trustedPackage)
-              || thePackage.getName().startsWith(trustedPackage + ".")) {
-            found = true;
-            break;
-          }
-        }
-        if (!found) {
-          throw new SecurityException("Forbidden " + clazz
-              + "! This class is not trusted to be included in Avro schema using java-class."
-              + " Please set org.apache.parquet.avro.SERIALIZABLE_PACKAGES system property"
-              + " with the packages you trust.");
-        }
-      }
     }
   }
 

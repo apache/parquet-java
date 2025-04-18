@@ -52,12 +52,10 @@ import org.apache.avro.generic.GenericData;
 import org.apache.avro.reflect.AvroIgnore;
 import org.apache.avro.reflect.AvroName;
 import org.apache.avro.reflect.ReflectData;
-import org.apache.avro.reflect.Stringable;
 import org.apache.avro.specific.SpecificData;
 import org.apache.avro.util.ClassUtils;
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.avro.AvroConverters.FieldStringConverter;
-import org.apache.parquet.avro.AvroConverters.FieldStringableConverter;
 import org.apache.parquet.io.InvalidRecordException;
 import org.apache.parquet.io.api.Converter;
 import org.apache.parquet.io.api.GroupConverter;
@@ -143,18 +141,6 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
       Class<?> fieldClass = fields.get(avroField.name());
       converters[parquetFieldIndex] =
           newConverter(nonNullSchema, parquetField, this.model, fieldClass, container);
-
-      // @Stringable doesn't affect the reflected schema; must be enforced here
-      if (recordClass != null && converters[parquetFieldIndex] instanceof FieldStringConverter) {
-        try {
-          Field field = recordClass.getDeclaredField(avroField.name());
-          if (field.isAnnotationPresent(Stringable.class)) {
-            converters[parquetFieldIndex] = new FieldStringableConverter(container, field.getType());
-          }
-        } catch (NoSuchFieldException e) {
-          // must not be stringable
-        }
-      }
 
       parquetFieldIndex += 1;
     }
@@ -411,7 +397,7 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
     } else if (stringableClass == CharSequence.class) {
       return new AvroConverters.FieldUTF8Converter(parent);
     }
-    return new FieldStringableConverter(parent, stringableClass);
+    return null;
   }
 
   private static Class<?> getStringableClass(Schema schema, GenericData model) {
