@@ -397,8 +397,7 @@ public class TestVariantScalar {
     testVariant(value, v -> {
       checkType(v, VariantUtil.PRIMITIVE, VariantUtil.Type.TIMESTAMP);
       Assert.assertEquals(
-          Instant.parse("2025-04-17T08:09:10.123456+00:00"),
-          Instant.EPOCH.plus(v.getLong(), ChronoUnit.MICROS));
+          Instant.parse("2025-04-17T08:09:10.123456Z"), Instant.EPOCH.plus(v.getLong(), ChronoUnit.MICROS));
     });
   }
 
@@ -420,8 +419,7 @@ public class TestVariantScalar {
     testVariant(value, v -> {
       checkType(v, VariantUtil.PRIMITIVE, VariantUtil.Type.TIMESTAMP);
       Assert.assertEquals(
-          Instant.parse("1969-12-31T23:59:59.999999+00:00"),
-          Instant.EPOCH.plus(v.getLong(), ChronoUnit.MICROS));
+          Instant.parse("1969-12-31T23:59:59.999999Z"), Instant.EPOCH.plus(v.getLong(), ChronoUnit.MICROS));
     });
   }
 
@@ -435,8 +433,7 @@ public class TestVariantScalar {
     testVariant(value, v -> {
       checkType(v, VariantUtil.PRIMITIVE, VariantUtil.Type.TIMESTAMP_NTZ);
       Assert.assertEquals(
-          Instant.parse("2025-04-17T08:09:10.123456+00:00"),
-          Instant.EPOCH.plus(v.getLong(), ChronoUnit.MICROS));
+          Instant.parse("2025-04-17T08:09:10.123456Z"), Instant.EPOCH.plus(v.getLong(), ChronoUnit.MICROS));
     });
   }
 
@@ -458,8 +455,7 @@ public class TestVariantScalar {
     testVariant(value, v -> {
       checkType(v, VariantUtil.PRIMITIVE, VariantUtil.Type.TIMESTAMP_NTZ);
       Assert.assertEquals(
-          Instant.parse("1969-12-31T23:59:59.999999+00:00"),
-          Instant.EPOCH.plus(v.getLong(), ChronoUnit.MICROS));
+          Instant.parse("1969-12-31T23:59:59.999999Z"), Instant.EPOCH.plus(v.getLong(), ChronoUnit.MICROS));
     });
   }
 
@@ -527,8 +523,7 @@ public class TestVariantScalar {
     testVariant(value, v -> {
       checkType(v, VariantUtil.PRIMITIVE, VariantUtil.Type.TIMESTAMP_NANOS);
       Assert.assertEquals(
-          Instant.parse("2025-04-17T08:09:10.123456789+00:00"),
-          Instant.EPOCH.plus(v.getLong(), ChronoUnit.NANOS));
+          Instant.parse("2025-04-17T08:09:10.123456789Z"), Instant.EPOCH.plus(v.getLong(), ChronoUnit.NANOS));
     });
   }
 
@@ -550,8 +545,7 @@ public class TestVariantScalar {
     testVariant(value, v -> {
       checkType(v, VariantUtil.PRIMITIVE, VariantUtil.Type.TIMESTAMP_NANOS);
       Assert.assertEquals(
-          Instant.parse("1969-12-31T23:59:59.999999999+00:00"),
-          Instant.EPOCH.plus(v.getLong(), ChronoUnit.NANOS));
+          Instant.parse("1969-12-31T23:59:59.999999999Z"), Instant.EPOCH.plus(v.getLong(), ChronoUnit.NANOS));
     });
   }
 
@@ -565,8 +559,7 @@ public class TestVariantScalar {
     testVariant(value, v -> {
       checkType(v, VariantUtil.PRIMITIVE, VariantUtil.Type.TIMESTAMP_NANOS_NTZ);
       Assert.assertEquals(
-          Instant.parse("2025-04-17T08:09:10.123456789+00:00"),
-          Instant.EPOCH.plus(v.getLong(), ChronoUnit.NANOS));
+          Instant.parse("2025-04-17T08:09:10.123456789Z"), Instant.EPOCH.plus(v.getLong(), ChronoUnit.NANOS));
     });
   }
 
@@ -588,8 +581,7 @@ public class TestVariantScalar {
     testVariant(value, v -> {
       checkType(v, VariantUtil.PRIMITIVE, VariantUtil.Type.TIMESTAMP_NANOS_NTZ);
       Assert.assertEquals(
-          Instant.parse("1969-12-31T23:59:59.999999999+00:00"),
-          Instant.EPOCH.plus(v.getLong(), ChronoUnit.NANOS));
+          Instant.parse("1969-12-31T23:59:59.999999999Z"), Instant.EPOCH.plus(v.getLong(), ChronoUnit.NANOS));
     });
   }
 
