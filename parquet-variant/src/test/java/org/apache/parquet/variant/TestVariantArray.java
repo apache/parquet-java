@@ -47,7 +47,7 @@ public class TestVariantArray {
   private static final byte[] VALUE_SHORT_STRING = new byte[] {0b101, 'c'};
   private static final byte[] VALUE_DATE = new byte[] {0b101100, (byte) 0xE3, 0x4E, 0x00, 0x00};
 
-  private void checkType(Variant v, int expectedBasicType, VariantUtil.Type expectedType) {
+  private void checkType(Variant v, int expectedBasicType, Variant.Type expectedType) {
     Assert.assertEquals(expectedBasicType, v.value.get(v.value.position()) & VariantUtil.BASIC_TYPE_MASK);
     Assert.assertEquals(expectedType, v.getType());
   }
@@ -148,7 +148,7 @@ public class TestVariantArray {
   public void testEmptyArray() {
     Variant value = new Variant(ByteBuffer.wrap(new byte[] {0b0011, 0x00}), EMPTY_METADATA);
     testVariant(value, v -> {
-      checkType(v, VariantUtil.ARRAY, VariantUtil.Type.ARRAY);
+      checkType(v, VariantUtil.ARRAY, Variant.Type.ARRAY);
       Assert.assertEquals(0, v.numArrayElements());
     });
   }
@@ -157,7 +157,7 @@ public class TestVariantArray {
   public void testEmptyLargeArray() {
     Variant value = new Variant(ByteBuffer.wrap(new byte[] {0b10011, 0x00, 0x00, 0x00, 0x00}), EMPTY_METADATA);
     testVariant(value, v -> {
-      checkType(v, VariantUtil.ARRAY, VariantUtil.Type.ARRAY);
+      checkType(v, VariantUtil.ARRAY, Variant.Type.ARRAY);
       Assert.assertEquals(0, v.numArrayElements());
     });
   }
@@ -167,7 +167,7 @@ public class TestVariantArray {
     Variant value = new Variant(
         ByteBuffer.wrap(new byte[] {0b10011, (byte) 0xFF, (byte) 0x01, 0x00, 0x00}), EMPTY_METADATA);
     testVariant(value, v -> {
-      checkType(v, VariantUtil.ARRAY, VariantUtil.Type.ARRAY);
+      checkType(v, VariantUtil.ARRAY, Variant.Type.ARRAY);
       Assert.assertEquals(511, v.numArrayElements());
     });
   }
@@ -180,26 +180,26 @@ public class TestVariantArray {
         EMPTY_METADATA);
 
     testVariant(value, v -> {
-      checkType(v, VariantUtil.ARRAY, VariantUtil.Type.ARRAY);
+      checkType(v, VariantUtil.ARRAY, Variant.Type.ARRAY);
       Assert.assertEquals(5, v.numArrayElements());
-      checkType(v.getElementAtIndex(0), VariantUtil.PRIMITIVE, VariantUtil.Type.DATE);
+      checkType(v.getElementAtIndex(0), VariantUtil.PRIMITIVE, Variant.Type.DATE);
       Assert.assertEquals(
           LocalDate.parse("2025-04-17"),
           LocalDate.ofEpochDay(v.getElementAtIndex(0).getInt()));
-      checkType(v.getElementAtIndex(1), VariantUtil.PRIMITIVE, VariantUtil.Type.BOOLEAN);
+      checkType(v.getElementAtIndex(1), VariantUtil.PRIMITIVE, Variant.Type.BOOLEAN);
       Assert.assertTrue(v.getElementAtIndex(1).getBoolean());
-      checkType(v.getElementAtIndex(2), VariantUtil.PRIMITIVE, VariantUtil.Type.INT);
+      checkType(v.getElementAtIndex(2), VariantUtil.PRIMITIVE, Variant.Type.INT);
       Assert.assertEquals(1234567890, v.getElementAtIndex(2).getInt());
-      checkType(v.getElementAtIndex(3), VariantUtil.PRIMITIVE, VariantUtil.Type.STRING);
+      checkType(v.getElementAtIndex(3), VariantUtil.PRIMITIVE, Variant.Type.STRING);
       Assert.assertEquals("variant", v.getElementAtIndex(3).getString());
-      checkType(v.getElementAtIndex(4), VariantUtil.ARRAY, VariantUtil.Type.ARRAY);
+      checkType(v.getElementAtIndex(4), VariantUtil.ARRAY, Variant.Type.ARRAY);
 
       Variant nestedV = v.getElementAtIndex(4);
       Assert.assertEquals(3, nestedV.numArrayElements());
-      checkType(nestedV.getElementAtIndex(0), VariantUtil.PRIMITIVE, VariantUtil.Type.INT);
+      checkType(nestedV.getElementAtIndex(0), VariantUtil.PRIMITIVE, Variant.Type.INT);
       Assert.assertEquals(1234567890, nestedV.getElementAtIndex(0).getInt());
-      checkType(nestedV.getElementAtIndex(1), VariantUtil.PRIMITIVE, VariantUtil.Type.NULL);
-      checkType(nestedV.getElementAtIndex(2), VariantUtil.SHORT_STR, VariantUtil.Type.STRING);
+      checkType(nestedV.getElementAtIndex(1), VariantUtil.PRIMITIVE, Variant.Type.NULL);
+      checkType(nestedV.getElementAtIndex(2), VariantUtil.SHORT_STR, Variant.Type.STRING);
       Assert.assertEquals("c", nestedV.getElementAtIndex(2).getString());
     });
   }
@@ -209,13 +209,13 @@ public class TestVariantArray {
         ByteBuffer.wrap(constructArray(constructString(randomString), VALUE_BOOL, VALUE_INT)), EMPTY_METADATA);
 
     testVariant(value, v -> {
-      checkType(v, VariantUtil.ARRAY, VariantUtil.Type.ARRAY);
+      checkType(v, VariantUtil.ARRAY, Variant.Type.ARRAY);
       Assert.assertEquals(3, v.numArrayElements());
-      checkType(v.getElementAtIndex(0), VariantUtil.PRIMITIVE, VariantUtil.Type.STRING);
+      checkType(v.getElementAtIndex(0), VariantUtil.PRIMITIVE, Variant.Type.STRING);
       Assert.assertEquals(randomString, v.getElementAtIndex(0).getString());
-      checkType(v.getElementAtIndex(1), VariantUtil.PRIMITIVE, VariantUtil.Type.BOOLEAN);
+      checkType(v.getElementAtIndex(1), VariantUtil.PRIMITIVE, Variant.Type.BOOLEAN);
       Assert.assertTrue(v.getElementAtIndex(1).getBoolean());
-      checkType(v.getElementAtIndex(2), VariantUtil.PRIMITIVE, VariantUtil.Type.INT);
+      checkType(v.getElementAtIndex(2), VariantUtil.PRIMITIVE, Variant.Type.INT);
       Assert.assertEquals(1234567890, v.getElementAtIndex(2).getInt());
     });
   }

@@ -40,26 +40,23 @@ public final class Variant {
   static final int BINARY_SEARCH_THRESHOLD = 32;
 
   public Variant(byte[] value, byte[] metadata) {
-    this(value, 0, metadata, 0);
+    this(value, 0, value.length, metadata, 0, metadata.length);
   }
 
-  Variant(byte[] value, int valuePos, byte[] metadata, int metadataPos) {
-    this(
-        ByteBuffer.wrap(value, valuePos, value.length - valuePos),
-        ByteBuffer.wrap(metadata, metadataPos, metadata.length - metadataPos));
+  public Variant(byte[] value, int valuePos, int valueLength, byte[] metadata, int metadataPos, int metadataLength) {
+    this(ByteBuffer.wrap(value, valuePos, valueLength), ByteBuffer.wrap(metadata, metadataPos, metadataLength));
   }
 
-  Variant(ByteBuffer value, ByteBuffer metadata) {
+  public Variant(ByteBuffer value, ByteBuffer metadata) {
+    // THe buffers are read single-byte at a time, so the endianness of the input buffers
+    // are not important.
     this.value = value.asReadOnlyBuffer();
-    this.value.mark();
-
     this.metadata = metadata.asReadOnlyBuffer();
-    this.metadata.mark();
 
     // There is currently only one allowed version.
     if ((metadata.get(metadata.position()) & VariantUtil.VERSION_MASK) != VariantUtil.VERSION) {
       throw new UnsupportedOperationException(String.format(
-          "Unsupported variant metadata version: %02X",
+          "Unsupported variant metadata version: %d",
           metadata.get(metadata.position()) & VariantUtil.VERSION_MASK));
     }
   }
@@ -135,7 +132,7 @@ public final class Variant {
   /**
    * @return the binary value
    */
-  public byte[] getBinary() {
+  public ByteBuffer getBinary() {
     return VariantUtil.getBinary(value);
   }
 
@@ -154,9 +151,37 @@ public final class Variant {
   }
 
   /**
+   * The value type of Variant value. It is determined by the header byte.
+   */
+  public enum Type {
+    OBJECT,
+    ARRAY,
+    NULL,
+    BOOLEAN,
+    BYTE,
+    SHORT,
+    INT,
+    LONG,
+    STRING,
+    DOUBLE,
+    DECIMAL4,
+    DECIMAL8,
+    DECIMAL16,
+    DATE,
+    TIMESTAMP_TZ,
+    TIMESTAMP_NTZ,
+    FLOAT,
+    BINARY,
+    TIME,
+    TIMESTAMP_NANOS,
+    TIMESTAMP_NANOS_NTZ,
+    UUID
+  }
+
+  /**
    * @return the type of the variant value
    */
-  public VariantUtil.Type getType() {
+  public Type getType() {
     return VariantUtil.getType(value);
   }
 
