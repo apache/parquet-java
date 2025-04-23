@@ -70,7 +70,7 @@ class VariantUtil {
    * data. The list of fields ids must be sorted by the field name in alphabetical order.
    * Duplicate field names within one object are not allowed.
    * 5 bits in the type info are used to specify the integer type of the object header. It is
-   * 0_b4_b3b2_b1b0 (MSB is 0), where:
+   * 0_b4_b3b2_b1b0 (most significant bit is 0), where:
    *   - b4: the integer type of size. When it is 0/1, `size` is a little-endian 1/4-byte
    *         unsigned integer.
    *   - b3b2: the integer type of ids. When the 2 bits are 0/1/2, the id list contains
@@ -149,12 +149,12 @@ class VariantUtil {
    */
   static final int TIME = 17;
   /**
-   * Timestamp nanos value. Similar to `TIMESTAMP`, but represents the number of nanoseconds
+   * Timestamp nanos value. Similar to `TIMESTAMP_TZ`, but represents the number of nanoseconds
    * elapsed since the Unix epoch, 1970-01-01 00:00:00 UTC.
    */
-  static final int TIMESTAMP_NANOS = 18;
+  static final int TIMESTAMP_NANOS_TZ = 18;
   /**
-   * Timestamp nanos (without timestamp) value. It has the same content as `TIMESTAMP_NANOS` but
+   * Timestamp nanos (without timestamp) value. It has the same content as `TIMESTAMP_NANOS_TZ` but
    * should always be interpreted as if the local time zone is UTC.
    */
   static final int TIMESTAMP_NANOS_NTZ = 19;
@@ -316,8 +316,8 @@ class VariantUtil {
             return Variant.Type.STRING;
           case TIME:
             return Variant.Type.TIME;
-          case TIMESTAMP_NANOS:
-            return Variant.Type.TIMESTAMP_NANOS;
+          case TIMESTAMP_NANOS_TZ:
+            return Variant.Type.TIMESTAMP_NANOS_TZ;
           case TIMESTAMP_NANOS_NTZ:
             return Variant.Type.TIMESTAMP_NANOS_NTZ;
           case UUID:
@@ -329,12 +329,30 @@ class VariantUtil {
     }
   }
 
-  private static IllegalArgumentException unexpectedType(Variant.Type type) {
-    return new IllegalArgumentException("Expected type to be " + type);
+  /**
+   * Returns the debug string representation of the type of the Variant value `value[pos...]`.
+   * @param value The Variant value to get the type from
+   * @return The String representation of the type of the Variant value
+   */
+  private static String getTypeDebugString(ByteBuffer value) {
+    try {
+      return getType(value).toString();
+    } catch (Exception e) {
+      int basicType = value.get(value.position()) & BASIC_TYPE_MASK;
+      int valueHeader = (value.get(value.position()) >> BASIC_TYPE_BITS) & PRIMITIVE_TYPE_MASK;
+      return String.format("unknownType(basicType: %d, valueHeader: %d)", basicType, valueHeader);
+    }
   }
 
-  private static IllegalArgumentException unexpectedType(Variant.Type[] types) {
-    return new IllegalArgumentException("Expected type to be one of: " + Arrays.toString(types));
+  private static IllegalArgumentException unexpectedType(Variant.Type type, ByteBuffer actualValue) {
+    String actualType = getTypeDebugString(actualValue);
+    return new IllegalArgumentException(String.format("Cannot read %s value as %s", actualType, type));
+  }
+
+  private static IllegalArgumentException unexpectedType(Variant.Type[] types, ByteBuffer actualValue) {
+    String actualType = getTypeDebugString(actualValue);
+    return new IllegalArgumentException(
+        String.format("Cannot read %s value as one of %s", actualType, Arrays.toString(types)));
   }
 
   static boolean getBoolean(ByteBuffer value) {
@@ -342,7 +360,7 @@ class VariantUtil {
     int basicType = value.get(value.position()) & BASIC_TYPE_MASK;
     int typeInfo = (value.get(value.position()) >> BASIC_TYPE_BITS) & PRIMITIVE_TYPE_MASK;
     if (basicType != PRIMITIVE || (typeInfo != TRUE && typeInfo != FALSE)) {
-      throw unexpectedType(Variant.Type.BOOLEAN);
+      throw unexpectedType(Variant.Type.BOOLEAN, value);
     }
     return typeInfo == TRUE;
   }
@@ -350,14 +368,14 @@ class VariantUtil {
   /**
    * Returns a long value from Variant value `value[pos...]`.
    * It is only legal to call it if `getType` returns one of Type.BYTE, SHORT, INT, LONG,
-   * DATE, TIMESTAMP, TIMESTAMP_NTZ, TIME, TIMESTAMP_NANOS, TIMESTAMP_NANOS_NTZ.
+   * DATE, TIMESTAMP_TZ, TIMESTAMP_NTZ, TIME, TIMESTAMP_NANOS_TZ, TIMESTAMP_NANOS_NTZ.
    * If the type is `DATE`, the return value is guaranteed to fit into an int and
    * represents the number of days from the Unix epoch.
-   * If the type is `TIMESTAMP/TIMESTAMP_NTZ`, the return value represents the number of
+   * If the type is `TIMESTAMP_TZ/TIMESTAMP_NTZ`, the return value represents the number of
    * microseconds from the Unix epoch.
    * If the type is `TIME`, the return value represents the number of microseconds since midnight.
-   * If the type is `TIMESTAMP_NANOS/TIMESTAMP_NANOS_NTZ`, the return value represents the number of
-   * nanoseconds from the Unix epoch.
+   * If the type is `TIMESTAMP_NANOS_TZ/TIMESTAMP_NANOS_NTZ`, the return value represents the number
+   * of nanoseconds from the Unix epoch.
    * @param value The Variant value
    * @return The long value
    */
@@ -366,8 +384,20 @@ class VariantUtil {
     int basicType = value.get(value.position()) & BASIC_TYPE_MASK;
     int typeInfo = (value.get(value.position()) >> BASIC_TYPE_BITS) & PRIMITIVE_TYPE_MASK;
     if (basicType != PRIMITIVE) {
-      throw new IllegalStateException(
-          "Expect type to be one of: BYTE, SHORT, INT, LONG, TIMESTAMP, TIMESTAMP_NTZ, TIME, TIMESTAMP_NANOS, TIMESTAMP_NANOS_NTZ");
+      throw unexpectedType(
+          new Variant.Type[] {
+            Variant.Type.BYTE,
+            Variant.Type.SHORT,
+            Variant.Type.INT,
+            Variant.Type.DATE,
+            Variant.Type.LONG,
+            Variant.Type.TIMESTAMP_TZ,
+            Variant.Type.TIMESTAMP_NTZ,
+            Variant.Type.TIME,
+            Variant.Type.TIMESTAMP_NANOS_TZ,
+            Variant.Type.TIMESTAMP_NANOS_NTZ
+          },
+          value);
     }
     switch (typeInfo) {
       case INT8:
@@ -381,12 +411,95 @@ class VariantUtil {
       case TIMESTAMP_TZ:
       case TIMESTAMP_NTZ:
       case TIME:
-      case TIMESTAMP_NANOS:
+      case TIMESTAMP_NANOS_TZ:
       case TIMESTAMP_NANOS_NTZ:
         return readLong(value, value.position() + 1, 8);
       default:
-        throw new IllegalStateException(
-            "Expect type to be one of: BYTE, SHORT, INT, LONG, TIMESTAMP, TIMESTAMP_NTZ, TIME, TIMESTAMP_NANOS, TIMESTAMP_NANOS_NTZ");
+        throw unexpectedType(
+            new Variant.Type[] {
+              Variant.Type.BYTE,
+              Variant.Type.SHORT,
+              Variant.Type.INT,
+              Variant.Type.DATE,
+              Variant.Type.LONG,
+              Variant.Type.TIMESTAMP_TZ,
+              Variant.Type.TIMESTAMP_NTZ,
+              Variant.Type.TIME,
+              Variant.Type.TIMESTAMP_NANOS_TZ,
+              Variant.Type.TIMESTAMP_NANOS_NTZ
+            },
+            value);
+    }
+  }
+
+  /**
+   * Similar to getLong(), but for the types: Type.BYTE, SHORT, INT, DATE.
+   * @param value The Variant value
+   * @return The int value
+   */
+  static int getInt(ByteBuffer value) {
+    checkIndex(value.position(), value.limit());
+    int basicType = value.get(value.position()) & BASIC_TYPE_MASK;
+    int typeInfo = (value.get(value.position()) >> BASIC_TYPE_BITS) & PRIMITIVE_TYPE_MASK;
+    if (basicType != PRIMITIVE) {
+      throw unexpectedType(
+          new Variant.Type[] {Variant.Type.BYTE, Variant.Type.SHORT, Variant.Type.INT, Variant.Type.DATE},
+          value);
+    }
+    switch (typeInfo) {
+      case INT8:
+        return (int) readLong(value, value.position() + 1, 1);
+      case INT16:
+        return (int) readLong(value, value.position() + 1, 2);
+      case INT32:
+      case DATE:
+        return (int) readLong(value, value.position() + 1, 4);
+      default:
+        throw unexpectedType(
+            new Variant.Type[] {Variant.Type.BYTE, Variant.Type.SHORT, Variant.Type.INT, Variant.Type.DATE},
+            value);
+    }
+  }
+
+  /**
+   * Similar to getLong(), but for the types: Type.BYTE, SHORT.
+   * @param value The Variant value
+   * @return The short value
+   */
+  static short getShort(ByteBuffer value) {
+    checkIndex(value.position(), value.limit());
+    int basicType = value.get(value.position()) & BASIC_TYPE_MASK;
+    int typeInfo = (value.get(value.position()) >> BASIC_TYPE_BITS) & PRIMITIVE_TYPE_MASK;
+    if (basicType != PRIMITIVE) {
+      throw unexpectedType(new Variant.Type[] {Variant.Type.BYTE, Variant.Type.SHORT}, value);
+    }
+    switch (typeInfo) {
+      case INT8:
+        return (short) readLong(value, value.position() + 1, 1);
+      case INT16:
+        return (short) readLong(value, value.position() + 1, 2);
+      default:
+        throw unexpectedType(new Variant.Type[] {Variant.Type.BYTE, Variant.Type.SHORT}, value);
+    }
+  }
+
+  /**
+   * Similar to getLong(), but for the types: Type.BYTE, SHORT.
+   * @param value The Variant value
+   * @return The short value
+   */
+  static byte getByte(ByteBuffer value) {
+    checkIndex(value.position(), value.limit());
+    int basicType = value.get(value.position()) & BASIC_TYPE_MASK;
+    int typeInfo = (value.get(value.position()) >> BASIC_TYPE_BITS) & PRIMITIVE_TYPE_MASK;
+    if (basicType != PRIMITIVE) {
+      throw unexpectedType(Variant.Type.BYTE, value);
+    }
+    switch (typeInfo) {
+      case INT8:
+        return (byte) readLong(value, value.position() + 1, 1);
+      default:
+        throw unexpectedType(Variant.Type.BYTE, value);
     }
   }
 
@@ -395,7 +508,7 @@ class VariantUtil {
     int basicType = value.get(value.position()) & BASIC_TYPE_MASK;
     int typeInfo = (value.get(value.position()) >> BASIC_TYPE_BITS) & PRIMITIVE_TYPE_MASK;
     if (basicType != PRIMITIVE || typeInfo != DOUBLE) {
-      throw unexpectedType(Variant.Type.DOUBLE);
+      throw unexpectedType(Variant.Type.DOUBLE, value);
     }
     return Double.longBitsToDouble(readLong(value, value.position() + 1, 8));
   }
@@ -406,7 +519,7 @@ class VariantUtil {
     int typeInfo = (value.get(value.position()) >> BASIC_TYPE_BITS) & PRIMITIVE_TYPE_MASK;
     if (basicType != PRIMITIVE) {
       throw unexpectedType(
-          new Variant.Type[] {Variant.Type.DECIMAL4, Variant.Type.DECIMAL8, Variant.Type.DECIMAL16});
+          new Variant.Type[] {Variant.Type.DECIMAL4, Variant.Type.DECIMAL8, Variant.Type.DECIMAL16}, value);
     }
     // Interpret the scale byte as unsigned. If it is a negative byte, the unsigned value must be
     // greater than `MAX_DECIMAL16_PRECISION` and will trigger an error in `checkDecimal`.
@@ -431,7 +544,8 @@ class VariantUtil {
         break;
       default:
         throw unexpectedType(
-            new Variant.Type[] {Variant.Type.DECIMAL4, Variant.Type.DECIMAL8, Variant.Type.DECIMAL16});
+            new Variant.Type[] {Variant.Type.DECIMAL4, Variant.Type.DECIMAL8, Variant.Type.DECIMAL16},
+            value);
     }
     return result;
   }
@@ -445,7 +559,7 @@ class VariantUtil {
     int basicType = value.get(value.position()) & BASIC_TYPE_MASK;
     int typeInfo = (value.get(value.position()) >> BASIC_TYPE_BITS) & PRIMITIVE_TYPE_MASK;
     if (basicType != PRIMITIVE || typeInfo != FLOAT) {
-      throw unexpectedType(Variant.Type.FLOAT);
+      throw unexpectedType(Variant.Type.FLOAT, value);
     }
     return Float.intBitsToFloat((int) readLong(value, value.position() + 1, 4));
   }
@@ -455,7 +569,7 @@ class VariantUtil {
     int basicType = value.get(value.position()) & BASIC_TYPE_MASK;
     int typeInfo = (value.get(value.position()) >> BASIC_TYPE_BITS) & PRIMITIVE_TYPE_MASK;
     if (basicType != PRIMITIVE || typeInfo != BINARY) {
-      throw unexpectedType(Variant.Type.BINARY);
+      throw unexpectedType(Variant.Type.BINARY, value);
     }
     int start = value.position() + 1 + U32_SIZE;
     int length = readUnsigned(value, value.position() + 1, U32_SIZE);
@@ -488,7 +602,7 @@ class VariantUtil {
         return new String(valueArray);
       }
     }
-    throw unexpectedType(Variant.Type.STRING);
+    throw unexpectedType(Variant.Type.STRING, value);
   }
 
   static java.util.UUID getUUID(ByteBuffer value) {
@@ -496,7 +610,7 @@ class VariantUtil {
     int basicType = value.get(value.position()) & BASIC_TYPE_MASK;
     int typeInfo = (value.get(value.position()) >> BASIC_TYPE_BITS) & PRIMITIVE_TYPE_MASK;
     if (basicType != PRIMITIVE || typeInfo != UUID) {
-      throw unexpectedType(Variant.Type.UUID);
+      throw unexpectedType(Variant.Type.UUID, value);
     }
     int start = value.position() + 1;
     checkIndex(start + UUID_SIZE - 1, value.limit());
@@ -557,7 +671,7 @@ class VariantUtil {
     int basicType = value.get(value.position()) & BASIC_TYPE_MASK;
     int typeInfo = (value.get(value.position()) >> BASIC_TYPE_BITS) & PRIMITIVE_TYPE_MASK;
     if (basicType != OBJECT) {
-      throw unexpectedType(Variant.Type.OBJECT);
+      throw unexpectedType(Variant.Type.OBJECT, value);
     }
     // Refer to the comment of the `OBJECT` constant for the details of the object header encoding.
     // Suppose `typeInfo` has a bit representation of 0_b4_b3b2_b1b0, the following line extracts
@@ -604,7 +718,7 @@ class VariantUtil {
     int basicType = value.get(value.position()) & BASIC_TYPE_MASK;
     int typeInfo = (value.get(value.position()) >> BASIC_TYPE_BITS) & PRIMITIVE_TYPE_MASK;
     if (basicType != ARRAY) {
-      throw unexpectedType(Variant.Type.ARRAY);
+      throw unexpectedType(Variant.Type.ARRAY, value);
     }
     // Refer to the comment of the `ARRAY` constant for the details of the object header encoding.
     // Suppose `typeInfo` has a bit representation of 000_b2_b1b0, the following line extracts

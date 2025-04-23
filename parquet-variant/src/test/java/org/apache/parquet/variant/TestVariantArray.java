@@ -237,4 +237,16 @@ public class TestVariantArray {
     // a string larger than 16777215 bytes to push the value offset size above 3 bytes
     testArrayOffsetSize(randomString(16_800_000));
   }
+
+  @Test
+  public void testInvalidArray() {
+    try {
+      // An object header
+      Variant value = new Variant(ByteBuffer.wrap(new byte[] {0b1000010}), EMPTY_METADATA);
+      value.numArrayElements();
+      Assert.fail("Expected exception not thrown");
+    } catch (Exception e) {
+      Assert.assertEquals("Cannot read OBJECT value as ARRAY", e.getMessage());
+    }
+  }
 }

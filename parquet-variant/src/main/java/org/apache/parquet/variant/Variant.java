@@ -48,8 +48,8 @@ public final class Variant {
   }
 
   public Variant(ByteBuffer value, ByteBuffer metadata) {
-    // THe buffers are read single-byte at a time, so the endianness of the input buffers
-    // are not important.
+    // The buffers are read a single-byte at a time, so the endianness of the input buffers
+    // is not important.
     this.value = value.asReadOnlyBuffer();
     this.metadata = metadata.asReadOnlyBuffer();
 
@@ -72,33 +72,21 @@ public final class Variant {
    * @return the byte value
    */
   public byte getByte() {
-    long longValue = VariantUtil.getLong(value);
-    if (longValue < Byte.MIN_VALUE || longValue > Byte.MAX_VALUE) {
-      throw new IllegalStateException("Value out of range for byte: " + longValue);
-    }
-    return (byte) longValue;
+    return VariantUtil.getByte(value);
   }
 
   /**
    * @return the short value
    */
   public short getShort() {
-    long longValue = VariantUtil.getLong(value);
-    if (longValue < Short.MIN_VALUE || longValue > Short.MAX_VALUE) {
-      throw new IllegalStateException("Value out of range for short: " + longValue);
-    }
-    return (short) longValue;
+    return VariantUtil.getShort(value);
   }
 
   /**
    * @return the int value
    */
   public int getInt() {
-    long longValue = VariantUtil.getLong(value);
-    if (longValue < Integer.MIN_VALUE || longValue > Integer.MAX_VALUE) {
-      throw new IllegalStateException("Value out of range for int: " + longValue);
-    }
-    return (int) longValue;
+    return VariantUtil.getInt(value);
   }
 
   /**
@@ -173,7 +161,7 @@ public final class Variant {
     FLOAT,
     BINARY,
     TIME,
-    TIMESTAMP_NANOS,
+    TIMESTAMP_NANOS_TZ,
     TIMESTAMP_NANOS_NTZ,
     UUID
   }
@@ -186,7 +174,8 @@ public final class Variant {
   }
 
   /**
-   * @return the number of object fields in the variant. `getType()` must be `Type.OBJECT`.
+   * @return the number of object fields in the variant
+   * @throws IllegalArgumentException if `getType()` does not return `Type.OBJECT`
    */
   public int numObjectElements() {
     return VariantUtil.getObjectInfo(value).numElements;
@@ -194,9 +183,10 @@ public final class Variant {
 
   /**
    * Returns the object field Variant value whose key is equal to `key`.
-   * Return null if the key is not found. `getType()` must be `Type.OBJECT`.
+   * Returns null if the key is not found.
    * @param key the key to look up
    * @return the field value whose key is equal to `key`, or null if key is not found
+   * @throws IllegalArgumentException if `getType()` does not return `Type.OBJECT`
    */
   public Variant getFieldByKey(String key) {
     VariantUtil.ObjectInfo info = VariantUtil.getObjectInfo(value);
@@ -250,7 +240,7 @@ public final class Variant {
   /**
    * A field in a Variant object.
    */
-  public static final class ObjectField {
+  static final class ObjectField {
     public final String key;
     public final Variant value;
 
@@ -278,7 +268,8 @@ public final class Variant {
   }
 
   /**
-   * @return the number of array elements. `getType()` must be `Type.ARRAY`.
+   * @return the number of array elements
+   * @throws IllegalArgumentException if `getType()` does not return `Type.ARRAY`
    */
   public int numArrayElements() {
     return VariantUtil.getArrayInfo(value).numElements;
@@ -286,9 +277,10 @@ public final class Variant {
 
   /**
    * Returns the array element Variant value at the `index` slot. Returns null if `index` is
-   * out of the bound of `[0, arraySize())`. `getType()` must be `Type.ARRAY`.
+   * out of the bound of `[0, arraySize())`.
    * @param index the index of the array element to get
    * @return the array element Variant at the `index` slot, or null if `index` is out of bounds
+   * @throws IllegalArgumentException if `getType()` does not return `Type.ARRAY`
    */
   public Variant getElementAtIndex(int index) {
     VariantUtil.ArrayInfo info = VariantUtil.getArrayInfo(value);

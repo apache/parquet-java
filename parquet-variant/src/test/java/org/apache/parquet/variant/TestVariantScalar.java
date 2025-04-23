@@ -521,7 +521,7 @@ public class TestVariantScalar {
         }),
         EMPTY_METADATA);
     testVariant(value, v -> {
-      checkType(v, VariantUtil.PRIMITIVE, Variant.Type.TIMESTAMP_NANOS);
+      checkType(v, VariantUtil.PRIMITIVE, Variant.Type.TIMESTAMP_NANOS_TZ);
       Assert.assertEquals(
           Instant.parse("2025-04-17T08:09:10.123456789Z"), Instant.EPOCH.plus(v.getLong(), ChronoUnit.NANOS));
     });
@@ -543,7 +543,7 @@ public class TestVariantScalar {
         }),
         EMPTY_METADATA);
     testVariant(value, v -> {
-      checkType(v, VariantUtil.PRIMITIVE, Variant.Type.TIMESTAMP_NANOS);
+      checkType(v, VariantUtil.PRIMITIVE, Variant.Type.TIMESTAMP_NANOS_TZ);
       Assert.assertEquals(
           Instant.parse("1969-12-31T23:59:59.999999999Z"), Instant.EPOCH.plus(v.getLong(), ChronoUnit.NANOS));
     });
@@ -612,5 +612,140 @@ public class TestVariantScalar {
       checkType(v, VariantUtil.PRIMITIVE, Variant.Type.UUID);
       Assert.assertEquals(UUID.fromString("00112233-4455-6677-8899-aabbccddeeff"), v.getUUID());
     });
+  }
+
+  @Test
+  public void testInvalidType() {
+    try {
+      Variant value = new Variant(ByteBuffer.wrap(new byte[] {(byte) 0xFC}), EMPTY_METADATA);
+      value.getBoolean();
+      Assert.fail("Expected exception not thrown");
+    } catch (Exception e) {
+      Assert.assertEquals(
+          "Cannot read unknownType(basicType: 0, valueHeader: 63) value as BOOLEAN", e.getMessage());
+    }
+  }
+
+  @Test
+  public void testInvalidBoolean() {
+    try {
+      Variant value = new Variant(ByteBuffer.wrap(new byte[] {primitiveHeader(6)}), EMPTY_METADATA);
+      value.getBoolean();
+      Assert.fail("Expected exception not thrown");
+    } catch (Exception e) {
+      Assert.assertEquals("Cannot read LONG value as BOOLEAN", e.getMessage());
+    }
+  }
+
+  @Test
+  public void testInvalidLong() {
+    try {
+      Variant value = new Variant(ByteBuffer.wrap(new byte[] {primitiveHeader(16)}), EMPTY_METADATA);
+      value.getLong();
+      Assert.fail("Expected exception not thrown");
+    } catch (Exception e) {
+      Assert.assertEquals(
+          "Cannot read STRING value as one of [BYTE, SHORT, INT, DATE, LONG, TIMESTAMP_TZ, TIMESTAMP_NTZ, TIME, TIMESTAMP_NANOS_TZ, TIMESTAMP_NANOS_NTZ]",
+          e.getMessage());
+    }
+  }
+
+  @Test
+  public void testInvalidInt() {
+    try {
+      Variant value = new Variant(ByteBuffer.wrap(new byte[] {primitiveHeader(6)}), EMPTY_METADATA);
+      value.getInt();
+      Assert.fail("Expected exception not thrown");
+    } catch (Exception e) {
+      Assert.assertEquals("Cannot read LONG value as one of [BYTE, SHORT, INT, DATE]", e.getMessage());
+    }
+  }
+
+  @Test
+  public void testInvalidShort() {
+    try {
+      Variant value = new Variant(ByteBuffer.wrap(new byte[] {primitiveHeader(6)}), EMPTY_METADATA);
+      value.getShort();
+      Assert.fail("Expected exception not thrown");
+    } catch (Exception e) {
+      Assert.assertEquals("Cannot read LONG value as one of [BYTE, SHORT]", e.getMessage());
+    }
+  }
+
+  @Test
+  public void testInvalidByte() {
+    try {
+      Variant value = new Variant(ByteBuffer.wrap(new byte[] {primitiveHeader(6)}), EMPTY_METADATA);
+      value.getByte();
+      Assert.fail("Expected exception not thrown");
+    } catch (Exception e) {
+      Assert.assertEquals("Cannot read LONG value as BYTE", e.getMessage());
+    }
+  }
+
+  @Test
+  public void testInvalidFloat() {
+    try {
+      Variant value = new Variant(ByteBuffer.wrap(new byte[] {primitiveHeader(6)}), EMPTY_METADATA);
+      value.getFloat();
+      Assert.fail("Expected exception not thrown");
+    } catch (Exception e) {
+      Assert.assertEquals("Cannot read LONG value as FLOAT", e.getMessage());
+    }
+  }
+
+  @Test
+  public void testInvalidDouble() {
+    try {
+      Variant value = new Variant(ByteBuffer.wrap(new byte[] {primitiveHeader(6)}), EMPTY_METADATA);
+      value.getDouble();
+      Assert.fail("Expected exception not thrown");
+    } catch (Exception e) {
+      Assert.assertEquals("Cannot read LONG value as DOUBLE", e.getMessage());
+    }
+  }
+
+  @Test
+  public void testInvalidDecimal() {
+    try {
+      Variant value = new Variant(ByteBuffer.wrap(new byte[] {primitiveHeader(6), 0}), EMPTY_METADATA);
+      value.getDecimal();
+      Assert.fail("Expected exception not thrown");
+    } catch (Exception e) {
+      Assert.assertEquals("Cannot read LONG value as one of [DECIMAL4, DECIMAL8, DECIMAL16]", e.getMessage());
+    }
+  }
+
+  @Test
+  public void testInvalidUUID() {
+    try {
+      Variant value = new Variant(ByteBuffer.wrap(new byte[] {primitiveHeader(6)}), EMPTY_METADATA);
+      value.getUUID();
+      Assert.fail("Expected exception not thrown");
+    } catch (Exception e) {
+      Assert.assertEquals("Cannot read LONG value as UUID", e.getMessage());
+    }
+  }
+
+  @Test
+  public void testInvalidString() {
+    try {
+      Variant value = new Variant(ByteBuffer.wrap(new byte[] {primitiveHeader(6)}), EMPTY_METADATA);
+      value.getString();
+      Assert.fail("Expected exception not thrown");
+    } catch (Exception e) {
+      Assert.assertEquals("Cannot read LONG value as STRING", e.getMessage());
+    }
+  }
+
+  @Test
+  public void testInvalidBinary() {
+    try {
+      Variant value = new Variant(ByteBuffer.wrap(new byte[] {primitiveHeader(6)}), EMPTY_METADATA);
+      value.getBinary();
+      Assert.fail("Expected exception not thrown");
+    } catch (Exception e) {
+      Assert.assertEquals("Cannot read LONG value as BINARY", e.getMessage());
+    }
   }
 }

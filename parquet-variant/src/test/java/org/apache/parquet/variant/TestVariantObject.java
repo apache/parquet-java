@@ -396,4 +396,16 @@ public class TestVariantObject {
       }
     });
   }
+
+  @Test
+  public void testInvalidObject() {
+    try {
+      // An array header
+      Variant value = new Variant(ByteBuffer.wrap(new byte[] {0b10011}), EMPTY_METADATA);
+      value.numObjectElements();
+      Assert.fail("Expected exception not thrown");
+    } catch (Exception e) {
+      Assert.assertEquals("Cannot read ARRAY value as OBJECT", e.getMessage());
+    }
+  }
 }
