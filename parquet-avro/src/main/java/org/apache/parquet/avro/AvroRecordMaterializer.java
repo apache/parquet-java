@@ -28,8 +28,9 @@ class AvroRecordMaterializer<T> extends RecordMaterializer<T> {
 
   private AvroRecordConverter<T> root;
 
-  public AvroRecordMaterializer(MessageType requestedSchema, Schema avroSchema, GenericData baseModel) {
-    this.root = new AvroRecordConverter<T>(requestedSchema, avroSchema, baseModel);
+  AvroRecordMaterializer(
+      MessageType requestedSchema, Schema avroSchema, GenericData baseModel, ReflectClassValidator validator) {
+    this.root = new AvroRecordConverter<T>(requestedSchema, avroSchema, baseModel, validator);
   }
 
   @Override
