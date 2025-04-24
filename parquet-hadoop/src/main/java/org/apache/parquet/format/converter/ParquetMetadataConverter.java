@@ -1323,7 +1323,7 @@ public class ParquetMetadataConverter {
         if (geography.getAlgorithm() != null) {
           return LogicalTypeAnnotation.geographyType(
               geography.getCrs(),
-              org.apache.parquet.column.statistics.geometry.EdgeInterpolationAlgorithm.valueOf(
+              org.apache.parquet.column.schema.EdgeInterpolationAlgorithm.valueOf(
                   String.valueOf(geography.getAlgorithm())));
         } else {
           return LogicalTypeAnnotation.geographyType(geography.getCrs(), null);

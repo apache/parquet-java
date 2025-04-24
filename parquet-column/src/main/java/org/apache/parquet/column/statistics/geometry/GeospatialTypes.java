@@ -136,12 +136,8 @@ public class GeospatialTypes {
     boolean hasZ = false;
     boolean hasM = false;
     for (Coordinate coordinate : coordinates) {
-      if (!Double.isNaN(coordinate.getZ())) {
-        hasZ = true;
-      }
-      if (!Double.isNaN(coordinate.getM())) {
-        hasM = true;
-      }
+      hasZ = !Double.isNaN(coordinate.getZ());
+      hasM = !Double.isNaN(coordinate.getM());
       if (hasZ && hasM) {
         break;
       }

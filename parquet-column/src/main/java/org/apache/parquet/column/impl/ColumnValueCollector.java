@@ -39,7 +39,6 @@ class ColumnValueCollector {
   private final ColumnDescriptor path;
   private final boolean statisticsEnabled;
   private final boolean sizeStatisticsEnabled;
-  private final boolean geospatialStatisticsEnabled;
   private BloomFilterWriter bloomFilterWriter;
   private BloomFilter bloomFilter;
   private Statistics<?> statistics;
@@ -50,7 +49,6 @@ class ColumnValueCollector {
     this.path = path;
     this.statisticsEnabled = props.getStatisticsEnabled(path);
     this.sizeStatisticsEnabled = props.getSizeStatisticsEnabled(path);
-    this.geospatialStatisticsEnabled = props.getStatisticsEnabled(path);
     resetPageStatistics();
     initBloomFilter(bloomFilterWriter, props);
   }
@@ -64,7 +62,7 @@ class ColumnValueCollector {
             path.getPrimitiveType(), path.getMaxRepetitionLevel(), path.getMaxDefinitionLevel())
         : SizeStatistics.noopBuilder(
             path.getPrimitiveType(), path.getMaxRepetitionLevel(), path.getMaxDefinitionLevel());
-    this.geospatialStatisticsBuilder = geospatialStatisticsEnabled
+    this.geospatialStatisticsBuilder = statisticsEnabled
         ? GeospatialStatistics.newBuilder(path.getPrimitiveType())
         : GeospatialStatistics.noopBuilder();
   }

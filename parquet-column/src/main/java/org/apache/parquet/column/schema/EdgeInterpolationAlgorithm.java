@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.parquet.column.statistics.geometry;
+package org.apache.parquet.column.schema;
 
 /**
  * Edge interpolation algorithm for Geography logical type
