@@ -579,6 +579,12 @@ public class Types {
 
               @Override
               public Optional<Boolean> visit(
+                  LogicalTypeAnnotation.GeometryLogicalTypeAnnotation geometryLogicalType) {
+                return checkBinaryPrimitiveType(geometryLogicalType);
+              }
+
+              @Override
+              public Optional<Boolean> visit(
                   LogicalTypeAnnotation.GeographyLogicalTypeAnnotation geographyLogicalType) {
                 return checkBinaryPrimitiveType(geographyLogicalType);
               }
