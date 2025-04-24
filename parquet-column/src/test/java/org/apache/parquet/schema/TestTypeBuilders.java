@@ -1102,7 +1102,7 @@ public class TestTypeBuilders {
 
     GroupType map = new GroupType(
         REQUIRED, "myMap", OriginalType.MAP, new GroupType(REPEATED, "key_value", new Type[] {keyType, valueType
-    }));
+        }));
     MessageType expected = new MessageType("mapParent", map);
 
     GroupType actual = Types.buildMessage()
@@ -1481,24 +1481,24 @@ public class TestTypeBuilders {
   @Test
   public void testGeometryLogicalType() {
     // Test with default CRS
-    PrimitiveType defaultCrsExpected = new PrimitiveType(
-        REQUIRED, BINARY, "aGeometry", LogicalTypeAnnotation.geometryType("OGC:CRS84"));
+    PrimitiveType defaultCrsExpected =
+        new PrimitiveType(REQUIRED, BINARY, "aGeometry", LogicalTypeAnnotation.geometryType("OGC:CRS84"));
     PrimitiveType defaultCrsActual = Types.required(BINARY)
         .as(LogicalTypeAnnotation.geometryType("OGC:CRS84"))
         .named("aGeometry");
     Assert.assertEquals(defaultCrsExpected, defaultCrsActual);
 
     // Test with custom CRS
-    PrimitiveType customCrsExpected = new PrimitiveType(
-        REQUIRED, BINARY, "aGeometry", LogicalTypeAnnotation.geometryType("EPSG:4326"));
+    PrimitiveType customCrsExpected =
+        new PrimitiveType(REQUIRED, BINARY, "aGeometry", LogicalTypeAnnotation.geometryType("EPSG:4326"));
     PrimitiveType customCrsActual = Types.required(BINARY)
         .as(LogicalTypeAnnotation.geometryType("EPSG:4326"))
         .named("aGeometry");
     Assert.assertEquals(customCrsExpected, customCrsActual);
 
     // Test with optional repetition
-    PrimitiveType optionalGeometryExpected = new PrimitiveType(
-        OPTIONAL, BINARY, "aGeometry", LogicalTypeAnnotation.geometryType("OGC:CRS84"));
+    PrimitiveType optionalGeometryExpected =
+        new PrimitiveType(OPTIONAL, BINARY, "aGeometry", LogicalTypeAnnotation.geometryType("OGC:CRS84"));
     PrimitiveType optionalGeometryActual = Types.optional(BINARY)
         .as(LogicalTypeAnnotation.geometryType("OGC:CRS84"))
         .named("aGeometry");
@@ -1544,11 +1544,10 @@ public class TestTypeBuilders {
   @Test
   public void testGeographyLogicalTypeWithoutEdgeInterpolationAlgorithm() {
     // Test with default CRS and no edge algorithm
-    PrimitiveType defaultCrsExpected = new PrimitiveType(
-        REQUIRED, BINARY, "aGeography", LogicalTypeAnnotation.geographyType());
-    PrimitiveType defaultCrsActual = Types.required(BINARY)
-        .as(LogicalTypeAnnotation.geographyType())
-        .named("aGeography");
+    PrimitiveType defaultCrsExpected =
+        new PrimitiveType(REQUIRED, BINARY, "aGeography", LogicalTypeAnnotation.geographyType());
+    PrimitiveType defaultCrsActual =
+        Types.required(BINARY).as(LogicalTypeAnnotation.geographyType()).named("aGeography");
     Assert.assertEquals(defaultCrsExpected, defaultCrsActual);
 
     // Test with custom CRS and no edge algorithm
@@ -1561,19 +1560,17 @@ public class TestTypeBuilders {
 
     // Test with custom CRS and edge algorithm
     PrimitiveType customCrsWithEdgeAlgorithmExpected = new PrimitiveType(
-        REQUIRED, BINARY, "aGeography",
-        LogicalTypeAnnotation.geographyType("EPSG:4326", null));
+        REQUIRED, BINARY, "aGeography", LogicalTypeAnnotation.geographyType("EPSG:4326", null));
     PrimitiveType customCrsWithEdgeAlgorithmActual = Types.required(BINARY)
         .as(LogicalTypeAnnotation.geographyType("EPSG:4326", null))
         .named("aGeography");
     Assert.assertEquals(customCrsWithEdgeAlgorithmExpected, customCrsWithEdgeAlgorithmActual);
 
     // Test with optional repetition
-    PrimitiveType optionalGeographyExpected = new PrimitiveType(
-        OPTIONAL, BINARY, "aGeography", LogicalTypeAnnotation.geographyType());
-    PrimitiveType optionalGeographyActual = Types.optional(BINARY)
-        .as(LogicalTypeAnnotation.geographyType())
-        .named("aGeography");
+    PrimitiveType optionalGeographyExpected =
+        new PrimitiveType(OPTIONAL, BINARY, "aGeography", LogicalTypeAnnotation.geographyType());
+    PrimitiveType optionalGeographyActual =
+        Types.optional(BINARY).as(LogicalTypeAnnotation.geographyType()).named("aGeography");
     Assert.assertEquals(optionalGeographyExpected, optionalGeographyActual);
   }
 
