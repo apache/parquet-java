@@ -136,12 +136,6 @@
       <scope>compile</scope>
     </dependency>
     <dependency>
-      <groupId>org.locationtech.jts</groupId>
-      <artifactId>jts-core</artifactId>
-      <version>${jts.version}</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
       <groupId>io.airlift</groupId>
       <artifactId>aircompressor</artifactId>
       <version>2.0.2</version>
