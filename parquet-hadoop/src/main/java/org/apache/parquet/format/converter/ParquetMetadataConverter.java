@@ -109,6 +109,7 @@ import org.apache.parquet.format.TimestampType;
 import org.apache.parquet.format.Type;
 import org.apache.parquet.format.TypeDefinedOrder;
 import org.apache.parquet.format.Uncompressed;
+import org.apache.parquet.format.VariantType;
 import org.apache.parquet.format.XxHash;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
@@ -544,6 +545,11 @@ public class ParquetMetadataConverter {
         }
       }
       return of(LogicalType.GEOGRAPHY(geographyType));
+    }
+
+    @Override
+    public Optional<LogicalType> visit(LogicalTypeAnnotation.VariantLogicalTypeAnnotation variantLogicalType) {
+      return of(LogicalTypes.VARIANT(variantLogicalType.getSpecVersion()));
     }
   }
 
@@ -1322,6 +1328,9 @@ public class ParquetMetadataConverter {
         } else {
           return LogicalTypeAnnotation.geographyType(geography.getCrs(), null);
         }
+      case VARIANT:
+        VariantType variant = type.getVARIANT();
+        return LogicalTypeAnnotation.variantType(variant.getSpecification_version());
       default:
         throw new RuntimeException("Unknown logical type " + type);
     }

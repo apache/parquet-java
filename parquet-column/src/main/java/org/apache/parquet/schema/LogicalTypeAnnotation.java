@@ -60,6 +60,14 @@ public abstract class LogicalTypeAnnotation {
         return listType();
       }
     },
+    VARIANT {
+      @Override
+      protected LogicalTypeAnnotation fromString(List<String> params) {
+        Preconditions.checkArgument(
+            params.size() == 1, "Expecting only spec version for variant annotation args: %s", params);
+        return variantType(Byte.parseByte(params.get(0)));
+      }
+    },
     STRING {
       @Override
       protected LogicalTypeAnnotation fromString(List<String> params) {
@@ -287,6 +295,10 @@ public abstract class LogicalTypeAnnotation {
 
   public static ListLogicalTypeAnnotation listType() {
     return ListLogicalTypeAnnotation.INSTANCE;
+  }
+
+  public static VariantLogicalTypeAnnotation variantType(byte specVersion) {
+    return new VariantLogicalTypeAnnotation(specVersion);
   }
 
   public static EnumLogicalTypeAnnotation enumType() {
@@ -1164,6 +1176,49 @@ public abstract class LogicalTypeAnnotation {
     }
   }
 
+  public static class VariantLogicalTypeAnnotation extends LogicalTypeAnnotation {
+    private byte specVersion;
+
+    private VariantLogicalTypeAnnotation(byte specVersion) {
+      this.specVersion = specVersion;
+    }
+
+    @Override
+    public OriginalType toOriginalType() {
+      // No OriginalType for Variant
+      return null;
+    }
+
+    @Override
+    public <T> Optional<T> accept(LogicalTypeAnnotationVisitor<T> logicalTypeAnnotationVisitor) {
+      return logicalTypeAnnotationVisitor.visit(this);
+    }
+
+    @Override
+    LogicalTypeToken getType() {
+      return LogicalTypeToken.VARIANT;
+    }
+
+    public byte getSpecVersion() {
+      return this.specVersion;
+    }
+
+    @Override
+    protected String typeParametersAsString() {
+      return "(" + specVersion + ")";
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      if (!(obj instanceof VariantLogicalTypeAnnotation)) {
+        return false;
+      }
+
+      VariantLogicalTypeAnnotation other = (VariantLogicalTypeAnnotation) obj;
+      return specVersion == other.specVersion;
+    }
+  }
+
   public static class GeometryLogicalTypeAnnotation extends LogicalTypeAnnotation {
     private final String crs;
 
@@ -1307,6 +1362,10 @@ public abstract class LogicalTypeAnnotation {
     }
 
     default Optional<T> visit(ListLogicalTypeAnnotation listLogicalType) {
+      return empty();
+    }
+
+    default Optional<T> visit(VariantLogicalTypeAnnotation variantLogicalType) {
       return empty();
     }
 
