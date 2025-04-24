@@ -824,12 +824,12 @@ public class ParquetMetadataConverter {
     formatBbox.setYmin(bbox.getYMin());
     formatBbox.setYmax(bbox.getYMax());
 
-    if (Double.isInfinite(bbox.getZMin()) && Double.isInfinite(bbox.getZMax())) {
+    if (bbox.isZValid()) {
       formatBbox.setZmin(bbox.getZMin());
       formatBbox.setZmax(bbox.getZMax());
     }
 
-    if (Double.isInfinite(bbox.getMMin()) && Double.isInfinite(bbox.getMMax())) {
+    if (bbox.isMValid()) {
       formatBbox.setMmin(bbox.getMMin());
       formatBbox.setMmax(bbox.getMMax());
     }

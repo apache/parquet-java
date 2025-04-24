@@ -1301,12 +1301,20 @@ public abstract class LogicalTypeAnnotation {
     @Override
     protected String typeParametersAsString() {
       StringBuilder sb = new StringBuilder();
+
+      boolean hasCrs = crs != null && !crs.isEmpty();
+      boolean hasEdgeAlgorithm = edgeAlgorithm != null;
+
+      if (!hasCrs && !hasEdgeAlgorithm) {
+        return ""; // Return empty string when both are empty
+      }
+
       sb.append("(");
-      if (crs != null && !crs.isEmpty()) {
+      if (hasCrs) {
         sb.append(crs);
       }
-      if (edgeAlgorithm != null) {
-        if (crs != null && !crs.isEmpty()) sb.append(",");
+      if (hasEdgeAlgorithm) {
+        if (hasCrs) sb.append(",");
         sb.append(edgeAlgorithm);
       }
       sb.append(")");

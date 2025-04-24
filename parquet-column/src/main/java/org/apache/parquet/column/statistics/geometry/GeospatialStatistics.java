@@ -18,7 +18,6 @@
  */
 package org.apache.parquet.column.statistics.geometry;
 
-import java.util.Objects;
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
@@ -26,12 +25,15 @@ import org.apache.parquet.schema.PrimitiveType;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.io.ParseException;
 import org.locationtech.jts.io.WKBReader;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A structure for capturing metadata for estimating the unencoded,
  * uncompressed size of geospatial data written.
  */
 public class GeospatialStatistics {
+  private static final Logger LOG = LoggerFactory.getLogger(GeospatialStatistics.class);
 
   // Metadata that may impact the statistics calculation
   private final BoundingBox boundingBox;
@@ -92,6 +94,7 @@ public class GeospatialStatistics {
         Geometry geom = reader.read(value.getBytes());
         update(geom);
       } catch (ParseException e) {
+        LOG.warn("Failed to parse WKB geometry, aborting statistics update", e);
         abort();
       }
     }
@@ -183,11 +186,10 @@ public class GeospatialStatistics {
    * @return whether the statistics has valid value.
    */
   public boolean isValid() {
-    if (boundingBox == null && geospatialTypes == null) {
+    if (boundingBox == null || geospatialTypes == null) {
       return false;
     }
-    return Objects.requireNonNull(this.boundingBox).isValid()
-        && Objects.requireNonNull(this.geospatialTypes).isValid();
+    return boundingBox.isValid() && geospatialTypes.isValid();
   }
 
   public void merge(GeospatialStatistics other) {

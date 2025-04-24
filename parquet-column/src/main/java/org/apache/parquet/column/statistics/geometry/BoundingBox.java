@@ -91,6 +91,30 @@ public class BoundingBox {
   }
 
   /**
+   * Checks if the Z dimension of the bounding box is valid.
+   * The Z dimension is considered valid if zMin and zMax are not infinite
+   * and don't contain NaN values.
+   *
+   * @return true if the Z dimension is valid, false otherwise.
+   */
+  public boolean isZValid() {
+    return !(Double.isInfinite(zMin) || Double.isInfinite(zMax) ||
+        Double.isNaN(zMin) || Double.isNaN(zMax));
+  }
+
+  /**
+   * Checks if the M dimension of the bounding box is valid.
+   * The M dimension is considered valid if mMin and mMax are not infinite
+   * and don't contain NaN values.
+   *
+   * @return true if the M dimension is valid, false otherwise.
+   */
+  public boolean isMValid() {
+    return !(Double.isInfinite(mMin) || Double.isInfinite(mMax) ||
+        Double.isNaN(mMin) || Double.isNaN(mMax));
+  }
+
+  /**
    * Checks if the bounding box is empty.
    * A bounding box is considered empty if any bounds are in their initial state
    *
