@@ -59,9 +59,9 @@ import org.apache.parquet.io.InvalidRecordException;
 import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.Converter;
-import org.apache.parquet.io.api.GroupConverter;
 import org.apache.parquet.io.api.PrimitiveConverter;
-import org.apache.parquet.proto.ProtoReadSupport.ProtoGroupConverter;
+import org.apache.parquet.proto.ProtoRecordMaterializer.ParentValueContainerHolder;
+import org.apache.parquet.proto.ProtoRecordMaterializer.ProtoGroupConverter;
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.IncompatibleSchemaModificationException;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
@@ -74,14 +74,14 @@ import org.slf4j.LoggerFactory;
  * Converts Protocol Buffer message (both top level and inner) to parquet.
  * This is internal class, use {@link ProtoRecordConverter}.
  */
-class ProtoMessageConverter extends ProtoGroupConverter {
+class ProtoMessageConverter extends ProtoGroupConverter implements ParentValueContainerHolder {
   private static final Logger LOG = LoggerFactory.getLogger(ProtoMessageConverter.class);
 
   private static final ParentValueContainer DUMMY_PVC = new DummyParentValueContainer();
 
   protected final ParquetConfiguration conf;
   protected final Converter[] converters;
-  protected final ParentValueContainer parent;
+  protected ParentValueContainer parent;
   protected final Message.Builder myBuilder;
   protected final Map<String, String> extraMetadata;
 
@@ -354,6 +354,16 @@ class ProtoMessageConverter extends ProtoGroupConverter {
     return converters.length;
   }
 
+  @Override
+  public ParentValueContainer getParentValueContainer() {
+    return parent;
+  }
+
+  @Override
+  public void setParentValueContainer(ParentValueContainer parentValueContainer) {
+    parent = parentValueContainer;
+  }
+
   abstract static class ParentValueContainer {
 
     /**
@@ -402,6 +412,14 @@ class ProtoMessageConverter extends ProtoGroupConverter {
     public void add(Object value) {
       parent.setField(fieldDescriptor, value);
     }
+
+    public Message.Builder getParent() {
+      return parent;
+    }
+
+    public Descriptors.FieldDescriptor getFieldDescriptor() {
+      return fieldDescriptor;
+    }
   }
 
   static class AddRepeatedFieldParentValueContainer extends ParentValueContainer {
@@ -418,14 +436,22 @@ class ProtoMessageConverter extends ProtoGroupConverter {
     public void add(Object value) {
       parent.addRepeatedField(fieldDescriptor, value);
     }
+
+    public Message.Builder getParent() {
+      return parent;
+    }
+
+    public Descriptors.FieldDescriptor getFieldDescriptor() {
+      return fieldDescriptor;
+    }
   }
 
-  final class ProtoEnumConverter extends PrimitiveConverter {
+  final class ProtoEnumConverter extends PrimitiveConverter implements ParentValueContainerHolder {
 
     private final Descriptors.FieldDescriptor fieldType;
     private final Map<Binary, Descriptors.EnumValueDescriptor> enumLookup;
     private Descriptors.EnumValueDescriptor[] dict;
-    private final ParentValueContainer parent;
+    private ParentValueContainer parent;
     private final Descriptors.EnumDescriptor enumType;
     private final String unknownEnumPrefix;
     private final boolean acceptUnknownEnum;
@@ -544,11 +570,21 @@ class ProtoMessageConverter extends ProtoGroupConverter {
         dict[i] = translateEnumValue(binaryValue);
       }
     }
+
+    @Override
+    public ParentValueContainer getParentValueContainer() {
+      return parent;
+    }
+
+    @Override
+    public void setParentValueContainer(ParentValueContainer parentValueContainer) {
+      parent = parentValueContainer;
+    }
   }
 
-  static final class ProtoBinaryConverter extends PrimitiveConverter {
+  static final class ProtoBinaryConverter extends PrimitiveConverter implements ParentValueContainerHolder {
 
-    final ParentValueContainer parent;
+    ParentValueContainer parent;
 
     public ProtoBinaryConverter(ParentValueContainer parent) {
       this.parent = parent;
@@ -559,11 +595,21 @@ class ProtoMessageConverter extends ProtoGroupConverter {
       ByteString byteString = ByteString.copyFrom(binary.toByteBuffer());
       parent.add(byteString);
     }
+
+    @Override
+    public ParentValueContainer getParentValueContainer() {
+      return parent;
+    }
+
+    @Override
+    public void setParentValueContainer(ParentValueContainer parentValueContainer) {
+      parent = parentValueContainer;
+    }
   }
 
-  static final class ProtoBooleanConverter extends PrimitiveConverter {
+  static final class ProtoBooleanConverter extends PrimitiveConverter implements ParentValueContainerHolder {
 
-    final ParentValueContainer parent;
+    ParentValueContainer parent;
 
     public ProtoBooleanConverter(ParentValueContainer parent) {
       this.parent = parent;
@@ -571,13 +617,23 @@ class ProtoMessageConverter extends ProtoGroupConverter {
 
     @Override
     public void addBoolean(boolean value) {
-      parent.add(value);
+      parent.addBoolean(value);
+    }
+
+    @Override
+    public ParentValueContainer getParentValueContainer() {
+      return parent;
+    }
+
+    @Override
+    public void setParentValueContainer(ParentValueContainer parentValueContainer) {
+      parent = parentValueContainer;
     }
   }
 
-  static final class ProtoDoubleConverter extends PrimitiveConverter {
+  static final class ProtoDoubleConverter extends PrimitiveConverter implements ParentValueContainerHolder {
 
-    final ParentValueContainer parent;
+    ParentValueContainer parent;
 
     public ProtoDoubleConverter(ParentValueContainer parent) {
       this.parent = parent;
@@ -585,13 +641,23 @@ class ProtoMessageConverter extends ProtoGroupConverter {
 
     @Override
     public void addDouble(double value) {
-      parent.add(value);
+      parent.addDouble(value);
+    }
+
+    @Override
+    public ParentValueContainer getParentValueContainer() {
+      return parent;
+    }
+
+    @Override
+    public void setParentValueContainer(ParentValueContainer parentValueContainer) {
+      parent = parentValueContainer;
     }
   }
 
-  static final class ProtoFloatConverter extends PrimitiveConverter {
+  static final class ProtoFloatConverter extends PrimitiveConverter implements ParentValueContainerHolder {
 
-    final ParentValueContainer parent;
+    ParentValueContainer parent;
 
     public ProtoFloatConverter(ParentValueContainer parent) {
       this.parent = parent;
@@ -599,13 +665,23 @@ class ProtoMessageConverter extends ProtoGroupConverter {
 
     @Override
     public void addFloat(float value) {
-      parent.add(value);
+      parent.addFloat(value);
+    }
+
+    @Override
+    public ParentValueContainer getParentValueContainer() {
+      return parent;
+    }
+
+    @Override
+    public void setParentValueContainer(ParentValueContainer parentValueContainer) {
+      parent = parentValueContainer;
     }
   }
 
-  static final class ProtoIntConverter extends PrimitiveConverter {
+  static final class ProtoIntConverter extends PrimitiveConverter implements ParentValueContainerHolder {
 
-    final ParentValueContainer parent;
+    ParentValueContainer parent;
 
     public ProtoIntConverter(ParentValueContainer parent) {
       this.parent = parent;
@@ -613,13 +689,23 @@ class ProtoMessageConverter extends ProtoGroupConverter {
 
     @Override
     public void addInt(int value) {
-      parent.add(value);
+      parent.addInt(value);
+    }
+
+    @Override
+    public ParentValueContainer getParentValueContainer() {
+      return parent;
+    }
+
+    @Override
+    public void setParentValueContainer(ParentValueContainer parentValueContainer) {
+      parent = parentValueContainer;
     }
   }
 
-  static final class ProtoLongConverter extends PrimitiveConverter {
+  static final class ProtoLongConverter extends PrimitiveConverter implements ParentValueContainerHolder {
 
-    final ParentValueContainer parent;
+    ParentValueContainer parent;
 
     public ProtoLongConverter(ParentValueContainer parent) {
       this.parent = parent;
@@ -627,13 +713,23 @@ class ProtoMessageConverter extends ProtoGroupConverter {
 
     @Override
     public void addLong(long value) {
-      parent.add(value);
+      parent.addLong(value);
+    }
+
+    @Override
+    public ParentValueContainer getParentValueContainer() {
+      return parent;
+    }
+
+    @Override
+    public void setParentValueContainer(ParentValueContainer parentValueContainer) {
+      parent = parentValueContainer;
     }
   }
 
-  static final class ProtoStringConverter extends PrimitiveConverter {
+  static final class ProtoStringConverter extends PrimitiveConverter implements ParentValueContainerHolder {
 
-    final ParentValueContainer parent;
+    ParentValueContainer parent;
 
     public ProtoStringConverter(ParentValueContainer parent) {
       this.parent = parent;
@@ -644,11 +740,21 @@ class ProtoMessageConverter extends ProtoGroupConverter {
       String str = binary.toStringUsingUTF8();
       parent.add(str);
     }
+
+    @Override
+    public ParentValueContainer getParentValueContainer() {
+      return parent;
+    }
+
+    @Override
+    public void setParentValueContainer(ParentValueContainer parentValueContainer) {
+      parent = parentValueContainer;
+    }
   }
 
-  static final class ProtoTimestampConverter extends PrimitiveConverter {
+  static final class ProtoTimestampConverter extends PrimitiveConverter implements ParentValueContainerHolder {
 
-    final ParentValueContainer parent;
+    ParentValueContainer parent;
     final LogicalTypeAnnotation.TimestampLogicalTypeAnnotation logicalTypeAnnotation;
 
     public ProtoTimestampConverter(
@@ -672,11 +778,21 @@ class ProtoMessageConverter extends ProtoGroupConverter {
           break;
       }
     }
+
+    @Override
+    public ParentValueContainer getParentValueContainer() {
+      return parent;
+    }
+
+    @Override
+    public void setParentValueContainer(ParentValueContainer parentValueContainer) {
+      parent = parentValueContainer;
+    }
   }
 
-  static final class ProtoDateConverter extends PrimitiveConverter {
+  static final class ProtoDateConverter extends PrimitiveConverter implements ParentValueContainerHolder {
 
-    final ParentValueContainer parent;
+    ParentValueContainer parent;
 
     public ProtoDateConverter(ParentValueContainer parent) {
       this.parent = parent;
@@ -692,11 +808,21 @@ class ProtoMessageConverter extends ProtoGroupConverter {
           .build();
       parent.add(date);
     }
+
+    @Override
+    public ParentValueContainer getParentValueContainer() {
+      return parent;
+    }
+
+    @Override
+    public void setParentValueContainer(ParentValueContainer parentValueContainer) {
+      parent = parentValueContainer;
+    }
   }
 
-  static final class ProtoTimeConverter extends PrimitiveConverter {
+  static final class ProtoTimeConverter extends PrimitiveConverter implements ParentValueContainerHolder {
 
-    final ParentValueContainer parent;
+    ParentValueContainer parent;
     final LogicalTypeAnnotation.TimeLogicalTypeAnnotation logicalTypeAnnotation;
 
     public ProtoTimeConverter(
@@ -734,11 +860,21 @@ class ProtoMessageConverter extends ProtoGroupConverter {
           .build();
       parent.add(timeOfDay);
     }
+
+    @Override
+    public ParentValueContainer getParentValueContainer() {
+      return parent;
+    }
+
+    @Override
+    public void setParentValueContainer(ParentValueContainer parentValueContainer) {
+      parent = parentValueContainer;
+    }
   }
 
-  static final class ProtoDoubleValueConverter extends PrimitiveConverter {
+  static final class ProtoDoubleValueConverter extends PrimitiveConverter implements ParentValueContainerHolder {
 
-    final ParentValueContainer parent;
+    ParentValueContainer parent;
 
     public ProtoDoubleValueConverter(ParentValueContainer parent) {
       this.parent = parent;
@@ -748,11 +884,21 @@ class ProtoMessageConverter extends ProtoGroupConverter {
     public void addDouble(double value) {
       parent.add(DoubleValue.of(value));
     }
+
+    @Override
+    public ParentValueContainer getParentValueContainer() {
+      return parent;
+    }
+
+    @Override
+    public void setParentValueContainer(ParentValueContainer parentValueContainer) {
+      parent = parentValueContainer;
+    }
   }
 
-  static final class ProtoFloatValueConverter extends PrimitiveConverter {
+  static final class ProtoFloatValueConverter extends PrimitiveConverter implements ParentValueContainerHolder {
 
-    final ParentValueContainer parent;
+    ParentValueContainer parent;
 
     public ProtoFloatValueConverter(ParentValueContainer parent) {
       this.parent = parent;
@@ -762,11 +908,21 @@ class ProtoMessageConverter extends ProtoGroupConverter {
     public void addFloat(float value) {
       parent.add(FloatValue.of(value));
     }
+
+    @Override
+    public ParentValueContainer getParentValueContainer() {
+      return parent;
+    }
+
+    @Override
+    public void setParentValueContainer(ParentValueContainer parentValueContainer) {
+      parent = parentValueContainer;
+    }
   }
 
-  static final class ProtoInt64ValueConverter extends PrimitiveConverter {
+  static final class ProtoInt64ValueConverter extends PrimitiveConverter implements ParentValueContainerHolder {
 
-    final ParentValueContainer parent;
+    ParentValueContainer parent;
 
     public ProtoInt64ValueConverter(ParentValueContainer parent) {
       this.parent = parent;
@@ -776,11 +932,21 @@ class ProtoMessageConverter extends ProtoGroupConverter {
     public void addLong(long value) {
       parent.add(Int64Value.of(value));
     }
+
+    @Override
+    public ParentValueContainer getParentValueContainer() {
+      return parent;
+    }
+
+    @Override
+    public void setParentValueContainer(ParentValueContainer parentValueContainer) {
+      parent = parentValueContainer;
+    }
   }
 
-  static final class ProtoUInt64ValueConverter extends PrimitiveConverter {
+  static final class ProtoUInt64ValueConverter extends PrimitiveConverter implements ParentValueContainerHolder {
 
-    final ParentValueContainer parent;
+    ParentValueContainer parent;
 
     public ProtoUInt64ValueConverter(ParentValueContainer parent) {
       this.parent = parent;
@@ -790,11 +956,21 @@ class ProtoMessageConverter extends ProtoGroupConverter {
     public void addLong(long value) {
       parent.add(UInt64Value.of(value));
     }
+
+    @Override
+    public ParentValueContainer getParentValueContainer() {
+      return parent;
+    }
+
+    @Override
+    public void setParentValueContainer(ParentValueContainer parentValueContainer) {
+      parent = parentValueContainer;
+    }
   }
 
-  static final class ProtoInt32ValueConverter extends PrimitiveConverter {
+  static final class ProtoInt32ValueConverter extends PrimitiveConverter implements ParentValueContainerHolder {
 
-    final ParentValueContainer parent;
+    ParentValueContainer parent;
 
     public ProtoInt32ValueConverter(ParentValueContainer parent) {
       this.parent = parent;
@@ -804,11 +980,21 @@ class ProtoMessageConverter extends ProtoGroupConverter {
     public void addInt(int value) {
       parent.add(Int32Value.of(value));
     }
+
+    @Override
+    public ParentValueContainer getParentValueContainer() {
+      return parent;
+    }
+
+    @Override
+    public void setParentValueContainer(ParentValueContainer parentValueContainer) {
+      parent = parentValueContainer;
+    }
   }
 
-  static final class ProtoUInt32ValueConverter extends PrimitiveConverter {
+  static final class ProtoUInt32ValueConverter extends PrimitiveConverter implements ParentValueContainerHolder {
 
-    final ParentValueContainer parent;
+    ParentValueContainer parent;
 
     public ProtoUInt32ValueConverter(ParentValueContainer parent) {
       this.parent = parent;
@@ -818,11 +1004,21 @@ class ProtoMessageConverter extends ProtoGroupConverter {
     public void addLong(long value) {
       parent.add(UInt32Value.of(Math.toIntExact(value)));
     }
+
+    @Override
+    public ParentValueContainer getParentValueContainer() {
+      return parent;
+    }
+
+    @Override
+    public void setParentValueContainer(ParentValueContainer parentValueContainer) {
+      parent = parentValueContainer;
+    }
   }
 
-  static final class ProtoBoolValueConverter extends PrimitiveConverter {
+  static final class ProtoBoolValueConverter extends PrimitiveConverter implements ParentValueContainerHolder {
 
-    final ParentValueContainer parent;
+    ParentValueContainer parent;
 
     public ProtoBoolValueConverter(ParentValueContainer parent) {
       this.parent = parent;
@@ -832,11 +1028,21 @@ class ProtoMessageConverter extends ProtoGroupConverter {
     public void addBoolean(boolean value) {
       parent.add(BoolValue.of(value));
     }
+
+    @Override
+    public ParentValueContainer getParentValueContainer() {
+      return parent;
+    }
+
+    @Override
+    public void setParentValueContainer(ParentValueContainer parentValueContainer) {
+      parent = parentValueContainer;
+    }
   }
 
-  static final class ProtoStringValueConverter extends PrimitiveConverter {
+  static final class ProtoStringValueConverter extends PrimitiveConverter implements ParentValueContainerHolder {
 
-    final ParentValueContainer parent;
+    ParentValueContainer parent;
 
     public ProtoStringValueConverter(ParentValueContainer parent) {
       this.parent = parent;
@@ -847,11 +1053,21 @@ class ProtoMessageConverter extends ProtoGroupConverter {
       String str = binary.toStringUsingUTF8();
       parent.add(StringValue.of(str));
     }
+
+    @Override
+    public ParentValueContainer getParentValueContainer() {
+      return parent;
+    }
+
+    @Override
+    public void setParentValueContainer(ParentValueContainer parentValueContainer) {
+      parent = parentValueContainer;
+    }
   }
 
-  static final class ProtoBytesValueConverter extends PrimitiveConverter {
+  static final class ProtoBytesValueConverter extends PrimitiveConverter implements ParentValueContainerHolder {
 
-    final ParentValueContainer parent;
+    ParentValueContainer parent;
 
     public ProtoBytesValueConverter(ParentValueContainer parent) {
       this.parent = parent;
@@ -861,6 +1077,16 @@ class ProtoMessageConverter extends ProtoGroupConverter {
     public void addBinary(Binary binary) {
       ByteString byteString = ByteString.copyFrom(binary.toByteBuffer());
       parent.add(BytesValue.of(byteString));
+    }
+
+    @Override
+    public ParentValueContainer getParentValueContainer() {
+      return parent;
+    }
+
+    @Override
+    public void setParentValueContainer(ParentValueContainer parentValueContainer) {
+      parent = parentValueContainer;
     }
   }
 

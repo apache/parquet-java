@@ -57,4 +57,13 @@ class ProtoRecordMaterializer<T extends MessageOrBuilder> extends RecordMaterial
   public GroupConverter getRootConverter() {
     return root;
   }
+
+  interface ParentValueContainerHolder {
+    ProtoMessageConverter.ParentValueContainer getParentValueContainer();
+    void setParentValueContainer(ProtoMessageConverter.ParentValueContainer parentValueContainer);
+  }
+
+  abstract static class ProtoGroupConverter extends GroupConverter {
+    abstract int getFieldCount();
+  }
 }

@@ -59,12 +59,12 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Queue;
+import java.util.Stack;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
-import com.twitter.elephantbird.util.Protobufs;
 import net.bytebuddy.ByteBuddy;
 import net.bytebuddy.description.field.FieldDescription;
 import net.bytebuddy.description.method.MethodDescription;
@@ -98,11 +98,14 @@ import net.bytebuddy.matcher.ElementMatchers;
 import net.bytebuddy.utility.JavaConstant;
 import org.apache.parquet.conf.ParquetConfiguration;
 import org.apache.parquet.io.api.Binary;
+import org.apache.parquet.io.api.Converter;
+import org.apache.parquet.io.api.PrimitiveConverter;
 import org.apache.parquet.io.api.RecordConsumer;
 import org.apache.parquet.io.api.RecordMaterializer;
 import org.apache.parquet.proto.ByteBuddyCodeGen.CodeGenUtils.Codegen;
 import org.apache.parquet.proto.ByteBuddyCodeGen.CodeGenUtils.Implementations;
 import org.apache.parquet.proto.ByteBuddyCodeGen.CodeGenUtils.LocalVar;
+import org.apache.parquet.proto.ProtoRecordMaterializer.ProtoGroupConverter;
 import org.apache.parquet.schema.MessageType;
 
 public class ByteBuddyCodeGen {
@@ -2755,7 +2758,55 @@ public class ByteBuddyCodeGen {
         ProtoReadSupport.CodegenMode codegenMode,
         ParquetConfiguration configuration) {
 
+      visitConverters(protoRecordMaterializer.getRootConverter(), new Stack<>());
+
       return protoRecordMaterializer;
+    }
+
+    static void visitConverters(Converter converter, Stack<ProtoGroupConverter> parentConverters) {
+      StringBuilder indentBuilder = new StringBuilder();
+      for (int i = 0; i < parentConverters.size(); i++) {
+        indentBuilder.append(" ");
+      }
+      String indent = indentBuilder.toString();
+
+      String parentValueContainerInfo = "";
+      if (converter instanceof ProtoRecordMaterializer.ParentValueContainerHolder) {
+        ProtoRecordMaterializer.ParentValueContainerHolder holder =
+            (ProtoRecordMaterializer.ParentValueContainerHolder) converter;
+        ProtoMessageConverter.ParentValueContainer parentValueContainer = holder.getParentValueContainer();
+        if (parentValueContainer instanceof ProtoMessageConverter.SetFieldParentValueContainer) {
+          ProtoMessageConverter.SetFieldParentValueContainer pvc = (ProtoMessageConverter.SetFieldParentValueContainer) parentValueContainer;
+          Descriptors.FieldDescriptor fieldDescriptor = pvc.getFieldDescriptor();
+          String containingTypeName = fieldDescriptor.getContainingType().getName();
+          String fieldName = fieldDescriptor.getName();
+          Message.Builder parent = pvc.getParent();
+          parentValueContainerInfo = " : single : " + containingTypeName + "." + fieldName + " : " + (parent != null ? parent.getClass() : "null");
+        } else if (parentValueContainer instanceof ProtoMessageConverter.AddRepeatedFieldParentValueContainer) {
+          ProtoMessageConverter.AddRepeatedFieldParentValueContainer pvc = (ProtoMessageConverter.AddRepeatedFieldParentValueContainer) parentValueContainer;
+          Descriptors.FieldDescriptor fieldDescriptor = pvc.getFieldDescriptor();
+          String containingTypeName = fieldDescriptor.getContainingType().getName();
+          String fieldName = fieldDescriptor.getName();
+          Message.Builder parent = pvc.getParent();
+          parentValueContainerInfo = " : repeated : " + containingTypeName + "." + fieldName + " : " + (parent != null ? parent.getClass() : "null");
+        }
+      }
+
+      if (converter instanceof ProtoGroupConverter) {
+        System.out.println(indent + "ProtoGroupConverter: " + converter.getClass() + parentValueContainerInfo);
+        ProtoGroupConverter groupConverter =
+            (ProtoGroupConverter) converter;
+        for (int i = 0; i < groupConverter.getFieldCount(); i++) {
+          Converter fieldConverter = groupConverter.getConverter(i);
+          parentConverters.push(groupConverter);
+          visitConverters(fieldConverter, parentConverters);
+          parentConverters.pop();
+        }
+      } else if (converter instanceof PrimitiveConverter) {
+        System.out.println(indent + "PrimitiveConverter: " + converter.getClass() + parentValueContainerInfo);
+      } else {
+        System.out.println(indent + "GroupConverter: " + converter.getClass() + parentValueContainerInfo);
+      }
     }
 
   }

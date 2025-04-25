@@ -26,7 +26,6 @@ import org.apache.parquet.conf.HadoopParquetConfiguration;
 import org.apache.parquet.conf.ParquetConfiguration;
 import org.apache.parquet.hadoop.api.InitContext;
 import org.apache.parquet.hadoop.api.ReadSupport;
-import org.apache.parquet.io.api.GroupConverter;
 import org.apache.parquet.io.api.RecordMaterializer;
 import org.apache.parquet.schema.MessageType;
 import org.slf4j.Logger;
@@ -41,10 +40,6 @@ public class ProtoReadSupport<T extends Message> extends ReadSupport<T> {
   public static final String PB_CLASS = "parquet.proto.class";
   public static final String PB_DESCRIPTOR = "parquet.proto.descriptor";
   public static final String PB_CODEGEN = "parquet.proto.readCodegen";
-
-  abstract static class ProtoGroupConverter extends GroupConverter {
-    abstract int getFieldCount();
-  }
 
   public enum CodegenMode {
     OFF {
