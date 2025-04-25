@@ -50,8 +50,9 @@ public class HadoopPositionOutputStream extends PositionOutputStream {
     wrapped.write(b, off, len);
   }
 
+  @Deprecated
   public void sync() throws IOException {
-    wrapped.hsync();
+    // sync is not necessary for Parquet use cases.
   }
 
   @Override
@@ -61,8 +62,6 @@ public class HadoopPositionOutputStream extends PositionOutputStream {
 
   @Override
   public void close() throws IOException {
-    try (FSDataOutputStream fdos = wrapped) {
-      fdos.hflush();
-    }
+    wrapped.close();
   }
 }
