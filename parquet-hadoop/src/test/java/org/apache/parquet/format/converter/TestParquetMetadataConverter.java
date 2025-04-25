@@ -88,6 +88,8 @@ import org.apache.parquet.column.statistics.IntStatistics;
 import org.apache.parquet.column.statistics.LongStatistics;
 import org.apache.parquet.column.statistics.SizeStatistics;
 import org.apache.parquet.column.statistics.Statistics;
+import org.apache.parquet.column.statistics.geometry.BoundingBox;
+import org.apache.parquet.column.statistics.geometry.GeospatialTypes;
 import org.apache.parquet.crypto.DecryptionPropertiesFactory;
 import org.apache.parquet.crypto.EncryptionPropertiesFactory;
 import org.apache.parquet.crypto.FileDecryptionProperties;
@@ -101,6 +103,7 @@ import org.apache.parquet.format.ConvertedType;
 import org.apache.parquet.format.DecimalType;
 import org.apache.parquet.format.FieldRepetitionType;
 import org.apache.parquet.format.FileMetaData;
+import org.apache.parquet.format.GeospatialStatistics;
 import org.apache.parquet.format.LogicalType;
 import org.apache.parquet.format.MapType;
 import org.apache.parquet.format.PageHeader;
@@ -1660,5 +1663,158 @@ public class TestParquetMetadataConverter {
     assertEquals(Optional.of(1024L), sizeStatistics.getUnencodedByteArrayDataBytes());
     assertEquals(repLevelHistogram, sizeStatistics.getRepetitionLevelHistogram());
     assertEquals(defLevelHistogram, sizeStatistics.getDefinitionLevelHistogram());
+  }
+
+  @Test
+  public void testGeospatialStatisticsConversion() {
+    PrimitiveType geometryType = Types.optional(PrimitiveTypeName.BINARY)
+        .as(LogicalTypeAnnotation.geometryType("EPSG:4326"))
+        .named("geometry");
+
+    // Test valid bounding box
+    org.apache.parquet.column.statistics.geometry.BoundingBox validBbox =
+        new org.apache.parquet.column.statistics.geometry.BoundingBox(
+            -180.0, 180.0, // x min/max
+            -90.0, 90.0, // y min/max
+            0.0, 100.0, // z min/max
+            0.0, 1000.0); // m min/max
+
+    GeospatialTypes geomTypes = new GeospatialTypes(new HashSet<>(Arrays.asList(1, 2, 3)));
+
+    org.apache.parquet.column.statistics.geometry.GeospatialStatistics originalStats =
+        new org.apache.parquet.column.statistics.geometry.GeospatialStatistics(validBbox, geomTypes, null);
+
+    // Convert to Parquet format
+    ParquetMetadataConverter converter = new ParquetMetadataConverter();
+    GeospatialStatistics parquetStats = converter.toParquetGeospatialStatistics(originalStats);
+
+    // Verify the conversion
+    assertNotNull("Parquet geospatial statistics should not be null", parquetStats);
+    assertTrue("BBox should be set", parquetStats.isSetBbox());
+    assertEquals(-180.0, parquetStats.getBbox().getXmin(), 0.0);
+    assertEquals(180.0, parquetStats.getBbox().getXmax(), 0.0);
+    assertEquals(-90.0, parquetStats.getBbox().getYmin(), 0.0);
+    assertEquals(90.0, parquetStats.getBbox().getYmax(), 0.0);
+    assertEquals(0.0, parquetStats.getBbox().getZmin(), 0.0);
+    assertEquals(100.0, parquetStats.getBbox().getZmax(), 0.0);
+    assertEquals(0.0, parquetStats.getBbox().getMmin(), 0.0);
+    assertEquals(1000.0, parquetStats.getBbox().getMmax(), 0.0);
+
+    assertTrue("Geospatial types should be set", parquetStats.isSetGeospatial_types());
+    assertEquals(3, parquetStats.getGeospatial_types().size());
+    assertTrue(parquetStats.getGeospatial_types().contains(1));
+    assertTrue(parquetStats.getGeospatial_types().contains(2));
+    assertTrue(parquetStats.getGeospatial_types().contains(3));
+
+    // Convert back to internal format
+    org.apache.parquet.column.statistics.geometry.GeospatialStatistics convertedStats =
+        ParquetMetadataConverter.fromParquetStatistics(parquetStats, geometryType);
+
+    // Verify round-trip conversion
+    assertNotNull("Converted geospatial statistics should not be null", convertedStats);
+    assertNotNull("BBox should not be null", convertedStats.getBoundingBox());
+    assertEquals(-180.0, convertedStats.getBoundingBox().getXMin(), 0.0);
+    assertEquals(180.0, convertedStats.getBoundingBox().getXMax(), 0.0);
+    assertEquals(-90.0, convertedStats.getBoundingBox().getYMin(), 0.0);
+    assertEquals(90.0, convertedStats.getBoundingBox().getYMax(), 0.0);
+    assertEquals(0.0, convertedStats.getBoundingBox().getZMin(), 0.0);
+    assertEquals(100.0, convertedStats.getBoundingBox().getZMax(), 0.0);
+    assertEquals(0.0, convertedStats.getBoundingBox().getMMin(), 0.0);
+    assertEquals(1000.0, convertedStats.getBoundingBox().getMMax(), 0.0);
+
+    assertNotNull("Geospatial types should not be null", convertedStats.getGeospatialTypes());
+    assertEquals(3, convertedStats.getGeospatialTypes().getTypes().size());
+    assertTrue(convertedStats.getGeospatialTypes().getTypes().contains(1));
+    assertTrue(convertedStats.getGeospatialTypes().getTypes().contains(2));
+    assertTrue(convertedStats.getGeospatialTypes().getTypes().contains(3));
+  }
+
+  @Test
+  public void testGeospatialStatisticsWithInvalidBBox() {
+    ParquetMetadataConverter converter = new ParquetMetadataConverter();
+
+    // Create test cases with different invalid bounding boxes
+    // Case 1: NaN in primary coordinates (x, y)
+    BoundingBox invalidXY = new BoundingBox(Double.NaN, 10.0, 0.0, 10.0, 0.0, 10.0, 0.0, 10.0);
+
+    // Case 2: NaN in Z coordinate
+    BoundingBox invalidZ = new BoundingBox(0.0, 10.0, 0.0, 10.0, Double.NaN, 10.0, 0.0, 10.0);
+
+    // Case 3: NaN in M coordinate
+    BoundingBox invalidM = new BoundingBox(0.0, 10.0, 0.0, 10.0, 0.0, 10.0, Double.NaN, 10.0);
+
+    // Case 4: Empty (infinite) bounding box
+    BoundingBox emptyBox = new BoundingBox(
+        Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY,
+        Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY,
+        Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY,
+        Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY);
+
+    // Case 5: Partial emptiness (only X dimension is empty)
+    BoundingBox partialEmptyX =
+        new BoundingBox(Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY, 0.0, 10.0, 0.0, 10.0, 0.0, 10.0);
+
+    // Case 6: Partial emptiness (only Y dimension is empty)
+    BoundingBox partialEmptyY =
+        new BoundingBox(0.0, 10.0, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY, 0.0, 10.0, 0.0, 10.0);
+
+    // Case 7: Valid bounding box (for comparison)
+    BoundingBox validBox = new BoundingBox(0.0, 10.0, 0.0, 10.0, 0.0, 10.0, 0.0, 10.0);
+
+    // Create geospatial statistics with each bounding box
+    org.apache.parquet.column.statistics.geometry.GeospatialStatistics invalidXYStats =
+        new org.apache.parquet.column.statistics.geometry.GeospatialStatistics(invalidXY, null, null);
+    org.apache.parquet.column.statistics.geometry.GeospatialStatistics invalidZStats =
+        new org.apache.parquet.column.statistics.geometry.GeospatialStatistics(invalidZ, null, null);
+    org.apache.parquet.column.statistics.geometry.GeospatialStatistics invalidMStats =
+        new org.apache.parquet.column.statistics.geometry.GeospatialStatistics(invalidM, null, null);
+    org.apache.parquet.column.statistics.geometry.GeospatialStatistics emptyBoxStats =
+        new org.apache.parquet.column.statistics.geometry.GeospatialStatistics(emptyBox, null, null);
+    org.apache.parquet.column.statistics.geometry.GeospatialStatistics partialEmptyXStats =
+        new org.apache.parquet.column.statistics.geometry.GeospatialStatistics(partialEmptyX, null, null);
+    org.apache.parquet.column.statistics.geometry.GeospatialStatistics partialEmptyYStats =
+        new org.apache.parquet.column.statistics.geometry.GeospatialStatistics(partialEmptyY, null, null);
+    org.apache.parquet.column.statistics.geometry.GeospatialStatistics validBoxStats =
+        new org.apache.parquet.column.statistics.geometry.GeospatialStatistics(validBox, null, null);
+
+    // Test conversion to Parquet format
+    // Case 1: NaN in primary coordinates (x, y) - should return null
+    GeospatialStatistics parquetStats1 = converter.toParquetGeospatialStatistics(invalidXYStats);
+    assertNull("Invalid x/y bbox should result in null geospatial stats", parquetStats1);
+
+    // Case 2: NaN in Z coordinate - should return non-null stats
+    GeospatialStatistics parquetStats2 = converter.toParquetGeospatialStatistics(invalidZStats);
+    assertNotNull("Invalid Z should still result in non-null geospatial stats", parquetStats2);
+    assertTrue("BBox should be present", parquetStats2.isSetBbox());
+
+    // Case 3: NaN in M coordinate - should return non-null stats
+    GeospatialStatistics parquetStats3 = converter.toParquetGeospatialStatistics(invalidMStats);
+    assertNotNull("Invalid M should still result in non-null geospatial stats", parquetStats3);
+    assertTrue("BBox should be present", parquetStats3.isSetBbox());
+
+    // Case 4: Empty box - should return null or empty stats
+    GeospatialStatistics parquetStats4 = converter.toParquetGeospatialStatistics(emptyBoxStats);
+    assertNull("Empty bbox should result in null geospatial stats", parquetStats4);
+
+    // Case 5: Partial emptiness (X only) - should return null
+    GeospatialStatistics parquetStats5 = converter.toParquetGeospatialStatistics(partialEmptyXStats);
+    assertNull("Partially empty X bbox should result in null geospatial stats", parquetStats5);
+
+    // Case 6: Partial emptiness (Y only) - should return null
+    GeospatialStatistics parquetStats6 = converter.toParquetGeospatialStatistics(partialEmptyYStats);
+    assertNull("Partially empty Y bbox should result in null geospatial stats", parquetStats6);
+
+    // Case 7: Valid box - should return complete stats
+    GeospatialStatistics parquetStats7 = converter.toParquetGeospatialStatistics(validBoxStats);
+    assertNotNull("Valid bbox should result in non-null geospatial stats", parquetStats7);
+    assertTrue("BBox should be present", parquetStats7.isSetBbox());
+    assertEquals(
+        "XMin should match", validBox.getXMin(), parquetStats7.getBbox().getXmin(), 0.001);
+    assertEquals(
+        "XMax should match", validBox.getXMax(), parquetStats7.getBbox().getXmax(), 0.001);
+    assertEquals(
+        "YMin should match", validBox.getYMin(), parquetStats7.getBbox().getYmin(), 0.001);
+    assertEquals(
+        "YMax should match", validBox.getYMax(), parquetStats7.getBbox().getYmax(), 0.001);
   }
 }

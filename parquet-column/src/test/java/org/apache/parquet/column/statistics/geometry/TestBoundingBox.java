@@ -23,6 +23,7 @@ import org.junit.Test;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.CoordinateXYZM;
 import org.locationtech.jts.geom.GeometryFactory;
+import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.Point;
 
 public class TestBoundingBox {
@@ -464,7 +465,7 @@ public class TestBoundingBox {
    * Tests the end-to-end case for updating and merging bounding boxes with mixed valid and NaN coordinates.
    *
    * Scenario - Parquet file with multiple row groups:
-   * file-level bbox: [1, 8, 100, 800]
+   * file-level bbox: [1, 9, 100, 900]
    *
    * Row group 1: [1, 2, 100, 100]
    * - POINT (1, 100)
@@ -485,6 +486,10 @@ public class TestBoundingBox {
    * Row group 5: no valid bbox
    * - POINT (NaN, NaN)
    * - POINT (NaN, NaN)
+   *
+   * Row group 6: [9, 9, 900, 900]
+   * - POINT (9, 900)
+   * - LINESTRING EMPTY
    *
    * The test verifies that:
    * 1. Individual row group bounding boxes correctly handle NaN coordinates
@@ -554,23 +559,43 @@ public class TestBoundingBox {
     // Verify Row Group 5
     Assert.assertTrue(rowGroup5.isEmpty());
 
+    // Row Group 6: Test mixing an empty geometry with a valid point [9, 9, 900, 900]
+    BoundingBox rowGroup6 = new BoundingBox();
+    // Create an empty LineString
+    LineString emptyLineString = gf.createLineString(new Coordinate[0]);
+    // Create a valid point
+    Coordinate pointCoord = new Coordinate(9, 900);
+    Point validPoint = gf.createPoint(pointCoord);
+
+    // Update the bounding box with both geometries
+    rowGroup6.update(emptyLineString); // This should be a no-op
+    rowGroup6.update(validPoint); // This should set the bounds
+
+    // Verify Row Group 6
+    Assert.assertEquals(9.0, rowGroup6.getXMin(), 0.0);
+    Assert.assertEquals(9.0, rowGroup6.getXMax(), 0.0);
+    Assert.assertEquals(900.0, rowGroup6.getYMin(), 0.0);
+    Assert.assertEquals(900.0, rowGroup6.getYMax(), 0.0);
+
     // Merge row group boxes into file-level box
     fileBBox.merge(rowGroup1);
     fileBBox.merge(rowGroup2);
     fileBBox.merge(rowGroup3);
     fileBBox.merge(rowGroup4);
     fileBBox.merge(rowGroup5);
+    fileBBox.merge(rowGroup6);
 
     // Verify file-level bounding box
-    // Expected: [1, 8, 100, 800] from valid coordinates
+    // Note: Now includes point (9, 900) from rowGroup6
     Assert.assertEquals(1.0, fileBBox.getXMin(), 0.0);
-    Assert.assertEquals(8.0, fileBBox.getXMax(), 0.0);
+    Assert.assertEquals(9.0, fileBBox.getXMax(), 0.0);
     Assert.assertEquals(100.0, fileBBox.getYMin(), 0.0);
-    Assert.assertEquals(800.0, fileBBox.getYMax(), 0.0);
+    Assert.assertEquals(900.0, fileBBox.getYMax(), 0.0);
     Assert.assertTrue(fileBBox.isValid());
 
     // Test merging in reverse order to ensure commutativity
     BoundingBox reverseMergeBox = new BoundingBox();
+    reverseMergeBox.merge(rowGroup6);
     reverseMergeBox.merge(rowGroup5);
     reverseMergeBox.merge(rowGroup4);
     reverseMergeBox.merge(rowGroup3);
@@ -578,9 +603,9 @@ public class TestBoundingBox {
     reverseMergeBox.merge(rowGroup1);
 
     Assert.assertEquals(1.0, reverseMergeBox.getXMin(), 0.0);
-    Assert.assertEquals(8.0, reverseMergeBox.getXMax(), 0.0);
+    Assert.assertEquals(9.0, reverseMergeBox.getXMax(), 0.0);
     Assert.assertEquals(100.0, reverseMergeBox.getYMin(), 0.0);
-    Assert.assertEquals(800.0, reverseMergeBox.getYMax(), 0.0);
+    Assert.assertEquals(900.0, reverseMergeBox.getYMax(), 0.0);
     Assert.assertTrue(reverseMergeBox.isValid());
   }
 }

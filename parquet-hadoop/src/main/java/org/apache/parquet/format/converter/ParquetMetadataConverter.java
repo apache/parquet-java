@@ -942,7 +942,7 @@ public class ParquetMetadataConverter {
     return fromParquetStatisticsInternal(createdBy, statistics, type, expectedOrder);
   }
 
-  private GeospatialStatistics toParquetGeospatialStatistics(
+  GeospatialStatistics toParquetGeospatialStatistics(
       org.apache.parquet.column.statistics.geometry.GeospatialStatistics geospatialStatistics) {
     if (geospatialStatistics == null) {
       return null;
@@ -952,6 +952,9 @@ public class ParquetMetadataConverter {
 
     if (geospatialStatistics.getBoundingBox() != null) {
       if (!geospatialStatistics.getBoundingBox().isValid()) {
+        return null;
+      }
+      if (geospatialStatistics.getBoundingBox().isEmpty()) {
         return null;
       }
       formatStats.setBbox(toParquetBoundingBox(geospatialStatistics.getBoundingBox()));

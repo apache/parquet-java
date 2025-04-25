@@ -81,7 +81,7 @@ public class BoundingBox {
 
   /**
    * Checks if the bounding box is valid.
-   * A bounding box is considered valid if none of the bounds contain NaN.
+   * A bounding box is considered valid if none of the X / Y dimensions contain NaN.
    *
    * @return true if the bounding box is valid, false otherwise.
    */
@@ -111,7 +111,7 @@ public class BoundingBox {
 
   /**
    * Checks if the bounding box is empty.
-   * A bounding box is considered empty if any bounds are in their initial state
+   * A bounding box is considered empty if any X/Y dimension are in their initial state
    *
    * @return true if the bounding box is empty, false otherwise.
    */
@@ -121,11 +121,17 @@ public class BoundingBox {
   }
 
   /**
-   * Merges the bounds of another bounding box into this one.
+   * Expands this bounding box to include the bounds of another box.
+   * After merging, this bounding box will contain both its original extent
+   * and the extent of the other bounding box.
    *
-   * @param other the other BoundingBox to merge
+   * @param other the other BoundingBox whose bounds will be merged into this one
    */
   public void merge(BoundingBox other) {
+    // Skip merging if the other bounding box is null or empty
+    // - A null bounding box cannot be merged
+    // - An empty bounding box (with inverted min/max) has no effect when merged,
+    //   so we can skip the merge operation entirely for efficiency
     if (other == null || other.isEmpty()) {
       return;
     }
@@ -140,8 +146,12 @@ public class BoundingBox {
   }
 
   /**
-   * Updates the bounding box with the coordinates of the given geometry.
-   * If the geometry is null or empty, the update is aborted.
+   * Extends this bounding box to include the spatial extent of the provided geometry.
+   * The bounding box coordinates (min/max values for x, y, z, m) will be adjusted
+   * to encompass both the current bounds and the geometry's bounds.
+   *
+   * @param geometry The geometry whose coordinates will be used to update this bounding box.
+   *                If null or empty, the method returns without making any changes.
    */
   public void update(Geometry geometry) {
     if (geometry == null || geometry.isEmpty()) {
@@ -164,9 +174,12 @@ public class BoundingBox {
   }
 
   /**
-   * Updates the bounding box with the given bounds.
-   * Only updates X bounds if both minX and maxX are not NaN.
-   * Only updates Y bounds if both minY and maxY are not NaN.
+   * Updates the X and Y bounds of this bounding box with the given coordinates.
+   * Updates are conditional:
+   * - X bounds are only updated if both minX and maxX are not NaN
+   * - Y bounds are only updated if both minY and maxY are not NaN
+   *
+   * This allows partial updates while preserving valid dimensions.
    */
   private void updateBounds(double minX, double maxX, double minY, double maxY) {
     if (!Double.isNaN(minX) && !Double.isNaN(maxX)) {
