@@ -220,6 +220,20 @@ class VariantUtil {
   }
 
   /**
+   * Write the least significant `numBytes` bytes in `value` into `bytes[pos, pos + numBytes)` in
+   * little endian.
+   * @param bytes The byte array to write into
+   * @param pos The starting index of the byte array to write into
+   * @param value The value to write
+   * @param numBytes The number of bytes to write
+   */
+  static void writeLong(byte[] bytes, int pos, long value, int numBytes) {
+    for (int i = 0; i < numBytes; ++i) {
+      bytes[pos + i] = (byte) ((value >>> (8 * i)) & 0xFF);
+    }
+  }
+
+  /**
    * Reads a little-endian signed long value from `buffer[pos, pos + numBytes)`.
    * @param buffer The ByteBuffer to read from
    * @param pos The starting index of the buffer to read from
@@ -322,6 +336,75 @@ class VariantUtil {
             return Variant.Type.TIMESTAMP_NANOS_NTZ;
           case UUID:
             return Variant.Type.UUID;
+          default:
+            throw new UnsupportedOperationException(
+                String.format("Unknown type in Variant. primitive type: %d", typeInfo));
+        }
+    }
+  }
+
+  /**
+   * Computes the actual size (in bytes) of the Variant value at `value[pos...]`
+   * @param value The Variant value
+   * @param pos The starting index of the Variant value
+   * @return The size (in bytes) of the Variant value
+   */
+  public static int valueSize(ByteBuffer value, int pos) {
+    checkIndex(pos, value.limit());
+    int basicType = value.get(pos) & BASIC_TYPE_MASK;
+    int typeInfo = (value.get(pos) >> BASIC_TYPE_BITS) & PRIMITIVE_TYPE_MASK;
+    switch (basicType) {
+      case SHORT_STR:
+        return 1 + typeInfo;
+      case OBJECT: {
+        VariantUtil.ObjectInfo info = VariantUtil.getObjectInfo(slice(value, pos));
+        return info.dataStartOffset
+            + readUnsigned(
+                value,
+                pos + info.offsetStartOffset + info.numElements * info.offsetSize,
+                info.offsetSize);
+      }
+      case ARRAY: {
+        VariantUtil.ArrayInfo info = VariantUtil.getArrayInfo(slice(value, pos));
+        return info.dataStartOffset
+            + readUnsigned(
+                value,
+                pos + info.offsetStartOffset + info.numElements * info.offsetSize,
+                info.offsetSize);
+      }
+      default:
+        switch (typeInfo) {
+          case NULL:
+          case TRUE:
+          case FALSE:
+            return 1;
+          case INT8:
+            return 2;
+          case INT16:
+            return 3;
+          case INT32:
+          case DATE:
+          case FLOAT:
+            return 5;
+          case INT64:
+          case DOUBLE:
+          case TIMESTAMP_TZ:
+          case TIMESTAMP_NTZ:
+          case TIME:
+          case TIMESTAMP_NANOS_TZ:
+          case TIMESTAMP_NANOS_NTZ:
+            return 9;
+          case DECIMAL4:
+            return 6;
+          case DECIMAL8:
+            return 10;
+          case DECIMAL16:
+            return 18;
+          case BINARY:
+          case LONG_STR:
+            return 1 + U32_SIZE + readUnsigned(value, pos + 1, U32_SIZE);
+          case UUID:
+            return 1 + UUID_SIZE;
           default:
             throw new UnsupportedOperationException(
                 String.format("Unknown type in Variant. primitive type: %d", typeInfo));
