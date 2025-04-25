@@ -61,6 +61,7 @@ import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.Converter;
 import org.apache.parquet.io.api.GroupConverter;
 import org.apache.parquet.io.api.PrimitiveConverter;
+import org.apache.parquet.proto.ProtoReadSupport.ProtoGroupConverter;
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.IncompatibleSchemaModificationException;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
@@ -73,13 +74,10 @@ import org.slf4j.LoggerFactory;
  * Converts Protocol Buffer message (both top level and inner) to parquet.
  * This is internal class, use {@link ProtoRecordConverter}.
  */
-class ProtoMessageConverter extends GroupConverter {
+class ProtoMessageConverter extends ProtoGroupConverter {
   private static final Logger LOG = LoggerFactory.getLogger(ProtoMessageConverter.class);
 
-  private static final ParentValueContainer DUMMY_PVC = new ParentValueContainer() {
-    @Override
-    public void add(Object value) {}
-  };
+  private static final ParentValueContainer DUMMY_PVC = new DummyParentValueContainer();
 
   protected final ParquetConfiguration conf;
   protected final Converter[] converters;
@@ -240,19 +238,9 @@ class ProtoMessageConverter extends GroupConverter {
     ParentValueContainer parent;
 
     if (isRepeated) {
-      parent = new ParentValueContainer() {
-        @Override
-        public void add(Object value) {
-          parentBuilder.addRepeatedField(fieldDescriptor, value);
-        }
-      };
+      parent = new AddRepeatedFieldParentValueContainer(parentBuilder, fieldDescriptor);
     } else {
-      parent = new ParentValueContainer() {
-        @Override
-        public void add(Object value) {
-          parentBuilder.setField(fieldDescriptor, value);
-        }
-      };
+      parent = new SetFieldParentValueContainer(parentBuilder, fieldDescriptor);
     }
 
     LogicalTypeAnnotation logicalTypeAnnotation = parquetType.getLogicalTypeAnnotation();
@@ -361,12 +349,75 @@ class ProtoMessageConverter extends GroupConverter {
     return myBuilder;
   }
 
+  @Override
+  int getFieldCount() {
+    return converters.length;
+  }
+
   abstract static class ParentValueContainer {
 
     /**
      * Adds the value to the parent.
      */
     public abstract void add(Object value);
+
+    public void addInt(int value) {
+      add(value);
+    }
+
+    public void addLong(long value) {
+      add(value);
+    }
+
+    public void addDouble(double value) {
+      add(value);
+    }
+
+    public void addFloat(float value) {
+      add(value);
+    }
+
+    public void addBoolean(boolean value) {
+      add(value);
+    }
+  }
+
+  static class DummyParentValueContainer extends ParentValueContainer {
+    @Override
+    public void add(Object value) {
+    }
+  }
+
+  static class SetFieldParentValueContainer extends ParentValueContainer {
+
+    private final Message.Builder parent;
+    private final Descriptors.FieldDescriptor fieldDescriptor;
+
+    public SetFieldParentValueContainer(Message.Builder parent, Descriptors.FieldDescriptor fieldDescriptor) {
+      this.parent = parent;
+      this.fieldDescriptor = fieldDescriptor;
+    }
+
+    @Override
+    public void add(Object value) {
+      parent.setField(fieldDescriptor, value);
+    }
+  }
+
+  static class AddRepeatedFieldParentValueContainer extends ParentValueContainer {
+
+    private final Message.Builder parent;
+    private final Descriptors.FieldDescriptor fieldDescriptor;
+
+    public AddRepeatedFieldParentValueContainer(Message.Builder parent, Descriptors.FieldDescriptor fieldDescriptor) {
+      this.parent = parent;
+      this.fieldDescriptor = fieldDescriptor;
+    }
+
+    @Override
+    public void add(Object value) {
+      parent.addRepeatedField(fieldDescriptor, value);
+    }
   }
 
   final class ProtoEnumConverter extends PrimitiveConverter {
@@ -835,8 +886,9 @@ class ProtoMessageConverter extends GroupConverter {
    * a repeated group named 'list', itself containing only one field called 'element' of the type of the repeated
    * object (can be a primitive as in this example or a group in case of a repeated message in protobuf).
    */
-  final class ListConverter extends GroupConverter {
+  final class ListConverter extends ProtoGroupConverter {
     private final Converter converter;
+    private final Converter wrapperConverter;
 
     public ListConverter(
         Message.Builder parentBuilder, Descriptors.FieldDescriptor fieldDescriptor, Type parquetType) {
@@ -862,6 +914,25 @@ class ProtoMessageConverter extends GroupConverter {
 
       Type elementType = listType.getType("element");
       converter = newMessageConverter(parentBuilder, fieldDescriptor, elementType);
+      wrapperConverter = new ProtoGroupConverter() {
+        @Override
+        int getFieldCount() {
+          return 1;
+        }
+
+        @Override
+        public Converter getConverter(int fieldIndex) {
+          return converter;
+        }
+
+        @Override
+        public void start() {
+        }
+
+        @Override
+        public void end() {
+        }
+      };
     }
 
     @Override
@@ -869,19 +940,7 @@ class ProtoMessageConverter extends GroupConverter {
       if (fieldIndex > 0) {
         throw new ParquetDecodingException("Unexpected multiple fields in the LIST wrapper");
       }
-
-      return new GroupConverter() {
-        @Override
-        public Converter getConverter(int fieldIndex) {
-          return converter;
-        }
-
-        @Override
-        public void start() {}
-
-        @Override
-        public void end() {}
-      };
+      return wrapperConverter;
     }
 
     @Override
@@ -889,9 +948,14 @@ class ProtoMessageConverter extends GroupConverter {
 
     @Override
     public void end() {}
+
+    @Override
+    int getFieldCount() {
+      return 1;
+    }
   }
 
-  final class MapConverter extends GroupConverter {
+  final class MapConverter extends ProtoGroupConverter {
     private final Converter converter;
 
     public MapConverter(
@@ -925,5 +989,10 @@ class ProtoMessageConverter extends GroupConverter {
 
     @Override
     public void end() {}
+
+    @Override
+    int getFieldCount() {
+      return 1;
+    }
   }
 }
