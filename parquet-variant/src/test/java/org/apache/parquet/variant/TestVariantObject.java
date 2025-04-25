@@ -380,16 +380,15 @@ public class TestVariantObject {
     b.appendLong(1234567890);
     b.endObject(objBuilder);
 
-    VariantTestUtil.testVariant(b.build(), v -> {
-      VariantTestUtil.checkType(v, VariantUtil.OBJECT, Variant.Type.OBJECT);
-      Assert.assertEquals(3, v.numObjectElements());
-      VariantTestUtil.checkType(v.getFieldByKey("key1"), VariantUtil.PRIMITIVE, Variant.Type.STRING);
-      Assert.assertEquals(randomString, v.getFieldByKey("key1").getString());
-      VariantTestUtil.checkType(v.getFieldByKey("key2"), VariantUtil.PRIMITIVE, Variant.Type.BOOLEAN);
-      Assert.assertTrue(v.getFieldByKey("key2").getBoolean());
-      VariantTestUtil.checkType(v.getFieldByKey("key3"), VariantUtil.PRIMITIVE, Variant.Type.INT);
-      Assert.assertEquals(1234567890, v.getFieldByKey("key3").getInt());
-    });
+    Variant v = b.build();
+    VariantTestUtil.checkType(v, VariantUtil.OBJECT, Variant.Type.OBJECT);
+    Assert.assertEquals(3, v.numObjectElements());
+    VariantTestUtil.checkType(v.getFieldByKey("key1"), VariantUtil.PRIMITIVE, Variant.Type.STRING);
+    Assert.assertEquals(randomString, v.getFieldByKey("key1").getString());
+    VariantTestUtil.checkType(v.getFieldByKey("key2"), VariantUtil.PRIMITIVE, Variant.Type.BOOLEAN);
+    Assert.assertTrue(v.getFieldByKey("key2").getBoolean());
+    VariantTestUtil.checkType(v.getFieldByKey("key3"), VariantUtil.PRIMITIVE, Variant.Type.INT);
+    Assert.assertEquals(1234567890, v.getFieldByKey("key3").getInt());
   }
 
   @Test
@@ -419,14 +418,12 @@ public class TestVariantObject {
     }
     b.endObject(objBuilder);
 
-    VariantTestUtil.testVariant(b.build(), v -> {
-      VariantTestUtil.checkType(v, VariantUtil.OBJECT, Variant.Type.OBJECT);
-      Assert.assertEquals(numKeys, v.numObjectElements());
-      // Only check a few keys, to avoid slowing down the test
-      Assert.assertEquals(0, v.getFieldByKey("k" + 0).getLong());
-      Assert.assertEquals(
-          numKeys - 1, v.getFieldByKey("k" + (numKeys - 1)).getLong());
-    });
+    Variant v = b.build();
+    VariantTestUtil.checkType(v, VariantUtil.OBJECT, Variant.Type.OBJECT);
+    Assert.assertEquals(numKeys, v.numObjectElements());
+    // Only check a few keys, to avoid slowing down the test
+    Assert.assertEquals(0, v.getFieldByKey("k" + 0).getLong());
+    Assert.assertEquals(numKeys - 1, v.getFieldByKey("k" + (numKeys - 1)).getLong());
   }
 
   @Test
