@@ -83,7 +83,7 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
 
   public static final String PB_UNWRAP_PROTO_WRAPPERS = "parquet.proto.unwrapProtoWrappers";
 
-  public static final String PB_CODEGEN = "parquet.proto.codegen";
+  public static final String PB_CODEGEN = "parquet.proto.writeCodegen";
 
   private boolean writeSpecsCompliant = false;
   private boolean unwrapProtoWrappers = false;

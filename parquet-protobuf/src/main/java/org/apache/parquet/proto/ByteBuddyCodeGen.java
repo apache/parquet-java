@@ -64,6 +64,7 @@ import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
+import com.twitter.elephantbird.util.Protobufs;
 import net.bytebuddy.ByteBuddy;
 import net.bytebuddy.description.field.FieldDescription;
 import net.bytebuddy.description.method.MethodDescription;
@@ -95,8 +96,10 @@ import net.bytebuddy.jar.asm.MethodVisitor;
 import net.bytebuddy.jar.asm.Opcodes;
 import net.bytebuddy.matcher.ElementMatchers;
 import net.bytebuddy.utility.JavaConstant;
+import org.apache.parquet.conf.ParquetConfiguration;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.RecordConsumer;
+import org.apache.parquet.io.api.RecordMaterializer;
 import org.apache.parquet.proto.ByteBuddyCodeGen.CodeGenUtils.Codegen;
 import org.apache.parquet.proto.ByteBuddyCodeGen.CodeGenUtils.Implementations;
 import org.apache.parquet.proto.ByteBuddyCodeGen.CodeGenUtils.LocalVar;
@@ -2743,5 +2746,17 @@ public class ByteBuddyCodeGen {
 
       protected abstract MethodHandles.Lookup getLookup();
     }
+  }
+
+  public static class ReadSupport {
+
+    static <T extends Message> RecordMaterializer<T> tryEnhanceRecordMaterializer(
+        org.apache.parquet.proto.ProtoRecordMaterializer<T> protoRecordMaterializer,
+        ProtoReadSupport.CodegenMode codegenMode,
+        ParquetConfiguration configuration) {
+
+      return protoRecordMaterializer;
+    }
+
   }
 }

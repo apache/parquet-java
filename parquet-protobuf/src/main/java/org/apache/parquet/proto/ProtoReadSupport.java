@@ -39,6 +39,59 @@ public class ProtoReadSupport<T extends Message> extends ReadSupport<T> {
 
   public static final String PB_CLASS = "parquet.proto.class";
   public static final String PB_DESCRIPTOR = "parquet.proto.descriptor";
+  public static final String PB_CODEGEN = "parquet.proto.readCodegen";
+
+  public enum CodegenMode {
+    OFF {
+      @Override
+      public boolean ignoreCodeGenException() {
+        throw new UnsupportedOperationException();
+      }
+
+      @Override
+      public boolean tryCodeGen(Class<? extends Message> protoClass) {
+        return false;
+      }
+    },
+
+    SUPPORT {
+      @Override
+      public boolean ignoreCodeGenException() {
+        return true;
+      }
+
+      @Override
+      public boolean tryCodeGen(Class<? extends Message> protoClass) {
+        return ByteBuddyCodeGen.isGeneratedMessage(protoClass) && ByteBuddyCodeGen.isByteBuddyAvailable(false);
+      }
+    },
+
+    REQUIRED {
+      @Override
+      public boolean ignoreCodeGenException() {
+        return false;
+      }
+
+      @Override
+      public boolean tryCodeGen(Class<? extends Message> protoClass) {
+        if (!ByteBuddyCodeGen.isGeneratedMessage(protoClass)) {
+          throw new UnsupportedOperationException("protoClass is not a GeneratedMessage: " + protoClass);
+        }
+        return ByteBuddyCodeGen.isByteBuddyAvailable(true);
+      }
+    };
+
+    public static final ProtoReadSupport.CodegenMode DEFAULT = CodegenMode.SUPPORT;
+
+    public static ProtoReadSupport.CodegenMode orDefault(ProtoReadSupport.CodegenMode codegenMode) {
+      return codegenMode == null ? DEFAULT : codegenMode;
+    }
+
+    public abstract boolean ignoreCodeGenException();
+
+    public abstract boolean tryCodeGen(Class<? extends Message> protoClass);
+  }
+
 
   public static void setRequestedProjection(Configuration configuration, String requestedProjection) {
     configuration.set(PB_REQUESTED_PROJECTION, requestedProjection);
@@ -104,6 +157,11 @@ public class ProtoReadSupport<T extends Message> extends ReadSupport<T> {
 
     MessageType requestedSchema = readContext.getRequestedSchema();
     Class<? extends Message> protobufClass = Protobufs.getProtobufClass(headerProtoClass);
-    return new ProtoRecordMaterializer(configuration, requestedSchema, protobufClass, keyValueMetaData);
+    ProtoRecordMaterializer protoRecordMaterializer = new ProtoRecordMaterializer(configuration, requestedSchema, protobufClass, keyValueMetaData);
+
+    CodegenMode codegenMode = ProtoReadSupport.CodegenMode.valueOf(configuration.get(PB_CODEGEN, CodegenMode.DEFAULT.name()));
+    return codegenMode.tryCodeGen(protobufClass)
+        ? ByteBuddyCodeGen.ReadSupport.tryEnhanceRecordMaterializer(protoRecordMaterializer, codegenMode, configuration)
+        : protoRecordMaterializer;
   }
 }

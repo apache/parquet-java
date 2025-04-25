@@ -35,6 +35,7 @@
     <common-protos.version>2.50.0</common-protos.version>  <!-- make sure it's compatible with protobuf.version -->
     <truth-proto-extension.version>1.4.3</truth-proto-extension.version>
     <byte-buddy.version>1.14.18</byte-buddy.version>
+<!--    <maven.surefire.debug>true</maven.surefire.debug>-->
   </properties>
 
 
