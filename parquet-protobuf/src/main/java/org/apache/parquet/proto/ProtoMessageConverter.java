@@ -60,8 +60,8 @@ import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.Converter;
 import org.apache.parquet.io.api.PrimitiveConverter;
-import org.apache.parquet.proto.ProtoRecordMaterializer.ParentValueContainerHolder;
-import org.apache.parquet.proto.ProtoRecordMaterializer.ProtoGroupConverter;
+import org.apache.parquet.proto.ProtoRecordMaterializer.ModifiableGroupConverter;
+import org.apache.parquet.proto.ProtoRecordMaterializer.ModifiableParentValueContainerHolder;
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.IncompatibleSchemaModificationException;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
@@ -74,7 +74,7 @@ import org.slf4j.LoggerFactory;
  * Converts Protocol Buffer message (both top level and inner) to parquet.
  * This is internal class, use {@link ProtoRecordConverter}.
  */
-class ProtoMessageConverter extends ProtoGroupConverter implements ParentValueContainerHolder {
+class ProtoMessageConverter extends ModifiableGroupConverter implements ModifiableParentValueContainerHolder {
   private static final Logger LOG = LoggerFactory.getLogger(ProtoMessageConverter.class);
 
   private static final ParentValueContainer DUMMY_PVC = new DummyParentValueContainer();
@@ -355,6 +355,11 @@ class ProtoMessageConverter extends ProtoGroupConverter implements ParentValueCo
   }
 
   @Override
+  void setFieldConverter(int fieldIndex, Converter converter) {
+    converters[fieldIndex] = converter;
+  }
+
+  @Override
   public ParentValueContainer getParentValueContainer() {
     return parent;
   }
@@ -364,12 +369,14 @@ class ProtoMessageConverter extends ProtoGroupConverter implements ParentValueCo
     parent = parentValueContainer;
   }
 
-  abstract static class ParentValueContainer {
+  static class ParentValueContainer {
 
     /**
      * Adds the value to the parent.
      */
-    public abstract void add(Object value);
+    public void add(Object value) {
+      throw new UnsupportedOperationException();
+    }
 
     public void addInt(int value) {
       add(value);
@@ -446,7 +453,7 @@ class ProtoMessageConverter extends ProtoGroupConverter implements ParentValueCo
     }
   }
 
-  final class ProtoEnumConverter extends PrimitiveConverter implements ParentValueContainerHolder {
+  final class ProtoEnumConverter extends PrimitiveConverter implements ModifiableParentValueContainerHolder {
 
     private final Descriptors.FieldDescriptor fieldType;
     private final Map<Binary, Descriptors.EnumValueDescriptor> enumLookup;
@@ -582,7 +589,7 @@ class ProtoMessageConverter extends ProtoGroupConverter implements ParentValueCo
     }
   }
 
-  static final class ProtoBinaryConverter extends PrimitiveConverter implements ParentValueContainerHolder {
+  static final class ProtoBinaryConverter extends PrimitiveConverter implements ModifiableParentValueContainerHolder {
 
     ParentValueContainer parent;
 
@@ -607,7 +614,8 @@ class ProtoMessageConverter extends ProtoGroupConverter implements ParentValueCo
     }
   }
 
-  static final class ProtoBooleanConverter extends PrimitiveConverter implements ParentValueContainerHolder {
+  static final class ProtoBooleanConverter extends PrimitiveConverter
+      implements ModifiableParentValueContainerHolder {
 
     ParentValueContainer parent;
 
@@ -631,7 +639,7 @@ class ProtoMessageConverter extends ProtoGroupConverter implements ParentValueCo
     }
   }
 
-  static final class ProtoDoubleConverter extends PrimitiveConverter implements ParentValueContainerHolder {
+  static final class ProtoDoubleConverter extends PrimitiveConverter implements ModifiableParentValueContainerHolder {
 
     ParentValueContainer parent;
 
@@ -655,7 +663,7 @@ class ProtoMessageConverter extends ProtoGroupConverter implements ParentValueCo
     }
   }
 
-  static final class ProtoFloatConverter extends PrimitiveConverter implements ParentValueContainerHolder {
+  static final class ProtoFloatConverter extends PrimitiveConverter implements ModifiableParentValueContainerHolder {
 
     ParentValueContainer parent;
 
@@ -679,7 +687,7 @@ class ProtoMessageConverter extends ProtoGroupConverter implements ParentValueCo
     }
   }
 
-  static final class ProtoIntConverter extends PrimitiveConverter implements ParentValueContainerHolder {
+  static final class ProtoIntConverter extends PrimitiveConverter implements ModifiableParentValueContainerHolder {
 
     ParentValueContainer parent;
 
@@ -703,7 +711,7 @@ class ProtoMessageConverter extends ProtoGroupConverter implements ParentValueCo
     }
   }
 
-  static final class ProtoLongConverter extends PrimitiveConverter implements ParentValueContainerHolder {
+  static final class ProtoLongConverter extends PrimitiveConverter implements ModifiableParentValueContainerHolder {
 
     ParentValueContainer parent;
 
@@ -727,7 +735,7 @@ class ProtoMessageConverter extends ProtoGroupConverter implements ParentValueCo
     }
   }
 
-  static final class ProtoStringConverter extends PrimitiveConverter implements ParentValueContainerHolder {
+  static final class ProtoStringConverter extends PrimitiveConverter implements ModifiableParentValueContainerHolder {
 
     ParentValueContainer parent;
 
@@ -752,7 +760,8 @@ class ProtoMessageConverter extends ProtoGroupConverter implements ParentValueCo
     }
   }
 
-  static final class ProtoTimestampConverter extends PrimitiveConverter implements ParentValueContainerHolder {
+  static final class ProtoTimestampConverter extends PrimitiveConverter
+      implements ModifiableParentValueContainerHolder {
 
     ParentValueContainer parent;
     final LogicalTypeAnnotation.TimestampLogicalTypeAnnotation logicalTypeAnnotation;
@@ -790,7 +799,7 @@ class ProtoMessageConverter extends ProtoGroupConverter implements ParentValueCo
     }
   }
 
-  static final class ProtoDateConverter extends PrimitiveConverter implements ParentValueContainerHolder {
+  static final class ProtoDateConverter extends PrimitiveConverter implements ModifiableParentValueContainerHolder {
 
     ParentValueContainer parent;
 
@@ -820,7 +829,7 @@ class ProtoMessageConverter extends ProtoGroupConverter implements ParentValueCo
     }
   }
 
-  static final class ProtoTimeConverter extends PrimitiveConverter implements ParentValueContainerHolder {
+  static final class ProtoTimeConverter extends PrimitiveConverter implements ModifiableParentValueContainerHolder {
 
     ParentValueContainer parent;
     final LogicalTypeAnnotation.TimeLogicalTypeAnnotation logicalTypeAnnotation;
@@ -872,7 +881,8 @@ class ProtoMessageConverter extends ProtoGroupConverter implements ParentValueCo
     }
   }
 
-  static final class ProtoDoubleValueConverter extends PrimitiveConverter implements ParentValueContainerHolder {
+  static final class ProtoDoubleValueConverter extends PrimitiveConverter
+      implements ModifiableParentValueContainerHolder {
 
     ParentValueContainer parent;
 
@@ -896,7 +906,8 @@ class ProtoMessageConverter extends ProtoGroupConverter implements ParentValueCo
     }
   }
 
-  static final class ProtoFloatValueConverter extends PrimitiveConverter implements ParentValueContainerHolder {
+  static final class ProtoFloatValueConverter extends PrimitiveConverter
+      implements ModifiableParentValueContainerHolder {
 
     ParentValueContainer parent;
 
@@ -920,7 +931,8 @@ class ProtoMessageConverter extends ProtoGroupConverter implements ParentValueCo
     }
   }
 
-  static final class ProtoInt64ValueConverter extends PrimitiveConverter implements ParentValueContainerHolder {
+  static final class ProtoInt64ValueConverter extends PrimitiveConverter
+      implements ModifiableParentValueContainerHolder {
 
     ParentValueContainer parent;
 
@@ -944,7 +956,8 @@ class ProtoMessageConverter extends ProtoGroupConverter implements ParentValueCo
     }
   }
 
-  static final class ProtoUInt64ValueConverter extends PrimitiveConverter implements ParentValueContainerHolder {
+  static final class ProtoUInt64ValueConverter extends PrimitiveConverter
+      implements ModifiableParentValueContainerHolder {
 
     ParentValueContainer parent;
 
@@ -968,7 +981,8 @@ class ProtoMessageConverter extends ProtoGroupConverter implements ParentValueCo
     }
   }
 
-  static final class ProtoInt32ValueConverter extends PrimitiveConverter implements ParentValueContainerHolder {
+  static final class ProtoInt32ValueConverter extends PrimitiveConverter
+      implements ModifiableParentValueContainerHolder {
 
     ParentValueContainer parent;
 
@@ -992,7 +1006,8 @@ class ProtoMessageConverter extends ProtoGroupConverter implements ParentValueCo
     }
   }
 
-  static final class ProtoUInt32ValueConverter extends PrimitiveConverter implements ParentValueContainerHolder {
+  static final class ProtoUInt32ValueConverter extends PrimitiveConverter
+      implements ModifiableParentValueContainerHolder {
 
     ParentValueContainer parent;
 
@@ -1016,7 +1031,8 @@ class ProtoMessageConverter extends ProtoGroupConverter implements ParentValueCo
     }
   }
 
-  static final class ProtoBoolValueConverter extends PrimitiveConverter implements ParentValueContainerHolder {
+  static final class ProtoBoolValueConverter extends PrimitiveConverter
+      implements ModifiableParentValueContainerHolder {
 
     ParentValueContainer parent;
 
@@ -1040,7 +1056,8 @@ class ProtoMessageConverter extends ProtoGroupConverter implements ParentValueCo
     }
   }
 
-  static final class ProtoStringValueConverter extends PrimitiveConverter implements ParentValueContainerHolder {
+  static final class ProtoStringValueConverter extends PrimitiveConverter
+      implements ModifiableParentValueContainerHolder {
 
     ParentValueContainer parent;
 
@@ -1065,7 +1082,8 @@ class ProtoMessageConverter extends ProtoGroupConverter implements ParentValueCo
     }
   }
 
-  static final class ProtoBytesValueConverter extends PrimitiveConverter implements ParentValueContainerHolder {
+  static final class ProtoBytesValueConverter extends PrimitiveConverter
+      implements ModifiableParentValueContainerHolder {
 
     ParentValueContainer parent;
 
@@ -1112,9 +1130,40 @@ class ProtoMessageConverter extends ProtoGroupConverter implements ParentValueCo
    * a repeated group named 'list', itself containing only one field called 'element' of the type of the repeated
    * object (can be a primitive as in this example or a group in case of a repeated message in protobuf).
    */
-  final class ListConverter extends ProtoGroupConverter {
-    private final Converter converter;
-    private final Converter wrapperConverter;
+  final class ListConverter extends ModifiableGroupConverter {
+    private Converter converter;
+
+    final class ListWrapperConverter extends ModifiableGroupConverter {
+      private Converter converter;
+
+      ListWrapperConverter(Converter converter) {
+        this.converter = converter;
+      }
+
+      @Override
+      int getFieldCount() {
+        return 1;
+      }
+
+      @Override
+      void setFieldConverter(int fieldIndex, Converter converter) {
+        if (fieldIndex > 0) {
+          throw new ParquetDecodingException("Unexpected multiple fields in the LIST wrapper");
+        }
+        this.converter = converter;
+      }
+
+      @Override
+      public Converter getConverter(int fieldIndex) {
+        return converter;
+      }
+
+      @Override
+      public void start() {}
+
+      @Override
+      public void end() {}
+    }
 
     public ListConverter(
         Message.Builder parentBuilder, Descriptors.FieldDescriptor fieldDescriptor, Type parquetType) {
@@ -1139,24 +1188,7 @@ class ProtoMessageConverter extends ProtoGroupConverter implements ParentValueCo
       }
 
       Type elementType = listType.getType("element");
-      converter = newMessageConverter(parentBuilder, fieldDescriptor, elementType);
-      wrapperConverter = new ProtoGroupConverter() {
-        @Override
-        int getFieldCount() {
-          return 1;
-        }
-
-        @Override
-        public Converter getConverter(int fieldIndex) {
-          return converter;
-        }
-
-        @Override
-        public void start() {}
-
-        @Override
-        public void end() {}
-      };
+      converter = new ListWrapperConverter(newMessageConverter(parentBuilder, fieldDescriptor, elementType));
     }
 
     @Override
@@ -1164,7 +1196,7 @@ class ProtoMessageConverter extends ProtoGroupConverter implements ParentValueCo
       if (fieldIndex > 0) {
         throw new ParquetDecodingException("Unexpected multiple fields in the LIST wrapper");
       }
-      return wrapperConverter;
+      return converter;
     }
 
     @Override
@@ -1177,10 +1209,18 @@ class ProtoMessageConverter extends ProtoGroupConverter implements ParentValueCo
     int getFieldCount() {
       return 1;
     }
+
+    @Override
+    void setFieldConverter(int fieldIndex, Converter converter) {
+      if (fieldIndex > 0) {
+        throw new ParquetDecodingException("Unexpected multiple fields in the LIST wrapper");
+      }
+      this.converter = converter;
+    }
   }
 
-  final class MapConverter extends ProtoGroupConverter {
-    private final Converter converter;
+  final class MapConverter extends ModifiableGroupConverter {
+    private Converter converter;
 
     public MapConverter(
         Message.Builder parentBuilder, Descriptors.FieldDescriptor fieldDescriptor, Type parquetType) {
@@ -1217,6 +1257,14 @@ class ProtoMessageConverter extends ProtoGroupConverter implements ParentValueCo
     @Override
     int getFieldCount() {
       return 1;
+    }
+
+    @Override
+    void setFieldConverter(int fieldIndex, Converter converter) {
+      if (fieldIndex > 0) {
+        throw new ParquetDecodingException("Unexpected multiple fields in the MAP wrapper");
+      }
+      MapConverter.this.converter = converter;
     }
   }
 }

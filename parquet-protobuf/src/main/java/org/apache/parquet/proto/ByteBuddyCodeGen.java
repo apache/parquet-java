@@ -105,7 +105,10 @@ import org.apache.parquet.io.api.RecordMaterializer;
 import org.apache.parquet.proto.ByteBuddyCodeGen.CodeGenUtils.Codegen;
 import org.apache.parquet.proto.ByteBuddyCodeGen.CodeGenUtils.Implementations;
 import org.apache.parquet.proto.ByteBuddyCodeGen.CodeGenUtils.LocalVar;
-import org.apache.parquet.proto.ProtoRecordMaterializer.ProtoGroupConverter;
+import org.apache.parquet.proto.ProtoMessageConverter.AddRepeatedFieldParentValueContainer;
+import org.apache.parquet.proto.ProtoMessageConverter.SetFieldParentValueContainer;
+import org.apache.parquet.proto.ProtoRecordMaterializer.ModifiableGroupConverter;
+import org.apache.parquet.proto.ProtoRecordMaterializer.ModifiableParentValueContainerHolder;
 import org.apache.parquet.schema.MessageType;
 
 public class ByteBuddyCodeGen {
@@ -2763,7 +2766,7 @@ public class ByteBuddyCodeGen {
       return protoRecordMaterializer;
     }
 
-    static void visitConverters(Converter converter, Stack<ProtoGroupConverter> parentConverters) {
+    static void visitConverters(Converter converter, Stack<ModifiableGroupConverter> parentConverters) {
       StringBuilder indentBuilder = new StringBuilder();
       for (int i = 0; i < parentConverters.size(); i++) {
         indentBuilder.append(" ");
@@ -2771,13 +2774,11 @@ public class ByteBuddyCodeGen {
       String indent = indentBuilder.toString();
 
       String parentValueContainerInfo = "";
-      if (converter instanceof ProtoRecordMaterializer.ParentValueContainerHolder) {
-        ProtoRecordMaterializer.ParentValueContainerHolder holder =
-            (ProtoRecordMaterializer.ParentValueContainerHolder) converter;
+      if (converter instanceof ModifiableParentValueContainerHolder) {
+        ModifiableParentValueContainerHolder holder = (ModifiableParentValueContainerHolder) converter;
         ProtoMessageConverter.ParentValueContainer parentValueContainer = holder.getParentValueContainer();
-        if (parentValueContainer instanceof ProtoMessageConverter.SetFieldParentValueContainer) {
-          ProtoMessageConverter.SetFieldParentValueContainer pvc =
-              (ProtoMessageConverter.SetFieldParentValueContainer) parentValueContainer;
+        if (parentValueContainer instanceof SetFieldParentValueContainer) {
+          SetFieldParentValueContainer pvc = (SetFieldParentValueContainer) parentValueContainer;
           Descriptors.FieldDescriptor fieldDescriptor = pvc.getFieldDescriptor();
           String containingTypeName =
               fieldDescriptor.getContainingType().getName();
@@ -2785,9 +2786,9 @@ public class ByteBuddyCodeGen {
           Message.Builder parent = pvc.getParent();
           parentValueContainerInfo = " : single : " + containingTypeName + "." + fieldName + " : "
               + (parent != null ? parent.getClass() : "null");
-        } else if (parentValueContainer instanceof ProtoMessageConverter.AddRepeatedFieldParentValueContainer) {
-          ProtoMessageConverter.AddRepeatedFieldParentValueContainer pvc =
-              (ProtoMessageConverter.AddRepeatedFieldParentValueContainer) parentValueContainer;
+        } else if (parentValueContainer instanceof AddRepeatedFieldParentValueContainer) {
+          AddRepeatedFieldParentValueContainer pvc =
+              (AddRepeatedFieldParentValueContainer) parentValueContainer;
           Descriptors.FieldDescriptor fieldDescriptor = pvc.getFieldDescriptor();
           String containingTypeName =
               fieldDescriptor.getContainingType().getName();
@@ -2798,9 +2799,9 @@ public class ByteBuddyCodeGen {
         }
       }
 
-      if (converter instanceof ProtoGroupConverter) {
+      if (converter instanceof ModifiableGroupConverter) {
         System.out.println(indent + "ProtoGroupConverter: " + converter.getClass() + parentValueContainerInfo);
-        ProtoGroupConverter groupConverter = (ProtoGroupConverter) converter;
+        ModifiableGroupConverter groupConverter = (ModifiableGroupConverter) converter;
         for (int i = 0; i < groupConverter.getFieldCount(); i++) {
           Converter fieldConverter = groupConverter.getConverter(i);
           parentConverters.push(groupConverter);
