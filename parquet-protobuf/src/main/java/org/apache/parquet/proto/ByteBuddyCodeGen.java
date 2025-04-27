@@ -2758,7 +2758,7 @@ public class ByteBuddyCodeGen {
         ProtoReadSupport.CodegenMode codegenMode,
         ParquetConfiguration configuration) {
 
-      visitConverters(protoRecordMaterializer.getRootConverter(), new Stack<>());
+      // visitConverters(protoRecordMaterializer.getRootConverter(), new Stack<>());
 
       return protoRecordMaterializer;
     }
@@ -2776,26 +2776,31 @@ public class ByteBuddyCodeGen {
             (ProtoRecordMaterializer.ParentValueContainerHolder) converter;
         ProtoMessageConverter.ParentValueContainer parentValueContainer = holder.getParentValueContainer();
         if (parentValueContainer instanceof ProtoMessageConverter.SetFieldParentValueContainer) {
-          ProtoMessageConverter.SetFieldParentValueContainer pvc = (ProtoMessageConverter.SetFieldParentValueContainer) parentValueContainer;
+          ProtoMessageConverter.SetFieldParentValueContainer pvc =
+              (ProtoMessageConverter.SetFieldParentValueContainer) parentValueContainer;
           Descriptors.FieldDescriptor fieldDescriptor = pvc.getFieldDescriptor();
-          String containingTypeName = fieldDescriptor.getContainingType().getName();
+          String containingTypeName =
+              fieldDescriptor.getContainingType().getName();
           String fieldName = fieldDescriptor.getName();
           Message.Builder parent = pvc.getParent();
-          parentValueContainerInfo = " : single : " + containingTypeName + "." + fieldName + " : " + (parent != null ? parent.getClass() : "null");
+          parentValueContainerInfo = " : single : " + containingTypeName + "." + fieldName + " : "
+              + (parent != null ? parent.getClass() : "null");
         } else if (parentValueContainer instanceof ProtoMessageConverter.AddRepeatedFieldParentValueContainer) {
-          ProtoMessageConverter.AddRepeatedFieldParentValueContainer pvc = (ProtoMessageConverter.AddRepeatedFieldParentValueContainer) parentValueContainer;
+          ProtoMessageConverter.AddRepeatedFieldParentValueContainer pvc =
+              (ProtoMessageConverter.AddRepeatedFieldParentValueContainer) parentValueContainer;
           Descriptors.FieldDescriptor fieldDescriptor = pvc.getFieldDescriptor();
-          String containingTypeName = fieldDescriptor.getContainingType().getName();
+          String containingTypeName =
+              fieldDescriptor.getContainingType().getName();
           String fieldName = fieldDescriptor.getName();
           Message.Builder parent = pvc.getParent();
-          parentValueContainerInfo = " : repeated : " + containingTypeName + "." + fieldName + " : " + (parent != null ? parent.getClass() : "null");
+          parentValueContainerInfo = " : repeated : " + containingTypeName + "." + fieldName + " : "
+              + (parent != null ? parent.getClass() : "null");
         }
       }
 
       if (converter instanceof ProtoGroupConverter) {
         System.out.println(indent + "ProtoGroupConverter: " + converter.getClass() + parentValueContainerInfo);
-        ProtoGroupConverter groupConverter =
-            (ProtoGroupConverter) converter;
+        ProtoGroupConverter groupConverter = (ProtoGroupConverter) converter;
         for (int i = 0; i < groupConverter.getFieldCount(); i++) {
           Converter fieldConverter = groupConverter.getConverter(i);
           parentConverters.push(groupConverter);
@@ -2808,6 +2813,5 @@ public class ByteBuddyCodeGen {
         System.out.println(indent + "GroupConverter: " + converter.getClass() + parentValueContainerInfo);
       }
     }
-
   }
 }

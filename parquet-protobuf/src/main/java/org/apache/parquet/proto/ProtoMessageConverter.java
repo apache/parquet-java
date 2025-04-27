@@ -394,8 +394,7 @@ class ProtoMessageConverter extends ProtoGroupConverter implements ParentValueCo
 
   static class DummyParentValueContainer extends ParentValueContainer {
     @Override
-    public void add(Object value) {
-    }
+    public void add(Object value) {}
   }
 
   static class SetFieldParentValueContainer extends ParentValueContainer {
@@ -427,7 +426,8 @@ class ProtoMessageConverter extends ProtoGroupConverter implements ParentValueCo
     private final Message.Builder parent;
     private final Descriptors.FieldDescriptor fieldDescriptor;
 
-    public AddRepeatedFieldParentValueContainer(Message.Builder parent, Descriptors.FieldDescriptor fieldDescriptor) {
+    public AddRepeatedFieldParentValueContainer(
+        Message.Builder parent, Descriptors.FieldDescriptor fieldDescriptor) {
       this.parent = parent;
       this.fieldDescriptor = fieldDescriptor;
     }
@@ -1152,12 +1152,10 @@ class ProtoMessageConverter extends ProtoGroupConverter implements ParentValueCo
         }
 
         @Override
-        public void start() {
-        }
+        public void start() {}
 
         @Override
-        public void end() {
-        }
+        public void end() {}
       };
     }
 

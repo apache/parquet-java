@@ -45,7 +45,7 @@ import org.openjdk.jmh.infra.Blackhole;
 @State(Scope.Benchmark)
 public class ReadBenchmarks {
 
-  private void read(Path parquetFile, int nRows, Blackhole blackhole) throws IOException {
+  protected void read(Path parquetFile, int nRows, Blackhole blackhole) throws IOException {
     ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), parquetFile)
         .withConf(configuration)
         .build();

@@ -92,7 +92,6 @@ public class ProtoReadSupport<T extends Message> extends ReadSupport<T> {
     public abstract boolean tryCodeGen(Class<? extends Message> protoClass);
   }
 
-
   public static void setRequestedProjection(Configuration configuration, String requestedProjection) {
     configuration.set(PB_REQUESTED_PROJECTION, requestedProjection);
   }
@@ -108,6 +107,10 @@ public class ProtoReadSupport<T extends Message> extends ReadSupport<T> {
    */
   public static void setProtobufClass(Configuration configuration, String protobufClass) {
     configuration.set(PB_CLASS, protobufClass);
+  }
+
+  public static void setCodegenMode(Configuration configuration, ProtoReadSupport.CodegenMode codegenMode) {
+    configuration.setEnum(PB_CODEGEN, codegenMode);
   }
 
   @Override
@@ -157,11 +160,14 @@ public class ProtoReadSupport<T extends Message> extends ReadSupport<T> {
 
     MessageType requestedSchema = readContext.getRequestedSchema();
     Class<? extends Message> protobufClass = Protobufs.getProtobufClass(headerProtoClass);
-    ProtoRecordMaterializer protoRecordMaterializer = new ProtoRecordMaterializer(configuration, requestedSchema, protobufClass, keyValueMetaData);
+    ProtoRecordMaterializer protoRecordMaterializer =
+        new ProtoRecordMaterializer(configuration, requestedSchema, protobufClass, keyValueMetaData);
 
-    CodegenMode codegenMode = ProtoReadSupport.CodegenMode.valueOf(configuration.get(PB_CODEGEN, CodegenMode.DEFAULT.name()));
+    CodegenMode codegenMode =
+        ProtoReadSupport.CodegenMode.valueOf(configuration.get(PB_CODEGEN, CodegenMode.DEFAULT.name()));
     return codegenMode.tryCodeGen(protobufClass)
-        ? ByteBuddyCodeGen.ReadSupport.tryEnhanceRecordMaterializer(protoRecordMaterializer, codegenMode, configuration)
+        ? ByteBuddyCodeGen.ReadSupport.tryEnhanceRecordMaterializer(
+            protoRecordMaterializer, codegenMode, configuration)
         : protoRecordMaterializer;
   }
 }

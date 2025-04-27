@@ -186,6 +186,9 @@ public class ProtoDataGenerator<B extends Message.Builder, M extends Message> ex
       CompressionCodecName codec,
       int nRows)
       throws IOException {
+
+    outFile = outFile.suffix(protoClass.getName());
+
     if (exists(configuration, outFile)) {
       System.out.println("File already exists " + outFile);
       return;

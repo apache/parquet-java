@@ -60,6 +60,7 @@ class ProtoRecordMaterializer<T extends MessageOrBuilder> extends RecordMaterial
 
   interface ParentValueContainerHolder {
     ProtoMessageConverter.ParentValueContainer getParentValueContainer();
+
     void setParentValueContainer(ProtoMessageConverter.ParentValueContainer parentValueContainer);
   }
 
