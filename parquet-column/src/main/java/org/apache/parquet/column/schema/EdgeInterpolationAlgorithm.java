@@ -58,7 +58,7 @@ public enum EdgeInterpolationAlgorithm {
       case 4:
         return KARNEY;
       default:
-        return null;
+        throw new IllegalArgumentException("Unrecognized EdgeInterpolationAlgorithm value: " + value);
     }
   }
 }

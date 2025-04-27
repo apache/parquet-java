@@ -450,10 +450,9 @@ public abstract class PrimitiveStringifier {
     @Override
     String stringifyNotNull(Binary value) {
 
-      Geometry geometry;
       try {
         WKBReader reader = new WKBReader();
-        geometry = reader.read(value.getBytesUnsafe());
+        Geometry geometry = reader.read(value.getBytesUnsafe());
         return geometry.toText();
       } catch (ParseException e) {
         return BINARY_INVALID;
