@@ -92,8 +92,9 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
   private final GenericData model;
   private final Map<Schema.Field, Object> recordDefaults = new HashMap<Schema.Field, Object>();
 
-  public AvroRecordConverter(MessageType parquetSchema, Schema avroSchema, GenericData baseModel) {
-    this(null, parquetSchema, avroSchema, baseModel);
+  AvroRecordConverter(
+      MessageType parquetSchema, Schema avroSchema, GenericData baseModel, ReflectClassValidator validator) {
+    this(null, parquetSchema, avroSchema, baseModel, validator);
     LogicalType logicalType = avroSchema.getLogicalType();
     Conversion<?> conversion = baseModel.getConversionFor(logicalType);
     this.rootContainer = ParentValueContainer.getConversionContainer(
@@ -108,8 +109,12 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
         avroSchema);
   }
 
-  public AvroRecordConverter(
-      ParentValueContainer parent, GroupType parquetSchema, Schema avroSchema, GenericData model) {
+  AvroRecordConverter(
+      ParentValueContainer parent,
+      GroupType parquetSchema,
+      Schema avroSchema,
+      GenericData model,
+      ReflectClassValidator validator) {
     super(parent);
     this.avroSchema = avroSchema;
     this.model = (model == null ? ReflectData.get() : model);
@@ -142,7 +147,7 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
 
       Class<?> fieldClass = fields.get(avroField.name());
       converters[parquetFieldIndex] =
-          newConverter(nonNullSchema, parquetField, this.model, fieldClass, container);
+          newConverter(nonNullSchema, parquetField, this.model, fieldClass, container, validator);
 
       // @Stringable doesn't affect the reflected schema; must be enforced here
       if (recordClass != null && converters[parquetFieldIndex] instanceof FieldStringConverter) {
@@ -326,12 +331,18 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
         String.format("Parquet/Avro schema mismatch: Avro field '%s' not found", parquetFieldName));
   }
 
-  private static Converter newConverter(Schema schema, Type type, GenericData model, ParentValueContainer setter) {
-    return newConverter(schema, type, model, null, setter);
+  private static Converter newConverter(
+      Schema schema, Type type, GenericData model, ParentValueContainer setter, ReflectClassValidator validator) {
+    return newConverter(schema, type, model, null, setter, validator);
   }
 
   private static Converter newConverter(
-      Schema schema, Type type, GenericData model, Class<?> knownClass, ParentValueContainer setter) {
+      Schema schema,
+      Type type,
+      GenericData model,
+      Class<?> knownClass,
+      ParentValueContainer setter,
+      ReflectClassValidator validator) {
     LogicalType logicalType = schema.getLogicalType();
     Conversion<?> conversion;
 
@@ -381,21 +392,23 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
             && logicalType.getName().equals(LogicalTypes.uuid().getName())) {
           return new AvroConverters.FieldUUIDConverter(parent, type.asPrimitiveType());
         }
-        return newStringConverter(schema, model, parent);
+        return newStringConverter(schema, model, parent, validator);
       case RECORD:
-        return new AvroRecordConverter(parent, type.asGroupType(), schema, model);
+        return new AvroRecordConverter(parent, type.asGroupType(), schema, model, validator);
       case ENUM:
         return new AvroConverters.FieldEnumConverter(parent, schema, model);
       case ARRAY:
         Class<?> arrayDatumClass = getDatumClass(conversion, knownClass, schema, model);
         if (arrayDatumClass != null && arrayDatumClass.isArray()) {
-          return new AvroArrayConverter(parent, type.asGroupType(), schema, model, arrayDatumClass);
+          return new AvroArrayConverter(
+              parent, type.asGroupType(), schema, model, arrayDatumClass, validator);
         }
-        return new AvroCollectionConverter(parent, type.asGroupType(), schema, model, arrayDatumClass);
+        return new AvroCollectionConverter(
+            parent, type.asGroupType(), schema, model, arrayDatumClass, validator);
       case MAP:
-        return new MapConverter(parent, type.asGroupType(), schema, model);
+        return new MapConverter(parent, type.asGroupType(), schema, model, validator);
       case UNION:
-        return new AvroUnionConverter(parent, type, schema, model);
+        return new AvroUnionConverter(parent, type, schema, model, validator);
       case FIXED:
         return new AvroConverters.FieldFixedConverter(parent, schema, model);
       default:
@@ -404,8 +417,9 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
     }
   }
 
-  private static Converter newStringConverter(Schema schema, GenericData model, ParentValueContainer parent) {
-    Class<?> stringableClass = getStringableClass(schema, model);
+  private static Converter newStringConverter(
+      Schema schema, GenericData model, ParentValueContainer parent, ReflectClassValidator validator) {
+    Class<?> stringableClass = getStringableClass(schema, model, validator);
     if (stringableClass == String.class) {
       return new FieldStringConverter(parent);
     } else if (stringableClass == CharSequence.class) {
@@ -414,12 +428,13 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
     return new FieldStringableConverter(parent, stringableClass);
   }
 
-  private static Class<?> getStringableClass(Schema schema, GenericData model) {
+  private static Class<?> getStringableClass(Schema schema, GenericData model, ReflectClassValidator validator) {
     if (model instanceof SpecificData) {
       // both specific and reflect (and any subclasses) use this logic
       boolean isMap = (schema.getType() == Schema.Type.MAP);
       String stringableClass = schema.getProp(isMap ? JAVA_KEY_CLASS_PROP : JAVA_CLASS_PROP);
       if (stringableClass != null) {
+        validator.validate(stringableClass);
         try {
           return ClassUtils.forName(model.getClassLoader(), stringableClass);
         } catch (ClassNotFoundException e) {
@@ -560,12 +575,13 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
     private Class<?> containerClass;
     private Collection<Object> container;
 
-    public AvroCollectionConverter(
+    AvroCollectionConverter(
         ParentValueContainer parent,
         GroupType type,
         Schema avroSchema,
         GenericData model,
-        Class<?> containerClass) {
+        Class<?> containerClass,
+        ReflectClassValidator validator) {
       this.parent = parent;
       this.avroSchema = avroSchema;
       this.containerClass = containerClass;
@@ -575,16 +591,21 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
       // matching it against the element schema.
       if (isElementType(repeatedType, elementSchema)) {
         // the element type is the repeated type (and required)
-        converter = newConverter(elementSchema, repeatedType, model, new ParentValueContainer() {
-          @Override
-          @SuppressWarnings("unchecked")
-          public void add(Object value) {
-            container.add(value);
-          }
-        });
+        converter = newConverter(
+            elementSchema,
+            repeatedType,
+            model,
+            new ParentValueContainer() {
+              @Override
+              @SuppressWarnings("unchecked")
+              public void add(Object value) {
+                container.add(value);
+              }
+            },
+            validator);
       } else {
         // the element is wrapped in a synthetic group and may be optional
-        converter = new ElementConverter(repeatedType.asGroupType(), elementSchema, model);
+        converter = new ElementConverter(repeatedType.asGroupType(), elementSchema, model, validator);
       }
     }
 
@@ -631,17 +652,22 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
       private Object element;
       private final Converter elementConverter;
 
-      public ElementConverter(GroupType repeatedType, Schema elementSchema, GenericData model) {
+      ElementConverter(
+          GroupType repeatedType, Schema elementSchema, GenericData model, ReflectClassValidator validator) {
         Type elementType = repeatedType.getType(0);
         Schema nonNullElementSchema = AvroSchemaConverter.getNonNull(elementSchema);
-        this.elementConverter =
-            newConverter(nonNullElementSchema, elementType, model, new ParentValueContainer() {
+        this.elementConverter = newConverter(
+            nonNullElementSchema,
+            elementType,
+            model,
+            new ParentValueContainer() {
               @Override
               @SuppressWarnings("unchecked")
               public void add(Object value) {
                 ElementConverter.this.element = value;
               }
-            });
+            },
+            validator);
       }
 
       @Override
@@ -683,12 +709,13 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
     private Class<?> elementClass;
     private Collection<?> container;
 
-    public AvroArrayConverter(
+    AvroArrayConverter(
         ParentValueContainer parent,
         GroupType type,
         Schema avroSchema,
         GenericData model,
-        Class<?> arrayClass) {
+        Class<?> arrayClass,
+        ReflectClassValidator validator) {
       this.parent = parent;
       this.avroSchema = avroSchema;
 
@@ -703,10 +730,11 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
       // matching it against the element schema.
       if (isElementType(repeatedType, elementSchema)) {
         // the element type is the repeated type (and required)
-        converter = newConverter(elementSchema, repeatedType, model, elementClass, setter);
+        converter = newConverter(elementSchema, repeatedType, model, elementClass, setter, validator);
       } else {
         // the element is wrapped in a synthetic group and may be optional
-        converter = new ArrayElementConverter(repeatedType.asGroupType(), elementSchema, model, setter);
+        converter =
+            new ArrayElementConverter(repeatedType.asGroupType(), elementSchema, model, setter, validator);
       }
     }
 
@@ -846,18 +874,23 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
       private boolean isSet;
       private final Converter elementConverter;
 
-      public ArrayElementConverter(
+      ArrayElementConverter(
           GroupType repeatedType,
           Schema elementSchema,
           GenericData model,
-          final ParentValueContainer setter) {
+          final ParentValueContainer setter,
+          ReflectClassValidator validator) {
         Type elementType = repeatedType.getType(0);
         Preconditions.checkArgument(
             !elementClass.isPrimitive() || elementType.isRepetition(REQUIRED),
             "Cannot convert list of optional elements to primitive array");
         Schema nonNullElementSchema = AvroSchemaConverter.getNonNull(elementSchema);
         this.elementConverter = newConverter(
-            nonNullElementSchema, elementType, model, elementClass, new ParentValueContainer() {
+            nonNullElementSchema,
+            elementType,
+            model,
+            elementClass,
+            new ParentValueContainer() {
               @Override
               public void add(Object value) {
                 isSet = true;
@@ -911,7 +944,8 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
                 isSet = true;
                 setter.addDouble(value);
               }
-            });
+            },
+            validator);
       }
 
       @Override
@@ -978,7 +1012,11 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
     private Object memberValue = null;
 
     public AvroUnionConverter(
-        ParentValueContainer parent, Type parquetSchema, Schema avroSchema, GenericData model) {
+        ParentValueContainer parent,
+        Type parquetSchema,
+        Schema avroSchema,
+        GenericData model,
+        ReflectClassValidator validator) {
       super(parent);
       GroupType parquetGroup = parquetSchema.asGroupType();
       this.memberConverters = new Converter[parquetGroup.getFieldCount()];
@@ -988,8 +1026,11 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
         Schema memberSchema = avroSchema.getTypes().get(index);
         if (!memberSchema.getType().equals(Schema.Type.NULL)) {
           Type memberType = parquetGroup.getType(parquetIndex);
-          memberConverters[parquetIndex] =
-              newConverter(memberSchema, memberType, model, new ParentValueContainer() {
+          memberConverters[parquetIndex] = newConverter(
+              memberSchema,
+              memberType,
+              model,
+              new ParentValueContainer() {
                 @Override
                 public void add(Object value) {
                   Preconditions.checkArgument(
@@ -997,7 +1038,8 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
                       "Union is resolving to more than one type");
                   memberValue = value;
                 }
-              });
+              },
+              validator);
           parquetIndex++; // Note for nulls the parquetIndex id not increased
         }
       }
@@ -1027,10 +1069,15 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
     private final Class<?> mapClass;
     private Map<K, V> map;
 
-    public MapConverter(ParentValueContainer parent, GroupType mapType, Schema mapSchema, GenericData model) {
+    MapConverter(
+        ParentValueContainer parent,
+        GroupType mapType,
+        Schema mapSchema,
+        GenericData model,
+        ReflectClassValidator validator) {
       this.parent = parent;
       GroupType repeatedKeyValueType = mapType.getType(0).asGroupType();
-      this.keyValueConverter = new MapKeyValueConverter(repeatedKeyValueType, mapSchema, model);
+      this.keyValueConverter = new MapKeyValueConverter(repeatedKeyValueType, mapSchema, model, validator);
       this.schema = mapSchema;
       this.mapClass = getDatumClass(mapSchema, model);
     }
@@ -1066,24 +1113,34 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
       private final Converter keyConverter;
       private final Converter valueConverter;
 
-      public MapKeyValueConverter(GroupType keyValueType, Schema mapSchema, GenericData model) {
-        keyConverter = newStringConverter(mapSchema, model, new ParentValueContainer() {
-          @Override
-          @SuppressWarnings("unchecked")
-          public void add(Object value) {
-            MapKeyValueConverter.this.key = (K) value;
-          }
-        });
+      MapKeyValueConverter(
+          GroupType keyValueType, Schema mapSchema, GenericData model, ReflectClassValidator validator) {
+        keyConverter = newStringConverter(
+            mapSchema,
+            model,
+            new ParentValueContainer() {
+              @Override
+              @SuppressWarnings("unchecked")
+              public void add(Object value) {
+                MapKeyValueConverter.this.key = (K) value;
+              }
+            },
+            validator);
 
         Type valueType = keyValueType.getType(1);
         Schema nonNullValueSchema = AvroSchemaConverter.getNonNull(mapSchema.getValueType());
-        valueConverter = newConverter(nonNullValueSchema, valueType, model, new ParentValueContainer() {
-          @Override
-          @SuppressWarnings("unchecked")
-          public void add(Object value) {
-            MapKeyValueConverter.this.value = (V) value;
-          }
-        });
+        valueConverter = newConverter(
+            nonNullValueSchema,
+            valueType,
+            model,
+            new ParentValueContainer() {
+              @Override
+              @SuppressWarnings("unchecked")
+              public void add(Object value) {
+                MapKeyValueConverter.this.value = (V) value;
+              }
+            },
+            validator);
       }
 
       @Override
