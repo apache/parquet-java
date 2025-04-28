@@ -1220,10 +1220,19 @@ public class ParquetMetadataConverter {
         return LogicalTypeAnnotation.geometryType(geometry.getCrs());
       case GEOGRAPHY:
         GeographyType geography = type.getGEOGRAPHY();
-        return LogicalTypeAnnotation.geographyType(
-            geography.getCrs(),
-            org.apache.parquet.column.schema.EdgeInterpolationAlgorithm.valueOf(
-                geography.getAlgorithm().name()));
+        // Handle when either algorithm or CRS is null
+        if (geography == null) {
+          return LogicalTypeAnnotation.geographyType(null, null);
+        }
+
+        EdgeInterpolationAlgorithm algorithm = geography.getAlgorithm();
+        org.apache.parquet.column.schema.EdgeInterpolationAlgorithm parquetAlgorithm = null;
+        if (algorithm != null) {
+          parquetAlgorithm =
+              org.apache.parquet.column.schema.EdgeInterpolationAlgorithm.valueOf(algorithm.name());
+        }
+
+        return LogicalTypeAnnotation.geographyType(geography.getCrs(), parquetAlgorithm);
       case VARIANT:
         VariantType variant = type.getVARIANT();
         return LogicalTypeAnnotation.variantType(variant.getSpecification_version());
