@@ -527,7 +527,8 @@ public class ParquetMetadataConverter {
     @Override
     public Optional<LogicalType> visit(LogicalTypeAnnotation.GeometryLogicalTypeAnnotation geometryLogicalType) {
       GeometryType geometryType = new GeometryType();
-      if (geometryLogicalType.getCrs() != null) {
+      if (geometryLogicalType.getCrs() != null
+          && !geometryLogicalType.getCrs().isEmpty()) {
         geometryType.setCrs(geometryLogicalType.getCrs());
       }
       return of(LogicalType.GEOMETRY(geometryType));
@@ -539,16 +540,12 @@ public class ParquetMetadataConverter {
       if (geographyLogicalType.getCrs() != null) {
         geographyType.setCrs(geographyLogicalType.getCrs());
       }
-      if (geographyLogicalType.getAlgorithm() != null) {
-        try {
-          // Convert from schema.EdgeInterpolationAlgorithm to format.EdgeInterpolationAlgorithm
-          EdgeInterpolationAlgorithm algorithm = EdgeInterpolationAlgorithm.valueOf(
-              geographyLogicalType.getAlgorithm().name());
-          geographyType.setAlgorithm(algorithm);
-        } catch (IllegalArgumentException e) {
-          throw new IllegalArgumentException(
-              "Unknown EdgeInterpolationAlgorithm value: " + geographyLogicalType.getAlgorithm(), e);
-        }
+      if (geographyLogicalType.getAlgorithm() != null
+          && !geographyLogicalType.getCrs().isEmpty()) {
+        // Convert from schema.EdgeInterpolationAlgorithm to format.EdgeInterpolationAlgorithm
+        EdgeInterpolationAlgorithm algorithm =
+            fromParquetEdgeInterpolationAlgorithm(geographyLogicalType.getAlgorithm());
+        geographyType.setAlgorithm(algorithm);
       }
       return of(LogicalType.GEOGRAPHY(geographyType));
     }
@@ -1220,16 +1217,10 @@ public class ParquetMetadataConverter {
         return LogicalTypeAnnotation.geometryType(geometry.getCrs());
       case GEOGRAPHY:
         GeographyType geography = type.getGEOGRAPHY();
-        // Handle when either algorithm or CRS is null
-        if (geography == null) {
-          return LogicalTypeAnnotation.geographyType(null, null);
-        }
-
         EdgeInterpolationAlgorithm algorithm = geography.getAlgorithm();
         org.apache.parquet.column.schema.EdgeInterpolationAlgorithm parquetAlgorithm = null;
         if (algorithm != null) {
-          parquetAlgorithm =
-              org.apache.parquet.column.schema.EdgeInterpolationAlgorithm.valueOf(algorithm.name());
+          parquetAlgorithm = toParquetEdgeInterpolationAlgorithm(algorithm);
         }
 
         return LogicalTypeAnnotation.geographyType(geography.getCrs(), parquetAlgorithm);
@@ -2539,5 +2530,27 @@ public class ParquetMetadataConverter {
       formatStats.setDefinition_level_histogram(defLevelHistogram);
     }
     return formatStats;
+  }
+
+  /** Convert Parquet Algorithm enum to Thrift Algorithm enum */
+  public static EdgeInterpolationAlgorithm fromParquetEdgeInterpolationAlgorithm(
+      org.apache.parquet.column.schema.EdgeInterpolationAlgorithm parquetAlgo) {
+    if (parquetAlgo == null) {
+      return null;
+    }
+    EdgeInterpolationAlgorithm thriftAlgo = EdgeInterpolationAlgorithm.findByValue(parquetAlgo.getValue());
+    if (thriftAlgo == null) {
+      throw new IllegalArgumentException("Unrecognized Parquet EdgeInterpolationAlgorithm: " + parquetAlgo);
+    }
+    return thriftAlgo;
+  }
+
+  /** Convert Thrift Algorithm enum to Parquet Algorithm enum */
+  public static org.apache.parquet.column.schema.EdgeInterpolationAlgorithm toParquetEdgeInterpolationAlgorithm(
+      EdgeInterpolationAlgorithm thriftAlgo) {
+    if (thriftAlgo == null) {
+      return null;
+    }
+    return org.apache.parquet.column.schema.EdgeInterpolationAlgorithm.findByValue(thriftAlgo.getValue());
   }
 }
