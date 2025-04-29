@@ -22,9 +22,14 @@ import static org.apache.parquet.bytes.BytesUtils.readIntLittleEndian;
 import static org.apache.parquet.hadoop.ParquetFileWriter.EFMAGIC;
 import static org.apache.parquet.hadoop.ParquetFileWriter.MAGIC;
 
+import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.SerializerProvider;
+import com.fasterxml.jackson.databind.module.SimpleModule;
+import com.fasterxml.jackson.databind.module.SimpleSerializers;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import java.io.IOException;
 import java.io.InputStream;
@@ -34,6 +39,7 @@ import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.format.FileMetaData;
 import org.apache.parquet.format.Util;
 import org.apache.parquet.io.SeekableInputStream;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
 
 public class RawUtils {
 
@@ -79,6 +85,27 @@ public class RawUtils {
     mapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
     mapper.configure(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, true);
     mapper.registerModule(new JavaTimeModule());
+    mapper.registerModule(new ParquetModule());
     return mapper;
+  }
+
+  static class ParquetModule extends SimpleModule {
+
+    @Override
+    public void setupModule(SetupContext context) {
+      super.setupModule(context);
+      SimpleSerializers sers = new SimpleSerializers();
+      sers.addSerializer(LogicalTypeAnnotation.class, new LogicalTypeAnnotationJsonSerializer());
+      context.addSerializers(sers);
+    }
+  }
+
+  static class LogicalTypeAnnotationJsonSerializer extends JsonSerializer<LogicalTypeAnnotation> {
+
+    @Override
+    public void serialize(LogicalTypeAnnotation value, JsonGenerator gen, SerializerProvider serializers)
+        throws IOException {
+      gen.writeString(value.toString());
+    }
   }
 }
