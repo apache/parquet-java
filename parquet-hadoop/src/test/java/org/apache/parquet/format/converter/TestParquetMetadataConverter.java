@@ -80,6 +80,7 @@ import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.EncodingStats;
 import org.apache.parquet.column.ParquetProperties;
+import org.apache.parquet.column.schema.EdgeInterpolationAlgorithm;
 import org.apache.parquet.column.statistics.BinaryStatistics;
 import org.apache.parquet.column.statistics.BooleanStatistics;
 import org.apache.parquet.column.statistics.DoubleStatistics;
@@ -101,6 +102,8 @@ import org.apache.parquet.format.ConvertedType;
 import org.apache.parquet.format.DecimalType;
 import org.apache.parquet.format.FieldRepetitionType;
 import org.apache.parquet.format.FileMetaData;
+import org.apache.parquet.format.GeographyType;
+import org.apache.parquet.format.GeometryType;
 import org.apache.parquet.format.LogicalType;
 import org.apache.parquet.format.MapType;
 import org.apache.parquet.format.PageHeader;
@@ -1660,5 +1663,142 @@ public class TestParquetMetadataConverter {
     assertEquals(Optional.of(1024L), sizeStatistics.getUnencodedByteArrayDataBytes());
     assertEquals(repLevelHistogram, sizeStatistics.getRepetitionLevelHistogram());
     assertEquals(defLevelHistogram, sizeStatistics.getDefinitionLevelHistogram());
+  }
+
+  @Test
+  public void testGeometryLogicalType() {
+    ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
+
+    // Create schema with geometry type
+    MessageType schema = Types.buildMessage()
+        .required(PrimitiveTypeName.BINARY)
+        .as(LogicalTypeAnnotation.geometryType("EPSG:4326"))
+        .named("geomField")
+        .named("Message");
+
+    // Convert to parquet schema and back
+    List<SchemaElement> parquetSchema = parquetMetadataConverter.toParquetSchema(schema);
+    MessageType actual = parquetMetadataConverter.fromParquetSchema(parquetSchema, null);
+
+    // Verify the logical type is preserved
+    assertEquals(schema, actual);
+
+    PrimitiveType primitiveType = actual.getType("geomField").asPrimitiveType();
+    LogicalTypeAnnotation logicalType = primitiveType.getLogicalTypeAnnotation();
+    assertTrue(logicalType instanceof LogicalTypeAnnotation.GeometryLogicalTypeAnnotation);
+    assertEquals("EPSG:4326", ((LogicalTypeAnnotation.GeometryLogicalTypeAnnotation) logicalType).getCrs());
+  }
+
+  @Test
+  public void testGeographyLogicalType() {
+    ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
+
+    // Create schema with geography type
+    MessageType schema = Types.buildMessage()
+        .required(PrimitiveTypeName.BINARY)
+        .as(LogicalTypeAnnotation.geographyType("EPSG:4326", EdgeInterpolationAlgorithm.SPHERICAL))
+        .named("geogField")
+        .named("Message");
+
+    // Convert to parquet schema and back
+    List<SchemaElement> parquetSchema = parquetMetadataConverter.toParquetSchema(schema);
+    MessageType actual = parquetMetadataConverter.fromParquetSchema(parquetSchema, null);
+
+    // Verify the logical type is preserved
+    assertEquals(schema, actual);
+
+    PrimitiveType primitiveType = actual.getType("geogField").asPrimitiveType();
+    LogicalTypeAnnotation logicalType = primitiveType.getLogicalTypeAnnotation();
+    assertTrue(logicalType instanceof LogicalTypeAnnotation.GeographyLogicalTypeAnnotation);
+
+    LogicalTypeAnnotation.GeographyLogicalTypeAnnotation geographyType =
+        (LogicalTypeAnnotation.GeographyLogicalTypeAnnotation) logicalType;
+    assertEquals("EPSG:4326", geographyType.getCrs());
+    assertEquals(EdgeInterpolationAlgorithm.SPHERICAL, geographyType.getAlgorithm());
+  }
+
+  @Test
+  public void testGeometryLogicalTypeWithMissingCrs() {
+    // Create a Geometry logical type without specifying CRS
+    GeometryType geometryType = new GeometryType();
+    LogicalType logicalType = new LogicalType();
+    logicalType.setGEOMETRY(geometryType);
+
+    // Convert to LogicalTypeAnnotation
+    ParquetMetadataConverter converter = new ParquetMetadataConverter();
+    LogicalTypeAnnotation annotation = converter.getLogicalTypeAnnotation(logicalType);
+
+    // Verify the annotation is created correctly
+    assertNotNull("Geometry annotation should not be null", annotation);
+    assertTrue(
+        "Should be a GeometryLogicalTypeAnnotation",
+        annotation instanceof LogicalTypeAnnotation.GeometryLogicalTypeAnnotation);
+
+    LogicalTypeAnnotation.GeometryLogicalTypeAnnotation geometryAnnotation =
+        (LogicalTypeAnnotation.GeometryLogicalTypeAnnotation) annotation;
+
+    // Default behavior should use null or empty CRS
+    assertNull("CRS should be null or empty when not specified", geometryAnnotation.getCrs());
+  }
+
+  @Test
+  public void testGeographyLogicalTypeWithMissingParameters() {
+    ParquetMetadataConverter converter = new ParquetMetadataConverter();
+
+    // Create a Geography logical type without CRS and algorithm
+    GeographyType geographyType = new GeographyType();
+    LogicalType logicalType = new LogicalType();
+    logicalType.setGEOGRAPHY(geographyType);
+
+    // Convert to LogicalTypeAnnotation
+    LogicalTypeAnnotation annotation = converter.getLogicalTypeAnnotation(logicalType);
+
+    // Verify the annotation is created correctly
+    assertNotNull("Geography annotation should not be null", annotation);
+    assertTrue(
+        "Should be a GeographyLogicalTypeAnnotation",
+        annotation instanceof LogicalTypeAnnotation.GeographyLogicalTypeAnnotation);
+
+    // Check that optional parameters are handled correctly
+    LogicalTypeAnnotation.GeographyLogicalTypeAnnotation geographyAnnotation =
+        (LogicalTypeAnnotation.GeographyLogicalTypeAnnotation) annotation;
+    assertNull("CRS should be null when not specified", geographyAnnotation.getCrs());
+    // Most implementations default to LINEAR when algorithm is not specified
+    assertNull("Algorithm should be null when not specified", geographyAnnotation.getAlgorithm());
+
+    // Now test the round-trip conversion
+    LogicalType roundTripType = converter.convertToLogicalType(annotation);
+    assertEquals("setField should be GEOGRAPHY", LogicalType._Fields.GEOGRAPHY, roundTripType.getSetField());
+    assertNull(
+        "Round trip CRS should still be null",
+        roundTripType.getGEOGRAPHY().getCrs());
+    assertNull(
+        "Round trip Algorithm should be null",
+        roundTripType.getGEOGRAPHY().getAlgorithm());
+  }
+
+  @Test
+  public void testGeographyLogicalTypeWithAlgorithmButNoCrs() {
+    // Create a Geography logical type with algorithm but no CRS
+    GeographyType geographyType = new GeographyType();
+    geographyType.setAlgorithm(org.apache.parquet.format.EdgeInterpolationAlgorithm.SPHERICAL);
+    LogicalType logicalType = new LogicalType();
+    logicalType.setGEOGRAPHY(geographyType);
+
+    // Convert to LogicalTypeAnnotation
+    ParquetMetadataConverter converter = new ParquetMetadataConverter();
+    LogicalTypeAnnotation annotation = converter.getLogicalTypeAnnotation(logicalType);
+
+    // Verify the annotation is created correctly
+    Assert.assertNotNull("Geography annotation should not be null", annotation);
+    LogicalTypeAnnotation.GeographyLogicalTypeAnnotation geographyAnnotation =
+        (LogicalTypeAnnotation.GeographyLogicalTypeAnnotation) annotation;
+
+    // CRS should be null/empty but algorithm should be set
+    assertNull("CRS should be null or empty", geographyAnnotation.getCrs());
+    assertEquals(
+        "Algorithm should be SPHERICAL",
+        EdgeInterpolationAlgorithm.SPHERICAL,
+        geographyAnnotation.getAlgorithm());
   }
 }

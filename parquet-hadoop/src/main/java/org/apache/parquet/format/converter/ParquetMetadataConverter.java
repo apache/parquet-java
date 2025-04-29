@@ -76,10 +76,13 @@ import org.apache.parquet.format.DataPageHeader;
 import org.apache.parquet.format.DataPageHeaderV2;
 import org.apache.parquet.format.DecimalType;
 import org.apache.parquet.format.DictionaryPageHeader;
+import org.apache.parquet.format.EdgeInterpolationAlgorithm;
 import org.apache.parquet.format.Encoding;
 import org.apache.parquet.format.EncryptionWithColumnKey;
 import org.apache.parquet.format.FieldRepetitionType;
 import org.apache.parquet.format.FileMetaData;
+import org.apache.parquet.format.GeographyType;
+import org.apache.parquet.format.GeometryType;
 import org.apache.parquet.format.IntType;
 import org.apache.parquet.format.KeyValue;
 import org.apache.parquet.format.LogicalType;
@@ -519,6 +522,27 @@ public class ParquetMetadataConverter {
     @Override
     public Optional<LogicalType> visit(LogicalTypeAnnotation.VariantLogicalTypeAnnotation variantLogicalType) {
       return of(LogicalTypes.VARIANT(variantLogicalType.getSpecVersion()));
+    }
+
+    @Override
+    public Optional<LogicalType> visit(LogicalTypeAnnotation.GeometryLogicalTypeAnnotation geometryLogicalType) {
+      GeometryType geometryType = new GeometryType();
+      if (geometryLogicalType.getCrs() != null
+          && !geometryLogicalType.getCrs().isEmpty()) {
+        geometryType.setCrs(geometryLogicalType.getCrs());
+      }
+      return of(LogicalType.GEOMETRY(geometryType));
+    }
+
+    @Override
+    public Optional<LogicalType> visit(LogicalTypeAnnotation.GeographyLogicalTypeAnnotation geographyLogicalType) {
+      GeographyType geographyType = new GeographyType();
+      if (geographyLogicalType.getCrs() != null
+          && !geographyLogicalType.getCrs().isEmpty()) {
+        geographyType.setCrs(geographyLogicalType.getCrs());
+      }
+      geographyType.setAlgorithm(fromParquetEdgeInterpolationAlgorithm(geographyLogicalType.getAlgorithm()));
+      return of(LogicalType.GEOGRAPHY(geographyType));
     }
   }
 
@@ -1183,6 +1207,13 @@ public class ParquetMetadataConverter {
         return LogicalTypeAnnotation.uuidType();
       case FLOAT16:
         return LogicalTypeAnnotation.float16Type();
+      case GEOMETRY:
+        GeometryType geometry = type.getGEOMETRY();
+        return LogicalTypeAnnotation.geometryType(geometry.getCrs());
+      case GEOGRAPHY:
+        GeographyType geography = type.getGEOGRAPHY();
+        return LogicalTypeAnnotation.geographyType(
+            geography.getCrs(), toParquetEdgeInterpolationAlgorithm(geography.getAlgorithm()));
       case VARIANT:
         VariantType variant = type.getVARIANT();
         return LogicalTypeAnnotation.variantType(variant.getSpecification_version());
@@ -2489,5 +2520,27 @@ public class ParquetMetadataConverter {
       formatStats.setDefinition_level_histogram(defLevelHistogram);
     }
     return formatStats;
+  }
+
+  /** Convert Parquet Algorithm enum to Thrift Algorithm enum */
+  public static EdgeInterpolationAlgorithm fromParquetEdgeInterpolationAlgorithm(
+      org.apache.parquet.column.schema.EdgeInterpolationAlgorithm parquetAlgo) {
+    if (parquetAlgo == null) {
+      return null;
+    }
+    EdgeInterpolationAlgorithm thriftAlgo = EdgeInterpolationAlgorithm.findByValue(parquetAlgo.getValue());
+    if (thriftAlgo == null) {
+      throw new IllegalArgumentException("Unrecognized Parquet EdgeInterpolationAlgorithm: " + parquetAlgo);
+    }
+    return thriftAlgo;
+  }
+
+  /** Convert Thrift Algorithm enum to Parquet Algorithm enum */
+  public static org.apache.parquet.column.schema.EdgeInterpolationAlgorithm toParquetEdgeInterpolationAlgorithm(
+      EdgeInterpolationAlgorithm thriftAlgo) {
+    if (thriftAlgo == null) {
+      return null;
+    }
+    return org.apache.parquet.column.schema.EdgeInterpolationAlgorithm.findByValue(thriftAlgo.getValue());
   }
 }
