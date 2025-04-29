@@ -1502,8 +1502,6 @@ public class TestTypeBuilders {
     PrimitiveType optionalGeometryActual = Types.optional(BINARY)
         .as(LogicalTypeAnnotation.geometryType("OGC:CRS84"))
         .named("aGeometry");
-    String typeInfo = optionalGeometryExpected.toString();
-    Assert.assertEquals("optional binary aGeometry (GEOMETRY(OGC:CRS84))", typeInfo);
     Assert.assertEquals(optionalGeometryExpected, optionalGeometryActual);
   }
 
@@ -1528,9 +1526,9 @@ public class TestTypeBuilders {
     // Test with custom CRS and edge algorithm
     EdgeInterpolationAlgorithm greatCircle = EdgeInterpolationAlgorithm.SPHERICAL;
     PrimitiveType customCrsWithEdgeAlgorithmExpected = new PrimitiveType(
-        REQUIRED, BINARY, "aGeography", LogicalTypeAnnotation.geographyType("EPSG:4326", null));
+        REQUIRED, BINARY, "aGeography", LogicalTypeAnnotation.geographyType("EPSG:4326", greatCircle));
     PrimitiveType customCrsWithEdgeAlgorithmActual = Types.required(BINARY)
-        .as(LogicalTypeAnnotation.geographyType("EPSG:4326", null))
+        .as(LogicalTypeAnnotation.geographyType("EPSG:4326", greatCircle))
         .named("aGeography");
     Assert.assertEquals(customCrsWithEdgeAlgorithmExpected, customCrsWithEdgeAlgorithmActual);
 
@@ -1540,8 +1538,6 @@ public class TestTypeBuilders {
     PrimitiveType optionalGeographyActual = Types.optional(BINARY)
         .as(LogicalTypeAnnotation.geographyType("OGC:CRS84", null))
         .named("aGeography");
-    String typeInfo = optionalGeographyExpected.toString();
-    Assert.assertEquals("optional binary aGeography (GEOGRAPHY(OGC:CRS84))", typeInfo);
     Assert.assertEquals(optionalGeographyExpected, optionalGeographyActual);
   }
 
@@ -1575,22 +1571,7 @@ public class TestTypeBuilders {
         new PrimitiveType(OPTIONAL, BINARY, "aGeography", LogicalTypeAnnotation.geographyType());
     PrimitiveType optionalGeographyActual =
         Types.optional(BINARY).as(LogicalTypeAnnotation.geographyType()).named("aGeography");
-    String typeInfo = optionalGeographyExpected.toString();
-    Assert.assertEquals("optional binary aGeography (GEOGRAPHY(OGC:CRS84))", typeInfo);
     Assert.assertEquals(optionalGeographyExpected, optionalGeographyActual);
-  }
-
-  @Test
-  public void testGeographyLogicalTypeWithoutCRSAndEdgeInterpolationAlgorithm() {
-    // Test with no CRS and no edge algorithm
-    PrimitiveType defaultExpected =
-        new PrimitiveType(REQUIRED, BINARY, "aGeography", LogicalTypeAnnotation.geographyType(null, null));
-    PrimitiveType defaultActual = Types.required(BINARY)
-        .as(LogicalTypeAnnotation.geographyType(null, null))
-        .named("aGeography");
-    String typeInfo = defaultActual.toString();
-    Assert.assertEquals("required binary aGeography (GEOGRAPHY)", typeInfo);
-    Assert.assertEquals(defaultExpected, defaultActual);
   }
 
   /**

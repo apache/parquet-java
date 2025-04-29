@@ -34,7 +34,7 @@ public class TestGeospatialStatistics {
   @Test
   public void testAddGeospatialData() throws ParseException {
     PrimitiveType type = Types.optional(PrimitiveType.PrimitiveTypeName.BINARY)
-        .as(LogicalTypeAnnotation.geometryType())
+        .as(LogicalTypeAnnotation.geometryType(null))
         .named("a");
     GeospatialStatistics.Builder builder = GeospatialStatistics.newBuilder(type);
     WKTReader wktReader = new WKTReader();
@@ -51,7 +51,7 @@ public class TestGeospatialStatistics {
   @Test
   public void testMergeGeospatialStatistics() throws ParseException {
     PrimitiveType type = Types.optional(PrimitiveType.PrimitiveTypeName.BINARY)
-        .as(LogicalTypeAnnotation.geometryType())
+        .as(LogicalTypeAnnotation.geometryType(null))
         .named("a");
 
     WKTReader wktReader = new WKTReader();
@@ -74,7 +74,7 @@ public class TestGeospatialStatistics {
   @Test
   public void testCopyGeospatialStatistics() {
     PrimitiveType type = Types.optional(PrimitiveType.PrimitiveTypeName.BINARY)
-        .as(LogicalTypeAnnotation.geometryType())
+        .as(LogicalTypeAnnotation.geometryType(null))
         .named("a");
     GeospatialStatistics.Builder builder = GeospatialStatistics.newBuilder(type);
     builder.update(Binary.fromString("POINT (1 1)"));

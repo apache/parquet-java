@@ -445,23 +445,14 @@ public abstract class PrimitiveStringifier {
     }
   };
 
-  static final PrimitiveStringifier FLOAT16_STRINGIFIER = new BinaryStringifierBase("FLOAT16_STRINGIFIER") {
-
-    @Override
-    String stringifyNotNull(Binary value) {
-      return Float16.toFloatString(value);
-    }
-  };
-
   static final PrimitiveStringifier WKB_STRINGIFIER = new BinaryStringifierBase("WKB_STRINGIFIER") {
 
     @Override
     String stringifyNotNull(Binary value) {
 
-      Geometry geometry;
       try {
         WKBReader reader = new WKBReader();
-        geometry = reader.read(value.getBytesUnsafe());
+        Geometry geometry = reader.read(value.getBytesUnsafe());
         return geometry.toText();
       } catch (ParseException e) {
         return BINARY_INVALID;
@@ -469,6 +460,13 @@ public abstract class PrimitiveStringifier {
     }
   };
 
+  static final PrimitiveStringifier FLOAT16_STRINGIFIER = new BinaryStringifierBase("FLOAT16_STRINGIFIER") {
+
+    @Override
+    String stringifyNotNull(Binary value) {
+      return Float16.toFloatString(value);
+    }
+  };
   static final PrimitiveStringifier UNKNOWN_STRINGIFIER = new PrimitiveStringifier("UNKNOWN_STRINGIFIER") {
 
     public String stringify(Binary ignored) {

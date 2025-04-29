@@ -78,7 +78,7 @@ public class TestGeometryTypeRoundTrip {
     // A message type that represents a message with a geometry column.
     MessageType schema = Types.buildMessage()
         .required(BINARY)
-        .as(geometryType())
+        .as(geometryType(null))
         .named("geometry")
         .named("msg");
 

@@ -132,7 +132,7 @@ public class GeospatialStatistics {
       return new GeospatialStatistics.Builder();
     } else if (logicalTypeAnnotation instanceof LogicalTypeAnnotation.GeographyLogicalTypeAnnotation) {
       EdgeInterpolationAlgorithm edgeAlgorithm =
-          ((LogicalTypeAnnotation.GeographyLogicalTypeAnnotation) logicalTypeAnnotation).getEdgeAlgorithm();
+          ((LogicalTypeAnnotation.GeographyLogicalTypeAnnotation) logicalTypeAnnotation).getAlgorithm();
       return new GeospatialStatistics.Builder(edgeAlgorithm);
     } else {
       return noopBuilder();
