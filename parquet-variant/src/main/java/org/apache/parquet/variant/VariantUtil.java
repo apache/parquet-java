@@ -187,6 +187,29 @@ class VariantUtil {
   // The size (in bytes) of a UUID.
   static final int UUID_SIZE = 16;
 
+  // header bytes
+  static final byte HDR_NULL = primitiveHeader(NULL);
+  static final byte HDR_LONG_STRING = primitiveHeader(LONG_STR);
+  static final byte HDR_TRUE = primitiveHeader(TRUE);
+  static final byte HDR_FALSE = primitiveHeader(FALSE);
+  static final byte HDR_INT8 = primitiveHeader(INT8);
+  static final byte HDR_INT16 = primitiveHeader(INT16);
+  static final byte HDR_INT32 = primitiveHeader(INT32);
+  static final byte HDR_INT64 = primitiveHeader(INT64);
+  static final byte HDR_DOUBLE = primitiveHeader(DOUBLE);
+  static final byte HDR_DECIMAL4 = primitiveHeader(DECIMAL4);
+  static final byte HDR_DECIMAL8 = primitiveHeader(DECIMAL8);
+  static final byte HDR_DECIMAL16 = primitiveHeader(DECIMAL16);
+  static final byte HDR_DATE = primitiveHeader(DATE);
+  static final byte HDR_TIMESTAMP_TZ = primitiveHeader(TIMESTAMP_TZ);
+  static final byte HDR_TIMESTAMP_NTZ = primitiveHeader(TIMESTAMP_NTZ);
+  static final byte HDR_TIME = primitiveHeader(TIME);
+  static final byte HDR_TIMESTAMP_NANOS_TZ = primitiveHeader(TIMESTAMP_NANOS_TZ);
+  static final byte HDR_TIMESTAMP_NANOS_NTZ = primitiveHeader(TIMESTAMP_NANOS_NTZ);
+  static final byte HDR_FLOAT = primitiveHeader(FLOAT);
+  static final byte HDR_BINARY = primitiveHeader(BINARY);
+  static final byte HDR_UUID = primitiveHeader(UUID);
+
   static byte primitiveHeader(int type) {
     return (byte) (type << 2 | PRIMITIVE);
   }

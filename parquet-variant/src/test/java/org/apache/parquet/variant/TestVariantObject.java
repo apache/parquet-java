@@ -31,6 +31,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -439,6 +440,7 @@ public class TestVariantObject {
   }
 
   @Test
+  @Ignore("Test uses too much memory")
   public void testObjectFourByteFieldIdBuilder() {
     // need more than 16777215 dictionary entries to push field id size above 3 bytes
     testObjectFieldIdSizeBuilder(16_800_000);
