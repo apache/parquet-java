@@ -193,7 +193,7 @@ public class TestVariantScalar {
   }
 
   @Test
-  public void testIntegerBuilder() {
+  public void testLongBuilder() {
     Arrays.asList(
             0L,
             (long) Byte.MIN_VALUE,
@@ -208,19 +208,14 @@ public class TestVariantScalar {
           VariantBuilder vb2 = new VariantBuilder(false);
           vb2.appendLong(l);
           VariantTestUtil.testVariant(vb2.build(), v -> {
-            if (Byte.MIN_VALUE <= l && l <= Byte.MAX_VALUE) {
-              VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.BYTE);
-            } else if (Short.MIN_VALUE <= l && l <= Short.MAX_VALUE) {
-              VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.SHORT);
-            } else if (Integer.MIN_VALUE <= l && l <= Integer.MAX_VALUE) {
-              VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.INT);
-            } else {
-              VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.LONG);
-            }
+            VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.LONG);
             Assert.assertEquals((long) l, v.getLong());
           });
         });
+  }
 
+  @Test
+  public void testIntBuilder() {
     Arrays.asList(
             0,
             (int) Byte.MIN_VALUE,
@@ -231,36 +226,32 @@ public class TestVariantScalar {
             Integer.MAX_VALUE)
         .forEach(i -> {
           VariantBuilder vb2 = new VariantBuilder(false);
-          vb2.appendLong((long) i);
+          vb2.appendInt(i);
           VariantTestUtil.testVariant(vb2.build(), v -> {
-            if (Byte.MIN_VALUE <= i && i <= Byte.MAX_VALUE) {
-              VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.BYTE);
-            } else if (Short.MIN_VALUE <= i && i <= Short.MAX_VALUE) {
-              VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.SHORT);
-            } else {
-              VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.INT);
-            }
+            VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.INT);
             Assert.assertEquals((int) i, v.getInt());
           });
         });
+  }
 
+  @Test
+  public void testShortBuilder() {
     Arrays.asList((short) 0, (short) Byte.MIN_VALUE, (short) Byte.MAX_VALUE, Short.MIN_VALUE, Short.MAX_VALUE)
         .forEach(s -> {
           VariantBuilder vb2 = new VariantBuilder(false);
-          vb2.appendLong(s);
+          vb2.appendShort(s);
           VariantTestUtil.testVariant(vb2.build(), v -> {
-            if (Byte.MIN_VALUE <= s && s <= Byte.MAX_VALUE) {
-              VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.BYTE);
-            } else {
-              VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.SHORT);
-            }
+            VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.SHORT);
             Assert.assertEquals((short) s, v.getShort());
           });
         });
+  }
 
+  @Test
+  public void testByteBuilder() {
     Arrays.asList((byte) 0, Byte.MIN_VALUE, Byte.MAX_VALUE).forEach(b -> {
       VariantBuilder vb2 = new VariantBuilder(false);
-      vb2.appendLong(b);
+      vb2.appendByte(b);
       VariantTestUtil.testVariant(vb2.build(), v -> {
         VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.BYTE);
         Assert.assertEquals((byte) b, v.getByte());

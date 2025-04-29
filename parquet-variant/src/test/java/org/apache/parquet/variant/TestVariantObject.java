@@ -388,8 +388,8 @@ public class TestVariantObject {
     Assert.assertEquals(randomString, v.getFieldByKey("key1").getString());
     VariantTestUtil.checkType(v.getFieldByKey("key2"), VariantUtil.PRIMITIVE, Variant.Type.BOOLEAN);
     Assert.assertTrue(v.getFieldByKey("key2").getBoolean());
-    VariantTestUtil.checkType(v.getFieldByKey("key3"), VariantUtil.PRIMITIVE, Variant.Type.INT);
-    Assert.assertEquals(1234567890, v.getFieldByKey("key3").getInt());
+    VariantTestUtil.checkType(v.getFieldByKey("key3"), VariantUtil.PRIMITIVE, Variant.Type.LONG);
+    Assert.assertEquals(1234567890, v.getFieldByKey("key3").getLong());
   }
 
   @Test

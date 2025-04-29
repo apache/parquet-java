@@ -126,33 +126,54 @@ public class VariantBuilder {
   }
 
   /**
-   * Appends a long value to the variant builder. The actual encoded integer type depends on the
-   * value range of the long value.
+   * Appends a long value to the variant builder.
    * @param l the long value to append
    * @return this builder
    */
   public VariantBuilder appendLong(long l) {
-    if (l == (byte) l) {
-      checkCapacity(1 /* header size */ + 1);
-      writeBuffer[writePos] = VariantUtil.HDR_INT8;
-      VariantUtil.writeLong(writeBuffer, writePos + 1, l, 1);
-      writePos += 2;
-    } else if (l == (short) l) {
-      checkCapacity(1 /* header size */ + 2);
-      writeBuffer[writePos] = VariantUtil.HDR_INT16;
-      VariantUtil.writeLong(writeBuffer, writePos + 1, l, 2);
-      writePos += 3;
-    } else if (l == (int) l) {
-      checkCapacity(1 /* header size */ + 4);
-      writeBuffer[writePos] = VariantUtil.HDR_INT32;
-      VariantUtil.writeLong(writeBuffer, writePos + 1, l, 4);
-      writePos += 5;
-    } else {
-      checkCapacity(1 /* header size */ + 8);
-      writeBuffer[writePos] = VariantUtil.HDR_INT64;
-      VariantUtil.writeLong(writeBuffer, writePos + 1, l, 8);
-      writePos += 9;
-    }
+    checkCapacity(1 /* header size */ + 8);
+    writeBuffer[writePos] = VariantUtil.HDR_INT64;
+    VariantUtil.writeLong(writeBuffer, writePos + 1, l, 8);
+    writePos += 9;
+    return this;
+  }
+
+  /**
+   * Appends an int value to the variant builder.
+   * @param i the int to append
+   * @return this builder
+   */
+  public VariantBuilder appendInt(int i) {
+    checkCapacity(1 /* header size */ + 4);
+    writeBuffer[writePos] = VariantUtil.HDR_INT32;
+    VariantUtil.writeLong(writeBuffer, writePos + 1, i, 4);
+    writePos += 5;
+    return this;
+  }
+
+  /**
+   * Appends a short value to the variant builder.
+   * @param s the short to append
+   * @return this builder
+   */
+  public VariantBuilder appendShort(short s) {
+    checkCapacity(1 /* header size */ + 2);
+    writeBuffer[writePos] = VariantUtil.HDR_INT16;
+    VariantUtil.writeLong(writeBuffer, writePos + 1, s, 2);
+    writePos += 3;
+    return this;
+  }
+
+  /**
+   * Appends a byte value to the variant builder.
+   * @param b the byte to append
+   * @return this builder
+   */
+  public VariantBuilder appendByte(byte b) {
+    checkCapacity(1 /* header size */ + 1);
+    writeBuffer[writePos] = VariantUtil.HDR_INT8;
+    VariantUtil.writeLong(writeBuffer, writePos + 1, b, 1);
+    writePos += 2;
     return this;
   }
 

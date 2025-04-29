@@ -119,13 +119,14 @@ public class TestVariantArray {
     VariantArrayBuilder a = b.startArray();
     for (int i = 0; i < 511; i++) {
       b.startArrayElement(a);
-      b.appendLong(i);
+      b.appendInt(i);
     }
     b.endArray(a);
     VariantTestUtil.testVariant(b.build(), v -> {
       VariantTestUtil.checkType(v, VariantUtil.ARRAY, Variant.Type.ARRAY);
       Assert.assertEquals(511, v.numArrayElements());
       for (int i = 0; i < 511; i++) {
+        VariantTestUtil.checkType(v.getElementAtIndex(i), VariantUtil.PRIMITIVE, Variant.Type.INT);
         Assert.assertEquals(i, v.getElementAtIndex(i).getInt());
       }
     });
@@ -255,8 +256,8 @@ public class TestVariantArray {
       Assert.assertEquals(randomString, v.getElementAtIndex(0).getString());
       VariantTestUtil.checkType(v.getElementAtIndex(1), VariantUtil.PRIMITIVE, Variant.Type.BOOLEAN);
       Assert.assertTrue(v.getElementAtIndex(1).getBoolean());
-      VariantTestUtil.checkType(v.getElementAtIndex(2), VariantUtil.PRIMITIVE, Variant.Type.INT);
-      Assert.assertEquals(1234567890, v.getElementAtIndex(2).getInt());
+      VariantTestUtil.checkType(v.getElementAtIndex(2), VariantUtil.PRIMITIVE, Variant.Type.LONG);
+      Assert.assertEquals(1234567890, v.getElementAtIndex(2).getLong());
     });
   }
 
