@@ -537,16 +537,11 @@ public class ParquetMetadataConverter {
     @Override
     public Optional<LogicalType> visit(LogicalTypeAnnotation.GeographyLogicalTypeAnnotation geographyLogicalType) {
       GeographyType geographyType = new GeographyType();
-      if (geographyLogicalType.getCrs() != null) {
+      if (geographyLogicalType.getCrs() != null
+          && !geographyLogicalType.getCrs().isEmpty()) {
         geographyType.setCrs(geographyLogicalType.getCrs());
       }
-      if (geographyLogicalType.getAlgorithm() != null
-          && !geographyLogicalType.getCrs().isEmpty()) {
-        // Convert from schema.EdgeInterpolationAlgorithm to format.EdgeInterpolationAlgorithm
-        EdgeInterpolationAlgorithm algorithm =
-            fromParquetEdgeInterpolationAlgorithm(geographyLogicalType.getAlgorithm());
-        geographyType.setAlgorithm(algorithm);
-      }
+      geographyType.setAlgorithm(fromParquetEdgeInterpolationAlgorithm(geographyLogicalType.getAlgorithm()));
       return of(LogicalType.GEOGRAPHY(geographyType));
     }
   }
@@ -1217,13 +1212,8 @@ public class ParquetMetadataConverter {
         return LogicalTypeAnnotation.geometryType(geometry.getCrs());
       case GEOGRAPHY:
         GeographyType geography = type.getGEOGRAPHY();
-        EdgeInterpolationAlgorithm algorithm = geography.getAlgorithm();
-        org.apache.parquet.column.schema.EdgeInterpolationAlgorithm parquetAlgorithm = null;
-        if (algorithm != null) {
-          parquetAlgorithm = toParquetEdgeInterpolationAlgorithm(algorithm);
-        }
-
-        return LogicalTypeAnnotation.geographyType(geography.getCrs(), parquetAlgorithm);
+        return LogicalTypeAnnotation.geographyType(
+            geography.getCrs(), toParquetEdgeInterpolationAlgorithm(geography.getAlgorithm()));
       case VARIANT:
         VariantType variant = type.getVARIANT();
         return LogicalTypeAnnotation.variantType(variant.getSpecification_version());
