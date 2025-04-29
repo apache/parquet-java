@@ -25,6 +25,7 @@ import org.apache.parquet.io.PositionOutputStream;
 
 public class HadoopPositionOutputStream extends PositionOutputStream {
   private final FSDataOutputStream wrapped;
+  private boolean closed;
 
   HadoopPositionOutputStream(FSDataOutputStream wrapped) {
     this.wrapped = wrapped;
@@ -61,8 +62,13 @@ public class HadoopPositionOutputStream extends PositionOutputStream {
 
   @Override
   public void close() throws IOException {
+    if (closed) {
+      return;
+    }
     try (FSDataOutputStream fdos = wrapped) {
       fdos.flush();
+    } finally {
+      closed = true;
     }
   }
 }
