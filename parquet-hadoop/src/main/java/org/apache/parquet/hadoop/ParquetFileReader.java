@@ -1743,8 +1743,12 @@ public class ParquetFileReader implements Closeable {
 
   @Override
   public void close() throws IOException {
+    close(true);
+  }
+
+  public void close(boolean closeFileInputStream) throws IOException {
     try {
-      if (f != null) {
+      if (closeFileInputStream && f != null) {
         f.close();
       }
     } finally {
