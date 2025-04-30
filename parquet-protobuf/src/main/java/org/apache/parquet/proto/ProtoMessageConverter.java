@@ -369,7 +369,7 @@ class ProtoMessageConverter extends ModifiableGroupConverter implements Modifiab
     parent = parentValueContainer;
   }
 
-  static class ParentValueContainer {
+  public static class ParentValueContainer {
 
     /**
      * Adds the value to the parent.

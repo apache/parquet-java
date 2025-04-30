@@ -29,6 +29,7 @@ import com.google.protobuf.DoubleValue;
 import com.google.protobuf.FloatValue;
 import com.google.protobuf.Int32Value;
 import com.google.protobuf.Int64Value;
+import com.google.protobuf.MapEntry;
 import com.google.protobuf.Message;
 import com.google.protobuf.MessageOrBuilder;
 import com.google.protobuf.StringValue;
@@ -64,6 +65,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.stream.Stream;
 import net.bytebuddy.ByteBuddy;
 import net.bytebuddy.description.field.FieldDescription;
@@ -2761,12 +2763,168 @@ public class ByteBuddyCodeGen {
         ProtoReadSupport.CodegenMode codegenMode,
         ParquetConfiguration configuration) {
 
+      updateConverters(protoRecordMaterializer.getRootConverter(), new Stack<>());
       // visitConverters(protoRecordMaterializer.getRootConverter(), new Stack<>());
 
       return protoRecordMaterializer;
     }
 
-    static void visitConverters(Converter converter, Stack<ModifiableGroupConverter> parentConverters) {
+    private static Converter updateConverters(
+        Converter converter, Stack<ModifiableGroupConverter> parentConverters) {
+      if (converter instanceof ModifiableGroupConverter) {
+        ModifiableGroupConverter groupConverter = (ModifiableGroupConverter) converter;
+        for (int i = 0; i < groupConverter.getFieldCount(); i++) {
+          Converter fieldConverter = groupConverter.getConverter(i);
+          parentConverters.push(groupConverter);
+          Converter newFieldConverter = updateConverters(fieldConverter, parentConverters);
+          parentConverters.pop();
+          groupConverter.setFieldConverter(i, newFieldConverter);
+        }
+      }
+      return updateConverter(converter, parentConverters);
+    }
+
+    private static Converter updateConverter(
+        Converter converter, Stack<ModifiableGroupConverter> parentConverters) {
+      if (converter instanceof ProtoRecordConverter) {
+        return converter;
+      }
+
+      if (converter instanceof ModifiableParentValueContainerHolder) {
+        ModifiableParentValueContainerHolder parentValueContainerHolder =
+            (ModifiableParentValueContainerHolder) converter;
+        ProtoMessageConverter.ParentValueContainer parentValueContainer =
+            parentValueContainerHolder.getParentValueContainer();
+
+        Descriptors.FieldDescriptor fieldDescriptor;
+        Message.Builder parentBuilder;
+        boolean repeatedField;
+        if (parentValueContainer instanceof SetFieldParentValueContainer) {
+          SetFieldParentValueContainer pvc = (SetFieldParentValueContainer) parentValueContainer;
+          fieldDescriptor = pvc.getFieldDescriptor();
+          parentBuilder = pvc.getParent();
+          repeatedField = false;
+        } else if (parentValueContainer instanceof AddRepeatedFieldParentValueContainer) {
+          AddRepeatedFieldParentValueContainer pvc =
+              (AddRepeatedFieldParentValueContainer) parentValueContainer;
+          fieldDescriptor = pvc.getFieldDescriptor();
+          parentBuilder = pvc.getParent();
+          repeatedField = true;
+        } else if (parentValueContainer instanceof ProtoMessageConverter.DummyParentValueContainer) {
+          return converter;
+        } else {
+          throw new IllegalStateException("Unknown parent value container: " + parentValueContainer);
+        }
+
+        if (converter instanceof PrimitiveConverter) {
+          return updatePrimitiveConverter(
+              (PrimitiveConverter) converter,
+              parentValueContainerHolder,
+              parentConverters,
+              fieldDescriptor,
+              repeatedField,
+              parentBuilder);
+        }
+      }
+      return converter;
+    }
+
+    private static Converter updatePrimitiveConverter(
+        PrimitiveConverter converter,
+        ModifiableParentValueContainerHolder containerHolder,
+        Stack<ModifiableGroupConverter> parentConverters,
+        Descriptors.FieldDescriptor fieldDescriptor,
+        boolean repeatedField,
+        Message.Builder parentBuilder) {
+      if (converter instanceof ProtoMessageConverter.ProtoIntConverter
+          && !repeatedField
+          && !(parentBuilder instanceof MapEntry.Builder)) {
+        ProtoMessageConverter.ParentValueContainer newPvc = new Function<
+            Message.Builder, ProtoMessageConverter.ParentValueContainer>() {
+          private DynamicType.Builder<ProtoMessageConverter.ParentValueContainer> classBuilder;
+
+          @Override
+          public ProtoMessageConverter.ParentValueContainer apply(Message.Builder builder) {
+            Class<? extends Message.Builder> parentBuilderClass = parentBuilder.getClass();
+            Method setterMethod = ReflectionUtil.getDeclaredMethod(
+                parentBuilderClass, fieldDescriptor, "set{}", int.class);
+
+            classBuilder = new ByteBuddy()
+                .subclass(ProtoMessageConverter.ParentValueContainer.class)
+                .modifiers(Visibility.PUBLIC)
+                .name(ProtoMessageConverter.ParentValueContainer.class.getName() + "$Generated$"
+                    + BYTE_BUDDY_CLASS_SEQUENCE.incrementAndGet());
+
+            TypeDescription.Generic parentBuilderType =
+                TypeDescription.Generic.OfNonGenericType.ForLoadedType.of(parentBuilderClass);
+            FieldDescription.Latent parentBuilderFieldDesc = new FieldDescription.Latent(
+                classBuilder.toTypeDescription(),
+                new FieldDescription.Token(
+                    "parent", Modifier.PRIVATE | Modifier.FINAL, parentBuilderType));
+            classBuilder = classBuilder.define(parentBuilderFieldDesc);
+
+            classBuilder = classBuilder
+                .define(new MethodDescription.Latent(
+                    classBuilder.toTypeDescription(),
+                    new MethodDescription.Token(
+                        MethodDescription.CONSTRUCTOR_INTERNAL_NAME,
+                        Visibility.PUBLIC.getMask(),
+                        TypeDescription.Generic.OfNonGenericType.ForLoadedType.of(void.class),
+                        Collections.singletonList(parentBuilderType))))
+                .intercept(MethodCall.invoke(ReflectionUtil.getConstructor(
+                        ProtoMessageConverter.ParentValueContainer.class))
+                    .andThen(new Implementations() {
+                      {
+                        CodeGenUtils.LocalVars localVars = new CodeGenUtils.LocalVars();
+                        try (LocalVar thisLocalVar =
+                            localVars.register(classBuilder.toTypeDescription())) {
+                          try (LocalVar parentVar = localVars.register(parentBuilderClass)) {
+                            add(
+                                MethodVariableAccess.loadThis(),
+                                parentVar.load(),
+                                FieldAccess.forField(parentBuilderFieldDesc)
+                                    .write());
+                          }
+                        }
+                        add(Codegen.returnVoid());
+                      }
+                    }));
+
+            classBuilder = classBuilder
+                .method(ElementMatchers.named("addInt"))
+                .intercept(new Implementations() {
+                  {
+                    CodeGenUtils.LocalVars localVars = new CodeGenUtils.LocalVars();
+                    try (LocalVar thisLocalVar =
+                        localVars.register(classBuilder.toTypeDescription())) {
+                      try (LocalVar valueVar = localVars.register(int.class)) {
+                        add(
+                            MethodVariableAccess.loadThis(),
+                            FieldAccess.forField(parentBuilderFieldDesc)
+                                .read(),
+                            valueVar.load(),
+                            Codegen.invokeMethod(setterMethod));
+                        add(Codegen.returnVoid());
+                      }
+                    }
+                  }
+                });
+
+            DynamicType.Unloaded<ProtoMessageConverter.ParentValueContainer> unloaded = classBuilder.make();
+            Class<? extends ProtoMessageConverter.ParentValueContainer> pvcClass = unloaded.load(
+                    this.getClass().getClassLoader(), ClassLoadingStrategy.Default.WRAPPER)
+                .getLoaded();
+            return ReflectionUtil.newInstance(
+                ReflectionUtil.getConstructor(pvcClass, parentBuilderClass), parentBuilder);
+          }
+        }.apply(parentBuilder);
+
+        containerHolder.setParentValueContainer(newPvc);
+      }
+      return converter;
+    }
+
+    static void printConvertersTree(Converter converter, Stack<ModifiableGroupConverter> parentConverters) {
       StringBuilder indentBuilder = new StringBuilder();
       for (int i = 0; i < parentConverters.size(); i++) {
         indentBuilder.append(" ");
@@ -2805,7 +2963,7 @@ public class ByteBuddyCodeGen {
         for (int i = 0; i < groupConverter.getFieldCount(); i++) {
           Converter fieldConverter = groupConverter.getConverter(i);
           parentConverters.push(groupConverter);
-          visitConverters(fieldConverter, parentConverters);
+          printConvertersTree(fieldConverter, parentConverters);
           parentConverters.pop();
         }
       } else if (converter instanceof PrimitiveConverter) {
