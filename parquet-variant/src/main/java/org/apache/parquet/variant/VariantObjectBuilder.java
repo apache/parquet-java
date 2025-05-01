@@ -21,29 +21,64 @@ import java.util.ArrayList;
 /**
  * Builder for creating Variant object, used by VariantBuilder.
  */
-public class VariantObjectBuilder {
-  VariantObjectBuilder(VariantBuilder builder) {
-    this.builder = builder;
-    this.startPos = builder.writePos();
+public class VariantObjectBuilder extends VariantBuilder {
+  /** The parent VariantBuilder. */
+  private final VariantBuilder parent;
+  /** The FieldEntry list for the fields of this object. */
+  private final ArrayList<VariantBuilder.FieldEntry> fields;
+
+  VariantObjectBuilder(VariantBuilder parent) {
+    this.parent = parent;
     this.fields = new ArrayList<>();
   }
 
+  /**
+   * Appends an object key to this object. This method must be called before appending any value.
+   * @param key the key to append
+   */
   void appendKey(String key) {
-    fields.add(new VariantBuilder.FieldEntry(key, builder.addKey(key), builder.writePos() - startPos));
+    if (fields.size() > numValues) {
+      throw new IllegalStateException("Cannot call appendKey() before appending an object value.");
+    }
+    updateLastValueSize();
+    fields.add(new VariantBuilder.FieldEntry(key, addDictionaryKey(key), writePos));
   }
 
-  int startPos() {
-    return startPos;
-  }
-
-  ArrayList<VariantBuilder.FieldEntry> fields() {
+  /**
+   * Returns the list of FieldEntry in this object. The state of the object is validated, so this
+   * object is guaranteed to have the same number of keys and values.
+   * @return the list of fields in this object
+   */
+  ArrayList<VariantBuilder.FieldEntry> validateAndGetFields() {
+    if (fields.size() != numValues) {
+      throw new IllegalStateException(String.format(
+          "Number of object keys (%d) do not match the number of values (%d).", fields.size(), numValues));
+    }
+    updateLastValueSize();
     return fields;
   }
 
-  /** The underlying VariantBuilder. */
-  private final VariantBuilder builder;
-  /** The saved builder.writPos() for the start of this object. */
-  private final int startPos;
-  /** The FieldEntry list for the fields of this object. */
-  private final ArrayList<VariantBuilder.FieldEntry> fields;
+  @Override
+  protected void checkAppendState() {
+    if (objectBuilder != null) {
+      throw new IllegalStateException(
+          "Cannot call append() methods while an object is being built. Must call endObject() first.");
+    }
+    if (numValues != fields.size() - 1) {
+      throw new IllegalStateException("Cannot append an object value before calling appendKey()");
+    }
+  }
+
+  @Override
+  int addDictionaryKey(String key) {
+    // Add to the parent dictionary.
+    return parent.addDictionaryKey(key);
+  }
+
+  private void updateLastValueSize() {
+    if (!fields.isEmpty()) {
+      VariantBuilder.FieldEntry lastField = fields.get(fields.size() - 1);
+      lastField.updateValueSize(writePos() - lastField.offset);
+    }
+  }
 }

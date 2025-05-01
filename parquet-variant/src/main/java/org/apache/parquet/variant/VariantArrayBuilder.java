@@ -22,6 +22,13 @@ import java.util.ArrayList;
  * Builder for creating Variant arrays, used by VariantBuilder.
  */
 public class VariantArrayBuilder {
+  /** The underlying VariantBuilder. */
+  private final VariantBuilder builder;
+  /** The saved builder.writPos() for the start of this array. */
+  private final int startPos;
+  /** The offsets of the elements in this array. */
+  private final ArrayList<Integer> offsets;
+
   VariantArrayBuilder(VariantBuilder builder) {
     this.builder = builder;
     this.startPos = builder.writePos();
@@ -39,11 +46,4 @@ public class VariantArrayBuilder {
   ArrayList<Integer> offsets() {
     return offsets;
   }
-
-  /** The underlying VariantBuilder. */
-  private final VariantBuilder builder;
-  /** The saved builder.writPos() for the start of this array. */
-  private final int startPos;
-  /** The offsets of the elements in this array. */
-  private final ArrayList<Integer> offsets;
 }

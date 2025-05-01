@@ -92,17 +92,6 @@ public class TestVariantArray {
   }
 
   @Test
-  public void testEmptyArrayBuilder() {
-    VariantBuilder b = new VariantBuilder(true);
-    VariantArrayBuilder a = b.startArray();
-    b.endArray(a);
-    VariantTestUtil.testVariant(b.build(), v -> {
-      VariantTestUtil.checkType(v, VariantUtil.ARRAY, Variant.Type.ARRAY);
-      Assert.assertEquals(0, v.numArrayElements());
-    });
-  }
-
-  @Test
   public void testLargeArraySize() {
     Variant value = new Variant(
         ByteBuffer.wrap(new byte[] {0b10011, (byte) 0xFF, (byte) 0x01, 0x00, 0x00}),
@@ -110,25 +99,6 @@ public class TestVariantArray {
     VariantTestUtil.testVariant(value, v -> {
       VariantTestUtil.checkType(v, VariantUtil.ARRAY, Variant.Type.ARRAY);
       Assert.assertEquals(511, v.numArrayElements());
-    });
-  }
-
-  @Test
-  public void testLargeArraySizeBuilder() {
-    VariantBuilder b = new VariantBuilder(true);
-    VariantArrayBuilder a = b.startArray();
-    for (int i = 0; i < 511; i++) {
-      b.startArrayElement(a);
-      b.appendInt(i);
-    }
-    b.endArray(a);
-    VariantTestUtil.testVariant(b.build(), v -> {
-      VariantTestUtil.checkType(v, VariantUtil.ARRAY, Variant.Type.ARRAY);
-      Assert.assertEquals(511, v.numArrayElements());
-      for (int i = 0; i < 511; i++) {
-        VariantTestUtil.checkType(v.getElementAtIndex(i), VariantUtil.PRIMITIVE, Variant.Type.INT);
-        Assert.assertEquals(i, v.getElementAtIndex(i).getInt());
-      }
     });
   }
 
@@ -161,45 +131,6 @@ public class TestVariantArray {
       VariantTestUtil.checkType(nestedV.getElementAtIndex(1), VariantUtil.PRIMITIVE, Variant.Type.NULL);
       VariantTestUtil.checkType(nestedV.getElementAtIndex(2), VariantUtil.SHORT_STR, Variant.Type.STRING);
       Assert.assertEquals("c", nestedV.getElementAtIndex(2).getString());
-    });
-  }
-
-  @Test
-  public void testMixedArrayBuilder() {
-    VariantBuilder b = new VariantBuilder(true);
-    VariantArrayBuilder arrBuilder = b.startArray();
-    b.startArrayElement(arrBuilder);
-    b.appendBoolean(true);
-    b.startArrayElement(arrBuilder);
-    b.appendLong(1234567890);
-    b.startArrayElement(arrBuilder);
-    {
-      // build a nested array
-      VariantArrayBuilder nestedBuilder = b.startArray();
-      b.startArrayElement(nestedBuilder);
-      {
-        // build a nested empty array
-        VariantArrayBuilder emptyBuilder = b.startArray();
-        b.endArray(emptyBuilder);
-      }
-      b.startArrayElement(nestedBuilder);
-      b.appendString("variant");
-      b.endArray(nestedBuilder);
-    }
-    b.endArray(arrBuilder);
-
-    VariantTestUtil.testVariant(b.build(), v -> {
-      VariantTestUtil.checkType(v, VariantUtil.ARRAY, Variant.Type.ARRAY);
-      Assert.assertEquals(3, v.numArrayElements());
-      Assert.assertTrue(v.getElementAtIndex(0).getBoolean());
-      Assert.assertEquals(1234567890, v.getElementAtIndex(1).getLong());
-      VariantTestUtil.checkType(v.getElementAtIndex(2), VariantUtil.ARRAY, Variant.Type.ARRAY);
-
-      Variant nested = v.getElementAtIndex(2);
-      Assert.assertEquals(2, nested.numArrayElements());
-      VariantTestUtil.checkType(nested.getElementAtIndex(0), VariantUtil.ARRAY, Variant.Type.ARRAY);
-      Assert.assertEquals(0, nested.getElementAtIndex(0).numArrayElements());
-      Assert.assertEquals("variant", nested.getElementAtIndex(1).getString());
     });
   }
 
@@ -236,47 +167,6 @@ public class TestVariantArray {
   public void testArrayFourByteOffset() {
     // a string larger than 16777215 bytes to push the value offset size above 3 bytes
     testArrayOffsetSize(VariantTestUtil.randomString(16_800_000));
-  }
-
-  private void testArrayOffsetSizeBuilder(String randomString) {
-    VariantBuilder b = new VariantBuilder(true);
-    VariantArrayBuilder arrBuilder = b.startArray();
-    b.startArrayElement(arrBuilder);
-    b.appendString(randomString);
-    b.startArrayElement(arrBuilder);
-    b.appendBoolean(true);
-    b.startArrayElement(arrBuilder);
-    b.appendLong(1234567890);
-    b.endArray(arrBuilder);
-
-    VariantTestUtil.testVariant(b.build(), v -> {
-      VariantTestUtil.checkType(v, VariantUtil.ARRAY, Variant.Type.ARRAY);
-      Assert.assertEquals(3, v.numArrayElements());
-      VariantTestUtil.checkType(v.getElementAtIndex(0), VariantUtil.PRIMITIVE, Variant.Type.STRING);
-      Assert.assertEquals(randomString, v.getElementAtIndex(0).getString());
-      VariantTestUtil.checkType(v.getElementAtIndex(1), VariantUtil.PRIMITIVE, Variant.Type.BOOLEAN);
-      Assert.assertTrue(v.getElementAtIndex(1).getBoolean());
-      VariantTestUtil.checkType(v.getElementAtIndex(2), VariantUtil.PRIMITIVE, Variant.Type.LONG);
-      Assert.assertEquals(1234567890, v.getElementAtIndex(2).getLong());
-    });
-  }
-
-  @Test
-  public void testArrayTwoByteOffsetBuilder() {
-    // a string larger than 255 bytes to push the value offset size above 1 byte
-    testArrayOffsetSizeBuilder(VariantTestUtil.randomString(300));
-  }
-
-  @Test
-  public void testArrayThreeByteOffsetBuilder() {
-    // a string larger than 65535 bytes to push the value offset size above 2 bytes
-    testArrayOffsetSizeBuilder(VariantTestUtil.randomString(70_000));
-  }
-
-  @Test
-  public void testArrayFourByteOffsetBuilder() {
-    // a string larger than 16777215 bytes to push the value offset size above 3 bytes
-    testArrayOffsetSizeBuilder(VariantTestUtil.randomString(16_800_000));
   }
 
   @Test

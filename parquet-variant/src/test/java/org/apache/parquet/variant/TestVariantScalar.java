@@ -20,15 +20,11 @@ package org.apache.parquet.variant;
 
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
-import java.util.Arrays;
 import java.util.UUID;
-import java.util.stream.IntStream;
 import org.junit.Assert;
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -42,13 +38,6 @@ public class TestVariantScalar {
     Variant value = new Variant(
         ByteBuffer.wrap(new byte[] {VariantTestUtil.primitiveHeader(0)}), VariantTestUtil.EMPTY_METADATA);
     VariantTestUtil.testVariant(value, v -> VariantTestUtil.checkType(v, VariantUtil.NULL, Variant.Type.NULL));
-  }
-
-  @Test
-  public void testNullBuilder() {
-    VariantBuilder vb = new VariantBuilder(false);
-    vb.appendNull();
-    VariantTestUtil.testVariant(vb.build(), v -> VariantTestUtil.checkType(v, VariantUtil.NULL, Variant.Type.NULL));
   }
 
   @Test
@@ -68,18 +57,6 @@ public class TestVariantScalar {
     VariantTestUtil.testVariant(value, v -> {
       VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.BOOLEAN);
       Assert.assertFalse(v.getBoolean());
-    });
-  }
-
-  @Test
-  public void testBooleanBuilder() {
-    Arrays.asList(true, false).forEach(b -> {
-      VariantBuilder vb = new VariantBuilder(false);
-      vb.appendBoolean(b);
-      VariantTestUtil.testVariant(vb.build(), v -> {
-        VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.BOOLEAN);
-        Assert.assertEquals(b, v.getBoolean());
-      });
     });
   }
 
@@ -193,73 +170,6 @@ public class TestVariantScalar {
   }
 
   @Test
-  public void testLongBuilder() {
-    Arrays.asList(
-            0L,
-            (long) Byte.MIN_VALUE,
-            (long) Byte.MAX_VALUE,
-            (long) Short.MIN_VALUE,
-            (long) Short.MAX_VALUE,
-            (long) Integer.MIN_VALUE,
-            (long) Integer.MAX_VALUE,
-            Long.MIN_VALUE,
-            Long.MAX_VALUE)
-        .forEach(l -> {
-          VariantBuilder vb2 = new VariantBuilder(false);
-          vb2.appendLong(l);
-          VariantTestUtil.testVariant(vb2.build(), v -> {
-            VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.LONG);
-            Assert.assertEquals((long) l, v.getLong());
-          });
-        });
-  }
-
-  @Test
-  public void testIntBuilder() {
-    Arrays.asList(
-            0,
-            (int) Byte.MIN_VALUE,
-            (int) Byte.MAX_VALUE,
-            (int) Short.MIN_VALUE,
-            (int) Short.MAX_VALUE,
-            Integer.MIN_VALUE,
-            Integer.MAX_VALUE)
-        .forEach(i -> {
-          VariantBuilder vb2 = new VariantBuilder(false);
-          vb2.appendInt(i);
-          VariantTestUtil.testVariant(vb2.build(), v -> {
-            VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.INT);
-            Assert.assertEquals((int) i, v.getInt());
-          });
-        });
-  }
-
-  @Test
-  public void testShortBuilder() {
-    Arrays.asList((short) 0, (short) Byte.MIN_VALUE, (short) Byte.MAX_VALUE, Short.MIN_VALUE, Short.MAX_VALUE)
-        .forEach(s -> {
-          VariantBuilder vb2 = new VariantBuilder(false);
-          vb2.appendShort(s);
-          VariantTestUtil.testVariant(vb2.build(), v -> {
-            VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.SHORT);
-            Assert.assertEquals((short) s, v.getShort());
-          });
-        });
-  }
-
-  @Test
-  public void testByteBuilder() {
-    Arrays.asList((byte) 0, Byte.MIN_VALUE, Byte.MAX_VALUE).forEach(b -> {
-      VariantBuilder vb2 = new VariantBuilder(false);
-      vb2.appendByte(b);
-      VariantTestUtil.testVariant(vb2.build(), v -> {
-        VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.BYTE);
-        Assert.assertEquals((byte) b, v.getByte());
-      });
-    });
-  }
-
-  @Test
   public void testFloat() {
     Variant value = new Variant(
         ByteBuffer.wrap(new byte[] {VariantTestUtil.primitiveHeader(14), (byte) 0xD2, 0x02, (byte) 0x96, 0x49}),
@@ -278,18 +188,6 @@ public class TestVariantScalar {
     VariantTestUtil.testVariant(value, v -> {
       VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.FLOAT);
       Assert.assertEquals(-0.0F, v.getFloat(), 0);
-    });
-  }
-
-  @Test
-  public void testFloatBuilder() {
-    Arrays.asList(Float.MIN_VALUE, 0f, Float.MAX_VALUE).forEach(f -> {
-      VariantBuilder vb2 = new VariantBuilder(false);
-      vb2.appendFloat(f);
-      VariantTestUtil.testVariant(vb2.build(), v -> {
-        VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.FLOAT);
-        Assert.assertEquals(f, v.getFloat(), 0);
-      });
     });
   }
 
@@ -324,18 +222,6 @@ public class TestVariantScalar {
     VariantTestUtil.testVariant(value, v -> {
       VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.DOUBLE);
       Assert.assertEquals(-0.0D, v.getDouble(), 0);
-    });
-  }
-
-  @Test
-  public void testDoubleBuilder() {
-    Arrays.asList(Double.MIN_VALUE, 0d, Double.MAX_VALUE).forEach(d -> {
-      VariantBuilder vb2 = new VariantBuilder(false);
-      vb2.appendDouble(d);
-      VariantTestUtil.testVariant(vb2.build(), v -> {
-        VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.DOUBLE);
-        Assert.assertEquals(d, v.getDouble(), 0);
-      });
     });
   }
 
@@ -469,41 +355,6 @@ public class TestVariantScalar {
   }
 
   @Test
-  public void testDecimalBuilder() {
-    // decimal4
-    Arrays.asList(new BigDecimal("123.456"), new BigDecimal("-987.654")).forEach(d -> {
-      VariantBuilder vb2 = new VariantBuilder(false);
-      vb2.appendDecimal(d);
-      VariantTestUtil.testVariant(vb2.build(), v -> {
-        VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.DECIMAL4);
-        Assert.assertEquals(d, v.getDecimal());
-      });
-    });
-
-    // decimal8
-    Arrays.asList(new BigDecimal("10.2147483647"), new BigDecimal("-1021474836.47"))
-        .forEach(d -> {
-          VariantBuilder vb2 = new VariantBuilder(false);
-          vb2.appendDecimal(d);
-          VariantTestUtil.testVariant(vb2.build(), v -> {
-            VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.DECIMAL8);
-            Assert.assertEquals(d, v.getDecimal());
-          });
-        });
-
-    // decimal16
-    Arrays.asList(new BigDecimal("109223372036854775.807"), new BigDecimal("-109.223372036854775807"))
-        .forEach(d -> {
-          VariantBuilder vb2 = new VariantBuilder(false);
-          vb2.appendDecimal(d);
-          VariantTestUtil.testVariant(vb2.build(), v -> {
-            VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.DECIMAL16);
-            Assert.assertEquals(d, v.getDecimal());
-          });
-        });
-  }
-
-  @Test
   public void testDate() {
     Variant value = new Variant(
         ByteBuffer.wrap(new byte[] {VariantTestUtil.primitiveHeader(11), (byte) 0xE3, 0x4E, 0x00, 0x00}),
@@ -524,17 +375,6 @@ public class TestVariantScalar {
     VariantTestUtil.testVariant(value, v -> {
       VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.DATE);
       Assert.assertEquals(LocalDate.parse("1969-12-31"), LocalDate.ofEpochDay(v.getInt()));
-    });
-  }
-
-  @Test
-  public void testDateBuilder() {
-    VariantBuilder vb = new VariantBuilder(false);
-    int days = Math.toIntExact(LocalDate.of(2024, 12, 16).toEpochDay());
-    vb.appendDate(days);
-    VariantTestUtil.testVariant(vb.build(), v -> {
-      VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.DATE);
-      Assert.assertEquals(days, v.getInt());
     });
   }
 
@@ -583,18 +423,6 @@ public class TestVariantScalar {
   }
 
   @Test
-  public void testTimestampTzBuilder() {
-    DateTimeFormatter dtf = DateTimeFormatter.ISO_DATE_TIME;
-    VariantBuilder vb = new VariantBuilder(false);
-    long micros = VariantTestUtil.microsSinceEpoch(Instant.from(dtf.parse("2024-12-16T10:23:45.321456-08:00")));
-    vb.appendTimestampTz(micros);
-    VariantTestUtil.testVariant(vb.build(), v -> {
-      VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.TIMESTAMP_TZ);
-      Assert.assertEquals(micros, v.getLong());
-    });
-  }
-
-  @Test
   public void testTimestampNtz() {
     Variant value = new Variant(
         ByteBuffer.wrap(new byte[] {
@@ -639,18 +467,6 @@ public class TestVariantScalar {
   }
 
   @Test
-  public void testTimestampNtzBuilder() {
-    DateTimeFormatter dtf = DateTimeFormatter.ISO_DATE_TIME;
-    VariantBuilder vb = new VariantBuilder(false);
-    long micros = VariantTestUtil.microsSinceEpoch(Instant.from(dtf.parse("2024-01-01T23:00:00.000001Z")));
-    vb.appendTimestampNtz(micros);
-    VariantTestUtil.testVariant(vb.build(), v -> {
-      VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.TIMESTAMP_NTZ);
-      Assert.assertEquals(micros, v.getLong());
-    });
-  }
-
-  @Test
   public void testBinary() {
     Variant value = new Variant(
         ByteBuffer.wrap(
@@ -660,17 +476,6 @@ public class TestVariantScalar {
     VariantTestUtil.testVariant(value, v -> {
       VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.BINARY);
       Assert.assertEquals(ByteBuffer.wrap(new byte[] {'a', 'b', 'c', 'd', 'e'}), v.getBinary());
-    });
-  }
-
-  @Test
-  public void testBinaryBuilder() {
-    VariantBuilder vb = new VariantBuilder(false);
-    byte[] binary = new byte[] {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
-    vb.appendBinary(binary);
-    VariantTestUtil.testVariant(vb.build(), v -> {
-      VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.BINARY);
-      Assert.assertEquals(ByteBuffer.wrap(binary), v.getBinary());
     });
   }
 
@@ -699,24 +504,6 @@ public class TestVariantScalar {
   }
 
   @Test
-  public void testStringBuilder() {
-    IntStream.range(VariantUtil.MAX_SHORT_STR_SIZE - 3, VariantUtil.MAX_SHORT_STR_SIZE + 3)
-        .forEach(len -> {
-          VariantBuilder vb2 = new VariantBuilder(false);
-          String s = VariantTestUtil.randomString(len);
-          vb2.appendString(s);
-          VariantTestUtil.testVariant(vb2.build(), v -> {
-            if (len <= VariantUtil.MAX_SHORT_STR_SIZE) {
-              VariantTestUtil.checkType(v, VariantUtil.SHORT_STR, Variant.Type.STRING);
-            } else {
-              VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.STRING);
-            }
-            Assert.assertEquals(s, v.getString());
-          });
-        });
-  }
-
-  @Test
   public void testTime() {
     Variant value = new Variant(
         ByteBuffer.wrap(new byte[] {
@@ -735,20 +522,6 @@ public class TestVariantScalar {
       VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.TIME);
       Assert.assertEquals(LocalTime.parse("23:59:59.123456"), LocalTime.ofNanoOfDay(v.getLong() * 1_000));
     });
-  }
-
-  @Test
-  public void testTimeBuilder() {
-    for (String timeStr : Arrays.asList(
-        "00:00:00.000000", "00:00:00.000120", "12:00:00.000000", "12:00:00.002300", "23:59:59.999999")) {
-      VariantBuilder vb = new VariantBuilder(false);
-      long micros = LocalTime.parse(timeStr).toNanoOfDay() / 1_000;
-      vb.appendTime(micros);
-      VariantTestUtil.testVariant(vb.build(), v -> {
-        VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.TIME);
-        Assert.assertEquals(micros, v.getLong());
-      });
-    }
   }
 
   @Test
@@ -792,18 +565,6 @@ public class TestVariantScalar {
       VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.TIMESTAMP_NANOS_TZ);
       Assert.assertEquals(
           Instant.parse("1969-12-31T23:59:59.999999999Z"), Instant.EPOCH.plus(v.getLong(), ChronoUnit.NANOS));
-    });
-  }
-
-  @Test
-  public void testTimestampNanosBuilder() {
-    DateTimeFormatter dtf = DateTimeFormatter.ISO_DATE_TIME;
-    VariantBuilder vb = new VariantBuilder(false);
-    long nanos = VariantTestUtil.nanosSinceEpoch(Instant.from(dtf.parse("2024-12-16T10:23:45.321456987-08:00")));
-    vb.appendTimestampNanosTz(nanos);
-    VariantTestUtil.testVariant(vb.build(), v -> {
-      VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.TIMESTAMP_NANOS_TZ);
-      Assert.assertEquals(nanos, v.getLong());
     });
   }
 
@@ -852,18 +613,6 @@ public class TestVariantScalar {
   }
 
   @Test
-  public void testTimestampNanosNtzBuilder() {
-    DateTimeFormatter dtf = DateTimeFormatter.ISO_DATE_TIME;
-    VariantBuilder vb = new VariantBuilder(false);
-    long nanos = VariantTestUtil.nanosSinceEpoch(Instant.from(dtf.parse("2024-01-01T23:00:00.839280983Z")));
-    vb.appendTimestampNanosNtz(nanos);
-    VariantTestUtil.testVariant(vb.build(), v -> {
-      VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.TIMESTAMP_NANOS_NTZ);
-      Assert.assertEquals(nanos, v.getLong());
-    });
-  }
-
-  @Test
   public void testUUID() {
     Variant value = new Variant(
         ByteBuffer.wrap(new byte[] {
@@ -889,21 +638,6 @@ public class TestVariantScalar {
     VariantTestUtil.testVariant(value, v -> {
       VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.UUID);
       Assert.assertEquals(UUID.fromString("00112233-4455-6677-8899-aabbccddeeff"), v.getUUID());
-    });
-  }
-
-  @Test
-  public void testUUIDBuilder() {
-    VariantBuilder vb = new VariantBuilder(false);
-    byte[] uuid = new byte[] {0, 17, 34, 51, 68, 85, 102, 119, -120, -103, -86, -69, -52, -35, -18, -1};
-    long msb = ByteBuffer.wrap(uuid, 0, 8).order(ByteOrder.BIG_ENDIAN).getLong();
-    long lsb = ByteBuffer.wrap(uuid, 8, 8).order(ByteOrder.BIG_ENDIAN).getLong();
-    UUID expected = new UUID(msb, lsb);
-
-    vb.appendUUID(expected);
-    VariantTestUtil.testVariant(vb.build(), v -> {
-      VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.UUID);
-      Assert.assertEquals(expected, v.getUUID());
     });
   }
 

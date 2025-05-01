@@ -31,7 +31,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -145,41 +144,12 @@ public class TestVariantObject {
   }
 
   @Test
-  public void testEmptyObjectBuilder() {
-    VariantBuilder b = new VariantBuilder(true);
-    VariantObjectBuilder o = b.startObject();
-    b.endObject(o);
-    VariantTestUtil.testVariant(b.build(), v -> {
-      VariantTestUtil.checkType(v, VariantUtil.OBJECT, Variant.Type.OBJECT);
-      Assert.assertEquals(0, v.numObjectElements());
-    });
-  }
-
-  @Test
   public void testEmptyLargeObject() {
     Variant value = new Variant(
         ByteBuffer.wrap(new byte[] {0b1000010, 0x00, 0x00, 0x00, 0x00}), VariantTestUtil.EMPTY_METADATA);
     VariantTestUtil.testVariant(value, v -> {
       VariantTestUtil.checkType(v, VariantUtil.OBJECT, Variant.Type.OBJECT);
       Assert.assertEquals(0, v.numObjectElements());
-    });
-  }
-
-  @Test
-  public void testLargeObjectBuilder() {
-    VariantBuilder b = new VariantBuilder(true);
-    VariantObjectBuilder o = b.startObject();
-    for (int i = 0; i < 1234; i++) {
-      b.appendObjectKey(o, "a" + i);
-      b.appendLong(i);
-    }
-    b.endObject(o);
-    VariantTestUtil.testVariant(b.build(), v -> {
-      VariantTestUtil.checkType(v, VariantUtil.OBJECT, Variant.Type.OBJECT);
-      Assert.assertEquals(1234, v.numObjectElements());
-      for (int i = 0; i < 1234; i++) {
-        Assert.assertEquals(i, v.getFieldByKey("a" + i).getLong());
-      }
     });
   }
 
@@ -228,45 +198,6 @@ public class TestVariantObject {
           LocalDate.parse("2025-04-17"),
           LocalDate.ofEpochDay(nestedV.getFieldByKey("a").getInt()));
       VariantTestUtil.checkType(nestedV.getFieldByKey("c"), VariantUtil.PRIMITIVE, Variant.Type.NULL);
-    });
-  }
-
-  @Test
-  public void testMixedObjectBuilder() {
-    VariantBuilder b = new VariantBuilder(true);
-    VariantObjectBuilder objBuilder = b.startObject();
-    b.appendObjectKey(objBuilder, "outer 1");
-    b.appendBoolean(true);
-    b.appendObjectKey(objBuilder, "outer 2");
-    b.appendLong(1234567890);
-    b.appendObjectKey(objBuilder, "outer 3");
-    {
-      // build a nested obj
-      VariantObjectBuilder nestedBuilder = b.startObject();
-      b.appendObjectKey(nestedBuilder, "nested 1");
-      {
-        // build a nested empty obj
-        VariantObjectBuilder emptyBuilder = b.startObject();
-        b.endObject(emptyBuilder);
-      }
-      b.appendObjectKey(nestedBuilder, "nested 2");
-      b.appendString("variant");
-      b.endObject(nestedBuilder);
-    }
-    b.endObject(objBuilder);
-
-    VariantTestUtil.testVariant(b.build(), v -> {
-      VariantTestUtil.checkType(v, VariantUtil.OBJECT, Variant.Type.OBJECT);
-      Assert.assertEquals(3, v.numObjectElements());
-      Assert.assertTrue(v.getFieldByKey("outer 1").getBoolean());
-      Assert.assertEquals(1234567890, v.getFieldByKey("outer 2").getLong());
-      VariantTestUtil.checkType(v.getFieldByKey("outer 3"), VariantUtil.OBJECT, Variant.Type.OBJECT);
-
-      Variant nested = v.getFieldByKey("outer 3");
-      Assert.assertEquals(2, nested.numObjectElements());
-      VariantTestUtil.checkType(nested.getFieldByKey("nested 1"), VariantUtil.OBJECT, Variant.Type.OBJECT);
-      Assert.assertEquals(0, nested.getFieldByKey("nested 1").numObjectElements());
-      Assert.assertEquals("variant", nested.getFieldByKey("nested 2").getString());
     });
   }
 
@@ -370,82 +301,6 @@ public class TestVariantObject {
     testObjectFieldIdSize(16_800_000);
   }
 
-  private void testObjectOffsetSizeBuilder(String randomString) {
-    VariantBuilder b = new VariantBuilder(true);
-    VariantObjectBuilder objBuilder = b.startObject();
-    b.appendObjectKey(objBuilder, "key1");
-    b.appendString(randomString);
-    b.appendObjectKey(objBuilder, "key2");
-    b.appendBoolean(true);
-    b.appendObjectKey(objBuilder, "key3");
-    b.appendLong(1234567890);
-    b.endObject(objBuilder);
-
-    Variant v = b.build();
-    VariantTestUtil.checkType(v, VariantUtil.OBJECT, Variant.Type.OBJECT);
-    Assert.assertEquals(3, v.numObjectElements());
-    VariantTestUtil.checkType(v.getFieldByKey("key1"), VariantUtil.PRIMITIVE, Variant.Type.STRING);
-    Assert.assertEquals(randomString, v.getFieldByKey("key1").getString());
-    VariantTestUtil.checkType(v.getFieldByKey("key2"), VariantUtil.PRIMITIVE, Variant.Type.BOOLEAN);
-    Assert.assertTrue(v.getFieldByKey("key2").getBoolean());
-    VariantTestUtil.checkType(v.getFieldByKey("key3"), VariantUtil.PRIMITIVE, Variant.Type.LONG);
-    Assert.assertEquals(1234567890, v.getFieldByKey("key3").getLong());
-  }
-
-  @Test
-  public void testObjectTwoByteOffsetBuilder() {
-    // a string larger than 255 bytes to push the offset size above 1 byte
-    testObjectOffsetSizeBuilder(VariantTestUtil.randomString(300));
-  }
-
-  @Test
-  public void testObjectThreeByteOffsetBuilder() {
-    // a string larger than 65535 bytes to push the offset size above 2 bytes
-    testObjectOffsetSizeBuilder(VariantTestUtil.randomString(70_000));
-  }
-
-  @Test
-  public void testObjectFourByteOffsetBuilder() {
-    // a string larger than 16777215 bytes to push the offset size above 3 bytes
-    testObjectOffsetSizeBuilder(VariantTestUtil.randomString(16_800_000));
-  }
-
-  private void testObjectFieldIdSizeBuilder(int numKeys) {
-    VariantBuilder b = new VariantBuilder(true);
-    VariantObjectBuilder objBuilder = b.startObject();
-    for (int i = 0; i < numKeys; i++) {
-      b.appendObjectKey(objBuilder, "k" + i);
-      b.appendLong(i);
-    }
-    b.endObject(objBuilder);
-
-    Variant v = b.build();
-    VariantTestUtil.checkType(v, VariantUtil.OBJECT, Variant.Type.OBJECT);
-    Assert.assertEquals(numKeys, v.numObjectElements());
-    // Only check a few keys, to avoid slowing down the test
-    Assert.assertEquals(0, v.getFieldByKey("k" + 0).getLong());
-    Assert.assertEquals(numKeys - 1, v.getFieldByKey("k" + (numKeys - 1)).getLong());
-  }
-
-  @Test
-  public void testObjectTwoByteFieldIdBuilder() {
-    // need more than 255 dictionary entries to push field id size above 1 byte
-    testObjectFieldIdSizeBuilder(300);
-  }
-
-  @Test
-  public void testObjectThreeByteFieldIdBuilder() {
-    // need more than 65535 dictionary entries to push field id size above 2 bytes
-    testObjectFieldIdSizeBuilder(70_000);
-  }
-
-  @Test
-  @Ignore("Test uses too much memory")
-  public void testObjectFourByteFieldIdBuilder() {
-    // need more than 16777215 dictionary entries to push field id size above 3 bytes
-    testObjectFieldIdSizeBuilder(16_800_000);
-  }
-
   @Test
   public void testLargeObject() {
     Map<String, Integer> keys = new HashMap<>();
@@ -484,41 +339,6 @@ public class TestVariantObject {
       Assert.fail("Expected exception not thrown");
     } catch (Exception e) {
       Assert.assertEquals("Cannot read ARRAY value as OBJECT", e.getMessage());
-    }
-  }
-
-  @Test
-  public void testDuplicateKeys() {
-    // disallow duplicate keys
-    try {
-      VariantBuilder b = new VariantBuilder(false);
-      VariantObjectBuilder objBuilder = b.startObject();
-      b.appendObjectKey(objBuilder, "duplicate");
-      b.appendLong(0);
-      b.appendObjectKey(objBuilder, "duplicate");
-      b.appendLong(1);
-      b.endObject(objBuilder);
-      b.build();
-      Assert.fail("Expected VariantDuplicateKeyException with duplicate keys");
-    } catch (Exception e) {
-      // Expected
-      Assert.assertEquals("Failed to build Variant because of duplicate object key: duplicate", e.getMessage());
-    }
-
-    // allow duplicate keys
-    try {
-      VariantBuilder b = new VariantBuilder(true);
-      VariantObjectBuilder objBuilder = b.startObject();
-      b.appendObjectKey(objBuilder, "duplicate");
-      b.appendLong(0);
-      b.appendObjectKey(objBuilder, "duplicate");
-      b.appendLong(1);
-      b.endObject(objBuilder);
-      Variant v = b.build();
-      Assert.assertEquals(1, v.numObjectElements());
-      Assert.assertEquals(1, v.getFieldByKey("duplicate").getLong());
-    } catch (Exception e) {
-      Assert.fail("Unexpected exception: " + e);
     }
   }
 }

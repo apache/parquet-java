@@ -22,9 +22,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
-import java.time.Instant;
 import java.util.Arrays;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import org.junit.Assert;
 import org.slf4j.Logger;
@@ -42,14 +40,6 @@ public class VariantTestUtil {
   static void checkType(Variant v, int expectedBasicType, Variant.Type expectedType) {
     Assert.assertEquals(expectedBasicType, v.value.get(v.value.position()) & VariantUtil.BASIC_TYPE_MASK);
     Assert.assertEquals(expectedType, v.getType());
-  }
-
-  static long microsSinceEpoch(Instant instant) {
-    return TimeUnit.SECONDS.toMicros(instant.getEpochSecond()) + instant.getNano() / 1000;
-  }
-
-  static long nanosSinceEpoch(Instant instant) {
-    return TimeUnit.SECONDS.toNanos(instant.getEpochSecond()) + instant.getNano();
   }
 
   static String randomString(int len) {

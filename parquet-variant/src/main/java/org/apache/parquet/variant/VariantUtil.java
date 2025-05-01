@@ -188,27 +188,27 @@ class VariantUtil {
   static final int UUID_SIZE = 16;
 
   // header bytes
-  static final byte HDR_NULL = primitiveHeader(NULL);
-  static final byte HDR_LONG_STRING = primitiveHeader(LONG_STR);
-  static final byte HDR_TRUE = primitiveHeader(TRUE);
-  static final byte HDR_FALSE = primitiveHeader(FALSE);
-  static final byte HDR_INT8 = primitiveHeader(INT8);
-  static final byte HDR_INT16 = primitiveHeader(INT16);
-  static final byte HDR_INT32 = primitiveHeader(INT32);
-  static final byte HDR_INT64 = primitiveHeader(INT64);
-  static final byte HDR_DOUBLE = primitiveHeader(DOUBLE);
-  static final byte HDR_DECIMAL4 = primitiveHeader(DECIMAL4);
-  static final byte HDR_DECIMAL8 = primitiveHeader(DECIMAL8);
-  static final byte HDR_DECIMAL16 = primitiveHeader(DECIMAL16);
-  static final byte HDR_DATE = primitiveHeader(DATE);
-  static final byte HDR_TIMESTAMP_TZ = primitiveHeader(TIMESTAMP_TZ);
-  static final byte HDR_TIMESTAMP_NTZ = primitiveHeader(TIMESTAMP_NTZ);
-  static final byte HDR_TIME = primitiveHeader(TIME);
-  static final byte HDR_TIMESTAMP_NANOS_TZ = primitiveHeader(TIMESTAMP_NANOS_TZ);
-  static final byte HDR_TIMESTAMP_NANOS_NTZ = primitiveHeader(TIMESTAMP_NANOS_NTZ);
-  static final byte HDR_FLOAT = primitiveHeader(FLOAT);
-  static final byte HDR_BINARY = primitiveHeader(BINARY);
-  static final byte HDR_UUID = primitiveHeader(UUID);
+  static final byte HEADER_NULL = primitiveHeader(NULL);
+  static final byte HEADER_LONG_STRING = primitiveHeader(LONG_STR);
+  static final byte HEADER_TRUE = primitiveHeader(TRUE);
+  static final byte HEADER_FALSE = primitiveHeader(FALSE);
+  static final byte HEADER_INT8 = primitiveHeader(INT8);
+  static final byte HEADER_INT16 = primitiveHeader(INT16);
+  static final byte HEADER_INT32 = primitiveHeader(INT32);
+  static final byte HEADER_INT64 = primitiveHeader(INT64);
+  static final byte HEADER_DOUBLE = primitiveHeader(DOUBLE);
+  static final byte HEADER_DECIMAL4 = primitiveHeader(DECIMAL4);
+  static final byte HEADER_DECIMAL8 = primitiveHeader(DECIMAL8);
+  static final byte HEADER_DECIMAL16 = primitiveHeader(DECIMAL16);
+  static final byte HEADER_DATE = primitiveHeader(DATE);
+  static final byte HEADER_TIMESTAMP_TZ = primitiveHeader(TIMESTAMP_TZ);
+  static final byte HEADER_TIMESTAMP_NTZ = primitiveHeader(TIMESTAMP_NTZ);
+  static final byte HEADER_TIME = primitiveHeader(TIME);
+  static final byte HEADER_TIMESTAMP_NANOS_TZ = primitiveHeader(TIMESTAMP_NANOS_TZ);
+  static final byte HEADER_TIMESTAMP_NANOS_NTZ = primitiveHeader(TIMESTAMP_NANOS_NTZ);
+  static final byte HEADER_FLOAT = primitiveHeader(FLOAT);
+  static final byte HEADER_BINARY = primitiveHeader(BINARY);
+  static final byte HEADER_UUID = primitiveHeader(UUID);
 
   static byte primitiveHeader(int type) {
     return (byte) (type << 2 | PRIMITIVE);
@@ -359,75 +359,6 @@ class VariantUtil {
             return Variant.Type.TIMESTAMP_NANOS_NTZ;
           case UUID:
             return Variant.Type.UUID;
-          default:
-            throw new UnsupportedOperationException(
-                String.format("Unknown type in Variant. primitive type: %d", typeInfo));
-        }
-    }
-  }
-
-  /**
-   * Computes the actual size (in bytes) of the Variant value at `value[pos...]`
-   * @param value The Variant value
-   * @param pos The starting index of the Variant value
-   * @return The size (in bytes) of the Variant value
-   */
-  public static int valueSize(ByteBuffer value, int pos) {
-    checkIndex(pos, value.limit());
-    int basicType = value.get(pos) & BASIC_TYPE_MASK;
-    int typeInfo = (value.get(pos) >> BASIC_TYPE_BITS) & PRIMITIVE_TYPE_MASK;
-    switch (basicType) {
-      case SHORT_STR:
-        return 1 + typeInfo;
-      case OBJECT: {
-        VariantUtil.ObjectInfo info = VariantUtil.getObjectInfo(slice(value, pos));
-        return info.dataStartOffset
-            + readUnsigned(
-                value,
-                pos + info.offsetStartOffset + info.numElements * info.offsetSize,
-                info.offsetSize);
-      }
-      case ARRAY: {
-        VariantUtil.ArrayInfo info = VariantUtil.getArrayInfo(slice(value, pos));
-        return info.dataStartOffset
-            + readUnsigned(
-                value,
-                pos + info.offsetStartOffset + info.numElements * info.offsetSize,
-                info.offsetSize);
-      }
-      default:
-        switch (typeInfo) {
-          case NULL:
-          case TRUE:
-          case FALSE:
-            return 1;
-          case INT8:
-            return 2;
-          case INT16:
-            return 3;
-          case INT32:
-          case DATE:
-          case FLOAT:
-            return 5;
-          case INT64:
-          case DOUBLE:
-          case TIMESTAMP_TZ:
-          case TIMESTAMP_NTZ:
-          case TIME:
-          case TIMESTAMP_NANOS_TZ:
-          case TIMESTAMP_NANOS_NTZ:
-            return 9;
-          case DECIMAL4:
-            return 6;
-          case DECIMAL8:
-            return 10;
-          case DECIMAL16:
-            return 18;
-          case BINARY:
-          case LONG_STR:
-            return 1 + U32_SIZE + readUnsigned(value, pos + 1, U32_SIZE);
-          case UUID:
-            return 1 + UUID_SIZE;
           default:
             throw new UnsupportedOperationException(
                 String.format("Unknown type in Variant. primitive type: %d", typeInfo));
