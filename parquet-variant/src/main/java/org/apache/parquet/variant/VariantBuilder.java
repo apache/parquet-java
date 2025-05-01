@@ -39,10 +39,17 @@ public class VariantBuilder {
   /** The keys in the dictionary, in id order. */
   private final ArrayList<byte[]> dictionaryKeys = new ArrayList<>();
 
-  /** The number of values appended to this builder. Must be updated after each append(). */
+  /** The number of values appended to this builder. */
   protected long numValues = 0;
 
+  /**
+   * These are used to build nested objects and arrays, via startObject() and startArray().
+   * Only one of these can be non-null at a time. If one of these is non-null, then no append()
+   * methods can be called on this builder, until endObject() or endArray() is called.
+   */
   protected VariantObjectBuilder objectBuilder = null;
+
+  protected VariantArrayBuilder arrayBuilder = null;
 
   /**
    * Creates a VariantBuilder.
@@ -56,6 +63,10 @@ public class VariantBuilder {
     if (objectBuilder != null) {
       throw new IllegalStateException(
           "Cannot call build() while an object is being built. Must call endObject() first.");
+    }
+    if (arrayBuilder != null) {
+      throw new IllegalStateException(
+          "Cannot call build() while an array is being built. Must call endArray() first.");
     }
     int numKeys = dictionaryKeys.size();
     // Use long to avoid overflow in accumulating lengths.
@@ -95,10 +106,9 @@ public class VariantBuilder {
   /**
    * Appends a string value to the Variant builder.
    * @param str the string value to append
-   * @return this builder
    */
-  public VariantBuilder appendString(String str) {
-    checkAppendState();
+  public void appendString(String str) {
+    onAppend();
     byte[] data = str.getBytes(StandardCharsets.UTF_8);
     boolean longStr = data.length > VariantUtil.MAX_SHORT_STR_SIZE;
     checkCapacity((longStr ? 1 + VariantUtil.U32_SIZE : 1) + data.length);
@@ -114,119 +124,103 @@ public class VariantBuilder {
     System.arraycopy(data, 0, writeBuffer, writePos, data.length);
     writePos += data.length;
     numValues++;
-    return this;
   }
 
   /**
    * Appends a null value to the Variant builder.
-   * @return this builder
    */
-  public VariantBuilder appendNull() {
-    checkAppendState();
+  public void appendNull() {
+    onAppend();
     checkCapacity(1);
     writeBuffer[writePos] = VariantUtil.HEADER_NULL;
     writePos += 1;
     numValues++;
-    return this;
   }
 
   /**
    * Appends a boolean value to the Variant builder.
    * @param b the boolean value to append
-   * @return this builder
    */
-  public VariantBuilder appendBoolean(boolean b) {
-    checkAppendState();
+  public void appendBoolean(boolean b) {
+    onAppend();
     checkCapacity(1);
     writeBuffer[writePos] = b ? VariantUtil.HEADER_TRUE : VariantUtil.HEADER_FALSE;
     writePos += 1;
     numValues++;
-    return this;
   }
 
   /**
    * Appends a long value to the variant builder.
    * @param l the long value to append
-   * @return this builder
    */
-  public VariantBuilder appendLong(long l) {
-    checkAppendState();
+  public void appendLong(long l) {
+    onAppend();
     checkCapacity(1 /* header size */ + 8);
     writeBuffer[writePos] = VariantUtil.HEADER_INT64;
     VariantUtil.writeLong(writeBuffer, writePos + 1, l, 8);
     writePos += 9;
     numValues++;
-    return this;
   }
 
   /**
    * Appends an int value to the variant builder.
    * @param i the int to append
-   * @return this builder
    */
-  public VariantBuilder appendInt(int i) {
-    checkAppendState();
+  public void appendInt(int i) {
+    onAppend();
     checkCapacity(1 /* header size */ + 4);
     writeBuffer[writePos] = VariantUtil.HEADER_INT32;
     VariantUtil.writeLong(writeBuffer, writePos + 1, i, 4);
     writePos += 5;
     numValues++;
-    return this;
   }
 
   /**
    * Appends a short value to the variant builder.
    * @param s the short to append
-   * @return this builder
    */
-  public VariantBuilder appendShort(short s) {
-    checkAppendState();
+  public void appendShort(short s) {
+    onAppend();
     checkCapacity(1 /* header size */ + 2);
     writeBuffer[writePos] = VariantUtil.HEADER_INT16;
     VariantUtil.writeLong(writeBuffer, writePos + 1, s, 2);
     writePos += 3;
     numValues++;
-    return this;
   }
 
   /**
    * Appends a byte value to the variant builder.
    * @param b the byte to append
-   * @return this builder
    */
-  public VariantBuilder appendByte(byte b) {
-    checkAppendState();
+  public void appendByte(byte b) {
+    onAppend();
     checkCapacity(1 /* header size */ + 1);
     writeBuffer[writePos] = VariantUtil.HEADER_INT8;
     VariantUtil.writeLong(writeBuffer, writePos + 1, b, 1);
     writePos += 2;
     numValues++;
-    return this;
   }
 
   /**
    * Appends a double value to the variant builder.
    * @param d the double to append
-   * @return this builder
    */
-  public VariantBuilder appendDouble(double d) {
-    checkAppendState();
+  public void appendDouble(double d) {
+    onAppend();
     checkCapacity(1 /* header size */ + 8);
     writeBuffer[writePos] = VariantUtil.HEADER_DOUBLE;
     VariantUtil.writeLong(writeBuffer, writePos + 1, Double.doubleToLongBits(d), 8);
     writePos += 9;
     numValues++;
-    return this;
   }
 
   /**
    * Appends a decimal value to the variant builder. The actual encoded decimal type depends on the
    * precision and scale of the decimal value.
    * @param d the decimal value to append
-   * @return this builder
    */
-  public VariantBuilder appendDecimal(BigDecimal d) {
-    checkAppendState();
+  public void appendDecimal(BigDecimal d) {
+    onAppend();
     BigInteger unscaled = d.unscaledValue();
     if (d.scale() <= VariantUtil.MAX_DECIMAL4_PRECISION && d.precision() <= VariantUtil.MAX_DECIMAL4_PRECISION) {
       checkCapacity(2 /* header and scale size */ + 4);
@@ -261,131 +255,115 @@ public class VariantBuilder {
       writePos += 16;
     }
     numValues++;
-    return this;
   }
 
   /**
    * Appends a date value to the variant builder. The date is represented as the number of days
    * since the epoch.
    * @param daysSinceEpoch the number of days since the epoch
-   * @return this builder
    */
-  public VariantBuilder appendDate(int daysSinceEpoch) {
-    checkAppendState();
+  public void appendDate(int daysSinceEpoch) {
+    onAppend();
     checkCapacity(1 /* header size */ + 4);
     writeBuffer[writePos] = VariantUtil.HEADER_DATE;
     VariantUtil.writeLong(writeBuffer, writePos + 1, daysSinceEpoch, 4);
     writePos += 5;
     numValues++;
-    return this;
   }
 
   /**
    * Appends a TimestampTz value to the variant builder. The timestamp is represented as the number
    * of microseconds since the epoch.
    * @param microsSinceEpoch the number of microseconds since the epoch
-   * @return this builder
    */
-  public VariantBuilder appendTimestampTz(long microsSinceEpoch) {
-    checkAppendState();
+  public void appendTimestampTz(long microsSinceEpoch) {
+    onAppend();
     checkCapacity(1 /* header size */ + 8);
     writeBuffer[writePos] = VariantUtil.HEADER_TIMESTAMP_TZ;
     VariantUtil.writeLong(writeBuffer, writePos + 1, microsSinceEpoch, 8);
     writePos += 9;
     numValues++;
-    return this;
   }
 
   /**
    * Appends a TimestampNtz value to the variant builder. The timestamp is represented as the number
    * of microseconds since the epoch.
    * @param microsSinceEpoch the number of microseconds since the epoch
-   * @return this builder
    */
-  public VariantBuilder appendTimestampNtz(long microsSinceEpoch) {
-    checkAppendState();
+  public void appendTimestampNtz(long microsSinceEpoch) {
+    onAppend();
     checkCapacity(1 /* header size */ + 8);
     writeBuffer[writePos] = VariantUtil.HEADER_TIMESTAMP_NTZ;
     VariantUtil.writeLong(writeBuffer, writePos + 1, microsSinceEpoch, 8);
     writePos += 9;
     numValues++;
-    return this;
   }
 
   /**
    * Appends a Time value to the variant builder. The time is represented as the number of
    * microseconds since midnight.
    * @param microsSinceMidnight the number of microseconds since midnight
-   * @return this builder
    */
-  public VariantBuilder appendTime(long microsSinceMidnight) {
+  public void appendTime(long microsSinceMidnight) {
     if (microsSinceMidnight < 0) {
       throw new IllegalArgumentException(
           String.format("Time value (%d) cannot be negative.", microsSinceMidnight));
     }
-    checkAppendState();
+    onAppend();
     checkCapacity(1 /* header size */ + 8);
     writeBuffer[writePos] = VariantUtil.HEADER_TIME;
     VariantUtil.writeLong(writeBuffer, writePos + 1, microsSinceMidnight, 8);
     writePos += 9;
     numValues++;
-    return this;
   }
 
   /**
    * Appends a TimestampNanosTz value to the variant builder. The timestamp is represented as the
    * number of nanoseconds since the epoch.
    * @param nanosSinceEpoch the number of nanoseconds since the epoch
-   * @return this builder
    */
-  public VariantBuilder appendTimestampNanosTz(long nanosSinceEpoch) {
-    checkAppendState();
+  public void appendTimestampNanosTz(long nanosSinceEpoch) {
+    onAppend();
     checkCapacity(1 /* header size */ + 8);
     writeBuffer[writePos] = VariantUtil.HEADER_TIMESTAMP_NANOS_TZ;
     VariantUtil.writeLong(writeBuffer, writePos + 1, nanosSinceEpoch, 8);
     writePos += 9;
     numValues++;
-    return this;
   }
 
   /**
    * Appends a TimestampNanosNtz value to the variant builder. The timestamp is represented as the
    * number of nanoseconds since the epoch.
    * @param nanosSinceEpoch the number of nanoseconds since the epoch
-   * @return this builder
    */
-  public VariantBuilder appendTimestampNanosNtz(long nanosSinceEpoch) {
-    checkAppendState();
+  public void appendTimestampNanosNtz(long nanosSinceEpoch) {
+    onAppend();
     checkCapacity(1 /* header size */ + 8);
     writeBuffer[writePos] = VariantUtil.HEADER_TIMESTAMP_NANOS_NTZ;
     VariantUtil.writeLong(writeBuffer, writePos + 1, nanosSinceEpoch, 8);
     writePos += 9;
     numValues++;
-    return this;
   }
 
   /**
    * Appends a float value to the variant builder.
    * @param f the float to append
-   * @return this builder
    */
-  public VariantBuilder appendFloat(float f) {
-    checkAppendState();
+  public void appendFloat(float f) {
+    onAppend();
     checkCapacity(1 /* header size */ + 4);
     writeBuffer[writePos] = VariantUtil.HEADER_FLOAT;
     VariantUtil.writeLong(writeBuffer, writePos + 1, Float.floatToIntBits(f), 8);
     writePos += 5;
     numValues++;
-    return this;
   }
 
   /**
    * Appends binary data to the variant builder.
    * @param binary the binary data to append
-   * @return this builder
    */
-  public VariantBuilder appendBinary(ByteBuffer binary) {
-    checkAppendState();
+  public void appendBinary(ByteBuffer binary) {
+    onAppend();
     int binarySize = binary.remaining();
     checkCapacity(1 /* header size */ + VariantUtil.U32_SIZE + binarySize);
     writeBuffer[writePos] = VariantUtil.HEADER_BINARY;
@@ -395,16 +373,14 @@ public class VariantBuilder {
     ByteBuffer.wrap(writeBuffer, writePos, binarySize).put(binary);
     writePos += binarySize;
     numValues++;
-    return this;
   }
 
   /**
    * Appends a UUID value to the variant builder.
    * @param uuid the UUID to append
-   * @return this builder
    */
-  public VariantBuilder appendUUID(java.util.UUID uuid) {
-    checkAppendState();
+  public void appendUUID(java.util.UUID uuid) {
+    onAppend();
     checkCapacity(1 /* header size */ + VariantUtil.UUID_SIZE);
     writeBuffer[writePos] = VariantUtil.HEADER_UUID;
     writePos += 1;
@@ -415,17 +391,6 @@ public class VariantBuilder {
     bb.putLong(uuid.getLeastSignificantBits());
     writePos += VariantUtil.UUID_SIZE;
     numValues++;
-    return this;
-  }
-
-  protected void checkAppendState() {
-    if (objectBuilder != null) {
-      throw new IllegalStateException(
-          "Cannot call append() methods while an object is being built. Must call endObject() first.");
-    }
-    if (numValues > 0) {
-      throw new IllegalStateException("Cannot call multiple append() methods.");
-    }
   }
 
   /**
@@ -443,8 +408,12 @@ public class VariantBuilder {
    * @return a VariantObjectBuilder to build an object
    */
   public VariantObjectBuilder startObject() {
+    onStartNested();
     if (objectBuilder != null) {
       throw new IllegalStateException("Cannot call startObject() without calling endObject() first.");
+    }
+    if (arrayBuilder != null) {
+      throw new IllegalStateException("Cannot call startObject() without calling endArray() first.");
     }
     objectBuilder = new VariantObjectBuilder(this);
     return objectBuilder;
@@ -453,9 +422,8 @@ public class VariantBuilder {
   /**
    * Finishes appending the object to this builder. This method must be called after startObject(),
    * before other append*() methods can be called on this builder.
-   * @return this builder
    */
-  protected VariantBuilder endObject() {
+  protected void endObject() {
     if (objectBuilder == null) {
       throw new IllegalStateException("Cannot call endObject() without calling startObject() first.");
     }
@@ -518,69 +486,98 @@ public class VariantBuilder {
     writePos += headerSize + dataSize;
     numValues++;
     objectBuilder = null;
-    return this;
   }
 
   /**
-   * Starts appending an array to this variant builder. The returned VariantArrayBuilder must be
-   * used for future calls to startArrayElement() and endArray(). To add an element to the array,
-   * call startArrayElement() and then append the value. endArray() must be called to finish writing
-   * the Variant array.
+   * Starts appending an array to this variant builder. The returned VariantArrayBuilder is used to
+   * append values ot the array. startArray() must be called before endArray(). No append*() methods
+   * can be called in between startArray() and endArray().
    *
    * Example usage:
    * VariantBuilder builder = new VariantBuilder();
    * VariantArrayBuilder arrayBuilder = builder.startArray();
-   * arrayBuilder.startArrayElement(arrayBuilder);
-   * builder.appendString("value1");
-   * arrayBuilder.endArray(arrayBuilder);
+   * arrayBuilder.appendString("value1");
+   * arrayBuilder.appendString("value2");
+   * builder.endArray();
    *
    * @return a VariantArrayBuilder to use for startArrayElement() and endArray().
    */
   public VariantArrayBuilder startArray() {
-    return new VariantArrayBuilder(this);
-  }
-
-  /**
-   * Starts appending an element to the array. This method must be called before appending the
-   * corresponding value.
-   * @param arrayBuilder the VariantArrayBuilder to use
-   */
-  public void startArrayElement(VariantArrayBuilder arrayBuilder) {
-    arrayBuilder.startElement();
+    onStartNested();
+    if (objectBuilder != null) {
+      throw new IllegalStateException("Cannot call startArray() without calling endObject() first.");
+    }
+    if (arrayBuilder != null) {
+      throw new IllegalStateException("Cannot call startArray() without calling endArray() first.");
+    }
+    arrayBuilder = new VariantArrayBuilder(this);
+    return arrayBuilder;
   }
 
   /**
    * Ends appending an array to this variant builder. This method must be called after all elements
    * have been added to the array.
-   * @param arrayBuilder the VariantArrayBuilder to use
-   * @return this builder
    */
-  public VariantBuilder endArray(VariantArrayBuilder arrayBuilder) {
-    int start = arrayBuilder.startPos();
-    int dataSize = writePos - start;
-    int size = arrayBuilder.offsets().size();
-    boolean largeSize = size > VariantUtil.U8_MAX;
+  public void endArray() {
+    if (arrayBuilder == null) {
+      throw new IllegalStateException("Cannot call endArray() without calling startArray() first.");
+    }
+    ArrayList<Integer> offsets = arrayBuilder.validateAndGetOffsets();
+    int numElements = offsets.size();
+    int dataSize = arrayBuilder.writePos;
+    boolean largeSize = numElements > VariantUtil.U8_MAX;
     int sizeBytes = largeSize ? VariantUtil.U32_SIZE : 1;
     int offsetSize = getMinIntegerSize(dataSize);
     // The space for header byte, object size, and offset list.
-    int headerSize = 1 + sizeBytes + (size + 1) * offsetSize;
-    checkCapacity(headerSize);
-    // Shift the just-written field data to make room for the header section.
-    System.arraycopy(writeBuffer, start, writeBuffer, start + headerSize, dataSize);
-    writePos += headerSize;
-    writeBuffer[start] = VariantUtil.arrayHeader(largeSize, offsetSize);
-    VariantUtil.writeLong(writeBuffer, start + 1, size, sizeBytes);
-    int offsetStart = start + 1 + sizeBytes;
-    for (int i = 0; i < size; ++i) {
-      VariantUtil.writeLong(
-          writeBuffer,
-          offsetStart + i * offsetSize,
-          arrayBuilder.offsets().get(i),
-          offsetSize);
+    int headerSize = 1 + sizeBytes + (numElements + 1) * offsetSize;
+    checkCapacity(headerSize + dataSize);
+
+    // Copy all the element data to the write buffer.
+    System.arraycopy(arrayBuilder.writeBuffer, 0, writeBuffer, writePos + headerSize, dataSize);
+
+    writeBuffer[writePos] = VariantUtil.arrayHeader(largeSize, offsetSize);
+    VariantUtil.writeLong(writeBuffer, writePos + 1, numElements, sizeBytes);
+
+    int offsetStart = writePos + 1 + sizeBytes;
+    for (int i = 0; i < numElements; ++i) {
+      VariantUtil.writeLong(writeBuffer, offsetStart + i * offsetSize, offsets.get(i), offsetSize);
     }
-    VariantUtil.writeLong(writeBuffer, offsetStart + size * offsetSize, dataSize, offsetSize);
+    VariantUtil.writeLong(writeBuffer, offsetStart + numElements * offsetSize, dataSize, offsetSize);
+    writePos += headerSize + dataSize;
     numValues++;
-    return this;
+    arrayBuilder = null;
+  }
+
+  protected void onAppend() {
+    checkAppendWhileNested();
+    if (numValues > 0) {
+      throw new IllegalStateException("Cannot call multiple append() methods.");
+    }
+  }
+
+  protected void onStartNested() {
+    checkMultipleNested();
+  }
+
+  protected void checkMultipleNested() {
+    if (objectBuilder != null) {
+      throw new IllegalStateException(
+          "Cannot call startObject()/startArray() without calling endObject() first.");
+    }
+    if (arrayBuilder != null) {
+      throw new IllegalStateException("Cannot call startObject()/startArray() without calling endArray() first.");
+    }
+  }
+
+  protected void checkAppendWhileNested() {
+    if (objectBuilder != null) {
+      throw new IllegalStateException(
+          "Cannot call append() methods while an object is being built. Must call endObject() first.");
+    }
+    if (arrayBuilder != null) {
+      throw new IllegalStateException(
+          "Cannot call append() methods while an array is being built. Must call endArray() first.");
+    }
   }
 
   /**

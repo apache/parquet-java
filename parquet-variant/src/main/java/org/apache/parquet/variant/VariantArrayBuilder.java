@@ -21,29 +21,43 @@ import java.util.ArrayList;
 /**
  * Builder for creating Variant arrays, used by VariantBuilder.
  */
-public class VariantArrayBuilder {
-  /** The underlying VariantBuilder. */
-  private final VariantBuilder builder;
-  /** The saved builder.writPos() for the start of this array. */
-  private final int startPos;
+public class VariantArrayBuilder extends VariantBuilder {
+  /** The parent VariantBuilder. */
+  private final VariantBuilder parent;
   /** The offsets of the elements in this array. */
   private final ArrayList<Integer> offsets;
 
-  VariantArrayBuilder(VariantBuilder builder) {
-    this.builder = builder;
-    this.startPos = builder.writePos();
+  VariantArrayBuilder(VariantBuilder parent) {
+    this.parent = parent;
     this.offsets = new ArrayList<>();
   }
 
-  void startElement() {
-    offsets.add(builder.writePos() - startPos);
-  }
-
-  int startPos() {
-    return startPos;
-  }
-
-  ArrayList<Integer> offsets() {
+  /**
+   * @return the list of element offsets in this array
+   */
+  ArrayList<Integer> validateAndGetOffsets() {
+    if (offsets.size() != numValues) {
+      throw new IllegalStateException(String.format(
+          "Number of offsets (%d) do not match the number of values (%d).", offsets.size(), numValues));
+    }
     return offsets;
+  }
+
+  @Override
+  protected void onAppend() {
+    checkAppendWhileNested();
+    offsets.add(writePos);
+  }
+
+  @Override
+  protected void onStartNested() {
+    checkMultipleNested();
+    offsets.add(writePos);
+  }
+
+  @Override
+  int addDictionaryKey(String key) {
+    // Add to the parent dictionary.
+    return parent.addDictionaryKey(key);
   }
 }

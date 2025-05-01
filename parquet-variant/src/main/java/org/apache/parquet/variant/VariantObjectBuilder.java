@@ -59,11 +59,8 @@ public class VariantObjectBuilder extends VariantBuilder {
   }
 
   @Override
-  protected void checkAppendState() {
-    if (objectBuilder != null) {
-      throw new IllegalStateException(
-          "Cannot call append() methods while an object is being built. Must call endObject() first.");
-    }
+  protected void onAppend() {
+    checkAppendWhileNested();
     if (numValues != fields.size() - 1) {
       throw new IllegalStateException("Cannot append an object value before calling appendKey()");
     }

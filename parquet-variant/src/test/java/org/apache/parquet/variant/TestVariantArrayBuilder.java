@@ -26,20 +26,11 @@ import org.slf4j.LoggerFactory;
 public class TestVariantArrayBuilder {
   private static final Logger LOG = LoggerFactory.getLogger(TestVariantArrayBuilder.class);
 
-  private static final byte[] VALUE_NULL = new byte[] {VariantTestUtil.primitiveHeader(0)};
-  private static final byte[] VALUE_BOOL = new byte[] {VariantTestUtil.primitiveHeader(1)};
-  private static final byte[] VALUE_INT =
-      new byte[] {VariantTestUtil.primitiveHeader(5), (byte) 0xD2, 0x02, (byte) 0x96, 0x49};
-  private static final byte[] VALUE_STRING =
-      new byte[] {VariantTestUtil.primitiveHeader(16), 0x07, 0x00, 0x00, 0x00, 'v', 'a', 'r', 'i', 'a', 'n', 't'};
-  private static final byte[] VALUE_SHORT_STRING = new byte[] {0b101, 'c'};
-  private static final byte[] VALUE_DATE = new byte[] {0b101100, (byte) 0xE3, 0x4E, 0x00, 0x00};
-
   @Test
   public void testEmptyArrayBuilder() {
     VariantBuilder b = new VariantBuilder();
     VariantArrayBuilder a = b.startArray();
-    b.endArray(a);
+    b.endArray();
     VariantTestUtil.testVariant(b.build(), v -> {
       VariantTestUtil.checkType(v, VariantUtil.ARRAY, Variant.Type.ARRAY);
       Assert.assertEquals(0, v.numArrayElements());
@@ -51,10 +42,9 @@ public class TestVariantArrayBuilder {
     VariantBuilder b = new VariantBuilder();
     VariantArrayBuilder a = b.startArray();
     for (int i = 0; i < 511; i++) {
-      b.startArrayElement(a);
-      b.appendInt(i);
+      a.appendInt(i);
     }
-    b.endArray(a);
+    b.endArray();
     VariantTestUtil.testVariant(b.build(), v -> {
       VariantTestUtil.checkType(v, VariantUtil.ARRAY, Variant.Type.ARRAY);
       Assert.assertEquals(511, v.numArrayElements());
@@ -69,51 +59,91 @@ public class TestVariantArrayBuilder {
   public void testMixedArrayBuilder() {
     VariantBuilder b = new VariantBuilder();
     VariantArrayBuilder arrBuilder = b.startArray();
-    b.startArrayElement(arrBuilder);
-    b.appendBoolean(true);
-    b.startArrayElement(arrBuilder);
-    b.appendLong(1234567890);
-    b.startArrayElement(arrBuilder);
+    arrBuilder.appendBoolean(true);
+    VariantObjectBuilder obj = arrBuilder.startObject();
+    obj.appendKey("key");
+    obj.appendInt(321);
+    arrBuilder.endObject();
+    arrBuilder.appendLong(1234567890);
     {
       // build a nested array
-      VariantArrayBuilder nestedBuilder = b.startArray();
-      b.startArrayElement(nestedBuilder);
+      VariantArrayBuilder nestedBuilder = arrBuilder.startArray();
       {
         // build a nested empty array
-        VariantArrayBuilder emptyBuilder = b.startArray();
-        b.endArray(emptyBuilder);
+        nestedBuilder.startArray();
+        nestedBuilder.endArray();
       }
-      b.startArrayElement(nestedBuilder);
-      b.appendString("variant");
-      b.endArray(nestedBuilder);
+      nestedBuilder.appendString("variant");
+      nestedBuilder.startObject();
+      nestedBuilder.endObject();
+      arrBuilder.endArray();
     }
-    b.endArray(arrBuilder);
+    b.endArray();
 
     VariantTestUtil.testVariant(b.build(), v -> {
       VariantTestUtil.checkType(v, VariantUtil.ARRAY, Variant.Type.ARRAY);
-      Assert.assertEquals(3, v.numArrayElements());
+      Assert.assertEquals(4, v.numArrayElements());
+      VariantTestUtil.checkType(v.getElementAtIndex(0), VariantUtil.PRIMITIVE, Variant.Type.BOOLEAN);
       Assert.assertTrue(v.getElementAtIndex(0).getBoolean());
-      Assert.assertEquals(1234567890, v.getElementAtIndex(1).getLong());
-      VariantTestUtil.checkType(v.getElementAtIndex(2), VariantUtil.ARRAY, Variant.Type.ARRAY);
 
-      Variant nested = v.getElementAtIndex(2);
-      Assert.assertEquals(2, nested.numArrayElements());
+      VariantTestUtil.checkType(v.getElementAtIndex(1), VariantUtil.OBJECT, Variant.Type.OBJECT);
+      Assert.assertEquals(1, v.getElementAtIndex(1).numObjectElements());
+      VariantTestUtil.checkType(
+          v.getElementAtIndex(1).getFieldByKey("key"), VariantUtil.PRIMITIVE, Variant.Type.INT);
+      Assert.assertEquals(321, v.getElementAtIndex(1).getFieldByKey("key").getInt());
+
+      VariantTestUtil.checkType(v.getElementAtIndex(2), VariantUtil.PRIMITIVE, Variant.Type.LONG);
+      Assert.assertEquals(1234567890, v.getElementAtIndex(2).getLong());
+
+      VariantTestUtil.checkType(v.getElementAtIndex(3), VariantUtil.ARRAY, Variant.Type.ARRAY);
+      Variant nested = v.getElementAtIndex(3);
+      Assert.assertEquals(3, nested.numArrayElements());
       VariantTestUtil.checkType(nested.getElementAtIndex(0), VariantUtil.ARRAY, Variant.Type.ARRAY);
       Assert.assertEquals(0, nested.getElementAtIndex(0).numArrayElements());
+      VariantTestUtil.checkType(nested.getElementAtIndex(1), VariantUtil.SHORT_STR, Variant.Type.STRING);
       Assert.assertEquals("variant", nested.getElementAtIndex(1).getString());
+      VariantTestUtil.checkType(nested.getElementAtIndex(2), VariantUtil.OBJECT, Variant.Type.OBJECT);
+      Assert.assertEquals(0, nested.getElementAtIndex(2).numObjectElements());
+    });
+  }
+
+  private void buildNested(int i, VariantArrayBuilder obj) {
+    if (i > 0) {
+      obj.appendString("str" + i);
+      buildNested(i - 1, obj.startArray());
+      obj.endArray();
+    }
+  }
+
+  @Test
+  public void testNestedBuilder() {
+    VariantBuilder b = new VariantBuilder();
+    buildNested(1000, b.startArray());
+    b.endArray();
+
+    VariantTestUtil.testVariant(b.build(), v -> {
+      Variant curr = v;
+      for (int i = 1000; i >= 0; i--) {
+        VariantTestUtil.checkType(curr, VariantUtil.ARRAY, Variant.Type.ARRAY);
+        if (i == 0) {
+          Assert.assertEquals(0, curr.numArrayElements());
+        } else {
+          Assert.assertEquals(2, curr.numArrayElements());
+          VariantTestUtil.checkType(curr.getElementAtIndex(0), VariantUtil.SHORT_STR, Variant.Type.STRING);
+          Assert.assertEquals("str" + i, curr.getElementAtIndex(0).getString());
+          curr = curr.getElementAtIndex(1);
+        }
+      }
     });
   }
 
   private void testArrayOffsetSizeBuilder(String randomString) {
     VariantBuilder b = new VariantBuilder();
     VariantArrayBuilder arrBuilder = b.startArray();
-    b.startArrayElement(arrBuilder);
-    b.appendString(randomString);
-    b.startArrayElement(arrBuilder);
-    b.appendBoolean(true);
-    b.startArrayElement(arrBuilder);
-    b.appendLong(1234567890);
-    b.endArray(arrBuilder);
+    arrBuilder.appendString(randomString);
+    arrBuilder.appendBoolean(true);
+    arrBuilder.appendLong(1234567890);
+    b.endArray();
 
     VariantTestUtil.testVariant(b.build(), v -> {
       VariantTestUtil.checkType(v, VariantUtil.ARRAY, Variant.Type.ARRAY);
@@ -143,5 +173,52 @@ public class TestVariantArrayBuilder {
   public void testArrayFourByteOffsetBuilder() {
     // a string larger than 16777215 bytes to push the value offset size above 3 bytes
     testArrayOffsetSizeBuilder(VariantTestUtil.randomString(16_800_000));
+  }
+
+  @Test
+  public void testMissingEndArray() {
+    VariantBuilder b = new VariantBuilder();
+    b.startArray();
+    try {
+      b.build();
+      Assert.fail("Expected Exception when calling build() without endArray()");
+    } catch (Exception e) {
+      // expected
+    }
+  }
+
+  @Test
+  public void testMissingStartArray() {
+    VariantBuilder b = new VariantBuilder();
+    try {
+      b.endArray();
+      Assert.fail("Expected Exception when calling endArray() without startArray()");
+    } catch (Exception e) {
+      // expected
+    }
+  }
+
+  @Test
+  public void testInvalidAppendDuringArray() {
+    VariantBuilder b = new VariantBuilder();
+    b.startArray();
+    try {
+      b.appendInt(1);
+      Assert.fail("Expected Exception when calling append() before endArray()");
+    } catch (Exception e) {
+      // expected
+    }
+  }
+
+  @Test
+  public void testStartArrayEndObject() {
+    VariantBuilder b = new VariantBuilder();
+    VariantArrayBuilder obj = b.startArray();
+    try {
+      obj.endObject();
+      Assert.fail("Expected Exception when calling endObject() while building array");
+    } catch (Exception e) {
+      // expected
+    }
   }
 }
