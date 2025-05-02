@@ -221,4 +221,73 @@ public class TestVariantArrayBuilder {
       // expected
     }
   }
+
+  @Test
+  public void testOpenNestedObject() {
+    VariantBuilder b = new VariantBuilder();
+    VariantArrayBuilder arr = b.startArray();
+    arr.startObject();
+    try {
+      b.endArray();
+      Assert.fail("Expected Exception when calling endArray() with an open nested object");
+    } catch (Exception e) {
+      // expected
+    }
+  }
+
+  @Test
+  public void testOpenNestedObjectWithKey() {
+    VariantBuilder b = new VariantBuilder();
+    VariantArrayBuilder arr = b.startArray();
+    VariantObjectBuilder nested = arr.startObject();
+    nested.appendKey("nested");
+    try {
+      b.endArray();
+      Assert.fail("Expected Exception when calling endArray() with an open nested object");
+    } catch (Exception e) {
+      // expected
+    }
+  }
+
+  @Test
+  public void testOpenNestedObjectWithKeyValue() {
+    VariantBuilder b = new VariantBuilder();
+    VariantArrayBuilder arr = b.startArray();
+    VariantObjectBuilder nested = arr.startObject();
+    nested.appendKey("nested");
+    nested.appendInt(1);
+    try {
+      b.endArray();
+      Assert.fail("Expected Exception when calling endArray() with an open nested object");
+    } catch (Exception e) {
+      // expected
+    }
+  }
+
+  @Test
+  public void testOpenNestedArray() {
+    VariantBuilder b = new VariantBuilder();
+    VariantArrayBuilder arr = b.startArray();
+    arr.startArray();
+    try {
+      b.endArray();
+      Assert.fail("Expected Exception when calling endArray() with an open nested array");
+    } catch (Exception e) {
+      // expected
+    }
+  }
+
+  @Test
+  public void testOpenNestedArrayWithElement() {
+    VariantBuilder b = new VariantBuilder();
+    VariantArrayBuilder arr = b.startArray();
+    VariantArrayBuilder nested = arr.startArray();
+    nested.appendInt(1);
+    try {
+      b.endArray();
+      Assert.fail("Expected Exception when calling endArray() with an open nested array");
+    } catch (Exception e) {
+      // expected
+    }
+  }
 }

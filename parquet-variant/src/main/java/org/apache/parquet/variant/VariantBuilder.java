@@ -97,6 +97,7 @@ public class VariantBuilder {
     }
     VariantUtil.writeLong(metadata, offsetListOffset + numKeys * offsetSize, currentOffset, offsetSize);
     // Copying the data to a new buffer, to retain only the required data length, not the capacity.
+    // TODO: Reduce the copying, and look into builder reuse.
     return new Variant(Arrays.copyOfRange(writeBuffer, 0, writePos), metadata);
   }
 
@@ -120,7 +121,6 @@ public class VariantBuilder {
     }
     System.arraycopy(data, 0, writeBuffer, writePos, data.length);
     writePos += data.length;
-    incrementNumValues();
   }
 
   /**
@@ -131,7 +131,6 @@ public class VariantBuilder {
     checkCapacity(1);
     writeBuffer[writePos] = VariantUtil.HEADER_NULL;
     writePos += 1;
-    incrementNumValues();
   }
 
   /**
@@ -143,7 +142,6 @@ public class VariantBuilder {
     checkCapacity(1);
     writeBuffer[writePos] = b ? VariantUtil.HEADER_TRUE : VariantUtil.HEADER_FALSE;
     writePos += 1;
-    incrementNumValues();
   }
 
   /**
@@ -156,7 +154,6 @@ public class VariantBuilder {
     writeBuffer[writePos] = VariantUtil.HEADER_INT64;
     VariantUtil.writeLong(writeBuffer, writePos + 1, l, 8);
     writePos += 9;
-    incrementNumValues();
   }
 
   /**
@@ -169,7 +166,6 @@ public class VariantBuilder {
     writeBuffer[writePos] = VariantUtil.HEADER_INT32;
     VariantUtil.writeLong(writeBuffer, writePos + 1, i, 4);
     writePos += 5;
-    incrementNumValues();
   }
 
   /**
@@ -182,7 +178,6 @@ public class VariantBuilder {
     writeBuffer[writePos] = VariantUtil.HEADER_INT16;
     VariantUtil.writeLong(writeBuffer, writePos + 1, s, 2);
     writePos += 3;
-    incrementNumValues();
   }
 
   /**
@@ -195,7 +190,6 @@ public class VariantBuilder {
     writeBuffer[writePos] = VariantUtil.HEADER_INT8;
     VariantUtil.writeLong(writeBuffer, writePos + 1, b, 1);
     writePos += 2;
-    incrementNumValues();
   }
 
   /**
@@ -208,7 +202,6 @@ public class VariantBuilder {
     writeBuffer[writePos] = VariantUtil.HEADER_DOUBLE;
     VariantUtil.writeLong(writeBuffer, writePos + 1, Double.doubleToLongBits(d), 8);
     writePos += 9;
-    incrementNumValues();
   }
 
   /**
@@ -251,7 +244,6 @@ public class VariantBuilder {
       }
       writePos += 16;
     }
-    incrementNumValues();
   }
 
   /**
@@ -265,7 +257,6 @@ public class VariantBuilder {
     writeBuffer[writePos] = VariantUtil.HEADER_DATE;
     VariantUtil.writeLong(writeBuffer, writePos + 1, daysSinceEpoch, 4);
     writePos += 5;
-    incrementNumValues();
   }
 
   /**
@@ -279,7 +270,6 @@ public class VariantBuilder {
     writeBuffer[writePos] = VariantUtil.HEADER_TIMESTAMP_TZ;
     VariantUtil.writeLong(writeBuffer, writePos + 1, microsSinceEpoch, 8);
     writePos += 9;
-    incrementNumValues();
   }
 
   /**
@@ -293,7 +283,6 @@ public class VariantBuilder {
     writeBuffer[writePos] = VariantUtil.HEADER_TIMESTAMP_NTZ;
     VariantUtil.writeLong(writeBuffer, writePos + 1, microsSinceEpoch, 8);
     writePos += 9;
-    incrementNumValues();
   }
 
   /**
@@ -311,7 +300,6 @@ public class VariantBuilder {
     writeBuffer[writePos] = VariantUtil.HEADER_TIME;
     VariantUtil.writeLong(writeBuffer, writePos + 1, microsSinceMidnight, 8);
     writePos += 9;
-    incrementNumValues();
   }
 
   /**
@@ -325,7 +313,6 @@ public class VariantBuilder {
     writeBuffer[writePos] = VariantUtil.HEADER_TIMESTAMP_NANOS_TZ;
     VariantUtil.writeLong(writeBuffer, writePos + 1, nanosSinceEpoch, 8);
     writePos += 9;
-    incrementNumValues();
   }
 
   /**
@@ -339,7 +326,6 @@ public class VariantBuilder {
     writeBuffer[writePos] = VariantUtil.HEADER_TIMESTAMP_NANOS_NTZ;
     VariantUtil.writeLong(writeBuffer, writePos + 1, nanosSinceEpoch, 8);
     writePos += 9;
-    incrementNumValues();
   }
 
   /**
@@ -352,7 +338,6 @@ public class VariantBuilder {
     writeBuffer[writePos] = VariantUtil.HEADER_FLOAT;
     VariantUtil.writeLong(writeBuffer, writePos + 1, Float.floatToIntBits(f), 8);
     writePos += 5;
-    incrementNumValues();
   }
 
   /**
@@ -369,7 +354,6 @@ public class VariantBuilder {
     writePos += VariantUtil.U32_SIZE;
     ByteBuffer.wrap(writeBuffer, writePos, binarySize).put(binary);
     writePos += binarySize;
-    incrementNumValues();
   }
 
   /**
@@ -387,7 +371,6 @@ public class VariantBuilder {
     bb.putLong(uuid.getMostSignificantBits());
     bb.putLong(uuid.getLeastSignificantBits());
     writePos += VariantUtil.UUID_SIZE;
-    incrementNumValues();
   }
 
   /**
@@ -484,7 +467,6 @@ public class VariantBuilder {
     }
     VariantUtil.writeLong(writeBuffer, offsetStart + numFields * offsetSize, dataSize, offsetSize);
     writePos += dataOffset + dataSize;
-    incrementNumValues();
     this.objectBuilder = null;
   }
 
@@ -544,7 +526,6 @@ public class VariantBuilder {
     }
     VariantUtil.writeLong(writeBuffer, offsetStart + numElements * offsetSize, dataSize, offsetSize);
     writePos += dataOffset + dataSize;
-    incrementNumValues();
     this.arrayBuilder = null;
   }
 
@@ -555,21 +536,13 @@ public class VariantBuilder {
     }
   }
 
-  protected void incrementNumValues() {
-    // Subclasses can override this method to update the number of values appended.
-  }
-
   protected void onStartNested() {
-    checkMultipleNested();
+    checkMultipleNested("Cannot call startObject()/startArray() without calling endObject()/endArray() first.");
   }
 
-  protected void checkMultipleNested() {
-    if (objectBuilder != null) {
-      throw new IllegalStateException(
-          "Cannot call startObject()/startArray() without calling endObject() first.");
-    }
-    if (arrayBuilder != null) {
-      throw new IllegalStateException("Cannot call startObject()/startArray() without calling endArray() first.");
+  protected void checkMultipleNested(String message) {
+    if (objectBuilder != null || arrayBuilder != null) {
+      throw new IllegalStateException(message);
     }
   }
 

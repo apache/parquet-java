@@ -373,4 +373,78 @@ public class TestVariantObjectBuilder {
       // expected
     }
   }
+
+  @Test
+  public void testOpenNestedObject() {
+    VariantBuilder b = new VariantBuilder();
+    VariantObjectBuilder obj = b.startObject();
+    obj.appendKey("outer");
+    obj.startObject();
+    try {
+      b.endObject();
+      Assert.fail("Expected Exception when calling endObject() with an open nested object");
+    } catch (Exception e) {
+      // expected
+    }
+  }
+
+  @Test
+  public void testOpenNestedObjectWithKey() {
+    VariantBuilder b = new VariantBuilder();
+    VariantObjectBuilder obj = b.startObject();
+    obj.appendKey("outer");
+    VariantObjectBuilder nested = obj.startObject();
+    nested.appendKey("nested");
+    try {
+      b.endObject();
+      Assert.fail("Expected Exception when calling endObject() with an open nested object");
+    } catch (Exception e) {
+      // expected
+    }
+  }
+
+  @Test
+  public void testOpenNestedObjectWithKeyValue() {
+    VariantBuilder b = new VariantBuilder();
+    VariantObjectBuilder obj = b.startObject();
+    obj.appendKey("outer");
+    VariantObjectBuilder nested = obj.startObject();
+    nested.appendKey("nested");
+    nested.appendInt(1);
+    try {
+      b.endObject();
+      Assert.fail("Expected Exception when calling endObject() with an open nested object");
+    } catch (Exception e) {
+      // expected
+    }
+  }
+
+  @Test
+  public void testOpenNestedArray() {
+    VariantBuilder b = new VariantBuilder();
+    VariantObjectBuilder obj = b.startObject();
+    obj.appendKey("outer");
+    obj.startArray();
+    try {
+      b.endObject();
+      Assert.fail("Expected Exception when calling endObject() with an open nested array");
+    } catch (Exception e) {
+      // expected
+    }
+  }
+
+  @Test
+  public void testOpenNestedArrayWithElement() {
+    VariantBuilder b = new VariantBuilder();
+    VariantObjectBuilder obj = b.startObject();
+    obj.appendKey("outer");
+    VariantArrayBuilder nested = obj.startArray();
+    nested.appendInt(1);
+    try {
+      b.endObject();
+      Assert.fail("Expected Exception when calling endObject() with an open nested array");
+    } catch (Exception e) {
+      // expected
+    }
+  }
 }

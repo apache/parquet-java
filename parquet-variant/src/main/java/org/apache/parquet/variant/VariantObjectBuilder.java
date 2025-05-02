@@ -40,7 +40,7 @@ public class VariantObjectBuilder extends VariantBuilder {
    */
   void appendKey(String key) {
     if (fields.size() > numValues) {
-      throw new IllegalStateException("Cannot call appendKey() before appending an object value.");
+      throw new IllegalStateException("Cannot call appendKey() before appending a value for the previous key.");
     }
     updateLastValueSize();
     fields.add(new VariantBuilder.FieldEntry(key, addDictionaryKey(key), writePos));
@@ -56,6 +56,7 @@ public class VariantObjectBuilder extends VariantBuilder {
       throw new IllegalStateException(String.format(
           "Number of object keys (%d) do not match the number of values (%d).", fields.size(), numValues));
     }
+    checkMultipleNested("Cannot call endObject() while a nested object/array is still open.");
     updateLastValueSize();
     return fields;
   }
@@ -66,10 +67,12 @@ public class VariantObjectBuilder extends VariantBuilder {
     if (numValues != fields.size() - 1) {
       throw new IllegalStateException("Cannot append an object value before calling appendKey()");
     }
+    numValues++;
   }
 
   @Override
-  protected void incrementNumValues() {
+  protected void onStartNested() {
+    checkMultipleNested("Cannot call startObject()/startArray() without calling endObject()/endArray() first.");
     numValues++;
   }
 
