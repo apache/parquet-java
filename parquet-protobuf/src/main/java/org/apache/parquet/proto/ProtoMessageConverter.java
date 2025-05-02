@@ -59,9 +59,8 @@ import org.apache.parquet.io.InvalidRecordException;
 import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.Converter;
+import org.apache.parquet.io.api.GroupConverter;
 import org.apache.parquet.io.api.PrimitiveConverter;
-import org.apache.parquet.proto.ProtoRecordMaterializer.ModifiableGroupConverter;
-import org.apache.parquet.proto.ProtoRecordMaterializer.ModifiableParentValueContainerHolder;
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.IncompatibleSchemaModificationException;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
@@ -74,14 +73,14 @@ import org.slf4j.LoggerFactory;
  * Converts Protocol Buffer message (both top level and inner) to parquet.
  * This is internal class, use {@link ProtoRecordConverter}.
  */
-class ProtoMessageConverter extends ModifiableGroupConverter implements ModifiableParentValueContainerHolder {
+class ProtoMessageConverter extends GroupConverter {
   private static final Logger LOG = LoggerFactory.getLogger(ProtoMessageConverter.class);
 
   private static final ParentValueContainer DUMMY_PVC = new DummyParentValueContainer();
 
   protected final ParquetConfiguration conf;
   protected final Converter[] converters;
-  protected ParentValueContainer parent;
+  protected final ParentValueContainer parent;
   protected final Message.Builder myBuilder;
   protected final Map<String, String> extraMetadata;
 
@@ -349,26 +348,6 @@ class ProtoMessageConverter extends ModifiableGroupConverter implements Modifiab
     return myBuilder;
   }
 
-  @Override
-  int getFieldCount() {
-    return converters.length;
-  }
-
-  @Override
-  void setFieldConverter(int fieldIndex, Converter converter) {
-    converters[fieldIndex] = converter;
-  }
-
-  @Override
-  public ParentValueContainer getParentValueContainer() {
-    return parent;
-  }
-
-  @Override
-  public void setParentValueContainer(ParentValueContainer parentValueContainer) {
-    parent = parentValueContainer;
-  }
-
   public static class ParentValueContainer {
 
     /**
@@ -453,12 +432,12 @@ class ProtoMessageConverter extends ModifiableGroupConverter implements Modifiab
     }
   }
 
-  final class ProtoEnumConverter extends PrimitiveConverter implements ModifiableParentValueContainerHolder {
+  final class ProtoEnumConverter extends PrimitiveConverter {
 
     private final Descriptors.FieldDescriptor fieldType;
     private final Map<Binary, Descriptors.EnumValueDescriptor> enumLookup;
     private Descriptors.EnumValueDescriptor[] dict;
-    private ParentValueContainer parent;
+    final ParentValueContainer parent;
     private final Descriptors.EnumDescriptor enumType;
     private final String unknownEnumPrefix;
     private final boolean acceptUnknownEnum;
@@ -577,21 +556,11 @@ class ProtoMessageConverter extends ModifiableGroupConverter implements Modifiab
         dict[i] = translateEnumValue(binaryValue);
       }
     }
-
-    @Override
-    public ParentValueContainer getParentValueContainer() {
-      return parent;
-    }
-
-    @Override
-    public void setParentValueContainer(ParentValueContainer parentValueContainer) {
-      parent = parentValueContainer;
-    }
   }
 
-  static final class ProtoBinaryConverter extends PrimitiveConverter implements ModifiableParentValueContainerHolder {
+  static final class ProtoBinaryConverter extends PrimitiveConverter {
 
-    ParentValueContainer parent;
+    final ParentValueContainer parent;
 
     public ProtoBinaryConverter(ParentValueContainer parent) {
       this.parent = parent;
@@ -602,22 +571,11 @@ class ProtoMessageConverter extends ModifiableGroupConverter implements Modifiab
       ByteString byteString = ByteString.copyFrom(binary.toByteBuffer());
       parent.add(byteString);
     }
-
-    @Override
-    public ParentValueContainer getParentValueContainer() {
-      return parent;
-    }
-
-    @Override
-    public void setParentValueContainer(ParentValueContainer parentValueContainer) {
-      parent = parentValueContainer;
-    }
   }
 
-  static final class ProtoBooleanConverter extends PrimitiveConverter
-      implements ModifiableParentValueContainerHolder {
+  static final class ProtoBooleanConverter extends PrimitiveConverter {
 
-    ParentValueContainer parent;
+    final ParentValueContainer parent;
 
     public ProtoBooleanConverter(ParentValueContainer parent) {
       this.parent = parent;
@@ -625,23 +583,13 @@ class ProtoMessageConverter extends ModifiableGroupConverter implements Modifiab
 
     @Override
     public void addBoolean(boolean value) {
-      parent.addBoolean(value);
-    }
-
-    @Override
-    public ParentValueContainer getParentValueContainer() {
-      return parent;
-    }
-
-    @Override
-    public void setParentValueContainer(ParentValueContainer parentValueContainer) {
-      parent = parentValueContainer;
+      parent.add(value);
     }
   }
 
-  static final class ProtoDoubleConverter extends PrimitiveConverter implements ModifiableParentValueContainerHolder {
+  static final class ProtoDoubleConverter extends PrimitiveConverter {
 
-    ParentValueContainer parent;
+    final ParentValueContainer parent;
 
     public ProtoDoubleConverter(ParentValueContainer parent) {
       this.parent = parent;
@@ -649,23 +597,13 @@ class ProtoMessageConverter extends ModifiableGroupConverter implements Modifiab
 
     @Override
     public void addDouble(double value) {
-      parent.addDouble(value);
-    }
-
-    @Override
-    public ParentValueContainer getParentValueContainer() {
-      return parent;
-    }
-
-    @Override
-    public void setParentValueContainer(ParentValueContainer parentValueContainer) {
-      parent = parentValueContainer;
+      parent.add(value);
     }
   }
 
-  static final class ProtoFloatConverter extends PrimitiveConverter implements ModifiableParentValueContainerHolder {
+  static final class ProtoFloatConverter extends PrimitiveConverter {
 
-    ParentValueContainer parent;
+    final ParentValueContainer parent;
 
     public ProtoFloatConverter(ParentValueContainer parent) {
       this.parent = parent;
@@ -673,23 +611,13 @@ class ProtoMessageConverter extends ModifiableGroupConverter implements Modifiab
 
     @Override
     public void addFloat(float value) {
-      parent.addFloat(value);
-    }
-
-    @Override
-    public ParentValueContainer getParentValueContainer() {
-      return parent;
-    }
-
-    @Override
-    public void setParentValueContainer(ParentValueContainer parentValueContainer) {
-      parent = parentValueContainer;
+      parent.add(value);
     }
   }
 
-  static final class ProtoIntConverter extends PrimitiveConverter implements ModifiableParentValueContainerHolder {
+  static final class ProtoIntConverter extends PrimitiveConverter {
 
-    ParentValueContainer parent;
+    final ParentValueContainer parent;
 
     public ProtoIntConverter(ParentValueContainer parent) {
       this.parent = parent;
@@ -697,23 +625,13 @@ class ProtoMessageConverter extends ModifiableGroupConverter implements Modifiab
 
     @Override
     public void addInt(int value) {
-      parent.addInt(value);
-    }
-
-    @Override
-    public ParentValueContainer getParentValueContainer() {
-      return parent;
-    }
-
-    @Override
-    public void setParentValueContainer(ParentValueContainer parentValueContainer) {
-      parent = parentValueContainer;
+      parent.add(value);
     }
   }
 
-  static final class ProtoLongConverter extends PrimitiveConverter implements ModifiableParentValueContainerHolder {
+  static final class ProtoLongConverter extends PrimitiveConverter {
 
-    ParentValueContainer parent;
+    final ParentValueContainer parent;
 
     public ProtoLongConverter(ParentValueContainer parent) {
       this.parent = parent;
@@ -721,23 +639,13 @@ class ProtoMessageConverter extends ModifiableGroupConverter implements Modifiab
 
     @Override
     public void addLong(long value) {
-      parent.addLong(value);
-    }
-
-    @Override
-    public ParentValueContainer getParentValueContainer() {
-      return parent;
-    }
-
-    @Override
-    public void setParentValueContainer(ParentValueContainer parentValueContainer) {
-      parent = parentValueContainer;
+      parent.add(value);
     }
   }
 
-  static final class ProtoStringConverter extends PrimitiveConverter implements ModifiableParentValueContainerHolder {
+  static final class ProtoStringConverter extends PrimitiveConverter {
 
-    ParentValueContainer parent;
+    final ParentValueContainer parent;
 
     public ProtoStringConverter(ParentValueContainer parent) {
       this.parent = parent;
@@ -748,22 +656,11 @@ class ProtoMessageConverter extends ModifiableGroupConverter implements Modifiab
       String str = binary.toStringUsingUTF8();
       parent.add(str);
     }
-
-    @Override
-    public ParentValueContainer getParentValueContainer() {
-      return parent;
-    }
-
-    @Override
-    public void setParentValueContainer(ParentValueContainer parentValueContainer) {
-      parent = parentValueContainer;
-    }
   }
 
-  static final class ProtoTimestampConverter extends PrimitiveConverter
-      implements ModifiableParentValueContainerHolder {
+  static final class ProtoTimestampConverter extends PrimitiveConverter {
 
-    ParentValueContainer parent;
+    final ParentValueContainer parent;
     final LogicalTypeAnnotation.TimestampLogicalTypeAnnotation logicalTypeAnnotation;
 
     public ProtoTimestampConverter(
@@ -787,21 +684,11 @@ class ProtoMessageConverter extends ModifiableGroupConverter implements Modifiab
           break;
       }
     }
-
-    @Override
-    public ParentValueContainer getParentValueContainer() {
-      return parent;
-    }
-
-    @Override
-    public void setParentValueContainer(ParentValueContainer parentValueContainer) {
-      parent = parentValueContainer;
-    }
   }
 
-  static final class ProtoDateConverter extends PrimitiveConverter implements ModifiableParentValueContainerHolder {
+  static final class ProtoDateConverter extends PrimitiveConverter {
 
-    ParentValueContainer parent;
+    final ParentValueContainer parent;
 
     public ProtoDateConverter(ParentValueContainer parent) {
       this.parent = parent;
@@ -817,21 +704,11 @@ class ProtoMessageConverter extends ModifiableGroupConverter implements Modifiab
           .build();
       parent.add(date);
     }
-
-    @Override
-    public ParentValueContainer getParentValueContainer() {
-      return parent;
-    }
-
-    @Override
-    public void setParentValueContainer(ParentValueContainer parentValueContainer) {
-      parent = parentValueContainer;
-    }
   }
 
-  static final class ProtoTimeConverter extends PrimitiveConverter implements ModifiableParentValueContainerHolder {
+  static final class ProtoTimeConverter extends PrimitiveConverter {
 
-    ParentValueContainer parent;
+    final ParentValueContainer parent;
     final LogicalTypeAnnotation.TimeLogicalTypeAnnotation logicalTypeAnnotation;
 
     public ProtoTimeConverter(
@@ -869,22 +746,11 @@ class ProtoMessageConverter extends ModifiableGroupConverter implements Modifiab
           .build();
       parent.add(timeOfDay);
     }
-
-    @Override
-    public ParentValueContainer getParentValueContainer() {
-      return parent;
-    }
-
-    @Override
-    public void setParentValueContainer(ParentValueContainer parentValueContainer) {
-      parent = parentValueContainer;
-    }
   }
 
-  static final class ProtoDoubleValueConverter extends PrimitiveConverter
-      implements ModifiableParentValueContainerHolder {
+  static final class ProtoDoubleValueConverter extends PrimitiveConverter {
 
-    ParentValueContainer parent;
+    final ParentValueContainer parent;
 
     public ProtoDoubleValueConverter(ParentValueContainer parent) {
       this.parent = parent;
@@ -894,22 +760,11 @@ class ProtoMessageConverter extends ModifiableGroupConverter implements Modifiab
     public void addDouble(double value) {
       parent.add(DoubleValue.of(value));
     }
-
-    @Override
-    public ParentValueContainer getParentValueContainer() {
-      return parent;
-    }
-
-    @Override
-    public void setParentValueContainer(ParentValueContainer parentValueContainer) {
-      parent = parentValueContainer;
-    }
   }
 
-  static final class ProtoFloatValueConverter extends PrimitiveConverter
-      implements ModifiableParentValueContainerHolder {
+  static final class ProtoFloatValueConverter extends PrimitiveConverter {
 
-    ParentValueContainer parent;
+    final ParentValueContainer parent;
 
     public ProtoFloatValueConverter(ParentValueContainer parent) {
       this.parent = parent;
@@ -919,22 +774,11 @@ class ProtoMessageConverter extends ModifiableGroupConverter implements Modifiab
     public void addFloat(float value) {
       parent.add(FloatValue.of(value));
     }
-
-    @Override
-    public ParentValueContainer getParentValueContainer() {
-      return parent;
-    }
-
-    @Override
-    public void setParentValueContainer(ParentValueContainer parentValueContainer) {
-      parent = parentValueContainer;
-    }
   }
 
-  static final class ProtoInt64ValueConverter extends PrimitiveConverter
-      implements ModifiableParentValueContainerHolder {
+  static final class ProtoInt64ValueConverter extends PrimitiveConverter {
 
-    ParentValueContainer parent;
+    final ParentValueContainer parent;
 
     public ProtoInt64ValueConverter(ParentValueContainer parent) {
       this.parent = parent;
@@ -944,22 +788,11 @@ class ProtoMessageConverter extends ModifiableGroupConverter implements Modifiab
     public void addLong(long value) {
       parent.add(Int64Value.of(value));
     }
-
-    @Override
-    public ParentValueContainer getParentValueContainer() {
-      return parent;
-    }
-
-    @Override
-    public void setParentValueContainer(ParentValueContainer parentValueContainer) {
-      parent = parentValueContainer;
-    }
   }
 
-  static final class ProtoUInt64ValueConverter extends PrimitiveConverter
-      implements ModifiableParentValueContainerHolder {
+  static final class ProtoUInt64ValueConverter extends PrimitiveConverter {
 
-    ParentValueContainer parent;
+    final ParentValueContainer parent;
 
     public ProtoUInt64ValueConverter(ParentValueContainer parent) {
       this.parent = parent;
@@ -969,22 +802,11 @@ class ProtoMessageConverter extends ModifiableGroupConverter implements Modifiab
     public void addLong(long value) {
       parent.add(UInt64Value.of(value));
     }
-
-    @Override
-    public ParentValueContainer getParentValueContainer() {
-      return parent;
-    }
-
-    @Override
-    public void setParentValueContainer(ParentValueContainer parentValueContainer) {
-      parent = parentValueContainer;
-    }
   }
 
-  static final class ProtoInt32ValueConverter extends PrimitiveConverter
-      implements ModifiableParentValueContainerHolder {
+  static final class ProtoInt32ValueConverter extends PrimitiveConverter {
 
-    ParentValueContainer parent;
+    final ParentValueContainer parent;
 
     public ProtoInt32ValueConverter(ParentValueContainer parent) {
       this.parent = parent;
@@ -994,22 +816,11 @@ class ProtoMessageConverter extends ModifiableGroupConverter implements Modifiab
     public void addInt(int value) {
       parent.add(Int32Value.of(value));
     }
-
-    @Override
-    public ParentValueContainer getParentValueContainer() {
-      return parent;
-    }
-
-    @Override
-    public void setParentValueContainer(ParentValueContainer parentValueContainer) {
-      parent = parentValueContainer;
-    }
   }
 
-  static final class ProtoUInt32ValueConverter extends PrimitiveConverter
-      implements ModifiableParentValueContainerHolder {
+  static final class ProtoUInt32ValueConverter extends PrimitiveConverter {
 
-    ParentValueContainer parent;
+    final ParentValueContainer parent;
 
     public ProtoUInt32ValueConverter(ParentValueContainer parent) {
       this.parent = parent;
@@ -1019,22 +830,11 @@ class ProtoMessageConverter extends ModifiableGroupConverter implements Modifiab
     public void addLong(long value) {
       parent.add(UInt32Value.of(Math.toIntExact(value)));
     }
-
-    @Override
-    public ParentValueContainer getParentValueContainer() {
-      return parent;
-    }
-
-    @Override
-    public void setParentValueContainer(ParentValueContainer parentValueContainer) {
-      parent = parentValueContainer;
-    }
   }
 
-  static final class ProtoBoolValueConverter extends PrimitiveConverter
-      implements ModifiableParentValueContainerHolder {
+  static final class ProtoBoolValueConverter extends PrimitiveConverter {
 
-    ParentValueContainer parent;
+    final ParentValueContainer parent;
 
     public ProtoBoolValueConverter(ParentValueContainer parent) {
       this.parent = parent;
@@ -1044,22 +844,11 @@ class ProtoMessageConverter extends ModifiableGroupConverter implements Modifiab
     public void addBoolean(boolean value) {
       parent.add(BoolValue.of(value));
     }
-
-    @Override
-    public ParentValueContainer getParentValueContainer() {
-      return parent;
-    }
-
-    @Override
-    public void setParentValueContainer(ParentValueContainer parentValueContainer) {
-      parent = parentValueContainer;
-    }
   }
 
-  static final class ProtoStringValueConverter extends PrimitiveConverter
-      implements ModifiableParentValueContainerHolder {
+  static final class ProtoStringValueConverter extends PrimitiveConverter {
 
-    ParentValueContainer parent;
+    final ParentValueContainer parent;
 
     public ProtoStringValueConverter(ParentValueContainer parent) {
       this.parent = parent;
@@ -1070,22 +859,11 @@ class ProtoMessageConverter extends ModifiableGroupConverter implements Modifiab
       String str = binary.toStringUsingUTF8();
       parent.add(StringValue.of(str));
     }
-
-    @Override
-    public ParentValueContainer getParentValueContainer() {
-      return parent;
-    }
-
-    @Override
-    public void setParentValueContainer(ParentValueContainer parentValueContainer) {
-      parent = parentValueContainer;
-    }
   }
 
-  static final class ProtoBytesValueConverter extends PrimitiveConverter
-      implements ModifiableParentValueContainerHolder {
+  static final class ProtoBytesValueConverter extends PrimitiveConverter {
 
-    ParentValueContainer parent;
+    final ParentValueContainer parent;
 
     public ProtoBytesValueConverter(ParentValueContainer parent) {
       this.parent = parent;
@@ -1095,16 +873,6 @@ class ProtoMessageConverter extends ModifiableGroupConverter implements Modifiab
     public void addBinary(Binary binary) {
       ByteString byteString = ByteString.copyFrom(binary.toByteBuffer());
       parent.add(BytesValue.of(byteString));
-    }
-
-    @Override
-    public ParentValueContainer getParentValueContainer() {
-      return parent;
-    }
-
-    @Override
-    public void setParentValueContainer(ParentValueContainer parentValueContainer) {
-      parent = parentValueContainer;
     }
   }
 
@@ -1130,26 +898,13 @@ class ProtoMessageConverter extends ModifiableGroupConverter implements Modifiab
    * a repeated group named 'list', itself containing only one field called 'element' of the type of the repeated
    * object (can be a primitive as in this example or a group in case of a repeated message in protobuf).
    */
-  final class ListConverter extends ModifiableGroupConverter {
-    private Converter converter;
+  final class ListConverter extends GroupConverter {
+    final ListWrapperConverter converter;
 
-    final class ListWrapperConverter extends ModifiableGroupConverter {
-      private Converter converter;
+    final class ListWrapperConverter extends GroupConverter {
+      final Converter converter;
 
       ListWrapperConverter(Converter converter) {
-        this.converter = converter;
-      }
-
-      @Override
-      int getFieldCount() {
-        return 1;
-      }
-
-      @Override
-      void setFieldConverter(int fieldIndex, Converter converter) {
-        if (fieldIndex > 0) {
-          throw new ParquetDecodingException("Unexpected multiple fields in the LIST wrapper");
-        }
         this.converter = converter;
       }
 
@@ -1204,23 +959,10 @@ class ProtoMessageConverter extends ModifiableGroupConverter implements Modifiab
 
     @Override
     public void end() {}
-
-    @Override
-    int getFieldCount() {
-      return 1;
-    }
-
-    @Override
-    void setFieldConverter(int fieldIndex, Converter converter) {
-      if (fieldIndex > 0) {
-        throw new ParquetDecodingException("Unexpected multiple fields in the LIST wrapper");
-      }
-      this.converter = converter;
-    }
   }
 
-  final class MapConverter extends ModifiableGroupConverter {
-    private Converter converter;
+  final class MapConverter extends GroupConverter {
+    final Converter converter;
 
     public MapConverter(
         Message.Builder parentBuilder, Descriptors.FieldDescriptor fieldDescriptor, Type parquetType) {
@@ -1253,18 +995,5 @@ class ProtoMessageConverter extends ModifiableGroupConverter implements Modifiab
 
     @Override
     public void end() {}
-
-    @Override
-    int getFieldCount() {
-      return 1;
-    }
-
-    @Override
-    void setFieldConverter(int fieldIndex, Converter converter) {
-      if (fieldIndex > 0) {
-        throw new ParquetDecodingException("Unexpected multiple fields in the MAP wrapper");
-      }
-      MapConverter.this.converter = converter;
-    }
   }
 }
