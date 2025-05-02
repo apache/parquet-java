@@ -26,6 +26,8 @@ public class VariantArrayBuilder extends VariantBuilder {
   private final VariantBuilder parent;
   /** The offsets of the elements in this array. */
   private final ArrayList<Integer> offsets;
+  /** The number of values appended to this array. */
+  protected long numValues = 0;
 
   VariantArrayBuilder(VariantBuilder parent) {
     this.parent = parent;
@@ -53,6 +55,11 @@ public class VariantArrayBuilder extends VariantBuilder {
   protected void onStartNested() {
     checkMultipleNested();
     offsets.add(writePos);
+  }
+
+  @Override
+  protected void incrementNumValues() {
+    numValues++;
   }
 
   @Override

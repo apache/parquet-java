@@ -39,9 +39,6 @@ public class VariantBuilder {
   /** The keys in the dictionary, in id order. */
   private final ArrayList<byte[]> dictionaryKeys = new ArrayList<>();
 
-  /** The number of values appended to this builder. */
-  protected long numValues = 0;
-
   /**
    * These are used to build nested objects and arrays, via startObject() and startArray().
    * Only one of these can be non-null at a time. If one of these is non-null, then no append()
@@ -123,7 +120,7 @@ public class VariantBuilder {
     }
     System.arraycopy(data, 0, writeBuffer, writePos, data.length);
     writePos += data.length;
-    numValues++;
+    incrementNumValues();
   }
 
   /**
@@ -134,7 +131,7 @@ public class VariantBuilder {
     checkCapacity(1);
     writeBuffer[writePos] = VariantUtil.HEADER_NULL;
     writePos += 1;
-    numValues++;
+    incrementNumValues();
   }
 
   /**
@@ -146,7 +143,7 @@ public class VariantBuilder {
     checkCapacity(1);
     writeBuffer[writePos] = b ? VariantUtil.HEADER_TRUE : VariantUtil.HEADER_FALSE;
     writePos += 1;
-    numValues++;
+    incrementNumValues();
   }
 
   /**
@@ -159,7 +156,7 @@ public class VariantBuilder {
     writeBuffer[writePos] = VariantUtil.HEADER_INT64;
     VariantUtil.writeLong(writeBuffer, writePos + 1, l, 8);
     writePos += 9;
-    numValues++;
+    incrementNumValues();
   }
 
   /**
@@ -172,7 +169,7 @@ public class VariantBuilder {
     writeBuffer[writePos] = VariantUtil.HEADER_INT32;
     VariantUtil.writeLong(writeBuffer, writePos + 1, i, 4);
     writePos += 5;
-    numValues++;
+    incrementNumValues();
   }
 
   /**
@@ -185,7 +182,7 @@ public class VariantBuilder {
     writeBuffer[writePos] = VariantUtil.HEADER_INT16;
     VariantUtil.writeLong(writeBuffer, writePos + 1, s, 2);
     writePos += 3;
-    numValues++;
+    incrementNumValues();
   }
 
   /**
@@ -198,7 +195,7 @@ public class VariantBuilder {
     writeBuffer[writePos] = VariantUtil.HEADER_INT8;
     VariantUtil.writeLong(writeBuffer, writePos + 1, b, 1);
     writePos += 2;
-    numValues++;
+    incrementNumValues();
   }
 
   /**
@@ -211,7 +208,7 @@ public class VariantBuilder {
     writeBuffer[writePos] = VariantUtil.HEADER_DOUBLE;
     VariantUtil.writeLong(writeBuffer, writePos + 1, Double.doubleToLongBits(d), 8);
     writePos += 9;
-    numValues++;
+    incrementNumValues();
   }
 
   /**
@@ -254,7 +251,7 @@ public class VariantBuilder {
       }
       writePos += 16;
     }
-    numValues++;
+    incrementNumValues();
   }
 
   /**
@@ -268,7 +265,7 @@ public class VariantBuilder {
     writeBuffer[writePos] = VariantUtil.HEADER_DATE;
     VariantUtil.writeLong(writeBuffer, writePos + 1, daysSinceEpoch, 4);
     writePos += 5;
-    numValues++;
+    incrementNumValues();
   }
 
   /**
@@ -282,7 +279,7 @@ public class VariantBuilder {
     writeBuffer[writePos] = VariantUtil.HEADER_TIMESTAMP_TZ;
     VariantUtil.writeLong(writeBuffer, writePos + 1, microsSinceEpoch, 8);
     writePos += 9;
-    numValues++;
+    incrementNumValues();
   }
 
   /**
@@ -296,7 +293,7 @@ public class VariantBuilder {
     writeBuffer[writePos] = VariantUtil.HEADER_TIMESTAMP_NTZ;
     VariantUtil.writeLong(writeBuffer, writePos + 1, microsSinceEpoch, 8);
     writePos += 9;
-    numValues++;
+    incrementNumValues();
   }
 
   /**
@@ -314,7 +311,7 @@ public class VariantBuilder {
     writeBuffer[writePos] = VariantUtil.HEADER_TIME;
     VariantUtil.writeLong(writeBuffer, writePos + 1, microsSinceMidnight, 8);
     writePos += 9;
-    numValues++;
+    incrementNumValues();
   }
 
   /**
@@ -328,7 +325,7 @@ public class VariantBuilder {
     writeBuffer[writePos] = VariantUtil.HEADER_TIMESTAMP_NANOS_TZ;
     VariantUtil.writeLong(writeBuffer, writePos + 1, nanosSinceEpoch, 8);
     writePos += 9;
-    numValues++;
+    incrementNumValues();
   }
 
   /**
@@ -342,7 +339,7 @@ public class VariantBuilder {
     writeBuffer[writePos] = VariantUtil.HEADER_TIMESTAMP_NANOS_NTZ;
     VariantUtil.writeLong(writeBuffer, writePos + 1, nanosSinceEpoch, 8);
     writePos += 9;
-    numValues++;
+    incrementNumValues();
   }
 
   /**
@@ -355,7 +352,7 @@ public class VariantBuilder {
     writeBuffer[writePos] = VariantUtil.HEADER_FLOAT;
     VariantUtil.writeLong(writeBuffer, writePos + 1, Float.floatToIntBits(f), 8);
     writePos += 5;
-    numValues++;
+    incrementNumValues();
   }
 
   /**
@@ -372,7 +369,7 @@ public class VariantBuilder {
     writePos += VariantUtil.U32_SIZE;
     ByteBuffer.wrap(writeBuffer, writePos, binarySize).put(binary);
     writePos += binarySize;
-    numValues++;
+    incrementNumValues();
   }
 
   /**
@@ -390,7 +387,7 @@ public class VariantBuilder {
     bb.putLong(uuid.getMostSignificantBits());
     bb.putLong(uuid.getLeastSignificantBits());
     writePos += VariantUtil.UUID_SIZE;
-    numValues++;
+    incrementNumValues();
   }
 
   /**
@@ -415,7 +412,7 @@ public class VariantBuilder {
     if (arrayBuilder != null) {
       throw new IllegalStateException("Cannot call startObject() without calling endArray() first.");
     }
-    objectBuilder = new VariantObjectBuilder(this);
+    this.objectBuilder = new VariantObjectBuilder(this);
     return objectBuilder;
   }
 
@@ -438,7 +435,7 @@ public class VariantBuilder {
     for (int i = 1; i < numFields; ++i) {
       maxId = Math.max(maxId, fields.get(i).id);
       if (fields.get(i).id == fields.get(i - 1).id) {
-        // Found a duplicate key. Keep the field with the greater offset.
+        // Found a duplicate key. Keep the field with the greater offset, because it was written last.
         if (fields.get(distinctPos).offset < fields.get(i).offset) {
           fields.set(distinctPos, fields.get(i));
         }
@@ -460,9 +457,9 @@ public class VariantBuilder {
     int sizeBytes = largeSize ? VariantUtil.U32_SIZE : 1;
     int idSize = getMinIntegerSize(maxId);
     int offsetSize = getMinIntegerSize(dataSize);
-    // The space for header byte, object size, id list, and offset list.
-    int headerSize = 1 + sizeBytes + numFields * idSize + (numFields + 1) * offsetSize;
-    checkCapacity(headerSize + dataSize);
+    // The data starts after: the header byte, object size, id list, and offset list.
+    int dataOffset = 1 + sizeBytes + numFields * idSize + (numFields + 1) * offsetSize;
+    checkCapacity(dataOffset + dataSize);
 
     // Write the header byte and size entry.
     writeBuffer[writePos] = VariantUtil.objectHeader(largeSize, idSize, offsetSize);
@@ -470,7 +467,6 @@ public class VariantBuilder {
 
     int idStart = writePos + 1 + sizeBytes;
     int offsetStart = idStart + numFields * idSize;
-    int fieldDataStart = offsetStart + (numFields + 1) * offsetSize;
     int currOffset = 0;
 
     // Loop over all fields and write the key id, offset, and data to the appropriate offsets
@@ -479,13 +475,17 @@ public class VariantBuilder {
       VariantUtil.writeLong(writeBuffer, idStart + i * idSize, field.id, idSize);
       VariantUtil.writeLong(writeBuffer, offsetStart + i * offsetSize, currOffset, offsetSize);
       System.arraycopy(
-          objectBuilder.writeBuffer, field.offset, writeBuffer, fieldDataStart + currOffset, field.valueSize);
+          objectBuilder.writeBuffer,
+          field.offset,
+          writeBuffer,
+          writePos + dataOffset + currOffset,
+          field.valueSize);
       currOffset += field.valueSize;
     }
     VariantUtil.writeLong(writeBuffer, offsetStart + numFields * offsetSize, dataSize, offsetSize);
-    writePos += headerSize + dataSize;
-    numValues++;
-    objectBuilder = null;
+    writePos += dataOffset + dataSize;
+    incrementNumValues();
+    this.objectBuilder = null;
   }
 
   /**
@@ -510,7 +510,7 @@ public class VariantBuilder {
     if (arrayBuilder != null) {
       throw new IllegalStateException("Cannot call startArray() without calling endArray() first.");
     }
-    arrayBuilder = new VariantArrayBuilder(this);
+    this.arrayBuilder = new VariantArrayBuilder(this);
     return arrayBuilder;
   }
 
@@ -528,12 +528,12 @@ public class VariantBuilder {
     boolean largeSize = numElements > VariantUtil.U8_MAX;
     int sizeBytes = largeSize ? VariantUtil.U32_SIZE : 1;
     int offsetSize = getMinIntegerSize(dataSize);
-    // The space for header byte, object size, and offset list.
-    int headerSize = 1 + sizeBytes + (numElements + 1) * offsetSize;
-    checkCapacity(headerSize + dataSize);
+    // The data starts after: the header byte, object size, and offset list.
+    int dataOffset = 1 + sizeBytes + (numElements + 1) * offsetSize;
+    checkCapacity(dataOffset + dataSize);
 
     // Copy all the element data to the write buffer.
-    System.arraycopy(arrayBuilder.writeBuffer, 0, writeBuffer, writePos + headerSize, dataSize);
+    System.arraycopy(arrayBuilder.writeBuffer, 0, writeBuffer, writePos + dataOffset, dataSize);
 
     writeBuffer[writePos] = VariantUtil.arrayHeader(largeSize, offsetSize);
     VariantUtil.writeLong(writeBuffer, writePos + 1, numElements, sizeBytes);
@@ -543,16 +543,20 @@ public class VariantBuilder {
       VariantUtil.writeLong(writeBuffer, offsetStart + i * offsetSize, offsets.get(i), offsetSize);
     }
     VariantUtil.writeLong(writeBuffer, offsetStart + numElements * offsetSize, dataSize, offsetSize);
-    writePos += headerSize + dataSize;
-    numValues++;
-    arrayBuilder = null;
+    writePos += dataOffset + dataSize;
+    incrementNumValues();
+    this.arrayBuilder = null;
   }
 
   protected void onAppend() {
     checkAppendWhileNested();
-    if (numValues > 0) {
+    if (writePos > 0) {
       throw new IllegalStateException("Cannot call multiple append() methods.");
     }
+  }
+
+  protected void incrementNumValues() {
+    // Subclasses can override this method to update the number of values appended.
   }
 
   protected void onStartNested() {
@@ -634,7 +638,7 @@ public class VariantBuilder {
       newCapacity = newCapacity < requiredBytes ? newCapacity * 2 : newCapacity;
       byte[] newValue = new byte[newCapacity];
       System.arraycopy(writeBuffer, 0, newValue, 0, writePos);
-      writeBuffer = newValue;
+      this.writeBuffer = newValue;
     }
   }
 

@@ -26,6 +26,8 @@ public class VariantObjectBuilder extends VariantBuilder {
   private final VariantBuilder parent;
   /** The FieldEntry list for the fields of this object. */
   private final ArrayList<VariantBuilder.FieldEntry> fields;
+  /** The number of values appended to this object. */
+  protected long numValues = 0;
 
   VariantObjectBuilder(VariantBuilder parent) {
     this.parent = parent;
@@ -64,6 +66,11 @@ public class VariantObjectBuilder extends VariantBuilder {
     if (numValues != fields.size() - 1) {
       throw new IllegalStateException("Cannot append an object value before calling appendKey()");
     }
+  }
+
+  @Override
+  protected void incrementNumValues() {
+    numValues++;
   }
 
   @Override
