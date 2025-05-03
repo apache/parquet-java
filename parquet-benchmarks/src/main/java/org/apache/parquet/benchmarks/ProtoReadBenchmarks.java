@@ -19,7 +19,11 @@
 
 package org.apache.parquet.benchmarks;
 
+import static org.apache.parquet.benchmarks.BenchmarkFiles.configuration;
+import static org.openjdk.jmh.annotations.Scope.Thread;
+
 import com.google.protobuf.Message;
+import java.io.IOException;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.proto.ProtoParquetReader;
@@ -29,12 +33,7 @@ import org.openjdk.jmh.annotations.Level;
 import org.openjdk.jmh.annotations.Param;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
-import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.infra.Blackhole;
-import java.io.IOException;
-
-import static org.apache.parquet.benchmarks.BenchmarkFiles.configuration;
-import static org.openjdk.jmh.annotations.Scope.Thread;
 
 @State(Thread)
 public class ProtoReadBenchmarks extends ReadBenchmarks {

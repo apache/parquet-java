@@ -298,7 +298,8 @@ class ProtoMessageConverter extends GroupConverter {
       case BYTE_STRING:
         return new ProtoBinaryConverter(pvc);
       case ENUM:
-        return new ProtoEnumConverter(pvc, fieldDescriptor);
+        return new ProtoEnumConverter(
+            pvc, fieldDescriptor, extraMetadata, conf.getBoolean(CONFIG_ACCEPT_UNKNOWN_ENUM, false));
       case INT:
         return new ProtoIntConverter(pvc);
       case LONG:
@@ -432,7 +433,7 @@ class ProtoMessageConverter extends GroupConverter {
     }
   }
 
-  final class ProtoEnumConverter extends PrimitiveConverter {
+  static final class ProtoEnumConverter extends PrimitiveConverter {
 
     private final Descriptors.FieldDescriptor fieldType;
     private final Map<Binary, Descriptors.EnumValueDescriptor> enumLookup;
@@ -441,14 +442,30 @@ class ProtoMessageConverter extends GroupConverter {
     private final Descriptors.EnumDescriptor enumType;
     private final String unknownEnumPrefix;
     private final boolean acceptUnknownEnum;
+    private final Map<String, String> extraMetadata;
 
-    public ProtoEnumConverter(ParentValueContainer parent, Descriptors.FieldDescriptor fieldType) {
+    public ProtoEnumConverter(
+        ParentValueContainer parent,
+        Descriptors.FieldDescriptor fieldType,
+        Map<String, String> extraMetadata,
+        boolean acceptUnknownEnum) {
       this.parent = parent;
+      this.extraMetadata = extraMetadata;
       this.fieldType = fieldType;
       this.enumType = fieldType.getEnumType();
       this.enumLookup = makeLookupStructure(enumType);
-      unknownEnumPrefix = "UNKNOWN_ENUM_VALUE_" + enumType.getName() + "_";
-      acceptUnknownEnum = conf.getBoolean(CONFIG_ACCEPT_UNKNOWN_ENUM, false);
+      this.unknownEnumPrefix = "UNKNOWN_ENUM_VALUE_" + enumType.getName() + "_";
+      this.acceptUnknownEnum = acceptUnknownEnum;
+    }
+
+    public ProtoEnumConverter(ParentValueContainer parent, ProtoEnumConverter from) {
+      this.parent = parent;
+      this.extraMetadata = from.extraMetadata;
+      this.fieldType = from.fieldType;
+      this.enumType = from.enumType;
+      this.enumLookup = from.enumLookup;
+      this.unknownEnumPrefix = from.unknownEnumPrefix;
+      this.acceptUnknownEnum = from.acceptUnknownEnum;
     }
 
     /**

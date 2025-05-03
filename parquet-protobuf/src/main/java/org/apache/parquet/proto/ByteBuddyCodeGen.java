@@ -29,7 +29,6 @@ import com.google.protobuf.DoubleValue;
 import com.google.protobuf.FloatValue;
 import com.google.protobuf.Int32Value;
 import com.google.protobuf.Int64Value;
-import com.google.protobuf.MapEntry;
 import com.google.protobuf.Message;
 import com.google.protobuf.MessageOrBuilder;
 import com.google.protobuf.StringValue;
@@ -109,27 +108,27 @@ import org.apache.parquet.proto.ProtoMessageConverter.AddRepeatedFieldParentValu
 import org.apache.parquet.proto.ProtoMessageConverter.ListConverter;
 import org.apache.parquet.proto.ProtoMessageConverter.MapConverter;
 import org.apache.parquet.proto.ProtoMessageConverter.ParentValueContainer;
-import org.apache.parquet.proto.ProtoMessageConverter.SetFieldParentValueContainer;
-import org.apache.parquet.proto.ProtoMessageConverter.ProtoEnumConverter;
 import org.apache.parquet.proto.ProtoMessageConverter.ProtoBinaryConverter;
+import org.apache.parquet.proto.ProtoMessageConverter.ProtoBoolValueConverter;
 import org.apache.parquet.proto.ProtoMessageConverter.ProtoBooleanConverter;
+import org.apache.parquet.proto.ProtoMessageConverter.ProtoBytesValueConverter;
+import org.apache.parquet.proto.ProtoMessageConverter.ProtoDateConverter;
 import org.apache.parquet.proto.ProtoMessageConverter.ProtoDoubleConverter;
+import org.apache.parquet.proto.ProtoMessageConverter.ProtoDoubleValueConverter;
+import org.apache.parquet.proto.ProtoMessageConverter.ProtoEnumConverter;
 import org.apache.parquet.proto.ProtoMessageConverter.ProtoFloatConverter;
+import org.apache.parquet.proto.ProtoMessageConverter.ProtoFloatValueConverter;
+import org.apache.parquet.proto.ProtoMessageConverter.ProtoInt32ValueConverter;
+import org.apache.parquet.proto.ProtoMessageConverter.ProtoInt64ValueConverter;
 import org.apache.parquet.proto.ProtoMessageConverter.ProtoIntConverter;
 import org.apache.parquet.proto.ProtoMessageConverter.ProtoLongConverter;
 import org.apache.parquet.proto.ProtoMessageConverter.ProtoStringConverter;
-import org.apache.parquet.proto.ProtoMessageConverter.ProtoTimestampConverter;
-import org.apache.parquet.proto.ProtoMessageConverter.ProtoDateConverter;
-import org.apache.parquet.proto.ProtoMessageConverter.ProtoTimeConverter;
-import org.apache.parquet.proto.ProtoMessageConverter.ProtoDoubleValueConverter;
-import org.apache.parquet.proto.ProtoMessageConverter.ProtoFloatValueConverter;
-import org.apache.parquet.proto.ProtoMessageConverter.ProtoInt64ValueConverter;
-import org.apache.parquet.proto.ProtoMessageConverter.ProtoUInt64ValueConverter;
-import org.apache.parquet.proto.ProtoMessageConverter.ProtoInt32ValueConverter;
-import org.apache.parquet.proto.ProtoMessageConverter.ProtoUInt32ValueConverter;
-import org.apache.parquet.proto.ProtoMessageConverter.ProtoBoolValueConverter;
 import org.apache.parquet.proto.ProtoMessageConverter.ProtoStringValueConverter;
-import org.apache.parquet.proto.ProtoMessageConverter.ProtoBytesValueConverter;
+import org.apache.parquet.proto.ProtoMessageConverter.ProtoTimeConverter;
+import org.apache.parquet.proto.ProtoMessageConverter.ProtoTimestampConverter;
+import org.apache.parquet.proto.ProtoMessageConverter.ProtoUInt32ValueConverter;
+import org.apache.parquet.proto.ProtoMessageConverter.ProtoUInt64ValueConverter;
+import org.apache.parquet.proto.ProtoMessageConverter.SetFieldParentValueContainer;
 import org.apache.parquet.schema.MessageType;
 
 public class ByteBuddyCodeGen {
@@ -2797,8 +2796,8 @@ public class ByteBuddyCodeGen {
       private ProtoReadSupport.CodegenMode codegenMode;
       private ParquetConfiguration configuration;
 
-      public ProtoRecordMaterializerTransformer(ProtoReadSupport.CodegenMode codegenMode,
-                                                ParquetConfiguration configuration) {
+      public ProtoRecordMaterializerTransformer(
+          ProtoReadSupport.CodegenMode codegenMode, ParquetConfiguration configuration) {
         this.codegenMode = codegenMode;
         this.configuration = configuration;
       }
@@ -2832,7 +2831,8 @@ public class ByteBuddyCodeGen {
           return transformChildConverterProtoBinaryConverter(parentBuilder, (ProtoBinaryConverter) converter);
         }
         if (converter instanceof ProtoBooleanConverter) {
-          return transformChildConverterProtoBooleanConverter(parentBuilder, (ProtoBooleanConverter) converter);
+          return transformChildConverterProtoBooleanConverter(
+              parentBuilder, (ProtoBooleanConverter) converter);
         }
         if (converter instanceof ProtoDoubleConverter) {
           return transformChildConverterProtoDoubleConverter(parentBuilder, (ProtoDoubleConverter) converter);
@@ -2850,7 +2850,8 @@ public class ByteBuddyCodeGen {
           return transformChildConverterProtoStringConverter(parentBuilder, (ProtoStringConverter) converter);
         }
         if (converter instanceof ProtoTimestampConverter) {
-          return transformChildConverterProtoTimestampConverter(parentBuilder, (ProtoTimestampConverter) converter);
+          return transformChildConverterProtoTimestampConverter(
+              parentBuilder, (ProtoTimestampConverter) converter);
         }
         if (converter instanceof ProtoDateConverter) {
           return transformChildConverterProtoDateConverter(parentBuilder, (ProtoDateConverter) converter);
@@ -2859,31 +2860,40 @@ public class ByteBuddyCodeGen {
           return transformChildConverterProtoTimeConverter(parentBuilder, (ProtoTimeConverter) converter);
         }
         if (converter instanceof ProtoDoubleValueConverter) {
-          return transformChildConverterProtoDoubleValueConverter(parentBuilder, (ProtoDoubleValueConverter) converter);
+          return transformChildConverterProtoDoubleValueConverter(
+              parentBuilder, (ProtoDoubleValueConverter) converter);
         }
         if (converter instanceof ProtoFloatValueConverter) {
-          return transformChildConverterProtoFloatValueConverter(parentBuilder, (ProtoFloatValueConverter) converter);
+          return transformChildConverterProtoFloatValueConverter(
+              parentBuilder, (ProtoFloatValueConverter) converter);
         }
         if (converter instanceof ProtoInt64ValueConverter) {
-          return transformChildConverterProtoInt64ValueConverter(parentBuilder, (ProtoInt64ValueConverter) converter);
+          return transformChildConverterProtoInt64ValueConverter(
+              parentBuilder, (ProtoInt64ValueConverter) converter);
         }
         if (converter instanceof ProtoUInt64ValueConverter) {
-          return transformChildConverterProtoUInt64ValueConverter(parentBuilder, (ProtoUInt64ValueConverter) converter);
+          return transformChildConverterProtoUInt64ValueConverter(
+              parentBuilder, (ProtoUInt64ValueConverter) converter);
         }
         if (converter instanceof ProtoInt32ValueConverter) {
-          return transformChildConverterProtoInt32ValueConverter(parentBuilder, (ProtoInt32ValueConverter) converter);
+          return transformChildConverterProtoInt32ValueConverter(
+              parentBuilder, (ProtoInt32ValueConverter) converter);
         }
         if (converter instanceof ProtoUInt32ValueConverter) {
-          return transformChildConverterProtoUInt32ValueConverter(parentBuilder, (ProtoUInt32ValueConverter) converter);
+          return transformChildConverterProtoUInt32ValueConverter(
+              parentBuilder, (ProtoUInt32ValueConverter) converter);
         }
         if (converter instanceof ProtoBoolValueConverter) {
-          return transformChildConverterProtoBoolValueConverter(parentBuilder, (ProtoBoolValueConverter) converter);
+          return transformChildConverterProtoBoolValueConverter(
+              parentBuilder, (ProtoBoolValueConverter) converter);
         }
         if (converter instanceof ProtoStringValueConverter) {
-          return transformChildConverterProtoStringValueConverter(parentBuilder, (ProtoStringValueConverter) converter);
+          return transformChildConverterProtoStringValueConverter(
+              parentBuilder, (ProtoStringValueConverter) converter);
         }
         if (converter instanceof ProtoBytesValueConverter) {
-          return transformChildConverterProtoBytesValueConverter(parentBuilder, (ProtoBytesValueConverter) converter);
+          return transformChildConverterProtoBytesValueConverter(
+              parentBuilder, (ProtoBytesValueConverter) converter);
         }
         if (converter instanceof MapConverter) {
           return transformChildConverterMapConverter(parentBuilder, (MapConverter) converter);
@@ -2894,24 +2904,31 @@ public class ByteBuddyCodeGen {
         return converter;
       }
 
-      private Converter transformChildConverterProtoEnumConverter(Object parentBuilder, ProtoEnumConverter converter) {
-        return converter;
+      private Converter transformChildConverterProtoEnumConverter(
+          Object parentBuilder, ProtoEnumConverter converter) {
+        Descriptors.FieldDescriptor fieldDescriptor = getFieldDescriptor(converter.parent);
+
+        if (fieldDescriptor == null) {
+          return converter;
+        }
+
+        return new ProtoEnumConverter(generatePvc(parentBuilder, fieldDescriptor), converter);
       }
 
       private Converter transformChildConverterListConverter(Object parentBuilder, ListConverter converter) {
+        Converter listConverter = transformChildConverter(parentBuilder, converter.converter.converter);
+
         GroupConverter wrapperConverter = new GroupConverter() {
           @Override
           public Converter getConverter(int fieldIndex) {
-            return transformChildConverter(parentBuilder, converter.converter.converter);
+            return listConverter;
           }
 
           @Override
-          public void start() {
-          }
+          public void start() {}
 
           @Override
-          public void end() {
-          }
+          public void end() {}
         };
 
         return new GroupConverter() {
@@ -2921,243 +2938,243 @@ public class ByteBuddyCodeGen {
           }
 
           @Override
-          public void start() {
-          }
+          public void start() {}
 
           @Override
-          public void end() {
-          }
+          public void end() {}
         };
       }
 
       private Converter transformChildConverterMapConverter(Object parentBuilder, MapConverter converter) {
+        Converter mapConverter = transformChildConverter(parentBuilder, converter.converter);
+
         return new GroupConverter() {
           @Override
           public Converter getConverter(int fieldIndex) {
-            return transformChildConverter(parentBuilder, converter.converter);
+            return mapConverter;
           }
 
           @Override
-          public void start() {
-          }
+          public void start() {}
 
           @Override
-          public void end() {
-          }
+          public void end() {}
         };
       }
 
-      private Converter transformChildConverterProtoBytesValueConverter(Object parentBuilder,
-                                                                        ProtoBytesValueConverter converter) {
+      private Converter transformChildConverterProtoBytesValueConverter(
+          Object parentBuilder, ProtoBytesValueConverter converter) {
         Descriptors.FieldDescriptor fieldDescriptor = getFieldDescriptor(converter.parent);
 
         if (fieldDescriptor == null) {
           return converter;
         }
 
-        return new ProtoBytesValueConverter(generatePvc(parentBuilder, fieldDescriptor, converter.parent));
+        return new ProtoBytesValueConverter(generatePvc(parentBuilder, fieldDescriptor));
       }
 
-      private Converter transformChildConverterProtoStringValueConverter(Object parentBuilder,
-                                                                         ProtoStringValueConverter converter) {
+      private Converter transformChildConverterProtoStringValueConverter(
+          Object parentBuilder, ProtoStringValueConverter converter) {
         Descriptors.FieldDescriptor fieldDescriptor = getFieldDescriptor(converter.parent);
 
         if (fieldDescriptor == null) {
           return converter;
         }
 
-        return new ProtoStringValueConverter(generatePvc(parentBuilder, fieldDescriptor, converter.parent));
+        return new ProtoStringValueConverter(generatePvc(parentBuilder, fieldDescriptor));
       }
 
-      private Converter transformChildConverterProtoBoolValueConverter(Object parentBuilder,
-                                                                       ProtoBoolValueConverter converter) {
+      private Converter transformChildConverterProtoBoolValueConverter(
+          Object parentBuilder, ProtoBoolValueConverter converter) {
         Descriptors.FieldDescriptor fieldDescriptor = getFieldDescriptor(converter.parent);
 
         if (fieldDescriptor == null) {
           return converter;
         }
 
-        return new ProtoBoolValueConverter(generatePvc(parentBuilder, fieldDescriptor, converter.parent));
+        return new ProtoBoolValueConverter(generatePvc(parentBuilder, fieldDescriptor));
       }
 
-      private Converter transformChildConverterProtoUInt32ValueConverter(Object parentBuilder,
-                                                                         ProtoUInt32ValueConverter converter) {
+      private Converter transformChildConverterProtoUInt32ValueConverter(
+          Object parentBuilder, ProtoUInt32ValueConverter converter) {
         Descriptors.FieldDescriptor fieldDescriptor = getFieldDescriptor(converter.parent);
 
         if (fieldDescriptor == null) {
           return converter;
         }
 
-        return new ProtoUInt32ValueConverter(generatePvc(parentBuilder, fieldDescriptor, converter.parent));
+        return new ProtoUInt32ValueConverter(generatePvc(parentBuilder, fieldDescriptor));
       }
 
-      private Converter transformChildConverterProtoInt32ValueConverter(Object parentBuilder,
-                                                                        ProtoInt32ValueConverter converter) {
+      private Converter transformChildConverterProtoInt32ValueConverter(
+          Object parentBuilder, ProtoInt32ValueConverter converter) {
         Descriptors.FieldDescriptor fieldDescriptor = getFieldDescriptor(converter.parent);
 
         if (fieldDescriptor == null) {
           return converter;
         }
 
-        return new ProtoInt32ValueConverter(generatePvc(parentBuilder, fieldDescriptor, converter.parent));
+        return new ProtoInt32ValueConverter(generatePvc(parentBuilder, fieldDescriptor));
       }
 
-      private Converter transformChildConverterProtoUInt64ValueConverter(Object parentBuilder,
-                                                                         ProtoUInt64ValueConverter converter) {
+      private Converter transformChildConverterProtoUInt64ValueConverter(
+          Object parentBuilder, ProtoUInt64ValueConverter converter) {
         Descriptors.FieldDescriptor fieldDescriptor = getFieldDescriptor(converter.parent);
 
         if (fieldDescriptor == null) {
           return converter;
         }
 
-        return new ProtoUInt64ValueConverter(generatePvc(parentBuilder, fieldDescriptor, converter.parent));
+        return new ProtoUInt64ValueConverter(generatePvc(parentBuilder, fieldDescriptor));
       }
 
-      private Converter transformChildConverterProtoInt64ValueConverter(Object parentBuilder,
-                                                                        ProtoInt64ValueConverter converter) {
+      private Converter transformChildConverterProtoInt64ValueConverter(
+          Object parentBuilder, ProtoInt64ValueConverter converter) {
         Descriptors.FieldDescriptor fieldDescriptor = getFieldDescriptor(converter.parent);
 
         if (fieldDescriptor == null) {
           return converter;
         }
 
-        return new ProtoInt64ValueConverter(generatePvc(parentBuilder, fieldDescriptor, converter.parent));
+        return new ProtoInt64ValueConverter(generatePvc(parentBuilder, fieldDescriptor));
       }
 
-      private Converter transformChildConverterProtoFloatValueConverter(Object parentBuilder,
-                                                                        ProtoFloatValueConverter converter) {
+      private Converter transformChildConverterProtoFloatValueConverter(
+          Object parentBuilder, ProtoFloatValueConverter converter) {
         Descriptors.FieldDescriptor fieldDescriptor = getFieldDescriptor(converter.parent);
 
         if (fieldDescriptor == null) {
           return converter;
         }
 
-        return new ProtoFloatValueConverter(generatePvc(parentBuilder, fieldDescriptor, converter.parent));
+        return new ProtoFloatValueConverter(generatePvc(parentBuilder, fieldDescriptor));
       }
 
-      private Converter transformChildConverterProtoDoubleValueConverter(Object parentBuilder,
-                                                                         ProtoDoubleValueConverter converter) {
+      private Converter transformChildConverterProtoDoubleValueConverter(
+          Object parentBuilder, ProtoDoubleValueConverter converter) {
         Descriptors.FieldDescriptor fieldDescriptor = getFieldDescriptor(converter.parent);
 
         if (fieldDescriptor == null) {
           return converter;
         }
 
-        return new ProtoDoubleValueConverter(generatePvc(parentBuilder, fieldDescriptor, converter.parent));
+        return new ProtoDoubleValueConverter(generatePvc(parentBuilder, fieldDescriptor));
       }
 
-      private Converter transformChildConverterProtoTimeConverter(Object parentBuilder,
-                                                                  ProtoTimeConverter converter) {
+      private Converter transformChildConverterProtoTimeConverter(
+          Object parentBuilder, ProtoTimeConverter converter) {
         Descriptors.FieldDescriptor fieldDescriptor = getFieldDescriptor(converter.parent);
 
         if (fieldDescriptor == null) {
           return converter;
         }
 
-        return new ProtoTimeConverter(generatePvc(parentBuilder, fieldDescriptor, converter.parent), converter.logicalTypeAnnotation);
+        return new ProtoTimeConverter(
+            generatePvc(parentBuilder, fieldDescriptor), converter.logicalTypeAnnotation);
       }
 
-      private Converter transformChildConverterProtoDateConverter(Object parentBuilder,
-                                                                  ProtoDateConverter converter) {
+      private Converter transformChildConverterProtoDateConverter(
+          Object parentBuilder, ProtoDateConverter converter) {
         Descriptors.FieldDescriptor fieldDescriptor = getFieldDescriptor(converter.parent);
 
         if (fieldDescriptor == null) {
           return converter;
         }
 
-        return new ProtoDateConverter(generatePvc(parentBuilder, fieldDescriptor, converter.parent));
+        return new ProtoDateConverter(generatePvc(parentBuilder, fieldDescriptor));
       }
 
-      private Converter transformChildConverterProtoTimestampConverter(Object parentBuilder,
-                                                                       ProtoTimestampConverter converter) {
+      private Converter transformChildConverterProtoTimestampConverter(
+          Object parentBuilder, ProtoTimestampConverter converter) {
         Descriptors.FieldDescriptor fieldDescriptor = getFieldDescriptor(converter.parent);
 
         if (fieldDescriptor == null) {
           return converter;
         }
 
-        return new ProtoTimestampConverter(generatePvc(parentBuilder, fieldDescriptor, converter.parent), converter.logicalTypeAnnotation);
+        return new ProtoTimestampConverter(
+            generatePvc(parentBuilder, fieldDescriptor), converter.logicalTypeAnnotation);
       }
 
-      private Converter transformChildConverterProtoBinaryConverter(Object parentBuilder,
-                                                                    ProtoBinaryConverter converter) {
+      private Converter transformChildConverterProtoBinaryConverter(
+          Object parentBuilder, ProtoBinaryConverter converter) {
         Descriptors.FieldDescriptor fieldDescriptor = getFieldDescriptor(converter.parent);
 
         if (fieldDescriptor == null) {
           return converter;
         }
 
-        return new ProtoBinaryConverter(generatePvc(parentBuilder, fieldDescriptor, converter.parent));
+        return new ProtoBinaryConverter(generatePvc(parentBuilder, fieldDescriptor));
       }
 
-      private Converter transformChildConverterProtoStringConverter(Object parentBuilder,
-                                                                    ProtoStringConverter converter) {
+      private Converter transformChildConverterProtoStringConverter(
+          Object parentBuilder, ProtoStringConverter converter) {
         Descriptors.FieldDescriptor fieldDescriptor = getFieldDescriptor(converter.parent);
 
         if (fieldDescriptor == null) {
           return converter;
         }
 
-        return new ProtoStringConverter(generatePvc(parentBuilder, fieldDescriptor, converter.parent));
+        return new ProtoStringConverter(generatePvc(parentBuilder, fieldDescriptor));
       }
 
-      private Converter transformChildConverterProtoLongConverter(Object parentBuilder,
-                                                                  ProtoLongConverter converter) {
+      private Converter transformChildConverterProtoLongConverter(
+          Object parentBuilder, ProtoLongConverter converter) {
         Descriptors.FieldDescriptor fieldDescriptor = getFieldDescriptor(converter.parent);
 
         if (fieldDescriptor == null) {
           return converter;
         }
 
-        return new ProtoLongConverter(generatePvc(parentBuilder, fieldDescriptor, converter.parent));
+        return new ProtoLongConverter(generatePvc(parentBuilder, fieldDescriptor));
       }
 
-      private Converter transformChildConverterProtoIntConverter(Object parentBuilder,
-                                                                 ProtoIntConverter converter) {
+      private Converter transformChildConverterProtoIntConverter(
+          Object parentBuilder, ProtoIntConverter converter) {
         Descriptors.FieldDescriptor fieldDescriptor = getFieldDescriptor(converter.parent);
 
         if (fieldDescriptor == null) {
           return converter;
         }
 
-        return new ProtoIntConverter(generatePvc(parentBuilder, fieldDescriptor, converter.parent));
+        return new ProtoIntConverter(generatePvc(parentBuilder, fieldDescriptor));
       }
 
-      private Converter transformChildConverterProtoFloatConverter(Object parentBuilder,
-                                                                   ProtoFloatConverter converter) {
+      private Converter transformChildConverterProtoFloatConverter(
+          Object parentBuilder, ProtoFloatConverter converter) {
         Descriptors.FieldDescriptor fieldDescriptor = getFieldDescriptor(converter.parent);
 
         if (fieldDescriptor == null) {
           return converter;
         }
 
-        return new ProtoFloatConverter(generatePvc(parentBuilder, fieldDescriptor, converter.parent));
+        return new ProtoFloatConverter(generatePvc(parentBuilder, fieldDescriptor));
       }
 
-      private Converter transformChildConverterProtoDoubleConverter(Object parentBuilder,
-                                                                    ProtoDoubleConverter converter) {
+      private Converter transformChildConverterProtoDoubleConverter(
+          Object parentBuilder, ProtoDoubleConverter converter) {
         Descriptors.FieldDescriptor fieldDescriptor = getFieldDescriptor(converter.parent);
 
         if (fieldDescriptor == null) {
           return converter;
         }
 
-        return new ProtoDoubleConverter(generatePvc(parentBuilder, fieldDescriptor, converter.parent));
+        return new ProtoDoubleConverter(generatePvc(parentBuilder, fieldDescriptor));
       }
 
-      private Converter transformChildConverterProtoBooleanConverter(Object parentBuilder,
-                                                                     ProtoBooleanConverter converter) {
+      private Converter transformChildConverterProtoBooleanConverter(
+          Object parentBuilder, ProtoBooleanConverter converter) {
         Descriptors.FieldDescriptor fieldDescriptor = getFieldDescriptor(converter.parent);
 
         if (fieldDescriptor == null) {
           return converter;
         }
 
-        return new ProtoBooleanConverter(generatePvc(parentBuilder, fieldDescriptor, converter.parent));
+        return new ProtoBooleanConverter(generatePvc(parentBuilder, fieldDescriptor));
       }
 
-      private Converter transformChildConverterProtoMessageConverter(Object parentBuilder,
-                                                                     ProtoMessageConverter converter) {
+      private Converter transformChildConverterProtoMessageConverter(
+          Object parentBuilder, ProtoMessageConverter converter) {
         Descriptors.FieldDescriptor fieldDescriptor = getFieldDescriptor(converter.parent);
 
         if (fieldDescriptor == null) {
@@ -3165,18 +3182,17 @@ public class ByteBuddyCodeGen {
         }
 
         Object myBuilder = fieldDescriptor.isMapField()
-            // TODO
-            ? converter.myBuilder.build().toBuilder()//newMapEntryBuilder(parentBuilder, fieldDescriptor)
+            ? newMapEntryBuilder(parentBuilder, fieldDescriptor)
             : converter.myBuilder;
 
         Converter[] converters = converter.converters;
         Converter[] newConverters = new Converter[converters.length];
         for (int i = 0; i < converters.length; i++) {
           Converter childConverter = converters[i];
-          newConverters[i] = transformChildConverter(converter, childConverter);
+          newConverters[i] = transformChildConverter(myBuilder, childConverter);
         }
 
-        ParentValueContainer newPvc = generatePvc(parentBuilder, fieldDescriptor, converter.parent);
+        ParentValueContainer newPvc = generatePvc(parentBuilder, fieldDescriptor);
 
         return new PreBuiltProtoMessageConverter(newConverters, newPvc, myBuilder);
       }
@@ -3186,8 +3202,11 @@ public class ByteBuddyCodeGen {
         return messageBuilder.newBuilderForField(fieldDescriptor);
       }
 
-      private ParentValueContainer generatePvc(Object parentBuilder, Descriptors.FieldDescriptor fieldDescriptor,
-                                               ParentValueContainer fallbackPvc) {
+      private ParentValueContainer generatePvc(
+          Object parentBuilder, Descriptors.FieldDescriptor fieldDescriptor) {
+        ParentValueContainer fallbackPvc = fieldDescriptor.isRepeated()
+            ? new AddRepeatedFieldParentValueContainer((Message.Builder) parentBuilder, fieldDescriptor)
+            : new SetFieldParentValueContainer((Message.Builder) parentBuilder, fieldDescriptor);
         return new ParentValueContainer() {
           @Override
           public void add(Object val) {
@@ -3209,7 +3228,8 @@ public class ByteBuddyCodeGen {
           return setFieldPvc.getFieldDescriptor();
         }
         if (pvc instanceof AddRepeatedFieldParentValueContainer) {
-          AddRepeatedFieldParentValueContainer addRepeatedFieldPvc = (AddRepeatedFieldParentValueContainer) pvc;
+          AddRepeatedFieldParentValueContainer addRepeatedFieldPvc =
+              (AddRepeatedFieldParentValueContainer) pvc;
           return addRepeatedFieldPvc.getFieldDescriptor();
         }
         return null;
@@ -3220,8 +3240,8 @@ public class ByteBuddyCodeGen {
         protected final ParentValueContainer parent;
         protected final Object myBuilder;
 
-        public PreBuiltProtoMessageConverter(Converter[] converters, ParentValueContainer parent,
-                                             Object myBuilder) {
+        public PreBuiltProtoMessageConverter(
+            Converter[] converters, ParentValueContainer parent, Object myBuilder) {
           this.converters = converters;
           this.parent = parent;
           this.myBuilder = myBuilder;
@@ -3233,8 +3253,7 @@ public class ByteBuddyCodeGen {
         }
 
         @Override
-        public void start() {
-        }
+        public void start() {}
 
         @Override
         public void end() {
