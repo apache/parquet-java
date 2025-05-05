@@ -611,7 +611,8 @@ public class ParquetMetadataConverter {
         metaData.setSize_statistics(toParquetSizeStatistics(columnMetaData.getSizeStatistics()));
       }
 
-      if (columnMetaData.getGeospatialStatistics() != null) {
+      if (columnMetaData.getGeospatialStatistics() != null
+          && columnMetaData.getGeospatialStatistics().isValid()) {
         metaData.setGeospatial_statistics(
             toParquetGeospatialStatistics(columnMetaData.getGeospatialStatistics()));
       }
@@ -1276,7 +1277,7 @@ public class ParquetMetadataConverter {
         return LogicalTypeAnnotation.bsonType();
       default:
         throw new RuntimeException(
-            "Can't convert converted type to logical type, unknown converted type " + type);
+            "Can't convert converted type t o logical type, unknown converted type " + type);
     }
   }
 

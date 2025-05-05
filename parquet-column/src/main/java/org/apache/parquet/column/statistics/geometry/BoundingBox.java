@@ -32,6 +32,7 @@ public class BoundingBox {
   private double zMax = Double.NEGATIVE_INFINITY;
   private double mMin = Double.POSITIVE_INFINITY;
   private double mMax = Double.NEGATIVE_INFINITY;
+  private boolean valid = true;
 
   public BoundingBox() {}
 
@@ -45,6 +46,17 @@ public class BoundingBox {
     this.zMax = zMax;
     this.mMin = mMin;
     this.mMax = mMax;
+  }
+
+  private void resetBBox() {
+    xMin = Double.POSITIVE_INFINITY;
+    xMax = Double.NEGATIVE_INFINITY;
+    yMin = Double.POSITIVE_INFINITY;
+    yMax = Double.NEGATIVE_INFINITY;
+    zMin = Double.POSITIVE_INFINITY;
+    zMax = Double.NEGATIVE_INFINITY;
+    mMin = Double.POSITIVE_INFINITY;
+    mMax = Double.NEGATIVE_INFINITY;
   }
 
   public double getXMin() {
@@ -86,6 +98,16 @@ public class BoundingBox {
    * @return true if the bounding box is valid, false otherwise.
    */
   public boolean isValid() {
+    return valid;
+  }
+
+  /**
+   * Checks if the X and Y dimensions of the bounding box are valid.
+   * The X and Y dimensions are considered valid if none of the bounds contain NaN.
+   *
+   * @return true if the X and Y dimensions are valid, false otherwise.
+   */
+  public boolean isXYValid() {
     return !(Double.isNaN(xMin) || Double.isNaN(xMax) || Double.isNaN(yMin) || Double.isNaN(yMax));
   }
 
@@ -128,13 +150,18 @@ public class BoundingBox {
    * @param other the other BoundingBox whose bounds will be merged into this one
    */
   public void merge(BoundingBox other) {
-    // Skip merging if the other bounding box is null or empty
+    // Skip merging if the bbox is not valid or other is null or empty
     // - A null bounding box cannot be merged
     // - An empty bounding box (with inverted min/max) has no effect when merged,
     //   so we can skip the merge operation entirely for efficiency
+    if (!valid) {
+      return;
+    }
+
     if (other == null || other.isEmpty()) {
       return;
     }
+
     this.xMin = Math.min(this.xMin, other.xMin);
     this.xMax = Math.max(this.xMax, other.xMax);
     this.yMin = Math.min(this.yMin, other.yMin);
@@ -143,6 +170,9 @@ public class BoundingBox {
     this.zMax = Math.max(this.zMax, other.zMax);
     this.mMin = Math.min(this.mMin, other.mMin);
     this.mMax = Math.max(this.mMax, other.mMax);
+
+    // Update the validity of this bounding box based on the other bounding box
+    valid = isXYValid();
   }
 
   /**
@@ -154,6 +184,11 @@ public class BoundingBox {
    *                If null or empty, the method returns without making any changes.
    */
   public void update(Geometry geometry) {
+    // Skip updating if the bbox is not valid or geometry is null or empty
+    if (!valid) {
+      return;
+    }
+
     if (geometry == null || geometry.isEmpty()) {
       return;
     }
@@ -171,6 +206,9 @@ public class BoundingBox {
         mMax = Math.max(mMax, coord.getM());
       }
     }
+
+    // Update the validity of this bounding box based on the other bounding box
+    valid = isXYValid();
   }
 
   /**
@@ -197,21 +235,16 @@ public class BoundingBox {
    * Aborts the bounding box by resetting it to its initial state.
    */
   public void abort() {
-    reset();
+    valid = false;
+    resetBBox();
   }
 
   /**
    * Resets the bounding box to its initial state.
    */
   public void reset() {
-    xMin = Double.POSITIVE_INFINITY;
-    xMax = Double.NEGATIVE_INFINITY;
-    yMin = Double.POSITIVE_INFINITY;
-    yMax = Double.NEGATIVE_INFINITY;
-    zMin = Double.POSITIVE_INFINITY;
-    zMax = Double.NEGATIVE_INFINITY;
-    mMin = Double.POSITIVE_INFINITY;
-    mMax = Double.NEGATIVE_INFINITY;
+    resetBBox();
+    valid = true;
   }
 
   /**

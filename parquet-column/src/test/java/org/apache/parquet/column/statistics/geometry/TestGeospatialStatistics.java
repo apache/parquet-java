@@ -86,6 +86,39 @@ public class TestGeospatialStatistics {
   }
 
   @Test
+  public void testInvalidGeometryMakesStatisticsInvalid() {
+    PrimitiveType type = Types.optional(PrimitiveType.PrimitiveTypeName.BINARY)
+        .as(LogicalTypeAnnotation.geometryType(null))
+        .named("a");
+    GeospatialStatistics.Builder builder = GeospatialStatistics.newBuilder(type);
+
+    // First add a valid geometry
+    WKTReader wktReader = new WKTReader();
+    WKBWriter wkbWriter = new WKBWriter();
+    try {
+      builder.update(Binary.fromConstantByteArray(wkbWriter.write(wktReader.read("POINT (1 1)"))));
+    } catch (ParseException e) {
+      Assert.fail("Failed to parse valid WKT: " + e.getMessage());
+    }
+
+    // Valid at this point
+    GeospatialStatistics validStats = builder.build();
+    Assert.assertTrue(validStats.isValid());
+
+    // Now add invalid data - corrupt WKB bytes
+    byte[] invalidBytes = new byte[] {0x01, 0x02, 0x03}; // Invalid WKB format
+    builder.update(Binary.fromConstantByteArray(invalidBytes));
+
+    // After adding invalid data, statistics should be invalidated
+    GeospatialStatistics invalidStats = builder.build();
+    Assert.assertFalse(invalidStats.isValid());
+
+    // The builder should have called abort() internally when parsing failed
+    Assert.assertFalse(invalidStats.getBoundingBox().isValid());
+    Assert.assertFalse(invalidStats.getGeospatialTypes().isValid());
+  }
+
+  @Test
   public void testNoopBuilder() {
     GeospatialStatistics.Builder builder = GeospatialStatistics.noopBuilder();
     GeospatialStatistics statistics = builder.build();

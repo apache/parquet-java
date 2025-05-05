@@ -168,4 +168,64 @@ public class TestGeometryTypeRoundTrip {
       Assert.assertNotNull(geospatialStatistics);
     }
   }
+
+  @Test
+  public void testInvalidGeometryInvalidatesStatistics() throws Exception {
+    GeometryFactory geomFactory = new GeometryFactory();
+    WKBWriter wkbWriter = new WKBWriter();
+
+    // Create an array of binary values with a mix of valid and invalid geometry data
+    Binary[] geometries = {
+      // Valid point
+      Binary.fromConstantByteArray(wkbWriter.write(geomFactory.createPoint(new Coordinate(1.0, 1.0)))),
+      // Invalid "geometry" - corrupt WKB data
+      Binary.fromConstantByteArray(new byte[] {0x01, 0x02, 0x03, 0x04}),
+      // Another valid point
+      Binary.fromConstantByteArray(wkbWriter.write(geomFactory.createPoint(new Coordinate(2.0, 2.0))))
+    };
+
+    // Create schema with geometry type
+    MessageType schema = Types.buildMessage()
+        .required(BINARY)
+        .as(geometryType(null))
+        .named("geometry")
+        .named("msg");
+
+    // Write file with mixed valid/invalid geometries
+    Configuration conf = new Configuration();
+    GroupWriteSupport.setSchema(schema, conf);
+    GroupFactory factory = new SimpleGroupFactory(schema);
+    Path path = newTempPath();
+
+    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(new LocalOutputFile(path))
+        .withConf(conf)
+        .withDictionaryEncoding(false)
+        .build()) {
+      for (Binary value : geometries) {
+        writer.write(factory.newGroup().append("geometry", value));
+      }
+    }
+
+    // Read and verify the file
+    try (ParquetFileReader reader = ParquetFileReader.open(new LocalInputFile(path))) {
+      Assert.assertEquals(3, reader.getRecordCount());
+
+      ParquetMetadata footer = reader.getFooter();
+      Assert.assertNotNull(footer);
+
+      ColumnChunkMetaData columnChunkMetaData =
+          reader.getRowGroups().get(0).getColumns().get(0);
+      Assert.assertNotNull(columnChunkMetaData);
+
+      // The key verification - when invalid geometry data is present,
+      // geospatial statistics should be null (not written to the file)
+      GeospatialStatistics geospatialStatistics = columnChunkMetaData.getGeospatialStatistics();
+      Assert.assertNull(
+          "Geospatial statistics should be null when corrupt geometry is present", geospatialStatistics);
+
+      // Column index should still be readable, even if geometry-specific stats aren't present
+      ColumnIndex columnIndex = reader.readColumnIndex(columnChunkMetaData);
+      Assert.assertNotNull(columnIndex);
+    }
+  }
 }
