@@ -187,6 +187,29 @@ class VariantUtil {
   // The size (in bytes) of a UUID.
   static final int UUID_SIZE = 16;
 
+  // header bytes
+  static final byte HEADER_NULL = primitiveHeader(NULL);
+  static final byte HEADER_LONG_STRING = primitiveHeader(LONG_STR);
+  static final byte HEADER_TRUE = primitiveHeader(TRUE);
+  static final byte HEADER_FALSE = primitiveHeader(FALSE);
+  static final byte HEADER_INT8 = primitiveHeader(INT8);
+  static final byte HEADER_INT16 = primitiveHeader(INT16);
+  static final byte HEADER_INT32 = primitiveHeader(INT32);
+  static final byte HEADER_INT64 = primitiveHeader(INT64);
+  static final byte HEADER_DOUBLE = primitiveHeader(DOUBLE);
+  static final byte HEADER_DECIMAL4 = primitiveHeader(DECIMAL4);
+  static final byte HEADER_DECIMAL8 = primitiveHeader(DECIMAL8);
+  static final byte HEADER_DECIMAL16 = primitiveHeader(DECIMAL16);
+  static final byte HEADER_DATE = primitiveHeader(DATE);
+  static final byte HEADER_TIMESTAMP_TZ = primitiveHeader(TIMESTAMP_TZ);
+  static final byte HEADER_TIMESTAMP_NTZ = primitiveHeader(TIMESTAMP_NTZ);
+  static final byte HEADER_TIME = primitiveHeader(TIME);
+  static final byte HEADER_TIMESTAMP_NANOS_TZ = primitiveHeader(TIMESTAMP_NANOS_TZ);
+  static final byte HEADER_TIMESTAMP_NANOS_NTZ = primitiveHeader(TIMESTAMP_NANOS_NTZ);
+  static final byte HEADER_FLOAT = primitiveHeader(FLOAT);
+  static final byte HEADER_BINARY = primitiveHeader(BINARY);
+  static final byte HEADER_UUID = primitiveHeader(UUID);
+
   static byte primitiveHeader(int type) {
     return (byte) (type << 2 | PRIMITIVE);
   }
@@ -216,6 +239,20 @@ class VariantUtil {
     if (pos < 0 || pos >= length) {
       throw new IllegalArgumentException(
           String.format("Invalid byte-array offset (%d). length: %d", pos, length));
+    }
+  }
+
+  /**
+   * Write the least significant `numBytes` bytes in `value` into `bytes[pos, pos + numBytes)` in
+   * little endian.
+   * @param bytes The byte array to write into
+   * @param pos The starting index of the byte array to write into
+   * @param value The value to write
+   * @param numBytes The number of bytes to write
+   */
+  static void writeLong(byte[] bytes, int pos, long value, int numBytes) {
+    for (int i = 0; i < numBytes; ++i) {
+      bytes[pos + i] = (byte) ((value >>> (8 * i)) & 0xFF);
     }
   }
 
