@@ -153,8 +153,8 @@ public class VariantBuilder {
     onAppend();
     int size = value.length();
     checkCapacity(size);
-    ByteBuffer buf = value.toByteBuffer();
-    System.arraycopy(buf.array(), buf.position(), writeBuffer, writePos, size);
+    byte[] buf = value.getBytes();
+    System.arraycopy(buf, 0, writeBuffer, writePos, size);
     writePos += size;
   }
 
@@ -430,12 +430,17 @@ public class VariantBuilder {
     writePos += VariantUtil.UUID_SIZE;
   }
 
-  // Append raw bytes, already in the form required for storage in Variant.
+
+  /**
+   * Append raw bytes in the form stored in Variant.
+   * @param bytes a 16-byte value.
+   */
   public void appendUUIDBytes(byte[] bytes) {
     checkCapacity(1 + VariantUtil.UUID_SIZE);
     writeBuffer[writePos++] = VariantUtil.primitiveHeader(VariantUtil.UUID);
-    // TODO Throw a better exception if this is violated.
-    assert (bytes.length == VariantUtil.UUID_SIZE);
+    if (bytes.length != VariantUtil.UUID_SIZE) {
+      throw new IllegalArgumentException("UUID must be exactly 16 bytes");
+    }
     System.arraycopy(bytes, 0, writeBuffer, writePos, bytes.length);
     writePos += bytes.length;
   }

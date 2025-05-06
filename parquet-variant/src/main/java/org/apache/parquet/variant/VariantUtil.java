@@ -799,7 +799,7 @@ class VariantUtil {
       throw new IllegalStateException(String.format("Invalid offset: %d. next offset: %d", offset, nextOffset));
     }
     checkIndex(dataPos + nextOffset - 1, metadata.limit());
-    if (metadata.hasArray()) {
+    if (metadata.hasArray() && !metadata.isReadOnly()) {
       return new String(metadata.array(), metadata.arrayOffset() + dataPos + offset, nextOffset - offset);
     } else {
       // ByteBuffer does not have an array, so we need to use the `get` method to read the bytes.
@@ -831,7 +831,6 @@ class VariantUtil {
             String.format("Invalid offset: %d. next offset: %d", offset, nextOffset));
       }
       checkIndex(pos + stringStart + nextOffset - 1, metadata.limit());
-      // TODO: Copied from code that didn't have the metadata.isReadOnly() check. Add it there?
       if (metadata.hasArray() && !metadata.isReadOnly()) {
         result.put(new String(metadata.array(), metadata.arrayOffset() + pos + stringStart + offset, nextOffset - offset), id);
       } else {

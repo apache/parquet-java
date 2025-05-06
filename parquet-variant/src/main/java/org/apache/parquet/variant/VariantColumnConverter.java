@@ -247,28 +247,23 @@ class VariantElementConverter extends GroupConverter implements VariantConverter
         builder.shallowAppendVariant(variantValue);
       } else {
         // Both value and typed_value were non-null. This is only valid for an object.
-        byte[] value = variantValue.getBytes();
-        int basicType = value[0] & VariantUtil.BASIC_TYPE_MASK;
-        if (hasTypedValue && basicType != VariantUtil.OBJECT) {
+        Variant value = new Variant(variantValue.toByteBuffer(), this.builder.topLevelHolder.metadata.toByteBuffer());
+        Variant.Type basicType = value.getType();
+        if (hasTypedValue && basicType != Variant.Type.OBJECT) {
           throw new IllegalArgumentException("Invalid variant, conflicting value and typed_value");
         }
 
-        VariantUtil.ObjectInfo info = VariantUtil.getObjectInfo(ByteBuffer.wrap(value));
-        for (int i = 0; i < info.numElements; i++) {
-          int id = VariantUtil.readUnsigned(ByteBuffer.wrap(value), info.idStartOffset + info.idSize * i, info.idSize);
-          String key = VariantUtil.getMetadataKey(this.builder.topLevelHolder.metadata.toByteBuffer(), id);
-          if (shreddedObjectKeys.contains(key)) {
+        for (int i = 0; i < value.numObjectElements(); i++) {
+          Variant.ObjectField field = value.getFieldAtIndex(i);
+          if (shreddedObjectKeys.contains(field.key)) {
             // Skip any field ID that is also in the typed schema. This check is needed because readers with
             // pushdown may not look at the value column, causing inconsistent results if a writer puth a given key
             // only in the value column when it was present in the typed_value schema.
             // Alternatively, we could fail at this point, since the shredding is invalid according to the spec.
             continue;
           }
-          int offset = VariantUtil.readUnsigned(ByteBuffer.wrap(value), info.offsetStartOffset + info.offsetSize * i, info.offsetSize);
-          objectBuilder.appendKey(key);
-          objectBuilder.shallowAppendVariant(
-            Binary.fromConstantByteBuffer(VariantUtil.slice(ByteBuffer.wrap(value), info.dataStartOffset + offset))
-          );
+          objectBuilder.appendKey(field.key);
+          objectBuilder.shallowAppendVariant(Binary.fromReusedByteBuffer(field.value.getValue()));
         }
         builder.endObject();
       }

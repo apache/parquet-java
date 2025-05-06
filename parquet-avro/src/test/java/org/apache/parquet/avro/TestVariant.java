@@ -2170,12 +2170,10 @@ public class TestVariant extends DirectWriterTest {
       case OBJECT:
         assertEquals(expected.numObjectElements(), actual.numObjectElements());
         for (int i = 0; i < expected.numObjectElements(); ++i) {
-          Variant expectedField = expected.getFieldAtIndex(i);
-          Variant actualField = actual.getFieldAtIndex(i);
-          String expectedKey = expected.getKeyAtIndex(i);
-          String actualKey = actual.getKeyAtIndex(i);
-          assertEquals(expectedKey, actualKey);
-          assertEquivalent(expectedField, actualField);
+          Variant.ObjectField expectedField = expected.getFieldAtIndex(i);
+          Variant.ObjectField actualField = actual.getFieldAtIndex(i);
+          assertEquals(expectedField.key, actualField.key);
+          assertEquivalent(expectedField.value, actualField.value);
         }
         break;
       default:

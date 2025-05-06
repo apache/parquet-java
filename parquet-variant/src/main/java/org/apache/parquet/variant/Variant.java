@@ -253,7 +253,7 @@ public final class Variant {
   /**
    * A field in a Variant object.
    */
-  static final class ObjectField {
+  public static final class ObjectField {
     public final String key;
     public final Variant value;
 
@@ -270,7 +270,7 @@ public final class Variant {
    * @return the field value whose key is equal to `key`, or null if key is not found
    * @throws IllegalArgumentException if `getType()` does not return `Type.OBJECT`
    */
-  public Variant getFieldAtIndex(int idx) {
+  public ObjectField getFieldAtIndex(int idx) {
     VariantUtil.ObjectInfo info = VariantUtil.getObjectInfo(value);
     // Use linear search for a short list. Switch to binary search when the length reaches
     // `BINARY_SEARCH_THRESHOLD`.
@@ -283,31 +283,7 @@ public final class Variant {
         value.position() + info.idStartOffset,
         value.position() + info.offsetStartOffset,
         value.position() + info.dataStartOffset);
-    return field.value;
-  }
-
-  // TODO: Probably combine getKey and getField into a single getItem?
-  /**
-   * Returns the field at index idx, lexicographically ordered.
-   *
-   * @param idx the index to look up
-   * @return the field value whose key is equal to `key`, or null if key is not found
-   * @throws IllegalArgumentException if `getType()` does not return `Type.OBJECT`
-   */
-  public String getKeyAtIndex(int idx) {
-    VariantUtil.ObjectInfo info = VariantUtil.getObjectInfo(value);
-    // Use linear search for a short list. Switch to binary search when the length reaches
-    // `BINARY_SEARCH_THRESHOLD`.
-    ObjectField field = getFieldAtIndex(
-        idx,
-        value,
-        metadata,
-        info.idSize,
-        info.offsetSize,
-        value.position() + info.idStartOffset,
-        value.position() + info.offsetStartOffset,
-        value.position() + info.dataStartOffset);
-    return field.key;
+    return field;
   }
 
   static ObjectField getFieldAtIndex(
