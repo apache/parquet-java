@@ -29,6 +29,7 @@ import static org.apache.parquet.schema.Type.Repetition.REPEATED;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.nio.ByteBuffer;
 import java.util.*;
 import org.apache.parquet.column.Dictionary;
 import org.apache.parquet.io.api.Binary;
@@ -41,16 +42,42 @@ import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
 
 /**
- * Stores the Variant builder and metadata used to rebuild a single Variant value from its shredded representation.
+ * Stores the Variant builder and metadata used to rebuild a Variant value from its shredded representation.
+ * Each object and array converter creates a new VariantBuilderHolder that constructs its builder from the parent
+ * builder.
  */
 class VariantBuilderHolder {
   VariantBuilder builder = null;
+  // The parent of this VariantBuilderHolder, for nested builders.
+  VariantBuilderHolder parentHolder = null;
+  // TODO: This is a mess.
+  VariantBuilderHolder topLevelHolder = null;
   Binary metadata = null;
-  // Maps metadata entries to their index in the metadata binary.
+  // Maps metadata entries to their index in the metadata binary. It is only stored in the top-level holder.
   HashMap<String, Integer> metadataMap = null;
 
+  VariantBuilderHolder() {
+    this.topLevelHolder = this;
+  }
+
+  VariantBuilderHolder(VariantBuilderHolder parentHolder) {
+    this.parentHolder = parentHolder;
+    this.topLevelHolder = parentHolder.topLevelHolder;
+  }
+
+  // Only call for a top-level converter.
   void startNewVariant() {
-    builder = new VariantBuilder(false);
+    builder = new VariantBuilder();
+  }
+
+  // Only call for an object converter.
+  void startNewObject() {
+    builder = parentHolder.builder.startObject();
+  }
+
+  // Only call for an array converter.
+  void startNewArray() {
+    builder = parentHolder.builder.startArray();
   }
 
   Binary getMetadata() {
@@ -69,7 +96,7 @@ class VariantBuilderHolder {
     // around for every dictionary value, but that could be expensive, and handling adjacent
     // rows with identical metadata should be the most common case.
     if (this.metadata != metadata) {
-      metadataMap = VariantUtil.getMetadataMap(metadata.getBytes());
+      metadataMap = VariantUtil.getMetadataMap(metadata.toByteBuffer());
     }
     this.metadata = metadata;
     builder.setFixedMetadata(metadataMap);
@@ -186,7 +213,12 @@ class VariantElementConverter extends GroupConverter implements VariantConverter
 
   @Override
   public void start() {
-    startWritePos = builder.builder.getWritePos();
+    if (objectFieldName != null) {
+      // Having a non-null element does not guarantee that we actually want to add this field, because
+      // if value and typed_value are both null, it's a missing field. In that case, we'll detect it
+      // in end() and reverse our decision to add this key.
+      ((VariantObjectBuilder) builder.builder).appendKey(objectFieldName);
+    }
     if (valueIdx >= 0) {
       ((VariantValueConverter) converters[valueIdx]).reset();
     }
@@ -197,75 +229,52 @@ class VariantElementConverter extends GroupConverter implements VariantConverter
     VariantBuilder builder = this.builder.builder;
 
     Binary variantValue = null;
-    ArrayList<VariantBuilder.FieldEntry> fields = null;
+    VariantObjectBuilder objectBuilder = null;
     if (typedValueIsObject) {
-      // Get the array that the child typed_value has been adding its fields to. We need to possibly add
+      // Get the builder that the child typed_value has been adding its fields to. We need to possibly add
       // more values from the `value` field, then finalize. If the value was not an object, fields will be null.
-      fields = ((VariantObjectConverter) converters[typedValueIdx]).getFieldsAndReset();
+      objectBuilder = ((VariantObjectConverter) converters[typedValueIdx]).getObjectBuilder();
     }
     if (valueIdx >= 0) {
       variantValue = ((VariantValueConverter) converters[valueIdx]).getValue();
     }
     if (variantValue != null) {
-      // The first check guards against an invalid shredding where value and typed_value are both non-null, and
-      // typed_value is not an object. It is not sufficient, because a non-null but empty object in typed_value
-      // will leave the write position unchanged.
-      if (startWritePos == builder.getWritePos() && fields == null) {
+      // TODO: Find a way to ensure that we don't add a value and typed_value?
+      if (objectBuilder == null) {
         // Nothing else was added. We can directly append this value.
-        builder.shallowAppendVariant(
-            variantValue.toByteBuffer().array(),
-            variantValue.toByteBuffer().position());
+        builder.shallowAppendVariant(variantValue);
       } else {
         // Both value and typed_value were non-null. This is only valid for an object.
         byte[] value = variantValue.getBytes();
         int basicType = value[0] & VariantUtil.BASIC_TYPE_MASK;
-        if (basicType != VariantUtil.OBJECT || fields == null) {
+        if (basicType != VariantUtil.OBJECT) {
           throw new IllegalArgumentException("Invalid variant, conflicting value and typed_value");
         }
 
-        // Copy needed to satisfy compiler due to lambda.
-        ArrayList<VariantBuilder.FieldEntry> finalFields = fields;
-        VariantUtil.handleObject(value, 0, (info) -> {
-          for (int i = 0; i < info.numElements; ++i) {
-            int id = VariantUtil.readUnsigned(value, info.idStart + info.idSize * i, info.idSize);
-            String key = VariantUtil.getMetadataKey(this.builder.getMetadata().getBytes(), id);
-            if (shreddedObjectKeys.contains(key)) {
-              // Skip any field ID that is also in the typed schema. This check is needed because readers with
-              // pushdown may not look at the value column, causing inconsistent results if a writer puth a given key
-              // only in the value column when it was present in the typed_value schema.
-              // Alternatively, we could fail at this point, since the shredding is invalid according to the spec.
-              continue;
-            }
-            int offset = VariantUtil.readUnsigned(
-                value, info.offsetStart + info.offsetSize * i, info.offsetSize);
-            int elementPos = info.dataStart + offset;
-            finalFields.add(new VariantBuilder.FieldEntry(key, id, builder.getWritePos() - startWritePos));
-            builder.shallowAppendVariant(value, elementPos);
-          }
-          return null;
-        });
-        builder.finishWritingObject(startWritePos, finalFields);
+        VariantUtil.ObjectInfo info = VariantUtil.getObjectInfo(ByteBuffer.wrap(value));
+        for (int i = 0; i < info.numElements; i++) {
+          int id = VariantUtil.readUnsigned(ByteBuffer.wrap(value), info.idStartOffset + info.idSize * i, info.idSize);
+          String key = VariantUtil.getMetadataKey(this.builder.topLevelHolder.metadata.toByteBuffer(), id);
+          int offset = VariantUtil.readUnsigned(ByteBuffer.wrap(value), info.offsetStartOffset + info.offsetSize * i, info.offsetSize);
+          objectBuilder.appendKey(key);
+          objectBuilder.shallowAppendVariant(
+            Binary.fromConstantByteBuffer(VariantUtil.slice(ByteBuffer.wrap(value), info.dataStartOffset + offset))
+          );
+        }
+        builder.endObject();
       }
-    } else if (typedValueIsObject && fields != null) {
+    } else if (objectBuilder != null) {
       // We wrote an object, and there's nothing left to append.
-      builder.finishWritingObject(startWritePos, fields);
+      builder.endObject();
     }
 
-    if (startWritePos == builder.getWritePos() && objectFieldName == null) {
-      // If startWritePos == builder.getWritePos(), and this is an array element or top-level field, the
-      // spec considers this invalid, but suggests writing a VariantNull to the resulting variant.
-      // We could also consider failing with an error.
-      builder.appendNull();
-    }
-
-    if (startWritePos != builder.getWritePos() && objectFieldName != null) {
-      if (objectFieldId == -1) {
-        // metadata isn't available in the constructor, so we look up the field lazily.
-        objectFieldId = builder.addKey(objectFieldName);
-      }
-      // Record that we added a field.
-      parent.addField(objectFieldName, objectFieldId, startWritePos);
-    }
+    // TODO Handle this case.
+//    if (startWritePos == builder.getWritePos() && objectFieldName == null) {
+//      // If startWritePos == builder.getWritePos(), and this is an array element or top-level field, the
+//      // spec considers this invalid, but suggests writing a VariantNull to the resulting variant.
+//      // We could also consider failing with an error.
+//      builder.appendNull();
+//    }
   }
 }
 
@@ -521,7 +530,7 @@ class VariantStringConverter extends VariantScalarConverter {
 class VariantBinaryConverter extends VariantScalarConverter {
   @Override
   public void addBinary(Binary value) {
-    builder.builder.appendBinary(value.getBytes());
+    builder.builder.appendBinary(value.toByteBuffer());
   }
 }
 
@@ -628,7 +637,7 @@ class VariantTimeConverter extends VariantScalarConverter {
 class VariantTimestampConverter extends VariantScalarConverter {
   @Override
   public void addLong(long value) {
-    builder.builder.appendTimestamp(value);
+    builder.builder.appendTimestampTz(value);
   }
 }
 
@@ -642,7 +651,7 @@ class VariantTimestampNtzConverter extends VariantScalarConverter {
 class VariantTimestampNanosConverter extends VariantScalarConverter {
   @Override
   public void addLong(long value) {
-    builder.builder.appendTimestampNanos(value);
+    builder.builder.appendTimestampNanosTz(value);
   }
 }
 
@@ -659,8 +668,6 @@ class VariantTimestampNanosNtzConverter extends VariantScalarConverter {
 class VariantArrayConverter extends GroupConverter implements VariantConverter {
   private VariantBuilderHolder builder;
   private VariantArrayRepeatedConverter repeatedConverter;
-  private ArrayList<Integer> offsets;
-  private int startPos;
 
   public VariantArrayConverter(GroupType listType) {
     if (listType.getFieldCount() != 1) {
@@ -677,7 +684,8 @@ class VariantArrayConverter extends GroupConverter implements VariantConverter {
 
   @Override
   public void init(VariantBuilderHolder builderHolder) {
-    builder = builderHolder;
+    // Create a new builder for the array.
+    builder = new VariantBuilderHolder(builderHolder);
     repeatedConverter.init(builderHolder);
   }
 
@@ -686,19 +694,14 @@ class VariantArrayConverter extends GroupConverter implements VariantConverter {
     return repeatedConverter;
   }
 
-  public void addElement() {
-    offsets.add(builder.builder.getWritePos() - startPos);
-  }
-
   @Override
   public void start() {
-    offsets = new ArrayList<>();
-    startPos = builder.builder.getWritePos();
+    builder.startNewArray();
   }
 
   @Override
   public void end() {
-    builder.builder.finishWritingArray(startPos, offsets);
+    builder.builder.endArray();
   }
 }
 
@@ -707,11 +710,9 @@ class VariantArrayConverter extends GroupConverter implements VariantConverter {
  */
 class VariantArrayRepeatedConverter extends GroupConverter implements VariantConverter {
   private VariantElementConverter elementConverter;
-  private VariantArrayConverter parentConverter;
 
   public VariantArrayRepeatedConverter(GroupType repeatedType, VariantArrayConverter parentaConverter) {
     this.elementConverter = new VariantElementConverter(repeatedType.getType(0).asGroupType());
-    this.parentConverter = parentaConverter;
   }
 
   @Override
@@ -725,10 +726,7 @@ class VariantArrayRepeatedConverter extends GroupConverter implements VariantCon
   }
 
   @Override
-  public void start() {
-    // Record the offset of this element in the binary.
-    parentConverter.addElement();
-  }
+  public void start() {}
 
   @Override
   public void end() {}
@@ -737,13 +735,6 @@ class VariantArrayRepeatedConverter extends GroupConverter implements VariantCon
 class VariantObjectConverter extends GroupConverter implements VariantConverter {
   private VariantBuilderHolder builder;
   private VariantElementConverter[] converters;
-  private ArrayList<VariantBuilder.FieldEntry> fieldEntries = new ArrayList<>();
-  // hasValue is used to distinguish a null typed_value (which may be a missing field of another object) from
-  // an empty object, since both will have an empty fieldEntries list at the end, and the parent converter
-  // will need to know if the field is missing or empty.
-  private boolean hasValue = false;
-  // The write position in the buffer for the start of this object.
-  private int startWritePos;
 
   public VariantObjectConverter(GroupType typed_value) {
     List<Type> fields = typed_value.getFields();
@@ -755,24 +746,22 @@ class VariantObjectConverter extends GroupConverter implements VariantConverter 
     }
   };
 
-  void addField(String fieldName, int fieldId, int fieldStartPos) {
-    fieldEntries.add(new VariantBuilder.FieldEntry(fieldName, fieldId, fieldStartPos - startWritePos));
-  }
-
-  // Return fieldEntries, and reset the the state for reading the next object.
-  // If there was no object, return null.
-  // It must be called after each call to end() to ensure that hasValue is reset.
-  ArrayList<VariantBuilder.FieldEntry> getFieldsAndReset() {
-    if (!hasValue) {
-      return null;
-    }
-    hasValue = false;
-    return fieldEntries;
+  /**
+   * This method must be called after each call to end() to ensure that the object builder is
+   * not reused on a subsequent value for which start() was never called.
+   *
+   * @return The partially built object builder, or null if no object was constructed.
+   */
+  VariantObjectBuilder getObjectBuilder() {
+    VariantObjectBuilder objectBuilder = (VariantObjectBuilder) builder.builder;
+    builder.builder = null;
+    return objectBuilder;
   }
 
   @Override
   public void init(VariantBuilderHolder builderHolder) {
-    builder = builderHolder;
+    // Create a new builder for the object.
+    builder = new VariantBuilderHolder(builderHolder);
     for (VariantElementConverter c: converters) {
       c.init(builderHolder);
     }
@@ -785,15 +774,12 @@ class VariantObjectConverter extends GroupConverter implements VariantConverter 
 
   @Override
   public void start() {
-    fieldEntries.clear();
-    startWritePos = builder.builder.getWritePos();
+    builder.startNewObject();
   }
 
   @Override
   public void end() {
     // We can't finish writing the object here, because there might be residual entries in our
-    // parent's value column. The parent converter calls getFields to finalize the object.
-    // However, we need to indicate to our parent that the object is non-null.
-    hasValue = true;
+    // parent's value column. The parent converter calls getObjectBuilder to finalize the object.
   }
 }

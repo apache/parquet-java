@@ -38,12 +38,19 @@ public class VariantObjectBuilder extends VariantBuilder {
    * Appends an object key to this object. This method must be called before appending any value.
    * @param key the key to append
    */
-  void appendKey(String key) {
+  public void appendKey(String key) {
     if (fields.size() > numValues) {
       throw new IllegalStateException("Cannot call appendKey() before appending a value for the previous key.");
     }
     updateLastValueSize();
     fields.add(new VariantBuilder.FieldEntry(key, addDictionaryKey(key), writePos));
+  }
+
+  void dropLastKey() {
+    if (fields.size() != numValues + 1) {
+      throw new IllegalStateException("Can only drop the last added key with no corresponding value.");
+    }
+    fields.remove(fields.size() - 1);
   }
 
   /**

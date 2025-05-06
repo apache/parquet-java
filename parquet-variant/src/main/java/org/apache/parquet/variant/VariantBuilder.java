@@ -16,6 +16,7 @@
  */
 package org.apache.parquet.variant;
 
+import org.apache.parquet.io.api.Binary;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
@@ -35,9 +36,14 @@ public class VariantBuilder {
 
   protected int writePos = 0;
   /** The dictionary for mapping keys to monotonically increasing ids. */
-  private final HashMap<String, Integer> dictionary = new HashMap<>();
+  private HashMap<String, Integer> dictionary = new HashMap<>();
   /** The keys in the dictionary, in id order. */
-  private final ArrayList<byte[]> dictionaryKeys = new ArrayList<>();
+  private ArrayList<byte[]> dictionaryKeys = new ArrayList<>();
+
+  /** If true, the dictionary is externally provided, and only keys from that
+   * metadata may be used in the builder.
+   */
+  private boolean fixedMetadata = false;
 
   /**
    * These are used to build nested objects and arrays, via startObject() and startArray().
@@ -54,9 +60,34 @@ public class VariantBuilder {
   public VariantBuilder() {}
 
   /**
+   * Set the metadata. May only be called if the builder has not yet added anything to the metadata.
+   * If set, it is invalid to call build() on the builder. Only valueWithoutMetadata() may be called
+   * to obtain the result.
+   *
+   * @param metadata
+   */
+  public void setFixedMetadata(HashMap<String, Integer> metadata) {
+    if (!this.dictionary.isEmpty()) {
+      throw new IllegalStateException("Cannot fix metadata once values have been added to it");
+    }
+    this.dictionary = metadata;
+    this.fixedMetadata = true;
+    // We don't need the dictionaryKeys list when metadata is fixed, and setting to null ensures that we'll
+    // fail if we accidentally try to use it. However, uses should be guarded by a cleaner exception.
+    this.dictionaryKeys = null;
+  }
+
+  public void setFixedMetadata(ByteBuffer metadata) {
+    setFixedMetadata(VariantUtil.getMetadataMap(metadata));
+  }
+
+  /**
    * @return the Variant value
    */
   public Variant build() {
+    if (fixedMetadata) {
+      throw new IllegalStateException("Cannot reconstruct metadata when using fixed metadata");
+    }
     if (objectBuilder != null) {
       throw new IllegalStateException(
           "Cannot call build() while an object is being built. Must call endObject() first.");
@@ -99,6 +130,26 @@ public class VariantBuilder {
     // Copying the data to a new buffer, to retain only the required data length, not the capacity.
     // TODO: Reduce the copying, and look into builder reuse.
     return new Variant(Arrays.copyOfRange(writeBuffer, 0, writePos), metadata);
+  }
+
+  /**
+   * @return the constructed Variant value binary, without metadata.
+   */
+  public byte[] valueWithoutMetadata() {
+    return Arrays.copyOfRange(writeBuffer, 0, writePos);
+  }
+
+  /**
+   * Directly append a Variant value. Its keys must already be in the metadata
+   * dictionary.
+   */
+  public void shallowAppendVariant(Binary value) {
+    onAppend();
+    int size = value.length();
+    checkCapacity(size);
+    ByteBuffer buf = value.toByteBuffer();
+    System.arraycopy(buf.array(), buf.position(), writeBuffer, writePos, size);
+    writePos += size;
   }
 
   /**
@@ -413,7 +464,7 @@ public class VariantBuilder {
    * Finishes appending the object to this builder. This method must be called after startObject(),
    * before other append*() methods can be called on this builder.
    */
-  protected void endObject() {
+  public void endObject() {
     if (objectBuilder == null) {
       throw new IllegalStateException("Cannot call endObject() without calling startObject() first.");
     }
@@ -575,7 +626,6 @@ public class VariantBuilder {
   int addDictionaryKey(String key) {
     return dictionary.computeIfAbsent(key, newKey -> {
       if (fixedMetadata) {
-        // TODO: Better exception.
         throw new IllegalArgumentException("Value in shredding refers to non-existent metadata string");
       }
       int id = dictionaryKeys.size();

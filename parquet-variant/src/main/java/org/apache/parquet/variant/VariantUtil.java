@@ -814,11 +814,11 @@ class VariantUtil {
    * @param metadata The Variant metadata
    * @return A map from metadata key to its position.
    */
-  public static HashMap<String, Integer> getMetadataMap(byte[] metadata) {
-    checkIndex(0, metadata.length);
+  public static HashMap<String, Integer> getMetadataMap(ByteBuffer metadata) {
+    checkIndex(0, metadata.limit());
     // Extracts the highest 2 bits in the metadata header to determine the integer size of the
     // offset list.
-    int offsetSize = ((metadata[0] >> 6) & 0x3) + 1;
+    int offsetSize = ((metadata.get(0) >> 6) & 0x3) + 1;
     int dictSize = readUnsigned(metadata, 1, offsetSize);
     HashMap<String, Integer> result = new HashMap<>();
     int offset = readUnsigned(metadata, 1 + offsetSize, offsetSize);
@@ -826,11 +826,11 @@ class VariantUtil {
       int stringStart = 1 + (dictSize + 2) * offsetSize;
       int nextOffset = readUnsigned(metadata, 1 + (id + 2) * offsetSize, offsetSize);
       if (offset > nextOffset) {
-        throw new MalformedVariantException(
+        throw new UnsupportedOperationException(
             String.format("Invalid offset: %d. next offset: %d", offset, nextOffset));
       }
-      checkIndex(stringStart + nextOffset - 1, metadata.length);
-      result.put(new String(metadata, stringStart + offset, nextOffset - offset), id);
+      checkIndex(stringStart + nextOffset - 1, metadata.limit());
+      result.put(new String(metadata.array(), stringStart + offset, nextOffset - offset), id);
       offset = nextOffset;
     }
     return result;

@@ -26,10 +26,14 @@ import java.util.UUID;
  * This Variant class holds the Variant-encoded value and metadata binary values.
  */
 public final class Variant {
-  /** The buffer that contains the Variant value. */
+  /**
+   * The buffer that contains the Variant value.
+   */
   final ByteBuffer value;
 
-  /** The buffer that contains the Variant metadata. */
+  /**
+   * The buffer that contains the Variant metadata.
+   */
   final ByteBuffer metadata;
 
   /**
@@ -59,6 +63,14 @@ public final class Variant {
           "Unsupported variant metadata version: %d",
           metadata.get(metadata.position()) & VariantUtil.VERSION_MASK));
     }
+  }
+
+  public ByteBuffer getValue() {
+    return value;
+  }
+
+  public ByteBuffer getMetadata() {
+    return metadata;
   }
 
   /**
@@ -184,6 +196,7 @@ public final class Variant {
   /**
    * Returns the object field Variant value whose key is equal to `key`.
    * Returns null if the key is not found.
+   *
    * @param key the key to look up
    * @return the field value whose key is equal to `key`, or null if key is not found
    * @throws IllegalArgumentException if `getType()` does not return `Type.OBJECT`
@@ -250,7 +263,54 @@ public final class Variant {
     }
   }
 
-  private static ObjectField getFieldAtIndex(
+  /**
+   * Returns the field at index idx, lexicographically ordered.
+   *
+   * @param idx the index to look up
+   * @return the field value whose key is equal to `key`, or null if key is not found
+   * @throws IllegalArgumentException if `getType()` does not return `Type.OBJECT`
+   */
+  public Variant getFieldAtIndex(int idx) {
+    VariantUtil.ObjectInfo info = VariantUtil.getObjectInfo(value);
+    // Use linear search for a short list. Switch to binary search when the length reaches
+    // `BINARY_SEARCH_THRESHOLD`.
+    ObjectField field = getFieldAtIndex(
+        idx,
+        value,
+        metadata,
+        info.idSize,
+        info.offsetSize,
+        value.position() + info.idStartOffset,
+        value.position() + info.offsetStartOffset,
+        value.position() + info.dataStartOffset);
+    return field.value;
+  }
+
+  // TODO: Probably combine getKey and getField into a single getItem?
+  /**
+   * Returns the field at index idx, lexicographically ordered.
+   *
+   * @param idx the index to look up
+   * @return the field value whose key is equal to `key`, or null if key is not found
+   * @throws IllegalArgumentException if `getType()` does not return `Type.OBJECT`
+   */
+  public String getKeyAtIndex(int idx) {
+    VariantUtil.ObjectInfo info = VariantUtil.getObjectInfo(value);
+    // Use linear search for a short list. Switch to binary search when the length reaches
+    // `BINARY_SEARCH_THRESHOLD`.
+    ObjectField field = getFieldAtIndex(
+        idx,
+        value,
+        metadata,
+        info.idSize,
+        info.offsetSize,
+        value.position() + info.idStartOffset,
+        value.position() + info.offsetStartOffset,
+        value.position() + info.dataStartOffset);
+    return field.key;
+  }
+
+  static ObjectField getFieldAtIndex(
       int index,
       ByteBuffer value,
       ByteBuffer metadata,

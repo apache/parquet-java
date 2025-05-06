@@ -49,9 +49,9 @@ import org.apache.parquet.schema.*;
 import org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.variant.Variant;
+import org.apache.parquet.variant.VariantArrayBuilder;
 import org.apache.parquet.variant.VariantBuilder;
-import org.apache.parquet.variant.VariantDuplicateKeyException;
-import org.apache.parquet.variant.VariantUtil;
+import org.apache.parquet.variant.VariantObjectBuilder;
 import org.junit.Test;
 
 public class TestVariant extends DirectWriterTest {
@@ -60,41 +60,41 @@ public class TestVariant extends DirectWriterTest {
 
   // Construct a variant, and return the value binary, dropping metadata.
   private static Variant fullVariant(Consumer<VariantBuilder> appendValue) {
-    VariantBuilder builder = new VariantBuilder(false);
+    VariantBuilder builder = new VariantBuilder();
     appendValue.accept(builder);
-    return builder.result();
+    return builder.build();
   }
 
   // Return only the byte[], which is usually all we want.
-  private static byte[] variant(Consumer<VariantBuilder> appendValue) {
+  private static ByteBuffer variant(Consumer<VariantBuilder> appendValue) {
     return fullVariant(appendValue).getValue();
   }
 
   // Returns a value based on building with fixed metadata.
-  private static byte[] variant(byte[] metadata, Consumer<VariantBuilder> appendValue) {
-    VariantBuilder builder = new VariantBuilder(false);
-    builder.setFixedMetadata(VariantUtil.getMetadataMap(metadata));
+  private static ByteBuffer variant(ByteBuffer metadata, Consumer<VariantBuilder> appendValue) {
+    VariantBuilder builder = new VariantBuilder();
+    builder.setFixedMetadata(metadata);
     appendValue.accept(builder);
-    return builder.valueWithoutMetadata();
+    return ByteBuffer.wrap(builder.valueWithoutMetadata());
   }
 
-  private static byte[] variant(int val) {
+  private static ByteBuffer variant(int val) {
     return variant(b -> b.appendLong(val));
   }
 
-  private static byte[] variant(long val) {
+  private static ByteBuffer variant(long val) {
     return variant(b -> b.appendLong(val));
   }
 
-  private static byte[] variant(String s) {
+  private static ByteBuffer variant(String s) {
     return variant(b -> b.appendString(s));
   }
 
   private static class PrimitiveCase {
     Object avroValue;
-    byte[] value;
+    ByteBuffer value;
 
-    PrimitiveCase(Object avroValue, byte[] value) {
+    PrimitiveCase(Object avroValue, ByteBuffer value) {
       this.avroValue = avroValue;
       this.value = value;
     }
@@ -135,12 +135,12 @@ public class TestVariant extends DirectWriterTest {
           // to and from the API as integers. So just test arbitrary integer values.
           new PrimitiveCase(12345, variant(b -> b.appendDate(12345))),
           new PrimitiveCase(-12345, variant(b -> b.appendDate(-12345))),
-          new PrimitiveCase(9876543210L, variant(b -> b.appendTimestamp(9876543210L))),
-          new PrimitiveCase(-9876543210L, variant(b -> b.appendTimestamp(-9876543210L))),
+          new PrimitiveCase(9876543210L, variant(b -> b.appendTimestampTz(9876543210L))),
+          new PrimitiveCase(-9876543210L, variant(b -> b.appendTimestampTz(-9876543210L))),
           new PrimitiveCase(9876543210L, variant(b -> b.appendTimestampNtz(9876543210L))),
           new PrimitiveCase(-9876543210L, variant(b -> b.appendTimestampNtz(-9876543210L))),
-          new PrimitiveCase(9876543210L, variant(b -> b.appendTimestampNanos(9876543210L))),
-          new PrimitiveCase(-9876543210L, variant(b -> b.appendTimestampNanos(-9876543210L))),
+          new PrimitiveCase(9876543210L, variant(b -> b.appendTimestampNanosTz(9876543210L))),
+          new PrimitiveCase(-9876543210L, variant(b -> b.appendTimestampNanosTz(-9876543210L))),
           new PrimitiveCase(9876543210L, variant(b -> b.appendTimestampNanosNtz(9876543210L))),
           new PrimitiveCase(-9876543210L, variant(b -> b.appendTimestampNanosNtz(-9876543210L))),
           new PrimitiveCase(avroDecimalValue("123456.7890"), variant(b -> b.appendDecimal(new BigDecimal("123456.7890")))), // decimal4
@@ -149,22 +149,22 @@ public class TestVariant extends DirectWriterTest {
           new PrimitiveCase(avroDecimalValue("-1234567890.987654321"), variant(b -> b.appendDecimal(new BigDecimal("-1234567890.987654321")))), // decimal8
           new PrimitiveCase(avroDecimalValue("9876543210.123456789"), variant(b -> b.appendDecimal(new BigDecimal("9876543210.123456789")))), // decimal16
           new PrimitiveCase(avroDecimalValue("-9876543210.123456789"), variant(b -> b.appendDecimal(new BigDecimal("-9876543210.123456789")))), // decimal16
-          new PrimitiveCase(new byte[] {0x0a, 0x0b, 0x0c, 0x0d}, variant(b -> b.appendBinary(new byte[] {0x0a, 0x0b, 0x0c, 0x0d}))),
+          new PrimitiveCase(ByteBuffer.wrap(new byte[] {0x0a, 0x0b, 0x0c, 0x0d}), variant(b -> b.appendBinary(ByteBuffer.wrap(new byte[] {0x0a, 0x0b, 0x0c, 0x0d})))),
           new PrimitiveCase("parquet", variant(b -> b.appendString("parquet"))),
           new PrimitiveCase(UUID.fromString("f24f9b64-81fa-49d1-b74e-8c09a6e31c56"), variant(b -> b.appendUUID(UUID.fromString("f24f9b64-81fa-49d1-b74e-8c09a6e31c56"))))
       };
 
-  private byte[] EMPTY_METADATA = fullVariant(b -> b.appendNull()).getMetadata();
-  private byte[] NULL_VALUE = PRIMITIVES[0].value;
+  private ByteBuffer EMPTY_METADATA = fullVariant(b -> b.appendNull()).getMetadata();
+  private ByteBuffer NULL_VALUE = PRIMITIVES[0].value;
 
-  private byte[] TEST_METADATA;
-  private byte[] TEST_OBJECT;
+  private ByteBuffer TEST_METADATA;
+  private ByteBuffer TEST_OBJECT;
 
   private static class TestCase {
-    byte[] value;
-    byte[] metadata;
+    ByteBuffer value;
+    ByteBuffer metadata;
 
-    public TestCase(byte[] value, byte[] metadata) {
+    public TestCase(ByteBuffer value, ByteBuffer metadata) {
       this.value = value;
       this.metadata = metadata;
     }
@@ -173,17 +173,30 @@ public class TestVariant extends DirectWriterTest {
   private ArrayList<TestCase> testCases;
 
   public TestVariant() throws Exception {
-    TEST_METADATA = VariantBuilder.parseJson(
-        "{\"a\": 0, \"b\": 0, \"c\": 0, \"d\": 0, \"e\": 0}").getMetadata();
+    TEST_METADATA = fullVariant(b -> {
+      VariantObjectBuilder ob = b.startObject();
+      ob.appendKey("a");
+      ob.appendNull();
+      ob.appendKey("b");
+      ob.appendNull();
+      ob.appendKey("c");
+      ob.appendNull();
+      ob.appendKey("d");
+      ob.appendNull();
+      ob.appendKey("e");
+      ob.appendNull();
+      b.endObject();
+
+    }).getMetadata();
 
     TEST_OBJECT = variant(b -> {
-      int startWritePos = b.getWritePos();
-      ArrayList<VariantBuilder.FieldEntry> entries = new ArrayList<>();
-      entries.add(new VariantBuilder.FieldEntry("a", 0, b.getWritePos() - startWritePos));
+      VariantObjectBuilder ob = b.startObject();
+      ob.appendKey("a");
+      ob.appendNull();
       b.appendNull();
-      entries.add(new VariantBuilder.FieldEntry("d", 3, b.getWritePos() - startWritePos));
+      ob.appendKey("d");
       b.appendString("iceberg");
-      b.finishWritingObject(startWritePos, entries);
+      b.endObject();
     });
 
     testCases = new ArrayList<>();
@@ -196,9 +209,21 @@ public class TestVariant extends DirectWriterTest {
   @Test
   public void testUnshredded() throws Exception {
     // Unshredded Variant should produce exactly the same value and metadata.
-    Variant testValue = VariantBuilder.parseJson("{\"a\": 123, \"b\": [\"a\", 2, true, null]}");
-    Binary expectedValue = Binary.fromConstantByteArray(testValue.getValue());
-    Binary expectedMetadata = Binary.fromConstantByteArray(testValue.getMetadata());
+    Variant testValue = fullVariant(b -> {
+      VariantObjectBuilder ob = b.startObject();
+      ob.appendKey("a");
+      ob.appendLong(123);
+      ob.appendKey("b");
+      VariantArrayBuilder ab = ob.startArray();
+      ab.appendString("a");
+      ab.appendLong(2);
+      ab.appendBoolean(true);
+      ab.appendNull();
+      ob.endArray();
+      b.endObject();
+    });
+    Binary expectedValue = Binary.fromConstantByteBuffer(testValue.getValue());
+    Binary expectedMetadata = Binary.fromConstantByteBuffer(testValue.getMetadata());
     Path test = writeDirect(
         "message VariantMessage {" + "  required group v (VARIANT(1)) {"
             + "    required binary value;"
@@ -255,11 +280,11 @@ public class TestVariant extends DirectWriterTest {
   public void runOneScalarTest(
       String type, String annotation, Consumer<VariantBuilder> appendValue, Consumer<RecordConsumer> addValue)
       throws Exception {
-    VariantBuilder builder = new VariantBuilder(false);
+    VariantBuilder builder = new VariantBuilder();
     appendValue.accept(builder);
-    Variant testValue = builder.result();
-    Binary expectedValue = Binary.fromConstantByteArray(testValue.getValue());
-    Binary expectedMetadata = Binary.fromConstantByteArray(testValue.getMetadata());
+    Variant testValue = builder.build();
+    Binary expectedValue = Binary.fromConstantByteBuffer(testValue.getValue());
+    Binary expectedMetadata = Binary.fromConstantByteBuffer(testValue.getMetadata());
     Path test = writeDirect(
         "message VariantMessage {" + "  required group v (VARIANT(1)) {"
             + "    optional binary value;"
@@ -348,17 +373,17 @@ public class TestVariant extends DirectWriterTest {
         b -> b.appendDecimal(decimalVal2),
         rc -> rc.addBinary(
             Binary.fromConstantByteArray(decimalVal2.unscaledValue().toByteArray())));
-    runOneScalarTest("int64", "(TIMESTAMP(MICROS, true))", b -> b.appendTimestamp(123), rc -> rc.addLong(123));
+    runOneScalarTest("int64", "(TIMESTAMP(MICROS, true))", b -> b.appendTimestampTz(123), rc -> rc.addLong(123));
     runOneScalarTest("int64", "(TIMESTAMP(MICROS, false))", b -> b.appendTimestampNtz(123), rc -> rc.addLong(123));
     runOneScalarTest(
         "binary",
         "",
-        b -> b.appendBinary(Binary.fromString("hello").toByteBuffer().array()),
+        b -> b.appendBinary(Binary.fromString("hello").toByteBuffer()),
         rc -> rc.addBinary(Binary.fromString("hello")));
     runOneScalarTest(
         "binary", "(UTF8)", b -> b.appendString("hello"), rc -> rc.addBinary(Binary.fromString("hello")));
     runOneScalarTest("int64", "(TIME(MICROS, false))", b -> b.appendTime(123), rc -> rc.addLong(123));
-    runOneScalarTest("int64", "(TIMESTAMP(NANOS, true))", b -> b.appendTimestampNanos(123), rc -> rc.addLong(123));
+    runOneScalarTest("int64", "(TIMESTAMP(NANOS, true))", b -> b.appendTimestampNanosTz(123), rc -> rc.addLong(123));
     runOneScalarTest(
         "int64", "(TIMESTAMP(NANOS, false))", b -> b.appendTimestampNanosNtz(123), rc -> rc.addLong(123));
     UUID uuid = UUID.randomUUID();
@@ -375,14 +400,20 @@ public class TestVariant extends DirectWriterTest {
 
   @Test
   public void testArray() throws Exception {
-    Variant testValue = VariantBuilder.parseJson("[123, \"hello\", 456]");
+    Variant testValue = fullVariant(b -> {
+      VariantArrayBuilder ab = b.startArray();
+      ab.appendLong(123);
+      ab.appendString("Hello");
+      ab.appendLong(456);
+      b.endArray();
+    });
     // The string value will be stored in value, not typed_value, so we need to write its binary representation
     // to parquet.
     Variant stringVal = testValue.getElementAtIndex(1);
-    byte[] stringValue = stringVal.getValue();
+    ByteBuffer stringValue = stringVal.getValue();
 
-    Binary expectedValue = Binary.fromConstantByteArray(testValue.getValue());
-    Binary expectedMetadata = Binary.fromConstantByteArray(testValue.getMetadata());
+    Binary expectedValue = Binary.fromConstantByteBuffer(testValue.getValue());
+    Binary expectedMetadata = Binary.fromConstantByteBuffer(testValue.getMetadata());
     Path test = writeDirect(
         "message VariantMessage {" + "  required group v (VARIANT(1)) {"
             + "    required binary metadata;"
@@ -419,7 +450,7 @@ public class TestVariant extends DirectWriterTest {
           rc.startField("element", 0);
           rc.startGroup();
           rc.startField("value", 1);
-          rc.addBinary(Binary.fromConstantByteArray(stringValue));
+          rc.addBinary(Binary.fromConstantByteBuffer(stringValue));
           rc.endField("value", 1);
           rc.endGroup();
           rc.endField("element", 0);
@@ -438,103 +469,6 @@ public class TestVariant extends DirectWriterTest {
           rc.endField("list", 0);
           rc.endGroup();
           rc.endField("typed_value", 2);
-
-          rc.startField("metadata", 0);
-          rc.addBinary(expectedMetadata);
-          rc.endField("metadata", 0);
-
-          rc.endGroup();
-          rc.endField("v", 0);
-          rc.endMessage();
-        });
-
-    Schema variantSchema = record(
-        "v",
-        field("metadata", Schema.create(Schema.Type.BYTES)),
-        optionalField("value", Schema.create(Schema.Type.BYTES)));
-    Schema expectedSchema = record("VariantMessage", field("v", variantSchema));
-
-    GenericRecord expectedRecord = instance(
-        expectedSchema,
-        "v",
-        instance(
-            variantSchema,
-            "metadata",
-            expectedMetadata.toByteBuffer(),
-            "value",
-            expectedValue.toByteBuffer()));
-
-    // both should behave the same way
-    assertReaderContains(new AvroParquetReader(new Configuration(), test), expectedSchema, expectedRecord);
-  }
-
-  @Test
-  public void testObject() throws Exception {
-    Variant testValue = VariantBuilder.parseJson("{\"a\": 123, \"b\": \"string_val\", \"c\": 456}");
-    // Column c will be omitted from the schema and stored in the value column as the object {c: 456}.
-    // It's a bit tricky to construct this, since we need to ensure that it ends up with the same ID in metadata.
-    // The value below should do the trick, but it makes assumptions about parseJson behavior that is not guaranteed,
-    // so is a bit fragile.
-    Variant cValue = VariantBuilder.parseJson("{\"x\": 1, \"dummy\": {\"c\": 456}}").getFieldByKey("dummy");
-
-    Binary expectedValue = Binary.fromConstantByteArray(testValue.getValue());
-    Binary expectedMetadata = Binary.fromConstantByteArray(testValue.getMetadata());
-    Path test = writeDirect(
-        "message VariantMessage {" + "  required group v (VARIANT(1)) {"
-            + "    required binary metadata;"
-            + "    optional binary value;"
-            + "    optional group typed_value {"
-            + "      required group a {"
-            + "        optional int64 typed_value;"
-            + "        optional binary value;"
-            + "      }"
-            + "      required group b {"
-            + "        optional binary typed_value (UTF8);"
-            + "        optional binary value;"
-            + "      }"
-            + "      required group missing {"
-            + "        optional int64 typed_value;"
-            + "        optional binary value;"
-            + "      }"
-            + "    }"
-            + "  }"
-            + "}",
-        rc -> {
-          rc.startMessage();
-          rc.startField("v", 0);
-          rc.startGroup();
-          rc.startField("typed_value", 2);
-          rc.startGroup();
-
-          rc.startField("a", 0);
-          rc.startGroup();
-          rc.startField("typed_value", 0);
-          rc.addLong(123);
-          rc.endField("typed_value", 0);
-          rc.endGroup();
-          rc.endField("a", 0);
-
-          rc.startField("b", 1);
-          rc.startGroup();
-          rc.startField("typed_value", 0);
-          rc.addBinary(Binary.fromString("string_val"));
-          rc.endField("typed_value", 0);
-          rc.endGroup();
-          rc.endField("b", 1);
-
-          // Spec requires missing fields to be non-null. They are identified as missing by
-          // not having a non-null value or typed_value.
-          rc.startField("missing", 2);
-          rc.startGroup();
-          rc.endGroup();
-          rc.endField("missing", 2);
-
-          rc.endGroup();
-          rc.endField("typed_value", 2);
-
-          rc.startField("value", 1);
-          rc.addBinary(Binary.fromConstantByteArray(cValue.getValue()));
-          rc.endField("value", 1);
 
           rc.startField("metadata", 0);
           rc.addBinary(expectedMetadata);
@@ -778,11 +712,17 @@ public class TestVariant extends DirectWriterTest {
     GenericRecord actual = writeAndRead(schema, record);
     assertEquals(actual.get("id"), 1);
 
-    Variant expectedValue = VariantBuilder.parseJson(
-        "{\"a\": null, \"b\": \"\"}");
+    ByteBuffer expectedValue = variant(TEST_METADATA, b -> {
+      VariantObjectBuilder ob = b.startObject();
+      ob.appendKey("a");
+      ob.appendNull();
+      ob.appendKey("b");
+      ob.appendString("");
+      b.endObject();
+    });
 
     GenericRecord actualVariant = (GenericRecord) actual.get("var");
-    assertEquivalent(TEST_METADATA, expectedValue.getValue(), actualVariant);
+    assertEquivalent(TEST_METADATA, expectedValue, actualVariant);
   }
 
   @Test
@@ -818,11 +758,17 @@ public class TestVariant extends DirectWriterTest {
     GenericRecord actual = writeAndRead(schema, record);
     assertEquals(actual.get("id"), 1);
 
-    Variant expectedValue = VariantBuilder.parseJson(
-        "{\"a\": 1234, \"b\": \"iceberg\"}");
+    ByteBuffer expectedValue = variant(TEST_METADATA, b -> {
+      VariantObjectBuilder ob = b.startObject();
+      ob.appendKey("a");
+      ob.appendLong(1234);
+      ob.appendKey("b");
+      ob.appendString("iceberg");
+      b.endObject();
+    });
 
     GenericRecord actualVariant = (GenericRecord) actual.get("var");
-    assertEquivalent(TEST_METADATA, expectedValue.getValue(), actualVariant);
+    assertEquivalent(TEST_METADATA, expectedValue, actualVariant);
   }
 
   @Test
@@ -845,11 +791,15 @@ public class TestVariant extends DirectWriterTest {
 
     assertEquals(actual.get("id"), 1);
 
-    Variant expectedValue = VariantBuilder.parseJson(
-        "{\"a\": false}");
+    ByteBuffer expectedValue = variant(TEST_METADATA, b -> {
+      VariantObjectBuilder ob = b.startObject();
+      ob.appendKey("a");
+      ob.appendBoolean(false);
+      b.endObject();
+    });
 
     GenericRecord actualVariant = (GenericRecord) actual.get("var");
-    assertEquivalent(TEST_METADATA, expectedValue.getValue(), actualVariant);
+    assertEquivalent(TEST_METADATA, expectedValue, actualVariant);
   }
 
   @Test
@@ -870,10 +820,13 @@ public class TestVariant extends DirectWriterTest {
 
     assertEquals(actual.get("id"), 1);
 
-    Variant expectedValue = VariantBuilder.parseJson("{}");
+    ByteBuffer expectedValue = variant(TEST_METADATA, b -> {
+      VariantObjectBuilder ob = b.startObject();
+      b.endObject();
+    });
 
     GenericRecord actualVariant = (GenericRecord) actual.get("var");
-    assertEquivalent(TEST_METADATA, expectedValue.getValue(), actualVariant);
+    assertEquivalent(TEST_METADATA, expectedValue, actualVariant);
   }
 
   @Test
@@ -902,13 +855,12 @@ public class TestVariant extends DirectWriterTest {
 
     assertEquals(actual.get("id"), 1);
 
-    byte[] expectedValue = variant(TEST_METADATA, b -> {
-            int startWritePos = b.getWritePos();
-            ArrayList<VariantBuilder.FieldEntry> entries = new ArrayList<>();
-            entries.add(new VariantBuilder.FieldEntry("b", 1, 0));
-            b.appendString("iceberg");
-            b.finishWritingObject(startWritePos, entries);
-      });
+    ByteBuffer expectedValue = variant(TEST_METADATA, b -> {
+      VariantObjectBuilder ob = b.startObject();
+      ob.appendKey("b");
+      ob.appendString("iceberg");
+      b.endObject();
+    });
 
     GenericRecord actualVariant = (GenericRecord) actual.get("var");
     assertEquivalent(TEST_METADATA, expectedValue, actualVariant);
@@ -943,12 +895,11 @@ public class TestVariant extends DirectWriterTest {
 
     assertEquals(actual.get("id"), 1);
 
-    byte[] expectedValue = variant(TEST_METADATA, b -> {
-      int startWritePos = b.getWritePos();
-      ArrayList<VariantBuilder.FieldEntry> entries = new ArrayList<>();
-      entries.add(new VariantBuilder.FieldEntry("b", 1, 0));
-      b.appendString("iceberg");
-      b.finishWritingObject(startWritePos, entries);
+    ByteBuffer expectedValue = variant(TEST_METADATA, b -> {
+      VariantObjectBuilder ob = b.startObject();
+      ob.appendKey("b");
+      ob.appendString("iceberg");
+      b.endObject();
     });
 
     GenericRecord actualVariant = (GenericRecord) actual.get("var");
@@ -979,21 +930,18 @@ public class TestVariant extends DirectWriterTest {
 
     assertEquals(actual.get("id"), 1);
 
-    byte[] expectedValue = variant(TEST_METADATA, b -> {
-      int startWritePos = b.getWritePos();
-      ArrayList<VariantBuilder.FieldEntry> outerEntries = new ArrayList<>();
-
-      outerEntries.add(new VariantBuilder.FieldEntry("c", 2, b.getWritePos() - startWritePos));
-      ArrayList<VariantBuilder.FieldEntry> innerEntries = new ArrayList<>();
-      innerEntries.add(new VariantBuilder.FieldEntry("a", 0, b.getWritePos() - startWritePos));
-      b.appendLong(34);
-      innerEntries.add(new VariantBuilder.FieldEntry("b", 1, b.getWritePos() - startWritePos));
-      b.appendString("iceberg");
-      b.finishWritingObject(startWritePos, innerEntries);
-
-      outerEntries.add(new VariantBuilder.FieldEntry("d", 3, b.getWritePos() - startWritePos));
-      b.appendDouble(-0.0D);
-      b.finishWritingObject(startWritePos, outerEntries);
+    ByteBuffer expectedValue = variant(TEST_METADATA, b -> {
+      VariantObjectBuilder ob = b.startObject();
+      ob.appendKey("c");
+      VariantObjectBuilder innerOb = ob.startObject();
+      innerOb.appendKey("a");
+      innerOb.appendLong(34);
+      innerOb.appendKey("b");
+      innerOb.appendString("iceberg");
+      ob.endObject();
+      ob.appendKey("d");
+      ob.appendDouble(-0.0D);
+      b.endObject();
     });
 
     GenericRecord actualVariant = (GenericRecord) actual.get("var");
@@ -1046,14 +994,13 @@ public class TestVariant extends DirectWriterTest {
 
     assertEquals(actual.get("id"), 1);
 
-    byte[] expectedValue = variant(TEST_METADATA, b -> {
-      int startWritePos = b.getWritePos();
-      ArrayList<VariantBuilder.FieldEntry> entries = new ArrayList<>();
-      entries.add(new VariantBuilder.FieldEntry("a", 0, b.getWritePos() - startWritePos));
-      b.appendLong(34);
-      entries.add(new VariantBuilder.FieldEntry("b", 1, b.getWritePos() - startWritePos));
-      b.appendString("iceberg");
-      b.finishWritingObject(startWritePos, entries);
+    ByteBuffer expectedValue = variant(TEST_METADATA, b -> {
+      VariantObjectBuilder ob = b.startObject();
+      ob.appendKey("a");
+      ob.appendLong(34);
+      ob.appendKey("b");
+      ob.appendString("iceberg");
+      b.endObject();
     });
 
     GenericRecord actualVariant = (GenericRecord) actual.get("var");
@@ -1070,12 +1017,11 @@ public class TestVariant extends DirectWriterTest {
     GroupType objectFields = objectFields(fieldD, fieldA);
     TestSchema schema = new TestSchema(objectFields);
 
-    byte[] baseObject = variant(TEST_METADATA, b -> {
-      int startWritePos = b.getWritePos();
-      ArrayList<VariantBuilder.FieldEntry> entries = new ArrayList<>();
-      entries.add(new VariantBuilder.FieldEntry("b", 1, b.getWritePos() - startWritePos));
-      b.appendDate(12345);
-      b.finishWritingObject(startWritePos, entries);
+    ByteBuffer baseObject = variant(TEST_METADATA, b -> {
+      VariantObjectBuilder ob = b.startObject();
+      ob.appendKey("b");
+      ob.appendDate(12345);
+      b.endObject();
     });
 
     GenericRecord recordA = recordFromMap(fieldD, ImmutableMap.of("value", NULL_VALUE));
@@ -1097,16 +1043,15 @@ public class TestVariant extends DirectWriterTest {
 
     assertEquals(actual.get("id"), 1);
 
-    byte[] expectedValue = variant(TEST_METADATA, b -> {
-      int startWritePos = b.getWritePos();
-      ArrayList<VariantBuilder.FieldEntry> entries = new ArrayList<>();
-      entries.add(new VariantBuilder.FieldEntry("a", 0, b.getWritePos() - startWritePos));
-      b.appendString("iceberg");
-      entries.add(new VariantBuilder.FieldEntry("b", 1, b.getWritePos() - startWritePos));
-      b.appendDate(12345);
-      entries.add(new VariantBuilder.FieldEntry("d", 3, b.getWritePos() - startWritePos));
-      b.appendNull();
-      b.finishWritingObject(startWritePos, entries);
+    ByteBuffer expectedValue = variant(TEST_METADATA, b -> {
+      VariantObjectBuilder ob = b.startObject();
+      ob.appendKey("a");
+      ob.appendString("iceberg");
+      ob.appendKey("b");
+      ob.appendDate(12345);
+      ob.appendKey("d");
+      ob.appendNull();
+      b.endObject();
     });
 
     GenericRecord actualVariant = (GenericRecord) actual.get("var");
@@ -1120,12 +1065,11 @@ public class TestVariant extends DirectWriterTest {
     GroupType objectFields = objectFields(fieldA, fieldB);
     TestSchema schema = new TestSchema(objectFields);
 
-    byte[] baseObject = variant(TEST_METADATA, b -> {
-      int startWritePos = b.getWritePos();
-      ArrayList<VariantBuilder.FieldEntry> entries = new ArrayList<>();
-      entries.add(new VariantBuilder.FieldEntry("d", 3, b.getWritePos() - startWritePos));
-      b.appendDate(12345);
-      b.finishWritingObject(startWritePos, entries);
+    ByteBuffer baseObject = variant(TEST_METADATA, b -> {
+      VariantObjectBuilder ob = b.startObject();
+      ob.appendKey("d");
+      ob.appendDate(12345);
+      b.endObject();
     });
 
     GenericRecord recordA = recordFromMap(fieldA, ImmutableMap.of("value", NULL_VALUE));
@@ -1147,16 +1091,15 @@ public class TestVariant extends DirectWriterTest {
 
     assertEquals(actual.get("id"), 1);
 
-    byte[] expectedValue = variant(TEST_METADATA, b -> {
-      int startWritePos = b.getWritePos();
-      ArrayList<VariantBuilder.FieldEntry> entries = new ArrayList<>();
-      entries.add(new VariantBuilder.FieldEntry("a", 0, b.getWritePos() - startWritePos));
-      b.appendNull();
-      entries.add(new VariantBuilder.FieldEntry("b", 1, b.getWritePos() - startWritePos));
-      b.appendString("iceberg");
-      entries.add(new VariantBuilder.FieldEntry("d", 3, b.getWritePos() - startWritePos));
-      b.appendDate(12345);
-      b.finishWritingObject(startWritePos, entries);
+    ByteBuffer expectedValue = variant(TEST_METADATA, b -> {
+      VariantObjectBuilder ob = b.startObject();
+      ob.appendKey("a");
+      ob.appendNull();
+      ob.appendKey("b");
+      ob.appendString("iceberg");
+      ob.appendKey("d");
+      ob.appendDate(12345);
+      b.endObject();
     });
 
     GenericRecord actualVariant = (GenericRecord) actual.get("var");
@@ -1169,12 +1112,11 @@ public class TestVariant extends DirectWriterTest {
     GroupType objectFields = objectFields(fieldA, fieldB);
     TestSchema schema = new TestSchema(objectFields);
 
-    byte[] baseObject = variant(TEST_METADATA, b -> {
-      int startWritePos = b.getWritePos();
-      ArrayList<VariantBuilder.FieldEntry> entries = new ArrayList<>();
-      entries.add(new VariantBuilder.FieldEntry("b", 1, b.getWritePos() - startWritePos));
-      b.appendDate(12345);
-      b.finishWritingObject(startWritePos, entries);
+    ByteBuffer baseObject = variant(TEST_METADATA, b -> {
+      VariantObjectBuilder ob = b.startObject();
+      ob.appendKey("b");
+      ob.appendDate(12345);
+      b.endObject();
     });
 
     GenericRecord recordA = recordFromMap(fieldA, ImmutableMap.of("value", NULL_VALUE));
@@ -1198,14 +1140,13 @@ public class TestVariant extends DirectWriterTest {
 
     // The reader is expected to ignore fields in value that are present in the typed_value schema.
     // This matches Iceberg behaviour, but we could also consider failing with an error.
-    byte[] expectedValue = variant(TEST_METADATA, b -> {
-      int startWritePos = b.getWritePos();
-      ArrayList<VariantBuilder.FieldEntry> entries = new ArrayList<>();
-      entries.add(new VariantBuilder.FieldEntry("a", 0, b.getWritePos() - startWritePos));
-      b.appendNull();
-      entries.add(new VariantBuilder.FieldEntry("b", 1, b.getWritePos() - startWritePos));
-      b.appendString("iceberg");
-      b.finishWritingObject(startWritePos, entries);
+    ByteBuffer expectedValue = variant(TEST_METADATA, b -> {
+      VariantObjectBuilder ob = b.startObject();
+      ob.appendKey("a");
+      ob.appendNull();
+      ob.appendKey("b");
+      ob.appendString("iceberg");
+      b.endObject();
     });
 
     GenericRecord actualVariant = (GenericRecord) actual.get("var");
@@ -1219,12 +1160,11 @@ public class TestVariant extends DirectWriterTest {
     GroupType objectFields = objectFields(fieldA, fieldB);
     TestSchema schema = new TestSchema(objectFields);
 
-    byte[] baseObject = variant(TEST_METADATA, b -> {
-      int startWritePos = b.getWritePos();
-      ArrayList<VariantBuilder.FieldEntry> entries = new ArrayList<>();
-      entries.add(new VariantBuilder.FieldEntry("b", 1, b.getWritePos() - startWritePos));
-      b.appendDate(12345);
-      b.finishWritingObject(startWritePos, entries);
+    ByteBuffer baseObject = variant(TEST_METADATA, b -> {
+      VariantObjectBuilder ob = b.startObject();
+      ob.appendKey("b");
+      ob.appendDate(12345);
+      b.endObject();
     });
 
     GenericRecord recordA = recordFromMap(fieldA, ImmutableMap.of("value", NULL_VALUE));
@@ -1249,12 +1189,11 @@ public class TestVariant extends DirectWriterTest {
 
     // The reader is expected to ignore fields in value that are present in the typed_value schema, even if they are
     // missing in typed_value.
-    byte[] expectedValue = variant(TEST_METADATA, b -> {
-      int startWritePos = b.getWritePos();
-      ArrayList<VariantBuilder.FieldEntry> entries = new ArrayList<>();
-      entries.add(new VariantBuilder.FieldEntry("a", 0, b.getWritePos() - startWritePos));
-      b.appendNull();
-      b.finishWritingObject(startWritePos, entries);
+    ByteBuffer expectedValue = variant(TEST_METADATA, b -> {
+      VariantObjectBuilder ob = b.startObject();
+      ob.appendKey("a");
+      ob.appendNull();
+      b.endObject();
     });
 
     GenericRecord actualVariant = (GenericRecord) actual.get("var");
@@ -1358,15 +1297,14 @@ public class TestVariant extends DirectWriterTest {
         recordFromMap(schema.unannotatedVariantType, ImmutableMap.of("metadata", TEST_METADATA, "typed_value", outer1));
     GenericRecord one = recordFromMap(schema.unannotatedParquetSchema, ImmutableMap.of("id", 1, "var", variant1));
 
-    byte[] expectedOne = variant(TEST_METADATA, b -> {
-      int startWritePos = b.getWritePos();
-      ArrayList<VariantBuilder.FieldEntry> outerEntries = new ArrayList<>();
-      outerEntries.add(new VariantBuilder.FieldEntry("c", 2, b.getWritePos() - startWritePos));
-      ArrayList<VariantBuilder.FieldEntry> innerEntries = new ArrayList<>();
-      innerEntries.add(new VariantBuilder.FieldEntry("b", 1, b.getWritePos() - startWritePos));
-      b.appendString("iceberg");
-      b.finishWritingObject(startWritePos, innerEntries);
-      b.finishWritingObject(startWritePos, outerEntries);
+    ByteBuffer expectedOne = variant(TEST_METADATA, b -> {
+      VariantObjectBuilder outerObj = b.startObject();
+      outerObj.appendKey("c");
+      VariantObjectBuilder innerObj = outerObj.startObject();
+      innerObj.appendKey("b");
+      innerObj.appendString("iceberg");
+      outerObj.endObject();
+      b.endObject();
     });
 
     GenericRecord c2 = recordFromMap(fieldC, ImmutableMap.of("value", variant(8)));
@@ -1376,14 +1314,13 @@ public class TestVariant extends DirectWriterTest {
         recordFromMap(schema.unannotatedVariantType, ImmutableMap.of("metadata", TEST_METADATA, "typed_value", outer2));
     GenericRecord two = recordFromMap(schema.unannotatedParquetSchema, ImmutableMap.of("id", 2, "var", variant2));
 
-    byte[] expectedTwo = variant(TEST_METADATA, b -> {
-      int startWritePos = b.getWritePos();
-      ArrayList<VariantBuilder.FieldEntry> outerEntries = new ArrayList<>();
-      outerEntries.add(new VariantBuilder.FieldEntry("c", 2, b.getWritePos() - startWritePos));
-      b.appendLong(8);
-      outerEntries.add(new VariantBuilder.FieldEntry("d", 3, b.getWritePos() - startWritePos));
-      b.appendDouble(-0.0D);
-      b.finishWritingObject(startWritePos, outerEntries);
+    ByteBuffer expectedTwo = variant(TEST_METADATA, b -> {
+      VariantObjectBuilder outerObj = b.startObject();
+      outerObj.appendKey("c");
+      outerObj.appendLong(8);
+      outerObj.appendKey("d");
+      outerObj.appendDouble(-0.0D);
+      b.endObject();
     });
 
     GenericRecord a3 = recordFromMap(fieldA, ImmutableMap.of("typed_value", 34));
@@ -1396,19 +1333,18 @@ public class TestVariant extends DirectWriterTest {
         recordFromMap(schema.unannotatedVariantType, ImmutableMap.of("metadata", TEST_METADATA, "typed_value", outer3));
     GenericRecord three = recordFromMap(schema.unannotatedParquetSchema, ImmutableMap.of("id", 3, "var", variant3));
 
-    byte[] expectedThree = variant(TEST_METADATA, b -> {
-      int startWritePos = b.getWritePos();
-      ArrayList<VariantBuilder.FieldEntry> outerEntries = new ArrayList<>();
-      outerEntries.add(new VariantBuilder.FieldEntry("c", 2, b.getWritePos() - startWritePos));
-      ArrayList<VariantBuilder.FieldEntry> innerEntries = new ArrayList<>();
-      innerEntries.add(new VariantBuilder.FieldEntry("a", 0, b.getWritePos() - startWritePos));
-      b.appendLong(34);
-      innerEntries.add(new VariantBuilder.FieldEntry("b", 1, b.getWritePos() - startWritePos));
-      b.appendString("");
-      b.finishWritingObject(startWritePos, innerEntries);
-      outerEntries.add(new VariantBuilder.FieldEntry("d", 3, b.getWritePos() - startWritePos));
-      b.appendDouble(0.0D);
-      b.finishWritingObject(startWritePos, outerEntries);
+    ByteBuffer expectedThree = variant(TEST_METADATA, b -> {
+      VariantObjectBuilder outerObj = b.startObject();
+      outerObj.appendKey("c");
+      VariantObjectBuilder innerObj = outerObj.startObject();
+      innerObj.appendKey("a");
+      innerObj.appendLong(34);
+      innerObj.appendKey("b");
+      innerObj.appendString("");
+      outerObj.endObject();
+      outerObj.appendKey("d");
+      outerObj.appendDouble(0.0D);
+      b.endObject();
     });
 
     List<GenericRecord> records = writeAndRead(schema, Arrays.asList(zero, one, two, three));
@@ -1450,14 +1386,11 @@ public class TestVariant extends DirectWriterTest {
             schema.unannotatedVariantType, ImmutableMap.of("metadata", EMPTY_METADATA, "typed_value", arr));
     GenericRecord row = recordFromMap(schema.unannotatedParquetSchema, ImmutableMap.of("id", 1, "var", var));
 
-    byte[] expected = variant(TEST_METADATA, b -> {
-      int startWritePos = b.getWritePos();
-      ArrayList<Integer> entries= new ArrayList<>();
-      entries.add(b.getWritePos() - startWritePos);
-      b.appendString("comedy");
-      entries.add(b.getWritePos() - startWritePos);
-      b.appendString("drama");
-      b.finishWritingArray(startWritePos, entries);
+    ByteBuffer expected = variant(b -> {
+      VariantArrayBuilder ab = b.startArray();
+      ab.appendString("comedy");
+      ab.appendString("drama");
+      b.endArray();
     });
 
     GenericRecord actual = writeAndRead(schema, row);
@@ -1500,10 +1433,9 @@ public class TestVariant extends DirectWriterTest {
 
     GenericRecord actual = writeAndRead(schema, row);
 
-    byte[] emptyArray = variant(TEST_METADATA, b -> {
-      int startWritePos = b.getWritePos();
-      ArrayList<Integer> entries= new ArrayList<>();
-      b.finishWritingArray(startWritePos, entries);
+    ByteBuffer emptyArray = variant(b -> {
+      b.startArray();
+      b.endArray();
     });
 
     assertEquals(actual.get("id"), 1);
@@ -1528,16 +1460,12 @@ public class TestVariant extends DirectWriterTest {
             schema.unannotatedVariantType, ImmutableMap.of("metadata", EMPTY_METADATA, "typed_value", arr));
     GenericRecord row = recordFromMap(schema.unannotatedParquetSchema, ImmutableMap.of("id", 1, "var", var));
 
-    byte[] expected = variant(TEST_METADATA, b -> {
-      int startWritePos = b.getWritePos();
-      ArrayList<Integer> entries= new ArrayList<>();
-      entries.add(b.getWritePos() - startWritePos);
-      b.appendString("comedy");
-      entries.add(b.getWritePos() - startWritePos);
-      b.appendNull();
-      entries.add(b.getWritePos() - startWritePos);
-      b.appendString("drama");
-      b.finishWritingArray(startWritePos, entries);
+    ByteBuffer expected = variant(b -> {
+      VariantArrayBuilder ab = b.startArray();
+      ab.appendString("comedy");
+      ab.appendNull();
+      ab.appendString("drama");
+      b.endArray();
     });
 
     GenericRecord actual = writeAndRead(schema, row);
@@ -1567,20 +1495,15 @@ public class TestVariant extends DirectWriterTest {
             ImmutableMap.of("metadata", EMPTY_METADATA, "typed_value", outer1));
     GenericRecord row = recordFromMap(schema.unannotatedParquetSchema, ImmutableMap.of("id", 1, "var", var));
 
-    byte[] expected = variant(EMPTY_METADATA, b -> {
-      int startWritePos = b.getWritePos();
-      ArrayList<Integer> outerEntries= new ArrayList<>();
-      outerEntries.add(b.getWritePos() - startWritePos);
-      ArrayList<Integer> entries1 = new ArrayList<>();
-      entries1.add(b.getWritePos() - startWritePos);
-      b.appendString("comedy");
-      entries1.add(b.getWritePos() - startWritePos);
-      b.appendString("drama");
-      b.finishWritingArray(startWritePos, entries1);
-      outerEntries.add(b.getWritePos() - startWritePos);
-      ArrayList<Integer> entries2 = new ArrayList<>();
-      b.finishWritingArray(b.getWritePos(), entries2);
-      b.finishWritingArray(startWritePos, outerEntries);
+    ByteBuffer expected = variant(b -> {
+      VariantArrayBuilder ab = b.startArray();
+      VariantArrayBuilder inner = ab.startArray();
+      inner.appendString("comedy");
+      inner.appendString("drama");
+      ab.endArray();
+      ab.startArray();
+      ab.endArray();
+      b.endArray();
     });
 
     GenericRecord actual = writeAndRead(schema, row);
@@ -1623,27 +1546,22 @@ public class TestVariant extends DirectWriterTest {
         recordFromMap(schema.unannotatedVariantType, ImmutableMap.of("metadata", TEST_METADATA, "typed_value", arr1));
     GenericRecord row1 = recordFromMap(schema.unannotatedParquetSchema, ImmutableMap.of("id", 1, "var", var1));
 
-    byte[] expected1 = variant(TEST_METADATA, b -> {
-      int startWritePos = b.getWritePos();
-      ArrayList<Integer> arrayEntries = new ArrayList<>();
-      arrayEntries.add(b.getWritePos() - startWritePos);
-      ArrayList<VariantBuilder.FieldEntry> objEntries1 = new ArrayList<>();
-      objEntries1.add(new VariantBuilder.FieldEntry("a", 0, b.getWritePos() - startWritePos));
-      b.appendLong(1);
-      objEntries1.add(new VariantBuilder.FieldEntry("b", 1, b.getWritePos() - startWritePos));
-      b.appendString("comedy");
-      b.finishWritingObject(startWritePos, objEntries1);
+    ByteBuffer expected1 = variant(TEST_METADATA, b -> {
+      VariantArrayBuilder ab = b.startArray();
+      VariantObjectBuilder ob1 = ab.startObject();
+      ob1.appendKey("a");
+      ob1.appendLong(1);
+      ob1.appendKey("b");
+      ob1.appendString("comedy");
+      ab.endObject();
 
-      int startWritePos2 = b.getWritePos();
-      arrayEntries.add(b.getWritePos() - startWritePos);
-      ArrayList<VariantBuilder.FieldEntry> objEntries2 = new ArrayList<>();
-      objEntries2.add(new VariantBuilder.FieldEntry("a", 0, b.getWritePos() - startWritePos2));
-      b.appendLong(2);
-      objEntries2.add(new VariantBuilder.FieldEntry("b", 1, b.getWritePos() - startWritePos2));
-      b.appendString("drama");
-      b.finishWritingObject(startWritePos2, objEntries2);
-
-      b.finishWritingArray(startWritePos, arrayEntries);
+      VariantObjectBuilder ob2 = ab.startObject();
+      ob2.appendKey("a");
+      ob2.appendLong(2);
+      ob2.appendKey("b");
+      ob2.appendString("drama");
+      ab.endObject();
+      b.endArray();
     });
 
     // Row 2 with nested partially shredded object
@@ -1656,12 +1574,11 @@ public class TestVariant extends DirectWriterTest {
                 "b",
                 recordFromMap(fieldB, ImmutableMap.of("typed_value", "action"))));
 
-    byte[] baseObject3 = variant(TEST_METADATA, b -> {
-      int startWritePos = b.getWritePos();
-      ArrayList<VariantBuilder.FieldEntry> entries = new ArrayList<>();
-      entries.add(new VariantBuilder.FieldEntry("c", 2, b.getWritePos() - startWritePos));
-      b.appendString("str");
-      b.finishWritingObject(startWritePos, entries);
+    ByteBuffer baseObject3 = variant(TEST_METADATA, b -> {
+      VariantObjectBuilder ob = b.startObject();
+      ob.appendKey("c");
+      ob.appendString("str");
+      b.endObject();
     });
 
     GenericRecord shredded4 =
@@ -1673,12 +1590,11 @@ public class TestVariant extends DirectWriterTest {
                 "b",
                 recordFromMap(fieldB, ImmutableMap.of("typed_value", "horror"))));
 
-    byte[] baseObject4 = variant(TEST_METADATA, b -> {
-      int startWritePos = b.getWritePos();
-      ArrayList<VariantBuilder.FieldEntry> entries = new ArrayList<>();
-      entries.add(new VariantBuilder.FieldEntry("d", 3, b.getWritePos() - startWritePos));
-      b.appendDate(12345);
-      b.finishWritingObject(startWritePos, entries);
+    ByteBuffer baseObject4 = variant(TEST_METADATA, b -> {
+      VariantObjectBuilder ob = b.startObject();
+      ob.appendKey("d");
+      ob.appendDate(12345);
+      b.endObject();
     });
 
     List<GenericRecord> arr2 =
@@ -1689,31 +1605,28 @@ public class TestVariant extends DirectWriterTest {
         recordFromMap(schema.unannotatedVariantType, ImmutableMap.of("metadata", TEST_METADATA, "typed_value", arr2));
     GenericRecord row2 = recordFromMap(schema.unannotatedParquetSchema, ImmutableMap.of("id", 2, "var", var2));
 
-    byte[] expected2 = variant(TEST_METADATA, b -> {
-      int startWritePos = b.getWritePos();
-      ArrayList<Integer> arrayEntries = new ArrayList<>();
-      arrayEntries.add(b.getWritePos() - startWritePos);
-      ArrayList<VariantBuilder.FieldEntry> objEntries1 = new ArrayList<>();
-      objEntries1.add(new VariantBuilder.FieldEntry("a", 0, b.getWritePos() - startWritePos));
-      b.appendLong(3);
-      objEntries1.add(new VariantBuilder.FieldEntry("b", 1, b.getWritePos() - startWritePos));
-      b.appendString("action");
-      objEntries1.add(new VariantBuilder.FieldEntry("c", 2, b.getWritePos() - startWritePos));
-      b.appendString("str");
-      b.finishWritingObject(startWritePos, objEntries1);
+    ByteBuffer expected2 = variant(TEST_METADATA, b -> {
+      VariantArrayBuilder ab = b.startArray();
 
-      int startWritePos2 = b.getWritePos();
-      arrayEntries.add(b.getWritePos() - startWritePos);
-      ArrayList<VariantBuilder.FieldEntry> objEntries2 = new ArrayList<>();
-      objEntries2.add(new VariantBuilder.FieldEntry("a", 0, b.getWritePos() - startWritePos2));
-      b.appendLong(4);
-      objEntries2.add(new VariantBuilder.FieldEntry("b", 1, b.getWritePos() - startWritePos2));
-      b.appendString("horror");
-      objEntries2.add(new VariantBuilder.FieldEntry("d", 3, b.getWritePos() - startWritePos2));
-      b.appendDate(12345);
-      b.finishWritingObject(startWritePos2, objEntries2);
+      VariantObjectBuilder ob1 = ab.startObject();
+      ob1.appendKey("a");
+      ob1.appendLong(3);
+      ob1.appendKey("b");
+      ob1.appendString("action");
+      ob1.appendKey("c");
+      ob1.appendString("str");
+      ab.endObject();
 
-      b.finishWritingArray(startWritePos, arrayEntries);
+      VariantObjectBuilder ob2 = ab.startObject();
+      ob2.appendKey("a");
+      ob2.appendLong(4);
+      ob2.appendKey("b");
+      ob2.appendString("horror");
+      ob2.appendKey("d");
+      ob2.appendDate(12345);
+      ab.endObject();
+
+      b.endArray();
     });
 
 
@@ -1745,14 +1658,11 @@ public class TestVariant extends DirectWriterTest {
             schema.unannotatedVariantType, ImmutableMap.of("metadata", EMPTY_METADATA, "typed_value", arr1));
     GenericRecord row1 = recordFromMap(schema.unannotatedParquetSchema, ImmutableMap.of("id", 1, "var", var1));
 
-    byte[] expectedArray1 = variant(TEST_METADATA, b -> {
-      int startWritePos = b.getWritePos();
-      ArrayList<Integer> entries= new ArrayList<>();
-      entries.add(b.getWritePos() - startWritePos);
-      b.appendString("comedy");
-      entries.add(b.getWritePos() - startWritePos);
-      b.appendString("drama");
-      b.finishWritingArray(startWritePos, entries);
+    ByteBuffer expectedArray1 = variant(b -> {
+      VariantArrayBuilder ab = b.startArray();
+      ab.appendString("comedy");
+      ab.appendString("drama");
+      b.endArray();
     });
 
     GenericRecord var2 =
@@ -1762,20 +1672,19 @@ public class TestVariant extends DirectWriterTest {
                 "metadata", EMPTY_METADATA, "value", variant(34)));
     GenericRecord row2 = recordFromMap(schema.unannotatedParquetSchema, ImmutableMap.of("id", 2, "var", var2));
 
-    byte[] expectedValue2 = variant(34);
+    ByteBuffer expectedValue2 = variant(34);
 
     GenericRecord var3 =
         recordFromMap(schema.unannotatedVariantType, ImmutableMap.of("metadata", TEST_METADATA, "value", TEST_OBJECT));
     GenericRecord row3 = recordFromMap(schema.unannotatedParquetSchema, ImmutableMap.of("id", 3, "var", var3));
 
-    byte[] expectedObject3 = variant(TEST_METADATA, b -> {
-      int startWritePos = b.getWritePos();
-      ArrayList<VariantBuilder.FieldEntry> entries = new ArrayList<>();
-      entries.add(new VariantBuilder.FieldEntry("a", 0, b.getWritePos() - startWritePos));
-      b.appendNull();
-      entries.add(new VariantBuilder.FieldEntry("d", 3, b.getWritePos() - startWritePos));
-      b.appendString("iceberg");
-      b.finishWritingObject(startWritePos, entries);
+    ByteBuffer expectedObject3 = variant(TEST_METADATA, b -> {
+      VariantObjectBuilder ob = b.startObject();
+      ob.appendKey("a");
+      ob.appendNull();
+      ob.appendKey("d");
+      ob.appendString("iceberg");
+      b.endObject();
     });
 
     // Test array is read properly after a non-array
@@ -1787,14 +1696,11 @@ public class TestVariant extends DirectWriterTest {
         recordFromMap(schema.unannotatedVariantType, ImmutableMap.of("metadata", TEST_METADATA, "typed_value", arr4));
     GenericRecord row4 = recordFromMap(schema.unannotatedParquetSchema, ImmutableMap.of("id", 4, "var", var4));
 
-    byte[] expectedArray4 = variant(TEST_METADATA, b -> {
-      int startWritePos = b.getWritePos();
-      ArrayList<Integer> entries= new ArrayList<>();
-      entries.add(b.getWritePos() - startWritePos);
-      b.appendString("action");
-      entries.add(b.getWritePos() - startWritePos);
-      b.appendString("horror");
-      b.finishWritingArray(startWritePos, entries);
+    ByteBuffer expectedArray4 = variant(TEST_METADATA, b -> {
+      VariantArrayBuilder ab = b.startArray();
+      ab.appendString("action");
+      ab.appendString("horror");
+      b.endArray();
     });
 
     List<GenericRecord> actual = writeAndRead(schema, Arrays.asList(row1, row2, row3, row4));
@@ -1851,14 +1757,11 @@ public class TestVariant extends DirectWriterTest {
             schema.unannotatedVariantType, ImmutableMap.of("metadata", EMPTY_METADATA, "typed_value", arr));
     GenericRecord row = recordFromMap(schema.unannotatedParquetSchema, ImmutableMap.of("id", 1, "var", var));
 
-    byte[] expectedArray = variant(TEST_METADATA, b -> {
-      int startWritePos = b.getWritePos();
-      ArrayList<Integer> entries= new ArrayList<>();
-      entries.add(b.getWritePos() - startWritePos);
+    ByteBuffer expectedArray = variant(b -> {
+      VariantArrayBuilder ab = b.startArray();
       b.appendString("comedy");
-      entries.add(b.getWritePos() - startWritePos);
       b.appendString("drama");
-      b.finishWritingArray(startWritePos, entries);
+      b.endArray();
     });
 
     GenericRecord actual = writeAndRead(schema, row);
@@ -1884,14 +1787,11 @@ public class TestVariant extends DirectWriterTest {
             schema.unannotatedVariantType, ImmutableMap.of("metadata", EMPTY_METADATA, "typed_value", arr));
     GenericRecord row = recordFromMap(schema.unannotatedParquetSchema, ImmutableMap.of("id", 1, "var", var));
 
-    byte[] expectedArray = variant(TEST_METADATA, b -> {
-      int startWritePos = b.getWritePos();
-      ArrayList<Integer> entries= new ArrayList<>();
-      entries.add(b.getWritePos() - startWritePos);
+    ByteBuffer expectedArray = variant(b -> {
+      VariantArrayBuilder ab = b.startArray();
       b.appendString("comedy");
-      entries.add(b.getWritePos() - startWritePos);
       b.appendString("drama");
-      b.finishWritingArray(startWritePos, entries);
+      b.endArray();
     });
 
     GenericRecord actual = writeAndRead(schema, row);
@@ -1915,12 +1815,10 @@ public class TestVariant extends DirectWriterTest {
             ImmutableMap.of("metadata", EMPTY_METADATA, "typed_value", Arrays.asList(element)));
     GenericRecord record = recordFromMap(schema.unannotatedParquetSchema, ImmutableMap.of("id", 1, "var", variant));
 
-    byte[] expectedArray = variant(TEST_METADATA, b -> {
-      int startWritePos = b.getWritePos();
-      ArrayList<Integer> entries= new ArrayList<>();
-      entries.add(b.getWritePos() - startWritePos);
+    ByteBuffer expectedArray = variant(b -> {
+      VariantArrayBuilder ab = b.startArray();
       b.appendNull();
-      b.finishWritingArray(startWritePos, entries);
+      b.endArray();
     });
 
     GenericRecord actual = writeAndRead(schema, record);
@@ -2040,22 +1938,18 @@ public class TestVariant extends DirectWriterTest {
         return shreddedPrimitive(PrimitiveTypeName.FLOAT);
       case DOUBLE:
         return shreddedPrimitive(PrimitiveTypeName.DOUBLE);
-      case DECIMAL:
-        int precision = value.getDecimal().precision();
-        int scale = value.getDecimal().scale ();
-        if (precision <= 9) {
-          return shreddedPrimitive(
-              PrimitiveTypeName.INT32, LogicalTypeAnnotation.decimalType(scale, 9));
-        } else if (precision <= 18) {
-          return shreddedPrimitive(
-              PrimitiveTypeName.INT64, LogicalTypeAnnotation.decimalType(scale, 18));
-        } else {
-          return shreddedPrimitive(
-              PrimitiveTypeName.BINARY, LogicalTypeAnnotation.decimalType(scale, 38));
-        }
+      case DECIMAL4:
+        return shreddedPrimitive(
+            PrimitiveTypeName.INT32, LogicalTypeAnnotation.decimalType(value.getDecimal().scale(), 9));
+      case DECIMAL8:
+        return shreddedPrimitive(
+            PrimitiveTypeName.INT64, LogicalTypeAnnotation.decimalType(value.getDecimal().scale(), 18));
+      case DECIMAL16:
+        return shreddedPrimitive(
+            PrimitiveTypeName.BINARY, LogicalTypeAnnotation.decimalType(value.getDecimal().scale(), 38));
       case DATE:
         return shreddedPrimitive(PrimitiveTypeName.INT32, LogicalTypeAnnotation.dateType());
-      case TIMESTAMP:
+      case TIMESTAMP_TZ:
         return shreddedPrimitive(
             PrimitiveTypeName.INT64, LogicalTypeAnnotation.timestampType(true, TimeUnit.MICROS));
       case TIMESTAMP_NTZ:
@@ -2068,7 +1962,7 @@ public class TestVariant extends DirectWriterTest {
       case TIME:
         return shreddedPrimitive(
             PrimitiveTypeName.INT64, LogicalTypeAnnotation.timeType(false, TimeUnit.MICROS));
-      case TIMESTAMP_NANOS:
+      case TIMESTAMP_NANOS_TZ:
         return shreddedPrimitive(
             PrimitiveTypeName.INT64, LogicalTypeAnnotation.timestampType(true, TimeUnit.NANOS));
       case TIMESTAMP_NANOS_NTZ:
@@ -2080,55 +1974,6 @@ public class TestVariant extends DirectWriterTest {
     }
 
     throw new UnsupportedOperationException("Unsupported shredding type: " + value.getType());
-  }
-
-  private static Object toAvroValue(Variant v) {
-    switch (v.getType()) {
-      case BOOLEAN:
-        return v.getBoolean();
-      case BYTE:
-        return v.getByte();
-      case SHORT:
-        return v.getShort();
-      case INT:
-        return v.getInt();
-      case LONG:
-        return v.getLong();
-      case FLOAT:
-        return v.getFloat();
-      case DOUBLE:
-        return v.getDouble();
-      case DECIMAL:
-        int precision = v.getDecimal().precision();
-        int scale = v.getDecimal().scale ();
-        if (precision <= 9) {
-          return v.getDecimal().unscaledValue().intValueExact();
-        } else if (precision <= 18) {
-          return v.getDecimal().unscaledValue().longValueExact();
-        } else {
-          return v.getDecimal().unscaledValue().toByteArray();
-        }
-      case DATE:
-        return v.getInt();
-      case TIMESTAMP:
-        return v.getLong();
-      case TIMESTAMP_NTZ:
-        return v.getLong();
-      case BINARY:
-        return v.getBinary();
-      case STRING:
-        return v.getString();
-      case TIME:
-        return v.getLong();
-      case TIMESTAMP_NANOS:
-        return v.getLong();
-      case TIMESTAMP_NANOS_NTZ:
-        return v.getLong();
-      case UUID:
-        return v.getUUID();
-      default:
-        throw new UnsupportedOperationException("Unsupported shredding type: " + v.getType());
-    }
   }
 
   private static GroupType variant(String name, int fieldId) {
@@ -2306,11 +2151,11 @@ public class TestVariant extends DirectWriterTest {
 
   // Assert that metadata contains identical bytes to expected, and value is logically equivalent.
   // E.g. object fields may be ordered differently in the binary.
-  void assertEquivalent(byte[] expectedMetadata, byte[] expectedValue, GenericRecord actual) {
-    assertEquals(ByteBuffer.wrap(expectedMetadata), (ByteBuffer) actual.get("metadata"));
-    assertEquals(ByteBuffer.wrap(expectedMetadata), (ByteBuffer) actual.get("metadata"));
+  void assertEquivalent(ByteBuffer expectedMetadata, ByteBuffer expectedValue, GenericRecord actual) {
+    assertEquals(expectedMetadata, (ByteBuffer) actual.get("metadata"));
+    assertEquals(expectedMetadata, (ByteBuffer) actual.get("metadata"));
     assertEquivalent(new Variant(expectedValue, expectedMetadata),
-        new Variant(((ByteBuffer) actual.get("value")).array(), expectedMetadata));
+        new Variant(((ByteBuffer) actual.get("value")), expectedMetadata));
   }
 
   void assertEquivalent(Variant expected, Variant actual) {
@@ -2329,15 +2174,17 @@ public class TestVariant extends DirectWriterTest {
       case OBJECT:
         assertEquals(expected.numObjectElements(), actual.numObjectElements());
         for (int i = 0; i < expected.numObjectElements(); ++i) {
-          Variant.ObjectField expectedField = expected.getFieldAtIndex(i);
-          Variant.ObjectField actualField = actual.getFieldAtIndex(i);
-          assertEquals(expectedField.key, actualField.key);
-          assertEquivalent(expectedField.value, actualField.value);
+          Variant expectedField = expected.getFieldAtIndex(i);
+          Variant actualField = actual.getFieldAtIndex(i);
+          String expectedKey = expected.getKeyAtIndex(i);
+          String actualKey = actual.getKeyAtIndex(i);
+          assertEquals(expectedKey, actualKey);
+          assertEquivalent(expectedField, actualField);
         }
         break;
       default:
         // All other types have a single representation, and must be bit-for-bit identical.
-        assertArrayEquals(expected.getValue(), actual.getValue());
+        assertEquals(expected.getValue(), actual.getValue());
     }
   }
 }
