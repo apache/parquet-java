@@ -189,13 +189,12 @@ public class TestVariant extends DirectWriterTest {
 
     }).getMetadata();
 
-    TEST_OBJECT = variant(b -> {
+    TEST_OBJECT = variant(TEST_METADATA, b -> {
       VariantObjectBuilder ob = b.startObject();
       ob.appendKey("a");
       ob.appendNull();
-      b.appendNull();
       ob.appendKey("d");
-      b.appendString("iceberg");
+      ob.appendString("iceberg");
       b.endObject();
     });
 
@@ -407,10 +406,8 @@ public class TestVariant extends DirectWriterTest {
       ab.appendLong(456);
       b.endArray();
     });
-    // The string value will be stored in value, not typed_value, so we need to write its binary representation
-    // to parquet.
-    Variant stringVal = testValue.getElementAtIndex(1);
-    ByteBuffer stringValue = stringVal.getValue();
+    // The string value will be stored in `value` in Variant binary form.
+    ByteBuffer stringValue = variant("Hello");
 
     Binary expectedValue = Binary.fromConstantByteBuffer(testValue.getValue());
     Binary expectedMetadata = Binary.fromConstantByteBuffer(testValue.getMetadata());
@@ -1759,8 +1756,8 @@ public class TestVariant extends DirectWriterTest {
 
     ByteBuffer expectedArray = variant(b -> {
       VariantArrayBuilder ab = b.startArray();
-      b.appendString("comedy");
-      b.appendString("drama");
+      ab.appendString("comedy");
+      ab.appendString("drama");
       b.endArray();
     });
 
@@ -1789,8 +1786,8 @@ public class TestVariant extends DirectWriterTest {
 
     ByteBuffer expectedArray = variant(b -> {
       VariantArrayBuilder ab = b.startArray();
-      b.appendString("comedy");
-      b.appendString("drama");
+      ab.appendString("comedy");
+      ab.appendString("drama");
       b.endArray();
     });
 
@@ -1817,7 +1814,7 @@ public class TestVariant extends DirectWriterTest {
 
     ByteBuffer expectedArray = variant(b -> {
       VariantArrayBuilder ab = b.startArray();
-      b.appendNull();
+      ab.appendNull();
       b.endArray();
     });
 

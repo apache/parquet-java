@@ -815,22 +815,31 @@ class VariantUtil {
    * @return A map from metadata key to its position.
    */
   public static HashMap<String, Integer> getMetadataMap(ByteBuffer metadata) {
-    checkIndex(0, metadata.limit());
+    int pos = metadata.position();
+    checkIndex(pos, metadata.limit());
     // Extracts the highest 2 bits in the metadata header to determine the integer size of the
     // offset list.
-    int offsetSize = ((metadata.get(0) >> 6) & 0x3) + 1;
-    int dictSize = readUnsigned(metadata, 1, offsetSize);
+    int offsetSize = ((metadata.get(pos) >> 6) & 0x3) + 1;
+    int dictSize = readUnsigned(metadata, pos + 1, offsetSize);
     HashMap<String, Integer> result = new HashMap<>();
-    int offset = readUnsigned(metadata, 1 + offsetSize, offsetSize);
+    int offset = readUnsigned(metadata, pos + 1 + offsetSize, offsetSize);
     for (int id = 0; id < dictSize; id++) {
       int stringStart = 1 + (dictSize + 2) * offsetSize;
-      int nextOffset = readUnsigned(metadata, 1 + (id + 2) * offsetSize, offsetSize);
+      int nextOffset = readUnsigned(metadata, pos + 1 + (id + 2) * offsetSize, offsetSize);
       if (offset > nextOffset) {
         throw new UnsupportedOperationException(
             String.format("Invalid offset: %d. next offset: %d", offset, nextOffset));
       }
-      checkIndex(stringStart + nextOffset - 1, metadata.limit());
-      result.put(new String(metadata.array(), stringStart + offset, nextOffset - offset), id);
+      checkIndex(pos + stringStart + nextOffset - 1, metadata.limit());
+      // TODO: Copied from code that didn't have the metadata.isReadOnly() check. Add it there?
+      if (metadata.hasArray() && !metadata.isReadOnly()) {
+        result.put(new String(metadata.array(), metadata.arrayOffset() + pos + stringStart + offset, nextOffset - offset), id);
+      } else {
+        // ByteBuffer does not have an array, so we need to use the `get` method to read the bytes.
+        byte[] metadataArray = new byte[nextOffset - offset];
+        slice(metadata, stringStart + offset).get(metadataArray);
+        result.put(new String(metadataArray), id);
+      }
       offset = nextOffset;
     }
     return result;
