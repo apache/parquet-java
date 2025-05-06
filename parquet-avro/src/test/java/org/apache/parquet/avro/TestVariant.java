@@ -79,7 +79,7 @@ public class TestVariant extends DirectWriterTest {
   }
 
   private static ByteBuffer variant(int val) {
-    return variant(b -> b.appendLong(val));
+    return variant(b -> b.appendInt(val));
   }
 
   private static ByteBuffer variant(long val) {
@@ -118,13 +118,12 @@ public class TestVariant extends DirectWriterTest {
           new PrimitiveCase(null, variant(b -> b.appendNull())),
           new PrimitiveCase(true, variant(b -> b.appendBoolean(true))),
           new PrimitiveCase(false, variant(b -> b.appendBoolean(false))),
-          // TODO: fix types
-          new PrimitiveCase(34, variant(b -> b.appendLong(34))),
-          new PrimitiveCase(-34, variant(b -> b.appendLong(-34))),
-          new PrimitiveCase(1234, variant(b -> b.appendLong(1234))),
-          new PrimitiveCase(-1234, variant(b -> b.appendLong(-1234))),
-          new PrimitiveCase(12345, variant(b -> b.appendLong(12345))),
-          new PrimitiveCase(-12345, variant(b -> b.appendLong(-12345))),
+          new PrimitiveCase((byte) 34, variant(b -> b.appendByte((byte) 34))),
+          new PrimitiveCase((byte) -34, variant(b -> b.appendByte((byte) -34))),
+          new PrimitiveCase((short) 1234, variant(b -> b.appendShort((short) 1234))),
+          new PrimitiveCase((short) -1234, variant(b -> b.appendShort((short) -1234))),
+          new PrimitiveCase(12345, variant(b -> b.appendInt(12345))),
+          new PrimitiveCase(-12345, variant(b -> b.appendInt(-12345))),
           new PrimitiveCase(9876543210L, variant(b -> b.appendLong(9876543210L))),
           new PrimitiveCase(-9876543210L, variant(b -> b.appendLong(-9876543210L))),
           new PrimitiveCase(10.11F, variant(b -> b.appendFloat(10.11F))),
@@ -334,9 +333,9 @@ public class TestVariant extends DirectWriterTest {
     // Test true and false, since they have different types in Variant.
     runOneScalarTest("boolean", "", b -> b.appendBoolean(false), rc -> rc.addBoolean(false));
     runOneScalarTest("boolean", "", b -> b.appendBoolean(false), rc -> rc.addBoolean(false));
-    runOneScalarTest("int32", "(INT_8)", b -> b.appendLong(123), rc -> rc.addInteger(123));
-    runOneScalarTest("int32", "(INT_16)", b -> b.appendLong(-12345), rc -> rc.addInteger(-12345));
-    runOneScalarTest("int32", "(INT_32)", b -> b.appendLong(1234567890), rc -> rc.addInteger(1234567890));
+    runOneScalarTest("int32", "(INT_8)", b -> b.appendByte((byte) 123), rc -> rc.addInteger(123));
+    runOneScalarTest("int32", "(INT_16)", b -> b.appendShort((short) -12345), rc -> rc.addInteger(-12345));
+    runOneScalarTest("int32", "(INT_32)", b -> b.appendInt(1234567890), rc -> rc.addInteger(1234567890));
     runOneScalarTest("int64", "", b -> b.appendLong(1234567890123L), rc -> rc.addLong(1234567890123L));
     runOneScalarTest("double", "", b -> b.appendDouble(1.2e34), rc -> rc.addDouble(1.2e34));
     runOneScalarTest("float", "", b -> b.appendFloat(1.2e34f), rc -> rc.addFloat(1.2e34f));
@@ -758,7 +757,7 @@ public class TestVariant extends DirectWriterTest {
     ByteBuffer expectedValue = variant(TEST_METADATA, b -> {
       VariantObjectBuilder ob = b.startObject();
       ob.appendKey("a");
-      ob.appendLong(1234);
+      ob.appendInt(1234);
       ob.appendKey("b");
       ob.appendString("iceberg");
       b.endObject();
@@ -932,7 +931,7 @@ public class TestVariant extends DirectWriterTest {
       ob.appendKey("c");
       VariantObjectBuilder innerOb = ob.startObject();
       innerOb.appendKey("a");
-      innerOb.appendLong(34);
+      innerOb.appendInt(34);
       innerOb.appendKey("b");
       innerOb.appendString("iceberg");
       ob.endObject();
@@ -994,7 +993,7 @@ public class TestVariant extends DirectWriterTest {
     ByteBuffer expectedValue = variant(TEST_METADATA, b -> {
       VariantObjectBuilder ob = b.startObject();
       ob.appendKey("a");
-      ob.appendLong(34);
+      ob.appendInt(34);
       ob.appendKey("b");
       ob.appendString("iceberg");
       b.endObject();
@@ -1314,7 +1313,7 @@ public class TestVariant extends DirectWriterTest {
     ByteBuffer expectedTwo = variant(TEST_METADATA, b -> {
       VariantObjectBuilder outerObj = b.startObject();
       outerObj.appendKey("c");
-      outerObj.appendLong(8);
+      outerObj.appendInt(8);
       outerObj.appendKey("d");
       outerObj.appendDouble(-0.0D);
       b.endObject();
@@ -1335,7 +1334,7 @@ public class TestVariant extends DirectWriterTest {
       outerObj.appendKey("c");
       VariantObjectBuilder innerObj = outerObj.startObject();
       innerObj.appendKey("a");
-      innerObj.appendLong(34);
+      innerObj.appendInt(34);
       innerObj.appendKey("b");
       innerObj.appendString("");
       outerObj.endObject();
@@ -1547,14 +1546,14 @@ public class TestVariant extends DirectWriterTest {
       VariantArrayBuilder ab = b.startArray();
       VariantObjectBuilder ob1 = ab.startObject();
       ob1.appendKey("a");
-      ob1.appendLong(1);
+      ob1.appendInt(1);
       ob1.appendKey("b");
       ob1.appendString("comedy");
       ab.endObject();
 
       VariantObjectBuilder ob2 = ab.startObject();
       ob2.appendKey("a");
-      ob2.appendLong(2);
+      ob2.appendInt(2);
       ob2.appendKey("b");
       ob2.appendString("drama");
       ab.endObject();
@@ -1607,7 +1606,7 @@ public class TestVariant extends DirectWriterTest {
 
       VariantObjectBuilder ob1 = ab.startObject();
       ob1.appendKey("a");
-      ob1.appendLong(3);
+      ob1.appendInt(3);
       ob1.appendKey("b");
       ob1.appendString("action");
       ob1.appendKey("c");
@@ -1616,7 +1615,7 @@ public class TestVariant extends DirectWriterTest {
 
       VariantObjectBuilder ob2 = ab.startObject();
       ob2.appendKey("a");
-      ob2.appendLong(4);
+      ob2.appendInt(4);
       ob2.appendKey("b");
       ob2.appendString("horror");
       ob2.appendKey("d");

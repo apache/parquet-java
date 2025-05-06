@@ -242,7 +242,6 @@ class VariantElementConverter extends GroupConverter implements VariantConverter
       variantValue = ((VariantValueConverter) converters[valueIdx]).getValue();
     }
     if (variantValue != null) {
-      // TODO: Find a way to ensure that we don't add a value and typed_value?
       if (!hasTypedValue) {
         // Nothing else was added. We can directly append this value.
         builder.shallowAppendVariant(variantValue);
@@ -603,24 +602,21 @@ class VariantFloatConverter extends VariantScalarConverter {
 class VariantByteConverter extends VariantScalarConverter {
   @Override
   public void addInt(int value) {
-    // TODO: Fix
-    builder.builder.appendLong(value);
+    builder.builder.appendByte((byte) value);
   }
 }
 
 class VariantShortConverter extends VariantScalarConverter {
   @Override
   public void addInt(int value) {
-    // TODO: Fix
-    builder.builder.appendLong(value);
+    builder.builder.appendShort((short) value);
   }
 }
 
 class VariantIntConverter extends VariantScalarConverter {
   @Override
   public void addInt(int value) {
-    // TODO: Fix
-    builder.builder.appendLong(value);
+    builder.builder.appendInt(value);
   }
 }
 
