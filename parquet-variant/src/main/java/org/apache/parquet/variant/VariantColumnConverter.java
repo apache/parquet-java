@@ -29,7 +29,6 @@ import static org.apache.parquet.schema.Type.Repetition.REPEATED;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.nio.ByteBuffer;
 import java.util.*;
 import org.apache.parquet.column.Dictionary;
 import org.apache.parquet.io.api.Binary;
@@ -47,18 +46,13 @@ import org.apache.parquet.schema.Type;
  * builder.
  */
 class VariantBuilderHolder {
+  // The builder at this level. It may the the top-level builder, or an array or object builder.
   VariantBuilder builder = null;
-  // The parent of this VariantBuilderHolder, for nested builders.
-  VariantBuilderHolder parentHolder = null;
-  // TODO: This is a mess.
-  VariantBuilderHolder topLevelHolder;
-  Binary metadata = null;
-  // Maps metadata entries to their index in the metadata binary. It is only stored in the top-level holder.
-  HashMap<String, Integer> metadataMap = null;
+  // The parent of this VariantBuilderHolder, or null if this is the top level.
+  protected VariantBuilderHolder parentHolder;
+  protected VariantBuilderTopLevelHolder topLevelHolder;
 
-  VariantBuilderHolder() {
-    this.topLevelHolder = this;
-  }
+  VariantBuilderHolder() {}
 
   VariantBuilderHolder(VariantBuilderHolder parentHolder) {
     this.parentHolder = parentHolder;
@@ -81,8 +75,20 @@ class VariantBuilderHolder {
   }
 
   Binary getMetadata() {
-    return metadata;
+    return topLevelHolder.metadata;
   }
+}
+
+class VariantBuilderTopLevelHolder extends VariantBuilderHolder {
+  VariantBuilderTopLevelHolder() {
+    super();
+    this.topLevelHolder = this;
+    this.parentHolder = null;
+  }
+
+  Binary metadata = null;
+  // Maps metadata entries to their index in the metadata binary. It is only stored in the top-level holder.
+  HashMap<String, Integer> metadataMap = null;
 
   /**
    * Sets the metadata. May only be called after startNewVariant. We allow the `value` column to
@@ -129,7 +135,7 @@ class VariantElementConverter extends GroupConverter implements VariantConverter
   private boolean typedValueIsObject = false;
   private int valueIdx = -1;
   private int typedValueIdx = -1;
-  protected VariantBuilderHolder builder;
+  protected VariantBuilderHolder holder;
   protected Converter[] converters;
 
   // The following are only used if this is an object field.
@@ -141,11 +147,11 @@ class VariantElementConverter extends GroupConverter implements VariantConverter
   private Set<String> shreddedObjectKeys;
 
   @Override
-  public void init(VariantBuilderHolder builder) {
-    this.builder = builder;
+  public void init(VariantBuilderHolder holder) {
+    this.holder = holder;
     for (Converter converter : converters) {
       if (converter != null) {
-        ((VariantConverter) converter).init(builder);
+        ((VariantConverter) converter).init(holder);
       }
     }
   }
@@ -214,17 +220,17 @@ class VariantElementConverter extends GroupConverter implements VariantConverter
       // Having a non-null element does not guarantee that we actually want to add this field, because
       // if value and typed_value are both null, it's a missing field. In that case, we'll detect it
       // in end() and reverse our decision to add this key.
-      ((VariantObjectBuilder) builder.builder).appendKey(objectFieldName);
+      ((VariantObjectBuilder) holder.builder).appendKey(objectFieldName);
     }
     if (valueIdx >= 0) {
       ((VariantValueConverter) converters[valueIdx]).reset();
     }
-    startWritePos = builder.builder.getWritePos();
+    startWritePos = holder.builder.getWritePos();
   }
 
   @Override
   public void end() {
-    VariantBuilder builder = this.builder.builder;
+    VariantBuilder builder = this.holder.builder;
 
     Binary variantValue = null;
     VariantObjectBuilder objectBuilder = null;
@@ -247,7 +253,7 @@ class VariantElementConverter extends GroupConverter implements VariantConverter
         builder.shallowAppendVariant(variantValue);
       } else {
         // Both value and typed_value were non-null. This is only valid for an object.
-        Variant value = new Variant(variantValue.toByteBuffer(), this.builder.topLevelHolder.metadata.toByteBuffer());
+        Variant value = new Variant(variantValue.toByteBuffer(), this.holder.topLevelHolder.metadata.toByteBuffer());
         Variant.Type basicType = value.getType();
         if (hasTypedValue && basicType != Variant.Type.OBJECT) {
           throw new IllegalArgumentException("Invalid variant, conflicting value and typed_value");
@@ -274,7 +280,7 @@ class VariantElementConverter extends GroupConverter implements VariantConverter
       // There was no value or typed_value.
       if (objectFieldName != null) {
         // Missing field.
-        ((VariantObjectBuilder) this.builder.builder).dropLastKey();
+        ((VariantObjectBuilder) this.holder.builder).dropLastKey();
       } else {
         // For arrays and top-level fields, the spec considers this invalid, but recommends using VariantNull.
         builder.appendNull();
@@ -309,8 +315,8 @@ public abstract class VariantColumnConverter extends VariantElementConverter {
       throw new IllegalArgumentException("Metadata missing from schema");
     }
     converters[topLevelMetadataIdx] = new VariantMetadataConverter();
-    builder = new VariantBuilderHolder();
-    init(builder);
+    holder = new VariantBuilderTopLevelHolder();
+    init(holder);
   }
 
   /**
@@ -323,7 +329,7 @@ public abstract class VariantColumnConverter extends VariantElementConverter {
    */
   @Override
   public void start() {
-    builder.startNewVariant();
+    holder.startNewVariant();
     super.start();
   }
 
@@ -333,8 +339,8 @@ public abstract class VariantColumnConverter extends VariantElementConverter {
   @Override
   public void end() {
     super.end();
-    byte[] value = builder.builder.valueWithoutMetadata();
-    addVariant(Binary.fromConstantByteArray(value), builder.getMetadata());
+    byte[] value = holder.builder.valueWithoutMetadata();
+    addVariant(Binary.fromConstantByteArray(value), holder.getMetadata());
   }
 }
 
@@ -343,7 +349,7 @@ public abstract class VariantColumnConverter extends VariantElementConverter {
  * so that it can be used by the typed_value converter on the same row.
  */
 class VariantMetadataConverter extends PrimitiveConverter implements VariantConverter {
-  private VariantBuilderHolder builder;
+  private VariantBuilderTopLevelHolder builder;
   Binary[] dict;
 
   public VariantMetadataConverter() {
@@ -352,7 +358,7 @@ class VariantMetadataConverter extends PrimitiveConverter implements VariantConv
 
   @Override
   public void init(VariantBuilderHolder builderHolder) {
-    builder = builderHolder;
+    builder = (VariantBuilderTopLevelHolder) builderHolder;
   }
 
   @Override
