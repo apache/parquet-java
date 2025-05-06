@@ -29,6 +29,7 @@ import com.google.protobuf.DoubleValue;
 import com.google.protobuf.FloatValue;
 import com.google.protobuf.Int32Value;
 import com.google.protobuf.Int64Value;
+import com.google.protobuf.MapEntry;
 import com.google.protobuf.Message;
 import com.google.protobuf.MessageOrBuilder;
 import com.google.protobuf.StringValue;
@@ -63,10 +64,12 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 import net.bytebuddy.ByteBuddy;
 import net.bytebuddy.description.field.FieldDescription;
 import net.bytebuddy.description.method.MethodDescription;
+import net.bytebuddy.description.method.MethodList;
 import net.bytebuddy.description.modifier.Visibility;
 import net.bytebuddy.description.type.TypeDescription;
 import net.bytebuddy.dynamic.DynamicType;
@@ -93,6 +96,7 @@ import net.bytebuddy.jar.asm.Handle;
 import net.bytebuddy.jar.asm.Label;
 import net.bytebuddy.jar.asm.MethodVisitor;
 import net.bytebuddy.jar.asm.Opcodes;
+import net.bytebuddy.matcher.ElementMatcher;
 import net.bytebuddy.matcher.ElementMatchers;
 import net.bytebuddy.utility.JavaConstant;
 import org.apache.parquet.conf.ParquetConfiguration;
@@ -2912,7 +2916,11 @@ public class ByteBuddyCodeGen {
           return converter;
         }
 
-        return new ProtoEnumConverter(generatePvc(parentBuilder, fieldDescriptor), converter);
+        return new ProtoEnumConverter(generatePvc(
+            parentBuilder,
+            fieldDescriptor,
+            Descriptors.EnumValueDescriptor.class
+        ), converter);
       }
 
       private Converter transformChildConverterListConverter(Object parentBuilder, ListConverter converter) {
@@ -2970,7 +2978,13 @@ public class ByteBuddyCodeGen {
           return converter;
         }
 
-        return new ProtoBytesValueConverter(generatePvc(parentBuilder, fieldDescriptor));
+        return new ProtoBytesValueConverter(
+            generatePvc(
+                parentBuilder,
+                fieldDescriptor,
+                BytesValue.class
+            )
+        );
       }
 
       private Converter transformChildConverterProtoStringValueConverter(
@@ -2981,7 +2995,13 @@ public class ByteBuddyCodeGen {
           return converter;
         }
 
-        return new ProtoStringValueConverter(generatePvc(parentBuilder, fieldDescriptor));
+        return new ProtoStringValueConverter(
+            generatePvc(
+                parentBuilder,
+                fieldDescriptor,
+                StringValue.class
+            )
+        );
       }
 
       private Converter transformChildConverterProtoBoolValueConverter(
@@ -2992,7 +3012,13 @@ public class ByteBuddyCodeGen {
           return converter;
         }
 
-        return new ProtoBoolValueConverter(generatePvc(parentBuilder, fieldDescriptor));
+        return new ProtoBoolValueConverter(
+            generatePvc(
+                parentBuilder,
+                fieldDescriptor,
+                BoolValue.class
+            )
+        );
       }
 
       private Converter transformChildConverterProtoUInt32ValueConverter(
@@ -3003,7 +3029,13 @@ public class ByteBuddyCodeGen {
           return converter;
         }
 
-        return new ProtoUInt32ValueConverter(generatePvc(parentBuilder, fieldDescriptor));
+        return new ProtoUInt32ValueConverter(
+            generatePvc(
+                parentBuilder,
+                fieldDescriptor,
+                UInt32Value.class
+            )
+        );
       }
 
       private Converter transformChildConverterProtoInt32ValueConverter(
@@ -3014,7 +3046,13 @@ public class ByteBuddyCodeGen {
           return converter;
         }
 
-        return new ProtoInt32ValueConverter(generatePvc(parentBuilder, fieldDescriptor));
+        return new ProtoInt32ValueConverter(
+            generatePvc(
+                parentBuilder,
+                fieldDescriptor,
+                Int32Value.class
+            )
+        );
       }
 
       private Converter transformChildConverterProtoUInt64ValueConverter(
@@ -3025,7 +3063,13 @@ public class ByteBuddyCodeGen {
           return converter;
         }
 
-        return new ProtoUInt64ValueConverter(generatePvc(parentBuilder, fieldDescriptor));
+        return new ProtoUInt64ValueConverter(
+            generatePvc(
+                parentBuilder,
+                fieldDescriptor,
+                UInt64Value.class
+            )
+        );
       }
 
       private Converter transformChildConverterProtoInt64ValueConverter(
@@ -3036,7 +3080,13 @@ public class ByteBuddyCodeGen {
           return converter;
         }
 
-        return new ProtoInt64ValueConverter(generatePvc(parentBuilder, fieldDescriptor));
+        return new ProtoInt64ValueConverter(
+            generatePvc(
+                parentBuilder,
+                fieldDescriptor,
+                Int64Value.class
+            )
+        );
       }
 
       private Converter transformChildConverterProtoFloatValueConverter(
@@ -3047,7 +3097,13 @@ public class ByteBuddyCodeGen {
           return converter;
         }
 
-        return new ProtoFloatValueConverter(generatePvc(parentBuilder, fieldDescriptor));
+        return new ProtoFloatValueConverter(
+            generatePvc(
+                parentBuilder,
+                fieldDescriptor,
+                FloatValue.class
+            )
+        );
       }
 
       private Converter transformChildConverterProtoDoubleValueConverter(
@@ -3058,7 +3114,13 @@ public class ByteBuddyCodeGen {
           return converter;
         }
 
-        return new ProtoDoubleValueConverter(generatePvc(parentBuilder, fieldDescriptor));
+        return new ProtoDoubleValueConverter(
+            generatePvc(
+                parentBuilder,
+                fieldDescriptor,
+                DoubleValue.class
+            )
+        );
       }
 
       private Converter transformChildConverterProtoTimeConverter(
@@ -3070,7 +3132,12 @@ public class ByteBuddyCodeGen {
         }
 
         return new ProtoTimeConverter(
-            generatePvc(parentBuilder, fieldDescriptor), converter.logicalTypeAnnotation);
+            generatePvc(
+                parentBuilder,
+                fieldDescriptor,
+                TimeOfDay.class
+            ), converter.logicalTypeAnnotation
+        );
       }
 
       private Converter transformChildConverterProtoDateConverter(
@@ -3081,7 +3148,13 @@ public class ByteBuddyCodeGen {
           return converter;
         }
 
-        return new ProtoDateConverter(generatePvc(parentBuilder, fieldDescriptor));
+        return new ProtoDateConverter(
+            generatePvc(
+                parentBuilder,
+                fieldDescriptor,
+                Date.class
+            )
+        );
       }
 
       private Converter transformChildConverterProtoTimestampConverter(
@@ -3093,7 +3166,12 @@ public class ByteBuddyCodeGen {
         }
 
         return new ProtoTimestampConverter(
-            generatePvc(parentBuilder, fieldDescriptor), converter.logicalTypeAnnotation);
+            generatePvc(
+                parentBuilder,
+                fieldDescriptor,
+                Timestamp.class
+            ), converter.logicalTypeAnnotation
+        );
       }
 
       private Converter transformChildConverterProtoBinaryConverter(
@@ -3104,7 +3182,13 @@ public class ByteBuddyCodeGen {
           return converter;
         }
 
-        return new ProtoBinaryConverter(generatePvc(parentBuilder, fieldDescriptor));
+        return new ProtoBinaryConverter(
+            generatePvc(
+                parentBuilder,
+                fieldDescriptor,
+                ByteString.class
+            )
+        );
       }
 
       private Converter transformChildConverterProtoStringConverter(
@@ -3115,7 +3199,13 @@ public class ByteBuddyCodeGen {
           return converter;
         }
 
-        return new ProtoStringConverter(generatePvc(parentBuilder, fieldDescriptor));
+        return new ProtoStringConverter(
+            generatePvc(
+                parentBuilder,
+                fieldDescriptor,
+                String.class
+            )
+        );
       }
 
       private Converter transformChildConverterProtoLongConverter(
@@ -3126,7 +3216,13 @@ public class ByteBuddyCodeGen {
           return converter;
         }
 
-        return new ProtoLongConverter(generatePvc(parentBuilder, fieldDescriptor));
+        return new ProtoLongConverter(
+            generatePvc(
+                parentBuilder,
+                fieldDescriptor,
+                long.class
+            )
+        );
       }
 
       private Converter transformChildConverterProtoIntConverter(
@@ -3137,7 +3233,13 @@ public class ByteBuddyCodeGen {
           return converter;
         }
 
-        return new ProtoIntConverter(generatePvc(parentBuilder, fieldDescriptor));
+        return new ProtoIntConverter(
+            generatePvc(
+                parentBuilder,
+                fieldDescriptor,
+                int.class
+            )
+        );
       }
 
       private Converter transformChildConverterProtoFloatConverter(
@@ -3148,7 +3250,13 @@ public class ByteBuddyCodeGen {
           return converter;
         }
 
-        return new ProtoFloatConverter(generatePvc(parentBuilder, fieldDescriptor));
+        return new ProtoFloatConverter(
+            generatePvc(
+                parentBuilder,
+                fieldDescriptor,
+                float.class
+            )
+        );
       }
 
       private Converter transformChildConverterProtoDoubleConverter(
@@ -3159,7 +3267,13 @@ public class ByteBuddyCodeGen {
           return converter;
         }
 
-        return new ProtoDoubleConverter(generatePvc(parentBuilder, fieldDescriptor));
+        return new ProtoDoubleConverter(
+            generatePvc(
+                parentBuilder,
+                fieldDescriptor,
+                double.class
+            )
+        );
       }
 
       private Converter transformChildConverterProtoBooleanConverter(
@@ -3170,7 +3284,13 @@ public class ByteBuddyCodeGen {
           return converter;
         }
 
-        return new ProtoBooleanConverter(generatePvc(parentBuilder, fieldDescriptor));
+        return new ProtoBooleanConverter(
+            generatePvc(
+                parentBuilder,
+                fieldDescriptor,
+                boolean.class
+            )
+        );
       }
 
       private Converter transformChildConverterProtoMessageConverter(
@@ -3192,7 +3312,7 @@ public class ByteBuddyCodeGen {
           newConverters[i] = transformChildConverter(myBuilder, childConverter);
         }
 
-        ParentValueContainer newPvc = generatePvc(parentBuilder, fieldDescriptor);
+        ParentValueContainer newPvc = generatePvc(parentBuilder, fieldDescriptor, myBuilder.getClass());
 
         return new PreBuiltProtoMessageConverter(newConverters, newPvc, myBuilder);
       }
@@ -3203,14 +3323,167 @@ public class ByteBuddyCodeGen {
       }
 
       private ParentValueContainer generatePvc(
-          Object parentBuilder, Descriptors.FieldDescriptor fieldDescriptor) {
+          Object parentBuilder, Descriptors.FieldDescriptor fieldDescriptor, Class<?> valueType) {
+        if (!fieldDescriptor.isMapField() && !(parentBuilder instanceof MapEntry.Builder)) {
+          return getRegularFieldPvc(parentBuilder, fieldDescriptor, valueType);
+        }
+        return getDefaultPvc((Message.Builder) parentBuilder, fieldDescriptor, valueType);
+      }
+
+      private ParentValueContainer getRegularFieldPvc(Object parentBuilder,
+                                                      Descriptors.FieldDescriptor fieldDescriptor,
+                                                      Class<?> valueType) {
+        return new Supplier<ParentValueContainer>() {
+          private DynamicType.Builder<ParentValueContainer> classBuilder;
+
+          @Override
+          public ParentValueContainer get() {
+            Class<?> parentBuilderClass = parentBuilder.getClass();
+
+            String fieldNameForMethod = ReflectionUtil.getFieldNameForMethod(fieldDescriptor);
+            TypeDescription parentBuilderTypeDef = TypeDescription.ForLoadedType.of(parentBuilderClass);
+            MethodList<MethodDescription.InDefinedShape> parentBuilderMethods = parentBuilderTypeDef.getDeclaredMethods();
+            String setterPrefix = fieldDescriptor.isRepeated() ? "add" : "set";
+            boolean isEnum = fieldDescriptor.getType() == Descriptors.FieldDescriptor.Type.ENUM;
+            boolean supportUnknownValues = isEnum
+                && !fieldDescriptor.getEnumType().isClosed()
+                && !fieldDescriptor.legacyEnumFieldTreatedAsClosed();
+            String setterSuffix = supportUnknownValues ? "Value" : "";
+            TypeDescription enumType = isEnum ?
+              parentBuilderMethods
+                  .filter(ElementMatchers.named(setterPrefix + fieldNameForMethod + setterSuffix))
+                  .getOnly()
+                  .asTypeToken()
+                  .getParameterTypes()
+                  .get(0)
+                : null;
+
+            boolean isMessageBuilder = Message.Builder.class.isAssignableFrom(valueType);
+            boolean isMessage = Message.class.isAssignableFrom(valueType);
+            ElementMatcher<MethodDescription> setterArgumentMatcher =
+                isMessageBuilder || isMessage
+                    ? ElementMatchers.takesArguments(valueType)
+                    : ElementMatchers.any();
+
+            MethodDescription.InDefinedShape parentBuilderSetter =
+                parentBuilderMethods.filter(
+                ElementMatchers.named(setterPrefix + fieldNameForMethod + setterSuffix).and(
+                    setterArgumentMatcher
+                )
+            ).getOnly();
+
+            classBuilder = new ByteBuddy()
+                .subclass(ParentValueContainer.class)
+                .modifiers(Visibility.PUBLIC)
+                .name(ParentValueContainer.class.getName() + "$Generated$"
+                    + BYTE_BUDDY_CLASS_SEQUENCE.incrementAndGet());
+
+            TypeDescription.Generic parentBuilderType =
+                TypeDescription.Generic.OfNonGenericType.ForLoadedType.of(parentBuilderClass);
+            FieldDescription.Latent parentBuilderFieldDesc = new FieldDescription.Latent(
+                classBuilder.toTypeDescription(),
+                new FieldDescription.Token(
+                    "parent", Modifier.PRIVATE | Modifier.FINAL, parentBuilderType));
+            classBuilder = classBuilder.define(parentBuilderFieldDesc);
+
+            classBuilder = classBuilder
+                .define(new MethodDescription.Latent(
+                    classBuilder.toTypeDescription(),
+                    new MethodDescription.Token(
+                        MethodDescription.CONSTRUCTOR_INTERNAL_NAME,
+                        Visibility.PUBLIC.getMask(),
+                        TypeDescription.Generic.OfNonGenericType.ForLoadedType.of(void.class),
+                        Collections.singletonList(parentBuilderType))))
+                .intercept(MethodCall.invoke(ReflectionUtil.getConstructor(
+                        ParentValueContainer.class))
+                    .andThen(new Implementations() {
+                      {
+                        CodeGenUtils.LocalVars localVars = new CodeGenUtils.LocalVars();
+                        try (LocalVar thisLocalVar =
+                                 localVars.register(classBuilder.toTypeDescription())) {
+                          try (LocalVar parentVar = localVars.register(parentBuilderClass)) {
+                            add(
+                                MethodVariableAccess.loadThis(),
+                                parentVar.load(),
+                                FieldAccess.forField(parentBuilderFieldDesc)
+                                    .write());
+                          }
+                        }
+                        add(Codegen.returnVoid());
+                      }
+                    }));
+
+            String pvcMethodNameSuffix = valueType.isPrimitive() ?
+                valueType.getName().substring(0, 1).toUpperCase() + valueType.getName().substring(1) :
+                "";
+
+            classBuilder = classBuilder
+                .method(ElementMatchers.named("add" + pvcMethodNameSuffix))
+                .intercept(new Implementations() {
+                  {
+                    CodeGenUtils.LocalVars localVars = new CodeGenUtils.LocalVars();
+                    try (LocalVar thisLocalVar =
+                             localVars.register(classBuilder.toTypeDescription())) {
+                      try (LocalVar valueVar = localVars.register(valueType.isPrimitive() ? valueType : Object.class)) {
+                        add(
+                            MethodVariableAccess.loadThis(),
+                            FieldAccess.forField(parentBuilderFieldDesc)
+                                .read(),
+                            valueVar.load());
+                        if (isEnum) {
+                          add(TypeCasting.to(
+                              TypeDescription.ForLoadedType.of(valueType)));
+                          if (supportUnknownValues) {
+                            add(Codegen.invokeMethod(ReflectionUtil.getDeclaredMethod(valueType, "getNumber")));
+                          } else {
+                            MethodDescription.InDefinedShape valueOfMethod = enumType.getDeclaredMethods()
+                                .filter(ElementMatchers
+                                    .hasMethodName("valueOf")
+                                    .and(ElementMatchers.takesArguments(Descriptors.EnumValueDescriptor.class)))
+                                .getOnly();
+                            add(MethodInvocation.invoke(valueOfMethod));
+                          }
+                        } else if (!valueType.isPrimitive()) {
+                          add(TypeCasting.to(
+                              TypeDescription.ForLoadedType.of(valueType)));
+                        }
+                        add(MethodInvocation.invoke(parentBuilderSetter));
+                        if (isMessageBuilder) {
+                          add(valueVar.load(),
+                              TypeCasting.to(
+                                  TypeDescription.ForLoadedType.of(valueType)),
+                              Codegen.invokeMethod(ReflectionUtil.getDeclaredMethod(valueType, "clear"))
+                          );
+                        }
+                        add(Codegen.returnVoid());
+                      }
+                    }
+                  }
+                });
+
+            DynamicType.Unloaded<ParentValueContainer> unloaded = classBuilder.make();
+            Class<? extends ParentValueContainer> pvcClass = unloaded.load(
+                    this.getClass().getClassLoader(), ClassLoadingStrategy.Default.WRAPPER)
+                .getLoaded();
+            return ReflectionUtil.newInstance(
+                ReflectionUtil.getConstructor(pvcClass, parentBuilderClass), parentBuilder);
+          }
+        }.get();
+      }
+
+      private static ParentValueContainer getDefaultPvc(Message.Builder parentBuilder,
+                                                                  Descriptors.FieldDescriptor fieldDescriptor,
+                                                                  Class<?> valueType) {
         ParentValueContainer fallbackPvc = fieldDescriptor.isRepeated()
-            ? new AddRepeatedFieldParentValueContainer((Message.Builder) parentBuilder, fieldDescriptor)
-            : new SetFieldParentValueContainer((Message.Builder) parentBuilder, fieldDescriptor);
+            ? new AddRepeatedFieldParentValueContainer(parentBuilder, fieldDescriptor)
+            : new SetFieldParentValueContainer(parentBuilder, fieldDescriptor);
+
+        boolean isBuilder = Message.Builder.class.isAssignableFrom(valueType);
+
         return new ParentValueContainer() {
           @Override
           public void add(Object val) {
-            if (val instanceof Message.Builder) {
+            if (isBuilder) {
               Message.Builder builder = (Message.Builder) val;
               Message message = builder.build();
               fallbackPvc.add(message);

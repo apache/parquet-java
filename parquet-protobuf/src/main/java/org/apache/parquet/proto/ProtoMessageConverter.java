@@ -600,7 +600,7 @@ class ProtoMessageConverter extends GroupConverter {
 
     @Override
     public void addBoolean(boolean value) {
-      parent.add(value);
+      parent.addBoolean(value);
     }
   }
 
@@ -614,7 +614,7 @@ class ProtoMessageConverter extends GroupConverter {
 
     @Override
     public void addDouble(double value) {
-      parent.add(value);
+      parent.addDouble(value);
     }
   }
 
@@ -628,7 +628,7 @@ class ProtoMessageConverter extends GroupConverter {
 
     @Override
     public void addFloat(float value) {
-      parent.add(value);
+      parent.addFloat(value);
     }
   }
 
@@ -642,7 +642,7 @@ class ProtoMessageConverter extends GroupConverter {
 
     @Override
     public void addInt(int value) {
-      parent.add(value);
+      parent.addInt(value);
     }
   }
 
@@ -656,7 +656,7 @@ class ProtoMessageConverter extends GroupConverter {
 
     @Override
     public void addLong(long value) {
-      parent.add(value);
+      parent.addLong(value);
     }
   }
 
