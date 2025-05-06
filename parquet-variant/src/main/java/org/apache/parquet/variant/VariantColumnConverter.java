@@ -29,7 +29,10 @@ import static org.apache.parquet.schema.Type.Repetition.REPEATED;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.util.*;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import org.apache.parquet.column.Dictionary;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.Converter;
@@ -115,11 +118,10 @@ interface VariantConverter {
 
 /**
  * Converter for a shredded Variant containing a value and/or typed_value field: either a top-level
- * Variant column, or a nested array element or object field.
- * The top-level converter is handled by a subclass (VariantColumnConverter)  that also reads
- * metadata.
+ * Variant column, or a nested array element or object field. The top-level converter is handled
+ * by a subclass (VariantColumnConverter)  that also reads metadata.
  *
- * All converters for a Variant column shared the same VariantBuilder, and append their results to
+ * All converters for a Variant column share the same VariantBuilder, and append their results to
  * it as values are read from Parquet.
  *
  * Values in `typed_value` are appended by the child converter. Values in `value` are stored by a
@@ -163,7 +165,7 @@ class VariantElementConverter extends GroupConverter implements VariantConverter
   }
 
   public VariantElementConverter(GroupType variantSchema) {
-    converters = new Converter[3];
+    converters = new Converter[variantSchema.getFieldCount()];
 
     List<Type> fields = variantSchema.getFields();
 
@@ -191,11 +193,11 @@ class VariantElementConverter extends GroupConverter implements VariantConverter
       if (annotation instanceof LogicalTypeAnnotation.ListLogicalTypeAnnotation) {
         typedConverter = new VariantArrayConverter(field.asGroupType());
       } else if (!field.isPrimitive()) {
-        GroupType typed_value = field.asGroupType();
-        typedConverter = new VariantObjectConverter(typed_value);
+        GroupType typedValue = field.asGroupType();
+        typedConverter = new VariantObjectConverter(typedValue);
         typedValueIsObject = true;
         shreddedObjectKeys = new HashSet<>();
-        for (Type f : typed_value.getFields()) {
+        for (Type f : typedValue.getFields()) {
           shreddedObjectKeys.add(f.getName());
         }
       } else {
