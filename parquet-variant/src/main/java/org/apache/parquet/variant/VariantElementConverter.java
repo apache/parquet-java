@@ -328,8 +328,7 @@ class VariantElementConverter extends GroupConverter implements VariantConverter
         LogicalTypeAnnotation.IntLogicalTypeAnnotation intAnnotation =
             (LogicalTypeAnnotation.IntLogicalTypeAnnotation) annotation;
         if (!intAnnotation.isSigned()) {
-          throw new UnsupportedOperationException("Unsupported shredded value type: " +
-              intAnnotation);
+          throw new UnsupportedOperationException("Unsupported shredded value type: " + intAnnotation);
         }
         int width = intAnnotation.getBitWidth();
         if (width == 8) {
@@ -341,8 +340,7 @@ class VariantElementConverter extends GroupConverter implements VariantConverter
         } else if (width == 64) {
           typedConverter = new VariantLongConverter();
         } else {
-          throw new UnsupportedOperationException("Unsupported shredded value type: " +
-              intAnnotation);
+          throw new UnsupportedOperationException("Unsupported shredded value type: " + intAnnotation);
         }
       } else if (annotation == null && primitiveType == INT32) {
         typedConverter = new VariantIntConverter();
@@ -429,8 +427,7 @@ class VariantElementConverter extends GroupConverter implements VariantConverter
 
     @Override
     public void addBinary(Binary value) {
-      builder.builder.appendDecimal(
-          new BigDecimal(new BigInteger(value.getBytes()), scale));
+      builder.builder.appendDecimal(new BigDecimal(new BigInteger(value.getBytes()), scale));
     }
 
     @Override
@@ -556,8 +553,7 @@ class VariantElementConverter extends GroupConverter implements VariantConverter
         throw new IllegalArgumentException("LIST must have one field");
       }
       Type middleLevel = listType.getType(0);
-      if (!middleLevel.isRepetition(REPEATED)
-          || middleLevel.isPrimitive()
+      if (!middleLevel.isRepetition(REPEATED) || middleLevel.isPrimitive()
           || middleLevel.asGroupType().getFieldCount() != 1) {
         throw new IllegalArgumentException("LIST must have one repeated field");
       }
@@ -626,7 +622,7 @@ class VariantElementConverter extends GroupConverter implements VariantConverter
         String name = fields.get(i).getName();
         converters[i] = new VariantElementConverter(field, name, this);
       }
-    };
+    }
 
     /**
      * This method must be called after each call to end() to ensure that the object builder is
@@ -644,7 +640,7 @@ class VariantElementConverter extends GroupConverter implements VariantConverter
     public void init(VariantBuilderHolder builderHolder) {
       // Create a new builder for the object.
       builder = new VariantBuilderHolder(builderHolder);
-      for (VariantElementConverter c: converters) {
+      for (VariantElementConverter c : converters) {
         c.init(builder);
       }
     }
@@ -665,6 +661,4 @@ class VariantElementConverter extends GroupConverter implements VariantConverter
       // parent's value column. The parent converter calls getObjectBuilder to finalize the object.
     }
   }
-
 }
-

@@ -100,7 +100,9 @@ public class TestReadVariant extends DirectWriterTest {
     }
   }
 
-  // Convert a string to a Decimal that can be written using Avro.
+  /**
+   * Convert a string to a Decimal that can be written using Avro.
+   */
   private static Object avroDecimalValue(String s) {
     BigDecimal v = new BigDecimal(s);
     int precision = v.precision();
@@ -1847,8 +1849,7 @@ public class TestReadVariant extends DirectWriterTest {
    * This is a custom Parquet writer builder that injects a specific Parquet schema and then uses
    * the Avro object model. This ensures that the Parquet file's schema is exactly what was passed.
    */
-  private static class TestWriterBuilder
-      extends ParquetWriter.Builder<GenericRecord, TestWriterBuilder> {
+  private static class TestWriterBuilder extends ParquetWriter.Builder<GenericRecord, TestWriterBuilder> {
     private TestSchema schema = null;
 
     protected TestWriterBuilder(Path path) {
@@ -1867,20 +1868,21 @@ public class TestReadVariant extends DirectWriterTest {
 
     @Override
     protected WriteSupport<GenericRecord> getWriteSupport(Configuration conf) {
-      return new AvroWriteSupport<>(schema.parquetSchema, avroSchema(schema.unannotatedParquetSchema), GenericData.get());
+      return new AvroWriteSupport<>(
+          schema.parquetSchema,
+          avroSchema(schema.unannotatedParquetSchema),
+          GenericData.get());
     }
   }
 
-  GenericRecord writeAndRead(TestSchema testSchema, GenericRecord record)
-      throws IOException {
+  GenericRecord writeAndRead(TestSchema testSchema, GenericRecord record) throws IOException {
     List<GenericRecord> result = writeAndRead(testSchema, Arrays.asList(record));
     assert(result.size() == 1);
     return result.get(0);
   }
 
-  List<GenericRecord> writeAndRead(TestSchema testSchema, List<GenericRecord> records)
-      throws IOException {
-    // Copied from TestSpecificReadWrite.java. Why does it do these weird things?
+  List<GenericRecord> writeAndRead(TestSchema testSchema, List<GenericRecord> records) throws IOException {
+    // Create a temporary file for testing
     File tmp = File.createTempFile(getClass().getSimpleName(), ".tmp");
     tmp.deleteOnExit();
     tmp.delete();
@@ -1894,9 +1896,9 @@ public class TestReadVariant extends DirectWriterTest {
     }
 
     Configuration conf = new Configuration();
-    // We need to set an explicit read schema, because Avro wrote the shredding schema as the Avro schema in the
-    // write, and it will use that by default. If we write using a proper shredding writer, the Avro schema
-    // should just contain a <metadata, value> record, and we won't need this.
+    // We need to set an explicit read schema because Avro wrote the shredding schema as the Avro
+    // schema in the write, and it will use that by default. If we write using a proper shredding
+    // writer, the Avro schema should just contain a <metadata, value> record, and we won't need this.
     AvroReadSupport.setAvroReadSchema(conf, avroSchema(testSchema.parquetSchema));
     AvroParquetReader<GenericRecord> reader = new AvroParquetReader(conf, path);
 
@@ -2124,7 +2126,9 @@ public class TestReadVariant extends DirectWriterTest {
         shreddedType.getRepetition());
   }
 
-  // Check for the given excpetion with message, possibly wrapped by a ParquetDecodingException
+  /**
+   * Check for the given exception with message, possibly wrapped by a ParquetDecodingException.
+   */
   void assertThrows(Callable callable, Class<? extends Exception> exception, String msg) {
     try {
       callable.call();
@@ -2145,12 +2149,15 @@ public class TestReadVariant extends DirectWriterTest {
     }
   }
 
-  // Assert that metadata contains identical bytes to expected, and value is logically equivalent.
-  // E.g. object fields may be ordered differently in the binary.
+  /**
+   * Assert that metadata contains identical bytes to expected, and value is logically equivalent.
+   * E.g. object fields may be ordered differently in the binary.
+   */
   void assertEquivalent(ByteBuffer expectedMetadata, ByteBuffer expectedValue, GenericRecord actual) {
     assertEquals(expectedMetadata, (ByteBuffer) actual.get("metadata"));
     assertEquals(expectedMetadata, (ByteBuffer) actual.get("metadata"));
-    assertEquivalent(new Variant(expectedValue, expectedMetadata),
+    assertEquivalent(
+        new Variant(expectedValue, expectedMetadata),
         new Variant(((ByteBuffer) actual.get("value")), expectedMetadata));
   }
 

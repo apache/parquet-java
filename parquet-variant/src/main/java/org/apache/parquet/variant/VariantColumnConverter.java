@@ -61,7 +61,7 @@ public abstract class VariantColumnConverter extends VariantElementConverter {
   public abstract void addVariant(Binary value, Binary metadata);
 
   /**
-   * called at the beginning of the group managed by this converter
+   * Called at the beginning of the group managed by this converter.
    */
   @Override
   public void start() {
@@ -70,7 +70,7 @@ public abstract class VariantColumnConverter extends VariantElementConverter {
   }
 
   /**
-   * call at the end of the group
+   * Called at the end of the group.
    */
   @Override
   public void end() {
