@@ -26,14 +26,10 @@ import java.util.UUID;
  * This Variant class holds the Variant-encoded value and metadata binary values.
  */
 public final class Variant {
-  /**
-   * The buffer that contains the Variant value.
-   */
+  /** The buffer that contains the Variant value. */
   final ByteBuffer value;
 
-  /**
-   * The buffer that contains the Variant metadata.
-   */
+  /** The buffer that contains the Variant metadata. */
   final ByteBuffer metadata;
 
   /**

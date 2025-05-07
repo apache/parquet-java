@@ -54,7 +54,7 @@ import org.apache.parquet.variant.VariantBuilder;
 import org.apache.parquet.variant.VariantObjectBuilder;
 import org.junit.Test;
 
-public class TestVariant extends DirectWriterTest {
+public class TestReadVariant extends DirectWriterTest {
 
   private static final LogicalTypeAnnotation STRING = LogicalTypeAnnotation.stringType();
 
@@ -171,7 +171,7 @@ public class TestVariant extends DirectWriterTest {
 
   private ArrayList<TestCase> testCases;
 
-  public TestVariant() throws Exception {
+  public TestReadVariant() throws Exception {
     TEST_METADATA = fullVariant(b -> {
       VariantObjectBuilder ob = b.startObject();
       ob.appendKey("a");

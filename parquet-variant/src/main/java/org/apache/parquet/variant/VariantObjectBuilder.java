@@ -46,6 +46,11 @@ public class VariantObjectBuilder extends VariantBuilder {
     fields.add(new VariantBuilder.FieldEntry(key, addDictionaryKey(key), writePos));
   }
 
+  /**
+   * Revert the last call to appendKey. May only be done if the corresponding value was not yet
+   * added. Used when reading data from Parquet, where a field may be non-null, but turn out to be
+   * missing (i.e. has null value and typed_value fields).
+   */
   void dropLastKey() {
     if (fields.size() != numValues + 1) {
       throw new IllegalStateException("Can only drop the last added key with no corresponding value.");
