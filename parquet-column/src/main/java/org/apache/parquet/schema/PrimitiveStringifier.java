@@ -467,7 +467,6 @@ public abstract class PrimitiveStringifier {
       return Float16.toFloatString(value);
     }
   };
-
   static final PrimitiveStringifier UNKNOWN_STRINGIFIER = new PrimitiveStringifier("UNKNOWN_STRINGIFIER") {
 
     public String stringify(Binary ignored) {
