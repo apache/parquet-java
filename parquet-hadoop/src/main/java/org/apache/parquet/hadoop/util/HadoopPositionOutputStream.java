@@ -20,12 +20,13 @@
 package org.apache.parquet.hadoop.util;
 
 import java.io.IOException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.parquet.io.PositionOutputStream;
 
 public class HadoopPositionOutputStream extends PositionOutputStream {
   private final FSDataOutputStream wrapped;
-  private boolean closed;
+  private final AtomicBoolean closed = new AtomicBoolean(false);
 
   HadoopPositionOutputStream(FSDataOutputStream wrapped) {
     this.wrapped = wrapped;
@@ -62,13 +63,11 @@ public class HadoopPositionOutputStream extends PositionOutputStream {
 
   @Override
   public void close() throws IOException {
-    if (closed) {
+    if (closed.getAndSet(true)) {
       return;
     }
     try (FSDataOutputStream fdos = wrapped) {
       fdos.flush();
-    } finally {
-      closed = true;
     }
   }
 }
