@@ -814,7 +814,7 @@ class VariantUtil {
    * @param metadata The Variant metadata
    * @return A map from metadata key to its position.
    */
-  public static HashMap<String, Integer> getMetadataMap(ByteBuffer metadata) {
+  static HashMap<String, Integer> getMetadataMap(ByteBuffer metadata) {
     int pos = metadata.position();
     checkIndex(pos, metadata.limit());
     // Extracts the highest 2 bits in the metadata header to determine the integer size of the

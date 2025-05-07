@@ -67,7 +67,7 @@ public class TestReadVariant extends DirectWriterTest {
 
   // Return only the byte[], which is usually all we want.
   private static ByteBuffer variant(Consumer<VariantBuilder> appendValue) {
-    return fullVariant(appendValue).getValue();
+    return fullVariant(appendValue).getValueRawBytes();
   }
 
   // Returns a value based on building with fixed metadata.
@@ -153,7 +153,7 @@ public class TestReadVariant extends DirectWriterTest {
           new PrimitiveCase(UUID.fromString("f24f9b64-81fa-49d1-b74e-8c09a6e31c56"), variant(b -> b.appendUUID(UUID.fromString("f24f9b64-81fa-49d1-b74e-8c09a6e31c56"))))
       };
 
-  private ByteBuffer EMPTY_METADATA = fullVariant(b -> b.appendNull()).getMetadata();
+  private ByteBuffer EMPTY_METADATA = fullVariant(b -> b.appendNull()).getMetadataRawBytes();
   private ByteBuffer NULL_VALUE = PRIMITIVES[0].value;
 
   private ByteBuffer TEST_METADATA;
@@ -186,7 +186,7 @@ public class TestReadVariant extends DirectWriterTest {
       ob.appendNull();
       b.endObject();
 
-    }).getMetadata();
+    }).getMetadataRawBytes();
 
     TEST_OBJECT = variant(TEST_METADATA, b -> {
       VariantObjectBuilder ob = b.startObject();
@@ -220,8 +220,8 @@ public class TestReadVariant extends DirectWriterTest {
       ob.endArray();
       b.endObject();
     });
-    Binary expectedValue = Binary.fromConstantByteBuffer(testValue.getValue());
-    Binary expectedMetadata = Binary.fromConstantByteBuffer(testValue.getMetadata());
+    Binary expectedValue = Binary.fromConstantByteBuffer(testValue.getValueRawBytes());
+    Binary expectedMetadata = Binary.fromConstantByteBuffer(testValue.getMetadataRawBytes());
     Path test = writeDirect(
         "message VariantMessage {" + "  required group v (VARIANT(1)) {"
             + "    required binary value;"
@@ -281,8 +281,8 @@ public class TestReadVariant extends DirectWriterTest {
     VariantBuilder builder = new VariantBuilder();
     appendValue.accept(builder);
     Variant testValue = builder.build();
-    Binary expectedValue = Binary.fromConstantByteBuffer(testValue.getValue());
-    Binary expectedMetadata = Binary.fromConstantByteBuffer(testValue.getMetadata());
+    Binary expectedValue = Binary.fromConstantByteBuffer(testValue.getValueRawBytes());
+    Binary expectedMetadata = Binary.fromConstantByteBuffer(testValue.getMetadataRawBytes());
     Path test = writeDirect(
         "message VariantMessage {" + "  required group v (VARIANT(1)) {"
             + "    optional binary value;"
@@ -408,8 +408,8 @@ public class TestReadVariant extends DirectWriterTest {
     // The string value will be stored in `value` in Variant binary form.
     ByteBuffer stringValue = variant("Hello");
 
-    Binary expectedValue = Binary.fromConstantByteBuffer(testValue.getValue());
-    Binary expectedMetadata = Binary.fromConstantByteBuffer(testValue.getMetadata());
+    Binary expectedValue = Binary.fromConstantByteBuffer(testValue.getValueRawBytes());
+    Binary expectedMetadata = Binary.fromConstantByteBuffer(testValue.getMetadataRawBytes());
     Path test = writeDirect(
         "message VariantMessage {" + "  required group v (VARIANT(1)) {"
             + "    required binary metadata;"
@@ -2178,7 +2178,7 @@ public class TestReadVariant extends DirectWriterTest {
         break;
       default:
         // All other types have a single representation, and must be bit-for-bit identical.
-        assertEquals(expected.getValue(), actual.getValue());
+        assertEquals(expected.getValueRawBytes(), actual.getValueRawBytes());
     }
   }
 }

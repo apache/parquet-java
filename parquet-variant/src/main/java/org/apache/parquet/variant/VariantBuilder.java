@@ -134,7 +134,7 @@ public class VariantBuilder {
 
   // This is used in the shredded reader to check if anything has been written to the Variant since the last call.
   // Tracking in the reader code is a bit awkward, but maybe better than polluting this interface.
-  public int getWritePos() {
+  int getWritePos() {
     return writePos;
   }
 
@@ -149,7 +149,7 @@ public class VariantBuilder {
    * Directly append a Variant value. Its keys must already be in the metadata
    * dictionary.
    */
-  public void shallowAppendVariant(Binary value) {
+  void shallowAppendVariant(Binary value) {
     onAppend();
     int size = value.length();
     checkCapacity(size);
@@ -435,7 +435,7 @@ public class VariantBuilder {
    * Append raw bytes in the form stored in Variant.
    * @param bytes a 16-byte value.
    */
-  public void appendUUIDBytes(byte[] bytes) {
+  void appendUUIDBytes(byte[] bytes) {
     checkCapacity(1 + VariantUtil.UUID_SIZE);
     writeBuffer[writePos++] = VariantUtil.primitiveHeader(VariantUtil.UUID);
     if (bytes.length != VariantUtil.UUID_SIZE) {

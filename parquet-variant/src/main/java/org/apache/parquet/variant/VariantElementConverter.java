@@ -199,7 +199,7 @@ class VariantElementConverter extends GroupConverter implements VariantConverter
             continue;
           }
           objectBuilder.appendKey(field.key);
-          objectBuilder.shallowAppendVariant(Binary.fromReusedByteBuffer(field.value.getValue()));
+          objectBuilder.shallowAppendVariant(Binary.fromReusedByteBuffer(field.value.getValueRawBytes()));
         }
         builder.endObject();
       }
