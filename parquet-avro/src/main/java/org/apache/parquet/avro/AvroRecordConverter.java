@@ -395,8 +395,7 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
         }
         return newStringConverter(schema, model, parent, validator);
       case RECORD:
-        if (type.getLogicalTypeAnnotation()
-                instanceof LogicalTypeAnnotation.VariantLogicalTypeAnnotation) {
+        if (type.getLogicalTypeAnnotation() instanceof LogicalTypeAnnotation.VariantLogicalTypeAnnotation) {
           return new AvroConverters.FieldVariantConverter(parent, type.asGroupType(), schema, model);
         } else {
           return new AvroRecordConverter(parent, type.asGroupType(), schema, model, validator);

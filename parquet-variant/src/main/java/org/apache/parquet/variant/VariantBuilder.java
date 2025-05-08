@@ -16,7 +16,6 @@
  */
 package org.apache.parquet.variant;
 
-import org.apache.parquet.io.api.Binary;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
@@ -428,7 +427,6 @@ public class VariantBuilder {
     bb.putLong(uuid.getLeastSignificantBits());
     writePos += VariantUtil.UUID_SIZE;
   }
-
 
   /**
    * Append raw bytes in the form stored in Variant.

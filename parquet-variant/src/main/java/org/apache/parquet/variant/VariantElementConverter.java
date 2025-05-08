@@ -143,7 +143,6 @@ class VariantElementConverter extends GroupConverter implements VariantConverter
   }
 
   /** runtime calls  **/
-
   @Override
   public void start() {
     if (objectFieldName != null) {
@@ -183,7 +182,8 @@ class VariantElementConverter extends GroupConverter implements VariantConverter
         builder.shallowAppendVariant(variantValue.toByteBuffer());
       } else {
         // Both value and typed_value were non-null. This is only valid for an object.
-        Variant value = new Variant(variantValue.toByteBuffer(), this.holder.topLevelHolder.metadata.toByteBuffer());
+        Variant value =
+            new Variant(variantValue.toByteBuffer(), this.holder.topLevelHolder.metadata.toByteBuffer());
         Variant.Type basicType = value.getType();
         if (hasTypedValue && basicType != Variant.Type.OBJECT) {
           throw new IllegalArgumentException("Invalid variant, conflicting value and typed_value");
@@ -193,9 +193,11 @@ class VariantElementConverter extends GroupConverter implements VariantConverter
           Variant.ObjectField field = value.getFieldAtIndex(i);
           if (shreddedObjectKeys.contains(field.key)) {
             // Skip any field ID that is also in the typed schema. This check is needed because readers with
-            // pushdown may not look at the value column, causing inconsistent results if a writer puth a given key
+            // pushdown may not look at the value column, causing inconsistent results if a writer puth a
+            // given key
             // only in the value column when it was present in the typed_value schema.
-            // Alternatively, we could fail at this point, since the shredding is invalid according to the spec.
+            // Alternatively, we could fail at this point, since the shredding is invalid according to the
+            // spec.
             continue;
           }
           objectBuilder.appendKey(field.key);
@@ -553,7 +555,8 @@ class VariantElementConverter extends GroupConverter implements VariantConverter
         throw new IllegalArgumentException("LIST must have one field");
       }
       Type middleLevel = listType.getType(0);
-      if (!middleLevel.isRepetition(REPEATED) || middleLevel.isPrimitive()
+      if (!middleLevel.isRepetition(REPEATED)
+          || middleLevel.isPrimitive()
           || middleLevel.asGroupType().getFieldCount() != 1) {
         throw new IllegalArgumentException("LIST must have one repeated field");
       }
@@ -590,7 +593,8 @@ class VariantElementConverter extends GroupConverter implements VariantConverter
     private VariantElementConverter elementConverter;
 
     public VariantArrayRepeatedConverter(GroupType repeatedType, VariantArrayConverter parentaConverter) {
-      this.elementConverter = new VariantElementConverter(repeatedType.getType(0).asGroupType());
+      this.elementConverter =
+          new VariantElementConverter(repeatedType.getType(0).asGroupType());
     }
 
     @Override
