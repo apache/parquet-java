@@ -30,6 +30,7 @@ import java.util.HashMap;
  * Builder for creating Variant value and metadata.
  */
 public class VariantBuilder {
+
   /** The buffer for building the Variant value. The first `writePos` bytes have been written. */
   protected byte[] writeBuffer = new byte[1024];
 
@@ -38,6 +39,9 @@ public class VariantBuilder {
   private HashMap<String, Integer> dictionary = new HashMap<>();
   /** The keys in the dictionary, in id order. */
   private ArrayList<byte[]> dictionaryKeys = new ArrayList<>();
+
+  /** The main VariantBuilder that owns metadata (i.e. this builder for non-object/array builders */
+  protected VariantBuilder rootBuilder = this;
 
   /** If true, the dictionary is externally provided, and only keys from that
    * metadata may be used in the builder.
@@ -149,6 +153,9 @@ public class VariantBuilder {
    * dictionary.
    */
   void shallowAppendVariant(ByteBuffer value) {
+    if (!rootBuilder.fixedMetadata) {
+      throw new IllegalStateException("Need fixed metaata to dirctly append a Variant value");
+    }
     onAppend();
     int size = value.remaining();
     checkCapacity(size);
@@ -464,7 +471,7 @@ public class VariantBuilder {
     if (arrayBuilder != null) {
       throw new IllegalStateException("Cannot call startObject() without calling endArray() first.");
     }
-    this.objectBuilder = new VariantObjectBuilder(this);
+    this.objectBuilder = new VariantObjectBuilder(this.rootBuilder);
     return objectBuilder;
   }
 
@@ -561,7 +568,7 @@ public class VariantBuilder {
     if (arrayBuilder != null) {
       throw new IllegalStateException("Cannot call startArray() without calling endArray() first.");
     }
-    this.arrayBuilder = new VariantArrayBuilder(this);
+    this.arrayBuilder = new VariantArrayBuilder(this.rootBuilder);
     return arrayBuilder;
   }
 

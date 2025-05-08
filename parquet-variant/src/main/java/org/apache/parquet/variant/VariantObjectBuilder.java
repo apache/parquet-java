@@ -22,15 +22,13 @@ import java.util.ArrayList;
  * Builder for creating Variant object, used by VariantBuilder.
  */
 public class VariantObjectBuilder extends VariantBuilder {
-  /** The parent VariantBuilder. */
-  private final VariantBuilder parent;
   /** The FieldEntry list for the fields of this object. */
   private final ArrayList<VariantBuilder.FieldEntry> fields;
   /** The number of values appended to this object. */
   protected long numValues = 0;
 
-  VariantObjectBuilder(VariantBuilder parent) {
-    this.parent = parent;
+  VariantObjectBuilder(VariantBuilder rootBuilder) {
+    this.rootBuilder = rootBuilder;
     this.fields = new ArrayList<>();
   }
 
@@ -90,8 +88,8 @@ public class VariantObjectBuilder extends VariantBuilder {
 
   @Override
   int addDictionaryKey(String key) {
-    // Add to the parent dictionary.
-    return parent.addDictionaryKey(key);
+    // Add to the top-level dictionary.
+    return rootBuilder.addDictionaryKey(key);
   }
 
   private void updateLastValueSize() {
