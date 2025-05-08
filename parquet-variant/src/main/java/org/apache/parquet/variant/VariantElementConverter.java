@@ -180,7 +180,7 @@ class VariantElementConverter extends GroupConverter implements VariantConverter
     if (variantValue != null) {
       if (!hasTypedValue) {
         // Nothing else was added. We can directly append this value.
-        builder.shallowAppendVariant(variantValue);
+        builder.shallowAppendVariant(variantValue.toByteBuffer());
       } else {
         // Both value and typed_value were non-null. This is only valid for an object.
         Variant value = new Variant(variantValue.toByteBuffer(), this.holder.topLevelHolder.metadata.toByteBuffer());
@@ -199,7 +199,7 @@ class VariantElementConverter extends GroupConverter implements VariantConverter
             continue;
           }
           objectBuilder.appendKey(field.key);
-          objectBuilder.shallowAppendVariant(Binary.fromReusedByteBuffer(field.value.getValueRawBytes()));
+          objectBuilder.shallowAppendVariant(field.value.getValueRawBytes());
         }
         builder.endObject();
       }
@@ -446,7 +446,7 @@ class VariantElementConverter extends GroupConverter implements VariantConverter
   static class VariantUuidConverter extends VariantScalarConverter {
     @Override
     public void addBinary(Binary value) {
-      builder.builder.appendUUIDBytes(value.getBytes());
+      builder.builder.appendUUIDBytes(value.toByteBuffer());
     }
   }
 

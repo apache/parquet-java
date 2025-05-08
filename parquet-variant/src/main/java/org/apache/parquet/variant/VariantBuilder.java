@@ -149,12 +149,11 @@ public class VariantBuilder {
    * Directly append a Variant value. Its keys must already be in the metadata
    * dictionary.
    */
-  void shallowAppendVariant(Binary value) {
+  void shallowAppendVariant(ByteBuffer value) {
     onAppend();
-    int size = value.length();
+    int size = value.remaining();
     checkCapacity(size);
-    byte[] buf = value.getBytes();
-    System.arraycopy(buf, 0, writeBuffer, writePos, size);
+    value.duplicate().get(writeBuffer, writePos, size);
     writePos += size;
   }
 
@@ -435,14 +434,14 @@ public class VariantBuilder {
    * Append raw bytes in the form stored in Variant.
    * @param bytes a 16-byte value.
    */
-  void appendUUIDBytes(byte[] bytes) {
+  void appendUUIDBytes(ByteBuffer bytes) {
     checkCapacity(1 + VariantUtil.UUID_SIZE);
     writeBuffer[writePos++] = VariantUtil.primitiveHeader(VariantUtil.UUID);
-    if (bytes.length != VariantUtil.UUID_SIZE) {
+    if (bytes.remaining() < VariantUtil.UUID_SIZE) {
       throw new IllegalArgumentException("UUID must be exactly 16 bytes");
     }
-    System.arraycopy(bytes, 0, writeBuffer, writePos, bytes.length);
-    writePos += bytes.length;
+    bytes.duplicate().get(writeBuffer, writePos, VariantUtil.UUID_SIZE);
+    writePos += VariantUtil.UUID_SIZE;
   }
 
   /**
