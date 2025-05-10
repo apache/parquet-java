@@ -29,8 +29,10 @@ import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.GroupConverter;
 import org.apache.parquet.io.api.PrimitiveConverter;
+import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.PrimitiveStringifier;
 import org.apache.parquet.schema.PrimitiveType;
+import org.apache.parquet.variant.VariantColumnConverter;
 
 public class AvroConverters {
 
@@ -337,6 +339,28 @@ public class AvroConverters {
     @Override
     public String convert(Binary binary) {
       return stringifier.stringify(binary);
+    }
+  }
+
+  static final class FieldVariantConverter<T> extends VariantColumnConverter {
+    protected final ParentValueContainer parent;
+    private final Schema avroSchema;
+    private final GenericData model;
+
+    public FieldVariantConverter(
+        ParentValueContainer parent, GroupType schema, Schema avroSchema, GenericData model) {
+      super(schema);
+      this.avroSchema = avroSchema;
+      this.model = model;
+      this.parent = parent;
+    }
+
+    @Override
+    public void addVariant(Binary value, Binary metadata) {
+      T currentRecord = (T) model.newRecord(null, avroSchema);
+      model.setField(currentRecord, "metadata", 0, metadata.toByteBuffer());
+      model.setField(currentRecord, "value", 1, value.toByteBuffer());
+      parent.add(currentRecord);
     }
   }
 }

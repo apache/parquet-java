@@ -30,14 +30,23 @@ import java.util.HashMap;
  * Builder for creating Variant value and metadata.
  */
 public class VariantBuilder {
+
   /** The buffer for building the Variant value. The first `writePos` bytes have been written. */
   protected byte[] writeBuffer = new byte[1024];
 
   protected int writePos = 0;
   /** The dictionary for mapping keys to monotonically increasing ids. */
-  private final HashMap<String, Integer> dictionary = new HashMap<>();
+  private HashMap<String, Integer> dictionary = new HashMap<>();
   /** The keys in the dictionary, in id order. */
-  private final ArrayList<byte[]> dictionaryKeys = new ArrayList<>();
+  private ArrayList<byte[]> dictionaryKeys = new ArrayList<>();
+
+  /** The main VariantBuilder that owns metadata (i.e. this builder for non-object/array builders */
+  protected VariantBuilder rootBuilder = this;
+
+  /** If true, the dictionary is externally provided, and only keys from that
+   * metadata may be used in the builder.
+   */
+  private boolean fixedMetadata = false;
 
   /**
    * These are used to build nested objects and arrays, via startObject() and startArray().
@@ -54,9 +63,34 @@ public class VariantBuilder {
   public VariantBuilder() {}
 
   /**
+   * Set the metadata. May only be called if the builder has not yet added anything to the metadata.
+   * If set, it is invalid to call build() on the builder. Only valueWithoutMetadata() may be called
+   * to obtain the result.
+   *
+   * @param metadata
+   */
+  public void setFixedMetadata(HashMap<String, Integer> metadata) {
+    if (!this.dictionary.isEmpty()) {
+      throw new IllegalStateException("Cannot fix metadata once values have been added to it");
+    }
+    this.dictionary = metadata;
+    this.fixedMetadata = true;
+    // We don't need the dictionaryKeys list when metadata is fixed, and setting to null ensures that we'll
+    // fail if we accidentally try to use it. However, uses should be guarded by a cleaner exception.
+    this.dictionaryKeys = null;
+  }
+
+  public void setFixedMetadata(ByteBuffer metadata) {
+    setFixedMetadata(VariantUtil.getMetadataMap(metadata));
+  }
+
+  /**
    * @return the Variant value
    */
   public Variant build() {
+    if (fixedMetadata) {
+      throw new IllegalStateException("Cannot reconstruct metadata when using fixed metadata");
+    }
     if (objectBuilder != null) {
       throw new IllegalStateException(
           "Cannot call build() while an object is being built. Must call endObject() first.");
@@ -99,6 +133,34 @@ public class VariantBuilder {
     // Copying the data to a new buffer, to retain only the required data length, not the capacity.
     // TODO: Reduce the copying, and look into builder reuse.
     return new Variant(Arrays.copyOfRange(writeBuffer, 0, writePos), metadata);
+  }
+
+  // This is used in the shredded reader to check if anything has been written to the Variant since the last call.
+  // Tracking in the reader code is a bit awkward, but maybe better than polluting this interface.
+  int getWritePos() {
+    return writePos;
+  }
+
+  /**
+   * @return the constructed Variant value binary, without metadata.
+   */
+  public byte[] valueWithoutMetadata() {
+    return Arrays.copyOfRange(writeBuffer, 0, writePos);
+  }
+
+  /**
+   * Directly append a Variant value. Its keys must already be in the metadata
+   * dictionary.
+   */
+  void shallowAppendVariant(ByteBuffer value) {
+    if (!rootBuilder.fixedMetadata) {
+      throw new IllegalStateException("Need fixed metaata to dirctly append a Variant value");
+    }
+    onAppend();
+    int size = value.remaining();
+    checkCapacity(size);
+    value.duplicate().get(writeBuffer, writePos, size);
+    writePos += size;
   }
 
   /**
@@ -374,6 +436,20 @@ public class VariantBuilder {
   }
 
   /**
+   * Append raw bytes in the form stored in Variant.
+   * @param bytes a 16-byte value.
+   */
+  void appendUUIDBytes(ByteBuffer bytes) {
+    checkCapacity(1 + VariantUtil.UUID_SIZE);
+    writeBuffer[writePos++] = VariantUtil.primitiveHeader(VariantUtil.UUID);
+    if (bytes.remaining() < VariantUtil.UUID_SIZE) {
+      throw new IllegalArgumentException("UUID must be exactly 16 bytes");
+    }
+    bytes.duplicate().get(writeBuffer, writePos, VariantUtil.UUID_SIZE);
+    writePos += VariantUtil.UUID_SIZE;
+  }
+
+  /**
    * Starts appending an object to this variant builder. The returned VariantObjectBuilder is used
    * to append object keys and values. startObject() must be called before endObject().
    * No append*() methods can be called in between startObject() and endObject().
@@ -395,7 +471,7 @@ public class VariantBuilder {
     if (arrayBuilder != null) {
       throw new IllegalStateException("Cannot call startObject() without calling endArray() first.");
     }
-    this.objectBuilder = new VariantObjectBuilder(this);
+    this.objectBuilder = new VariantObjectBuilder(this.rootBuilder);
     return objectBuilder;
   }
 
@@ -403,7 +479,7 @@ public class VariantBuilder {
    * Finishes appending the object to this builder. This method must be called after startObject(),
    * before other append*() methods can be called on this builder.
    */
-  protected void endObject() {
+  public void endObject() {
     if (objectBuilder == null) {
       throw new IllegalStateException("Cannot call endObject() without calling startObject() first.");
     }
@@ -492,7 +568,7 @@ public class VariantBuilder {
     if (arrayBuilder != null) {
       throw new IllegalStateException("Cannot call startArray() without calling endArray() first.");
     }
-    this.arrayBuilder = new VariantArrayBuilder(this);
+    this.arrayBuilder = new VariantArrayBuilder(this.rootBuilder);
     return arrayBuilder;
   }
 
@@ -564,6 +640,9 @@ public class VariantBuilder {
    */
   int addDictionaryKey(String key) {
     return dictionary.computeIfAbsent(key, newKey -> {
+      if (fixedMetadata) {
+        throw new IllegalArgumentException("Value in shredding refers to non-existent metadata string");
+      }
       int id = dictionaryKeys.size();
       dictionaryKeys.add(newKey.getBytes(StandardCharsets.UTF_8));
       return id;

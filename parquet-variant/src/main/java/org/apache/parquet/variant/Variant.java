@@ -61,6 +61,14 @@ public final class Variant {
     }
   }
 
+  public ByteBuffer getValueRawBytes() {
+    return value;
+  }
+
+  public ByteBuffer getMetadataRawBytes() {
+    return metadata;
+  }
+
   /**
    * @return the boolean value
    */
@@ -184,6 +192,7 @@ public final class Variant {
   /**
    * Returns the object field Variant value whose key is equal to `key`.
    * Returns null if the key is not found.
+   *
    * @param key the key to look up
    * @return the field value whose key is equal to `key`, or null if key is not found
    * @throws IllegalArgumentException if `getType()` does not return `Type.OBJECT`
@@ -240,7 +249,7 @@ public final class Variant {
   /**
    * A field in a Variant object.
    */
-  static final class ObjectField {
+  public static final class ObjectField {
     public final String key;
     public final Variant value;
 
@@ -250,7 +259,30 @@ public final class Variant {
     }
   }
 
-  private static ObjectField getFieldAtIndex(
+  /**
+   * Returns the field at index idx, lexicographically ordered.
+   *
+   * @param idx the index to look up
+   * @return the field value whose key is equal to `key`, or null if key is not found
+   * @throws IllegalArgumentException if `getType()` does not return `Type.OBJECT`
+   */
+  public ObjectField getFieldAtIndex(int idx) {
+    VariantUtil.ObjectInfo info = VariantUtil.getObjectInfo(value);
+    // Use linear search for a short list. Switch to binary search when the length reaches
+    // `BINARY_SEARCH_THRESHOLD`.
+    ObjectField field = getFieldAtIndex(
+        idx,
+        value,
+        metadata,
+        info.idSize,
+        info.offsetSize,
+        value.position() + info.idStartOffset,
+        value.position() + info.offsetStartOffset,
+        value.position() + info.dataStartOffset);
+    return field;
+  }
+
+  static ObjectField getFieldAtIndex(
       int index,
       ByteBuffer value,
       ByteBuffer metadata,
