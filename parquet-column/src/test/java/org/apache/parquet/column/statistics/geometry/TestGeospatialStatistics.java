@@ -72,6 +72,55 @@ public class TestGeospatialStatistics {
   }
 
   @Test
+  public void testMergeNullGeospatialStatistics() {
+    // Create a valid stats object
+    PrimitiveType type = Types.optional(PrimitiveType.PrimitiveTypeName.BINARY)
+        .as(LogicalTypeAnnotation.geometryType(null))
+        .named("a");
+
+    WKTReader wktReader = new WKTReader();
+    WKBWriter wkbWriter = new WKBWriter();
+
+    GeospatialStatistics.Builder validBuilder = GeospatialStatistics.newBuilder(type);
+    try {
+      validBuilder.update(Binary.fromConstantByteArray(wkbWriter.write(wktReader.read("POINT (1 1)"))));
+    } catch (ParseException e) {
+      Assert.fail("Failed to parse valid WKT: " + e.getMessage());
+    }
+    GeospatialStatistics validStats = validBuilder.build();
+    Assert.assertTrue(validStats.isValid());
+
+    // Create stats with null components
+    GeospatialStatistics nullStats = new GeospatialStatistics(null, null, null);
+    Assert.assertFalse(nullStats.isValid());
+
+    // Test merging valid with null
+    GeospatialStatistics validCopy = validStats.copy();
+    validCopy.merge(nullStats);
+    Assert.assertFalse(validCopy.isValid());
+    Assert.assertNull(validCopy.getBoundingBox());
+    Assert.assertNull(validCopy.getGeospatialTypes());
+
+    // Test merging null with valid
+    nullStats = new GeospatialStatistics(null, null, null);
+    nullStats.merge(validStats);
+    Assert.assertFalse(nullStats.isValid());
+    Assert.assertNull(nullStats.getBoundingBox());
+    Assert.assertNull(nullStats.getGeospatialTypes());
+
+    // Create stats with null bounding box only
+    GeospatialStatistics nullBboxStats = new GeospatialStatistics(null, new GeospatialTypes(), null);
+    Assert.assertFalse(nullBboxStats.isValid());
+
+    // Test merging valid with null bounding box
+    validCopy = validStats.copy();
+    validCopy.merge(nullBboxStats);
+    Assert.assertFalse(validCopy.isValid());
+    Assert.assertNull(validCopy.getBoundingBox());
+    Assert.assertNotNull(validCopy.getGeospatialTypes());
+  }
+
+  @Test
   public void testCopyGeospatialStatistics() {
     PrimitiveType type = Types.optional(PrimitiveType.PrimitiveTypeName.BINARY)
         .as(LogicalTypeAnnotation.geometryType(null))

@@ -21,7 +21,6 @@ package org.apache.parquet.column.statistics.geometry;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
-import org.apache.parquet.Preconditions;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 
@@ -45,6 +44,11 @@ public class GeospatialTypes {
     if (!valid) {
       return;
     }
+
+    if (geometry == null || geometry.isEmpty()) {
+      return;
+    }
+
     int code = getGeometryTypeCode(geometry);
     if (code != UNKNOWN_TYPE_ID) {
       types.add(code);
@@ -55,11 +59,12 @@ public class GeospatialTypes {
   }
 
   public void merge(GeospatialTypes other) {
-    Preconditions.checkArgument(other != null, "Cannot merge with null GeospatialTypes");
     if (!valid) {
       return;
     }
-    if (!other.valid) {
+
+    // If other is null or invalid, mark this as invalid
+    if (other == null || !other.valid) {
       valid = false;
       types.clear();
       return;

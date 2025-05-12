@@ -37,9 +37,9 @@ public class GeospatialStatistics {
   private static final Logger LOG = LoggerFactory.getLogger(GeospatialStatistics.class);
 
   // Metadata that may impact the statistics calculation
-  private final BoundingBox boundingBox;
   private final EdgeInterpolationAlgorithm edgeAlgorithm;
-  private final GeospatialTypes geospatialTypes;
+  private BoundingBox boundingBox;
+  private GeospatialTypes geospatialTypes;
 
   /**
    * Merge the statistics from another GeospatialStatistics object.
@@ -196,11 +196,21 @@ public class GeospatialStatistics {
   public void merge(GeospatialStatistics other) {
     Preconditions.checkArgument(other != null, "Cannot merge with null GeometryStatistics");
 
-    if (boundingBox != null && other.boundingBox != null) {
+    // If other bounding box is null or invalid, set this as null
+    if (boundingBox == null || other.boundingBox == null) {
+      boundingBox = null;
+    }
+
+    if (boundingBox != null) {
       boundingBox.merge(other.boundingBox);
     }
 
-    if (geospatialTypes != null && other.geospatialTypes != null) {
+    // If other geosptialTypes is null or invalid, set this as null
+    if (geospatialTypes == null || other.geospatialTypes == null) {
+      geospatialTypes = null;
+    }
+
+    if (geospatialTypes != null) {
       geospatialTypes.merge(other.geospatialTypes);
     }
   }

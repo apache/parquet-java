@@ -150,15 +150,14 @@ public class BoundingBox {
    * @param other the other BoundingBox whose bounds will be merged into this one
    */
   public void merge(BoundingBox other) {
-    // Skip merging if the bbox is not valid or other is null or empty
-    // - A null bounding box cannot be merged
-    // - An empty bounding box (with inverted min/max) has no effect when merged,
-    //   so we can skip the merge operation entirely for efficiency
     if (!valid) {
       return;
     }
 
-    if (other == null || other.isEmpty()) {
+    // If other is null or invalid, mark this as invalid
+    if (other == null || other.isEmpty() || !other.valid) {
+      valid = false;
+      resetBBox();
       return;
     }
 
@@ -184,7 +183,6 @@ public class BoundingBox {
    *                If null or empty, the method returns without making any changes.
    */
   public void update(Geometry geometry) {
-    // Skip updating if the bbox is not valid or geometry is null or empty
     if (!valid) {
       return;
     }
