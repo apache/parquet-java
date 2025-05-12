@@ -155,7 +155,7 @@ public class BoundingBox {
     }
 
     // If other is null or invalid, mark this as invalid
-    if (other == null || other.isEmpty() || !other.valid) {
+    if (other == null || !other.valid) {
       valid = false;
       resetBBox();
       return;
