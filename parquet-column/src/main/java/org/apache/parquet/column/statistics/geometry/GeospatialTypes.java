@@ -135,12 +135,10 @@ public class GeospatialTypes {
     Coordinate[] coordinates = geometry.getCoordinates();
     boolean hasZ = false;
     boolean hasM = false;
-    for (Coordinate coordinate : coordinates) {
-      hasZ = !Double.isNaN(coordinate.getZ());
-      hasM = !Double.isNaN(coordinate.getM());
-      if (hasZ && hasM) {
-        break;
-      }
+    if (coordinates.length > 0) {
+      Coordinate firstCoord = coordinates[0];
+      hasZ = !Double.isNaN(firstCoord.getZ());
+      hasM = !Double.isNaN(firstCoord.getM());
     }
     if (hasZ) {
       typeId += 1000;
