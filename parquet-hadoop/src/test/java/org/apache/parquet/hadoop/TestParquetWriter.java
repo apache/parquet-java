@@ -631,9 +631,7 @@ public class TestParquetWriter {
         .withByteStreamSplitEncoding(true)
         .withByteStreamSplitEncoding("int32_field", true)
         .build()) {
-      writer.write(factory.newGroup()
-          .append("float_field", 0.3f)
-          .append("int32_field", 42));
+      writer.write(factory.newGroup().append("float_field", 0.3f).append("int32_field", 42));
     }
 
     try (ParquetFileReader reader = ParquetFileReader.open(HadoopInputFile.fromPath(path, new Configuration()))) {
@@ -645,7 +643,7 @@ public class TestParquetWriter {
     }
 
     try (ParquetReader<Group> reader =
-             ParquetReader.builder(new GroupReadSupport(), path).build()) {
+        ParquetReader.builder(new GroupReadSupport(), path).build()) {
       Group group = reader.read();
       assertEquals(0.3f, group.getFloat("float_field", 0), 0.0);
       assertEquals(42, group.getInteger("int32_field", 0));
