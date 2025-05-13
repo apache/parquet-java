@@ -65,6 +65,7 @@ import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import net.bytebuddy.ByteBuddy;
 import net.bytebuddy.description.field.FieldDescription;
@@ -85,8 +86,11 @@ import net.bytebuddy.implementation.bytecode.StackSize;
 import net.bytebuddy.implementation.bytecode.assign.TypeCasting;
 import net.bytebuddy.implementation.bytecode.collection.ArrayAccess;
 import net.bytebuddy.implementation.bytecode.collection.ArrayFactory;
+import net.bytebuddy.implementation.bytecode.constant.DoubleConstant;
+import net.bytebuddy.implementation.bytecode.constant.FloatConstant;
 import net.bytebuddy.implementation.bytecode.constant.IntegerConstant;
 import net.bytebuddy.implementation.bytecode.constant.JavaConstantValue;
+import net.bytebuddy.implementation.bytecode.constant.LongConstant;
 import net.bytebuddy.implementation.bytecode.constant.TextConstant;
 import net.bytebuddy.implementation.bytecode.member.FieldAccess;
 import net.bytebuddy.implementation.bytecode.member.MethodInvocation;
@@ -3318,8 +3322,319 @@ public class ByteBuddyCodeGen {
       }
 
       private Object newMapEntryBuilder(Object parentBuilder, Descriptors.FieldDescriptor fieldDescriptor) {
-        Message.Builder messageBuilder = (Message.Builder) parentBuilder;
-        return messageBuilder.newBuilderForField(fieldDescriptor);
+        return new Supplier<Object>() {
+          private DynamicType.Builder<Object> classBuilder;
+
+          @Override
+          public Object get() {
+            List<Descriptors.FieldDescriptor> mapFields = fieldDescriptor.getMessageType().getFields();
+            Descriptors.FieldDescriptor keyField = mapFields.get(0);
+            Descriptors.FieldDescriptor valueField = mapFields.get(1);
+            Class<?> keyType = getMapEntryKeyType(parentBuilder.getClass(), keyField);
+            Class<?> valueType = getMapEntryValueType(parentBuilder.getClass(), fieldDescriptor, valueField);
+            String setValueMethodName = valueField.getJavaType() == Descriptors.FieldDescriptor.JavaType.ENUM
+                && int.class.equals(valueType)
+                ? "setValueValue" : "setValue";
+
+            classBuilder = new ByteBuddy()
+                .subclass(Object.class)
+                .modifiers(Visibility.PUBLIC)
+                .name(ByteBuddyCodeGen.class.getName() + "$MapBuilder$Generated$"
+                    + BYTE_BUDDY_CLASS_SEQUENCE.incrementAndGet());
+
+            MethodDescription.Latent clearMethodDesc = new MethodDescription.Latent(
+                classBuilder.toTypeDescription(),
+                new MethodDescription.Token(
+                    "clear",
+                    Visibility.PUBLIC.getMask(),
+                    TypeDescription.Generic.OfNonGenericType.ForLoadedType.of(void.class),
+                    Collections.emptyList()));
+
+            TypeDescription.Generic keyTypeGen = TypeDescription.Generic.OfNonGenericType.ForLoadedType.of(keyType);
+            TypeDescription.Generic valueTypeGen = TypeDescription.Generic.OfNonGenericType.ForLoadedType.of(valueType);
+
+            FieldDescription.Latent keyFieldDesc = new FieldDescription.Latent(
+                classBuilder.toTypeDescription(),
+                new FieldDescription.Token(
+                    "key",
+                    Visibility.PRIVATE.getMask(),
+                    keyTypeGen,
+                    Collections.emptyList()));
+
+            FieldDescription.Latent valueFieldDesc = new FieldDescription.Latent(
+                classBuilder.toTypeDescription(),
+                new FieldDescription.Token(
+                    "value",
+                    Visibility.PRIVATE.getMask(),
+                    valueTypeGen,
+                    Collections.emptyList()));
+
+            MethodDescription.Latent getKeyMethodDesc = new MethodDescription.Latent(
+                classBuilder.toTypeDescription(),
+                new MethodDescription.Token(
+                    "getKey",
+                    Visibility.PUBLIC.getMask(),
+                    keyTypeGen,
+                    Collections.emptyList()));
+
+            MethodDescription.Latent getValueMethodDesc = new MethodDescription.Latent(
+                classBuilder.toTypeDescription(),
+                new MethodDescription.Token(
+                    "getValue",
+                    Visibility.PUBLIC.getMask(),
+                    valueTypeGen,
+                    Collections.emptyList()));
+
+            MethodDescription.Latent setKeyMethodDesc = new MethodDescription.Latent(
+                classBuilder.toTypeDescription(),
+                new MethodDescription.Token(
+                    "setKey",
+                    Visibility.PUBLIC.getMask(),
+                    TypeDescription.Generic.OfNonGenericType.ForLoadedType.of(void.class),
+                    Collections.singletonList(keyTypeGen)));
+
+            Class<?> valueBuilderType;
+            if (valueField.getJavaType() == Descriptors.FieldDescriptor.JavaType.MESSAGE) {
+              try {
+                valueBuilderType = valueType.getDeclaredMethod("newBuilder").invoke(null).getClass();
+              } catch (Exception e) {
+                throw new RuntimeException(e);
+              }
+            } else {
+              valueBuilderType = null;
+            }
+
+            MethodDescription.Latent setValueMethodDesc = new MethodDescription.Latent(
+                classBuilder.toTypeDescription(),
+                new MethodDescription.Token(
+                    setValueMethodName,
+                    Visibility.PUBLIC.getMask(),
+                    TypeDescription.Generic.OfNonGenericType.ForLoadedType.of(void.class),
+                    Collections.singletonList(TypeDescription.Generic.OfNonGenericType.ForLoadedType.of(valueBuilderType != null ? valueBuilderType : valueType))));
+
+
+            classBuilder = classBuilder
+                .constructor(ElementMatchers.any())
+                .intercept(MethodCall.invoke(ReflectionUtil.getConstructor(
+                        Object.class))
+                    .andThen(new Implementations() {
+                      {
+                        CodeGenUtils.LocalVars localVars = new CodeGenUtils.LocalVars();
+                        try (LocalVar thisLocalVar =
+                                 localVars.register(classBuilder.toTypeDescription())) {
+                          add(
+                              MethodVariableAccess.loadThis(),
+                              MethodInvocation.invoke(clearMethodDesc));
+                        }
+                        add(Codegen.returnVoid());
+                      }
+                    }));
+
+            classBuilder = classBuilder.define(keyFieldDesc);
+            classBuilder = classBuilder.define(valueFieldDesc);
+            classBuilder = classBuilder.define(getKeyMethodDesc)
+                .intercept(new Implementations() {
+                  {
+                    CodeGenUtils.LocalVars localVars = new CodeGenUtils.LocalVars();
+                    try (LocalVar thisLocalVar =
+                             localVars.register(classBuilder.toTypeDescription())) {
+                      add(
+                          MethodVariableAccess.loadThis(),
+                          FieldAccess.forField(keyFieldDesc).read());
+                    }
+                    add(MethodReturn.of(keyTypeGen));
+                  }
+                });
+            classBuilder = classBuilder.define(setKeyMethodDesc)
+                .intercept(new Implementations() {
+                  {
+                    CodeGenUtils.LocalVars localVars = new CodeGenUtils.LocalVars();
+                    try (LocalVar thisLocalVar =
+                             localVars.register(classBuilder.toTypeDescription())) {
+                      try (LocalVar v = localVars.register(TypeDescription.ForLoadedType.of(keyType))) {
+                        add(
+                            MethodVariableAccess.loadThis(),
+                            v.load(),
+                            FieldAccess.forField(keyFieldDesc).write());
+                      }
+                    }
+                    add(Codegen.returnVoid());
+                  }
+                });
+            classBuilder = classBuilder.define(getValueMethodDesc)
+                .intercept(new Implementations() {
+                  {
+                    CodeGenUtils.LocalVars localVars = new CodeGenUtils.LocalVars();
+                    try (LocalVar thisLocalVar =
+                             localVars.register(classBuilder.toTypeDescription())) {
+                      add(
+                          MethodVariableAccess.loadThis(),
+                          FieldAccess.forField(valueFieldDesc).read());
+                    }
+                    add(MethodReturn.of(valueTypeGen));
+                  }
+                });
+            classBuilder = classBuilder.define(setValueMethodDesc)
+                .intercept(new Implementations() {
+                  {
+                    CodeGenUtils.LocalVars localVars = new CodeGenUtils.LocalVars();
+                    try (LocalVar thisLocalVar =
+                             localVars.register(classBuilder.toTypeDescription())) {
+                      try (LocalVar v = localVars.register(TypeDescription.ForLoadedType.of(valueBuilderType != null ? valueBuilderType : valueType))) {
+                        add(
+                            MethodVariableAccess.loadThis(),
+                            v.load());
+                        if (valueBuilderType != null) {
+                          add(Codegen.invokeMethod(ReflectionUtil.getDeclaredMethod(valueBuilderType, "build")));
+                        }
+                        add(FieldAccess.forField(valueFieldDesc).write());
+                      }
+                    }
+                    add(Codegen.returnVoid());
+                  }
+                });
+            classBuilder = classBuilder.define(clearMethodDesc)
+                .intercept(new Implementations() {
+                  {
+                    CodeGenUtils.LocalVars localVars = new CodeGenUtils.LocalVars();
+                    try (LocalVar thisLocalVar =
+                             localVars.register(classBuilder.toTypeDescription())) {
+                      add(MethodVariableAccess.loadThis());
+                      switch (keyField.getJavaType()) {
+                        case INT:
+                          add(IntegerConstant.forValue(0));
+                          break;
+                        case LONG:
+                          add(LongConstant.forValue(0L));
+                          break;
+                        case FLOAT:
+                          add(FloatConstant.forValue(0.0f));
+                          break;
+                        case DOUBLE:
+                          add(DoubleConstant.forValue(0.0));
+                          break;
+                        case BOOLEAN:
+                          add(IntegerConstant.forValue(false));
+                          break;
+                        case STRING:
+                          add(new TextConstant(""));
+                          break;
+                        default:
+                          throw new IllegalStateException();
+                      }
+                      add(FieldAccess.forField(keyFieldDesc).write());
+                      add(MethodVariableAccess.loadThis());
+                      switch (valueField.getJavaType()) {
+                        case INT:
+                          add(IntegerConstant.forValue(0));
+                          break;
+                        case LONG:
+                          add(LongConstant.forValue(0L));
+                          break;
+                        case FLOAT:
+                          add(FloatConstant.forValue(0.0f));
+                          break;
+                        case DOUBLE:
+                          add(DoubleConstant.forValue(0.0));
+                          break;
+                        case BOOLEAN:
+                          add(IntegerConstant.forValue(false));
+                          break;
+                        case STRING:
+                          add(new TextConstant(""));
+                          break;
+                        case ENUM:
+                          if (valueType.equals(int.class)) {
+                            add(IntegerConstant.forValue(0));
+                          } else {
+                            add(IntegerConstant.forValue(0),
+                                Codegen.invokeMethod(
+                                    ReflectionUtil.getDeclaredMethod(valueType, "forNumber", int.class)));
+                          }
+                          break;
+                        case MESSAGE:
+                            add(Codegen.invokeMethod(
+                                ReflectionUtil.getDeclaredMethod(valueType, "getDefaultInstance")));
+                          break;
+                        default:
+                          throw new IllegalStateException();
+                      }
+                      add(FieldAccess.forField(valueFieldDesc).write());
+                    }
+                    add(Codegen.returnVoid());
+                  }
+                });
+
+            DynamicType.Unloaded<Object> unloaded = classBuilder.make();
+            Class<?> mapBuilderClass = unloaded.load(
+                    parentBuilder.getClass().getClassLoader(), ClassLoadingStrategy.Default.WRAPPER)
+                .getLoaded();
+            return ReflectionUtil.newInstance(ReflectionUtil.getConstructor(mapBuilderClass));
+          }
+        }.get();
+      }
+
+      private Class<?> getMapEntryValueType(Class<?> messageBuilderClass, Descriptors.FieldDescriptor mapFieldDescriptor, Descriptors.FieldDescriptor valueField) {
+        switch (valueField.getJavaType()) {
+          case INT:
+            return int.class;
+          case LONG:
+            return long.class;
+          case FLOAT:
+            return float.class;
+          case DOUBLE:
+            return double.class;
+          case BOOLEAN:
+            return boolean.class;
+          case STRING:
+            return String.class;
+          case BYTE_STRING:
+            return ByteString.class;
+          case ENUM: {
+            Descriptors.EnumDescriptor enumType = valueField.getEnumType();
+            boolean hasValueSetter = !enumType.isClosed() && !valueField.legacyEnumFieldTreatedAsClosed();
+            if (hasValueSetter) {
+              return int.class;
+            }
+          }
+        }
+        switch (valueField.getJavaType()) {
+          case ENUM:
+          case MESSAGE: {
+            String mapField = ReflectionUtil.getFieldNameForMethod(mapFieldDescriptor);
+            List<Method> putMethods = Arrays.stream(messageBuilderClass.getDeclaredMethods()).filter(x -> x.getName().equals("put" + mapField))
+                .collect(Collectors.toList());
+            if (putMethods.size() != 1) {
+              throw new IllegalStateException("Expected one put method for map field: " + mapField);
+            }
+            Method putMethod = putMethods.get(0);
+            Class<?>[] parameterTypes = putMethod.getParameterTypes();
+            if (parameterTypes.length != 2) {
+              throw new IllegalStateException("Expected two parameters for put method: " + putMethod);
+            }
+            return parameterTypes[1];
+          }
+        }
+        throw new IllegalStateException("Unsupported value type: " + valueField.getJavaType());
+      };
+
+      private Class<?> getMapEntryKeyType(Class<?> messageBuilderClass, Descriptors.FieldDescriptor keyField) {
+        switch (keyField.getJavaType()) {
+          case INT:
+            return int.class;
+          case LONG:
+            return long.class;
+          case FLOAT:
+            return float.class;
+          case DOUBLE:
+            return double.class;
+          case BOOLEAN:
+            return boolean.class;
+          case STRING:
+            return String.class;
+          default:
+            throw new IllegalStateException("Unsupported key type: " + keyField.getJavaType());
+        }
       }
 
       private ParentValueContainer generatePvc(
@@ -3327,7 +3642,119 @@ public class ByteBuddyCodeGen {
         if (!fieldDescriptor.isMapField() && !(parentBuilder instanceof MapEntry.Builder)) {
           return getRegularFieldPvc(parentBuilder, fieldDescriptor, valueType);
         }
-        return getDefaultPvc((Message.Builder) parentBuilder, fieldDescriptor, valueType);
+        return getMapFieldPvc(parentBuilder, fieldDescriptor, valueType);
+//         return getDefaultPvc((Message.Builder) parentBuilder, fieldDescriptor, valueType);
+      }
+
+      private ParentValueContainer getMapFieldPvc(Object parentBuilder, Descriptors.FieldDescriptor fieldDescriptor, Class<?> mapBuilderType) {
+        return new Supplier<ParentValueContainer>() {
+          private DynamicType.Builder<ParentValueContainer> classBuilder;
+
+          @Override
+          public ParentValueContainer get() {
+            Class<?> parentBuilderClass = parentBuilder.getClass();
+            String fieldNameForMethod = ReflectionUtil.getFieldNameForMethod(fieldDescriptor);
+            TypeDescription parentBuilderTypeDef = TypeDescription.ForLoadedType.of(parentBuilderClass);
+            MethodList<MethodDescription.InDefinedShape> parentBuilderMethods = parentBuilderTypeDef.getDeclaredMethods();
+            String setterPrefix = "put";
+            String setterSuffix =
+                Arrays.stream(mapBuilderType.getDeclaredMethods()).anyMatch(x -> x.getName().equals("setValueValue"))
+                ? "Value" : "";
+
+            ElementMatcher<MethodDescription> setterArgumentMatcher =
+                    ElementMatchers.takesArguments(
+                        Arrays.stream(mapBuilderType.getDeclaredMethods()).filter(x -> x.getName().equals("getKey"))
+                            .map(x -> x.getReturnType()).findFirst().get(),
+                        Arrays.stream(mapBuilderType.getDeclaredMethods()).filter(x -> x.getName().equals("getValue"))
+                            .map(x -> x.getReturnType()).findFirst().get()
+                    );
+
+            MethodDescription.InDefinedShape parentBuilderSetter =
+                parentBuilderMethods.filter(
+                    ElementMatchers.named(setterPrefix + fieldNameForMethod + setterSuffix).and(
+                        setterArgumentMatcher
+                    )
+                ).getOnly();
+
+            classBuilder = new ByteBuddy()
+                .subclass(ParentValueContainer.class)
+                .modifiers(Visibility.PUBLIC)
+                .name(ParentValueContainer.class.getName() + "$Generated$"
+                    + BYTE_BUDDY_CLASS_SEQUENCE.incrementAndGet());
+
+            TypeDescription.Generic parentBuilderType =
+                TypeDescription.Generic.OfNonGenericType.ForLoadedType.of(parentBuilderClass);
+            FieldDescription.Latent parentBuilderFieldDesc = new FieldDescription.Latent(
+                classBuilder.toTypeDescription(),
+                new FieldDescription.Token(
+                    "parent", Modifier.PRIVATE | Modifier.FINAL, parentBuilderType));
+            classBuilder = classBuilder.define(parentBuilderFieldDesc);
+
+            classBuilder = classBuilder
+                .define(new MethodDescription.Latent(
+                    classBuilder.toTypeDescription(),
+                    new MethodDescription.Token(
+                        MethodDescription.CONSTRUCTOR_INTERNAL_NAME,
+                        Visibility.PUBLIC.getMask(),
+                        TypeDescription.Generic.OfNonGenericType.ForLoadedType.of(void.class),
+                        Collections.singletonList(parentBuilderType))))
+                .intercept(MethodCall.invoke(ReflectionUtil.getConstructor(
+                        ParentValueContainer.class))
+                    .andThen(new Implementations() {
+                      {
+                        CodeGenUtils.LocalVars localVars = new CodeGenUtils.LocalVars();
+                        try (LocalVar thisLocalVar =
+                                 localVars.register(classBuilder.toTypeDescription())) {
+                          try (LocalVar parentVar = localVars.register(parentBuilderClass)) {
+                            add(
+                                MethodVariableAccess.loadThis(),
+                                parentVar.load(),
+                                FieldAccess.forField(parentBuilderFieldDesc)
+                                    .write());
+                          }
+                        }
+                        add(Codegen.returnVoid());
+                      }
+                    }));
+
+            String pvcMethodNameSuffix = "";
+
+            classBuilder = classBuilder
+                .method(ElementMatchers.named("add" + pvcMethodNameSuffix))
+                .intercept(new Implementations() {
+                  {
+                    CodeGenUtils.LocalVars localVars = new CodeGenUtils.LocalVars();
+                    try (LocalVar thisLocalVar =
+                             localVars.register(classBuilder.toTypeDescription())) {
+                      try (LocalVar valueVar = localVars.register(Object.class)) {
+                        add(
+                            MethodVariableAccess.loadThis(),
+                            FieldAccess.forField(parentBuilderFieldDesc)
+                                .read(),
+                            valueVar.load(),
+                            TypeCasting.to(TypeDescription.ForLoadedType.of(mapBuilderType)),
+                            Codegen.invokeMethod(ReflectionUtil.getDeclaredMethod(mapBuilderType, "getKey")),
+                            valueVar.load(),
+                            TypeCasting.to(TypeDescription.ForLoadedType.of(mapBuilderType)),
+                            Codegen.invokeMethod(ReflectionUtil.getDeclaredMethod(mapBuilderType, "getValue")),
+                            MethodInvocation.invoke(parentBuilderSetter),
+                            valueVar.load(),
+                            TypeCasting.to(TypeDescription.ForLoadedType.of(mapBuilderType)),
+                            Codegen.invokeMethod(ReflectionUtil.getDeclaredMethod(mapBuilderType, "clear")));
+                        add(Codegen.returnVoid());
+                      }
+                    }
+                  }
+                });
+
+            DynamicType.Unloaded<ParentValueContainer> unloaded = classBuilder.make();
+            Class<? extends ParentValueContainer> pvcClass = unloaded.load(
+                    mapBuilderType.getClassLoader(), ClassLoadingStrategy.Default.WRAPPER)
+                .getLoaded();
+            return ReflectionUtil.newInstance(
+                ReflectionUtil.getConstructor(pvcClass, parentBuilderClass), parentBuilder);
+          }
+        }.get();
       }
 
       private ParentValueContainer getRegularFieldPvc(Object parentBuilder,
@@ -3463,7 +3890,7 @@ public class ByteBuddyCodeGen {
 
             DynamicType.Unloaded<ParentValueContainer> unloaded = classBuilder.make();
             Class<? extends ParentValueContainer> pvcClass = unloaded.load(
-                    this.getClass().getClassLoader(), ClassLoadingStrategy.Default.WRAPPER)
+                    parentBuilderClass.getClassLoader(), ClassLoadingStrategy.Default.WRAPPER)
                 .getLoaded();
             return ReflectionUtil.newInstance(
                 ReflectionUtil.getConstructor(pvcClass, parentBuilderClass), parentBuilder);
