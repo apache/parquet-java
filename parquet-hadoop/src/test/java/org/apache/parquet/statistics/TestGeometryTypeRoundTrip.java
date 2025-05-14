@@ -220,8 +220,7 @@ public class TestGeometryTypeRoundTrip {
       // The key verification - when invalid geometry data is present,
       // geospatial statistics should omit the invalid data
       GeospatialStatistics geospatialStatistics = columnChunkMetaData.getGeospatialStatistics();
-      Assert.assertNotNull(
-          "Geospatial statistics should omit the corrupt geometry", geospatialStatistics);
+      Assert.assertNotNull("Geospatial statistics should omit the corrupt geometry", geospatialStatistics);
 
       // Column index should still be readable, even if geometry-specific stats aren't present
       ColumnIndex columnIndex = reader.readColumnIndex(columnChunkMetaData);
