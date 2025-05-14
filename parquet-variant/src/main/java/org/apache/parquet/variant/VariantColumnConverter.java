@@ -25,7 +25,7 @@ import org.apache.parquet.schema.GroupType;
  * Converter for shredded Variant values. Connectors should implement the addVariant method, similar to
  * the add* methods on PrimitiveConverter.
  */
-public abstract class VariantColumnConverter extends VariantElementConverter {
+public abstract class VariantColumnConverter extends VariantConverters.VariantElementConverter {
 
   private int topLevelMetadataIdx = -1;
 
@@ -33,7 +33,7 @@ public abstract class VariantColumnConverter extends VariantElementConverter {
     super(variantSchema);
 
     this.topLevelMetadataIdx = variantSchema.getFieldIndex("metadata");
-    converters[topLevelMetadataIdx] = new VariantMetadataConverter();
+    converters[topLevelMetadataIdx] = new VariantConverters.VariantMetadataConverter();
     holder = new VariantBuilderTopLevelHolder();
     init(holder);
   }
