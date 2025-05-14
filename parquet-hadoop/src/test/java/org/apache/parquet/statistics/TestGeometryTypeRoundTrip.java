@@ -170,7 +170,7 @@ public class TestGeometryTypeRoundTrip {
   }
 
   @Test
-  public void testInvalidGeometryInvalidatesStatistics() throws Exception {
+  public void testInvalidGeometryPresented() throws Exception {
     GeometryFactory geomFactory = new GeometryFactory();
     WKBWriter wkbWriter = new WKBWriter();
 
@@ -218,10 +218,10 @@ public class TestGeometryTypeRoundTrip {
       Assert.assertNotNull(columnChunkMetaData);
 
       // The key verification - when invalid geometry data is present,
-      // geospatial statistics should be null (not written to the file)
+      // geospatial statistics should omit the invalid data
       GeospatialStatistics geospatialStatistics = columnChunkMetaData.getGeospatialStatistics();
-      Assert.assertNull(
-          "Geospatial statistics should be null when corrupt geometry is present", geospatialStatistics);
+      Assert.assertNotNull(
+          "Geospatial statistics should omit the corrupt geometry", geospatialStatistics);
 
       // Column index should still be readable, even if geometry-specific stats aren't present
       ColumnIndex columnIndex = reader.readColumnIndex(columnChunkMetaData);
