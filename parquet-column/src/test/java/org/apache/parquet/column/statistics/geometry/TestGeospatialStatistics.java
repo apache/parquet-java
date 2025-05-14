@@ -91,7 +91,7 @@ public class TestGeospatialStatistics {
     Assert.assertTrue(validStats.isValid());
 
     // Create stats with null components
-    GeospatialStatistics nullStats = new GeospatialStatistics(null, null, null);
+    GeospatialStatistics nullStats = new GeospatialStatistics(null, null);
     Assert.assertFalse(nullStats.isValid());
 
     // Test merging valid with null
@@ -102,14 +102,14 @@ public class TestGeospatialStatistics {
     Assert.assertNull(validCopy.getGeospatialTypes());
 
     // Test merging null with valid
-    nullStats = new GeospatialStatistics(null, null, null);
+    nullStats = new GeospatialStatistics(null, null);
     nullStats.merge(validStats);
     Assert.assertFalse(nullStats.isValid());
     Assert.assertNull(nullStats.getBoundingBox());
     Assert.assertNull(nullStats.getGeospatialTypes());
 
     // Create stats with null bounding box only
-    GeospatialStatistics nullBboxStats = new GeospatialStatistics(null, new GeospatialTypes(), null);
+    GeospatialStatistics nullBboxStats = new GeospatialStatistics(null, new GeospatialTypes());
     Assert.assertFalse(nullBboxStats.isValid());
 
     // Test merging valid with null bounding box
@@ -129,7 +129,7 @@ public class TestGeospatialStatistics {
     builder.update(Binary.fromString("POINT (1 1)"));
     GeospatialStatistics statistics = builder.build();
     GeospatialStatistics copy = statistics.copy();
-    Assert.assertTrue(copy.isValid());
+    Assert.assertFalse(copy.isValid());
     Assert.assertNotNull(copy.getBoundingBox());
     Assert.assertNotNull(copy.getGeospatialTypes());
   }

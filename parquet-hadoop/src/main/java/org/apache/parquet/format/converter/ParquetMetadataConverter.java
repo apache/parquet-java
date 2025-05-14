@@ -995,11 +995,11 @@ public class ParquetMetadataConverter {
     if (logicalType instanceof LogicalTypeAnnotation.GeometryLogicalTypeAnnotation) {
       LogicalTypeAnnotation.GeometryLogicalTypeAnnotation geometryLogicalType =
           (LogicalTypeAnnotation.GeometryLogicalTypeAnnotation) logicalType;
-      return new org.apache.parquet.column.statistics.geometry.GeospatialStatistics(bbox, geospatialTypes, null);
+      return new org.apache.parquet.column.statistics.geometry.GeospatialStatistics(bbox, geospatialTypes);
     }
     return new org.apache.parquet.column.statistics.geometry.GeospatialStatistics(
         // this case should not happen in normal cases
-        bbox, geospatialTypes, null);
+        bbox, geospatialTypes);
   }
 
   /**

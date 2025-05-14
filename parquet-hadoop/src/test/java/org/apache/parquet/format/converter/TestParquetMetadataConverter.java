@@ -1825,7 +1825,7 @@ public class TestParquetMetadataConverter {
 
     // Create GeospatialStatistics with the bbox and types
     org.apache.parquet.column.statistics.geometry.GeospatialStatistics origStats =
-        new org.apache.parquet.column.statistics.geometry.GeospatialStatistics(bbox, geospatialTypes, null);
+        new org.apache.parquet.column.statistics.geometry.GeospatialStatistics(bbox, geospatialTypes);
 
     // Convert to Thrift format
     GeospatialStatistics thriftStats = converter.toParquetGeospatialStatistics(origStats);
@@ -1894,7 +1894,7 @@ public class TestParquetMetadataConverter {
     Set<Integer> types = new HashSet<>(Arrays.asList(1, 2, 3));
     GeospatialTypes geospatialTypes = new GeospatialTypes(types);
     org.apache.parquet.column.statistics.geometry.GeospatialStatistics origStats =
-        new org.apache.parquet.column.statistics.geometry.GeospatialStatistics(null, geospatialTypes, null);
+        new org.apache.parquet.column.statistics.geometry.GeospatialStatistics(null, geospatialTypes);
 
     // Convert to Thrift format
     GeospatialStatistics thriftStats = converter.toParquetGeospatialStatistics(origStats);
@@ -1936,7 +1936,7 @@ public class TestParquetMetadataConverter {
             8.0);
 
     org.apache.parquet.column.statistics.geometry.GeospatialStatistics origStats =
-        new org.apache.parquet.column.statistics.geometry.GeospatialStatistics(invalidBbox, null, null);
+        new org.apache.parquet.column.statistics.geometry.GeospatialStatistics(invalidBbox, null);
 
     // Convert to Thrift format - should return null for invalid bbox
     GeospatialStatistics thriftStats = converter.toParquetGeospatialStatistics(origStats);
