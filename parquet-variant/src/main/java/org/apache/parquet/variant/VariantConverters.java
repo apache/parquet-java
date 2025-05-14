@@ -243,8 +243,8 @@ class VariantConverters {
       } else if (variantValue != null) {
         // There is only a value.
         getBuilder().appendEncodedValue(variantValue.toByteBuffer());
-      } else if (objectFieldName != null) {
-        // There was no value or typed value. If this is an array or top-level value, the caller appends null.
+      } else {
+        // There was no value or typed value. Tell the caller that we didn't add anything.
         return false;
       }
       return true;
