@@ -821,12 +821,12 @@ public class ParquetMetadataConverter {
     formatBbox.setYmin(bbox.getYMin());
     formatBbox.setYmax(bbox.getYMax());
 
-    if (bbox.isZValid()) {
+    if (bbox.isZValid() && !bbox.isZEmpty()) {
       formatBbox.setZmin(bbox.getZMin());
       formatBbox.setZmax(bbox.getZMax());
     }
 
-    if (bbox.isMValid()) {
+    if (bbox.isMValid() && !bbox.isMEmpty()) {
       formatBbox.setMmin(bbox.getMMin());
       formatBbox.setMmax(bbox.getMMax());
     }
@@ -946,22 +946,29 @@ public class ParquetMetadataConverter {
     }
 
     GeospatialStatistics formatStats = new GeospatialStatistics();
+    boolean isBoundingBoxSet = false;
+    boolean isGeometryTypes = false;
 
-    if (geospatialStatistics.getBoundingBox() != null) {
-      if (!geospatialStatistics.getBoundingBox().isValid()) {
-        return null;
-      }
-      if (geospatialStatistics.getBoundingBox().isXYEmpty()) {
-        return null;
-      }
+    if (geospatialStatistics.getBoundingBox() != null
+        && geospatialStatistics.getBoundingBox().isValid()
+        && !geospatialStatistics.getBoundingBox().isXYEmpty()) {
       formatStats.setBbox(toParquetBoundingBox(geospatialStatistics.getBoundingBox()));
+      isBoundingBoxSet = true;
     }
 
-    if (geospatialStatistics.getGeospatialTypes() != null) {
+    if (geospatialStatistics.getGeospatialTypes() != null
+        && geospatialStatistics.getGeospatialTypes().isValid()) {
       List<Integer> geometryTypes =
           new ArrayList<>(geospatialStatistics.getGeospatialTypes().getTypes());
-      Collections.sort(geometryTypes);
-      formatStats.setGeospatial_types(geometryTypes);
+      if (!geometryTypes.isEmpty()) {
+        Collections.sort(geometryTypes);
+        formatStats.setGeospatial_types(geometryTypes);
+        isGeometryTypes = true;
+      }
+    }
+
+    if (!isBoundingBoxSet && !isGeometryTypes) {
+      return null;
     }
 
     return formatStats;
@@ -1277,7 +1284,7 @@ public class ParquetMetadataConverter {
         return LogicalTypeAnnotation.bsonType();
       default:
         throw new RuntimeException(
-            "Can't convert converted type t o logical type, unknown converted type " + type);
+            "Can't convert converted type to logical type, unknown converted type " + type);
     }
   }
 
@@ -2512,7 +2519,6 @@ public class ParquetMetadataConverter {
     if (defLevelHistogram != null && !defLevelHistogram.isEmpty()) {
       parquetColumnIndex.setDefinition_level_histograms(defLevelHistogram);
     }
-
     return parquetColumnIndex;
   }
 

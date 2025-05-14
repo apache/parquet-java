@@ -393,7 +393,7 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
         sizeStatistics = null;
       }
 
-      totalGeospatialStatistics.mergeStatistics(geospatialStatistics);
+      totalGeospatialStatistics.merge(geospatialStatistics);
 
       if (totalStatistics != null && totalStatistics.isEmpty()) {
         return;

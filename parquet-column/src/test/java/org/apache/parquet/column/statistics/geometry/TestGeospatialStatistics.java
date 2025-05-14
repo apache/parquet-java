@@ -129,7 +129,7 @@ public class TestGeospatialStatistics {
     builder.update(Binary.fromString("POINT (1 1)"));
     GeospatialStatistics statistics = builder.build();
     GeospatialStatistics copy = statistics.copy();
-    Assert.assertFalse(copy.isValid());
+    Assert.assertTrue(copy.isValid());
     Assert.assertNotNull(copy.getBoundingBox());
     Assert.assertNotNull(copy.getGeospatialTypes());
   }

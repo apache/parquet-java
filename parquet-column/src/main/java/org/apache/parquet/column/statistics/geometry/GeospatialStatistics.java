@@ -18,7 +18,6 @@
  */
 package org.apache.parquet.column.statistics.geometry;
 
-import org.apache.parquet.Preconditions;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.PrimitiveType;
@@ -38,23 +37,6 @@ public class GeospatialStatistics {
   // Metadata that may impact the statistics calculation
   private BoundingBox boundingBox;
   private GeospatialTypes geospatialTypes;
-
-  /**
-   * Merge the statistics from another GeospatialStatistics object.
-   *
-   * @param other the other GeospatialStatistics object
-   */
-  public void mergeStatistics(GeospatialStatistics other) {
-    if (other == null) {
-      return;
-    }
-    if (this.boundingBox != null && other.boundingBox != null) {
-      this.boundingBox.merge(other.boundingBox);
-    }
-    if (this.geospatialTypes != null && other.geospatialTypes != null) {
-      this.geospatialTypes.merge(other.geospatialTypes);
-    }
-  }
 
   /**
    * Builder to create a GeospatialStatistics.
@@ -170,28 +152,28 @@ public class GeospatialStatistics {
     if (boundingBox == null || geospatialTypes == null) {
       return false;
     }
-    return boundingBox.isValid() && geospatialTypes.isValid();
+    return (boundingBox != null && boundingBox.isValid()) || (geospatialTypes != null && geospatialTypes.isValid());
   }
 
   public void merge(GeospatialStatistics other) {
-    Preconditions.checkArgument(other != null, "Cannot merge with null GeometryStatistics");
-
-    // If other bounding box is null or invalid, set this as null
-    if (boundingBox == null || other.boundingBox == null) {
-      boundingBox = null;
+    if (other == this) {
+      abort();
     }
 
     if (boundingBox != null) {
       boundingBox.merge(other.boundingBox);
     }
-
-    // If other geosptialTypes is null or invalid, set this as null
-    if (geospatialTypes == null || other.geospatialTypes == null) {
-      geospatialTypes = null;
-    }
-
     if (geospatialTypes != null) {
       geospatialTypes.merge(other.geospatialTypes);
+    }
+  }
+
+  private void abort() {
+    if (boundingBox != null) {
+      boundingBox.abort();
+    }
+    if (geospatialTypes != null) {
+      geospatialTypes.abort();
     }
   }
 
