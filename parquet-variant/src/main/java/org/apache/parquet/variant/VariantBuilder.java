@@ -80,6 +80,11 @@ public class VariantBuilder {
     return new Variant(ByteBuffer.wrap(writeBuffer, 0, writePos), metadataBuffer);
   }
 
+  // Direct access to Metadata.
+  Metadata getMetadata() {
+    return rootBuilder.metadata;
+  }
+
   // This is used in the shredded reader to check if anything has been written to the Variant since the last call.
   // Tracking in the reader code is a bit awkward, but maybe better than polluting this interface.
   int getWritePos() {

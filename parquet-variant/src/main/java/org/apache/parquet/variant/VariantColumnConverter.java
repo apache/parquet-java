@@ -19,6 +19,7 @@
 package org.apache.parquet.variant;
 
 import java.nio.ByteBuffer;
+import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.GroupType;
 
 /**
@@ -28,14 +29,21 @@ import org.apache.parquet.schema.GroupType;
 public abstract class VariantColumnConverter extends VariantConverters.VariantElementConverter {
 
   private int topLevelMetadataIdx = -1;
+  VariantBuilder builder = null;
+  // We try to reuse metadata across rows, so track it outside of the builder.
+  Metadata immutableMetadata = null;
+  Binary metadata = null;
 
   public VariantColumnConverter(GroupType variantSchema) {
-    super(variantSchema);
+    super(null, variantSchema);
 
     this.topLevelMetadataIdx = variantSchema.getFieldIndex("metadata");
-    converters[topLevelMetadataIdx] = new VariantConverters.VariantMetadataConverter();
-    holder = new VariantBuilderTopLevelHolder();
-    init(holder);
+    converters[topLevelMetadataIdx] = new VariantConverters.VariantMetadataConverter(this);
+  }
+
+  @Override
+  public VariantBuilder getBuilder() {
+    return this.builder;
   }
 
   /**
@@ -57,10 +65,22 @@ public abstract class VariantColumnConverter extends VariantConverters.VariantEl
   @Override
   public void end() {
     super.end();
-    ByteBuffer value = holder.builder.valueWithoutMetadata();
-    addVariant(value, holder.getMetadata().toByteBuffer());
+    ByteBuffer value = this.builder.valueWithoutMetadata();
+    addVariant(value, builder.metadata.getEncodedBuffer());
     // TODO: Don't do this. Right now, it's needed in order for getWritePos to work correctly, so we don't have
     // a stale builder in start().
-    this.holder.builder = null;
+    this.builder = null;
+  }
+
+  void setMetadata(Binary metadata) {
+    // If the metadata hasn't changed, we don't need to rebuild the map.
+    // When metadata is dictionary encoded, we could consider keeping the map
+    // around for every dictionary value, but that could be expensive, and handling adjacent
+    // rows with identical metadata should be the most common case.
+    if (this.metadata != metadata) {
+      this.metadata = metadata;
+      immutableMetadata = new ImmutableMetadata(metadata.toByteBuffer());
+    }
+    builder = new VariantBuilder(immutableMetadata);
   }
 }

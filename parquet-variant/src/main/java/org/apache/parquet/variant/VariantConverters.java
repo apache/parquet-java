@@ -69,34 +69,33 @@ class VariantConverters {
     private boolean typedValueIsObject = false;
     private int valueIdx = -1;
     private int typedValueIdx = -1;
-    protected VariantBuilderHolder holder;
     protected Converter[] converters;
 
     // The following are only used if this is an object field.
     private String objectFieldName = null;
     private int objectFieldId = -1;
-    private VariantObjectConverter parent = null;
+    private VariantConverter parent = null;
 
     // Only used if typedValueIsObject is true.
     private Set<String> shreddedObjectKeys;
 
     @Override
-    public void init(VariantBuilderHolder holder) {
-      this.holder = holder;
-      for (Converter converter : converters) {
-        if (converter != null) {
-          ((VariantConverter) converter).init(holder);
-        }
-      }
+    public VariantConverter getParent() {
+      return this.parent;
     }
 
-    public VariantElementConverter(GroupType variantSchema, String objectFieldName, VariantObjectConverter parent) {
-      this(variantSchema);
+    @Override
+    public VariantBuilder getBuilder() {
+      return this.parent.getBuilder();
+    }
+
+    public VariantElementConverter(VariantConverter parent, GroupType variantSchema, String objectFieldName) {
+      this(parent, variantSchema);
       this.objectFieldName = objectFieldName;
-      this.parent = parent;
     }
 
-    public VariantElementConverter(GroupType variantSchema) {
+    public VariantElementConverter(VariantConverter parent, GroupType variantSchema) {
+      this.parent = parent;
       converters = new Converter[variantSchema.getFieldCount()];
 
       List<Type> fields = variantSchema.getFields();
@@ -123,17 +122,17 @@ class VariantConverters {
         Type field = fields.get(typedValueIdx);
         LogicalTypeAnnotation annotation = field.getLogicalTypeAnnotation();
         if (annotation instanceof LogicalTypeAnnotation.ListLogicalTypeAnnotation) {
-          typedConverter = new VariantArrayConverter(field.asGroupType());
+          typedConverter = new VariantArrayConverter(this, field.asGroupType());
         } else if (!field.isPrimitive()) {
           GroupType typedValue = field.asGroupType();
-          typedConverter = new VariantObjectConverter(typedValue);
+          typedConverter = new VariantObjectConverter(this, typedValue);
           typedValueIsObject = true;
           shreddedObjectKeys = new HashSet<>();
           for (Type f : typedValue.getFields()) {
             shreddedObjectKeys.add(f.getName());
           }
         } else {
-          typedConverter = ShreddedScalarConverter.create(field.asPrimitiveType());
+          typedConverter = ShreddedScalarConverter.create(this, field.asPrimitiveType());
         }
 
         converters[typedValueIdx] = typedConverter;
@@ -154,22 +153,22 @@ class VariantConverters {
         // Having a non-null element does not guarantee that we actually want to add this field, because
         // if value and typed_value are both null, it's a missing field. In that case, we'll detect it
         // in end() and reverse our decision to add this key.
-        ((VariantObjectBuilder) holder.builder).appendKey(objectFieldName);
+        ((VariantObjectBuilder) getBuilder()).appendKey(objectFieldName);
       }
       if (valueIdx >= 0) {
         ((VariantValueConverter) converters[valueIdx]).reset();
       }
       // TODO: This should all eventually go away, I hope.
-      if (holder.builder == null) {
+      if (getBuilder() == null) {
         startWritePos = 0;
       } else {
-        startWritePos = holder.builder.getWritePos();
+        startWritePos = getBuilder().getWritePos();
       }
     }
 
     @Override
     public void end() {
-      VariantBuilder builder = this.holder.builder;
+      VariantBuilder builder = getBuilder();
 
       Binary variantValue = null;
       VariantObjectBuilder objectBuilder = null;
@@ -177,7 +176,7 @@ class VariantConverters {
         // Get the builder that the child typed_value has been adding its fields to. We need to possibly add
         // more values from the `value` field, then finalize. If the value was not an object, fields will be
         // null.
-        objectBuilder = ((VariantObjectConverter) converters[typedValueIdx]).getObjectBuilder();
+        objectBuilder = ((VariantObjectConverter) converters[typedValueIdx]).consumeObjectBuilder();
       }
 
       // If objectBuilder is non-null, then we have a partially complete object ready to write.
@@ -194,7 +193,8 @@ class VariantConverters {
         } else {
           // Both value and typed_value were non-null. This is only valid for an object.
           Variant value = new Variant(
-              variantValue.toByteBuffer(), this.holder.topLevelHolder.metadata.toByteBuffer());
+              variantValue.toByteBuffer(),
+              getBuilder().getMetadata().getEncodedBuffer());
           Variant.Type basicType = value.getType();
           if (hasTypedValue && basicType != Variant.Type.OBJECT) {
             throw new IllegalArgumentException("Invalid variant, conflicting value and typed_value");
@@ -226,7 +226,7 @@ class VariantConverters {
         // There was no value or typed_value.
         if (objectFieldName != null) {
           // Missing field.
-          ((VariantObjectBuilder) this.holder.builder).dropLastKey();
+          ((VariantObjectBuilder) getBuilder()).dropLastKey();
         } else {
           // For arrays and top-level fields, the spec considers this invalid, but recommends using
           // VariantNull.
@@ -241,21 +241,27 @@ class VariantConverters {
    * so that it can be used by the typed_value converter on the same row.
    */
   static class VariantMetadataConverter extends PrimitiveConverter implements VariantConverter {
-    private VariantBuilderTopLevelHolder builder;
+    private VariantColumnConverter parent;
     Binary[] dict;
 
-    public VariantMetadataConverter() {
+    public VariantMetadataConverter(VariantColumnConverter parent) {
       dict = null;
+      this.parent = parent;
     }
 
     @Override
-    public void init(VariantBuilderHolder builderHolder) {
-      builder = (VariantBuilderTopLevelHolder) builderHolder;
+    public VariantConverter getParent() {
+      return parent;
+    }
+
+    @Override
+    public VariantBuilder getBuilder() {
+      return null;
     }
 
     @Override
     public void addBinary(Binary value) {
-      builder.setMetadata(value);
+      parent.setMetadata(value);
     }
 
     @Override
@@ -273,7 +279,7 @@ class VariantConverters {
 
     @Override
     public void addValueFromDictionary(int dictionaryId) {
-      builder.setMetadata(dict[dictionaryId]);
+      parent.setMetadata(dict[dictionaryId]);
     }
   }
 
@@ -284,14 +290,21 @@ class VariantConverters {
     Binary[] dict;
     Binary currentValue;
 
+    @Override
+    public VariantConverter getParent() {
+      return parent;
+    }
+
+    @Override
+    public VariantBuilder getBuilder() {
+      return parent.getBuilder();
+    }
+
     public VariantValueConverter(VariantElementConverter parent) {
       this.parent = parent;
       this.currentValue = null;
       dict = null;
     }
-
-    @Override
-    public void init(VariantBuilderHolder builderHolder) {}
 
     void reset() {
       currentValue = null;
@@ -327,21 +340,29 @@ class VariantConverters {
 
   // Base class for converting primitive typed_value fields.
   static class ShreddedScalarConverter extends PrimitiveConverter implements VariantConverter {
-    protected VariantBuilderHolder builder;
-    private GroupType scalarType;
+    protected VariantConverter parent;
+
+    ShreddedScalarConverter(VariantConverter parent) {
+      this.parent = parent;
+    }
 
     @Override
-    public void init(VariantBuilderHolder builderHolder) {
-      builder = builderHolder;
+    public VariantConverter getParent() {
+      return parent;
+    }
+
+    @Override
+    public VariantBuilder getBuilder() {
+      return parent.getBuilder();
     }
 
     // Return an appropriate converter for the given Parquet type.
-    static ShreddedScalarConverter create(PrimitiveType primitive) {
+    static ShreddedScalarConverter create(VariantConverter parent, PrimitiveType primitive) {
       ShreddedScalarConverter typedConverter = null;
       LogicalTypeAnnotation annotation = primitive.getLogicalTypeAnnotation();
       PrimitiveType.PrimitiveTypeName primitiveType = primitive.getPrimitiveTypeName();
       if (primitiveType == BOOLEAN) {
-        typedConverter = new VariantBooleanConverter();
+        typedConverter = new VariantBooleanConverter(parent);
       } else if (annotation instanceof LogicalTypeAnnotation.IntLogicalTypeAnnotation) {
         LogicalTypeAnnotation.IntLogicalTypeAnnotation intAnnotation =
             (LogicalTypeAnnotation.IntLogicalTypeAnnotation) annotation;
@@ -350,30 +371,30 @@ class VariantConverters {
         }
         int width = intAnnotation.getBitWidth();
         if (width == 8) {
-          typedConverter = new VariantByteConverter();
+          typedConverter = new VariantByteConverter(parent);
         } else if (width == 16) {
-          typedConverter = new VariantShortConverter();
+          typedConverter = new VariantShortConverter(parent);
         } else if (width == 32) {
-          typedConverter = new VariantIntConverter();
+          typedConverter = new VariantIntConverter(parent);
         } else if (width == 64) {
-          typedConverter = new VariantLongConverter();
+          typedConverter = new VariantLongConverter(parent);
         } else {
           throw new UnsupportedOperationException("Unsupported shredded value type: " + intAnnotation);
         }
       } else if (annotation == null && primitiveType == INT32) {
-        typedConverter = new VariantIntConverter();
+        typedConverter = new VariantIntConverter(parent);
       } else if (annotation == null && primitiveType == INT64) {
-        typedConverter = new VariantLongConverter();
+        typedConverter = new VariantLongConverter(parent);
       } else if (primitiveType == FLOAT) {
-        typedConverter = new VariantFloatConverter();
+        typedConverter = new VariantFloatConverter(parent);
       } else if (primitiveType == DOUBLE) {
-        typedConverter = new VariantDoubleConverter();
+        typedConverter = new VariantDoubleConverter(parent);
       } else if (annotation instanceof LogicalTypeAnnotation.DecimalLogicalTypeAnnotation) {
         LogicalTypeAnnotation.DecimalLogicalTypeAnnotation decimalType =
             (LogicalTypeAnnotation.DecimalLogicalTypeAnnotation) annotation;
-        typedConverter = new VariantDecimalConverter(decimalType.getScale());
+        typedConverter = new VariantDecimalConverter(parent, decimalType.getScale());
       } else if (annotation instanceof LogicalTypeAnnotation.DateLogicalTypeAnnotation) {
-        typedConverter = new VariantDateConverter();
+        typedConverter = new VariantDateConverter(parent);
       } else if (annotation instanceof LogicalTypeAnnotation.TimestampLogicalTypeAnnotation) {
         LogicalTypeAnnotation.TimestampLogicalTypeAnnotation timestampType =
             (LogicalTypeAnnotation.TimestampLogicalTypeAnnotation) annotation;
@@ -382,10 +403,10 @@ class VariantConverters {
             case MILLIS:
               throw new UnsupportedOperationException("MILLIS not supported by Variant");
             case MICROS:
-              typedConverter = new VariantTimestampConverter();
+              typedConverter = new VariantTimestampConverter(parent);
               break;
             case NANOS:
-              typedConverter = new VariantTimestampNanosConverter();
+              typedConverter = new VariantTimestampNanosConverter(parent);
               break;
           }
         } else {
@@ -393,10 +414,10 @@ class VariantConverters {
             case MILLIS:
               throw new UnsupportedOperationException("MILLIS not supported by Variant");
             case MICROS:
-              typedConverter = new VariantTimestampNtzConverter();
+              typedConverter = new VariantTimestampNtzConverter(parent);
               break;
             case NANOS:
-              typedConverter = new VariantTimestampNanosNtzConverter();
+              typedConverter = new VariantTimestampNanosNtzConverter(parent);
               break;
           }
         }
@@ -406,14 +427,14 @@ class VariantConverters {
         if (timeType.isAdjustedToUTC() || timeType.getUnit() != MICROS) {
           throw new UnsupportedOperationException(timeType + " not supported by Variant");
         } else {
-          typedConverter = new VariantTimeConverter();
+          typedConverter = new VariantTimeConverter(parent);
         }
       } else if (annotation instanceof LogicalTypeAnnotation.UUIDLogicalTypeAnnotation) {
-        typedConverter = new VariantUUIDConverter();
+        typedConverter = new VariantUUIDConverter(parent);
       } else if (annotation instanceof LogicalTypeAnnotation.StringLogicalTypeAnnotation) {
-        typedConverter = new VariantStringConverter();
+        typedConverter = new VariantStringConverter(parent);
       } else if (primitiveType == BINARY) {
-        typedConverter = new VariantBinaryConverter();
+        typedConverter = new VariantBinaryConverter(parent);
       } else {
         throw new UnsupportedOperationException("Unsupported shredded value type: " + primitive);
       }
@@ -422,140 +443,204 @@ class VariantConverters {
   }
 
   static class VariantStringConverter extends ShreddedScalarConverter {
+    VariantStringConverter(VariantConverter parent) {
+      super(parent);
+    }
+
     @Override
     public void addBinary(Binary value) {
-      builder.builder.appendString(value.toStringUsingUTF8());
+      getBuilder().appendString(value.toStringUsingUTF8());
     }
   }
 
   static class VariantBinaryConverter extends ShreddedScalarConverter {
+    VariantBinaryConverter(VariantConverter parent) {
+      super(parent);
+    }
+
     @Override
     public void addBinary(Binary value) {
-      builder.builder.appendBinary(value.toByteBuffer());
+      getBuilder().appendBinary(value.toByteBuffer());
     }
   }
 
   static class VariantDecimalConverter extends ShreddedScalarConverter {
     private int scale;
 
-    VariantDecimalConverter(int scale) {
-      super();
+    VariantDecimalConverter(VariantConverter parent, int scale) {
+      super(parent);
       this.scale = scale;
     }
 
     @Override
     public void addBinary(Binary value) {
-      builder.builder.appendDecimal(new BigDecimal(new BigInteger(value.getBytes()), scale));
+      getBuilder().appendDecimal(new BigDecimal(new BigInteger(value.getBytes()), scale));
     }
 
     @Override
     public void addLong(long value) {
       BigDecimal decimal = BigDecimal.valueOf(value, scale);
-      builder.builder.appendDecimal(decimal);
+      getBuilder().appendDecimal(decimal);
     }
 
     @Override
     public void addInt(int value) {
       BigDecimal decimal = BigDecimal.valueOf(value, scale);
-      builder.builder.appendDecimal(decimal);
+      getBuilder().appendDecimal(decimal);
     }
   }
 
   static class VariantUUIDConverter extends ShreddedScalarConverter {
+    VariantUUIDConverter(VariantConverter parent) {
+      super(parent);
+    }
+
     @Override
     public void addBinary(Binary value) {
-      builder.builder.appendUUIDBytes(value.toByteBuffer());
+      getBuilder().appendUUIDBytes(value.toByteBuffer());
     }
   }
 
   static class VariantBooleanConverter extends ShreddedScalarConverter {
+    VariantBooleanConverter(VariantConverter parent) {
+      super(parent);
+    }
+
     @Override
     public void addBoolean(boolean value) {
-      builder.builder.appendBoolean(value);
+      getBuilder().appendBoolean(value);
     }
   }
 
   static class VariantDoubleConverter extends ShreddedScalarConverter {
+    VariantDoubleConverter(VariantConverter parent) {
+      super(parent);
+    }
+
     @Override
     public void addDouble(double value) {
-      builder.builder.appendDouble(value);
+      getBuilder().appendDouble(value);
     }
   }
 
   static class VariantFloatConverter extends ShreddedScalarConverter {
+    VariantFloatConverter(VariantConverter parent) {
+      super(parent);
+    }
+
     @Override
     public void addFloat(float value) {
-      builder.builder.appendFloat(value);
+      getBuilder().appendFloat(value);
     }
   }
 
   static class VariantByteConverter extends ShreddedScalarConverter {
+    VariantByteConverter(VariantConverter parent) {
+      super(parent);
+    }
+
     @Override
     public void addInt(int value) {
-      builder.builder.appendByte((byte) value);
+      getBuilder().appendByte((byte) value);
     }
   }
 
   static class VariantShortConverter extends ShreddedScalarConverter {
+    VariantShortConverter(VariantConverter parent) {
+      super(parent);
+    }
+
     @Override
     public void addInt(int value) {
-      builder.builder.appendShort((short) value);
+      getBuilder().appendShort((short) value);
     }
   }
 
   static class VariantIntConverter extends ShreddedScalarConverter {
+    VariantIntConverter(VariantConverter parent) {
+      super(parent);
+    }
+
     @Override
     public void addInt(int value) {
-      builder.builder.appendInt(value);
+      getBuilder().appendInt(value);
     }
   }
 
   static class VariantLongConverter extends ShreddedScalarConverter {
+    VariantLongConverter(VariantConverter parent) {
+      super(parent);
+    }
+
     @Override
     public void addLong(long value) {
-      builder.builder.appendLong(value);
+      getBuilder().appendLong(value);
     }
   }
 
   static class VariantDateConverter extends ShreddedScalarConverter {
+    VariantDateConverter(VariantConverter parent) {
+      super(parent);
+    }
+
     @Override
     public void addInt(int value) {
-      builder.builder.appendDate(value);
+      getBuilder().appendDate(value);
     }
   }
 
   static class VariantTimeConverter extends ShreddedScalarConverter {
+    VariantTimeConverter(VariantConverter parent) {
+      super(parent);
+    }
+
     @Override
     public void addLong(long value) {
-      builder.builder.appendTime(value);
+      getBuilder().appendTime(value);
     }
   }
 
   static class VariantTimestampConverter extends ShreddedScalarConverter {
+    VariantTimestampConverter(VariantConverter parent) {
+      super(parent);
+    }
+
     @Override
     public void addLong(long value) {
-      builder.builder.appendTimestampTz(value);
+      getBuilder().appendTimestampTz(value);
     }
   }
 
   static class VariantTimestampNtzConverter extends ShreddedScalarConverter {
+    VariantTimestampNtzConverter(VariantConverter parent) {
+      super(parent);
+    }
+
     @Override
     public void addLong(long value) {
-      builder.builder.appendTimestampNtz(value);
+      getBuilder().appendTimestampNtz(value);
     }
   }
 
   static class VariantTimestampNanosConverter extends ShreddedScalarConverter {
+    VariantTimestampNanosConverter(VariantConverter parent) {
+      super(parent);
+    }
+
     @Override
     public void addLong(long value) {
-      builder.builder.appendTimestampNanosTz(value);
+      getBuilder().appendTimestampNanosTz(value);
     }
   }
 
   static class VariantTimestampNanosNtzConverter extends ShreddedScalarConverter {
+    VariantTimestampNanosNtzConverter(VariantConverter parent) {
+      super(parent);
+    }
+
     @Override
     public void addLong(long value) {
-      builder.builder.appendTimestampNanosNtz(value);
+      getBuilder().appendTimestampNanosNtz(value);
     }
   }
 
@@ -563,10 +648,12 @@ class VariantConverters {
    * Converter for a LIST typed_value.
    */
   static class VariantArrayConverter extends GroupConverter implements VariantConverter {
-    private VariantBuilderHolder builder;
+    private VariantConverter parent;
     private VariantArrayRepeatedConverter repeatedConverter;
+    private VariantBuilder arrayBuilder;
 
-    public VariantArrayConverter(GroupType listType) {
+    public VariantArrayConverter(VariantConverter parent, GroupType listType) {
+      this.parent = parent;
       if (listType.getFieldCount() != 1) {
         throw new IllegalArgumentException("LIST must have one field");
       }
@@ -576,14 +663,17 @@ class VariantConverters {
           || middleLevel.asGroupType().getFieldCount() != 1) {
         throw new IllegalArgumentException("LIST must have one repeated field");
       }
-      this.repeatedConverter = new VariantArrayRepeatedConverter(middleLevel.asGroupType(), this);
+      this.repeatedConverter = new VariantArrayRepeatedConverter(this, middleLevel.asGroupType(), this);
     }
 
     @Override
-    public void init(VariantBuilderHolder builderHolder) {
-      // Create a new builder for the array.
-      builder = new VariantBuilderHolder(builderHolder);
-      repeatedConverter.init(builder);
+    public VariantConverter getParent() {
+      return this.parent;
+    }
+
+    @Override
+    public VariantBuilder getBuilder() {
+      return arrayBuilder;
     }
 
     @Override
@@ -593,12 +683,12 @@ class VariantConverters {
 
     @Override
     public void start() {
-      builder.startNewArray();
+      arrayBuilder = getParent().getBuilder().startArray();
     }
 
     @Override
     public void end() {
-      builder.parentHolder.builder.endArray();
+      getParent().getBuilder().endArray();
     }
   }
 
@@ -607,15 +697,23 @@ class VariantConverters {
    */
   static class VariantArrayRepeatedConverter extends GroupConverter implements VariantConverter {
     private VariantElementConverter elementConverter;
+    private VariantConverter parent;
 
-    public VariantArrayRepeatedConverter(GroupType repeatedType, VariantArrayConverter parentaConverter) {
+    public VariantArrayRepeatedConverter(
+        VariantConverter parent, GroupType repeatedType, VariantArrayConverter parentaConverter) {
+      this.parent = parent;
       this.elementConverter =
-          new VariantElementConverter(repeatedType.getType(0).asGroupType());
+          new VariantElementConverter(this, repeatedType.getType(0).asGroupType());
     }
 
     @Override
-    public void init(VariantBuilderHolder builderHolder) {
-      elementConverter.init(builderHolder);
+    public VariantConverter getParent() {
+      return this.parent;
+    }
+
+    @Override
+    public VariantBuilder getBuilder() {
+      return this.parent.getBuilder();
     }
 
     @Override
@@ -631,17 +729,29 @@ class VariantConverters {
   }
 
   static class VariantObjectConverter extends GroupConverter implements VariantConverter {
-    private VariantBuilderHolder builder;
+    private VariantConverter parent;
+    private VariantObjectBuilder objectBuilder;
     private VariantElementConverter[] converters;
 
-    public VariantObjectConverter(GroupType typed_value) {
+    public VariantObjectConverter(VariantConverter parent, GroupType typed_value) {
+      this.parent = parent;
       List<Type> fields = typed_value.getFields();
       converters = new VariantElementConverter[fields.size()];
       for (int i = 0; i < fields.size(); i++) {
         GroupType field = fields.get(i).asGroupType();
         String name = fields.get(i).getName();
-        converters[i] = new VariantElementConverter(field, name, this);
+        converters[i] = new VariantElementConverter(this, field, name);
       }
+    }
+
+    @Override
+    public VariantConverter getParent() {
+      return this.parent;
+    }
+
+    @Override
+    public VariantBuilder getBuilder() {
+      return objectBuilder;
     }
 
     /**
@@ -650,19 +760,10 @@ class VariantConverters {
      *
      * @return The partially built object builder, or null if no object was constructed.
      */
-    VariantObjectBuilder getObjectBuilder() {
-      VariantObjectBuilder objectBuilder = (VariantObjectBuilder) builder.builder;
-      builder.builder = null;
+    VariantObjectBuilder consumeObjectBuilder() {
+      VariantObjectBuilder objectBuilder = this.objectBuilder;
+      this.objectBuilder = null;
       return objectBuilder;
-    }
-
-    @Override
-    public void init(VariantBuilderHolder builderHolder) {
-      // Create a new builder for the object.
-      builder = new VariantBuilderHolder(builderHolder);
-      for (VariantElementConverter c : converters) {
-        c.init(builder);
-      }
     }
 
     @Override
@@ -672,13 +773,13 @@ class VariantConverters {
 
     @Override
     public void start() {
-      builder.startNewObject();
+      objectBuilder = getParent().getBuilder().startObject();
     }
 
     @Override
     public void end() {
       // We can't finish writing the object here, because there might be residual entries in our
-      // parent's value column. The parent converter calls getObjectBuilder to finalize the object.
+      // parent's value column. The parent converter calls consumeObjectBuilder to finalize the object.
     }
   }
 }
