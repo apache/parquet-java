@@ -63,19 +63,16 @@ class VariantConverters {
    */
   static class VariantElementConverter extends GroupConverter implements VariantConverter {
 
-    // We need to remember the start position in order to tell if the child typed_value was non-null.
-    // Maybe we should just add a callback to each child's end()?
-    private int startWritePos;
-    private boolean typedValueIsObject = false;
     private int valueIdx = -1;
     private int typedValueIdx = -1;
     protected Converter[] converters;
 
     // The following are only used if this is an object field.
     private String objectFieldName = null;
-    private int objectFieldId = -1;
     private VariantConverter parent = null;
 
+    // True if typed_value is an object (i.e. non-list group).
+    private boolean typedValueIsObject = false;
     // Only used if typedValueIsObject is true.
     private Set<String> shreddedObjectKeys;
 
