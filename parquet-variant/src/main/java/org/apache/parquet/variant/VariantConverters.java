@@ -158,11 +158,9 @@ class VariantConverters {
       if (valueIdx >= 0) {
         ((VariantValueConverter) converters[valueIdx]).reset();
       }
-      // TODO: This should all eventually go away, I hope.
-      if (getBuilder() == null) {
-        startWritePos = 0;
-      } else {
-        startWritePos = getBuilder().getWritePos();
+      // We need to remember the state of the writer so that we can tell if anything was written by typed_value.
+      if (getBuilder() != null) {
+        getBuilder().markCurrentWriteState();
       }
     }
 
@@ -171,68 +169,88 @@ class VariantConverters {
       VariantBuilder builder = getBuilder();
 
       Binary variantValue = null;
-      VariantObjectBuilder objectBuilder = null;
-      if (typedValueIsObject) {
-        // Get the builder that the child typed_value has been adding its fields to. We need to possibly add
-        // more values from the `value` field, then finalize. If the value was not an object, fields will be
-        // null.
-        objectBuilder = ((VariantObjectConverter) converters[typedValueIdx]).consumeObjectBuilder();
-      }
-
-      // If objectBuilder is non-null, then we have a partially complete object ready to write.
-      // Otherwise, the typed_value converter should have written something if it was non-null.
-      boolean hasTypedValue = objectBuilder != null || (startWritePos != builder.getWritePos());
-
       if (valueIdx >= 0) {
         variantValue = ((VariantValueConverter) converters[valueIdx]).getValue();
       }
-      if (variantValue != null) {
-        if (!hasTypedValue) {
-          // Nothing else was added. We can directly append this value.
-          builder.appendEncodedValue(variantValue.toByteBuffer());
-        } else {
-          // Both value and typed_value were non-null. This is only valid for an object.
-          Variant value = new Variant(
-              variantValue.toByteBuffer(),
-              getBuilder().getMetadata().getEncodedBuffer());
-          Variant.Type basicType = value.getType();
-          if (hasTypedValue && basicType != Variant.Type.OBJECT) {
-            throw new IllegalArgumentException("Invalid variant, conflicting value and typed_value");
-          }
 
-          for (int i = 0; i < value.numObjectElements(); i++) {
-            Variant.ObjectField field = value.getFieldAtIndex(i);
-            if (shreddedObjectKeys.contains(field.key)) {
-              // Skip any field ID that is also in the typed schema. This check is needed because readers
-              // with
-              // pushdown may not look at the value column, causing inconsistent results if a writer puth
-              // a
-              // given key
-              // only in the value column when it was present in the typed_value schema.
-              // Alternatively, we could fail at this point, since the shredding is invalid according to
-              // the
-              // spec.
-              continue;
-            }
-            objectBuilder.appendKey(field.key);
-            objectBuilder.appendEncodedValue(field.value.getValueBuffer());
-          }
-          builder.endObject();
+      boolean appendedValue = false;
+      if (typedValueIsObject) {
+        appendedValue = endObject(variantValue);
+      } else {
+        appendedValue = builder.hasWriteStateChanged();
+        if (appendedValue && variantValue != null) {
+          throw new IllegalArgumentException("Invalid variant, conflicting value and typed_value");
+        } else if (variantValue != null) {
+          builder.appendEncodedValue(variantValue.toByteBuffer());
+          appendedValue = true;
         }
-      } else if (objectBuilder != null) {
-        // typed_value was an object, and there's nothing left to append.
-        builder.endObject();
-      } else if (!hasTypedValue) {
-        // There was no value or typed_value.
+      }
+
+      if (!appendedValue) {
+        // There was no value or typed_value. If this is an object field, it is missing. It is invalid for this
+        // to
+        // occur for an array element or top-level value, but the spec recommends treating it as Variant Null.
         if (objectFieldName != null) {
-          // Missing field.
-          ((VariantObjectBuilder) getBuilder()).dropLastKey();
+          ((VariantObjectBuilder) builder).dropLastKey();
         } else {
-          // For arrays and top-level fields, the spec considers this invalid, but recommends using
-          // VariantNull.
           builder.appendNull();
         }
       }
+    }
+
+    /**
+     * If typed_value was an object, append variantValue to the object.
+     * @return true if a value was appended from either value or typed_value.
+     */
+    private boolean endObject(Binary variantValue) {
+      VariantObjectBuilder objectBuilder = null;
+      // Get the builder that the child typed_value has been adding its fields to. We need to possibly add
+      // more values from the `value` field, then finalize. If the value was not an object, fields will be
+      // null.
+      objectBuilder = ((VariantObjectConverter) converters[typedValueIdx]).consumeObjectBuilder();
+
+      // If objectBuilder is non-null, then we have a partially complete object ready to write.
+      // Otherwise, the typed_value converter should have written something if it was non-null.
+      boolean hasObject = objectBuilder != null;
+
+      if (variantValue != null && hasObject) {
+        // Both value and typed_value were non-null. This is only valid for an object.
+        Variant value = new Variant(
+            variantValue.toByteBuffer(), getBuilder().getMetadata().getEncodedBuffer());
+        Variant.Type basicType = value.getType();
+        if (basicType != Variant.Type.OBJECT) {
+          throw new IllegalArgumentException("Invalid variant, conflicting value and typed_value");
+        }
+
+        for (int i = 0; i < value.numObjectElements(); i++) {
+          Variant.ObjectField field = value.getFieldAtIndex(i);
+          if (shreddedObjectKeys.contains(field.key)) {
+            // Skip any field ID that is also in the typed schema. This check is needed because readers
+            // with
+            // pushdown may not look at the value column, causing inconsistent results if a writer puth
+            // a
+            // given key
+            // only in the value column when it was present in the typed_value schema.
+            // Alternatively, we could fail at this point, since the shredding is invalid according to
+            // the
+            // spec.
+            continue;
+          }
+          objectBuilder.appendKey(field.key);
+          objectBuilder.appendEncodedValue(field.value.getValueBuffer());
+        }
+        getBuilder().endObject();
+      } else if (hasObject) {
+        // There is only a typed_value.
+        getBuilder().endObject();
+      } else if (variantValue != null) {
+        // There is only a value.
+        getBuilder().appendEncodedValue(variantValue.toByteBuffer());
+      } else if (objectFieldName != null) {
+        // There was no value or typed value. If this is an array or top-level value, the caller appends null.
+        return false;
+      }
+      return true;
     }
   }
 

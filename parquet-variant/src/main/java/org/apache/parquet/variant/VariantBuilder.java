@@ -34,6 +34,9 @@ public class VariantBuilder {
 
   protected int writePos = 0;
 
+  /** Allows callers to check if a value has been written with checkWriteState */
+  private int lastWritePosMark = 0;
+
   /** The main VariantBuilder that owns metadata (i.e. this builder for non-object/array builders */
   protected VariantBuilder rootBuilder = this;
 
@@ -85,12 +88,6 @@ public class VariantBuilder {
     return rootBuilder.metadata;
   }
 
-  // This is used in the shredded reader to check if anything has been written to the Variant since the last call.
-  // Tracking in the reader code is a bit awkward, but maybe better than polluting this interface.
-  int getWritePos() {
-    return writePos;
-  }
-
   /**
    * @return the constructed Variant value binary, without metadata.
    */
@@ -108,6 +105,20 @@ public class VariantBuilder {
     checkCapacity(size);
     value.duplicate().get(writeBuffer, writePos, size);
     writePos += size;
+  }
+
+  /** Record the current state of the writer. A later call to hasWriteStateChanged() will return true
+   *  if any values have been added since this call.
+   */
+  void markCurrentWriteState() {
+    lastWritePosMark = writePos;
+  }
+
+  /** Returns true if any values have been added since the last call to markCurrentWriteState, or
+   * since the builder was created, if markCurrentWriteState was never called.
+   */
+  boolean hasWriteStateChanged() {
+    return (writePos > lastWritePosMark);
   }
 
   /**
