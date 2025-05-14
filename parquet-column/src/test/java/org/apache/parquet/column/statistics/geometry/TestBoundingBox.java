@@ -83,7 +83,7 @@ public class TestBoundingBox {
     boundingBox.update(nanPoint);
 
     // All values should be NaN after updating with all-NaN coordinates
-    Assert.assertTrue(boundingBox.isEmpty());
+    Assert.assertTrue(boundingBox.isXYEmpty());
 
     // Reset the bounding box for the next test
     boundingBox = new BoundingBox();
@@ -93,7 +93,7 @@ public class TestBoundingBox {
     boundingBox.update(mixedPoint);
 
     // The valid X coordinate should be used, Y should remain at initial values
-    Assert.assertTrue(boundingBox.isEmpty());
+    Assert.assertTrue(boundingBox.isXYEmpty());
   }
 
   @Test
@@ -249,7 +249,7 @@ public class TestBoundingBox {
     Point nanPoint = gf.createPoint(new Coordinate(Double.NaN, Double.NaN));
     box.update(nanPoint);
 
-    Assert.assertFalse("Box should be empty after the merge", box.isEmpty());
+    Assert.assertFalse("Box should be empty after the merge", box.isXYEmpty());
     Assert.assertTrue("Box should be valid after the merge", box.isValid());
   }
 
@@ -431,7 +431,7 @@ public class TestBoundingBox {
     box3.update(gf.createLineString(coords3));
 
     // The bounding box should remain empty
-    Assert.assertTrue(box3.isEmpty());
+    Assert.assertTrue(box3.isXYEmpty());
   }
 
   @Test
@@ -458,7 +458,7 @@ public class TestBoundingBox {
         new Coordinate[] {new Coordinate(Double.NaN, 5), new Coordinate(6, Double.NaN), new Coordinate(7, 8)};
 
     box2.update(gf.createLineString(coords2));
-    Assert.assertTrue(box2.isEmpty());
+    Assert.assertTrue(box2.isXYEmpty());
   }
 
   /**
@@ -537,7 +537,7 @@ public class TestBoundingBox {
     rowGroup3.update(gf.createPoint(new Coordinate(6, Double.NaN)));
 
     // Verify Row Group 3
-    Assert.assertTrue(rowGroup3.isEmpty());
+    Assert.assertTrue(rowGroup3.isXYEmpty());
 
     // Row Group 4: [7, 8, 700, 800]
     BoundingBox rowGroup4 = new BoundingBox();
@@ -557,7 +557,7 @@ public class TestBoundingBox {
     rowGroup5.update(gf.createPoint(nanCoord));
 
     // Verify Row Group 5
-    Assert.assertTrue(rowGroup5.isEmpty());
+    Assert.assertTrue(rowGroup5.isXYEmpty());
 
     // Row Group 6: Test mixing an empty geometry with a valid point [9, 9, 900, 900]
     BoundingBox rowGroup6 = new BoundingBox();

@@ -125,7 +125,7 @@ public interface PageWriter extends AutoCloseable {
       Encoding dlEncoding,
       Encoding valuesEncoding)
       throws IOException {
-    throw new UnsupportedOperationException("writePage with SizeStatistics is not implemented");
+    throw new UnsupportedOperationException("writePage with GeospatialStatistics is not implemented");
   }
 
   /**
@@ -205,7 +205,7 @@ public interface PageWriter extends AutoCloseable {
       SizeStatistics sizeStatistics,
       GeospatialStatistics geospatialStatistics)
       throws IOException {
-    throw new UnsupportedOperationException("writePageV2 with SizeStatistics is not implemented");
+    throw new UnsupportedOperationException("writePageV2 with GeospatialStatistics is not implemented");
   }
 
   /**

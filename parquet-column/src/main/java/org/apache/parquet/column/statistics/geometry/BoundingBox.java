@@ -46,6 +46,9 @@ public class BoundingBox {
     this.zMax = zMax;
     this.mMin = mMin;
     this.mMax = mMax;
+
+    // Update the validity
+    valid = isXYValid();
   }
 
   private void resetBBox() {
@@ -132,14 +135,31 @@ public class BoundingBox {
   }
 
   /**
-   * Checks if the bounding box is empty.
-   * A bounding box is considered empty if any X/Y dimension are in their initial state
+   * Checks if the bounding box is empty in the X / Y dimension.
    *
    * @return true if the bounding box is empty, false otherwise.
    */
-  public boolean isEmpty() {
+  public boolean isXYEmpty() {
     return (Double.isInfinite(xMin) && Double.isInfinite(xMax))
         || (Double.isInfinite(yMin) && Double.isInfinite(yMax));
+  }
+
+  /**
+   * Checks if the bounding box is empty in the Z dimension.
+   *
+   * @return true if the Z dimension is empty, false otherwise.
+   */
+  public boolean isZEmpty() {
+    return Double.isInfinite(zMin) && Double.isInfinite(zMax);
+  }
+
+  /**
+   * Checks if the bounding box is empty in the M dimension.
+   *
+   * @return true if the M dimension is empty, false otherwise.
+   */
+  public boolean isMEmpty() {
+    return Double.isInfinite(mMin) && Double.isInfinite(mMax);
   }
 
   /**
@@ -260,10 +280,29 @@ public class BoundingBox {
 
   @Override
   public String toString() {
-    return "BoundingBox{" + "xMin="
-        + xMin + ", xMax=" + xMax + ", yMin="
-        + yMin + ", yMax=" + yMax + ", zMin="
-        + zMin + ", zMax=" + zMax + ", mMin="
-        + mMin + ", mMax=" + mMax + '}';
+    StringBuilder sb = new StringBuilder("BoundingBox{xMin=")
+        .append(xMin)
+        .append(", xMax=")
+        .append(xMax)
+        .append(", yMin=")
+        .append(yMin)
+        .append(", yMax=")
+        .append(yMax)
+        .append(", zMin=")
+        .append(zMin)
+        .append(", zMax=")
+        .append(zMax)
+        .append(", mMin=")
+        .append(mMin)
+        .append(", mMax=")
+        .append(mMax);
+
+    // Only include the valid flag when it's false
+    if (!valid) {
+      sb.append(", valid=false");
+    }
+
+    sb.append('}');
+    return sb.toString();
   }
 }

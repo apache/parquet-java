@@ -32,6 +32,12 @@ public class GeospatialTypes {
 
   public GeospatialTypes(Set<Integer> types) {
     this.types = types;
+    this.valid = validateTypeValues();
+  }
+
+  public GeospatialTypes(Set<Integer> types, boolean valid) {
+    this.types = types;
+    this.valid = valid;
   }
 
   public GeospatialTypes() {}
@@ -40,7 +46,7 @@ public class GeospatialTypes {
     return types;
   }
 
-  void update(Geometry geometry) {
+  public void update(Geometry geometry) {
     if (!valid) {
       return;
     }
@@ -63,7 +69,6 @@ public class GeospatialTypes {
       return;
     }
 
-    // If other is null or invalid, mark this as invalid
     if (other == null || !other.valid) {
       valid = false;
       types.clear();
@@ -87,7 +92,73 @@ public class GeospatialTypes {
   }
 
   public GeospatialTypes copy() {
-    return new GeospatialTypes(new HashSet<>(types));
+    return new GeospatialTypes(new HashSet<>(types), valid);
+  }
+
+  /**
+   * Validates the geometry type codes in this GeospatialTypes instance.
+   * This method ensures that all type codes represent valid geometry types and dimensions.
+   *
+   * @return true if all type codes are valid, false otherwise.
+   */
+  public boolean validateTypeValues() {
+    if (!isValid()) {
+      return false;
+    }
+
+    // No types is considered valid
+    if (types.isEmpty()) {
+      return true;
+    }
+
+    for (Integer typeId : types) {
+      // Null type code is invalid
+      if (typeId == null) {
+        return false;
+      }
+
+      // Negative type codes (except UNKNOWN_TYPE_ID) are invalid
+      if (typeId < 0 && typeId != UNKNOWN_TYPE_ID) {
+        return false;
+      }
+
+      // Check for valid geometry type base codes (1-7)
+      // After removing dimension prefix: 1=Point, 2=LineString, 3=Polygon, etc.
+      int baseTypeCode = getBaseTypeCode(typeId);
+      if (baseTypeCode < 1 || baseTypeCode > 7) {
+        return false;
+      }
+
+      // Check for valid dimension prefix (0=XY, 1000=XYZ, 2000=XYM, 3000=XYZM)
+      int dimension = getDimensionPrefix(typeId);
+      if (dimension != 0 && dimension != 1000 && dimension != 2000 && dimension != 3000) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  /**
+   * Extracts the base geometry type code from a full type code.
+   * For example: 1001 (XYZ Point) -> 1 (Point)
+   *
+   * @param typeId the full geometry type code
+   * @return the base type code (1-7)
+   */
+  private int getBaseTypeCode(int typeId) {
+    return typeId % 1000;
+  }
+
+  /**
+   * Extracts the dimension prefix from a full type code.
+   * For example: 1001 (XYZ Point) -> 1000 (XYZ)
+   *
+   * @param typeId the full geometry type code
+   * @return the dimension prefix (0, 1000, 2000, or 3000)
+   */
+  private int getDimensionPrefix(int typeId) {
+    return (typeId / 1000) * 1000;
   }
 
   @Override
