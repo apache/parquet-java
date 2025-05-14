@@ -255,14 +255,13 @@ class VariantConverters {
   }
 
   /**
-   * Converter for the metadata column. It sets the current metadata in the parent converter,
-   * so that it can be used by the typed_value converter on the same row.
+   * Base class for `value` and `metadata` converters, that both return a binary.
    */
-  static class VariantMetadataConverter extends PrimitiveConverter implements VariantConverter {
-    private VariantColumnConverter parent;
+  static class BinaryConverter extends PrimitiveConverter implements VariantConverter {
+    private VariantConverter parent;
     Binary[] dict;
 
-    public VariantMetadataConverter(VariantColumnConverter parent) {
+    public BinaryConverter(VariantConverter parent) {
       dict = null;
       this.parent = parent;
     }
@@ -278,11 +277,6 @@ class VariantConverters {
     }
 
     @Override
-    public void addBinary(Binary value) {
-      parent.setMetadata(value);
-    }
-
-    @Override
     public boolean hasDictionarySupport() {
       return true;
     }
@@ -294,34 +288,36 @@ class VariantConverters {
         dict[i] = dictionary.decodeToBinary(i);
       }
     }
+  }
+  /**
+   * Converter for the metadata column. It sets the current metadata in the parent converter,
+   * so that it can be used by the typed_value converter on the same row.
+   */
+  static class VariantMetadataConverter extends BinaryConverter implements VariantConverter {
+
+    public VariantMetadataConverter(VariantColumnConverter parent) {
+      super(parent);
+    }
+
+    @Override
+    public void addBinary(Binary value) {
+      ((VariantColumnConverter) getParent()).setMetadata(value);
+    }
 
     @Override
     public void addValueFromDictionary(int dictionaryId) {
-      parent.setMetadata(dict[dictionaryId]);
+      ((VariantColumnConverter) getParent()).setMetadata(dict[dictionaryId]);
     }
   }
 
   // Converter for the `value` field. It does not append to VariantBuilder directly: it simply holds onto
   // its value for the parent converter to append.
-  static class VariantValueConverter extends PrimitiveConverter implements VariantConverter {
-    private VariantElementConverter parent;
-    Binary[] dict;
+  static class VariantValueConverter extends BinaryConverter implements VariantConverter {
     Binary currentValue;
 
-    @Override
-    public VariantConverter getParent() {
-      return parent;
-    }
-
-    @Override
-    public VariantBuilder getBuilder() {
-      return parent.getBuilder();
-    }
-
     public VariantValueConverter(VariantElementConverter parent) {
-      this.parent = parent;
+      super(parent);
       this.currentValue = null;
-      dict = null;
     }
 
     void reset() {
@@ -335,19 +331,6 @@ class VariantConverters {
     @Override
     public void addBinary(Binary value) {
       currentValue = value;
-    }
-
-    @Override
-    public boolean hasDictionarySupport() {
-      return true;
-    }
-
-    @Override
-    public void setDictionary(Dictionary dictionary) {
-      dict = new Binary[dictionary.getMaxId() + 1];
-      for (int i = 0; i <= dictionary.getMaxId(); i++) {
-        dict[i] = dictionary.decodeToBinary(i);
-      }
     }
 
     @Override
