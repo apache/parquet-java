@@ -158,13 +158,9 @@ public class TestGeospatialStatistics {
     byte[] invalidBytes = new byte[] {0x01, 0x02, 0x03}; // Invalid WKB format
     builder.update(Binary.fromConstantByteArray(invalidBytes));
 
-    // After adding invalid data, statistics should be invalidated
+    // After adding invalid data, omit it from stats
     GeospatialStatistics invalidStats = builder.build();
-    Assert.assertFalse(invalidStats.isValid());
-
-    // The builder should have called abort() internally when parsing failed
-    Assert.assertFalse(invalidStats.getBoundingBox().isValid());
-    Assert.assertFalse(invalidStats.getGeospatialTypes().isValid());
+    Assert.assertTrue(invalidStats.isValid());
   }
 
   @Test
