@@ -98,8 +98,8 @@ public class TestGeospatialStatistics {
     GeospatialStatistics validCopy = validStats.copy();
     validCopy.merge(nullStats);
     Assert.assertFalse(validCopy.isValid());
-    Assert.assertNull(validCopy.getBoundingBox());
-    Assert.assertNull(validCopy.getGeospatialTypes());
+    Assert.assertNotNull(validCopy.getBoundingBox());
+    Assert.assertNotNull(validCopy.getGeospatialTypes());
 
     // Test merging null with valid
     nullStats = new GeospatialStatistics(null, null);
@@ -115,8 +115,8 @@ public class TestGeospatialStatistics {
     // Test merging valid with null bounding box
     validCopy = validStats.copy();
     validCopy.merge(nullBboxStats);
-    Assert.assertFalse(validCopy.isValid());
-    Assert.assertNull(validCopy.getBoundingBox());
+    Assert.assertTrue(validCopy.isValid());
+    Assert.assertNotNull(validCopy.getBoundingBox());
     Assert.assertNotNull(validCopy.getGeospatialTypes());
   }
 

@@ -165,7 +165,7 @@ public class TestGeometryTypeRoundTrip {
       Assert.assertNotNull(columnIndex);
 
       GeospatialStatistics geospatialStatistics = columnChunkMetaData.getGeospatialStatistics();
-      Assert.assertNotNull(geospatialStatistics);
+      Assert.assertNull(geospatialStatistics);
     }
   }
 

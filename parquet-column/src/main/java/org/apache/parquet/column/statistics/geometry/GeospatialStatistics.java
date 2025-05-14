@@ -62,8 +62,7 @@ public class GeospatialStatistics {
         Geometry geom = reader.read(value.getBytes());
         update(geom);
       } catch (ParseException e) {
-        LOG.warn("Failed to parse WKB geometry, aborting statistics update", e);
-        abort();
+        LOG.warn("Failed to parse WKB geometry, omit it from stats", e);
       }
     }
 
