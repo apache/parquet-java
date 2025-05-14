@@ -48,10 +48,7 @@ import org.apache.parquet.io.api.RecordConsumer;
 import org.apache.parquet.schema.*;
 import org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
-import org.apache.parquet.variant.Variant;
-import org.apache.parquet.variant.VariantArrayBuilder;
-import org.apache.parquet.variant.VariantBuilder;
-import org.apache.parquet.variant.VariantObjectBuilder;
+import org.apache.parquet.variant.*;
 import org.junit.Test;
 
 public class TestReadVariant extends DirectWriterTest {
@@ -72,8 +69,8 @@ public class TestReadVariant extends DirectWriterTest {
 
   // Returns a value based on building with fixed metadata.
   private static ByteBuffer variant(ByteBuffer metadata, Consumer<VariantBuilder> appendValue) {
-    VariantBuilder builder = new VariantBuilder();
-    builder.setFixedMetadata(metadata);
+    ImmutableMetadata immutableMetadata = new ImmutableMetadata(metadata);
+    VariantBuilder builder = new VariantBuilder(immutableMetadata);
     appendValue.accept(builder);
     return builder.valueWithoutMetadata();
   }

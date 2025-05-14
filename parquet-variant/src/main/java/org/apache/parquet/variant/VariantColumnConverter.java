@@ -48,7 +48,6 @@ public abstract class VariantColumnConverter extends VariantElementConverter {
    */
   @Override
   public void start() {
-    holder.startNewVariant();
     super.start();
   }
 
@@ -60,5 +59,8 @@ public abstract class VariantColumnConverter extends VariantElementConverter {
     super.end();
     ByteBuffer value = holder.builder.valueWithoutMetadata();
     addVariant(value, holder.getMetadata().toByteBuffer());
+    // TODO: Don't do this. Right now, it's needed in order for getWritePos to work correctly, so we don't have
+    // a stale builder in start().
+    this.holder.builder = null;
   }
 }

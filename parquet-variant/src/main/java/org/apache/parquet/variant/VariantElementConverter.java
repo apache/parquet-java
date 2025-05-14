@@ -153,7 +153,12 @@ class VariantElementConverter extends GroupConverter implements VariantConverter
     if (valueIdx >= 0) {
       ((VariantValueConverter) converters[valueIdx]).reset();
     }
-    startWritePos = holder.builder.getWritePos();
+    // TODO: This should all eventually go away, I hope.
+    if (holder.builder == null) {
+      startWritePos = 0;
+    } else {
+      startWritePos = holder.builder.getWritePos();
+    }
   }
 
   @Override

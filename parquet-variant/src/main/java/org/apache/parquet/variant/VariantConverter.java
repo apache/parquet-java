@@ -18,7 +18,6 @@
  */
 package org.apache.parquet.variant;
 
-import java.util.HashMap;
 import org.apache.parquet.io.api.Binary;
 
 /**
@@ -48,17 +47,12 @@ interface VariantConverter {
       this.topLevelHolder = parentHolder.topLevelHolder;
     }
 
-    // May only be called for a top-level converter.
-    void startNewVariant() {
-      builder = new VariantBuilder();
-    }
-
-    // May only be called for an object converter.
+    // May only be called on an object converter.
     void startNewObject() {
       builder = parentHolder.builder.startObject();
     }
 
-    // May only be called for an array converter.
+    // May only be called on an array converter.
     void startNewArray() {
       builder = parentHolder.builder.startArray();
     }
@@ -76,14 +70,13 @@ interface VariantConverter {
     }
 
     Binary metadata = null;
-    // Maps metadata entries to their index in the metadata binary. It is only stored in the top-level holder.
-    HashMap<String, Integer> metadataMap = null;
+    Metadata immutableMetadata = null;
 
     /**
      * Sets the metadata. May only be called after startNewVariant. We allow the `value` column to
      * be added to the builder before metadata has been set, since it does not depend on metadata, but
-     * typed_value must be added after setting the metadata, since object conversion requires the mapping from
-     * field name to metadata ID.
+     * typed_value (specifically, if typed_value is or contains an object) must be added after setting
+     * the metadata.
      */
     void setMetadata(Binary metadata) {
       // If the metadata hasn't changed, we don't need to rebuild the map.
@@ -92,9 +85,9 @@ interface VariantConverter {
       // rows with identical metadata should be the most common case.
       if (this.metadata != metadata) {
         this.metadata = metadata;
-        metadataMap = VariantUtil.getMetadataMap(metadata.toByteBuffer());
+        immutableMetadata = new ImmutableMetadata(metadata.toByteBuffer());
       }
-      builder.setFixedMetadata(metadataMap);
+      builder = new VariantBuilder(immutableMetadata);
     }
   }
 }

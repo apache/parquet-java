@@ -22,9 +22,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 
 /**
  * Builder for creating Variant value and metadata.
@@ -35,18 +33,11 @@ public class VariantBuilder {
   protected byte[] writeBuffer = new byte[1024];
 
   protected int writePos = 0;
-  /** The dictionary for mapping keys to monotonically increasing ids. */
-  private HashMap<String, Integer> dictionary = new HashMap<>();
-  /** The keys in the dictionary, in id order. */
-  private ArrayList<byte[]> dictionaryKeys = new ArrayList<>();
 
   /** The main VariantBuilder that owns metadata (i.e. this builder for non-object/array builders */
   protected VariantBuilder rootBuilder = this;
 
-  /** If true, the dictionary is externally provided, and only keys from that
-   * metadata may be used in the builder.
-   */
-  private boolean fixedMetadata = false;
+  protected Metadata metadata;
 
   /**
    * These are used to build nested objects and arrays, via startObject() and startArray().
@@ -60,37 +51,21 @@ public class VariantBuilder {
   /**
    * Creates a VariantBuilder.
    */
-  public VariantBuilder() {}
-
-  /**
-   * Set the metadata. May only be called if the builder has not yet added anything to the metadata.
-   * If set, it is invalid to call build() on the builder. Only valueWithoutMetadata() may be called
-   * to obtain the result.
-   *
-   * @param metadata
-   */
-  public void setFixedMetadata(HashMap<String, Integer> metadata) {
-    if (!this.dictionary.isEmpty()) {
-      throw new IllegalStateException("Cannot fix metadata once values have been added to it");
-    }
-    this.dictionary = metadata;
-    this.fixedMetadata = true;
-    // We don't need the dictionaryKeys list when metadata is fixed, and setting to null ensures that we'll
-    // fail if we accidentally try to use it. However, uses should be guarded by a cleaner exception.
-    this.dictionaryKeys = null;
+  public VariantBuilder() {
+    this.metadata = new MetadataBuilder();
   }
 
-  public void setFixedMetadata(ByteBuffer metadata) {
-    setFixedMetadata(VariantUtil.getMetadataMap(metadata));
+  /**
+   * Creates a VariantBuilder with a non-default metadata object.
+   */
+  public VariantBuilder(Metadata metadata) {
+    this.metadata = metadata;
   }
 
   /**
    * @return the Variant value
    */
   public Variant build() {
-    if (fixedMetadata) {
-      throw new IllegalStateException("Cannot reconstruct metadata when using fixed metadata");
-    }
     if (objectBuilder != null) {
       throw new IllegalStateException(
           "Cannot call build() while an object is being built. Must call endObject() first.");
@@ -99,40 +74,10 @@ public class VariantBuilder {
       throw new IllegalStateException(
           "Cannot call build() while an array is being built. Must call endArray() first.");
     }
-    int numKeys = dictionaryKeys.size();
-    // Use long to avoid overflow in accumulating lengths.
-    long dictionaryTotalDataSize = 0;
-    for (byte[] key : dictionaryKeys) {
-      dictionaryTotalDataSize += key.length;
-    }
-    // Determine the number of bytes required per offset entry.
-    // The largest offset is the one-past-the-end value, which is total data size. It's very
-    // unlikely that the number of keys could be larger, but incorporate that into the calculation
-    // in case of pathological data.
-    long maxSize = Math.max(dictionaryTotalDataSize, numKeys);
-    int offsetSize = getMinIntegerSize((int) maxSize);
-
-    int offsetListOffset = 1 + offsetSize;
-    int dataOffset = offsetListOffset + (numKeys + 1) * offsetSize;
-    long metadataSize = dataOffset + dictionaryTotalDataSize;
-
-    byte[] metadata = new byte[(int) metadataSize];
-    // Only unsorted dictionary keys are supported.
-    // TODO: Support sorted dictionary keys.
-    int headerByte = VariantUtil.VERSION | ((offsetSize - 1) << 6);
-    VariantUtil.writeLong(metadata, 0, headerByte, 1);
-    VariantUtil.writeLong(metadata, 1, numKeys, offsetSize);
-    int currentOffset = 0;
-    for (int i = 0; i < numKeys; ++i) {
-      VariantUtil.writeLong(metadata, offsetListOffset + i * offsetSize, currentOffset, offsetSize);
-      byte[] key = dictionaryKeys.get(i);
-      System.arraycopy(key, 0, metadata, dataOffset + currentOffset, key.length);
-      currentOffset += key.length;
-    }
-    VariantUtil.writeLong(metadata, offsetListOffset + numKeys * offsetSize, currentOffset, offsetSize);
+    ByteBuffer metadataBuffer = metadata.getEncodedBuffer();
     // Copying the data to a new buffer, to retain only the required data length, not the capacity.
     // TODO: Reduce the copying, and look into builder reuse.
-    return new Variant(Arrays.copyOfRange(writeBuffer, 0, writePos), metadata);
+    return new Variant(ByteBuffer.wrap(writeBuffer, 0, writePos), metadataBuffer);
   }
 
   // This is used in the shredded reader to check if anything has been written to the Variant since the last call.
@@ -153,9 +98,6 @@ public class VariantBuilder {
    * dictionary.
    */
   void appendEncodedValue(ByteBuffer value) {
-    if (!rootBuilder.fixedMetadata) {
-      throw new IllegalStateException("Need fixed metaata to dirctly append a Variant value");
-    }
     onAppend();
     int size = value.remaining();
     checkCapacity(size);
@@ -639,14 +581,7 @@ public class VariantBuilder {
    * @return the id of the key
    */
   int addDictionaryKey(String key) {
-    return dictionary.computeIfAbsent(key, newKey -> {
-      if (fixedMetadata) {
-        throw new IllegalArgumentException("Value in shredding refers to non-existent metadata string");
-      }
-      int id = dictionaryKeys.size();
-      dictionaryKeys.add(newKey.getBytes(StandardCharsets.UTF_8));
-      return id;
-    });
+    return metadata.getOrInsert(key);
   }
 
   /**
@@ -694,7 +629,7 @@ public class VariantBuilder {
     }
   }
 
-  protected int getMinIntegerSize(int value) {
+  public static int getMinIntegerSize(int value) {
     assert value >= 0;
     if (value <= VariantUtil.U8_MAX) {
       return VariantUtil.U8_SIZE;

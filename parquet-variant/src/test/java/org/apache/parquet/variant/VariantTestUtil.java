@@ -53,19 +53,18 @@ public class VariantTestUtil {
   static void testVariant(Variant v, Consumer<Variant> consumer) {
     consumer.accept(v);
     // Create new Variant with different byte offsets
-    byte[] newValue = new byte[v.value.capacity() + 50];
-    byte[] newMetadata = new byte[v.metadata.capacity() + 50];
+    byte[] newValue = new byte[v.value.limit() + 50];
+    byte[] newMetadata = new byte[v.metadata.limit() + 50];
     Arrays.fill(newValue, (byte) 0xFF);
     Arrays.fill(newMetadata, (byte) 0xFF);
     v.value.position(0);
-    v.value.get(newValue, 25, v.value.capacity());
+    v.value.get(newValue, 25, v.value.limit());
     v.value.position(0);
     v.metadata.position(0);
-    v.metadata.get(newMetadata, 25, v.metadata.capacity());
+    v.metadata.get(newMetadata, 25, v.metadata.limit());
     v.metadata.position(0);
     Variant v2 = new Variant(
-        ByteBuffer.wrap(newValue, 25, v.value.capacity()),
-        ByteBuffer.wrap(newMetadata, 25, v.metadata.capacity()));
+        ByteBuffer.wrap(newValue, 25, v.value.limit()), ByteBuffer.wrap(newMetadata, 25, v.metadata.limit()));
     consumer.accept(v2);
   }
 
