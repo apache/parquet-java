@@ -18,12 +18,8 @@
  */
 package org.apache.parquet.variant;
 
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
-
-import java.util.List;
-import org.apache.parquet.io.api.Binary;
+import java.nio.ByteBuffer;
 import org.apache.parquet.schema.GroupType;
-import org.apache.parquet.schema.Type;
 
 /**
  * Converter for shredded Variant values. Connectors should implement the addVariant method, similar to
@@ -36,20 +32,7 @@ public abstract class VariantColumnConverter extends VariantElementConverter {
   public VariantColumnConverter(GroupType variantSchema) {
     super(variantSchema);
 
-    List<Type> fields = variantSchema.getFields();
-    for (int i = 0; i < fields.size(); i++) {
-      Type field = fields.get(i);
-      String fieldName = field.getName();
-      if (fieldName.equals("metadata")) {
-        this.topLevelMetadataIdx = i;
-        if (!field.isPrimitive() || field.asPrimitiveType().getPrimitiveTypeName() != BINARY) {
-          throw new IllegalArgumentException("Metadata must be a binary value");
-        }
-      }
-    }
-    if (topLevelMetadataIdx < 0) {
-      throw new IllegalArgumentException("Metadata missing from schema");
-    }
+    this.topLevelMetadataIdx = variantSchema.getFieldIndex("metadata");
     converters[topLevelMetadataIdx] = new VariantMetadataConverter();
     holder = new VariantBuilderTopLevelHolder();
     init(holder);
@@ -58,7 +41,7 @@ public abstract class VariantColumnConverter extends VariantElementConverter {
   /**
    * Set the final shredded value.
    */
-  public abstract void addVariant(Binary value, Binary metadata);
+  public abstract void addVariant(ByteBuffer value, ByteBuffer metadata);
 
   /**
    * Called at the beginning of the group managed by this converter.
@@ -75,7 +58,7 @@ public abstract class VariantColumnConverter extends VariantElementConverter {
   @Override
   public void end() {
     super.end();
-    byte[] value = holder.builder.valueWithoutMetadata();
-    addVariant(Binary.fromConstantByteArray(value), holder.getMetadata());
+    ByteBuffer value = holder.builder.valueWithoutMetadata();
+    addVariant(value, holder.getMetadata().toByteBuffer());
   }
 }

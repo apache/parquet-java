@@ -144,15 +144,15 @@ public class VariantBuilder {
   /**
    * @return the constructed Variant value binary, without metadata.
    */
-  public byte[] valueWithoutMetadata() {
-    return Arrays.copyOfRange(writeBuffer, 0, writePos);
+  public ByteBuffer valueWithoutMetadata() {
+    return ByteBuffer.wrap(writeBuffer, 0, writePos);
   }
 
   /**
    * Directly append a Variant value. Its keys must already be in the metadata
    * dictionary.
    */
-  void shallowAppendVariant(ByteBuffer value) {
+  void appendEncodedValue(ByteBuffer value) {
     if (!rootBuilder.fixedMetadata) {
       throw new IllegalStateException("Need fixed metaata to dirctly append a Variant value");
     }

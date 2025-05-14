@@ -471,15 +471,10 @@ public class AvroSchemaConverter {
               public Optional<Schema> visit(
                   LogicalTypeAnnotation.VariantLogicalTypeAnnotation variantLogicalType) {
                 String name = parquetGroupType.getName();
-                SchemaBuilder.FieldAssembler<Schema> builder = SchemaBuilder.builder(
-                        namespace(name, names))
-                    .record(name)
-                    .fields();
-                builder.name("metadata")
-                    .type(Schema.create(Schema.Type.BYTES))
-                    .noDefault();
-                builder.name("value").type().optional().type(Schema.create(Schema.Type.BYTES));
-                return of(builder.endRecord());
+                List<Schema.Field> fields = new ArrayList<>();
+                fields.add(new Schema.Field("metadata", Schema.create(Schema.Type.BYTES)));
+                fields.add(new Schema.Field("value", Schema.create(Schema.Type.BYTES)));
+                return of(Schema.createRecord(name, null, namespace(name, names), false, fields));
               }
             })
             .orElseThrow(

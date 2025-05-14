@@ -61,11 +61,11 @@ public final class Variant {
     }
   }
 
-  public ByteBuffer getValueRawBytes() {
+  public ByteBuffer getValueBuffer() {
     return value;
   }
 
-  public ByteBuffer getMetadataRawBytes() {
+  public ByteBuffer getMetadataBuffer() {
     return metadata;
   }
 

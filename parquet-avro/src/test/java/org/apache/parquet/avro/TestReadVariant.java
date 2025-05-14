@@ -65,9 +65,9 @@ public class TestReadVariant extends DirectWriterTest {
     return builder.build();
   }
 
-  // Return only the byte[], which is usually all we want.
+  // Return only the value bytes, which is usually all we want.
   private static ByteBuffer variant(Consumer<VariantBuilder> appendValue) {
-    return fullVariant(appendValue).getValueRawBytes();
+    return fullVariant(appendValue).getValueBuffer();
   }
 
   // Returns a value based on building with fixed metadata.
@@ -75,7 +75,7 @@ public class TestReadVariant extends DirectWriterTest {
     VariantBuilder builder = new VariantBuilder();
     builder.setFixedMetadata(metadata);
     appendValue.accept(builder);
-    return ByteBuffer.wrap(builder.valueWithoutMetadata());
+    return builder.valueWithoutMetadata();
   }
 
   private static ByteBuffer variant(int val) {
@@ -170,7 +170,7 @@ public class TestReadVariant extends DirectWriterTest {
         variant(b -> b.appendUUID(UUID.fromString("f24f9b64-81fa-49d1-b74e-8c09a6e31c56"))))
   };
 
-  private ByteBuffer EMPTY_METADATA = fullVariant(b -> b.appendNull()).getMetadataRawBytes();
+  private ByteBuffer EMPTY_METADATA = fullVariant(b -> b.appendNull()).getMetadataBuffer();
   private ByteBuffer NULL_VALUE = PRIMITIVES[0].value;
 
   private ByteBuffer TEST_METADATA;
@@ -203,7 +203,7 @@ public class TestReadVariant extends DirectWriterTest {
           ob.appendNull();
           b.endObject();
         })
-        .getMetadataRawBytes();
+        .getMetadataBuffer();
 
     TEST_OBJECT = variant(TEST_METADATA, b -> {
       VariantObjectBuilder ob = b.startObject();
@@ -237,8 +237,8 @@ public class TestReadVariant extends DirectWriterTest {
       ob.endArray();
       b.endObject();
     });
-    Binary expectedValue = Binary.fromConstantByteBuffer(testValue.getValueRawBytes());
-    Binary expectedMetadata = Binary.fromConstantByteBuffer(testValue.getMetadataRawBytes());
+    Binary expectedValue = Binary.fromConstantByteBuffer(testValue.getValueBuffer());
+    Binary expectedMetadata = Binary.fromConstantByteBuffer(testValue.getMetadataBuffer());
     Path test = writeDirect(
         "message VariantMessage {" + "  required group v (VARIANT(1)) {"
             + "    required binary value;"
@@ -265,7 +265,7 @@ public class TestReadVariant extends DirectWriterTest {
     Schema variantSchema = record(
         "v",
         field("metadata", Schema.create(Schema.Type.BYTES)),
-        optionalField("value", Schema.create(Schema.Type.BYTES)));
+        field("value", Schema.create(Schema.Type.BYTES)));
     Schema expectedSchema = record("VariantMessage", field("v", variantSchema));
 
     GenericRecord expectedRecord = instance(
@@ -298,8 +298,8 @@ public class TestReadVariant extends DirectWriterTest {
     VariantBuilder builder = new VariantBuilder();
     appendValue.accept(builder);
     Variant testValue = builder.build();
-    Binary expectedValue = Binary.fromConstantByteBuffer(testValue.getValueRawBytes());
-    Binary expectedMetadata = Binary.fromConstantByteBuffer(testValue.getMetadataRawBytes());
+    Binary expectedValue = Binary.fromConstantByteBuffer(testValue.getValueBuffer());
+    Binary expectedMetadata = Binary.fromConstantByteBuffer(testValue.getMetadataBuffer());
     Path test = writeDirect(
         "message VariantMessage {" + "  required group v (VARIANT(1)) {"
             + "    optional binary value;"
@@ -327,7 +327,7 @@ public class TestReadVariant extends DirectWriterTest {
     Schema variantSchema = record(
         "v",
         field("metadata", Schema.create(Schema.Type.BYTES)),
-        optionalField("value", Schema.create(Schema.Type.BYTES)));
+        field("value", Schema.create(Schema.Type.BYTES)));
     Schema expectedSchema = record("VariantMessage", field("v", variantSchema));
 
     GenericRecord expectedRecord = instance(
@@ -426,8 +426,8 @@ public class TestReadVariant extends DirectWriterTest {
     // The string value will be stored in `value` in Variant binary form.
     ByteBuffer stringValue = variant("Hello");
 
-    Binary expectedValue = Binary.fromConstantByteBuffer(testValue.getValueRawBytes());
-    Binary expectedMetadata = Binary.fromConstantByteBuffer(testValue.getMetadataRawBytes());
+    Binary expectedValue = Binary.fromConstantByteBuffer(testValue.getValueBuffer());
+    Binary expectedMetadata = Binary.fromConstantByteBuffer(testValue.getMetadataBuffer());
     Path test = writeDirect(
         "message VariantMessage {" + "  required group v (VARIANT(1)) {"
             + "    required binary metadata;"
@@ -496,7 +496,7 @@ public class TestReadVariant extends DirectWriterTest {
     Schema variantSchema = record(
         "v",
         field("metadata", Schema.create(Schema.Type.BYTES)),
-        optionalField("value", Schema.create(Schema.Type.BYTES)));
+        field("value", Schema.create(Schema.Type.BYTES)));
     Schema expectedSchema = record("VariantMessage", field("v", variantSchema));
 
     GenericRecord expectedRecord = instance(
@@ -2116,7 +2116,7 @@ public class TestReadVariant extends DirectWriterTest {
         break;
       default:
         // All other types have a single representation, and must be bit-for-bit identical.
-        assertEquals(expected.getValueRawBytes(), actual.getValueRawBytes());
+        assertEquals(expected.getValueBuffer(), actual.getValueBuffer());
     }
   }
 }

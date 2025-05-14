@@ -115,7 +115,7 @@ class VariantElementConverter extends GroupConverter implements VariantConverter
     }
 
     if (typedValueIdx >= 0) {
-      Converter typedConverter = null;
+      Converter typedConverter;
       Type field = fields.get(typedValueIdx);
       LogicalTypeAnnotation annotation = field.getLogicalTypeAnnotation();
       if (annotation instanceof LogicalTypeAnnotation.ListLogicalTypeAnnotation) {
@@ -129,10 +129,9 @@ class VariantElementConverter extends GroupConverter implements VariantConverter
           shreddedObjectKeys.add(f.getName());
         }
       } else {
-        typedConverter = VariantScalarConverter.create(field.asPrimitiveType());
+        typedConverter = ShreddedScalarConverter.create(field.asPrimitiveType());
       }
 
-      assert (typedConverter != null);
       converters[typedValueIdx] = typedConverter;
     }
   }
@@ -179,7 +178,7 @@ class VariantElementConverter extends GroupConverter implements VariantConverter
     if (variantValue != null) {
       if (!hasTypedValue) {
         // Nothing else was added. We can directly append this value.
-        builder.shallowAppendVariant(variantValue.toByteBuffer());
+        builder.appendEncodedValue(variantValue.toByteBuffer());
       } else {
         // Both value and typed_value were non-null. This is only valid for an object.
         Variant value =
@@ -201,7 +200,7 @@ class VariantElementConverter extends GroupConverter implements VariantConverter
             continue;
           }
           objectBuilder.appendKey(field.key);
-          objectBuilder.shallowAppendVariant(field.value.getValueRawBytes());
+          objectBuilder.appendEncodedValue(field.value.getValueBuffer());
         }
         builder.endObject();
       }
@@ -310,7 +309,7 @@ class VariantElementConverter extends GroupConverter implements VariantConverter
   }
 
   // Base class for converting primitive typed_value fields.
-  static class VariantScalarConverter extends PrimitiveConverter implements VariantConverter {
+  static class ShreddedScalarConverter extends PrimitiveConverter implements VariantConverter {
     protected VariantBuilderHolder builder;
     private GroupType scalarType;
 
@@ -320,8 +319,8 @@ class VariantElementConverter extends GroupConverter implements VariantConverter
     }
 
     // Return an appropriate converter for the given Parquet type.
-    static VariantScalarConverter create(PrimitiveType primitive) {
-      VariantScalarConverter typedConverter = null;
+    static ShreddedScalarConverter create(PrimitiveType primitive) {
+      ShreddedScalarConverter typedConverter = null;
       LogicalTypeAnnotation annotation = primitive.getLogicalTypeAnnotation();
       PrimitiveType.PrimitiveTypeName primitiveType = primitive.getPrimitiveTypeName();
       if (primitiveType == BOOLEAN) {
@@ -393,7 +392,7 @@ class VariantElementConverter extends GroupConverter implements VariantConverter
           typedConverter = new VariantTimeConverter();
         }
       } else if (annotation instanceof LogicalTypeAnnotation.UUIDLogicalTypeAnnotation) {
-        typedConverter = new VariantUuidConverter();
+        typedConverter = new VariantUUIDConverter();
       } else if (annotation instanceof LogicalTypeAnnotation.StringLogicalTypeAnnotation) {
         typedConverter = new VariantStringConverter();
       } else if (primitiveType == BINARY) {
@@ -405,21 +404,21 @@ class VariantElementConverter extends GroupConverter implements VariantConverter
     }
   }
 
-  static class VariantStringConverter extends VariantScalarConverter {
+  static class VariantStringConverter extends ShreddedScalarConverter {
     @Override
     public void addBinary(Binary value) {
       builder.builder.appendString(value.toStringUsingUTF8());
     }
   }
 
-  static class VariantBinaryConverter extends VariantScalarConverter {
+  static class VariantBinaryConverter extends ShreddedScalarConverter {
     @Override
     public void addBinary(Binary value) {
       builder.builder.appendBinary(value.toByteBuffer());
     }
   }
 
-  static class VariantDecimalConverter extends VariantScalarConverter {
+  static class VariantDecimalConverter extends ShreddedScalarConverter {
     private int scale;
 
     VariantDecimalConverter(int scale) {
@@ -445,98 +444,98 @@ class VariantElementConverter extends GroupConverter implements VariantConverter
     }
   }
 
-  static class VariantUuidConverter extends VariantScalarConverter {
+  static class VariantUUIDConverter extends ShreddedScalarConverter {
     @Override
     public void addBinary(Binary value) {
       builder.builder.appendUUIDBytes(value.toByteBuffer());
     }
   }
 
-  static class VariantBooleanConverter extends VariantScalarConverter {
+  static class VariantBooleanConverter extends ShreddedScalarConverter {
     @Override
     public void addBoolean(boolean value) {
       builder.builder.appendBoolean(value);
     }
   }
 
-  static class VariantDoubleConverter extends VariantScalarConverter {
+  static class VariantDoubleConverter extends ShreddedScalarConverter {
     @Override
     public void addDouble(double value) {
       builder.builder.appendDouble(value);
     }
   }
 
-  static class VariantFloatConverter extends VariantScalarConverter {
+  static class VariantFloatConverter extends ShreddedScalarConverter {
     @Override
     public void addFloat(float value) {
       builder.builder.appendFloat(value);
     }
   }
 
-  static class VariantByteConverter extends VariantScalarConverter {
+  static class VariantByteConverter extends ShreddedScalarConverter {
     @Override
     public void addInt(int value) {
       builder.builder.appendByte((byte) value);
     }
   }
 
-  static class VariantShortConverter extends VariantScalarConverter {
+  static class VariantShortConverter extends ShreddedScalarConverter {
     @Override
     public void addInt(int value) {
       builder.builder.appendShort((short) value);
     }
   }
 
-  static class VariantIntConverter extends VariantScalarConverter {
+  static class VariantIntConverter extends ShreddedScalarConverter {
     @Override
     public void addInt(int value) {
       builder.builder.appendInt(value);
     }
   }
 
-  static class VariantLongConverter extends VariantScalarConverter {
+  static class VariantLongConverter extends ShreddedScalarConverter {
     @Override
     public void addLong(long value) {
       builder.builder.appendLong(value);
     }
   }
 
-  static class VariantDateConverter extends VariantScalarConverter {
+  static class VariantDateConverter extends ShreddedScalarConverter {
     @Override
     public void addInt(int value) {
       builder.builder.appendDate(value);
     }
   }
 
-  static class VariantTimeConverter extends VariantScalarConverter {
+  static class VariantTimeConverter extends ShreddedScalarConverter {
     @Override
     public void addLong(long value) {
       builder.builder.appendTime(value);
     }
   }
 
-  static class VariantTimestampConverter extends VariantScalarConverter {
+  static class VariantTimestampConverter extends ShreddedScalarConverter {
     @Override
     public void addLong(long value) {
       builder.builder.appendTimestampTz(value);
     }
   }
 
-  static class VariantTimestampNtzConverter extends VariantScalarConverter {
+  static class VariantTimestampNtzConverter extends ShreddedScalarConverter {
     @Override
     public void addLong(long value) {
       builder.builder.appendTimestampNtz(value);
     }
   }
 
-  static class VariantTimestampNanosConverter extends VariantScalarConverter {
+  static class VariantTimestampNanosConverter extends ShreddedScalarConverter {
     @Override
     public void addLong(long value) {
       builder.builder.appendTimestampNanosTz(value);
     }
   }
 
-  static class VariantTimestampNanosNtzConverter extends VariantScalarConverter {
+  static class VariantTimestampNanosNtzConverter extends ShreddedScalarConverter {
     @Override
     public void addLong(long value) {
       builder.builder.appendTimestampNanosNtz(value);

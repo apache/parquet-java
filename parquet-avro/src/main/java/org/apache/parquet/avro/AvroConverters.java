@@ -343,7 +343,7 @@ public class AvroConverters {
   }
 
   static final class FieldVariantConverter<T> extends VariantColumnConverter {
-    protected final ParentValueContainer parent;
+    private final ParentValueContainer parent;
     private final Schema avroSchema;
     private final GenericData model;
 
@@ -356,10 +356,11 @@ public class AvroConverters {
     }
 
     @Override
-    public void addVariant(Binary value, Binary metadata) {
+    @SuppressWarnings("unchecked")
+    public void addVariant(ByteBuffer value, ByteBuffer metadata) {
       T currentRecord = (T) model.newRecord(null, avroSchema);
-      model.setField(currentRecord, "metadata", 0, metadata.toByteBuffer());
-      model.setField(currentRecord, "value", 1, value.toByteBuffer());
+      model.setField(currentRecord, "metadata", 0, metadata);
+      model.setField(currentRecord, "value", 1, value);
       parent.add(currentRecord);
     }
   }
