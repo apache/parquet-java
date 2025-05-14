@@ -29,9 +29,11 @@ import static org.apache.parquet.schema.Type.Repetition.REPEATED;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.nio.ByteBuffer;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Consumer;
 import org.apache.parquet.column.Dictionary;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.Converter;
@@ -67,7 +69,7 @@ class VariantConverters {
     private int typedValueIdx = -1;
     protected Converter[] converters;
     // The binary produces by the `value` field of this converter.
-    private Binary variantValue = null;
+    private ByteBuffer variantValue = null;
 
     // The following are only used if this is an object field.
     private String objectFieldName = null;
@@ -91,7 +93,7 @@ class VariantConverters {
     /**
      * Called by the `value` converter to provide a new value.
      */
-    public void setValueBinary(Binary variantValue) {
+    private void setValueBinary(ByteBuffer variantValue) {
       this.variantValue = variantValue;
     }
 
@@ -116,11 +118,13 @@ class VariantConverters {
           }
         } else if (fieldName.equals("typed_value")) {
           this.typedValueIdx = i;
+        } else if (!fieldName.equals("metadata")) {
+          throw new UnsupportedOperationException("Cannot read variant with unexpected field: " + fieldName);
         }
       }
 
       if (valueIdx >= 0) {
-        converters[valueIdx] = new VariantValueConverter(this);
+        converters[valueIdx] = new VariantValueConverter(this::setValueBinary);
       }
 
       if (typedValueIdx >= 0) {
@@ -180,7 +184,7 @@ class VariantConverters {
         if (appendedValue && variantValue != null) {
           throw new IllegalArgumentException("Invalid variant, conflicting value and typed_value");
         } else if (variantValue != null) {
-          builder.appendEncodedValue(variantValue.toByteBuffer());
+          builder.appendEncodedValue(variantValue);
           appendedValue = true;
         }
       }
@@ -214,8 +218,8 @@ class VariantConverters {
 
       if (variantValue != null && hasObject) {
         // Both value and typed_value were non-null. This is only valid for an object.
-        Variant value = new Variant(
-            variantValue.toByteBuffer(), getBuilder().getMetadata().getEncodedBuffer());
+        Variant value =
+            new Variant(variantValue, getBuilder().getMetadata().getEncodedBuffer());
         Variant.Type basicType = value.getType();
         if (basicType != Variant.Type.OBJECT) {
           throw new IllegalArgumentException("Invalid variant, conflicting value and typed_value");
@@ -244,7 +248,7 @@ class VariantConverters {
         getBuilder().endObject();
       } else if (variantValue != null) {
         // There is only a value.
-        getBuilder().appendEncodedValue(variantValue.toByteBuffer());
+        getBuilder().appendEncodedValue(variantValue);
       } else {
         // There was no value or typed value. Tell the caller that we didn't add anything.
         return false;
@@ -256,28 +260,28 @@ class VariantConverters {
   /**
    * Base class for `value` and `metadata` converters, that both return a binary.
    */
-  static class BinaryConverter extends PrimitiveConverter implements VariantConverter {
-    private VariantConverter parent;
+  abstract static class BinaryConverter extends PrimitiveConverter {
     Binary[] dict;
 
-    public BinaryConverter(VariantConverter parent) {
+    public BinaryConverter() {
       dict = null;
-      this.parent = parent;
     }
 
-    @Override
-    public VariantConverter getParent() {
-      return parent;
-    }
-
-    @Override
-    public VariantBuilder getBuilder() {
-      return null;
-    }
+    protected abstract void handleBinary(Binary value);
 
     @Override
     public boolean hasDictionarySupport() {
       return true;
+    }
+
+    @Override
+    public void addBinary(Binary value) {
+      handleBinary(value);
+    }
+
+    @Override
+    public void addValueFromDictionary(int dictionaryId) {
+      handleBinary(dict[dictionaryId]);
     }
 
     @Override
@@ -292,40 +296,33 @@ class VariantConverters {
    * Converter for the metadata column. It sets the current metadata in the parent converter,
    * so that it can be used by the typed_value converter on the same row.
    */
-  static class VariantMetadataConverter extends BinaryConverter implements VariantConverter {
+  static class VariantMetadataConverter extends BinaryConverter {
+    final Consumer<Binary> parent;
 
-    public VariantMetadataConverter(VariantColumnConverter parent) {
-      super(parent);
+    public VariantMetadataConverter(Consumer<Binary> parent) {
+      super();
+      this.parent = parent;
     }
 
     @Override
-    public void addBinary(Binary value) {
-      ((VariantColumnConverter) getParent()).setMetadata(value);
-    }
-
-    @Override
-    public void addValueFromDictionary(int dictionaryId) {
-      ((VariantColumnConverter) getParent()).setMetadata(dict[dictionaryId]);
+    public void handleBinary(Binary value) {
+      parent.accept(value);
     }
   }
 
   // Converter for the `value` field. It does not append to VariantBuilder directly: it simply holds onto
   // its value for the parent converter to append.
-  static class VariantValueConverter extends BinaryConverter implements VariantConverter {
-    Binary currentValue;
+  static class VariantValueConverter extends BinaryConverter {
+    final Consumer<ByteBuffer> parent;
 
-    public VariantValueConverter(VariantElementConverter parent) {
-      super(parent);
+    public VariantValueConverter(Consumer<ByteBuffer> parent) {
+      super();
+      this.parent = parent;
     }
 
     @Override
-    public void addBinary(Binary value) {
-      ((VariantElementConverter) getParent()).setValueBinary(value);
-    }
-
-    @Override
-    public void addValueFromDictionary(int dictionaryId) {
-      ((VariantElementConverter) getParent()).setValueBinary(dict[dictionaryId]);
+    public void handleBinary(Binary value) {
+      parent.accept(value.toByteBuffer());
     }
   }
 

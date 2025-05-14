@@ -24,8 +24,8 @@ import java.util.HashMap;
  *
  */
 public class ImmutableMetadata implements Metadata {
-  private HashMap<String, Integer> dictionary = null;
-  private ByteBuffer metadataBuffer;
+  private final HashMap<String, Integer> dictionary;
+  private final ByteBuffer metadataBuffer;
 
   public ImmutableMetadata(ByteBuffer metadata) {
     this.dictionary = VariantUtil.getMetadataMap(metadata);
@@ -36,7 +36,7 @@ public class ImmutableMetadata implements Metadata {
   public int getOrInsert(String key) {
     Integer result = dictionary.get(key);
     if (result == null) {
-      throw new IllegalArgumentException("Key does not exist in metadata");
+      throw new IllegalArgumentException("Key does not exist in metadata: " + key);
     }
     return result;
   }
