@@ -260,7 +260,7 @@ public class ProtoSchemaConverter {
           return builder.primitive(INT32, getRepetition(descriptor));
         }
         if (messageType.equals(UInt32Value.getDescriptor())) {
-          return builder.primitive(INT64, getRepetition(descriptor));
+          return builder.primitive(INT32, getRepetition(descriptor));
         }
         if (messageType.equals(BytesValue.getDescriptor())) {
           return builder.primitive(BINARY, getRepetition(descriptor));
