@@ -946,8 +946,6 @@ public class ParquetMetadataConverter {
     }
 
     GeospatialStatistics formatStats = new GeospatialStatistics();
-    //     boolean isBoundingBoxSet = false;
-    //     boolean isGeometryTypes = false;
     boolean hasStats = false;
 
     if (geospatialStatistics.getBoundingBox() != null

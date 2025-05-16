@@ -34,7 +34,6 @@ import org.slf4j.LoggerFactory;
 public class GeospatialStatistics {
   private static final Logger LOG = LoggerFactory.getLogger(GeospatialStatistics.class);
 
-  // Metadata that may impact the statistics calculation
   private BoundingBox boundingBox;
   private GeospatialTypes geospatialTypes;
 
