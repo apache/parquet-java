@@ -28,6 +28,7 @@ public class VariantObjectBuilder extends VariantBuilder {
   protected long numValues = 0;
 
   VariantObjectBuilder(VariantBuilder rootBuilder) {
+    super(rootBuilder.metadata);
     this.rootBuilder = rootBuilder;
     this.fields = new ArrayList<>();
   }

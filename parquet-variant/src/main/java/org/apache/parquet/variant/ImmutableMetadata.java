@@ -21,11 +21,10 @@ import java.util.HashMap;
 
 /**
  * Metadata that is set up at construction time, and never modified.
- *
  */
 public class ImmutableMetadata implements Metadata {
-  private HashMap<String, Integer> dictionary = null;
-  private ByteBuffer metadataBuffer;
+  private final HashMap<String, Integer> dictionary;
+  private final ByteBuffer metadataBuffer;
 
   public ImmutableMetadata(ByteBuffer metadata) {
     this.dictionary = VariantUtil.getMetadataMap(metadata);
