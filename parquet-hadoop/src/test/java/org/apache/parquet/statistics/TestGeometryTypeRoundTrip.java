@@ -37,7 +37,6 @@ import org.apache.parquet.hadoop.example.ExampleParquetWriter;
 import org.apache.parquet.hadoop.example.GroupWriteSupport;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
-import org.apache.parquet.internal.column.columnindex.ColumnIndex;
 import org.apache.parquet.io.LocalInputFile;
 import org.apache.parquet.io.LocalOutputFile;
 import org.apache.parquet.io.api.Binary;
@@ -220,7 +219,9 @@ public class TestGeometryTypeRoundTrip {
       Assert.assertTrue("Geospatial statistics should be valid", geospatialStatistics.isValid());
       Assert.assertNotNull("Bounding box should not be null", geospatialStatistics.getBoundingBox());
       Assert.assertNotNull("Geospatial types should not be null", geospatialStatistics.getGeospatialTypes());
-      Assert.assertTrue("Geospatial types should be valid", geospatialStatistics.getGeospatialTypes().isValid());
+      Assert.assertTrue(
+          "Geospatial types should be valid",
+          geospatialStatistics.getGeospatialTypes().isValid());
     }
   }
 }
