@@ -89,7 +89,7 @@ import org.apache.parquet.column.statistics.IntStatistics;
 import org.apache.parquet.column.statistics.LongStatistics;
 import org.apache.parquet.column.statistics.SizeStatistics;
 import org.apache.parquet.column.statistics.Statistics;
-import org.apache.parquet.column.statistics.geometry.GeospatialTypes;
+import org.apache.parquet.column.statistics.geospatial.GeospatialTypes;
 import org.apache.parquet.crypto.DecryptionPropertiesFactory;
 import org.apache.parquet.crypto.EncryptionPropertiesFactory;
 import org.apache.parquet.crypto.FileDecryptionProperties;
@@ -1811,8 +1811,8 @@ public class TestParquetMetadataConverter {
     ParquetMetadataConverter converter = new ParquetMetadataConverter();
 
     // Create a valid BoundingBox with all fields set
-    org.apache.parquet.column.statistics.geometry.BoundingBox bbox =
-        new org.apache.parquet.column.statistics.geometry.BoundingBox(
+    org.apache.parquet.column.statistics.geospatial.BoundingBox bbox =
+        new org.apache.parquet.column.statistics.geospatial.BoundingBox(
             1.0, 2.0, // xmin, xmax
             3.0, 4.0, // ymin, ymax
             5.0, 6.0, // zmin, zmax
@@ -1824,8 +1824,8 @@ public class TestParquetMetadataConverter {
     GeospatialTypes geospatialTypes = new GeospatialTypes(types);
 
     // Create GeospatialStatistics with the bbox and types
-    org.apache.parquet.column.statistics.geometry.GeospatialStatistics origStats =
-        new org.apache.parquet.column.statistics.geometry.GeospatialStatistics(bbox, geospatialTypes);
+    org.apache.parquet.column.statistics.geospatial.GeospatialStatistics origStats =
+        new org.apache.parquet.column.statistics.geospatial.GeospatialStatistics(bbox, geospatialTypes);
 
     // Convert to Thrift format
     GeospatialStatistics thriftStats = converter.toParquetGeospatialStatistics(origStats);
@@ -1859,7 +1859,7 @@ public class TestParquetMetadataConverter {
         Types.required(PrimitiveTypeName.BINARY).as(geometryAnnotation).named("geometry");
 
     // Convert back from Thrift format
-    org.apache.parquet.column.statistics.geometry.GeospatialStatistics convertedStats =
+    org.apache.parquet.column.statistics.geospatial.GeospatialStatistics convertedStats =
         ParquetMetadataConverter.fromParquetStatistics(thriftStats, geometryType);
 
     // Verify conversion from Thrift
@@ -1868,7 +1868,7 @@ public class TestParquetMetadataConverter {
     assertNotNull("GeospatialTypes should not be null", convertedStats.getGeospatialTypes());
 
     // Check BoundingBox values
-    org.apache.parquet.column.statistics.geometry.BoundingBox convertedBbox = convertedStats.getBoundingBox();
+    org.apache.parquet.column.statistics.geospatial.BoundingBox convertedBbox = convertedStats.getBoundingBox();
     assertEquals(1.0, convertedBbox.getXMin(), 0.0001);
     assertEquals(2.0, convertedBbox.getXMax(), 0.0001);
     assertEquals(3.0, convertedBbox.getYMin(), 0.0001);
@@ -1893,8 +1893,8 @@ public class TestParquetMetadataConverter {
     // Create GeospatialStatistics with null bbox but valid types
     Set<Integer> types = new HashSet<>(Arrays.asList(1, 2, 3));
     GeospatialTypes geospatialTypes = new GeospatialTypes(types);
-    org.apache.parquet.column.statistics.geometry.GeospatialStatistics origStats =
-        new org.apache.parquet.column.statistics.geometry.GeospatialStatistics(null, geospatialTypes);
+    org.apache.parquet.column.statistics.geospatial.GeospatialStatistics origStats =
+        new org.apache.parquet.column.statistics.geospatial.GeospatialStatistics(null, geospatialTypes);
 
     // Convert to Thrift format
     GeospatialStatistics thriftStats = converter.toParquetGeospatialStatistics(origStats);
@@ -1910,7 +1910,7 @@ public class TestParquetMetadataConverter {
         Types.required(PrimitiveTypeName.BINARY).as(geometryAnnotation).named("geometry");
 
     // Convert back from Thrift format
-    org.apache.parquet.column.statistics.geometry.GeospatialStatistics convertedStats =
+    org.apache.parquet.column.statistics.geospatial.GeospatialStatistics convertedStats =
         ParquetMetadataConverter.fromParquetStatistics(thriftStats, geometryType);
 
     // Verify conversion from Thrift
@@ -1924,8 +1924,8 @@ public class TestParquetMetadataConverter {
     ParquetMetadataConverter converter = new ParquetMetadataConverter();
 
     // Create an invalid BoundingBox with NaN values
-    org.apache.parquet.column.statistics.geometry.BoundingBox invalidBbox =
-        new org.apache.parquet.column.statistics.geometry.BoundingBox(
+    org.apache.parquet.column.statistics.geospatial.BoundingBox invalidBbox =
+        new org.apache.parquet.column.statistics.geospatial.BoundingBox(
             Double.NaN,
             2.0, // xmin is NaN (invalid)
             3.0,
@@ -1935,8 +1935,8 @@ public class TestParquetMetadataConverter {
             7.0,
             8.0);
 
-    org.apache.parquet.column.statistics.geometry.GeospatialStatistics origStats =
-        new org.apache.parquet.column.statistics.geometry.GeospatialStatistics(invalidBbox, null);
+    org.apache.parquet.column.statistics.geospatial.GeospatialStatistics origStats =
+        new org.apache.parquet.column.statistics.geospatial.GeospatialStatistics(invalidBbox, null);
 
     // Convert to Thrift format - should return null for invalid bbox
     GeospatialStatistics thriftStats = converter.toParquetGeospatialStatistics(origStats);

@@ -23,7 +23,7 @@ import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.statistics.SizeStatistics;
 import org.apache.parquet.column.statistics.Statistics;
-import org.apache.parquet.column.statistics.geometry.GeospatialStatistics;
+import org.apache.parquet.column.statistics.geospatial.GeospatialStatistics;
 
 /**
  * a writer for all the pages of a given column chunk

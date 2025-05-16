@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.parquet.column.statistics.geometry;
+package org.apache.parquet.column.statistics.geospatial;
 
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Envelope;

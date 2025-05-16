@@ -32,7 +32,7 @@ import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.page.PageWriter;
 import org.apache.parquet.column.statistics.SizeStatistics;
 import org.apache.parquet.column.statistics.Statistics;
-import org.apache.parquet.column.statistics.geometry.GeospatialStatistics;
+import org.apache.parquet.column.statistics.geospatial.GeospatialStatistics;
 import org.apache.parquet.io.ParquetEncodingException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

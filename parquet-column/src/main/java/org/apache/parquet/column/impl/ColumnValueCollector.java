@@ -26,7 +26,7 @@ import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.statistics.SizeStatistics;
 import org.apache.parquet.column.statistics.Statistics;
-import org.apache.parquet.column.statistics.geometry.GeospatialStatistics;
+import org.apache.parquet.column.statistics.geospatial.GeospatialStatistics;
 import org.apache.parquet.column.values.bloomfilter.AdaptiveBlockSplitBloomFilter;
 import org.apache.parquet.column.values.bloomfilter.BlockSplitBloomFilter;
 import org.apache.parquet.column.values.bloomfilter.BloomFilter;

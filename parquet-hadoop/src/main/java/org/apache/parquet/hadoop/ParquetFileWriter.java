@@ -57,7 +57,7 @@ import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.statistics.SizeStatistics;
 import org.apache.parquet.column.statistics.Statistics;
-import org.apache.parquet.column.statistics.geometry.GeospatialStatistics;
+import org.apache.parquet.column.statistics.geospatial.GeospatialStatistics;
 import org.apache.parquet.column.values.bloomfilter.BloomFilter;
 import org.apache.parquet.crypto.AesCipher;
 import org.apache.parquet.crypto.ColumnEncryptionProperties;

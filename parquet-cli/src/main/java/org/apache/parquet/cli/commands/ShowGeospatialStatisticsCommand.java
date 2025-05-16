@@ -26,7 +26,7 @@ import java.io.IOException;
 import java.util.List;
 import org.apache.commons.text.TextStringBuilder;
 import org.apache.parquet.cli.BaseCommand;
-import org.apache.parquet.column.statistics.geometry.GeospatialStatistics;
+import org.apache.parquet.column.statistics.geospatial.GeospatialStatistics;
 import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;

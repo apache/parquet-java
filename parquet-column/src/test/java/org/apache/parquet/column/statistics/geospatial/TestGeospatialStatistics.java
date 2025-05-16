@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.apache.parquet.column.statistics.geometry;
+package org.apache.parquet.column.statistics.geospatial;
 
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
