@@ -125,6 +125,39 @@ public class TestBoundingBox {
     Assert.assertEquals(25.0, boundingBox.getYMax(), 0.0);
     Assert.assertEquals(30.0, boundingBox.getZMin(), 0.0);
     Assert.assertEquals(30.0, boundingBox.getZMax(), 0.0);
+
+    // Reset the bounding box for M value tests
+    boundingBox.reset();
+
+    // Create a point with NaN M value
+    CoordinateXYZM coordNanM = new CoordinateXYZM(10, 20, 30, Double.NaN);
+    Point nanMPoint = geometryFactory.createPoint(coordNanM);
+    boundingBox.update(nanMPoint);
+
+    // X, Y, Z should be updated, but M should remain at initial values
+    Assert.assertEquals(10.0, boundingBox.getXMin(), 0.0);
+    Assert.assertEquals(10.0, boundingBox.getXMax(), 0.0);
+    Assert.assertEquals(20.0, boundingBox.getYMin(), 0.0);
+    Assert.assertEquals(20.0, boundingBox.getYMax(), 0.0);
+    Assert.assertEquals(30.0, boundingBox.getZMin(), 0.0);
+    Assert.assertEquals(30.0, boundingBox.getZMax(), 0.0);
+    Assert.assertEquals(Double.POSITIVE_INFINITY, boundingBox.getMMin(), 0.0);
+    Assert.assertEquals(Double.NEGATIVE_INFINITY, boundingBox.getMMax(), 0.0);
+
+    // Add a point with valid M value
+    CoordinateXYZM coordValidM = new CoordinateXYZM(15, 25, 35, 40);
+    Point validMPoint = geometryFactory.createPoint(coordValidM);
+    boundingBox.update(validMPoint);
+
+    // All values including M should now be updated
+    Assert.assertEquals(10.0, boundingBox.getXMin(), 0.0);
+    Assert.assertEquals(15.0, boundingBox.getXMax(), 0.0);
+    Assert.assertEquals(20.0, boundingBox.getYMin(), 0.0);
+    Assert.assertEquals(25.0, boundingBox.getYMax(), 0.0);
+    Assert.assertEquals(30.0, boundingBox.getZMin(), 0.0);
+    Assert.assertEquals(35.0, boundingBox.getZMax(), 0.0);
+    Assert.assertEquals(40.0, boundingBox.getMMin(), 0.0);
+    Assert.assertEquals(40.0, boundingBox.getMMax(), 0.0);
   }
 
   @Test

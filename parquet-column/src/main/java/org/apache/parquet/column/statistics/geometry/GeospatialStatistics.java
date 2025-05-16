@@ -148,17 +148,10 @@ public class GeospatialStatistics {
    * @return whether the statistics has valid value.
    */
   public boolean isValid() {
-    if (boundingBox == null || geospatialTypes == null) {
-      return false;
-    }
     return (boundingBox != null && boundingBox.isValid()) || (geospatialTypes != null && geospatialTypes.isValid());
   }
 
   public void merge(GeospatialStatistics other) {
-    if (other == this) {
-      abort();
-    }
-
     if (boundingBox != null) {
       boundingBox.merge(other.boundingBox);
     }

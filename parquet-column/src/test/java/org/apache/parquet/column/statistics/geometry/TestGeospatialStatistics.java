@@ -110,7 +110,7 @@ public class TestGeospatialStatistics {
 
     // Create stats with null bounding box only
     GeospatialStatistics nullBboxStats = new GeospatialStatistics(null, new GeospatialTypes());
-    Assert.assertFalse(nullBboxStats.isValid());
+    Assert.assertTrue(nullBboxStats.isValid());
 
     // Test merging valid with null bounding box
     validCopy = validStats.copy();

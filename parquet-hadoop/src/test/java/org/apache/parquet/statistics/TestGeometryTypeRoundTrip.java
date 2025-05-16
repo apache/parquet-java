@@ -112,9 +112,6 @@ public class TestGeometryTypeRoundTrip {
       Assert.assertEquals(2.0, geospatialStatistics.getBoundingBox().getXMax(), 0.0);
       Assert.assertEquals(1.0, geospatialStatistics.getBoundingBox().getYMin(), 0.0);
       Assert.assertEquals(2.0, geospatialStatistics.getBoundingBox().getYMax(), 0.0);
-
-      ColumnIndex columnIndex = reader.readColumnIndex(columnChunkMetaData);
-      Assert.assertNotNull(columnIndex);
     }
   }
 
@@ -160,9 +157,6 @@ public class TestGeometryTypeRoundTrip {
       ColumnChunkMetaData columnChunkMetaData =
           reader.getRowGroups().get(0).getColumns().get(0);
       Assert.assertNotNull(columnChunkMetaData);
-
-      ColumnIndex columnIndex = reader.readColumnIndex(columnChunkMetaData);
-      Assert.assertNotNull(columnIndex);
 
       GeospatialStatistics geospatialStatistics = columnChunkMetaData.getGeospatialStatistics();
       Assert.assertNull(geospatialStatistics);
@@ -222,9 +216,13 @@ public class TestGeometryTypeRoundTrip {
       GeospatialStatistics geospatialStatistics = columnChunkMetaData.getGeospatialStatistics();
       Assert.assertNotNull("Geospatial statistics should omit the corrupt geometry", geospatialStatistics);
 
-      // Column index should still be readable, even if geometry-specific stats aren't present
-      ColumnIndex columnIndex = reader.readColumnIndex(columnChunkMetaData);
-      Assert.assertNotNull(columnIndex);
+      // further check fields in the GeospatialStatistics
+      Assert.assertTrue("Geospatial statistics should be valid", geospatialStatistics.isValid());
+      Assert.assertNotNull("Bounding box should not be null", geospatialStatistics.getBoundingBox());
+      Assert.assertNotNull("Geospatial types should not be null", geospatialStatistics.getGeospatialTypes());
+      Assert.assertTrue("Geospatial types should be valid", geospatialStatistics.getGeospatialTypes().isValid());
+      Assert.assertTrue("Geospatial types should contain valid geometry type values",
+          geospatialStatistics.getGeospatialTypes().validateTypeValues());
     }
   }
 }

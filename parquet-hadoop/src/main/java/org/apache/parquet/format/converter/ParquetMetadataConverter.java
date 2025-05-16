@@ -806,7 +806,7 @@ public class ParquetMetadataConverter {
 
   private static BoundingBox toParquetBoundingBox(org.apache.parquet.column.statistics.geometry.BoundingBox bbox) {
     // Check if any of the required bounding box is valid.
-    if (!bbox.isValid() || bbox.isXYEmpty()) {
+    if (!bbox.isXYValid() || bbox.isXYEmpty()) {
       // According to the Thrift-generated class, these fields are marked as required and must be set explicitly.
       // If any of them is NaN, it indicates the bounding box is invalid or uninitialized,
       // so we return null to avoid creating a malformed BoundingBox object that would later fail serialization
@@ -946,14 +946,15 @@ public class ParquetMetadataConverter {
     }
 
     GeospatialStatistics formatStats = new GeospatialStatistics();
-    boolean isBoundingBoxSet = false;
-    boolean isGeometryTypes = false;
+//     boolean isBoundingBoxSet = false;
+//     boolean isGeometryTypes = false;
+    boolean hasStats = false;
 
     if (geospatialStatistics.getBoundingBox() != null
         && geospatialStatistics.getBoundingBox().isValid()
         && !geospatialStatistics.getBoundingBox().isXYEmpty()) {
       formatStats.setBbox(toParquetBoundingBox(geospatialStatistics.getBoundingBox()));
-      isBoundingBoxSet = true;
+      hasStats = true;
     }
 
     if (geospatialStatistics.getGeospatialTypes() != null
@@ -963,11 +964,11 @@ public class ParquetMetadataConverter {
       if (!geometryTypes.isEmpty()) {
         Collections.sort(geometryTypes);
         formatStats.setGeospatial_types(geometryTypes);
-        isGeometryTypes = true;
+        hasStats = true;
       }
     }
 
-    if (!isBoundingBoxSet && !isGeometryTypes) {
+    if (!hasStats) {
       return null;
     }
 
