@@ -221,8 +221,6 @@ public class TestGeometryTypeRoundTrip {
       Assert.assertNotNull("Bounding box should not be null", geospatialStatistics.getBoundingBox());
       Assert.assertNotNull("Geospatial types should not be null", geospatialStatistics.getGeospatialTypes());
       Assert.assertTrue("Geospatial types should be valid", geospatialStatistics.getGeospatialTypes().isValid());
-      Assert.assertTrue("Geospatial types should contain valid geometry type values",
-          geospatialStatistics.getGeospatialTypes().validateTypeValues());
     }
   }
 }

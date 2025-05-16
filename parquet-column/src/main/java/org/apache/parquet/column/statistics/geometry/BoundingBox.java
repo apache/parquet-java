@@ -111,7 +111,27 @@ public class BoundingBox {
    * @return true if the X and Y dimensions are valid, false otherwise.
    */
   public boolean isXYValid() {
-    return !(Double.isNaN(xMin) || Double.isNaN(xMax) || Double.isNaN(yMin) || Double.isNaN(yMax));
+    return isXValid() && isYValid();
+  }
+
+  /**
+   * Checks if the X dimension of the bounding box is valid.
+   * The X dimension is considered valid if neither bound contains NaN.
+   *
+   * @return true if the X dimension is valid, false otherwise.
+   */
+  public boolean isXValid() {
+    return !(Double.isNaN(xMin) || Double.isNaN(xMax));
+  }
+
+  /**
+   * Checks if the Y dimension of the bounding box is valid.
+   * The Y dimension is considered valid if neither bound contains NaN.
+   *
+   * @return true if the Y dimension is valid, false otherwise.
+   */
+  public boolean isYValid() {
+    return !(Double.isNaN(yMin) || Double.isNaN(yMax));
   }
 
   /**
@@ -140,8 +160,25 @@ public class BoundingBox {
    * @return true if the bounding box is empty, false otherwise.
    */
   public boolean isXYEmpty() {
-    return (Double.isInfinite(xMin) && Double.isInfinite(xMax))
-        || (Double.isInfinite(yMin) && Double.isInfinite(yMax));
+    return isXEmpty() || isYEmpty();
+  }
+
+  /**
+   * Checks if the bounding box is empty in the X dimension.
+   *
+   * @return true if the X dimension is empty, false otherwise.
+   */
+  public boolean isXEmpty() {
+    return Double.isInfinite(xMin) && Double.isInfinite(xMax);
+  }
+
+  /**
+   * Checks if the bounding box is empty in the Y dimension.
+   *
+   * @return true if the Y dimension is empty, false otherwise.
+   */
+  public boolean isYEmpty() {
+    return Double.isInfinite(yMin) && Double.isInfinite(yMax);
   }
 
   /**

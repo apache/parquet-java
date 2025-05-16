@@ -32,7 +32,7 @@ public class GeospatialTypes {
 
   public GeospatialTypes(Set<Integer> types) {
     this.types = types;
-    this.valid = validateTypeValues();
+    this.valid = true;
   }
 
   public GeospatialTypes(Set<Integer> types, boolean valid) {
@@ -93,50 +93,6 @@ public class GeospatialTypes {
 
   public GeospatialTypes copy() {
     return new GeospatialTypes(new HashSet<>(types), valid);
-  }
-
-  /**
-   * Validates the geometry type codes in this GeospatialTypes instance.
-   * This method ensures that all type codes represent valid geometry types and dimensions.
-   *
-   * @return true if all type codes are valid, false otherwise.
-   */
-  public boolean validateTypeValues() {
-    if (!isValid()) {
-      return false;
-    }
-
-    // No types is considered valid
-    if (types.isEmpty()) {
-      return true;
-    }
-
-    for (Integer typeId : types) {
-      // Null type code is invalid
-      if (typeId == null) {
-        return false;
-      }
-
-      // Negative type codes (except UNKNOWN_TYPE_ID) are invalid
-      if (typeId < 0 && typeId != UNKNOWN_TYPE_ID) {
-        return false;
-      }
-
-      // Check for valid geometry type base codes (1-7)
-      // After removing dimension prefix: 1=Point, 2=LineString, 3=Polygon, etc.
-      int baseTypeCode = getBaseTypeCode(typeId);
-      if (baseTypeCode < 1 || baseTypeCode > 7) {
-        return false;
-      }
-
-      // Check for valid dimension prefix (0=XY, 1000=XYZ, 2000=XYM, 3000=XYZM)
-      int dimension = getDimensionPrefix(typeId);
-      if (dimension != 0 && dimension != 1000 && dimension != 2000 && dimension != 3000) {
-        return false;
-      }
-    }
-
-    return true;
   }
 
   /**

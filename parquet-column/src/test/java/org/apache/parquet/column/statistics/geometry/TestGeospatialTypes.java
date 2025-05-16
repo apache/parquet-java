@@ -531,34 +531,6 @@ public class TestGeospatialTypes {
   }
 
   @Test
-  public void testUnsupportedGeometryType() {
-    // Instead of creating a mock geometry, we'll use reflection to test
-    // the GeospatialTypes with invalid geometry type codes
-    GeospatialTypes types = new GeospatialTypes();
-
-    // Add an invalid type code directly to test validation
-    Set<Integer> invalidTypes = new HashSet<>();
-    invalidTypes.add(8); // 8 is not a valid base geometry type (valid ones are 1-7)
-
-    GeospatialTypes invalidTypeInstance = new GeospatialTypes(invalidTypes);
-    Assert.assertFalse(invalidTypeInstance.isValid());
-
-    // Test with out of range dimension prefix
-    Set<Integer> invalidDimensionTypes = new HashSet<>();
-    invalidDimensionTypes.add(4000 + 1); // 4000 is not a valid dimension prefix
-
-    GeospatialTypes invalidDimensionInstance = new GeospatialTypes(invalidDimensionTypes);
-    Assert.assertFalse(invalidDimensionInstance.isValid());
-
-    // Test with negative type code
-    Set<Integer> negativeTypes = new HashSet<>();
-    negativeTypes.add(-5); // Negative type that's not UNKNOWN_TYPE_ID
-
-    GeospatialTypes negativeTypeInstance = new GeospatialTypes(negativeTypes);
-    Assert.assertFalse(negativeTypeInstance.isValid());
-  }
-
-  @Test
   public void testGeometryTypeDimensionCodes() {
     GeometryFactory gf = new GeometryFactory();
 
