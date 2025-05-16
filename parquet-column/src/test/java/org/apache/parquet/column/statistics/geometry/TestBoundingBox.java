@@ -36,6 +36,8 @@ public class TestBoundingBox {
     // Create a 2D point
     Point point2D = geometryFactory.createPoint(new Coordinate(10, 20));
     boundingBox.update(point2D);
+
+    Assert.assertTrue(boundingBox.isValid());
     Assert.assertEquals(10.0, boundingBox.getXMin(), 0.0);
     Assert.assertEquals(10.0, boundingBox.getXMax(), 0.0);
     Assert.assertEquals(20.0, boundingBox.getYMin(), 0.0);
@@ -52,6 +54,7 @@ public class TestBoundingBox {
     boundingBox.update(emptyPoint);
 
     // Empty geometry should retain the initial state
+    Assert.assertTrue(boundingBox.isValid());
     Assert.assertEquals(Double.POSITIVE_INFINITY, boundingBox.getXMin(), 0.0);
     Assert.assertEquals(Double.NEGATIVE_INFINITY, boundingBox.getXMax(), 0.0);
     Assert.assertEquals(Double.POSITIVE_INFINITY, boundingBox.getYMin(), 0.0);
@@ -60,6 +63,7 @@ public class TestBoundingBox {
     // Test that after adding a non-empty geometry, values are updated correctly
     Point point = geometryFactory.createPoint(new Coordinate(10, 20));
     boundingBox.update(point);
+    Assert.assertTrue(boundingBox.isValid());
     Assert.assertEquals(10.0, boundingBox.getXMin(), 0.0);
     Assert.assertEquals(10.0, boundingBox.getXMax(), 0.0);
     Assert.assertEquals(20.0, boundingBox.getYMin(), 0.0);
@@ -67,6 +71,7 @@ public class TestBoundingBox {
 
     // Update with another empty geometry, should not change the bounds
     boundingBox.update(emptyPoint);
+    Assert.assertTrue(boundingBox.isValid());
     Assert.assertEquals(10.0, boundingBox.getXMin(), 0.0);
     Assert.assertEquals(10.0, boundingBox.getXMax(), 0.0);
     Assert.assertEquals(20.0, boundingBox.getYMin(), 0.0);
@@ -83,6 +88,7 @@ public class TestBoundingBox {
     boundingBox.update(nanPoint);
 
     // All values should be NaN after updating with all-NaN coordinates
+    Assert.assertTrue(boundingBox.isValid());
     Assert.assertTrue(boundingBox.isXYEmpty());
 
     // Reset the bounding box for the next test
@@ -93,6 +99,7 @@ public class TestBoundingBox {
     boundingBox.update(mixedPoint);
 
     // The valid X coordinate should be used, Y should remain at initial values
+    Assert.assertTrue(boundingBox.isValid());
     Assert.assertTrue(boundingBox.isXYEmpty());
   }
 
@@ -108,6 +115,7 @@ public class TestBoundingBox {
     boundingBox.update(nanZPoint);
 
     // X and Y should be updated, but Z should remain NaN
+    Assert.assertTrue(boundingBox.isValid());
     Assert.assertEquals(10.0, boundingBox.getXMin(), 0.0);
     Assert.assertEquals(10.0, boundingBox.getXMax(), 0.0);
     Assert.assertEquals(20.0, boundingBox.getYMin(), 0.0);
@@ -119,6 +127,7 @@ public class TestBoundingBox {
     boundingBox.update(validZPoint);
 
     // X, Y, and Z values should now be updated
+    Assert.assertTrue(boundingBox.isValid());
     Assert.assertEquals(10.0, boundingBox.getXMin(), 0.0);
     Assert.assertEquals(15.0, boundingBox.getXMax(), 0.0);
     Assert.assertEquals(20.0, boundingBox.getYMin(), 0.0);
@@ -135,6 +144,7 @@ public class TestBoundingBox {
     boundingBox.update(nanMPoint);
 
     // X, Y, Z should be updated, but M should remain at initial values
+    Assert.assertTrue(boundingBox.isValid());
     Assert.assertEquals(10.0, boundingBox.getXMin(), 0.0);
     Assert.assertEquals(10.0, boundingBox.getXMax(), 0.0);
     Assert.assertEquals(20.0, boundingBox.getYMin(), 0.0);
@@ -150,6 +160,7 @@ public class TestBoundingBox {
     boundingBox.update(validMPoint);
 
     // All values including M should now be updated
+    Assert.assertTrue(boundingBox.isValid());
     Assert.assertEquals(10.0, boundingBox.getXMin(), 0.0);
     Assert.assertEquals(15.0, boundingBox.getXMax(), 0.0);
     Assert.assertEquals(20.0, boundingBox.getYMin(), 0.0);
@@ -170,6 +181,7 @@ public class TestBoundingBox {
     boundingBox.update(validPoint);
 
     // Check initial values
+    Assert.assertTrue(boundingBox.isValid());
     Assert.assertEquals(10.0, boundingBox.getXMin(), 0.0);
     Assert.assertEquals(10.0, boundingBox.getXMax(), 0.0);
     Assert.assertEquals(20.0, boundingBox.getYMin(), 0.0);
@@ -179,6 +191,7 @@ public class TestBoundingBox {
     boundingBox.abort();
 
     // Check that values are reset to initial state
+    Assert.assertFalse(boundingBox.isValid());
     Assert.assertEquals(Double.POSITIVE_INFINITY, boundingBox.getXMin(), 0.0);
     Assert.assertEquals(Double.NEGATIVE_INFINITY, boundingBox.getXMax(), 0.0);
     Assert.assertEquals(Double.POSITIVE_INFINITY, boundingBox.getYMin(), 0.0);
@@ -194,6 +207,7 @@ public class TestBoundingBox {
     BoundingBox boundingBox = new BoundingBox();
 
     // Assert all initial values are Infinity
+    Assert.assertTrue(boundingBox.isValid());
     Assert.assertEquals(Double.POSITIVE_INFINITY, boundingBox.getXMin(), 0.0);
     Assert.assertEquals(Double.NEGATIVE_INFINITY, boundingBox.getXMax(), 0.0);
     Assert.assertEquals(Double.POSITIVE_INFINITY, boundingBox.getYMin(), 0.0);
@@ -211,6 +225,7 @@ public class TestBoundingBox {
 
     boundingBox1.merge(boundingBox2);
 
+    Assert.assertTrue(boundingBox1.isValid());
     Assert.assertEquals(0.0, boundingBox1.getXMin(), 0.0);
     Assert.assertEquals(15.0, boundingBox1.getXMax(), 0.0);
     Assert.assertEquals(0.0, boundingBox1.getYMin(), 0.0);
@@ -228,6 +243,7 @@ public class TestBoundingBox {
 
     boundingBox1.merge(emptyBoundingBox);
 
+    Assert.assertTrue(boundingBox1.isValid());
     Assert.assertEquals(0.0, boundingBox1.getXMin(), 0.0);
     Assert.assertEquals(10.0, boundingBox1.getXMax(), 0.0);
     Assert.assertEquals(0.0, boundingBox1.getYMin(), 0.0);
@@ -244,6 +260,7 @@ public class TestBoundingBox {
     boundingBox.update(null);
 
     // Check that the bounding box remains in its initial state
+    Assert.assertTrue(boundingBox.isValid());
     Assert.assertEquals(Double.POSITIVE_INFINITY, boundingBox.getXMin(), 0.0);
     Assert.assertEquals(Double.NEGATIVE_INFINITY, boundingBox.getXMax(), 0.0);
     Assert.assertEquals(Double.POSITIVE_INFINITY, boundingBox.getYMin(), 0.0);
@@ -273,6 +290,7 @@ public class TestBoundingBox {
 
     // First add a valid point
     box.update(gf.createPoint(new Coordinate(10, 20)));
+    Assert.assertTrue(box.isValid());
     Assert.assertEquals(10.0, box.getXMin(), 0.0);
     Assert.assertEquals(10.0, box.getXMax(), 0.0);
     Assert.assertEquals(20.0, box.getYMin(), 0.0);
@@ -296,6 +314,7 @@ public class TestBoundingBox {
     Point point3D = gf.createPoint(coord);
     box.update(point3D);
 
+    Assert.assertTrue(box.isValid());
     Assert.assertEquals(10.0, box.getXMin(), 0.0);
     Assert.assertEquals(10.0, box.getXMax(), 0.0);
     Assert.assertEquals(20.0, box.getYMin(), 0.0);
@@ -306,6 +325,7 @@ public class TestBoundingBox {
     // Add another 3D point with different Z
     box.update(gf.createPoint(new Coordinate(15, 25, 10)));
 
+    Assert.assertTrue(box.isValid());
     Assert.assertEquals(10.0, box.getXMin(), 0.0);
     Assert.assertEquals(15.0, box.getXMax(), 0.0);
     Assert.assertEquals(20.0, box.getYMin(), 0.0);
@@ -324,6 +344,7 @@ public class TestBoundingBox {
     Point pointWithM = gf.createPoint(coord);
     box.update(pointWithM);
 
+    Assert.assertTrue(box.isValid());
     Assert.assertEquals(10.0, box.getXMin(), 0.0);
     Assert.assertEquals(10.0, box.getXMax(), 0.0);
     Assert.assertEquals(20.0, box.getYMin(), 0.0);
@@ -335,6 +356,7 @@ public class TestBoundingBox {
     CoordinateXYZM coord2 = new CoordinateXYZM(15, 25, Double.NaN, 10.0);
     box.update(gf.createPoint(coord2));
 
+    Assert.assertTrue(box.isValid());
     Assert.assertEquals(10.0, box.getXMin(), 0.0);
     Assert.assertEquals(15.0, box.getXMax(), 0.0);
     Assert.assertEquals(20.0, box.getYMin(), 0.0);
@@ -350,12 +372,14 @@ public class TestBoundingBox {
 
     // Update with a valid point
     box.update(gf.createPoint(new Coordinate(10, 20)));
+    Assert.assertTrue(box.isValid());
     Assert.assertEquals(10.0, box.getXMin(), 0.0);
 
     // Reset the box
     box.reset();
 
     // All values should be reset to their initial state
+    Assert.assertTrue(box.isValid());
     Assert.assertEquals(Double.POSITIVE_INFINITY, box.getXMin(), 0.0);
     Assert.assertEquals(Double.NEGATIVE_INFINITY, box.getXMax(), 0.0);
     Assert.assertEquals(Double.POSITIVE_INFINITY, box.getYMin(), 0.0);
@@ -367,6 +391,7 @@ public class TestBoundingBox {
 
     // Update after reset should work correctly
     box.update(gf.createPoint(new Coordinate(30, 40)));
+    Assert.assertTrue(box.isValid());
     Assert.assertEquals(30.0, box.getXMin(), 0.0);
     Assert.assertEquals(30.0, box.getXMax(), 0.0);
     Assert.assertEquals(40.0, box.getYMin(), 0.0);
@@ -382,6 +407,7 @@ public class TestBoundingBox {
     BoundingBox copy = original.copy();
 
     // Verify all values are copied correctly
+    Assert.assertTrue(original.isValid());
     Assert.assertEquals(original.getXMin(), copy.getXMin(), 0.0);
     Assert.assertEquals(original.getXMax(), copy.getXMax(), 0.0);
     Assert.assertEquals(original.getYMin(), copy.getYMin(), 0.0);
@@ -393,6 +419,7 @@ public class TestBoundingBox {
 
     // Modify the copy and verify original is unchanged
     copy.reset();
+    Assert.assertTrue(original.isValid());
     Assert.assertEquals(1.0, original.getXMin(), 0.0);
   }
 
@@ -407,6 +434,7 @@ public class TestBoundingBox {
     // Merge should keep existing values
     box1.merge(box2);
 
+    Assert.assertTrue(box1.isValid());
     Assert.assertEquals(1.0, box1.getXMin(), 0.0);
     Assert.assertEquals(2.0, box1.getXMax(), 0.0);
     Assert.assertEquals(3.0, box1.getYMin(), 0.0);
@@ -420,6 +448,7 @@ public class TestBoundingBox {
     BoundingBox box3 = new BoundingBox();
     box3.merge(box1);
 
+    Assert.assertTrue(box1.isValid());
     Assert.assertEquals(1.0, box3.getXMin(), 0.0);
     Assert.assertEquals(2.0, box3.getXMax(), 0.0);
     Assert.assertEquals(3.0, box3.getYMin(), 0.0);
@@ -438,6 +467,7 @@ public class TestBoundingBox {
     box.update(gf.createLineString(coords));
 
     // The bounding box should include the valid coordinates and ignore NaN
+    Assert.assertTrue(box.isValid());
     Assert.assertEquals(0.0, box.getXMin(), 0.0);
     Assert.assertEquals(2.0, box.getXMax(), 0.0);
     Assert.assertEquals(1.0, box.getYMin(), 0.0);
@@ -451,6 +481,7 @@ public class TestBoundingBox {
 
     box2.update(gf.createLineString(coords2));
 
+    Assert.assertTrue(box2.isValid());
     Assert.assertEquals(5.0, box2.getXMin(), 0.0);
     Assert.assertEquals(5.0, box2.getXMax(), 0.0);
     Assert.assertEquals(6.0, box2.getYMin(), 0.0);
@@ -464,6 +495,7 @@ public class TestBoundingBox {
     box3.update(gf.createLineString(coords3));
 
     // The bounding box should remain empty
+    Assert.assertTrue(box3.isValid());
     Assert.assertTrue(box3.isXYEmpty());
   }
 
@@ -480,6 +512,7 @@ public class TestBoundingBox {
     box.update(gf.createLineString(coords));
 
     // The bounding box should include all valid coordinates
+    Assert.assertTrue(box.isValid());
     Assert.assertEquals(0.0, box.getXMin(), 0.0);
     Assert.assertEquals(2.0, box.getXMax(), 0.0);
     Assert.assertEquals(1.0, box.getYMin(), 0.0);
@@ -491,6 +524,7 @@ public class TestBoundingBox {
         new Coordinate[] {new Coordinate(Double.NaN, 5), new Coordinate(6, Double.NaN), new Coordinate(7, 8)};
 
     box2.update(gf.createLineString(coords2));
+    Assert.assertTrue(box2.isValid());
     Assert.assertTrue(box2.isXYEmpty());
   }
 
@@ -544,6 +578,7 @@ public class TestBoundingBox {
     rowGroup1.update(gf.createPoint(new Coordinate(2, Double.NaN)));
 
     // Verify Row Group 1
+    Assert.assertTrue(rowGroup1.isValid());
     Assert.assertEquals(1.0, rowGroup1.getXMin(), 0.0);
     Assert.assertEquals(2.0, rowGroup1.getXMax(), 0.0);
     Assert.assertEquals(100.0, rowGroup1.getYMin(), 0.0);
@@ -558,6 +593,7 @@ public class TestBoundingBox {
     rowGroup2.update(gf.createPoint(nanCoord));
 
     // Verify Row Group 2
+    Assert.assertTrue(rowGroup2.isValid());
     Assert.assertEquals(3.0, rowGroup2.getXMin(), 0.0);
     Assert.assertEquals(3.0, rowGroup2.getXMax(), 0.0);
     Assert.assertEquals(300.0, rowGroup2.getYMin(), 0.0);
@@ -578,6 +614,7 @@ public class TestBoundingBox {
     rowGroup4.update(gf.createPoint(new Coordinate(8, 800)));
 
     // Verify Row Group 4
+    Assert.assertTrue(rowGroup4.isValid());
     Assert.assertEquals(7.0, rowGroup4.getXMin(), 0.0);
     Assert.assertEquals(8.0, rowGroup4.getXMax(), 0.0);
     Assert.assertEquals(700.0, rowGroup4.getYMin(), 0.0);
@@ -605,6 +642,7 @@ public class TestBoundingBox {
     rowGroup6.update(validPoint); // This should set the bounds
 
     // Verify Row Group 6
+    Assert.assertTrue(rowGroup6.isValid());
     Assert.assertEquals(9.0, rowGroup6.getXMin(), 0.0);
     Assert.assertEquals(9.0, rowGroup6.getXMax(), 0.0);
     Assert.assertEquals(900.0, rowGroup6.getYMin(), 0.0);
@@ -620,6 +658,7 @@ public class TestBoundingBox {
 
     // Verify file-level bounding box
     // Note: Now includes point (9, 900) from rowGroup6
+    Assert.assertTrue(fileBBox.isValid());
     Assert.assertEquals(1.0, fileBBox.getXMin(), 0.0);
     Assert.assertEquals(9.0, fileBBox.getXMax(), 0.0);
     Assert.assertEquals(100.0, fileBBox.getYMin(), 0.0);
@@ -635,6 +674,7 @@ public class TestBoundingBox {
     reverseMergeBox.merge(rowGroup2);
     reverseMergeBox.merge(rowGroup1);
 
+    Assert.assertTrue(reverseMergeBox.isValid());
     Assert.assertEquals(1.0, reverseMergeBox.getXMin(), 0.0);
     Assert.assertEquals(9.0, reverseMergeBox.getXMax(), 0.0);
     Assert.assertEquals(100.0, reverseMergeBox.getYMin(), 0.0);
