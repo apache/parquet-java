@@ -89,6 +89,7 @@ import org.apache.parquet.column.statistics.IntStatistics;
 import org.apache.parquet.column.statistics.LongStatistics;
 import org.apache.parquet.column.statistics.SizeStatistics;
 import org.apache.parquet.column.statistics.Statistics;
+import org.apache.parquet.column.statistics.geospatial.GeospatialTypes;
 import org.apache.parquet.crypto.DecryptionPropertiesFactory;
 import org.apache.parquet.crypto.EncryptionPropertiesFactory;
 import org.apache.parquet.crypto.FileDecryptionProperties;
@@ -96,6 +97,7 @@ import org.apache.parquet.crypto.InternalFileDecryptor;
 import org.apache.parquet.example.Paper;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroup;
+import org.apache.parquet.format.BoundingBox;
 import org.apache.parquet.format.ColumnChunk;
 import org.apache.parquet.format.ColumnMetaData;
 import org.apache.parquet.format.ConvertedType;
@@ -104,6 +106,7 @@ import org.apache.parquet.format.FieldRepetitionType;
 import org.apache.parquet.format.FileMetaData;
 import org.apache.parquet.format.GeographyType;
 import org.apache.parquet.format.GeometryType;
+import org.apache.parquet.format.GeospatialStatistics;
 import org.apache.parquet.format.LogicalType;
 import org.apache.parquet.format.MapType;
 import org.apache.parquet.format.PageHeader;
@@ -1800,5 +1803,162 @@ public class TestParquetMetadataConverter {
         "Algorithm should be SPHERICAL",
         EdgeInterpolationAlgorithm.SPHERICAL,
         geographyAnnotation.getAlgorithm());
+  }
+
+  @Test
+  public void testGeospatialStatisticsConversion() {
+    // Create a ParquetMetadataConverter
+    ParquetMetadataConverter converter = new ParquetMetadataConverter();
+
+    // Create a valid BoundingBox with all fields set
+    org.apache.parquet.column.statistics.geospatial.BoundingBox bbox =
+        new org.apache.parquet.column.statistics.geospatial.BoundingBox(
+            1.0, 2.0, // xmin, xmax
+            3.0, 4.0, // ymin, ymax
+            5.0, 6.0, // zmin, zmax
+            7.0, 8.0 // mmin, mmax
+            );
+
+    // Create GeospatialTypes with some example type values
+    Set<Integer> types = new HashSet<>(Arrays.asList(1, 2, 3));
+    GeospatialTypes geospatialTypes = new GeospatialTypes(types);
+
+    // Create GeospatialStatistics with the bbox and types
+    org.apache.parquet.column.statistics.geospatial.GeospatialStatistics origStats =
+        new org.apache.parquet.column.statistics.geospatial.GeospatialStatistics(bbox, geospatialTypes);
+
+    // Convert to Thrift format
+    GeospatialStatistics thriftStats = converter.toParquetGeospatialStatistics(origStats);
+
+    // Verify conversion to Thrift
+    assertNotNull("Thrift GeospatialStatistics should not be null", thriftStats);
+    assertTrue("BoundingBox should be set", thriftStats.isSetBbox());
+    assertTrue("Geospatial types should be set", thriftStats.isSetGeospatial_types());
+
+    // Check BoundingBox values
+    BoundingBox thriftBbox = thriftStats.getBbox();
+    assertEquals(1.0, thriftBbox.getXmin(), 0.0001);
+    assertEquals(2.0, thriftBbox.getXmax(), 0.0001);
+    assertEquals(3.0, thriftBbox.getYmin(), 0.0001);
+    assertEquals(4.0, thriftBbox.getYmax(), 0.0001);
+    assertEquals(5.0, thriftBbox.getZmin(), 0.0001);
+    assertEquals(6.0, thriftBbox.getZmax(), 0.0001);
+    assertEquals(7.0, thriftBbox.getMmin(), 0.0001);
+    assertEquals(8.0, thriftBbox.getMmax(), 0.0001);
+
+    // Check geospatial types
+    List<Integer> thriftTypes = thriftStats.getGeospatial_types();
+    assertEquals(3, thriftTypes.size());
+    assertTrue(thriftTypes.contains(1));
+    assertTrue(thriftTypes.contains(2));
+    assertTrue(thriftTypes.contains(3));
+
+    // Create primitive geometry type for conversion back
+    LogicalTypeAnnotation geometryAnnotation = LogicalTypeAnnotation.geometryType("EPSG:4326");
+    PrimitiveType geometryType =
+        Types.required(PrimitiveTypeName.BINARY).as(geometryAnnotation).named("geometry");
+
+    // Convert back from Thrift format
+    org.apache.parquet.column.statistics.geospatial.GeospatialStatistics convertedStats =
+        ParquetMetadataConverter.fromParquetStatistics(thriftStats, geometryType);
+
+    // Verify conversion from Thrift
+    assertNotNull("Converted GeospatialStatistics should not be null", convertedStats);
+    assertNotNull("BoundingBox should not be null", convertedStats.getBoundingBox());
+    assertNotNull("GeospatialTypes should not be null", convertedStats.getGeospatialTypes());
+
+    // Check BoundingBox values
+    org.apache.parquet.column.statistics.geospatial.BoundingBox convertedBbox = convertedStats.getBoundingBox();
+    assertEquals(1.0, convertedBbox.getXMin(), 0.0001);
+    assertEquals(2.0, convertedBbox.getXMax(), 0.0001);
+    assertEquals(3.0, convertedBbox.getYMin(), 0.0001);
+    assertEquals(4.0, convertedBbox.getYMax(), 0.0001);
+    assertEquals(5.0, convertedBbox.getZMin(), 0.0001);
+    assertEquals(6.0, convertedBbox.getZMax(), 0.0001);
+    assertEquals(7.0, convertedBbox.getMMin(), 0.0001);
+    assertEquals(8.0, convertedBbox.getMMax(), 0.0001);
+
+    // Check geospatial types
+    Set<Integer> convertedTypes = convertedStats.getGeospatialTypes().getTypes();
+    assertEquals(3, convertedTypes.size());
+    assertTrue(convertedTypes.contains(1));
+    assertTrue(convertedTypes.contains(2));
+    assertTrue(convertedTypes.contains(3));
+  }
+
+  @Test
+  public void testGeospatialStatisticsWithNullBoundingBox() {
+    ParquetMetadataConverter converter = new ParquetMetadataConverter();
+
+    // Create GeospatialStatistics with null bbox but valid types
+    Set<Integer> types = new HashSet<>(Arrays.asList(1, 2, 3));
+    GeospatialTypes geospatialTypes = new GeospatialTypes(types);
+    org.apache.parquet.column.statistics.geospatial.GeospatialStatistics origStats =
+        new org.apache.parquet.column.statistics.geospatial.GeospatialStatistics(null, geospatialTypes);
+
+    // Convert to Thrift format
+    GeospatialStatistics thriftStats = converter.toParquetGeospatialStatistics(origStats);
+
+    // Verify conversion to Thrift
+    assertNotNull("Thrift GeospatialStatistics should not be null", thriftStats);
+    assertFalse("BoundingBox should not be set", thriftStats.isSetBbox());
+    assertTrue("Geospatial types should be set", thriftStats.isSetGeospatial_types());
+
+    // Create primitive geometry type for conversion back
+    LogicalTypeAnnotation geometryAnnotation = LogicalTypeAnnotation.geometryType("EPSG:4326");
+    PrimitiveType geometryType =
+        Types.required(PrimitiveTypeName.BINARY).as(geometryAnnotation).named("geometry");
+
+    // Convert back from Thrift format
+    org.apache.parquet.column.statistics.geospatial.GeospatialStatistics convertedStats =
+        ParquetMetadataConverter.fromParquetStatistics(thriftStats, geometryType);
+
+    // Verify conversion from Thrift
+    assertNotNull("Converted GeospatialStatistics should not be null", convertedStats);
+    assertNull("BoundingBox should be null", convertedStats.getBoundingBox());
+    assertNotNull("GeospatialTypes should not be null", convertedStats.getGeospatialTypes());
+  }
+
+  @Test
+  public void testInvalidBoundingBox() {
+    ParquetMetadataConverter converter = new ParquetMetadataConverter();
+
+    // Create an invalid BoundingBox with NaN values
+    org.apache.parquet.column.statistics.geospatial.BoundingBox invalidBbox =
+        new org.apache.parquet.column.statistics.geospatial.BoundingBox(
+            Double.NaN,
+            2.0, // xmin is NaN (invalid)
+            3.0,
+            4.0,
+            5.0,
+            6.0,
+            7.0,
+            8.0);
+
+    org.apache.parquet.column.statistics.geospatial.GeospatialStatistics origStats =
+        new org.apache.parquet.column.statistics.geospatial.GeospatialStatistics(invalidBbox, null);
+
+    // Convert to Thrift format - should return null for invalid bbox
+    GeospatialStatistics thriftStats = converter.toParquetGeospatialStatistics(origStats);
+    assertNull("Should return null for invalid BoundingBox", thriftStats);
+  }
+
+  @Test
+  public void testEdgeInterpolationAlgorithmConversion() {
+    // Test conversion from Parquet to Thrift enum
+    org.apache.parquet.column.schema.EdgeInterpolationAlgorithm parquetAlgo = EdgeInterpolationAlgorithm.SPHERICAL;
+    org.apache.parquet.format.EdgeInterpolationAlgorithm thriftAlgo =
+        ParquetMetadataConverter.fromParquetEdgeInterpolationAlgorithm(parquetAlgo);
+
+    // convert the Thrift enum to the column schema enum
+    org.apache.parquet.column.schema.EdgeInterpolationAlgorithm expected =
+        org.apache.parquet.column.schema.EdgeInterpolationAlgorithm.SPHERICAL;
+    org.apache.parquet.column.schema.EdgeInterpolationAlgorithm actual =
+        ParquetMetadataConverter.toParquetEdgeInterpolationAlgorithm(thriftAlgo);
+    assertEquals(expected, actual);
+
+    // Test with null
+    assertNull(ParquetMetadataConverter.fromParquetEdgeInterpolationAlgorithm(null));
+    assertNull(ParquetMetadataConverter.toParquetEdgeInterpolationAlgorithm(null));
   }
 }

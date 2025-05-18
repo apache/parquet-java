@@ -121,6 +121,8 @@ Usage: parquet [options] [command] [command options]
         Rewrite one or more Parquet files to a new Parquet file
     size-stats
         Print size statistics for a Parquet file
+    geospatial-stats
+        Print geospatial statistics for a Parquet file
 
   Examples:
 

@@ -31,6 +31,7 @@ import org.apache.parquet.column.EncodingStats;
 import org.apache.parquet.column.statistics.BooleanStatistics;
 import org.apache.parquet.column.statistics.SizeStatistics;
 import org.apache.parquet.column.statistics.Statistics;
+import org.apache.parquet.column.statistics.geospatial.GeospatialStatistics;
 import org.apache.parquet.crypto.AesCipher;
 import org.apache.parquet.crypto.InternalColumnDecryptionSetup;
 import org.apache.parquet.crypto.InternalFileDecryptor;
@@ -156,6 +157,35 @@ public abstract class ColumnChunkMetaData {
       long dictionaryPageOffset,
       long valueCount,
       long totalSize,
+      long totalUncompressedSize,
+      SizeStatistics sizeStatistics) {
+    return get(
+        path,
+        type,
+        codec,
+        encodingStats,
+        encodings,
+        statistics,
+        firstDataPage,
+        dictionaryPageOffset,
+        valueCount,
+        totalSize,
+        totalUncompressedSize,
+        sizeStatistics,
+        null);
+  }
+
+  public static ColumnChunkMetaData get(
+      ColumnPath path,
+      PrimitiveType type,
+      CompressionCodecName codec,
+      EncodingStats encodingStats,
+      Set<Encoding> encodings,
+      Statistics statistics,
+      long firstDataPage,
+      long dictionaryPageOffset,
+      long valueCount,
+      long totalSize,
       long totalUncompressedSize) {
     return get(
         path,
@@ -169,6 +199,7 @@ public abstract class ColumnChunkMetaData {
         valueCount,
         totalSize,
         totalUncompressedSize,
+        null,
         null);
   }
 
@@ -199,7 +230,8 @@ public abstract class ColumnChunkMetaData {
       long valueCount,
       long totalSize,
       long totalUncompressedSize,
-      SizeStatistics sizeStatistics) {
+      SizeStatistics sizeStatistics,
+      GeospatialStatistics geospatialStats) {
 
     // to save space we store those always positive longs in ints when they fit.
     if (positiveLongFitsInAnInt(firstDataPage)
@@ -219,7 +251,8 @@ public abstract class ColumnChunkMetaData {
           valueCount,
           totalSize,
           totalUncompressedSize,
-          sizeStatistics);
+          sizeStatistics,
+          geospatialStats);
     } else {
       return new LongColumnChunkMetaData(
           path,
@@ -233,7 +266,8 @@ public abstract class ColumnChunkMetaData {
           valueCount,
           totalSize,
           totalUncompressedSize,
-          sizeStatistics);
+          sizeStatistics,
+          geospatialStats);
     }
   }
 
@@ -395,6 +429,12 @@ public abstract class ColumnChunkMetaData {
     throw new UnsupportedOperationException("SizeStatistics is not implemented");
   }
 
+  /** @return the geospatial stats for this column */
+  @JsonIgnore
+  public GeospatialStatistics getGeospatialStatistics() {
+    throw new UnsupportedOperationException("GeospatialStatistics is not implemented");
+  }
+
   /**
    * Method should be considered private
    *
@@ -515,6 +555,7 @@ class IntColumnChunkMetaData extends ColumnChunkMetaData {
   private final int totalUncompressedSize;
   private final Statistics statistics;
   private final SizeStatistics sizeStatistics;
+  private final GeospatialStatistics geospatialStatistics;
 
   /**
    * @param path                  column identifier
@@ -528,6 +569,7 @@ class IntColumnChunkMetaData extends ColumnChunkMetaData {
    * @param totalSize
    * @param totalUncompressedSize
    * @param sizeStatistics
+   * @param geospatialStatistics
    */
   IntColumnChunkMetaData(
       ColumnPath path,
@@ -541,7 +583,8 @@ class IntColumnChunkMetaData extends ColumnChunkMetaData {
       long valueCount,
       long totalSize,
       long totalUncompressedSize,
-      SizeStatistics sizeStatistics) {
+      SizeStatistics sizeStatistics,
+      GeospatialStatistics geospatialStatistics) {
     super(encodingStats, ColumnChunkProperties.get(path, type, codec, encodings));
     this.firstDataPage = positiveLongToInt(firstDataPage);
     this.dictionaryPageOffset = positiveLongToInt(dictionaryPageOffset);
@@ -550,6 +593,7 @@ class IntColumnChunkMetaData extends ColumnChunkMetaData {
     this.totalUncompressedSize = positiveLongToInt(totalUncompressedSize);
     this.statistics = statistics;
     this.sizeStatistics = sizeStatistics;
+    this.geospatialStatistics = geospatialStatistics;
   }
 
   /**
@@ -624,6 +668,11 @@ class IntColumnChunkMetaData extends ColumnChunkMetaData {
   public SizeStatistics getSizeStatistics() {
     return sizeStatistics;
   }
+
+  @Override
+  public GeospatialStatistics getGeospatialStatistics() {
+    return geospatialStatistics;
+  }
 }
 
 class LongColumnChunkMetaData extends ColumnChunkMetaData {
@@ -635,6 +684,7 @@ class LongColumnChunkMetaData extends ColumnChunkMetaData {
   private final long totalUncompressedSize;
   private final Statistics statistics;
   private final SizeStatistics sizeStatistics;
+  private final GeospatialStatistics geospatialStatistics;
 
   /**
    * @param path                  column identifier
@@ -648,6 +698,7 @@ class LongColumnChunkMetaData extends ColumnChunkMetaData {
    * @param totalSize
    * @param totalUncompressedSize
    * @param sizeStatistics
+   * @param geospatialStatistics
    */
   LongColumnChunkMetaData(
       ColumnPath path,
@@ -661,7 +712,8 @@ class LongColumnChunkMetaData extends ColumnChunkMetaData {
       long valueCount,
       long totalSize,
       long totalUncompressedSize,
-      SizeStatistics sizeStatistics) {
+      SizeStatistics sizeStatistics,
+      GeospatialStatistics geospatialStatistics) {
     super(encodingStats, ColumnChunkProperties.get(path, type, codec, encodings));
     this.firstDataPageOffset = firstDataPageOffset;
     this.dictionaryPageOffset = dictionaryPageOffset;
@@ -670,6 +722,7 @@ class LongColumnChunkMetaData extends ColumnChunkMetaData {
     this.totalUncompressedSize = totalUncompressedSize;
     this.statistics = statistics;
     this.sizeStatistics = sizeStatistics;
+    this.geospatialStatistics = geospatialStatistics;
   }
 
   /**
@@ -720,6 +773,11 @@ class LongColumnChunkMetaData extends ColumnChunkMetaData {
   @Override
   public SizeStatistics getSizeStatistics() {
     return sizeStatistics;
+  }
+
+  @Override
+  public GeospatialStatistics getGeospatialStatistics() {
+    return geospatialStatistics;
   }
 }
 
@@ -849,5 +907,9 @@ class EncryptedColumnChunkMetaData extends ColumnChunkMetaData {
   @Override
   public boolean isEncrypted() {
     return true;
+  }
+
+  public GeospatialStatistics getGeospatialStatistics() {
+    return shadowColumnChunkMetaData.getGeospatialStatistics();
   }
 }
