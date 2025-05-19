@@ -18,8 +18,10 @@
  */
 package org.apache.parquet.cli.commands;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.util.Arrays;
 import org.apache.hadoop.conf.Configuration;
 import org.junit.Assert;
@@ -37,4 +39,17 @@ public class ConvertCommandTest extends AvroFileTest {
     Assert.assertEquals(0, command.run());
     Assert.assertTrue(output.exists());
   }
+
+  @Test
+  public void testConvertCommandToStdOut() throws IOException {
+    File file = toAvro(parquetFile());
+    ConvertCommand command = new ConvertCommand(createLogger());
+    command.targets = Arrays.asList(file.getAbsolutePath());
+    command.setConf(new Configuration());
+    final ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    System.setOut(new PrintStream(baos));
+    Assert.assertEquals(0, command.run());
+    Assert.assertTrue(baos.size() > 0);
+  }
+
 }

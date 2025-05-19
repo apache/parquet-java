@@ -32,6 +32,7 @@ import com.google.common.io.Closeables;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.List;
+
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.hadoop.fs.FileSystem;
@@ -42,6 +43,7 @@ import org.apache.parquet.cli.util.Codecs;
 import org.apache.parquet.cli.util.Schemas;
 import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
+import org.apache.parquet.io.StandardOutputFile;
 import org.slf4j.Logger;
 
 @Parameters(commandDescription = "Create a Parquet file from a data file")
@@ -56,8 +58,8 @@ public class ConvertCommand extends BaseCommand {
 
   @Parameter(
       names = {"-o", "--output"},
-      description = "Output file path",
-      required = true)
+      description = "Output file path, if not given writes to stdout",
+      required = false)
   String outputPath = null;
 
   @Parameter(
@@ -112,18 +114,11 @@ public class ConvertCommand extends BaseCommand {
     }
     Schema projection = filterSchema(schema, columns);
 
-    Path outPath = qualifiedPath(outputPath);
-    FileSystem outFS = outPath.getFileSystem(getConf());
-    if (overwrite && outFS.exists(outPath)) {
-      console.debug("Deleting output file {} (already exists)", outPath);
-      outFS.delete(outPath);
-    }
-
     Iterable<Record> reader = openDataFile(source, projection);
     boolean threw = true;
     long count = 0;
     try {
-      try (ParquetWriter<Record> writer = AvroParquetWriter.<Record>builder(qualifiedPath(outputPath))
+      try (ParquetWriter<Record> writer = createBuilder()
           .withWriterVersion(v2 ? PARQUET_2_0 : PARQUET_1_0)
           .withConf(getConf())
           .withCompressionCodec(codec)
@@ -149,6 +144,19 @@ public class ConvertCommand extends BaseCommand {
     }
 
     return 0;
+  }
+
+  private AvroParquetWriter.Builder<Record> createBuilder() throws IOException {
+    if (outputPath != null) {
+      Path outPath = qualifiedPath(outputPath);
+      FileSystem outFS = outPath.getFileSystem(getConf());
+      if (overwrite && outFS.exists(outPath)) {
+        console.debug("Deleting output file {} (already exists)", outPath);
+        outFS.delete(outPath);
+      }
+      return AvroParquetWriter.<Record>builder(outPath);
+    }
+    return AvroParquetWriter.<Record>builder(new StandardOutputFile());
   }
 
   @Override

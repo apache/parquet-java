@@ -18,8 +18,10 @@
  */
 package org.apache.parquet.cli.commands;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.nio.file.Files;
 import java.util.Arrays;
 import org.apache.hadoop.conf.Configuration;
@@ -95,4 +97,19 @@ public class RewriteCommandTest extends ParquetFileTest {
     Assert.assertEquals(0, command.run());
     Assert.assertTrue(output.exists());
   }
+
+  @Test
+  public void testRewriteCommandToStdOut() throws IOException {
+    File file = parquetFile();
+    RewriteCommand command = new RewriteCommand(createLogger());
+    command.inputs = Arrays.asList(file.getAbsolutePath());
+    command.codec = "gzip";
+    command.setConf(new Configuration());
+
+    final ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    System.setOut(new PrintStream(baos));
+    Assert.assertEquals(0, command.run());
+    Assert.assertTrue(baos.size() > 0);
+  }
+
 }

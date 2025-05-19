@@ -31,10 +31,15 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.cli.BaseCommand;
 import org.apache.parquet.cli.util.Codecs;
+import org.apache.parquet.conf.HadoopParquetConfiguration;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.rewrite.MaskMode;
 import org.apache.parquet.hadoop.rewrite.ParquetRewriter;
 import org.apache.parquet.hadoop.rewrite.RewriteOptions;
+import org.apache.parquet.hadoop.util.HadoopInputFile;
+import org.apache.parquet.io.InputFile;
+import org.apache.parquet.io.OutputFile;
+import org.apache.parquet.io.StandardOutputFile;
 import org.slf4j.Logger;
 
 @Parameters(commandDescription = "Rewrite one or more Parquet files to a new Parquet file")
@@ -48,8 +53,8 @@ public class RewriteCommand extends BaseCommand {
 
   @Parameter(
       names = {"-o", "--output"},
-      description = "<output parquet file path>",
-      required = true)
+      description = "<output parquet file path. If not given, writes to stdout>",
+      required = false)
   String output;
 
   @Parameter(
@@ -88,17 +93,11 @@ public class RewriteCommand extends BaseCommand {
 
   private RewriteOptions buildOptionsOrFail() throws IOException {
     Preconditions.checkArgument(
-        inputs != null && !inputs.isEmpty() && output != null,
-        "Both input and output parquet file paths are required.");
-
-    List<Path> inputPaths = new ArrayList<>();
-    for (String input : inputs) {
-      inputPaths.add(new Path(input));
-    }
-    Path outputPath = new Path(output);
+        inputs != null && !inputs.isEmpty(),
+        "Input parquet file paths are required.");
 
     // The builder below takes the job to validate all input parameters.
-    RewriteOptions.Builder builder = new RewriteOptions.Builder(getConf(), inputPaths, outputPath);
+    RewriteOptions.Builder builder = createBuilder();
 
     // Mask columns if specified.
     if (maskMode != null && maskMode.equals("nullify") && maskColumns != null && !maskColumns.isEmpty()) {
@@ -121,18 +120,38 @@ public class RewriteCommand extends BaseCommand {
 
     RewriteOptions options = builder.build();
 
-    // If RewriteOptions are successfully built and the overwrite option is specified, remove the output path
-    FileSystem outFS = outputPath.getFileSystem(getConf());
-    if (overwrite && outFS.exists(outputPath)) {
-      console.debug("Deleting output file {} (already exists)", outputPath);
-      outFS.delete(outputPath);
+    if (output != null) {
+      Path outputPath = new Path(output);
+      // If RewriteOptions are successfully built and the overwrite option is specified, remove the output path
+      FileSystem outFS = outputPath.getFileSystem(getConf());
+      if (overwrite && outFS.exists(outputPath)) {
+        console.debug("Deleting output file {} (already exists)", outputPath);
+        outFS.delete(outputPath);
+      }
     }
 
     return options;
   }
 
+  private RewriteOptions.Builder createBuilder() {
+    if (output != null) {
+      List<Path> inputPaths = new ArrayList<>();
+      for (String input : inputs) {
+        inputPaths.add(new Path(input));
+      }
+      Path outputPath = new Path(output);
+      return new RewriteOptions.Builder(getConf(), inputPaths, outputPath);
+    }
+
+    List<InputFile> inputFiles = new ArrayList<>();
+    for (String input : inputs) {
+      inputFiles.add(HadoopInputFile.fromPathUnchecked(new Path(input), getConf()));
+    }
+    OutputFile outputFile = new StandardOutputFile();
+    return new RewriteOptions.Builder(new HadoopParquetConfiguration(getConf()), inputFiles, outputFile);
+  }
+
   @Override
-  @SuppressWarnings("unchecked")
   public int run() throws IOException {
     RewriteOptions options = buildOptionsOrFail();
     ParquetRewriter rewriter = new ParquetRewriter(options);
