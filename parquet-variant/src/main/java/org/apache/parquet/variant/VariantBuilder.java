@@ -23,21 +23,23 @@ import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Set;
 
 /**
  * Builder for creating Variant value and metadata.
  */
 public class VariantBuilder {
 
-  /** The buffer for building the Variant value. The first `writePos` bytes have been written. */
+  /**
+   * The buffer for building the Variant value. The first `writePos` bytes have been written.
+   */
   protected byte[] writeBuffer = new byte[1024];
 
   protected int writePos = 0;
 
-  /** Allows callers to check if a value has been written with checkWriteState */
-  private int lastWritePosMark = 0;
-
-  /** The main VariantBuilder that owns metadata (i.e. this builder for non-object/array builders */
+  /**
+   * The main VariantBuilder that owns metadata (i.e. this builder for non-object/array builders
+   */
   protected VariantBuilder rootBuilder = this;
 
   protected Metadata metadata;
@@ -83,15 +85,10 @@ public class VariantBuilder {
     return new Variant(ByteBuffer.wrap(writeBuffer, 0, writePos), metadataBuffer);
   }
 
-  // Direct access to Metadata.
-  Metadata getMetadata() {
-    return rootBuilder.metadata;
-  }
-
   /**
    * @return the constructed Variant value binary, without metadata.
    */
-  public ByteBuffer valueWithoutMetadata() {
+  public ByteBuffer encodedValue() {
     return ByteBuffer.wrap(writeBuffer, 0, writePos);
   }
 
@@ -99,7 +96,7 @@ public class VariantBuilder {
    * Directly append a Variant value. Its keys must already be in the metadata
    * dictionary.
    */
-  void appendEncodedValue(ByteBuffer value) {
+  public void appendEncodedValue(ByteBuffer value) {
     onAppend();
     int size = value.remaining();
     checkCapacity(size);
@@ -107,22 +104,9 @@ public class VariantBuilder {
     writePos += size;
   }
 
-  /** Record the current state of the writer. A later call to hasWriteStateChanged() will return true
-   *  if any values have been added since this call.
-   */
-  void markCurrentWriteState() {
-    lastWritePosMark = writePos;
-  }
-
-  /** Returns true if any values have been added since the last call to markCurrentWriteState, or
-   * since the builder was created, if markCurrentWriteState was never called.
-   */
-  boolean hasWriteStateChanged() {
-    return (writePos > lastWritePosMark);
-  }
-
   /**
    * Appends a string value to the Variant builder.
+   *
    * @param str the string value to append
    */
   public void appendString(String str) {
@@ -153,8 +137,15 @@ public class VariantBuilder {
     writePos += 1;
   }
 
+  public void appendNullIfEmpty() {
+    if (writePos == 0) {
+      appendNull();
+    }
+  }
+
   /**
    * Appends a boolean value to the Variant builder.
+   *
    * @param b the boolean value to append
    */
   public void appendBoolean(boolean b) {
@@ -166,6 +157,7 @@ public class VariantBuilder {
 
   /**
    * Appends a long value to the variant builder.
+   *
    * @param l the long value to append
    */
   public void appendLong(long l) {
@@ -178,6 +170,7 @@ public class VariantBuilder {
 
   /**
    * Appends an int value to the variant builder.
+   *
    * @param i the int to append
    */
   public void appendInt(int i) {
@@ -190,6 +183,7 @@ public class VariantBuilder {
 
   /**
    * Appends a short value to the variant builder.
+   *
    * @param s the short to append
    */
   public void appendShort(short s) {
@@ -202,6 +196,7 @@ public class VariantBuilder {
 
   /**
    * Appends a byte value to the variant builder.
+   *
    * @param b the byte to append
    */
   public void appendByte(byte b) {
@@ -214,6 +209,7 @@ public class VariantBuilder {
 
   /**
    * Appends a double value to the variant builder.
+   *
    * @param d the double to append
    */
   public void appendDouble(double d) {
@@ -227,6 +223,7 @@ public class VariantBuilder {
   /**
    * Appends a decimal value to the variant builder. The actual encoded decimal type depends on the
    * precision and scale of the decimal value.
+   *
    * @param d the decimal value to append
    */
   public void appendDecimal(BigDecimal d) {
@@ -269,6 +266,7 @@ public class VariantBuilder {
   /**
    * Appends a date value to the variant builder. The date is represented as the number of days
    * since the epoch.
+   *
    * @param daysSinceEpoch the number of days since the epoch
    */
   public void appendDate(int daysSinceEpoch) {
@@ -282,6 +280,7 @@ public class VariantBuilder {
   /**
    * Appends a TimestampTz value to the variant builder. The timestamp is represented as the number
    * of microseconds since the epoch.
+   *
    * @param microsSinceEpoch the number of microseconds since the epoch
    */
   public void appendTimestampTz(long microsSinceEpoch) {
@@ -295,6 +294,7 @@ public class VariantBuilder {
   /**
    * Appends a TimestampNtz value to the variant builder. The timestamp is represented as the number
    * of microseconds since the epoch.
+   *
    * @param microsSinceEpoch the number of microseconds since the epoch
    */
   public void appendTimestampNtz(long microsSinceEpoch) {
@@ -308,6 +308,7 @@ public class VariantBuilder {
   /**
    * Appends a Time value to the variant builder. The time is represented as the number of
    * microseconds since midnight.
+   *
    * @param microsSinceMidnight the number of microseconds since midnight
    */
   public void appendTime(long microsSinceMidnight) {
@@ -325,6 +326,7 @@ public class VariantBuilder {
   /**
    * Appends a TimestampNanosTz value to the variant builder. The timestamp is represented as the
    * number of nanoseconds since the epoch.
+   *
    * @param nanosSinceEpoch the number of nanoseconds since the epoch
    */
   public void appendTimestampNanosTz(long nanosSinceEpoch) {
@@ -338,6 +340,7 @@ public class VariantBuilder {
   /**
    * Appends a TimestampNanosNtz value to the variant builder. The timestamp is represented as the
    * number of nanoseconds since the epoch.
+   *
    * @param nanosSinceEpoch the number of nanoseconds since the epoch
    */
   public void appendTimestampNanosNtz(long nanosSinceEpoch) {
@@ -350,6 +353,7 @@ public class VariantBuilder {
 
   /**
    * Appends a float value to the variant builder.
+   *
    * @param f the float to append
    */
   public void appendFloat(float f) {
@@ -362,6 +366,7 @@ public class VariantBuilder {
 
   /**
    * Appends binary data to the variant builder.
+   *
    * @param binary the binary data to append
    */
   public void appendBinary(ByteBuffer binary) {
@@ -378,6 +383,7 @@ public class VariantBuilder {
 
   /**
    * Appends a UUID value to the variant builder.
+   *
    * @param uuid the UUID to append
    */
   public void appendUUID(java.util.UUID uuid) {
@@ -395,6 +401,7 @@ public class VariantBuilder {
 
   /**
    * Append raw bytes in the form stored in Variant.
+   *
    * @param bytes a 16-byte value.
    */
   void appendUUIDBytes(ByteBuffer bytes) {
@@ -411,7 +418,7 @@ public class VariantBuilder {
    * Starts appending an object to this variant builder. The returned VariantObjectBuilder is used
    * to append object keys and values. startObject() must be called before endObject().
    * No append*() methods can be called in between startObject() and endObject().
-   *
+   * <p>
    * Example usage:
    * VariantBuilder builder = new VariantBuilder();
    * VariantObjectBuilder objBuilder = builder.startObject();
@@ -431,6 +438,36 @@ public class VariantBuilder {
     }
     this.objectBuilder = new VariantObjectBuilder(this.rootBuilder);
     return objectBuilder;
+  }
+
+  public VariantObjectBuilder startOrContinueObject() {
+    if (objectBuilder != null) {
+      return objectBuilder;
+    }
+
+    return startObject();
+  }
+
+  public VariantObjectBuilder startOrContinuePartialObject(ByteBuffer value, Set<String> suppressedKeys) {
+    VariantObjectBuilder objectBuilder = startOrContinueObject();
+
+    // copy values to a new builder
+    Variant variant = new Variant(value, metadata);
+    for (int index = 0; index < variant.numObjectElements(); index += 1) {
+      Variant.ObjectField field = variant.getFieldAtIndex(index);
+      if (!suppressedKeys.contains(field.key)) {
+        objectBuilder.appendKey(field.key);
+        objectBuilder.appendEncodedValue(field.value.getValueBuffer());
+      }
+    }
+
+    return objectBuilder;
+  }
+
+  public void endObjectIfExists() {
+    if (objectBuilder != null) {
+      endObject();
+    }
   }
 
   /**
@@ -508,7 +545,7 @@ public class VariantBuilder {
    * Starts appending an array to this variant builder. The returned VariantArrayBuilder is used to
    * append values ot the array. startArray() must be called before endArray(). No append*() methods
    * can be called in between startArray() and endArray().
-   *
+   * <p>
    * Example usage:
    * VariantBuilder builder = new VariantBuilder();
    * VariantArrayBuilder arrayBuilder = builder.startArray();
@@ -572,6 +609,9 @@ public class VariantBuilder {
 
   protected void onStartNested() {
     checkMultipleNested("Cannot call startObject()/startArray() without calling endObject()/endArray() first.");
+    if (writePos > 0) {
+      throw new IllegalStateException("Cannot call startObject()/startArray() after appending a value.");
+    }
   }
 
   protected void checkMultipleNested(String message) {
@@ -593,6 +633,7 @@ public class VariantBuilder {
 
   /**
    * Adds a key to the Variant dictionary. If the key already exists, the dictionary is unmodified.
+   *
    * @param key the key to add
    * @return the id of the key
    */

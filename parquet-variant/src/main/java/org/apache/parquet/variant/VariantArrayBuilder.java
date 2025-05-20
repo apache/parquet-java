@@ -28,8 +28,13 @@ public class VariantArrayBuilder extends VariantBuilder {
   protected long numValues = 0;
 
   VariantArrayBuilder(VariantBuilder rootBuilder) {
+    super(rootBuilder.metadata);
     this.rootBuilder = rootBuilder;
     this.offsets = new ArrayList<>();
+  }
+
+  long numValues() {
+    return numValues;
   }
 
   /**

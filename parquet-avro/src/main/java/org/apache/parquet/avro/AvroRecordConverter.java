@@ -396,7 +396,7 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
         return newStringConverter(schema, model, parent, validator);
       case RECORD:
         if (type.getLogicalTypeAnnotation() instanceof LogicalTypeAnnotation.VariantLogicalTypeAnnotation) {
-          return new AvroConverters.FieldVariantConverter(parent, type.asGroupType(), schema, model);
+          return new AvroVariantConverter(parent, type.asGroupType(), schema, model);
         } else {
           return new AvroRecordConverter(parent, type.asGroupType(), schema, model, validator);
         }
@@ -1004,7 +1004,7 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
     } else if (elementSchema != null && elementSchema.getType() == Schema.Type.RECORD) {
       Schema schemaFromRepeated = CONVERTER.convert(repeatedType.asGroupType());
       if (checkReaderWriterCompatibility(elementSchema, schemaFromRepeated)
-              .getType()
+          .getType()
           == COMPATIBLE) {
         return true;
       }
