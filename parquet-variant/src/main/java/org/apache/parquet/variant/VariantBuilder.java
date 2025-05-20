@@ -38,10 +38,8 @@ public class VariantBuilder {
   protected int writePos = 0;
 
   /**
-   * The main VariantBuilder that owns metadata (i.e. this builder for non-object/array builders
+   * Object and array builders share the same Metadata object as the main builder.
    */
-  protected VariantBuilder rootBuilder = this;
-
   protected Metadata metadata;
 
   /**
@@ -436,7 +434,7 @@ public class VariantBuilder {
     if (arrayBuilder != null) {
       throw new IllegalStateException("Cannot call startObject() without calling endArray() first.");
     }
-    this.objectBuilder = new VariantObjectBuilder(this.rootBuilder);
+    this.objectBuilder = new VariantObjectBuilder(this.metadata);
     return objectBuilder;
   }
 
@@ -563,7 +561,7 @@ public class VariantBuilder {
     if (arrayBuilder != null) {
       throw new IllegalStateException("Cannot call startArray() without calling endArray() first.");
     }
-    this.arrayBuilder = new VariantArrayBuilder(this.rootBuilder);
+    this.arrayBuilder = new VariantArrayBuilder(this.metadata);
     return arrayBuilder;
   }
 

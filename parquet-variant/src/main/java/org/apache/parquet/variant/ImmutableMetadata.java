@@ -35,7 +35,7 @@ public class ImmutableMetadata implements Metadata {
   public int getOrInsert(String key) {
     Integer result = dictionary.get(key);
     if (result == null) {
-      throw new IllegalArgumentException("Key does not exist in metadata");
+      throw new IllegalArgumentException("Key does not exist in metadata: " + key);
     }
     return result;
   }

@@ -27,9 +27,8 @@ public class VariantObjectBuilder extends VariantBuilder {
   /** The number of values appended to this object. */
   protected long numValues = 0;
 
-  VariantObjectBuilder(VariantBuilder rootBuilder) {
-    super(rootBuilder.metadata);
-    this.rootBuilder = rootBuilder;
+  VariantObjectBuilder(Metadata metadata) {
+    super(metadata);
     this.fields = new ArrayList<>();
   }
 
@@ -85,12 +84,6 @@ public class VariantObjectBuilder extends VariantBuilder {
   protected void onStartNested() {
     checkMultipleNested("Cannot call startObject()/startArray() without calling endObject()/endArray() first.");
     numValues++;
-  }
-
-  @Override
-  int addDictionaryKey(String key) {
-    // Add to the top-level dictionary.
-    return rootBuilder.addDictionaryKey(key);
   }
 
   private void updateLastValueSize() {

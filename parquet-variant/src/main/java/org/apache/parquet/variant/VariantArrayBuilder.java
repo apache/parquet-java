@@ -27,16 +27,15 @@ public class VariantArrayBuilder extends VariantBuilder {
   /** The number of values appended to this array. */
   protected long numValues = 0;
 
-  VariantArrayBuilder(VariantBuilder rootBuilder) {
-    super(rootBuilder.metadata);
-    this.rootBuilder = rootBuilder;
+  VariantArrayBuilder(Metadata metadata) {
+    super(metadata);
     this.offsets = new ArrayList<>();
   }
 
   long numValues() {
     return numValues;
   }
-
+  parquet-variant/src/main/java/org/apache/parquet/variant/VariantArrayBuilder.java
   /**
    * @return the list of element offsets in this array
    */
@@ -61,11 +60,5 @@ public class VariantArrayBuilder extends VariantBuilder {
     checkMultipleNested("Cannot call startObject()/startArray() without calling endObject()/endArray() first.");
     offsets.add(writePos);
     numValues++;
-  }
-
-  @Override
-  int addDictionaryKey(String key) {
-    // Add to the top-level dictionary.
-    return rootBuilder.addDictionaryKey(key);
   }
 }

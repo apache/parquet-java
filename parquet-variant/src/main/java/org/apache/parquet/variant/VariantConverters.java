@@ -47,15 +47,14 @@ import org.apache.parquet.schema.Type;
 
 public class VariantConverters {
   // do not allow instantiating this class
-  private VariantConverters() {
-  }
+  private VariantConverters() {}
 
   public interface ParentConverter<T extends VariantBuilder> {
     void build(Consumer<T> buildConsumer);
   }
 
-  public static GroupConverter newVariantConverter(GroupType variantGroup, Consumer<ByteBuffer> metadata,
-                                                   ParentConverter<VariantBuilder> parent) {
+  public static GroupConverter newVariantConverter(
+      GroupType variantGroup, Consumer<ByteBuffer> metadata, ParentConverter<VariantBuilder> parent) {
     ValueConverter converter = newValueConverter(variantGroup, parent);
 
     // if there is a metadata field, add a converter for it
@@ -129,12 +128,10 @@ public class VariantConverters {
     }
 
     @Override
-    public void start() {
-    }
+    public void start() {}
 
     @Override
-    public void end() {
-    }
+    public void end() {}
   }
 
   static class ShreddedValueConverter extends ValueConverter {
@@ -184,7 +181,8 @@ public class VariantConverters {
         Type valueField = group.getType(valueIndex);
         Preconditions.checkArgument(isBinary(valueField), "Invalid variant value type: " + valueField);
 
-        setConverter(valueIndex, new PartiallyShreddedValueConverter(parent, fieldsConverter.shreddedFieldNames()));
+        setConverter(
+            valueIndex, new PartiallyShreddedValueConverter(parent, fieldsConverter.shreddedFieldNames()));
       }
     }
 
@@ -324,7 +322,9 @@ public class VariantConverters {
 
       Type repeated = list.getType(0);
       Preconditions.checkArgument(
-          repeated.isRepetition(REPEATED) && !repeated.isPrimitive() && repeated.asGroupType().getFieldCount() == 1,
+          repeated.isRepetition(REPEATED)
+              && !repeated.isPrimitive()
+              && repeated.asGroupType().getFieldCount() == 1,
           "Invalid repeated type in list: " + repeated);
 
       this.repeatedConverter = new ShreddedArrayRepeatedConverter(
@@ -364,11 +364,9 @@ public class VariantConverters {
     private final ParentConverter<VariantArrayBuilder> parent;
     private Long numValues = null;
 
-    public ShreddedArrayRepeatedConverter(
-        GroupType repeated, ParentConverter<VariantArrayBuilder> parent) {
+    public ShreddedArrayRepeatedConverter(GroupType repeated, ParentConverter<VariantArrayBuilder> parent) {
       Type element = repeated.getType(0);
-      Preconditions.checkArgument(
-          !element.isPrimitive(), "Invalid element type in variant array: " + element);
+      Preconditions.checkArgument(!element.isPrimitive(), "Invalid element type in variant array: " + element);
 
       ParentConverter<VariantBuilder> newParent = consumer -> parent.build(consumer::accept);
       this.elementConverter = newValueConverter(element.asGroupType(), newParent);
