@@ -32,15 +32,13 @@ public abstract class VariantColumnConverter extends VariantConverters.VariantEl
   VariantBuilder builder = null;
   // We try to reuse metadata across rows, so track it outside of the builder.
   Metadata immutableMetadata = null;
-  // Store the Binary metadata so that we can avoid reconstructing the metadata map if it's referentially equal
-  // to the previous value. This should happen if all rows have the same metadata, and it's dictionary-encoded.
   Binary metadata = null;
 
   public VariantColumnConverter(GroupType variantSchema) {
     super(null, variantSchema);
 
     this.topLevelMetadataIdx = variantSchema.getFieldIndex("metadata");
-    converters[topLevelMetadataIdx] = new VariantConverters.VariantMetadataConverter(this::setMetadata);
+    converters[topLevelMetadataIdx] = new VariantConverters.VariantMetadataConverter(this);
   }
 
   @Override
@@ -69,9 +67,12 @@ public abstract class VariantColumnConverter extends VariantConverters.VariantEl
     super.end();
     ByteBuffer value = this.builder.valueWithoutMetadata();
     addVariant(value, builder.metadata.getEncodedBuffer());
+    // TODO: Don't do this. Right now, it's needed in order for getWritePos to work correctly, so we don't have
+    // a stale builder in start().
+    this.builder = null;
   }
 
-  private void setMetadata(Binary metadata) {
+  void setMetadata(Binary metadata) {
     // If the metadata hasn't changed, we don't need to rebuild the map.
     // When metadata is dictionary encoded, we could consider keeping the map
     // around for every dictionary value, but that could be expensive, and handling adjacent
