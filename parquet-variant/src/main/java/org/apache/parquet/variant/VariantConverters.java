@@ -66,8 +66,6 @@ class VariantConverters {
     private int valueIdx = -1;
     private int typedValueIdx = -1;
     protected Converter[] converters;
-    // The binary produces by the `value` field of this converter.
-    private Binary variantValue = null;
 
     // The following are only used if this is an object field.
     private String objectFieldName = null;
@@ -86,13 +84,6 @@ class VariantConverters {
     @Override
     public VariantBuilder getBuilder() {
       return this.parent.getBuilder();
-    }
-
-    /**
-     * Called by the `value` converter to provide a new value.
-     */
-    public void setValueBinary(Binary variantValue) {
-      this.variantValue = variantValue;
     }
 
     public VariantElementConverter(VariantConverter parent, GroupType variantSchema, String objectFieldName) {
@@ -155,12 +146,14 @@ class VariantConverters {
      **/
     @Override
     public void start() {
-      this.variantValue = null;
       if (objectFieldName != null) {
         // Having a non-null element does not guarantee that we actually want to add this field, because
         // if value and typed_value are both null, it's a missing field. In that case, we'll detect it
         // in end() and reverse our decision to add this key.
         ((VariantObjectBuilder) getBuilder()).appendKey(objectFieldName);
+      }
+      if (valueIdx >= 0) {
+        ((VariantValueConverter) converters[valueIdx]).reset();
       }
       // We need to remember the state of the writer so that we can tell if anything was written by typed_value.
       if (getBuilder() != null) {
@@ -172,9 +165,14 @@ class VariantConverters {
     public void end() {
       VariantBuilder builder = getBuilder();
 
+      Binary variantValue = null;
+      if (valueIdx >= 0) {
+        variantValue = ((VariantValueConverter) converters[valueIdx]).getValue();
+      }
+
       boolean appendedValue = false;
       if (typedValueIsObject) {
-        appendedValue = endObject();
+        appendedValue = endObject(variantValue);
       } else {
         appendedValue = builder.hasWriteStateChanged();
         if (appendedValue && variantValue != null) {
@@ -201,7 +199,7 @@ class VariantConverters {
      * If typed_value was an object, append variantValue to the object.
      * @return true if a value was appended from either value or typed_value.
      */
-    private boolean endObject() {
+    private boolean endObject(Binary variantValue) {
       VariantObjectBuilder objectBuilder = null;
       // Get the builder that the child typed_value has been adding its fields to. We need to possibly add
       // more values from the `value` field, then finalize. If the value was not an object, fields will be
@@ -316,16 +314,25 @@ class VariantConverters {
 
     public VariantValueConverter(VariantElementConverter parent) {
       super(parent);
+      this.currentValue = null;
+    }
+
+    void reset() {
+      currentValue = null;
+    }
+
+    Binary getValue() {
+      return currentValue;
     }
 
     @Override
     public void addBinary(Binary value) {
-      ((VariantElementConverter) getParent()).setValueBinary(value);
+      currentValue = value;
     }
 
     @Override
     public void addValueFromDictionary(int dictionaryId) {
-      ((VariantElementConverter) getParent()).setValueBinary(dict[dictionaryId]);
+      currentValue = dict[dictionaryId];
     }
   }
 
