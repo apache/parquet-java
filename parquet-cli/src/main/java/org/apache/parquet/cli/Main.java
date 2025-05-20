@@ -50,6 +50,7 @@ import org.apache.parquet.cli.commands.ShowBloomFilterCommand;
 import org.apache.parquet.cli.commands.ShowColumnIndexCommand;
 import org.apache.parquet.cli.commands.ShowDictionaryCommand;
 import org.apache.parquet.cli.commands.ShowFooterCommand;
+import org.apache.parquet.cli.commands.ShowGeospatialStatisticsCommand;
 import org.apache.parquet.cli.commands.ShowPagesCommand;
 import org.apache.parquet.cli.commands.ShowSizeStatisticsCommand;
 import org.apache.parquet.cli.commands.ToAvroCommand;
@@ -107,6 +108,7 @@ public class Main extends Configured implements Tool {
     jc.addCommand("scan", new ScanCommand(console));
     jc.addCommand("rewrite", new RewriteCommand(console));
     jc.addCommand("size-stats", new ShowSizeStatisticsCommand(console));
+    jc.addCommand("geospatial-stats", new ShowGeospatialStatisticsCommand(console));
   }
 
   @Override
