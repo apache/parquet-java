@@ -1004,7 +1004,7 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
     } else if (elementSchema != null && elementSchema.getType() == Schema.Type.RECORD) {
       Schema schemaFromRepeated = CONVERTER.convert(repeatedType.asGroupType());
       if (checkReaderWriterCompatibility(elementSchema, schemaFromRepeated)
-          .getType()
+              .getType()
           == COMPATIBLE) {
         return true;
       }

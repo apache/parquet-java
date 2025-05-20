@@ -35,7 +35,7 @@ public class VariantArrayBuilder extends VariantBuilder {
   long numValues() {
     return numValues;
   }
-  parquet-variant/src/main/java/org/apache/parquet/variant/VariantArrayBuilder.java
+
   /**
    * @return the list of element offsets in this array
    */

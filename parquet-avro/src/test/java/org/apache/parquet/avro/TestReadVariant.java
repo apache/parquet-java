@@ -130,58 +130,58 @@ public class TestReadVariant extends DirectWriterTest {
   }
 
   private static final PrimitiveCase[] PRIMITIVES = new PrimitiveCase[] {
-      new PrimitiveCase(null, variant(b -> b.appendNull())),
-      new PrimitiveCase(true, variant(b -> b.appendBoolean(true))),
-      new PrimitiveCase(false, variant(b -> b.appendBoolean(false))),
-      new PrimitiveCase((byte) 34, variant(b -> b.appendByte((byte) 34))),
-      new PrimitiveCase((byte) -34, variant(b -> b.appendByte((byte) -34))),
-      new PrimitiveCase((short) 1234, variant(b -> b.appendShort((short) 1234))),
-      new PrimitiveCase((short) -1234, variant(b -> b.appendShort((short) -1234))),
-      new PrimitiveCase(12345, variant(b -> b.appendInt(12345))),
-      new PrimitiveCase(-12345, variant(b -> b.appendInt(-12345))),
-      new PrimitiveCase(9876543210L, variant(b -> b.appendLong(9876543210L))),
-      new PrimitiveCase(-9876543210L, variant(b -> b.appendLong(-9876543210L))),
-      new PrimitiveCase(10.11F, variant(b -> b.appendFloat(10.11F))),
-      new PrimitiveCase(-10.11F, variant(b -> b.appendFloat(-10.11F))),
-      new PrimitiveCase(14.3D, variant(b -> b.appendDouble(14.3D))),
-      new PrimitiveCase(-14.3D, variant(b -> b.appendDouble(-14.3D))),
-      // Dates and timestamps aren't very interesting in Variant tests, since they are passed
-      // to and from the API as integers. So just test arbitrary integer values.
-      new PrimitiveCase(12345, variant(b -> b.appendDate(12345))),
-      new PrimitiveCase(-12345, variant(b -> b.appendDate(-12345))),
-      new PrimitiveCase(9876543210L, variant(b -> b.appendTimestampTz(9876543210L))),
-      new PrimitiveCase(-9876543210L, variant(b -> b.appendTimestampTz(-9876543210L))),
-      new PrimitiveCase(9876543210L, variant(b -> b.appendTimestampNtz(9876543210L))),
-      new PrimitiveCase(-9876543210L, variant(b -> b.appendTimestampNtz(-9876543210L))),
-      new PrimitiveCase(9876543210L, variant(b -> b.appendTimestampNanosTz(9876543210L))),
-      new PrimitiveCase(-9876543210L, variant(b -> b.appendTimestampNanosTz(-9876543210L))),
-      new PrimitiveCase(9876543210L, variant(b -> b.appendTimestampNanosNtz(9876543210L))),
-      new PrimitiveCase(-9876543210L, variant(b -> b.appendTimestampNanosNtz(-9876543210L))),
-      new PrimitiveCase(
-          avroDecimalValue("123456.7890"),
-          variant(b -> b.appendDecimal(new BigDecimal("123456.7890")))), // decimal4
-      new PrimitiveCase(
-          avroDecimalValue("-123456.7890"),
-          variant(b -> b.appendDecimal(new BigDecimal("-123456.7890")))), // decimal4
-      new PrimitiveCase(
-          avroDecimalValue("1234567890.987654321"),
-          variant(b -> b.appendDecimal(new BigDecimal("1234567890.987654321")))), // decimal8
-      new PrimitiveCase(
-          avroDecimalValue("-1234567890.987654321"),
-          variant(b -> b.appendDecimal(new BigDecimal("-1234567890.987654321")))), // decimal8
-      new PrimitiveCase(
-          avroDecimalValue("9876543210.123456789"),
-          variant(b -> b.appendDecimal(new BigDecimal("9876543210.123456789")))), // decimal16
-      new PrimitiveCase(
-          avroDecimalValue("-9876543210.123456789"),
-          variant(b -> b.appendDecimal(new BigDecimal("-9876543210.123456789")))), // decimal16
-      new PrimitiveCase(
-          ByteBuffer.wrap(new byte[] {0x0a, 0x0b, 0x0c, 0x0d}),
-          variant(b -> b.appendBinary(ByteBuffer.wrap(new byte[] {0x0a, 0x0b, 0x0c, 0x0d})))),
-      new PrimitiveCase("parquet", variant(b -> b.appendString("parquet"))),
-      new PrimitiveCase(
-          UUID.fromString("f24f9b64-81fa-49d1-b74e-8c09a6e31c56"),
-          variant(b -> b.appendUUID(UUID.fromString("f24f9b64-81fa-49d1-b74e-8c09a6e31c56"))))
+    new PrimitiveCase(null, variant(b -> b.appendNull())),
+    new PrimitiveCase(true, variant(b -> b.appendBoolean(true))),
+    new PrimitiveCase(false, variant(b -> b.appendBoolean(false))),
+    new PrimitiveCase((byte) 34, variant(b -> b.appendByte((byte) 34))),
+    new PrimitiveCase((byte) -34, variant(b -> b.appendByte((byte) -34))),
+    new PrimitiveCase((short) 1234, variant(b -> b.appendShort((short) 1234))),
+    new PrimitiveCase((short) -1234, variant(b -> b.appendShort((short) -1234))),
+    new PrimitiveCase(12345, variant(b -> b.appendInt(12345))),
+    new PrimitiveCase(-12345, variant(b -> b.appendInt(-12345))),
+    new PrimitiveCase(9876543210L, variant(b -> b.appendLong(9876543210L))),
+    new PrimitiveCase(-9876543210L, variant(b -> b.appendLong(-9876543210L))),
+    new PrimitiveCase(10.11F, variant(b -> b.appendFloat(10.11F))),
+    new PrimitiveCase(-10.11F, variant(b -> b.appendFloat(-10.11F))),
+    new PrimitiveCase(14.3D, variant(b -> b.appendDouble(14.3D))),
+    new PrimitiveCase(-14.3D, variant(b -> b.appendDouble(-14.3D))),
+    // Dates and timestamps aren't very interesting in Variant tests, since they are passed
+    // to and from the API as integers. So just test arbitrary integer values.
+    new PrimitiveCase(12345, variant(b -> b.appendDate(12345))),
+    new PrimitiveCase(-12345, variant(b -> b.appendDate(-12345))),
+    new PrimitiveCase(9876543210L, variant(b -> b.appendTimestampTz(9876543210L))),
+    new PrimitiveCase(-9876543210L, variant(b -> b.appendTimestampTz(-9876543210L))),
+    new PrimitiveCase(9876543210L, variant(b -> b.appendTimestampNtz(9876543210L))),
+    new PrimitiveCase(-9876543210L, variant(b -> b.appendTimestampNtz(-9876543210L))),
+    new PrimitiveCase(9876543210L, variant(b -> b.appendTimestampNanosTz(9876543210L))),
+    new PrimitiveCase(-9876543210L, variant(b -> b.appendTimestampNanosTz(-9876543210L))),
+    new PrimitiveCase(9876543210L, variant(b -> b.appendTimestampNanosNtz(9876543210L))),
+    new PrimitiveCase(-9876543210L, variant(b -> b.appendTimestampNanosNtz(-9876543210L))),
+    new PrimitiveCase(
+        avroDecimalValue("123456.7890"),
+        variant(b -> b.appendDecimal(new BigDecimal("123456.7890")))), // decimal4
+    new PrimitiveCase(
+        avroDecimalValue("-123456.7890"),
+        variant(b -> b.appendDecimal(new BigDecimal("-123456.7890")))), // decimal4
+    new PrimitiveCase(
+        avroDecimalValue("1234567890.987654321"),
+        variant(b -> b.appendDecimal(new BigDecimal("1234567890.987654321")))), // decimal8
+    new PrimitiveCase(
+        avroDecimalValue("-1234567890.987654321"),
+        variant(b -> b.appendDecimal(new BigDecimal("-1234567890.987654321")))), // decimal8
+    new PrimitiveCase(
+        avroDecimalValue("9876543210.123456789"),
+        variant(b -> b.appendDecimal(new BigDecimal("9876543210.123456789")))), // decimal16
+    new PrimitiveCase(
+        avroDecimalValue("-9876543210.123456789"),
+        variant(b -> b.appendDecimal(new BigDecimal("-9876543210.123456789")))), // decimal16
+    new PrimitiveCase(
+        ByteBuffer.wrap(new byte[] {0x0a, 0x0b, 0x0c, 0x0d}),
+        variant(b -> b.appendBinary(ByteBuffer.wrap(new byte[] {0x0a, 0x0b, 0x0c, 0x0d})))),
+    new PrimitiveCase("parquet", variant(b -> b.appendString("parquet"))),
+    new PrimitiveCase(
+        UUID.fromString("f24f9b64-81fa-49d1-b74e-8c09a6e31c56"),
+        variant(b -> b.appendUUID(UUID.fromString("f24f9b64-81fa-49d1-b74e-8c09a6e31c56"))))
   };
 
   private ByteBuffer EMPTY_METADATA = fullVariant(b -> b.appendNull()).getMetadataBuffer();
@@ -204,19 +204,19 @@ public class TestReadVariant extends DirectWriterTest {
 
   public TestReadVariant() throws Exception {
     TEST_METADATA = fullVariant(b -> {
-      VariantObjectBuilder ob = b.startObject();
-      ob.appendKey("a");
-      ob.appendNull();
-      ob.appendKey("b");
-      ob.appendNull();
-      ob.appendKey("c");
-      ob.appendNull();
-      ob.appendKey("d");
-      ob.appendNull();
-      ob.appendKey("e");
-      ob.appendNull();
-      b.endObject();
-    })
+          VariantObjectBuilder ob = b.startObject();
+          ob.appendKey("a");
+          ob.appendNull();
+          ob.appendKey("b");
+          ob.appendNull();
+          ob.appendKey("c");
+          ob.appendNull();
+          ob.appendKey("d");
+          ob.appendNull();
+          ob.appendKey("e");
+          ob.appendNull();
+          b.endObject();
+        })
         .getMetadataBuffer();
 
     TEST_OBJECT = variant(TEST_METADATA, b -> {
