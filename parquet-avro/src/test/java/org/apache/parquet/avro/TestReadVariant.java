@@ -54,13 +54,9 @@ import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.RecordConsumer;
-import org.apache.parquet.schema.GroupType;
-import org.apache.parquet.schema.LogicalTypeAnnotation;
+import org.apache.parquet.schema.*;
 import org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit;
-import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
-import org.apache.parquet.schema.Type;
-import org.apache.parquet.schema.Types;
 import org.apache.parquet.variant.ImmutableMetadata;
 import org.apache.parquet.variant.Variant;
 import org.apache.parquet.variant.VariantArrayBuilder;
@@ -253,10 +249,13 @@ public class TestReadVariant extends DirectWriterTest {
     });
     Binary expectedValue = Binary.fromConstantByteBuffer(testValue.getValueBuffer());
     Binary expectedMetadata = Binary.fromConstantByteBuffer(testValue.getMetadataBuffer());
+    // Test with value before metadata in the schema: Spark's initial implementation wrote in this
+    // order. The read schema (set below) requires metadata before value, but the order in the file
+    // schema shouldn't matter.
     Path test = writeDirect(
         "message VariantMessage {" + "  required group v (VARIANT(1)) {"
-            + "    required binary metadata;"
             + "    required binary value;"
+            + "    required binary metadata;"
             + "  }"
             + "}",
         rc -> {
@@ -264,12 +263,12 @@ public class TestReadVariant extends DirectWriterTest {
           rc.startField("v", 0);
 
           rc.startGroup();
-          rc.startField("metadata", 0);
-          rc.addBinary(expectedMetadata);
-          rc.endField("metadata", 0);
-          rc.startField("value", 1);
+          rc.startField("value", 0);
           rc.addBinary(expectedValue);
-          rc.endField("value", 1);
+          rc.endField("value", 0);
+          rc.startField("metadata", 1);
+          rc.addBinary(expectedMetadata);
+          rc.endField("metadata", 1);
           rc.endGroup();
 
           rc.endField("v", 0);
@@ -292,8 +291,17 @@ public class TestReadVariant extends DirectWriterTest {
             "value",
             expectedValue.toByteBuffer()));
 
+    MessageType readSchema =
+        MessageTypeParser.parseMessageType("message VariantMessage {" + "  required group v (VARIANT(1)) {"
+            + "    required binary metadata;"
+            + "    required binary value;"
+            + "  }"
+            + "}");
+    Configuration conf = new Configuration();
+    AvroReadSupport.setRequestedProjection(conf, avroSchema(readSchema));
+
     // both should behave the same way
-    assertReaderContains(new AvroParquetReader(new Configuration(), test), expectedSchema, expectedRecord);
+    assertReaderContains(new AvroParquetReader(conf, test), expectedSchema, expectedRecord);
   }
 
   /**
