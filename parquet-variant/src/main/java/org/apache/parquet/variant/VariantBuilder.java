@@ -22,22 +22,25 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
+import java.util.Set;
 
 /**
  * Builder for creating Variant value and metadata.
  */
 public class VariantBuilder {
-  /** The buffer for building the Variant value. The first `writePos` bytes have been written. */
+
+  /**
+   * The buffer for building the Variant value. The first `writePos` bytes have been written.
+   */
   protected byte[] writeBuffer = new byte[1024];
 
   protected int writePos = 0;
-  /** The dictionary for mapping keys to monotonically increasing ids. */
-  private final HashMap<String, Integer> dictionary = new HashMap<>();
-  /** The keys in the dictionary, in id order. */
-  private final ArrayList<byte[]> dictionaryKeys = new ArrayList<>();
+
+  /**
+   * Object and array builders share the same Metadata object as the main builder.
+   */
+  protected Metadata metadata;
 
   /**
    * These are used to build nested objects and arrays, via startObject() and startArray().
@@ -51,7 +54,16 @@ public class VariantBuilder {
   /**
    * Creates a VariantBuilder.
    */
-  public VariantBuilder() {}
+  public VariantBuilder() {
+    this.metadata = new MetadataBuilder();
+  }
+
+  /**
+   * Creates a VariantBuilder with a non-default metadata object.
+   */
+  public VariantBuilder(Metadata metadata) {
+    this.metadata = metadata;
+  }
 
   /**
    * @return the Variant value
@@ -65,44 +77,34 @@ public class VariantBuilder {
       throw new IllegalStateException(
           "Cannot call build() while an array is being built. Must call endArray() first.");
     }
-    int numKeys = dictionaryKeys.size();
-    // Use long to avoid overflow in accumulating lengths.
-    long dictionaryTotalDataSize = 0;
-    for (byte[] key : dictionaryKeys) {
-      dictionaryTotalDataSize += key.length;
-    }
-    // Determine the number of bytes required per offset entry.
-    // The largest offset is the one-past-the-end value, which is total data size. It's very
-    // unlikely that the number of keys could be larger, but incorporate that into the calculation
-    // in case of pathological data.
-    long maxSize = Math.max(dictionaryTotalDataSize, numKeys);
-    int offsetSize = getMinIntegerSize((int) maxSize);
-
-    int offsetListOffset = 1 + offsetSize;
-    int dataOffset = offsetListOffset + (numKeys + 1) * offsetSize;
-    long metadataSize = dataOffset + dictionaryTotalDataSize;
-
-    byte[] metadata = new byte[(int) metadataSize];
-    // Only unsorted dictionary keys are supported.
-    // TODO: Support sorted dictionary keys.
-    int headerByte = VariantUtil.VERSION | ((offsetSize - 1) << 6);
-    VariantUtil.writeLong(metadata, 0, headerByte, 1);
-    VariantUtil.writeLong(metadata, 1, numKeys, offsetSize);
-    int currentOffset = 0;
-    for (int i = 0; i < numKeys; ++i) {
-      VariantUtil.writeLong(metadata, offsetListOffset + i * offsetSize, currentOffset, offsetSize);
-      byte[] key = dictionaryKeys.get(i);
-      System.arraycopy(key, 0, metadata, dataOffset + currentOffset, key.length);
-      currentOffset += key.length;
-    }
-    VariantUtil.writeLong(metadata, offsetListOffset + numKeys * offsetSize, currentOffset, offsetSize);
+    ByteBuffer metadataBuffer = metadata.getEncodedBuffer();
     // Copying the data to a new buffer, to retain only the required data length, not the capacity.
     // TODO: Reduce the copying, and look into builder reuse.
-    return new Variant(Arrays.copyOfRange(writeBuffer, 0, writePos), metadata);
+    return new Variant(ByteBuffer.wrap(writeBuffer, 0, writePos), metadataBuffer);
+  }
+
+  /**
+   * @return the constructed Variant value binary, without metadata.
+   */
+  public ByteBuffer encodedValue() {
+    return ByteBuffer.wrap(writeBuffer, 0, writePos);
+  }
+
+  /**
+   * Directly append a Variant value. Its keys must already be in the metadata
+   * dictionary.
+   */
+  public void appendEncodedValue(ByteBuffer value) {
+    onAppend();
+    int size = value.remaining();
+    checkCapacity(size);
+    value.duplicate().get(writeBuffer, writePos, size);
+    writePos += size;
   }
 
   /**
    * Appends a string value to the Variant builder.
+   *
    * @param str the string value to append
    */
   public void appendString(String str) {
@@ -133,8 +135,15 @@ public class VariantBuilder {
     writePos += 1;
   }
 
+  public void appendNullIfEmpty() {
+    if (writePos == 0) {
+      appendNull();
+    }
+  }
+
   /**
    * Appends a boolean value to the Variant builder.
+   *
    * @param b the boolean value to append
    */
   public void appendBoolean(boolean b) {
@@ -146,6 +155,7 @@ public class VariantBuilder {
 
   /**
    * Appends a long value to the variant builder.
+   *
    * @param l the long value to append
    */
   public void appendLong(long l) {
@@ -158,6 +168,7 @@ public class VariantBuilder {
 
   /**
    * Appends an int value to the variant builder.
+   *
    * @param i the int to append
    */
   public void appendInt(int i) {
@@ -170,6 +181,7 @@ public class VariantBuilder {
 
   /**
    * Appends a short value to the variant builder.
+   *
    * @param s the short to append
    */
   public void appendShort(short s) {
@@ -182,6 +194,7 @@ public class VariantBuilder {
 
   /**
    * Appends a byte value to the variant builder.
+   *
    * @param b the byte to append
    */
   public void appendByte(byte b) {
@@ -194,6 +207,7 @@ public class VariantBuilder {
 
   /**
    * Appends a double value to the variant builder.
+   *
    * @param d the double to append
    */
   public void appendDouble(double d) {
@@ -207,6 +221,7 @@ public class VariantBuilder {
   /**
    * Appends a decimal value to the variant builder. The actual encoded decimal type depends on the
    * precision and scale of the decimal value.
+   *
    * @param d the decimal value to append
    */
   public void appendDecimal(BigDecimal d) {
@@ -249,6 +264,7 @@ public class VariantBuilder {
   /**
    * Appends a date value to the variant builder. The date is represented as the number of days
    * since the epoch.
+   *
    * @param daysSinceEpoch the number of days since the epoch
    */
   public void appendDate(int daysSinceEpoch) {
@@ -262,6 +278,7 @@ public class VariantBuilder {
   /**
    * Appends a TimestampTz value to the variant builder. The timestamp is represented as the number
    * of microseconds since the epoch.
+   *
    * @param microsSinceEpoch the number of microseconds since the epoch
    */
   public void appendTimestampTz(long microsSinceEpoch) {
@@ -275,6 +292,7 @@ public class VariantBuilder {
   /**
    * Appends a TimestampNtz value to the variant builder. The timestamp is represented as the number
    * of microseconds since the epoch.
+   *
    * @param microsSinceEpoch the number of microseconds since the epoch
    */
   public void appendTimestampNtz(long microsSinceEpoch) {
@@ -288,6 +306,7 @@ public class VariantBuilder {
   /**
    * Appends a Time value to the variant builder. The time is represented as the number of
    * microseconds since midnight.
+   *
    * @param microsSinceMidnight the number of microseconds since midnight
    */
   public void appendTime(long microsSinceMidnight) {
@@ -305,6 +324,7 @@ public class VariantBuilder {
   /**
    * Appends a TimestampNanosTz value to the variant builder. The timestamp is represented as the
    * number of nanoseconds since the epoch.
+   *
    * @param nanosSinceEpoch the number of nanoseconds since the epoch
    */
   public void appendTimestampNanosTz(long nanosSinceEpoch) {
@@ -318,6 +338,7 @@ public class VariantBuilder {
   /**
    * Appends a TimestampNanosNtz value to the variant builder. The timestamp is represented as the
    * number of nanoseconds since the epoch.
+   *
    * @param nanosSinceEpoch the number of nanoseconds since the epoch
    */
   public void appendTimestampNanosNtz(long nanosSinceEpoch) {
@@ -330,6 +351,7 @@ public class VariantBuilder {
 
   /**
    * Appends a float value to the variant builder.
+   *
    * @param f the float to append
    */
   public void appendFloat(float f) {
@@ -342,6 +364,7 @@ public class VariantBuilder {
 
   /**
    * Appends binary data to the variant builder.
+   *
    * @param binary the binary data to append
    */
   public void appendBinary(ByteBuffer binary) {
@@ -358,6 +381,7 @@ public class VariantBuilder {
 
   /**
    * Appends a UUID value to the variant builder.
+   *
    * @param uuid the UUID to append
    */
   public void appendUUID(java.util.UUID uuid) {
@@ -374,10 +398,25 @@ public class VariantBuilder {
   }
 
   /**
+   * Append raw bytes in the form stored in Variant.
+   *
+   * @param bytes a 16-byte value.
+   */
+  void appendUUIDBytes(ByteBuffer bytes) {
+    checkCapacity(1 + VariantUtil.UUID_SIZE);
+    writeBuffer[writePos++] = VariantUtil.primitiveHeader(VariantUtil.UUID);
+    if (bytes.remaining() < VariantUtil.UUID_SIZE) {
+      throw new IllegalArgumentException("UUID must be exactly 16 bytes");
+    }
+    bytes.duplicate().get(writeBuffer, writePos, VariantUtil.UUID_SIZE);
+    writePos += VariantUtil.UUID_SIZE;
+  }
+
+  /**
    * Starts appending an object to this variant builder. The returned VariantObjectBuilder is used
    * to append object keys and values. startObject() must be called before endObject().
    * No append*() methods can be called in between startObject() and endObject().
-   *
+   * <p>
    * Example usage:
    * VariantBuilder builder = new VariantBuilder();
    * VariantObjectBuilder objBuilder = builder.startObject();
@@ -395,15 +434,45 @@ public class VariantBuilder {
     if (arrayBuilder != null) {
       throw new IllegalStateException("Cannot call startObject() without calling endArray() first.");
     }
-    this.objectBuilder = new VariantObjectBuilder(this);
+    this.objectBuilder = new VariantObjectBuilder(this.metadata);
     return objectBuilder;
+  }
+
+  public VariantObjectBuilder startOrContinueObject() {
+    if (objectBuilder != null) {
+      return objectBuilder;
+    }
+
+    return startObject();
+  }
+
+  public VariantObjectBuilder startOrContinuePartialObject(ByteBuffer value, Set<String> suppressedKeys) {
+    VariantObjectBuilder objectBuilder = startOrContinueObject();
+
+    // copy values to a new builder
+    Variant variant = new Variant(value, metadata);
+    for (int index = 0; index < variant.numObjectElements(); index += 1) {
+      Variant.ObjectField field = variant.getFieldAtIndex(index);
+      if (!suppressedKeys.contains(field.key)) {
+        objectBuilder.appendKey(field.key);
+        objectBuilder.appendEncodedValue(field.value.getValueBuffer());
+      }
+    }
+
+    return objectBuilder;
+  }
+
+  public void endObjectIfExists() {
+    if (objectBuilder != null) {
+      endObject();
+    }
   }
 
   /**
    * Finishes appending the object to this builder. This method must be called after startObject(),
    * before other append*() methods can be called on this builder.
    */
-  protected void endObject() {
+  public void endObject() {
     if (objectBuilder == null) {
       throw new IllegalStateException("Cannot call endObject() without calling startObject() first.");
     }
@@ -474,7 +543,7 @@ public class VariantBuilder {
    * Starts appending an array to this variant builder. The returned VariantArrayBuilder is used to
    * append values ot the array. startArray() must be called before endArray(). No append*() methods
    * can be called in between startArray() and endArray().
-   *
+   * <p>
    * Example usage:
    * VariantBuilder builder = new VariantBuilder();
    * VariantArrayBuilder arrayBuilder = builder.startArray();
@@ -492,7 +561,7 @@ public class VariantBuilder {
     if (arrayBuilder != null) {
       throw new IllegalStateException("Cannot call startArray() without calling endArray() first.");
     }
-    this.arrayBuilder = new VariantArrayBuilder(this);
+    this.arrayBuilder = new VariantArrayBuilder(this.metadata);
     return arrayBuilder;
   }
 
@@ -538,6 +607,9 @@ public class VariantBuilder {
 
   protected void onStartNested() {
     checkMultipleNested("Cannot call startObject()/startArray() without calling endObject()/endArray() first.");
+    if (writePos > 0) {
+      throw new IllegalStateException("Cannot call startObject()/startArray() after appending a value.");
+    }
   }
 
   protected void checkMultipleNested(String message) {
@@ -559,15 +631,12 @@ public class VariantBuilder {
 
   /**
    * Adds a key to the Variant dictionary. If the key already exists, the dictionary is unmodified.
+   *
    * @param key the key to add
    * @return the id of the key
    */
   int addDictionaryKey(String key) {
-    return dictionary.computeIfAbsent(key, newKey -> {
-      int id = dictionaryKeys.size();
-      dictionaryKeys.add(newKey.getBytes(StandardCharsets.UTF_8));
-      return id;
-    });
+    return metadata.getOrInsert(key);
   }
 
   /**
@@ -615,7 +684,7 @@ public class VariantBuilder {
     }
   }
 
-  protected int getMinIntegerSize(int value) {
+  public static int getMinIntegerSize(int value) {
     assert value >= 0;
     if (value <= VariantUtil.U8_MAX) {
       return VariantUtil.U8_SIZE;

@@ -21,6 +21,7 @@ import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.Arrays;
+import java.util.HashMap;
 
 /**
  * This class defines constants related to the Variant format and provides functions for
@@ -798,7 +799,7 @@ class VariantUtil {
       throw new IllegalStateException(String.format("Invalid offset: %d. next offset: %d", offset, nextOffset));
     }
     checkIndex(dataPos + nextOffset - 1, metadata.limit());
-    if (metadata.hasArray()) {
+    if (metadata.hasArray() && !metadata.isReadOnly()) {
       return new String(metadata.array(), metadata.arrayOffset() + dataPos + offset, nextOffset - offset);
     } else {
       // ByteBuffer does not have an array, so we need to use the `get` method to read the bytes.
@@ -806,5 +807,45 @@ class VariantUtil {
       slice(metadata, dataPos + offset).get(metadataArray);
       return new String(metadataArray);
     }
+  }
+
+  /**
+   * Returns a map from each string to its ID in the Variant metadata.
+   * @param metadata The Variant metadata
+   * @return A map from metadata key to its position.
+   */
+  static HashMap<String, Integer> getMetadataMap(ByteBuffer metadata) {
+    int pos = metadata.position();
+    checkIndex(pos, metadata.limit());
+    // Extracts the highest 2 bits in the metadata header to determine the integer size of the
+    // offset list.
+    int offsetSize = ((metadata.get(pos) >> 6) & 0x3) + 1;
+    int dictSize = readUnsigned(metadata, pos + 1, offsetSize);
+    HashMap<String, Integer> result = new HashMap<>();
+    int offset = readUnsigned(metadata, pos + 1 + offsetSize, offsetSize);
+    for (int id = 0; id < dictSize; id++) {
+      int stringStart = 1 + (dictSize + 2) * offsetSize;
+      int nextOffset = readUnsigned(metadata, pos + 1 + (id + 2) * offsetSize, offsetSize);
+      if (offset > nextOffset) {
+        throw new UnsupportedOperationException(
+            String.format("Invalid offset: %d. next offset: %d", offset, nextOffset));
+      }
+      checkIndex(pos + stringStart + nextOffset - 1, metadata.limit());
+      if (metadata.hasArray() && !metadata.isReadOnly()) {
+        result.put(
+            new String(
+                metadata.array(),
+                metadata.arrayOffset() + pos + stringStart + offset,
+                nextOffset - offset),
+            id);
+      } else {
+        // ByteBuffer does not have an array, so we need to use the `get` method to read the bytes.
+        byte[] metadataArray = new byte[nextOffset - offset];
+        slice(metadata, stringStart + offset).get(metadataArray);
+        result.put(new String(metadataArray), id);
+      }
+      offset = nextOffset;
+    }
+    return result;
   }
 }

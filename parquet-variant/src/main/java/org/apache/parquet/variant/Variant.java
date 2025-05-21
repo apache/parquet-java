@@ -26,10 +26,14 @@ import java.util.UUID;
  * This Variant class holds the Variant-encoded value and metadata binary values.
  */
 public final class Variant {
-  /** The buffer that contains the Variant value. */
+  /**
+   * The buffer that contains the Variant value.
+   */
   final ByteBuffer value;
 
-  /** The buffer that contains the Variant metadata. */
+  /**
+   * The buffer that contains the Variant metadata.
+   */
   final ByteBuffer metadata;
 
   /**
@@ -47,6 +51,10 @@ public final class Variant {
     this(ByteBuffer.wrap(value, valuePos, valueLength), ByteBuffer.wrap(metadata, metadataPos, metadataLength));
   }
 
+  Variant(ByteBuffer value, Metadata metadata) {
+    this(value, metadata.getEncodedBuffer());
+  }
+
   public Variant(ByteBuffer value, ByteBuffer metadata) {
     // The buffers are read a single-byte at a time, so the endianness of the input buffers
     // is not important.
@@ -59,6 +67,14 @@ public final class Variant {
           "Unsupported variant metadata version: %d",
           metadata.get(metadata.position()) & VariantUtil.VERSION_MASK));
     }
+  }
+
+  public ByteBuffer getValueBuffer() {
+    return value;
+  }
+
+  public ByteBuffer getMetadataBuffer() {
+    return metadata;
   }
 
   /**
@@ -184,6 +200,7 @@ public final class Variant {
   /**
    * Returns the object field Variant value whose key is equal to `key`.
    * Returns null if the key is not found.
+   *
    * @param key the key to look up
    * @return the field value whose key is equal to `key`, or null if key is not found
    * @throws IllegalArgumentException if `getType()` does not return `Type.OBJECT`
@@ -240,7 +257,7 @@ public final class Variant {
   /**
    * A field in a Variant object.
    */
-  static final class ObjectField {
+  public static final class ObjectField {
     public final String key;
     public final Variant value;
 
@@ -250,7 +267,30 @@ public final class Variant {
     }
   }
 
-  private static ObjectField getFieldAtIndex(
+  /**
+   * Returns the field at index idx, lexicographically ordered.
+   *
+   * @param idx the index to look up
+   * @return the field value whose key is equal to `key`, or null if key is not found
+   * @throws IllegalArgumentException if `getType()` does not return `Type.OBJECT`
+   */
+  public ObjectField getFieldAtIndex(int idx) {
+    VariantUtil.ObjectInfo info = VariantUtil.getObjectInfo(value);
+    // Use linear search for a short list. Switch to binary search when the length reaches
+    // `BINARY_SEARCH_THRESHOLD`.
+    ObjectField field = getFieldAtIndex(
+        idx,
+        value,
+        metadata,
+        info.idSize,
+        info.offsetSize,
+        value.position() + info.idStartOffset,
+        value.position() + info.offsetStartOffset,
+        value.position() + info.dataStartOffset);
+    return field;
+  }
+
+  static ObjectField getFieldAtIndex(
       int index,
       ByteBuffer value,
       ByteBuffer metadata,
@@ -278,6 +318,7 @@ public final class Variant {
   /**
    * Returns the array element Variant value at the `index` slot. Returns null if `index` is
    * out of the bound of `[0, arraySize())`.
+   *
    * @param index the index of the array element to get
    * @return the array element Variant at the `index` slot, or null if `index` is out of bounds
    * @throws IllegalArgumentException if `getType()` does not return `Type.ARRAY`

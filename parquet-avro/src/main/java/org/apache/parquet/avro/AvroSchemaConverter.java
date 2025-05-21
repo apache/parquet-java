@@ -466,6 +466,16 @@ public class AvroSchemaConverter {
                   LogicalTypeAnnotation.EnumLogicalTypeAnnotation enumLogicalType) {
                 return of(Schema.create(Schema.Type.STRING));
               }
+
+              @Override
+              public Optional<Schema> visit(
+                  LogicalTypeAnnotation.VariantLogicalTypeAnnotation variantLogicalType) {
+                String name = parquetGroupType.getName();
+                List<Schema.Field> fields = new ArrayList<>();
+                fields.add(new Schema.Field("metadata", Schema.create(Schema.Type.BYTES)));
+                fields.add(new Schema.Field("value", Schema.create(Schema.Type.BYTES)));
+                return of(Schema.createRecord(name, null, namespace(name, names), false, fields));
+              }
             })
             .orElseThrow(
                 () -> new UnsupportedOperationException("Cannot convert Parquet type " + parquetType));

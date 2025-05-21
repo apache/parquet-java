@@ -22,16 +22,18 @@ import java.util.ArrayList;
  * Builder for creating Variant arrays, used by VariantBuilder.
  */
 public class VariantArrayBuilder extends VariantBuilder {
-  /** The parent VariantBuilder. */
-  private final VariantBuilder parent;
   /** The offsets of the elements in this array. */
   private final ArrayList<Integer> offsets;
   /** The number of values appended to this array. */
   protected long numValues = 0;
 
-  VariantArrayBuilder(VariantBuilder parent) {
-    this.parent = parent;
+  VariantArrayBuilder(Metadata metadata) {
+    super(metadata);
     this.offsets = new ArrayList<>();
+  }
+
+  long numValues() {
+    return numValues;
   }
 
   /**
@@ -58,11 +60,5 @@ public class VariantArrayBuilder extends VariantBuilder {
     checkMultipleNested("Cannot call startObject()/startArray() without calling endObject()/endArray() first.");
     offsets.add(writePos);
     numValues++;
-  }
-
-  @Override
-  int addDictionaryKey(String key) {
-    // Add to the parent dictionary.
-    return parent.addDictionaryKey(key);
   }
 }
