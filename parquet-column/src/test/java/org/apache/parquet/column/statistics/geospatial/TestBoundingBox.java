@@ -530,34 +530,34 @@ public class TestBoundingBox {
 
   /**
    * Tests the end-to-end case for updating and merging bounding boxes with mixed valid and NaN coordinates.
-   *
+   * <p>
    * Scenario - Parquet file with multiple row groups:
    * file-level bbox: [1, 9, 100, 900]
-   *
+   * <p>
    * Row group 1: [1, 2, 100, 100]
    * - POINT (1, 100)
    * - POINT (2, NaN)
-   *
+   * <p>
    * Row group 2: [3, 3, 300, 300]
    * - POINT (3, 300)
    * - POINT (NaN, NaN)
-   *
+   * <p>
    * Row group 3: no valid bbox
    * - POINT (5, NaN)
    * - POINT (6, NaN)
-   *
+   * <p>
    * Row group 4: [7, 8, 700, 800]
    * - POINT (7, 700)
    * - POINT (8, 800)
-   *
+   * <p>
    * Row group 5: no valid bbox
    * - POINT (NaN, NaN)
    * - POINT (NaN, NaN)
-   *
+   * <p>
    * Row group 6: [9, 9, 900, 900]
    * - POINT (9, 900)
    * - LINESTRING EMPTY
-   *
+   * <p>
    * The test verifies that:
    * 1. Individual row group bounding boxes correctly handle NaN coordinates
    * 2. The merge operation correctly combines valid bounding boxes and ignores invalid ones
@@ -688,22 +688,33 @@ public class TestBoundingBox {
     BoundingBox validBox = new BoundingBox(1, 2, 3, 4, 5, 6, 7, 8);
     Assert.assertTrue(validBox.isXValid());
     Assert.assertTrue(validBox.isYValid());
+    Assert.assertTrue(validBox.isXYValid());
+    Assert.assertTrue(validBox.isZValid());
+    Assert.assertTrue(validBox.isMValid());
 
     // Test with invalid X (NaN)
     BoundingBox invalidXBox = new BoundingBox(Double.NaN, 2, 3, 4, 5, 6, 7, 8);
     Assert.assertFalse(invalidXBox.isXValid());
     Assert.assertTrue(invalidXBox.isYValid());
+    Assert.assertFalse(invalidXBox.isXYValid());
+    Assert.assertTrue(invalidXBox.isZValid());
+    Assert.assertTrue(invalidXBox.isMValid());
 
     // Test with invalid Y (NaN)
     BoundingBox invalidYBox = new BoundingBox(1, 2, Double.NaN, 4, 5, 6, 7, 8);
     Assert.assertTrue(invalidYBox.isXValid());
     Assert.assertFalse(invalidYBox.isYValid());
+    Assert.assertFalse(invalidXBox.isXYValid());
+    Assert.assertTrue(invalidXBox.isZValid());
+    Assert.assertTrue(invalidXBox.isMValid());
 
     // Test with both X and Y invalid
     BoundingBox invalidXYBox = new BoundingBox(Double.NaN, Double.NaN, Double.NaN, Double.NaN, 5, 6, 7, 8);
     Assert.assertFalse(invalidXYBox.isXValid());
     Assert.assertFalse(invalidXYBox.isYValid());
     Assert.assertFalse(invalidXYBox.isXYValid());
+    Assert.assertTrue(invalidXBox.isZValid());
+    Assert.assertTrue(invalidXBox.isMValid());
   }
 
   @Test
@@ -755,6 +766,16 @@ public class TestBoundingBox {
     // Test static method directly
     Assert.assertTrue(BoundingBox.isWraparound(180, -180));
     Assert.assertFalse(BoundingBox.isWraparound(-180, 180));
+
+    // Test with infinity values
+    Assert.assertFalse(BoundingBox.isWraparound(Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY));
+    Assert.assertFalse(BoundingBox.isWraparound(Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY));
+    Assert.assertFalse(BoundingBox.isWraparound(Double.POSITIVE_INFINITY, Double.POSITIVE_INFINITY));
+    Assert.assertFalse(BoundingBox.isWraparound(Double.NEGATIVE_INFINITY, Double.NEGATIVE_INFINITY));
+
+    // Check edge cases
+    Assert.assertFalse(BoundingBox.isWraparound(0.0, Double.POSITIVE_INFINITY));
+    Assert.assertFalse(BoundingBox.isWraparound(Double.NEGATIVE_INFINITY, 0.0));
   }
 
   @Test
@@ -779,5 +800,27 @@ public class TestBoundingBox {
     Assert.assertTrue(Double.isNaN(normalBox.getXMax()));
     Assert.assertEquals(0.0, normalBox.getYMin(), 0.0);
     Assert.assertEquals(15.0, normalBox.getYMax(), 0.0);
+  }
+
+  @Test
+  public void testWraparoundBoxMergingNormalBox() {
+    // Create a normal bounding box
+    BoundingBox normalBox = new BoundingBox(0, 10, 0, 10, 0, 0, 0, 0);
+
+    // Create a wraparound bounding box (xMin > xMax)
+    BoundingBox wraparoundBox = new BoundingBox(170, -170, 5, 15, 0, 0, 0, 0);
+
+    // Merge the normal box into the wraparound box
+    wraparoundBox.merge(normalBox);
+
+    // After merging, X dimension should be marked as invalid (NaN)
+    // because we don't support merging wraparound bounds
+    Assert.assertFalse(wraparoundBox.isValid());
+    Assert.assertTrue(Double.isNaN(wraparoundBox.getXMin()));
+    Assert.assertTrue(Double.isNaN(wraparoundBox.getXMax()));
+
+    // Y dimension should be properly merged
+    Assert.assertEquals(0.0, wraparoundBox.getYMin(), 0.0);
+    Assert.assertEquals(15.0, wraparoundBox.getYMax(), 0.0);
   }
 }

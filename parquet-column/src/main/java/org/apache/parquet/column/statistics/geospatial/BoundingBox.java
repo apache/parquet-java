@@ -314,17 +314,14 @@ public class BoundingBox {
    */
   private void updateBounds(double minX, double maxX, double minY, double maxY) {
     if (!Double.isNaN(minX) && !Double.isNaN(maxX)) {
-      double newXMin = Math.min(xMin, minX);
-      double newXMax = Math.max(xMax, maxX);
-
       // Check if the update would create a wraparound condition
       // This should never happen with standard JTS geometry operations
-      if (isWraparound(newXMin, newXMax)) {
-        throw new ShouldNeverHappenException("Wraparound X is not supported by BoundingBox.update()");
+      if (isWraparound(minX, maxX) || isWraparound(xMin, xMax)) {
+        throw new ShouldNeverHappenException("Wraparound bounding boxes are not yet supported");
       }
 
-      xMin = newXMin;
-      xMax = newXMax;
+      xMin = Math.min(xMin, minX);
+      xMax = Math.max(xMax, maxX);
     }
 
     if (!Double.isNaN(minY) && !Double.isNaN(maxY)) {
@@ -353,7 +350,7 @@ public class BoundingBox {
    * The Parquet specification allows X bounds to be "wraparound" to allow for
    * more compact bounding boxes when a geometry happens to include components
    * on both sides of the antimeridian (e.g., the nation of Fiji). This function
-   * checks for that case (see GeoStatistics::lower_bound/upper_bound for more details).
+   * checks for that case.
    */
   public static boolean isWraparound(double xmin, double xmax) {
     return !Double.isInfinite(xmin - xmax) && xmin > xmax;
