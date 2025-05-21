@@ -123,7 +123,8 @@ public class TestWriteVariant extends DirectWriterTest {
           ob.appendKey("e");
           ob.appendNull();
           b.endObject();
-        }).getMetadataBuffer();
+        })
+        .getMetadataBuffer();
 
     TEST_OBJECT = variant(TEST_METADATA, b -> {
       VariantObjectBuilder ob = b.startObject();
@@ -268,8 +269,8 @@ public class TestWriteVariant extends DirectWriterTest {
 
       GenericRecord actual = writeAndRead(testSchema, record);
       assertEquals(record.get(0), actual.get(0));
-      Variant actualV = new Variant((ByteBuffer) ((GenericRecord) actual.get(1)).get(1),
-          (ByteBuffer) ((GenericRecord) actual.get(1)).get(0));
+      Variant actualV = new Variant((ByteBuffer) ((GenericRecord) actual.get(1)).get(1), (ByteBuffer)
+          ((GenericRecord) actual.get(1)).get(0));
       AvroTestUtil.assertEquivalent(v, actualV);
     }
   }
@@ -288,8 +289,9 @@ public class TestWriteVariant extends DirectWriterTest {
       List<GenericRecord> actual = writeAndRead(testSchema, expected);
       assertEquals(actual.size(), VARIANTS.length);
       for (int i = 0; i < VARIANTS.length; i++) {
-        Variant actualV = new Variant((ByteBuffer) ((GenericRecord) actual.get(i).get(1)).get(1),
-            (ByteBuffer) ((GenericRecord) actual.get(i).get(1)).get(0));
+        Variant actualV =
+            new Variant((ByteBuffer) ((GenericRecord) actual.get(i).get(1)).get(1), (ByteBuffer)
+                ((GenericRecord) actual.get(i).get(1)).get(0));
         AvroTestUtil.assertEquivalent(VARIANTS[i], actualV);
       }
     }

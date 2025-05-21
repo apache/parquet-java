@@ -46,8 +46,8 @@ import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.LogicalTypeAnnotation.UUIDLogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Type;
-import org.apache.parquet.variant.VariantValueWriter;
 import org.apache.parquet.variant.Variant;
+import org.apache.parquet.variant.VariantValueWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -235,9 +235,7 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
       recordConsumer.startGroup();
       writeRecordFields(schema, avroSchema, record);
       recordConsumer.endGroup();
-      return;
     }
-
   }
 
   private void writeRecordFields(GroupType schema, Schema avroSchema, Object record) {

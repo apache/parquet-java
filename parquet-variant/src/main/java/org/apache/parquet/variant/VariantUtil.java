@@ -866,17 +866,17 @@ class VariantUtil {
         VariantUtil.ObjectInfo info = VariantUtil.getObjectInfo(slice(value, pos));
         return info.dataStartOffset
             + readUnsigned(
-            value,
-            pos + info.offsetStartOffset + info.numElements * info.offsetSize,
-            info.offsetSize);
+                value,
+                pos + info.offsetStartOffset + info.numElements * info.offsetSize,
+                info.offsetSize);
       }
       case ARRAY: {
         VariantUtil.ArrayInfo info = VariantUtil.getArrayInfo(slice(value, pos));
         return info.dataStartOffset
             + readUnsigned(
-            value,
-            pos + info.offsetStartOffset + info.numElements * info.offsetSize,
-            info.offsetSize);
+                value,
+                pos + info.offsetStartOffset + info.numElements * info.offsetSize,
+                info.offsetSize);
       }
       default:
         switch (typeInfo) {
