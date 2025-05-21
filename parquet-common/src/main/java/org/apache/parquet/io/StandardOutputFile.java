@@ -26,61 +26,59 @@ import java.io.IOException;
  */
 public class StandardOutputFile implements OutputFile {
 
-    /**
-     * @implNote we don't want to close the standard output (it's up to the process lifecycle to handle that)
-     */
-    public class RawPositionOutputStream extends PositionOutputStream {
+  /**
+   * @implNote we don't want to close the standard output (it's up to the process lifecycle to handle that)
+   */
+  public class RawPositionOutputStream extends PositionOutputStream {
 
-        private long pos = 0;
+    private long pos = 0;
 
-        @Override
-        public long getPos() throws IOException {
-            return this.pos;
-        }
-
-        @Override
-        public void write(int b) throws IOException {
-            this.pos++;
-            System.out.write(b);
-        }
-
-        @Override
-        public void write(byte[] b) throws IOException {
-            this.pos += b.length;
-            System.out.write(b);
-        }
-
-        @Override
-        public void write(byte[] b, int off, int len) throws IOException {
-            this.pos += len;
-            System.out.write(b, off, len);
-        }
-
-        @Override
-        public void flush() throws IOException {
-            System.out.flush();
-        }
-
+    @Override
+    public long getPos() throws IOException {
+      return this.pos;
     }
 
     @Override
-    public PositionOutputStream create(long blockSizeHint) throws IOException {
-        return new RawPositionOutputStream();
+    public void write(int b) throws IOException {
+      this.pos++;
+      System.out.write(b);
     }
 
     @Override
-    public PositionOutputStream createOrOverwrite(long blockSizeHint) throws IOException {
-        return new RawPositionOutputStream();
+    public void write(byte[] b) throws IOException {
+      this.pos += b.length;
+      System.out.write(b);
     }
 
     @Override
-    public boolean supportsBlockSize() {
-        return false;
+    public void write(byte[] b, int off, int len) throws IOException {
+      this.pos += len;
+      System.out.write(b, off, len);
     }
 
     @Override
-    public long defaultBlockSize() {
-        return -1;
+    public void flush() throws IOException {
+      System.out.flush();
     }
+  }
 
+  @Override
+  public PositionOutputStream create(long blockSizeHint) throws IOException {
+    return new RawPositionOutputStream();
+  }
+
+  @Override
+  public PositionOutputStream createOrOverwrite(long blockSizeHint) throws IOException {
+    return new RawPositionOutputStream();
+  }
+
+  @Override
+  public boolean supportsBlockSize() {
+    return false;
+  }
+
+  @Override
+  public long defaultBlockSize() {
+    return -1;
+  }
 }

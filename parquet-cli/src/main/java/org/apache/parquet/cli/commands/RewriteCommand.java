@@ -92,9 +92,7 @@ public class RewriteCommand extends BaseCommand {
   }
 
   private RewriteOptions buildOptionsOrFail() throws IOException {
-    Preconditions.checkArgument(
-        inputs != null && !inputs.isEmpty(),
-        "Input parquet file paths are required.");
+    Preconditions.checkArgument(inputs != null && !inputs.isEmpty(), "Input parquet file paths are required.");
 
     // The builder below takes the job to validate all input parameters.
     RewriteOptions.Builder builder = createBuilder();

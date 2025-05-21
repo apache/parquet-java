@@ -51,5 +51,4 @@ public class ConvertCommandTest extends AvroFileTest {
     Assert.assertEquals(0, command.run());
     Assert.assertTrue(baos.size() > 0);
   }
-
 }

@@ -111,5 +111,4 @@ public class RewriteCommandTest extends ParquetFileTest {
     Assert.assertEquals(0, command.run());
     Assert.assertTrue(baos.size() > 0);
   }
-
 }

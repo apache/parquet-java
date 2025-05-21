@@ -20,11 +20,10 @@ package org.apache.parquet.io;
 
 import static org.junit.Assert.assertEquals;
 
-import org.junit.Test;
-
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
+import org.junit.Test;
 
 public class TestStandardOutputFile {
 
@@ -65,5 +64,4 @@ public class TestStandardOutputFile {
     assertEquals(4, baos.toByteArray().length);
     assertEquals(TEST.substring(1, 5), new String(baos.toByteArray()));
   }
-
 }

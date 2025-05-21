@@ -32,7 +32,6 @@ import com.google.common.io.Closeables;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.List;
-
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.hadoop.fs.FileSystem;
