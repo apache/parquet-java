@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.column.statistics.geospatial;
 
+import org.apache.parquet.ShouldNeverHappenException;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.Geometry;
@@ -169,7 +170,7 @@ public class BoundingBox {
    * @return true if the X dimension is empty, false otherwise.
    */
   public boolean isXEmpty() {
-    return Double.isInfinite(xMin) && Double.isInfinite(xMax);
+    return Double.isInfinite(xMin - xMax);
   }
 
   /**
@@ -178,7 +179,7 @@ public class BoundingBox {
    * @return true if the Y dimension is empty, false otherwise.
    */
   public boolean isYEmpty() {
-    return Double.isInfinite(yMin) && Double.isInfinite(yMax);
+    return Double.isInfinite(yMin - yMax);
   }
 
   /**
@@ -187,7 +188,7 @@ public class BoundingBox {
    * @return true if the Z dimension is empty, false otherwise.
    */
   public boolean isZEmpty() {
-    return Double.isInfinite(zMin) && Double.isInfinite(zMax);
+    return Double.isInfinite(zMin - zMax);
   }
 
   /**
@@ -196,13 +197,27 @@ public class BoundingBox {
    * @return true if the M dimension is empty, false otherwise.
    */
   public boolean isMEmpty() {
-    return Double.isInfinite(mMin) && Double.isInfinite(mMax);
+    return Double.isInfinite(mMin - mMax);
+  }
+
+  /**
+   * Checks if the X dimension of this bounding box wraps around the antimeridian.
+   * This occurs when the minimum X value is greater than the maximum X value,
+   * which is allowed by the Parquet specification for geometries that cross the antimeridian.
+   *
+   * @return true if the X dimension wraps around, false otherwise.
+   */
+  public boolean isXWraparound() {
+    return isWraparound(xMin, xMax);
   }
 
   /**
    * Expands this bounding box to include the bounds of another box.
    * After merging, this bounding box will contain both its original extent
    * and the extent of the other bounding box.
+   *
+   * If either this bounding box or the other has wraparound X coordinates,
+   * the X dimension will be marked as invalid (set to NaN) in the result.
    *
    * @param other the other BoundingBox whose bounds will be merged into this one
    */
@@ -218,8 +233,19 @@ public class BoundingBox {
       return;
     }
 
-    this.xMin = Math.min(this.xMin, other.xMin);
-    this.xMax = Math.max(this.xMax, other.xMax);
+    // We don't yet support merging wraparound bounds.
+    // Rather than throw, we mark the X bounds as invalid.
+    if (isXWraparound() || other.isXWraparound()) {
+      // Mark X dimension as invalid by setting to NaN
+      xMin = Double.NaN;
+      xMax = Double.NaN;
+    } else {
+      // Normal case - merge X bounds
+      this.xMin = Math.min(this.xMin, other.xMin);
+      this.xMax = Math.max(this.xMax, other.xMax);
+    }
+
+    // Always merge Y, Z, and M bounds
     this.yMin = Math.min(this.yMin, other.yMin);
     this.yMax = Math.max(this.yMax, other.yMax);
     this.zMin = Math.min(this.zMin, other.zMin);
@@ -227,7 +253,7 @@ public class BoundingBox {
     this.mMin = Math.min(this.mMin, other.mMin);
     this.mMax = Math.max(this.mMax, other.mMax);
 
-    // Update the validity of this bounding box based on the other bounding box
+    // Update the validity of this bounding box
     valid = isXYValid();
   }
 
@@ -272,12 +298,33 @@ public class BoundingBox {
    * - X bounds are only updated if both minX and maxX are not NaN
    * - Y bounds are only updated if both minY and maxY are not NaN
    *
-   * This allows partial updates while preserving valid dimensions.
+   * Note: JTS (Java Topology Suite) does not natively support wraparound envelopes
+   * or geometries that cross the antimeridian (±180° longitude). It operates strictly
+   * in a 2D Cartesian coordinate space and doesn't account for the Earth's spherical
+   * nature or longitudinal wrapping.
+   *
+   * When JTS encounters a geometry that crosses the antimeridian, it will represent
+   * it with an envelope spanning from the westernmost to easternmost points, often
+   * covering most of the Earth's longitude range (e.g., minX=-180, maxX=180).
+   *
+   * The wraparound check below is defensive but should never be triggered with standard
+   * JTS geometry operations, as JTS will never produce an envelope with minX > maxX.
+   *
+   * @throws ShouldNeverHappenException if the update creates an X wraparound condition
    */
   private void updateBounds(double minX, double maxX, double minY, double maxY) {
     if (!Double.isNaN(minX) && !Double.isNaN(maxX)) {
-      xMin = Math.min(xMin, minX);
-      xMax = Math.max(xMax, maxX);
+      double newXMin = Math.min(xMin, minX);
+      double newXMax = Math.max(xMax, maxX);
+
+      // Check if the update would create a wraparound condition
+      // This should never happen with standard JTS geometry operations
+      if (isWraparound(newXMin, newXMax)) {
+        throw new ShouldNeverHappenException("Wraparound X is not supported by BoundingBox.update()");
+      }
+
+      xMin = newXMin;
+      xMax = newXMax;
     }
 
     if (!Double.isNaN(minY) && !Double.isNaN(maxY)) {
@@ -300,6 +347,16 @@ public class BoundingBox {
   public void reset() {
     resetBBox();
     valid = true;
+  }
+
+  /**
+   * The Parquet specification allows X bounds to be "wraparound" to allow for
+   * more compact bounding boxes when a geometry happens to include components
+   * on both sides of the antimeridian (e.g., the nation of Fiji). This function
+   * checks for that case (see GeoStatistics::lower_bound/upper_bound for more details).
+   */
+  public static boolean isWraparound(double xmin, double xmax) {
+    return !Double.isInfinite(xmin - xmax) && xmin > xmax;
   }
 
   /**

@@ -681,4 +681,103 @@ public class TestBoundingBox {
     Assert.assertEquals(900.0, reverseMergeBox.getYMax(), 0.0);
     Assert.assertTrue(reverseMergeBox.isValid());
   }
+
+  @Test
+  public void testIsXValidAndIsYValid() {
+    // Test with valid X and Y
+    BoundingBox validBox = new BoundingBox(1, 2, 3, 4, 5, 6, 7, 8);
+    Assert.assertTrue(validBox.isXValid());
+    Assert.assertTrue(validBox.isYValid());
+
+    // Test with invalid X (NaN)
+    BoundingBox invalidXBox = new BoundingBox(Double.NaN, 2, 3, 4, 5, 6, 7, 8);
+    Assert.assertFalse(invalidXBox.isXValid());
+    Assert.assertTrue(invalidXBox.isYValid());
+
+    // Test with invalid Y (NaN)
+    BoundingBox invalidYBox = new BoundingBox(1, 2, Double.NaN, 4, 5, 6, 7, 8);
+    Assert.assertTrue(invalidYBox.isXValid());
+    Assert.assertFalse(invalidYBox.isYValid());
+
+    // Test with both X and Y invalid
+    BoundingBox invalidXYBox = new BoundingBox(Double.NaN, Double.NaN, Double.NaN, Double.NaN, 5, 6, 7, 8);
+    Assert.assertFalse(invalidXYBox.isXValid());
+    Assert.assertFalse(invalidXYBox.isYValid());
+    Assert.assertFalse(invalidXYBox.isXYValid());
+  }
+
+  @Test
+  public void testIsXEmptyAndIsYEmpty() {
+    // Empty bounding box (initial state)
+    BoundingBox emptyBox = new BoundingBox();
+    Assert.assertTrue(emptyBox.isXEmpty());
+    Assert.assertTrue(emptyBox.isYEmpty());
+    Assert.assertTrue(emptyBox.isXYEmpty());
+
+    // Non-empty box
+    BoundingBox nonEmptyBox = new BoundingBox(1, 2, 3, 4, 5, 6, 7, 8);
+    Assert.assertFalse(nonEmptyBox.isXEmpty());
+    Assert.assertFalse(nonEmptyBox.isYEmpty());
+    Assert.assertFalse(nonEmptyBox.isXYEmpty());
+
+    // Box with empty X dimension only
+    GeometryFactory gf = new GeometryFactory();
+    BoundingBox emptyXBox = new BoundingBox();
+    // Only update Y dimension
+    emptyXBox.update(gf.createPoint(new Coordinate(Double.NaN, 5)));
+    Assert.assertTrue(emptyXBox.isXEmpty());
+    Assert.assertFalse(emptyXBox.isYEmpty());
+    Assert.assertTrue(emptyXBox.isXYEmpty());
+
+    // Box with empty Y dimension only
+    BoundingBox emptyYBox = new BoundingBox();
+    // Only update X dimension
+    emptyYBox.update(gf.createPoint(new Coordinate(10, Double.NaN)));
+    Assert.assertFalse(emptyYBox.isXEmpty());
+    Assert.assertTrue(emptyYBox.isYEmpty());
+    Assert.assertTrue(emptyYBox.isXYEmpty());
+  }
+
+  @Test
+  public void testIsXWraparound() {
+    // Normal bounding box (no wraparound)
+    BoundingBox normalBox = new BoundingBox(1, 2, 3, 4, 5, 6, 7, 8);
+    Assert.assertFalse(normalBox.isXWraparound());
+
+    // Wraparound box (xMin > xMax)
+    BoundingBox wraparoundBox = new BoundingBox(170, 20, 10, 20, 0, 0, 0, 0);
+    Assert.assertTrue(wraparoundBox.isXWraparound());
+
+    // Edge case: equal bounds
+    BoundingBox equalBoundsBox = new BoundingBox(10, 10, 20, 20, 0, 0, 0, 0);
+    Assert.assertFalse(equalBoundsBox.isXWraparound());
+
+    // Test static method directly
+    Assert.assertTrue(BoundingBox.isWraparound(180, -180));
+    Assert.assertFalse(BoundingBox.isWraparound(-180, 180));
+  }
+
+  @Test
+  public void testWraparoundHandlingInMerge() {
+    // Test with two normal boxes
+    BoundingBox box1 = new BoundingBox(10, 20, 10, 20, 0, 0, 0, 0);
+    BoundingBox box2 = new BoundingBox(15, 25, 15, 25, 0, 0, 0, 0);
+    box1.merge(box2);
+
+    Assert.assertTrue(box1.isValid());
+    Assert.assertEquals(10.0, box1.getXMin(), 0.0);
+    Assert.assertEquals(25.0, box1.getXMax(), 0.0);
+
+    // Test with one wraparound box
+    BoundingBox normalBox = new BoundingBox(0, 10, 0, 10, 0, 0, 0, 0);
+    BoundingBox wraparoundBox = new BoundingBox(170, -170, 5, 15, 0, 0, 0, 0);
+
+    normalBox.merge(wraparoundBox);
+
+    Assert.assertFalse(normalBox.isValid());
+    Assert.assertTrue(Double.isNaN(normalBox.getXMin()));
+    Assert.assertTrue(Double.isNaN(normalBox.getXMax()));
+    Assert.assertEquals(0.0, normalBox.getYMin(), 0.0);
+    Assert.assertEquals(15.0, normalBox.getYMax(), 0.0);
+  }
 }
