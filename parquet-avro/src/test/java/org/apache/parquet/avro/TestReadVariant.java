@@ -2111,36 +2111,8 @@ public class TestReadVariant extends DirectWriterTest {
   void assertEquivalent(ByteBuffer expectedMetadata, ByteBuffer expectedValue, GenericRecord actual) {
     assertEquals(expectedMetadata, (ByteBuffer) actual.get("metadata"));
     assertEquals(expectedMetadata, (ByteBuffer) actual.get("metadata"));
-    assertEquivalent(
+    AvroTestUtil.assertEquivalent(
         new Variant(expectedValue, expectedMetadata),
         new Variant(((ByteBuffer) actual.get("value")), expectedMetadata));
-  }
-
-  void assertEquivalent(Variant expected, Variant actual) {
-    assertEquals(expected.getType(), actual.getType());
-    switch (expected.getType()) {
-      case STRING:
-        // Short strings may use the compact or extended representation.
-        assertEquals(expected.getString(), actual.getString());
-        break;
-      case ARRAY:
-        assertEquals(expected.numArrayElements(), actual.numArrayElements());
-        for (int i = 0; i < expected.numArrayElements(); ++i) {
-          assertEquivalent(expected.getElementAtIndex(i), actual.getElementAtIndex(i));
-        }
-        break;
-      case OBJECT:
-        assertEquals(expected.numObjectElements(), actual.numObjectElements());
-        for (int i = 0; i < expected.numObjectElements(); ++i) {
-          Variant.ObjectField expectedField = expected.getFieldAtIndex(i);
-          Variant.ObjectField actualField = actual.getFieldAtIndex(i);
-          assertEquals(expectedField.key, actualField.key);
-          assertEquivalent(expectedField.value, actualField.value);
-        }
-        break;
-      default:
-        // All other types have a single representation, and must be bit-for-bit identical.
-        assertEquals(expected.getValueBuffer(), actual.getValueBuffer());
-    }
   }
 }

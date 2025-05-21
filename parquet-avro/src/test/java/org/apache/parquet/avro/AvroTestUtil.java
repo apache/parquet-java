@@ -33,6 +33,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
+import org.apache.parquet.variant.Variant;
 import org.junit.Assert;
 import org.junit.rules.TemporaryFolder;
 
@@ -128,5 +129,37 @@ public class AvroTestUtil {
     Configuration conf = new Configuration(false);
     conf.setBoolean(name, value);
     return conf;
+  }
+
+  /**
+   * Assert that to Variant values are logically equivalent.
+   * E.g. object fields may be ordered differently in the binary.
+   */
+  static void assertEquivalent(Variant expected, Variant actual) {
+    Assert.assertEquals(expected.getType(), actual.getType());
+    switch (expected.getType()) {
+      case STRING:
+        // Short strings may use the compact or extended representation.
+        Assert.assertEquals(expected.getString(), actual.getString());
+        break;
+      case ARRAY:
+        Assert.assertEquals(expected.numArrayElements(), actual.numArrayElements());
+        for (int i = 0; i < expected.numArrayElements(); ++i) {
+          assertEquivalent(expected.getElementAtIndex(i), actual.getElementAtIndex(i));
+        }
+        break;
+      case OBJECT:
+        Assert.assertEquals(expected.numObjectElements(), actual.numObjectElements());
+        for (int i = 0; i < expected.numObjectElements(); ++i) {
+          Variant.ObjectField expectedField = expected.getFieldAtIndex(i);
+          Variant.ObjectField actualField = actual.getFieldAtIndex(i);
+          Assert.assertEquals(expectedField.key, actualField.key);
+          assertEquivalent(expectedField.value, actualField.value);
+        }
+        break;
+      default:
+        // All other types have a single representation, and must be bit-for-bit identical.
+        Assert.assertEquals(expected.getValueBuffer(), actual.getValueBuffer());
+    }
   }
 }
