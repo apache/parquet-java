@@ -268,24 +268,30 @@ public class TestWriteVariant extends DirectWriterTest {
 
       GenericRecord actual = writeAndRead(testSchema, record);
       assertEquals(record.get(0), actual.get(0));
-      assertEquals(((GenericRecord) record.get(1)).get(0), ((GenericRecord) actual.get(1)).get(0));
-      assertEquals(((GenericRecord) record.get(1)).get(1), ((GenericRecord) actual.get(1)).get(1));
+      Variant actualV = new Variant((ByteBuffer) ((GenericRecord) actual.get(1)).get(1),
+          (ByteBuffer) ((GenericRecord) actual.get(1)).get(0));
+      AvroTestUtil.assertEquivalent(v, actualV);
     }
   }
 
   @Test
   public void testMixedShredding() throws IOException {
-    for (Variant v : VARIANTS) {
+    for (Variant valueForSchema : VARIANTS) {
       List<GenericRecord> expected = new ArrayList<>();
       for (int i = 0; i < VARIANTS.length; i++) {
         expected.add(createRecord(i, VARIANTS[i]));
       }
 
-      MessageType writeSchema = shreddingSchema(v);
+      MessageType writeSchema = shreddingSchema(valueForSchema);
       TestSchema testSchema = new TestSchema(writeSchema, readSchema);
 
       List<GenericRecord> actual = writeAndRead(testSchema, expected);
-      // TODO: CHECK RESULTS
+      assertEquals(actual.size(), VARIANTS.length);
+      for (int i = 0; i < VARIANTS.length; i++) {
+        Variant actualV = new Variant((ByteBuffer) ((GenericRecord) actual.get(i).get(1)).get(1),
+            (ByteBuffer) ((GenericRecord) actual.get(i).get(1)).get(0));
+        AvroTestUtil.assertEquivalent(VARIANTS[i], actualV);
+      }
     }
   }
 

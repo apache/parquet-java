@@ -20,6 +20,7 @@ package org.apache.parquet.variant;
 
 import java.nio.ByteBuffer;
 import java.util.HashMap;
+import org.apache.parquet.format.VariantType;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.RecordConsumer;
 import org.apache.parquet.schema.GroupType;
@@ -121,8 +122,9 @@ public class VariantValueWriter {
               && ((LogicalTypeAnnotation.IntLogicalTypeAnnotation) logicalType).getBitWidth() == 16;
         case INT:
           return primitiveTypeName == PrimitiveType.PrimitiveTypeName.INT32
-              && (logicalType == null
-                  || logicalType instanceof LogicalTypeAnnotation.IntLogicalTypeAnnotation);
+              && (logicalType == null ||
+              (logicalType instanceof LogicalTypeAnnotation.IntLogicalTypeAnnotation &&
+                  ((LogicalTypeAnnotation.IntLogicalTypeAnnotation) logicalType).getBitWidth() == 32));
         case LONG:
           return primitiveTypeName == PrimitiveType.PrimitiveTypeName.INT64
               && (logicalType == null
@@ -146,14 +148,25 @@ public class VariantValueWriter {
         case TIME:
           return primitiveTypeName == PrimitiveType.PrimitiveTypeName.INT64
               && logicalType instanceof LogicalTypeAnnotation.TimeLogicalTypeAnnotation;
-        case TIMESTAMP_TZ:
-          return primitiveTypeName == PrimitiveType.PrimitiveTypeName.INT64
-              && logicalType instanceof LogicalTypeAnnotation.TimestampLogicalTypeAnnotation
-              && ((LogicalTypeAnnotation.TimestampLogicalTypeAnnotation) logicalType).isAdjustedToUTC();
         case TIMESTAMP_NTZ:
-          return primitiveTypeName == PrimitiveType.PrimitiveTypeName.INT64
-              && logicalType instanceof LogicalTypeAnnotation.TimestampLogicalTypeAnnotation
-              && !((LogicalTypeAnnotation.TimestampLogicalTypeAnnotation) logicalType).isAdjustedToUTC();
+        case TIMESTAMP_NANOS_NTZ:
+        case TIMESTAMP_TZ:
+        case TIMESTAMP_NANOS_TZ:
+          if (primitiveTypeName == PrimitiveType.PrimitiveTypeName.INT64 &&
+              logicalType instanceof LogicalTypeAnnotation.TimestampLogicalTypeAnnotation) {
+            LogicalTypeAnnotation.TimestampLogicalTypeAnnotation annotation =
+                (LogicalTypeAnnotation.TimestampLogicalTypeAnnotation) logicalType;
+            boolean micros = annotation.getUnit() == LogicalTypeAnnotation.TimeUnit.MICROS;
+            boolean nanos = annotation.getUnit() == LogicalTypeAnnotation.TimeUnit.NANOS;
+            boolean adjustedToUTC  = annotation.isAdjustedToUTC();
+            return
+                (variantType == Variant.Type.TIMESTAMP_TZ && micros && adjustedToUTC) ||
+                (variantType == Variant.Type.TIMESTAMP_NTZ && micros && !adjustedToUTC) ||
+                (variantType == Variant.Type.TIMESTAMP_NANOS_TZ && nanos && adjustedToUTC) ||
+                (variantType == Variant.Type.TIMESTAMP_NANOS_NTZ && nanos && !adjustedToUTC);
+          } else {
+            return false;
+          }
         case STRING:
           return primitiveTypeName == PrimitiveType.PrimitiveTypeName.BINARY
               && logicalType instanceof LogicalTypeAnnotation.StringLogicalTypeAnnotation;

@@ -852,10 +852,10 @@ class VariantUtil {
   /**
    * Computes the actual size (in bytes) of the Variant value at `value[pos...]`
    * @param value The Variant value
-   * @param pos The starting index of the Variant value
    * @return The size (in bytes) of the Variant value
    */
-  public static int valueSize(ByteBuffer value, int pos) {
+  public static int valueSize(ByteBuffer value) {
+    int pos = value.position();
     checkIndex(pos, value.limit());
     int basicType = value.get(pos) & BASIC_TYPE_MASK;
     int typeInfo = (value.get(pos) >> BASIC_TYPE_BITS) & PRIMITIVE_TYPE_MASK;
