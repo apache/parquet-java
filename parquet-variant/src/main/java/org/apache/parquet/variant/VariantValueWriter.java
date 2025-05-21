@@ -51,17 +51,22 @@ public class VariantValueWriter {
   }
 
   /**
-   * Write a Variant value to a shredded schema. The caller is responsible for calling startGroup()
-   * and endGroup(), and for writing metadata.
+   * Write a Variant value to a shredded schema.
    */
   public static void write(RecordConsumer recordConsumer, GroupType schema, Variant value) {
+    recordConsumer.startGroup();
+    int metadataIndex = schema.getFieldIndex("metadata");
+    recordConsumer.startField("metadata", metadataIndex);
+    recordConsumer.addBinary(Binary.fromConstantByteBuffer(value.getMetadataBuffer()));
+    recordConsumer.endField("metadata", metadataIndex);
     VariantValueWriter writer = new VariantValueWriter(recordConsumer, value.getMetadataBuffer());
     writer.write(schema, value);
+    recordConsumer.endGroup();
   }
 
   /**
    * Write a Variant value to a shredded schema. The caller is responsible for calling startGroup()
-   * and endGroup().
+   * and endGroup(), and writing metadata if this is the top level of the Variant group.
    */
   void write(GroupType schema, Variant value) {
     Type typedValueField = null;
