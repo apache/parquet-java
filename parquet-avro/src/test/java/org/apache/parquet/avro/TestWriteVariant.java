@@ -79,7 +79,7 @@ public class TestWriteVariant extends DirectWriterTest {
     return variant(b -> b.appendString(s));
   }
 
-  private static GroupType variantGroup = Types.buildGroup(Type.Repetition.REQUIRED)
+  private static final GroupType UNSHREDDED_GROUP = Types.buildGroup(Type.Repetition.REQUIRED)
       .as(LogicalTypeAnnotation.variantType((byte) 1))
       .required(PrimitiveTypeName.BINARY)
       .named("metadata")
@@ -95,10 +95,10 @@ public class TestWriteVariant extends DirectWriterTest {
         .named("table");
   }
 
-  private static MessageType readSchema = parquetSchema(variantGroup);
+  private static final MessageType READ_SCHEMA = parquetSchema(UNSHREDDED_GROUP);
 
-  private static final Schema VARIANT_SCHEMA = new AvroSchemaConverter().convert(variantGroup);
-  private static final Schema SCHEMA = new AvroSchemaConverter().convert(readSchema);
+  private static final Schema VARIANT_SCHEMA = new AvroSchemaConverter().convert(UNSHREDDED_GROUP);
+  private static final Schema SCHEMA = new AvroSchemaConverter().convert(READ_SCHEMA);
 
   private ByteBuffer TEST_METADATA;
   private ByteBuffer TEST_OBJECT;
@@ -249,7 +249,7 @@ public class TestWriteVariant extends DirectWriterTest {
   public void testUnshreddedValues() throws IOException {
     for (Variant v : VARIANTS) {
       GenericRecord record = createRecord(1, v);
-      TestSchema testSchema = new TestSchema(readSchema, readSchema);
+      TestSchema testSchema = new TestSchema(READ_SCHEMA, READ_SCHEMA);
 
       GenericRecord actual = writeAndRead(testSchema, record);
 
@@ -264,7 +264,7 @@ public class TestWriteVariant extends DirectWriterTest {
     for (Variant v : VARIANTS) {
       GenericRecord record = createRecord(1, v);
       MessageType writeSchema = shreddingSchema(v);
-      TestSchema testSchema = new TestSchema(writeSchema, readSchema);
+      TestSchema testSchema = new TestSchema(writeSchema, READ_SCHEMA);
 
       GenericRecord actual = writeAndRead(testSchema, record);
       assertEquals(record.get(0), actual.get(0));
@@ -283,7 +283,7 @@ public class TestWriteVariant extends DirectWriterTest {
       }
 
       MessageType writeSchema = shreddingSchema(valueForSchema);
-      TestSchema testSchema = new TestSchema(writeSchema, readSchema);
+      TestSchema testSchema = new TestSchema(writeSchema, READ_SCHEMA);
 
       List<GenericRecord> actual = writeAndRead(testSchema, expected);
       assertEquals(actual.size(), VARIANTS.length);

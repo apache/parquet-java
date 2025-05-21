@@ -196,7 +196,7 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
   private void writeVariantFields(GroupType schema, Schema avroSchema, Object record) {
     List<Type> fields = schema.getFields();
     List<Schema.Field> avroFields = avroSchema.getFields();
-    // Check if the avro schema is a value/metadata pair. If not, just read the Variant as if it was a normal record.
+    // Check if the avro schema is a value/metadata pair. If not, treat the value as a non-variant record.
     boolean binarySchema = true;
     int valueIndex = -1;
     int metadataIndex = -1;
