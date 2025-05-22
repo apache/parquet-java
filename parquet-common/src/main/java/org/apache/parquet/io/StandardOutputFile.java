@@ -26,9 +26,6 @@ import java.io.IOException;
  */
 public class StandardOutputFile implements OutputFile {
 
-  /**
-   * @implNote we don't want to close the standard output (it's up to the process lifecycle to handle that)
-   */
   public class RawPositionOutputStream extends PositionOutputStream {
 
     private long pos = 0;
