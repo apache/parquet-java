@@ -19,6 +19,7 @@
 package org.apache.parquet.cli;
 
 import com.beust.jcommander.*;
+import java.util.Collections;
 import java.util.List;
 import org.apache.parquet.Version;
 import org.slf4j.Logger;
@@ -40,6 +41,6 @@ public class ShowVersionCommand implements Command {
 
   @Override
   public List<String> getExamples() {
-    return null;
+    return Collections.emptyList();
   }
 }

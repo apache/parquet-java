@@ -26,6 +26,7 @@ import com.beust.jcommander.ParameterDescription;
 import com.beust.jcommander.Parameters;
 import com.google.common.collect.Lists;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import org.slf4j.Logger;
 
@@ -149,6 +150,6 @@ public class Help implements Command {
 
   @Override
   public List<String> getExamples() {
-    return null;
+    return Collections.emptyList();
   }
 }
