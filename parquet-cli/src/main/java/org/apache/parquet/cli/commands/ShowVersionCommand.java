@@ -16,21 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.parquet.cli;
+package org.apache.parquet.cli.commands;
 
-import com.beust.jcommander.*;
+import com.beust.jcommander.Parameters;
 import java.util.Collections;
 import java.util.List;
 import org.apache.parquet.Version;
+import org.apache.parquet.cli.BaseCommand;
 import org.slf4j.Logger;
 
 @Parameters(commandDescription = "Print version of the Parquet CLI tool")
-public class ShowVersionCommand implements Command {
-
-  private final Logger console;
+public class ShowVersionCommand extends BaseCommand {
 
   public ShowVersionCommand(Logger console) {
-    this.console = console;
+    super(console);
   }
 
   @Override

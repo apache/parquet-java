@@ -20,7 +20,6 @@ package org.apache.parquet.cli.commands;
 
 import java.util.Queue;
 import org.apache.parquet.Version;
-import org.apache.parquet.cli.ShowVersionCommand;
 import org.junit.Assert;
 import org.junit.Test;
 import org.slf4j.Logger;
