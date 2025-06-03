@@ -128,8 +128,8 @@ Usage: parquet [options] [command] [command options]
 
   Examples:
 
-    # print information for version
-    parquet help version
+    # print information for meta
+    parquet help meta
 
   See 'parquet help <command>' for more information on a specific command.
 ```
