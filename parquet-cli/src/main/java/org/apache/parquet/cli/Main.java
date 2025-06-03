@@ -87,7 +87,7 @@ public class Main extends Configured implements Tool {
     this.help = new Help(jc, console);
     jc.setProgramName(DEFAULT_PROGRAM_NAME);
     jc.addCommand("help", help, "-h", "-help", "--help");
-    jc.addCommand("version", new ShowVersionCommand(console));
+    jc.addCommand("version", new ShowVersionCommand(console), "-version", "--version");
     jc.addCommand("meta", new ParquetMetadataCommand(console));
     jc.addCommand("pages", new ShowPagesCommand(console));
     jc.addCommand("dictionary", new ShowDictionaryCommand(console));
