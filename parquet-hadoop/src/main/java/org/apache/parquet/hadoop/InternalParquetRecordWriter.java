@@ -49,7 +49,7 @@ class InternalParquetRecordWriter<T> {
   private final MessageType schema;
   private final Map<String, String> extraMetaData;
   private long rowGroupSizeThreshold;
-  private final long rowGroupRecordCountThreshold;
+  private final int rowGroupRecordCountThreshold;
   private long nextRowGroupSize;
   private final BytesInputCompressor compressor;
   private final boolean validating;
