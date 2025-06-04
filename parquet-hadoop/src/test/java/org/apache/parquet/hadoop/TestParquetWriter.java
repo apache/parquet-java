@@ -443,8 +443,17 @@ public class TestParquetWriter {
     testParquetFileNumberOfBlocks(
         ParquetProperties.DEFAULT_MINIMUM_RECORD_COUNT_FOR_CHECK,
         ParquetProperties.DEFAULT_MAXIMUM_RECORD_COUNT_FOR_CHECK,
+        new Configuration(),
         1);
-    testParquetFileNumberOfBlocks(1, 1, 3);
+    testParquetFileNumberOfBlocks(1, 1, new Configuration(), 3);
+
+    Configuration conf = new Configuration();
+    ParquetOutputFormat.setBlockRowCountLimit(conf, 1);
+    testParquetFileNumberOfBlocks(
+        ParquetProperties.DEFAULT_MINIMUM_RECORD_COUNT_FOR_CHECK,
+        ParquetProperties.DEFAULT_MAXIMUM_RECORD_COUNT_FOR_CHECK,
+        conf,
+        3);
   }
 
   @Test
@@ -506,7 +515,10 @@ public class TestParquetWriter {
   }
 
   private void testParquetFileNumberOfBlocks(
-      int minRowCountForPageSizeCheck, int maxRowCountForPageSizeCheck, int expectedNumberOfBlocks)
+      int minRowCountForPageSizeCheck,
+      int maxRowCountForPageSizeCheck,
+      Configuration conf,
+      int expectedNumberOfBlocks)
       throws IOException {
     MessageType schema = Types.buildMessage()
         .required(BINARY)
@@ -514,7 +526,6 @@ public class TestParquetWriter {
         .named("str")
         .named("msg");
 
-    Configuration conf = new Configuration();
     GroupWriteSupport.setSchema(schema, conf);
 
     File file = temp.newFile();
@@ -523,7 +534,8 @@ public class TestParquetWriter {
     try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(path)
         .withAllocator(allocator)
         .withConf(conf)
-        // Set row group size to 1, to make sure we flush every time
+        .withRowGroupRowCountLimit(ParquetOutputFormat.getBlockRowCountLimit(conf))
+        // Set row group size to 1, to make sure we flush every time when
         // minRowCountForPageSizeCheck or maxRowCountForPageSizeCheck is exceeded
         .withRowGroupSize(1)
         .withMinRowCountForPageSizeCheck(minRowCountForPageSizeCheck)
