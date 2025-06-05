@@ -21,6 +21,7 @@ package org.apache.parquet.hadoop;
 import static org.apache.parquet.filter2.predicate.FilterApi.in;
 import static org.apache.parquet.filter2.predicate.FilterApi.longColumn;
 import static org.apache.parquet.hadoop.ParquetFileWriter.Mode.OVERWRITE;
+import static org.apache.parquet.hadoop.ParquetInputFormat.HADOOP_VECTORED_IO_ENABLED;
 import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
@@ -61,6 +62,7 @@ public class TestParquetReader {
   private static final List<PhoneBookWriter.User> DATA = Collections.unmodifiableList(makeUsers(1000));
 
   private final Path file;
+  private final boolean vectoredRead;
   private final long fileSize;
   private TrackingByteBufferAllocator allocator;
 
@@ -72,15 +74,19 @@ public class TestParquetReader {
     }
   }
 
-  public TestParquetReader(Path file) throws IOException {
+  public TestParquetReader(Path file, final boolean vectoredRead) throws IOException {
     this.file = file;
+    this.vectoredRead = vectoredRead;
     this.fileSize =
         file.getFileSystem(new Configuration()).getFileStatus(file).getLen();
   }
 
-  @Parameterized.Parameters
+  @Parameterized.Parameters(name = "file={0} vector={1}")
   public static Collection<Object[]> data() {
-    Object[][] data = new Object[][] {{FILE_V1}, {FILE_V2}, {STATIC_FILE_WITHOUT_COL_INDEXES}};
+    Object[][] data = new Object[][] {
+      {FILE_V1, false}, {FILE_V2, false}, {STATIC_FILE_WITHOUT_COL_INDEXES, false},
+      {FILE_V1, true}, {FILE_V2, true}, {STATIC_FILE_WITHOUT_COL_INDEXES, true}
+    };
     return Arrays.asList(data);
   }
 
@@ -153,8 +159,11 @@ public class TestParquetReader {
       long rangeStart,
       long rangeEnd)
       throws IOException {
+    final Configuration conf = new Configuration();
+    conf.setBoolean(HADOOP_VECTORED_IO_ENABLED, vectoredRead);
     return PhoneBookWriter.readUsers(
         ParquetReader.builder(new GroupReadSupport(), file)
+            .withConf(conf)
             .withAllocator(allocator)
             .withFilter(filter)
             .useDictionaryFilter(useOtherFiltering)
