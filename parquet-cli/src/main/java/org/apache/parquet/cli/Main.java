@@ -53,6 +53,7 @@ import org.apache.parquet.cli.commands.ShowFooterCommand;
 import org.apache.parquet.cli.commands.ShowGeospatialStatisticsCommand;
 import org.apache.parquet.cli.commands.ShowPagesCommand;
 import org.apache.parquet.cli.commands.ShowSizeStatisticsCommand;
+import org.apache.parquet.cli.commands.ShowVersionCommand;
 import org.apache.parquet.cli.commands.ToAvroCommand;
 import org.apache.parquet.cli.commands.TransCompressionCommand;
 import org.slf4j.Logger;
@@ -87,6 +88,7 @@ public class Main extends Configured implements Tool {
     this.help = new Help(jc, console);
     jc.setProgramName(DEFAULT_PROGRAM_NAME);
     jc.addCommand("help", help, "-h", "-help", "--help");
+    jc.addCommand("version", new ShowVersionCommand(console), "-version", "--version");
     jc.addCommand("meta", new ParquetMetadataCommand(console));
     jc.addCommand("pages", new ShowPagesCommand(console));
     jc.addCommand("dictionary", new ShowDictionaryCommand(console));
