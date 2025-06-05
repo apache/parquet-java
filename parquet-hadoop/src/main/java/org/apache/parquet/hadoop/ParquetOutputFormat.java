@@ -154,6 +154,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   public static final String BLOOM_FILTER_FPP = "parquet.bloom.filter.fpp";
   public static final String ADAPTIVE_BLOOM_FILTER_ENABLED = "parquet.bloom.filter.adaptive.enabled";
   public static final String BLOOM_FILTER_CANDIDATES_NUMBER = "parquet.bloom.filter.candidates.number";
+  public static final String BLOCK_ROW_COUNT_LIMIT = "parquet.block.row.count.limit";
   public static final String PAGE_ROW_COUNT_LIMIT = "parquet.page.row.count.limit";
   public static final String PAGE_WRITE_CHECKSUM_ENABLED = "parquet.page.write-checksum.enabled";
   public static final String STATISTICS_ENABLED = "parquet.column.statistics.enabled";
@@ -366,6 +367,18 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     return conf.getInt(STATISTICS_TRUNCATE_LENGTH, ParquetProperties.DEFAULT_STATISTICS_TRUNCATE_LENGTH);
   }
 
+  public static void setBlockRowCountLimit(JobContext jobContext, int rowCount) {
+    setBlockRowCountLimit(getConfiguration(jobContext), rowCount);
+  }
+
+  public static void setBlockRowCountLimit(Configuration conf, int rowCount) {
+    conf.setInt(BLOCK_ROW_COUNT_LIMIT, rowCount);
+  }
+
+  static int getBlockRowCountLimit(Configuration conf) {
+    return conf.getInt(BLOCK_ROW_COUNT_LIMIT, ParquetProperties.DEFAULT_ROW_GROUP_ROW_COUNT_LIMIT);
+  }
+
   public static void setPageRowCountLimit(JobContext jobContext, int rowCount) {
     setPageRowCountLimit(getConfiguration(jobContext), rowCount);
   }
@@ -500,6 +513,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
         .withMaxBloomFilterBytes(getBloomFilterMaxBytes(conf))
         .withBloomFilterEnabled(getBloomFilterEnabled(conf))
         .withAdaptiveBloomFilterEnabled(getAdaptiveBloomFilterEnabled(conf))
+        .withRowGroupRowCountLimit(getBlockRowCountLimit(conf))
         .withPageRowCountLimit(getPageRowCountLimit(conf))
         .withPageWriteChecksumEnabled(getPageWriteChecksumEnabled(conf))
         .withStatisticsEnabled(getStatisticsEnabled(conf));

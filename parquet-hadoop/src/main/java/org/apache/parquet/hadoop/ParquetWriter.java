@@ -610,6 +610,17 @@ public class ParquetWriter<T> implements Closeable {
     }
 
     /**
+     * Sets the Parquet format row group row count limit used by the constructed writer.
+     *
+     * @param rowCount limit for the number of rows stored in a row group
+     * @return this builder for method chaining
+     */
+    public SELF withRowGroupRowCountLimit(int rowCount) {
+      encodingPropsBuilder.withRowGroupRowCountLimit(rowCount);
+      return self();
+    }
+
+    /**
      * Sets the Parquet format page row count limit used by the constructed writer.
      *
      * @param rowCount limit for the number of rows stored in a page

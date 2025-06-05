@@ -57,6 +57,7 @@ public class ParquetProperties {
   public static final int DEFAULT_PAGE_VALUE_COUNT_THRESHOLD = Integer.MAX_VALUE / 2;
   public static final int DEFAULT_COLUMN_INDEX_TRUNCATE_LENGTH = 64;
   public static final int DEFAULT_STATISTICS_TRUNCATE_LENGTH = Integer.MAX_VALUE;
+  public static final int DEFAULT_ROW_GROUP_ROW_COUNT_LIMIT = Integer.MAX_VALUE;
   public static final int DEFAULT_PAGE_ROW_COUNT_LIMIT = 20_000;
   public static final int DEFAULT_MAX_BLOOM_FILTER_BYTES = 1024 * 1024;
   public static final boolean DEFAULT_BLOOM_FILTER_ENABLED = false;
@@ -122,6 +123,7 @@ public class ParquetProperties {
   private final ColumnProperty<Boolean> bloomFilterEnabled;
   private final ColumnProperty<Boolean> adaptiveBloomFilterEnabled;
   private final ColumnProperty<Integer> numBloomFilterCandidates;
+  private final int rowGroupRowCountLimit;
   private final int pageRowCountLimit;
   private final boolean pageWriteChecksumEnabled;
   private final ColumnProperty<ByteStreamSplitMode> byteStreamSplitEnabled;
@@ -153,6 +155,7 @@ public class ParquetProperties {
     this.maxBloomFilterBytes = builder.maxBloomFilterBytes;
     this.adaptiveBloomFilterEnabled = builder.adaptiveBloomFilterEnabled.build();
     this.numBloomFilterCandidates = builder.numBloomFilterCandidates.build();
+    this.rowGroupRowCountLimit = builder.rowGroupRowCountLimit;
     this.pageRowCountLimit = builder.pageRowCountLimit;
     this.pageWriteChecksumEnabled = builder.pageWriteChecksumEnabled;
     this.byteStreamSplitEnabled = builder.byteStreamSplitEnabled.build();
@@ -302,6 +305,10 @@ public class ParquetProperties {
     return estimateNextSizeCheck;
   }
 
+  public int getRowGroupRowCountLimit() {
+    return rowGroupRowCountLimit;
+  }
+
   public int getPageRowCountLimit() {
     return pageRowCountLimit;
   }
@@ -400,6 +407,7 @@ public class ParquetProperties {
     private final ColumnProperty.Builder<Boolean> adaptiveBloomFilterEnabled;
     private final ColumnProperty.Builder<Integer> numBloomFilterCandidates;
     private final ColumnProperty.Builder<Boolean> bloomFilterEnabled;
+    private int rowGroupRowCountLimit = DEFAULT_ROW_GROUP_ROW_COUNT_LIMIT;
     private int pageRowCountLimit = DEFAULT_PAGE_ROW_COUNT_LIMIT;
     private boolean pageWriteChecksumEnabled = DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED;
     private final ColumnProperty.Builder<ByteStreamSplitMode> byteStreamSplitEnabled;
@@ -676,6 +684,12 @@ public class ParquetProperties {
      */
     public Builder withBloomFilterEnabled(String columnPath, boolean enabled) {
       this.bloomFilterEnabled.withValue(columnPath, enabled);
+      return this;
+    }
+
+    public Builder withRowGroupRowCountLimit(int rowCount) {
+      Preconditions.checkArgument(rowCount > 0, "Invalid row count limit for row groups: %s", rowCount);
+      rowGroupRowCountLimit = rowCount;
       return this;
     }
 
