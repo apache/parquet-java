@@ -213,15 +213,17 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
         if (valueObj instanceof byte[]) {
           value = ByteBuffer.wrap((byte[]) valueObj);
         } else {
+          if (!(valueObj instanceof ByteBuffer)) {
+            throw new RuntimeException("Variant value must be a ByteBuffer: " + schema.getName());
+          }
           value = (ByteBuffer) valueObj;
         }
       } else if (fieldType.getName() == "metadata") {
         Object metadataObj = model.getField(record, avroField.name(), index);
-        if (metadataObj instanceof byte[]) {
-          metadata = ByteBuffer.wrap((byte[]) metadataObj);
-        } else {
-          metadata = (ByteBuffer) metadataObj;
+        if (!(metadataObj instanceof ByteBuffer)) {
+          throw new RuntimeException("Variant metadata must be a ByteBuffer: " + schema.getName());
         }
+        metadata = (ByteBuffer) metadataObj;
       } else {
         binarySchema = false;
         break;
@@ -231,10 +233,7 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
     if (binarySchema) {
       VariantValueWriter.write(recordConsumer, schema, new Variant(value, metadata));
     } else {
-      // If the schema was something other than value and metaadata, treat the value as a non-variant record.
-      recordConsumer.startGroup();
-      writeRecordFields(schema, avroSchema, record);
-      recordConsumer.endGroup();
+      throw new RuntimeException("Invalid Avro schema for Variant logical type: " + schema.getName());
     }
   }
 

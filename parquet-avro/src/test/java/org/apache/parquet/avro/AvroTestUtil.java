@@ -133,7 +133,7 @@ public class AvroTestUtil {
 
   /**
    * Assert that to Variant values are logically equivalent.
-   * E.g. object fields may be ordered differently in the binary.
+   * E.g. values in an object may be ordered differently in the binary.
    */
   static void assertEquivalent(Variant expected, Variant actual) {
     Assert.assertEquals(expected.getType(), actual.getType());

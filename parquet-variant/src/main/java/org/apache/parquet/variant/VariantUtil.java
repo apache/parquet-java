@@ -850,18 +850,17 @@ class VariantUtil {
   }
 
   /**
-   * Computes the actual size (in bytes) of the Variant value at `value[pos...]`
-   * @param value The Variant value
-   * @return The size (in bytes) of the Variant value
+   * Computes the actual size (in bytes) of the Variant value.
+   * @param value The Variant value binary
+   * @return The size (in bytes) of the Variant value, including the header byte
    */
   public static int valueSize(ByteBuffer value) {
     int pos = value.position();
-    checkIndex(pos, value.limit());
     int basicType = value.get(pos) & BASIC_TYPE_MASK;
-    int typeInfo = (value.get(pos) >> BASIC_TYPE_BITS) & PRIMITIVE_TYPE_MASK;
     switch (basicType) {
       case SHORT_STR:
-        return 1 + typeInfo;
+        int stringSize = (value.get(pos) >> BASIC_TYPE_BITS) & PRIMITIVE_TYPE_MASK;
+        return 1 + stringSize;
       case OBJECT: {
         VariantUtil.ObjectInfo info = VariantUtil.getObjectInfo(slice(value, pos));
         return info.dataStartOffset
@@ -878,7 +877,8 @@ class VariantUtil {
                 pos + info.offsetStartOffset + info.numElements * info.offsetSize,
                 info.offsetSize);
       }
-      default:
+      default: {
+        int typeInfo = (value.get(pos) >> BASIC_TYPE_BITS) & PRIMITIVE_TYPE_MASK;
         switch (typeInfo) {
           case NULL:
           case TRUE:
@@ -915,6 +915,7 @@ class VariantUtil {
             throw new UnsupportedOperationException(
                 String.format("Unknown type in Variant. primitive type: %d", typeInfo));
         }
+      }
     }
   }
 }

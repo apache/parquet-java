@@ -18,7 +18,6 @@
  */
 package org.apache.parquet.avro;
 
-import static org.apache.parquet.avro.AvroTestUtil.*;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.*;
 import static org.junit.Assert.*;
 
@@ -48,7 +47,6 @@ import org.junit.Test;
 
 public class TestWriteVariant extends DirectWriterTest {
 
-  // Construct a variant, and return the value binary, dropping metadata.
   private static Variant fullVariant(Consumer<VariantBuilder> appendValue) {
     VariantBuilder builder = new VariantBuilder();
     appendValue.accept(builder);
@@ -103,8 +101,14 @@ public class TestWriteVariant extends DirectWriterTest {
   private ByteBuffer TEST_METADATA;
   private ByteBuffer TEST_OBJECT;
   private ByteBuffer SIMILAR_OBJECT;
-  private ByteBuffer TEST_ARRAY;
-  private ByteBuffer SIMILAR_ARRAY;
+  private ByteBuffer EMPTY_ARRAY;
+  private ByteBuffer STRING_ARRAY;
+  private ByteBuffer MIXED_ARRAY;
+  private ByteBuffer NESTED_ARRAY;
+  private ByteBuffer MIXED_NESTED_ARRAY;
+  private ByteBuffer OBJECT_IN_ARRAY;
+  private ByteBuffer MIXED_OBJECT_IN_ARRAY;
+  private ByteBuffer SIMILAR_OBJECT_IN_ARRAY;
   private ByteBuffer EMPTY_OBJECT;
   private ByteBuffer EMPTY_METADATA = fullVariant(b -> b.appendNull()).getMetadataBuffer();
   private Variant[] VARIANTS;
@@ -144,8 +148,61 @@ public class TestWriteVariant extends DirectWriterTest {
       b.endObject();
     });
 
+    EMPTY_ARRAY = variant(b -> {
+      b.startArray();
+      b.endArray();
+    });
+
+    STRING_ARRAY = variant(b -> {
+      VariantArrayBuilder ab = b.startArray();
+      ab.appendString("parquet");
+      b.endArray();
+    });
+
+    MIXED_ARRAY = variant(b -> {
+      VariantArrayBuilder ab = b.startArray();
+      ab.appendString("parquet");
+      ab.appendString("string");
+      ab.appendInt(34);
+      b.endArray();
+    });
+
+    NESTED_ARRAY = variant(b -> {
+      VariantArrayBuilder ab = b.startArray();
+      VariantArrayBuilder inner1 = ab.startArray();
+      inner1.appendString("parquet");
+      inner1.appendString("string");
+      ab.endArray();
+      VariantArrayBuilder inner2 = ab.startArray();
+      inner2.appendString("parquet");
+      inner2.appendString("string");
+      ab.endArray();
+      b.endArray();
+    });
+
+    MIXED_NESTED_ARRAY = variant(b -> {
+      VariantArrayBuilder ab = b.startArray();
+      VariantArrayBuilder inner1 = ab.startArray();
+      inner1.appendString("parquet");
+      inner1.appendString("string");
+      inner1.appendInt(34);
+      ab.endArray();
+      VariantArrayBuilder inner2 = ab.startArray();
+      inner2.appendInt(34);
+      inner2.appendNull();
+      ab.endArray();
+      ab.startArray();
+      ab.endArray();
+      VariantArrayBuilder inner4 = ab.startArray();
+      inner4.appendString("parquet");
+      inner4.appendString("string");
+      inner4.appendInt(34);
+      ab.endArray();
+      b.endArray();
+    });
+
     // The first array element defines the schema.
-    TEST_ARRAY = variant(TEST_METADATA, b -> {
+    OBJECT_IN_ARRAY = variant(TEST_METADATA, b -> {
       VariantArrayBuilder ab = b.startArray();
       VariantObjectBuilder ob = ab.startObject();
       ob.appendKey("a");
@@ -163,8 +220,28 @@ public class TestWriteVariant extends DirectWriterTest {
       b.endArray();
     });
 
+    MIXED_OBJECT_IN_ARRAY = variant(TEST_METADATA, b -> {
+      VariantArrayBuilder ab = b.startArray();
+      VariantObjectBuilder ob = ab.startObject();
+      ob.appendKey("a");
+      ob.appendNull();
+      ob.appendKey("d");
+      ob.appendString("iceberg");
+      ab.endObject();
+      ab.appendInt(123);
+      VariantObjectBuilder ob2 = ab.startObject();
+      ob2.appendKey("c");
+      ob2.appendString("hello");
+      ob2.appendKey("d");
+      ob2.appendDate(12345);
+      ab.endObject();
+      ab.appendString("parquet");
+      ab.appendInt(34);
+      b.endArray();
+    });
+
     // Change one field name and one type in the first element to change the schema.
-    SIMILAR_ARRAY = variant(TEST_METADATA, b -> {
+    SIMILAR_OBJECT_IN_ARRAY = variant(TEST_METADATA, b -> {
       VariantArrayBuilder ab = b.startArray();
       VariantObjectBuilder ob = ab.startObject();
       ob.appendKey("c");
@@ -206,8 +283,14 @@ public class TestWriteVariant extends DirectWriterTest {
       new Variant(EMPTY_OBJECT, EMPTY_METADATA),
       new Variant(TEST_OBJECT, TEST_METADATA),
       new Variant(SIMILAR_OBJECT, TEST_METADATA),
-      new Variant(TEST_ARRAY, TEST_METADATA),
-      new Variant(SIMILAR_ARRAY, TEST_METADATA),
+      new Variant(EMPTY_ARRAY, EMPTY_METADATA),
+      new Variant(STRING_ARRAY, EMPTY_METADATA),
+      new Variant(MIXED_ARRAY, EMPTY_METADATA),
+      new Variant(NESTED_ARRAY, EMPTY_METADATA),
+      new Variant(MIXED_NESTED_ARRAY, EMPTY_METADATA),
+      new Variant(OBJECT_IN_ARRAY, TEST_METADATA),
+      new Variant(MIXED_OBJECT_IN_ARRAY, TEST_METADATA),
+      new Variant(SIMILAR_OBJECT_IN_ARRAY, TEST_METADATA),
       fullVariant(b -> b.appendDate(12345)),
       fullVariant(b -> b.appendDate(-12345)),
       fullVariant(b -> b.appendTimestampTz(1234567890L)),
@@ -233,7 +316,6 @@ public class TestWriteVariant extends DirectWriterTest {
 
   /**
    * Create a record containing a Variant value using the standard schema.
-   * @return
    */
   GenericRecord createRecord(int i, Variant v) {
     GenericRecord vRecord = new GenericData.Record(VARIANT_SCHEMA);

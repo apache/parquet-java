@@ -259,20 +259,23 @@ public class VariantValueWriter {
     Type elementType = listType.getType(0);
 
     recordConsumer.startGroup();
-    recordConsumer.startField(arrayType.getFieldName(0), 0);
-    // Write each array element
-    for (int i = 0; i < variant.numArrayElements(); i++) {
-      recordConsumer.startGroup();
-      recordConsumer.startField("element", 0);
+    int numElements = variant.numArrayElements();
+    if (numElements > 0) {
+      recordConsumer.startField(arrayType.getFieldName(0), 0);
+      // Write each array element
+      for (int i = 0; i < numElements; i++) {
+        recordConsumer.startGroup();
+        recordConsumer.startField("element", 0);
 
-      recordConsumer.startGroup();
-      write(elementType.asGroupType(), variant.getElementAtIndex(i));
-      recordConsumer.endGroup();
+        recordConsumer.startGroup();
+        write(elementType.asGroupType(), variant.getElementAtIndex(i));
+        recordConsumer.endGroup();
 
-      recordConsumer.endField("element", 0);
-      recordConsumer.endGroup();
+        recordConsumer.endField("element", 0);
+        recordConsumer.endGroup();
+      }
+      recordConsumer.endField(arrayType.getFieldName(0), 0);
     }
-    recordConsumer.endField(arrayType.getFieldName(0), 0);
     recordConsumer.endGroup();
   }
 
