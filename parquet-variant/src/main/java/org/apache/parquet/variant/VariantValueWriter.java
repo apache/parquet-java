@@ -118,8 +118,7 @@ public class VariantValueWriter {
         (LogicalTypeAnnotation.DecimalLogicalTypeAnnotation) logicalType;
 
     BigDecimal decimal = value.getDecimal();
-    return decimal.scale() == decimalType.getScale() &&
-        decimal.precision() <= decimalType.getPrecision();
+    return decimal.scale() == decimalType.getScale() && decimal.precision() <= decimalType.getPrecision();
   }
 
   private boolean isTypeCompatible(Variant.Type variantType, Type typedValueField, Variant value) {
@@ -149,25 +148,28 @@ public class VariantValueWriter {
               && (logicalType == null
                   || (logicalType instanceof LogicalTypeAnnotation.IntLogicalTypeAnnotation
                       && ((LogicalTypeAnnotation.IntLogicalTypeAnnotation) logicalType).isSigned()
-                      && ((LogicalTypeAnnotation.IntLogicalTypeAnnotation) logicalType).getBitWidth() == 32));
+                      && ((LogicalTypeAnnotation.IntLogicalTypeAnnotation) logicalType)
+                              .getBitWidth()
+                          == 32));
         case LONG:
           return primitiveTypeName == PrimitiveType.PrimitiveTypeName.INT64
               && (logicalType == null
                   || (logicalType instanceof LogicalTypeAnnotation.IntLogicalTypeAnnotation
-                      && ((LogicalTypeAnnotation.IntLogicalTypeAnnotation) logicalType).isSigned()));
+                      && ((LogicalTypeAnnotation.IntLogicalTypeAnnotation) logicalType)
+                          .isSigned()));
         case FLOAT:
           return primitiveTypeName == PrimitiveType.PrimitiveTypeName.FLOAT;
         case DOUBLE:
           return primitiveTypeName == PrimitiveType.PrimitiveTypeName.DOUBLE;
         case DECIMAL4:
-          return primitiveTypeName == PrimitiveType.PrimitiveTypeName.INT32 &&
-              compatibleDecimalType(value, logicalType);
+          return primitiveTypeName == PrimitiveType.PrimitiveTypeName.INT32
+              && compatibleDecimalType(value, logicalType);
         case DECIMAL8:
-          return primitiveTypeName == PrimitiveType.PrimitiveTypeName.INT64 &&
-              compatibleDecimalType(value, logicalType);
+          return primitiveTypeName == PrimitiveType.PrimitiveTypeName.INT64
+              && compatibleDecimalType(value, logicalType);
         case DECIMAL16:
-          return primitiveTypeName == PrimitiveType.PrimitiveTypeName.BINARY &&
-              compatibleDecimalType(value, logicalType);
+          return primitiveTypeName == PrimitiveType.PrimitiveTypeName.BINARY
+              && compatibleDecimalType(value, logicalType);
         case DATE:
           return primitiveTypeName == PrimitiveType.PrimitiveTypeName.INT32
               && logicalType instanceof LogicalTypeAnnotation.DateLogicalTypeAnnotation;
@@ -271,25 +273,26 @@ public class VariantValueWriter {
   }
 
   private void writeArrayValue(RecordConsumer recordConsumer, Variant variant, GroupType arrayType) {
-    Preconditions.checkArgument(variant.getType() == Variant.Type.ARRAY,
+    Preconditions.checkArgument(
+        variant.getType() == Variant.Type.ARRAY,
         "Cannot write variant type " + variant.getType() + " as array");
 
     // Validate that it's a 3-level array.
-    if (arrayType.getFieldCount() != 1 ||
-        arrayType.getRepetition() == Type.Repetition.REPEATED ||
-        arrayType.getType(0).isPrimitive() ||
-        !arrayType.getFieldName(0).equals(LIST_REPEATED_NAME)) {
-        throw new IllegalArgumentException("Variant list must be a three-level list structure: " + arrayType);
+    if (arrayType.getFieldCount() != 1
+        || arrayType.getRepetition() == Type.Repetition.REPEATED
+        || arrayType.getType(0).isPrimitive()
+        || !arrayType.getFieldName(0).equals(LIST_REPEATED_NAME)) {
+      throw new IllegalArgumentException("Variant list must be a three-level list structure: " + arrayType);
     }
 
     // Get the element type from the array schema
     GroupType repeatedType = arrayType.getType(0).asGroupType();
 
-    if (repeatedType.getFieldCount() != 1 ||
-        repeatedType.getRepetition() != Type.Repetition.REPEATED ||
-        repeatedType.getType(0).isPrimitive() ||
-        !repeatedType.getFieldName(0).equals(LIST_ELEMENT_NAME)) {
-        throw new IllegalArgumentException("Variant list must be a three-level list structure: " + arrayType);
+    if (repeatedType.getFieldCount() != 1
+        || repeatedType.getRepetition() != Type.Repetition.REPEATED
+        || repeatedType.getType(0).isPrimitive()
+        || !repeatedType.getFieldName(0).equals(LIST_ELEMENT_NAME)) {
+      throw new IllegalArgumentException("Variant list must be a three-level list structure: " + arrayType);
     }
 
     GroupType elementType = repeatedType.getType(0).asGroupType();
