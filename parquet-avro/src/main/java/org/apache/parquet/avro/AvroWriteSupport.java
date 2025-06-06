@@ -208,7 +208,7 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
         break;
       }
       Type fieldType = fields.get(index);
-      if (fieldType.getName() == "value") {
+      if (fieldType.getName().equals("value")) {
         Object valueObj = model.getField(record, avroField.name(), index);
         if (valueObj instanceof byte[]) {
           value = ByteBuffer.wrap((byte[]) valueObj);
@@ -218,7 +218,7 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
           }
           value = (ByteBuffer) valueObj;
         }
-      } else if (fieldType.getName() == "metadata") {
+      } else if (fieldType.getName().equals("metadata")) {
         Object metadataObj = model.getField(record, avroField.name(), index);
         if (!(metadataObj instanceof ByteBuffer)) {
           throw new RuntimeException("Variant metadata must be a ByteBuffer: " + schema.getName());

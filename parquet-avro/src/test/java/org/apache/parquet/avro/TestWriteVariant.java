@@ -18,14 +18,16 @@
  */
 package org.apache.parquet.avro;
 
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.*;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
 import java.io.File;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
-import java.util.*;
+import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 import java.util.function.Consumer;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
@@ -35,7 +37,11 @@ import org.apache.hadoop.fs.Path;
 import org.apache.parquet.DirectWriterTest;
 import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.api.WriteSupport;
-import org.apache.parquet.schema.*;
+import org.apache.parquet.schema.GroupType;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
+import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.schema.Type;
+import org.apache.parquet.schema.Types;
 import org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.variant.ImmutableMetadata;
@@ -87,7 +93,7 @@ public class TestWriteVariant extends DirectWriterTest {
 
   private static MessageType parquetSchema(GroupType variantGroup) {
     return Types.buildMessage()
-        .required(INT32)
+        .required(PrimitiveTypeName.INT32)
         .named("id")
         .addField(variantGroup)
         .named("table");
@@ -359,18 +365,18 @@ public class TestWriteVariant extends DirectWriterTest {
 
   @Test
   public void testMixedShredding() throws IOException {
-    for (Variant valueForSchema : VARIANTS) {
-      List<GenericRecord> expected = new ArrayList<>();
-      for (int i = 0; i < VARIANTS.length; i++) {
-        expected.add(createRecord(i, VARIANTS[i]));
-      }
+    List<GenericRecord> expected = new ArrayList<>();
+    for (int i = 0; i < VARIANTS.length; i++) {
+      expected.add(createRecord(i, VARIANTS[i]));
+    }
 
+    for (Variant valueForSchema : VARIANTS) {
       MessageType writeSchema = shreddingSchema(valueForSchema);
       TestSchema testSchema = new TestSchema(writeSchema, READ_SCHEMA);
 
       List<GenericRecord> actual = writeAndRead(testSchema, expected);
-      assertEquals(actual.size(), VARIANTS.length);
-      for (int i = 0; i < VARIANTS.length; i++) {
+      assertEquals(actual.size(), expected.size());
+      for (int i = 0; i < expected.size(); i++) {
         Variant actualV =
             new Variant((ByteBuffer) ((GenericRecord) actual.get(i).get(1)).get(1), (ByteBuffer)
                 ((GenericRecord) actual.get(i).get(1)).get(0));
@@ -419,7 +425,7 @@ public class TestWriteVariant extends DirectWriterTest {
 
   GenericRecord writeAndRead(TestSchema testSchema, GenericRecord record) throws IOException {
     List<GenericRecord> result = writeAndRead(testSchema, Arrays.asList(record));
-    assert (result.size() == 1);
+    assertEquals(result.size(), 1);
     return result.get(0);
   }
 
@@ -456,9 +462,9 @@ public class TestWriteVariant extends DirectWriterTest {
     Type shreddedType = shreddedType(v);
     Types.GroupBuilder<GroupType> partialType = Types.buildGroup(Type.Repetition.OPTIONAL)
         .as(LogicalTypeAnnotation.variantType((byte) 1))
-        .required(BINARY)
+        .required(PrimitiveTypeName.BINARY)
         .named("metadata")
-        .optional(BINARY)
+        .optional(PrimitiveTypeName.BINARY)
         .named("value");
     Type variantType;
     if (shreddedType == null) {
@@ -467,7 +473,7 @@ public class TestWriteVariant extends DirectWriterTest {
       variantType = partialType.addField(shreddedType).named("var");
     }
     return Types.buildMessage()
-        .required(INT32)
+        .required(PrimitiveTypeName.INT32)
         .named("id")
         .addField(variantType)
         .named("table");
@@ -477,12 +483,12 @@ public class TestWriteVariant extends DirectWriterTest {
     Type shreddedType = shreddedType(v);
     if (shreddedType == null) {
       return Types.buildGroup(Type.Repetition.OPTIONAL)
-          .optional(BINARY)
+          .optional(PrimitiveTypeName.BINARY)
           .named("value")
           .named(name);
     } else {
       return Types.buildGroup(Type.Repetition.OPTIONAL)
-          .optional(BINARY)
+          .optional(PrimitiveTypeName.BINARY)
           .named("value")
           .addField(shreddedType)
           .named(name);
@@ -497,67 +503,67 @@ public class TestWriteVariant extends DirectWriterTest {
       case NULL:
         return null;
       case BOOLEAN:
-        return Types.optional(BOOLEAN).named("typed_value");
+        return Types.optional(PrimitiveTypeName.BOOLEAN).named("typed_value");
       case BYTE:
-        return Types.optional(INT32)
+        return Types.optional(PrimitiveTypeName.INT32)
             .as(LogicalTypeAnnotation.intType(8))
             .named("typed_value");
       case SHORT:
-        return Types.optional(INT32)
+        return Types.optional(PrimitiveTypeName.INT32)
             .as(LogicalTypeAnnotation.intType(16))
             .named("typed_value");
       case INT:
-        return Types.optional(INT32).named("typed_value");
+        return Types.optional(PrimitiveTypeName.INT32).named("typed_value");
       case LONG:
-        return Types.optional(INT64).named("typed_value");
+        return Types.optional(PrimitiveTypeName.INT64).named("typed_value");
       case FLOAT:
-        return Types.optional(FLOAT).named("typed_value");
+        return Types.optional(PrimitiveTypeName.FLOAT).named("typed_value");
       case DOUBLE:
-        return Types.optional(DOUBLE).named("typed_value");
+        return Types.optional(PrimitiveTypeName.DOUBLE).named("typed_value");
       case DECIMAL4:
-        return Types.optional(INT32)
+        return Types.optional(PrimitiveTypeName.INT32)
             .as(LogicalTypeAnnotation.decimalType(v.getDecimal().scale(), 9))
             .named("typed_value");
       case DECIMAL8:
-        return Types.optional(INT64)
+        return Types.optional(PrimitiveTypeName.INT64)
             .as(LogicalTypeAnnotation.decimalType(v.getDecimal().scale(), 18))
             .named("typed_value");
       case DECIMAL16:
-        return Types.optional(BINARY)
+        return Types.optional(PrimitiveTypeName.BINARY)
             .as(LogicalTypeAnnotation.decimalType(v.getDecimal().scale(), 38))
             .named("typed_value");
       case DATE:
-        return Types.optional(INT32)
+        return Types.optional(PrimitiveTypeName.INT32)
             .as(LogicalTypeAnnotation.dateType())
             .named("typed_value");
       case TIMESTAMP_TZ:
-        return Types.optional(INT64)
+        return Types.optional(PrimitiveTypeName.INT64)
             .as(LogicalTypeAnnotation.timestampType(true, TimeUnit.MICROS))
             .named("typed_value");
       case TIMESTAMP_NTZ:
-        return Types.optional(INT64)
+        return Types.optional(PrimitiveTypeName.INT64)
             .as(LogicalTypeAnnotation.timestampType(false, TimeUnit.MICROS))
             .named("typed_value");
       case BINARY:
-        return Types.optional(BINARY).named("typed_value");
+        return Types.optional(PrimitiveTypeName.BINARY).named("typed_value");
       case STRING:
-        return Types.optional(BINARY)
+        return Types.optional(PrimitiveTypeName.BINARY)
             .as(LogicalTypeAnnotation.stringType())
             .named("typed_value");
       case TIME:
-        return Types.optional(INT64)
+        return Types.optional(PrimitiveTypeName.INT64)
             .as(LogicalTypeAnnotation.timeType(false, TimeUnit.MICROS))
             .named("typed_value");
       case TIMESTAMP_NANOS_TZ:
-        return Types.optional(INT64)
+        return Types.optional(PrimitiveTypeName.INT64)
             .as(LogicalTypeAnnotation.timestampType(true, TimeUnit.NANOS))
             .named("typed_value");
       case TIMESTAMP_NANOS_NTZ:
-        return Types.optional(INT64)
+        return Types.optional(PrimitiveTypeName.INT64)
             .as(LogicalTypeAnnotation.timestampType(false, TimeUnit.NANOS))
             .named("typed_value");
       case UUID:
-        return Types.optional(FIXED_LEN_BYTE_ARRAY)
+        return Types.optional(PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY)
             .as(LogicalTypeAnnotation.uuidType())
             .named("typed_value");
       case OBJECT:

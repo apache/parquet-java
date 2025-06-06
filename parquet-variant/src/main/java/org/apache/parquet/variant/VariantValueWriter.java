@@ -19,6 +19,7 @@
 package org.apache.parquet.variant;
 
 import java.nio.ByteBuffer;
+import org.apache.parquet.Preconditions;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.RecordConsumer;
 import org.apache.parquet.schema.GroupType;
@@ -35,6 +36,9 @@ public class VariantValueWriter {
   // object fields are shredded into typed_value, it will never be used.
   private ImmutableMetadata metadata = null;
   private RecordConsumer recordConsumer;
+
+  private static final String LIST_REPEATED_NAME = "list";
+  private static final String LIST_ELEMENT_NAME = "element";
 
   VariantValueWriter(RecordConsumer recordConsumer, ByteBuffer metadata) {
     this.recordConsumer = recordConsumer;
@@ -118,22 +122,24 @@ public class VariantValueWriter {
         case BYTE:
           return primitiveTypeName == PrimitiveType.PrimitiveTypeName.INT32
               && logicalType instanceof LogicalTypeAnnotation.IntLogicalTypeAnnotation
+              && ((LogicalTypeAnnotation.IntLogicalTypeAnnotation) logicalType).isSigned()
               && ((LogicalTypeAnnotation.IntLogicalTypeAnnotation) logicalType).getBitWidth() == 8;
         case SHORT:
           return primitiveTypeName == PrimitiveType.PrimitiveTypeName.INT32
               && logicalType instanceof LogicalTypeAnnotation.IntLogicalTypeAnnotation
+              && ((LogicalTypeAnnotation.IntLogicalTypeAnnotation) logicalType).isSigned()
               && ((LogicalTypeAnnotation.IntLogicalTypeAnnotation) logicalType).getBitWidth() == 16;
         case INT:
           return primitiveTypeName == PrimitiveType.PrimitiveTypeName.INT32
               && (logicalType == null
                   || (logicalType instanceof LogicalTypeAnnotation.IntLogicalTypeAnnotation
-                      && ((LogicalTypeAnnotation.IntLogicalTypeAnnotation) logicalType)
-                              .getBitWidth()
-                          == 32));
+                      && ((LogicalTypeAnnotation.IntLogicalTypeAnnotation) logicalType).isSigned()
+                      && ((LogicalTypeAnnotation.IntLogicalTypeAnnotation) logicalType).getBitWidth() == 32));
         case LONG:
           return primitiveTypeName == PrimitiveType.PrimitiveTypeName.INT64
               && (logicalType == null
-                  || logicalType instanceof LogicalTypeAnnotation.IntLogicalTypeAnnotation);
+                  || (logicalType instanceof LogicalTypeAnnotation.IntLogicalTypeAnnotation
+                      && ((LogicalTypeAnnotation.IntLogicalTypeAnnotation) logicalType).isSigned()));
         case FLOAT:
           return primitiveTypeName == PrimitiveType.PrimitiveTypeName.FLOAT;
         case DOUBLE:
@@ -250,31 +256,50 @@ public class VariantValueWriter {
   }
 
   private void writeArrayValue(RecordConsumer recordConsumer, Variant variant, GroupType arrayType) {
-    if (variant.getType() != Variant.Type.ARRAY) {
-      throw new IllegalArgumentException("Expected array type but got: " + variant.getType());
+    Preconditions.checkArgument(variant.getType() == Variant.Type.ARRAY,
+        "Cannot write variant type " + variant.getType() + " as array");
+
+    // Validate that it's a 3-level array.
+    if (arrayType.getFieldCount() != 1 ||
+        arrayType.getRepetition() == Type.Repetition.REPEATED ||
+        arrayType.getType(0).isPrimitive() ||
+        !arrayType.getFieldName(0).equals(LIST_REPEATED_NAME)) {
+        throw new IllegalArgumentException("Variant list must be a three-level list structure: " + arrayType);
     }
 
     // Get the element type from the array schema
-    GroupType listType = arrayType.getType(0).asGroupType();
-    Type elementType = listType.getType(0);
+    GroupType repeatedType = arrayType.getType(0).asGroupType();
 
+    if (repeatedType.getFieldCount() != 1 ||
+        repeatedType.getRepetition() != Type.Repetition.REPEATED ||
+        repeatedType.getType(0).isPrimitive() ||
+        !repeatedType.getFieldName(0).equals(LIST_ELEMENT_NAME)) {
+        throw new IllegalArgumentException("Variant list must be a three-level list structure: " + arrayType);
+    }
+
+    GroupType elementType = repeatedType.getType(0).asGroupType();
+
+    // List field, annotated as LIST
     recordConsumer.startGroup();
     int numElements = variant.numArrayElements();
+    // Can only call startField if there is at least one element.
     if (numElements > 0) {
-      recordConsumer.startField(arrayType.getFieldName(0), 0);
+      recordConsumer.startField(LIST_REPEATED_NAME, 0);
       // Write each array element
       for (int i = 0; i < numElements; i++) {
+        // Repeated group.
         recordConsumer.startGroup();
-        recordConsumer.startField("element", 0);
+        recordConsumer.startField(LIST_ELEMENT_NAME, 0);
 
+        // Element group. Can never be null for shredded Variant.
         recordConsumer.startGroup();
-        write(elementType.asGroupType(), variant.getElementAtIndex(i));
+        write(elementType, variant.getElementAtIndex(i));
         recordConsumer.endGroup();
 
-        recordConsumer.endField("element", 0);
+        recordConsumer.endField(LIST_ELEMENT_NAME, 0);
         recordConsumer.endGroup();
       }
-      recordConsumer.endField(arrayType.getFieldName(0), 0);
+      recordConsumer.endField(LIST_REPEATED_NAME, 0);
     }
     recordConsumer.endGroup();
   }
