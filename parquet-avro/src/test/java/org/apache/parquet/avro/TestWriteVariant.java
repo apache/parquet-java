@@ -305,10 +305,16 @@ public class TestWriteVariant extends DirectWriterTest {
       fullVariant(b -> b.appendTimestampNtz(-1234567890L)),
       fullVariant(b -> b.appendDecimal(new BigDecimal("123456.789"))), // decimal4
       fullVariant(b -> b.appendDecimal(new BigDecimal("-123456.789"))), // decimal4
+      fullVariant(b -> b.appendDecimal(new BigDecimal("123456.7"))), // decimal4
+      fullVariant(b -> b.appendDecimal(new BigDecimal("-123456.7"))), // decimal4
       fullVariant(b -> b.appendDecimal(new BigDecimal("123456789.987654321"))), // decimal8
       fullVariant(b -> b.appendDecimal(new BigDecimal("-123456789.987654321"))), // decimal8
+      fullVariant(b -> b.appendDecimal(new BigDecimal("123456789.9876543"))), // decimal8
+      fullVariant(b -> b.appendDecimal(new BigDecimal("-123456789.9876543"))), // decimal8
       fullVariant(b -> b.appendDecimal(new BigDecimal("9876543210.123456789"))), // decimal16
       fullVariant(b -> b.appendDecimal(new BigDecimal("-9876543210.123456789"))), // decimal16
+      fullVariant(b -> b.appendDecimal(new BigDecimal("9876543210.12345678912345"))), // decimal16
+      fullVariant(b -> b.appendDecimal(new BigDecimal("-9876543210.12345678912345"))), // decimal16
       fullVariant(b -> b.appendBinary(ByteBuffer.wrap(new byte[] {0x0a, 0x0b, 0x0c, 0x0d}))),
       fullVariant(b -> b.appendString("iceberg")),
       fullVariant(b -> b.appendTime(1234567890)),

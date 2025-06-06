@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.variant;
 
+import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.io.api.Binary;
@@ -79,7 +80,7 @@ public class VariantValueWriter {
     Variant.Type variantType = value.getType();
 
     // Handle typed_value if present
-    if (isTypeCompatible(variantType, typedValueField)) {
+    if (isTypeCompatible(variantType, typedValueField, value)) {
       int typedValueIdx = schema.getFieldIndex("typed_value");
       recordConsumer.startField("typed_value", typedValueIdx);
       ByteBuffer residual = null;
@@ -107,7 +108,21 @@ public class VariantValueWriter {
     }
   }
 
-  private boolean isTypeCompatible(Variant.Type variantType, Type typedValueField) {
+  // Return true if the logical type is a decimal with the same scale as the provided value, with enough
+  // precision to hold the value. The provided value must be a decimal.
+  private boolean compatibleDecimalType(Variant value, LogicalTypeAnnotation logicalType) {
+    if (!(logicalType instanceof LogicalTypeAnnotation.DecimalLogicalTypeAnnotation)) {
+      return false;
+    }
+    LogicalTypeAnnotation.DecimalLogicalTypeAnnotation decimalType =
+        (LogicalTypeAnnotation.DecimalLogicalTypeAnnotation) logicalType;
+
+    BigDecimal decimal = value.getDecimal();
+    return decimal.scale() == decimalType.getScale() &&
+        decimal.precision() <= decimalType.getPrecision();
+  }
+
+  private boolean isTypeCompatible(Variant.Type variantType, Type typedValueField, Variant value) {
     if (typedValueField == null) {
       return false;
     }
@@ -145,14 +160,14 @@ public class VariantValueWriter {
         case DOUBLE:
           return primitiveTypeName == PrimitiveType.PrimitiveTypeName.DOUBLE;
         case DECIMAL4:
-          return primitiveTypeName == PrimitiveType.PrimitiveTypeName.INT32
-              && logicalType instanceof LogicalTypeAnnotation.DecimalLogicalTypeAnnotation;
+          return primitiveTypeName == PrimitiveType.PrimitiveTypeName.INT32 &&
+              compatibleDecimalType(value, logicalType);
         case DECIMAL8:
-          return primitiveTypeName == PrimitiveType.PrimitiveTypeName.INT64
-              && logicalType instanceof LogicalTypeAnnotation.DecimalLogicalTypeAnnotation;
+          return primitiveTypeName == PrimitiveType.PrimitiveTypeName.INT64 &&
+              compatibleDecimalType(value, logicalType);
         case DECIMAL16:
-          return primitiveTypeName == PrimitiveType.PrimitiveTypeName.BINARY
-              && logicalType instanceof LogicalTypeAnnotation.DecimalLogicalTypeAnnotation;
+          return primitiveTypeName == PrimitiveType.PrimitiveTypeName.BINARY &&
+              compatibleDecimalType(value, logicalType);
         case DATE:
           return primitiveTypeName == PrimitiveType.PrimitiveTypeName.INT32
               && logicalType instanceof LogicalTypeAnnotation.DateLogicalTypeAnnotation;
