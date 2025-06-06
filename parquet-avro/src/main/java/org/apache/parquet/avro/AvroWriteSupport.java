@@ -42,9 +42,12 @@ import org.apache.parquet.hadoop.util.ConfigurationUtil;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.RecordConsumer;
 import org.apache.parquet.schema.GroupType;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.LogicalTypeAnnotation.UUIDLogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Type;
+import org.apache.parquet.variant.Variant;
+import org.apache.parquet.variant.VariantValueWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -181,9 +184,57 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
   }
 
   private void writeRecord(GroupType schema, Schema avroSchema, Object record) {
-    recordConsumer.startGroup();
-    writeRecordFields(schema, avroSchema, record);
-    recordConsumer.endGroup();
+    if (schema.getLogicalTypeAnnotation() instanceof LogicalTypeAnnotation.VariantLogicalTypeAnnotation) {
+      writeVariantFields(schema, avroSchema, record);
+    } else {
+      recordConsumer.startGroup();
+      writeRecordFields(schema, avroSchema, record);
+      recordConsumer.endGroup();
+    }
+  }
+
+  private void writeVariantFields(GroupType schema, Schema avroSchema, Object record) {
+    List<Type> fields = schema.getFields();
+    List<Schema.Field> avroFields = avroSchema.getFields();
+    boolean binarySchema = true;
+    ByteBuffer metadata = null;
+    ByteBuffer value = null;
+    // Extract the value and metadata binary.
+    for (int index = 0; index < avroFields.size(); index++) {
+      Schema.Field avroField = avroFields.get(index);
+      Schema fieldSchema = AvroSchemaConverter.getNonNull(avroField.schema());
+      if (!fieldSchema.getType().equals(Schema.Type.BYTES)) {
+        binarySchema = false;
+        break;
+      }
+      Type fieldType = fields.get(index);
+      if (fieldType.getName().equals("value")) {
+        Object valueObj = model.getField(record, avroField.name(), index);
+        if (valueObj instanceof byte[]) {
+          value = ByteBuffer.wrap((byte[]) valueObj);
+        } else {
+          if (!(valueObj instanceof ByteBuffer)) {
+            throw new RuntimeException("Variant value must be a ByteBuffer: " + schema.getName());
+          }
+          value = (ByteBuffer) valueObj;
+        }
+      } else if (fieldType.getName().equals("metadata")) {
+        Object metadataObj = model.getField(record, avroField.name(), index);
+        if (!(metadataObj instanceof ByteBuffer)) {
+          throw new RuntimeException("Variant metadata must be a ByteBuffer: " + schema.getName());
+        }
+        metadata = (ByteBuffer) metadataObj;
+      } else {
+        binarySchema = false;
+        break;
+      }
+    }
+
+    if (binarySchema) {
+      VariantValueWriter.write(recordConsumer, schema, new Variant(value, metadata));
+    } else {
+      throw new RuntimeException("Invalid Avro schema for Variant logical type: " + schema.getName());
+    }
   }
 
   private void writeRecordFields(GroupType schema, Schema avroSchema, Object record) {
