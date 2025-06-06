@@ -1310,11 +1310,14 @@ public class ParquetFileReader implements Closeable {
     f.readVectored(ranges, options.getAllocator());
     List<ByteBuffer> buffers = new ArrayList<>(allParts.size());
     int k = 0;
-    for (ConsecutivePartList consecutivePart : allParts) {
-      ParquetFileRange currRange = ranges.get(k++);
-      buffers.add(consecutivePart.readFromVectoredRange(currRange, builder));
+    try {
+      for (ConsecutivePartList consecutivePart : allParts) {
+        ParquetFileRange currRange = ranges.get(k++);
+        buffers.add(consecutivePart.readFromVectoredRange(currRange, builder));
+      }
+    } finally {
+      builder.addBuffersToRelease(buffers);
     }
-    builder.addBuffersToRelease(buffers);
   }
 
   /**

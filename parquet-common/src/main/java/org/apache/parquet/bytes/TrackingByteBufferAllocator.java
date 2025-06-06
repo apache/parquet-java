@@ -143,20 +143,21 @@ public final class TrackingByteBufferAllocator implements ByteBufferAllocator, A
   public ByteBuffer allocate(int size) {
     ByteBuffer buffer = allocator.allocate(size);
     final ByteBufferAllocationStacktraceException ex = ByteBufferAllocationStacktraceException.create();
-    allocated.put(new Key(buffer), ex);
-    LOG.debug("Creating ByteBuffer: {} of size {}", buffer, size);
+    final Key key = new Key(buffer);
+    allocated.put(key, ex);
+    LOG.debug("Creating ByteBuffer:{} size {} {}", key.hashCode(), size, buffer);
     if (DEBUG) {
       LOG.debug("Stack", ex);
     }
-
     return buffer;
   }
 
   @Override
   public void release(ByteBuffer b) throws ReleasingUnallocatedByteBufferException {
     Objects.requireNonNull(b);
-    LOG.debug("Releasing ByteBuffer: {}", b);
-    if (allocated.remove(new Key(b)) == null) {
+    final Key key = new Key(b);
+    LOG.debug("Releasing ByteBuffer: {}: {}", key.hashCode(), b);
+    if (allocated.remove(key) == null) {
       throw new ReleasingUnallocatedByteBufferException();
     }
     allocator.release(b);
@@ -172,9 +173,8 @@ public final class TrackingByteBufferAllocator implements ByteBufferAllocator, A
   @Override
   public void close() throws LeakedByteBufferException {
     if (!allocated.isEmpty()) {
-      allocated.keySet().forEach(key -> {
-        LOG.debug("Unreleased ByteBuffer: {}", key);
-      });
+      allocated.keySet().forEach(key ->
+          LOG.warn("Unreleased ByteBuffer {}; {}", key.hashCode(), key));
       LeakedByteBufferException ex = new LeakedByteBufferException(
           allocated.size(), allocated.values().iterator().next());
       allocated.clear(); // Drop the references to the ByteBuffers, so they can be gc'd
