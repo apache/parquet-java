@@ -23,8 +23,6 @@ import static java.lang.String.format;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
-import java.nio.channels.Channels;
-import java.nio.channels.WritableByteChannel;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -72,9 +70,15 @@ public class ConcatenatingByteBufferCollector extends BytesInput implements Auto
 
   @Override
   public void writeAllTo(OutputStream out) throws IOException {
-    WritableByteChannel channel = Channels.newChannel(out);
     for (ByteBuffer buffer : slabs) {
-      channel.write(buffer.duplicate());
+      ByteBuffer dup = buffer.duplicate();
+      if (dup.hasArray()) {
+        out.write(dup.array(), dup.arrayOffset() + dup.position(), dup.remaining());
+      } else {
+        byte[] bytes = new byte[dup.remaining()];
+        dup.get(bytes);
+        out.write(bytes);
+      }
     }
   }
 
