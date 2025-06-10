@@ -35,6 +35,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.LocalFileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.bytes.HeapByteBufferAllocator;
 import org.apache.parquet.bytes.TrackingByteBufferAllocator;
@@ -51,6 +53,8 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @RunWith(Parameterized.class)
 public class TestParquetReader {
@@ -60,6 +64,7 @@ public class TestParquetReader {
   private static final Path STATIC_FILE_WITHOUT_COL_INDEXES =
       createPathFromCP("/test-file-with-no-column-indexes-1.parquet");
   private static final List<PhoneBookWriter.User> DATA = Collections.unmodifiableList(makeUsers(1000));
+  private static final Logger LOG = LoggerFactory.getLogger(TestParquetReader.class);
 
   private final Path file;
   private final boolean vectoredRead;
@@ -100,6 +105,11 @@ public class TestParquetReader {
   public static void deleteFiles() throws IOException {
     deleteFile(FILE_V1);
     deleteFile(FILE_V2);
+  }
+
+  @Before
+  public void setup() throws IOException {
+    LOG.info("Test run with file {}, size {}; vectored={}", file, fileSize, vectoredRead);
   }
 
   private static void deleteFile(Path file) throws IOException {
@@ -145,6 +155,10 @@ public class TestParquetReader {
             .withPageSize(pageSize)
             .withWriterVersion(parquetVersion),
         DATA);
+    // remove the CRC file so that Hadoop local filesystem doesn't slice buffers on
+    // vector reads.
+    final LocalFileSystem local = FileSystem.getLocal(new Configuration());
+    local.delete(local.getChecksumFile(file), false);
   }
 
   private List<PhoneBookWriter.User> readUsers(
@@ -188,22 +202,22 @@ public class TestParquetReader {
   public void testCurrentRowIndex() throws Exception {
     ParquetReader<Group> reader = PhoneBookWriter.createReader(file, FilterCompat.NOOP, allocator);
     // Fetch row index without processing any row.
-    assertEquals(reader.getCurrentRowIndex(), -1);
+    assertEquals(-1, reader.getCurrentRowIndex());
     reader.read();
-    assertEquals(reader.getCurrentRowIndex(), 0);
+    assertEquals(0, reader.getCurrentRowIndex());
     // calling the same API again and again should return same result.
-    assertEquals(reader.getCurrentRowIndex(), 0);
+    assertEquals(0, reader.getCurrentRowIndex());
 
     reader.read();
-    assertEquals(reader.getCurrentRowIndex(), 1);
-    assertEquals(reader.getCurrentRowIndex(), 1);
+    assertEquals(1, reader.getCurrentRowIndex());
+    assertEquals(1, reader.getCurrentRowIndex());
     long expectedCurrentRowIndex = 2L;
     while (reader.read() != null) {
       assertEquals(reader.getCurrentRowIndex(), expectedCurrentRowIndex);
       expectedCurrentRowIndex++;
     }
     // reader.read() returned null and so reader doesn't have any more rows.
-    assertEquals(reader.getCurrentRowIndex(), -1);
+    assertEquals(-1, reader.getCurrentRowIndex());
   }
 
   @Test
@@ -223,13 +237,13 @@ public class TestParquetReader {
     // The readUsers also validates the rowIndex for each returned row.
     List<PhoneBookWriter.User> filteredUsers1 =
         readUsers(FilterCompat.get(in(longColumn("id"), idSet)), true, true);
-    assertEquals(filteredUsers1.size(), 2L);
+    assertEquals(2L, filteredUsers1.size());
     List<PhoneBookWriter.User> filteredUsers2 =
         readUsers(FilterCompat.get(in(longColumn("id"), idSet)), true, false);
-    assertEquals(filteredUsers2.size(), 2L);
+    assertEquals(2L, filteredUsers2.size());
     List<PhoneBookWriter.User> filteredUsers3 =
         readUsers(FilterCompat.get(in(longColumn("id"), idSet)), false, false);
-    assertEquals(filteredUsers3.size(), 1000L);
+    assertEquals(1000L, filteredUsers3.size());
   }
 
   @Test

@@ -173,8 +173,7 @@ public final class TrackingByteBufferAllocator implements ByteBufferAllocator, A
   @Override
   public void close() throws LeakedByteBufferException {
     if (!allocated.isEmpty()) {
-      allocated.keySet().forEach(key ->
-          LOG.warn("Unreleased ByteBuffer {}; {}", key.hashCode(), key));
+      allocated.keySet().forEach(key -> LOG.warn("Unreleased ByteBuffer {}; {}", key.hashCode(), key));
       LeakedByteBufferException ex = new LeakedByteBufferException(
           allocated.size(), allocated.values().iterator().next());
       allocated.clear(); // Drop the references to the ByteBuffers, so they can be gc'd
