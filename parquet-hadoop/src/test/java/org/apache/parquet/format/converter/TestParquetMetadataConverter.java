@@ -150,6 +150,7 @@ public class TestParquetMetadataConverter {
   private static final String CHAR_UPPER = CHAR_LOWER.toUpperCase();
   private static final String NUMBER = "0123456789";
   private static final String DATA_FOR_RANDOM_STRING = CHAR_LOWER + CHAR_UPPER + NUMBER;
+  private static final String CREATED_BY = "parquet-mr";
 
   @Rule
   public TemporaryFolder temporaryFolder = new TemporaryFolder();
@@ -801,9 +802,9 @@ public class TestParquetMetadataConverter {
     Assert.assertFalse("Min_value should not be set", formatStats.isSetMin_value());
     Assert.assertFalse("Max_value should not be set", formatStats.isSetMax_value());
     Assert.assertFalse("Num nulls should not be set", formatStats.isSetNull_count());
-
-    Statistics roundTripStats = ParquetMetadataConverter.fromParquetStatisticsInternal(
-        Version.FULL_VERSION,
+    ParquetMetadataConverter converter = new ParquetMetadataConverter();
+    Statistics roundTripStats = converter.fromParquetStatisticsInternal(
+        CREATED_BY,
         formatStats,
         new PrimitiveType(Repetition.OPTIONAL, PrimitiveTypeName.BINARY, ""),
         ParquetMetadataConverter.SortOrder.SIGNED);
@@ -842,7 +843,7 @@ public class TestParquetMetadataConverter {
     stats.updateStats(Binary.fromConstantByteArray(min));
     stats.updateStats(Binary.fromConstantByteArray(max));
     ParquetMetadataConverter metadataConverter = new ParquetMetadataConverter(truncateLen);
-    org.apache.parquet.format.Statistics formatStats = metadataConverter.toParquetStatistics(stats);
+    org.apache.parquet.format.Statistics formatStats = metadataConverter.toParquetStatistics(CREATED_BY, stats);
 
     if (minLen + maxLen >= ParquetMetadataConverter.MAX_STATS_SIZE) {
       assertNull(formatStats.getMin_value());
@@ -1051,7 +1052,7 @@ public class TestParquetMetadataConverter {
     PrimitiveType binaryType =
         Types.required(PrimitiveTypeName.BINARY).as(OriginalType.UTF8).named("b");
     Statistics convertedStats = converter.fromParquetStatistics(
-        Version.FULL_VERSION, ParquetMetadataConverter.toParquetStatistics(stats), binaryType);
+        Version.FULL_VERSION, converter.toParquetStatistics(CREATED_BY, stats), binaryType);
 
     Assert.assertFalse("Stats should not be empty: " + convertedStats, convertedStats.isEmpty());
     Assert.assertArrayEquals(
@@ -1126,7 +1127,7 @@ public class TestParquetMetadataConverter {
     PrimitiveType type = Types.required(PrimitiveTypeName.INT32).named("test_int32");
 
     org.apache.parquet.format.Statistics formatStats = new org.apache.parquet.format.Statistics();
-    Statistics<?> stats = converter.fromParquetStatistics(Version.FULL_VERSION, formatStats, type);
+    Statistics<?> stats = converter.fromParquetStatistics(CREATED_BY, formatStats, type);
     assertFalse(stats.isNumNullsSet());
     assertFalse(stats.hasNonNullValue());
     assertTrue(stats.isEmpty());
@@ -1135,7 +1136,7 @@ public class TestParquetMetadataConverter {
     formatStats.clear();
     formatStats.setMin(BytesUtils.intToBytes(-100));
     formatStats.setMax(BytesUtils.intToBytes(100));
-    stats = converter.fromParquetStatistics(Version.FULL_VERSION, formatStats, type);
+    stats = converter.fromParquetStatistics(CREATED_BY, formatStats, type);
     assertFalse(stats.isNumNullsSet());
     assertTrue(stats.hasNonNullValue());
     assertFalse(stats.isEmpty());
@@ -1145,7 +1146,7 @@ public class TestParquetMetadataConverter {
 
     formatStats.clear();
     formatStats.setNull_count(2000);
-    stats = converter.fromParquetStatistics(Version.FULL_VERSION, formatStats, type);
+    stats = converter.fromParquetStatistics(CREATED_BY, formatStats, type);
     assertTrue(stats.isNumNullsSet());
     assertFalse(stats.hasNonNullValue());
     assertFalse(stats.isEmpty());
@@ -1169,7 +1170,8 @@ public class TestParquetMetadataConverter {
 
   private void testSkippedV2Stats(PrimitiveType type, Object min, Object max) {
     Statistics<?> stats = createStats(type, min, max);
-    org.apache.parquet.format.Statistics statistics = ParquetMetadataConverter.toParquetStatistics(stats);
+    ParquetMetadataConverter converter = new ParquetMetadataConverter();
+    org.apache.parquet.format.Statistics statistics = converter.toParquetStatistics(CREATED_BY, stats);
     assertFalse(statistics.isSetMin());
     assertFalse(statistics.isSetMax());
     assertFalse(statistics.isSetMin_value());
@@ -1207,7 +1209,8 @@ public class TestParquetMetadataConverter {
 
   private void testV2OnlyStats(PrimitiveType type, Object min, Object max) {
     Statistics<?> stats = createStats(type, min, max);
-    org.apache.parquet.format.Statistics statistics = ParquetMetadataConverter.toParquetStatistics(stats);
+    ParquetMetadataConverter converter = new ParquetMetadataConverter();
+    org.apache.parquet.format.Statistics statistics = converter.toParquetStatistics(CREATED_BY, stats);
     assertFalse(statistics.isSetMin());
     assertFalse(statistics.isSetMax());
     assertEquals(ByteBuffer.wrap(stats.getMinBytes()), statistics.min_value);
@@ -1249,7 +1252,8 @@ public class TestParquetMetadataConverter {
 
   private void testV2StatsEqualMinMax(PrimitiveType type, Object min, Object max) {
     Statistics<?> stats = createStats(type, min, max);
-    org.apache.parquet.format.Statistics statistics = ParquetMetadataConverter.toParquetStatistics(stats);
+    ParquetMetadataConverter converter = new ParquetMetadataConverter();
+    org.apache.parquet.format.Statistics statistics = converter.toParquetStatistics(CREATED_BY, stats);
     assertEquals(ByteBuffer.wrap(stats.getMinBytes()), statistics.min);
     assertEquals(ByteBuffer.wrap(stats.getMaxBytes()), statistics.max);
     assertEquals(ByteBuffer.wrap(stats.getMinBytes()), statistics.min_value);
@@ -1340,7 +1344,8 @@ public class TestParquetMetadataConverter {
     V1() {
       @Override
       public org.apache.parquet.format.Statistics toParquetStatistics(Statistics<?> stats) {
-        org.apache.parquet.format.Statistics statistics = ParquetMetadataConverter.toParquetStatistics(stats);
+        ParquetMetadataConverter converter = new ParquetMetadataConverter();
+        org.apache.parquet.format.Statistics statistics = converter.toParquetStatistics(CREATED_BY, stats);
         statistics.unsetMin_value();
         statistics.unsetMax_value();
         return statistics;
@@ -1350,7 +1355,8 @@ public class TestParquetMetadataConverter {
     V2() {
       @Override
       public org.apache.parquet.format.Statistics toParquetStatistics(Statistics<?> stats) {
-        return ParquetMetadataConverter.toParquetStatistics(stats);
+        ParquetMetadataConverter converter = new ParquetMetadataConverter();
+        return converter.toParquetStatistics(CREATED_BY, stats);
       }
     };
 
@@ -1447,9 +1453,11 @@ public class TestParquetMetadataConverter {
       builder.add(
           stats,
           withSizeStats ? new SizeStatistics(type, 0, LongArrayList.of(5, 6), LongArrayList.of(2, 1)) : null);
+      ParquetMetadataConverter converter = new ParquetMetadataConverter();
       org.apache.parquet.format.ColumnIndex parquetColumnIndex =
-          ParquetMetadataConverter.toParquetColumnIndex(type, builder.build());
-      ColumnIndex columnIndex = ParquetMetadataConverter.fromParquetColumnIndex(type, parquetColumnIndex);
+      converter.toParquetColumnIndex(type, builder.build());
+    
+      ColumnIndex columnIndex = converter.fromParquetColumnIndex(CREATED_BY, type, parquetColumnIndex);
       assertEquals(BoundaryOrder.ASCENDING, columnIndex.getBoundaryOrder());
       assertTrue(Arrays.asList(false, true, false).equals(columnIndex.getNullPages()));
       assertTrue(Arrays.asList(16l, 111l, 0l).equals(columnIndex.getNullCounts()));
@@ -1463,18 +1471,17 @@ public class TestParquetMetadataConverter {
               ByteBuffer.allocate(0),
               ByteBuffer.wrap(BytesUtils.longToBytes(500l)))
           .equals(columnIndex.getMaxValues()));
-
       assertNull(
           "Should handle null column index",
-          ParquetMetadataConverter.toParquetColumnIndex(
+          converter.toParquetColumnIndex(
               Types.required(PrimitiveTypeName.INT32).named("test_int32"), null));
       assertNull(
           "Should ignore unsupported types",
-          ParquetMetadataConverter.toParquetColumnIndex(
+          converter.toParquetColumnIndex(
               Types.required(PrimitiveTypeName.INT96).named("test_int96"), columnIndex));
       assertNull(
           "Should ignore unsupported types",
-          ParquetMetadataConverter.fromParquetColumnIndex(
+          converter.fromParquetColumnIndex(CREATED_BY,
               Types.required(PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY)
                   .length(12)
                   .as(OriginalType.INTERVAL)
