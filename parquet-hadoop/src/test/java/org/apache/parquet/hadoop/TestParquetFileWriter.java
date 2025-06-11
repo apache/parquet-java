@@ -82,7 +82,6 @@ import org.apache.parquet.column.values.bloomfilter.BlockSplitBloomFilter;
 import org.apache.parquet.column.values.bloomfilter.BloomFilter;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroup;
-import org.apache.parquet.format.Statistics;
 import org.apache.parquet.hadoop.ParquetOutputFormat.JobSummaryLevel;
 import org.apache.parquet.hadoop.example.GroupReadSupport;
 import org.apache.parquet.hadoop.example.GroupWriteSupport;
@@ -869,12 +868,11 @@ public class TestParquetFileWriter {
       parquetMRstats.updateStats(l);
     }
     final String createdBy = "parquet-mr version 1.8.0 (build d4d5a07ec9bd262ca1e93c309f1d7d4a74ebda4c)";
-    org.apache.parquet.format.converter.ParquetMetadataConverter converter = new org.apache.parquet.format.converter.ParquetMetadataConverter();
-    org.apache.parquet.format.Statistics thriftStats =
-    converter.toParquetStatistics(createdBy, parquetMRstats);
+    org.apache.parquet.format.converter.ParquetMetadataConverter converter =
+        new org.apache.parquet.format.converter.ParquetMetadataConverter();
+    org.apache.parquet.format.Statistics thriftStats = converter.toParquetStatistics(createdBy, parquetMRstats);
     LongStatistics convertedBackStats =
-        (LongStatistics) converter.fromParquetStatistics(
-            createdBy, thriftStats, PrimitiveTypeName.INT64);
+        (LongStatistics) converter.fromParquetStatistics(createdBy, thriftStats, PrimitiveTypeName.INT64);
 
     assertEquals(parquetMRstats.getMax(), convertedBackStats.getMax());
     assertEquals(parquetMRstats.getMin(), convertedBackStats.getMin());

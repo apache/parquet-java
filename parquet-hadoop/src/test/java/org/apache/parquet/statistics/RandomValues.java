@@ -20,15 +20,14 @@
 package org.apache.parquet.statistics;
 
 import java.math.BigInteger;
-import java.nio.ByteOrder;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
 import java.util.function.Supplier;
-import org.apache.parquet.FixedBinaryTestUtils;
 import org.apache.parquet.io.api.Binary;
 
 public class RandomValues {

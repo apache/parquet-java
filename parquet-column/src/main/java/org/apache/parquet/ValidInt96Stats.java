@@ -19,7 +19,6 @@
 package org.apache.parquet;
 
 import java.util.concurrent.atomic.AtomicBoolean;
-import org.apache.parquet.SemanticVersion.SemanticVersionParseException;
 import org.apache.parquet.VersionParser.ParsedVersion;
 import org.apache.parquet.VersionParser.VersionParseException;
 import org.slf4j.Logger;
@@ -34,7 +33,6 @@ public class ValidInt96Stats {
   private static final AtomicBoolean alreadyLogged = new AtomicBoolean(false);
 
   private static final Logger LOG = LoggerFactory.getLogger(ValidInt96Stats.class);
-
 
   /**
    * Decides if the statistics from a file created by createdBy (the created_by field from parquet format)

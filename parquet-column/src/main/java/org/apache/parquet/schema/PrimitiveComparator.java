@@ -206,7 +206,7 @@ public abstract class PrimitiveComparator<T> implements Comparator<T>, Serializa
         }
       };
 
-/*
+  /*
    * This comparator is for comparing two timestamps represented as int96 binary.
    */
   static final PrimitiveComparator<Binary> BINARY_AS_INT_96_COMPARATOR = new BinaryComparator() {

@@ -24,18 +24,18 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.ArrayList;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.NanoTime;
 import org.apache.parquet.example.data.simple.SimpleGroup;
-import org.apache.parquet.hadoop.example.ExampleParquetWriter;
 import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.ParquetWriter;
+import org.apache.parquet.hadoop.example.ExampleParquetWriter;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.io.api.Binary;
@@ -50,9 +50,7 @@ public class TestInt96TimestampStatisticsRoundTrip {
   public final TemporaryFolder temp = new TemporaryFolder();
 
   private MessageType createSchema() {
-    return Types.buildMessage()
-        .required(INT96).named("timestamp_field")
-        .named("root");
+    return Types.buildMessage().required(INT96).named("timestamp_field").named("root");
   }
 
   /**
@@ -65,7 +63,7 @@ public class TestInt96TimestampStatisticsRoundTrip {
     LocalDateTime dt = LocalDateTime.parse(timestamp);
     long julianDay = dt.toLocalDate().toEpochDay() + 2440588; // Convert to Julian Day
     long nanos = dt.toLocalTime().toNanoOfDay();
-    return new NanoTime((int)julianDay, nanos).toBinary();
+    return new NanoTime((int) julianDay, nanos).toBinary();
   }
 
   private void writeParquetFile(Path file, List<Binary> timestampValues) throws IOException {
@@ -83,13 +81,15 @@ public class TestInt96TimestampStatisticsRoundTrip {
     }
   }
 
-  private void verifyStatistics(Path file, Binary minValue, Binary maxValue, boolean readInt96Stats) throws IOException {
+  private void verifyStatistics(Path file, Binary minValue, Binary maxValue, boolean readInt96Stats)
+      throws IOException {
     Configuration conf = new Configuration();
     conf.set("parquet.read.int96stats.enabled", readInt96Stats ? "true" : "false");
     ParquetMetadata metadata = ParquetFileReader.readFooter(conf, file);
-    
+
     // Verify INT96 statistics
-    ColumnChunkMetaData timestampColumn = metadata.getBlocks().get(0).getColumns().get(0);
+    ColumnChunkMetaData timestampColumn =
+        metadata.getBlocks().get(0).getColumns().get(0);
     Statistics<?> timestampStats = timestampColumn.getStatistics();
 
     if (readInt96Stats) {
@@ -107,7 +107,7 @@ public class TestInt96TimestampStatisticsRoundTrip {
     Binary maxValue = timestampToInt96(timestamps[timestamps.length - 1]);
     List<Binary> timestampValues = new ArrayList<>();
     for (String timestamp : timestamps) {
-        timestampValues.add(timestampToInt96(timestamp));
+      timestampValues.add(timestampToInt96(timestamp));
     }
     Collections.shuffle(timestampValues);
 
@@ -136,21 +136,13 @@ public class TestInt96TimestampStatisticsRoundTrip {
 
   @Test
   public void testSameDayDifferentTime() throws IOException {
-    String[] timestamps = {
-      "2020-01-01T00:01:00.000",
-      "2020-01-01T00:02:00.000",
-      "2020-01-01T00:03:00.000"
-    };
+    String[] timestamps = {"2020-01-01T00:01:00.000", "2020-01-01T00:02:00.000", "2020-01-01T00:03:00.000"};
     runTimestampTest(timestamps);
   }
 
   @Test
   public void testIncreasingDayDecreasingTime() throws IOException {
-    String[] timestamps = {
-      "2020-01-01T12:00:00.000",
-      "2020-02-01T11:00:00.000",
-      "2020-03-01T10:00:00.000"
-    };
+    String[] timestamps = {"2020-01-01T12:00:00.000", "2020-02-01T11:00:00.000", "2020-03-01T10:00:00.000"};
     runTimestampTest(timestamps);
   }
 }

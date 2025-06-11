@@ -19,8 +19,8 @@
 package org.apache.parquet.schema;
 
 import static org.apache.parquet.schema.PrimitiveComparator.BINARY_AS_FLOAT16_COMPARATOR;
-import static org.apache.parquet.schema.PrimitiveComparator.BINARY_AS_SIGNED_INTEGER_COMPARATOR;
 import static org.apache.parquet.schema.PrimitiveComparator.BINARY_AS_INT_96_COMPARATOR;
+import static org.apache.parquet.schema.PrimitiveComparator.BINARY_AS_SIGNED_INTEGER_COMPARATOR;
 import static org.apache.parquet.schema.PrimitiveComparator.BOOLEAN_COMPARATOR;
 import static org.apache.parquet.schema.PrimitiveComparator.DOUBLE_COMPARATOR;
 import static org.apache.parquet.schema.PrimitiveComparator.FLOAT_COMPARATOR;
@@ -37,8 +37,8 @@ import java.nio.ByteBuffer;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.example.data.simple.NanoTime;
+import org.apache.parquet.io.api.Binary;
 import org.junit.Test;
 
 /*
@@ -281,22 +281,22 @@ public class TestPrimitiveComparator {
     LocalDateTime dt = LocalDateTime.parse(timestamp);
     long julianDay = dt.toLocalDate().toEpochDay() + 2440588; // Convert to Julian Day
     long nanos = dt.toLocalTime().toNanoOfDay();
-    return new NanoTime((int)julianDay, nanos).toBinary();
+    return new NanoTime((int) julianDay, nanos).toBinary();
   }
 
   @Test
   public void testInt96Comparator() {
     Binary[] valuesInAscendingOrder = {
-            timestampToInt96("2020-01-01T00:00:00.000"),
-            timestampToInt96("2020-02-29T23:59:59.999"),
-            timestampToInt96("2020-12-31T23:59:59.999"),
-            timestampToInt96("2021-01-01T00:00:00.000"),
-            timestampToInt96("2023-06-15T12:30:45.500"),
-            timestampToInt96("2024-02-29T15:45:30.750"),
-            timestampToInt96("2024-12-25T07:00:00.000"),
-            timestampToInt96("2025-01-01T00:00:00.000"),
-            timestampToInt96("2025-07-04T20:00:00.000"),
-            timestampToInt96("2025-12-31T23:59:59.999")
+      timestampToInt96("2020-01-01T00:00:00.000"),
+      timestampToInt96("2020-02-29T23:59:59.999"),
+      timestampToInt96("2020-12-31T23:59:59.999"),
+      timestampToInt96("2021-01-01T00:00:00.000"),
+      timestampToInt96("2023-06-15T12:30:45.500"),
+      timestampToInt96("2024-02-29T15:45:30.750"),
+      timestampToInt96("2024-12-25T07:00:00.000"),
+      timestampToInt96("2025-01-01T00:00:00.000"),
+      timestampToInt96("2025-07-04T20:00:00.000"),
+      timestampToInt96("2025-12-31T23:59:59.999")
     };
     for (int i = 0; i < valuesInAscendingOrder.length; ++i) {
       for (int j = 0; j < valuesInAscendingOrder.length; ++j) {

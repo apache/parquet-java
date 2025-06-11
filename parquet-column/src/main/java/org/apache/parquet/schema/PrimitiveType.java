@@ -35,7 +35,6 @@ import org.apache.parquet.io.InvalidRecordException;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.PrimitiveConverter;
 import org.apache.parquet.io.api.RecordConsumer;
-import org.apache.parquet.schema.ColumnOrder.ColumnOrderName;
 import org.apache.parquet.schema.LogicalTypeAnnotation.UUIDLogicalTypeAnnotation;
 
 /**
@@ -542,9 +541,7 @@ public final class PrimitiveType extends Type {
     this.decimalMeta = decimalMeta;
 
     if (columnOrder == null) {
-      columnOrder = originalType == OriginalType.INTERVAL
-          ? ColumnOrder.undefined()
-          : ColumnOrder.typeDefined();
+      columnOrder = originalType == OriginalType.INTERVAL ? ColumnOrder.undefined() : ColumnOrder.typeDefined();
     }
     this.columnOrder = requireValidColumnOrder(columnOrder);
   }

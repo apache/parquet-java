@@ -24,8 +24,8 @@ import static org.apache.parquet.format.Util.readColumnMetaData;
 import static org.apache.parquet.format.Util.readFileMetaData;
 import static org.apache.parquet.format.Util.writeColumnMetaData;
 import static org.apache.parquet.format.Util.writePageHeader;
-import static org.apache.parquet.hadoop.ParquetInputFormat.READ_INT96_STATS_ENABLED;
 import static org.apache.parquet.hadoop.ParquetInputFormat.DEFAULT_READ_INT96_STATS_ENABLED;
+import static org.apache.parquet.hadoop.ParquetInputFormat.READ_INT96_STATS_ENABLED;
 
 import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
@@ -173,8 +173,9 @@ public class ParquetMetadataConverter {
    */
   @Deprecated
   public ParquetMetadataConverter(Configuration conf) {
-    this(conf.getBoolean("parquet.strings.signed-min-max.enabled", false), conf.getBoolean(READ_INT96_STATS_ENABLED, 
-    DEFAULT_READ_INT96_STATS_ENABLED));
+    this(
+        conf.getBoolean("parquet.strings.signed-min-max.enabled", false),
+        conf.getBoolean(READ_INT96_STATS_ENABLED, DEFAULT_READ_INT96_STATS_ENABLED));
   }
 
   public ParquetMetadataConverter(ParquetReadOptions options) {
@@ -185,7 +186,8 @@ public class ParquetMetadataConverter {
     this(useSignedStringMinMax, ParquetProperties.DEFAULT_STATISTICS_TRUNCATE_LENGTH, readInt96Stats);
   }
 
-  private ParquetMetadataConverter(boolean useSignedStringMinMax, int statisticsTruncateLength, boolean readInt96Stats) {
+  private ParquetMetadataConverter(
+      boolean useSignedStringMinMax, int statisticsTruncateLength, boolean readInt96Stats) {
     if (statisticsTruncateLength <= 0) {
       throw new IllegalArgumentException("Truncate length should be greater than 0");
     }
@@ -606,8 +608,10 @@ public class ParquetMetadataConverter {
       }
       if (columnMetaData.getStatistics() != null
           && !columnMetaData.getStatistics().isEmpty()) {
-        metaData.setStatistics(
-            toParquetStatistics(parquetMetadata.getFileMetaData().getCreatedBy(), columnMetaData.getStatistics(), this.statisticsTruncateLength));
+        metaData.setStatistics(toParquetStatistics(
+            parquetMetadata.getFileMetaData().getCreatedBy(),
+            columnMetaData.getStatistics(),
+            this.statisticsTruncateLength));
       }
       if (columnMetaData.getEncodingStats() != null) {
         metaData.setEncoding_stats(convertEncodingStats(columnMetaData.getEncodingStats()));
@@ -874,7 +878,7 @@ public class ParquetMetadataConverter {
       return readInt96Stats && ValidInt96Stats.hasValidInt96Stats(createdBy);
     }
     return isMinMaxStatsWritingSupported(type);
- }
+  }
 
   /**
    * @param statistics parquet format statistics

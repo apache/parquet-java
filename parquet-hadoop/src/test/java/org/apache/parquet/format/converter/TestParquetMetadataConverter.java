@@ -1455,8 +1455,8 @@ public class TestParquetMetadataConverter {
           withSizeStats ? new SizeStatistics(type, 0, LongArrayList.of(5, 6), LongArrayList.of(2, 1)) : null);
       ParquetMetadataConverter converter = new ParquetMetadataConverter();
       org.apache.parquet.format.ColumnIndex parquetColumnIndex =
-      converter.toParquetColumnIndex(type, builder.build());
-    
+          converter.toParquetColumnIndex(type, builder.build());
+
       ColumnIndex columnIndex = converter.fromParquetColumnIndex(CREATED_BY, type, parquetColumnIndex);
       assertEquals(BoundaryOrder.ASCENDING, columnIndex.getBoundaryOrder());
       assertTrue(Arrays.asList(false, true, false).equals(columnIndex.getNullPages()));
@@ -1481,7 +1481,8 @@ public class TestParquetMetadataConverter {
               Types.required(PrimitiveTypeName.INT96).named("test_int96"), columnIndex));
       assertNull(
           "Should ignore unsupported types",
-          converter.fromParquetColumnIndex(CREATED_BY,
+          converter.fromParquetColumnIndex(
+              CREATED_BY,
               Types.required(PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY)
                   .length(12)
                   .as(OriginalType.INTERVAL)

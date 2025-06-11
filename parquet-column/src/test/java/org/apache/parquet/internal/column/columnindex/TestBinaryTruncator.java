@@ -160,12 +160,11 @@ public class TestBinaryTruncator {
   }
 
   private Binary createInt96Value(long nanoseconds, int julianDay) {
-    return Binary.fromConstantByteArray(
-        ByteBuffer.allocate(12)
-            .order(ByteOrder.LITTLE_ENDIAN)
-            .putLong(nanoseconds)
-            .putInt(julianDay)
-            .array());
+    return Binary.fromConstantByteArray(ByteBuffer.allocate(12)
+        .order(ByteOrder.LITTLE_ENDIAN)
+        .putLong(nanoseconds)
+        .putInt(julianDay)
+        .array());
   }
 
   private void testInt96Truncator(PrimitiveType type, boolean strict) {

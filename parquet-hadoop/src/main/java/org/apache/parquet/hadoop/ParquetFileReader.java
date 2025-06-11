@@ -1706,7 +1706,9 @@ public class ParquetFileReader implements Closeable {
       }
     }
     return converter.fromParquetColumnIndex(
-        getFileMetaData().getCreatedBy(), column.getPrimitiveType(), Util.readColumnIndex(f, columnIndexDecryptor, columnIndexAAD));
+        getFileMetaData().getCreatedBy(),
+        column.getPrimitiveType(),
+        Util.readColumnIndex(f, columnIndexDecryptor, columnIndexAAD));
   }
 
   /**
