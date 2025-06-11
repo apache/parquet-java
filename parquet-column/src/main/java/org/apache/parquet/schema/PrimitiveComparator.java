@@ -206,6 +206,31 @@ public abstract class PrimitiveComparator<T> implements Comparator<T>, Serializa
         }
       };
 
+/*
+   * This comparator is for comparing two timestamps represented as int96 binary.
+   */
+  static final PrimitiveComparator<Binary> BINARY_AS_INT_96_COMPARATOR = new BinaryComparator() {
+    @Override
+    int compareBinary(Binary b1, Binary b2) {
+      ByteBuffer bb1 = b1.toByteBuffer();
+      ByteBuffer bb2 = b2.toByteBuffer();
+      bb1.order(java.nio.ByteOrder.LITTLE_ENDIAN);
+      bb2.order(java.nio.ByteOrder.LITTLE_ENDIAN);
+      int jd1 = bb1.getInt(8);
+      int jd2 = bb2.getInt(8);
+      if (jd1 != jd2) return Integer.compareUnsigned(jd1, jd2) < 0 ? -1 : 1;
+      long s1 = bb1.getLong(0);
+      long s2 = bb2.getLong(0);
+      if (s1 != s2) return Long.compareUnsigned(s1, s2) < 0 ? 1 : 1;
+      return 0;
+    }
+
+    @Override
+    public String toString() {
+      return "BINARY_AS_INT_96_COMPARATOR";
+    }
+  };
+
   /*
    * This comparator is for comparing two signed decimal values represented in twos-complement binary. In case of the
    * binary length of one value is shorter than the other it will be padded by the corresponding prefix (0xFF for
