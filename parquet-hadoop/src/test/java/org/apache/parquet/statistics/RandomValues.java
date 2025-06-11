@@ -20,6 +20,8 @@
 package org.apache.parquet.statistics;
 
 import java.math.BigInteger;
+import java.nio.ByteOrder;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Iterator;
@@ -213,11 +215,11 @@ public class RandomValues {
     }
   }
 
-  public static class Int96Generator extends RandomBinaryBase<BigInteger> {
-    private final RandomRange<BigInteger> randomRange = new RandomRange<BigInteger>(randomInt96(), randomInt96());
-    private final BigInteger minimum = randomRange.minimum();
-    private final BigInteger maximum = randomRange.maximum();
-    private final BigInteger range = maximum.subtract(minimum);
+  public static class Int96Generator extends RandomBinaryBase<Binary> {
+    private final RandomRange<Integer> randomRangeJulianDay = new RandomRange<>(randomInt(), randomInt());
+    private final int minimumJulianDay = randomRangeJulianDay.minimum();
+    private final int maximumJulianDay = randomRangeJulianDay.maximum();
+    private final int rangeJulianDay = (maximumJulianDay - minimumJulianDay);
 
     private static final int INT_96_LENGTH = 12;
 
@@ -226,13 +228,21 @@ public class RandomValues {
     }
 
     @Override
-    public BigInteger nextValue() {
-      return (minimum.add(randomInt96(range)));
+    public Binary nextValue() {
+      long timeOfDay = randomLong();
+      int julianDay = minimumJulianDay + randomPositiveInt(rangeJulianDay);
+
+      ByteBuffer.wrap(buffer)
+          .order(ByteOrder.LITTLE_ENDIAN)
+          .putLong(timeOfDay)
+          .putInt(julianDay);
+
+      return Binary.fromReusedByteArray(buffer, 0, INT_96_LENGTH);
     }
 
     @Override
     public Binary nextBinaryValue() {
-      return FixedBinaryTestUtils.getFixedBinary(INT_96_LENGTH, nextValue());
+      return nextValue();
     }
   }
 

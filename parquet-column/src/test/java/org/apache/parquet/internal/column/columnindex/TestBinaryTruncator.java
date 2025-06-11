@@ -32,6 +32,8 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.charset.CharacterCodingException;
 import java.nio.charset.CharsetDecoder;
 import java.nio.charset.CodingErrorAction;
@@ -93,7 +95,7 @@ public class TestBinaryTruncator {
     testTruncator(
         Types.required(FIXED_LEN_BYTE_ARRAY).length(12).as(INTERVAL).named("test_fixed_interval"), false);
     testTruncator(Types.required(BINARY).as(DECIMAL).precision(10).scale(2).named("test_binary_decimal"), false);
-    testTruncator(Types.required(INT96).named("test_int96"), false);
+    testInt96Truncator(Types.required(INT96).named("test_int96"), false);
   }
 
   @Test
@@ -155,6 +157,22 @@ public class TestBinaryTruncator {
     testTruncator(Types.required(BINARY).as(JSON).named("test_json"), true);
     testTruncator(Types.required(BINARY).as(BSON).named("test_bson"), true);
     testTruncator(Types.required(FIXED_LEN_BYTE_ARRAY).length(5).named("test_fixed"), true);
+  }
+
+  private Binary createInt96Value(long nanoseconds, int julianDay) {
+    return Binary.fromConstantByteArray(
+        ByteBuffer.allocate(12)
+            .order(ByteOrder.LITTLE_ENDIAN)
+            .putLong(nanoseconds)
+            .putInt(julianDay)
+            .array());
+  }
+
+  private void testInt96Truncator(PrimitiveType type, boolean strict) {
+    BinaryTruncator truncator = BinaryTruncator.getTruncator(type);
+    Comparator<Binary> comparator = type.comparator();
+    checkContract(truncator, comparator, createInt96Value(0, 2458849), strict, strict);
+    checkContract(truncator, comparator, createInt96Value(100, 128849), strict, strict);
   }
 
   private void testTruncator(PrimitiveType type, boolean strict) {
