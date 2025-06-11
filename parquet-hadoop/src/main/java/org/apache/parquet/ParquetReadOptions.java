@@ -22,12 +22,14 @@ package org.apache.parquet;
 import static org.apache.parquet.format.converter.ParquetMetadataConverter.NO_FILTER;
 import static org.apache.parquet.hadoop.ParquetInputFormat.BLOOM_FILTERING_ENABLED;
 import static org.apache.parquet.hadoop.ParquetInputFormat.COLUMN_INDEX_FILTERING_ENABLED;
+import static org.apache.parquet.hadoop.ParquetInputFormat.DEFAULT_READ_INT96_STATS_ENABLED;
 import static org.apache.parquet.hadoop.ParquetInputFormat.DICTIONARY_FILTERING_ENABLED;
 import static org.apache.parquet.hadoop.ParquetInputFormat.HADOOP_VECTORED_IO_DEFAULT;
 import static org.apache.parquet.hadoop.ParquetInputFormat.HADOOP_VECTORED_IO_ENABLED;
 import static org.apache.parquet.hadoop.ParquetInputFormat.OFF_HEAP_DECRYPT_BUFFER_ENABLED;
 import static org.apache.parquet.hadoop.ParquetInputFormat.PAGE_VERIFY_CHECKSUM_ENABLED;
 import static org.apache.parquet.hadoop.ParquetInputFormat.RECORD_FILTERING_ENABLED;
+import static org.apache.parquet.hadoop.ParquetInputFormat.READ_INT96_STATS_ENABLED;
 import static org.apache.parquet.hadoop.ParquetInputFormat.STATS_FILTERING_ENABLED;
 import static org.apache.parquet.hadoop.ParquetInputFormat.getFilter;
 import static org.apache.parquet.hadoop.UnmaterializableRecordCounter.BAD_RECORD_THRESHOLD_CONF_KEY;
@@ -63,6 +65,7 @@ public class ParquetReadOptions {
   private static final boolean USE_OFF_HEAP_DECRYPT_BUFFER_DEFAULT = false;
 
   private final boolean useSignedStringMinMax;
+  private final boolean readInt96Stats;
   private final boolean useStatsFilter;
   private final boolean useDictionaryFilter;
   private final boolean useRecordFilter;
@@ -91,6 +94,7 @@ public class ParquetReadOptions {
       boolean useBloomFilter,
       boolean useOffHeapDecryptBuffer,
       boolean useHadoopVectoredIo,
+      boolean readInt96Stats,
       FilterCompat.Filter recordFilter,
       ParquetMetadataConverter.MetadataFilter metadataFilter,
       CompressionCodecFactory codecFactory,
@@ -109,6 +113,7 @@ public class ParquetReadOptions {
         useBloomFilter,
         useOffHeapDecryptBuffer,
         useHadoopVectoredIo,
+        readInt96Stats,
         recordFilter,
         metadataFilter,
         codecFactory,
@@ -130,6 +135,7 @@ public class ParquetReadOptions {
       boolean useBloomFilter,
       boolean useOffHeapDecryptBuffer,
       boolean useHadoopVectoredIo,
+      boolean readInt96Stats,
       FilterCompat.Filter recordFilter,
       ParquetMetadataConverter.MetadataFilter metadataFilter,
       CompressionCodecFactory codecFactory,
@@ -148,6 +154,7 @@ public class ParquetReadOptions {
     this.useBloomFilter = useBloomFilter;
     this.useOffHeapDecryptBuffer = useOffHeapDecryptBuffer;
     this.useHadoopVectoredIo = useHadoopVectoredIo;
+    this.readInt96Stats = readInt96Stats;
     this.recordFilter = recordFilter;
     this.metadataFilter = metadataFilter;
     this.codecFactory = codecFactory;
@@ -161,6 +168,10 @@ public class ParquetReadOptions {
 
   public boolean useSignedStringMinMax() {
     return useSignedStringMinMax;
+  }
+
+  public boolean readInt96Stats() {
+    return readInt96Stats;
   }
 
   public boolean useStatsFilter() {
@@ -250,6 +261,7 @@ public class ParquetReadOptions {
 
   public static class Builder {
     protected boolean useSignedStringMinMax = false;
+    protected boolean readInt96Stats = DEFAULT_READ_INT96_STATS_ENABLED;
     protected boolean useStatsFilter = STATS_FILTERING_ENABLED_DEFAULT;
     protected boolean useDictionaryFilter = DICTIONARY_FILTERING_ENABLED_DEFAULT;
     protected boolean useRecordFilter = RECORD_FILTERING_ENABLED_DEFAULT;
@@ -287,6 +299,7 @@ public class ParquetReadOptions {
       withRecordFilter(getFilter(conf));
       withMaxAllocationInBytes(conf.getInt(ALLOCATION_SIZE, 8388608));
       withUseHadoopVectoredIo(conf.getBoolean(HADOOP_VECTORED_IO_ENABLED, HADOOP_VECTORED_IO_DEFAULT));
+      readInt96Stats(conf.getBoolean(READ_INT96_STATS_ENABLED, DEFAULT_READ_INT96_STATS_ENABLED));
       String badRecordThresh = conf.get(BAD_RECORD_THRESHOLD_CONF_KEY);
       if (badRecordThresh != null) {
         set(BAD_RECORD_THRESHOLD_CONF_KEY, badRecordThresh);
@@ -335,6 +348,11 @@ public class ParquetReadOptions {
 
     public Builder withUseHadoopVectoredIo(boolean useHadoopVectoredIo) {
       this.useHadoopVectoredIo = useHadoopVectoredIo;
+      return this;
+    }
+
+    public Builder readInt96Stats(boolean readInt96Stats) {
+      this.readInt96Stats = readInt96Stats;
       return this;
     }
 
@@ -437,6 +455,7 @@ public class ParquetReadOptions {
       useRecordFilter(options.useRecordFilter);
       withRecordFilter(options.recordFilter);
       withUseHadoopVectoredIo(options.useHadoopVectoredIo);
+      readInt96Stats(options.readInt96Stats);
       withMetadataFilter(options.metadataFilter);
       withCodecFactory(options.codecFactory);
       withAllocator(options.allocator);
@@ -469,6 +488,7 @@ public class ParquetReadOptions {
           useBloomFilter,
           useOffHeapDecryptBuffer,
           useHadoopVectoredIo,
+          readInt96Stats,
           recordFilter,
           metadataFilter,
           codecFactory,

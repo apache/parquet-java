@@ -363,7 +363,7 @@ public final class PrimitiveType extends Type {
 
       @Override
       PrimitiveComparator<?> comparator(LogicalTypeAnnotation logicalType) {
-        return PrimitiveComparator.BINARY_AS_SIGNED_INTEGER_COMPARATOR;
+        return PrimitiveComparator.BINARY_AS_INT_96_COMPARATOR;
       }
     },
     FIXED_LEN_BYTE_ARRAY("getBinary", Binary.class) {
@@ -542,7 +542,7 @@ public final class PrimitiveType extends Type {
     this.decimalMeta = decimalMeta;
 
     if (columnOrder == null) {
-      columnOrder = primitive == PrimitiveTypeName.INT96 || originalType == OriginalType.INTERVAL
+      columnOrder = originalType == OriginalType.INTERVAL
           ? ColumnOrder.undefined()
           : ColumnOrder.typeDefined();
     }
@@ -587,8 +587,7 @@ public final class PrimitiveType extends Type {
     }
 
     if (columnOrder == null) {
-      columnOrder = primitive == PrimitiveTypeName.INT96
-              || logicalTypeAnnotation instanceof LogicalTypeAnnotation.IntervalLogicalTypeAnnotation
+      columnOrder = logicalTypeAnnotation instanceof LogicalTypeAnnotation.IntervalLogicalTypeAnnotation
           ? ColumnOrder.undefined()
           : ColumnOrder.typeDefined();
     }
@@ -596,12 +595,6 @@ public final class PrimitiveType extends Type {
   }
 
   private ColumnOrder requireValidColumnOrder(ColumnOrder columnOrder) {
-    if (primitive == PrimitiveTypeName.INT96) {
-      Preconditions.checkArgument(
-          columnOrder.getColumnOrderName() == ColumnOrderName.UNDEFINED,
-          "The column order %s is not supported by INT96",
-          columnOrder);
-    }
     if (getLogicalTypeAnnotation() != null) {
       Preconditions.checkArgument(
           getLogicalTypeAnnotation().isValidColumnOrder(columnOrder),
