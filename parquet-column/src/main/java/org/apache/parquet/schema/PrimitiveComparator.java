@@ -221,7 +221,7 @@ public abstract class PrimitiveComparator<T> implements Comparator<T>, Serializa
       if (jd1 != jd2) return Integer.compareUnsigned(jd1, jd2) < 0 ? -1 : 1;
       long s1 = bb1.getLong(0);
       long s2 = bb2.getLong(0);
-      if (s1 != s2) return Long.compareUnsigned(s1, s2) < 0 ? 1 : 1;
+      if (s1 != s2) return Long.compareUnsigned(s1, s2) < 0 ? -1 : 1;
       return 0;
     }
 
