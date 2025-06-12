@@ -1334,7 +1334,7 @@ public class TestTypeBuilders {
   @Test
   public void testTypeConstructionWithTypeDefinedColumnOrder() {
     PrimitiveTypeName[] types =
-        new PrimitiveTypeName[] {BOOLEAN, INT32, INT64, FLOAT, DOUBLE, BINARY, FIXED_LEN_BYTE_ARRAY};
+        new PrimitiveTypeName[] {BOOLEAN, INT32, INT64, INT96, FLOAT, DOUBLE, BINARY, FIXED_LEN_BYTE_ARRAY};
     for (PrimitiveTypeName type : types) {
       String name = type.toString() + "_";
       int len = type == FIXED_LEN_BYTE_ARRAY ? 42 : 0;
@@ -1350,8 +1350,6 @@ public class TestTypeBuilders {
 
   @Test
   public void testTypeConstructionWithUnsupportedColumnOrder() {
-    assertThrows(null, IllegalArgumentException.class, (Callable<PrimitiveType>) () ->
-        Types.optional(INT96).columnOrder(ColumnOrder.typeDefined()).named("int96_unsupported"));
     assertThrows(null, IllegalArgumentException.class, (Callable<PrimitiveType>)
         () -> Types.optional(FIXED_LEN_BYTE_ARRAY)
             .length(12)
