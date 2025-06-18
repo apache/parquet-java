@@ -266,12 +266,16 @@ conf.set("parquet.bloom.filter.fpp#column.path", 0.02)
 
 ---
 
-
 **Property:** `parquet.decrypt.off-heap.buffer.enabled`  
 **Description:** Whether to use direct buffers to decrypt encrypted files. This should be set to 
 true if the reader is using a `DirectByteBufferAllocator`
 **Default value:** `false`
 
+---
+
+**Property:** `parquet.block.row.count.limit`
+**Description:** The maximum number of rows per row group.
+**Default value:** `2147483647` (Integer.MAX_VALUE)
 
 ---
 **Property:** `parquet.page.row.count.limit`  
