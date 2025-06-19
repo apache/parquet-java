@@ -32,14 +32,15 @@ import org.apache.parquet.schema.Type;
  * Class to write Variant values to a shredded schema.
  */
 public class VariantValueWriter {
-  private ByteBuffer metadataBuffer;
-  // We defer initializing the ImmutableMetata until it's needed. It has some construction cost, and if all
-  // object fields are shredded into typed_value, it will never be used.
-  private ImmutableMetadata metadata = null;
-  private RecordConsumer recordConsumer;
-
   private static final String LIST_REPEATED_NAME = "list";
   private static final String LIST_ELEMENT_NAME = "element";
+
+  private final ByteBuffer metadataBuffer;
+  private final RecordConsumer recordConsumer;
+
+  // We defer initializing the ImmutableMetata until it's needed. There is a construction cost to deserialize the
+  // metadata binary into a Map, and if all object fields are shredded into typed_value, it will never be used.
+  private ImmutableMetadata metadata = null;
 
   VariantValueWriter(RecordConsumer recordConsumer, ByteBuffer metadata) {
     this.recordConsumer = recordConsumer;
@@ -85,12 +86,12 @@ public class VariantValueWriter {
       recordConsumer.startField("typed_value", typedValueIdx);
       ByteBuffer residual = null;
       if (typedValueField.isPrimitive()) {
-        writeScalarValue(recordConsumer, value, typedValueField.asPrimitiveType());
+        writeScalarValue(value);
       } else if (typedValueField.getLogicalTypeAnnotation()
           instanceof LogicalTypeAnnotation.ListLogicalTypeAnnotation) {
-        writeArrayValue(recordConsumer, value, typedValueField.asGroupType());
+        writeArrayValue(value, typedValueField.asGroupType());
       } else {
-        residual = writeObjectValue(recordConsumer, value, typedValueField.asGroupType());
+        residual = writeObjectValue(value, typedValueField.asGroupType());
       }
       recordConsumer.endField("typed_value", typedValueIdx);
 
@@ -110,7 +111,7 @@ public class VariantValueWriter {
 
   // Return true if the logical type is a decimal with the same scale as the provided value, with enough
   // precision to hold the value. The provided value must be a decimal.
-  private boolean compatibleDecimalType(Variant value, LogicalTypeAnnotation logicalType) {
+  private static boolean compatibleDecimalType(Variant value, LogicalTypeAnnotation logicalType) {
     if (!(logicalType instanceof LogicalTypeAnnotation.DecimalLogicalTypeAnnotation)) {
       return false;
     }
@@ -121,7 +122,7 @@ public class VariantValueWriter {
     return decimal.scale() == decimalType.getScale() && decimal.precision() <= decimalType.getPrecision();
   }
 
-  private boolean isTypeCompatible(Variant.Type variantType, Type typedValueField, Variant value) {
+  private static boolean isTypeCompatible(Variant.Type variantType, Type typedValueField, Variant value) {
     if (typedValueField == null) {
       return false;
     }
@@ -155,8 +156,10 @@ public class VariantValueWriter {
           return primitiveTypeName == PrimitiveType.PrimitiveTypeName.INT64
               && (logicalType == null
                   || (logicalType instanceof LogicalTypeAnnotation.IntLogicalTypeAnnotation
+                      && ((LogicalTypeAnnotation.IntLogicalTypeAnnotation) logicalType).isSigned()
                       && ((LogicalTypeAnnotation.IntLogicalTypeAnnotation) logicalType)
-                          .isSigned()));
+                              .getBitWidth()
+                          == 64));
         case FLOAT:
           return primitiveTypeName == PrimitiveType.PrimitiveTypeName.FLOAT;
         case DOUBLE:
@@ -210,7 +213,7 @@ public class VariantValueWriter {
     }
   }
 
-  private void writeScalarValue(RecordConsumer recordConsumer, Variant variant, PrimitiveType type) {
+  private void writeScalarValue(Variant variant) {
     switch (variant.getType()) {
       case BOOLEAN:
         recordConsumer.addBoolean(variant.getBoolean());
@@ -272,7 +275,7 @@ public class VariantValueWriter {
     }
   }
 
-  private void writeArrayValue(RecordConsumer recordConsumer, Variant variant, GroupType arrayType) {
+  private void writeArrayValue(Variant variant, GroupType arrayType) {
     Preconditions.checkArgument(
         variant.getType() == Variant.Type.ARRAY,
         "Cannot write variant type " + variant.getType() + " as array");
@@ -328,10 +331,10 @@ public class VariantValueWriter {
    * @return the residual value that must be written to the value column, or null if all values were written
    *         to typed_value.
    */
-  private ByteBuffer writeObjectValue(RecordConsumer recordConsumer, Variant variant, GroupType objectType) {
-    if (variant.getType() != Variant.Type.OBJECT) {
-      throw new IllegalArgumentException("Expected object type but got: " + variant.getType());
-    }
+  private ByteBuffer writeObjectValue(Variant variant, GroupType objectType) {
+    Preconditions.checkArgument(
+        variant.getType() == Variant.Type.OBJECT,
+        "Cannot write variant type " + variant.getType() + " as object");
 
     VariantBuilder residualBuilder = null;
     // The residualBuilder, if created, is always a single object. This is that object's builder.
