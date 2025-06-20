@@ -962,9 +962,9 @@ public class TestReadWrite {
           writerBuilder.withCodecFactory(HadoopCodecs.newFactory(ParquetProperties.DEFAULT_PAGE_SIZE));
     }
     if (conf == ConfigurationType.PLAIN_PARQUET_INTERFACE) {
-      return writerBuilder.withConf(hadoopConfWithInterface).build();
-    } else if (conf == ConfigurationType.HADOOP_PARQUET_INTERFACE) {
       return writerBuilder.withConf(plainParquetConf).build();
+    } else if (conf == ConfigurationType.HADOOP_PARQUET_INTERFACE) {
+      return writerBuilder.withConf(hadoopConfWithInterface).build();
     } else {
       return writerBuilder.withConf(testConf).build();
     }
@@ -983,9 +983,9 @@ public class TestReadWrite {
           readerBuilder.withCodecFactory(HadoopCodecs.newFactory(ParquetProperties.DEFAULT_PAGE_SIZE));
     }
     if (conf == ConfigurationType.PLAIN_PARQUET_INTERFACE) {
-      return readerBuilder.withConf(hadoopConfWithInterface).build();
-    } else if (conf == ConfigurationType.HADOOP_PARQUET_INTERFACE) {
       return readerBuilder.withConf(plainParquetConf).build();
+    } else if (conf == ConfigurationType.HADOOP_PARQUET_INTERFACE) {
+      return readerBuilder.withConf(hadoopConfWithInterface).build();
     } else {
       return readerBuilder.withConf(testConf).build();
     }
