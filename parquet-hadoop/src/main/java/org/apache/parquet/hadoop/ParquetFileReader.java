@@ -744,7 +744,7 @@ public class ParquetFileReader implements Closeable {
     return new ParquetFileReader(file, footer, options, f);
   }
 
-  protected final SeekableInputStream f;
+  protected SeekableInputStream f;
   private final InputFile file;
   private final ParquetReadOptions options;
   private final Map<ColumnPath, ColumnDescriptor> paths = new HashMap<>();
