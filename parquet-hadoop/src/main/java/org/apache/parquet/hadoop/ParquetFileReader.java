@@ -724,6 +724,21 @@ public class ParquetFileReader implements Closeable {
     return new ParquetFileReader(file, options, f);
   }
 
+  /**
+   * Open a {@link InputFile file} with {@link ParquetMetadata footer} and {@link ParquetReadOptions options}.
+   *
+   * @param file    an input file
+   * @param footer  a {@link ParquetMetadata} footer already read from the file
+   * @param options parquet read options
+   * @param f       the input stream for the file
+   * @return an open ParquetFileReader
+   * @throws IOException if there is an error while opening the file
+   */
+  public static ParquetFileReader open(InputFile file, ParquetMetadata footer, ParquetReadOptions options, SeekableInputStream f)
+      throws IOException {
+    return new ParquetFileReader(file, footer, options, f);
+  }
+
   protected final SeekableInputStream f;
   private final InputFile file;
   private final ParquetReadOptions options;
@@ -925,6 +940,12 @@ public class ParquetFileReader implements Closeable {
     this(file, options, file.newStream());
   }
 
+  /**
+   * @param file    Path to a parquet file
+   * @param options {@link ParquetReadOptions}
+   * @param f       a {@link SeekableInputStream} for the parquet file
+   * @throws IOException if the file can not be opened
+   */
   public ParquetFileReader(InputFile file, ParquetReadOptions options, SeekableInputStream f) throws IOException {
     this.converter = new ParquetMetadataConverter(options);
     this.file = file;
@@ -933,6 +954,8 @@ public class ParquetFileReader implements Closeable {
     try {
       this.footer = readFooter(file, options, f, converter);
     } catch (IOException e) {
+      // In case that reading footer throws an exception in the constructor, the new stream
+	    // should be closed. Otherwise, there's no way to close this outside.
       f.close();
       throw e;
     }
@@ -966,6 +989,13 @@ public class ParquetFileReader implements Closeable {
     }
   }
 
+  /**
+   * @param file    Path to a parquet file
+   * @param footer  a {@link ParquetMetadata} footer already read from the file
+   * @param options {@link ParquetReadOptions}
+   * @param f       a {@link SeekableInputStream} for the parquet file
+   * @throws IOException if the file can not be opened
+   */
   public ParquetFileReader(InputFile file, ParquetMetadata footer, ParquetReadOptions options, SeekableInputStream f)
       throws IOException {
     this.converter = new ParquetMetadataConverter(options);
