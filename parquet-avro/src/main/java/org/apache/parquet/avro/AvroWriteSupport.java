@@ -196,6 +196,17 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
   private void writeVariantFields(GroupType schema, Schema avroSchema, Object record) {
     List<Type> fields = schema.getFields();
     List<Schema.Field> avroFields = avroSchema.getFields();
+
+    if (avroFields.size() == 3 || (avroFields.size() == 2 &&
+          avroFields.get(1).name().equals("typed_value"))) {
+      // Assume that the data is already shredded, and write the record directly.
+      // This is used to construct manual test cases.
+      recordConsumer.startGroup();
+      writeRecordFields(schema, avroSchema, record);
+      recordConsumer.endGroup();
+      return;
+    }
+
     boolean binarySchema = true;
     ByteBuffer metadata = null;
     ByteBuffer value = null;
