@@ -193,14 +193,29 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
     }
   }
 
+  // Return true if schema and avroSchema have the same field names, in the same order.
+  private static boolean schemaMatches(GroupType schema, Schema avroSchema) {
+    List<Schema.Field> avroFields = avroSchema.getFields();
+    if (schema.getFieldCount() != avroFields.size()) {
+      return false;
+    }
+
+    for (int i = 0; i < avroFields.size(); i += 1) {
+      if (!avroFields.get(i).name().equals(schema.getFieldName(i))) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
   private void writeVariantFields(GroupType schema, Schema avroSchema, Object record) {
     List<Type> fields = schema.getFields();
     List<Schema.Field> avroFields = avroSchema.getFields();
 
-    if (avroFields.size() == 3 || (avroFields.size() == 2 &&
-          avroFields.get(1).name().equals("typed_value"))) {
-      // Assume that the data is already shredded, and write the record directly.
-      // This is used to construct manual test cases.
+    if (schemaMatches(schema, avroSchema)) {
+      // If the Avro schema matches the Parquet schema, the shredding matches and writeRecordFields can be used.
+      // writeRecordFields will validate that the field types match.
       recordConsumer.startGroup();
       writeRecordFields(schema, avroSchema, record);
       recordConsumer.endGroup();
