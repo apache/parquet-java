@@ -848,4 +848,74 @@ class VariantUtil {
     }
     return result;
   }
+
+  /**
+   * Computes the actual size (in bytes) of the Variant value.
+   * @param value The Variant value binary
+   * @return The size (in bytes) of the Variant value, including the header byte
+   */
+  public static int valueSize(ByteBuffer value) {
+    int pos = value.position();
+    int basicType = value.get(pos) & BASIC_TYPE_MASK;
+    switch (basicType) {
+      case SHORT_STR:
+        int stringSize = (value.get(pos) >> BASIC_TYPE_BITS) & PRIMITIVE_TYPE_MASK;
+        return 1 + stringSize;
+      case OBJECT: {
+        VariantUtil.ObjectInfo info = VariantUtil.getObjectInfo(slice(value, pos));
+        return info.dataStartOffset
+            + readUnsigned(
+                value,
+                pos + info.offsetStartOffset + info.numElements * info.offsetSize,
+                info.offsetSize);
+      }
+      case ARRAY: {
+        VariantUtil.ArrayInfo info = VariantUtil.getArrayInfo(slice(value, pos));
+        return info.dataStartOffset
+            + readUnsigned(
+                value,
+                pos + info.offsetStartOffset + info.numElements * info.offsetSize,
+                info.offsetSize);
+      }
+      default: {
+        int typeInfo = (value.get(pos) >> BASIC_TYPE_BITS) & PRIMITIVE_TYPE_MASK;
+        switch (typeInfo) {
+          case NULL:
+          case TRUE:
+          case FALSE:
+            return 1;
+          case INT8:
+            return 2;
+          case INT16:
+            return 3;
+          case INT32:
+          case DATE:
+          case FLOAT:
+            return 5;
+          case INT64:
+          case DOUBLE:
+          case TIMESTAMP_TZ:
+          case TIMESTAMP_NTZ:
+          case TIME:
+          case TIMESTAMP_NANOS_TZ:
+          case TIMESTAMP_NANOS_NTZ:
+            return 9;
+          case DECIMAL4:
+            return 6;
+          case DECIMAL8:
+            return 10;
+          case DECIMAL16:
+            return 18;
+          case BINARY:
+          case LONG_STR:
+            return 1 + U32_SIZE + readUnsigned(value, pos + 1, U32_SIZE);
+          case UUID:
+            return 1 + UUID_SIZE;
+          default:
+            throw new UnsupportedOperationException(
+                String.format("Unknown type in Variant. primitive type: %d", typeInfo));
+        }
+      }
+    }
+  }
 }

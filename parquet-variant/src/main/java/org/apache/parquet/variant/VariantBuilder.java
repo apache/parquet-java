@@ -96,7 +96,7 @@ public class VariantBuilder {
    */
   public void appendEncodedValue(ByteBuffer value) {
     onAppend();
-    int size = value.remaining();
+    int size = VariantUtil.valueSize(value);
     checkCapacity(size);
     value.duplicate().get(writeBuffer, writePos, size);
     writePos += size;
