@@ -19,12 +19,17 @@
 package org.apache.parquet.cli.commands;
 
 import java.io.File;
+import java.util.Queue;
+import java.util.concurrent.LinkedBlockingQueue;
 import org.apache.commons.logging.LogFactory;
 import org.apache.log4j.PropertyConfigurator;
 import org.junit.Rule;
 import org.junit.rules.TemporaryFolder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.event.LoggingEvent;
+import org.slf4j.event.SubstituteLoggingEvent;
+import org.slf4j.helpers.SubstituteLoggerFactory;
 
 public abstract class FileTest {
 
@@ -51,5 +56,25 @@ public abstract class FileTest {
     LogFactory.getFactory()
         .setAttribute("org.apache.commons.logging.Log", "org.apache.commons.logging.impl.Log4JLogger");
     return console;
+  }
+
+  @FunctionalInterface
+  public interface ThrowableBiConsumer<T, U> {
+    void accept(T t, U u) throws Exception;
+  }
+
+  protected static void withLogger(ThrowableBiConsumer<Logger, Queue<? extends LoggingEvent>> body) {
+    SubstituteLoggerFactory loggerFactory = new SubstituteLoggerFactory();
+    LinkedBlockingQueue<SubstituteLoggingEvent> loggingEvents = loggerFactory.getEventQueue();
+    Logger console = loggerFactory.getLogger(ParquetFileTest.class.getName());
+    try {
+      body.accept(console, loggingEvents);
+    } catch (RuntimeException rethrow) {
+      throw rethrow;
+    } catch (Exception checkedException) {
+      throw new RuntimeException(checkedException);
+    } finally {
+      loggerFactory.clear();
+    }
   }
 }

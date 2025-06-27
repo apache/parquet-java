@@ -77,8 +77,8 @@
     <jackson.datatype.groupId>com.fasterxml.jackson.datatype</jackson.datatype.groupId>
     <jackson.package>com.fasterxml.jackson</jackson.package>
     <!-- To upgrade jackson, check the jdk versions inside the jar and include any new versions in the shading in parquet-jackson. -->
-    <jackson.version>2.18.3</jackson.version>
-    <jackson-databind.version>2.18.3</jackson-databind.version>
+    <jackson.version>2.19.0</jackson.version>
+    <jackson-databind.version>2.19.0</jackson-databind.version>
     <japicmp.version>0.23.1</japicmp.version>
     <javax.annotation.version>1.3.2</javax.annotation.version>
     <spotless.version>2.30.0</spotless.version>
@@ -111,7 +111,7 @@
     <jcommander.version>1.82</jcommander.version>
     <tukaani.version>1.10</tukaani.version>
     <zstd-jni.version>1.5.7-3</zstd-jni.version>
-    <commons-text.version>1.13.0</commons-text.version>
+    <commons-text.version>1.13.1</commons-text.version>
     <jsr305.version>3.0.2</jsr305.version>
     <commons-lang3.version>3.17.0</commons-lang3.version>
 
