@@ -36,11 +36,16 @@ public class ColumnOrder {
     /**
      * Type defined order meaning that the comparison order of the elements are based on its type.
      */
-    TYPE_DEFINED_ORDER
+    TYPE_DEFINED_ORDER,
+    /**
+     * The column order is defined by the IEEE 754 standard.
+     */
+    IEEE_754_TOTAL_ORDER,
   }
 
   private static final ColumnOrder UNDEFINED_COLUMN_ORDER = new ColumnOrder(ColumnOrderName.UNDEFINED);
   private static final ColumnOrder TYPE_DEFINED_COLUMN_ORDER = new ColumnOrder(ColumnOrderName.TYPE_DEFINED_ORDER);
+  private static final ColumnOrder IEEE_754_TOTAL_ORDER = new ColumnOrder(ColumnOrderName.IEEE_754_TOTAL_ORDER);
 
   /**
    * @return a {@link ColumnOrder} instance representing an undefined order
@@ -56,6 +61,14 @@ public class ColumnOrder {
    */
   public static ColumnOrder typeDefined() {
     return TYPE_DEFINED_COLUMN_ORDER;
+  }
+
+  /**
+   * @return a {@link ColumnOrder} instance representing an IEEE 754 total order
+   * @see ColumnOrderName#IEEE_754_TOTAL_ORDER
+   */
+  public static ColumnOrder ieee754TotalOrder() {
+    return IEEE_754_TOTAL_ORDER;
   }
 
   private final ColumnOrderName columnOrderName;
