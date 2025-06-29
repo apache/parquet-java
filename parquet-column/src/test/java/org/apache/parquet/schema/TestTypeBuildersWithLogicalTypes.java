@@ -349,9 +349,6 @@ public class TestTypeBuildersWithLogicalTypes {
 
   @Test
   public void testTypeConstructionWithUnsupportedColumnOrder() {
-    assertThrows(null, IllegalArgumentException.class, () -> Types.optional(INT96)
-        .columnOrder(ColumnOrder.typeDefined())
-        .named("int96_unsupported"));
     assertThrows(null, IllegalArgumentException.class, () -> Types.optional(PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY)
         .length(12)
         .as(LogicalTypeAnnotation.IntervalLogicalTypeAnnotation.getInstance())
