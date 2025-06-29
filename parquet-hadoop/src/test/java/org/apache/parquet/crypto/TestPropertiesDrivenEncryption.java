@@ -28,6 +28,7 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -41,6 +42,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.LocalFileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.bytes.DirectByteBufferAllocator;
 import org.apache.parquet.bytes.HeapByteBufferAllocator;
@@ -528,6 +530,14 @@ public class TestPropertiesDrivenEncryption {
       }
     } catch (Exception e) {
       addErrorToErrorCollectorAndLog("Failed writing " + file.toString(), e, encryptionConfiguration, null);
+    }
+    // remove the CRC file so that Hadoop local filesystem doesn't slice buffers on
+    // vector reads.
+    try {
+      final LocalFileSystem local = FileSystem.getLocal(new Configuration());
+      local.delete(local.getChecksumFile(file), false);
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
     }
   }
 
