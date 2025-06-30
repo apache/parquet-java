@@ -33,11 +33,24 @@ public class ValidInt96StatsTest {
 
   @Test
   public void testParquetMrValid() {
-    assertTrue(ValidInt96Stats.hasValidInt96Stats("parquet-mr version 1.12.3"));
-    assertTrue(ValidInt96Stats.hasValidInt96Stats("parquet-mr version 1.12.3 (build abcd)"));
-    assertTrue(ValidInt96Stats.hasValidInt96Stats("parquet-mr version 1.12.3-SNAPSHOT"));
-    assertTrue(ValidInt96Stats.hasValidInt96Stats("parquet-mr version 1.12.3rc1"));
-    assertTrue(ValidInt96Stats.hasValidInt96Stats("parquet-mr version 1.12.3rc1-SNAPSHOT"));
+    // Versions > 1.15.0 should be valid
+    assertTrue(ValidInt96Stats.hasValidInt96Stats("parquet-mr version 1.16.0"));
+    assertTrue(ValidInt96Stats.hasValidInt96Stats("parquet-mr version 1.15.1"));
+    assertTrue(ValidInt96Stats.hasValidInt96Stats("parquet-mr version 2.0.0"));
+    assertTrue(ValidInt96Stats.hasValidInt96Stats("parquet-mr version 1.16.0 (build abcd)"));
+    assertTrue(ValidInt96Stats.hasValidInt96Stats("parquet-mr version 1.15.1-SNAPSHOT"));
+  }
+
+  @Test
+  public void testParquetMrInvalid() {
+    // Versions <= 1.15.0 should be invalid
+    assertFalse(ValidInt96Stats.hasValidInt96Stats("parquet-mr version 1.15.0"));
+    assertFalse(ValidInt96Stats.hasValidInt96Stats("parquet-mr version 1.12.3"));
+    assertFalse(ValidInt96Stats.hasValidInt96Stats("parquet-mr version 1.14.0"));
+    assertFalse(ValidInt96Stats.hasValidInt96Stats("parquet-mr version 1.12.3 (build abcd)"));
+    assertFalse(ValidInt96Stats.hasValidInt96Stats("parquet-mr version 1.12.3-SNAPSHOT"));
+    assertFalse(ValidInt96Stats.hasValidInt96Stats("parquet-mr version 1.12.3rc1"));
+    assertFalse(ValidInt96Stats.hasValidInt96Stats("parquet-mr version 1.12.3rc1-SNAPSHOT"));
   }
 
   @Test
