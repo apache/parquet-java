@@ -19,7 +19,7 @@
 package org.apache.parquet.schema;
 
 import static org.apache.parquet.schema.PrimitiveComparator.BINARY_AS_FLOAT16_COMPARATOR;
-import static org.apache.parquet.schema.PrimitiveComparator.BINARY_AS_INT_96_COMPARATOR;
+import static org.apache.parquet.schema.PrimitiveComparator.BINARY_AS_INT96_TIMESTAMP_COMPARATOR;
 import static org.apache.parquet.schema.PrimitiveComparator.BINARY_AS_SIGNED_INTEGER_COMPARATOR;
 import static org.apache.parquet.schema.PrimitiveComparator.BOOLEAN_COMPARATOR;
 import static org.apache.parquet.schema.PrimitiveComparator.DOUBLE_COMPARATOR;
@@ -302,7 +302,7 @@ public class TestPrimitiveComparator {
       for (int j = 0; j < valuesInAscendingOrder.length; ++j) {
         Binary bi = valuesInAscendingOrder[i];
         Binary bj = valuesInAscendingOrder[j];
-        assertEquals(Integer.compare(i, j), BINARY_AS_INT_96_COMPARATOR.compare(bi, bj));
+        assertEquals(Integer.compare(i, j), BINARY_AS_INT96_TIMESTAMP_COMPARATOR.compare(bi, bj));
       }
     }
   }

@@ -362,7 +362,7 @@ public final class PrimitiveType extends Type {
 
       @Override
       PrimitiveComparator<?> comparator(LogicalTypeAnnotation logicalType) {
-        return PrimitiveComparator.BINARY_AS_INT_96_COMPARATOR;
+        return PrimitiveComparator.BINARY_AS_INT96_TIMESTAMP_COMPARATOR;
       }
     },
     FIXED_LEN_BYTE_ARRAY("getBinary", Binary.class) {

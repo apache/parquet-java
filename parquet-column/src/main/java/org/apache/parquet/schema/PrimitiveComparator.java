@@ -209,7 +209,7 @@ public abstract class PrimitiveComparator<T> implements Comparator<T>, Serializa
   /*
    * This comparator is for comparing two timestamps represented as int96 binary.
    */
-  static final PrimitiveComparator<Binary> BINARY_AS_INT_96_COMPARATOR = new BinaryComparator() {
+  static final PrimitiveComparator<Binary> BINARY_AS_INT96_TIMESTAMP_COMPARATOR = new BinaryComparator() {
     @Override
     int compareBinary(Binary b1, Binary b2) {
       ByteBuffer bb1 = b1.toByteBuffer();
@@ -227,7 +227,7 @@ public abstract class PrimitiveComparator<T> implements Comparator<T>, Serializa
 
     @Override
     public String toString() {
-      return "BINARY_AS_INT_96_COMPARATOR";
+      return "BINARY_AS_INT96_TIMESTAMP_COMPARATOR";
     }
   };
 
