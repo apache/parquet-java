@@ -1667,7 +1667,14 @@ public class ParquetFileReader implements Closeable {
     byte[] bitset;
     if (null == bloomFilterDecryptor) {
       bitset = new byte[numBytes];
-      in.read(bitset);
+      // For negative bloomFilterLength (files from older versions), use readFully() instead of read().
+      // readFully() guarantees reading exactly numBytes bytes, while read() may read fewer bytes in a single
+      // call. This ensures the entire bitset is properly loaded.
+      if (bloomFilterLength < 0) {
+        f.readFully(bitset);
+      } else {
+        in.read(bitset);
+      }
     } else {
       bitset = bloomFilterDecryptor.decrypt(in, bloomFilterBitsetAAD);
       if (bitset.length != numBytes) {
