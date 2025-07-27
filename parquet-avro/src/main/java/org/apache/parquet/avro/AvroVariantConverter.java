@@ -27,6 +27,7 @@ import org.apache.parquet.io.api.Converter;
 import org.apache.parquet.io.api.GroupConverter;
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.variant.ImmutableMetadata;
+import org.apache.parquet.variant.Variant;
 import org.apache.parquet.variant.VariantBuilder;
 import org.apache.parquet.variant.VariantConverters;
 
@@ -35,10 +36,10 @@ import org.apache.parquet.variant.VariantConverters;
  */
 class AvroVariantConverter extends GroupConverter implements VariantConverters.ParentConverter<VariantBuilder> {
   private final ParentValueContainer parent;
-  private final Schema avroSchema;
-  private final GenericData model;
-  private final int metadataPos;
-  private final int valuePos;
+//   private final Schema avroSchema;
+//   private final GenericData model;
+//   private final int metadataPos;
+//   private final int valuePos;
   private final GroupConverter wrappedConverter;
 
   private VariantBuilder builder = null;
@@ -46,10 +47,10 @@ class AvroVariantConverter extends GroupConverter implements VariantConverters.P
 
   AvroVariantConverter(ParentValueContainer parent, GroupType variantGroup, Schema avroSchema, GenericData model) {
     this.parent = parent;
-    this.avroSchema = avroSchema;
-    this.metadataPos = avroSchema.getField("metadata").pos();
-    this.valuePos = avroSchema.getField("value").pos();
-    this.model = model;
+//     this.avroSchema = avroSchema;
+//     this.metadataPos = avroSchema.getField("metadata").pos();
+//     this.valuePos = avroSchema.getField("value").pos();
+//     this.model = model;
     this.wrappedConverter = VariantConverters.newVariantConverter(variantGroup, this::setMetadata, this);
   }
 
@@ -77,10 +78,12 @@ class AvroVariantConverter extends GroupConverter implements VariantConverters.P
 
     builder.appendNullIfEmpty();
 
-    Object record = model.newRecord(null, avroSchema);
-    model.setField(record, "metadata", metadataPos, metadata.getEncodedBuffer());
-    model.setField(record, "value", valuePos, builder.encodedValue());
-    parent.add(record);
+    Variant variant = builder.build();
+    parent.add(variant);
+//     Object record = model.newRecord(null, avroSchema);
+//     model.setField(record, "metadata", metadataPos, metadata.getEncodedBuffer());
+//     model.setField(record, "value", valuePos, builder.encodedValue());
+//     parent.add(record);
 
     this.builder = null;
   }
