@@ -21,13 +21,13 @@ package org.apache.parquet.avro;
 import java.nio.ByteBuffer;
 import java.util.function.Consumer;
 import org.apache.avro.Schema;
+import org.apache.avro.SchemaBuilder;
 import org.apache.avro.generic.GenericData;
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.io.api.Converter;
 import org.apache.parquet.io.api.GroupConverter;
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.variant.ImmutableMetadata;
-import org.apache.parquet.variant.Variant;
 import org.apache.parquet.variant.VariantBuilder;
 import org.apache.parquet.variant.VariantConverters;
 
@@ -35,11 +35,20 @@ import org.apache.parquet.variant.VariantConverters;
  * Converter for Variant values.
  */
 class AvroVariantConverter extends GroupConverter implements VariantConverters.ParentConverter<VariantBuilder> {
+  private static final Schema VARIANT_SCHEMA = SchemaBuilder.record("VariantRecord")
+      .fields()
+      .name("metadata")
+      .type()
+      .bytesType()
+      .noDefault()
+      .name("value")
+      .type()
+      .bytesType()
+      .noDefault()
+      .endRecord();
+
   private final ParentValueContainer parent;
-//   private final Schema avroSchema;
-//   private final GenericData model;
-//   private final int metadataPos;
-//   private final int valuePos;
+  private final GenericData model;
   private final GroupConverter wrappedConverter;
 
   private VariantBuilder builder = null;
@@ -47,10 +56,7 @@ class AvroVariantConverter extends GroupConverter implements VariantConverters.P
 
   AvroVariantConverter(ParentValueContainer parent, GroupType variantGroup, Schema avroSchema, GenericData model) {
     this.parent = parent;
-//     this.avroSchema = avroSchema;
-//     this.metadataPos = avroSchema.getField("metadata").pos();
-//     this.valuePos = avroSchema.getField("value").pos();
-//     this.model = model;
+    this.model = model;
     this.wrappedConverter = VariantConverters.newVariantConverter(variantGroup, this::setMetadata, this);
   }
 
@@ -78,12 +84,10 @@ class AvroVariantConverter extends GroupConverter implements VariantConverters.P
 
     builder.appendNullIfEmpty();
 
-    Variant variant = builder.build();
-    parent.add(variant);
-//     Object record = model.newRecord(null, avroSchema);
-//     model.setField(record, "metadata", metadataPos, metadata.getEncodedBuffer());
-//     model.setField(record, "value", valuePos, builder.encodedValue());
-//     parent.add(record);
+    Object record = model.newRecord(null, VARIANT_SCHEMA);
+    model.setField(record, "metadata", 0, metadata.getEncodedBuffer());
+    model.setField(record, "value", 1, builder.encodedValue());
+    parent.add(record);
 
     this.builder = null;
   }

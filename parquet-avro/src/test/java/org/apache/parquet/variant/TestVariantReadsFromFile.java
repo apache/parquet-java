@@ -19,7 +19,6 @@
 
 package org.apache.parquet.variant;
 
-
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -33,19 +32,18 @@ import java.nio.ByteBuffer;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.stream.Stream;
+import org.apache.avro.generic.GenericData;
+import org.apache.avro.generic.GenericRecord;
 import org.apache.parquet.Preconditions;
+import org.apache.parquet.avro.AvroParquetReader;
 import org.apache.parquet.io.InputFile;
 import org.apache.parquet.io.LocalInputFile;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.apache.avro.generic.GenericRecord;
-import org.apache.parquet.avro.AvroParquetReader;
-
 
 public class TestVariantReadsFromFile {
-  // Set this location to generated variant test cases
   private static final String CASE_LOCATION = null;
 
   private static Stream<JsonNode> cases() throws IOException {
@@ -62,50 +60,42 @@ public class TestVariantReadsFromFile {
   }
 
   private static Stream<Arguments> errorCases() throws IOException {
-    return cases()
-        .filter(caseNode -> caseNode.has("error_message") || !caseNode.has("parquet_file"))
-        .map(
-            caseNode -> {
-              int caseNumber = JsonUtil.getInt("case_number", caseNode);
-              String testName = JsonUtil.getStringOrNull("test", caseNode);
-              String parquetFile = JsonUtil.getStringOrNull("parquet_file", caseNode);
-              String errorMessage = JsonUtil.getStringOrNull("error_message", caseNode);
-              return Arguments.of(caseNumber, testName, parquetFile, errorMessage);
-            });
+    return cases().filter(caseNode -> caseNode.has("error_message") || !caseNode.has("parquet_file"))
+        .map(caseNode -> {
+          int caseNumber = JsonUtil.getInt("case_number", caseNode);
+          String testName = JsonUtil.getStringOrNull("test", caseNode);
+          String parquetFile = JsonUtil.getStringOrNull("parquet_file", caseNode);
+          String errorMessage = JsonUtil.getStringOrNull("error_message", caseNode);
+          return Arguments.of(caseNumber, testName, parquetFile, errorMessage);
+        });
   }
 
   private static Stream<Arguments> singleVariantCases() throws IOException {
-    return cases()
-        .filter(caseNode -> caseNode.has("variant_file") || !caseNode.has("parquet_file"))
-        .map(
-            caseNode -> {
-              int caseNumber = JsonUtil.getInt("case_number", caseNode);
-              String testName = JsonUtil.getStringOrNull("test", caseNode);
-              String variant = JsonUtil.getStringOrNull("variant", caseNode);
-              String parquetFile = JsonUtil.getStringOrNull("parquet_file", caseNode);
-              String variantFile = JsonUtil.getStringOrNull("variant_file", caseNode);
-              return Arguments.of(caseNumber, testName, variant, parquetFile, variantFile);
-            });
+    return cases().filter(caseNode -> caseNode.has("variant_file") || !caseNode.has("parquet_file"))
+        .map(caseNode -> {
+          int caseNumber = JsonUtil.getInt("case_number", caseNode);
+          String testName = JsonUtil.getStringOrNull("test", caseNode);
+          String variant = JsonUtil.getStringOrNull("variant", caseNode);
+          String parquetFile = JsonUtil.getStringOrNull("parquet_file", caseNode);
+          String variantFile = JsonUtil.getStringOrNull("variant_file", caseNode);
+          return Arguments.of(caseNumber, testName, variant, parquetFile, variantFile);
+        });
   }
 
   private static Stream<Arguments> multiVariantCases() throws IOException {
-    return cases()
-        .filter(caseNode -> caseNode.has("variant_files") || !caseNode.has("parquet_file"))
-        .map(
-            caseNode -> {
-              int caseNumber = JsonUtil.getInt("case_number", caseNode);
-              String testName = JsonUtil.getStringOrNull("test", caseNode);
-              String parquetFile = JsonUtil.getStringOrNull("parquet_file", caseNode);
-              List<String> variantFiles =
-                  caseNode.has("variant_files")
-                      ? Lists.newArrayList(
-                      Iterables.transform(
-                          caseNode.get("variant_files"),
-                          node -> node == null || node.isNull() ? null : node.asText()))
-                      : null;
-              String variants = JsonUtil.getStringOrNull("variants", caseNode);
-              return Arguments.of(caseNumber, testName, variants, parquetFile, variantFiles);
-            });
+    return cases().filter(caseNode -> caseNode.has("variant_files") || !caseNode.has("parquet_file"))
+        .map(caseNode -> {
+          int caseNumber = JsonUtil.getInt("case_number", caseNode);
+          String testName = JsonUtil.getStringOrNull("test", caseNode);
+          String parquetFile = JsonUtil.getStringOrNull("parquet_file", caseNode);
+          List<String> variantFiles = caseNode.has("variant_files")
+              ? Lists.newArrayList(Iterables.transform(
+                  caseNode.get("variant_files"),
+                  node -> node == null || node.isNull() ? null : node.asText()))
+              : null;
+          String variants = JsonUtil.getStringOrNull("variants", caseNode);
+          return Arguments.of(caseNumber, testName, variants, parquetFile, variantFiles);
+        });
   }
 
   @ParameterizedTest
@@ -115,9 +105,8 @@ public class TestVariantReadsFromFile {
       return;
     }
 
-    Assertions.assertThatThrownBy(() -> readParquet(parquetFile))
-        .as("Test case %s: %s", caseNumber, testName);
-        //.hasMessage(errorMessage);
+    Assertions.assertThatThrownBy(() -> readParquet(parquetFile)).as("Test case %s: %s", caseNumber, testName);
+    // .hasMessage(errorMessage);
   }
 
   @ParameterizedTest
@@ -132,19 +121,15 @@ public class TestVariantReadsFromFile {
     Variant expected = readVariant(variantFile);
 
     GenericRecord record = readParquetRecord(parquetFile);
-    Assertions.assertThat(record.get("var")).isInstanceOf(Variant.class);
-    Variant actual = (Variant) record.get("var");
+    Assertions.assertThat(record.get("var")).isInstanceOf(GenericData.Record.class);
+    GenericData.Record actual = (GenericData.Record) record.get("var");
     assertEqual(expected, actual);
   }
 
   @ParameterizedTest
   @MethodSource("multiVariantCases")
   public void testMultiVariant(
-      int caseNumber,
-      String testName,
-      String variants,
-      String parquetFile,
-      List<String> variantFiles)
+      int caseNumber, String testName, String variants, String parquetFile, List<String> variantFiles)
       throws IOException {
     if (parquetFile == null) {
       return;
@@ -158,8 +143,8 @@ public class TestVariantReadsFromFile {
 
       if (variantFile != null) {
         Variant expected = readVariant(variantFile);
-        Assertions.assertThat(record.get("var")).isInstanceOf(Variant.class);
-        Variant actual = (Variant) record.get("var");
+        Assertions.assertThat(record.get("var")).isInstanceOf(GenericData.Record.class);
+        GenericData.Record actual = (GenericData.Record) record.get("var");
         assertEqual(expected, actual);
       } else {
         Assertions.assertThat(record.get("var")).isNull();
@@ -187,7 +172,8 @@ public class TestVariantReadsFromFile {
       int dictSize = VariantUtil.readUnsigned(variantBuffer, 1, offsetSize);
       int offsetListOffset = 1 + offsetSize;
       int dataOffset = offsetListOffset + ((1 + dictSize) * offsetSize);
-      int endOffset = dataOffset + VariantUtil.readUnsigned(variantBuffer, offsetListOffset + (offsetSize * dictSize), offsetSize);
+      int endOffset = dataOffset
+          + VariantUtil.readUnsigned(variantBuffer, offsetListOffset + (offsetSize * dictSize), offsetSize);
 
       return new Variant(VariantUtil.slice(variantBuffer, endOffset), variantBuffer);
     }
@@ -200,7 +186,8 @@ public class TestVariantReadsFromFile {
   private List<GenericRecord> readParquet(String parquetFile) throws IOException {
     org.apache.parquet.io.InputFile inputFile = new LocalInputFile(Paths.get(CASE_LOCATION + "/" + parquetFile));
     List<GenericRecord> records = Lists.newArrayList();
-    try (org.apache.parquet.hadoop.ParquetReader<GenericRecord> reader = AvroParquetReader.<GenericRecord>builder(inputFile).build()) {
+    try (org.apache.parquet.hadoop.ParquetReader<GenericRecord> reader =
+        AvroParquetReader.<GenericRecord>builder(inputFile).build()) {
       GenericRecord record;
       while ((record = reader.read()) != null) {
         records.add(record);
@@ -209,9 +196,18 @@ public class TestVariantReadsFromFile {
     return records;
   }
 
+  private static void assertEqual(Variant expected, GenericData.Record actualRecord) {
+    assertThat(actualRecord).isNotNull();
+    assertThat(expected).isNotNull();
+    Variant actual = new Variant((ByteBuffer) actualRecord.get("value"), (ByteBuffer) actualRecord.get("metadata"));
+
+    assertEqual(expected, actual);
+  }
+
   private static void assertEqual(Variant expected, Variant actual) {
     assertThat(actual).isNotNull();
     assertThat(expected).isNotNull();
+
     assertThat(actual.getType()).isEqualTo(expected.getType());
 
     switch (expected.getType()) {
@@ -266,13 +262,13 @@ public class TestVariantReadsFromFile {
           Variant.ObjectField actualField = actual.getFieldAtIndex(i);
 
           assertThat(actualField.key).isEqualTo(expectedField.key);
-          assertEqual(actualField.value, actualField.value);
+          assertEqual(expectedField.value, actualField.value);
         }
         break;
       case ARRAY:
         assertThat(actual.numArrayElements()).isEqualTo(expected.numArrayElements());
         for (int i = 0; i < expected.numArrayElements(); ++i) {
-          assertEqual(expected.getElementAtIndex(i),actual.getElementAtIndex(i));
+          assertEqual(expected.getElementAtIndex(i), actual.getElementAtIndex(i));
         }
         break;
       default:

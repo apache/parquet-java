@@ -24,16 +24,14 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.parquet.Preconditions;
 
-
 public class JsonUtil {
 
   private JsonUtil() {}
 
-  private static final JsonFactory FACTORY =
-      new JsonFactoryBuilder()
-          .configure(JsonFactory.Feature.INTERN_FIELD_NAMES, false)
-          .configure(JsonFactory.Feature.FAIL_ON_SYMBOL_HASH_OVERFLOW, false)
-          .build();
+  private static final JsonFactory FACTORY = new JsonFactoryBuilder()
+      .configure(JsonFactory.Feature.INTERN_FIELD_NAMES, false)
+      .configure(JsonFactory.Feature.FAIL_ON_SYMBOL_HASH_OVERFLOW, false)
+      .build();
   private static final ObjectMapper MAPPER = new ObjectMapper(FACTORY);
 
   public static ObjectMapper mapper() {
@@ -72,5 +70,4 @@ public class JsonUtil {
     }
     return getString(property, node);
   }
-
 }
