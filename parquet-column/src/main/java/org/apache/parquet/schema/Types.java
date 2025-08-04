@@ -413,8 +413,8 @@ public class Types {
     /**
      * Adds the column order for the primitive type.
      * <p>
-     * In case of not set the default column order is {@link ColumnOrderName#TYPE_DEFINED_ORDER} except the type
-     * {@link PrimitiveTypeName#INT96} and the types annotated by {@link OriginalType#INTERVAL} where the default column
+     * In case of not set the default column order is {@link ColumnOrderName#TYPE_DEFINED_ORDER} except the types
+     * annotated by {@link OriginalType#INTERVAL} where the default column
      * order is {@link ColumnOrderName#UNDEFINED}.
      *
      * @param columnOrder the column order for the primitive type
