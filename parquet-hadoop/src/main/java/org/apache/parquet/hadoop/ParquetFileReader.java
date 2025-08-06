@@ -1121,11 +1121,15 @@ public class ParquetFileReader implements Closeable {
     return blocks;
   }
 
-  public void setRequestedSchema(MessageType projection) {
+  public void setRequestedSchema(List<ColumnDescriptor> columns) {
     paths.clear();
-    for (ColumnDescriptor col : projection.getColumns()) {
+    for (ColumnDescriptor col : columns) {
       paths.put(ColumnPath.get(col.getPath()), col);
     }
+  }
+
+  public void setRequestedSchema(MessageType projection) {
+    setRequestedSchema(projection.getColumns());
   }
 
   public void appendTo(ParquetFileWriter writer) throws IOException {
