@@ -445,30 +445,39 @@ abstract class ColumnReaderBase implements ColumnReader {
    * @param converter     a converter that materializes the values in this column in the current record
    * @param writerVersion writer version string from the Parquet file being read
    */
-  ColumnReaderBase(
+  protected ColumnReaderBase(
       ColumnDescriptor path, PageReader pageReader, PrimitiveConverter converter, ParsedVersion writerVersion) {
+    this(path, readDict(path, pageReader), pageReader, converter, writerVersion);
+  }
+
+  protected ColumnReaderBase(
+        ColumnDescriptor path, Dictionary dictionary, PageReader dataPageReader, PrimitiveConverter converter, ParsedVersion writerVersion) {
     this.path = Objects.requireNonNull(path, "path cannot be null");
-    this.pageReader = Objects.requireNonNull(pageReader, "pageReader cannot be null");
+    this.pageReader = Objects.requireNonNull(dataPageReader, "pageReader cannot be null");
     this.converter = Objects.requireNonNull(converter, "converter cannot be null");
     this.writerVersion = writerVersion;
     this.maxDefinitionLevel = path.getMaxDefinitionLevel();
-    DictionaryPage dictionaryPage = pageReader.readDictionaryPage();
-    if (dictionaryPage != null) {
-      try {
-        this.dictionary = dictionaryPage.getEncoding().initDictionary(path, dictionaryPage);
-        if (converter.hasDictionarySupport()) {
-          converter.setDictionary(dictionary);
-        }
-      } catch (IOException e) {
-        throw new ParquetDecodingException("could not decode the dictionary for " + path, e);
-      }
-    } else {
-      this.dictionary = null;
+    this.dictionary = dictionary;
+    if (dictionary != null && converter.hasDictionarySupport()) {
+      converter.setDictionary(dictionary);
     }
     this.totalValueCount = pageReader.getTotalValueCount();
     if (totalValueCount <= 0) {
       throw new ParquetDecodingException("totalValueCount '" + totalValueCount + "' <= 0");
     }
+  }
+
+  private static Dictionary readDict(ColumnDescriptor path, PageReader pageReader) {
+    Dictionary dictionary = null;
+    DictionaryPage dictionaryPage = Objects.requireNonNull(pageReader,"Page reader cannot be null").readDictionaryPage();
+    if (dictionaryPage != null) {
+      try {
+        dictionary = dictionaryPage.getEncoding().initDictionary(path, dictionaryPage);
+      } catch (IOException e) {
+        throw new ParquetDecodingException("could not decode the dictionary for " + path, e);
+      }
+    }
+    return dictionary;
   }
 
   boolean isFullyConsumed() {
