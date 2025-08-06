@@ -130,6 +130,8 @@ public class TestRecordLevelFilters {
   public static void setup() throws IOException {
     users = makeUsers();
     phonebookFile = PhoneBookWriter.writeToFile(users);
+    // remove the CRC file
+    new File(phonebookFile.getParentFile(), "." + phonebookFile.getName() + ".crc").delete();
   }
 
   private static interface UserFilter {
