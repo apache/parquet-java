@@ -729,6 +729,22 @@ public class ParquetFileReader implements Closeable {
     return new ParquetFileReader(file, options, f);
   }
 
+  /**
+   * Open a {@link InputFile file} with {@link ParquetMetadata footer} and {@link ParquetReadOptions options}.
+   *
+   * @param file    an input file
+   * @param footer  a {@link ParquetMetadata} footer already read from the file
+   * @param options parquet read options
+   * @param f       the input stream for the file
+   * @return an open ParquetFileReader
+   * @throws IOException if there is an error while opening the file
+   */
+  public static ParquetFileReader open(
+      InputFile file, ParquetMetadata footer, ParquetReadOptions options, SeekableInputStream f)
+      throws IOException {
+    return new ParquetFileReader(file, footer, options, f);
+  }
+
   protected SeekableInputStream f;
   private final InputFile file;
   private final ParquetReadOptions options;
@@ -930,6 +946,12 @@ public class ParquetFileReader implements Closeable {
     this(file, options, file.newStream());
   }
 
+  /**
+   * @param file    Path to a parquet file
+   * @param options {@link ParquetReadOptions}
+   * @param f       a {@link SeekableInputStream} for the parquet file
+   * @throws IOException if the file can not be opened
+   */
   public ParquetFileReader(InputFile file, ParquetReadOptions options, SeekableInputStream f) throws IOException {
     this.converter = new ParquetMetadataConverter(options);
     this.file = file;
@@ -943,6 +965,51 @@ public class ParquetFileReader implements Closeable {
       f.close();
       throw e;
     }
+
+    this.fileMetaData = footer.getFileMetaData();
+    this.fileDecryptor = fileMetaData.getFileDecryptor(); // must be called before filterRowGroups!
+    if (null != fileDecryptor && fileDecryptor.plaintextFile()) {
+      this.fileDecryptor = null; // Plaintext file. No need in decryptor
+    }
+
+    try {
+      this.blocks = filterRowGroups(footer.getBlocks());
+    } catch (Exception e) {
+      // In case that filterRowGroups throws an exception in the constructor, the new stream
+      // should be closed. Otherwise, there's no way to close this outside.
+      f.close();
+      throw e;
+    }
+    this.blockIndexStores = listWithNulls(this.blocks.size());
+    this.blockRowRanges = listWithNulls(this.blocks.size());
+    for (ColumnDescriptor col : footer.getFileMetaData().getSchema().getColumns()) {
+      paths.put(ColumnPath.get(col.getPath()), col);
+    }
+
+    if (options.usePageChecksumVerification()) {
+      this.crc = new CRC32();
+      this.crcAllocator = ReusingByteBufferAllocator.strict(options.getAllocator());
+    } else {
+      this.crc = null;
+      this.crcAllocator = null;
+    }
+  }
+
+  /**
+   * @param file    Path to a parquet file
+   * @param footer  a {@link ParquetMetadata} footer already read from the file
+   * @param options {@link ParquetReadOptions}
+   * @param f       a {@link SeekableInputStream} for the parquet file
+   * @throws IOException if the file can not be opened
+   */
+  public ParquetFileReader(InputFile file, ParquetMetadata footer, ParquetReadOptions options, SeekableInputStream f)
+      throws IOException {
+    this.converter = new ParquetMetadataConverter(options);
+    this.file = file;
+    this.f = f;
+    this.options = options;
+    this.footer = footer;
+
     this.fileMetaData = footer.getFileMetaData();
     this.fileDecryptor = fileMetaData.getFileDecryptor(); // must be called before filterRowGroups!
     if (null != fileDecryptor && fileDecryptor.plaintextFile()) {
@@ -1054,11 +1121,15 @@ public class ParquetFileReader implements Closeable {
     return blocks;
   }
 
-  public void setRequestedSchema(MessageType projection) {
+  public void setRequestedSchema(List<ColumnDescriptor> columns) {
     paths.clear();
-    for (ColumnDescriptor col : projection.getColumns()) {
+    for (ColumnDescriptor col : columns) {
       paths.put(ColumnPath.get(col.getPath()), col);
     }
+  }
+
+  public void setRequestedSchema(MessageType projection) {
+    setRequestedSchema(projection.getColumns());
   }
 
   public void appendTo(ParquetFileWriter writer) throws IOException {
