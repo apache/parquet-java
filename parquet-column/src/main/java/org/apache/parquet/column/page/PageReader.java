@@ -18,11 +18,10 @@
  */
 package org.apache.parquet.column.page;
 
+import java.io.IOException;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.Dictionary;
 import org.apache.parquet.io.ParquetDecodingException;
-import java.io.IOException;
-import java.util.Objects;
 
 /**
  * Reader for a sequence a page from a given column chunk
