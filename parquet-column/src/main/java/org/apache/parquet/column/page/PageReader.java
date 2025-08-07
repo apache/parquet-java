@@ -18,6 +18,12 @@
  */
 package org.apache.parquet.column.page;
 
+import org.apache.parquet.column.ColumnDescriptor;
+import org.apache.parquet.column.Dictionary;
+import org.apache.parquet.io.ParquetDecodingException;
+import java.io.IOException;
+import java.util.Objects;
+
 /**
  * Reader for a sequence a page from a given column chunk
  */
@@ -27,6 +33,22 @@ public interface PageReader {
    * @return the dictionary page in that chunk or null if none
    */
   DictionaryPage readDictionaryPage();
+
+  /**
+   * @return the dictionary in this page or null if none
+   */
+  default Dictionary getDictionary(ColumnDescriptor path) {
+    Dictionary dictionary = null;
+    DictionaryPage dictionaryPage = readDictionaryPage();
+    if (dictionaryPage != null) {
+      try {
+        dictionary = dictionaryPage.getEncoding().initDictionary(path, dictionaryPage);
+      } catch (IOException e) {
+        throw new ParquetDecodingException("could not decode the dictionary for " + path, e);
+      }
+    }
+    return dictionary;
+  }
 
   /**
    * @return the total number of values in the column chunk
