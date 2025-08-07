@@ -37,7 +37,6 @@ import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.page.DataPage;
 import org.apache.parquet.column.page.DataPageV1;
 import org.apache.parquet.column.page.DataPageV2;
-import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.page.PageReader;
 import org.apache.parquet.column.values.RequiresPreviousReader;
 import org.apache.parquet.column.values.ValuesReader;
@@ -452,18 +451,9 @@ abstract class ColumnReaderBase implements ColumnReader {
     this.converter = Objects.requireNonNull(converter, "converter cannot be null");
     this.writerVersion = writerVersion;
     this.maxDefinitionLevel = path.getMaxDefinitionLevel();
-    DictionaryPage dictionaryPage = pageReader.readDictionaryPage();
-    if (dictionaryPage != null) {
-      try {
-        this.dictionary = dictionaryPage.getEncoding().initDictionary(path, dictionaryPage);
-        if (converter.hasDictionarySupport()) {
-          converter.setDictionary(dictionary);
-        }
-      } catch (IOException e) {
-        throw new ParquetDecodingException("could not decode the dictionary for " + path, e);
-      }
-    } else {
-      this.dictionary = null;
+    this.dictionary = pageReader.getDictionary(path);
+    if (dictionary != null && converter.hasDictionarySupport()) {
+      converter.setDictionary(dictionary);
     }
     this.totalValueCount = pageReader.getTotalValueCount();
     if (totalValueCount <= 0) {
