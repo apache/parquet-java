@@ -452,6 +452,9 @@ abstract class ColumnReaderBase implements ColumnReader {
     this.writerVersion = writerVersion;
     this.maxDefinitionLevel = path.getMaxDefinitionLevel();
     this.dictionary = pageReader.getDictionary(path);
+    if (dictionary != null && converter.hasDictionarySupport()) {
+      converter.setDictionary(dictionary);
+    }
     this.totalValueCount = pageReader.getTotalValueCount();
     if (totalValueCount <= 0) {
       throw new ParquetDecodingException("totalValueCount '" + totalValueCount + "' <= 0");
