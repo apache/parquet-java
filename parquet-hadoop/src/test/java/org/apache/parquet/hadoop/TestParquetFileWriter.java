@@ -132,7 +132,7 @@ public class TestParquetFileWriter {
 
   private static final Logger LOG = LoggerFactory.getLogger(TestParquetFileWriter.class);
 
-  private static final MessageType SCHEMA = MessageTypeParser.parseMessageType("" + "message m {"
+  private static final MessageType SCHEMA = MessageTypeParser.parseMessageType("message m {"
       + "  required group a {"
       + "    required binary b;"
       + "  }"
@@ -155,8 +155,6 @@ public class TestParquetFileWriter {
       org.apache.parquet.column.statistics.Statistics.getBuilderForReading(
               Types.required(PrimitiveTypeName.BINARY).named("test_binary"))
           .build();
-
-  private String writeSchema;
 
   @Rule
   public final TemporaryFolder temp = new TemporaryFolder();
@@ -1032,7 +1030,7 @@ public class TestParquetFileWriter {
     File testFile = temp.newFile();
     testFile.delete();
 
-    writeSchema = "message example {\n" + "required binary content (UTF8);\n" + "}";
+    String writeSchema = "message example {\n" + "required binary content (UTF8);\n" + "}";
 
     Path path = new Path(testFile.toURI());
 
@@ -1041,7 +1039,7 @@ public class TestParquetFileWriter {
     configuration.setBoolean("parquet.strings.signed-min-max.enabled", true);
     GroupWriteSupport.setSchema(schema, configuration);
 
-    // close any filesystems to ensure that the the FS used by the writer picks up the configuration
+    // close any filesystems to ensure that the FS used by the writer picks up the configuration
     FileSystem.closeAll();
     ParquetWriter<Group> writer = new ParquetWriter<Group>(path, configuration, new GroupWriteSupport());
 
