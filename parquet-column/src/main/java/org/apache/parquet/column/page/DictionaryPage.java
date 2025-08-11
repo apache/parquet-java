@@ -80,7 +80,7 @@ public class DictionaryPage extends Page {
   /**
    * @return the decoded dictionary
    */
-  public Dictionary getDictionary(ColumnDescriptor path) {
+  public Dictionary decode(ColumnDescriptor path) {
     try {
       return getEncoding().initDictionary(path, this);
     } catch (IOException e) {

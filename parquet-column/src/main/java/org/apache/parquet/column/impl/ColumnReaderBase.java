@@ -453,7 +453,7 @@ abstract class ColumnReaderBase implements ColumnReader {
     this.writerVersion = writerVersion;
     this.maxDefinitionLevel = path.getMaxDefinitionLevel();
     DictionaryPage dictionaryPage = pageReader.readDictionaryPage();
-    this.dictionary = dictionaryPage == null ? null : dictionaryPage.getDictionary(path);
+    this.dictionary = dictionaryPage == null ? null : dictionaryPage.decode(path);
     if (dictionary != null && converter.hasDictionarySupport()) {
       converter.setDictionary(dictionary);
     }
