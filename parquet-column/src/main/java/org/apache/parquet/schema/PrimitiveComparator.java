@@ -215,8 +215,8 @@ public abstract class PrimitiveComparator<T> implements Comparator<T>, Serializa
   static final PrimitiveComparator<Binary> BINARY_AS_INT96_TIMESTAMP_COMPARATOR = new BinaryComparator() {
     @Override
     int compareBinary(Binary b1, Binary b2) {
-      ByteBuffer bb1 = b1.toByteBuffer();
-      ByteBuffer bb2 = b2.toByteBuffer();
+      ByteBuffer bb1 = b1.toByteBuffer().slice();
+      ByteBuffer bb2 = b2.toByteBuffer().slice();
       bb1.order(java.nio.ByteOrder.LITTLE_ENDIAN);
       bb2.order(java.nio.ByteOrder.LITTLE_ENDIAN);
       int jd1 = bb1.getInt(8);
