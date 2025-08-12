@@ -32,12 +32,18 @@ import java.nio.ByteBuffer;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.stream.Stream;
+import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.avro.AvroParquetReader;
+import org.apache.parquet.avro.AvroReadSupport;
+import org.apache.parquet.avro.AvroSchemaConverter;
+import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.io.InputFile;
 import org.apache.parquet.io.LocalInputFile;
+import org.apache.parquet.schema.MessageType;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -186,8 +192,17 @@ public class TestVariantReadsFromFile {
   private List<GenericRecord> readParquet(String parquetFile) throws IOException {
     org.apache.parquet.io.InputFile inputFile = new LocalInputFile(Paths.get(CASE_LOCATION + "/" + parquetFile));
     List<GenericRecord> records = Lists.newArrayList();
+
+    // Set Avro read schema converted from the Parquet schema
+    Configuration conf = new Configuration(false);
+    try (ParquetFileReader fileReader = ParquetFileReader.open(inputFile)) {
+      final MessageType fileSchema = fileReader.getFileMetaData().getSchema();
+      Schema avroReadSchema = new AvroSchemaConverter().convert(fileSchema);
+      AvroReadSupport.setAvroReadSchema(conf, avroReadSchema);
+    }
+
     try (org.apache.parquet.hadoop.ParquetReader<GenericRecord> reader =
-        AvroParquetReader.<GenericRecord>builder(inputFile).build()) {
+        AvroParquetReader.<GenericRecord>builder(inputFile).withConf(conf).build()) {
       GenericRecord record;
       while ((record = reader.read()) != null) {
         records.add(record);

@@ -470,8 +470,11 @@ public class AvroSchemaConverter {
               @Override
               public Optional<Schema> visit(
                   LogicalTypeAnnotation.VariantLogicalTypeAnnotation variantLogicalType) {
-                return of(
-                    convertFields(parquetGroupType.getName(), parquetGroupType.getFields(), names));
+                String name = parquetGroupType.getName();
+                List<Schema.Field> fields = new ArrayList<>();
+                fields.add(new Schema.Field("metadata", Schema.create(Schema.Type.BYTES)));
+                fields.add(new Schema.Field("value", Schema.create(Schema.Type.BYTES)));
+                return of(Schema.createRecord(name, null, namespace(name, names), false, fields));
               }
             })
             .orElseThrow(
