@@ -36,6 +36,8 @@ import java.util.Random;
 import java.util.zip.CRC32;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
+import org.apache.parquet.HadoopReadOptions;
+import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.HeapByteBufferAllocator;
 import org.apache.parquet.bytes.TrackingByteBufferAllocator;
@@ -688,8 +690,13 @@ public class TestDataPageChecksums {
    */
   private ParquetFileReader getParquetFileReader(Path path, Configuration conf, List<ColumnDescriptor> columns)
       throws IOException {
-    ParquetMetadata footer = ParquetFileReader.readFooter(conf, path);
-    return new ParquetFileReader(conf, footer.getFileMetaData(), path, footer.getBlocks(), columns);
+    HadoopInputFile inputFile = HadoopInputFile.fromPath(path, conf);
+    SeekableInputStream inputStream = inputFile.newStream();
+    ParquetReadOptions readOptions = HadoopReadOptions.builder(conf).build();
+    ParquetMetadata footer = ParquetFileReader.readFooter(inputFile, readOptions, inputStream);
+    ParquetFileReader reader = ParquetFileReader.open(inputFile, footer, readOptions, inputStream);
+    reader.setRequestedSchema(columns);
+    return reader;
   }
 
   /**
