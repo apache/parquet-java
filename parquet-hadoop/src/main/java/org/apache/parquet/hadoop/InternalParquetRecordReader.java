@@ -30,7 +30,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.PrimitiveIterator;
 import java.util.Set;
-import java.util.stream.LongStream;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.column.page.PageReadStore;
@@ -320,12 +319,13 @@ class InternalParquetRecordReader<T> {
     if (pages.getRowIndexes().isPresent()) {
       rowIdxInRowGroupItr = pages.getRowIndexes().get();
     } else {
-      rowIdxInRowGroupItr = LongStream.range(0, pages.getRowCount()).iterator();
+      rowIdxInRowGroupItr = new LongIterator(pages.getRowCount());
     }
     // Adjust the row group offset in the `rowIndexWithinRowGroupIterator` iterator.
+    final long rowGroupRowIdxOffsetValue = rowGroupRowIdxOffset.get();
     this.rowIdxInFileItr = new PrimitiveIterator.OfLong() {
       public long nextLong() {
-        return rowGroupRowIdxOffset.get() + rowIdxInRowGroupItr.nextLong();
+        return rowGroupRowIdxOffsetValue + rowIdxInRowGroupItr.nextLong();
       }
 
       public boolean hasNext() {
@@ -333,8 +333,28 @@ class InternalParquetRecordReader<T> {
       }
 
       public Long next() {
-        return rowGroupRowIdxOffset.get() + rowIdxInRowGroupItr.next();
+        return rowGroupRowIdxOffsetValue + rowIdxInRowGroupItr.next();
       }
     };
+  }
+
+  private static class LongIterator implements PrimitiveIterator.OfLong {
+
+    private final long maxValue;
+    private long currentValue = 0;
+
+    public LongIterator(long maxValue) {
+      this.maxValue = maxValue;
+    }
+
+    @Override
+    public long nextLong() {
+      return currentValue++;
+    }
+
+    @Override
+    public boolean hasNext() {
+      return currentValue < maxValue;
+    }
   }
 }
