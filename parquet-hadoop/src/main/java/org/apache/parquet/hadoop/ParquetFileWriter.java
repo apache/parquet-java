@@ -2488,8 +2488,7 @@ public class ParquetFileWriter implements AutoCloseable {
     }
 
     @Override
-    public void flush() {
-    }
+    public void flush() {}
 
     byte[] toByteArray() {
       return buffer.toByteArray();
