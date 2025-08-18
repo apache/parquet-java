@@ -40,7 +40,7 @@ import org.slf4j.LoggerFactory;
  * of the un-scaled integer (the same bytes produced by
  * {@link java.math.BigInteger#toByteArray()}).  This writer keeps those bytes
  * exactly as they are and only adds the 4-byte little-endian length prefix
- * required by the PLAIN encoding.  Bytes are not re-ordered..</p>
+ * required by the PLAIN encoding.  Bytes are not re-ordered.</p>
  */
 public class PlainValuesWriter extends ValuesWriter {
   private static final Logger LOG = LoggerFactory.getLogger(PlainValuesWriter.class);
