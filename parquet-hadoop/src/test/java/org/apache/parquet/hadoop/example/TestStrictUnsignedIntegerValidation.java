@@ -21,7 +21,6 @@ package org.apache.parquet.hadoop.example;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.intType;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
-import static org.apache.parquet.schema.Types.required;
 import static org.junit.Assert.assertThrows;
 
 import java.io.File;
@@ -48,10 +47,18 @@ public class TestStrictUnsignedIntegerValidation {
   @Test
   public void testValidUnsignedIntegerValues() throws IOException {
     MessageType schema = Types.buildMessage()
-        .required(INT32).as(intType(8, false)).named("uint8_field")
-        .required(INT32).as(intType(16, false)).named("uint16_field")
-        .required(INT32).as(intType(32, false)).named("uint32_field")
-        .required(INT64).as(intType(64, false)).named("uint64_field")
+        .required(INT32)
+        .as(intType(8, false))
+        .named("uint8_field")
+        .required(INT32)
+        .as(intType(16, false))
+        .named("uint16_field")
+        .required(INT32)
+        .as(intType(32, false))
+        .named("uint32_field")
+        .required(INT64)
+        .as(intType(64, false))
+        .named("uint64_field")
         .named("test_schema");
 
     File tempFile = new File(tempFolder.getRoot(), "valid_unsigned.parquet");
@@ -64,7 +71,8 @@ public class TestStrictUnsignedIntegerValidation {
 
       SimpleGroupFactory groupFactory = new SimpleGroupFactory(schema);
 
-      Group validGroup = groupFactory.newGroup()
+      Group validGroup = groupFactory
+          .newGroup()
           .append("uint8_field", 255)
           .append("uint16_field", 65535)
           .append("uint32_field", Integer.MAX_VALUE)
@@ -72,7 +80,8 @@ public class TestStrictUnsignedIntegerValidation {
 
       writer.write(validGroup);
 
-      Group zeroGroup = groupFactory.newGroup()
+      Group zeroGroup = groupFactory
+          .newGroup()
           .append("uint8_field", 0)
           .append("uint16_field", 0)
           .append("uint32_field", 0)
@@ -85,7 +94,9 @@ public class TestStrictUnsignedIntegerValidation {
   @Test
   public void testInvalidUint8Values() throws IOException {
     MessageType schema = Types.buildMessage()
-        .required(INT32).as(intType(8, false)).named("uint8_field")
+        .required(INT32)
+        .as(intType(8, false))
+        .named("uint8_field")
         .named("test_schema");
 
     File tempFile = new File(tempFolder.getRoot(), "invalid_uint8.parquet");
@@ -108,7 +119,9 @@ public class TestStrictUnsignedIntegerValidation {
   @Test
   public void testInvalidUint16Values() throws IOException {
     MessageType schema = Types.buildMessage()
-        .required(INT32).as(intType(16, false)).named("uint16_field")
+        .required(INT32)
+        .as(intType(16, false))
+        .named("uint16_field")
         .named("test_schema");
 
     File tempFile = new File(tempFolder.getRoot(), "invalid_uint16.parquet");
@@ -131,7 +144,9 @@ public class TestStrictUnsignedIntegerValidation {
   @Test
   public void testInvalidUint32Values() throws IOException {
     MessageType schema = Types.buildMessage()
-        .required(INT32).as(intType(32, false)).named("uint32_field")
+        .required(INT32)
+        .as(intType(32, false))
+        .named("uint32_field")
         .named("test_schema");
 
     File tempFile = new File(tempFolder.getRoot(), "invalid_uint32.parquet");
@@ -154,7 +169,9 @@ public class TestStrictUnsignedIntegerValidation {
   @Test
   public void testInvalidUint64Values() throws IOException {
     MessageType schema = Types.buildMessage()
-        .required(INT64).as(intType(64, false)).named("uint64_field")
+        .required(INT64)
+        .as(intType(64, false))
+        .named("uint64_field")
         .named("test_schema");
 
     File tempFile = new File(tempFolder.getRoot(), "invalid_uint64.parquet");
@@ -177,15 +194,16 @@ public class TestStrictUnsignedIntegerValidation {
   @Test
   public void testValidationDisabledByDefault() throws IOException {
     MessageType schema = Types.buildMessage()
-        .required(INT32).as(intType(8, false)).named("uint8_field")
+        .required(INT32)
+        .as(intType(8, false))
+        .named("uint8_field")
         .named("test_schema");
 
     File tempFile = new File(tempFolder.getRoot(), "validation_disabled.parquet");
     Path outputPath = new Path(tempFile.getAbsolutePath());
 
-    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(outputPath)
-        .withType(schema)
-        .build()) {
+    try (ParquetWriter<Group> writer =
+        ExampleParquetWriter.builder(outputPath).withType(schema).build()) {
 
       SimpleGroupFactory groupFactory = new SimpleGroupFactory(schema);
 
@@ -197,7 +215,9 @@ public class TestStrictUnsignedIntegerValidation {
   @Test
   public void testValidationCanBeExplicitlyDisabled() throws IOException {
     MessageType schema = Types.buildMessage()
-        .required(INT32).as(intType(8, false)).named("uint8_field")
+        .required(INT32)
+        .as(intType(8, false))
+        .named("uint8_field")
         .named("test_schema");
 
     File tempFile = new File(tempFolder.getRoot(), "validation_explicit_disabled.parquet");

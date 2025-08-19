@@ -63,7 +63,8 @@ public class ValidatingUnsignedIntegerRecordConsumer extends RecordConsumer {
 
     if (!types.isEmpty()) {
       Type parentType = types.peek();
-      if (parentType.asGroupType() != null && index < parentType.asGroupType().getFieldCount()) {
+      if (parentType.asGroupType() != null
+          && index < parentType.asGroupType().getFieldCount()) {
         Type fieldType = parentType.asGroupType().getType(index);
         types.push(fieldType);
       }
@@ -134,22 +135,21 @@ public class ValidatingUnsignedIntegerRecordConsumer extends RecordConsumer {
           switch (intType.getBitWidth()) {
             case 8:
               if (value < 0 || value > 255) {
-                throw new InvalidRecordException(
-                    "Value " + value + " is out of range for UINT_8 (0-255) in field " + currentType.getName());
+                throw new InvalidRecordException("Value " + value
+                    + " is out of range for UINT_8 (0-255) in field " + currentType.getName());
               }
               break;
             case 16:
               if (value < 0 || value > 65535) {
-                throw new InvalidRecordException(
-                    "Value " + value + " is out of range for UINT_16 (0-65535) in field " + currentType.getName());
+                throw new InvalidRecordException("Value " + value
+                    + " is out of range for UINT_16 (0-65535) in field " + currentType.getName());
               }
               break;
             case 32:
             case 64:
               if (value < 0) {
-                throw new InvalidRecordException(
-                    "Negative value " + value + " is not allowed for unsigned integer type "
-                        + currentType.getName());
+                throw new InvalidRecordException("Negative value " + value
+                    + " is not allowed for unsigned integer type " + currentType.getName());
               }
               break;
           }
@@ -167,9 +167,8 @@ public class ValidatingUnsignedIntegerRecordConsumer extends RecordConsumer {
             (LogicalTypeAnnotation.IntLogicalTypeAnnotation) logicalType;
         if (!intType.isSigned()) {
           if (value < 0) {
-            throw new InvalidRecordException(
-                "Negative value " + value + " is not allowed for unsigned integer type "
-                    + currentType.getName());
+            throw new InvalidRecordException("Negative value " + value
+                + " is not allowed for unsigned integer type " + currentType.getName());
           }
         }
       }

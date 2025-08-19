@@ -23,7 +23,6 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FLOAT;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
-import static org.apache.parquet.schema.Types.required;
 import static org.junit.Assert.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -49,7 +48,9 @@ public class TestValidatingUnsignedIntegerRecordConsumer {
   @Test
   public void testValidUint8Values() {
     MessageType schema = Types.buildMessage()
-        .required(INT32).as(intType(8, false)).named("uint8_field")
+        .required(INT32)
+        .as(intType(8, false))
+        .named("uint8_field")
         .named("test_schema");
 
     validator = new ValidatingUnsignedIntegerRecordConsumer(mockDelegate, schema);
@@ -69,7 +70,9 @@ public class TestValidatingUnsignedIntegerRecordConsumer {
   @Test
   public void testInvalidUint8Values() {
     MessageType schema = Types.buildMessage()
-        .required(INT32).as(intType(8, false)).named("uint8_field")
+        .required(INT32)
+        .as(intType(8, false))
+        .named("uint8_field")
         .named("test_schema");
 
     validator = new ValidatingUnsignedIntegerRecordConsumer(mockDelegate, schema);
@@ -89,7 +92,9 @@ public class TestValidatingUnsignedIntegerRecordConsumer {
   @Test
   public void testValidUint16Values() {
     MessageType schema = Types.buildMessage()
-        .required(INT32).as(intType(16, false)).named("uint16_field")
+        .required(INT32)
+        .as(intType(16, false))
+        .named("uint16_field")
         .named("test_schema");
 
     validator = new ValidatingUnsignedIntegerRecordConsumer(mockDelegate, schema);
@@ -109,7 +114,9 @@ public class TestValidatingUnsignedIntegerRecordConsumer {
   @Test
   public void testInvalidUint16Values() {
     MessageType schema = Types.buildMessage()
-        .required(INT32).as(intType(16, false)).named("uint16_field")
+        .required(INT32)
+        .as(intType(16, false))
+        .named("uint16_field")
         .named("test_schema");
 
     validator = new ValidatingUnsignedIntegerRecordConsumer(mockDelegate, schema);
@@ -129,7 +136,9 @@ public class TestValidatingUnsignedIntegerRecordConsumer {
   @Test
   public void testValidUint32Values() {
     MessageType schema = Types.buildMessage()
-        .required(INT32).as(intType(32, false)).named("uint32_field")
+        .required(INT32)
+        .as(intType(32, false))
+        .named("uint32_field")
         .named("test_schema");
 
     validator = new ValidatingUnsignedIntegerRecordConsumer(mockDelegate, schema);
@@ -147,7 +156,9 @@ public class TestValidatingUnsignedIntegerRecordConsumer {
   @Test
   public void testInvalidUint32Values() {
     MessageType schema = Types.buildMessage()
-        .required(INT32).as(intType(32, false)).named("uint32_field")
+        .required(INT32)
+        .as(intType(32, false))
+        .named("uint32_field")
         .named("test_schema");
 
     validator = new ValidatingUnsignedIntegerRecordConsumer(mockDelegate, schema);
@@ -163,7 +174,9 @@ public class TestValidatingUnsignedIntegerRecordConsumer {
   @Test
   public void testValidUint64Values() {
     MessageType schema = Types.buildMessage()
-        .required(INT64).as(intType(64, false)).named("uint64_field")
+        .required(INT64)
+        .as(intType(64, false))
+        .named("uint64_field")
         .named("test_schema");
 
     validator = new ValidatingUnsignedIntegerRecordConsumer(mockDelegate, schema);
@@ -181,7 +194,9 @@ public class TestValidatingUnsignedIntegerRecordConsumer {
   @Test
   public void testInvalidUint64Values() {
     MessageType schema = Types.buildMessage()
-        .required(INT64).as(intType(64, false)).named("uint64_field")
+        .required(INT64)
+        .as(intType(64, false))
+        .named("uint64_field")
         .named("test_schema");
 
     validator = new ValidatingUnsignedIntegerRecordConsumer(mockDelegate, schema);
@@ -197,7 +212,9 @@ public class TestValidatingUnsignedIntegerRecordConsumer {
   @Test
   public void testSignedIntegerTypesNotValidated() {
     MessageType schema = Types.buildMessage()
-        .required(INT32).as(intType(32, true)).named("signed_field")
+        .required(INT32)
+        .as(intType(32, true))
+        .named("signed_field")
         .named("test_schema");
 
     validator = new ValidatingUnsignedIntegerRecordConsumer(mockDelegate, schema);
@@ -215,8 +232,10 @@ public class TestValidatingUnsignedIntegerRecordConsumer {
   @Test
   public void testNonIntegerTypesIgnored() {
     MessageType schema = Types.buildMessage()
-        .required(BINARY).named("binary_field")
-        .required(FLOAT).named("float_field")
+        .required(BINARY)
+        .named("binary_field")
+        .required(FLOAT)
+        .named("float_field")
         .named("test_schema");
 
     validator = new ValidatingUnsignedIntegerRecordConsumer(mockDelegate, schema);
@@ -237,9 +256,8 @@ public class TestValidatingUnsignedIntegerRecordConsumer {
 
   @Test
   public void testAllRecordConsumerMethodsDelegated() {
-    MessageType schema = Types.buildMessage()
-        .required(INT32).named("test_field")
-        .named("test_schema");
+    MessageType schema =
+        Types.buildMessage().required(INT32).named("test_field").named("test_schema");
 
     validator = new ValidatingUnsignedIntegerRecordConsumer(mockDelegate, schema);
 
