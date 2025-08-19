@@ -52,6 +52,7 @@ public class GroupWriteSupport extends WriteSupport<Group> {
   private MessageType schema;
   private GroupWriter groupWriter;
   private Map<String, String> extraMetaData;
+  private boolean strictUnsignedIntegerValidation;
 
   public GroupWriteSupport() {
     this(null, new HashMap<String, String>());
@@ -62,8 +63,17 @@ public class GroupWriteSupport extends WriteSupport<Group> {
   }
 
   GroupWriteSupport(MessageType schema, Map<String, String> extraMetaData) {
+    this(schema, extraMetaData, false);
+  }
+
+  GroupWriteSupport(MessageType schema, boolean strictUnsignedIntegerValidation) {
+    this(schema, new HashMap<String, String>(), strictUnsignedIntegerValidation);
+  }
+
+  GroupWriteSupport(MessageType schema, Map<String, String> extraMetaData, boolean strictUnsignedIntegerValidation) {
     this.schema = schema;
     this.extraMetaData = extraMetaData;
+    this.strictUnsignedIntegerValidation = strictUnsignedIntegerValidation;
   }
 
   @Override
@@ -87,7 +97,10 @@ public class GroupWriteSupport extends WriteSupport<Group> {
 
   @Override
   public void prepareForWrite(RecordConsumer recordConsumer) {
-    groupWriter = new GroupWriter(recordConsumer, schema);
+    RecordConsumer consumer = strictUnsignedIntegerValidation
+        ? new ValidatingUnsignedIntegerRecordConsumer(recordConsumer, schema)
+        : recordConsumer;
+    groupWriter = new GroupWriter(consumer, schema);
   }
 
   @Override
