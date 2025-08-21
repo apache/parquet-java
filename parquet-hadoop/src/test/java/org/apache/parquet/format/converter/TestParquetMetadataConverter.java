@@ -1961,4 +1961,37 @@ public class TestParquetMetadataConverter {
     assertNull(ParquetMetadataConverter.fromParquetEdgeInterpolationAlgorithm(null));
     assertNull(ParquetMetadataConverter.toParquetEdgeInterpolationAlgorithm(null));
   }
+
+  @Test
+  public void testIEEE754TotalOrderColumnOrder() throws IOException {
+    MessageType schema = Types.buildMessage()
+        .required(PrimitiveTypeName.FLOAT)
+        .columnOrder(ColumnOrder.ieee754TotalOrder())
+        .named("float_ieee754")
+        .required(PrimitiveTypeName.DOUBLE)
+        .columnOrder(ColumnOrder.ieee754TotalOrder())
+        .named("double_ieee754")
+        .named("Message");
+
+    org.apache.parquet.hadoop.metadata.FileMetaData fileMetaData =
+        new org.apache.parquet.hadoop.metadata.FileMetaData(schema, new HashMap<String, String>(), null);
+    ParquetMetadata metadata = new ParquetMetadata(fileMetaData, new ArrayList<BlockMetaData>());
+    ParquetMetadataConverter converter = new ParquetMetadataConverter();
+    FileMetaData formatMetadata = converter.toParquetMetadata(1, metadata);
+
+    List<org.apache.parquet.format.ColumnOrder> columnOrders = formatMetadata.getColumn_orders();
+    assertEquals(2, columnOrders.size());
+    for (org.apache.parquet.format.ColumnOrder columnOrder : columnOrders) {
+      assertTrue(columnOrder.isSetIEEE_754_TOTAL_ORDER());
+    }
+
+    MessageType resultSchema =
+        converter.fromParquetMetadata(formatMetadata).getFileMetaData().getSchema();
+    assertEquals(
+        ColumnOrder.ieee754TotalOrder(),
+        resultSchema.getType("float_ieee754").asPrimitiveType().columnOrder());
+    assertEquals(
+        ColumnOrder.ieee754TotalOrder(),
+        resultSchema.getType("double_ieee754").asPrimitiveType().columnOrder());
+  }
 }

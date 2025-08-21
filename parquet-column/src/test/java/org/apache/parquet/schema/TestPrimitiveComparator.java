@@ -19,10 +19,13 @@
 package org.apache.parquet.schema;
 
 import static org.apache.parquet.schema.PrimitiveComparator.BINARY_AS_FLOAT16_COMPARATOR;
+import static org.apache.parquet.schema.PrimitiveComparator.BINARY_AS_FLOAT16_IEEE_754_TOTAL_ORDER_COMPARATOR;
 import static org.apache.parquet.schema.PrimitiveComparator.BINARY_AS_SIGNED_INTEGER_COMPARATOR;
 import static org.apache.parquet.schema.PrimitiveComparator.BOOLEAN_COMPARATOR;
 import static org.apache.parquet.schema.PrimitiveComparator.DOUBLE_COMPARATOR;
+import static org.apache.parquet.schema.PrimitiveComparator.DOUBLE_IEEE_754_TOTAL_ORDER_COMPARATOR;
 import static org.apache.parquet.schema.PrimitiveComparator.FLOAT_COMPARATOR;
+import static org.apache.parquet.schema.PrimitiveComparator.FLOAT_IEEE_754_TOTAL_ORDER_COMPARATOR;
 import static org.apache.parquet.schema.PrimitiveComparator.SIGNED_INT32_COMPARATOR;
 import static org.apache.parquet.schema.PrimitiveComparator.SIGNED_INT64_COMPARATOR;
 import static org.apache.parquet.schema.PrimitiveComparator.UNSIGNED_INT32_COMPARATOR;
@@ -144,6 +147,22 @@ public class TestPrimitiveComparator {
     checkThrowingUnsupportedException(comparator, Long.TYPE);
   }
 
+  private void testFloatComparator(PrimitiveComparator<Float> comparator, Float... valuesInAscendingOrder) {
+    for (int i = 0; i < valuesInAscendingOrder.length; ++i) {
+      for (int j = 0; j < valuesInAscendingOrder.length; ++j) {
+        Float vi = valuesInAscendingOrder[i];
+        Float vj = valuesInAscendingOrder[j];
+        int exp = i - j;
+        assertSignumEquals(vi, vj, exp, comparator.compare(vi, vj));
+        if (vi != null && vj != null) {
+          assertSignumEquals(vi, vj, exp, comparator.compare(vi.floatValue(), vj.floatValue()));
+        }
+      }
+    }
+
+    checkThrowingUnsupportedException(comparator, Float.TYPE);
+  }
+
   @Test
   public void testFloatComparator() {
     Float[] valuesInAscendingOrder = {
@@ -159,19 +178,46 @@ public class TestPrimitiveComparator {
       Float.POSITIVE_INFINITY
     };
 
+    testFloatComparator(FLOAT_COMPARATOR, valuesInAscendingOrder);
+  }
+
+  @Test
+  public void testFloatIEEE754TotalOrderComparator() {
+    Float[] valuesInAscendingOrder = {
+      null,
+      Float.intBitsToFloat(0xFFFFFFFF), // -NaN (smallest)
+      Float.intBitsToFloat(0xFFF00001), // -NaN (largest)
+      Float.NEGATIVE_INFINITY,
+      -Float.MAX_VALUE,
+      -1234.5678F,
+      -Float.MIN_VALUE,
+      -0.0F,
+      0.0F,
+      Float.MIN_VALUE,
+      1234.5678F,
+      Float.MAX_VALUE,
+      Float.POSITIVE_INFINITY,
+      Float.intBitsToFloat(0x7FF00001), // +NaN (smallest)
+      Float.intBitsToFloat(0x7FFFFFFF), // +NaN (largest)
+    };
+
+    testFloatComparator(FLOAT_IEEE_754_TOTAL_ORDER_COMPARATOR, valuesInAscendingOrder);
+  }
+
+  private void testDoubleComparator(PrimitiveComparator<Double> comparator, Double... valuesInAscendingOrder) {
     for (int i = 0; i < valuesInAscendingOrder.length; ++i) {
       for (int j = 0; j < valuesInAscendingOrder.length; ++j) {
-        Float vi = valuesInAscendingOrder[i];
-        Float vj = valuesInAscendingOrder[j];
+        Double vi = valuesInAscendingOrder[i];
+        Double vj = valuesInAscendingOrder[j];
         int exp = i - j;
-        assertSignumEquals(vi, vj, exp, FLOAT_COMPARATOR.compare(vi, vj));
+        assertSignumEquals(vi, vj, exp, comparator.compare(vi, vj));
         if (vi != null && vj != null) {
-          assertSignumEquals(vi, vj, exp, FLOAT_COMPARATOR.compare(vi.floatValue(), vj.floatValue()));
+          assertSignumEquals(vi, vj, exp, comparator.compare(vi.doubleValue(), vj.doubleValue()));
         }
       }
     }
 
-    checkThrowingUnsupportedException(FLOAT_COMPARATOR, Float.TYPE);
+    checkThrowingUnsupportedException(comparator, Double.TYPE);
   }
 
   @Test
@@ -189,19 +235,30 @@ public class TestPrimitiveComparator {
       Double.POSITIVE_INFINITY
     };
 
-    for (int i = 0; i < valuesInAscendingOrder.length; ++i) {
-      for (int j = 0; j < valuesInAscendingOrder.length; ++j) {
-        Double vi = valuesInAscendingOrder[i];
-        Double vj = valuesInAscendingOrder[j];
-        int exp = i - j;
-        assertSignumEquals(vi, vj, exp, DOUBLE_COMPARATOR.compare(vi, vj));
-        if (vi != null && vj != null) {
-          assertSignumEquals(vi, vj, exp, DOUBLE_COMPARATOR.compare(vi.doubleValue(), vj.doubleValue()));
-        }
-      }
-    }
+    testDoubleComparator(DOUBLE_COMPARATOR, valuesInAscendingOrder);
+  }
 
-    checkThrowingUnsupportedException(DOUBLE_COMPARATOR, Double.TYPE);
+  @Test
+  public void testDoubleIEEE754TotalOrderComparator() {
+    Double[] valuesInAscendingOrder = {
+      null,
+      Double.longBitsToDouble(0xFFFFFFFFFFFFFFFFL), // -NaN (smallest)
+      Double.longBitsToDouble(0xFFF0000000000001L), // -NaN (largest)
+      Double.NEGATIVE_INFINITY,
+      -Double.MAX_VALUE,
+      -123456.7890123456789,
+      -Double.MIN_VALUE,
+      -0.0,
+      +0.0,
+      Double.MIN_VALUE,
+      123456.7890123456789,
+      Double.MAX_VALUE,
+      Double.POSITIVE_INFINITY,
+      Double.longBitsToDouble(0x7FF0000000000001L), // +NaN (smallest)
+      Double.longBitsToDouble(0x7FFFFFFFFFFFFFFFL), // +NaN (largest)
+    };
+
+    testDoubleComparator(DOUBLE_IEEE_754_TOTAL_ORDER_COMPARATOR, valuesInAscendingOrder);
   }
 
   @Test
@@ -297,6 +354,34 @@ public class TestPrimitiveComparator {
         if (i < j) {
           assertEquals(-1, Float.compare(fi, fj));
         }
+      }
+    }
+  }
+
+  @Test
+  public void testBinaryAsFloat16IEEE754TotalOrderComparator() {
+    Binary[] valuesInAscendingOrder = {
+      null,
+      Binary.fromConstantByteArray(new byte[] {(byte) 0xff, (byte) 0xff}), // -NaN (smallest)
+      Binary.fromConstantByteArray(new byte[] {(byte) 0x01, (byte) 0xfc}), // -NaN (largest)
+      Binary.fromConstantByteArray(new byte[] {0x00, (byte) 0xfc}), // -Infinity
+      Binary.fromConstantByteArray(new byte[] {0x00, (byte) 0xc0}), // -2.0
+      Binary.fromConstantByteArray(new byte[] {(byte) 0x01, (byte) 0x84}), // -6.109476E-5
+      Binary.fromConstantByteArray(new byte[] {0x00, (byte) 0x80}), // -0
+      Binary.fromConstantByteArray(new byte[] {0x00, 0x00}), // +0
+      Binary.fromConstantByteArray(new byte[] {(byte) 0x01, (byte) 0x00}), // 5.9604645E-8
+      Binary.fromConstantByteArray(new byte[] {(byte) 0xff, (byte) 0x7b}), // 65504.0
+      Binary.fromConstantByteArray(new byte[] {(byte) 0x00, (byte) 0x7c}), // Infinity
+      Binary.fromConstantByteArray(new byte[] {0x01, 0x7c}), // +NaN (smallest)
+      Binary.fromConstantByteArray(new byte[] {(byte) 0xff, 0x7f}) // +NaN (largest)
+    };
+
+    for (int i = 0; i < valuesInAscendingOrder.length; ++i) {
+      for (int j = 0; j < valuesInAscendingOrder.length; ++j) {
+        Binary vi = valuesInAscendingOrder[i];
+        Binary vj = valuesInAscendingOrder[j];
+        int exp = i - j;
+        assertSignumEquals(vi, vj, exp, BINARY_AS_FLOAT16_IEEE_754_TOTAL_ORDER_COMPARATOR.compare(vi, vj));
       }
     }
   }
