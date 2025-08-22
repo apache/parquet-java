@@ -108,6 +108,13 @@ Parquet-Java has supported Java Vector API to speed up reading, to enable this f
   * Edit spark class#VectorizedRleValuesReader, function#readNextGroup refer to parquet class#ParquetReadRouter, function#readBatchUsing512Vector
   * Build spark with maven and replace spark-sql_2.12-{VERSION}.jar on the spark jars folder
 
+## Documentation
+
+For comprehensive usage documentation, examples, and tutorials, see:
+
+- **[Examples](examples/)** - Practical examples demonstrating basic and advanced usage
+- **[API Reference](examples/README.md)** - Detailed API documentation
+
 ## Map/Reduce integration
 
 [Input](https://github.com/apache/parquet-java/blob/master/parquet-hadoop/src/main/java/org/apache/parquet/hadoop/ParquetInputFormat.java) and [Output](https://github.com/apache/parquet-java/blob/master/parquet-hadoop/src/main/java/org/apache/parquet/hadoop/ParquetOutputFormat.java) formats.
