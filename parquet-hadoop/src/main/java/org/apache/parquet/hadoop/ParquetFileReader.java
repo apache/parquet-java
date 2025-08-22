@@ -567,8 +567,23 @@ public class ParquetFileReader implements Closeable {
 
   public static final ParquetMetadata readFooter(InputFile file, ParquetReadOptions options, SeekableInputStream f)
       throws IOException {
+    return readFooter(file, options, f, /*closeStreamOnFailure*/ false);
+  }
+
+  public static final ParquetMetadata readFooter(
+      InputFile file, ParquetReadOptions options, SeekableInputStream f, boolean closeStreamOnFailure)
+      throws IOException {
     ParquetMetadataConverter converter = new ParquetMetadataConverter(options);
-    return readFooter(file, options, f, converter);
+    try {
+      return readFooter(file, options, f, converter);
+    } catch (Exception e) {
+      // In case that readFooter throws an exception in the constructor, the new stream
+      // should be closed. Otherwise, there's no way to close this outside.
+      if (closeStreamOnFailure) {
+        f.close();
+      }
+      throw e;
+    }
   }
 
   private static final ParquetMetadata readFooter(
@@ -953,46 +968,7 @@ public class ParquetFileReader implements Closeable {
    * @throws IOException if the file can not be opened
    */
   public ParquetFileReader(InputFile file, ParquetReadOptions options, SeekableInputStream f) throws IOException {
-    this.converter = new ParquetMetadataConverter(options);
-    this.file = file;
-    this.f = f;
-    this.options = options;
-    try {
-      this.footer = readFooter(file, options, f, converter);
-    } catch (Exception e) {
-      // In case that reading footer throws an exception in the constructor, the new stream
-      // should be closed. Otherwise, there's no way to close this outside.
-      f.close();
-      throw e;
-    }
-
-    this.fileMetaData = footer.getFileMetaData();
-    this.fileDecryptor = fileMetaData.getFileDecryptor(); // must be called before filterRowGroups!
-    if (null != fileDecryptor && fileDecryptor.plaintextFile()) {
-      this.fileDecryptor = null; // Plaintext file. No need in decryptor
-    }
-
-    try {
-      this.blocks = filterRowGroups(footer.getBlocks());
-    } catch (Exception e) {
-      // In case that filterRowGroups throws an exception in the constructor, the new stream
-      // should be closed. Otherwise, there's no way to close this outside.
-      f.close();
-      throw e;
-    }
-    this.blockIndexStores = listWithNulls(this.blocks.size());
-    this.blockRowRanges = listWithNulls(this.blocks.size());
-    for (ColumnDescriptor col : footer.getFileMetaData().getSchema().getColumns()) {
-      paths.put(ColumnPath.get(col.getPath()), col);
-    }
-
-    if (options.usePageChecksumVerification()) {
-      this.crc = new CRC32();
-      this.crcAllocator = ReusingByteBufferAllocator.strict(options.getAllocator());
-    } else {
-      this.crc = null;
-      this.crcAllocator = null;
-    }
+    this(file, readFooter(file, options, f, /*closeStreamOnFailure*/ true), options, f);
   }
 
   /**
