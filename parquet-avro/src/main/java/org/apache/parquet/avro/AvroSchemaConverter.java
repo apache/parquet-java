@@ -51,6 +51,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -82,12 +83,26 @@ public class AvroSchemaConverter {
 
   public static final String ADD_LIST_ELEMENT_RECORDS = "parquet.avro.add-list-element-records";
   private static final boolean ADD_LIST_ELEMENT_RECORDS_DEFAULT = true;
+  public static final String AVRO_MAX_RECURSION = "parquet.avro.max-recursion";
+  private static final int AVRO_MAX_RECURSION_DEFAULT = 10;
 
   private final boolean assumeRepeatedIsListElement;
   private final boolean writeOldListStructure;
   private final boolean writeParquetUUID;
   private final boolean readInt96AsFixed;
   private final Set<String> pathsToInt96;
+  private final int maxRecursion;
+
+  /**
+   * Sets the maximum recursion depth for recursive schemas.
+   *
+   * @param config       The hadoop configuration to be updated.
+   * @param maxRecursion The maximum recursion depth schemas are allowed to go before terminating
+   *                     with an UnsupportedOperationException instead of their actual schema.
+   */
+  public static void setMaxRecursion(Configuration config, int maxRecursion) {
+    config.setInt(AVRO_MAX_RECURSION, maxRecursion);
+  }
 
   public AvroSchemaConverter() {
     this(ADD_LIST_ELEMENT_RECORDS_DEFAULT, READ_INT96_AS_FIXED_DEFAULT);
@@ -106,6 +121,7 @@ public class AvroSchemaConverter {
     this.writeParquetUUID = WRITE_PARQUET_UUID_DEFAULT;
     this.readInt96AsFixed = readInt96AsFixed;
     this.pathsToInt96 = Collections.emptySet();
+    this.maxRecursion = AVRO_MAX_RECURSION_DEFAULT;
   }
 
   public AvroSchemaConverter(Configuration conf) {
@@ -118,6 +134,7 @@ public class AvroSchemaConverter {
     this.writeParquetUUID = conf.getBoolean(WRITE_PARQUET_UUID, WRITE_PARQUET_UUID_DEFAULT);
     this.readInt96AsFixed = conf.getBoolean(READ_INT96_AS_FIXED, READ_INT96_AS_FIXED_DEFAULT);
     this.pathsToInt96 = new HashSet<>(Arrays.asList(conf.getStrings(WRITE_FIXED_AS_INT96, new String[0])));
+    this.maxRecursion = conf.getInt(AVRO_MAX_RECURSION, AVRO_MAX_RECURSION_DEFAULT);
   }
 
   /**
@@ -150,16 +167,23 @@ public class AvroSchemaConverter {
     if (!avroSchema.getType().equals(Schema.Type.RECORD)) {
       throw new IllegalArgumentException("Avro schema must be a record.");
     }
-    return new MessageType(avroSchema.getFullName(), convertFields(avroSchema.getFields(), ""));
+    return new MessageType(
+        avroSchema.getFullName(),
+        convertFields(avroSchema.getFields(), "", new IdentityHashMap<Schema, Integer>()));
   }
 
   private List<Type> convertFields(List<Schema.Field> fields, String schemaPath) {
+    return convertFields(fields, schemaPath, new IdentityHashMap<Schema, Integer>());
+  }
+
+  private List<Type> convertFields(
+      List<Schema.Field> fields, String schemaPath, IdentityHashMap<Schema, Integer> seenSchemas) {
     List<Type> types = new ArrayList<Type>();
     for (Schema.Field field : fields) {
       if (field.schema().getType().equals(Schema.Type.NULL)) {
         continue; // Avro nulls are not encoded, unless they are null unions
       }
-      types.add(convertField(field, appendPath(schemaPath, field.name())));
+      types.add(convertField(field, appendPath(schemaPath, field.name()), seenSchemas));
     }
     return types;
   }
@@ -168,11 +192,37 @@ public class AvroSchemaConverter {
     return convertField(fieldName, schema, Type.Repetition.REQUIRED, schemaPath);
   }
 
+  private Type convertField(
+      String fieldName, Schema schema, String schemaPath, IdentityHashMap<Schema, Integer> seenSchemas) {
+    return convertField(fieldName, schema, Type.Repetition.REQUIRED, schemaPath, seenSchemas);
+  }
+
   @SuppressWarnings("deprecation")
   private Type convertField(String fieldName, Schema schema, Type.Repetition repetition, String schemaPath) {
-    Types.PrimitiveBuilder<PrimitiveType> builder;
+    return convertField(fieldName, schema, repetition, schemaPath, new IdentityHashMap<Schema, Integer>());
+  }
+
+  @SuppressWarnings("deprecation")
+  private Type convertField(
+      String fieldName,
+      Schema schema,
+      Type.Repetition repetition,
+      String schemaPath,
+      IdentityHashMap<Schema, Integer> seenSchemas) {
     Schema.Type type = schema.getType();
     LogicalType logicalType = schema.getLogicalType();
+
+    if (type.equals(Schema.Type.RECORD) || type.equals(Schema.Type.ENUM) || type.equals(Schema.Type.FIXED)) {
+      Integer depth = seenSchemas.get(schema);
+      if (depth != null && depth >= maxRecursion) {
+        throw new UnsupportedOperationException("Recursive Avro schemas are not supported by parquet-avro: "
+            + schema.getFullName() + " (exceeded maximum recursion depth of " + maxRecursion + ")");
+      }
+      seenSchemas = new IdentityHashMap<>(seenSchemas);
+      seenSchemas.put(schema, depth == null ? 1 : depth + 1);
+    }
+
+    Types.PrimitiveBuilder<PrimitiveType> builder;
     if (type.equals(Schema.Type.BOOLEAN)) {
       builder = Types.primitive(BOOLEAN, repetition);
     } else if (type.equals(Schema.Type.INT)) {
@@ -195,21 +245,24 @@ public class AvroSchemaConverter {
         builder = Types.primitive(BINARY, repetition).as(stringType());
       }
     } else if (type.equals(Schema.Type.RECORD)) {
-      return new GroupType(repetition, fieldName, convertFields(schema.getFields(), schemaPath));
+      return new GroupType(repetition, fieldName, convertFields(schema.getFields(), schemaPath, seenSchemas));
     } else if (type.equals(Schema.Type.ENUM)) {
       builder = Types.primitive(BINARY, repetition).as(enumType());
     } else if (type.equals(Schema.Type.ARRAY)) {
       if (writeOldListStructure) {
         return ConversionPatterns.listType(
-            repetition, fieldName, convertField("array", schema.getElementType(), REPEATED, schemaPath));
+            repetition,
+            fieldName,
+            convertField("array", schema.getElementType(), REPEATED, schemaPath, seenSchemas));
       } else {
         return ConversionPatterns.listOfElements(
             repetition,
             fieldName,
-            convertField(AvroWriteSupport.LIST_ELEMENT_NAME, schema.getElementType(), schemaPath));
+            convertField(
+                AvroWriteSupport.LIST_ELEMENT_NAME, schema.getElementType(), schemaPath, seenSchemas));
       }
     } else if (type.equals(Schema.Type.MAP)) {
-      Type valType = convertField("value", schema.getValueType(), schemaPath);
+      Type valType = convertField("value", schema.getValueType(), schemaPath, seenSchemas);
       // avro map key type is always string
       return ConversionPatterns.stringKeyMapType(repetition, fieldName, valType);
     } else if (type.equals(Schema.Type.FIXED)) {
@@ -223,7 +276,7 @@ public class AvroSchemaConverter {
         builder = Types.primitive(FIXED_LEN_BYTE_ARRAY, repetition).length(schema.getFixedSize());
       }
     } else if (type.equals(Schema.Type.UNION)) {
-      return convertUnion(fieldName, schema, repetition, schemaPath);
+      return convertUnion(fieldName, schema, repetition, schemaPath, seenSchemas);
     } else {
       throw new UnsupportedOperationException("Cannot convert Avro type " + type);
     }
@@ -246,6 +299,15 @@ public class AvroSchemaConverter {
   }
 
   private Type convertUnion(String fieldName, Schema schema, Type.Repetition repetition, String schemaPath) {
+    return convertUnion(fieldName, schema, repetition, schemaPath, new IdentityHashMap<Schema, Integer>());
+  }
+
+  private Type convertUnion(
+      String fieldName,
+      Schema schema,
+      Type.Repetition repetition,
+      String schemaPath,
+      IdentityHashMap<Schema, Integer> seenSchemas) {
     List<Schema> nonNullSchemas = new ArrayList<Schema>(schema.getTypes().size());
     // Found any schemas in the union? Required for the edge case, where the union contains only a single type.
     boolean foundNullSchema = false;
@@ -267,26 +329,41 @@ public class AvroSchemaConverter {
 
       case 1:
         return foundNullSchema
-            ? convertField(fieldName, nonNullSchemas.get(0), repetition, schemaPath)
-            : convertUnionToGroupType(fieldName, repetition, nonNullSchemas, schemaPath);
+            ? convertField(fieldName, nonNullSchemas.get(0), repetition, schemaPath, seenSchemas)
+            : convertUnionToGroupType(fieldName, repetition, nonNullSchemas, schemaPath, seenSchemas);
 
       default: // complex union type
-        return convertUnionToGroupType(fieldName, repetition, nonNullSchemas, schemaPath);
+        return convertUnionToGroupType(fieldName, repetition, nonNullSchemas, schemaPath, seenSchemas);
     }
   }
 
   private Type convertUnionToGroupType(
       String fieldName, Type.Repetition repetition, List<Schema> nonNullSchemas, String schemaPath) {
+    return convertUnionToGroupType(
+        fieldName, repetition, nonNullSchemas, schemaPath, new IdentityHashMap<Schema, Integer>());
+  }
+
+  private Type convertUnionToGroupType(
+      String fieldName,
+      Type.Repetition repetition,
+      List<Schema> nonNullSchemas,
+      String schemaPath,
+      IdentityHashMap<Schema, Integer> seenSchemas) {
     List<Type> unionTypes = new ArrayList<Type>(nonNullSchemas.size());
     int index = 0;
     for (Schema childSchema : nonNullSchemas) {
-      unionTypes.add(convertField("member" + index++, childSchema, Type.Repetition.OPTIONAL, schemaPath));
+      unionTypes.add(
+          convertField("member" + index++, childSchema, Type.Repetition.OPTIONAL, schemaPath, seenSchemas));
     }
     return new GroupType(repetition, fieldName, unionTypes);
   }
 
   private Type convertField(Schema.Field field, String schemaPath) {
     return convertField(field.name(), field.schema(), schemaPath);
+  }
+
+  private Type convertField(Schema.Field field, String schemaPath, IdentityHashMap<Schema, Integer> seenSchemas) {
+    return convertField(field.name(), field.schema(), schemaPath, seenSchemas);
   }
 
   public Schema convert(MessageType parquetSchema) {

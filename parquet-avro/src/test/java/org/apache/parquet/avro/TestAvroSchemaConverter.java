@@ -965,6 +965,116 @@ public class TestAvroSchemaConverter {
         () -> new AvroSchemaConverter(conf).convert(schema));
   }
 
+  @Test
+  public void testRecursiveSchemaThrowsException() {
+    String recursiveSchemaJson = "{"
+        + "\"type\": \"record\", \"name\": \"Node\", \"fields\": ["
+        + "  {\"name\": \"value\", \"type\": \"int\"},"
+        + "  {\"name\": \"children\", \"type\": ["
+        + "    \"null\", {"
+        + "      \"type\": \"array\", \"items\": [\"null\", \"Node\"]"
+        + "    }"
+        + "  ], \"default\": null}"
+        + "]}";
+
+    Schema recursiveSchema = new Schema.Parser().parse(recursiveSchemaJson);
+
+    assertThrows(
+        "Recursive Avro schema should throw UnsupportedOperationException",
+        UnsupportedOperationException.class,
+        () -> new AvroSchemaConverter().convert(recursiveSchema));
+  }
+
+  @Test
+  public void testRecursiveSchemaFromGitHubIssue() {
+    String issueSchemaJson = "{"
+        + "\"type\": \"record\", \"name\": \"ObjXX\", \"fields\": ["
+        + "  {\"name\": \"id\", \"type\": [\"null\", \"long\"], \"default\": null},"
+        + "  {\"name\": \"struct_add_list\", \"type\": [\"null\", {"
+        + "    \"type\": \"array\", \"items\": [\"null\", {"
+        + "      \"type\": \"record\", \"name\": \"ObjStructAdd\", \"fields\": ["
+        + "        {\"name\": \"name\", \"type\": [\"null\", \"string\"], \"default\": null},"
+        + "        {\"name\": \"fld_list\", \"type\": [\"null\", {"
+        + "          \"type\": \"array\", \"items\": [\"null\", {"
+        + "            \"type\": \"record\", \"name\": \"ObjStructAddFld\", \"fields\": ["
+        + "              {\"name\": \"name\", \"type\": [\"null\", \"string\"], \"default\": null},"
+        + "              {\"name\": \"ref_val\", \"type\": [\"null\", \"ObjStructAdd\"], \"default\": null}"
+        + "            ]"
+        + "          }]"
+        + "        }], \"default\": null}"
+        + "      ]"
+        + "    }]"
+        + "  }], \"default\": null},"
+        + "  {\"name\": \"kafka_timestamp\", \"type\": {\"type\": \"long\", \"logicalType\": \"timestamp-millis\"}}"
+        + "]}";
+
+    Schema issueSchema = new Schema.Parser().parse(issueSchemaJson);
+
+    assertThrows(
+        "Schema should throw UnsupportedOperationException",
+        UnsupportedOperationException.class,
+        () -> new AvroSchemaConverter().convert(issueSchema));
+  }
+
+  @Test
+  public void testRecursiveSchemaErrorMessage() {
+    String recursiveSchemaJson = "{"
+        + "\"type\": \"record\", \"name\": \"TestRecord\", \"fields\": ["
+        + "  {\"name\": \"self\", \"type\": [\"null\", \"TestRecord\"], \"default\": null}"
+        + "]}";
+
+    Schema recursiveSchema = new Schema.Parser().parse(recursiveSchemaJson);
+
+    try {
+      new AvroSchemaConverter().convert(recursiveSchema);
+      Assert.fail("Expected UnsupportedOperationException");
+    } catch (UnsupportedOperationException e) {
+      String message = e.getMessage();
+      Assert.assertTrue(
+          "Error message should mention recursion",
+          message.contains("Recursive Avro schemas are not supported"));
+      Assert.assertTrue("Error message should mention schema name", message.contains("TestRecord"));
+      Assert.assertTrue(
+          "Error message should mention max recursion depth", message.contains("maximum recursion depth"));
+    }
+  }
+
+  @Test
+  public void testConfigurableMaxRecursion() {
+    String recursiveSchemaJson = "{"
+        + "\"type\": \"record\", \"name\": \"Node\", \"fields\": ["
+        + "  {\"name\": \"child\", \"type\": [\"null\", \"Node\"], \"default\": null}"
+        + "]}";
+
+    Schema recursiveSchema = new Schema.Parser().parse(recursiveSchemaJson);
+    Configuration conf = new Configuration();
+
+    AvroSchemaConverter.setMaxRecursion(conf, 1);
+    assertThrows(
+        "Should fail with max recursion 1",
+        UnsupportedOperationException.class,
+        () -> new AvroSchemaConverter(conf).convert(recursiveSchema));
+
+    AvroSchemaConverter.setMaxRecursion(conf, 5);
+    assertThrows(
+        "Should fail with max recursion 5",
+        UnsupportedOperationException.class,
+        () -> new AvroSchemaConverter(conf).convert(recursiveSchema));
+  }
+
+  @Test
+  public void testDeeplyNestedNonRecursiveSchema() {
+    Schema level3 = record("Level3", field("value", primitive(STRING)));
+    Schema level2 = record("Level2", field("level3", level3));
+    Schema level1 = record("Level1", field("level2", level2));
+    Schema rootSchema = record("Root", field("level1", level1));
+
+    AvroSchemaConverter converter = new AvroSchemaConverter();
+    MessageType result = converter.convert(rootSchema);
+    Assert.assertNotNull("Non-recursive deep schema should convert successfully", result);
+    Assert.assertEquals("Root schema name should be preserved", "Root", result.getName());
+  }
+
   public static Schema optional(Schema original) {
     return Schema.createUnion(Lists.newArrayList(Schema.create(Schema.Type.NULL), original));
   }
