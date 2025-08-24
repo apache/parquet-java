@@ -97,6 +97,7 @@ public class ExampleParquetWriter extends ParquetWriter<Group> {
 
   public static class Builder extends ParquetWriter.Builder<Group, Builder> {
     private MessageType type = null;
+    private boolean strictUnsignedIntegerValidation = false;
 
     private Builder(Path file) {
       super(file);
@@ -108,6 +109,18 @@ public class ExampleParquetWriter extends ParquetWriter<Group> {
 
     public Builder withType(MessageType type) {
       this.type = type;
+      return this;
+    }
+
+    /**
+     * Enable strict validation for unsigned integer values (UINT_8, UINT_16, UINT_32, UINT_64).
+     * When enabled, negative values or out-of-range values will cause an exception.
+     *
+     * @param enabled whether to enable strict validation
+     * @return this builder for method chaining
+     */
+    public Builder withStrictUnsignedIntegerValidation(boolean enabled) {
+      this.strictUnsignedIntegerValidation = enabled;
       return this;
     }
 
@@ -123,7 +136,7 @@ public class ExampleParquetWriter extends ParquetWriter<Group> {
 
     @Override
     protected WriteSupport<Group> getWriteSupport(ParquetConfiguration conf) {
-      return new GroupWriteSupport(type);
+      return new GroupWriteSupport(type, strictUnsignedIntegerValidation);
     }
 
     @Override
