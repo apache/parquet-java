@@ -64,6 +64,8 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.LocalFileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.bytes.HeapByteBufferAllocator;
 import org.apache.parquet.bytes.TrackingByteBufferAllocator;
@@ -363,6 +365,10 @@ public class TestColumnIndexFiltering {
               .withWriterVersion(parquetVersion),
           DATA);
     }
+    // remove the CRC file so that Hadoop local filesystem doesn't slice buffers on
+    // vector reads.
+    final LocalFileSystem local = FileSystem.getLocal(new Configuration());
+    local.delete(local.getChecksumFile(file), false);
   }
 
   private static FileEncryptionProperties getFileEncryptionProperties() {

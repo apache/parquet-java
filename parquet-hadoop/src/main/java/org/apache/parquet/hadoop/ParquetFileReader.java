@@ -1355,10 +1355,15 @@ public class ParquetFileReader implements Closeable {
     LOG.debug("Reading {} bytes of data with vectored IO in {} ranges", totalSize, ranges.size());
     // Request a vectored read;
     f.readVectored(ranges, options.getAllocator());
+    List<ByteBuffer> buffers = new ArrayList<>(allParts.size());
     int k = 0;
-    for (ConsecutivePartList consecutivePart : allParts) {
-      ParquetFileRange currRange = ranges.get(k++);
-      consecutivePart.readFromVectoredRange(currRange, builder);
+    try {
+      for (ConsecutivePartList consecutivePart : allParts) {
+        ParquetFileRange currRange = ranges.get(k++);
+        buffers.add(consecutivePart.readFromVectoredRange(currRange, builder));
+      }
+    } finally {
+      builder.addBuffersToRelease(buffers);
     }
   }
 
@@ -2295,11 +2300,16 @@ public class ParquetFileReader implements Closeable {
     /**
      * Populate data in a parquet file range from a vectored range; will block for up
      * to {@link #HADOOP_VECTORED_READ_TIMEOUT_SECONDS} seconds.
+     *
      * @param currRange range to populated.
      * @param builder used to build chunk list to read the pages for the different columns.
+     *
+     * @return the buffer, for queuing for release later.
+     *
      * @throws IOException if there is an error while reading from the stream, including a timeout.
      */
-    public void readFromVectoredRange(ParquetFileRange currRange, ChunkListBuilder builder) throws IOException {
+    public ByteBuffer readFromVectoredRange(ParquetFileRange currRange, ChunkListBuilder builder)
+        throws IOException {
       ByteBuffer buffer;
       final long timeoutSeconds = HADOOP_VECTORED_READ_TIMEOUT_SECONDS;
       long readStart = System.nanoTime();
@@ -2322,6 +2332,7 @@ public class ParquetFileReader implements Closeable {
       for (ChunkDescriptor descriptor : chunks) {
         builder.add(descriptor, stream.sliceBuffers(descriptor.size), f);
       }
+      return buffer;
     }
 
     /**

@@ -22,6 +22,8 @@ import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A wrapper {@link ByteBufferAllocator} implementation that tracks whether all allocated buffers are released. It
@@ -37,7 +39,9 @@ public final class TrackingByteBufferAllocator implements ByteBufferAllocator, A
    *
    * @see ByteBufferAllocationStacktraceException
    */
-  private static final boolean DEBUG = false;
+  private static final boolean DEBUG = true;
+
+  private static final Logger LOG = LoggerFactory.getLogger(TrackingByteBufferAllocator.class);
 
   public static TrackingByteBufferAllocator wrap(ByteBufferAllocator allocator) {
     return new TrackingByteBufferAllocator(allocator);
@@ -68,6 +72,11 @@ public final class TrackingByteBufferAllocator implements ByteBufferAllocator, A
     @Override
     public int hashCode() {
       return hashCode;
+    }
+
+    @Override
+    public String toString() {
+      return buffer.toString();
     }
   }
 
@@ -133,14 +142,22 @@ public final class TrackingByteBufferAllocator implements ByteBufferAllocator, A
   @Override
   public ByteBuffer allocate(int size) {
     ByteBuffer buffer = allocator.allocate(size);
-    allocated.put(new Key(buffer), ByteBufferAllocationStacktraceException.create());
+    final ByteBufferAllocationStacktraceException ex = ByteBufferAllocationStacktraceException.create();
+    final Key key = new Key(buffer);
+    allocated.put(key, ex);
+    LOG.debug("Creating ByteBuffer:{} size {} {}", key.hashCode(), size, buffer);
+    if (DEBUG) {
+      LOG.debug("Stack", ex);
+    }
     return buffer;
   }
 
   @Override
   public void release(ByteBuffer b) throws ReleasingUnallocatedByteBufferException {
     Objects.requireNonNull(b);
-    if (allocated.remove(new Key(b)) == null) {
+    final Key key = new Key(b);
+    LOG.debug("Releasing ByteBuffer: {}: {}", key.hashCode(), b);
+    if (allocated.remove(key) == null) {
       throw new ReleasingUnallocatedByteBufferException();
     }
     allocator.release(b);
@@ -156,6 +173,7 @@ public final class TrackingByteBufferAllocator implements ByteBufferAllocator, A
   @Override
   public void close() throws LeakedByteBufferException {
     if (!allocated.isEmpty()) {
+      allocated.keySet().forEach(key -> LOG.warn("Unreleased ByteBuffer {}; {}", key.hashCode(), key));
       LeakedByteBufferException ex = new LeakedByteBufferException(
           allocated.size(), allocated.values().iterator().next());
       allocated.clear(); // Drop the references to the ByteBuffers, so they can be gc'd
