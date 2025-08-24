@@ -31,11 +31,6 @@ Demonstrates basic reading and writing of Parquet files using the example API.
 - Reading data and calculating statistics
 - Basic configuration options
 
-**Run from the project root with:**
-```bash
-mvn exec:java -Dexec.mainClass="org.apache.parquet.examples.BasicReadWriteExample"
-```
-
 ### 2. AvroIntegrationExample.java
 Shows how to integrate Avro with Parquet format.
 
@@ -44,22 +39,12 @@ Shows how to integrate Avro with Parquet format.
 - Reading Parquet files as Avro records
 - Schema projection for performance
 
-**Run with:**
-```bash
-mvn exec:java -Dexec.mainClass="org.apache.parquet.examples.AvroIntegrationExample"
-```
-
 ### 3. AdvancedFeaturesExample.java
 Demonstrates advanced Parquet features.
 
 - Predicate pushdown filtering
 - Performance optimization with projections
 - Complex filter conditions
-
-**Run with:**
-```bash
-mvn exec:java -Dexec.mainClass="org.apache.parquet.examples.AdvancedFeaturesExample"
-```
 
 ## Prerequisites
 

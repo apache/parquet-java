@@ -110,10 +110,9 @@ Parquet-Java has supported Java Vector API to speed up reading, to enable this f
 
 ## Documentation
 
-For comprehensive usage documentation, examples, and tutorials, see:
+For usage documentation, examples, and tutorials, see:
 
 - **[Examples](examples/)** - Practical examples demonstrating basic and advanced usage
-- **[API Reference](examples/README.md)** - Detailed API documentation
 
 ## Map/Reduce integration
 
