@@ -79,6 +79,7 @@ import org.apache.parquet.hadoop.example.GroupWriteSupport;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
+import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.hadoop.util.HadoopOutputFile;
@@ -454,6 +455,116 @@ public class TestParquetWriter {
         ParquetProperties.DEFAULT_MAXIMUM_RECORD_COUNT_FOR_CHECK,
         conf,
         3);
+  }
+
+  @Test
+  public void testWriterConfigPersisted() throws Exception {
+    Configuration conf = new Configuration();
+    ParquetOutputFormat.setBlockRowCountLimit(conf, 2);
+    ParquetOutputFormat.setPersistWriterConfig(conf, true);
+
+    MessageType schema = Types.buildMessage()
+        .required(BINARY)
+        .as(stringType())
+        .named("str")
+        .named("msg");
+    GroupWriteSupport.setSchema(schema, conf);
+
+    java.io.File file = new File(temp.getRoot(), "testWriterConfigPersisted.parquet");
+    Path path = new Path(file.toURI());
+
+    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(path)
+        .withConf(conf)
+        .withRowGroupRowCountLimit(2)
+        .build()) {
+      writer.write(new SimpleGroupFactory(schema).newGroup().append("str", "a"));
+      writer.write(new SimpleGroupFactory(schema).newGroup().append("str", "b"));
+    }
+
+    try (ParquetFileReader r = ParquetFileReader.open(HadoopInputFile.fromPath(path, conf))) {
+      java.util.Map<String, String> kv = r.getFooter().getFileMetaData().getKeyValueMetaData();
+      Assert.assertEquals("2", kv.get(ParquetOutputFormat.BLOCK_ROW_COUNT_LIMIT));
+    }
+  }
+
+  @Test
+  public void testWriterConfigNotPersistedByDefault() throws Exception {
+    Configuration conf = new Configuration();
+    ParquetOutputFormat.setBlockRowCountLimit(conf, 2);
+
+    MessageType schema = Types.buildMessage()
+        .required(BINARY)
+        .as(stringType())
+        .named("str")
+        .named("msg");
+    GroupWriteSupport.setSchema(schema, conf);
+
+    java.io.File file = new File(temp.getRoot(), "testWriterConfigNotPersistedByDefault.parquet");
+    Path path = new Path(file.toURI());
+
+    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(path)
+        .withConf(conf)
+        .withRowGroupRowCountLimit(2)
+        .build()) {
+      writer.write(new SimpleGroupFactory(schema).newGroup().append("str", "a"));
+      writer.write(new SimpleGroupFactory(schema).newGroup().append("str", "b"));
+    }
+
+    try (ParquetFileReader r = ParquetFileReader.open(HadoopInputFile.fromPath(path, conf))) {
+      java.util.Map<String, String> kv = r.getFooter().getFileMetaData().getKeyValueMetaData();
+      Assert.assertNull(
+          "Writer config should not be persisted by default",
+          kv.get(ParquetOutputFormat.BLOCK_ROW_COUNT_LIMIT));
+    }
+  }
+
+  @Test
+  public void testComprehensiveWriterConfigPersisted() throws Exception {
+    Configuration conf = new Configuration();
+    ParquetOutputFormat.setPersistWriterConfig(conf, true);
+
+    MessageType schema = Types.buildMessage()
+        .required(BINARY)
+        .as(stringType())
+        .named("str")
+        .named("msg");
+    GroupWriteSupport.setSchema(schema, conf);
+
+    java.io.File file = new File(temp.getRoot(), "testComprehensiveWriterConfigPersisted.parquet");
+    Path path = new Path(file.toURI());
+
+    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(path)
+        .withConf(conf)
+        .withRowGroupRowCountLimit(1000)
+        .withPageSize(1024)
+        .withPageRowCountLimit(500)
+        .withDictionaryPageSize(2048)
+        .withCompressionCodec(CompressionCodecName.SNAPPY)
+        .withDictionaryEncoding(true)
+        .withMaxBloomFilterBytes(1024 * 1024)
+        .withValidation(false)
+        .withPageWriteChecksumEnabled(true)
+        .withRowGroupSize(64 * 1024 * 1024)
+        .withMaxPaddingSize(8 * 1024 * 1024)
+        .build()) {
+      writer.write(new SimpleGroupFactory(schema).newGroup().append("str", "test"));
+    }
+
+    try (ParquetFileReader r = ParquetFileReader.open(HadoopInputFile.fromPath(path, conf))) {
+      java.util.Map<String, String> kv = r.getFooter().getFileMetaData().getKeyValueMetaData();
+
+      Assert.assertEquals("1000", kv.get("parquet.block.row.count.limit"));
+      Assert.assertEquals("67108864", kv.get("parquet.block.size"));
+      Assert.assertEquals("1024", kv.get("parquet.page.size"));
+      Assert.assertEquals("500", kv.get("parquet.page.row.count.limit"));
+      Assert.assertEquals("2048", kv.get("parquet.dictionary.page.size"));
+      Assert.assertEquals("SNAPPY", kv.get("parquet.compression.codec"));
+      Assert.assertEquals("true", kv.get("parquet.dictionary.enabled"));
+      Assert.assertEquals("1048576", kv.get("parquet.bloom.filter.max.bytes"));
+      Assert.assertEquals("false", kv.get("parquet.validation.enabled"));
+      Assert.assertEquals("true", kv.get("parquet.page.write.checksum.enabled"));
+      Assert.assertEquals("8388608", kv.get("parquet.max.padding.size"));
+    }
   }
 
   @Test

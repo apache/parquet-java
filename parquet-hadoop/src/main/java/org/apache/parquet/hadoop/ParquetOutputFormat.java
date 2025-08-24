@@ -154,6 +154,9 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   public static final String BLOOM_FILTER_FPP = "parquet.bloom.filter.fpp";
   public static final String ADAPTIVE_BLOOM_FILTER_ENABLED = "parquet.bloom.filter.adaptive.enabled";
   public static final String BLOOM_FILTER_CANDIDATES_NUMBER = "parquet.bloom.filter.candidates.number";
+  /** If true, selected writer configuration values will be stored in the Parquet footer's key-value metadata. */
+  public static final String PERSIST_WRITER_CONFIG = "parquet.persist.writer.config";
+
   public static final String BLOCK_ROW_COUNT_LIMIT = "parquet.block.row.count.limit";
   public static final String PAGE_ROW_COUNT_LIMIT = "parquet.page.row.count.limit";
   public static final String PAGE_WRITE_CHECKSUM_ENABLED = "parquet.page.write-checksum.enabled";
@@ -377,6 +380,18 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
 
   static int getBlockRowCountLimit(Configuration conf) {
     return conf.getInt(BLOCK_ROW_COUNT_LIMIT, ParquetProperties.DEFAULT_ROW_GROUP_ROW_COUNT_LIMIT);
+  }
+
+  public static void setPersistWriterConfig(JobContext jobContext, boolean enabled) {
+    setPersistWriterConfig(getConfiguration(jobContext), enabled);
+  }
+
+  public static void setPersistWriterConfig(Configuration conf, boolean enabled) {
+    conf.setBoolean(PERSIST_WRITER_CONFIG, enabled);
+  }
+
+  static boolean getPersistWriterConfig(Configuration conf) {
+    return conf.getBoolean(PERSIST_WRITER_CONFIG, false);
   }
 
   public static void setPageRowCountLimit(JobContext jobContext, int rowCount) {

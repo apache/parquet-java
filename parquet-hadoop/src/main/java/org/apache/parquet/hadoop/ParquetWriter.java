@@ -464,6 +464,32 @@ public class ParquetWriter<T> implements Closeable {
    * @param <SELF> The type of this builder that is returned by builder methods
    */
   public abstract static class Builder<T, SELF extends Builder<T, SELF>> {
+    private static final String CFG_BLOCK_SIZE = "parquet.block.size";
+    private static final String CFG_BLOCK_ROW_COUNT_LIMIT = "parquet.block.row.count.limit";
+    private static final String CFG_PAGE_SIZE = "parquet.page.size";
+    private static final String CFG_PAGE_ROW_COUNT_LIMIT = "parquet.page.row.count.limit";
+    private static final String CFG_DICT_PAGE_SIZE = "parquet.dictionary.page.size";
+    private static final String CFG_COMPRESSION = "parquet.compression.codec";
+    private static final String CFG_DICT_ENABLED = "parquet.dictionary.enabled";
+    private static final String CFG_BLOOM_MAX_BYTES = "parquet.bloom.filter.max.bytes";
+    private static final String CFG_VALIDATION_ENABLED = "parquet.validation.enabled";
+    private static final String CFG_PAGE_CHECKSUM_ENABLED = "parquet.page.write.checksum.enabled";
+    private static final String CFG_WRITER_VERSION = "parquet.writer.version";
+    private static final String CFG_MAX_PADDING_SIZE = "parquet.max.padding.size";
+
+    private static final class ConfigCollector {
+      private final java.util.LinkedHashMap<String, String> m = new java.util.LinkedHashMap<>();
+
+      ConfigCollector add(String k, Object v) {
+        m.put(k, String.valueOf(v));
+        return this;
+      }
+
+      java.util.Map<String, String> done() {
+        return m;
+      }
+    }
+
     private OutputFile file = null;
     private Path path = null;
     private FileEncryptionProperties encryptionProperties = null;
@@ -963,7 +989,14 @@ public class ParquetWriter<T> implements Closeable {
       if (conf == null) {
         conf = new HadoopParquetConfiguration();
       }
-      ParquetProperties encodingProps = encodingPropsBuilder.build();
+
+      final ParquetProperties propsSnapshot = encodingPropsBuilder.build();
+
+      if (conf.getBoolean(org.apache.parquet.hadoop.ParquetOutputFormat.PERSIST_WRITER_CONFIG, false)) {
+        encodingPropsBuilder.withExtraMetaData(buildWriterConfigMetadata(propsSnapshot));
+      }
+
+      final ParquetProperties encodingProps = encodingPropsBuilder.build();
       if (codecFactory == null) {
         codecFactory = new CodecFactory(conf, encodingProps.getPageSizeThreshold());
       }
@@ -982,6 +1015,26 @@ public class ParquetWriter<T> implements Closeable {
           maxPaddingSize,
           encodingProps,
           encryptionProperties);
+    }
+
+    /**
+     * Builds a map of writer configuration parameters to be persisted in footer metadata.
+     */
+    private java.util.Map<String, String> buildWriterConfigMetadata(ParquetProperties props) {
+      return new ConfigCollector()
+          .add(CFG_BLOCK_SIZE, rowGroupSize)
+          .add(CFG_BLOCK_ROW_COUNT_LIMIT, props.getRowGroupRowCountLimit())
+          .add(CFG_PAGE_SIZE, props.getPageSizeThreshold())
+          .add(CFG_PAGE_ROW_COUNT_LIMIT, props.getPageRowCountLimit())
+          .add(CFG_DICT_PAGE_SIZE, props.getDictionaryPageSizeThreshold())
+          .add(CFG_COMPRESSION, codecName.name())
+          .add(CFG_DICT_ENABLED, props.isEnableDictionary())
+          .add(CFG_BLOOM_MAX_BYTES, props.getMaxBloomFilterBytes())
+          .add(CFG_VALIDATION_ENABLED, enableValidation)
+          .add(CFG_PAGE_CHECKSUM_ENABLED, props.getPageWriteChecksumEnabled())
+          .add(CFG_WRITER_VERSION, props.getWriterVersion().name())
+          .add(CFG_MAX_PADDING_SIZE, maxPaddingSize)
+          .done();
     }
   }
 }
