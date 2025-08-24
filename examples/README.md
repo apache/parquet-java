@@ -19,7 +19,7 @@
 
 # Parquet Java Examples
 
-This directory contains real examples demonstrating how to use the Apache Parquet Java library.
+This directory contains self-contained code snippets that demonstrate how to use the Apache Parquet Java library.
 
 ## Examples Overview
 
@@ -31,7 +31,7 @@ Demonstrates basic reading and writing of Parquet files using the example API.
 - Reading data and calculating statistics
 - Basic configuration options
 
-**Run with:**
+**Run from the project root with:**
 ```bash
 mvn exec:java -Dexec.mainClass="org.apache.parquet.examples.BasicReadWriteExample"
 ```

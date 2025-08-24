@@ -27,7 +27,6 @@ import org.apache.parquet.filter2.predicate.FilterPredicate;
 import org.apache.parquet.filter2.predicate.Operators;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.hadoop.ParquetWriter;
-import org.apache.parquet.hadoop.example.ExampleParquetWriter;
 import org.apache.parquet.hadoop.example.GroupReadSupport;
 import org.apache.parquet.hadoop.example.GroupWriteSupport;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
@@ -37,6 +36,7 @@ import org.apache.parquet.schema.Types;
 
 import java.io.IOException;
 import java.util.Random;
+import org.apache.hadoop.conf.Configuration;
 
 public class AdvancedFeaturesExample {
 
@@ -60,13 +60,20 @@ public class AdvancedFeaturesExample {
     private static void writeSalesData(String filename, MessageType schema) throws IOException {
         Path file = new Path(filename);
 
-        try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(file)
-            .withCompressionCodec(CompressionCodecName.SNAPPY)
-            .withRowGroupSize(64 * 1024 * 1024)
-            .withPageSize(1024 * 1024)
-            .withDictionaryEncoding(true)
-            .config(GroupWriteSupport.PARQUET_EXAMPLE_SCHEMA, schema.toString())
-            .build()) {
+        Configuration conf = new Configuration();
+        GroupWriteSupport.setSchema(schema, conf);
+
+        try (ParquetWriter<Group> writer = new ParquetWriter<>(
+            file,                               // destination path
+            new GroupWriteSupport(),            // write support implementation
+            CompressionCodecName.SNAPPY,        // compression codec
+            64 * 1024 * 1024,                   // row-group size
+            1024 * 1024,                        // page size
+            1024 * 1024,                        // dictionary page size
+            true,                               // enable dictionary encoding
+            false,                              // disable validation
+            ParquetWriter.DEFAULT_WRITER_VERSION, // writer version
+            conf)) {
 
             SimpleGroupFactory factory = new SimpleGroupFactory(schema);
             Random random = new Random(42);
