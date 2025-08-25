@@ -22,8 +22,10 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
@@ -51,11 +53,8 @@ import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Types;
 import org.junit.Before;
 import org.junit.Test;
-import org.slf4j.LoggerFactory;
-
-import java.io.ByteArrayOutputStream;
-import java.io.PrintStream;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class TestEncryptionInfoCommand extends ParquetFileTest {
 
@@ -270,9 +269,8 @@ public class TestEncryptionInfoCommand extends ParquetFileTest {
     FileDecryptionProperties decryptionProps = createDecryptionProperties();
     Configuration verifyConf = new Configuration();
 
-    ParquetReadOptions readOptions = ParquetReadOptions.builder()
-        .withDecryption(decryptionProps)
-        .build();
+    ParquetReadOptions readOptions =
+        ParquetReadOptions.builder().withDecryption(decryptionProps).build();
     InputFile inputFile = HadoopInputFile.fromPath(new Path(footerEncryptedFile.getPath()), verifyConf);
 
     try {
