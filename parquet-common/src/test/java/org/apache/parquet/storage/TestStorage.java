@@ -51,18 +51,14 @@ public class TestStorage {
         provider instanceof org.apache.parquet.storage.impl.NioStorageProvider);
   }
 
-  @Test
-  public void testHdfsSchemeReturnsHadoopProvider() {
-    StorageProvider provider = Storage.select(URI.create("hdfs://namenode:8020/test.parquet"));
-    assertNotNull("Should return a provider", provider);
+  @Test(expected = IllegalStateException.class)
+  public void testHdfsSchemeThrowsExceptionWhenHadoopNotAvailable() {
+    Storage.select(URI.create("hdfs://namenode:8020/test.parquet"));
   }
 
-  @Test
-  public void testUnknownSchemeReturnsNioProvider() {
-    StorageProvider provider = Storage.select(URI.create("s3://bucket/test.parquet"));
-    assertTrue(
-        "unknown scheme should return NioStorageProvider",
-        provider instanceof org.apache.parquet.storage.impl.NioStorageProvider);
+  @Test(expected = IllegalStateException.class)
+  public void testUnknownSchemeThrowsExceptionWhenHadoopNotAvailable() {
+    Storage.select(URI.create("s3://bucket/test.parquet"));
   }
 
   @Test
@@ -70,5 +66,25 @@ public class TestStorage {
     StorageProvider provider = Storage.select(URI.create("file:///tmp/test.parquet"));
 
     assertTrue(provider instanceof org.apache.parquet.storage.impl.NioStorageProvider);
+  }
+
+  @Test
+  public void testProviderSelectionLogic() {
+    StorageProvider fileProvider = Storage.select(URI.create("file:///tmp/test.parquet"));
+    assertTrue(
+        "file:// should always return NIO provider",
+        fileProvider instanceof org.apache.parquet.storage.impl.NioStorageProvider);
+
+    try {
+      Storage.select(URI.create("hdfs://namenode:8020/test.parquet"));
+      fail("Should throw IllegalStateException for hdfs:// when Hadoop not available");
+    } catch (IllegalStateException e) {
+    }
+
+    try {
+      Storage.select(URI.create("s3://bucket/test.parquet"));
+      fail("Should throw IllegalStateException for s3:// when Hadoop not available");
+    } catch (IllegalStateException e) {
+    }
   }
 }
