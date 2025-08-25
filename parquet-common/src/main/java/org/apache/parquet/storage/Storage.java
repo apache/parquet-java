@@ -30,8 +30,6 @@ public final class Storage {
 
   /**
    * Return the appropriate provider for the given URI scheme.
-   * - file:// or no scheme → NIO provider
-   * - hdfs:// → Hadoop provider (if available)
    */
   public static StorageProvider select(URI uri) {
     final String scheme = uri == null ? null : uri.getScheme();
