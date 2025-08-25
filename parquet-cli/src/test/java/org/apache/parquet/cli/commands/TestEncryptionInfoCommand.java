@@ -27,8 +27,10 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.ParquetReadOptions;
@@ -47,6 +49,8 @@ import org.apache.parquet.hadoop.example.ExampleParquetWriter;
 import org.apache.parquet.hadoop.example.GroupWriteSupport;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
+import org.apache.parquet.hadoop.metadata.ParquetMetadata;
+import org.apache.parquet.hadoop.metadata.ParquetMetadataConverter;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.io.InputFile;
 import org.apache.parquet.schema.MessageType;
@@ -246,22 +250,19 @@ public class TestEncryptionInfoCommand extends ParquetFileTest {
   public void testColumnEncryptedFileWithKeys() throws IOException {
     assertTrue(columnEncryptedFile.exists());
 
-    ByteArrayOutputStream out = new ByteArrayOutputStream();
-    PrintStream ps = new PrintStream(out, true, StandardCharsets.UTF_8);
-    Logger logger = createLogger(ps);
-
-    EncryptionInfoCommand cmd = new EncryptionInfoCommand(logger);
+    EncryptionInfoCommand cmd = new EncryptionInfoCommand(createLogger());
     cmd.targets = java.util.Arrays.asList(columnEncryptedFile.getAbsolutePath());
     cmd.setConf(new Configuration());
 
     int rc = cmd.run();
     assertEquals(0, rc);
 
-    String output = out.toString(StandardCharsets.UTF_8);
-
-    assertTrue(output.contains("Encryption type: PLAINTEXT_FOOTER"));
-    assertTrue(output.contains("ssn   ENCRYPTED"));
-    assertTrue(output.contains("id    -"));
+    ParquetMetadata footer = ParquetFileReader.readFooter(
+        new Configuration(),
+        new Path(columnEncryptedFile.getAbsolutePath()),
+        ParquetMetadataConverter.NO_FILTER);
+    Set<String> encrypted = EncryptionInfoCommand.findEncryptedColumns(footer);
+    assertEquals(Collections.singleton("ssn"), encrypted);
   }
 
   @Test
