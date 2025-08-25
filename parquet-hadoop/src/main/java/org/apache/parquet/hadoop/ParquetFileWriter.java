@@ -1820,10 +1820,10 @@ public class ParquetFileWriter implements AutoCloseable {
     byte[] footerBytes = buffer.toByteArray();
 
     try {
+      state = state.end();
+
       out.write(footerBytes);
       out.flush();
-
-      state = state.end();
       this.footer = localFooter;
     } finally {
       close();
