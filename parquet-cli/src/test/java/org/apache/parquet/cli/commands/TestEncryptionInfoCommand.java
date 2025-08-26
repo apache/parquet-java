@@ -250,6 +250,8 @@ public class TestEncryptionInfoCommand extends ParquetFileTest {
   public void testColumnEncryptedFileWithKeys() throws IOException {
     assertTrue(columnEncryptedFile.exists());
 
+    enableCliDecryptionKeys();
+
     EncryptionInfoCommand cmd = new EncryptionInfoCommand(createLogger());
     cmd.targets = java.util.Arrays.asList(columnEncryptedFile.getAbsolutePath());
     cmd.setConf(new Configuration());
@@ -257,10 +259,13 @@ public class TestEncryptionInfoCommand extends ParquetFileTest {
     int rc = cmd.run();
     assertEquals(0, rc);
 
-    ParquetMetadata footer = ParquetFileReader.readFooter(
-        new Configuration(),
-        new Path(columnEncryptedFile.getAbsolutePath()),
-        ParquetMetadataConverter.NO_FILTER);
+    FileDecryptionProperties decryptionProps = createDecryptionProperties();
+    ParquetReadOptions options = ParquetReadOptions.builder().withDecryption(decryptionProps).build();
+    InputFile inputFile = HadoopInputFile.fromPath(new Path(columnEncryptedFile.getAbsolutePath()), new Configuration());
+    ParquetMetadata footer;
+    try (ParquetFileReader reader = ParquetFileReader.open(inputFile, options)) {
+      footer = reader.getFooter();
+    }
     Set<String> encrypted = EncryptionInfoCommand.findEncryptedColumns(footer);
     assertEquals(Collections.singleton("ssn"), encrypted);
   }
@@ -281,6 +286,7 @@ public class TestEncryptionInfoCommand extends ParquetFileTest {
     }
 
     ByteArrayOutputStream out = new ByteArrayOutputStream();
+    enableCliDecryptionKeys();
     Logger logger = createLogger(new PrintStream(out));
     EncryptionInfoCommand cmd = new EncryptionInfoCommand(logger);
     cmd.targets = java.util.Arrays.asList(footerEncryptedFile.getAbsolutePath());
