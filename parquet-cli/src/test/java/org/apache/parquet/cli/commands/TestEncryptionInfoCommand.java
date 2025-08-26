@@ -43,7 +43,6 @@ import org.apache.parquet.crypto.KeyAccessDeniedException;
 import org.apache.parquet.crypto.ParquetCryptoRuntimeException;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroupFactory;
-import org.apache.parquet.format.converter.ParquetMetadataConverter;
 import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.example.ExampleParquetWriter;
@@ -260,8 +259,10 @@ public class TestEncryptionInfoCommand extends ParquetFileTest {
     assertEquals(0, rc);
 
     FileDecryptionProperties decryptionProps = createDecryptionProperties();
-    ParquetReadOptions options = ParquetReadOptions.builder().withDecryption(decryptionProps).build();
-    InputFile inputFile = HadoopInputFile.fromPath(new Path(columnEncryptedFile.getAbsolutePath()), new Configuration());
+    ParquetReadOptions options =
+        ParquetReadOptions.builder().withDecryption(decryptionProps).build();
+    InputFile inputFile =
+        HadoopInputFile.fromPath(new Path(columnEncryptedFile.getAbsolutePath()), new Configuration());
     ParquetMetadata footer;
     try (ParquetFileReader reader = ParquetFileReader.open(inputFile, options)) {
       footer = reader.getFooter();
