@@ -136,23 +136,15 @@ Usage: parquet [options] [command] [command options]
 
 ### Configuration Options
 
-The `convert` and `convert-csv` commands support a generic configuration mechanism:
-
 - `--conf` or `--property`: Set any configuration property in format `key=value`. Can be specified multiple times.
-
-This allows you to configure any Avro or Parquet setting without needing to modify source code or rebuild the project.
 
 Examples:
 ```bash
-# Enable UUID support
 parquet convert input.avro -o output.parquet --conf parquet.avro.write-parquet-uuid=true
 
-# Use new 3-level list structure
 parquet convert input.avro -o output.parquet --conf parquet.avro.write-old-list-structure=false
 
-# Convert CSV with multiple options
+# Multiple options
 parquet convert-csv input.csv -o output.parquet --schema schema.avsc --conf parquet.avro.write-parquet-uuid=true --conf parquet.avro.write-old-list-structure=false
 
-# Set any other configuration properties
-parquet convert input.avro -o output.parquet --conf parquet.avro.add-list-element-records=false --conf parquet.avro.write.data.supplier=org.apache.parquet.avro.GenericDataSupplier
 ```

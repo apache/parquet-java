@@ -34,6 +34,7 @@ import java.io.IOException;
 import java.util.List;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.avro.AvroParquetWriter;
@@ -43,7 +44,6 @@ import org.apache.parquet.cli.util.Schemas;
 import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.slf4j.Logger;
-import org.apache.hadoop.conf.Configuration;
 
 @Parameters(commandDescription = "Create a Parquet file from a data file")
 public class ConvertCommand extends BaseCommand {
@@ -125,10 +125,8 @@ public class ConvertCommand extends BaseCommand {
       outFS.delete(outPath);
     }
 
-    // Create a configuration and apply custom properties
     Configuration conf = new Configuration(getConf());
 
-    // Apply custom configuration properties
     if (confProperties != null) {
       for (String prop : confProperties) {
         String[] parts = prop.split("=", 2);

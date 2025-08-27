@@ -174,10 +174,8 @@ public class ConvertCSVCommand extends BaseCommand {
       }
     }
 
-    // Create a configuration and apply custom properties
     Configuration conf = new Configuration(getConf());
 
-    // Apply custom configuration properties
     if (confProperties != null) {
       for (String prop : confProperties) {
         String[] parts = prop.split("=", 2);

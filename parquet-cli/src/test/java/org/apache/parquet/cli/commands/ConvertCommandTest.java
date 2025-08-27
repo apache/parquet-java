@@ -48,8 +48,7 @@ public class ConvertCommandTest extends AvroFileTest {
     command.confProperties = Arrays.asList(
         "parquet.avro.write-parquet-uuid=true",
         "parquet.avro.write-old-list-structure=false",
-        "test.property=test.value"
-    );
+        "test.property=test.value");
     command.setConf(new Configuration());
 
     Assert.assertEquals(0, command.run());
@@ -64,10 +63,8 @@ public class ConvertCommandTest extends AvroFileTest {
     File output = new File(getTempFolder(), "converted_with_config_validation.parquet");
     command.outputPath = output.getAbsolutePath();
 
-    command.confProperties = Arrays.asList(
-        "parquet.avro.write-parquet-uuid=true",
-        "parquet.avro.write-old-list-structure=false"
-    );
+    command.confProperties =
+        Arrays.asList("parquet.avro.write-parquet-uuid=true", "parquet.avro.write-old-list-structure=false");
 
     command.setConf(new Configuration());
 
@@ -76,10 +73,8 @@ public class ConvertCommandTest extends AvroFileTest {
 
     File output2 = new File(getTempFolder(), "converted_with_config_validation2.parquet");
     command.outputPath = output2.getAbsolutePath();
-    command.confProperties = Arrays.asList(
-        "parquet.avro.write-parquet-uuid=false",
-        "parquet.avro.write-old-list-structure=true"
-    );
+    command.confProperties =
+        Arrays.asList("parquet.avro.write-parquet-uuid=false", "parquet.avro.write-old-list-structure=true");
 
     Assert.assertEquals(0, command.run());
     Assert.assertTrue(output2.exists());
