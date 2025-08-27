@@ -61,4 +61,20 @@ public class ConvertCSVCommandTest extends CSVFileTest {
     command.setConf(new Configuration());
     command.run();
   }
+
+  @Test
+  public void testConvertCSVCommandWithGenericConf() throws IOException {
+    File file = csvFile();
+    ConvertCSVCommand command = new ConvertCSVCommand(createLogger());
+    command.targets = Arrays.asList(file.getAbsolutePath());
+    File output = new File(getTempFolder(), getClass().getSimpleName() + "_with_generic_conf.parquet");
+    command.outputPath = output.getAbsolutePath();
+    command.confProperties = Arrays.asList(
+        "parquet.avro.write-parquet-uuid=true",
+        "parquet.avro.write-old-list-structure=false"
+    );
+    command.setConf(new Configuration());
+    Assert.assertEquals(0, command.run());
+    Assert.assertTrue(output.exists());
+  }
 }

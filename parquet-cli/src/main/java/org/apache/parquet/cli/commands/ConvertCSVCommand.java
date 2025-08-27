@@ -45,6 +45,7 @@ import org.apache.parquet.cli.util.Codecs;
 import org.apache.parquet.cli.util.Schemas;
 import org.apache.parquet.hadoop.ParquetFileWriter;
 import org.apache.parquet.hadoop.ParquetWriter;
+import org.apache.hadoop.conf.Configuration;
 import org.slf4j.Logger;
 
 @Parameters(commandDescription = "Create a file from CSV data")
@@ -117,6 +118,11 @@ public class ConvertCSVCommand extends BaseCommand {
       description = "Remove any data already in the target view or dataset")
   boolean overwrite = false;
 
+  @Parameter(
+      names = {"--conf", "--property"},
+      description = "Set a configuration property (format: key=value). Can be specified multiple times.")
+  List<String> confProperties;
+
   @Override
   @SuppressWarnings("unchecked")
   public int run() throws IOException {
@@ -168,6 +174,23 @@ public class ConvertCSVCommand extends BaseCommand {
       }
     }
 
+    // Create a configuration and apply custom properties
+    Configuration conf = new Configuration(getConf());
+
+    // Apply custom configuration properties
+    if (confProperties != null) {
+      for (String prop : confProperties) {
+        String[] parts = prop.split("=", 2);
+        if (parts.length != 2) {
+          throw new IllegalArgumentException("Configuration property must be in format key=value: " + prop);
+        }
+        String key = parts[0].trim();
+        String value = parts[1].trim();
+        conf.set(key, value);
+        console.debug("Set configuration property: {}={}", key, value);
+      }
+    }
+
     try (ParquetWriter<Record> writer = AvroParquetWriter.<Record>builder(qualifiedPath(outputPath))
         .withWriterVersion(v2 ? PARQUET_2_0 : PARQUET_1_0)
         .withWriteMode(overwrite ? ParquetFileWriter.Mode.OVERWRITE : ParquetFileWriter.Mode.CREATE)
@@ -177,7 +200,7 @@ public class ConvertCSVCommand extends BaseCommand {
         .withPageSize(pageSize)
         .withRowGroupSize(rowGroupSize)
         .withDataModel(GenericData.get())
-        .withConf(getConf())
+        .withConf(conf)
         .withSchema(csvSchema)
         .build()) {
       for (String target : targets) {
