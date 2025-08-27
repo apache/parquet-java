@@ -36,6 +36,7 @@ import java.util.Set;
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaNormalization;
 import org.apache.avro.generic.GenericData;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.avro.AvroParquetWriter;
 import org.apache.parquet.cli.BaseCommand;
 import org.apache.parquet.cli.csv.AvroCSV;
@@ -45,7 +46,6 @@ import org.apache.parquet.cli.util.Codecs;
 import org.apache.parquet.cli.util.Schemas;
 import org.apache.parquet.hadoop.ParquetFileWriter;
 import org.apache.parquet.hadoop.ParquetWriter;
-import org.apache.hadoop.conf.Configuration;
 import org.slf4j.Logger;
 
 @Parameters(commandDescription = "Create a file from CSV data")
