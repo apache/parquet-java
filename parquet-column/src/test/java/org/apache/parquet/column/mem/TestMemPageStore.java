@@ -22,6 +22,7 @@ import static org.apache.parquet.column.Encoding.BIT_PACKED;
 import static org.apache.parquet.column.Encoding.PLAIN;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 import org.apache.parquet.bytes.BytesInput;
@@ -71,6 +72,7 @@ public class TestMemPageStore {
       // Assert page has expected value count
       assertEquals("Each page should have 209 values", 209, readPage.getValueCount());
       // Assert encodings when the implementation is DataPageV1
+      assertTrue("Page should be an instance of DataPageV1", readPage instanceof DataPageV1);
       if (readPage instanceof DataPageV1) {
         DataPageV1 v1 = (DataPageV1) readPage;
         assertEquals("Page repetition level encoding should be BIT_PACKED", BIT_PACKED, v1.getRlEncoding());
@@ -80,7 +82,6 @@ public class TestMemPageStore {
 
       total += readPage.getValueCount();
       pageCount++;
-      LOG.info("Page " + pageCount + ": " + readPage.toString());
     } while (total < totalValueCount);
 
     // Assert we read exactly the expected number of pages and values
