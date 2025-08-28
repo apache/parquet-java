@@ -26,9 +26,12 @@ import com.beust.jcommander.Parameters;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.Collection;
+import javax.annotation.Nullable;
 import org.apache.commons.text.TextStringBuilder;
 import org.apache.parquet.cli.BaseCommand;
 import org.apache.parquet.column.statistics.SizeStatistics;
@@ -41,6 +44,15 @@ import org.slf4j.Logger;
 
 @Parameters(commandDescription = "Print size statistics for a Parquet file")
 public class ShowSizeStatisticsCommand extends BaseCommand {
+
+  private static <T> Set<T> filterOrNull(Collection<T> values) {
+    if (values == null || values.isEmpty()) return null;
+    return new HashSet<>(values);
+  }
+
+  private static boolean includesOrAll(@Nullable Set<?> filter, Object value) {
+    return filter == null || filter.contains(value);
+  }
 
   public ShowSizeStatisticsCommand(Logger console) {
     super(console);
@@ -73,12 +85,12 @@ public class ShowSizeStatisticsCommand extends BaseCommand {
       console.info("\nFile path: {}", source);
 
       List<BlockMetaData> blocks = footer.getBlocks();
-      Set<Integer> allowedRowGroups = rowGroups == null ? new HashSet<>() : new HashSet<>(rowGroups);
-      for (int index = 0, n = blocks.size(); index < n; index++) {
-        if (!allowedRowGroups.isEmpty() && !allowedRowGroups.contains(index)) {
-          continue;
-        }
-        printRowGroupSizeStats(console, index, blocks.get(index), schema);
+
+      final Set<Integer> rowGroupFilter = filterOrNull(this.rowGroups);
+
+      for (int i = 0, n = blocks.size(); i < n; i++) {
+        if (!includesOrAll(rowGroupFilter, i)) continue;
+        printRowGroupSizeStats(console, i, blocks.get(i), schema);
         console.info("");
       }
     }
@@ -100,13 +112,11 @@ public class ShowSizeStatisticsCommand extends BaseCommand {
     console.info(
         String.format(formatString, "column", "unencoded bytes", "rep level histogram", "def level histogram"));
 
-    Set<String> allowedColumns = columns == null ? new HashSet<>() : new HashSet<>(columns);
+    final Set<String> columnFilter = filterOrNull(this.columns);
 
     for (ColumnChunkMetaData column : rowGroup.getColumns()) {
       String dotPath = column.getPath().toDotString();
-      if (!allowedColumns.isEmpty() && !allowedColumns.contains(dotPath)) {
-        continue;
-      }
+      if (!includesOrAll(columnFilter, dotPath)) continue;
       printColumnSizeStats(console, column, schema, maxColumnWidth);
     }
   }
