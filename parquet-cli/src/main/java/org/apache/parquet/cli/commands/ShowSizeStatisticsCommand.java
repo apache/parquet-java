@@ -73,9 +73,9 @@ public class ShowSizeStatisticsCommand extends BaseCommand {
       console.info("\nFile path: {}", source);
 
       List<BlockMetaData> blocks = footer.getBlocks();
-      Set<Integer> allowedRowGroups = rowGroups == null ? null : new HashSet<>(rowGroups);
+      Set<Integer> allowedRowGroups = rowGroups == null ? new HashSet<>() : new HashSet<>(rowGroups);
       for (int index = 0, n = blocks.size(); index < n; index++) {
-        if (allowedRowGroups != null && !allowedRowGroups.contains(index)) {
+        if (!allowedRowGroups.isEmpty() && !allowedRowGroups.contains(index)) {
           continue;
         }
         printRowGroupSizeStats(console, index, blocks.get(index), schema);
@@ -100,14 +100,11 @@ public class ShowSizeStatisticsCommand extends BaseCommand {
     console.info(
         String.format(formatString, "column", "unencoded bytes", "rep level histogram", "def level histogram"));
 
-    Set<String> allowedColumns = null;
-    if (columns != null && !columns.isEmpty()) {
-      allowedColumns = new HashSet<>(columns);
-    }
+    Set<String> allowedColumns = columns == null ? new HashSet<>() : new HashSet<>(columns);
 
     for (ColumnChunkMetaData column : rowGroup.getColumns()) {
       String dotPath = column.getPath().toDotString();
-      if (allowedColumns != null && !allowedColumns.contains(dotPath)) {
+      if (!allowedColumns.isEmpty() && !allowedColumns.contains(dotPath)) {
         continue;
       }
       printColumnSizeStats(console, column, schema, maxColumnWidth);
