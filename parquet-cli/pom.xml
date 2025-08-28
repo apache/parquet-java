@@ -98,6 +98,13 @@
       <classifier>tests</classifier>
       <scope>test</scope>
     </dependency>
+    <!-- CatCommandTest (for TestProtobuf) -->
+    <dependency>
+      <groupId>com.google.protobuf</groupId>
+      <artifactId>protobuf-java</artifactId>
+      <version>3.25.6</version>
+      <scope>test</scope>
+    </dependency>
     <dependency>
       <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-format-structures</artifactId>
