@@ -56,11 +56,10 @@ import org.apache.parquet.cli.util.Formats;
 import org.apache.parquet.cli.util.GetClassLoader;
 import org.apache.parquet.cli.util.Schemas;
 import org.apache.parquet.cli.util.SeekableFSDataInputStream;
-import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.example.data.Group;
-import org.apache.parquet.hadoop.example.GroupReadSupport;
 import org.apache.parquet.hadoop.ParquetFileReader;
-import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.hadoop.ParquetReader;
+import org.apache.parquet.hadoop.example.GroupReadSupport;
 import org.slf4j.Logger;
 
 public abstract class BaseCommand implements Command, Configurable {
@@ -366,7 +365,8 @@ public abstract class BaseCommand implements Command, Configurable {
       case PARQUET:
         boolean isProtobufStyle = isProtobufStyleSchema(source);
         if (isProtobufStyle) {
-          final ParquetReader<Group> grp = ParquetReader.<Group>builder(new GroupReadSupport(), qualifiedPath(source))
+          final ParquetReader<Group> grp = ParquetReader.<Group>builder(
+                  new GroupReadSupport(), qualifiedPath(source))
               .withConf(getConf())
               .build();
           return (Iterable<D>) asIterable(grp);
