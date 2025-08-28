@@ -118,11 +118,6 @@ public class ConvertCSVCommand extends BaseCommand {
       description = "Remove any data already in the target view or dataset")
   boolean overwrite = false;
 
-  @Parameter(
-      names = {"--conf", "--property"},
-      description = "Set a configuration property (format: key=value). Can be specified multiple times.")
-  List<String> confProperties;
-
   @Override
   @SuppressWarnings("unchecked")
   public int run() throws IOException {
@@ -174,21 +169,6 @@ public class ConvertCSVCommand extends BaseCommand {
       }
     }
 
-    Configuration conf = new Configuration(getConf());
-
-    if (confProperties != null) {
-      for (String prop : confProperties) {
-        String[] parts = prop.split("=", 2);
-        if (parts.length != 2) {
-          throw new IllegalArgumentException("Configuration property must be in format key=value: " + prop);
-        }
-        String key = parts[0].trim();
-        String value = parts[1].trim();
-        conf.set(key, value);
-        console.debug("Set configuration property: {}={}", key, value);
-      }
-    }
-
     try (ParquetWriter<Record> writer = AvroParquetWriter.<Record>builder(qualifiedPath(outputPath))
         .withWriterVersion(v2 ? PARQUET_2_0 : PARQUET_1_0)
         .withWriteMode(overwrite ? ParquetFileWriter.Mode.OVERWRITE : ParquetFileWriter.Mode.CREATE)
@@ -198,7 +178,7 @@ public class ConvertCSVCommand extends BaseCommand {
         .withPageSize(pageSize)
         .withRowGroupSize(rowGroupSize)
         .withDataModel(GenericData.get())
-        .withConf(conf)
+        .withConf(getConf())
         .withSchema(csvSchema)
         .build()) {
       for (String target : targets) {

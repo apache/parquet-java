@@ -45,11 +45,11 @@ public class ConvertCommandTest extends AvroFileTest {
     command.targets = Arrays.asList(file.getAbsolutePath());
     File output = new File(getTempFolder(), "converted_with_generic_conf.parquet");
     command.outputPath = output.getAbsolutePath();
-    command.confProperties = Arrays.asList(
-        "parquet.avro.write-parquet-uuid=true",
-        "parquet.avro.write-old-list-structure=false",
-        "test.property=test.value");
-    command.setConf(new Configuration());
+    Configuration conf = new Configuration();
+    conf.set("parquet.avro.write-parquet-uuid", "true");
+    conf.set("parquet.avro.write-old-list-structure", "false");
+    conf.set("test.property", "test.value");
+    command.setConf(conf);
 
     Assert.assertEquals(0, command.run());
     Assert.assertTrue(output.exists());
@@ -63,32 +63,22 @@ public class ConvertCommandTest extends AvroFileTest {
     File output = new File(getTempFolder(), "converted_with_config_validation.parquet");
     command.outputPath = output.getAbsolutePath();
 
-    command.confProperties =
-        Arrays.asList("parquet.avro.write-parquet-uuid=true", "parquet.avro.write-old-list-structure=false");
-
-    command.setConf(new Configuration());
+    Configuration conf = new Configuration();
+    conf.set("parquet.avro.write-parquet-uuid", "true");
+    conf.set("parquet.avro.write-old-list-structure", "false");
+    command.setConf(conf);
 
     Assert.assertEquals(0, command.run());
     Assert.assertTrue(output.exists());
 
     File output2 = new File(getTempFolder(), "converted_with_config_validation2.parquet");
     command.outputPath = output2.getAbsolutePath();
-    command.confProperties =
-        Arrays.asList("parquet.avro.write-parquet-uuid=false", "parquet.avro.write-old-list-structure=true");
+    Configuration conf2 = new Configuration();
+    conf2.set("parquet.avro.write-parquet-uuid", "false");
+    conf2.set("parquet.avro.write-old-list-structure", "true");
+    command.setConf(conf2);
 
     Assert.assertEquals(0, command.run());
     Assert.assertTrue(output2.exists());
-  }
-
-  @Test(expected = IllegalArgumentException.class)
-  public void testConvertCommandWithInvalidConf() throws IOException {
-    File file = toAvro(parquetFile());
-    ConvertCommand command = new ConvertCommand(createLogger());
-    command.targets = Arrays.asList(file.getAbsolutePath());
-    File output = new File(getTempFolder(), "converted_with_invalid_conf.parquet");
-    command.outputPath = output.getAbsolutePath();
-    command.confProperties = Arrays.asList("invalid-property-format");
-    command.setConf(new Configuration());
-    command.run();
   }
 }
