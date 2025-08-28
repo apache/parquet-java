@@ -25,8 +25,8 @@ import com.beust.jcommander.ParameterException;
 import com.beust.jcommander.Parameters;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableSet;
-import java.util.Set;
 import java.util.List;
+import java.util.Set;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configurable;
 import org.apache.hadoop.conf.Configuration;
@@ -206,7 +206,6 @@ public class Main extends Configured implements Tool {
       console.error("Unknown error", e);
       return 1;
     }
-
   }
 
   public static void main(String[] args) throws Exception {

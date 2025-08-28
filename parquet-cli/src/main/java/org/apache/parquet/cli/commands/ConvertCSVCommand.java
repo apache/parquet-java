@@ -36,7 +36,6 @@ import java.util.Set;
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaNormalization;
 import org.apache.avro.generic.GenericData;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.avro.AvroParquetWriter;
 import org.apache.parquet.cli.BaseCommand;
 import org.apache.parquet.cli.csv.AvroCSV;
