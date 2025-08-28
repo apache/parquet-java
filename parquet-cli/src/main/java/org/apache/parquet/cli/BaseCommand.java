@@ -35,6 +35,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.AccessController;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import org.apache.avro.Schema;
 import org.apache.avro.file.DataFileReader;
@@ -56,12 +57,55 @@ import org.apache.parquet.cli.util.GetClassLoader;
 import org.apache.parquet.cli.util.Schemas;
 import org.apache.parquet.cli.util.SeekableFSDataInputStream;
 import org.apache.parquet.hadoop.ParquetReader;
+import org.apache.parquet.example.data.Group;
+import org.apache.parquet.hadoop.example.GroupReadSupport;
+import org.apache.parquet.hadoop.ParquetFileReader;
+import org.apache.parquet.schema.MessageType;
 import org.slf4j.Logger;
 
 public abstract class BaseCommand implements Command, Configurable {
 
   private static final String RESOURCE_URI_SCHEME = "resource";
   private static final String STDIN_AS_SOURCE = "stdin";
+
+  /**
+   * Note for dev: Due to legancy reasons, parquet-cli used the avro schema reader which
+   * breaks for files generated through proto. This logic is in place to auto-detect such cases
+   * and route the request to simple reader instead of avro.
+   */
+  private boolean isProtobufStyleSchema(String source) throws IOException {
+    try (ParquetFileReader reader = ParquetFileReader.open(getConf(), qualifiedPath(source))) {
+      Map<String, String> metadata = reader.getFooter().getFileMetaData().getKeyValueMetaData();
+      return metadata != null && metadata.containsKey("parquet.proto.class");
+    }
+  }
+
+  // Util to convert ParquetReader to Iterable
+  private static <T> Iterable<T> asIterable(final ParquetReader<T> reader) {
+    return () -> new Iterator<T>() {
+      private T next = advance();
+
+      private T advance() {
+        try {
+          return reader.read();
+        } catch (IOException e) {
+          throw new RuntimeException(e);
+        }
+      }
+
+      @Override
+      public boolean hasNext() {
+        return next != null;
+      }
+
+      @Override
+      public T next() {
+        T current = next;
+        next = advance();
+        return current;
+      }
+    };
+  }
 
   protected final Logger console;
 
@@ -320,6 +364,13 @@ public abstract class BaseCommand implements Command, Configurable {
     Formats.Format format = Formats.detectFormat(open(source));
     switch (format) {
       case PARQUET:
+        boolean isProtobufStyle = isProtobufStyleSchema(source);
+        if (isProtobufStyle) {
+          final ParquetReader<Group> grp = ParquetReader.<Group>builder(new GroupReadSupport(), qualifiedPath(source))
+              .withConf(getConf())
+              .build();
+          return (Iterable<D>) asIterable(grp);
+        }
         Configuration conf = new Configuration(getConf());
         // TODO: add these to the reader builder
         AvroReadSupport.setRequestedProjection(conf, projection);

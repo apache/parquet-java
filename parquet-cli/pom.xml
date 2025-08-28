@@ -87,6 +87,19 @@
     </dependency>
     <dependency>
       <groupId>org.apache.parquet</groupId>
+      <artifactId>parquet-protobuf</artifactId>
+      <version>${project.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.parquet</groupId>
+      <artifactId>parquet-protobuf</artifactId>
+      <version>${project.version}</version>
+      <classifier>tests</classifier>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-format-structures</artifactId>
       <version>${project.version}</version>
     </dependency>
