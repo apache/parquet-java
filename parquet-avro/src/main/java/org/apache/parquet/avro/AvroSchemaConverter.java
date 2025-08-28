@@ -83,26 +83,12 @@ public class AvroSchemaConverter {
 
   public static final String ADD_LIST_ELEMENT_RECORDS = "parquet.avro.add-list-element-records";
   private static final boolean ADD_LIST_ELEMENT_RECORDS_DEFAULT = true;
-  public static final String AVRO_MAX_RECURSION = "parquet.avro.max-recursion";
-  private static final int AVRO_MAX_RECURSION_DEFAULT = 10;
 
   private final boolean assumeRepeatedIsListElement;
   private final boolean writeOldListStructure;
   private final boolean writeParquetUUID;
   private final boolean readInt96AsFixed;
   private final Set<String> pathsToInt96;
-  private final int maxRecursion;
-
-  /**
-   * Sets the maximum recursion depth for recursive schemas.
-   *
-   * @param config       The hadoop configuration to be updated.
-   * @param maxRecursion The maximum recursion depth schemas are allowed to go before terminating
-   *                     with an UnsupportedOperationException instead of their actual schema.
-   */
-  public static void setMaxRecursion(Configuration config, int maxRecursion) {
-    config.setInt(AVRO_MAX_RECURSION, maxRecursion);
-  }
 
   public AvroSchemaConverter() {
     this(ADD_LIST_ELEMENT_RECORDS_DEFAULT, READ_INT96_AS_FIXED_DEFAULT);
@@ -121,7 +107,6 @@ public class AvroSchemaConverter {
     this.writeParquetUUID = WRITE_PARQUET_UUID_DEFAULT;
     this.readInt96AsFixed = readInt96AsFixed;
     this.pathsToInt96 = Collections.emptySet();
-    this.maxRecursion = AVRO_MAX_RECURSION_DEFAULT;
   }
 
   public AvroSchemaConverter(Configuration conf) {
@@ -134,7 +119,6 @@ public class AvroSchemaConverter {
     this.writeParquetUUID = conf.getBoolean(WRITE_PARQUET_UUID, WRITE_PARQUET_UUID_DEFAULT);
     this.readInt96AsFixed = conf.getBoolean(READ_INT96_AS_FIXED, READ_INT96_AS_FIXED_DEFAULT);
     this.pathsToInt96 = new HashSet<>(Arrays.asList(conf.getStrings(WRITE_FIXED_AS_INT96, new String[0])));
-    this.maxRecursion = conf.getInt(AVRO_MAX_RECURSION, AVRO_MAX_RECURSION_DEFAULT);
   }
 
   /**
@@ -213,13 +197,13 @@ public class AvroSchemaConverter {
     LogicalType logicalType = schema.getLogicalType();
 
     if (type.equals(Schema.Type.RECORD) || type.equals(Schema.Type.ENUM) || type.equals(Schema.Type.FIXED)) {
-      Integer depth = seenSchemas.get(schema);
-      if (depth != null && depth >= maxRecursion) {
-        throw new UnsupportedOperationException("Recursive Avro schemas are not supported by parquet-avro: "
-            + schema.getFullName() + " (exceeded maximum recursion depth of " + maxRecursion + ")");
+      // If this schema has already been seen in the current branch, we have a recursion loop
+      if (seenSchemas.containsKey(schema)) {
+        throw new UnsupportedOperationException(
+            "Recursive Avro schemas are not supported by parquet-avro: " + schema.getFullName());
       }
       seenSchemas = new IdentityHashMap<>(seenSchemas);
-      seenSchemas.put(schema, depth == null ? 1 : depth + 1);
+      seenSchemas.put(schema, 1);
     }
 
     Types.PrimitiveBuilder<PrimitiveType> builder;

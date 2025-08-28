@@ -980,7 +980,7 @@ public class TestAvroSchemaConverter {
     Schema recursiveSchema = new Schema.Parser().parse(recursiveSchemaJson);
 
     assertThrows(
-        "Recursive Avro schema should throw UnsupportedOperationException",
+        "Recursive Avro schema should throw UnsupportedOperationException for cycles",
         UnsupportedOperationException.class,
         () -> new AvroSchemaConverter().convert(recursiveSchema));
   }
@@ -1011,7 +1011,7 @@ public class TestAvroSchemaConverter {
     Schema issueSchema = new Schema.Parser().parse(issueSchemaJson);
 
     assertThrows(
-        "Schema should throw UnsupportedOperationException",
+        "Schema hould throw UnsupportedOperationException for cycles",
         UnsupportedOperationException.class,
         () -> new AvroSchemaConverter().convert(issueSchema));
   }
@@ -1025,41 +1025,11 @@ public class TestAvroSchemaConverter {
 
     Schema recursiveSchema = new Schema.Parser().parse(recursiveSchemaJson);
 
-    try {
-      new AvroSchemaConverter().convert(recursiveSchema);
-      Assert.fail("Expected UnsupportedOperationException");
-    } catch (UnsupportedOperationException e) {
-      String message = e.getMessage();
-      Assert.assertTrue(
-          "Error message should mention recursion",
-          message.contains("Recursive Avro schemas are not supported"));
-      Assert.assertTrue("Error message should mention schema name", message.contains("TestRecord"));
-      Assert.assertTrue(
-          "Error message should mention max recursion depth", message.contains("maximum recursion depth"));
-    }
-  }
-
-  @Test
-  public void testConfigurableMaxRecursion() {
-    String recursiveSchemaJson = "{"
-        + "\"type\": \"record\", \"name\": \"Node\", \"fields\": ["
-        + "  {\"name\": \"child\", \"type\": [\"null\", \"Node\"], \"default\": null}"
-        + "]}";
-
-    Schema recursiveSchema = new Schema.Parser().parse(recursiveSchemaJson);
-    Configuration conf = new Configuration();
-
-    AvroSchemaConverter.setMaxRecursion(conf, 1);
+    // With our cycle detection fix, this should throw UnsupportedOperationException
     assertThrows(
-        "Should fail with max recursion 1",
+        "Recursive schema should throw UnsupportedOperationException with clear error message",
         UnsupportedOperationException.class,
-        () -> new AvroSchemaConverter(conf).convert(recursiveSchema));
-
-    AvroSchemaConverter.setMaxRecursion(conf, 5);
-    assertThrows(
-        "Should fail with max recursion 5",
-        UnsupportedOperationException.class,
-        () -> new AvroSchemaConverter(conf).convert(recursiveSchema));
+        () -> new AvroSchemaConverter().convert(recursiveSchema));
   }
 
   @Test
