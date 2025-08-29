@@ -61,11 +61,18 @@ public class MessageColumnIO extends GroupColumnIO {
   private List<PrimitiveColumnIO> leaves;
 
   private final boolean validating;
+  private final boolean strictUnsignedIntegerValidation;
   private final String createdBy;
 
   MessageColumnIO(MessageType messageType, boolean validating, String createdBy) {
+    this(messageType, validating, false, createdBy);
+  }
+
+  MessageColumnIO(
+      MessageType messageType, boolean validating, boolean strictUnsignedIntegerValidation, String createdBy) {
     super(messageType, null, 0);
     this.validating = validating;
+    this.strictUnsignedIntegerValidation = strictUnsignedIntegerValidation;
     this.createdBy = createdBy;
   }
 
@@ -508,7 +515,9 @@ public class MessageColumnIO extends GroupColumnIO {
   public RecordConsumer getRecordWriter(ColumnWriteStore columns) {
     RecordConsumer recordWriter = new MessageColumnIORecordConsumer(columns);
     if (DEBUG) recordWriter = new RecordConsumerLoggingWrapper(recordWriter);
-    return validating ? new ValidatingRecordConsumer(recordWriter, getType()) : recordWriter;
+    return validating
+        ? new ValidatingRecordConsumer(recordWriter, getType(), strictUnsignedIntegerValidation)
+        : recordWriter;
   }
 
   void setLevels() {

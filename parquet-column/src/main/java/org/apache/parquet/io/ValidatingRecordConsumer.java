@@ -52,6 +52,7 @@ public class ValidatingRecordConsumer extends RecordConsumer {
   private static final int UINT_16_MAX_VALUE = 65535;
 
   private final RecordConsumer delegate;
+  private final boolean strictUnsignedIntegerValidation;
 
   private Deque<Type> types = new ArrayDeque<>();
   private Deque<Integer> fields = new ArrayDeque<>();
@@ -63,7 +64,18 @@ public class ValidatingRecordConsumer extends RecordConsumer {
    * @param schema   the schema to validate against
    */
   public ValidatingRecordConsumer(RecordConsumer delegate, MessageType schema) {
+    this(delegate, schema, false);
+  }
+
+  /**
+   * @param delegate the consumer to pass down the event to
+   * @param schema   the schema to validate against
+   * @param strictUnsignedIntegerValidation whether to enable strict unsigned integer validation
+   */
+  public ValidatingRecordConsumer(
+      RecordConsumer delegate, MessageType schema, boolean strictUnsignedIntegerValidation) {
     this.delegate = delegate;
+    this.strictUnsignedIntegerValidation = strictUnsignedIntegerValidation;
     this.types.push(schema);
   }
 
@@ -207,7 +219,9 @@ public class ValidatingRecordConsumer extends RecordConsumer {
   @Override
   public void addInteger(int value) {
     validate(INT32);
-    validateUnsignedInteger(value);
+    if (strictUnsignedIntegerValidation) {
+      validateUnsignedInteger(value);
+    }
     delegate.addInteger(value);
   }
 
@@ -217,7 +231,9 @@ public class ValidatingRecordConsumer extends RecordConsumer {
   @Override
   public void addLong(long value) {
     validate(INT64);
-    validateUnsignedLong(value);
+    if (strictUnsignedIntegerValidation) {
+      validateUnsignedLong(value);
+    }
     delegate.addLong(value);
   }
 

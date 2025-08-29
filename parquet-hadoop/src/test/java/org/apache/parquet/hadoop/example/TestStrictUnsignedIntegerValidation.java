@@ -69,6 +69,7 @@ public class TestStrictUnsignedIntegerValidation {
     try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(outputPath)
         .withType(schema)
         .withValidation(true)
+        .withStrictUnsignedIntegerValidation(true)
         .build()) {
 
       SimpleGroupFactory groupFactory = new SimpleGroupFactory(schema);
@@ -145,6 +146,7 @@ public class TestStrictUnsignedIntegerValidation {
     try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(outputPath)
         .withType(schema)
         .withValidation(true)
+        .withStrictUnsignedIntegerValidation(true)
         .build()) {
 
       SimpleGroupFactory groupFactory = new SimpleGroupFactory(schema);
@@ -170,6 +172,7 @@ public class TestStrictUnsignedIntegerValidation {
     try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(outputPath)
         .withType(schema)
         .withValidation(true)
+        .withStrictUnsignedIntegerValidation(true)
         .build()) {
 
       SimpleGroupFactory groupFactory = new SimpleGroupFactory(schema);
@@ -195,6 +198,7 @@ public class TestStrictUnsignedIntegerValidation {
     try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(outputPath)
         .withType(schema)
         .withValidation(true)
+        .withStrictUnsignedIntegerValidation(true)
         .build()) {
 
       SimpleGroupFactory groupFactory = new SimpleGroupFactory(schema);
@@ -220,6 +224,7 @@ public class TestStrictUnsignedIntegerValidation {
     try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(outputPath)
         .withType(schema)
         .withValidation(true)
+        .withStrictUnsignedIntegerValidation(true)
         .build()) {
 
       SimpleGroupFactory groupFactory = new SimpleGroupFactory(schema);
@@ -302,6 +307,66 @@ public class TestStrictUnsignedIntegerValidation {
       assertThrows(InvalidRecordException.class, () -> {
         writer.write(invalidGroup);
       });
+    }
+  }
+
+  @Test
+  public void testStrictUnsignedIntegerValidationEnabled() throws IOException {
+    MessageType schema = Types.buildMessage()
+        .required(INT32)
+        .as(intType(8, false))
+        .named("uint8_field")
+        .named("test_schema");
+
+    File tempFile = new File(tempFolder.getRoot(), "strict_validation_enabled.parquet");
+    Path outputPath = new Path(tempFile.getAbsolutePath());
+
+    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(outputPath)
+        .withType(schema)
+        .withValidation(true)
+        .withStrictUnsignedIntegerValidation(true)
+        .build()) {
+
+      SimpleGroupFactory groupFactory = new SimpleGroupFactory(schema);
+
+      // This should work - valid value
+      Group validGroup = groupFactory.newGroup().append("uint8_field", 255);
+      writer.write(validGroup);
+
+      // This should throw an exception - invalid value
+      Group invalidGroup = groupFactory.newGroup().append("uint8_field", -1);
+      assertThrows(InvalidRecordException.class, () -> {
+        writer.write(invalidGroup);
+      });
+    }
+  }
+
+  @Test
+  public void testStrictUnsignedIntegerValidationDisabled() throws IOException {
+    MessageType schema = Types.buildMessage()
+        .required(INT32)
+        .as(intType(8, false))
+        .named("uint8_field")
+        .named("test_schema");
+
+    File tempFile = new File(tempFolder.getRoot(), "strict_validation_disabled.parquet");
+    Path outputPath = new Path(tempFile.getAbsolutePath());
+
+    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(outputPath)
+        .withType(schema)
+        .withValidation(true)
+        .withStrictUnsignedIntegerValidation(false)
+        .build()) {
+
+      SimpleGroupFactory groupFactory = new SimpleGroupFactory(schema);
+
+      // This should work - valid value
+      Group validGroup = groupFactory.newGroup().append("uint8_field", 255);
+      writer.write(validGroup);
+
+      // This should also work - invalid value but strict validation is disabled
+      Group invalidGroup = groupFactory.newGroup().append("uint8_field", -1);
+      writer.write(invalidGroup);
     }
   }
 }
