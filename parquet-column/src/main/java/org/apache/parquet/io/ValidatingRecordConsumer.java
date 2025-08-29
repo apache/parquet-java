@@ -48,6 +48,9 @@ import org.slf4j.LoggerFactory;
 public class ValidatingRecordConsumer extends RecordConsumer {
   private static final Logger LOG = LoggerFactory.getLogger(ValidatingRecordConsumer.class);
 
+  private static final int UINT_8_MAX_VALUE = 255;
+  private static final int UINT_16_MAX_VALUE = 65535;
+
   private final RecordConsumer delegate;
 
   private Deque<Type> types = new ArrayDeque<>();
@@ -265,16 +268,16 @@ public class ValidatingRecordConsumer extends RecordConsumer {
             if (!intType.isSigned()) {
               switch (intType.getBitWidth()) {
                 case 8:
-                  if (value < 0 || value > 255) {
+                  if (value < 0 || value > UINT_8_MAX_VALUE) {
                     throw new InvalidRecordException("Value " + value
-                        + " is out of range for UINT_8 (0-255) in field "
+                        + " is out of range for UINT_8 (0-" + UINT_8_MAX_VALUE + ") in field "
                         + currentType.getName());
                   }
                   break;
                 case 16:
-                  if (value < 0 || value > 65535) {
+                  if (value < 0 || value > UINT_16_MAX_VALUE) {
                     throw new InvalidRecordException("Value " + value
-                        + " is out of range for UINT_16 (0-65535) in field "
+                        + " is out of range for UINT_16 (0-" + UINT_16_MAX_VALUE + ") in field "
                         + currentType.getName());
                   }
                   break;

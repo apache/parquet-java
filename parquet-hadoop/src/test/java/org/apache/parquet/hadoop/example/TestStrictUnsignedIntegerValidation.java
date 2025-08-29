@@ -19,11 +19,10 @@
 package org.apache.parquet.hadoop.example;
 
 import static org.apache.parquet.schema.LogicalTypeAnnotation.intType;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static org.junit.Assert.assertThrows;
-import org.apache.parquet.io.api.Binary;
 
 import java.io.File;
 import java.io.IOException;
@@ -32,6 +31,7 @@ import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroupFactory;
 import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.io.InvalidRecordException;
+import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Types;
 import org.junit.Rule;
@@ -277,10 +277,8 @@ public class TestStrictUnsignedIntegerValidation {
 
   @Test
   public void testBasicValidation() throws IOException {
-    MessageType schema = Types.buildMessage()
-        .required(INT32)
-        .named("int32_field")
-        .named("test_schema");
+    MessageType schema =
+        Types.buildMessage().required(INT32).named("int32_field").named("test_schema");
 
     File tempFile = new File(tempFolder.getRoot(), "basic_validation.parquet");
     Path outputPath = new Path(tempFile.getAbsolutePath());
@@ -295,10 +293,8 @@ public class TestStrictUnsignedIntegerValidation {
       Group validGroup = groupFactory.newGroup().append("int32_field", 42);
       writer.write(validGroup);
 
-      MessageType stringSchema = Types.buildMessage()
-          .required(BINARY)
-          .named("int32_field")
-          .named("test_schema");
+      MessageType stringSchema =
+          Types.buildMessage().required(BINARY).named("int32_field").named("test_schema");
 
       SimpleGroupFactory stringGroupFactory = new SimpleGroupFactory(stringSchema);
       Group invalidGroup = stringGroupFactory.newGroup().append("int32_field", Binary.fromString("not_an_int"));
