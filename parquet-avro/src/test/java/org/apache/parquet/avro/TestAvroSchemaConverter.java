@@ -965,6 +965,86 @@ public class TestAvroSchemaConverter {
         () -> new AvroSchemaConverter(conf).convert(schema));
   }
 
+  @Test
+  public void testRecursiveSchemaThrowsException() {
+    String recursiveSchemaJson = "{"
+        + "\"type\": \"record\", \"name\": \"Node\", \"fields\": ["
+        + "  {\"name\": \"value\", \"type\": \"int\"},"
+        + "  {\"name\": \"children\", \"type\": ["
+        + "    \"null\", {"
+        + "      \"type\": \"array\", \"items\": [\"null\", \"Node\"]"
+        + "    }"
+        + "  ], \"default\": null}"
+        + "]}";
+
+    Schema recursiveSchema = new Schema.Parser().parse(recursiveSchemaJson);
+
+    assertThrows(
+        "Recursive Avro schema should throw UnsupportedOperationException for cycles",
+        UnsupportedOperationException.class,
+        () -> new AvroSchemaConverter().convert(recursiveSchema));
+  }
+
+  @Test
+  public void testRecursiveSchemaFromGitHubIssue() {
+    String issueSchemaJson = "{"
+        + "\"type\": \"record\", \"name\": \"ObjXX\", \"fields\": ["
+        + "  {\"name\": \"id\", \"type\": [\"null\", \"long\"], \"default\": null},"
+        + "  {\"name\": \"struct_add_list\", \"type\": [\"null\", {"
+        + "    \"type\": \"array\", \"items\": [\"null\", {"
+        + "      \"type\": \"record\", \"name\": \"ObjStructAdd\", \"fields\": ["
+        + "        {\"name\": \"name\", \"type\": [\"null\", \"string\"], \"default\": null},"
+        + "        {\"name\": \"fld_list\", \"type\": [\"null\", {"
+        + "          \"type\": \"array\", \"items\": [\"null\", {"
+        + "            \"type\": \"record\", \"name\": \"ObjStructAddFld\", \"fields\": ["
+        + "              {\"name\": \"name\", \"type\": [\"null\", \"string\"], \"default\": null},"
+        + "              {\"name\": \"ref_val\", \"type\": [\"null\", \"ObjStructAdd\"], \"default\": null}"
+        + "            ]"
+        + "          }]"
+        + "        }], \"default\": null}"
+        + "      ]"
+        + "    }]"
+        + "  }], \"default\": null},"
+        + "  {\"name\": \"kafka_timestamp\", \"type\": {\"type\": \"long\", \"logicalType\": \"timestamp-millis\"}}"
+        + "]}";
+
+    Schema issueSchema = new Schema.Parser().parse(issueSchemaJson);
+
+    assertThrows(
+        "Schema hould throw UnsupportedOperationException for cycles",
+        UnsupportedOperationException.class,
+        () -> new AvroSchemaConverter().convert(issueSchema));
+  }
+
+  @Test
+  public void testRecursiveSchemaErrorMessage() {
+    String recursiveSchemaJson = "{"
+        + "\"type\": \"record\", \"name\": \"TestRecord\", \"fields\": ["
+        + "  {\"name\": \"self\", \"type\": [\"null\", \"TestRecord\"], \"default\": null}"
+        + "]}";
+
+    Schema recursiveSchema = new Schema.Parser().parse(recursiveSchemaJson);
+
+    // With our cycle detection fix, this should throw UnsupportedOperationException
+    assertThrows(
+        "Recursive schema should throw UnsupportedOperationException with clear error message",
+        UnsupportedOperationException.class,
+        () -> new AvroSchemaConverter().convert(recursiveSchema));
+  }
+
+  @Test
+  public void testDeeplyNestedNonRecursiveSchema() {
+    Schema level3 = record("Level3", field("value", primitive(STRING)));
+    Schema level2 = record("Level2", field("level3", level3));
+    Schema level1 = record("Level1", field("level2", level2));
+    Schema rootSchema = record("Root", field("level1", level1));
+
+    AvroSchemaConverter converter = new AvroSchemaConverter();
+    MessageType result = converter.convert(rootSchema);
+    Assert.assertNotNull("Non-recursive deep schema should convert successfully", result);
+    Assert.assertEquals("Root schema name should be preserved", "Root", result.getName());
+  }
+
   public static Schema optional(Schema original) {
     return Schema.createUnion(Lists.newArrayList(Schema.create(Schema.Type.NULL), original));
   }
