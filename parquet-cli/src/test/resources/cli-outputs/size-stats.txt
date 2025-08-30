@@ -1,0 +1,10 @@
+Row group 0
+--------------------------------------------------------------------------------
+column         unencoded bytes rep level histogram                      def level histogram                     
+[int32_field]  -               -                                        -                                       
+[int64_field]  -               -                                        -                                       
+[float_field]  -               -                                        -                                       
+[double_field] -               -                                        -                                       
+[binary_field] 46 B            -                                        -                                       
+[flba_field]   -               -                                        -                                       
+[date_field]   -               -                                        -                                       
