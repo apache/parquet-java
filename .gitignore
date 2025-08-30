@@ -15,9 +15,9 @@ target
 dependency-reduced-pom.xml
 .idea/*
 target/
+examples/data/**
 .cache
 *~
 mvn_install.log
 .vscode/*
 .DS_Store
-
