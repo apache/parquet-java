@@ -1,0 +1,33 @@
+{
+  "type" : "record",
+  "name" : "schema",
+  "fields" : [ {
+    "name" : "int32_field",
+    "type" : "int"
+  }, {
+    "name" : "int64_field",
+    "type" : "long"
+  }, {
+    "name" : "float_field",
+    "type" : "float"
+  }, {
+    "name" : "double_field",
+    "type" : "double"
+  }, {
+    "name" : "binary_field",
+    "type" : "bytes"
+  }, {
+    "name" : "flba_field",
+    "type" : {
+      "type" : "fixed",
+      "name" : "flba_field",
+      "size" : 12
+    }
+  }, {
+    "name" : "date_field",
+    "type" : {
+      "type" : "int",
+      "logicalType" : "date"
+    }
+  } ]
+}
