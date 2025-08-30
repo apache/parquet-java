@@ -39,6 +39,6 @@ new_development_version="$release_version-SNAPSHOT"
 tag="apache-parquet-$release_version-rc$2"
 
 ./mvnw release:clean
-./mvnw release:prepare -DskipTests -Darguments=-DskipTests -Dtag="$tag" "-DreleaseVersion=$release_version" -DdevelopmentVersion="$new_development_version"
+./mvnw release:prepare -Pvector-plugins -DskipTests -Darguments=-DskipTests -Dtag="$tag" "-DreleaseVersion=$release_version" -DdevelopmentVersion="$new_development_version"
 
 echo "Finish staging binary artifacts by running: ./mvnw release:perform"
