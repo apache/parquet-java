@@ -20,6 +20,32 @@ package org.apache.parquet.cli.testing;
 
 import org.apache.parquet.cli.commands.ParquetFileTest;
 
+/**
+ * Base class for CLI integration tests with an API for testing command output.
+ *
+ * Developer Usage Examples:
+ *
+ * // Basic command execution and assertion
+ * cli("schema file.parquet")
+ *     .ok()
+ *     .outputContains("int32_field", "int64_field");
+ *
+ * // Test help output
+ * cli("help size-stats")
+ *     .ok()
+ *     .matchOutputFromFile("expected-help.txt");
+ *
+ * // Test error conditions
+ * cli("invalid-command")
+ *     .fails(1)
+ *     .outputContains("Unknown command");
+ *
+ * // Test command with multiple arguments
+ * cli("size-stats parquetFile.getAbsolutePath()")
+ *     .ok()
+ *     .lineCount(8);
+ *
+ */
 public abstract class CliTestBase extends ParquetFileTest {
   private final CliHarness harness = new CliHarness();
 

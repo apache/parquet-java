@@ -45,7 +45,6 @@ final class CapturingLogger extends MarkerIgnoringBase implements org.slf4j.Logg
     return buf.toString();
   }
 
-
   // Since the CLI logic can call any console method, this is some needed delegator code to
   // ensure all methods are coverted and that the test harness does not miss anything.
   // Unfortunately slf4j API does not make this easy to do in a generic way, so we

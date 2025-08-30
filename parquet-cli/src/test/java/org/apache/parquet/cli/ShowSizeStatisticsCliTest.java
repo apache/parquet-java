@@ -35,9 +35,7 @@ public class ShowSizeStatisticsCliTest extends CliTestBase {
 
   @Test
   public void showsHelpMessage() throws Exception {
-    cli("help size-stats")
-        .ok()
-        .matchOutputFromFile("src/test/resources/cli-outputs/size-stats-help.txt");
+    cli("help size-stats").ok().matchOutputFromFile("src/test/resources/cli-outputs/size-stats-help.txt");
   }
 
   @Test

@@ -19,9 +19,10 @@
 package org.apache.parquet.cli.testing;
 
 import static org.junit.Assert.*;
+
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.nio.charset.StandardCharsets;
 
 public final class CliResult {
   public final int exitCode;
@@ -64,9 +65,7 @@ public final class CliResult {
   }
 
   public CliResult matchOutputFromFile(String filePath) throws Exception {
-    String expected = new String(
-        Files.readAllBytes(Paths.get(filePath)),
-        StandardCharsets.UTF_8);
+    String expected = new String(Files.readAllBytes(Paths.get(filePath)), StandardCharsets.UTF_8);
     return outputContains(expected);
   }
 }
