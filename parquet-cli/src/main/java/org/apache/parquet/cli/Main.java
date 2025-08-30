@@ -25,6 +25,7 @@ import com.beust.jcommander.ParameterException;
 import com.beust.jcommander.Parameters;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableSet;
+import java.util.List;
 import java.util.Set;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configurable;
@@ -66,6 +67,11 @@ public class Main extends Configured implements Tool {
       names = {"-v", "--verbose", "--debug"},
       description = "Print extra debugging information")
   private boolean debug = false;
+
+  @Parameter(
+      names = {"--conf", "--property"},
+      description = "Set a configuration property (format: key=value). Can be specified multiple times.")
+  private List<String> confProperties;
 
   @VisibleForTesting
   @Parameter(names = "--dollar-zero", description = "A way for the runtime path to be passed in", hidden = true)
@@ -162,10 +168,25 @@ public class Main extends Configured implements Tool {
       return 1;
     }
 
-    try {
-      if (command instanceof Configurable) {
-        ((Configurable) command).setConf(getConf());
+    // Note to developer: This is a generic way to apply configs to given command.
+    // If the command does not support the configs, it would simply be ignored.
+    if (command instanceof Configurable) {
+      Configuration merged = new Configuration(getConf());
+      if (confProperties != null) {
+        for (String prop : confProperties) {
+          String[] parts = prop.split("=", 2);
+          if (parts.length != 2) {
+            throw new IllegalArgumentException(
+                "Configuration property must be in format key=value: " + prop);
+          }
+          merged.set(parts[0].trim(), parts[1].trim());
+          console.debug("Set configuration property: {}={}", parts[0].trim(), parts[1].trim());
+        }
       }
+      ((Configurable) command).setConf(merged);
+    }
+
+    try {
       return command.run();
     } catch (IllegalArgumentException e) {
       if (debug) {
