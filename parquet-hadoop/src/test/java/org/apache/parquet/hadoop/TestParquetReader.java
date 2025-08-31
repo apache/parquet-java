@@ -33,6 +33,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.Callable;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.bytes.HeapByteBufferAllocator;
@@ -41,8 +42,12 @@ import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.filter2.recordlevel.PhoneBookWriter;
+import org.apache.parquet.hadoop.ParquetReader.Builder;
+import org.apache.parquet.hadoop.api.ReadSupport;
 import org.apache.parquet.hadoop.example.ExampleParquetWriter;
 import org.apache.parquet.hadoop.example.GroupReadSupport;
+import org.apache.parquet.hadoop.util.HadoopInputFile;
+import org.apache.parquet.io.InputFile;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -229,5 +234,43 @@ public class TestParquetReader {
     assertEquals(DATA, readUsers(FilterCompat.NOOP, true, false));
     assertEquals(DATA, readUsers(FilterCompat.NOOP, false, true));
     assertEquals(DATA, readUsers(FilterCompat.NOOP, true, true));
+  }
+
+  private static class TestParquetReaderBuilder extends ParquetReader.Builder<Group> {
+
+    @Override
+    protected ReadSupport<Group> getReadSupport() {
+      return new GroupReadSupport();
+    }
+  }
+
+  @Test
+  public void testParquetReaderBuilderWithInputFile() throws Exception {
+    InputFile inputFile = HadoopInputFile.fromPath(file, new Configuration());
+    Builder<Group> builder = new TestParquetReaderBuilder().withFile(inputFile);
+    assertEquals(DATA, PhoneBookWriter.readUsers(builder, false));
+  }
+
+  @Test
+  public void testParquetReaderBuilderValidatesThatInputFileCanNotBeNull() throws Exception {
+    TestUtils.assertThrows("file cannot be null", NullPointerException.class, (Callable<ParquetReader<Group>>)
+        () -> new TestParquetReaderBuilder().withFile(null).build());
+  }
+
+  @Test
+  public void testParquetReaderBuilderValidatesThatInputFileIsSet() throws Exception {
+    TestUtils.assertThrows("File or Path must be set", IllegalStateException.class, (Callable<ParquetReader<Group>>)
+        () -> new TestParquetReaderBuilder().build());
+  }
+
+  @Test
+  public void testParquetReaderBuilderCanNotConfigurePathAndFile() throws Exception {
+    TestUtils.assertThrows(
+        "Path is already set", IllegalStateException.class, (Callable<ParquetReader<Group>>) () -> {
+          InputFile inputFile = HadoopInputFile.fromPath(file, new Configuration());
+          return ParquetReader.<Group>builder(new GroupReadSupport(), file)
+              .withFile(inputFile)
+              .build();
+        });
   }
 }

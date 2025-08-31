@@ -190,9 +190,13 @@ public class ParquetReader<T> implements Closeable {
     return new Builder<>(readSupport, path);
   }
 
+  public static <T> Builder<T> builder() {
+    return new Builder<T>();
+  }
+
   public static class Builder<T> {
     private final ReadSupport<T> readSupport;
-    private final InputFile file;
+    private InputFile file;
     private final Path path;
     private Filter filter = null;
     private ByteBufferAllocator allocator = new HeapByteBufferAllocator();
@@ -223,6 +227,14 @@ public class ParquetReader<T> implements Closeable {
       this.optionsBuilder = HadoopReadOptions.builder(this.conf, path);
     }
 
+    protected Builder() {
+      this.readSupport = null;
+      this.file = null;
+      this.path = null;
+      this.configuration = new HadoopParquetConfiguration();
+      this.optionsBuilder = HadoopReadOptions.builder(this.configuration);
+    }
+
     protected Builder(InputFile file) {
       this.readSupport = null;
       this.file = Objects.requireNonNull(file, "file cannot be null");
@@ -248,6 +260,14 @@ public class ParquetReader<T> implements Closeable {
       } else {
         optionsBuilder = ParquetReadOptions.builder(conf);
       }
+    }
+
+    public Builder<T> withFile(InputFile file) {
+      this.file = Objects.requireNonNull(file, "file cannot be null");
+      if (this.path != null) {
+        throw new IllegalStateException("Path is already set");
+      }
+      return this;
     }
 
     // when called, resets options to the defaults from conf
@@ -384,6 +404,10 @@ public class ParquetReader<T> implements Closeable {
     }
 
     public ParquetReader<T> build() throws IOException {
+      if (file == null && path == null) {
+        throw new IllegalStateException("File or Path must be set");
+      }
+
       ParquetReadOptions options = optionsBuilder.withAllocator(allocator).build();
 
       if (path != null) {
