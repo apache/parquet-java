@@ -51,6 +51,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -151,14 +152,14 @@ public class AvroSchemaConverter {
       throw new IllegalArgumentException("Avro schema must be a record.");
     }
     return new MessageType(
-        avroSchema.getFullName(), convertFields(avroSchema.getFields(), "", new HashSet<Schema>()));
+        avroSchema.getFullName(), convertFields(avroSchema.getFields(), "", new IdentityHashMap<Schema, Void>()));
   }
 
   private List<Type> convertFields(List<Schema.Field> fields, String schemaPath) {
-    return convertFields(fields, schemaPath, new HashSet<Schema>());
+    return convertFields(fields, schemaPath, new IdentityHashMap<Schema, Void>());
   }
 
-  private List<Type> convertFields(List<Schema.Field> fields, String schemaPath, Set<Schema> seenSchemas) {
+  private List<Type> convertFields(List<Schema.Field> fields, String schemaPath, IdentityHashMap<Schema, Void> seenSchemas) {
     List<Type> types = new ArrayList<Type>();
     for (Schema.Field field : fields) {
       if (field.schema().getType().equals(Schema.Type.NULL)) {
@@ -173,29 +174,29 @@ public class AvroSchemaConverter {
     return convertField(fieldName, schema, Type.Repetition.REQUIRED, schemaPath);
   }
 
-  private Type convertField(String fieldName, Schema schema, String schemaPath, Set<Schema> seenSchemas) {
+  private Type convertField(String fieldName, Schema schema, String schemaPath, IdentityHashMap<Schema, Void> seenSchemas) {
     return convertField(fieldName, schema, Type.Repetition.REQUIRED, schemaPath, seenSchemas);
   }
 
   @SuppressWarnings("deprecation")
   private Type convertField(String fieldName, Schema schema, Type.Repetition repetition, String schemaPath) {
-    return convertField(fieldName, schema, repetition, schemaPath, new HashSet<Schema>());
+    return convertField(fieldName, schema, repetition, schemaPath, new IdentityHashMap<Schema, Void>());
   }
 
   @SuppressWarnings("deprecation")
   private Type convertField(
-      String fieldName, Schema schema, Type.Repetition repetition, String schemaPath, Set<Schema> seenSchemas) {
+      String fieldName, Schema schema, Type.Repetition repetition, String schemaPath, IdentityHashMap<Schema, Void> seenSchemas) {
     Schema.Type type = schema.getType();
     LogicalType logicalType = schema.getLogicalType();
 
     if (type.equals(Schema.Type.RECORD) || type.equals(Schema.Type.ENUM) || type.equals(Schema.Type.FIXED)) {
       // If this schema has already been seen in the current branch, we have a recursion loop
-      if (seenSchemas.contains(schema)) {
+      if (seenSchemas.containsKey(schema)) {
         throw new UnsupportedOperationException(
             "Recursive Avro schemas are not supported by parquet-avro: " + schema.getFullName());
       }
-      seenSchemas = new HashSet<>(seenSchemas);
-      seenSchemas.add(schema);
+      seenSchemas = new IdentityHashMap<>(seenSchemas);
+      seenSchemas.put(schema, null);
     }
 
     Types.PrimitiveBuilder<PrimitiveType> builder;
@@ -275,11 +276,11 @@ public class AvroSchemaConverter {
   }
 
   private Type convertUnion(String fieldName, Schema schema, Type.Repetition repetition, String schemaPath) {
-    return convertUnion(fieldName, schema, repetition, schemaPath, new HashSet<Schema>());
+    return convertUnion(fieldName, schema, repetition, schemaPath, new IdentityHashMap<Schema, Void>());
   }
 
   private Type convertUnion(
-      String fieldName, Schema schema, Type.Repetition repetition, String schemaPath, Set<Schema> seenSchemas) {
+      String fieldName, Schema schema, Type.Repetition repetition, String schemaPath, IdentityHashMap<Schema, Void> seenSchemas) {
     List<Schema> nonNullSchemas = new ArrayList<Schema>(schema.getTypes().size());
     // Found any schemas in the union? Required for the edge case, where the union contains only a single type.
     boolean foundNullSchema = false;
@@ -311,7 +312,7 @@ public class AvroSchemaConverter {
 
   private Type convertUnionToGroupType(
       String fieldName, Type.Repetition repetition, List<Schema> nonNullSchemas, String schemaPath) {
-    return convertUnionToGroupType(fieldName, repetition, nonNullSchemas, schemaPath, new HashSet<Schema>());
+    return convertUnionToGroupType(fieldName, repetition, nonNullSchemas, schemaPath, new IdentityHashMap<Schema, Void>());
   }
 
   private Type convertUnionToGroupType(
@@ -319,7 +320,7 @@ public class AvroSchemaConverter {
       Type.Repetition repetition,
       List<Schema> nonNullSchemas,
       String schemaPath,
-      Set<Schema> seenSchemas) {
+      IdentityHashMap<Schema, Void> seenSchemas) {
     List<Type> unionTypes = new ArrayList<Type>(nonNullSchemas.size());
     int index = 0;
     for (Schema childSchema : nonNullSchemas) {
@@ -333,7 +334,7 @@ public class AvroSchemaConverter {
     return convertField(field.name(), field.schema(), schemaPath);
   }
 
-  private Type convertField(Schema.Field field, String schemaPath, Set<Schema> seenSchemas) {
+  private Type convertField(Schema.Field field, String schemaPath, IdentityHashMap<Schema, Void> seenSchemas) {
     return convertField(field.name(), field.schema(), schemaPath, seenSchemas);
   }
 
