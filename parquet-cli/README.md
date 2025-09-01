@@ -134,3 +134,17 @@ Usage: parquet [options] [command] [command options]
   See 'parquet help <command>' for more information on a specific command.
 ```
 
+### Configuration Options
+
+- `--conf` or `--property`: Set any configuration property in format `key=value`. Can be specified multiple times.
+
+Examples:
+```bash
+parquet convert input.avro -o output.parquet --conf parquet.avro.write-parquet-uuid=true
+
+parquet convert input.avro -o output.parquet --conf parquet.avro.write-old-list-structure=false
+
+# Multiple options
+parquet convert-csv input.csv -o output.parquet --schema schema.avsc --conf parquet.avro.write-parquet-uuid=true --conf parquet.avro.write-old-list-structure=false
+
+```
