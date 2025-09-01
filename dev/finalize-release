@@ -34,7 +34,7 @@ rc_tag="$release_tag-rc$2"
 new_development_version="$3-SNAPSHOT"
 
 git tag -am "Release Apache Parquet $release_version" "$release_tag" "$rc_tag"
-./mvnw --batch-mode -Pvector-plugins release:update-versions -DdevelopmentVersion="$new_development_version"
+./mvnw versions:set -DgenerateBackupPoms=false -DnewVersion="$new_development_version"
 ./mvnw -pl . versions:set-property -Dproperty=previous.version -DnewVersion="$release_version"
 git commit -am 'Prepare for next development iteration'
 
