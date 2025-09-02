@@ -18,6 +18,10 @@
  */
 package org.apache.parquet.cli;
 
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import org.apache.hadoop.conf.Configurable;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.util.ToolRunner;
 import org.junit.Assert;
@@ -30,5 +34,22 @@ public class MainTest {
   public void mainTest() throws Exception {
     ToolRunner.run(new Configuration(), new Main(LoggerFactory.getLogger(MainTest.class)), new String[] {});
     Assert.assertTrue("we simply verify there are no errors here", true);
+  }
+
+  @Test
+  public void testConfigFileLoading() throws Exception {
+    File configFile = File.createTempFile("test-config", ".properties");
+    configFile.deleteOnExit();
+
+    try (FileWriter writer = new FileWriter(configFile)) {
+      writer.write("test.key=test.value\n");
+    }
+
+    try {
+      new Main(LoggerFactory.getLogger(MainTest.class)).run(new String[]{"--config-file", configFile.getAbsolutePath(), "help"});
+      Assert.assertTrue("Config file loading should not throw exception", true);
+    } catch (IllegalArgumentException e) {
+      Assert.fail("Config file loading failed: " + e.getMessage());
+    }
   }
 }

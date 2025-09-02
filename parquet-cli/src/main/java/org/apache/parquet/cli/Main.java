@@ -25,6 +25,9 @@ import com.beust.jcommander.ParameterException;
 import com.beust.jcommander.Parameters;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableSet;
+import java.io.FileInputStream;
+import java.io.InputStream;
+import java.util.Properties;
 import java.util.List;
 import java.util.Set;
 import org.apache.commons.logging.LogFactory;
@@ -72,6 +75,11 @@ public class Main extends Configured implements Tool {
       names = {"--conf", "--property"},
       description = "Set a configuration property (format: key=value). Can be specified multiple times.")
   private List<String> confProperties;
+
+  @Parameter(
+      names = {"--config-file"},
+      description = "Path to a properties configuration file containing key=value pairs.")
+  private String configFilePath;
 
   @VisibleForTesting
   @Parameter(names = "--dollar-zero", description = "A way for the runtime path to be passed in", hidden = true)
@@ -172,6 +180,18 @@ public class Main extends Configured implements Tool {
     // If the command does not support the configs, it would simply be ignored.
     if (command instanceof Configurable) {
       Configuration merged = new Configuration(getConf());
+
+      if (configFilePath != null) {
+        try (InputStream in = new FileInputStream(configFilePath)) {
+          Properties props = new Properties();
+          props.load(in);
+          props.forEach((key, value) -> merged.set(key.toString(), value.toString()));
+          console.debug("Loaded configuration from file: {}", configFilePath);
+        } catch (Exception e) {
+          throw new IllegalArgumentException("Failed to load config file '" + configFilePath + "': " + e.getMessage(), e);
+        }
+      }
+
       if (confProperties != null) {
         for (String prop : confProperties) {
           String[] parts = prop.split("=", 2);
