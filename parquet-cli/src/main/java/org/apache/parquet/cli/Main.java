@@ -27,8 +27,8 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableSet;
 import java.io.FileInputStream;
 import java.io.InputStream;
-import java.util.Properties;
 import java.util.List;
+import java.util.Properties;
 import java.util.Set;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configurable;
@@ -188,7 +188,8 @@ public class Main extends Configured implements Tool {
           props.forEach((key, value) -> merged.set(key.toString(), value.toString()));
           console.debug("Loaded configuration from file: {}", configFilePath);
         } catch (Exception e) {
-          throw new IllegalArgumentException("Failed to load config file '" + configFilePath + "': " + e.getMessage(), e);
+          throw new IllegalArgumentException(
+              "Failed to load config file '" + configFilePath + "': " + e.getMessage(), e);
         }
       }
 

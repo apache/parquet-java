@@ -20,8 +20,6 @@ package org.apache.parquet.cli;
 
 import java.io.File;
 import java.io.FileWriter;
-import java.io.IOException;
-import org.apache.hadoop.conf.Configurable;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.util.ToolRunner;
 import org.junit.Assert;
@@ -46,7 +44,8 @@ public class MainTest {
     }
 
     try {
-      new Main(LoggerFactory.getLogger(MainTest.class)).run(new String[]{"--config-file", configFile.getAbsolutePath(), "help"});
+      new Main(LoggerFactory.getLogger(MainTest.class))
+          .run(new String[] {"--config-file", configFile.getAbsolutePath(), "help"});
       Assert.assertTrue("Config file loading should not throw exception", true);
     } catch (IllegalArgumentException e) {
       Assert.fail("Config file loading failed: " + e.getMessage());
