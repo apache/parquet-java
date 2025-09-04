@@ -417,7 +417,8 @@ public class TestReadWrite {
 
     MessageType parquetSchema = new MessageType(
         "test_decimal_int64_values",
-        new PrimitiveType(REQUIRED, INT64, "decimal_salary").withLogicalTypeAnnotation(LogicalTypeAnnotation.decimalType(1, 10)));
+        new PrimitiveType(REQUIRED, INT64, "decimal_salary")
+            .withLogicalTypeAnnotation(LogicalTypeAnnotation.decimalType(1, 10)));
 
     try (ParquetWriter<Group> writer =
         ExampleParquetWriter.builder(path).withType(parquetSchema).build()) {
@@ -451,8 +452,7 @@ public class TestReadWrite {
     Object firstSalary = records.get(0).get("decimal_salary");
     Object secondSalary = records.get(1).get("decimal_salary");
 
-    Assert.assertTrue(
-        "Should be BigDecimal, but is " + firstSalary.getClass(), firstSalary instanceof BigDecimal);
+    Assert.assertTrue("Should be BigDecimal, but is " + firstSalary.getClass(), firstSalary instanceof BigDecimal);
     Assert.assertEquals("Should be 23.4, but is " + firstSalary, new BigDecimal("23.4"), firstSalary);
     Assert.assertEquals("Should be 120.3, but is " + secondSalary, new BigDecimal("120.3"), secondSalary);
   }
