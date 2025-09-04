@@ -19,6 +19,8 @@
 package org.apache.parquet.avro;
 
 import static org.apache.parquet.avro.AvroTestUtil.optional;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
+import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
@@ -61,9 +63,12 @@ import org.apache.parquet.conf.HadoopParquetConfiguration;
 import org.apache.parquet.conf.ParquetConfiguration;
 import org.apache.parquet.conf.PlainParquetConfiguration;
 import org.apache.parquet.example.data.Group;
+import org.apache.parquet.example.data.GroupFactory;
+import org.apache.parquet.example.data.simple.SimpleGroupFactory;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.api.WriteSupport;
+import org.apache.parquet.hadoop.example.ExampleParquetWriter;
 import org.apache.parquet.hadoop.example.GroupReadSupport;
 import org.apache.parquet.hadoop.util.HadoopCodecs;
 import org.apache.parquet.io.InputFile;
@@ -71,7 +76,10 @@ import org.apache.parquet.io.LocalInputFile;
 import org.apache.parquet.io.LocalOutputFile;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.RecordConsumer;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
+import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
+import org.apache.parquet.schema.PrimitiveType;
 import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
@@ -398,6 +406,55 @@ public class TestReadWrite {
     Assert.assertTrue(
         "dec field should be a BigDecimal instance", records.get(0).get("dec") instanceof BigDecimal);
     Assert.assertEquals("Content should match", expected, records);
+  }
+
+  @Test
+  public void testDecimalInt64Values() throws Exception {
+
+    File file = temp.newFile("test_decimal_int64_values.parquet");
+    file.delete();
+    Path path = new Path(file.toString());
+
+    MessageType parquetSchema = new MessageType(
+        "test_decimal_int64_values",
+        new PrimitiveType(REQUIRED, INT64, "decimal_salary").withLogicalTypeAnnotation(LogicalTypeAnnotation.decimalType(1, 10)));
+
+    try (ParquetWriter<Group> writer =
+        ExampleParquetWriter.builder(path).withType(parquetSchema).build()) {
+
+      GroupFactory factory = new SimpleGroupFactory(parquetSchema);
+
+      Group group1 = factory.newGroup();
+      group1.add("decimal_salary", 234L);
+      writer.write(group1);
+
+      Group group2 = factory.newGroup();
+      group2.add("decimal_salary", 1203L);
+      writer.write(group2);
+    }
+
+    GenericData decimalSupport = new GenericData();
+    decimalSupport.addLogicalTypeConversion(new Conversions.DecimalConversion());
+
+    List<GenericRecord> records = Lists.newArrayList();
+    try (ParquetReader<GenericRecord> reader = AvroParquetReader.<GenericRecord>builder(path)
+        .withDataModel(decimalSupport)
+        .build()) {
+      GenericRecord rec;
+      while ((rec = reader.read()) != null) {
+        records.add(rec);
+      }
+    }
+
+    Assert.assertEquals("Should read 2 records", 2, records.size());
+
+    Object firstSalary = records.get(0).get("decimal_salary");
+    Object secondSalary = records.get(1).get("decimal_salary");
+
+    Assert.assertTrue(
+        "Should be BigDecimal, but is " + firstSalary.getClass(), firstSalary instanceof BigDecimal);
+    Assert.assertEquals("Should be 23.4, but is " + firstSalary, new BigDecimal("23.4"), firstSalary);
+    Assert.assertEquals("Should be 120.3, but is " + secondSalary, new BigDecimal("120.3"), secondSalary);
   }
 
   @Test

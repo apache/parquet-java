@@ -20,6 +20,8 @@ package org.apache.parquet.avro;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
@@ -29,6 +31,7 @@ import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.GroupConverter;
 import org.apache.parquet.io.api.PrimitiveConverter;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.PrimitiveStringifier;
 import org.apache.parquet.schema.PrimitiveType;
 
@@ -337,6 +340,76 @@ public class AvroConverters {
     @Override
     public String convert(Binary binary) {
       return stringifier.stringify(binary);
+    }
+  }
+
+  static final class FieldDecimalIntConverter extends AvroPrimitiveConverter {
+    private final int scale;
+    private int[] dict = null;
+
+    public FieldDecimalIntConverter(ParentValueContainer parent, PrimitiveType type) {
+      super(parent);
+      LogicalTypeAnnotation.DecimalLogicalTypeAnnotation decimalType =
+          (LogicalTypeAnnotation.DecimalLogicalTypeAnnotation) type.getLogicalTypeAnnotation();
+      this.scale = decimalType.getScale();
+    }
+
+    @Override
+    public void addInt(int value) {
+      parent.add(new BigDecimal(BigInteger.valueOf(value), scale));
+    }
+
+    @Override
+    public boolean hasDictionarySupport() {
+      return true;
+    }
+
+    @Override
+    public void setDictionary(Dictionary dictionary) {
+      dict = new int[dictionary.getMaxId() + 1];
+      for (int i = 0; i <= dictionary.getMaxId(); i++) {
+        dict[i] = dictionary.decodeToInt(i);
+      }
+    }
+
+    @Override
+    public void addValueFromDictionary(int dictionaryId) {
+      addInt(dict[dictionaryId]);
+    }
+  }
+
+  static final class FieldDecimalLongConverter extends AvroPrimitiveConverter {
+    private final int scale;
+    private long[] dict = null;
+
+    public FieldDecimalLongConverter(ParentValueContainer parent, PrimitiveType type) {
+      super(parent);
+      LogicalTypeAnnotation.DecimalLogicalTypeAnnotation decimalType =
+          (LogicalTypeAnnotation.DecimalLogicalTypeAnnotation) type.getLogicalTypeAnnotation();
+      this.scale = decimalType.getScale();
+    }
+
+    @Override
+    public void addLong(long value) {
+      parent.add(new BigDecimal(BigInteger.valueOf(value), scale));
+    }
+
+    @Override
+    public boolean hasDictionarySupport() {
+      return true;
+    }
+
+    @Override
+    public void setDictionary(Dictionary dictionary) {
+      dict = new long[dictionary.getMaxId() + 1];
+      for (int i = 0; i <= dictionary.getMaxId(); i++) {
+        dict[i] = dictionary.decodeToLong(i);
+      }
+    }
+
+    @Override
+    public void addValueFromDictionary(int dictionaryId) {
+      addLong(dict[dictionaryId]);
     }
   }
 }
