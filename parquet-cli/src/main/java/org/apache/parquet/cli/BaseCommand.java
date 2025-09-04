@@ -66,7 +66,7 @@ public abstract class BaseCommand implements Command, Configurable {
 
   private static final String RESOURCE_URI_SCHEME = "resource";
   private static final String STDIN_AS_SOURCE = "stdin";
-  public static final String PARQUET_CLI_ENABLE_GROUP_READER = "parquet.enable.fallback-simple-reader";
+  public static final String PARQUET_CLI_ENABLE_GROUP_READER = "parquet.enable.simple-reader";
 
   /**
    * Note for dev: Due to legancy reasons, parquet-cli used the avro schema reader which
