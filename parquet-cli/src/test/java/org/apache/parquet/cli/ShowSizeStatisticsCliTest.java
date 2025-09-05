@@ -20,7 +20,6 @@ package org.apache.parquet.cli;
 
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BOOLEAN;
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.DOUBLE;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FLOAT;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
@@ -35,12 +34,11 @@ import java.util.Random;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.cli.testing.CliTestBase;
-import org.apache.parquet.cli.testing.CliResult;
 import org.apache.parquet.example.data.simple.SimpleGroup;
-import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.example.ExampleParquetWriter;
 import org.apache.parquet.hadoop.example.GroupWriteSupport;
+import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
 import org.junit.Test;
@@ -75,8 +73,7 @@ public class ShowSizeStatisticsCliTest extends CliTestBase {
 
     File file = new File(getTempFolder(), "test.parquet");
     String filePath = file.getAbsolutePath();
-    ExampleParquetWriter.Builder builder =
-        ExampleParquetWriter.builder(new Path(filePath))
+    ExampleParquetWriter.Builder builder = ExampleParquetWriter.builder(new Path(filePath))
         .withType(schema)
         .withSizeStatisticsEnabled(true)
         .withPageRowCountLimit(50)
@@ -110,8 +107,18 @@ public class ShowSizeStatisticsCliTest extends CliTestBase {
           g.add("Tags", Binary.fromString(possibleTags[rnd.nextInt(possibleTags.length)]));
         }
 
-        String[] products = {"Laptop", "Mouse", "Keyboard", "Monitor", "Headphones",
-                           "Smartphone", "Tablet", "Camera", "Printer", "Speaker"};
+        String[] products = {
+          "Laptop",
+          "Mouse",
+          "Keyboard",
+          "Monitor",
+          "Headphones",
+          "Smartphone",
+          "Tablet",
+          "Camera",
+          "Printer",
+          "Speaker"
+        };
         g.add("ProductName", Binary.fromString(products[i % products.length] + "_Model_" + (i % 50)));
 
         if (i % 3 != 0) {
@@ -139,5 +146,4 @@ public class ShowSizeStatisticsCliTest extends CliTestBase {
   public void showsHelpMessage() throws Exception {
     cli("help size-stats").ok().matchOutputFromFile("src/test/resources/cli-outputs/size-stats-help.txt");
   }
-
 }

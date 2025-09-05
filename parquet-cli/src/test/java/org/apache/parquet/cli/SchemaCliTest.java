@@ -27,8 +27,6 @@ public class SchemaCliTest extends CliTestBase {
   @Test
   public void showsSchemaOutput() throws Exception {
     File file = parquetFile();
-    cli("schema " + file.getAbsolutePath())
-        .ok()
-        .matchOutputFromFile("src/test/resources/cli-outputs/schema.txt");
+    cli("schema " + file.getAbsolutePath()).ok().matchOutputFromFile("src/test/resources/cli-outputs/schema.txt");
   }
 }
