@@ -19,6 +19,7 @@
 package org.apache.parquet.avro;
 
 import static org.apache.parquet.avro.AvroTestUtil.optional;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
 import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
 import static org.junit.Assert.assertEquals;
@@ -409,14 +410,16 @@ public class TestReadWrite {
   }
 
   @Test
-  public void testDecimalInt64Values() throws Exception {
+  public void testDecimalIntegerValues() throws Exception {
 
-    File file = temp.newFile("test_decimal_int64_values.parquet");
+    File file = temp.newFile("test_decimal_integer_values.parquet");
     file.delete();
     Path path = new Path(file.toString());
 
     MessageType parquetSchema = new MessageType(
-        "test_decimal_int64_values",
+        "test_decimal_integer_values",
+        new PrimitiveType(REQUIRED, INT32, "decimal_age")
+            .withLogicalTypeAnnotation(LogicalTypeAnnotation.decimalType(2, 5)),
         new PrimitiveType(REQUIRED, INT64, "decimal_salary")
             .withLogicalTypeAnnotation(LogicalTypeAnnotation.decimalType(1, 10)));
 
@@ -426,10 +429,12 @@ public class TestReadWrite {
       GroupFactory factory = new SimpleGroupFactory(parquetSchema);
 
       Group group1 = factory.newGroup();
+      group1.add("decimal_age", 2534);
       group1.add("decimal_salary", 234L);
       writer.write(group1);
 
       Group group2 = factory.newGroup();
+      group2.add("decimal_age", 4267);
       group2.add("decimal_salary", 1203L);
       writer.write(group2);
     }
@@ -449,6 +454,15 @@ public class TestReadWrite {
 
     Assert.assertEquals("Should read 2 records", 2, records.size());
 
+    // INT32 values
+    Object firstAge = records.get(0).get("decimal_age");
+    Object secondAge = records.get(1).get("decimal_age");
+
+    Assert.assertTrue("Should be BigDecimal, but is " + firstAge.getClass(), firstAge instanceof BigDecimal);
+    Assert.assertEquals("Should be 25.34, but is " + firstAge, new BigDecimal("25.34"), firstAge);
+    Assert.assertEquals("Should be 42.67, but is " + secondAge, new BigDecimal("42.67"), secondAge);
+
+    // INT64 values
     Object firstSalary = records.get(0).get("decimal_salary");
     Object secondSalary = records.get(1).get("decimal_salary");
 

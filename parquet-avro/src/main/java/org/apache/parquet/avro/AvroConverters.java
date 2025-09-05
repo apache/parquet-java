@@ -345,7 +345,6 @@ public class AvroConverters {
 
   static final class FieldDecimalIntConverter extends AvroPrimitiveConverter {
     private final int scale;
-    private int[] dict = null;
 
     public FieldDecimalIntConverter(ParentValueContainer parent, PrimitiveType type) {
       super(parent);
@@ -358,29 +357,10 @@ public class AvroConverters {
     public void addInt(int value) {
       parent.add(new BigDecimal(BigInteger.valueOf(value), scale));
     }
-
-    @Override
-    public boolean hasDictionarySupport() {
-      return true;
-    }
-
-    @Override
-    public void setDictionary(Dictionary dictionary) {
-      dict = new int[dictionary.getMaxId() + 1];
-      for (int i = 0; i <= dictionary.getMaxId(); i++) {
-        dict[i] = dictionary.decodeToInt(i);
-      }
-    }
-
-    @Override
-    public void addValueFromDictionary(int dictionaryId) {
-      addInt(dict[dictionaryId]);
-    }
   }
 
   static final class FieldDecimalLongConverter extends AvroPrimitiveConverter {
     private final int scale;
-    private long[] dict = null;
 
     public FieldDecimalLongConverter(ParentValueContainer parent, PrimitiveType type) {
       super(parent);
@@ -392,24 +372,6 @@ public class AvroConverters {
     @Override
     public void addLong(long value) {
       parent.add(new BigDecimal(BigInteger.valueOf(value), scale));
-    }
-
-    @Override
-    public boolean hasDictionarySupport() {
-      return true;
-    }
-
-    @Override
-    public void setDictionary(Dictionary dictionary) {
-      dict = new long[dictionary.getMaxId() + 1];
-      for (int i = 0; i <= dictionary.getMaxId(); i++) {
-        dict[i] = dictionary.decodeToLong(i);
-      }
-    }
-
-    @Override
-    public void addValueFromDictionary(int dictionaryId) {
-      addLong(dict[dictionaryId]);
     }
   }
 }
