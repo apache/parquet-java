@@ -33,13 +33,13 @@ import org.slf4j.helpers.SubstituteLoggerFactory;
 
 public abstract class FileTest {
 
-  public static final String INT32_FIELD = "int32_field";
-  public static final String INT64_FIELD = "int64_field";
-  public static final String FLOAT_FIELD = "float_field";
-  public static final String DOUBLE_FIELD = "double_field";
-  public static final String BINARY_FIELD = "binary_field";
-  public static final String FIXED_LEN_BYTE_ARRAY_FIELD = "flba_field";
-  public static final String DATE_FIELD = "date_field";
+  static final String INT32_FIELD = "int32_field";
+  static final String INT64_FIELD = "int64_field";
+  static final String FLOAT_FIELD = "float_field";
+  static final String DOUBLE_FIELD = "double_field";
+  static final String BINARY_FIELD = "binary_field";
+  static final String FIXED_LEN_BYTE_ARRAY_FIELD = "flba_field";
+  static final String DATE_FIELD = "date_field";
 
   static final String[] COLORS = {"RED", "BLUE", "YELLOW", "GREEN", "WHITE"};
 

@@ -19,7 +19,6 @@
 package org.apache.parquet.cli;
 
 import java.io.File;
-import org.apache.parquet.cli.testing.CliTestBase;
 import org.junit.Test;
 
 public class SchemaCliTest extends CliTestBase {

@@ -16,10 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.parquet.cli.testing;
+package org.apache.parquet.cli;
 
 import org.apache.hadoop.conf.Configuration;
-import org.apache.parquet.cli.Main;
 import org.slf4j.Logger;
 
 public final class CliHarness {

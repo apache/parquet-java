@@ -88,8 +88,7 @@ public class Main extends Configured implements Tool {
   @VisibleForTesting
   final JCommander jc;
 
-  @VisibleForTesting
-  public Main(Logger console) {
+  Main(Logger console) {
     this.console = console;
     this.jc = new JCommander(this);
     this.help = new Help(jc, console);

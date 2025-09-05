@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.parquet.cli.testing;
+package org.apache.parquet.cli;
 
 import org.apache.parquet.cli.commands.ParquetFileTest;
 
