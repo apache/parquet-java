@@ -82,13 +82,15 @@ public class CatCommandTest extends ParquetFileTest {
   }
 
   @Test
-  public void testCatCommandProtoParquetSucceedsWithAutoDetection() throws Exception {
-    File protoFile = new File(getTempFolder(), "proto_someevent.parquet");
-    writeProtoParquet(protoFile);
+  public void testCatCommandWithSimpleReaderConfig() throws Exception {
+    File regularFile = parquetFile();
 
-    CatCommand cmd = new CatCommand(createLogger(), 0);
-    cmd.sourceFiles = Arrays.asList(protoFile.getAbsolutePath());
-    cmd.setConf(new Configuration());
+    Configuration conf = new Configuration();
+    conf.setBoolean("parquet.enable.simple-reader", true);
+
+    CatCommand cmd = new CatCommand(createLogger(), 5);
+    cmd.sourceFiles = Arrays.asList(regularFile.getAbsolutePath());
+    cmd.setConf(conf);
 
     int result = cmd.run();
     Assert.assertEquals(0, result);
