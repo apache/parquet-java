@@ -1,4 +1,3 @@
-
 Usage: parquet [general options] size-stats [command options]
 
   Description:
