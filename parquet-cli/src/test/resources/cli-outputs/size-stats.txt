@@ -1,10 +1,12 @@
+
 Row group 0
 --------------------------------------------------------------------------------
-column         unencoded bytes rep level histogram                      def level histogram                     
-[int32_field]  -               -                                        -                                       
-[int64_field]  -               -                                        -                                       
-[float_field]  -               -                                        -                                       
-[double_field] -               -                                        -                                       
-[binary_field] 46 B            -                                        -                                       
-[flba_field]   -               -                                        -                                       
-[date_field]   -               -                                        -                                       
+column        unencoded bytes rep level histogram                      def level histogram
+[DocId]       -               -                                        -
+[CategoryId]  -               -                                        -
+[IsActive]    -               -                                        -
+[Prices]      -               [10000, 7425]                            -
+[Tags]        152.405 kB      [10000, 11931]                           -
+[ProductName] 156.250 kB      -                                        -
+[Description] 1.170 MB        -                                        -
+[UUID]        -               -                                        -
