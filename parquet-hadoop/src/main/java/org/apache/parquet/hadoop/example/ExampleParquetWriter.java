@@ -38,6 +38,17 @@ import org.apache.parquet.schema.MessageType;
 public class ExampleParquetWriter extends ParquetWriter<Group> {
 
   /**
+   * Creates a Builder without preconfigured Output File for configuring
+   * ParquetWriter with the example object model.
+   * THIS IS AN EXAMPLE ONLY AND NOT INTENDED FOR USE.
+   *
+   * @return a {@link Builder} to create a {@link ParquetWriter}
+   */
+  public static Builder builder() {
+    return new Builder();
+  }
+
+  /**
    * Creates a Builder for configuring ParquetWriter with the example object
    * model. THIS IS AN EXAMPLE ONLY AND NOT INTENDED FOR USE.
    *
@@ -104,6 +115,10 @@ public class ExampleParquetWriter extends ParquetWriter<Group> {
 
     private Builder(OutputFile file) {
       super(file);
+    }
+
+    private Builder() {
+      super();
     }
 
     public Builder withType(MessageType type) {

@@ -22,6 +22,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.bytes.ByteBufferAllocator;
@@ -476,6 +477,9 @@ public class ParquetWriter<T> implements Closeable {
     private boolean enableValidation = DEFAULT_IS_VALIDATING_ENABLED;
     private ParquetProperties.Builder encodingPropsBuilder = ParquetProperties.builder();
 
+    protected Builder() {}
+
+    @Deprecated
     protected Builder(Path path) {
       this.path = path;
     }
@@ -524,6 +528,20 @@ public class ParquetWriter<T> implements Closeable {
      */
     public SELF withConf(ParquetConfiguration conf) {
       this.conf = conf;
+      return self();
+    }
+
+    /**
+     * Set the {@link OutputFile} to be written by the constructed writer.
+     *
+     * @param file a {@code OutputFile}
+     * @return this builder for method chaining.
+     */
+    public SELF withFile(OutputFile file) {
+      this.file = Objects.requireNonNull(file, "file cannot be null");
+      if (this.path != null) {
+        throw new IllegalStateException("Cannot set both path and file");
+      }
       return self();
     }
 
@@ -960,6 +978,9 @@ public class ParquetWriter<T> implements Closeable {
      * @throws IOException if there is an error while creating the writer
      */
     public ParquetWriter<T> build() throws IOException {
+      if (file == null && path == null) {
+        throw new IllegalStateException("File or Path must be set");
+      }
       if (conf == null) {
         conf = new HadoopParquetConfiguration();
       }
