@@ -82,7 +82,8 @@ public class Schemas {
     if (schemaString != null) {
       return new Schema.Parser().parse(schemaString);
     } else {
-      return new AvroSchemaConverter().convert(footer.getFileMetaData().getSchema());
+      return new AvroSchemaConverter(conf)
+          .convert(footer.getFileMetaData().getSchema());
     }
   }
 

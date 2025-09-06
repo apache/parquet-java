@@ -85,6 +85,28 @@
       <artifactId>parquet-avro</artifactId>
       <version>${project.version}</version>
     </dependency>
+
+    <!-- Protobuf dependencies for CLI Tests -->
+    <dependency>
+      <groupId>org.apache.parquet</groupId>
+      <artifactId>parquet-protobuf</artifactId>
+      <version>${project.version}</version>
+      <classifier>tests</classifier>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.google.protobuf</groupId>
+      <artifactId>protobuf-java</artifactId>
+      <version>3.25.6</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.parquet</groupId>
+      <artifactId>parquet-protobuf</artifactId>
+      <version>${project.version}</version>
+      <scope>test</scope>
+    </dependency>
+
     <dependency>
       <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-format-structures</artifactId>

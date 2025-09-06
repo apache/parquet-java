@@ -18,10 +18,14 @@
  */
 package org.apache.parquet.cli.commands;
 
+import com.google.protobuf.Message;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
+import org.apache.parquet.proto.ProtoParquetWriter;
+import org.apache.parquet.proto.test.TestProtobuf;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -62,5 +66,45 @@ public class CatCommandTest extends ParquetFileTest {
     command.columns = Arrays.asList("invalid_field");
     command.setConf(new Configuration());
     command.run();
+  }
+
+  @Test
+  public void testCatCommandProtoParquetAutoDetected() throws Exception {
+    File protoFile = new File(getTempFolder(), "proto_someevent.parquet");
+    writeProtoParquet(protoFile);
+
+    CatCommand cmd = new CatCommand(createLogger(), 0);
+    cmd.sourceFiles = Arrays.asList(protoFile.getAbsolutePath());
+    cmd.setConf(new Configuration());
+
+    int result = cmd.run();
+    Assert.assertEquals(0, result);
+  }
+
+  @Test
+  public void testCatCommandWithSimpleReaderConfig() throws Exception {
+    File regularFile = parquetFile();
+
+    Configuration conf = new Configuration();
+    conf.setBoolean("parquet.enable.simple-reader", true);
+
+    CatCommand cmd = new CatCommand(createLogger(), 5);
+    cmd.sourceFiles = Arrays.asList(regularFile.getAbsolutePath());
+    cmd.setConf(conf);
+
+    int result = cmd.run();
+    Assert.assertEquals(0, result);
+  }
+
+  private static void writeProtoParquet(File file) throws Exception {
+    TestProtobuf.RepeatedIntMessage.Builder b = TestProtobuf.RepeatedIntMessage.newBuilder()
+        .addRepeatedInt(1)
+        .addRepeatedInt(2)
+        .addRepeatedInt(3);
+
+    try (ProtoParquetWriter<Message> w =
+        new ProtoParquetWriter<>(new Path(file.getAbsolutePath()), TestProtobuf.RepeatedIntMessage.class)) {
+      w.write(b.build());
+    }
   }
 }
