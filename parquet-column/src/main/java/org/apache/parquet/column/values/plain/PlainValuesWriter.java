@@ -32,7 +32,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Plain encoding except for booleans
+ * Plain encoding except for booleans.
+ *
+ * <p>Endianness note for DECIMAL: when a DECIMAL value is stored in a
+ * BYTE_ARRAY column, the {@link org.apache.parquet.io.api.Binary}
+ * passed to this writer already contains the big-endian two's-complement bytes
+ * of the un-scaled integer (the same bytes produced by
+ * {@link java.math.BigInteger#toByteArray()}).  This writer keeps those bytes
+ * exactly as they are and only adds the 4-byte little-endian length prefix
+ * required by the PLAIN encoding.  Bytes are not re-ordered.</p>
  */
 public class PlainValuesWriter extends ValuesWriter {
   private static final Logger LOG = LoggerFactory.getLogger(PlainValuesWriter.class);
