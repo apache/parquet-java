@@ -1,0 +1,10 @@
+Usage: parquet [general options] size-stats [command options]
+
+  Description:
+
+    Print size statistics for a Parquet file
+
+  Examples:
+
+    # Show size statistics for a Parquet file
+    parquet size-stats sample.parquet
