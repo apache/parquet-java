@@ -137,7 +137,7 @@ Usage: parquet [options] [command] [command options]
 ### Configuration Options
 
 - `--conf` or `--property`: Set any configuration property in format `key=value`. Can be specified multiple times.
-- `--config-file`: Path to a properties configuration file containing key=value pairs.
+- `--config-file`: Path to a configuration file (`.properties` or `.xml` format).
 
 Examples:
 ```bash

@@ -51,4 +51,20 @@ public class MainTest {
       Assert.fail("Config file loading failed: " + e.getMessage());
     }
   }
+
+  @Test
+  public void testLocalPropertiesFile() throws Exception {
+    String configFile = getClass().getResource("/test-config.properties").getPath();
+    ToolRunner.run(new Configuration(), new Main(LoggerFactory.getLogger(MainTest.class)), new String[] {
+      "--config-file", configFile, "version"
+    });
+  }
+
+  @Test
+  public void testLocalXmlFile() throws Exception {
+    String configFile = getClass().getResource("/test-config.xml").getPath();
+    ToolRunner.run(new Configuration(), new Main(LoggerFactory.getLogger(MainTest.class)), new String[] {
+      "--config-file", configFile, "version"
+    });
+  }
 }
