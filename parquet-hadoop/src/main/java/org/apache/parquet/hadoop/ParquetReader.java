@@ -49,7 +49,7 @@ import org.apache.parquet.io.InputFile;
 
 /**
  * Read records from a Parquet file.
- * TODO: too many constructors (https://issues.apache.org/jira/browse/PARQUET-39)
+ * TODO: too many constructors (https://github.com/apache/parquet-java/issues/1466)
  */
 public class ParquetReader<T> implements Closeable {
 

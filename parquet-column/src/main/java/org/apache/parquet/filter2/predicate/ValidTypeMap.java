@@ -34,7 +34,7 @@ import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
  * when there are type mismatches.
  * <p>
  * TODO: this has some overlap with {@link PrimitiveTypeName#javaType}
- * TODO: (https://issues.apache.org/jira/browse/PARQUET-30)
+ * TODO: (https://github.com/apache/parquet-java/issues/1447)
  */
 public class ValidTypeMap {
   private ValidTypeMap() {}
