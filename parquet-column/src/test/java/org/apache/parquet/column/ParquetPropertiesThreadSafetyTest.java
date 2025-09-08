@@ -18,12 +18,11 @@
  */
 package org.apache.parquet.column;
 
-import org.apache.parquet.column.values.factory.ValuesWriterFactory;
-import org.junit.Test;
+import static org.junit.Assert.assertNotSame;
 
 import java.lang.reflect.Field;
-
-import static org.junit.Assert.assertNotSame;
+import org.apache.parquet.column.values.factory.ValuesWriterFactory;
+import org.junit.Test;
 
 public class ParquetPropertiesThreadSafetyTest {
 
