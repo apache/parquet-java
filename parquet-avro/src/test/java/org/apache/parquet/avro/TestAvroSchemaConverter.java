@@ -600,6 +600,32 @@ public class TestAvroSchemaConverter {
   }
 
   @Test
+  public void testMultipleInt96FieldsToStringConversion() throws Exception {
+    Configuration enableInt96ReadingConfig = new Configuration();
+    enableInt96ReadingConfig.setBoolean(AvroReadSupport.READ_INT96_AS_FIXED, true);
+
+    Types.MessageTypeBuilder builder = Types.buildMessage();
+    builder.optional(PrimitiveType.PrimitiveTypeName.INT96).named("timestamp_1");
+    builder.optional(PrimitiveType.PrimitiveTypeName.INT96).named("timestamp_2");
+    MessageType int96Schema = builder.named("int96Schema");
+
+    AvroSchemaConverter converter = new AvroSchemaConverter(enableInt96ReadingConfig);
+    Schema avroSchema = converter.convert(int96Schema);
+
+    String schemaString = avroSchema.toString(true);
+    System.out.println("Generated Avro schema:");
+    System.out.println(schemaString);
+
+    Assert.assertTrue("First field should have full timestamp_1 definition",
+        schemaString.contains("\"name\" : \"timestamp_1\""));
+    Assert.assertTrue("Second field should have full timestamp_2 definition",
+        schemaString.contains("\"name\" : \"timestamp_2\""));
+
+    Assert.assertFalse("Should not reference bare 'INT96' type anymore",
+        schemaString.contains("\"type\" : [ \"null\", \"INT96\" ]"));
+  }
+
+  @Test
   public void testDateType() throws Exception {
     Schema date = LogicalTypes.date().addToSchema(Schema.create(INT));
     Schema expected = Schema.createRecord(
