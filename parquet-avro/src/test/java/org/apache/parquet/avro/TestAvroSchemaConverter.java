@@ -579,7 +579,7 @@ public class TestAvroSchemaConverter {
     enableInt96ReadingConfig.setBoolean(AvroReadSupport.READ_INT96_AS_FIXED, true);
 
     Schema schema = Schema.createRecord("myrecord", null, null, false);
-    Schema int96schema = Schema.createFixed("INT96", "INT96 represented as byte[12]", null, 12);
+    Schema int96schema = Schema.createFixed("int96_field", "INT96 represented as byte[12]", null, 12);
     schema.setFields(Collections.singletonList(new Schema.Field("int96_field", int96schema, null, null)));
 
     testParquetToAvroConversion(
