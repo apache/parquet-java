@@ -209,7 +209,7 @@ public abstract class PrimitiveComparator<T> implements Comparator<T>, Serializa
   /*
    * This comparator is for comparing two timestamps represented as int96 binary.
    * It is a two level comparison.
-   * Days (last 4 bytes compared as unsigned Little endian int32),
+   * Days (last 4 bytes compared as unsigned little endian int32),
    * Nanoseconds (first 8 bytes compared as unsigned little endian int64)
    */
   static final PrimitiveComparator<Binary> BINARY_AS_INT96_TIMESTAMP_COMPARATOR = new BinaryComparator() {
