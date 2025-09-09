@@ -613,15 +613,16 @@ public class TestAvroSchemaConverter {
     Schema avroSchema = converter.convert(int96Schema);
 
     String schemaString = avroSchema.toString(true);
-    System.out.println("Generated Avro schema:");
-    System.out.println(schemaString);
 
-    Assert.assertTrue("First field should have full timestamp_1 definition",
+    Assert.assertTrue(
+        "First field should have full timestamp_1 definition",
         schemaString.contains("\"name\" : \"timestamp_1\""));
-    Assert.assertTrue("Second field should have full timestamp_2 definition",
+    Assert.assertTrue(
+        "Second field should have full timestamp_2 definition",
         schemaString.contains("\"name\" : \"timestamp_2\""));
 
-    Assert.assertFalse("Should not reference bare 'INT96' type anymore",
+    Assert.assertFalse(
+        "Should not reference bare 'INT96' type anymore",
         schemaString.contains("\"type\" : [ \"null\", \"INT96\" ]"));
   }
 
