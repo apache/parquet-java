@@ -50,7 +50,7 @@ public class ValidInt96Stats {
     try {
       ParsedVersion version = VersionParser.parse(createdBy);
       if ("parquet-mr".equals(version.application)) {
-        return version.version != null && version.version.compareTo("1.15.0") > 0;
+        return version.version != null && version.version.compareTo("1.16.0") > 0;
       }
       if ("parquet-mr compatible Photon".equals(version.application)) {
         return true;
