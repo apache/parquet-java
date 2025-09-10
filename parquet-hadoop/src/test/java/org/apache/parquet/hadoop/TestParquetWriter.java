@@ -722,4 +722,62 @@ public class TestParquetWriter {
       }
     }
   }
+
+  @Test
+  public void testParquetWriterConfiguringOutputFile() throws IOException {
+    MessageType schema = Types.buildMessage()
+        .required(BINARY)
+        .as(stringType())
+        .named("name")
+        .named("msg");
+
+    Configuration conf = new Configuration();
+    GroupWriteSupport.setSchema(schema, conf);
+
+    GroupFactory factory = new SimpleGroupFactory(schema);
+    File file = temp.newFile();
+    file.delete();
+    Path path = new Path(file.getAbsolutePath());
+    OutputFile outputFile = new TestOutputFile(path, conf);
+
+    String[] testNames = {"new", "writer", "builder", "without", "file"};
+    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder()
+        .withFile(outputFile)
+        .withConf(conf)
+        .build()) {
+      for (String testName : testNames) {
+        writer.write(factory.newGroup().append("name", testName));
+      }
+    }
+    ParquetReader<Group> reader =
+        ParquetReader.builder(new GroupReadSupport(), path).build();
+    assertEquals("new", reader.read().getBinary("name", 0).toStringUsingUTF8());
+    assertEquals("writer", reader.read().getBinary("name", 0).toStringUsingUTF8());
+    assertEquals("builder", reader.read().getBinary("name", 0).toStringUsingUTF8());
+    assertEquals("without", reader.read().getBinary("name", 0).toStringUsingUTF8());
+    assertEquals("file", reader.read().getBinary("name", 0).toStringUsingUTF8());
+  }
+
+  @Test
+  public void testParquetWriterBuilderOutputFileCanNotBeNull() throws IOException {
+    TestUtils.assertThrows("file cannot be null", NullPointerException.class, (Callable<ParquetWriter<Group>>)
+        () -> ExampleParquetWriter.builder().withFile(null).build());
+  }
+
+  @Test
+  public void testParquetWriterBuilderValidatesThatOutputFileIsSet() throws IOException {
+    TestUtils.assertThrows("File or Path must be set", IllegalStateException.class, (Callable<ParquetWriter<Group>>)
+        () -> ExampleParquetWriter.builder().build());
+  }
+
+  @Test
+  public void testParquetWriterBuilderCanNotConfigurePathAndFile() throws IOException {
+    File file = temp.newFile();
+    Path path = new Path(file.getAbsolutePath());
+    Configuration conf = new Configuration();
+    OutputFile outputFile = new TestOutputFile(path, conf);
+    TestUtils.assertThrows(
+        "Cannot set both path and file", IllegalStateException.class, (Callable<ParquetWriter<Group>>) () ->
+            ExampleParquetWriter.builder(path).withFile(outputFile).build());
+  }
 }
