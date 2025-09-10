@@ -507,6 +507,7 @@
             <exclude>thrift-${thrift.version}.tar.gz</exclude>
             <exclude>**/dependency-reduced-pom.xml</exclude>
             <exclude>**/*.rej</exclude>
+            <exclude>**/cli-outputs/**</exclude>
           </excludes>
         </configuration>
       </plugin>
