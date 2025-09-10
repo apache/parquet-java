@@ -396,7 +396,7 @@ public class ParquetProperties {
     private int pageValueCountThreshold = DEFAULT_PAGE_VALUE_COUNT_THRESHOLD;
     private boolean estimateNextSizeCheck = DEFAULT_ESTIMATE_ROW_COUNT_FOR_PAGE_SIZE_CHECK;
     private ByteBufferAllocator allocator = new HeapByteBufferAllocator();
-    private ValuesWriterFactory valuesWriterFactory = DEFAULT_VALUES_WRITER_FACTORY;
+    private ValuesWriterFactory valuesWriterFactory = new DefaultValuesWriterFactory();
     private int columnIndexTruncateLength = DEFAULT_COLUMN_INDEX_TRUNCATE_LENGTH;
     private int statisticsTruncateLength = DEFAULT_STATISTICS_TRUNCATE_LENGTH;
     private boolean statisticsEnabled = DEFAULT_STATISTICS_ENABLED;
