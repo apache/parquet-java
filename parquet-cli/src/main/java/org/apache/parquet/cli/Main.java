@@ -25,12 +25,16 @@ import com.beust.jcommander.ParameterException;
 import com.beust.jcommander.Parameters;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableSet;
+import java.io.FileInputStream;
+import java.io.InputStream;
 import java.util.List;
+import java.util.Properties;
 import java.util.Set;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configurable;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
+import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 import org.apache.log4j.Level;
@@ -72,6 +76,11 @@ public class Main extends Configured implements Tool {
       names = {"--conf", "--property"},
       description = "Set a configuration property (format: key=value). Can be specified multiple times.")
   private List<String> confProperties;
+
+  @Parameter(
+      names = {"--config-file"},
+      description = "Path to a configuration file (properties or Hadoop XML format).")
+  private String configFilePath;
 
   @VisibleForTesting
   @Parameter(names = "--dollar-zero", description = "A way for the runtime path to be passed in", hidden = true)
@@ -172,6 +181,24 @@ public class Main extends Configured implements Tool {
     // If the command does not support the configs, it would simply be ignored.
     if (command instanceof Configurable) {
       Configuration merged = new Configuration(getConf());
+
+      if (configFilePath != null) {
+        try {
+          if (isXmlConfigFile(configFilePath)) {
+            loadXmlConfiguration(merged, configFilePath);
+          } else if (isPropertiesConfigFile(configFilePath)) {
+            loadPropertiesConfiguration(merged, configFilePath);
+          } else {
+            throw new IllegalArgumentException(
+                "Unsupported config file format. Only .xml and .properties files are supported: "
+                    + configFilePath);
+          }
+        } catch (Exception e) {
+          throw new IllegalArgumentException(
+              "Failed to load config file '" + configFilePath + "': " + e.getMessage(), e);
+        }
+      }
+
       if (confProperties != null) {
         for (String prop : confProperties) {
           String[] parts = prop.split("=", 2);
@@ -217,5 +244,28 @@ public class Main extends Configured implements Tool {
         .setAttribute("org.apache.commons.logging.Log", "org.apache.commons.logging.impl.Log4JLogger");
     int rc = ToolRunner.run(new Configuration(), new Main(console), args);
     System.exit(rc);
+  }
+
+  private boolean isXmlConfigFile(String filePath) {
+    return filePath.toLowerCase().endsWith(".xml");
+  }
+
+  private boolean isPropertiesConfigFile(String filePath) {
+    String lowerPath = filePath.toLowerCase();
+    return lowerPath.endsWith(".properties");
+  }
+
+  private void loadXmlConfiguration(Configuration config, String filePath) {
+    config.addResource(new Path(filePath));
+    console.debug("Loaded XML configuration from file: {}", filePath);
+  }
+
+  private void loadPropertiesConfiguration(Configuration config, String filePath) throws Exception {
+    try (InputStream in = new FileInputStream(filePath)) {
+      Properties props = new Properties();
+      props.load(in);
+      props.forEach((key, value) -> config.set(key.toString(), value.toString()));
+      console.debug("Loaded properties configuration from file: {}", filePath);
+    }
   }
 }

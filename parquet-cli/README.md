@@ -137,6 +137,7 @@ Usage: parquet [options] [command] [command options]
 ### Configuration Options
 
 - `--conf` or `--property`: Set any configuration property in format `key=value`. Can be specified multiple times.
+- `--config-file`: Path to a configuration file (`.properties` or `.xml` format).
 
 Examples:
 ```bash
@@ -146,5 +147,8 @@ parquet convert input.avro -o output.parquet --conf parquet.avro.write-old-list-
 
 # Multiple options
 parquet convert-csv input.csv -o output.parquet --schema schema.avsc --conf parquet.avro.write-parquet-uuid=true --conf parquet.avro.write-old-list-structure=false
+
+# Using config file
+parquet convert input.avro -o output.parquet --config-file config.properties
 
 ```
