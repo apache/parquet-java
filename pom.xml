@@ -69,8 +69,8 @@
   </mailingLists>
 
   <properties>
-    <maven.compiler.source>1.8</maven.compiler.source>
-    <maven.compiler.target>1.8</maven.compiler.target>
+    <maven.compiler.source>11</maven.compiler.source>
+    <maven.compiler.target>11</maven.compiler.target>
     <github.global.server>github</github.global.server>
     <jackson.groupId>com.fasterxml.jackson.core</jackson.groupId>
     <jackson.datatype.groupId>com.fasterxml.jackson.datatype</jackson.datatype.groupId>
@@ -246,7 +246,7 @@
           <sourceFileExcludes>
             <sourceFileExclude>**/generated-sources/**/*.java</sourceFileExclude>
           </sourceFileExcludes>
-          <source>8</source>
+          <source>11</source>
           <quiet>true</quiet>
         </configuration>
       </plugin>
@@ -383,7 +383,7 @@
           <sourceFileExcludes>
             <sourceFileExclude>**/generated-sources/**/*.java</sourceFileExclude>
           </sourceFileExcludes>
-          <source>8</source>
+          <source>11</source>
           <quiet>true</quiet>
         </configuration>
       </plugin>
@@ -629,17 +629,6 @@
   </build>
 
   <profiles>
-    <profile>
-      <id>jdk9+</id>
-      <activation>
-        <jdk>[9,)</jdk>
-      </activation>
-      <properties>
-        <!-- release takes precedence over source/target if java version is 9 or higher -->
-        <maven.compiler.release>8</maven.compiler.release>
-      </properties>
-    </profile>
-
     <!-- Profile for tests to have more output -->
     <profile>
       <id>verbose-test</id>

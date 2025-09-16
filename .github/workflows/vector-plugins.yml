@@ -26,7 +26,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        java: [ '17' ]
+        java: [ '17', '21' ]
         codes: [ 'uncompressed' ]
     name: Build Parquet with JDK ${{ matrix.java }} and ${{ matrix.codes }}
 
