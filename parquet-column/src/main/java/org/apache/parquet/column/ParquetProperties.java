@@ -69,6 +69,11 @@ public class ParquetProperties {
 
   public static final boolean DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED = true;
 
+  /**
+   * @deprecated This shared instance can cause thread safety issues when used by multiple builders concurrently.
+   * Use {@code new DefaultValuesWriterFactory()} instead to create individual instances.
+   */
+  @Deprecated
   public static final ValuesWriterFactory DEFAULT_VALUES_WRITER_FACTORY = new DefaultValuesWriterFactory();
 
   private static final int MIN_SLAB_SIZE = 64;
