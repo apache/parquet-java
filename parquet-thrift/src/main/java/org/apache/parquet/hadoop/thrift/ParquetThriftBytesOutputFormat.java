@@ -72,23 +72,4 @@ public class ParquetThriftBytesOutputFormat extends ParquetOutputFormat<BytesWri
       FieldIgnoredHandler errorHandler) {
     super(new ThriftBytesWriteSupport(configuration, protocolFactory, thriftClass, buffered, errorHandler));
   }
-
-  /**
-   * @param protocolFactory the protocol factory to use to read the bytes
-   * @param thriftClass     thriftClass the class to extract the schema from
-   * @param buffered        whether we should buffer each record
-   * @param errorHandler    handle record corruption and schema incompatible exception
-   * @deprecated Use @link{ParquetThriftBytesOutputFormat(
-   * Configuration configuration, TProtocolFactory protocolFactory,
-   * {@literal Class<\? extends TBase<\?, ?>>} thriftClass, boolean buffered,
-   * FieldIgnoredHandler errorHandler)} instead.
-   */
-  @Deprecated
-  public ParquetThriftBytesOutputFormat(
-      TProtocolFactory protocolFactory,
-      Class<? extends TBase<?, ?>> thriftClass,
-      boolean buffered,
-      FieldIgnoredHandler errorHandler) {
-    this(new Configuration(), protocolFactory, thriftClass, buffered, errorHandler);
-  }
 }

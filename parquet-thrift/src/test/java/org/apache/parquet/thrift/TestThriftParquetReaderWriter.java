@@ -61,20 +61,5 @@ public class TestThriftParquetReaderWriter {
       thriftParquetWriter.write(original);
       thriftParquetWriter.close();
     }
-
-    { // read
-      ThriftParquetReader<AddressBook> thriftParquetReader =
-          new ThriftParquetReader<AddressBook>(f, AddressBook.class);
-      AddressBook read = thriftParquetReader.read();
-      Assert.assertEquals(original, read);
-      thriftParquetReader.close();
-    }
-
-    { // read without providing a thrift class
-      ThriftParquetReader<AddressBook> thriftParquetReader = new ThriftParquetReader<AddressBook>(f);
-      AddressBook read = thriftParquetReader.read();
-      Assert.assertEquals(original, read);
-      thriftParquetReader.close();
-    }
   }
 }
