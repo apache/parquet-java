@@ -579,7 +579,7 @@ public class TestAvroSchemaConverter {
     enableInt96ReadingConfig.setBoolean(AvroReadSupport.READ_INT96_AS_FIXED, true);
 
     Schema schema = Schema.createRecord("myrecord", null, null, false);
-    Schema int96schema = Schema.createFixed("INT96", "INT96 represented as byte[12]", null, 12);
+    Schema int96schema = Schema.createFixed("int96_field", "INT96 represented as byte[12]", null, 12);
     schema.setFields(Collections.singletonList(new Schema.Field("int96_field", int96schema, null, null)));
 
     testParquetToAvroConversion(
@@ -597,6 +597,33 @@ public class TestAvroSchemaConverter {
         "INT96 is deprecated. As interim enable READ_INT96_AS_FIXED  flag to read as byte array.",
         IllegalArgumentException.class,
         () -> new AvroSchemaConverter().convert(parquetSchemaWithInt96));
+  }
+
+  @Test
+  public void testMultipleInt96FieldsToStringConversion() throws Exception {
+    Configuration enableInt96ReadingConfig = new Configuration();
+    enableInt96ReadingConfig.setBoolean(AvroReadSupport.READ_INT96_AS_FIXED, true);
+
+    Types.MessageTypeBuilder builder = Types.buildMessage();
+    builder.optional(PrimitiveType.PrimitiveTypeName.INT96).named("timestamp_1");
+    builder.optional(PrimitiveType.PrimitiveTypeName.INT96).named("timestamp_2");
+    MessageType int96Schema = builder.named("int96Schema");
+
+    AvroSchemaConverter converter = new AvroSchemaConverter(enableInt96ReadingConfig);
+    Schema avroSchema = converter.convert(int96Schema);
+
+    String schemaString = avroSchema.toString(true);
+
+    Assert.assertTrue(
+        "First field should have full timestamp_1 definition",
+        schemaString.contains("\"name\" : \"timestamp_1\""));
+    Assert.assertTrue(
+        "Second field should have full timestamp_2 definition",
+        schemaString.contains("\"name\" : \"timestamp_2\""));
+
+    Assert.assertFalse(
+        "Should not reference bare 'INT96' type anymore",
+        schemaString.contains("\"type\" : [ \"null\", \"INT96\" ]"));
   }
 
   @Test

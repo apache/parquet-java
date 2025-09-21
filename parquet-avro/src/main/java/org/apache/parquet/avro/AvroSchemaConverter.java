@@ -404,7 +404,9 @@ public class AvroSchemaConverter {
             @Override
             public Schema convertINT96(PrimitiveTypeName primitiveTypeName) {
               if (readInt96AsFixed) {
-                return Schema.createFixed("INT96", "INT96 represented as byte[12]", null, 12);
+                String name = parquetType.getName();
+                String ns = namespace(name, names);
+                return Schema.createFixed(name, "INT96 represented as byte[12]", ns, 12);
               }
               throw new IllegalArgumentException(
                   "INT96 is deprecated. As interim enable READ_INT96_AS_FIXED flag to read as byte array.");
