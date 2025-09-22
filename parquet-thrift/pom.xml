@@ -52,6 +52,8 @@
       <artifactId>parquet-common</artifactId>
       <version>${project.version}</version>
     </dependency>
+    <!-- Several of these hadoop dependencies will show up as "unused" in dependnency analysis
+         but they are needed at runtime for several tests -->
     <dependency>
       <groupId>org.apache.hadoop</groupId>
       <artifactId>hadoop-client</artifactId>
@@ -65,7 +67,15 @@
     <dependency>
       <groupId>org.apache.hadoop</groupId>
       <artifactId>hadoop-common</artifactId>
-      <scope>provided</scope>
+      <scope>test</scope>
+    </dependency>
+    <!-- Guava is a dependency of hadoop-common, but scoped to compile. We need to
+         explicity declare it as a test dependency. -->
+    <dependency>
+      <groupId>com.google.guava</groupId>
+      <artifactId>guava</artifactId>
+      <version>${guava.version}</version>
+      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>com.twitter.elephantbird</groupId>
@@ -136,12 +146,6 @@
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-api</artifactId>
       <version>${slf4j.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.slf4j</groupId>
-      <artifactId>slf4j-simple</artifactId>
-      <version>${slf4j.version}</version>
-      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.apache.parquet</groupId>
