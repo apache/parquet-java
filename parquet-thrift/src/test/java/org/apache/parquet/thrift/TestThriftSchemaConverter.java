@@ -244,8 +244,7 @@ public class TestThriftSchemaConverter {
       getStrictFilteredSchema(filters, thriftClass);
       fail("this should throw");
     } catch (ThriftProjectionException e) {
-      assertEquals(
-          "No columns have been selected", e.getMessage());
+      assertEquals("No columns have been selected", e.getMessage());
     }
   }
 
@@ -256,13 +255,21 @@ public class TestThriftSchemaConverter {
 
   @Test
   public void testThrowWhenProjectionFilterMatchesNothing() {
-    shouldThrowWhenProjectionFilterMatchesNothing("name;non_existing", "Pattern: 'non_existing' (when expanded to 'non_existing')", TestStructInMap.class);
-    shouldThrowWhenProjectionFilterMatchesNothing("**;non_existing", "Pattern: 'non_existing' (when expanded to 'non_existing')", TestStructInMap.class);
     shouldThrowWhenProjectionFilterMatchesNothing(
-        "**;names/non_existing", "Pattern: 'names/non_existing' (when expanded to 'names/non_existing')", TestStructInMap.class);
+        "name;non_existing",
+        "Pattern: 'non_existing' (when expanded to 'non_existing')",
+        TestStructInMap.class);
     shouldThrowWhenProjectionFilterMatchesNothing(
-        "**;names/non_existing;non_existing", "Pattern: 'names/non_existing' (when expanded to 'names/non_existing')\n" +
-            "Pattern: 'non_existing' (when expanded to 'non_existing')", TestStructInMap.class);
+        "**;non_existing", "Pattern: 'non_existing' (when expanded to 'non_existing')", TestStructInMap.class);
+    shouldThrowWhenProjectionFilterMatchesNothing(
+        "**;names/non_existing",
+        "Pattern: 'names/non_existing' (when expanded to 'names/non_existing')",
+        TestStructInMap.class);
+    shouldThrowWhenProjectionFilterMatchesNothing(
+        "**;names/non_existing;non_existing",
+        "Pattern: 'names/non_existing' (when expanded to 'names/non_existing')\n"
+            + "Pattern: 'non_existing' (when expanded to 'non_existing')",
+        TestStructInMap.class);
   }
 
   @Test

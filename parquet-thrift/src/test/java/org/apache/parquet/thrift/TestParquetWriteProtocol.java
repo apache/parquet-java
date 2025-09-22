@@ -177,7 +177,7 @@ public class TestParquetWriteProtocol {
     names.add("John");
     names.add("Jack");
     final TestNameList o = new TestNameList("name", names);
-    
+
     String[] expectations = {
       "startMessage()",
       "startField(name, 0)",

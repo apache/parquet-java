@@ -45,7 +45,6 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.impl.ColumnWriteStoreV1;
 import org.apache.parquet.column.page.mem.MemPageStore;
-import org.apache.parquet.conf.ParquetConfiguration;
 import org.apache.parquet.io.ColumnIOFactory;
 import org.apache.parquet.io.MessageColumnIO;
 import org.apache.parquet.io.RecordReader;
@@ -166,7 +165,8 @@ public class TestParquetReadProtocol {
     recordWriter.flush();
     columns.flush();
 
-    ThriftRecordConverter<T> converter = new TBaseRecordConverter<T>(thriftClass, schema, thriftType, new Configuration());
+    ThriftRecordConverter<T> converter =
+        new TBaseRecordConverter<T>(thriftClass, schema, thriftType, new Configuration());
     final RecordReader<T> recordReader = columnIO.getRecordReader(memPageStore, converter);
 
     final T result = recordReader.read();
