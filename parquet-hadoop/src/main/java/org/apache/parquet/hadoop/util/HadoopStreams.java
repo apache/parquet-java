@@ -19,9 +19,6 @@
 
 package org.apache.parquet.hadoop.util;
 
-import static org.apache.hadoop.fs.StreamCapabilities.PREADBYTEBUFFER;
-import static org.apache.hadoop.fs.StreamCapabilities.READBYTEBUFFER;
-
 import java.io.InputStream;
 import java.util.Objects;
 import org.apache.hadoop.fs.ByteBufferReadable;
@@ -50,7 +47,7 @@ public class HadoopStreams {
     Objects.requireNonNull(stream, "Cannot wrap a null input stream");
 
     // Check using hasCapabilities(str)
-    if (stream.hasCapability(PREADBYTEBUFFER)) {
+    if (stream.hasCapability("in:preadbytebuffer")) {
       LOG.debug("Using ByteBufferPositionedReadable to read {}", stream);
       return new H3ByteBufferInputStream(stream);
     } else if (isWrappedStreamByteBufferReadable(stream)) {
