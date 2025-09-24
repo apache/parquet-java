@@ -372,7 +372,7 @@ public class TestAvroSchemaConverter {
     Schema schema = Schema.createRecord("HasArray", null, null, false);
     schema.setFields(
         Lists.newArrayList(new Schema.Field("myarray", Schema.createArray(optional(innerRecord)), null, null)));
-    System.err.println("Avro schema: " + schema.toString(true));
+    System.out.println("Avro schema: " + schema.toString(true));
 
     testRoundTripConversion(
         NEW_BEHAVIOR,
@@ -398,7 +398,7 @@ public class TestAvroSchemaConverter {
     Schema schema = Schema.createRecord("HasArray", null, null, false);
     schema.setFields(
         Lists.newArrayList(new Schema.Field("myarray", Schema.createArray(optional(innerRecord)), null, null)));
-    System.err.println("Avro schema: " + schema.toString(true));
+    System.out.println("Avro schema: " + schema.toString(true));
 
     // Cannot use round-trip assertion because InnerRecord optional is removed
     testAvroToParquetConversion(
@@ -418,7 +418,7 @@ public class TestAvroSchemaConverter {
     Schema schema = Schema.createRecord("AvroCompatListInList", null, null, false);
     schema.setFields(
         Lists.newArrayList(new Schema.Field("listOfLists", listOfLists, null, JsonProperties.NULL_VALUE)));
-    System.err.println("Avro schema: " + schema.toString(true));
+    System.out.println("Avro schema: " + schema.toString(true));
 
     testRoundTripConversion(
         schema,
@@ -462,7 +462,7 @@ public class TestAvroSchemaConverter {
     Schema schema = Schema.createRecord("ThriftCompatListInList", null, null, false);
     schema.setFields(
         Lists.newArrayList(new Schema.Field("listOfLists", listOfLists, null, JsonProperties.NULL_VALUE)));
-    System.err.println("Avro schema: " + schema.toString(true));
+    System.out.println("Avro schema: " + schema.toString(true));
 
     // Cannot use round-trip assertion because repeated group names differ
     testParquetToAvroConversion(
@@ -494,7 +494,7 @@ public class TestAvroSchemaConverter {
     Schema schema = Schema.createRecord("UnknownTwoLevelListInList", null, null, false);
     schema.setFields(
         Lists.newArrayList(new Schema.Field("listOfLists", listOfLists, null, JsonProperties.NULL_VALUE)));
-    System.err.println("Avro schema: " + schema.toString(true));
+    System.out.println("Avro schema: " + schema.toString(true));
 
     // Cannot use round-trip assertion because repeated group names differ
     testParquetToAvroConversion(
