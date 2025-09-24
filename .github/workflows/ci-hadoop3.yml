@@ -26,7 +26,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        java: [ { setup: '8', maven: '1.8' }, { setup: '11', maven: '11' }, { setup: '17', maven: '17' } ]
+        java: [ { setup: '8', maven: '1.8' }, { setup: '11', maven: '11' }, { setup: '17', maven: '17' }, { setup: '21', maven: '21' } ]
         codes: [ 'uncompressed,brotli', 'gzip,snappy' ]
     name: Build Parquet with JDK ${{ matrix.java.setup }} and ${{ matrix.codes }}
 
