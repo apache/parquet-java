@@ -192,7 +192,7 @@ public class ColumnIndexFilter implements Visitor<RowRanges> {
       return allRows();
     }
 
-    if (!isValidMetadata(ci, oi, columnPath)) {
+    if (!isValidIndexSize(ci, oi, columnPath)) {
       return allRows();
     }
 
@@ -234,10 +234,7 @@ public class ColumnIndexFilter implements Visitor<RowRanges> {
    * @param columnPath the column path for error reporting
    * @return true if metadata is valid and safe to use, false if corrupt and should be ignored
    */
-  private static boolean isValidMetadata(ColumnIndex columnIndex, OffsetIndex offsetIndex, ColumnPath columnPath) {
-    if (columnIndex == null || offsetIndex == null) {
-      return true;
-    }
+  private static boolean isValidIndexSize(ColumnIndex columnIndex, OffsetIndex offsetIndex, ColumnPath columnPath) {
 
     int columnIndexSize = columnIndex.getMinValues().size();
     int offsetIndexSize = offsetIndex.getPageCount();
