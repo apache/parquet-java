@@ -26,6 +26,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.thrift.ThriftRecordConverter.FieldEnumConverter;
@@ -100,6 +101,7 @@ public class TestThriftRecordConverter {
         },
         "name",
         new ThriftSchemaConverter().convert(StructWithUnionV1.class),
-        noStructOrUnionMeta);
+        noStructOrUnionMeta,
+        new Configuration());
   }
 }
