@@ -1423,7 +1423,8 @@ public class ParquetFileReader implements Closeable {
       if (columnDescriptor != null) {
         OffsetIndex offsetIndex = ciStore.getOffsetIndex(mc.getPath());
 
-        OffsetIndex filteredOffsetIndex = filterOffsetIndex(offsetIndex, rowRanges, block.getRowCount());
+        OffsetIndex filteredOffsetIndex =
+            filterOffsetIndex(offsetIndex, rowRanges, block.getRowCount(), options);
         for (OffsetRange range : calculateOffsetRanges(filteredOffsetIndex, mc, offsetIndex.getOffset(0))) {
           BenchmarkCounter.incrementTotalBytes(range.getLength());
           long startingPos = range.getOffset();
