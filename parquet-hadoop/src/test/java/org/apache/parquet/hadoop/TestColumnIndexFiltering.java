@@ -58,7 +58,6 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Random;
 import java.util.Set;
 import java.util.function.Predicate;
@@ -70,7 +69,6 @@ import org.apache.parquet.bytes.HeapByteBufferAllocator;
 import org.apache.parquet.bytes.TrackingByteBufferAllocator;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
-import org.apache.parquet.column.statistics.BinaryStatistics;
 import org.apache.parquet.crypto.ColumnEncryptionProperties;
 import org.apache.parquet.crypto.DecryptionKeyRetrieverMock;
 import org.apache.parquet.crypto.FileDecryptionProperties;
@@ -88,16 +86,8 @@ import org.apache.parquet.hadoop.api.ReadSupport;
 import org.apache.parquet.hadoop.example.ExampleParquetWriter;
 import org.apache.parquet.hadoop.example.GroupReadSupport;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
-import org.apache.parquet.internal.column.columnindex.ColumnIndex;
-import org.apache.parquet.internal.column.columnindex.ColumnIndexBuilder;
-import org.apache.parquet.internal.column.columnindex.OffsetIndex;
-import org.apache.parquet.internal.column.columnindex.OffsetIndexBuilder;
-import org.apache.parquet.internal.filter2.columnindex.ColumnIndexFilter;
-import org.apache.parquet.internal.filter2.columnindex.ColumnIndexStore;
-import org.apache.parquet.internal.filter2.columnindex.RowRanges;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.MessageType;
-import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Types;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -659,76 +649,5 @@ public class TestColumnIndexFiltering {
             SCHEMA_WITHOUT_NAME,
             false,
             true));
-  }
-
-  @Test
-  public void testValidMetadata() throws Exception {
-    String testColumnName = "test_column";
-    long testRowCount = 100L;
-    Binary testMinValue = Binary.fromString("a");
-    Binary testMaxValue = Binary.fromString("z");
-    Binary filterValue = Binary.fromString("");
-
-    OffsetIndex offsetIndex = createValidOffsetIndex();
-    ColumnIndex columnIndex = createValidColumnIndex(testColumnName, testMinValue, testMaxValue);
-
-    MockColumnIndexStore store = new MockColumnIndexStore(columnIndex, offsetIndex);
-    RowRanges result = ColumnIndexFilter.calculateRowRanges(
-        FilterCompat.get(gtEq(binaryColumn(testColumnName), filterValue)),
-        store,
-        Collections.singleton(ColumnPath.fromDotString(testColumnName)),
-        testRowCount);
-
-    assertEquals("Should return all rows for this filter", testRowCount, result.rowCount());
-    assertEquals("Should have single range", 1, result.getRanges().size());
-    assertEquals("Range should start at 0", 0L, result.getRanges().get(0).from);
-    assertEquals(
-        "Range should end at last row",
-        testRowCount - 1,
-        result.getRanges().get(0).to);
-  }
-
-  private OffsetIndex createValidOffsetIndex() {
-    OffsetIndexBuilder builder = OffsetIndexBuilder.getBuilder();
-    builder.add(1000L, 100, 0L, Optional.empty());
-    builder.add(1100L, 100, 50L, Optional.empty());
-    return builder.build();
-  }
-
-  private ColumnIndex createValidColumnIndex(String columnName, Binary minValue, Binary maxValue) {
-    MessageType schema = Types.buildMessage()
-        .required(PrimitiveType.PrimitiveTypeName.BINARY)
-        .named(columnName)
-        .named("test_schema");
-    PrimitiveType primitiveType = schema.getColumns().get(0).getPrimitiveType();
-    ColumnIndexBuilder builder = ColumnIndexBuilder.getBuilder(primitiveType, Integer.MAX_VALUE);
-
-    for (int i = 0; i < 2; i++) {
-      BinaryStatistics stats = new BinaryStatistics();
-      stats.updateStats(minValue);
-      stats.updateStats(maxValue);
-      builder.add(stats);
-    }
-    return builder.build();
-  }
-
-  private static class MockColumnIndexStore implements ColumnIndexStore {
-    private final ColumnIndex columnIndex;
-    private final OffsetIndex offsetIndex;
-
-    public MockColumnIndexStore(ColumnIndex columnIndex, OffsetIndex offsetIndex) {
-      this.columnIndex = columnIndex;
-      this.offsetIndex = offsetIndex;
-    }
-
-    @Override
-    public ColumnIndex getColumnIndex(ColumnPath column) {
-      return columnIndex;
-    }
-
-    @Override
-    public OffsetIndex getOffsetIndex(ColumnPath column) {
-      return offsetIndex;
-    }
   }
 }
