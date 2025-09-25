@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.variant;
 
+import java.nio.ByteBuffer;
 import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -112,6 +113,41 @@ public class TestVariantObjectBuilder {
 
       VariantTestUtil.checkType(v.getFieldByKey("outer 4"), VariantUtil.ARRAY, Variant.Type.ARRAY);
       Assert.assertEquals(0, v.getFieldByKey("outer 4").numArrayElements());
+    });
+  }
+
+  @Test
+  public void testMixedBinaryBuilder() {
+    VariantBuilder b = new VariantBuilder();
+    VariantObjectBuilder objBuilder = b.startObject();
+    objBuilder.appendKey("as_binary");
+    objBuilder.appendBinary(ByteBuffer.wrap(new byte[] {0, 1, 2, 3, 4, 5, 6, 7, 8, 9}));
+    objBuilder.appendKey("in_array");
+    VariantArrayBuilder arrBinary = objBuilder.startArray();
+    arrBinary.appendBinary(ByteBuffer.wrap(new byte[] {}));
+    arrBinary.appendBinary(ByteBuffer.wrap(new byte[] {10, 11, 12, 13, 14, 15, 16}));
+    arrBinary.appendBinary(ByteBuffer.wrap(new byte[] {17, 18}));
+    objBuilder.endArray();
+    b.endObject();
+
+    VariantTestUtil.testVariant(b.build(), v -> {
+      VariantTestUtil.checkType(v, VariantUtil.OBJECT, Variant.Type.OBJECT);
+      Assert.assertEquals(2, v.numObjectElements());
+      Assert.assertEquals(
+          ByteBuffer.wrap(new byte[] {0, 1, 2, 3, 4, 5, 6, 7, 8, 9}),
+          v.getFieldByKey("as_binary").getBinary());
+      Variant nestedArray = v.getFieldByKey("in_array");
+      VariantTestUtil.checkType(nestedArray, VariantUtil.ARRAY, Variant.Type.ARRAY);
+      Assert.assertEquals(3, nestedArray.numArrayElements());
+      Assert.assertEquals(
+          ByteBuffer.wrap(new byte[] {}),
+          nestedArray.getElementAtIndex(0).getBinary());
+      Assert.assertEquals(
+          ByteBuffer.wrap(new byte[] {10, 11, 12, 13, 14, 15, 16}),
+          nestedArray.getElementAtIndex(1).getBinary());
+      Assert.assertEquals(
+          ByteBuffer.wrap(new byte[] {17, 18}),
+          nestedArray.getElementAtIndex(2).getBinary());
     });
   }
 
