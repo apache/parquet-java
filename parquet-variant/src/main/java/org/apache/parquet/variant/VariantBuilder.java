@@ -358,7 +358,7 @@ public class VariantBuilder {
     onAppend();
     checkCapacity(1 /* header size */ + 4);
     writeBuffer[writePos] = VariantUtil.HEADER_FLOAT;
-    VariantUtil.writeLong(writeBuffer, writePos + 1, Float.floatToIntBits(f), 8);
+    VariantUtil.writeLong(writeBuffer, writePos + 1, Float.floatToIntBits(f), 4);
     writePos += 5;
   }
 
