@@ -192,7 +192,12 @@ public class ColumnIndexFilter implements Visitor<RowRanges> {
       return allRows();
     }
 
-    return RowRanges.create(rowCount, func.apply(ci), oi);
+    if (!isValidIndexSize(ci, oi, columnPath)) {
+      return allRows();
+    }
+
+    PrimitiveIterator.OfInt pageIndexes = func.apply(ci);
+    return RowRanges.create(rowCount, pageIndexes, oi);
   }
 
   @Override
@@ -219,5 +224,33 @@ public class ColumnIndexFilter implements Visitor<RowRanges> {
   public RowRanges visit(Not not) {
     throw new IllegalArgumentException(
         "Predicates containing a NOT must be run through LogicalInverseRewriter. " + not);
+  }
+
+  /**
+   * Validates that column index and offset index metadata are consistent and can be used safely.
+   *
+   * @param columnIndex the column index to validate
+   * @param offsetIndex the offset index to validate
+   * @param columnPath the column path for error reporting
+   * @return true if metadata is valid and safe to use, false if corrupt and should be ignored
+   */
+  private static boolean isValidIndexSize(ColumnIndex columnIndex, OffsetIndex offsetIndex, ColumnPath columnPath) {
+
+    int columnIndexSize = columnIndex.getMinValues().size();
+    int offsetIndexSize = offsetIndex.getPageCount();
+
+    if (columnIndexSize != offsetIndexSize) {
+      LOGGER.warn(
+          "Column index and offset index size mismatch for column {}: "
+              + "column index has {} entries but offset index has {} pages. "
+              + "This indicates corrupted metadata from the writer. "
+              + "Ignoring column index for filtering to avoid errors.",
+          columnPath,
+          columnIndexSize,
+          offsetIndexSize);
+      return false;
+    }
+
+    return true;
   }
 }
