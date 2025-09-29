@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.variant;
 
+import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -179,6 +180,43 @@ public class TestVariantScalarBuilder {
         // expected
       }
     });
+  }
+
+  @Test
+  public void testFloatBuilderDoesNotWriteTooManyBytes() throws Exception {
+    VariantBuilder vb = new VariantBuilder();
+
+    Field writeBufferField = VariantBuilder.class.getDeclaredField("writeBuffer");
+    writeBufferField.setAccessible(true);
+    Field writePosField = VariantBuilder.class.getDeclaredField("writePos");
+    writePosField.setAccessible(true);
+
+    byte[] buffer = (byte[]) writeBufferField.get(vb);
+    for (int i = 0; i < 20; i++) {
+      buffer[i] = (byte) 0xFF;
+    }
+
+    float testFloat = 1.23456f;
+    vb.appendFloat(testFloat);
+
+    int writePos = (Integer) writePosField.get(vb);
+    Assert.assertEquals("writePos should be exactly 5 after appendFloat", 5, writePos);
+
+    int modifiedBytes = 0;
+    for (int i = 0; i < 10; i++) {
+      if (buffer[i] != (byte) 0xFF) {
+        modifiedBytes++;
+      }
+    }
+    Assert.assertEquals("appendFloat should write exactly 5 bytes (1 header + 4 data)", 5, modifiedBytes);
+
+    for (int i = 5; i < 10; i++) {
+      Assert.assertEquals(
+          "Byte at position " + i + " should not be modified by appendFloat", (byte) 0xFF, buffer[i]);
+    }
+
+    Variant variant = vb.build();
+    Assert.assertEquals("Float value should be preserved correctly", testFloat, variant.getFloat(), 0.0f);
   }
 
   @Test
