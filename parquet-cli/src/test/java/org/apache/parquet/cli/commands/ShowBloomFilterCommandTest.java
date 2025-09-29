@@ -120,7 +120,9 @@ public class ShowBloomFilterCommandTest extends ParquetFileTest {
 
     SimpleGroupFactory factory = new SimpleGroupFactory(schema);
     String[] nameValues = {"test_value_1", "test_value_2", "another_test", "bloom_filter_test", "final_value"};
-    String[] emailValues = {"user1@test.com", "user2@test.com", "admin@test.com", "support@test.com", "sales@test.com"};
+    String[] emailValues = {
+      "user1@test.com", "user2@test.com", "admin@test.com", "support@test.com", "sales@test.com"
+    };
     String[] phoneValues = {"555-0001", "555-0002", "555-0003", "555-0004", "555-0005"};
 
     try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(new Path(tempFile.toURI()))

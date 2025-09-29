@@ -409,7 +409,8 @@ public abstract class BaseCommand implements Command, Configurable {
 
       String[] parts = curKeyToColumns.split(":");
       if (parts.length != 2) {
-        console.warn("Incorrect key to columns mapping in parquet.encryption.column.keys: [{}]", curKeyToColumns);
+        console.warn(
+            "Incorrect key to columns mapping in parquet.encryption.column.keys: [{}]", curKeyToColumns);
         continue;
       }
 
