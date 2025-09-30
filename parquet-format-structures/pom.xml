@@ -129,7 +129,7 @@
         <configuration>
           <!-- We have to turn off the javadoc check because thrift generates improper comments -->
           <doclint>none</doclint>
-          <source>8</source>
+          <source>11</source>
           <quiet>true</quiet>
         </configuration>
       </plugin>
@@ -144,7 +144,7 @@
         <configuration>
           <!-- We have to turn off the javadoc check because thrift generates improper comments -->
           <doclint>none</doclint>
-          <source>8</source>
+          <source>11</source>
         </configuration>
       </plugin>
     </plugins>
