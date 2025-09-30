@@ -227,14 +227,13 @@ public class VariantBuilder {
   public void appendDecimal(BigDecimal d) {
     onAppend();
     BigInteger unscaled = d.unscaledValue();
-    if (d.scale() <= VariantUtil.MAX_DECIMAL4_PRECISION && d.precision() <= VariantUtil.MAX_DECIMAL4_PRECISION) {
+    if (d.precision() <= VariantUtil.MAX_DECIMAL4_PRECISION) {
       checkCapacity(2 /* header and scale size */ + 4);
       writeBuffer[writePos] = VariantUtil.HEADER_DECIMAL4;
       writeBuffer[writePos + 1] = (byte) d.scale();
       VariantUtil.writeLong(writeBuffer, writePos + 2, unscaled.intValueExact(), 4);
       writePos += 6;
-    } else if (d.scale() <= VariantUtil.MAX_DECIMAL8_PRECISION
-        && d.precision() <= VariantUtil.MAX_DECIMAL8_PRECISION) {
+    } else if (d.precision() <= VariantUtil.MAX_DECIMAL8_PRECISION) {
       checkCapacity(2 /* header and scale size */ + 8);
       writeBuffer[writePos] = VariantUtil.HEADER_DECIMAL8;
       writeBuffer[writePos + 1] = (byte) d.scale();

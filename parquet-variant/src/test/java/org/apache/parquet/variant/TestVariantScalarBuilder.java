@@ -283,6 +283,42 @@ public class TestVariantScalarBuilder {
   }
 
   @Test
+  public void testDecimalBuilderUsesOnlyPrecision() {
+
+    BigDecimal smallPrecisionLargeScale = new BigDecimal("1").scaleByPowerOfTen(-20);
+    VariantBuilder vb1 = new VariantBuilder();
+    vb1.appendDecimal(smallPrecisionLargeScale);
+    VariantTestUtil.testVariant(vb1.build(), v -> {
+      VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.DECIMAL4);
+      Assert.assertEquals(smallPrecisionLargeScale, v.getDecimal());
+    });
+
+    BigDecimal mediumPrecisionLargeScale = new BigDecimal("1234567890").scaleByPowerOfTen(-25);
+    VariantBuilder vb2 = new VariantBuilder();
+    vb2.appendDecimal(mediumPrecisionLargeScale);
+    VariantTestUtil.testVariant(vb2.build(), v -> {
+      VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.DECIMAL8);
+      Assert.assertEquals(mediumPrecisionLargeScale, v.getDecimal());
+    });
+
+    BigDecimal maxDecimal4Precision = new BigDecimal("123456789").scaleByPowerOfTen(-18);
+    VariantBuilder vb3 = new VariantBuilder();
+    vb3.appendDecimal(maxDecimal4Precision);
+    VariantTestUtil.testVariant(vb3.build(), v -> {
+      VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.DECIMAL4);
+      Assert.assertEquals(maxDecimal4Precision, v.getDecimal());
+    });
+
+    BigDecimal maxDecimal8Precision = new BigDecimal("123456789012345678").scaleByPowerOfTen(-19);
+    VariantBuilder vb4 = new VariantBuilder();
+    vb4.appendDecimal(maxDecimal8Precision);
+    VariantTestUtil.testVariant(vb4.build(), v -> {
+      VariantTestUtil.checkType(v, VariantUtil.PRIMITIVE, Variant.Type.DECIMAL8);
+      Assert.assertEquals(maxDecimal8Precision, v.getDecimal());
+    });
+  }
+
+  @Test
   public void testDateBuilder() {
     VariantBuilder vb = new VariantBuilder();
     int days = Math.toIntExact(LocalDate.of(2024, 12, 16).toEpochDay());
