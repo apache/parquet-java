@@ -596,7 +596,8 @@ public class ParquetFileReader implements Closeable {
 
     int FOOTER_LENGTH_SIZE = 4;
     if (fileLen < MAGIC.length + FOOTER_LENGTH_SIZE + MAGIC.length) { // MAGIC + data + footer + footerIndex + MAGIC
-      throw new ParquetDecodingException(filePath + " is not a Parquet file (length is too low: " + fileLen + ")");
+      throw new ParquetDecodingException(
+          filePath + " is not a Parquet file (length is too low: " + fileLen + ")");
     }
 
     // Read footer length and magic string - with a single seek
@@ -618,15 +619,15 @@ public class ParquetFileReader implements Closeable {
     } else if (Arrays.equals(EFMAGIC, magic)) {
       encryptedFooterMode = true;
     } else {
-      throw new ParquetDecodingException(
-        filePath + " is not a Parquet file. Expected magic number at tail, but found " + Arrays.toString(magic));
+      throw new ParquetDecodingException(filePath
+          + " is not a Parquet file. Expected magic number at tail, but found " + Arrays.toString(magic));
     }
 
     long fileMetadataIndex = fileMetadataLengthIndex - fileMetadataLength;
     LOG.debug("read footer length: {}, footer index: {}", fileMetadataLength, fileMetadataIndex);
     if (fileMetadataIndex < magic.length || fileMetadataIndex >= fileMetadataLengthIndex) {
       throw new ParquetDecodingException(
-        "corrupted file: the footer index is not within the file: " + fileMetadataIndex);
+          "corrupted file: the footer index is not within the file: " + fileMetadataIndex);
     }
     f.seek(fileMetadataIndex);
 
