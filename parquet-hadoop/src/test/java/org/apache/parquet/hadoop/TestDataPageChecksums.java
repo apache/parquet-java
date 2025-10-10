@@ -589,11 +589,21 @@ public class TestDataPageChecksums {
         PageReadStore pageReadStore = reader.readNextRowGroup();
 
         DataPage colCIdPage = readNextPage(colCIdDesc, pageReadStore);
-        assertCrcSetAndCorrect(colCIdPage, snappy(colCIdPageBytes, getDataOffset(colCIdPage)));
+        if (colCIdPage instanceof DataPageV2 && !((DataPageV2) colCIdPage).isCompressed()) {
+          assertCrcSetAndCorrect(colCIdPage, colCIdPageBytes);
+        } else {
+          assertCrcSetAndCorrect(colCIdPage, snappy(colCIdPageBytes, getDataOffset(colCIdPage)));
+        }
         assertCorrectContent(getPageBytes(colCIdPage), colCIdPageBytes);
 
         DataPage colDValPage = readNextPage(colDValDesc, pageReadStore);
-        assertCrcSetAndCorrect(colDValPage, snappy(colDValPageBytes, getDataOffset(colDValPage)));
+
+        if (colCIdPage instanceof DataPageV2 && !((DataPageV2) colCIdPage).isCompressed()) {
+          assertCrcSetAndCorrect(colDValPage, colDValPageBytes);
+        } else {
+          assertCrcSetAndCorrect(colDValPage, snappy(colDValPageBytes, getDataOffset(colDValPage)));
+        }
+
         assertCorrectContent(getPageBytes(colDValPage), colDValPageBytes);
       }
     }
@@ -639,7 +649,11 @@ public class TestDataPageChecksums {
         assertCorrectContent(dictPage.getBytes().toByteArray(), dictPageBytes);
 
         DataPage colDValPage = readNextPage(colDValDesc, pageReadStore);
-        assertCrcSetAndCorrect(colDValPage, snappy(colDValPageBytes, getDataOffset(colDValPage)));
+        if (colDValPage instanceof DataPageV2 && !((DataPageV2) colDValPage).isCompressed()) {
+          assertCrcSetAndCorrect(colDValPage, colDValPageBytes);
+        } else {
+          assertCrcSetAndCorrect(colDValPage, snappy(colDValPageBytes, getDataOffset(colDValPage)));
+        }
         assertCorrectContent(getPageBytes(colDValPage), colDValPageBytes);
       }
     }

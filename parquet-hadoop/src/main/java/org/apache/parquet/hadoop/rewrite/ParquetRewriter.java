@@ -629,7 +629,7 @@ public class ParquetRewriter implements Closeable {
     while (readValues < totalChunkValues) {
       PageHeader pageHeader = reader.readPageHeader();
       int compressedPageSize = pageHeader.getCompressed_page_size();
-      byte[] pageLoad;
+      RewritePageData pageLoad;
       switch (pageHeader.type) {
         case DICTIONARY_PAGE:
           if (dictionaryPage != null) {
@@ -646,9 +646,10 @@ public class ParquetRewriter implements Closeable {
               pageHeader.getUncompressed_page_size(),
               encryptColumn,
               dataEncryptor,
-              dictPageAAD);
+              dictPageAAD,
+              false);
           dictionaryPage = new DictionaryPage(
-              BytesInput.from(pageLoad),
+              BytesInput.from(pageLoad.getData()),
               pageHeader.getUncompressed_page_size(),
               dictPageHeader.getNum_values(),
               converter.getEncoding(dictPageHeader.getEncoding()));
@@ -669,7 +670,8 @@ public class ParquetRewriter implements Closeable {
               pageHeader.getUncompressed_page_size(),
               encryptColumn,
               dataEncryptor,
-              dataPageAAD);
+              dataPageAAD,
+              false);
           statistics = convertStatistics(
               originalCreatedBy,
               normalizeNameInType(chunk.getPrimitiveType()),
@@ -694,7 +696,7 @@ public class ParquetRewriter implements Closeable {
             writer.writeDataPage(
                 toIntWithCheck(headerV1.getNum_values()),
                 pageHeader.getUncompressed_page_size(),
-                BytesInput.from(pageLoad),
+                BytesInput.from(pageLoad.getData()),
                 statistics,
                 toIntWithCheck(rowCount),
                 converter.getEncoding(headerV1.getRepetition_level_encoding()),
@@ -706,7 +708,7 @@ public class ParquetRewriter implements Closeable {
             writer.writeDataPage(
                 toIntWithCheck(headerV1.getNum_values()),
                 pageHeader.getUncompressed_page_size(),
-                BytesInput.from(pageLoad),
+                BytesInput.from(pageLoad.getData()),
                 statistics,
                 converter.getEncoding(headerV1.getRepetition_level_encoding()),
                 converter.getEncoding(headerV1.getDefinition_level_encoding()),
@@ -737,7 +739,8 @@ public class ParquetRewriter implements Closeable {
               rawDataLength,
               encryptColumn,
               dataEncryptor,
-              dataPageAAD);
+              dataPageAAD,
+              true);
           statistics = convertStatistics(
               originalCreatedBy,
               normalizeNameInType(chunk.getPrimitiveType()),
@@ -762,8 +765,8 @@ public class ParquetRewriter implements Closeable {
               rlLevels,
               dlLevels,
               converter.getEncoding(headerV2.getEncoding()),
-              BytesInput.from(pageLoad),
-              headerV2.is_compressed,
+              BytesInput.from(pageLoad.getData()),
+              pageLoad.isCompressed(),
               rawDataLength,
               statistics,
               metaEncryptor,
@@ -825,33 +828,61 @@ public class ParquetRewriter implements Closeable {
     }
   }
 
-  private byte[] processPageLoad(
+  private static class RewritePageData {
+    private final byte[] data;
+    private final boolean compressed;
+
+    public RewritePageData(byte[] data, boolean compressed) {
+      this.data = data;
+      this.compressed = compressed;
+    }
+
+    public byte[] getData() {
+      return data;
+    }
+
+    public boolean isCompressed() {
+      return compressed;
+    }
+  }
+
+  private RewritePageData processPageLoad(
       TransParquetFileReader reader,
-      boolean isCompressed,
+      boolean oldPageCompressed,
       CompressionCodecFactory.BytesInputCompressor compressor,
       CompressionCodecFactory.BytesInputDecompressor decompressor,
       int payloadLength,
       int rawDataLength,
       boolean encrypt,
       BlockCipher.Encryptor dataEncryptor,
-      byte[] AAD)
+      byte[] AAD,
+      boolean allowUncompressed)
       throws IOException {
-    BytesInput data = readBlock(payloadLength, reader);
+    byte[] data = readBlock(payloadLength, reader).toByteArray();
 
     // recompress page load
+    boolean newPageCompressed;
     if (compressor != null) {
-      if (isCompressed) {
-        data = decompressor.decompress(data, rawDataLength);
+      if (oldPageCompressed) {
+        data = decompressor.decompress(BytesInput.from(data), rawDataLength).toByteArray();
       }
-      data = compressor.compress(data);
+      BytesInput compressedData = compressor.compress(BytesInput.from(data));
+      if (allowUncompressed && compressedData.size() >= data.length * 0.98) {
+        newPageCompressed = false;
+      } else {
+        newPageCompressed = true;
+        data = compressedData.toByteArray();
+      }
+    } else {
+      newPageCompressed = oldPageCompressed;
     }
 
     if (!encrypt) {
-      return data.toByteArray();
+      return new RewritePageData(data, newPageCompressed);
     }
 
     // encrypt page load
-    return dataEncryptor.encrypt(data.toByteArray(), AAD);
+    return new RewritePageData(dataEncryptor.encrypt(data, AAD), newPageCompressed);
   }
 
   public BytesInput readBlock(int length, TransParquetFileReader reader) throws IOException {
