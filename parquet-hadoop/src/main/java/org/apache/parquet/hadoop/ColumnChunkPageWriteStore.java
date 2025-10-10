@@ -305,9 +305,13 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
       boolean compressed = false;
       BytesInput compressedData = BytesInput.empty();
       if (data.size() > 0) {
-        // TODO: decide if we compress
+        // decide if we compress
         compressedData = compressor.compress(data);
-        compressed = true;
+        if (compressedData.size() <= data.size() * 0.98) {
+          compressed = true;
+        } else {
+          compressedData = data;
+        }
       }
       if (null != pageBlockEncryptor) {
         AesCipher.quickUpdatePageAAD(dataPageAAD, pageOrdinal);
