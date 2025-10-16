@@ -222,6 +222,17 @@
         </executions>
       </plugin>
 
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <configuration>
+          <systemPropertyVariables>
+            <!-- We need to set this system property to allow Avro to serialize these classes via the specific/reflect models -->
+            <org.apache.avro.SERIALIZABLE_CLASSES>java.math.BigDecimal</org.apache.avro.SERIALIZABLE_CLASSES>
+          </systemPropertyVariables>
+        </configuration>
+      </plugin>
+
     </plugins>
   </build>
 
