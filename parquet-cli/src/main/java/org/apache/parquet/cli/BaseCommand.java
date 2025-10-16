@@ -285,6 +285,7 @@ public abstract class BaseCommand implements Command, Configurable {
 
   @Override
   public void setConf(Configuration conf) {
+    conf.setBoolean(AvroReadSupport.READ_INT96_AS_FIXED, true);
     this.conf = conf;
     HadoopFileSystemURLStreamHandler.setDefaultConf(conf);
   }
