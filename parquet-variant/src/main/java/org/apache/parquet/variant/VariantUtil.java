@@ -612,7 +612,9 @@ class VariantUtil {
     int start = value.position() + 1 + U32_SIZE;
     int length = readUnsigned(value, value.position() + 1, U32_SIZE);
     checkIndex(start + length - 1, value.limit());
-    return slice(value, start);
+    ByteBuffer result = slice(value, start);
+    result.limit(start + length);
+    return result;
   }
 
   static String getString(ByteBuffer value) {
