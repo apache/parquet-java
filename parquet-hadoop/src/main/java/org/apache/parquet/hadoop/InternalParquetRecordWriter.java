@@ -140,8 +140,9 @@ class InternalParquetRecordWriter<T> {
         }
         finalMetadata.putAll(finalWriteContext.getExtraMetaData());
         parquetFileWriter.end(finalMetadata);
+        AutoCloseables.uncheckedClose(parquetFileWriter);
       } finally {
-        AutoCloseables.uncheckedClose(columnStore, pageStore, bloomFilterWriteStore, parquetFileWriter);
+        AutoCloseables.uncheckedClose(columnStore, pageStore, bloomFilterWriteStore);
         closed = true;
       }
     }
