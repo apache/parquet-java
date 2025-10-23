@@ -445,10 +445,9 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
 
     private void writeAllFields(MessageOrBuilder pb) {
       Descriptor messageDescriptor = pb.getDescriptorForType();
-      String syntax =
-          messageDescriptor.getFile().toProto().getSyntax();
+      String syntax = messageDescriptor.getFile().toProto().getSyntax();
       if ("editions".equals(syntax)) {
-          throw new UnsupportedOperationException("protocol buffers 'editions' not supported");
+        throw new UnsupportedOperationException("protocol buffers 'editions' not supported");
       }
       boolean isProto2 = !"proto3".equals(syntax);
 
