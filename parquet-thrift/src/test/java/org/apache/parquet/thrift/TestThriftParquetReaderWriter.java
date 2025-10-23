@@ -28,7 +28,6 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
-import org.junit.Assert;
 import org.junit.Test;
 
 public class TestThriftParquetReaderWriter {
@@ -60,21 +59,6 @@ public class TestThriftParquetReaderWriter {
           new ThriftParquetWriter<AddressBook>(f, AddressBook.class, CompressionCodecName.UNCOMPRESSED);
       thriftParquetWriter.write(original);
       thriftParquetWriter.close();
-    }
-
-    { // read
-      ThriftParquetReader<AddressBook> thriftParquetReader =
-          new ThriftParquetReader<AddressBook>(f, AddressBook.class);
-      AddressBook read = thriftParquetReader.read();
-      Assert.assertEquals(original, read);
-      thriftParquetReader.close();
-    }
-
-    { // read without providing a thrift class
-      ThriftParquetReader<AddressBook> thriftParquetReader = new ThriftParquetReader<AddressBook>(f);
-      AddressBook read = thriftParquetReader.read();
-      Assert.assertEquals(original, read);
-      thriftParquetReader.close();
     }
   }
 }

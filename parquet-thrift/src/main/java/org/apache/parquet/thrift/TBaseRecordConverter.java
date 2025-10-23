@@ -30,19 +30,6 @@ import org.apache.thrift.protocol.TProtocol;
 
 public class TBaseRecordConverter<T extends TBase<?, ?>> extends ThriftRecordConverter<T> {
 
-  /**
-   * This is for compatibility only.
-   *
-   * @param thriftClass            a thrift class
-   * @param requestedParquetSchema the requested Parquet schema
-   * @param thriftType             the thrift type
-   * @deprecated will be removed in 2.x
-   */
-  @Deprecated
-  public TBaseRecordConverter(final Class<T> thriftClass, MessageType requestedParquetSchema, StructType thriftType) {
-    this(thriftClass, requestedParquetSchema, thriftType, (HadoopParquetConfiguration) null);
-  }
-
   @SuppressWarnings("unused")
   public TBaseRecordConverter(
       final Class<T> thriftClass, MessageType requestedParquetSchema, StructType thriftType, Configuration conf) {
