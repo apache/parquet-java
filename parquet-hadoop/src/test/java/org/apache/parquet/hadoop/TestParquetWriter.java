@@ -780,4 +780,44 @@ public class TestParquetWriter {
         "Cannot set both path and file", IllegalStateException.class, (Callable<ParquetWriter<Group>>) () ->
             ExampleParquetWriter.builder(path).withFile(outputFile).build());
   }
+
+  @Test
+  public void testNoFlushAfterException() throws Exception {
+    final File testDir = temp.newFile();
+    testDir.delete();
+
+    final Path file = new Path(testDir.getAbsolutePath(), "test.parquet");
+
+    MessageType schema = Types.buildMessage()
+        .required(BINARY)
+        .named("binary_field")
+        .required(INT32)
+        .named("int32_field")
+        .named("test_schema_abort");
+    Configuration conf = new Configuration();
+
+    try (ParquetWriter<Group> writer =  ExampleParquetWriter.builder(new Path(file.toString()))
+        .withAllocator(allocator)
+        .withType(schema)
+        .build()) {
+
+      SimpleGroupFactory f = new SimpleGroupFactory(schema);
+      writer.write(f.newGroup()
+          .append("binary_field", "hello")
+          .append("int32_field", 123));
+
+      Field internalWriterField = ParquetWriter.class.getDeclaredField("writer");
+      internalWriterField.setAccessible(true);
+      Object internalWriter = internalWriterField.get(writer);
+
+      Field abortedField = internalWriter.getClass().getDeclaredField("aborted");
+      abortedField.setAccessible(true);
+      abortedField.setBoolean(internalWriter, true);
+      writer.close();
+    }
+
+    // After closing, check whether file exists or is empty
+    FileSystem fs = file.getFileSystem(conf);
+    assertTrue(!fs.exists(file) || fs.getFileStatus(file).getLen() == 0);
+  }
 }
