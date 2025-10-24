@@ -113,7 +113,7 @@ public class ParquetFileWriter implements AutoCloseable {
   public static final byte[] EFMAGIC = EF_MAGIC_STR.getBytes(StandardCharsets.US_ASCII);
   public static final String PARQUET_COMMON_METADATA_FILE = "_common_metadata";
   public static final int CURRENT_VERSION = 1;
-
+  
   // File creation modes
   public static enum Mode {
     CREATE,
@@ -173,6 +173,7 @@ public class ParquetFileWriter implements AutoCloseable {
 
   // set when end is called
   private ParquetMetadata footer = null;
+  private boolean aborted;
   private boolean closed;
 
   private final CRC32 crc;
@@ -1812,6 +1813,8 @@ public class ParquetFileWriter implements AutoCloseable {
       LOG.debug("{}: end", out.getPos());
       this.footer = new ParquetMetadata(new FileMetaData(schema, extraMetaData, Version.FULL_VERSION), blocks);
       serializeFooter(footer, out, fileEncryptor, metadataConverter);
+    } catch (Exception e) {
+      aborted = true;
     } finally {
       close();
     }
@@ -1823,7 +1826,7 @@ public class ParquetFileWriter implements AutoCloseable {
       return;
     }
     try (PositionOutputStream temp = out) {
-      temp.flush();
+      if (!aborted) temp.flush();
       if (crcAllocator != null) {
         crcAllocator.close();
       }
