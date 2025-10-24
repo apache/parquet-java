@@ -113,7 +113,7 @@ public class ParquetFileWriter implements AutoCloseable {
   public static final byte[] EFMAGIC = EF_MAGIC_STR.getBytes(StandardCharsets.US_ASCII);
   public static final String PARQUET_COMMON_METADATA_FILE = "_common_metadata";
   public static final int CURRENT_VERSION = 1;
-  
+
   // File creation modes
   public static enum Mode {
     CREATE,
