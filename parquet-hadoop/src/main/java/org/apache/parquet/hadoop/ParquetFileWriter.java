@@ -1813,11 +1813,17 @@ public class ParquetFileWriter implements AutoCloseable {
       LOG.debug("{}: end", out.getPos());
       this.footer = new ParquetMetadata(new FileMetaData(schema, extraMetaData, Version.FULL_VERSION), blocks);
       serializeFooter(footer, out, fileEncryptor, metadataConverter);
-    } catch (Exception e) {
-      aborted = true;
+    } catch (IOException e) {
+      abort();
+      throw e;
     } finally {
       close();
     }
+  }
+
+  /* Mark the writer as aborted to avoid flushing incomplete data to the cloud. */
+  public void abort() {
+    aborted = true;
   }
 
   @Override
@@ -1825,12 +1831,17 @@ public class ParquetFileWriter implements AutoCloseable {
     if (closed) {
       return;
     }
-    try (PositionOutputStream temp = out) {
-      if (!aborted) temp.flush();
+
+    try {
+      if (!aborted && out != null) {
+        out.flush();
+      }
+    } catch (IOException e) {
+      throw e;
+    } finally {
       if (crcAllocator != null) {
         crcAllocator.close();
       }
-    } finally {
       closed = true;
     }
   }
