@@ -654,15 +654,16 @@ public class ParquetFileWriter implements AutoCloseable {
       currentChunkFirstDataPage = -1;
       compressedLength = 0;
       uncompressedLength = 0;
-      // The statistics will be copied from the first one added at writeDataPage(s) so we have the correct typed one
+      // The statistics will be copied from the first one added at writeDataPage(s) so we have the correct typed
+      // one
       currentStatistics = null;
       currentSizeStatistics = SizeStatistics.newBuilder(
               descriptor.getPrimitiveType(),
               descriptor.getMaxRepetitionLevel(),
               descriptor.getMaxDefinitionLevel())
           .build();
-      currentGeospatialStatistics =
-          GeospatialStatistics.newBuilder(descriptor.getPrimitiveType()).build();
+      currentGeospatialStatistics = GeospatialStatistics.newBuilder(descriptor.getPrimitiveType())
+          .build();
 
       columnIndexBuilder = ColumnIndexBuilder.getBuilder(currentChunkType, columnIndexTruncateLength);
       offsetIndexBuilder = OffsetIndexBuilder.getBuilder();
@@ -715,7 +716,9 @@ public class ParquetFileWriter implements AutoCloseable {
       this.uncompressedLength += uncompressedSize + headerSize;
       this.compressedLength += compressedPageSize + headerSize;
       LOG.debug("{}: write dictionary page content {}", out.getPos(), compressedPageSize);
-      dictionaryPage.getBytes().writeAllTo(out); // for encrypted column, dictionary page bytes are already encrypted
+      dictionaryPage
+          .getBytes()
+          .writeAllTo(out); // for encrypted column, dictionary page bytes are already encrypted
       encodingStatsBuilder.addDictEncoding(dictionaryPage.getEncoding());
       currentEncodings.add(dictionaryPage.getEncoding());
     });
@@ -1345,7 +1348,8 @@ public class ParquetFileWriter implements AutoCloseable {
       int rlByteLength = toIntWithCheck(repetitionLevels.size(), "page repetition levels");
       int dlByteLength = toIntWithCheck(definitionLevels.size(), "page definition levels");
 
-      int compressedSize = toIntWithCheck(bytes.size() + repetitionLevels.size() + definitionLevels.size(), "page");
+      int compressedSize =
+          toIntWithCheck(bytes.size() + repetitionLevels.size() + definitionLevels.size(), "page");
 
       int uncompressedSize =
           toIntWithCheck(uncompressedDataSize + repetitionLevels.size() + definitionLevels.size(), "page");
@@ -1519,7 +1523,8 @@ public class ParquetFileWriter implements AutoCloseable {
         // write bloom filter if one of data pages is not dictionary encoded
         boolean isWriteBloomFilter = false;
         for (Encoding encoding : dataEncodings) {
-          // dictionary encoding: `PLAIN_DICTIONARY` is used in parquet v1, `RLE_DICTIONARY` is used in parquet v2
+          // dictionary encoding: `PLAIN_DICTIONARY` is used in parquet v1, `RLE_DICTIONARY` is used in
+          // parquet v2
           if (encoding != Encoding.PLAIN_DICTIONARY && encoding != Encoding.RLE_DICTIONARY) {
             isWriteBloomFilter = true;
             break;
@@ -1739,7 +1744,8 @@ public class ParquetFileWriter implements AutoCloseable {
         }
         length += chunk.getTotalSize();
 
-        if ((i + 1) == columnsInOrder.size() || columnsInOrder.get(i + 1).getStartingPos() != (start + length)) {
+        if ((i + 1) == columnsInOrder.size()
+            || columnsInOrder.get(i + 1).getStartingPos() != (start + length)) {
           // not contiguous. do the copy now.
           copy(from, out, start, length);
           // reset to start at the next column chunk
@@ -1800,9 +1806,9 @@ public class ParquetFileWriter implements AutoCloseable {
       OffsetIndex effectiveOffsetIndex = offsetIndex;
 
       if (effectiveOffsetIndex != null && newChunkStart != start) {
-          effectiveOffsetIndex = OffsetIndexBuilder.getBuilder()
-                                .fromOffsetIndex(effectiveOffsetIndex)
-                                .build(newChunkStart - start);
+        effectiveOffsetIndex = OffsetIndexBuilder.getBuilder()
+            .fromOffsetIndex(effectiveOffsetIndex)
+            .build(newChunkStart - start);
       }
 
       copy(from, out, start, length);
@@ -1825,8 +1831,7 @@ public class ParquetFileWriter implements AutoCloseable {
           chunk.getTotalSize(),
           chunk.getTotalUncompressedSize()));
 
-      currentBlock.setTotalByteSize(
-          currentBlock.getTotalByteSize() + chunk.getTotalUncompressedSize());
+      currentBlock.setTotalByteSize(currentBlock.getTotalByteSize() + chunk.getTotalUncompressedSize());
     });
   }
 
@@ -1874,7 +1879,8 @@ public class ParquetFileWriter implements AutoCloseable {
         serializeOffsetIndexes(offsetIndexes, blocks, out, fileEncryptor);
         serializeBloomFilters(bloomFilters, blocks, out, fileEncryptor);
         LOG.debug("{}: end", out.getPos());
-        this.footer = new ParquetMetadata(new FileMetaData(schema, extraMetaData, Version.FULL_VERSION), blocks);
+        this.footer =
+            new ParquetMetadata(new FileMetaData(schema, extraMetaData, Version.FULL_VERSION), blocks);
         serializeFooter(footer, out, fileEncryptor, metadataConverter);
       } finally {
         close();

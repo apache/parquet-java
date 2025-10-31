@@ -798,15 +798,13 @@ public class TestParquetWriter {
         .named("test_schema_abort");
     Configuration conf = new Configuration();
 
-    try (ParquetWriter<Group> writer =  ExampleParquetWriter.builder(new Path(file.toString()))
+    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(new Path(file.toString()))
         .withAllocator(allocator)
         .withType(schema)
         .build()) {
 
       SimpleGroupFactory f = new SimpleGroupFactory(schema);
-      writer.write(f.newGroup()
-          .append("binary_field", "hello")
-          .append("int32_field", 123));
+      writer.write(f.newGroup().append("binary_field", "hello").append("int32_field", 123));
 
       Field internalWriterField = ParquetWriter.class.getDeclaredField("writer");
       internalWriterField.setAccessible(true);
