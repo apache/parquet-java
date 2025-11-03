@@ -129,6 +129,7 @@ class InternalParquetRecordWriter<T> {
     if (!closed) {
       try {
         if (aborted) {
+          parquetFileWriter.abort();
           return;
         }
         flushRowGroupToStore();
@@ -140,6 +141,9 @@ class InternalParquetRecordWriter<T> {
         }
         finalMetadata.putAll(finalWriteContext.getExtraMetaData());
         parquetFileWriter.end(finalMetadata);
+      } catch (Exception e) {
+        parquetFileWriter.abort();
+        throw e;
       } finally {
         AutoCloseables.uncheckedClose(columnStore, pageStore, bloomFilterWriteStore, parquetFileWriter);
         closed = true;
