@@ -16,8 +16,7 @@
   ~ specific language governing permissions and limitations
   ~ under the License.
   -->
-<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
   <parent>
@@ -28,7 +27,7 @@
 
   <groupId>org.apache.parquet</groupId>
   <artifactId>parquet</artifactId>
-  <version>1.16.0-SNAPSHOT</version>
+  <version>1.17.0-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <name>Apache Parquet Java</name>
@@ -77,27 +76,27 @@
     <jackson.datatype.groupId>com.fasterxml.jackson.datatype</jackson.datatype.groupId>
     <jackson.package>com.fasterxml.jackson</jackson.package>
     <!-- To upgrade jackson, check the jdk versions inside the jar and include any new versions in the shading in parquet-jackson. -->
-    <jackson.version>2.18.3</jackson.version>
-    <jackson-databind.version>2.18.3</jackson-databind.version>
+    <jackson.version>2.19.2</jackson.version>
+    <jackson-databind.version>2.19.2</jackson-databind.version>
     <japicmp.version>0.23.1</japicmp.version>
     <javax.annotation.version>1.3.2</javax.annotation.version>
     <spotless.version>2.30.0</spotless.version>
     <shade.prefix>shaded.parquet</shade.prefix>
     <!-- Guarantees no newer classes/methods/constants are used by parquet. -->
     <hadoop.version>3.3.0</hadoop.version>
-    <parquet.format.version>2.11.0</parquet.format.version>
-    <previous.version>1.15.1</previous.version>
+    <parquet.format.version>2.12.0</parquet.format.version>
+    <previous.version>1.16.0</previous.version>
     <thrift.executable>thrift</thrift.executable>
     <format.thrift.executable>${thrift.executable}</format.thrift.executable>
     <pig.version>0.16.0</pig.version>
     <pig.classifier>h2</pig.classifier>
     <thrift-maven-plugin.version>0.10.0</thrift-maven-plugin.version>
-    <thrift.version>0.21.0</thrift.version>
+    <thrift.version>0.22.0</thrift.version>
     <format.thrift.version>${thrift.version}</format.thrift.version>
     <fastutil.version>8.5.15</fastutil.version>
     <semver.api.version>0.9.33</semver.api.version>
     <slf4j.version>1.7.33</slf4j.version>
-    <avro.version>1.11.4</avro.version>
+    <avro.version>1.11.5</avro.version>
     <guava.version>33.4.0-jre</guava.version>
     <brotli-codec.version>0.1.1</brotli-codec.version>
     <mockito.version>1.10.19</mockito.version>
@@ -111,7 +110,7 @@
     <jcommander.version>1.82</jcommander.version>
     <tukaani.version>1.10</tukaani.version>
     <zstd-jni.version>1.5.7-3</zstd-jni.version>
-    <commons-text.version>1.13.0</commons-text.version>
+    <commons-text.version>1.13.1</commons-text.version>
     <jsr305.version>3.0.2</jsr305.version>
     <commons-lang3.version>3.17.0</commons-lang3.version>
 
@@ -522,13 +521,13 @@
             <excludes>
               <exclude>**/generated-sources/**</exclude>
             </excludes>
-            <toggleOffOn/>
-            <removeUnusedImports/>
-            <importOrder/>
-            <trimTrailingWhitespace/>
-            <palantirJavaFormat/>
-            <endWithNewline/>
-            <formatAnnotations/>
+            <toggleOffOn />
+            <removeUnusedImports />
+            <importOrder />
+            <trimTrailingWhitespace />
+            <palantirJavaFormat />
+            <endWithNewline />
+            <formatAnnotations />
             <indent>
               <tabs>true</tabs>
               <spacesPerTab>4</spacesPerTab>

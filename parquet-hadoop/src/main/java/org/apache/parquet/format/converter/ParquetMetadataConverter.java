@@ -139,7 +139,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 // TODO: This file has become too long!
-// TODO: Lets split it up: https://issues.apache.org/jira/browse/PARQUET-310
+// TODO: Lets split it up: https://github.com/apache/parquet-java/issues/1835
 public class ParquetMetadataConverter {
 
   private static final TypeDefinedOrder TYPE_DEFINED_ORDER = new TypeDefinedOrder();

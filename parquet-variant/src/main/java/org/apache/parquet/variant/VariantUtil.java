@@ -21,6 +21,7 @@ import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.Arrays;
+import java.util.HashMap;
 
 /**
  * This class defines constants related to the Variant format and provides functions for
@@ -798,13 +799,123 @@ class VariantUtil {
       throw new IllegalStateException(String.format("Invalid offset: %d. next offset: %d", offset, nextOffset));
     }
     checkIndex(dataPos + nextOffset - 1, metadata.limit());
-    if (metadata.hasArray()) {
+    if (metadata.hasArray() && !metadata.isReadOnly()) {
       return new String(metadata.array(), metadata.arrayOffset() + dataPos + offset, nextOffset - offset);
     } else {
       // ByteBuffer does not have an array, so we need to use the `get` method to read the bytes.
       byte[] metadataArray = new byte[nextOffset - offset];
       slice(metadata, dataPos + offset).get(metadataArray);
       return new String(metadataArray);
+    }
+  }
+
+  /**
+   * Returns a map from each string to its ID in the Variant metadata.
+   * @param metadata The Variant metadata
+   * @return A map from metadata key to its position.
+   */
+  static HashMap<String, Integer> getMetadataMap(ByteBuffer metadata) {
+    int pos = metadata.position();
+    checkIndex(pos, metadata.limit());
+    // Extracts the highest 2 bits in the metadata header to determine the integer size of the
+    // offset list.
+    int offsetSize = ((metadata.get(pos) >> 6) & 0x3) + 1;
+    int dictSize = readUnsigned(metadata, pos + 1, offsetSize);
+    HashMap<String, Integer> result = new HashMap<>();
+    int offset = readUnsigned(metadata, pos + 1 + offsetSize, offsetSize);
+    for (int id = 0; id < dictSize; id++) {
+      int stringStart = 1 + (dictSize + 2) * offsetSize;
+      int nextOffset = readUnsigned(metadata, pos + 1 + (id + 2) * offsetSize, offsetSize);
+      if (offset > nextOffset) {
+        throw new UnsupportedOperationException(
+            String.format("Invalid offset: %d. next offset: %d", offset, nextOffset));
+      }
+      checkIndex(pos + stringStart + nextOffset - 1, metadata.limit());
+      if (metadata.hasArray() && !metadata.isReadOnly()) {
+        result.put(
+            new String(
+                metadata.array(),
+                metadata.arrayOffset() + pos + stringStart + offset,
+                nextOffset - offset),
+            id);
+      } else {
+        // ByteBuffer does not have an array, so we need to use the `get` method to read the bytes.
+        byte[] metadataArray = new byte[nextOffset - offset];
+        slice(metadata, stringStart + offset).get(metadataArray);
+        result.put(new String(metadataArray), id);
+      }
+      offset = nextOffset;
+    }
+    return result;
+  }
+
+  /**
+   * Computes the actual size (in bytes) of the Variant value.
+   * @param value The Variant value binary
+   * @return The size (in bytes) of the Variant value, including the header byte
+   */
+  public static int valueSize(ByteBuffer value) {
+    int pos = value.position();
+    int basicType = value.get(pos) & BASIC_TYPE_MASK;
+    switch (basicType) {
+      case SHORT_STR:
+        int stringSize = (value.get(pos) >> BASIC_TYPE_BITS) & PRIMITIVE_TYPE_MASK;
+        return 1 + stringSize;
+      case OBJECT: {
+        VariantUtil.ObjectInfo info = VariantUtil.getObjectInfo(slice(value, pos));
+        return info.dataStartOffset
+            + readUnsigned(
+                value,
+                pos + info.offsetStartOffset + info.numElements * info.offsetSize,
+                info.offsetSize);
+      }
+      case ARRAY: {
+        VariantUtil.ArrayInfo info = VariantUtil.getArrayInfo(slice(value, pos));
+        return info.dataStartOffset
+            + readUnsigned(
+                value,
+                pos + info.offsetStartOffset + info.numElements * info.offsetSize,
+                info.offsetSize);
+      }
+      default: {
+        int typeInfo = (value.get(pos) >> BASIC_TYPE_BITS) & PRIMITIVE_TYPE_MASK;
+        switch (typeInfo) {
+          case NULL:
+          case TRUE:
+          case FALSE:
+            return 1;
+          case INT8:
+            return 2;
+          case INT16:
+            return 3;
+          case INT32:
+          case DATE:
+          case FLOAT:
+            return 5;
+          case INT64:
+          case DOUBLE:
+          case TIMESTAMP_TZ:
+          case TIMESTAMP_NTZ:
+          case TIME:
+          case TIMESTAMP_NANOS_TZ:
+          case TIMESTAMP_NANOS_NTZ:
+            return 9;
+          case DECIMAL4:
+            return 6;
+          case DECIMAL8:
+            return 10;
+          case DECIMAL16:
+            return 18;
+          case BINARY:
+          case LONG_STR:
+            return 1 + U32_SIZE + readUnsigned(value, pos + 1, U32_SIZE);
+          case UUID:
+            return 1 + UUID_SIZE;
+          default:
+            throw new UnsupportedOperationException(
+                String.format("Unknown type in Variant. primitive type: %d", typeInfo));
+        }
+      }
     }
   }
 }

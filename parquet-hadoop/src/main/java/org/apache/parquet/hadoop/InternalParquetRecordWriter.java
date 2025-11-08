@@ -48,8 +48,8 @@ class InternalParquetRecordWriter<T> {
   private final WriteSupport<T> writeSupport;
   private final MessageType schema;
   private final Map<String, String> extraMetaData;
-  private final long rowGroupSize;
   private long rowGroupSizeThreshold;
+  private final int rowGroupRecordCountThreshold;
   private long nextRowGroupSize;
   private final BytesInputCompressor compressor;
   private final boolean validating;
@@ -91,8 +91,8 @@ class InternalParquetRecordWriter<T> {
     this.writeSupport = Objects.requireNonNull(writeSupport, "writeSupport cannot be null");
     this.schema = schema;
     this.extraMetaData = extraMetaData;
-    this.rowGroupSize = rowGroupSize;
     this.rowGroupSizeThreshold = rowGroupSize;
+    this.rowGroupRecordCountThreshold = props.getRowGroupRowCountLimit();
     this.nextRowGroupSize = rowGroupSizeThreshold;
     this.compressor = compressor;
     this.validating = validating;
@@ -129,6 +129,7 @@ class InternalParquetRecordWriter<T> {
     if (!closed) {
       try {
         if (aborted) {
+          parquetFileWriter.abort();
           return;
         }
         flushRowGroupToStore();
@@ -140,6 +141,9 @@ class InternalParquetRecordWriter<T> {
         }
         finalMetadata.putAll(finalWriteContext.getExtraMetaData());
         parquetFileWriter.end(finalMetadata);
+      } catch (Exception e) {
+        parquetFileWriter.abort();
+        throw e;
       } finally {
         AutoCloseables.uncheckedClose(columnStore, pageStore, bloomFilterWriteStore, parquetFileWriter);
         closed = true;
@@ -166,9 +170,16 @@ class InternalParquetRecordWriter<T> {
   }
 
   private void checkBlockSizeReached() throws IOException {
-    if (recordCount
-        >= recordCountForNextMemCheck) { // checking the memory size is relatively expensive, so let's not do it
-      // for every record.
+    if (recordCount >= rowGroupRecordCountThreshold) {
+      LOG.debug("record count reaches threshold: flushing {} records to disk.", recordCount);
+      flushRowGroupToStore();
+      initStore();
+      recordCountForNextMemCheck = min(
+          max(props.getMinRowCountForPageSizeCheck(), recordCount / 2),
+          props.getMaxRowCountForPageSizeCheck());
+      this.lastRowGroupEndPos = parquetFileWriter.getPos();
+    } else if (recordCount >= recordCountForNextMemCheck) {
+      // checking the memory size is relatively expensive, so let's not do it for every record.
       long memSize = columnStore.getBufferedSize();
       long recordSize = memSize / recordCount;
       // flush the row group if it is within ~2 records of the limit

@@ -567,8 +567,23 @@ public class ParquetFileReader implements Closeable {
 
   public static final ParquetMetadata readFooter(InputFile file, ParquetReadOptions options, SeekableInputStream f)
       throws IOException {
+    return readFooter(file, options, f, /*closeStreamOnFailure*/ false);
+  }
+
+  private static final ParquetMetadata readFooter(
+      InputFile file, ParquetReadOptions options, SeekableInputStream f, boolean closeStreamOnFailure)
+      throws IOException {
     ParquetMetadataConverter converter = new ParquetMetadataConverter(options);
-    return readFooter(file, options, f, converter);
+    try {
+      return readFooter(file, options, f, converter);
+    } catch (Exception e) {
+      // In case that readFooter throws an exception in the constructor, the new stream
+      // should be closed. Otherwise, there's no way to close this outside.
+      if (closeStreamOnFailure) {
+        f.close();
+      }
+      throw e;
+    }
   }
 
   private static final ParquetMetadata readFooter(
@@ -727,6 +742,22 @@ public class ParquetFileReader implements Closeable {
   public static ParquetFileReader open(InputFile file, ParquetReadOptions options, SeekableInputStream f)
       throws IOException {
     return new ParquetFileReader(file, options, f);
+  }
+
+  /**
+   * Open a {@link InputFile file} with {@link ParquetMetadata footer} and {@link ParquetReadOptions options}.
+   *
+   * @param file    an input file
+   * @param footer  a {@link ParquetMetadata} footer already read from the file
+   * @param options parquet read options
+   * @param f       the input stream for the file
+   * @return an open ParquetFileReader
+   * @throws IOException if there is an error while opening the file
+   */
+  public static ParquetFileReader open(
+      InputFile file, ParquetMetadata footer, ParquetReadOptions options, SeekableInputStream f)
+      throws IOException {
+    return new ParquetFileReader(file, footer, options, f);
   }
 
   protected SeekableInputStream f;
@@ -930,19 +961,31 @@ public class ParquetFileReader implements Closeable {
     this(file, options, file.newStream());
   }
 
+  /**
+   * @param file    Path to a parquet file
+   * @param options {@link ParquetReadOptions}
+   * @param f       a {@link SeekableInputStream} for the parquet file
+   * @throws IOException if the file can not be opened
+   */
   public ParquetFileReader(InputFile file, ParquetReadOptions options, SeekableInputStream f) throws IOException {
+    this(file, readFooter(file, options, f, /*closeStreamOnFailure*/ true), options, f);
+  }
+
+  /**
+   * @param file    Path to a parquet file
+   * @param footer  a {@link ParquetMetadata} footer already read from the file
+   * @param options {@link ParquetReadOptions}
+   * @param f       a {@link SeekableInputStream} for the parquet file
+   * @throws IOException if the file can not be opened
+   */
+  public ParquetFileReader(InputFile file, ParquetMetadata footer, ParquetReadOptions options, SeekableInputStream f)
+      throws IOException {
     this.converter = new ParquetMetadataConverter(options);
     this.file = file;
     this.f = f;
     this.options = options;
-    try {
-      this.footer = readFooter(file, options, f, converter);
-    } catch (Exception e) {
-      // In case that reading footer throws an exception in the constructor, the new stream
-      // should be closed. Otherwise, there's no way to close this outside.
-      f.close();
-      throw e;
-    }
+    this.footer = footer;
+
     this.fileMetaData = footer.getFileMetaData();
     this.fileDecryptor = fileMetaData.getFileDecryptor(); // must be called before filterRowGroups!
     if (null != fileDecryptor && fileDecryptor.plaintextFile()) {
@@ -1054,11 +1097,15 @@ public class ParquetFileReader implements Closeable {
     return blocks;
   }
 
-  public void setRequestedSchema(MessageType projection) {
+  public void setRequestedSchema(List<ColumnDescriptor> columns) {
     paths.clear();
-    for (ColumnDescriptor col : projection.getColumns()) {
+    for (ColumnDescriptor col : columns) {
       paths.put(ColumnPath.get(col.getPath()), col);
     }
+  }
+
+  public void setRequestedSchema(MessageType projection) {
+    setRequestedSchema(projection.getColumns());
   }
 
   public void appendTo(ParquetFileWriter writer) throws IOException {
@@ -1376,7 +1423,8 @@ public class ParquetFileReader implements Closeable {
       if (columnDescriptor != null) {
         OffsetIndex offsetIndex = ciStore.getOffsetIndex(mc.getPath());
 
-        OffsetIndex filteredOffsetIndex = filterOffsetIndex(offsetIndex, rowRanges, block.getRowCount());
+        OffsetIndex filteredOffsetIndex =
+            filterOffsetIndex(offsetIndex, rowRanges, block.getRowCount(), options);
         for (OffsetRange range : calculateOffsetRanges(filteredOffsetIndex, mc, offsetIndex.getOffset(0))) {
           BenchmarkCounter.incrementTotalBytes(range.getLength());
           long startingPos = range.getOffset();
@@ -1667,7 +1715,14 @@ public class ParquetFileReader implements Closeable {
     byte[] bitset;
     if (null == bloomFilterDecryptor) {
       bitset = new byte[numBytes];
-      in.read(bitset);
+      // For negative bloomFilterLength (files from older versions), use readFully() instead of read().
+      // readFully() guarantees reading exactly numBytes bytes, while read() may read fewer bytes in a single
+      // call. This ensures the entire bitset is properly loaded.
+      if (bloomFilterLength < 0) {
+        f.readFully(bitset);
+      } else {
+        in.read(bitset);
+      }
     } else {
       bitset = bloomFilterDecryptor.decrypt(in, bloomFilterBitsetAAD);
       if (bitset.length != numBytes) {

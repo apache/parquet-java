@@ -235,7 +235,8 @@ public class Types {
     protected abstract THIS self();
 
     protected final THIS repetition(Type.Repetition repetition) {
-      Preconditions.checkArgument(!repetitionAlreadySet, "Repetition has already been set");
+      Preconditions.checkArgument(
+          !repetitionAlreadySet, "Repetition has already been set to: %s", this.repetition);
       this.repetition = Objects.requireNonNull(repetition, "Repetition cannot be null");
       this.repetitionAlreadySet = true;
       return self();
@@ -656,12 +657,16 @@ public class Types {
           if (scaleAlreadySet) {
             Preconditions.checkArgument(
                 this.scale == decimalType.getScale(),
-                "Decimal scale should match with the scale of the logical type");
+                "Decimal scale should match with the scale of the logical type. Expected: %s, but was: %s",
+                decimalType.getScale(),
+                this.scale);
           }
           if (precisionAlreadySet) {
             Preconditions.checkArgument(
                 this.precision == decimalType.getPrecision(),
-                "Decimal precision should match with the precision of the logical type");
+                "Decimal precision should match with the precision of the logical type. Expected: %s, but was: %s",
+                decimalType.getPrecision(),
+                this.precision);
           }
           scale = decimalType.getScale();
           precision = decimalType.getPrecision();
@@ -669,7 +674,10 @@ public class Types {
         Preconditions.checkArgument(precision > 0, "Invalid DECIMAL precision: %s", precision);
         Preconditions.checkArgument(this.scale >= 0, "Invalid DECIMAL scale: %s", this.scale);
         Preconditions.checkArgument(
-            this.scale <= precision, "Invalid DECIMAL scale: cannot be greater than precision");
+            this.scale <= precision,
+            "Invalid DECIMAL scale: %s cannot be greater than precision: %s",
+            this.scale,
+            precision);
         meta = new DecimalMetadata(precision, scale);
       }
       return meta;
@@ -1115,12 +1123,18 @@ public class Types {
     }
 
     protected void setKeyType(Type keyType) {
-      Preconditions.checkState(this.keyType == null, "Only one key type can be built with a MapBuilder");
+      Preconditions.checkState(
+          this.keyType == null,
+          "Only one key type can be built with a MapBuilder, but found existing type: %s",
+          this.keyType);
       this.keyType = keyType;
     }
 
     protected void setValueType(Type valueType) {
-      Preconditions.checkState(this.valueType == null, "Only one key type can be built with a ValueBuilder");
+      Preconditions.checkState(
+          this.valueType == null,
+          "Only one value type can be built with a ValueBuilder, but found existing type: %s",
+          this.valueType);
       this.valueType = valueType;
     }
 
@@ -1207,7 +1221,9 @@ public class Types {
     @Override
     protected Type build(String name) {
       Preconditions.checkState(
-          logicalTypeAnnotation == null, "MAP is already a logical type and can't be changed.");
+          logicalTypeAnnotation == null,
+          "MAP is already a logical type and can't be changed. Current annotation: %s",
+          logicalTypeAnnotation);
       if (keyType == null) {
         keyType = STRING_KEY;
       }
@@ -1260,7 +1276,10 @@ public class Types {
     }
 
     public THIS setElementType(Type elementType) {
-      Preconditions.checkState(this.elementType == null, "Only one element can be built with a ListBuilder");
+      Preconditions.checkState(
+          this.elementType == null,
+          "Only one element can be built with a ListBuilder, but found existing type: %s",
+          this.elementType);
       this.elementType = elementType;
       return self();
     }
@@ -1357,7 +1376,9 @@ public class Types {
     @Override
     protected Type build(String name) {
       Preconditions.checkState(
-          logicalTypeAnnotation == null, "LIST is already the logical type and can't be changed");
+          logicalTypeAnnotation == null,
+          "LIST is already the logical type and can't be changed. Current annotation: %s",
+          logicalTypeAnnotation);
       Objects.requireNonNull(elementType, "List element type cannot be null");
 
       GroupBuilder<GroupType> builder = buildGroup(repetition).as(OriginalType.LIST);

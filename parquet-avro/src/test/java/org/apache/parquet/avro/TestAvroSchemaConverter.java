@@ -579,7 +579,7 @@ public class TestAvroSchemaConverter {
     enableInt96ReadingConfig.setBoolean(AvroReadSupport.READ_INT96_AS_FIXED, true);
 
     Schema schema = Schema.createRecord("myrecord", null, null, false);
-    Schema int96schema = Schema.createFixed("INT96", "INT96 represented as byte[12]", null, 12);
+    Schema int96schema = Schema.createFixed("int96_field", "INT96 represented as byte[12]", null, 12);
     schema.setFields(Collections.singletonList(new Schema.Field("int96_field", int96schema, null, null)));
 
     testParquetToAvroConversion(
@@ -597,6 +597,33 @@ public class TestAvroSchemaConverter {
         "INT96 is deprecated. As interim enable READ_INT96_AS_FIXED  flag to read as byte array.",
         IllegalArgumentException.class,
         () -> new AvroSchemaConverter().convert(parquetSchemaWithInt96));
+  }
+
+  @Test
+  public void testMultipleInt96FieldsToStringConversion() throws Exception {
+    Configuration enableInt96ReadingConfig = new Configuration();
+    enableInt96ReadingConfig.setBoolean(AvroReadSupport.READ_INT96_AS_FIXED, true);
+
+    Types.MessageTypeBuilder builder = Types.buildMessage();
+    builder.optional(PrimitiveType.PrimitiveTypeName.INT96).named("timestamp_1");
+    builder.optional(PrimitiveType.PrimitiveTypeName.INT96).named("timestamp_2");
+    MessageType int96Schema = builder.named("int96Schema");
+
+    AvroSchemaConverter converter = new AvroSchemaConverter(enableInt96ReadingConfig);
+    Schema avroSchema = converter.convert(int96Schema);
+
+    String schemaString = avroSchema.toString(true);
+
+    Assert.assertTrue(
+        "First field should have full timestamp_1 definition",
+        schemaString.contains("\"name\" : \"timestamp_1\""));
+    Assert.assertTrue(
+        "Second field should have full timestamp_2 definition",
+        schemaString.contains("\"name\" : \"timestamp_2\""));
+
+    Assert.assertFalse(
+        "Should not reference bare 'INT96' type anymore",
+        schemaString.contains("\"type\" : [ \"null\", \"INT96\" ]"));
   }
 
   @Test
@@ -963,6 +990,86 @@ public class TestAvroSchemaConverter {
         "Exception should be thrown for fixed types to be converted to INT96 where the size is not 12 bytes",
         IllegalArgumentException.class,
         () -> new AvroSchemaConverter(conf).convert(schema));
+  }
+
+  @Test
+  public void testRecursiveSchemaThrowsException() {
+    String recursiveSchemaJson = "{"
+        + "\"type\": \"record\", \"name\": \"Node\", \"fields\": ["
+        + "  {\"name\": \"value\", \"type\": \"int\"},"
+        + "  {\"name\": \"children\", \"type\": ["
+        + "    \"null\", {"
+        + "      \"type\": \"array\", \"items\": [\"null\", \"Node\"]"
+        + "    }"
+        + "  ], \"default\": null}"
+        + "]}";
+
+    Schema recursiveSchema = new Schema.Parser().parse(recursiveSchemaJson);
+
+    assertThrows(
+        "Recursive Avro schema should throw UnsupportedOperationException for cycles",
+        UnsupportedOperationException.class,
+        () -> new AvroSchemaConverter().convert(recursiveSchema));
+  }
+
+  @Test
+  public void testRecursiveSchemaFromGitHubIssue() {
+    String issueSchemaJson = "{"
+        + "\"type\": \"record\", \"name\": \"ObjXX\", \"fields\": ["
+        + "  {\"name\": \"id\", \"type\": [\"null\", \"long\"], \"default\": null},"
+        + "  {\"name\": \"struct_add_list\", \"type\": [\"null\", {"
+        + "    \"type\": \"array\", \"items\": [\"null\", {"
+        + "      \"type\": \"record\", \"name\": \"ObjStructAdd\", \"fields\": ["
+        + "        {\"name\": \"name\", \"type\": [\"null\", \"string\"], \"default\": null},"
+        + "        {\"name\": \"fld_list\", \"type\": [\"null\", {"
+        + "          \"type\": \"array\", \"items\": [\"null\", {"
+        + "            \"type\": \"record\", \"name\": \"ObjStructAddFld\", \"fields\": ["
+        + "              {\"name\": \"name\", \"type\": [\"null\", \"string\"], \"default\": null},"
+        + "              {\"name\": \"ref_val\", \"type\": [\"null\", \"ObjStructAdd\"], \"default\": null}"
+        + "            ]"
+        + "          }]"
+        + "        }], \"default\": null}"
+        + "      ]"
+        + "    }]"
+        + "  }], \"default\": null},"
+        + "  {\"name\": \"kafka_timestamp\", \"type\": {\"type\": \"long\", \"logicalType\": \"timestamp-millis\"}}"
+        + "]}";
+
+    Schema issueSchema = new Schema.Parser().parse(issueSchemaJson);
+
+    assertThrows(
+        "Schema hould throw UnsupportedOperationException for cycles",
+        UnsupportedOperationException.class,
+        () -> new AvroSchemaConverter().convert(issueSchema));
+  }
+
+  @Test
+  public void testRecursiveSchemaErrorMessage() {
+    String recursiveSchemaJson = "{"
+        + "\"type\": \"record\", \"name\": \"TestRecord\", \"fields\": ["
+        + "  {\"name\": \"self\", \"type\": [\"null\", \"TestRecord\"], \"default\": null}"
+        + "]}";
+
+    Schema recursiveSchema = new Schema.Parser().parse(recursiveSchemaJson);
+
+    // With our cycle detection fix, this should throw UnsupportedOperationException
+    assertThrows(
+        "Recursive schema should throw UnsupportedOperationException with clear error message",
+        UnsupportedOperationException.class,
+        () -> new AvroSchemaConverter().convert(recursiveSchema));
+  }
+
+  @Test
+  public void testDeeplyNestedNonRecursiveSchema() {
+    Schema level3 = record("Level3", field("value", primitive(STRING)));
+    Schema level2 = record("Level2", field("level3", level3));
+    Schema level1 = record("Level1", field("level2", level2));
+    Schema rootSchema = record("Root", field("level1", level1));
+
+    AvroSchemaConverter converter = new AvroSchemaConverter();
+    MessageType result = converter.convert(rootSchema);
+    Assert.assertNotNull("Non-recursive deep schema should convert successfully", result);
+    Assert.assertEquals("Root schema name should be preserved", "Root", result.getName());
   }
 
   public static Schema optional(Schema original) {

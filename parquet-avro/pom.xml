@@ -21,7 +21,7 @@
     <groupId>org.apache.parquet</groupId>
     <artifactId>parquet</artifactId>
     <relativePath>../pom.xml</relativePath>
-    <version>1.16.0-SNAPSHOT</version>
+    <version>1.17.0-SNAPSHOT</version>
   </parent>
 
   <modelVersion>4.0.0</modelVersion>
@@ -46,6 +46,11 @@
     <dependency>
       <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-common</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.parquet</groupId>
+      <artifactId>parquet-variant</artifactId>
       <version>${project.version}</version>
     </dependency>
     <dependency>
@@ -215,6 +220,17 @@
             </configuration>
           </execution>
         </executions>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <configuration>
+          <systemPropertyVariables>
+            <!-- We need to set this system property to allow Avro to serialize these classes via the specific/reflect models -->
+            <org.apache.avro.SERIALIZABLE_CLASSES>java.math.BigDecimal</org.apache.avro.SERIALIZABLE_CLASSES>
+          </systemPropertyVariables>
+        </configuration>
       </plugin>
 
     </plugins>

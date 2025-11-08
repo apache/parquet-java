@@ -31,13 +31,13 @@ You can build this project using maven:
 The build produces a shaded Jar that can be run using the `hadoop` command:
 
 ```
-hadoop jar parquet-cli-1.12.3-runtime.jar org.apache.parquet.cli.Main
+hadoop jar parquet-cli-1.16.0-runtime.jar org.apache.parquet.cli.Main
 ```
 
 For a shorter command-line invocation, add an alias to your shell like this:
 
 ```
-alias parquet="hadoop jar /path/to/parquet-cli-1.12.3-runtime.jar org.apache.parquet.cli.Main --dollar-zero parquet"
+alias parquet="hadoop jar /path/to/parquet-cli-1.16.0-runtime.jar org.apache.parquet.cli.Main --dollar-zero parquet"
 ```
 
 ### Running without Hadoop
@@ -51,7 +51,7 @@ To run from the target directory instead of using the `hadoop` command, first co
 Then, run the command-line and add `target/dependencies/*` to the classpath:
 
 ```
-java -cp 'target/parquet-cli-1.12.3.jar:target/dependency/*' org.apache.parquet.cli.Main
+java -cp 'target/parquet-cli-1.16.0.jar:target/dependency/*' org.apache.parquet.cli.Main
 ```
 
 Note that you shouldn't include the runtime jar used above into the classpath in this case.
@@ -79,6 +79,8 @@ Usage: parquet [options] [command] [command options]
 
     help
         Retrieves details on the functions of other commands
+    version
+        Print version of the Parquet CLI tool
     meta
         Print a Parquet file's metadata
     pages
@@ -126,9 +128,27 @@ Usage: parquet [options] [command] [command options]
 
   Examples:
 
-    # print information for create
+    # print information for meta
     parquet help meta
 
   See 'parquet help <command>' for more information on a specific command.
 ```
 
+### Configuration Options
+
+- `--conf` or `--property`: Set any configuration property in format `key=value`. Can be specified multiple times.
+- `--config-file`: Path to a configuration file (`.properties` or `.xml` format).
+
+Examples:
+```bash
+parquet convert input.avro -o output.parquet --conf parquet.avro.write-parquet-uuid=true
+
+parquet convert input.avro -o output.parquet --conf parquet.avro.write-old-list-structure=false
+
+# Multiple options
+parquet convert-csv input.csv -o output.parquet --schema schema.avsc --conf parquet.avro.write-parquet-uuid=true --conf parquet.avro.write-old-list-structure=false
+
+# Using config file
+parquet convert input.avro -o output.parquet --config-file config.properties
+
+```
