@@ -627,6 +627,44 @@ public class TestParquetWriter {
   }
 
   @Test
+  public void testByteStreamSplitEncodingControl() throws Exception {
+    MessageType schema = Types.buildMessage()
+        .required(FLOAT)
+        .named("float_field")
+        .required(INT32)
+        .named("int32_field")
+        .named("test_schema");
+
+    File file = temp.newFile();
+    temp.delete();
+
+    Path path = new Path(file.getAbsolutePath());
+    SimpleGroupFactory factory = new SimpleGroupFactory(schema);
+    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(path)
+        .withType(schema)
+        .withByteStreamSplitEncoding(true)
+        .withByteStreamSplitEncoding("int32_field", true)
+        .build()) {
+      writer.write(factory.newGroup().append("float_field", 0.3f).append("int32_field", 42));
+    }
+
+    try (ParquetFileReader reader = ParquetFileReader.open(HadoopInputFile.fromPath(path, new Configuration()))) {
+      for (BlockMetaData block : reader.getFooter().getBlocks()) {
+        for (ColumnChunkMetaData column : block.getColumns()) {
+          assertTrue(column.getEncodings().contains(Encoding.BYTE_STREAM_SPLIT));
+        }
+      }
+    }
+
+    try (ParquetReader<Group> reader =
+        ParquetReader.builder(new GroupReadSupport(), path).build()) {
+      Group group = reader.read();
+      assertEquals(0.3f, group.getFloat("float_field", 0), 0.0);
+      assertEquals(42, group.getInteger("int32_field", 0));
+    }
+  }
+
+  @Test
   public void testV2WriteAllNullValues() throws Exception {
     testV2WriteAllNullValues(null, null);
   }
