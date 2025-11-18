@@ -110,11 +110,6 @@ class ThriftSchemaConvertVisitor implements ThriftType.StateVisitor<ConvertedFie
     this(fieldProjectionFilter, doProjection, keepOneOfEachUnion, new Configuration());
   }
 
-  @Deprecated
-  public static MessageType convert(StructType struct, FieldProjectionFilter filter) {
-    return convert(struct, filter, true, new Configuration());
-  }
-
   public static MessageType convert(
       StructType struct, FieldProjectionFilter filter, boolean keepOneOfEachUnion, Configuration conf) {
     return convert(struct, filter, keepOneOfEachUnion, new HadoopParquetConfiguration(conf));
@@ -128,19 +123,13 @@ class ThriftSchemaConvertVisitor implements ThriftType.StateVisitor<ConvertedFie
         struct.accept(new ThriftSchemaConvertVisitor(filter, true, keepOneOfEachUnion, conf), state);
 
     if (!converted.isKeep()) {
+      System.out.println(converted.toString());
+      System.out.println(converted.path().toDelimitedString("."));
       throw new ThriftProjectionException("No columns have been selected");
     }
 
     return new MessageType(
         state.name, converted.asKeep().getType().asGroupType().getFields());
-  }
-
-  /**
-   * @deprecated this will be removed in 2.0.0.
-   */
-  @Deprecated
-  public FieldProjectionFilter getFieldProjectionFilter() {
-    return fieldProjectionFilter;
   }
 
   @Override

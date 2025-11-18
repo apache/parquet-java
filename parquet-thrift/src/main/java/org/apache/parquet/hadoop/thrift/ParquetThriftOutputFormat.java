@@ -29,14 +29,14 @@ import org.apache.thrift.TBase;
 public class ParquetThriftOutputFormat<T extends TBase<?, ?>> extends ParquetOutputFormat<T> {
 
   public static void setThriftClass(Job job, Class<? extends TBase<?, ?>> thriftClass) {
-    ThriftWriteSupport.setThriftClass(ContextUtil.getConfiguration(job), thriftClass);
+    TBaseWriteSupport.setThriftClass(ContextUtil.getConfiguration(job), thriftClass);
   }
 
   public static Class<? extends TBase<?, ?>> getThriftClass(Job job) {
-    return ThriftWriteSupport.getThriftClass(ContextUtil.getConfiguration(job));
+    return TBaseWriteSupport.getThriftClass(ContextUtil.getConfiguration(job));
   }
 
   public ParquetThriftOutputFormat() {
-    super(new ThriftWriteSupport<T>());
+    super(new TBaseWriteSupport<T>());
   }
 }
