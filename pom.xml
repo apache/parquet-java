@@ -336,6 +336,12 @@
                       <exclude>**</exclude>
                     </excludes>
                   </filter>
+                  <filter>
+                    <artifact>it.unimi.dsi:fastutil</artifact>
+                    <excludes>
+                      <exclude>it/unimi/dsi/fastutil/**/package-info.class</exclude>
+                    </excludes>
+                  </filter>
                 </filters>
                 <relocations>
                   <relocation>
