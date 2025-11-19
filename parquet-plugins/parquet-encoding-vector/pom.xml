@@ -35,9 +35,8 @@
   <url>https://parquet.apache.org</url>
 
   <properties>
-    <!-- Those properties prevent java 8 to try and compile this code -->
-    <maven.compiler.source>17</maven.compiler.source>
-    <maven.compiler.target>17</maven.compiler.target>
+    <!-- Those properties prevent Java 11 to try and compile this code -->
+    <maven.compiler.release>17</maven.compiler.release>
   </properties>
 
   <dependencies>
@@ -74,7 +73,7 @@
         <artifactId>maven-compiler-plugin</artifactId>
         <configuration>
           <compilerArgs combine.children="append">
-            <compilerArg>${extraJavaVectorArgs}</compilerArg>
+            <compilerArg>--add-modules=jdk.incubator.vector</compilerArg>
           </compilerArgs>
         </configuration>
       </plugin>
@@ -83,7 +82,7 @@
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-failsafe-plugin</artifactId>
         <configuration>
-          <argLine>${extraJavaVectorArgs}</argLine>
+          <argLine>--add-modules=jdk.incubator.vector</argLine>
         </configuration>
       </plugin>
 
@@ -91,7 +90,7 @@
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
         <configuration>
-          <argLine>${extraJavaVectorArgs}</argLine>
+          <argLine>--add-modules=jdk.incubator.vector</argLine>
         </configuration>
       </plugin>
 
@@ -99,7 +98,7 @@
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-javadoc-plugin</artifactId>
         <configuration>
-          <additionalJOption>${extraJavaVectorArgs}</additionalJOption>>
+          <additionalJOption>--add-modules=jdk.incubator.vector</additionalJOption>>
         </configuration>
       </plugin>
 
@@ -130,20 +129,4 @@
       </plugin>
     </plugins>
   </build>
-
-  <profiles>
-    <profile>
-      <id>jdk9+</id>
-      <activation>
-        <jdk>[9,)</jdk>
-      </activation>
-      <properties>
-        <!-- release takes precedence over source/target if java version is 9 or higher -->
-        <maven.compiler.release>17</maven.compiler.release>
-        <extraJavaVectorArgs>
-          --add-modules=jdk.incubator.vector
-        </extraJavaVectorArgs>
-      </properties>
-    </profile>
-  </profiles>
 </project>
