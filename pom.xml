@@ -82,7 +82,7 @@
     <spotless.version>2.30.0</spotless.version>
     <shade.prefix>shaded.parquet</shade.prefix>
     <!-- Guarantees no newer classes/methods/constants are used by parquet. -->
-    <hadoop.version>3.3.0</hadoop.version>
+    <hadoop.version>3.4.0</hadoop.version>
     <parquet.format.version>2.12.0</parquet.format.version>
     <previous.version>1.16.0</previous.version>
     <thrift.executable>thrift</thrift.executable>
