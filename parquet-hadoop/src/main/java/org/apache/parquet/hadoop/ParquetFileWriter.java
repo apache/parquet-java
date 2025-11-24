@@ -1200,13 +1200,13 @@ public class ParquetFileWriter implements AutoCloseable {
       int compressedSize =
           toIntWithCheck(compressedData.size() + repetitionLevels.size() + definitionLevels.size(), "page");
 
-        int uncompressedSize =
-            toIntWithCheck(uncompressedDataSize + repetitionLevels.size() + definitionLevels.size(), "page");
+      int uncompressedSize =
+          toIntWithCheck(uncompressedDataSize + repetitionLevels.size() + definitionLevels.size(), "page");
 
-        long beforeHeader = out.getPos();
-        if (currentChunkFirstDataPage < 0) {
-          currentChunkFirstDataPage = beforeHeader;
-        }
+      long beforeHeader = out.getPos();
+      if (currentChunkFirstDataPage < 0) {
+        currentChunkFirstDataPage = beforeHeader;
+      }
 
       if (pageWriteChecksumEnabled) {
         crc.reset();
@@ -1247,16 +1247,17 @@ public class ParquetFileWriter implements AutoCloseable {
             pageHeaderAAD);
       }
 
-        long headersSize = out.getPos() - beforeHeader;
-        this.uncompressedLength += uncompressedSize + headersSize;
-        this.compressedLength += compressedSize + headersSize;
+      long headersSize = out.getPos() - beforeHeader;
+      this.uncompressedLength += uncompressedSize + headersSize;
+      this.compressedLength += compressedSize + headersSize;
 
-        mergeColumnStatistics(statistics, sizeStatistics);
+      mergeColumnStatistics(statistics, sizeStatistics);
 
-        currentEncodings.add(dataEncoding);
-        encodingStatsBuilder.addDataEncoding(dataEncoding);
+      currentEncodings.add(dataEncoding);
+      encodingStatsBuilder.addDataEncoding(dataEncoding);
 
-      BytesInput.concat(repetitionLevels, definitionLevels, compressedData).writeAllTo(out);
+      BytesInput.concat(repetitionLevels, definitionLevels, compressedData)
+          .writeAllTo(out);
 
       offsetIndexBuilder.add(
           toIntWithCheck(out.getPos() - beforeHeader, "page"),
@@ -1367,7 +1368,8 @@ public class ParquetFileWriter implements AutoCloseable {
         // write bloom filter if one of data pages is not dictionary encoded
         boolean isWriteBloomFilter = false;
         for (Encoding encoding : dataEncodings) {
-          // dictionary encoding: `PLAIN_DICTIONARY` is used in parquet v1, `RLE_DICTIONARY` is used in parquet v2
+          // dictionary encoding: `PLAIN_DICTIONARY` is used in parquet v1, `RLE_DICTIONARY` is used in
+          // parquet v2
           if (encoding != Encoding.PLAIN_DICTIONARY && encoding != Encoding.RLE_DICTIONARY) {
             isWriteBloomFilter = true;
             break;
