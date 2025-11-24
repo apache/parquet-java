@@ -45,6 +45,7 @@ import org.apache.parquet.format.event.TypedConsumer.I32Consumer;
 import org.apache.parquet.format.event.TypedConsumer.I64Consumer;
 import org.apache.parquet.format.event.TypedConsumer.StringConsumer;
 import org.apache.thrift.TBase;
+import org.apache.thrift.TConfiguration;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TCompactProtocol;
 import org.apache.thrift.protocol.TProtocol;
@@ -59,6 +60,7 @@ import org.apache.thrift.transport.TTransportException;
 public class Util {
 
   private static final int INIT_MEM_ALLOC_ENCR_BUFFER = 100;
+  private static final int DEFAULT_MAX_MESSAGE_SIZE = 104857600; // 100 MB
 
   public static void writeColumnIndex(ColumnIndex columnIndex, OutputStream to) throws IOException {
     writeColumnIndex(columnIndex, to, null, null);
@@ -156,6 +158,15 @@ public class Util {
     return read(from, new FileMetaData(), decryptor, AAD);
   }
 
+  public static FileMetaData readFileMetaData(InputStream from, int maxMessageSize) throws IOException {
+    return readFileMetaData(from, null, null, maxMessageSize);
+  }
+
+  public static FileMetaData readFileMetaData(
+      InputStream from, BlockCipher.Decryptor decryptor, byte[] AAD, int maxMessageSize) throws IOException {
+    return read(from, new FileMetaData(), decryptor, AAD, maxMessageSize);
+  }
+
   public static void writeColumnMetaData(
       ColumnMetaData columnMetaData, OutputStream to, BlockCipher.Encryptor encryptor, byte[] AAD)
       throws IOException {
@@ -186,6 +197,18 @@ public class Util {
       readFileMetaData(from, new DefaultFileMetaDataConsumer(md), skipRowGroups, decryptor, AAD);
     } else {
       read(from, md, decryptor, AAD);
+    }
+    return md;
+  }
+
+  public static FileMetaData readFileMetaData(
+      InputStream from, boolean skipRowGroups, BlockCipher.Decryptor decryptor, byte[] AAD, int maxMessageSize)
+      throws IOException {
+    FileMetaData md = new FileMetaData();
+    if (skipRowGroups) {
+      readFileMetaData(from, new DefaultFileMetaDataConsumer(md), skipRowGroups, decryptor, AAD, maxMessageSize);
+    } else {
+      read(from, md, decryptor, AAD, maxMessageSize);
     }
     return md;
   }
@@ -293,6 +316,17 @@ public class Util {
       BlockCipher.Decryptor decryptor,
       byte[] AAD)
       throws IOException {
+    readFileMetaData(input, consumer, skipRowGroups, decryptor, AAD, DEFAULT_MAX_MESSAGE_SIZE);
+  }
+
+  public static void readFileMetaData(
+      final InputStream input,
+      final FileMetaDataConsumer consumer,
+      boolean skipRowGroups,
+      BlockCipher.Decryptor decryptor,
+      byte[] AAD,
+      int maxMessageSize)
+      throws IOException {
     try {
       DelegatingFieldConsumer eventConsumer = fieldConsumer()
           .onField(VERSION, new I32Consumer() {
@@ -358,26 +392,54 @@ public class Util {
         byte[] plainText = decryptor.decrypt(input, AAD);
         from = new ByteArrayInputStream(plainText);
       }
-      new EventBasedThriftReader(protocol(from)).readStruct(eventConsumer);
+      new EventBasedThriftReader(protocol(from, maxMessageSize)).readStruct(eventConsumer);
     } catch (TException e) {
       throw new IOException("can not read FileMetaData: " + e.getMessage(), e);
     }
   }
 
   private static TProtocol protocol(OutputStream to) throws TTransportException {
-    return protocol(new TIOStreamTransport(to));
+    return protocol(new TIOStreamTransport(to), DEFAULT_MAX_MESSAGE_SIZE);
   }
 
   private static TProtocol protocol(InputStream from) throws TTransportException {
-    return protocol(new TIOStreamTransport(from));
+    return protocol(new TIOStreamTransport(from), DEFAULT_MAX_MESSAGE_SIZE);
   }
 
-  private static InterningProtocol protocol(TIOStreamTransport t) {
+  private static TProtocol protocol(InputStream from, int maxMessageSize) throws TTransportException {
+    return protocol(new TIOStreamTransport(from), maxMessageSize);
+  }
+
+  private static InterningProtocol protocol(TIOStreamTransport t, int configuredMaxMessageSize)
+      throws TTransportException, NumberFormatException {
+    int maxMessageSize = configuredMaxMessageSize;
+    if (configuredMaxMessageSize == -1) {
+      // Set to default 100 MB
+      maxMessageSize = DEFAULT_MAX_MESSAGE_SIZE;
+    }
+    if (configuredMaxMessageSize <= 0) {
+      throw new NumberFormatException("Max message size must be positive: " + configuredMaxMessageSize);
+    }
+
+    TConfiguration config = t.getConfiguration();
+    config.setMaxMessageSize(maxMessageSize);
+    /*
+    Reset known message size to 0 to force checking against the max message size.
+    This is necessary when reusing the same transport for multiple reads/writes,
+    as the known message size may be larger than the max message size.
+    */
+    t.updateKnownMessageSize(0);
     return new InterningProtocol(new TCompactProtocol(t));
   }
 
   private static <T extends TBase<?, ?>> T read(
       final InputStream input, T tbase, BlockCipher.Decryptor decryptor, byte[] AAD) throws IOException {
+    return read(input, tbase, decryptor, AAD, DEFAULT_MAX_MESSAGE_SIZE);
+  }
+
+  private static <T extends TBase<?, ?>> T read(
+      final InputStream input, T tbase, BlockCipher.Decryptor decryptor, byte[] AAD, int maxMessageSize)
+      throws IOException {
     final InputStream from;
     if (null == decryptor) {
       from = input;
@@ -387,7 +449,7 @@ public class Util {
     }
 
     try {
-      tbase.read(protocol(from));
+      tbase.read(protocol(from, maxMessageSize));
       return tbase;
     } catch (TException e) {
       throw new IOException("can not read " + tbase.getClass() + ": " + e.getMessage(), e);
