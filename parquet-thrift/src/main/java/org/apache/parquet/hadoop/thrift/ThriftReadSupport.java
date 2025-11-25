@@ -23,7 +23,6 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.Map;
 import java.util.Set;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.mapred.JobConf;
 import org.apache.parquet.Strings;
 import org.apache.parquet.conf.HadoopParquetConfiguration;
 import org.apache.parquet.conf.ParquetConfiguration;
@@ -39,7 +38,6 @@ import org.apache.parquet.thrift.ThriftSchemaConverter;
 import org.apache.parquet.thrift.projection.FieldProjectionFilter;
 import org.apache.parquet.thrift.projection.StrictFieldProjectionFilter;
 import org.apache.parquet.thrift.projection.ThriftProjectionException;
-import org.apache.parquet.thrift.projection.deprecated.DeprecatedFieldProjectionFilter;
 import org.apache.parquet.thrift.struct.ThriftType.StructType;
 import org.apache.thrift.TBase;
 import org.apache.thrift.protocol.TProtocol;
@@ -48,13 +46,6 @@ import org.slf4j.LoggerFactory;
 
 public class ThriftReadSupport<T> extends ReadSupport<T> {
   private static final Logger LOG = LoggerFactory.getLogger(ThriftReadSupport.class);
-
-  /**
-   * Deprecated. Use {@link #STRICT_THRIFT_COLUMN_FILTER_KEY}
-   * Accepts a ";" delimited list of globs in the syntax implemented by {@link DeprecatedFieldProjectionFilter}
-   */
-  @Deprecated
-  public static final String THRIFT_COLUMN_FILTER_KEY = "parquet.thrift.column.filter";
 
   /**
    * Accepts a ";" delimited list of glob paths, in the syntax implemented by {@link StrictFieldProjectionFilter}
@@ -78,30 +69,11 @@ public class ThriftReadSupport<T> extends ReadSupport<T> {
    * implementation creates standard Apache Thrift {@link TBase} objects; to support alternatives, such
    * as <a href="http://github.com/twitter/scrooge">Twiter's Scrooge</a>, a custom converter can be specified.
    *
-   * @param conf  a mapred jobconf
-   * @param klass a thrift class
-   * @deprecated use {@link #setRecordConverterClass(Configuration, Class)} below
-   */
-  @Deprecated
-  public static void setRecordConverterClass(JobConf conf, Class<?> klass) {
-    setRecordConverterClass((Configuration) conf, klass);
-  }
-
-  /**
-   * A {@link ThriftRecordConverter} builds an object by working with {@link TProtocol}. The default
-   * implementation creates standard Apache Thrift {@link TBase} objects; to support alternatives, such
-   * as <a href="http://github.com/twitter/scrooge">Twiter's Scrooge</a>, a custom converter can be specified.
-   *
    * @param conf  a configuration
    * @param klass a thrift class
    */
   public static void setRecordConverterClass(Configuration conf, Class<?> klass) {
     conf.set(RECORD_CONVERTER_CLASS_KEY, klass.getName());
-  }
-
-  @Deprecated
-  public static void setProjectionPushdown(JobConf jobConf, String projectionString) {
-    jobConf.set(THRIFT_COLUMN_FILTER_KEY, projectionString);
   }
 
   public static void setStrictFieldProjectionFilter(Configuration conf, String semicolonDelimitedGlobs) {
@@ -113,29 +85,10 @@ public class ThriftReadSupport<T> extends ReadSupport<T> {
   }
 
   public static FieldProjectionFilter getFieldProjectionFilter(ParquetConfiguration conf) {
-    String deprecated = conf.get(THRIFT_COLUMN_FILTER_KEY);
     String strict = conf.get(STRICT_THRIFT_COLUMN_FILTER_KEY);
 
-    if (Strings.isNullOrEmpty(deprecated) && Strings.isNullOrEmpty(strict)) {
+    if (Strings.isNullOrEmpty(strict)) {
       return null;
-    }
-
-    if (!Strings.isNullOrEmpty(deprecated) && !Strings.isNullOrEmpty(strict)) {
-      throw new ThriftProjectionException("You cannot provide both "
-          + THRIFT_COLUMN_FILTER_KEY
-          + " and "
-          + STRICT_THRIFT_COLUMN_FILTER_KEY
-          + "! "
-          + THRIFT_COLUMN_FILTER_KEY
-          + " is deprecated.");
-    }
-
-    if (!Strings.isNullOrEmpty(deprecated)) {
-      LOG.warn(
-          "Using {} is deprecated. Please see the docs for {}!",
-          THRIFT_COLUMN_FILTER_KEY,
-          STRICT_THRIFT_COLUMN_FILTER_KEY);
-      return new DeprecatedFieldProjectionFilter(deprecated);
     }
 
     return StrictFieldProjectionFilter.fromSemicolonDelimitedString(strict);
@@ -166,8 +119,8 @@ public class ThriftReadSupport<T> extends ReadSupport<T> {
     if (partialSchemaString != null && projectionFilter != null) {
       throw new ThriftProjectionException(String.format(
           "You cannot provide both a partial schema and field projection filter."
-              + "Only one of (%s, %s, %s) should be set.",
-          PARQUET_READ_SCHEMA, STRICT_THRIFT_COLUMN_FILTER_KEY, THRIFT_COLUMN_FILTER_KEY));
+              + "Only one of (%s, %s) should be set.",
+          PARQUET_READ_SCHEMA, STRICT_THRIFT_COLUMN_FILTER_KEY));
     }
 
     // set requestedProjections only when it's specified
@@ -194,13 +147,6 @@ public class ThriftReadSupport<T> extends ReadSupport<T> {
   protected MessageType getProjectedSchema(
       ParquetConfiguration configuration, FieldProjectionFilter fieldProjectionFilter) {
     return new ThriftSchemaConverter(configuration, fieldProjectionFilter)
-        .convert((Class<TBase<?, ?>>) thriftClass);
-  }
-
-  @Deprecated
-  @SuppressWarnings("unchecked")
-  protected MessageType getProjectedSchema(FieldProjectionFilter fieldProjectionFilter) {
-    return new ThriftSchemaConverter(new Configuration(), fieldProjectionFilter)
         .convert((Class<TBase<?, ?>>) thriftClass);
   }
 

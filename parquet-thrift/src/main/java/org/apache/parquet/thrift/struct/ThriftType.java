@@ -139,87 +139,6 @@ public abstract class ThriftType {
     }
   }
 
-  /**
-   * @deprecated will be removed in 2.0.0; use StateVisitor instead.
-   */
-  public interface TypeVisitor {
-
-    void visit(MapType mapType);
-
-    void visit(SetType setType);
-
-    void visit(ListType listType);
-
-    void visit(StructType structType);
-
-    void visit(EnumType enumType);
-
-    void visit(BoolType boolType);
-
-    void visit(ByteType byteType);
-
-    void visit(DoubleType doubleType);
-
-    void visit(I16Type i16Type);
-
-    void visit(I32Type i32Type);
-
-    void visit(I64Type i64Type);
-
-    void visit(StringType stringType);
-
-    default void visit(UUIDType uuidType) {
-      throw new UnsupportedOperationException("Not implemented");
-    }
-  }
-
-  /**
-   * @deprecated will be removed in 2.0.0.
-   */
-  @Deprecated
-  public abstract static class ComplexTypeVisitor implements TypeVisitor {
-
-    @Override
-    public final void visit(EnumType enumType) {
-      throw new IllegalArgumentException("Expected complex type");
-    }
-
-    @Override
-    public final void visit(BoolType boolType) {
-      throw new IllegalArgumentException("Expected complex type");
-    }
-
-    @Override
-    public final void visit(ByteType byteType) {
-      throw new IllegalArgumentException("Expected complex type");
-    }
-
-    @Override
-    public final void visit(DoubleType doubleType) {
-      throw new IllegalArgumentException("Expected complex type");
-    }
-
-    @Override
-    public final void visit(I16Type i16Type) {
-      throw new IllegalArgumentException("Expected complex type");
-    }
-
-    @Override
-    public final void visit(I32Type i32Type) {
-      throw new IllegalArgumentException("Expected complex type");
-    }
-
-    @Override
-    public final void visit(I64Type i64Type) {
-      throw new IllegalArgumentException("Expected complex type");
-    }
-
-    @Override
-    public final void visit(StringType stringType) {
-      throw new IllegalArgumentException("Expected complex type");
-    }
-  }
-
   public static class StructType extends ThriftType {
     private final List<ThriftField> children;
 
@@ -238,11 +157,6 @@ public abstract class ThriftType {
     }
 
     private final StructOrUnionType structOrUnionType;
-
-    @Deprecated
-    public StructType(List<ThriftField> children) {
-      this(children, null);
-    }
 
     @JsonCreator
     public StructType(
@@ -289,11 +203,6 @@ public abstract class ThriftType {
     }
 
     @Override
-    public void accept(TypeVisitor visitor) {
-      visitor.visit(this);
-    }
-
-    @Override
     public boolean equals(Object o) {
       if (this == o) return true;
       if (o == null || getClass() != o.getClass()) return false;
@@ -333,11 +242,6 @@ public abstract class ThriftType {
     @Override
     public <R, S> R accept(StateVisitor<R, S> visitor, S state) {
       return visitor.visit(this, state);
-    }
-
-    @Override
-    public void accept(TypeVisitor visitor) {
-      visitor.visit(this);
     }
 
     @Override
@@ -382,11 +286,6 @@ public abstract class ThriftType {
     }
 
     @Override
-    public void accept(TypeVisitor visitor) {
-      visitor.visit(this);
-    }
-
-    @Override
     public boolean equals(Object o) {
       if (this == o) return true;
       if (!(o instanceof SetType)) return false;
@@ -423,11 +322,6 @@ public abstract class ThriftType {
     @Override
     public <R, S> R accept(StateVisitor<R, S> visitor, S state) {
       return visitor.visit(this, state);
-    }
-
-    @Override
-    public void accept(TypeVisitor visitor) {
-      visitor.visit(this);
     }
 
     @Override
@@ -530,11 +424,6 @@ public abstract class ThriftType {
     }
 
     @Override
-    public void accept(TypeVisitor visitor) {
-      visitor.visit(this);
-    }
-
-    @Override
     public boolean equals(Object o) {
       if (this == o) return true;
       if (!(o instanceof EnumType)) return false;
@@ -566,11 +455,6 @@ public abstract class ThriftType {
     public <R, S> R accept(StateVisitor<R, S> visitor, S state) {
       return visitor.visit(this, state);
     }
-
-    @Override
-    public void accept(TypeVisitor visitor) {
-      visitor.visit(this);
-    }
   }
 
   public static class ByteType extends ThriftType {
@@ -583,11 +467,6 @@ public abstract class ThriftType {
     @Override
     public <R, S> R accept(StateVisitor<R, S> visitor, S state) {
       return visitor.visit(this, state);
-    }
-
-    @Override
-    public void accept(TypeVisitor visitor) {
-      visitor.visit(this);
     }
   }
 
@@ -602,11 +481,6 @@ public abstract class ThriftType {
     public <R, S> R accept(StateVisitor<R, S> visitor, S state) {
       return visitor.visit(this, state);
     }
-
-    @Override
-    public void accept(TypeVisitor visitor) {
-      visitor.visit(this);
-    }
   }
 
   public static class I16Type extends ThriftType {
@@ -619,11 +493,6 @@ public abstract class ThriftType {
     @Override
     public <R, S> R accept(StateVisitor<R, S> visitor, S state) {
       return visitor.visit(this, state);
-    }
-
-    @Override
-    public void accept(TypeVisitor visitor) {
-      visitor.visit(this);
     }
   }
 
@@ -638,11 +507,6 @@ public abstract class ThriftType {
     public <R, S> R accept(StateVisitor<R, S> visitor, S state) {
       return visitor.visit(this, state);
     }
-
-    @Override
-    public void accept(TypeVisitor visitor) {
-      visitor.visit(this);
-    }
   }
 
   public static class I64Type extends ThriftType {
@@ -655,11 +519,6 @@ public abstract class ThriftType {
     @Override
     public <R, S> R accept(StateVisitor<R, S> visitor, S state) {
       return visitor.visit(this, state);
-    }
-
-    @Override
-    public void accept(TypeVisitor visitor) {
-      visitor.visit(this);
     }
   }
 
@@ -674,11 +533,6 @@ public abstract class ThriftType {
     public <R, S> R accept(StateVisitor<R, S> visitor, S state) {
       this.setLogicalTypeAnnotation(LogicalTypeAnnotation.uuidType());
       return visitor.visit(this, state);
-    }
-
-    @Override
-    public void accept(TypeVisitor visitor) {
-      visitor.visit(this);
     }
   }
 
@@ -702,11 +556,6 @@ public abstract class ThriftType {
     public <R, S> R accept(StateVisitor<R, S> visitor, S state) {
       return visitor.visit(this, state);
     }
-
-    @Override
-    public void accept(TypeVisitor visitor) {
-      visitor.visit(this);
-    }
   }
 
   private final ThriftTypeID type;
@@ -715,8 +564,6 @@ public abstract class ThriftType {
     super();
     this.type = type;
   }
-
-  public abstract void accept(TypeVisitor visitor);
 
   public abstract <R, S> R accept(StateVisitor<R, S> visitor, S state);
 
