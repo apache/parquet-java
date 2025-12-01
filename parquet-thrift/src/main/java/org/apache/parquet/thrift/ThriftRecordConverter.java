@@ -841,24 +841,6 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
   private boolean ignoreNullElements = IGNORE_NULL_LIST_ELEMENTS_DEFAULT;
 
   /**
-   * This is for compatibility only.
-   *
-   * @param thriftReader           the class responsible for instantiating the final object and read from the protocol
-   * @param name                   the name of that type ( the thrift class simple name)
-   * @param requestedParquetSchema the schema for the incoming columnar events
-   * @param thriftType             the thrift type descriptor
-   * @deprecated will be removed in 2.x
-   */
-  @Deprecated
-  public ThriftRecordConverter(
-      ThriftReader<T> thriftReader,
-      String name,
-      MessageType requestedParquetSchema,
-      ThriftType.StructType thriftType) {
-    this(thriftReader, name, requestedParquetSchema, thriftType, (ParquetConfiguration) null);
-  }
-
-  /**
    * @param thriftReader           the class responsible for instantiating the final object and read from the protocol
    * @param name                   the name of that type ( the thrift class simple name)
    * @param requestedParquetSchema the schema for the incoming columnar events

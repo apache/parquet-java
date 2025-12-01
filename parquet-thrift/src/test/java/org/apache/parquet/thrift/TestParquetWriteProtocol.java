@@ -23,7 +23,6 @@ import com.twitter.data.proto.tutorial.thrift.Name;
 import com.twitter.data.proto.tutorial.thrift.Person;
 import com.twitter.data.proto.tutorial.thrift.PhoneNumber;
 import com.twitter.data.proto.tutorial.thrift.PhoneType;
-import com.twitter.elephantbird.pig.util.ThriftToPig;
 import com.twitter.elephantbird.thrift.test.TestMap;
 import com.twitter.elephantbird.thrift.test.TestMapInList;
 import com.twitter.elephantbird.thrift.test.TestMapInSet;
@@ -45,20 +44,14 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.parquet.conf.ParquetConfiguration;
 import org.apache.parquet.io.ColumnIOFactory;
 import org.apache.parquet.io.ExpectationValidatingRecordConsumer;
 import org.apache.parquet.io.MessageColumnIO;
 import org.apache.parquet.io.RecordConsumerLoggingWrapper;
-import org.apache.parquet.pig.PigSchemaConverter;
-import org.apache.parquet.pig.TupleWriteSupport;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.thrift.struct.ThriftType.StructType;
-import org.apache.pig.data.Tuple;
-import org.apache.pig.impl.logicalLayer.schema.Schema;
 import org.apache.thrift.TBase;
 import org.apache.thrift.TException;
-import org.junit.ComparisonFailure;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -133,59 +126,19 @@ public class TestParquetWriteProtocol {
     map.put("foo", "bar");
     map.put("foo2", "bar2");
     TestMap testMap = new TestMap("map_name", map);
-    try {
-      validatePig(expectations, testMap);
-    } catch (ComparisonFailure e) {
-      // This can happen despite using a stable TreeMap, since ThriftToPig#toPigMap
-      // in com.twitter.elephantbird.pig.util creates a HashMap.
-      // So we test with the map elements in reverse order
-      validatePig(expectationsAlt, testMap);
-    }
     validateThrift(expectations, testMap);
   }
 
   /**
    * @throws Exception
-   * @see TestThriftToPigCompatibility
    */
   @Test
   public void testMapInSet() throws Exception {
-    String[] pigExpectations = {
-      "startMessage()",
-      "startField(name, 0)",
-      "addBinary(top)",
-      "endField(name, 0)",
-      "startField(names, 1)", // set: optional field
-      "startGroup()",
-      "startField(t, 0)", // repeated field
-      "startGroup()",
-      "startField(names_tuple, 0)", // map: optional field
-      "startGroup()",
-      "startField(key_value, 0)", // repeated field
-      "startGroup()",
-      "startField(key, 0)", // key
-      "addBinary(foo)",
-      "endField(key, 0)",
-      "startField(value, 1)", // value
-      "addBinary(bar)",
-      "endField(value, 1)",
-      "endGroup()",
-      "endField(key_value, 0)",
-      "endGroup()",
-      "endField(names_tuple, 0)",
-      "endGroup()",
-      "endField(t, 0)",
-      "endGroup()",
-      "endField(names, 1)",
-      "endMessage()"
-    };
-
     final Set<Map<String, String>> set = new HashSet<Map<String, String>>();
     final Map<String, String> map = new HashMap<String, String>();
     map.put("foo", "bar");
     set.add(map);
     TestMapInSet o = new TestMapInSet("top", set);
-    validatePig(pigExpectations, o);
 
     String[] expectationsThrift = {
       "startMessage()",
@@ -217,7 +170,6 @@ public class TestParquetWriteProtocol {
 
   /**
    * @throws TException
-   * @see TestThriftToPigCompatibility
    */
   @Test
   public void testNameList() throws TException {
@@ -225,31 +177,6 @@ public class TestParquetWriteProtocol {
     names.add("John");
     names.add("Jack");
     final TestNameList o = new TestNameList("name", names);
-
-    String[] pigExpectations = {
-      "startMessage()",
-      "startField(name, 0)",
-      "addBinary(name)",
-      "endField(name, 0)",
-      "startField(names, 1)",
-      "startGroup()",
-      "startField(t, 0)",
-      "startGroup()",
-      "startField(names_tuple, 0)",
-      "addBinary(John)",
-      "endField(names_tuple, 0)",
-      "endGroup()",
-      "startGroup()",
-      "startField(names_tuple, 0)",
-      "addBinary(Jack)",
-      "endField(names_tuple, 0)",
-      "endGroup()",
-      "endField(t, 0)",
-      "endGroup()",
-      "endField(names, 1)",
-      "endMessage()"
-    };
-    validatePig(pigExpectations, o);
 
     String[] expectations = {
       "startMessage()",
@@ -326,7 +253,6 @@ public class TestParquetWriteProtocol {
     map.put("foo", new TestPerson(new TestName("john", "johnson"), new HashMap<TestPhoneType, String>()));
     final Map<String, Integer> stringToIntMap = Collections.singletonMap("bar", 10);
     TestStructInMap testMap = new TestStructInMap("map_name", map, stringToIntMap);
-    validatePig(expectations, testMap);
     validateThrift(expectations, testMap);
   }
 
@@ -341,7 +267,6 @@ public class TestParquetWriteProtocol {
       "endMessage()"
     };
     AddressBook a = new AddressBook(new ArrayList<Person>());
-    validatePig(expectations, a);
     validateThrift(expectations, a);
   }
 
@@ -442,7 +367,6 @@ public class TestParquetWriteProtocol {
         "dick@richardson.com",
         Arrays.asList(new PhoneNumber("555 999 9997"), new PhoneNumber("555 999 9996"))));
     AddressBook a = new AddressBook(persons);
-    validatePig(expectations, a);
     // naming conventions are slightly different for the bag inner tuple. The reader should ignore this.
     String[] expectationsThrift = Arrays.copyOf(expectations, expectations.length, String[].class);
     expectationsThrift[3] = "startField(persons_tuple, 0)";
@@ -520,7 +444,6 @@ public class TestParquetWriteProtocol {
         new ArrayList<Byte>(),
         new ArrayList<Short>(),
         new ArrayList<Long>());
-    validatePig(expectations, a);
     String[] thriftExpectations = Arrays.copyOf(expectations, expectations.length, String[].class);
     thriftExpectations[2] = "addBoolean(true)"; // Elephant bird maps booleans to int
     thriftExpectations[5] = "addBoolean(false)";
@@ -708,22 +631,5 @@ public class TestParquetWriteProtocol {
     ParquetWriteProtocol p = new ParquetWriteProtocol(
         configuration, new RecordConsumerLoggingWrapper(recordConsumer), columnIO, structType);
     a.write(p);
-  }
-
-  private MessageType validatePig(String[] expectations, TBase<?, ?> a) {
-    ThriftToPig<TBase<?, ?>> thriftToPig = new ThriftToPig(a.getClass());
-    ExpectationValidatingRecordConsumer recordConsumer =
-        new ExpectationValidatingRecordConsumer(new ArrayDeque<String>(Arrays.asList(expectations)));
-    Schema pigSchema = thriftToPig.toSchema();
-    LOG.info("{}", pigSchema);
-    MessageType schema = new PigSchemaConverter().convert(pigSchema);
-    LOG.info("{}", schema);
-    TupleWriteSupport tupleWriteSupport = new TupleWriteSupport(pigSchema);
-    tupleWriteSupport.init((ParquetConfiguration) null);
-    tupleWriteSupport.prepareForWrite(recordConsumer);
-    final Tuple pigTuple = thriftToPig.getPigTuple(a);
-    LOG.info("{}", pigTuple);
-    tupleWriteSupport.write(pigTuple);
-    return schema;
   }
 }

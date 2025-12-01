@@ -22,8 +22,7 @@ package org.apache.parquet.thrift.projection;
  * A field projection filter decides whether a thrift field (column) should
  * be included when reading thrift data. It is used to implement projection push down.
  * <p>
- * See {@link StrictFieldProjectionFilter} and
- * {@link org.apache.parquet.thrift.projection.deprecated.DeprecatedFieldProjectionFilter}
+ * See {@link StrictFieldProjectionFilter}
  */
 public interface FieldProjectionFilter {
 

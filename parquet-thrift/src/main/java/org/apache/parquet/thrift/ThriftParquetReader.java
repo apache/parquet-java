@@ -34,55 +34,7 @@ import org.apache.thrift.TBase;
  *
  * @param <T> the thrift type
  */
-public class ThriftParquetReader<T extends TBase<?, ?>> extends ParquetReader<T> {
-
-  /**
-   * @param file        the file to read
-   * @param thriftClass the class used to read
-   * @throws IOException if there is an error while reading
-   * @deprecated use {@link #build(Path)}
-   */
-  @Deprecated
-  public ThriftParquetReader(Path file, Class<T> thriftClass) throws IOException {
-    super(file, new ThriftReadSupport<T>(thriftClass));
-  }
-
-  /**
-   * @param conf        the configuration
-   * @param file        the file to read
-   * @param thriftClass the class used to read
-   * @throws IOException if there is an error while reading
-   * @deprecated use {@link #build(Path)}
-   */
-  @Deprecated
-  public ThriftParquetReader(Configuration conf, Path file, Class<T> thriftClass) throws IOException {
-    super(conf, file, new ThriftReadSupport<T>(thriftClass));
-  }
-
-  /**
-   * will use the thrift class based on the file metadata if a thrift class information is present
-   *
-   * @param file the file to read
-   * @throws IOException if there is an error while reading
-   * @deprecated use {@link #build(Path)}
-   */
-  @Deprecated
-  public ThriftParquetReader(Path file) throws IOException {
-    super(file, new ThriftReadSupport<T>());
-  }
-
-  /**
-   * will use the thrift class based on the file metadata if a thrift class information is present
-   *
-   * @param conf the configuration
-   * @param file the file to read
-   * @throws IOException if there is an error while reading
-   * @deprecated use {@link #build(Path)}
-   */
-  @Deprecated
-  public ThriftParquetReader(Configuration conf, Path file) throws IOException {
-    super(conf, file, new ThriftReadSupport<T>());
-  }
+public class ThriftParquetReader<T extends TBase<?, ?>> {
 
   public static <T extends TBase<?, ?>> Builder<T> build(Path file) {
     return new Builder<T>(file);
