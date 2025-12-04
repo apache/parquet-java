@@ -23,6 +23,7 @@ import static java.util.Optional.of;
 import static org.apache.parquet.schema.converters.ParquetEnumConverter.fromParquetEdgeInterpolationAlgorithm;
 import static org.apache.parquet.schema.converters.ParquetEnumConverter.getPrimitive;
 import static org.apache.parquet.schema.converters.ParquetEnumConverter.getType;
+import static org.apache.parquet.schema.converters.ParquetEnumConverter.toParquetOriginalType;
 import static org.apache.parquet.schema.converters.ParquetEnumConverter.toParquetRepetition;
 
 import java.util.ArrayList;
@@ -47,6 +48,7 @@ import org.apache.parquet.format.TimestampType;
 import org.apache.parquet.format.Type;
 import org.apache.parquet.format.TypeDefinedOrder;
 import org.apache.parquet.format.VariantType;
+import org.apache.parquet.schema.DecimalMetadata;
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
@@ -176,57 +178,10 @@ public class ParquetSchemaConverter {
 
   // Visible for testing
   LogicalTypeAnnotation getLogicalTypeAnnotation(ConvertedType type, SchemaElement schemaElement) {
-    switch (type) {
-      case UTF8:
-        return LogicalTypeAnnotation.stringType();
-      case MAP:
-        return LogicalTypeAnnotation.mapType();
-      case MAP_KEY_VALUE:
-        return LogicalTypeAnnotation.MapKeyValueTypeAnnotation.getInstance();
-      case LIST:
-        return LogicalTypeAnnotation.listType();
-      case ENUM:
-        return LogicalTypeAnnotation.enumType();
-      case DECIMAL:
-        int scale = (schemaElement == null ? 0 : schemaElement.scale);
-        int precision = (schemaElement == null ? 0 : schemaElement.precision);
-        return LogicalTypeAnnotation.decimalType(scale, precision);
-      case DATE:
-        return LogicalTypeAnnotation.dateType();
-      case TIME_MILLIS:
-        return LogicalTypeAnnotation.timeType(true, LogicalTypeAnnotation.TimeUnit.MILLIS);
-      case TIME_MICROS:
-        return LogicalTypeAnnotation.timeType(true, LogicalTypeAnnotation.TimeUnit.MICROS);
-      case TIMESTAMP_MILLIS:
-        return LogicalTypeAnnotation.timestampType(true, LogicalTypeAnnotation.TimeUnit.MILLIS);
-      case TIMESTAMP_MICROS:
-        return LogicalTypeAnnotation.timestampType(true, LogicalTypeAnnotation.TimeUnit.MICROS);
-      case INTERVAL:
-        return LogicalTypeAnnotation.IntervalLogicalTypeAnnotation.getInstance();
-      case INT_8:
-        return LogicalTypeAnnotation.intType(8, true);
-      case INT_16:
-        return LogicalTypeAnnotation.intType(16, true);
-      case INT_32:
-        return LogicalTypeAnnotation.intType(32, true);
-      case INT_64:
-        return LogicalTypeAnnotation.intType(64, true);
-      case UINT_8:
-        return LogicalTypeAnnotation.intType(8, false);
-      case UINT_16:
-        return LogicalTypeAnnotation.intType(16, false);
-      case UINT_32:
-        return LogicalTypeAnnotation.intType(32, false);
-      case UINT_64:
-        return LogicalTypeAnnotation.intType(64, false);
-      case JSON:
-        return LogicalTypeAnnotation.jsonType();
-      case BSON:
-        return LogicalTypeAnnotation.bsonType();
-      default:
-        throw new RuntimeException(
-            "Can't convert converted type to logical type, unknown converted type " + type);
-    }
+    int scale = (schemaElement == null ? 0 : schemaElement.scale);
+    int precision = (schemaElement == null ? 0 : schemaElement.precision);
+    return LogicalTypeAnnotation.fromOriginalType(
+        toParquetOriginalType(type), new DecimalMetadata(scale, precision));
   }
 
   LogicalTypeAnnotation getLogicalTypeAnnotation(LogicalType type) {
