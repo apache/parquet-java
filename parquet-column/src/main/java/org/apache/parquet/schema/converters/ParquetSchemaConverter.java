@@ -16,10 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.parquet.schema;
+package org.apache.parquet.schema.converters;
 
 import static java.util.Optional.empty;
 import static java.util.Optional.of;
+import static org.apache.parquet.schema.converters.ParquetEnumConverter.fromParquetEdgeInterpolationAlgorithm;
+import static org.apache.parquet.schema.converters.ParquetEnumConverter.getPrimitive;
+import static org.apache.parquet.schema.converters.ParquetEnumConverter.getType;
+import static org.apache.parquet.schema.converters.ParquetEnumConverter.toParquetRepetition;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -28,8 +32,6 @@ import java.util.Optional;
 import org.apache.parquet.format.ColumnOrder;
 import org.apache.parquet.format.ConvertedType;
 import org.apache.parquet.format.DecimalType;
-import org.apache.parquet.format.EdgeInterpolationAlgorithm;
-import org.apache.parquet.format.FieldRepetitionType;
 import org.apache.parquet.format.GeographyType;
 import org.apache.parquet.format.GeometryType;
 import org.apache.parquet.format.IntType;
@@ -45,6 +47,13 @@ import org.apache.parquet.format.TimestampType;
 import org.apache.parquet.format.Type;
 import org.apache.parquet.format.TypeDefinedOrder;
 import org.apache.parquet.format.VariantType;
+import org.apache.parquet.schema.GroupType;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
+import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.schema.OriginalType;
+import org.apache.parquet.schema.PrimitiveType;
+import org.apache.parquet.schema.TypeVisitor;
+import org.apache.parquet.schema.Types;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -92,7 +101,8 @@ public class ParquetSchemaConverter {
       Types.Builder childBuilder;
       if (schemaElement.type != null) {
         Types.PrimitiveBuilder primitiveBuilder = builder.primitive(
-            getPrimitive(schemaElement.type), fromParquetRepetition(schemaElement.repetition_type));
+            getPrimitive(schemaElement.type),
+            ParquetEnumConverter.fromParquetRepetition(schemaElement.repetition_type));
         if (schemaElement.isSetType_length()) {
           primitiveBuilder.length(schemaElement.type_length);
         }
@@ -118,7 +128,7 @@ public class ParquetSchemaConverter {
         }
         childBuilder = primitiveBuilder;
       } else {
-        childBuilder = builder.group(fromParquetRepetition(schemaElement.repetition_type));
+        childBuilder = builder.group(ParquetEnumConverter.fromParquetRepetition(schemaElement.repetition_type));
         buildChildren(
             (Types.GroupBuilder) childBuilder,
             schema,
@@ -156,68 +166,12 @@ public class ParquetSchemaConverter {
     }
   }
 
-  // Visible for testing
-  FieldRepetitionType toParquetRepetition(org.apache.parquet.schema.Type.Repetition repetition) {
-    return FieldRepetitionType.valueOf(repetition.name());
-  }
-
-  // Visible for testing
-  org.apache.parquet.schema.Type.Repetition fromParquetRepetition(FieldRepetitionType repetition) {
-    return org.apache.parquet.schema.Type.Repetition.valueOf(repetition.name());
-  }
-
   private static org.apache.parquet.schema.ColumnOrder fromParquetColumnOrder(ColumnOrder columnOrder) {
     if (columnOrder.isSetTYPE_ORDER()) {
       return org.apache.parquet.schema.ColumnOrder.typeDefined();
     }
     // The column order is not yet supported by this API
     return org.apache.parquet.schema.ColumnOrder.undefined();
-  }
-
-  public PrimitiveType.PrimitiveTypeName getPrimitive(Type type) {
-    switch (type) {
-      case BYTE_ARRAY: // TODO: rename BINARY and remove this switch
-        return PrimitiveType.PrimitiveTypeName.BINARY;
-      case INT64:
-        return PrimitiveType.PrimitiveTypeName.INT64;
-      case INT32:
-        return PrimitiveType.PrimitiveTypeName.INT32;
-      case BOOLEAN:
-        return PrimitiveType.PrimitiveTypeName.BOOLEAN;
-      case FLOAT:
-        return PrimitiveType.PrimitiveTypeName.FLOAT;
-      case DOUBLE:
-        return PrimitiveType.PrimitiveTypeName.DOUBLE;
-      case INT96:
-        return PrimitiveType.PrimitiveTypeName.INT96;
-      case FIXED_LEN_BYTE_ARRAY:
-        return PrimitiveType.PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY;
-      default:
-        throw new RuntimeException("Unknown type " + type);
-    }
-  }
-
-  public Type getType(PrimitiveType.PrimitiveTypeName type) {
-    switch (type) {
-      case INT64:
-        return Type.INT64;
-      case INT32:
-        return Type.INT32;
-      case BOOLEAN:
-        return Type.BOOLEAN;
-      case BINARY:
-        return Type.BYTE_ARRAY;
-      case FLOAT:
-        return Type.FLOAT;
-      case DOUBLE:
-        return Type.DOUBLE;
-      case INT96:
-        return Type.INT96;
-      case FIXED_LEN_BYTE_ARRAY:
-        return Type.FIXED_LEN_BYTE_ARRAY;
-      default:
-        throw new RuntimeException("Unknown primitive type " + type);
-    }
   }
 
   // Visible for testing
@@ -291,7 +245,8 @@ public class ParquetSchemaConverter {
         return LogicalTypeAnnotation.listType();
       case TIME:
         TimeType time = type.getTIME();
-        return LogicalTypeAnnotation.timeType(time.isAdjustedToUTC, convertTimeUnit(time.unit));
+        return LogicalTypeAnnotation.timeType(
+            time.isAdjustedToUTC, ParquetEnumConverter.convertTimeUnit(time.unit));
       case STRING:
         return LogicalTypeAnnotation.stringType();
       case DECIMAL:
@@ -304,7 +259,8 @@ public class ParquetSchemaConverter {
         return LogicalTypeAnnotation.unknownType();
       case TIMESTAMP:
         TimestampType timestamp = type.getTIMESTAMP();
-        return LogicalTypeAnnotation.timestampType(timestamp.isAdjustedToUTC, convertTimeUnit(timestamp.unit));
+        return LogicalTypeAnnotation.timestampType(
+            timestamp.isAdjustedToUTC, ParquetEnumConverter.convertTimeUnit(timestamp.unit));
       case UUID:
         return LogicalTypeAnnotation.uuidType();
       case FLOAT16:
@@ -315,48 +271,14 @@ public class ParquetSchemaConverter {
       case GEOGRAPHY:
         GeographyType geography = type.getGEOGRAPHY();
         return LogicalTypeAnnotation.geographyType(
-            geography.getCrs(), toParquetEdgeInterpolationAlgorithm(geography.getAlgorithm()));
+            geography.getCrs(),
+            ParquetEnumConverter.toParquetEdgeInterpolationAlgorithm(geography.getAlgorithm()));
       case VARIANT:
         VariantType variant = type.getVARIANT();
         return LogicalTypeAnnotation.variantType(variant.getSpecification_version());
       default:
         throw new RuntimeException("Unknown logical type " + type);
     }
-  }
-
-  private LogicalTypeAnnotation.TimeUnit convertTimeUnit(TimeUnit unit) {
-    switch (unit.getSetField()) {
-      case MICROS:
-        return LogicalTypeAnnotation.TimeUnit.MICROS;
-      case MILLIS:
-        return LogicalTypeAnnotation.TimeUnit.MILLIS;
-      case NANOS:
-        return LogicalTypeAnnotation.TimeUnit.NANOS;
-      default:
-        throw new RuntimeException("Unknown time unit " + unit);
-    }
-  }
-
-  /** Convert Parquet Algorithm enum to Thrift Algorithm enum */
-  public static EdgeInterpolationAlgorithm fromParquetEdgeInterpolationAlgorithm(
-      org.apache.parquet.column.schema.EdgeInterpolationAlgorithm parquetAlgo) {
-    if (parquetAlgo == null) {
-      return null;
-    }
-    EdgeInterpolationAlgorithm thriftAlgo = EdgeInterpolationAlgorithm.findByValue(parquetAlgo.getValue());
-    if (thriftAlgo == null) {
-      throw new IllegalArgumentException("Unrecognized Parquet EdgeInterpolationAlgorithm: " + parquetAlgo);
-    }
-    return thriftAlgo;
-  }
-
-  /** Convert Thrift Algorithm enum to Parquet Algorithm enum */
-  public static org.apache.parquet.column.schema.EdgeInterpolationAlgorithm toParquetEdgeInterpolationAlgorithm(
-      EdgeInterpolationAlgorithm thriftAlgo) {
-    if (thriftAlgo == null) {
-      return null;
-    }
-    return org.apache.parquet.column.schema.EdgeInterpolationAlgorithm.findByValue(thriftAlgo.getValue());
   }
 
   /**

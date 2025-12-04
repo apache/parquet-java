@@ -108,10 +108,11 @@ import org.apache.parquet.schema.ColumnOrder.ColumnOrderName;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.LogicalTypeAnnotation.UUIDLogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
-import org.apache.parquet.schema.ParquetSchemaConverter;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Type.Repetition;
+import org.apache.parquet.schema.converters.ParquetEnumConverter;
+import org.apache.parquet.schema.converters.ParquetSchemaConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -278,7 +279,7 @@ public class ParquetMetadataConverter {
         encryptMetaData = fileEncryptor.encryptColumnMetaData(columnSetup);
       }
       ColumnMetaData metaData = new ColumnMetaData(
-          parquetSchemaConverter.getType(columnMetaData.getType()),
+          ParquetEnumConverter.getType(columnMetaData.getType()),
           toFormatEncodings(columnMetaData.getEncodings()),
           columnMetaData.getPath().toList(),
           toFormatCodec(columnMetaData.getCodec()),
@@ -886,9 +887,12 @@ public class ParquetMetadataConverter {
     return defaultSortOrder(primitive.getPrimitiveTypeName());
   }
 
+  /**
+   * @deprecated Please use {@link ParquetEnumConverter#getPrimitive(Type)} instead.
+   */
   @Deprecated
   public PrimitiveTypeName getPrimitive(Type type) {
-    return parquetSchemaConverter.getPrimitive(type);
+    return ParquetEnumConverter.getPrimitive(type);
   }
 
   private static void addKeyValue(FileMetaData fileMetaData, String key, String value) {
@@ -2083,15 +2087,21 @@ public class ParquetMetadataConverter {
     return formatStats;
   }
 
+  /**
+   * @deprecated Use {@link ParquetEnumConverter#fromParquetEdgeInterpolationAlgorithm(org.apache.parquet.column.schema.EdgeInterpolationAlgorithm)} instead.
+   */
   @Deprecated
   public static EdgeInterpolationAlgorithm fromParquetEdgeInterpolationAlgorithm(
       org.apache.parquet.column.schema.EdgeInterpolationAlgorithm parquetAlgo) {
-    return ParquetSchemaConverter.fromParquetEdgeInterpolationAlgorithm(parquetAlgo);
+    return ParquetEnumConverter.fromParquetEdgeInterpolationAlgorithm(parquetAlgo);
   }
 
+  /**
+   * @deprecated Use {@link ParquetEnumConverter#toParquetEdgeInterpolationAlgorithm(EdgeInterpolationAlgorithm)} instead.
+   */
   @Deprecated
   public static org.apache.parquet.column.schema.EdgeInterpolationAlgorithm toParquetEdgeInterpolationAlgorithm(
       EdgeInterpolationAlgorithm thriftAlgo) {
-    return ParquetSchemaConverter.toParquetEdgeInterpolationAlgorithm(thriftAlgo);
+    return ParquetEnumConverter.toParquetEdgeInterpolationAlgorithm(thriftAlgo);
   }
 }
