@@ -73,6 +73,7 @@ import org.apache.parquet.format.CompressionCodec;
 import org.apache.parquet.format.DataPageHeader;
 import org.apache.parquet.format.DataPageHeaderV2;
 import org.apache.parquet.format.DictionaryPageHeader;
+import org.apache.parquet.format.EdgeInterpolationAlgorithm;
 import org.apache.parquet.format.Encoding;
 import org.apache.parquet.format.EncryptionWithColumnKey;
 import org.apache.parquet.format.FileMetaData;
@@ -87,6 +88,7 @@ import org.apache.parquet.format.RowGroup;
 import org.apache.parquet.format.SizeStatistics;
 import org.apache.parquet.format.SplitBlockAlgorithm;
 import org.apache.parquet.format.Statistics;
+import org.apache.parquet.format.Type;
 import org.apache.parquet.format.Uncompressed;
 import org.apache.parquet.format.XxHash;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
@@ -882,6 +884,11 @@ public class ParquetMetadataConverter {
     }
 
     return defaultSortOrder(primitive.getPrimitiveTypeName());
+  }
+
+  @Deprecated
+  public PrimitiveTypeName getPrimitive(Type type) {
+    return parquetSchemaConverter.getPrimitive(type);
   }
 
   private static void addKeyValue(FileMetaData fileMetaData, String key, String value) {
@@ -2074,5 +2081,17 @@ public class ParquetMetadataConverter {
       formatStats.setDefinition_level_histogram(defLevelHistogram);
     }
     return formatStats;
+  }
+
+  @Deprecated
+  public static EdgeInterpolationAlgorithm fromParquetEdgeInterpolationAlgorithm(
+      org.apache.parquet.column.schema.EdgeInterpolationAlgorithm parquetAlgo) {
+    return ParquetSchemaConverter.fromParquetEdgeInterpolationAlgorithm(parquetAlgo);
+  }
+
+  @Deprecated
+  public static org.apache.parquet.column.schema.EdgeInterpolationAlgorithm toParquetEdgeInterpolationAlgorithm(
+      EdgeInterpolationAlgorithm thriftAlgo) {
+    return ParquetSchemaConverter.toParquetEdgeInterpolationAlgorithm(thriftAlgo);
   }
 }
