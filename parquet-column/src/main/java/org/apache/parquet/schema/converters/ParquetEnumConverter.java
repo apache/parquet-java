@@ -18,11 +18,13 @@
  */
 package org.apache.parquet.schema.converters;
 
+import org.apache.parquet.format.ConvertedType;
 import org.apache.parquet.format.EdgeInterpolationAlgorithm;
 import org.apache.parquet.format.FieldRepetitionType;
 import org.apache.parquet.format.TimeUnit;
 import org.apache.parquet.format.Type;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
+import org.apache.parquet.schema.OriginalType;
 import org.apache.parquet.schema.PrimitiveType;
 
 /**
@@ -118,5 +120,9 @@ public class ParquetEnumConverter {
       default:
         throw new RuntimeException("Unknown time unit " + unit);
     }
+  }
+
+  static OriginalType toParquetOriginalType(ConvertedType convertedType) {
+    return OriginalType.valueOf(convertedType.name());
   }
 }

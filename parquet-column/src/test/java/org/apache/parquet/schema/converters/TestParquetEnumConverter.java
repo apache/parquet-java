@@ -18,6 +18,9 @@
  */
 package org.apache.parquet.schema.converters;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+
 import org.apache.parquet.column.schema.EdgeInterpolationAlgorithm;
 import org.apache.parquet.format.ConvertedType;
 import org.apache.parquet.format.FieldRepetitionType;
@@ -27,11 +30,7 @@ import org.apache.parquet.schema.OriginalType;
 import org.apache.parquet.schema.PrimitiveType;
 import org.junit.Test;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-
-public class TestParquetEnumConverter
-{
+public class TestParquetEnumConverter {
   @Test
   public void testEnumEquivalence() {
     ParquetSchemaConverter parquetMetadataConverter = new ParquetSchemaConverter();
@@ -89,5 +88,14 @@ public class TestParquetEnumConverter
     // Test with null
     assertNull(ParquetEnumConverter.fromParquetEdgeInterpolationAlgorithm(null));
     assertNull(ParquetEnumConverter.toParquetEdgeInterpolationAlgorithm(null));
+  }
+
+  @Test
+  public void testConvertedTypeToOriginalType() {
+    for (ConvertedType convertedType : ConvertedType.values()) {
+      assertEquals(
+          convertedType.name(),
+          ParquetEnumConverter.toParquetOriginalType(convertedType).name());
+    }
   }
 }
