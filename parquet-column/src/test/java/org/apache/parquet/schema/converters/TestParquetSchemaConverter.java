@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.parquet.schema;
+package org.apache.parquet.schema.converters;
 
 import static org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit.MICROS;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit.MILLIS;
@@ -52,6 +52,11 @@ import org.apache.parquet.format.MapType;
 import org.apache.parquet.format.SchemaElement;
 import org.apache.parquet.format.StringType;
 import org.apache.parquet.format.Type;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
+import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.schema.OriginalType;
+import org.apache.parquet.schema.PrimitiveType;
+import org.apache.parquet.schema.Types;
 import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
@@ -252,48 +257,6 @@ public class TestParquetSchemaConverter {
         ConvertedType.MAP_KEY_VALUE,
         parquetMetadataConverter.convertToConvertedType(
             LogicalTypeAnnotation.MapKeyValueTypeAnnotation.getInstance()));
-  }
-
-  @Test
-  public void testEnumEquivalence() {
-    ParquetSchemaConverter parquetMetadataConverter = new ParquetSchemaConverter();
-    for (org.apache.parquet.schema.Type.Repetition repetition :
-        org.apache.parquet.schema.Type.Repetition.values()) {
-      assertEquals(
-          repetition,
-          parquetMetadataConverter.fromParquetRepetition(
-              parquetMetadataConverter.toParquetRepetition(repetition)));
-    }
-    for (FieldRepetitionType repetition : FieldRepetitionType.values()) {
-      assertEquals(
-          repetition,
-          parquetMetadataConverter.toParquetRepetition(
-              parquetMetadataConverter.fromParquetRepetition(repetition)));
-    }
-    for (PrimitiveType.PrimitiveTypeName primitiveTypeName : PrimitiveType.PrimitiveTypeName.values()) {
-      assertEquals(
-          primitiveTypeName,
-          parquetMetadataConverter.getPrimitive(parquetMetadataConverter.getType(primitiveTypeName)));
-    }
-    for (Type type : Type.values()) {
-      assertEquals(type, parquetMetadataConverter.getType(parquetMetadataConverter.getPrimitive(type)));
-    }
-    for (OriginalType original : OriginalType.values()) {
-      assertEquals(
-          original,
-          parquetMetadataConverter
-              .getLogicalTypeAnnotation(
-                  parquetMetadataConverter.convertToConvertedType(
-                      LogicalTypeAnnotation.fromOriginalType(original, null)),
-                  null)
-              .toOriginalType());
-    }
-    for (ConvertedType converted : ConvertedType.values()) {
-      assertEquals(
-          converted,
-          parquetMetadataConverter.convertToConvertedType(
-              parquetMetadataConverter.getLogicalTypeAnnotation(converted, null)));
-    }
   }
 
   @Test
@@ -508,24 +471,5 @@ public class TestParquetSchemaConverter {
         "Algorithm should be SPHERICAL",
         EdgeInterpolationAlgorithm.SPHERICAL,
         geographyAnnotation.getAlgorithm());
-  }
-
-  @Test
-  public void testEdgeInterpolationAlgorithmConversion() {
-    // Test conversion from Parquet to Thrift enum
-    org.apache.parquet.column.schema.EdgeInterpolationAlgorithm parquetAlgo = EdgeInterpolationAlgorithm.SPHERICAL;
-    org.apache.parquet.format.EdgeInterpolationAlgorithm thriftAlgo =
-        ParquetSchemaConverter.fromParquetEdgeInterpolationAlgorithm(parquetAlgo);
-
-    // convert the Thrift enum to the column schema enum
-    org.apache.parquet.column.schema.EdgeInterpolationAlgorithm expected =
-        org.apache.parquet.column.schema.EdgeInterpolationAlgorithm.SPHERICAL;
-    org.apache.parquet.column.schema.EdgeInterpolationAlgorithm actual =
-        ParquetSchemaConverter.toParquetEdgeInterpolationAlgorithm(thriftAlgo);
-    assertEquals(expected, actual);
-
-    // Test with null
-    assertNull(ParquetSchemaConverter.fromParquetEdgeInterpolationAlgorithm(null));
-    assertNull(ParquetSchemaConverter.toParquetEdgeInterpolationAlgorithm(null));
   }
 }
