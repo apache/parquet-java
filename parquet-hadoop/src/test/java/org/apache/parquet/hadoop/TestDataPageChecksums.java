@@ -147,12 +147,11 @@ public class TestDataPageChecksums {
     CodecFactory codecFactory = new CodecFactory(conf, PAGE_SIZE);
     BytesInputCompressor compressor = codecFactory.getCompressor(compression);
 
-    ColumnChunkPageWriteStore writeStore = new ColumnChunkPageWriteStore(
-        compressor,
-        schemaSimple,
-        new HeapByteBufferAllocator(),
-        Integer.MAX_VALUE,
-        ParquetOutputFormat.getPageWriteChecksumEnabled(conf));
+    ColumnChunkPageWriteStore writeStore = ColumnChunkPageWriteStore.build(
+            compressor, schemaSimple, new HeapByteBufferAllocator())
+        .withColumnIndexTruncateLength(Integer.MAX_VALUE)
+        .withPageWriteChecksumEnabled(ParquetOutputFormat.getPageWriteChecksumEnabled(conf))
+        .build();
 
     if (version == ParquetProperties.WriterVersion.PARQUET_1_0) {
       PageWriter pageWriter = writeStore.getPageWriter(colADesc);
@@ -281,6 +280,7 @@ public class TestDataPageChecksums {
         .withType(schemaNestedWithNulls)
         .withPageWriteChecksumEnabled(ParquetOutputFormat.getPageWriteChecksumEnabled(conf))
         .withWriterVersion(version)
+        .withPageCompressThreshold(100) // always compress
         .build()) {
       GroupFactory groupFactory = new SimpleGroupFactory(schemaNestedWithNulls);
       Random rand = new Random(42);

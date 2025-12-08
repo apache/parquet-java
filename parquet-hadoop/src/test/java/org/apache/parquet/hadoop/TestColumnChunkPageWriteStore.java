@@ -42,13 +42,17 @@ import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.inOrder;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.file.Files;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.DirectByteBufferAllocator;
@@ -65,15 +69,20 @@ import org.apache.parquet.column.page.PageWriter;
 import org.apache.parquet.column.statistics.BinaryStatistics;
 import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.compression.CompressionCodecFactory.BytesInputCompressor;
+import org.apache.parquet.format.PageHeader;
+import org.apache.parquet.format.Util;
 import org.apache.parquet.hadoop.ParquetFileWriter.Mode;
+import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
+import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.hadoop.util.HadoopOutputFile;
 import org.apache.parquet.internal.column.columnindex.ColumnIndex;
 import org.apache.parquet.internal.column.columnindex.ColumnIndexBuilder;
 import org.apache.parquet.internal.column.columnindex.OffsetIndex;
 import org.apache.parquet.internal.column.columnindex.OffsetIndexBuilder;
+import org.apache.parquet.io.InputFile;
 import org.apache.parquet.io.OutputFile;
 import org.apache.parquet.io.PositionOutputStream;
 import org.apache.parquet.schema.MessageType;
@@ -139,7 +148,9 @@ public class TestColumnChunkPageWriteStore {
 
   @After
   public void closeAllocator() {
-    allocator.close();
+    if (allocator != null) {
+      allocator.close();
+    }
   }
 
   @Test
@@ -157,13 +168,7 @@ public class TestColumnChunkPageWriteStore {
   }
 
   public void test(Configuration config, ByteBufferAllocator allocator) throws Exception {
-    Path file = new Path("target/test/TestColumnChunkPageWriteStore/test.parquet");
-    Path root = file.getParent();
-    FileSystem fs = file.getFileSystem(config);
-    if (fs.exists(root)) {
-      fs.delete(root, true);
-    }
-    fs.mkdirs(root);
+    Path file = createTestFile("test.parquet");
     MessageType schema = MessageTypeParser.parseMessageType("message test { repeated binary bar; }");
     ColumnDescriptor col = schema.getColumns().get(0);
     Encoding dataEncoding = PLAIN;
@@ -397,6 +402,187 @@ public class TestColumnChunkPageWriteStore {
     BadConfigurationException ex =
         assertThrows(BadConfigurationException.class, () -> writeAndReadCodecs(schema, SNAPPY, props));
     assertTrue(ex.getMessage().contains("10"));
+  }
+
+  @Test
+  public void testV2PageCompressThreshold() throws Exception {
+    V2PageData pageData = createV2PageData();
+
+    verifyV2PageCompression(pageData, "lowCompressThreshold", 0.01, false);
+    verifyV2PageCompression(pageData, "highCompressThreshold", 1.0, true);
+  }
+
+  private V2PageData createV2PageData() throws IOException {
+    MessageType schema = MessageTypeParser.parseMessageType("message test { required int32 data; }");
+    ColumnDescriptor col = schema.getColumns().get(0);
+    int valueCount = 100;
+    int rowCount = 100;
+    int nullCount = 0;
+    byte[] value = ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(0).array();
+    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    for (int i = 0; i < valueCount; i++) {
+      baos.write(value);
+    }
+    BytesInput data = BytesInput.from(baos.toByteArray());
+    Statistics<?> statistics = Statistics.getBuilderForReading(Types.required(INT32).named("data")).build();
+    statistics.setMinMaxFromBytes(value, value);
+
+    return new V2PageData(
+        schema,
+        col,
+        rowCount,
+        nullCount,
+        valueCount,
+        BytesInput.empty(),
+        BytesInput.empty(),
+        data,
+        statistics);
+  }
+
+  private void verifyV2PageCompression(
+      V2PageData pageData, String filePrefix, double pageCompressThreshold, boolean expectedCompressed)
+      throws Exception {
+    Path file = writeSingleColumnData(filePrefix, pageData, pageCompressThreshold);
+    ColumnChunkMetaData columnMeta = readSingleColumnMeta(file);
+
+    assertV2PageCompressionSize(columnMeta, expectedCompressed);
+    verifyReadData(file, pageData, expectedCompressed);
+  }
+
+  private void assertV2PageCompressionSize(ColumnChunkMetaData columnMeta, boolean expectedCompressed) {
+    long uncompressedSize = columnMeta.getTotalUncompressedSize();
+    long compressedSize = columnMeta.getTotalSize();
+    if (expectedCompressed) {
+      assertTrue(
+          "Data should be stored compressed when compression ratio does not exceed threshold",
+          uncompressedSize > compressedSize);
+    } else {
+      assertEquals(
+          "Data should be stored uncompressed when compression ratio exceeds threshold",
+          uncompressedSize,
+          compressedSize);
+    }
+  }
+
+  private ColumnChunkMetaData readSingleColumnMeta(Path file) throws IOException {
+    ParquetMetadata footer = ParquetFileReader.readFooter(conf, file, NO_FILTER);
+    return footer.getBlocks().get(0).getColumns().get(0);
+  }
+
+  private Path writeSingleColumnData(String filePrefix, V2PageData pageData, double pageCompressThreshold)
+      throws Exception {
+    if (allocator == null) {
+      allocator = TrackingByteBufferAllocator.wrap(new HeapByteBufferAllocator());
+    }
+
+    Path file = createTestFile(filePrefix);
+    OutputFileForTesting outputFile = new OutputFileForTesting(file, conf);
+    ParquetProperties props = ParquetProperties.builder()
+        .withAllocator(allocator)
+        .withPageCompressThreshold(pageCompressThreshold)
+        .build();
+
+    ParquetFileWriter writer = new ParquetFileWriter(
+        outputFile,
+        pageData.schema,
+        Mode.OVERWRITE,
+        ParquetWriter.DEFAULT_BLOCK_SIZE,
+        ParquetWriter.MAX_PADDING_SIZE_DEFAULT,
+        null,
+        props);
+    writer.start();
+    writer.startBlock(pageData.rowCount);
+
+    CodecFactory codecFactory = new CodecFactory(conf, pageSize);
+    try (ColumnChunkPageWriteStore store = ColumnChunkPageWriteStore.builder()
+        .withCompressorProvider(ColumnChunkPageWriteStore.compressorProvider(codecFactory, GZIP, props))
+        .withSchema(pageData.schema)
+        .withAllocator(allocator)
+        .withColumnIndexTruncateLength(Integer.MAX_VALUE)
+        .withPageCompressThreshold(pageCompressThreshold)
+        .build()) {
+      PageWriter pageWriter = store.getPageWriter(pageData.col);
+      pageWriter.writePageV2(
+          pageData.rowCount,
+          pageData.nullCount,
+          pageData.valueCount,
+          pageData.repetitionLevels,
+          pageData.definitionLevels,
+          PLAIN,
+          pageData.data,
+          pageData.statistics);
+      store.flushToFileWriter(writer);
+    }
+
+    writer.endBlock();
+    writer.end(new HashMap<>());
+
+    return file;
+  }
+
+  private Path createTestFile(String prefix) throws Exception {
+    java.nio.file.Path path = Files.createTempFile(prefix, ".tmp").toAbsolutePath();
+    Files.deleteIfExists(path);
+    return new Path(path.toString());
+  }
+
+  private void verifyReadData(Path file, V2PageData expected, boolean expectedCompressed) throws IOException {
+    InputFile inputFile = HadoopInputFile.fromPath(file, conf);
+    ParquetReadOptions options = ParquetReadOptions.builder().build();
+    try (ParquetFileReader reader = ParquetFileReader.open(inputFile, options)) {
+      BlockMetaData blockMetaData = reader.getFooter().getBlocks().get(0);
+      reader.f.seek(blockMetaData.getStartingPos());
+
+      PageHeader pageHeader = Util.readPageHeader(reader.f);
+      assertEquals(
+          "Page compressed mismatch",
+          expectedCompressed,
+          pageHeader.getData_page_header_v2().isIs_compressed());
+    }
+
+    try (ParquetFileReader reader = new ParquetFileReader(inputFile, options)) {
+      PageReadStore rowGroup = reader.readNextRowGroup();
+      PageReader pageReader = rowGroup.getPageReader(expected.col);
+      DataPageV2 page = (DataPageV2) pageReader.readPage();
+
+      assertEquals("Row count mismatch", expected.rowCount, page.getRowCount());
+      assertEquals("Null count mismatch", expected.nullCount, page.getNullCount());
+      assertEquals("Value count mismatch", expected.valueCount, page.getValueCount());
+      assertArrayEquals("Data content mismatch", expected.data.toByteArray(), page.getData().toByteArray());
+    }
+  }
+
+  private static class V2PageData {
+    private final MessageType schema;
+    private final ColumnDescriptor col;
+    private final int rowCount;
+    private final int nullCount;
+    private final int valueCount;
+    private final BytesInput repetitionLevels;
+    private final BytesInput definitionLevels;
+    private final BytesInput data;
+    private final Statistics<?> statistics;
+
+    private V2PageData(
+        MessageType schema,
+        ColumnDescriptor col,
+        int rowCount,
+        int nullCount,
+        int valueCount,
+        BytesInput repetitionLevels,
+        BytesInput definitionLevels,
+        BytesInput data,
+        Statistics<?> statistics) {
+      this.schema = schema;
+      this.col = col;
+      this.rowCount = rowCount;
+      this.nullCount = nullCount;
+      this.valueCount = valueCount;
+      this.repetitionLevels = repetitionLevels;
+      this.definitionLevels = definitionLevels;
+      this.data = data;
+      this.statistics = statistics;
+    }
   }
 
   private Map<String, CompressionCodecName> writeAndReadCodecs(
