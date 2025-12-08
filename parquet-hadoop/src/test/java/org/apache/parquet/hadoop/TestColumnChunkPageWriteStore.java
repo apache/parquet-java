@@ -32,6 +32,7 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.eq;
 import static org.mockito.Matchers.isNull;
@@ -41,9 +42,11 @@ import static org.mockito.Mockito.inOrder;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.nio.file.Files;
 import java.util.HashMap;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.BytesInput;
@@ -154,13 +157,7 @@ public class TestColumnChunkPageWriteStore {
   }
 
   public void test(Configuration config, ByteBufferAllocator allocator) throws Exception {
-    Path file = new Path("target/test/TestColumnChunkPageWriteStore/test.parquet");
-    Path root = file.getParent();
-    FileSystem fs = file.getFileSystem(config);
-    if (fs.exists(root)) {
-      fs.delete(root, true);
-    }
-    fs.mkdirs(root);
+    Path file = createTestFile("test.parquet");
     MessageType schema = MessageTypeParser.parseMessageType("message test { repeated binary bar; }");
     ColumnDescriptor col = schema.getColumns().get(0);
     Encoding dataEncoding = PLAIN;
@@ -194,8 +191,10 @@ public class TestColumnChunkPageWriteStore {
       writer.start();
       writer.startBlock(rowCount);
       pageOffset = outputFile.out().getPos();
-      try (ColumnChunkPageWriteStore store =
-          new ColumnChunkPageWriteStore(compressor(GZIP), schema, allocator, Integer.MAX_VALUE)) {
+      ColumnChunkPageWriteStore.Builder builder = ColumnChunkPageWriteStore.build(
+              compressor(GZIP), schema, allocator)
+          .withColumnIndexTruncateLength(Integer.MAX_VALUE);
+      try (ColumnChunkPageWriteStore store = builder.build()) {
         PageWriter pageWriter = store.getPageWriter(col);
         pageWriter.writePageV2(
             rowCount,
@@ -279,11 +278,12 @@ public class TestColumnChunkPageWriteStore {
     int fakeCount = 3;
     BinaryStatistics fakeStats = new BinaryStatistics();
 
-    try (ColumnChunkPageWriteStore store = new ColumnChunkPageWriteStore(
-        compressor(UNCOMPRESSED),
-        schema,
-        allocator = TrackingByteBufferAllocator.wrap(new HeapByteBufferAllocator()),
-        Integer.MAX_VALUE)) {
+    ColumnChunkPageWriteStore.Builder builder = ColumnChunkPageWriteStore.build(
+            compressor(UNCOMPRESSED),
+            schema,
+            TrackingByteBufferAllocator.wrap(new HeapByteBufferAllocator()))
+        .withColumnIndexTruncateLength(Integer.MAX_VALUE);
+    try (ColumnChunkPageWriteStore store = builder.build()) {
 
       for (ColumnDescriptor col : schema.getColumns()) {
         PageWriter pageWriter = store.getPageWriter(col);
@@ -316,7 +316,130 @@ public class TestColumnChunkPageWriteStore {
     }
   }
 
+  @Test
+  public void testV2PageCompressThreshold() throws Exception {
+    allocator = TrackingByteBufferAllocator.wrap(new HeapByteBufferAllocator());
+    MessageType schema = MessageTypeParser.parseMessageType("message test { required int32 data; }");
+    ColumnDescriptor col = schema.getColumns().get(0);
+
+    int valueCount = 100;
+    int rowCount = 100;
+    int nullCount = 0;
+    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    byte[] value =
+        ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(0).array();
+    for (int i = 0; i < valueCount; i++) {
+      baos.write(value);
+    }
+    BytesInput data = BytesInput.from(baos.toByteArray());
+
+    BytesInput definitionLevels = BytesInput.empty();
+    BytesInput repetitionLevels = BytesInput.empty();
+    Statistics<?> statistics = Statistics.getBuilderForReading(
+            Types.required(INT32).named("data"))
+        .build();
+    statistics.setMinMaxFromBytes(value, value);
+
+    Path file = writeSingleColumnData(
+        "lowCompressThreshold",
+        schema,
+        col,
+        rowCount,
+        nullCount,
+        valueCount,
+        repetitionLevels,
+        definitionLevels,
+        data,
+        statistics,
+        0.01);
+    ParquetMetadata footer = ParquetFileReader.readFooter(conf, file, NO_FILTER);
+    ColumnChunkMetaData columnMeta = footer.getBlocks().get(0).getColumns().get(0);
+
+    long uncompressedSize = columnMeta.getTotalUncompressedSize();
+    long compressedSize = columnMeta.getTotalSize();
+
+    assertEquals(
+        "Data should be stored uncompressed when compression ratio exceeds threshold",
+        uncompressedSize,
+        compressedSize);
+
+    file = writeSingleColumnData(
+        "highCompressThreshold",
+        schema,
+        col,
+        rowCount,
+        nullCount,
+        valueCount,
+        repetitionLevels,
+        definitionLevels,
+        data,
+        statistics,
+        10);
+    footer = ParquetFileReader.readFooter(conf, file, NO_FILTER);
+    columnMeta = footer.getBlocks().get(0).getColumns().get(0);
+
+    uncompressedSize = columnMeta.getTotalUncompressedSize();
+    compressedSize = columnMeta.getTotalSize();
+
+    assertTrue(
+        "Data should be stored compressed when compression ratio does not exceed threshold",
+        uncompressedSize > compressedSize);
+  }
+
+  private Path writeSingleColumnData(
+      String filePrefix,
+      MessageType schema,
+      ColumnDescriptor col,
+      int rowCount,
+      int nullCount,
+      int valueCount,
+      BytesInput repetitionLevels,
+      BytesInput definitionLevels,
+      BytesInput data,
+      Statistics<?> statistics,
+      double v2PageCompressThreshold)
+      throws Exception {
+    Path file = createTestFile(filePrefix);
+    OutputFileForTesting outputFile = new OutputFileForTesting(file, conf);
+    ParquetProperties props = ParquetProperties.builder()
+        .withAllocator(TrackingByteBufferAllocator.wrap(new HeapByteBufferAllocator()))
+        .withV2PageCompressThreshold(v2PageCompressThreshold)
+        .build();
+
+    ParquetFileWriter writer = new ParquetFileWriter(
+        outputFile,
+        schema,
+        Mode.OVERWRITE,
+        ParquetWriter.DEFAULT_BLOCK_SIZE,
+        ParquetWriter.MAX_PADDING_SIZE_DEFAULT,
+        null,
+        props);
+    writer.start();
+    writer.startBlock(rowCount);
+
+    ColumnChunkPageWriteStore.Builder builder = ColumnChunkPageWriteStore.build(
+            compressor(GZIP), schema, props.getAllocator())
+        .withColumnIndexTruncateLength(Integer.MAX_VALUE)
+        .withV2PageCompressThreshold(v2PageCompressThreshold);
+
+    try (ColumnChunkPageWriteStore store = builder.build()) {
+      PageWriter pageWriter = store.getPageWriter(col);
+      pageWriter.writePageV2(
+          rowCount, nullCount, valueCount, repetitionLevels, definitionLevels, PLAIN, data, statistics);
+      store.flushToFileWriter(writer);
+    }
+
+    writer.endBlock();
+    writer.end(new HashMap<>());
+
+    return file;
+  }
+
   private BytesInputCompressor compressor(CompressionCodecName codec) {
     return new CodecFactory(conf, pageSize).getCompressor(codec);
+  }
+
+  private Path createTestFile(String prefix) throws Exception {
+    return new Path(Files.createTempFile(prefix, ".tmp").toAbsolutePath().toString());
   }
 }

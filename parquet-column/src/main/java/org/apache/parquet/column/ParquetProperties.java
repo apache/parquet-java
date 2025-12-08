@@ -68,6 +68,7 @@ public class ParquetProperties {
   public static final boolean DEFAULT_SIZE_STATISTICS_ENABLED = true;
 
   public static final boolean DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED = true;
+  public static final double DEFAULT_V2_PAGE_COMPRESS_THRESHOLD = 0.98;
 
   /**
    * @deprecated This shared instance can cause thread safety issues when used by multiple builders concurrently.
@@ -120,6 +121,7 @@ public class ParquetProperties {
   private final int statisticsTruncateLength;
   private final boolean statisticsEnabled;
   private final boolean sizeStatisticsEnabled;
+  private final double v2PageCompressThreshold;
 
   // The expected NDV (number of distinct values) for each columns
   private final ColumnProperty<Long> bloomFilterNDVs;
@@ -154,6 +156,8 @@ public class ParquetProperties {
     this.statisticsTruncateLength = builder.statisticsTruncateLength;
     this.statisticsEnabled = builder.statisticsEnabled;
     this.sizeStatisticsEnabled = builder.sizeStatisticsEnabled;
+    this.v2PageCompressThreshold = builder.v2PageCompressThreshold;
+
     this.bloomFilterNDVs = builder.bloomFilterNDVs.build();
     this.bloomFilterFPPs = builder.bloomFilterFPPs.build();
     this.bloomFilterEnabled = builder.bloomFilterEnabled.build();
@@ -322,6 +326,10 @@ public class ParquetProperties {
     return pageWriteChecksumEnabled;
   }
 
+  public double v2PageCompressThreshold() {
+    return v2PageCompressThreshold;
+  }
+
   public OptionalLong getBloomFilterNDV(ColumnDescriptor column) {
     Long ndv = bloomFilterNDVs.getValue(column);
     return ndv == null ? OptionalLong.empty() : OptionalLong.of(ndv);
@@ -388,7 +396,8 @@ public class ParquetProperties {
         + "Page row count limit to " + getPageRowCountLimit() + '\n'
         + "Writing page checksums is: " + (getPageWriteChecksumEnabled() ? "on" : "off") + '\n'
         + "Statistics enabled: " + statisticsEnabled + '\n'
-        + "Size statistics enabled: " + sizeStatisticsEnabled;
+        + "Size statistics enabled: " + sizeStatisticsEnabled + '\n'
+        + "V2 page compress threshold: " + v2PageCompressThreshold;
   }
 
   public static class Builder {
@@ -406,6 +415,7 @@ public class ParquetProperties {
     private int statisticsTruncateLength = DEFAULT_STATISTICS_TRUNCATE_LENGTH;
     private boolean statisticsEnabled = DEFAULT_STATISTICS_ENABLED;
     private boolean sizeStatisticsEnabled = DEFAULT_SIZE_STATISTICS_ENABLED;
+    private double v2PageCompressThreshold = DEFAULT_V2_PAGE_COMPRESS_THRESHOLD;
     private final ColumnProperty.Builder<Long> bloomFilterNDVs;
     private final ColumnProperty.Builder<Double> bloomFilterFPPs;
     private int maxBloomFilterBytes = DEFAULT_MAX_BLOOM_FILTER_BYTES;
@@ -460,6 +470,7 @@ public class ParquetProperties {
       this.extraMetaData = toCopy.extraMetaData;
       this.statistics = ColumnProperty.builder(toCopy.statistics);
       this.sizeStatistics = ColumnProperty.builder(toCopy.sizeStatistics);
+      this.v2PageCompressThreshold = toCopy.v2PageCompressThreshold();
     }
 
     /**
@@ -753,6 +764,21 @@ public class ParquetProperties {
      */
     public Builder withSizeStatisticsEnabled(String columnPath, boolean enabled) {
       this.sizeStatistics.withValue(columnPath, enabled);
+      return this;
+    }
+
+    /**
+     * Sets the compression threshold for V2 data pages.
+     *
+     * <p>When the compression ratio (compressed size / uncompressed size) exceeds this threshold,
+     * the uncompressed data will be used instead. For example, with a threshold of 0.98, if
+     * compression only saves 2% of space, the data will not be compressed.
+     *
+     * @param threshold the compression ratio threshold, default is {@value #DEFAULT_V2_PAGE_COMPRESS_THRESHOLD}
+     * @return this builder for method chaining
+     */
+    public Builder withV2PageCompressThreshold(double threshold) {
+      this.v2PageCompressThreshold = threshold;
       return this;
     }
 
