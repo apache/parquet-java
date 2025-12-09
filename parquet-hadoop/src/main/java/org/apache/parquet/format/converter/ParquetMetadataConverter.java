@@ -761,7 +761,7 @@ public class ParquetMetadataConverter {
       switch (stat.getPage_type()) {
         case DATA_PAGE_V2:
           builder.withV2Pages();
-          // falls through
+        // falls through
         case DATA_PAGE:
           builder.addDataEncoding(getEncoding(stat.getEncoding()), stat.getCount());
           break;
