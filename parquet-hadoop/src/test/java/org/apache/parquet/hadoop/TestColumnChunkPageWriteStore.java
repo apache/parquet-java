@@ -48,6 +48,7 @@ import java.nio.file.Files;
 import java.util.HashMap;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
+import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.DirectByteBufferAllocator;
@@ -65,15 +66,20 @@ import org.apache.parquet.column.page.PageWriter;
 import org.apache.parquet.column.statistics.BinaryStatistics;
 import org.apache.parquet.column.statistics.Statistics;
 import org.apache.parquet.compression.CompressionCodecFactory.BytesInputCompressor;
+import org.apache.parquet.format.PageHeader;
+import org.apache.parquet.format.Util;
 import org.apache.parquet.hadoop.ParquetFileWriter.Mode;
+import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
+import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.hadoop.util.HadoopOutputFile;
 import org.apache.parquet.internal.column.columnindex.ColumnIndex;
 import org.apache.parquet.internal.column.columnindex.ColumnIndexBuilder;
 import org.apache.parquet.internal.column.columnindex.OffsetIndex;
 import org.apache.parquet.internal.column.columnindex.OffsetIndexBuilder;
+import org.apache.parquet.io.InputFile;
 import org.apache.parquet.io.OutputFile;
 import org.apache.parquet.io.PositionOutputStream;
 import org.apache.parquet.schema.MessageType;
@@ -363,6 +369,8 @@ public class TestColumnChunkPageWriteStore {
         uncompressedSize,
         compressedSize);
 
+    verifyReadData(file, col, rowCount, nullCount, valueCount, data, false);
+
     file = writeSingleColumnData(
         "highCompressThreshold",
         schema,
@@ -374,7 +382,7 @@ public class TestColumnChunkPageWriteStore {
         definitionLevels,
         data,
         statistics,
-        10);
+        1.0);
     footer = ParquetFileReader.readFooter(conf, file, NO_FILTER);
     columnMeta = footer.getBlocks().get(0).getColumns().get(0);
 
@@ -384,6 +392,8 @@ public class TestColumnChunkPageWriteStore {
     assertTrue(
         "Data should be stored compressed when compression ratio does not exceed threshold",
         uncompressedSize > compressedSize);
+
+    verifyReadData(file, col, rowCount, nullCount, valueCount, data, true);
   }
 
   private Path writeSingleColumnData(
@@ -397,13 +407,13 @@ public class TestColumnChunkPageWriteStore {
       BytesInput definitionLevels,
       BytesInput data,
       Statistics<?> statistics,
-      double v2PageCompressThreshold)
+      double pageCompressThreshold)
       throws Exception {
     Path file = createTestFile(filePrefix);
     OutputFileForTesting outputFile = new OutputFileForTesting(file, conf);
     ParquetProperties props = ParquetProperties.builder()
         .withAllocator(TrackingByteBufferAllocator.wrap(new HeapByteBufferAllocator()))
-        .withV2PageCompressThreshold(v2PageCompressThreshold)
+        .withPageCompressThreshold(pageCompressThreshold)
         .build();
 
     ParquetFileWriter writer = new ParquetFileWriter(
@@ -420,7 +430,7 @@ public class TestColumnChunkPageWriteStore {
     ColumnChunkPageWriteStore.Builder builder = ColumnChunkPageWriteStore.build(
             compressor(GZIP), schema, props.getAllocator())
         .withColumnIndexTruncateLength(Integer.MAX_VALUE)
-        .withV2PageCompressThreshold(v2PageCompressThreshold);
+        .withPageCompressThreshold(pageCompressThreshold);
 
     try (ColumnChunkPageWriteStore store = builder.build()) {
       PageWriter pageWriter = store.getPageWriter(col);
@@ -441,5 +451,43 @@ public class TestColumnChunkPageWriteStore {
 
   private Path createTestFile(String prefix) throws Exception {
     return new Path(Files.createTempFile(prefix, ".tmp").toAbsolutePath().toString());
+  }
+
+  private void verifyReadData(
+      Path file,
+      ColumnDescriptor col,
+      int expectedRowCount,
+      int expectedNullCount,
+      int expectedValueCount,
+      BytesInput expectedData,
+      boolean expectedCompressed)
+      throws IOException {
+    InputFile inputFile = HadoopInputFile.fromPath(file, conf);
+    ParquetReadOptions options = ParquetReadOptions.builder().build();
+    try (ParquetFileReader reader = ParquetFileReader.open(inputFile, options)) {
+      BlockMetaData blockMetaData = reader.getFooter().getBlocks().get(0);
+      reader.f.seek(blockMetaData.getStartingPos());
+
+      PageHeader pageHeader = Util.readPageHeader(reader.f);
+      assertEquals(
+          "Page compressed mismatch",
+          expectedCompressed,
+          pageHeader.getData_page_header_v2().isIs_compressed());
+    }
+
+    try (ParquetFileReader reader = new ParquetFileReader(inputFile, options)) {
+      PageReadStore rowGroup = reader.readNextRowGroup();
+      PageReader pageReader = rowGroup.getPageReader(col);
+      DataPageV2 page = (DataPageV2) pageReader.readPage();
+
+      assertEquals("Row count mismatch", expectedRowCount, page.getRowCount());
+      assertEquals("Null count mismatch", expectedNullCount, page.getNullCount());
+      assertEquals("Value count mismatch", expectedValueCount, page.getValueCount());
+
+      BytesInput actualData = page.getData();
+      byte[] expectedBytes = expectedData.toByteArray();
+      byte[] actualBytes = actualData.toByteArray();
+      assertArrayEquals("Data content mismatch", expectedBytes, actualBytes);
+    }
   }
 }

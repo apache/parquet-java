@@ -53,6 +53,7 @@ import org.apache.parquet.format.BlockCipher;
 import org.apache.parquet.format.converter.ParquetMetadataConverter;
 import org.apache.parquet.hadoop.CodecFactory.BytesCompressor;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
+import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.internal.column.columnindex.ColumnIndexBuilder;
 import org.apache.parquet.internal.column.columnindex.OffsetIndexBuilder;
 import org.apache.parquet.io.ParquetEncodingException;
@@ -73,7 +74,7 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
 
     private final ColumnDescriptor path;
     private final BytesInputCompressor compressor;
-    private final double v2PageCompressThreshold;
+    private final double pageCompressThreshold;
 
     private final ByteArrayOutputStream tempOutputStream = new ByteArrayOutputStream();
     private final ConcatenatingByteBufferCollector buf;
@@ -120,10 +121,10 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
         byte[] fileAAD,
         int rowGroupOrdinal,
         int columnOrdinal,
-        double v2PageCompressThreshold) {
+        double pageCompressThreshold) {
       this.path = path;
       this.compressor = compressor;
-      this.v2PageCompressThreshold = v2PageCompressThreshold;
+      this.pageCompressThreshold = pageCompressThreshold;
       this.releaser = new ByteBufferReleaser(allocator);
       this.buf = new ConcatenatingByteBufferCollector(allocator);
       this.columnIndexBuilder = ColumnIndexBuilder.getBuilder(path.getPrimitiveType(), columnIndexTruncateLength);
@@ -311,7 +312,8 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
         compressedData = compressor.compress(data);
         compressed = true;
         double compressionRatio = (double) compressedData.size() / data.size();
-        if (compressionRatio > v2PageCompressThreshold) {
+        if (compressor.getCodecName() != CompressionCodecName.UNCOMPRESSED
+            && compressionRatio > pageCompressThreshold) {
           compressedData = data;
           compressed = false;
         }
@@ -547,7 +549,7 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
       boolean pageWriteChecksumEnabled,
       InternalFileEncryptor fileEncryptor,
       int rowGroupOrdinal,
-      double v2PageCompressThreshold) {
+      double pageCompressThreshold) {
     this.schema = schema;
 
     if (null == fileEncryptor) {
@@ -565,7 +567,7 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
                 null,
                 -1,
                 -1,
-                v2PageCompressThreshold));
+                pageCompressThreshold));
       }
     } else {
       // Encrypted file
@@ -597,7 +599,7 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
                 fileAAD,
                 rowGroupOrdinal,
                 columnOrdinal,
-                v2PageCompressThreshold));
+                pageCompressThreshold));
       }
     }
   }
@@ -743,7 +745,7 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
     private boolean pageWriteChecksumEnabled = ParquetProperties.DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED;
     private InternalFileEncryptor fileEncryptor = null;
     private int rowGroupOrdinal = -1;
-    private double v2PageCompressThreshold = Double.MAX_VALUE;
+    private double pageCompressThreshold = Double.MAX_VALUE;
 
     public Builder(BytesInputCompressor compressor, MessageType schema, ByteBufferAllocator allocator) {
       this.compressor = compressor;
@@ -771,8 +773,8 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
       return this;
     }
 
-    public Builder withV2PageCompressThreshold(double newV2PageCompressThreshold) {
-      this.v2PageCompressThreshold = newV2PageCompressThreshold;
+    public Builder withPageCompressThreshold(double newPageCompressThreshold) {
+      this.pageCompressThreshold = newPageCompressThreshold;
       return this;
     }
 
@@ -785,7 +787,7 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
           pageWriteChecksumEnabled,
           fileEncryptor,
           rowGroupOrdinal,
-          v2PageCompressThreshold);
+          pageCompressThreshold);
     }
   }
 }
