@@ -280,6 +280,7 @@ public class TestDataPageChecksums {
         .withType(schemaNestedWithNulls)
         .withPageWriteChecksumEnabled(ParquetOutputFormat.getPageWriteChecksumEnabled(conf))
         .withWriterVersion(version)
+        .withPageCompressThreshold(100) // always compress
         .build()) {
       GroupFactory groupFactory = new SimpleGroupFactory(schemaNestedWithNulls);
       Random rand = new Random(42);
