@@ -759,7 +759,7 @@ public class ParquetRewriter implements Closeable {
           if (compressor == null) {
             compressed = headerV2.is_compressed;
           } else {
-            compressed = newCodecName != CompressionCodecName.UNCOMPRESSED;
+            compressed = true;
           }
           writer.writeDataPageV2(
               headerV2.getNum_rows(),
