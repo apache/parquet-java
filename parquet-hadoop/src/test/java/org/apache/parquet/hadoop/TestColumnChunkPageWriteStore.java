@@ -145,7 +145,9 @@ public class TestColumnChunkPageWriteStore {
 
   @After
   public void closeAllocator() {
-    allocator.close();
+    if (allocator != null) {
+      allocator.close();
+    }
   }
 
   @Test
@@ -324,7 +326,6 @@ public class TestColumnChunkPageWriteStore {
 
   @Test
   public void testV2PageCompressThreshold() throws Exception {
-    allocator = TrackingByteBufferAllocator.wrap(new HeapByteBufferAllocator());
     MessageType schema = MessageTypeParser.parseMessageType("message test { required int32 data; }");
     ColumnDescriptor col = schema.getColumns().get(0);
 
@@ -450,7 +451,9 @@ public class TestColumnChunkPageWriteStore {
   }
 
   private Path createTestFile(String prefix) throws Exception {
-    return new Path(Files.createTempFile(prefix, ".tmp").toAbsolutePath().toString());
+    java.nio.file.Path path = Files.createTempFile(prefix, ".tmp").toAbsolutePath();
+    Files.deleteIfExists(path);
+    return new Path(path.toString());
   }
 
   private void verifyReadData(
