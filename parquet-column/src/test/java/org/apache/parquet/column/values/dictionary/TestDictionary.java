@@ -24,7 +24,7 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.DOUBLE;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FLOAT;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.*;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -44,6 +44,7 @@ import org.apache.parquet.column.values.dictionary.DictionaryValuesWriter.PlainD
 import org.apache.parquet.column.values.dictionary.DictionaryValuesWriter.PlainFloatDictionaryValuesWriter;
 import org.apache.parquet.column.values.dictionary.DictionaryValuesWriter.PlainIntegerDictionaryValuesWriter;
 import org.apache.parquet.column.values.dictionary.DictionaryValuesWriter.PlainLongDictionaryValuesWriter;
+import org.apache.parquet.column.values.dictionary.PlainValuesDictionary.PlainBooleanDictionary;
 import org.apache.parquet.column.values.fallback.FallbackValuesWriter;
 import org.apache.parquet.column.values.plain.BinaryPlainValuesReader;
 import org.apache.parquet.column.values.plain.PlainValuesReader;
@@ -676,6 +677,72 @@ public class TestDictionary {
       int offset = bytes.remaining();
       reader.initFromPage(100, bytes, offset);
     }
+  }
+
+  @Test
+  public void testBooleanDictionary() throws IOException {
+    // Create a dictionary page with boolean values (false, true)
+    // Bit-packed: bit 0 = false (0), bit 1 = true (1) => byte = 0b00000010 = 0x02
+    BytesInput bytes = BytesInput.from(new byte[] {0x02});
+    DictionaryPage dictionaryPage = new DictionaryPage(bytes, 2, PLAIN);
+
+    PlainBooleanDictionary dictionary = new PlainBooleanDictionary(dictionaryPage);
+
+    // Verify dictionary decoding
+    assertFalse(dictionary.decodeToBoolean(0));
+    assertTrue(dictionary.decodeToBoolean(1));
+    assertEquals(1, dictionary.getMaxId());
+  }
+
+  @Test
+  public void testBooleanDictionarySingleValue() throws IOException {
+    // Test dictionary with only true value
+    // Bit-packed: bit 0 = true (1) => byte = 0b00000001 = 0x01
+    BytesInput bytesTrue = BytesInput.from(new byte[] {0x01});
+    DictionaryPage dictionaryPageTrue = new DictionaryPage(bytesTrue, 1, PLAIN);
+
+    PlainBooleanDictionary dictionaryTrue = new PlainBooleanDictionary(dictionaryPageTrue);
+
+    assertTrue(dictionaryTrue.decodeToBoolean(0));
+    assertEquals(0, dictionaryTrue.getMaxId());
+
+    // Test dictionary with only false value
+    // Bit-packed: bit 0 = false (0) => byte = 0b00000000 = 0x00
+    BytesInput bytesFalse = BytesInput.from(new byte[] {0x00});
+    DictionaryPage dictionaryPageFalse = new DictionaryPage(bytesFalse, 1, PLAIN);
+
+    PlainBooleanDictionary dictionaryFalse = new PlainBooleanDictionary(dictionaryPageFalse);
+
+    assertFalse(dictionaryFalse.decodeToBoolean(0));
+    assertEquals(0, dictionaryFalse.getMaxId());
+  }
+
+  @Test
+  public void testBooleanDictionaryToString() throws IOException {
+    // Bit-packed: bit 0 = false (0), bit 1 = true (1) => byte = 0b00000010 = 0x02
+    BytesInput bytes = BytesInput.from(new byte[] {0x02});
+    DictionaryPage dictionaryPage = new DictionaryPage(bytes, 2, PLAIN);
+
+    PlainBooleanDictionary dictionary = new PlainBooleanDictionary(dictionaryPage);
+
+    String str = dictionary.toString();
+    Assert.assertTrue(str.contains("PlainIntegerDictionary"));
+    Assert.assertTrue(str.contains("0 => false"));
+    Assert.assertTrue(str.contains("1 => true"));
+  }
+
+  @Test
+  public void testBooleanDictionaryWithDictionaryEncoding() throws IOException {
+    // Test with PLAIN_DICTIONARY encoding (both PLAIN and PLAIN_DICTIONARY should work)
+    // Bit-packed: bit 0 = true (1), bit 1 = false (0) => byte = 0b00000001 = 0x01
+    BytesInput bytes = BytesInput.from(new byte[] {0x01});
+    DictionaryPage dictionaryPage = new DictionaryPage(bytes, 2, PLAIN_DICTIONARY);
+
+    PlainBooleanDictionary dictionary = new PlainBooleanDictionary(dictionaryPage);
+
+    assertEquals(true, dictionary.decodeToBoolean(0));
+    assertEquals(false, dictionary.decodeToBoolean(1));
+    assertEquals(1, dictionary.getMaxId());
   }
 
   private DictionaryValuesReader initDicReader(ValuesWriter cw, PrimitiveTypeName type) throws IOException {

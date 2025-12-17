@@ -28,6 +28,7 @@ import org.apache.parquet.Preconditions;
 import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.column.Dictionary;
 import org.apache.parquet.column.page.DictionaryPage;
+import org.apache.parquet.column.values.plain.BooleanPlainValuesReader;
 import org.apache.parquet.column.values.plain.PlainValuesReader.DoublePlainValuesReader;
 import org.apache.parquet.column.values.plain.PlainValuesReader.FloatPlainValuesReader;
 import org.apache.parquet.column.values.plain.PlainValuesReader.IntegerPlainValuesReader;
@@ -298,6 +299,48 @@ public abstract class PlainValuesDictionary extends Dictionary {
     @Override
     public int getMaxId() {
       return floatDictionaryContent.length - 1;
+    }
+  }
+
+  /**
+   * a simple implementation of dictionary for plain encoded boolean values
+   */
+  public static class PlainBooleanDictionary extends PlainValuesDictionary {
+
+    private final boolean[] boolDictionaryContent;
+
+    /**
+     * @param dictionaryPage a dictionary page of encoded boolean values
+     * @throws IOException if there is an exception while decoding the dictionary page
+     */
+    public PlainBooleanDictionary(DictionaryPage dictionaryPage) throws IOException {
+      super(dictionaryPage);
+      ByteBufferInputStream in = dictionaryPage.getBytes().toInputStream();
+      boolDictionaryContent = new boolean[dictionaryPage.getDictionarySize()];
+      BooleanPlainValuesReader boolReader = new BooleanPlainValuesReader();
+      boolReader.initFromPage(dictionaryPage.getDictionarySize(), in);
+      for (int i = 0; i < boolDictionaryContent.length; i++) {
+        boolDictionaryContent[i] = boolReader.readBoolean();
+      }
+    }
+
+    @Override
+    public boolean decodeToBoolean(int id) {
+      return boolDictionaryContent[id];
+    }
+
+    @Override
+    public String toString() {
+      StringBuilder sb = new StringBuilder("PlainIntegerDictionary {\n");
+      for (int i = 0; i < boolDictionaryContent.length; i++) {
+        sb.append(i).append(" => ").append(boolDictionaryContent[i]).append("\n");
+      }
+      return sb.append("}").toString();
+    }
+
+    @Override
+    public int getMaxId() {
+      return boolDictionaryContent.length - 1;
     }
   }
 }
