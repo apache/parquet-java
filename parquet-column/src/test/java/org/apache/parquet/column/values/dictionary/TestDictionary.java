@@ -24,7 +24,9 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.DOUBLE;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FLOAT;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -726,7 +728,7 @@ public class TestDictionary {
     PlainBooleanDictionary dictionary = new PlainBooleanDictionary(dictionaryPage);
 
     String str = dictionary.toString();
-    Assert.assertTrue(str.contains("PlainIntegerDictionary"));
+    Assert.assertTrue(str.contains("PlainBooleanDictionary"));
     Assert.assertTrue(str.contains("0 => false"));
     Assert.assertTrue(str.contains("1 => true"));
   }

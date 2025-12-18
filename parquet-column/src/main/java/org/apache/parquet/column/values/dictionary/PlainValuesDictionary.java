@@ -331,7 +331,7 @@ public abstract class PlainValuesDictionary extends Dictionary {
 
     @Override
     public String toString() {
-      StringBuilder sb = new StringBuilder("PlainIntegerDictionary {\n");
+      StringBuilder sb = new StringBuilder("PlainBooleanDictionary {\n");
       for (int i = 0; i < boolDictionaryContent.length; i++) {
         sb.append(i).append(" => ").append(boolDictionaryContent[i]).append("\n");
       }
