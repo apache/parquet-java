@@ -40,6 +40,7 @@ import org.apache.parquet.column.values.deltalengthbytearray.DeltaLengthByteArra
 import org.apache.parquet.column.values.deltastrings.DeltaByteArrayReader;
 import org.apache.parquet.column.values.dictionary.DictionaryValuesReader;
 import org.apache.parquet.column.values.dictionary.PlainValuesDictionary.PlainBinaryDictionary;
+import org.apache.parquet.column.values.dictionary.PlainValuesDictionary.PlainBooleanDictionary;
 import org.apache.parquet.column.values.dictionary.PlainValuesDictionary.PlainDoubleDictionary;
 import org.apache.parquet.column.values.dictionary.PlainValuesDictionary.PlainFloatDictionary;
 import org.apache.parquet.column.values.dictionary.PlainValuesDictionary.PlainIntegerDictionary;
@@ -102,6 +103,8 @@ public enum Encoding {
           return new PlainIntegerDictionary(dictionaryPage);
         case FLOAT:
           return new PlainFloatDictionary(dictionaryPage);
+        case BOOLEAN:
+          return new PlainBooleanDictionary(dictionaryPage);
         default:
           throw new ParquetDecodingException(
               "Dictionary encoding not supported for type: " + descriptor.getType());
