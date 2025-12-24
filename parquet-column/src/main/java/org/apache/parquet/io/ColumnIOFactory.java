@@ -39,21 +39,27 @@ public class ColumnIOFactory {
     private final boolean validating;
     private final MessageType requestedSchema;
     private final String createdBy;
+    private final boolean strictUnsignedIntegerValidation;
     private int currentRequestedIndex;
     private Type currentRequestedType;
     private boolean strictTypeChecking;
 
     private ColumnIOCreatorVisitor(
-        boolean validating, MessageType requestedSchema, String createdBy, boolean strictTypeChecking) {
+        boolean validating,
+        MessageType requestedSchema,
+        String createdBy,
+        boolean strictTypeChecking,
+        boolean strictUnsignedIntegerValidation) {
       this.validating = validating;
       this.requestedSchema = requestedSchema;
       this.createdBy = createdBy;
       this.strictTypeChecking = strictTypeChecking;
+      this.strictUnsignedIntegerValidation = strictUnsignedIntegerValidation;
     }
 
     @Override
     public void visit(MessageType messageType) {
-      columnIO = new MessageColumnIO(requestedSchema, validating, createdBy);
+      columnIO = new MessageColumnIO(requestedSchema, validating, strictUnsignedIntegerValidation, createdBy);
       visitChildren(columnIO, messageType, requestedSchema);
       columnIO.setLevels();
       columnIO.setLeaves(leaves);
@@ -113,12 +119,13 @@ public class ColumnIOFactory {
 
   private final String createdBy;
   private final boolean validating;
+  private final boolean strictUnsignedIntegerValidation;
 
   /**
    * validation is off by default
    */
   public ColumnIOFactory() {
-    this(null, false);
+    this(null, false, false);
   }
 
   /**
@@ -127,14 +134,22 @@ public class ColumnIOFactory {
    * @param createdBy createdBy string for readers
    */
   public ColumnIOFactory(String createdBy) {
-    this(createdBy, false);
+    this(createdBy, false, false);
   }
 
   /**
    * @param validating to turn validation on
    */
   public ColumnIOFactory(boolean validating) {
-    this(null, validating);
+    this(null, validating, false);
+  }
+
+  /**
+   * @param validating to turn validation on
+   * @param strictUnsignedIntegerValidation to turn strict unsigned integer validation on
+   */
+  public ColumnIOFactory(boolean validating, boolean strictUnsignedIntegerValidation) {
+    this(null, validating, strictUnsignedIntegerValidation);
   }
 
   /**
@@ -142,9 +157,19 @@ public class ColumnIOFactory {
    * @param validating to turn validation on
    */
   public ColumnIOFactory(String createdBy, boolean validating) {
+    this(createdBy, validating, false);
+  }
+
+  /**
+   * @param createdBy  createdBy string for readers
+   * @param validating to turn validation on
+   * @param strictUnsignedIntegerValidation to turn strict unsigned integer validation on
+   */
+  public ColumnIOFactory(String createdBy, boolean validating, boolean strictUnsignedIntegerValidation) {
     super();
     this.createdBy = createdBy;
     this.validating = validating;
+    this.strictUnsignedIntegerValidation = strictUnsignedIntegerValidation;
   }
 
   /**
@@ -163,7 +188,8 @@ public class ColumnIOFactory {
    * @return the corresponding serializing/deserializing structure
    */
   public MessageColumnIO getColumnIO(MessageType requestedSchema, MessageType fileSchema, boolean strict) {
-    ColumnIOCreatorVisitor visitor = new ColumnIOCreatorVisitor(validating, requestedSchema, createdBy, strict);
+    ColumnIOCreatorVisitor visitor = new ColumnIOCreatorVisitor(
+        validating, requestedSchema, createdBy, strict, strictUnsignedIntegerValidation);
     fileSchema.accept(visitor);
     return visitor.getColumnIO();
   }
