@@ -51,7 +51,7 @@ public class ShowGeospatialStatisticsCommand extends BaseCommand {
     Preconditions.checkArgument(targets.size() == 1, "Cannot process multiple Parquet files.");
 
     String source = targets.get(0);
-    try (ParquetFileReader reader = ParquetFileReader.open(getConf(), qualifiedPath(source))) {
+    try (ParquetFileReader reader = createParquetFileReader(source)) {
       ParquetMetadata footer = reader.getFooter();
       MessageType schema = footer.getFileMetaData().getSchema();
 
