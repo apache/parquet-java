@@ -34,4 +34,18 @@ public class ParquetMetadataCommandTest extends ParquetFileTest {
     command.setConf(new Configuration());
     Assert.assertEquals(0, command.run());
   }
+
+  @Test
+  public void testParquetMetadataCommandWithEncryptedFile() throws IOException {
+    File encryptedFile = EncryptedParquetFileTestHelper.createEncryptedParquetFile(
+        getTempFolder(), "encrypted_metadata_test.parquet");
+
+    ParquetMetadataCommand command = new ParquetMetadataCommand(createLogger());
+    command.targets = Arrays.asList(encryptedFile.getAbsolutePath());
+    command.setConf(EncryptedParquetFileTestHelper.createDecryptionConfiguration());
+
+    Assert.assertEquals(0, command.run());
+
+    encryptedFile.delete();
+  }
 }
