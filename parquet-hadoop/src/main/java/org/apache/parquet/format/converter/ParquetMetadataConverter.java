@@ -1052,12 +1052,12 @@ public class ParquetMetadataConverter {
     UNKNOWN
   }
 
-  private static final Set<Class> STRING_TYPES = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
+  private static final Set<Class> STRING_TYPES = Set.of(
       LogicalTypeAnnotation.StringLogicalTypeAnnotation.class,
       LogicalTypeAnnotation.EnumLogicalTypeAnnotation.class,
       LogicalTypeAnnotation.JsonLogicalTypeAnnotation.class,
       LogicalTypeAnnotation.Float16LogicalTypeAnnotation.class,
-      LogicalTypeAnnotation.UnknownLogicalTypeAnnotation.class)));
+      LogicalTypeAnnotation.UnknownLogicalTypeAnnotation.class);
 
   /**
    * Returns whether to use signed order min and max with a type. It is safe to

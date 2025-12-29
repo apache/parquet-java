@@ -31,7 +31,6 @@ import java.io.IOException;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -91,7 +90,7 @@ public class TestInputOutputFormat {
 
   @Parameterized.Parameters(name = "vectored : {0}")
   public static List<Boolean> params() {
-    return Arrays.asList(true, false);
+    return List.of(true, false);
   }
 
   /**

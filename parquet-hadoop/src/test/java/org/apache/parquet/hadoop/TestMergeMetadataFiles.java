@@ -26,7 +26,6 @@ import static org.junit.Assert.fail;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -184,9 +183,9 @@ public class TestMergeMetadataFiles {
     // test file serialization
     Path mergedOut = new Path(new File(temp.getRoot(), "merged_meta").getAbsolutePath());
     Path mergedCommonOut = new Path(new File(temp.getRoot(), "merged_common_meta").getAbsolutePath());
-    ParquetFileWriter.writeMergedMetadataFile(Arrays.asList(info.metaPath1, info.metaPath2), mergedOut, info.conf);
+    ParquetFileWriter.writeMergedMetadataFile(List.of(info.metaPath1, info.metaPath2), mergedOut, info.conf);
     ParquetFileWriter.writeMergedMetadataFile(
-        Arrays.asList(info.commonMetaPath1, info.commonMetaPath2), mergedCommonOut, info.conf);
+        List.of(info.commonMetaPath1, info.commonMetaPath2), mergedCommonOut, info.conf);
 
     ParquetMetadata mergedMeta =
         ParquetFileReader.readFooter(info.conf, mergedOut, ParquetMetadataConverter.NO_FILTER);
@@ -222,8 +221,7 @@ public class TestMergeMetadataFiles {
     Path mergedCommonOut = new Path(new File(temp.getRoot(), "merged_common_meta").getAbsolutePath());
 
     try {
-      ParquetFileWriter.writeMergedMetadataFile(
-          Arrays.asList(info.metaPath1, info.metaPath2), mergedOut, info.conf);
+      ParquetFileWriter.writeMergedMetadataFile(List.of(info.metaPath1, info.metaPath2), mergedOut, info.conf);
       fail("this should throw");
     } catch (RuntimeException e) {
       boolean eq1 =
@@ -236,7 +234,7 @@ public class TestMergeMetadataFiles {
 
     try {
       ParquetFileWriter.writeMergedMetadataFile(
-          Arrays.asList(info.commonMetaPath1, info.commonMetaPath2), mergedCommonOut, info.conf);
+          List.of(info.commonMetaPath1, info.commonMetaPath2), mergedCommonOut, info.conf);
       fail("this should throw");
     } catch (RuntimeException e) {
       boolean eq1 =
