@@ -24,7 +24,6 @@ import static org.easymock.EasyMock.verify;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
-import java.util.Arrays;
 import java.util.List;
 import org.junit.Test;
 
@@ -33,7 +32,7 @@ public class TestStrictFieldProjectionFilter {
   @Test
   public void testFromSemicolonDelimitedString() {
     List<String> globs = StrictFieldProjectionFilter.parseSemicolonDelimitedString(";x.y.z;*.a.b.c*;;foo;;;;bar;");
-    assertEquals(Arrays.asList("x.y.z", "*.a.b.c*", "foo", "bar"), globs);
+    assertEquals(List.of("x.y.z", "*.a.b.c*", "foo", "bar"), globs);
 
     try {
       StrictFieldProjectionFilter.parseSemicolonDelimitedString(";;");
@@ -113,7 +112,7 @@ public class TestStrictFieldProjectionFilter {
   @Test
   public void testWarnWhenMultiplePatternsMatch() {
     StrictFieldProjectionFilter filter = createMockBuilder(StrictFieldProjectionFilter.class)
-        .withConstructor(Arrays.asList("a.b.c.{x_average,z_average}", "a.*_average"))
+        .withConstructor(List.of("a.b.c.{x_average,z_average}", "a.*_average"))
         .addMockedMethod("warn")
         .createMock();
 
