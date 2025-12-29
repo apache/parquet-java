@@ -31,7 +31,7 @@ sudo apt-get install -qq --no-install-recommends build-essential pv autoconf aut
    libevent-dev automake libtool flex bison pkg-config g++ libssl-dev xmlstarlet
 date
 pwd
-wget -q --show-error -O- https://archive.apache.org/dist/thrift/$THRIFT_VERSION/thrift-$THRIFT_VERSION.tar.gz | tar zxf -
+wget -nv -O- https://archive.apache.org/dist/thrift/$THRIFT_VERSION/thrift-$THRIFT_VERSION.tar.gz | tar zxf -
 cd thrift-${THRIFT_VERSION}
 chmod +x ./configure
 ./configure --disable-libs
