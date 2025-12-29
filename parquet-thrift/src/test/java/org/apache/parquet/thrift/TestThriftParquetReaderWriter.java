@@ -23,7 +23,7 @@ import com.twitter.data.proto.tutorial.thrift.Name;
 import com.twitter.data.proto.tutorial.thrift.Person;
 import com.twitter.data.proto.tutorial.thrift.PhoneNumber;
 import java.io.IOException;
-import java.util.Arrays;
+import java.util.List;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -52,8 +52,8 @@ public class TestThriftParquetReaderWriter {
       fs.delete(f, true);
     }
 
-    AddressBook original = new AddressBook(Arrays.asList(new Person(
-        new Name("Bob", "Roberts"), 1, "bob@roberts.com", Arrays.asList(new PhoneNumber("5555555555")))));
+    AddressBook original = new AddressBook(List.of(new Person(
+        new Name("Bob", "Roberts"), 1, "bob@roberts.com", List.of(new PhoneNumber("5555555555")))));
 
     { // write
       ThriftParquetWriter<AddressBook> thriftParquetWriter =

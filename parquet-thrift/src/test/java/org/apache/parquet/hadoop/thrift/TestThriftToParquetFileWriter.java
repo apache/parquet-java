@@ -28,7 +28,6 @@ import com.twitter.elephantbird.thrift.test.TestListInMap;
 import com.twitter.elephantbird.thrift.test.TestMapInList;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -72,11 +71,11 @@ public class TestThriftToParquetFileWriter {
 
   @Test
   public void testWriteFile() throws IOException, InterruptedException, TException {
-    final AddressBook a = new AddressBook(Arrays.asList(new Person(
+    final AddressBook a = new AddressBook(List.of(new Person(
         new Name("Bob", "Roberts"),
         0,
         "bob.roberts@example.com",
-        Arrays.asList(new PhoneNumber("1234567890")))));
+        List.of(new PhoneNumber("1234567890")))));
 
     final Path fileToCreate = createFile(new Configuration(), a);
 
@@ -215,7 +214,7 @@ public class TestThriftToParquetFileWriter {
     map1.put("key12", "value12");
     Map<String, String> map2 = new HashMap<String, String>();
     map2.put("key21", "value21");
-    final TestMapInList listMap = new TestMapInList("listmap", Arrays.asList(map1, map2));
+    final TestMapInList listMap = new TestMapInList("listmap", List.of(map1, map2));
 
     final Path fileToCreate = createFile(new Configuration(), listMap);
 
@@ -236,7 +235,7 @@ public class TestThriftToParquetFileWriter {
   @Test
   public void testWriteFileMapOfList() throws IOException, InterruptedException, TException {
     Map<String, List<String>> map = new HashMap<String, List<String>>();
-    map.put("key", Arrays.asList("val1", "val2"));
+    map.put("key", List.of("val1", "val2"));
     final TestListInMap mapList = new TestListInMap("maplist", map);
     final Path fileToCreate = createFile(new Configuration(), mapList);
 
@@ -262,7 +261,7 @@ public class TestThriftToParquetFileWriter {
   @Test
   public void testWriteFileMapOfLists() throws IOException, InterruptedException, TException {
     Map<List<String>, List<String>> map = new HashMap<List<String>, List<String>>();
-    map.put(Arrays.asList("key1", "key2"), Arrays.asList("val1", "val2"));
+    map.put(List.of("key1", "key2"), List.of("val1", "val2"));
     final TestListsInMap mapList = new TestListsInMap("maplists", map);
     final Path fileToCreate = createFile(new Configuration(), mapList);
 
@@ -303,11 +302,11 @@ public class TestThriftToParquetFileWriter {
 
   @Test
   public void testWriteFileWithThreeLevelsList() throws IOException, InterruptedException, TException {
-    final AddressBook a = new AddressBook(Arrays.asList(new Person(
+    final AddressBook a = new AddressBook(List.of(new Person(
         new Name("Bob", "Roberts"),
         0,
         "bob.roberts@example.com",
-        Arrays.asList(new PhoneNumber("1234567890")))));
+        List.of(new PhoneNumber("1234567890")))));
 
     Configuration conf = new Configuration();
     conf.set(ParquetWriteProtocol.WRITE_THREE_LEVEL_LISTS, "true");
@@ -336,7 +335,7 @@ public class TestThriftToParquetFileWriter {
     map1.put("key12", "value12");
     Map<String, String> map2 = new HashMap<String, String>();
     map2.put("key21", "value21");
-    final TestMapInList listMap = new TestMapInList("listmap", Arrays.asList(map1, map2));
+    final TestMapInList listMap = new TestMapInList("listmap", List.of(map1, map2));
 
     Configuration conf = new Configuration();
     conf.set(ParquetWriteProtocol.WRITE_THREE_LEVEL_LISTS, "true");

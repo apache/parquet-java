@@ -26,7 +26,6 @@ import com.twitter.data.proto.tutorial.thrift.Person;
 import com.twitter.data.proto.tutorial.thrift.PhoneNumber;
 import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -82,29 +81,29 @@ public class TestParquetToThriftReadWriteAndProjection {
         + "  }\n"
         + "}";
     conf.set(ReadSupport.PARQUET_READ_SCHEMA, readProjectionSchema);
-    TBase toWrite = new AddressBook(Arrays.asList(new Person(
+    TBase toWrite = new AddressBook(List.of(new Person(
         new Name("Bob", "Roberts"),
         0,
         "bob.roberts@example.com",
-        Arrays.asList(new PhoneNumber("1234567890")))));
+        List.of(new PhoneNumber("1234567890")))));
 
-    TBase toRead = new AddressBook(Arrays.asList(new Person(new Name("Bob", "Roberts"), 0, null, null)));
+    TBase toRead = new AddressBook(List.of(new Person(new Name("Bob", "Roberts"), 0, null, null)));
     shouldDoProjection(conf, toWrite, toRead, AddressBook.class);
   }
 
   @Test
   public void testPullingInRequiredStructWithFilter() throws Exception {
     final String projectionFilterDesc = "persons/{id};persons/email";
-    TBase toWrite = new AddressBook(Arrays.asList(new Person(
+    TBase toWrite = new AddressBook(List.of(new Person(
         new Name("Bob", "Roberts"),
         0,
         "bob.roberts@example.com",
-        Arrays.asList(new PhoneNumber("1234567890")))));
+        List.of(new PhoneNumber("1234567890")))));
 
     // Name is a required field, but is projected out. To make the thrift record pass validation, the name field is
     // filled
     // with empty string
-    TBase toRead = new AddressBook(Arrays.asList(new Person(new Name("", ""), 0, "bob.roberts@example.com", null)));
+    TBase toRead = new AddressBook(List.of(new Person(new Name("", ""), 0, "bob.roberts@example.com", null)));
     shouldDoProjectionWithThriftColumnFilter(projectionFilterDesc, toWrite, toRead, AddressBook.class);
   }
 
@@ -124,14 +123,14 @@ public class TestParquetToThriftReadWriteAndProjection {
 
     final String projectionFilterDesc = "persons/name/*";
 
-    TBase toWrite = new AddressBook(Arrays.asList(new Person(
+    TBase toWrite = new AddressBook(List.of(new Person(
         new Name("Bob", "Roberts"),
         0,
         "bob.roberts@example.com",
-        Arrays.asList(new PhoneNumber("1234567890")))));
+        List.of(new PhoneNumber("1234567890")))));
 
     // emails and phones are optional fields that do not match the projection filter
-    TBase toRead = new AddressBook(Arrays.asList(new Person(new Name("Bob", "Roberts"), 0, null, null)));
+    TBase toRead = new AddressBook(List.of(new Person(new Name("Bob", "Roberts"), 0, null, null)));
 
     shouldDoProjectionWithThriftColumnFilter(projectionFilterDesc, toWrite, toRead, AddressBook.class);
   }
@@ -292,7 +291,7 @@ public class TestParquetToThriftReadWriteAndProjection {
     String filter = "info";
 
     RequiredListFixture toWrite =
-        new RequiredListFixture(Arrays.asList(new org.apache.parquet.thrift.test.Name("first_name")));
+        new RequiredListFixture(List.of(new org.apache.parquet.thrift.test.Name("first_name")));
     toWrite.setInfo("test_info");
 
     RequiredListFixture toRead = new RequiredListFixture(new ArrayList<org.apache.parquet.thrift.test.Name>());
@@ -306,7 +305,7 @@ public class TestParquetToThriftReadWriteAndProjection {
     String filter = "info";
 
     RequiredSetFixture toWrite = new RequiredSetFixture(new HashSet<org.apache.parquet.thrift.test.Name>(
-        Arrays.asList(new org.apache.parquet.thrift.test.Name("first_name"))));
+        List.of(new org.apache.parquet.thrift.test.Name("first_name"))));
     toWrite.setInfo("test_info");
 
     RequiredSetFixture toRead = new RequiredSetFixture(new HashSet<org.apache.parquet.thrift.test.Name>());

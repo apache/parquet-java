@@ -21,8 +21,9 @@ package org.apache.parquet.thrift.struct;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.File;
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.LinkedList;
+import java.util.ArrayDeque;
+import java.util.Deque;
+import java.util.List;
 import org.apache.parquet.thrift.ThriftSchemaConverter;
 import org.apache.thrift.TBase;
 
@@ -38,7 +39,7 @@ import org.apache.thrift.TBase;
  */
 public class CompatibilityRunner {
   public static void main(String[] args) throws Exception {
-    LinkedList<String> arguments = new LinkedList<String>(Arrays.asList(args));
+    Deque<String> arguments = new ArrayDeque<>(List.of(args));
     String operator = arguments.pollFirst();
     if (operator.equals("generate-json")) {
       // java CompatibilityRunner generate-json tfe_request com.twitter.logs.TfeRequestLog old_json/
@@ -50,7 +51,7 @@ public class CompatibilityRunner {
     }
   }
 
-  private static void compareJson(LinkedList<String> arguments) throws IOException {
+  private static void compareJson(Deque<String> arguments) throws IOException {
     String oldJsonPath = arguments.pollFirst();
     String newJsonPath = arguments.pollFirst();
 
@@ -83,7 +84,7 @@ public class CompatibilityRunner {
     if (!f.exists()) throw new RuntimeException("can not find file " + f);
   }
 
-  private static void generateJson(LinkedList<String> arguments) throws ClassNotFoundException, IOException {
+  private static void generateJson(Deque<String> arguments) throws ClassNotFoundException, IOException {
     String catName = arguments.pollFirst();
     String className = arguments.pollFirst();
     String storedPath = arguments.pollFirst();

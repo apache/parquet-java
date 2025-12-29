@@ -34,9 +34,9 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.apache.parquet.thrift.test.Phone;
@@ -99,12 +99,12 @@ public class TestProtocolReadToWrite {
         new Name("Bob", "Roberts"),
         1,
         "bob@roberts.com",
-        Arrays.asList(new PhoneNumber("555 999 9999"), phoneNumber)));
+        List.of(new PhoneNumber("555 999 9999"), phoneNumber)));
     persons.add(new Person(
         new Name("Dick", "Richardson"),
         2,
         "dick@richardson.com",
-        Arrays.asList(new PhoneNumber("555 999 9997"), new PhoneNumber("555 999 9996"))));
+        List.of(new PhoneNumber("555 999 9997"), new PhoneNumber("555 999 9996"))));
     AddressBook a = new AddressBook(persons);
     writeReadCompare(a);
   }
@@ -125,7 +125,7 @@ public class TestProtocolReadToWrite {
     writeReadCompare(a);
   }
 
-  private void writeReadCompare(TBase<?, ?> a) throws TException, InstantiationException, IllegalAccessException {
+  private void writeReadCompare(TBase<?, ?> a) throws TException, ReflectiveOperationException {
     ProtocolPipe[] pipes = {
       new ProtocolReadToWrite(),
       new BufferedProtocolReadToWrite(ThriftSchemaConverter.toStructType((Class<TBase<?, ?>>) a.getClass()))
@@ -135,7 +135,7 @@ public class TestProtocolReadToWrite {
       final ByteArrayOutputStream out = new ByteArrayOutputStream();
       a.write(protocol(in));
       p.readOne(protocol(new ByteArrayInputStream(in.toByteArray())), protocol(out));
-      TBase<?, ?> b = a.getClass().newInstance();
+      TBase<?, ?> b = a.getClass().getDeclaredConstructor().newInstance();
       b.read(protocol(new ByteArrayInputStream(out.toByteArray())));
 
       assertEquals(p.getClass().getSimpleName(), a, b);
@@ -381,7 +381,7 @@ public class TestProtocolReadToWrite {
     assertEquals(1, countingHandler.recordCountOfMissingFields);
     assertEquals(1, countingHandler.fieldIgnoredCount);
 
-    StructV4WithExtracStructField b = StructV4WithExtracStructField.class.newInstance();
+    StructV4WithExtracStructField b = StructV4WithExtracStructField.class.getDeclaredConstructor().newInstance();
     b.read(protocol(new ByteArrayInputStream(out.toByteArray())));
     assertEquals(dataWithNewSchema.getName(), b.getName());
     assertEquals(dataWithNewSchema.getAge(), b.getAge());

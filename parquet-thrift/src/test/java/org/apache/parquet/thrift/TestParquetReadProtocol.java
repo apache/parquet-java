@@ -34,7 +34,6 @@ import com.twitter.elephantbird.thrift.test.TestPhoneType;
 import com.twitter.elephantbird.thrift.test.TestStructInMap;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -114,13 +113,13 @@ public class TestParquetReadProtocol {
   public void testRead() throws Exception {
     final PhoneNumber phoneNumber = new PhoneNumber("5555555555");
     phoneNumber.type = MOBILE;
-    List<Person> persons = Arrays.asList(
-        new Person(new Name("john", "johson"), 1, "john@johnson.org", Arrays.asList(phoneNumber)),
+    List<Person> persons = List.of(
+        new Person(new Name("john", "johson"), 1, "john@johnson.org", List.of(phoneNumber)),
         new Person(
             new Name("jack", "jackson"),
             2,
             "jack@jackson.org",
-            Arrays.asList(new PhoneNumber("5555555556"))));
+            List.of(new PhoneNumber("5555555556"))));
     AddressBook expected = new AddressBook(persons);
     validate(expected);
   }
