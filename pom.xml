@@ -400,14 +400,6 @@
           <header>src/license.txt</header>
           <strictCheck>true</strictCheck>
         </configuration>
-        <!--executions>
-          <execution>
-            <phase>test</phase>
-            <goals>
-              <goal>check</goal>
-            </goals>
-          </execution>
-        </executions-->
       </plugin>
 
       <plugin>
