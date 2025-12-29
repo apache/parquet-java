@@ -531,7 +531,7 @@ public class TestParquetMetadataConverter {
           size * 2,
           size,
           offset));
-      rowGroups.add(new RowGroup(Arrays.asList(columnChunk), size, 1));
+      rowGroups.add(new RowGroup(List.of(columnChunk), size, 1));
       offset += size;
     }
     return new FileMetaData(1, schema, sizes.length, rowGroups);
@@ -722,12 +722,12 @@ public class TestParquetMetadataConverter {
   public void testEncodingsCache() {
     ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
 
-    List<org.apache.parquet.format.Encoding> formatEncodingsCopy1 = Arrays.asList(
+    List<org.apache.parquet.format.Encoding> formatEncodingsCopy1 = List.of(
         org.apache.parquet.format.Encoding.BIT_PACKED,
         org.apache.parquet.format.Encoding.RLE_DICTIONARY,
         org.apache.parquet.format.Encoding.DELTA_LENGTH_BYTE_ARRAY);
 
-    List<org.apache.parquet.format.Encoding> formatEncodingsCopy2 = Arrays.asList(
+    List<org.apache.parquet.format.Encoding> formatEncodingsCopy2 = List.of(
         org.apache.parquet.format.Encoding.BIT_PACKED,
         org.apache.parquet.format.Encoding.RLE_DICTIONARY,
         org.apache.parquet.format.Encoding.DELTA_LENGTH_BYTE_ARRAY);
@@ -1451,14 +1451,14 @@ public class TestParquetMetadataConverter {
           ParquetMetadataConverter.toParquetColumnIndex(type, builder.build());
       ColumnIndex columnIndex = ParquetMetadataConverter.fromParquetColumnIndex(type, parquetColumnIndex);
       assertEquals(BoundaryOrder.ASCENDING, columnIndex.getBoundaryOrder());
-      assertTrue(Arrays.asList(false, true, false).equals(columnIndex.getNullPages()));
-      assertTrue(Arrays.asList(16l, 111l, 0l).equals(columnIndex.getNullCounts()));
-      assertTrue(Arrays.asList(
+      assertTrue(List.of(false, true, false).equals(columnIndex.getNullPages()));
+      assertTrue(List.of(16l, 111l, 0l).equals(columnIndex.getNullCounts()));
+      assertTrue(List.of(
               ByteBuffer.wrap(BytesUtils.longToBytes(-100l)),
               ByteBuffer.allocate(0),
               ByteBuffer.wrap(BytesUtils.longToBytes(200l)))
           .equals(columnIndex.getMinValues()));
-      assertTrue(Arrays.asList(
+      assertTrue(List.of(
               ByteBuffer.wrap(BytesUtils.longToBytes(100l)),
               ByteBuffer.allocate(0),
               ByteBuffer.wrap(BytesUtils.longToBytes(500l)))
@@ -1656,8 +1656,8 @@ public class TestParquetMetadataConverter {
   @Test
   public void testSizeStatisticsConversion() {
     PrimitiveType type = Types.required(PrimitiveTypeName.BINARY).named("test");
-    List<Long> repLevelHistogram = Arrays.asList(1L, 2L, 3L, 4L, 5L);
-    List<Long> defLevelHistogram = Arrays.asList(6L, 7L, 8L, 9L, 10L);
+    List<Long> repLevelHistogram = List.of(1L, 2L, 3L, 4L, 5L);
+    List<Long> defLevelHistogram = List.of(6L, 7L, 8L, 9L, 10L);
     SizeStatistics sizeStatistics = ParquetMetadataConverter.fromParquetSizeStatistics(
         ParquetMetadataConverter.toParquetSizeStatistics(
             new SizeStatistics(type, 1024, repLevelHistogram, defLevelHistogram)),
@@ -1820,7 +1820,7 @@ public class TestParquetMetadataConverter {
             );
 
     // Create GeospatialTypes with some example type values
-    Set<Integer> types = new HashSet<>(Arrays.asList(1, 2, 3));
+    Set<Integer> types = new HashSet<>(List.of(1, 2, 3));
     GeospatialTypes geospatialTypes = new GeospatialTypes(types);
 
     // Create GeospatialStatistics with the bbox and types
@@ -1891,7 +1891,7 @@ public class TestParquetMetadataConverter {
     ParquetMetadataConverter converter = new ParquetMetadataConverter();
 
     // Create GeospatialStatistics with null bbox but valid types
-    Set<Integer> types = new HashSet<>(Arrays.asList(1, 2, 3));
+    Set<Integer> types = new HashSet<>(List.of(1, 2, 3));
     GeospatialTypes geospatialTypes = new GeospatialTypes(types);
     org.apache.parquet.column.statistics.geospatial.GeospatialStatistics origStats =
         new org.apache.parquet.column.statistics.geospatial.GeospatialStatistics(null, geospatialTypes);

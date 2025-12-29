@@ -18,7 +18,6 @@
  */
 package org.apache.parquet.hadoop;
 
-import static java.util.Arrays.asList;
 import static org.apache.parquet.column.Encoding.DELTA_BYTE_ARRAY;
 import static org.apache.parquet.column.Encoding.PLAIN;
 import static org.apache.parquet.column.Encoding.PLAIN_DICTIONARY;
@@ -47,6 +46,7 @@ import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
@@ -166,7 +166,7 @@ public class TestParquetWriter {
     expected.put("1000-" + PARQUET_1_0, PLAIN);
     expected.put("10-" + PARQUET_2_0, RLE_DICTIONARY);
     expected.put("1000-" + PARQUET_2_0, DELTA_BYTE_ARRAY);
-    for (int modulo : asList(10, 1000)) {
+    for (int modulo : List.of(10, 1000)) {
       for (WriterVersion version : WriterVersion.values()) {
         Path file = new Path(root, version.name() + "_" + modulo);
         ParquetWriter<Group> writer = ExampleParquetWriter.builder(new TestOutputFile(file, conf))

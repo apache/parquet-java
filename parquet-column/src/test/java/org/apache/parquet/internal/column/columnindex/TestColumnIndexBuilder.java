@@ -18,7 +18,6 @@
  */
 package org.apache.parquet.internal.column.columnindex;
 
-import static java.util.Arrays.asList;
 import static org.apache.parquet.filter2.predicate.FilterApi.and;
 import static org.apache.parquet.filter2.predicate.FilterApi.binaryColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.booleanColumn;
@@ -688,8 +687,8 @@ public class TestColumnIndexBuilder {
     ColumnIndex columnIndex = ColumnIndexBuilder.build(
         Types.required(BINARY).as(UTF8).named("test_binary_utf8"),
         BoundaryOrder.ASCENDING,
-        asList(true, true, false, false, true, false, true, false),
-        asList(1l, 2l, 3l, 4l, 5l, 6l, 7l, 8l),
+        List.of(true, true, false, false, true, false, true, false),
+        List.of(1l, 2l, 3l, 4l, 5l, 6l, 7l, 8l),
         toBBList(
             null,
             null,
@@ -738,7 +737,7 @@ public class TestColumnIndexBuilder {
     ColumnIndex columnIndex = ColumnIndexBuilder.build(
         Types.required(BINARY).as(UTF8).named("test_binary_utf8"),
         BoundaryOrder.ASCENDING,
-        asList(true, true, false, false, true, false, true, false),
+        List.of(true, true, false, false, true, false, true, false),
         null,
         toBBList(
             null,
@@ -904,8 +903,8 @@ public class TestColumnIndexBuilder {
     ColumnIndex columnIndex = ColumnIndexBuilder.build(
         Types.required(BOOLEAN).named("test_boolean"),
         BoundaryOrder.DESCENDING,
-        asList(false, true, false, true, false, true),
-        asList(9l, 8l, 7l, 6l, 5l, 0l),
+        List.of(false, true, false, true, false, true),
+        List.of(9l, 8l, 7l, 6l, 5l, 0l),
         toBBList(false, null, false, null, true, null),
         toBBList(true, null, false, null, true, null));
     assertEquals(BoundaryOrder.DESCENDING, columnIndex.getBoundaryOrder());
@@ -1058,8 +1057,8 @@ public class TestColumnIndexBuilder {
     ColumnIndex columnIndex = ColumnIndexBuilder.build(
         Types.required(DOUBLE).named("test_double"),
         BoundaryOrder.UNORDERED,
-        asList(false, false, false, false, false, false),
-        asList(0l, 1l, 2l, 3l, 4l, 5l),
+        List.of(false, false, false, false, false, false),
+        List.of(0l, 1l, 2l, 3l, 4l, 5l),
         toBBList(-1.0, -2.0, -3.0, -4.0, -5.0, -6.0),
         toBBList(1.0, 2.0, 3.0, 4.0, 5.0, 6.0));
     assertEquals(BoundaryOrder.UNORDERED, columnIndex.getBoundaryOrder());
@@ -1211,8 +1210,8 @@ public class TestColumnIndexBuilder {
     ColumnIndex columnIndex = ColumnIndexBuilder.build(
         Types.required(FLOAT).named("test_float"),
         BoundaryOrder.ASCENDING,
-        asList(true, true, true, false, false, false),
-        asList(9l, 8l, 7l, 6l, 0l, 0l),
+        List.of(true, true, true, false, false, false),
+        List.of(9l, 8l, 7l, 6l, 0l, 0l),
         toBBList(null, null, null, -3.0f, -2.0f, 0.1f),
         toBBList(null, null, null, -2.0f, 0.0f, 6.0f));
     assertEquals(BoundaryOrder.ASCENDING, columnIndex.getBoundaryOrder());
@@ -1345,8 +1344,8 @@ public class TestColumnIndexBuilder {
     ColumnIndex columnIndex = ColumnIndexBuilder.build(
         Types.required(INT32).named("test_int32"),
         BoundaryOrder.DESCENDING,
-        asList(false, false, false, true, true, true),
-        asList(0l, 10l, 0l, 3l, 5l, 7l),
+        List.of(false, false, false, true, true, true),
+        List.of(0l, 10l, 0l, 3l, 5l, 7l),
         toBBList(10, 8, 6, null, null, null),
         toBBList(9, 7, 5, null, null, null));
     assertEquals(BoundaryOrder.DESCENDING, columnIndex.getBoundaryOrder());
@@ -1597,8 +1596,8 @@ public class TestColumnIndexBuilder {
     ColumnIndex columnIndex = ColumnIndexBuilder.build(
         Types.required(INT64).named("test_int64"),
         BoundaryOrder.UNORDERED,
-        asList(true, false, true, false, true, false),
-        asList(1l, 2l, 3l, 4l, 5l, 6l),
+        List.of(true, false, true, false, true, false),
+        List.of(1l, 2l, 3l, 4l, 5l, 6l),
         toBBList(null, 2l, null, 4l, null, 9l),
         toBBList(null, 3l, null, 15l, null, 10l));
     assertEquals(BoundaryOrder.UNORDERED, columnIndex.getBoundaryOrder());

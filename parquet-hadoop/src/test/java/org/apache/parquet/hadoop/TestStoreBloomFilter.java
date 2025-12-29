@@ -24,7 +24,6 @@ import static org.apache.parquet.hadoop.TestBloomFiltering.generateDictionaryDat
 
 import java.io.IOException;
 import java.nio.file.Files;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -62,7 +61,7 @@ public class TestStoreBloomFilter {
 
   @Parameterized.Parameters(name = "Run {index}: parquet {1}")
   public static Collection<Object[]> params() {
-    return Arrays.asList(new Object[] {FILE_V1, "v1"}, new Object[] {FILE_V2, "v2"});
+    return List.of(new Object[] {FILE_V1, "v1"}, new Object[] {FILE_V2, "v2"});
   }
 
   @BeforeClass

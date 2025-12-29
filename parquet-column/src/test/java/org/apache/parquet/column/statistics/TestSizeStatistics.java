@@ -18,8 +18,8 @@
  */
 package org.apache.parquet.column.statistics;
 
-import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
@@ -47,8 +47,8 @@ public class TestSizeStatistics {
     builder.add(1, 1);
     SizeStatistics statistics = builder.build();
     Assert.assertEquals(Optional.of(3L), statistics.getUnencodedByteArrayDataBytes());
-    Assert.assertEquals(Arrays.asList(3L, 3L, 1L), statistics.getRepetitionLevelHistogram());
-    Assert.assertEquals(Arrays.asList(2L, 2L, 3L), statistics.getDefinitionLevelHistogram());
+    Assert.assertEquals(List.of(3L, 3L, 1L), statistics.getRepetitionLevelHistogram());
+    Assert.assertEquals(List.of(2L, 2L, 3L), statistics.getDefinitionLevelHistogram());
   }
 
   @Test
@@ -67,7 +67,7 @@ public class TestSizeStatistics {
     builder.add(1, 0);
     SizeStatistics statistics = builder.build();
     Assert.assertEquals(Optional.empty(), statistics.getUnencodedByteArrayDataBytes());
-    Assert.assertEquals(Arrays.asList(2L, 4L), statistics.getRepetitionLevelHistogram());
+    Assert.assertEquals(List.of(2L, 4L), statistics.getRepetitionLevelHistogram());
     Assert.assertEquals(Collections.emptyList(), statistics.getDefinitionLevelHistogram());
   }
 
@@ -89,8 +89,8 @@ public class TestSizeStatistics {
     SizeStatistics statistics2 = builder2.build();
     statistics1.mergeStatistics(statistics2);
     Assert.assertEquals(Optional.of(5L), statistics1.getUnencodedByteArrayDataBytes());
-    Assert.assertEquals(Arrays.asList(3L, 1L, 1L), statistics1.getRepetitionLevelHistogram());
-    Assert.assertEquals(Arrays.asList(1L, 3L, 1L), statistics1.getDefinitionLevelHistogram());
+    Assert.assertEquals(List.of(3L, 1L, 1L), statistics1.getRepetitionLevelHistogram());
+    Assert.assertEquals(List.of(1L, 3L, 1L), statistics1.getDefinitionLevelHistogram());
   }
 
   @Test
@@ -122,8 +122,8 @@ public class TestSizeStatistics {
     SizeStatistics statistics = builder.build();
     SizeStatistics copy = statistics.copy();
     Assert.assertEquals(Optional.of(3L), copy.getUnencodedByteArrayDataBytes());
-    Assert.assertEquals(Arrays.asList(1L, 1L, 1L), copy.getRepetitionLevelHistogram());
-    Assert.assertEquals(Arrays.asList(1L, 1L, 1L), copy.getDefinitionLevelHistogram());
+    Assert.assertEquals(List.of(1L, 1L, 1L), copy.getRepetitionLevelHistogram());
+    Assert.assertEquals(List.of(1L, 1L, 1L), copy.getDefinitionLevelHistogram());
   }
 
   @Test

@@ -23,7 +23,6 @@ import static org.apache.parquet.hadoop.ParquetFileWriter.PARQUET_METADATA_FILE;
 
 import java.net.URI;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Deque;
 import java.util.LinkedHashMap;
@@ -77,7 +76,7 @@ public class PrintFooter {
       List<FileStatus> statuses;
       if (fileStatus.isDir()) {
         System.out.println("listing files in " + fileStatus.getPath());
-        statuses = Arrays.asList(fs.listStatus(fileStatus.getPath(), HiddenFileFilter.INSTANCE));
+        statuses = List.of(fs.listStatus(fileStatus.getPath(), HiddenFileFilter.INSTANCE));
       } else {
         statuses = new ArrayList<FileStatus>();
         statuses.add(fileStatus);

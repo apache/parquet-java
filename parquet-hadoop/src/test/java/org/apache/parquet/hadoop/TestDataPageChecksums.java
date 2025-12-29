@@ -320,7 +320,7 @@ public class TestDataPageChecksums {
 
     Path path = writeSimpleParquetFile(conf, CompressionCodecName.UNCOMPRESSED, version);
 
-    try (ParquetFileReader reader = getParquetFileReader(path, conf, Arrays.asList(colADesc, colBDesc))) {
+    try (ParquetFileReader reader = getParquetFileReader(path, conf, List.of(colADesc, colBDesc))) {
       PageReadStore pageReadStore = reader.readNextRowGroup();
 
       DataPage colAPage1 = readNextPage(colADesc, pageReadStore);
@@ -361,7 +361,7 @@ public class TestDataPageChecksums {
 
     Path path = writeSimpleParquetFile(conf, CompressionCodecName.UNCOMPRESSED, version);
 
-    try (ParquetFileReader reader = getParquetFileReader(path, conf, Arrays.asList(colADesc, colBDesc))) {
+    try (ParquetFileReader reader = getParquetFileReader(path, conf, List.of(colADesc, colBDesc))) {
       PageReadStore pageReadStore = reader.readNextRowGroup();
 
       assertCrcNotSet(readNextPage(colADesc, pageReadStore));
@@ -392,7 +392,7 @@ public class TestDataPageChecksums {
 
     Path path = writeSimpleParquetFile(conf, CompressionCodecName.UNCOMPRESSED, version);
 
-    try (ParquetFileReader reader = getParquetFileReader(path, conf, Arrays.asList(colADesc, colBDesc))) {
+    try (ParquetFileReader reader = getParquetFileReader(path, conf, List.of(colADesc, colBDesc))) {
       PageReadStore pageReadStore = reader.readNextRowGroup();
 
       assertCorrectContent(getPageBytes(readNextPage(colADesc, pageReadStore)), colAPage1Bytes);
@@ -423,7 +423,7 @@ public class TestDataPageChecksums {
 
     Path path = writeSimpleParquetFile(conf, CompressionCodecName.UNCOMPRESSED, version);
 
-    try (ParquetFileReader reader = getParquetFileReader(path, conf, Arrays.asList(colADesc, colBDesc))) {
+    try (ParquetFileReader reader = getParquetFileReader(path, conf, List.of(colADesc, colBDesc))) {
       PageReadStore pageReadStore = reader.readNextRowGroup();
 
       DataPage colAPage1 = readNextPage(colADesc, pageReadStore);
@@ -484,7 +484,7 @@ public class TestDataPageChecksums {
         // First we disable checksum verification, the corruption will go undetected as it is in the
         // data section of the page
         conf.setBoolean(ParquetInputFormat.PAGE_VERIFY_CHECKSUM_ENABLED, false);
-        try (ParquetFileReader reader = getParquetFileReader(path, conf, Arrays.asList(colADesc, colBDesc))) {
+        try (ParquetFileReader reader = getParquetFileReader(path, conf, List.of(colADesc, colBDesc))) {
           PageReadStore pageReadStore = reader.readNextRowGroup();
 
           DataPage colAPage1 = readNextPage(colADesc, pageReadStore);
@@ -499,7 +499,7 @@ public class TestDataPageChecksums {
 
         // Now we enable checksum verification, the corruption should be detected
         conf.setBoolean(ParquetInputFormat.PAGE_VERIFY_CHECKSUM_ENABLED, true);
-        try (ParquetFileReader reader = getParquetFileReader(path, conf, Arrays.asList(colADesc, colBDesc))) {
+        try (ParquetFileReader reader = getParquetFileReader(path, conf, List.of(colADesc, colBDesc))) {
           // We expect an exception on the first encountered corrupt page (in readAllPages)
           assertVerificationFailed(reader);
         }
@@ -528,7 +528,7 @@ public class TestDataPageChecksums {
 
     Path path = writeSimpleParquetFile(conf, CompressionCodecName.SNAPPY, version);
 
-    try (ParquetFileReader reader = getParquetFileReader(path, conf, Arrays.asList(colADesc, colBDesc))) {
+    try (ParquetFileReader reader = getParquetFileReader(path, conf, List.of(colADesc, colBDesc))) {
       PageReadStore pageReadStore = reader.readNextRowGroup();
 
       DataPage colAPage1 = readNextPage(colADesc, pageReadStore);
@@ -574,8 +574,7 @@ public class TestDataPageChecksums {
     conf.setBoolean(ParquetInputFormat.PAGE_VERIFY_CHECKSUM_ENABLED, false);
     Path refPath = writeNestedWithNullsSampleParquetFile(conf, false, CompressionCodecName.SNAPPY, version);
 
-    try (ParquetFileReader refReader =
-        getParquetFileReader(refPath, conf, Arrays.asList(colCIdDesc, colDValDesc))) {
+    try (ParquetFileReader refReader = getParquetFileReader(refPath, conf, List.of(colCIdDesc, colDValDesc))) {
       PageReadStore refPageReadStore = refReader.readNextRowGroup();
       byte[] colCIdPageBytes = getPageBytes(readNextPage(colCIdDesc, refPageReadStore));
       byte[] colDValPageBytes = getPageBytes(readNextPage(colDValDesc, refPageReadStore));
@@ -585,7 +584,7 @@ public class TestDataPageChecksums {
       conf.setBoolean(ParquetInputFormat.PAGE_VERIFY_CHECKSUM_ENABLED, true);
       Path path = writeNestedWithNullsSampleParquetFile(conf, false, CompressionCodecName.SNAPPY, version);
 
-      try (ParquetFileReader reader = getParquetFileReader(path, conf, Arrays.asList(colCIdDesc, colDValDesc))) {
+      try (ParquetFileReader reader = getParquetFileReader(path, conf, List.of(colCIdDesc, colDValDesc))) {
         PageReadStore pageReadStore = reader.readNextRowGroup();
 
         DataPage colCIdPage = readNextPage(colCIdDesc, pageReadStore);
