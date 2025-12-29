@@ -15,7 +15,6 @@
  */
 package org.apache.parquet.hadoop.thrift;
 
-import com.twitter.elephantbird.pig.util.ThriftToPig;
 import java.util.Map;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.conf.HadoopParquetConfiguration;
@@ -25,13 +24,11 @@ import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.io.ColumnIOFactory;
 import org.apache.parquet.io.MessageColumnIO;
 import org.apache.parquet.io.api.RecordConsumer;
-import org.apache.parquet.pig.PigMetaData;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.thrift.ParquetWriteProtocol;
 import org.apache.parquet.thrift.ThriftMetaData;
 import org.apache.parquet.thrift.ThriftSchemaConverter;
 import org.apache.parquet.thrift.struct.ThriftType.StructType;
-import org.apache.thrift.TBase;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -99,24 +96,8 @@ public abstract class AbstractThriftWriteSupport<T> extends WriteSupport<T> {
 
     final Map<String, String> extraMetaData =
         new ThriftMetaData(thriftClass.getName(), thriftStruct).toExtraMetaData();
-    // adding the Pig schema as it would have been mapped from thrift
-    // TODO: make this work for non-tbase types
-    if (isPigLoaded() && TBase.class.isAssignableFrom(thriftClass)) {
-      new PigMetaData(new ThriftToPig((Class<? extends TBase<?, ?>>) thriftClass).toSchema())
-          .addToMetaData(extraMetaData);
-    }
 
     this.writeContext = new WriteContext(schema, extraMetaData);
-  }
-
-  protected boolean isPigLoaded() {
-    try {
-      Class.forName("org.apache.pig.impl.logicalLayer.schema.Schema");
-      return true;
-    } catch (ClassNotFoundException e) {
-      LOG.info("Pig is not loaded, pig metadata will not be written");
-      return false;
-    }
   }
 
   @Override
