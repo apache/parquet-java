@@ -27,7 +27,7 @@ set -o pipefail
 date
 sudo apt-get update -qq
 sudo apt-get install -qq --no-install-recommends build-essential pv autoconf automake libtool curl make \
-   g++ unzip libboost-dev libboost-test-dev libboost-program-options-dev \
+   g++ unzip libboost-dev libboost-test-dev libboost-program-options-dev wget \
    libevent-dev automake libtool flex bison pkg-config g++ libssl-dev xmlstarlet
 date
 pwd
