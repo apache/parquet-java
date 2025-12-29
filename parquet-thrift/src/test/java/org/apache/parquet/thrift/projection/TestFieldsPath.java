@@ -47,10 +47,12 @@ public class TestFieldsPath {
     StructType person = ThriftSchemaConverter.toStructType(Person.class);
 
     List<String> paths = PrimitivePathVisitor.visit(person, ".");
-    assertEquals(List.of("name.first_name", "name.last_name", "id", "email", "phones.number", "phones.type"), paths);
+    assertEquals(
+        List.of("name.first_name", "name.last_name", "id", "email", "phones.number", "phones.type"), paths);
 
     paths = PrimitivePathVisitor.visit(person, "/");
-    assertEquals(List.of("name/first_name", "name/last_name", "id", "email", "phones/number", "phones/type"), paths);
+    assertEquals(
+        List.of("name/first_name", "name/last_name", "id", "email", "phones/number", "phones/type"), paths);
 
     StructType structInMap = ThriftSchemaConverter.toStructType(TestStructInMap.class);
 

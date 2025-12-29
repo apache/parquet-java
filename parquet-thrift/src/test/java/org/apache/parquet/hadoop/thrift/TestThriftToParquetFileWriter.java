@@ -72,10 +72,7 @@ public class TestThriftToParquetFileWriter {
   @Test
   public void testWriteFile() throws IOException, InterruptedException, TException {
     final AddressBook a = new AddressBook(List.of(new Person(
-        new Name("Bob", "Roberts"),
-        0,
-        "bob.roberts@example.com",
-        List.of(new PhoneNumber("1234567890")))));
+        new Name("Bob", "Roberts"), 0, "bob.roberts@example.com", List.of(new PhoneNumber("1234567890")))));
 
     final Path fileToCreate = createFile(new Configuration(), a);
 
@@ -303,10 +300,7 @@ public class TestThriftToParquetFileWriter {
   @Test
   public void testWriteFileWithThreeLevelsList() throws IOException, InterruptedException, TException {
     final AddressBook a = new AddressBook(List.of(new Person(
-        new Name("Bob", "Roberts"),
-        0,
-        "bob.roberts@example.com",
-        List.of(new PhoneNumber("1234567890")))));
+        new Name("Bob", "Roberts"), 0, "bob.roberts@example.com", List.of(new PhoneNumber("1234567890")))));
 
     Configuration conf = new Configuration();
     conf.set(ParquetWriteProtocol.WRITE_THREE_LEVEL_LISTS, "true");

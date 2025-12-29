@@ -154,7 +154,9 @@ public class ThriftBytesWriteSupport extends WriteSupport<BytesWritable> {
     this.configuration = configuration;
     if (this.protocolFactory == null) {
       try {
-        this.protocolFactory = getTProtocolFactoryClass(configuration).getDeclaredConstructor().newInstance();
+        this.protocolFactory = getTProtocolFactoryClass(configuration)
+            .getDeclaredConstructor()
+            .newInstance();
       } catch (ReflectiveOperationException e) {
         throw new RuntimeException(e);
       }

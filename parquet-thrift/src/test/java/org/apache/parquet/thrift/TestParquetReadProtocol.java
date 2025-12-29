@@ -115,11 +115,7 @@ public class TestParquetReadProtocol {
     phoneNumber.type = MOBILE;
     List<Person> persons = List.of(
         new Person(new Name("john", "johson"), 1, "john@johnson.org", List.of(phoneNumber)),
-        new Person(
-            new Name("jack", "jackson"),
-            2,
-            "jack@jackson.org",
-            List.of(new PhoneNumber("5555555556"))));
+        new Person(new Name("jack", "jackson"), 2, "jack@jackson.org", List.of(new PhoneNumber("5555555556"))));
     AddressBook expected = new AddressBook(persons);
     validate(expected);
   }

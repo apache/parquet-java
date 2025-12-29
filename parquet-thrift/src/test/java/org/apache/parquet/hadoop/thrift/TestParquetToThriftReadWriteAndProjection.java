@@ -82,10 +82,7 @@ public class TestParquetToThriftReadWriteAndProjection {
         + "}";
     conf.set(ReadSupport.PARQUET_READ_SCHEMA, readProjectionSchema);
     TBase toWrite = new AddressBook(List.of(new Person(
-        new Name("Bob", "Roberts"),
-        0,
-        "bob.roberts@example.com",
-        List.of(new PhoneNumber("1234567890")))));
+        new Name("Bob", "Roberts"), 0, "bob.roberts@example.com", List.of(new PhoneNumber("1234567890")))));
 
     TBase toRead = new AddressBook(List.of(new Person(new Name("Bob", "Roberts"), 0, null, null)));
     shouldDoProjection(conf, toWrite, toRead, AddressBook.class);
@@ -95,10 +92,7 @@ public class TestParquetToThriftReadWriteAndProjection {
   public void testPullingInRequiredStructWithFilter() throws Exception {
     final String projectionFilterDesc = "persons/{id};persons/email";
     TBase toWrite = new AddressBook(List.of(new Person(
-        new Name("Bob", "Roberts"),
-        0,
-        "bob.roberts@example.com",
-        List.of(new PhoneNumber("1234567890")))));
+        new Name("Bob", "Roberts"), 0, "bob.roberts@example.com", List.of(new PhoneNumber("1234567890")))));
 
     // Name is a required field, but is projected out. To make the thrift record pass validation, the name field is
     // filled
@@ -124,10 +118,7 @@ public class TestParquetToThriftReadWriteAndProjection {
     final String projectionFilterDesc = "persons/name/*";
 
     TBase toWrite = new AddressBook(List.of(new Person(
-        new Name("Bob", "Roberts"),
-        0,
-        "bob.roberts@example.com",
-        List.of(new PhoneNumber("1234567890")))));
+        new Name("Bob", "Roberts"), 0, "bob.roberts@example.com", List.of(new PhoneNumber("1234567890")))));
 
     // emails and phones are optional fields that do not match the projection filter
     TBase toRead = new AddressBook(List.of(new Person(new Name("Bob", "Roberts"), 0, null, null)));

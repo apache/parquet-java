@@ -52,8 +52,8 @@ public class TestThriftParquetReaderWriter {
       fs.delete(f, true);
     }
 
-    AddressBook original = new AddressBook(List.of(new Person(
-        new Name("Bob", "Roberts"), 1, "bob@roberts.com", List.of(new PhoneNumber("5555555555")))));
+    AddressBook original = new AddressBook(List.of(
+        new Person(new Name("Bob", "Roberts"), 1, "bob@roberts.com", List.of(new PhoneNumber("5555555555")))));
 
     { // write
       ThriftParquetWriter<AddressBook> thriftParquetWriter =

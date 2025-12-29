@@ -59,7 +59,8 @@ public class TBaseRecordConverter<T extends TBase<?, ?>> extends ThriftRecordCon
           @Override
           public T readOneRecord(TProtocol protocol) throws TException {
             try {
-              T thriftObject = thriftClass.getDeclaredConstructor().newInstance();
+              T thriftObject =
+                  thriftClass.getDeclaredConstructor().newInstance();
               thriftObject.read(protocol);
               return thriftObject;
             } catch (ReflectiveOperationException e) {

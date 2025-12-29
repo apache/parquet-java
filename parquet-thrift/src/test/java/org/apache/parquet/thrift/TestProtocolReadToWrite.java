@@ -381,7 +381,8 @@ public class TestProtocolReadToWrite {
     assertEquals(1, countingHandler.recordCountOfMissingFields);
     assertEquals(1, countingHandler.fieldIgnoredCount);
 
-    StructV4WithExtracStructField b = StructV4WithExtracStructField.class.getDeclaredConstructor().newInstance();
+    StructV4WithExtracStructField b =
+        StructV4WithExtracStructField.class.getDeclaredConstructor().newInstance();
     b.read(protocol(new ByteArrayInputStream(out.toByteArray())));
     assertEquals(dataWithNewSchema.getName(), b.getName());
     assertEquals(dataWithNewSchema.getAge(), b.getAge());
