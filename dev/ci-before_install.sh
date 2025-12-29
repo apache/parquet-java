@@ -31,7 +31,16 @@ sudo apt-get install -qq --no-install-recommends build-essential pv autoconf aut
    libevent-dev automake libtool flex bison pkg-config g++ libssl-dev xmlstarlet
 date
 pwd
-wget -nv -O- https://archive.apache.org/dist/thrift/$THRIFT_VERSION/thrift-$THRIFT_VERSION.tar.gz | tar zxf -
+for attempt in 1 2 3; do
+  if wget -nv -O- https://archive.apache.org/dist/thrift/$THRIFT_VERSION/thrift-$THRIFT_VERSION.tar.gz | tar zxf -; then
+    break
+  fi
+  if [[ "$attempt" -eq 3 ]]; then
+    echo "Failed to download thrift after ${attempt} attempts." >&2
+    exit 1
+  fi
+  sleep $((attempt * 5))
+done
 cd thrift-${THRIFT_VERSION}
 chmod +x ./configure
 ./configure --disable-libs
