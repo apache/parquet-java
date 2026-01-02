@@ -708,7 +708,9 @@ public class TestAvroSchemaConverter {
 
     // Test that conversions for timestamp types only use APIs that are available in the user's Avro version
     for (String avroVersion : ImmutableSet.of("1.7.0", "1.8.0", "1.9.0", "1.10.0", "1.11.0")) {
-      avroRecordConverterMock.when(AvroRecordConverter::getRuntimeAvroVersion).thenReturn(avroVersion);
+      avroRecordConverterMock
+          .when(AvroRecordConverter::getRuntimeAvroVersion)
+          .thenReturn(avroVersion);
       final Schema converted = new AvroSchemaConverter()
           .convert(Types.buildMessage()
               .addField(Types.primitive(INT64, Type.Repetition.REQUIRED)
@@ -794,7 +796,9 @@ public class TestAvroSchemaConverter {
 
     // Test that conversions for timestamp types only use APIs that are available in the user's Avro version
     for (String avroVersion : ImmutableSet.of("1.7.0", "1.8.0", "1.9.0", "1.10.0", "1.11.0")) {
-      avroRecordConverterMock.when(AvroRecordConverter::getRuntimeAvroVersion).thenReturn(avroVersion);
+      avroRecordConverterMock
+          .when(AvroRecordConverter::getRuntimeAvroVersion)
+          .thenReturn(avroVersion);
       final Schema converted = new AvroSchemaConverter()
           .convert(Types.buildMessage()
               .addField(Types.primitive(INT64, Type.Repetition.REQUIRED)
