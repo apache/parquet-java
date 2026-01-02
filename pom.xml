@@ -98,8 +98,7 @@
     <avro.version>1.11.5</avro.version>
     <guava.version>33.5.0-jre</guava.version>
     <brotli-codec.version>0.1.1</brotli-codec.version>
-    <mockito.version>1.10.19</mockito.version>
-    <powermock.version>2.0.9</powermock.version>
+    <mockito.version>5.21.0</mockito.version>
     <net.openhft.version>0.27ea0</net.openhft.version>
     <exec-maven-plugin.version>3.5.0</exec-maven-plugin.version>
     <jts.version>1.20.0</jts.version>
@@ -161,12 +160,6 @@
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
       <version>4.13.2</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.easymock</groupId>
-      <artifactId>easymock</artifactId>
-      <version>5.6.0</version>
       <scope>test</scope>
     </dependency>
   </dependencies>
