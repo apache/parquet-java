@@ -18,11 +18,12 @@
  */
 package org.apache.parquet.thrift.projection;
 
-import static org.easymock.EasyMock.createMockBuilder;
-import static org.easymock.EasyMock.replay;
-import static org.easymock.EasyMock.verify;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
 
 import java.util.Arrays;
 import java.util.List;
@@ -112,23 +113,18 @@ public class TestStrictFieldProjectionFilter {
 
   @Test
   public void testWarnWhenMultiplePatternsMatch() {
-    StrictFieldProjectionFilter filter = createMockBuilder(StrictFieldProjectionFilter.class)
-        .withConstructor(Arrays.asList("a.b.c.{x_average,z_average}", "a.*_average"))
-        .addMockedMethod("warn")
-        .createMock();
-
-    // set expectations
-    filter.warn("Field path: 'a.b.c.x_average' matched more than one glob path pattern. "
-        + "First match: 'a.b.c.{x_average,z_average}' (when expanded to 'a.b.c.x_average') "
-        + "second match:'a.*_average' (when expanded to 'a.*_average')");
-    filter.warn("Field path: 'a.b.c.z_average' matched more than one glob path pattern. "
-        + "First match: 'a.b.c.{x_average,z_average}' (when expanded to 'a.b.c.z_average') "
-        + "second match:'a.*_average' (when expanded to 'a.*_average')");
-
-    replay(filter);
+    StrictFieldProjectionFilter filter = spy(new StrictFieldProjectionFilter(
+        Arrays.asList("a.b.c.{x_average,z_average}", "a.*_average")));
+    doNothing().when(filter).warn(anyString());
 
     assertMatches(filter, "a.b.c.x_average", "a.b.c.z_average", "a.other.w_average");
     assertDoesNotMatch(filter, "hello");
-    verify(filter);
+
+    verify(filter).warn("Field path: 'a.b.c.x_average' matched more than one glob path pattern. "
+        + "First match: 'a.b.c.{x_average,z_average}' (when expanded to 'a.b.c.x_average') "
+        + "second match:'a.*_average' (when expanded to 'a.*_average')");
+    verify(filter).warn("Field path: 'a.b.c.z_average' matched more than one glob path pattern. "
+        + "First match: 'a.b.c.{x_average,z_average}' (when expanded to 'a.b.c.z_average') "
+        + "second match:'a.*_average' (when expanded to 'a.*_average')");
   }
 }
