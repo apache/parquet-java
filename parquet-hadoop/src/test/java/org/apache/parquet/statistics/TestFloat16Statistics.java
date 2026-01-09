@@ -24,7 +24,6 @@ import static org.junit.Assert.assertArrayEquals;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.List;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -141,14 +140,14 @@ public class TestFloat16Statistics {
 
   @Test
   public void testFloat16StatisticsMultipleCases() throws IOException {
-    List<Binary[]> testValues = Arrays.asList(
+    List<Binary[]> testValues = List.of(
         valuesInAscendingOrder,
         valuesInDescendingOrder,
         valuesUndefinedOrder,
         valuesAllPositiveZero,
         valuesAllNegativeZero,
         valuesWithNaN);
-    List<Binary[]> expectedValues = Arrays.asList(
+    List<Binary[]> expectedValues = List.of(
         valuesInAscendingOrderMinMax,
         valuesInDescendingOrderMinMax,
         valuesUndefinedOrderMinMax,

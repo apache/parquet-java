@@ -25,7 +25,6 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import org.apache.hadoop.conf.Configuration;
@@ -110,7 +109,7 @@ public class TestInputFormatColumnProjection {
 
   @Parameterized.Parameters(name = "vectored : {0}")
   public static List<Boolean> params() {
-    return Arrays.asList(true, false);
+    return List.of(true, false);
   }
 
   /**

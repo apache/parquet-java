@@ -27,7 +27,6 @@ import java.io.IOException;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
@@ -86,7 +85,7 @@ public class TestParquetReader {
   @Parameterized.Parameters
   public static Collection<Object[]> data() {
     Object[][] data = new Object[][] {{FILE_V1}, {FILE_V2}, {STATIC_FILE_WITHOUT_COL_INDEXES}};
-    return Arrays.asList(data);
+    return List.of(data);
   }
 
   @BeforeClass
@@ -117,7 +116,7 @@ public class TestParquetReader {
       }
       // row index of each row in the file is same as the user id.
       users.add(new PhoneBookWriter.User(
-          i, "p" + i, Arrays.asList(new PhoneBookWriter.PhoneNumber(i, "cell")), location));
+          i, "p" + i, List.of(new PhoneBookWriter.PhoneNumber(i, "cell")), location));
     }
     return users;
   }

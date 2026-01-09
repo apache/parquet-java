@@ -20,9 +20,9 @@ package org.apache.parquet.crypto.keytools.samples;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Base64;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import okhttp3.ConnectionSpec;
 import okhttp3.MediaType;
@@ -56,7 +56,7 @@ public class VaultClient implements KmsClient {
 
   private String endPointPrefix;
   private OkHttpClient httpClient = new OkHttpClient.Builder()
-      .connectionSpecs(Arrays.asList(ConnectionSpec.MODERN_TLS, ConnectionSpec.COMPATIBLE_TLS))
+      .connectionSpecs(List.of(ConnectionSpec.MODERN_TLS, ConnectionSpec.COMPATIBLE_TLS))
       .build();
 
   @Override

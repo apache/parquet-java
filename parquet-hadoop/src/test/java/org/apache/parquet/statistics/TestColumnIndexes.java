@@ -323,7 +323,7 @@ public class TestColumnIndexes {
 
   @Parameters
   public static Collection<WriteContext> getContexts() {
-    return Arrays.asList(
+    return List.of(
         new WriteContext(System.nanoTime(), 1000, 8),
         new WriteContext(System.nanoTime(), 20000, 64),
         new WriteContext(System.nanoTime(), 50000, 10));
