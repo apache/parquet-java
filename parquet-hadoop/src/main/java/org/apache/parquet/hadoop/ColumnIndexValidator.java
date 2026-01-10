@@ -546,7 +546,7 @@ public class ColumnIndexValidator {
               prevMaxValue::toString);
           break;
         case UNORDERED:
-          // No checks necessary.
+        // No checks necessary.
       }
     }
   }
