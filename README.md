@@ -72,6 +72,7 @@ Parquet is an active project, and new features are being added quickly. Here are
 
 * Type-specific encoding
 * Hive integration (deprecated)
+* Pig integration (deprecated)
 * Cascading integration (deprecated)
 * Crunch integration
 * Apache Arrow integration
