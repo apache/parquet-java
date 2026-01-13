@@ -323,7 +323,7 @@ public class CodecFactory implements CompressionCodecFactory {
         level = conf.get("parquet.compression.codec.zstd.level");
         break;
       default:
-        // compression level is not supported; ignore it
+      // compression level is not supported; ignore it
     }
     String codecClass = codecName.getHadoopCompressionCodecClassName();
     return level == null ? codecClass : codecClass + ":" + level;
