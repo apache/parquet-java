@@ -21,7 +21,6 @@ package org.apache.parquet.io;
 import static org.junit.Assert.assertEquals;
 
 import java.util.ArrayDeque;
-import java.util.Arrays;
 import java.util.Deque;
 import java.util.List;
 import org.apache.parquet.io.api.Binary;
@@ -48,7 +47,7 @@ public class ExpectationValidatingConverter extends RecordMaterializer<Void> {
   }
 
   public ExpectationValidatingConverter(String[] expectations, MessageType schema) {
-    this(new ArrayDeque<>(Arrays.asList(expectations)), schema);
+    this(new ArrayDeque<>(List.of(expectations)), schema);
   }
 
   public ExpectationValidatingConverter(Deque<String> expectations, MessageType schema) {

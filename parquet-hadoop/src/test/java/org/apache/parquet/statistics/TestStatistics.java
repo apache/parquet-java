@@ -35,7 +35,6 @@ import com.google.common.collect.ImmutableSet;
 import java.io.File;
 import java.io.IOException;
 import java.math.BigInteger;
-import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Random;
@@ -346,7 +345,7 @@ public class TestStatistics {
 
       int fixedLength = schema.getType("fixed-binary").asPrimitiveType().getTypeLength();
 
-      randomGenerators = Arrays.<RandomValueGenerator<?>>asList(
+      randomGenerators = List.<RandomValueGenerator<?>>of(
           new RandomValues.IntGenerator(random.nextLong()),
           new RandomValues.LongGenerator(random.nextLong()),
           new RandomValues.Int96Generator(random.nextLong()),
@@ -545,7 +544,7 @@ public class TestStatistics {
     int blockSize = (random.nextInt(54) + 10) * MEGABYTE;
     int pageSize = (random.nextInt(10) + 1) * MEGABYTE;
 
-    List<DataContext> contexts = Arrays.asList(
+    List<DataContext> contexts = List.of(
         new DataContext(
             random.nextLong(),
             file,
@@ -592,7 +591,7 @@ public class TestStatistics {
     int blockSize = (random.nextInt(54) + 10) * MEGABYTE;
     int pageSize = (random.nextInt(10) + 1) * MEGABYTE;
 
-    List<DataContext> contexts = Arrays.asList(
+    List<DataContext> contexts = List.of(
         new DataContext(
             random.nextLong(),
             file,

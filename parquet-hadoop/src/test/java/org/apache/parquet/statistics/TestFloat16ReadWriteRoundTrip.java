@@ -25,7 +25,6 @@ import static org.junit.Assert.assertEquals;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -140,14 +139,14 @@ public class TestFloat16ReadWriteRoundTrip {
 
   @Test
   public void testFloat16ColumnIndex() throws IOException {
-    List<Binary[]> testValues = Arrays.asList(
+    List<Binary[]> testValues = List.of(
         valuesInAscendingOrder,
         valuesInDescendingOrder,
         valuesUndefinedOrder,
         valuesAllPositiveZero,
         valuesAllNegativeZero,
         valuesWithNaN);
-    List<Binary[]> expectedValues = Arrays.asList(
+    List<Binary[]> expectedValues = List.of(
         valuesInAscendingOrderMinMax,
         valuesInDescendingOrderMinMax,
         valuesUndefinedOrderMinMax,

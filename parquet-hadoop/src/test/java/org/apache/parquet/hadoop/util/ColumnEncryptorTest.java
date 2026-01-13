@@ -30,7 +30,6 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -86,7 +85,7 @@ public class ColumnEncryptorTest {
     columnEncryptor.encryptColumns(
         inputFile.getFileName(),
         outputFile,
-        Arrays.asList(encryptColumns),
+        List.of(encryptColumns),
         EncDecProperties.getFileEncryptionProperties(encryptColumns, ParquetCipher.AES_GCM_CTR_V1, false));
     verifyResultDecryptionWithValidKey();
   }
@@ -98,7 +97,7 @@ public class ColumnEncryptorTest {
     columnEncryptor.encryptColumns(
         inputFile.getFileName(),
         outputFile,
-        Arrays.asList(encryptColumns),
+        List.of(encryptColumns),
         EncDecProperties.getFileEncryptionProperties(encryptColumns, ParquetCipher.AES_GCM_CTR_V1, false));
     verifyResultDecryptionWithValidKey();
   }
@@ -110,7 +109,7 @@ public class ColumnEncryptorTest {
     columnEncryptor.encryptColumns(
         inputFile.getFileName(),
         outputFile,
-        Arrays.asList(encryptColumns),
+        List.of(encryptColumns),
         EncDecProperties.getFileEncryptionProperties(encryptColumns, ParquetCipher.AES_GCM_CTR_V1, false));
     verifyResultDecryptionWithValidKey();
   }
@@ -122,7 +121,7 @@ public class ColumnEncryptorTest {
     columnEncryptor.encryptColumns(
         inputFile.getFileName(),
         outputFile,
-        Arrays.asList(encryptColumns),
+        List.of(encryptColumns),
         EncDecProperties.getFileEncryptionProperties(encryptColumns, ParquetCipher.AES_GCM_CTR_V1, false));
     verifyResultDecryptionWithValidKey();
   }
@@ -134,13 +133,13 @@ public class ColumnEncryptorTest {
     columnEncryptor.encryptColumns(
         inputFile.getFileName(),
         outputFile,
-        Arrays.asList(encryptColumns),
+        List.of(encryptColumns),
         EncDecProperties.getFileEncryptionProperties(encryptColumns, ParquetCipher.AES_GCM_CTR_V1, false));
 
     ParquetMetadata metaData = getParquetMetadata(EncDecProperties.getFileDecryptionProperties());
     assertFalse(metaData.getBlocks().isEmpty());
     List<ColumnChunkMetaData> columns = metaData.getBlocks().get(0).getColumns();
-    Set<String> set = new HashSet<>(Arrays.asList(encryptColumns));
+    Set<String> set = new HashSet<>(List.of(encryptColumns));
     for (ColumnChunkMetaData column : columns) {
       if (set.contains(column.getPath().toDotString())) {
         assertTrue(column.isEncrypted());
@@ -157,7 +156,7 @@ public class ColumnEncryptorTest {
     columnEncryptor.encryptColumns(
         inputFile.getFileName(),
         outputFile,
-        Arrays.asList(encryptColumns),
+        List.of(encryptColumns),
         EncDecProperties.getFileEncryptionProperties(encryptColumns, ParquetCipher.AES_GCM_CTR_V1, true));
 
     verifyResultDecryptionWithValidKey();
@@ -170,7 +169,7 @@ public class ColumnEncryptorTest {
     columnEncryptor.encryptColumns(
         inputFile.getFileName(),
         outputFile,
-        Arrays.asList(encryptColumns),
+        List.of(encryptColumns),
         EncDecProperties.getFileEncryptionProperties(encryptColumns, ParquetCipher.AES_GCM_V1, true));
 
     verifyResultDecryptionWithValidKey();
@@ -183,7 +182,7 @@ public class ColumnEncryptorTest {
     columnEncryptor.encryptColumns(
         inputFile.getFileName(),
         outputFile,
-        Arrays.asList(encryptColumns),
+        List.of(encryptColumns),
         EncDecProperties.getFileEncryptionProperties(encryptColumns, ParquetCipher.AES_GCM_V1, false));
 
     verifyResultDecryptionWithValidKey();
@@ -199,7 +198,7 @@ public class ColumnEncryptorTest {
       columnEncryptor.encryptColumns(
           inputFile.getFileName(),
           outputFile,
-          Arrays.asList(encryptColumns),
+          List.of(encryptColumns),
           EncDecProperties.getFileEncryptionProperties(encryptColumns, ParquetCipher.AES_GCM_CTR_V1, false));
       verifyResultDecryptionWithValidKey();
     }

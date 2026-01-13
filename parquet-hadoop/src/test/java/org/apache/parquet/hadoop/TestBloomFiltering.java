@@ -35,7 +35,6 @@ import static org.junit.Assert.assertTrue;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -113,7 +112,7 @@ public class TestBloomFiltering {
 
   @Parameterized.Parameters(name = "Run {index}: isEncrypted={1}")
   public static Collection<Object[]> params() {
-    return Arrays.asList(
+    return List.of(
         new Object[] {FILE_V1, false /*isEncrypted*/},
         new Object[] {FILE_V2, false /*isEncrypted*/},
         new Object[] {FILE_V1_E, true /*isEncrypted*/},

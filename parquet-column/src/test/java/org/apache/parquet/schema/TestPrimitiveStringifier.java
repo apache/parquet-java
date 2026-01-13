@@ -19,7 +19,6 @@
 package org.apache.parquet.schema;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static java.util.Arrays.asList;
 import static java.util.concurrent.TimeUnit.HOURS;
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
@@ -48,6 +47,7 @@ import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.util.Calendar;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
@@ -175,7 +175,7 @@ public class TestPrimitiveStringifier {
   @Test
   public void testTimestampMillisStringifier() {
     for (PrimitiveStringifier stringifier :
-        asList(TIMESTAMP_MILLIS_STRINGIFIER, TIMESTAMP_MILLIS_UTC_STRINGIFIER)) {
+        List.of(TIMESTAMP_MILLIS_STRINGIFIER, TIMESTAMP_MILLIS_UTC_STRINGIFIER)) {
       String timezoneAmendment = (stringifier == TIMESTAMP_MILLIS_STRINGIFIER ? "" : "+0000");
 
       assertEquals(withZoneString("1970-01-01T00:00:00.000", timezoneAmendment), stringifier.stringify(0l));
@@ -202,7 +202,7 @@ public class TestPrimitiveStringifier {
   @Test
   public void testTimestampMicrosStringifier() {
     for (PrimitiveStringifier stringifier :
-        asList(TIMESTAMP_MICROS_STRINGIFIER, TIMESTAMP_MICROS_UTC_STRINGIFIER)) {
+        List.of(TIMESTAMP_MICROS_STRINGIFIER, TIMESTAMP_MICROS_UTC_STRINGIFIER)) {
       String timezoneAmendment = (stringifier == TIMESTAMP_MICROS_STRINGIFIER ? "" : "+0000");
 
       assertEquals(withZoneString("1970-01-01T00:00:00.000000", timezoneAmendment), stringifier.stringify(0l));
@@ -228,7 +228,7 @@ public class TestPrimitiveStringifier {
 
   @Test
   public void testTimestampNanosStringifier() {
-    for (PrimitiveStringifier stringifier : asList(TIMESTAMP_NANOS_STRINGIFIER, TIMESTAMP_NANOS_UTC_STRINGIFIER)) {
+    for (PrimitiveStringifier stringifier : List.of(TIMESTAMP_NANOS_STRINGIFIER, TIMESTAMP_NANOS_UTC_STRINGIFIER)) {
       String timezoneAmendment = (stringifier == TIMESTAMP_NANOS_STRINGIFIER ? "" : "+0000");
 
       assertEquals(withZoneString("1970-01-01T00:00:00.000000000", timezoneAmendment), stringifier.stringify(0l));
@@ -254,7 +254,7 @@ public class TestPrimitiveStringifier {
 
   @Test
   public void testTimeStringifier() {
-    for (PrimitiveStringifier stringifier : asList(TIME_STRINGIFIER, TIME_UTC_STRINGIFIER)) {
+    for (PrimitiveStringifier stringifier : List.of(TIME_STRINGIFIER, TIME_UTC_STRINGIFIER)) {
       String timezoneAmendment = (stringifier == TIME_STRINGIFIER ? "" : "+0000");
 
       assertEquals(withZoneString("00:00:00.000", timezoneAmendment), stringifier.stringify(0));
@@ -290,7 +290,7 @@ public class TestPrimitiveStringifier {
 
   @Test
   public void testTimeNanoStringifier() {
-    for (PrimitiveStringifier stringifier : asList(TIME_NANOS_STRINGIFIER, TIME_NANOS_UTC_STRINGIFIER)) {
+    for (PrimitiveStringifier stringifier : List.of(TIME_NANOS_STRINGIFIER, TIME_NANOS_UTC_STRINGIFIER)) {
       String timezoneAmendment = (stringifier == TIME_NANOS_STRINGIFIER ? "" : "+0000");
 
       assertEquals(withZoneString("00:00:00.000000000", timezoneAmendment), stringifier.stringify(0l));
@@ -434,7 +434,7 @@ public class TestPrimitiveStringifier {
   }
 
   private void checkThrowingUnsupportedException(PrimitiveStringifier stringifier, Class<?>... excludes) {
-    Set<Class<?>> set = new HashSet<>(asList(excludes));
+    Set<Class<?>> set = new HashSet<>(List.of(excludes));
     if (!set.contains(Integer.TYPE)) {
       try {
         stringifier.stringify(0);

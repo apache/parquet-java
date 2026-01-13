@@ -19,7 +19,6 @@
 package org.apache.parquet.hadoop.mapred;
 
 import static java.lang.Boolean.TRUE;
-import static java.util.Arrays.asList;
 
 import java.io.DataInput;
 import java.io.DataOutput;
@@ -65,7 +64,7 @@ public class DeprecatedParquetInputFormat<V> extends org.apache.hadoop.mapred.Fi
   }
 
   public List<Footer> getFooters(JobConf job) throws IOException {
-    return realInputFormat.getFooters(job, asList(super.listStatus(job)));
+    return realInputFormat.getFooters(job, List.of(super.listStatus(job)));
   }
 
   private static class RecordReaderWrapper<V> implements RecordReader<Void, Container<V>> {

@@ -42,7 +42,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -87,27 +86,27 @@ public class TestRecordLevelFilters {
             "business", 2000.0D,
             "retirement", 1000.0D)));
 
-    users.add(new User(20, "thing1", Arrays.asList(new PhoneNumber(5555555555L, null)), null));
+    users.add(new User(20, "thing1", List.of(new PhoneNumber(5555555555L, null)), null));
 
     users.add(new User(
         27,
         "thing2",
-        Arrays.asList(new PhoneNumber(1111111111L, "home"), new PhoneNumber(2222222222L, "cell")),
+        List.of(new PhoneNumber(1111111111L, "home"), new PhoneNumber(2222222222L, "cell")),
         null));
 
     users.add(new User(
         28,
         "popular",
-        Arrays.asList(
+        List.of(
             new PhoneNumber(1111111111L, "home"),
             new PhoneNumber(1111111111L, "apartment"),
             new PhoneNumber(2222222222L, null),
             new PhoneNumber(3333333333L, "mobile")),
         null));
 
-    users.add(new User(30, null, Arrays.asList(new PhoneNumber(1111111111L, "home")), null));
+    users.add(new User(30, null, List.of(new PhoneNumber(1111111111L, "home")), null));
 
-    users.add(new User(31, null, Arrays.asList(new PhoneNumber(2222222222L, "business")), null));
+    users.add(new User(31, null, List.of(new PhoneNumber(2222222222L, "business")), null));
 
     for (int i = 100; i < 200; i++) {
       Location location = null;
@@ -117,7 +116,7 @@ public class TestRecordLevelFilters {
       if (i % 3 == 2) {
         location = new Location((double) i, null);
       }
-      users.add(new User(i, "p" + i, Arrays.asList(new PhoneNumber(i, "cell")), location));
+      users.add(new User(i, "p" + i, List.of(new PhoneNumber(i, "cell")), location));
     }
 
     return users;
