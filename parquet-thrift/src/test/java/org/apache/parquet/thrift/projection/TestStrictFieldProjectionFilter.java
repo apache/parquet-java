@@ -113,18 +113,20 @@ public class TestStrictFieldProjectionFilter {
 
   @Test
   public void testWarnWhenMultiplePatternsMatch() {
-    StrictFieldProjectionFilter filter = spy(new StrictFieldProjectionFilter(
-        Arrays.asList("a.b.c.{x_average,z_average}", "a.*_average")));
+    StrictFieldProjectionFilter filter =
+        spy(new StrictFieldProjectionFilter(Arrays.asList("a.b.c.{x_average,z_average}", "a.*_average")));
     doNothing().when(filter).warn(anyString());
 
     assertMatches(filter, "a.b.c.x_average", "a.b.c.z_average", "a.other.w_average");
     assertDoesNotMatch(filter, "hello");
 
-    verify(filter).warn("Field path: 'a.b.c.x_average' matched more than one glob path pattern. "
-        + "First match: 'a.b.c.{x_average,z_average}' (when expanded to 'a.b.c.x_average') "
-        + "second match:'a.*_average' (when expanded to 'a.*_average')");
-    verify(filter).warn("Field path: 'a.b.c.z_average' matched more than one glob path pattern. "
-        + "First match: 'a.b.c.{x_average,z_average}' (when expanded to 'a.b.c.z_average') "
-        + "second match:'a.*_average' (when expanded to 'a.*_average')");
+    verify(filter)
+        .warn("Field path: 'a.b.c.x_average' matched more than one glob path pattern. "
+            + "First match: 'a.b.c.{x_average,z_average}' (when expanded to 'a.b.c.x_average') "
+            + "second match:'a.*_average' (when expanded to 'a.*_average')");
+    verify(filter)
+        .warn("Field path: 'a.b.c.z_average' matched more than one glob path pattern. "
+            + "First match: 'a.b.c.{x_average,z_average}' (when expanded to 'a.b.c.z_average') "
+            + "second match:'a.*_average' (when expanded to 'a.*_average')");
   }
 }
