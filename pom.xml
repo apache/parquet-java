@@ -571,6 +571,8 @@
             </excludeModules>
             <excludes>
               <exclude>${shade.prefix}</exclude>
+              <!-- JDK 11 adds interface methods/bridges on PrimitiveIterator.OfInt; ignore japicmp source incompatibility -->
+              <exclude>org.apache.parquet.internal.column.columnindex.IndexIterator</exclude>
               <!-- Removal of a protected method in a class that's not supposed to be subclassed by third-party code -->
               <exclude>org.apache.parquet.column.values.bytestreamsplit.ByteStreamSplitValuesReader#gatherElementDataFromStreams(byte[])</exclude>
               <!-- Due to the removal of deprecated methods -->
