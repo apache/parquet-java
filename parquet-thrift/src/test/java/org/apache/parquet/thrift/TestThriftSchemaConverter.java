@@ -26,7 +26,7 @@ import static org.junit.Assert.fail;
 import com.twitter.data.proto.tutorial.thrift.AddressBook;
 import com.twitter.data.proto.tutorial.thrift.Person;
 import com.twitter.elephantbird.thrift.test.TestStructInMap;
-import java.util.Arrays;
+import java.util.List;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
 import org.apache.parquet.thrift.projection.StrictFieldProjectionFilter;
@@ -333,7 +333,7 @@ public class TestThriftSchemaConverter {
 
     ThriftSchemaConverter converter = new ThriftSchemaConverter();
 
-    StructType structType = new StructType(Arrays.asList(
+    StructType structType = new StructType(List.of(
         new ThriftField("a", (short) 1, REQUIRED, new ThriftType.StringType()),
         new ThriftField("b", (short) 2, REQUIRED, new ThriftType.StringType())));
 
