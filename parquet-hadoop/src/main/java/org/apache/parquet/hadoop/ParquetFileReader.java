@@ -2156,6 +2156,9 @@ public class ParquetFileReader implements Closeable {
 
         ByteBuffer lastBuffer = ByteBuffer.allocate(missingBytes);
         f.readFully(lastBuffer);
+        lastBuffer.flip();
+        LOG.warn(
+            "compressedLength underflow occurred, possibly due to older files not including dict header len");
 
         List<ByteBuffer> buffers = new ArrayList<>(streamBuffers.size() + 1);
         buffers.addAll(streamBuffers);
