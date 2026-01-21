@@ -62,25 +62,27 @@ import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Type;
 import org.apache.parquet.schema.Types;
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.mockito.MockedStatic;
 import org.mockito.Mockito;
-import org.powermock.api.mockito.PowerMockito;
-import org.powermock.core.classloader.annotations.PrepareForTest;
-import org.powermock.modules.junit4.PowerMockRunner;
 
-@RunWith(PowerMockRunner.class)
-@PrepareForTest(AvroRecordConverter.class)
 public class TestAvroSchemaConverter {
 
   private static final Configuration NEW_BEHAVIOR = new Configuration(false);
+  private MockedStatic<AvroRecordConverter> avroRecordConverterMock;
 
   @Before
   public void setupMockito() {
-    PowerMockito.mockStatic(AvroRecordConverter.class, CALLS_REAL_METHODS);
+    avroRecordConverterMock = Mockito.mockStatic(AvroRecordConverter.class, CALLS_REAL_METHODS);
+  }
+
+  @After
+  public void tearDown() {
+    avroRecordConverterMock.close();
   }
 
   @BeforeClass
@@ -706,7 +708,9 @@ public class TestAvroSchemaConverter {
 
     // Test that conversions for timestamp types only use APIs that are available in the user's Avro version
     for (String avroVersion : ImmutableSet.of("1.7.0", "1.8.0", "1.9.0", "1.10.0", "1.11.0")) {
-      Mockito.when(AvroRecordConverter.getRuntimeAvroVersion()).thenReturn(avroVersion);
+      avroRecordConverterMock
+          .when(AvroRecordConverter::getRuntimeAvroVersion)
+          .thenReturn(avroVersion);
       final Schema converted = new AvroSchemaConverter()
           .convert(Types.buildMessage()
               .addField(Types.primitive(INT64, Type.Repetition.REQUIRED)
@@ -792,7 +796,9 @@ public class TestAvroSchemaConverter {
 
     // Test that conversions for timestamp types only use APIs that are available in the user's Avro version
     for (String avroVersion : ImmutableSet.of("1.7.0", "1.8.0", "1.9.0", "1.10.0", "1.11.0")) {
-      Mockito.when(AvroRecordConverter.getRuntimeAvroVersion()).thenReturn(avroVersion);
+      avroRecordConverterMock
+          .when(AvroRecordConverter::getRuntimeAvroVersion)
+          .thenReturn(avroVersion);
       final Schema converted = new AvroSchemaConverter()
           .convert(Types.buildMessage()
               .addField(Types.primitive(INT64, Type.Repetition.REQUIRED)
