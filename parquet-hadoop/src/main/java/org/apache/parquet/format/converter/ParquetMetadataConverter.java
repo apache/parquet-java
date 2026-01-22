@@ -750,8 +750,7 @@ public class ParquetMetadataConverter {
   public Encoding getEncoding(org.apache.parquet.column.Encoding encoding) {
     // ALP encoding is not yet part of the parquet-format specification
     if (encoding == org.apache.parquet.column.Encoding.ALP) {
-      throw new IllegalArgumentException(
-          "ALP encoding is not yet supported in the parquet-format specification");
+      throw new IllegalArgumentException("ALP encoding is not yet supported in the parquet-format specification");
     }
     return Encoding.valueOf(encoding.name());
   }
