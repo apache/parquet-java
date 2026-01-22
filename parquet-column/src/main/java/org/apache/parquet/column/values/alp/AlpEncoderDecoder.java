@@ -74,7 +74,7 @@ public final class AlpEncoderDecoder {
    *
    * @param value    the float value
    * @param exponent the decimal exponent (0-10)
-   * @param factor   the decimal factor (0 <= factor <= exponent)
+   * @param factor   the decimal factor (0 &lt;= factor &lt;= exponent)
    * @return true if the value is an exception for this encoding
    */
   public static boolean isFloatException(float value, int exponent, int factor) {
@@ -110,7 +110,7 @@ public final class AlpEncoderDecoder {
    *
    * @param value    the float value to encode
    * @param exponent the decimal exponent (0-10)
-   * @param factor   the decimal factor (0 <= factor <= exponent)
+   * @param factor   the decimal factor (0 &lt;= factor &lt;= exponent)
    * @return the encoded integer value
    */
   public static int encodeFloat(float value, int exponent, int factor) {
@@ -128,7 +128,7 @@ public final class AlpEncoderDecoder {
    *
    * @param encoded  the encoded integer value
    * @param exponent the decimal exponent (0-10)
-   * @param factor   the decimal factor (0 <= factor <= exponent)
+   * @param factor   the decimal factor (0 &lt;= factor &lt;= exponent)
    * @return the decoded float value
    */
   public static float decodeFloat(int encoded, int exponent, int factor) {
@@ -182,7 +182,7 @@ public final class AlpEncoderDecoder {
    *
    * @param value    the double value
    * @param exponent the decimal exponent (0-18)
-   * @param factor   the decimal factor (0 <= factor <= exponent)
+   * @param factor   the decimal factor (0 &lt;= factor &lt;= exponent)
    * @return true if the value is an exception for this encoding
    */
   public static boolean isDoubleException(double value, int exponent, int factor) {
@@ -218,7 +218,7 @@ public final class AlpEncoderDecoder {
    *
    * @param value    the double value to encode
    * @param exponent the decimal exponent (0-18)
-   * @param factor   the decimal factor (0 <= factor <= exponent)
+   * @param factor   the decimal factor (0 &lt;= factor &lt;= exponent)
    * @return the encoded long value
    */
   public static long encodeDouble(double value, int exponent, int factor) {
@@ -236,7 +236,7 @@ public final class AlpEncoderDecoder {
    *
    * @param encoded  the encoded long value
    * @param exponent the decimal exponent (0-18)
-   * @param factor   the decimal factor (0 <= factor <= exponent)
+   * @param factor   the decimal factor (0 &lt;= factor &lt;= exponent)
    * @return the decoded double value
    */
   public static double decodeDouble(long encoded, int exponent, int factor) {
