@@ -103,8 +103,8 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
         return new SnappyCompressor();
       case ZSTD:
         return new ZstdCompressor();
-      // todo: create class similar to the SnappyCompressor for zlib and exclude it as
-      // snappy is above since it also generates allocateDirect calls.
+        // todo: create class similar to the SnappyCompressor for zlib and exclude it as
+        // snappy is above since it also generates allocateDirect calls.
       default:
         return super.createCompressor(codecName);
     }
