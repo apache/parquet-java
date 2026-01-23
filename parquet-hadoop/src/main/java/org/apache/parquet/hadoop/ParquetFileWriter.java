@@ -171,6 +171,7 @@ public class ParquetFileWriter implements AutoCloseable {
 
   // set when end is called
   private ParquetMetadata footer = null;
+  private boolean aborted;
   private boolean closed;
 
   private final CRC32 crc;
@@ -331,6 +332,34 @@ public class ParquetFileWriter implements AutoCloseable {
         ParquetProperties.DEFAULT_COLUMN_INDEX_TRUNCATE_LENGTH,
         ParquetProperties.DEFAULT_STATISTICS_TRUNCATE_LENGTH,
         ParquetProperties.DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED);
+  }
+
+  @FunctionalInterface
+  interface IOCallable<T> {
+    T call() throws IOException;
+  }
+
+  private <T> T withAbortOnFailure(IOCallable<T> action) throws IOException {
+    try {
+      return action.call();
+    } catch (IOException e) {
+      aborted = true;
+      throw e;
+    }
+  }
+
+  @FunctionalInterface
+  interface IORunnable {
+    void run() throws IOException;
+  }
+
+  private void withAbortOnFailure(IORunnable action) throws IOException {
+    try {
+      action.run();
+    } catch (IOException e) {
+      aborted = true;
+      throw e;
+    }
   }
 
   /**
@@ -563,13 +592,15 @@ public class ParquetFileWriter implements AutoCloseable {
    * @throws IOException if there is an error while writing
    */
   public void start() throws IOException {
-    state = state.start();
-    LOG.debug("{}: start", out.getPos());
-    byte[] magic = MAGIC;
-    if (null != fileEncryptor && fileEncryptor.isFooterEncrypted()) {
-      magic = EFMAGIC;
-    }
-    out.write(magic);
+    withAbortOnFailure(() -> {
+      state = state.start();
+      LOG.debug("{}: start", out.getPos());
+      byte[] magic = MAGIC;
+      if (null != fileEncryptor && fileEncryptor.isFooterEncrypted()) {
+        magic = EFMAGIC;
+      }
+      out.write(magic);
+    });
   }
 
   public InternalFileEncryptor getEncryptor() {
@@ -583,19 +614,21 @@ public class ParquetFileWriter implements AutoCloseable {
    * @throws IOException if there is an error while writing
    */
   public void startBlock(long recordCount) throws IOException {
-    state = state.startBlock();
-    LOG.debug("{}: start block", out.getPos());
-    //    out.write(MAGIC); // TODO: add a magic delimiter
+    withAbortOnFailure(() -> {
+      state = state.startBlock();
+      LOG.debug("{}: start block", out.getPos());
+      //    out.write(MAGIC); // TODO: add a magic delimiter
 
-    alignment.alignForRowGroup(out);
+      alignment.alignForRowGroup(out);
 
-    currentBlock = new BlockMetaData();
-    currentRecordCount = recordCount;
+      currentBlock = new BlockMetaData();
+      currentRecordCount = recordCount;
 
-    currentColumnIndexes = new ArrayList<>();
-    currentOffsetIndexes = new ArrayList<>();
+      currentColumnIndexes = new ArrayList<>();
+      currentOffsetIndexes = new ArrayList<>();
 
-    currentBloomFilters = new HashMap<>();
+      currentBloomFilters = new HashMap<>();
+    });
   }
 
   /**
@@ -608,26 +641,29 @@ public class ParquetFileWriter implements AutoCloseable {
    */
   public void startColumn(ColumnDescriptor descriptor, long valueCount, CompressionCodecName compressionCodecName)
       throws IOException {
-    state = state.startColumn();
-    encodingStatsBuilder.clear();
-    currentEncodings = new HashSet<Encoding>();
-    currentChunkPath = ColumnPath.get(descriptor.getPath());
-    currentChunkType = descriptor.getPrimitiveType();
-    currentChunkCodec = compressionCodecName;
-    currentChunkValueCount = valueCount;
-    currentChunkFirstDataPage = -1;
-    compressedLength = 0;
-    uncompressedLength = 0;
-    // The statistics will be copied from the first one added at writeDataPage(s) so we have the correct typed one
-    currentStatistics = null;
-    currentSizeStatistics = SizeStatistics.newBuilder(
-            descriptor.getPrimitiveType(),
-            descriptor.getMaxRepetitionLevel(),
-            descriptor.getMaxDefinitionLevel())
-        .build();
+    withAbortOnFailure(() -> {
+      state = state.startColumn();
+      encodingStatsBuilder.clear();
+      currentEncodings = new HashSet<Encoding>();
+      currentChunkPath = ColumnPath.get(descriptor.getPath());
+      currentChunkType = descriptor.getPrimitiveType();
+      currentChunkCodec = compressionCodecName;
+      currentChunkValueCount = valueCount;
+      currentChunkFirstDataPage = -1;
+      compressedLength = 0;
+      uncompressedLength = 0;
+      // The statistics will be copied from the first one added at writeDataPage(s) so we have the correct typed
+      // one
+      currentStatistics = null;
+      currentSizeStatistics = SizeStatistics.newBuilder(
+              descriptor.getPrimitiveType(),
+              descriptor.getMaxRepetitionLevel(),
+              descriptor.getMaxDefinitionLevel())
+          .build();
 
-    columnIndexBuilder = ColumnIndexBuilder.getBuilder(currentChunkType, columnIndexTruncateLength);
-    offsetIndexBuilder = OffsetIndexBuilder.getBuilder();
+      columnIndexBuilder = ColumnIndexBuilder.getBuilder(currentChunkType, columnIndexTruncateLength);
+      offsetIndexBuilder = OffsetIndexBuilder.getBuilder();
+    });
   }
 
   /**
@@ -637,45 +673,51 @@ public class ParquetFileWriter implements AutoCloseable {
    * @throws IOException if there is an error while writing
    */
   public void writeDictionaryPage(DictionaryPage dictionaryPage) throws IOException {
-    writeDictionaryPage(dictionaryPage, null, null);
+    withAbortOnFailure(() -> {
+      writeDictionaryPage(dictionaryPage, null, null);
+    });
   }
 
   public void writeDictionaryPage(
       DictionaryPage dictionaryPage, BlockCipher.Encryptor headerBlockEncryptor, byte[] AAD) throws IOException {
-    state = state.write();
-    LOG.debug("{}: write dictionary page: {} values", out.getPos(), dictionaryPage.getDictionarySize());
-    currentChunkDictionaryPageOffset = out.getPos();
-    int uncompressedSize = dictionaryPage.getUncompressedSize();
-    int compressedPageSize = Math.toIntExact(dictionaryPage.getBytes().size());
-    if (pageWriteChecksumEnabled) {
-      crc.reset();
-      crcUpdate(dictionaryPage.getBytes());
-      metadataConverter.writeDictionaryPageHeader(
-          uncompressedSize,
-          compressedPageSize,
-          dictionaryPage.getDictionarySize(),
-          dictionaryPage.getEncoding(),
-          (int) crc.getValue(),
-          out,
-          headerBlockEncryptor,
-          AAD);
-    } else {
-      metadataConverter.writeDictionaryPageHeader(
-          uncompressedSize,
-          compressedPageSize,
-          dictionaryPage.getDictionarySize(),
-          dictionaryPage.getEncoding(),
-          out,
-          headerBlockEncryptor,
-          AAD);
-    }
-    long headerSize = out.getPos() - currentChunkDictionaryPageOffset;
-    this.uncompressedLength += uncompressedSize + headerSize;
-    this.compressedLength += compressedPageSize + headerSize;
-    LOG.debug("{}: write dictionary page content {}", out.getPos(), compressedPageSize);
-    dictionaryPage.getBytes().writeAllTo(out); // for encrypted column, dictionary page bytes are already encrypted
-    encodingStatsBuilder.addDictEncoding(dictionaryPage.getEncoding());
-    currentEncodings.add(dictionaryPage.getEncoding());
+    withAbortOnFailure(() -> {
+      state = state.write();
+      LOG.debug("{}: write dictionary page: {} values", out.getPos(), dictionaryPage.getDictionarySize());
+      currentChunkDictionaryPageOffset = out.getPos();
+      int uncompressedSize = dictionaryPage.getUncompressedSize();
+      int compressedPageSize = Math.toIntExact(dictionaryPage.getBytes().size());
+      if (pageWriteChecksumEnabled) {
+        crc.reset();
+        crcUpdate(dictionaryPage.getBytes());
+        metadataConverter.writeDictionaryPageHeader(
+            uncompressedSize,
+            compressedPageSize,
+            dictionaryPage.getDictionarySize(),
+            dictionaryPage.getEncoding(),
+            (int) crc.getValue(),
+            out,
+            headerBlockEncryptor,
+            AAD);
+      } else {
+        metadataConverter.writeDictionaryPageHeader(
+            uncompressedSize,
+            compressedPageSize,
+            dictionaryPage.getDictionarySize(),
+            dictionaryPage.getEncoding(),
+            out,
+            headerBlockEncryptor,
+            AAD);
+      }
+      long headerSize = out.getPos() - currentChunkDictionaryPageOffset;
+      this.uncompressedLength += uncompressedSize + headerSize;
+      this.compressedLength += compressedPageSize + headerSize;
+      LOG.debug("{}: write dictionary page content {}", out.getPos(), compressedPageSize);
+      dictionaryPage
+          .getBytes()
+          .writeAllTo(out); // for encrypted column, dictionary page bytes are already encrypted
+      encodingStatsBuilder.addDictEncoding(dictionaryPage.getEncoding());
+      currentEncodings.add(dictionaryPage.getEncoding());
+    });
   }
 
   /**
@@ -867,22 +909,24 @@ public class ParquetFileWriter implements AutoCloseable {
       byte[] pageHeaderAAD,
       SizeStatistics sizeStatistics)
       throws IOException {
-    long beforeHeader = out.getPos();
-    innerWriteDataPage(
-        valueCount,
-        uncompressedPageSize,
-        bytes,
-        statistics,
-        rlEncoding,
-        dlEncoding,
-        valuesEncoding,
-        metadataBlockEncryptor,
-        pageHeaderAAD,
-        sizeStatistics);
-    offsetIndexBuilder.add(
-        toIntWithCheck(out.getPos() - beforeHeader, "page"),
-        rowCount,
-        sizeStatistics != null ? sizeStatistics.getUnencodedByteArrayDataBytes() : Optional.empty());
+    withAbortOnFailure(() -> {
+      long beforeHeader = out.getPos();
+      innerWriteDataPage(
+          valueCount,
+          uncompressedPageSize,
+          bytes,
+          statistics,
+          rlEncoding,
+          dlEncoding,
+          valuesEncoding,
+          metadataBlockEncryptor,
+          pageHeaderAAD,
+          sizeStatistics);
+      offsetIndexBuilder.add(
+          toIntWithCheck(out.getPos() - beforeHeader, "page"),
+          rowCount,
+          sizeStatistics != null ? sizeStatistics.getUnencodedByteArrayDataBytes() : Optional.empty());
+    });
   }
 
   private void innerWriteDataPage(
@@ -974,51 +1018,53 @@ public class ParquetFileWriter implements AutoCloseable {
       byte[] pageHeaderAAD,
       SizeStatistics sizeStatistics)
       throws IOException {
-    state = state.write();
-    long beforeHeader = out.getPos();
-    if (currentChunkFirstDataPage < 0) {
-      currentChunkFirstDataPage = beforeHeader;
-    }
-    LOG.debug("{}: write data page: {} values", beforeHeader, valueCount);
-    int compressedPageSize = toIntWithCheck(bytes.size(), "page");
-    if (pageWriteChecksumEnabled) {
-      crc.reset();
-      crcUpdate(bytes);
-      metadataConverter.writeDataPageV1Header(
-          uncompressedPageSize,
-          compressedPageSize,
-          valueCount,
-          rlEncoding,
-          dlEncoding,
-          valuesEncoding,
-          (int) crc.getValue(),
-          out,
-          metadataBlockEncryptor,
-          pageHeaderAAD);
-    } else {
-      metadataConverter.writeDataPageV1Header(
-          uncompressedPageSize,
-          compressedPageSize,
-          valueCount,
-          rlEncoding,
-          dlEncoding,
-          valuesEncoding,
-          out,
-          metadataBlockEncryptor,
-          pageHeaderAAD);
-    }
-    long headerSize = out.getPos() - beforeHeader;
-    this.uncompressedLength += uncompressedPageSize + headerSize;
-    this.compressedLength += compressedPageSize + headerSize;
-    LOG.debug("{}: write data page content {}", out.getPos(), compressedPageSize);
-    bytes.writeAllTo(out);
+    withAbortOnFailure(() -> {
+      state = state.write();
+      long beforeHeader = out.getPos();
+      if (currentChunkFirstDataPage < 0) {
+        currentChunkFirstDataPage = beforeHeader;
+      }
+      LOG.debug("{}: write data page: {} values", beforeHeader, valueCount);
+      int compressedPageSize = toIntWithCheck(bytes.size(), "page");
+      if (pageWriteChecksumEnabled) {
+        crc.reset();
+        crcUpdate(bytes);
+        metadataConverter.writeDataPageV1Header(
+            uncompressedPageSize,
+            compressedPageSize,
+            valueCount,
+            rlEncoding,
+            dlEncoding,
+            valuesEncoding,
+            (int) crc.getValue(),
+            out,
+            metadataBlockEncryptor,
+            pageHeaderAAD);
+      } else {
+        metadataConverter.writeDataPageV1Header(
+            uncompressedPageSize,
+            compressedPageSize,
+            valueCount,
+            rlEncoding,
+            dlEncoding,
+            valuesEncoding,
+            out,
+            metadataBlockEncryptor,
+            pageHeaderAAD);
+      }
+      long headerSize = out.getPos() - beforeHeader;
+      this.uncompressedLength += uncompressedPageSize + headerSize;
+      this.compressedLength += compressedPageSize + headerSize;
+      LOG.debug("{}: write data page content {}", out.getPos(), compressedPageSize);
+      bytes.writeAllTo(out);
 
-    mergeColumnStatistics(statistics, sizeStatistics);
+      mergeColumnStatistics(statistics, sizeStatistics);
 
-    encodingStatsBuilder.addDataEncoding(valuesEncoding);
-    currentEncodings.add(rlEncoding);
-    currentEncodings.add(dlEncoding);
-    currentEncodings.add(valuesEncoding);
+      encodingStatsBuilder.addDataEncoding(valuesEncoding);
+      currentEncodings.add(rlEncoding);
+      currentEncodings.add(dlEncoding);
+      currentEncodings.add(valuesEncoding);
+    });
   }
 
   /**
@@ -1146,75 +1192,78 @@ public class ParquetFileWriter implements AutoCloseable {
       byte[] pageHeaderAAD,
       SizeStatistics sizeStatistics)
       throws IOException {
-    state = state.write();
-    int rlByteLength = toIntWithCheck(repetitionLevels.size(), "page repetition levels");
-    int dlByteLength = toIntWithCheck(definitionLevels.size(), "page definition levels");
+    withAbortOnFailure(() -> {
+      state = state.write();
+      int rlByteLength = toIntWithCheck(repetitionLevels.size(), "page repetition levels");
+      int dlByteLength = toIntWithCheck(definitionLevels.size(), "page definition levels");
 
-    int compressedSize =
-        toIntWithCheck(compressedData.size() + repetitionLevels.size() + definitionLevels.size(), "page");
+      int compressedSize =
+          toIntWithCheck(compressedData.size() + repetitionLevels.size() + definitionLevels.size(), "page");
 
-    int uncompressedSize =
-        toIntWithCheck(uncompressedDataSize + repetitionLevels.size() + definitionLevels.size(), "page");
+      int uncompressedSize =
+          toIntWithCheck(uncompressedDataSize + repetitionLevels.size() + definitionLevels.size(), "page");
 
-    long beforeHeader = out.getPos();
-    if (currentChunkFirstDataPage < 0) {
-      currentChunkFirstDataPage = beforeHeader;
-    }
-
-    if (pageWriteChecksumEnabled) {
-      crc.reset();
-      if (repetitionLevels.size() > 0) {
-        crcUpdate(repetitionLevels);
+      long beforeHeader = out.getPos();
+      if (currentChunkFirstDataPage < 0) {
+        currentChunkFirstDataPage = beforeHeader;
       }
-      if (definitionLevels.size() > 0) {
-        crcUpdate(definitionLevels);
+
+      if (pageWriteChecksumEnabled) {
+        crc.reset();
+        if (repetitionLevels.size() > 0) {
+          crcUpdate(repetitionLevels);
+        }
+        if (definitionLevels.size() > 0) {
+          crcUpdate(definitionLevels);
+        }
+        if (compressedData.size() > 0) {
+          crcUpdate(compressedData);
+        }
+        metadataConverter.writeDataPageV2Header(
+            uncompressedSize,
+            compressedSize,
+            valueCount,
+            nullCount,
+            rowCount,
+            dataEncoding,
+            rlByteLength,
+            dlByteLength,
+            (int) crc.getValue(),
+            out,
+            metadataBlockEncryptor,
+            pageHeaderAAD);
+      } else {
+        metadataConverter.writeDataPageV2Header(
+            uncompressedSize,
+            compressedSize,
+            valueCount,
+            nullCount,
+            rowCount,
+            dataEncoding,
+            rlByteLength,
+            dlByteLength,
+            out,
+            metadataBlockEncryptor,
+            pageHeaderAAD);
       }
-      if (compressedData.size() > 0) {
-        crcUpdate(compressedData);
-      }
-      metadataConverter.writeDataPageV2Header(
-          uncompressedSize,
-          compressedSize,
-          valueCount,
-          nullCount,
+
+      long headersSize = out.getPos() - beforeHeader;
+      this.uncompressedLength += uncompressedSize + headersSize;
+      this.compressedLength += compressedSize + headersSize;
+
+      mergeColumnStatistics(statistics, sizeStatistics);
+
+      currentEncodings.add(dataEncoding);
+      encodingStatsBuilder.addDataEncoding(dataEncoding);
+
+      BytesInput.concat(repetitionLevels, definitionLevels, compressedData)
+          .writeAllTo(out);
+
+      offsetIndexBuilder.add(
+          toIntWithCheck(out.getPos() - beforeHeader, "page"),
           rowCount,
-          dataEncoding,
-          rlByteLength,
-          dlByteLength,
-          (int) crc.getValue(),
-          out,
-          metadataBlockEncryptor,
-          pageHeaderAAD);
-    } else {
-      metadataConverter.writeDataPageV2Header(
-          uncompressedSize,
-          compressedSize,
-          valueCount,
-          nullCount,
-          rowCount,
-          dataEncoding,
-          rlByteLength,
-          dlByteLength,
-          out,
-          metadataBlockEncryptor,
-          pageHeaderAAD);
-    }
-
-    long headersSize = out.getPos() - beforeHeader;
-    this.uncompressedLength += uncompressedSize + headersSize;
-    this.compressedLength += compressedSize + headersSize;
-
-    mergeColumnStatistics(statistics, sizeStatistics);
-
-    currentEncodings.add(dataEncoding);
-    encodingStatsBuilder.addDataEncoding(dataEncoding);
-
-    BytesInput.concat(repetitionLevels, definitionLevels, compressedData).writeAllTo(out);
-
-    offsetIndexBuilder.add(
-        toIntWithCheck(out.getPos() - beforeHeader, "page"),
-        rowCount,
-        sizeStatistics != null ? sizeStatistics.getUnencodedByteArrayDataBytes() : Optional.empty());
+          sizeStatistics != null ? sizeStatistics.getUnencodedByteArrayDataBytes() : Optional.empty());
+    });
   }
 
   private void crcUpdate(BytesInput bytes) {
@@ -1302,57 +1351,60 @@ public class ParquetFileWriter implements AutoCloseable {
       int columnOrdinal,
       byte[] fileAAD)
       throws IOException {
-    startColumn(descriptor, valueCount, compressionCodecName);
+    withAbortOnFailure(() -> {
+      startColumn(descriptor, valueCount, compressionCodecName);
 
-    state = state.write();
-    if (dictionaryPage != null) {
-      byte[] dictonaryPageHeaderAAD = null;
-      if (null != headerBlockEncryptor) {
-        dictonaryPageHeaderAAD = AesCipher.createModuleAAD(
-            fileAAD, ModuleType.DictionaryPageHeader, rowGroupOrdinal, columnOrdinal, -1);
+      state = state.write();
+      if (dictionaryPage != null) {
+        byte[] dictonaryPageHeaderAAD = null;
+        if (null != headerBlockEncryptor) {
+          dictonaryPageHeaderAAD = AesCipher.createModuleAAD(
+              fileAAD, ModuleType.DictionaryPageHeader, rowGroupOrdinal, columnOrdinal, -1);
+        }
+        writeDictionaryPage(dictionaryPage, headerBlockEncryptor, dictonaryPageHeaderAAD);
       }
-      writeDictionaryPage(dictionaryPage, headerBlockEncryptor, dictonaryPageHeaderAAD);
-    }
 
-    if (bloomFilter != null) {
-      // write bloom filter if one of data pages is not dictionary encoded
-      boolean isWriteBloomFilter = false;
-      for (Encoding encoding : dataEncodings) {
-        // dictionary encoding: `PLAIN_DICTIONARY` is used in parquet v1, `RLE_DICTIONARY` is used in parquet v2
-        if (encoding != Encoding.PLAIN_DICTIONARY && encoding != Encoding.RLE_DICTIONARY) {
-          isWriteBloomFilter = true;
-          break;
+      if (bloomFilter != null) {
+        // write bloom filter if one of data pages is not dictionary encoded
+        boolean isWriteBloomFilter = false;
+        for (Encoding encoding : dataEncodings) {
+          // dictionary encoding: `PLAIN_DICTIONARY` is used in parquet v1, `RLE_DICTIONARY` is used in
+          // parquet v2
+          if (encoding != Encoding.PLAIN_DICTIONARY && encoding != Encoding.RLE_DICTIONARY) {
+            isWriteBloomFilter = true;
+            break;
+          }
+        }
+        if (isWriteBloomFilter) {
+          currentBloomFilters.put(String.join(".", descriptor.getPath()), bloomFilter);
+        } else {
+          LOG.info(
+              "No need to write bloom filter because column {} data pages are all encoded as dictionary.",
+              descriptor.getPath());
         }
       }
-      if (isWriteBloomFilter) {
-        currentBloomFilters.put(String.join(".", descriptor.getPath()), bloomFilter);
-      } else {
-        LOG.info(
-            "No need to write bloom filter because column {} data pages are all encoded as dictionary.",
-            descriptor.getPath());
+      LOG.debug("{}: write data pages", out.getPos());
+      long headersSize = bytes.size() - compressedTotalPageSize;
+      this.uncompressedLength += uncompressedTotalPageSize + headersSize;
+      this.compressedLength += compressedTotalPageSize + headersSize;
+      LOG.debug("{}: write data pages content", out.getPos());
+      currentChunkFirstDataPage = out.getPos();
+      bytes.writeAllTo(out);
+      encodingStatsBuilder.addDataEncodings(dataEncodings);
+      if (rlEncodings.isEmpty()) {
+        encodingStatsBuilder.withV2Pages();
       }
-    }
-    LOG.debug("{}: write data pages", out.getPos());
-    long headersSize = bytes.size() - compressedTotalPageSize;
-    this.uncompressedLength += uncompressedTotalPageSize + headersSize;
-    this.compressedLength += compressedTotalPageSize + headersSize;
-    LOG.debug("{}: write data pages content", out.getPos());
-    currentChunkFirstDataPage = out.getPos();
-    bytes.writeAllTo(out);
-    encodingStatsBuilder.addDataEncodings(dataEncodings);
-    if (rlEncodings.isEmpty()) {
-      encodingStatsBuilder.withV2Pages();
-    }
-    currentEncodings.addAll(rlEncodings);
-    currentEncodings.addAll(dlEncodings);
-    currentEncodings.addAll(dataEncodings);
-    currentStatistics = totalStats;
-    currentSizeStatistics = totalSizeStats;
+      currentEncodings.addAll(rlEncodings);
+      currentEncodings.addAll(dlEncodings);
+      currentEncodings.addAll(dataEncodings);
+      currentStatistics = totalStats;
+      currentSizeStatistics = totalSizeStats;
 
-    this.columnIndexBuilder = columnIndexBuilder;
-    this.offsetIndexBuilder = offsetIndexBuilder;
+      this.columnIndexBuilder = columnIndexBuilder;
+      this.offsetIndexBuilder = offsetIndexBuilder;
 
-    endColumn();
+      endColumn();
+    });
   }
 
   /**
@@ -1374,33 +1426,35 @@ public class ParquetFileWriter implements AutoCloseable {
    * @throws IOException if there is an error while writing
    */
   public void endColumn() throws IOException {
-    state = state.endColumn();
-    LOG.debug("{}: end column", out.getPos());
-    if (columnIndexBuilder.getMinMaxSize() > columnIndexBuilder.getPageCount() * MAX_STATS_SIZE) {
-      currentColumnIndexes.add(null);
-    } else {
-      currentColumnIndexes.add(columnIndexBuilder.build());
-    }
-    currentOffsetIndexes.add(offsetIndexBuilder.build(currentChunkFirstDataPage));
-    currentBlock.addColumn(ColumnChunkMetaData.get(
-        currentChunkPath,
-        currentChunkType,
-        currentChunkCodec,
-        encodingStatsBuilder.build(),
-        currentEncodings,
-        currentStatistics,
-        currentChunkFirstDataPage,
-        currentChunkDictionaryPageOffset,
-        currentChunkValueCount,
-        compressedLength,
-        uncompressedLength,
-        currentSizeStatistics));
-    this.currentBlock.setTotalByteSize(currentBlock.getTotalByteSize() + uncompressedLength);
-    this.uncompressedLength = 0;
-    this.compressedLength = 0;
-    this.currentChunkDictionaryPageOffset = 0;
-    columnIndexBuilder = null;
-    offsetIndexBuilder = null;
+    withAbortOnFailure(() -> {
+      state = state.endColumn();
+      LOG.debug("{}: end column", out.getPos());
+      if (columnIndexBuilder.getMinMaxSize() > columnIndexBuilder.getPageCount() * MAX_STATS_SIZE) {
+        currentColumnIndexes.add(null);
+      } else {
+        currentColumnIndexes.add(columnIndexBuilder.build());
+      }
+      currentOffsetIndexes.add(offsetIndexBuilder.build(currentChunkFirstDataPage));
+      currentBlock.addColumn(ColumnChunkMetaData.get(
+          currentChunkPath,
+          currentChunkType,
+          currentChunkCodec,
+          encodingStatsBuilder.build(),
+          currentEncodings,
+          currentStatistics,
+          currentChunkFirstDataPage,
+          currentChunkDictionaryPageOffset,
+          currentChunkValueCount,
+          compressedLength,
+          uncompressedLength,
+          currentSizeStatistics));
+      this.currentBlock.setTotalByteSize(currentBlock.getTotalByteSize() + uncompressedLength);
+      this.uncompressedLength = 0;
+      this.compressedLength = 0;
+      this.currentChunkDictionaryPageOffset = 0;
+      columnIndexBuilder = null;
+      offsetIndexBuilder = null;
+    });
   }
 
   /**
@@ -1409,22 +1463,24 @@ public class ParquetFileWriter implements AutoCloseable {
    * @throws IOException if there is an error while writing
    */
   public void endBlock() throws IOException {
-    if (currentRecordCount == 0) {
-      throw new ParquetEncodingException("End block with zero record");
-    }
+    withAbortOnFailure(() -> {
+      if (currentRecordCount == 0) {
+        throw new ParquetEncodingException("End block with zero record");
+      }
 
-    state = state.endBlock();
-    LOG.debug("{}: end block", out.getPos());
-    currentBlock.setRowCount(currentRecordCount);
-    currentBlock.setOrdinal(blocks.size());
-    blocks.add(currentBlock);
-    columnIndexes.add(currentColumnIndexes);
-    offsetIndexes.add(currentOffsetIndexes);
-    bloomFilters.add(currentBloomFilters);
-    currentColumnIndexes = null;
-    currentOffsetIndexes = null;
-    currentBloomFilters = null;
-    currentBlock = null;
+      state = state.endBlock();
+      LOG.debug("{}: end block", out.getPos());
+      currentBlock.setRowCount(currentRecordCount);
+      currentBlock.setOrdinal(blocks.size());
+      blocks.add(currentBlock);
+      columnIndexes.add(currentColumnIndexes);
+      offsetIndexes.add(currentOffsetIndexes);
+      bloomFilters.add(currentBloomFilters);
+      currentColumnIndexes = null;
+      currentOffsetIndexes = null;
+      currentBloomFilters = null;
+      currentBlock = null;
+    });
   }
 
   /**
@@ -1441,9 +1497,11 @@ public class ParquetFileWriter implements AutoCloseable {
   }
 
   public void appendFile(InputFile file) throws IOException {
-    try (ParquetFileReader reader = ParquetFileReader.open(file)) {
-      reader.appendTo(this);
-    }
+    withAbortOnFailure(() -> {
+      try (ParquetFileReader reader = ParquetFileReader.open(file)) {
+        reader.appendTo(this);
+      }
+    });
   }
 
   /**
@@ -1462,9 +1520,11 @@ public class ParquetFileWriter implements AutoCloseable {
 
   public void appendRowGroups(SeekableInputStream file, List<BlockMetaData> rowGroups, boolean dropColumns)
       throws IOException {
-    for (BlockMetaData block : rowGroups) {
-      appendRowGroup(file, block, dropColumns);
-    }
+    withAbortOnFailure(() -> {
+      for (BlockMetaData block : rowGroups) {
+        appendRowGroup(file, block, dropColumns);
+      }
+    });
   }
 
   /**
@@ -1482,83 +1542,86 @@ public class ParquetFileWriter implements AutoCloseable {
 
   public void appendRowGroup(SeekableInputStream from, BlockMetaData rowGroup, boolean dropColumns)
       throws IOException {
-    startBlock(rowGroup.getRowCount());
+    withAbortOnFailure(() -> {
+      startBlock(rowGroup.getRowCount());
 
-    Map<String, ColumnChunkMetaData> columnsToCopy = new HashMap<String, ColumnChunkMetaData>();
-    for (ColumnChunkMetaData chunk : rowGroup.getColumns()) {
-      columnsToCopy.put(chunk.getPath().toDotString(), chunk);
-    }
-
-    List<ColumnChunkMetaData> columnsInOrder = new ArrayList<ColumnChunkMetaData>();
-
-    for (ColumnDescriptor descriptor : schema.getColumns()) {
-      String path = ColumnPath.get(descriptor.getPath()).toDotString();
-      ColumnChunkMetaData chunk = columnsToCopy.remove(path);
-      if (chunk != null) {
-        columnsInOrder.add(chunk);
-      } else {
-        throw new IllegalArgumentException(
-            String.format("Missing column '%s', cannot copy row group: %s", path, rowGroup));
-      }
-    }
-
-    // complain if some columns would be dropped and that's not okay
-    if (!dropColumns && !columnsToCopy.isEmpty()) {
-      throw new IllegalArgumentException(String.format(
-          "Columns cannot be copied (missing from target schema): %s",
-          String.join(", ", columnsToCopy.keySet())));
-    }
-
-    // copy the data for all chunks
-    long start = -1;
-    long length = 0;
-    long blockUncompressedSize = 0L;
-    for (int i = 0; i < columnsInOrder.size(); i += 1) {
-      ColumnChunkMetaData chunk = columnsInOrder.get(i);
-
-      // get this chunk's start position in the new file
-      long newChunkStart = out.getPos() + length;
-
-      // add this chunk to be copied with any previous chunks
-      if (start < 0) {
-        // no previous chunk included, start at this chunk's starting pos
-        start = chunk.getStartingPos();
-      }
-      length += chunk.getTotalSize();
-
-      if ((i + 1) == columnsInOrder.size() || columnsInOrder.get(i + 1).getStartingPos() != (start + length)) {
-        // not contiguous. do the copy now.
-        copy(from, out, start, length);
-        // reset to start at the next column chunk
-        start = -1;
-        length = 0;
+      Map<String, ColumnChunkMetaData> columnsToCopy = new HashMap<String, ColumnChunkMetaData>();
+      for (ColumnChunkMetaData chunk : rowGroup.getColumns()) {
+        columnsToCopy.put(chunk.getPath().toDotString(), chunk);
       }
 
-      // TODO: column/offset indexes are not copied
-      // (it would require seeking to the end of the file for each row groups)
-      currentColumnIndexes.add(null);
-      currentOffsetIndexes.add(null);
+      List<ColumnChunkMetaData> columnsInOrder = new ArrayList<ColumnChunkMetaData>();
 
-      Offsets offsets = Offsets.getOffsets(from, chunk, newChunkStart);
-      currentBlock.addColumn(ColumnChunkMetaData.get(
-          chunk.getPath(),
-          chunk.getPrimitiveType(),
-          chunk.getCodec(),
-          chunk.getEncodingStats(),
-          chunk.getEncodings(),
-          chunk.getStatistics(),
-          offsets.firstDataPageOffset,
-          offsets.dictionaryPageOffset,
-          chunk.getValueCount(),
-          chunk.getTotalSize(),
-          chunk.getTotalUncompressedSize()));
+      for (ColumnDescriptor descriptor : schema.getColumns()) {
+        String path = ColumnPath.get(descriptor.getPath()).toDotString();
+        ColumnChunkMetaData chunk = columnsToCopy.remove(path);
+        if (chunk != null) {
+          columnsInOrder.add(chunk);
+        } else {
+          throw new IllegalArgumentException(
+              String.format("Missing column '%s', cannot copy row group: %s", path, rowGroup));
+        }
+      }
 
-      blockUncompressedSize += chunk.getTotalUncompressedSize();
-    }
+      // complain if some columns would be dropped and that's not okay
+      if (!dropColumns && !columnsToCopy.isEmpty()) {
+        throw new IllegalArgumentException(String.format(
+            "Columns cannot be copied (missing from target schema): %s",
+            String.join(", ", columnsToCopy.keySet())));
+      }
 
-    currentBlock.setTotalByteSize(blockUncompressedSize);
+      // copy the data for all chunks
+      long start = -1;
+      long length = 0;
+      long blockUncompressedSize = 0L;
+      for (int i = 0; i < columnsInOrder.size(); i += 1) {
+        ColumnChunkMetaData chunk = columnsInOrder.get(i);
 
-    endBlock();
+        // get this chunk's start position in the new file
+        long newChunkStart = out.getPos() + length;
+
+        // add this chunk to be copied with any previous chunks
+        if (start < 0) {
+          // no previous chunk included, start at this chunk's starting pos
+          start = chunk.getStartingPos();
+        }
+        length += chunk.getTotalSize();
+
+        if ((i + 1) == columnsInOrder.size()
+            || columnsInOrder.get(i + 1).getStartingPos() != (start + length)) {
+          // not contiguous. do the copy now.
+          copy(from, out, start, length);
+          // reset to start at the next column chunk
+          start = -1;
+          length = 0;
+        }
+
+        // TODO: column/offset indexes are not copied
+        // (it would require seeking to the end of the file for each row groups)
+        currentColumnIndexes.add(null);
+        currentOffsetIndexes.add(null);
+
+        Offsets offsets = Offsets.getOffsets(from, chunk, newChunkStart);
+        currentBlock.addColumn(ColumnChunkMetaData.get(
+            chunk.getPath(),
+            chunk.getPrimitiveType(),
+            chunk.getCodec(),
+            chunk.getEncodingStats(),
+            chunk.getEncodings(),
+            chunk.getStatistics(),
+            offsets.firstDataPageOffset,
+            offsets.dictionaryPageOffset,
+            chunk.getValueCount(),
+            chunk.getTotalSize(),
+            chunk.getTotalUncompressedSize()));
+
+        blockUncompressedSize += chunk.getTotalUncompressedSize();
+      }
+
+      currentBlock.setTotalByteSize(blockUncompressedSize);
+
+      endBlock();
+    });
   }
 
   /**
@@ -1578,36 +1641,41 @@ public class ParquetFileWriter implements AutoCloseable {
       ColumnIndex columnIndex,
       OffsetIndex offsetIndex)
       throws IOException {
-    long start = chunk.getStartingPos();
-    long length = chunk.getTotalSize();
-    long newChunkStart = out.getPos();
+    withAbortOnFailure(() -> {
+      long start = chunk.getStartingPos();
+      long length = chunk.getTotalSize();
+      long newChunkStart = out.getPos();
 
-    if (offsetIndex != null && newChunkStart != start) {
-      offsetIndex =
-          OffsetIndexBuilder.getBuilder().fromOffsetIndex(offsetIndex).build(newChunkStart - start);
-    }
+      OffsetIndex effectiveOffsetIndex = offsetIndex;
 
-    copy(from, out, start, length);
+      if (effectiveOffsetIndex != null && newChunkStart != start) {
+        effectiveOffsetIndex = OffsetIndexBuilder.getBuilder()
+            .fromOffsetIndex(effectiveOffsetIndex)
+            .build(newChunkStart - start);
+      }
 
-    currentBloomFilters.put(String.join(".", descriptor.getPath()), bloomFilter);
-    currentColumnIndexes.add(columnIndex);
-    currentOffsetIndexes.add(offsetIndex);
+      copy(from, out, start, length);
 
-    Offsets offsets = Offsets.getOffsets(from, chunk, newChunkStart);
-    currentBlock.addColumn(ColumnChunkMetaData.get(
-        chunk.getPath(),
-        chunk.getPrimitiveType(),
-        chunk.getCodec(),
-        chunk.getEncodingStats(),
-        chunk.getEncodings(),
-        chunk.getStatistics(),
-        offsets.firstDataPageOffset,
-        offsets.dictionaryPageOffset,
-        chunk.getValueCount(),
-        chunk.getTotalSize(),
-        chunk.getTotalUncompressedSize()));
+      currentBloomFilters.put(String.join(".", descriptor.getPath()), bloomFilter);
+      currentColumnIndexes.add(columnIndex);
+      currentOffsetIndexes.add(effectiveOffsetIndex);
 
-    currentBlock.setTotalByteSize(currentBlock.getTotalByteSize() + chunk.getTotalUncompressedSize());
+      Offsets offsets = Offsets.getOffsets(from, chunk, newChunkStart);
+      currentBlock.addColumn(ColumnChunkMetaData.get(
+          chunk.getPath(),
+          chunk.getPrimitiveType(),
+          chunk.getCodec(),
+          chunk.getEncodingStats(),
+          chunk.getEncodings(),
+          chunk.getStatistics(),
+          offsets.firstDataPageOffset,
+          offsets.dictionaryPageOffset,
+          chunk.getValueCount(),
+          chunk.getTotalSize(),
+          chunk.getTotalUncompressedSize()));
+
+      currentBlock.setTotalByteSize(currentBlock.getTotalByteSize() + chunk.getTotalUncompressedSize());
+    });
   }
 
   // Buffers for the copy function.
@@ -1647,17 +1715,25 @@ public class ParquetFileWriter implements AutoCloseable {
    * @throws IOException if there is an error while writing
    */
   public void end(Map<String, String> extraMetaData) throws IOException {
-    try {
-      state = state.end();
-      serializeColumnIndexes(columnIndexes, blocks, out, fileEncryptor);
-      serializeOffsetIndexes(offsetIndexes, blocks, out, fileEncryptor);
-      serializeBloomFilters(bloomFilters, blocks, out, fileEncryptor);
-      LOG.debug("{}: end", out.getPos());
-      this.footer = new ParquetMetadata(new FileMetaData(schema, extraMetaData, Version.FULL_VERSION), blocks);
-      serializeFooter(footer, out, fileEncryptor, metadataConverter);
-    } finally {
-      close();
-    }
+    withAbortOnFailure(() -> {
+      try {
+        state = state.end();
+        serializeColumnIndexes(columnIndexes, blocks, out, fileEncryptor);
+        serializeOffsetIndexes(offsetIndexes, blocks, out, fileEncryptor);
+        serializeBloomFilters(bloomFilters, blocks, out, fileEncryptor);
+        LOG.debug("{}: end", out.getPos());
+        this.footer =
+            new ParquetMetadata(new FileMetaData(schema, extraMetaData, Version.FULL_VERSION), blocks);
+        serializeFooter(footer, out, fileEncryptor, metadataConverter);
+      } finally {
+        close();
+      }
+    });
+  }
+
+  /* Mark the writer as aborted to avoid flushing incomplete data. */
+  public void abort() {
+    aborted = true;
   }
 
   @Override
@@ -1665,8 +1741,13 @@ public class ParquetFileWriter implements AutoCloseable {
     if (closed) {
       return;
     }
-    try (PositionOutputStream temp = out) {
-      temp.flush();
+
+    try {
+      if (!aborted) {
+        try (PositionOutputStream temp = out) {
+          temp.flush();
+        }
+      }
       if (crcAllocator != null) {
         crcAllocator.close();
       }
@@ -2117,11 +2198,11 @@ public class ParquetFileWriter implements AutoCloseable {
    * @throws IOException if there is an error while getting the current stream's position
    */
   public long getPos() throws IOException {
-    return out.getPos();
+    return withAbortOnFailure(() -> out.getPos());
   }
 
   public long getNextRowGroupSize() throws IOException {
-    return alignment.nextRowGroupSize(out);
+    return withAbortOnFailure(() -> alignment.nextRowGroupSize(out));
   }
 
   /**
