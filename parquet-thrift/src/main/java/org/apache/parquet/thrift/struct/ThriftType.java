@@ -502,7 +502,7 @@ public abstract class ThriftType {
     }
 
     public Iterable<EnumValue> getValues() {
-      return List.copyOf(values);
+      return values::iterator;
     }
 
     public EnumValue getEnumValueById(int id) {
