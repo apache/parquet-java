@@ -18,14 +18,19 @@
  */
 package org.apache.parquet.hadoop.codec;
 
-import io.airlift.compress.lz4.Lz4Decompressor;
+import io.airlift.compress.v3.lz4.Lz4Decompressor;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import org.apache.hadoop.io.compress.DirectDecompressor;
 
 public class Lz4RawDecompressor extends NonBlockedDecompressor implements DirectDecompressor {
 
-  private Lz4Decompressor decompressor = new Lz4Decompressor();
+  private final Lz4Decompressor decompressor = Lz4Decompressor.create();
+
+  /** Reused for direct buffers; lazily allocated and grown when needed. */
+  private byte[] inputBuf;
+  /** Reused for direct buffers; lazily allocated and grown when needed. */
+  private byte[] outputBuf;
 
   @Override
   protected int maxUncompressedLength(ByteBuffer compressed, int maxUncompressedLength) throws IOException {
@@ -36,10 +41,34 @@ public class Lz4RawDecompressor extends NonBlockedDecompressor implements Direct
 
   @Override
   protected int uncompress(ByteBuffer compressed, ByteBuffer uncompressed) throws IOException {
-    decompressor.decompress(compressed, uncompressed);
-    int uncompressedSize = uncompressed.position();
-    uncompressed.limit(uncompressedSize);
-    uncompressed.rewind();
+    int startPos = uncompressed.position();
+    int compressedLen = compressed.remaining();
+    int maxOut = uncompressed.remaining();
+
+    final int uncompressedSize;
+    if (compressed.hasArray() && uncompressed.hasArray()) {
+      int inputOffset = compressed.arrayOffset() + compressed.position();
+      int outputOffset = uncompressed.arrayOffset() + uncompressed.position();
+      uncompressedSize = decompressor.decompress(
+          compressed.array(), inputOffset, compressedLen,
+          uncompressed.array(), outputOffset, maxOut);
+      // Advance positions to match the direct-buffer path (where get/put do this)
+      compressed.position(compressed.position() + compressedLen);
+    } else {
+      if (inputBuf == null || inputBuf.length < compressedLen) {
+        inputBuf = new byte[compressedLen];
+      }
+      if (outputBuf == null || outputBuf.length < maxOut) {
+        outputBuf = new byte[maxOut];
+      }
+      compressed.get(inputBuf, 0, compressedLen);
+      uncompressedSize = decompressor.decompress(
+          inputBuf, 0, compressedLen, outputBuf, 0, maxOut);
+      uncompressed.put(outputBuf, 0, uncompressedSize);
+    }
+
+    uncompressed.limit(startPos + uncompressedSize);
+    uncompressed.position(startPos);
     return uncompressedSize;
   }
 
