@@ -40,7 +40,7 @@ public class Lz4RawCompressor extends NonBlockedCompressor {
   protected int compress(ByteBuffer uncompressed, ByteBuffer compressed) throws IOException {
     int startPos = compressed.position();
     int inputLen = uncompressed.remaining();
-    int maxOut = compressor.maxCompressedLength(inputLen);
+    int maxOut = compressed.remaining();
 
     final int compressedSize;
     if (uncompressed.hasArray() && compressed.hasArray()) {
