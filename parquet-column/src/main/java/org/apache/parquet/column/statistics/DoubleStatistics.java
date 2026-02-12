@@ -19,6 +19,7 @@
 package org.apache.parquet.column.statistics;
 
 import org.apache.parquet.bytes.BytesUtils;
+import org.apache.parquet.schema.ColumnOrder;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Types;
 
@@ -41,6 +42,7 @@ public class DoubleStatistics extends Statistics<Double> {
 
   DoubleStatistics(PrimitiveType type) {
     super(type);
+    incrementNanCount(0);
   }
 
   private DoubleStatistics(DoubleStatistics other) {
@@ -49,10 +51,14 @@ public class DoubleStatistics extends Statistics<Double> {
       initializeStats(other.min, other.max);
     }
     setNumNulls(other.getNumNulls());
+    incrementNanCount(other.getNanCount());
   }
 
   @Override
   public void updateStats(double value) {
+    if (Double.isNaN(value)) {
+      incrementNanCount();
+    }
     if (!this.hasNonNullValue()) {
       initializeStats(value, value);
     } else {
@@ -98,6 +104,20 @@ public class DoubleStatistics extends Statistics<Double> {
   }
 
   public void updateStats(double min_value, double max_value) {
+    if (type().columnOrder().equals(ColumnOrder.ieee754TotalOrder())) {
+      if (!Double.isNaN(min_value)) {
+        if (Double.isNaN(min) || comparator().compare(min, min_value) > 0) {
+          min = min_value;
+        }
+      }
+      if (!Double.isNaN(max_value)) {
+        if (Double.isNaN(max) || comparator().compare(max, max_value) < 0) {
+          max = max_value;
+        }
+      }
+      return;
+    }
+
     if (comparator().compare(min, min_value) > 0) {
       min = min_value;
     }
