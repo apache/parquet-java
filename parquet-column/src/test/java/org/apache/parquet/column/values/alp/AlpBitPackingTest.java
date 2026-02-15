@@ -25,45 +25,80 @@ import java.nio.ByteOrder;
 import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.DirectByteBufferAllocator;
+import org.apache.parquet.column.values.bitpacking.BytePacker;
+import org.apache.parquet.column.values.bitpacking.BytePackerForLong;
+import org.apache.parquet.column.values.bitpacking.Packer;
 import org.junit.Test;
 
 /**
- * Tests to debug bit packing issues.
+ * Tests for bit-packing behavior in the ALP encoding pipeline.
  */
 public class AlpBitPackingTest {
+
+  @Test
+  public void testBytePackerIntRoundTrip() {
+    // Verify BytePacker pack/unpack round-trip for various bit widths
+    for (int bitWidth = 1; bitWidth <= 31; bitWidth++) {
+      BytePacker packer = Packer.LITTLE_ENDIAN.newBytePacker(bitWidth);
+      int maxVal = (int) Math.min((1L << bitWidth) - 1, Integer.MAX_VALUE);
+
+      int[] input = new int[8];
+      for (int i = 0; i < 8; i++) {
+        input[i] = (maxVal / 8) * i;
+      }
+
+      byte[] packed = new byte[bitWidth];
+      packer.pack8Values(input, 0, packed, 0);
+
+      int[] unpacked = new int[8];
+      ByteBuffer buf = ByteBuffer.wrap(packed);
+      packer.unpack8Values(buf, 0, unpacked, 0);
+
+      for (int i = 0; i < 8; i++) {
+        assertEquals("BitWidth=" + bitWidth + " index=" + i, input[i], unpacked[i]);
+      }
+    }
+  }
+
+  @Test
+  public void testBytePackerForLongRoundTrip() {
+    // Verify BytePackerForLong pack/unpack round-trip for various bit widths
+    for (int bitWidth = 1; bitWidth <= 63; bitWidth++) {
+      BytePackerForLong packer = Packer.LITTLE_ENDIAN.newBytePackerForLong(bitWidth);
+      long maxVal = (bitWidth == 63) ? Long.MAX_VALUE : (1L << bitWidth) - 1;
+
+      long[] input = new long[8];
+      for (int i = 0; i < 8; i++) {
+        input[i] = (maxVal / 8) * i;
+      }
+
+      byte[] packed = new byte[bitWidth];
+      packer.pack8Values(input, 0, packed, 0);
+
+      long[] unpacked = new long[8];
+      ByteBuffer buf = ByteBuffer.wrap(packed);
+      packer.unpack8Values(buf, 0, unpacked, 0);
+
+      for (int i = 0; i < 8; i++) {
+        assertEquals("BitWidth=" + bitWidth + " index=" + i, input[i], unpacked[i]);
+      }
+    }
+  }
 
   @Test
   public void testSimpleTwoFloats() throws Exception {
     AlpValuesWriter.FloatAlpValuesWriter writer = null;
     try {
       writer = new AlpValuesWriter.FloatAlpValuesWriter(256, 256, new DirectByteBufferAllocator());
-
-      // Write just two simple values
       writer.writeFloat(1.0f);
       writer.writeFloat(2.0f);
 
       BytesInput input = writer.getBytes();
-      byte[] bytes = input.toByteArray();
-
-      System.out.println("Encoded bytes length: " + bytes.length);
-      System.out.println("Encoded bytes (hex):");
-      for (int i = 0; i < bytes.length; i++) {
-        System.out.printf("%02X ", bytes[i] & 0xFF);
-        if ((i + 1) % 16 == 0) System.out.println();
-      }
-      System.out.println();
-
       AlpValuesReaderForFloat reader = new AlpValuesReaderForFloat();
       reader.initFromPage(2, ByteBufferInputStream.wrap(input.toByteBuffer()));
 
-      float v1 = reader.readFloat();
-      float v2 = reader.readFloat();
-
-      System.out.println("Read v1: " + v1 + " (bits: " + Float.floatToRawIntBits(v1) + ")");
-      System.out.println("Read v2: " + v2 + " (bits: " + Float.floatToRawIntBits(v2) + ")");
-
-      assertEquals(Float.floatToRawIntBits(1.0f), Float.floatToRawIntBits(v1));
-      assertEquals(Float.floatToRawIntBits(2.0f), Float.floatToRawIntBits(v2));
+      assertEquals(Float.floatToRawIntBits(1.0f), Float.floatToRawIntBits(reader.readFloat()));
+      assertEquals(Float.floatToRawIntBits(2.0f), Float.floatToRawIntBits(reader.readFloat()));
     } finally {
       if (writer != null) {
         writer.reset();
@@ -77,68 +112,17 @@ public class AlpBitPackingTest {
     AlpValuesWriter.FloatAlpValuesWriter writer = null;
     try {
       writer = new AlpValuesWriter.FloatAlpValuesWriter(256, 256, new DirectByteBufferAllocator());
-
-      // Write values including negative
       writer.writeFloat(1.0f);
       writer.writeFloat(-1.0f);
       writer.writeFloat(2.0f);
 
       BytesInput input = writer.getBytes();
-      byte[] bytes = input.toByteArray();
-
-      System.out.println("testThreeFloatsWithNegative - Encoded bytes (hex):");
-      for (int i = 0; i < bytes.length; i++) {
-        System.out.printf("%02X ", bytes[i] & 0xFF);
-        if ((i + 1) % 16 == 0) System.out.println();
-      }
-      System.out.println();
-
-      // Parse header manually to debug
-      ByteBuffer buf = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN);
-      int version = buf.get() & 0xFF;
-      int compressionMode = buf.get() & 0xFF;
-      int integerEncoding = buf.get() & 0xFF;
-      int logVectorSize = buf.get() & 0xFF;
-      int numElements = buf.getInt();
-
-      System.out.println("  Header: version=" + version + ", numElements=" + numElements);
-
-      // Parse AlpInfo
-      int exponent = buf.get() & 0xFF;
-      int factor = buf.get() & 0xFF;
-      int numExceptions = buf.getShort() & 0xFFFF;
-
-      System.out.println(
-          "  AlpInfo: exponent=" + exponent + ", factor=" + factor + ", numExceptions=" + numExceptions);
-
-      // Parse ForInfo
-      int frameOfReference = buf.getInt();
-      int bitWidth = buf.get() & 0xFF;
-
-      System.out.println("  ForInfo: FOR=" + frameOfReference + ", bitWidth=" + bitWidth);
-
-      // Show expected encoding
-      float multiplier = 1.0f; // For exp=0, fac=0
-      System.out.println("  Expected encoding (exp=" + exponent + ", fac=" + factor + "):");
-      System.out.println("    1.0f -> " + Math.round(1.0f * multiplier));
-      System.out.println("    -1.0f -> " + Math.round(-1.0f * multiplier));
-      System.out.println("    2.0f -> " + Math.round(2.0f * multiplier));
-
       AlpValuesReaderForFloat reader = new AlpValuesReaderForFloat();
       reader.initFromPage(3, ByteBufferInputStream.wrap(input.toByteBuffer()));
 
-      float v1 = reader.readFloat();
-      float v2 = reader.readFloat();
-      float v3 = reader.readFloat();
-
-      System.out.println("testThreeFloatsWithNegative:");
-      System.out.println("Read v1: " + v1 + " expected: 1.0");
-      System.out.println("Read v2: " + v2 + " expected: -1.0");
-      System.out.println("Read v3: " + v3 + " expected: 2.0");
-
-      assertEquals(Float.floatToRawIntBits(1.0f), Float.floatToRawIntBits(v1));
-      assertEquals(Float.floatToRawIntBits(-1.0f), Float.floatToRawIntBits(v2));
-      assertEquals(Float.floatToRawIntBits(2.0f), Float.floatToRawIntBits(v3));
+      assertEquals(Float.floatToRawIntBits(1.0f), Float.floatToRawIntBits(reader.readFloat()));
+      assertEquals(Float.floatToRawIntBits(-1.0f), Float.floatToRawIntBits(reader.readFloat()));
+      assertEquals(Float.floatToRawIntBits(2.0f), Float.floatToRawIntBits(reader.readFloat()));
     } finally {
       if (writer != null) {
         writer.reset();
@@ -149,248 +133,45 @@ public class AlpBitPackingTest {
 
   @Test
   public void testEncoderDecoderDirectly() {
-    // Test the encoder/decoder directly without bit packing
     float value = 1.0f;
     int exponent = 2;
     int factor = 0;
 
-    // Check if it's an exception
-    boolean isException = AlpEncoderDecoder.isFloatException(value, exponent, factor);
-    System.out.println("Is 1.0f an exception with exp=2, fac=0? " + isException);
-
-    if (!isException) {
-      int encoded = AlpEncoderDecoder.encodeFloat(value, exponent, factor);
-      float decoded = AlpEncoderDecoder.decodeFloat(encoded, exponent, factor);
-      System.out.println("Encoded: " + encoded);
-      System.out.println("Decoded: " + decoded);
-      assertEquals(Float.floatToRawIntBits(value), Float.floatToRawIntBits(decoded));
-    }
+    assertFalse(AlpEncoderDecoder.isFloatException(value, exponent, factor));
+    int encoded = AlpEncoderDecoder.encodeFloat(value, exponent, factor);
+    float decoded = AlpEncoderDecoder.decodeFloat(encoded, exponent, factor);
+    assertEquals(Float.floatToRawIntBits(value), Float.floatToRawIntBits(decoded));
   }
 
   @Test
-  public void testManualUnpack() throws Exception {
-    // Manually test unpacking
-    byte[] packedData = {0x02}; // Binary: 00000010
-    ByteBuffer buf = ByteBuffer.wrap(packedData);
-
-    int[] values = new int[2];
-    int bitPos = 0;
-    int bitWidth = 1;
-
-    for (int i = 0; i < 2; i++) {
-      int value = 0;
-      int bitsToRead = bitWidth;
-      int destBit = 0;
-
-      while (bitsToRead > 0) {
-        int byteIdx = bitPos / 8;
-        int bitIdx = bitPos % 8;
-        int bitsAvailable = 8 - bitIdx;
-        int bitsThisRound = Math.min(bitsAvailable, bitsToRead);
-        int mask = (1 << bitsThisRound) - 1;
-        int bits = ((buf.get(byteIdx) & 0xFF) >>> bitIdx) & mask;
-        value |= (bits << destBit);
-        bitPos += bitsThisRound;
-        destBit += bitsThisRound;
-        bitsToRead -= bitsThisRound;
-      }
-
-      values[i] = value;
-      System.out.println("Unpacked value[" + i + "] = " + value);
-    }
-
-    assertEquals(0, values[0]); // First bit of 0x02 = 0
-    assertEquals(1, values[1]); // Second bit of 0x02 = 1
-  }
-
-  @Test
-  public void testPackUnpackSymmetry() throws Exception {
-    // Test that packing and unpacking are symmetric
-    // Pack [2, 0, 3] with bitWidth=2, then unpack
-
-    // Pack manually using the same algorithm as the writer
-    int[] values = {2, 0, 3};
-    int bitWidth = 2;
-    int count = 3;
-
-    // Pack (same as writer's packInts)
-    int totalBits = count * bitWidth;
-    int totalBytes = (totalBits + 7) / 8;
-    byte[] packed = new byte[totalBytes];
-
-    long bitBuffer = 0;
-    int bitCount = 0;
-    int bytePos = 0;
-
-    for (int i = 0; i < count; i++) {
-      bitBuffer |= ((long) values[i] << bitCount);
-      bitCount += bitWidth;
-
-      while (bitCount >= 8) {
-        packed[bytePos++] = (byte) bitBuffer;
-        bitBuffer >>>= 8;
-        bitCount -= 8;
-      }
-    }
-
-    // Write remaining bits
-    if (bitCount > 0) {
-      packed[bytePos] = (byte) bitBuffer;
-    }
-
-    System.out.println("testPackUnpackSymmetry:");
-    System.out.println("  Input values: [" + values[0] + ", " + values[1] + ", " + values[2] + "]");
-    System.out.println("  BitWidth: " + bitWidth);
-    System.out.println("  Packed bytes: ");
-    for (int i = 0; i < packed.length; i++) {
-      System.out.printf(
-          "    packed[%d] = 0x%02X = %s\n", i, packed[i] & 0xFF, Integer.toBinaryString(packed[i] & 0xFF));
-    }
-
-    // Unpack (same as reader's unpackInts)
-    ByteBuffer buf = ByteBuffer.wrap(packed);
-    int[] unpacked = new int[count];
-    int bitPos = 0;
-
-    for (int i = 0; i < count; i++) {
-      int value = 0;
-      int bitsToRead = bitWidth;
-      int destBit = 0;
-
-      while (bitsToRead > 0) {
-        int byteIdx = bitPos / 8;
-        int bitIdx = bitPos % 8;
-        int bitsAvailable = 8 - bitIdx;
-        int bitsThisRound = Math.min(bitsAvailable, bitsToRead);
-        int mask = (1 << bitsThisRound) - 1;
-        int bits = ((buf.get(byteIdx) & 0xFF) >>> bitIdx) & mask;
-        value |= (bits << destBit);
-        bitPos += bitsThisRound;
-        destBit += bitsThisRound;
-        bitsToRead -= bitsThisRound;
-      }
-
-      unpacked[i] = value;
-    }
-
-    System.out.println("  Unpacked values: [" + unpacked[0] + ", " + unpacked[1] + ", " + unpacked[2] + "]");
-
-    for (int i = 0; i < count; i++) {
-      assertEquals("Value at index " + i, values[i], unpacked[i]);
-    }
-  }
-
-  @Test
-  public void testDoubleRandomDebug() throws Exception {
-    // Test with random doubles to debug the issue
-    java.util.Random rand = new java.util.Random(42);
-    final int numElements = 1024;
-    double[] values = new double[numElements];
-    for (int i = 0; i < numElements; ++i) {
-      values[i] = rand.nextDouble() * 1000000.0 - 500000.0;
-    }
-
-    // Find which values will be exceptions
-    AlpEncoderDecoder.EncodingParams params = AlpEncoderDecoder.findBestDoubleParams(values, 0, numElements);
-    System.out.println("testDoubleRandomDebug:");
-    System.out.println("  Best params: exponent=" + params.exponent + ", factor=" + params.factor);
-    System.out.println("  Num exceptions: " + params.numExceptions + " out of " + numElements);
-
-    // Encode value 28 manually to see what it should be
-    double val28 = values[28];
-    System.out.println("  Value at index 28: " + val28);
-    if (!AlpEncoderDecoder.isDoubleException(val28, params.exponent, params.factor)) {
-      long encoded28 = AlpEncoderDecoder.encodeDouble(val28, params.exponent, params.factor);
-      System.out.println("    Encoded (before FOR): " + encoded28);
-      double decoded28 = AlpEncoderDecoder.decodeDouble(encoded28, params.exponent, params.factor);
-      System.out.println("    Decoded back: " + decoded28);
-      System.out.println("    Round-trip OK? "
-          + (Double.doubleToRawLongBits(val28) == Double.doubleToRawLongBits(decoded28)));
-    }
-
-    // Now test encode/decode
-    AlpValuesWriter.DoubleAlpValuesWriter writer = null;
+  public void testHeaderFormatValidation() throws Exception {
+    AlpValuesWriter.FloatAlpValuesWriter writer = null;
     try {
-      writer = new AlpValuesWriter.DoubleAlpValuesWriter(
-          numElements * 16, numElements * 16, new DirectByteBufferAllocator());
-
-      for (double v : values) {
-        writer.writeDouble(v);
-      }
+      writer = new AlpValuesWriter.FloatAlpValuesWriter(256, 256, new DirectByteBufferAllocator());
+      writer.writeFloat(1.0f);
+      writer.writeFloat(2.0f);
 
       BytesInput input = writer.getBytes();
       byte[] bytes = input.toByteArray();
 
-      System.out.println("  Total encoded bytes: " + bytes.length);
-
-      // Parse header
+      // Parse and validate header
       ByteBuffer buf = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN);
       int version = buf.get() & 0xFF;
       int compressionMode = buf.get() & 0xFF;
       int integerEncoding = buf.get() & 0xFF;
       int logVectorSize = buf.get() & 0xFF;
-      int numElem = buf.getInt();
-      System.out.println("  Header: numElements=" + numElem);
+      int numElements = buf.getInt();
 
-      // Parse AlpInfo
-      int exponent = buf.get() & 0xFF;
-      int factor = buf.get() & 0xFF;
-      int numExceptions = buf.getShort() & 0xFFFF;
-      System.out.println(
-          "  AlpInfo: exponent=" + exponent + ", factor=" + factor + ", numExceptions=" + numExceptions);
+      assertEquals(AlpConstants.ALP_VERSION, version);
+      assertEquals(AlpConstants.ALP_COMPRESSION_MODE, compressionMode);
+      assertEquals(AlpConstants.ALP_INTEGER_ENCODING_FOR, integerEncoding);
+      assertEquals(AlpConstants.DEFAULT_VECTOR_SIZE_LOG, logVectorSize);
+      assertEquals(2, numElements);
 
-      // Parse ForInfo (9 bytes for double)
-      long frameOfReference = buf.getLong();
-      int bitWidth = buf.get() & 0xFF;
-      System.out.println("  ForInfo: FOR=" + frameOfReference + ", bitWidth=" + bitWidth);
-
-      // Calculate expected delta for value 28
-      if (!AlpEncoderDecoder.isDoubleException(val28, params.exponent, params.factor)) {
-        long encoded28 = AlpEncoderDecoder.encodeDouble(val28, params.exponent, params.factor);
-        long delta28 = encoded28 - frameOfReference;
-        System.out.println("    Expected delta for value 28: " + delta28);
-        System.out.println("    Delta in hex: " + Long.toHexString(delta28));
-      }
-
-      // Now manually read the packed data for index 28
-      int packedDataStart = 8 + 4 + 9; // Header + AlpInfo + ForInfo
-      int bitStart = 28 * bitWidth;
-      int byteStart = packedDataStart + (bitStart / 8);
-      int bitOffset = bitStart % 8;
-      System.out.println(
-          "    Packed data for index 28 starts at byte " + byteStart + ", bit offset " + bitOffset);
-
-      // Print the bytes around this position
-      System.out.print("    Bytes around position: ");
-      for (int i = byteStart; i < Math.min(byteStart + 10, bytes.length); i++) {
-        System.out.printf("%02X ", bytes[i] & 0xFF);
-      }
-      System.out.println();
-
-      AlpValuesReaderForDouble reader = new AlpValuesReaderForDouble();
-      reader.initFromPage(numElements, ByteBufferInputStream.wrap(input.toByteBuffer()));
-
-      // Check first few values and find first mismatch
-      int firstMismatch = -1;
-      for (int i = 0; i < numElements; i++) {
-        double expected = values[i];
-        double actual = reader.readDouble();
-        if (Double.doubleToRawLongBits(expected) != Double.doubleToRawLongBits(actual)) {
-          System.out.println("  First mismatch at index " + i + ":");
-          System.out.println(
-              "    Expected: " + expected + " (bits: " + Double.doubleToRawLongBits(expected) + ")");
-          System.out.println("    Actual: " + actual + " (bits: " + Double.doubleToRawLongBits(actual) + ")");
-          System.out.println(
-              "    Is exception? " + AlpEncoderDecoder.isDoubleException(expected, exponent, factor));
-          firstMismatch = i;
-          break;
-        }
-      }
-
-      if (firstMismatch == -1) {
-        System.out.println("  All values matched!");
-      }
-
+      // Verify offset array follows header (1 vector = 1 offset entry)
+      int offset0 = buf.getInt();
+      // First vector starts right after the offset array (1 vector * 4 bytes = 4)
+      assertEquals(Integer.BYTES, offset0);
     } finally {
       if (writer != null) {
         writer.reset();
@@ -400,61 +181,100 @@ public class AlpBitPackingTest {
   }
 
   @Test
-  public void testHeaderParsing() throws Exception {
+  public void testPartialGroupPacking() throws Exception {
+    // Test with fewer than 8 values to exercise partial group packing/unpacking
     AlpValuesWriter.FloatAlpValuesWriter writer = null;
     try {
       writer = new AlpValuesWriter.FloatAlpValuesWriter(256, 256, new DirectByteBufferAllocator());
-
-      writer.writeFloat(1.0f);
-      writer.writeFloat(2.0f);
+      float[] values = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f};
+      for (float v : values) {
+        writer.writeFloat(v);
+      }
 
       BytesInput input = writer.getBytes();
-      byte[] bytes = input.toByteArray();
+      AlpValuesReaderForFloat reader = new AlpValuesReaderForFloat();
+      reader.initFromPage(values.length, ByteBufferInputStream.wrap(input.toByteBuffer()));
 
-      // Parse header manually
-      ByteBuffer buf = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN);
-      int version = buf.get() & 0xFF;
-      int compressionMode = buf.get() & 0xFF;
-      int integerEncoding = buf.get() & 0xFF;
-      int logVectorSize = buf.get() & 0xFF;
-      int numElements = buf.getInt();
+      for (float expected : values) {
+        assertEquals(Float.floatToRawIntBits(expected), Float.floatToRawIntBits(reader.readFloat()));
+      }
+    } finally {
+      if (writer != null) {
+        writer.reset();
+        writer.close();
+      }
+    }
+  }
 
-      System.out.println("Header parsing:");
-      System.out.println("  version: " + version);
-      System.out.println("  compressionMode: " + compressionMode);
-      System.out.println("  integerEncoding: " + integerEncoding);
-      System.out.println("  logVectorSize: " + logVectorSize);
-      System.out.println("  numElements: " + numElements);
+  @Test
+  public void testBitWidthZeroPacking() throws Exception {
+    // All identical values should result in bitWidth=0 (no packed data)
+    AlpValuesWriter.FloatAlpValuesWriter writer = null;
+    try {
+      writer = new AlpValuesWriter.FloatAlpValuesWriter(256, 256, new DirectByteBufferAllocator());
+      for (int i = 0; i < 10; i++) {
+        writer.writeFloat(5.0f);
+      }
 
-      assertEquals(1, version);
-      assertEquals(0, compressionMode);
-      assertEquals(0, integerEncoding);
-      assertEquals(10, logVectorSize);
-      assertEquals(2, numElements);
+      BytesInput input = writer.getBytes();
+      AlpValuesReaderForFloat reader = new AlpValuesReaderForFloat();
+      reader.initFromPage(10, ByteBufferInputStream.wrap(input.toByteBuffer()));
 
-      // Parse AlpInfo
-      int exponent = buf.get() & 0xFF;
-      int factor = buf.get() & 0xFF;
-      int numExceptions = buf.getShort() & 0xFFFF;
+      for (int i = 0; i < 10; i++) {
+        assertEquals(Float.floatToRawIntBits(5.0f), Float.floatToRawIntBits(reader.readFloat()));
+      }
+    } finally {
+      if (writer != null) {
+        writer.reset();
+        writer.close();
+      }
+    }
+  }
 
-      System.out.println("AlpInfo:");
-      System.out.println("  exponent: " + exponent);
-      System.out.println("  factor: " + factor);
-      System.out.println("  numExceptions: " + numExceptions);
+  @Test
+  public void testDoublePackingRoundTrip() throws Exception {
+    // Verify double packing round-trip with varying values
+    AlpValuesWriter.DoubleAlpValuesWriter writer = null;
+    try {
+      writer = new AlpValuesWriter.DoubleAlpValuesWriter(512, 512, new DirectByteBufferAllocator());
+      double[] values = {1.0, -1.0, 2.0, 100.5, 0.0, 3.14, 42.0, 99.99, 0.001, 7.77};
+      for (double v : values) {
+        writer.writeDouble(v);
+      }
 
-      // Parse ForInfo
-      int frameOfReference = buf.getInt();
-      int bitWidth = buf.get() & 0xFF;
+      BytesInput input = writer.getBytes();
+      AlpValuesReaderForDouble reader = new AlpValuesReaderForDouble();
+      reader.initFromPage(values.length, ByteBufferInputStream.wrap(input.toByteBuffer()));
 
-      System.out.println("ForInfo:");
-      System.out.println("  frameOfReference: " + frameOfReference);
-      System.out.println("  bitWidth: " + bitWidth);
+      for (double expected : values) {
+        assertEquals(Double.doubleToRawLongBits(expected), Double.doubleToRawLongBits(reader.readDouble()));
+      }
+    } finally {
+      if (writer != null) {
+        writer.reset();
+        writer.close();
+      }
+    }
+  }
 
-      // Calculate expected packed data size
-      int vectorLen = 2;
-      int packedBytes = (vectorLen * bitWidth + 7) / 8;
-      System.out.println("Expected packed bytes: " + packedBytes);
+  @Test
+  public void testExactEightValues() throws Exception {
+    // Exactly 8 values = one full packing group, no partial group
+    AlpValuesWriter.FloatAlpValuesWriter writer = null;
+    try {
+      writer = new AlpValuesWriter.FloatAlpValuesWriter(256, 256, new DirectByteBufferAllocator());
+      float[] values = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f};
+      for (float v : values) {
+        writer.writeFloat(v);
+      }
 
+      BytesInput input = writer.getBytes();
+      AlpValuesReaderForFloat reader = new AlpValuesReaderForFloat();
+      reader.initFromPage(values.length, ByteBufferInputStream.wrap(input.toByteBuffer()));
+
+      for (float expected : values) {
+        assertEquals(Float.floatToRawIntBits(expected), Float.floatToRawIntBits(reader.readFloat()));
+      }
     } finally {
       if (writer != null) {
         writer.reset();
