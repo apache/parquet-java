@@ -20,160 +20,28 @@ package org.apache.parquet.column.values.alp;
 
 import static org.apache.parquet.column.values.alp.AlpConstants.*;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import org.apache.parquet.bytes.ByteBufferInputStream;
-import org.apache.parquet.column.values.ValuesReader;
+import org.apache.parquet.column.values.bitpacking.BytePacker;
+import org.apache.parquet.column.values.bitpacking.Packer;
 import org.apache.parquet.io.ParquetDecodingException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
- * ALP values reader for FLOAT type.
+ * ALP values reader for FLOAT type with lazy per-vector decoding.
  *
- * <p>Reads ALP-encoded float values from a page and decodes them back to float values.
- *
- * <p>Page Layout:
- * <pre>
- * ┌─────────┬────────────────┬────────────────┬─────────────┐
- * │ Header  │ AlpInfo Array  │ ForInfo Array  │ Data Array  │
- * │ 8 bytes │ 4B × N vectors │ 5B × N vectors │ Variable    │
- * └─────────┴────────────────┴────────────────┴─────────────┘
- * </pre>
+ * <p>Reads ALP-encoded float values from the interleaved page layout.
+ * Each vector is decoded on first access using BytePacker-based unpacking.
  */
-public class AlpValuesReaderForFloat extends ValuesReader {
-  private static final Logger LOG = LoggerFactory.getLogger(AlpValuesReaderForFloat.class);
+public class AlpValuesReaderForFloat extends AlpValuesReader {
 
-  // Decoded float values (eagerly decoded)
   private float[] decodedValues;
-  private int currentIndex;
-  private int totalCount;
 
   public AlpValuesReaderForFloat() {
-    this.currentIndex = 0;
-    this.totalCount = 0;
+    super();
   }
 
   @Override
-  public void initFromPage(int valuesCount, ByteBufferInputStream stream)
-      throws ParquetDecodingException, IOException {
-    LOG.debug("init from page at offset {} for length {}", stream.position(), stream.available());
-
-    // Read and validate header
-    ByteBuffer headerBuf = stream.slice(ALP_HEADER_SIZE).order(ByteOrder.LITTLE_ENDIAN);
-    int version = headerBuf.get() & 0xFF;
-    int compressionMode = headerBuf.get() & 0xFF;
-    int integerEncoding = headerBuf.get() & 0xFF;
-    int logVectorSize = headerBuf.get() & 0xFF;
-    int numElements = headerBuf.getInt();
-
-    if (version != ALP_VERSION) {
-      throw new ParquetDecodingException("Unsupported ALP version: " + version + ", expected " + ALP_VERSION);
-    }
-    if (compressionMode != ALP_COMPRESSION_MODE) {
-      throw new ParquetDecodingException("Unsupported ALP compression mode: " + compressionMode);
-    }
-    if (integerEncoding != ALP_INTEGER_ENCODING_FOR) {
-      throw new ParquetDecodingException("Unsupported ALP integer encoding: " + integerEncoding);
-    }
-
-    int vectorSize = 1 << logVectorSize;
-    int numVectors = (numElements + vectorSize - 1) / vectorSize;
-
-    this.totalCount = numElements;
-    this.decodedValues = new float[numElements];
-    this.currentIndex = 0;
-
-    // Read AlpInfo array
-    ByteBuffer alpInfoBuf = stream.slice(ALP_INFO_SIZE * numVectors).order(ByteOrder.LITTLE_ENDIAN);
-    int[] exponents = new int[numVectors];
-    int[] factors = new int[numVectors];
-    int[] numExceptions = new int[numVectors];
-
-    for (int v = 0; v < numVectors; v++) {
-      exponents[v] = alpInfoBuf.get() & 0xFF;
-      factors[v] = alpInfoBuf.get() & 0xFF;
-      numExceptions[v] = alpInfoBuf.getShort() & 0xFFFF;
-    }
-
-    // Read ForInfo array
-    ByteBuffer forInfoBuf = stream.slice(FLOAT_FOR_INFO_SIZE * numVectors).order(ByteOrder.LITTLE_ENDIAN);
-    int[] frameOfReference = new int[numVectors];
-    int[] bitWidths = new int[numVectors];
-
-    for (int v = 0; v < numVectors; v++) {
-      frameOfReference[v] = forInfoBuf.getInt();
-      bitWidths[v] = forInfoBuf.get() & 0xFF;
-    }
-
-    // Decode each vector
-    for (int v = 0; v < numVectors; v++) {
-      int vectorStart = v * vectorSize;
-      int vectorEnd = Math.min(vectorStart + vectorSize, numElements);
-      int vectorLen = vectorEnd - vectorStart;
-
-      // Calculate packed data size
-      int packedBytes = (vectorLen * bitWidths[v] + 7) / 8;
-
-      // Read and unpack values
-      int[] deltas = new int[vectorLen];
-      if (bitWidths[v] > 0) {
-        ByteBuffer packedBuf = stream.slice(packedBytes).order(ByteOrder.LITTLE_ENDIAN);
-        unpackInts(packedBuf, deltas, vectorLen, bitWidths[v]);
-      }
-      // else: all deltas are 0 (bitWidth == 0)
-
-      // Reverse FOR and decode
-      for (int i = 0; i < vectorLen; i++) {
-        int encoded = deltas[i] + frameOfReference[v];
-        decodedValues[vectorStart + i] = AlpEncoderDecoder.decodeFloat(encoded, exponents[v], factors[v]);
-      }
-
-      // Apply exceptions
-      if (numExceptions[v] > 0) {
-        ByteBuffer excPosBuf = stream.slice(numExceptions[v] * 2).order(ByteOrder.LITTLE_ENDIAN);
-        ByteBuffer excValBuf =
-            stream.slice(numExceptions[v] * Float.BYTES).order(ByteOrder.LITTLE_ENDIAN);
-
-        for (int e = 0; e < numExceptions[v]; e++) {
-          int pos = excPosBuf.getShort() & 0xFFFF;
-          float val = excValBuf.getFloat();
-          decodedValues[vectorStart + pos] = val;
-        }
-      }
-    }
-  }
-
-  /**
-   * Unpack integers from a byte buffer using the specified bit width.
-   * Note: This method reads from the buffer's current position, using absolute indexing
-   * relative to that position.
-   */
-  private void unpackInts(ByteBuffer packed, int[] values, int count, int bitWidth) {
-    int basePosition = packed.position();
-    int bitPos = 0;
-    for (int i = 0; i < count; i++) {
-      int value = 0;
-      int bitsToRead = bitWidth;
-      int destBit = 0;
-
-      while (bitsToRead > 0) {
-        int byteIdx = bitPos / 8;
-        int bitIdx = bitPos % 8;
-        int bitsAvailable = 8 - bitIdx;
-        int bitsThisRound = Math.min(bitsAvailable, bitsToRead);
-        int mask = (1 << bitsThisRound) - 1;
-        // Use basePosition + byteIdx to account for sliced buffer position
-        int bits = ((packed.get(basePosition + byteIdx) & 0xFF) >>> bitIdx) & mask;
-        value |= (bits << destBit);
-        bitPos += bitsThisRound;
-        destBit += bitsThisRound;
-        bitsToRead -= bitsThisRound;
-      }
-
-      values[i] = value;
-    }
+  protected void allocateDecodedBuffer(int capacity) {
+    this.decodedValues = new float[capacity];
   }
 
   @Override
@@ -181,21 +49,105 @@ public class AlpValuesReaderForFloat extends ValuesReader {
     if (currentIndex >= totalCount) {
       throw new ParquetDecodingException("ALP float data was already exhausted.");
     }
-    return decodedValues[currentIndex++];
+    ensureVectorDecoded();
+    int indexInVector = currentIndex % vectorSize;
+    currentIndex++;
+    return decodedValues[indexInVector];
   }
 
   @Override
-  public void skip() {
-    skip(1);
-  }
+  protected void decodeVector(int vectorIdx) {
+    int vectorLen = getVectorLength(vectorIdx);
+    int pos = getVectorDataPosition(vectorIdx);
 
-  @Override
-  public void skip(int n) {
-    if (n < 0 || currentIndex + n > totalCount) {
-      throw new ParquetDecodingException(String.format(
-          "Cannot skip this many elements. Current index: %d. Skip %d. Total count: %d",
-          currentIndex, n, totalCount));
+    // Read AlpInfo (4 bytes): exponent(1) + factor(1) + numExceptions(2)
+    int exponent = vectorsData.get(pos) & 0xFF;
+    int factor = vectorsData.get(pos + 1) & 0xFF;
+    int numExceptions = getShortLE(vectorsData, pos + 2) & 0xFFFF;
+    pos += ALP_INFO_SIZE;
+
+    // Read ForInfo (5 bytes for float): frameOfReference(4) + bitWidth(1)
+    int frameOfReference = getIntLE(vectorsData, pos);
+    int bitWidth = vectorsData.get(pos + 4) & 0xFF;
+    pos += FLOAT_FOR_INFO_SIZE;
+
+    // Unpack bit-packed values using BytePacker
+    int[] deltas = new int[vectorLen];
+    if (bitWidth > 0) {
+      pos = unpackIntsWithBytePacker(vectorsData, pos, deltas, vectorLen, bitWidth);
     }
-    currentIndex += n;
+
+    // Reverse Frame of Reference and decode
+    for (int i = 0; i < vectorLen; i++) {
+      int encoded = deltas[i] + frameOfReference;
+      decodedValues[i] = AlpEncoderDecoder.decodeFloat(encoded, exponent, factor);
+    }
+
+    // Apply exceptions (positions and values are stored in separate blocks)
+    if (numExceptions > 0) {
+      int[] excPositions = new int[numExceptions];
+      for (int e = 0; e < numExceptions; e++) {
+        excPositions[e] = getShortLE(vectorsData, pos) & 0xFFFF;
+        pos += Short.BYTES;
+      }
+      for (int e = 0; e < numExceptions; e++) {
+        decodedValues[excPositions[e]] = getFloatLE(vectorsData, pos);
+        pos += Float.BYTES;
+      }
+    }
+  }
+
+  /**
+   * Unpack ints from a ByteBuffer using BytePacker, working in groups of 8.
+   *
+   * @return the position after the packed data
+   */
+  private int unpackIntsWithBytePacker(ByteBuffer buf, int pos, int[] output, int count, int bitWidth) {
+    BytePacker packer = Packer.LITTLE_ENDIAN.newBytePacker(bitWidth);
+    int numFullGroups = count / 8;
+    int remaining = count % 8;
+
+    for (int g = 0; g < numFullGroups; g++) {
+      packer.unpack8Values(buf, pos, output, g * 8);
+      pos += bitWidth;
+    }
+
+    // Handle partial last group: read only spec-required bytes, zero-pad, unpack
+    // Spec: total packed size = ceil(count * bitWidth / 8)
+    if (remaining > 0) {
+      int totalPackedBytes = (count * bitWidth + 7) / 8;
+      int alreadyRead = numFullGroups * bitWidth;
+      int partialBytes = totalPackedBytes - alreadyRead;
+
+      byte[] padded = new byte[bitWidth];
+      for (int i = 0; i < partialBytes; i++) {
+        padded[i] = buf.get(pos + i);
+      }
+
+      int[] temp = new int[8];
+      packer.unpack8Values(padded, 0, temp, 0);
+      System.arraycopy(temp, 0, output, numFullGroups * 8, remaining);
+      pos += partialBytes;
+    }
+
+    return pos;
+  }
+
+  /** Read a little-endian unsigned short from a ByteBuffer at a specific position. */
+  private static int getShortLE(ByteBuffer buf, int pos) {
+    return (buf.get(pos) & 0xFF) | ((buf.get(pos + 1) & 0xFF) << 8);
+  }
+
+  /** Read a little-endian int from a ByteBuffer at a specific position. */
+  private static int getIntLE(ByteBuffer buf, int pos) {
+    return (buf.get(pos) & 0xFF)
+        | ((buf.get(pos + 1) & 0xFF) << 8)
+        | ((buf.get(pos + 2) & 0xFF) << 16)
+        | ((buf.get(pos + 3) & 0xFF) << 24);
+  }
+
+  /** Read a little-endian float from a ByteBuffer at a specific position. */
+  private static float getFloatLE(ByteBuffer buf, int pos) {
+    return Float.intBitsToFloat(getIntLE(buf, pos));
   }
 }
