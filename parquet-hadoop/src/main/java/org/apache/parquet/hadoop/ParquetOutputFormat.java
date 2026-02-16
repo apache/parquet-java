@@ -546,6 +546,10 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
             STATISTICS_ENABLED,
             key -> conf.getBoolean(key, ParquetProperties.DEFAULT_STATISTICS_ENABLED),
             propsBuilder::withStatisticsEnabled)
+        .withColumnConfig(
+            COMPRESSION,
+            key -> CompressionCodecName.fromConf(conf.get(key)),
+            propsBuilder::withCompressionCodec)
         .parseConfig(conf);
 
     ParquetProperties props = propsBuilder.build();

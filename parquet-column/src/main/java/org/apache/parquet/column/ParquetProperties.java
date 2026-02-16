@@ -39,6 +39,7 @@ import org.apache.parquet.column.values.factory.DefaultValuesWriterFactory;
 import org.apache.parquet.column.values.factory.ValuesWriterFactory;
 import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridEncoder;
 import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridValuesWriter;
+import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.schema.MessageType;
 
 /**
@@ -135,6 +136,7 @@ public class ParquetProperties {
   private final Map<String, String> extraMetaData;
   private final ColumnProperty<Boolean> statistics;
   private final ColumnProperty<Boolean> sizeStatistics;
+  private final ColumnProperty<CompressionCodecName> compressionCodec;
 
   private ParquetProperties(Builder builder) {
     this.pageSizeThreshold = builder.pageSize;
@@ -167,6 +169,7 @@ public class ParquetProperties {
     this.extraMetaData = builder.extraMetaData;
     this.statistics = builder.statistics.build();
     this.sizeStatistics = builder.sizeStatistics.build();
+    this.compressionCodec = builder.compressionCodec.build();
   }
 
   public static Builder builder() {
@@ -348,6 +351,14 @@ public class ParquetProperties {
     return numBloomFilterCandidates.getValue(column);
   }
 
+  public CompressionCodecName getCompressionCodec(ColumnDescriptor column) {
+    return compressionCodec.getValue(column);
+  }
+
+  public CompressionCodecName getDefaultCompressionCodec() {
+    return compressionCodec.getDefaultValue();
+  }
+
   public Map<String, String> getExtraMetaData() {
     return extraMetaData;
   }
@@ -419,6 +430,7 @@ public class ParquetProperties {
     private Map<String, String> extraMetaData = new HashMap<>();
     private final ColumnProperty.Builder<Boolean> statistics;
     private final ColumnProperty.Builder<Boolean> sizeStatistics;
+    private final ColumnProperty.Builder<CompressionCodecName> compressionCodec;
 
     private Builder() {
       enableDict = ColumnProperty.<Boolean>builder().withDefaultValue(DEFAULT_IS_DICTIONARY_ENABLED);
@@ -436,6 +448,8 @@ public class ParquetProperties {
           ColumnProperty.<Integer>builder().withDefaultValue(DEFAULT_BLOOM_FILTER_CANDIDATES_NUMBER);
       statistics = ColumnProperty.<Boolean>builder().withDefaultValue(DEFAULT_STATISTICS_ENABLED);
       sizeStatistics = ColumnProperty.<Boolean>builder().withDefaultValue(DEFAULT_SIZE_STATISTICS_ENABLED);
+      compressionCodec =
+          ColumnProperty.<CompressionCodecName>builder().withDefaultValue(CompressionCodecName.UNCOMPRESSED);
     }
 
     private Builder(ParquetProperties toCopy) {
@@ -460,6 +474,7 @@ public class ParquetProperties {
       this.extraMetaData = toCopy.extraMetaData;
       this.statistics = ColumnProperty.builder(toCopy.statistics);
       this.sizeStatistics = ColumnProperty.builder(toCopy.sizeStatistics);
+      this.compressionCodec = ColumnProperty.builder(toCopy.compressionCodec);
     }
 
     /**
@@ -753,6 +768,32 @@ public class ParquetProperties {
      */
     public Builder withSizeStatisticsEnabled(String columnPath, boolean enabled) {
       this.sizeStatistics.withValue(columnPath, enabled);
+      return this;
+    }
+
+    /**
+     * Set the compression codec for the columns not specified by
+     * {@link #withCompressionCodec(String, CompressionCodecName)}.
+     *
+     * @param codecName the compression codec to use by default
+     * @return this builder for method chaining.
+     */
+    public Builder withCompressionCodec(CompressionCodecName codecName) {
+      this.compressionCodec.withDefaultValue(
+          Objects.requireNonNull(codecName, "compressionCodecName cannot be null"));
+      return this;
+    }
+
+    /**
+     * Set the compression codec for the specified column.
+     *
+     * @param columnPath the path of the column (dot-string)
+     * @param codecName  the compression codec to use for the column
+     * @return this builder for method chaining.
+     */
+    public Builder withCompressionCodec(String columnPath, CompressionCodecName codecName) {
+      this.compressionCodec.withValue(
+          columnPath, Objects.requireNonNull(codecName, "compressionCodecName cannot be null"));
       return this;
     }
 
