@@ -49,13 +49,8 @@ abstract class AlpValuesReader extends ValuesReader {
   protected int currentIndex;
   protected int currentVectorIndex;
 
-  // Offset array: byte offset of each vector relative to start of compression body
   protected int[] vectorOffsets;
-
-  // Raw vector data (everything after the header)
   protected ByteBuffer vectorsData;
-
-  // Size of the offset array in bytes
   protected int offsetArraySize;
 
   AlpValuesReader() {
@@ -67,7 +62,6 @@ abstract class AlpValuesReader extends ValuesReader {
   @Override
   public void initFromPage(int valuesCount, ByteBufferInputStream stream)
       throws ParquetDecodingException, IOException {
-    // Read 8-byte header sequentially
     ByteBuffer headerBuf = stream.slice(ALP_HEADER_SIZE).order(ByteOrder.LITTLE_ENDIAN);
     int version = headerBuf.get() & 0xFF;
     int compressionMode = headerBuf.get() & 0xFF;
@@ -75,7 +69,6 @@ abstract class AlpValuesReader extends ValuesReader {
     int logVectorSize = headerBuf.get() & 0xFF;
     int numElements = headerBuf.getInt();
 
-    // Validate header
     if (version != ALP_VERSION) {
       throw new ParquetDecodingException("Unsupported ALP version: " + version + ", expected " + ALP_VERSION);
     }
@@ -99,7 +92,6 @@ abstract class AlpValuesReader extends ValuesReader {
     this.currentIndex = 0;
     this.currentVectorIndex = -1;
 
-    // Read offset array
     this.offsetArraySize = numVectors * Integer.BYTES;
     ByteBuffer offsetBuf = stream.slice(offsetArraySize).order(ByteOrder.LITTLE_ENDIAN);
     this.vectorOffsets = new int[numVectors];
@@ -107,20 +99,15 @@ abstract class AlpValuesReader extends ValuesReader {
       vectorOffsets[v] = offsetBuf.getInt();
     }
 
-    // Slice all remaining bytes as vectors data.
-    // We call ByteBuffer.slice() to create a 0-based view because decodeVector
-    // uses absolute get methods (e.g., vectorsData.get(pos)) which index from 0.
+    // Slice remaining bytes into a 0-based view so decodeVector can use
+    // absolute get methods (vectorsData.get(pos)) directly.
     int remainingBytes = (int) stream.available();
     ByteBuffer rawSlice = stream.slice(remainingBytes);
     this.vectorsData = rawSlice.slice().order(ByteOrder.LITTLE_ENDIAN);
 
-    // Allocate decoded values buffer
     allocateDecodedBuffer(vectorSize);
   }
 
-  /**
-   * Get the number of values in a specific vector.
-   */
   protected int getVectorLength(int vectorIdx) {
     if (vectorIdx < numVectors - 1) {
       return vectorSize;
@@ -130,11 +117,8 @@ abstract class AlpValuesReader extends ValuesReader {
     return lastVectorLen == 0 ? vectorSize : lastVectorLen;
   }
 
-  /**
-   * Get the byte position in vectorsData where a vector starts.
-   * The offset is relative to the compression body (after header),
-   * but vectorsData starts after the offset array, so we subtract offsetArraySize.
-   */
+  // Offsets in the page are relative to the compression body (after header),
+  // but vectorsData starts after the offset array, so adjust.
   protected int getVectorDataPosition(int vectorIdx) {
     return vectorOffsets[vectorIdx] - offsetArraySize;
   }
@@ -154,9 +138,6 @@ abstract class AlpValuesReader extends ValuesReader {
     currentIndex += n;
   }
 
-  /**
-   * Ensure the vector containing currentIndex is decoded.
-   */
   protected void ensureVectorDecoded() {
     int vectorIdx = currentIndex / vectorSize;
     if (vectorIdx != currentVectorIndex) {
@@ -165,13 +146,7 @@ abstract class AlpValuesReader extends ValuesReader {
     }
   }
 
-  /**
-   * Allocate the decoded values buffer with the given capacity.
-   */
   protected abstract void allocateDecodedBuffer(int capacity);
 
-  /**
-   * Decode a specific vector from the raw data.
-   */
   protected abstract void decodeVector(int vectorIdx);
 }

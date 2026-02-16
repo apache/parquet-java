@@ -45,15 +45,6 @@ final class AlpEncoderDecoder {
     // Utility class
   }
 
-  // ========== Multiplier Computation ==========
-
-  /**
-   * Compute the float multiplier for the given exponent and factor.
-   *
-   * @param exponent the decimal exponent (0-10)
-   * @param factor   the decimal factor (0 &lt;= factor &lt;= exponent)
-   * @return the multiplier: 10^exponent / 10^factor
-   */
   static float getFloatMultiplier(int exponent, int factor) {
     float multiplier = FLOAT_POW10[exponent];
     if (factor > 0) {
@@ -62,13 +53,6 @@ final class AlpEncoderDecoder {
     return multiplier;
   }
 
-  /**
-   * Compute the double multiplier for the given exponent and factor.
-   *
-   * @param exponent the decimal exponent (0-18)
-   * @param factor   the decimal factor (0 &lt;= factor &lt;= exponent)
-   * @return the multiplier: 10^exponent / 10^factor
-   */
   static double getDoubleMultiplier(int exponent, int factor) {
     double multiplier = DOUBLE_POW10[exponent];
     if (factor > 0) {
@@ -77,14 +61,7 @@ final class AlpEncoderDecoder {
     return multiplier;
   }
 
-  // ========== Float Encoding/Decoding ==========
-
-  /**
-   * Check if a float value is an unconditional exception (cannot be encoded regardless of params).
-   *
-   * @param value the float value to check
-   * @return true if the value is NaN, Infinite, or negative zero
-   */
+  /** NaN, Inf, and -0.0 can never be encoded regardless of exponent/factor. */
   static boolean isFloatException(float value) {
     if (Float.isNaN(value)) {
       return true;
@@ -95,15 +72,7 @@ final class AlpEncoderDecoder {
     return Float.floatToRawIntBits(value) == FLOAT_NEGATIVE_ZERO_BITS;
   }
 
-  /**
-   * Check if a float value will be an exception for the given exponent/factor.
-   * Uses encodeFloat/decodeFloat internally to verify round-trip.
-   *
-   * @param value    the float value
-   * @param exponent the decimal exponent (0-10)
-   * @param factor   the decimal factor (0 &lt;= factor &lt;= exponent)
-   * @return true if the value is an exception for this encoding
-   */
+  /** Check round-trip: encode then decode, and see if we get the same bits back. */
   static boolean isFloatException(float value, int exponent, int factor) {
     if (isFloatException(value)) {
       return true;
@@ -118,40 +87,17 @@ final class AlpEncoderDecoder {
     return Float.floatToRawIntBits(value) != Float.floatToRawIntBits(decoded);
   }
 
-  /**
-   * Encode a float value to an integer using the specified exponent and factor.
-   *
-   * <p>Formula: encoded = round(value * 10^(exponent - factor))
-   *
-   * @param value    the float value to encode
-   * @param exponent the decimal exponent (0-10)
-   * @param factor   the decimal factor (0 &lt;= factor &lt;= exponent)
-   * @return the encoded integer value
-   */
+  /** Encode: round(value * 10^exponent / 10^factor) */
   static int encodeFloat(float value, int exponent, int factor) {
     return fastRoundFloat(value * getFloatMultiplier(exponent, factor));
   }
 
-  /**
-   * Decode an integer back to a float using the specified exponent and factor.
-   *
-   * <p>Formula: value = encoded / 10^(exponent - factor)
-   *
-   * @param encoded  the encoded integer value
-   * @param exponent the decimal exponent (0-10)
-   * @param factor   the decimal factor (0 &lt;= factor &lt;= exponent)
-   * @return the decoded float value
-   */
+  /** Decode: encoded / 10^exponent * 10^factor */
   static float decodeFloat(int encoded, int exponent, int factor) {
     return encoded / getFloatMultiplier(exponent, factor);
   }
 
-  /**
-   * Fast rounding for float values using the magic number technique.
-   *
-   * @param value the float value to round
-   * @return the rounded integer value
-   */
+  // Uses the 2^22+2^23 magic-number trick to round without branching on the FPU.
   static int fastRoundFloat(float value) {
     if (value >= 0) {
       return (int) ((value + MAGIC_FLOAT) - MAGIC_FLOAT);
@@ -160,14 +106,6 @@ final class AlpEncoderDecoder {
     }
   }
 
-  // ========== Double Encoding/Decoding ==========
-
-  /**
-   * Check if a double value is an unconditional exception (cannot be encoded regardless of params).
-   *
-   * @param value the double value to check
-   * @return true if the value is NaN, Infinite, or negative zero
-   */
   static boolean isDoubleException(double value) {
     if (Double.isNaN(value)) {
       return true;
@@ -178,15 +116,6 @@ final class AlpEncoderDecoder {
     return Double.doubleToRawLongBits(value) == DOUBLE_NEGATIVE_ZERO_BITS;
   }
 
-  /**
-   * Check if a double value will be an exception for the given exponent/factor.
-   * Uses encodeDouble/decodeDouble internally to verify round-trip.
-   *
-   * @param value    the double value
-   * @param exponent the decimal exponent (0-18)
-   * @param factor   the decimal factor (0 &lt;= factor &lt;= exponent)
-   * @return true if the value is an exception for this encoding
-   */
   static boolean isDoubleException(double value, int exponent, int factor) {
     if (isDoubleException(value)) {
       return true;
@@ -201,40 +130,15 @@ final class AlpEncoderDecoder {
     return Double.doubleToRawLongBits(value) != Double.doubleToRawLongBits(decoded);
   }
 
-  /**
-   * Encode a double value to a long using the specified exponent and factor.
-   *
-   * <p>Formula: encoded = round(value * 10^(exponent - factor))
-   *
-   * @param value    the double value to encode
-   * @param exponent the decimal exponent (0-18)
-   * @param factor   the decimal factor (0 &lt;= factor &lt;= exponent)
-   * @return the encoded long value
-   */
   static long encodeDouble(double value, int exponent, int factor) {
     return fastRoundDouble(value * getDoubleMultiplier(exponent, factor));
   }
 
-  /**
-   * Decode a long back to a double using the specified exponent and factor.
-   *
-   * <p>Formula: value = encoded / 10^(exponent - factor)
-   *
-   * @param encoded  the encoded long value
-   * @param exponent the decimal exponent (0-18)
-   * @param factor   the decimal factor (0 &lt;= factor &lt;= exponent)
-   * @return the decoded double value
-   */
   static double decodeDouble(long encoded, int exponent, int factor) {
     return encoded / getDoubleMultiplier(exponent, factor);
   }
 
-  /**
-   * Fast rounding for double values using the magic number technique.
-   *
-   * @param value the double value to round
-   * @return the rounded long value
-   */
+  // Same trick but with 2^51+2^52 for double precision.
   static long fastRoundDouble(double value) {
     if (value >= 0) {
       return (long) ((value + MAGIC_DOUBLE) - MAGIC_DOUBLE);
@@ -243,14 +147,7 @@ final class AlpEncoderDecoder {
     }
   }
 
-  // ========== Bit Width Calculation ==========
-
-  /**
-   * Calculate the bit width needed to store unsigned int values up to maxDelta.
-   *
-   * @param maxDelta the maximum delta value (unsigned)
-   * @return the number of bits needed (0 to {@link Integer#SIZE})
-   */
+  /** Number of bits needed to represent maxDelta as an unsigned value. */
   static int bitWidthForInt(int maxDelta) {
     if (maxDelta == 0) {
       return 0;
@@ -258,12 +155,6 @@ final class AlpEncoderDecoder {
     return Integer.SIZE - Integer.numberOfLeadingZeros(maxDelta);
   }
 
-  /**
-   * Calculate the bit width needed to store unsigned long values up to maxDelta.
-   *
-   * @param maxDelta the maximum delta value (unsigned)
-   * @return the number of bits needed (0 to {@link Long#SIZE})
-   */
   static int bitWidthForLong(long maxDelta) {
     if (maxDelta == 0) {
       return 0;
@@ -271,11 +162,6 @@ final class AlpEncoderDecoder {
     return Long.SIZE - Long.numberOfLeadingZeros(maxDelta);
   }
 
-  // ========== Best Exponent/Factor Selection ==========
-
-  /**
-   * Result of finding the best exponent/factor combination.
-   */
   public static class EncodingParams {
     public final int exponent;
     public final int factor;
@@ -288,17 +174,7 @@ final class AlpEncoderDecoder {
     }
   }
 
-  /**
-   * Find the best exponent/factor combination for encoding float values.
-   *
-   * <p>Tries all valid (exponent, factor) combinations and selects the one
-   * that minimizes the number of exceptions.
-   *
-   * @param values the float values to analyze
-   * @param offset the starting index in the array
-   * @param length the number of values to analyze
-   * @return the best encoding parameters
-   */
+  /** Try all (exponent, factor) combos and pick the one with fewest exceptions. */
   static EncodingParams findBestFloatParams(float[] values, int offset, int length) {
     int bestExponent = 0;
     int bestFactor = 0;
@@ -325,15 +201,7 @@ final class AlpEncoderDecoder {
     return new EncodingParams(bestExponent, bestFactor, bestExceptions);
   }
 
-  /**
-   * Find the best exponent/factor from a preset list of combinations for float values.
-   *
-   * @param values  the float values to analyze
-   * @param offset  the starting index in the array
-   * @param length  the number of values to analyze
-   * @param presets array of [exponent, factor] pairs to try
-   * @return the best encoding parameters from the presets
-   */
+  /** Same as findBestFloatParams but only tries the cached preset combos. */
   static EncodingParams findBestFloatParamsWithPresets(float[] values, int offset, int length, int[][] presets) {
     int bestExponent = presets[0][0];
     int bestFactor = presets[0][1];
@@ -360,17 +228,6 @@ final class AlpEncoderDecoder {
     return new EncodingParams(bestExponent, bestFactor, bestExceptions);
   }
 
-  /**
-   * Find the best exponent/factor combination for encoding double values.
-   *
-   * <p>Tries all valid (exponent, factor) combinations and selects the one
-   * that minimizes the number of exceptions.
-   *
-   * @param values the double values to analyze
-   * @param offset the starting index in the array
-   * @param length the number of values to analyze
-   * @return the best encoding parameters
-   */
   static EncodingParams findBestDoubleParams(double[] values, int offset, int length) {
     int bestExponent = 0;
     int bestFactor = 0;
@@ -397,15 +254,6 @@ final class AlpEncoderDecoder {
     return new EncodingParams(bestExponent, bestFactor, bestExceptions);
   }
 
-  /**
-   * Find the best exponent/factor from a preset list of combinations for double values.
-   *
-   * @param values  the double values to analyze
-   * @param offset  the starting index in the array
-   * @param length  the number of values to analyze
-   * @param presets array of [exponent, factor] pairs to try
-   * @return the best encoding parameters from the presets
-   */
   static EncodingParams findBestDoubleParamsWithPresets(double[] values, int offset, int length, int[][] presets) {
     int bestExponent = presets[0][0];
     int bestFactor = presets[0][1];

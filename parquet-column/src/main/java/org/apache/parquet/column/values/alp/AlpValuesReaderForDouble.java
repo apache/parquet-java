@@ -60,30 +60,25 @@ public class AlpValuesReaderForDouble extends AlpValuesReader {
     int vectorLen = getVectorLength(vectorIdx);
     int pos = getVectorDataPosition(vectorIdx);
 
-    // Read AlpInfo (4 bytes): exponent(1) + factor(1) + numExceptions(2)
     int exponent = vectorsData.get(pos) & 0xFF;
     int factor = vectorsData.get(pos + 1) & 0xFF;
     int numExceptions = getShortLE(vectorsData, pos + 2) & 0xFFFF;
     pos += ALP_INFO_SIZE;
 
-    // Read ForInfo (9 bytes for double): frameOfReference(8) + bitWidth(1)
     long frameOfReference = getLongLE(vectorsData, pos);
     int bitWidth = vectorsData.get(pos + 8) & 0xFF;
     pos += DOUBLE_FOR_INFO_SIZE;
 
-    // Unpack bit-packed values using BytePackerForLong
     long[] deltas = new long[vectorLen];
     if (bitWidth > 0) {
       pos = unpackLongsWithBytePacker(vectorsData, pos, deltas, vectorLen, bitWidth);
     }
 
-    // Reverse Frame of Reference and decode
     for (int i = 0; i < vectorLen; i++) {
       long encoded = deltas[i] + frameOfReference;
       decodedValues[i] = AlpEncoderDecoder.decodeDouble(encoded, exponent, factor);
     }
 
-    // Apply exceptions (positions and values are stored in separate blocks)
     if (numExceptions > 0) {
       int[] excPositions = new int[numExceptions];
       for (int e = 0; e < numExceptions; e++) {
@@ -97,11 +92,6 @@ public class AlpValuesReaderForDouble extends AlpValuesReader {
     }
   }
 
-  /**
-   * Unpack longs from a ByteBuffer using BytePackerForLong, working in groups of 8.
-   *
-   * @return the position after the packed data
-   */
   private int unpackLongsWithBytePacker(ByteBuffer buf, int pos, long[] output, int count, int bitWidth) {
     BytePackerForLong packer = Packer.LITTLE_ENDIAN.newBytePackerForLong(bitWidth);
     int numFullGroups = count / 8;
@@ -112,8 +102,8 @@ public class AlpValuesReaderForDouble extends AlpValuesReader {
       pos += bitWidth;
     }
 
-    // Handle partial last group: read only spec-required bytes, zero-pad, unpack
-    // Spec: total packed size = ceil(count * bitWidth / 8)
+    // Last group might have fewer than 8 values; zero-pad and unpack,
+    // but only advance pos by the actual bytes in the page.
     if (remaining > 0) {
       int totalPackedBytes = (count * bitWidth + 7) / 8;
       int alreadyRead = numFullGroups * bitWidth;
@@ -133,12 +123,10 @@ public class AlpValuesReaderForDouble extends AlpValuesReader {
     return pos;
   }
 
-  /** Read a little-endian unsigned short from a ByteBuffer at a specific position. */
   private static int getShortLE(ByteBuffer buf, int pos) {
     return (buf.get(pos) & 0xFF) | ((buf.get(pos + 1) & 0xFF) << 8);
   }
 
-  /** Read a little-endian long from a ByteBuffer at a specific position. */
   private static long getLongLE(ByteBuffer buf, int pos) {
     return (buf.get(pos) & 0xFFL)
         | ((buf.get(pos + 1) & 0xFFL) << 8)
@@ -150,7 +138,6 @@ public class AlpValuesReaderForDouble extends AlpValuesReader {
         | ((buf.get(pos + 7) & 0xFFL) << 56);
   }
 
-  /** Read a little-endian double from a ByteBuffer at a specific position. */
   private static double getDoubleLE(ByteBuffer buf, int pos) {
     return Double.longBitsToDouble(getLongLE(buf, pos));
   }

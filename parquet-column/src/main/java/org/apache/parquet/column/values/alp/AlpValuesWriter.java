@@ -81,9 +81,7 @@ public abstract class AlpValuesWriter extends ValuesWriter {
     return Encoding.ALP;
   }
 
-  /**
-   * Float-specific ALP values writer with incremental encoding and interleaved layout.
-   */
+  /** Float writer. Buffers one vector at a time, encodes and flushes when full. */
   public static class FloatAlpValuesWriter extends AlpValuesWriter {
     private final float[] vectorBuffer;
     private int bufferCount;
@@ -123,13 +121,12 @@ public abstract class AlpValuesWriter extends ValuesWriter {
     }
 
     private void encodeAndFlushVector(int vectorLen) {
-      // Find best encoding parameters
+      // Use cached presets after the sampling phase, full search before
       AlpEncoderDecoder.EncodingParams params;
       if (cachedPresets != null) {
         params = AlpEncoderDecoder.findBestFloatParamsWithPresets(vectorBuffer, 0, vectorLen, cachedPresets);
       } else {
         params = AlpEncoderDecoder.findBestFloatParams(vectorBuffer, 0, vectorLen);
-        // Track this combination for preset caching
         long key = ((long) params.exponent << Integer.SIZE) | params.factor;
         presetCounts.merge(key, 1, Integer::sum);
       }
@@ -139,14 +136,14 @@ public abstract class AlpValuesWriter extends ValuesWriter {
         buildPresetCache();
       }
 
-      // Encode values, detect exceptions, find placeholder
       int[] encoded = new int[vectorLen];
       short[] excPositions = new short[params.numExceptions];
       float[] excValues = new float[params.numExceptions];
       int excIdx = 0;
-      int placeholder = 0;
 
-      // First pass: find a non-exception value for placeholder
+      // We need a valid encoded value to fill exception slots (placeholder).
+      // Any non-exception value works; it gets overwritten on decode.
+      int placeholder = 0;
       for (int i = 0; i < vectorLen; i++) {
         if (!AlpEncoderDecoder.isFloatException(vectorBuffer[i], params.exponent, params.factor)) {
           placeholder = AlpEncoderDecoder.encodeFloat(vectorBuffer[i], params.exponent, params.factor);
@@ -154,7 +151,6 @@ public abstract class AlpValuesWriter extends ValuesWriter {
         }
       }
 
-      // Second pass: encode all values
       int minValue = Integer.MAX_VALUE;
       for (int i = 0; i < vectorLen; i++) {
         if (AlpEncoderDecoder.isFloatException(vectorBuffer[i], params.exponent, params.factor)) {
@@ -170,9 +166,8 @@ public abstract class AlpValuesWriter extends ValuesWriter {
         }
       }
 
-      // Apply Frame of Reference (subtract min)
-      // Deltas are unsigned: if the range exceeds Integer.MAX_VALUE, the
-      // subtraction wraps but the unsigned bits are still correct.
+      // Subtract min so deltas start at 0, reducing bit width.
+      // The subtraction may wrap for large ranges but unsigned bits stay correct.
       int maxDelta = 0;
       for (int i = 0; i < vectorLen; i++) {
         encoded[i] = encoded[i] - minValue;
@@ -183,28 +178,26 @@ public abstract class AlpValuesWriter extends ValuesWriter {
 
       int bitWidth = AlpEncoderDecoder.bitWidthForInt(maxDelta);
 
-      // Record start position to measure vector byte size
       long startSize = encodedVectors.size();
 
-      // Write AlpInfo (4 bytes): exponent(1) + factor(1) + numExceptions(2)
+      // AlpInfo: exponent(1) + factor(1) + numExceptions(2)
       ByteBuffer alpInfo = ByteBuffer.allocate(ALP_INFO_SIZE).order(ByteOrder.LITTLE_ENDIAN);
       alpInfo.put((byte) params.exponent);
       alpInfo.put((byte) params.factor);
       alpInfo.putShort((short) params.numExceptions);
       encodedVectors.write(alpInfo.array(), 0, ALP_INFO_SIZE);
 
-      // Write ForInfo (5 bytes for float): frameOfReference(4) + bitWidth(1)
+      // ForInfo: frameOfReference(4) + bitWidth(1)
       ByteBuffer forInfo = ByteBuffer.allocate(FLOAT_FOR_INFO_SIZE).order(ByteOrder.LITTLE_ENDIAN);
       forInfo.putInt(minValue);
       forInfo.put((byte) bitWidth);
       encodedVectors.write(forInfo.array(), 0, FLOAT_FOR_INFO_SIZE);
 
-      // Write bit-packed values using BytePacker
       if (bitWidth > 0) {
         packIntsWithBytePacker(encoded, vectorLen, bitWidth);
       }
 
-      // Write exception positions (2 bytes each)
+      // Exception positions then values, written as separate blocks
       if (params.numExceptions > 0) {
         ByteBuffer excPosBuf =
             ByteBuffer.allocate(params.numExceptions * Short.BYTES).order(ByteOrder.LITTLE_ENDIAN);
@@ -213,7 +206,6 @@ public abstract class AlpValuesWriter extends ValuesWriter {
         }
         encodedVectors.write(excPosBuf.array(), 0, params.numExceptions * Short.BYTES);
 
-        // Write exception values (4 bytes each for float)
         ByteBuffer excValBuf =
             ByteBuffer.allocate(params.numExceptions * Float.BYTES).order(ByteOrder.LITTLE_ENDIAN);
         for (int i = 0; i < params.numExceptions; i++) {
@@ -229,15 +221,15 @@ public abstract class AlpValuesWriter extends ValuesWriter {
       BytePacker packer = Packer.LITTLE_ENDIAN.newBytePacker(bitWidth);
       int numFullGroups = count / 8;
       int remaining = count % 8;
-      byte[] packed = new byte[bitWidth]; // reuse for each group of 8
+      byte[] packed = new byte[bitWidth];
 
       for (int g = 0; g < numFullGroups; g++) {
         packer.pack8Values(values, g * 8, packed, 0);
         encodedVectors.write(packed, 0, bitWidth);
       }
 
-      // Handle partial last group: pad with zeros, write only spec-required bytes
-      // Spec: total packed size = ceil(count * bitWidth / 8)
+      // Partial last group: pack 8 values (zero-padded), but only write
+      // ceil(count * bitWidth / 8) - alreadyWritten bytes per spec.
       if (remaining > 0) {
         int[] padded = new int[8];
         System.arraycopy(values, numFullGroups * 8, padded, 0, remaining);
@@ -273,7 +265,6 @@ public abstract class AlpValuesWriter extends ValuesWriter {
         return BytesInput.empty();
       }
 
-      // Flush any remaining partial vector
       if (bufferCount > 0) {
         encodeAndFlushVector(bufferCount);
         bufferCount = 0;
@@ -281,7 +272,7 @@ public abstract class AlpValuesWriter extends ValuesWriter {
 
       int numVectors = vectorByteSizes.size();
 
-      // Build header (8 bytes)
+      // Assemble: [header 8B] [offset array 4B*N] [vector data...]
       ByteBuffer header = ByteBuffer.allocate(ALP_HEADER_SIZE).order(ByteOrder.LITTLE_ENDIAN);
       header.put((byte) ALP_VERSION);
       header.put((byte) ALP_COMPRESSION_MODE);
@@ -289,10 +280,9 @@ public abstract class AlpValuesWriter extends ValuesWriter {
       header.put((byte) logVectorSize);
       header.putInt(totalCount);
 
-      // Build offset array (4 bytes per vector)
       int offsetArraySize = numVectors * Integer.BYTES;
       ByteBuffer offsets = ByteBuffer.allocate(offsetArraySize).order(ByteOrder.LITTLE_ENDIAN);
-      int currentOffset = offsetArraySize; // first vector starts after offset array
+      int currentOffset = offsetArraySize;
       for (int v = 0; v < numVectors; v++) {
         offsets.putInt(currentOffset);
         currentOffset += vectorByteSizes.get(v);
@@ -330,9 +320,7 @@ public abstract class AlpValuesWriter extends ValuesWriter {
     }
   }
 
-  /**
-   * Double-specific ALP values writer with incremental encoding and interleaved layout.
-   */
+  /** Double writer. Same structure as FloatAlpValuesWriter but uses longs. */
   public static class DoubleAlpValuesWriter extends AlpValuesWriter {
     private final double[] vectorBuffer;
     private int bufferCount;
@@ -372,7 +360,6 @@ public abstract class AlpValuesWriter extends ValuesWriter {
     }
 
     private void encodeAndFlushVector(int vectorLen) {
-      // Find best encoding parameters
       AlpEncoderDecoder.EncodingParams params;
       if (cachedPresets != null) {
         params = AlpEncoderDecoder.findBestDoubleParamsWithPresets(vectorBuffer, 0, vectorLen, cachedPresets);
@@ -387,14 +374,11 @@ public abstract class AlpValuesWriter extends ValuesWriter {
         buildPresetCache();
       }
 
-      // Encode values, detect exceptions, find placeholder
       long[] encoded = new long[vectorLen];
       short[] excPositions = new short[params.numExceptions];
       double[] excValues = new double[params.numExceptions];
       int excIdx = 0;
       long placeholder = 0;
-
-      // First pass: find a non-exception value for placeholder
       for (int i = 0; i < vectorLen; i++) {
         if (!AlpEncoderDecoder.isDoubleException(vectorBuffer[i], params.exponent, params.factor)) {
           placeholder = AlpEncoderDecoder.encodeDouble(vectorBuffer[i], params.exponent, params.factor);
@@ -402,7 +386,6 @@ public abstract class AlpValuesWriter extends ValuesWriter {
         }
       }
 
-      // Second pass: encode all values
       long minValue = Long.MAX_VALUE;
       for (int i = 0; i < vectorLen; i++) {
         if (AlpEncoderDecoder.isDoubleException(vectorBuffer[i], params.exponent, params.factor)) {
@@ -418,7 +401,6 @@ public abstract class AlpValuesWriter extends ValuesWriter {
         }
       }
 
-      // Apply Frame of Reference (subtract min)
       long maxDelta = 0;
       for (int i = 0; i < vectorLen; i++) {
         encoded[i] = encoded[i] - minValue;
@@ -429,28 +411,24 @@ public abstract class AlpValuesWriter extends ValuesWriter {
 
       int bitWidth = AlpEncoderDecoder.bitWidthForLong(maxDelta);
 
-      // Record start position to measure vector byte size
       long startSize = encodedVectors.size();
 
-      // Write AlpInfo (4 bytes): exponent(1) + factor(1) + numExceptions(2)
       ByteBuffer alpInfo = ByteBuffer.allocate(ALP_INFO_SIZE).order(ByteOrder.LITTLE_ENDIAN);
       alpInfo.put((byte) params.exponent);
       alpInfo.put((byte) params.factor);
       alpInfo.putShort((short) params.numExceptions);
       encodedVectors.write(alpInfo.array(), 0, ALP_INFO_SIZE);
 
-      // Write ForInfo (9 bytes for double): frameOfReference(8) + bitWidth(1)
+      // ForInfo is 9 bytes for double (vs 5 for float) due to 8-byte frame of reference
       ByteBuffer forInfo = ByteBuffer.allocate(DOUBLE_FOR_INFO_SIZE).order(ByteOrder.LITTLE_ENDIAN);
       forInfo.putLong(minValue);
       forInfo.put((byte) bitWidth);
       encodedVectors.write(forInfo.array(), 0, DOUBLE_FOR_INFO_SIZE);
 
-      // Write bit-packed values using BytePackerForLong
       if (bitWidth > 0) {
         packLongsWithBytePacker(encoded, vectorLen, bitWidth);
       }
 
-      // Write exception positions (2 bytes each)
       if (params.numExceptions > 0) {
         ByteBuffer excPosBuf =
             ByteBuffer.allocate(params.numExceptions * Short.BYTES).order(ByteOrder.LITTLE_ENDIAN);
@@ -459,7 +437,6 @@ public abstract class AlpValuesWriter extends ValuesWriter {
         }
         encodedVectors.write(excPosBuf.array(), 0, params.numExceptions * Short.BYTES);
 
-        // Write exception values (8 bytes each for double)
         ByteBuffer excValBuf =
             ByteBuffer.allocate(params.numExceptions * Double.BYTES).order(ByteOrder.LITTLE_ENDIAN);
         for (int i = 0; i < params.numExceptions; i++) {
@@ -475,15 +452,13 @@ public abstract class AlpValuesWriter extends ValuesWriter {
       BytePackerForLong packer = Packer.LITTLE_ENDIAN.newBytePackerForLong(bitWidth);
       int numFullGroups = count / 8;
       int remaining = count % 8;
-      byte[] packed = new byte[bitWidth]; // reuse for each group of 8
+      byte[] packed = new byte[bitWidth];
 
       for (int g = 0; g < numFullGroups; g++) {
         packer.pack8Values(values, g * 8, packed, 0);
         encodedVectors.write(packed, 0, bitWidth);
       }
 
-      // Handle partial last group: pad with zeros, write only spec-required bytes
-      // Spec: total packed size = ceil(count * bitWidth / 8)
       if (remaining > 0) {
         long[] padded = new long[8];
         System.arraycopy(values, numFullGroups * 8, padded, 0, remaining);
@@ -518,7 +493,6 @@ public abstract class AlpValuesWriter extends ValuesWriter {
         return BytesInput.empty();
       }
 
-      // Flush any remaining partial vector
       if (bufferCount > 0) {
         encodeAndFlushVector(bufferCount);
         bufferCount = 0;
@@ -526,7 +500,6 @@ public abstract class AlpValuesWriter extends ValuesWriter {
 
       int numVectors = vectorByteSizes.size();
 
-      // Build header (8 bytes)
       ByteBuffer header = ByteBuffer.allocate(ALP_HEADER_SIZE).order(ByteOrder.LITTLE_ENDIAN);
       header.put((byte) ALP_VERSION);
       header.put((byte) ALP_COMPRESSION_MODE);
@@ -534,7 +507,7 @@ public abstract class AlpValuesWriter extends ValuesWriter {
       header.put((byte) logVectorSize);
       header.putInt(totalCount);
 
-      // Build offset array (4 bytes per vector)
+      // Offset array lets the reader jump to any vector in O(1)
       int offsetArraySize = numVectors * Integer.BYTES;
       ByteBuffer offsets = ByteBuffer.allocate(offsetArraySize).order(ByteOrder.LITTLE_ENDIAN);
       int currentOffset = offsetArraySize;

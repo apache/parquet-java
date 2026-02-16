@@ -37,102 +37,46 @@ public final class AlpConstants {
     // Utility class
   }
 
-  // ========== Page Header Constants ==========
-
-  /** Current ALP format version */
+  // Page header fields
   public static final int ALP_VERSION = 1;
-
-  /** ALP compression mode identifier (0 = ALP) */
   public static final int ALP_COMPRESSION_MODE = 0;
-
-  /** Frame of Reference encoding for integers (0 = Frame of Reference) */
   public static final int ALP_INTEGER_ENCODING_FOR = 0;
-
-  /** Size of the ALP page header in bytes */
   public static final int ALP_HEADER_SIZE = 8;
 
-  // ========== Vector Size Constants ==========
-
-  /** Default number of elements per compressed vector (2^10 = 1024) */
   public static final int DEFAULT_VECTOR_SIZE = 1024;
-
-  /** Log2 of the default vector size */
   public static final int DEFAULT_VECTOR_SIZE_LOG = 10;
 
-  /** Maximum allowed log2 of vector size */
-  static final int MAX_LOG_VECTOR_SIZE = 16;
-
-  /** Minimum allowed log2 of vector size */
+  // Capped at 15 (vectorSize=32768) because num_exceptions is uint16,
+  // so vectorSize must not exceed 65535 to avoid overflow when all values are exceptions.
+  static final int MAX_LOG_VECTOR_SIZE = 15;
   static final int MIN_LOG_VECTOR_SIZE = 3;
 
-  // ========== Exponent/Factor Limits ==========
-
-  /** Maximum exponent for float encoding (10^10 ~ 10 billion) */
   static final int FLOAT_MAX_EXPONENT = 10;
-
-  /** Maximum exponent for double encoding (10^18 ~ 1 quintillion) */
   static final int DOUBLE_MAX_EXPONENT = 18;
 
-  // ========== Sampling Constants ==========
-
-  /** Number of sample vectors used for preset caching */
+  // Preset caching: full search for the first N vectors, then lock in the top combos
   static final int SAMPLER_SAMPLE_VECTORS = 8;
-
-  /** Maximum (exponent, factor) combinations to keep in preset */
   static final int MAX_PRESET_COMBINATIONS = 5;
 
-  // ========== Fast Rounding Magic Numbers ==========
+  // Magic numbers for the fast-rounding trick (see ALP paper, Section 3.2)
+  static final float MAGIC_FLOAT = 12_582_912.0f; // 2^22 + 2^23
+  static final double MAGIC_DOUBLE = 6_755_399_441_055_744.0; // 2^51 + 2^52
 
-  /**
-   * Magic number for fast float rounding using the floating-point trick.
-   * Formula: 2^22 + 2^23 = 12,582,912
-   */
-  static final float MAGIC_FLOAT = 12_582_912.0f;
+  // Per-vector metadata sizes in bytes
+  public static final int ALP_INFO_SIZE = 4; // exponent(1) + factor(1) + num_exceptions(2)
+  public static final int FLOAT_FOR_INFO_SIZE = 5; // frame_of_reference(4) + bit_width(1)
+  public static final int DOUBLE_FOR_INFO_SIZE = 9; // frame_of_reference(8) + bit_width(1)
 
-  /**
-   * Magic number for fast double rounding using the floating-point trick.
-   * Formula: 2^51 + 2^52 = 6,755,399,441,055,744
-   */
-  static final double MAGIC_DOUBLE = 6_755_399_441_055_744.0;
-
-  // ========== Metadata Sizes ==========
-
-  /** Size of AlpInfo structure in bytes (exponent:1 + factor:1 + num_exceptions:2) */
-  public static final int ALP_INFO_SIZE = 4;
-
-  /** Size of ForInfo structure for float (frame_of_reference:4 + bit_width:1) */
-  public static final int FLOAT_FOR_INFO_SIZE = 5;
-
-  /** Size of ForInfo structure for double (frame_of_reference:8 + bit_width:1) */
-  public static final int DOUBLE_FOR_INFO_SIZE = 9;
-
-  // ========== Precomputed Powers of 10 ==========
-
-  /** Precomputed powers of 10 for float encoding (10^0 to 10^10) */
   static final float[] FLOAT_POW10 = {1e0f, 1e1f, 1e2f, 1e3f, 1e4f, 1e5f, 1e6f, 1e7f, 1e8f, 1e9f, 1e10f};
 
-  /** Precomputed powers of 10 for double encoding (10^0 to 10^18) */
   static final double[] DOUBLE_POW10 = {
     1e0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9, 1e10, 1e11, 1e12, 1e13, 1e14, 1e15, 1e16, 1e17, 1e18
   };
 
-  // ========== Bit Masks for Negative Zero Detection ==========
-
-  /** Bit pattern for negative zero in float */
   static final int FLOAT_NEGATIVE_ZERO_BITS = 0x80000000;
-
-  /** Bit pattern for negative zero in double */
   static final long DOUBLE_NEGATIVE_ZERO_BITS = 0x8000000000000000L;
 
-  // ========== Validation ==========
-
-  /**
-   * Validate that a vector size is a power of 2 and within the allowed range.
-   *
-   * @param vectorSize the vector size to validate
-   * @return the validated vector size
-   * @throws IllegalArgumentException if the vector size is invalid
-   */
+  /** Validates vector size: must be a power of 2 in [2^MIN_LOG .. 2^MAX_LOG]. */
   static int validateVectorSize(int vectorSize) {
     Preconditions.checkArgument(
         vectorSize > 0 && (vectorSize & (vectorSize - 1)) == 0,
