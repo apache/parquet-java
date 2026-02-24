@@ -75,11 +75,7 @@ public abstract class ConversionPatterns {
           repetition,
           alias,
           LogicalTypeAnnotation.mapType(),
-          new GroupType(
-              Repetition.REPEATED,
-              mapAlias,
-              LogicalTypeAnnotation.MapKeyValueTypeAnnotation.getInstance(),
-              keyType));
+          new GroupType(Repetition.REPEATED, mapAlias, keyType));
     } else {
       if (!valueType.getName().equals("value")) {
         throw new RuntimeException(valueType.getName() + " should be value");
@@ -88,12 +84,7 @@ public abstract class ConversionPatterns {
           repetition,
           alias,
           LogicalTypeAnnotation.mapType(),
-          new GroupType(
-              Repetition.REPEATED,
-              mapAlias,
-              LogicalTypeAnnotation.MapKeyValueTypeAnnotation.getInstance(),
-              keyType,
-              valueType));
+          new GroupType(Repetition.REPEATED, mapAlias, keyType, valueType));
     }
   }
 
