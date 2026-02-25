@@ -62,7 +62,7 @@ public class DeprecatedFieldProjectionFilter implements FieldProjectionFilter {
 
     filterPatterns = new LinkedList<PathGlobPatternStatus>();
 
-    if (filterDescStr == null || filterDescStr.isEmpty()) return;
+    if (filterDescStr.isEmpty()) return;
 
     String[] rawPatterns = filterDescStr.split(PATTERN_SEPARATOR);
     for (String rawPattern : rawPatterns) {

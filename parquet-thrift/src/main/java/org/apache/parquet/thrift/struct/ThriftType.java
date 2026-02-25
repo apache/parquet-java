@@ -39,9 +39,9 @@ import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
 
 /**
@@ -249,7 +249,7 @@ public abstract class ThriftType {
         @JsonProperty("children") List<ThriftField> children,
         @JsonProperty("structOrUnionType") StructOrUnionType structOrUnionType) {
       super(STRUCT);
-      this.structOrUnionType = structOrUnionType == null ? StructOrUnionType.STRUCT : structOrUnionType;
+      this.structOrUnionType = Objects.requireNonNullElse(structOrUnionType, StructOrUnionType.STRUCT);
       this.children = children;
       int maxId = 0;
       if (children != null) {
@@ -502,12 +502,7 @@ public abstract class ThriftType {
     }
 
     public Iterable<EnumValue> getValues() {
-      return new Iterable<EnumValue>() {
-        @Override
-        public Iterator<EnumValue> iterator() {
-          return values.iterator();
-        }
-      };
+      return values::iterator;
     }
 
     public EnumValue getEnumValueById(int id) {

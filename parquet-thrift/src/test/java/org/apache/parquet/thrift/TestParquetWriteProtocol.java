@@ -435,12 +435,12 @@ public class TestParquetWriteProtocol {
         new Name("Bob", "Roberts"),
         1,
         "bob@roberts.com",
-        Arrays.asList(new PhoneNumber("555 999 9999"), phoneNumber)));
+        List.of(new PhoneNumber("555 999 9999"), phoneNumber)));
     persons.add(new Person(
         new Name("Dick", "Richardson"),
         2,
         "dick@richardson.com",
-        Arrays.asList(new PhoneNumber("555 999 9997"), new PhoneNumber("555 999 9996"))));
+        List.of(new PhoneNumber("555 999 9997"), new PhoneNumber("555 999 9996"))));
     AddressBook a = new AddressBook(persons);
     validatePig(expectations, a);
     // naming conventions are slightly different for the bag inner tuple. The reader should ignore this.
@@ -632,7 +632,7 @@ public class TestParquetWriteProtocol {
     map1.put("key12", "value12");
     Map<String, String> map2 = new HashMap<String, String>();
     map2.put("key21", "value21");
-    final TestMapInList listMap = new TestMapInList("listmap", Arrays.asList(map1, map2));
+    final TestMapInList listMap = new TestMapInList("listmap", List.of(map1, map2));
 
     String[] expectations = {
       "startMessage()",
@@ -703,7 +703,7 @@ public class TestParquetWriteProtocol {
     LOG.info("{}", schema);
     final StructType structType = thriftSchemaConverter.toStructType(class1);
     ExpectationValidatingRecordConsumer recordConsumer =
-        new ExpectationValidatingRecordConsumer(new ArrayDeque<String>(Arrays.asList(expectations)));
+        new ExpectationValidatingRecordConsumer(new ArrayDeque<String>(List.of(expectations)));
     final MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
     ParquetWriteProtocol p = new ParquetWriteProtocol(
         configuration, new RecordConsumerLoggingWrapper(recordConsumer), columnIO, structType);
