@@ -755,6 +755,12 @@ public class ParquetRewriter implements Closeable {
           }
           readValues += headerV2.getNum_values();
           readRows += headerV2.getNum_rows();
+          boolean compressed;
+          if (compressor == null) {
+            compressed = headerV2.is_compressed;
+          } else {
+            compressed = true;
+          }
           writer.writeDataPageV2(
               headerV2.getNum_rows(),
               headerV2.getNum_nulls(),
@@ -763,7 +769,7 @@ public class ParquetRewriter implements Closeable {
               dlLevels,
               converter.getEncoding(headerV2.getEncoding()),
               BytesInput.from(pageLoad),
-              headerV2.is_compressed,
+              compressed,
               rawDataLength,
               statistics,
               metaEncryptor,
@@ -981,14 +987,14 @@ public class ParquetRewriter implements Closeable {
 
     // Create new schema that only has the current column
     MessageType newSchema = getSchemaWithRenamedColumns(newSchema(outSchema, descriptor));
-    ColumnChunkPageWriteStore cPageStore = new ColumnChunkPageWriteStore(
-        compressor,
-        newSchema,
-        props.getAllocator(),
-        props.getColumnIndexTruncateLength(),
-        props.getPageWriteChecksumEnabled(),
-        nullColumnEncryptor,
-        numBlocksRewritten);
+    ColumnChunkPageWriteStore cPageStore = ColumnChunkPageWriteStore.build(
+            compressor, newSchema, props.getAllocator())
+        .withColumnIndexTruncateLength(props.getColumnIndexTruncateLength())
+        .withPageWriteChecksumEnabled(props.getPageWriteChecksumEnabled())
+        .withFileEncryptor(nullColumnEncryptor)
+        .withRowGroupOrdinal(numBlocksRewritten)
+        .withPageCompressThreshold(props.pageCompressThreshold())
+        .build();
     ColumnWriteStore cStore = props.newColumnWriteStore(newSchema, cPageStore);
     ColumnWriter cWriter = cStore.getColumnWriter(descriptor);
 
