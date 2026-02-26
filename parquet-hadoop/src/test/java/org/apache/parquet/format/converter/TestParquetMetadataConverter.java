@@ -26,22 +26,8 @@ import static org.apache.parquet.format.Util.writePageHeader;
 import static org.apache.parquet.format.converter.ParquetMetadataConverter.filterFileMetaDataByMidpoint;
 import static org.apache.parquet.format.converter.ParquetMetadataConverter.filterFileMetaDataByStart;
 import static org.apache.parquet.format.converter.ParquetMetadataConverter.getOffset;
-import static org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit.MICROS;
-import static org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit.MILLIS;
-import static org.apache.parquet.schema.LogicalTypeAnnotation.TimeUnit.NANOS;
-import static org.apache.parquet.schema.LogicalTypeAnnotation.bsonType;
-import static org.apache.parquet.schema.LogicalTypeAnnotation.dateType;
-import static org.apache.parquet.schema.LogicalTypeAnnotation.decimalType;
-import static org.apache.parquet.schema.LogicalTypeAnnotation.enumType;
-import static org.apache.parquet.schema.LogicalTypeAnnotation.intType;
-import static org.apache.parquet.schema.LogicalTypeAnnotation.jsonType;
-import static org.apache.parquet.schema.LogicalTypeAnnotation.listType;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.mapType;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.stringType;
-import static org.apache.parquet.schema.LogicalTypeAnnotation.timeType;
-import static org.apache.parquet.schema.LogicalTypeAnnotation.timestampType;
-import static org.apache.parquet.schema.LogicalTypeAnnotation.uuidType;
-import static org.apache.parquet.schema.LogicalTypeAnnotation.variantType;
 import static org.apache.parquet.schema.MessageTypeParser.parseMessageType;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -51,7 +37,6 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import java.io.ByteArrayInputStream;
@@ -80,7 +65,6 @@ import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.EncodingStats;
 import org.apache.parquet.column.ParquetProperties;
-import org.apache.parquet.column.schema.EdgeInterpolationAlgorithm;
 import org.apache.parquet.column.statistics.BinaryStatistics;
 import org.apache.parquet.column.statistics.BooleanStatistics;
 import org.apache.parquet.column.statistics.DoubleStatistics;
@@ -94,26 +78,19 @@ import org.apache.parquet.crypto.DecryptionPropertiesFactory;
 import org.apache.parquet.crypto.EncryptionPropertiesFactory;
 import org.apache.parquet.crypto.FileDecryptionProperties;
 import org.apache.parquet.crypto.InternalFileDecryptor;
-import org.apache.parquet.example.Paper;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroup;
 import org.apache.parquet.format.BoundingBox;
 import org.apache.parquet.format.ColumnChunk;
 import org.apache.parquet.format.ColumnMetaData;
 import org.apache.parquet.format.ConvertedType;
-import org.apache.parquet.format.DecimalType;
 import org.apache.parquet.format.FieldRepetitionType;
 import org.apache.parquet.format.FileMetaData;
-import org.apache.parquet.format.GeographyType;
-import org.apache.parquet.format.GeometryType;
 import org.apache.parquet.format.GeospatialStatistics;
-import org.apache.parquet.format.LogicalType;
-import org.apache.parquet.format.MapType;
 import org.apache.parquet.format.PageHeader;
 import org.apache.parquet.format.PageType;
 import org.apache.parquet.format.RowGroup;
 import org.apache.parquet.format.SchemaElement;
-import org.apache.parquet.format.StringType;
 import org.apache.parquet.format.Type;
 import org.apache.parquet.format.Util;
 import org.apache.parquet.hadoop.ParquetReader;
@@ -139,6 +116,7 @@ import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Type.Repetition;
 import org.apache.parquet.schema.Types;
+import org.apache.parquet.schema.converters.ParquetSchemaConverter;
 import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
@@ -164,50 +142,6 @@ public class TestParquetMetadataConverter {
     writePageHeader(pageHeader, out);
     PageHeader readPageHeader = readPageHeader(new ByteArrayInputStream(out.toByteArray()));
     assertEquals(pageHeader, readPageHeader);
-  }
-
-  @Test
-  public void testSchemaConverter() {
-    ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
-    List<SchemaElement> parquetSchema = parquetMetadataConverter.toParquetSchema(Paper.schema);
-    MessageType schema = parquetMetadataConverter.fromParquetSchema(parquetSchema, null);
-    assertEquals(Paper.schema, schema);
-  }
-
-  @Test
-  public void testSchemaConverterDecimal() {
-    ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
-    List<SchemaElement> schemaElements = parquetMetadataConverter.toParquetSchema(Types.buildMessage()
-        .required(PrimitiveTypeName.BINARY)
-        .as(OriginalType.DECIMAL)
-        .precision(9)
-        .scale(2)
-        .named("aBinaryDecimal")
-        .optional(PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY)
-        .length(4)
-        .as(OriginalType.DECIMAL)
-        .precision(9)
-        .scale(2)
-        .named("aFixedDecimal")
-        .named("Message"));
-    List<SchemaElement> expected = Lists.newArrayList(
-        new SchemaElement("Message").setNum_children(2),
-        new SchemaElement("aBinaryDecimal")
-            .setRepetition_type(FieldRepetitionType.REQUIRED)
-            .setType(Type.BYTE_ARRAY)
-            .setConverted_type(ConvertedType.DECIMAL)
-            .setLogicalType(LogicalType.DECIMAL(new DecimalType(2, 9)))
-            .setPrecision(9)
-            .setScale(2),
-        new SchemaElement("aFixedDecimal")
-            .setRepetition_type(FieldRepetitionType.OPTIONAL)
-            .setType(Type.FIXED_LEN_BYTE_ARRAY)
-            .setType_length(4)
-            .setConverted_type(ConvertedType.DECIMAL)
-            .setLogicalType(LogicalType.DECIMAL(new DecimalType(2, 9)))
-            .setPrecision(9)
-            .setScale(2));
-    Assert.assertEquals(expected, schemaElements);
   }
 
   @Test
@@ -319,155 +253,6 @@ public class TestParquetMetadataConverter {
   }
 
   @Test
-  public void testLogicalTypesBackwardCompatibleWithConvertedTypes() {
-    ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
-    MessageType expected = Types.buildMessage()
-        .required(PrimitiveTypeName.BINARY)
-        .as(OriginalType.DECIMAL)
-        .precision(9)
-        .scale(2)
-        .named("aBinaryDecimal")
-        .named("Message");
-    List<SchemaElement> parquetSchema = parquetMetadataConverter.toParquetSchema(expected);
-    // Set logical type field to null to test backward compatibility with files written by older API,
-    // where converted_types are written to the metadata, but logicalType is missing
-    parquetSchema.get(1).setLogicalType(null);
-    MessageType schema = parquetMetadataConverter.fromParquetSchema(parquetSchema, null);
-    assertEquals(expected, schema);
-  }
-
-  @Test
-  public void testIncompatibleLogicalAndConvertedTypes() {
-    ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
-    MessageType schema = Types.buildMessage()
-        .required(PrimitiveTypeName.BINARY)
-        .as(OriginalType.DECIMAL)
-        .precision(9)
-        .scale(2)
-        .named("aBinary")
-        .named("Message");
-    MessageType expected = Types.buildMessage()
-        .required(PrimitiveTypeName.BINARY)
-        .as(LogicalTypeAnnotation.jsonType())
-        .named("aBinary")
-        .named("Message");
-
-    List<SchemaElement> parquetSchema = parquetMetadataConverter.toParquetSchema(schema);
-    // Set converted type field to a different type to verify that in case of mismatch, it overrides logical type
-    parquetSchema.get(1).setConverted_type(ConvertedType.JSON);
-    MessageType actual = parquetMetadataConverter.fromParquetSchema(parquetSchema, null);
-    assertEquals(expected, actual);
-  }
-
-  @Test
-  public void testTimeLogicalTypes() {
-    ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
-    MessageType expected = Types.buildMessage()
-        .required(PrimitiveTypeName.INT64)
-        .as(timestampType(false, MILLIS))
-        .named("aTimestampNonUtcMillis")
-        .required(PrimitiveTypeName.INT64)
-        .as(timestampType(true, MILLIS))
-        .named("aTimestampUtcMillis")
-        .required(PrimitiveTypeName.INT64)
-        .as(timestampType(false, MICROS))
-        .named("aTimestampNonUtcMicros")
-        .required(PrimitiveTypeName.INT64)
-        .as(timestampType(true, MICROS))
-        .named("aTimestampUtcMicros")
-        .required(PrimitiveTypeName.INT64)
-        .as(timestampType(false, NANOS))
-        .named("aTimestampNonUtcNanos")
-        .required(PrimitiveTypeName.INT64)
-        .as(timestampType(true, NANOS))
-        .named("aTimestampUtcNanos")
-        .required(PrimitiveTypeName.INT32)
-        .as(timeType(false, MILLIS))
-        .named("aTimeNonUtcMillis")
-        .required(PrimitiveTypeName.INT32)
-        .as(timeType(true, MILLIS))
-        .named("aTimeUtcMillis")
-        .required(PrimitiveTypeName.INT64)
-        .as(timeType(false, MICROS))
-        .named("aTimeNonUtcMicros")
-        .required(PrimitiveTypeName.INT64)
-        .as(timeType(true, MICROS))
-        .named("aTimeUtcMicros")
-        .required(PrimitiveTypeName.INT64)
-        .as(timeType(false, NANOS))
-        .named("aTimeNonUtcNanos")
-        .required(PrimitiveTypeName.INT64)
-        .as(timeType(true, NANOS))
-        .named("aTimeUtcNanos")
-        .named("Message");
-    List<SchemaElement> parquetSchema = parquetMetadataConverter.toParquetSchema(expected);
-    MessageType schema = parquetMetadataConverter.fromParquetSchema(parquetSchema, null);
-    assertEquals(expected, schema);
-  }
-
-  @Test
-  public void testLogicalToConvertedTypeConversion() {
-    ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
-
-    assertEquals(ConvertedType.UTF8, parquetMetadataConverter.convertToConvertedType(stringType()));
-    assertEquals(ConvertedType.ENUM, parquetMetadataConverter.convertToConvertedType(enumType()));
-
-    assertEquals(ConvertedType.INT_8, parquetMetadataConverter.convertToConvertedType(intType(8, true)));
-    assertEquals(ConvertedType.INT_16, parquetMetadataConverter.convertToConvertedType(intType(16, true)));
-    assertEquals(ConvertedType.INT_32, parquetMetadataConverter.convertToConvertedType(intType(32, true)));
-    assertEquals(ConvertedType.INT_64, parquetMetadataConverter.convertToConvertedType(intType(64, true)));
-    assertEquals(ConvertedType.UINT_8, parquetMetadataConverter.convertToConvertedType(intType(8, false)));
-    assertEquals(ConvertedType.UINT_16, parquetMetadataConverter.convertToConvertedType(intType(16, false)));
-    assertEquals(ConvertedType.UINT_32, parquetMetadataConverter.convertToConvertedType(intType(32, false)));
-    assertEquals(ConvertedType.UINT_64, parquetMetadataConverter.convertToConvertedType(intType(64, false)));
-    assertEquals(ConvertedType.DECIMAL, parquetMetadataConverter.convertToConvertedType(decimalType(8, 16)));
-
-    assertEquals(
-        ConvertedType.TIMESTAMP_MILLIS,
-        parquetMetadataConverter.convertToConvertedType(timestampType(true, MILLIS)));
-    assertEquals(
-        ConvertedType.TIMESTAMP_MICROS,
-        parquetMetadataConverter.convertToConvertedType(timestampType(true, MICROS)));
-    assertNull(parquetMetadataConverter.convertToConvertedType(timestampType(true, NANOS)));
-    assertEquals(
-        ConvertedType.TIMESTAMP_MILLIS,
-        parquetMetadataConverter.convertToConvertedType(timestampType(false, MILLIS)));
-    assertEquals(
-        ConvertedType.TIMESTAMP_MICROS,
-        parquetMetadataConverter.convertToConvertedType(timestampType(false, MICROS)));
-    assertNull(parquetMetadataConverter.convertToConvertedType(timestampType(false, NANOS)));
-
-    assertEquals(
-        ConvertedType.TIME_MILLIS, parquetMetadataConverter.convertToConvertedType(timeType(true, MILLIS)));
-    assertEquals(
-        ConvertedType.TIME_MICROS, parquetMetadataConverter.convertToConvertedType(timeType(true, MICROS)));
-    assertNull(parquetMetadataConverter.convertToConvertedType(timeType(true, NANOS)));
-    assertEquals(
-        ConvertedType.TIME_MILLIS, parquetMetadataConverter.convertToConvertedType(timeType(false, MILLIS)));
-    assertEquals(
-        ConvertedType.TIME_MICROS, parquetMetadataConverter.convertToConvertedType(timeType(false, MICROS)));
-    assertNull(parquetMetadataConverter.convertToConvertedType(timeType(false, NANOS)));
-
-    assertEquals(ConvertedType.DATE, parquetMetadataConverter.convertToConvertedType(dateType()));
-
-    assertEquals(
-        ConvertedType.INTERVAL,
-        parquetMetadataConverter.convertToConvertedType(
-            LogicalTypeAnnotation.IntervalLogicalTypeAnnotation.getInstance()));
-    assertEquals(ConvertedType.JSON, parquetMetadataConverter.convertToConvertedType(jsonType()));
-    assertEquals(ConvertedType.BSON, parquetMetadataConverter.convertToConvertedType(bsonType()));
-
-    assertNull(parquetMetadataConverter.convertToConvertedType(uuidType()));
-
-    assertEquals(ConvertedType.LIST, parquetMetadataConverter.convertToConvertedType(listType()));
-    assertEquals(ConvertedType.MAP, parquetMetadataConverter.convertToConvertedType(mapType()));
-    assertEquals(
-        ConvertedType.MAP_KEY_VALUE,
-        parquetMetadataConverter.convertToConvertedType(
-            LogicalTypeAnnotation.MapKeyValueTypeAnnotation.getInstance()));
-  }
-
-  @Test
   public void testEnumEquivalence() {
     ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
     for (org.apache.parquet.column.Encoding encoding : org.apache.parquet.column.Encoding.values()) {
@@ -477,42 +262,6 @@ public class TestParquetMetadataConverter {
     for (org.apache.parquet.format.Encoding encoding : org.apache.parquet.format.Encoding.values()) {
       assertEquals(
           encoding, parquetMetadataConverter.getEncoding(parquetMetadataConverter.getEncoding(encoding)));
-    }
-    for (Repetition repetition : Repetition.values()) {
-      assertEquals(
-          repetition,
-          parquetMetadataConverter.fromParquetRepetition(
-              parquetMetadataConverter.toParquetRepetition(repetition)));
-    }
-    for (FieldRepetitionType repetition : FieldRepetitionType.values()) {
-      assertEquals(
-          repetition,
-          parquetMetadataConverter.toParquetRepetition(
-              parquetMetadataConverter.fromParquetRepetition(repetition)));
-    }
-    for (PrimitiveTypeName primitiveTypeName : PrimitiveTypeName.values()) {
-      assertEquals(
-          primitiveTypeName,
-          parquetMetadataConverter.getPrimitive(parquetMetadataConverter.getType(primitiveTypeName)));
-    }
-    for (Type type : Type.values()) {
-      assertEquals(type, parquetMetadataConverter.getType(parquetMetadataConverter.getPrimitive(type)));
-    }
-    for (OriginalType original : OriginalType.values()) {
-      assertEquals(
-          original,
-          parquetMetadataConverter
-              .getLogicalTypeAnnotation(
-                  parquetMetadataConverter.convertToConvertedType(
-                      LogicalTypeAnnotation.fromOriginalType(original, null)),
-                  null)
-              .toOriginalType());
-    }
-    for (ConvertedType converted : ConvertedType.values()) {
-      assertEquals(
-          converted,
-          parquetMetadataConverter.convertToConvertedType(
-              parquetMetadataConverter.getLogicalTypeAnnotation(converted, null)));
     }
   }
 
@@ -1492,61 +1241,6 @@ public class TestParquetMetadataConverter {
   }
 
   @Test
-  public void testMapLogicalType() {
-    ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
-    MessageType expected = Types.buildMessage()
-        .requiredGroup()
-        .as(mapType())
-        .repeatedGroup()
-        .as(LogicalTypeAnnotation.MapKeyValueTypeAnnotation.getInstance())
-        .required(PrimitiveTypeName.BINARY)
-        .as(stringType())
-        .named("key")
-        .required(PrimitiveTypeName.INT32)
-        .named("value")
-        .named("key_value")
-        .named("testMap")
-        .named("Message");
-
-    List<SchemaElement> parquetSchema = parquetMetadataConverter.toParquetSchema(expected);
-    assertEquals(5, parquetSchema.size());
-    assertEquals(new SchemaElement("Message").setNum_children(1), parquetSchema.get(0));
-    assertEquals(
-        new SchemaElement("testMap")
-            .setRepetition_type(FieldRepetitionType.REQUIRED)
-            .setNum_children(1)
-            .setConverted_type(ConvertedType.MAP)
-            .setLogicalType(LogicalType.MAP(new MapType())),
-        parquetSchema.get(1));
-    // PARQUET-1879 ensure that LogicalType is not written (null) but ConvertedType is MAP_KEY_VALUE for
-    // backwards-compatibility
-    assertEquals(
-        new SchemaElement("key_value")
-            .setRepetition_type(FieldRepetitionType.REPEATED)
-            .setNum_children(2)
-            .setConverted_type(ConvertedType.MAP_KEY_VALUE)
-            .setLogicalType(null),
-        parquetSchema.get(2));
-    assertEquals(
-        new SchemaElement("key")
-            .setType(Type.BYTE_ARRAY)
-            .setRepetition_type(FieldRepetitionType.REQUIRED)
-            .setConverted_type(ConvertedType.UTF8)
-            .setLogicalType(LogicalType.STRING(new StringType())),
-        parquetSchema.get(3));
-    assertEquals(
-        new SchemaElement("value")
-            .setType(Type.INT32)
-            .setRepetition_type(FieldRepetitionType.REQUIRED)
-            .setConverted_type(null)
-            .setLogicalType(null),
-        parquetSchema.get(4));
-
-    MessageType schema = parquetMetadataConverter.fromParquetSchema(parquetSchema, null);
-    assertEquals(expected, schema);
-  }
-
-  @Test
   public void testMapLogicalTypeReadWrite() throws Exception {
     MessageType messageType = Types.buildMessage()
         .requiredGroup()
@@ -1590,32 +1284,10 @@ public class TestParquetMetadataConverter {
         .setConverted_type(null)
         .setLogicalType(null));
 
-    ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
-    MessageType messageType = parquetMetadataConverter.fromParquetSchema(oldConvertedTypeSchemaElements, null);
+    ParquetSchemaConverter parquetSchemaConverter = new ParquetSchemaConverter();
+    MessageType messageType = parquetSchemaConverter.fromParquetSchema(oldConvertedTypeSchemaElements, null);
 
     verifyMapMessageType(messageType, "map");
-  }
-
-  @Test
-  public void testVariantLogicalType() {
-    byte specVersion = 1;
-    MessageType expected = Types.buildMessage()
-        .requiredGroup()
-        .as(variantType(specVersion))
-        .required(PrimitiveTypeName.BINARY)
-        .named("metadata")
-        .required(PrimitiveTypeName.BINARY)
-        .named("value")
-        .named("v")
-        .named("example");
-
-    ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
-    List<SchemaElement> parquetSchema = parquetMetadataConverter.toParquetSchema(expected);
-    MessageType schema = parquetMetadataConverter.fromParquetSchema(parquetSchema, null);
-    assertEquals(expected, schema);
-    LogicalTypeAnnotation logicalType = schema.getType("v").getLogicalTypeAnnotation();
-    assertEquals(LogicalTypeAnnotation.variantType(specVersion), logicalType);
-    assertEquals(specVersion, ((LogicalTypeAnnotation.VariantLogicalTypeAnnotation) logicalType).getSpecVersion());
   }
 
   private void verifyMapMessageType(final MessageType messageType, final String keyValueName) throws IOException {
@@ -1669,143 +1341,6 @@ public class TestParquetMetadataConverter {
   }
 
   @Test
-  public void testGeometryLogicalType() {
-    ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
-
-    // Create schema with geometry type
-    MessageType schema = Types.buildMessage()
-        .required(PrimitiveTypeName.BINARY)
-        .as(LogicalTypeAnnotation.geometryType("EPSG:4326"))
-        .named("geomField")
-        .named("Message");
-
-    // Convert to parquet schema and back
-    List<SchemaElement> parquetSchema = parquetMetadataConverter.toParquetSchema(schema);
-    MessageType actual = parquetMetadataConverter.fromParquetSchema(parquetSchema, null);
-
-    // Verify the logical type is preserved
-    assertEquals(schema, actual);
-
-    PrimitiveType primitiveType = actual.getType("geomField").asPrimitiveType();
-    LogicalTypeAnnotation logicalType = primitiveType.getLogicalTypeAnnotation();
-    assertTrue(logicalType instanceof LogicalTypeAnnotation.GeometryLogicalTypeAnnotation);
-    assertEquals("EPSG:4326", ((LogicalTypeAnnotation.GeometryLogicalTypeAnnotation) logicalType).getCrs());
-  }
-
-  @Test
-  public void testGeographyLogicalType() {
-    ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
-
-    // Create schema with geography type
-    MessageType schema = Types.buildMessage()
-        .required(PrimitiveTypeName.BINARY)
-        .as(LogicalTypeAnnotation.geographyType("EPSG:4326", EdgeInterpolationAlgorithm.SPHERICAL))
-        .named("geogField")
-        .named("Message");
-
-    // Convert to parquet schema and back
-    List<SchemaElement> parquetSchema = parquetMetadataConverter.toParquetSchema(schema);
-    MessageType actual = parquetMetadataConverter.fromParquetSchema(parquetSchema, null);
-
-    // Verify the logical type is preserved
-    assertEquals(schema, actual);
-
-    PrimitiveType primitiveType = actual.getType("geogField").asPrimitiveType();
-    LogicalTypeAnnotation logicalType = primitiveType.getLogicalTypeAnnotation();
-    assertTrue(logicalType instanceof LogicalTypeAnnotation.GeographyLogicalTypeAnnotation);
-
-    LogicalTypeAnnotation.GeographyLogicalTypeAnnotation geographyType =
-        (LogicalTypeAnnotation.GeographyLogicalTypeAnnotation) logicalType;
-    assertEquals("EPSG:4326", geographyType.getCrs());
-    assertEquals(EdgeInterpolationAlgorithm.SPHERICAL, geographyType.getAlgorithm());
-  }
-
-  @Test
-  public void testGeometryLogicalTypeWithMissingCrs() {
-    // Create a Geometry logical type without specifying CRS
-    GeometryType geometryType = new GeometryType();
-    LogicalType logicalType = new LogicalType();
-    logicalType.setGEOMETRY(geometryType);
-
-    // Convert to LogicalTypeAnnotation
-    ParquetMetadataConverter converter = new ParquetMetadataConverter();
-    LogicalTypeAnnotation annotation = converter.getLogicalTypeAnnotation(logicalType);
-
-    // Verify the annotation is created correctly
-    assertNotNull("Geometry annotation should not be null", annotation);
-    assertTrue(
-        "Should be a GeometryLogicalTypeAnnotation",
-        annotation instanceof LogicalTypeAnnotation.GeometryLogicalTypeAnnotation);
-
-    LogicalTypeAnnotation.GeometryLogicalTypeAnnotation geometryAnnotation =
-        (LogicalTypeAnnotation.GeometryLogicalTypeAnnotation) annotation;
-
-    // Default behavior should use null or empty CRS
-    assertNull("CRS should be null or empty when not specified", geometryAnnotation.getCrs());
-  }
-
-  @Test
-  public void testGeographyLogicalTypeWithMissingParameters() {
-    ParquetMetadataConverter converter = new ParquetMetadataConverter();
-
-    // Create a Geography logical type without CRS and algorithm
-    GeographyType geographyType = new GeographyType();
-    LogicalType logicalType = new LogicalType();
-    logicalType.setGEOGRAPHY(geographyType);
-
-    // Convert to LogicalTypeAnnotation
-    LogicalTypeAnnotation annotation = converter.getLogicalTypeAnnotation(logicalType);
-
-    // Verify the annotation is created correctly
-    assertNotNull("Geography annotation should not be null", annotation);
-    assertTrue(
-        "Should be a GeographyLogicalTypeAnnotation",
-        annotation instanceof LogicalTypeAnnotation.GeographyLogicalTypeAnnotation);
-
-    // Check that optional parameters are handled correctly
-    LogicalTypeAnnotation.GeographyLogicalTypeAnnotation geographyAnnotation =
-        (LogicalTypeAnnotation.GeographyLogicalTypeAnnotation) annotation;
-    assertNull("CRS should be null when not specified", geographyAnnotation.getCrs());
-    // Most implementations default to LINEAR when algorithm is not specified
-    assertNull("Algorithm should be null when not specified", geographyAnnotation.getAlgorithm());
-
-    // Now test the round-trip conversion
-    LogicalType roundTripType = converter.convertToLogicalType(annotation);
-    assertEquals("setField should be GEOGRAPHY", LogicalType._Fields.GEOGRAPHY, roundTripType.getSetField());
-    assertNull(
-        "Round trip CRS should still be null",
-        roundTripType.getGEOGRAPHY().getCrs());
-    assertNull(
-        "Round trip Algorithm should be null",
-        roundTripType.getGEOGRAPHY().getAlgorithm());
-  }
-
-  @Test
-  public void testGeographyLogicalTypeWithAlgorithmButNoCrs() {
-    // Create a Geography logical type with algorithm but no CRS
-    GeographyType geographyType = new GeographyType();
-    geographyType.setAlgorithm(org.apache.parquet.format.EdgeInterpolationAlgorithm.SPHERICAL);
-    LogicalType logicalType = new LogicalType();
-    logicalType.setGEOGRAPHY(geographyType);
-
-    // Convert to LogicalTypeAnnotation
-    ParquetMetadataConverter converter = new ParquetMetadataConverter();
-    LogicalTypeAnnotation annotation = converter.getLogicalTypeAnnotation(logicalType);
-
-    // Verify the annotation is created correctly
-    Assert.assertNotNull("Geography annotation should not be null", annotation);
-    LogicalTypeAnnotation.GeographyLogicalTypeAnnotation geographyAnnotation =
-        (LogicalTypeAnnotation.GeographyLogicalTypeAnnotation) annotation;
-
-    // CRS should be null/empty but algorithm should be set
-    assertNull("CRS should be null or empty", geographyAnnotation.getCrs());
-    assertEquals(
-        "Algorithm should be SPHERICAL",
-        EdgeInterpolationAlgorithm.SPHERICAL,
-        geographyAnnotation.getAlgorithm());
-  }
-
-  @Test
   public void testGeospatialStatisticsConversion() {
     // Create a ParquetMetadataConverter
     ParquetMetadataConverter converter = new ParquetMetadataConverter();
@@ -1855,8 +1390,9 @@ public class TestParquetMetadataConverter {
 
     // Create primitive geometry type for conversion back
     LogicalTypeAnnotation geometryAnnotation = LogicalTypeAnnotation.geometryType("EPSG:4326");
-    PrimitiveType geometryType =
-        Types.required(PrimitiveTypeName.BINARY).as(geometryAnnotation).named("geometry");
+    PrimitiveType geometryType = Types.required(PrimitiveType.PrimitiveTypeName.BINARY)
+        .as(geometryAnnotation)
+        .named("geometry");
 
     // Convert back from Thrift format
     org.apache.parquet.column.statistics.geospatial.GeospatialStatistics convertedStats =
@@ -1906,8 +1442,9 @@ public class TestParquetMetadataConverter {
 
     // Create primitive geometry type for conversion back
     LogicalTypeAnnotation geometryAnnotation = LogicalTypeAnnotation.geometryType("EPSG:4326");
-    PrimitiveType geometryType =
-        Types.required(PrimitiveTypeName.BINARY).as(geometryAnnotation).named("geometry");
+    PrimitiveType geometryType = Types.required(PrimitiveType.PrimitiveTypeName.BINARY)
+        .as(geometryAnnotation)
+        .named("geometry");
 
     // Convert back from Thrift format
     org.apache.parquet.column.statistics.geospatial.GeospatialStatistics convertedStats =
@@ -1941,24 +1478,5 @@ public class TestParquetMetadataConverter {
     // Convert to Thrift format - should return null for invalid bbox
     GeospatialStatistics thriftStats = converter.toParquetGeospatialStatistics(origStats);
     assertNull("Should return null for invalid BoundingBox", thriftStats);
-  }
-
-  @Test
-  public void testEdgeInterpolationAlgorithmConversion() {
-    // Test conversion from Parquet to Thrift enum
-    org.apache.parquet.column.schema.EdgeInterpolationAlgorithm parquetAlgo = EdgeInterpolationAlgorithm.SPHERICAL;
-    org.apache.parquet.format.EdgeInterpolationAlgorithm thriftAlgo =
-        ParquetMetadataConverter.fromParquetEdgeInterpolationAlgorithm(parquetAlgo);
-
-    // convert the Thrift enum to the column schema enum
-    org.apache.parquet.column.schema.EdgeInterpolationAlgorithm expected =
-        org.apache.parquet.column.schema.EdgeInterpolationAlgorithm.SPHERICAL;
-    org.apache.parquet.column.schema.EdgeInterpolationAlgorithm actual =
-        ParquetMetadataConverter.toParquetEdgeInterpolationAlgorithm(thriftAlgo);
-    assertEquals(expected, actual);
-
-    // Test with null
-    assertNull(ParquetMetadataConverter.fromParquetEdgeInterpolationAlgorithm(null));
-    assertNull(ParquetMetadataConverter.toParquetEdgeInterpolationAlgorithm(null));
   }
 }
