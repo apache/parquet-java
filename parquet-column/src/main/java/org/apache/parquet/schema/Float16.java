@@ -46,6 +46,13 @@ import org.apache.parquet.io.api.Binary;
  * Ref: https://android.googlesource.com/platform/libcore/+/master/luni/src/main/java/libcore/util/FP16.java
  */
 public class Float16 {
+  // Positive zero of type half-precision float.
+  public static final Binary POSITIVE_ZERO_LITTLE_ENDIAN =
+      Binary.fromConstantByteArray(new byte[] {0x00, 0x00}, 0, 2);
+  // Negative zero of type half-precision float.
+  public static final Binary NEGATIVE_ZERO_LITTLE_ENDIAN =
+      Binary.fromConstantByteArray(new byte[] {0x00, (byte) 0x80}, 0, 2);
+
   // Positive infinity of type half-precision float.
   private static final short POSITIVE_INFINITY = (short) 0x7c00;
   // A Not-a-Number representation of a half-precision float.
