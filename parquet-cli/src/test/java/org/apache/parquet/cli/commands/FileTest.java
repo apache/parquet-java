@@ -58,6 +58,10 @@ public abstract class FileTest {
     return console;
   }
 
+  protected static Logger createLogger(java.io.PrintStream out) {
+    return createLogger();
+  }
+
   @FunctionalInterface
   public interface ThrowableBiConsumer<T, U> {
     void accept(T t, U u) throws Exception;

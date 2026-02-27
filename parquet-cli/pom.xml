@@ -127,6 +127,14 @@
       <artifactId>parquet-hadoop</artifactId>
       <version>${project.version}</version>
     </dependency>
+    <!-- Bring in helper test classes like InMemoryKMS used by CLI encryption tests -->
+    <dependency>
+      <groupId>org.apache.parquet</groupId>
+      <artifactId>parquet-hadoop</artifactId>
+      <classifier>tests</classifier>
+      <version>${project.version}</version>
+      <scope>test</scope>
+    </dependency>
     <dependency>
       <groupId>org.apache.avro</groupId>
       <artifactId>avro</artifactId>
