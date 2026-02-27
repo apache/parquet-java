@@ -19,8 +19,10 @@
 package org.apache.parquet.column.statistics;
 
 import java.util.Arrays;
+import org.apache.parquet.Preconditions;
 import org.apache.parquet.column.UnknownColumnTypeException;
 import org.apache.parquet.io.api.Binary;
+import org.apache.parquet.schema.ColumnOrder;
 import org.apache.parquet.schema.Float16;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.PrimitiveComparator;
@@ -40,10 +42,11 @@ public abstract class Statistics<T extends Comparable<T>> {
    * Builder class to build Statistics objects. Used to read the statistics from the Parquet file.
    */
   public static class Builder {
-    private final PrimitiveType type;
+    protected final PrimitiveType type;
     private byte[] min;
     private byte[] max;
     private long numNulls = -1;
+    private long nanCount = -1;
 
     private Builder(PrimitiveType type) {
       this.type = type;
@@ -64,12 +67,21 @@ public abstract class Statistics<T extends Comparable<T>> {
       return this;
     }
 
+    public Builder withNanCount(long nanCount) {
+      this.nanCount = nanCount;
+      return this;
+    }
+
     public Statistics<?> build() {
       Statistics<?> stats = createStats(type);
       if (min != null && max != null) {
         stats.setMinMaxFromBytes(min, max);
       }
       stats.num_nulls = this.numNulls;
+      stats.nan_count = this.nanCount;
+      Preconditions.checkState(
+          !type.columnOrder().equals(ColumnOrder.ieee754TotalOrder()) || stats.nan_count >= 0,
+          "nan_count is required by IEEE 754 column order with type " + type);
       return stats;
     }
   }
@@ -87,10 +99,12 @@ public abstract class Statistics<T extends Comparable<T>> {
       if (stats.hasNonNullValue()) {
         Float min = stats.genericGetMin();
         Float max = stats.genericGetMax();
-        // Drop min/max values in case of NaN as the sorting order of values is undefined for this case
         if (min.isNaN() || max.isNaN()) {
-          stats.setMinMax(0.0f, 0.0f);
-          ((Statistics<?>) stats).hasNonNullValue = false;
+          if (!type.columnOrder().equals(ColumnOrder.ieee754TotalOrder())) {
+            // For TYPE_DEFINED_ORDER: drop min/max values as NaN ordering is undefined
+            stats.setMinMax(0.0f, 0.0f);
+            ((Statistics<?>) stats).hasNonNullValue = false;
+          }
         } else {
           // Updating min to -0.0 and max to +0.0 to ensure that no 0.0 values would be skipped
           if (Float.compare(min, 0.0f) == 0) {
@@ -120,10 +134,12 @@ public abstract class Statistics<T extends Comparable<T>> {
       if (stats.hasNonNullValue()) {
         Double min = stats.genericGetMin();
         Double max = stats.genericGetMax();
-        // Drop min/max values in case of NaN as the sorting order of values is undefined for this case
         if (min.isNaN() || max.isNaN()) {
-          stats.setMinMax(0.0, 0.0);
-          ((Statistics<?>) stats).hasNonNullValue = false;
+          if (!type.columnOrder().equals(ColumnOrder.ieee754TotalOrder())) {
+            // For TYPE_DEFINED_ORDER: drop min/max values as NaN ordering is undefined
+            stats.setMinMax(0.0, 0.0);
+            ((Statistics<?>) stats).hasNonNullValue = false;
+          }
         } else {
           // Updating min to -0.0 and max to +0.0 to ensure that no 0.0 values would be skipped
           if (Double.compare(min, 0.0) == 0) {
@@ -160,10 +176,12 @@ public abstract class Statistics<T extends Comparable<T>> {
         Binary bMax = stats.genericGetMax();
         short min = bMin.get2BytesLittleEndian();
         short max = bMax.get2BytesLittleEndian();
-        // Drop min/max values in case of NaN as the sorting order of values is undefined for this case
         if (Float16.isNaN(min) || Float16.isNaN(max)) {
-          stats.setMinMax(POSITIVE_ZERO_LITTLE_ENDIAN, NEGATIVE_ZERO_LITTLE_ENDIAN);
-          ((Statistics<?>) stats).hasNonNullValue = false;
+          if (!type.columnOrder().equals(ColumnOrder.ieee754TotalOrder())) {
+            // For TYPE_DEFINED_ORDER: drop min/max values as NaN ordering is undefined
+            stats.setMinMax(POSITIVE_ZERO_LITTLE_ENDIAN, NEGATIVE_ZERO_LITTLE_ENDIAN);
+            ((Statistics<?>) stats).hasNonNullValue = false;
+          }
         } else {
           // Updating min to -0.0 and max to +0.0 to ensure that no 0.0 values would be skipped
           if (min == (short) 0x0000) {
@@ -182,6 +200,7 @@ public abstract class Statistics<T extends Comparable<T>> {
   private final PrimitiveComparator<T> comparator;
   private boolean hasNonNullValue;
   private long num_nulls;
+  private long nan_count = -1;
   final PrimitiveStringifier stringifier;
 
   Statistics(PrimitiveType type) {
@@ -351,7 +370,8 @@ public abstract class Statistics<T extends Comparable<T>> {
     return type.equals(stats.type)
         && Arrays.equals(stats.getMaxBytes(), this.getMaxBytes())
         && Arrays.equals(stats.getMinBytes(), this.getMinBytes())
-        && stats.getNumNulls() == this.getNumNulls();
+        && stats.getNumNulls() == this.getNumNulls()
+        && stats.getNanCount() == this.getNanCount();
   }
 
   /**
@@ -383,6 +403,11 @@ public abstract class Statistics<T extends Comparable<T>> {
       if (stats.hasNonNullValue()) {
         mergeStatisticsMinMax(stats);
         markAsNotEmpty();
+      }
+      if (isNanCountSet() && stats.isNanCountSet()) {
+        incrementNanCount(stats.getNanCount());
+      } else {
+        unsetNanCount();
       }
     } else {
       throw StatisticsClassException.create(this, stats);
@@ -533,6 +558,53 @@ public abstract class Statistics<T extends Comparable<T>> {
    */
   public void incrementNumNulls(long increment) {
     num_nulls += increment;
+  }
+
+  /**
+   * Increments the NaN count by one. If nan_count was not set (-1), initializes it to 1.
+   */
+  public void incrementNanCount() {
+    if (nan_count < 0) {
+      nan_count = 1;
+    } else {
+      nan_count++;
+    }
+  }
+
+  /**
+   * Increments the NaN count by the parameter value. If nan_count was not set (-1), initializes it to increment.
+   *
+   * @param increment value to increment the NaN count by
+   */
+  public void incrementNanCount(long increment) {
+    if (nan_count < 0) {
+      nan_count = increment;
+    } else {
+      nan_count += increment;
+    }
+  }
+
+  /**
+   * Returns the NaN count
+   *
+   * @return NaN count or {@code -1} if the NaN count is not set
+   */
+  public long getNanCount() {
+    return nan_count;
+  }
+
+  /**
+   * @return whether nanCount is set and can be used
+   */
+  public boolean isNanCountSet() {
+    return nan_count >= 0;
+  }
+
+  /**
+   * Unsets the NaN count to -1.
+   */
+  public void unsetNanCount() {
+    nan_count = -1;
   }
 
   /**

@@ -37,6 +37,7 @@ import java.util.List;
 import java.util.PrimitiveIterator;
 import java.util.Set;
 import java.util.function.IntPredicate;
+import org.apache.parquet.Preconditions;
 import org.apache.parquet.column.MinMax;
 import org.apache.parquet.column.statistics.SizeStatistics;
 import org.apache.parquet.column.statistics.Statistics;
@@ -56,6 +57,7 @@ import org.apache.parquet.filter2.predicate.Operators.Or;
 import org.apache.parquet.filter2.predicate.Operators.UserDefined;
 import org.apache.parquet.filter2.predicate.UserDefinedPredicate;
 import org.apache.parquet.io.api.Binary;
+import org.apache.parquet.schema.ColumnOrder;
 import org.apache.parquet.schema.PrimitiveComparator;
 import org.apache.parquet.schema.PrimitiveStringifier;
 import org.apache.parquet.schema.PrimitiveType;
@@ -102,6 +104,8 @@ public abstract class ColumnIndexBuilder {
     // might be null
     private long[] nullCounts;
     // might be null
+    private long[] nanCounts;
+    // might be null
     private long[] repLevelHistogram;
     // might be null
     private long[] defLevelHistogram;
@@ -131,6 +135,14 @@ public abstract class ColumnIndexBuilder {
         return null;
       }
       return LongLists.unmodifiable(LongArrayList.wrap(nullCounts));
+    }
+
+    @Override
+    public List<Long> getNanCounts() {
+      if (nanCounts == null) {
+        return null;
+      }
+      return LongLists.unmodifiable(LongArrayList.wrap(nanCounts));
     }
 
     @Override
@@ -517,6 +529,7 @@ public abstract class ColumnIndexBuilder {
   private PrimitiveType type;
   private final BooleanList nullPages = new BooleanArrayList();
   private final LongList nullCounts = new LongArrayList();
+  private LongList nanCounts = new LongArrayList();
   private final IntList pageIndexes = new IntArrayList();
   private int nextPageIndex;
   private LongList repLevelHistogram = new LongArrayList();
@@ -550,9 +563,9 @@ public abstract class ColumnIndexBuilder {
       case BOOLEAN:
         return new BooleanColumnIndexBuilder();
       case DOUBLE:
-        return new DoubleColumnIndexBuilder();
+        return new DoubleColumnIndexBuilder(type);
       case FLOAT:
-        return new FloatColumnIndexBuilder();
+        return new FloatColumnIndexBuilder(type);
       case INT32:
         return new IntColumnIndexBuilder();
       case INT64:
@@ -611,10 +624,53 @@ public abstract class ColumnIndexBuilder {
       List<ByteBuffer> maxValues,
       List<Long> repLevelHistogram,
       List<Long> defLevelHistogram) {
+    return build(
+        type,
+        boundaryOrder,
+        nullPages,
+        nullCounts,
+        null,
+        minValues,
+        maxValues,
+        repLevelHistogram,
+        defLevelHistogram);
+  }
+
+  /**
+   * @param type
+   *          the primitive type
+   * @param boundaryOrder
+   *          the boundary order of the min/max values
+   * @param nullPages
+   *          the null pages (one boolean value for each page that signifies whether the page consists of nulls
+   *          entirely)
+   * @param nullCounts
+   *          the number of null values for each page
+   * @param nanCounts
+   *          the number of NaN values for each page (may be null)
+   * @param minValues
+   *          the min values for each page
+   * @param maxValues
+   *          the max values for each page
+   * @param repLevelHistogram
+   *          the repetition level histogram for all levels of each page
+   * @param defLevelHistogram
+   *          the definition level histogram for all levels of each page
+   * @return the newly created {@link ColumnIndex} object based on the specified arguments
+   */
+  public static ColumnIndex build(
+      PrimitiveType type,
+      BoundaryOrder boundaryOrder,
+      List<Boolean> nullPages,
+      List<Long> nullCounts,
+      List<Long> nanCounts,
+      List<ByteBuffer> minValues,
+      List<ByteBuffer> maxValues,
+      List<Long> repLevelHistogram,
+      List<Long> defLevelHistogram) {
 
     ColumnIndexBuilder builder = createNewBuilder(type, Integer.MAX_VALUE);
-
-    builder.fill(nullPages, nullCounts, minValues, maxValues, repLevelHistogram, defLevelHistogram);
+    builder.fill(nullPages, nullCounts, nanCounts, minValues, maxValues, repLevelHistogram, defLevelHistogram);
     ColumnIndexBase<?> columnIndex = builder.build(type);
     columnIndex.boundaryOrder = requireNonNull(boundaryOrder);
     return columnIndex;
@@ -653,6 +709,15 @@ public abstract class ColumnIndexBuilder {
     }
     nullCounts.add(stats.getNumNulls());
 
+    if (nanCounts != null && stats.isNanCountSet()) {
+      nanCounts.add(stats.getNanCount());
+      if (stats.getNanCount() > 0) {
+        onNanEncountered();
+      }
+    } else {
+      nanCounts = null;
+    }
+
     // Collect repetition and definition level histograms only when all pages are valid.
     if (sizeStats != null && sizeStats.isValid() && repLevelHistogram != null && defLevelHistogram != null) {
       repLevelHistogram.addAll(sizeStats.getRepetitionLevelHistogram());
@@ -669,9 +734,18 @@ public abstract class ColumnIndexBuilder {
 
   abstract void addMinMax(Object min, Object max);
 
+  /**
+   * Called when a page with NaN values is encountered (nan_count > 0) and the page also has non-NaN values.
+   * Subclasses should override to handle NaN presence (e.g., invalidate for TYPE_DEFINED_ORDER).
+   */
+  void onNanEncountered() {
+    throw new UnsupportedOperationException("Cannot call onNanEncountered on type: " + type);
+  }
+
   private void fill(
       List<Boolean> nullPages,
       List<Long> nullCounts,
+      List<Long> nanCounts,
       List<ByteBuffer> minValues,
       List<ByteBuffer> maxValues,
       List<Long> repLevelHistogram,
@@ -679,12 +753,14 @@ public abstract class ColumnIndexBuilder {
     clear();
     int pageCount = nullPages.size();
     if ((nullCounts != null && nullCounts.size() != pageCount)
+        || (nanCounts != null && nanCounts.size() != pageCount)
         || minValues.size() != pageCount
         || maxValues.size() != pageCount) {
       throw new IllegalArgumentException(String.format(
-          "Not all sizes are equal (nullPages:%d, nullCounts:%s, minValues:%d, maxValues:%d",
+          "Not all sizes are equal (nullPages:%d, nullCounts:%s, nanCounts:%s, minValues:%d, maxValues:%d",
           nullPages.size(),
           nullCounts == null ? "null" : nullCounts.size(),
+          nanCounts == null ? "null" : nanCounts.size(),
           minValues.size(),
           maxValues.size()));
     }
@@ -704,6 +780,10 @@ public abstract class ColumnIndexBuilder {
     // Nullcounts is optional in the format
     if (nullCounts != null) {
       this.nullCounts.addAll(nullCounts);
+    }
+    // NaN counts is optional in the format
+    if (nanCounts != null) {
+      this.nanCounts.addAll(nanCounts);
     }
 
     for (int i = 0; i < pageCount; ++i) {
@@ -749,6 +829,14 @@ public abstract class ColumnIndexBuilder {
     // Null counts is optional so keep it null if the builder has no values
     if (!nullCounts.isEmpty()) {
       columnIndex.nullCounts = nullCounts.toLongArray();
+    }
+    // NaN counts is optional so keep it null if the builder has no values
+    if (nanCounts != null && !nanCounts.isEmpty()) {
+      columnIndex.nanCounts = nanCounts.toLongArray();
+    } else {
+      Preconditions.checkState(
+          !type.columnOrder().equals(ColumnOrder.ieee754TotalOrder()),
+          "NaN counts must be provided for types with IEEE_754_TOTAL_ORDER column order");
     }
     columnIndex.pageIndexes = pageIndexes.toIntArray();
     // Repetition and definition level histograms are optional so keep them null if the builder has no values
@@ -802,8 +890,21 @@ public abstract class ColumnIndexBuilder {
     clearMinMax();
     nextPageIndex = 0;
     pageIndexes.clear();
-    repLevelHistogram.clear();
-    defLevelHistogram.clear();
+    if (nanCounts != null) {
+      nanCounts.clear();
+    } else {
+      nanCounts = new LongArrayList();
+    }
+    if (repLevelHistogram == null) {
+      repLevelHistogram = new LongArrayList();
+    } else {
+      repLevelHistogram.clear();
+    }
+    if (defLevelHistogram == null) {
+      defLevelHistogram = new LongArrayList();
+    } else {
+      defLevelHistogram.clear();
+    }
   }
 
   abstract void clearMinMax();
