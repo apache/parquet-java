@@ -34,22 +34,25 @@ import org.apache.avro.LogicalTypes;
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder;
 import org.apache.avro.specific.SpecificData;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.mockito.MockedStatic;
 import org.mockito.Mockito;
-import org.powermock.api.mockito.PowerMockito;
-import org.powermock.core.classloader.annotations.PrepareForTest;
-import org.powermock.modules.junit4.PowerMockRunner;
 
-@RunWith(PowerMockRunner.class)
-@PrepareForTest(AvroRecordConverter.class)
 public class TestAvroRecordConverter {
+
+  private MockedStatic<AvroRecordConverter> avroRecordConverterMock;
 
   @Before
   public void setup() {
     // Default to calling real methods unless overridden in specific test
-    PowerMockito.mockStatic(AvroRecordConverter.class, CALLS_REAL_METHODS);
+    avroRecordConverterMock = Mockito.mockStatic(AvroRecordConverter.class, CALLS_REAL_METHODS);
+  }
+
+  @After
+  public void tearDown() {
+    avroRecordConverterMock.close();
   }
 
   @Test
@@ -86,7 +89,7 @@ public class TestAvroRecordConverter {
   // Test logical type support for older Avro versions
   @Test
   public void testModelForSpecificRecordWithLogicalTypesWithDeprecatedAvro1_8() {
-    Mockito.when(AvroRecordConverter.getRuntimeAvroVersion()).thenReturn("1.8.2");
+    avroRecordConverterMock.when(AvroRecordConverter::getRuntimeAvroVersion).thenReturn("1.8.2");
 
     // Test that model is generated correctly when record contains both top-level and nested logical types
     SpecificData model = AvroRecordConverter.getModelForSchema(LogicalTypesTestDeprecated.SCHEMA$);
@@ -108,7 +111,7 @@ public class TestAvroRecordConverter {
 
   @Test
   public void testModelForSpecificRecordWithLogicalTypesWithDeprecatedAvro1_7() {
-    Mockito.when(AvroRecordConverter.getRuntimeAvroVersion()).thenReturn("1.7.7");
+    avroRecordConverterMock.when(AvroRecordConverter::getRuntimeAvroVersion).thenReturn("1.7.7");
 
     // Test that model is generated correctly
     final SpecificData model = AvroRecordConverter.getModelForSchema(LogicalTypesTestDeprecated.SCHEMA$);
