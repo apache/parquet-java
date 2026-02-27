@@ -53,6 +53,7 @@ class InternalParquetRecordWriter<T> {
   private long nextRowGroupSize;
   private final BytesInputCompressor compressor;
   private final boolean validating;
+  private final boolean strictUnsignedIntegerValidation;
   private final ParquetProperties props;
 
   private boolean closed;
@@ -87,6 +88,28 @@ class InternalParquetRecordWriter<T> {
       BytesInputCompressor compressor,
       boolean validating,
       ParquetProperties props) {
+    this(
+        parquetFileWriter,
+        writeSupport,
+        schema,
+        extraMetaData,
+        rowGroupSize,
+        compressor,
+        validating,
+        false,
+        props);
+  }
+
+  public InternalParquetRecordWriter(
+      ParquetFileWriter parquetFileWriter,
+      WriteSupport<T> writeSupport,
+      MessageType schema,
+      Map<String, String> extraMetaData,
+      long rowGroupSize,
+      BytesInputCompressor compressor,
+      boolean validating,
+      boolean strictUnsignedIntegerValidation,
+      ParquetProperties props) {
     this.parquetFileWriter = parquetFileWriter;
     this.writeSupport = Objects.requireNonNull(writeSupport, "writeSupport cannot be null");
     this.schema = schema;
@@ -96,6 +119,7 @@ class InternalParquetRecordWriter<T> {
     this.nextRowGroupSize = rowGroupSizeThreshold;
     this.compressor = compressor;
     this.validating = validating;
+    this.strictUnsignedIntegerValidation = strictUnsignedIntegerValidation;
     this.props = props;
     this.fileEncryptor = parquetFileWriter.getEncryptor();
     this.rowGroupOrdinal = 0;
@@ -120,7 +144,7 @@ class InternalParquetRecordWriter<T> {
     bloomFilterWriteStore = columnChunkPageWriteStore;
 
     columnStore = props.newColumnWriteStore(schema, pageStore, bloomFilterWriteStore);
-    MessageColumnIO columnIO = new ColumnIOFactory(validating).getColumnIO(schema);
+    MessageColumnIO columnIO = new ColumnIOFactory(validating, strictUnsignedIntegerValidation).getColumnIO(schema);
     this.recordConsumer = columnIO.getRecordWriter(columnStore);
     writeSupport.prepareForWrite(recordConsumer);
   }

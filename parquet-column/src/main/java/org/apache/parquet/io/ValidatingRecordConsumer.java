@@ -30,8 +30,10 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT96;
 import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.Deque;
+import java.util.Optional;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.RecordConsumer;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Type;
@@ -46,7 +48,11 @@ import org.slf4j.LoggerFactory;
 public class ValidatingRecordConsumer extends RecordConsumer {
   private static final Logger LOG = LoggerFactory.getLogger(ValidatingRecordConsumer.class);
 
+  private static final int UINT_8_MAX_VALUE = 255;
+  private static final int UINT_16_MAX_VALUE = 65535;
+
   private final RecordConsumer delegate;
+  private final boolean strictUnsignedIntegerValidation;
 
   private Deque<Type> types = new ArrayDeque<>();
   private Deque<Integer> fields = new ArrayDeque<>();
@@ -58,7 +64,18 @@ public class ValidatingRecordConsumer extends RecordConsumer {
    * @param schema   the schema to validate against
    */
   public ValidatingRecordConsumer(RecordConsumer delegate, MessageType schema) {
+    this(delegate, schema, false);
+  }
+
+  /**
+   * @param delegate the consumer to pass down the event to
+   * @param schema   the schema to validate against
+   * @param strictUnsignedIntegerValidation whether to enable strict unsigned integer validation
+   */
+  public ValidatingRecordConsumer(
+      RecordConsumer delegate, MessageType schema, boolean strictUnsignedIntegerValidation) {
     this.delegate = delegate;
+    this.strictUnsignedIntegerValidation = strictUnsignedIntegerValidation;
     this.types.push(schema);
   }
 
@@ -202,6 +219,9 @@ public class ValidatingRecordConsumer extends RecordConsumer {
   @Override
   public void addInteger(int value) {
     validate(INT32);
+    if (strictUnsignedIntegerValidation) {
+      validateUnsignedInteger(value);
+    }
     delegate.addInteger(value);
   }
 
@@ -211,6 +231,9 @@ public class ValidatingRecordConsumer extends RecordConsumer {
   @Override
   public void addLong(long value) {
     validate(INT64);
+    if (strictUnsignedIntegerValidation) {
+      validateUnsignedLong(value);
+    }
     delegate.addLong(value);
   }
 
@@ -248,5 +271,67 @@ public class ValidatingRecordConsumer extends RecordConsumer {
   public void addDouble(double value) {
     validate(DOUBLE);
     delegate.addDouble(value);
+  }
+
+  private void validateUnsignedInteger(int value) {
+    Type currentType = types.peek().asGroupType().getType(fields.peek());
+    if (currentType != null && currentType.isPrimitive()) {
+      LogicalTypeAnnotation logicalType = currentType.asPrimitiveType().getLogicalTypeAnnotation();
+      if (logicalType != null) {
+        logicalType.accept(new LogicalTypeAnnotation.LogicalTypeAnnotationVisitor<Void>() {
+          @Override
+          public Optional<Void> visit(LogicalTypeAnnotation.IntLogicalTypeAnnotation intType) {
+            if (!intType.isSigned()) {
+              switch (intType.getBitWidth()) {
+                case 8:
+                  if (value < 0 || value > UINT_8_MAX_VALUE) {
+                    throw new InvalidRecordException("Value " + value
+                        + " is out of range for UINT_8 (0-" + UINT_8_MAX_VALUE + ") in field "
+                        + currentType.getName());
+                  }
+                  break;
+                case 16:
+                  if (value < 0 || value > UINT_16_MAX_VALUE) {
+                    throw new InvalidRecordException("Value " + value
+                        + " is out of range for UINT_16 (0-" + UINT_16_MAX_VALUE + ") in field "
+                        + currentType.getName());
+                  }
+                  break;
+                case 32:
+                case 64:
+                  if (value < 0) {
+                    throw new InvalidRecordException("Negative value " + value
+                        + " is not allowed for unsigned integer type "
+                        + currentType.getName());
+                  }
+                  break;
+              }
+            }
+            return Optional.empty();
+          }
+        });
+      }
+    }
+  }
+
+  private void validateUnsignedLong(long value) {
+    Type currentType = types.peek().asGroupType().getType(fields.peek());
+    if (currentType != null && currentType.isPrimitive()) {
+      LogicalTypeAnnotation logicalType = currentType.asPrimitiveType().getLogicalTypeAnnotation();
+      if (logicalType != null) {
+        logicalType.accept(new LogicalTypeAnnotation.LogicalTypeAnnotationVisitor<Void>() {
+          @Override
+          public Optional<Void> visit(LogicalTypeAnnotation.IntLogicalTypeAnnotation intType) {
+            if (!intType.isSigned()) {
+              if (value < 0) {
+                throw new InvalidRecordException("Negative value " + value
+                    + " is not allowed for unsigned integer type " + currentType.getName());
+              }
+            }
+            return Optional.empty();
+          }
+        });
+      }
+    }
   }
 }
