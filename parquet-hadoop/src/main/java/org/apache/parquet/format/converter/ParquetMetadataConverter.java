@@ -703,11 +703,13 @@ public class ParquetMetadataConverter {
     rowGroups.add(rowGroup);
   }
 
-  private List<Encoding> toFormatEncodings(Set<org.apache.parquet.column.Encoding> encodings) {
+  // Visible for testing
+  List<Encoding> toFormatEncodings(Set<org.apache.parquet.column.Encoding> encodings) {
     List<Encoding> converted = new ArrayList<Encoding>(encodings.size());
     for (org.apache.parquet.column.Encoding encoding : encodings) {
       converted.add(getEncoding(encoding));
     }
+    Collections.sort(converted);
     return converted;
   }
 
