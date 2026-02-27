@@ -77,7 +77,7 @@
  *   <tr>
  *     <td>map</td>
  *     <td>group (with original type MAP) containing one repeated group
- *     field (with original type MAP_KEY_VALUE) of (key, value)</td>
+ *     field of (key, value)</td>
  *   </tr>
  *   <tr>
  *     <td>fixed</td>
@@ -148,7 +148,7 @@
  *   </tr>
  *   <tr>
  *     <td>group (with original type MAP) containing one repeated group
- *     field (with original type MAP_KEY_VALUE) of (key, value)</td>
+ *     field of (key, value)</td>
  *     <td>map</td>
  *   </tr>
  * </table>

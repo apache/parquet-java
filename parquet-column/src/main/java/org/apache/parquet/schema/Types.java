@@ -110,7 +110,7 @@ import org.slf4j.LoggerFactory;
  *
  * <pre>
  *   // required group zipMap (MAP) {
- *   //   repeated group map (MAP_KEY_VALUE) {
+ *   //   repeated group map {
  *   //     required float key
  *   //     optional int32 value
  *   //   }
@@ -122,7 +122,7 @@ import org.slf4j.LoggerFactory;
  *
  *
  *   // required group zipMap (MAP) {
- *   //   repeated group map (MAP_KEY_VALUE) {
+ *   //   repeated group map {
  *   //     required group key {
  *   //       optional int64 first;
  *   //       required group second {
