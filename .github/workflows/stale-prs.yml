@@ -1,0 +1,55 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+name: Stale pull requests
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+permissions:
+  pull-requests: write
+  issues: write
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Mark and close stale pull requests
+        uses: actions/stale@v9
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          # Don't touch issues.
+          days-before-issue-stale: -1
+          days-before-issue-close: -1
+          # PRs stale after 2 months of inactivity and closed 1 month later.
+          days-before-pr-stale: 60
+          days-before-pr-close: 30
+          stale-pr-label: stale
+          stale-pr-message: >
+            This pull request has been automatically marked as stale because it has
+            had no activity for at least 2 months. If you are still working on this
+            change or plan to move it forward, please leave a comment or push a new
+            commit so we know to keep it open. Otherwise, this PR will be closed
+            automatically in about one month. Thank you for your contribution to
+            Apache Parquet!
+          close-pr-message: >
+            Closing this pull request due to at least 3 months of inactivity. If you
+            would like to continue the work, please feel free to reopen this pull
+            request or open a new one. Thank you for your contribution to
+            Apache Parquet!
