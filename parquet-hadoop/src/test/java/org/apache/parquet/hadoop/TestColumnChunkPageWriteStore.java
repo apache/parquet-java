@@ -22,6 +22,7 @@ import static org.apache.parquet.column.Encoding.PLAIN;
 import static org.apache.parquet.column.Encoding.RLE;
 import static org.apache.parquet.format.converter.ParquetMetadataConverter.NO_FILTER;
 import static org.apache.parquet.hadoop.metadata.CompressionCodecName.GZIP;
+import static org.apache.parquet.hadoop.metadata.CompressionCodecName.SNAPPY;
 import static org.apache.parquet.hadoop.metadata.CompressionCodecName.UNCOMPRESSED;
 import static org.apache.parquet.schema.OriginalType.UTF8;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
@@ -313,6 +314,70 @@ public class TestColumnChunkPageWriteStore {
               any(),
               any(),
               any());
+    }
+  }
+
+  @Test
+  public void testPerColumnCompression() throws Exception {
+    Path file = new Path("target/test/TestColumnChunkPageWriteStore/testPerColumnCompression.parquet");
+    Path root = file.getParent();
+    FileSystem fs = file.getFileSystem(conf);
+    if (fs.exists(root)) {
+      fs.delete(root, true);
+    }
+    fs.mkdirs(root);
+
+    MessageType schema = MessageTypeParser.parseMessageType(
+        "message test { required binary col_a; required binary col_b; required binary col_c; }");
+
+    ParquetProperties props = ParquetProperties.builder()
+        .withCompressionCodec(CompressionCodecName.GZIP)
+        .withCompressionCodec("col_a", CompressionCodecName.SNAPPY)
+        .withCompressionCodec("col_c", CompressionCodecName.UNCOMPRESSED)
+        .build();
+
+    CodecFactory codecFactory = new CodecFactory(conf, pageSize);
+    allocator = TrackingByteBufferAllocator.wrap(new HeapByteBufferAllocator());
+
+    OutputFileForTesting outputFile = new OutputFileForTesting(file, conf);
+    ParquetFileWriter writer = new ParquetFileWriter(
+        outputFile,
+        schema,
+        ParquetFileWriter.Mode.CREATE,
+        ParquetWriter.DEFAULT_BLOCK_SIZE,
+        ParquetWriter.MAX_PADDING_SIZE_DEFAULT,
+        null,
+        ParquetProperties.builder().withAllocator(allocator).build());
+    writer.start();
+    writer.startBlock(1);
+
+    try (ColumnChunkPageWriteStore store = new ColumnChunkPageWriteStore(
+        codecFactory, props, schema, allocator, Integer.MAX_VALUE, false, null, 0)) {
+      BytesInput fakeData = BytesInput.fromInt(42);
+      BinaryStatistics fakeStats = new BinaryStatistics();
+      for (ColumnDescriptor col : schema.getColumns()) {
+        PageWriter pageWriter = store.getPageWriter(col);
+        pageWriter.writePage(fakeData, 1, 1, fakeStats, RLE, RLE, PLAIN);
+      }
+      store.flushToFileWriter(writer);
+    }
+    writer.endBlock();
+    writer.end(new HashMap<>());
+
+    // Read back and verify per-column codecs in metadata
+    ParquetMetadata footer = ParquetFileReader.readFooter(conf, file, NO_FILTER);
+    for (ColumnChunkMetaData column : footer.getBlocks().get(0).getColumns()) {
+      switch (column.getPath().toDotString()) {
+        case "col_a":
+          assertEquals(SNAPPY, column.getCodec());
+          break;
+        case "col_b":
+          assertEquals(GZIP, column.getCodec());
+          break;
+        case "col_c":
+          assertEquals(UNCOMPRESSED, column.getCodec());
+          break;
+      }
     }
   }
 
