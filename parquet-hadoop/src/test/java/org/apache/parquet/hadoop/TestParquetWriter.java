@@ -988,8 +988,8 @@ public class TestParquetWriter {
     conf.set("parquet.compression#col_a", "SNAPPY");
     conf.set("parquet.compression#col_b", "UNCOMPRESSED");
 
-    ParquetProperties.Builder propsBuilder = ParquetProperties.builder()
-        .withCompressionCodec(ParquetOutputFormat.getCompression(conf));
+    ParquetProperties.Builder propsBuilder =
+        ParquetProperties.builder().withCompressionCodec(ParquetOutputFormat.getCompression(conf));
     new ColumnConfigParser()
         .withColumnConfig(
             ParquetOutputFormat.COMPRESSION,
@@ -1000,9 +1000,15 @@ public class TestParquetWriter {
     ParquetProperties props = propsBuilder.build();
 
     MessageType schema = Types.buildMessage()
-        .required(BINARY).as(stringType()).named("col_a")
-        .required(BINARY).as(stringType()).named("col_b")
-        .required(BINARY).as(stringType()).named("col_c")
+        .required(BINARY)
+        .as(stringType())
+        .named("col_a")
+        .required(BINARY)
+        .as(stringType())
+        .named("col_b")
+        .required(BINARY)
+        .as(stringType())
+        .named("col_c")
         .named("test_schema");
 
     for (org.apache.parquet.column.ColumnDescriptor col : schema.getColumns()) {

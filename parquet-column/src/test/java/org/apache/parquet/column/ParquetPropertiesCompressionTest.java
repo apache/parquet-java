@@ -38,7 +38,7 @@ public class ParquetPropertiesCompressionTest {
   }
 
   @Test
-public void testSetDefaultCompressionCodec() {
+  public void testSetDefaultCompressionCodec() {
     ParquetProperties props = ParquetProperties.builder()
         .withCompressionCodec(CompressionCodecName.SNAPPY)
         .build();

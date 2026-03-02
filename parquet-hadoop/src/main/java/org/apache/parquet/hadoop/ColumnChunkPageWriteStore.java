@@ -608,8 +608,14 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
       boolean pageWriteChecksumEnabled,
       InternalFileEncryptor fileEncryptor,
       int rowGroupOrdinal) {
-    this(path -> compressor, schema, allocator, columnIndexTruncateLength,
-        pageWriteChecksumEnabled, fileEncryptor, rowGroupOrdinal);
+    this(
+        path -> compressor,
+        schema,
+        allocator,
+        columnIndexTruncateLength,
+        pageWriteChecksumEnabled,
+        fileEncryptor,
+        rowGroupOrdinal);
   }
 
   public ColumnChunkPageWriteStore(
@@ -621,9 +627,14 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
       boolean pageWriteChecksumEnabled,
       InternalFileEncryptor fileEncryptor,
       int rowGroupOrdinal) {
-    this(path -> codecFactory.getCompressor(props.getCompressionCodec(path)),
-        schema, allocator, columnIndexTruncateLength,
-        pageWriteChecksumEnabled, fileEncryptor, rowGroupOrdinal);
+    this(
+        path -> codecFactory.getCompressor(props.getCompressionCodec(path)),
+        schema,
+        allocator,
+        columnIndexTruncateLength,
+        pageWriteChecksumEnabled,
+        fileEncryptor,
+        rowGroupOrdinal);
   }
 
   private ColumnChunkPageWriteStore(

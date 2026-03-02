@@ -62,7 +62,6 @@ import org.apache.parquet.column.page.PageReader;
 import org.apache.parquet.column.page.PageWriter;
 import org.apache.parquet.column.statistics.BinaryStatistics;
 import org.apache.parquet.column.statistics.Statistics;
-import org.apache.parquet.compression.CompressionCodecFactory;
 import org.apache.parquet.compression.CompressionCodecFactory.BytesInputCompressor;
 import org.apache.parquet.hadoop.ParquetFileWriter.Mode;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
@@ -342,9 +341,13 @@ public class TestColumnChunkPageWriteStore {
 
     OutputFileForTesting outputFile = new OutputFileForTesting(file, conf);
     ParquetFileWriter writer = new ParquetFileWriter(
-        outputFile, schema, ParquetFileWriter.Mode.CREATE,
-        ParquetWriter.DEFAULT_BLOCK_SIZE, ParquetWriter.MAX_PADDING_SIZE_DEFAULT,
-        null, ParquetProperties.builder().withAllocator(allocator).build());
+        outputFile,
+        schema,
+        ParquetFileWriter.Mode.CREATE,
+        ParquetWriter.DEFAULT_BLOCK_SIZE,
+        ParquetWriter.MAX_PADDING_SIZE_DEFAULT,
+        null,
+        ParquetProperties.builder().withAllocator(allocator).build());
     writer.start();
     writer.startBlock(1);
 
