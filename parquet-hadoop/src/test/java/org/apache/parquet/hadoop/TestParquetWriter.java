@@ -83,6 +83,7 @@ import org.apache.parquet.hadoop.example.GroupWriteSupport;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
+import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.hadoop.util.HadoopOutputFile;
@@ -862,66 +863,6 @@ public class TestParquetWriter {
   }
 
   @Test
-  public void testPerColumnCompression() throws Exception {
-    MessageType schema = Types.buildMessage()
-        .required(BINARY)
-        .as(stringType())
-        .named("name")
-        .required(INT32)
-        .named("id")
-        .required(BINARY)
-        .named("embeddings")
-        .named("test_schema");
-
-    File file = temp.newFile();
-    temp.delete();
-    Path path = new Path(file.getAbsolutePath());
-
-    SimpleGroupFactory factory = new SimpleGroupFactory(schema);
-
-    // Write with per-column compression: SNAPPY default, embeddings UNCOMPRESSED
-    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(path)
-        .withAllocator(allocator)
-        .withType(schema)
-        .withCompressionCodec(SNAPPY)
-        .withCompressionCodec("embeddings", UNCOMPRESSED)
-        .build()) {
-      for (int i = 0; i < 1000; i++) {
-        writer.write(factory.newGroup()
-            .append("name", "name_" + i)
-            .append("id", i)
-            .append("embeddings", "embedding_data_" + i));
-      }
-    }
-
-    // Verify data integrity via round-trip read
-    try (ParquetReader<Group> reader =
-        ParquetReader.builder(new GroupReadSupport(), path).build()) {
-      for (int i = 0; i < 1000; i++) {
-        Group group = reader.read();
-        assertEquals("name_" + i, group.getString("name", 0));
-        assertEquals(i, group.getInteger("id", 0));
-        assertEquals("embedding_data_" + i, group.getString("embeddings", 0));
-      }
-      assertNull(reader.read());
-    }
-
-    // Verify per-column codec in footer metadata
-    try (ParquetFileReader reader = ParquetFileReader.open(HadoopInputFile.fromPath(path, new Configuration()))) {
-      for (BlockMetaData block : reader.getFooter().getBlocks()) {
-        for (ColumnChunkMetaData column : block.getColumns()) {
-          if (column.getPath().toDotString().equals("embeddings")) {
-            assertEquals("embeddings column should be UNCOMPRESSED", UNCOMPRESSED, column.getCodec());
-          } else {
-            assertEquals(
-                column.getPath().toDotString() + " column should be SNAPPY", SNAPPY, column.getCodec());
-          }
-        }
-      }
-    }
-  }
-
-  @Test
   public void testPerColumnCompressionMultipleCodecs() throws Exception {
     MessageType schema = Types.buildMessage()
         .required(BINARY)
@@ -1035,6 +976,48 @@ public class TestParquetWriter {
         assertEquals(i, group.getInteger("id", 0));
       }
       assertNull(reader.read());
+    }
+  }
+
+  @Test
+  public void testPerColumnCompressionViaHadoopConfig() throws Exception {
+    // Test that ColumnConfigParser correctly parses per-column compression
+    // from Hadoop config keys (parquet.compression#<column>=<CODEC>)
+    Configuration conf = new Configuration();
+    conf.set("parquet.compression", "GZIP");
+    conf.set("parquet.compression#col_a", "SNAPPY");
+    conf.set("parquet.compression#col_b", "UNCOMPRESSED");
+
+    ParquetProperties.Builder propsBuilder = ParquetProperties.builder()
+        .withCompressionCodec(ParquetOutputFormat.getCompression(conf));
+    new ColumnConfigParser()
+        .withColumnConfig(
+            ParquetOutputFormat.COMPRESSION,
+            key -> CompressionCodecName.fromConf(conf.get(key)),
+            propsBuilder::withCompressionCodec)
+        .parseConfig(conf);
+
+    ParquetProperties props = propsBuilder.build();
+
+    MessageType schema = Types.buildMessage()
+        .required(BINARY).as(stringType()).named("col_a")
+        .required(BINARY).as(stringType()).named("col_b")
+        .required(BINARY).as(stringType()).named("col_c")
+        .named("test_schema");
+
+    for (org.apache.parquet.column.ColumnDescriptor col : schema.getColumns()) {
+      String colName = String.join(".", col.getPath());
+      switch (colName) {
+        case "col_a":
+          assertEquals(SNAPPY, props.getCompressionCodec(col));
+          break;
+        case "col_b":
+          assertEquals(UNCOMPRESSED, props.getCompressionCodec(col));
+          break;
+        case "col_c":
+          assertEquals(GZIP, props.getCompressionCodec(col));
+          break;
+      }
     }
   }
 }

@@ -526,7 +526,8 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
         .withRowGroupRowCountLimit(getBlockRowCountLimit(conf))
         .withPageRowCountLimit(getPageRowCountLimit(conf))
         .withPageWriteChecksumEnabled(getPageWriteChecksumEnabled(conf))
-        .withStatisticsEnabled(getStatisticsEnabled(conf));
+        .withStatisticsEnabled(getStatisticsEnabled(conf))
+        .withCompressionCodec(codec);
     new ColumnConfigParser()
         .withColumnConfig(
             ENABLE_DICTIONARY, key -> conf.getBoolean(key, false), propsBuilder::withDictionaryEncoding)
@@ -598,7 +599,6 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
         fileWriteContext.getSchema(),
         fileWriteContext.getExtraMetaData(),
         blockSize,
-        codec,
         validating,
         props,
         memoryManager,

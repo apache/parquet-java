@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.zip.CRC32;
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.ByteBufferReleaser;
@@ -577,22 +578,7 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
       ByteBufferAllocator allocator,
       int columnIndexTruncateLength,
       boolean pageWriteChecksumEnabled) {
-    this.schema = schema;
-    for (ColumnDescriptor path : schema.getColumns()) {
-      writers.put(
-          path,
-          new ColumnChunkPageWriter(
-              path,
-              compressor,
-              allocator,
-              columnIndexTruncateLength,
-              pageWriteChecksumEnabled,
-              null,
-              null,
-              null,
-              -1,
-              -1));
-    }
+    this(compressor, schema, allocator, columnIndexTruncateLength, pageWriteChecksumEnabled, null, 0);
   }
 
   @Deprecated
@@ -622,71 +608,10 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
       boolean pageWriteChecksumEnabled,
       InternalFileEncryptor fileEncryptor,
       int rowGroupOrdinal) {
-    this.schema = schema;
-    if (null == fileEncryptor) {
-      for (ColumnDescriptor path : schema.getColumns()) {
-        writers.put(
-            path,
-            new ColumnChunkPageWriter(
-                path,
-                compressor,
-                allocator,
-                columnIndexTruncateLength,
-                pageWriteChecksumEnabled,
-                null,
-                null,
-                null,
-                -1,
-                -1));
-      }
-      return;
-    }
-
-    // Encrypted file
-    int columnOrdinal = -1;
-    byte[] fileAAD = fileEncryptor.getFileAAD();
-    for (ColumnDescriptor path : schema.getColumns()) {
-      columnOrdinal++;
-      BlockCipher.Encryptor headerBlockEncryptor = null;
-      BlockCipher.Encryptor pageBlockEncryptor = null;
-      ColumnPath columnPath = ColumnPath.get(path.getPath());
-
-      InternalColumnEncryptionSetup columnSetup = fileEncryptor.getColumnSetup(columnPath, true, columnOrdinal);
-      if (columnSetup.isEncrypted()) {
-        headerBlockEncryptor = columnSetup.getMetaDataEncryptor();
-        pageBlockEncryptor = columnSetup.getDataEncryptor();
-      }
-
-      writers.put(
-          path,
-          new ColumnChunkPageWriter(
-              path,
-              compressor,
-              allocator,
-              columnIndexTruncateLength,
-              pageWriteChecksumEnabled,
-              headerBlockEncryptor,
-              pageBlockEncryptor,
-              fileAAD,
-              rowGroupOrdinal,
-              columnOrdinal));
-    }
+    this(path -> compressor, schema, allocator, columnIndexTruncateLength,
+        pageWriteChecksumEnabled, fileEncryptor, rowGroupOrdinal);
   }
 
-  /**
-   * Construct a page write store with per-column compression support.
-   * Each column's compression codec is resolved from {@code props} via
-   * {@link ParquetProperties#getCompressionCodec(ColumnDescriptor)}.
-   *
-   * @param codecFactory           factory to create compressors for each codec
-   * @param props                  properties containing per-column compression configuration
-   * @param schema                 the message schema
-   * @param allocator              byte buffer allocator
-   * @param columnIndexTruncateLength truncate length for column indexes
-   * @param pageWriteChecksumEnabled  whether to write page checksums
-   * @param fileEncryptor          file encryptor (null if not encrypted)
-   * @param rowGroupOrdinal        row group ordinal
-   */
   public ColumnChunkPageWriteStore(
       CompressionCodecFactory codecFactory,
       ParquetProperties props,
@@ -696,15 +621,27 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
       boolean pageWriteChecksumEnabled,
       InternalFileEncryptor fileEncryptor,
       int rowGroupOrdinal) {
+    this(path -> codecFactory.getCompressor(props.getCompressionCodec(path)),
+        schema, allocator, columnIndexTruncateLength,
+        pageWriteChecksumEnabled, fileEncryptor, rowGroupOrdinal);
+  }
+
+  private ColumnChunkPageWriteStore(
+      Function<ColumnDescriptor, BytesInputCompressor> compressorProvider,
+      MessageType schema,
+      ByteBufferAllocator allocator,
+      int columnIndexTruncateLength,
+      boolean pageWriteChecksumEnabled,
+      InternalFileEncryptor fileEncryptor,
+      int rowGroupOrdinal) {
     this.schema = schema;
     if (null == fileEncryptor) {
       for (ColumnDescriptor path : schema.getColumns()) {
-        BytesInputCompressor compressor = codecFactory.getCompressor(props.getCompressionCodec(path));
         writers.put(
             path,
             new ColumnChunkPageWriter(
                 path,
-                compressor,
+                compressorProvider.apply(path),
                 allocator,
                 columnIndexTruncateLength,
                 pageWriteChecksumEnabled,
@@ -726,8 +663,6 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
       BlockCipher.Encryptor pageBlockEncryptor = null;
       ColumnPath columnPath = ColumnPath.get(path.getPath());
 
-      BytesInputCompressor compressor = codecFactory.getCompressor(props.getCompressionCodec(path));
-
       InternalColumnEncryptionSetup columnSetup = fileEncryptor.getColumnSetup(columnPath, true, columnOrdinal);
       if (columnSetup.isEncrypted()) {
         headerBlockEncryptor = columnSetup.getMetaDataEncryptor();
@@ -738,7 +673,7 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
           path,
           new ColumnChunkPageWriter(
               path,
-              compressor,
+              compressorProvider.apply(path),
               allocator,
               columnIndexTruncateLength,
               pageWriteChecksumEnabled,
