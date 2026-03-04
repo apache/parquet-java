@@ -362,6 +362,7 @@ public class ParquetWriter<T> implements Closeable {
         new CodecFactory(conf, encodingProps.getPageSizeThreshold()),
         rowGroupSize,
         validating,
+        false,
         conf,
         maxPaddingSize,
         encodingProps,
@@ -376,6 +377,7 @@ public class ParquetWriter<T> implements Closeable {
       CompressionCodecFactory codecFactory,
       long rowGroupSize,
       boolean validating,
+      boolean strictUnsignedIntegerValidation,
       ParquetConfiguration conf,
       int maxPaddingSize,
       ParquetProperties encodingProps,
@@ -418,7 +420,15 @@ public class ParquetWriter<T> implements Closeable {
     }
 
     this.writer = new InternalParquetRecordWriter<T>(
-        fileWriter, writeSupport, schema, extraMetadata, rowGroupSize, compressor, validating, encodingProps);
+        fileWriter,
+        writeSupport,
+        schema,
+        extraMetadata,
+        rowGroupSize,
+        compressor,
+        validating,
+        strictUnsignedIntegerValidation,
+        encodingProps);
   }
 
   public void write(T object) throws IOException {
@@ -475,6 +485,7 @@ public class ParquetWriter<T> implements Closeable {
     private long rowGroupSize = DEFAULT_BLOCK_SIZE;
     private int maxPaddingSize = MAX_PADDING_SIZE_DEFAULT;
     private boolean enableValidation = DEFAULT_IS_VALIDATING_ENABLED;
+    private boolean strictUnsignedIntegerValidation = false;
     private ParquetProperties.Builder encodingPropsBuilder = ParquetProperties.builder();
 
     protected Builder() {}
@@ -735,6 +746,27 @@ public class ParquetWriter<T> implements Closeable {
      */
     public SELF withValidation(boolean enableValidation) {
       this.enableValidation = enableValidation;
+      return self();
+    }
+
+    /**
+     * Enable strict unsigned integer validation for the constructed writer.
+     *
+     * @return this builder for method chaining.
+     */
+    public SELF enableStrictUnsignedIntegerValidation() {
+      this.strictUnsignedIntegerValidation = true;
+      return self();
+    }
+
+    /**
+     * Enable or disable strict unsigned integer validation for the constructed writer.
+     *
+     * @param strictUnsignedIntegerValidation whether strict unsigned integer validation should be enabled
+     * @return this builder for method chaining.
+     */
+    public SELF withStrictUnsignedIntegerValidation(boolean strictUnsignedIntegerValidation) {
+      this.strictUnsignedIntegerValidation = strictUnsignedIntegerValidation;
       return self();
     }
 
@@ -1004,6 +1036,7 @@ public class ParquetWriter<T> implements Closeable {
           codecFactory,
           rowGroupSize,
           enableValidation,
+          strictUnsignedIntegerValidation,
           conf,
           maxPaddingSize,
           encodingProps,
