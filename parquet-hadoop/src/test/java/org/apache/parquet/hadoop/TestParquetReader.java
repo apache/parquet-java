@@ -22,6 +22,7 @@ import static org.apache.parquet.filter2.predicate.FilterApi.in;
 import static org.apache.parquet.filter2.predicate.FilterApi.longColumn;
 import static org.apache.parquet.hadoop.ParquetFileWriter.Mode.OVERWRITE;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -199,6 +200,39 @@ public class TestParquetReader {
     }
     // reader.read() returned null and so reader doesn't have any more rows.
     assertEquals(reader.getCurrentRowIndex(), -1);
+  }
+
+  @Test
+  public void testCurrentRowGroupIndex() throws Exception {
+    int expectedRowGroups;
+    try (ParquetFileReader fileReader =
+        ParquetFileReader.open(HadoopInputFile.fromPath(file, new Configuration()))) {
+      expectedRowGroups = fileReader.getRowGroups().size();
+    }
+    assertTrue("expected multiple row groups for this test", expectedRowGroups > 1);
+
+    try (ParquetReader<Group> reader =
+        PhoneBookWriter.createReader(file, FilterCompat.NOOP, allocator)) {
+      // before reading anything, returns -1
+      assertEquals(-1, reader.getCurrentRowGroupIndex());
+
+      reader.read();
+      assertEquals(0, reader.getCurrentRowGroupIndex());
+      // idempotent
+      assertEquals(0, reader.getCurrentRowGroupIndex());
+
+      int prevIdx = 0;
+      while (reader.read() != null) {
+        int idx = reader.getCurrentRowGroupIndex();
+        assertTrue(idx >= prevIdx);
+        assertTrue(idx <= prevIdx + 1);
+        prevIdx = idx;
+      }
+      // last row group seen should be the final one
+      assertEquals(expectedRowGroups - 1, prevIdx);
+      // after exhaustion, returns -1
+      assertEquals(-1, reader.getCurrentRowGroupIndex());
+    }
   }
 
   @Test
