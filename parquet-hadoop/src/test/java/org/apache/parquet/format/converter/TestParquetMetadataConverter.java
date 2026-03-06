@@ -767,9 +767,11 @@ public class TestParquetMetadataConverter {
         new HashSet<>(Arrays.asList(org.apache.parquet.column.Encoding.values()));
 
     // Assert that the encodings are returned in ascending ordinal order
-    List<org.apache.parquet.format.Encoding> formatEncodings = parquetMetadataConverter.toFormatEncodings(columnEncodings);
-    for (int i=1; i<formatEncodings.size(); i++) {
-      assertTrue(formatEncodings.get(i - 1).ordinal() < formatEncodings.get(i).ordinal());
+    List<org.apache.parquet.format.Encoding> formatEncodings =
+        parquetMetadataConverter.toFormatEncodings(columnEncodings);
+    for (int i = 1; i < formatEncodings.size(); i++) {
+      assertTrue(formatEncodings.get(i - 1).ordinal()
+          < formatEncodings.get(i).ordinal());
     }
   }
 
