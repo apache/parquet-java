@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.parquet.filter2.predicate.Statistics;
 import org.apache.parquet.io.api.Binary;
+import org.apache.parquet.schema.ColumnOrder;
 import org.apache.parquet.schema.Float16;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.PrimitiveComparator;
@@ -32,9 +33,22 @@ class BinaryColumnIndexBuilder extends ColumnIndexBuilder {
   private static class BinaryColumnIndex extends ColumnIndexBase<Binary> {
     private Binary[] minValues;
     private Binary[] maxValues;
+    private final boolean isFloat16;
 
     private BinaryColumnIndex(PrimitiveType type) {
       super(type);
+      this.isFloat16 =
+          type.getLogicalTypeAnnotation() instanceof LogicalTypeAnnotation.Float16LogicalTypeAnnotation;
+    }
+
+    @Override
+    boolean isMinNaN(int arrayIndex) {
+      return isFloat16 && Float16.isNaN(minValues[arrayIndex].get2BytesLittleEndian());
+    }
+
+    @Override
+    boolean isMaxNaN(int arrayIndex) {
+      return isFloat16 && Float16.isNaN(maxValues[arrayIndex].get2BytesLittleEndian());
     }
 
     @Override
@@ -80,11 +94,17 @@ class BinaryColumnIndexBuilder extends ColumnIndexBuilder {
     }
   }
 
+  private static final Binary FLOAT16_NAN = Binary.fromConstantByteArray(new byte[] {0x00, 0x7e});
+  private static final Binary POSITIVE_ZERO_LITTLE_ENDIAN = Binary.fromConstantByteArray(new byte[] {0x00, 0x00});
+  private static final Binary NEGATIVE_ZERO_LITTLE_ENDIAN =
+      Binary.fromConstantByteArray(new byte[] {0x00, (byte) 0x80});
+
   private final List<Binary> minValues = new ArrayList<>();
   private final List<Binary> maxValues = new ArrayList<>();
   private final BinaryTruncator truncator;
   private final int truncateLength;
   private final boolean isFloat16;
+  private final boolean isIeee754TotalOrder;
   private boolean invalid;
 
   private static Binary convert(ByteBuffer buffer) {
@@ -99,6 +119,7 @@ class BinaryColumnIndexBuilder extends ColumnIndexBuilder {
     truncator = BinaryTruncator.getTruncator(type);
     this.truncateLength = truncateLength;
     this.isFloat16 = type.getLogicalTypeAnnotation() instanceof LogicalTypeAnnotation.Float16LogicalTypeAnnotation;
+    this.isIeee754TotalOrder = type.columnOrder().equals(ColumnOrder.ieee754TotalOrder());
   }
 
   @Override
@@ -122,7 +143,12 @@ class BinaryColumnIndexBuilder extends ColumnIndexBuilder {
         short sMax = bMax.get2BytesLittleEndian();
 
         if (Float16.isNaN(sMin) || Float16.isNaN(sMax)) {
-          invalid = true;
+          if (isIeee754TotalOrder) {
+            bMin = FLOAT16_NAN;
+            bMax = FLOAT16_NAN;
+          } else {
+            invalid = true;
+          }
         }
 
         // Sorting order is undefined for -0.0 so let min = -0.0 and max = +0.0 to
@@ -139,6 +165,13 @@ class BinaryColumnIndexBuilder extends ColumnIndexBuilder {
 
     minValues.add(bMin == null ? null : truncator.truncateMin(bMin, truncateLength));
     maxValues.add(bMax == null ? null : truncator.truncateMax(bMax, truncateLength));
+  }
+
+  @Override
+  void onNanEncountered() {
+    if (isFloat16 && !isIeee754TotalOrder) {
+      invalid = true;
+    }
   }
 
   @Override

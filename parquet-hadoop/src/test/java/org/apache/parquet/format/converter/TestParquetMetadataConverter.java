@@ -1961,4 +1961,160 @@ public class TestParquetMetadataConverter {
     assertNull(ParquetMetadataConverter.fromParquetEdgeInterpolationAlgorithm(null));
     assertNull(ParquetMetadataConverter.toParquetEdgeInterpolationAlgorithm(null));
   }
+
+  @Test
+  public void testIEEE754TotalOrderColumnOrder() throws IOException {
+    MessageType schema = Types.buildMessage()
+        .required(PrimitiveTypeName.FLOAT)
+        .columnOrder(ColumnOrder.ieee754TotalOrder())
+        .named("float_ieee754")
+        .required(PrimitiveTypeName.DOUBLE)
+        .columnOrder(ColumnOrder.ieee754TotalOrder())
+        .named("double_ieee754")
+        .named("Message");
+
+    org.apache.parquet.hadoop.metadata.FileMetaData fileMetaData =
+        new org.apache.parquet.hadoop.metadata.FileMetaData(schema, new HashMap<String, String>(), null);
+    ParquetMetadata metadata = new ParquetMetadata(fileMetaData, new ArrayList<BlockMetaData>());
+    ParquetMetadataConverter converter = new ParquetMetadataConverter();
+    FileMetaData formatMetadata = converter.toParquetMetadata(1, metadata);
+
+    List<org.apache.parquet.format.ColumnOrder> columnOrders = formatMetadata.getColumn_orders();
+    assertEquals(2, columnOrders.size());
+    for (org.apache.parquet.format.ColumnOrder columnOrder : columnOrders) {
+      assertTrue(columnOrder.isSetIEEE_754_TOTAL_ORDER());
+    }
+
+    MessageType resultSchema =
+        converter.fromParquetMetadata(formatMetadata).getFileMetaData().getSchema();
+    assertEquals(
+        ColumnOrder.ieee754TotalOrder(),
+        resultSchema.getType("float_ieee754").asPrimitiveType().columnOrder());
+    assertEquals(
+        ColumnOrder.ieee754TotalOrder(),
+        resultSchema.getType("double_ieee754").asPrimitiveType().columnOrder());
+  }
+
+  @Test
+  public void testStatisticsNanCountRoundTripFloat() {
+    PrimitiveType type = Types.required(PrimitiveTypeName.FLOAT).named("test_float");
+    FloatStatistics stats = (FloatStatistics) Statistics.createStats(type);
+    stats.updateStats(1.0f);
+    stats.updateStats(Float.NaN);
+    stats.updateStats(3.0f);
+    stats.updateStats(Float.NaN);
+
+    org.apache.parquet.format.Statistics formatStats = ParquetMetadataConverter.toParquetStatistics(stats);
+    assertTrue("nan_count should be set", formatStats.isSetNan_count());
+    assertEquals(2, formatStats.getNan_count());
+
+    Statistics<?> roundTrip = ParquetMetadataConverter.fromParquetStatisticsInternal(
+        Version.FULL_VERSION, formatStats, type, ParquetMetadataConverter.SortOrder.SIGNED);
+    assertTrue(roundTrip.isNanCountSet());
+    assertEquals(2, roundTrip.getNanCount());
+  }
+
+  @Test
+  public void testStatisticsNanCountRoundTripDouble() {
+    PrimitiveType type = Types.required(PrimitiveTypeName.DOUBLE).named("test_double");
+    DoubleStatistics stats = (DoubleStatistics) Statistics.createStats(type);
+    stats.updateStats(1.0);
+    stats.updateStats(Double.NaN);
+    stats.updateStats(3.0);
+
+    org.apache.parquet.format.Statistics formatStats = ParquetMetadataConverter.toParquetStatistics(stats);
+    assertTrue("nan_count should be set", formatStats.isSetNan_count());
+    assertEquals(1, formatStats.getNan_count());
+
+    Statistics<?> roundTrip = ParquetMetadataConverter.fromParquetStatisticsInternal(
+        Version.FULL_VERSION, formatStats, type, ParquetMetadataConverter.SortOrder.SIGNED);
+    assertTrue(roundTrip.isNanCountSet());
+    assertEquals(1, roundTrip.getNanCount());
+  }
+
+  @Test
+  public void testStatisticsNanCountRoundTripFloat16() {
+    PrimitiveType type = Types.required(PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY)
+        .length(2)
+        .as(LogicalTypeAnnotation.float16Type())
+        .named("test_float16");
+    BinaryStatistics stats = (BinaryStatistics) Statistics.createStats(type);
+    // FLOAT16 1.0 = 0x3C00
+    stats.updateStats(Binary.fromConstantByteArray(new byte[] {0x00, 0x3C}));
+    // FLOAT16 NaN = 0x7E00
+    stats.updateStats(Binary.fromConstantByteArray(new byte[] {0x00, 0x7E}));
+
+    org.apache.parquet.format.Statistics formatStats = ParquetMetadataConverter.toParquetStatistics(stats);
+    assertTrue("nan_count should be set", formatStats.isSetNan_count());
+    assertEquals(1, formatStats.getNan_count());
+
+    Statistics<?> roundTrip = ParquetMetadataConverter.fromParquetStatisticsInternal(
+        Version.FULL_VERSION, formatStats, type, ParquetMetadataConverter.SortOrder.SIGNED);
+    assertTrue(roundTrip.isNanCountSet());
+    assertEquals(1, roundTrip.getNanCount());
+  }
+
+  @Test
+  public void testStatisticsNanCountZeroRoundTrip() {
+    PrimitiveType type = Types.required(PrimitiveTypeName.FLOAT).named("test_float");
+    FloatStatistics stats = (FloatStatistics) Statistics.createStats(type);
+    stats.updateStats(1.0f);
+    stats.updateStats(2.0f);
+
+    org.apache.parquet.format.Statistics formatStats = ParquetMetadataConverter.toParquetStatistics(stats);
+    assertTrue("nan_count should be set even when zero", formatStats.isSetNan_count());
+    assertEquals(0, formatStats.getNan_count());
+
+    Statistics<?> roundTrip = ParquetMetadataConverter.fromParquetStatisticsInternal(
+        Version.FULL_VERSION, formatStats, type, ParquetMetadataConverter.SortOrder.SIGNED);
+    assertTrue(roundTrip.isNanCountSet());
+    assertEquals(0, roundTrip.getNanCount());
+  }
+
+  @Test
+  public void testStatisticsNanCountBackwardCompatibility() {
+    PrimitiveType type = Types.required(PrimitiveTypeName.FLOAT).named("test_float");
+    org.apache.parquet.format.Statistics formatStats = new org.apache.parquet.format.Statistics();
+    formatStats.setNull_count(5);
+
+    Statistics<?> stats = ParquetMetadataConverter.fromParquetStatisticsInternal(
+        Version.FULL_VERSION, formatStats, type, ParquetMetadataConverter.SortOrder.SIGNED);
+    assertFalse("nan_count should not be set for old files", stats.isNanCountSet());
+  }
+
+  @Test
+  public void testColumnIndexNanCountsRoundTrip() {
+    PrimitiveType type = Types.required(PrimitiveTypeName.FLOAT)
+        .columnOrder(ColumnOrder.ieee754TotalOrder())
+        .named("test_float");
+    ColumnIndexBuilder builder = ColumnIndexBuilder.getBuilder(type, Integer.MAX_VALUE);
+
+    // Page 1: mixed NaN and non-NaN
+    FloatStatistics stats1 = (FloatStatistics) Statistics.createStats(type);
+    stats1.updateStats(1.0f);
+    stats1.updateStats(Float.NaN);
+    stats1.updateStats(3.0f);
+    builder.add(stats1);
+
+    // Page 2: all nulls
+    FloatStatistics stats2 = (FloatStatistics) Statistics.createStats(type);
+    stats2.incrementNumNulls(10);
+    builder.add(stats2);
+
+    // Page 3: no NaN
+    FloatStatistics stats3 = (FloatStatistics) Statistics.createStats(type);
+    stats3.updateStats(5.0f);
+    stats3.updateStats(10.0f);
+    builder.add(stats3);
+
+    ColumnIndex columnIndex = builder.build();
+    org.apache.parquet.format.ColumnIndex parquetColumnIndex =
+        ParquetMetadataConverter.toParquetColumnIndex(type, columnIndex);
+    assertNotNull("nan_counts should be set", parquetColumnIndex.getNan_counts());
+    assertEquals(List.of(1L, 0L, 0L), parquetColumnIndex.getNan_counts());
+
+    ColumnIndex roundTrip = ParquetMetadataConverter.fromParquetColumnIndex(type, parquetColumnIndex);
+    assertNotNull(roundTrip);
+    assertEquals(List.of(1L, 0L, 0L), roundTrip.getNanCounts());
+  }
 }

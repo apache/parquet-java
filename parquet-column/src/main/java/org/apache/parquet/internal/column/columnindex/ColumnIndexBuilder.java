@@ -37,6 +37,7 @@ import java.util.List;
 import java.util.PrimitiveIterator;
 import java.util.Set;
 import java.util.function.IntPredicate;
+import org.apache.parquet.Preconditions;
 import org.apache.parquet.column.MinMax;
 import org.apache.parquet.column.statistics.SizeStatistics;
 import org.apache.parquet.column.statistics.Statistics;
@@ -56,6 +57,7 @@ import org.apache.parquet.filter2.predicate.Operators.Or;
 import org.apache.parquet.filter2.predicate.Operators.UserDefined;
 import org.apache.parquet.filter2.predicate.UserDefinedPredicate;
 import org.apache.parquet.io.api.Binary;
+import org.apache.parquet.schema.ColumnOrder;
 import org.apache.parquet.schema.PrimitiveComparator;
 import org.apache.parquet.schema.PrimitiveStringifier;
 import org.apache.parquet.schema.PrimitiveType;
@@ -93,14 +95,27 @@ public abstract class ColumnIndexBuilder {
         MAX_VALUE_LENGTH_FOR_TOSTRING - TOSTRING_TRUNCATION_MARKER.length() - TOSTRING_TRUNCATION_START_POS;
     private static final String TOSTRING_MISSING_VALUE_MARKER = "<none>";
 
+    // Status of a page with respect to NaN values in its min/max statistics.
+    enum NaNPageStatus {
+      // Min/max are trustworthy; evaluate them normally.
+      EVALUATE,
+      // Min/max are untrustworthy (malformed or unknown); conservatively include the page.
+      SKIP,
+      // All values in the page are NaN; exclude for comparison predicates.
+      ALL_NAN
+    }
+
     final PrimitiveStringifier stringifier;
     final PrimitiveComparator<C> comparator;
+    private final ColumnOrder columnOrder;
     private boolean[] nullPages;
     private BoundaryOrder boundaryOrder;
     // Storing the page index for each array index (min/max values are not stored for null-pages)
     private int[] pageIndexes;
     // might be null
     private long[] nullCounts;
+    // might be null
+    private long[] nanCounts;
     // might be null
     private long[] repLevelHistogram;
     // might be null
@@ -118,6 +133,7 @@ public abstract class ColumnIndexBuilder {
     ColumnIndexBase(PrimitiveType type) {
       comparator = type.comparator();
       stringifier = type.stringifier();
+      columnOrder = type.columnOrder();
     }
 
     @Override
@@ -131,6 +147,20 @@ public abstract class ColumnIndexBuilder {
         return null;
       }
       return LongLists.unmodifiable(LongArrayList.wrap(nullCounts));
+    }
+
+    @Override
+    public List<Long> getNanCounts() {
+      if (nanCounts == null) {
+        return null;
+      }
+      return LongLists.unmodifiable(LongArrayList.wrap(nanCounts));
+    }
+
+    // Returns true if the page at pageIndex might have NaN values.
+    // When nanCounts is not available (null), we conservatively assume NaN may exist.
+    boolean hasNaNs(int pageIndex) {
+      return nanCounts == null || nanCounts[pageIndex] > 0;
     }
 
     @Override
@@ -242,6 +272,64 @@ public abstract class ColumnIndexBuilder {
       return nullPages[pageIndex];
     }
 
+    // Returns true if the min value at arrayIndex is NaN. Override in typed subclasses.
+    boolean isMinNaN(int arrayIndex) {
+      return false;
+    }
+
+    // Returns true if the max value at arrayIndex is NaN. Override in typed subclasses.
+    boolean isMaxNaN(int arrayIndex) {
+      return false;
+    }
+
+    private int getArrayIndex(int pageIndex) {
+      for (int i = 0; i < pageIndexes.length; i++) {
+        if (pageIndexes[i] == pageIndex) {
+          return i;
+        }
+      }
+      return -1;
+    }
+
+    private NaNPageStatus getNaNPageStatus(int pageIndex) {
+      if (isNullPage(pageIndex)) {
+        return NaNPageStatus.EVALUATE;
+      }
+      int arrayIndex = getArrayIndex(pageIndex);
+      if (arrayIndex < 0) {
+        return NaNPageStatus.EVALUATE;
+      }
+
+      boolean minNaN = isMinNaN(arrayIndex);
+      boolean maxNaN = isMaxNaN(arrayIndex);
+      boolean anyNaN = minNaN || maxNaN;
+
+      if (!columnOrder.equals(ColumnOrder.ieee754TotalOrder())) {
+        return anyNaN ? NaNPageStatus.SKIP : NaNPageStatus.EVALUATE;
+      }
+
+      // IEEE_754_TOTAL_ORDER
+      if (nanCounts != null) {
+        if (nanCounts[pageIndex] == 0) {
+          return anyNaN ? NaNPageStatus.SKIP : NaNPageStatus.EVALUATE;
+        } else {
+          return (minNaN && maxNaN) ? NaNPageStatus.ALL_NAN : NaNPageStatus.EVALUATE;
+        }
+      } else {
+        return anyNaN ? NaNPageStatus.SKIP : NaNPageStatus.EVALUATE;
+      }
+    }
+
+    private PrimitiveIterator.OfInt filterAllNaNPages(PrimitiveIterator.OfInt result) {
+      IntSet pages = new IntOpenHashSet();
+      result.forEachRemaining((int pageIndex) -> {
+        if (getNaNPageStatus(pageIndex) != NaNPageStatus.ALL_NAN) {
+          pages.add(pageIndex);
+        }
+      });
+      return IndexIterator.filter(getPageCount(), pages::contains);
+    }
+
     /*
      * Returns the min value for arrayIndex as a ByteBuffer. (Min values are not stored for null-pages so arrayIndex
      * might not equal to pageIndex.)
@@ -299,27 +387,27 @@ public abstract class ColumnIndexBuilder {
           return IndexIterator.filter(getPageCount(), pageIndex -> nullCounts[pageIndex] > 0);
         }
       }
-      return getBoundaryOrder().eq(createValueComparator(value));
+      return filterAllNaNPages(getBoundaryOrder().eq(createValueComparator(value)));
     }
 
     @Override
     public <T extends Comparable<T>> PrimitiveIterator.OfInt visit(Gt<T> gt) {
-      return getBoundaryOrder().gt(createValueComparator(gt.getValue()));
+      return filterAllNaNPages(getBoundaryOrder().gt(createValueComparator(gt.getValue())));
     }
 
     @Override
     public <T extends Comparable<T>> PrimitiveIterator.OfInt visit(GtEq<T> gtEq) {
-      return getBoundaryOrder().gtEq(createValueComparator(gtEq.getValue()));
+      return filterAllNaNPages(getBoundaryOrder().gtEq(createValueComparator(gtEq.getValue())));
     }
 
     @Override
     public <T extends Comparable<T>> PrimitiveIterator.OfInt visit(Lt<T> lt) {
-      return getBoundaryOrder().lt(createValueComparator(lt.getValue()));
+      return filterAllNaNPages(getBoundaryOrder().lt(createValueComparator(lt.getValue())));
     }
 
     @Override
     public <T extends Comparable<T>> PrimitiveIterator.OfInt visit(LtEq<T> ltEq) {
-      return getBoundaryOrder().ltEq(createValueComparator(ltEq.getValue()));
+      return filterAllNaNPages(getBoundaryOrder().ltEq(createValueComparator(ltEq.getValue())));
     }
 
     @Override
@@ -388,7 +476,7 @@ public abstract class ColumnIndexBuilder {
       matchingIndexesLessThanMax.retainAll(matchingIndexesGreaterThanMin);
       IntSet matchingIndex = matchingIndexesLessThanMax;
       matchingIndex.addAll(matchingIndexesForNull); // add the matching null pages
-      return IndexIterator.filter(getPageCount(), matchingIndex::contains);
+      return filterAllNaNPages(IndexIterator.filter(getPageCount(), matchingIndex::contains));
     }
 
     @Override
@@ -517,6 +605,7 @@ public abstract class ColumnIndexBuilder {
   private PrimitiveType type;
   private final BooleanList nullPages = new BooleanArrayList();
   private final LongList nullCounts = new LongArrayList();
+  private LongList nanCounts = new LongArrayList();
   private final IntList pageIndexes = new IntArrayList();
   private int nextPageIndex;
   private LongList repLevelHistogram = new LongArrayList();
@@ -550,9 +639,9 @@ public abstract class ColumnIndexBuilder {
       case BOOLEAN:
         return new BooleanColumnIndexBuilder();
       case DOUBLE:
-        return new DoubleColumnIndexBuilder();
+        return new DoubleColumnIndexBuilder(type);
       case FLOAT:
-        return new FloatColumnIndexBuilder();
+        return new FloatColumnIndexBuilder(type);
       case INT32:
         return new IntColumnIndexBuilder();
       case INT64:
@@ -611,10 +700,53 @@ public abstract class ColumnIndexBuilder {
       List<ByteBuffer> maxValues,
       List<Long> repLevelHistogram,
       List<Long> defLevelHistogram) {
+    return build(
+        type,
+        boundaryOrder,
+        nullPages,
+        nullCounts,
+        null,
+        minValues,
+        maxValues,
+        repLevelHistogram,
+        defLevelHistogram);
+  }
+
+  /**
+   * @param type
+   *          the primitive type
+   * @param boundaryOrder
+   *          the boundary order of the min/max values
+   * @param nullPages
+   *          the null pages (one boolean value for each page that signifies whether the page consists of nulls
+   *          entirely)
+   * @param nullCounts
+   *          the number of null values for each page
+   * @param nanCounts
+   *          the number of NaN values for each page (may be null)
+   * @param minValues
+   *          the min values for each page
+   * @param maxValues
+   *          the max values for each page
+   * @param repLevelHistogram
+   *          the repetition level histogram for all levels of each page
+   * @param defLevelHistogram
+   *          the definition level histogram for all levels of each page
+   * @return the newly created {@link ColumnIndex} object based on the specified arguments
+   */
+  public static ColumnIndex build(
+      PrimitiveType type,
+      BoundaryOrder boundaryOrder,
+      List<Boolean> nullPages,
+      List<Long> nullCounts,
+      List<Long> nanCounts,
+      List<ByteBuffer> minValues,
+      List<ByteBuffer> maxValues,
+      List<Long> repLevelHistogram,
+      List<Long> defLevelHistogram) {
 
     ColumnIndexBuilder builder = createNewBuilder(type, Integer.MAX_VALUE);
-
-    builder.fill(nullPages, nullCounts, minValues, maxValues, repLevelHistogram, defLevelHistogram);
+    builder.fill(nullPages, nullCounts, nanCounts, minValues, maxValues, repLevelHistogram, defLevelHistogram);
     ColumnIndexBase<?> columnIndex = builder.build(type);
     columnIndex.boundaryOrder = requireNonNull(boundaryOrder);
     return columnIndex;
@@ -653,6 +785,15 @@ public abstract class ColumnIndexBuilder {
     }
     nullCounts.add(stats.getNumNulls());
 
+    if (nanCounts != null && stats.isNanCountSet()) {
+      nanCounts.add(stats.getNanCount());
+      if (stats.getNanCount() > 0) {
+        onNanEncountered();
+      }
+    } else {
+      nanCounts = null;
+    }
+
     // Collect repetition and definition level histograms only when all pages are valid.
     if (sizeStats != null && sizeStats.isValid() && repLevelHistogram != null && defLevelHistogram != null) {
       repLevelHistogram.addAll(sizeStats.getRepetitionLevelHistogram());
@@ -669,9 +810,18 @@ public abstract class ColumnIndexBuilder {
 
   abstract void addMinMax(Object min, Object max);
 
+  /**
+   * Called when a page with NaN values is encountered (nan_count > 0) and the page also has non-NaN values.
+   * Subclasses should override to handle NaN presence (e.g., invalidate for TYPE_DEFINED_ORDER).
+   */
+  void onNanEncountered() {
+    throw new UnsupportedOperationException("Cannot call onNanEncountered on type: " + type);
+  }
+
   private void fill(
       List<Boolean> nullPages,
       List<Long> nullCounts,
+      List<Long> nanCounts,
       List<ByteBuffer> minValues,
       List<ByteBuffer> maxValues,
       List<Long> repLevelHistogram,
@@ -679,12 +829,14 @@ public abstract class ColumnIndexBuilder {
     clear();
     int pageCount = nullPages.size();
     if ((nullCounts != null && nullCounts.size() != pageCount)
+        || (nanCounts != null && nanCounts.size() != pageCount)
         || minValues.size() != pageCount
         || maxValues.size() != pageCount) {
       throw new IllegalArgumentException(String.format(
-          "Not all sizes are equal (nullPages:%d, nullCounts:%s, minValues:%d, maxValues:%d",
+          "Not all sizes are equal (nullPages:%d, nullCounts:%s, nanCounts:%s, minValues:%d, maxValues:%d",
           nullPages.size(),
           nullCounts == null ? "null" : nullCounts.size(),
+          nanCounts == null ? "null" : nanCounts.size(),
           minValues.size(),
           maxValues.size()));
     }
@@ -704,6 +856,10 @@ public abstract class ColumnIndexBuilder {
     // Nullcounts is optional in the format
     if (nullCounts != null) {
       this.nullCounts.addAll(nullCounts);
+    }
+    // NaN counts is optional in the format
+    if (nanCounts != null) {
+      this.nanCounts.addAll(nanCounts);
     }
 
     for (int i = 0; i < pageCount; ++i) {
@@ -749,6 +905,14 @@ public abstract class ColumnIndexBuilder {
     // Null counts is optional so keep it null if the builder has no values
     if (!nullCounts.isEmpty()) {
       columnIndex.nullCounts = nullCounts.toLongArray();
+    }
+    // NaN counts is optional so keep it null if the builder has no values
+    if (nanCounts != null && !nanCounts.isEmpty()) {
+      columnIndex.nanCounts = nanCounts.toLongArray();
+    } else {
+      Preconditions.checkState(
+          !type.columnOrder().equals(ColumnOrder.ieee754TotalOrder()),
+          "NaN counts must be provided for types with IEEE_754_TOTAL_ORDER column order");
     }
     columnIndex.pageIndexes = pageIndexes.toIntArray();
     // Repetition and definition level histograms are optional so keep them null if the builder has no values
@@ -802,8 +966,21 @@ public abstract class ColumnIndexBuilder {
     clearMinMax();
     nextPageIndex = 0;
     pageIndexes.clear();
-    repLevelHistogram.clear();
-    defLevelHistogram.clear();
+    if (nanCounts != null) {
+      nanCounts.clear();
+    } else {
+      nanCounts = new LongArrayList();
+    }
+    if (repLevelHistogram == null) {
+      repLevelHistogram = new LongArrayList();
+    } else {
+      repLevelHistogram.clear();
+    }
+    if (defLevelHistogram == null) {
+      defLevelHistogram = new LongArrayList();
+    } else {
+      defLevelHistogram.clear();
+    }
   }
 
   abstract void clearMinMax();

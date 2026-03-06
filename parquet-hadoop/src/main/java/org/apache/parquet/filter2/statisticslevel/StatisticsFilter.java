@@ -44,6 +44,9 @@ import org.apache.parquet.filter2.predicate.Operators.UserDefined;
 import org.apache.parquet.filter2.predicate.UserDefinedPredicate;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
+import org.apache.parquet.schema.PrimitiveType;
+import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 
 /**
  * Applies a {@link org.apache.parquet.filter2.predicate.FilterPredicate} to statistics about a group of
@@ -99,6 +102,26 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
     return column.getStatistics().getNumNulls() > 0;
   }
 
+  // all non-null values are NaN (nan_count + null_count == value_count)
+  private boolean isAllNaNs(ColumnChunkMetaData column) {
+    Statistics<?> stats = column.getStatistics();
+    return stats.isNanCountSet()
+        && stats.isNumNullsSet()
+        && stats.getNanCount() > 0
+        && stats.getNanCount() + stats.getNumNulls() == column.getValueCount();
+  }
+
+  // is this a floating-point column where NaN is possible?
+  private static boolean isFloatingPointColumn(ColumnChunkMetaData column) {
+    PrimitiveType type = column.getPrimitiveType();
+    PrimitiveTypeName typeName = type.getPrimitiveTypeName();
+    return typeName == PrimitiveTypeName.FLOAT
+        || typeName == PrimitiveTypeName.DOUBLE
+        || (typeName == PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY
+            && type.getLogicalTypeAnnotation()
+                instanceof LogicalTypeAnnotation.Float16LogicalTypeAnnotation);
+  }
+
   @Override
   @SuppressWarnings("unchecked")
   public <T extends Comparable<T>> Boolean visit(Eq<T> eq) {
@@ -136,6 +159,11 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
     if (isAllNulls(meta)) {
       // we are looking for records where v eq(someNonNull)
       // and this is a column of all nulls, so drop it
+      return BLOCK_CANNOT_MATCH;
+    }
+
+    // For floating-point columns: if all non-null values are NaN, comparison predicates cannot match
+    if (isFloatingPointColumn(meta) && isAllNaNs(meta)) {
       return BLOCK_CANNOT_MATCH;
     }
 
@@ -180,6 +208,14 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
       } else {
         return BLOCK_CANNOT_MATCH;
       }
+    }
+
+    // For floating-point columns: if all non-null values are NaN, comparison predicates cannot match
+    if (isFloatingPointColumn(meta) && isAllNaNs(meta)) {
+      if (values.contains(null) && hasNulls(meta)) {
+        return BLOCK_MIGHT_MATCH;
+      }
+      return BLOCK_CANNOT_MATCH;
     }
 
     if (!stats.hasNonNullValue()) {
@@ -286,6 +322,11 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
       return BLOCK_CANNOT_MATCH;
     }
 
+    // For floating-point columns: if all non-null values are NaN, comparison predicates cannot match
+    if (isFloatingPointColumn(meta) && isAllNaNs(meta)) {
+      return BLOCK_CANNOT_MATCH;
+    }
+
     if (!stats.hasNonNullValue()) {
       // stats does not contain min/max values, we cannot drop any chunks
       return BLOCK_MIGHT_MATCH;
@@ -319,6 +360,11 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
     if (isAllNulls(meta)) {
       // we are looking for records where v <= someValue
       // this chunk is all nulls, so we can drop it
+      return BLOCK_CANNOT_MATCH;
+    }
+
+    // For floating-point columns: if all non-null values are NaN, comparison predicates cannot match
+    if (isFloatingPointColumn(meta) && isAllNaNs(meta)) {
       return BLOCK_CANNOT_MATCH;
     }
 
@@ -358,6 +404,11 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
       return BLOCK_CANNOT_MATCH;
     }
 
+    // For floating-point columns: if all non-null values are NaN, comparison predicates cannot match
+    if (isFloatingPointColumn(meta) && isAllNaNs(meta)) {
+      return BLOCK_CANNOT_MATCH;
+    }
+
     if (!stats.hasNonNullValue()) {
       // stats does not contain min/max values, we cannot drop any chunks
       return BLOCK_MIGHT_MATCH;
@@ -391,6 +442,11 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
     if (isAllNulls(meta)) {
       // we are looking for records where v >= someValue
       // this chunk is all nulls, so we can drop it
+      return BLOCK_CANNOT_MATCH;
+    }
+
+    // For floating-point columns: if all non-null values are NaN, comparison predicates cannot match
+    if (isFloatingPointColumn(meta) && isAllNaNs(meta)) {
       return BLOCK_CANNOT_MATCH;
     }
 

@@ -57,7 +57,7 @@ public class TestFloat16ReadWriteRoundTrip {
   private Binary[] valuesInAscendingOrder = {
     Binary.fromConstantByteArray(new byte[] {(byte) 0x00, (byte) 0xfc}), // -Infinity
     Binary.fromConstantByteArray(new byte[] {(byte) 0x00, (byte) 0xc0}), // -2.0
-    Binary.fromConstantByteArray(new byte[] {(byte) 0xff, (byte) 0x7b}), // -6.109476E-5
+    Binary.fromConstantByteArray(new byte[] {(byte) 0x01, (byte) 0x84}), // -6.109476E-5
     Binary.fromConstantByteArray(new byte[] {(byte) 0x00, (byte) 0x80}), // -0
     Binary.fromConstantByteArray(new byte[] {(byte) 0x00, (byte) 0x00}), // +0
     Binary.fromConstantByteArray(new byte[] {(byte) 0x01, (byte) 0x00}), // 5.9604645E-8
@@ -71,7 +71,7 @@ public class TestFloat16ReadWriteRoundTrip {
     Binary.fromConstantByteArray(new byte[] {(byte) 0x01, (byte) 0x00}), // 5.9604645E-8
     Binary.fromConstantByteArray(new byte[] {(byte) 0x00, (byte) 0x00}), // +0
     Binary.fromConstantByteArray(new byte[] {(byte) 0x00, (byte) 0x80}), // -0
-    Binary.fromConstantByteArray(new byte[] {(byte) 0xff, (byte) 0x7b}), // -6.109476E-5
+    Binary.fromConstantByteArray(new byte[] {(byte) 0x01, (byte) 0x84}), // -6.109476E-5
     Binary.fromConstantByteArray(new byte[] {(byte) 0x00, (byte) 0xc0}), // -2.0
     Binary.fromConstantByteArray(new byte[] {(byte) 0x00, (byte) 0xfc})
   }; // -Infinity
@@ -83,7 +83,7 @@ public class TestFloat16ReadWriteRoundTrip {
     Binary.fromConstantByteArray(new byte[] {(byte) 0x01, (byte) 0x00}), // 5.9604645E-8
     Binary.fromConstantByteArray(new byte[] {(byte) 0x00, (byte) 0x00}), // +0
     Binary.fromConstantByteArray(new byte[] {(byte) 0x00, (byte) 0xc0}), // -2.0
-    Binary.fromConstantByteArray(new byte[] {(byte) 0xff, (byte) 0x7b}), // -6.109476E-5
+    Binary.fromConstantByteArray(new byte[] {(byte) 0x01, (byte) 0x84}), // -6.109476E-5
     Binary.fromConstantByteArray(new byte[] {(byte) 0x00, (byte) 0xfc})
   }; // -Infinity
 
@@ -172,6 +172,38 @@ public class TestFloat16ReadWriteRoundTrip {
         ColumnIndex index = reader.readColumnIndex(column);
         assertEquals(Collections.singletonList(expectedValues.get(i)[0]), toFloat16List(index.getMinValues()));
         assertEquals(Collections.singletonList(expectedValues.get(i)[1]), toFloat16List(index.getMaxValues()));
+      }
+    }
+
+    // NaN values with TYPE_DEFINED_ORDER result in a null column index
+    {
+      MessageType schema = Types.buildMessage()
+          .required(FIXED_LEN_BYTE_ARRAY)
+          .as(float16Type())
+          .length(2)
+          .named("col_float16")
+          .named("msg");
+
+      Configuration conf = new Configuration();
+      GroupWriteSupport.setSchema(schema, conf);
+      GroupFactory factory = new SimpleGroupFactory(schema);
+      Path path = newTempPath();
+      try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(path)
+          .withConf(conf)
+          .withDictionaryEncoding(false)
+          .build()) {
+
+        for (Binary value : valuesWithNaN) {
+          writer.write(factory.newGroup().append("col_float16", value));
+        }
+      }
+
+      try (ParquetFileReader reader =
+          ParquetFileReader.open(HadoopInputFile.fromPath(path, new Configuration()))) {
+        ColumnChunkMetaData column =
+            reader.getFooter().getBlocks().get(0).getColumns().get(0);
+        ColumnIndex index = reader.readColumnIndex(column);
+        assertNull(index);
       }
     }
   }

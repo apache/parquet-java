@@ -74,6 +74,7 @@ import org.apache.parquet.internal.column.columnindex.TestColumnIndexBuilder.Bin
 import org.apache.parquet.internal.column.columnindex.TestColumnIndexBuilder.DoubleIsInteger;
 import org.apache.parquet.internal.column.columnindex.TestColumnIndexBuilder.IntegerIsDivisableWith3;
 import org.apache.parquet.io.api.Binary;
+import org.apache.parquet.schema.ColumnOrder;
 import org.apache.parquet.schema.PrimitiveType;
 import org.junit.Test;
 
@@ -1056,5 +1057,149 @@ public class TestColumnIndexFilter {
         STORE,
         paths,
         TOTAL_ROW_COUNT));
+  }
+
+  private static int[] toArray(java.util.PrimitiveIterator.OfInt iter) {
+    it.unimi.dsi.fastutil.ints.IntList list = new it.unimi.dsi.fastutil.ints.IntArrayList();
+    iter.forEachRemaining((int v) -> list.add(v));
+    return list.toIntArray();
+  }
+
+  private static ByteBuffer doubleBytes(double v) {
+    return ByteBuffer.allocate(8).order(java.nio.ByteOrder.LITTLE_ENDIAN).putDouble(0, v);
+  }
+
+  @Test
+  public void testNanFilteringIeee754AllNanExcluded() {
+    // 3 pages: [0.0, 1.0], [NaN, NaN], [2.0, 3.0]; nanCounts=[0, 2, 0]
+    PrimitiveType type =
+        optional(DOUBLE).columnOrder(ColumnOrder.ieee754TotalOrder()).named("col");
+    ColumnIndex ci = ColumnIndexBuilder.build(
+        type,
+        UNORDERED,
+        Arrays.asList(false, false, false),
+        Arrays.asList(0L, 0L, 0L),
+        Arrays.asList(0L, 2L, 0L), // nanCounts
+        Arrays.asList(doubleBytes(0.0), doubleBytes(Double.NaN), doubleBytes(2.0)),
+        Arrays.asList(doubleBytes(1.0), doubleBytes(Double.NaN), doubleBytes(3.0)),
+        null,
+        null);
+
+    // gt(0.5) should return pages 0, 2 (page 1 is all-NaN, excluded)
+    assertArrayEquals(new int[] {0, 2}, toArray(ci.visit(gt(doubleColumn("col"), 0.5))));
+    // gtEq(0.5) should return pages 0, 2
+    assertArrayEquals(new int[] {0, 2}, toArray(ci.visit(gtEq(doubleColumn("col"), 0.5))));
+    // lt(2.5) should return pages 0, 2
+    assertArrayEquals(new int[] {0, 2}, toArray(ci.visit(lt(doubleColumn("col"), 2.5))));
+    // ltEq(3.0) should return pages 0, 2
+    assertArrayEquals(new int[] {0, 2}, toArray(ci.visit(ltEq(doubleColumn("col"), 3.0))));
+    // eq(1.0) should return page 0 only
+    assertArrayEquals(new int[] {0}, toArray(ci.visit(eq(doubleColumn("col"), 1.0))));
+    // notEq(1.0) should include all-NaN page (page 1 NOT excluded for notEq)
+    assertArrayEquals(new int[] {0, 1, 2}, toArray(ci.visit(notEq(doubleColumn("col"), 1.0))));
+    // notIn should include all pages
+    Set<Double> notInSet = new HashSet<>(Arrays.asList(1.0));
+    assertArrayEquals(new int[] {0, 1, 2}, toArray(ci.visit(notIn(doubleColumn("col"), notInSet))));
+  }
+
+  @Test
+  public void testNanFilteringIeee754MixedNanIncluded() {
+    // 2 pages: [0.0, 1.0], [2.0, 3.0]; nanCounts=[0, 1] (page 1 has 1 NaN but min/max not NaN)
+    PrimitiveType type =
+        optional(DOUBLE).columnOrder(ColumnOrder.ieee754TotalOrder()).named("col");
+    ColumnIndex ci = ColumnIndexBuilder.build(
+        type,
+        ASCENDING,
+        Arrays.asList(false, false),
+        Arrays.asList(0L, 0L),
+        Arrays.asList(0L, 1L), // nanCounts
+        Arrays.asList(doubleBytes(0.0), doubleBytes(2.0)),
+        Arrays.asList(doubleBytes(1.0), doubleBytes(3.0)),
+        null,
+        null);
+
+    // gt(0.5) should return both pages (page 1 is mixed, not all-NaN)
+    assertArrayEquals(new int[] {0, 1}, toArray(ci.visit(gt(doubleColumn("col"), 0.5))));
+  }
+
+  @Test
+  public void testNanFilteringIeee754MalformedNanCountZeroButMinMaxNaN() {
+    // nanCount=0 but min/max are NaN → malformed, conservatively include (SKIP)
+    PrimitiveType type =
+        optional(DOUBLE).columnOrder(ColumnOrder.ieee754TotalOrder()).named("col");
+    ColumnIndex ci = ColumnIndexBuilder.build(
+        type,
+        UNORDERED,
+        Arrays.asList(false, false),
+        Arrays.asList(0L, 0L),
+        Arrays.asList(0L, 0L), // nanCounts=0 for both
+        Arrays.asList(doubleBytes(0.0), doubleBytes(Double.NaN)),
+        Arrays.asList(doubleBytes(1.0), doubleBytes(Double.NaN)),
+        null,
+        null);
+
+    // gt(0.5) should include page 1 (malformed → SKIP → conservatively include)
+    assertArrayEquals(new int[] {0, 1}, toArray(ci.visit(gt(doubleColumn("col"), 0.5))));
+  }
+
+  @Test
+  public void testNanFilteringTypeDefinedOrderMinMaxNaN() {
+    // TYPE_DEFINED_ORDER: NaN in min/max is malformed → SKIP (conservatively include)
+    // Note: TYPE_DEFINED_ORDER builders normally reject NaN, but we can build via the
+    // static build method which bypasses that validation for reading existing files.
+    PrimitiveType type = optional(DOUBLE).named("col");
+    ColumnIndex ci = ColumnIndexBuilder.build(
+        type,
+        UNORDERED,
+        Arrays.asList(false, false),
+        Arrays.asList(0L, 0L),
+        null,
+        Arrays.asList(doubleBytes(0.0), doubleBytes(Double.NaN)),
+        Arrays.asList(doubleBytes(1.0), doubleBytes(Double.NaN)),
+        null,
+        null);
+
+    // gt(0.5) should include page 1 (TYPE_DEFINED_ORDER, NaN in min/max → SKIP)
+    assertArrayEquals(new int[] {0, 1}, toArray(ci.visit(gt(doubleColumn("col"), 0.5))));
+  }
+
+  @Test
+  public void testNanFilteringIeee754NanCountsMissingMinMaxNotNaN() {
+    // TYPE_DEFINED_ORDER with no NaN in min/max → EVALUATE normally
+    PrimitiveType type = optional(DOUBLE).named("col");
+    ColumnIndex ci = ColumnIndexBuilder.build(
+        type,
+        ASCENDING,
+        Arrays.asList(false, false),
+        Arrays.asList(0L, 0L),
+        null, // nanCounts missing (ok for TYPE_DEFINED_ORDER)
+        Arrays.asList(doubleBytes(0.0), doubleBytes(2.0)),
+        Arrays.asList(doubleBytes(1.0), doubleBytes(3.0)),
+        null,
+        null);
+
+    // lt(1.5) should return page 0 only (normal evaluation)
+    assertArrayEquals(new int[] {0}, toArray(ci.visit(lt(doubleColumn("col"), 1.5))));
+  }
+
+  @Test
+  public void testNanFilteringInPredicate() {
+    // Test that IN predicate also filters all-NaN pages
+    PrimitiveType type =
+        optional(DOUBLE).columnOrder(ColumnOrder.ieee754TotalOrder()).named("col");
+    ColumnIndex ci = ColumnIndexBuilder.build(
+        type,
+        UNORDERED,
+        Arrays.asList(false, false, false),
+        Arrays.asList(0L, 0L, 0L),
+        Arrays.asList(0L, 2L, 0L), // nanCounts
+        Arrays.asList(doubleBytes(0.0), doubleBytes(Double.NaN), doubleBytes(2.0)),
+        Arrays.asList(doubleBytes(1.0), doubleBytes(Double.NaN), doubleBytes(3.0)),
+        null,
+        null);
+
+    Set<Double> inSet = new HashSet<>(Arrays.asList(0.5, 2.5));
+    // in({0.5, 2.5}) should return pages 0, 2 (page 1 is all-NaN, excluded)
+    assertArrayEquals(new int[] {0, 2}, toArray(ci.visit(in(doubleColumn("col"), inSet))));
   }
 }

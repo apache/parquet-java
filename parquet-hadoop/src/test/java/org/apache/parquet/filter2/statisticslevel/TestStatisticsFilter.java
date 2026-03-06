@@ -23,6 +23,7 @@ import static org.apache.parquet.filter2.predicate.FilterApi.binaryColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.contains;
 import static org.apache.parquet.filter2.predicate.FilterApi.doubleColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.eq;
+import static org.apache.parquet.filter2.predicate.FilterApi.floatColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.gt;
 import static org.apache.parquet.filter2.predicate.FilterApi.gtEq;
 import static org.apache.parquet.filter2.predicate.FilterApi.in;
@@ -46,12 +47,14 @@ import java.util.List;
 import java.util.Set;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.statistics.DoubleStatistics;
+import org.apache.parquet.column.statistics.FloatStatistics;
 import org.apache.parquet.column.statistics.IntStatistics;
 import org.apache.parquet.filter2.predicate.FilterPredicate;
 import org.apache.parquet.filter2.predicate.LogicalInverseRewriter;
 import org.apache.parquet.filter2.predicate.Operators;
 import org.apache.parquet.filter2.predicate.Operators.BinaryColumn;
 import org.apache.parquet.filter2.predicate.Operators.DoubleColumn;
+import org.apache.parquet.filter2.predicate.Operators.FloatColumn;
 import org.apache.parquet.filter2.predicate.Operators.IntColumn;
 import org.apache.parquet.filter2.predicate.Statistics;
 import org.apache.parquet.filter2.predicate.UserDefinedPredicate;
@@ -59,6 +62,9 @@ import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.io.api.Binary;
+import org.apache.parquet.schema.ColumnOrder;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
+import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Types;
 import org.junit.Test;
@@ -588,5 +594,198 @@ public class TestStatisticsFilter {
               + " not(eq(double.column, 12.0))",
           e.getMessage());
     }
+  }
+
+  private static final FloatColumn floatCol = floatColumn("float.column");
+
+  private static ColumnChunkMetaData getFloatColumnMeta(
+      org.apache.parquet.column.statistics.Statistics<?> stats, long valueCount) {
+    return ColumnChunkMetaData.get(
+        ColumnPath.get("float", "column"),
+        PrimitiveTypeName.FLOAT,
+        CompressionCodecName.GZIP,
+        new HashSet<>(List.of(Encoding.PLAIN)),
+        stats,
+        0L,
+        0L,
+        valueCount,
+        0L,
+        0L);
+  }
+
+  private static ColumnChunkMetaData getDoubleColumnMetaWithType(
+      PrimitiveType type, org.apache.parquet.column.statistics.Statistics<?> stats, long valueCount) {
+    return ColumnChunkMetaData.get(
+        ColumnPath.get("double", "column"),
+        type,
+        CompressionCodecName.GZIP,
+        null,
+        new HashSet<>(List.of(Encoding.PLAIN)),
+        stats,
+        0L,
+        0L,
+        valueCount,
+        0L,
+        0L);
+  }
+
+  @Test
+  public void testAllNaNDoubleTypeDefinedOrder() {
+    // All non-null values are NaN, TYPE_DEFINED_ORDER
+    DoubleStatistics allNanStats = new DoubleStatistics();
+    allNanStats.setNumNulls(0);
+    allNanStats.incrementNanCount(177);
+
+    List<ColumnChunkMetaData> metas =
+        List.of(getIntColumnMeta(intStats, 177L), getDoubleColumnMeta(allNanStats, 177L));
+
+    // Comparison predicates should be dropped
+    assertTrue(canDrop(eq(doubleColumn, 5.0), metas));
+    assertTrue(canDrop(lt(doubleColumn, 5.0), metas));
+    assertTrue(canDrop(ltEq(doubleColumn, 5.0), metas));
+    assertTrue(canDrop(gt(doubleColumn, 5.0), metas));
+    assertTrue(canDrop(gtEq(doubleColumn, 5.0), metas));
+
+    Set<Double> inValues = new HashSet<>(List.of(1.0, 2.0, 3.0));
+    assertTrue(canDrop(in(doubleColumn, inValues), metas));
+
+    // NotEq should NOT be dropped (NaN != 5.0 is true)
+    assertFalse(canDrop(notEq(doubleColumn, 5.0), metas));
+    assertFalse(canDrop(notIn(doubleColumn, inValues), metas));
+  }
+
+  @Test
+  public void testAllNaNWithSomeNulls() {
+    // nan_count=100, null_count=77, valueCount=177 => all non-null values are NaN
+    DoubleStatistics nanWithNullsStats = new DoubleStatistics();
+    nanWithNullsStats.setNumNulls(77);
+    nanWithNullsStats.incrementNanCount(100);
+
+    List<ColumnChunkMetaData> metas =
+        List.of(getIntColumnMeta(intStats, 177L), getDoubleColumnMeta(nanWithNullsStats, 177L));
+
+    // Eq(5.0) should be dropped
+    assertTrue(canDrop(eq(doubleColumn, 5.0), metas));
+    // Eq(null) should NOT be dropped (there are nulls)
+    assertFalse(canDrop(eq(doubleColumn, null), metas));
+
+    // In with null should NOT be dropped (there are nulls)
+    Set<Double> inWithNull = new HashSet<>();
+    inWithNull.add(null);
+    inWithNull.add(5.0);
+    assertFalse(canDrop(in(doubleColumn, inWithNull), metas));
+
+    // In without null should be dropped
+    Set<Double> inWithoutNull = new HashSet<>(List.of(1.0, 2.0));
+    assertTrue(canDrop(in(doubleColumn, inWithoutNull), metas));
+  }
+
+  @Test
+  public void testAllNaNDoubleIeee754TotalOrder() {
+    // All-NaN with IEEE_754_TOTAL_ORDER — same optimization applies
+    PrimitiveType ieee754Type = Types.required(PrimitiveTypeName.DOUBLE)
+        .columnOrder(ColumnOrder.ieee754TotalOrder())
+        .named("test_double");
+    org.apache.parquet.column.statistics.Statistics<?> allNanStats =
+        org.apache.parquet.column.statistics.Statistics.getBuilderForReading(ieee754Type)
+            .withNumNulls(0)
+            .withNanCount(177)
+            .build();
+
+    List<ColumnChunkMetaData> metas =
+        List.of(getIntColumnMeta(intStats, 177L), getDoubleColumnMetaWithType(ieee754Type, allNanStats, 177L));
+
+    assertTrue(canDrop(eq(doubleColumn, 5.0), metas));
+    assertTrue(canDrop(lt(doubleColumn, 5.0), metas));
+    assertTrue(canDrop(ltEq(doubleColumn, 5.0), metas));
+    assertTrue(canDrop(gt(doubleColumn, 5.0), metas));
+    assertTrue(canDrop(gtEq(doubleColumn, 5.0), metas));
+    assertFalse(canDrop(notEq(doubleColumn, 5.0), metas));
+  }
+
+  @Test
+  public void testMixedNaNAndNonNaN() {
+    // nan_count=50, null_count=0, valueCount=177 => NOT all NaN
+    DoubleStatistics mixedStats = new DoubleStatistics();
+    mixedStats.setMinMax(10, 100);
+    mixedStats.setNumNulls(0);
+    mixedStats.incrementNanCount(50);
+
+    List<ColumnChunkMetaData> metas =
+        List.of(getIntColumnMeta(intStats, 177L), getDoubleColumnMeta(mixedStats, 177L));
+
+    // All predicates should fall through to normal min/max logic
+    assertFalse(canDrop(eq(doubleColumn, 50.0), metas));
+    assertFalse(canDrop(lt(doubleColumn, 50.0), metas));
+    assertFalse(canDrop(gt(doubleColumn, 50.0), metas));
+  }
+
+  @Test
+  public void testNanCountNotSet() {
+    // nan_count not set (backward compat) — should fall through to existing behavior
+    DoubleStatistics statsNoNanCount = new DoubleStatistics();
+    statsNoNanCount.setMinMax(10, 100);
+    statsNoNanCount.setNumNulls(0);
+    // nan_count defaults to -1 (not set)
+
+    List<ColumnChunkMetaData> metas =
+        List.of(getIntColumnMeta(intStats, 177L), getDoubleColumnMeta(statsNoNanCount, 177L));
+
+    assertFalse(canDrop(eq(doubleColumn, 50.0), metas));
+    assertFalse(canDrop(lt(doubleColumn, 50.0), metas));
+  }
+
+  @Test
+  public void testAllNaNFloatColumn() {
+    FloatStatistics allNanFloatStats = new FloatStatistics();
+    allNanFloatStats.setNumNulls(0);
+    allNanFloatStats.incrementNanCount(177);
+
+    List<ColumnChunkMetaData> metas =
+        List.of(getIntColumnMeta(intStats, 177L), getFloatColumnMeta(allNanFloatStats, 177L));
+
+    assertTrue(canDrop(eq(floatCol, 5.0f), metas));
+    assertTrue(canDrop(lt(floatCol, 5.0f), metas));
+    assertTrue(canDrop(ltEq(floatCol, 5.0f), metas));
+    assertTrue(canDrop(gt(floatCol, 5.0f), metas));
+    assertTrue(canDrop(gtEq(floatCol, 5.0f), metas));
+    assertFalse(canDrop(notEq(floatCol, 5.0f), metas));
+  }
+
+  @Test
+  public void testAllNaNNonFloatingPointColumnUnaffected() {
+    // Integer column with nan_count set should NOT trigger NaN optimization
+    // (nan_count is only meaningful for floating-point types)
+    IntStatistics intStatsWithNan = new IntStatistics();
+    intStatsWithNan.setMinMax(10, 100);
+    intStatsWithNan.setNumNulls(0);
+    intStatsWithNan.incrementNanCount(177);
+
+    List<ColumnChunkMetaData> metas =
+        List.of(getIntColumnMeta(intStatsWithNan, 177L), getDoubleColumnMeta(doubleStats, 177L));
+
+    // Should NOT be dropped — int columns don't have NaN semantics
+    assertFalse(canDrop(eq(intColumn, 50), metas));
+  }
+
+  @Test
+  public void testFloat16IsFloatingPoint() {
+    // Verify Float16 columns are recognized as floating-point
+    PrimitiveType float16Type = Types.required(PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY)
+        .length(2)
+        .as(LogicalTypeAnnotation.float16Type())
+        .named("test_float16");
+    org.apache.parquet.column.statistics.Statistics<?> allNanFloat16Stats =
+        org.apache.parquet.column.statistics.Statistics.getBuilderForReading(float16Type)
+            .withNumNulls(0)
+            .withNanCount(177)
+            .build();
+
+    Operators.BinaryColumn float16Column = binaryColumn("double.column");
+    ColumnChunkMetaData float16Meta = getDoubleColumnMetaWithType(float16Type, allNanFloat16Stats, 177L);
+
+    List<ColumnChunkMetaData> metas = List.of(getIntColumnMeta(intStats, 177L), float16Meta);
+
+    assertTrue(canDrop(eq(float16Column, fromString("test")), metas));
   }
 }
