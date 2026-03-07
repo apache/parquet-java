@@ -54,10 +54,9 @@ public abstract class AlpValuesWriter extends ValuesWriter {
     this(DEFAULT_VECTOR_SIZE);
   }
 
-  // TODO: Replace with Encoding.ALP once ALP is added to parquet-format Thrift spec.
   @Override
   public Encoding getEncoding() {
-    return Encoding.PLAIN;
+    return Encoding.ALP;
   }
 
   @Override
