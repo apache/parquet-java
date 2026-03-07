@@ -27,8 +27,8 @@ import static org.apache.parquet.column.values.alp.AlpConstants.*;
  * then applying Frame of Reference encoding and bit-packing.
  * Values that cannot be losslessly converted are stored as exceptions.
  *
- * <p>Encoding formula: encoded = round(value * 10^exponent / 10^factor)
- * <p>Decoding formula: value = encoded / 10^exponent * 10^factor
+ * <p>Encoding formula: encoded = round(value * 10^exponent * 10^(-factor))
+ * <p>Decoding formula: value = encoded * 10^factor * 10^(-exponent)
  *
  * <p>Exception conditions:
  * <ul>
@@ -43,26 +43,6 @@ final class AlpEncoderDecoder {
 
   private AlpEncoderDecoder() {
     // Utility class
-  }
-
-  // ========== Float multiplier ==========
-
-  static float getFloatMultiplier(int exponent, int factor) {
-    float multiplier = FLOAT_POW10[exponent];
-    if (factor > 0) {
-      multiplier /= FLOAT_POW10[factor];
-    }
-    return multiplier;
-  }
-
-  // ========== Double multiplier ==========
-
-  static double getDoubleMultiplier(int exponent, int factor) {
-    double multiplier = DOUBLE_POW10[exponent];
-    if (factor > 0) {
-      multiplier /= DOUBLE_POW10[factor];
-    }
-    return multiplier;
   }
 
   // ========== Float exception detection ==========
@@ -83,9 +63,8 @@ final class AlpEncoderDecoder {
     if (isFloatException(value)) {
       return true;
     }
-    float multiplier = getFloatMultiplier(exponent, factor);
-    float scaled = value * multiplier;
-    if (scaled > Integer.MAX_VALUE || scaled < Integer.MIN_VALUE) {
+    float scaled = value * FLOAT_POW10[exponent] * FLOAT_POW10_NEGATIVE[factor];
+    if (scaled > FLOAT_ENCODING_UPPER_LIMIT || scaled < FLOAT_ENCODING_LOWER_LIMIT) {
       return true;
     }
     int encoded = encodeFloat(value, exponent, factor);
@@ -94,15 +73,18 @@ final class AlpEncoderDecoder {
   }
 
   // ========== Float encode/decode ==========
+  // Two-step multiplication matching C++ to produce identical floating-point rounding.
+  // C++ encode: value * 10^exponent * 10^(-factor)
+  // C++ decode: (float)encoded * 10^factor * 10^(-exponent)
 
-  /** Encode: round(value * 10^exponent / 10^factor) */
+  /** Encode: round(value * 10^exponent * 10^(-factor)) */
   static int encodeFloat(float value, int exponent, int factor) {
-    return fastRoundFloat(value * getFloatMultiplier(exponent, factor));
+    return fastRoundFloat(value * FLOAT_POW10[exponent] * FLOAT_POW10_NEGATIVE[factor]);
   }
 
-  /** Decode: encoded / 10^exponent * 10^factor */
+  /** Decode: encoded * 10^factor * 10^(-exponent) */
   static float decodeFloat(int encoded, int exponent, int factor) {
-    return encoded / getFloatMultiplier(exponent, factor);
+    return (float) encoded * FLOAT_POW10[factor] * FLOAT_POW10_NEGATIVE[exponent];
   }
 
   // Uses the 2^22+2^23 magic-number trick to round without branching on the FPU.
@@ -130,9 +112,8 @@ final class AlpEncoderDecoder {
     if (isDoubleException(value)) {
       return true;
     }
-    double multiplier = getDoubleMultiplier(exponent, factor);
-    double scaled = value * multiplier;
-    if (scaled > Long.MAX_VALUE || scaled < Long.MIN_VALUE) {
+    double scaled = value * DOUBLE_POW10[exponent] * DOUBLE_POW10_NEGATIVE[factor];
+    if (scaled > DOUBLE_ENCODING_UPPER_LIMIT || scaled < DOUBLE_ENCODING_LOWER_LIMIT) {
       return true;
     }
     long encoded = encodeDouble(value, exponent, factor);
@@ -141,13 +122,16 @@ final class AlpEncoderDecoder {
   }
 
   // ========== Double encode/decode ==========
+  // Two-step multiplication matching C++ to produce identical floating-point rounding.
 
+  /** Encode: round(value * 10^exponent * 10^(-factor)) */
   static long encodeDouble(double value, int exponent, int factor) {
-    return fastRoundDouble(value * getDoubleMultiplier(exponent, factor));
+    return fastRoundDouble(value * DOUBLE_POW10[exponent] * DOUBLE_POW10_NEGATIVE[factor]);
   }
 
+  /** Decode: encoded * 10^factor * 10^(-exponent) */
   static double decodeDouble(long encoded, int exponent, int factor) {
-    return encoded / getDoubleMultiplier(exponent, factor);
+    return (double) encoded * DOUBLE_POW10[factor] * DOUBLE_POW10_NEGATIVE[exponent];
   }
 
   // Same trick but with 2^51+2^52 for double precision.
