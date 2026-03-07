@@ -131,6 +131,74 @@ public class TestInteropAlpEncoding {
     }
   }
 
+  /**
+   * Read the Java-generated ALP-encoded arade parquet file and verify all values
+   * match the expected CSV.
+   */
+  @Test
+  public void testReadAlpJavaAradeParquet() throws IOException {
+    Path parquetPath = resourcePath("alp_java_arade.parquet");
+    String[] columnNames = {"value1", "value2", "value3", "value4"};
+    int expectedRows = 15000;
+
+    double[][] expected = readExpectedCsv("/alp_arade_expect.csv", columnNames.length, expectedRows);
+
+    List<Group> rows = readParquetGroups(parquetPath);
+    assertEquals("Row count should match", expectedRows, rows.size());
+
+    verifyAlpEncoding(parquetPath);
+
+    for (int r = 0; r < expectedRows; r++) {
+      Group group = rows.get(r);
+      for (int c = 0; c < columnNames.length; c++) {
+        double actual = group.getDouble(columnNames[c], 0);
+        assertEquals(
+            String.format("Mismatch at row %d, column %s", r, columnNames[c]),
+            Double.doubleToLongBits(expected[c][r]),
+            Double.doubleToLongBits(actual));
+      }
+    }
+  }
+
+  /**
+   * Read the Java-generated ALP-encoded spotify1 parquet file and verify all values
+   * match the expected CSV.
+   */
+  @Test
+  public void testReadAlpJavaSpotify1Parquet() throws IOException {
+    Path parquetPath = resourcePath("alp_java_spotify1.parquet");
+    String[] columnNames = {
+      "danceability",
+      "energy",
+      "loudness",
+      "speechiness",
+      "acousticness",
+      "instrumentalness",
+      "liveness",
+      "valence",
+      "tempo"
+    };
+    int expectedRows = 15000;
+
+    double[][] expected = readExpectedCsv("/alp_spotify1_expect.csv", columnNames.length, expectedRows);
+
+    List<Group> rows = readParquetGroups(parquetPath);
+    assertEquals("Row count should match", expectedRows, rows.size());
+
+    verifyAlpEncoding(parquetPath);
+
+    for (int r = 0; r < expectedRows; r++) {
+      Group group = rows.get(r);
+      for (int c = 0; c < columnNames.length; c++) {
+        double actual = group.getDouble(columnNames[c], 0);
+        assertEquals(
+            String.format("Mismatch at row %d, column %s", r, columnNames[c]),
+            Double.doubleToLongBits(expected[c][r]),
+            Double.doubleToLongBits(actual));
+      }
+    }
+  }
+
   private List<Group> readParquetGroups(Path path) throws IOException {
     List<Group> rows = new ArrayList<>();
     try (ParquetReader<Group> reader =
