@@ -51,22 +51,18 @@ public class AlpCompressionTest {
 
   private static void assertFloatRoundTrip(float[] input) {
     AlpCompression.AlpEncodingPreset preset = allFloatCombos();
-    AlpCompression.FloatCompressedVector cv =
-        AlpCompression.compressFloatVector(input, input.length, preset);
+    AlpCompression.FloatCompressedVector cv = AlpCompression.compressFloatVector(input, input.length, preset);
     float[] output = new float[input.length];
     AlpCompression.decompressFloatVector(cv, output);
     for (int i = 0; i < input.length; i++) {
       assertEquals(
-          "Mismatch at index " + i,
-          Float.floatToRawIntBits(input[i]),
-          Float.floatToRawIntBits(output[i]));
+          "Mismatch at index " + i, Float.floatToRawIntBits(input[i]), Float.floatToRawIntBits(output[i]));
     }
   }
 
   private static void assertDoubleRoundTrip(double[] input) {
     AlpCompression.AlpEncodingPreset preset = allDoubleCombos();
-    AlpCompression.DoubleCompressedVector cv =
-        AlpCompression.compressDoubleVector(input, input.length, preset);
+    AlpCompression.DoubleCompressedVector cv = AlpCompression.compressDoubleVector(input, input.length, preset);
     double[] output = new double[input.length];
     AlpCompression.decompressDoubleVector(cv, output);
     for (int i = 0; i < input.length; i++) {
@@ -123,8 +119,9 @@ public class AlpCompressionTest {
 
   @Test
   public void testFloatSpecialValues() {
-    float[] input = {1.0f, Float.NaN, 2.0f, Float.POSITIVE_INFINITY, 3.0f,
-        Float.NEGATIVE_INFINITY, 4.0f, -0.0f, 5.0f};
+    float[] input = {
+      1.0f, Float.NaN, 2.0f, Float.POSITIVE_INFINITY, 3.0f, Float.NEGATIVE_INFINITY, 4.0f, -0.0f, 5.0f
+    };
     assertFloatRoundTrip(input);
 
     AlpCompression.FloatCompressedVector cv =
@@ -140,8 +137,7 @@ public class AlpCompressionTest {
 
   @Test
   public void testFloatEmptyVector() {
-    AlpCompression.FloatCompressedVector cv =
-        AlpCompression.compressFloatVector(new float[0], 0, allFloatCombos());
+    AlpCompression.FloatCompressedVector cv = AlpCompression.compressFloatVector(new float[0], 0, allFloatCombos());
     assertEquals(0, cv.numElements);
     assertEquals(0, cv.numExceptions);
   }
@@ -194,17 +190,14 @@ public class AlpCompressionTest {
     byte[] buf = new byte[cv.storedSize()];
     cv.store(buf, 0);
 
-    AlpCompression.FloatCompressedVector loaded =
-        AlpCompression.FloatCompressedVector.load(buf, 0, input.length);
+    AlpCompression.FloatCompressedVector loaded = AlpCompression.FloatCompressedVector.load(buf, 0, input.length);
 
     float[] output = new float[input.length];
     AlpCompression.decompressFloatVector(loaded, output);
 
     for (int i = 0; i < input.length; i++) {
       assertEquals(
-          "Mismatch at index " + i,
-          Float.floatToRawIntBits(input[i]),
-          Float.floatToRawIntBits(output[i]));
+          "Mismatch at index " + i, Float.floatToRawIntBits(input[i]), Float.floatToRawIntBits(output[i]));
     }
   }
 
@@ -217,8 +210,7 @@ public class AlpCompressionTest {
     byte[] buf = new byte[cv.storedSize()];
     cv.store(buf, 0);
 
-    AlpCompression.FloatCompressedVector loaded =
-        AlpCompression.FloatCompressedVector.load(buf, 0, input.length);
+    AlpCompression.FloatCompressedVector loaded = AlpCompression.FloatCompressedVector.load(buf, 0, input.length);
 
     assertEquals(cv.exponent, loaded.exponent);
     assertEquals(cv.factor, loaded.factor);
@@ -264,8 +256,8 @@ public class AlpCompressionTest {
 
   @Test
   public void testDoubleSpecialValues() {
-    double[] input = {1.0, Double.NaN, 2.0, Double.POSITIVE_INFINITY, 3.0,
-        Double.NEGATIVE_INFINITY, 4.0, -0.0, 5.0};
+    double[] input = {1.0, Double.NaN, 2.0, Double.POSITIVE_INFINITY, 3.0, Double.NEGATIVE_INFINITY, 4.0, -0.0, 5.0
+    };
     assertDoubleRoundTrip(input);
 
     AlpCompression.DoubleCompressedVector cv =
@@ -315,8 +307,7 @@ public class AlpCompressionTest {
     byte[] buf = new byte[cv.storedSize()];
     cv.store(buf, 0);
 
-    AlpCompression.DoubleCompressedVector loaded =
-        AlpCompression.DoubleCompressedVector.load(buf, 0, input.length);
+    AlpCompression.DoubleCompressedVector loaded = AlpCompression.DoubleCompressedVector.load(buf, 0, input.length);
 
     double[] output = new double[input.length];
     AlpCompression.decompressDoubleVector(loaded, output);

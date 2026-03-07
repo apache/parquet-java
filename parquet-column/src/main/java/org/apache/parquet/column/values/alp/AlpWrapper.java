@@ -47,16 +47,14 @@ public final class AlpWrapper {
   // ========== Sampling presets ==========
 
   /** Create a sampling-based encoding preset for float data. */
-  public static AlpCompression.AlpEncodingPreset createFloatSamplingPreset(
-      float[] data, int count) {
+  public static AlpCompression.AlpEncodingPreset createFloatSamplingPreset(float[] data, int count) {
     AlpSampler.FloatSampler sampler = new AlpSampler.FloatSampler();
     sampler.addSample(data, count);
     return sampler.finalizeSampling();
   }
 
   /** Create a sampling-based encoding preset for double data. */
-  public static AlpCompression.AlpEncodingPreset createDoubleSamplingPreset(
-      double[] data, int count) {
+  public static AlpCompression.AlpEncodingPreset createDoubleSamplingPreset(double[] data, int count) {
     AlpSampler.DoubleSampler sampler = new AlpSampler.DoubleSampler();
     sampler.addSample(data, count);
     return sampler.finalizeSampling();
@@ -73,12 +71,10 @@ public final class AlpWrapper {
    * @param preset the encoding preset from sampling
    * @return the number of compressed bytes written
    */
-  public static int encodeFloats(
-      float[] input, int count, byte[] output, AlpCompression.AlpEncodingPreset preset) {
+  public static int encodeFloats(float[] input, int count, byte[] output, AlpCompression.AlpEncodingPreset preset) {
     Preconditions.checkArgument(count >= 0, "count must be non-negative, got: %s", count);
     if (count == 0) {
-      writeHeader(output, 0, COMPRESSION_MODE_ALP, INTEGER_ENCODING_FOR,
-          DEFAULT_VECTOR_SIZE_LOG, 0);
+      writeHeader(output, 0, COMPRESSION_MODE_ALP, INTEGER_ENCODING_FOR, DEFAULT_VECTOR_SIZE_LOG, 0);
       return HEADER_SIZE;
     }
 
@@ -101,14 +97,14 @@ public final class AlpWrapper {
     int currentOffset = offsetsSectionSize;
     for (int i = 0; i < numVectors; i++) {
       vectorOffsets[i] = currentOffset;
-      currentOffset += ALP_INFO_SIZE + FLOAT_FOR_INFO_SIZE + vectors.get(i).dataStoredSize();
+      currentOffset +=
+          ALP_INFO_SIZE + FLOAT_FOR_INFO_SIZE + vectors.get(i).dataStoredSize();
     }
     int bodySize = currentOffset;
     int totalSize = HEADER_SIZE + bodySize;
 
     // Phase 3: Write header
-    writeHeader(output, 0, COMPRESSION_MODE_ALP, INTEGER_ENCODING_FOR,
-        DEFAULT_VECTOR_SIZE_LOG, count);
+    writeHeader(output, 0, COMPRESSION_MODE_ALP, INTEGER_ENCODING_FOR, DEFAULT_VECTOR_SIZE_LOG, count);
 
     // Phase 4: Write offsets
     ByteBuffer buf = ByteBuffer.wrap(output, HEADER_SIZE, bodySize).order(ByteOrder.LITTLE_ENDIAN);
@@ -128,12 +124,10 @@ public final class AlpWrapper {
 
   // ========== Encode doubles ==========
 
-  public static int encodeDoubles(
-      double[] input, int count, byte[] output, AlpCompression.AlpEncodingPreset preset) {
+  public static int encodeDoubles(double[] input, int count, byte[] output, AlpCompression.AlpEncodingPreset preset) {
     Preconditions.checkArgument(count >= 0, "count must be non-negative, got: %s", count);
     if (count == 0) {
-      writeHeader(output, 0, COMPRESSION_MODE_ALP, INTEGER_ENCODING_FOR,
-          DEFAULT_VECTOR_SIZE_LOG, 0);
+      writeHeader(output, 0, COMPRESSION_MODE_ALP, INTEGER_ENCODING_FOR, DEFAULT_VECTOR_SIZE_LOG, 0);
       return HEADER_SIZE;
     }
 
@@ -146,8 +140,7 @@ public final class AlpWrapper {
       int elementsInVector = Math.min(vectorSize, count - offset);
       double[] vectorInput = new double[elementsInVector];
       System.arraycopy(input, offset, vectorInput, 0, elementsInVector);
-      vectors.add(
-          AlpCompression.compressDoubleVector(vectorInput, elementsInVector, preset));
+      vectors.add(AlpCompression.compressDoubleVector(vectorInput, elementsInVector, preset));
     }
 
     int offsetsSectionSize = numVectors * OFFSET_SIZE;
@@ -161,8 +154,7 @@ public final class AlpWrapper {
     int bodySize = currentOffset;
     int totalSize = HEADER_SIZE + bodySize;
 
-    writeHeader(output, 0, COMPRESSION_MODE_ALP, INTEGER_ENCODING_FOR,
-        DEFAULT_VECTOR_SIZE_LOG, count);
+    writeHeader(output, 0, COMPRESSION_MODE_ALP, INTEGER_ENCODING_FOR, DEFAULT_VECTOR_SIZE_LOG, count);
 
     ByteBuffer buf = ByteBuffer.wrap(output, HEADER_SIZE, bodySize).order(ByteOrder.LITTLE_ENDIAN);
     for (int offset : vectorOffsets) {
@@ -188,10 +180,8 @@ public final class AlpWrapper {
    * @param output output float array (must hold numElements values)
    * @param numElements number of elements to decode
    */
-  public static void decodeFloats(
-      byte[] compressed, int compSize, float[] output, int numElements) {
-    Preconditions.checkArgument(compSize >= HEADER_SIZE,
-        "compressed size too small for header: %s", compSize);
+  public static void decodeFloats(byte[] compressed, int compSize, float[] output, int numElements) {
+    Preconditions.checkArgument(compSize >= HEADER_SIZE, "compressed size too small for header: %s", compSize);
 
     ByteBuffer header = ByteBuffer.wrap(compressed, 0, HEADER_SIZE).order(ByteOrder.LITTLE_ENDIAN);
     int compressionMode = header.get() & 0xFF;
@@ -199,10 +189,10 @@ public final class AlpWrapper {
     int logVectorSize = header.get() & 0xFF;
     int storedNumElements = header.getInt();
 
-    Preconditions.checkArgument(compressionMode == COMPRESSION_MODE_ALP,
-        "unsupported compression mode: %s", compressionMode);
-    Preconditions.checkArgument(integerEncoding == INTEGER_ENCODING_FOR,
-        "unsupported integer encoding: %s", integerEncoding);
+    Preconditions.checkArgument(
+        compressionMode == COMPRESSION_MODE_ALP, "unsupported compression mode: %s", compressionMode);
+    Preconditions.checkArgument(
+        integerEncoding == INTEGER_ENCODING_FOR, "unsupported integer encoding: %s", integerEncoding);
 
     int vectorSize = 1 << logVectorSize;
     int numVectors = (storedNumElements + vectorSize - 1) / vectorSize;
@@ -210,8 +200,8 @@ public final class AlpWrapper {
     if (numVectors == 0) return;
 
     // Read offsets
-    ByteBuffer body = ByteBuffer.wrap(compressed, HEADER_SIZE, compSize - HEADER_SIZE)
-        .order(ByteOrder.LITTLE_ENDIAN);
+    ByteBuffer body =
+        ByteBuffer.wrap(compressed, HEADER_SIZE, compSize - HEADER_SIZE).order(ByteOrder.LITTLE_ENDIAN);
     int[] vectorOffsets = new int[numVectors];
     for (int i = 0; i < numVectors; i++) {
       vectorOffsets[i] = body.getInt();
@@ -234,18 +224,16 @@ public final class AlpWrapper {
 
       float[] vectorOutput = new float[elementsInVector];
       AlpCompression.decompressFloatVector(cv, vectorOutput);
-      System.arraycopy(vectorOutput, 0, output, outputOffset,
-          Math.min(elementsInVector, numElements - outputOffset));
+      System.arraycopy(
+          vectorOutput, 0, output, outputOffset, Math.min(elementsInVector, numElements - outputOffset));
       outputOffset += elementsInVector;
     }
   }
 
   // ========== Decode doubles ==========
 
-  public static void decodeDoubles(
-      byte[] compressed, int compSize, double[] output, int numElements) {
-    Preconditions.checkArgument(compSize >= HEADER_SIZE,
-        "compressed size too small for header: %s", compSize);
+  public static void decodeDoubles(byte[] compressed, int compSize, double[] output, int numElements) {
+    Preconditions.checkArgument(compSize >= HEADER_SIZE, "compressed size too small for header: %s", compSize);
 
     ByteBuffer header = ByteBuffer.wrap(compressed, 0, HEADER_SIZE).order(ByteOrder.LITTLE_ENDIAN);
     int compressionMode = header.get() & 0xFF;
@@ -253,18 +241,18 @@ public final class AlpWrapper {
     int logVectorSize = header.get() & 0xFF;
     int storedNumElements = header.getInt();
 
-    Preconditions.checkArgument(compressionMode == COMPRESSION_MODE_ALP,
-        "unsupported compression mode: %s", compressionMode);
-    Preconditions.checkArgument(integerEncoding == INTEGER_ENCODING_FOR,
-        "unsupported integer encoding: %s", integerEncoding);
+    Preconditions.checkArgument(
+        compressionMode == COMPRESSION_MODE_ALP, "unsupported compression mode: %s", compressionMode);
+    Preconditions.checkArgument(
+        integerEncoding == INTEGER_ENCODING_FOR, "unsupported integer encoding: %s", integerEncoding);
 
     int vectorSize = 1 << logVectorSize;
     int numVectors = (storedNumElements + vectorSize - 1) / vectorSize;
 
     if (numVectors == 0) return;
 
-    ByteBuffer body = ByteBuffer.wrap(compressed, HEADER_SIZE, compSize - HEADER_SIZE)
-        .order(ByteOrder.LITTLE_ENDIAN);
+    ByteBuffer body =
+        ByteBuffer.wrap(compressed, HEADER_SIZE, compSize - HEADER_SIZE).order(ByteOrder.LITTLE_ENDIAN);
     int[] vectorOffsets = new int[numVectors];
     for (int i = 0; i < numVectors; i++) {
       vectorOffsets[i] = body.getInt();
@@ -286,8 +274,8 @@ public final class AlpWrapper {
 
       double[] vectorOutput = new double[elementsInVector];
       AlpCompression.decompressDoubleVector(cv, vectorOutput);
-      System.arraycopy(vectorOutput, 0, output, outputOffset,
-          Math.min(elementsInVector, numElements - outputOffset));
+      System.arraycopy(
+          vectorOutput, 0, output, outputOffset, Math.min(elementsInVector, numElements - outputOffset));
       outputOffset += elementsInVector;
     }
   }
@@ -322,8 +310,7 @@ public final class AlpWrapper {
   // ========== Header helpers ==========
 
   private static void writeHeader(
-      byte[] output, int offset, int compressionMode, int integerEncoding,
-      int logVectorSize, int numElements) {
+      byte[] output, int offset, int compressionMode, int integerEncoding, int logVectorSize, int numElements) {
     ByteBuffer buf = ByteBuffer.wrap(output, offset, HEADER_SIZE).order(ByteOrder.LITTLE_ENDIAN);
     buf.put((byte) compressionMode);
     buf.put((byte) integerEncoding);

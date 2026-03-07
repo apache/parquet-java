@@ -21,7 +21,6 @@ package org.apache.parquet.column.values.alp;
 import static org.apache.parquet.column.values.alp.AlpConstants.*;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -63,8 +62,7 @@ final class AlpSampler {
     }
 
     private void addSampleVector(float[] data, int offset, int length) {
-      boolean mustSkip = mustSkipSamplingFromCurrentVector(
-          vectorsCount, vectorsSampledCount, length);
+      boolean mustSkip = mustSkipSamplingFromCurrentVector(vectorsCount, vectorsSampledCount, length);
       vectorsCount++;
       totalValuesCount += length;
       if (mustSkip) {
@@ -129,8 +127,7 @@ final class AlpSampler {
     }
 
     private void addSampleVector(double[] data, int offset, int length) {
-      boolean mustSkip = mustSkipSamplingFromCurrentVector(
-          vectorsCount, vectorsSampledCount, length);
+      boolean mustSkip = mustSkipSamplingFromCurrentVector(vectorsCount, vectorsSampledCount, length);
       vectorsCount++;
       totalValuesCount += length;
       if (mustSkip) {
@@ -209,8 +206,7 @@ final class AlpSampler {
     return estimatedSize;
   }
 
-  static AlpCompression.AlpEncodingPreset createFloatEncodingPreset(
-      List<float[]> vectorsSampled) {
+  static AlpCompression.AlpEncodingPreset createFloatEncodingPreset(List<float[]> vectorsSampled) {
     // For each sampled vector, find the best (e,f) combo by estimated compressed size.
     // Count how many times each best combo appears across all sampled vectors.
     Map<Long, int[]> bestCombosCount = new HashMap<>(); // key = e<<8|f, value = [count]
@@ -299,8 +295,7 @@ final class AlpSampler {
     return estimatedSize;
   }
 
-  static AlpCompression.AlpEncodingPreset createDoubleEncodingPreset(
-      List<double[]> vectorsSampled) {
+  static AlpCompression.AlpEncodingPreset createDoubleEncodingPreset(List<double[]> vectorsSampled) {
     Map<Long, int[]> bestCombosCount = new HashMap<>();
 
     for (double[] sample : vectorsSampled) {

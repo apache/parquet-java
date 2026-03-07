@@ -24,7 +24,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Random;
 import org.apache.parquet.bytes.ByteBufferInputStream;
-import org.apache.parquet.bytes.BytesInput;
 import org.junit.Test;
 
 public class AlpValuesReaderTest {
@@ -49,10 +48,7 @@ public class AlpValuesReaderTest {
 
     for (int i = 0; i < values.length; i++) {
       float actual = reader.readFloat();
-      assertEquals(
-          "Mismatch at " + i,
-          Float.floatToRawIntBits(values[i]),
-          Float.floatToRawIntBits(actual));
+      assertEquals("Mismatch at " + i, Float.floatToRawIntBits(values[i]), Float.floatToRawIntBits(actual));
     }
   }
 
@@ -86,8 +82,9 @@ public class AlpValuesReaderTest {
 
   @Test
   public void testFloatReaderSpecialValues() throws IOException {
-    float[] values = {1.0f, Float.NaN, 2.0f, Float.POSITIVE_INFINITY,
-        3.0f, Float.NEGATIVE_INFINITY, 4.0f, -0.0f, 5.0f};
+    float[] values = {
+      1.0f, Float.NaN, 2.0f, Float.POSITIVE_INFINITY, 3.0f, Float.NEGATIVE_INFINITY, 4.0f, -0.0f, 5.0f
+    };
     assertFloatWriterReaderRoundTrip(values);
   }
 
@@ -112,16 +109,12 @@ public class AlpValuesReaderTest {
     // Skip first 10, read next 5
     reader.skip(10);
     for (int i = 10; i < 15; i++) {
-      assertEquals(
-          Float.floatToRawIntBits(values[i]),
-          Float.floatToRawIntBits(reader.readFloat()));
+      assertEquals(Float.floatToRawIntBits(values[i]), Float.floatToRawIntBits(reader.readFloat()));
     }
 
     // Skip 20 more, read next
     reader.skip(20);
-    assertEquals(
-        Float.floatToRawIntBits(values[35]),
-        Float.floatToRawIntBits(reader.readFloat()));
+    assertEquals(Float.floatToRawIntBits(values[35]), Float.floatToRawIntBits(reader.readFloat()));
   }
 
   @Test
@@ -142,9 +135,7 @@ public class AlpValuesReaderTest {
 
     // Skip into second vector
     reader.skip(1500);
-    assertEquals(
-        Float.floatToRawIntBits(values[1500]),
-        Float.floatToRawIntBits(reader.readFloat()));
+    assertEquals(Float.floatToRawIntBits(values[1500]), Float.floatToRawIntBits(reader.readFloat()));
   }
 
   // ========== Double writer → reader round-trip ==========
@@ -161,10 +152,7 @@ public class AlpValuesReaderTest {
 
     for (int i = 0; i < values.length; i++) {
       double actual = reader.readDouble();
-      assertEquals(
-          "Mismatch at " + i,
-          Double.doubleToRawLongBits(values[i]),
-          Double.doubleToRawLongBits(actual));
+      assertEquals("Mismatch at " + i, Double.doubleToRawLongBits(values[i]), Double.doubleToRawLongBits(actual));
     }
   }
 
@@ -189,8 +177,8 @@ public class AlpValuesReaderTest {
 
   @Test
   public void testDoubleReaderSpecialValues() throws IOException {
-    double[] values = {1.0, Double.NaN, 2.0, Double.POSITIVE_INFINITY,
-        3.0, Double.NEGATIVE_INFINITY, 4.0, -0.0, 5.0};
+    double[] values = {1.0, Double.NaN, 2.0, Double.POSITIVE_INFINITY, 3.0, Double.NEGATIVE_INFINITY, 4.0, -0.0, 5.0
+    };
     assertDoubleWriterReaderRoundTrip(values);
   }
 
@@ -212,9 +200,7 @@ public class AlpValuesReaderTest {
 
     reader.skip(10);
     for (int i = 10; i < 15; i++) {
-      assertEquals(
-          Double.doubleToRawLongBits(values[i]),
-          Double.doubleToRawLongBits(reader.readDouble()));
+      assertEquals(Double.doubleToRawLongBits(values[i]), Double.doubleToRawLongBits(reader.readDouble()));
     }
   }
 

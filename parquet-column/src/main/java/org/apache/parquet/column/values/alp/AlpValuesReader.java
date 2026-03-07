@@ -48,8 +48,7 @@ abstract class AlpValuesReader extends ValuesReader {
   public void initFromPage(int valueCount, ByteBufferInputStream stream) throws IOException {
     int available = (int) stream.available();
     if (available < HEADER_SIZE) {
-      throw new ParquetDecodingException(
-          "ALP page too small for header: " + available + " bytes");
+      throw new ParquetDecodingException("ALP page too small for header: " + available + " bytes");
     }
 
     // Read header
@@ -63,12 +62,10 @@ abstract class AlpValuesReader extends ValuesReader {
     totalCount = header.getInt();
 
     if (compressionMode != COMPRESSION_MODE_ALP) {
-      throw new ParquetDecodingException(
-          "Unsupported ALP compression mode: " + compressionMode);
+      throw new ParquetDecodingException("Unsupported ALP compression mode: " + compressionMode);
     }
     if (integerEncoding != INTEGER_ENCODING_FOR) {
-      throw new ParquetDecodingException(
-          "Unsupported ALP integer encoding: " + integerEncoding);
+      throw new ParquetDecodingException("Unsupported ALP integer encoding: " + integerEncoding);
     }
 
     vectorSize = 1 << logVectorSize;
@@ -88,8 +85,7 @@ abstract class AlpValuesReader extends ValuesReader {
     stream.read(rawData);
 
     // Parse offsets from rawData
-    ByteBuffer body = ByteBuffer.wrap(rawData, 0, numVectors * OFFSET_SIZE)
-        .order(ByteOrder.LITTLE_ENDIAN);
+    ByteBuffer body = ByteBuffer.wrap(rawData, 0, numVectors * OFFSET_SIZE).order(ByteOrder.LITTLE_ENDIAN);
     vectorOffsets = new int[numVectors];
     for (int i = 0; i < numVectors; i++) {
       vectorOffsets[i] = body.getInt();

@@ -49,10 +49,7 @@ public class AlpValuesWriterTest {
     AlpWrapper.decodeFloats(compressed, compressed.length, output, values.length);
 
     for (int i = 0; i < values.length; i++) {
-      assertEquals(
-          "Mismatch at " + i,
-          Float.floatToRawIntBits(values[i]),
-          Float.floatToRawIntBits(output[i]));
+      assertEquals("Mismatch at " + i, Float.floatToRawIntBits(values[i]), Float.floatToRawIntBits(output[i]));
     }
   }
 
@@ -76,10 +73,7 @@ public class AlpValuesWriterTest {
     AlpWrapper.decodeFloats(compressed, compressed.length, output, values.length);
 
     for (int i = 0; i < values.length; i++) {
-      assertEquals(
-          "Mismatch at " + i,
-          Float.floatToRawIntBits(values[i]),
-          Float.floatToRawIntBits(output[i]));
+      assertEquals("Mismatch at " + i, Float.floatToRawIntBits(values[i]), Float.floatToRawIntBits(output[i]));
     }
   }
 
@@ -101,16 +95,15 @@ public class AlpValuesWriterTest {
     AlpWrapper.decodeFloats(compressed, compressed.length, output, values.length);
 
     for (int i = 0; i < values.length; i++) {
-      assertEquals(
-          Float.floatToRawIntBits(values[i]),
-          Float.floatToRawIntBits(output[i]));
+      assertEquals(Float.floatToRawIntBits(values[i]), Float.floatToRawIntBits(output[i]));
     }
   }
 
   @Test
   public void testFloatWriterSpecialValues() throws IOException {
-    float[] values = {1.0f, Float.NaN, 2.0f, Float.POSITIVE_INFINITY,
-        3.0f, Float.NEGATIVE_INFINITY, 4.0f, -0.0f, 5.0f};
+    float[] values = {
+      1.0f, Float.NaN, 2.0f, Float.POSITIVE_INFINITY, 3.0f, Float.NEGATIVE_INFINITY, 4.0f, -0.0f, 5.0f
+    };
 
     AlpValuesWriter.FloatAlpValuesWriter writer = new AlpValuesWriter.FloatAlpValuesWriter();
     for (float v : values) {
@@ -123,10 +116,7 @@ public class AlpValuesWriterTest {
     AlpWrapper.decodeFloats(compressed, compressed.length, output, values.length);
 
     for (int i = 0; i < values.length; i++) {
-      assertEquals(
-          "Mismatch at " + i,
-          Float.floatToRawIntBits(values[i]),
-          Float.floatToRawIntBits(output[i]));
+      assertEquals("Mismatch at " + i, Float.floatToRawIntBits(values[i]), Float.floatToRawIntBits(output[i]));
     }
   }
 
@@ -161,9 +151,7 @@ public class AlpValuesWriterTest {
     float[] output = new float[50];
     AlpWrapper.decodeFloats(second, second.length, output, 50);
     for (int i = 0; i < 50; i++) {
-      assertEquals(
-          Float.floatToRawIntBits(i * 2.0f),
-          Float.floatToRawIntBits(output[i]));
+      assertEquals(Float.floatToRawIntBits(i * 2.0f), Float.floatToRawIntBits(output[i]));
     }
   }
 
@@ -188,9 +176,7 @@ public class AlpValuesWriterTest {
 
     for (int i = 0; i < values.length; i++) {
       assertEquals(
-          "Mismatch at " + i,
-          Double.doubleToRawLongBits(values[i]),
-          Double.doubleToRawLongBits(output[i]));
+          "Mismatch at " + i, Double.doubleToRawLongBits(values[i]), Double.doubleToRawLongBits(output[i]));
     }
   }
 
@@ -214,16 +200,14 @@ public class AlpValuesWriterTest {
 
     for (int i = 0; i < values.length; i++) {
       assertEquals(
-          "Mismatch at " + i,
-          Double.doubleToRawLongBits(values[i]),
-          Double.doubleToRawLongBits(output[i]));
+          "Mismatch at " + i, Double.doubleToRawLongBits(values[i]), Double.doubleToRawLongBits(output[i]));
     }
   }
 
   @Test
   public void testDoubleWriterSpecialValues() throws IOException {
-    double[] values = {1.0, Double.NaN, 2.0, Double.POSITIVE_INFINITY,
-        3.0, Double.NEGATIVE_INFINITY, 4.0, -0.0, 5.0};
+    double[] values = {1.0, Double.NaN, 2.0, Double.POSITIVE_INFINITY, 3.0, Double.NEGATIVE_INFINITY, 4.0, -0.0, 5.0
+    };
 
     AlpValuesWriter.DoubleAlpValuesWriter writer = new AlpValuesWriter.DoubleAlpValuesWriter();
     for (double v : values) {
@@ -237,9 +221,7 @@ public class AlpValuesWriterTest {
 
     for (int i = 0; i < values.length; i++) {
       assertEquals(
-          "Mismatch at " + i,
-          Double.doubleToRawLongBits(values[i]),
-          Double.doubleToRawLongBits(output[i]));
+          "Mismatch at " + i, Double.doubleToRawLongBits(values[i]), Double.doubleToRawLongBits(output[i]));
     }
   }
 

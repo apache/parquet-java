@@ -30,8 +30,7 @@ public class AlpWrapperTest {
   // ========== Float round-trip ==========
 
   private static void assertFloatPageRoundTrip(float[] input) {
-    AlpCompression.AlpEncodingPreset preset =
-        AlpWrapper.createFloatSamplingPreset(input, input.length);
+    AlpCompression.AlpEncodingPreset preset = AlpWrapper.createFloatSamplingPreset(input, input.length);
     byte[] compressed = new byte[(int) AlpWrapper.maxCompressedSizeFloat(input.length)];
     int compSize = AlpWrapper.encodeFloats(input, input.length, compressed, preset);
     assertTrue(compSize > 0);
@@ -42,9 +41,7 @@ public class AlpWrapperTest {
 
     for (int i = 0; i < input.length; i++) {
       assertEquals(
-          "Mismatch at index " + i,
-          Float.floatToRawIntBits(input[i]),
-          Float.floatToRawIntBits(output[i]));
+          "Mismatch at index " + i, Float.floatToRawIntBits(input[i]), Float.floatToRawIntBits(output[i]));
     }
   }
 
@@ -102,8 +99,7 @@ public class AlpWrapperTest {
   public void testFloatEmptyInput() {
     byte[] compressed = new byte[AlpConstants.HEADER_SIZE];
     int compSize = AlpWrapper.encodeFloats(
-        new float[0], 0, compressed,
-        new AlpCompression.AlpEncodingPreset(new int[][] {{0, 0}}));
+        new float[0], 0, compressed, new AlpCompression.AlpEncodingPreset(new int[][] {{0, 0}}));
     assertEquals(AlpConstants.HEADER_SIZE, compSize);
   }
 
@@ -120,8 +116,7 @@ public class AlpWrapperTest {
   // ========== Double round-trip ==========
 
   private static void assertDoublePageRoundTrip(double[] input) {
-    AlpCompression.AlpEncodingPreset preset =
-        AlpWrapper.createDoubleSamplingPreset(input, input.length);
+    AlpCompression.AlpEncodingPreset preset = AlpWrapper.createDoubleSamplingPreset(input, input.length);
     byte[] compressed = new byte[(int) AlpWrapper.maxCompressedSizeDouble(input.length)];
     int compSize = AlpWrapper.encodeDoubles(input, input.length, compressed, preset);
     assertTrue(compSize > 0);
@@ -183,8 +178,7 @@ public class AlpWrapperTest {
   @Test
   public void testHeaderFormat() {
     float[] input = {1.0f, 2.0f, 3.0f};
-    AlpCompression.AlpEncodingPreset preset =
-        AlpWrapper.createFloatSamplingPreset(input, input.length);
+    AlpCompression.AlpEncodingPreset preset = AlpWrapper.createFloatSamplingPreset(input, input.length);
     byte[] compressed = new byte[(int) AlpWrapper.maxCompressedSizeFloat(input.length)];
     int compSize = AlpWrapper.encodeFloats(input, input.length, compressed, preset);
 
@@ -204,14 +198,14 @@ public class AlpWrapperTest {
     for (int i = 0; i < 2048; i++) {
       input[i] = i * 0.5f;
     }
-    AlpCompression.AlpEncodingPreset preset =
-        AlpWrapper.createFloatSamplingPreset(input, input.length);
+    AlpCompression.AlpEncodingPreset preset = AlpWrapper.createFloatSamplingPreset(input, input.length);
     byte[] compressed = new byte[(int) AlpWrapper.maxCompressedSizeFloat(input.length)];
     AlpWrapper.encodeFloats(input, input.length, compressed, preset);
 
     // After header (7B), offsets section should have 2 int offsets (8 bytes)
-    ByteBuffer body = ByteBuffer.wrap(compressed, AlpConstants.HEADER_SIZE,
-        compressed.length - AlpConstants.HEADER_SIZE).order(ByteOrder.LITTLE_ENDIAN);
+    ByteBuffer body = ByteBuffer.wrap(
+            compressed, AlpConstants.HEADER_SIZE, compressed.length - AlpConstants.HEADER_SIZE)
+        .order(ByteOrder.LITTLE_ENDIAN);
     int offset0 = body.getInt();
     int offset1 = body.getInt();
 

@@ -79,16 +79,12 @@ public class AlpSamplerTest {
     float[] vector = new float[vectorSize];
     System.arraycopy(data, 0, vector, 0, vectorSize);
 
-    AlpCompression.FloatCompressedVector cv =
-        AlpCompression.compressFloatVector(vector, vectorSize, preset);
+    AlpCompression.FloatCompressedVector cv = AlpCompression.compressFloatVector(vector, vectorSize, preset);
     float[] output = new float[vectorSize];
     AlpCompression.decompressFloatVector(cv, output);
 
     for (int i = 0; i < vectorSize; i++) {
-      assertEquals(
-          "Mismatch at " + i,
-          Float.floatToRawIntBits(vector[i]),
-          Float.floatToRawIntBits(output[i]));
+      assertEquals("Mismatch at " + i, Float.floatToRawIntBits(vector[i]), Float.floatToRawIntBits(output[i]));
     }
   }
 
@@ -169,16 +165,13 @@ public class AlpSamplerTest {
     double[] vector = new double[vectorSize];
     System.arraycopy(data, 0, vector, 0, vectorSize);
 
-    AlpCompression.DoubleCompressedVector cv =
-        AlpCompression.compressDoubleVector(vector, vectorSize, preset);
+    AlpCompression.DoubleCompressedVector cv = AlpCompression.compressDoubleVector(vector, vectorSize, preset);
     double[] output = new double[vectorSize];
     AlpCompression.decompressDoubleVector(cv, output);
 
     for (int i = 0; i < vectorSize; i++) {
       assertEquals(
-          "Mismatch at " + i,
-          Double.doubleToRawLongBits(vector[i]),
-          Double.doubleToRawLongBits(output[i]));
+          "Mismatch at " + i, Double.doubleToRawLongBits(vector[i]), Double.doubleToRawLongBits(output[i]));
     }
   }
 

@@ -89,8 +89,7 @@ final class AlpCompression {
     }
 
     void storeDataOnly(byte[] output, int offset) {
-      ByteBuffer buf =
-          ByteBuffer.wrap(output, offset, dataStoredSize()).order(ByteOrder.LITTLE_ENDIAN);
+      ByteBuffer buf = ByteBuffer.wrap(output, offset, dataStoredSize()).order(ByteOrder.LITTLE_ENDIAN);
       storeDataTo(buf);
     }
 
@@ -169,8 +168,7 @@ final class AlpCompression {
     }
 
     void storeDataOnly(byte[] output, int offset) {
-      ByteBuffer buf =
-          ByteBuffer.wrap(output, offset, dataStoredSize()).order(ByteOrder.LITTLE_ENDIAN);
+      ByteBuffer buf = ByteBuffer.wrap(output, offset, dataStoredSize()).order(ByteOrder.LITTLE_ENDIAN);
       storeDataTo(buf);
     }
 
@@ -212,8 +210,7 @@ final class AlpCompression {
 
   // ========== Compress float ==========
 
-  static FloatCompressedVector compressFloatVector(
-      float[] input, int count, AlpEncodingPreset preset) {
+  static FloatCompressedVector compressFloatVector(float[] input, int count, AlpEncodingPreset preset) {
     if (count == 0) {
       FloatCompressedVector r = new FloatCompressedVector();
       r.packedValues = new byte[0];
@@ -321,8 +318,7 @@ final class AlpCompression {
 
   // ========== Compress double ==========
 
-  static DoubleCompressedVector compressDoubleVector(
-      double[] input, int count, AlpEncodingPreset preset) {
+  static DoubleCompressedVector compressDoubleVector(double[] input, int count, AlpEncodingPreset preset) {
     if (count == 0) {
       DoubleCompressedVector r = new DoubleCompressedVector();
       r.packedValues = new byte[0];

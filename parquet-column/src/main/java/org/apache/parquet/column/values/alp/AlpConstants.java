@@ -88,8 +88,8 @@ public final class AlpConstants {
 
   // Negative powers of 10 as double, matching C++ PowerOfTenDouble(-power).
   static final double[] DOUBLE_POW10_NEGATIVE = {
-    1e0, 1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7, 1e-8, 1e-9, 1e-10,
-    1e-11, 1e-12, 1e-13, 1e-14, 1e-15, 1e-16, 1e-17, 1e-18
+    1e0, 1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7, 1e-8, 1e-9, 1e-10, 1e-11, 1e-12, 1e-13, 1e-14, 1e-15, 1e-16,
+    1e-17, 1e-18
   };
 
   // ========== Per-vector metadata sizes ==========
