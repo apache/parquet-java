@@ -20,9 +20,14 @@ package org.apache.parquet.column.values.alp;
 
 import static org.apache.parquet.column.values.alp.AlpConstants.*;
 
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.BytesInput;
+import org.apache.parquet.bytes.CapacityByteArrayOutputStream;
+import org.apache.parquet.bytes.HeapByteBufferAllocator;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.values.ValuesWriter;
 
@@ -33,6 +38,10 @@ import org.apache.parquet.column.values.ValuesWriter;
  * it is compressed via {@link AlpCompression} and stored. On {@link #getBytes()},
  * assembles the ALP page: [Header(7B)][Offsets...][Vector0][Vector1]...
  *
+ * <p>Uses {@link CapacityByteArrayOutputStream} for encoded vector storage
+ * and {@link BytesInput#concat} for zero-copy page assembly, integrating
+ * with the Parquet pipeline's memory management.
+ *
  * <p>Sampling: the first vector's data is used to create an encoding preset via
  * {@link AlpSampler}. The preset is cached for subsequent vectors.
  */
@@ -41,8 +50,6 @@ public abstract class AlpValuesWriter extends ValuesWriter {
   protected final int vectorSize;
   protected int bufferedCount; // values in current partial vector
   protected int totalCount; // total values written
-  protected final List<byte[]> encodedVectors = new ArrayList<>();
-  protected final List<Integer> encodedVectorSizes = new ArrayList<>();
   protected AlpCompression.AlpEncodingPreset preset;
   protected boolean presetReady;
 
@@ -59,39 +66,38 @@ public abstract class AlpValuesWriter extends ValuesWriter {
     return Encoding.ALP;
   }
 
-  @Override
-  public void reset() {
-    bufferedCount = 0;
-    totalCount = 0;
-    encodedVectors.clear();
-    encodedVectorSizes.clear();
-    preset = null;
-    presetReady = false;
-    resetVectorBuffer();
-  }
-
-  protected abstract void resetVectorBuffer();
-
-  @Override
-  public void close() {
-    reset();
-  }
-
   // ========== FloatAlpValuesWriter ==========
 
   public static class FloatAlpValuesWriter extends AlpValuesWriter {
     private float[] vectorBuffer;
     private float[] samplerBuffer;
     private int samplerCount;
+    private CapacityByteArrayOutputStream encodedVectors;
+    private final List<Integer> vectorByteSizes = new ArrayList<>();
+
+    public FloatAlpValuesWriter(int initialCapacity, int pageSize, ByteBufferAllocator allocator) {
+      this(initialCapacity, pageSize, allocator, DEFAULT_VECTOR_SIZE);
+    }
+
+    public FloatAlpValuesWriter(
+        int initialCapacity, int pageSize, ByteBufferAllocator allocator, int vectorSize) {
+      super(vectorSize);
+      this.vectorBuffer = new float[this.vectorSize];
+      this.samplerBuffer = new float[SAMPLER_ROWGROUP_SIZE];
+      this.encodedVectors = new CapacityByteArrayOutputStream(initialCapacity, pageSize, allocator);
+    }
+
+    /** No-arg constructor for tests and benchmarks. */
+    public FloatAlpValuesWriter() {
+      this(DEFAULT_VECTOR_SIZE);
+    }
 
     public FloatAlpValuesWriter(int vectorSize) {
       super(vectorSize);
       this.vectorBuffer = new float[this.vectorSize];
       this.samplerBuffer = new float[SAMPLER_ROWGROUP_SIZE];
-    }
-
-    public FloatAlpValuesWriter() {
-      this(DEFAULT_VECTOR_SIZE);
+      this.encodedVectors =
+          new CapacityByteArrayOutputStream(64, 1024 * 1024, HeapByteBufferAllocator.getInstance());
     }
 
     @Override
@@ -126,8 +132,8 @@ public abstract class AlpValuesWriter extends ValuesWriter {
       int size = cv.storedSize();
       byte[] encoded = new byte[size];
       cv.store(encoded, 0);
-      encodedVectors.add(encoded);
-      encodedVectorSizes.add(size);
+      encodedVectors.write(encoded, 0, size);
+      vectorByteSizes.add(size);
       bufferedCount = 0;
     }
 
@@ -145,56 +151,39 @@ public abstract class AlpValuesWriter extends ValuesWriter {
         return BytesInput.from(header);
       }
 
-      // Calculate layout
-      int numVectors = encodedVectors.size();
+      // Build header
+      byte[] header = new byte[HEADER_SIZE];
+      writeAlpHeader(header, vectorSize, totalCount);
+
+      // Build offset array
+      int numVectors = vectorByteSizes.size();
       int offsetsSectionSize = numVectors * OFFSET_SIZE;
-      int[] offsets = new int[numVectors];
+      ByteBuffer offsets = ByteBuffer.allocate(offsetsSectionSize).order(ByteOrder.LITTLE_ENDIAN);
       int currentOffset = offsetsSectionSize;
       for (int i = 0; i < numVectors; i++) {
-        offsets[i] = currentOffset;
-        currentOffset += encodedVectorSizes.get(i);
+        offsets.putInt(currentOffset);
+        currentOffset += vectorByteSizes.get(i);
       }
 
-      // Assemble page
-      int bodySize = currentOffset;
-      byte[] page = new byte[HEADER_SIZE + bodySize];
-      writeAlpHeader(page, vectorSize, totalCount);
-
-      // Write offsets
-      int pos = HEADER_SIZE;
-      for (int offset : offsets) {
-        writeLittleEndianInt(page, pos, offset);
-        pos += OFFSET_SIZE;
-      }
-
-      // Write vectors
-      for (byte[] vec : encodedVectors) {
-        System.arraycopy(vec, 0, page, pos, vec.length);
-        pos += vec.length;
-      }
-
-      return BytesInput.from(page);
+      return BytesInput.concat(
+          BytesInput.from(header), BytesInput.from(offsets.array()), BytesInput.from(encodedVectors));
     }
 
     @Override
     public long getBufferedSize() {
-      long size = HEADER_SIZE;
-      for (int s : encodedVectorSizes) {
-        size += OFFSET_SIZE + s;
-      }
+      long size = HEADER_SIZE + encodedVectors.size();
+      size += (long) vectorByteSizes.size() * OFFSET_SIZE;
       size += (long) bufferedCount * Float.BYTES;
       return size;
     }
 
     @Override
     public long getAllocatedSize() {
-      long size = (vectorBuffer != null ? (long) vectorBuffer.length * Float.BYTES : 0);
+      long size = (long) vectorBuffer.length * Float.BYTES;
       if (samplerBuffer != null) {
         size += (long) samplerBuffer.length * Float.BYTES;
       }
-      for (byte[] vec : encodedVectors) {
-        size += vec.length;
-      }
+      size += encodedVectors.getCapacity();
       return size;
     }
 
@@ -202,14 +191,25 @@ public abstract class AlpValuesWriter extends ValuesWriter {
     public String memUsageString(String prefix) {
       return String.format(
           "%s ALPFloatWriter: %d values, %d vectors, %d bytes allocated",
-          prefix, totalCount, encodedVectors.size(), getAllocatedSize());
+          prefix, totalCount, vectorByteSizes.size(), getAllocatedSize());
     }
 
     @Override
-    protected void resetVectorBuffer() {
+    public void reset() {
+      bufferedCount = 0;
+      totalCount = 0;
+      encodedVectors.reset();
+      vectorByteSizes.clear();
+      preset = null;
+      presetReady = false;
       vectorBuffer = new float[vectorSize];
       samplerBuffer = new float[SAMPLER_ROWGROUP_SIZE];
       samplerCount = 0;
+    }
+
+    @Override
+    public void close() {
+      encodedVectors.close();
     }
   }
 
@@ -219,15 +219,32 @@ public abstract class AlpValuesWriter extends ValuesWriter {
     private double[] vectorBuffer;
     private double[] samplerBuffer;
     private int samplerCount;
+    private CapacityByteArrayOutputStream encodedVectors;
+    private final List<Integer> vectorByteSizes = new ArrayList<>();
+
+    public DoubleAlpValuesWriter(int initialCapacity, int pageSize, ByteBufferAllocator allocator) {
+      this(initialCapacity, pageSize, allocator, DEFAULT_VECTOR_SIZE);
+    }
+
+    public DoubleAlpValuesWriter(
+        int initialCapacity, int pageSize, ByteBufferAllocator allocator, int vectorSize) {
+      super(vectorSize);
+      this.vectorBuffer = new double[this.vectorSize];
+      this.samplerBuffer = new double[SAMPLER_ROWGROUP_SIZE];
+      this.encodedVectors = new CapacityByteArrayOutputStream(initialCapacity, pageSize, allocator);
+    }
+
+    /** No-arg constructor for tests and benchmarks. */
+    public DoubleAlpValuesWriter() {
+      this(DEFAULT_VECTOR_SIZE);
+    }
 
     public DoubleAlpValuesWriter(int vectorSize) {
       super(vectorSize);
       this.vectorBuffer = new double[this.vectorSize];
       this.samplerBuffer = new double[SAMPLER_ROWGROUP_SIZE];
-    }
-
-    public DoubleAlpValuesWriter() {
-      this(DEFAULT_VECTOR_SIZE);
+      this.encodedVectors =
+          new CapacityByteArrayOutputStream(64, 1024 * 1024, HeapByteBufferAllocator.getInstance());
     }
 
     @Override
@@ -261,8 +278,8 @@ public abstract class AlpValuesWriter extends ValuesWriter {
       int size = cv.storedSize();
       byte[] encoded = new byte[size];
       cv.store(encoded, 0);
-      encodedVectors.add(encoded);
-      encodedVectorSizes.add(size);
+      encodedVectors.write(encoded, 0, size);
+      vectorByteSizes.add(size);
       bufferedCount = 0;
     }
 
@@ -279,52 +296,37 @@ public abstract class AlpValuesWriter extends ValuesWriter {
         return BytesInput.from(header);
       }
 
-      int numVectors = encodedVectors.size();
+      byte[] header = new byte[HEADER_SIZE];
+      writeAlpHeader(header, vectorSize, totalCount);
+
+      int numVectors = vectorByteSizes.size();
       int offsetsSectionSize = numVectors * OFFSET_SIZE;
-      int[] offsets = new int[numVectors];
+      ByteBuffer offsets = ByteBuffer.allocate(offsetsSectionSize).order(ByteOrder.LITTLE_ENDIAN);
       int currentOffset = offsetsSectionSize;
       for (int i = 0; i < numVectors; i++) {
-        offsets[i] = currentOffset;
-        currentOffset += encodedVectorSizes.get(i);
+        offsets.putInt(currentOffset);
+        currentOffset += vectorByteSizes.get(i);
       }
 
-      int bodySize = currentOffset;
-      byte[] page = new byte[HEADER_SIZE + bodySize];
-      writeAlpHeader(page, vectorSize, totalCount);
-
-      int pos = HEADER_SIZE;
-      for (int offset : offsets) {
-        writeLittleEndianInt(page, pos, offset);
-        pos += OFFSET_SIZE;
-      }
-
-      for (byte[] vec : encodedVectors) {
-        System.arraycopy(vec, 0, page, pos, vec.length);
-        pos += vec.length;
-      }
-
-      return BytesInput.from(page);
+      return BytesInput.concat(
+          BytesInput.from(header), BytesInput.from(offsets.array()), BytesInput.from(encodedVectors));
     }
 
     @Override
     public long getBufferedSize() {
-      long size = HEADER_SIZE;
-      for (int s : encodedVectorSizes) {
-        size += OFFSET_SIZE + s;
-      }
+      long size = HEADER_SIZE + encodedVectors.size();
+      size += (long) vectorByteSizes.size() * OFFSET_SIZE;
       size += (long) bufferedCount * Double.BYTES;
       return size;
     }
 
     @Override
     public long getAllocatedSize() {
-      long size = (vectorBuffer != null ? (long) vectorBuffer.length * Double.BYTES : 0);
+      long size = (long) vectorBuffer.length * Double.BYTES;
       if (samplerBuffer != null) {
         size += (long) samplerBuffer.length * Double.BYTES;
       }
-      for (byte[] vec : encodedVectors) {
-        size += vec.length;
-      }
+      size += encodedVectors.getCapacity();
       return size;
     }
 
@@ -332,14 +334,25 @@ public abstract class AlpValuesWriter extends ValuesWriter {
     public String memUsageString(String prefix) {
       return String.format(
           "%s ALPDoubleWriter: %d values, %d vectors, %d bytes allocated",
-          prefix, totalCount, encodedVectors.size(), getAllocatedSize());
+          prefix, totalCount, vectorByteSizes.size(), getAllocatedSize());
     }
 
     @Override
-    protected void resetVectorBuffer() {
+    public void reset() {
+      bufferedCount = 0;
+      totalCount = 0;
+      encodedVectors.reset();
+      vectorByteSizes.clear();
+      preset = null;
+      presetReady = false;
       vectorBuffer = new double[vectorSize];
       samplerBuffer = new double[SAMPLER_ROWGROUP_SIZE];
       samplerCount = 0;
+    }
+
+    @Override
+    public void close() {
+      encodedVectors.close();
     }
   }
 

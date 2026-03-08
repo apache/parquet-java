@@ -22,10 +22,17 @@ import org.apache.parquet.io.ParquetDecodingException;
 
 /**
  * ALP values reader for double columns with lazy per-vector decoding.
+ *
+ * <p>Reuses the decoded buffer across vectors to reduce allocations.
  */
 public class AlpValuesReaderForDouble extends AlpValuesReader {
 
   private double[] decodedBuffer;
+
+  @Override
+  protected void allocateDecodedBuffer(int capacity) {
+    this.decodedBuffer = new double[capacity];
+  }
 
   @Override
   public double readDouble() {
@@ -47,7 +54,6 @@ public class AlpValuesReaderForDouble extends AlpValuesReader {
     int dataOffset = vectorOffsets[vectorIdx];
     AlpCompression.DoubleCompressedVector cv =
         AlpCompression.DoubleCompressedVector.load(rawData, dataOffset, numElements);
-    decodedBuffer = new double[numElements];
     AlpCompression.decompressDoubleVector(cv, decodedBuffer);
     decodedVectorIndex = vectorIdx;
   }

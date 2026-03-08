@@ -161,7 +161,10 @@ public class DefaultV2ValuesWriterFactory implements ValuesWriterFactory {
   private ValuesWriter getDoubleValuesWriter(ColumnDescriptor path) {
     final ValuesWriter fallbackWriter;
     if (this.parquetProperties.isAlpEnabled(path)) {
-      fallbackWriter = new AlpValuesWriter.DoubleAlpValuesWriter();
+      fallbackWriter = new AlpValuesWriter.DoubleAlpValuesWriter(
+              parquetProperties.getInitialSlabSize(),
+              parquetProperties.getPageSizeThreshold(),
+              parquetProperties.getAllocator());
     } else if (this.parquetProperties.isByteStreamSplitEnabled(path)) {
       fallbackWriter = new ByteStreamSplitValuesWriter.DoubleByteStreamSplitValuesWriter(
           parquetProperties.getInitialSlabSize(),
@@ -180,7 +183,10 @@ public class DefaultV2ValuesWriterFactory implements ValuesWriterFactory {
   private ValuesWriter getFloatValuesWriter(ColumnDescriptor path) {
     final ValuesWriter fallbackWriter;
     if (this.parquetProperties.isAlpEnabled(path)) {
-      fallbackWriter = new AlpValuesWriter.FloatAlpValuesWriter();
+      fallbackWriter = new AlpValuesWriter.FloatAlpValuesWriter(
+              parquetProperties.getInitialSlabSize(),
+              parquetProperties.getPageSizeThreshold(),
+              parquetProperties.getAllocator());
     } else if (this.parquetProperties.isByteStreamSplitEnabled(path)) {
       fallbackWriter = new ByteStreamSplitValuesWriter.FloatByteStreamSplitValuesWriter(
           parquetProperties.getInitialSlabSize(),

@@ -33,6 +33,10 @@ import org.apache.parquet.io.ParquetDecodingException;
  * <p>On {@link #initFromPage}, reads the 7-byte header and offset array but does NOT
  * decode any vectors. Vectors are decoded on demand when values are accessed.
  * {@link #skip()} is O(1) — it just advances the index.
+ *
+ * <p>Reuses the decoded buffer across vectors to reduce allocations.
+ * Validates header fields (compression mode, integer encoding, log vector size bounds,
+ * element count) and skip bounds.
  */
 abstract class AlpValuesReader extends ValuesReader {
 
@@ -42,7 +46,7 @@ abstract class AlpValuesReader extends ValuesReader {
   protected int currentIndex;
   protected int decodedVectorIndex = -1;
   protected int[] vectorOffsets;
-  protected byte[] rawData; // all data after header
+  protected byte[] rawData; // all data after header (offsets + vectors)
 
   @Override
   public void initFromPage(int valueCount, ByteBufferInputStream stream) throws IOException {
@@ -67,6 +71,13 @@ abstract class AlpValuesReader extends ValuesReader {
     if (integerEncoding != INTEGER_ENCODING_FOR) {
       throw new ParquetDecodingException("Unsupported ALP integer encoding: " + integerEncoding);
     }
+    if (logVectorSize < MIN_LOG_VECTOR_SIZE || logVectorSize > MAX_LOG_VECTOR_SIZE) {
+      throw new ParquetDecodingException("Invalid ALP log vector size: " + logVectorSize
+          + ", must be between " + MIN_LOG_VECTOR_SIZE + " and " + MAX_LOG_VECTOR_SIZE);
+    }
+    if (totalCount < 0) {
+      throw new ParquetDecodingException("Invalid ALP element count: " + totalCount);
+    }
 
     vectorSize = 1 << logVectorSize;
     numVectors = (totalCount + vectorSize - 1) / vectorSize;
@@ -76,6 +87,7 @@ abstract class AlpValuesReader extends ValuesReader {
     if (numVectors == 0) {
       vectorOffsets = new int[0];
       rawData = new byte[0];
+      allocateDecodedBuffer(vectorSize);
       return;
     }
 
@@ -90,6 +102,8 @@ abstract class AlpValuesReader extends ValuesReader {
     for (int i = 0; i < numVectors; i++) {
       vectorOffsets[i] = body.getInt();
     }
+
+    allocateDecodedBuffer(vectorSize);
   }
 
   @Override
@@ -99,6 +113,10 @@ abstract class AlpValuesReader extends ValuesReader {
 
   @Override
   public void skip(int n) {
+    if (n < 0 || currentIndex + n > totalCount) {
+      throw new ParquetDecodingException(String.format(
+          "Cannot skip %d elements. Current index: %d, total count: %d", n, currentIndex, totalCount));
+    }
     currentIndex += n;
   }
 
@@ -110,4 +128,7 @@ abstract class AlpValuesReader extends ValuesReader {
     int rem = totalCount % vectorSize;
     return (rem == 0) ? vectorSize : rem;
   }
+
+  /** Allocate the decoded buffer once; called from initFromPage. */
+  protected abstract void allocateDecodedBuffer(int capacity);
 }

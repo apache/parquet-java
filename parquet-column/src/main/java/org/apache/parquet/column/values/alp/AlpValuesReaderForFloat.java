@@ -22,10 +22,17 @@ import org.apache.parquet.io.ParquetDecodingException;
 
 /**
  * ALP values reader for float columns with lazy per-vector decoding.
+ *
+ * <p>Reuses the decoded buffer across vectors to reduce allocations.
  */
 public class AlpValuesReaderForFloat extends AlpValuesReader {
 
   private float[] decodedBuffer;
+
+  @Override
+  protected void allocateDecodedBuffer(int capacity) {
+    this.decodedBuffer = new float[capacity];
+  }
 
   @Override
   public float readFloat() {
@@ -47,7 +54,6 @@ public class AlpValuesReaderForFloat extends AlpValuesReader {
     int dataOffset = vectorOffsets[vectorIdx];
     AlpCompression.FloatCompressedVector cv =
         AlpCompression.FloatCompressedVector.load(rawData, dataOffset, numElements);
-    decodedBuffer = new float[numElements];
     AlpCompression.decompressFloatVector(cv, decodedBuffer);
     decodedVectorIndex = vectorIdx;
   }
