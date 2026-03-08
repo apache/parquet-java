@@ -477,21 +477,34 @@ final class AlpCompression {
     }
   }
 
-  @SuppressWarnings("deprecation")
   static void unpackLongs(byte[] packed, int count, int bitWidth, long[] output) {
     BytePackerForLong packer = Packer.LITTLE_ENDIAN.newBytePackerForLong(bitWidth);
-    int fullGroups = count / 8;
-    for (int g = 0; g < fullGroups; g++) {
-      packer.unpack8Values(packed, g * bitWidth, output, g * 8);
+
+    // Process 32 values at a time (4x fewer calls than unpack8Values)
+    int fullGroups32 = count / 32;
+    for (int g = 0; g < fullGroups32; g++) {
+      packer.unpack32Values(packed, g * bitWidth * 4, output, g * 32);
     }
-    int remaining = count % 8;
-    if (remaining > 0) {
+
+    // Process remaining 8 at a time
+    int processed = fullGroups32 * 32;
+    int byteOffset = fullGroups32 * bitWidth * 4;
+    int remaining8 = (count - processed) / 8;
+    for (int g = 0; g < remaining8; g++) {
+      packer.unpack8Values(packed, byteOffset + g * bitWidth, output, processed + g * 8);
+    }
+
+    // Handle tail (< 8 values)
+    int tailStart = processed + remaining8 * 8;
+    int tailCount = count - tailStart;
+    if (tailCount > 0) {
+      int tailByteOffset = byteOffset + remaining8 * bitWidth;
       byte[] tmp = new byte[bitWidth];
-      int available = packed.length - fullGroups * bitWidth;
-      System.arraycopy(packed, fullGroups * bitWidth, tmp, 0, Math.min(available, bitWidth));
+      int available = packed.length - tailByteOffset;
+      System.arraycopy(packed, tailByteOffset, tmp, 0, Math.min(available, bitWidth));
       long[] padded = new long[8];
       packer.unpack8Values(tmp, 0, padded, 0);
-      System.arraycopy(padded, 0, output, fullGroups * 8, remaining);
+      System.arraycopy(padded, 0, output, tailStart, tailCount);
     }
   }
 }
