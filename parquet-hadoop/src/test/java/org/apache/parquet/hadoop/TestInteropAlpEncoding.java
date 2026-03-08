@@ -199,6 +199,142 @@ public class TestInteropAlpEncoding {
     }
   }
 
+  /**
+   * Read the ALP-encoded float32 arade parquet file (C++ generated)
+   * and verify all values match the expected CSV.
+   */
+  @Test
+  public void testReadAlpFloatAradeParquet() throws IOException {
+    Path parquetPath = resourcePath("alp_float_arade.parquet");
+    String[] columnNames = {"value1", "value2", "value3", "value4"};
+    int expectedRows = 15000;
+
+    float[][] expected = readExpectedCsvFloat("/alp_float_arade_expect.csv", columnNames.length, expectedRows);
+
+    List<Group> rows = readParquetGroups(parquetPath);
+    assertEquals("Row count should match", expectedRows, rows.size());
+
+    verifyAlpEncoding(parquetPath);
+
+    for (int r = 0; r < expectedRows; r++) {
+      Group group = rows.get(r);
+      for (int c = 0; c < columnNames.length; c++) {
+        float actual = group.getFloat(columnNames[c], 0);
+        assertEquals(
+            String.format("Mismatch at row %d, column %s", r, columnNames[c]),
+            Float.floatToIntBits(expected[c][r]),
+            Float.floatToIntBits(actual));
+      }
+    }
+  }
+
+  /**
+   * Read the ALP-encoded float32 spotify1 parquet file (C++ generated)
+   * and verify all values match the expected CSV.
+   */
+  @Test
+  public void testReadAlpFloatSpotify1Parquet() throws IOException {
+    Path parquetPath = resourcePath("alp_float_spotify1.parquet");
+    String[] columnNames = {
+      "danceability",
+      "energy",
+      "loudness",
+      "speechiness",
+      "acousticness",
+      "instrumentalness",
+      "liveness",
+      "valence",
+      "tempo"
+    };
+    int expectedRows = 15000;
+
+    float[][] expected = readExpectedCsvFloat("/alp_float_spotify1_expect.csv", columnNames.length, expectedRows);
+
+    List<Group> rows = readParquetGroups(parquetPath);
+    assertEquals("Row count should match", expectedRows, rows.size());
+
+    verifyAlpEncoding(parquetPath);
+
+    for (int r = 0; r < expectedRows; r++) {
+      Group group = rows.get(r);
+      for (int c = 0; c < columnNames.length; c++) {
+        float actual = group.getFloat(columnNames[c], 0);
+        assertEquals(
+            String.format("Mismatch at row %d, column %s", r, columnNames[c]),
+            Float.floatToIntBits(expected[c][r]),
+            Float.floatToIntBits(actual));
+      }
+    }
+  }
+
+  /**
+   * Read the Java-generated ALP-encoded float32 arade parquet file
+   * and verify all values match the expected CSV.
+   */
+  @Test
+  public void testReadAlpJavaFloatAradeParquet() throws IOException {
+    Path parquetPath = resourcePath("alp_java_float_arade.parquet");
+    String[] columnNames = {"value1", "value2", "value3", "value4"};
+    int expectedRows = 15000;
+
+    float[][] expected = readExpectedCsvFloat("/alp_float_arade_expect.csv", columnNames.length, expectedRows);
+
+    List<Group> rows = readParquetGroups(parquetPath);
+    assertEquals("Row count should match", expectedRows, rows.size());
+
+    verifyAlpEncoding(parquetPath);
+
+    for (int r = 0; r < expectedRows; r++) {
+      Group group = rows.get(r);
+      for (int c = 0; c < columnNames.length; c++) {
+        float actual = group.getFloat(columnNames[c], 0);
+        assertEquals(
+            String.format("Mismatch at row %d, column %s", r, columnNames[c]),
+            Float.floatToIntBits(expected[c][r]),
+            Float.floatToIntBits(actual));
+      }
+    }
+  }
+
+  /**
+   * Read the Java-generated ALP-encoded float32 spotify1 parquet file
+   * and verify all values match the expected CSV.
+   */
+  @Test
+  public void testReadAlpJavaFloatSpotify1Parquet() throws IOException {
+    Path parquetPath = resourcePath("alp_java_float_spotify1.parquet");
+    String[] columnNames = {
+      "danceability",
+      "energy",
+      "loudness",
+      "speechiness",
+      "acousticness",
+      "instrumentalness",
+      "liveness",
+      "valence",
+      "tempo"
+    };
+    int expectedRows = 15000;
+
+    float[][] expected = readExpectedCsvFloat("/alp_float_spotify1_expect.csv", columnNames.length, expectedRows);
+
+    List<Group> rows = readParquetGroups(parquetPath);
+    assertEquals("Row count should match", expectedRows, rows.size());
+
+    verifyAlpEncoding(parquetPath);
+
+    for (int r = 0; r < expectedRows; r++) {
+      Group group = rows.get(r);
+      for (int c = 0; c < columnNames.length; c++) {
+        float actual = group.getFloat(columnNames[c], 0);
+        assertEquals(
+            String.format("Mismatch at row %d, column %s", r, columnNames[c]),
+            Float.floatToIntBits(expected[c][r]),
+            Float.floatToIntBits(actual));
+      }
+    }
+  }
+
   private List<Group> readParquetGroups(Path path) throws IOException {
     List<Group> rows = new ArrayList<>();
     try (ParquetReader<Group> reader =
@@ -247,6 +383,35 @@ public class TestInteropAlpEncoding {
         assertEquals("CSV row " + row + " should have " + numColumns + " columns", numColumns, parts.length);
         for (int c = 0; c < numColumns; c++) {
           columns[c][row] = Double.parseDouble(parts[c]);
+        }
+        row++;
+      }
+      assertEquals("CSV should have " + expectedRows + " data rows", expectedRows, row);
+    }
+    return columns;
+  }
+
+  /**
+   * Parse expected CSV into float column arrays.
+   * CSV format: header row, then data rows with comma-separated float values.
+   */
+  private float[][] readExpectedCsvFloat(String resourcePath, int numColumns, int expectedRows) throws IOException {
+    float[][] columns = new float[numColumns][expectedRows];
+    try (InputStream is = getClass().getResourceAsStream(resourcePath);
+        BufferedReader br = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
+      assertNotNull("CSV resource not found: " + resourcePath, is);
+
+      // Skip header
+      String header = br.readLine();
+      assertNotNull("CSV should have a header", header);
+
+      int row = 0;
+      String line;
+      while ((line = br.readLine()) != null) {
+        String[] parts = line.split(",");
+        assertEquals("CSV row " + row + " should have " + numColumns + " columns", numColumns, parts.length);
+        for (int c = 0; c < numColumns; c++) {
+          columns[c][row] = Float.parseFloat(parts[c]);
         }
         row++;
       }

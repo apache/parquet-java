@@ -55,6 +55,14 @@ public class GenerateAlpParquet {
 
     generateAlpParquet("/alp_spotify1_expect.csv", outputDir + "/alp_java_spotify1.parquet");
     System.out.println("Generated: " + outputDir + "/alp_java_spotify1.parquet");
+
+    generateAlpParquetFloat(
+        "/alp_float_arade_expect.csv", outputDir + "/alp_java_float_arade.parquet");
+    System.out.println("Generated: " + outputDir + "/alp_java_float_arade.parquet");
+
+    generateAlpParquetFloat(
+        "/alp_float_spotify1_expect.csv", outputDir + "/alp_java_float_spotify1.parquet");
+    System.out.println("Generated: " + outputDir + "/alp_java_float_spotify1.parquet");
   }
 
   private static void generateAlpParquet(String csvResource, String outputPath) throws IOException {
@@ -103,6 +111,62 @@ public class GenerateAlpParquet {
         .withDictionaryEncoding(false)
         .build()) {
       for (double[] row : rows) {
+        Group group = groupFactory.newGroup();
+        for (int c = 0; c < columnNames.length; c++) {
+          group.append(columnNames[c], row[c]);
+        }
+        writer.write(group);
+      }
+    }
+  }
+
+  private static void generateAlpParquetFloat(String csvResource, String outputPath)
+      throws IOException {
+    // Read CSV into float values
+    String[] columnNames;
+    List<float[]> rows = new ArrayList<>();
+
+    try (InputStream is = GenerateAlpParquet.class.getResourceAsStream(csvResource);
+        BufferedReader br = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
+      // Parse header
+      String header = br.readLine();
+      columnNames = header.split(",");
+
+      // Parse data rows
+      String line;
+      while ((line = br.readLine()) != null) {
+        String[] parts = line.split(",");
+        float[] values = new float[parts.length];
+        for (int i = 0; i < parts.length; i++) {
+          values[i] = Float.parseFloat(parts[i]);
+        }
+        rows.add(values);
+      }
+    }
+
+    // Build schema: all required FLOAT columns
+    Types.MessageTypeBuilder schemaBuilder = Types.buildMessage();
+    for (String name : columnNames) {
+      schemaBuilder.required(PrimitiveTypeName.FLOAT).named(name);
+    }
+    MessageType schema = schemaBuilder.named("schema");
+
+    // Delete output file if it exists
+    java.io.File outFile = new java.io.File(outputPath);
+    if (outFile.exists()) {
+      outFile.delete();
+    }
+
+    // Write ALP-encoded parquet
+    Path path = new Path(outFile.getAbsolutePath());
+    SimpleGroupFactory groupFactory = new SimpleGroupFactory(schema);
+    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(path)
+        .withType(schema)
+        .withWriterVersion(org.apache.parquet.column.ParquetProperties.WriterVersion.PARQUET_2_0)
+        .withAlpEncoding(true)
+        .withDictionaryEncoding(false)
+        .build()) {
+      for (float[] row : rows) {
         Group group = groupFactory.newGroup();
         for (int c = 0; c < columnNames.length; c++) {
           group.append(columnNames[c], row[c]);
