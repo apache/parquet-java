@@ -399,12 +399,20 @@ final class AlpCompression {
 
   static void decompressDoubleVector(DoubleCompressedVector v, double[] output) {
     long[] encoded = new long[v.numElements];
+    decompressDoubleVector(v, output, encoded);
+  }
+
+  static void decompressDoubleVector(DoubleCompressedVector v, double[] output, long[] encodedBuffer) {
     if (v.bitWidth > 0) {
-      unpackLongs(v.packedValues, v.numElements, v.bitWidth, encoded);
+      unpackLongs(v.packedValues, v.numElements, v.bitWidth, encodedBuffer);
+    } else {
+      for (int i = 0; i < v.numElements; i++) {
+        encodedBuffer[i] = 0;
+      }
     }
 
     for (int i = 0; i < v.numElements; i++) {
-      long unfored = encoded[i] + v.frameOfReference;
+      long unfored = encodedBuffer[i] + v.frameOfReference;
       output[i] = AlpEncoderDecoder.decodeDouble(unfored, v.exponent, v.factor);
     }
 

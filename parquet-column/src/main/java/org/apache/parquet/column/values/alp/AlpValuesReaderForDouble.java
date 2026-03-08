@@ -28,10 +28,12 @@ import org.apache.parquet.io.ParquetDecodingException;
 public class AlpValuesReaderForDouble extends AlpValuesReader {
 
   private double[] decodedBuffer;
+  private long[] encodedLongBuffer;
 
   @Override
   protected void allocateDecodedBuffer(int capacity) {
     this.decodedBuffer = new double[capacity];
+    this.encodedLongBuffer = new long[capacity];
   }
 
   @Override
@@ -54,7 +56,7 @@ public class AlpValuesReaderForDouble extends AlpValuesReader {
     int dataOffset = vectorOffsets[vectorIdx];
     AlpCompression.DoubleCompressedVector cv =
         AlpCompression.DoubleCompressedVector.load(rawData, dataOffset, numElements);
-    AlpCompression.decompressDoubleVector(cv, decodedBuffer);
+    AlpCompression.decompressDoubleVector(cv, decodedBuffer, encodedLongBuffer);
     decodedVectorIndex = vectorIdx;
   }
 }
