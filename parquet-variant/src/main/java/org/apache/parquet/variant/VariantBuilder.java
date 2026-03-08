@@ -16,6 +16,12 @@
  */
 package org.apache.parquet.variant;
 
+import com.fasterxml.jackson.core.JsonFactory;
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonToken;
+import com.fasterxml.jackson.core.exc.InputCoercionException;
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
@@ -29,6 +35,8 @@ import java.util.Set;
  * Builder for creating Variant value and metadata.
  */
 public class VariantBuilder {
+
+  private static final JsonFactory JSON_FACTORY = new JsonFactory();
 
   /**
    * The buffer for building the Variant value. The first `writePos` bytes have been written.
@@ -63,6 +71,152 @@ public class VariantBuilder {
    */
   public VariantBuilder(Metadata metadata) {
     this.metadata = metadata;
+  }
+
+  /**
+   * Parses a JSON string and returns the corresponding {@link Variant}.
+   *
+   * <p>Uses Jackson streaming parser for single-pass conversion
+   * with no intermediate tree. Number handling preserves precision:
+   * integers use the smallest fitting type, floating-point numbers
+   * prefer decimal encoding (no scientific notation) and fall back
+   * to double.
+   *
+   * <p>Ported from Apache Spark's {@code VariantBuilder.parseJson}.
+   *
+   * @param json the JSON string to parse
+   * @return the parsed Variant
+   * @throws IOException if the JSON is malformed or an I/O error occurs
+   */
+  public static Variant parseJson(String json) throws IOException {
+    try (JsonParser parser = JSON_FACTORY.createParser(json)) {
+      parser.nextToken();
+      return parseJson(parser);
+    }
+  }
+
+  /**
+   * Parses a JSON value from an already-positioned {@link JsonParser}
+   * and returns the corresponding {@link Variant}. The parser must
+   * have its current token set (i.e., {@code parser.nextToken()}
+   * or equivalent must have been called).
+   *
+   * @param parser a positioned Jackson JsonParser
+   * @return the parsed Variant
+   * @throws IOException if the JSON is malformed or an I/O error occurs
+   */
+  public static Variant parseJson(JsonParser parser) throws IOException {
+    VariantBuilder builder = new VariantBuilder();
+    buildJson(builder, parser);
+    return builder.build();
+  }
+
+  /**
+   * Recursively builds a Variant value from the current position of a
+   * Jackson streaming parser. Handles objects, arrays, strings, numbers
+   * (int/long/decimal/double), booleans, and null.
+   */
+  private static void buildJson(VariantBuilder builder, JsonParser parser) throws IOException {
+    JsonToken token = parser.currentToken();
+    if (token == null) {
+      throw new JsonParseException(parser, "Unexpected null token");
+    }
+    switch (token) {
+      case START_OBJECT:
+        buildJsonObject(builder, parser);
+        break;
+      case START_ARRAY:
+        buildJsonArray(builder, parser);
+        break;
+      case VALUE_STRING:
+        builder.appendString(parser.getText());
+        break;
+      case VALUE_NUMBER_INT:
+        buildJsonInteger(builder, parser);
+        break;
+      case VALUE_NUMBER_FLOAT:
+        buildJsonFloat(builder, parser);
+        break;
+      case VALUE_TRUE:
+        builder.appendBoolean(true);
+        break;
+      case VALUE_FALSE:
+        builder.appendBoolean(false);
+        break;
+      case VALUE_NULL:
+        builder.appendNull();
+        break;
+      default:
+        throw new JsonParseException(parser, "Unexpected token " + token);
+    }
+  }
+
+  private static void buildJsonObject(VariantBuilder builder, JsonParser parser) throws IOException {
+    VariantObjectBuilder obj = builder.startObject();
+    while (parser.nextToken() != JsonToken.END_OBJECT) {
+      obj.appendKey(parser.currentName());
+      parser.nextToken();
+      buildJson(obj, parser);
+    }
+    builder.endObject();
+  }
+
+  private static void buildJsonArray(VariantBuilder builder, JsonParser parser) throws IOException {
+    VariantArrayBuilder arr = builder.startArray();
+    while (parser.nextToken() != JsonToken.END_ARRAY) {
+      buildJson(arr, parser);
+    }
+    builder.endArray();
+  }
+
+  private static void buildJsonInteger(VariantBuilder builder, JsonParser parser) throws IOException {
+    try {
+      appendSmallestLong(builder, parser.getLongValue());
+    } catch (InputCoercionException ignored) {
+      buildJsonFloat(builder, parser);
+    }
+  }
+
+  private static void buildJsonFloat(VariantBuilder builder, JsonParser parser) throws IOException {
+    if (!tryAppendDecimal(builder, parser.getText())) {
+      builder.appendDouble(parser.getDoubleValue());
+    }
+  }
+
+  /**
+   * Appends a long value using the smallest integer type that fits.
+   */
+  private static void appendSmallestLong(VariantBuilder builder, long l) {
+    if (l == (byte) l) {
+      builder.appendByte((byte) l);
+    } else if (l == (short) l) {
+      builder.appendShort((short) l);
+    } else if (l == (int) l) {
+      builder.appendInt((int) l);
+    } else {
+      builder.appendLong(l);
+    }
+  }
+
+  /**
+   * Tries to parse a number string as a decimal. Only accepts plain
+   * decimal format (digits, minus, dot -- no scientific notation).
+   * Returns true if the number was successfully appended as a decimal.
+   * Ported from Spark's {@code tryParseDecimal}.
+   */
+  private static boolean tryAppendDecimal(VariantBuilder builder, String input) {
+    for (int i = 0; i < input.length(); i++) {
+      char ch = input.charAt(i);
+      if (ch != '-' && ch != '.' && !(ch >= '0' && ch <= '9')) {
+        return false;
+      }
+    }
+    BigDecimal d = new BigDecimal(input);
+    if (d.scale() <= VariantUtil.MAX_DECIMAL16_PRECISION && d.precision() <= VariantUtil.MAX_DECIMAL16_PRECISION) {
+      builder.appendDecimal(d);
+      return true;
+    }
+    return false;
   }
 
   /**
