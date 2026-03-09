@@ -568,6 +568,10 @@
               <exclude>org.apache.parquet.column.values.bytestreamsplit.ByteStreamSplitValuesReader#gatherElementDataFromStreams(byte[])</exclude>
               <!-- Due to the removal of deprecated methods -->
               <exclude>org.apache.parquet.arrow.schema.SchemaMapping$TypeMappingVisitor#visit(org.apache.parquet.arrow.schema.SchemaMapping$MapTypeMapping)</exclude>
+              <!-- Intentional removal of deprecated Pig support from parquet-thrift -->
+              <exclude>org.apache.parquet.thrift.pig.ParquetThriftStorer</exclude>
+              <exclude>org.apache.parquet.thrift.pig.TupleToThriftWriteSupport</exclude>
+              <exclude>org.apache.parquet.hadoop.thrift.AbstractThriftWriteSupport#isPigLoaded()</exclude>
               <!-- Make static variables final -->
               <exclude>org.apache.parquet.avro.AvroReadSupport#AVRO_REQUESTED_PROJECTION</exclude>
               <exclude>org.apache.parquet.avro.AvroReadSupport#AVRO_DATA_SUPPLIER</exclude>
