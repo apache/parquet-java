@@ -211,8 +211,7 @@ public class TestParquetReader {
     }
     assertTrue("expected multiple row groups for this test", expectedRowGroups > 1);
 
-    try (ParquetReader<Group> reader =
-        PhoneBookWriter.createReader(file, FilterCompat.NOOP, allocator)) {
+    try (ParquetReader<Group> reader = PhoneBookWriter.createReader(file, FilterCompat.NOOP, allocator)) {
       // before reading anything, returns -1
       assertEquals(-1, reader.getCurrentRowGroupIndex());
 
