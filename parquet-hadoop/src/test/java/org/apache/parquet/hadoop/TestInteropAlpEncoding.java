@@ -25,6 +25,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.zip.GZIPInputStream;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -66,7 +67,7 @@ public class TestInteropAlpEncoding {
     int expectedRows = 15000;
 
     // Read expected values from CSV
-    double[][] expected = readExpectedCsv("/alp_arade_expect.csv", columnNames.length, expectedRows);
+    double[][] expected = readExpectedCsv("/alp_arade_expect.csv.gz", columnNames.length, expectedRows);
 
     // Read parquet file using GroupReadSupport
     List<Group> rows = readParquetGroups(parquetPath);
@@ -109,7 +110,7 @@ public class TestInteropAlpEncoding {
     int expectedRows = 15000;
 
     // Read expected values from CSV
-    double[][] expected = readExpectedCsv("/alp_spotify1_expect.csv", columnNames.length, expectedRows);
+    double[][] expected = readExpectedCsv("/alp_spotify1_expect.csv.gz", columnNames.length, expectedRows);
 
     // Read parquet file using GroupReadSupport
     List<Group> rows = readParquetGroups(parquetPath);
@@ -141,7 +142,7 @@ public class TestInteropAlpEncoding {
     String[] columnNames = {"value1", "value2", "value3", "value4"};
     int expectedRows = 15000;
 
-    double[][] expected = readExpectedCsv("/alp_arade_expect.csv", columnNames.length, expectedRows);
+    double[][] expected = readExpectedCsv("/alp_arade_expect.csv.gz", columnNames.length, expectedRows);
 
     List<Group> rows = readParquetGroups(parquetPath);
     assertEquals("Row count should match", expectedRows, rows.size());
@@ -180,7 +181,7 @@ public class TestInteropAlpEncoding {
     };
     int expectedRows = 15000;
 
-    double[][] expected = readExpectedCsv("/alp_spotify1_expect.csv", columnNames.length, expectedRows);
+    double[][] expected = readExpectedCsv("/alp_spotify1_expect.csv.gz", columnNames.length, expectedRows);
 
     List<Group> rows = readParquetGroups(parquetPath);
     assertEquals("Row count should match", expectedRows, rows.size());
@@ -209,7 +210,7 @@ public class TestInteropAlpEncoding {
     String[] columnNames = {"value1", "value2", "value3", "value4"};
     int expectedRows = 15000;
 
-    float[][] expected = readExpectedCsvFloat("/alp_float_arade_expect.csv", columnNames.length, expectedRows);
+    float[][] expected = readExpectedCsvFloat("/alp_float_arade_expect.csv.gz", columnNames.length, expectedRows);
 
     List<Group> rows = readParquetGroups(parquetPath);
     assertEquals("Row count should match", expectedRows, rows.size());
@@ -248,7 +249,7 @@ public class TestInteropAlpEncoding {
     };
     int expectedRows = 15000;
 
-    float[][] expected = readExpectedCsvFloat("/alp_float_spotify1_expect.csv", columnNames.length, expectedRows);
+    float[][] expected = readExpectedCsvFloat("/alp_float_spotify1_expect.csv.gz", columnNames.length, expectedRows);
 
     List<Group> rows = readParquetGroups(parquetPath);
     assertEquals("Row count should match", expectedRows, rows.size());
@@ -277,7 +278,7 @@ public class TestInteropAlpEncoding {
     String[] columnNames = {"value1", "value2", "value3", "value4"};
     int expectedRows = 15000;
 
-    float[][] expected = readExpectedCsvFloat("/alp_float_arade_expect.csv", columnNames.length, expectedRows);
+    float[][] expected = readExpectedCsvFloat("/alp_float_arade_expect.csv.gz", columnNames.length, expectedRows);
 
     List<Group> rows = readParquetGroups(parquetPath);
     assertEquals("Row count should match", expectedRows, rows.size());
@@ -316,7 +317,7 @@ public class TestInteropAlpEncoding {
     };
     int expectedRows = 15000;
 
-    float[][] expected = readExpectedCsvFloat("/alp_float_spotify1_expect.csv", columnNames.length, expectedRows);
+    float[][] expected = readExpectedCsvFloat("/alp_float_spotify1_expect.csv.gz", columnNames.length, expectedRows);
 
     List<Group> rows = readParquetGroups(parquetPath);
     assertEquals("Row count should match", expectedRows, rows.size());
@@ -368,9 +369,10 @@ public class TestInteropAlpEncoding {
    */
   private double[][] readExpectedCsv(String resourcePath, int numColumns, int expectedRows) throws IOException {
     double[][] columns = new double[numColumns][expectedRows];
-    try (InputStream is = getClass().getResourceAsStream(resourcePath);
+    try (InputStream raw = getClass().getResourceAsStream(resourcePath);
+        InputStream is = new GZIPInputStream(raw);
         BufferedReader br = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
-      assertNotNull("CSV resource not found: " + resourcePath, is);
+      assertNotNull("CSV resource not found: " + resourcePath, raw);
 
       // Skip header
       String header = br.readLine();
@@ -397,9 +399,10 @@ public class TestInteropAlpEncoding {
    */
   private float[][] readExpectedCsvFloat(String resourcePath, int numColumns, int expectedRows) throws IOException {
     float[][] columns = new float[numColumns][expectedRows];
-    try (InputStream is = getClass().getResourceAsStream(resourcePath);
+    try (InputStream raw = getClass().getResourceAsStream(resourcePath);
+        InputStream is = new GZIPInputStream(raw);
         BufferedReader br = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
-      assertNotNull("CSV resource not found: " + resourcePath, is);
+      assertNotNull("CSV resource not found: " + resourcePath, raw);
 
       // Skip header
       String header = br.readLine();

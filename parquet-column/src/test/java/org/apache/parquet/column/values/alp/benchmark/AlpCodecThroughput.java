@@ -23,6 +23,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.zip.GZIPInputStream;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -53,8 +54,8 @@ public class AlpCodecThroughput {
   private static final int MEASURED = 30;
 
   private static final String CSV_DIR = "parquet-hadoop/src/test/resources";
-  private static final String DOUBLE_CSV = "alp_spotify1_expect.csv";
-  private static final String FLOAT_CSV = "alp_float_spotify1_expect.csv";
+  private static final String DOUBLE_CSV = "alp_spotify1_expect.csv.gz";
+  private static final String FLOAT_CSV = "alp_float_spotify1_expect.csv.gz";
 
   // Spotify column names matching C++ benchmark
   private static final String[] COLUMNS = {
@@ -140,7 +141,7 @@ public class AlpCodecThroughput {
   }
 
   private static double[][] loadDoubleCsv(Path csvPath) throws IOException {
-    try (InputStream is = new FileInputStream(csvPath.toFile())) {
+    try (InputStream is = new GZIPInputStream(new FileInputStream(csvPath.toFile()))) {
       BufferedReader br = new BufferedReader(new InputStreamReader(is));
       String header = br.readLine();
       int numCols = header.split(",").length;
@@ -168,7 +169,7 @@ public class AlpCodecThroughput {
   }
 
   private static float[][] loadFloatCsv(Path csvPath) throws IOException {
-    try (InputStream is = new FileInputStream(csvPath.toFile())) {
+    try (InputStream is = new GZIPInputStream(new FileInputStream(csvPath.toFile()))) {
       BufferedReader br = new BufferedReader(new InputStreamReader(is));
       String header = br.readLine();
       int numCols = header.split(",").length;

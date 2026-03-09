@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.util.zip.GZIPInputStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -38,7 +39,7 @@ import org.apache.parquet.schema.Types;
 /**
  * Standalone utility to generate ALP-encoded parquet files from CSV test data.
  *
- * <p>Reads the existing expect CSV files (alp_spotify1_expect.csv, alp_arade_expect.csv)
+ * <p>Reads the existing expect CSV files (alp_spotify1_expect.csv.gz, alp_arade_expect.csv.gz)
  * from test resources and writes ALP-encoded parquet files using the Java ALP encoder.
  *
  * <p>Usage: java GenerateAlpParquet [output_directory]
@@ -50,18 +51,18 @@ public class GenerateAlpParquet {
     String outputDir = args.length > 0 ? args[0] : ".";
     Files.createDirectories(Paths.get(outputDir));
 
-    generateAlpParquet("/alp_arade_expect.csv", outputDir + "/alp_java_arade.parquet");
+    generateAlpParquet("/alp_arade_expect.csv.gz", outputDir + "/alp_java_arade.parquet");
     System.out.println("Generated: " + outputDir + "/alp_java_arade.parquet");
 
-    generateAlpParquet("/alp_spotify1_expect.csv", outputDir + "/alp_java_spotify1.parquet");
+    generateAlpParquet("/alp_spotify1_expect.csv.gz", outputDir + "/alp_java_spotify1.parquet");
     System.out.println("Generated: " + outputDir + "/alp_java_spotify1.parquet");
 
     generateAlpParquetFloat(
-        "/alp_float_arade_expect.csv", outputDir + "/alp_java_float_arade.parquet");
+        "/alp_float_arade_expect.csv.gz", outputDir + "/alp_java_float_arade.parquet");
     System.out.println("Generated: " + outputDir + "/alp_java_float_arade.parquet");
 
     generateAlpParquetFloat(
-        "/alp_float_spotify1_expect.csv", outputDir + "/alp_java_float_spotify1.parquet");
+        "/alp_float_spotify1_expect.csv.gz", outputDir + "/alp_java_float_spotify1.parquet");
     System.out.println("Generated: " + outputDir + "/alp_java_float_spotify1.parquet");
   }
 
@@ -70,7 +71,8 @@ public class GenerateAlpParquet {
     String[] columnNames;
     List<double[]> rows = new ArrayList<>();
 
-    try (InputStream is = GenerateAlpParquet.class.getResourceAsStream(csvResource);
+    try (InputStream raw = GenerateAlpParquet.class.getResourceAsStream(csvResource);
+        InputStream is = new GZIPInputStream(raw);
         BufferedReader br = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
       // Parse header
       String header = br.readLine();
@@ -126,7 +128,8 @@ public class GenerateAlpParquet {
     String[] columnNames;
     List<float[]> rows = new ArrayList<>();
 
-    try (InputStream is = GenerateAlpParquet.class.getResourceAsStream(csvResource);
+    try (InputStream raw = GenerateAlpParquet.class.getResourceAsStream(csvResource);
+        InputStream is = new GZIPInputStream(raw);
         BufferedReader br = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
       // Parse header
       String header = br.readLine();
