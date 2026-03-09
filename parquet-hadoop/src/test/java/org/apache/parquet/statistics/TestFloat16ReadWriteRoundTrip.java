@@ -21,11 +21,11 @@ package org.apache.parquet.statistics;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.float16Type;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -123,37 +123,25 @@ public class TestFloat16ReadWriteRoundTrip {
     Binary.fromConstantByteArray(new byte[] {(byte) 0x00, (byte) 0x7c})
   }; // Infinity
 
-  private Binary[] valuesAllPositiveZeroMinMax = {
-    Binary.fromConstantByteArray(new byte[] {(byte) 0x00, (byte) 0x00}), // +0
+  private Binary[] valuesAllZeroMinMax = {
+    Binary.fromConstantByteArray(new byte[] {(byte) 0x00, (byte) 0x80}), // -0
     Binary.fromConstantByteArray(new byte[] {(byte) 0x00, (byte) 0x00})
   }; // +0
 
-  private Binary[] valuesAllNegativeZeroMinMax = {
-    Binary.fromConstantByteArray(new byte[] {(byte) 0x00, (byte) 0x80}), // -0
-    Binary.fromConstantByteArray(new byte[] {(byte) 0x00, (byte) 0x80})
-  }; // -0
-
-  private Binary[] valuesWithNaNMinMax = {
-    Binary.fromConstantByteArray(new byte[] {(byte) 0x00, (byte) 0xc0}), // -2.0
-    Binary.fromConstantByteArray(new byte[] {(byte) 0x00, (byte) 0x7e})
-  }; // NaN
-
   @Test
   public void testFloat16ColumnIndex() throws IOException {
-    List<Binary[]> testValues = Arrays.asList(
+    List<Binary[]> testValues = List.of(
         valuesInAscendingOrder,
         valuesInDescendingOrder,
         valuesUndefinedOrder,
         valuesAllPositiveZero,
-        valuesAllNegativeZero,
-        valuesWithNaN);
-    List<Binary[]> expectedValues = Arrays.asList(
+        valuesAllNegativeZero);
+    List<Binary[]> expectedValues = List.of(
         valuesInAscendingOrderMinMax,
         valuesInDescendingOrderMinMax,
         valuesUndefinedOrderMinMax,
-        valuesAllPositiveZeroMinMax,
-        valuesAllNegativeZeroMinMax,
-        valuesWithNaNMinMax);
+        valuesAllZeroMinMax,
+        valuesAllZeroMinMax);
 
     for (int i = 0; i < testValues.size(); i++) {
       MessageType schema = Types.buildMessage()
@@ -185,6 +173,37 @@ public class TestFloat16ReadWriteRoundTrip {
         assertEquals(Collections.singletonList(expectedValues.get(i)[0]), toFloat16List(index.getMinValues()));
         assertEquals(Collections.singletonList(expectedValues.get(i)[1]), toFloat16List(index.getMaxValues()));
       }
+    }
+  }
+
+  @Test
+  public void testFloat16NanColumnIndex() throws IOException {
+    MessageType schema = Types.buildMessage()
+        .required(FIXED_LEN_BYTE_ARRAY)
+        .as(float16Type())
+        .length(2)
+        .named("col_float16")
+        .named("msg");
+
+    Configuration conf = new Configuration();
+    GroupWriteSupport.setSchema(schema, conf);
+    GroupFactory factory = new SimpleGroupFactory(schema);
+    Path path = newTempPath();
+    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(path)
+        .withConf(conf)
+        .withDictionaryEncoding(false)
+        .build()) {
+
+      for (Binary value : valuesWithNaN) {
+        writer.write(factory.newGroup().append("col_float16", value));
+      }
+    }
+
+    try (ParquetFileReader reader = ParquetFileReader.open(HadoopInputFile.fromPath(path, new Configuration()))) {
+      ColumnChunkMetaData column =
+          reader.getFooter().getBlocks().get(0).getColumns().get(0);
+      ColumnIndex index = reader.readColumnIndex(column);
+      assertNull(index);
     }
   }
 

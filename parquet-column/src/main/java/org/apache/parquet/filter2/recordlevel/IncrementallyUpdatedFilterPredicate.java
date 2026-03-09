@@ -18,7 +18,7 @@
  */
 package org.apache.parquet.filter2.recordlevel;
 
-import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 import org.apache.parquet.io.api.Binary;
 
@@ -153,7 +153,7 @@ public interface IncrementallyUpdatedFilterPredicate {
     private final Iterable<ValueInspector> delegates;
 
     DelegatingValueInspector(ValueInspector... delegates) {
-      this.delegates = Arrays.asList(delegates);
+      this.delegates = List.of(delegates);
     }
 
     /**

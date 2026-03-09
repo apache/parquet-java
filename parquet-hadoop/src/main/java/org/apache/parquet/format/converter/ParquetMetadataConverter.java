@@ -703,11 +703,13 @@ public class ParquetMetadataConverter {
     rowGroups.add(rowGroup);
   }
 
-  private List<Encoding> toFormatEncodings(Set<org.apache.parquet.column.Encoding> encodings) {
+  // Visible for testing
+  List<Encoding> toFormatEncodings(Set<org.apache.parquet.column.Encoding> encodings) {
     List<Encoding> converted = new ArrayList<Encoding>(encodings.size());
     for (org.apache.parquet.column.Encoding encoding : encodings) {
       converted.add(getEncoding(encoding));
     }
+    Collections.sort(converted);
     return converted;
   }
 
@@ -1052,12 +1054,12 @@ public class ParquetMetadataConverter {
     UNKNOWN
   }
 
-  private static final Set<Class> STRING_TYPES = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
+  private static final Set<Class> STRING_TYPES = Set.of(
       LogicalTypeAnnotation.StringLogicalTypeAnnotation.class,
       LogicalTypeAnnotation.EnumLogicalTypeAnnotation.class,
       LogicalTypeAnnotation.JsonLogicalTypeAnnotation.class,
       LogicalTypeAnnotation.Float16LogicalTypeAnnotation.class,
-      LogicalTypeAnnotation.UnknownLogicalTypeAnnotation.class)));
+      LogicalTypeAnnotation.UnknownLogicalTypeAnnotation.class);
 
   /**
    * Returns whether to use signed order min and max with a type. It is safe to

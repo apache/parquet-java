@@ -28,7 +28,6 @@ import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
 import java.nio.file.Files;
-import java.util.Arrays;
 import java.util.List;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -61,7 +60,7 @@ public class ColumnPrunerTest {
     String outputFile = createTempFile("output");
 
     // Remove column Gender
-    List<String> cols = Arrays.asList("Gender");
+    List<String> cols = List.of("Gender");
     columnPruner.pruneColumns(conf, new Path(inputFile), new Path(outputFile), cols);
 
     // Verify the schema are not changed for the columns not pruned
@@ -79,7 +78,7 @@ public class ColumnPrunerTest {
     assertEquals(subFields.get(1).getName(), "Forward");
 
     // Verify the data are not changed for the columns not pruned
-    List<String> prunePaths = Arrays.asList("Gender");
+    List<String> prunePaths = List.of("Gender");
     validateColumns(inputFile, prunePaths);
   }
 
@@ -91,7 +90,7 @@ public class ColumnPrunerTest {
 
     // Remove columns
     String cargs[] = {inputFile, outputFile, "Name", "Gender"};
-    List<String> cols = Arrays.asList("Name", "Gender");
+    List<String> cols = List.of("Name", "Gender");
     columnPruner.pruneColumns(conf, new Path(inputFile), new Path(outputFile), cols);
 
     // Verify the schema are not changed for the columns not pruned
@@ -108,7 +107,7 @@ public class ColumnPrunerTest {
     assertEquals(subFields.get(1).getName(), "Forward");
 
     // Verify the data are not changed for the columns not pruned
-    List<String> prunePaths = Arrays.asList("Name", "Gender");
+    List<String> prunePaths = List.of("Name", "Gender");
     validateColumns(inputFile, prunePaths);
   }
 
@@ -117,7 +116,7 @@ public class ColumnPrunerTest {
     // Create Parquet file
     String inputFile = createParquetFile("input");
     String outputFile = createTempFile("output");
-    List<String> cols = Arrays.asList("no_exist");
+    List<String> cols = List.of("no_exist");
     columnPruner.pruneColumns(conf, new Path(inputFile), new Path(outputFile), cols);
   }
 
@@ -128,7 +127,7 @@ public class ColumnPrunerTest {
     String outputFile = createTempFile("output");
 
     // Remove nested column
-    List<String> cols = Arrays.asList("Links.Backward");
+    List<String> cols = List.of("Links.Backward");
     columnPruner.pruneColumns(conf, new Path(inputFile), new Path(outputFile), cols);
 
     // Verify the schema are not changed for the columns not pruned
@@ -146,7 +145,7 @@ public class ColumnPrunerTest {
     assertEquals(subFields.get(0).getName(), "Forward");
 
     // Verify the data are not changed for the columns not pruned
-    List<String> prunePaths = Arrays.asList("Links.Backward");
+    List<String> prunePaths = List.of("Links.Backward");
     validateColumns(inputFile, prunePaths);
   }
 
@@ -157,7 +156,7 @@ public class ColumnPrunerTest {
     String outputFile = createTempFile("output");
 
     // Remove parent column. All of it's children will be removed.
-    List<String> cols = Arrays.asList("Links");
+    List<String> cols = List.of("Links");
     columnPruner.pruneColumns(conf, new Path(inputFile), new Path(outputFile), cols);
 
     // Verify the schema are not changed for the columns not pruned
@@ -171,7 +170,7 @@ public class ColumnPrunerTest {
     assertEquals(fields.get(2).getName(), "Gender");
 
     // Verify the data are not changed for the columns not pruned
-    List<String> prunePaths = Arrays.asList("Links");
+    List<String> prunePaths = List.of("Links");
     validateColumns(inputFile, prunePaths);
   }
 
@@ -180,7 +179,7 @@ public class ColumnPrunerTest {
     // Create Parquet file
     String inputFile = createParquetFile("input");
     String outputFile = createTempFile("output");
-    List<String> cols = Arrays.asList("Links.Not_exists");
+    List<String> cols = List.of("Links.Not_exists");
     columnPruner.pruneColumns(conf, new Path(inputFile), new Path(outputFile), cols);
   }
 

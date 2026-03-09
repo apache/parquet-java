@@ -23,6 +23,8 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.parquet.filter2.predicate.Statistics;
 import org.apache.parquet.io.api.Binary;
+import org.apache.parquet.schema.Float16;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.PrimitiveComparator;
 import org.apache.parquet.schema.PrimitiveType;
 
@@ -82,6 +84,8 @@ class BinaryColumnIndexBuilder extends ColumnIndexBuilder {
   private final List<Binary> maxValues = new ArrayList<>();
   private final BinaryTruncator truncator;
   private final int truncateLength;
+  private final boolean isFloat16;
+  private boolean invalid;
 
   private static Binary convert(ByteBuffer buffer) {
     return Binary.fromReusedByteBuffer(buffer);
@@ -94,6 +98,7 @@ class BinaryColumnIndexBuilder extends ColumnIndexBuilder {
   BinaryColumnIndexBuilder(PrimitiveType type, int truncateLength) {
     truncator = BinaryTruncator.getTruncator(type);
     this.truncateLength = truncateLength;
+    this.isFloat16 = type.getLogicalTypeAnnotation() instanceof LogicalTypeAnnotation.Float16LogicalTypeAnnotation;
   }
 
   @Override
@@ -104,12 +109,43 @@ class BinaryColumnIndexBuilder extends ColumnIndexBuilder {
 
   @Override
   void addMinMax(Object min, Object max) {
-    minValues.add(min == null ? null : truncator.truncateMin((Binary) min, truncateLength));
-    maxValues.add(max == null ? null : truncator.truncateMax((Binary) max, truncateLength));
+    Binary bMin = (Binary) min;
+    Binary bMax = (Binary) max;
+
+    if (isFloat16 && bMin != null && bMax != null) {
+      if (bMin.length() != LogicalTypeAnnotation.Float16LogicalTypeAnnotation.BYTES
+          || bMax.length() != LogicalTypeAnnotation.Float16LogicalTypeAnnotation.BYTES) {
+        // Should not happen for Float16
+        invalid = true;
+      } else {
+        short sMin = bMin.get2BytesLittleEndian();
+        short sMax = bMax.get2BytesLittleEndian();
+
+        if (Float16.isNaN(sMin) || Float16.isNaN(sMax)) {
+          invalid = true;
+        }
+
+        // Sorting order is undefined for -0.0 so let min = -0.0 and max = +0.0 to
+        // ensure that no 0.0 values are skipped
+        // +0.0 is 0x0000, -0.0 is 0x8000 (little endian: 00 00, 00 80)
+        if (sMin == (short) 0x0000) {
+          bMin = Float16.NEGATIVE_ZERO_LITTLE_ENDIAN;
+        }
+        if (sMax == (short) 0x8000) {
+          bMax = Float16.POSITIVE_ZERO_LITTLE_ENDIAN;
+        }
+      }
+    }
+
+    minValues.add(bMin == null ? null : truncator.truncateMin(bMin, truncateLength));
+    maxValues.add(bMax == null ? null : truncator.truncateMax(bMax, truncateLength));
   }
 
   @Override
   ColumnIndexBase<Binary> createColumnIndex(PrimitiveType type) {
+    if (invalid) {
+      return null;
+    }
     BinaryColumnIndex columnIndex = new BinaryColumnIndex(type);
     columnIndex.minValues = minValues.toArray(new Binary[0]);
     columnIndex.maxValues = maxValues.toArray(new Binary[0]);
