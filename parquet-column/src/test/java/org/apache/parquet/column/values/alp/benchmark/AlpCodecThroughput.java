@@ -19,10 +19,14 @@
 package org.apache.parquet.column.values.alp.benchmark;
 
 import java.io.BufferedReader;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.ByteBuffer;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.parquet.bytes.ByteBufferInputStream;
@@ -48,6 +52,7 @@ public class AlpCodecThroughput {
   private static final int WARMUP = 10;
   private static final int MEASURED = 30;
 
+  private static final String CSV_DIR = "parquet-hadoop/src/test/resources";
   private static final String DOUBLE_CSV = "alp_spotify1_expect.csv";
   private static final String FLOAT_CSV = "alp_float_spotify1_expect.csv";
 
@@ -64,8 +69,9 @@ public class AlpCodecThroughput {
 
   @BeforeClass
   public static void setup() throws IOException {
-    // Load double columns from Spotify CSV
-    double[][] rawDoubles = loadDoubleCsv(DOUBLE_CSV);
+    Path csvDir = findCsvDir();
+
+    double[][] rawDoubles = loadDoubleCsv(csvDir.resolve(DOUBLE_CSV));
     doubleColumns = new double[rawDoubles.length][];
     doubleCompressed = new byte[rawDoubles.length][];
     for (int c = 0; c < rawDoubles.length; c++) {
@@ -73,8 +79,7 @@ public class AlpCodecThroughput {
       doubleCompressed[c] = compressDoubles(doubleColumns[c]);
     }
 
-    // Load float columns from Spotify CSV
-    float[][] rawFloats = loadFloatCsv(FLOAT_CSV);
+    float[][] rawFloats = loadFloatCsv(csvDir.resolve(FLOAT_CSV));
     floatColumns = new float[rawFloats.length][];
     floatCompressed = new byte[rawFloats.length][];
     for (int c = 0; c < rawFloats.length; c++) {
@@ -115,11 +120,27 @@ public class AlpCodecThroughput {
 
   // ========== CSV loading ==========
 
-  private static double[][] loadDoubleCsv(String resource) throws IOException {
-    try (InputStream is = AlpCodecThroughput.class.getClassLoader().getResourceAsStream(resource)) {
-      if (is == null) {
-        throw new IOException("Resource not found: " + resource);
+  /**
+   * Find the CSV directory. Searches from the working directory upward for the
+   * parquet-hadoop test resources directory, so the benchmark works whether run
+   * from the project root or from parquet-column/.
+   */
+  private static Path findCsvDir() throws IOException {
+    Path dir = Paths.get("").toAbsolutePath();
+    for (int i = 0; i < 3; i++) {
+      Path candidate = dir.resolve(CSV_DIR);
+      if (Files.isDirectory(candidate) && Files.exists(candidate.resolve(DOUBLE_CSV))) {
+        return candidate;
       }
+      dir = dir.getParent();
+      if (dir == null) break;
+    }
+    throw new IOException("Cannot find CSV directory '" + CSV_DIR
+        + "'. Run from the parquet-java project root.");
+  }
+
+  private static double[][] loadDoubleCsv(Path csvPath) throws IOException {
+    try (InputStream is = new FileInputStream(csvPath.toFile())) {
       BufferedReader br = new BufferedReader(new InputStreamReader(is));
       String header = br.readLine();
       int numCols = header.split(",").length;
@@ -135,7 +156,6 @@ public class AlpCodecThroughput {
         rows.add(row);
       }
 
-      // Transpose: rows -> columns
       double[][] columns = new double[numCols][rows.size()];
       for (int r = 0; r < rows.size(); r++) {
         double[] row = rows.get(r);
@@ -147,11 +167,8 @@ public class AlpCodecThroughput {
     }
   }
 
-  private static float[][] loadFloatCsv(String resource) throws IOException {
-    try (InputStream is = AlpCodecThroughput.class.getClassLoader().getResourceAsStream(resource)) {
-      if (is == null) {
-        throw new IOException("Resource not found: " + resource);
-      }
+  private static float[][] loadFloatCsv(Path csvPath) throws IOException {
+    try (InputStream is = new FileInputStream(csvPath.toFile())) {
       BufferedReader br = new BufferedReader(new InputStreamReader(is));
       String header = br.readLine();
       int numCols = header.split(",").length;
