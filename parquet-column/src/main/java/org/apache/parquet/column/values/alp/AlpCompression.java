@@ -411,9 +411,13 @@ final class AlpCompression {
       }
     }
 
-    for (int i = 0; i < v.numElements; i++) {
-      long unfored = encodedBuffer[i] + v.frameOfReference;
-      output[i] = AlpEncoderDecoder.decodeDouble(unfored, v.exponent, v.factor);
+    // Fused unFOR + decode with hoisted multipliers
+    final long frameOfRef = v.frameOfReference;
+    final double factorMul = DOUBLE_POW10[v.factor];
+    final double expMul = DOUBLE_POW10_NEGATIVE[v.exponent];
+    final int numElements = v.numElements;
+    for (int i = 0; i < numElements; i++) {
+      output[i] = (double) (encodedBuffer[i] + frameOfRef) * factorMul * expMul;
     }
 
     for (int i = 0; i < v.numExceptions; i++) {
