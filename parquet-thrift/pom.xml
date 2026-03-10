@@ -165,7 +165,7 @@
            If that deprecated class is removed, so can this dependency -->
       <groupId>com.google.re2j</groupId>
       <artifactId>re2j</artifactId>
-      <version>1.7</version>
+      <version>1.8</version>
       <scope>provided</scope>
     </dependency>
   </dependencies>
