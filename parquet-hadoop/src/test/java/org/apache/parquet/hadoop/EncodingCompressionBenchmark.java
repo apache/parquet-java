@@ -19,10 +19,19 @@
 package org.apache.parquet.hadoop;
 
 import com.github.luben.zstd.Zstd;
+import java.io.BufferedReader;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.util.Random;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.zip.GZIPInputStream;
 import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.bytes.HeapByteBufferAllocator;
 import org.apache.parquet.column.values.alp.AlpValuesReaderForDouble;
@@ -42,92 +51,69 @@ import org.junit.Test;
  */
 public class EncodingCompressionBenchmark {
 
-  private static final int NUM_VALUES = 1_000_000;
+  private static final int TILE_FACTOR = 6; // 15K * 6 = 90K values
   private static final int WARMUP = 10;
   private static final int MEASURED = 30;
 
-  // Datasets
-  private static double[] doubleDecimal;
-  private static double[] doubleInteger;
-  private static double[] doubleMixed;
-  private static float[] floatDecimal;
-  private static float[] floatInteger;
-  private static float[] floatMixed;
+  private static final String CSV_DIR = "parquet-hadoop/src/test/resources";
+  private static final String DOUBLE_CSV = "alp_spotify1_expect.csv.gz";
+  private static final String FLOAT_CSV = "alp_float_spotify1_expect.csv.gz";
+
+  private static final String[] COLUMNS = {
+    "valence", "danceability", "energy", "loudness", "speechiness",
+    "acousticness", "instrumentalness", "liveness", "tempo"
+  };
+
+  private static double[][] doubleColumns;
+  private static float[][] floatColumns;
 
   @BeforeClass
-  public static void setup() {
-    Random rng = new Random(42);
+  public static void setup() throws IOException {
+    Path csvDir = findCsvDir();
 
-    doubleDecimal = new double[NUM_VALUES];
-    for (int i = 0; i < NUM_VALUES; i++) {
-      doubleDecimal[i] = Math.round(rng.nextDouble() * 10000) / 100.0;
-    }
-
-    doubleInteger = new double[NUM_VALUES];
-    for (int i = 0; i < NUM_VALUES; i++) {
-      doubleInteger[i] = (double) rng.nextInt(100000);
+    double[][] rawDoubles = loadDoubleCsv(csvDir.resolve(DOUBLE_CSV));
+    doubleColumns = new double[rawDoubles.length][];
+    for (int c = 0; c < rawDoubles.length; c++) {
+      doubleColumns[c] = tile(rawDoubles[c], rawDoubles[c].length * TILE_FACTOR);
     }
 
-    doubleMixed = new double[NUM_VALUES];
-    for (int i = 0; i < NUM_VALUES; i++) {
-      doubleMixed[i] = Math.round(rng.nextDouble() * 10000) / 100.0;
-    }
-    for (int i = 0; i < NUM_VALUES; i += 50) {
-      doubleMixed[i] = Double.NaN;
-    }
-
-    floatDecimal = new float[NUM_VALUES];
-    for (int i = 0; i < NUM_VALUES; i++) {
-      floatDecimal[i] = Math.round(rng.nextFloat() * 10000) / 100.0f;
-    }
-
-    floatInteger = new float[NUM_VALUES];
-    for (int i = 0; i < NUM_VALUES; i++) {
-      floatInteger[i] = (float) rng.nextInt(100000);
-    }
-
-    floatMixed = new float[NUM_VALUES];
-    for (int i = 0; i < NUM_VALUES; i++) {
-      floatMixed[i] = Math.round(rng.nextFloat() * 10000) / 100.0f;
-    }
-    for (int i = 0; i < NUM_VALUES; i += 50) {
-      floatMixed[i] = Float.NaN;
+    float[][] rawFloats = loadFloatCsv(csvDir.resolve(FLOAT_CSV));
+    floatColumns = new float[rawFloats.length][];
+    for (int c = 0; c < rawFloats.length; c++) {
+      floatColumns[c] = tile(rawFloats[c], rawFloats[c].length * TILE_FACTOR);
     }
   }
 
   @Test
   public void measureThroughput() throws IOException {
     System.out.println();
-    System.out.println("=== Encoding/Compression Benchmark (1M values, " + MEASURED + " iters) ===");
+    System.out.printf("=== Encoding/Compression Benchmark (%d values per column, Spotify dataset, %d iters) ===%n",
+        doubleColumns[0].length, MEASURED);
     System.out.println();
 
     String hdr = String.format(
-        "%-35s %10s %10s %10s %10s %8s", "Dataset / Encoding", "Enc MB/s", "Dec MB/s", "Raw KB", "Comp KB", "Ratio");
+        "%-35s %10s %10s %10s %10s %8s", "Column / Encoding", "Enc MB/s", "Dec MB/s", "Raw KB", "Comp KB", "Ratio");
     String sep = "-".repeat(hdr.length());
 
-    // --- Double datasets ---
+    // --- Double columns ---
     System.out.println("=== DOUBLE (8 bytes/value) ===");
     System.out.println(hdr);
     System.out.println(sep);
 
-    benchAllDouble("double_decimal", doubleDecimal);
-    System.out.println();
-    benchAllDouble("double_integer", doubleInteger);
-    System.out.println();
-    benchAllDouble("double_mixed(2%exc)", doubleMixed);
-    System.out.println();
+    for (int c = 0; c < doubleColumns.length; c++) {
+      benchAllDouble(COLUMNS[c], doubleColumns[c]);
+      System.out.println();
+    }
 
-    // --- Float datasets ---
+    // --- Float columns ---
     System.out.println("=== FLOAT (4 bytes/value) ===");
     System.out.println(hdr);
     System.out.println(sep);
 
-    benchAllFloat("float_decimal", floatDecimal);
-    System.out.println();
-    benchAllFloat("float_integer", floatInteger);
-    System.out.println();
-    benchAllFloat("float_mixed(2%exc)", floatMixed);
-    System.out.println();
+    for (int c = 0; c < floatColumns.length; c++) {
+      benchAllFloat(COLUMNS[c], floatColumns[c]);
+      System.out.println();
+    }
   }
 
   // ---- Double benchmarks ----
@@ -389,5 +375,97 @@ public class EncodingCompressionBenchmark {
     for (int i = 0; i < numValues; i++) {
       reader.readFloat();
     }
+  }
+
+  // ---- CSV loading and tiling ----
+
+  private static Path findCsvDir() throws IOException {
+    Path dir = Paths.get("").toAbsolutePath();
+    for (int i = 0; i < 3; i++) {
+      Path candidate = dir.resolve(CSV_DIR);
+      if (Files.isDirectory(candidate) && Files.exists(candidate.resolve(DOUBLE_CSV))) {
+        return candidate;
+      }
+      dir = dir.getParent();
+      if (dir == null) break;
+    }
+    throw new IOException("Cannot find CSV directory '" + CSV_DIR
+        + "'. Run from the parquet-java project root.");
+  }
+
+  private static double[][] loadDoubleCsv(Path csvPath) throws IOException {
+    try (InputStream is = new GZIPInputStream(new FileInputStream(csvPath.toFile()))) {
+      BufferedReader br = new BufferedReader(new InputStreamReader(is));
+      String header = br.readLine();
+      int numCols = header.split(",").length;
+
+      List<double[]> rows = new ArrayList<>();
+      String line;
+      while ((line = br.readLine()) != null) {
+        String[] parts = line.split(",");
+        double[] row = new double[numCols];
+        for (int i = 0; i < numCols; i++) {
+          row[i] = Double.parseDouble(parts[i]);
+        }
+        rows.add(row);
+      }
+
+      double[][] columns = new double[numCols][rows.size()];
+      for (int r = 0; r < rows.size(); r++) {
+        double[] row = rows.get(r);
+        for (int c = 0; c < numCols; c++) {
+          columns[c][r] = row[c];
+        }
+      }
+      return columns;
+    }
+  }
+
+  private static float[][] loadFloatCsv(Path csvPath) throws IOException {
+    try (InputStream is = new GZIPInputStream(new FileInputStream(csvPath.toFile()))) {
+      BufferedReader br = new BufferedReader(new InputStreamReader(is));
+      String header = br.readLine();
+      int numCols = header.split(",").length;
+
+      List<float[]> rows = new ArrayList<>();
+      String line;
+      while ((line = br.readLine()) != null) {
+        String[] parts = line.split(",");
+        float[] row = new float[numCols];
+        for (int i = 0; i < numCols; i++) {
+          row[i] = Float.parseFloat(parts[i]);
+        }
+        rows.add(row);
+      }
+
+      float[][] columns = new float[numCols][rows.size()];
+      for (int r = 0; r < rows.size(); r++) {
+        float[] row = rows.get(r);
+        for (int c = 0; c < numCols; c++) {
+          columns[c][r] = row[c];
+        }
+      }
+      return columns;
+    }
+  }
+
+  private static double[] tile(double[] source, int targetSize) {
+    double[] result = new double[targetSize];
+    int len = source.length;
+    for (int i = 0; i < targetSize; i++) {
+      int copyIdx = i / len; // 0 for first copy, 1 for second, etc.
+      result[i] = source[i % len] + copyIdx;
+    }
+    return result;
+  }
+
+  private static float[] tile(float[] source, int targetSize) {
+    float[] result = new float[targetSize];
+    int len = source.length;
+    for (int i = 0; i < targetSize; i++) {
+      int copyIdx = i / len;
+      result[i] = source[i % len] + copyIdx;
+    }
+    return result;
   }
 }
