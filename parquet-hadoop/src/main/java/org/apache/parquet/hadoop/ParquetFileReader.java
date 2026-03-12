@@ -1097,6 +1097,14 @@ public class ParquetFileReader implements Closeable {
     return blocks;
   }
 
+  /**
+   * Returns the 0-based index of the row group that was last read via {@link #readNextRowGroup()}
+   * or {@link #readNextFilteredRowGroup()}. Returns -1 if no row group has been read yet.
+   */
+  public int getCurrentRowGroupIndex() {
+    return currentBlock - 1;
+  }
+
   public void setRequestedSchema(List<ColumnDescriptor> columns) {
     paths.clear();
     for (ColumnDescriptor col : columns) {
