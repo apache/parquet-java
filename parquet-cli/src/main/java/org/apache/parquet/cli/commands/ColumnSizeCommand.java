@@ -30,10 +30,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.cli.BaseCommand;
-import org.apache.parquet.format.converter.ParquetMetadataConverter;
 import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
@@ -164,13 +162,14 @@ public class ColumnSizeCommand extends BaseCommand {
   // Make it public to allow some automation tools to call it
   public Map<String, Long> getColumnSizeInBytes(Path inputFile) throws IOException {
     Map<String, Long> colSizes = new HashMap<>();
-    ParquetMetadata pmd =
-        ParquetFileReader.readFooter(new Configuration(), inputFile, ParquetMetadataConverter.NO_FILTER);
 
-    for (BlockMetaData block : pmd.getBlocks()) {
-      for (ColumnChunkMetaData column : block.getColumns()) {
-        String colName = column.getPath().toDotString();
-        colSizes.put(colName, column.getTotalSize() + colSizes.getOrDefault(colName, 0L));
+    try (ParquetFileReader reader = createParquetFileReader(inputFile.toString())) {
+      ParquetMetadata pmd = reader.getFooter();
+      for (BlockMetaData block : pmd.getBlocks()) {
+        for (ColumnChunkMetaData column : block.getColumns()) {
+          String colName = column.getPath().toDotString();
+          colSizes.put(colName, column.getTotalSize() + colSizes.getOrDefault(colName, 0L));
+        }
       }
     }
 
