@@ -20,7 +20,7 @@ package org.apache.parquet.thrift.struct;
 
 import static org.junit.Assert.assertEquals;
 
-import java.util.LinkedList;
+import java.util.List;
 import org.apache.parquet.thrift.struct.ThriftType.StructType;
 import org.apache.parquet.thrift.struct.ThriftType.StructType.StructOrUnionType;
 import org.junit.Test;
@@ -29,7 +29,7 @@ public class TestThriftType {
 
   @Test
   public void testWriteUnionInfo() throws Exception {
-    StructType st = new StructType(new LinkedList<ThriftField>(), null);
+    StructType st = new StructType(List.of(), null);
     assertEquals(
         ("{\n"
                 + "  \"id\" : \"STRUCT\",\n"
@@ -40,7 +40,7 @@ public class TestThriftType {
             .replace("\n", System.lineSeparator()),
         st.toJSON());
 
-    st = new StructType(new LinkedList<ThriftField>(), StructOrUnionType.UNION);
+    st = new StructType(List.of(), StructOrUnionType.UNION);
     assertEquals(
         ("{\n"
                 + "  \"id\" : \"STRUCT\",\n"
@@ -51,7 +51,7 @@ public class TestThriftType {
             .replace("\n", System.lineSeparator()),
         st.toJSON());
 
-    st = new StructType(new LinkedList<ThriftField>(), StructOrUnionType.STRUCT);
+    st = new StructType(List.of(), StructOrUnionType.STRUCT);
     assertEquals(
         ("{\n"
                 + "  \"id\" : \"STRUCT\",\n"

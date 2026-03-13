@@ -23,7 +23,6 @@ import static org.junit.Assert.fail;
 
 import com.google.common.collect.Lists;
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.List;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -520,9 +519,9 @@ public class TestArrayCompatibility extends DirectWriterTest {
         });
 
     ListOfLists expected = new ListOfLists();
-    expected.addToListOfLists(Arrays.asList(34, 35, 36));
-    expected.addToListOfLists(Arrays.<Integer>asList());
-    expected.addToListOfLists(Arrays.asList(32, 33, 34));
+    expected.addToListOfLists(List.of(34, 35, 36));
+    expected.addToListOfLists(List.of());
+    expected.addToListOfLists(List.of(32, 33, 34));
 
     // should detect the "array" name
     assertReaderContains(reader(test, ListOfLists.class), expected);
@@ -581,9 +580,9 @@ public class TestArrayCompatibility extends DirectWriterTest {
         });
 
     ListOfLists expected = new ListOfLists();
-    expected.addToListOfLists(Arrays.asList(34, 35, 36));
-    expected.addToListOfLists(Arrays.<Integer>asList());
-    expected.addToListOfLists(Arrays.asList(32, 33, 34));
+    expected.addToListOfLists(List.of(34, 35, 36));
+    expected.addToListOfLists(List.of());
+    expected.addToListOfLists(List.of(32, 33, 34));
 
     // should detect the "_tuple" names
     assertReaderContains(reader(test, ListOfLists.class), expected);
