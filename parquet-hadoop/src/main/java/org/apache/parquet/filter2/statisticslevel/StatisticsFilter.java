@@ -44,6 +44,11 @@ import org.apache.parquet.filter2.predicate.Operators.UserDefined;
 import org.apache.parquet.filter2.predicate.UserDefinedPredicate;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
+import org.apache.parquet.io.api.Binary;
+import org.apache.parquet.schema.Float16;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
+import org.apache.parquet.schema.PrimitiveType;
+import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 
 /**
  * Applies a {@link org.apache.parquet.filter2.predicate.FilterPredicate} to statistics about a group of
@@ -99,6 +104,102 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
     return column.getStatistics().getNumNulls() > 0;
   }
 
+  private static boolean isFloatingPointColumn(ColumnChunkMetaData column) {
+    PrimitiveType type = column.getPrimitiveType();
+    PrimitiveTypeName typeName = type.getPrimitiveTypeName();
+    return typeName == PrimitiveTypeName.FLOAT
+        || typeName == PrimitiveTypeName.DOUBLE
+        || (typeName == PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY
+            && type.getLogicalTypeAnnotation()
+                instanceof LogicalTypeAnnotation.Float16LogicalTypeAnnotation);
+  }
+
+  // check if all non-null values are NaN (nan_count + null_count == value_count)
+  private boolean isAllNaNs(ColumnChunkMetaData column) {
+    if (!isFloatingPointColumn(column)) {
+      return false;
+    }
+    Statistics<?> stats = column.getStatistics();
+    return stats.isNanCountSet()
+        && stats.isNumNullsSet()
+        && stats.getNanCount() > 0
+        && stats.getNanCount() + stats.getNumNulls() == column.getValueCount();
+  }
+
+  private static boolean isNaNLiteral(ColumnChunkMetaData column, Object value) {
+    if (!isFloatingPointColumn(column)) {
+      return false;
+    }
+    PrimitiveTypeName typeName = column.getPrimitiveType().getPrimitiveTypeName();
+    if (typeName == PrimitiveTypeName.FLOAT) {
+      return Float.isNaN((Float) value);
+    }
+    if (typeName == PrimitiveTypeName.DOUBLE) {
+      return Double.isNaN((Double) value);
+    }
+    // Float16: value is Binary, must be exactly 2 bytes
+    if (!(value instanceof Binary)) {
+      return false;
+    }
+    Binary b = (Binary) value;
+    if (b.length() != 2) {
+      return false;
+    }
+    return Float16.isNaN(b.get2BytesLittleEndian());
+  }
+
+  // check if any of min or max value is NaN
+  private static boolean hasNaNMinMax(ColumnChunkMetaData column, Statistics<?> stats) {
+    if (!isFloatingPointColumn(column) || !stats.hasNonNullValue()) {
+      return false;
+    }
+    PrimitiveTypeName typeName = column.getPrimitiveType().getPrimitiveTypeName();
+    if (typeName == PrimitiveTypeName.FLOAT) {
+      return Float.isNaN((Float) stats.genericGetMin()) || Float.isNaN((Float) stats.genericGetMax());
+    }
+    if (typeName == PrimitiveTypeName.DOUBLE) {
+      return Double.isNaN((Double) stats.genericGetMin()) || Double.isNaN((Double) stats.genericGetMax());
+    }
+    // Float16
+    Object minVal = stats.genericGetMin();
+    Object maxVal = stats.genericGetMax();
+    if (minVal instanceof Binary && maxVal instanceof Binary) {
+      Binary bMin = (Binary) minVal;
+      Binary bMax = (Binary) maxVal;
+      return (bMin.length() == 2 && Float16.isNaN(bMin.get2BytesLittleEndian()))
+          || (bMax.length() == 2 && Float16.isNaN(bMax.get2BytesLittleEndian()));
+    }
+    return false;
+  }
+
+  private static <T> boolean hasNaNLiteral(ColumnChunkMetaData column, Set<T> values) {
+    PrimitiveTypeName typeName = column.getPrimitiveType().getPrimitiveTypeName();
+    boolean isFloat = typeName == PrimitiveTypeName.FLOAT;
+    boolean isDouble = typeName == PrimitiveTypeName.DOUBLE;
+    boolean isFloat16 = typeName == PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY
+        && column.getPrimitiveType().getLogicalTypeAnnotation()
+            instanceof LogicalTypeAnnotation.Float16LogicalTypeAnnotation;
+    if (!isFloat && !isDouble && !isFloat16) {
+      return false;
+    }
+    for (T v : values) {
+      if (v == null) {
+        continue;
+      }
+      if (isFloat) {
+        if (Float.isNaN((Float) v)) return true;
+      } else if (isDouble) {
+        if (Double.isNaN((Double) v)) return true;
+      } else if (v instanceof Binary) {
+        Binary b = (Binary) v;
+        if (b.length() == 2 && Float16.isNaN(b.get2BytesLittleEndian())) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
   @Override
   @SuppressWarnings("unchecked")
   public <T extends Comparable<T>> Boolean visit(Eq<T> eq) {
@@ -139,7 +240,15 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
       return BLOCK_CANNOT_MATCH;
     }
 
-    if (!stats.hasNonNullValue()) {
+    if (isNaNLiteral(meta, value)) {
+      return (!stats.isNanCountSet() || stats.getNanCount() > 0) ? BLOCK_MIGHT_MATCH : BLOCK_CANNOT_MATCH;
+    }
+
+    if (isAllNaNs(meta)) {
+      return BLOCK_CANNOT_MATCH;
+    }
+
+    if (!stats.hasNonNullValue() || hasNaNMinMax(meta, stats)) {
       // stats does not contain min/max values, we cannot drop any chunks
       return BLOCK_MIGHT_MATCH;
     }
@@ -182,17 +291,26 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
       }
     }
 
-    if (!stats.hasNonNullValue()) {
-      // stats does not contain min/max values, we cannot drop any chunks
-      return BLOCK_MIGHT_MATCH;
-    }
-
     if (stats.isNumNullsSet()) {
       if (stats.getNumNulls() == 0) {
         if (values.contains(null) && values.size() == 1) return BLOCK_CANNOT_MATCH;
       } else {
         if (values.contains(null)) return BLOCK_MIGHT_MATCH;
       }
+    }
+
+    // If any value in the IN set is NaN, be conservative
+    if (hasNaNLiteral(meta, values)) {
+      return BLOCK_MIGHT_MATCH;
+    }
+
+    if (isAllNaNs(meta)) {
+      return (values.contains(null) && hasNulls(meta)) ? BLOCK_MIGHT_MATCH : BLOCK_CANNOT_MATCH;
+    }
+
+    if (!stats.hasNonNullValue() || hasNaNMinMax(meta, stats)) {
+      // stats does not contain min/max values, we cannot drop any chunks
+      return BLOCK_MIGHT_MATCH;
     }
 
     MinMax<T> minMax = new MinMax(meta.getPrimitiveType().comparator(), values);
@@ -252,7 +370,15 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
       return BLOCK_MIGHT_MATCH;
     }
 
-    if (!stats.hasNonNullValue()) {
+    if (isNaNLiteral(meta, value)) {
+      return (stats.isNanCountSet() && stats.getNanCount() == 0) ? BLOCK_CANNOT_MATCH : BLOCK_MIGHT_MATCH;
+    }
+
+    if (isAllNaNs(meta)) {
+      return BLOCK_MIGHT_MATCH;
+    }
+
+    if (!stats.hasNonNullValue() || hasNaNMinMax(meta, stats)) {
       // stats does not contain min/max values, we cannot drop any chunks
       return BLOCK_MIGHT_MATCH;
     }
@@ -286,12 +412,16 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
       return BLOCK_CANNOT_MATCH;
     }
 
-    if (!stats.hasNonNullValue()) {
+    if (!stats.hasNonNullValue() || hasNaNMinMax(meta, stats)) {
       // stats does not contain min/max values, we cannot drop any chunks
       return BLOCK_MIGHT_MATCH;
     }
 
     T value = lt.getValue();
+
+    if (isNaNLiteral(meta, value)) {
+      return BLOCK_MIGHT_MATCH;
+    }
 
     // drop if value <= min
     return stats.compareMinToValue(value) >= 0;
@@ -322,12 +452,16 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
       return BLOCK_CANNOT_MATCH;
     }
 
-    if (!stats.hasNonNullValue()) {
+    if (!stats.hasNonNullValue() || hasNaNMinMax(meta, stats)) {
       // stats does not contain min/max values, we cannot drop any chunks
       return BLOCK_MIGHT_MATCH;
     }
 
     T value = ltEq.getValue();
+
+    if (isNaNLiteral(meta, value)) {
+      return BLOCK_MIGHT_MATCH;
+    }
 
     // drop if value < min
     return stats.compareMinToValue(value) > 0;
@@ -358,12 +492,16 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
       return BLOCK_CANNOT_MATCH;
     }
 
-    if (!stats.hasNonNullValue()) {
+    if (!stats.hasNonNullValue() || hasNaNMinMax(meta, stats)) {
       // stats does not contain min/max values, we cannot drop any chunks
       return BLOCK_MIGHT_MATCH;
     }
 
     T value = gt.getValue();
+
+    if (isNaNLiteral(meta, value)) {
+      return BLOCK_MIGHT_MATCH;
+    }
 
     // drop if value >= max
     return stats.compareMaxToValue(value) <= 0;
@@ -394,12 +532,16 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
       return BLOCK_CANNOT_MATCH;
     }
 
-    if (!stats.hasNonNullValue()) {
+    if (!stats.hasNonNullValue() || hasNaNMinMax(meta, stats)) {
       // stats does not contain min/max values, we cannot drop any chunks
       return BLOCK_MIGHT_MATCH;
     }
 
     T value = gtEq.getValue();
+
+    if (isNaNLiteral(meta, value)) {
+      return BLOCK_MIGHT_MATCH;
+    }
 
     // drop if value > max
     return stats.compareMaxToValue(value) < 0;
@@ -462,7 +604,7 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
       }
     }
 
-    if (!stats.hasNonNullValue()) {
+    if (!stats.hasNonNullValue() || hasNaNMinMax(columnChunk, stats)) {
       // stats does not contain min/max values, we cannot drop any chunks
       return BLOCK_MIGHT_MATCH;
     }
