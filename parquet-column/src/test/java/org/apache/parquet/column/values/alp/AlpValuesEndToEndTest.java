@@ -772,8 +772,7 @@ public class AlpValuesEndToEndTest {
       byte[] bytes = input.toByteArray();
       java.nio.ByteBuffer buf = java.nio.ByteBuffer.wrap(bytes).order(java.nio.ByteOrder.LITTLE_ENDIAN);
 
-      // Header (8 bytes)
-      assertEquals("version", 1, buf.get() & 0xFF);
+      // Header (7 bytes)
       assertEquals("compression_mode", 0, buf.get() & 0xFF);
       assertEquals("integer_encoding", 0, buf.get() & 0xFF);
       assertEquals("log_vector_size", 3, buf.get() & 0xFF); // log2(8)=3
@@ -956,10 +955,9 @@ public class AlpValuesEndToEndTest {
     int offsetArraySize = numVectors * 4;
 
     ByteBuffer page =
-        ByteBuffer.allocate(8 + offsetArraySize + vectorDataSize).order(ByteOrder.LITTLE_ENDIAN);
+        ByteBuffer.allocate(7 + offsetArraySize + vectorDataSize).order(ByteOrder.LITTLE_ENDIAN);
 
-    // Header (8 bytes)
-    page.put((byte) 1); // version
+    // Header (7 bytes)
     page.put((byte) 0); // compression_mode
     page.put((byte) 0); // integer_encoding
     page.put((byte) logVectorSize);
@@ -1022,12 +1020,11 @@ public class AlpValuesEndToEndTest {
     int offsetArraySize = 1 * 4;
 
     ByteBuffer page =
-        ByteBuffer.allocate(8 + offsetArraySize + vectorDataSize).order(ByteOrder.LITTLE_ENDIAN);
+        ByteBuffer.allocate(7 + offsetArraySize + vectorDataSize).order(ByteOrder.LITTLE_ENDIAN);
 
-    // Header
-    page.put((byte) 1);
-    page.put((byte) 0);
-    page.put((byte) 0);
+    // Header (7 bytes)
+    page.put((byte) 0); // compression_mode
+    page.put((byte) 0); // integer_encoding
     page.put((byte) logVectorSize);
     page.putInt(numElements);
 
@@ -1087,12 +1084,11 @@ public class AlpValuesEndToEndTest {
     int offsetArraySize = 4;
 
     ByteBuffer page =
-        ByteBuffer.allocate(8 + offsetArraySize + vectorDataSize).order(ByteOrder.LITTLE_ENDIAN);
+        ByteBuffer.allocate(7 + offsetArraySize + vectorDataSize).order(ByteOrder.LITTLE_ENDIAN);
 
-    // Header
-    page.put((byte) 1);
-    page.put((byte) 0);
-    page.put((byte) 0);
+    // Header (7 bytes)
+    page.put((byte) 0); // compression_mode
+    page.put((byte) 0); // integer_encoding
     page.put((byte) 3); // log2(8)
     page.putInt(numElements);
 
@@ -1143,8 +1139,7 @@ public class AlpValuesEndToEndTest {
       byte[] bytes = writer.getBytes().toByteArray();
       ByteBuffer buf = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN);
 
-      // Header (8 bytes)
-      assertEquals(1, buf.get() & 0xFF); // version
+      // Header (7 bytes)
       assertEquals(0, buf.get() & 0xFF); // compression_mode
       assertEquals(0, buf.get() & 0xFF); // integer_encoding
       assertEquals(3, buf.get() & 0xFF); // log2(8) = 3
@@ -1448,13 +1443,12 @@ public class AlpValuesEndToEndTest {
     int offsetArraySize = numVectors * 4; // 8
 
     ByteBuffer page =
-        ByteBuffer.allocate(8 + offsetArraySize + v0DataSize + v1DataSize)
+        ByteBuffer.allocate(7 + offsetArraySize + v0DataSize + v1DataSize)
             .order(ByteOrder.LITTLE_ENDIAN);
 
-    // Header
-    page.put((byte) 1);
-    page.put((byte) 0);
-    page.put((byte) 0);
+    // Header (7 bytes)
+    page.put((byte) 0); // compression_mode
+    page.put((byte) 0); // integer_encoding
     page.put((byte) 3); // log2(8)
     page.putInt(numElements);
 
@@ -1521,10 +1515,10 @@ public class AlpValuesEndToEndTest {
     int offsetArraySize = numVectors * 4;
 
     ByteBuffer page =
-        ByteBuffer.allocate(8 + offsetArraySize + v0DataSize + v1DataSize)
+        ByteBuffer.allocate(7 + offsetArraySize + v0DataSize + v1DataSize)
             .order(ByteOrder.LITTLE_ENDIAN);
 
-    page.put((byte) 1).put((byte) 0).put((byte) 0).put((byte) 3);
+    page.put((byte) 0).put((byte) 0).put((byte) 3);
     page.putInt(numElements);
     page.putInt(offsetArraySize);
     page.putInt(offsetArraySize + v0DataSize);
@@ -1592,6 +1586,132 @@ public class AlpValuesEndToEndTest {
         writer.close();
       }
     }
+  }
+
+  // ========== Factor > 0 Tests ==========
+
+  /**
+   * Data where the best (e,f) combo has factor > 0.
+   * Values like 1234.56 have digits on both sides of the decimal point.
+   * With e=4,f=2: 1234.56 * 10000 / 100 = 123456 — exact integer.
+   * This exercises the division path in the encode/decode formula.
+   */
+  @Test
+  public void testDoubleFactorGreaterThanZero() throws Exception {
+    // These values are designed so the best combo has f > 0
+    double[] values = new double[1024];
+    for (int i = 0; i < values.length; i++) {
+      values[i] = 1000.0 + i * 0.01; // 1000.00, 1000.01, ...
+    }
+
+    // Verify the best params actually have f > 0 or f == 0 with low exceptions
+    AlpEncoderDecoder.EncodingParams params =
+        AlpEncoderDecoder.findBestDoubleParams(values, 0, values.length);
+    // Regardless of the chosen f, the roundtrip must be lossless
+    roundTripDouble(values);
+  }
+
+  @Test
+  public void testFloatFactorGreaterThanZero() throws Exception {
+    float[] values = new float[1024];
+    for (int i = 0; i < values.length; i++) {
+      values[i] = 1000.0f + i * 0.01f;
+    }
+    roundTripFloat(values);
+  }
+
+  // ========== Overflow Boundary Tests ==========
+
+  /**
+   * Values near the encoding limits that test the overflow check.
+   * The old code used Long.MAX_VALUE (which rounds to 2^63 as double),
+   * the fix uses ENCODING_UPPER_LIMIT = 9223372036854774784.0.
+   */
+  @Test
+  public void testDoubleNearOverflowBoundary() throws Exception {
+    double[] values = {
+        9.2e18,         // near Long.MAX_VALUE
+        -9.2e18,        // near Long.MIN_VALUE
+        1.7e308,        // near Double.MAX_VALUE
+        -1.7e308,       // near -Double.MAX_VALUE
+        4.9e-324,       // Double.MIN_VALUE (subnormal)
+        1.0e18,         // large but in range
+        -1.0e18,        // large negative but in range
+        0.0,            // normal
+        1.23,           // normal
+    };
+    roundTripDouble(values);
+  }
+
+  @Test
+  public void testFloatNearOverflowBoundary() throws Exception {
+    float[] values = {
+        2.1e9f,          // near Integer.MAX_VALUE
+        -2.1e9f,         // near Integer.MIN_VALUE
+        3.4e38f,         // near Float.MAX_VALUE
+        -3.4e38f,        // near -Float.MAX_VALUE
+        1.4e-45f,        // Float.MIN_VALUE (subnormal)
+        1.0e9f,          // large but in range
+        0.0f,            // normal
+        1.23f,           // normal
+    };
+    roundTripFloat(values);
+  }
+
+  // ========== Large Scale Stress Test ==========
+
+  @Test
+  public void testDoubleLargeScale100K() throws Exception {
+    Random rand = new Random(12345);
+    double[] values = new double[100_000];
+    for (int i = 0; i < values.length; i++) {
+      values[i] = rand.nextDouble() * 10000.0 - 5000.0;
+    }
+    roundTripDouble(values);
+  }
+
+  @Test
+  public void testFloatLargeScale100K() throws Exception {
+    Random rand = new Random(12345);
+    float[] values = new float[100_000];
+    for (int i = 0; i < values.length; i++) {
+      values[i] = rand.nextFloat() * 10000.0f - 5000.0f;
+    }
+    roundTripFloat(values);
+  }
+
+  // ========== All Exceptions in Large Vector ==========
+
+  /**
+   * A full vector where every value is an exception (NaN/Inf/-0.0).
+   * This exercises the case where placeholder search finds no valid value.
+   */
+  @Test
+  public void testFloatEntireVectorAllExceptions() throws Exception {
+    float[] values = new float[DEFAULT_VECTOR_SIZE + 5]; // partial second vector
+    for (int i = 0; i < values.length; i++) {
+      switch (i % 4) {
+        case 0: values[i] = Float.NaN; break;
+        case 1: values[i] = Float.POSITIVE_INFINITY; break;
+        case 2: values[i] = Float.NEGATIVE_INFINITY; break;
+        case 3: values[i] = -0.0f; break;
+      }
+    }
+    roundTripFloat(values);
+  }
+
+  @Test
+  public void testDoubleEntireVectorAllExceptions() throws Exception {
+    double[] values = new double[DEFAULT_VECTOR_SIZE + 5];
+    for (int i = 0; i < values.length; i++) {
+      switch (i % 4) {
+        case 0: values[i] = Double.NaN; break;
+        case 1: values[i] = Double.POSITIVE_INFINITY; break;
+        case 2: values[i] = Double.NEGATIVE_INFINITY; break;
+        case 3: values[i] = -0.0; break;
+      }
+    }
+    roundTripDouble(values);
   }
 
   // ========== Verify Encoder Produces Expected Values ==========

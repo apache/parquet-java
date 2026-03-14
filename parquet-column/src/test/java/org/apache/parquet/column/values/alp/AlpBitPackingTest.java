@@ -154,15 +154,13 @@ public class AlpBitPackingTest {
       BytesInput input = writer.getBytes();
       byte[] bytes = input.toByteArray();
 
-      // Parse and validate header
+      // Parse and validate header (7 bytes: mode + encoding + logVectorSize + count)
       ByteBuffer buf = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN);
-      int version = buf.get() & 0xFF;
       int compressionMode = buf.get() & 0xFF;
       int integerEncoding = buf.get() & 0xFF;
       int logVectorSize = buf.get() & 0xFF;
       int numElements = buf.getInt();
 
-      assertEquals(AlpConstants.ALP_VERSION, version);
       assertEquals(AlpConstants.ALP_COMPRESSION_MODE, compressionMode);
       assertEquals(AlpConstants.ALP_INTEGER_ENCODING_FOR, integerEncoding);
       assertEquals(AlpConstants.DEFAULT_VECTOR_SIZE_LOG, logVectorSize);
