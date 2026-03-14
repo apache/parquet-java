@@ -34,7 +34,7 @@ import org.apache.parquet.io.ParquetDecodingException;
  * <pre>
  * ┌─────────┬──────────────────────┬──────────────┬──────────────┬─────┐
  * │ Header  │ Offset Array         │ Vector 0     │ Vector 1     │ ... │
- * │ 8 bytes │ 4B &times; numVectors │ (interleaved)│ (interleaved)│     │
+ * │ 7 bytes │ 4B &times; numVectors │ (interleaved)│ (interleaved)│     │
  * └─────────┴──────────────────────┴──────────────┴──────────────┴─────┘
  * </pre>
  *
@@ -63,15 +63,11 @@ abstract class AlpValuesReader extends ValuesReader {
   public void initFromPage(int valuesCount, ByteBufferInputStream stream)
       throws ParquetDecodingException, IOException {
     ByteBuffer headerBuf = stream.slice(ALP_HEADER_SIZE).order(ByteOrder.LITTLE_ENDIAN);
-    int version = headerBuf.get() & 0xFF;
     int compressionMode = headerBuf.get() & 0xFF;
     int integerEncoding = headerBuf.get() & 0xFF;
     int logVectorSize = headerBuf.get() & 0xFF;
     int numElements = headerBuf.getInt();
 
-    if (version != ALP_VERSION) {
-      throw new ParquetDecodingException("Unsupported ALP version: " + version + ", expected " + ALP_VERSION);
-    }
     if (compressionMode != ALP_COMPRESSION_MODE) {
       throw new ParquetDecodingException("Unsupported ALP compression mode: " + compressionMode);
     }

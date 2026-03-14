@@ -27,8 +27,13 @@ import static org.apache.parquet.column.values.alp.AlpConstants.*;
  * then applying Frame of Reference encoding and bit-packing.
  * Values that cannot be losslessly converted are stored as exceptions.
  *
- * <p>Encoding formula: encoded = round(value * 10^(exponent - factor))
- * <p>Decoding formula: value = encoded / 10^(exponent - factor)
+ * <p>Encoding formula: encoded = fastRound(value * POW10[e] * POW10_NEGATIVE[f])
+ * <p>Decoding formula: value = encoded * POW10[f] * POW10_NEGATIVE[e]
+ *
+ * <p>The order of operations is critical for IEEE 754 correctness. Both formulas must
+ * be evaluated as single expressions — storing the intermediate multiplication result
+ * in a variable before the second multiply changes IEEE 754 rounding and produces extra
+ * exceptions. Uses multiply-by-reciprocal (via POW10_NEGATIVE) for C++ wire compatibility.
  *
  * <p>Exception conditions:
  * <ul>
@@ -41,24 +46,13 @@ import static org.apache.parquet.column.values.alp.AlpConstants.*;
  */
 final class AlpEncoderDecoder {
 
+  private static final double ENCODING_UPPER_LIMIT = 9223372036854774784.0;
+  private static final double ENCODING_LOWER_LIMIT = -9223372036854774784.0;
+  private static final float FLOAT_ENCODING_UPPER_LIMIT = 2147483520.0f;
+  private static final float FLOAT_ENCODING_LOWER_LIMIT = -2147483520.0f;
+
   private AlpEncoderDecoder() {
     // Utility class
-  }
-
-  static float getFloatMultiplier(int exponent, int factor) {
-    float multiplier = FLOAT_POW10[exponent];
-    if (factor > 0) {
-      multiplier /= FLOAT_POW10[factor];
-    }
-    return multiplier;
-  }
-
-  static double getDoubleMultiplier(int exponent, int factor) {
-    double multiplier = DOUBLE_POW10[exponent];
-    if (factor > 0) {
-      multiplier /= DOUBLE_POW10[factor];
-    }
-    return multiplier;
   }
 
   /** NaN, Inf, and -0.0 can never be encoded regardless of exponent/factor. */
@@ -77,9 +71,9 @@ final class AlpEncoderDecoder {
     if (isFloatException(value)) {
       return true;
     }
-    float multiplier = getFloatMultiplier(exponent, factor);
-    float scaled = value * multiplier;
-    if (scaled > Integer.MAX_VALUE || scaled < Integer.MIN_VALUE) {
+    // Check before rounding: overflow or non-finite after scaling
+    float scaled = value * FLOAT_POW10[exponent] * FLOAT_POW10_NEGATIVE[factor];
+    if (!Float.isFinite(scaled) || scaled > FLOAT_ENCODING_UPPER_LIMIT || scaled < FLOAT_ENCODING_LOWER_LIMIT) {
       return true;
     }
     int encoded = encodeFloat(value, exponent, factor);
@@ -87,23 +81,23 @@ final class AlpEncoderDecoder {
     return Float.floatToRawIntBits(value) != Float.floatToRawIntBits(decoded);
   }
 
-  /** Encode: round(value * 10^exponent / 10^factor) */
-  static int encodeFloat(float value, int exponent, int factor) {
-    return fastRoundFloat(value * getFloatMultiplier(exponent, factor));
-  }
-
-  /** Decode: encoded / 10^exponent * 10^factor */
-  static float decodeFloat(int encoded, int exponent, int factor) {
-    return encoded / getFloatMultiplier(exponent, factor);
-  }
-
-  // Uses the 2^22+2^23 magic-number trick to round without branching on the FPU.
+  /** Round float to nearest integer using magic-number trick with sign branching. */
   static int fastRoundFloat(float value) {
     if (value >= 0) {
       return (int) ((value + MAGIC_FLOAT) - MAGIC_FLOAT);
     } else {
       return (int) ((value - MAGIC_FLOAT) + MAGIC_FLOAT);
     }
+  }
+
+  /** Encode: fastRound(value * POW10[e] * POW10_NEGATIVE[f]) — single expression. */
+  static int encodeFloat(float value, int exponent, int factor) {
+    return fastRoundFloat(value * FLOAT_POW10[exponent] * FLOAT_POW10_NEGATIVE[factor]);
+  }
+
+  /** Decode: encoded * POW10[f] * POW10_NEGATIVE[e] — single expression. */
+  static float decodeFloat(int encoded, int exponent, int factor) {
+    return encoded * FLOAT_POW10[factor] * FLOAT_POW10_NEGATIVE[exponent];
   }
 
   static boolean isDoubleException(double value) {
@@ -120,9 +114,9 @@ final class AlpEncoderDecoder {
     if (isDoubleException(value)) {
       return true;
     }
-    double multiplier = getDoubleMultiplier(exponent, factor);
-    double scaled = value * multiplier;
-    if (scaled > Long.MAX_VALUE || scaled < Long.MIN_VALUE) {
+    // Check before rounding: overflow or non-finite after scaling
+    double scaled = value * DOUBLE_POW10[exponent] * DOUBLE_POW10_NEGATIVE[factor];
+    if (!Double.isFinite(scaled) || scaled > ENCODING_UPPER_LIMIT || scaled < ENCODING_LOWER_LIMIT) {
       return true;
     }
     long encoded = encodeDouble(value, exponent, factor);
@@ -130,21 +124,23 @@ final class AlpEncoderDecoder {
     return Double.doubleToRawLongBits(value) != Double.doubleToRawLongBits(decoded);
   }
 
-  static long encodeDouble(double value, int exponent, int factor) {
-    return fastRoundDouble(value * getDoubleMultiplier(exponent, factor));
-  }
-
-  static double decodeDouble(long encoded, int exponent, int factor) {
-    return encoded / getDoubleMultiplier(exponent, factor);
-  }
-
-  // Same trick but with 2^51+2^52 for double precision.
+  /** Round double to nearest integer using magic-number trick with sign branching. */
   static long fastRoundDouble(double value) {
     if (value >= 0) {
       return (long) ((value + MAGIC_DOUBLE) - MAGIC_DOUBLE);
     } else {
       return (long) ((value - MAGIC_DOUBLE) + MAGIC_DOUBLE);
     }
+  }
+
+  /** Encode: fastRound(value * POW10[e] * POW10_NEGATIVE[f]) — single expression. */
+  static long encodeDouble(double value, int exponent, int factor) {
+    return fastRoundDouble(value * DOUBLE_POW10[exponent] * DOUBLE_POW10_NEGATIVE[factor]);
+  }
+
+  /** Decode: encoded * POW10[f] * POW10_NEGATIVE[e] — single expression. */
+  static double decodeDouble(long encoded, int exponent, int factor) {
+    return encoded * DOUBLE_POW10[factor] * DOUBLE_POW10_NEGATIVE[exponent];
   }
 
   /** Number of bits needed to represent maxDelta as an unsigned value. */

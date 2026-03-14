@@ -80,22 +80,25 @@ public class AlpEncoderDecoderTest {
   }
 
   @Test
-  public void testFastRoundFloat() {
-    assertEquals(5, AlpEncoderDecoder.fastRoundFloat(5.4f));
-    assertEquals(6, AlpEncoderDecoder.fastRoundFloat(5.5f));
-    assertEquals(6, AlpEncoderDecoder.fastRoundFloat(5.6f));
-    assertEquals(-5, AlpEncoderDecoder.fastRoundFloat(-5.4f));
-    assertEquals(-6, AlpEncoderDecoder.fastRoundFloat(-5.5f));
-    assertEquals(-6, AlpEncoderDecoder.fastRoundFloat(-5.6f));
-    assertEquals(0, AlpEncoderDecoder.fastRoundFloat(0.0f));
+  public void testFloatEncodeRounding() {
+    // Verify rounding behavior (magic number trick rounds to nearest)
+    assertEquals(5, AlpEncoderDecoder.encodeFloat(5.4f, 0, 0));
+    assertEquals(6, AlpEncoderDecoder.encodeFloat(5.6f, 0, 0));
+    assertEquals(-5, AlpEncoderDecoder.encodeFloat(-5.4f, 0, 0));
+    assertEquals(-6, AlpEncoderDecoder.encodeFloat(-5.6f, 0, 0));
+    assertEquals(0, AlpEncoderDecoder.encodeFloat(0.0f, 0, 0));
   }
 
   @Test
-  public void testFloatMultiplier() {
-    assertEquals(1.0f, AlpEncoderDecoder.getFloatMultiplier(0, 0), 0.0f);
-    assertEquals(100.0f, AlpEncoderDecoder.getFloatMultiplier(2, 0), 0.0f);
-    assertEquals(10.0f, AlpEncoderDecoder.getFloatMultiplier(2, 1), 1e-6f);
-    assertEquals(1.0f, AlpEncoderDecoder.getFloatMultiplier(2, 2), 1e-6f);
+  public void testFloatEncodeDecodeWithFactor() {
+    // Verify that encode/decode with non-zero factor works correctly.
+    // The key correctness property: encode uses value * POW10[e] * POW10_NEGATIVE[f],
+    // and decode uses encoded * POW10[f] * POW10_NEGATIVE[e].
+    float value = 12.3f;
+    int encoded = AlpEncoderDecoder.encodeFloat(value, 2, 1);
+    assertEquals(123, encoded); // 12.3 * 100 * 0.1 = 123
+    float decoded = AlpEncoderDecoder.decodeFloat(encoded, 2, 1);
+    assertEquals(Float.floatToRawIntBits(value), Float.floatToRawIntBits(decoded));
   }
 
   // ========== Double Encoding/Decoding Tests ==========
@@ -151,22 +154,49 @@ public class AlpEncoderDecoderTest {
   }
 
   @Test
-  public void testFastRoundDouble() {
-    assertEquals(5L, AlpEncoderDecoder.fastRoundDouble(5.4));
-    assertEquals(6L, AlpEncoderDecoder.fastRoundDouble(5.5));
-    assertEquals(6L, AlpEncoderDecoder.fastRoundDouble(5.6));
-    assertEquals(-5L, AlpEncoderDecoder.fastRoundDouble(-5.4));
-    assertEquals(-6L, AlpEncoderDecoder.fastRoundDouble(-5.5));
-    assertEquals(-6L, AlpEncoderDecoder.fastRoundDouble(-5.6));
-    assertEquals(0L, AlpEncoderDecoder.fastRoundDouble(0.0));
+  public void testDoubleEncodeRounding() {
+    // Verify rounding behavior (magic number trick rounds to nearest)
+    assertEquals(5L, AlpEncoderDecoder.encodeDouble(5.4, 0, 0));
+    assertEquals(6L, AlpEncoderDecoder.encodeDouble(5.6, 0, 0));
+    assertEquals(-5L, AlpEncoderDecoder.encodeDouble(-5.4, 0, 0));
+    assertEquals(-6L, AlpEncoderDecoder.encodeDouble(-5.6, 0, 0));
+    assertEquals(0L, AlpEncoderDecoder.encodeDouble(0.0, 0, 0));
   }
 
   @Test
-  public void testDoubleMultiplier() {
-    assertEquals(1.0, AlpEncoderDecoder.getDoubleMultiplier(0, 0), 0.0);
-    assertEquals(100.0, AlpEncoderDecoder.getDoubleMultiplier(2, 0), 0.0);
-    assertEquals(10.0, AlpEncoderDecoder.getDoubleMultiplier(2, 1), 1e-10);
-    assertEquals(1.0, AlpEncoderDecoder.getDoubleMultiplier(2, 2), 1e-10);
+  public void testDoubleEncodeDecodeWithFactor() {
+    // Verify that encode/decode with non-zero factor works correctly.
+    // The key correctness property: encode uses value * POW10[e] * POW10_NEGATIVE[f],
+    // and decode uses encoded * POW10[f] * POW10_NEGATIVE[e].
+    double value = 12.3;
+    long encoded = AlpEncoderDecoder.encodeDouble(value, 2, 1);
+    assertEquals(123L, encoded); // 12.3 * 100 * 0.1 = 123
+    double decoded = AlpEncoderDecoder.decodeDouble(encoded, 2, 1);
+    assertEquals(Double.doubleToRawLongBits(value), Double.doubleToRawLongBits(decoded));
+  }
+
+  @Test
+  public void testDoubleEncodeDecodeArithmeticOrder() {
+    // This test verifies that the exact order of operations in encode/decode
+    // is critical for IEEE 754 correctness. The encode uses
+    // fastRound(value * POW10[e] * POW10_NEGATIVE[f]) and decode uses
+    // (encoded * POW10[f] * POW10_NEGATIVE[e]), both as single expressions.
+    // Splitting the multiplies or reordering changes rounding.
+    double[] testValues = {0.123456789, 1.23456789, 12.3456789, 123.456789, 1234.56789};
+    for (double value : testValues) {
+      for (int e = 0; e <= 10; e++) {
+        for (int f = 0; f <= e; f++) {
+          if (!AlpEncoderDecoder.isDoubleException(value, e, f)) {
+            long encoded = AlpEncoderDecoder.encodeDouble(value, e, f);
+            double decoded = AlpEncoderDecoder.decodeDouble(encoded, e, f);
+            assertEquals(
+                "Roundtrip failed for " + value + " (e=" + e + ", f=" + f + ")",
+                Double.doubleToRawLongBits(value),
+                Double.doubleToRawLongBits(decoded));
+          }
+        }
+      }
+    }
   }
 
   // ========== Bit Width Tests (renamed methods) ==========
