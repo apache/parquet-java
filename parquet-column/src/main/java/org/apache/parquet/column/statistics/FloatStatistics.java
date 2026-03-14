@@ -19,6 +19,7 @@
 package org.apache.parquet.column.statistics;
 
 import org.apache.parquet.bytes.BytesUtils;
+import org.apache.parquet.schema.ColumnOrder;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Types;
 
@@ -42,6 +43,7 @@ public class FloatStatistics extends Statistics<Float> {
 
   FloatStatistics(PrimitiveType type) {
     super(type);
+    incrementNanCount(0);
   }
 
   private FloatStatistics(FloatStatistics other) {
@@ -50,10 +52,14 @@ public class FloatStatistics extends Statistics<Float> {
       initializeStats(other.min, other.max);
     }
     setNumNulls(other.getNumNulls());
+    incrementNanCount(other.getNanCount());
   }
 
   @Override
   public void updateStats(float value) {
+    if (Float.isNaN(value)) {
+      incrementNanCount();
+    }
     if (!this.hasNonNullValue()) {
       initializeStats(value, value);
     } else {
@@ -99,6 +105,20 @@ public class FloatStatistics extends Statistics<Float> {
   }
 
   public void updateStats(float min_value, float max_value) {
+    if (type().columnOrder().equals(ColumnOrder.ieee754TotalOrder())) {
+      if (!Float.isNaN(min_value)) {
+        if (Float.isNaN(min) || comparator().compare(min, min_value) > 0) {
+          min = min_value;
+        }
+      }
+      if (!Float.isNaN(max_value)) {
+        if (Float.isNaN(max) || comparator().compare(max, max_value) < 0) {
+          max = max_value;
+        }
+      }
+      return;
+    }
+
     if (comparator().compare(min, min_value) > 0) {
       min = min_value;
     }

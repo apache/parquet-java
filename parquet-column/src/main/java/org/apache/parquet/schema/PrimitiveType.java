@@ -88,7 +88,7 @@ public final class PrimitiveType extends Type {
       }
 
       @Override
-      PrimitiveComparator<?> comparator(LogicalTypeAnnotation logicalType) {
+      PrimitiveComparator<?> comparator(LogicalTypeAnnotation logicalType, ColumnOrder columnOrder) {
         if (logicalType == null) {
           return PrimitiveComparator.SIGNED_INT64_COMPARATOR;
         }
@@ -152,7 +152,7 @@ public final class PrimitiveType extends Type {
       }
 
       @Override
-      PrimitiveComparator<?> comparator(LogicalTypeAnnotation logicalType) {
+      PrimitiveComparator<?> comparator(LogicalTypeAnnotation logicalType, ColumnOrder columnOrder) {
         if (logicalType == null) {
           return PrimitiveComparator.SIGNED_INT32_COMPARATOR;
         }
@@ -222,7 +222,7 @@ public final class PrimitiveType extends Type {
       }
 
       @Override
-      PrimitiveComparator<?> comparator(LogicalTypeAnnotation logicalType) {
+      PrimitiveComparator<?> comparator(LogicalTypeAnnotation logicalType, ColumnOrder columnOrder) {
         return PrimitiveComparator.BOOLEAN_COMPARATOR;
       }
     },
@@ -248,7 +248,7 @@ public final class PrimitiveType extends Type {
       }
 
       @Override
-      PrimitiveComparator<?> comparator(LogicalTypeAnnotation logicalType) {
+      PrimitiveComparator<?> comparator(LogicalTypeAnnotation logicalType, ColumnOrder columnOrder) {
         if (logicalType == null) {
           return PrimitiveComparator.UNSIGNED_LEXICOGRAPHICAL_BINARY_COMPARATOR;
         }
@@ -328,8 +328,10 @@ public final class PrimitiveType extends Type {
       }
 
       @Override
-      PrimitiveComparator<?> comparator(LogicalTypeAnnotation logicalType) {
-        return PrimitiveComparator.FLOAT_COMPARATOR;
+      PrimitiveComparator<?> comparator(LogicalTypeAnnotation logicalType, ColumnOrder columnOrder) {
+        return columnOrder != null && columnOrder.getColumnOrderName() == ColumnOrderName.IEEE_754_TOTAL_ORDER
+            ? PrimitiveComparator.FLOAT_IEEE_754_TOTAL_ORDER_COMPARATOR
+            : PrimitiveComparator.FLOAT_COMPARATOR;
       }
     },
     DOUBLE("getDouble", Double.TYPE) {
@@ -354,8 +356,10 @@ public final class PrimitiveType extends Type {
       }
 
       @Override
-      PrimitiveComparator<?> comparator(LogicalTypeAnnotation logicalType) {
-        return PrimitiveComparator.DOUBLE_COMPARATOR;
+      PrimitiveComparator<?> comparator(LogicalTypeAnnotation logicalType, ColumnOrder columnOrder) {
+        return columnOrder != null && columnOrder.getColumnOrderName() == ColumnOrderName.IEEE_754_TOTAL_ORDER
+            ? PrimitiveComparator.DOUBLE_IEEE_754_TOTAL_ORDER_COMPARATOR
+            : PrimitiveComparator.DOUBLE_COMPARATOR;
       }
     },
     INT96("getBinary", Binary.class) {
@@ -380,7 +384,7 @@ public final class PrimitiveType extends Type {
       }
 
       @Override
-      PrimitiveComparator<?> comparator(LogicalTypeAnnotation logicalType) {
+      PrimitiveComparator<?> comparator(LogicalTypeAnnotation logicalType, ColumnOrder columnOrder) {
         return PrimitiveComparator.BINARY_AS_SIGNED_INTEGER_COMPARATOR;
       }
     },
@@ -406,7 +410,7 @@ public final class PrimitiveType extends Type {
       }
 
       @Override
-      PrimitiveComparator<?> comparator(LogicalTypeAnnotation logicalType) {
+      PrimitiveComparator<?> comparator(LogicalTypeAnnotation logicalType, ColumnOrder columnOrder) {
         if (logicalType == null) {
           return PrimitiveComparator.UNSIGNED_LEXICOGRAPHICAL_BINARY_COMPARATOR;
         }
@@ -433,7 +437,11 @@ public final class PrimitiveType extends Type {
               @Override
               public Optional<PrimitiveComparator> visit(
                   LogicalTypeAnnotation.Float16LogicalTypeAnnotation float16LogicalType) {
-                return of(PrimitiveComparator.BINARY_AS_FLOAT16_COMPARATOR);
+                return (columnOrder != null
+                        && columnOrder.getColumnOrderName()
+                            == ColumnOrderName.IEEE_754_TOTAL_ORDER)
+                    ? of(PrimitiveComparator.BINARY_AS_FLOAT16_IEEE_754_TOTAL_ORDER_COMPARATOR)
+                    : of(PrimitiveComparator.BINARY_AS_FLOAT16_COMPARATOR);
               }
 
               @Override
@@ -477,7 +485,11 @@ public final class PrimitiveType extends Type {
 
     public abstract <T, E extends Exception> T convert(PrimitiveTypeNameConverter<T, E> converter) throws E;
 
-    abstract PrimitiveComparator<?> comparator(LogicalTypeAnnotation logicalType);
+    abstract PrimitiveComparator<?> comparator(LogicalTypeAnnotation logicalType, ColumnOrder columnOrder);
+
+    public PrimitiveComparator<?> comparator(LogicalTypeAnnotation logicalType) {
+      return comparator(logicalType, ColumnOrder.typeDefined());
+    }
   }
 
   private final PrimitiveTypeName primitive;
@@ -569,6 +581,12 @@ public final class PrimitiveType extends Type {
       columnOrder = primitive == PrimitiveTypeName.INT96 || originalType == OriginalType.INTERVAL
           ? ColumnOrder.undefined()
           : ColumnOrder.typeDefined();
+    } else if (columnOrder.getColumnOrderName() == ColumnOrderName.IEEE_754_TOTAL_ORDER) {
+      Preconditions.checkArgument(
+          primitive == PrimitiveTypeName.FLOAT || primitive == PrimitiveTypeName.DOUBLE,
+          "The column order %s is not supported by type %s",
+          columnOrder,
+          primitive);
     }
     this.columnOrder = requireValidColumnOrder(columnOrder);
   }
@@ -615,6 +633,17 @@ public final class PrimitiveType extends Type {
               || logicalTypeAnnotation instanceof LogicalTypeAnnotation.IntervalLogicalTypeAnnotation
           ? ColumnOrder.undefined()
           : ColumnOrder.typeDefined();
+    } else if (columnOrder.getColumnOrderName() == ColumnOrderName.IEEE_754_TOTAL_ORDER) {
+      Preconditions.checkArgument(
+          primitive == PrimitiveTypeName.FLOAT
+              || primitive == PrimitiveTypeName.DOUBLE
+              || (logicalTypeAnnotation != null
+                  && logicalTypeAnnotation.getType()
+                      == LogicalTypeAnnotation.LogicalTypeToken.FLOAT16),
+          "The column order %s is not supported by type %s logical type %s",
+          columnOrder,
+          primitive,
+          logicalTypeAnnotation);
     }
     this.columnOrder = requireValidColumnOrder(columnOrder);
   }
@@ -653,6 +682,15 @@ public final class PrimitiveType extends Type {
    */
   public PrimitiveType withLogicalTypeAnnotation(LogicalTypeAnnotation logicalType) {
     return new PrimitiveType(getRepetition(), primitive, length, getName(), logicalType, getId());
+  }
+
+  /**
+   * @param columnOrder the column order
+   * @return the same type with the column order set
+   */
+  public Type withColumnOrder(ColumnOrder columnOrder) {
+    return new PrimitiveType(
+        getRepetition(), primitive, length, getName(), getLogicalTypeAnnotation(), getId(), columnOrder);
   }
 
   /**
@@ -869,7 +907,7 @@ public final class PrimitiveType extends Type {
    */
   @SuppressWarnings("unchecked")
   public <T> PrimitiveComparator<T> comparator() {
-    return (PrimitiveComparator<T>) getPrimitiveTypeName().comparator(getLogicalTypeAnnotation());
+    return (PrimitiveComparator<T>) getPrimitiveTypeName().comparator(getLogicalTypeAnnotation(), columnOrder());
   }
 
   /**

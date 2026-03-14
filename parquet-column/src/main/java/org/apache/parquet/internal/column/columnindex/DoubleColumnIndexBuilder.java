@@ -25,6 +25,7 @@ import it.unimi.dsi.fastutil.doubles.DoubleList;
 import java.nio.ByteBuffer;
 import org.apache.parquet.filter2.predicate.Statistics;
 import org.apache.parquet.io.api.Binary;
+import org.apache.parquet.schema.ColumnOrder;
 import org.apache.parquet.schema.PrimitiveComparator;
 import org.apache.parquet.schema.PrimitiveType;
 
@@ -32,9 +33,31 @@ class DoubleColumnIndexBuilder extends ColumnIndexBuilder {
   private static class DoubleColumnIndex extends ColumnIndexBase<Double> {
     private double[] minValues;
     private double[] maxValues;
+    private final boolean isIeee754TotalOrder;
 
     private DoubleColumnIndex(PrimitiveType type) {
       super(type);
+      isIeee754TotalOrder = type.columnOrder().equals(ColumnOrder.ieee754TotalOrder());
+    }
+
+    @Override
+    boolean mayHaveNaNPollutedMinMax() {
+      return !isIeee754TotalOrder;
+    }
+
+    @Override
+    boolean isNaNLiteral(Object value) {
+      return Double.isNaN((double) value);
+    }
+
+    @Override
+    boolean isMinNaN(int arrayIndex) {
+      return Double.isNaN(minValues[arrayIndex]);
+    }
+
+    @Override
+    boolean isMaxNaN(int arrayIndex) {
+      return Double.isNaN(maxValues[arrayIndex]);
     }
 
     @Override
@@ -83,6 +106,11 @@ class DoubleColumnIndexBuilder extends ColumnIndexBuilder {
   private final DoubleList minValues = new DoubleArrayList();
   private final DoubleList maxValues = new DoubleArrayList();
   private boolean invalid;
+  private final boolean isIeee754TotalOrder;
+
+  DoubleColumnIndexBuilder(PrimitiveType type) {
+    this.isIeee754TotalOrder = type.columnOrder().equals(ColumnOrder.ieee754TotalOrder());
+  }
 
   private static double convert(ByteBuffer buffer) {
     return buffer.order(LITTLE_ENDIAN).getDouble(0);
@@ -103,20 +131,34 @@ class DoubleColumnIndexBuilder extends ColumnIndexBuilder {
     double dMin = (double) min;
     double dMax = (double) max;
     if (Double.isNaN(dMin) || Double.isNaN(dMax)) {
-      // Invalidate this column index in case of NaN as the sorting order of values is undefined for this case
-      invalid = true;
+      if (isIeee754TotalOrder) {
+        dMin = Double.NaN;
+        dMax = Double.NaN;
+      } else {
+        invalid = true;
+      }
     }
 
-    // Sorting order is undefined for -0.0 so let min = -0.0 and max = +0.0 to ensure that no 0.0 values are skipped
-    if (Double.compare(dMin, +0.0) == 0) {
-      dMin = -0.0;
-    }
-    if (Double.compare(dMax, -0.0) == 0) {
-      dMax = +0.0;
+    // For TYPE_DEFINED_ORDER, sorting order is undefined for -0.0 so let min = -0.0 and max = +0.0
+    // to ensure that no 0.0 values are skipped. For IEEE_754_TOTAL_ORDER, -0 < +0 is well-defined.
+    if (!isIeee754TotalOrder) {
+      if (Double.compare(dMin, +0.0) == 0) {
+        dMin = -0.0;
+      }
+      if (Double.compare(dMax, -0.0) == 0) {
+        dMax = +0.0;
+      }
     }
 
     minValues.add(dMin);
     maxValues.add(dMax);
+  }
+
+  @Override
+  void onNanEncountered() {
+    if (!isIeee754TotalOrder) {
+      invalid = true;
+    }
   }
 
   @Override
