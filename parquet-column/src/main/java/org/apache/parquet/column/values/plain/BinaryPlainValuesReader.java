@@ -27,6 +27,14 @@ import org.apache.parquet.io.api.Binary;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * ValuesReader for variable-length {@code BYTE_ARRAY} columns.
+ *
+ * <p>When the column carries the logical type {@code DECIMAL}, the bytes read
+ * here are the big-endian two's-complement form of the un-scaled integer.
+ * It slices the requested number of bytes without flipping and
+ * returns them as a {@link org.apache.parquet.io.api.Binary}.
+ */
 public class BinaryPlainValuesReader extends ValuesReader {
   private static final Logger LOG = LoggerFactory.getLogger(BinaryPlainValuesReader.class);
   private ByteBufferInputStream in;
