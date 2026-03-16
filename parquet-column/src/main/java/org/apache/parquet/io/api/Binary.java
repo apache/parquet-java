@@ -25,12 +25,8 @@ import java.io.OutputStream;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.nio.CharBuffer;
-import java.nio.charset.CharacterCodingException;
-import java.nio.charset.CharsetEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
-import org.apache.parquet.io.ParquetEncodingException;
 import org.apache.parquet.schema.PrimitiveComparator;
 
 public abstract class Binary implements Comparable<Binary>, Serializable {
@@ -268,15 +264,8 @@ public abstract class Binary implements Comparable<Binary>, Serializable {
       return "Binary{\"" + toStringUsingUTF8() + "\"}";
     }
 
-    private static final ThreadLocal<CharsetEncoder> ENCODER =
-        ThreadLocal.withInitial(StandardCharsets.UTF_8::newEncoder);
-
     private static ByteBuffer encodeUTF8(CharSequence value) {
-      try {
-        return ENCODER.get().encode(CharBuffer.wrap(value));
-      } catch (CharacterCodingException e) {
-        throw new ParquetEncodingException("UTF-8 not supported.", e);
-      }
+      return ByteBuffer.wrap(value.toString().getBytes(StandardCharsets.UTF_8));
     }
   }
 
