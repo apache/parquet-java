@@ -927,4 +927,16 @@ public class TestStatistics {
     assertThrows(UnsupportedOperationException.class, stats::minAsString);
     assertThrows(UnsupportedOperationException.class, () -> stats.isSmallerThan(0));
   }
+
+  @Test
+  public void testBinaryIsSmallerThanNoOverflowForLargeValues() {
+    PrimitiveType type = Types.required(BINARY).named("test_binary");
+    Statistics<?> stats = Statistics.getBuilderForReading(type).build();
+
+    byte[] largeValue = new byte[1_073_741_824]; // 2^30 = 1 GB
+    stats.setMinMaxFromBytes(largeValue, largeValue);
+
+    // min.length() + max.length() = 2^31, must not overflow int to negative
+    assertFalse(stats.isSmallerThan(4096));
+  }
 }
