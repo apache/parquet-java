@@ -108,7 +108,7 @@
     <jcommander.version>1.82</jcommander.version>
     <tukaani.version>1.12</tukaani.version>
     <zstd-jni.version>1.5.7-7</zstd-jni.version>
-    <commons-text.version>1.13.1</commons-text.version>
+    <commons-text.version>1.15.0</commons-text.version>
     <jsr305.version>3.0.2</jsr305.version>
     <commons-lang3.version>3.20.0</commons-lang3.version>
 
