@@ -930,11 +930,10 @@ public class TestStatistics {
 
   @Test
   public void testBinaryIsSmallerThanNoOverflowForLargeValues() {
-    PrimitiveType type = Types.required(BINARY).named("test_binary");
-    Statistics<?> stats = Statistics.getBuilderForReading(type).build();
-
-    byte[] largeValue = new byte[1_073_741_824]; // 2^30 = 1 GB
-    stats.setMinMaxFromBytes(largeValue, largeValue);
+    BinaryStatistics stats = new BinaryStatistics();
+    // Create a Binary whose length() reports 2^30 without allocating 1 GB
+    Binary fakeLarge = Binary.fromConstantByteArray(new byte[0], 0, 1 << 30);
+    stats.updateStats(fakeLarge);
 
     // min.length() + max.length() = 2^31, must not overflow int to negative
     assertFalse(stats.isSmallerThan(4096));
