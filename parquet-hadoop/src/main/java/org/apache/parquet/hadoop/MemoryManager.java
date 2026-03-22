@@ -48,7 +48,7 @@ public class MemoryManager {
   private final long minMemoryAllocation;
   private final Map<InternalParquetRecordWriter<?>, Long> writerList = new HashMap<>();
   private final Map<String, Runnable> callBacks = new HashMap<String, Runnable>();
-  private double scale = 1.0;
+  private volatile double scale = 1.0;
 
   public MemoryManager(float ratio, long minAllocation) {
     checkRatio(ratio);
