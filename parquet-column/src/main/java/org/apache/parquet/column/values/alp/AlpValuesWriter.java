@@ -23,6 +23,7 @@ import static org.apache.parquet.column.values.alp.AlpConstants.*;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -89,10 +90,12 @@ public abstract class AlpValuesWriter extends ValuesWriter {
     private CapacityByteArrayOutputStream encodedVectors;
     private final List<Integer> vectorByteSizes;
 
-    // Preset caching
+    // Preset caching: collect evenly-spaced sample vectors across the rowgroup,
+    // then build presets using estimated compressed size (matching C++ AlpSampler).
     private int vectorsProcessed;
     private int[][] cachedPresets;
-    private final Map<Long, Integer> presetCounts;
+    private final List<float[]> rowgroupSamples;
+    private final int rowgroupSampleJump;
 
     // Reusable per-vector buffers
     private final int[] encodedBuffer;
@@ -115,7 +118,10 @@ public abstract class AlpValuesWriter extends ValuesWriter {
       this.vectorByteSizes = new ArrayList<>();
       this.vectorsProcessed = 0;
       this.cachedPresets = null;
-      this.presetCounts = new HashMap<>();
+      this.rowgroupSamples = new ArrayList<>();
+      // Space samples evenly: one sample every jump vectors across the rowgroup.
+      // Math.max(1, ...) guards against very small rowgroups or large vector sizes.
+      this.rowgroupSampleJump = Math.max(1, SAMPLER_ROWGROUP_SIZE / SAMPLER_SAMPLE_VECTORS_PER_ROWGROUP / vectorSize);
       // Pre-allocate reusable buffers
       this.encodedBuffer = new int[vectorSize];
       this.excPosBuffer = new short[vectorSize];
@@ -142,12 +148,16 @@ public abstract class AlpValuesWriter extends ValuesWriter {
         params = AlpEncoderDecoder.findBestFloatParamsWithPresets(vectorBuffer, 0, vectorLen, cachedPresets);
       } else {
         params = AlpEncoderDecoder.findBestFloatParams(vectorBuffer, 0, vectorLen);
-        long key = ((long) params.exponent << Integer.SIZE) | params.factor;
-        presetCounts.merge(key, 1, Integer::sum);
+        // Collect one sample every rowgroupSampleJump vectors so that samples are
+        // evenly distributed across the rowgroup (matching C++ AlpSampler spacing).
+        if (vectorsProcessed % rowgroupSampleJump == 0
+            && rowgroupSamples.size() < SAMPLER_SAMPLE_VECTORS_PER_ROWGROUP) {
+          rowgroupSamples.add(Arrays.copyOf(vectorBuffer, vectorLen));
+        }
       }
 
       vectorsProcessed++;
-      if (cachedPresets == null && vectorsProcessed >= SAMPLER_SAMPLE_VECTORS) {
+      if (cachedPresets == null && rowgroupSamples.size() >= SAMPLER_SAMPLE_VECTORS_PER_ROWGROUP) {
         buildPresetCache();
       }
 
@@ -258,7 +268,16 @@ public abstract class AlpValuesWriter extends ValuesWriter {
     }
 
     private void buildPresetCache() {
-      List<Map.Entry<Long, Integer>> sorted = new ArrayList<>(presetCounts.entrySet());
+      // For each sampled vector, find the best (e,f) using estimated compressed size,
+      // then rank combos by how many samples they win. Take the top MAX_PRESET_COMBINATIONS.
+      Map<Long, Integer> comboCounts = new HashMap<>();
+      for (float[] sample : rowgroupSamples) {
+        AlpEncoderDecoder.EncodingParams best =
+            AlpEncoderDecoder.findBestFloatParams(sample, 0, sample.length);
+        long key = ((long) best.exponent << Integer.SIZE) | best.factor;
+        comboCounts.merge(key, 1, Integer::sum);
+      }
+      List<Map.Entry<Long, Integer>> sorted = new ArrayList<>(comboCounts.entrySet());
       sorted.sort(Comparator.<Map.Entry<Long, Integer>, Integer>comparing(Map.Entry::getValue)
           .reversed());
       int numPresets = Math.min(sorted.size(), MAX_PRESET_COMBINATIONS);
@@ -268,6 +287,7 @@ public abstract class AlpValuesWriter extends ValuesWriter {
         cachedPresets[i][0] = (int) (key >>> Integer.SIZE); // exponent
         cachedPresets[i][1] = (int) key; // factor
       }
+      rowgroupSamples.clear();
     }
 
     @Override
@@ -316,7 +336,7 @@ public abstract class AlpValuesWriter extends ValuesWriter {
       vectorByteSizes.clear();
       vectorsProcessed = 0;
       cachedPresets = null;
-      presetCounts.clear();
+      rowgroupSamples.clear();
     }
 
     @Override
@@ -344,10 +364,12 @@ public abstract class AlpValuesWriter extends ValuesWriter {
     private CapacityByteArrayOutputStream encodedVectors;
     private final List<Integer> vectorByteSizes;
 
-    // Preset caching
+    // Preset caching: collect evenly-spaced sample vectors across the rowgroup,
+    // then build presets using estimated compressed size (matching C++ AlpSampler).
     private int vectorsProcessed;
     private int[][] cachedPresets;
-    private final Map<Long, Integer> presetCounts;
+    private final List<double[]> rowgroupSamples;
+    private final int rowgroupSampleJump;
 
     // Reusable per-vector buffers
     private final long[] encodedBuffer;
@@ -370,7 +392,8 @@ public abstract class AlpValuesWriter extends ValuesWriter {
       this.vectorByteSizes = new ArrayList<>();
       this.vectorsProcessed = 0;
       this.cachedPresets = null;
-      this.presetCounts = new HashMap<>();
+      this.rowgroupSamples = new ArrayList<>();
+      this.rowgroupSampleJump = Math.max(1, SAMPLER_ROWGROUP_SIZE / SAMPLER_SAMPLE_VECTORS_PER_ROWGROUP / vectorSize);
       // Pre-allocate reusable buffers
       this.encodedBuffer = new long[vectorSize];
       this.excPosBuffer = new short[vectorSize];
@@ -396,12 +419,14 @@ public abstract class AlpValuesWriter extends ValuesWriter {
         params = AlpEncoderDecoder.findBestDoubleParamsWithPresets(vectorBuffer, 0, vectorLen, cachedPresets);
       } else {
         params = AlpEncoderDecoder.findBestDoubleParams(vectorBuffer, 0, vectorLen);
-        long key = ((long) params.exponent << Integer.SIZE) | params.factor;
-        presetCounts.merge(key, 1, Integer::sum);
+        if (vectorsProcessed % rowgroupSampleJump == 0
+            && rowgroupSamples.size() < SAMPLER_SAMPLE_VECTORS_PER_ROWGROUP) {
+          rowgroupSamples.add(Arrays.copyOf(vectorBuffer, vectorLen));
+        }
       }
 
       vectorsProcessed++;
-      if (cachedPresets == null && vectorsProcessed >= SAMPLER_SAMPLE_VECTORS) {
+      if (cachedPresets == null && rowgroupSamples.size() >= SAMPLER_SAMPLE_VECTORS_PER_ROWGROUP) {
         buildPresetCache();
       }
 
@@ -512,7 +537,14 @@ public abstract class AlpValuesWriter extends ValuesWriter {
     }
 
     private void buildPresetCache() {
-      List<Map.Entry<Long, Integer>> sorted = new ArrayList<>(presetCounts.entrySet());
+      Map<Long, Integer> comboCounts = new HashMap<>();
+      for (double[] sample : rowgroupSamples) {
+        AlpEncoderDecoder.EncodingParams best =
+            AlpEncoderDecoder.findBestDoubleParams(sample, 0, sample.length);
+        long key = ((long) best.exponent << Integer.SIZE) | best.factor;
+        comboCounts.merge(key, 1, Integer::sum);
+      }
+      List<Map.Entry<Long, Integer>> sorted = new ArrayList<>(comboCounts.entrySet());
       sorted.sort(Comparator.<Map.Entry<Long, Integer>, Integer>comparing(Map.Entry::getValue)
           .reversed());
       int numPresets = Math.min(sorted.size(), MAX_PRESET_COMBINATIONS);
@@ -522,6 +554,7 @@ public abstract class AlpValuesWriter extends ValuesWriter {
         cachedPresets[i][0] = (int) (key >>> Integer.SIZE);
         cachedPresets[i][1] = (int) key;
       }
+      rowgroupSamples.clear();
     }
 
     @Override
@@ -569,7 +602,7 @@ public abstract class AlpValuesWriter extends ValuesWriter {
       vectorByteSizes.clear();
       vectorsProcessed = 0;
       cachedPresets = null;
-      presetCounts.clear();
+      rowgroupSamples.clear();
     }
 
     @Override

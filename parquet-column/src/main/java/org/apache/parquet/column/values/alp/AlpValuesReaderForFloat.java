@@ -34,6 +34,10 @@ import org.apache.parquet.io.ParquetDecodingException;
 public class AlpValuesReaderForFloat extends AlpValuesReader {
 
   private float[] decodedValues;
+  private int[] deltasBuffer;
+  private int[] excPositionsBuffer;
+  private final int[] unpackPadBuf = new int[8];
+  private byte[] unpackByteBuf;
 
   public AlpValuesReaderForFloat() {
     super();
@@ -42,6 +46,9 @@ public class AlpValuesReaderForFloat extends AlpValuesReader {
   @Override
   protected void allocateDecodedBuffer(int capacity) {
     this.decodedValues = new float[capacity];
+    this.deltasBuffer = new int[capacity];
+    this.excPositionsBuffer = new int[capacity];
+    this.unpackByteBuf = new byte[Integer.SIZE]; // max bit width for int = 32 bytes
   }
 
   @Override
@@ -69,26 +76,25 @@ public class AlpValuesReaderForFloat extends AlpValuesReader {
     int bitWidth = vectorsData.get(pos + 4) & 0xFF;
     pos += FLOAT_FOR_INFO_SIZE;
 
-    int[] deltas = new int[vectorLen];
     if (bitWidth > 0) {
-      pos = unpackIntsWithBytePacker(vectorsData, pos, deltas, vectorLen, bitWidth);
+      pos = unpackIntsWithBytePacker(vectorsData, pos, deltasBuffer, vectorLen, bitWidth);
+    } else {
+      java.util.Arrays.fill(deltasBuffer, 0, vectorLen, 0);
     }
 
-    // Reverse the frame-of-reference subtraction, then decimal-decode
     for (int i = 0; i < vectorLen; i++) {
-      int encoded = deltas[i] + frameOfReference;
+      int encoded = deltasBuffer[i] + frameOfReference;
       decodedValues[i] = AlpEncoderDecoder.decodeFloat(encoded, exponent, factor);
     }
 
     // Overwrite exception slots with their original float values
     if (numExceptions > 0) {
-      int[] excPositions = new int[numExceptions];
       for (int e = 0; e < numExceptions; e++) {
-        excPositions[e] = getShortLE(vectorsData, pos) & 0xFFFF;
+        excPositionsBuffer[e] = getShortLE(vectorsData, pos) & 0xFFFF;
         pos += Short.BYTES;
       }
       for (int e = 0; e < numExceptions; e++) {
-        decodedValues[excPositions[e]] = getFloatLE(vectorsData, pos);
+        decodedValues[excPositionsBuffer[e]] = getFloatLE(vectorsData, pos);
         pos += Float.BYTES;
       }
     }
@@ -110,14 +116,15 @@ public class AlpValuesReaderForFloat extends AlpValuesReader {
       int alreadyRead = numFullGroups * bitWidth;
       int partialBytes = totalPackedBytes - alreadyRead;
 
-      byte[] padded = new byte[bitWidth];
       for (int i = 0; i < partialBytes; i++) {
-        padded[i] = buf.get(pos + i);
+        unpackByteBuf[i] = buf.get(pos + i);
+      }
+      for (int i = partialBytes; i < bitWidth; i++) {
+        unpackByteBuf[i] = 0;
       }
 
-      int[] temp = new int[8];
-      packer.unpack8Values(padded, 0, temp, 0);
-      System.arraycopy(temp, 0, output, numFullGroups * 8, remaining);
+      packer.unpack8Values(unpackByteBuf, 0, unpackPadBuf, 0);
+      System.arraycopy(unpackPadBuf, 0, output, numFullGroups * 8, remaining);
       pos += partialBytes;
     }
 

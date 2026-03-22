@@ -34,6 +34,10 @@ import org.apache.parquet.io.ParquetDecodingException;
 public class AlpValuesReaderForDouble extends AlpValuesReader {
 
   private double[] decodedValues;
+  private long[] deltasBuffer;
+  private int[] excPositionsBuffer;
+  private final long[] unpackPadBuf = new long[8];
+  private byte[] unpackByteBuf;
 
   public AlpValuesReaderForDouble() {
     super();
@@ -42,6 +46,9 @@ public class AlpValuesReaderForDouble extends AlpValuesReader {
   @Override
   protected void allocateDecodedBuffer(int capacity) {
     this.decodedValues = new double[capacity];
+    this.deltasBuffer = new long[capacity];
+    this.excPositionsBuffer = new int[capacity];
+    this.unpackByteBuf = new byte[Long.SIZE]; // max bit width for long = 64 bytes
   }
 
   @Override
@@ -69,24 +76,24 @@ public class AlpValuesReaderForDouble extends AlpValuesReader {
     int bitWidth = vectorsData.get(pos + 8) & 0xFF;
     pos += DOUBLE_FOR_INFO_SIZE;
 
-    long[] deltas = new long[vectorLen];
     if (bitWidth > 0) {
-      pos = unpackLongsWithBytePacker(vectorsData, pos, deltas, vectorLen, bitWidth);
+      pos = unpackLongsWithBytePacker(vectorsData, pos, deltasBuffer, vectorLen, bitWidth);
+    } else {
+      java.util.Arrays.fill(deltasBuffer, 0, vectorLen, 0L);
     }
 
     for (int i = 0; i < vectorLen; i++) {
-      long encoded = deltas[i] + frameOfReference;
+      long encoded = deltasBuffer[i] + frameOfReference;
       decodedValues[i] = AlpEncoderDecoder.decodeDouble(encoded, exponent, factor);
     }
 
     if (numExceptions > 0) {
-      int[] excPositions = new int[numExceptions];
       for (int e = 0; e < numExceptions; e++) {
-        excPositions[e] = getShortLE(vectorsData, pos) & 0xFFFF;
+        excPositionsBuffer[e] = getShortLE(vectorsData, pos) & 0xFFFF;
         pos += Short.BYTES;
       }
       for (int e = 0; e < numExceptions; e++) {
-        decodedValues[excPositions[e]] = getDoubleLE(vectorsData, pos);
+        decodedValues[excPositionsBuffer[e]] = getDoubleLE(vectorsData, pos);
         pos += Double.BYTES;
       }
     }
@@ -109,14 +116,15 @@ public class AlpValuesReaderForDouble extends AlpValuesReader {
       int alreadyRead = numFullGroups * bitWidth;
       int partialBytes = totalPackedBytes - alreadyRead;
 
-      byte[] padded = new byte[bitWidth];
       for (int i = 0; i < partialBytes; i++) {
-        padded[i] = buf.get(pos + i);
+        unpackByteBuf[i] = buf.get(pos + i);
+      }
+      for (int i = partialBytes; i < bitWidth; i++) {
+        unpackByteBuf[i] = 0;
       }
 
-      long[] temp = new long[8];
-      packer.unpack8Values(padded, 0, temp, 0);
-      System.arraycopy(temp, 0, output, numFullGroups * 8, remaining);
+      packer.unpack8Values(unpackByteBuf, 0, unpackPadBuf, 0);
+      System.arraycopy(unpackPadBuf, 0, output, numFullGroups * 8, remaining);
       pos += partialBytes;
     }
 

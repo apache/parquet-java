@@ -36,8 +36,9 @@ public final class Files {
   private Files() {}
 
   public static List<String> readAllLines(File file, Charset charset) throws IOException {
-    BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), charset));
-    try {
+    try (FileInputStream fis = new FileInputStream(file);
+         InputStreamReader isr = new InputStreamReader(fis, charset);
+         BufferedReader reader = new BufferedReader(isr)) {
       List<String> result = new ArrayList<String>();
       for (; ; ) {
         String line = reader.readLine();
@@ -45,8 +46,6 @@ public final class Files {
         result.add(line);
       }
       return result;
-    } finally {
-      reader.close();
     }
   }
 }
