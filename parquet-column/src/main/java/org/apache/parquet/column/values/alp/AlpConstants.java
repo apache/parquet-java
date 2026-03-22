@@ -53,8 +53,11 @@ public final class AlpConstants {
   static final int FLOAT_MAX_EXPONENT = 10;
   static final int DOUBLE_MAX_EXPONENT = 18;
 
-  // Preset caching: full search for the first N vectors, then lock in the top combos
-  static final int SAMPLER_SAMPLE_VECTORS = 8;
+  // Sampler constants matching C++ AlpConstants.
+  // Sample SAMPLER_SAMPLE_VECTORS_PER_ROWGROUP vectors evenly distributed across a rowgroup
+  // of SAMPLER_ROWGROUP_SIZE values, then lock in top MAX_PRESET_COMBINATIONS combos.
+  static final int SAMPLER_ROWGROUP_SIZE = 122_880;
+  static final int SAMPLER_SAMPLE_VECTORS_PER_ROWGROUP = 8;
   static final int MAX_PRESET_COMBINATIONS = 5;
 
   // Magic numbers for the fast-rounding trick (see ALP paper, Section 3.2)

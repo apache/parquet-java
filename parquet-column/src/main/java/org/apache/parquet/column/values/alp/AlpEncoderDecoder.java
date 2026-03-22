@@ -170,26 +170,51 @@ final class AlpEncoderDecoder {
     }
   }
 
-  /** Try all (exponent, factor) combos and pick the one with fewest exceptions. */
+  /**
+   * Try all (exponent, factor) combos and pick the one with the smallest estimated compressed size.
+   *
+   * <p>Estimated size (in bits) = {@code length * bitWidth + exceptions * (Float.SIZE + Short.SIZE)},
+   * where bitWidth is the number of bits needed to represent the unsigned range of non-exception
+   * encoded values after frame-of-reference subtraction. This matches the C++ ALP cost model and
+   * produces better compression ratios than minimizing exception count alone.
+   */
   static EncodingParams findBestFloatParams(float[] values, int offset, int length) {
     int bestExponent = 0;
     int bestFactor = 0;
     int bestExceptions = length;
+    long bestEstimatedSize = Long.MAX_VALUE;
 
     for (int e = 0; e <= FLOAT_MAX_EXPONENT; e++) {
       for (int f = 0; f <= e; f++) {
         int exceptions = 0;
+        int minEncoded = Integer.MAX_VALUE;
+        int maxEncoded = Integer.MIN_VALUE;
         for (int i = 0; i < length; i++) {
-          if (isFloatException(values[offset + i], e, f)) {
+          float value = values[offset + i];
+          if (isFloatException(value, e, f)) {
             exceptions++;
+          } else {
+            int encoded = encodeFloat(value, e, f);
+            if (encoded < minEncoded) minEncoded = encoded;
+            if (encoded > maxEncoded) maxEncoded = encoded;
           }
         }
-        if (exceptions < bestExceptions) {
+        int nonExceptions = length - exceptions;
+        if (nonExceptions == 0) continue;
+        long delta = (nonExceptions < 2) ? 0 :
+            Integer.toUnsignedLong(maxEncoded) - Integer.toUnsignedLong(minEncoded);
+        int bitsPerValue = (delta == 0) ? 0 : (64 - Long.numberOfLeadingZeros(delta));
+        long estimatedSize = (long) length * bitsPerValue
+            + (long) exceptions * (Float.SIZE + Short.SIZE);
+        if (estimatedSize < bestEstimatedSize
+            || (estimatedSize == bestEstimatedSize
+                && (e > bestExponent || (e == bestExponent && f > bestFactor)))) {
+          bestEstimatedSize = estimatedSize;
           bestExponent = e;
           bestFactor = f;
           bestExceptions = exceptions;
-          if (bestExceptions == 0) {
-            return new EncodingParams(bestExponent, bestFactor, bestExceptions);
+          if (bestExceptions == 0 && bitsPerValue == 0) {
+            return new EncodingParams(bestExponent, bestFactor, 0);
           }
         }
       }
@@ -202,47 +227,85 @@ final class AlpEncoderDecoder {
     int bestExponent = presets[0][0];
     int bestFactor = presets[0][1];
     int bestExceptions = length;
+    long bestEstimatedSize = Long.MAX_VALUE;
 
     for (int[] preset : presets) {
       int e = preset[0];
       int f = preset[1];
       int exceptions = 0;
+      int minEncoded = Integer.MAX_VALUE;
+      int maxEncoded = Integer.MIN_VALUE;
       for (int i = 0; i < length; i++) {
-        if (isFloatException(values[offset + i], e, f)) {
+        float value = values[offset + i];
+        if (isFloatException(value, e, f)) {
           exceptions++;
+        } else {
+          int encoded = encodeFloat(value, e, f);
+          if (encoded < minEncoded) minEncoded = encoded;
+          if (encoded > maxEncoded) maxEncoded = encoded;
         }
       }
-      if (exceptions < bestExceptions) {
+      int nonExceptions = length - exceptions;
+      if (nonExceptions == 0) continue;
+      long delta = (nonExceptions < 2) ? 0 :
+          Integer.toUnsignedLong(maxEncoded) - Integer.toUnsignedLong(minEncoded);
+      int bitsPerValue = (delta == 0) ? 0 : (64 - Long.numberOfLeadingZeros(delta));
+      long estimatedSize = (long) length * bitsPerValue
+          + (long) exceptions * (Float.SIZE + Short.SIZE);
+      if (estimatedSize < bestEstimatedSize
+          || (estimatedSize == bestEstimatedSize
+              && (e > bestExponent || (e == bestExponent && f > bestFactor)))) {
+        bestEstimatedSize = estimatedSize;
         bestExponent = e;
         bestFactor = f;
         bestExceptions = exceptions;
-        if (bestExceptions == 0) {
-          return new EncodingParams(bestExponent, bestFactor, bestExceptions);
+        if (bestExceptions == 0 && bitsPerValue == 0) {
+          return new EncodingParams(bestExponent, bestFactor, 0);
         }
       }
     }
     return new EncodingParams(bestExponent, bestFactor, bestExceptions);
   }
 
+  /** Try all (exponent, factor) combos and pick the one with the smallest estimated compressed size. */
   static EncodingParams findBestDoubleParams(double[] values, int offset, int length) {
     int bestExponent = 0;
     int bestFactor = 0;
     int bestExceptions = length;
+    long bestEstimatedSize = Long.MAX_VALUE;
 
     for (int e = 0; e <= DOUBLE_MAX_EXPONENT; e++) {
       for (int f = 0; f <= e; f++) {
         int exceptions = 0;
+        long minEncoded = Long.MAX_VALUE;
+        long maxEncoded = Long.MIN_VALUE;
         for (int i = 0; i < length; i++) {
-          if (isDoubleException(values[offset + i], e, f)) {
+          double value = values[offset + i];
+          if (isDoubleException(value, e, f)) {
             exceptions++;
+          } else {
+            long encoded = encodeDouble(value, e, f);
+            if (encoded < minEncoded) minEncoded = encoded;
+            if (encoded > maxEncoded) maxEncoded = encoded;
           }
         }
-        if (exceptions < bestExceptions) {
+        int nonExceptions = length - exceptions;
+        if (nonExceptions == 0) continue;
+        // delta as signed subtraction; Long.numberOfLeadingZeros handles the unsigned bit width
+        // correctly even when the subtraction overflows (large range → penalized with 64 bits).
+        long delta = (nonExceptions < 2) ? 0 : (maxEncoded - minEncoded);
+        int bitsPerValue = (delta == 0) ? 0 : (64 - Long.numberOfLeadingZeros(delta));
+        long estimatedSize = (long) length * bitsPerValue
+            + (long) exceptions * (Double.SIZE + Short.SIZE);
+        if (estimatedSize < bestEstimatedSize
+            || (estimatedSize == bestEstimatedSize
+                && (e > bestExponent || (e == bestExponent && f > bestFactor)))) {
+          bestEstimatedSize = estimatedSize;
           bestExponent = e;
           bestFactor = f;
           bestExceptions = exceptions;
-          if (bestExceptions == 0) {
-            return new EncodingParams(bestExponent, bestFactor, bestExceptions);
+          if (bestExceptions == 0 && bitsPerValue == 0) {
+            return new EncodingParams(bestExponent, bestFactor, 0);
           }
         }
       }
@@ -250,26 +313,44 @@ final class AlpEncoderDecoder {
     return new EncodingParams(bestExponent, bestFactor, bestExceptions);
   }
 
+  /** Same as findBestDoubleParams but only tries the cached preset combos. */
   static EncodingParams findBestDoubleParamsWithPresets(double[] values, int offset, int length, int[][] presets) {
     int bestExponent = presets[0][0];
     int bestFactor = presets[0][1];
     int bestExceptions = length;
+    long bestEstimatedSize = Long.MAX_VALUE;
 
     for (int[] preset : presets) {
       int e = preset[0];
       int f = preset[1];
       int exceptions = 0;
+      long minEncoded = Long.MAX_VALUE;
+      long maxEncoded = Long.MIN_VALUE;
       for (int i = 0; i < length; i++) {
-        if (isDoubleException(values[offset + i], e, f)) {
+        double value = values[offset + i];
+        if (isDoubleException(value, e, f)) {
           exceptions++;
+        } else {
+          long encoded = encodeDouble(value, e, f);
+          if (encoded < minEncoded) minEncoded = encoded;
+          if (encoded > maxEncoded) maxEncoded = encoded;
         }
       }
-      if (exceptions < bestExceptions) {
+      int nonExceptions = length - exceptions;
+      if (nonExceptions == 0) continue;
+      long delta = (nonExceptions < 2) ? 0 : (maxEncoded - minEncoded);
+      int bitsPerValue = (delta == 0) ? 0 : (64 - Long.numberOfLeadingZeros(delta));
+      long estimatedSize = (long) length * bitsPerValue
+          + (long) exceptions * (Double.SIZE + Short.SIZE);
+      if (estimatedSize < bestEstimatedSize
+          || (estimatedSize == bestEstimatedSize
+              && (e > bestExponent || (e == bestExponent && f > bestFactor)))) {
+        bestEstimatedSize = estimatedSize;
         bestExponent = e;
         bestFactor = f;
         bestExceptions = exceptions;
-        if (bestExceptions == 0) {
-          return new EncodingParams(bestExponent, bestFactor, bestExceptions);
+        if (bestExceptions == 0 && bitsPerValue == 0) {
+          return new EncodingParams(bestExponent, bestFactor, 0);
         }
       }
     }
