@@ -733,7 +733,13 @@ class ClientSideMetadataSplitStrategy {
       final Path file = footer.getFile();
       LOG.debug("{}", file);
       FileSystem fs = file.getFileSystem(configuration);
-      FileStatus fileStatus = fs.getFileStatus(file);
+      // Reuse FileStatus from Footer to avoid redundant getFileStatus RPC
+      FileStatus fileStatus = footer.getFileStatus();
+      if (fileStatus == null) {
+        // Fallback for backwards compatibility or when Footer doesn't have FileStatus
+        // (e.g., footers from summary files)
+        fileStatus = fs.getFileStatus(file);
+      }
       ParquetMetadata parquetMetaData = footer.getParquetMetadata();
       List<BlockMetaData> blocks = parquetMetaData.getBlocks();
 
