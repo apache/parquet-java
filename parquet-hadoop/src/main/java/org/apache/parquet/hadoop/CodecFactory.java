@@ -29,9 +29,12 @@ import java.util.Objects;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.compress.CodecPool;
 import org.apache.hadoop.io.compress.CompressionCodec;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.apache.hadoop.io.compress.CompressionOutputStream;
 import org.apache.hadoop.io.compress.Compressor;
 import org.apache.hadoop.io.compress.Decompressor;
+import org.apache.hadoop.io.compress.zlib.ZlibCompressor;
 import org.apache.hadoop.util.ReflectionUtils;
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.bytes.ByteBufferAllocator;
@@ -45,10 +48,15 @@ import org.apache.parquet.hadoop.util.ConfigurationUtil;
 
 public class CodecFactory implements CompressionCodecFactory {
 
+  private static final Logger LOG = LoggerFactory.getLogger(CodecFactory.class);
+
   protected static final Map<String, CompressionCodec> CODEC_BY_NAME =
       Collections.synchronizedMap(new HashMap<String, CompressionCodec>());
 
-  private final Map<CompressionCodecName, BytesCompressor> compressors = new HashMap<>();
+  static final String GZIP_COMPRESS_LEVEL = "zlib.compress.level";
+  static final String BROTLI_COMPRESS_QUALITY = "compression.brotli.quality";
+
+  private final Map<String, BytesCompressor> compressors = new HashMap<>();
   private final Map<CompressionCodecName, BytesDecompressor> decompressors = new HashMap<>();
 
   protected final ParquetConfiguration conf;
@@ -250,10 +258,22 @@ public class CodecFactory implements CompressionCodecFactory {
 
   @Override
   public BytesCompressor getCompressor(CompressionCodecName codecName) {
-    BytesCompressor comp = compressors.get(codecName);
+    String key = cacheKey(codecName);
+    BytesCompressor comp = compressors.get(key);
     if (comp == null) {
       comp = createCompressor(codecName);
-      compressors.put(codecName, comp);
+      compressors.put(key, comp);
+    }
+    return comp;
+  }
+
+  @Override
+  public BytesCompressor getCompressor(CompressionCodecName codecName, int level) {
+    String key = cacheKey(codecName, level);
+    BytesCompressor comp = compressors.get(key);
+    if (comp == null) {
+      comp = createCompressorAtLevel(codecName, level);
+      compressors.put(key, comp);
     }
     return comp;
   }
@@ -269,13 +289,110 @@ public class CodecFactory implements CompressionCodecFactory {
   }
 
   protected BytesCompressor createCompressor(CompressionCodecName codecName) {
-    CompressionCodec codec = getCodec(codecName);
-    return codec == null ? NO_OP_COMPRESSOR : new HeapBytesCompressor(codecName, codec);
+    return compressorForCodec(codecName, getCodec(codecName));
   }
 
   protected BytesDecompressor createDecompressor(CompressionCodecName codecName) {
     CompressionCodec codec = getCodec(codecName);
     return codec == null ? NO_OP_DECOMPRESSOR : new HeapBytesDecompressor(codec);
+  }
+
+  private BytesCompressor createCompressorAtLevel(CompressionCodecName codecName, int level) {
+    return compressorForCodec(codecName, getCodecAtLevel(codecName, level));
+  }
+
+  private BytesCompressor compressorForCodec(CompressionCodecName codecName, CompressionCodec codec) {
+    return codec == null ? NO_OP_COMPRESSOR : new HeapBytesCompressor(codecName, codec);
+  }
+
+  private static void validateZstdLevel(int level) {
+    if (level < 1 || level > 22) {
+      throw new BadConfigurationException("Unsupported ZSTD compression level: " + level
+          + ". Valid range is 1 (fastest) to 22 (best compression).");
+    }
+  }
+
+  private static void validateBrotliLevel(int level) {
+    if (level < 0 || level > 11) {
+      throw new BadConfigurationException("Unsupported Brotli compression level: " + level
+          + ". Valid range is 0 (fastest) to 11 (best compression).");
+    }
+  }
+
+  private static void validateGzipLevel(int level) {
+    if (level != -1 && (level < 0 || level > 9)) {
+      throw new BadConfigurationException("Unsupported GZIP compression level: " + level
+          + ". Valid range is 0 (no compression) to 9 (best compression), or -1 for default.");
+    }
+  }
+
+  private static ZlibCompressor.CompressionLevel zlibCompressionLevel(int level) {
+    switch (level) {
+      case -1: return ZlibCompressor.CompressionLevel.DEFAULT_COMPRESSION;
+      case 0:  return ZlibCompressor.CompressionLevel.NO_COMPRESSION;
+      case 1:  return ZlibCompressor.CompressionLevel.BEST_SPEED;
+      case 2:  return ZlibCompressor.CompressionLevel.TWO;
+      case 3:  return ZlibCompressor.CompressionLevel.THREE;
+      case 4:  return ZlibCompressor.CompressionLevel.FOUR;
+      case 5:  return ZlibCompressor.CompressionLevel.FIVE;
+      case 6:  return ZlibCompressor.CompressionLevel.SIX;
+      case 7:  return ZlibCompressor.CompressionLevel.SEVEN;
+      case 8:  return ZlibCompressor.CompressionLevel.EIGHT;
+      case 9:  return ZlibCompressor.CompressionLevel.BEST_COMPRESSION;
+      default: throw new BadConfigurationException("Unsupported GZIP compression level: " + level
+          + ". Valid range is 0 (no compression) to 9 (best compression), or -1 for default.");
+    }
+  }
+
+  /**
+   * Returns a {@link CompressionCodec} instance configured at the specified compression level.
+   * A level-specific {@link Configuration} snapshot is built so that the codec is initialized
+   * with the requested level rather than the global configuration value.
+   * For codecs that do not support levels the method falls back to {@link #getCodec(CompressionCodecName)}.
+   */
+  private CompressionCodec getCodecAtLevel(CompressionCodecName codecName, int level) {
+    String codecClassName = codecName.getHadoopCompressionCodecClassName();
+    if (codecClassName == null) {
+      return null;
+    }
+    String key = cacheKey(codecName, level);
+    CompressionCodec codec = CODEC_BY_NAME.get(key);
+    if (codec != null) {
+      return codec;
+    }
+    // Build a Configuration snapshot with the level explicitly set for this codec.
+    Configuration levelConf = new Configuration(ConfigurationUtil.createHadoopConfiguration(conf));
+    switch (codecName) {
+      case ZSTD:
+        validateZstdLevel(level);
+        levelConf.setInt(ZstandardCodec.PARQUET_COMPRESS_ZSTD_LEVEL, level);
+        break;
+      case GZIP:
+        validateGzipLevel(level);
+        levelConf.setEnum(GZIP_COMPRESS_LEVEL, zlibCompressionLevel(level));
+        break;
+      case BROTLI:
+        validateBrotliLevel(level);
+        levelConf.setInt(BROTLI_COMPRESS_QUALITY, level);
+        break;
+      default:
+        // Codec does not support levels; fall back to the default codec instance.
+        LOG.warn("Compression level {} is not supported for codec {} and will be ignored.", level, codecName);
+        return getCodec(codecName);
+    }
+    try {
+      Class<?> codecClass;
+      try {
+        codecClass = Class.forName(codecClassName);
+      } catch (ClassNotFoundException e) {
+        codecClass = new Configuration(false).getClassLoader().loadClass(codecClassName);
+      }
+      codec = (CompressionCodec) ReflectionUtils.newInstance(codecClass, levelConf);
+      CODEC_BY_NAME.put(key, codec);
+      return codec;
+    } catch (ClassNotFoundException e) {
+      throw new BadConfigurationException("Class " + codecClassName + " was not found", e);
+    }
   }
 
   /**
@@ -314,10 +431,10 @@ public class CodecFactory implements CompressionCodecFactory {
     String level = null;
     switch (codecName) {
       case GZIP:
-        level = conf.get("zlib.compress.level");
+        level = conf.get(GZIP_COMPRESS_LEVEL);
         break;
       case BROTLI:
-        level = conf.get("compression.brotli.quality");
+        level = conf.get(BROTLI_COMPRESS_QUALITY);
         break;
       case ZSTD:
         level = conf.get("parquet.compression.codec.zstd.level");
@@ -327,6 +444,11 @@ public class CodecFactory implements CompressionCodecFactory {
     }
     String codecClass = codecName.getHadoopCompressionCodecClassName();
     return level == null ? codecClass : codecClass + ":" + level;
+  }
+
+  private String cacheKey(CompressionCodecName codecName, int level) {
+    String codecClass = codecName.getHadoopCompressionCodecClassName();
+    return (codecClass == null ? codecName.name() : codecClass) + ":" + level;
   }
 
   @Override
