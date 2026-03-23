@@ -159,9 +159,9 @@ final class AlpEncoderDecoder {
   }
 
   public static class EncodingParams {
-    public final int exponent;
-    public final int factor;
-    public final int numExceptions;
+    final int exponent;
+    final int factor;
+    final int numExceptions;
 
     EncodingParams(int exponent, int factor, int numExceptions) {
       this.exponent = exponent;

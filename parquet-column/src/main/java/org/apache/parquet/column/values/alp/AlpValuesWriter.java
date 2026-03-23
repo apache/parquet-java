@@ -292,7 +292,9 @@ public abstract class AlpValuesWriter extends ValuesWriter {
 
     @Override
     public long getBufferedSize() {
-      // Encoded vectors so far + estimate for buffered values
+      // Encoded vectors so far + estimate for buffered values.
+      // 3 bytes/value ≈ ALP_INFO_SIZE(4) + FLOAT_FOR_INFO_SIZE(5) amortized over vectorSize(1024),
+      // plus ~1 bit/value for packed data at typical bit widths — rounds up to ~3 bytes.
       return encodedVectors.size() + (long) bufferCount * 3;
     }
 
@@ -559,6 +561,9 @@ public abstract class AlpValuesWriter extends ValuesWriter {
 
     @Override
     public long getBufferedSize() {
+      // Encoded vectors so far + estimate for buffered values.
+      // 5 bytes/value ≈ ALP_INFO_SIZE(4) + DOUBLE_FOR_INFO_SIZE(9) amortized over vectorSize(1024),
+      // plus ~1 bit/value for packed data at typical bit widths — rounds up to ~5 bytes.
       return encodedVectors.size() + (long) bufferCount * 5;
     }
 
