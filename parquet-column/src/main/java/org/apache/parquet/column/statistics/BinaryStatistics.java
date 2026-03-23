@@ -19,6 +19,9 @@
 package org.apache.parquet.column.statistics;
 
 import org.apache.parquet.io.api.Binary;
+import org.apache.parquet.schema.ColumnOrder;
+import org.apache.parquet.schema.Float16;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Types;
 
@@ -28,6 +31,7 @@ public class BinaryStatistics extends Statistics<Binary> {
   private static final PrimitiveType DEFAULT_FAKE_TYPE =
       Types.optional(PrimitiveType.PrimitiveTypeName.BINARY).named("fake_binary_type");
 
+  private final boolean isFloat16;
   private Binary max;
   private Binary min;
 
@@ -41,26 +45,59 @@ public class BinaryStatistics extends Statistics<Binary> {
 
   BinaryStatistics(PrimitiveType type) {
     super(type);
+    this.isFloat16 = type.getLogicalTypeAnnotation() instanceof LogicalTypeAnnotation.Float16LogicalTypeAnnotation;
+    if (isFloat16) {
+      incrementNanCount(0);
+    }
   }
 
   private BinaryStatistics(BinaryStatistics other) {
     super(other.type());
+    this.isFloat16 = other.isFloat16;
     if (other.hasNonNullValue()) {
       initializeStats(other.min, other.max);
     }
     setNumNulls(other.getNumNulls());
+    incrementNanCount(other.getNanCount());
   }
 
   @Override
   public void updateStats(Binary value) {
+    if (isFloat16 && Float16.isNaN(value.get2BytesLittleEndian())) {
+      incrementNanCount();
+    }
     if (!this.hasNonNullValue()) {
       min = value.copy();
       max = value.copy();
       this.markAsNotEmpty();
-    } else if (comparator().compare(min, value) > 0) {
-      min = value.copy();
-    } else if (comparator().compare(max, value) < 0) {
-      max = value.copy();
+    } else {
+      if (isFloat16 && type().columnOrder().equals(ColumnOrder.ieee754TotalOrder())) {
+        boolean valueIsNaN = Float16.isNaN(value.get2BytesLittleEndian());
+        boolean minIsNaN = Float16.isNaN(min.get2BytesLittleEndian());
+        boolean maxIsNaN = Float16.isNaN(max.get2BytesLittleEndian());
+        if (valueIsNaN) {
+          if (minIsNaN && comparator().compare(min, value) > 0) {
+            min = value.copy();
+          }
+          if (maxIsNaN && comparator().compare(max, value) < 0) {
+            max = value.copy();
+          }
+        } else {
+          if (minIsNaN || comparator().compare(min, value) > 0) {
+            min = value.copy();
+          }
+          if (maxIsNaN || comparator().compare(max, value) < 0) {
+            max = value.copy();
+          }
+        }
+        return;
+      }
+
+      if (comparator().compare(min, value) > 0) {
+        min = value.copy();
+      } else if (comparator().compare(max, value) < 0) {
+        max = value.copy();
+      }
     }
   }
 
@@ -126,6 +163,29 @@ public class BinaryStatistics extends Statistics<Binary> {
    */
   @Deprecated
   public void updateStats(Binary min_value, Binary max_value) {
+    if (isFloat16 && type().columnOrder().equals(ColumnOrder.ieee754TotalOrder())) {
+      boolean minValueIsNaN = Float16.isNaN(min_value.get2BytesLittleEndian());
+      boolean minIsNaN = Float16.isNaN(min.get2BytesLittleEndian());
+      if (minValueIsNaN) {
+        if (minIsNaN && comparator().compare(min, min_value) > 0) {
+          min = min_value.copy();
+        }
+      } else if (minIsNaN || comparator().compare(min, min_value) > 0) {
+        min = min_value.copy();
+      }
+
+      boolean maxValueIsNaN = Float16.isNaN(max_value.get2BytesLittleEndian());
+      boolean maxIsNaN = Float16.isNaN(max.get2BytesLittleEndian());
+      if (maxValueIsNaN) {
+        if (maxIsNaN && comparator().compare(max, max_value) < 0) {
+          max = max_value.copy();
+        }
+      } else if (maxIsNaN || comparator().compare(max, max_value) < 0) {
+        max = max_value.copy();
+      }
+      return;
+    }
+
     if (comparator().compare(min, min_value) > 0) {
       min = min_value.copy();
     }

@@ -83,7 +83,7 @@
     <shade.prefix>shaded.parquet</shade.prefix>
     <!-- Guarantees no newer classes/methods/constants are used by parquet. -->
     <hadoop.version>3.3.0</hadoop.version>
-    <parquet.format.version>2.12.0</parquet.format.version>
+    <parquet.format.version>2.13.0-SNAPSHOT</parquet.format.version>
     <previous.version>1.17.0</previous.version>
     <thrift.executable>thrift</thrift.executable>
     <format.thrift.executable>${thrift.executable}</format.thrift.executable>
