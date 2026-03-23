@@ -36,12 +36,10 @@ public class IOExceptionUtils {
    * @param closeable - resource to close
    */
   public static void closeQuietly(Closeable closeable) {
-    if (closeable != null) {
-      try {
-        closeable.close();
-      } catch (IOException e) {
-        throw new ParquetRuntimeException("Error closing I/O related resources.", e) {};
-      }
+    try {
+      closeable.close();
+    } catch (IOException e) {
+      throw new ParquetRuntimeException("Error closing I/O related resources.", e) {};
     }
   }
 }
