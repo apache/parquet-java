@@ -22,6 +22,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 
+import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -73,6 +74,8 @@ public class TestColumnIndexBuilderNaN {
   }
 
   private static final Binary FLOAT16_NAN = float16Binary((short) 0x7e00);
+  private static final Binary FLOAT16_NAN_SMALL = float16Binary((short) 0x7c01);
+  private static final Binary FLOAT16_NAN_LARGE = float16Binary((short) 0x7fff);
   private static final Binary FLOAT16_ONE = float16Binary((short) 0x3C00); // 1.0
   private static final Binary FLOAT16_TWO = float16Binary((short) 0x4000); // 2.0
   private static final Binary FLOAT16_THREE = float16Binary((short) 0x4200); // 3.0
@@ -170,6 +173,58 @@ public class TestColumnIndexBuilderNaN {
     ColumnIndex ci = builder.build();
     assertNotNull(ci);
     assertEquals(List.of(1L, 2L, 0L), ci.getNanCounts());
+  }
+
+  @Test
+  public void testFloatIeee754AllNanPageKeepsNanRangeInColumnIndex() {
+    float minNaN = Float.intBitsToFloat(0x7fc00001);
+    float maxNaN = Float.intBitsToFloat(0x7fffffff);
+    ColumnIndexBuilder builder = ColumnIndexBuilder.getBuilder(FLOAT_IEEE754_TYPE, Integer.MAX_VALUE);
+    builder.add(floatStats(FLOAT_IEEE754_TYPE, maxNaN, minNaN));
+
+    ColumnIndex ci = builder.build();
+    assertNotNull(ci);
+    assertEquals(1, ci.getMinValues().size());
+    assertEquals(
+        0x7fc00001,
+        ci.getMinValues().get(0).order(ByteOrder.LITTLE_ENDIAN).getInt(0));
+    assertEquals(
+        0x7fffffff,
+        ci.getMaxValues().get(0).order(ByteOrder.LITTLE_ENDIAN).getInt(0));
+  }
+
+  @Test
+  public void testDoubleIeee754AllNanPageKeepsNanRangeInColumnIndex() {
+    double minNaN = Double.longBitsToDouble(0x7ff0000000000001L);
+    double maxNaN = Double.longBitsToDouble(0x7fffffffffffffffL);
+    ColumnIndexBuilder builder = ColumnIndexBuilder.getBuilder(DOUBLE_IEEE754_TYPE, Integer.MAX_VALUE);
+    builder.add(doubleStats(DOUBLE_IEEE754_TYPE, maxNaN, minNaN));
+
+    ColumnIndex ci = builder.build();
+    assertNotNull(ci);
+    assertEquals(1, ci.getMinValues().size());
+    assertEquals(
+        0x7ff0000000000001L,
+        ci.getMinValues().get(0).order(ByteOrder.LITTLE_ENDIAN).getLong(0));
+    assertEquals(
+        0x7fffffffffffffffL,
+        ci.getMaxValues().get(0).order(ByteOrder.LITTLE_ENDIAN).getLong(0));
+  }
+
+  @Test
+  public void testFloat16Ieee754AllNanPageKeepsNanRangeInColumnIndex() {
+    ColumnIndexBuilder builder = ColumnIndexBuilder.getBuilder(FLOAT16_IEEE754_TYPE, Integer.MAX_VALUE);
+    builder.add(binaryStats(FLOAT16_IEEE754_TYPE, FLOAT16_NAN_LARGE, FLOAT16_NAN_SMALL));
+
+    ColumnIndex ci = builder.build();
+    assertNotNull(ci);
+    assertEquals(1, ci.getMinValues().size());
+    assertEquals(
+        FLOAT16_NAN_SMALL.get2BytesLittleEndian(),
+        ci.getMinValues().get(0).order(ByteOrder.LITTLE_ENDIAN).getShort(0));
+    assertEquals(
+        FLOAT16_NAN_LARGE.get2BytesLittleEndian(),
+        ci.getMaxValues().get(0).order(ByteOrder.LITTLE_ENDIAN).getShort(0));
   }
 
   // Column index filtering for float

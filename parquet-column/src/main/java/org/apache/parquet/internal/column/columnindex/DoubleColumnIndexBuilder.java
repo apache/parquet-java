@@ -131,10 +131,7 @@ class DoubleColumnIndexBuilder extends ColumnIndexBuilder {
     double dMin = (double) min;
     double dMax = (double) max;
     if (Double.isNaN(dMin) || Double.isNaN(dMax)) {
-      if (isIeee754TotalOrder) {
-        dMin = Double.NaN;
-        dMax = Double.NaN;
-      } else {
+      if (!isIeee754TotalOrder) {
         invalid = true;
       }
     }

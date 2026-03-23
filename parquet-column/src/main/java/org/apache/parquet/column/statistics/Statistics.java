@@ -19,7 +19,6 @@
 package org.apache.parquet.column.statistics;
 
 import java.util.Arrays;
-import org.apache.parquet.Preconditions;
 import org.apache.parquet.column.UnknownColumnTypeException;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.ColumnOrder;
@@ -79,9 +78,6 @@ public abstract class Statistics<T extends Comparable<T>> {
       }
       stats.num_nulls = this.numNulls;
       stats.nan_count = this.nanCount;
-      Preconditions.checkState(
-          !type.columnOrder().equals(ColumnOrder.ieee754TotalOrder()) || stats.nan_count >= 0,
-          "nan_count is required by IEEE 754 column order with type " + type);
       return stats;
     }
   }

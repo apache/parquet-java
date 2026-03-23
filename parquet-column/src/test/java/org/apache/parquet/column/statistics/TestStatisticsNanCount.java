@@ -60,6 +60,8 @@ public class TestStatisticsNanCount {
   }
 
   private static final Binary FLOAT16_NAN = float16Binary((short) 0x7e00);
+  private static final Binary FLOAT16_NAN_SMALL = float16Binary((short) 0x7c01);
+  private static final Binary FLOAT16_NAN_LARGE = float16Binary((short) 0x7fff);
   private static final Binary FLOAT16_ONE = float16Binary((short) 0x3C00);
   private static final Binary FLOAT16_TWO = float16Binary((short) 0x4000);
 
@@ -237,6 +239,45 @@ public class TestStatisticsNanCount {
     assertEquals(1, stats.getNanCount());
     assertTrue(Float16.isNaN(stats.genericGetMin().get2BytesLittleEndian()));
     assertTrue(Float16.isNaN(stats.genericGetMax().get2BytesLittleEndian()));
+  }
+
+  @Test
+  public void testFloatIEEE754AllNaNTracksNaNRange() {
+    FloatStatistics stats = (FloatStatistics) Statistics.createStats(FLOAT_IEEE754_TYPE);
+    float minNaN = Float.intBitsToFloat(0x7fc00001);
+    float maxNaN = Float.intBitsToFloat(0x7fffffff);
+    stats.updateStats(maxNaN);
+    stats.updateStats(minNaN);
+
+    assertEquals(2, stats.getNanCount());
+    assertEquals(0x7fc00001, Float.floatToRawIntBits(stats.getMin()));
+    assertEquals(0x7fffffff, Float.floatToRawIntBits(stats.getMax()));
+  }
+
+  @Test
+  public void testDoubleIEEE754AllNaNTracksNaNRange() {
+    DoubleStatistics stats = (DoubleStatistics) Statistics.createStats(DOUBLE_IEEE754_TYPE);
+    double minNaN = Double.longBitsToDouble(0x7ff0000000000001L);
+    double maxNaN = Double.longBitsToDouble(0x7fffffffffffffffL);
+    stats.updateStats(maxNaN);
+    stats.updateStats(minNaN);
+
+    assertEquals(2, stats.getNanCount());
+    assertEquals(0x7ff0000000000001L, Double.doubleToRawLongBits(stats.getMin()));
+    assertEquals(0x7fffffffffffffffL, Double.doubleToRawLongBits(stats.getMax()));
+  }
+
+  @Test
+  public void testFloat16IEEE754AllNaNTracksNaNRange() {
+    BinaryStatistics stats = (BinaryStatistics) Statistics.createStats(FLOAT16_IEEE754_TYPE);
+    stats.updateStats(FLOAT16_NAN_LARGE);
+    stats.updateStats(FLOAT16_NAN_SMALL);
+
+    assertEquals(2, stats.getNanCount());
+    assertEquals(
+        FLOAT16_NAN_SMALL.get2BytesLittleEndian(), stats.genericGetMin().get2BytesLittleEndian());
+    assertEquals(
+        FLOAT16_NAN_LARGE.get2BytesLittleEndian(), stats.genericGetMax().get2BytesLittleEndian());
   }
 
   @Test
