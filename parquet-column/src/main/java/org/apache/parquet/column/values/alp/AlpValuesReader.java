@@ -81,6 +81,10 @@ abstract class AlpValuesReader extends ValuesReader {
     if (numElements < 0) {
       throw new ParquetDecodingException("Invalid ALP element count: " + numElements);
     }
+    if (numElements != valuesCount) {
+      throw new ParquetDecodingException(
+          "ALP header element count " + numElements + " does not match page valuesCount " + valuesCount);
+    }
 
     this.vectorSize = 1 << logVectorSize;
     this.totalCount = numElements;
@@ -145,4 +149,27 @@ abstract class AlpValuesReader extends ValuesReader {
   protected abstract void allocateDecodedBuffer(int capacity);
 
   protected abstract void decodeVector(int vectorIdx);
+
+  // Explicit little-endian reads using absolute get(), since absolute get() ignores ByteBuffer order.
+  protected static int getShortLE(ByteBuffer buf, int pos) {
+    return (buf.get(pos) & 0xFF) | ((buf.get(pos + 1) & 0xFF) << 8);
+  }
+
+  protected static int getIntLE(ByteBuffer buf, int pos) {
+    return (buf.get(pos) & 0xFF)
+        | ((buf.get(pos + 1) & 0xFF) << 8)
+        | ((buf.get(pos + 2) & 0xFF) << 16)
+        | ((buf.get(pos + 3) & 0xFF) << 24);
+  }
+
+  protected static long getLongLE(ByteBuffer buf, int pos) {
+    return (buf.get(pos) & 0xFFL)
+        | ((buf.get(pos + 1) & 0xFFL) << 8)
+        | ((buf.get(pos + 2) & 0xFFL) << 16)
+        | ((buf.get(pos + 3) & 0xFFL) << 24)
+        | ((buf.get(pos + 4) & 0xFFL) << 32)
+        | ((buf.get(pos + 5) & 0xFFL) << 40)
+        | ((buf.get(pos + 6) & 0xFFL) << 48)
+        | ((buf.get(pos + 7) & 0xFFL) << 56);
+  }
 }
