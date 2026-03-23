@@ -126,6 +126,7 @@ public class Main extends Configured implements Tool {
     jc.addCommand("rewrite", new RewriteCommand(console));
     jc.addCommand("size-stats", new ShowSizeStatisticsCommand(console));
     jc.addCommand("geospatial-stats", new ShowGeospatialStatisticsCommand(console));
+    jc.addCommand("encryption-info", new org.apache.parquet.cli.commands.EncryptionInfoCommand(console));
   }
 
   @Override
