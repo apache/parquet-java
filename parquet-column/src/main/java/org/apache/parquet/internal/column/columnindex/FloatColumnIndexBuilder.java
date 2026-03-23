@@ -131,10 +131,7 @@ class FloatColumnIndexBuilder extends ColumnIndexBuilder {
     float fMin = (float) min;
     float fMax = (float) max;
     if (Float.isNaN(fMin) || Float.isNaN(fMax)) {
-      if (isIeee754TotalOrder) {
-        fMin = Float.NaN;
-        fMax = Float.NaN;
-      } else {
+      if (!isIeee754TotalOrder) {
         invalid = true;
       }
     }

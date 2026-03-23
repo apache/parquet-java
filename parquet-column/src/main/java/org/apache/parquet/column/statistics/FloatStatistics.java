@@ -106,15 +106,20 @@ public class FloatStatistics extends Statistics<Float> {
 
   public void updateStats(float min_value, float max_value) {
     if (type().columnOrder().equals(ColumnOrder.ieee754TotalOrder())) {
-      if (!Float.isNaN(min_value)) {
-        if (Float.isNaN(min) || comparator().compare(min, min_value) > 0) {
+      if (Float.isNaN(min_value)) {
+        if (Float.isNaN(min) && comparator().compare(min, min_value) > 0) {
           min = min_value;
         }
+      } else if (Float.isNaN(min) || comparator().compare(min, min_value) > 0) {
+        min = min_value;
       }
-      if (!Float.isNaN(max_value)) {
-        if (Float.isNaN(max) || comparator().compare(max, max_value) < 0) {
+
+      if (Float.isNaN(max_value)) {
+        if (Float.isNaN(max) && comparator().compare(max, max_value) < 0) {
           max = max_value;
         }
+      } else if (Float.isNaN(max) || comparator().compare(max, max_value) < 0) {
+        max = max_value;
       }
       return;
     }

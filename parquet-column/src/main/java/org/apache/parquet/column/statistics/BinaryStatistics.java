@@ -72,13 +72,21 @@ public class BinaryStatistics extends Statistics<Binary> {
       this.markAsNotEmpty();
     } else {
       if (isFloat16 && type().columnOrder().equals(ColumnOrder.ieee754TotalOrder())) {
-        if (!Float16.isNaN(value.get2BytesLittleEndian())) {
-          if (Float16.isNaN(min.get2BytesLittleEndian())
-              || comparator().compare(min, value) > 0) {
+        boolean valueIsNaN = Float16.isNaN(value.get2BytesLittleEndian());
+        boolean minIsNaN = Float16.isNaN(min.get2BytesLittleEndian());
+        boolean maxIsNaN = Float16.isNaN(max.get2BytesLittleEndian());
+        if (valueIsNaN) {
+          if (minIsNaN && comparator().compare(min, value) > 0) {
             min = value.copy();
           }
-          if (Float16.isNaN(max.get2BytesLittleEndian())
-              || comparator().compare(max, value) < 0) {
+          if (maxIsNaN && comparator().compare(max, value) < 0) {
+            max = value.copy();
+          }
+        } else {
+          if (minIsNaN || comparator().compare(min, value) > 0) {
+            min = value.copy();
+          }
+          if (maxIsNaN || comparator().compare(max, value) < 0) {
             max = value.copy();
           }
         }
@@ -156,15 +164,24 @@ public class BinaryStatistics extends Statistics<Binary> {
   @Deprecated
   public void updateStats(Binary min_value, Binary max_value) {
     if (isFloat16 && type().columnOrder().equals(ColumnOrder.ieee754TotalOrder())) {
-      if (!Float16.isNaN(min_value.get2BytesLittleEndian())) {
-        if (Float16.isNaN(min.get2BytesLittleEndian()) || comparator().compare(min, min_value) > 0) {
+      boolean minValueIsNaN = Float16.isNaN(min_value.get2BytesLittleEndian());
+      boolean minIsNaN = Float16.isNaN(min.get2BytesLittleEndian());
+      if (minValueIsNaN) {
+        if (minIsNaN && comparator().compare(min, min_value) > 0) {
           min = min_value.copy();
         }
+      } else if (minIsNaN || comparator().compare(min, min_value) > 0) {
+        min = min_value.copy();
       }
-      if (!Float16.isNaN(max_value.get2BytesLittleEndian())) {
-        if (Float16.isNaN(max.get2BytesLittleEndian()) || comparator().compare(max, max_value) < 0) {
+
+      boolean maxValueIsNaN = Float16.isNaN(max_value.get2BytesLittleEndian());
+      boolean maxIsNaN = Float16.isNaN(max.get2BytesLittleEndian());
+      if (maxValueIsNaN) {
+        if (maxIsNaN && comparator().compare(max, max_value) < 0) {
           max = max_value.copy();
         }
+      } else if (maxIsNaN || comparator().compare(max, max_value) < 0) {
+        max = max_value.copy();
       }
       return;
     }

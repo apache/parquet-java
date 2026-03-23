@@ -108,7 +108,6 @@ class BinaryColumnIndexBuilder extends ColumnIndexBuilder {
     }
   }
 
-  private static final Binary FLOAT16_NAN = Binary.fromConstantByteArray(new byte[] {0x00, 0x7e});
   private final List<Binary> minValues = new ArrayList<>();
   private final List<Binary> maxValues = new ArrayList<>();
   private final BinaryTruncator truncator;
@@ -153,10 +152,7 @@ class BinaryColumnIndexBuilder extends ColumnIndexBuilder {
         short sMax = bMax.get2BytesLittleEndian();
 
         if (Float16.isNaN(sMin) || Float16.isNaN(sMax)) {
-          if (isIeee754TotalOrder) {
-            bMin = FLOAT16_NAN;
-            bMax = FLOAT16_NAN;
-          } else {
+          if (!isIeee754TotalOrder) {
             invalid = true;
           }
         }
