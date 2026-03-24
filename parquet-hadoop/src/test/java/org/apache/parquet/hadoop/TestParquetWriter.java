@@ -53,6 +53,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
+import org.apache.hadoop.mapreduce.Job;
+import org.apache.hadoop.mapreduce.RecordWriter;
 import net.openhft.hashing.LongHashFunction;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.hadoop.conf.Configuration;
@@ -1070,5 +1072,141 @@ public class TestParquetWriter {
     // After closing, check whether file exists or is empty
     FileSystem fs = file.getFileSystem(conf);
     assertTrue(!fs.exists(file) || fs.getFileStatus(file).getLen() == 0);
+  }
+
+
+  @Test
+  public void outputFormat_setColumnCompression_overridesDefaultForOneColumn() throws Exception {
+    MessageType schema = Types.buildMessage()
+        .required(BINARY).as(stringType()).named("col_a")
+        .required(INT32).named("col_b")
+        .named("test");
+    File file = temp.newFile();
+    file.delete();
+    Path path = new Path(file.getAbsolutePath());
+    Job job = Job.getInstance();
+    ParquetOutputFormat.setColumnCompression(job, "col_a", ZSTD);
+
+    Map<String, CompressionCodecName> codecs = writeAndReadCodecsViaOutputFormat(schema, SNAPPY, job, path);
+
+    assertEquals(ZSTD, codecs.get("col_a"));
+    assertEquals(SNAPPY, codecs.get("col_b"));
+  }
+
+  @Test
+  public void outputFormat_setColumnCompression_allColumnsOverridden() throws Exception {
+    MessageType schema = Types.buildMessage()
+        .required(BINARY).as(stringType()).named("col_a")
+        .required(INT32).named("col_b")
+        .named("test");
+    File file = temp.newFile();
+    file.delete();
+    Path path = new Path(file.getAbsolutePath());
+    Job job = Job.getInstance();
+    ParquetOutputFormat.setColumnCompression(job, "col_a", ZSTD);
+    ParquetOutputFormat.setColumnCompression(job, "col_b", GZIP);
+
+    Map<String, CompressionCodecName> codecs = writeAndReadCodecsViaOutputFormat(schema, SNAPPY, job, path);
+
+    assertEquals(ZSTD, codecs.get("col_a"));
+    assertEquals(GZIP, codecs.get("col_b"));
+  }
+
+  @Test
+  public void outputFormat_setColumnCompression_defaultUsedWhenNotSet() throws Exception {
+    MessageType schema = Types.buildMessage()
+        .required(BINARY).as(stringType()).named("col_a")
+        .required(INT32).named("col_b")
+        .named("test");
+    File file = temp.newFile();
+    file.delete();
+    Path path = new Path(file.getAbsolutePath());
+    Job job = Job.getInstance();
+
+    Map<String, CompressionCodecName> codecs = writeAndReadCodecsViaOutputFormat(schema, GZIP, job, path);
+
+    assertEquals(GZIP, codecs.get("col_a"));
+    assertEquals(GZIP, codecs.get("col_b"));
+  }
+
+  @Test
+  public void outputFormat_setColumnCompressionLevel_withCodec_dataRoundTrips() throws Exception {
+    MessageType schema = Types.buildMessage()
+        .required(BINARY).as(stringType()).named("col_a")
+        .required(INT32).named("col_b")
+        .named("test");
+    File file = temp.newFile();
+    file.delete();
+    Path path = new Path(file.getAbsolutePath());
+    Job job = Job.getInstance();
+    ParquetOutputFormat.setColumnCompression(job, "col_a", ZSTD);
+    ParquetOutputFormat.setColumnCompressionLevel(job, "col_a", 1);
+
+    Map<String, CompressionCodecName> codecs = writeAndReadCodecsViaOutputFormat(schema, SNAPPY, job, path);
+    assertEquals(ZSTD, codecs.get("col_a"));
+    assertEquals(SNAPPY, codecs.get("col_b"));
+
+    try (ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), path).build()) {
+      Group group = reader.read();
+      assertEquals("hello", group.getBinary("col_a", 0).toStringUsingUTF8());
+      assertEquals(42, group.getInteger("col_b", 0));
+      assertNull(reader.read());
+    }
+  }
+
+  @Test
+  public void outputFormat_setColumnCompressionLevel_differentLevelsPerColumn() throws Exception {
+    MessageType schema = Types.buildMessage()
+        .required(BINARY).as(stringType()).named("col_a")
+        .required(BINARY).as(stringType()).named("col_b")
+        .named("test");
+    File file = temp.newFile();
+    file.delete();
+    Path path = new Path(file.getAbsolutePath());
+    Job job = Job.getInstance();
+    ParquetOutputFormat.setColumnCompressionLevel(job, "col_a", 1);
+    ParquetOutputFormat.setColumnCompressionLevel(job, "col_b", 10);
+
+    Map<String, CompressionCodecName> codecs = writeAndReadCodecsViaOutputFormat(schema, ZSTD, job, path);
+    assertEquals(ZSTD, codecs.get("col_a"));
+    assertEquals(ZSTD, codecs.get("col_b"));
+
+    try (ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), path).build()) {
+      Group group = reader.read();
+      assertEquals("hello", group.getBinary("col_a", 0).toStringUsingUTF8());
+      assertEquals("fast", group.getBinary("col_b", 0).toStringUsingUTF8());
+      assertNull(reader.read());
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  private Map<String, CompressionCodecName> writeAndReadCodecsViaOutputFormat(
+      MessageType schema, CompressionCodecName defaultCodec, Job job, Path file)
+      throws Exception {
+    Configuration conf = job.getConfiguration();
+    GroupWriteSupport.setSchema(schema, conf);
+    SimpleGroupFactory f = new SimpleGroupFactory(schema);
+
+    Group group = f.newGroup();
+    for (int i = 0; i < schema.getFieldCount(); i++) {
+      String name = schema.getFieldName(i);
+      switch (schema.getType(i).asPrimitiveType().getPrimitiveTypeName()) {
+        case BINARY: group.append(name, name.equals("col_a") ? "hello" : "fast"); break;
+        case INT32:  group.append(name, 42); break;
+        default: break;
+      }
+    }
+
+    ParquetOutputFormat<Group> outputFormat = new ParquetOutputFormat<>(new GroupWriteSupport());
+    RecordWriter<Void, Group> writer = outputFormat.getRecordWriter(conf, file, defaultCodec);
+    writer.write(null, group);
+    writer.close(null);
+
+    ParquetMetadata footer = readFooter(conf, file, NO_FILTER);
+    Map<String, CompressionCodecName> result = new HashMap<>();
+    for (ColumnChunkMetaData col : footer.getBlocks().get(0).getColumns()) {
+      result.put(col.getPath().toDotString(), col.getCodec());
+    }
+    return result;
   }
 }
