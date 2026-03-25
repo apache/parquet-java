@@ -93,8 +93,12 @@ public class VariantBenchmark {
 
   /** Whether to include nested sub-objects in the field values. */
   public enum Depth {
-    Shallow,
-    Nested
+    /** Flat structure: no nesting. */
+    Flat,
+    /** Nested values. */
+    Nested,
+    /** Deeper nesting structure. */
+    DeepNesting;
   }
 
   /**
@@ -108,7 +112,7 @@ public class VariantBenchmark {
   private int fieldCount;
 
   /** Whether to include nested variant objects as some of the field values. */
-  @Param({"Shallow", "Nested"})
+  @Param({"Flat", "Nested", "DeepNesting"})
   private Depth depth;
 
   /**
@@ -195,7 +199,7 @@ public class VariantBenchmark {
     }
   }
 
-  /** Number of fields in each nested sub-object (when {@link #depth} is {@link Depth#Nested}). */
+  /** Number of fields in each nested sub-object in a nested variant. */
   private static final int NESTED_FIELD_COUNT = 5;
 
   // ---- state built once per trial ----
@@ -262,7 +266,7 @@ public class VariantBenchmark {
     // Type distribution: biased towards strings.
 
     int typeCount = FieldType.Nested.ordinal();
-    if (depth != Depth.Nested) {
+    if (depth == Depth.Flat) {
       typeCount--;
     }
 
