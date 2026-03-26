@@ -97,8 +97,6 @@ public class VariantBenchmark {
     Flat,
     /** Nested values. */
     Nested,
-    /** Deeper nesting structure. */
-    DeepNesting;
   }
 
   /**
@@ -112,7 +110,7 @@ public class VariantBenchmark {
   private int fieldCount;
 
   /** Whether to include nested variant objects as some of the field values. */
-  @Param({"Flat", "Nested", "DeepNesting"})
+  @Param({"Flat", "Nested"})
   private Depth depth;
 
   /**
