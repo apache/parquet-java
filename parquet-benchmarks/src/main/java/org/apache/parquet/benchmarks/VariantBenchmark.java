@@ -64,7 +64,7 @@ import org.openjdk.jmh.infra.Blackhole;
  *
  * <ul>
  *   <li>{@link #fieldCount} – total number of top-level fields per object.
- *   <li>{@link #depth} – {@code Shallow} (primitives only) or {@code Nested} (some fields are
+ *   <li>{@link #depth} – {@code Flat} (primitives only) or {@code Nested} (some fields are
  *       5-field sub-objects).
  * </ul>
  *
@@ -77,7 +77,7 @@ import org.openjdk.jmh.infra.Blackhole;
  * <pre>
  *   ./mvnw --projects parquet-benchmarks -amd -DskipTests -Denforcer.skip=true clean package
  *   ./parquet-benchmarks/run.sh all org.apache.parquet.benchmarks.VariantBenchmark \
- *       -wi 5 -i 5 -f 1 -rff /tmp/variant-benchmark.json
+ *       -wi 5 -i 5 -f 1 -rff target/results.json
  * </pre>
  *
  * Change fork to 1 before merge
@@ -115,6 +115,7 @@ public class VariantBenchmark {
 
   /**
    * A counter of strings created; used to ensure limited uniqueness in strings.
+   * Reset to 0 in {@link #setupTrial()} so each trial is reproducible.
    */
   private static int counter;
 
@@ -253,6 +254,7 @@ public class VariantBenchmark {
   @Setup(Level.Trial)
   public void setupTrial() {
     random = new Random(0x1ceb1cebL);
+    counter = 0;
 
     // --- field names ---
     fieldNames = new ArrayList<>(fieldCount);
@@ -274,7 +276,7 @@ public class VariantBenchmark {
     for (int i = 0; i < fieldCount; i++) {
 
       // slightly more than the type count as there are extra strings
-      int typeIndex = random.nextInt(typeCount + 2);
+      int typeIndex = random.nextInt(typeCount + 4);
       // based on type, create entries.
       FieldEntry fieldEntry;
       switch (typeIndex) {
@@ -304,9 +306,12 @@ public class VariantBenchmark {
           fieldEntry = new FieldEntry(FieldType.Double, random.nextDouble());
           break;
         case 8:
-          fieldEntry = new FieldEntry(FieldType.UUID, UUID.randomUUID());
+          fieldEntry = new FieldEntry(FieldType.BigDecimal, BigDecimal.valueOf(random.nextInt()));
           break;
         case 9:
+          fieldEntry = new FieldEntry(FieldType.UUID, UUID.randomUUID());
+          break;
+        case 10:
           fieldEntry = new FieldEntry(FieldType.Nested, null);
           break;
         default:
@@ -380,16 +385,26 @@ public class VariantBenchmark {
 
   /**
    * Read path: iterate all fields of the pre-built variant, extracting each value. This exercises
-   * the field-name lookup and type dispatch that a query engine performs on every row.
+   * the field-name lookup and type dispatch that a query engine performs on every row. Nested
+   * objects are recursively traversed so that {@code depth=Nested} incurs the full deserialization
+   * cost of sub-objects.
    */
   @Benchmark
   public void benchmarkDeserialize(Blackhole bh) {
     for (int j = 0; j < ITERATIONS; j++) {
-      Variant v = preBuiltVariant;
-      int n = v.numObjectElements();
-      for (int i = 0; i < n; i++) {
-        Variant.ObjectField field = v.getFieldAtIndex(i);
-        bh.consume(field.key);
+      deserializeVariant(preBuiltVariant, bh);
+    }
+  }
+
+  /** Recursively deserialize a variant object, descending into any nested objects. */
+  private void deserializeVariant(Variant v, Blackhole bh) {
+    int n = v.numObjectElements();
+    for (int i = 0; i < n; i++) {
+      Variant.ObjectField field = v.getFieldAtIndex(i);
+      bh.consume(field.key);
+      if (field.value.getType() == Variant.Type.OBJECT) {
+        deserializeVariant(field.value, bh);
+      } else {
         bh.consume(field.value.getValueBuffer());
       }
     }
