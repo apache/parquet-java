@@ -18,25 +18,45 @@
  */
 package org.apache.parquet.benchmarks;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.parquet.hadoop.ParquetReader;
+import org.apache.parquet.hadoop.ParquetWriter;
+import org.apache.parquet.hadoop.api.InitContext;
+import org.apache.parquet.hadoop.api.ReadSupport;
+import org.apache.parquet.hadoop.api.WriteSupport;
+import org.apache.parquet.io.InputFile;
+import org.apache.parquet.io.OutputFile;
+import org.apache.parquet.io.PositionOutputStream;
+import org.apache.parquet.io.SeekableInputStream;
 import org.apache.parquet.io.api.Binary;
+import org.apache.parquet.io.api.Converter;
+import org.apache.parquet.io.api.GroupConverter;
 import org.apache.parquet.io.api.RecordConsumer;
+import org.apache.parquet.io.api.RecordMaterializer;
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
+import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Type.Repetition;
 import org.apache.parquet.schema.Types;
+import org.apache.parquet.variant.ImmutableMetadata;
 import org.apache.parquet.variant.Variant;
 import org.apache.parquet.variant.VariantBuilder;
+import org.apache.parquet.variant.VariantConverters;
 import org.apache.parquet.variant.VariantObjectBuilder;
 import org.apache.parquet.variant.VariantValueWriter;
 import org.openjdk.jmh.annotations.Benchmark;
@@ -82,7 +102,7 @@ import org.openjdk.jmh.infra.Blackhole;
  *
  * Change fork to 1 before merge
  */
-@Fork(0)
+@Fork(1)
 @State(Scope.Benchmark)
 @Warmup(iterations = 100)
 @Measurement(iterations = 100)
@@ -103,10 +123,13 @@ public class VariantBenchmark {
    * Iterations on the small benchmarks whose operations are so fast that clocks, especially ARM clocks,
    * can't reliably measure them.
    */
-  private static final int ITERATIONS = 100;
+  private static final int ITERATIONS = 1000;
+
+  /** Number of rows written per file in the file-based write/read benchmarks. */
+  private static final int FILE_ROWS = ITERATIONS;
 
   /** Total number of top-level fields in each variant object. */
-  @Param({"1000", "10000"})
+  @Param({"200" /*, "1000"*/})
   private int fieldCount;
 
   /** Whether to include nested variant objects as some of the field values. */
@@ -241,6 +264,12 @@ public class VariantBenchmark {
   /** No-op RecordConsumer that discards all output. */
   private RecordConsumer noopConsumer;
 
+  /** Pre-written shredded Parquet file bytes, used by {@link #readFileShredded}. */
+  private byte[] shreddedFileBytes;
+
+  /** Pre-written unshredded Parquet file bytes, used by {@link #readFileUnshredded}. */
+  private byte[] unshreddedFileBytes;
+
   // ------------------------------------------------------------------
   // Setup
   // ------------------------------------------------------------------
@@ -345,6 +374,14 @@ public class VariantBenchmark {
         .named("value")
         .named("variant_field");
     shreddedSchema = buildShreddedSchema();
+
+    // --- pre-written Parquet files for file-based read benchmarks ---
+    try {
+      shreddedFileBytes = writeVariantsToMemory(shreddedSchema);
+      unshreddedFileBytes = writeVariantsToMemory(unshreddedSchema);
+    } catch (IOException e) {
+      throw new RuntimeException("Failed to pre-write variant files", e);
+    }
   }
 
   // ------------------------------------------------------------------
@@ -415,11 +452,21 @@ public class VariantBenchmark {
    * field matching, and recursive decomposition that {@link VariantValueWriter} perform
    */
   @Benchmark
-  public void writeShredded(Blackhole bh) {
+  public void writeShredded(Blackhole blackhole) {
     for (int i = 0; i < ITERATIONS; i++) {
       VariantValueWriter.write(noopConsumer, shreddedSchema, preBuiltVariant);
-      bh.consume(noopConsumer);
+      blackhole.consume(noopConsumer);
     }
+  }
+
+  /**
+   * Write {@link #FILE_ROWS} rows of the pre-built variant to an in-memory Parquet file using the
+   * shredded schema. Measures end-to-end Parquet encoding cost including page/row-group framing.
+   * Compare with {@link #writeShredded} to quantify the overhead over raw schema traversal.
+   */
+  @Benchmark
+  public void writeFileShredded(Blackhole blackhole) throws IOException {
+    writeThenConsume(blackhole, shreddedSchema);
   }
 
   /**
@@ -432,6 +479,45 @@ public class VariantBenchmark {
     for (int i = 0; i < ITERATIONS; i++) {
       VariantValueWriter.write(noopConsumer, unshreddedSchema, preBuiltVariant);
       bh.consume(noopConsumer);
+    }
+  }
+
+  /**
+   * Write {@link #FILE_ROWS} rows of the pre-built variant to an in-memory Parquet file using the
+   * unshredded schema (metadata + value binary blobs only). Baseline for {@link #writeFileShredded}.
+   */
+  @Benchmark
+  public void writeFileUnshredded(Blackhole bh) throws IOException {
+    writeThenConsume(bh, unshreddedSchema);
+  }
+
+  /**
+   * Read all rows from the pre-written shredded Parquet file in memory. Measures full Parquet
+   * decode cost including typed column decoding and Variant reassembly.
+   */
+  @Benchmark
+  public void readFileShredded(Blackhole blackhole) throws IOException {
+    try (ParquetReader<Variant> reader =
+        new VariantReaderBuilder(new ByteArrayInputFile(shreddedFileBytes)).build()) {
+      Variant v;
+      while ((v = reader.read()) != null) {
+        blackhole.consume(v);
+      }
+    }
+  }
+
+  /**
+   * Read all rows from the pre-written unshredded Parquet file in memory. Baseline for
+   * {@link #readFileShredded}: measures raw binary blob read with no typed column decoding.
+   */
+  @Benchmark
+  public void readFileUnshredded(Blackhole bh) throws IOException {
+    try (ParquetReader<Variant> reader =
+        new VariantReaderBuilder(new ByteArrayInputFile(unshreddedFileBytes)).build()) {
+      Variant v;
+      while ((v = reader.read()) != null) {
+        bh.consume(v);
+      }
     }
   }
 
@@ -520,6 +606,377 @@ public class VariantBenchmark {
         .named("value")
         .addField(typedValueBuilder.named("typed_value"))
         .named("variant_field");
+  }
+
+  /**
+   * Write {@link #FILE_ROWS} copies of {@link #preBuiltVariant} to a fresh in-memory Parquet file
+   * using the given schema. Used both in {@link #setupTrial()} to pre-build read buffers and as the
+   * body of the write-file benchmarks.
+   */
+  private byte[] writeVariantsToMemory(GroupType schema) throws IOException {
+    ByteArrayOutputFile out = new ByteArrayOutputFile();
+    try (ParquetWriter<Variant> writer = new VariantWriterBuilder(out, schema).build()) {
+      for (int i = 0; i < FILE_ROWS; i++) {
+        writer.write(preBuiltVariant);
+      }
+    }
+    return out.toByteArray();
+  }
+
+  /**
+   * Write the prebuilt variant to a memory output stream.
+   * As the same variant is written, compression on the shredded variant should be good.
+   * @param blackhole black hole
+   * @param schema schema
+   * @throws IOException write failure
+   */
+  private void writeThenConsume(final Blackhole blackhole, final GroupType schema) throws IOException {
+    ByteArrayOutputFile out = new ByteArrayOutputFile();
+    try (ParquetWriter<Variant> writer = new VariantWriterBuilder(out, schema).build()) {
+      for (int i = 0; i < FILE_ROWS; i++) {
+        writer.write(preBuiltVariant);
+      }
+    }
+    blackhole.consume(out.toByteArray());
+  }
+
+  // ------------------------------------------------------------------
+  // In-memory I/O
+  // ------------------------------------------------------------------
+
+  /** An {@link OutputFile} backed by a {@link ByteArrayOutputStream}. */
+  private static final class ByteArrayOutputFile implements OutputFile {
+    private final ByteArrayOutputStream baos = new ByteArrayOutputStream();
+
+    byte[] toByteArray() {
+      return baos.toByteArray();
+    }
+
+    @Override
+    public PositionOutputStream create(long blockSizeHint) {
+      return newStream();
+    }
+
+    @Override
+    public PositionOutputStream createOrOverwrite(long blockSizeHint) {
+      return newStream();
+    }
+
+    private PositionOutputStream newStream() {
+      return new PositionOutputStream() {
+        private long pos = 0;
+
+        @Override
+        public void write(int b) throws IOException {
+          baos.write(b);
+          pos++;
+        }
+
+        @Override
+        public void write(byte[] b, int off, int len) throws IOException {
+          baos.write(b, off, len);
+          pos += len;
+        }
+
+        @Override
+        public long getPos() {
+          return pos;
+        }
+      };
+    }
+
+    @Override
+    public boolean supportsBlockSize() {
+      return false;
+    }
+
+    @Override
+    public long defaultBlockSize() {
+      return 0;
+    }
+  }
+
+  /** An {@link InputFile} backed by a {@code byte[]}. */
+  private static final class ByteArrayInputFile implements InputFile {
+    private final byte[] data;
+
+    ByteArrayInputFile(byte[] data) {
+      this.data = data;
+    }
+
+    @Override
+    public long getLength() {
+      return data.length;
+    }
+
+    @Override
+    public SeekableInputStream newStream() {
+      return new SeekableInputStream() {
+        private int pos = 0;
+
+        @Override
+        public int read() {
+          return pos < data.length ? (data[pos++] & 0xFF) : -1;
+        }
+
+        @Override
+        public int read(byte[] b, int off, int len) {
+          int remaining = data.length - pos;
+          if (remaining <= 0) return -1;
+          int n = Math.min(len, remaining);
+          System.arraycopy(data, pos, b, off, n);
+          pos += n;
+          return n;
+        }
+
+        @Override
+        public long getPos() {
+          return pos;
+        }
+
+        @Override
+        public void seek(long newPos) {
+          pos = (int) newPos;
+        }
+
+        @Override
+        public void readFully(byte[] bytes) throws IOException {
+          readFully(bytes, 0, bytes.length);
+        }
+
+        @Override
+        public void readFully(byte[] bytes, int start, int len) throws IOException {
+          if (pos + len > data.length) {
+            throw new IOException("Unexpected end of data");
+          }
+          System.arraycopy(data, pos, bytes, start, len);
+          pos += len;
+        }
+
+        @Override
+        public int read(ByteBuffer buf) {
+          int len = buf.remaining();
+          int remaining = data.length - pos;
+          if (remaining <= 0) return -1;
+          int n = Math.min(len, remaining);
+          buf.put(data, pos, n);
+          pos += n;
+          return n;
+        }
+
+        @Override
+        public void readFully(ByteBuffer buf) throws IOException {
+          int len = buf.remaining();
+          if (pos + len > data.length) {
+            throw new IOException("Unexpected end of data");
+          }
+          buf.put(data, pos, len);
+          pos += len;
+        }
+
+        @Override
+        public void close() {}
+      };
+    }
+  }
+
+  // ------------------------------------------------------------------
+  // Write support
+  // ------------------------------------------------------------------
+
+  /**
+   * {@link ParquetWriter.Builder} for {@link Variant} records using {@link VariantWriteSupport}.
+   */
+  private static final class VariantWriterBuilder extends ParquetWriter.Builder<Variant, VariantWriterBuilder> {
+    private final GroupType variantGroup;
+
+    VariantWriterBuilder(OutputFile file, GroupType variantGroup) {
+      super(file);
+      this.variantGroup = variantGroup;
+    }
+
+    @Override
+    protected VariantWriterBuilder self() {
+      return this;
+    }
+
+    @Override
+    protected WriteSupport<Variant> getWriteSupport(Configuration conf) {
+      return new VariantWriteSupport(variantGroup);
+    }
+  }
+
+  /**
+   * {@link WriteSupport} that writes a single {@link Variant} field named {@code "variant_field"}
+   * per message using {@link VariantValueWriter}.
+   */
+  private static final class VariantWriteSupport extends WriteSupport<Variant> {
+    private static final String FIELD_NAME = "variant_field";
+    private final GroupType variantGroup;
+    private RecordConsumer consumer;
+
+    VariantWriteSupport(GroupType variantGroup) {
+      this.variantGroup = variantGroup;
+    }
+
+    @Override
+    public WriteContext init(Configuration conf) {
+      return new WriteContext(new MessageType("message", variantGroup), Collections.emptyMap());
+    }
+
+    @Override
+    public void prepareForWrite(RecordConsumer recordConsumer) {
+      this.consumer = recordConsumer;
+    }
+
+    @Override
+    public void write(Variant record) {
+      consumer.startMessage();
+      consumer.startField(FIELD_NAME, 0);
+      VariantValueWriter.write(consumer, variantGroup, record);
+      consumer.endField(FIELD_NAME, 0);
+      consumer.endMessage();
+    }
+  }
+
+  // ------------------------------------------------------------------
+  // Read support
+  // ------------------------------------------------------------------
+
+  /**
+   * {@link ParquetReader.Builder} for {@link Variant} records using {@link VariantReadSupport}.
+   */
+  private static final class VariantReaderBuilder extends ParquetReader.Builder<Variant> {
+    VariantReaderBuilder(InputFile file) {
+      super(file);
+    }
+
+    @Override
+    protected ReadSupport<Variant> getReadSupport() {
+      return new VariantReadSupport();
+    }
+  }
+
+  /**
+   * {@link ReadSupport} that materializes each row as a {@link Variant} using
+   * {@link VariantConverters}.
+   */
+  private static final class VariantReadSupport extends ReadSupport<Variant> {
+    @Override
+    public ReadContext init(InitContext context) {
+      return new ReadContext(context.getFileSchema());
+    }
+
+    @Override
+    public RecordMaterializer<Variant> prepareForRead(
+        Configuration conf,
+        Map<String, String> keyValueMetaData,
+        MessageType fileSchema,
+        ReadContext readContext) {
+      GroupType variantGroup = fileSchema.getType("variant_field").asGroupType();
+      return new VariantRecordMaterializer(fileSchema, variantGroup);
+    }
+  }
+
+  /** Materializes a single {@link Variant} from a Parquet message containing one variant field. */
+  private static final class VariantRecordMaterializer extends RecordMaterializer<Variant> {
+    private final MessageGroupConverter root;
+
+    VariantRecordMaterializer(MessageType messageType, GroupType variantGroup) {
+      this.root = new MessageGroupConverter(variantGroup);
+    }
+
+    @Override
+    public GroupConverter getRootConverter() {
+      return root;
+    }
+
+    @Override
+    public Variant getCurrentRecord() {
+      return root.getCurrentVariant();
+    }
+  }
+
+  /**
+   * Top-level (message) {@link GroupConverter} that delegates field 0 ({@code "variant_field"})
+   * to a {@link VariantGroupConverter}.
+   */
+  private static final class MessageGroupConverter extends GroupConverter {
+    private final VariantGroupConverter variantConverter;
+
+    MessageGroupConverter(GroupType variantGroup) {
+      this.variantConverter = new VariantGroupConverter(variantGroup);
+    }
+
+    @Override
+    public Converter getConverter(int fieldIndex) {
+      return variantConverter;
+    }
+
+    @Override
+    public void start() {}
+
+    @Override
+    public void end() {}
+
+    Variant getCurrentVariant() {
+      return variantConverter.getCurrentVariant();
+    }
+  }
+
+  /**
+   * {@link GroupConverter} for a variant group. Implements
+   * {@link VariantConverters.ParentConverter} so it can be used with
+   * {@link VariantConverters#newVariantConverter}.
+   */
+  private static final class VariantGroupConverter extends GroupConverter
+      implements VariantConverters.ParentConverter<VariantBuilder> {
+    private final GroupConverter wrapped;
+    private VariantBuilder builder;
+    private ImmutableMetadata metadata;
+    private Variant currentVariant;
+
+    VariantGroupConverter(GroupType variantGroup) {
+      this.wrapped = VariantConverters.newVariantConverter(variantGroup, this::setMetadata, this);
+    }
+
+    private void setMetadata(ByteBuffer buf) {
+      this.metadata = new ImmutableMetadata(buf);
+    }
+
+    @Override
+    public void build(Consumer<VariantBuilder> consumer) {
+      if (builder == null) {
+        builder = new VariantBuilder(metadata);
+      }
+      consumer.accept(builder);
+    }
+
+    @Override
+    public Converter getConverter(int fieldIndex) {
+      return wrapped.getConverter(fieldIndex);
+    }
+
+    @Override
+    public void start() {
+      builder = null;
+      metadata = null;
+      wrapped.start();
+    }
+
+    @Override
+    public void end() {
+      wrapped.end();
+      if (builder == null) {
+        builder = new VariantBuilder(metadata);
+      }
+      builder.appendNullIfEmpty();
+      currentVariant = builder.build();
+    }
+
+    Variant getCurrentVariant() {
+      return currentVariant;
+    }
   }
 
   /**
