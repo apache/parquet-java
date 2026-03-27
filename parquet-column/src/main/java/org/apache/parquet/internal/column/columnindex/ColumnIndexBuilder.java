@@ -616,6 +616,9 @@ public abstract class ColumnIndexBuilder {
 
     builder.fill(nullPages, nullCounts, minValues, maxValues, repLevelHistogram, defLevelHistogram);
     ColumnIndexBase<?> columnIndex = builder.build(type);
+    if (columnIndex == null) {
+      return null;
+    }
     columnIndex.boundaryOrder = requireNonNull(boundaryOrder);
     return columnIndex;
   }
@@ -749,6 +752,19 @@ public abstract class ColumnIndexBuilder {
     // Null counts is optional so keep it null if the builder has no values
     if (!nullCounts.isEmpty()) {
       columnIndex.nullCounts = nullCounts.toLongArray();
+    }
+    // A null_pages entry of true indicates the page consists entirely of null values.
+    // When null_counts is present, a null_counts entry of zero means the page has no
+    // null values at all. These two fields directly contradict each other: a page
+    // cannot both consist entirely of nulls and contain zero nulls. Since null_pages
+    // is the field that causes the reader to skip pages during column index filtering,
+    // the safe response is to discard the column index for this column entirely.
+    if (columnIndex.nullCounts != null) {
+      for (int i = 0; i < columnIndex.nullPages.length; i++) {
+        if (columnIndex.nullPages[i] && columnIndex.nullCounts[i] == 0L) {
+          return null;
+        }
+      }
     }
     columnIndex.pageIndexes = pageIndexes.toIntArray();
     // Repetition and definition level histograms are optional so keep them null if the builder has no values
