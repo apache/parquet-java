@@ -95,7 +95,7 @@ import org.slf4j.LoggerFactory;
 @Fork(0)
 @State(Scope.Benchmark)
 @Warmup(iterations = 3)
-@Measurement(iterations = 10)
+@Measurement(iterations = 5)
 @BenchmarkMode(Mode.SingleShotTime)
 @OutputTimeUnit(MILLISECONDS)
 @Timeout(time = 10, timeUnit = TimeUnit.MINUTES)
@@ -104,24 +104,36 @@ public class VariantReadBenchmark {
   private static final Logger LOG = LoggerFactory.getLogger(VariantReadBenchmark.class);
 
   /** Number of rows written per file. */
-  private static final int NUM_ROWS = 10_000_000;
+  private static final int NUM_ROWS = 1_000_000;
 
-  /** 20 col4 values, one per category. */
+  private static final int CATEGORIES = 20;
+
+  /** The col4 values, one per category. */
   private static final String[] COL4_VALUES;
 
   static {
-    COL4_VALUES = new String[20];
-    for (int i = 0; i < 20; i++) {
+    COL4_VALUES = new String[CATEGORIES];
+    for (int i = 0; i < CATEGORIES; i++) {
       COL4_VALUES[i] = "col4_category_" + i;
     }
   }
 
   @Param({"true", "false"})
   public boolean shredded;
-
+  /**
+   * The record schema with the unshredded variant.
+   */
   private final MessageType unshreddedSchema;
+
+  /**
+   * The shredded schema splits all expected variant group entries
+   * into their own columns.
+   */
   private final MessageType shreddedSchema;
-  private final MessageType projectionSchema;
+  /**
+   * Select schema.
+   */
+  private final MessageType selectSchema;
   private MessageType activeSchema;
   private Configuration conf;
   private FileSystem fs;
@@ -130,6 +142,8 @@ public class VariantReadBenchmark {
   private Path dataFile;
 
   public VariantReadBenchmark() {
+
+
     unshreddedSchema = parseMessageType("message vschema { "
         + "required int64 id;"
         + "required int32 category;"
@@ -166,9 +180,9 @@ public class VariantReadBenchmark {
         + "   }"
         + "}");
 
-    projectionSchema = parseMessageType("message vschema { "
+
+    selectSchema = parseMessageType("message vschema { "
         + "required int64 id;"
-        + "required int32 category;"
         + "optional group nested (VARIANT(1)) {"
         + "  required binary metadata;"
         + "  optional binary value;"
@@ -177,7 +191,8 @@ public class VariantReadBenchmark {
         + "      optional binary value;"
         + "      optional int32 typed_value;"
         + "      }"
-        + "   }"
+        + "    }"
+        + "  }"
         + "}");
 
   }
@@ -212,7 +227,7 @@ public class VariantReadBenchmark {
     try (ParquetWriter<RowRecord> writer =
         new RowWriterBuilder(HadoopOutputFile.fromPath(path, conf), schema, nestedGroup).build()) {
       for (int i = 0; i < NUM_ROWS; i++) {
-        int category = i % 20;
+        int category = i % CATEGORIES;
         writer.write(new RowRecord(i, category, buildVariant(i, category, COL4_VALUES[category])));
       }
     }
@@ -238,17 +253,19 @@ public class VariantReadBenchmark {
   }
 
   /**
-   * Like {@link #readFileWithoutProjection(Blackhole)}, but uses column projection to read only the
-   * {@code nested.typed_value.varcategory} column, skipping {@code id}, {@code category},
-   * {@code idstr}, {@code varid}, and {@code col4}.
+   * Like {@link #readFileWithoutProjection(Blackhole)}, but uses column projection to read only
+   * {@code id} and {@code nested.typed_value.varcategory}, skipping {@code category}, {@code
+   * idstr}, {@code varid}, and {@code col4}.
    */
   @Benchmark
   public void readFileProjected(Blackhole blackhole) throws IOException {
-    try (ParquetReader<Variant> reader =
+    try (ParquetReader<RowRecord> reader =
         new ProjectedReaderBuilder(HadoopInputFile.fromPath(dataFile, conf)).build()) {
-      Variant nested;
-      while ((nested = reader.read()) != null) {
-        Variant varcategory = nested.getFieldByKey("varcategory");
+      RowRecord row;
+      while ((row = reader.read()) != null) {
+        blackhole.consume(row.id);
+        blackhole.consume(row.category);
+        Variant varcategory = row.variant.getFieldByKey("varcategory");
         if (varcategory != null) {
           blackhole.consume(varcategory.getInt());
         }
@@ -528,40 +545,43 @@ public class VariantReadBenchmark {
   // ------------------------------------------------------------------
 
   /** {@link ParquetReader.Builder} using {@link ProjectedReadSupport}. */
-  private static final class ProjectedReaderBuilder extends ParquetReader.Builder<Variant> {
+  private final class ProjectedReaderBuilder extends ParquetReader.Builder<RowRecord> {
     ProjectedReaderBuilder(InputFile file) {
       super(file);
     }
 
     @Override
-    protected ReadSupport<Variant> getReadSupport() {
+    protected ReadSupport<RowRecord> getReadSupport() {
       return new ProjectedReadSupport();
     }
   }
 
+  private static final MessageType VARCATEGORY_PROJECTION = new MessageType(
+      "vschema",
+      Types.required(PrimitiveTypeName.INT64).named("id"),
+      Types.required(PrimitiveTypeName.INT32).named("category"),
+      Types.optionalGroup()
+          .as(LogicalTypeAnnotation.variantType((byte) 1))
+          .required(PrimitiveTypeName.BINARY)
+          .named("metadata")
+          .optional(PrimitiveTypeName.BINARY)
+          .named("value")
+          .addField(Types.optionalGroup()
+              .addField(Types.optionalGroup()
+                  .optional(PrimitiveTypeName.BINARY)
+                  .named("value")
+                  .optional(PrimitiveTypeName.INT32)
+                  .named("typed_value")
+                  .named("varcategory"))
+              .named("typed_value"))
+          .named("nested"));
+
   /**
-   * {@link ReadSupport} that projects the file schema down to only the {@code nested} variant's
-   * {@code varcategory} field, skipping {@code id}, {@code category}, {@code idstr},
-   * {@code varid}, and {@code col4} column chunks entirely.
+   * {@link ReadSupport} that projects the file schema down to {@code id} and only the {@code
+   * nested.typed_value.varcategory} column, skipping {@code category}, {@code idstr}, {@code
+   * varid}, and {@code col4} column chunks entirely.
    */
-  private static final class ProjectedReadSupport extends ReadSupport<Variant> {
-    private static final MessageType VARCATEGORY_PROJECTION = new MessageType(
-        "vschema",
-        Types.optionalGroup()
-            .as(LogicalTypeAnnotation.variantType((byte) 1))
-            .required(PrimitiveTypeName.BINARY)
-            .named("metadata")
-            .optional(PrimitiveTypeName.BINARY)
-            .named("value")
-            .addField(Types.optionalGroup()
-                .addField(Types.optionalGroup()
-                    .optional(PrimitiveTypeName.BINARY)
-                    .named("value")
-                    .optional(PrimitiveTypeName.INT32)
-                    .named("typed_value")
-                    .named("varcategory"))
-                .named("typed_value"))
-            .named("nested"));
+  private final class ProjectedReadSupport extends ReadSupport<RowRecord> {
 
     @Override
     public ReadContext init(InitContext context) {
@@ -576,24 +596,25 @@ public class VariantReadBenchmark {
     }
 
     @Override
-    public RecordMaterializer<Variant> prepareForRead(
+    public RecordMaterializer<RowRecord> prepareForRead(
         Configuration conf,
         Map<String, String> keyValueMetaData,
         MessageType fileSchema,
         ReadContext readContext) {
       // Use the requested schema from the ReadContext — either VARCATEGORY_PROJECTION
       // (shredded) or the full file schema (unshredded fallback).
-      GroupType nestedGroup = readContext.getRequestedSchema().getType("nested").asGroupType();
-      return new ProjectedRecordMaterializer(nestedGroup);
+      MessageType requestedSchema = readContext.getRequestedSchema();
+      GroupType nestedGroup = requestedSchema.getType("nested").asGroupType();
+      return new ProjectedRecordMaterializer(requestedSchema, nestedGroup);
     }
   }
 
-  /** Materializes the {@code nested} {@link Variant} from the projected single-field schema. */
-  private static final class ProjectedRecordMaterializer extends RecordMaterializer<Variant> {
+  /** Materializes a {@link RowRecord} from the projected schema. */
+  private static final class ProjectedRecordMaterializer extends RecordMaterializer<RowRecord> {
     private final ProjectedMessageConverter root;
 
-    ProjectedRecordMaterializer(GroupType nestedGroup) {
-      this.root = new ProjectedMessageConverter(nestedGroup);
+    ProjectedRecordMaterializer(MessageType requestedSchema, GroupType nestedGroup) {
+      this.root = new ProjectedMessageConverter(requestedSchema, nestedGroup);
     }
 
     @Override
@@ -602,35 +623,64 @@ public class VariantReadBenchmark {
     }
 
     @Override
-    public Variant getCurrentRecord() {
-      return root.getCurrentVariant();
+    public RowRecord getCurrentRecord() {
+      return root.getCurrentRecord();
     }
   }
 
   /**
-   * Root converter for the projected schema: single field 0 ({@code nested}). No converters for
-   * {@code id} or {@code category} — those columns are not requested and never decoded.
+   * Root converter for the projected schema. Routes {@code id}, {@code category}, and {@code
+   * nested} to dedicated converters; indices are resolved dynamically from the requested schema so
+   * both the shredded projection and the unshredded full-schema fallback work correctly.
    */
   private static final class ProjectedMessageConverter extends GroupConverter {
+    private final int idIndex;
+    private final int categoryIndex;
+    private final int nestedIndex;
+    private final PrimitiveConverter idConverter;
+    private final PrimitiveConverter categoryConverter;
     private final RowVariantGroupConverter variantConverter;
+    private long id;
+    private int category;
 
-    ProjectedMessageConverter(GroupType nestedGroup) {
-      this.variantConverter = new RowVariantGroupConverter(nestedGroup);
+    ProjectedMessageConverter(MessageType requestedSchema, GroupType nestedGroup) {
+      idIndex = requestedSchema.getFieldIndex("id");
+      categoryIndex = requestedSchema.getFieldIndex("category");
+      nestedIndex = requestedSchema.getFieldIndex("nested");
+      idConverter = new PrimitiveConverter() {
+        @Override
+        public void addLong(long value) {
+          id = value;
+        }
+      };
+      categoryConverter = new PrimitiveConverter() {
+        @Override
+        public void addInt(int value) {
+          category = value;
+        }
+      };
+      variantConverter = new RowVariantGroupConverter(nestedGroup);
     }
 
     @Override
     public Converter getConverter(int fieldIndex) {
-      return variantConverter;
+      if (fieldIndex == idIndex) return idConverter;
+      if (fieldIndex == categoryIndex) return categoryConverter;
+      if (fieldIndex == nestedIndex) return variantConverter;
+      throw new IllegalArgumentException("Unknown field index: " + fieldIndex);
     }
 
     @Override
-    public void start() {}
+    public void start() {
+      id = -1;
+      category = -1;
+    }
 
     @Override
     public void end() {}
 
-    Variant getCurrentVariant() {
-      return variantConverter.getCurrentVariant();
+    RowRecord getCurrentRecord() {
+      return new RowRecord(id, category, variantConverter.getCurrentVariant());
     }
   }
 }
