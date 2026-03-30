@@ -19,6 +19,7 @@
 package org.apache.parquet.benchmarks;
 
 import java.io.ByteArrayOutputStream;
+import java.io.EOFException;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
@@ -73,6 +74,8 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Timeout;
 import org.openjdk.jmh.annotations.Warmup;
 import org.openjdk.jmh.infra.Blackhole;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * JMH benchmarks for {@link VariantBuilder}: construction, serialization and deserialization of
@@ -99,17 +102,17 @@ import org.openjdk.jmh.infra.Blackhole;
  *   ./parquet-benchmarks/run.sh all org.apache.parquet.benchmarks.VariantBenchmark \
  *       -wi 5 -i 5 -f 1 -rff target/results.json
  * </pre>
- *
- * Change fork to 1 before merge
  */
 @Fork(1)
 @State(Scope.Benchmark)
 @Warmup(iterations = 100)
-@Measurement(iterations = 100)
+@Measurement(iterations = 250)
 @BenchmarkMode(Mode.SingleShotTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
 @Timeout(time = 10, timeUnit = TimeUnit.MINUTES)
 public class VariantBenchmark {
+
+  private static final Logger LOG = LoggerFactory.getLogger(VariantBenchmark.class);
 
   /** Whether to include nested sub-objects in the field values. */
   public enum Depth {
@@ -149,7 +152,8 @@ public class VariantBenchmark {
   private static int count() {
     int c = counter++;
     if (c >= 512) {
-      c = 0;
+      counter = 0;
+      c = counter;
     }
     return c;
   }
@@ -393,7 +397,7 @@ public class VariantBenchmark {
    * VariantBuilder#build()}. Measures object construction including dictionary encoding.
    */
   @Benchmark
-  public void benchmarkBuildVariant(Blackhole bh) {
+  public void buildVariant(Blackhole bh) {
     for (int i = 0; i < ITERATIONS; i++) {
       Variant v = buildVariant();
       bh.consume(v.getValueBuffer());
@@ -409,7 +413,7 @@ public class VariantBenchmark {
    * primarily measures the ByteBuffer access and the Blackhole overhead..
    */
   @Benchmark
-  public void benchmarkSerialize(Blackhole bh) {
+  public void serializeVariant(Blackhole bh) {
     // duplicate() gives an independent position/limit on the same backing array –
     for (int i = 0; i < ITERATIONS; i++) {
       // equivalent to the Iceberg benchmark's outputBuffer.clear() + writeTo() pattern.
@@ -427,23 +431,9 @@ public class VariantBenchmark {
    * cost of sub-objects.
    */
   @Benchmark
-  public void benchmarkDeserialize(Blackhole bh) {
+  public void deserializeVariant(Blackhole bh) {
     for (int j = 0; j < ITERATIONS; j++) {
-      deserializeVariant(preBuiltVariant, bh);
-    }
-  }
-
-  /** Recursively deserialize a variant object, descending into any nested objects. */
-  private void deserializeVariant(Variant v, Blackhole bh) {
-    int n = v.numObjectElements();
-    for (int i = 0; i < n; i++) {
-      Variant.ObjectField field = v.getFieldAtIndex(i);
-      bh.consume(field.key);
-      if (field.value.getType() == Variant.Type.OBJECT) {
-        deserializeVariant(field.value, bh);
-      } else {
-        bh.consume(field.value.getValueBuffer());
-      }
+      deserializeAndConsume(preBuiltVariant, bh);
     }
   }
 
@@ -452,7 +442,7 @@ public class VariantBenchmark {
    * field matching, and recursive decomposition that {@link VariantValueWriter} perform
    */
   @Benchmark
-  public void writeShredded(Blackhole blackhole) {
+  public void consumeRecordsShredded(Blackhole blackhole) {
     for (int i = 0; i < ITERATIONS; i++) {
       VariantValueWriter.write(noopConsumer, shreddedSchema, preBuiltVariant);
       blackhole.consume(noopConsumer);
@@ -462,33 +452,33 @@ public class VariantBenchmark {
   /**
    * Write {@link #FILE_ROWS} rows of the pre-built variant to an in-memory Parquet file using the
    * shredded schema. Measures end-to-end Parquet encoding cost including page/row-group framing.
-   * Compare with {@link #writeShredded} to quantify the overhead over raw schema traversal.
+   * Compare with {@link #consumeRecordsShredded} to quantify the overhead over raw schema traversal.
    */
   @Benchmark
-  public void writeFileShredded(Blackhole blackhole) throws IOException {
-    writeThenConsume(blackhole, shreddedSchema);
+  public void writeToMemoryFile(Blackhole blackhole) throws IOException {
+    writeToMemory(blackhole, shreddedSchema);
   }
 
   /**
    * Write the pre-built variant to an unshredded schema (metadata + value only).
    * This is the baseline: the entire variant is written as a single binary blob.
-   * Compare with {@link #writeShredded} to see the cost of shredding.
+   * Compare with {@link #consumeRecordsShredded} to see the cost of shredding.
    */
   @Benchmark
-  public void writeUnshredded(Blackhole bh) {
+  public void consumeRecordsUnshredded(Blackhole blackhole) {
     for (int i = 0; i < ITERATIONS; i++) {
       VariantValueWriter.write(noopConsumer, unshreddedSchema, preBuiltVariant);
-      bh.consume(noopConsumer);
+      blackhole.consume(noopConsumer);
     }
   }
 
   /**
    * Write {@link #FILE_ROWS} rows of the pre-built variant to an in-memory Parquet file using the
-   * unshredded schema (metadata + value binary blobs only). Baseline for {@link #writeFileShredded}.
+   * unshredded schema (metadata + value binary blobs only). Baseline for {@link #writeToMemoryFile}.
    */
   @Benchmark
-  public void writeFileUnshredded(Blackhole bh) throws IOException {
-    writeThenConsume(bh, unshreddedSchema);
+  public void writeToMemoryUnshredded(Blackhole blackhole) throws IOException {
+    writeToMemory(blackhole, unshreddedSchema);
   }
 
   /**
@@ -497,13 +487,8 @@ public class VariantBenchmark {
    */
   @Benchmark
   public void readFileShredded(Blackhole blackhole) throws IOException {
-    try (ParquetReader<Variant> reader =
-        new VariantReaderBuilder(new ByteArrayInputFile(shreddedFileBytes)).build()) {
-      Variant v;
-      while ((v = reader.read()) != null) {
-        blackhole.consume(v);
-      }
-    }
+    final ByteArrayInputFile inputFile = new ByteArrayInputFile(shreddedFileBytes);
+    consumeInputFile(blackhole, inputFile);
   }
 
   /**
@@ -512,13 +497,7 @@ public class VariantBenchmark {
    */
   @Benchmark
   public void readFileUnshredded(Blackhole bh) throws IOException {
-    try (ParquetReader<Variant> reader =
-        new VariantReaderBuilder(new ByteArrayInputFile(unshreddedFileBytes)).build()) {
-      Variant v;
-      while ((v = reader.read()) != null) {
-        bh.consume(v);
-      }
-    }
+    consumeInputFile(bh, new ByteArrayInputFile(unshreddedFileBytes));
   }
 
   // ------------------------------------------------------------------
@@ -526,8 +505,7 @@ public class VariantBenchmark {
   // ------------------------------------------------------------------
 
   /**
-   * Build a complete Variant object from the pre-decided field types. This is the core logic shared
-   * between {@link #benchmarkBuildVariant} and setup..
+   * Build a complete Variant object from the pre-decided field types.
    */
   private Variant buildVariant() {
     VariantBuilder builder = new VariantBuilder();
@@ -608,6 +586,20 @@ public class VariantBenchmark {
         .named("variant_field");
   }
 
+  /** Recursively deserialize a variant object, descending into any nested objects. */
+  private void deserializeAndConsume(Variant v, Blackhole bh) {
+    int n = v.numObjectElements();
+    for (int i = 0; i < n; i++) {
+      Variant.ObjectField field = v.getFieldAtIndex(i);
+      bh.consume(field.key);
+      if (field.value.getType() == Variant.Type.OBJECT) {
+        deserializeAndConsume(field.value, bh);
+      } else {
+        bh.consume(field.value.getValueBuffer());
+      }
+    }
+  }
+
   /**
    * Write {@link #FILE_ROWS} copies of {@link #preBuiltVariant} to a fresh in-memory Parquet file
    * using the given schema. Used both in {@link #setupTrial()} to pre-build read buffers and as the
@@ -620,6 +612,7 @@ public class VariantBenchmark {
         writer.write(preBuiltVariant);
       }
     }
+    LOG.info("Written Parquet file has size: {}", out.size());
     return out.toByteArray();
   }
 
@@ -630,14 +623,23 @@ public class VariantBenchmark {
    * @param schema schema
    * @throws IOException write failure
    */
-  private void writeThenConsume(final Blackhole blackhole, final GroupType schema) throws IOException {
-    ByteArrayOutputFile out = new ByteArrayOutputFile();
-    try (ParquetWriter<Variant> writer = new VariantWriterBuilder(out, schema).build()) {
-      for (int i = 0; i < FILE_ROWS; i++) {
-        writer.write(preBuiltVariant);
+  private void writeToMemory(final Blackhole blackhole, final GroupType schema) throws IOException {
+    blackhole.consume(writeVariantsToMemory(schema));
+  }
+
+  /**
+   * Consume an Input file.
+   * @param blackhole black hole
+   * @param inputFile input file
+   */
+  private static void consumeInputFile(final Blackhole blackhole, final ByteArrayInputFile inputFile)
+      throws IOException {
+    try (ParquetReader<Variant> reader = new VariantReaderBuilder(inputFile).build()) {
+      Variant v;
+      while ((v = reader.read()) != null) {
+        blackhole.consume(v);
       }
     }
-    blackhole.consume(out.toByteArray());
   }
 
   // ------------------------------------------------------------------
@@ -694,6 +696,10 @@ public class VariantBenchmark {
     public long defaultBlockSize() {
       return 0;
     }
+
+    int size() {
+      return baos.size();
+    }
   }
 
   /** An {@link InputFile} backed by a {@code byte[]}. */
@@ -747,7 +753,7 @@ public class VariantBenchmark {
         @Override
         public void readFully(byte[] bytes, int start, int len) throws IOException {
           if (pos + len > data.length) {
-            throw new IOException("Unexpected end of data");
+            throw new EOFException("Unexpected end of data");
           }
           System.arraycopy(data, pos, bytes, start, len);
           pos += len;
