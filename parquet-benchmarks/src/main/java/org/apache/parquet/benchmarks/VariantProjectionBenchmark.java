@@ -46,10 +46,7 @@ import org.apache.parquet.io.api.PrimitiveConverter;
 import org.apache.parquet.io.api.RecordConsumer;
 import org.apache.parquet.io.api.RecordMaterializer;
 import org.apache.parquet.schema.GroupType;
-import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
-import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
-import org.apache.parquet.schema.Types;
 import org.apache.parquet.variant.ImmutableMetadata;
 import org.apache.parquet.variant.Variant;
 import org.apache.parquet.variant.VariantBuilder;
@@ -87,7 +84,7 @@ import org.slf4j.LoggerFactory;
  *
  * <pre>
  *   ./mvnw --projects parquet-benchmarks -amd -DskipTests -Denforcer.skip=true clean package
- *   ./parquet-benchmarks/run.sh all org.apache.parquet.benchmarks.VariantReadBenchmark \
+ *   ./parquet-benchmarks/run.sh all org.apache.parquet.benchmarks.VariantProjectionBenchmark \
  *       -wi 5 -i 5 -f 1 -rff target/results.json
  * </pre>
  * *
@@ -99,12 +96,72 @@ import org.slf4j.LoggerFactory;
 @BenchmarkMode(Mode.SingleShotTime)
 @OutputTimeUnit(MILLISECONDS)
 @Timeout(time = 10, timeUnit = TimeUnit.MINUTES)
-public class VariantReadBenchmark {
+public class VariantProjectionBenchmark {
 
-  private static final Logger LOG = LoggerFactory.getLogger(VariantReadBenchmark.class);
+  private static final Logger LOG = LoggerFactory.getLogger(VariantProjectionBenchmark.class);
 
   /** Number of rows written per file. */
   private static final int NUM_ROWS = 1_000_000;
+
+  /**
+   * General specification of the records.
+   */
+  public static final String UNSHREDDED_SCHEMA = "message vschema { "
+      + "required int64 id;"
+      + "required int32 category;"
+      + "optional group nested (VARIANT(1)) {"
+      + "  required binary metadata;"
+      + "  required binary value;"
+      + "  }"
+      + "}";
+
+  /**
+   * Detailed specification declaring all variant columns.
+   */
+  public static final String SHREDDED_SCHEMA = "message vschema { "
+      + "required int64 id;"
+      + "required int32 category;"
+      + "optional group nested (VARIANT(1)) {"
+      + "  required binary metadata;"
+      + "  optional binary value;"
+      + "  optional group typed_value {"
+      + "    required group idstr {"
+      + "      optional binary value;"
+      + "      optional binary typed_value (STRING);"
+      + "      }"
+      + "    required group varid {"
+      + "      optional binary value;"
+      + "      optional int64 typed_value;"
+      + "      }"
+      + "    required group varcategory {"
+      + "      optional binary value;"
+      + "      optional int32 typed_value;"
+      + "      }"
+      + "    required group col4 {"
+      + "      optional binary value;"
+      + "      optional binary typed_value (STRING);"
+      + "      }"
+      + "    }"
+      + "   }"
+      + "}";
+
+  /**
+   * The select schema is a subset of {@link #SHREDDED_SCHEMA}.
+   */
+  public static final String SELECT_SCHEMA = "message vschema { "
+      + "required int64 id;"
+      + "required int32 category;"
+      + "optional group nested (VARIANT(1)) {"
+      + "  required binary metadata;"
+      + "  optional binary value;"
+      + "  optional group typed_value {"
+      + "    required group varcategory {"
+      + "      optional binary value;"
+      + "      optional int32 typed_value;"
+      + "      }"
+      + "    }"
+      + "  }"
+      + "}";
 
   private static final int CATEGORIES = 20;
 
@@ -120,6 +177,7 @@ public class VariantReadBenchmark {
 
   @Param({"true", "false"})
   public boolean shredded;
+
   /**
    * The record schema with the unshredded variant.
    */
@@ -130,90 +188,45 @@ public class VariantReadBenchmark {
    * into their own columns.
    */
   private final MessageType shreddedSchema;
+
   /**
    * Select schema.
+   * A subset of the {@link }
    */
   private final MessageType selectSchema;
-  private MessageType activeSchema;
+
   private Configuration conf;
   private FileSystem fs;
-  private Path shreddedFile;
-  private Path unshreddedFile;
   private Path dataFile;
 
-  public VariantReadBenchmark() {
-
-
-    unshreddedSchema = parseMessageType("message vschema { "
-        + "required int64 id;"
-        + "required int32 category;"
-        + "optional group nested (VARIANT(1)) {"
-        + "  required binary metadata;"
-        + "  required binary value;"
-        + "  }"
-        + "}");
-
-    shreddedSchema = parseMessageType("message vschema { "
-        + "required int64 id;"
-        + "required int32 category;"
-        + "optional group nested (VARIANT(1)) {"
-        + "  required binary metadata;"
-        + "  optional binary value;"
-        + "  optional group typed_value {"
-        + "    required group idstr {"
-        + "      optional binary value;"
-        + "      optional binary typed_value (STRING);"
-        + "      }"
-        + "    required group varid {"
-        + "      optional binary value;"
-        + "      optional int64 typed_value;"
-        + "      }"
-        + "    required group varcategory {"
-        + "      optional binary value;"
-        + "      optional int32 typed_value;"
-        + "      }"
-        + "    required group col4 {"
-        + "      optional binary value;"
-        + "      optional binary typed_value (STRING);"
-        + "      }"
-        + "    }"
-        + "   }"
-        + "}");
-
-
-    selectSchema = parseMessageType("message vschema { "
-        + "required int64 id;"
-        + "optional group nested (VARIANT(1)) {"
-        + "  required binary metadata;"
-        + "  optional binary value;"
-        + "  optional group typed_value {"
-        + "    required group varcategory {"
-        + "      optional binary value;"
-        + "      optional int32 typed_value;"
-        + "      }"
-        + "    }"
-        + "  }"
-        + "}");
-
+  public VariantProjectionBenchmark() {
+    // build the schemas.
+    // doing this in the constructor makes it slightly easier to debug
+    // schema errors.
+    unshreddedSchema = parseMessageType(UNSHREDDED_SCHEMA);
+    shreddedSchema = parseMessageType(SHREDDED_SCHEMA);
+    selectSchema = parseMessageType(SELECT_SCHEMA);
   }
 
   @Setup(Level.Trial)
   public void setupBenchmarks() throws IOException {
     conf = new Configuration();
+    // hadoop 3.4.3 turn off CRC and use direct nio range reads.
+    conf.setBoolean("fs.file.checksum.verify", false);
     fs = FileSystem.getLocal(conf);
     cleanup();
     fs.mkdirs(BenchmarkFiles.targetDir);
     // using different filenames assists with manual examination
     // of the contents.
-    shreddedFile = new Path(BenchmarkFiles.targetDir, "shredded.parquet");
-    unshreddedFile = new Path(BenchmarkFiles.targetDir, "unshredded.parquet");
+    MessageType activeSchema;
     if (shredded) {
-      dataFile = shreddedFile;
+      dataFile = new Path(BenchmarkFiles.targetDir, "shredded.parquet");
       activeSchema = shreddedSchema;
     } else {
-      dataFile = unshreddedFile;
+      dataFile = new Path(BenchmarkFiles.targetDir, "unshredded.parquet");
       activeSchema = unshreddedSchema;
     }
+    fs.delete(dataFile, false);
     writeDataset(activeSchema, dataFile);
   }
 
@@ -240,7 +253,7 @@ public class VariantReadBenchmark {
    * @param blackhole black hole.
    */
   @Benchmark
-  public void readFileWithoutProjection(Blackhole blackhole) throws IOException {
+  public void readAllRecords(Blackhole blackhole) throws IOException {
     try (ParquetReader<RowRecord> reader = new RowReaderBuilder(HadoopInputFile.fromPath(dataFile, conf)).build()) {
       RowRecord row;
       while ((row = reader.read()) != null) {
@@ -253,23 +266,43 @@ public class VariantReadBenchmark {
   }
 
   /**
-   * Like {@link #readFileWithoutProjection(Blackhole)}, but uses column projection to read only
-   * {@code id} and {@code nested.typed_value.varcategory}, skipping {@code category}, {@code
-   * idstr}, {@code varid}, and {@code col4}.
+   * Projected read, using {@link #SELECT_SCHEMA} as the record schema.
    */
   @Benchmark
-  public void readFileProjected(Blackhole blackhole) throws IOException {
+  public void readProjectedLeanSchema(Blackhole blackhole) throws IOException {
     try (ParquetReader<RowRecord> reader =
-        new ProjectedReaderBuilder(HadoopInputFile.fromPath(dataFile, conf)).build()) {
-      RowRecord row;
-      while ((row = reader.read()) != null) {
-        blackhole.consume(row.id);
-        blackhole.consume(row.category);
-        Variant varcategory = row.variant.getFieldByKey("varcategory");
-        if (varcategory != null) {
-          blackhole.consume(varcategory.getInt());
-        }
+        new ProjectedReaderBuilder(HadoopInputFile.fromPath(dataFile, conf), true).build()) {
+      consumeProjectedFields(blackhole, reader);
+    }
+  }
+
+  /**
+   * Consume only those fields which are in the projection schema.
+   * Other variant columns may or may not be present.
+   * @param blackhole black hold.
+   * @param reader reader.
+   */
+  private static void consumeProjectedFields(final Blackhole blackhole, final ParquetReader<RowRecord> reader)
+      throws IOException {
+    RowRecord row;
+    while ((row = reader.read()) != null) {
+      blackhole.consume(row.id);
+      blackhole.consume(row.category);
+      Variant varcategory = row.variant.getFieldByKey("varcategory");
+      if (varcategory != null) {
+        blackhole.consume(varcategory.getInt());
       }
+    }
+  }
+
+  /**
+   * Read projected with the file schema, not the leaner one.
+   */
+  @Benchmark
+  public void readProjectedFileSchema(Blackhole blackhole) throws IOException {
+    try (ParquetReader<RowRecord> reader =
+        new ProjectedReaderBuilder(HadoopInputFile.fromPath(dataFile, conf), false).build()) {
+      consumeProjectedFields(blackhole, reader);
     }
   }
 
@@ -414,7 +447,7 @@ public class VariantReadBenchmark {
     }
   }
 
-  /** Materializes a {@link RowRecord} from a 3-field Parquet message. */
+  /** Materializes a {@link RowRecord}. */
   private static final class RowRecordMaterializer extends RecordMaterializer<RowRecord> {
     private final RowMessageConverter root;
 
@@ -540,58 +573,49 @@ public class VariantReadBenchmark {
     }
   }
 
-  // ------------------------------------------------------------------
-  // Projected read support (varcategory only)
-  // ------------------------------------------------------------------
-
   /** {@link ParquetReader.Builder} using {@link ProjectedReadSupport}. */
   private final class ProjectedReaderBuilder extends ParquetReader.Builder<RowRecord> {
-    ProjectedReaderBuilder(InputFile file) {
+
+    /** Read support for this read. */
+    private final ProjectedReadSupport readSupport;
+
+    /**
+     * Reader for projected reads.
+     * @param file input file
+     * @param useSelectSchema true if the select schema should be used instead of the file schema.
+     */
+    ProjectedReaderBuilder(InputFile file, boolean useSelectSchema) {
       super(file);
+      this.readSupport = new ProjectedReadSupport(useSelectSchema);
     }
 
     @Override
     protected ReadSupport<RowRecord> getReadSupport() {
-      return new ProjectedReadSupport();
+      return readSupport;
     }
   }
 
-  private static final MessageType VARCATEGORY_PROJECTION = new MessageType(
-      "vschema",
-      Types.required(PrimitiveTypeName.INT64).named("id"),
-      Types.required(PrimitiveTypeName.INT32).named("category"),
-      Types.optionalGroup()
-          .as(LogicalTypeAnnotation.variantType((byte) 1))
-          .required(PrimitiveTypeName.BINARY)
-          .named("metadata")
-          .optional(PrimitiveTypeName.BINARY)
-          .named("value")
-          .addField(Types.optionalGroup()
-              .addField(Types.optionalGroup()
-                  .optional(PrimitiveTypeName.BINARY)
-                  .named("value")
-                  .optional(PrimitiveTypeName.INT32)
-                  .named("typed_value")
-                  .named("varcategory"))
-              .named("typed_value"))
-          .named("nested"));
-
   /**
-   * {@link ReadSupport} that projects the file schema down to {@code id} and only the {@code
-   * nested.typed_value.varcategory} column, skipping {@code category}, {@code idstr}, {@code
-   * varid}, and {@code col4} column chunks entirely.
+   * {@link ReadSupport} for proejection.
    */
   private final class ProjectedReadSupport extends ReadSupport<RowRecord> {
 
+    /**
+     * Use the optimized select schema?
+     */
+    private final boolean useSelectSchema;
+
+    /**
+     * Constructor.
+     * @param useSelectSchema Use the optimized select schema?
+     */
+    public ProjectedReadSupport(final boolean useSelectSchema) {
+      this.useSelectSchema = useSelectSchema;
+    }
+
     @Override
     public ReadContext init(InitContext context) {
-      MessageType fileSchema = context.getFileSchema();
-      GroupType nested = fileSchema.getType("nested").asGroupType();
-      if (nested.containsField("typed_value")) {
-        return new ReadContext(VARCATEGORY_PROJECTION);
-      }
-      // Unshredded file: projection designed for typed columns provides no benefit and
-      // causes schema mismatch overhead — fall back to the full file schema.
+      MessageType fileSchema = useSelectSchema ? selectSchema : context.getFileSchema();
       return new ReadContext(fileSchema);
     }
 
@@ -601,8 +625,6 @@ public class VariantReadBenchmark {
         Map<String, String> keyValueMetaData,
         MessageType fileSchema,
         ReadContext readContext) {
-      // Use the requested schema from the ReadContext — either VARCATEGORY_PROJECTION
-      // (shredded) or the full file schema (unshredded fallback).
       MessageType requestedSchema = readContext.getRequestedSchema();
       GroupType nestedGroup = requestedSchema.getType("nested").asGroupType();
       return new ProjectedRecordMaterializer(requestedSchema, nestedGroup);
@@ -664,9 +686,13 @@ public class VariantReadBenchmark {
 
     @Override
     public Converter getConverter(int fieldIndex) {
-      if (fieldIndex == idIndex) return idConverter;
-      if (fieldIndex == categoryIndex) return categoryConverter;
-      if (fieldIndex == nestedIndex) return variantConverter;
+      if (fieldIndex == idIndex) {
+        return idConverter;
+      } else if (fieldIndex == categoryIndex) {
+        return categoryConverter;
+      } else if (fieldIndex == nestedIndex) {
+        return variantConverter;
+      }
       throw new IllegalArgumentException("Unknown field index: " + fieldIndex);
     }
 
