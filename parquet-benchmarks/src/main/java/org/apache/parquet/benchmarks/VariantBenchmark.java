@@ -136,7 +136,7 @@ public class VariantBenchmark {
   private int fieldCount;
 
   /** Whether to include nested variant objects as some of the field values. */
-  @Param({"Flat", "Nested"})
+  @Param
   private Depth depth;
 
   /**
