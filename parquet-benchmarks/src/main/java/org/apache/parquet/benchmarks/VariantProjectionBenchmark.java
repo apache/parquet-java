@@ -64,6 +64,7 @@ import org.openjdk.jmh.annotations.Param;
 import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
+import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.annotations.Timeout;
 import org.openjdk.jmh.annotations.Warmup;
 import org.openjdk.jmh.infra.Blackhole;
@@ -72,20 +73,20 @@ import org.slf4j.LoggerFactory;
 
 /**
  * <pre>
- *   id: int64 -> unique per row
- *   category: int32 -> in range 0-19:  (fileNum % 2) * 10 + (id % 10);
+ *   id: int64 :- unique per row counter
+ *   category: int32 :- in range 0-19:  (fileNum % 2) * 10 + (id % 10);
  *   nested: variant
- *       .idstr: string -> unique string per row
- *       .varid: int64  -> id
- *       .varcategory: int32  -> category (0-19)
- *       .col4: string -> non-unique string per row (picked from 20 values based on category)
+ *       .idstr: string :- unique string per row
+ *       .varid: int64  :- id
+ *       .varcategory: int32  :- category (0-19)
+ *       .col4: string :- non-unique string per row (picked from 20 values based on category)
  * </pre>
  * <p>Build and run:
  *
  * <pre>
  *   ./mvnw --projects parquet-benchmarks -amd -DskipTests -Denforcer.skip=true clean package
  *   ./parquet-benchmarks/run.sh all org.apache.parquet.benchmarks.VariantProjectionBenchmark \
- *       -wi 5 -i 5 -f 1 -rff target/results.json
+ *       -wi 3 -i 5 -f 1  -foe true -rf json -rff target/results.json
  * </pre>
  * *
  */
@@ -104,9 +105,10 @@ public class VariantProjectionBenchmark {
   private static final int NUM_ROWS = 1_000_000;
 
   /**
-   * General specification of the records.
+   * General specification of the records doesn't declare any values within the variant.
+   * The per-record metadata declares that.
    */
-  public static final String UNSHREDDED_SCHEMA = "message vschema { "
+  public static final String UNSHREDDED_SCHEMA = "message vschema {"
       + "required int64 id;"
       + "required int32 category;"
       + "optional group nested (VARIANT(1)) {"
@@ -116,9 +118,9 @@ public class VariantProjectionBenchmark {
       + "}";
 
   /**
-   * Detailed specification declaring all variant columns.
+   * Detailed specification declaring all the columns as shredded variants.
    */
-  public static final String SHREDDED_SCHEMA = "message vschema { "
+  public static final String SHREDDED_SCHEMA = "message vschema {"
       + "required int64 id;"
       + "required int32 category;"
       + "optional group nested (VARIANT(1)) {"
@@ -146,9 +148,10 @@ public class VariantProjectionBenchmark {
       + "}";
 
   /**
-   * The select schema is a subset of {@link #SHREDDED_SCHEMA}.
+   * The select schema is a subset of {@link #SHREDDED_SCHEMA}, containing
+   * only the variant column desired.
    */
-  public static final String SELECT_SCHEMA = "message vschema { "
+  public static final String SELECT_SCHEMA = "message vschema {"
       + "required int64 id;"
       + "required int32 category;"
       + "optional group nested (VARIANT(1)) {"
@@ -175,8 +178,20 @@ public class VariantProjectionBenchmark {
     }
   }
 
-  @Param({"true", "false"})
-  public boolean shredded;
+  /** Table to use in benchmark. */
+  public enum TableType {
+    /** Parquet, no shedding. */
+    Unshredded,
+    /** Parquet, shedded. */
+    Shredded,
+  }
+
+  @Param({"Unshredded", "Shredded"})
+  private TableType tableType;
+
+  public boolean shredded() {
+    return tableType == TableType.Shredded;
+  }
 
   /**
    * The record schema with the unshredded variant.
@@ -214,12 +229,11 @@ public class VariantProjectionBenchmark {
     // hadoop 3.4.3 turn off CRC and use direct nio range reads.
     conf.setBoolean("fs.file.checksum.verify", false);
     fs = FileSystem.getLocal(conf);
-    cleanup();
     fs.mkdirs(BenchmarkFiles.targetDir);
     // using different filenames assists with manual examination
     // of the contents.
     MessageType activeSchema;
-    if (shredded) {
+    if (shredded()) {
       dataFile = new Path(BenchmarkFiles.targetDir, "shredded.parquet");
       activeSchema = shreddedSchema;
     } else {
@@ -228,6 +242,11 @@ public class VariantProjectionBenchmark {
     }
     fs.delete(dataFile, false);
     writeDataset(activeSchema, dataFile);
+  }
+
+  @TearDown
+  public void tearDownBenchmark() throws IOException {
+    cleanup();
   }
 
   private void cleanup() throws IOException {
@@ -251,57 +270,75 @@ public class VariantProjectionBenchmark {
   /**
    * Reads the records, reconstructing the full record from the variant.
    * @param blackhole black hole.
+   * @throws IOException IO failure.
    */
   @Benchmark
   public void readAllRecords(Blackhole blackhole) throws IOException {
-    try (ParquetReader<RowRecord> reader = new RowReaderBuilder(HadoopInputFile.fromPath(dataFile, conf)).build()) {
+    try (ParquetReader<RowRecord> reader =
+        new RowReaderBuilder(HadoopInputFile.fromPath(dataFile, conf), false).build()) {
       RowRecord row;
       while ((row = reader.read()) != null) {
-        Variant varcategory = row.variant.getFieldByKey("varcategory");
-        if (varcategory != null) {
-          blackhole.consume(varcategory.getInt());
-        }
+        blackhole.consume(row.id);
+        blackhole.consume(row.category);
+        consumeField(row.variant, "varid", v -> blackhole.consume(v.getLong()));
+        consumeField(row.variant, "varcategory", v -> blackhole.consume(v.getInt()));
+        consumeField(row.variant, "idstr", v -> blackhole.consume(v.getString()));
+        consumeField(row.variant, "col4", v -> blackhole.consume(v.getString()));
       }
     }
   }
 
   /**
    * Projected read, using {@link #SELECT_SCHEMA} as the record schema.
+   * @param blackhole black hole.
+   * @throws IOException IO failure.
    */
   @Benchmark
   public void readProjectedLeanSchema(Blackhole blackhole) throws IOException {
     try (ParquetReader<RowRecord> reader =
-        new ProjectedReaderBuilder(HadoopInputFile.fromPath(dataFile, conf), true).build()) {
+        new RowReaderBuilder(HadoopInputFile.fromPath(dataFile, conf), true).build()) {
       consumeProjectedFields(blackhole, reader);
+    }
+  }
+
+  /**
+   * Consume one nested field.
+   * @param nested base nested group
+   * @param key key
+   * @param consume consume operation.
+   */
+  private void consumeField(Variant nested, String key, Consumer<Variant> consume) {
+    Variant variant = nested.getFieldByKey(key);
+    if (variant != null) {
+      consume.accept(variant);
     }
   }
 
   /**
    * Consume only those fields which are in the projection schema.
    * Other variant columns may or may not be present.
-   * @param blackhole black hold.
+   * @param blackhole black hole.
    * @param reader reader.
+   * @throws IOException IO failure.
    */
-  private static void consumeProjectedFields(final Blackhole blackhole, final ParquetReader<RowRecord> reader)
+  private void consumeProjectedFields(final Blackhole blackhole, final ParquetReader<RowRecord> reader)
       throws IOException {
     RowRecord row;
     while ((row = reader.read()) != null) {
       blackhole.consume(row.id);
       blackhole.consume(row.category);
-      Variant varcategory = row.variant.getFieldByKey("varcategory");
-      if (varcategory != null) {
-        blackhole.consume(varcategory.getInt());
-      }
+      consumeField(row.variant, "varcategory", v -> blackhole.consume(v.getInt()));
     }
   }
 
   /**
    * Read projected with the file schema, not the leaner one.
+   * @throws IOException IO failure.
    */
   @Benchmark
   public void readProjectedFileSchema(Blackhole blackhole) throws IOException {
     try (ParquetReader<RowRecord> reader =
-        new ProjectedReaderBuilder(HadoopInputFile.fromPath(dataFile, conf), false).build()) {
+        new RowReaderBuilder(HadoopInputFile.fromPath(dataFile, conf), false).build()) {
       consumeProjectedFields(blackhole, reader);
     }
   }
@@ -417,23 +454,46 @@ public class VariantProjectionBenchmark {
   // Read support
   // ------------------------------------------------------------------
 
-  /** {@link ParquetReader.Builder} for {@link RowRecord} values. */
-  private static final class RowReaderBuilder extends ParquetReader.Builder<RowRecord> {
-    RowReaderBuilder(InputFile file) {
+  /**
+   * {@link ParquetReader.Builder} for {@link RowRecord} values.
+   *
+   */
+  private final class RowReaderBuilder extends ParquetReader.Builder<RowRecord> {
+    private final boolean useSelectSchema;
+
+    /**
+     * Row reader builder.
+     * @param file file to read.
+     * @param useSelectSchema true to project using {@link #selectSchema}; false to use the full
+     *     file schema.
+     */
+    RowReaderBuilder(InputFile file, boolean useSelectSchema) {
       super(file);
+      this.useSelectSchema = useSelectSchema;
     }
 
     @Override
     protected ReadSupport<RowRecord> getReadSupport() {
-      return new RowReadSupport();
+      return new RowReadSupport(useSelectSchema);
     }
   }
 
-  /** {@link ReadSupport} that materializes each row as a {@link RowRecord}. */
-  private static final class RowReadSupport extends ReadSupport<RowRecord> {
+  /**
+   * {@link ReadSupport} that materializes each row as a {@link RowRecord}.
+   * When {@code useSelectSchema} is true and the file contains shredded typed columns,
+   * the read is projected to {@link #selectSchema} so unneeded columns are skipped.
+   */
+  private final class RowReadSupport extends ReadSupport<RowRecord> {
+    private final boolean useSelectSchema;
+
+    RowReadSupport(boolean useSelectSchema) {
+      this.useSelectSchema = useSelectSchema;
+    }
+
     @Override
     public ReadContext init(InitContext context) {
-      return new ReadContext(context.getFileSchema());
+      MessageType fileSchema = useSelectSchema ? selectSchema : context.getFileSchema();
+      return new ReadContext(fileSchema);
     }
 
     @Override
@@ -442,17 +502,18 @@ public class VariantProjectionBenchmark {
         Map<String, String> keyValueMetaData,
         MessageType fileSchema,
         ReadContext readContext) {
-      GroupType nestedGroup = fileSchema.getType("nested").asGroupType();
-      return new RowRecordMaterializer(fileSchema, nestedGroup);
+      MessageType requestedSchema = readContext.getRequestedSchema();
+      GroupType nestedGroup = requestedSchema.getType("nested").asGroupType();
+      return new RowRecordMaterializer(requestedSchema, nestedGroup);
     }
   }
 
-  /** Materializes a {@link RowRecord}. */
+  /** Materializes a {@link RowRecord} from any schema containing {@code id}, {@code category}, and {@code nested}. */
   private static final class RowRecordMaterializer extends RecordMaterializer<RowRecord> {
-    private final RowMessageConverter root;
+    private final MessageConverter root;
 
-    RowRecordMaterializer(MessageType messageType, GroupType nestedGroup) {
-      this.root = new RowMessageConverter(nestedGroup);
+    RowRecordMaterializer(MessageType schema, GroupType nestedGroup) {
+      this.root = new MessageConverter(schema, nestedGroup);
     }
 
     @Override
@@ -467,17 +528,24 @@ public class VariantProjectionBenchmark {
   }
 
   /**
-   * Root {@link GroupConverter} for a message with {@code id} (field 0), {@code category} (field
-   * 1), and {@code nested} variant (field 2).
+   * Root {@link GroupConverter} for a message containing {@code id}, {@code category}, and
+   * {@code nested}. Field indices are resolved dynamically from the schema so both the full file
+   * schema and projected schemas are handled correctly.
    */
-  private static final class RowMessageConverter extends GroupConverter {
+  private static final class MessageConverter extends GroupConverter {
+    private final int idIndex;
+    private final int categoryIndex;
+    private final int nestedIndex;
     private final PrimitiveConverter idConverter;
     private final PrimitiveConverter categoryConverter;
     private final RowVariantGroupConverter variantConverter;
     private long id;
     private int category;
 
-    RowMessageConverter(GroupType nestedGroup) {
+    MessageConverter(MessageType schema, GroupType nestedGroup) {
+      idIndex = schema.getFieldIndex("id");
+      categoryIndex = schema.getFieldIndex("category");
+      nestedIndex = schema.getFieldIndex("nested");
       idConverter = new PrimitiveConverter() {
         @Override
         public void addLong(long value) {
@@ -495,20 +563,17 @@ public class VariantProjectionBenchmark {
 
     @Override
     public Converter getConverter(int fieldIndex) {
-      switch (fieldIndex) {
-        case 0:
-          return idConverter;
-        case 1:
-          return categoryConverter;
-        case 2:
-          return variantConverter;
-        default:
-          throw new IllegalArgumentException("Unknown field index: " + fieldIndex);
-      }
+      if (fieldIndex == idIndex) return idConverter;
+      if (fieldIndex == categoryIndex) return categoryConverter;
+      if (fieldIndex == nestedIndex) return variantConverter;
+      throw new IllegalArgumentException("Unknown field index: " + fieldIndex);
     }
 
     @Override
-    public void start() {}
+    public void start() {
+      id = -1;
+      category = -1;
+    }
 
     @Override
     public void end() {}
@@ -519,9 +584,7 @@ public class VariantProjectionBenchmark {
   }
 
   /**
-   * {@link GroupConverter} for the {@code nested} variant field. Implements
-   * {@link VariantConverters.ParentConverter} so it works with
-   * {@link VariantConverters#newVariantConverter}.
+   * {@link GroupConverter} for the {@code nested} variant field.
    */
   private static final class RowVariantGroupConverter extends GroupConverter
       implements VariantConverters.ParentConverter<VariantBuilder> {
@@ -570,143 +633,6 @@ public class VariantProjectionBenchmark {
 
     Variant getCurrentVariant() {
       return currentVariant;
-    }
-  }
-
-  /** {@link ParquetReader.Builder} using {@link ProjectedReadSupport}. */
-  private final class ProjectedReaderBuilder extends ParquetReader.Builder<RowRecord> {
-
-    /** Read support for this read. */
-    private final ProjectedReadSupport readSupport;
-
-    /**
-     * Reader for projected reads.
-     * @param file input file
-     * @param useSelectSchema true if the select schema should be used instead of the file schema.
-     */
-    ProjectedReaderBuilder(InputFile file, boolean useSelectSchema) {
-      super(file);
-      this.readSupport = new ProjectedReadSupport(useSelectSchema);
-    }
-
-    @Override
-    protected ReadSupport<RowRecord> getReadSupport() {
-      return readSupport;
-    }
-  }
-
-  /**
-   * {@link ReadSupport} for proejection.
-   */
-  private final class ProjectedReadSupport extends ReadSupport<RowRecord> {
-
-    /**
-     * Use the optimized select schema?
-     */
-    private final boolean useSelectSchema;
-
-    /**
-     * Constructor.
-     * @param useSelectSchema Use the optimized select schema?
-     */
-    public ProjectedReadSupport(final boolean useSelectSchema) {
-      this.useSelectSchema = useSelectSchema;
-    }
-
-    @Override
-    public ReadContext init(InitContext context) {
-      MessageType fileSchema = useSelectSchema ? selectSchema : context.getFileSchema();
-      return new ReadContext(fileSchema);
-    }
-
-    @Override
-    public RecordMaterializer<RowRecord> prepareForRead(
-        Configuration conf,
-        Map<String, String> keyValueMetaData,
-        MessageType fileSchema,
-        ReadContext readContext) {
-      MessageType requestedSchema = readContext.getRequestedSchema();
-      GroupType nestedGroup = requestedSchema.getType("nested").asGroupType();
-      return new ProjectedRecordMaterializer(requestedSchema, nestedGroup);
-    }
-  }
-
-  /** Materializes a {@link RowRecord} from the projected schema. */
-  private static final class ProjectedRecordMaterializer extends RecordMaterializer<RowRecord> {
-    private final ProjectedMessageConverter root;
-
-    ProjectedRecordMaterializer(MessageType requestedSchema, GroupType nestedGroup) {
-      this.root = new ProjectedMessageConverter(requestedSchema, nestedGroup);
-    }
-
-    @Override
-    public GroupConverter getRootConverter() {
-      return root;
-    }
-
-    @Override
-    public RowRecord getCurrentRecord() {
-      return root.getCurrentRecord();
-    }
-  }
-
-  /**
-   * Root converter for the projected schema. Routes {@code id}, {@code category}, and {@code
-   * nested} to dedicated converters; indices are resolved dynamically from the requested schema so
-   * both the shredded projection and the unshredded full-schema fallback work correctly.
-   */
-  private static final class ProjectedMessageConverter extends GroupConverter {
-    private final int idIndex;
-    private final int categoryIndex;
-    private final int nestedIndex;
-    private final PrimitiveConverter idConverter;
-    private final PrimitiveConverter categoryConverter;
-    private final RowVariantGroupConverter variantConverter;
-    private long id;
-    private int category;
-
-    ProjectedMessageConverter(MessageType requestedSchema, GroupType nestedGroup) {
-      idIndex = requestedSchema.getFieldIndex("id");
-      categoryIndex = requestedSchema.getFieldIndex("category");
-      nestedIndex = requestedSchema.getFieldIndex("nested");
-      idConverter = new PrimitiveConverter() {
-        @Override
-        public void addLong(long value) {
-          id = value;
-        }
-      };
-      categoryConverter = new PrimitiveConverter() {
-        @Override
-        public void addInt(int value) {
-          category = value;
-        }
-      };
-      variantConverter = new RowVariantGroupConverter(nestedGroup);
-    }
-
-    @Override
-    public Converter getConverter(int fieldIndex) {
-      if (fieldIndex == idIndex) {
-        return idConverter;
-      } else if (fieldIndex == categoryIndex) {
-        return categoryConverter;
-      } else if (fieldIndex == nestedIndex) {
-        return variantConverter;
-      }
-      throw new IllegalArgumentException("Unknown field index: " + fieldIndex);
-    }
-
-    @Override
-    public void start() {
-      id = -1;
-      category = -1;
-    }
-
-    @Override
-    public void end() {}
-
-    RowRecord getCurrentRecord() {
-      return new RowRecord(id, category, variantConverter.getCurrentVariant());
     }
   }
 }

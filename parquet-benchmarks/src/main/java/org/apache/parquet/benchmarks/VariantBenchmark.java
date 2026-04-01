@@ -429,17 +429,19 @@ public class VariantBenchmark {
    * the field-name lookup and type dispatch that a query engine performs on every row. Nested
    * objects are recursively traversed so that {@code depth=Nested} incurs the full deserialization
    * cost of sub-objects.
+   * @param blackhole black hole.
    */
   @Benchmark
-  public void deserializeVariant(Blackhole bh) {
+  public void deserializeVariant(Blackhole blackhole) {
     for (int j = 0; j < ITERATIONS; j++) {
-      deserializeAndConsume(preBuiltVariant, bh);
+      deserializeAndConsume(preBuiltVariant, blackhole);
     }
   }
 
   /**
    * Shred the pre-built variant into a fully typed schema. Measures the cost of type dispatch,
    * field matching, and recursive decomposition that {@link VariantValueWriter} perform
+   * @param blackhole black hole.
    */
   @Benchmark
   public void consumeRecordsShredded(Blackhole blackhole) {
@@ -453,6 +455,7 @@ public class VariantBenchmark {
    * Write {@link #FILE_ROWS} rows of the pre-built variant to an in-memory Parquet file using the
    * shredded schema. Measures end-to-end Parquet encoding cost including page/row-group framing.
    * Compare with {@link #consumeRecordsShredded} to quantify the overhead over raw schema traversal.
+   * @param blackhole black hole.
    */
   @Benchmark
   public void writeToMemoryFile(Blackhole blackhole) throws IOException {
@@ -463,6 +466,7 @@ public class VariantBenchmark {
    * Write the pre-built variant to an unshredded schema (metadata + value only).
    * This is the baseline: the entire variant is written as a single binary blob.
    * Compare with {@link #consumeRecordsShredded} to see the cost of shredding.
+   * @param blackhole black hole.
    */
   @Benchmark
   public void consumeRecordsUnshredded(Blackhole blackhole) {
@@ -475,6 +479,7 @@ public class VariantBenchmark {
   /**
    * Write {@link #FILE_ROWS} rows of the pre-built variant to an in-memory Parquet file using the
    * unshredded schema (metadata + value binary blobs only). Baseline for {@link #writeToMemoryFile}.
+   * @param blackhole black hole.
    */
   @Benchmark
   public void writeToMemoryUnshredded(Blackhole blackhole) throws IOException {
@@ -484,6 +489,8 @@ public class VariantBenchmark {
   /**
    * Read all rows from the pre-written shredded Parquet file in memory. Measures full Parquet
    * decode cost including typed column decoding and Variant reassembly.
+   * @param blackhole black hole.
+   * @throws IOException IO failure.
    */
   @Benchmark
   public void readFileShredded(Blackhole blackhole) throws IOException {
@@ -494,10 +501,12 @@ public class VariantBenchmark {
   /**
    * Read all rows from the pre-written unshredded Parquet file in memory. Baseline for
    * {@link #readFileShredded}: measures raw binary blob read with no typed column decoding.
+   * @param blackhole black hole.
+   * @throws IOException IO failure.
    */
   @Benchmark
-  public void readFileUnshredded(Blackhole bh) throws IOException {
-    consumeInputFile(bh, new ByteArrayInputFile(unshreddedFileBytes));
+  public void readFileUnshredded(Blackhole blackhole) throws IOException {
+    consumeInputFile(blackhole, new ByteArrayInputFile(unshreddedFileBytes));
   }
 
   // ------------------------------------------------------------------
@@ -522,13 +531,15 @@ public class VariantBenchmark {
 
   /**
    * Append the value for field {@code i} to {@code ob} according to its type, building nested objects on demand.
+   * @param ob object
+   * @param index index
    */
-  private void appendFieldValue(VariantObjectBuilder ob, int i) {
-    final FieldEntry entry = fieldValues[i];
+  private void appendFieldValue(VariantObjectBuilder ob, int index) {
+    final FieldEntry entry = fieldValues[index];
     // special handling of nested.
     if (entry.type == FieldType.Nested) {
       if (depth == Depth.Nested && stringFieldCount > 0) {
-        appendNestedObject(ob, i);
+        appendNestedObject(ob, index);
       } else {
         // outlier.
         ob.appendNull();
@@ -541,6 +552,9 @@ public class VariantBenchmark {
   /**
    * Append a nested sub-object with {@link #NESTED_FIELD_COUNT} string fields. Field names are
    * drawn from the set of top-level string fields so the nested dictionary overlaps with the parent.
+   *
+   * @param parentOb parent object.
+   * @param parentIndex parent index.
    */
   private void appendNestedObject(VariantObjectBuilder parentOb, int parentIndex) {
     // VariantObjectBuilder does not expose startObject() for nesting directly;
@@ -563,6 +577,7 @@ public class VariantBenchmark {
   /**
    * Build a shredded schema with typed_value columns matching each field's type.
    * For nested fields, the typed_value is an object group with string sub-fields.
+   * @return the group type for a shredded object.
    */
   private GroupType buildShreddedSchema() {
     Types.GroupBuilder<GroupType> typedValueBuilder = Types.optionalGroup();
@@ -586,16 +601,21 @@ public class VariantBenchmark {
         .named("variant_field");
   }
 
-  /** Recursively deserialize a variant object, descending into any nested objects. */
-  private void deserializeAndConsume(Variant v, Blackhole bh) {
-    int n = v.numObjectElements();
+  /**
+   *  Recursively deserialize a variant object, descending into any nested objects.
+   *
+   * @param variant variant to deserialize.
+   * @param blackhole black hole.
+   */
+  private void deserializeAndConsume(Variant variant, Blackhole blackhole) {
+    int n = variant.numObjectElements();
     for (int i = 0; i < n; i++) {
-      Variant.ObjectField field = v.getFieldAtIndex(i);
-      bh.consume(field.key);
+      Variant.ObjectField field = variant.getFieldAtIndex(i);
+      blackhole.consume(field.key);
       if (field.value.getType() == Variant.Type.OBJECT) {
-        deserializeAndConsume(field.value, bh);
+        deserializeAndConsume(field.value, blackhole);
       } else {
-        bh.consume(field.value.getValueBuffer());
+        blackhole.consume(field.value.getValueBuffer());
       }
     }
   }
@@ -604,6 +624,10 @@ public class VariantBenchmark {
    * Write {@link #FILE_ROWS} copies of {@link #preBuiltVariant} to a fresh in-memory Parquet file
    * using the given schema. Used both in {@link #setupTrial()} to pre-build read buffers and as the
    * body of the write-file benchmarks.
+   *
+   * @param schema group schema.
+   * @return the byte of an in-memory parquet file.
+   * @throws IOException IO failure.
    */
   private byte[] writeVariantsToMemory(GroupType schema) throws IOException {
     ByteArrayOutputFile out = new ByteArrayOutputFile();
@@ -631,6 +655,7 @@ public class VariantBenchmark {
    * Consume an Input file.
    * @param blackhole black hole
    * @param inputFile input file
+   * @throws IOException IO failure.
    */
   private static void consumeInputFile(final Blackhole blackhole, final ByteArrayInputFile inputFile)
       throws IOException {
