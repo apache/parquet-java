@@ -178,7 +178,7 @@
     <dependency>
       <groupId>${jackson.groupId}</groupId>
       <artifactId>jackson-annotations</artifactId>
-      <version>${jackson.version}</version>
+      <version>${jackson-annotations.version}</version>
     </dependency>
     <dependency>
       <groupId>${jackson.datatype.groupId}</groupId>
