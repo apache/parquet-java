@@ -88,9 +88,9 @@ import org.slf4j.LoggerFactory;
  *   ./parquet-benchmarks/run.sh all org.apache.parquet.benchmarks.VariantProjectionBenchmark \
  *       -wi 3 -i 5 -f 1  -foe true -rf json -rff target/results.json
  * </pre>
- * *
+ *
  */
-@Fork(0)
+@Fork(1)
 @State(Scope.Benchmark)
 @Warmup(iterations = 3)
 @Measurement(iterations = 5)
@@ -533,9 +533,7 @@ public class VariantProjectionBenchmark {
    * schema and projected schemas are handled correctly.
    */
   private static final class MessageConverter extends GroupConverter {
-    private final int idIndex;
-    private final int categoryIndex;
-    private final int nestedIndex;
+
     private final PrimitiveConverter idConverter;
     private final PrimitiveConverter categoryConverter;
     private final RowVariantGroupConverter variantConverter;
@@ -543,9 +541,6 @@ public class VariantProjectionBenchmark {
     private int category;
 
     MessageConverter(MessageType schema, GroupType nestedGroup) {
-      idIndex = schema.getFieldIndex("id");
-      categoryIndex = schema.getFieldIndex("category");
-      nestedIndex = schema.getFieldIndex("nested");
       idConverter = new PrimitiveConverter() {
         @Override
         public void addLong(long value) {
@@ -563,10 +558,16 @@ public class VariantProjectionBenchmark {
 
     @Override
     public Converter getConverter(int fieldIndex) {
-      if (fieldIndex == idIndex) return idConverter;
-      if (fieldIndex == categoryIndex) return categoryConverter;
-      if (fieldIndex == nestedIndex) return variantConverter;
-      throw new IllegalArgumentException("Unknown field index: " + fieldIndex);
+      switch (fieldIndex) {
+        case 0:
+          return idConverter;
+        case 1:
+          return categoryConverter;
+        case 2:
+          return variantConverter;
+        default:
+          throw new IllegalArgumentException("Unknown field index: " + fieldIndex);
+      }
     }
 
     @Override

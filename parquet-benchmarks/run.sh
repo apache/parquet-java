@@ -100,6 +100,9 @@ else
   "filter")
     BENCHMARK_REGEX="org.apache.parquet.benchmarks.FilteringBenchmarks"
     ;;
+  "variant")
+    BENCHMARK_REGEX="org.apache.parquet.benchmarks.Variant*"
+    ;;
   esac
 
   echo JMH command: java -jar ${SCRIPT_PATH}/target/parquet-benchmarks.jar $BENCHMARK_REGEX $JMH_OPTIONS
