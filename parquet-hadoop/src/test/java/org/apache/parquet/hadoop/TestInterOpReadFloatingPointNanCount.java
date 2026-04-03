@@ -44,7 +44,6 @@ import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.internal.column.columnindex.ColumnIndex;
 import org.apache.parquet.io.api.Binary;
-import org.apache.parquet.schema.Float16;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -63,7 +62,16 @@ public class TestInterOpReadFloatingPointNanCount {
     verifyFile(generated.getNoNanFile(), conf, Scenario.NO_NAN);
     verifyFile(generated.getMixedNanFile(), conf, Scenario.MIXED_NAN);
     verifyFile(generated.getAllNanFile(), conf, Scenario.ALL_NAN);
-    verifyFile(generated.getMergedFile(), conf, Scenario.NO_NAN, Scenario.MIXED_NAN, Scenario.ALL_NAN);
+    verifyFile(generated.getZeroMinFile(), conf, Scenario.ZERO_MIN);
+    verifyFile(generated.getZeroMaxFile(), conf, Scenario.ZERO_MAX);
+    verifyFile(
+        generated.getMergedFile(),
+        conf,
+        Scenario.NO_NAN,
+        Scenario.MIXED_NAN,
+        Scenario.ALL_NAN,
+        Scenario.ZERO_MIN,
+        Scenario.ZERO_MAX);
   }
 
   private static void verifyFile(Path file, Configuration conf, Scenario... scenarios) throws IOException {
@@ -129,20 +137,33 @@ public class TestInterOpReadFloatingPointNanCount {
     }
 
     if (scenario == Scenario.MIXED_NAN) {
-      assertEquals(2L, stats.getNanCount());
+      assertEquals(4L, stats.getNanCount());
       if (isIeee(name)) {
         assertEquals(-2f, stats.getMin(), 0f);
-        assertEquals(5f, stats.getMax(), 0f);
+        assertEquals(3f, stats.getMax(), 0f);
       }
       return;
     }
 
-    // ALL_NAN
-    assertEquals(10L, stats.getNanCount());
-    if (isIeee(name)) {
-      assertTrue(Float.isNaN(stats.getMin()));
-      assertTrue(Float.isNaN(stats.getMax()));
+    if (scenario == Scenario.ALL_NAN) {
+      assertEquals(10L, stats.getNanCount());
+      if (isIeee(name)) {
+        assertEquals(0xffffffff, Float.floatToRawIntBits(stats.getMin()));
+        assertEquals(0x7fffffff, Float.floatToRawIntBits(stats.getMax()));
+      }
+      return;
     }
+
+    if (scenario == Scenario.ZERO_MIN) {
+      assertEquals(0L, stats.getNanCount());
+      assertEquals(isIeee(name) ? 0x00000000 : 0x80000000, Float.floatToRawIntBits(stats.getMin()));
+      assertEquals(5f, stats.getMax(), 0f);
+      return;
+    }
+
+    assertEquals(0L, stats.getNanCount());
+    assertEquals(-5f, stats.getMin(), 0f);
+    assertEquals(isIeee(name) ? 0x80000000 : 0x00000000, Float.floatToRawIntBits(stats.getMax()));
   }
 
   private static void verifyDoubleStats(Scenario scenario, String name, DoubleStatistics stats) {
@@ -154,19 +175,36 @@ public class TestInterOpReadFloatingPointNanCount {
     }
 
     if (scenario == Scenario.MIXED_NAN) {
-      assertEquals(2L, stats.getNanCount());
+      assertEquals(4L, stats.getNanCount());
       if (isIeee(name)) {
         assertEquals(-2d, stats.getMin(), 0d);
-        assertEquals(5d, stats.getMax(), 0d);
+        assertEquals(3d, stats.getMax(), 0d);
       }
       return;
     }
 
-    assertEquals(10L, stats.getNanCount());
-    if (isIeee(name)) {
-      assertTrue(Double.isNaN(stats.getMin()));
-      assertTrue(Double.isNaN(stats.getMax()));
+    if (scenario == Scenario.ALL_NAN) {
+      assertEquals(10L, stats.getNanCount());
+      if (isIeee(name)) {
+        assertEquals(0xffffffffffffffffL, Double.doubleToRawLongBits(stats.getMin()));
+        assertEquals(0x7fffffffffffffffL, Double.doubleToRawLongBits(stats.getMax()));
+      }
+      return;
     }
+
+    if (scenario == Scenario.ZERO_MIN) {
+      assertEquals(0L, stats.getNanCount());
+      assertEquals(
+          isIeee(name) ? 0x0000000000000000L : 0x8000000000000000L,
+          Double.doubleToRawLongBits(stats.getMin()));
+      assertEquals(5d, stats.getMax(), 0d);
+      return;
+    }
+
+    assertEquals(0L, stats.getNanCount());
+    assertEquals(-5d, stats.getMin(), 0d);
+    assertEquals(
+        isIeee(name) ? 0x8000000000000000L : 0x0000000000000000L, Double.doubleToRawLongBits(stats.getMax()));
   }
 
   private static void verifyFloat16Stats(Scenario scenario, String name, BinaryStatistics stats) {
@@ -180,22 +218,47 @@ public class TestInterOpReadFloatingPointNanCount {
     }
 
     if (scenario == Scenario.MIXED_NAN) {
-      assertEquals(2L, stats.getNanCount());
+      assertEquals(4L, stats.getNanCount());
       if (isIeee(name)) {
         short min = stats.genericGetMin().get2BytesLittleEndian();
         short max = stats.genericGetMax().get2BytesLittleEndian();
         assertEquals((short) 0xc000, min);
-        assertEquals((short) 0x4500, max);
+        assertEquals((short) 0x4200, max);
       }
       return;
     }
 
-    assertEquals(10L, stats.getNanCount());
+    if (scenario == Scenario.ALL_NAN) {
+      assertEquals(10L, stats.getNanCount());
+      if (isIeee(name)) {
+        short min = stats.genericGetMin().get2BytesLittleEndian();
+        short max = stats.genericGetMax().get2BytesLittleEndian();
+        assertEquals((short) 0xffff, min);
+        assertEquals((short) 0x7fff, max);
+      }
+      return;
+    }
+
+    if (scenario == Scenario.ZERO_MIN) {
+      short min = stats.genericGetMin().get2BytesLittleEndian();
+      short max = stats.genericGetMax().get2BytesLittleEndian();
+      assertEquals(0L, stats.getNanCount());
+      assertEquals((short) (isIeee(name) ? 0x0000 : 0x8000), min);
+      assertEquals((short) 0x4500, max);
+      return;
+    }
+
+    assertEquals(0L, stats.getNanCount());
     if (isIeee(name)) {
       short min = stats.genericGetMin().get2BytesLittleEndian();
       short max = stats.genericGetMax().get2BytesLittleEndian();
-      assertTrue(Float16.isNaN(min));
-      assertTrue(Float16.isNaN(max));
+      assertEquals((short) 0xc500, min);
+      assertEquals((short) 0x8000, max);
+    } else {
+      short min = stats.genericGetMin().get2BytesLittleEndian();
+      short max = stats.genericGetMax().get2BytesLittleEndian();
+      assertEquals((short) 0xc500, min);
+      assertEquals((short) 0x0000, max);
     }
   }
 
@@ -203,7 +266,7 @@ public class TestInterOpReadFloatingPointNanCount {
       throws IOException {
     String name = column.getPath().toDotString();
     boolean ieee = isIeee(name);
-    boolean hasNaN = scenario != Scenario.NO_NAN;
+    boolean hasNaN = scenario == Scenario.MIXED_NAN || scenario == Scenario.ALL_NAN;
 
     ColumnIndex columnIndex = reader.readColumnIndex(column);
     if (!ieee && hasNaN) {
@@ -224,55 +287,80 @@ public class TestInterOpReadFloatingPointNanCount {
     ByteBuffer max = columnIndex.getMaxValues().get(0).order(ByteOrder.LITTLE_ENDIAN);
 
     if (name.contains("float16")) {
-      verifyFloat16ColumnIndexBounds(scenario, min, max);
+      verifyFloat16ColumnIndexBounds(scenario, ieee, min, max);
       return;
     }
 
     if (name.contains("double")) {
-      verifyDoubleColumnIndexBounds(scenario, min, max);
+      verifyDoubleColumnIndexBounds(scenario, ieee, min, max);
       return;
     }
 
-    verifyFloatColumnIndexBounds(scenario, min, max);
+    verifyFloatColumnIndexBounds(scenario, ieee, min, max);
   }
 
   private static long expectedNanCount(Scenario scenario) {
-    return scenario == Scenario.NO_NAN ? 0L : (scenario == Scenario.MIXED_NAN ? 2L : 10L);
+    if (scenario == Scenario.MIXED_NAN) {
+      return 4L;
+    }
+    if (scenario == Scenario.ALL_NAN) {
+      return 10L;
+    }
+    return 0L;
   }
 
-  private static void verifyFloat16ColumnIndexBounds(Scenario scenario, ByteBuffer min, ByteBuffer max) {
+  private static void verifyFloat16ColumnIndexBounds(
+      Scenario scenario, boolean ieee, ByteBuffer min, ByteBuffer max) {
     short minV = min.getShort(0);
     short maxV = max.getShort(0);
     if (scenario == Scenario.ALL_NAN) {
-      assertEquals((short) 0x7c01, minV);
+      assertEquals((short) 0xffff, minV);
       assertEquals((short) 0x7fff, maxV);
-    } else {
+    } else if (scenario == Scenario.MIXED_NAN || scenario == Scenario.NO_NAN) {
       assertEquals((short) 0xc000, minV);
+      assertEquals((short) (scenario == Scenario.MIXED_NAN ? 0x4200 : 0x4500), maxV);
+    } else if (scenario == Scenario.ZERO_MIN) {
+      assertEquals((short) (ieee ? 0x0000 : 0x8000), minV);
       assertEquals((short) 0x4500, maxV);
+    } else {
+      assertEquals((short) 0xc500, minV);
+      assertEquals((short) (ieee ? 0x8000 : 0x0000), maxV);
     }
   }
 
-  private static void verifyDoubleColumnIndexBounds(Scenario scenario, ByteBuffer min, ByteBuffer max) {
+  private static void verifyDoubleColumnIndexBounds(Scenario scenario, boolean ieee, ByteBuffer min, ByteBuffer max) {
     long minV = min.getLong(0);
     long maxV = max.getLong(0);
     if (scenario == Scenario.ALL_NAN) {
-      assertEquals(0x7ff0000000000001L, minV);
+      assertEquals(0xffffffffffffffffL, minV);
       assertEquals(0x7fffffffffffffffL, maxV);
-    } else {
+    } else if (scenario == Scenario.MIXED_NAN || scenario == Scenario.NO_NAN) {
       assertEquals(Double.doubleToRawLongBits(-2d), minV);
+      assertEquals(Double.doubleToRawLongBits(scenario == Scenario.MIXED_NAN ? 3d : 5d), maxV);
+    } else if (scenario == Scenario.ZERO_MIN) {
+      assertEquals(Double.doubleToRawLongBits(ieee ? 0d : -0d), minV);
       assertEquals(Double.doubleToRawLongBits(5d), maxV);
+    } else {
+      assertEquals(Double.doubleToRawLongBits(-5d), minV);
+      assertEquals(Double.doubleToRawLongBits(ieee ? -0d : 0d), maxV);
     }
   }
 
-  private static void verifyFloatColumnIndexBounds(Scenario scenario, ByteBuffer min, ByteBuffer max) {
+  private static void verifyFloatColumnIndexBounds(Scenario scenario, boolean ieee, ByteBuffer min, ByteBuffer max) {
     int minV = min.getInt(0);
     int maxV = max.getInt(0);
     if (scenario == Scenario.ALL_NAN) {
-      assertEquals(0x7fc00001, minV);
+      assertEquals(0xffffffff, minV);
       assertEquals(0x7fffffff, maxV);
-    } else {
+    } else if (scenario == Scenario.MIXED_NAN || scenario == Scenario.NO_NAN) {
       assertEquals(Float.floatToRawIntBits(-2f), minV);
+      assertEquals(Float.floatToRawIntBits(scenario == Scenario.MIXED_NAN ? 3f : 5f), maxV);
+    } else if (scenario == Scenario.ZERO_MIN) {
+      assertEquals(Float.floatToRawIntBits(ieee ? 0f : -0f), minV);
       assertEquals(Float.floatToRawIntBits(5f), maxV);
+    } else {
+      assertEquals(Float.floatToRawIntBits(-5f), minV);
+      assertEquals(Float.floatToRawIntBits(ieee ? -0f : 0f), maxV);
     }
   }
 
@@ -281,19 +369,11 @@ public class TestInterOpReadFloatingPointNanCount {
   }
 
   private static void assertFloatValue(float expected, float actual) {
-    if (Float.isNaN(expected)) {
-      assertTrue(Float.isNaN(actual));
-    } else {
-      assertEquals(Float.floatToRawIntBits(expected), Float.floatToRawIntBits(actual));
-    }
+    assertEquals(Float.floatToRawIntBits(expected), Float.floatToRawIntBits(actual));
   }
 
   private static void assertDoubleValue(double expected, double actual) {
-    if (Double.isNaN(expected)) {
-      assertTrue(Double.isNaN(actual));
-    } else {
-      assertEquals(Double.doubleToRawLongBits(expected), Double.doubleToRawLongBits(actual));
-    }
+    assertEquals(Double.doubleToRawLongBits(expected), Double.doubleToRawLongBits(actual));
   }
 
   private static List<Float> concatFloatValues(Scenario... scenarios) {

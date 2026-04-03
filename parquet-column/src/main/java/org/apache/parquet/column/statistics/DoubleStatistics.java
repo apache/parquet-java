@@ -85,12 +85,12 @@ public class DoubleStatistics extends Statistics<Double> {
 
   @Override
   public byte[] getMaxBytes() {
-    return BytesUtils.longToBytes(Double.doubleToLongBits(max));
+    return BytesUtils.longToBytes(Double.doubleToRawLongBits(max));
   }
 
   @Override
   public byte[] getMinBytes() {
-    return BytesUtils.longToBytes(Double.doubleToLongBits(min));
+    return BytesUtils.longToBytes(Double.doubleToRawLongBits(min));
   }
 
   @Override

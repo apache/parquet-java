@@ -116,7 +116,7 @@ public abstract class ByteStreamSplitValuesWriter extends ValuesWriter {
 
     @Override
     public void writeFloat(float v) {
-      super.scatterBytes(BytesUtils.intToBytes(Float.floatToIntBits(v)));
+      super.scatterBytes(BytesUtils.intToBytes(Float.floatToRawIntBits(v)));
     }
 
     @Override
@@ -133,7 +133,7 @@ public abstract class ByteStreamSplitValuesWriter extends ValuesWriter {
 
     @Override
     public void writeDouble(double v) {
-      super.scatterBytes(BytesUtils.longToBytes(Double.doubleToLongBits(v)));
+      super.scatterBytes(BytesUtils.longToBytes(Double.doubleToRawLongBits(v)));
     }
 
     @Override

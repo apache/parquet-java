@@ -47,14 +47,22 @@ public final class FloatingPointNanInteropFileGenerator {
   public static final String FILE_NO_NAN = "floating_orders_nan_count_no_nan.parquet";
   public static final String FILE_MIXED_NAN = "floating_orders_nan_count_mixed_nan.parquet";
   public static final String FILE_ALL_NAN = "floating_orders_nan_count_all_nan.parquet";
+  public static final String FILE_ZERO_MIN = "floating_orders_nan_count_zero_min.parquet";
+  public static final String FILE_ZERO_MAX = "floating_orders_nan_count_zero_max.parquet";
   public static final String FILE_MERGED = "floating_orders_nan_count_merged.parquet";
 
   public static final int ROWS_PER_FILE = 10;
 
+  private static final float FLOAT_NEG_NAN_SMALL = Float.intBitsToFloat(0xffffffff);
+  private static final float FLOAT_NEG_NAN_LARGE = Float.intBitsToFloat(0xfff00001);
   private static final float FLOAT_NAN_SMALL = Float.intBitsToFloat(0x7fc00001);
   private static final float FLOAT_NAN_LARGE = Float.intBitsToFloat(0x7fffffff);
+  private static final double DOUBLE_NEG_NAN_SMALL = Double.longBitsToDouble(0xffffffffffffffffL);
+  private static final double DOUBLE_NEG_NAN_LARGE = Double.longBitsToDouble(0xfff0000000000001L);
   private static final double DOUBLE_NAN_SMALL = Double.longBitsToDouble(0x7ff0000000000001L);
   private static final double DOUBLE_NAN_LARGE = Double.longBitsToDouble(0x7fffffffffffffffL);
+  private static final Binary FLOAT16_NEG_NAN_SMALL = float16Binary((short) 0xffff);
+  private static final Binary FLOAT16_NEG_NAN_LARGE = float16Binary((short) 0xfc01);
   private static final Binary FLOAT16_NAN_SMALL = float16Binary((short) 0x7c01);
   private static final Binary FLOAT16_NAN_LARGE = float16Binary((short) 0x7fff);
 
@@ -95,78 +103,123 @@ public final class FloatingPointNanInteropFileGenerator {
     float16Binary((short) 0x4500)
   };
 
-  private static final float[] MIXED_NAN_FLOATS =
-      new float[] {FLOAT_NAN_SMALL, -2f, FLOAT_NAN_LARGE, -1f, -0f, 0f, 1f, 2f, 3f, 5f};
-  private static final double[] MIXED_NAN_DOUBLES =
-      new double[] {DOUBLE_NAN_SMALL, -2d, DOUBLE_NAN_LARGE, -1d, -0d, 0d, 1d, 2d, 3d, 5d};
+  private static final float[] MIXED_NAN_FLOATS = new float[] {
+    FLOAT_NEG_NAN_SMALL, -2f, FLOAT_NEG_NAN_LARGE, -1f, -0f, 0f, 1f, FLOAT_NAN_SMALL, 3f, FLOAT_NAN_LARGE
+  };
+  private static final double[] MIXED_NAN_DOUBLES = new double[] {
+    DOUBLE_NEG_NAN_SMALL, -2d, DOUBLE_NEG_NAN_LARGE, -1d, -0d, 0d, 1d, DOUBLE_NAN_SMALL, 3d, DOUBLE_NAN_LARGE
+  };
   private static final Binary[] MIXED_NAN_FLOAT16 = new Binary[] {
-    FLOAT16_NAN_SMALL,
+    FLOAT16_NEG_NAN_SMALL,
     float16Binary((short) 0xc000),
-    FLOAT16_NAN_LARGE,
+    FLOAT16_NEG_NAN_LARGE,
     float16Binary((short) 0xbc00),
     float16Binary((short) 0x8000),
     float16Binary((short) 0x0000),
     float16Binary((short) 0x3c00),
-    float16Binary((short) 0x4000),
+    FLOAT16_NAN_SMALL,
     float16Binary((short) 0x4200),
-    float16Binary((short) 0x4500)
+    FLOAT16_NAN_LARGE
   };
 
   private static final float[] ALL_NAN_FLOATS = new float[] {
+    FLOAT_NEG_NAN_SMALL,
+    FLOAT_NEG_NAN_LARGE,
     FLOAT_NAN_SMALL,
     FLOAT_NAN_LARGE,
+    FLOAT_NEG_NAN_SMALL,
+    FLOAT_NEG_NAN_LARGE,
     FLOAT_NAN_SMALL,
     FLOAT_NAN_LARGE,
-    FLOAT_NAN_SMALL,
-    FLOAT_NAN_LARGE,
-    FLOAT_NAN_SMALL,
-    FLOAT_NAN_LARGE,
-    FLOAT_NAN_SMALL,
+    FLOAT_NEG_NAN_SMALL,
     FLOAT_NAN_LARGE
   };
 
   private static final double[] ALL_NAN_DOUBLES = new double[] {
+    DOUBLE_NEG_NAN_SMALL,
+    DOUBLE_NEG_NAN_LARGE,
     DOUBLE_NAN_SMALL,
     DOUBLE_NAN_LARGE,
+    DOUBLE_NEG_NAN_SMALL,
+    DOUBLE_NEG_NAN_LARGE,
     DOUBLE_NAN_SMALL,
     DOUBLE_NAN_LARGE,
-    DOUBLE_NAN_SMALL,
-    DOUBLE_NAN_LARGE,
-    DOUBLE_NAN_SMALL,
-    DOUBLE_NAN_LARGE,
-    DOUBLE_NAN_SMALL,
+    DOUBLE_NEG_NAN_SMALL,
     DOUBLE_NAN_LARGE
   };
 
   private static final Binary[] ALL_NAN_FLOAT16 = new Binary[] {
+    FLOAT16_NEG_NAN_SMALL,
+    FLOAT16_NEG_NAN_LARGE,
     FLOAT16_NAN_SMALL,
     FLOAT16_NAN_LARGE,
+    FLOAT16_NEG_NAN_SMALL,
+    FLOAT16_NEG_NAN_LARGE,
     FLOAT16_NAN_SMALL,
     FLOAT16_NAN_LARGE,
-    FLOAT16_NAN_SMALL,
-    FLOAT16_NAN_LARGE,
-    FLOAT16_NAN_SMALL,
-    FLOAT16_NAN_LARGE,
-    FLOAT16_NAN_SMALL,
+    FLOAT16_NEG_NAN_SMALL,
     FLOAT16_NAN_LARGE
+  };
+
+  private static final float[] ZERO_MIN_FLOATS = new float[] {0f, 0f, 0f, 0.5f, 1f, 1.5f, 2f, 3f, 4f, 5f};
+  private static final double[] ZERO_MIN_DOUBLES = new double[] {0d, 0d, 0d, 0.5d, 1d, 1.5d, 2d, 3d, 4d, 5d};
+  private static final Binary[] ZERO_MIN_FLOAT16 = new Binary[] {
+    float16Binary((short) 0x0000),
+    float16Binary((short) 0x0000),
+    float16Binary((short) 0x0000),
+    float16Binary((short) 0x3800),
+    float16Binary((short) 0x3c00),
+    float16Binary((short) 0x3e00),
+    float16Binary((short) 0x4000),
+    float16Binary((short) 0x4200),
+    float16Binary((short) 0x4400),
+    float16Binary((short) 0x4500)
+  };
+
+  private static final float[] ZERO_MAX_FLOATS = new float[] {-5f, -4f, -3f, -2f, -1.5f, -1f, -0.5f, -0f, -0f, -0f};
+  private static final double[] ZERO_MAX_DOUBLES =
+      new double[] {-5d, -4d, -3d, -2d, -1.5d, -1d, -0.5d, -0d, -0d, -0d};
+  private static final Binary[] ZERO_MAX_FLOAT16 = new Binary[] {
+    float16Binary((short) 0xc500),
+    float16Binary((short) 0xc400),
+    float16Binary((short) 0xc200),
+    float16Binary((short) 0xc000),
+    float16Binary((short) 0xbe00),
+    float16Binary((short) 0xbc00),
+    float16Binary((short) 0xb800),
+    float16Binary((short) 0x8000),
+    float16Binary((short) 0x8000),
+    float16Binary((short) 0x8000)
   };
 
   public enum Scenario {
     NO_NAN,
     MIXED_NAN,
-    ALL_NAN
+    ALL_NAN,
+    ZERO_MIN,
+    ZERO_MAX
   }
 
   public static final class GenerationResult {
     private final Path noNanFile;
     private final Path mixedNanFile;
     private final Path allNanFile;
+    private final Path zeroMinFile;
+    private final Path zeroMaxFile;
     private final Path mergedFile;
 
-    private GenerationResult(Path noNanFile, Path mixedNanFile, Path allNanFile, Path mergedFile) {
+    private GenerationResult(
+        Path noNanFile,
+        Path mixedNanFile,
+        Path allNanFile,
+        Path zeroMinFile,
+        Path zeroMaxFile,
+        Path mergedFile) {
       this.noNanFile = noNanFile;
       this.mixedNanFile = mixedNanFile;
       this.allNanFile = allNanFile;
+      this.zeroMinFile = zeroMinFile;
+      this.zeroMaxFile = zeroMaxFile;
       this.mergedFile = mergedFile;
     }
 
@@ -180,6 +233,14 @@ public final class FloatingPointNanInteropFileGenerator {
 
     public Path getAllNanFile() {
       return allNanFile;
+    }
+
+    public Path getZeroMinFile() {
+      return zeroMinFile;
+    }
+
+    public Path getZeroMaxFile() {
+      return zeroMaxFile;
     }
 
     public Path getMergedFile() {
@@ -201,6 +262,10 @@ public final class FloatingPointNanInteropFileGenerator {
         return Arrays.copyOf(MIXED_NAN_FLOATS, MIXED_NAN_FLOATS.length);
       case ALL_NAN:
         return Arrays.copyOf(ALL_NAN_FLOATS, ALL_NAN_FLOATS.length);
+      case ZERO_MIN:
+        return Arrays.copyOf(ZERO_MIN_FLOATS, ZERO_MIN_FLOATS.length);
+      case ZERO_MAX:
+        return Arrays.copyOf(ZERO_MAX_FLOATS, ZERO_MAX_FLOATS.length);
       default:
         throw new IllegalArgumentException("Unknown scenario: " + scenario);
     }
@@ -214,6 +279,10 @@ public final class FloatingPointNanInteropFileGenerator {
         return Arrays.copyOf(MIXED_NAN_DOUBLES, MIXED_NAN_DOUBLES.length);
       case ALL_NAN:
         return Arrays.copyOf(ALL_NAN_DOUBLES, ALL_NAN_DOUBLES.length);
+      case ZERO_MIN:
+        return Arrays.copyOf(ZERO_MIN_DOUBLES, ZERO_MIN_DOUBLES.length);
+      case ZERO_MAX:
+        return Arrays.copyOf(ZERO_MAX_DOUBLES, ZERO_MAX_DOUBLES.length);
       default:
         throw new IllegalArgumentException("Unknown scenario: " + scenario);
     }
@@ -230,6 +299,12 @@ public final class FloatingPointNanInteropFileGenerator {
         break;
       case ALL_NAN:
         values = ALL_NAN_FLOAT16;
+        break;
+      case ZERO_MIN:
+        values = ZERO_MIN_FLOAT16;
+        break;
+      case ZERO_MAX:
+        values = ZERO_MAX_FLOAT16;
         break;
       default:
         throw new IllegalArgumentException("Unknown scenario: " + scenario);
@@ -251,19 +326,25 @@ public final class FloatingPointNanInteropFileGenerator {
     Path noNanPath = new Path(outputDir, FILE_NO_NAN);
     Path mixedNanPath = new Path(outputDir, FILE_MIXED_NAN);
     Path allNanPath = new Path(outputDir, FILE_ALL_NAN);
+    Path zeroMinPath = new Path(outputDir, FILE_ZERO_MIN);
+    Path zeroMaxPath = new Path(outputDir, FILE_ZERO_MAX);
     Path mergedPath = new Path(outputDir, FILE_MERGED);
 
     deleteIfExists(fs, noNanPath);
     deleteIfExists(fs, mixedNanPath);
     deleteIfExists(fs, allNanPath);
+    deleteIfExists(fs, zeroMinPath);
+    deleteIfExists(fs, zeroMaxPath);
     deleteIfExists(fs, mergedPath);
 
     writeScenarioFile(conf, noNanPath, Scenario.NO_NAN);
     writeScenarioFile(conf, mixedNanPath, Scenario.MIXED_NAN);
     writeScenarioFile(conf, allNanPath, Scenario.ALL_NAN);
-    mergeFiles(conf, List.of(noNanPath, mixedNanPath, allNanPath), mergedPath);
+    writeScenarioFile(conf, zeroMinPath, Scenario.ZERO_MIN);
+    writeScenarioFile(conf, zeroMaxPath, Scenario.ZERO_MAX);
+    mergeFiles(conf, List.of(noNanPath, mixedNanPath, allNanPath, zeroMinPath, zeroMaxPath), mergedPath);
 
-    return new GenerationResult(noNanPath, mixedNanPath, allNanPath, mergedPath);
+    return new GenerationResult(noNanPath, mixedNanPath, allNanPath, zeroMinPath, zeroMaxPath, mergedPath);
   }
 
   public static void writeScenarioFile(Configuration conf, Path outputFile, Scenario scenario) throws IOException {
@@ -323,6 +404,8 @@ public final class FloatingPointNanInteropFileGenerator {
     System.out.println("  " + result.getNoNanFile());
     System.out.println("  " + result.getMixedNanFile());
     System.out.println("  " + result.getAllNanFile());
+    System.out.println("  " + result.getZeroMinFile());
+    System.out.println("  " + result.getZeroMaxFile());
     System.out.println("  " + result.getMergedFile());
   }
 }

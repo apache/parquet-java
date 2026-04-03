@@ -20,12 +20,6 @@ package org.apache.parquet.column.values.dictionary;
 
 import static org.apache.parquet.bytes.BytesInput.concat;
 
-import it.unimi.dsi.fastutil.doubles.Double2IntLinkedOpenHashMap;
-import it.unimi.dsi.fastutil.doubles.Double2IntMap;
-import it.unimi.dsi.fastutil.doubles.DoubleIterator;
-import it.unimi.dsi.fastutil.floats.Float2IntLinkedOpenHashMap;
-import it.unimi.dsi.fastutil.floats.Float2IntMap;
-import it.unimi.dsi.fastutil.floats.FloatIterator;
 import it.unimi.dsi.fastutil.ints.Int2IntLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2IntMap;
 import it.unimi.dsi.fastutil.longs.Long2IntLinkedOpenHashMap;
@@ -417,7 +411,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
   public static class PlainDoubleDictionaryValuesWriter extends DictionaryValuesWriter {
 
     /* type specific dictionary content */
-    private Double2IntMap doubleDictionaryContent = new Double2IntLinkedOpenHashMap();
+    private Long2IntMap doubleDictionaryContent = new Long2IntLinkedOpenHashMap();
 
     public PlainDoubleDictionaryValuesWriter(
         int maxDictionaryByteSize,
@@ -430,10 +424,11 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
 
     @Override
     public void writeDouble(double v) {
-      int id = doubleDictionaryContent.get(v);
+      long bits = Double.doubleToRawLongBits(v);
+      int id = doubleDictionaryContent.get(bits);
       if (id == -1) {
         id = doubleDictionaryContent.size();
-        doubleDictionaryContent.put(v, id);
+        doubleDictionaryContent.put(bits, id);
         dictionaryByteSize += 8;
       }
       encodedValues.add(id);
@@ -445,10 +440,10 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
         // return a dictionary only if we actually used it
         PlainValuesWriter dictionaryEncoder =
             new PlainValuesWriter(lastUsedDictionaryByteSize, maxDictionaryByteSize, allocator);
-        DoubleIterator doubleIterator = doubleDictionaryContent.keySet().iterator();
+        LongIterator doubleIterator = doubleDictionaryContent.keySet().iterator();
         // write only the part of the dict that we used
         for (int i = 0; i < lastUsedDictionarySize; i++) {
-          dictionaryEncoder.writeDouble(doubleIterator.nextDouble());
+          dictionaryEncoder.writeDouble(Double.longBitsToDouble(doubleIterator.nextLong()));
         }
         return dictPage(dictionaryEncoder);
       }
@@ -468,20 +463,23 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
     @Override
     public void fallBackDictionaryEncodedData(ValuesWriter writer) {
       // build reverse dictionary
-      double[] reverseDictionary = new double[getDictionarySize()];
-      ObjectIterator<Double2IntMap.Entry> entryIterator =
-          doubleDictionaryContent.double2IntEntrySet().iterator();
+      long[] reverseDictionary = new long[getDictionarySize()];
+      ObjectIterator<Long2IntMap.Entry> entryIterator = longDictionaryContentIterator();
       while (entryIterator.hasNext()) {
-        Double2IntMap.Entry entry = entryIterator.next();
-        reverseDictionary[entry.getIntValue()] = entry.getDoubleKey();
+        Long2IntMap.Entry entry = entryIterator.next();
+        reverseDictionary[entry.getIntValue()] = entry.getLongKey();
       }
 
       // fall back to plain encoding
       IntIterator iterator = encodedValues.iterator();
       while (iterator.hasNext()) {
         int id = iterator.next();
-        writer.writeDouble(reverseDictionary[id]);
+        writer.writeDouble(Double.longBitsToDouble(reverseDictionary[id]));
       }
+    }
+
+    private ObjectIterator<Long2IntMap.Entry> longDictionaryContentIterator() {
+      return doubleDictionaryContent.long2IntEntrySet().iterator();
     }
   }
 
@@ -560,7 +558,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
   public static class PlainFloatDictionaryValuesWriter extends DictionaryValuesWriter {
 
     /* type specific dictionary content */
-    private Float2IntMap floatDictionaryContent = new Float2IntLinkedOpenHashMap();
+    private Int2IntMap floatDictionaryContent = new Int2IntLinkedOpenHashMap();
 
     public PlainFloatDictionaryValuesWriter(
         int maxDictionaryByteSize,
@@ -573,10 +571,11 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
 
     @Override
     public void writeFloat(float v) {
-      int id = floatDictionaryContent.get(v);
+      int bits = Float.floatToRawIntBits(v);
+      int id = floatDictionaryContent.get(bits);
       if (id == -1) {
         id = floatDictionaryContent.size();
-        floatDictionaryContent.put(v, id);
+        floatDictionaryContent.put(bits, id);
         dictionaryByteSize += 4;
       }
       encodedValues.add(id);
@@ -588,10 +587,11 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
         // return a dictionary only if we actually used it
         PlainValuesWriter dictionaryEncoder =
             new PlainValuesWriter(lastUsedDictionaryByteSize, maxDictionaryByteSize, allocator);
-        FloatIterator floatIterator = floatDictionaryContent.keySet().iterator();
+        it.unimi.dsi.fastutil.ints.IntIterator floatIterator =
+            floatDictionaryContent.keySet().iterator();
         // write only the part of the dict that we used
         for (int i = 0; i < lastUsedDictionarySize; i++) {
-          dictionaryEncoder.writeFloat(floatIterator.nextFloat());
+          dictionaryEncoder.writeFloat(Float.intBitsToFloat(floatIterator.nextInt()));
         }
         return dictPage(dictionaryEncoder);
       }
@@ -611,19 +611,19 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
     @Override
     public void fallBackDictionaryEncodedData(ValuesWriter writer) {
       // build reverse dictionary
-      float[] reverseDictionary = new float[getDictionarySize()];
-      ObjectIterator<Float2IntMap.Entry> entryIterator =
-          floatDictionaryContent.float2IntEntrySet().iterator();
+      int[] reverseDictionary = new int[getDictionarySize()];
+      ObjectIterator<Int2IntMap.Entry> entryIterator =
+          floatDictionaryContent.int2IntEntrySet().iterator();
       while (entryIterator.hasNext()) {
-        Float2IntMap.Entry entry = entryIterator.next();
-        reverseDictionary[entry.getIntValue()] = entry.getFloatKey();
+        Int2IntMap.Entry entry = entryIterator.next();
+        reverseDictionary[entry.getIntValue()] = entry.getIntKey();
       }
 
       // fall back to plain encoding
       IntIterator iterator = encodedValues.iterator();
       while (iterator.hasNext()) {
         int id = iterator.next();
-        writer.writeFloat(reverseDictionary[id]);
+        writer.writeFloat(Float.intBitsToFloat(reverseDictionary[id]));
       }
     }
   }

@@ -86,12 +86,12 @@ public class FloatStatistics extends Statistics<Float> {
 
   @Override
   public byte[] getMaxBytes() {
-    return BytesUtils.intToBytes(Float.floatToIntBits(max));
+    return BytesUtils.intToBytes(Float.floatToRawIntBits(max));
   }
 
   @Override
   public byte[] getMinBytes() {
-    return BytesUtils.intToBytes(Float.floatToIntBits(min));
+    return BytesUtils.intToBytes(Float.floatToRawIntBits(min));
   }
 
   @Override
