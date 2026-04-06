@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.column.values.deltastrings;
 
+import java.util.Arrays;
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.column.Encoding;
@@ -88,14 +89,19 @@ public class DeltaByteArrayWriter extends ValuesWriter {
 
   @Override
   public void writeBytes(Binary v) {
-    int i = 0;
-    byte[] vb = v.getBytes();
-    int length = previous.length < vb.length ? previous.length : vb.length;
-    // find the number of matching prefix bytes between this value and the previous one
-    for (i = 0; (i < length) && (previous[i] == vb[i]); i++)
-      ;
+    byte[] vb = v.getBytesUnsafe();
+    int length = Math.min(previous.length, vb.length);
+    // Find the number of matching prefix bytes between this value and the previous one.
+    // Arrays.mismatch is intrinsified by the JVM to use SIMD instructions.
+    int i = Arrays.mismatch(previous, 0, length, vb, 0, length);
+    if (i < 0) {
+      i = length; // all bytes in the common range matched
+    }
     prefixLengthWriter.writeInteger(i);
     suffixWriter.writeBytes(v.slice(i, vb.length - i));
-    previous = vb;
+    // Retain an owned copy for prefix comparison with the next value.
+    // getBytesUnsafe() may return the backing array directly, so we must copy
+    // if the Binary's backing bytes may be reused by the caller.
+    previous = v.isBackingBytesReused() ? v.getBytes() : vb;
   }
 }
