@@ -18,10 +18,12 @@
  */
 package org.apache.parquet.column.values.rle;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 
 import java.io.ByteArrayInputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.bytes.DirectByteBufferAllocator;
@@ -296,6 +298,49 @@ public class TestRunLengthBitPackingHybridEncoder {
     assertEquals(decoder.readInt(), 2);
     assertEquals(decoder.readInt(), 3);
     assertEquals(stream.available(), 0);
+  }
+
+  @Test
+  public void testTruncatedPackedRunAfterFullPackedRunDoesNotReuseStaleBytes() throws Exception {
+    int bitWidth = 3;
+    BytePacker packer = Packer.LITTLE_ENDIAN.newBytePacker(bitWidth);
+
+    int[] firstRunValues = new int[8];
+    Arrays.fill(firstRunValues, 7);
+    byte[] firstRunPacked = new byte[bitWidth];
+    packer.pack8Values(firstRunValues, 0, firstRunPacked, 0);
+
+    int[] secondRunValues = {1, 2, 3, 4, 5, 6, 7, 0};
+    byte[] secondRunPacked = new byte[bitWidth];
+    packer.pack8Values(secondRunValues, 0, secondRunPacked, 0);
+
+    byte[] encoded = {
+      (byte) ((1 << 1) | 1),
+      firstRunPacked[0],
+      firstRunPacked[1],
+      firstRunPacked[2],
+      (byte) ((1 << 1) | 1),
+      secondRunPacked[0]
+    };
+
+    RunLengthBitPackingHybridDecoder decoder =
+        new RunLengthBitPackingHybridDecoder(bitWidth, new ByteArrayInputStream(encoded));
+
+    for (int ignored = 0; ignored < 8; ignored++) {
+      assertEquals(7, decoder.readInt());
+    }
+
+    int[] actualSecondRun = new int[8];
+    for (int i = 0; i < 8; i++) {
+      actualSecondRun[i] = decoder.readInt();
+    }
+
+    byte[] expectedSecondPacked = new byte[bitWidth];
+    expectedSecondPacked[0] = secondRunPacked[0];
+    int[] expectedSecondRun = new int[8];
+    packer.unpack8Values(expectedSecondPacked, 0, expectedSecondRun, 0);
+
+    assertArrayEquals(expectedSecondRun, actualSecondRun);
   }
 
   private static List<Integer> unpack(int bitWidth, int numValues, ByteArrayInputStream is) throws Exception {
