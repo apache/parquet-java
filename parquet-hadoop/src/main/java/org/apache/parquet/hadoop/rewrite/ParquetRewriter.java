@@ -195,6 +195,7 @@ public class ParquetRewriter implements Closeable {
         DEFAULT_COLUMN_INDEX_TRUNCATE_LENGTH,
         DEFAULT_STATISTICS_TRUNCATE_LENGTH,
         ParquetProperties.DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED,
+        ParquetProperties.DEFAULT_WRITE_PATH_IN_SCHEMA_ENABLED,
         options.getFileEncryptionProperties());
     writer.start();
     // column nullification requires a separate encryptor and forcing other columns encryption initialization

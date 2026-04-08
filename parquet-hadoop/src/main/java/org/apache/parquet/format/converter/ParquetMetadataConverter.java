@@ -163,6 +163,7 @@ public class ParquetMetadataConverter {
       new ConvertedTypeConverterVisitor();
   private final int statisticsTruncateLength;
   private final boolean useSignedStringMinMax;
+  private final boolean writePathInSchema;
   private final ParquetReadOptions options;
 
   public ParquetMetadataConverter() {
@@ -170,7 +171,11 @@ public class ParquetMetadataConverter {
   }
 
   public ParquetMetadataConverter(int statisticsTruncateLength) {
-    this(false, statisticsTruncateLength);
+    this(false, statisticsTruncateLength, ParquetProperties.DEFAULT_WRITE_PATH_IN_SCHEMA_ENABLED);
+  }
+
+  public ParquetMetadataConverter(int statisticsTruncateLength, boolean writePathInSchema) {
+    this(false, statisticsTruncateLength, writePathInSchema);
   }
 
   /**
@@ -183,24 +188,36 @@ public class ParquetMetadataConverter {
   }
 
   public ParquetMetadataConverter(ParquetReadOptions options) {
-    this(options.useSignedStringMinMax(), ParquetProperties.DEFAULT_STATISTICS_TRUNCATE_LENGTH, options);
+    this(
+        options.useSignedStringMinMax(),
+        ParquetProperties.DEFAULT_STATISTICS_TRUNCATE_LENGTH,
+        ParquetProperties.DEFAULT_WRITE_PATH_IN_SCHEMA_ENABLED,
+        options);
   }
 
   private ParquetMetadataConverter(boolean useSignedStringMinMax) {
-    this(useSignedStringMinMax, ParquetProperties.DEFAULT_STATISTICS_TRUNCATE_LENGTH);
-  }
-
-  private ParquetMetadataConverter(boolean useSignedStringMinMax, int statisticsTruncateLength) {
-    this(useSignedStringMinMax, statisticsTruncateLength, null);
+    this(
+        useSignedStringMinMax,
+        ParquetProperties.DEFAULT_STATISTICS_TRUNCATE_LENGTH,
+        ParquetProperties.DEFAULT_WRITE_PATH_IN_SCHEMA_ENABLED);
   }
 
   private ParquetMetadataConverter(
-      boolean useSignedStringMinMax, int statisticsTruncateLength, ParquetReadOptions options) {
+      boolean useSignedStringMinMax, int statisticsTruncateLength, boolean writePathInSchema) {
+    this(useSignedStringMinMax, statisticsTruncateLength, writePathInSchema, null);
+  }
+
+  private ParquetMetadataConverter(
+      boolean useSignedStringMinMax,
+      int statisticsTruncateLength,
+      boolean writePathInSchema,
+      ParquetReadOptions options) {
     if (statisticsTruncateLength <= 0) {
       throw new IllegalArgumentException("Truncate length should be greater than 0");
     }
     this.useSignedStringMinMax = useSignedStringMinMax;
     this.statisticsTruncateLength = statisticsTruncateLength;
+    this.writePathInSchema = writePathInSchema;
     this.options = options;
   }
 
@@ -618,7 +635,7 @@ public class ParquetMetadataConverter {
           || columnMetaData.hasDictionaryPage()) {
         metaData.setDictionary_page_offset(columnMetaData.getDictionaryPageOffset());
       }
-      if (path != null) {
+      if (path != null && this.writePathInSchema) {
         metaData.setPath_in_schema(path.toList());
       }
       long bloomFilterOffset = columnMetaData.getBloomFilterOffset();

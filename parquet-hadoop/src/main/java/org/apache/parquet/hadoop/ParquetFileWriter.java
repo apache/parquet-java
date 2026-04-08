@@ -333,7 +333,8 @@ public class ParquetFileWriter implements AutoCloseable {
         maxPaddingSize,
         ParquetProperties.DEFAULT_COLUMN_INDEX_TRUNCATE_LENGTH,
         ParquetProperties.DEFAULT_STATISTICS_TRUNCATE_LENGTH,
-        ParquetProperties.DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED);
+        ParquetProperties.DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED,
+        ParquetProperties.DEFAULT_WRITE_PATH_IN_SCHEMA_ENABLED);
   }
 
   @FunctionalInterface
@@ -373,8 +374,35 @@ public class ParquetFileWriter implements AutoCloseable {
    * @param columnIndexTruncateLength the length which the min/max values in column indexes tried to be truncated to
    * @param statisticsTruncateLength  the length which the min/max values in row groups tried to be truncated to
    * @param pageWriteChecksumEnabled  whether to write out page level checksums
+   * @param writePathInSchemaEnabled  whether to write path_in_schema to the column metadata
    * @throws IOException if the file can not be created
    */
+  public ParquetFileWriter(
+      OutputFile file,
+      MessageType schema,
+      Mode mode,
+      long rowGroupSize,
+      int maxPaddingSize,
+      int columnIndexTruncateLength,
+      int statisticsTruncateLength,
+      boolean pageWriteChecksumEnabled,
+      boolean writePathInSchemaEnabled)
+      throws IOException {
+    this(
+        file,
+        schema,
+        mode,
+        rowGroupSize,
+        maxPaddingSize,
+        columnIndexTruncateLength,
+        statisticsTruncateLength,
+        pageWriteChecksumEnabled,
+        writePathInSchemaEnabled,
+        null,
+        null,
+        null);
+  }
+
   public ParquetFileWriter(
       OutputFile file,
       MessageType schema,
@@ -394,6 +422,7 @@ public class ParquetFileWriter implements AutoCloseable {
         columnIndexTruncateLength,
         statisticsTruncateLength,
         pageWriteChecksumEnabled,
+        ParquetProperties.DEFAULT_WRITE_PATH_IN_SCHEMA_ENABLED,
         null,
         null,
         null);
@@ -419,6 +448,34 @@ public class ParquetFileWriter implements AutoCloseable {
         columnIndexTruncateLength,
         statisticsTruncateLength,
         pageWriteChecksumEnabled,
+        ParquetProperties.DEFAULT_WRITE_PATH_IN_SCHEMA_ENABLED,
+        encryptionProperties,
+        null,
+        null);
+  }
+
+  public ParquetFileWriter(
+      OutputFile file,
+      MessageType schema,
+      Mode mode,
+      long rowGroupSize,
+      int maxPaddingSize,
+      int columnIndexTruncateLength,
+      int statisticsTruncateLength,
+      boolean pageWriteChecksumEnabled,
+      boolean writePathInSchemaEnabled,
+      FileEncryptionProperties encryptionProperties)
+      throws IOException {
+    this(
+        file,
+        schema,
+        mode,
+        rowGroupSize,
+        maxPaddingSize,
+        columnIndexTruncateLength,
+        statisticsTruncateLength,
+        pageWriteChecksumEnabled,
+        writePathInSchemaEnabled,
         encryptionProperties,
         null,
         null);
@@ -442,6 +499,7 @@ public class ParquetFileWriter implements AutoCloseable {
         props.getColumnIndexTruncateLength(),
         props.getStatisticsTruncateLength(),
         props.getPageWriteChecksumEnabled(),
+        props.getWritePathInSchemaEnabled(),
         encryptionProperties,
         null,
         props.getAllocator());
@@ -468,6 +526,7 @@ public class ParquetFileWriter implements AutoCloseable {
         columnIndexTruncateLength,
         statisticsTruncateLength,
         pageWriteChecksumEnabled,
+        ParquetProperties.DEFAULT_WRITE_PATH_IN_SCHEMA_ENABLED,
         null,
         encryptor,
         null);
@@ -482,6 +541,7 @@ public class ParquetFileWriter implements AutoCloseable {
       int columnIndexTruncateLength,
       int statisticsTruncateLength,
       boolean pageWriteChecksumEnabled,
+      boolean writePathInSchemaEnabled,
       FileEncryptionProperties encryptionProperties,
       InternalFileEncryptor encryptor,
       ByteBufferAllocator allocator)
@@ -512,7 +572,7 @@ public class ParquetFileWriter implements AutoCloseable {
         ? ReusingByteBufferAllocator.strict(allocator == null ? new HeapByteBufferAllocator() : allocator)
         : null;
 
-    this.metadataConverter = new ParquetMetadataConverter(statisticsTruncateLength);
+    this.metadataConverter = new ParquetMetadataConverter(statisticsTruncateLength, writePathInSchemaEnabled);
 
     if (null == encryptionProperties && null == encryptor) {
       this.fileEncryptor = null;
@@ -584,7 +644,9 @@ public class ParquetFileWriter implements AutoCloseable {
     this.crcAllocator = pageWriteChecksumEnabled
         ? ReusingByteBufferAllocator.strict(allocator == null ? new HeapByteBufferAllocator() : allocator)
         : null;
-    this.metadataConverter = new ParquetMetadataConverter(ParquetProperties.DEFAULT_STATISTICS_TRUNCATE_LENGTH);
+    this.metadataConverter = new ParquetMetadataConverter(
+        ParquetProperties.DEFAULT_STATISTICS_TRUNCATE_LENGTH,
+        ParquetProperties.DEFAULT_WRITE_PATH_IN_SCHEMA_ENABLED);
     this.fileEncryptor = null;
   }
 

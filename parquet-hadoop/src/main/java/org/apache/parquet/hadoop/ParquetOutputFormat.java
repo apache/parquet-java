@@ -508,6 +508,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
       throws IOException, InterruptedException {
     final WriteSupport<T> writeSupport = getWriteSupport(conf);
 
+    // TODO(ets): add write_path_in_schema to conf?
     ParquetProperties.Builder propsBuilder = ParquetProperties.builder()
         .withPageSize(getPageSize(conf))
         .withDictionaryPageSize(getDictionaryPageSize(conf))
