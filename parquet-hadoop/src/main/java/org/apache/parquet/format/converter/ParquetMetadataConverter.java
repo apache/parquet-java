@@ -608,7 +608,6 @@ public class ParquetMetadataConverter {
       ColumnMetaData metaData = new ColumnMetaData(
           getType(columnMetaData.getType()),
           toFormatEncodings(columnMetaData.getEncodings()),
-          columnMetaData.getPath().toList(),
           toFormatCodec(columnMetaData.getCodec()),
           columnMetaData.getValueCount(),
           columnMetaData.getTotalUncompressedSize(),
@@ -618,6 +617,9 @@ public class ParquetMetadataConverter {
               && columnMetaData.getEncodingStats().hasDictionaryPages())
           || columnMetaData.hasDictionaryPage()) {
         metaData.setDictionary_page_offset(columnMetaData.getDictionaryPageOffset());
+      }
+      if (path != null) {
+        metaData.setPath_in_schema(path.toList());
       }
       long bloomFilterOffset = columnMetaData.getBloomFilterOffset();
       if (bloomFilterOffset >= 0) {
@@ -1830,6 +1832,9 @@ public class ParquetMetadataConverter {
     List<BlockMetaData> blocks = new ArrayList<BlockMetaData>();
     List<RowGroup> row_groups = parquetMetadata.getRow_groups();
 
+    // needed to create path_in_schema for leaf columns
+    List<String[]> col_paths = messageType.getPaths();
+
     if (row_groups != null) {
       for (RowGroup rowGroup : row_groups) {
         BlockMetaData blockMetaData = new BlockMetaData();
@@ -1859,7 +1864,7 @@ public class ParquetMetadataConverter {
           boolean lazyMetadataDecryption = false;
 
           if (null == cryptoMetaData) { // Plaintext column
-            columnPath = getPath(metaData);
+            columnPath = ColumnPath.get(col_paths.get(columnOrdinal));
             if (null != fileDecryptor && !fileDecryptor.plaintextFile()) {
               // mark this column as plaintext in encrypted file decryptor
               fileDecryptor.setColumnCryptoMetadata(
@@ -1876,7 +1881,7 @@ public class ParquetMetadataConverter {
                 throw new ParquetCryptoRuntimeException(
                     "ColumnMetaData not set in Encryption with Footer key");
               }
-              columnPath = getPath(metaData);
+              columnPath = ColumnPath.get(col_paths.get(columnOrdinal));
               if (!encryptedFooter) { // Unencrypted footer. Decrypt full column metadata, using footer
                 // key
                 ByteArrayInputStream tempInputStream =
@@ -1981,11 +1986,6 @@ public class ParquetMetadataConverter {
       return new IndexReference(columnChunk.getOffset_index_offset(), columnChunk.getOffset_index_length());
     }
     return null;
-  }
-
-  private static ColumnPath getPath(ColumnMetaData metaData) {
-    String[] path = metaData.path_in_schema.toArray(new String[0]);
-    return ColumnPath.get(path);
   }
 
   // Visible for testing

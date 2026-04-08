@@ -525,7 +525,6 @@ public class TestParquetMetadataConverter {
       columnChunk.setMeta_data(new ColumnMetaData(
           INT32,
           Collections.<org.apache.parquet.format.Encoding>emptyList(),
-          Collections.<String>emptyList(),
           UNCOMPRESSED,
           10l,
           size * 2,
