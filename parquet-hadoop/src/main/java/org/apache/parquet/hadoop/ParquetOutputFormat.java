@@ -163,6 +163,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   public static final String PAGE_WRITE_CHECKSUM_ENABLED = "parquet.page.write-checksum.enabled";
   public static final String STATISTICS_ENABLED = "parquet.column.statistics.enabled";
   public static final String SIZE_STATISTICS_ENABLED = "parquet.size.statistics.enabled";
+  public static final String WRITE_PATH_IN_SCHEMA_ENABLED = "parquet.path-in-schema.enabled";
 
   public static JobSummaryLevel getJobSummaryLevel(Configuration conf) {
     String level = conf.get(JOB_SUMMARY_LEVEL);
@@ -448,6 +449,14 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     return conf.getBoolean(SIZE_STATISTICS_ENABLED + "#" + path, getSizeStatisticsEnabled(conf));
   }
 
+  public static boolean getWritePathInSchemaEnabled(Configuration conf) {
+    return conf.getBoolean(WRITE_PATH_IN_SCHEMA_ENABLED, ParquetProperties.DEFAULT_WRITE_PATH_IN_SCHEMA_ENABLED);
+  }
+
+  public static void setWritePathInSchemaEnabled(Configuration conf, boolean enabled) {
+    conf.setBoolean(WRITE_PATH_IN_SCHEMA_ENABLED, enabled);
+  }
+
   private WriteSupport<T> writeSupport;
   private ParquetOutputCommitter committer;
 
@@ -508,7 +517,6 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
       throws IOException, InterruptedException {
     final WriteSupport<T> writeSupport = getWriteSupport(conf);
 
-    // TODO(ets): add write_path_in_schema to conf?
     ParquetProperties.Builder propsBuilder = ParquetProperties.builder()
         .withPageSize(getPageSize(conf))
         .withDictionaryPageSize(getDictionaryPageSize(conf))
@@ -527,7 +535,8 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
         .withRowGroupRowCountLimit(getBlockRowCountLimit(conf))
         .withPageRowCountLimit(getPageRowCountLimit(conf))
         .withPageWriteChecksumEnabled(getPageWriteChecksumEnabled(conf))
-        .withStatisticsEnabled(getStatisticsEnabled(conf));
+        .withStatisticsEnabled(getStatisticsEnabled(conf))
+        .withWritePathInSchemaEnabled(getWritePathInSchemaEnabled(conf));
     new ColumnConfigParser()
         .withColumnConfig(
             ENABLE_DICTIONARY, key -> conf.getBoolean(key, false), propsBuilder::withDictionaryEncoding)
