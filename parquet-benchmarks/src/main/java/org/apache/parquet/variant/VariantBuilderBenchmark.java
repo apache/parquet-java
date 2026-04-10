@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.parquet.benchmarks;
+package org.apache.parquet.variant;
 
 import java.io.ByteArrayOutputStream;
 import java.io.EOFException;
@@ -54,12 +54,6 @@ import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Type.Repetition;
 import org.apache.parquet.schema.Types;
-import org.apache.parquet.variant.ImmutableMetadata;
-import org.apache.parquet.variant.Variant;
-import org.apache.parquet.variant.VariantBuilder;
-import org.apache.parquet.variant.VariantConverters;
-import org.apache.parquet.variant.VariantObjectBuilder;
-import org.apache.parquet.variant.VariantValueWriter;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
@@ -99,7 +93,7 @@ import org.slf4j.LoggerFactory;
  *
  * <pre>
  *   ./mvnw --projects parquet-benchmarks -amd -DskipTests -Denforcer.skip=true clean package
- *   ./parquet-benchmarks/run.sh all org.apache.parquet.benchmarks.VariantBenchmark \
+ *   ./parquet-benchmarks/run.sh all org.apache.parquet.variant.VariantBuilderBenchmark \
  *       -wi 5 -i 5 -f 1 -rff target/results.json
  * </pre>
  */
@@ -110,9 +104,9 @@ import org.slf4j.LoggerFactory;
 @BenchmarkMode(Mode.SingleShotTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
 @Timeout(time = 10, timeUnit = TimeUnit.MINUTES)
-public class VariantBenchmark {
+public class VariantBuilderBenchmark {
 
-  private static final Logger LOG = LoggerFactory.getLogger(VariantBenchmark.class);
+  private static final Logger LOG = LoggerFactory.getLogger(VariantBuilderBenchmark.class);
 
   /** Whether to include nested sub-objects in the field values. */
   public enum Depth {
@@ -121,7 +115,6 @@ public class VariantBenchmark {
     /** Nested values. */
     Nested,
   }
-
   /**
    * Iterations on the small benchmarks whose operations are so fast that clocks, especially ARM clocks,
    * can't reliably measure them.
@@ -232,27 +225,26 @@ public class VariantBenchmark {
 
   /** Ordered list of top-level field names, e.g. "field_0" … "field_N-1". */
   private List<String> fieldNames;
-
   /**
    * Some types are pregenerated to keep RNG costs out of the benchmark, placed in generic object map then
    * cast to the correct type.
    */
   private FieldEntry[] fieldValues;
-
   /**
    * Indices of fields that are strings, used when constructing nested sub-objects so that nested
    * fields share the top-level field-name dictionary.
    */
   private int[] stringFieldIndices;
 
+  /**
+   * How many string fields were generated.
+   */
   private int stringFieldCount;
-
   /**
    * A pre-built {@link Variant} for all benchmarks which want to keep build costs out
    * of their measurements.
    */
   private Variant preBuiltVariant;
-
   /**
    * Fixed random seed for reproducibility across runs. The same seed is used in the Iceberg
    * benchmark.

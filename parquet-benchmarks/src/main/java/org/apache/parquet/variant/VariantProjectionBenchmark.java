@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package org.apache.parquet.benchmarks;
+package org.apache.parquet.variant;
 
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static org.apache.parquet.schema.MessageTypeParser.parseMessageType;
@@ -31,6 +31,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.parquet.benchmarks.BenchmarkFiles;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.api.InitContext;
@@ -47,12 +48,6 @@ import org.apache.parquet.io.api.RecordConsumer;
 import org.apache.parquet.io.api.RecordMaterializer;
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.MessageType;
-import org.apache.parquet.variant.ImmutableMetadata;
-import org.apache.parquet.variant.Variant;
-import org.apache.parquet.variant.VariantBuilder;
-import org.apache.parquet.variant.VariantConverters;
-import org.apache.parquet.variant.VariantObjectBuilder;
-import org.apache.parquet.variant.VariantValueWriter;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
@@ -85,15 +80,15 @@ import org.slf4j.LoggerFactory;
  *
  * <pre>
  *   ./mvnw --projects parquet-benchmarks -amd -DskipTests -Denforcer.skip=true clean package
- *   ./parquet-benchmarks/run.sh all org.apache.parquet.benchmarks.VariantProjectionBenchmark \
+ *   ./parquet-benchmarks/run.sh all org.apache.parquet.variant.VariantProjectionBenchmark \
  *       -wi 3 -i 5 -f 1  -foe true -rf json -rff target/results.json
  * </pre>
  *
  */
 @Fork(1)
 @State(Scope.Benchmark)
-@Warmup(iterations = 3)
-@Measurement(iterations = 5)
+@Warmup(iterations = 5)
+@Measurement(iterations = 10)
 @BenchmarkMode(Mode.SingleShotTime)
 @OutputTimeUnit(MILLISECONDS)
 @Timeout(time = 10, timeUnit = TimeUnit.MINUTES)
@@ -109,9 +104,9 @@ public class VariantProjectionBenchmark {
    * The per-record metadata declares that.
    */
   public static final String UNSHREDDED_SCHEMA = "message vschema {"
-      + "required int64 id;"
-      + "required int32 category;"
-      + "optional group nested (VARIANT(1)) {"
+      + "required int64 id = 1;"
+      + "required int32 category = 2;"
+      + "required group nested (VARIANT(1)) = 3 {"
       + "  required binary metadata;"
       + "  required binary value;"
       + "  }"
@@ -121,9 +116,9 @@ public class VariantProjectionBenchmark {
    * Detailed specification declaring all the columns as shredded variants.
    */
   public static final String SHREDDED_SCHEMA = "message vschema {"
-      + "required int64 id;"
-      + "required int32 category;"
-      + "optional group nested (VARIANT(1)) {"
+      + "required int64 id = 1;"
+      + "required int32 category = 2;"
+      + "required group nested (VARIANT(1)) = 3 {"
       + "  required binary metadata;"
       + "  optional binary value;"
       + "  optional group typed_value {"
@@ -152,9 +147,9 @@ public class VariantProjectionBenchmark {
    * only the variant column desired.
    */
   public static final String SELECT_SCHEMA = "message vschema {"
-      + "required int64 id;"
-      + "required int32 category;"
-      + "optional group nested (VARIANT(1)) {"
+      + "required int64 id = 1;"
+      + "required int32 category = 2;"
+      + "required group nested (VARIANT(1)) = 3 {"
       + "  required binary metadata;"
       + "  optional binary value;"
       + "  optional group typed_value {"

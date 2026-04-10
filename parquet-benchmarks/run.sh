@@ -43,6 +43,7 @@ read        | Reading files with different compression, page and block sizes.
 write       | Writing files.
 checksum    | Reading and writing with and without CRC checksums.
 filter      | Filtering column indexes
+variant     | Variant performance
 
 Examples:
 
@@ -101,7 +102,7 @@ else
     BENCHMARK_REGEX="org.apache.parquet.benchmarks.FilteringBenchmarks"
     ;;
   "variant")
-    BENCHMARK_REGEX="org.apache.parquet.benchmarks.Variant*"
+    BENCHMARK_REGEX="org.apache.parquet.variant.Variant*"
     ;;
   esac
 
