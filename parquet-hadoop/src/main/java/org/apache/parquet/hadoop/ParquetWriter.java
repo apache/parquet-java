@@ -983,7 +983,7 @@ public class ParquetWriter<T> implements Closeable {
      * deal of space. Parquet file footers can be made much smaller by omitting this field.
      * Because the field was originally a mandatory field, this property defaults to true
      * to maintain compatibility with older readers that expect this field to be present.
-     * If one knows that all readers one plans to use are tolerant of the absense of this field,
+     * If one knows that all readers one plans to use are tolerant of the absence of this field,
      * this may be safely set to false.
      *
      * @param enabled whether to write path_in_schema
