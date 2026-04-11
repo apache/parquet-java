@@ -843,7 +843,7 @@ class VariantUtil {
       } else {
         // ByteBuffer does not have an array, so we need to use the `get` method to read the bytes.
         byte[] metadataArray = new byte[nextOffset - offset];
-        slice(metadata, stringStart + offset).get(metadataArray);
+        slice(metadata, pos + stringStart + offset).get(metadataArray);
         result.put(new String(metadataArray), id);
       }
       offset = nextOffset;

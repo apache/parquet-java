@@ -374,7 +374,7 @@ public class VariantBuilder {
     writePos += 1;
     VariantUtil.writeLong(writeBuffer, writePos, binarySize, VariantUtil.U32_SIZE);
     writePos += VariantUtil.U32_SIZE;
-    ByteBuffer.wrap(writeBuffer, writePos, binarySize).put(binary);
+    ByteBuffer.wrap(writeBuffer, writePos, binarySize).put(binary.duplicate());
     writePos += binarySize;
   }
 
