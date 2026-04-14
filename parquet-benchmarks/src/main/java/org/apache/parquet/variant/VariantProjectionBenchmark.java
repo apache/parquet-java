@@ -143,7 +143,7 @@ public class VariantProjectionBenchmark {
       + "}";
 
   /**
-   * The select schema is a subset of {@link #SHREDDED_SCHEMA}, containing
+   * The select schema is a lean subset of {@link #SHREDDED_SCHEMA}, containing
    * only the variant column desired.
    */
   public static final String SELECT_SCHEMA = "message vschema {"
