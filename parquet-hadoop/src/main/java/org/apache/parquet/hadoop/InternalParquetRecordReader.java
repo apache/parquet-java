@@ -295,6 +295,14 @@ class InternalParquetRecordReader<T> {
   }
 
   /**
+   * Returns the 0-based index of the row group currently being read. Returns -1 if no row group
+   * has been read yet.
+   */
+  public int getCurrentRowGroupIndex() {
+    return currentBlock;
+  }
+
+  /**
    * Returns the row index of the current row. If no row has been processed or if the
    * row index information is unavailable from the underlying @{@link PageReadStore}, returns -1.
    */
