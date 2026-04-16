@@ -38,8 +38,14 @@ public class InterOpTester {
   private static final Logger LOG = LoggerFactory.getLogger(InterOpTester.class);
   // since PARQUET_TESTING_REPO might be beyond a web proxy ...
   private static OkHttpClient createOkHttpClientOptProxy() {
-    String proxyHost = System.getProperty("https.proxyHost");
-    String proxyPort = System.getProperty("https.proxyPort");
+    /* We use a different JVM property set,
+     * because CI may define JVM properties
+     * "https.proxyHost" and "https.proxyPort"
+     * and that proxy won't support some compressions
+     * (e.g. gzip/snappy on github.com CI).
+     /
+    String proxyHost = System.getProperty("parquet.https.proxyHost");
+    String proxyPort = System.getProperty("parquet.https.proxyPort");
     OkHttpClient client = null;
     if (proxyHost != null || proxyPort != null) {
       try {
