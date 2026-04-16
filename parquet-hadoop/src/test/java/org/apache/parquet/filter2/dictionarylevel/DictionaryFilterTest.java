@@ -45,7 +45,7 @@ import static org.apache.parquet.schema.MessageTypeParser.parseMessageType;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verifyZeroInteractions;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
@@ -731,7 +731,7 @@ public class DictionaryFilterTest {
         "Should never drop block using plain encoding",
         canDrop(notEq(plain, nElements + 10), ccmd, dictionaryStore));
 
-    verifyZeroInteractions(dictionaryStore);
+    verifyNoInteractions(dictionaryStore);
   }
 
   @Test
@@ -757,7 +757,7 @@ public class DictionaryFilterTest {
         "Should never drop block using plain encoding",
         canDrop(notEq(plain, nElements + 10), ccmd, dictionaryStore));
 
-    verifyZeroInteractions(dictionaryStore);
+    verifyNoInteractions(dictionaryStore);
   }
 
   @Test

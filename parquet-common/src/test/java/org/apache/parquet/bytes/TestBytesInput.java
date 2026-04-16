@@ -21,8 +21,8 @@ package org.apache.parquet.bytes;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
-import static org.mockito.Matchers.anyInt;
-import static org.mockito.Matchers.anyObject;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -401,6 +401,6 @@ public class TestBytesInput {
     Consumer<ByteBuffer> callbackMock = Mockito.mock(Consumer.class);
     factory.get().toByteBuffer(allocatorMock, callbackMock);
     verify(allocatorMock, never()).allocate(anyInt());
-    verify(callbackMock, never()).accept(anyObject());
+    verify(callbackMock, never()).accept(any());
   }
 }
