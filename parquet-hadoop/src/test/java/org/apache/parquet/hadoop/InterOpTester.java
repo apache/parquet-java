@@ -20,6 +20,8 @@
 package org.apache.parquet.hadoop;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.net.Proxy;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -34,7 +36,24 @@ public class InterOpTester {
   private static final String PARQUET_TESTING_REPO = "https://github.com/apache/parquet-testing/raw/";
   private static final String PARQUET_TESTING_PATH = "target/parquet-testing/";
   private static final Logger LOG = LoggerFactory.getLogger(InterOpTester.class);
-  private OkHttpClient httpClient = new OkHttpClient();
+  // since PARQUET_TESTING_REPO might be beyond a web proxy ...
+  private static OkHttpClient createOkHttpClientOptProxy() {
+    String proxyHost = System.getProperty("https.proxyHost");
+    String proxyPort = System.getProperty("https.proxyPort");
+    OkHttpClient client = null;
+    if (proxyHost != null || proxyPort != null) {
+      try {
+        int port = Integer.valueOf(proxyPort);
+        Proxy proxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress(proxyHost, port));
+        client = new OkHttpClient.Builder().proxy(proxy).build();
+      } catch (NumberFormatException e) {
+      }
+    }
+    if (client == null) client = new OkHttpClient();
+    return client;
+  }
+
+  private OkHttpClient httpClient = createOkHttpClientOptProxy();
 
   public Path GetInterOpFile(String fileName, String changeset) throws IOException {
     return GetInterOpFile(fileName, changeset, "data");
