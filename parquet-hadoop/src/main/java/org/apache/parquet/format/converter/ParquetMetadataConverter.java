@@ -750,16 +750,6 @@ public class ParquetMetadataConverter {
   }
 
   public Encoding getEncoding(org.apache.parquet.column.Encoding encoding) {
-    // ALP (enum value 26) is defined in the ALP paper but has not yet been merged into
-    // the parquet-format Thrift spec, so the generated Encoding enum does not contain it.
-    // Writing ALP-encoded columns through the Hadoop write path is not supported until
-    // parquet-format adds the ALP enum entry and parquet-java updates its dependency.
-    if (encoding == org.apache.parquet.column.Encoding.ALP) {
-      throw new IllegalArgumentException(
-          "ALP encoding cannot be written via the Hadoop write path: the ALP enum value is not yet "
-              + "present in the parquet-format Thrift definition. "
-              + "Remove this check once parquet-format includes ALP and parquet-java updates its dependency.");
-    }
     return Encoding.valueOf(encoding.name());
   }
 
