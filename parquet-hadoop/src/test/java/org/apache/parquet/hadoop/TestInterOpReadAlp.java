@@ -28,18 +28,26 @@ import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.parquet.column.ColumnDescriptor;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.parquet.column.ParquetProperties.WriterVersion;
 import org.apache.parquet.column.page.PageReadStore;
 import org.apache.parquet.example.data.Group;
+import org.apache.parquet.example.data.simple.SimpleGroup;
 import org.apache.parquet.example.data.simple.convert.GroupRecordConverter;
+import org.apache.parquet.hadoop.example.ExampleParquetWriter;
+import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.io.ColumnIOFactory;
 import org.apache.parquet.io.LocalInputFile;
+import org.apache.parquet.io.LocalOutputFile;
 import org.apache.parquet.io.MessageColumnIO;
 import org.apache.parquet.io.RecordReader;
 import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.schema.MessageTypeParser;
 import org.apache.parquet.schema.PrimitiveType;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,6 +65,9 @@ import org.slf4j.LoggerFactory;
  */
 public class TestInterOpReadAlp {
   private static final Logger LOG = LoggerFactory.getLogger(TestInterOpReadAlp.class);
+
+  @Rule
+  public TemporaryFolder temp = new TemporaryFolder();
 
   private static final String[] CPP_DOUBLE_FILES = {"alp_spotify1.parquet", "alp_arade.parquet"};
   private static final String[] CPP_FLOAT_FILES = {
@@ -224,6 +235,80 @@ public class TestInterOpReadAlp {
     }
     // This test always passes — it's for inspection
     assertTrue(true);
+  }
+
+  private static final String ALP_SCHEMA =
+      "message alp_interop { "
+          + "required double double_col; "
+          + "required float float_col; "
+          + "}";
+
+  private static final double[] DOUBLE_VALUES = {
+    1.23, 4.56, 7.89, 0.001, 1000.0, -3.14, 2.718281828, 9.99999, 0.123456789, 100.5
+  };
+  private static final float[] FLOAT_VALUES = {
+    1.23f, 4.56f, 7.89f, 0.001f, 1000.0f, -3.14f, 2.718f, 9.999f, 0.1234f, 100.5f
+  };
+
+  /**
+   * Write an ALP-encoded file from Java using the given page version, then read it back and verify
+   * all double and float values round-trip exactly.
+   */
+  private void writeAndVerifyAlpFile(WriterVersion version) throws IOException {
+    MessageType schema = MessageTypeParser.parseMessageType(ALP_SCHEMA);
+    java.nio.file.Path outPath =
+        temp.newFolder().toPath().resolve("alp_java_" + version.name().toLowerCase() + ".parquet");
+
+    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(new LocalOutputFile(outPath))
+        .withType(schema)
+        .withCompressionCodec(CompressionCodecName.UNCOMPRESSED)
+        .withWriterVersion(version)
+        .withAlpEncoding(true)
+        .withDictionaryEncoding(false)
+        .withConf(new Configuration())
+        .build()) {
+      for (int i = 0; i < DOUBLE_VALUES.length; i++) {
+        SimpleGroup row = new SimpleGroup(schema);
+        row.add("double_col", DOUBLE_VALUES[i]);
+        row.add("float_col", FLOAT_VALUES[i]);
+        writer.write(row);
+      }
+    }
+
+    List<Group> rows = readAllRows(outPath);
+    assertEquals("Row count mismatch for " + version, DOUBLE_VALUES.length, rows.size());
+    for (int i = 0; i < DOUBLE_VALUES.length; i++) {
+      assertEquals(
+          "double_col mismatch at row " + i + " for " + version,
+          DOUBLE_VALUES[i],
+          rows.get(i).getDouble("double_col", 0),
+          0.0);
+      assertEquals(
+          "float_col mismatch at row " + i + " for " + version,
+          FLOAT_VALUES[i],
+          rows.get(i).getFloat("float_col", 0),
+          0.0f);
+    }
+    LOG.info("writeAndVerifyAlpFile [{}]: wrote and read back {} rows from {}", version, rows.size(), outPath.getFileName());
+  }
+
+  /**
+   * Java writes ALP-encoded floats/doubles using V1 (PARQUET_1_0) data pages and reads them back.
+   * Verifies the Java write path produces a valid file readable by this implementation.
+   */
+  @Test
+  public void testJavaWriteAlpV1Pages() throws IOException {
+    writeAndVerifyAlpFile(WriterVersion.PARQUET_1_0);
+  }
+
+  /**
+   * Java writes ALP-encoded floats/doubles using V2 (PARQUET_2_0) data pages and reads them back.
+   * V2 page headers include the encoding value directly; ALP = 10 is supported via the build-time
+   * patch to the generated Encoding enum in parquet-format-structures.
+   */
+  @Test
+  public void testJavaWriteAlpV2Pages() throws IOException {
+    writeAndVerifyAlpFile(WriterVersion.PARQUET_2_0);
   }
 
   // TODO: Uncomment once parquet-testing PR #100 merges

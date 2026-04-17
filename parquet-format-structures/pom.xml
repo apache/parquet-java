@@ -66,6 +66,35 @@
            </execution>
          </executions>
        </plugin>
+      <!--
+        Patch the generated Encoding.java to add ALP(10) after BYTE_STREAM_SPLIT(9).
+        ALP (Adaptive Lossless floating-Point) encoding uses value 10 (the next
+        sequential value after BYTE_STREAM_SPLIT = 9). This patch should be removed
+        once parquet-format releases a version that includes the ALP encoding enum
+        and parquet-java bumps the parquet.format.version dependency.
+        Note: runs in process-sources phase (after generate-sources where thrift runs).
+      -->
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <version>${exec-maven-plugin.version}</version>
+        <executions>
+          <execution>
+            <id>patch-alp-encoding</id>
+            <phase>process-sources</phase>
+            <goals>
+              <goal>exec</goal>
+            </goals>
+            <configuration>
+              <executable>perl</executable>
+              <arguments>
+                <argument>${basedir}/src/main/perl/patch-alp-encoding.pl</argument>
+                <argument>${project.build.directory}/generated-sources/thrift/org/apache/parquet/format/Encoding.java</argument>
+              </arguments>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
       <!-- thrift -->
       <plugin>
         <groupId>org.apache.thrift</groupId>
