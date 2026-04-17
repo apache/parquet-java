@@ -37,7 +37,7 @@ public class InterOpTester {
   private static final String PARQUET_TESTING_PATH = "target/parquet-testing/";
   private static final Logger LOG = LoggerFactory.getLogger(InterOpTester.class);
   // since PARQUET_TESTING_REPO might be beyond a web proxy ...
-  private static OkHttpClient createOkHttpClientOptProxy() {
+  public static OkHttpClient createOkHttpClientOptProxy() {
     /* We use a different JVM property set,
      * because CI may define JVM properties
      * "https.proxyHost" and "https.proxyPort"
