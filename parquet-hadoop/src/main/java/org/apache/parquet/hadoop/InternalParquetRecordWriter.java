@@ -147,27 +147,19 @@ class InternalParquetRecordWriter<T> {
   }
 
   private void initStore() {
-    ColumnChunkPageWriteStore columnChunkPageWriteStore;
+    ColumnChunkPageWriteStore.Builder storeBuilder = ColumnChunkPageWriteStore.builder()
+        .withSchema(schema)
+        .withAllocator(props.getAllocator())
+        .withColumnIndexTruncateLength(props.getColumnIndexTruncateLength())
+        .withPageWriteChecksumEnabled(props.getPageWriteChecksumEnabled())
+        .withFileEncryptor(fileEncryptor)
+        .withRowGroupOrdinal(rowGroupOrdinal);
     if (codecFactory != null) {
-      columnChunkPageWriteStore = new ColumnChunkPageWriteStore(
-          codecFactory,
-          props,
-          schema,
-          props.getAllocator(),
-          props.getColumnIndexTruncateLength(),
-          props.getPageWriteChecksumEnabled(),
-          fileEncryptor,
-          rowGroupOrdinal);
+      storeBuilder.withCodecFactory(codecFactory, props);
     } else {
-      columnChunkPageWriteStore = new ColumnChunkPageWriteStore(
-          compressor,
-          schema,
-          props.getAllocator(),
-          props.getColumnIndexTruncateLength(),
-          props.getPageWriteChecksumEnabled(),
-          fileEncryptor,
-          rowGroupOrdinal);
+      storeBuilder.withCompressor(compressor);
     }
+    ColumnChunkPageWriteStore columnChunkPageWriteStore = storeBuilder.build();
     pageStore = columnChunkPageWriteStore;
     bloomFilterWriteStore = columnChunkPageWriteStore;
 

@@ -351,8 +351,13 @@ public class TestColumnChunkPageWriteStore {
     writer.start();
     writer.startBlock(1);
 
-    try (ColumnChunkPageWriteStore store = new ColumnChunkPageWriteStore(
-        codecFactory, props, schema, allocator, Integer.MAX_VALUE, false, null, 0)) {
+    try (ColumnChunkPageWriteStore store = ColumnChunkPageWriteStore.builder()
+        .withCodecFactory(codecFactory, props)
+        .withSchema(schema)
+        .withAllocator(allocator)
+        .withColumnIndexTruncateLength(Integer.MAX_VALUE)
+        .withPageWriteChecksumEnabled(false)
+        .build()) {
       BytesInput fakeData = BytesInput.fromInt(42);
       BinaryStatistics fakeStats = new BinaryStatistics();
       for (ColumnDescriptor col : schema.getColumns()) {
