@@ -43,7 +43,7 @@ public class InterOpTester {
      * "https.proxyHost" and "https.proxyPort"
      * and that proxy won't support some compressions
      * (e.g. gzip/snappy on github.com CI).
-     /
+     */
     String proxyHost = System.getProperty("parquet.https.proxyHost");
     String proxyPort = System.getProperty("parquet.https.proxyPort");
     OkHttpClient client = null;
