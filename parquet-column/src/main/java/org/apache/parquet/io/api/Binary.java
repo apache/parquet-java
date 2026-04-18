@@ -498,6 +498,16 @@ public abstract class Binary implements Comparable<Binary>, Serializable {
     }
 
     @Override
+    public Binary copy() {
+      if (value.isDirect()) {
+        // Direct ByteBuffers may be backed by memory that can be freed independently, so always materialize to
+        // a heap-backed copy to avoid use-after-free.
+        return Binary.fromConstantByteArray(getBytes());
+      }
+      return super.copy();
+    }
+
+    @Override
     public int hashCode() {
       if (value.hasArray()) {
         return Binary.hashCode(value.array(), value.arrayOffset() + offset, length);
