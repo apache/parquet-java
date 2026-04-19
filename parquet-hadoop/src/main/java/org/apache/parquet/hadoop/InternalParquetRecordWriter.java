@@ -149,8 +149,7 @@ class InternalParquetRecordWriter<T> {
 
   public void write(T value) throws IOException, InterruptedException {
     if (aborted) {
-      throw new IOException("Writer has been aborted due to a previous error and is in an undefined state. "
-          + "No further writes are allowed. Please create a new writer.");
+      throw new IOException("Writer has been aborted due to a previous error and cannot accept further writes");
     }
     try {
       writeSupport.write(value);

@@ -91,14 +91,13 @@ public class TestParquetWriterError {
       abortedField.setBoolean(internalWriter, true);
 
       // Now try to write again - this should throw IOException
-      try {
-        writer.write(groupFactory.newGroup().append("name", "Charlie").append("age", 25));
-        Assert.fail("Expected IOException when writing to an aborted writer");
-      } catch (IOException e) {
-        Assert.assertTrue(
-            "Error message should mention aborted state",
-            e.getMessage().contains("aborted"));
-      }
+      IOException e = Assert.assertThrows(
+          "Expected IOException when writing to an aborted writer",
+          IOException.class,
+          () -> writer.write(
+              groupFactory.newGroup().append("name", "Charlie").append("age", 25)));
+      Assert.assertTrue(
+          "Error message should mention aborted state", e.getMessage().contains("aborted"));
 
       // Close should not throw (it should silently skip flushing due to aborted state)
       writer.close();
