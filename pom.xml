@@ -594,6 +594,8 @@
               <exclude>org.apache.parquet.internal.column.columnindex.IndexIterator</exclude>
               <!-- Removal of a protected method in a class that's not supposed to be subclassed by third-party code -->
               <exclude>org.apache.parquet.column.values.bytestreamsplit.ByteStreamSplitValuesReader#gatherElementDataFromStreams(byte[])</exclude>
+              <!-- Removal of a protected internal field that should not have been part of the public API -->
+              <exclude>org.apache.parquet.column.values.plain.PlainValuesReader#in</exclude>
               <!-- Due to the removal of deprecated methods -->
               <exclude>org.apache.parquet.arrow.schema.SchemaMapping$TypeMappingVisitor#visit(org.apache.parquet.arrow.schema.SchemaMapping$MapTypeMapping)</exclude>
               <!-- Intentional removal of deprecated Pig support from parquet-thrift -->
