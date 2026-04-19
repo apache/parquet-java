@@ -27,6 +27,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.parquet.OutputStreamCloseException;
@@ -194,6 +195,7 @@ public class CapacityByteArrayOutputStream extends OutputStream {
     LOG.debug("used {} slabs, adding new slab of size {}", slabs.size(), nextSlabSize);
 
     this.currentSlab = allocator.allocate(nextSlabSize);
+    this.currentSlab.order(ByteOrder.LITTLE_ENDIAN);
     this.slabs.add(currentSlab);
     this.bytesAllocated = Math.addExact(this.bytesAllocated, nextSlabSize);
   }
@@ -223,6 +225,34 @@ public class CapacityByteArrayOutputStream extends OutputStream {
       currentSlab.put(b, off, len);
     }
     bytesUsed = Math.addExact(bytesUsed, len);
+  }
+
+  /**
+   * Writes an int in little-endian byte order directly to the underlying slab,
+   * bypassing intermediate byte array decomposition. Slabs are set to
+   * {@link ByteOrder#LITTLE_ENDIAN} order so {@code putInt} produces the correct encoding.
+   *
+   * @param v the int value to write
+   */
+  public void writeInt(int v) {
+    if (currentSlab.remaining() < 4) {
+      addSlab(4);
+    }
+    currentSlab.putInt(v);
+    bytesUsed = Math.addExact(bytesUsed, 4);
+  }
+
+  /**
+   * Writes a long in little-endian byte order directly to the underlying slab.
+   *
+   * @param v the long value to write
+   */
+  public void writeLong(long v) {
+    if (currentSlab.remaining() < 8) {
+      addSlab(8);
+    }
+    currentSlab.putLong(v);
+    bytesUsed = Math.addExact(bytesUsed, 8);
   }
 
   private void writeToOutput(OutputStream out, ByteBuffer buf, int len) throws IOException {
