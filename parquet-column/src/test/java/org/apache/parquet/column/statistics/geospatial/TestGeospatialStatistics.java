@@ -169,4 +169,30 @@ public class TestGeospatialStatistics {
     GeospatialStatistics statistics = builder.build();
     Assert.assertFalse(statistics.isValid());
   }
+
+  @Test
+  public void testNoopBuilderIsSingleton() {
+    GeospatialStatistics.Builder builder1 = GeospatialStatistics.noopBuilder();
+    GeospatialStatistics.Builder builder2 = GeospatialStatistics.noopBuilder();
+    Assert.assertSame("noopBuilder() should return the same instance", builder1, builder2);
+    Assert.assertSame("build() should return the same instance", builder1.build(), builder2.build());
+  }
+
+  @Test
+  public void testNoopBuilderUpdateAndAbortAreNoOps() {
+    GeospatialStatistics.Builder builder = GeospatialStatistics.noopBuilder();
+
+    // update with non-null value should not throw
+    builder.update(Binary.fromConstantByteArray(new byte[] {0x01, 0x02, 0x03}));
+    // update with null should not throw
+    builder.update(null);
+    // abort should not throw
+    builder.abort();
+
+    // builder still produces an invalid (empty) result
+    GeospatialStatistics statistics = builder.build();
+    Assert.assertFalse(statistics.isValid());
+    Assert.assertNull(statistics.getBoundingBox());
+    Assert.assertNull(statistics.getGeospatialTypes());
+  }
 }
