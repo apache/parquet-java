@@ -208,6 +208,14 @@ public class ParquetRecordReader<T> extends RecordReader<Void, T> {
   }
 
   /**
+   * @return the 0-based index of the row group currently being read. If no row group has been
+   *     read yet, returns -1.
+   */
+  public int getCurrentRowGroupIndex() {
+    return internalReader.getCurrentRowGroupIndex();
+  }
+
+  /**
    * @return the row index of the current row. If no row has been processed, returns -1.
    */
   public long getCurrentRowIndex() throws IOException {

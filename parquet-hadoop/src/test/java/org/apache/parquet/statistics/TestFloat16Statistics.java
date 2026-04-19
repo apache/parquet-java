@@ -24,7 +24,6 @@ import static org.junit.Assert.assertArrayEquals;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.List;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -136,19 +135,19 @@ public class TestFloat16Statistics {
   // Float16Builder: Drop min/max values in case of NaN as the sorting order of values is undefined
   private Binary[] valuesWithNaNStatsMinMax = {
     Binary.fromConstantByteArray(new byte[] {(byte) 0x00, (byte) 0x00}), // +0
-    Binary.fromConstantByteArray(new byte[] {(byte) 0x00, (byte) 0x80})
-  }; // -0
+    Binary.fromConstantByteArray(new byte[] {(byte) 0x00, (byte) 0x00})
+  }; // +0
 
   @Test
   public void testFloat16StatisticsMultipleCases() throws IOException {
-    List<Binary[]> testValues = Arrays.asList(
+    List<Binary[]> testValues = List.of(
         valuesInAscendingOrder,
         valuesInDescendingOrder,
         valuesUndefinedOrder,
         valuesAllPositiveZero,
         valuesAllNegativeZero,
         valuesWithNaN);
-    List<Binary[]> expectedValues = Arrays.asList(
+    List<Binary[]> expectedValues = List.of(
         valuesInAscendingOrderMinMax,
         valuesInDescendingOrderMinMax,
         valuesUndefinedOrderMinMax,

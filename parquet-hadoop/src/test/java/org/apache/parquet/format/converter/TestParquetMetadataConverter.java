@@ -41,6 +41,7 @@ import static org.apache.parquet.schema.LogicalTypeAnnotation.stringType;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.timeType;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.timestampType;
 import static org.apache.parquet.schema.LogicalTypeAnnotation.uuidType;
+import static org.apache.parquet.schema.LogicalTypeAnnotation.variantType;
 import static org.apache.parquet.schema.MessageTypeParser.parseMessageType;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -79,6 +80,7 @@ import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.EncodingStats;
 import org.apache.parquet.column.ParquetProperties;
+import org.apache.parquet.column.schema.EdgeInterpolationAlgorithm;
 import org.apache.parquet.column.statistics.BinaryStatistics;
 import org.apache.parquet.column.statistics.BooleanStatistics;
 import org.apache.parquet.column.statistics.DoubleStatistics;
@@ -87,6 +89,7 @@ import org.apache.parquet.column.statistics.IntStatistics;
 import org.apache.parquet.column.statistics.LongStatistics;
 import org.apache.parquet.column.statistics.SizeStatistics;
 import org.apache.parquet.column.statistics.Statistics;
+import org.apache.parquet.column.statistics.geospatial.GeospatialTypes;
 import org.apache.parquet.crypto.DecryptionPropertiesFactory;
 import org.apache.parquet.crypto.EncryptionPropertiesFactory;
 import org.apache.parquet.crypto.FileDecryptionProperties;
@@ -94,12 +97,16 @@ import org.apache.parquet.crypto.InternalFileDecryptor;
 import org.apache.parquet.example.Paper;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroup;
+import org.apache.parquet.format.BoundingBox;
 import org.apache.parquet.format.ColumnChunk;
 import org.apache.parquet.format.ColumnMetaData;
 import org.apache.parquet.format.ConvertedType;
 import org.apache.parquet.format.DecimalType;
 import org.apache.parquet.format.FieldRepetitionType;
 import org.apache.parquet.format.FileMetaData;
+import org.apache.parquet.format.GeographyType;
+import org.apache.parquet.format.GeometryType;
+import org.apache.parquet.format.GeospatialStatistics;
 import org.apache.parquet.format.LogicalType;
 import org.apache.parquet.format.MapType;
 import org.apache.parquet.format.PageHeader;
@@ -524,7 +531,7 @@ public class TestParquetMetadataConverter {
           size * 2,
           size,
           offset));
-      rowGroups.add(new RowGroup(Arrays.asList(columnChunk), size, 1));
+      rowGroups.add(new RowGroup(List.of(columnChunk), size, 1));
       offset += size;
     }
     return new FileMetaData(1, schema, sizes.length, rowGroups);
@@ -715,12 +722,12 @@ public class TestParquetMetadataConverter {
   public void testEncodingsCache() {
     ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
 
-    List<org.apache.parquet.format.Encoding> formatEncodingsCopy1 = Arrays.asList(
+    List<org.apache.parquet.format.Encoding> formatEncodingsCopy1 = List.of(
         org.apache.parquet.format.Encoding.BIT_PACKED,
         org.apache.parquet.format.Encoding.RLE_DICTIONARY,
         org.apache.parquet.format.Encoding.DELTA_LENGTH_BYTE_ARRAY);
 
-    List<org.apache.parquet.format.Encoding> formatEncodingsCopy2 = Arrays.asList(
+    List<org.apache.parquet.format.Encoding> formatEncodingsCopy2 = List.of(
         org.apache.parquet.format.Encoding.BIT_PACKED,
         org.apache.parquet.format.Encoding.RLE_DICTIONARY,
         org.apache.parquet.format.Encoding.DELTA_LENGTH_BYTE_ARRAY);
@@ -750,6 +757,22 @@ public class TestParquetMetadataConverter {
     assertEquals("java.util.Collections$UnmodifiableSet", res1.getClass().getName());
     assertEquals("java.util.Collections$UnmodifiableSet", res2.getClass().getName());
     assertEquals("java.util.Collections$UnmodifiableSet", res3.getClass().getName());
+  }
+
+  @Test
+  public void testEncodingsOrder() {
+    ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
+
+    Set<org.apache.parquet.column.Encoding> columnEncodings =
+        new HashSet<>(Arrays.asList(org.apache.parquet.column.Encoding.values()));
+
+    // Assert that the encodings are returned in ascending ordinal order
+    List<org.apache.parquet.format.Encoding> formatEncodings =
+        parquetMetadataConverter.toFormatEncodings(columnEncodings);
+    for (int i = 1; i < formatEncodings.size(); i++) {
+      assertTrue(formatEncodings.get(i - 1).ordinal()
+          < formatEncodings.get(i).ordinal());
+    }
   }
 
   @Test
@@ -1444,14 +1467,14 @@ public class TestParquetMetadataConverter {
           ParquetMetadataConverter.toParquetColumnIndex(type, builder.build());
       ColumnIndex columnIndex = ParquetMetadataConverter.fromParquetColumnIndex(type, parquetColumnIndex);
       assertEquals(BoundaryOrder.ASCENDING, columnIndex.getBoundaryOrder());
-      assertTrue(Arrays.asList(false, true, false).equals(columnIndex.getNullPages()));
-      assertTrue(Arrays.asList(16l, 111l, 0l).equals(columnIndex.getNullCounts()));
-      assertTrue(Arrays.asList(
+      assertTrue(List.of(false, true, false).equals(columnIndex.getNullPages()));
+      assertTrue(List.of(16l, 111l, 0l).equals(columnIndex.getNullCounts()));
+      assertTrue(List.of(
               ByteBuffer.wrap(BytesUtils.longToBytes(-100l)),
               ByteBuffer.allocate(0),
               ByteBuffer.wrap(BytesUtils.longToBytes(200l)))
           .equals(columnIndex.getMinValues()));
-      assertTrue(Arrays.asList(
+      assertTrue(List.of(
               ByteBuffer.wrap(BytesUtils.longToBytes(100l)),
               ByteBuffer.allocate(0),
               ByteBuffer.wrap(BytesUtils.longToBytes(500l)))
@@ -1589,6 +1612,28 @@ public class TestParquetMetadataConverter {
     verifyMapMessageType(messageType, "map");
   }
 
+  @Test
+  public void testVariantLogicalType() {
+    byte specVersion = 1;
+    MessageType expected = Types.buildMessage()
+        .requiredGroup()
+        .as(variantType(specVersion))
+        .required(PrimitiveTypeName.BINARY)
+        .named("metadata")
+        .required(PrimitiveTypeName.BINARY)
+        .named("value")
+        .named("v")
+        .named("example");
+
+    ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
+    List<SchemaElement> parquetSchema = parquetMetadataConverter.toParquetSchema(expected);
+    MessageType schema = parquetMetadataConverter.fromParquetSchema(parquetSchema, null);
+    assertEquals(expected, schema);
+    LogicalTypeAnnotation logicalType = schema.getType("v").getLogicalTypeAnnotation();
+    assertEquals(LogicalTypeAnnotation.variantType(specVersion), logicalType);
+    assertEquals(specVersion, ((LogicalTypeAnnotation.VariantLogicalTypeAnnotation) logicalType).getSpecVersion());
+  }
+
   private void verifyMapMessageType(final MessageType messageType, final String keyValueName) throws IOException {
     Path file = new Path(temporaryFolder.newFolder("verifyMapMessageType").getPath(), keyValueName + ".parquet");
 
@@ -1627,8 +1672,8 @@ public class TestParquetMetadataConverter {
   @Test
   public void testSizeStatisticsConversion() {
     PrimitiveType type = Types.required(PrimitiveTypeName.BINARY).named("test");
-    List<Long> repLevelHistogram = Arrays.asList(1L, 2L, 3L, 4L, 5L);
-    List<Long> defLevelHistogram = Arrays.asList(6L, 7L, 8L, 9L, 10L);
+    List<Long> repLevelHistogram = List.of(1L, 2L, 3L, 4L, 5L);
+    List<Long> defLevelHistogram = List.of(6L, 7L, 8L, 9L, 10L);
     SizeStatistics sizeStatistics = ParquetMetadataConverter.fromParquetSizeStatistics(
         ParquetMetadataConverter.toParquetSizeStatistics(
             new SizeStatistics(type, 1024, repLevelHistogram, defLevelHistogram)),
@@ -1637,5 +1682,299 @@ public class TestParquetMetadataConverter {
     assertEquals(Optional.of(1024L), sizeStatistics.getUnencodedByteArrayDataBytes());
     assertEquals(repLevelHistogram, sizeStatistics.getRepetitionLevelHistogram());
     assertEquals(defLevelHistogram, sizeStatistics.getDefinitionLevelHistogram());
+  }
+
+  @Test
+  public void testGeometryLogicalType() {
+    ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
+
+    // Create schema with geometry type
+    MessageType schema = Types.buildMessage()
+        .required(PrimitiveTypeName.BINARY)
+        .as(LogicalTypeAnnotation.geometryType("EPSG:4326"))
+        .named("geomField")
+        .named("Message");
+
+    // Convert to parquet schema and back
+    List<SchemaElement> parquetSchema = parquetMetadataConverter.toParquetSchema(schema);
+    MessageType actual = parquetMetadataConverter.fromParquetSchema(parquetSchema, null);
+
+    // Verify the logical type is preserved
+    assertEquals(schema, actual);
+
+    PrimitiveType primitiveType = actual.getType("geomField").asPrimitiveType();
+    LogicalTypeAnnotation logicalType = primitiveType.getLogicalTypeAnnotation();
+    assertTrue(logicalType instanceof LogicalTypeAnnotation.GeometryLogicalTypeAnnotation);
+    assertEquals("EPSG:4326", ((LogicalTypeAnnotation.GeometryLogicalTypeAnnotation) logicalType).getCrs());
+  }
+
+  @Test
+  public void testGeographyLogicalType() {
+    ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
+
+    // Create schema with geography type
+    MessageType schema = Types.buildMessage()
+        .required(PrimitiveTypeName.BINARY)
+        .as(LogicalTypeAnnotation.geographyType("EPSG:4326", EdgeInterpolationAlgorithm.SPHERICAL))
+        .named("geogField")
+        .named("Message");
+
+    // Convert to parquet schema and back
+    List<SchemaElement> parquetSchema = parquetMetadataConverter.toParquetSchema(schema);
+    MessageType actual = parquetMetadataConverter.fromParquetSchema(parquetSchema, null);
+
+    // Verify the logical type is preserved
+    assertEquals(schema, actual);
+
+    PrimitiveType primitiveType = actual.getType("geogField").asPrimitiveType();
+    LogicalTypeAnnotation logicalType = primitiveType.getLogicalTypeAnnotation();
+    assertTrue(logicalType instanceof LogicalTypeAnnotation.GeographyLogicalTypeAnnotation);
+
+    LogicalTypeAnnotation.GeographyLogicalTypeAnnotation geographyType =
+        (LogicalTypeAnnotation.GeographyLogicalTypeAnnotation) logicalType;
+    assertEquals("EPSG:4326", geographyType.getCrs());
+    assertEquals(EdgeInterpolationAlgorithm.SPHERICAL, geographyType.getAlgorithm());
+  }
+
+  @Test
+  public void testGeometryLogicalTypeWithMissingCrs() {
+    // Create a Geometry logical type without specifying CRS
+    GeometryType geometryType = new GeometryType();
+    LogicalType logicalType = new LogicalType();
+    logicalType.setGEOMETRY(geometryType);
+
+    // Convert to LogicalTypeAnnotation
+    ParquetMetadataConverter converter = new ParquetMetadataConverter();
+    LogicalTypeAnnotation annotation = converter.getLogicalTypeAnnotation(logicalType);
+
+    // Verify the annotation is created correctly
+    assertNotNull("Geometry annotation should not be null", annotation);
+    assertTrue(
+        "Should be a GeometryLogicalTypeAnnotation",
+        annotation instanceof LogicalTypeAnnotation.GeometryLogicalTypeAnnotation);
+
+    LogicalTypeAnnotation.GeometryLogicalTypeAnnotation geometryAnnotation =
+        (LogicalTypeAnnotation.GeometryLogicalTypeAnnotation) annotation;
+
+    // Default behavior should use null or empty CRS
+    assertNull("CRS should be null or empty when not specified", geometryAnnotation.getCrs());
+  }
+
+  @Test
+  public void testGeographyLogicalTypeWithMissingParameters() {
+    ParquetMetadataConverter converter = new ParquetMetadataConverter();
+
+    // Create a Geography logical type without CRS and algorithm
+    GeographyType geographyType = new GeographyType();
+    LogicalType logicalType = new LogicalType();
+    logicalType.setGEOGRAPHY(geographyType);
+
+    // Convert to LogicalTypeAnnotation
+    LogicalTypeAnnotation annotation = converter.getLogicalTypeAnnotation(logicalType);
+
+    // Verify the annotation is created correctly
+    assertNotNull("Geography annotation should not be null", annotation);
+    assertTrue(
+        "Should be a GeographyLogicalTypeAnnotation",
+        annotation instanceof LogicalTypeAnnotation.GeographyLogicalTypeAnnotation);
+
+    // Check that optional parameters are handled correctly
+    LogicalTypeAnnotation.GeographyLogicalTypeAnnotation geographyAnnotation =
+        (LogicalTypeAnnotation.GeographyLogicalTypeAnnotation) annotation;
+    assertNull("CRS should be null when not specified", geographyAnnotation.getCrs());
+    // Most implementations default to LINEAR when algorithm is not specified
+    assertNull("Algorithm should be null when not specified", geographyAnnotation.getAlgorithm());
+
+    // Now test the round-trip conversion
+    LogicalType roundTripType = converter.convertToLogicalType(annotation);
+    assertEquals("setField should be GEOGRAPHY", LogicalType._Fields.GEOGRAPHY, roundTripType.getSetField());
+    assertNull(
+        "Round trip CRS should still be null",
+        roundTripType.getGEOGRAPHY().getCrs());
+    assertNull(
+        "Round trip Algorithm should be null",
+        roundTripType.getGEOGRAPHY().getAlgorithm());
+  }
+
+  @Test
+  public void testGeographyLogicalTypeWithAlgorithmButNoCrs() {
+    // Create a Geography logical type with algorithm but no CRS
+    GeographyType geographyType = new GeographyType();
+    geographyType.setAlgorithm(org.apache.parquet.format.EdgeInterpolationAlgorithm.SPHERICAL);
+    LogicalType logicalType = new LogicalType();
+    logicalType.setGEOGRAPHY(geographyType);
+
+    // Convert to LogicalTypeAnnotation
+    ParquetMetadataConverter converter = new ParquetMetadataConverter();
+    LogicalTypeAnnotation annotation = converter.getLogicalTypeAnnotation(logicalType);
+
+    // Verify the annotation is created correctly
+    Assert.assertNotNull("Geography annotation should not be null", annotation);
+    LogicalTypeAnnotation.GeographyLogicalTypeAnnotation geographyAnnotation =
+        (LogicalTypeAnnotation.GeographyLogicalTypeAnnotation) annotation;
+
+    // CRS should be null/empty but algorithm should be set
+    assertNull("CRS should be null or empty", geographyAnnotation.getCrs());
+    assertEquals(
+        "Algorithm should be SPHERICAL",
+        EdgeInterpolationAlgorithm.SPHERICAL,
+        geographyAnnotation.getAlgorithm());
+  }
+
+  @Test
+  public void testGeospatialStatisticsConversion() {
+    // Create a ParquetMetadataConverter
+    ParquetMetadataConverter converter = new ParquetMetadataConverter();
+
+    // Create a valid BoundingBox with all fields set
+    org.apache.parquet.column.statistics.geospatial.BoundingBox bbox =
+        new org.apache.parquet.column.statistics.geospatial.BoundingBox(
+            1.0, 2.0, // xmin, xmax
+            3.0, 4.0, // ymin, ymax
+            5.0, 6.0, // zmin, zmax
+            7.0, 8.0 // mmin, mmax
+            );
+
+    // Create GeospatialTypes with some example type values
+    Set<Integer> types = new HashSet<>(List.of(1, 2, 3));
+    GeospatialTypes geospatialTypes = new GeospatialTypes(types);
+
+    // Create GeospatialStatistics with the bbox and types
+    org.apache.parquet.column.statistics.geospatial.GeospatialStatistics origStats =
+        new org.apache.parquet.column.statistics.geospatial.GeospatialStatistics(bbox, geospatialTypes);
+
+    // Convert to Thrift format
+    GeospatialStatistics thriftStats = converter.toParquetGeospatialStatistics(origStats);
+
+    // Verify conversion to Thrift
+    assertNotNull("Thrift GeospatialStatistics should not be null", thriftStats);
+    assertTrue("BoundingBox should be set", thriftStats.isSetBbox());
+    assertTrue("Geospatial types should be set", thriftStats.isSetGeospatial_types());
+
+    // Check BoundingBox values
+    BoundingBox thriftBbox = thriftStats.getBbox();
+    assertEquals(1.0, thriftBbox.getXmin(), 0.0001);
+    assertEquals(2.0, thriftBbox.getXmax(), 0.0001);
+    assertEquals(3.0, thriftBbox.getYmin(), 0.0001);
+    assertEquals(4.0, thriftBbox.getYmax(), 0.0001);
+    assertEquals(5.0, thriftBbox.getZmin(), 0.0001);
+    assertEquals(6.0, thriftBbox.getZmax(), 0.0001);
+    assertEquals(7.0, thriftBbox.getMmin(), 0.0001);
+    assertEquals(8.0, thriftBbox.getMmax(), 0.0001);
+
+    // Check geospatial types
+    List<Integer> thriftTypes = thriftStats.getGeospatial_types();
+    assertEquals(3, thriftTypes.size());
+    assertTrue(thriftTypes.contains(1));
+    assertTrue(thriftTypes.contains(2));
+    assertTrue(thriftTypes.contains(3));
+
+    // Create primitive geometry type for conversion back
+    LogicalTypeAnnotation geometryAnnotation = LogicalTypeAnnotation.geometryType("EPSG:4326");
+    PrimitiveType geometryType =
+        Types.required(PrimitiveTypeName.BINARY).as(geometryAnnotation).named("geometry");
+
+    // Convert back from Thrift format
+    org.apache.parquet.column.statistics.geospatial.GeospatialStatistics convertedStats =
+        ParquetMetadataConverter.fromParquetStatistics(thriftStats, geometryType);
+
+    // Verify conversion from Thrift
+    assertNotNull("Converted GeospatialStatistics should not be null", convertedStats);
+    assertNotNull("BoundingBox should not be null", convertedStats.getBoundingBox());
+    assertNotNull("GeospatialTypes should not be null", convertedStats.getGeospatialTypes());
+
+    // Check BoundingBox values
+    org.apache.parquet.column.statistics.geospatial.BoundingBox convertedBbox = convertedStats.getBoundingBox();
+    assertEquals(1.0, convertedBbox.getXMin(), 0.0001);
+    assertEquals(2.0, convertedBbox.getXMax(), 0.0001);
+    assertEquals(3.0, convertedBbox.getYMin(), 0.0001);
+    assertEquals(4.0, convertedBbox.getYMax(), 0.0001);
+    assertEquals(5.0, convertedBbox.getZMin(), 0.0001);
+    assertEquals(6.0, convertedBbox.getZMax(), 0.0001);
+    assertEquals(7.0, convertedBbox.getMMin(), 0.0001);
+    assertEquals(8.0, convertedBbox.getMMax(), 0.0001);
+
+    // Check geospatial types
+    Set<Integer> convertedTypes = convertedStats.getGeospatialTypes().getTypes();
+    assertEquals(3, convertedTypes.size());
+    assertTrue(convertedTypes.contains(1));
+    assertTrue(convertedTypes.contains(2));
+    assertTrue(convertedTypes.contains(3));
+  }
+
+  @Test
+  public void testGeospatialStatisticsWithNullBoundingBox() {
+    ParquetMetadataConverter converter = new ParquetMetadataConverter();
+
+    // Create GeospatialStatistics with null bbox but valid types
+    Set<Integer> types = new HashSet<>(List.of(1, 2, 3));
+    GeospatialTypes geospatialTypes = new GeospatialTypes(types);
+    org.apache.parquet.column.statistics.geospatial.GeospatialStatistics origStats =
+        new org.apache.parquet.column.statistics.geospatial.GeospatialStatistics(null, geospatialTypes);
+
+    // Convert to Thrift format
+    GeospatialStatistics thriftStats = converter.toParquetGeospatialStatistics(origStats);
+
+    // Verify conversion to Thrift
+    assertNotNull("Thrift GeospatialStatistics should not be null", thriftStats);
+    assertFalse("BoundingBox should not be set", thriftStats.isSetBbox());
+    assertTrue("Geospatial types should be set", thriftStats.isSetGeospatial_types());
+
+    // Create primitive geometry type for conversion back
+    LogicalTypeAnnotation geometryAnnotation = LogicalTypeAnnotation.geometryType("EPSG:4326");
+    PrimitiveType geometryType =
+        Types.required(PrimitiveTypeName.BINARY).as(geometryAnnotation).named("geometry");
+
+    // Convert back from Thrift format
+    org.apache.parquet.column.statistics.geospatial.GeospatialStatistics convertedStats =
+        ParquetMetadataConverter.fromParquetStatistics(thriftStats, geometryType);
+
+    // Verify conversion from Thrift
+    assertNotNull("Converted GeospatialStatistics should not be null", convertedStats);
+    assertNull("BoundingBox should be null", convertedStats.getBoundingBox());
+    assertNotNull("GeospatialTypes should not be null", convertedStats.getGeospatialTypes());
+  }
+
+  @Test
+  public void testInvalidBoundingBox() {
+    ParquetMetadataConverter converter = new ParquetMetadataConverter();
+
+    // Create an invalid BoundingBox with NaN values
+    org.apache.parquet.column.statistics.geospatial.BoundingBox invalidBbox =
+        new org.apache.parquet.column.statistics.geospatial.BoundingBox(
+            Double.NaN,
+            2.0, // xmin is NaN (invalid)
+            3.0,
+            4.0,
+            5.0,
+            6.0,
+            7.0,
+            8.0);
+
+    org.apache.parquet.column.statistics.geospatial.GeospatialStatistics origStats =
+        new org.apache.parquet.column.statistics.geospatial.GeospatialStatistics(invalidBbox, null);
+
+    // Convert to Thrift format - should return null for invalid bbox
+    GeospatialStatistics thriftStats = converter.toParquetGeospatialStatistics(origStats);
+    assertNull("Should return null for invalid BoundingBox", thriftStats);
+  }
+
+  @Test
+  public void testEdgeInterpolationAlgorithmConversion() {
+    // Test conversion from Parquet to Thrift enum
+    org.apache.parquet.column.schema.EdgeInterpolationAlgorithm parquetAlgo = EdgeInterpolationAlgorithm.SPHERICAL;
+    org.apache.parquet.format.EdgeInterpolationAlgorithm thriftAlgo =
+        ParquetMetadataConverter.fromParquetEdgeInterpolationAlgorithm(parquetAlgo);
+
+    // convert the Thrift enum to the column schema enum
+    org.apache.parquet.column.schema.EdgeInterpolationAlgorithm expected =
+        org.apache.parquet.column.schema.EdgeInterpolationAlgorithm.SPHERICAL;
+    org.apache.parquet.column.schema.EdgeInterpolationAlgorithm actual =
+        ParquetMetadataConverter.toParquetEdgeInterpolationAlgorithm(thriftAlgo);
+    assertEquals(expected, actual);
+
+    // Test with null
+    assertNull(ParquetMetadataConverter.fromParquetEdgeInterpolationAlgorithm(null));
+    assertNull(ParquetMetadataConverter.toParquetEdgeInterpolationAlgorithm(null));
   }
 }

@@ -26,7 +26,11 @@ import com.beust.jcommander.Parameters;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import java.io.IOException;
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import javax.annotation.Nullable;
 import org.apache.commons.text.TextStringBuilder;
 import org.apache.parquet.cli.BaseCommand;
 import org.apache.parquet.column.statistics.SizeStatistics;
@@ -40,12 +44,31 @@ import org.slf4j.Logger;
 @Parameters(commandDescription = "Print size statistics for a Parquet file")
 public class ShowSizeStatisticsCommand extends BaseCommand {
 
+  private static <T> Set<T> filterOrNull(Collection<T> values) {
+    if (values == null || values.isEmpty()) return null;
+    return new HashSet<>(values);
+  }
+
+  private static boolean includesOrAll(@Nullable Set<?> filter, Object value) {
+    return filter == null || filter.contains(value);
+  }
+
   public ShowSizeStatisticsCommand(Logger console) {
     super(console);
   }
 
   @Parameter(description = "<parquet path>")
   List<String> targets;
+
+  @Parameter(
+      names = {"-c", "--column", "--columns"},
+      description = "List of columns (dot paths) to include")
+  List<String> columns;
+
+  @Parameter(
+      names = {"-r", "--row-group", "--row-groups"},
+      description = "List of row-group indexes to include (0-based)")
+  List<Integer> rowGroups;
 
   @Override
   @SuppressWarnings("unchecked")
@@ -60,9 +83,13 @@ public class ShowSizeStatisticsCommand extends BaseCommand {
 
       console.info("\nFile path: {}", source);
 
-      List<BlockMetaData> rowGroups = footer.getBlocks();
-      for (int index = 0, n = rowGroups.size(); index < n; index++) {
-        printRowGroupSizeStats(console, index, rowGroups.get(index), schema);
+      List<BlockMetaData> blocks = footer.getBlocks();
+
+      final Set<Integer> rowGroupFilter = filterOrNull(this.rowGroups);
+
+      for (int i = 0, n = blocks.size(); i < n; i++) {
+        if (!includesOrAll(rowGroupFilter, i)) continue;
+        printRowGroupSizeStats(console, i, blocks.get(i), schema);
         console.info("");
       }
     }
@@ -84,7 +111,11 @@ public class ShowSizeStatisticsCommand extends BaseCommand {
     console.info(
         String.format(formatString, "column", "unencoded bytes", "rep level histogram", "def level histogram"));
 
+    final Set<String> columnFilter = filterOrNull(this.columns);
+
     for (ColumnChunkMetaData column : rowGroup.getColumns()) {
+      String dotPath = column.getPath().toDotString();
+      if (!includesOrAll(columnFilter, dotPath)) continue;
       printColumnSizeStats(console, column, schema, maxColumnWidth);
     }
   }
@@ -111,6 +142,12 @@ public class ShowSizeStatisticsCommand extends BaseCommand {
 
   @Override
   public List<String> getExamples() {
-    return Lists.newArrayList("# Show size statistics for a Parquet file", "sample.parquet");
+    return Lists.newArrayList(
+        "# Show size statistics for a Parquet file",
+        "sample.parquet",
+        "# Show size statistics for selected columns",
+        "sample.parquet -c name,tags",
+        "# Show size statistics for a specific row-group",
+        "sample.parquet -r 0");
   }
 }

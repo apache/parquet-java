@@ -26,6 +26,7 @@ import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.page.PageWriter;
 import org.apache.parquet.column.statistics.SizeStatistics;
 import org.apache.parquet.column.statistics.Statistics;
+import org.apache.parquet.column.statistics.geospatial.GeospatialStatistics;
 import org.apache.parquet.column.values.ValuesWriter;
 import org.apache.parquet.column.values.bloomfilter.BloomFilterWriter;
 
@@ -62,6 +63,7 @@ final class ColumnWriterV1 extends ColumnWriterBase {
       int valueCount,
       Statistics<?> statistics,
       SizeStatistics sizeStatistics,
+      GeospatialStatistics geospatialStatistics,
       ValuesWriter repetitionLevels,
       ValuesWriter definitionLevels,
       ValuesWriter values)
@@ -72,6 +74,7 @@ final class ColumnWriterV1 extends ColumnWriterBase {
         rowCount,
         statistics,
         sizeStatistics,
+        geospatialStatistics,
         repetitionLevels.getEncoding(),
         definitionLevels.getEncoding(),
         values.getEncoding());

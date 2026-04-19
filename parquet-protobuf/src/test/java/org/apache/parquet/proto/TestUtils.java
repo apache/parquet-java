@@ -85,14 +85,14 @@ public class TestUtils {
     List<Message> outputAsMessages = asMessages(output);
     Descriptors.Descriptor messageDescriptor =
         Protobufs.getMessageDescriptor(asMessage(messages[0]).getClass());
-    Descriptors.FileDescriptor.Syntax syntax = messageDescriptor.getFile().getSyntax();
+    String syntax = messageDescriptor.getFile().toProto().getSyntax();
     for (int i = 0; i < messages.length; i++) {
-      if (Descriptors.FileDescriptor.Syntax.PROTO2.equals(syntax)) {
+      if (!"proto3".equals(syntax)) {
         com.google.common.truth.extensions.proto.ProtoTruth.assertThat(outputAsMessages.get(i))
             .ignoringRepeatedFieldOrder()
             .reportingMismatchesOnly()
             .isEqualTo(asMessage(messages[i]));
-      } else if (Descriptors.FileDescriptor.Syntax.PROTO3.equals(syntax)) {
+      } else if ("proto3".equals(syntax)) {
         // proto3 will return default values for absent fields which is what is returned in output
         // this is why we can ignore absent fields here
         com.google.common.truth.extensions.proto.ProtoTruth.assertThat(outputAsMessages.get(i))

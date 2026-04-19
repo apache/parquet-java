@@ -32,10 +32,10 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.eq;
-import static org.mockito.Matchers.isNull;
-import static org.mockito.Matchers.same;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.inOrder;
 
 import java.io.ByteArrayInputStream;
@@ -305,6 +305,7 @@ public class TestColumnChunkPageWriteStore {
               eq(fakeData.size()),
               eq(fakeData.size()),
               eq(fakeStats),
+              any(),
               any(),
               same(ColumnIndexBuilder.getNoOpBuilder()), // Deprecated writePage -> no column index
               same(OffsetIndexBuilder.getNoOpBuilder()), // Deprecated writePage -> no offset index

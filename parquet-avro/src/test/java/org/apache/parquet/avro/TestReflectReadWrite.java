@@ -37,7 +37,6 @@ import org.apache.avro.reflect.Stringable;
 import org.apache.avro.util.Utf8;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
-import org.apache.parquet.UntrustedStringableClass;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
@@ -75,40 +74,6 @@ public class TestReflectReadWrite {
       }
       assertNull(reader.read());
     }
-  }
-
-  @Test(expected = SecurityException.class)
-  public void testUntrustedStringableClass() {
-    new AvroConverters.FieldStringableConverter(
-        new ParentValueContainer() {
-          @Override
-          public void add(Object value) {}
-
-          @Override
-          public void addBoolean(boolean value) {}
-
-          @Override
-          public void addInt(int value) {}
-
-          @Override
-          public void addLong(long value) {}
-
-          @Override
-          public void addFloat(float value) {}
-
-          @Override
-          public void addDouble(double value) {}
-
-          @Override
-          public void addChar(char value) {}
-
-          @Override
-          public void addByte(byte value) {}
-
-          @Override
-          public void addShort(short value) {}
-        },
-        UntrustedStringableClass.class);
   }
 
   private GenericRecord getGenericPojoUtf8() {

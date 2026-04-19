@@ -32,6 +32,12 @@ public class LogicalTypes {
     return LogicalType.DECIMAL(new DecimalType(scale, precision));
   }
 
+  public static LogicalType VARIANT(byte specificationVersion) {
+    VariantType type = new VariantType();
+    type.setSpecification_version(specificationVersion);
+    return LogicalType.VARIANT(type);
+  }
+
   public static final LogicalType UTF8 = LogicalType.STRING(new StringType());
   public static final LogicalType MAP = LogicalType.MAP(new MapType());
   public static final LogicalType LIST = LogicalType.LIST(new ListType());

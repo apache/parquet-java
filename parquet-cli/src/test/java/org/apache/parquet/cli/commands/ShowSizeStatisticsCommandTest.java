@@ -34,4 +34,24 @@ public class ShowSizeStatisticsCommandTest extends ParquetFileTest {
     command.setConf(new Configuration());
     Assert.assertEquals(0, command.run());
   }
+
+  @Test
+  public void testShowSizeStatisticsWithColumnFilter() throws IOException {
+    File file = parquetFile();
+    ShowSizeStatisticsCommand command = new ShowSizeStatisticsCommand(createLogger());
+    command.targets = Arrays.asList(file.getAbsolutePath());
+    command.columns = Arrays.asList(INT32_FIELD, INT64_FIELD);
+    command.setConf(new Configuration());
+    Assert.assertEquals(0, command.run());
+  }
+
+  @Test
+  public void testShowSizeStatisticsWithRowGroupFilter() throws IOException {
+    File file = parquetFile();
+    ShowSizeStatisticsCommand command = new ShowSizeStatisticsCommand(createLogger());
+    command.targets = Arrays.asList(file.getAbsolutePath());
+    command.rowGroups = Arrays.asList(0);
+    command.setConf(new Configuration());
+    Assert.assertEquals(0, command.run());
+  }
 }

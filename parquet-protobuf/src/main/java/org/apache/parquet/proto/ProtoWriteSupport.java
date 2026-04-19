@@ -445,10 +445,13 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
 
     private void writeAllFields(MessageOrBuilder pb) {
       Descriptor messageDescriptor = pb.getDescriptorForType();
-      Descriptors.FileDescriptor.Syntax syntax =
-          messageDescriptor.getFile().getSyntax();
+      String syntax = messageDescriptor.getFile().toProto().getSyntax();
+      if ("editions".equals(syntax)) {
+        throw new UnsupportedOperationException("protocol buffers 'editions' not supported");
+      }
+      boolean isProto2 = !"proto3".equals(syntax);
 
-      if (Descriptors.FileDescriptor.Syntax.PROTO2.equals(syntax)) {
+      if (isProto2) {
         // Returns changed fields with values. Map is ordered by id.
         Map<FieldDescriptor, Object> changedPbFields = pb.getAllFields();
 
@@ -464,7 +467,7 @@ public class ProtoWriteSupport<T extends MessageOrBuilder> extends WriteSupport<
           int fieldIndex = fieldDescriptor.getIndex();
           fieldWriters[fieldIndex].writeField(entry.getValue());
         }
-      } else if (Descriptors.FileDescriptor.Syntax.PROTO3.equals(syntax)) {
+      } else {
         List<FieldDescriptor> fieldDescriptors = messageDescriptor.getFields();
         for (FieldDescriptor fieldDescriptor : fieldDescriptors) {
           FieldDescriptor.Type type = fieldDescriptor.getType();

@@ -37,6 +37,7 @@ import org.apache.avro.reflect.AvroSchema;
 import org.apache.avro.reflect.ReflectData;
 import org.apache.avro.reflect.ReflectDatumReader;
 import org.apache.avro.reflect.Stringable;
+import org.apache.avro.specific.SpecificData;
 import org.apache.avro.specific.SpecificDatumReader;
 import org.apache.avro.util.Utf8;
 import org.apache.hadoop.conf.Configuration;
@@ -177,13 +178,11 @@ public class TestStringBehavior {
     }
 
     org.apache.parquet.avro.StringBehaviorTest parquetRecord;
-    Configuration conf = new Configuration();
-    conf.setBoolean(AvroReadSupport.AVRO_COMPATIBILITY, false);
-    AvroReadSupport.setAvroDataSupplier(conf, SpecificDataSupplier.class);
-    AvroReadSupport.setAvroReadSchema(conf, org.apache.parquet.avro.StringBehaviorTest.getClassSchema());
     try (ParquetReader<org.apache.parquet.avro.StringBehaviorTest> parquet =
         AvroParquetReader.<org.apache.parquet.avro.StringBehaviorTest>builder(parquetFile)
-            .withConf(conf)
+            .withDataModel(SpecificData.get())
+            .withSerializableClasses(BigDecimal.class)
+            .withCompatibility(false)
             .build()) {
       parquetRecord = parquet.read();
     }
@@ -258,6 +257,7 @@ public class TestStringBehavior {
     conf.setBoolean(AvroReadSupport.AVRO_COMPATIBILITY, false);
     AvroReadSupport.setAvroDataSupplier(conf, ReflectDataSupplier.class);
     AvroReadSupport.setAvroReadSchema(conf, reflectSchema);
+    AvroReadSupport.setSerializableClasses(conf, BigDecimal.class);
     try (ParquetReader<ReflectRecord> parquet = AvroParquetReader.<ReflectRecord>builder(parquetFile)
         .withConf(conf)
         .build()) {
@@ -326,6 +326,7 @@ public class TestStringBehavior {
     AvroReadSupport.setAvroDataSupplier(conf, ReflectDataSupplier.class);
     AvroReadSupport.setAvroReadSchema(conf, reflectSchema);
     AvroReadSupport.setRequestedProjection(conf, reflectSchema);
+    AvroReadSupport.setSerializableClasses(conf, BigDecimal.class);
     try (ParquetReader<ReflectRecordJavaClass> parquet = AvroParquetReader.<ReflectRecordJavaClass>builder(
             parquetFile)
         .withConf(conf)
@@ -346,6 +347,52 @@ public class TestStringBehavior {
         BigDecimal.class,
         parquetRecord.stringable_class.getClass());
     Assert.assertEquals("Should have the correct BigDecimal value", BIG_DECIMAL, parquetRecord.stringable_class);
+  }
+
+  @Test(expected = SecurityException.class)
+  public void testSpecificValidationFail() throws IOException {
+    Configuration conf = new Configuration();
+    conf.setBoolean(AvroReadSupport.AVRO_COMPATIBILITY, false);
+    AvroReadSupport.setAvroDataSupplier(conf, SpecificDataSupplier.class);
+    AvroReadSupport.setAvroReadSchema(conf, org.apache.parquet.avro.StringBehaviorTest.getClassSchema());
+    try (ParquetReader<org.apache.parquet.avro.StringBehaviorTest> parquet =
+        AvroParquetReader.<org.apache.parquet.avro.StringBehaviorTest>builder(parquetFile)
+            .withConf(conf)
+            .build()) {
+      parquet.read();
+    }
+  }
+
+  @Test(expected = SecurityException.class)
+  public void testReflectValidationFail() throws IOException {
+    Schema reflectSchema = ReflectData.get().getSchema(ReflectRecord.class);
+
+    Configuration conf = new Configuration();
+    conf.setBoolean(AvroReadSupport.AVRO_COMPATIBILITY, false);
+    AvroReadSupport.setAvroDataSupplier(conf, ReflectDataSupplier.class);
+    AvroReadSupport.setAvroReadSchema(conf, reflectSchema);
+    try (ParquetReader<ReflectRecord> parquet = AvroParquetReader.<ReflectRecord>builder(parquetFile)
+        .withConf(conf)
+        .build()) {
+      parquet.read();
+    }
+  }
+
+  @Test(expected = SecurityException.class)
+  public void testReflectJavaClassValidationFail() throws IOException {
+    Schema reflectSchema = ReflectData.get().getSchema(ReflectRecordJavaClass.class);
+
+    Configuration conf = new Configuration();
+    conf.setBoolean(AvroReadSupport.AVRO_COMPATIBILITY, false);
+    AvroReadSupport.setAvroDataSupplier(conf, ReflectDataSupplier.class);
+    AvroReadSupport.setAvroReadSchema(conf, reflectSchema);
+    AvroReadSupport.setRequestedProjection(conf, reflectSchema);
+    try (ParquetReader<ReflectRecordJavaClass> parquet = AvroParquetReader.<ReflectRecordJavaClass>builder(
+            parquetFile)
+        .withConf(conf)
+        .build()) {
+      parquet.read();
+    }
   }
 
   public static class ReflectRecord {

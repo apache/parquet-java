@@ -27,7 +27,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * There was a bug (PARQUET-251) that caused the statistics metadata
+ * There was a bug (https://github.com/apache/parquet-java/issues/1433) that caused the statistics metadata
  * for binary columns to be corrupted in the write path.
  * <p>
  * This class is used to detect whether a file was written with this bug,
@@ -38,7 +38,7 @@ public class CorruptStatistics {
 
   private static final Logger LOG = LoggerFactory.getLogger(CorruptStatistics.class);
 
-  // the version in which the bug described by jira: PARQUET-251 was fixed
+  // the version in which the bug described by jira: (https://github.com/apache/parquet-java/issues/1433) was fixed
   // the bug involved writing invalid binary statistics, so stats written prior to this
   // fix must be ignored / assumed invalid
   private static final SemanticVersion PARQUET_251_FIXED_VERSION = new SemanticVersion(1, 8, 0);

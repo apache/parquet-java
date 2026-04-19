@@ -26,6 +26,7 @@ import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.statistics.SizeStatistics;
 import org.apache.parquet.column.statistics.Statistics;
+import org.apache.parquet.column.statistics.geospatial.GeospatialStatistics;
 import org.apache.parquet.column.values.bloomfilter.AdaptiveBlockSplitBloomFilter;
 import org.apache.parquet.column.values.bloomfilter.BlockSplitBloomFilter;
 import org.apache.parquet.column.values.bloomfilter.BloomFilter;
@@ -42,6 +43,7 @@ class ColumnValueCollector {
   private BloomFilter bloomFilter;
   private Statistics<?> statistics;
   private SizeStatistics.Builder sizeStatisticsBuilder;
+  private GeospatialStatistics.Builder geospatialStatisticsBuilder;
 
   ColumnValueCollector(ColumnDescriptor path, BloomFilterWriter bloomFilterWriter, ParquetProperties props) {
     this.path = path;
@@ -60,6 +62,9 @@ class ColumnValueCollector {
             path.getPrimitiveType(), path.getMaxRepetitionLevel(), path.getMaxDefinitionLevel())
         : SizeStatistics.noopBuilder(
             path.getPrimitiveType(), path.getMaxRepetitionLevel(), path.getMaxDefinitionLevel());
+    this.geospatialStatisticsBuilder = statisticsEnabled
+        ? GeospatialStatistics.newBuilder(path.getPrimitiveType())
+        : GeospatialStatistics.noopBuilder();
   }
 
   void writeNull(int repetitionLevel, int definitionLevel) {
@@ -99,6 +104,7 @@ class ColumnValueCollector {
   void write(Binary value, int repetitionLevel, int definitionLevel) {
     statistics.updateStats(value);
     sizeStatisticsBuilder.add(repetitionLevel, definitionLevel, value);
+    geospatialStatisticsBuilder.update(value);
     bloomFilter.insertHash(bloomFilter.hash(value));
   }
 
@@ -198,5 +204,9 @@ class ColumnValueCollector {
 
   SizeStatistics getSizeStatistics() {
     return sizeStatisticsBuilder.build();
+  }
+
+  GeospatialStatistics getGeospatialStatistics() {
+    return geospatialStatisticsBuilder.build();
   }
 }

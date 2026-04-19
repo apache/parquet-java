@@ -43,7 +43,6 @@ import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.EncodingStats;
 import org.apache.parquet.column.statistics.Statistics;
-import org.apache.parquet.format.converter.ParquetMetadataConverter;
 import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
@@ -70,32 +69,33 @@ public class ParquetMetadataCommand extends BaseCommand {
     Preconditions.checkArgument(targets.size() == 1, "Cannot process multiple Parquet files.");
 
     String source = targets.get(0);
-    ParquetMetadata footer =
-        ParquetFileReader.readFooter(getConf(), qualifiedPath(source), ParquetMetadataConverter.NO_FILTER);
+    try (ParquetFileReader reader = createParquetFileReader(source)) {
+      ParquetMetadata footer = reader.getFooter();
 
-    console.info("\nFile path:  {}", source);
-    console.info("Created by: {}", footer.getFileMetaData().getCreatedBy());
+      console.info("\nFile path:  {}", source);
+      console.info("Created by: {}", footer.getFileMetaData().getCreatedBy());
 
-    Map<String, String> kv = footer.getFileMetaData().getKeyValueMetaData();
-    if (kv != null && !kv.isEmpty()) {
-      console.info("Properties:");
-      String format = "  %" + maxSize(kv.keySet()) + "s: %s";
-      for (Map.Entry<String, String> entry : kv.entrySet()) {
-        console.info(String.format(format, entry.getKey(), entry.getValue()));
+      Map<String, String> kv = footer.getFileMetaData().getKeyValueMetaData();
+      if (kv != null && !kv.isEmpty()) {
+        console.info("Properties:");
+        String format = "  %" + maxSize(kv.keySet()) + "s: %s";
+        for (Map.Entry<String, String> entry : kv.entrySet()) {
+          console.info(String.format(format, entry.getKey(), entry.getValue()));
+        }
+      } else {
+        console.info("Properties: (none)");
       }
-    } else {
-      console.info("Properties: (none)");
+
+      MessageType schema = footer.getFileMetaData().getSchema();
+      console.info("Schema:\n{}", schema);
+
+      List<BlockMetaData> rowGroups = footer.getBlocks();
+      for (int index = 0, n = rowGroups.size(); index < n; index += 1) {
+        printRowGroup(console, index, rowGroups.get(index), schema);
+      }
+
+      console.info("");
     }
-
-    MessageType schema = footer.getFileMetaData().getSchema();
-    console.info("Schema:\n{}", schema);
-
-    List<BlockMetaData> rowGroups = footer.getBlocks();
-    for (int index = 0, n = rowGroups.size(); index < n; index += 1) {
-      printRowGroup(console, index, rowGroups.get(index), schema);
-    }
-
-    console.info("");
 
     return 0;
   }

@@ -18,7 +18,6 @@
  */
 package org.apache.parquet.schema;
 
-import static java.util.Arrays.asList;
 import static java.util.Optional.empty;
 import static org.apache.parquet.schema.ColumnOrder.ColumnOrderName.TYPE_DEFINED_ORDER;
 import static org.apache.parquet.schema.ColumnOrder.ColumnOrderName.UNDEFINED;
@@ -33,16 +32,19 @@ import static org.apache.parquet.schema.PrimitiveStringifier.TIME_NANOS_UTC_STRI
 import static org.apache.parquet.schema.PrimitiveStringifier.TIME_STRINGIFIER;
 import static org.apache.parquet.schema.PrimitiveStringifier.TIME_UTC_STRINGIFIER;
 
-import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Supplier;
 import org.apache.parquet.Preconditions;
+import org.apache.parquet.column.schema.EdgeInterpolationAlgorithm;
 
 public abstract class LogicalTypeAnnotation {
+
+  public static final String DEFAULT_CRS = "OGC:CRS84";
+  public static final EdgeInterpolationAlgorithm DEFAULT_ALGO = EdgeInterpolationAlgorithm.SPHERICAL;
+
   enum LogicalTypeToken {
     MAP {
       @Override
@@ -54,6 +56,14 @@ public abstract class LogicalTypeAnnotation {
       @Override
       protected LogicalTypeAnnotation fromString(List<String> params) {
         return listType();
+      }
+    },
+    VARIANT {
+      @Override
+      protected LogicalTypeAnnotation fromString(List<String> params) {
+        Preconditions.checkArgument(
+            params.size() == 1, "Expecting only spec version for variant annotation args: %s", params);
+        return variantType(Byte.parseByte(params.get(0)));
       }
     },
     STRING {
@@ -145,6 +155,31 @@ public abstract class LogicalTypeAnnotation {
       @Override
       protected LogicalTypeAnnotation fromString(List<String> params) {
         return float16Type();
+      }
+    },
+    GEOMETRY {
+      @Override
+      protected LogicalTypeAnnotation fromString(List<String> params) {
+        if (params.size() > 1) {
+          throw new RuntimeException(
+              "Expecting at most 1 parameter for geometry logical type, got " + params.size());
+        }
+        String crs = params.isEmpty() ? null : params.get(0);
+        return geometryType(crs);
+      }
+    },
+    GEOGRAPHY {
+      @Override
+      protected LogicalTypeAnnotation fromString(List<String> params) {
+        if (params.size() > 2) {
+          throw new RuntimeException(
+              "Expecting at most 2 parameters for geography logical type (crs and edge algorithm), got "
+                  + params.size());
+        }
+        String crs = !params.isEmpty() ? params.get(0) : null;
+        EdgeInterpolationAlgorithm algo =
+            params.size() > 1 ? EdgeInterpolationAlgorithm.valueOf(params.get(1)) : null;
+        return geographyType(crs, algo);
       }
     },
     UNKNOWN {
@@ -269,6 +304,10 @@ public abstract class LogicalTypeAnnotation {
     return ListLogicalTypeAnnotation.INSTANCE;
   }
 
+  public static VariantLogicalTypeAnnotation variantType(byte specVersion) {
+    return new VariantLogicalTypeAnnotation(specVersion);
+  }
+
   public static EnumLogicalTypeAnnotation enumType() {
     return EnumLogicalTypeAnnotation.INSTANCE;
   }
@@ -320,6 +359,18 @@ public abstract class LogicalTypeAnnotation {
 
   public static Float16LogicalTypeAnnotation float16Type() {
     return Float16LogicalTypeAnnotation.INSTANCE;
+  }
+
+  public static GeometryLogicalTypeAnnotation geometryType(String crs) {
+    return new GeometryLogicalTypeAnnotation(crs);
+  }
+
+  public static GeographyLogicalTypeAnnotation geographyType(String crs, EdgeInterpolationAlgorithm edgeAlgorithm) {
+    return new GeographyLogicalTypeAnnotation(crs, edgeAlgorithm);
+  }
+
+  public static GeographyLogicalTypeAnnotation geographyType() {
+    return new GeographyLogicalTypeAnnotation(null, null);
   }
 
   public static UnknownLogicalTypeAnnotation unknownType() {
@@ -768,8 +819,7 @@ public abstract class LogicalTypeAnnotation {
   }
 
   public static class IntLogicalTypeAnnotation extends LogicalTypeAnnotation {
-    private static final Set<Integer> VALID_BIT_WIDTH =
-        Collections.unmodifiableSet(new HashSet<>(asList(8, 16, 32, 64)));
+    private static final Set<Integer> VALID_BIT_WIDTH = Set.of(8, 16, 32, 64);
 
     private final int bitWidth;
     private final boolean isSigned;
@@ -1128,6 +1178,167 @@ public abstract class LogicalTypeAnnotation {
     }
   }
 
+  public static class VariantLogicalTypeAnnotation extends LogicalTypeAnnotation {
+    private byte specVersion;
+
+    private VariantLogicalTypeAnnotation(byte specVersion) {
+      this.specVersion = specVersion;
+    }
+
+    @Override
+    public OriginalType toOriginalType() {
+      // No OriginalType for Variant
+      return null;
+    }
+
+    @Override
+    public <T> Optional<T> accept(LogicalTypeAnnotationVisitor<T> logicalTypeAnnotationVisitor) {
+      return logicalTypeAnnotationVisitor.visit(this);
+    }
+
+    @Override
+    LogicalTypeToken getType() {
+      return LogicalTypeToken.VARIANT;
+    }
+
+    public byte getSpecVersion() {
+      return this.specVersion;
+    }
+
+    @Override
+    protected String typeParametersAsString() {
+      return "(" + specVersion + ")";
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      if (!(obj instanceof VariantLogicalTypeAnnotation)) {
+        return false;
+      }
+
+      VariantLogicalTypeAnnotation other = (VariantLogicalTypeAnnotation) obj;
+      return specVersion == other.specVersion;
+    }
+  }
+
+  public static class GeometryLogicalTypeAnnotation extends LogicalTypeAnnotation {
+    private final String crs;
+
+    private GeometryLogicalTypeAnnotation(String crs) {
+      this.crs = crs;
+    }
+
+    @Override
+    @Deprecated
+    public OriginalType toOriginalType() {
+      return null;
+    }
+
+    @Override
+    public <T> Optional<T> accept(LogicalTypeAnnotationVisitor<T> logicalTypeAnnotationVisitor) {
+      return logicalTypeAnnotationVisitor.visit(this);
+    }
+
+    @Override
+    LogicalTypeToken getType() {
+      return LogicalTypeToken.GEOMETRY;
+    }
+
+    @Override
+    protected String typeParametersAsString() {
+      if (crs == null || crs.isEmpty()) {
+        return "";
+      }
+      return String.format("(%s)", crs);
+    }
+
+    public String getCrs() {
+      return crs;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      if (!(obj instanceof GeometryLogicalTypeAnnotation)) {
+        return false;
+      }
+      GeometryLogicalTypeAnnotation other = (GeometryLogicalTypeAnnotation) obj;
+      return Objects.equals(crs, other.crs);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(crs);
+    }
+
+    @Override
+    PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
+      return PrimitiveStringifier.WKB_STRINGIFIER;
+    }
+  }
+
+  public static class GeographyLogicalTypeAnnotation extends LogicalTypeAnnotation {
+    private final String crs;
+    private final EdgeInterpolationAlgorithm algorithm;
+
+    private GeographyLogicalTypeAnnotation(String crs, EdgeInterpolationAlgorithm algorithm) {
+      this.crs = crs;
+      this.algorithm = algorithm;
+    }
+
+    @Override
+    @Deprecated
+    public OriginalType toOriginalType() {
+      return null;
+    }
+
+    @Override
+    public <T> Optional<T> accept(LogicalTypeAnnotationVisitor<T> logicalTypeAnnotationVisitor) {
+      return logicalTypeAnnotationVisitor.visit(this);
+    }
+
+    @Override
+    LogicalTypeToken getType() {
+      return LogicalTypeToken.GEOGRAPHY;
+    }
+
+    @Override
+    protected String typeParametersAsString() {
+      boolean hasCrs = crs != null && !crs.isEmpty();
+      boolean hasAlgo = algorithm != null;
+      if (!hasCrs && !hasAlgo) {
+        return "";
+      }
+      return String.format("(%s,%s)", hasCrs ? crs : DEFAULT_CRS, hasAlgo ? algorithm : DEFAULT_ALGO);
+    }
+
+    public String getCrs() {
+      return crs;
+    }
+
+    public EdgeInterpolationAlgorithm getAlgorithm() {
+      return algorithm;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      if (!(obj instanceof GeographyLogicalTypeAnnotation)) {
+        return false;
+      }
+      GeographyLogicalTypeAnnotation other = (GeographyLogicalTypeAnnotation) obj;
+      return Objects.equals(crs, other.crs) && Objects.equals(algorithm, other.algorithm);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(crs, algorithm);
+    }
+
+    @Override
+    PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
+      return PrimitiveStringifier.WKB_STRINGIFIER;
+    }
+  }
+
   /**
    * Implement this interface to visit a logical type annotation in the schema.
    * The default implementation for each logical type specific visitor method is empty.
@@ -1149,6 +1360,10 @@ public abstract class LogicalTypeAnnotation {
     }
 
     default Optional<T> visit(ListLogicalTypeAnnotation listLogicalType) {
+      return empty();
+    }
+
+    default Optional<T> visit(VariantLogicalTypeAnnotation variantLogicalType) {
       return empty();
     }
 
@@ -1197,6 +1412,14 @@ public abstract class LogicalTypeAnnotation {
     }
 
     default Optional<T> visit(Float16LogicalTypeAnnotation float16LogicalType) {
+      return empty();
+    }
+
+    default Optional<T> visit(GeometryLogicalTypeAnnotation geometryLogicalType) {
+      return empty();
+    }
+
+    default Optional<T> visit(GeographyLogicalTypeAnnotation geographyLogicalType) {
       return empty();
     }
 

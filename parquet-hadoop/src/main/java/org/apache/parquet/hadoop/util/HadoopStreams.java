@@ -27,7 +27,6 @@ import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.parquet.io.PositionOutputStream;
 import org.apache.parquet.io.SeekableInputStream;
-import org.apache.parquet.util.DynMethods;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,11 +36,6 @@ import org.slf4j.LoggerFactory;
 public class HadoopStreams {
 
   private static final Logger LOG = LoggerFactory.getLogger(HadoopStreams.class);
-
-  private static final DynMethods.UnboundMethod hasCapabilitiesMethod = new DynMethods.Builder("hasCapabilities")
-      .impl(FSDataInputStream.class, "hasCapabilities", String.class)
-      .orNoop()
-      .build();
 
   /**
    * Wraps a {@link FSDataInputStream} in a {@link SeekableInputStream}
@@ -111,12 +105,7 @@ public class HadoopStreams {
    * the data, null when it cannot be determined because of missing hasCapabilities
    */
   private static Boolean isWrappedStreamByteBufferReadable(FSDataInputStream stream) {
-    if (hasCapabilitiesMethod.isNoop()) {
-      // When the method is not available, just return a null
-      return null;
-    }
-
-    boolean isByteBufferReadable = hasCapabilitiesMethod.invoke(stream, "in:readbytebuffer");
+    boolean isByteBufferReadable = stream.hasCapability("in:readbytebuffer");
 
     if (isByteBufferReadable) {
       // stream is issuing the guarantee that it implements the

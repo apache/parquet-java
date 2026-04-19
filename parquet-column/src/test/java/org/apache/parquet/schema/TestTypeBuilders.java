@@ -50,10 +50,12 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT96;
 import static org.apache.parquet.schema.Type.Repetition.OPTIONAL;
 import static org.apache.parquet.schema.Type.Repetition.REPEATED;
 import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
+import static org.junit.Assert.assertEquals;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
+import org.apache.parquet.column.schema.EdgeInterpolationAlgorithm;
 import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 import org.apache.parquet.schema.Type.Repetition;
 import org.junit.Assert;
@@ -1414,6 +1416,52 @@ public class TestTypeBuilders {
     Assert.assertEquals(nonUtcMicrosExpected, nonUtcMicrosActual);
   }
 
+  @Test
+  public void testVariantLogicalType() {
+    byte specVersion = 1;
+    String name = "variant_field";
+    GroupType variantExpected = new GroupType(
+        REQUIRED,
+        name,
+        LogicalTypeAnnotation.variantType(specVersion),
+        new PrimitiveType(REQUIRED, BINARY, "metadata"),
+        new PrimitiveType(REQUIRED, BINARY, "value"));
+
+    GroupType variantActual = Types.buildGroup(REQUIRED)
+        .addFields(
+            Types.required(BINARY).named("metadata"),
+            Types.required(BINARY).named("value"))
+        .as(LogicalTypeAnnotation.variantType(specVersion))
+        .named(name);
+
+    assertEquals(variantExpected, variantActual);
+  }
+
+  @Test
+  public void testVariantLogicalTypeWithShredded() {
+    byte specVersion = 1;
+    String name = "variant_field";
+    GroupType variantExpected = new GroupType(
+        REQUIRED,
+        name,
+        LogicalTypeAnnotation.variantType(specVersion),
+        new PrimitiveType(REQUIRED, BINARY, "metadata"),
+        new PrimitiveType(OPTIONAL, BINARY, "value"),
+        new PrimitiveType(OPTIONAL, BINARY, "typed_value", LogicalTypeAnnotation.stringType()));
+
+    GroupType variantActual = Types.buildGroup(REQUIRED)
+        .addFields(
+            Types.required(BINARY).named("metadata"),
+            Types.optional(BINARY).named("value"),
+            Types.optional(BINARY)
+                .as(LogicalTypeAnnotation.stringType())
+                .named("typed_value"))
+        .as(LogicalTypeAnnotation.variantType(specVersion))
+        .named(name);
+
+    assertEquals(variantExpected, variantActual);
+  }
+
   @Test(expected = IllegalArgumentException.class)
   public void testDecimalLogicalTypeWithDeprecatedScaleMismatch() {
     Types.required(BINARY)
@@ -1428,6 +1476,102 @@ public class TestTypeBuilders {
         .as(LogicalTypeAnnotation.decimalType(3, 4))
         .precision(5)
         .named("aDecimal");
+  }
+
+  @Test
+  public void testGeometryLogicalType() {
+    // Test with default CRS
+    PrimitiveType defaultCrsExpected =
+        new PrimitiveType(REQUIRED, BINARY, "aGeometry", LogicalTypeAnnotation.geometryType("OGC:CRS84"));
+    PrimitiveType defaultCrsActual = Types.required(BINARY)
+        .as(LogicalTypeAnnotation.geometryType("OGC:CRS84"))
+        .named("aGeometry");
+    Assert.assertEquals(defaultCrsExpected, defaultCrsActual);
+
+    // Test with custom CRS
+    PrimitiveType customCrsExpected =
+        new PrimitiveType(REQUIRED, BINARY, "aGeometry", LogicalTypeAnnotation.geometryType("EPSG:4326"));
+    PrimitiveType customCrsActual = Types.required(BINARY)
+        .as(LogicalTypeAnnotation.geometryType("EPSG:4326"))
+        .named("aGeometry");
+    Assert.assertEquals(customCrsExpected, customCrsActual);
+
+    // Test with optional repetition
+    PrimitiveType optionalGeometryExpected =
+        new PrimitiveType(OPTIONAL, BINARY, "aGeometry", LogicalTypeAnnotation.geometryType("OGC:CRS84"));
+    PrimitiveType optionalGeometryActual = Types.optional(BINARY)
+        .as(LogicalTypeAnnotation.geometryType("OGC:CRS84"))
+        .named("aGeometry");
+    Assert.assertEquals(optionalGeometryExpected, optionalGeometryActual);
+  }
+
+  @Test
+  public void testGeographyLogicalType() {
+    // Test with default CRS and no edge algorithm
+    PrimitiveType defaultCrsExpected = new PrimitiveType(
+        REQUIRED, BINARY, "aGeography", LogicalTypeAnnotation.geographyType("OGC:CRS84", null));
+    PrimitiveType defaultCrsActual = Types.required(BINARY)
+        .as(LogicalTypeAnnotation.geographyType("OGC:CRS84", null))
+        .named("aGeography");
+    Assert.assertEquals(defaultCrsExpected, defaultCrsActual);
+
+    // Test with custom CRS and no edge algorithm
+    PrimitiveType customCrsExpected = new PrimitiveType(
+        REQUIRED, BINARY, "aGeography", LogicalTypeAnnotation.geographyType("EPSG:4326", null));
+    PrimitiveType customCrsActual = Types.required(BINARY)
+        .as(LogicalTypeAnnotation.geographyType("EPSG:4326", null))
+        .named("aGeography");
+    Assert.assertEquals(customCrsExpected, customCrsActual);
+
+    // Test with custom CRS and edge algorithm
+    EdgeInterpolationAlgorithm greatCircle = EdgeInterpolationAlgorithm.SPHERICAL;
+    PrimitiveType customCrsWithEdgeAlgorithmExpected = new PrimitiveType(
+        REQUIRED, BINARY, "aGeography", LogicalTypeAnnotation.geographyType("EPSG:4326", greatCircle));
+    PrimitiveType customCrsWithEdgeAlgorithmActual = Types.required(BINARY)
+        .as(LogicalTypeAnnotation.geographyType("EPSG:4326", greatCircle))
+        .named("aGeography");
+    Assert.assertEquals(customCrsWithEdgeAlgorithmExpected, customCrsWithEdgeAlgorithmActual);
+
+    // Test with optional repetition
+    PrimitiveType optionalGeographyExpected = new PrimitiveType(
+        OPTIONAL, BINARY, "aGeography", LogicalTypeAnnotation.geographyType("OGC:CRS84", null));
+    PrimitiveType optionalGeographyActual = Types.optional(BINARY)
+        .as(LogicalTypeAnnotation.geographyType("OGC:CRS84", null))
+        .named("aGeography");
+    Assert.assertEquals(optionalGeographyExpected, optionalGeographyActual);
+  }
+
+  @Test
+  public void testGeographyLogicalTypeWithoutEdgeInterpolationAlgorithm() {
+    // Test with default CRS and no edge algorithm
+    PrimitiveType defaultCrsExpected =
+        new PrimitiveType(REQUIRED, BINARY, "aGeography", LogicalTypeAnnotation.geographyType());
+    PrimitiveType defaultCrsActual =
+        Types.required(BINARY).as(LogicalTypeAnnotation.geographyType()).named("aGeography");
+    Assert.assertEquals(defaultCrsExpected, defaultCrsActual);
+
+    // Test with custom CRS and no edge algorithm
+    PrimitiveType customCrsExpected = new PrimitiveType(
+        REQUIRED, BINARY, "aGeography", LogicalTypeAnnotation.geographyType("EPSG:4326", null));
+    PrimitiveType customCrsActual = Types.required(BINARY)
+        .as(LogicalTypeAnnotation.geographyType("EPSG:4326", null))
+        .named("aGeography");
+    Assert.assertEquals(customCrsExpected, customCrsActual);
+
+    // Test with custom CRS and edge algorithm
+    PrimitiveType customCrsWithEdgeAlgorithmExpected = new PrimitiveType(
+        REQUIRED, BINARY, "aGeography", LogicalTypeAnnotation.geographyType("EPSG:4326", null));
+    PrimitiveType customCrsWithEdgeAlgorithmActual = Types.required(BINARY)
+        .as(LogicalTypeAnnotation.geographyType("EPSG:4326", null))
+        .named("aGeography");
+    Assert.assertEquals(customCrsWithEdgeAlgorithmExpected, customCrsWithEdgeAlgorithmActual);
+
+    // Test with optional repetition
+    PrimitiveType optionalGeographyExpected =
+        new PrimitiveType(OPTIONAL, BINARY, "aGeography", LogicalTypeAnnotation.geographyType());
+    PrimitiveType optionalGeographyActual =
+        Types.optional(BINARY).as(LogicalTypeAnnotation.geographyType()).named("aGeography");
+    Assert.assertEquals(optionalGeographyExpected, optionalGeographyActual);
   }
 
   /**

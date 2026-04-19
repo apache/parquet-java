@@ -412,6 +412,25 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
   /**
    * converts Binary into Enum
    */
+  static class FieldUUIDConverter extends PrimitiveConverter {
+
+    private final List<TProtocol> events;
+
+    public FieldUUIDConverter(List<TProtocol> events, ThriftField field) {
+      this.events = events;
+    }
+
+    @Override
+    public void addBinary(final Binary value) {
+      events.add(new ParquetProtocol("readBinary() uuid") {
+        @Override
+        public ByteBuffer readBinary() throws TException {
+          return ByteBuffer.wrap(value.getBytes());
+        }
+      });
+    }
+  }
+
   static class FieldEnumConverter extends PrimitiveConverter {
 
     private final List<TProtocol> events;
@@ -960,6 +979,8 @@ public class ThriftRecordConverter<T> extends RecordMaterializer<T> {
         return new FieldStringConverter(events, field);
       case ENUM:
         return new FieldEnumConverter(events, field);
+      case UUID:
+        return new FieldUUIDConverter(events, field);
       default:
         return new FieldPrimitiveConverter(events, field);
     }

@@ -36,6 +36,8 @@ import java.util.Random;
 import java.util.zip.CRC32;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
+import org.apache.parquet.HadoopReadOptions;
+import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.HeapByteBufferAllocator;
 import org.apache.parquet.bytes.TrackingByteBufferAllocator;
@@ -318,7 +320,7 @@ public class TestDataPageChecksums {
 
     Path path = writeSimpleParquetFile(conf, CompressionCodecName.UNCOMPRESSED, version);
 
-    try (ParquetFileReader reader = getParquetFileReader(path, conf, Arrays.asList(colADesc, colBDesc))) {
+    try (ParquetFileReader reader = getParquetFileReader(path, conf, List.of(colADesc, colBDesc))) {
       PageReadStore pageReadStore = reader.readNextRowGroup();
 
       DataPage colAPage1 = readNextPage(colADesc, pageReadStore);
@@ -359,7 +361,7 @@ public class TestDataPageChecksums {
 
     Path path = writeSimpleParquetFile(conf, CompressionCodecName.UNCOMPRESSED, version);
 
-    try (ParquetFileReader reader = getParquetFileReader(path, conf, Arrays.asList(colADesc, colBDesc))) {
+    try (ParquetFileReader reader = getParquetFileReader(path, conf, List.of(colADesc, colBDesc))) {
       PageReadStore pageReadStore = reader.readNextRowGroup();
 
       assertCrcNotSet(readNextPage(colADesc, pageReadStore));
@@ -390,7 +392,7 @@ public class TestDataPageChecksums {
 
     Path path = writeSimpleParquetFile(conf, CompressionCodecName.UNCOMPRESSED, version);
 
-    try (ParquetFileReader reader = getParquetFileReader(path, conf, Arrays.asList(colADesc, colBDesc))) {
+    try (ParquetFileReader reader = getParquetFileReader(path, conf, List.of(colADesc, colBDesc))) {
       PageReadStore pageReadStore = reader.readNextRowGroup();
 
       assertCorrectContent(getPageBytes(readNextPage(colADesc, pageReadStore)), colAPage1Bytes);
@@ -421,7 +423,7 @@ public class TestDataPageChecksums {
 
     Path path = writeSimpleParquetFile(conf, CompressionCodecName.UNCOMPRESSED, version);
 
-    try (ParquetFileReader reader = getParquetFileReader(path, conf, Arrays.asList(colADesc, colBDesc))) {
+    try (ParquetFileReader reader = getParquetFileReader(path, conf, List.of(colADesc, colBDesc))) {
       PageReadStore pageReadStore = reader.readNextRowGroup();
 
       DataPage colAPage1 = readNextPage(colADesc, pageReadStore);
@@ -482,7 +484,7 @@ public class TestDataPageChecksums {
         // First we disable checksum verification, the corruption will go undetected as it is in the
         // data section of the page
         conf.setBoolean(ParquetInputFormat.PAGE_VERIFY_CHECKSUM_ENABLED, false);
-        try (ParquetFileReader reader = getParquetFileReader(path, conf, Arrays.asList(colADesc, colBDesc))) {
+        try (ParquetFileReader reader = getParquetFileReader(path, conf, List.of(colADesc, colBDesc))) {
           PageReadStore pageReadStore = reader.readNextRowGroup();
 
           DataPage colAPage1 = readNextPage(colADesc, pageReadStore);
@@ -497,7 +499,7 @@ public class TestDataPageChecksums {
 
         // Now we enable checksum verification, the corruption should be detected
         conf.setBoolean(ParquetInputFormat.PAGE_VERIFY_CHECKSUM_ENABLED, true);
-        try (ParquetFileReader reader = getParquetFileReader(path, conf, Arrays.asList(colADesc, colBDesc))) {
+        try (ParquetFileReader reader = getParquetFileReader(path, conf, List.of(colADesc, colBDesc))) {
           // We expect an exception on the first encountered corrupt page (in readAllPages)
           assertVerificationFailed(reader);
         }
@@ -526,7 +528,7 @@ public class TestDataPageChecksums {
 
     Path path = writeSimpleParquetFile(conf, CompressionCodecName.SNAPPY, version);
 
-    try (ParquetFileReader reader = getParquetFileReader(path, conf, Arrays.asList(colADesc, colBDesc))) {
+    try (ParquetFileReader reader = getParquetFileReader(path, conf, List.of(colADesc, colBDesc))) {
       PageReadStore pageReadStore = reader.readNextRowGroup();
 
       DataPage colAPage1 = readNextPage(colADesc, pageReadStore);
@@ -572,8 +574,7 @@ public class TestDataPageChecksums {
     conf.setBoolean(ParquetInputFormat.PAGE_VERIFY_CHECKSUM_ENABLED, false);
     Path refPath = writeNestedWithNullsSampleParquetFile(conf, false, CompressionCodecName.SNAPPY, version);
 
-    try (ParquetFileReader refReader =
-        getParquetFileReader(refPath, conf, Arrays.asList(colCIdDesc, colDValDesc))) {
+    try (ParquetFileReader refReader = getParquetFileReader(refPath, conf, List.of(colCIdDesc, colDValDesc))) {
       PageReadStore refPageReadStore = refReader.readNextRowGroup();
       byte[] colCIdPageBytes = getPageBytes(readNextPage(colCIdDesc, refPageReadStore));
       byte[] colDValPageBytes = getPageBytes(readNextPage(colDValDesc, refPageReadStore));
@@ -583,7 +584,7 @@ public class TestDataPageChecksums {
       conf.setBoolean(ParquetInputFormat.PAGE_VERIFY_CHECKSUM_ENABLED, true);
       Path path = writeNestedWithNullsSampleParquetFile(conf, false, CompressionCodecName.SNAPPY, version);
 
-      try (ParquetFileReader reader = getParquetFileReader(path, conf, Arrays.asList(colCIdDesc, colDValDesc))) {
+      try (ParquetFileReader reader = getParquetFileReader(path, conf, List.of(colCIdDesc, colDValDesc))) {
         PageReadStore pageReadStore = reader.readNextRowGroup();
 
         DataPage colCIdPage = readNextPage(colCIdDesc, pageReadStore);
@@ -688,8 +689,13 @@ public class TestDataPageChecksums {
    */
   private ParquetFileReader getParquetFileReader(Path path, Configuration conf, List<ColumnDescriptor> columns)
       throws IOException {
-    ParquetMetadata footer = ParquetFileReader.readFooter(conf, path);
-    return new ParquetFileReader(conf, footer.getFileMetaData(), path, footer.getBlocks(), columns);
+    HadoopInputFile inputFile = HadoopInputFile.fromPath(path, conf);
+    SeekableInputStream inputStream = inputFile.newStream();
+    ParquetReadOptions readOptions = HadoopReadOptions.builder(conf).build();
+    ParquetMetadata footer = ParquetFileReader.readFooter(inputFile, readOptions, inputStream);
+    ParquetFileReader reader = ParquetFileReader.open(inputFile, footer, readOptions, inputStream);
+    reader.setRequestedSchema(columns);
+    return reader;
   }
 
   /**

@@ -22,7 +22,6 @@ import static org.junit.Assert.assertEquals;
 
 import java.io.ByteArrayInputStream;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.bytes.DirectByteBufferAllocator;
@@ -187,7 +186,7 @@ public class TestRunLengthBitPackingHybridEncoder {
     assertEquals(3, BytesUtils.readUnsignedVarInt(is));
 
     List<Integer> values = unpack(3, 8, is);
-    assertEquals(Arrays.asList(0, 1, 0, 1, 0, 2, 2, 2), values);
+    assertEquals(List.of(0, 1, 0, 1, 0, 2, 2, 2), values);
 
     // header = 100 << 1 = 200
     assertEquals(200, BytesUtils.readUnsignedVarInt(is));
@@ -212,7 +211,7 @@ public class TestRunLengthBitPackingHybridEncoder {
 
     List<Integer> values = unpack(5, 16, is);
 
-    assertEquals(Arrays.asList(1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 0, 0, 0, 0, 0, 0), values);
+    assertEquals(List.of(1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 0, 0, 0, 0, 0, 0), values);
 
     assertEquals(-1, is.read());
   }

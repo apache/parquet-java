@@ -18,6 +18,9 @@
  */
 package org.apache.parquet.hadoop;
 
+import static org.apache.parquet.hadoop.ParquetFileReaderMetrics.PagesIncluded;
+import static org.apache.parquet.hadoop.ParquetFileReaderMetrics.PagesSkipped;
+
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntList;
 import java.util.ArrayList;
@@ -129,14 +132,30 @@ class ColumnIndexFilterUtils {
   /*
    * Returns the filtered offset index containing only the pages which are overlapping with rowRanges.
    */
-  static OffsetIndex filterOffsetIndex(OffsetIndex offsetIndex, RowRanges rowRanges, long totalRowCount) {
+  static OffsetIndex filterOffsetIndex(
+      OffsetIndex offsetIndex,
+      RowRanges rowRanges,
+      long totalRowCount,
+      org.apache.parquet.ParquetReadOptions options) {
     IntList indexMap = new IntArrayList();
+    int pagesIncluded = 0;
+    int pagesSkipped = 0;
     for (int i = 0, n = offsetIndex.getPageCount(); i < n; ++i) {
       long from = offsetIndex.getFirstRowIndex(i);
       if (rowRanges.isOverlapping(from, offsetIndex.getLastRowIndex(i, totalRowCount))) {
         indexMap.add(i);
+        pagesIncluded++;
+      } else {
+        pagesSkipped++;
       }
     }
+
+    if (options != null && options.getMetricsCallback() != null) {
+      final ParquetMetricsCallback metricsCallback = options.getMetricsCallback();
+      metricsCallback.setValueInt(PagesIncluded.name(), pagesIncluded);
+      metricsCallback.setValueInt(PagesSkipped.name(), pagesSkipped);
+    }
+
     return new FilteredOffsetIndex(offsetIndex, indexMap.toIntArray());
   }
 

@@ -27,12 +27,14 @@ import com.google.common.collect.Lists;
 import com.google.common.io.Closeables;
 import java.io.Closeable;
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import org.apache.avro.Schema;
+import org.apache.avro.SchemaParseException;
 import org.apache.parquet.cli.BaseCommand;
 import org.apache.parquet.cli.util.Expressions;
+import org.apache.parquet.example.data.Group;
+import org.apache.parquet.hadoop.ParquetReader;
+import org.apache.parquet.hadoop.example.GroupReadSupport;
 import org.slf4j.Logger;
 
 @Parameters(commandDescription = "Print the first N records from a file")
@@ -60,41 +62,90 @@ public class CatCommand extends BaseCommand {
   public int run() throws IOException {
     Preconditions.checkArgument(sourceFiles != null && !sourceFiles.isEmpty(), "Missing file name");
 
-    // Ensure all source files have the columns specified first
-    Map<String, Schema> schemas = new HashMap<>();
     for (String source : sourceFiles) {
-      Schema schema = getAvroSchema(source);
-      schemas.put(source, Expressions.filterSchema(schema, columns));
-    }
-
-    for (String source : sourceFiles) {
-      Schema projection = schemas.get(source);
-      Iterable<Object> reader = openDataFile(source, projection);
-      boolean threw = true;
-      long count = 0;
       try {
-        for (Object record : reader) {
-          if (numRecords > 0 && count >= numRecords) {
-            break;
-          }
-          if (columns == null || columns.size() != 1) {
-            console.info(String.valueOf(record));
-          } else {
-            console.info(String.valueOf(select(projection, record, columns.get(0))));
-          }
-          count += 1;
-        }
-        threw = false;
-      } catch (RuntimeException e) {
-        throw new RuntimeException("Failed on record " + count + " in file " + source, e);
-      } finally {
-        if (reader instanceof Closeable) {
-          Closeables.close((Closeable) reader, threw);
-        }
+        runWithAvroSchema(source);
+      } catch (SchemaParseException e) {
+        console.debug(
+            "Avro schema conversion failed for {}, falling back to Group reader: {}",
+            source,
+            e.getMessage());
+        runWithGroupReader(source);
       }
     }
 
     return 0;
+  }
+
+  private void runWithAvroSchema(String source) throws IOException {
+    Schema schema = getAvroSchema(source);
+    Schema projection = Expressions.filterSchema(schema, columns);
+
+    Iterable<Object> reader = openDataFile(source, projection);
+    boolean threw = true;
+    long count = 0;
+    try {
+      for (Object record : reader) {
+        if (numRecords > 0 && count >= numRecords) {
+          break;
+        }
+        if (columns == null || columns.size() != 1) {
+          console.info(String.valueOf(record));
+        } else {
+          console.info(String.valueOf(select(projection, record, columns.get(0))));
+        }
+        count += 1;
+      }
+      threw = false;
+    } catch (RuntimeException e) {
+      throw new RuntimeException("Failed on record " + count + " in file " + source, e);
+    } finally {
+      if (reader instanceof Closeable) {
+        Closeables.close((Closeable) reader, threw);
+      }
+    }
+  }
+
+  private void runWithGroupReader(String source) throws IOException {
+    ParquetReader<Group> reader = ParquetReader.<Group>builder(new GroupReadSupport(), qualifiedPath(source))
+        .withConf(getConf())
+        .build();
+
+    boolean threw = true;
+    long count = 0;
+    try {
+      for (Group record = reader.read(); record != null; record = reader.read()) {
+        if (numRecords > 0 && count >= numRecords) {
+          break;
+        }
+
+        if (columns == null) {
+          console.info(record.toString());
+        } else {
+          StringBuilder sb = new StringBuilder();
+          for (int i = 0; i < columns.size(); i++) {
+            String columnName = columns.get(i);
+            try {
+              Object value =
+                  record.getValueToString(record.getType().getFieldIndex(columnName), 0);
+              if (i > 0) sb.append(", ");
+              sb.append(columnName).append(": ").append(value);
+            } catch (Exception e) {
+              console.warn("Column '{}' not found in file {}", columnName, source);
+            }
+          }
+          if (sb.length() > 0) {
+            console.info(sb.toString());
+          }
+        }
+        count += 1;
+      }
+      threw = false;
+    } catch (RuntimeException e) {
+      throw new RuntimeException("Failed on record " + count + " in file " + source, e);
+    } finally {
+      Closeables.close(reader, threw);
+    }
   }
 
   @Override

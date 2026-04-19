@@ -24,7 +24,7 @@
     <groupId>org.apache.parquet</groupId>
     <artifactId>parquet</artifactId>
     <relativePath>../pom.xml</relativePath>
-    <version>1.16.0-SNAPSHOT</version>
+    <version>1.18.0-SNAPSHOT</version>
   </parent>
 
   <artifactId>parquet-format-structures</artifactId>
@@ -129,9 +129,28 @@
         <configuration>
           <!-- We have to turn off the javadoc check because thrift generates improper comments -->
           <doclint>none</doclint>
-          <source>8</source>
+          <source>11</source>
           <quiet>true</quiet>
         </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>build-helper-maven-plugin</artifactId>
+        <version>3.6.0</version>
+        <executions>
+          <execution>
+            <id>add-sources</id>
+            <phase>generate-sources</phase>
+            <goals>
+              <goal>add-source</goal>
+            </goals>
+            <configuration>
+              <sources>
+                <source>${project.build.directory}/generated-sources/thrift</source>
+              </sources>
+            </configuration>
+          </execution>
+        </executions>
       </plugin>
     </plugins>
   </build>
@@ -144,7 +163,7 @@
         <configuration>
           <!-- We have to turn off the javadoc check because thrift generates improper comments -->
           <doclint>none</doclint>
-          <source>8</source>
+          <source>11</source>
         </configuration>
       </plugin>
     </plugins>

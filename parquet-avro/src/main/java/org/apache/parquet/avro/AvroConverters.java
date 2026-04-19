@@ -20,9 +20,9 @@ package org.apache.parquet.avro;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.nio.ByteBuffer;
-import java.util.Arrays;
-import java.util.List;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.util.Utf8;
@@ -31,18 +31,25 @@ import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.GroupConverter;
 import org.apache.parquet.io.api.PrimitiveConverter;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.PrimitiveStringifier;
 import org.apache.parquet.schema.PrimitiveType;
 
 public class AvroConverters {
 
+  /**
+   * Contains the packages which classes are allowed to be loaded that may be referenced from the Avro schema by
+   * "java-class" or "java-key-class". It contains the packages parsed from system variable
+   * "org.apache.parquet.avro.SERIALIZABLE_PACKAGES".
+   *
+   * @deprecated will be removed in 2.0.0
+   */
+  @Deprecated
   public static final String[] SERIALIZABLE_PACKAGES;
 
   static {
-    SERIALIZABLE_PACKAGES = System.getProperty(
-            "org.apache.parquet.avro.SERIALIZABLE_PACKAGES",
-            "java.lang,java.math,java.io,java.net,org.apache.parquet.avro")
-        .split(",");
+    String prop = System.getProperty("org.apache.parquet.avro.SERIALIZABLE_PACKAGES");
+    SERIALIZABLE_PACKAGES = prop == null ? new String[0] : prop.split(",");
   }
 
   public abstract static class AvroGroupConverter extends GroupConverter {
@@ -272,7 +279,6 @@ public class AvroConverters {
 
     public FieldStringableConverter(ParentValueContainer parent, Class<?> stringableClass) {
       super(parent);
-      checkSecurity(stringableClass);
       stringableName = stringableClass.getName();
       try {
         this.ctor = stringableClass.getConstructor(String.class);
@@ -287,33 +293,6 @@ public class AvroConverters {
         return ctor.newInstance(binary.toStringUsingUTF8());
       } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
         throw new ParquetDecodingException("Cannot convert binary to " + stringableName, e);
-      }
-    }
-
-    private void checkSecurity(Class<?> clazz) throws SecurityException {
-      List<String> trustedPackages = Arrays.asList(SERIALIZABLE_PACKAGES);
-
-      boolean trustAllPackages = trustedPackages.size() == 1 && "*".equals(trustedPackages.get(0));
-      if (trustAllPackages || clazz.isPrimitive()) {
-        return;
-      }
-
-      boolean found = false;
-      Package thePackage = clazz.getPackage();
-      if (thePackage != null) {
-        for (String trustedPackage : trustedPackages) {
-          if (thePackage.getName().equals(trustedPackage)
-              || thePackage.getName().startsWith(trustedPackage + ".")) {
-            found = true;
-            break;
-          }
-        }
-        if (!found) {
-          throw new SecurityException("Forbidden " + clazz
-              + "! This class is not trusted to be included in Avro schema using java-class."
-              + " Please set org.apache.parquet.avro.SERIALIZABLE_PACKAGES system property"
-              + " with the packages you trust.");
-        }
       }
     }
   }
@@ -361,6 +340,38 @@ public class AvroConverters {
     @Override
     public String convert(Binary binary) {
       return stringifier.stringify(binary);
+    }
+  }
+
+  static final class FieldDecimalIntConverter extends AvroPrimitiveConverter {
+    private final int scale;
+
+    public FieldDecimalIntConverter(ParentValueContainer parent, PrimitiveType type) {
+      super(parent);
+      LogicalTypeAnnotation.DecimalLogicalTypeAnnotation decimalType =
+          (LogicalTypeAnnotation.DecimalLogicalTypeAnnotation) type.getLogicalTypeAnnotation();
+      this.scale = decimalType.getScale();
+    }
+
+    @Override
+    public void addInt(int value) {
+      parent.add(new BigDecimal(BigInteger.valueOf(value), scale));
+    }
+  }
+
+  static final class FieldDecimalLongConverter extends AvroPrimitiveConverter {
+    private final int scale;
+
+    public FieldDecimalLongConverter(ParentValueContainer parent, PrimitiveType type) {
+      super(parent);
+      LogicalTypeAnnotation.DecimalLogicalTypeAnnotation decimalType =
+          (LogicalTypeAnnotation.DecimalLogicalTypeAnnotation) type.getLogicalTypeAnnotation();
+      this.scale = decimalType.getScale();
+    }
+
+    @Override
+    public void addLong(long value) {
+      parent.add(new BigDecimal(BigInteger.valueOf(value), scale));
     }
   }
 }

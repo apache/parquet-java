@@ -16,19 +16,18 @@
   ~ specific language governing permissions and limitations
   ~ under the License.
   -->
-<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
   <parent>
     <groupId>org.apache</groupId>
     <artifactId>apache</artifactId>
-    <version>33</version>
+    <version>37</version>
   </parent>
 
   <groupId>org.apache.parquet</groupId>
   <artifactId>parquet</artifactId>
-  <version>1.16.0-SNAPSHOT</version>
+  <version>1.18.0-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <name>Apache Parquet Java</name>
@@ -70,49 +69,49 @@
   </mailingLists>
 
   <properties>
-    <maven.compiler.source>1.8</maven.compiler.source>
-    <maven.compiler.target>1.8</maven.compiler.target>
+    <maven.compiler.release>11</maven.compiler.release>
     <github.global.server>github</github.global.server>
     <jackson.groupId>com.fasterxml.jackson.core</jackson.groupId>
     <jackson.datatype.groupId>com.fasterxml.jackson.datatype</jackson.datatype.groupId>
     <jackson.package>com.fasterxml.jackson</jackson.package>
     <!-- To upgrade jackson, check the jdk versions inside the jar and include any new versions in the shading in parquet-jackson. -->
-    <jackson.version>2.18.3</jackson.version>
-    <jackson-databind.version>2.18.3</jackson-databind.version>
-    <japicmp.version>0.21.0</japicmp.version>
+    <jackson.version>2.21.2</jackson.version>
+    <jackson-databind.version>2.21.2</jackson-databind.version>
+    <jackson-annotations.version>2.21</jackson-annotations.version>
+    <japicmp.version>0.25.5</japicmp.version>
     <javax.annotation.version>1.3.2</javax.annotation.version>
-    <spotless.version>2.30.0</spotless.version>
+    <spotless.version>2.46.1</spotless.version>
     <shade.prefix>shaded.parquet</shade.prefix>
     <!-- Guarantees no newer classes/methods/constants are used by parquet. -->
     <hadoop.version>3.3.0</hadoop.version>
-    <parquet.format.version>2.11.0</parquet.format.version>
-    <previous.version>1.15.1</previous.version>
+    <parquet.format.version>2.12.0</parquet.format.version>
+    <previous.version>1.17.0</previous.version>
     <thrift.executable>thrift</thrift.executable>
     <format.thrift.executable>${thrift.executable}</format.thrift.executable>
     <pig.version>0.16.0</pig.version>
     <pig.classifier>h2</pig.classifier>
     <thrift-maven-plugin.version>0.10.0</thrift-maven-plugin.version>
-    <thrift.version>0.21.0</thrift.version>
+    <thrift.version>0.22.0</thrift.version>
     <format.thrift.version>${thrift.version}</format.thrift.version>
-    <fastutil.version>8.5.15</fastutil.version>
+    <fastutil.version>8.5.18</fastutil.version>
     <semver.api.version>0.9.33</semver.api.version>
     <slf4j.version>1.7.33</slf4j.version>
-    <avro.version>1.11.4</avro.version>
-    <guava.version>33.4.0-jre</guava.version>
+    <avro.version>1.11.5</avro.version>
+    <guava.version>33.5.0-jre</guava.version>
     <brotli-codec.version>0.1.1</brotli-codec.version>
-    <mockito.version>1.10.19</mockito.version>
-    <powermock.version>2.0.9</powermock.version>
-    <net.openhft.version>0.27ea0</net.openhft.version>
-    <exec-maven-plugin.version>3.5.0</exec-maven-plugin.version>
+    <mockito.version>5.23.0</mockito.version>
+    <net.openhft.version>0.27ea1</net.openhft.version>
+    <exec-maven-plugin.version>3.6.3</exec-maven-plugin.version>
+    <jts.version>1.20.0</jts.version>
 
     <!-- parquet-cli dependencies -->
     <opencsv.version>2.3</opencsv.version>
     <jcommander.version>1.82</jcommander.version>
-    <tukaani.version>1.10</tukaani.version>
-    <zstd-jni.version>1.5.6-6</zstd-jni.version>
-    <commons-text.version>1.13.0</commons-text.version>
+    <tukaani.version>1.12</tukaani.version>
+    <zstd-jni.version>1.5.7-7</zstd-jni.version>
+    <commons-text.version>1.15.0</commons-text.version>
     <jsr305.version>3.0.2</jsr305.version>
-    <commons-lang3.version>3.17.0</commons-lang3.version>
+    <commons-lang3.version>3.20.0</commons-lang3.version>
 
     <!-- properties for the profiles -->
     <surefire.argLine>-XX:MaxJavaStackTraceDepth=8</surefire.argLine>
@@ -154,6 +153,7 @@
     <module>parquet-protobuf</module>
     <module>parquet-thrift</module>
     <module>parquet-hadoop-bundle</module>
+    <module>parquet-variant</module>
   </modules>
 
   <dependencies>
@@ -161,12 +161,6 @@
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
       <version>4.13.2</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.easymock</groupId>
-      <artifactId>easymock</artifactId>
-      <version>5.5.0</version>
       <scope>test</scope>
     </dependency>
   </dependencies>
@@ -245,7 +239,7 @@
           <sourceFileExcludes>
             <sourceFileExclude>**/generated-sources/**/*.java</sourceFileExclude>
           </sourceFileExcludes>
-          <source>8</source>
+          <source>11</source>
           <quiet>true</quiet>
         </configuration>
       </plugin>
@@ -335,6 +329,12 @@
                       <exclude>**</exclude>
                     </excludes>
                   </filter>
+                  <filter>
+                    <artifact>it.unimi.dsi:fastutil</artifact>
+                    <excludes>
+                      <exclude>it/unimi/dsi/fastutil/**/package-info.class</exclude>
+                    </excludes>
+                  </filter>
                 </filters>
                 <relocations>
                   <relocation>
@@ -382,7 +382,7 @@
           <sourceFileExcludes>
             <sourceFileExclude>**/generated-sources/**/*.java</sourceFileExclude>
           </sourceFileExcludes>
-          <source>8</source>
+          <source>11</source>
           <quiet>true</quiet>
         </configuration>
       </plugin>
@@ -394,14 +394,6 @@
           <header>src/license.txt</header>
           <strictCheck>true</strictCheck>
         </configuration>
-        <!--executions>
-          <execution>
-            <phase>test</phase>
-            <goals>
-              <goal>check</goal>
-            </goals>
-          </execution>
-        </executions-->
       </plugin>
 
       <plugin>
@@ -520,13 +512,13 @@
             <excludes>
               <exclude>**/generated-sources/**</exclude>
             </excludes>
-            <toggleOffOn/>
-            <removeUnusedImports/>
-            <importOrder/>
-            <trimTrailingWhitespace/>
-            <palantirJavaFormat/>
-            <endWithNewline/>
-            <formatAnnotations/>
+            <toggleOffOn />
+            <removeUnusedImports />
+            <importOrder />
+            <trimTrailingWhitespace />
+            <palantirJavaFormat />
+            <endWithNewline />
+            <formatAnnotations />
             <indent>
               <tabs>true</tabs>
               <spacesPerTab>4</spacesPerTab>
@@ -573,6 +565,8 @@
             </excludeModules>
             <excludes>
               <exclude>${shade.prefix}</exclude>
+              <!-- JDK 11 adds interface methods/bridges on PrimitiveIterator.OfInt; ignore japicmp source incompatibility -->
+              <exclude>org.apache.parquet.internal.column.columnindex.IndexIterator</exclude>
               <!-- Removal of a protected method in a class that's not supposed to be subclassed by third-party code -->
               <exclude>org.apache.parquet.column.values.bytestreamsplit.ByteStreamSplitValuesReader#gatherElementDataFromStreams(byte[])</exclude>
               <!-- Due to the removal of deprecated methods -->
@@ -628,17 +622,6 @@
   </build>
 
   <profiles>
-    <profile>
-      <id>jdk9+</id>
-      <activation>
-        <jdk>[9,)</jdk>
-      </activation>
-      <properties>
-        <!-- release takes precedence over source/target if java version is 9 or higher -->
-        <maven.compiler.release>8</maven.compiler.release>
-      </properties>
-    </profile>
-
     <!-- Profile for tests to have more output -->
     <profile>
       <id>verbose-test</id>
