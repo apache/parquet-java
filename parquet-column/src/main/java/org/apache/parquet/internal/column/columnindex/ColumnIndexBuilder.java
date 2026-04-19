@@ -761,7 +761,7 @@ public abstract class ColumnIndexBuilder {
     // the safe response is to discard the column index for this column entirely.
     if (columnIndex.nullCounts != null) {
       for (int i = 0; i < columnIndex.nullPages.length; i++) {
-        if (columnIndex.nullPages[i] && columnIndex.nullCounts[i] == 0L) {
+        if (columnIndex.nullPages[i] && columnIndex.nullCounts[i] <= 0L) {
           return null;
         }
       }
