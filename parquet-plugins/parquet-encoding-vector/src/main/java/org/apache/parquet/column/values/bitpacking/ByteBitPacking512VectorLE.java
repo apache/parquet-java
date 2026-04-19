@@ -3178,13 +3178,39 @@ public abstract class ByteBitPacking512VectorLE {
     }
   }
 
+  // TODO Replace these helpers with ByteVector.fromMemorySegment(...) once the project's minimum
+  // supported JDK is >= 22 (where java.lang.foreign.MemorySegment became a permanent API per
+  // JEP 454). fromMemorySegment is the direct successor to ByteVector.fromByteBuffer (which was
+  // removed after JDK 21) and is intrinsifiable by HotSpot for both heap and direct buffers via
+  // jdk.internal.misc.ScopedMemoryAccess, eliminating the byte[] copy that this fallback uses
+  // for direct ByteBuffers. Until then, the implementations below are constrained to APIs
+  // available under --release 17. A multi-release JAR overlay (src/main/java22) would let JDK
+  // 22+ runtimes pick up the fromMemorySegment path automatically; see GH-3475 discussion.
   private static ByteVector fromByteBuffer(VectorSpecies<Byte> species, ByteBuffer input, int inPos) {
+    // Heap buffers are loaded directly from their backing array: no ByteBuffer.duplicate(),
+    // no intermediate byte[] allocation, no extra copy. ByteVector.fromArray is intrinsified by
+    // HotSpot and lowered to a single AVX-512 load.
+    if (input.hasArray()) {
+      return ByteVector.fromArray(species, input.array(), input.arrayOffset() + inPos);
+    }
+    // Off-heap (direct) buffers: fall back to copying species.length() bytes into a scratch
+    // array. The original JDK 17 fast path used ScopedMemoryAccess.loadFromByteBuffer to avoid
+    // the copy, but that intrinsic is not exposed; the alternative ByteVector.fromMemorySegment
+    // is only available on JDK 19+ and cannot be called from --release 17 sources.
     return ByteVector.fromArray(species, readInputBytes(input, inPos, species.length()), 0);
   }
 
   private static ByteVector fromByteBuffer(
       VectorSpecies<Byte> species, ByteBuffer input, int inPos, VectorMask<Byte> mask) {
-    return ByteVector.fromArray(species, readInputBytes(input, inPos, mask.trueCount()), 0, mask);
+    // Mirror the fast path of OpenJDK 17's ByteVector.fromByteBuffer(species, bb, offset, bo, m):
+    // when the full vector window fits in the buffer, read the entire window unconditionally and
+    // let fromArray(species, array, 0, mask) apply the mask. This matches the JDK semantics for
+    // arbitrary mask shapes (not just contiguous-prefix masks) and keeps array.length equal to
+    // species.length(), which satisfies the bounds-check precondition of fromArray.
+    if (input.hasArray()) {
+      return ByteVector.fromArray(species, input.array(), input.arrayOffset() + inPos, mask);
+    }
+    return ByteVector.fromArray(species, readInputBytes(input, inPos, species.length()), 0, mask);
   }
 
   private static byte[] readInputBytes(ByteBuffer input, int inPos, int byteCount) {
