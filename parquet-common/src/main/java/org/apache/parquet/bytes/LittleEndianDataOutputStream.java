@@ -24,8 +24,18 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Based on DataOutputStream but in little endian and without the String/char methods
+ * Based on DataOutputStream but in little endian and without the String/char methods.
+ *
+ * @deprecated As of release following the {@link CapacityByteArrayOutputStream#writeInt(int)}
+ *     and {@link CapacityByteArrayOutputStream#writeLong(long)} additions, this class is no
+ *     longer used by Parquet's own writers. Producers of PLAIN-encoded data should write
+ *     little-endian values directly into a {@link java.nio.ByteBuffer} configured with
+ *     {@link java.nio.ByteOrder#LITTLE_ENDIAN}, which compiles to a single intrinsic store on
+ *     little-endian architectures and avoids the per-call byte decomposition and virtual
+ *     dispatch performed here. This class is retained for binary compatibility and will be
+ *     removed in a future release.
  */
+@Deprecated
 public class LittleEndianDataOutputStream extends OutputStream {
 
   private static final Logger LOG = LoggerFactory.getLogger(LittleEndianDataOutputStream.class);
