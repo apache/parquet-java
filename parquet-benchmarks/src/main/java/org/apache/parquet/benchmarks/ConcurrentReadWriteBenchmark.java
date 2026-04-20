@@ -20,10 +20,8 @@ package org.apache.parquet.benchmarks;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Random;
 import java.util.concurrent.TimeUnit;
 import org.apache.parquet.example.data.Group;
-import org.apache.parquet.example.data.simple.SimpleGroupFactory;
 import org.apache.parquet.hadoop.ParquetFileWriter;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.hadoop.ParquetWriter;
@@ -49,8 +47,10 @@ import org.openjdk.jmh.annotations.Warmup;
 import org.openjdk.jmh.infra.Blackhole;
 
 /**
- * Multi-threaded benchmarks to validate that read and write operations perform correctly
- * under concurrency. Uses {@code @Threads(4)} by default (overridable via JMH {@code -t} flag).
+ * Multi-threaded benchmarks measuring independent read and write throughput under
+ * concurrency. Uses {@code @Threads(4)} by default (overridable via JMH {@code -t} flag).
+ * This benchmark does not assert correctness; it measures the cost of each thread
+ * writing a full file to a stateless sink or reading a shared pre-generated file.
  *
  * <ul>
  *   <li>{@link #concurrentWrite()} - each thread independently writes to a shared
@@ -59,7 +59,7 @@ import org.openjdk.jmh.infra.Blackhole;
  *       pre-generated Parquet file</li>
  * </ul>
  */
-@BenchmarkMode({Mode.SingleShotTime, Mode.AverageTime})
+@BenchmarkMode(Mode.SingleShotTime)
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
 @Fork(1)
 @Warmup(iterations = 2, batchSize = 1)
@@ -69,6 +69,18 @@ import org.openjdk.jmh.infra.Blackhole;
 public class ConcurrentReadWriteBenchmark {
 
   private File tempFile;
+  private Group[] readRows;
+
+  @State(Scope.Thread)
+  public static class ThreadData {
+    private Group[] rows;
+
+    @Setup(Level.Trial)
+    public void setup() {
+      rows = TestDataFactory.generateRows(
+          TestDataFactory.newGroupFactory(), TestDataFactory.DEFAULT_ROW_COUNT, 42L);
+    }
+  }
 
   @Setup(Level.Trial)
   public void setup() throws IOException {
@@ -77,14 +89,14 @@ public class ConcurrentReadWriteBenchmark {
     tempFile.deleteOnExit();
     tempFile.delete();
 
-    SimpleGroupFactory factory = TestDataFactory.newGroupFactory();
-    Random random = new Random(42);
+    readRows = TestDataFactory.generateRows(
+        TestDataFactory.newGroupFactory(), TestDataFactory.DEFAULT_ROW_COUNT, 42L);
     try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(new LocalOutputFile(tempFile.toPath()))
         .withWriteMode(ParquetFileWriter.Mode.OVERWRITE)
         .withType(TestDataFactory.FILE_BENCHMARK_SCHEMA)
         .build()) {
-      for (int i = 0; i < TestDataFactory.DEFAULT_ROW_COUNT; i++) {
-        writer.write(TestDataFactory.generateRow(factory, i, random));
+      for (Group row : readRows) {
+        writer.write(row);
       }
     }
   }
@@ -101,15 +113,13 @@ public class ConcurrentReadWriteBenchmark {
    * {@link BlackHoleOutputFile} sink.
    */
   @Benchmark
-  public void concurrentWrite() throws IOException {
-    SimpleGroupFactory factory = TestDataFactory.newGroupFactory();
-    Random random = new Random(Thread.currentThread().getId());
+  public void concurrentWrite(ThreadData threadData) throws IOException {
     try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(BlackHoleOutputFile.INSTANCE)
         .withWriteMode(ParquetFileWriter.Mode.OVERWRITE)
         .withType(TestDataFactory.FILE_BENCHMARK_SCHEMA)
         .build()) {
-      for (int i = 0; i < TestDataFactory.DEFAULT_ROW_COUNT; i++) {
-        writer.write(TestDataFactory.generateRow(factory, i, random));
+      for (Group row : threadData.rows) {
+        writer.write(row);
       }
     }
   }
