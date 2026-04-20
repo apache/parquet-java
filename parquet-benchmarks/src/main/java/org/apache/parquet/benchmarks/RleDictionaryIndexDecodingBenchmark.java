@@ -20,7 +20,6 @@ package org.apache.parquet.benchmarks;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Random;
 import java.util.concurrent.TimeUnit;
 import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.bytes.HeapByteBufferAllocator;
@@ -46,6 +45,10 @@ import org.openjdk.jmh.infra.Blackhole;
  * {@link RunLengthBitPackingHybridEncoder}. This isolates the dictionary-id
  * decode path and is intentionally separate from {@link IntEncodingBenchmark},
  * which measures full INT32 value decode paths.
+ *
+ * <p>Per-invocation overhead (decoder construction and {@link ByteBufferInputStream}
+ * wrapping) is amortized over {@value #VALUE_COUNT} reads via
+ * {@link OperationsPerInvocation}.
  */
 @BenchmarkMode(Mode.Throughput)
 @OutputTimeUnit(TimeUnit.SECONDS)
@@ -61,6 +64,13 @@ public class RleDictionaryIndexDecodingBenchmark {
   private static final int BIT_WIDTH = 10;
   private static final int MAX_ID = 1 << BIT_WIDTH;
 
+  static {
+    if (TestDataFactory.LOW_CARDINALITY_DISTINCT > MAX_ID) {
+      throw new IllegalStateException("LOW_CARDINALITY_DISTINCT (" + TestDataFactory.LOW_CARDINALITY_DISTINCT
+          + ") must fit within BIT_WIDTH=" + BIT_WIDTH + " (MAX_ID=" + MAX_ID + ")");
+    }
+  }
+
   @Param({"SEQUENTIAL", "RANDOM", "LOW_CARDINALITY"})
   public String indexPattern;
 
@@ -69,45 +79,38 @@ public class RleDictionaryIndexDecodingBenchmark {
   @Setup(Level.Trial)
   public void setup() throws IOException {
     int[] ids = generateDictionaryIds();
-    RunLengthBitPackingHybridEncoder encoder = new RunLengthBitPackingHybridEncoder(
-        BIT_WIDTH, INIT_SLAB_SIZE, PAGE_SIZE, new HeapByteBufferAllocator());
-    for (int id : ids) {
-      encoder.writeInt(id);
+    try (RunLengthBitPackingHybridEncoder encoder = new RunLengthBitPackingHybridEncoder(
+        BIT_WIDTH, INIT_SLAB_SIZE, PAGE_SIZE, new HeapByteBufferAllocator())) {
+      for (int id : ids) {
+        encoder.writeInt(id);
+      }
+      encoded = encoder.toBytes().toByteArray();
     }
-    encoded = encoder.toBytes().toByteArray();
-    encoder.close();
   }
 
   private int[] generateDictionaryIds() {
-    int[] ids = new int[VALUE_COUNT];
-    Random random = new Random(42);
     switch (indexPattern) {
       case "SEQUENTIAL":
+        int[] sequential = new int[VALUE_COUNT];
         for (int i = 0; i < VALUE_COUNT; i++) {
-          ids[i] = i % MAX_ID;
+          sequential[i] = i % MAX_ID;
         }
-        break;
+        return sequential;
       case "RANDOM":
-        for (int i = 0; i < VALUE_COUNT; i++) {
-          ids[i] = random.nextInt(MAX_ID);
-        }
-        break;
+        return TestDataFactory.generateLowCardinalityInts(VALUE_COUNT, MAX_ID, TestDataFactory.DEFAULT_SEED);
       case "LOW_CARDINALITY":
-        for (int i = 0; i < VALUE_COUNT; i++) {
-          ids[i] = random.nextInt(TestDataFactory.LOW_CARDINALITY_DISTINCT);
-        }
-        break;
+        return TestDataFactory.generateLowCardinalityInts(
+            VALUE_COUNT, TestDataFactory.LOW_CARDINALITY_DISTINCT, TestDataFactory.DEFAULT_SEED);
       default:
         throw new IllegalArgumentException("Unknown index pattern: " + indexPattern);
     }
-    return ids;
   }
 
   @Benchmark
   @OperationsPerInvocation(VALUE_COUNT)
   public void decodeDictionaryIds(Blackhole bh) throws IOException {
-    RunLengthBitPackingHybridDecoder decoder = new RunLengthBitPackingHybridDecoder(
-        BIT_WIDTH, ByteBufferInputStream.wrap(ByteBuffer.wrap(encoded)));
+    RunLengthBitPackingHybridDecoder decoder =
+        new RunLengthBitPackingHybridDecoder(BIT_WIDTH, ByteBufferInputStream.wrap(ByteBuffer.wrap(encoded)));
     for (int i = 0; i < VALUE_COUNT; i++) {
       bh.consume(decoder.readInt());
     }

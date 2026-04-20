@@ -48,6 +48,10 @@ import org.openjdk.jmh.annotations.Warmup;
  * <p>Writes are sent to a {@link BlackHoleOutputFile} to isolate CPU and encoding cost
  * from filesystem I/O. Parameterized across compression codec, writer version, and
  * dictionary encoding.
+ *
+ * <p>{@link Mode#SingleShotTime} is used because each invocation does enough work
+ * (a full write of {@value TestDataFactory#DEFAULT_ROW_COUNT} rows) that JIT
+ * amortization across invocations is unnecessary.
  */
 @BenchmarkMode(Mode.SingleShotTime)
 @Fork(1)
@@ -71,7 +75,7 @@ public class FileWriteBenchmark {
   @Setup(Level.Trial)
   public void setup() {
     rows = TestDataFactory.generateRows(
-        TestDataFactory.newGroupFactory(), TestDataFactory.DEFAULT_ROW_COUNT, 42L);
+        TestDataFactory.newGroupFactory(), TestDataFactory.DEFAULT_ROW_COUNT, TestDataFactory.DEFAULT_SEED);
   }
 
   @Benchmark

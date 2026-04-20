@@ -20,10 +20,8 @@ package org.apache.parquet.benchmarks;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Random;
 import java.util.concurrent.TimeUnit;
 import org.apache.parquet.bytes.ByteBufferInputStream;
-import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.HeapByteBufferAllocator;
 import org.apache.parquet.column.Dictionary;
 import org.apache.parquet.column.Encoding;
@@ -62,6 +60,15 @@ import org.openjdk.jmh.infra.Blackhole;
  *
  * <p>Each benchmark invocation processes {@value #VALUE_COUNT} values. Throughput is
  * reported per-value using {@link OperationsPerInvocation}.
+ *
+ * <p>BYTE_STREAM_SPLIT is included for completeness even though it is rarely a good
+ * choice for integer data; it exists here to compare the full set of encodings the
+ * Parquet writer can emit for INT32.
+ *
+ * <p>The dictionary encode/decode benchmarks measure the full path: the encoder
+ * produces both the RLE-encoded indices and a {@link DictionaryPage}; the decoder
+ * consumes the indices through a {@link DictionaryValuesReader} backed by the same
+ * dictionary.
  */
 @BenchmarkMode(Mode.Throughput)
 @OutputTimeUnit(TimeUnit.SECONDS)
@@ -84,24 +91,25 @@ public class IntEncodingBenchmark {
   private byte[] deltaEncoded;
   private byte[] bssEncoded;
   private byte[] dictDataEncoded;
+  private DictionaryPage dictPage;
   private Dictionary intDictionary;
+  private boolean dictionaryAvailable;
 
   @Setup(Level.Trial)
   public void setup() throws IOException {
-    Random random = new Random(42);
     switch (dataPattern) {
       case "SEQUENTIAL":
         data = TestDataFactory.generateSequentialInts(VALUE_COUNT);
         break;
       case "RANDOM":
-        data = TestDataFactory.generateRandomInts(VALUE_COUNT, random);
+        data = TestDataFactory.generateRandomInts(VALUE_COUNT, TestDataFactory.DEFAULT_SEED);
         break;
       case "LOW_CARDINALITY":
         data = TestDataFactory.generateLowCardinalityInts(
-            VALUE_COUNT, TestDataFactory.LOW_CARDINALITY_DISTINCT, random);
+            VALUE_COUNT, TestDataFactory.LOW_CARDINALITY_DISTINCT, TestDataFactory.DEFAULT_SEED);
         break;
       case "HIGH_CARDINALITY":
-        data = TestDataFactory.generateHighCardinalityInts(VALUE_COUNT, random);
+        data = TestDataFactory.generateHighCardinalityInts(VALUE_COUNT, TestDataFactory.DEFAULT_SEED);
         break;
       default:
         throw new IllegalArgumentException("Unknown data pattern: " + dataPattern);
@@ -117,11 +125,13 @@ public class IntEncodingBenchmark {
     for (int v : data) {
       dictWriter.writeInteger(v);
     }
-    BytesInput dictDataBytes = dictWriter.getBytes();
-    dictDataEncoded = dictDataBytes.toByteArray();
-    DictionaryPage dictPage = dictWriter.toDictPageAndClose().copy();
-    intDictionary = new PlainValuesDictionary.PlainIntegerDictionary(dictPage);
-    dictWriter.close();
+    BenchmarkEncodingUtils.EncodedDictionary encoded = BenchmarkEncodingUtils.drainDictionary(dictWriter);
+    dictDataEncoded = encoded.dictData;
+    dictPage = encoded.dictPage;
+    dictionaryAvailable = !encoded.fellBackToPlain();
+    if (dictionaryAvailable) {
+      intDictionary = new PlainValuesDictionary.PlainIntegerDictionary(dictPage);
+    }
   }
 
   private byte[] encodeWith(ValuesWriter writer) throws IOException {
@@ -133,22 +143,12 @@ public class IntEncodingBenchmark {
     return bytes;
   }
 
-  private byte[] encodeDictionaryWith(DictionaryValuesWriter.PlainIntegerDictionaryValuesWriter writer)
-      throws IOException {
+  private BenchmarkEncodingUtils.EncodedDictionary encodeDictionaryWith(
+      DictionaryValuesWriter.PlainIntegerDictionaryValuesWriter writer) throws IOException {
     for (int v : data) {
       writer.writeInteger(v);
     }
-    BytesInput dataBytes = writer.getBytes();
-    DictionaryPage dictPage = writer.toDictPageAndClose();
-    byte[] bytes;
-    if (dictPage == null) {
-      bytes = dataBytes.toByteArray();
-    } else {
-      BytesInput allBytes = BytesInput.concat(dataBytes, dictPage.getBytes());
-      bytes = allBytes.toByteArray();
-    }
-    writer.close();
-    return bytes;
+    return BenchmarkEncodingUtils.drainDictionary(writer);
   }
 
   // ---- Writer factories ----
@@ -193,8 +193,10 @@ public class IntEncodingBenchmark {
 
   @Benchmark
   @OperationsPerInvocation(VALUE_COUNT)
-  public byte[] encodeDictionary() throws IOException {
-    return encodeDictionaryWith(newDictWriter());
+  public void encodeDictionary(Blackhole bh) throws IOException {
+    BenchmarkEncodingUtils.EncodedDictionary encoded = encodeDictionaryWith(newDictWriter());
+    bh.consume(encoded.dictData);
+    bh.consume(encoded.dictPage);
   }
 
   // ---- Decode benchmarks ----
@@ -232,6 +234,11 @@ public class IntEncodingBenchmark {
   @Benchmark
   @OperationsPerInvocation(VALUE_COUNT)
   public void decodeDictionary(Blackhole bh) throws IOException {
+    if (!dictionaryAvailable) {
+      // Dictionary fell back to plain encoding (e.g. very large unique-value sets
+      // exceeding MAX_DICT_BYTE_SIZE). Skip to keep the benchmark meaningful.
+      return;
+    }
     DictionaryValuesReader reader = new DictionaryValuesReader(intDictionary);
     reader.initFromPage(VALUE_COUNT, ByteBufferInputStream.wrap(ByteBuffer.wrap(dictDataEncoded)));
     for (int i = 0; i < VALUE_COUNT; i++) {
