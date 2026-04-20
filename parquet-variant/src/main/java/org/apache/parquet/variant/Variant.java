@@ -37,7 +37,7 @@ public final class Variant {
   final ByteBuffer metadata;
 
   /**
-   * Pre-computed metadata dictionary size
+   * Pre-computed metadata dictionary size.
    */
   private final int dictSize;
 
@@ -49,12 +49,12 @@ public final class Variant {
   /**
    * Lazy cache for the parsed object header.
    */
-  private volatile VariantUtil.ObjectInfo cachedObjectInfo;
+  private VariantUtil.ObjectInfo cachedObjectInfo;
 
   /**
    * Lazy cache for the parsed array header.
    */
-  private volatile VariantUtil.ArrayInfo cachedArrayInfo;
+  private VariantUtil.ArrayInfo cachedArrayInfo;
 
   /**
    * The threshold to switch from linear search to binary search when looking up a field by key in
@@ -363,6 +363,7 @@ public final class Variant {
     if (cache == null) {
       cache = new String[dictSize];
       metadataCache = cache;
+      cache = metadataCache;
     }
     if (cache[id] == null) {
       cache[id] = VariantUtil.getMetadataKey(metadata, id);
