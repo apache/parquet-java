@@ -145,6 +145,17 @@ public class ParquetReader<T> implements Closeable {
   }
 
   /**
+   * @return the 0-based index of the row group currently being read. If no row group has been
+   *     read yet, returns -1.
+   */
+  public int getCurrentRowGroupIndex() {
+    if (reader == null) {
+      return -1;
+    }
+    return reader.getCurrentRowGroupIndex();
+  }
+
+  /**
    * @return the row index of the last read row. If no row has been processed, returns -1.
    */
   public long getCurrentRowIndex() {
