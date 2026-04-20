@@ -20,10 +20,8 @@ package org.apache.parquet.benchmarks;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Random;
 import java.util.concurrent.TimeUnit;
 import org.apache.parquet.bytes.ByteBufferInputStream;
-import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.HeapByteBufferAllocator;
 import org.apache.parquet.column.Dictionary;
 import org.apache.parquet.column.Encoding;
@@ -61,6 +59,14 @@ import org.openjdk.jmh.infra.Blackhole;
  *
  * <p>Each benchmark invocation processes {@value #VALUE_COUNT} values. Throughput is
  * reported per-value using {@link OperationsPerInvocation}.
+ *
+ * <p>The dictionary encode/decode benchmarks intentionally measure the full path:
+ * the encoder produces both the RLE-encoded indices and a {@link DictionaryPage};
+ * the decoder consumes the indices through a {@link DictionaryValuesReader} backed
+ * by the same dictionary. If the dictionary exceeds {@link #MAX_DICT_BYTE_SIZE}
+ * (which can happen for high-cardinality, long-string parameter combinations) the
+ * writer falls back to plain encoding and dictionary decoding for that combination
+ * is skipped.
  */
 @BenchmarkMode(Mode.Throughput)
 @OutputTimeUnit(TimeUnit.SECONDS)
@@ -87,13 +93,14 @@ public class BinaryEncodingBenchmark {
   private byte[] deltaLengthEncoded;
   private byte[] deltaStringsEncoded;
   private byte[] dictEncoded;
+  private DictionaryPage dictPage;
   private Dictionary binaryDictionary;
+  private boolean dictionaryAvailable;
 
   @Setup(Level.Trial)
   public void setup() throws IOException {
-    Random random = new Random(42);
     int distinct = "LOW".equals(cardinality) ? TestDataFactory.LOW_CARDINALITY_DISTINCT : 0;
-    data = TestDataFactory.generateBinaryData(VALUE_COUNT, stringLength, distinct, random);
+    data = TestDataFactory.generateBinaryData(VALUE_COUNT, stringLength, distinct, TestDataFactory.DEFAULT_SEED);
 
     // Pre-encode data for decode benchmarks
     plainEncoded = encodeBinaryWith(newPlainWriter());
@@ -104,10 +111,13 @@ public class BinaryEncodingBenchmark {
     for (Binary v : data) {
       dictWriter.writeBytes(v);
     }
-    dictEncoded = dictWriter.getBytes().toByteArray();
-    DictionaryPage dictPage = dictWriter.toDictPageAndClose().copy();
-    binaryDictionary = new PlainValuesDictionary.PlainBinaryDictionary(dictPage);
-    dictWriter.close();
+    BenchmarkEncodingUtils.EncodedDictionary encoded = BenchmarkEncodingUtils.drainDictionary(dictWriter);
+    dictEncoded = encoded.dictData;
+    dictPage = encoded.dictPage;
+    dictionaryAvailable = !encoded.fellBackToPlain();
+    if (dictionaryAvailable) {
+      binaryDictionary = new PlainValuesDictionary.PlainBinaryDictionary(dictPage);
+    }
   }
 
   private byte[] encodeBinaryWith(ValuesWriter writer) throws IOException {
@@ -119,22 +129,12 @@ public class BinaryEncodingBenchmark {
     return bytes;
   }
 
-  private byte[] encodeDictionaryWith(DictionaryValuesWriter.PlainBinaryDictionaryValuesWriter writer)
-      throws IOException {
+  private BenchmarkEncodingUtils.EncodedDictionary encodeDictionaryWith(
+      DictionaryValuesWriter.PlainBinaryDictionaryValuesWriter writer) throws IOException {
     for (Binary v : data) {
       writer.writeBytes(v);
     }
-    BytesInput dataBytes = writer.getBytes();
-    DictionaryPage dictPage = writer.toDictPageAndClose();
-    byte[] bytes;
-    if (dictPage == null) {
-      bytes = dataBytes.toByteArray();
-    } else {
-      BytesInput allBytes = BytesInput.concat(dataBytes, dictPage.getBytes());
-      bytes = allBytes.toByteArray();
-    }
-    writer.close();
-    return bytes;
+    return BenchmarkEncodingUtils.drainDictionary(writer);
   }
 
   // ---- Writer factories ----
@@ -178,8 +178,10 @@ public class BinaryEncodingBenchmark {
 
   @Benchmark
   @OperationsPerInvocation(VALUE_COUNT)
-  public byte[] encodeDictionary() throws IOException {
-    return encodeDictionaryWith(newDictWriter());
+  public void encodeDictionary(Blackhole bh) throws IOException {
+    BenchmarkEncodingUtils.EncodedDictionary encoded = encodeDictionaryWith(newDictWriter());
+    bh.consume(encoded.dictData);
+    bh.consume(encoded.dictPage);
   }
 
   // ---- Decode benchmarks ----
@@ -217,6 +219,11 @@ public class BinaryEncodingBenchmark {
   @Benchmark
   @OperationsPerInvocation(VALUE_COUNT)
   public void decodeDictionary(Blackhole bh) throws IOException {
+    if (!dictionaryAvailable) {
+      // Dictionary fell back to plain encoding (e.g. high-cardinality long strings
+      // exceeding MAX_DICT_BYTE_SIZE). Skip to keep the benchmark meaningful.
+      return;
+    }
     DictionaryValuesReader reader = new DictionaryValuesReader(binaryDictionary);
     reader.initFromPage(VALUE_COUNT, ByteBufferInputStream.wrap(ByteBuffer.wrap(dictEncoded)));
     for (int i = 0; i < VALUE_COUNT; i++) {

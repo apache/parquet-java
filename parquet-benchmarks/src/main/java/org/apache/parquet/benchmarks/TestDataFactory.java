@@ -44,6 +44,9 @@ public final class TestDataFactory {
   /** Number of distinct values for low-cardinality data patterns. */
   public static final int LOW_CARDINALITY_DISTINCT = 100;
 
+  /** Default RNG seed used across benchmarks for deterministic data. */
+  public static final long DEFAULT_SEED = 42L;
+
   /** A standard multi-type schema used by file-level benchmarks. */
   public static final MessageType FILE_BENCHMARK_SCHEMA = Types.buildMessage()
       .required(INT32)
@@ -113,7 +116,17 @@ public final class TestDataFactory {
   }
 
   /**
+   * Generates uniformly random integers using the given seed.
+   */
+  public static int[] generateRandomInts(int count, long seed) {
+    return generateRandomInts(count, new Random(seed));
+  }
+
+  /**
    * Generates uniformly random integers.
+   *
+   * <p>Note: prefer {@link #generateRandomInts(int, long)} when call ordering between
+   * generators in the same setup must not influence the produced data.
    */
   public static int[] generateRandomInts(int count, Random random) {
     int[] data = new int[count];
@@ -121,6 +134,13 @@ public final class TestDataFactory {
       data[i] = random.nextInt();
     }
     return data;
+  }
+
+  /**
+   * Generates low-cardinality integers (values drawn from a small set) using the given seed.
+   */
+  public static int[] generateLowCardinalityInts(int count, int distinctValues, long seed) {
+    return generateLowCardinalityInts(count, distinctValues, new Random(seed));
   }
 
   /**
@@ -132,6 +152,13 @@ public final class TestDataFactory {
       data[i] = random.nextInt(distinctValues);
     }
     return data;
+  }
+
+  /**
+   * Generates high-cardinality integers (all unique in randomized order) using the given seed.
+   */
+  public static int[] generateHighCardinalityInts(int count, long seed) {
+    return generateHighCardinalityInts(count, new Random(seed));
   }
 
   /**
@@ -149,6 +176,14 @@ public final class TestDataFactory {
   }
 
   // ---- Binary data generation for encoding benchmarks ----
+
+  /**
+   * Generates binary strings of the given length with the specified cardinality, using
+   * a deterministic seed.
+   */
+  public static Binary[] generateBinaryData(int count, int stringLength, int distinct, long seed) {
+    return generateBinaryData(count, stringLength, distinct, new Random(seed));
+  }
 
   /**
    * Generates binary strings of the given length with the specified cardinality.

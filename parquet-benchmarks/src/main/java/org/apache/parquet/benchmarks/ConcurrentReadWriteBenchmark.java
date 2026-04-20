@@ -49,15 +49,23 @@ import org.openjdk.jmh.infra.Blackhole;
 /**
  * Multi-threaded benchmarks measuring independent read and write throughput under
  * concurrency. Uses {@code @Threads(4)} by default (overridable via JMH {@code -t} flag).
- * This benchmark does not assert correctness; it measures the cost of each thread
+ *
+ * <p>This benchmark does not assert correctness; it measures the cost of each thread
  * writing a full file to a stateless sink or reading a shared pre-generated file.
+ * The set of rows used by {@link #concurrentWrite(Blackhole)} is built once during
+ * setup and shared (read-only) across all threads, so the timed section measures
+ * the encoder/serializer pipeline rather than per-row data construction.
  *
  * <ul>
- *   <li>{@link #concurrentWrite()} - each thread independently writes to a shared
- *       {@link BlackHoleOutputFile} (stateless sink)</li>
+ *   <li>{@link #concurrentWrite(Blackhole)} - each thread independently writes the
+ *       shared pre-generated rows to a {@link BlackHoleOutputFile} (stateless sink)</li>
  *   <li>{@link #concurrentRead(Blackhole)} - each thread independently reads the same
  *       pre-generated Parquet file</li>
  * </ul>
+ *
+ * <p>{@link Mode#SingleShotTime} is used because each invocation does enough work
+ * (a full file write or read of {@value TestDataFactory#DEFAULT_ROW_COUNT} rows)
+ * that JIT amortization across invocations is unnecessary.
  */
 @BenchmarkMode(Mode.SingleShotTime)
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
@@ -69,33 +77,23 @@ import org.openjdk.jmh.infra.Blackhole;
 public class ConcurrentReadWriteBenchmark {
 
   private File tempFile;
-  private Group[] readRows;
-
-  @State(Scope.Thread)
-  public static class ThreadData {
-    private Group[] rows;
-
-    @Setup(Level.Trial)
-    public void setup() {
-      rows = TestDataFactory.generateRows(
-          TestDataFactory.newGroupFactory(), TestDataFactory.DEFAULT_ROW_COUNT, 42L);
-    }
-  }
+  private Group[] rows;
 
   @Setup(Level.Trial)
   public void setup() throws IOException {
+    rows = TestDataFactory.generateRows(
+        TestDataFactory.newGroupFactory(), TestDataFactory.DEFAULT_ROW_COUNT, TestDataFactory.DEFAULT_SEED);
+
     // Generate a shared file for concurrent reads
     tempFile = File.createTempFile("parquet-concurrent-bench-", ".parquet");
     tempFile.deleteOnExit();
     tempFile.delete();
 
-    readRows = TestDataFactory.generateRows(
-        TestDataFactory.newGroupFactory(), TestDataFactory.DEFAULT_ROW_COUNT, 42L);
     try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(new LocalOutputFile(tempFile.toPath()))
         .withWriteMode(ParquetFileWriter.Mode.OVERWRITE)
         .withType(TestDataFactory.FILE_BENCHMARK_SCHEMA)
         .build()) {
-      for (Group row : readRows) {
+      for (Group row : rows) {
         writer.write(row);
       }
     }
@@ -109,19 +107,20 @@ public class ConcurrentReadWriteBenchmark {
   }
 
   /**
-   * Each thread writes a full file independently to the shared stateless
-   * {@link BlackHoleOutputFile} sink.
+   * Each thread writes the shared pre-generated rows independently to the
+   * stateless {@link BlackHoleOutputFile} sink.
    */
   @Benchmark
-  public void concurrentWrite(ThreadData threadData) throws IOException {
+  public void concurrentWrite(Blackhole bh) throws IOException {
     try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(BlackHoleOutputFile.INSTANCE)
         .withWriteMode(ParquetFileWriter.Mode.OVERWRITE)
         .withType(TestDataFactory.FILE_BENCHMARK_SCHEMA)
         .build()) {
-      for (Group row : threadData.rows) {
+      for (Group row : rows) {
         writer.write(row);
       }
     }
+    bh.consume(rows);
   }
 
   /**

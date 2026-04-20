@@ -54,7 +54,13 @@ import org.openjdk.jmh.infra.Blackhole;
  * pre-generated rows using {@link LocalOutputFile}, then read repeatedly during the
  * benchmark.
  *
- * <p>Parameterized across compression codec and writer version.
+ * <p>Parameterized across compression codec and writer version. The footer parse
+ * (via {@link LocalInputFile} open) is included in the timed section so the result
+ * reflects the full open-and-read cost a typical caller would observe.
+ *
+ * <p>{@link Mode#SingleShotTime} is used because each invocation does enough work
+ * (a full read of {@value TestDataFactory#DEFAULT_ROW_COUNT} rows) that JIT
+ * amortization across invocations is unnecessary.
  */
 @BenchmarkMode(Mode.SingleShotTime)
 @Fork(1)
@@ -79,7 +85,7 @@ public class FileReadBenchmark {
     tempFile.delete(); // remove so the writer can create it
 
     Group[] rows = TestDataFactory.generateRows(
-        TestDataFactory.newGroupFactory(), TestDataFactory.DEFAULT_ROW_COUNT, 42L);
+        TestDataFactory.newGroupFactory(), TestDataFactory.DEFAULT_ROW_COUNT, TestDataFactory.DEFAULT_SEED);
     try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(new LocalOutputFile(tempFile.toPath()))
         .withWriteMode(ParquetFileWriter.Mode.OVERWRITE)
         .withType(TestDataFactory.FILE_BENCHMARK_SCHEMA)
