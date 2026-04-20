@@ -19,11 +19,9 @@
 package org.apache.parquet.benchmarks;
 
 import java.io.IOException;
-import java.util.Random;
 import java.util.concurrent.TimeUnit;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
 import org.apache.parquet.example.data.Group;
-import org.apache.parquet.example.data.simple.SimpleGroupFactory;
 import org.apache.parquet.hadoop.ParquetFileWriter;
 import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.example.ExampleParquetWriter;
@@ -31,22 +29,27 @@ import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
+import org.openjdk.jmh.annotations.Level;
 import org.openjdk.jmh.annotations.Measurement;
 import org.openjdk.jmh.annotations.Mode;
 import org.openjdk.jmh.annotations.OutputTimeUnit;
 import org.openjdk.jmh.annotations.Param;
 import org.openjdk.jmh.annotations.Scope;
+import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Warmup;
 
 /**
- * File-level write benchmarks measuring throughput of the full Parquet write pipeline.
- * Writes are sent to a {@link BlackHoleOutputFile} to isolate CPU/encoding cost from
- * filesystem I/O.
+ * File-level write benchmarks measuring end-to-end Parquet write throughput through the
+ * example {@link Group} API. Row contents are pre-generated during setup so compression
+ * and writer settings dominate the timed section, while writes still flow through the
+ * full Parquet writer path.
  *
- * <p>Parameterized across compression codec, writer version, and dictionary encoding.
+ * <p>Writes are sent to a {@link BlackHoleOutputFile} to isolate CPU and encoding cost
+ * from filesystem I/O. Parameterized across compression codec, writer version, and
+ * dictionary encoding.
  */
-@BenchmarkMode({Mode.SingleShotTime, Mode.AverageTime})
+@BenchmarkMode(Mode.SingleShotTime)
 @Fork(1)
 @Warmup(iterations = 3, batchSize = 1)
 @Measurement(iterations = 5, batchSize = 1)
@@ -63,10 +66,16 @@ public class FileWriteBenchmark {
   @Param({"true", "false"})
   public String dictionary;
 
+  private Group[] rows;
+
+  @Setup(Level.Trial)
+  public void setup() {
+    rows = TestDataFactory.generateRows(
+        TestDataFactory.newGroupFactory(), TestDataFactory.DEFAULT_ROW_COUNT, 42L);
+  }
+
   @Benchmark
   public void writeFile() throws IOException {
-    SimpleGroupFactory factory = TestDataFactory.newGroupFactory();
-    Random random = new Random(42);
     try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(BlackHoleOutputFile.INSTANCE)
         .withWriteMode(ParquetFileWriter.Mode.OVERWRITE)
         .withType(TestDataFactory.FILE_BENCHMARK_SCHEMA)
@@ -74,8 +83,8 @@ public class FileWriteBenchmark {
         .withWriterVersion(WriterVersion.valueOf(writerVersion))
         .withDictionaryEncoding(Boolean.parseBoolean(dictionary))
         .build()) {
-      for (int i = 0; i < TestDataFactory.DEFAULT_ROW_COUNT; i++) {
-        writer.write(TestDataFactory.generateRow(factory, i, random));
+      for (Group row : rows) {
+        writer.write(row);
       }
     }
   }

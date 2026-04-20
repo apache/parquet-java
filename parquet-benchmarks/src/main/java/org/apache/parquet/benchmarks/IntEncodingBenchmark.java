@@ -38,8 +38,6 @@ import org.apache.parquet.column.values.dictionary.DictionaryValuesWriter;
 import org.apache.parquet.column.values.dictionary.PlainValuesDictionary;
 import org.apache.parquet.column.values.plain.PlainValuesReader;
 import org.apache.parquet.column.values.plain.PlainValuesWriter;
-import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridDecoder;
-import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridEncoder;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
@@ -56,9 +54,11 @@ import org.openjdk.jmh.annotations.Warmup;
 import org.openjdk.jmh.infra.Blackhole;
 
 /**
- * Encoding-level micro-benchmarks for INT32 values.
+ * Encoding-level and decoding-level micro-benchmarks for INT32 values.
  * Compares PLAIN, DELTA_BINARY_PACKED, BYTE_STREAM_SPLIT, and DICTIONARY encodings
- * across different data distribution patterns.
+ * across different data distribution patterns. Synthetic dictionary-id RLE decode is
+ * benchmarked separately in {@link RleDictionaryIndexDecodingBenchmark} so the results
+ * here stay comparable at the full-value level.
  *
  * <p>Each benchmark invocation processes {@value #VALUE_COUNT} values. Throughput is
  * reported per-value using {@link OperationsPerInvocation}.
@@ -83,8 +83,6 @@ public class IntEncodingBenchmark {
   private byte[] plainEncoded;
   private byte[] deltaEncoded;
   private byte[] bssEncoded;
-  private byte[] rleEncoded;
-  private int rleBitWidth;
   private byte[] dictDataEncoded;
   private Dictionary intDictionary;
 
@@ -103,7 +101,7 @@ public class IntEncodingBenchmark {
             VALUE_COUNT, TestDataFactory.LOW_CARDINALITY_DISTINCT, random);
         break;
       case "HIGH_CARDINALITY":
-        data = TestDataFactory.generateHighCardinalityInts(VALUE_COUNT);
+        data = TestDataFactory.generateHighCardinalityInts(VALUE_COUNT, random);
         break;
       default:
         throw new IllegalArgumentException("Unknown data pattern: " + dataPattern);
@@ -114,16 +112,6 @@ public class IntEncodingBenchmark {
     deltaEncoded = encodeWith(newDeltaWriter());
     bssEncoded = encodeWith(newBssWriter());
 
-    // Pre-encode RLE data (using 10-bit values to simulate dictionary indices)
-    rleBitWidth = 10;
-    RunLengthBitPackingHybridEncoder rleEncoder = new RunLengthBitPackingHybridEncoder(
-        rleBitWidth, INIT_SLAB_SIZE, PAGE_SIZE, new HeapByteBufferAllocator());
-    for (int v : data) {
-      rleEncoder.writeInt(v & 0x3FF); // mask to 10 bits
-    }
-    rleEncoded = rleEncoder.toBytes().toByteArray();
-    rleEncoder.close();
-
     // Pre-encode dictionary data for decode benchmark
     DictionaryValuesWriter.PlainIntegerDictionaryValuesWriter dictWriter = newDictWriter();
     for (int v : data) {
@@ -133,6 +121,7 @@ public class IntEncodingBenchmark {
     dictDataEncoded = dictDataBytes.toByteArray();
     DictionaryPage dictPage = dictWriter.toDictPageAndClose().copy();
     intDictionary = new PlainValuesDictionary.PlainIntegerDictionary(dictPage);
+    dictWriter.close();
   }
 
   private byte[] encodeWith(ValuesWriter writer) throws IOException {
@@ -140,6 +129,24 @@ public class IntEncodingBenchmark {
       writer.writeInteger(v);
     }
     byte[] bytes = writer.getBytes().toByteArray();
+    writer.close();
+    return bytes;
+  }
+
+  private byte[] encodeDictionaryWith(DictionaryValuesWriter.PlainIntegerDictionaryValuesWriter writer)
+      throws IOException {
+    for (int v : data) {
+      writer.writeInteger(v);
+    }
+    BytesInput dataBytes = writer.getBytes();
+    DictionaryPage dictPage = writer.toDictPageAndClose();
+    byte[] bytes;
+    if (dictPage == null) {
+      bytes = dataBytes.toByteArray();
+    } else {
+      BytesInput allBytes = BytesInput.concat(dataBytes, dictPage.getBytes());
+      bytes = allBytes.toByteArray();
+    }
     writer.close();
     return bytes;
   }
@@ -187,7 +194,7 @@ public class IntEncodingBenchmark {
   @Benchmark
   @OperationsPerInvocation(VALUE_COUNT)
   public byte[] encodeDictionary() throws IOException {
-    return encodeWith(newDictWriter());
+    return encodeDictionaryWith(newDictWriter());
   }
 
   // ---- Decode benchmarks ----
@@ -219,16 +226,6 @@ public class IntEncodingBenchmark {
     reader.initFromPage(VALUE_COUNT, ByteBufferInputStream.wrap(ByteBuffer.wrap(bssEncoded)));
     for (int i = 0; i < VALUE_COUNT; i++) {
       bh.consume(reader.readInteger());
-    }
-  }
-
-  @Benchmark
-  @OperationsPerInvocation(VALUE_COUNT)
-  public void decodeRle(Blackhole bh) throws IOException {
-    RunLengthBitPackingHybridDecoder decoder = new RunLengthBitPackingHybridDecoder(
-        rleBitWidth, ByteBufferInputStream.wrap(ByteBuffer.wrap(rleEncoded)));
-    for (int i = 0; i < VALUE_COUNT; i++) {
-      bh.consume(decoder.readInt());
     }
   }
 

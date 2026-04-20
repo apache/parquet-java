@@ -25,6 +25,7 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.FLOAT;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Random;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroupFactory;
@@ -86,6 +87,18 @@ public final class TestDataFactory {
         .append("binary_field", "value_" + (index % 1000));
   }
 
+  /**
+   * Generates a deterministic set of rows for file-level benchmarks.
+   */
+  public static Group[] generateRows(SimpleGroupFactory factory, int rowCount, long seed) {
+    Group[] rows = new Group[rowCount];
+    Random random = new Random(seed);
+    for (int i = 0; i < rowCount; i++) {
+      rows[i] = generateRow(factory, i, random);
+    }
+    return rows;
+  }
+
   // ---- Integer data generation for encoding benchmarks ----
 
   /**
@@ -122,12 +135,15 @@ public final class TestDataFactory {
   }
 
   /**
-   * Generates high-cardinality integers (all unique).
+   * Generates high-cardinality integers (all unique in randomized order).
    */
-  public static int[] generateHighCardinalityInts(int count) {
-    int[] data = new int[count];
-    for (int i = 0; i < count; i++) {
-      data[i] = i;
+  public static int[] generateHighCardinalityInts(int count, Random random) {
+    int[] data = generateSequentialInts(count);
+    for (int i = count - 1; i > 0; i--) {
+      int swapIndex = random.nextInt(i + 1);
+      int tmp = data[i];
+      data[i] = data[swapIndex];
+      data[swapIndex] = tmp;
     }
     return data;
   }
@@ -150,7 +166,7 @@ public final class TestDataFactory {
       Binary[] dictionary = new Binary[distinct];
       for (int i = 0; i < distinct; i++) {
         dictionary[i] = Binary.fromConstantByteArray(
-            randomString(stringLength, random).getBytes());
+            randomString(stringLength, random).getBytes(StandardCharsets.UTF_8));
       }
       for (int i = 0; i < count; i++) {
         data[i] = dictionary[random.nextInt(distinct)];
@@ -159,7 +175,7 @@ public final class TestDataFactory {
       // All unique
       for (int i = 0; i < count; i++) {
         data[i] = Binary.fromConstantByteArray(
-            randomString(stringLength, random).getBytes());
+            randomString(stringLength, random).getBytes(StandardCharsets.UTF_8));
       }
     }
     return data;

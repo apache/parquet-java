@@ -23,14 +23,19 @@ import java.nio.ByteBuffer;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 import org.apache.parquet.bytes.ByteBufferInputStream;
+import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.HeapByteBufferAllocator;
+import org.apache.parquet.column.Dictionary;
 import org.apache.parquet.column.Encoding;
+import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.values.ValuesWriter;
 import org.apache.parquet.column.values.deltalengthbytearray.DeltaLengthByteArrayValuesReader;
 import org.apache.parquet.column.values.deltalengthbytearray.DeltaLengthByteArrayValuesWriter;
 import org.apache.parquet.column.values.deltastrings.DeltaByteArrayReader;
 import org.apache.parquet.column.values.deltastrings.DeltaByteArrayWriter;
+import org.apache.parquet.column.values.dictionary.DictionaryValuesReader;
 import org.apache.parquet.column.values.dictionary.DictionaryValuesWriter;
+import org.apache.parquet.column.values.dictionary.PlainValuesDictionary;
 import org.apache.parquet.column.values.plain.BinaryPlainValuesReader;
 import org.apache.parquet.column.values.plain.PlainValuesWriter;
 import org.apache.parquet.io.api.Binary;
@@ -50,7 +55,7 @@ import org.openjdk.jmh.annotations.Warmup;
 import org.openjdk.jmh.infra.Blackhole;
 
 /**
- * Encoding-level micro-benchmarks for BINARY values.
+ * Encoding-level and decoding-level micro-benchmarks for BINARY values.
  * Compares PLAIN, DELTA_BYTE_ARRAY, DELTA_LENGTH_BYTE_ARRAY, and DICTIONARY encodings
  * across different string lengths and cardinality patterns.
  *
@@ -81,6 +86,8 @@ public class BinaryEncodingBenchmark {
   private byte[] plainEncoded;
   private byte[] deltaLengthEncoded;
   private byte[] deltaStringsEncoded;
+  private byte[] dictEncoded;
+  private Dictionary binaryDictionary;
 
   @Setup(Level.Trial)
   public void setup() throws IOException {
@@ -92,6 +99,15 @@ public class BinaryEncodingBenchmark {
     plainEncoded = encodeBinaryWith(newPlainWriter());
     deltaLengthEncoded = encodeBinaryWith(newDeltaLengthWriter());
     deltaStringsEncoded = encodeBinaryWith(newDeltaStringsWriter());
+
+    DictionaryValuesWriter.PlainBinaryDictionaryValuesWriter dictWriter = newDictWriter();
+    for (Binary v : data) {
+      dictWriter.writeBytes(v);
+    }
+    dictEncoded = dictWriter.getBytes().toByteArray();
+    DictionaryPage dictPage = dictWriter.toDictPageAndClose().copy();
+    binaryDictionary = new PlainValuesDictionary.PlainBinaryDictionary(dictPage);
+    dictWriter.close();
   }
 
   private byte[] encodeBinaryWith(ValuesWriter writer) throws IOException {
@@ -99,6 +115,24 @@ public class BinaryEncodingBenchmark {
       writer.writeBytes(v);
     }
     byte[] bytes = writer.getBytes().toByteArray();
+    writer.close();
+    return bytes;
+  }
+
+  private byte[] encodeDictionaryWith(DictionaryValuesWriter.PlainBinaryDictionaryValuesWriter writer)
+      throws IOException {
+    for (Binary v : data) {
+      writer.writeBytes(v);
+    }
+    BytesInput dataBytes = writer.getBytes();
+    DictionaryPage dictPage = writer.toDictPageAndClose();
+    byte[] bytes;
+    if (dictPage == null) {
+      bytes = dataBytes.toByteArray();
+    } else {
+      BytesInput allBytes = BytesInput.concat(dataBytes, dictPage.getBytes());
+      bytes = allBytes.toByteArray();
+    }
     writer.close();
     return bytes;
   }
@@ -145,7 +179,7 @@ public class BinaryEncodingBenchmark {
   @Benchmark
   @OperationsPerInvocation(VALUE_COUNT)
   public byte[] encodeDictionary() throws IOException {
-    return encodeBinaryWith(newDictWriter());
+    return encodeDictionaryWith(newDictWriter());
   }
 
   // ---- Decode benchmarks ----
@@ -175,6 +209,16 @@ public class BinaryEncodingBenchmark {
   public void decodeDeltaByteArray(Blackhole bh) throws IOException {
     DeltaByteArrayReader reader = new DeltaByteArrayReader();
     reader.initFromPage(VALUE_COUNT, ByteBufferInputStream.wrap(ByteBuffer.wrap(deltaStringsEncoded)));
+    for (int i = 0; i < VALUE_COUNT; i++) {
+      bh.consume(reader.readBytes());
+    }
+  }
+
+  @Benchmark
+  @OperationsPerInvocation(VALUE_COUNT)
+  public void decodeDictionary(Blackhole bh) throws IOException {
+    DictionaryValuesReader reader = new DictionaryValuesReader(binaryDictionary);
+    reader.initFromPage(VALUE_COUNT, ByteBufferInputStream.wrap(ByteBuffer.wrap(dictEncoded)));
     for (int i = 0; i < VALUE_COUNT; i++) {
       bh.consume(reader.readBytes());
     }
