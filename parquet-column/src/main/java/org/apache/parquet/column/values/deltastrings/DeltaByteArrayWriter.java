@@ -89,7 +89,10 @@ public class DeltaByteArrayWriter extends ValuesWriter {
   @Override
   public void writeBytes(Binary v) {
     int i = 0;
-    byte[] vb = v.getBytes();
+    // copy() is a no-op for constant (non-reused) Binaries, and getBytesUnsafe()
+    // returns the backing array directly for ByteArrayBackedBinary — avoiding
+    // the unconditional array copy that getBytes() always performs.
+    byte[] vb = v.copy().getBytesUnsafe();
     int length = previous.length < vb.length ? previous.length : vb.length;
     // find the number of matching prefix bytes between this value and the previous one
     for (i = 0; (i < length) && (previous[i] == vb[i]); i++)
