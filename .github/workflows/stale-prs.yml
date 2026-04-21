@@ -28,7 +28,7 @@ permissions:
 
 jobs:
   stale:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     steps:
       - name: Mark and close stale pull requests
         uses: actions/stale@v9
