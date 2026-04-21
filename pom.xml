@@ -88,8 +88,6 @@
     <previous.version>1.17.0</previous.version>
     <thrift.executable>thrift</thrift.executable>
     <format.thrift.executable>${thrift.executable}</format.thrift.executable>
-    <pig.version>0.16.0</pig.version>
-    <pig.classifier>h2</pig.classifier>
     <thrift-maven-plugin.version>0.10.0</thrift-maven-plugin.version>
     <thrift.version>0.22.0</thrift.version>
     <format.thrift.version>${thrift.version}</format.thrift.version>
@@ -571,6 +569,10 @@
               <exclude>org.apache.parquet.column.values.bytestreamsplit.ByteStreamSplitValuesReader#gatherElementDataFromStreams(byte[])</exclude>
               <!-- Due to the removal of deprecated methods -->
               <exclude>org.apache.parquet.arrow.schema.SchemaMapping$TypeMappingVisitor#visit(org.apache.parquet.arrow.schema.SchemaMapping$MapTypeMapping)</exclude>
+              <!-- Intentional removal of deprecated Pig support from parquet-thrift -->
+              <exclude>org.apache.parquet.thrift.pig.ParquetThriftStorer</exclude>
+              <exclude>org.apache.parquet.thrift.pig.TupleToThriftWriteSupport</exclude>
+              <exclude>org.apache.parquet.hadoop.thrift.AbstractThriftWriteSupport#isPigLoaded()</exclude>
               <!-- Make static variables final -->
               <exclude>org.apache.parquet.avro.AvroReadSupport#AVRO_REQUESTED_PROJECTION</exclude>
               <exclude>org.apache.parquet.avro.AvroReadSupport#AVRO_DATA_SUPPLIER</exclude>
