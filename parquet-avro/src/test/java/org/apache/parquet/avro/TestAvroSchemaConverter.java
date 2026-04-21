@@ -1073,6 +1073,18 @@ public class TestAvroSchemaConverter {
     Assert.assertEquals("Root schema name should be preserved", "Root", result.getName());
   }
 
+  @Test
+  public void testHyphenatedColumnName() {
+    // PARQUET-3364: Parquet spec allows any UTF-8 string as a field name
+    MessageType parquetSchema = MessageTypeParser.parseMessageType(
+        "message test {\n  required binary Creation-Time (UTF8);\n  optional int32 my-count;\n}\n");
+    AvroSchemaConverter converter = new AvroSchemaConverter();
+    Schema avroSchema = converter.convert(parquetSchema);
+    Assert.assertNotNull("Schema with hyphenated field names should convert", avroSchema);
+    Assert.assertNotNull(avroSchema.getField("Creation-Time"));
+    Assert.assertNotNull(avroSchema.getField("my-count"));
+  }
+
   public static Schema optional(Schema original) {
     return Schema.createUnion(Lists.newArrayList(Schema.create(Schema.Type.NULL), original));
   }

@@ -351,11 +351,38 @@ public class AvroSchemaConverter {
   }
 
   public Schema convert(MessageType parquetSchema) {
-    return convertFields(parquetSchema.getName(), parquetSchema.getFields(), new HashMap<>());
+    return withDisabledNameValidation(
+        () -> convertFields(parquetSchema.getName(), parquetSchema.getFields(), new HashMap<>()));
   }
 
   Schema convert(GroupType parquetSchema) {
-    return convertFields(parquetSchema.getName(), parquetSchema.getFields(), new HashMap<>());
+    return withDisabledNameValidation(
+        () -> convertFields(parquetSchema.getName(), parquetSchema.getFields(), new HashMap<>()));
+  }
+
+  /**
+   * Temporarily disables Avro name validation so that Parquet field names
+   * containing characters not allowed by Avro (e.g. hyphens) can be converted.
+   * The Parquet spec allows any UTF-8 string as a field name.
+   */
+  @SuppressWarnings("unchecked")
+  private static Schema withDisabledNameValidation(java.util.function.Supplier<Schema> supplier) {
+    ThreadLocal<Boolean> validateNames;
+    try {
+      java.lang.reflect.Field f = Schema.class.getDeclaredField("validateNames");
+      f.setAccessible(true);
+      validateNames = (ThreadLocal<Boolean>) f.get(null);
+    } catch (ReflectiveOperationException e) {
+      // If reflection fails, fall back to default behavior
+      return supplier.get();
+    }
+    Boolean prev = validateNames.get();
+    try {
+      validateNames.set(Boolean.FALSE);
+      return supplier.get();
+    } finally {
+      validateNames.set(prev);
+    }
   }
 
   private Schema convertFields(String name, List<Type> parquetFields, Map<String, Integer> names) {
