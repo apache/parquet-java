@@ -28,7 +28,7 @@ import org.junit.Test;
 
 public class ShowFooterCommandTest extends ParquetFileTest {
   @Test
-  public void testShowDirectoryCommand() throws IOException {
+  public void testShowFooterCommand() throws IOException {
     File file = parquetFile();
     ShowFooterCommand command = new ShowFooterCommand(createLogger());
     command.target = file.getAbsolutePath();
