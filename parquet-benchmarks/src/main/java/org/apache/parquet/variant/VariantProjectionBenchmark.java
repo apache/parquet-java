@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import org.apache.hadoop.conf.Configuration;
@@ -74,7 +75,8 @@ import org.slf4j.LoggerFactory;
  *       .idstr: string :- unique string per row
  *       .varid: int64  :- id
  *       .varcategory: int32  :- category (0-19)
- *       .col4: string :- non-unique string per row (picked from 20 values based on category)
+ *       .longstr: string :- non-unique string per row (picked from 20 values based on category),
+ *                           extended to be over the "long string" threshold.
  * </pre>
  * <p>Build and run:
  *
@@ -134,9 +136,13 @@ public class VariantProjectionBenchmark {
       + "      optional binary value;"
       + "      optional int32 typed_value;"
       + "      }"
-      + "    required group col4 {"
+      + "    required group longstr {"
       + "      optional binary value;"
       + "      optional binary typed_value (STRING);"
+      + "      }"
+      + "    required group uuid_entry {"
+      + "      optional binary value;"
+      + "      optional FIXED_LEN_BYTE_ARRAY(16) typed_value (UUID);"
       + "      }"
       + "    }"
       + "   }"
@@ -161,15 +167,19 @@ public class VariantProjectionBenchmark {
       + "  }"
       + "}";
 
+  /**
+   * Categories: limits uniqueness of category columns and longstr.
+   */
   private static final int CATEGORIES = 20;
 
-  /** The col4 values, one per category. */
-  private static final String[] COL4_VALUES;
+  /** The longstr values, one per category. */
+  private static final String[] CATEGORY_STRINGS;
 
   static {
-    COL4_VALUES = new String[CATEGORIES];
+    CATEGORY_STRINGS = new String[CATEGORIES];
     for (int i = 0; i < CATEGORIES; i++) {
-      COL4_VALUES[i] = "col4_category_" + i;
+      CATEGORY_STRINGS[i] =
+          "longstr_category_" + i + " in a long string" + "-0123456789-0123456789-0123456789-0123456789";
     }
   }
 
@@ -241,10 +251,6 @@ public class VariantProjectionBenchmark {
 
   @TearDown
   public void tearDownBenchmark() throws IOException {
-    cleanup();
-  }
-
-  private void cleanup() throws IOException {
     FileSystem fs = FileSystem.getLocal(conf);
     fs.delete(BenchmarkFiles.targetDir, true);
   }
@@ -255,7 +261,7 @@ public class VariantProjectionBenchmark {
         new RowWriterBuilder(HadoopOutputFile.fromPath(path, conf), schema, nestedGroup).build()) {
       for (int i = 0; i < NUM_ROWS; i++) {
         int category = i % CATEGORIES;
-        writer.write(new RowRecord(i, category, buildVariant(i, category, COL4_VALUES[category])));
+        writer.write(new RowRecord(i, category, buildVariant(i, category, CATEGORY_STRINGS[category])));
       }
     }
     final FileStatus st = fs.getFileStatus(path);
@@ -278,7 +284,8 @@ public class VariantProjectionBenchmark {
         consumeField(row.variant, "varid", v -> blackhole.consume(v.getLong()));
         consumeField(row.variant, "varcategory", v -> blackhole.consume(v.getInt()));
         consumeField(row.variant, "idstr", v -> blackhole.consume(v.getString()));
-        consumeField(row.variant, "col4", v -> blackhole.consume(v.getString()));
+        consumeField(row.variant, "longstr", v -> blackhole.consume(v.getString()));
+        consumeField(row.variant, "uuid_entry", v -> blackhole.consume(v.getUUID()));
       }
     }
   }
@@ -343,11 +350,11 @@ public class VariantProjectionBenchmark {
    *
    * @param id row ID
    * @param category category
-   * @param col4 string for column 4
+   * @param longstr string for column 4
    *
    * @return a variant
    */
-  private static Variant buildVariant(long id, int category, String col4) {
+  private static Variant buildVariant(long id, int category, String longstr) {
     VariantBuilder builder = new VariantBuilder();
     VariantObjectBuilder obj = builder.startObject();
     obj.appendKey("idstr");
@@ -356,8 +363,10 @@ public class VariantProjectionBenchmark {
     obj.appendLong(id);
     obj.appendKey("varcategory");
     obj.appendInt(category);
-    obj.appendKey("col4");
-    obj.appendString(col4);
+    obj.appendKey("longstr");
+    obj.appendString(longstr);
+    obj.appendKey("uuid_entry");
+    obj.appendUUID(UUID.randomUUID());
     builder.endObject();
     return builder.build();
   }

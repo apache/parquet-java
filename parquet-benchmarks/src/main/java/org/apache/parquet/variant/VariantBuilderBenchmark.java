@@ -60,6 +60,7 @@ import org.openjdk.jmh.annotations.Fork;
 import org.openjdk.jmh.annotations.Level;
 import org.openjdk.jmh.annotations.Measurement;
 import org.openjdk.jmh.annotations.Mode;
+import org.openjdk.jmh.annotations.OperationsPerInvocation;
 import org.openjdk.jmh.annotations.OutputTimeUnit;
 import org.openjdk.jmh.annotations.Param;
 import org.openjdk.jmh.annotations.Scope;
@@ -389,12 +390,11 @@ public class VariantBuilderBenchmark {
    * VariantBuilder#build()}. Measures object construction including dictionary encoding.
    */
   @Benchmark
+  @OperationsPerInvocation(ITERATIONS)
   public void buildVariant(Blackhole bh) {
-    for (int i = 0; i < ITERATIONS; i++) {
-      Variant v = buildVariant();
-      bh.consume(v.getValueBuffer());
-      bh.consume(v.getMetadataBuffer());
-    }
+    Variant v = buildVariant();
+    bh.consume(v.getValueBuffer());
+    bh.consume(v.getMetadataBuffer());
   }
 
   /**
@@ -405,15 +405,14 @@ public class VariantBuilderBenchmark {
    * primarily measures the ByteBuffer access and the Blackhole overhead..
    */
   @Benchmark
+  @OperationsPerInvocation(ITERATIONS)
   public void serializeVariant(Blackhole bh) {
     // duplicate() gives an independent position/limit on the same backing array –
-    for (int i = 0; i < ITERATIONS; i++) {
-      // equivalent to the Iceberg benchmark's outputBuffer.clear() + writeTo() pattern.
-      ByteBuffer value = preBuiltVariant.getValueBuffer().duplicate();
-      ByteBuffer meta = preBuiltVariant.getMetadataBuffer().duplicate();
-      bh.consume(value);
-      bh.consume(meta);
-    }
+    // equivalent to the Iceberg benchmark's outputBuffer.clear() + writeTo() pattern.
+    ByteBuffer value = preBuiltVariant.getValueBuffer().duplicate();
+    ByteBuffer meta = preBuiltVariant.getMetadataBuffer().duplicate();
+    bh.consume(value);
+    bh.consume(meta);
   }
 
   /**
@@ -424,10 +423,9 @@ public class VariantBuilderBenchmark {
    * @param blackhole black hole.
    */
   @Benchmark
+  @OperationsPerInvocation(ITERATIONS)
   public void deserializeVariant(Blackhole blackhole) {
-    for (int j = 0; j < ITERATIONS; j++) {
-      deserializeAndConsume(preBuiltVariant, blackhole);
-    }
+    deserializeAndConsume(preBuiltVariant, blackhole);
   }
 
   /**
@@ -436,11 +434,10 @@ public class VariantBuilderBenchmark {
    * @param blackhole black hole.
    */
   @Benchmark
+  @OperationsPerInvocation(ITERATIONS)
   public void consumeRecordsShredded(Blackhole blackhole) {
-    for (int i = 0; i < ITERATIONS; i++) {
-      VariantValueWriter.write(noopConsumer, shreddedSchema, preBuiltVariant);
-      blackhole.consume(noopConsumer);
-    }
+    VariantValueWriter.write(noopConsumer, shreddedSchema, preBuiltVariant);
+    blackhole.consume(noopConsumer);
   }
 
   /**
@@ -461,11 +458,10 @@ public class VariantBuilderBenchmark {
    * @param blackhole black hole.
    */
   @Benchmark
+  @OperationsPerInvocation(ITERATIONS)
   public void consumeRecordsUnshredded(Blackhole blackhole) {
-    for (int i = 0; i < ITERATIONS; i++) {
-      VariantValueWriter.write(noopConsumer, unshreddedSchema, preBuiltVariant);
-      blackhole.consume(noopConsumer);
-    }
+    VariantValueWriter.write(noopConsumer, unshreddedSchema, preBuiltVariant);
+    blackhole.consume(noopConsumer);
   }
 
   /**

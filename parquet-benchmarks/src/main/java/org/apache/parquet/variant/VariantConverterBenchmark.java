@@ -29,6 +29,7 @@ import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
 import org.openjdk.jmh.annotations.Measurement;
 import org.openjdk.jmh.annotations.Mode;
+import org.openjdk.jmh.annotations.OperationsPerInvocation;
 import org.openjdk.jmh.annotations.OutputTimeUnit;
 import org.openjdk.jmh.annotations.Param;
 import org.openjdk.jmh.annotations.Scope;
@@ -70,7 +71,7 @@ public class VariantConverterBenchmark {
   /** Number of iterations within each benchmark.
    * This compensates for the low resolution of ARM CPUs,
    * while also ensuring profile graphs are filled out in detail. */
-  private static final int INNER_ITERATIONS = 100_000;
+  private static final int ITERATIONS = 100_000;
 
   /** How long is the string to convert? */
   @Param({"16", "512", "2048"})
@@ -102,12 +103,11 @@ public class VariantConverterBenchmark {
    * {@code typed_value} string column.
    */
   @Benchmark
+  @OperationsPerInvocation(ITERATIONS)
   public void appendStringAsString(Blackhole blackhole) {
-    for (int i = 0; i < INNER_ITERATIONS; i++) {
-      VariantBuilder builder = new VariantBuilder();
-      builder.appendString(inputString);
-      blackhole.consume(builder.build());
-    }
+    VariantBuilder builder = new VariantBuilder();
+    builder.appendString(inputString);
+    blackhole.consume(builder.build());
   }
 
   /**
@@ -116,12 +116,11 @@ public class VariantConverterBenchmark {
    * {@code typed_value} string column.
    */
   @Benchmark
+  @OperationsPerInvocation(ITERATIONS)
   public void appendStringAsBinary(Blackhole blackhole) {
-    for (int i = 0; i < INNER_ITERATIONS; i++) {
-      VariantBuilder builder = new VariantBuilder();
-      builder.appendAsString(inputBinary);
-      blackhole.consume(builder.build());
-    }
+    VariantBuilder builder = new VariantBuilder();
+    builder.appendAsString(inputBinary);
+    blackhole.consume(builder.build());
   }
 
   /**
@@ -130,11 +129,10 @@ public class VariantConverterBenchmark {
    * {@code typed_value} binary column.
    */
   @Benchmark
+  @OperationsPerInvocation(ITERATIONS)
   public void appendBinary(Blackhole blackhole) {
-    for (int i = 0; i < INNER_ITERATIONS; i++) {
-      VariantBuilder builder = new VariantBuilder();
-      builder.appendBinary(inputBinary.toByteBuffer());
-      blackhole.consume(builder.build());
-    }
+    VariantBuilder builder = new VariantBuilder();
+    builder.appendBinary(inputBinary.toByteBuffer());
+    blackhole.consume(builder.build());
   }
 }
