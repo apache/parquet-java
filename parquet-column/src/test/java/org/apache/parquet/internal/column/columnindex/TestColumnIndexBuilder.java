@@ -904,11 +904,11 @@ public class TestColumnIndexBuilder {
         Types.required(BOOLEAN).named("test_boolean"),
         BoundaryOrder.DESCENDING,
         List.of(false, true, false, true, false, true),
-        List.of(9l, 8l, 7l, 6l, 5l, 0l),
+        List.of(9l, 8l, 7l, 6l, 5l, 4l),
         toBBList(false, null, false, null, true, null),
         toBBList(true, null, false, null, true, null));
     assertEquals(BoundaryOrder.DESCENDING, columnIndex.getBoundaryOrder());
-    assertCorrectNullCounts(columnIndex, 9, 8, 7, 6, 5, 0);
+    assertCorrectNullCounts(columnIndex, 9, 8, 7, 6, 5, 4);
     assertCorrectNullPages(columnIndex, false, true, false, true, false, true);
     assertCorrectValues(columnIndex.getMaxValues(), true, null, false, null, true, null);
     assertCorrectValues(columnIndex.getMinValues(), false, null, false, null, true, null);

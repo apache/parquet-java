@@ -250,9 +250,11 @@ public class TestBoundaryOrder {
     RAND_DESCENDING = (ColumnIndexBase<?>) builder.build();
 
     builder = ColumnIndexBuilder.getBuilder(TYPE, Integer.MAX_VALUE);
-    // Add a couple of empty stats so column index will contain null pages only
+    // Add a couple of all-null stats so column index will contain null pages only
     for (int i = 0; i < 10; ++i) {
-      builder.add(Statistics.createStats(TYPE));
+      Statistics<?> nullStats = Statistics.createStats(TYPE);
+      nullStats.incrementNumNulls(10);
+      builder.add(nullStats);
     }
     ALL_NULL_PAGES = (ColumnIndexBase<?>) builder.build();
   }
