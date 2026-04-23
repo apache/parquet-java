@@ -40,7 +40,6 @@ body:
         - Build
         - Arrow
         - Avro
-        - Pig
         - Protobuf
         - Thrift
         - CLI
