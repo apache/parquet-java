@@ -413,6 +413,37 @@ public class TestDictionary {
     }
   }
 
+  @Test
+  public void testDoubleDictionaryPreservesNaNBits() throws IOException {
+    double[] dictionaryValues = {
+      Double.longBitsToDouble(0xffffffffffffffffL),
+      Double.longBitsToDouble(0xfff0000000000001L),
+      -0.0d,
+      0.0d,
+      Double.longBitsToDouble(0x7ff0000000000001L),
+      Double.longBitsToDouble(0x7fffffffffffffffL)
+    };
+    try (final FallbackValuesWriter<PlainDoubleDictionaryValuesWriter, PlainValuesWriter> cw =
+        newPlainDoubleDictionaryValuesWriter(10000, 10000)) {
+      for (int i = 0; i < 10; i++) {
+        for (double value : dictionaryValues) {
+          cw.writeDouble(value);
+        }
+      }
+
+      BytesInput bytes = getBytesAndCheckEncoding(cw, PLAIN_DICTIONARY);
+      assertEquals(dictionaryValues.length, cw.initialWriter.getDictionarySize());
+
+      final DictionaryValuesReader cr = initDicReader(cw, DOUBLE);
+      cr.initFromPage(dictionaryValues.length * 10, bytes.toInputStream());
+      for (int i = 0; i < 10; i++) {
+        for (double expected : dictionaryValues) {
+          assertEquals(Double.doubleToRawLongBits(expected), Double.doubleToRawLongBits(cr.readDouble()));
+        }
+      }
+    }
+  }
+
   private void roundTripDouble(
       FallbackValuesWriter<PlainDoubleDictionaryValuesWriter, PlainValuesWriter> cw,
       ValuesReader reader,
@@ -597,6 +628,37 @@ public class TestDictionary {
       for (float i = COUNT2; i > 0; i--) {
         float back = cr.readFloat();
         assertEquals(i % 50, back, 0.0f);
+      }
+    }
+  }
+
+  @Test
+  public void testFloatDictionaryPreservesNaNBits() throws IOException {
+    float[] dictionaryValues = {
+      Float.intBitsToFloat(0xffffffff),
+      Float.intBitsToFloat(0xfff00001),
+      -0.0f,
+      0.0f,
+      Float.intBitsToFloat(0x7fc00001),
+      Float.intBitsToFloat(0x7fffffff)
+    };
+    try (final FallbackValuesWriter<PlainFloatDictionaryValuesWriter, PlainValuesWriter> cw =
+        newPlainFloatDictionaryValuesWriter(10000, 10000)) {
+      for (int i = 0; i < 10; i++) {
+        for (float value : dictionaryValues) {
+          cw.writeFloat(value);
+        }
+      }
+
+      BytesInput bytes = getBytesAndCheckEncoding(cw, PLAIN_DICTIONARY);
+      assertEquals(dictionaryValues.length, cw.initialWriter.getDictionarySize());
+
+      final DictionaryValuesReader cr = initDicReader(cw, FLOAT);
+      cr.initFromPage(dictionaryValues.length * 10, bytes.toInputStream());
+      for (int i = 0; i < 10; i++) {
+        for (float expected : dictionaryValues) {
+          assertEquals(Float.floatToRawIntBits(expected), Float.floatToRawIntBits(cr.readFloat()));
+        }
       }
     }
   }
