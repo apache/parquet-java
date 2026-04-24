@@ -18,6 +18,9 @@
  */
 package org.apache.parquet.variant;
 
+import static org.apache.parquet.variant.VariantBenchmarkMeasurementSettings.SMALL_BENCHMARK_MEASUREMENTS;
+import static org.apache.parquet.variant.VariantBenchmarkMeasurementSettings.SMALL_BENCHMARK_WARMUP;
+
 import java.io.ByteArrayOutputStream;
 import java.io.EOFException;
 import java.io.IOException;
@@ -100,8 +103,8 @@ import org.slf4j.LoggerFactory;
  */
 @Fork(1)
 @State(Scope.Benchmark)
-@Warmup(iterations = 100)
-@Measurement(iterations = 250)
+@Warmup(iterations = SMALL_BENCHMARK_WARMUP)
+@Measurement(iterations = SMALL_BENCHMARK_MEASUREMENTS)
 @BenchmarkMode(Mode.SingleShotTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
 @Timeout(time = 10, timeUnit = TimeUnit.MINUTES)

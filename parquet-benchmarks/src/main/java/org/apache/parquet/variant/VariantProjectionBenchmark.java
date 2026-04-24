@@ -100,7 +100,6 @@ public class VariantProjectionBenchmark {
 
   /** Number of rows written per file. */
   private static final int NUM_ROWS = 1_000_000;
-
   /**
    * General specification of the records doesn't declare any values within the variant.
    * The per-record metadata declares that.

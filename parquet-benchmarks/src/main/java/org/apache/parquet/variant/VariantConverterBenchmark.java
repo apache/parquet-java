@@ -19,6 +19,8 @@
 package org.apache.parquet.variant;
 
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
+import static org.apache.parquet.variant.VariantBenchmarkMeasurementSettings.SMALL_BENCHMARK_MEASUREMENTS;
+import static org.apache.parquet.variant.VariantBenchmarkMeasurementSettings.SMALL_BENCHMARK_WARMUP;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Random;
@@ -59,8 +61,8 @@ import org.slf4j.LoggerFactory;
  * */
 @Fork(1)
 @State(Scope.Benchmark)
-@Warmup(iterations = 100)
-@Measurement(iterations = 500)
+@Warmup(iterations = SMALL_BENCHMARK_WARMUP)
+@Measurement(iterations = SMALL_BENCHMARK_MEASUREMENTS)
 @BenchmarkMode(Mode.SingleShotTime)
 @OutputTimeUnit(MICROSECONDS)
 @Timeout(time = 10, timeUnit = TimeUnit.MINUTES)
@@ -109,20 +111,6 @@ public class VariantConverterBenchmark {
     builder.appendString(inputString);
     blackhole.consume(builder.build());
   }
-
-  /**
-   * Benchmark converting a {@link Binary} as a string value and building a {@link Variant}.
-   * This exercises the path taken by {@link VariantConverters} when decoding a shredded
-   * {@code typed_value} string column.
-   */
-  @Benchmark
-  @OperationsPerInvocation(ITERATIONS)
-  public void appendStringAsBinary(Blackhole blackhole) {
-    VariantBuilder builder = new VariantBuilder();
-    builder.appendAsString(inputBinary);
-    blackhole.consume(builder.build());
-  }
-
   /**
    * Benchmark appending a {@link Binary} as a binary value and building a {@link Variant}.
    * This exercises the path taken by {@link VariantConverters} when decoding a shredded

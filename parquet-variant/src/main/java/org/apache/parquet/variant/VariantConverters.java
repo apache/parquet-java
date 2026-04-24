@@ -233,7 +233,6 @@ public class VariantConverters {
     PartiallyShreddedFieldsConverter(GroupType fieldsType, ParentConverter<VariantBuilder> parent) {
       this.converters = new Converter[fieldsType.getFieldCount()];
       this.parent = parent;
-      ParentConverter<VariantObjectBuilder> newParent = converter -> converter.accept(objectBuilder);
 
       for (int index = 0; index < fieldsType.getFieldCount(); index += 1) {
         Type field = fieldsType.getType(index);
@@ -241,6 +240,7 @@ public class VariantConverters {
 
         String name = field.getName();
         shreddedFieldNames.add(name);
+        ParentConverter<VariantObjectBuilder> newParent = converter -> converter.accept(objectBuilder);
         converters[index] = new FieldValueConverter(name, field.asGroupType(), newParent);
       }
     }
@@ -501,7 +501,7 @@ public class VariantConverters {
 
     @Override
     public void addBinary(Binary value) {
-      parent.build(builder -> builder.appendAsString(value));
+      parent.build(builder -> builder.appendString(value.toStringUsingUTF8()));
     }
   }
 
