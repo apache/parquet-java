@@ -311,6 +311,73 @@ public class TestInterOpReadAlp {
     writeAndVerifyAlpFile(WriterVersion.PARQUET_2_0);
   }
 
+  /**
+   * Writes ALP-encoded V1 and V2 parquet files from Java and verifies that pyarrow (Python Arrow)
+   * can read them back correctly. Skipped if python3/pyarrow is not available in the environment.
+   *
+   * <p>This test addresses cross-language compatibility: Java writes, another implementation reads.
+   */
+  @Test
+  public void testJavaWrittenAlpFilesReadableByPyarrow() throws IOException, InterruptedException {
+    // Check python3 is available
+    Process check = new ProcessBuilder("python3", "-c", "import pyarrow.parquet")
+        .redirectErrorStream(true)
+        .start();
+    assumeTrue("python3/pyarrow not available, skipping cross-language test", check.waitFor() == 0);
+
+    for (WriterVersion version : new WriterVersion[] {WriterVersion.PARQUET_1_0, WriterVersion.PARQUET_2_0}) {
+      MessageType schema = MessageTypeParser.parseMessageType(ALP_SCHEMA);
+      java.nio.file.Path outPath =
+          temp.newFolder().toPath().resolve("alp_java_xcompat_" + version.name().toLowerCase() + ".parquet");
+
+      try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(new LocalOutputFile(outPath))
+          .withType(schema)
+          .withCompressionCodec(CompressionCodecName.UNCOMPRESSED)
+          .withWriterVersion(version)
+          .withAlpEncoding(true)
+          .withDictionaryEncoding(false)
+          .withConf(new Configuration())
+          .build()) {
+        for (int i = 0; i < DOUBLE_VALUES.length; i++) {
+          SimpleGroup row = new SimpleGroup(schema);
+          row.add("double_col", DOUBLE_VALUES[i]);
+          row.add("float_col", FLOAT_VALUES[i]);
+          writer.write(row);
+        }
+      }
+
+      // Build a python snippet that reads the file and asserts row count and values
+      StringBuilder pyScript = new StringBuilder();
+      pyScript.append("import pyarrow.parquet as pq, sys\n");
+      pyScript.append("t = pq.read_table('").append(outPath.toAbsolutePath()).append("')\n");
+      pyScript.append("assert len(t) == ").append(DOUBLE_VALUES.length).append(", f'row count mismatch: {len(t)}'\n");
+      pyScript.append("dc = t.column('double_col').to_pylist()\n");
+      pyScript.append("fc = t.column('float_col').to_pylist()\n");
+      for (int i = 0; i < DOUBLE_VALUES.length; i++) {
+        pyScript.append("assert abs(dc[").append(i).append("] - ").append(DOUBLE_VALUES[i])
+            .append(") < 1e-9, f'double mismatch at ").append(i).append(": {dc[").append(i).append("]}'\n");
+        pyScript.append("assert abs(fc[").append(i).append("] - ").append(FLOAT_VALUES[i])
+            .append(") < 1e-4, f'float mismatch at ").append(i).append(": {fc[").append(i).append("]}'\n");
+      }
+      pyScript.append("print('OK: " + version.name() + " " + DOUBLE_VALUES.length + " rows verified by pyarrow')\n");
+
+      Process proc = new ProcessBuilder("python3", "-c", pyScript.toString())
+          .redirectErrorStream(true)
+          .start();
+      String output = new String(proc.getInputStream().readAllBytes());
+      int exitCode = proc.waitFor();
+      LOG.info("pyarrow cross-compat [{}]: {}", version, output.trim());
+      // pyarrow may not yet support reading ALP (Arrow C++ PR #48345 in progress).
+      // Skip rather than fail so the test becomes a passing signal once pyarrow adds ALP support.
+      assumeTrue(
+          "pyarrow does not yet support reading ALP encoding (Arrow C++ PR #48345 pending): "
+              + output,
+          !output.contains("Unknown encoding type"));
+      assertEquals(
+          "pyarrow failed to read Java-written ALP file (" + version + "): " + output, 0, exitCode);
+    }
+  }
+
   // TODO: Uncomment once parquet-testing PR #100 merges
   /*
   @Test
