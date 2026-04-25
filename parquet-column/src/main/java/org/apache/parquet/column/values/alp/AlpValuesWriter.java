@@ -337,7 +337,10 @@ public abstract class AlpValuesWriter extends ValuesWriter {
       encodedVectors.reset();
       vectorByteSizes.clear();
       vectorsProcessed = 0;
-      cachedPresets = null;
+      // Preserve cachedPresets across page boundaries: the preset (exponent, factor) pairs
+      // reflect the column's data distribution and remain valid for subsequent pages.
+      // Clearing them on every reset forces a full parameter search from scratch on each page,
+      // which is the main source of write overhead. Only reset the sampling state.
       rowgroupSamples.clear();
     }
 
@@ -606,7 +609,10 @@ public abstract class AlpValuesWriter extends ValuesWriter {
       encodedVectors.reset();
       vectorByteSizes.clear();
       vectorsProcessed = 0;
-      cachedPresets = null;
+      // Preserve cachedPresets across page boundaries: the preset (exponent, factor) pairs
+      // reflect the column's data distribution and remain valid for subsequent pages.
+      // Clearing them on every reset forces a full parameter search from scratch on each page,
+      // which is the main source of write overhead. Only reset the sampling state.
       rowgroupSamples.clear();
     }
 

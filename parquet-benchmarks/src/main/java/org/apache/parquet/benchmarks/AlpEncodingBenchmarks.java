@@ -54,6 +54,8 @@ import java.util.concurrent.TimeUnit;
  * JMH benchmarks for ALP (Adaptive Lossless floating-Point) encoding.
  *
  * <p>Compares ALP vs PLAIN encoding for float and double columns across write and read paths.
+ * Both encodings use no compression codec (UNCOMPRESSED), so the comparison isolates the
+ * effect of the encoding itself — not any downstream codec like ZSTD or SNAPPY.
  * Uses realistic floating-point data with limited decimal precision — the type of data ALP
  * is designed to compress (e.g. sensor readings, prices, timestamps as doubles).
  *
