@@ -20,10 +20,15 @@ package org.apache.parquet.variant;
 
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.UUID;
 
 /**
  * This Variant class holds the Variant-encoded value and metadata binary values.
+ *
+ * <p>Concurrency: the byte buffers are read-only and all lazy caches are idempotent,
+ * so concurrent reads are safe - the worst outcome is a redundant decode. The metadata
+ * dictionary cache is {@code volatile} for safe publication to child Variants.
  */
 public final class Variant {
   /**
@@ -42,7 +47,7 @@ public final class Variant {
   private final int dictSize;
 
   /**
-   * Lazy cache for metadata dictionary strings.
+   * Lazy cache for metadata dictionary strings, shared with child Variants.
    */
   private volatile String[] metadataCache;
 
@@ -76,10 +81,8 @@ public final class Variant {
   }
 
   public Variant(ByteBuffer value, ByteBuffer metadata) {
-    // The buffers are read a single-byte at a time, so the endianness of the input buffers
-    // is not important.
-    this.value = value.asReadOnlyBuffer();
-    this.metadata = metadata.asReadOnlyBuffer();
+    this.value = value.asReadOnlyBuffer().order(ByteOrder.LITTLE_ENDIAN);
+    this.metadata = metadata.asReadOnlyBuffer().order(ByteOrder.LITTLE_ENDIAN);
 
     // There is currently only one allowed version.
     if ((metadata.get(metadata.position()) & VariantUtil.VERSION_MASK) != VariantUtil.VERSION) {
@@ -92,7 +95,7 @@ public final class Variant {
     int pos = this.metadata.position();
     int metaOffsetSize = ((this.metadata.get(pos) >> 6) & 0x3) + 1;
     if (this.metadata.remaining() > 1) {
-      this.dictSize = VariantUtil.readUnsigned(this.metadata, pos + 1, metaOffsetSize);
+      this.dictSize = VariantUtil.readUnsignedLittleEndian(this.metadata, pos + 1, metaOffsetSize);
     } else {
       this.dictSize = 0;
     }
@@ -103,8 +106,8 @@ public final class Variant {
    * Package-private constructor that shares pre-parsed metadata state from a parent Variant.
    */
   Variant(ByteBuffer value, ByteBuffer metadata, String[] metadataCache, int dictSize) {
-    this.value = value.asReadOnlyBuffer();
-    this.metadata = metadata.asReadOnlyBuffer();
+    this.value = value.asReadOnlyBuffer().order(ByteOrder.LITTLE_ENDIAN);
+    this.metadata = metadata.asReadOnlyBuffer().order(ByteOrder.LITTLE_ENDIAN);
     this.metadataCache = metadataCache;
     this.dictSize = dictSize;
   }
@@ -253,10 +256,11 @@ public final class Variant {
 
     if (info.numElements < BINARY_SEARCH_THRESHOLD) {
       for (int i = 0; i < info.numElements; ++i) {
-        int id = VariantUtil.readUnsigned(value, idStart + info.idSize * i, info.idSize);
+        int id = VariantUtil.readUnsignedLittleEndian(value, idStart + info.idSize * i, info.idSize);
         String fieldKey = getMetadataKeyCached(id);
         if (fieldKey.equals(key)) {
-          int offset = VariantUtil.readUnsigned(value, offsetStart + info.offsetSize * i, info.offsetSize);
+          int offset = VariantUtil.readUnsignedLittleEndian(
+              value, offsetStart + info.offsetSize * i, info.offsetSize);
           return childVariant(VariantUtil.slice(value, dataStart + offset));
         }
       }
@@ -268,7 +272,7 @@ public final class Variant {
         // performance optimization, because it can properly handle the case where `low + high`
         // overflows int.
         int mid = (low + high) >>> 1;
-        int midId = VariantUtil.readUnsigned(value, idStart + info.idSize * mid, info.idSize);
+        int midId = VariantUtil.readUnsignedLittleEndian(value, idStart + info.idSize * mid, info.idSize);
         String midKey = getMetadataKeyCached(midId);
         int cmp = midKey.compareTo(key);
         if (cmp < 0) {
@@ -276,7 +280,8 @@ public final class Variant {
         } else if (cmp > 0) {
           high = mid - 1;
         } else {
-          int offset = VariantUtil.readUnsigned(value, offsetStart + info.offsetSize * mid, info.offsetSize);
+          int offset = VariantUtil.readUnsignedLittleEndian(
+              value, offsetStart + info.offsetSize * mid, info.offsetSize);
           return childVariant(VariantUtil.slice(value, dataStart + offset));
         }
       }
@@ -309,8 +314,8 @@ public final class Variant {
     int idStart = value.position() + info.idStartOffset;
     int offsetStart = value.position() + info.offsetStartOffset;
     int dataStart = value.position() + info.dataStartOffset;
-    int id = VariantUtil.readUnsigned(value, idStart + info.idSize * idx, info.idSize);
-    int offset = VariantUtil.readUnsigned(value, offsetStart + info.offsetSize * idx, info.offsetSize);
+    int id = VariantUtil.readUnsignedLittleEndian(value, idStart + info.idSize * idx, info.idSize);
+    int offset = VariantUtil.readUnsignedLittleEndian(value, offsetStart + info.offsetSize * idx, info.offsetSize);
     String key = getMetadataKeyCached(id);
     Variant v = childVariant(VariantUtil.slice(value, dataStart + offset));
     return new ObjectField(key, v);
@@ -339,7 +344,8 @@ public final class Variant {
     }
     int offsetStart = value.position() + info.offsetStartOffset;
     int dataStart = value.position() + info.dataStartOffset;
-    int offset = VariantUtil.readUnsigned(value, offsetStart + info.offsetSize * index, info.offsetSize);
+    int offset =
+        VariantUtil.readUnsignedLittleEndian(value, offsetStart + info.offsetSize * index, info.offsetSize);
     return childVariant(VariantUtil.slice(value, dataStart + offset));
   }
 
@@ -352,23 +358,25 @@ public final class Variant {
 
   /**
    * Returns the metadata dictionary string for the given ID, caching the result.
+   * All state is captured in locals so the calling thread retains needed values
+   * for the duration of the call regardless of concurrent access.
    */
   String getMetadataKeyCached(int id) {
-    // Fall back to uncached lookup for out-of-range IDs
     if (id < 0 || id >= dictSize) {
       return VariantUtil.getMetadataKey(metadata, id);
     }
-    // Demand-create shared dictionary cache
+    // Demand-create shared dictionary cache.
     String[] cache = metadataCache;
     if (cache == null) {
       cache = new String[dictSize];
       metadataCache = cache;
-      cache = metadataCache;
     }
-    if (cache[id] == null) {
-      cache[id] = VariantUtil.getMetadataKey(metadata, id);
+    String key = cache[id];
+    if (key == null) {
+      key = VariantUtil.getMetadataKey(metadata, id);
+      cache[id] = key;
     }
-    return cache[id];
+    return key;
   }
 
   /**

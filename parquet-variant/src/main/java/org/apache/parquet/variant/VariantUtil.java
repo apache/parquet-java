@@ -300,6 +300,31 @@ class VariantUtil {
   }
 
   /**
+   * Fast little-endian unsigned read using bulk ByteBuffer operations.
+   * Requires the buffer to have {@link java.nio.ByteOrder#LITTLE_ENDIAN} byte order.
+   * Adapted from Apache Iceberg's VariantUtil.readLittleEndianUnsigned.
+   */
+  static int readUnsignedLittleEndian(ByteBuffer buffer, int pos, int numBytes) {
+    switch (numBytes) {
+      case 1:
+        return buffer.get(pos) & U8_MAX;
+      case 2:
+        return buffer.getShort(pos) & U16_MAX;
+      case 3:
+        return (buffer.getShort(pos) & U16_MAX) | ((buffer.get(pos + 2) & U8_MAX) << 16);
+      case 4:
+        int v = buffer.getInt(pos);
+        if (v < 0) {
+          throw new IllegalArgumentException(
+              String.format("Failed to read unsigned int. numBytes: %d", numBytes));
+        }
+        return v;
+      default:
+        throw new IllegalArgumentException(String.format("Invalid numBytes: %d", numBytes));
+    }
+  }
+
+  /**
    * Returns the value type of Variant value `value[pos...]`. It is only legal to call `get*` if
    * `getType` returns the corresponding type. For example, it is only legal to call
    * `getLong` if this method returns `Type.Long`.
