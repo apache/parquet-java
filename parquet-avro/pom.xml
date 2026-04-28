@@ -137,7 +137,6 @@
       <plugin>
         <groupId>org.apache.avro</groupId>
         <artifactId>avro-maven-plugin</artifactId>
-        <version>${avro.version}</version>
         <executions>
           <execution>
             <id>compile-idl</id>
@@ -162,7 +161,6 @@
         <!-- Ensure that the specific classes are available during test compile but not included in jar -->
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>build-helper-maven-plugin</artifactId>
-        <version>3.6.0</version>
         <executions>
           <execution>
             <id>add-test-sources</id>
