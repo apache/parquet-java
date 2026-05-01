@@ -185,6 +185,62 @@ public abstract class ValuesReader {
     throw new UnsupportedOperationException();
   }
 
+  // ---- Batch read methods ----
+  // Default implementations loop over the per-value methods.
+  // Subclasses should override with bulk/memcpy-style implementations.
+
+  /**
+   * Reads {@code count} integers into {@code dest} starting at {@code offset}.
+   *
+   * @param dest   destination array
+   * @param offset start index in dest
+   * @param count  number of values to read
+   */
+  public void readIntegers(int[] dest, int offset, int count) {
+    for (int i = 0; i < count; i++) {
+      dest[offset + i] = readInteger();
+    }
+  }
+
+  /**
+   * Reads {@code count} longs into {@code dest} starting at {@code offset}.
+   *
+   * @param dest   destination array
+   * @param offset start index in dest
+   * @param count  number of values to read
+   */
+  public void readLongs(long[] dest, int offset, int count) {
+    for (int i = 0; i < count; i++) {
+      dest[offset + i] = readLong();
+    }
+  }
+
+  /**
+   * Reads {@code count} floats into {@code dest} starting at {@code offset}.
+   *
+   * @param dest   destination array
+   * @param offset start index in dest
+   * @param count  number of values to read
+   */
+  public void readFloats(float[] dest, int offset, int count) {
+    for (int i = 0; i < count; i++) {
+      dest[offset + i] = readFloat();
+    }
+  }
+
+  /**
+   * Reads {@code count} doubles into {@code dest} starting at {@code offset}.
+   *
+   * @param dest   destination array
+   * @param offset start index in dest
+   * @param count  number of values to read
+   */
+  public void readDoubles(double[] dest, int offset, int count) {
+    for (int i = 0; i < count; i++) {
+      dest[offset + i] = readDouble();
+    }
+  }
+
   /**
    * Skips the next value in the page
    */

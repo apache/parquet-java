@@ -118,6 +118,59 @@ public class DictionaryValuesReader extends ValuesReader {
   }
 
   @Override
+  public void readIntegers(int[] dest, int offset, int count) {
+    try {
+      // Batch-decode dictionary IDs, then batch-lookup
+      int[] ids = new int[count];
+      decoder.readInts(ids, 0, count);
+      for (int i = 0; i < count; i++) {
+        dest[offset + i] = dictionary.decodeToInt(ids[i]);
+      }
+    } catch (IOException e) {
+      throw new ParquetDecodingException(e);
+    }
+  }
+
+  @Override
+  public void readLongs(long[] dest, int offset, int count) {
+    try {
+      int[] ids = new int[count];
+      decoder.readInts(ids, 0, count);
+      for (int i = 0; i < count; i++) {
+        dest[offset + i] = dictionary.decodeToLong(ids[i]);
+      }
+    } catch (IOException e) {
+      throw new ParquetDecodingException(e);
+    }
+  }
+
+  @Override
+  public void readFloats(float[] dest, int offset, int count) {
+    try {
+      int[] ids = new int[count];
+      decoder.readInts(ids, 0, count);
+      for (int i = 0; i < count; i++) {
+        dest[offset + i] = dictionary.decodeToFloat(ids[i]);
+      }
+    } catch (IOException e) {
+      throw new ParquetDecodingException(e);
+    }
+  }
+
+  @Override
+  public void readDoubles(double[] dest, int offset, int count) {
+    try {
+      int[] ids = new int[count];
+      decoder.readInts(ids, 0, count);
+      for (int i = 0; i < count; i++) {
+        dest[offset + i] = dictionary.decodeToDouble(ids[i]);
+      }
+    } catch (IOException e) {
+      throw new ParquetDecodingException(e);
+    }
+  }
+
+  @Override
   public void skip() {
     try {
       decoder.readInt(); // Type does not matter as we are just skipping dictionary keys
