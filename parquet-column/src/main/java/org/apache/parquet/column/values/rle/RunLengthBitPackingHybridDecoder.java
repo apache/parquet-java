@@ -114,10 +114,18 @@ public class RunLengthBitPackingHybridDecoder {
         int bytesToRead = (int) Math.ceil(currentCount * bitWidth / 8.0);
         bytesToRead = Math.min(bytesToRead, buffer.remaining());
         buffer.get(packedBytesBuffer, 0, bytesToRead);
-        for (int valueIndex = 0, byteIndex = 0;
-            valueIndex < currentCount;
-            valueIndex += 8, byteIndex += bitWidth) {
-          packer.unpack8Values(packedBytesBuffer, byteIndex, currentBuffer, valueIndex);
+        // Unpack 32 values (4 groups) at a time when possible — symmetric to the encoder's
+        // pack32Values fast path. Falls back to unpack8Values for any residual groups.
+        int groupIdx = 0;
+        int byteIndex = 0;
+        final int step32 = bitWidth * 4;
+        while (groupIdx + 4 <= numGroups) {
+          packer.unpack32Values(packedBytesBuffer, byteIndex, currentBuffer, groupIdx * 8);
+          groupIdx += 4;
+          byteIndex += step32;
+        }
+        for (; groupIdx < numGroups; groupIdx++, byteIndex += bitWidth) {
+          packer.unpack8Values(packedBytesBuffer, byteIndex, currentBuffer, groupIdx * 8);
         }
         break;
       default:
