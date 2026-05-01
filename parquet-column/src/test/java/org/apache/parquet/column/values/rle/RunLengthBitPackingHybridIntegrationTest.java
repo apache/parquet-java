@@ -21,7 +21,6 @@ package org.apache.parquet.column.values.rle;
 import static org.junit.Assert.assertEquals;
 
 import java.nio.ByteBuffer;
-import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.bytes.DirectByteBufferAllocator;
 import org.junit.Test;
 
@@ -57,9 +56,8 @@ public class RunLengthBitPackingHybridIntegrationTest {
       encoder.writeInt((int) (17 % modValue));
     }
     ByteBuffer encodedBytes = encoder.toBytes().toByteBuffer();
-    ByteBufferInputStream in = ByteBufferInputStream.wrap(encodedBytes);
 
-    RunLengthBitPackingHybridDecoder decoder = new RunLengthBitPackingHybridDecoder(bitWidth, in);
+    RunLengthBitPackingHybridDecoder decoder = new RunLengthBitPackingHybridDecoder(bitWidth, encodedBytes);
 
     for (int i = 0; i < 100; i++) {
       assertEquals(i % modValue, decoder.readInt());
