@@ -21,6 +21,7 @@ package org.apache.parquet.column.values.rle;
 import static org.junit.Assert.assertEquals;
 
 import java.io.ByteArrayInputStream;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.parquet.bytes.BytesUtils;
@@ -290,12 +291,12 @@ public class TestRunLengthBitPackingHybridEncoder {
     // bit width 2.
     bytes[0] = (1 << 1) | 1;
     bytes[1] = (1 << 0) | (2 << 2) | (3 << 4);
-    ByteArrayInputStream stream = new ByteArrayInputStream(bytes);
-    RunLengthBitPackingHybridDecoder decoder = new RunLengthBitPackingHybridDecoder(2, stream);
+    ByteBuffer buffer = ByteBuffer.wrap(bytes);
+    RunLengthBitPackingHybridDecoder decoder = new RunLengthBitPackingHybridDecoder(2, buffer);
     assertEquals(decoder.readInt(), 1);
     assertEquals(decoder.readInt(), 2);
     assertEquals(decoder.readInt(), 3);
-    assertEquals(stream.available(), 0);
+    assertEquals(buffer.remaining(), 0);
   }
 
   private static List<Integer> unpack(int bitWidth, int numValues, ByteArrayInputStream is) throws Exception {
