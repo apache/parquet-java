@@ -71,6 +71,17 @@ public abstract class PlainValuesReader extends ValuesReader {
         throw new ParquetDecodingException("could not read double", e);
       }
     }
+
+    @Override
+    public void readDoubles(double[] dest, int offset, int count) {
+      try {
+        for (int i = 0; i < count; i++) {
+          dest[offset + i] = in.readDouble();
+        }
+      } catch (IOException e) {
+        throw new ParquetDecodingException("could not read doubles", e);
+      }
+    }
   }
 
   public static class FloatPlainValuesReader extends PlainValuesReader {
@@ -90,6 +101,17 @@ public abstract class PlainValuesReader extends ValuesReader {
         return in.readFloat();
       } catch (IOException e) {
         throw new ParquetDecodingException("could not read float", e);
+      }
+    }
+
+    @Override
+    public void readFloats(float[] dest, int offset, int count) {
+      try {
+        for (int i = 0; i < count; i++) {
+          dest[offset + i] = in.readFloat();
+        }
+      } catch (IOException e) {
+        throw new ParquetDecodingException("could not read floats", e);
       }
     }
   }
@@ -113,6 +135,17 @@ public abstract class PlainValuesReader extends ValuesReader {
         throw new ParquetDecodingException("could not read int", e);
       }
     }
+
+    @Override
+    public void readIntegers(int[] dest, int offset, int count) {
+      try {
+        for (int i = 0; i < count; i++) {
+          dest[offset + i] = in.readInt();
+        }
+      } catch (IOException e) {
+        throw new ParquetDecodingException("could not read ints", e);
+      }
+    }
   }
 
   public static class LongPlainValuesReader extends PlainValuesReader {
@@ -132,6 +165,17 @@ public abstract class PlainValuesReader extends ValuesReader {
         return in.readLong();
       } catch (IOException e) {
         throw new ParquetDecodingException("could not read long", e);
+      }
+    }
+
+    @Override
+    public void readLongs(long[] dest, int offset, int count) {
+      try {
+        for (int i = 0; i < count; i++) {
+          dest[offset + i] = in.readLong();
+        }
+      } catch (IOException e) {
+        throw new ParquetDecodingException("could not read longs", e);
       }
     }
   }
