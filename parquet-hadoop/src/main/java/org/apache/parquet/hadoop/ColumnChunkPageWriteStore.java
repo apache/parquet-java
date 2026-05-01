@@ -20,6 +20,7 @@ package org.apache.parquet.hadoop;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -98,6 +99,28 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
 
     private final CRC32 crc;
     boolean pageWriteChecksumEnabled;
+
+    /**
+     * OutputStream adapter that feeds bytes directly to a CRC32 checksum.
+     * Used to compute CRC from BytesInput without the intermediate toByteArray() copy.
+     */
+    private static final class CRC32OutputStream extends OutputStream {
+      private final CRC32 crc;
+
+      CRC32OutputStream(CRC32 crc) {
+        this.crc = crc;
+      }
+
+      @Override
+      public void write(int b) {
+        crc.update(b);
+      }
+
+      @Override
+      public void write(byte[] b, int off, int len) {
+        crc.update(b, off, len);
+      }
+    }
 
     private final BlockCipher.Encryptor headerBlockEncryptor;
     private final BlockCipher.Encryptor pageBlockEncryptor;
@@ -217,7 +240,7 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
       }
       if (pageWriteChecksumEnabled) {
         crc.reset();
-        crc.update(compressedBytes.toByteArray());
+        compressedBytes.writeAllTo(new CRC32OutputStream(crc));
         parquetMetadataConverter.writeDataPageV1Header(
             (int) uncompressedSize,
             (int) compressedSize,
@@ -321,14 +344,15 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
       }
       if (pageWriteChecksumEnabled) {
         crc.reset();
+        CRC32OutputStream crcOut = new CRC32OutputStream(crc);
         if (repetitionLevels.size() > 0) {
-          crc.update(repetitionLevels.toByteArray());
+          repetitionLevels.writeAllTo(crcOut);
         }
         if (definitionLevels.size() > 0) {
-          crc.update(definitionLevels.toByteArray());
+          definitionLevels.writeAllTo(crcOut);
         }
         if (compressedData.size() > 0) {
-          crc.update(compressedData.toByteArray());
+          compressedData.writeAllTo(crcOut);
         }
         parquetMetadataConverter.writeDataPageV2Header(
             uncompressedSize,
