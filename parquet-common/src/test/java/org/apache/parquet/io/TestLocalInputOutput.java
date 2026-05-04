@@ -109,8 +109,6 @@ public class TestLocalInputOutput {
 
   @Test
   public void readFullyIntoHeapByteBufferWithNonZeroPosition() throws IOException {
-    // Regression: the buggy implementation passed buf.position() as the src offset to
-    // ByteBuffer.put(byte[], int, int), which reads from the wrong location in the source array.
     Path path = writeBytes(new byte[] {10, 20, 30, 40});
     try (SeekableInputStream stream = new LocalInputFile(path).newStream()) {
       ByteBuffer buf = ByteBuffer.allocate(6);
@@ -126,8 +124,6 @@ public class TestLocalInputOutput {
 
   @Test
   public void readFullyIntoDirectByteBuffer() throws IOException {
-    // Regression: the buggy implementation called arrayOffset() which throws
-    // UnsupportedOperationException on direct buffers.
     Path path = writeBytes(new byte[] {7, 8, 9});
     try (SeekableInputStream stream = new LocalInputFile(path).newStream()) {
       ByteBuffer buf = ByteBuffer.allocateDirect(3);
@@ -142,7 +138,6 @@ public class TestLocalInputOutput {
 
   @Test
   public void readFullyIntoReadOnlyByteBuffer() throws IOException {
-    // Read-only views also throw from arrayOffset().
     Path path = writeBytes(new byte[] {7, 8, 9});
     try (SeekableInputStream stream = new LocalInputFile(path).newStream()) {
       ByteBuffer backing = ByteBuffer.allocate(3);
@@ -168,8 +163,6 @@ public class TestLocalInputOutput {
 
   @Test
   public void readIntoByteBufferAdvancesPositionByBytesRead() throws IOException {
-    // Regression: the buggy implementation always advanced by buf.remaining() regardless of how
-    // many bytes were actually read, leaving the destination buffer inconsistent on partial reads.
     Path path = writeBytes(new byte[] {1, 2, 3});
     try (SeekableInputStream stream = new LocalInputFile(path).newStream()) {
       ByteBuffer buf = ByteBuffer.allocate(10);
@@ -208,8 +201,6 @@ public class TestLocalInputOutput {
 
   @Test
   public void readIntoByteBufferWithNonZeroPosition() throws IOException {
-    // Regression: the buggy implementation passed buf.position() as the src offset to
-    // ByteBuffer.put(byte[], int, int), which reads from the wrong location in the source array.
     Path path = writeBytes(new byte[] {10, 20, 30});
     try (SeekableInputStream stream = new LocalInputFile(path).newStream()) {
       ByteBuffer buf = ByteBuffer.allocate(5);
