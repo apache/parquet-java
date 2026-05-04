@@ -89,7 +89,7 @@ public class DeltaByteArrayWriter extends ValuesWriter {
 
   @Override
   public void writeBytes(Binary v) {
-    byte[] vb = v.getBytesUnsafe();
+    byte[] vb = v.isBackingBytesReused() ? v.getBytes() : v.getBytesUnsafe();
     int length = Math.min(previous.length, vb.length);
     // Find the number of matching prefix bytes between this value and the previous one.
     // Arrays.mismatch is intrinsified by the JVM to use SIMD instructions.
@@ -99,9 +99,6 @@ public class DeltaByteArrayWriter extends ValuesWriter {
     }
     prefixLengthWriter.writeInteger(i);
     suffixWriter.writeBytes(v.slice(i, vb.length - i));
-    // Retain an owned copy for prefix comparison with the next value.
-    // getBytesUnsafe() may return the backing array directly, so we must copy
-    // if the Binary's backing bytes may be reused by the caller.
-    previous = v.isBackingBytesReused() ? v.getBytes() : vb;
+    previous = vb;
   }
 }
