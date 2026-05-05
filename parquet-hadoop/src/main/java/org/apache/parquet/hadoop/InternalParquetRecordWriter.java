@@ -28,10 +28,11 @@ import java.util.Objects;
 import org.apache.parquet.column.ColumnWriteStore;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.values.bloomfilter.BloomFilterWriteStore;
-import org.apache.parquet.compression.CompressionCodecFactory.BytesInputCompressor;
+import org.apache.parquet.compression.CompressionCodecFactory;
 import org.apache.parquet.crypto.InternalFileEncryptor;
 import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.hadoop.api.WriteSupport.FinalizedWriteContext;
+import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.metadata.ParquetMetadata;
 import org.apache.parquet.io.ColumnIOFactory;
 import org.apache.parquet.io.MessageColumnIO;
@@ -51,7 +52,8 @@ class InternalParquetRecordWriter<T> {
   private long rowGroupSizeThreshold;
   private final int rowGroupRecordCountThreshold;
   private long nextRowGroupSize;
-  private final BytesInputCompressor compressor;
+  private final CompressionCodecFactory codecFactory;
+  private final CompressionCodecName defaultCodec;
   private final boolean validating;
   private final ParquetProperties props;
 
@@ -76,7 +78,8 @@ class InternalParquetRecordWriter<T> {
    * @param schema            the schema of the records
    * @param extraMetaData     extra meta data to write in the footer of the file
    * @param rowGroupSize      the size of a block in the file (this will be approximate)
-   * @param compressor        the codec used to compress
+   * @param codecFactory      factory used to create per-column compressors
+   * @param defaultCodec      the default codec to use when no per-column codec is configured
    */
   public InternalParquetRecordWriter(
       ParquetFileWriter parquetFileWriter,
@@ -84,7 +87,8 @@ class InternalParquetRecordWriter<T> {
       MessageType schema,
       Map<String, String> extraMetaData,
       long rowGroupSize,
-      BytesInputCompressor compressor,
+      CompressionCodecFactory codecFactory,
+      CompressionCodecName defaultCodec,
       boolean validating,
       ParquetProperties props) {
     this.parquetFileWriter = parquetFileWriter;
@@ -94,7 +98,8 @@ class InternalParquetRecordWriter<T> {
     this.rowGroupSizeThreshold = rowGroupSize;
     this.rowGroupRecordCountThreshold = props.getRowGroupRowCountLimit();
     this.nextRowGroupSize = rowGroupSizeThreshold;
-    this.compressor = compressor;
+    this.codecFactory = codecFactory;
+    this.defaultCodec = defaultCodec;
     this.validating = validating;
     this.props = props;
     this.fileEncryptor = parquetFileWriter.getEncryptor();
@@ -109,7 +114,9 @@ class InternalParquetRecordWriter<T> {
 
   private void initStore() {
     ColumnChunkPageWriteStore columnChunkPageWriteStore = new ColumnChunkPageWriteStore(
-        compressor,
+        codecFactory,
+        defaultCodec,
+        props,
         schema,
         props.getAllocator(),
         props.getColumnIndexTruncateLength(),
