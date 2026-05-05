@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -18,12 +18,28 @@
  */
 package org.apache.parquet.thrift.struct;
 
-import org.junit.Test;
-import org.apache.parquet.thrift.ThriftSchemaConverter;
-import org.apache.parquet.thrift.test.compat.*;
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+
+import org.apache.parquet.thrift.ThriftSchemaConverter;
+import org.apache.parquet.thrift.test.compat.AddRequiredStructV1;
+import org.apache.parquet.thrift.test.compat.DefaultStructV1;
+import org.apache.parquet.thrift.test.compat.ListStructV1;
+import org.apache.parquet.thrift.test.compat.ListStructV2;
+import org.apache.parquet.thrift.test.compat.MapAddRequiredStructV1;
+import org.apache.parquet.thrift.test.compat.MapStructV1;
+import org.apache.parquet.thrift.test.compat.MapStructV2;
+import org.apache.parquet.thrift.test.compat.MapValueStructV1;
+import org.apache.parquet.thrift.test.compat.MapValueStructV2;
+import org.apache.parquet.thrift.test.compat.NestedEmptyStruct;
+import org.apache.parquet.thrift.test.compat.OptionalStructV1;
+import org.apache.parquet.thrift.test.compat.RenameStructV1;
+import org.apache.parquet.thrift.test.compat.SetStructV1;
+import org.apache.parquet.thrift.test.compat.SetStructV2;
+import org.apache.parquet.thrift.test.compat.StructV1;
+import org.apache.parquet.thrift.test.compat.StructV2;
+import org.apache.parquet.thrift.test.compat.TypeChangeStructV1;
+import org.junit.Test;
 
 public class CompatibilityCheckerTest {
 
@@ -64,11 +80,11 @@ public class CompatibilityCheckerTest {
    */
   @Test
   public void testReuirementChange() {
-    //required can become optional or default
+    // required can become optional or default
     verifyCompatible(StructV1.class, OptionalStructV1.class, true);
     verifyCompatible(StructV1.class, DefaultStructV1.class, true);
 
-    //optional/deafult can not become required
+    // optional/deafult can not become required
     verifyCompatible(OptionalStructV1.class, StructV1.class, false);
     verifyCompatible(DefaultStructV1.class, StructV1.class, false);
   }
@@ -83,17 +99,16 @@ public class CompatibilityCheckerTest {
 
   @Test
   public void testMap() {
-    //can add optional field
+    // can add optional field
     verifyCompatible(MapStructV1.class, MapStructV2.class, true);
     verifyCompatible(MapValueStructV1.class, MapValueStructV2.class, true);
 
-    //should not delete field
+    // should not delete field
     verifyCompatible(MapStructV2.class, MapStructV1.class, false);
     verifyCompatible(MapValueStructV2.class, MapValueStructV1.class, false);
 
-    //should not add required field
+    // should not add required field
     verifyCompatible(MapStructV2.class, MapAddRequiredStructV1.class, false);
-
   }
 
   @Test
@@ -111,7 +126,9 @@ public class CompatibilityCheckerTest {
   @Test
   public void testEmptyStruct() {
     CompatibilityReport report = getCompatibilityReport(NestedEmptyStruct.class, NestedEmptyStruct.class);
-    assertEquals("encountered an empty struct: required_empty\nencountered an empty struct: optional_empty",report.prettyMessages());
+    assertEquals(
+        "encountered an empty struct: required_empty\nencountered an empty struct: optional_empty",
+        report.prettyMessages());
     assertTrue(report.hasEmptyStruct());
   }
 

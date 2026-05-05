@@ -1,0 +1,500 @@
+{
+  "schema" : {
+    "name" : "root",
+    "repetition" : "REPEATED",
+    "logicalTypeAnnotation" : null,
+    "id" : null,
+    "fields" : [ {
+      "name" : "a",
+      "repetition" : "OPTIONAL",
+      "logicalTypeAnnotation" : {
+        "bitWidth" : 8,
+        "signed" : true
+      },
+      "id" : null,
+      "primitive" : true,
+      "primitiveTypeName" : "INT32",
+      "typeLength" : 0,
+      "decimalMetadata" : null,
+      "originalType" : "INT_8"
+    }, {
+      "name" : "b",
+      "repetition" : "OPTIONAL",
+      "logicalTypeAnnotation" : null,
+      "id" : null,
+      "fields" : [ {
+        "name" : "c",
+        "repetition" : "OPTIONAL",
+        "logicalTypeAnnotation" : {
+          "bitWidth" : 16,
+          "signed" : true
+        },
+        "id" : null,
+        "primitive" : true,
+        "primitiveTypeName" : "INT32",
+        "typeLength" : 0,
+        "decimalMetadata" : null,
+        "originalType" : "INT_16"
+      }, {
+        "name" : "d",
+        "repetition" : "OPTIONAL",
+        "logicalTypeAnnotation" : { },
+        "id" : null,
+        "primitive" : true,
+        "primitiveTypeName" : "BINARY",
+        "typeLength" : 0,
+        "decimalMetadata" : null,
+        "originalType" : "UTF8"
+      } ],
+      "primitive" : false,
+      "fieldCount" : 2,
+      "originalType" : null
+    }, {
+      "name" : "e",
+      "repetition" : "OPTIONAL",
+      "logicalTypeAnnotation" : { },
+      "id" : null,
+      "fields" : [ {
+        "name" : "list",
+        "repetition" : "REPEATED",
+        "logicalTypeAnnotation" : null,
+        "id" : null,
+        "fields" : [ {
+          "name" : "element",
+          "repetition" : "OPTIONAL",
+          "logicalTypeAnnotation" : { },
+          "id" : null,
+          "primitive" : true,
+          "primitiveTypeName" : "INT32",
+          "typeLength" : 0,
+          "decimalMetadata" : null,
+          "originalType" : "DATE"
+        } ],
+        "primitive" : false,
+        "fieldCount" : 1,
+        "originalType" : null
+      } ],
+      "primitive" : false,
+      "fieldCount" : 1,
+      "originalType" : "LIST"
+    }, {
+      "name" : "f",
+      "repetition" : "OPTIONAL",
+      "logicalTypeAnnotation" : { },
+      "id" : null,
+      "fields" : [ {
+        "name" : "list",
+        "repetition" : "REPEATED",
+        "logicalTypeAnnotation" : null,
+        "id" : null,
+        "fields" : [ {
+          "name" : "element",
+          "repetition" : "OPTIONAL",
+          "logicalTypeAnnotation" : { },
+          "id" : null,
+          "primitive" : true,
+          "primitiveTypeName" : "INT32",
+          "typeLength" : 0,
+          "decimalMetadata" : null,
+          "originalType" : "DATE"
+        } ],
+        "primitive" : false,
+        "fieldCount" : 1,
+        "originalType" : null
+      } ],
+      "primitive" : false,
+      "fieldCount" : 1,
+      "originalType" : "LIST"
+    }, {
+      "name" : "g",
+      "repetition" : "OPTIONAL",
+      "logicalTypeAnnotation" : null,
+      "id" : null,
+      "primitive" : true,
+      "primitiveTypeName" : "FLOAT",
+      "typeLength" : 0,
+      "decimalMetadata" : null,
+      "originalType" : null
+    }, {
+      "name" : "h",
+      "repetition" : "OPTIONAL",
+      "logicalTypeAnnotation" : {
+        "unit" : "MILLIS",
+        "adjustedToUTC" : true
+      },
+      "id" : null,
+      "primitive" : true,
+      "primitiveTypeName" : "INT64",
+      "typeLength" : 0,
+      "decimalMetadata" : null,
+      "originalType" : "TIMESTAMP_MILLIS"
+    }, {
+      "name" : "i",
+      "repetition" : "OPTIONAL",
+      "logicalTypeAnnotation" : {
+        "unit" : "NANOS",
+        "adjustedToUTC" : true
+      },
+      "id" : null,
+      "primitive" : true,
+      "primitiveTypeName" : "INT64",
+      "typeLength" : 0,
+      "decimalMetadata" : null,
+      "originalType" : null
+    }, {
+      "name" : "j",
+      "repetition" : "OPTIONAL",
+      "logicalTypeAnnotation" : {
+        "unit" : "MILLIS",
+        "adjustedToUTC" : false
+      },
+      "id" : null,
+      "primitive" : true,
+      "primitiveTypeName" : "INT64",
+      "typeLength" : 0,
+      "decimalMetadata" : null,
+      "originalType" : "TIMESTAMP_MILLIS"
+    }, {
+      "name" : "k",
+      "repetition" : "OPTIONAL",
+      "logicalTypeAnnotation" : {
+        "unit" : "MICROS",
+        "adjustedToUTC" : true
+      },
+      "id" : null,
+      "primitive" : true,
+      "primitiveTypeName" : "INT64",
+      "typeLength" : 0,
+      "decimalMetadata" : null,
+      "originalType" : "TIMESTAMP_MICROS"
+    }, {
+      "name" : "l",
+      "repetition" : "OPTIONAL",
+      "logicalTypeAnnotation" : {
+        "unit" : "MICROS",
+        "adjustedToUTC" : false
+      },
+      "id" : null,
+      "primitive" : true,
+      "primitiveTypeName" : "INT64",
+      "typeLength" : 0,
+      "decimalMetadata" : null,
+      "originalType" : "TIMESTAMP_MICROS"
+    }, {
+      "name" : "m",
+      "repetition" : "OPTIONAL",
+      "logicalTypeAnnotation" : { },
+      "id" : null,
+      "primitive" : true,
+      "primitiveTypeName" : "FIXED_LEN_BYTE_ARRAY",
+      "typeLength" : 12,
+      "decimalMetadata" : null,
+      "originalType" : "INTERVAL"
+    }, {
+      "name" : "list",
+      "repetition" : "OPTIONAL",
+      "logicalTypeAnnotation" : { },
+      "id" : null,
+      "fields" : [ {
+        "name" : "key_value",
+        "repetition" : "REPEATED",
+        "logicalTypeAnnotation" : null,
+        "id" : null,
+        "fields" : [ {
+          "name" : "key",
+          "repetition" : "OPTIONAL",
+          "logicalTypeAnnotation" : { },
+          "id" : null,
+          "primitive" : true,
+          "primitiveTypeName" : "INT32",
+          "typeLength" : 0,
+          "decimalMetadata" : null,
+          "originalType" : "DATE"
+        }, {
+          "name" : "value",
+          "repetition" : "OPTIONAL",
+          "logicalTypeAnnotation" : { },
+          "id" : null,
+          "primitive" : true,
+          "primitiveTypeName" : "BINARY",
+          "typeLength" : 0,
+          "decimalMetadata" : null,
+          "originalType" : "UTF8"
+        } ],
+        "primitive" : false,
+        "fieldCount" : 2,
+        "originalType" : null
+      } ],
+      "primitive" : false,
+      "fieldCount" : 1,
+      "originalType" : "MAP"
+    } ],
+    "paths" : [ [ "a" ], [ "b", "c" ], [ "b", "d" ], [ "e", "list", "element" ], [ "f", "list", "element" ], [ "g" ], [ "h" ], [ "i" ], [ "j" ], [ "k" ], [ "l" ], [ "m" ], [ "list", "key_value", "key" ], [ "list", "key_value", "value" ] ],
+    "columns" : [ {
+      "path" : [ "a" ],
+      "type" : "INT32",
+      "typeLength" : 0,
+      "maxRepetitionLevel" : 0,
+      "maxDefinitionLevel" : 1,
+      "primitiveType" : {
+        "name" : "a",
+        "repetition" : "OPTIONAL",
+        "logicalTypeAnnotation" : {
+          "bitWidth" : 8,
+          "signed" : true
+        },
+        "id" : null,
+        "primitive" : true,
+        "primitiveTypeName" : "INT32",
+        "typeLength" : 0,
+        "decimalMetadata" : null,
+        "originalType" : "INT_8"
+      }
+    }, {
+      "path" : [ "b", "c" ],
+      "type" : "INT32",
+      "typeLength" : 0,
+      "maxRepetitionLevel" : 0,
+      "maxDefinitionLevel" : 2,
+      "primitiveType" : {
+        "name" : "c",
+        "repetition" : "OPTIONAL",
+        "logicalTypeAnnotation" : {
+          "bitWidth" : 16,
+          "signed" : true
+        },
+        "id" : null,
+        "primitive" : true,
+        "primitiveTypeName" : "INT32",
+        "typeLength" : 0,
+        "decimalMetadata" : null,
+        "originalType" : "INT_16"
+      }
+    }, {
+      "path" : [ "b", "d" ],
+      "type" : "BINARY",
+      "typeLength" : 0,
+      "maxRepetitionLevel" : 0,
+      "maxDefinitionLevel" : 2,
+      "primitiveType" : {
+        "name" : "d",
+        "repetition" : "OPTIONAL",
+        "logicalTypeAnnotation" : { },
+        "id" : null,
+        "primitive" : true,
+        "primitiveTypeName" : "BINARY",
+        "typeLength" : 0,
+        "decimalMetadata" : null,
+        "originalType" : "UTF8"
+      }
+    }, {
+      "path" : [ "e", "list", "element" ],
+      "type" : "INT32",
+      "typeLength" : 0,
+      "maxRepetitionLevel" : 1,
+      "maxDefinitionLevel" : 3,
+      "primitiveType" : {
+        "name" : "element",
+        "repetition" : "OPTIONAL",
+        "logicalTypeAnnotation" : { },
+        "id" : null,
+        "primitive" : true,
+        "primitiveTypeName" : "INT32",
+        "typeLength" : 0,
+        "decimalMetadata" : null,
+        "originalType" : "DATE"
+      }
+    }, {
+      "path" : [ "f", "list", "element" ],
+      "type" : "INT32",
+      "typeLength" : 0,
+      "maxRepetitionLevel" : 1,
+      "maxDefinitionLevel" : 3,
+      "primitiveType" : {
+        "name" : "element",
+        "repetition" : "OPTIONAL",
+        "logicalTypeAnnotation" : { },
+        "id" : null,
+        "primitive" : true,
+        "primitiveTypeName" : "INT32",
+        "typeLength" : 0,
+        "decimalMetadata" : null,
+        "originalType" : "DATE"
+      }
+    }, {
+      "path" : [ "g" ],
+      "type" : "FLOAT",
+      "typeLength" : 0,
+      "maxRepetitionLevel" : 0,
+      "maxDefinitionLevel" : 1,
+      "primitiveType" : {
+        "name" : "g",
+        "repetition" : "OPTIONAL",
+        "logicalTypeAnnotation" : null,
+        "id" : null,
+        "primitive" : true,
+        "primitiveTypeName" : "FLOAT",
+        "typeLength" : 0,
+        "decimalMetadata" : null,
+        "originalType" : null
+      }
+    }, {
+      "path" : [ "h" ],
+      "type" : "INT64",
+      "typeLength" : 0,
+      "maxRepetitionLevel" : 0,
+      "maxDefinitionLevel" : 1,
+      "primitiveType" : {
+        "name" : "h",
+        "repetition" : "OPTIONAL",
+        "logicalTypeAnnotation" : {
+          "unit" : "MILLIS",
+          "adjustedToUTC" : true
+        },
+        "id" : null,
+        "primitive" : true,
+        "primitiveTypeName" : "INT64",
+        "typeLength" : 0,
+        "decimalMetadata" : null,
+        "originalType" : "TIMESTAMP_MILLIS"
+      }
+    }, {
+      "path" : [ "i" ],
+      "type" : "INT64",
+      "typeLength" : 0,
+      "maxRepetitionLevel" : 0,
+      "maxDefinitionLevel" : 1,
+      "primitiveType" : {
+        "name" : "i",
+        "repetition" : "OPTIONAL",
+        "logicalTypeAnnotation" : {
+          "unit" : "NANOS",
+          "adjustedToUTC" : true
+        },
+        "id" : null,
+        "primitive" : true,
+        "primitiveTypeName" : "INT64",
+        "typeLength" : 0,
+        "decimalMetadata" : null,
+        "originalType" : null
+      }
+    }, {
+      "path" : [ "j" ],
+      "type" : "INT64",
+      "typeLength" : 0,
+      "maxRepetitionLevel" : 0,
+      "maxDefinitionLevel" : 1,
+      "primitiveType" : {
+        "name" : "j",
+        "repetition" : "OPTIONAL",
+        "logicalTypeAnnotation" : {
+          "unit" : "MILLIS",
+          "adjustedToUTC" : false
+        },
+        "id" : null,
+        "primitive" : true,
+        "primitiveTypeName" : "INT64",
+        "typeLength" : 0,
+        "decimalMetadata" : null,
+        "originalType" : "TIMESTAMP_MILLIS"
+      }
+    }, {
+      "path" : [ "k" ],
+      "type" : "INT64",
+      "typeLength" : 0,
+      "maxRepetitionLevel" : 0,
+      "maxDefinitionLevel" : 1,
+      "primitiveType" : {
+        "name" : "k",
+        "repetition" : "OPTIONAL",
+        "logicalTypeAnnotation" : {
+          "unit" : "MICROS",
+          "adjustedToUTC" : true
+        },
+        "id" : null,
+        "primitive" : true,
+        "primitiveTypeName" : "INT64",
+        "typeLength" : 0,
+        "decimalMetadata" : null,
+        "originalType" : "TIMESTAMP_MICROS"
+      }
+    }, {
+      "path" : [ "l" ],
+      "type" : "INT64",
+      "typeLength" : 0,
+      "maxRepetitionLevel" : 0,
+      "maxDefinitionLevel" : 1,
+      "primitiveType" : {
+        "name" : "l",
+        "repetition" : "OPTIONAL",
+        "logicalTypeAnnotation" : {
+          "unit" : "MICROS",
+          "adjustedToUTC" : false
+        },
+        "id" : null,
+        "primitive" : true,
+        "primitiveTypeName" : "INT64",
+        "typeLength" : 0,
+        "decimalMetadata" : null,
+        "originalType" : "TIMESTAMP_MICROS"
+      }
+    }, {
+      "path" : [ "m" ],
+      "type" : "FIXED_LEN_BYTE_ARRAY",
+      "typeLength" : 12,
+      "maxRepetitionLevel" : 0,
+      "maxDefinitionLevel" : 1,
+      "primitiveType" : {
+        "name" : "m",
+        "repetition" : "OPTIONAL",
+        "logicalTypeAnnotation" : { },
+        "id" : null,
+        "primitive" : true,
+        "primitiveTypeName" : "FIXED_LEN_BYTE_ARRAY",
+        "typeLength" : 12,
+        "decimalMetadata" : null,
+        "originalType" : "INTERVAL"
+      }
+    }, {
+      "path" : [ "list", "key_value", "key" ],
+      "type" : "INT32",
+      "typeLength" : 0,
+      "maxRepetitionLevel" : 1,
+      "maxDefinitionLevel" : 3,
+      "primitiveType" : {
+        "name" : "key",
+        "repetition" : "OPTIONAL",
+        "logicalTypeAnnotation" : { },
+        "id" : null,
+        "primitive" : true,
+        "primitiveTypeName" : "INT32",
+        "typeLength" : 0,
+        "decimalMetadata" : null,
+        "originalType" : "DATE"
+      }
+    }, {
+      "path" : [ "list", "key_value", "value" ],
+      "type" : "BINARY",
+      "typeLength" : 0,
+      "maxRepetitionLevel" : 1,
+      "maxDefinitionLevel" : 3,
+      "primitiveType" : {
+        "name" : "value",
+        "repetition" : "OPTIONAL",
+        "logicalTypeAnnotation" : { },
+        "id" : null,
+        "primitive" : true,
+        "primitiveTypeName" : "BINARY",
+        "typeLength" : 0,
+        "decimalMetadata" : null,
+        "originalType" : "UTF8"
+      }
+    } ],
+    "primitive" : false,
+    "fieldCount" : 12,
+    "originalType" : null
+  },
+  "keyValueMetaData" : { },
+  "createdBy" : "ASF",
+  "encryptionType" : null
+}

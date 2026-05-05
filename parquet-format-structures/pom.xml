@@ -24,7 +24,7 @@
     <groupId>org.apache.parquet</groupId>
     <artifactId>parquet</artifactId>
     <relativePath>../pom.xml</relativePath>
-    <version>1.14.0-SNAPSHOT</version>
+    <version>1.18.0-SNAPSHOT</version>
   </parent>
 
   <artifactId>parquet-format-structures</artifactId>
@@ -70,7 +70,6 @@
       <plugin>
         <groupId>org.apache.thrift</groupId>
         <artifactId>thrift-maven-plugin</artifactId>
-        <version>${thrift-maven-plugin.version}</version>
         <configuration>
           <thriftSourceRoot>${parquet.thrift.path}</thriftSourceRoot>
           <thriftExecutable>${format.thrift.executable}</thriftExecutable>
@@ -129,9 +128,27 @@
         <configuration>
           <!-- We have to turn off the javadoc check because thrift generates improper comments -->
           <doclint>none</doclint>
-          <source>8</source>
+          <source>11</source>
           <quiet>true</quiet>
         </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>build-helper-maven-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>add-sources</id>
+            <phase>generate-sources</phase>
+            <goals>
+              <goal>add-source</goal>
+            </goals>
+            <configuration>
+              <sources>
+                <source>${project.build.directory}/generated-sources/thrift</source>
+              </sources>
+            </configuration>
+          </execution>
+        </executions>
       </plugin>
     </plugins>
   </build>
@@ -144,7 +161,7 @@
         <configuration>
           <!-- We have to turn off the javadoc check because thrift generates improper comments -->
           <doclint>none</doclint>
-          <source>8</source>
+          <source>11</source>
         </configuration>
       </plugin>
     </plugins>
@@ -155,6 +172,11 @@
       <groupId>org.apache.thrift</groupId>
       <artifactId>libthrift</artifactId>
       <version>${format.thrift.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>javax.annotation</groupId>
+      <artifactId>javax.annotation-api</artifactId>
+      <version>${javax.annotation.version}</version>
     </dependency>
   </dependencies>
 
@@ -171,7 +193,6 @@
           <plugin>
             <groupId>org.codehaus.mojo</groupId>
             <artifactId>exec-maven-plugin</artifactId>
-            <version>3.1.0</version>
             <executions>
               <execution>
                 <id>check-thrift-version</id>

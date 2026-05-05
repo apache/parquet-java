@@ -29,21 +29,18 @@ import java.nio.ByteOrder;
 import java.util.HashSet;
 import java.util.Random;
 import java.util.Set;
-
+import net.openhft.hashing.LongHashFunction;
 import org.apache.commons.lang3.RandomStringUtils;
+import org.apache.parquet.io.api.Binary;
 import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
-import org.apache.parquet.io.api.Binary;
-
-import net.openhft.hashing.LongHashFunction;
-
 public class TestBlockSplitBloomFilter {
 
   @Test
-  public void testConstructor () {
+  public void testConstructor() {
     BloomFilter bloomFilter1 = new BlockSplitBloomFilter(0);
     assertEquals(bloomFilter1.getBitsetSize(), BlockSplitBloomFilter.LOWER_BOUND_BYTES);
     BloomFilter bloomFilter3 = new BlockSplitBloomFilter(1000);
@@ -60,11 +57,11 @@ public class TestBlockSplitBloomFilter {
   @Test
   public void testBloomFilterForString() {
     final int numValues = 1024 * 1024;
-    int numBytes = BlockSplitBloomFilter.optimalNumOfBits(numValues , 0.01) / 8;
+    int numBytes = BlockSplitBloomFilter.optimalNumOfBits(numValues, 0.01) / 8;
     BloomFilter bloomFilter = new BlockSplitBloomFilter(numBytes);
 
     Set<String> testStrings = new HashSet<>();
-    for (int i = 0; i < numValues; i ++) {
+    for (int i = 0; i < numValues; i++) {
       String str = RandomStringUtils.randomAlphabetic(1, 64);
       bloomFilter.insertHash(bloomFilter.hash(Binary.fromString(str)));
       testStrings.add(str);
@@ -116,8 +113,9 @@ public class TestBlockSplitBloomFilter {
     }
 
     for (Object v : values) {
-      assertTrue(String.format("the value %s should not be filtered, seed = %d", v, seed),
-        bloomFilter.findHash(bloomFilter.hash(v)));
+      assertTrue(
+          String.format("the value %s should not be filtered, seed = %d", v, seed),
+          bloomFilter.findHash(bloomFilter.hash(v)));
     }
   }
 
@@ -126,7 +124,8 @@ public class TestBlockSplitBloomFilter {
     final int totalCount = 100000;
     final double FPP = 0.01;
 
-    BloomFilter bloomFilter = new BlockSplitBloomFilter(BlockSplitBloomFilter.optimalNumOfBits(totalCount, FPP) / 8);
+    BloomFilter bloomFilter =
+        new BlockSplitBloomFilter(BlockSplitBloomFilter.optimalNumOfBits(totalCount, FPP) / 8);
 
     Set<String> distinctStrings = new HashSet<>();
     while (distinctStrings.size() < totalCount) {
@@ -139,10 +138,10 @@ public class TestBlockSplitBloomFilter {
     distinctStrings.clear();
     // The exist counts the number of times FindHash returns true.
     int exist = 0;
-    while(distinctStrings.size() < totalCount) {
+    while (distinctStrings.size() < totalCount) {
       String str = RandomStringUtils.randomAlphabetic(10);
       if (distinctStrings.add(str) && bloomFilter.findHash(bloomFilter.hash(Binary.fromString(str)))) {
-        exist ++;
+        exist++;
       }
     }
 
@@ -170,20 +169,20 @@ public class TestBlockSplitBloomFilter {
   }
 
   @Test
-  public void testBloomFilterNDVs(){
+  public void testBloomFilterNDVs() {
     // a row group of 128M with one column of long type.
     int ndv = 128 * 1024 * 1024 / 8;
     double fpp = 0.01;
 
     // the optimal value formula
     double numBits = -8 * ndv / Math.log(1 - Math.pow(0.01, 1.0 / 8));
-    int bytes = (int)numBits / 8;
+    int bytes = (int) numBits / 8;
     assertTrue(bytes < 20 * 1024 * 1024);
 
     // a row group of 128MB with one column of UUID type
     ndv = 128 * 1024 * 1024 / java.util.UUID.randomUUID().toString().length();
     numBits = -8 * ndv / Math.log(1 - Math.pow(fpp, 1.0 / 8));
-    bytes = (int)numBits / 8;
+    bytes = (int) numBits / 8;
     assertTrue(bytes < 5 * 1024 * 1024);
   }
 
@@ -191,8 +190,8 @@ public class TestBlockSplitBloomFilter {
   public void testAdaptiveBloomFilter() {
     int maxBloomFilterSize = 1024 * 1024;
     int candidateNumber = 10;
-    AdaptiveBlockSplitBloomFilter adaptiveBloomFilter = new AdaptiveBlockSplitBloomFilter(maxBloomFilterSize,
-      candidateNumber, 0.01, null);
+    AdaptiveBlockSplitBloomFilter adaptiveBloomFilter =
+        new AdaptiveBlockSplitBloomFilter(maxBloomFilterSize, candidateNumber, 0.01, null);
 
     assertEquals(candidateNumber, adaptiveBloomFilter.getCandidates().size());
 
@@ -204,19 +203,23 @@ public class TestBlockSplitBloomFilter {
     }
     // removed some small bloom filter
     assertEquals(7, adaptiveBloomFilter.getCandidates().size());
-    BlockSplitBloomFilter optimalCandidate = adaptiveBloomFilter.optimalCandidate().getBloomFilter();
+    BlockSplitBloomFilter optimalCandidate =
+        adaptiveBloomFilter.optimalCandidate().getBloomFilter();
     for (String value : existedValue) {
       assertTrue(optimalCandidate.findHash(optimalCandidate.hash(Binary.fromString(value))));
     }
 
     int maxCandidateNDV = adaptiveBloomFilter.getCandidates().stream()
-      .max(AdaptiveBlockSplitBloomFilter.BloomFilterCandidate::compareTo).get().getExpectedNDV();
+        .max(AdaptiveBlockSplitBloomFilter.BloomFilterCandidate::compareTo)
+        .get()
+        .getExpectedNDV();
     while (existedValue.size() < maxCandidateNDV + 1) {
       String str = RandomStringUtils.randomAlphabetic(1, 64);
       adaptiveBloomFilter.insertHash(adaptiveBloomFilter.hash(Binary.fromString(str)));
       existedValue.add(str);
     }
-    // the number of distinct value exceeds the maximum candidate's expected NDV, so only the maximum candidate is kept
+    // the number of distinct value exceeds the maximum candidate's expected NDV, so only the maximum candidate is
+    // kept
     assertEquals(1, adaptiveBloomFilter.getCandidates().size());
   }
 
@@ -260,32 +263,30 @@ public class TestBlockSplitBloomFilter {
   /**
    * Test data is output of the following program with xxHash implementation
    * from https://github.com/Cyan4973/xxHash with commit c8c4cc0f812719ce1f5b2c291159658980e7c255
-   *
+   * <p>
    * #define XXH_INLINE_ALL
    * #include "xxhash.h"
    * #include <stdlib.h>
    * #include <stdio.h>
    * int main()
    * {
-   *     char* src = (char*) malloc(32);
-   *     const int N = 32;
-   *     for (int i = 0; i < N; i++) {
-   *         src[i] = (char) i;
-   *     }
-   *
-   *     printf("without seed\n");
-   *     for (int i = 0; i <= N; i++) {
-   *        printf("%lldL,\n", (long long) XXH64(src, i, 0));
-   *     }
-   *
-   *     printf("with seed 42\n");
-   *     for (int i = 0; i <= N; i++) {
-   *        printf("%lldL,\n", (long long) XXH64(src, i, 42));
-   *     }
+   * char* src = (char*) malloc(32);
+   * const int N = 32;
+   * for (int i = 0; i < N; i++) {
+   * src[i] = (char) i;
+   * }
+   * <p>
+   * printf("without seed\n");
+   * for (int i = 0; i <= N; i++) {
+   * printf("%lldL,\n", (long long) XXH64(src, i, 0));
+   * }
+   * <p>
+   * printf("with seed 42\n");
+   * for (int i = 0; i <= N; i++) {
+   * printf("%lldL,\n", (long long) XXH64(src, i, 42));
+   * }
    * }
    */
-
-
   private static final long[] HASHES_OF_LOOPING_BYTES_WITH_SEED_0 = {
     -1205034819632174695L, -1642502924627794072L, 5216751715308240086L, -1889335612763511331L,
     -13835840860730338L, -2521325055659080948L, 4867868962443297827L, 1498682999415010002L,
@@ -296,6 +297,7 @@ public class TestBlockSplitBloomFilter {
     -2516210193198301541L, 8356900479849653862L, -4413748141896466000L, -6040072975510680789L,
     1451490609699316991L, -7948005844616396060L, 8567048088357095527L, -4375578310507393311L
   };
+
   private static final long[] HASHES_OF_LOOPING_BYTES_WITH_SEED_42 = {
     -7444071767201028348L, -8959994473701255385L, 7116559933691734543L, 6019482000716350659L,
     -6625277557348586272L, -5507563483608914162L, 1540412690865189709L, 4522324563441226749L,
@@ -314,12 +316,13 @@ public class TestBlockSplitBloomFilter {
       data[i] = (byte) i;
 
       ByteBuffer input = ByteBuffer.wrap(data, 0, i).order(ByteOrder.nativeOrder());
-      assertEquals(HASHES_OF_LOOPING_BYTES_WITH_SEED_0[i],
-        LongHashFunction.xx(0).hashBytes(input));
+      assertEquals(
+          HASHES_OF_LOOPING_BYTES_WITH_SEED_0[i],
+          LongHashFunction.xx(0).hashBytes(input));
 
-      assertEquals(HASHES_OF_LOOPING_BYTES_WITH_SEED_42[i],
-        LongHashFunction.xx(42).hashBytes(input));
+      assertEquals(
+          HASHES_OF_LOOPING_BYTES_WITH_SEED_42[i],
+          LongHashFunction.xx(42).hashBytes(input));
     }
   }
-
 }

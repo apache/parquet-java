@@ -39,12 +39,14 @@ public interface ValuesWriterFactory {
 
   /**
    * Used to initialize the factory. This method is called before newValuesWriter()
+   *
    * @param parquetProperties a write configuration
    */
   void initialize(ParquetProperties parquetProperties);
 
   /**
    * Creates a ValuesWriter to write values for the given column.
+   *
    * @param descriptor a column descriptor
    * @return a new values writer for values in the descriptor's column
    */

@@ -18,11 +18,11 @@
  */
 package org.apache.parquet.hadoop;
 
+import static org.junit.Assert.assertEquals;
+
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.hadoop.ParquetOutputFormat.JobSummaryLevel;
 import org.junit.Test;
-
-import static org.junit.Assert.assertEquals;
 
 public class TestParquetOutputFormatJobSummaryLevel {
   @Test
@@ -65,5 +65,4 @@ public class TestParquetOutputFormatJobSummaryLevel {
     conf.set(ParquetOutputFormat.ENABLE_JOB_SUMMARY, "false");
     assertEquals(JobSummaryLevel.COMMON_ONLY, ParquetOutputFormat.getJobSummaryLevel(conf));
   }
-
 }

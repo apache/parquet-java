@@ -18,17 +18,6 @@
  */
 package org.apache.parquet.schema;
 
-import org.apache.parquet.Preconditions;
-
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
-import java.util.function.Supplier;
-
-import static java.util.Arrays.asList;
 import static java.util.Optional.empty;
 import static org.apache.parquet.schema.ColumnOrder.ColumnOrderName.TYPE_DEFINED_ORDER;
 import static org.apache.parquet.schema.ColumnOrder.ColumnOrderName.UNDEFINED;
@@ -43,7 +32,19 @@ import static org.apache.parquet.schema.PrimitiveStringifier.TIME_NANOS_UTC_STRI
 import static org.apache.parquet.schema.PrimitiveStringifier.TIME_STRINGIFIER;
 import static org.apache.parquet.schema.PrimitiveStringifier.TIME_UTC_STRINGIFIER;
 
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
+import java.util.function.Supplier;
+import org.apache.parquet.Preconditions;
+import org.apache.parquet.column.schema.EdgeInterpolationAlgorithm;
+
 public abstract class LogicalTypeAnnotation {
+
+  public static final String DEFAULT_CRS = "OGC:CRS84";
+  public static final EdgeInterpolationAlgorithm DEFAULT_ALGO = EdgeInterpolationAlgorithm.SPHERICAL;
+
   enum LogicalTypeToken {
     MAP {
       @Override
@@ -55,6 +56,14 @@ public abstract class LogicalTypeAnnotation {
       @Override
       protected LogicalTypeAnnotation fromString(List<String> params) {
         return listType();
+      }
+    },
+    VARIANT {
+      @Override
+      protected LogicalTypeAnnotation fromString(List<String> params) {
+        Preconditions.checkArgument(
+            params.size() == 1, "Expecting only spec version for variant annotation args: %s", params);
+        return variantType(Byte.parseByte(params.get(0)));
       }
     },
     STRING {
@@ -81,7 +90,7 @@ public abstract class LogicalTypeAnnotation {
         if (params.size() != 2) {
           throw new RuntimeException("Expecting 2 parameters for decimal logical type, got " + params.size());
         }
-        return decimalType(Integer.valueOf(params.get(1)), Integer.valueOf(params.get(0)));
+        return decimalType(Integer.parseInt(params.get(1)), Integer.parseInt(params.get(0)));
       }
     },
     DATE {
@@ -103,7 +112,8 @@ public abstract class LogicalTypeAnnotation {
       @Override
       protected LogicalTypeAnnotation fromString(List<String> params) {
         if (params.size() != 2) {
-          throw new RuntimeException("Expecting 2 parameters for timestamp logical type, got " + params.size());
+          throw new RuntimeException(
+              "Expecting 2 parameters for timestamp logical type, got " + params.size());
         }
         return timestampType(Boolean.parseBoolean(params.get(1)), TimeUnit.valueOf(params.get(0)));
       }
@@ -114,7 +124,7 @@ public abstract class LogicalTypeAnnotation {
         if (params.size() != 2) {
           throw new RuntimeException("Expecting 2 parameters for integer logical type, got " + params.size());
         }
-        return intType(Integer.valueOf(params.get(0)), Boolean.parseBoolean(params.get(1)));
+        return intType(Integer.parseInt(params.get(0)), Boolean.parseBoolean(params.get(1)));
       }
     },
     JSON {
@@ -140,6 +150,43 @@ public abstract class LogicalTypeAnnotation {
       protected LogicalTypeAnnotation fromString(List<String> params) {
         return IntervalLogicalTypeAnnotation.getInstance();
       }
+    },
+    FLOAT16 {
+      @Override
+      protected LogicalTypeAnnotation fromString(List<String> params) {
+        return float16Type();
+      }
+    },
+    GEOMETRY {
+      @Override
+      protected LogicalTypeAnnotation fromString(List<String> params) {
+        if (params.size() > 1) {
+          throw new RuntimeException(
+              "Expecting at most 1 parameter for geometry logical type, got " + params.size());
+        }
+        String crs = params.isEmpty() ? null : params.get(0);
+        return geometryType(crs);
+      }
+    },
+    GEOGRAPHY {
+      @Override
+      protected LogicalTypeAnnotation fromString(List<String> params) {
+        if (params.size() > 2) {
+          throw new RuntimeException(
+              "Expecting at most 2 parameters for geography logical type (crs and edge algorithm), got "
+                  + params.size());
+        }
+        String crs = !params.isEmpty() ? params.get(0) : null;
+        EdgeInterpolationAlgorithm algo =
+            params.size() > 1 ? EdgeInterpolationAlgorithm.valueOf(params.get(1)) : null;
+        return geographyType(crs, algo);
+      }
+    },
+    UNKNOWN {
+      @Override
+      protected LogicalTypeAnnotation fromString(List<String> params) {
+        return unknownType();
+      }
     };
 
     protected abstract LogicalTypeAnnotation fromString(List<String> params);
@@ -164,10 +211,7 @@ public abstract class LogicalTypeAnnotation {
 
   @Override
   public String toString() {
-    StringBuilder sb = new StringBuilder();
-    sb.append(getType());
-    sb.append(typeParametersAsString());
-    return sb.toString();
+    return getType() + typeParametersAsString();
   }
 
   PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
@@ -176,7 +220,7 @@ public abstract class LogicalTypeAnnotation {
 
   /**
    * Helper method to convert the old representation of logical types (OriginalType) to new logical type.
-   *
+   * <p>
    * API should be considered private
    */
   public static LogicalTypeAnnotation fromOriginalType(OriginalType originalType, DecimalMetadata decimalMetadata) {
@@ -231,7 +275,8 @@ public abstract class LogicalTypeAnnotation {
       case MAP_KEY_VALUE:
         return MapKeyValueTypeAnnotation.getInstance();
       default:
-        throw new RuntimeException("Can't convert original type to logical type, unknown original type " + originalType);
+        throw new RuntimeException(
+            "Can't convert original type to logical type, unknown original type " + originalType);
     }
   }
 
@@ -245,6 +290,10 @@ public abstract class LogicalTypeAnnotation {
 
   public static ListLogicalTypeAnnotation listType() {
     return ListLogicalTypeAnnotation.INSTANCE;
+  }
+
+  public static VariantLogicalTypeAnnotation variantType(byte specVersion) {
+    return new VariantLogicalTypeAnnotation(specVersion);
   }
 
   public static EnumLogicalTypeAnnotation enumType() {
@@ -273,9 +322,10 @@ public abstract class LogicalTypeAnnotation {
 
   public static IntLogicalTypeAnnotation intType(final int bitWidth, final boolean isSigned) {
     Preconditions.checkArgument(
-      bitWidth == 8 || bitWidth == 16 || bitWidth == 32 || bitWidth == 64,
-      "Invalid bit width for integer logical type, %s is not allowed, " +
-        "valid bit width values: 8, 16, 32, 64", bitWidth);
+        bitWidth == 8 || bitWidth == 16 || bitWidth == 32 || bitWidth == 64,
+        "Invalid bit width for integer logical type, %s is not allowed, "
+            + "valid bit width values: 8, 16, 32, 64",
+        bitWidth);
     return new IntLogicalTypeAnnotation(bitWidth, isSigned);
   }
 
@@ -295,11 +345,30 @@ public abstract class LogicalTypeAnnotation {
     return UUIDLogicalTypeAnnotation.INSTANCE;
   }
 
+  public static Float16LogicalTypeAnnotation float16Type() {
+    return Float16LogicalTypeAnnotation.INSTANCE;
+  }
+
+  public static GeometryLogicalTypeAnnotation geometryType(String crs) {
+    return new GeometryLogicalTypeAnnotation(crs);
+  }
+
+  public static GeographyLogicalTypeAnnotation geographyType(String crs, EdgeInterpolationAlgorithm edgeAlgorithm) {
+    return new GeographyLogicalTypeAnnotation(crs, edgeAlgorithm);
+  }
+
+  public static GeographyLogicalTypeAnnotation geographyType() {
+    return new GeographyLogicalTypeAnnotation(null, null);
+  }
+
+  public static UnknownLogicalTypeAnnotation unknownType() {
+    return UnknownLogicalTypeAnnotation.INSTANCE;
+  }
+
   public static class StringLogicalTypeAnnotation extends LogicalTypeAnnotation {
     private static final StringLogicalTypeAnnotation INSTANCE = new StringLogicalTypeAnnotation();
 
-    private StringLogicalTypeAnnotation() {
-    }
+    private StringLogicalTypeAnnotation() {}
 
     @Override
     public <T> Optional<T> accept(LogicalTypeAnnotationVisitor<T> logicalTypeAnnotationVisitor) {
@@ -331,8 +400,7 @@ public abstract class LogicalTypeAnnotation {
   public static class MapLogicalTypeAnnotation extends LogicalTypeAnnotation {
     private static final MapLogicalTypeAnnotation INSTANCE = new MapLogicalTypeAnnotation();
 
-    private MapLogicalTypeAnnotation() {
-    }
+    private MapLogicalTypeAnnotation() {}
 
     @Override
     public <T> Optional<T> accept(LogicalTypeAnnotationVisitor<T> logicalTypeAnnotationVisitor) {
@@ -359,8 +427,7 @@ public abstract class LogicalTypeAnnotation {
   public static class ListLogicalTypeAnnotation extends LogicalTypeAnnotation {
     private static final ListLogicalTypeAnnotation INSTANCE = new ListLogicalTypeAnnotation();
 
-    private ListLogicalTypeAnnotation() {
-    }
+    private ListLogicalTypeAnnotation() {}
 
     @Override
     public <T> Optional<T> accept(LogicalTypeAnnotationVisitor<T> logicalTypeAnnotationVisitor) {
@@ -387,8 +454,7 @@ public abstract class LogicalTypeAnnotation {
   public static class EnumLogicalTypeAnnotation extends LogicalTypeAnnotation {
     private static final EnumLogicalTypeAnnotation INSTANCE = new EnumLogicalTypeAnnotation();
 
-    private EnumLogicalTypeAnnotation() {
-    }
+    private EnumLogicalTypeAnnotation() {}
 
     @Override
     public <T> Optional<T> accept(LogicalTypeAnnotationVisitor<T> logicalTypeAnnotationVisitor) {
@@ -448,13 +514,7 @@ public abstract class LogicalTypeAnnotation {
 
     @Override
     protected String typeParametersAsString() {
-      StringBuilder sb = new StringBuilder();
-      sb.append("(");
-      sb.append(precision);
-      sb.append(",");
-      sb.append(scale);
-      sb.append(")");
-      return sb.toString();
+      return "(" + precision + "," + scale + ")";
     }
 
     @Override
@@ -480,8 +540,7 @@ public abstract class LogicalTypeAnnotation {
   public static class DateLogicalTypeAnnotation extends LogicalTypeAnnotation {
     private static final DateLogicalTypeAnnotation INSTANCE = new DateLogicalTypeAnnotation();
 
-    private DateLogicalTypeAnnotation() {
-    }
+    private DateLogicalTypeAnnotation() {}
 
     @Override
     public <T> Optional<T> accept(LogicalTypeAnnotationVisitor<T> logicalTypeAnnotationVisitor) {
@@ -537,13 +596,7 @@ public abstract class LogicalTypeAnnotation {
 
     @Override
     protected String typeParametersAsString() {
-      StringBuilder sb = new StringBuilder();
-      sb.append("(");
-      sb.append(unit);
-      sb.append(",");
-      sb.append(isAdjustedToUTC);
-      sb.append(")");
-      return sb.toString();
+      return "(" + unit + "," + isAdjustedToUTC + ")";
     }
 
     public TimeUnit getUnit() {
@@ -603,13 +656,7 @@ public abstract class LogicalTypeAnnotation {
 
     @Override
     protected String typeParametersAsString() {
-      StringBuilder sb = new StringBuilder();
-      sb.append("(");
-      sb.append(unit);
-      sb.append(",");
-      sb.append(isAdjustedToUTC);
-      sb.append(")");
-      return sb.toString();
+      return "(" + unit + "," + isAdjustedToUTC + ")";
     }
 
     public TimeUnit getUnit() {
@@ -650,8 +697,7 @@ public abstract class LogicalTypeAnnotation {
   }
 
   public static class IntLogicalTypeAnnotation extends LogicalTypeAnnotation {
-    private static final Set<Integer> VALID_BIT_WIDTH = Collections.unmodifiableSet(
-      new HashSet<>(asList(8, 16, 32, 64)));
+    private static final Set<Integer> VALID_BIT_WIDTH = Set.of(8, 16, 32, 64);
 
     private final int bitWidth;
     private final boolean isSigned;
@@ -676,13 +722,7 @@ public abstract class LogicalTypeAnnotation {
 
     @Override
     protected String typeParametersAsString() {
-      StringBuilder sb = new StringBuilder();
-      sb.append("(");
-      sb.append(bitWidth);
-      sb.append(",");
-      sb.append(isSigned);
-      sb.append(")");
-      return sb.toString();
+      return "(" + bitWidth + "," + isSigned + ")";
     }
 
     public int getBitWidth() {
@@ -716,8 +756,7 @@ public abstract class LogicalTypeAnnotation {
   public static class JsonLogicalTypeAnnotation extends LogicalTypeAnnotation {
     private static final JsonLogicalTypeAnnotation INSTANCE = new JsonLogicalTypeAnnotation();
 
-    private JsonLogicalTypeAnnotation() {
-    }
+    private JsonLogicalTypeAnnotation() {}
 
     @Override
     public <T> Optional<T> accept(LogicalTypeAnnotationVisitor<T> logicalTypeAnnotationVisitor) {
@@ -749,8 +788,7 @@ public abstract class LogicalTypeAnnotation {
   public static class BsonLogicalTypeAnnotation extends LogicalTypeAnnotation {
     private static final BsonLogicalTypeAnnotation INSTANCE = new BsonLogicalTypeAnnotation();
 
-    private BsonLogicalTypeAnnotation() {
-    }
+    private BsonLogicalTypeAnnotation() {}
 
     @Override
     public <T> Optional<T> accept(LogicalTypeAnnotationVisitor<T> logicalTypeAnnotationVisitor) {
@@ -783,8 +821,7 @@ public abstract class LogicalTypeAnnotation {
     private static final UUIDLogicalTypeAnnotation INSTANCE = new UUIDLogicalTypeAnnotation();
     public static final int BYTES = 16;
 
-    private UUIDLogicalTypeAnnotation() {
-    }
+    private UUIDLogicalTypeAnnotation() {}
 
     @Override
     public <T> Optional<T> accept(LogicalTypeAnnotationVisitor<T> logicalTypeAnnotationVisitor) {
@@ -802,6 +839,61 @@ public abstract class LogicalTypeAnnotation {
     }
   }
 
+  public static class Float16LogicalTypeAnnotation extends LogicalTypeAnnotation {
+    private static final Float16LogicalTypeAnnotation INSTANCE = new Float16LogicalTypeAnnotation();
+    public static final int BYTES = 2;
+
+    private Float16LogicalTypeAnnotation() {}
+
+    @Override
+    public OriginalType toOriginalType() {
+      // No OriginalType for Float16
+      return null;
+    }
+
+    @Override
+    public <T> Optional<T> accept(LogicalTypeAnnotationVisitor<T> logicalTypeAnnotationVisitor) {
+      return logicalTypeAnnotationVisitor.visit(this);
+    }
+
+    @Override
+    LogicalTypeToken getType() {
+      return LogicalTypeToken.FLOAT16;
+    }
+
+    @Override
+    PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
+      return PrimitiveStringifier.FLOAT16_STRINGIFIER;
+    }
+  }
+
+  public static class UnknownLogicalTypeAnnotation extends LogicalTypeAnnotation {
+    private static final UnknownLogicalTypeAnnotation INSTANCE = new UnknownLogicalTypeAnnotation();
+
+    private UnknownLogicalTypeAnnotation() {}
+
+    @Override
+    public OriginalType toOriginalType() {
+      // No OriginalType for UknownType
+      return null;
+    }
+
+    @Override
+    public <T> Optional<T> accept(LogicalTypeAnnotationVisitor<T> logicalTypeAnnotationVisitor) {
+      return logicalTypeAnnotationVisitor.visit(this);
+    }
+
+    @Override
+    LogicalTypeToken getType() {
+      return LogicalTypeToken.UNKNOWN;
+    }
+
+    @Override
+    PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
+      return PrimitiveStringifier.UNKNOWN_STRINGIFIER;
+    }
+  }
+
   // This logical type annotation is implemented to support backward compatibility with ConvertedType.
   // The new logical type representation in parquet-format doesn't have any interval type,
   // thus this annotation is mapped to UNKNOWN.
@@ -812,8 +904,7 @@ public abstract class LogicalTypeAnnotation {
       return INSTANCE;
     }
 
-    private IntervalLogicalTypeAnnotation() {
-    }
+    private IntervalLogicalTypeAnnotation() {}
 
     @Override
     public <T> Optional<T> accept(LogicalTypeAnnotationVisitor<T> logicalTypeAnnotationVisitor) {
@@ -857,8 +948,7 @@ public abstract class LogicalTypeAnnotation {
       return INSTANCE;
     }
 
-    private MapKeyValueTypeAnnotation() {
-    }
+    private MapKeyValueTypeAnnotation() {}
 
     @Override
     public <T> Optional<T> accept(LogicalTypeAnnotationVisitor<T> logicalTypeAnnotationVisitor) {
@@ -882,12 +972,173 @@ public abstract class LogicalTypeAnnotation {
     }
   }
 
+  public static class VariantLogicalTypeAnnotation extends LogicalTypeAnnotation {
+    private byte specVersion;
+
+    private VariantLogicalTypeAnnotation(byte specVersion) {
+      this.specVersion = specVersion;
+    }
+
+    @Override
+    public OriginalType toOriginalType() {
+      // No OriginalType for Variant
+      return null;
+    }
+
+    @Override
+    public <T> Optional<T> accept(LogicalTypeAnnotationVisitor<T> logicalTypeAnnotationVisitor) {
+      return logicalTypeAnnotationVisitor.visit(this);
+    }
+
+    @Override
+    LogicalTypeToken getType() {
+      return LogicalTypeToken.VARIANT;
+    }
+
+    public byte getSpecVersion() {
+      return this.specVersion;
+    }
+
+    @Override
+    protected String typeParametersAsString() {
+      return "(" + specVersion + ")";
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      if (!(obj instanceof VariantLogicalTypeAnnotation)) {
+        return false;
+      }
+
+      VariantLogicalTypeAnnotation other = (VariantLogicalTypeAnnotation) obj;
+      return specVersion == other.specVersion;
+    }
+  }
+
+  public static class GeometryLogicalTypeAnnotation extends LogicalTypeAnnotation {
+    private final String crs;
+
+    private GeometryLogicalTypeAnnotation(String crs) {
+      this.crs = crs;
+    }
+
+    @Override
+    @Deprecated
+    public OriginalType toOriginalType() {
+      return null;
+    }
+
+    @Override
+    public <T> Optional<T> accept(LogicalTypeAnnotationVisitor<T> logicalTypeAnnotationVisitor) {
+      return logicalTypeAnnotationVisitor.visit(this);
+    }
+
+    @Override
+    LogicalTypeToken getType() {
+      return LogicalTypeToken.GEOMETRY;
+    }
+
+    @Override
+    protected String typeParametersAsString() {
+      if (crs == null || crs.isEmpty()) {
+        return "";
+      }
+      return String.format("(%s)", crs);
+    }
+
+    public String getCrs() {
+      return crs;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      if (!(obj instanceof GeometryLogicalTypeAnnotation)) {
+        return false;
+      }
+      GeometryLogicalTypeAnnotation other = (GeometryLogicalTypeAnnotation) obj;
+      return Objects.equals(crs, other.crs);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(crs);
+    }
+
+    @Override
+    PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
+      return PrimitiveStringifier.WKB_STRINGIFIER;
+    }
+  }
+
+  public static class GeographyLogicalTypeAnnotation extends LogicalTypeAnnotation {
+    private final String crs;
+    private final EdgeInterpolationAlgorithm algorithm;
+
+    private GeographyLogicalTypeAnnotation(String crs, EdgeInterpolationAlgorithm algorithm) {
+      this.crs = crs;
+      this.algorithm = algorithm;
+    }
+
+    @Override
+    @Deprecated
+    public OriginalType toOriginalType() {
+      return null;
+    }
+
+    @Override
+    public <T> Optional<T> accept(LogicalTypeAnnotationVisitor<T> logicalTypeAnnotationVisitor) {
+      return logicalTypeAnnotationVisitor.visit(this);
+    }
+
+    @Override
+    LogicalTypeToken getType() {
+      return LogicalTypeToken.GEOGRAPHY;
+    }
+
+    @Override
+    protected String typeParametersAsString() {
+      boolean hasCrs = crs != null && !crs.isEmpty();
+      boolean hasAlgo = algorithm != null;
+      if (!hasCrs && !hasAlgo) {
+        return "";
+      }
+      return String.format("(%s,%s)", hasCrs ? crs : DEFAULT_CRS, hasAlgo ? algorithm : DEFAULT_ALGO);
+    }
+
+    public String getCrs() {
+      return crs;
+    }
+
+    public EdgeInterpolationAlgorithm getAlgorithm() {
+      return algorithm;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      if (!(obj instanceof GeographyLogicalTypeAnnotation)) {
+        return false;
+      }
+      GeographyLogicalTypeAnnotation other = (GeographyLogicalTypeAnnotation) obj;
+      return Objects.equals(crs, other.crs) && Objects.equals(algorithm, other.algorithm);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(crs, algorithm);
+    }
+
+    @Override
+    PrimitiveStringifier valueStringifier(PrimitiveType primitiveType) {
+      return PrimitiveStringifier.WKB_STRINGIFIER;
+    }
+  }
+
   /**
    * Implement this interface to visit a logical type annotation in the schema.
    * The default implementation for each logical type specific visitor method is empty.
    * <p>
    * Example usage: logicalTypeAnnotation.accept(new LogicalTypeAnnotationVisitor() { ... });
-   *
+   * <p>
    * Every visit method returns {@link Optional#empty()} by default.
    * It means that for the given logical type no specific action is needed.
    * Client code can use {@link Optional#orElse(Object)} to return a default value for unhandled types,
@@ -903,6 +1154,10 @@ public abstract class LogicalTypeAnnotation {
     }
 
     default Optional<T> visit(ListLogicalTypeAnnotation listLogicalType) {
+      return empty();
+    }
+
+    default Optional<T> visit(VariantLogicalTypeAnnotation variantLogicalType) {
       return empty();
     }
 
@@ -947,6 +1202,22 @@ public abstract class LogicalTypeAnnotation {
     }
 
     default Optional<T> visit(MapKeyValueTypeAnnotation mapKeyValueLogicalType) {
+      return empty();
+    }
+
+    default Optional<T> visit(Float16LogicalTypeAnnotation float16LogicalType) {
+      return empty();
+    }
+
+    default Optional<T> visit(GeometryLogicalTypeAnnotation geometryLogicalType) {
+      return empty();
+    }
+
+    default Optional<T> visit(GeographyLogicalTypeAnnotation geographyLogicalType) {
+      return empty();
+    }
+
+    default Optional<T> visit(UnknownLogicalTypeAnnotation unknownLogicalTypeAnnotation) {
       return empty();
     }
   }

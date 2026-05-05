@@ -24,12 +24,12 @@ import java.util.Map;
 /**
  * Configuration interface with the methods necessary to configure Parquet applications.
  */
-public interface ParquetConfiguration extends Iterable<Map.Entry<String,String>> {
+public interface ParquetConfiguration extends Iterable<Map.Entry<String, String>> {
 
   /**
    * Sets the value of the name property.
    *
-   * @param name the property to set
+   * @param name  the property to set
    * @param value the value to set the property to
    */
   void set(String name, String value);
@@ -37,7 +37,7 @@ public interface ParquetConfiguration extends Iterable<Map.Entry<String,String>>
   /**
    * Sets the value of the name property to a long.
    *
-   * @param name the property to set
+   * @param name  the property to set
    * @param value the value to set the property to
    */
   void setLong(String name, long value);
@@ -45,7 +45,7 @@ public interface ParquetConfiguration extends Iterable<Map.Entry<String,String>>
   /**
    * Sets the value of the name property to an integer.
    *
-   * @param name the property to set
+   * @param name  the property to set
    * @param value the value to set the property to
    */
   void setInt(String name, int value);
@@ -53,7 +53,7 @@ public interface ParquetConfiguration extends Iterable<Map.Entry<String,String>>
   /**
    * Sets the value of the name property to a boolean.
    *
-   * @param name the property to set
+   * @param name  the property to set
    * @param value the value to set the property to
    */
   void setBoolean(String name, boolean value);
@@ -61,7 +61,7 @@ public interface ParquetConfiguration extends Iterable<Map.Entry<String,String>>
   /**
    * Sets the value of the name property to an array of comma delimited values.
    *
-   * @param name the property to set
+   * @param name  the property to set
    * @param value the values to set the property to
    */
   void setStrings(String name, String... value);
@@ -69,7 +69,7 @@ public interface ParquetConfiguration extends Iterable<Map.Entry<String,String>>
   /**
    * Sets the value of the name property to a class.
    *
-   * @param name the property to set
+   * @param name  the property to set
    * @param value the value to set the property to
    * @param xface the interface implemented by the value
    */
@@ -86,7 +86,7 @@ public interface ParquetConfiguration extends Iterable<Map.Entry<String,String>>
   /**
    * Gets the value of the name property. Returns the default value if no such value exists.
    *
-   * @param name the property to retrieve the value of
+   * @param name         the property to retrieve the value of
    * @param defaultValue the default return if no value is set for the property
    * @return the value of the property, or the default value if it does not exist
    */
@@ -95,7 +95,7 @@ public interface ParquetConfiguration extends Iterable<Map.Entry<String,String>>
   /**
    * Gets the value of the name property as a long. Returns the default value if no such value exists.
    *
-   * @param name the property to retrieve the value of
+   * @param name         the property to retrieve the value of
    * @param defaultValue the default return if no value is set for the property
    * @return the value of the property as a long, or the default value if it does not exist
    */
@@ -104,7 +104,7 @@ public interface ParquetConfiguration extends Iterable<Map.Entry<String,String>>
   /**
    * Gets the value of the name property as an integer. Returns the default value if no such value exists.
    *
-   * @param name the property to retrieve the value of
+   * @param name         the property to retrieve the value of
    * @param defaultValue the default return if no value is set for the property
    * @return the value of the property as an integer, or the default value if it does not exist
    */
@@ -113,7 +113,7 @@ public interface ParquetConfiguration extends Iterable<Map.Entry<String,String>>
   /**
    * Gets the value of the name property as a boolean. Returns the default value if no such value exists.
    *
-   * @param name the property to retrieve the value of
+   * @param name         the property to retrieve the value of
    * @param defaultValue the default return if no value is set for the property
    * @return the value of the property as a boolean, or the default value if it does not exist
    */
@@ -131,7 +131,7 @@ public interface ParquetConfiguration extends Iterable<Map.Entry<String,String>>
    * Gets the trimmed value of the name property as a boolean.
    * Returns the default value if no such value exists.
    *
-   * @param name the property to retrieve the value of
+   * @param name         the property to retrieve the value of
    * @param defaultValue the default return if no value is set for the property
    * @return the trimmed value of the property, or the default value if it does not exist
    */
@@ -142,7 +142,7 @@ public interface ParquetConfiguration extends Iterable<Map.Entry<String,String>>
    * Returns the default value if no such value exists.
    * Interprets the stored value as a comma delimited array.
    *
-   * @param name the property to retrieve the value of
+   * @param name         the property to retrieve the value of
    * @param defaultValue the default return if no value is set for the property
    * @return the value of the property as an array, or the default value if it does not exist
    */
@@ -151,7 +151,7 @@ public interface ParquetConfiguration extends Iterable<Map.Entry<String,String>>
   /**
    * Gets the value of the name property as a class. Returns the default value if no such value exists.
    *
-   * @param name the property to retrieve the value of
+   * @param name         the property to retrieve the value of
    * @param defaultValue the default return if no value is set for the property
    * @return the value of the property as a class, or the default value if it does not exist
    */
@@ -161,7 +161,7 @@ public interface ParquetConfiguration extends Iterable<Map.Entry<String,String>>
    * Gets the value of the name property as a class implementing the xface interface.
    * Returns the default value if no such value exists.
    *
-   * @param name the property to retrieve the value of
+   * @param name         the property to retrieve the value of
    * @param defaultValue the default return if no value is set for the property
    * @return the value of the property as a class, or the default value if it does not exist
    */

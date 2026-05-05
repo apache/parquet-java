@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -18,15 +18,15 @@
  */
 package org.apache.parquet.avro;
 
+import java.nio.ByteBuffer;
+import java.util.Collection;
+import java.util.Map;
 import org.apache.avro.Conversion;
 import org.apache.avro.LogicalType;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericEnumSymbol;
 import org.apache.avro.generic.IndexedRecord;
-import java.nio.ByteBuffer;
-import java.util.Collection;
-import java.util.Map;
 
 abstract class ParentValueContainer {
 
@@ -34,8 +34,7 @@ abstract class ParentValueContainer {
    * Adds the value to the parent.
    */
   public void add(Object value) {
-    throw new RuntimeException(
-        "[BUG] ParentValueContainer#add was not overridden");
+    throw new RuntimeException("[BUG] ParentValueContainer#add was not overridden");
   }
 
   public void addBoolean(boolean value) {
@@ -76,8 +75,7 @@ abstract class ParentValueContainer {
     private final LogicalType logicalType;
     private final Conversion conversion;
 
-    public LogicalTypePrimitiveContainer(ParentValueContainer wrapped,
-                                         Schema schema, Conversion conversion) {
+    public LogicalTypePrimitiveContainer(ParentValueContainer wrapped, Schema schema, Conversion conversion) {
       this.wrapped = wrapped;
       this.schema = schema;
       this.logicalType = schema.getLogicalType();
@@ -126,8 +124,7 @@ abstract class ParentValueContainer {
   }
 
   static ParentValueContainer getConversionContainer(
-      final ParentValueContainer parent, final Conversion<?> conversion,
-      final Schema schema) {
+      final ParentValueContainer parent, final Conversion<?> conversion, final Schema schema) {
     if (conversion == null) {
       return parent;
     }
@@ -139,96 +136,84 @@ abstract class ParentValueContainer {
         return new ParentValueContainer() {
           @Override
           public void add(Object value) {
-            parent.add(conversion.fromCharSequence(
-                (CharSequence) value, schema, logicalType));
+            parent.add(conversion.fromCharSequence((CharSequence) value, schema, logicalType));
           }
         };
       case BOOLEAN:
         return new LogicalTypePrimitiveContainer(parent, schema, conversion) {
           @Override
           public void add(Object value) {
-            parent.add(conversion.fromBoolean(
-                (Boolean) value, schema, logicalType));
+            parent.add(conversion.fromBoolean((Boolean) value, schema, logicalType));
           }
         };
       case INT:
         return new LogicalTypePrimitiveContainer(parent, schema, conversion) {
           @Override
           public void add(Object value) {
-            parent.add(conversion.fromInt(
-                (Integer) value, schema, logicalType));
+            parent.add(conversion.fromInt((Integer) value, schema, logicalType));
           }
         };
       case LONG:
         return new LogicalTypePrimitiveContainer(parent, schema, conversion) {
           @Override
           public void add(Object value) {
-            parent.add(conversion.fromLong(
-                (Long) value, schema, logicalType));
+            parent.add(conversion.fromLong((Long) value, schema, logicalType));
           }
         };
       case FLOAT:
         return new LogicalTypePrimitiveContainer(parent, schema, conversion) {
           @Override
           public void add(Object value) {
-            parent.add(conversion.fromFloat(
-                (Float) value, schema, logicalType));
+            parent.add(conversion.fromFloat((Float) value, schema, logicalType));
           }
         };
       case DOUBLE:
         return new LogicalTypePrimitiveContainer(parent, schema, conversion) {
           @Override
           public void add(Object value) {
-            parent.add(conversion.fromDouble(
-                (Double) value, schema, logicalType));
+            parent.add(conversion.fromDouble((Double) value, schema, logicalType));
           }
         };
       case BYTES:
         return new ParentValueContainer() {
           @Override
           public void add(Object value) {
-            parent.add(conversion.fromBytes(
-                (ByteBuffer) value, schema, logicalType));
+            parent.add(conversion.fromBytes((ByteBuffer) value, schema, logicalType));
           }
         };
       case FIXED:
         return new ParentValueContainer() {
           @Override
           public void add(Object value) {
-            parent.add(conversion.fromFixed(
-                (GenericData.Fixed) value, schema, logicalType));
+            parent.add(conversion.fromFixed((GenericData.Fixed) value, schema, logicalType));
           }
         };
       case RECORD:
         return new ParentValueContainer() {
           @Override
           public void add(Object value) {
-            parent.add(conversion.fromRecord(
-                (IndexedRecord) value, schema, logicalType));
+            parent.add(conversion.fromRecord((IndexedRecord) value, schema, logicalType));
           }
         };
       case ARRAY:
         return new ParentValueContainer() {
           @Override
           public void add(Object value) {
-            parent.add(conversion.fromArray(
-                (Collection<?>) value, schema, logicalType));
+            parent.add(conversion.fromArray((Collection<?>) value, schema, logicalType));
           }
         };
       case MAP:
         return new ParentValueContainer() {
           @Override
           public void add(Object value) {
-            parent.add(conversion.fromMap(
-                (Map<?, ?>) value, schema, logicalType));
+            parent.add(conversion.fromMap((Map<?, ?>) value, schema, logicalType));
           }
         };
       case ENUM:
         return new ParentValueContainer() {
           @Override
           public void add(Object value) {
-            parent.add(conversion.fromEnumSymbol(
-                (GenericEnumSymbol) value, schema, logicalType));
+            parent.add(conversion.fromEnumSymbol((GenericEnumSymbol) value, schema, logicalType));
           }
         };
       default:

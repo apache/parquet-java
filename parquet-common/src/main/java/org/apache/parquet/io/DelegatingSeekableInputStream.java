@@ -101,8 +101,7 @@ public abstract class DelegatingSeekableInputStream extends SeekableInputStream 
     while (remaining > 0) {
       int bytesRead = f.read(bytes, offset, remaining);
       if (bytesRead < 0) {
-        throw new EOFException(
-            "Reached the end of stream with " + remaining + " bytes left to read");
+        throw new EOFException("Reached the end of stream with " + remaining + " bytes left to read");
       }
 
       remaining -= bytesRead;
@@ -164,8 +163,7 @@ public abstract class DelegatingSeekableInputStream extends SeekableInputStream 
     }
 
     if (bytesRead < 0 && buf.remaining() > 0) {
-      throw new EOFException(
-          "Reached the end of stream with " + buf.remaining() + " bytes left to read");
+      throw new EOFException("Reached the end of stream with " + buf.remaining() + " bytes left to read");
     }
   }
 }

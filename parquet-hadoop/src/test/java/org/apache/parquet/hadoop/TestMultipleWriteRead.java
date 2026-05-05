@@ -33,8 +33,8 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
 
+import com.google.common.io.Files;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -50,7 +50,6 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.example.data.Group;
@@ -68,8 +67,6 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.google.common.io.Files;
-
 /**
  * Tests writing/reading multiple files in the same time (using multiple threads). Readers/writers do not support
  * concurrency but the API shall support using separate reader/writer instances to read/write parquet files in different
@@ -77,13 +74,21 @@ import com.google.common.io.Files;
  */
 public class TestMultipleWriteRead {
   private static final MessageType SCHEMA = Types.buildMessage()
-      .required(INT32).named("id")
-      .required(BINARY).as(stringType()).named("name")
-      .requiredList().requiredElement(INT64).as(intType(64, false)).named("phone_numbers")
-      .optional(BINARY).as(stringType()).named("comment")
+      .required(INT32)
+      .named("id")
+      .required(BINARY)
+      .as(stringType())
+      .named("name")
+      .requiredList()
+      .requiredElement(INT64)
+      .as(intType(64, false))
+      .named("phone_numbers")
+      .optional(BINARY)
+      .as(stringType())
+      .named("comment")
       .named("msg");
-  private static final Comparator<Binary> BINARY_COMPARATOR = Types.required(BINARY).as(stringType()).named("dummy")
-      .comparator();
+  private static final Comparator<Binary> BINARY_COMPARATOR =
+      Types.required(BINARY).as(stringType()).named("dummy").comparator();
 
   private static class DataGenerator implements Supplier<Group> {
     private static final String ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz -";
@@ -153,7 +158,8 @@ public class TestMultipleWriteRead {
   }
 
   private void validateFile(Path file, List<Group> data) throws IOException {
-    try (ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), file).build()) {
+    try (ParquetReader<Group> reader =
+        ParquetReader.builder(new GroupReadSupport(), file).build()) {
       for (Group group : data) {
         assertEquals(group.toString(), reader.read().toString());
       }
@@ -164,30 +170,31 @@ public class TestMultipleWriteRead {
     try (ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), file)
         .withFilter(filter)
         .build()) {
-      for (Iterator<Group> it = data.iterator(); it.hasNext();) {
+      for (Iterator<Group> it = data.iterator(); it.hasNext(); ) {
         assertEquals(it.next().toString(), reader.read().toString());
       }
     }
   }
 
   private void validateFileWithIdFilter(Path file, List<Group> data) throws IOException {
-    validateFile(file, FilterCompat.get(eq(intColumn("id"), 0)),
+    validateFile(
+        file,
+        FilterCompat.get(eq(intColumn("id"), 0)),
         data.stream().filter(group -> group.getInteger("id", 0) == 0));
   }
 
   private void validateFileWithCommentFilter(Path file, List<Group> data) throws IOException {
-    validateFile(file, FilterCompat.get(eq(binaryColumn("comment"), null)),
+    validateFile(
+        file,
+        FilterCompat.get(eq(binaryColumn("comment"), null)),
         data.stream().filter(group -> group.getFieldRepetitionCount("comment") == 0));
   }
 
   private void validateFileWithComplexFilter(Path file, List<Group> data) throws IOException {
     Binary binaryValueB = fromString("b");
-    Filter filter = FilterCompat.get(
-        and(
-            gtEq(intColumn("id"), 0),
-            and(
-                lt(binaryColumn("name"), binaryValueB),
-                notEq(binaryColumn("comment"), null))));
+    Filter filter = FilterCompat.get(and(
+        gtEq(intColumn("id"), 0),
+        and(lt(binaryColumn("name"), binaryValueB), notEq(binaryColumn("comment"), null))));
     Predicate<Group> predicate = group -> group.getInteger("id", 0) >= 0
         && BINARY_COMPARATOR.compare(group.getBinary("name", 0), binaryValueB) < 0
         && group.getFieldRepetitionCount("comment") > 0;
@@ -199,7 +206,9 @@ public class TestMultipleWriteRead {
     // 10 random datasets with row counts 10000 to 1000
     List<List<Group>> data = new ArrayList<>();
     for (int i = 0; i < 10; ++i) {
-      data.add(Stream.generate(new DataGenerator(i)).limit(10000 - i * 1000).collect(Collectors.toList()));
+      data.add(Stream.generate(new DataGenerator(i))
+          .limit(10000 - i * 1000)
+          .collect(Collectors.toList()));
     }
 
     // Writes (and reads back the data to validate) the random values using 6 threads

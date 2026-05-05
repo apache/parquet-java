@@ -18,32 +18,37 @@
  */
 package org.apache.parquet.proto;
 
-import com.google.protobuf.Descriptors;
-import com.google.protobuf.DynamicMessage;
-import com.google.protobuf.Message;
-import com.google.protobuf.Value;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
+import com.google.protobuf.*;
+import com.google.protobuf.util.Timestamps;
+import java.io.IOException;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.List;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
-import org.junit.Test;
-import static org.junit.Assert.*;
-import org.mockito.InOrder;
-import org.mockito.Mockito;
+import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.RecordConsumer;
 import org.apache.parquet.proto.test.TestProto3;
 import org.apache.parquet.proto.test.TestProtobuf;
 import org.apache.parquet.proto.test.Trees;
-
-import java.io.IOException;
-import java.util.List;
+import org.junit.Test;
+import org.mockito.InOrder;
+import org.mockito.Mockito;
 
 public class ProtoWriteSupportTest {
 
-  private <T extends Message> ProtoWriteSupport<T> createReadConsumerInstance(Class<T> cls, RecordConsumer readConsumerMock) {
+  private <T extends Message> ProtoWriteSupport<T> createReadConsumerInstance(
+      Class<T> cls, RecordConsumer readConsumerMock) {
     return createReadConsumerInstance(cls, readConsumerMock, new Configuration());
   }
 
-  private <T extends Message> ProtoWriteSupport<T> createReadConsumerInstance(Class<T> cls, RecordConsumer readConsumerMock, Configuration conf) {
+  private <T extends Message> ProtoWriteSupport<T> createReadConsumerInstance(
+      Class<T> cls, RecordConsumer readConsumerMock, Configuration conf) {
     ProtoWriteSupport<T> support = new ProtoWriteSupport<>(cls);
     support.init(conf);
     support.prepareForWrite(readConsumerMock);
@@ -52,7 +57,7 @@ public class ProtoWriteSupportTest {
 
   @Test
   public void testSimplestMessage() throws Exception {
-    RecordConsumer readConsumerMock =  Mockito.mock(RecordConsumer.class);
+    RecordConsumer readConsumerMock = Mockito.mock(RecordConsumer.class);
     ProtoWriteSupport<TestProtobuf.InnerMessage> instance =
         createReadConsumerInstance(TestProtobuf.InnerMessage.class, readConsumerMock);
 
@@ -74,7 +79,7 @@ public class ProtoWriteSupportTest {
 
   @Test
   public void testProto3SimplestMessage() throws Exception {
-    RecordConsumer readConsumerMock =  Mockito.mock(RecordConsumer.class);
+    RecordConsumer readConsumerMock = Mockito.mock(RecordConsumer.class);
     ProtoWriteSupport<TestProto3.InnerMessage> instance =
         createReadConsumerInstance(TestProto3.InnerMessage.class, readConsumerMock);
 
@@ -102,7 +107,7 @@ public class ProtoWriteSupportTest {
 
   @Test
   public void testProto3SimplestDynamicMessage() throws Exception {
-    RecordConsumer readConsumerMock =  Mockito.mock(RecordConsumer.class);
+    RecordConsumer readConsumerMock = Mockito.mock(RecordConsumer.class);
     Descriptors.Descriptor descriptor = TestProto3.InnerMessage.getDescriptor();
 
     ProtoWriteSupport instance = new ProtoWriteSupport(descriptor);
@@ -112,7 +117,7 @@ public class ProtoWriteSupportTest {
     TestProto3.InnerMessage.Builder msg = TestProto3.InnerMessage.newBuilder();
     msg.setOne("oneValue");
 
-    DynamicMessage dynamicMessage = DynamicMessage.newBuilder(msg.build()).build() ;
+    DynamicMessage dynamicMessage = DynamicMessage.newBuilder(msg.build()).build();
 
     instance.write(dynamicMessage);
 
@@ -135,7 +140,7 @@ public class ProtoWriteSupportTest {
 
   @Test
   public void testRepeatedIntMessageSpecsCompliant() throws Exception {
-    RecordConsumer readConsumerMock =  Mockito.mock(RecordConsumer.class);
+    RecordConsumer readConsumerMock = Mockito.mock(RecordConsumer.class);
     Configuration conf = new Configuration();
     ProtoWriteSupport.setWriteSpecsCompliant(conf, true);
     ProtoWriteSupport<TestProtobuf.RepeatedIntMessage> instance =
@@ -175,7 +180,7 @@ public class ProtoWriteSupportTest {
 
   @Test
   public void testRepeatedIntMessage() throws Exception {
-    RecordConsumer readConsumerMock =  Mockito.mock(RecordConsumer.class);
+    RecordConsumer readConsumerMock = Mockito.mock(RecordConsumer.class);
     ProtoWriteSupport<TestProtobuf.RepeatedIntMessage> instance =
         createReadConsumerInstance(TestProtobuf.RepeatedIntMessage.class, readConsumerMock);
 
@@ -198,7 +203,7 @@ public class ProtoWriteSupportTest {
 
   @Test
   public void testRepeatedIntMessageEmptySpecsCompliant() throws Exception {
-    RecordConsumer readConsumerMock =  Mockito.mock(RecordConsumer.class);
+    RecordConsumer readConsumerMock = Mockito.mock(RecordConsumer.class);
     Configuration conf = new Configuration();
     ProtoWriteSupport.setWriteSpecsCompliant(conf, true);
     ProtoWriteSupport<TestProtobuf.RepeatedIntMessage> instance =
@@ -217,7 +222,7 @@ public class ProtoWriteSupportTest {
 
   @Test
   public void testRepeatedIntMessageEmpty() throws Exception {
-    RecordConsumer readConsumerMock =  Mockito.mock(RecordConsumer.class);
+    RecordConsumer readConsumerMock = Mockito.mock(RecordConsumer.class);
     ProtoWriteSupport<TestProtobuf.RepeatedIntMessage> instance =
         createReadConsumerInstance(TestProtobuf.RepeatedIntMessage.class, readConsumerMock);
 
@@ -234,7 +239,7 @@ public class ProtoWriteSupportTest {
 
   @Test
   public void testProto3RepeatedIntMessageSpecsCompliant() throws Exception {
-    RecordConsumer readConsumerMock =  Mockito.mock(RecordConsumer.class);
+    RecordConsumer readConsumerMock = Mockito.mock(RecordConsumer.class);
     Configuration conf = new Configuration();
     ProtoWriteSupport.setWriteSpecsCompliant(conf, true);
     ProtoWriteSupport<TestProto3.RepeatedIntMessage> instance =
@@ -274,7 +279,7 @@ public class ProtoWriteSupportTest {
 
   @Test
   public void testProto3RepeatedIntMessage() throws Exception {
-    RecordConsumer readConsumerMock =  Mockito.mock(RecordConsumer.class);
+    RecordConsumer readConsumerMock = Mockito.mock(RecordConsumer.class);
     ProtoWriteSupport<TestProto3.RepeatedIntMessage> instance =
         createReadConsumerInstance(TestProto3.RepeatedIntMessage.class, readConsumerMock);
 
@@ -297,7 +302,7 @@ public class ProtoWriteSupportTest {
 
   @Test
   public void testProto3RepeatedIntMessageEmptySpecsCompliant() throws Exception {
-    RecordConsumer readConsumerMock =  Mockito.mock(RecordConsumer.class);
+    RecordConsumer readConsumerMock = Mockito.mock(RecordConsumer.class);
     Configuration conf = new Configuration();
     ProtoWriteSupport.setWriteSpecsCompliant(conf, true);
     ProtoWriteSupport<TestProto3.RepeatedIntMessage> instance =
@@ -316,7 +321,7 @@ public class ProtoWriteSupportTest {
 
   @Test
   public void testProto3RepeatedIntMessageEmpty() throws Exception {
-    RecordConsumer readConsumerMock =  Mockito.mock(RecordConsumer.class);
+    RecordConsumer readConsumerMock = Mockito.mock(RecordConsumer.class);
     ProtoWriteSupport<TestProto3.RepeatedIntMessage> instance =
         createReadConsumerInstance(TestProto3.RepeatedIntMessage.class, readConsumerMock);
 
@@ -333,7 +338,7 @@ public class ProtoWriteSupportTest {
 
   @Test
   public void testMapIntMessageSpecsCompliant() throws Exception {
-    RecordConsumer readConsumerMock =  Mockito.mock(RecordConsumer.class);
+    RecordConsumer readConsumerMock = Mockito.mock(RecordConsumer.class);
     Configuration conf = new Configuration();
     ProtoWriteSupport.setWriteSpecsCompliant(conf, true);
     ProtoWriteSupport<TestProtobuf.MapIntMessage> instance =
@@ -378,7 +383,7 @@ public class ProtoWriteSupportTest {
 
   @Test
   public void testMapIntMessage() throws Exception {
-    RecordConsumer readConsumerMock =  Mockito.mock(RecordConsumer.class);
+    RecordConsumer readConsumerMock = Mockito.mock(RecordConsumer.class);
     ProtoWriteSupport<TestProtobuf.MapIntMessage> instance =
         createReadConsumerInstance(TestProtobuf.MapIntMessage.class, readConsumerMock);
 
@@ -417,7 +422,7 @@ public class ProtoWriteSupportTest {
 
   @Test
   public void testMapIntMessageEmptySpecsCompliant() throws Exception {
-    RecordConsumer readConsumerMock =  Mockito.mock(RecordConsumer.class);
+    RecordConsumer readConsumerMock = Mockito.mock(RecordConsumer.class);
     Configuration conf = new Configuration();
     ProtoWriteSupport.setWriteSpecsCompliant(conf, true);
     ProtoWriteSupport<TestProtobuf.MapIntMessage> instance =
@@ -435,7 +440,7 @@ public class ProtoWriteSupportTest {
 
   @Test
   public void testMapIntMessageEmpty() throws Exception {
-    RecordConsumer readConsumerMock =  Mockito.mock(RecordConsumer.class);
+    RecordConsumer readConsumerMock = Mockito.mock(RecordConsumer.class);
     ProtoWriteSupport<TestProtobuf.MapIntMessage> instance =
         createReadConsumerInstance(TestProtobuf.MapIntMessage.class, readConsumerMock);
 
@@ -451,7 +456,7 @@ public class ProtoWriteSupportTest {
 
   @Test
   public void testProto3MapIntMessageSpecsCompliant() throws Exception {
-    RecordConsumer readConsumerMock =  Mockito.mock(RecordConsumer.class);
+    RecordConsumer readConsumerMock = Mockito.mock(RecordConsumer.class);
     Configuration conf = new Configuration();
     ProtoWriteSupport.setWriteSpecsCompliant(conf, true);
     ProtoWriteSupport<TestProto3.MapIntMessage> instance =
@@ -496,7 +501,7 @@ public class ProtoWriteSupportTest {
 
   @Test
   public void testProto3MapIntMessage() throws Exception {
-    RecordConsumer readConsumerMock =  Mockito.mock(RecordConsumer.class);
+    RecordConsumer readConsumerMock = Mockito.mock(RecordConsumer.class);
     ProtoWriteSupport<TestProto3.MapIntMessage> instance =
         createReadConsumerInstance(TestProto3.MapIntMessage.class, readConsumerMock);
 
@@ -535,7 +540,7 @@ public class ProtoWriteSupportTest {
 
   @Test
   public void testProto3MapIntMessageEmptySpecsCompliant() throws Exception {
-    RecordConsumer readConsumerMock =  Mockito.mock(RecordConsumer.class);
+    RecordConsumer readConsumerMock = Mockito.mock(RecordConsumer.class);
     Configuration conf = new Configuration();
     ProtoWriteSupport.setWriteSpecsCompliant(conf, true);
     ProtoWriteSupport<TestProto3.MapIntMessage> instance =
@@ -553,7 +558,7 @@ public class ProtoWriteSupportTest {
 
   @Test
   public void testProto3MapIntMessageEmpty() throws Exception {
-    RecordConsumer readConsumerMock =  Mockito.mock(RecordConsumer.class);
+    RecordConsumer readConsumerMock = Mockito.mock(RecordConsumer.class);
     ProtoWriteSupport<TestProto3.MapIntMessage> instance =
         createReadConsumerInstance(TestProto3.MapIntMessage.class, readConsumerMock);
 
@@ -569,7 +574,7 @@ public class ProtoWriteSupportTest {
 
   @Test
   public void testRepeatedInnerMessageMessage_message() throws Exception {
-    RecordConsumer readConsumerMock =  Mockito.mock(RecordConsumer.class);
+    RecordConsumer readConsumerMock = Mockito.mock(RecordConsumer.class);
     ProtoWriteSupport<TestProtobuf.TopMessage> instance =
         createReadConsumerInstance(TestProtobuf.TopMessage.class, readConsumerMock);
 
@@ -599,7 +604,7 @@ public class ProtoWriteSupportTest {
 
   @Test
   public void testRepeatedInnerMessageSpecsCompliantMessage_message() throws Exception {
-    RecordConsumer readConsumerMock =  Mockito.mock(RecordConsumer.class);
+    RecordConsumer readConsumerMock = Mockito.mock(RecordConsumer.class);
     Configuration conf = new Configuration();
     ProtoWriteSupport.setWriteSpecsCompliant(conf, true);
     ProtoWriteSupport<TestProtobuf.TopMessage> instance =
@@ -639,7 +644,8 @@ public class ProtoWriteSupportTest {
 
   @Test
   public void testProto3RepeatedInnerMessageMessage_message() throws Exception {
-    RecordConsumer readConsumerMock =  Mockito.mock(RecordConsumer.class);;
+    RecordConsumer readConsumerMock = Mockito.mock(RecordConsumer.class);
+    ;
     ProtoWriteSupport<TestProto3.TopMessage> instance =
         createReadConsumerInstance(TestProto3.TopMessage.class, readConsumerMock);
 
@@ -672,7 +678,7 @@ public class ProtoWriteSupportTest {
 
   @Test
   public void testProto3RepeatedInnerMessageSpecsCompliantMessage_message() throws Exception {
-    RecordConsumer readConsumerMock =  Mockito.mock(RecordConsumer.class);
+    RecordConsumer readConsumerMock = Mockito.mock(RecordConsumer.class);
     Configuration conf = new Configuration();
     ProtoWriteSupport.setWriteSpecsCompliant(conf, true);
     ProtoWriteSupport<TestProto3.TopMessage> instance =
@@ -713,10 +719,9 @@ public class ProtoWriteSupportTest {
     Mockito.verifyNoMoreInteractions(readConsumerMock);
   }
 
-
   @Test
   public void testRepeatedInnerMessageSpecsCompliantMessage_scalar() throws Exception {
-    RecordConsumer readConsumerMock =  Mockito.mock(RecordConsumer.class);
+    RecordConsumer readConsumerMock = Mockito.mock(RecordConsumer.class);
     Configuration conf = new Configuration();
     ProtoWriteSupport.setWriteSpecsCompliant(conf, true);
     ProtoWriteSupport<TestProtobuf.TopMessage> instance =
@@ -735,7 +740,7 @@ public class ProtoWriteSupportTest {
     inOrder.verify(readConsumerMock).startGroup();
     inOrder.verify(readConsumerMock).startField("list", 0);
 
-    //first inner message
+    // first inner message
     inOrder.verify(readConsumerMock).startGroup();
     inOrder.verify(readConsumerMock).startField("element", 0);
     inOrder.verify(readConsumerMock).startGroup();
@@ -746,7 +751,7 @@ public class ProtoWriteSupportTest {
     inOrder.verify(readConsumerMock).endField("element", 0);
     inOrder.verify(readConsumerMock).endGroup();
 
-    //second inner message
+    // second inner message
     inOrder.verify(readConsumerMock).startGroup();
     inOrder.verify(readConsumerMock).startField("element", 0);
     inOrder.verify(readConsumerMock).startGroup();
@@ -766,7 +771,7 @@ public class ProtoWriteSupportTest {
 
   @Test
   public void testRepeatedInnerMessageMessage_scalar() throws Exception {
-    RecordConsumer readConsumerMock =  Mockito.mock(RecordConsumer.class);
+    RecordConsumer readConsumerMock = Mockito.mock(RecordConsumer.class);
     ProtoWriteSupport<TestProtobuf.TopMessage> instance =
         createReadConsumerInstance(TestProtobuf.TopMessage.class, readConsumerMock);
 
@@ -781,14 +786,14 @@ public class ProtoWriteSupportTest {
     inOrder.verify(readConsumerMock).startMessage();
     inOrder.verify(readConsumerMock).startField("inner", 0);
 
-    //first inner message
+    // first inner message
     inOrder.verify(readConsumerMock).startGroup();
     inOrder.verify(readConsumerMock).startField("one", 0);
     inOrder.verify(readConsumerMock).addBinary(Binary.fromConstantByteArray("one".getBytes()));
     inOrder.verify(readConsumerMock).endField("one", 0);
     inOrder.verify(readConsumerMock).endGroup();
 
-    //second inner message
+    // second inner message
     inOrder.verify(readConsumerMock).startGroup();
     inOrder.verify(readConsumerMock).startField("two", 1);
     inOrder.verify(readConsumerMock).addBinary(Binary.fromConstantByteArray("two".getBytes()));
@@ -802,7 +807,7 @@ public class ProtoWriteSupportTest {
 
   @Test
   public void testProto3RepeatedInnerMessageMessage_scalar() throws Exception {
-    RecordConsumer readConsumerMock =  Mockito.mock(RecordConsumer.class);
+    RecordConsumer readConsumerMock = Mockito.mock(RecordConsumer.class);
     ProtoWriteSupport<TestProto3.TopMessage> instance =
         createReadConsumerInstance(TestProto3.TopMessage.class, readConsumerMock);
 
@@ -817,7 +822,7 @@ public class ProtoWriteSupportTest {
     inOrder.verify(readConsumerMock).startMessage();
     inOrder.verify(readConsumerMock).startField("inner", 0);
 
-    //first inner message
+    // first inner message
     inOrder.verify(readConsumerMock).startGroup();
     inOrder.verify(readConsumerMock).startField("one", 0);
     inOrder.verify(readConsumerMock).addBinary(Binary.fromConstantByteArray("one".getBytes()));
@@ -830,7 +835,7 @@ public class ProtoWriteSupportTest {
     inOrder.verify(readConsumerMock).endField("three", 2);
     inOrder.verify(readConsumerMock).endGroup();
 
-    //second inner message
+    // second inner message
     inOrder.verify(readConsumerMock).startGroup();
     inOrder.verify(readConsumerMock).startField("one", 0);
     inOrder.verify(readConsumerMock).addBinary(Binary.fromConstantByteArray("".getBytes()));
@@ -850,7 +855,7 @@ public class ProtoWriteSupportTest {
 
   @Test
   public void testProto3RepeatedInnerMessageSpecsCompliantMessage_scalar() throws Exception {
-    RecordConsumer readConsumerMock =  Mockito.mock(RecordConsumer.class);
+    RecordConsumer readConsumerMock = Mockito.mock(RecordConsumer.class);
     Configuration conf = new Configuration();
     ProtoWriteSupport.setWriteSpecsCompliant(conf, true);
     ProtoWriteSupport<TestProto3.TopMessage> instance =
@@ -869,7 +874,7 @@ public class ProtoWriteSupportTest {
     inOrder.verify(readConsumerMock).startGroup();
     inOrder.verify(readConsumerMock).startField("list", 0);
 
-    //first inner message
+    // first inner message
     inOrder.verify(readConsumerMock).startGroup();
     inOrder.verify(readConsumerMock).startField("element", 0);
     inOrder.verify(readConsumerMock).startGroup();
@@ -886,7 +891,7 @@ public class ProtoWriteSupportTest {
     inOrder.verify(readConsumerMock).endField("element", 0);
     inOrder.verify(readConsumerMock).endGroup();
 
-    //second inner message
+    // second inner message
     inOrder.verify(readConsumerMock).startGroup();
     inOrder.verify(readConsumerMock).startField("element", 0);
     inOrder.verify(readConsumerMock).startGroup();
@@ -912,7 +917,7 @@ public class ProtoWriteSupportTest {
 
   @Test
   public void testOptionalInnerMessage() throws Exception {
-    RecordConsumer readConsumerMock =  Mockito.mock(RecordConsumer.class);
+    RecordConsumer readConsumerMock = Mockito.mock(RecordConsumer.class);
     ProtoWriteSupport<TestProtobuf.MessageA> instance =
         createReadConsumerInstance(TestProtobuf.MessageA.class, readConsumerMock);
 
@@ -939,7 +944,7 @@ public class ProtoWriteSupportTest {
 
   @Test
   public void testProto3OptionalInnerMessage() throws Exception {
-    RecordConsumer readConsumerMock =  Mockito.mock(RecordConsumer.class);
+    RecordConsumer readConsumerMock = Mockito.mock(RecordConsumer.class);
     ProtoWriteSupport<TestProto3.MessageA> instance =
         createReadConsumerInstance(TestProto3.MessageA.class, readConsumerMock);
 
@@ -972,7 +977,7 @@ public class ProtoWriteSupportTest {
 
   @Test(expected = UnsupportedOperationException.class)
   public void testMessageWithExtensions() throws Exception {
-    RecordConsumer readConsumerMock =  Mockito.mock(RecordConsumer.class);
+    RecordConsumer readConsumerMock = Mockito.mock(RecordConsumer.class);
     ProtoWriteSupport<TestProtobuf.Vehicle> instance =
         createReadConsumerInstance(TestProtobuf.Vehicle.class, readConsumerMock);
 
@@ -987,7 +992,7 @@ public class ProtoWriteSupportTest {
 
   @Test
   public void testMessageOneOf() {
-    RecordConsumer readConsumerMock =  Mockito.mock(RecordConsumer.class);
+    RecordConsumer readConsumerMock = Mockito.mock(RecordConsumer.class);
     ProtoWriteSupport<TestProto3.OneOfTestMessage> spyWriter =
         createReadConsumerInstance(TestProto3.OneOfTestMessage.class, readConsumerMock);
     final int theInt = 99;
@@ -1023,20 +1028,21 @@ public class ProtoWriteSupportTest {
     msgBuilder3.setFirst(42);
     TestProto3.OneOfTestMessage theMessageFirstSet = msgBuilder3.build();
 
-    //Write them out and read them back
+    // Write them out and read them back
     Path tmpFilePath = TestUtils.writeMessages(theMessage, theMessageNothingSet, theMessageFirstSet);
-    List<TestProto3.OneOfTestMessage> gotBack = TestUtils.readMessages(tmpFilePath, TestProto3.OneOfTestMessage.class);
+    List<TestProto3.OneOfTestMessage> gotBack =
+        TestUtils.readMessages(tmpFilePath, TestProto3.OneOfTestMessage.class);
 
-    //First message
+    // First message
     TestProto3.OneOfTestMessage gotBackFirst = gotBack.get(0);
     assertEquals(gotBackFirst.getSecond(), 99);
     assertEquals(gotBackFirst.getTheOneofCase(), TestProto3.OneOfTestMessage.TheOneofCase.SECOND);
 
-    //Second message with nothing set
+    // Second message with nothing set
     TestProto3.OneOfTestMessage gotBackSecond = gotBack.get(1);
     assertEquals(gotBackSecond.getTheOneofCase(), TestProto3.OneOfTestMessage.TheOneofCase.THEONEOF_NOT_SET);
 
-    //Third message with opposite field set
+    // Third message with opposite field set
     TestProto3.OneOfTestMessage gotBackThird = gotBack.get(2);
     assertEquals(gotBackThird.getFirst(), 42);
     assertEquals(gotBackThird.getTheOneofCase(), TestProto3.OneOfTestMessage.TheOneofCase.FIRST);
@@ -1044,7 +1050,7 @@ public class ProtoWriteSupportTest {
 
   @Test
   public void testMessageRecursion() {
-    RecordConsumer readConsumerMock =  Mockito.mock(RecordConsumer.class);
+    RecordConsumer readConsumerMock = Mockito.mock(RecordConsumer.class);
     Configuration conf = new Configuration();
     ProtoSchemaConverter.setMaxRecursion(conf, 1);
     ProtoWriteSupport<Trees.BinaryTree> spyWriter =
@@ -1085,7 +1091,9 @@ public class ProtoWriteSupportTest {
     inOrder.verify(readConsumerMock).endGroup();
     inOrder.verify(readConsumerMock).endField("value", 0);
     inOrder.verify(readConsumerMock).startField("right", 2);
-    inOrder.verify(readConsumerMock).addBinary(Binary.fromConstantByteArray(built.getRight().getRight().toByteArray()));
+    inOrder.verify(readConsumerMock)
+        .addBinary(
+            Binary.fromConstantByteArray(built.getRight().getRight().toByteArray()));
     inOrder.verify(readConsumerMock).endField("right", 2);
     inOrder.verify(readConsumerMock).endGroup();
     inOrder.verify(readConsumerMock).endField("right", 2);
@@ -1096,7 +1104,7 @@ public class ProtoWriteSupportTest {
 
   @Test
   public void testRepeatedRecursion() {
-    RecordConsumer readConsumerMock =  Mockito.mock(RecordConsumer.class);
+    RecordConsumer readConsumerMock = Mockito.mock(RecordConsumer.class);
     Configuration conf = new Configuration();
     ProtoSchemaConverter.setMaxRecursion(conf, 1);
     ProtoWriteSupport<Trees.WideTree> spyWriter =
@@ -1138,7 +1146,9 @@ public class ProtoWriteSupportTest {
     inOrder.verify(readConsumerMock).endGroup();
     inOrder.verify(readConsumerMock).endField("value", 0);
     inOrder.verify(readConsumerMock).startField("children", 1);
-    inOrder.verify(readConsumerMock).addBinary(Binary.fromConstantByteArray(built.getChildren(0).getChildren(0).toByteArray()));
+    inOrder.verify(readConsumerMock)
+        .addBinary(Binary.fromConstantByteArray(
+            built.getChildren(0).getChildren(0).toByteArray()));
     inOrder.verify(readConsumerMock).endField("children", 1);
     inOrder.verify(readConsumerMock).endGroup();
     inOrder.verify(readConsumerMock).endField("children", 1);
@@ -1149,11 +1159,10 @@ public class ProtoWriteSupportTest {
 
   @Test
   public void testMapRecursion() {
-    RecordConsumer readConsumerMock =  Mockito.mock(RecordConsumer.class);
+    RecordConsumer readConsumerMock = Mockito.mock(RecordConsumer.class);
     Configuration conf = new Configuration();
     ProtoSchemaConverter.setMaxRecursion(conf, 1);
-    ProtoWriteSupport<Value> spyWriter =
-        createReadConsumerInstance(Value.class, readConsumerMock, conf);
+    ProtoWriteSupport<Value> spyWriter = createReadConsumerInstance(Value.class, readConsumerMock, conf);
 
     // Need to build it backwards due to clunky Struct.Builder interface.
     Value.Builder msg = Value.newBuilder().setStringValue("last");
@@ -1185,7 +1194,12 @@ public class ProtoWriteSupportTest {
     inOrder.verify(readConsumerMock).addBinary(Binary.fromConstantByteArray("1".getBytes()));
     inOrder.verify(readConsumerMock).endField("key", 0);
     inOrder.verify(readConsumerMock).startField("value", 1);
-    inOrder.verify(readConsumerMock).addBinary(Binary.fromConstantByteArray(built.getStructValue().getFieldsOrThrow("0").getStructValue().getFieldsOrThrow("1").toByteArray()));
+    inOrder.verify(readConsumerMock)
+        .addBinary(Binary.fromConstantByteArray(built.getStructValue()
+            .getFieldsOrThrow("0")
+            .getStructValue()
+            .getFieldsOrThrow("1")
+            .toByteArray()));
     inOrder.verify(readConsumerMock).endField("value", 1);
     inOrder.verify(readConsumerMock).endGroup();
     inOrder.verify(readConsumerMock).endField("fields", 0);
@@ -1200,5 +1214,213 @@ public class ProtoWriteSupportTest {
     inOrder.verify(readConsumerMock).endMessage();
 
     Mockito.verifyNoMoreInteractions(readConsumerMock);
+  }
+
+  @Test
+  public void testProto3DateTimeMessageUnwrapped() throws Exception {
+    Timestamp timestamp = Timestamps.parse("2021-05-02T15:04:03.748Z");
+    LocalDate date = LocalDate.of(2021, 5, 2);
+    LocalTime time = LocalTime.of(15, 4, 3, 748_000_000);
+
+    RecordConsumer readConsumerMock = Mockito.mock(RecordConsumer.class);
+    Configuration conf = new Configuration();
+    ProtoWriteSupport.setUnwrapProtoWrappers(conf, true);
+    ProtoWriteSupport<TestProto3.DateTimeMessage> instance =
+        createReadConsumerInstance(TestProto3.DateTimeMessage.class, readConsumerMock, conf);
+
+    TestProto3.DateTimeMessage.Builder msg = TestProto3.DateTimeMessage.newBuilder();
+    msg.setTimestamp(timestamp);
+    msg.setDate(com.google.type.Date.newBuilder()
+        .setYear(date.getYear())
+        .setMonth(date.getMonthValue())
+        .setDay(date.getDayOfMonth()));
+    msg.setTime(com.google.type.TimeOfDay.newBuilder()
+        .setHours(time.getHour())
+        .setMinutes(time.getMinute())
+        .setSeconds(time.getSecond())
+        .setNanos(time.getNano()));
+    instance.write(msg.build());
+
+    InOrder inOrder = Mockito.inOrder(readConsumerMock);
+
+    inOrder.verify(readConsumerMock).startMessage();
+    inOrder.verify(readConsumerMock).startField("timestamp", 0);
+    inOrder.verify(readConsumerMock).addLong(Timestamps.toNanos(timestamp));
+    inOrder.verify(readConsumerMock).endField("timestamp", 0);
+    inOrder.verify(readConsumerMock).startField("date", 1);
+    inOrder.verify(readConsumerMock).addInteger((int) date.toEpochDay());
+    inOrder.verify(readConsumerMock).endField("date", 1);
+    inOrder.verify(readConsumerMock).startField("time", 2);
+    inOrder.verify(readConsumerMock).addLong(time.toNanoOfDay());
+    inOrder.verify(readConsumerMock).endField("time", 2);
+    inOrder.verify(readConsumerMock).endMessage();
+    Mockito.verifyNoMoreInteractions(readConsumerMock);
+  }
+
+  @Test
+  public void testProto3DateTimeMessageRoundTrip() throws Exception {
+    Timestamp timestamp = Timestamps.parse("2021-05-02T15:04:03.748Z");
+    LocalDate date = LocalDate.of(2021, 5, 2);
+    LocalTime time = LocalTime.of(15, 4, 3, 748_000_000);
+    com.google.type.Date protoDate = com.google.type.Date.newBuilder()
+        .setYear(date.getYear())
+        .setMonth(date.getMonthValue())
+        .setDay(date.getDayOfMonth())
+        .build();
+    com.google.type.TimeOfDay protoTime = com.google.type.TimeOfDay.newBuilder()
+        .setHours(time.getHour())
+        .setMinutes(time.getMinute())
+        .setSeconds(time.getSecond())
+        .setNanos(time.getNano())
+        .build();
+
+    TestProto3.DateTimeMessage msg = TestProto3.DateTimeMessage.newBuilder()
+        .setTimestamp(timestamp)
+        .setDate(protoDate)
+        .setTime(protoTime)
+        .build();
+
+    // Write them out and read them back
+    Path tmpFilePath = TestUtils.someTemporaryFilePath();
+    ParquetWriter<MessageOrBuilder> writer = ProtoParquetWriter.<MessageOrBuilder>builder(tmpFilePath)
+        .withMessage(TestProto3.DateTimeMessage.class)
+        .config(ProtoWriteSupport.PB_UNWRAP_PROTO_WRAPPERS, "true")
+        .build();
+    writer.write(msg);
+    writer.close();
+    List<TestProto3.DateTimeMessage> gotBack =
+        TestUtils.readMessages(tmpFilePath, TestProto3.DateTimeMessage.class);
+
+    TestProto3.DateTimeMessage gotBackFirst = gotBack.get(0);
+    assertEquals(timestamp, gotBackFirst.getTimestamp());
+    assertEquals(protoDate, gotBackFirst.getDate());
+    assertEquals(protoTime, gotBackFirst.getTime());
+  }
+
+  @Test
+  public void testProto3WrappedMessageUnwrapped() throws Exception {
+    RecordConsumer readConsumerMock = Mockito.mock(RecordConsumer.class);
+    Configuration conf = new Configuration();
+    ProtoWriteSupport.setUnwrapProtoWrappers(conf, true);
+    ProtoWriteSupport<TestProto3.WrappedMessage> instance =
+        createReadConsumerInstance(TestProto3.WrappedMessage.class, readConsumerMock, conf);
+
+    TestProto3.WrappedMessage.Builder msg = TestProto3.WrappedMessage.newBuilder();
+    msg.setWrappedDouble(DoubleValue.of(3.1415));
+
+    instance.write(msg.build());
+
+    InOrder inOrder = Mockito.inOrder(readConsumerMock);
+
+    inOrder.verify(readConsumerMock).startMessage();
+    inOrder.verify(readConsumerMock).startField("wrappedDouble", 0);
+    inOrder.verify(readConsumerMock).addDouble(3.1415);
+    inOrder.verify(readConsumerMock).endField("wrappedDouble", 0);
+    inOrder.verify(readConsumerMock).endMessage();
+    Mockito.verifyNoMoreInteractions(readConsumerMock);
+  }
+
+  @Test
+  public void testProto3WrappedMessageUnwrappedRoundTrip() throws Exception {
+    TestProto3.WrappedMessage.Builder msg = TestProto3.WrappedMessage.newBuilder();
+    msg.setWrappedDouble(DoubleValue.of(0.577));
+    msg.setWrappedFloat(FloatValue.of(3.1415f));
+    msg.setWrappedInt64(Int64Value.of(1_000_000_000L * 4));
+    msg.setWrappedUInt64(UInt64Value.of(1_000_000_000L * 9));
+    msg.setWrappedInt32(Int32Value.of(1_000_000 * 3));
+    msg.setWrappedUInt32(UInt32Value.of(1_000_000 * 8));
+    msg.setWrappedBool(BoolValue.of(true));
+    msg.setWrappedString(StringValue.of("Good Will Hunting"));
+    msg.setWrappedBytes(BytesValue.of(ByteString.copyFrom("someText", "UTF-8")));
+
+    // Write them out and read them back
+    Path tmpFilePath = TestUtils.someTemporaryFilePath();
+    ParquetWriter<MessageOrBuilder> writer = ProtoParquetWriter.<MessageOrBuilder>builder(tmpFilePath)
+        .withMessage(TestProto3.WrappedMessage.class)
+        .config(ProtoWriteSupport.PB_UNWRAP_PROTO_WRAPPERS, "true")
+        .build();
+    writer.write(msg);
+    writer.close();
+    List<TestProto3.WrappedMessage> gotBack = TestUtils.readMessages(tmpFilePath, TestProto3.WrappedMessage.class);
+
+    TestProto3.WrappedMessage gotBackFirst = gotBack.get(0);
+    assertEquals(0.577, gotBackFirst.getWrappedDouble().getValue(), 1e-5);
+    assertEquals(3.1415f, gotBackFirst.getWrappedFloat().getValue(), 1e-5f);
+    assertEquals(1_000_000_000L * 4, gotBackFirst.getWrappedInt64().getValue());
+    assertEquals(1_000_000_000L * 9, gotBackFirst.getWrappedUInt64().getValue());
+    assertEquals(1_000_000 * 3, gotBackFirst.getWrappedInt32().getValue());
+    assertEquals(1_000_000 * 8, gotBackFirst.getWrappedUInt32().getValue());
+    assertEquals(BoolValue.of(true), gotBackFirst.getWrappedBool());
+    assertEquals("Good Will Hunting", gotBackFirst.getWrappedString().getValue());
+    assertEquals(
+        ByteString.copyFrom("someText", "UTF-8"),
+        gotBackFirst.getWrappedBytes().getValue());
+  }
+
+  @Test
+  public void testProto3WrappedMessageUnwrappedRoundTripUint32() throws Exception {
+
+    TestProto3.WrappedMessage msgMin = TestProto3.WrappedMessage.newBuilder()
+        .setWrappedUInt32(UInt32Value.of(Integer.MIN_VALUE))
+        .build();
+    assertEquals(TextFormat.shortDebugString(msgMin), "wrappedUInt32 { value: 2147483648 }");
+
+    TestProto3.WrappedMessage msgMax = TestProto3.WrappedMessage.newBuilder()
+        .setWrappedUInt32(UInt32Value.of(Integer.MAX_VALUE))
+        .build();
+    assertEquals(TextFormat.shortDebugString(msgMax), "wrappedUInt32 { value: 2147483647 }");
+
+    TestProto3.WrappedMessage msgMinusOne = TestProto3.WrappedMessage.newBuilder()
+        .setWrappedUInt32(UInt32Value.of(-1))
+        .build();
+    assertEquals(TextFormat.shortDebugString(msgMinusOne), "wrappedUInt32 { value: 4294967295 }");
+
+    Path tmpFilePath = TestUtils.someTemporaryFilePath();
+    ParquetWriter<MessageOrBuilder> writer = ProtoParquetWriter.<MessageOrBuilder>builder(tmpFilePath)
+        .withMessage(TestProto3.WrappedMessage.class)
+        .config(ProtoWriteSupport.PB_UNWRAP_PROTO_WRAPPERS, "true")
+        .build();
+    writer.write(msgMin);
+    writer.write(msgMax);
+    writer.write(msgMinusOne);
+    writer.close();
+    List<TestProto3.WrappedMessage> gotBack = TestUtils.readMessages(tmpFilePath, TestProto3.WrappedMessage.class);
+
+    assertEquals(msgMin, gotBack.get(0));
+    assertEquals(msgMax, gotBack.get(1));
+    assertEquals(msgMinusOne, gotBack.get(2));
+  }
+
+  @Test
+  public void testProto3WrappedMessageWithNullsRoundTrip() throws Exception {
+    TestProto3.WrappedMessage.Builder msg = TestProto3.WrappedMessage.newBuilder();
+    msg.setWrappedFloat(FloatValue.of(3.1415f));
+    msg.setWrappedString(StringValue.of("Good Will Hunting"));
+    msg.setWrappedInt32(Int32Value.of(0));
+
+    // Write them out and read them back
+    Path tmpFilePath = TestUtils.someTemporaryFilePath();
+    ParquetWriter<MessageOrBuilder> writer = ProtoParquetWriter.<MessageOrBuilder>builder(tmpFilePath)
+        .withMessage(TestProto3.WrappedMessage.class)
+        .config(ProtoWriteSupport.PB_UNWRAP_PROTO_WRAPPERS, "true")
+        .build();
+    writer.write(msg);
+    writer.close();
+    List<TestProto3.WrappedMessage> gotBack = TestUtils.readMessages(tmpFilePath, TestProto3.WrappedMessage.class);
+
+    TestProto3.WrappedMessage gotBackFirst = gotBack.get(0);
+    assertFalse(gotBackFirst.hasWrappedDouble());
+    assertEquals(3.1415f, gotBackFirst.getWrappedFloat().getValue(), 1e-5f);
+
+    // double-check that nulls are honored
+    assertTrue(gotBackFirst.hasWrappedFloat());
+    assertFalse(gotBackFirst.hasWrappedInt64());
+    assertFalse(gotBackFirst.hasWrappedUInt64());
+    assertTrue(gotBackFirst.hasWrappedInt32());
+    assertFalse(gotBackFirst.hasWrappedUInt32());
+    assertEquals(0, gotBackFirst.getWrappedUInt32().getValue());
+    assertFalse(gotBackFirst.hasWrappedBool());
+    assertEquals("Good Will Hunting", gotBackFirst.getWrappedString().getValue());
+    assertFalse(gotBackFirst.hasWrappedBytes());
   }
 }

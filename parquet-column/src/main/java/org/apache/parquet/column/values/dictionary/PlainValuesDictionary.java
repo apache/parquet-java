@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -19,16 +19,16 @@
 package org.apache.parquet.column.values.dictionary;
 
 import static org.apache.parquet.bytes.BytesUtils.readIntLittleEndian;
-import static org.apache.parquet.column.Encoding.PLAIN_DICTIONARY;
 import static org.apache.parquet.column.Encoding.PLAIN;
+import static org.apache.parquet.column.Encoding.PLAIN_DICTIONARY;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.column.Dictionary;
 import org.apache.parquet.column.page.DictionaryPage;
+import org.apache.parquet.column.values.plain.BooleanPlainValuesReader;
 import org.apache.parquet.column.values.plain.PlainValuesReader.DoublePlainValuesReader;
 import org.apache.parquet.column.values.plain.PlainValuesReader.FloatPlainValuesReader;
 import org.apache.parquet.column.values.plain.PlainValuesReader.IntegerPlainValuesReader;
@@ -38,7 +38,6 @@ import org.apache.parquet.io.api.Binary;
 
 /**
  * a simple implementation of dictionary for plain encoded values
- *
  */
 public abstract class PlainValuesDictionary extends Dictionary {
 
@@ -48,9 +47,9 @@ public abstract class PlainValuesDictionary extends Dictionary {
    */
   protected PlainValuesDictionary(DictionaryPage dictionaryPage) throws IOException {
     super(dictionaryPage.getEncoding());
-    if (dictionaryPage.getEncoding() != PLAIN_DICTIONARY
-        && dictionaryPage.getEncoding() != PLAIN) {
-      throw new ParquetDecodingException("Dictionary data encoding type not supported: " + dictionaryPage.getEncoding());
+    if (dictionaryPage.getEncoding() != PLAIN_DICTIONARY && dictionaryPage.getEncoding() != PLAIN) {
+      throw new ParquetDecodingException(
+          "Dictionary data encoding type not supported: " + dictionaryPage.getEncoding());
     }
   }
 
@@ -63,7 +62,7 @@ public abstract class PlainValuesDictionary extends Dictionary {
 
     /**
      * Decodes {@link Binary} values from a {@link DictionaryPage}.
-     *
+     * <p>
      * Values are read as length-prefixed values with a 4-byte little-endian
      * length.
      *
@@ -76,14 +75,14 @@ public abstract class PlainValuesDictionary extends Dictionary {
 
     /**
      * Decodes {@link Binary} values from a {@link DictionaryPage}.
-     *
+     * <p>
      * If the given {@code length} is null, the values will be read as length-
      * prefixed values with a 4-byte little-endian length. If length is not
      * null, it will be used as the length for all fixed-length {@code Binary}
      * values read from the page.
      *
      * @param dictionaryPage a {@code DictionaryPage} of encoded binary values
-     * @param length a fixed length of binary arrays, or null if not fixed
+     * @param length         a fixed length of binary arrays, or null if not fixed
      * @throws IOException if there is an exception while decoding the dictionary page
      */
     public PlainBinaryDictionary(DictionaryPage dictionaryPage, Integer length) throws IOException {
@@ -105,12 +104,10 @@ public abstract class PlainValuesDictionary extends Dictionary {
         }
       } else {
         // dictionary values are stored as fixed-length arrays
-        Preconditions.checkArgument(length > 0,
-            "Invalid byte array length: %s", length);
+        Preconditions.checkArgument(length > 0, "Invalid byte array length: %s", length);
         for (int i = 0; i < binaryDictionaryContent.length; i++) {
           // wrap the content in a Binary
-          binaryDictionaryContent[i] = Binary.fromConstantByteBuffer(
-              dictionaryBytes, offset, length);
+          binaryDictionaryContent[i] = Binary.fromConstantByteBuffer(dictionaryBytes, offset, length);
           // increment to the next value
           offset += length;
         }
@@ -135,7 +132,6 @@ public abstract class PlainValuesDictionary extends Dictionary {
     public int getMaxId() {
       return binaryDictionaryContent.length - 1;
     }
-
   }
 
   /**
@@ -178,7 +174,6 @@ public abstract class PlainValuesDictionary extends Dictionary {
     public int getMaxId() {
       return longDictionaryContent.length - 1;
     }
-
   }
 
   /**
@@ -221,7 +216,6 @@ public abstract class PlainValuesDictionary extends Dictionary {
     public int getMaxId() {
       return doubleDictionaryContent.length - 1;
     }
-
   }
 
   /**
@@ -264,7 +258,6 @@ public abstract class PlainValuesDictionary extends Dictionary {
     public int getMaxId() {
       return intDictionaryContent.length - 1;
     }
-
   }
 
   /**
@@ -307,7 +300,47 @@ public abstract class PlainValuesDictionary extends Dictionary {
     public int getMaxId() {
       return floatDictionaryContent.length - 1;
     }
-
   }
 
+  /**
+   * a simple implementation of dictionary for plain encoded boolean values
+   */
+  public static class PlainBooleanDictionary extends PlainValuesDictionary {
+
+    private final boolean[] boolDictionaryContent;
+
+    /**
+     * @param dictionaryPage a dictionary page of encoded boolean values
+     * @throws IOException if there is an exception while decoding the dictionary page
+     */
+    public PlainBooleanDictionary(DictionaryPage dictionaryPage) throws IOException {
+      super(dictionaryPage);
+      ByteBufferInputStream in = dictionaryPage.getBytes().toInputStream();
+      boolDictionaryContent = new boolean[dictionaryPage.getDictionarySize()];
+      BooleanPlainValuesReader boolReader = new BooleanPlainValuesReader();
+      boolReader.initFromPage(dictionaryPage.getDictionarySize(), in);
+      for (int i = 0; i < boolDictionaryContent.length; i++) {
+        boolDictionaryContent[i] = boolReader.readBoolean();
+      }
+    }
+
+    @Override
+    public boolean decodeToBoolean(int id) {
+      return boolDictionaryContent[id];
+    }
+
+    @Override
+    public String toString() {
+      StringBuilder sb = new StringBuilder("PlainBooleanDictionary {\n");
+      for (int i = 0; i < boolDictionaryContent.length; i++) {
+        sb.append(i).append(" => ").append(boolDictionaryContent[i]).append("\n");
+      }
+      return sb.append("}").toString();
+    }
+
+    @Override
+    public int getMaxId() {
+      return boolDictionaryContent.length - 1;
+    }
+  }
 }

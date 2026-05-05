@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -21,6 +21,9 @@ package org.apache.parquet.hadoop.codec;
 import com.github.luben.zstd.BufferPool;
 import com.github.luben.zstd.NoPool;
 import com.github.luben.zstd.RecyclingBufferPool;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import org.apache.hadoop.conf.Configurable;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.compress.CompressionCodec;
@@ -29,16 +32,12 @@ import org.apache.hadoop.io.compress.CompressionOutputStream;
 import org.apache.hadoop.io.compress.Compressor;
 import org.apache.hadoop.io.compress.Decompressor;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-
 /**
  * ZSTD compression codec for Parquet.  We do not use the default hadoop
  * one because it requires 1) to set up hadoop on local development machine;
  * 2) to upgrade hadoop to the newer version to have ZSTD support which is
  * more cumbersome than upgrading parquet version.
- *
+ * <p>
  * This implementation relies on ZSTD JNI(https://github.com/luben/zstd-jni)
  * which is already a dependency for Parquet. ZSTD JNI ZstdOutputStream and
  * ZstdInputStream use Zstd internally. So no need to create compressor and
@@ -46,12 +45,13 @@ import java.io.OutputStream;
  */
 public class ZstandardCodec implements Configurable, CompressionCodec {
 
-  public final static String PARQUET_COMPRESS_ZSTD_BUFFERPOOL_ENABLED = "parquet.compression.codec.zstd.bufferPool.enabled";
-  public final static boolean DEFAULT_PARQUET_COMPRESS_ZSTD_BUFFERPOOL_ENABLED = true;
-  public final static String PARQUET_COMPRESS_ZSTD_LEVEL = "parquet.compression.codec.zstd.level";
-  public final static int DEFAULT_PARQUET_COMPRESS_ZSTD_LEVEL = 3;
-  public final static String PARQUET_COMPRESS_ZSTD_WORKERS = "parquet.compression.codec.zstd.workers";
-  public final static int DEFAULTPARQUET_COMPRESS_ZSTD_WORKERS = 0;
+  public static final String PARQUET_COMPRESS_ZSTD_BUFFERPOOL_ENABLED =
+      "parquet.compression.codec.zstd.bufferPool.enabled";
+  public static final boolean DEFAULT_PARQUET_COMPRESS_ZSTD_BUFFERPOOL_ENABLED = true;
+  public static final String PARQUET_COMPRESS_ZSTD_LEVEL = "parquet.compression.codec.zstd.level";
+  public static final int DEFAULT_PARQUET_COMPRESS_ZSTD_LEVEL = 3;
+  public static final String PARQUET_COMPRESS_ZSTD_WORKERS = "parquet.compression.codec.zstd.workers";
+  public static final int DEFAULTPARQUET_COMPRESS_ZSTD_WORKERS = 0;
 
   private Configuration conf;
 
@@ -86,7 +86,8 @@ public class ZstandardCodec implements Configurable, CompressionCodec {
   @Override
   public CompressionInputStream createInputStream(InputStream stream) throws IOException {
     BufferPool pool;
-    if (conf.getBoolean(PARQUET_COMPRESS_ZSTD_BUFFERPOOL_ENABLED, DEFAULT_PARQUET_COMPRESS_ZSTD_BUFFERPOOL_ENABLED)) {
+    if (conf.getBoolean(
+        PARQUET_COMPRESS_ZSTD_BUFFERPOOL_ENABLED, DEFAULT_PARQUET_COMPRESS_ZSTD_BUFFERPOOL_ENABLED)) {
       pool = RecyclingBufferPool.INSTANCE;
     } else {
       pool = NoPool.INSTANCE;
@@ -103,14 +104,17 @@ public class ZstandardCodec implements Configurable, CompressionCodec {
   @Override
   public CompressionOutputStream createOutputStream(OutputStream stream) throws IOException {
     BufferPool pool;
-    if (conf.getBoolean(PARQUET_COMPRESS_ZSTD_BUFFERPOOL_ENABLED, DEFAULT_PARQUET_COMPRESS_ZSTD_BUFFERPOOL_ENABLED)) {
+    if (conf.getBoolean(
+        PARQUET_COMPRESS_ZSTD_BUFFERPOOL_ENABLED, DEFAULT_PARQUET_COMPRESS_ZSTD_BUFFERPOOL_ENABLED)) {
       pool = RecyclingBufferPool.INSTANCE;
     } else {
       pool = NoPool.INSTANCE;
     }
-    return new ZstdCompressorStream(stream, pool,
-      conf.getInt(PARQUET_COMPRESS_ZSTD_LEVEL, DEFAULT_PARQUET_COMPRESS_ZSTD_LEVEL),
-      conf.getInt(PARQUET_COMPRESS_ZSTD_WORKERS, DEFAULTPARQUET_COMPRESS_ZSTD_WORKERS));
+    return new ZstdCompressorStream(
+        stream,
+        pool,
+        conf.getInt(PARQUET_COMPRESS_ZSTD_LEVEL, DEFAULT_PARQUET_COMPRESS_ZSTD_LEVEL),
+        conf.getInt(PARQUET_COMPRESS_ZSTD_WORKERS, DEFAULTPARQUET_COMPRESS_ZSTD_WORKERS));
   }
 
   @Override
@@ -126,5 +130,5 @@ public class ZstandardCodec implements Configurable, CompressionCodec {
   @Override
   public String getDefaultExtension() {
     return ".zstd";
-  }  
+  }
 }

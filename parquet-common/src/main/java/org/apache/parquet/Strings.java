@@ -23,19 +23,18 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
-
 import org.apache.parquet.glob.GlobExpander;
 import org.apache.parquet.glob.WildcardPath;
 
 public final class Strings {
-  private Strings() { }
+  private Strings() {}
 
   /**
    * Join an Iterable of Strings into a single string with a delimiter.
    * For example, join(Arrays.asList("foo","","bar","x"), "|") would return
    * "foo||bar|x"
    *
-   * @param s an iterable of strings
+   * @param s  an iterable of strings
    * @param on the delimiter
    * @return a single joined string
    * @deprecated Use {@link String#join(CharSequence, Iterable)}
@@ -51,7 +50,7 @@ public final class Strings {
    * "foo||bar|x"
    *
    * @param iter an iterator of strings
-   * @param on the delimiter
+   * @param on   the delimiter
    * @return a single joined string
    * @deprecated Use {@link String#join(CharSequence, Iterable)}
    */
@@ -72,7 +71,7 @@ public final class Strings {
    * For example, join(new String[] {"foo","","bar","x"}, "|") would return
    * "foo||bar|x"
    *
-   * @param s an iterable of strings
+   * @param s  an iterable of strings
    * @param on the delimiter
    * @return a single joined string
    * @deprecated Use {@link String#join(CharSequence, Iterable)}
@@ -95,12 +94,12 @@ public final class Strings {
   /**
    * Expands a string with braces ("{}") into all of its possible permutations.
    * We call anything inside of {} braces a "one-of" group.
-   *
+   * <p>
    * The only special characters in this glob syntax are '}', '{' and ','
-   *
+   * <p>
    * The top-level pattern must not contain any commas, but a "one-of" group separates
    * its elements with commas, and a one-of group may contain sub one-of groups.
-   *
+   * <p>
    * For example:
    * start{a,b,c}end -&gt; startaend, startbend, startcend
    * start{a,{b,c},d} -&gt; startaend, startbend, startcend, startdend
@@ -119,7 +118,7 @@ public final class Strings {
    * for each expanded result which can be used to match strings as described in {@link WildcardPath}.
    *
    * @param globPattern a String to be passed to {@link #expandGlob(String)}
-   * @param delim the delimeter used by {@link WildcardPath}
+   * @param delim       the delimeter used by {@link WildcardPath}
    * @return a list of wildcard paths, one for each expanded result
    */
   public static List<WildcardPath> expandGlobToWildCardPaths(String globPattern, char delim) {

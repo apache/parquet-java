@@ -22,21 +22,35 @@ import static org.apache.parquet.filter2.predicate.FilterApi.in;
 import static org.apache.parquet.filter2.predicate.FilterApi.longColumn;
 import static org.apache.parquet.hadoop.ParquetFileWriter.Mode.OVERWRITE;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
-import java.util.*;
-
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.Callable;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
+import org.apache.parquet.bytes.HeapByteBufferAllocator;
+import org.apache.parquet.bytes.TrackingByteBufferAllocator;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.filter2.compat.FilterCompat;
 import org.apache.parquet.filter2.recordlevel.PhoneBookWriter;
+import org.apache.parquet.hadoop.ParquetReader.Builder;
+import org.apache.parquet.hadoop.api.ReadSupport;
 import org.apache.parquet.hadoop.example.ExampleParquetWriter;
 import org.apache.parquet.hadoop.example.GroupReadSupport;
+import org.apache.parquet.hadoop.util.HadoopInputFile;
+import org.apache.parquet.io.InputFile;
+import org.junit.After;
 import org.junit.AfterClass;
+import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -47,11 +61,13 @@ public class TestParquetReader {
 
   private static final Path FILE_V1 = createTempFile();
   private static final Path FILE_V2 = createTempFile();
-  private static final Path STATIC_FILE_WITHOUT_COL_INDEXES = createPathFromCP("/test-file-with-no-column-indexes-1.parquet");
+  private static final Path STATIC_FILE_WITHOUT_COL_INDEXES =
+      createPathFromCP("/test-file-with-no-column-indexes-1.parquet");
   private static final List<PhoneBookWriter.User> DATA = Collections.unmodifiableList(makeUsers(1000));
 
   private final Path file;
   private final long fileSize;
+  private TrackingByteBufferAllocator allocator;
 
   private static Path createPathFromCP(String path) {
     try {
@@ -63,16 +79,14 @@ public class TestParquetReader {
 
   public TestParquetReader(Path file) throws IOException {
     this.file = file;
-    this.fileSize = file.getFileSystem(new Configuration()).getFileStatus(file).getLen();
+    this.fileSize =
+        file.getFileSystem(new Configuration()).getFileStatus(file).getLen();
   }
 
   @Parameterized.Parameters
   public static Collection<Object[]> data() {
-    Object[][] data = new Object[][] {
-      { FILE_V1 },
-      { FILE_V2 },
-      { STATIC_FILE_WITHOUT_COL_INDEXES } };
-    return Arrays.asList(data);
+    Object[][] data = new Object[][] {{FILE_V1}, {FILE_V2}, {STATIC_FILE_WITHOUT_COL_INDEXES}};
+    return List.of(data);
   }
 
   @BeforeClass
@@ -96,56 +110,79 @@ public class TestParquetReader {
     for (int i = 0; i < rowCount; i++) {
       PhoneBookWriter.Location location = null;
       if (i % 3 == 1) {
-        location = new PhoneBookWriter.Location((double)i, (double) i * 2);
+        location = new PhoneBookWriter.Location((double) i, (double) i * 2);
       }
       if (i % 3 == 2) {
-        location = new PhoneBookWriter.Location((double)i, null);
+        location = new PhoneBookWriter.Location((double) i, null);
       }
       // row index of each row in the file is same as the user id.
-      users.add(new PhoneBookWriter.User(i, "p" + i, Arrays.asList(new PhoneBookWriter.PhoneNumber(i, "cell")), location));
+      users.add(new PhoneBookWriter.User(
+          i, "p" + i, List.of(new PhoneBookWriter.PhoneNumber(i, "cell")), location));
     }
     return users;
   }
 
   private static Path createTempFile() {
     try {
-      return new Path(Files.createTempFile("test-ci_", ".parquet").toAbsolutePath().toString());
+      return new Path(Files.createTempFile("test-ci_", ".parquet")
+          .toAbsolutePath()
+          .toString());
     } catch (IOException e) {
       throw new AssertionError("Unable to create temporary file", e);
     }
   }
 
-  private static void writePhoneBookToFile(Path file, ParquetProperties.WriterVersion parquetVersion) throws IOException {
-    int pageSize = DATA.size() / 10;     // Ensure that several pages will be created
+  private static void writePhoneBookToFile(Path file, ParquetProperties.WriterVersion parquetVersion)
+      throws IOException {
+    int pageSize = DATA.size() / 10; // Ensure that several pages will be created
     int rowGroupSize = pageSize * 6 * 5; // Ensure that there are more row-groups created
 
-    PhoneBookWriter.write(ExampleParquetWriter.builder(file)
-        .withWriteMode(OVERWRITE)
-        .withRowGroupSize(rowGroupSize)
-        .withPageSize(pageSize)
-        .withWriterVersion(parquetVersion),
-      DATA);
+    PhoneBookWriter.write(
+        ExampleParquetWriter.builder(file)
+            .withWriteMode(OVERWRITE)
+            .withRowGroupSize(rowGroupSize)
+            .withPageSize(pageSize)
+            .withWriterVersion(parquetVersion),
+        DATA);
   }
 
-  private List<PhoneBookWriter.User> readUsers(FilterCompat.Filter filter, boolean useOtherFiltering, boolean useColumnIndexFilter)
-    throws IOException {
+  private List<PhoneBookWriter.User> readUsers(
+      FilterCompat.Filter filter, boolean useOtherFiltering, boolean useColumnIndexFilter) throws IOException {
     return readUsers(filter, useOtherFiltering, useColumnIndexFilter, 0, this.fileSize);
   }
 
-  private List<PhoneBookWriter.User> readUsers(FilterCompat.Filter filter, boolean useOtherFiltering, boolean useColumnIndexFilter, long rangeStart, long rangeEnd)
-    throws IOException {
-    return PhoneBookWriter.readUsers(ParquetReader.builder(new GroupReadSupport(), file)
-      .withFilter(filter)
-      .useDictionaryFilter(useOtherFiltering)
-      .useStatsFilter(useOtherFiltering)
-      .useRecordFilter(useOtherFiltering)
-      .useColumnIndexFilter(useColumnIndexFilter)
-      .withFileRange(rangeStart, rangeEnd), true);
+  private List<PhoneBookWriter.User> readUsers(
+      FilterCompat.Filter filter,
+      boolean useOtherFiltering,
+      boolean useColumnIndexFilter,
+      long rangeStart,
+      long rangeEnd)
+      throws IOException {
+    return PhoneBookWriter.readUsers(
+        ParquetReader.builder(new GroupReadSupport(), file)
+            .withAllocator(allocator)
+            .withFilter(filter)
+            .useDictionaryFilter(useOtherFiltering)
+            .useStatsFilter(useOtherFiltering)
+            .useRecordFilter(useOtherFiltering)
+            .useColumnIndexFilter(useColumnIndexFilter)
+            .withFileRange(rangeStart, rangeEnd),
+        true);
+  }
+
+  @Before
+  public void initAllocator() {
+    allocator = TrackingByteBufferAllocator.wrap(new HeapByteBufferAllocator());
+  }
+
+  @After
+  public void closeAllocator() {
+    allocator.close();
   }
 
   @Test
   public void testCurrentRowIndex() throws Exception {
-    ParquetReader<Group> reader = PhoneBookWriter.createReader(file, FilterCompat.NOOP);
+    ParquetReader<Group> reader = PhoneBookWriter.createReader(file, FilterCompat.NOOP, allocator);
     // Fetch row index without processing any row.
     assertEquals(reader.getCurrentRowIndex(), -1);
     reader.read();
@@ -157,12 +194,44 @@ public class TestParquetReader {
     assertEquals(reader.getCurrentRowIndex(), 1);
     assertEquals(reader.getCurrentRowIndex(), 1);
     long expectedCurrentRowIndex = 2L;
-    while(reader.read() != null) {
+    while (reader.read() != null) {
       assertEquals(reader.getCurrentRowIndex(), expectedCurrentRowIndex);
       expectedCurrentRowIndex++;
     }
     // reader.read() returned null and so reader doesn't have any more rows.
     assertEquals(reader.getCurrentRowIndex(), -1);
+  }
+
+  @Test
+  public void testCurrentRowGroupIndex() throws Exception {
+    int expectedRowGroups;
+    try (ParquetFileReader fileReader =
+        ParquetFileReader.open(HadoopInputFile.fromPath(file, new Configuration()))) {
+      expectedRowGroups = fileReader.getRowGroups().size();
+    }
+    assertTrue("expected multiple row groups for this test", expectedRowGroups > 1);
+
+    try (ParquetReader<Group> reader = PhoneBookWriter.createReader(file, FilterCompat.NOOP, allocator)) {
+      // before reading anything, returns -1
+      assertEquals(-1, reader.getCurrentRowGroupIndex());
+
+      reader.read();
+      assertEquals(0, reader.getCurrentRowGroupIndex());
+      // idempotent
+      assertEquals(0, reader.getCurrentRowGroupIndex());
+
+      int prevIdx = 0;
+      while (reader.read() != null) {
+        int idx = reader.getCurrentRowGroupIndex();
+        assertTrue(idx >= prevIdx);
+        assertTrue(idx <= prevIdx + 1);
+        prevIdx = idx;
+      }
+      // last row group seen should be the final one
+      assertEquals(expectedRowGroups - 1, prevIdx);
+      // after exhaustion, returns -1
+      assertEquals(-1, reader.getCurrentRowGroupIndex());
+    }
   }
 
   @Test
@@ -180,11 +249,14 @@ public class TestParquetReader {
     idSet.add(123l);
     idSet.add(567l);
     // The readUsers also validates the rowIndex for each returned row.
-    List<PhoneBookWriter.User> filteredUsers1 = readUsers(FilterCompat.get(in(longColumn("id"), idSet)), true, true);
+    List<PhoneBookWriter.User> filteredUsers1 =
+        readUsers(FilterCompat.get(in(longColumn("id"), idSet)), true, true);
     assertEquals(filteredUsers1.size(), 2L);
-    List<PhoneBookWriter.User> filteredUsers2 = readUsers(FilterCompat.get(in(longColumn("id"), idSet)), true, false);
+    List<PhoneBookWriter.User> filteredUsers2 =
+        readUsers(FilterCompat.get(in(longColumn("id"), idSet)), true, false);
     assertEquals(filteredUsers2.size(), 2L);
-    List<PhoneBookWriter.User> filteredUsers3 = readUsers(FilterCompat.get(in(longColumn("id"), idSet)), false, false);
+    List<PhoneBookWriter.User> filteredUsers3 =
+        readUsers(FilterCompat.get(in(longColumn("id"), idSet)), false, false);
     assertEquals(filteredUsers3.size(), 1000L);
   }
 
@@ -194,5 +266,43 @@ public class TestParquetReader {
     assertEquals(DATA, readUsers(FilterCompat.NOOP, true, false));
     assertEquals(DATA, readUsers(FilterCompat.NOOP, false, true));
     assertEquals(DATA, readUsers(FilterCompat.NOOP, true, true));
+  }
+
+  private static class TestParquetReaderBuilder extends ParquetReader.Builder<Group> {
+
+    @Override
+    protected ReadSupport<Group> getReadSupport() {
+      return new GroupReadSupport();
+    }
+  }
+
+  @Test
+  public void testParquetReaderBuilderWithInputFile() throws Exception {
+    InputFile inputFile = HadoopInputFile.fromPath(file, new Configuration());
+    Builder<Group> builder = new TestParquetReaderBuilder().withFile(inputFile);
+    assertEquals(DATA, PhoneBookWriter.readUsers(builder, false));
+  }
+
+  @Test
+  public void testParquetReaderBuilderValidatesThatInputFileCanNotBeNull() throws Exception {
+    TestUtils.assertThrows("file cannot be null", NullPointerException.class, (Callable<ParquetReader<Group>>)
+        () -> new TestParquetReaderBuilder().withFile(null).build());
+  }
+
+  @Test
+  public void testParquetReaderBuilderValidatesThatInputFileIsSet() throws Exception {
+    TestUtils.assertThrows("File or Path must be set", IllegalStateException.class, (Callable<ParquetReader<Group>>)
+        () -> new TestParquetReaderBuilder().build());
+  }
+
+  @Test
+  public void testParquetReaderBuilderCanNotConfigurePathAndFile() throws Exception {
+    TestUtils.assertThrows(
+        "Path is already set", IllegalStateException.class, (Callable<ParquetReader<Group>>) () -> {
+          InputFile inputFile = HadoopInputFile.fromPath(file, new Configuration());
+          return ParquetReader.<Group>builder(new GroupReadSupport(), file)
+              .withFile(inputFile)
+              .build();
+        });
   }
 }

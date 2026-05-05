@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -35,7 +35,8 @@ public class ProtocolReadToWrite implements ProtocolPipe {
   /**
    * reads one record from in and writes it to out
    * exceptions are not recoverable as record might be halfway written
-   * @param in input protocol
+   *
+   * @param in  input protocol
    * @param out output protocol
    * @throws TException if there is an error while reading or writing
    */
@@ -44,49 +45,49 @@ public class ProtocolReadToWrite implements ProtocolPipe {
     readOneStruct(in, out);
   }
 
-  void readOneValue(TProtocol in, TProtocol out, byte type)
-      throws TException {
+  void readOneValue(TProtocol in, TProtocol out, byte type) throws TException {
     switch (type) {
-    case TType.LIST:
-      readOneList(in, out);
-      break;
-    case TType.MAP:
-      readOneMap(in, out);
-      break;
-    case TType.SET:
-      readOneSet(in, out);
-      break;
-    case TType.STRUCT:
-      readOneStruct(in, out);
-      break;
-    case TType.STOP:
-      break;
-    case TType.BOOL:
-      out.writeBool(in.readBool());
-      break;
-    case TType.BYTE:
-      out.writeByte(in.readByte());
-      break;
-    case TType.DOUBLE:
-      out.writeDouble(in.readDouble());
-      break;
-    case TType.I16:
-      out.writeI16(in.readI16());
-      break;
-    case TType.ENUM: // same as i32 => actually never seen in the protocol layer as enums are written as a i32 field
-    case TType.I32:
-      out.writeI32(in.readI32());
-      break;
-    case TType.I64:
-      out.writeI64(in.readI64());
-      break;
-    case TType.STRING:
-      out.writeBinary(in.readBinary());
-      break;
-    case TType.VOID:
-      break;
-    default:
-      throw new TException("Unknown type: " + type);
+      case TType.LIST:
+        readOneList(in, out);
+        break;
+      case TType.MAP:
+        readOneMap(in, out);
+        break;
+      case TType.SET:
+        readOneSet(in, out);
+        break;
+      case TType.STRUCT:
+        readOneStruct(in, out);
+        break;
+      case TType.STOP:
+        break;
+      case TType.BOOL:
+        out.writeBool(in.readBool());
+        break;
+      case TType.BYTE:
+        out.writeByte(in.readByte());
+        break;
+      case TType.DOUBLE:
+        out.writeDouble(in.readDouble());
+        break;
+      case TType.I16:
+        out.writeI16(in.readI16());
+        break;
+      case TType.ENUM: // same as i32 => actually never seen in the protocol layer as enums are written as a i32
+        // field
+      case TType.I32:
+        out.writeI32(in.readI32());
+        break;
+      case TType.I64:
+        out.writeI64(in.readI64());
+        break;
+      case TType.STRING:
+        out.writeBinary(in.readBinary());
+        break;
+      case TType.VOID:
+        break;
+      default:
+        throw new TException("Unknown type: " + type);
     }
   }
 
@@ -132,11 +133,10 @@ public class ProtocolReadToWrite implements ProtocolPipe {
     out.writeListEnd();
   }
 
-  private void readCollectionElements(TProtocol in, TProtocol out,
-      final int size, final byte elemType) throws TException {
+  private void readCollectionElements(TProtocol in, TProtocol out, final int size, final byte elemType)
+      throws TException {
     for (int i = 0; i < size; i++) {
       readOneValue(in, out, elemType);
     }
   }
-
 }

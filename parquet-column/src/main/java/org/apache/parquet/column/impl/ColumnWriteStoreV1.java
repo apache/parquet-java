@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -33,20 +33,24 @@ public class ColumnWriteStoreV1 extends ColumnWriteStoreBase {
   }
 
   @Deprecated
-  public ColumnWriteStoreV1(final PageWriteStore pageWriteStore,
-      final ParquetProperties props) {
+  public ColumnWriteStoreV1(final PageWriteStore pageWriteStore, final ParquetProperties props) {
     super(pageWriteStore, props);
   }
 
-  public ColumnWriteStoreV1(MessageType schema, PageWriteStore pageWriteStore,
-                            BloomFilterWriteStore bloomFilterWriteStore,
-                            ParquetProperties props) {
+  public ColumnWriteStoreV1(
+      MessageType schema,
+      PageWriteStore pageWriteStore,
+      BloomFilterWriteStore bloomFilterWriteStore,
+      ParquetProperties props) {
     super(schema, pageWriteStore, bloomFilterWriteStore, props);
   }
 
   @Override
-  ColumnWriterBase createColumnWriter(ColumnDescriptor path, PageWriter pageWriter,
-                                      BloomFilterWriter bloomFilterWriter, ParquetProperties props) {
+  ColumnWriterBase createColumnWriter(
+      ColumnDescriptor path,
+      PageWriter pageWriter,
+      BloomFilterWriter bloomFilterWriter,
+      ParquetProperties props) {
     return new ColumnWriterV1(path, pageWriter, bloomFilterWriter, props);
   }
 }

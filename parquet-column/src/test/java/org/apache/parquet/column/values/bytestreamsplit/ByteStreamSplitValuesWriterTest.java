@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -19,11 +19,15 @@
 package org.apache.parquet.column.values.bytestreamsplit;
 
 import static org.junit.Assert.assertEquals;
-import org.junit.Test;
 
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.DirectByteBufferAllocator;
+import org.apache.parquet.io.api.Binary;
+import org.junit.Test;
+import org.junit.experimental.runners.Enclosed;
+import org.junit.runner.RunWith;
 
+@RunWith(Enclosed.class)
 public class ByteStreamSplitValuesWriterTest {
 
   public static class FloatTest {
@@ -31,14 +35,14 @@ public class ByteStreamSplitValuesWriterTest {
     static float convertType(byte[] bytes) {
       int v = 0;
       for (int i = 0; i < bytes.length; ++i) {
-        v |= (((int) (bytes[i] & 0xFF)) << (i * 8));
+        v |= ((bytes[i] & 0xFF) << (i * 8));
       }
       return Float.intBitsToFloat(v);
     }
 
     private ByteStreamSplitValuesWriter.FloatByteStreamSplitValuesWriter getWriter(int capacity) {
       return new ByteStreamSplitValuesWriter.FloatByteStreamSplitValuesWriter(
-              capacity, capacity, new DirectByteBufferAllocator());
+          capacity, capacity, new DirectByteBufferAllocator());
     }
 
     @Test
@@ -116,7 +120,7 @@ public class ByteStreamSplitValuesWriterTest {
 
     private ByteStreamSplitValuesWriter.DoubleByteStreamSplitValuesWriter getWriter(int capacity) {
       return new ByteStreamSplitValuesWriter.DoubleByteStreamSplitValuesWriter(
-              capacity, capacity, new DirectByteBufferAllocator());
+          capacity, capacity, new DirectByteBufferAllocator());
     }
 
     @Test
@@ -184,6 +188,99 @@ public class ByteStreamSplitValuesWriterTest {
           writer.close();
         }
       }
+    }
+  }
+
+  public static class IntegerTest {
+    private ByteStreamSplitValuesWriter.IntegerByteStreamSplitValuesWriter getWriter(int capacity) {
+      return new ByteStreamSplitValuesWriter.IntegerByteStreamSplitValuesWriter(
+          capacity, capacity, new DirectByteBufferAllocator());
+    }
+
+    @Test
+    public void testSmallBuffer() throws Exception {
+      ByteStreamSplitValuesWriter.IntegerByteStreamSplitValuesWriter writer = getWriter(3);
+      writer.writeInteger(0x11223344);
+      writer.writeInteger(0xFFEEDDCC);
+      writer.writeInteger(0x66778899);
+
+      assertEquals(12, writer.getBufferedSize());
+      byte[] rawBytes = writer.getBytes().toByteArray();
+      assertEquals(12, rawBytes.length);
+
+      final byte[] expectedBytes = {
+        (byte) 0x44, (byte) 0xCC, (byte) 0x99,
+        (byte) 0x33, (byte) 0xDD, (byte) 0x88,
+        (byte) 0x22, (byte) 0xEE, (byte) 0x77,
+        (byte) 0x11, (byte) 0xFF, (byte) 0x66
+      };
+      for (int i = 0; i < expectedBytes.length; ++i) {
+        assertEquals(expectedBytes[i], rawBytes[i]);
+      }
+      writer.reset();
+      writer.close();
+    }
+  }
+
+  public static class LongTest {
+    private ByteStreamSplitValuesWriter.LongByteStreamSplitValuesWriter getWriter(int capacity) {
+      return new ByteStreamSplitValuesWriter.LongByteStreamSplitValuesWriter(
+          capacity, capacity, new DirectByteBufferAllocator());
+    }
+
+    @Test
+    public void testSmallBuffer() throws Exception {
+      ByteStreamSplitValuesWriter.LongByteStreamSplitValuesWriter writer = getWriter(2);
+      writer.writeLong(0x1122334455667700L);
+      writer.writeLong(0xFFEEDDCCBBAA9988L);
+
+      assertEquals(16, writer.getBufferedSize());
+      byte[] rawBytes = writer.getBytes().toByteArray();
+      assertEquals(16, rawBytes.length);
+
+      final byte[] expectedBytes = {
+        (byte) 0x00, (byte) 0x88,
+        (byte) 0x77, (byte) 0x99,
+        (byte) 0x66, (byte) 0xAA,
+        (byte) 0x55, (byte) 0xBB,
+        (byte) 0x44, (byte) 0xCC,
+        (byte) 0x33, (byte) 0xDD,
+        (byte) 0x22, (byte) 0xEE,
+        (byte) 0x11, (byte) 0xFF,
+      };
+      for (int i = 0; i < expectedBytes.length; ++i) {
+        assertEquals(expectedBytes[i], rawBytes[i]);
+      }
+      writer.reset();
+      writer.close();
+    }
+  }
+
+  public static class FixedLenByteArrayTest {
+    private ByteStreamSplitValuesWriter.FixedLenByteArrayByteStreamSplitValuesWriter getWriter(
+        int length, int capacity) {
+      return new ByteStreamSplitValuesWriter.FixedLenByteArrayByteStreamSplitValuesWriter(
+          length, capacity, capacity, new DirectByteBufferAllocator());
+    }
+
+    @Test
+    public void testSmallBuffer() throws Exception {
+      ByteStreamSplitValuesWriter.FixedLenByteArrayByteStreamSplitValuesWriter writer = getWriter(3, 2);
+      writer.writeBytes(Binary.fromString("abc"));
+      writer.writeBytes(Binary.fromString("ghi"));
+
+      assertEquals(6, writer.getBufferedSize());
+      byte[] rawBytes = writer.getBytes().toByteArray();
+      assertEquals(6, rawBytes.length);
+
+      final byte[] expectedBytes = {
+        'a', 'g', 'b', 'h', 'c', 'i',
+      };
+      for (int i = 0; i < expectedBytes.length; ++i) {
+        assertEquals(expectedBytes[i], rawBytes[i]);
+      }
+      writer.reset();
+      writer.close();
     }
   }
 }

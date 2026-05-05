@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -19,8 +19,6 @@
 package org.apache.parquet.column.values.bitpacking;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
-
 import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.column.values.ValuesReader;
@@ -53,7 +51,7 @@ public class ByteBitPackingValuesReader extends ValuesReader {
       if (avail < bitWidth) {
         in.read(tempEncode, 0, avail);
         // Clear the portion of the array we didn't read into
-        for (int i=avail; i<bitWidth; i++) tempEncode[i] = 0;
+        for (int i = avail; i < bitWidth; i++) tempEncode[i] = 0;
       } else {
         in.read(tempEncode, 0, bitWidth);
       }
@@ -68,7 +66,7 @@ public class ByteBitPackingValuesReader extends ValuesReader {
 
   @Override
   public int readInteger() {
-    ++ decodedPosition;
+    ++decodedPosition;
     if (decodedPosition == decoded.length) {
       readMore();
     }
@@ -76,12 +74,10 @@ public class ByteBitPackingValuesReader extends ValuesReader {
   }
 
   @Override
-  public void initFromPage(int valueCount, ByteBufferInputStream stream)
-      throws IOException {
+  public void initFromPage(int valueCount, ByteBufferInputStream stream) throws IOException {
     int effectiveBitLength = valueCount * bitWidth;
     int length = BytesUtils.paddedByteCountFromBits(effectiveBitLength); // ceil
-    LOG.debug("reading {} bytes for {} values of size {} bits.",
-        length, valueCount, bitWidth);
+    LOG.debug("reading {} bytes for {} values of size {} bits.", length, valueCount, bitWidth);
     // work-around for null values. this will not happen for repetition or
     // definition levels (never null), but will happen when valueCount has not
     // been adjusted for null values in the data.
@@ -95,5 +91,4 @@ public class ByteBitPackingValuesReader extends ValuesReader {
   public void skip() {
     readInteger();
   }
-
 }

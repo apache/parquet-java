@@ -40,5 +40,4 @@ public interface InputFile {
    * @throws IOException if the stream cannot be opened
    */
   SeekableInputStream newStream() throws IOException;
-
 }

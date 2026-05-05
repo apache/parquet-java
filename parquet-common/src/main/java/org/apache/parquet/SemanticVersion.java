@@ -27,7 +27,7 @@ import java.util.regex.Pattern;
  * Very basic semver parser, only pays attention to major, minor, and patch numbers.
  * Attempts to do a little bit of validation that the version string is valid, but
  * is not a full implementation of the semver spec.
- *
+ * <p>
  * NOTE: compareTo only respects major, minor, patch, and whether this is a
  * prerelease version. All prerelease versions are considered equivalent.
  */
@@ -103,9 +103,9 @@ public final class SemanticVersion implements Comparable<SemanticVersion> {
     final int patch;
 
     try {
-      major = Integer.valueOf(matcher.group(1));
-      minor = Integer.valueOf(matcher.group(2));
-      patch = Integer.valueOf(matcher.group(3));
+      major = Integer.parseInt(matcher.group(1));
+      minor = Integer.parseInt(matcher.group(2));
+      patch = Integer.parseInt(matcher.group(3));
     } catch (NumberFormatException e) {
       throw new SemanticVersionParseException(e);
     }

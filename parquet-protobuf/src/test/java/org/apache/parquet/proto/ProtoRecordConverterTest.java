@@ -18,19 +18,18 @@
  */
 package org.apache.parquet.proto;
 
-import com.google.protobuf.ByteString;
-import org.junit.Test;
-import org.apache.parquet.proto.test.TestProto3;
-import org.apache.parquet.proto.test.TestProtobuf;
-
-import java.util.List;
-
 import static org.apache.parquet.proto.TestUtils.testData;
 import static org.apache.parquet.proto.test.TestProtobuf.SchemaConverterAllDatatypes;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
+
+import com.google.protobuf.ByteString;
+import java.util.List;
+import org.apache.parquet.proto.test.TestProto3;
+import org.apache.parquet.proto.test.TestProtobuf;
+import org.junit.Test;
 
 public class ProtoRecordConverterTest {
 
@@ -64,7 +63,7 @@ public class ProtoRecordConverterTest {
     List<TestProtobuf.SchemaConverterAllDatatypes> result;
     result = testData(dataBuilt);
 
-    //data are fully checked in testData function. Lets do one more check.
+    // data are fully checked in testData function. Lets do one more check.
     SchemaConverterAllDatatypes o = result.get(0);
     assertEquals("Good Will Hunting", o.getOptionalString());
 
@@ -116,7 +115,7 @@ public class ProtoRecordConverterTest {
     List<TestProto3.SchemaConverterAllDatatypes> result;
     result = testData(dataBuilt);
 
-    //data are fully checked in testData function. Lets do one more check.
+    // data are fully checked in testData function. Lets do one more check.
     TestProto3.SchemaConverterAllDatatypes o = result.get(0);
     assertEquals("Good Will Hunting", o.getOptionalString());
 
@@ -170,7 +169,7 @@ public class ProtoRecordConverterTest {
     List<TestProtobuf.SchemaConverterAllDatatypes> result;
     result = testData(input);
 
-    //data are fully checked in testData function. Lets do one more check.
+    // data are fully checked in testData function. Lets do one more check.
     assertEquals("Good Will Hunting 0", result.get(0).getOptionalString());
     assertEquals("Good Will Hunting 90", result.get(90).getOptionalString());
   }
@@ -206,7 +205,7 @@ public class ProtoRecordConverterTest {
     List<TestProto3.SchemaConverterAllDatatypes> result;
     result = testData(input);
 
-    //data are fully checked in testData function. Lets do one more check.
+    // data are fully checked in testData function. Lets do one more check.
     assertEquals("Good Will Hunting 0", result.get(0).getOptionalString());
     assertEquals("Good Will Hunting 90", result.get(90).getOptionalString());
   }
@@ -355,7 +354,7 @@ public class ProtoRecordConverterTest {
     List<TestProto3.SchemaConverterAllDatatypes> result;
     result = testData(dataBuilt);
 
-    //data are fully checked in testData function. Lets do one more check.
+    // data are fully checked in testData function. Lets do one more check.
     TestProto3.SchemaConverterAllDatatypes o = result.get(0);
     assertSame(o.getOptionalEnum(), TestProto3.SchemaConverterAllDatatypes.TestEnum.UNRECOGNIZED);
     assertEquals(o.getOptionalEnumValue(), 42);

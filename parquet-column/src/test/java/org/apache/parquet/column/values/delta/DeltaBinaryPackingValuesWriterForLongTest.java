@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -24,15 +24,13 @@ import static org.junit.Assert.assertTrue;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Random;
-
 import org.apache.parquet.bytes.ByteBufferInputStream;
-import org.junit.Before;
-import org.junit.Test;
-
-import org.apache.parquet.bytes.DirectByteBufferAllocator;
 import org.apache.parquet.bytes.BytesInput;
+import org.apache.parquet.bytes.DirectByteBufferAllocator;
 import org.apache.parquet.column.values.ValuesWriter;
 import org.apache.parquet.io.ParquetDecodingException;
+import org.junit.Before;
+import org.junit.Test;
 
 public class DeltaBinaryPackingValuesWriterForLongTest {
   DeltaBinaryPackingValuesReader reader;
@@ -52,8 +50,7 @@ public class DeltaBinaryPackingValuesWriterForLongTest {
 
   @Test(expected = IllegalArgumentException.class)
   public void miniBlockSizeShouldBeMultipleOf8() {
-    new DeltaBinaryPackingValuesWriterForLong(
-        1281, 4, 100, 100, new DirectByteBufferAllocator());
+    new DeltaBinaryPackingValuesWriterForLong(1281, 4, 100, 100, new DirectByteBufferAllocator());
   }
 
   /* When data size is multiple of Block */
@@ -267,10 +264,11 @@ public class DeltaBinaryPackingValuesWriterForLongTest {
 
     double miniBlockFlushed = Math.ceil(((double) length - 1) / miniBlockSize);
     double blockFlushed = Math.ceil(((double) length - 1) / blockSize);
-    double estimatedSize = 3 * 5 + 1 * 10 //blockHeader, 3 * int + 1 * long
-        + 8 * miniBlockFlushed * miniBlockSize //data(aligned to miniBlock)
-        + blockFlushed * miniBlockNum //bitWidth of mini blocks
-        + (10.0 * blockFlushed);//min delta for each block
+    double estimatedSize = 3 * 5
+        + 1 * 10 // blockHeader, 3 * int + 1 * long
+        + 8 * miniBlockFlushed * miniBlockSize // data(aligned to miniBlock)
+        + blockFlushed * miniBlockNum // bitWidth of mini blocks
+        + (10.0 * blockFlushed); // min delta for each block
     assertTrue(estimatedSize >= page.length);
     reader.initFromPage(100, ByteBufferInputStream.wrap(ByteBuffer.wrap(page)));
 

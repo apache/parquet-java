@@ -18,11 +18,11 @@
  */
 package org.apache.parquet;
 
-import org.apache.parquet.SemanticVersion.SemanticVersionParseException;
+import static org.apache.parquet.Preconditions.checkArgument;
+
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import static org.apache.parquet.Preconditions.checkArgument;
+import org.apache.parquet.SemanticVersion.SemanticVersionParseException;
 
 /**
  * Parses a parquet Version string
@@ -78,7 +78,8 @@ public class VersionParser {
 
       if (appBuildHash != null ? !appBuildHash.equals(version.appBuildHash) : version.appBuildHash != null)
         return false;
-      if (application != null ? !application.equals(version.application) : version.application != null) return false;
+      if (application != null ? !application.equals(version.application) : version.application != null)
+        return false;
       if (this.version != null ? !this.version.equals(version.version) : version.version != null) return false;
 
       return true;
@@ -94,18 +95,17 @@ public class VersionParser {
 
     @Override
     public String toString() {
-      return "ParsedVersion(" +
-          "application=" + application +
-          ", semver=" + version +
-          ", appBuildHash=" + appBuildHash +
-          ')';
+      return "ParsedVersion(" + "application="
+          + application + ", semver="
+          + version + ", appBuildHash="
+          + appBuildHash + ')';
     }
   }
 
   public static ParsedVersion parse(String createdBy) throws VersionParseException {
     Matcher matcher = PATTERN.matcher(createdBy);
 
-    if(!matcher.matches()){
+    if (!matcher.matches()) {
       throw new VersionParseException("Could not parse created_by: " + createdBy + " using format: " + FORMAT);
     }
 
@@ -125,5 +125,4 @@ public class VersionParser {
       super(message);
     }
   }
-
 }

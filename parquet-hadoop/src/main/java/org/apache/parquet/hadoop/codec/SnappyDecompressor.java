@@ -20,7 +20,6 @@ package org.apache.parquet.hadoop.codec;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-
 import org.xerial.snappy.Snappy;
 
 public class SnappyDecompressor extends NonBlockedDecompressor {
@@ -34,5 +33,4 @@ public class SnappyDecompressor extends NonBlockedDecompressor {
   protected int maxUncompressedLength(ByteBuffer compressed, int maxUncompressedLength) throws IOException {
     return Snappy.uncompressedLength(compressed);
   }
-
-} //class SnappyDecompressor
+} // class SnappyDecompressor

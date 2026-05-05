@@ -20,7 +20,6 @@ package org.apache.parquet.thrift.projection;
 
 import java.util.ArrayList;
 import java.util.List;
-
 import org.apache.parquet.Strings;
 import org.apache.parquet.glob.WildcardPath;
 import org.slf4j.Logger;
@@ -28,13 +27,13 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Stricter Implementation of {@link FieldProjectionFilter}.
- *
+ * <p>
  * See {@link org.apache.parquet.thrift.projection.deprecated.DeprecatedFieldProjectionFilter} for the previous
  * syntax that allows for more powerful glob patterns, but has less error reporting and less strict requirements.
- *
+ * <p>
  * This filter requires that every *possible* expansion of glob expressions (like '{x,y,z}') must match at least one
  * column. Each expansion may match more than one if it contains wildcards ('*').
- *
+ * <p>
  * Note that this class is stateful -- it keeps track of which expanded glob paths have matched a column, so that it can
  * throw when {@link #assertNoUnmatchedPatterns()} is called.
  */
@@ -57,8 +56,8 @@ public class StrictFieldProjectionFilter implements FieldProjectionFilter {
     }
 
     if (globs.isEmpty()) {
-      throw new ThriftProjectionException(String.format("Semicolon delimited string '%s' contains 0 glob strings",
-          columnsToKeepGlobs));
+      throw new ThriftProjectionException(
+          String.format("Semicolon delimited string '%s' contains 0 glob strings", columnsToKeepGlobs));
     }
 
     return globs;
@@ -66,7 +65,7 @@ public class StrictFieldProjectionFilter implements FieldProjectionFilter {
 
   /**
    * Construct a StrictFieldProjectionFilter from a single string.
-   *
+   * <p>
    * columnsToKeepGlobs should be a list of Strings in the format expected by
    * {@link Strings#expandGlobToWildCardPaths(String, char)}, separated by ';'
    * Should only be used for parsing values out of the hadoop config -- for APIs
@@ -82,6 +81,7 @@ public class StrictFieldProjectionFilter implements FieldProjectionFilter {
   /**
    * Construct a StrictFieldProjectionFilter from a list of Strings in the format expected by
    * {@link Strings#expandGlobToWildCardPaths(String, char)}
+   *
    * @param columnsToKeepGlobs glob patterns for columns to keep
    */
   public StrictFieldProjectionFilter(List<String> columnsToKeepGlobs) {
@@ -110,13 +110,19 @@ public class StrictFieldProjectionFilter implements FieldProjectionFilter {
     // This also allows us log a warning when more than one glob path matches.
     for (WildcardPathStatus wp : columnsToKeep) {
       if (wp.matches(path)) {
-        if (match != null && !match.getParentGlobPath().equals(wp.getWildcardPath().getParentGlobPath())) {
-          String message = "Field path: '%s' matched more than one glob path pattern. First match: " +
-              "'%s' (when expanded to '%s') second match:'%s' (when expanded to '%s')";
+        if (match != null
+            && !match.getParentGlobPath()
+                .equals(wp.getWildcardPath().getParentGlobPath())) {
+          String message = "Field path: '%s' matched more than one glob path pattern. First match: "
+              + "'%s' (when expanded to '%s') second match:'%s' (when expanded to '%s')";
 
-          warn(String.format(message,
-              path, match.getParentGlobPath(), match.getOriginalPattern(),
-              wp.getWildcardPath().getParentGlobPath(), wp.getWildcardPath().getOriginalPattern()));
+          warn(String.format(
+              message,
+              path,
+              match.getParentGlobPath(),
+              match.getOriginalPattern(),
+              wp.getWildcardPath().getParentGlobPath(),
+              wp.getWildcardPath().getOriginalPattern()));
         } else {
           match = wp.getWildcardPath();
         }
@@ -142,14 +148,14 @@ public class StrictFieldProjectionFilter implements FieldProjectionFilter {
   }
 
   @Override
-  public void assertNoUnmatchedPatterns() throws ThriftProjectionException{
+  public void assertNoUnmatchedPatterns() throws ThriftProjectionException {
     List<WildcardPath> unmatched = getUnmatchedPatterns();
     if (!unmatched.isEmpty()) {
       StringBuilder message =
           new StringBuilder("The following projection patterns did not match any columns in this schema:\n");
       for (WildcardPath wp : unmatched) {
-        message.append(String.format("Pattern: '%s' (when expanded to '%s')",
-            wp.getParentGlobPath(), wp.getOriginalPattern()));
+        message.append(String.format(
+            "Pattern: '%s' (when expanded to '%s')", wp.getParentGlobPath(), wp.getOriginalPattern()));
         message.append('\n');
       }
       throw new ThriftProjectionException(message.toString());
@@ -183,5 +189,4 @@ public class StrictFieldProjectionFilter implements FieldProjectionFilter {
       return hasMatched;
     }
   }
-
 }

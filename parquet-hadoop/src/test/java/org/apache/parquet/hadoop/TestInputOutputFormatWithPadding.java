@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -18,6 +18,16 @@
  */
 package org.apache.parquet.hadoop;
 
+import static java.lang.Thread.sleep;
+import static org.apache.parquet.schema.OriginalType.UTF8;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.util.UUID;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.LongWritable;
@@ -43,26 +53,18 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.util.UUID;
-
-import static java.lang.Thread.sleep;
-import static org.apache.parquet.schema.OriginalType.UTF8;
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
-
 public class TestInputOutputFormatWithPadding {
-  public static final String FILE_CONTENT = "" +
-      "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ," +
-      "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ," +
-      "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  public static final String FILE_CONTENT = "" + "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ,"
+      + "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ,"
+      + "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
   public static MessageType PARQUET_TYPE = Types.buildMessage()
-      .required(BINARY).as(UTF8).named("uuid")
-      .required(BINARY).as(UTF8).named("char")
+      .required(BINARY)
+      .as(UTF8)
+      .named("uuid")
+      .required(BINARY)
+      .as(UTF8)
+      .named("char")
       .named("FormatTestObject");
 
   /**
@@ -77,15 +79,15 @@ public class TestInputOutputFormatWithPadding {
 
   public static class Writer extends Mapper<LongWritable, Text, Void, Group> {
     public static final SimpleGroupFactory GROUP_FACTORY = new SimpleGroupFactory(PARQUET_TYPE);
+
     @Override
-    protected void map(LongWritable key, Text value, Context context)
-        throws IOException, InterruptedException {
+    protected void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
       // writes each character of the line with a UUID
       String line = value.toString();
       for (int i = 0; i < line.length(); i += 1) {
         Group group = GROUP_FACTORY.newGroup();
         group.add(0, Binary.fromString(UUID.randomUUID().toString()));
-        group.add(1, Binary.fromString(line.substring(i, i+1)));
+        group.add(1, Binary.fromString(line.substring(i, i + 1)));
         context.write(null, group);
       }
     }
@@ -93,8 +95,7 @@ public class TestInputOutputFormatWithPadding {
 
   public static class Reader extends Mapper<Void, Group, LongWritable, Text> {
     @Override
-    protected void map(Void key, Group value, Context context)
-        throws IOException, InterruptedException {
+    protected void map(Void key, Group value, Context context) throws IOException, InterruptedException {
       context.write(null, new Text(value.getString("char", 0)));
     }
   }
@@ -153,11 +154,10 @@ public class TestInputOutputFormatWithPadding {
 
     // make sure padding was added
     File parquetFile = getDataFile(tempFolder);
-    ParquetMetadata footer = ParquetFileReader.readFooter(conf,
-        new Path(parquetFile.toString()), ParquetMetadataConverter.NO_FILTER);
+    ParquetMetadata footer = ParquetFileReader.readFooter(
+        conf, new Path(parquetFile.toString()), ParquetMetadataConverter.NO_FILTER);
     for (BlockMetaData block : footer.getBlocks()) {
-      Assert.assertTrue("Block should start at a multiple of the block size",
-          block.getStartingPos() % 1024 == 0);
+      Assert.assertTrue("Block should start at a multiple of the block size", block.getStartingPos() % 1024 == 0);
     }
 
     {
@@ -182,8 +182,7 @@ public class TestInputOutputFormatWithPadding {
       contentBuilder.append(line);
     }
     String reconstructed = contentBuilder.toString();
-    Assert.assertEquals("Should match written file content",
-        FILE_CONTENT, reconstructed);
+    Assert.assertEquals("Should match written file content", FILE_CONTENT, reconstructed);
 
     HadoopOutputFile.getBlockFileSystems().remove("file");
   }

@@ -22,15 +22,14 @@ package org.apache.parquet.cli.util;
 import com.google.common.base.MoreObjects;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
-import org.apache.avro.Schema;
-import org.apache.avro.generic.GenericData;
-import org.apache.avro.generic.GenericRecord;
-import org.apache.avro.util.Utf8;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
-
+import org.apache.avro.Schema;
+import org.apache.avro.generic.GenericData;
+import org.apache.avro.generic.GenericRecord;
+import org.apache.avro.util.Utf8;
 
 public class Expressions {
   private static final Pattern NUMERIC_RE = Pattern.compile("^\\d+$");
@@ -54,19 +53,15 @@ public class Expressions {
           // skip the placeholder record schema
           return select(schema.getField("value").schema(), datum, tokens);
         }
-        Preconditions.checkArgument(token.type == PathExpr.Type.FIELD,
-            "Cannot dereference records");
-        Preconditions.checkArgument(datum instanceof GenericRecord,
-            "Not a record: %s", datum);
+        Preconditions.checkArgument(token.type == PathExpr.Type.FIELD, "Cannot dereference records");
+        Preconditions.checkArgument(datum instanceof GenericRecord, "Not a record: %s", datum);
         GenericRecord record = (GenericRecord) datum;
         Schema.Field field = schema.getField(token.value);
-        Preconditions.checkArgument(field != null,
-            "No such field '%s' in schema: %s", token.value, schema);
+        Preconditions.checkArgument(field != null, "No such field '%s' in schema: %s", token.value, schema);
         return select(field.schema(), record.get(token.value), token.children);
 
       case MAP:
-        Preconditions.checkArgument(datum instanceof Map,
-            "Not a map: %s", datum);
+        Preconditions.checkArgument(datum instanceof Map, "Not a map: %s", datum);
         Map<Object, Object> map = (Map<Object, Object>) datum;
         Object value = map.get(token.value);
         if (value == null) {
@@ -76,15 +71,12 @@ public class Expressions {
         return select(schema.getValueType(), value, token.children);
 
       case ARRAY:
-        Preconditions.checkArgument(token.type == PathExpr.Type.DEREF,
-            "Cannot access fields of an array");
-        Preconditions.checkArgument(datum instanceof Collection,
-            "Not an array: %s", datum);
-        Preconditions.checkArgument(NUMERIC_RE.matcher(token.value).matches(),
-            "Not an array index: %s", token.value);
+        Preconditions.checkArgument(token.type == PathExpr.Type.DEREF, "Cannot access fields of an array");
+        Preconditions.checkArgument(datum instanceof Collection, "Not an array: %s", datum);
+        Preconditions.checkArgument(
+            NUMERIC_RE.matcher(token.value).matches(), "Not an array index: %s", token.value);
         List<Object> list = (List<Object>) datum;
-        return select(schema.getElementType(), list.get(Integer.parseInt(token.value)),
-            token.children);
+        return select(schema.getElementType(), list.get(Integer.parseInt(token.value)), token.children);
 
       case UNION:
         int branch = GenericData.get().resolveUnion(schema, datum);
@@ -103,7 +95,7 @@ public class Expressions {
    * * arrays are dereferenced by position [n] =&gt; schema is the element schema
    * * maps are dereferenced by key =&gt; schema is the value schema
    *
-   * @param schema an Avro schema
+   * @param schema     an Avro schema
    * @param fieldPaths selected field paths
    * @return a filtered schema
    */
@@ -200,8 +192,7 @@ public class Expressions {
   private static List<PathExpr> merge(List<PathExpr> tokens, PathExpr toAdd) {
     boolean merged = false;
     for (PathExpr token : tokens) {
-      if ((token.type == toAdd.type) &&
-          (token.type == PathExpr.Type.DEREF || token.value.equals(toAdd.value))) {
+      if ((token.type == toAdd.type) && (token.type == PathExpr.Type.DEREF || token.value.equals(toAdd.value))) {
         for (PathExpr child : toAdd.children) {
           merge(token.children, child);
         }
@@ -224,13 +215,17 @@ public class Expressions {
         List<Schema.Field> fields = Lists.newArrayList();
         for (PathExpr expr : exprs) {
           Schema.Field field = schema.getField(expr.value);
-          Preconditions.checkArgument(field != null,
-              "Cannot find field '%s' in schema: %s", expr.value, schema);
-          fields.add(new Schema.Field(expr.value, filter(field.schema(), expr.children),
-              field.doc(), field.defaultVal(), field.order()));
+          Preconditions.checkArgument(
+              field != null, "Cannot find field '%s' in schema: %s", expr.value, schema);
+          fields.add(new Schema.Field(
+              expr.value,
+              filter(field.schema(), expr.children),
+              field.doc(),
+              field.defaultVal(),
+              field.order()));
         }
-        return Schema.createRecord(schema.getName(),
-            schema.getDoc(), schema.getNamespace(), schema.isError(), fields);
+        return Schema.createRecord(
+            schema.getName(), schema.getDoc(), schema.getNamespace(), schema.isError(), fields);
 
       case UNION:
         // Ignore schemas that are a union with null because there is another token
@@ -254,18 +249,17 @@ public class Expressions {
         }
 
       case MAP:
-        Preconditions.checkArgument(exprs.size() == 1,
-            "Cannot find multiple children of map schema: %s", schema);
+        Preconditions.checkArgument(
+            exprs.size() == 1, "Cannot find multiple children of map schema: %s", schema);
         return filter(schema, exprs.get(0));
 
       case ARRAY:
-        Preconditions.checkArgument(exprs.size() == 1,
-            "Cannot find multiple children of array schema: %s", schema);
+        Preconditions.checkArgument(
+            exprs.size() == 1, "Cannot find multiple children of array schema: %s", schema);
         return filter(schema, exprs.get(0));
 
       default:
-        throw new IllegalArgumentException(String.format(
-            "Cannot find child of primitive schema: %s", schema));
+        throw new IllegalArgumentException(String.format("Cannot find child of primitive schema: %s", schema));
     }
   }
 
@@ -276,31 +270,33 @@ public class Expressions {
 
     switch (schema.getType()) {
       case RECORD:
-        Preconditions.checkArgument(expr.type == PathExpr.Type.FIELD,
-            "Cannot index a record: [%s]", expr.value);
+        Preconditions.checkArgument(
+            expr.type == PathExpr.Type.FIELD, "Cannot index a record: [%s]", expr.value);
         Schema.Field field = schema.getField(expr.value);
         if (field != null) {
           return filter(field.schema(), expr.children);
         } else {
-          throw new IllegalArgumentException(String.format(
-              "Cannot find field '%s' in schema: %s", expr.value, schema.toString(true)));
+          throw new IllegalArgumentException(
+              String.format("Cannot find field '%s' in schema: %s", expr.value, schema.toString(true)));
         }
 
       case MAP:
         return Schema.createMap(filter(schema.getValueType(), expr.children));
 
       case ARRAY:
-        Preconditions.checkArgument(expr.type == PathExpr.Type.DEREF,
-            "Cannot find field '%s' in an array", expr.value);
-        Preconditions.checkArgument(NUMERIC_RE.matcher(expr.value).matches(),
-            "Cannot index array by non-numeric value '%s'", expr.value);
+        Preconditions.checkArgument(
+            expr.type == PathExpr.Type.DEREF, "Cannot find field '%s' in an array", expr.value);
+        Preconditions.checkArgument(
+            NUMERIC_RE.matcher(expr.value).matches(),
+            "Cannot index array by non-numeric value '%s'",
+            expr.value);
         return Schema.createArray(filter(schema.getElementType(), expr.children));
 
       case UNION:
         // TODO: this should only return something if the type can match rather than explicitly
         // accessing parts of a union. when selecting data, unions are ignored.
-        Preconditions.checkArgument(expr.type == PathExpr.Type.DEREF,
-            "Cannot find field '%s' in a union", expr.value);
+        Preconditions.checkArgument(
+            expr.type == PathExpr.Type.DEREF, "Cannot find field '%s' in a union", expr.value);
         List<Schema> options = schema.getTypes();
         if (NUMERIC_RE.matcher(expr.value).matches()) {
           // look up the option by position
@@ -316,12 +312,12 @@ public class Expressions {
             }
           }
         }
-        throw new IllegalArgumentException(String.format(
-            "Invalid union index '%s' for schema: %s", expr.value, schema));
+        throw new IllegalArgumentException(
+            String.format("Invalid union index '%s' for schema: %s", expr.value, schema));
 
       default:
-        throw new IllegalArgumentException(String.format(
-            "Cannot find '%s' in primitive schema: %s", expr.value, schema));
+        throw new IllegalArgumentException(
+            String.format("Cannot find '%s' in primitive schema: %s", expr.value, schema));
     }
   }
 

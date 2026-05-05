@@ -18,6 +18,11 @@
  */
 package org.apache.parquet.hadoop;
 
+import static org.apache.parquet.filter2.predicate.FilterApi.gt;
+import static org.apache.parquet.filter2.predicate.FilterApi.intColumn;
+
+import java.io.IOException;
+import java.net.URISyntaxException;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.ParquetReadOptions;
@@ -28,12 +33,6 @@ import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.io.InputFile;
 import org.junit.Assert;
 import org.junit.Test;
-
-import java.io.IOException;
-import java.net.URISyntaxException;
-
-import static org.apache.parquet.filter2.predicate.FilterApi.gt;
-import static org.apache.parquet.filter2.predicate.FilterApi.intColumn;
 
 public class TestParquetReaderEmptyBlock {
 
@@ -72,10 +71,10 @@ public class TestParquetReaderEmptyBlock {
     // The empty block is skipped via readNextFilteredRowGroup()
     FilterCompat.Filter filter = FilterCompat.get(gt(intColumn("a"), 1));
     ParquetReadOptions filterOptions = ParquetReadOptions.builder()
-      .copy(options)
-      .withRecordFilter(filter)
-      .useStatsFilter(true)
-      .build();
+        .copy(options)
+        .withRecordFilter(filter)
+        .useStatsFilter(true)
+        .build();
     try (ParquetFileReader r = new ParquetFileReader(inputFile, filterOptions)) {
       Assert.assertNull(r.readNextFilteredRowGroup());
     }
@@ -109,10 +108,10 @@ public class TestParquetReaderEmptyBlock {
     // Only the last row group is read via readNextFilteredRowGroup()
     FilterCompat.Filter filter = FilterCompat.get(gt(intColumn("a"), 1));
     ParquetReadOptions filterOptions = ParquetReadOptions.builder()
-      .copy(options)
-      .withRecordFilter(filter)
-      .useStatsFilter(true)
-      .build();
+        .copy(options)
+        .withRecordFilter(filter)
+        .useStatsFilter(true)
+        .build();
     try (ParquetFileReader r = new ParquetFileReader(inputFile, filterOptions)) {
       PageReadStore pages = null;
       pages = r.readNextFilteredRowGroup();
@@ -152,10 +151,10 @@ public class TestParquetReaderEmptyBlock {
     // Only the last row group is read via readNextFilteredRowGroup()
     FilterCompat.Filter filter = FilterCompat.get(gt(intColumn("a"), 1));
     ParquetReadOptions filterOptions = ParquetReadOptions.builder()
-      .copy(options)
-      .withRecordFilter(filter)
-      .useStatsFilter(true)
-      .build();
+        .copy(options)
+        .withRecordFilter(filter)
+        .useStatsFilter(true)
+        .build();
     try (ParquetFileReader r = new ParquetFileReader(inputFile, filterOptions)) {
       PageReadStore pages = null;
       pages = r.readNextFilteredRowGroup();
@@ -166,5 +165,4 @@ public class TestParquetReaderEmptyBlock {
       Assert.assertNull(pages);
     }
   }
-
 }

@@ -34,14 +34,12 @@ import org.apache.parquet.hadoop.BloomFilterReader;
 import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
-import org.apache.parquet.hadoop.util.HadoopInputFile;
-import org.apache.parquet.io.InputFile;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
 import org.slf4j.Logger;
 
-@Parameters(commandDescription="Check bloom filters for a Parquet column")
+@Parameters(commandDescription = "Check bloom filters for a Parquet column")
 public class ShowBloomFilterCommand extends BaseCommand {
 
   public ShowBloomFilterCommand(Logger console) {
@@ -52,37 +50,34 @@ public class ShowBloomFilterCommand extends BaseCommand {
   String file;
 
   @Parameter(
-    names = { "-c", "--column" },
-    description = "Check the bloom filter indexes for the given column",
-    required = true)
+      names = {"-c", "--column"},
+      description = "Check the bloom filter indexes for the given column",
+      required = true)
   String columnPath;
 
   @Parameter(
-    names = { "-v", "--values" },
-    description = "Check if the given values match bloom filter",
-    required = true)
+      names = {"-v", "--values"},
+      description = "Check if the given values match bloom filter",
+      required = true)
   List<String> testValues;
 
   @Override
   @SuppressWarnings("unchecked")
   public int run() throws IOException {
-    Preconditions.checkArgument(file != null,
-      "A Parquet file is required.");
+    Preconditions.checkArgument(file != null, "A Parquet file is required.");
 
-    InputFile in = HadoopInputFile.fromPath(qualifiedPath(file), getConf());
-
-    try (ParquetFileReader reader = ParquetFileReader.open(in)) {
+    try (ParquetFileReader reader = createParquetFileReader(file)) {
       MessageType schema = reader.getFileMetaData().getSchema();
       PrimitiveType type = Util.primitive(columnPath, schema);
 
       int rowGroupIndex = 0;
       for (BlockMetaData block : reader.getFooter().getBlocks()) {
-        console.info(String.format("\nRow group %d: \n%s",
-          rowGroupIndex,
-          new TextStringBuilder(80).appendPadding(80, '-')));
+        console.info(String.format(
+            "\nRow group %d: \n%s", rowGroupIndex, new TextStringBuilder(80).appendPadding(80, '-')));
 
         Optional<ColumnChunkMetaData> maybeColumnMeta = block.getColumns().stream()
-          .filter(c -> columnPath.equals(c.getPath().toDotString())).findFirst();
+            .filter(c -> columnPath.equals(c.getPath().toDotString()))
+            .findFirst();
         if (!maybeColumnMeta.isPresent()) {
           console.info("column {} doesn't exist.", columnPath);
         } else {
@@ -91,7 +86,7 @@ public class ShowBloomFilterCommand extends BaseCommand {
           if (bloomFilter == null) {
             console.info("column {} has no bloom filter", columnPath);
           } else {
-            for (String value: testValues) {
+            for (String value : testValues) {
               if (bloomFilter.findHash(bloomFilter.hash(getOriginalType(value, type)))) {
                 console.info("value {} maybe exists.", value);
               } else {
@@ -107,7 +102,7 @@ public class ShowBloomFilterCommand extends BaseCommand {
   }
 
   private Object getOriginalType(String value, PrimitiveType type) {
-    switch(type.getPrimitiveTypeName()) {
+    switch (type.getPrimitiveTypeName()) {
       case BINARY:
         return Binary.fromString(value);
       case INT32:
@@ -119,15 +114,13 @@ public class ShowBloomFilterCommand extends BaseCommand {
       case DOUBLE:
         return Double.valueOf(value);
       default:
-        throw new IllegalArgumentException(
-          "Unknown type: " + type.getPrimitiveTypeName());
+        throw new IllegalArgumentException("Unknown type: " + type.getPrimitiveTypeName());
     }
   }
 
   @Override
   public List<String> getExamples() {
     return Lists.newArrayList(
-      "# Show bloom filter for column 'col' from a Parquet file",
-      "-c col -v 1,2,3 -i sample.parquet");
+        "# Show bloom filter for column 'col' from a Parquet file", "-c col -v 1,2,3 -i sample.parquet");
   }
 }

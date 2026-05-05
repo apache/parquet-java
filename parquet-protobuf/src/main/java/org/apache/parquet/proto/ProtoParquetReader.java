@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -18,23 +18,20 @@
  */
 package org.apache.parquet.proto;
 
-import java.io.IOException;
+import static org.apache.parquet.proto.ProtoConstants.CONFIG_IGNORE_UNKNOWN_FIELDS;
 
+import com.google.protobuf.MessageOrBuilder;
+import java.io.IOException;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.filter.UnboundRecordFilter;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.hadoop.api.ReadSupport;
 import org.apache.parquet.io.InputFile;
 
-import com.google.protobuf.MessageOrBuilder;
-
-import static org.apache.parquet.proto.ProtoConstants.CONFIG_IGNORE_UNKNOWN_FIELDS;
-
 /**
  * Read Protobuf records from a Parquet file.
  */
-public class ProtoParquetReader<T extends MessageOrBuilder>
-    extends ParquetReader<T> {
+public class ProtoParquetReader<T extends MessageOrBuilder> extends ParquetReader<T> {
 
   public static <T> ParquetReader.Builder<T> builder(Path file) {
     return new ProtoParquetReader.Builder<T>(file);
@@ -64,7 +61,7 @@ public class ProtoParquetReader<T extends MessageOrBuilder>
   }
 
   /**
-   * @param file a file path
+   * @param file         a file path
    * @param recordFilter an unbound record filter
    * @throws IOException if there is an error while reading
    * @deprecated use {@link #builder(Path)}
@@ -82,7 +79,7 @@ public class ProtoParquetReader<T extends MessageOrBuilder>
     }
 
     protected Builder setIgnoreUnknownFields(boolean ignoreUnknownFields) {
-      if(ignoreUnknownFields) {
+      if (ignoreUnknownFields) {
         this.set(CONFIG_IGNORE_UNKNOWN_FIELDS, "TRUE");
       }
       return this;
@@ -92,7 +89,7 @@ public class ProtoParquetReader<T extends MessageOrBuilder>
       super(path);
     }
 
-    @SuppressWarnings({ "rawtypes", "unchecked" })
+    @SuppressWarnings({"rawtypes", "unchecked"})
     @Override
     protected ReadSupport<T> getReadSupport() {
       return new ProtoReadSupport();

@@ -19,24 +19,6 @@
 
 package org.apache.parquet.cli;
 
-import com.google.common.base.Ascii;
-import com.google.common.base.Joiner;
-import com.google.common.base.Preconditions;
-import com.google.common.base.Splitter;
-import com.google.common.collect.Iterables;
-import com.google.common.hash.HashCode;
-
-import org.apache.parquet.column.ColumnDescriptor;
-import org.apache.parquet.column.Encoding;
-import org.apache.parquet.column.EncodingStats;
-import org.apache.parquet.column.statistics.Statistics;
-import org.apache.parquet.hadoop.metadata.CompressionCodecName;
-import org.apache.parquet.schema.MessageType;
-import org.apache.parquet.schema.OriginalType;
-import org.apache.parquet.schema.PrimitiveType;
-import org.apache.parquet.schema.Type;
-import java.util.Set;
-
 import static org.apache.parquet.column.Encoding.BIT_PACKED;
 import static org.apache.parquet.column.Encoding.DELTA_BINARY_PACKED;
 import static org.apache.parquet.column.Encoding.DELTA_BYTE_ARRAY;
@@ -46,6 +28,22 @@ import static org.apache.parquet.column.Encoding.RLE;
 import static org.apache.parquet.column.Encoding.RLE_DICTIONARY;
 import static org.apache.parquet.format.Encoding.DELTA_LENGTH_BYTE_ARRAY;
 
+import com.google.common.base.Ascii;
+import com.google.common.base.Joiner;
+import com.google.common.base.Preconditions;
+import com.google.common.base.Splitter;
+import com.google.common.collect.Iterables;
+import com.google.common.hash.HashCode;
+import java.util.Set;
+import org.apache.parquet.column.ColumnDescriptor;
+import org.apache.parquet.column.Encoding;
+import org.apache.parquet.column.EncodingStats;
+import org.apache.parquet.column.statistics.Statistics;
+import org.apache.parquet.hadoop.metadata.CompressionCodecName;
+import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.schema.OriginalType;
+import org.apache.parquet.schema.PrimitiveType;
+import org.apache.parquet.schema.Type;
 
 public class Util {
 
@@ -106,8 +104,12 @@ public class Util {
     if (stats == null) {
       return "no stats";
     }
-    return String.format("min: %s max: %s nulls: %d/%d",
-        humanReadable(stats.minAsString(), 30), humanReadable(stats.maxAsString(), 30), stats.getNumNulls(), count);
+    return String.format(
+        "min: %s max: %s nulls: %d/%d",
+        humanReadable(stats.minAsString(), 30),
+        humanReadable(stats.maxAsString(), 30),
+        stats.getNumNulls(),
+        count);
   }
 
   public static String humanReadable(String str, int len) {
@@ -181,7 +183,7 @@ public class Util {
   public static String encodingStatsAsString(EncodingStats encodingStats) {
     StringBuilder sb = new StringBuilder();
     if (encodingStats.hasDictionaryPages()) {
-      for (Encoding encoding: encodingStats.getDictionaryEncodings()) {
+      for (Encoding encoding : encodingStats.getDictionaryEncodings()) {
         sb.append(encodingAsString(encoding, true));
       }
       sb.append(" ");
@@ -196,9 +198,9 @@ public class Util {
     if (encodings.contains(PLAIN)) {
       sb.append("_");
     }
-    if (encodings.contains(DELTA_BYTE_ARRAY) ||
-        encodings.contains(DELTA_BINARY_PACKED) ||
-        encodings.contains(DELTA_LENGTH_BYTE_ARRAY)) {
+    if (encodings.contains(DELTA_BYTE_ARRAY)
+        || encodings.contains(DELTA_BINARY_PACKED)
+        || encodings.contains(DELTA_LENGTH_BYTE_ARRAY)) {
       sb.append("D");
     }
 
@@ -229,9 +231,9 @@ public class Util {
       if (encodings.contains(PLAIN)) {
         sb.append("_");
       }
-      if (encodings.contains(DELTA_BYTE_ARRAY) ||
-          encodings.contains(DELTA_BINARY_PACKED) ||
-          encodings.contains(DELTA_LENGTH_BYTE_ARRAY)) {
+      if (encodings.contains(DELTA_BYTE_ARRAY)
+          || encodings.contains(DELTA_BINARY_PACKED)
+          || encodings.contains(DELTA_LENGTH_BYTE_ARRAY)) {
         sb.append("D");
       }
     }
@@ -242,8 +244,7 @@ public class Util {
 
   public static ColumnDescriptor descriptor(String column, MessageType schema) {
     String[] path = Iterables.toArray(DOT.split(column), String.class);
-    Preconditions.checkArgument(schema.containsPath(path),
-        "Schema doesn't have column: %s", column);
+    Preconditions.checkArgument(schema.containsPath(path), "Schema doesn't have column: %s", column);
     return schema.getColumnDescription(path);
   }
 
@@ -264,9 +265,7 @@ public class Util {
 
   public static PrimitiveType primitive(String column, MessageType schema) {
     String[] path = Iterables.toArray(DOT.split(column), String.class);
-    Preconditions.checkArgument(schema.containsPath(path),
-        "Schema doesn't have column: %s", column);
+    Preconditions.checkArgument(schema.containsPath(path), "Schema doesn't have column: %s", column);
     return primitive(schema, path);
   }
-
 }

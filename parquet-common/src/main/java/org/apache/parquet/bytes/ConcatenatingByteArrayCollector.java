@@ -18,14 +18,22 @@
  */
 package org.apache.parquet.bytes;
 
+import static java.lang.String.format;
+
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-import static java.lang.String.format;
-
+/**
+ * Used for collecting the content of {@link BytesInput} objects.
+ *
+ * @deprecated Use {@link ConcatenatingByteBufferCollector} instead.
+ */
+@Deprecated
 public class ConcatenatingByteArrayCollector extends BytesInput {
+
   private final List<byte[]> slabs = new ArrayList<byte[]>();
   private long size = 0;
 
@@ -48,16 +56,22 @@ public class ConcatenatingByteArrayCollector extends BytesInput {
   }
 
   @Override
+  public void writeInto(ByteBuffer buffer) {
+    for (byte[] slab : slabs) {
+      buffer.put(slab);
+    }
+  }
+
+  @Override
   public long size() {
     return size;
   }
 
   /**
-   * @param prefix  a prefix to be used for every new line in the string
+   * @param prefix a prefix to be used for every new line in the string
    * @return a text representation of the memory usage of this structure
    */
   public String memUsageString(String prefix) {
     return format("%s %s %d slabs, %,d bytes", prefix, getClass().getSimpleName(), slabs.size(), size);
   }
-
 }

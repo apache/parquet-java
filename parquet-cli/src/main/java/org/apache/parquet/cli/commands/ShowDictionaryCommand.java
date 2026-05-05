@@ -23,6 +23,8 @@ import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
+import java.io.IOException;
+import java.util.List;
 import org.apache.parquet.cli.BaseCommand;
 import org.apache.parquet.cli.Util;
 import org.apache.parquet.column.ColumnDescriptor;
@@ -34,11 +36,9 @@ import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
 import org.slf4j.Logger;
-import java.io.IOException;
-import java.util.List;
 
 // TODO: show dictionary size in values and in bytes
-@Parameters(commandDescription="Print dictionaries for a Parquet column")
+@Parameters(commandDescription = "Print dictionaries for a Parquet column")
 public class ShowDictionaryCommand extends BaseCommand {
 
   public ShowDictionaryCommand(Logger console) {
@@ -57,10 +57,8 @@ public class ShowDictionaryCommand extends BaseCommand {
   @Override
   @SuppressWarnings("unchecked")
   public int run() throws IOException {
-    Preconditions.checkArgument(targets != null && targets.size() >= 1,
-        "A Parquet file is required.");
-    Preconditions.checkArgument(targets.size() == 1,
-        "Cannot process multiple Parquet files.");
+    Preconditions.checkArgument(targets != null && targets.size() >= 1, "A Parquet file is required.");
+    Preconditions.checkArgument(targets.size() == 1, "Cannot process multiple Parquet files.");
 
     String source = targets.get(0);
 
@@ -96,36 +94,35 @@ public class ShowDictionaryCommand extends BaseCommand {
 
   private void printDictionary(Dictionary dict, PrimitiveType type) {
     for (int i = 0; i <= dict.getMaxId(); i += 1) {
-      switch(type.getPrimitiveTypeName()) {
+      switch (type.getPrimitiveTypeName()) {
         case BINARY:
         case FIXED_LEN_BYTE_ARRAY:
           if (type.getLogicalTypeAnnotation() instanceof LogicalTypeAnnotation.StringLogicalTypeAnnotation) {
-            console.info("{}: {}", String.format("%6d", i),
-                    Util.humanReadable(dict.decodeToBinary(i).toStringUsingUTF8(), 70));
+            console.info(
+                "{}: {}",
+                String.format("%6d", i),
+                Util.humanReadable(dict.decodeToBinary(i).toStringUsingUTF8(), 70));
           } else {
-            console.info("{}: {}", String.format("%6d", i),
-                    Util.humanReadable(dict.decodeToBinary(i).getBytesUnsafe(), 70));
+            console.info(
+                "{}: {}",
+                String.format("%6d", i),
+                Util.humanReadable(dict.decodeToBinary(i).getBytesUnsafe(), 70));
           }
           break;
         case INT32:
-          console.info("{}: {}", String.format("%6d", i),
-                  dict.decodeToInt(i));
+          console.info("{}: {}", String.format("%6d", i), dict.decodeToInt(i));
           break;
         case INT64:
-          console.info("{}: {}", String.format("%6d", i),
-                  dict.decodeToLong(i));
+          console.info("{}: {}", String.format("%6d", i), dict.decodeToLong(i));
           break;
         case FLOAT:
-          console.info("{}: {}", String.format("%6d", i),
-                  dict.decodeToFloat(i));
+          console.info("{}: {}", String.format("%6d", i), dict.decodeToFloat(i));
           break;
         case DOUBLE:
-          console.info("{}: {}", String.format("%6d", i),
-                  dict.decodeToDouble(i));
+          console.info("{}: {}", String.format("%6d", i), dict.decodeToDouble(i));
           break;
         default:
-          throw new IllegalArgumentException(
-                  "Unknown dictionary type: " + type.getPrimitiveTypeName());
+          throw new IllegalArgumentException("Unknown dictionary type: " + type.getPrimitiveTypeName());
       }
     }
   }
@@ -133,8 +130,6 @@ public class ShowDictionaryCommand extends BaseCommand {
   @Override
   public List<String> getExamples() {
     return Lists.newArrayList(
-        "# Show the dictionary for column 'col' from a Parquet file",
-        "-c col sample.parquet"
-    );
+        "# Show the dictionary for column 'col' from a Parquet file", "-c col sample.parquet");
   }
 }

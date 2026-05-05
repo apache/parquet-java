@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -19,8 +19,6 @@
 package org.apache.parquet.filter;
 
 import java.util.Objects;
-
-import org.apache.parquet.Preconditions;
 import org.apache.parquet.column.ColumnReader;
 
 /**
@@ -32,16 +30,17 @@ public final class NotRecordFilter implements RecordFilter {
 
   /**
    * Returns builder for creating an and filter.
+   *
    * @param filter The filter to invert.
    * @return a not record filter
    */
-  public static final UnboundRecordFilter not( final UnboundRecordFilter filter) {
+  public static final UnboundRecordFilter not(final UnboundRecordFilter filter) {
     Objects.requireNonNull(filter, "filter cannot be null");
 
     return new UnboundRecordFilter() {
       @Override
       public RecordFilter bind(Iterable<ColumnReader> readers) {
-        return new NotRecordFilter( filter.bind(readers) );
+        return new NotRecordFilter(filter.bind(readers));
       }
     };
   }
@@ -49,7 +48,7 @@ public final class NotRecordFilter implements RecordFilter {
   /**
    * Private constructor, use NotRecordFilter.not() instead.
    */
-  private NotRecordFilter( RecordFilter boundFilter) {
+  private NotRecordFilter(RecordFilter boundFilter) {
     this.boundFilter = boundFilter;
   }
 

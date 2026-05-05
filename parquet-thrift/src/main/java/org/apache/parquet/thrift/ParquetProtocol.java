@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -20,7 +20,7 @@ package org.apache.parquet.thrift;
 
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
-
+import java.util.UUID;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TField;
 import org.apache.thrift.protocol.TList;
@@ -59,14 +59,14 @@ public abstract class ParquetProtocol extends TProtocol {
   }
 
   private TException exception() {
-    String message = name == null ?
-        "in " + getClassInfo() :
-        "when we expected " + name + " in " + getClassInfo();
-    return new TException(new UnsupportedOperationException(new Exception().getStackTrace()[1].getMethodName() + " was called " + message));
+    String message = name == null ? "in " + getClassInfo() : "when we expected " + name + " in " + getClassInfo();
+    return new TException(new UnsupportedOperationException(
+        new Exception().getStackTrace()[1].getMethodName() + " was called " + message));
   }
 
-  /** WRITE */
-
+  /**
+   * WRITE
+   */
   @Override
   public void writeMessageBegin(TMessage message) throws TException {
     throw exception();
@@ -158,6 +158,11 @@ public abstract class ParquetProtocol extends TProtocol {
   }
 
   @Override
+  public void writeUuid(UUID uuid) throws TException {
+    throw exception();
+  }
+
+  @Override
   public void writeDouble(double dub) throws TException {
     throw exception();
   }
@@ -172,8 +177,9 @@ public abstract class ParquetProtocol extends TProtocol {
     throw exception();
   }
 
-  /** READ */
-
+  /**
+   * READ
+   */
   @Override
   public TMessage readMessageBegin() throws TException {
     throw exception();
@@ -260,6 +266,11 @@ public abstract class ParquetProtocol extends TProtocol {
   }
 
   @Override
+  public UUID readUuid() throws TException {
+    throw exception();
+  }
+
+  @Override
   public double readDouble() throws TException {
     throw exception();
   }
@@ -278,5 +289,4 @@ public abstract class ParquetProtocol extends TProtocol {
   public int getMinSerializedSize(byte type) throws TException {
     throw exception();
   }
-
 }

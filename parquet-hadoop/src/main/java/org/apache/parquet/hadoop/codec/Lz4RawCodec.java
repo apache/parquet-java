@@ -18,6 +18,9 @@
  */
 package org.apache.parquet.hadoop.codec;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import org.apache.hadoop.conf.Configurable;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.compress.CompressionCodec;
@@ -25,10 +28,8 @@ import org.apache.hadoop.io.compress.CompressionInputStream;
 import org.apache.hadoop.io.compress.CompressionOutputStream;
 import org.apache.hadoop.io.compress.Compressor;
 import org.apache.hadoop.io.compress.Decompressor;
-
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import org.apache.hadoop.io.compress.DirectDecompressionCodec;
+import org.apache.hadoop.io.compress.DirectDecompressor;
 
 /**
  * Lz4 raw compression codec for Parquet. This codec type has been introduced
@@ -40,7 +41,7 @@ import java.io.OutputStream;
  * below for reference.
  * https://github.com/apache/parquet-format/blob/master/Compression.md
  */
-public class Lz4RawCodec implements Configurable, CompressionCodec {
+public class Lz4RawCodec implements Configurable, CompressionCodec, DirectDecompressionCodec {
 
   private Configuration conf;
 
@@ -70,29 +71,30 @@ public class Lz4RawCodec implements Configurable, CompressionCodec {
   }
 
   @Override
-  public CompressionInputStream createInputStream(InputStream stream)
-    throws IOException {
+  public DirectDecompressor createDirectDecompressor() {
+    return new Lz4RawDecompressor();
+  }
+
+  @Override
+  public CompressionInputStream createInputStream(InputStream stream) throws IOException {
     return createInputStream(stream, createDecompressor());
   }
 
   @Override
-  public CompressionInputStream createInputStream(InputStream stream,
-                                                  Decompressor decompressor) throws IOException {
-    return new NonBlockedDecompressorStream(stream, decompressor,
-      conf.getInt(BUFFER_SIZE_CONFIG, DEFAULT_BUFFER_SIZE_CONFIG));
+  public CompressionInputStream createInputStream(InputStream stream, Decompressor decompressor) throws IOException {
+    return new NonBlockedDecompressorStream(
+        stream, decompressor, conf.getInt(BUFFER_SIZE_CONFIG, DEFAULT_BUFFER_SIZE_CONFIG));
   }
 
   @Override
-  public CompressionOutputStream createOutputStream(OutputStream stream)
-    throws IOException {
+  public CompressionOutputStream createOutputStream(OutputStream stream) throws IOException {
     return createOutputStream(stream, createCompressor());
   }
 
   @Override
-  public CompressionOutputStream createOutputStream(OutputStream stream,
-                                                    Compressor compressor) throws IOException {
-    return new NonBlockedCompressorStream(stream, compressor,
-      conf.getInt(BUFFER_SIZE_CONFIG, DEFAULT_BUFFER_SIZE_CONFIG));
+  public CompressionOutputStream createOutputStream(OutputStream stream, Compressor compressor) throws IOException {
+    return new NonBlockedCompressorStream(
+        stream, compressor, conf.getInt(BUFFER_SIZE_CONFIG, DEFAULT_BUFFER_SIZE_CONFIG));
   }
 
   @Override

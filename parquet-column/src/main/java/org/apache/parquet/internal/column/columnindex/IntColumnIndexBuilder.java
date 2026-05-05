@@ -20,15 +20,13 @@ package org.apache.parquet.internal.column.columnindex;
 
 import static java.nio.ByteOrder.LITTLE_ENDIAN;
 
+import it.unimi.dsi.fastutil.ints.IntArrayList;
+import it.unimi.dsi.fastutil.ints.IntList;
 import java.nio.ByteBuffer;
-
 import org.apache.parquet.filter2.predicate.Statistics;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.PrimitiveComparator;
 import org.apache.parquet.schema.PrimitiveType;
-
-import it.unimi.dsi.fastutil.ints.IntArrayList;
-import it.unimi.dsi.fastutil.ints.IntList;
 
 class IntColumnIndexBuilder extends ColumnIndexBuilder {
   private static class IntColumnIndex extends ColumnIndexBase<Integer> {
@@ -132,5 +130,10 @@ class IntColumnIndexBuilder extends ColumnIndexBuilder {
   @Override
   int sizeOf(Object value) {
     return Integer.BYTES;
+  }
+
+  @Override
+  public long getMinMaxSize() {
+    return (long) minValues.size() * Integer.BYTES + (long) maxValues.size() * Integer.BYTES;
   }
 }

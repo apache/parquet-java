@@ -97,5 +97,6 @@ struct StructWithExtraField {
 }
 
 struct TestLogicalType {
-  1: required i16 test_i16
+  1: required i16 test_i16,
+  2: required byte test_i8
 }

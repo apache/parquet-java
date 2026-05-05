@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -25,20 +25,28 @@ import org.apache.parquet.column.values.RequiresFallback;
 import org.apache.parquet.column.values.ValuesWriter;
 import org.apache.parquet.io.api.Binary;
 
-public class FallbackValuesWriter<I extends ValuesWriter & RequiresFallback, F extends ValuesWriter> extends ValuesWriter {
+public class FallbackValuesWriter<I extends ValuesWriter & RequiresFallback, F extends ValuesWriter>
+    extends ValuesWriter {
 
-  public static <I extends ValuesWriter & RequiresFallback, F extends ValuesWriter> FallbackValuesWriter<I, F> of(I initialWriter, F fallBackWriter) {
+  public static <I extends ValuesWriter & RequiresFallback, F extends ValuesWriter> FallbackValuesWriter<I, F> of(
+      I initialWriter, F fallBackWriter) {
     return new FallbackValuesWriter<>(initialWriter, fallBackWriter);
   }
 
-  /** writer to start with */
+  /**
+   * writer to start with
+   */
   public final I initialWriter;
-  /** fallback */
+  /**
+   * fallback
+   */
   public final F fallBackWriter;
 
   private boolean fellBackAlready = false;
 
-  /** writer currently written to */
+  /**
+   * writer currently written to
+   */
   private ValuesWriter currentWriter;
 
   private boolean initialUsedAndHadDictionary = false;
@@ -49,7 +57,9 @@ public class FallbackValuesWriter<I extends ValuesWriter & RequiresFallback, F e
    */
   private long rawDataByteSize = 0;
 
-  /** indicates if this is the first page being processed */
+  /**
+   * indicates if this is the first page being processed
+   */
   private boolean firstPage = true;
 
   public FallbackValuesWriter(I initialWriter, F fallBackWriter) {
@@ -133,15 +143,11 @@ public class FallbackValuesWriter<I extends ValuesWriter & RequiresFallback, F e
   @Override
   public String memUsageString(String prefix) {
     return String.format(
-        "%s FallbackValuesWriter{\n"
-          + "%s\n"
-          + "%s\n"
-        + "%s}\n",
+        "%s FallbackValuesWriter{\n" + "%s\n" + "%s\n" + "%s}\n",
         prefix,
         initialWriter.memUsageString(prefix + " initial:"),
         fallBackWriter.memUsageString(prefix + " fallback:"),
-        prefix
-        );
+        prefix);
   }
 
   private void checkFallback() {
@@ -167,7 +173,7 @@ public class FallbackValuesWriter<I extends ValuesWriter & RequiresFallback, F e
 
   @Override
   public void writeBytes(Binary v) {
-    //for rawdata, length(4 bytes int) is stored, followed by the binary content itself
+    // for rawdata, length(4 bytes int) is stored, followed by the binary content itself
     rawDataByteSize += v.length() + 4;
     currentWriter.writeBytes(v);
     checkFallback();
@@ -200,5 +206,4 @@ public class FallbackValuesWriter<I extends ValuesWriter & RequiresFallback, F e
     currentWriter.writeDouble(v);
     checkFallback();
   }
-
 }

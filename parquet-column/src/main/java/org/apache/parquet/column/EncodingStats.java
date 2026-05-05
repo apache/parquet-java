@@ -19,6 +19,9 @@
 
 package org.apache.parquet.column;
 
+import static org.apache.parquet.column.Encoding.PLAIN_DICTIONARY;
+import static org.apache.parquet.column.Encoding.RLE_DICTIONARY;
+
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
@@ -26,9 +29,6 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
-
-import static org.apache.parquet.column.Encoding.PLAIN_DICTIONARY;
-import static org.apache.parquet.column.Encoding.RLE_DICTIONARY;
 
 /**
  * EncodingStats track dictionary and data page encodings for a single column within a row group.
@@ -41,9 +41,7 @@ public class EncodingStats {
   final Map<Encoding, Number> dataStats;
   private final boolean usesV2Pages;
 
-  private EncodingStats(Map<Encoding, Number> dictStats,
-                        Map<Encoding, Number> dataStats,
-                        boolean usesV2Pages) {
+  private EncodingStats(Map<Encoding, Number> dictStats, Map<Encoding, Number> dataStats, boolean usesV2Pages) {
     this.dictStats = dictStats;
     this.dataStats = dataStats;
     this.usesV2Pages = usesV2Pages;
@@ -83,8 +81,7 @@ public class EncodingStats {
 
     // this modifies the set, so copy it
     Set<Encoding> encodings = new HashSet<>(dataStats.keySet());
-    if (!encodings.remove(RLE_DICTIONARY) &&
-        !encodings.remove(PLAIN_DICTIONARY)) {
+    if (!encodings.remove(RLE_DICTIONARY) && !encodings.remove(PLAIN_DICTIONARY)) {
       return true; // not dictionary encoded
     }
 
@@ -125,8 +122,7 @@ public class EncodingStats {
     }
 
     public Builder addDictEncoding(Encoding encoding, int numPages) {
-      dictStats.computeIfAbsent(encoding, enc -> new AtomicInteger(0))
-          .addAndGet(numPages);
+      dictStats.computeIfAbsent(encoding, enc -> new AtomicInteger(0)).addAndGet(numPages);
       return this;
     }
 
@@ -142,8 +138,7 @@ public class EncodingStats {
     }
 
     public Builder addDataEncoding(Encoding encoding, int numPages) {
-      dataStats.computeIfAbsent(encoding, enc -> new AtomicInteger(0))
-      .addAndGet(numPages);
+      dataStats.computeIfAbsent(encoding, enc -> new AtomicInteger(0)).addAndGet(numPages);
       return this;
     }
 

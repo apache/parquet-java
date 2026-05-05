@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -18,13 +18,22 @@
  */
 package org.apache.parquet.thrift.projection.amend;
 
-import org.apache.thrift.TException;
-import org.apache.thrift.protocol.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
 import org.apache.parquet.thrift.struct.ThriftField;
 import org.apache.parquet.thrift.struct.ThriftType;
 import org.apache.parquet.thrift.struct.ThriftType.StructType;
-
-import java.util.*;
+import org.apache.thrift.TException;
+import org.apache.thrift.protocol.TField;
+import org.apache.thrift.protocol.TList;
+import org.apache.thrift.protocol.TMap;
+import org.apache.thrift.protocol.TProtocol;
+import org.apache.thrift.protocol.TSet;
+import org.apache.thrift.protocol.TStruct;
+import org.apache.thrift.protocol.TType;
 
 /**
  * fill in default value for required fields in TProtocols after projection is specified.
@@ -67,8 +76,7 @@ public class ProtocolEventsAmender {
       TProtocol next = eventIter.next();
       TField field = next.readFieldBegin();
 
-      if (isStopField(field))
-        break;
+      if (isStopField(field)) break;
       acceptProtocol(next);
       includedFieldsIds.add(field.id);
       ThriftField fieldDefinition = thriftStructType.getChildById(field.id);
@@ -131,9 +139,9 @@ public class ProtocolEventsAmender {
 
     int mapSize = thriftMap.size;
     for (int i = 0; i < mapSize; i++) {
-      //readkey
+      // readkey
       checkField(thriftMap.keyType, eventIter, keyFieldForWriting);
-      //readValue
+      // readValue
       checkField(thriftMap.valueType, eventIter, valueFieldForWriting);
     }
     acceptProtocol(eventIter.next()).readMapEnd();
@@ -167,5 +175,4 @@ public class ProtocolEventsAmender {
   private boolean isRequired(ThriftField requiredField) {
     return requiredField.getRequirement() == ThriftField.Requirement.REQUIRED;
   }
-
 }

@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -26,13 +26,13 @@ import java.util.UUID;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.conf.ParquetConfiguration;
-import org.junit.Rule;
-import org.junit.rules.TemporaryFolder;
 import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.io.api.RecordConsumer;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
+import org.junit.Rule;
+import org.junit.rules.TemporaryFolder;
 
 public class DirectWriterTest {
 
@@ -47,8 +47,7 @@ public class DirectWriterTest {
     return writeDirect(MessageTypeParser.parseMessageType(type), writer);
   }
 
-  protected Path writeDirect(String type, DirectWriter writer,
-                           Map<String, String> metadata) throws IOException {
+  protected Path writeDirect(String type, DirectWriter writer, Map<String, String> metadata) throws IOException {
     return writeDirect(MessageTypeParser.parseMessageType(type), writer, metadata);
   }
 
@@ -56,16 +55,15 @@ public class DirectWriterTest {
     return writeDirect(type, writer, new HashMap<String, String>());
   }
 
-  protected Path writeDirect(MessageType type, DirectWriter writer,
-                           Map<String, String> metadata) throws IOException {
+  protected Path writeDirect(MessageType type, DirectWriter writer, Map<String, String> metadata) throws IOException {
     File temp = tempDir.newFile(UUID.randomUUID().toString());
     temp.deleteOnExit();
     temp.delete();
 
     Path path = new Path(temp.getPath());
 
-    ParquetWriter<Void> parquetWriter = new ParquetWriter<Void>(
-        path, new DirectWriteSupport(type, writer, metadata));
+    ParquetWriter<Void> parquetWriter =
+        new ParquetWriter<Void>(path, new DirectWriteSupport(type, writer, metadata));
     parquetWriter.write(null);
     parquetWriter.close();
 
@@ -78,8 +76,7 @@ public class DirectWriterTest {
     private final DirectWriter writer;
     private final Map<String, String> metadata;
 
-    protected DirectWriteSupport(MessageType type, DirectWriter writer,
-                                 Map<String, String> metadata) {
+    protected DirectWriteSupport(MessageType type, DirectWriter writer, Map<String, String> metadata) {
       this.type = type;
       this.writer = writer;
       this.metadata = metadata;

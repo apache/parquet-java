@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -21,18 +21,7 @@ package org.apache.parquet.thrift;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
-
-import org.apache.thrift.TException;
-import org.apache.thrift.protocol.TField;
-import org.apache.thrift.protocol.TList;
-import org.apache.thrift.protocol.TMap;
-import org.apache.thrift.protocol.TMessage;
-import org.apache.thrift.protocol.TProtocol;
-import org.apache.thrift.protocol.TSet;
-import org.apache.thrift.protocol.TStruct;
-import org.apache.thrift.protocol.TType;
-
-import org.apache.parquet.ParquetRuntimeException;
+import java.util.UUID;
 import org.apache.parquet.ShouldNeverHappenException;
 import org.apache.parquet.thrift.struct.ThriftField;
 import org.apache.parquet.thrift.struct.ThriftType;
@@ -42,6 +31,15 @@ import org.apache.parquet.thrift.struct.ThriftType.SetType;
 import org.apache.parquet.thrift.struct.ThriftType.StructType;
 import org.apache.parquet.thrift.struct.ThriftType.StructType.StructOrUnionType;
 import org.apache.parquet.thrift.struct.ThriftTypeID;
+import org.apache.thrift.TException;
+import org.apache.thrift.protocol.TField;
+import org.apache.thrift.protocol.TList;
+import org.apache.thrift.protocol.TMap;
+import org.apache.thrift.protocol.TMessage;
+import org.apache.thrift.protocol.TProtocol;
+import org.apache.thrift.protocol.TSet;
+import org.apache.thrift.protocol.TStruct;
+import org.apache.thrift.protocol.TType;
 
 /**
  * Class to read from one protocol in a buffer and then write to another one
@@ -56,6 +54,7 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
 
   private interface Action {
     void write(TProtocol out) throws TException;
+
     String toDebugString();
   }
 
@@ -77,6 +76,7 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
     public void write(TProtocol out) throws TException {
       out.writeFieldEnd();
     }
+
     @Override
     public String toDebugString() {
       return ";";
@@ -88,6 +88,7 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
     public void write(TProtocol out) throws TException {
       out.writeMapEnd();
     }
+
     @Override
     public String toDebugString() {
       return "]";
@@ -99,6 +100,7 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
     public void write(TProtocol out) throws TException {
       out.writeListEnd();
     }
+
     @Override
     public String toDebugString() {
       return "}";
@@ -110,12 +112,13 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
     public void write(TProtocol out) throws TException {
       out.writeSetEnd();
     }
+
     @Override
     public String toDebugString() {
       return "*}";
     }
   };
-  //error handler is global
+  // error handler is global
   private final FieldIgnoredHandler errorHandler;
   private final StructType thriftType;
 
@@ -136,16 +139,16 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
    *
    * @param in  input protocol
    * @param out output protocol
-   * @throws org.apache.thrift.TException         when an error happened while writing. Those are usually not recoverable
+   * @throws org.apache.thrift.TException when an error happened while writing. Those are usually not recoverable
    */
   @Override
   public void readOne(TProtocol in, TProtocol out) throws TException {
     List<Action> buffer = new ArrayList<Action>(1);
-    try{
-        boolean hasFieldsIgnored = readOneStruct(in, buffer, thriftType);
-        if (hasFieldsIgnored) {
-          notifyRecordHasFieldIgnored();
-        }
+    try {
+      boolean hasFieldsIgnored = readOneStruct(in, buffer, thriftType);
+      if (hasFieldsIgnored) {
+        notifyRecordHasFieldIgnored();
+      }
     } catch (Exception e) {
       throw new SkippableException(error("Error while reading", buffer), e);
     }
@@ -183,60 +186,68 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
    * @return true when all value is consumed, false when some values is ignored due to the field is not defined in expectedType
    * @throws TException
    */
-  private boolean readOneValue(TProtocol in, byte type, List<Action> buffer, ThriftType expectedType) throws TException {
+  private boolean readOneValue(TProtocol in, byte type, List<Action> buffer, ThriftType expectedType)
+      throws TException {
     if (expectedType != null && expectedType.getType().getSerializedThriftType() != type) {
-      throw new DecodingSchemaMismatchException("the data type does not match the expected thrift structure: expected " + expectedType + " got " + typeName(type));
+      throw new DecodingSchemaMismatchException(
+          "the data type does not match the expected thrift structure: expected " + expectedType + " got "
+              + typeName(type));
     }
     boolean hasFieldsIgnored = false;
     switch (type) {
-    case TType.LIST:
-      hasFieldsIgnored = readOneList(in, buffer, (ListType)expectedType);
-      break;
-    case TType.MAP:
-      hasFieldsIgnored = readOneMap(in, buffer, (MapType)expectedType);
-      break;
-    case TType.SET:
-      hasFieldsIgnored = readOneSet(in, buffer, (SetType)expectedType);
-      break;
-    case TType.STRUCT:
-      hasFieldsIgnored = readOneStruct(in, buffer, (StructType)expectedType);
-      break;
-    case TType.STOP:
-      break;
-    case TType.BOOL:
-      final boolean bool = in.readBool();
-      writeBoolAction(buffer, bool);
-      break;
-    case TType.BYTE:
-      final byte b = in.readByte();
-      writeByteAction(buffer, b);
-      break;
-    case TType.DOUBLE:
-      final double d = in.readDouble();
-      writeDoubleAction(buffer, d);
-      break;
-    case TType.I16:
-      final short s = in.readI16();
-      writeShortAction(buffer, s);
-      break;
-    case TType.ENUM: // same as i32 => actually never seen in the protocol layer as enums are written as a i32 field
-    case TType.I32:
-      final int i = in.readI32();
-      checkEnum(expectedType,i);
-      writeIntAction(buffer, i);
-      break;
-    case TType.I64:
-      final long l = in.readI64();
-      writeLongAction(buffer, l);
-      break;
-    case TType.STRING:
-      final ByteBuffer bin = in.readBinary();
-      writeStringAction(buffer, bin);
-      break;
-    case TType.VOID:
-      break;
-    default:
-      throw new TException("Unknown type: " + type);
+      case TType.LIST:
+        hasFieldsIgnored = readOneList(in, buffer, (ListType) expectedType);
+        break;
+      case TType.MAP:
+        hasFieldsIgnored = readOneMap(in, buffer, (MapType) expectedType);
+        break;
+      case TType.SET:
+        hasFieldsIgnored = readOneSet(in, buffer, (SetType) expectedType);
+        break;
+      case TType.STRUCT:
+        hasFieldsIgnored = readOneStruct(in, buffer, (StructType) expectedType);
+        break;
+      case TType.STOP:
+        break;
+      case TType.BOOL:
+        final boolean bool = in.readBool();
+        writeBoolAction(buffer, bool);
+        break;
+      case TType.BYTE:
+        final byte b = in.readByte();
+        writeByteAction(buffer, b);
+        break;
+      case TType.DOUBLE:
+        final double d = in.readDouble();
+        writeDoubleAction(buffer, d);
+        break;
+      case TType.I16:
+        final short s = in.readI16();
+        writeShortAction(buffer, s);
+        break;
+      case TType.ENUM: // same as i32 => actually never seen in the protocol layer as enums are written as a i32
+        // field
+      case TType.I32:
+        final int i = in.readI32();
+        checkEnum(expectedType, i);
+        writeIntAction(buffer, i);
+        break;
+      case TType.I64:
+        final long l = in.readI64();
+        writeLongAction(buffer, l);
+        break;
+      case TType.STRING:
+        final ByteBuffer bin = in.readBinary();
+        writeStringAction(buffer, bin);
+        break;
+      case TType.UUID:
+        final UUID uuid = in.readUuid();
+        writeUuidAction(buffer, uuid);
+        break;
+      case TType.VOID:
+        break;
+      default:
+        throw new TException("Unknown type: " + type);
     }
     return hasFieldsIgnored;
   }
@@ -251,6 +262,20 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
       @Override
       public String toDebugString() {
         return String.valueOf(bin);
+      }
+    });
+  }
+
+  private void writeUuidAction(List<Action> buffer, final UUID uuid) {
+    buffer.add(new Action() {
+      @Override
+      public void write(TProtocol out) throws TException {
+        out.writeUuid(uuid);
+      }
+
+      @Override
+      public String toDebugString() {
+        return uuid.toString();
       }
     });
   }
@@ -369,10 +394,10 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
       ThriftField expectedField;
       if ((expectedField = type.getChildById(field.id)) == null) {
         handleUnrecognizedField(field, type, in);
-        hasFieldsIgnored |= true;
+        hasFieldsIgnored = true;
         continue;
       }
-      
+
       childFieldsPresent++;
 
       buffer.add(new Action() {
@@ -404,15 +429,15 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
       case STRUCT:
         // this is an unrecognized field in a struct, not a union
         notifyIgnoredFieldsOfRecord(field);
-        //read the value and ignore it, NullProtocol will do nothing
+        // read the value and ignore it, NullProtocol will do nothing
         new ProtocolReadToWrite().readOneValue(in, new NullProtocol(), field.type);
         break;
       case UNION:
         // this is a union with an unrecognized member -- this is fatal for this record
         // in the write path, because it will be unreadable in the read path.
         // throwing here means we will either skip this record entirely, or fail completely.
-        throw new DecodingSchemaMismatchException("Unrecognized union member with id: "
-            + field.id + " for struct:\n" + type);
+        throw new DecodingSchemaMismatchException(
+            "Unrecognized union member with id: " + field.id + " for struct:\n" + type);
       case UNKNOWN:
         throw unknownStructOrUnion(type);
       default:
@@ -430,11 +455,12 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
         if (childFieldsPresent != 1) {
 
           if (childFieldsPresent == 0) {
-            throw new DecodingSchemaMismatchException("Cannot write a TUnion with no set value in :\n" + type);
+            throw new DecodingSchemaMismatchException(
+                "Cannot write a TUnion with no set value in :\n" + type);
           } else {
-            throw new DecodingSchemaMismatchException("Cannot write a TUnion with more than 1 set value in :\n" + type);
+            throw new DecodingSchemaMismatchException(
+                "Cannot write a TUnion with more than 1 set value in :\n" + type);
           }
-
         }
         break;
       case UNKNOWN:
@@ -471,8 +497,10 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
     });
     boolean hasFieldIgnored = false;
     for (int i = 0; i < map.size; i++) {
-      hasFieldIgnored |= readOneValue(in, map.keyType, buffer, mapType.getKey().getType());
-      hasFieldIgnored |= readOneValue(in, map.valueType, buffer, mapType.getValue().getType());
+      hasFieldIgnored |=
+          readOneValue(in, map.keyType, buffer, mapType.getKey().getType());
+      hasFieldIgnored |=
+          readOneValue(in, map.valueType, buffer, mapType.getValue().getType());
     }
     in.readMapEnd();
     buffer.add(MAP_END);
@@ -493,7 +521,8 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
       }
     });
 
-    boolean hasFieldsIgnored = readCollectionElements(in, set.size, set.elemType, buffer, expectedType.getValues().getType());
+    boolean hasFieldsIgnored = readCollectionElements(
+        in, set.size, set.elemType, buffer, expectedType.getValues().getType());
     in.readSetEnd();
     buffer.add(SET_END);
     return hasFieldsIgnored;
@@ -512,14 +541,16 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
         return "<e=" + list.elemType + ", s=" + list.size + ">{";
       }
     });
-    boolean hasFieldsIgnored = readCollectionElements(in, list.size, list.elemType, buffer, expectedType.getValues().getType());
+    boolean hasFieldsIgnored = readCollectionElements(
+        in, list.size, list.elemType, buffer, expectedType.getValues().getType());
     in.readListEnd();
     buffer.add(LIST_END);
     return hasFieldsIgnored;
   }
 
-  private boolean readCollectionElements(TProtocol in,
-                                         final int size, final byte elemType, List<Action> buffer, ThriftType expectedType) throws TException {
+  private boolean readCollectionElements(
+      TProtocol in, final int size, final byte elemType, List<Action> buffer, ThriftType expectedType)
+      throws TException {
     boolean hasFieldIgnored = false;
     for (int i = 0; i < size; i++) {
       hasFieldIgnored |= readOneValue(in, elemType, buffer, expectedType);
@@ -535,7 +566,7 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
    */
   private void checkEnum(ThriftType expectedType, int i) {
     if (expectedType.getType() == ThriftTypeID.ENUM) {
-      ThriftType.EnumType expectedEnumType = (ThriftType.EnumType)expectedType;
+      ThriftType.EnumType expectedEnumType = (ThriftType.EnumType) expectedType;
       if (expectedEnumType.getEnumValueById(i) == null) {
         throw new DecodingSchemaMismatchException("can not find index " + i + " in enum " + expectedType);
       }
@@ -552,88 +583,70 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
     }
 
     @Override
-    public void writeMessageBegin(TMessage tMessage) throws TException {
-    }
+    public void writeMessageBegin(TMessage tMessage) throws TException {}
 
     @Override
-    public void writeMessageEnd() throws TException {
-    }
+    public void writeMessageEnd() throws TException {}
 
     @Override
-    public void writeStructBegin(TStruct tStruct) throws TException {
-    }
+    public void writeStructBegin(TStruct tStruct) throws TException {}
 
     @Override
-    public void writeStructEnd() throws TException {
-    }
+    public void writeStructEnd() throws TException {}
 
     @Override
-    public void writeFieldBegin(TField tField) throws TException {
-    }
+    public void writeFieldBegin(TField tField) throws TException {}
 
     @Override
-    public void writeFieldEnd() throws TException {
-    }
+    public void writeFieldEnd() throws TException {}
 
     @Override
-    public void writeFieldStop() throws TException {
-    }
+    public void writeFieldStop() throws TException {}
 
     @Override
-    public void writeMapBegin(TMap tMap) throws TException {
-    }
+    public void writeMapBegin(TMap tMap) throws TException {}
 
     @Override
-    public void writeMapEnd() throws TException {
-    }
+    public void writeMapEnd() throws TException {}
 
     @Override
-    public void writeListBegin(TList tList) throws TException {
-    }
+    public void writeListBegin(TList tList) throws TException {}
 
     @Override
-    public void writeListEnd() throws TException {
-    }
+    public void writeListEnd() throws TException {}
 
     @Override
-    public void writeSetBegin(TSet tSet) throws TException {
-    }
+    public void writeSetBegin(TSet tSet) throws TException {}
 
     @Override
-    public void writeSetEnd() throws TException {
-    }
+    public void writeSetEnd() throws TException {}
 
     @Override
-    public void writeBool(boolean b) throws TException {
-    }
+    public void writeBool(boolean b) throws TException {}
 
     @Override
-    public void writeByte(byte b) throws TException {
-    }
+    public void writeByte(byte b) throws TException {}
 
     @Override
-    public void writeI16(short i) throws TException {
-    }
+    public void writeI16(short i) throws TException {}
 
     @Override
-    public void writeI32(int i) throws TException {
-    }
+    public void writeI32(int i) throws TException {}
 
     @Override
-    public void writeI64(long l) throws TException {
-    }
+    public void writeI64(long l) throws TException {}
 
     @Override
-    public void writeDouble(double v) throws TException {
-    }
+    public void writeUuid(UUID uuid) throws TException {}
 
     @Override
-    public void writeString(String s) throws TException {
-    }
+    public void writeDouble(double v) throws TException {}
 
     @Override
-    public void writeBinary(ByteBuffer byteBuffer) throws TException {
-    }
+    public void writeString(String s) throws TException {}
+
+    @Override
+    public void writeBinary(ByteBuffer byteBuffer) throws TException {}
 
     @Override
     public TMessage readMessageBegin() throws TException {
@@ -641,8 +654,7 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
     }
 
     @Override
-    public void readMessageEnd() throws TException {
-    }
+    public void readMessageEnd() throws TException {}
 
     @Override
     public TStruct readStructBegin() throws TException {
@@ -650,8 +662,7 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
     }
 
     @Override
-    public void readStructEnd() throws TException {
-    }
+    public void readStructEnd() throws TException {}
 
     @Override
     public TField readFieldBegin() throws TException {
@@ -659,8 +670,7 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
     }
 
     @Override
-    public void readFieldEnd() throws TException {
-    }
+    public void readFieldEnd() throws TException {}
 
     @Override
     public TMap readMapBegin() throws TException {
@@ -668,8 +678,7 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
     }
 
     @Override
-    public void readMapEnd() throws TException {
-    }
+    public void readMapEnd() throws TException {}
 
     @Override
     public TList readListBegin() throws TException {
@@ -677,8 +686,7 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
     }
 
     @Override
-    public void readListEnd() throws TException {
-    }
+    public void readListEnd() throws TException {}
 
     @Override
     public TSet readSetBegin() throws TException {
@@ -686,8 +694,7 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
     }
 
     @Override
-    public void readSetEnd() throws TException {
-    }
+    public void readSetEnd() throws TException {}
 
     @Override
     public boolean readBool() throws TException {
@@ -715,6 +722,11 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
     }
 
     @Override
+    public UUID readUuid() throws TException {
+      return null;
+    }
+
+    @Override
     public double readDouble() throws TException {
       return 0;
     }
@@ -734,5 +746,4 @@ public class BufferedProtocolReadToWrite implements ProtocolPipe {
       return 0;
     }
   }
-
 }

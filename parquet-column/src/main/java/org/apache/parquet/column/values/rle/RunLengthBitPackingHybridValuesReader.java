@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -19,7 +19,6 @@
 package org.apache.parquet.column.values.rle;
 
 import java.io.IOException;
-
 import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.column.values.ValuesReader;
@@ -40,8 +39,7 @@ public class RunLengthBitPackingHybridValuesReader extends ValuesReader {
   @Override
   public void initFromPage(int valueCountL, ByteBufferInputStream stream) throws IOException {
     int length = BytesUtils.readIntLittleEndian(stream);
-    this.decoder = new RunLengthBitPackingHybridDecoder(
-        bitWidth, stream.sliceStream(length));
+    this.decoder = new RunLengthBitPackingHybridDecoder(bitWidth, stream.sliceStream(length));
 
     // 4 is for the length which is stored as 4 bytes little endian
     updateNextOffset(length + 4);
@@ -55,7 +53,7 @@ public class RunLengthBitPackingHybridValuesReader extends ValuesReader {
       throw new ParquetDecodingException(e);
     }
   }
-  
+
   @Override
   public boolean readBoolean() {
     return readInteger() == 0 ? false : true;

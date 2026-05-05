@@ -18,22 +18,18 @@
  */
 package org.apache.parquet.thrift;
 
-import java.io.IOException;
-import java.util.Arrays;
-
-import org.junit.Assert;
-
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
-import org.junit.Test;
-
-import org.apache.parquet.hadoop.metadata.CompressionCodecName;
-
 import com.twitter.data.proto.tutorial.thrift.AddressBook;
 import com.twitter.data.proto.tutorial.thrift.Name;
 import com.twitter.data.proto.tutorial.thrift.Person;
 import com.twitter.data.proto.tutorial.thrift.PhoneNumber;
+import java.io.IOException;
+import java.util.Arrays;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
+import org.apache.parquet.hadoop.metadata.CompressionCodecName;
+import org.junit.Assert;
+import org.junit.Test;
 
 public class TestThriftParquetReaderWriter {
 
@@ -56,18 +52,19 @@ public class TestThriftParquetReaderWriter {
       fs.delete(f, true);
     }
 
-    AddressBook original = new AddressBook(
-        Arrays.asList(new Person(new Name("Bob", "Roberts"), 1, "bob@roberts.com", Arrays.asList(new PhoneNumber("5555555555"))))
-        );
+    AddressBook original = new AddressBook(Arrays.asList(new Person(
+        new Name("Bob", "Roberts"), 1, "bob@roberts.com", Arrays.asList(new PhoneNumber("5555555555")))));
 
     { // write
-      ThriftParquetWriter<AddressBook> thriftParquetWriter = new ThriftParquetWriter<AddressBook>(f, AddressBook.class, CompressionCodecName.UNCOMPRESSED);
+      ThriftParquetWriter<AddressBook> thriftParquetWriter =
+          new ThriftParquetWriter<AddressBook>(f, AddressBook.class, CompressionCodecName.UNCOMPRESSED);
       thriftParquetWriter.write(original);
       thriftParquetWriter.close();
     }
 
     { // read
-      ThriftParquetReader<AddressBook> thriftParquetReader = new ThriftParquetReader<AddressBook>(f, AddressBook.class);
+      ThriftParquetReader<AddressBook> thriftParquetReader =
+          new ThriftParquetReader<AddressBook>(f, AddressBook.class);
       AddressBook read = thriftParquetReader.read();
       Assert.assertEquals(original, read);
       thriftParquetReader.close();

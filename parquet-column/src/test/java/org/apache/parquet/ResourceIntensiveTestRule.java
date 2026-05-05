@@ -32,8 +32,8 @@ import org.junit.runners.model.Statement;
  */
 public class ResourceIntensiveTestRule implements TestRule {
 
-  private static final TestRule INSTANCE = new ResourceIntensiveTestRule(
-      Boolean.getBoolean("enableResourceIntensiveTests"));
+  private static final TestRule INSTANCE =
+      new ResourceIntensiveTestRule(Boolean.getBoolean("enableResourceIntensiveTests"));
 
   public static TestRule get() {
     return INSTANCE;
@@ -47,12 +47,15 @@ public class ResourceIntensiveTestRule implements TestRule {
 
   @Override
   public Statement apply(Statement base, Description description) {
-    return enabled ? base : new Statement() {
-      @Override
-      public void evaluate() {
-        assumeTrue("Resource intensive test is not executed due to the limitations of the environment", enabled);
-      }
-    };
+    return enabled
+        ? base
+        : new Statement() {
+          @Override
+          public void evaluate() {
+            assumeTrue(
+                "Resource intensive test is not executed due to the limitations of the environment",
+                enabled);
+          }
+        };
   }
-
 }

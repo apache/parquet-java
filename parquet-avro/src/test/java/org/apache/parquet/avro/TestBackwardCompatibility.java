@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -24,9 +24,9 @@ import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.util.Utf8;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
+import org.apache.parquet.hadoop.ParquetReader;
 import org.junit.Assert;
 import org.junit.Test;
-import org.apache.parquet.hadoop.ParquetReader;
 
 public class TestBackwardCompatibility {
 
@@ -38,14 +38,12 @@ public class TestBackwardCompatibility {
     // schema is recognized and used to read the file as expected.
     Path testFile = new Path(Resources.getResource("strings-2.parquet").getFile());
     Configuration conf = new Configuration();
-    ParquetReader<GenericRecord> reader = AvroParquetReader
-        .builder(new AvroReadSupport<GenericRecord>(), testFile)
+    ParquetReader<GenericRecord> reader = AvroParquetReader.builder(new AvroReadSupport<GenericRecord>(), testFile)
         .withConf(conf)
         .build();
     GenericRecord r;
     while ((r = reader.read()) != null) {
-      Assert.assertTrue("Should read value into a String",
-          r.get("text") instanceof String);
+      Assert.assertTrue("Should read value into a String", r.get("text") instanceof String);
     }
   }
 
@@ -54,15 +52,12 @@ public class TestBackwardCompatibility {
     Path testFile = new Path(Resources.getResource("strings-2.parquet").getFile());
     Configuration conf = new Configuration();
     conf.setBoolean(AvroReadSupport.AVRO_COMPATIBILITY, false);
-    ParquetReader<GenericRecord> reader = AvroParquetReader
-        .builder(new AvroReadSupport<GenericRecord>(), testFile)
+    ParquetReader<GenericRecord> reader = AvroParquetReader.builder(new AvroReadSupport<GenericRecord>(), testFile)
         .withConf(conf)
         .build();
     GenericRecord r;
     while ((r = reader.read()) != null) {
-      Assert.assertTrue("Should read value into a String",
-          r.get("text") instanceof Utf8);
+      Assert.assertTrue("Should read value into a String", r.get("text") instanceof Utf8);
     }
   }
-
 }

@@ -19,32 +19,39 @@
 
 package org.apache.parquet.crypto;
 
+import java.util.HashMap;
+import java.util.Map;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 
-import java.util.HashMap;
-import java.util.Map;
-
 public class SampleEncryptionPropertiesFactory implements EncryptionPropertiesFactory {
 
-  public static final byte[] FOOTER_KEY = {0x01, 0x02, 0x03, 0x4, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a,
-    0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10};
+  public static final byte[] FOOTER_KEY = {
+    0x01, 0x02, 0x03, 0x4, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10
+  };
   public static final ColumnPath COL1 = ColumnPath.fromDotString("col_1");
-  public static final byte[] COL1_KEY = {0x02, 0x03, 0x4, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b,
-    0x0c, 0x0d, 0x0e, 0x0f, 0x10, 0x11};
+  public static final byte[] COL1_KEY = {
+    0x02, 0x03, 0x4, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10, 0x11
+  };
   public static final ColumnEncryptionProperties COL1_ENCR_PROPERTIES = ColumnEncryptionProperties.builder(
-    COL1.toDotString()).withKey(COL1_KEY).build();
+          COL1.toDotString())
+      .withKey(COL1_KEY)
+      .build();
   public static final ColumnPath COL2 = ColumnPath.fromDotString("col_2");
-  public static final byte[] COL2_KEY = {0x03, 0x4, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c,
-     0x0d, 0x0e, 0x0f, 0x10, 0x11, 0x12};
+  public static final byte[] COL2_KEY = {
+    0x03, 0x4, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10, 0x11, 0x12
+  };
   public static final ColumnEncryptionProperties COL2_ENCR_PROPERTIES = ColumnEncryptionProperties.builder(
-    COL2.toDotString()).withKey(COL2_KEY).build();
+          COL2.toDotString())
+      .withKey(COL2_KEY)
+      .build();
 
   @Override
-  public FileEncryptionProperties getFileEncryptionProperties(Configuration fileHadoopConfig, Path tempFilePath,
-                                                              WriteSupport.WriteContext fileWriteContext) throws ParquetCryptoRuntimeException {
+  public FileEncryptionProperties getFileEncryptionProperties(
+      Configuration fileHadoopConfig, Path tempFilePath, WriteSupport.WriteContext fileWriteContext)
+      throws ParquetCryptoRuntimeException {
 
     Map<ColumnPath, ColumnEncryptionProperties> columnEncPropertiesMap = new HashMap<>();
 
@@ -53,6 +60,9 @@ public class SampleEncryptionPropertiesFactory implements EncryptionPropertiesFa
 
     FileEncryptionProperties.Builder fileEncBuilder = FileEncryptionProperties.builder(FOOTER_KEY);
 
-    return fileEncBuilder.withAlgorithm(ParquetCipher.AES_GCM_V1).withEncryptedColumns(columnEncPropertiesMap).build();
+    return fileEncBuilder
+        .withAlgorithm(ParquetCipher.AES_GCM_V1)
+        .withEncryptedColumns(columnEncPropertiesMap)
+        .build();
   }
 }

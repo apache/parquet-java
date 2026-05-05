@@ -19,17 +19,17 @@
 
 package org.apache.parquet.hadoop.util;
 
-import org.apache.hadoop.fs.PositionedReadable;
-import org.apache.hadoop.fs.Seekable;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import org.apache.hadoop.fs.PositionedReadable;
+import org.apache.hadoop.fs.Seekable;
 
-class MockHadoopInputStream extends ByteArrayInputStream
-    implements Seekable, PositionedReadable {
-  static final byte[] TEST_ARRAY = new byte[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
+class MockHadoopInputStream extends ByteArrayInputStream implements Seekable, PositionedReadable {
+  static final byte[] TEST_ARRAY = new byte[] {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
 
   private int[] lengths;
   private int current = 0;
+
   MockHadoopInputStream(int... actualReadLengths) {
     super(TEST_ARRAY);
     this.lengths = actualReadLengths;

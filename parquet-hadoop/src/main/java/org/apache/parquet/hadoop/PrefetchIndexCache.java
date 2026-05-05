@@ -18,6 +18,10 @@
  */
 package org.apache.parquet.hadoop;
 
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.column.values.bloomfilter.BloomFilter;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
@@ -25,11 +29,6 @@ import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.internal.column.columnindex.ColumnIndex;
 import org.apache.parquet.internal.column.columnindex.OffsetIndex;
-
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
 
 /**
  * This index cache will prefetch indexes of all columns when calling {@link #setBlockMetadata(BlockMetaData)}.
@@ -46,14 +45,11 @@ class PrefetchIndexCache implements IndexCache {
   private Map<ColumnPath, BloomFilter> bloomIndexCache;
 
   /**
-   * @param fileReader the file reader
-   * @param columns the columns that need to cache
+   * @param fileReader        the file reader
+   * @param columns           the columns that need to cache
    * @param freeCacheAfterGet whether free the given index cache after calling the given get method
    */
-  PrefetchIndexCache(
-      ParquetFileReader fileReader,
-      Set<ColumnPath> columns,
-      boolean freeCacheAfterGet) {
+  PrefetchIndexCache(ParquetFileReader fileReader, Set<ColumnPath> columns, boolean freeCacheAfterGet) {
     this.fileReader = fileReader;
     this.columns = columns;
     this.freeCacheAfterGet = freeCacheAfterGet;
@@ -72,10 +68,10 @@ class PrefetchIndexCache implements IndexCache {
     ColumnPath columnPath = chunk.getPath();
     if (columns.contains(columnPath)) {
       Preconditions.checkState(
-        columnIndexCache.containsKey(columnPath),
-        "Not found cached ColumnIndex for column: %s with cache strategy: %s",
-        columnPath.toDotString(),
-        CacheStrategy.PREFETCH_BLOCK);
+          columnIndexCache.containsKey(columnPath),
+          "Not found cached ColumnIndex for column: %s with cache strategy: %s",
+          columnPath.toDotString(),
+          CacheStrategy.PREFETCH_BLOCK);
     }
 
     if (freeCacheAfterGet) {
@@ -91,10 +87,10 @@ class PrefetchIndexCache implements IndexCache {
 
     if (columns.contains(columnPath)) {
       Preconditions.checkState(
-        offsetIndexCache.containsKey(columnPath),
-        "Not found cached OffsetIndex for column: %s with cache strategy: %s",
-        columnPath.toDotString(),
-        CacheStrategy.PREFETCH_BLOCK);
+          offsetIndexCache.containsKey(columnPath),
+          "Not found cached OffsetIndex for column: %s with cache strategy: %s",
+          columnPath.toDotString(),
+          CacheStrategy.PREFETCH_BLOCK);
     }
 
     if (freeCacheAfterGet) {
@@ -110,10 +106,10 @@ class PrefetchIndexCache implements IndexCache {
 
     if (columns.contains(columnPath)) {
       Preconditions.checkState(
-        bloomIndexCache.containsKey(columnPath),
-        "Not found cached BloomFilter for column: %s with cache strategy: %s",
-        columnPath.toDotString(),
-        CacheStrategy.PREFETCH_BLOCK);
+          bloomIndexCache.containsKey(columnPath),
+          "Not found cached BloomFilter for column: %s with cache strategy: %s",
+          columnPath.toDotString(),
+          CacheStrategy.PREFETCH_BLOCK);
     }
 
     if (freeCacheAfterGet) {

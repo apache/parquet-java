@@ -18,31 +18,25 @@
  */
 package org.apache.parquet.cli.commands;
 
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.Random;
+import java.util.concurrent.ThreadLocalRandom;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroupFactory;
-import org.apache.parquet.format.DateType;
-import org.apache.parquet.format.LogicalType;
-import org.apache.parquet.format.LogicalTypes;
 import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.example.GroupWriteSupport;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
-import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Types;
 import org.junit.Before;
-
-import java.io.File;
-import java.io.IOException;
-import java.util.Random;
-import java.util.concurrent.ThreadLocalRandom;
-
-import static org.apache.parquet.schema.Type.Repetition.*;
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
 
 public abstract class ParquetFileTest extends FileTest {
 
@@ -65,16 +59,23 @@ public abstract class ParquetFileTest extends FileTest {
 
   private static MessageType createSchema() {
     return Types.buildMessage()
-      .required(PrimitiveTypeName.INT32).named(INT32_FIELD)
-      .required(PrimitiveTypeName.INT64).named(INT64_FIELD)
-      .required(PrimitiveTypeName.FLOAT).named(FLOAT_FIELD)
-      .required(PrimitiveTypeName.DOUBLE).named(DOUBLE_FIELD)
-      .required(PrimitiveTypeName.BINARY).named(BINARY_FIELD)
-      .required(PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY).length(12)
+        .required(PrimitiveTypeName.INT32)
+        .named(INT32_FIELD)
+        .required(PrimitiveTypeName.INT64)
+        .named(INT64_FIELD)
+        .required(PrimitiveTypeName.FLOAT)
+        .named(FLOAT_FIELD)
+        .required(PrimitiveTypeName.DOUBLE)
+        .named(DOUBLE_FIELD)
+        .required(PrimitiveTypeName.BINARY)
+        .named(BINARY_FIELD)
+        .required(PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY)
+        .length(12)
         .named(FIXED_LEN_BYTE_ARRAY_FIELD)
-      .required(PrimitiveTypeName.INT32).as(LogicalTypeAnnotation.dateType())
+        .required(PrimitiveTypeName.INT32)
+        .as(LogicalTypeAnnotation.dateType())
         .named(DATE_FIELD)
-      .named("schema");
+        .named("schema");
   }
 
   private void createTestParquetFile() throws IOException {
@@ -86,8 +87,7 @@ public abstract class ParquetFileTest extends FileTest {
     SimpleGroupFactory fact = new SimpleGroupFactory(schema);
     GroupWriteSupport.setSchema(schema, conf);
 
-    try (
-      ParquetWriter<Group> writer = new ParquetWriter<>(
+    try (ParquetWriter<Group> writer = new ParquetWriter<>(
         fsPath,
         new GroupWriteSupport(),
         CompressionCodecName.UNCOMPRESSED,
@@ -103,14 +103,13 @@ public abstract class ParquetFileTest extends FileTest {
         ThreadLocalRandom.current().nextBytes(bytes);
 
         writer.write(fact.newGroup()
-         .append(INT32_FIELD, 32 + i)
-         .append(INT64_FIELD, 64L + i)
-         .append(FLOAT_FIELD, 1.0f + i)
-         .append(DOUBLE_FIELD, 2.0d + i)
-         .append(BINARY_FIELD, Binary.fromString(COLORS[i % COLORS.length]))
-         .append(FIXED_LEN_BYTE_ARRAY_FIELD,
-           Binary.fromConstantByteArray(bytes))
-         .append(DATE_FIELD, i));
+            .append(INT32_FIELD, 32 + i)
+            .append(INT64_FIELD, 64L + i)
+            .append(FLOAT_FIELD, 1.0f + i)
+            .append(DOUBLE_FIELD, 2.0d + i)
+            .append(BINARY_FIELD, Binary.fromString(COLORS[i % COLORS.length]))
+            .append(FIXED_LEN_BYTE_ARRAY_FIELD, Binary.fromConstantByteArray(bytes))
+            .append(DATE_FIELD, i));
       }
     }
   }

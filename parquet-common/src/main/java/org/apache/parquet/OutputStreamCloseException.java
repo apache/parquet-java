@@ -19,7 +19,7 @@ package org.apache.parquet;
 
 /**
  * Runtime exception indicating that a stream failed to be closed properly.
- *
+ * <p>
  * Used to wrap up the checked IOException usually thrown from IO operations,
  * these are generally not recoverable so it does not make sense to pollute the
  * codebase declaring that they can be thrown whenever resources are being
@@ -29,8 +29,7 @@ public class OutputStreamCloseException extends ParquetRuntimeException {
 
   private static final long serialVersionUID = 1L;
 
-  public OutputStreamCloseException() {
-  }
+  public OutputStreamCloseException() {}
 
   public OutputStreamCloseException(String message, Throwable cause) {
     super(message, cause);

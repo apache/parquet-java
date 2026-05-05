@@ -18,25 +18,21 @@
  */
 package org.apache.parquet.bytes;
 
-import org.junit.Test;
+import static org.junit.Assert.assertEquals;
 
 import java.io.ByteArrayInputStream;
-
-import static org.junit.Assert.assertEquals;
+import org.junit.Test;
 
 public class TestBytesInput {
 
-	@Test
-	public void testWriteInt() throws Throwable {
-		int[] testVals = {
-				Integer.MIN_VALUE,
-				Integer.MAX_VALUE,
-				0, 100, 1000, 0xdaedbeef};
-		for (Integer testVal : testVals) {
-			BytesInput varInt = BytesInput.fromUnsignedVarInt(testVal);
-			byte[] rno = varInt.toByteArray();
-			int i = BytesUtils.readUnsignedVarInt(new ByteArrayInputStream(rno));
-			assertEquals((int) testVal, i);
-		}
-	}
+  @Test
+  public void testWriteInt() throws Throwable {
+    int[] testVals = {Integer.MIN_VALUE, Integer.MAX_VALUE, 0, 100, 1000, 0xdaedbeef};
+    for (Integer testVal : testVals) {
+      BytesInput varInt = BytesInput.fromUnsignedVarInt(testVal);
+      byte[] rno = varInt.toByteArray();
+      int i = BytesUtils.readUnsignedVarInt(new ByteArrayInputStream(rno));
+      assertEquals((int) testVal, i);
+    }
+  }
 }

@@ -19,6 +19,11 @@
 package org.apache.parquet.avro;
 
 import com.google.common.collect.Lists;
+import java.io.File;
+import java.io.IOException;
+import java.util.Collections;
+import java.util.List;
+import java.util.Random;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
@@ -32,12 +37,6 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.Collections;
-import java.util.List;
-import java.util.Random;
-
 public class TestByteStreamSplitE2E {
 
   @Rule
@@ -46,20 +45,19 @@ public class TestByteStreamSplitE2E {
   private void testWriteReadFloatingNumbers(boolean isDouble, boolean hasNull) throws IOException {
     Schema schema = Schema.createRecord("myrecord", null, null, false);
     Schema field = Schema.create(isDouble ? Schema.Type.DOUBLE : Schema.Type.FLOAT);
-    schema.setFields(Collections.singletonList(new Schema.Field("a",
-            Schema.createUnion(Schema.create(Schema.Type.NULL), field), null, null)));
+    schema.setFields(Collections.singletonList(
+        new Schema.Field("a", Schema.createUnion(Schema.create(Schema.Type.NULL), field), null, null)));
 
     File file = temp.newFile((isDouble ? "double_" : "float_") + hasNull + ".parquet");
     Path path = new Path(file.toString());
     List<GenericRecord> expected = Lists.newArrayList();
 
-    try (ParquetWriter<GenericRecord> writer = AvroParquetWriter
-            .<GenericRecord>builder(path)
-            .withDataModel(new GenericData())
-            .withWriteMode(ParquetFileWriter.Mode.OVERWRITE)
-            .withSchema(schema)
-            .withByteStreamSplitEncoding(true)
-            .build()) {
+    try (ParquetWriter<GenericRecord> writer = AvroParquetWriter.<GenericRecord>builder(path)
+        .withDataModel(new GenericData())
+        .withWriteMode(ParquetFileWriter.Mode.OVERWRITE)
+        .withSchema(schema)
+        .withByteStreamSplitEncoding(true)
+        .build()) {
       GenericRecordBuilder builder = new GenericRecordBuilder(schema);
       Random rnd = new Random();
       for (int i = 0; i < 1000; i++) {
@@ -78,10 +76,9 @@ public class TestByteStreamSplitE2E {
     }
 
     List<GenericRecord> records = Lists.newArrayList();
-    try (ParquetReader<GenericRecord> reader = AvroParquetReader
-            .<GenericRecord>builder(path)
-            .withDataModel(new GenericData())
-            .build()) {
+    try (ParquetReader<GenericRecord> reader = AvroParquetReader.<GenericRecord>builder(path)
+        .withDataModel(new GenericData())
+        .build()) {
       GenericRecord rec;
       while ((rec = reader.read()) != null) {
         records.add(rec);
@@ -110,5 +107,4 @@ public class TestByteStreamSplitE2E {
   public void testWriteReadDoubleWithNull() throws IOException {
     testWriteReadFloatingNumbers(true, true);
   }
-
 }

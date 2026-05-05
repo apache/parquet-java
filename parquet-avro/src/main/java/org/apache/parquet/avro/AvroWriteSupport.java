@@ -25,7 +25,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-
 import org.apache.avro.Conversion;
 import org.apache.avro.LogicalType;
 import org.apache.avro.Schema;
@@ -34,6 +33,8 @@ import org.apache.avro.generic.GenericFixed;
 import org.apache.avro.generic.IndexedRecord;
 import org.apache.avro.util.Utf8;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.util.ReflectionUtils;
+import org.apache.parquet.Preconditions;
 import org.apache.parquet.conf.HadoopParquetConfiguration;
 import org.apache.parquet.conf.ParquetConfiguration;
 import org.apache.parquet.hadoop.api.WriteSupport;
@@ -41,11 +42,12 @@ import org.apache.parquet.hadoop.util.ConfigurationUtil;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.RecordConsumer;
 import org.apache.parquet.schema.GroupType;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.LogicalTypeAnnotation.UUIDLogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Type;
-import org.apache.hadoop.util.ReflectionUtils;
-import org.apache.parquet.Preconditions;
+import org.apache.parquet.variant.Variant;
+import org.apache.parquet.variant.VariantValueWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -60,16 +62,14 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
 
   public static final String AVRO_DATA_SUPPLIER = "parquet.avro.write.data.supplier";
 
-  public static void setAvroDataSupplier(
-      Configuration configuration, Class<? extends AvroDataSupplier> suppClass) {
+  public static void setAvroDataSupplier(Configuration configuration, Class<? extends AvroDataSupplier> suppClass) {
     configuration.set(AVRO_DATA_SUPPLIER, suppClass.getName());
   }
 
   static final String AVRO_SCHEMA = "parquet.avro.schema";
   private static final Schema MAP_KEY_SCHEMA = Schema.create(Schema.Type.STRING);
 
-  public static final String WRITE_OLD_LIST_STRUCTURE =
-      "parquet.avro.write-old-list-structure";
+  public static final String WRITE_OLD_LIST_STRUCTURE = "parquet.avro.write-old-list-structure";
   static final boolean WRITE_OLD_LIST_STRUCTURE_DEFAULT = true;
   public static final String WRITE_PARQUET_UUID = "parquet.avro.write-parquet-uuid";
   static final boolean WRITE_PARQUET_UUID_DEFAULT = false;
@@ -92,11 +92,10 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
   private GenericData model;
   private ListWriter listWriter;
 
-  public AvroWriteSupport() {
-  }
+  public AvroWriteSupport() {}
 
   /**
-   * @param schema the write parquet schema
+   * @param schema     the write parquet schema
    * @param avroSchema the write avro schema
    * @deprecated will be removed in 2.0.0
    */
@@ -108,8 +107,7 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
     this.model = null;
   }
 
-  public AvroWriteSupport(MessageType schema, Schema avroSchema,
-                          GenericData model) {
+  public AvroWriteSupport(MessageType schema, Schema avroSchema, GenericData model) {
     this.rootSchema = schema;
     this.rootAvroSchema = avroSchema;
     this.rootLogicalType = rootAvroSchema.getLogicalType();
@@ -123,7 +121,7 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
 
   /**
    * @param configuration a configuration
-   * @param schema the write schema
+   * @param schema        the write schema
    * @see org.apache.parquet.avro.AvroParquetOutputFormat#setSchema(org.apache.hadoop.mapreduce.Job, org.apache.avro.Schema)
    */
   public static void setSchema(Configuration configuration, Schema schema) {
@@ -146,8 +144,8 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
       this.model = getDataModel(configuration, rootAvroSchema);
     }
 
-    boolean writeOldListStructure = configuration.getBoolean(
-        WRITE_OLD_LIST_STRUCTURE, WRITE_OLD_LIST_STRUCTURE_DEFAULT);
+    boolean writeOldListStructure =
+        configuration.getBoolean(WRITE_OLD_LIST_STRUCTURE, WRITE_OLD_LIST_STRUCTURE_DEFAULT);
     if (writeOldListStructure) {
       this.listWriter = new TwoLevelListWriter();
     } else {
@@ -173,14 +171,11 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
   @Override
   public void write(T record) {
     if (rootLogicalType != null) {
-      Conversion<?> conversion = model.getConversionByClass(
-          record.getClass(), rootLogicalType);
+      Conversion<?> conversion = model.getConversionByClass(record.getClass(), rootLogicalType);
 
       recordConsumer.startMessage();
-      writeRecordFields(rootSchema, rootAvroSchema,
-          convert(rootAvroSchema, rootLogicalType, conversion, record));
+      writeRecordFields(rootSchema, rootAvroSchema, convert(rootAvroSchema, rootLogicalType, conversion, record));
       recordConsumer.endMessage();
-
     } else {
       recordConsumer.startMessage();
       writeRecordFields(rootSchema, rootAvroSchema, record);
@@ -188,15 +183,83 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
     }
   }
 
-  private void writeRecord(GroupType schema, Schema avroSchema,
-                           Object record) {
-    recordConsumer.startGroup();
-    writeRecordFields(schema, avroSchema, record);
-    recordConsumer.endGroup();
+  private void writeRecord(GroupType schema, Schema avroSchema, Object record) {
+    if (schema.getLogicalTypeAnnotation() instanceof LogicalTypeAnnotation.VariantLogicalTypeAnnotation) {
+      writeVariantFields(schema, avroSchema, record);
+    } else {
+      recordConsumer.startGroup();
+      writeRecordFields(schema, avroSchema, record);
+      recordConsumer.endGroup();
+    }
   }
 
-  private void writeRecordFields(GroupType schema, Schema avroSchema,
-                                 Object record) {
+  // Return true if schema and avroSchema have the same field names, in the same order.
+  private static boolean schemaMatches(GroupType schema, Schema avroSchema) {
+    List<Schema.Field> avroFields = avroSchema.getFields();
+    if (schema.getFieldCount() != avroFields.size()) {
+      return false;
+    }
+
+    for (int i = 0; i < avroFields.size(); i += 1) {
+      if (!avroFields.get(i).name().equals(schema.getFieldName(i))) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  private void writeVariantFields(GroupType schema, Schema avroSchema, Object record) {
+    List<Type> fields = schema.getFields();
+    List<Schema.Field> avroFields = avroSchema.getFields();
+
+    if (schemaMatches(schema, avroSchema)) {
+      // If the Avro schema matches the Parquet schema, the shredding matches and writeRecordFields can be used.
+      // writeRecordFields will validate that the field types match.
+      recordConsumer.startGroup();
+      writeRecordFields(schema, avroSchema, record);
+      recordConsumer.endGroup();
+      return;
+    }
+
+    boolean binarySchema = true;
+    ByteBuffer metadata = null;
+    ByteBuffer value = null;
+    // Extract the value and metadata binary.
+    for (int index = 0; index < avroFields.size(); index++) {
+      Schema.Field avroField = avroFields.get(index);
+      Schema fieldSchema = AvroSchemaConverter.getNonNull(avroField.schema());
+      if (!fieldSchema.getType().equals(Schema.Type.BYTES)) {
+        binarySchema = false;
+        break;
+      }
+      Type fieldType = fields.get(index);
+      if (fieldType.getName().equals("value")) {
+        Object valueObj = model.getField(record, avroField.name(), index);
+        Preconditions.checkArgument(
+            valueObj instanceof ByteBuffer,
+            "Expected ByteBuffer for value, but got " + valueObj.getClass());
+        value = (ByteBuffer) valueObj;
+      } else if (fieldType.getName().equals("metadata")) {
+        Object metadataObj = model.getField(record, avroField.name(), index);
+        Preconditions.checkArgument(
+            metadataObj instanceof ByteBuffer,
+            "Expected metadata to be a ByteBuffer, but got " + metadataObj.getClass());
+        metadata = (ByteBuffer) metadataObj;
+      } else {
+        binarySchema = false;
+        break;
+      }
+    }
+
+    if (binarySchema) {
+      VariantValueWriter.write(recordConsumer, schema, new Variant(value, metadata));
+    } else {
+      throw new RuntimeException("Invalid Avro schema for Variant logical type: " + schema.getName());
+    }
+  }
+
+  private void writeRecordFields(GroupType schema, Schema avroSchema, Object record) {
     List<Type> fields = schema.getFields();
     List<Schema.Field> avroFields = avroSchema.getFields();
     int index = 0; // parquet ignores Avro nulls, so index may differ
@@ -218,14 +281,13 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
     }
   }
 
-  private <V> void writeMap(GroupType schema, Schema avroSchema,
-                            Map<CharSequence, V> map) {
+  private <V> void writeMap(GroupType schema, Schema avroSchema, Map<CharSequence, V> map) {
     GroupType innerGroup = schema.getType(0).asGroupType();
     Type keyType = innerGroup.getType(0);
     Type valueType = innerGroup.getType(1);
 
     recordConsumer.startGroup(); // group wrapper (original type MAP)
-    if (map.size() > 0) {
+    if (!map.isEmpty()) {
       recordConsumer.startField(MAP_REPEATED_NAME, 0);
 
       for (Map.Entry<CharSequence, V> entry : map.entrySet()) {
@@ -249,8 +311,7 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
     recordConsumer.endGroup();
   }
 
-  private void writeUnion(GroupType parquetSchema, Schema avroSchema,
-                          Object value) {
+  private void writeUnion(GroupType parquetSchema, Schema avroSchema, Object value) {
     recordConsumer.startGroup();
 
     // ResolveUnion will tell us which of the union member types to
@@ -272,8 +333,7 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
     // set of columns.
     String memberName = "member" + parquetIndex;
     recordConsumer.startField(memberName, parquetIndex);
-    writeValue(parquetGroup.getType(parquetIndex),
-               avroSchema.getTypes().get(avroIndex), value);
+    writeValue(parquetGroup.getType(parquetIndex), avroSchema.getTypes().get(avroIndex), value);
     recordConsumer.endField(memberName, parquetIndex);
 
     recordConsumer.endGroup();
@@ -283,42 +343,52 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
    * Calls an appropriate write method based on the value.
    * Value MUST not be null.
    *
-   * @param type the Parquet type
+   * @param type       the Parquet type
    * @param avroSchema the Avro schema
-   * @param value a non-null value to write
+   * @param value      a non-null value to write
    */
   private void writeValue(Type type, Schema avroSchema, Object value) {
     Schema nonNullAvroSchema = AvroSchemaConverter.getNonNull(avroSchema);
     LogicalType logicalType = nonNullAvroSchema.getLogicalType();
     if (logicalType != null) {
-      Conversion<?> conversion = model.getConversionByClass(
-          value.getClass(), logicalType);
-      writeValueWithoutConversion(type, nonNullAvroSchema,
-          convert(nonNullAvroSchema, logicalType, conversion, value));
+      Conversion<?> conversion = model.getConversionByClass(value.getClass(), logicalType);
+      writeValueWithoutConversion(
+          type, nonNullAvroSchema, convert(nonNullAvroSchema, logicalType, conversion, value));
     } else {
       writeValueWithoutConversion(type, nonNullAvroSchema, value);
     }
   }
 
-  private <D> Object convert(Schema schema, LogicalType logicalType,
-                             Conversion<D> conversion, Object datum) {
+  private <D> Object convert(Schema schema, LogicalType logicalType, Conversion<D> conversion, Object datum) {
     if (conversion == null) {
       return datum;
     }
     Class<D> fromClass = conversion.getConvertedType();
     switch (schema.getType()) {
-      case RECORD:  return conversion.toRecord(fromClass.cast(datum), schema, logicalType);
-      case ENUM:    return conversion.toEnumSymbol(fromClass.cast(datum), schema, logicalType);
-      case ARRAY:   return conversion.toArray(fromClass.cast(datum), schema, logicalType);
-      case MAP:     return conversion.toMap(fromClass.cast(datum), schema, logicalType);
-      case FIXED:   return conversion.toFixed(fromClass.cast(datum), schema, logicalType);
-      case STRING:  return conversion.toCharSequence(fromClass.cast(datum), schema, logicalType);
-      case BYTES:   return conversion.toBytes(fromClass.cast(datum), schema, logicalType);
-      case INT:     return conversion.toInt(fromClass.cast(datum), schema, logicalType);
-      case LONG:    return conversion.toLong(fromClass.cast(datum), schema, logicalType);
-      case FLOAT:   return conversion.toFloat(fromClass.cast(datum), schema, logicalType);
-      case DOUBLE:  return conversion.toDouble(fromClass.cast(datum), schema, logicalType);
-      case BOOLEAN: return conversion.toBoolean(fromClass.cast(datum), schema, logicalType);
+      case RECORD:
+        return conversion.toRecord(fromClass.cast(datum), schema, logicalType);
+      case ENUM:
+        return conversion.toEnumSymbol(fromClass.cast(datum), schema, logicalType);
+      case ARRAY:
+        return conversion.toArray(fromClass.cast(datum), schema, logicalType);
+      case MAP:
+        return conversion.toMap(fromClass.cast(datum), schema, logicalType);
+      case FIXED:
+        return conversion.toFixed(fromClass.cast(datum), schema, logicalType);
+      case STRING:
+        return conversion.toCharSequence(fromClass.cast(datum), schema, logicalType);
+      case BYTES:
+        return conversion.toBytes(fromClass.cast(datum), schema, logicalType);
+      case INT:
+        return conversion.toInt(fromClass.cast(datum), schema, logicalType);
+      case LONG:
+        return conversion.toLong(fromClass.cast(datum), schema, logicalType);
+      case FLOAT:
+        return conversion.toFloat(fromClass.cast(datum), schema, logicalType);
+      case DOUBLE:
+        return conversion.toDouble(fromClass.cast(datum), schema, logicalType);
+      case BOOLEAN:
+        return conversion.toBoolean(fromClass.cast(datum), schema, logicalType);
     }
     return datum;
   }
@@ -327,9 +397,9 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
    * Calls an appropriate write method based on the value.
    * Value must not be null and the schema must not be nullable.
    *
-   * @param type a Parquet type
+   * @param type       a Parquet type
    * @param avroSchema a non-nullable Avro schema
-   * @param value a non-null value to write
+   * @param value      a non-null value to write
    */
   @SuppressWarnings("unchecked")
   private void writeValueWithoutConversion(Type type, Schema avroSchema, Object value) {
@@ -406,10 +476,12 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
     if (value instanceof Utf8) {
       Utf8 utf8 = (Utf8) value;
       return Binary.fromReusedByteArray(utf8.getBytes(), 0, utf8.getByteLength());
+    } else if (value instanceof String) {
+      return Binary.fromString((String) value);
     } else if (value instanceof CharSequence) {
       return Binary.fromCharSequence((CharSequence) value);
     }
-    return Binary.fromCharSequence(value.toString());
+    return Binary.fromString(value.toString());
   }
 
   private static GenericData getDataModel(ParquetConfiguration conf, Schema schema) {
@@ -418,29 +490,31 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
       try {
         modelForSchema = AvroRecordConverter.getModelForSchema(schema);
       } catch (Exception e) {
-        LOG.warn(String.format("Failed to derive data model for Avro schema %s. Parquet will use default " +
-          "SpecificData model for writing to sink.", schema), e);
+        LOG.warn(
+            String.format(
+                "Failed to derive data model for Avro schema %s. Parquet will use default "
+                    + "SpecificData model for writing to sink.",
+                schema),
+            e);
         modelForSchema = null;
       }
-
 
       if (modelForSchema != null) {
         return modelForSchema;
       }
     }
 
-    Class<? extends AvroDataSupplier> suppClass = conf.getClass(
-        AVRO_DATA_SUPPLIER, SpecificDataSupplier.class, AvroDataSupplier.class);
-    return ReflectionUtils.newInstance(suppClass, ConfigurationUtil.createHadoopConfiguration(conf)).get();
+    Class<? extends AvroDataSupplier> suppClass =
+        conf.getClass(AVRO_DATA_SUPPLIER, SpecificDataSupplier.class, AvroDataSupplier.class);
+    return ReflectionUtils.newInstance(suppClass, ConfigurationUtil.createHadoopConfiguration(conf))
+        .get();
   }
 
   private abstract class ListWriter {
 
-    protected abstract void writeCollection(
-        GroupType type, Schema schema, Collection<?> collection);
+    protected abstract void writeCollection(GroupType type, Schema schema, Collection<?> collection);
 
-    protected abstract void writeObjectArray(
-        GroupType type, Schema schema, Object[] array);
+    protected abstract void writeObjectArray(GroupType type, Schema schema, Object[] array);
 
     protected abstract void startArray();
 
@@ -452,15 +526,14 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
         writeCollection(schema, avroSchema, (Collection) value);
       } else {
         Class<?> arrayClass = value.getClass();
-        Preconditions.checkArgument(arrayClass.isArray(),
-            "Cannot write unless collection or array: %s", arrayClass.getName());
+        Preconditions.checkArgument(
+            arrayClass.isArray(), "Cannot write unless collection or array: %s", arrayClass.getName());
         writeJavaArray(schema, avroSchema, arrayClass, value);
       }
       recordConsumer.endGroup();
     }
 
-    public void writeJavaArray(GroupType schema, Schema avroSchema,
-                               Class<?> arrayClass, Object value) {
+    public void writeJavaArray(GroupType schema, Schema avroSchema, Class<?> arrayClass, Object value) {
       Class<?> elementClass = arrayClass.getComponentType();
 
       if (!elementClass.isPrimitive()) {
@@ -470,8 +543,8 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
 
       switch (avroSchema.getElementType().getType()) {
         case BOOLEAN:
-          Preconditions.checkArgument(elementClass == boolean.class,
-              "Cannot write as boolean array: %s", arrayClass.getName());
+          Preconditions.checkArgument(
+              elementClass == boolean.class, "Cannot write as boolean array: %s", arrayClass.getName());
           writeBooleanArray((boolean[]) value);
           break;
         case INT:
@@ -484,28 +557,27 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
           } else if (elementClass == int.class) {
             writeIntArray((int[]) value);
           } else {
-            throw new IllegalArgumentException(
-                "Cannot write as an int array: " + arrayClass.getName());
+            throw new IllegalArgumentException("Cannot write as an int array: " + arrayClass.getName());
           }
           break;
         case LONG:
-          Preconditions.checkArgument(elementClass == long.class,
-              "Cannot write as long array: %s", arrayClass.getName());
+          Preconditions.checkArgument(
+              elementClass == long.class, "Cannot write as long array: %s", arrayClass.getName());
           writeLongArray((long[]) value);
           break;
         case FLOAT:
-          Preconditions.checkArgument(elementClass == float.class,
-              "Cannot write as float array: %s", arrayClass.getName());
+          Preconditions.checkArgument(
+              elementClass == float.class, "Cannot write as float array: %s", arrayClass.getName());
           writeFloatArray((float[]) value);
           break;
         case DOUBLE:
-          Preconditions.checkArgument(elementClass == double.class,
-              "Cannot write as double array: %s", arrayClass.getName());
+          Preconditions.checkArgument(
+              elementClass == double.class, "Cannot write as double array: %s", arrayClass.getName());
           writeDoubleArray((double[]) value);
           break;
         default:
-          throw new IllegalArgumentException("Cannot write " +
-              avroSchema.getElementType() + " array: " + arrayClass.getName());
+          throw new IllegalArgumentException(
+              "Cannot write " + avroSchema.getElementType() + " array: " + arrayClass.getName());
       }
     }
 
@@ -595,8 +667,7 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
    */
   private class TwoLevelListWriter extends ListWriter {
     @Override
-    public void writeCollection(GroupType schema, Schema avroSchema,
-                                Collection<?> array) {
+    public void writeCollection(GroupType schema, Schema avroSchema, Collection<?> array) {
       if (!array.isEmpty()) {
         recordConsumer.startField(OLD_LIST_REPEATED_NAME, 0);
         try {
@@ -605,24 +676,21 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
           }
         } catch (NullPointerException e) {
           // find the null element and throw a better error message
-          final int idx =
-              Arrays.asList(array.toArray(new Object[0])).indexOf(null);
+          final int idx = Arrays.asList(array.toArray(new Object[0])).indexOf(null);
           if (idx < 0) {
             // no element was null, throw the original exception
             throw e;
           }
-          throw new NullPointerException(
-              "Array contains a null element at " + idx + ". "
-                  + "Set parquet.avro.write-old-list-structure=false to turn "
-                  + "on support for arrays with null elements.");
+          throw new NullPointerException("Array contains a null element at " + idx + ". "
+              + "Set parquet.avro.write-old-list-structure=false to turn "
+              + "on support for arrays with null elements.");
         }
         recordConsumer.endField(OLD_LIST_REPEATED_NAME, 0);
       }
     }
 
     @Override
-    protected void writeObjectArray(GroupType type, Schema schema,
-                                    Object[] array) {
+    protected void writeObjectArray(GroupType type, Schema schema, Object[] array) {
       if (array.length > 0) {
         recordConsumer.startField(OLD_LIST_REPEATED_NAME, 0);
         try {
@@ -636,10 +704,9 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
             // no element was null, throw the original exception
             throw e;
           }
-          throw new NullPointerException(
-              "Array contains a null element at " + idx + ". " +
-              "Set parquet.avro.write-old-list-structure=false to turn " +
-              "on support for arrays with null elements.");
+          throw new NullPointerException("Array contains a null element at " + idx + ". "
+              + "Set parquet.avro.write-old-list-structure=false to turn "
+              + "on support for arrays with null elements.");
         }
         recordConsumer.endField(OLD_LIST_REPEATED_NAME, 0);
       }
@@ -659,7 +726,7 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
   private class ThreeLevelListWriter extends ListWriter {
     @Override
     protected void writeCollection(GroupType type, Schema schema, Collection<?> collection) {
-      if (collection.size() > 0) {
+      if (!collection.isEmpty()) {
         recordConsumer.startField(LIST_REPEATED_NAME, 0);
         GroupType repeatedType = type.getType(0).asGroupType();
         Type elementType = repeatedType.getType(0);
@@ -670,8 +737,7 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
             writeValue(elementType, schema.getElementType(), element);
             recordConsumer.endField(LIST_ELEMENT_NAME, 0);
           } else if (!elementType.isRepetition(Type.Repetition.OPTIONAL)) {
-            throw new RuntimeException(
-                "Null list element for " + schema.getName());
+            throw new RuntimeException("Null list element for " + schema.getName());
           }
           recordConsumer.endGroup();
         }
@@ -680,8 +746,7 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
     }
 
     @Override
-    protected void writeObjectArray(GroupType type, Schema schema,
-                                    Object[] array) {
+    protected void writeObjectArray(GroupType type, Schema schema, Object[] array) {
       if (array.length > 0) {
         recordConsumer.startField(LIST_REPEATED_NAME, 0);
         GroupType repeatedType = type.getType(0).asGroupType();
@@ -693,8 +758,7 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
             writeValue(elementType, schema.getElementType(), element);
             recordConsumer.endField(LIST_ELEMENT_NAME, 0);
           } else if (!elementType.isRepetition(Type.Repetition.OPTIONAL)) {
-            throw new RuntimeException(
-                "Null list element for " + schema.getName());
+            throw new RuntimeException("Null list element for " + schema.getName());
           }
           recordConsumer.endGroup();
         }

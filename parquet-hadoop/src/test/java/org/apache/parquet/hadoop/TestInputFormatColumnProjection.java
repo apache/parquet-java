@@ -18,6 +18,15 @@
  */
 package org.apache.parquet.hadoop;
 
+import static java.lang.Thread.sleep;
+import static org.apache.parquet.schema.OriginalType.UTF8;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.util.List;
+import java.util.UUID;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
@@ -42,37 +51,39 @@ import org.junit.Assume;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.util.UUID;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 
-import static java.lang.Thread.sleep;
-import static org.apache.parquet.schema.OriginalType.UTF8;
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
-
+/**
+ * Parameterized on Vectored IO enabled/disabled so can verify that
+ * ranged reads work through the bridge on compatible hadoop versions.
+ */
+@RunWith(Parameterized.class)
 public class TestInputFormatColumnProjection {
-  public static final String FILE_CONTENT = "" +
-      "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ," +
-      "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ," +
-      "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  public static final String FILE_CONTENT = "" + "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ,"
+      + "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ,"
+      + "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
   public static MessageType PARQUET_TYPE = Types.buildMessage()
-      .required(BINARY).as(UTF8).named("uuid")
-      .required(BINARY).as(UTF8).named("char")
+      .required(BINARY)
+      .as(UTF8)
+      .named("uuid")
+      .required(BINARY)
+      .as(UTF8)
+      .named("char")
       .named("FormatTestObject");
 
   public static class Writer extends Mapper<LongWritable, Text, Void, Group> {
     public static final SimpleGroupFactory GROUP_FACTORY = new SimpleGroupFactory(PARQUET_TYPE);
+
     @Override
-    protected void map(LongWritable key, Text value, Context context)
-        throws IOException, InterruptedException {
+    protected void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
       // writes each character of the line with a UUID
       String line = value.toString();
       for (int i = 0; i < line.length(); i += 1) {
         Group group = GROUP_FACTORY.newGroup();
         group.add(0, Binary.fromString(UUID.randomUUID().toString()));
-        group.add(1, Binary.fromString(line.substring(i, i+1)));
+        group.add(1, Binary.fromString(line.substring(i, i + 1)));
         context.write(null, group);
       }
     }
@@ -81,21 +92,34 @@ public class TestInputFormatColumnProjection {
   public static class Reader extends Mapper<Void, Group, LongWritable, Text> {
 
     public static Counter bytesReadCounter = null;
+
     public static void setBytesReadCounter(Counter bytesRead) {
       bytesReadCounter = bytesRead;
     }
 
     @Override
-    protected void map(Void key, Group value, Context context)
-        throws IOException, InterruptedException {
+    protected void map(Void key, Group value, Context context) throws IOException, InterruptedException {
       // Do nothing. The test uses Hadoop FS counters for verification.
-      setBytesReadCounter(ContextUtil.getCounter(
-          context, "parquet", "bytesread"));
+      setBytesReadCounter(ContextUtil.getCounter(context, "parquet", "bytesread"));
     }
   }
 
   @Rule
   public TemporaryFolder temp = new TemporaryFolder();
+
+  @Parameterized.Parameters(name = "vectored : {0}")
+  public static List<Boolean> params() {
+    return List.of(true, false);
+  }
+
+  /**
+   * Read type: true for vectored IO.
+   */
+  private final boolean readType;
+
+  public TestInputFormatColumnProjection(boolean readType) {
+    this.readType = readType;
+  }
 
   @Test
   public void testProjectionSize() throws Exception {
@@ -115,10 +139,17 @@ public class TestInputFormatColumnProjection {
     outputFolder.delete();
 
     Configuration conf = new Configuration();
+    // set the vector IO option
+    conf.setBoolean(ParquetInputFormat.HADOOP_VECTORED_IO_ENABLED, readType);
     // set the projection schema
-    conf.set("parquet.read.schema", Types.buildMessage()
-        .required(BINARY).as(UTF8).named("char")
-        .named("FormatTestObject").toString());
+    conf.set(
+        "parquet.read.schema",
+        Types.buildMessage()
+            .required(BINARY)
+            .as(UTF8)
+            .named("char")
+            .named("FormatTestObject")
+            .toString());
 
     // disable summary metadata, it isn't needed
     conf.set("parquet.enable.summary-metadata", "false");
@@ -164,7 +195,9 @@ public class TestInputFormatColumnProjection {
       bytesRead = Reader.bytesReadCounter.getValue();
     }
 
-    Assert.assertTrue("Should read less than 10% of the input file size",
+    Assert.assertTrue(
+        "Should read (" + bytesRead + " bytes)" + " less than 10% of the input file size (" + bytesWritten
+            + ")",
         bytesRead < (bytesWritten / 10));
   }
 

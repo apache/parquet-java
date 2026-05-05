@@ -18,16 +18,16 @@
  */
 package org.apache.parquet.thrift.projection;
 
-import java.util.Arrays;
-import java.util.List;
-
-import org.junit.Test;
-
-import static org.easymock.EasyMock.createMockBuilder;
-import static org.easymock.EasyMock.replay;
-import static org.easymock.EasyMock.verify;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
+
+import java.util.Arrays;
+import java.util.List;
+import org.junit.Test;
 
 public class TestStrictFieldProjectionFilter {
 
@@ -60,19 +60,36 @@ public class TestStrictFieldProjectionFilter {
     }
   }
 
-
   @Test
   public void testProjection() {
     StrictFieldProjectionFilter filter = StrictFieldProjectionFilter.fromSemicolonDelimitedString(
         "home.phone_number;home.address;work.address.zip;base_info;*.average;a.b.c.pre{x,y,z{a,b,c}}post");
 
-    assertMatches(filter, "home.phone_number", "home.address", "work.address.zip", "base_info",
-        "foo.average", "bar.x.y.z.average", "base_info.nested.field", "a.b.c.prexpost", "a.b.c.prezapost");
+    assertMatches(
+        filter,
+        "home.phone_number",
+        "home.address",
+        "work.address.zip",
+        "base_info",
+        "foo.average",
+        "bar.x.y.z.average",
+        "base_info.nested.field",
+        "a.b.c.prexpost",
+        "a.b.c.prezapost");
 
-    assertDoesNotMatch(filter, "home2.phone_number", "home2.address", "work.address", "base_info2",
-        "foo_average", "bar.x.y.z_average", "base_info_nested.field", "hi", "average", "a.b.c.pre{x,y,z{a,b,c}}post",
+    assertDoesNotMatch(
+        filter,
+        "home2.phone_number",
+        "home2.address",
+        "work.address",
+        "base_info2",
+        "foo_average",
+        "bar.x.y.z_average",
+        "base_info_nested.field",
+        "hi",
+        "average",
+        "a.b.c.pre{x,y,z{a,b,c}}post",
         "");
-
   }
 
   @Test
@@ -86,34 +103,30 @@ public class TestStrictFieldProjectionFilter {
       filter.assertNoUnmatchedPatterns();
       fail("this should throw");
     } catch (ThriftProjectionException e) {
-      String expectedMessage = "The following projection patterns did not match any columns in this schema:\n" +
-          "Pattern: 'a.b.c.pre{x,y,z{a,b,c}}post' (when expanded to 'a.b.c.preypost')\n" +
-          "Pattern: 'a.b.c.pre{x,y,z{a,b,c}}post' (when expanded to 'a.b.c.prezapost')\n" +
-          "Pattern: 'a.b.c.pre{x,y,z{a,b,c}}post' (when expanded to 'a.b.c.prezbpost')\n";
+      String expectedMessage = "The following projection patterns did not match any columns in this schema:\n"
+          + "Pattern: 'a.b.c.pre{x,y,z{a,b,c}}post' (when expanded to 'a.b.c.preypost')\n"
+          + "Pattern: 'a.b.c.pre{x,y,z{a,b,c}}post' (when expanded to 'a.b.c.prezapost')\n"
+          + "Pattern: 'a.b.c.pre{x,y,z{a,b,c}}post' (when expanded to 'a.b.c.prezbpost')\n";
       assertEquals(expectedMessage, e.getMessage());
     }
   }
 
   @Test
   public void testWarnWhenMultiplePatternsMatch() {
-    StrictFieldProjectionFilter filter = createMockBuilder(StrictFieldProjectionFilter.class)
-        .withConstructor(Arrays.asList("a.b.c.{x_average,z_average}", "a.*_average"))
-        .addMockedMethod("warn")
-        .createMock();
-
-    // set expectations
-    filter.warn("Field path: 'a.b.c.x_average' matched more than one glob path pattern. "
-        + "First match: 'a.b.c.{x_average,z_average}' (when expanded to 'a.b.c.x_average') "
-        + "second match:'a.*_average' (when expanded to 'a.*_average')");
-    filter.warn("Field path: 'a.b.c.z_average' matched more than one glob path pattern. "
-        + "First match: 'a.b.c.{x_average,z_average}' (when expanded to 'a.b.c.z_average') "
-        + "second match:'a.*_average' (when expanded to 'a.*_average')");
-
-    replay(filter);
+    StrictFieldProjectionFilter filter =
+        spy(new StrictFieldProjectionFilter(Arrays.asList("a.b.c.{x_average,z_average}", "a.*_average")));
+    doNothing().when(filter).warn(anyString());
 
     assertMatches(filter, "a.b.c.x_average", "a.b.c.z_average", "a.other.w_average");
     assertDoesNotMatch(filter, "hello");
-    verify(filter);
-  }
 
+    verify(filter)
+        .warn("Field path: 'a.b.c.x_average' matched more than one glob path pattern. "
+            + "First match: 'a.b.c.{x_average,z_average}' (when expanded to 'a.b.c.x_average') "
+            + "second match:'a.*_average' (when expanded to 'a.*_average')");
+    verify(filter)
+        .warn("Field path: 'a.b.c.z_average' matched more than one glob path pattern. "
+            + "First match: 'a.b.c.{x_average,z_average}' (when expanded to 'a.b.c.z_average') "
+            + "second match:'a.*_average' (when expanded to 'a.*_average')");
+  }
 }

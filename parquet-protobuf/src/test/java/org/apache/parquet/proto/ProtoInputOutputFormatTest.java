@@ -18,8 +18,17 @@
  */
 package org.apache.parquet.proto;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
+import com.google.protobuf.BoolValue;
 import com.google.protobuf.ByteString;
+import com.google.protobuf.DoubleValue;
 import com.google.protobuf.Message;
+import com.google.protobuf.Timestamp;
+import com.google.protobuf.util.Timestamps;
+import java.util.List;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.proto.test.TestProto3;
@@ -29,11 +38,6 @@ import org.apache.parquet.proto.test.TestProtobuf.SecondCustomClassMessage;
 import org.apache.parquet.proto.utils.ReadUsingMR;
 import org.apache.parquet.proto.utils.WriteUsingMR;
 import org.junit.Test;
-
-import java.util.List;
-
-import static org.junit.Assert.*;
-
 
 public class ProtoInputOutputFormatTest {
 
@@ -91,11 +95,10 @@ public class ProtoInputOutputFormatTest {
     assertEquals(input, output);
   }
 
-
   /**
    * Writes data to file then reads them again with projection.
    * Only requested data should be read.
-   * */
+   */
   @Test
   public void testProjection() throws Exception {
 
@@ -105,7 +108,7 @@ public class ProtoInputOutputFormatTest {
 
     Path outputPath = new WriteUsingMR().write(writtenDocument.build());
 
-    //lets prepare reading with schema
+    // lets prepare reading with schema
     ReadUsingMR reader = new ReadUsingMR();
 
     String projection = "message Document {required int64 DocId; }";
@@ -113,8 +116,7 @@ public class ProtoInputOutputFormatTest {
     List<Message> output = reader.read(outputPath);
     TestProtobuf.Document readDocument = (TestProtobuf.Document) output.get(0);
 
-
-    //test that only requested fields were deserialized
+    // test that only requested fields were deserialized
     assertTrue(readDocument.hasDocId());
     assertTrue("Found data outside projection.", readDocument.getNameCount() == 0);
   }
@@ -128,7 +130,7 @@ public class ProtoInputOutputFormatTest {
 
     Path outputPath = new WriteUsingMR().write(writtenDocument.build());
 
-    //lets prepare reading with schema
+    // lets prepare reading with schema
     ReadUsingMR reader = new ReadUsingMR();
 
     String projection = "message Document {optional int64 DocId; }";
@@ -136,8 +138,7 @@ public class ProtoInputOutputFormatTest {
     List<Message> output = reader.read(outputPath);
     TestProto3.Document readDocument = (TestProto3.Document) output.get(0);
 
-
-    //test that only requested fields were deserialized
+    // test that only requested fields were deserialized
     assertTrue(readDocument.getDocId() == 12345);
     assertTrue(readDocument.getNameCount() == 0);
     assertTrue("Found data outside projection.", readDocument.getNameCount() == 0);
@@ -146,14 +147,14 @@ public class ProtoInputOutputFormatTest {
   /**
    * When user specified protobuffer class in configuration,
    * It should replace class specified in header.
-   * */
+   */
   @Test
   public void testCustomProtoClass() throws Exception {
     FirstCustomClassMessage.Builder inputMessage;
     inputMessage = FirstCustomClassMessage.newBuilder();
     inputMessage.setString("writtenString");
 
-    Path outputPath = new WriteUsingMR().write(new Message[]{inputMessage.build()});
+    Path outputPath = new WriteUsingMR().write(new Message[] {inputMessage.build()});
     ReadUsingMR readUsingMR = new ReadUsingMR();
     String customClass = SecondCustomClassMessage.class.getName();
     ProtoReadSupport.setProtobufClass(readUsingMR.getConfiguration(), customClass);
@@ -161,10 +162,8 @@ public class ProtoInputOutputFormatTest {
 
     assertEquals(1, result.size());
     Message msg = result.get(0);
-    assertFalse("Class from header returned.",
-            msg instanceof FirstCustomClassMessage);
-    assertTrue("Custom class was not used",
-            msg instanceof SecondCustomClassMessage);
+    assertFalse("Class from header returned.", msg instanceof FirstCustomClassMessage);
+    assertTrue("Custom class was not used", msg instanceof SecondCustomClassMessage);
 
     String stringValue;
     stringValue = ((SecondCustomClassMessage) msg).getString();
@@ -177,7 +176,7 @@ public class ProtoInputOutputFormatTest {
     inputMessage = TestProto3.FirstCustomClassMessage.newBuilder();
     inputMessage.setString("writtenString");
 
-    Path outputPath = new WriteUsingMR().write(new Message[]{inputMessage.build()});
+    Path outputPath = new WriteUsingMR().write(new Message[] {inputMessage.build()});
     ReadUsingMR readUsingMR = new ReadUsingMR();
     String customClass = TestProto3.SecondCustomClassMessage.class.getName();
     ProtoReadSupport.setProtobufClass(readUsingMR.getConfiguration(), customClass);
@@ -185,10 +184,8 @@ public class ProtoInputOutputFormatTest {
 
     assertEquals(1, result.size());
     Message msg = result.get(0);
-    assertFalse("Class from header returned.",
-      msg instanceof TestProto3.FirstCustomClassMessage);
-    assertTrue("Custom class was not used",
-      msg instanceof TestProto3.SecondCustomClassMessage);
+    assertFalse("Class from header returned.", msg instanceof TestProto3.FirstCustomClassMessage);
+    assertTrue("Custom class was not used", msg instanceof TestProto3.SecondCustomClassMessage);
 
     String stringValue;
     stringValue = ((TestProto3.SecondCustomClassMessage) msg).getString();
@@ -197,10 +194,12 @@ public class ProtoInputOutputFormatTest {
 
   @Test
   public void testRepeatedIntMessageClass() throws Exception {
-    TestProtobuf.RepeatedIntMessage msgEmpty = TestProtobuf.RepeatedIntMessage.newBuilder().build();
+    TestProtobuf.RepeatedIntMessage msgEmpty =
+        TestProtobuf.RepeatedIntMessage.newBuilder().build();
     TestProtobuf.RepeatedIntMessage msgNonEmpty = TestProtobuf.RepeatedIntMessage.newBuilder()
-      .addRepeatedInt(1).addRepeatedInt(2)
-      .build();
+        .addRepeatedInt(1)
+        .addRepeatedInt(2)
+        .build();
 
     Path outputPath = new WriteUsingMR().write(msgEmpty, msgNonEmpty);
     ReadUsingMR readUsingMR = new ReadUsingMR();
@@ -215,10 +214,12 @@ public class ProtoInputOutputFormatTest {
 
   @Test
   public void testProto3RepeatedIntMessageClass() throws Exception {
-    TestProto3.RepeatedIntMessage msgEmpty = TestProto3.RepeatedIntMessage.newBuilder().build();
+    TestProto3.RepeatedIntMessage msgEmpty =
+        TestProto3.RepeatedIntMessage.newBuilder().build();
     TestProto3.RepeatedIntMessage msgNonEmpty = TestProto3.RepeatedIntMessage.newBuilder()
-      .addRepeatedInt(1).addRepeatedInt(2)
-      .build();
+        .addRepeatedInt(1)
+        .addRepeatedInt(2)
+        .build();
 
     Path outputPath = new WriteUsingMR().write(msgEmpty, msgNonEmpty);
     ReadUsingMR readUsingMR = new ReadUsingMR();
@@ -233,10 +234,12 @@ public class ProtoInputOutputFormatTest {
 
   @Test
   public void testRepeatedIntMessageClassSchemaCompliant() throws Exception {
-    TestProtobuf.RepeatedIntMessage msgEmpty = TestProtobuf.RepeatedIntMessage.newBuilder().build();
+    TestProtobuf.RepeatedIntMessage msgEmpty =
+        TestProtobuf.RepeatedIntMessage.newBuilder().build();
     TestProtobuf.RepeatedIntMessage msgNonEmpty = TestProtobuf.RepeatedIntMessage.newBuilder()
-      .addRepeatedInt(1).addRepeatedInt(2)
-      .build();
+        .addRepeatedInt(1)
+        .addRepeatedInt(2)
+        .build();
 
     Configuration conf = new Configuration();
     ProtoWriteSupport.setWriteSpecsCompliant(conf, true);
@@ -254,10 +257,12 @@ public class ProtoInputOutputFormatTest {
 
   @Test
   public void testProto3RepeatedIntMessageClassSchemaCompliant() throws Exception {
-    TestProto3.RepeatedIntMessage msgEmpty = TestProto3.RepeatedIntMessage.newBuilder().build();
+    TestProto3.RepeatedIntMessage msgEmpty =
+        TestProto3.RepeatedIntMessage.newBuilder().build();
     TestProto3.RepeatedIntMessage msgNonEmpty = TestProto3.RepeatedIntMessage.newBuilder()
-      .addRepeatedInt(1).addRepeatedInt(2)
-      .build();
+        .addRepeatedInt(1)
+        .addRepeatedInt(2)
+        .build();
 
     Configuration conf = new Configuration();
     ProtoWriteSupport.setWriteSpecsCompliant(conf, true);
@@ -275,10 +280,12 @@ public class ProtoInputOutputFormatTest {
 
   @Test
   public void testMapIntMessageClass() throws Exception {
-    TestProtobuf.MapIntMessage msgEmpty = TestProtobuf.MapIntMessage.newBuilder().build();
+    TestProtobuf.MapIntMessage msgEmpty =
+        TestProtobuf.MapIntMessage.newBuilder().build();
     TestProtobuf.MapIntMessage msgNonEmpty = TestProtobuf.MapIntMessage.newBuilder()
-      .putMapInt(1, 123).putMapInt(2, 234)
-      .build();
+        .putMapInt(1, 123)
+        .putMapInt(2, 234)
+        .build();
 
     Path outputPath = new WriteUsingMR().write(msgEmpty, msgNonEmpty);
     ReadUsingMR readUsingMR = new ReadUsingMR();
@@ -293,10 +300,12 @@ public class ProtoInputOutputFormatTest {
 
   @Test
   public void testProto3MapIntMessageClass() throws Exception {
-    TestProto3.MapIntMessage msgEmpty = TestProto3.MapIntMessage.newBuilder().build();
+    TestProto3.MapIntMessage msgEmpty =
+        TestProto3.MapIntMessage.newBuilder().build();
     TestProto3.MapIntMessage msgNonEmpty = TestProto3.MapIntMessage.newBuilder()
-      .putMapInt(1, 123).putMapInt(2, 234)
-      .build();
+        .putMapInt(1, 123)
+        .putMapInt(2, 234)
+        .build();
 
     Path outputPath = new WriteUsingMR().write(msgEmpty, msgNonEmpty);
     ReadUsingMR readUsingMR = new ReadUsingMR();
@@ -311,10 +320,12 @@ public class ProtoInputOutputFormatTest {
 
   @Test
   public void testMapIntMessageClassSchemaCompliant() throws Exception {
-    TestProtobuf.MapIntMessage msgEmpty = TestProtobuf.MapIntMessage.newBuilder().build();
+    TestProtobuf.MapIntMessage msgEmpty =
+        TestProtobuf.MapIntMessage.newBuilder().build();
     TestProtobuf.MapIntMessage msgNonEmpty = TestProtobuf.MapIntMessage.newBuilder()
-      .putMapInt(1, 123).putMapInt(2, 234)
-      .build();
+        .putMapInt(1, 123)
+        .putMapInt(2, 234)
+        .build();
 
     Configuration conf = new Configuration();
     ProtoWriteSupport.setWriteSpecsCompliant(conf, true);
@@ -332,10 +343,12 @@ public class ProtoInputOutputFormatTest {
 
   @Test
   public void testProto3MapIntMessageClassSchemaCompliant() throws Exception {
-    TestProto3.MapIntMessage msgEmpty = TestProto3.MapIntMessage.newBuilder().build();
+    TestProto3.MapIntMessage msgEmpty =
+        TestProto3.MapIntMessage.newBuilder().build();
     TestProto3.MapIntMessage msgNonEmpty = TestProto3.MapIntMessage.newBuilder()
-      .putMapInt(1, 123).putMapInt(2, 234)
-      .build();
+        .putMapInt(1, 123)
+        .putMapInt(2, 234)
+        .build();
 
     Configuration conf = new Configuration();
     ProtoWriteSupport.setWriteSpecsCompliant(conf, true);
@@ -353,11 +366,14 @@ public class ProtoInputOutputFormatTest {
 
   @Test
   public void testRepeatedInnerMessageClass() throws Exception {
-    TestProtobuf.RepeatedInnerMessage msgEmpty = TestProtobuf.RepeatedInnerMessage.newBuilder().build();
+    TestProtobuf.RepeatedInnerMessage msgEmpty =
+        TestProtobuf.RepeatedInnerMessage.newBuilder().build();
     TestProtobuf.RepeatedInnerMessage msgNonEmpty = TestProtobuf.RepeatedInnerMessage.newBuilder()
-      .addRepeatedInnerMessage(TestProtobuf.InnerMessage.newBuilder().setOne("one").build())
-      .addRepeatedInnerMessage(TestProtobuf.InnerMessage.newBuilder().setTwo("two").build())
-      .build();
+        .addRepeatedInnerMessage(
+            TestProtobuf.InnerMessage.newBuilder().setOne("one").build())
+        .addRepeatedInnerMessage(
+            TestProtobuf.InnerMessage.newBuilder().setTwo("two").build())
+        .build();
 
     Path outputPath = new WriteUsingMR().write(msgEmpty, msgNonEmpty);
     ReadUsingMR readUsingMR = new ReadUsingMR();
@@ -372,11 +388,14 @@ public class ProtoInputOutputFormatTest {
 
   @Test
   public void testProto3RepeatedInnerMessageClass() throws Exception {
-    TestProto3.RepeatedInnerMessage msgEmpty = TestProto3.RepeatedInnerMessage.newBuilder().build();
+    TestProto3.RepeatedInnerMessage msgEmpty =
+        TestProto3.RepeatedInnerMessage.newBuilder().build();
     TestProto3.RepeatedInnerMessage msgNonEmpty = TestProto3.RepeatedInnerMessage.newBuilder()
-      .addRepeatedInnerMessage(TestProto3.InnerMessage.newBuilder().setOne("one").build())
-      .addRepeatedInnerMessage(TestProto3.InnerMessage.newBuilder().setTwo("two").build())
-      .build();
+        .addRepeatedInnerMessage(
+            TestProto3.InnerMessage.newBuilder().setOne("one").build())
+        .addRepeatedInnerMessage(
+            TestProto3.InnerMessage.newBuilder().setTwo("two").build())
+        .build();
 
     Path outputPath = new WriteUsingMR().write(msgEmpty, msgNonEmpty);
     ReadUsingMR readUsingMR = new ReadUsingMR();
@@ -391,11 +410,14 @@ public class ProtoInputOutputFormatTest {
 
   @Test
   public void testRepeatedInnerMessageClassSchemaCompliant() throws Exception {
-    TestProtobuf.RepeatedInnerMessage msgEmpty = TestProtobuf.RepeatedInnerMessage.newBuilder().build();
+    TestProtobuf.RepeatedInnerMessage msgEmpty =
+        TestProtobuf.RepeatedInnerMessage.newBuilder().build();
     TestProtobuf.RepeatedInnerMessage msgNonEmpty = TestProtobuf.RepeatedInnerMessage.newBuilder()
-      .addRepeatedInnerMessage(TestProtobuf.InnerMessage.newBuilder().setOne("one").build())
-      .addRepeatedInnerMessage(TestProtobuf.InnerMessage.newBuilder().setTwo("two").build())
-      .build();
+        .addRepeatedInnerMessage(
+            TestProtobuf.InnerMessage.newBuilder().setOne("one").build())
+        .addRepeatedInnerMessage(
+            TestProtobuf.InnerMessage.newBuilder().setTwo("two").build())
+        .build();
 
     Configuration conf = new Configuration();
     ProtoWriteSupport.setWriteSpecsCompliant(conf, true);
@@ -413,11 +435,14 @@ public class ProtoInputOutputFormatTest {
 
   @Test
   public void testProto3RepeatedInnerMessageClassSchemaCompliant() throws Exception {
-    TestProto3.RepeatedInnerMessage msgEmpty = TestProto3.RepeatedInnerMessage.newBuilder().build();
+    TestProto3.RepeatedInnerMessage msgEmpty =
+        TestProto3.RepeatedInnerMessage.newBuilder().build();
     TestProto3.RepeatedInnerMessage msgNonEmpty = TestProto3.RepeatedInnerMessage.newBuilder()
-      .addRepeatedInnerMessage(TestProto3.InnerMessage.newBuilder().setOne("one").build())
-      .addRepeatedInnerMessage(TestProto3.InnerMessage.newBuilder().setTwo("two").build())
-      .build();
+        .addRepeatedInnerMessage(
+            TestProto3.InnerMessage.newBuilder().setOne("one").build())
+        .addRepeatedInnerMessage(
+            TestProto3.InnerMessage.newBuilder().setTwo("two").build())
+        .build();
 
     Configuration conf = new Configuration();
     ProtoWriteSupport.setWriteSpecsCompliant(conf, true);
@@ -435,7 +460,8 @@ public class ProtoInputOutputFormatTest {
 
   @Test
   public void testProto3Defaults() throws Exception {
-    TestProto3.SchemaConverterAllDatatypes msgEmpty = TestProto3.SchemaConverterAllDatatypes.newBuilder().build();
+    TestProto3.SchemaConverterAllDatatypes msgEmpty =
+        TestProto3.SchemaConverterAllDatatypes.newBuilder().build();
 
     Configuration conf = new Configuration();
     ProtoWriteSupport.setWriteSpecsCompliant(conf, true);
@@ -447,14 +473,14 @@ public class ProtoInputOutputFormatTest {
     List<Message> result = readUsingMR.read(outputPath);
 
     assertEquals(1, result.size());
-    //assertEquals(msgEmpty, result.get(0));
+    // assertEquals(msgEmpty, result.get(0));
     // proto3 will return default values for absent fields which is what is returned in output
     // this is why we can ignore absent fields here as optionalMessage and optionalMap will get default value
     com.google.common.truth.extensions.proto.ProtoTruth.assertThat(result.get(0))
-      .ignoringRepeatedFieldOrder()
-      .ignoringFieldAbsence()
-      .reportingMismatchesOnly()
-      .isEqualTo(msgEmpty);
+        .ignoringRepeatedFieldOrder()
+        .ignoringFieldAbsence()
+        .reportingMismatchesOnly()
+        .isEqualTo(msgEmpty);
   }
 
   @Test
@@ -495,10 +521,10 @@ public class ProtoInputOutputFormatTest {
     // proto3 will return default values for absent fields which is what is returned in output
     // this is why we can ignore absent fields here as optionalMap will get default value
     com.google.common.truth.extensions.proto.ProtoTruth.assertThat(result.get(0))
-      .ignoringRepeatedFieldOrder()
-      .ignoringFieldAbsence()
-      .reportingMismatchesOnly()
-      .isEqualTo(dataBuilt);
+        .ignoringRepeatedFieldOrder()
+        .ignoringFieldAbsence()
+        .reportingMismatchesOnly()
+        .isEqualTo(dataBuilt);
 
     TestProto3.SchemaConverterAllDatatypes o = (TestProto3.SchemaConverterAllDatatypes) result.get(0);
     assertEquals("Good Will Hunting", o.getOptionalString());
@@ -558,17 +584,19 @@ public class ProtoInputOutputFormatTest {
     List<Message> result = readUsingMR.read(outputPath);
 
     assertEquals(100, result.size());
-    for (int i = 0; i < 100 ; i++) {
+    for (int i = 0; i < 100; i++) {
       // proto3 will return default values for absent fields which is what is returned in output
       // this is why we can ignore absent fields here
       com.google.common.truth.extensions.proto.ProtoTruth.assertThat(result.get(i))
-        .ignoringRepeatedFieldOrder()
-        .ignoringFieldAbsence()
-        .reportingMismatchesOnly()
-        .isEqualTo(input[i]);
+          .ignoringRepeatedFieldOrder()
+          .ignoringFieldAbsence()
+          .reportingMismatchesOnly()
+          .isEqualTo(input[i]);
     }
-    assertEquals("Good Will Hunting 0", ((TestProto3.SchemaConverterAllDatatypes) result.get(0)).getOptionalString());
-    assertEquals("Good Will Hunting 90", ((TestProto3.SchemaConverterAllDatatypes) result.get(90)).getOptionalString());
+    assertEquals(
+        "Good Will Hunting 0", ((TestProto3.SchemaConverterAllDatatypes) result.get(0)).getOptionalString());
+    assertEquals(
+        "Good Will Hunting 90", ((TestProto3.SchemaConverterAllDatatypes) result.get(90)).getOptionalString());
   }
 
   @Test
@@ -605,6 +633,77 @@ public class ProtoInputOutputFormatTest {
     assertEquals("Third inner", third.getThree());
     assertTrue(third.getOne().isEmpty());
     assertTrue(third.getTwo().isEmpty());
+  }
+
+  @Test
+  public void testProto3TimestampMessageClass() throws Exception {
+    Timestamp timestamp = Timestamps.parse("2021-05-02T15:04:03.748Z");
+    TestProto3.DateTimeMessage msgEmpty =
+        TestProto3.DateTimeMessage.newBuilder().build();
+    TestProto3.DateTimeMessage msgNonEmpty =
+        TestProto3.DateTimeMessage.newBuilder().setTimestamp(timestamp).build();
+
+    Configuration conf = new Configuration();
+    conf.setBoolean(ProtoWriteSupport.PB_UNWRAP_PROTO_WRAPPERS, true);
+    Path outputPath = new WriteUsingMR(conf).write(msgEmpty, msgNonEmpty);
+    ReadUsingMR readUsingMR = new ReadUsingMR();
+    String customClass = TestProto3.DateTimeMessage.class.getName();
+    ProtoReadSupport.setProtobufClass(readUsingMR.getConfiguration(), customClass);
+    List<Message> result = readUsingMR.read(outputPath);
+
+    assertEquals(2, result.size());
+    assertEquals(msgEmpty, result.get(0));
+    assertEquals(msgNonEmpty, result.get(1));
+  }
+
+  @Test
+  public void testProto3WrappedMessageClass() throws Exception {
+    TestProto3.WrappedMessage msgEmpty =
+        TestProto3.WrappedMessage.newBuilder().build();
+    TestProto3.WrappedMessage msgNonEmpty = TestProto3.WrappedMessage.newBuilder()
+        .setWrappedDouble(DoubleValue.of(0.577))
+        .setWrappedBool(BoolValue.of(true))
+        .build();
+
+    Configuration conf = new Configuration();
+    conf.setBoolean(ProtoWriteSupport.PB_UNWRAP_PROTO_WRAPPERS, true);
+    Path outputPath = new WriteUsingMR(conf).write(msgEmpty, msgNonEmpty);
+    ReadUsingMR readUsingMR = new ReadUsingMR();
+    String customClass = TestProto3.WrappedMessage.class.getName();
+    ProtoReadSupport.setProtobufClass(readUsingMR.getConfiguration(), customClass);
+    List<Message> result = readUsingMR.read(outputPath);
+
+    assertEquals(2, result.size());
+    assertEquals(msgEmpty, result.get(0));
+    assertEquals(msgNonEmpty, result.get(1));
+  }
+
+  @Test
+  public void testProto3Uint32Behaviour() throws Exception {
+
+    TestProto3.SchemaConverterAllDatatypes intMin = TestProto3.SchemaConverterAllDatatypes.newBuilder()
+        .setOptionalUInt32(Integer.MIN_VALUE)
+        .build();
+    assertEquals(intMin.toString(), "optionalUInt32: 2147483648\n");
+    TestProto3.SchemaConverterAllDatatypes uintMin = TestProto3.SchemaConverterAllDatatypes.newBuilder()
+        .setOptionalUInt32(-1)
+        .build();
+    assertEquals(uintMin.toString(), "optionalUInt32: 4294967295\n");
+    TestProto3.SchemaConverterAllDatatypes uintMax = TestProto3.SchemaConverterAllDatatypes.newBuilder()
+        .setOptionalUInt32(Integer.MAX_VALUE)
+        .build();
+    assertEquals(uintMax.toString(), "optionalUInt32: 2147483647\n");
+
+    Configuration conf = new Configuration();
+    Path outputPath = new WriteUsingMR(conf).write(intMin, uintMin, uintMax);
+    ReadUsingMR readUsingMR = new ReadUsingMR(conf);
+    String customClass = TestProto3.SchemaConverterAllDatatypes.class.getName();
+    ProtoReadSupport.setProtobufClass(readUsingMR.getConfiguration(), customClass);
+    List<Message> result = readUsingMR.read(outputPath);
+
+    assertEquals(result.get(0), intMin);
+    assertEquals(result.get(1), uintMin);
+    assertEquals(result.get(2), uintMax);
   }
 
   /**

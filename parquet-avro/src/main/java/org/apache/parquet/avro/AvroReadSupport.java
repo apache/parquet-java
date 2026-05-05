@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -20,6 +20,8 @@ package org.apache.parquet.avro;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.hadoop.conf.Configuration;
@@ -44,7 +46,7 @@ public class AvroReadSupport<T> extends ReadSupport<T> {
 
   private static final Logger LOG = LoggerFactory.getLogger(AvroReadSupport.class);
 
-  public static String AVRO_REQUESTED_PROJECTION = "parquet.avro.projection";
+  public static final String AVRO_REQUESTED_PROJECTION = "parquet.avro.projection";
   private static final String AVRO_READ_SCHEMA = "parquet.avro.read.schema";
 
   static final String AVRO_SCHEMA_METADATA_KEY = "parquet.avro.schema";
@@ -52,8 +54,7 @@ public class AvroReadSupport<T> extends ReadSupport<T> {
   static final String OLD_AVRO_SCHEMA_METADATA_KEY = "avro.schema";
   private static final String AVRO_READ_SCHEMA_METADATA_KEY = "avro.read.schema";
 
-  // TODO: for 2.0.0, make this final (breaking change)
-  public static String AVRO_DATA_SUPPLIER = "parquet.avro.data.supplier";
+  public static final String AVRO_DATA_SUPPLIER = "parquet.avro.data.supplier";
 
   public static final String AVRO_COMPATIBILITY = "parquet.avro.compatible";
   public static final boolean AVRO_DEFAULT_COMPATIBILITY = true;
@@ -63,7 +64,13 @@ public class AvroReadSupport<T> extends ReadSupport<T> {
   public static final boolean READ_INT96_AS_FIXED_DEFAULT = false;
 
   /**
-   * @param configuration a configuration
+   * List of the fully qualified class names separated by ',' that may be referenced from the Avro schema by
+   * "java-class" or "java-key-class" and are allowed to be loaded.
+   */
+  public static final String SERIALIZABLE_CLASSES = "parquet.avro.serializable.classes";
+
+  /**
+   * @param configuration       a configuration
    * @param requestedProjection the requested projection schema
    * @see org.apache.parquet.avro.AvroParquetInputFormat#setRequestedProjection(org.apache.hadoop.mapreduce.Job, org.apache.avro.Schema)
    */
@@ -72,7 +79,7 @@ public class AvroReadSupport<T> extends ReadSupport<T> {
   }
 
   /**
-   * @param configuration a configuration
+   * @param configuration  a configuration
    * @param avroReadSchema the read schema
    * @see org.apache.parquet.avro.AvroParquetInputFormat#setAvroReadSchema(org.apache.hadoop.mapreduce.Job, org.apache.avro.Schema)
    */
@@ -80,31 +87,44 @@ public class AvroReadSupport<T> extends ReadSupport<T> {
     configuration.set(AVRO_READ_SCHEMA, avroReadSchema.toString());
   }
 
-  public static void setAvroDataSupplier(Configuration configuration,
-      Class<? extends AvroDataSupplier> clazz) {
+  public static void setAvroDataSupplier(Configuration configuration, Class<? extends AvroDataSupplier> clazz) {
     configuration.set(AVRO_DATA_SUPPLIER, clazz.getName());
+  }
+
+  public static void setSerializableClasses(Configuration configuration, String... classNames) {
+    if (classNames.length == 0) {
+      configuration.set(AvroReadSupport.SERIALIZABLE_CLASSES, null);
+    } else {
+      configuration.set(AvroReadSupport.SERIALIZABLE_CLASSES, String.join(",", classNames));
+    }
+  }
+
+  public static void setSerializableClasses(Configuration configuration, Class<?>... classes) {
+    if (classes.length == 0) {
+      configuration.set(AvroReadSupport.SERIALIZABLE_CLASSES, null);
+    } else {
+      configuration.set(
+          AvroReadSupport.SERIALIZABLE_CLASSES,
+          Stream.of(classes).map(Class::getName).collect(Collectors.joining(",")));
+    }
   }
 
   private GenericData model = null;
 
-  public AvroReadSupport() {
-  }
+  public AvroReadSupport() {}
 
   public AvroReadSupport(GenericData model) {
     this.model = model;
   }
 
   @Override
-  public ReadContext init(Configuration configuration,
-                          Map<String, String> keyValueMetaData,
-                          MessageType fileSchema) {
+  public ReadContext init(Configuration configuration, Map<String, String> keyValueMetaData, MessageType fileSchema) {
     return init(new HadoopParquetConfiguration(configuration), keyValueMetaData, fileSchema);
   }
 
   @Override
-  public ReadContext init(ParquetConfiguration configuration,
-                          Map<String, String> keyValueMetaData,
-                          MessageType fileSchema) {
+  public ReadContext init(
+      ParquetConfiguration configuration, Map<String, String> keyValueMetaData, MessageType fileSchema) {
     MessageType projection = fileSchema;
     Map<String, String> metadata = new LinkedHashMap<String, String>();
 
@@ -128,15 +148,19 @@ public class AvroReadSupport<T> extends ReadSupport<T> {
 
   @Override
   public RecordMaterializer<T> prepareForRead(
-      Configuration configuration, Map<String, String> keyValueMetaData,
-      MessageType fileSchema, ReadContext readContext) {
+      Configuration configuration,
+      Map<String, String> keyValueMetaData,
+      MessageType fileSchema,
+      ReadContext readContext) {
     return prepareForRead(new HadoopParquetConfiguration(configuration), keyValueMetaData, fileSchema, readContext);
   }
 
   @Override
   public RecordMaterializer<T> prepareForRead(
-    ParquetConfiguration configuration, Map<String, String> keyValueMetaData,
-    MessageType fileSchema, ReadContext readContext) {
+      ParquetConfiguration configuration,
+      Map<String, String> keyValueMetaData,
+      MessageType fileSchema,
+      ReadContext readContext) {
     Map<String, String> metadata = readContext.getReadSupportMetadata();
     MessageType parquetSchema = readContext.getRequestedSchema();
     Schema avroSchema;
@@ -157,17 +181,24 @@ public class AvroReadSupport<T> extends ReadSupport<T> {
 
     GenericData model = getDataModel(configuration, avroSchema);
     String compatEnabled = metadata.get(AvroReadSupport.AVRO_COMPATIBILITY);
-    if (compatEnabled != null && Boolean.valueOf(compatEnabled)) {
+    if (Boolean.parseBoolean(compatEnabled)) {
       return newCompatMaterializer(parquetSchema, avroSchema, model);
     }
-    return new AvroRecordMaterializer<T>(parquetSchema, avroSchema, model);
+    String[] serializableClasses = configuration.getStrings(SERIALIZABLE_CLASSES, null);
+
+    return new AvroRecordMaterializer<T>(
+        parquetSchema,
+        avroSchema,
+        model,
+        serializableClasses == null
+            ? new ReflectClassValidator.PackageValidator()
+            : new ReflectClassValidator.ClassValidator(serializableClasses));
   }
 
   @SuppressWarnings("unchecked")
   private static <T> RecordMaterializer<T> newCompatMaterializer(
       MessageType parquetSchema, Schema avroSchema, GenericData model) {
-    return (RecordMaterializer<T>) new AvroCompatRecordMaterializer(
-        parquetSchema, avroSchema, model);
+    return (RecordMaterializer<T>) new AvroCompatRecordMaterializer(parquetSchema, avroSchema, model);
   }
 
   private GenericData getDataModel(ParquetConfiguration conf, Schema schema) {
@@ -180,8 +211,12 @@ public class AvroReadSupport<T> extends ReadSupport<T> {
       try {
         modelForSchema = AvroRecordConverter.getModelForSchema(schema);
       } catch (Exception e) {
-        LOG.warn(String.format("Failed to derive data model for Avro schema %s. Parquet will use default " +
-          "SpecificData model for reading from source.", schema), e);
+        LOG.warn(
+            String.format(
+                "Failed to derive data model for Avro schema %s. Parquet will use default "
+                    + "SpecificData model for reading from source.",
+                schema),
+            e);
         modelForSchema = null;
       }
 
@@ -190,8 +225,9 @@ public class AvroReadSupport<T> extends ReadSupport<T> {
       }
     }
 
-    Class<? extends AvroDataSupplier> suppClass = conf.getClass(
-        AVRO_DATA_SUPPLIER, SpecificDataSupplier.class, AvroDataSupplier.class);
-    return ReflectionUtils.newInstance(suppClass, ConfigurationUtil.createHadoopConfiguration(conf)).get();
+    Class<? extends AvroDataSupplier> suppClass =
+        conf.getClass(AVRO_DATA_SUPPLIER, SpecificDataSupplier.class, AvroDataSupplier.class);
+    return ReflectionUtils.newInstance(suppClass, ConfigurationUtil.createHadoopConfiguration(conf))
+        .get();
   }
 }

@@ -18,6 +18,16 @@
  */
 package org.apache.parquet.cli.commands;
 
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
+import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.Map;
+import java.util.Random;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.example.data.simple.SimpleGroup;
@@ -28,19 +38,6 @@ import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
 import org.junit.Assert;
 import org.junit.Test;
-
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.util.Arrays;
-import java.util.Map;
-import java.util.Random;
-
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
-import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
 public class ColumnSizeCommandTest extends ParquetFileTest {
 
@@ -68,14 +65,14 @@ public class ColumnSizeCommandTest extends ParquetFileTest {
   }
 
   private String createParquetFile() throws IOException {
-    MessageType schema = new MessageType("schema",
-      new PrimitiveType(REQUIRED, INT64, "DocId"),
-      new PrimitiveType(REQUIRED, INT32, "Num"));
+    MessageType schema = new MessageType(
+        "schema", new PrimitiveType(REQUIRED, INT64, "DocId"), new PrimitiveType(REQUIRED, INT32, "Num"));
 
     conf.set(GroupWriteSupport.PARQUET_EXAMPLE_SCHEMA, schema.toString());
 
     String file = randomParquetFile().getAbsolutePath();
-    ExampleParquetWriter.Builder builder = ExampleParquetWriter.builder(new Path(file)).withConf(conf);
+    ExampleParquetWriter.Builder builder =
+        ExampleParquetWriter.builder(new Path(file)).withConf(conf);
     Random rnd = new Random();
     try (ParquetWriter writer = builder.build()) {
       for (int i = 0; i < numRecord; i++) {

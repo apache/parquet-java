@@ -18,16 +18,15 @@
  */
 package org.apache.parquet.column.values.bitpacking;
 
+import static org.junit.Assert.assertArrayEquals;
+
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.junit.Assume;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.nio.ByteBuffer;
-
-import static org.junit.Assert.assertArrayEquals;
 
 public class TestParquetReadRouter {
   private static final Logger LOG = LoggerFactory.getLogger(TestParquetReadRouter.class);
@@ -41,7 +40,7 @@ public class TestParquetReadRouter {
 
   @Test
   public void testRead() throws IOException {
-    for (int bitWidth=minBitWidth; bitWidth <= maxBitWidth; bitWidth++) {
+    for (int bitWidth = minBitWidth; bitWidth <= maxBitWidth; bitWidth++) {
       byte[] input = new byte[outputValues * bitWidth / 8];
       for (int i = 0; i < input.length; i++) {
         input[i] = (byte) i;

@@ -20,7 +20,6 @@
 package org.apache.parquet.crypto;
 
 import java.nio.charset.StandardCharsets;
-
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 
 public class ColumnEncryptionProperties {
@@ -31,8 +30,7 @@ public class ColumnEncryptionProperties {
   private final byte[] keyBytes;
   private final byte[] keyMetaData;
 
-  private ColumnEncryptionProperties(boolean encrypted, ColumnPath columnPath, 
-      byte[] keyBytes, byte[] keyMetaData) {
+  private ColumnEncryptionProperties(boolean encrypted, ColumnPath columnPath, byte[] keyBytes, byte[] keyMetaData) {
 
     if (null == columnPath) {
       throw new IllegalArgumentException("Null column path");
@@ -45,15 +43,13 @@ public class ColumnEncryptionProperties {
         throw new IllegalArgumentException("Setting key metadata on unencrypted column: " + columnPath);
       }
     }
-    if ((null != keyBytes) && 
-        !(keyBytes.length == 16 || keyBytes.length == 24 || keyBytes.length == 32)) {
-      throw new IllegalArgumentException("Wrong key length: " + keyBytes.length + 
-          ". Column: " + columnPath);
+    if ((null != keyBytes) && !(keyBytes.length == 16 || keyBytes.length == 24 || keyBytes.length == 32)) {
+      throw new IllegalArgumentException("Wrong key length: " + keyBytes.length + ". Column: " + columnPath);
     }
     encryptedWithFooterKey = (encrypted && (null == keyBytes));
     if (encryptedWithFooterKey && (null != keyMetaData)) {
-      throw new IllegalArgumentException("Setting key metadata on column encrypted with footer key:  " +
-          columnPath);
+      throw new IllegalArgumentException(
+          "Setting key metadata on column encrypted with footer key:  " + columnPath);
     }
 
     this.encrypted = encrypted;
@@ -64,7 +60,7 @@ public class ColumnEncryptionProperties {
 
   /**
    * Convenience builder for regular (not nested) columns.
-   * To make sure column name is not misspelled or misplaced, 
+   * To make sure column name is not misspelled or misplaced,
    * file writer will verify that column is in file schema.
    *
    * @param name Flat column name
@@ -76,9 +72,9 @@ public class ColumnEncryptionProperties {
 
   /**
    * Builder for encrypted columns.
-   * To make sure column path is not misspelled or misplaced, 
+   * To make sure column path is not misspelled or misplaced,
    * file writer will verify this column is in file schema.
-   * 
+   *
    * @param path Column path
    * @return Builder
    */
@@ -91,7 +87,7 @@ public class ColumnEncryptionProperties {
    * To make sure column path is not misspelled or misplaced,
    * file writer will verify this column is in file schema.
    *
-   * @param path Column path
+   * @param path    Column path
    * @param encrypt whether or not this column to be encrypted
    * @return Builder
    */
@@ -115,7 +111,7 @@ public class ColumnEncryptionProperties {
      * Set a column-specific key.
      * If key is not set on an encrypted column, the column will
      * be encrypted with the footer key.
-     * 
+     *
      * @param columnKey Key length must be either 16, 24 or 32 bytes.
      * @return Builder
      */
@@ -135,7 +131,7 @@ public class ColumnEncryptionProperties {
     /**
      * Set a key retrieval metadata.
      * use either withKeyMetaData or withKeyID, not both.
-     * 
+     *
      * @param keyMetaData arbitrary byte array with encryption key metadata
      * @return Builder
      */
@@ -154,7 +150,7 @@ public class ColumnEncryptionProperties {
     /**
      * Set a key retrieval metadata (converted from String).
      * use either withKeyMetaData or withKeyID, not both.
-     * 
+     *
      * @param keyId will be converted to metadata (UTF-8 array).
      * @return Builder
      */

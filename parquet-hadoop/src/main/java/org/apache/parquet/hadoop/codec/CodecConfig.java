@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -17,6 +17,8 @@
  * under the License.
  */
 package org.apache.parquet.hadoop.codec;
+
+import static org.apache.parquet.hadoop.metadata.CompressionCodecName.UNCOMPRESSED;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.mapred.JobConf;
@@ -27,8 +29,6 @@ import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.util.ContextUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import static org.apache.parquet.hadoop.metadata.CompressionCodecName.UNCOMPRESSED;
 
 /**
  * Template class and factory for accessing codec related configurations in different APIs(mapreduce or mapred),
@@ -56,8 +56,9 @@ public abstract class CodecConfig {
 
   /**
    * use mapred api to read codec config
+   *
    * @param jobConf a mapred job configuration
-   * @return  MapredCodecConfig
+   * @return MapredCodecConfig
    */
   public static CodecConfig from(JobConf jobConf) {
     return new MapredCodecConfig(jobConf);
@@ -65,6 +66,7 @@ public abstract class CodecConfig {
 
   /**
    * use mapreduce api to read codec config
+   *
    * @param context a mapreduce task attempt context
    * @return MapreduceCodecConfig
    */
@@ -100,11 +102,15 @@ public abstract class CodecConfig {
     CompressionCodecName codec;
     try {
       // find the right codec
-      Class<?> codecClass = getHadoopOutputCompressorClass(CompressionCodecName.UNCOMPRESSED.getHadoopCompressionCodecClass());
+      Class<?> codecClass =
+          getHadoopOutputCompressorClass(CompressionCodecName.UNCOMPRESSED.getHadoopCompressionCodecClass());
       LOG.info("Compression set through hadoop codec: {}", codecClass.getName());
       codec = CompressionCodecName.fromCompressionCodec(codecClass);
     } catch (CompressionCodecNotSupportedException e) {
-      LOG.warn("codec defined in hadoop config is not supported by parquet [{}] and will use UNCOMPRESSED",e.getCodecClass().getName(), e);
+      LOG.warn(
+          "codec defined in hadoop config is not supported by parquet [{}] and will use UNCOMPRESSED",
+          e.getCodecClass().getName(),
+          e);
       codec = CompressionCodecName.UNCOMPRESSED;
     } catch (IllegalArgumentException e) {
       LOG.warn("codec class not found: {}", e.getMessage(), e);

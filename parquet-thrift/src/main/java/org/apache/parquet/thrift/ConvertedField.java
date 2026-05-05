@@ -19,7 +19,6 @@
 package org.apache.parquet.thrift;
 
 import java.util.Objects;
-
 import org.apache.parquet.ShouldNeverHappenException;
 import org.apache.parquet.schema.Type;
 import org.apache.parquet.thrift.projection.FieldsPath;
@@ -29,7 +28,7 @@ import org.apache.parquet.thrift.projection.FieldsPath;
  * It represents a field that has been converted from a {@link org.apache.parquet.thrift.struct.ThriftType}
  * to a {@link org.apache.parquet.schema.MessageType}, as well as whether this field is being
  * projected away, kept, or kept only because we cannot safely drop all of its fields.
- *
+ * <p>
  * This interface is essentially a union of {keep, drop, sentinelUnion}
  */
 public interface ConvertedField {
@@ -42,15 +41,18 @@ public interface ConvertedField {
   FieldsPath path();
 
   boolean isKeep();
+
   Keep asKeep();
 
   boolean isDrop();
+
   Drop asDrop();
 
   boolean isSentinelUnion();
+
   SentinelUnion asSentinelUnion();
 
-  static abstract class ConvertedFieldBase implements ConvertedField {
+  abstract static class ConvertedFieldBase implements ConvertedField {
     private final FieldsPath path;
 
     protected ConvertedFieldBase(FieldsPath path) {
@@ -166,4 +168,3 @@ public interface ConvertedField {
     }
   }
 }
-

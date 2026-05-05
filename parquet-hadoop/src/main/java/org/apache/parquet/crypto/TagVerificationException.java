@@ -19,7 +19,6 @@
 
 package org.apache.parquet.crypto;
 
-
 public class TagVerificationException extends ParquetCryptoRuntimeException {
   private static final long serialVersionUID = 1L;
 

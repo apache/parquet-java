@@ -18,22 +18,21 @@
  */
 package org.apache.parquet.hadoop.thrift;
 
+import static org.apache.parquet.hadoop.thrift.TestInputOutputFormat.waitForJob;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.lib.output.NullOutputFormat;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
-
-import org.apache.parquet.hadoop.UnmaterializableRecordCounter;
 import org.apache.parquet.hadoop.ParquetWriter;
+import org.apache.parquet.hadoop.UnmaterializableRecordCounter;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.thrift.ThriftParquetWriter;
 import org.apache.parquet.thrift.test.compat.ABool;
@@ -43,10 +42,9 @@ import org.apache.parquet.thrift.test.compat.AStructThatLooksLikeUnionV2;
 import org.apache.parquet.thrift.test.compat.StructWithAStructThatLooksLikeUnionV2;
 import org.apache.parquet.thrift.test.compat.StructWithUnionV2;
 import org.apache.parquet.thrift.test.compat.UnionV2;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
-import static org.apache.parquet.hadoop.thrift.TestInputOutputFormat.waitForJob;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
 public class TestCorruptThriftRecords {
 
@@ -125,21 +123,20 @@ public class TestCorruptThriftRecords {
     assertEquals(expected, found);
   }
 
-  private Path writeFileWithCorruptRecords(int numCorrupt, List<StructWithUnionV2> collectExpectedRecords) throws Exception {
+  private Path writeFileWithCorruptRecords(int numCorrupt, List<StructWithUnionV2> collectExpectedRecords)
+      throws Exception {
     // generate a file with records that are corrupt according to thrift
     // by writing some structs that when interpreted as unions will be
     // unreadable
     Path outputPath = new Path(new File(tempDir.getRoot(), "corrupt_out").getAbsolutePath());
-    ParquetWriter<StructWithAStructThatLooksLikeUnionV2> writer = new ThriftParquetWriter<StructWithAStructThatLooksLikeUnionV2>(
-        outputPath,
-        StructWithAStructThatLooksLikeUnionV2.class,
-        CompressionCodecName.UNCOMPRESSED
-    );
+    ParquetWriter<StructWithAStructThatLooksLikeUnionV2> writer =
+        new ThriftParquetWriter<StructWithAStructThatLooksLikeUnionV2>(
+            outputPath, StructWithAStructThatLooksLikeUnionV2.class, CompressionCodecName.UNCOMPRESSED);
 
     int numRecords = 0;
 
     for (int i = 0; i < 100; i++) {
-      StructWithAStructThatLooksLikeUnionV2 valid  = makeValid(numRecords);
+      StructWithAStructThatLooksLikeUnionV2 valid = makeValid(numRecords);
       StructWithUnionV2 expected = makeExpectedValid(numRecords);
       numRecords++;
       collectExpectedRecords.add(expected);
@@ -151,7 +148,7 @@ public class TestCorruptThriftRecords {
     }
 
     for (int i = 0; i < 100; i++) {
-      StructWithAStructThatLooksLikeUnionV2 valid  = makeValid(numRecords);
+      StructWithAStructThatLooksLikeUnionV2 valid = makeValid(numRecords);
       StructWithUnionV2 expected = makeExpectedValid(numRecords);
       numRecords++;
       collectExpectedRecords.add(expected);

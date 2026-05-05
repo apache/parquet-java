@@ -18,7 +18,22 @@
  */
 package org.apache.parquet.hadoop.util;
 
+import static org.apache.parquet.format.converter.ParquetMetadataConverter.NO_FILTER;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
+import static org.apache.parquet.schema.Type.Repetition.OPTIONAL;
+import static org.apache.parquet.schema.Type.Repetition.REPEATED;
+import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
+import static org.junit.Assert.assertArrayEquals;
+
 import com.google.common.collect.ImmutableMap;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import java.util.concurrent.ThreadLocalRandom;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.HadoopReadOptions;
@@ -41,22 +56,6 @@ import org.apache.parquet.schema.PrimitiveType;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
-import java.util.concurrent.ThreadLocalRandom;
-
-import static org.apache.parquet.format.converter.ParquetMetadataConverter.NO_FILTER;
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
-import static org.apache.parquet.schema.Type.Repetition.OPTIONAL;
-import static org.apache.parquet.schema.Type.Repetition.REPEATED;
-import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
-import static org.junit.Assert.assertArrayEquals;
-
 public class ColumnMaskerTest {
 
   private Configuration conf = new Configuration();
@@ -71,15 +70,24 @@ public class ColumnMaskerTest {
   @Before
   public void testSetup() throws Exception {
     testDocs = new TestDocs(numRecord);
-    inputFile = createParquetFile(conf, extraMeta, numRecord, "input", "GZIP",
-      ParquetProperties.WriterVersion.PARQUET_1_0, ParquetProperties.DEFAULT_PAGE_SIZE, testDocs);
+    inputFile = createParquetFile(
+        conf,
+        extraMeta,
+        numRecord,
+        "input",
+        "GZIP",
+        ParquetProperties.WriterVersion.PARQUET_1_0,
+        ParquetProperties.DEFAULT_PAGE_SIZE,
+        testDocs);
     outputFile = createTempFile("test");
     nullifyColumns(conf, inputFile, outputFile);
   }
 
   @Test(expected = RuntimeException.class)
   public void testNullColumns() throws IOException {
-    ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), new Path(outputFile)).withConf(conf).build();
+    ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), new Path(outputFile))
+        .withConf(conf)
+        .build();
     Group group = reader.read();
     group.getLong("DocId", 0);
     reader.close();
@@ -87,7 +95,9 @@ public class ColumnMaskerTest {
 
   @Test(expected = RuntimeException.class)
   public void testNullNestedColumns() throws IOException {
-    ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), new Path(outputFile)).withConf(conf).build();
+    ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), new Path(outputFile))
+        .withConf(conf)
+        .build();
     Group group = reader.read();
     Group subGroup = group.getGroup("Links", 0);
     subGroup.getBinary("Backward", 0).getBytes();
@@ -96,7 +106,9 @@ public class ColumnMaskerTest {
 
   @Test
   public void validateNonNuLLColumns() throws IOException {
-    ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), new Path(outputFile)).withConf(conf).build();
+    ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), new Path(outputFile))
+        .withConf(conf)
+        .build();
     for (int i = 0; i < numRecord; i++) {
       Group group = reader.read();
       assertArrayEquals(group.getBinary("Name", 0).getBytes(), testDocs.name[i].getBytes());
@@ -119,36 +131,49 @@ public class ColumnMaskerTest {
     paths.add("DocId");
     paths.add("Gender");
     paths.add("Links.Backward");
-    try (TransParquetFileReader reader = new TransParquetFileReader(HadoopInputFile.fromPath(inPath, conf), HadoopReadOptions.builder(conf).build())) {
+    try (TransParquetFileReader reader = new TransParquetFileReader(
+        HadoopInputFile.fromPath(inPath, conf),
+        HadoopReadOptions.builder(conf).build())) {
       columnMasker.processBlocks(reader, writer, metaData, schema, paths, ColumnMasker.MaskMode.NULLIFY);
     } finally {
       writer.end(metaData.getFileMetaData().getKeyValueMetaData());
     }
   }
 
-  private String createParquetFile(Configuration conf, Map<String, String> extraMeta, int numRecord, String prefix, String codec,
-                                         ParquetProperties.WriterVersion writerVersion, int pageSize, TestDocs testDocs) throws IOException {
-    MessageType schema = new MessageType("schema",
-      new PrimitiveType(OPTIONAL, INT64, "DocId"),
-      new PrimitiveType(REQUIRED, BINARY, "Name"),
-      new PrimitiveType(OPTIONAL, BINARY, "Gender"),
-      new GroupType(OPTIONAL, "Links",
-        new PrimitiveType(REPEATED, BINARY, "Backward"),
-        new PrimitiveType(REPEATED, BINARY, "Forward")));
+  private String createParquetFile(
+      Configuration conf,
+      Map<String, String> extraMeta,
+      int numRecord,
+      String prefix,
+      String codec,
+      ParquetProperties.WriterVersion writerVersion,
+      int pageSize,
+      TestDocs testDocs)
+      throws IOException {
+    MessageType schema = new MessageType(
+        "schema",
+        new PrimitiveType(OPTIONAL, INT64, "DocId"),
+        new PrimitiveType(REQUIRED, BINARY, "Name"),
+        new PrimitiveType(OPTIONAL, BINARY, "Gender"),
+        new GroupType(
+            OPTIONAL,
+            "Links",
+            new PrimitiveType(REPEATED, BINARY, "Backward"),
+            new PrimitiveType(REPEATED, BINARY, "Forward")));
 
     conf.set(GroupWriteSupport.PARQUET_EXAMPLE_SCHEMA, schema.toString());
 
     String file = createTempFile(prefix);
     ExampleParquetWriter.Builder builder = ExampleParquetWriter.builder(new Path(file))
-      .withConf(conf)
-      .withWriterVersion(writerVersion)
-      .withExtraMetaData(extraMeta)
-      .withDictionaryEncoding("DocId", true)
-      .withDictionaryEncoding("Name", true)
-      .withValidation(true)
-      .enablePageWriteChecksum()
-      .withPageSize(pageSize)
-      .withCompressionCodec(CompressionCodecName.valueOf(codec));
+        .withConf(conf)
+        .withWriterVersion(writerVersion)
+        .withExtraMetaData(extraMeta)
+        .withDictionaryEncoding("DocId", true)
+        .withDictionaryEncoding("Name", true)
+        .withValidation(true)
+        .enablePageWriteChecksum()
+        .withPageSize(pageSize)
+        .withCompressionCodec(CompressionCodecName.valueOf(codec));
     try (ParquetWriter writer = builder.build()) {
       for (int i = 0; i < numRecord; i++) {
         SimpleGroup g = new SimpleGroup(schema);
@@ -186,7 +211,7 @@ public class ColumnMaskerTest {
     }
   }
 
-  private  class TestDocs {
+  private class TestDocs {
     public long[] docId;
     public String[] name;
     public String[] gender;

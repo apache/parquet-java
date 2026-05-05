@@ -18,10 +18,10 @@
  */
 package org.apache.parquet.column.values.bitpacking;
 
+import static org.junit.Assert.assertEquals;
+
 import org.apache.parquet.bytes.BytesUtils;
 import org.junit.Test;
-
-import static org.junit.Assert.assertEquals;
 
 public class TestByteBasedBitPackingEncoder {
 
@@ -42,5 +42,4 @@ public class TestByteBasedBitPackingEncoder {
       assertEquals(i == 0 ? 1 : 9, encoder.getNumSlabs());
     }
   }
-
 }

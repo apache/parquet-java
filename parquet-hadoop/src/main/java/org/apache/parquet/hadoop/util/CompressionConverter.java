@@ -18,6 +18,7 @@
  */
 package org.apache.parquet.hadoop.util;
 
+import java.io.IOException;
 import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.format.PageHeader;
@@ -31,15 +32,19 @@ import org.apache.parquet.io.InputFile;
 import org.apache.parquet.io.SeekableInputStream;
 import org.apache.parquet.schema.MessageType;
 
-import java.io.IOException;
-
 @Deprecated
 public class CompressionConverter {
 
   private ParquetRewriter rewriter;
 
-  public void processBlocks(TransParquetFileReader reader, ParquetFileWriter writer, ParquetMetadata meta, MessageType schema,
-                            String createdBy, CompressionCodecName codecName) throws IOException {
+  public void processBlocks(
+      TransParquetFileReader reader,
+      ParquetFileWriter writer,
+      ParquetMetadata meta,
+      MessageType schema,
+      String createdBy,
+      CompressionCodecName codecName)
+      throws IOException {
     rewriter = new ParquetRewriter(reader, writer, meta, schema, createdBy, codecName, null, null);
     rewriter.processBlocks();
   }

@@ -27,6 +27,7 @@ public interface HashFunction {
 
   /**
    * compute the hash value for a byte array.
+   *
    * @param input the input byte array
    * @return a result of long value.
    */
@@ -34,6 +35,7 @@ public interface HashFunction {
 
   /**
    * compute the hash value for a ByteBuffer.
+   *
    * @param input the input ByteBuffer
    * @return a result of long value.
    */

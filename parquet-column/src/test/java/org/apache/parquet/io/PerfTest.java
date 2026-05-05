@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -32,7 +32,6 @@ import org.apache.parquet.example.data.GroupWriter;
 import org.apache.parquet.io.api.RecordMaterializer;
 import org.apache.parquet.schema.MessageType;
 
-
 public class PerfTest {
 
   public static void main(String[] args) {
@@ -48,8 +47,7 @@ public class PerfTest {
     read(memPageStore, schema3, "read projected no Strings");
   }
 
-  private static void read(MemPageStore memPageStore, MessageType myschema,
-      String message) {
+  private static void read(MemPageStore memPageStore, MessageType myschema, String message) {
     MessageColumnIO columnIO = newColumnFactory(myschema);
     System.out.println(message);
     RecordMaterializer<Object> recordConsumer = new DummyRecordConverter(myschema);
@@ -66,12 +64,11 @@ public class PerfTest {
     System.out.println();
   }
 
-
   private static void write(MemPageStore memPageStore) {
     ColumnWriteStoreV1 columns = new ColumnWriteStoreV1(
         memPageStore,
         ParquetProperties.builder()
-            .withPageSize(50*1024*1024)
+            .withPageSize(50 * 1024 * 1024)
             .withDictionaryEncoding(false)
             .build());
     MessageColumnIO columnIO = newColumnFactory(schema);
@@ -90,12 +87,13 @@ public class PerfTest {
     columns.flush();
     System.out.println();
     System.out.println(columns.getBufferedSize() + " bytes used total");
-    System.out.println("max col size: "+columns.maxColMemSize()+" bytes");
+    System.out.println("max col size: " + columns.maxColMemSize() + " bytes");
   }
 
   private static MessageColumnIO newColumnFactory(MessageType schema) {
     return new ColumnIOFactory().getColumnIO(schema);
   }
+
   private static void read(RecordReader<Object> recordReader, int count, MessageType schema) {
     Object[] records = new Object[count];
     System.gc();
@@ -106,11 +104,13 @@ public class PerfTest {
     }
     long t1 = System.currentTimeMillis();
     System.out.print("> ");
-    long t = t1-t0;
-    float err = (float)100 * 2 / t; // (+/- 1 ms)
-    System.out.printf("                                            read %,9d recs in %,5d ms at %,9d rec/s err: %3.2f%%\n", count , t, t == 0 ? 0 : count * 1000 / t, err);
+    long t = t1 - t0;
+    float err = (float) 100 * 2 / t; // (+/- 1 ms)
+    System.out.printf(
+        "                                            read %,9d recs in %,5d ms at %,9d rec/s err: %3.2f%%\n",
+        count, t, t == 0 ? 0 : count * 1000 / t, err);
     if (!records[0].equals("end()")) {
-      throw new RuntimeException(""+records[0]);
+      throw new RuntimeException("" + records[0]);
     }
   }
 
@@ -120,9 +120,8 @@ public class PerfTest {
       groupWriter.write(r1);
     }
     long t1 = System.currentTimeMillis();
-    long t = t1-t0;
+    long t = t1 - t0;
     memPageStore.addRowCount(count);
-    System.out.printf("written %,9d recs in %,5d ms at %,9d rec/s\n", count, t, t == 0 ? 0 : count * 1000 / t );
+    System.out.printf("written %,9d recs in %,5d ms at %,9d rec/s\n", count, t, t == 0 ? 0 : count * 1000 / t);
   }
-
 }

@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -18,13 +18,17 @@
  */
 package org.apache.parquet.avro;
 
+import static java.lang.Thread.sleep;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
 import com.google.common.collect.Lists;
 import java.io.IOException;
-import java.lang.reflect.Field;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 import org.apache.avro.Schema;
 import org.apache.avro.reflect.Nullable;
 import org.apache.avro.reflect.ReflectData;
@@ -48,16 +52,8 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static java.lang.Thread.sleep;
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
-
 public class TestReflectInputOutputFormat {
   private static final Logger LOG = LoggerFactory.getLogger(TestReflectInputOutputFormat.class);
-
 
   public static class Service {
     private long date;
@@ -85,7 +81,9 @@ public class TestReflectInputOutputFormat {
   }
 
   public static enum EngineType {
-    DIESEL, PETROL, ELECTRIC
+    DIESEL,
+    PETROL,
+    ELECTRIC
   }
 
   public static class Engine {
@@ -174,8 +172,8 @@ public class TestReflectInputOutputFormat {
     private int doors;
     private Engine engine;
     private Extra optionalExtra = null;
-    @Nullable
-    private List<Service> serviceHistory = null;
+
+    @Nullable private List<Service> serviceHistory = null;
 
     @Override
     public boolean equals(Object o) {
@@ -215,8 +213,8 @@ public class TestReflectInputOutputFormat {
   }
 
   public static class ShortCar {
-    @Nullable
-    private String make = null;
+    @Nullable private String make = null;
+
     private Engine engine;
     private long year;
     private byte[] vin;
@@ -230,8 +228,7 @@ public class TestReflectInputOutputFormat {
 
       if (year != shortCar.year) return false;
       if (!engine.equals(shortCar.engine)) return false;
-      if (make != null ? !make.equals(shortCar.make) : shortCar.make != null)
-        return false;
+      if (make != null ? !make.equals(shortCar.make) : shortCar.make != null) return false;
       if (!Arrays.equals(vin, shortCar.vin)) return false;
 
       return true;
@@ -247,9 +244,9 @@ public class TestReflectInputOutputFormat {
     }
   }
 
-  public static final Schema CAR_SCHEMA = ReflectData.get()//AllowNulls.INSTANCE
+  public static final Schema CAR_SCHEMA = ReflectData.get() // AllowNulls.INSTANCE
       .getSchema(Car.class);
-  public static final Schema SHORT_CAR_SCHEMA = ReflectData.get()//AllowNulls.INSTANCE
+  public static final Schema SHORT_CAR_SCHEMA = ReflectData.get() // AllowNulls.INSTANCE
       .getSchema(ShortCar.class);
 
   public static Car nextRecord(int i) {
@@ -284,7 +281,7 @@ public class TestReflectInputOutputFormat {
 
   public static class MyMapper extends Mapper<LongWritable, Text, Void, Car> {
     @Override
-    public void run(Context context) throws IOException ,InterruptedException {
+    public void run(Context context) throws IOException, InterruptedException {
       for (int i = 0; i < 10; i++) {
         context.write(null, nextRecord(i));
       }
@@ -293,34 +290,31 @@ public class TestReflectInputOutputFormat {
 
   public static class MyMapper2 extends Mapper<Void, Car, Void, Car> {
     @Override
-    protected void map(Void key, Car car, Context context) throws IOException ,InterruptedException {
+    protected void map(Void key, Car car, Context context) throws IOException, InterruptedException {
       // Note: Car can be null because of predicate pushdown defined by an UnboundedRecordFilter (see below)
       if (car != null) {
         context.write(null, car);
       }
     }
-
   }
 
-  public static class MyMapperShort extends
-      Mapper<Void, ShortCar, Void, ShortCar> {
+  public static class MyMapperShort extends Mapper<Void, ShortCar, Void, ShortCar> {
     @Override
-    protected void map(Void key, ShortCar car, Context context)
-        throws IOException, InterruptedException {
+    protected void map(Void key, ShortCar car, Context context) throws IOException, InterruptedException {
       // Note: Car can be null because of predicate pushdown defined by an
       // UnboundedRecordFilter (see below)
       if (car != null) {
         context.write(null, car);
       }
     }
-
   }
 
   public static class ElectricCarFilter implements UnboundRecordFilter {
     private final UnboundRecordFilter filter;
 
     public ElectricCarFilter() {
-      filter = ColumnRecordFilter.column("engine.type", ColumnPredicates.equalTo(org.apache.parquet.avro.EngineType.ELECTRIC));
+      filter = ColumnRecordFilter.column(
+          "engine.type", ColumnPredicates.equalTo(org.apache.parquet.avro.EngineType.ELECTRIC));
     }
 
     @Override
@@ -374,13 +368,13 @@ public class TestReflectInputOutputFormat {
     AvroParquetInputFormat.setUnboundRecordFilter(job, ElectricCarFilter.class);
 
     // Test schema projection by dropping the optional extras
-    Schema projection = Schema.createRecord(CAR_SCHEMA.getName(),
-        CAR_SCHEMA.getDoc(), CAR_SCHEMA.getNamespace(), false);
+    Schema projection =
+        Schema.createRecord(CAR_SCHEMA.getName(), CAR_SCHEMA.getDoc(), CAR_SCHEMA.getNamespace(), false);
     List<Schema.Field> fields = Lists.newArrayList();
     for (Schema.Field field : ReflectData.get().getSchema(Car.class).getFields()) {
       if (!"optionalExtra".equals(field.name())) {
-        fields.add(new Schema.Field(field.name(), field.schema(), field.doc(),
-            field.defaultVal(), field.order()));
+        fields.add(
+            new Schema.Field(field.name(), field.schema(), field.doc(), field.defaultVal(), field.order()));
       }
     }
     projection.setFields(fields);
@@ -395,9 +389,8 @@ public class TestReflectInputOutputFormat {
 
     waitForJob(job);
 
-    final Path mapperOutput = new Path(outputPath.toString(),
-        "part-m-00000.parquet");
-    try(final AvroParquetReader<Car> out = new AvroParquetReader<Car>(conf, mapperOutput)) {
+    final Path mapperOutput = new Path(outputPath.toString(), "part-m-00000.parquet");
+    try (final AvroParquetReader<Car> out = new AvroParquetReader<Car>(conf, mapperOutput)) {
       Car car;
       Car previousCar = null;
       int lineNumber = 0;
@@ -434,14 +427,14 @@ public class TestReflectInputOutputFormat {
 
     // Test schema projection by dropping the engine, year, and vin (like ShortCar),
     // but making make optional (unlike ShortCar)
-    Schema projection = Schema.createRecord(CAR_SCHEMA.getName(),
-        CAR_SCHEMA.getDoc(), CAR_SCHEMA.getNamespace(), false);
+    Schema projection =
+        Schema.createRecord(CAR_SCHEMA.getName(), CAR_SCHEMA.getDoc(), CAR_SCHEMA.getNamespace(), false);
     List<Schema.Field> fields = Lists.newArrayList();
     for (Schema.Field field : CAR_SCHEMA.getFields()) {
       // No make!
       if ("engine".equals(field.name()) || "year".equals(field.name()) || "vin".equals(field.name())) {
-        fields.add(new Schema.Field(field.name(), field.schema(), field.doc(),
-            field.defaultVal(), field.order()));
+        fields.add(
+            new Schema.Field(field.name(), field.schema(), field.doc(), field.defaultVal(), field.order()));
       }
     }
     projection.setFields(fields);
@@ -458,7 +451,7 @@ public class TestReflectInputOutputFormat {
     waitForJob(job);
 
     final Path mapperOutput = new Path(outputPath.toString(), "part-m-00000.parquet");
-    try(final AvroParquetReader<ShortCar> out = new AvroParquetReader<ShortCar>(conf, mapperOutput)) {
+    try (final AvroParquetReader<ShortCar> out = new AvroParquetReader<ShortCar>(conf, mapperOutput)) {
       ShortCar car;
       int lineNumber = 0;
       while ((car = out.read()) != null) {

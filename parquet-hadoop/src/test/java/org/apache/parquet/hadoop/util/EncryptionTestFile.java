@@ -15,24 +15,20 @@ package org.apache.parquet.hadoop.util;
 
 import org.apache.parquet.example.data.simple.SimpleGroup;
 
-public class EncryptionTestFile
-{
-    private final String fileName;
-    private final SimpleGroup[] fileContent;
+public class EncryptionTestFile {
+  private final String fileName;
+  private final SimpleGroup[] fileContent;
 
-    public EncryptionTestFile(String fileName, SimpleGroup[] fileContent)
-    {
-        this.fileName = fileName;
-        this.fileContent = fileContent;
-    }
+  public EncryptionTestFile(String fileName, SimpleGroup[] fileContent) {
+    this.fileName = fileName;
+    this.fileContent = fileContent;
+  }
 
-    public String getFileName()
-    {
-        return this.fileName;
-    }
+  public String getFileName() {
+    return this.fileName;
+  }
 
-    public SimpleGroup[] getFileContent()
-    {
-        return this.fileContent;
-    }
+  public SimpleGroup[] getFileContent() {
+    return this.fileContent;
+  }
 }

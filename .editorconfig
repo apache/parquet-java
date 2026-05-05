@@ -23,12 +23,40 @@ charset = utf-8
 end_of_line = lf
 insert_final_newline = true
 indent_style = space
+trim_trailing_whitespace = true
 
 [*.scala]
 indent_size = 2
 
 [*.java]
 indent_size = 2
+max_line_length = 120
+ij_java_space_within_empty_method_parentheses = false
+ij_java_blank_lines_before_method_body = 0
+ij_java_keep_blank_lines_before_right_brace = 0
+ij_java_space_before_annotation_array_initializer_left_brace = false
+ij_java_space_before_array_initializer_left_brace = true
+ij_java_layout_static_imports_separately = true
+ij_java_insert_inner_class_imports = false
+ij_java_use_single_class_imports = true
+ij_java_continuation_indent_size = 4
+ij_java_use_relative_indents = false
+ij_java_keep_indents_on_empty_lines = false
+ij_java_indent_case_from_switch = true
+ij_java_do_not_indent_top_level_class_members = false
+ij_java_keep_builder_methods_indents = true
+ij_java_line_comment_add_space = true
+ij_java_space_after_type_cast = true
+ij_java_align_types_in_multi_catch = true
+ij_java_space_after_comma_in_type_arguments = true
+ij_java_blank_lines_around_method_in_interface = 1
+ij_java_method_parameters_wrap = normal
+ij_java_keep_simple_lambdas_in_one_line = true
+ij_java_replace_sum_lambda_with_method_ref = true
+ij_java_spaces_around_lambda_arrow = true
+ij_java_method_brace_style = end_of_line
+ij_java_align_group_field_declarations = false
+ij_java_imports_layout = $*,|,*
 
 [*.yaml]
 indent_size = 2
@@ -39,4 +67,3 @@ indent_size = 2
 # Tab indentation (no size specified)
 [Makefile]
 indent_style = tab
-

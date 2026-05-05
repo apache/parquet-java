@@ -36,8 +36,7 @@ public class TestValuesReaderImpl {
 
   private static class InvalidValuesReaderImpl extends ValuesReader {
     @Override
-    public void skip() {
-    }
+    public void skip() {}
   }
 
   private static class ByteBufferValuesReaderImpl extends ValuesReader {
@@ -56,8 +55,7 @@ public class TestValuesReaderImpl {
     }
 
     @Override
-    public void skip() {
-    }
+    public void skip() {}
 
     @Override
     public Binary readBytes() {
@@ -81,8 +79,7 @@ public class TestValuesReaderImpl {
     }
 
     @Override
-    public void skip() {
-    }
+    public void skip() {}
 
     @Override
     public Binary readBytes() {

@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -24,15 +24,13 @@ import static org.junit.Assert.assertTrue;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Random;
-
 import org.apache.parquet.bytes.ByteBufferInputStream;
-import org.junit.Before;
-import org.junit.Test;
-
-import org.apache.parquet.bytes.DirectByteBufferAllocator;
 import org.apache.parquet.bytes.BytesInput;
+import org.apache.parquet.bytes.DirectByteBufferAllocator;
 import org.apache.parquet.column.values.ValuesWriter;
 import org.apache.parquet.io.ParquetDecodingException;
+import org.junit.Before;
+import org.junit.Test;
 
 public class DeltaBinaryPackingValuesWriterForIntegerTest {
   DeltaBinaryPackingValuesReader reader;
@@ -52,8 +50,7 @@ public class DeltaBinaryPackingValuesWriterForIntegerTest {
 
   @Test(expected = IllegalArgumentException.class)
   public void miniBlockSizeShouldBeMultipleOf8() {
-    new DeltaBinaryPackingValuesWriterForInteger(
-        1281, 4, 100, 100, new DirectByteBufferAllocator());
+    new DeltaBinaryPackingValuesWriterForInteger(1281, 4, 100, 100, new DirectByteBufferAllocator());
   }
 
   /* When data size is multiple of Block*/
@@ -191,7 +188,6 @@ public class DeltaBinaryPackingValuesWriterForIntegerTest {
     } catch (ParquetDecodingException e) {
       assertEquals("no more value to read, total value count is " + data.length, e.getMessage());
     }
-
   }
 
   @Test
@@ -247,7 +243,6 @@ public class DeltaBinaryPackingValuesWriterForIntegerTest {
 
     for (int round = 0; round < 100000; round++) {
 
-
       int size = random.nextInt(maxSize);
 
       for (int i = 0; i < size; i++) {
@@ -270,10 +265,10 @@ public class DeltaBinaryPackingValuesWriterForIntegerTest {
 
     double miniBlockFlushed = Math.ceil(((double) length - 1) / miniBlockSize);
     double blockFlushed = Math.ceil(((double) length - 1) / blockSize);
-    double estimatedSize = 4 * 5 //blockHeader
-        + 4 * miniBlockFlushed * miniBlockSize //data(aligned to miniBlock)
-        + blockFlushed * miniBlockNum //bitWidth of mini blocks
-        + (5.0 * blockFlushed);//min delta for each block
+    double estimatedSize = 4 * 5 // blockHeader
+        + 4 * miniBlockFlushed * miniBlockSize // data(aligned to miniBlock)
+        + blockFlushed * miniBlockNum // bitWidth of mini blocks
+        + (5.0 * blockFlushed); // min delta for each block
     assertTrue(estimatedSize >= page.length);
     reader.initFromPage(100, ByteBufferInputStream.wrap(ByteBuffer.wrap(page)));
 

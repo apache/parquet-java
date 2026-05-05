@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -20,7 +20,9 @@ package org.apache.parquet.hadoop.metadata;
 
 import java.io.Serializable;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Objects;
 
 public final class ColumnPath implements Iterable<String>, Serializable {
@@ -41,20 +43,22 @@ public final class ColumnPath implements Iterable<String>, Serializable {
     return get(path.split("\\."));
   }
 
-  public static ColumnPath get(String... path){
+  public static ColumnPath get(String... path) {
     return paths.canonicalize(new ColumnPath(path));
   }
 
   private final String[] p;
 
   private ColumnPath(String[] path) {
+    // No need to copy the array here as the only published ColumnPath instances are created by the toCanonical
+    // method
     this.p = path;
   }
 
   @Override
   public boolean equals(Object obj) {
     if (obj instanceof ColumnPath) {
-      return Arrays.equals(p, ((ColumnPath)obj).p);
+      return Arrays.equals(p, ((ColumnPath) obj).p);
     }
     return false;
   }
@@ -83,6 +87,10 @@ public final class ColumnPath implements Iterable<String>, Serializable {
   }
 
   public String[] toArray() {
-    return p;
+    return p.clone();
+  }
+
+  public List<String> toList() {
+    return Collections.unmodifiableList(Arrays.asList(p));
   }
 }

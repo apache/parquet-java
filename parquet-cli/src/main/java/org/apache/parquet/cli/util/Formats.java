@@ -34,11 +34,11 @@ public class Formats {
   public static Format detectFormat(InputStream stream) throws IOException {
     byte[] first3 = new byte[3];
     stream.read(first3);
-    if (Arrays.equals(first3, new byte[]{'P', 'A', 'R'})) {
+    if (Arrays.equals(first3, new byte[] {'P', 'A', 'R'})) {
       return Format.PARQUET;
-    } else if (Arrays.equals(first3, new byte[]{'O', 'b', 'j'})) {
+    } else if (Arrays.equals(first3, new byte[] {'O', 'b', 'j'})) {
       return Format.AVRO;
-    } else if (Arrays.equals(first3, new byte[]{'S', 'E', 'Q'})) {
+    } else if (Arrays.equals(first3, new byte[] {'S', 'E', 'Q'})) {
       return Format.SEQUENCE;
     } else {
       return Format.TEXT;

@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -22,12 +22,10 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-
-import org.junit.Assert;
-import org.junit.Test;
-
 import org.apache.parquet.column.values.bitpacking.BitPacking.BitPackingReader;
 import org.apache.parquet.column.values.bitpacking.BitPacking.BitPackingWriter;
+import org.junit.Assert;
+import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,12 +44,12 @@ public class TestLemireBitPacking {
         {
           packUnpack(packer.newIntPacker(i), values, unpacked);
           LOG.debug("int based Output " + packer.name() + ": " + TestBitPacking.toString(unpacked));
-          Assert.assertArrayEquals(packer.name() + " width "+i, values, unpacked);
+          Assert.assertArrayEquals(packer.name() + " width " + i, values, unpacked);
         }
         {
           packUnpack(packer.newBytePacker(i), values, unpacked);
           LOG.debug("byte based Output " + packer.name() + ": " + TestBitPacking.toString(unpacked));
-          Assert.assertArrayEquals(packer.name() + " width "+i, values, unpacked);
+          Assert.assertArrayEquals(packer.name() + " width " + i, values, unpacked);
         }
       }
     }
@@ -72,7 +70,7 @@ public class TestLemireBitPacking {
   private int[] generateValues(int bitWidth) {
     int[] values = new int[32];
     for (int j = 0; j < values.length; j++) {
-      values[j] = (int)(Math.random() * 100000) % (int)Math.pow(2, bitWidth);
+      values[j] = (int) (Math.random() * 100000) % (int) Math.pow(2, bitWidth);
     }
     LOG.debug("Input:  {}", TestBitPacking.toString(values));
     return values;
@@ -96,8 +94,8 @@ public class TestLemireBitPacking {
       for (int v : packed) {
         lemireOut.write((v >>> 24) & 0xFF);
         lemireOut.write((v >>> 16) & 0xFF);
-        lemireOut.write((v >>>  8) & 0xFF);
-        lemireOut.write((v >>>  0) & 0xFF);
+        lemireOut.write((v >>> 8) & 0xFF);
+        lemireOut.write((v >>> 0) & 0xFF);
       }
       final byte[] packedByLemireAsBytes = lemireOut.toByteArray();
       LOG.debug("Lemire: {}", TestBitPacking.toString(packedByLemireAsBytes));
@@ -112,7 +110,8 @@ public class TestLemireBitPacking {
       LOG.debug("Manual: {}", TestBitPacking.toString(packedManualAsBytes));
 
       // unpack manual
-      final BitPackingReader reader = BitPacking.createBitPackingReader(i, new ByteArrayInputStream(packedByLemireAsBytes), 32);
+      final BitPackingReader reader =
+          BitPacking.createBitPackingReader(i, new ByteArrayInputStream(packedByLemireAsBytes), 32);
       for (int j = 0; j < unpacked.length; j++) {
         unpacked[j] = reader.read();
       }
@@ -121,5 +120,4 @@ public class TestLemireBitPacking {
       Assert.assertArrayEquals("width " + i, values, unpacked);
     }
   }
-
 }

@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -38,6 +38,7 @@ public abstract class BaseRecordReader<T> extends RecordReader<T> {
   public RecordConsumer recordConsumer;
   public RecordMaterializer<T> recordMaterializer;
   public ColumnReadStore columnStore;
+
   @Override
   public T read() {
     readOneRecord();
@@ -53,25 +54,25 @@ public abstract class BaseRecordReader<T> extends RecordReader<T> {
   private int endIndex;
 
   protected void currentLevel(int currentLevel) {
-    LOG.debug("currentLevel: {}",currentLevel);
+    LOG.debug("currentLevel: {}", currentLevel);
   }
 
   protected void log(String message) {
     LOG.debug("bc: {}", message);
   }
 
-  final protected int getCaseId(int state, int currentLevel, int d, int nextR) {
+  protected final int getCaseId(int state, int currentLevel, int d, int nextR) {
     return caseLookup[state].getCase(currentLevel, d, nextR).getID();
   }
 
-  final protected void startMessage() {
+  protected final void startMessage() {
     // reset state
     endField = null;
     LOG.debug("startMessage()");
     recordConsumer.startMessage();
   }
 
-  final protected void startGroup(String field, int index) {
+  protected final void startGroup(String field, int index) {
     startField(field, index);
     LOG.debug("startGroup()");
     recordConsumer.startGroup();
@@ -92,7 +93,7 @@ public abstract class BaseRecordReader<T> extends RecordReader<T> {
     }
   }
 
-  final protected void addPrimitiveINT64(String field, int index, long value) {
+  protected final void addPrimitiveINT64(String field, int index, long value) {
     startField(field, index);
     LOG.debug("addLong({})", value);
     recordConsumer.addLong(value);
@@ -108,21 +109,21 @@ public abstract class BaseRecordReader<T> extends RecordReader<T> {
     endIndex = index;
   }
 
-  final protected void addPrimitiveBINARY(String field, int index, Binary value) {
+  protected final void addPrimitiveBINARY(String field, int index, Binary value) {
     startField(field, index);
     LOG.debug("addBinary({})", value);
     recordConsumer.addBinary(value);
     endField(field, index);
   }
 
-  final protected void addPrimitiveINT32(String field, int index, int value) {
+  protected final void addPrimitiveINT32(String field, int index, int value) {
     startField(field, index);
     LOG.debug("addInteger({})", value);
     recordConsumer.addInteger(value);
     endField(field, index);
   }
 
-  final protected void endGroup(String field, int index) {
+  protected final void endGroup(String field, int index) {
     if (endField != null) {
       // close the previous field
       recordConsumer.endField(endField, endIndex);
@@ -133,7 +134,7 @@ public abstract class BaseRecordReader<T> extends RecordReader<T> {
     endField(field, index);
   }
 
-  final protected void endMessage() {
+  protected final void endMessage() {
     if (endField != null) {
       // close the previous field
       recordConsumer.endField(endField, endIndex);

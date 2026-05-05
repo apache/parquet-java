@@ -20,6 +20,9 @@ package org.apache.parquet.proto.utils;
 
 import com.google.protobuf.Message;
 import com.google.protobuf.MessageOrBuilder;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.LongWritable;
@@ -27,11 +30,6 @@ import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.lib.output.NullOutputFormat;
 import org.apache.parquet.proto.ProtoParquetInputFormat;
-
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-
 
 /**
  * Reads data from given parquet file using MapReduce job.
@@ -90,5 +88,4 @@ public class ReadUsingMR {
       return result;
     }
   }
-
 }

@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -21,7 +21,6 @@ package org.apache.parquet.hadoop.codec;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-
 import org.apache.hadoop.conf.Configurable;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.compress.CompressionCodec;
@@ -63,29 +62,23 @@ public class SnappyCodec implements Configurable, CompressionCodec {
   }
 
   @Override
-  public CompressionInputStream createInputStream(InputStream stream)
-      throws IOException {
+  public CompressionInputStream createInputStream(InputStream stream) throws IOException {
     return createInputStream(stream, createDecompressor());
   }
 
   @Override
-  public CompressionInputStream createInputStream(InputStream stream,
-      Decompressor decompressor) throws IOException {
-    return new NonBlockedDecompressorStream(stream, decompressor,
-        conf.getInt(BUFFER_SIZE_CONFIG, 4*1024));
+  public CompressionInputStream createInputStream(InputStream stream, Decompressor decompressor) throws IOException {
+    return new NonBlockedDecompressorStream(stream, decompressor, conf.getInt(BUFFER_SIZE_CONFIG, 4 * 1024));
   }
 
   @Override
-  public CompressionOutputStream createOutputStream(OutputStream stream)
-      throws IOException {
+  public CompressionOutputStream createOutputStream(OutputStream stream) throws IOException {
     return createOutputStream(stream, createCompressor());
   }
 
   @Override
-  public CompressionOutputStream createOutputStream(OutputStream stream,
-      Compressor compressor) throws IOException {
-    return new NonBlockedCompressorStream(stream, compressor, 
-        conf.getInt(BUFFER_SIZE_CONFIG, 4*1024));
+  public CompressionOutputStream createOutputStream(OutputStream stream, Compressor compressor) throws IOException {
+    return new NonBlockedCompressorStream(stream, compressor, conf.getInt(BUFFER_SIZE_CONFIG, 4 * 1024));
   }
 
   @Override
@@ -101,5 +94,5 @@ public class SnappyCodec implements Configurable, CompressionCodec {
   @Override
   public String getDefaultExtension() {
     return ".snappy";
-  }  
+  }
 }

@@ -21,7 +21,7 @@
     <groupId>org.apache.parquet</groupId>
     <artifactId>parquet</artifactId>
     <relativePath>../pom.xml</relativePath>
-    <version>1.14.0-SNAPSHOT</version>
+    <version>1.18.0-SNAPSHOT</version>
   </parent>
 
   <modelVersion>4.0.0</modelVersion>
@@ -46,6 +46,11 @@
     <dependency>
       <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-common</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.parquet</groupId>
+      <artifactId>parquet-variant</artifactId>
       <version>${project.version}</version>
     </dependency>
     <dependency>
@@ -107,25 +112,7 @@
     <dependency>
       <groupId>org.mockito</groupId>
       <artifactId>mockito-core</artifactId>
-      <version>2.23.0</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.powermock</groupId>
-      <artifactId>powermock-module-junit4</artifactId>
-      <version>${powermock.version}</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.powermock</groupId>
-      <artifactId>powermock-core</artifactId>
-      <version>${powermock.version}</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.powermock</groupId>
-      <artifactId>powermock-api-mockito2</artifactId>
-      <version>${powermock.version}</version>
+      <version>${mockito.version}</version>
       <scope>test</scope>
     </dependency>
   </dependencies>
@@ -150,8 +137,17 @@
       <plugin>
         <groupId>org.apache.avro</groupId>
         <artifactId>avro-maven-plugin</artifactId>
-        <version>${avro.version}</version>
         <executions>
+          <execution>
+            <id>compile-idl</id>
+            <phase>generate-test-sources</phase>
+            <goals>
+              <goal>idl-protocol</goal>
+            </goals>
+            <configuration>
+              <stringType>String</stringType>
+            </configuration>
+          </execution>
           <execution>
             <id>compile-avsc</id>
             <phase>generate-test-sources</phase>
@@ -159,25 +155,12 @@
               <goal>schema</goal>
             </goals>
           </execution>
-            <execution>
-                <id>compile-idl</id>
-                <phase>generate-test-sources</phase>
-                <goals>
-                    <goal>idl-protocol</goal>
-                </goals>
-                <configuration>
-                    <sourceDirectory>${project.basedir}/src/test/resources</sourceDirectory>
-                    <outputDirectory>${project.build.directory}/generated-test-sources</outputDirectory>
-                    <stringType>String</stringType>
-                </configuration>
-            </execution>
         </executions>
       </plugin>
       <plugin>
         <!-- Ensure that the specific classes are available during test compile but not included in jar -->
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>build-helper-maven-plugin</artifactId>
-        <version>3.4.0</version>
         <executions>
           <execution>
             <id>add-test-sources</id>
@@ -187,7 +170,7 @@
             </goals>
             <configuration>
               <sources>
-                <source>${project.build.directory}/generated-test-sources</source>
+                <source>${project.build.directory}/generated-test-sources/avro</source>
               </sources>
             </configuration>
           </execution>
@@ -217,6 +200,17 @@
             </configuration>
           </execution>
         </executions>
+      </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <configuration>
+          <systemPropertyVariables>
+            <!-- We need to set this system property to allow Avro to serialize these classes via the specific/reflect models -->
+            <org.apache.avro.SERIALIZABLE_CLASSES>java.math.BigDecimal</org.apache.avro.SERIALIZABLE_CLASSES>
+          </systemPropertyVariables>
+        </configuration>
       </plugin>
 
     </plugins>

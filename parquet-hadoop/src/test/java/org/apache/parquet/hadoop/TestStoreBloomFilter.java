@@ -24,21 +24,14 @@ import static org.apache.parquet.hadoop.TestBloomFiltering.generateDictionaryDat
 
 import java.io.IOException;
 import java.nio.file.Files;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
-import org.junit.AfterClass;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-
 import org.apache.parquet.ParquetReadOptions;
+import org.apache.parquet.bytes.HeapByteBufferAllocator;
+import org.apache.parquet.bytes.TrackingByteBufferAllocator;
 import org.apache.parquet.column.EncodingStats;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.filter2.recordlevel.PhoneBookWriter;
@@ -46,6 +39,12 @@ import org.apache.parquet.hadoop.example.ExampleParquetWriter;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
+import org.junit.AfterClass;
+import org.junit.Assert;
+import org.junit.BeforeClass;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 
 @RunWith(Parameterized.class)
 public class TestStoreBloomFilter {
@@ -62,9 +61,7 @@ public class TestStoreBloomFilter {
 
   @Parameterized.Parameters(name = "Run {index}: parquet {1}")
   public static Collection<Object[]> params() {
-    return Arrays.asList(
-      new Object[]{FILE_V1, "v1"},
-      new Object[]{FILE_V2, "v2"});
+    return List.of(new Object[] {FILE_V1, "v1"}, new Object[] {FILE_V2, "v2"});
   }
 
   @BeforeClass
@@ -81,32 +78,36 @@ public class TestStoreBloomFilter {
 
   @Test
   public void testStoreBloomFilter() throws IOException {
-    ParquetFileReader reader = new ParquetFileReader(HadoopInputFile.fromPath(file, new Configuration()),
-      ParquetReadOptions.builder().build());
-    List<BlockMetaData> blocks = reader.getRowGroups();
-    blocks.forEach(block -> {
-      try {
-        // column `id` isn't fully encoded in dictionary, it will generate `BloomFilter`
-        ColumnChunkMetaData idMeta = block.getColumns().get(0);
-        EncodingStats idEncoding = idMeta.getEncodingStats();
-        Assert.assertTrue(idEncoding.hasNonDictionaryEncodedPages());
-        Assert.assertNotNull(reader.readBloomFilter(idMeta));
+    try (TrackingByteBufferAllocator allocator = TrackingByteBufferAllocator.wrap(new HeapByteBufferAllocator());
+        ParquetFileReader reader = new ParquetFileReader(
+            HadoopInputFile.fromPath(file, new Configuration()),
+            ParquetReadOptions.builder().withAllocator(allocator).build())) {
+      List<BlockMetaData> blocks = reader.getRowGroups();
+      blocks.forEach(block -> {
+        try {
+          // column `id` isn't fully encoded in dictionary, it will generate `BloomFilter`
+          ColumnChunkMetaData idMeta = block.getColumns().get(0);
+          EncodingStats idEncoding = idMeta.getEncodingStats();
+          Assert.assertTrue(idEncoding.hasNonDictionaryEncodedPages());
+          Assert.assertNotNull(reader.readBloomFilter(idMeta));
 
-        // column `name` is fully encoded in dictionary, it won't generate `BloomFilter`
-        ColumnChunkMetaData nameMeta = block.getColumns().get(1);
-        EncodingStats nameEncoding = nameMeta.getEncodingStats();
-        Assert.assertFalse(nameEncoding.hasNonDictionaryEncodedPages());
-        Assert.assertNull(reader.readBloomFilter(nameMeta));
-      } catch (IOException e) {
-        e.printStackTrace();
-      }
-    });
+          // column `name` is fully encoded in dictionary, it won't generate `BloomFilter`
+          ColumnChunkMetaData nameMeta = block.getColumns().get(1);
+          EncodingStats nameEncoding = nameMeta.getEncodingStats();
+          Assert.assertFalse(nameEncoding.hasNonDictionaryEncodedPages());
+          Assert.assertNull(reader.readBloomFilter(nameMeta));
+        } catch (IOException e) {
+          e.printStackTrace();
+        }
+      });
+    }
   }
 
   private static Path createTempFile(String version) {
     try {
       return new Path(Files.createTempFile("test-store-bloom-filter-" + version, ".parquet")
-        .toAbsolutePath().toString());
+          .toAbsolutePath()
+          .toString());
     } catch (IOException e) {
       throw new AssertionError("Unable to create temporary file", e);
     }
@@ -116,17 +117,21 @@ public class TestStoreBloomFilter {
     file.getFileSystem(new Configuration()).delete(file, false);
   }
 
-  private static void writePhoneBookToFile(Path file,
-    ParquetProperties.WriterVersion parquetVersion) throws IOException {
-    int pageSize = DATA.size() / 100;     // Ensure that several pages will be created
-    int rowGroupSize = pageSize * 4;    // Ensure that there are more row-groups created
-    PhoneBookWriter.write(ExampleParquetWriter.builder(file)
-        .withWriteMode(OVERWRITE)
-        .withRowGroupSize(rowGroupSize)
-        .withPageSize(pageSize)
-        .withBloomFilterNDV("id", 10000L)
-        .withBloomFilterNDV("name", 10000L)
-        .withWriterVersion(parquetVersion),
-      DATA);
+  private static void writePhoneBookToFile(Path file, ParquetProperties.WriterVersion parquetVersion)
+      throws IOException {
+    int pageSize = DATA.size() / 100; // Ensure that several pages will be created
+    int rowGroupSize = pageSize * 4; // Ensure that there are more row-groups created
+    try (TrackingByteBufferAllocator allocator = TrackingByteBufferAllocator.wrap(new HeapByteBufferAllocator())) {
+      PhoneBookWriter.write(
+          ExampleParquetWriter.builder(file)
+              .withAllocator(allocator)
+              .withWriteMode(OVERWRITE)
+              .withRowGroupSize(rowGroupSize)
+              .withPageSize(pageSize)
+              .withBloomFilterNDV("id", 10000L)
+              .withBloomFilterNDV("name", 10000L)
+              .withWriterVersion(parquetVersion),
+          DATA);
+    }
   }
 }

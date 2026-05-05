@@ -19,8 +19,6 @@
 
 package org.apache.parquet.crypto;
 
-import java.util.Arrays;
-
 import org.apache.parquet.format.BlockCipher;
 import org.apache.parquet.format.ColumnCryptoMetaData;
 import org.apache.parquet.format.EncryptionWithColumnKey;
@@ -34,8 +32,11 @@ public class InternalColumnEncryptionSetup {
   private final ColumnCryptoMetaData columnCryptoMetaData;
   private final int ordinal;
 
-  InternalColumnEncryptionSetup(ColumnEncryptionProperties encryptionProperties, int ordinal,
-      BlockCipher.Encryptor dataEncryptor, BlockCipher.Encryptor metaDataEncryptor) {
+  InternalColumnEncryptionSetup(
+      ColumnEncryptionProperties encryptionProperties,
+      int ordinal,
+      BlockCipher.Encryptor dataEncryptor,
+      BlockCipher.Encryptor metaDataEncryptor) {
     this.encryptionProperties = encryptionProperties;
     this.dataEncryptor = dataEncryptor;
     this.metadataEncryptor = metaDataEncryptor;
@@ -45,11 +46,12 @@ public class InternalColumnEncryptionSetup {
       if (encryptionProperties.isEncryptedWithFooterKey()) {
         columnCryptoMetaData = ColumnCryptoMetaData.ENCRYPTION_WITH_FOOTER_KEY(new EncryptionWithFooterKey());
       } else {
-        EncryptionWithColumnKey withColumnKeyStruct = new EncryptionWithColumnKey(Arrays.asList(encryptionProperties.getPath().toArray()));
+        EncryptionWithColumnKey withColumnKeyStruct = new EncryptionWithColumnKey(
+            encryptionProperties.getPath().toList());
         if (null != encryptionProperties.getKeyMetaData()) {
           withColumnKeyStruct.setKey_metadata(encryptionProperties.getKeyMetaData());
         }
-        columnCryptoMetaData =  ColumnCryptoMetaData.ENCRYPTION_WITH_COLUMN_KEY(withColumnKeyStruct);
+        columnCryptoMetaData = ColumnCryptoMetaData.ENCRYPTION_WITH_COLUMN_KEY(withColumnKeyStruct);
       }
     } else {
       columnCryptoMetaData = null;

@@ -19,21 +19,25 @@
 
 package org.apache.parquet.util;
 
-import org.apache.parquet.Preconditions;
+import static org.apache.parquet.Exceptions.throwIfInstance;
+
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.Arrays;
-
-import static org.apache.parquet.Exceptions.throwIfInstance;
+import org.apache.parquet.Preconditions;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class DynMethods {
 
+  private static final Logger LOG = LoggerFactory.getLogger(DynMethods.class);
+
   /**
    * Convenience wrapper class around {@link java.lang.reflect.Method}.
-   *
+   * <p>
    * Allows callers to invoke the wrapped method with all Exceptions wrapped by
    * RuntimeException, or with a single Exception catch block.
    */
@@ -46,8 +50,7 @@ public class DynMethods {
     UnboundMethod(Method method, String name) {
       this.method = method;
       this.name = name;
-      this.argLength = (method == null || method.isVarArgs()) ? -1 :
-          method.getParameterTypes().length;
+      this.argLength = (method == null || method.isVarArgs()) ? -1 : method.getParameterTypes().length;
     }
 
     @SuppressWarnings("unchecked")
@@ -58,7 +61,6 @@ public class DynMethods {
         } else {
           return (R) method.invoke(target, Arrays.copyOfRange(args, 0, argLength));
         }
-
       } catch (InvocationTargetException e) {
         throwIfInstance(e.getCause(), Exception.class);
         throwIfInstance(e.getCause(), RuntimeException.class);
@@ -80,15 +82,15 @@ public class DynMethods {
      *
      * @param receiver an Object to receive the method invocation
      * @return a {@link BoundMethod} for this method and the receiver
-     * @throws IllegalStateException if the method is static
+     * @throws IllegalStateException    if the method is static
      * @throws IllegalArgumentException if the receiver's class is incompatible
      */
     public BoundMethod bind(Object receiver) {
-      Preconditions.checkState(!isStatic(),
-          "Cannot bind static method %s", method.toGenericString());
+      Preconditions.checkState(!isStatic(), "Cannot bind static method %s", method.toGenericString());
       Preconditions.checkArgument(
           method.getDeclaringClass().isAssignableFrom(receiver.getClass()),
-          "Cannot bind %s to instance of %s", method.toGenericString(), 
+          "Cannot bind %s to instance of %s",
+          method.toGenericString(),
           receiver.getClass());
 
       return new BoundMethod(this, receiver);
@@ -120,8 +122,7 @@ public class DynMethods {
     }
 
     public String toString() {
-      return "DynMethods.UnboundMethod(name=" + name +" method=" +
-          method.toGenericString() + ")";
+      return "DynMethods.UnboundMethod(name=" + name + " method=" + method.toGenericString() + ")";
     }
 
     /**
@@ -213,7 +214,7 @@ public class DynMethods {
 
     /**
      * If no implementation has been found, adds a NOOP method.
-     *
+     * <p>
      * Note: calls to impl will not match after this method is called!
      *
      * @return this Builder for method chaining
@@ -228,7 +229,7 @@ public class DynMethods {
     /**
      * Checks for an implementation, first finding the given class by name.
      *
-     * @param className name of a class
+     * @param className  name of a class
      * @param methodName name of a method (different from constructor)
      * @param argClasses argument classes for the method
      * @return this Builder for method chaining
@@ -243,17 +244,18 @@ public class DynMethods {
         Class<?> targetClass = Class.forName(className, true, loader);
         impl(targetClass, methodName, argClasses);
       } catch (ClassNotFoundException e) {
-        // not the right implementation
+        // class not found on supplied classloader.
+        LOG.debug("failed to load class {}", className, e);
       }
       return this;
     }
 
     /**
      * Checks for an implementation, first finding the given class by name.
-     *
+     * <p>
      * The name passed to the constructor is the method name used.
      *
-     * @param className name of a class
+     * @param className  name of a class
      * @param argClasses argument classes for the method
      * @return this Builder for method chaining
      */
@@ -266,8 +268,8 @@ public class DynMethods {
      * Checks for a method implementation.
      *
      * @param targetClass the class to check for an implementation
-     * @param methodName name of a method (different from constructor)
-     * @param argClasses argument classes for the method
+     * @param methodName  name of a method (different from constructor)
+     * @param argClasses  argument classes for the method
      * @return this Builder for method chaining
      */
     public Builder impl(Class<?> targetClass, String methodName, Class<?>... argClasses) {
@@ -277,21 +279,21 @@ public class DynMethods {
       }
 
       try {
-        this.method = new UnboundMethod(
-            targetClass.getMethod(methodName, argClasses), name);
+        this.method = new UnboundMethod(targetClass.getMethod(methodName, argClasses), name);
       } catch (NoSuchMethodException e) {
         // not the right implementation
+        LOG.debug("failed to load method {} from class {}", methodName, targetClass, e);
       }
       return this;
     }
 
     /**
      * Checks for a method implementation.
-     *
+     * <p>
      * The name passed to the constructor is the method name used.
      *
      * @param targetClass the class to check for an implementation
-     * @param argClasses argument classes for the method
+     * @param argClasses  argument classes for the method
      * @return this Builder for method chaining
      */
     public Builder impl(Class<?> targetClass, Class<?>... argClasses) {
@@ -311,6 +313,7 @@ public class DynMethods {
             .buildChecked();
       } catch (NoSuchMethodException e) {
         // not the right implementation
+        LOG.debug("failed to load constructor arity {} from class {}", argClasses.length, targetClass, e);
       }
       return this;
     }
@@ -327,6 +330,7 @@ public class DynMethods {
             .buildChecked();
       } catch (NoSuchMethodException e) {
         // not the right implementation
+        LOG.debug("failed to load constructor arity {} from class {}", argClasses.length, className, e);
       }
       return this;
     }
@@ -334,7 +338,7 @@ public class DynMethods {
     /**
      * Checks for an implementation, first finding the given class by name.
      *
-     * @param className name of a class
+     * @param className  name of a class
      * @param methodName name of a method (different from constructor)
      * @param argClasses argument classes for the method
      * @return this Builder for method chaining
@@ -349,17 +353,18 @@ public class DynMethods {
         Class<?> targetClass = Class.forName(className, true, loader);
         hiddenImpl(targetClass, methodName, argClasses);
       } catch (ClassNotFoundException e) {
-        // not the right implementation
+        // class not found on supplied classloader.
+        LOG.debug("failed to load class {}", className, e);
       }
       return this;
     }
 
     /**
      * Checks for an implementation, first finding the given class by name.
-     *
+     * <p>
      * The name passed to the constructor is the method name used.
      *
-     * @param className name of a class
+     * @param className  name of a class
      * @param argClasses argument classes for the method
      * @return this Builder for method chaining
      */
@@ -372,8 +377,8 @@ public class DynMethods {
      * Checks for a method implementation.
      *
      * @param targetClass the class to check for an implementation
-     * @param methodName name of a method (different from constructor)
-     * @param argClasses argument classes for the method
+     * @param methodName  name of a method (different from constructor)
+     * @param argClasses  argument classes for the method
      * @return this Builder for method chaining
      */
     public Builder hiddenImpl(Class<?> targetClass, String methodName, Class<?>... argClasses) {
@@ -388,17 +393,18 @@ public class DynMethods {
         this.method = new UnboundMethod(hidden, name);
       } catch (SecurityException | NoSuchMethodException e) {
         // unusable or not the right implementation
+        LOG.debug("failed to load method {} from class {}", methodName, targetClass, e);
       }
       return this;
     }
 
     /**
      * Checks for a method implementation.
-     *
+     * <p>
      * The name passed to the constructor is the method name used.
      *
      * @param targetClass the class to check for an implementation
-     * @param argClasses argument classes for the method
+     * @param argClasses  argument classes for the method
      * @return this Builder for method chaining
      */
     public Builder hiddenImpl(Class<?> targetClass, Class<?>... argClasses) {
@@ -442,9 +448,9 @@ public class DynMethods {
      *
      * @param receiver an Object to receive the method invocation
      * @return a {@link BoundMethod} with a valid implementation and receiver
-     * @throws IllegalStateException if the method is static
+     * @throws IllegalStateException    if the method is static
      * @throws IllegalArgumentException if the receiver's class is incompatible
-     * @throws NoSuchMethodException if no implementation was found
+     * @throws NoSuchMethodException    if no implementation was found
      */
     public BoundMethod buildChecked(Object receiver) throws NoSuchMethodException {
       return buildChecked().bind(receiver);
@@ -456,9 +462,9 @@ public class DynMethods {
      *
      * @param receiver an Object to receive the method invocation
      * @return a {@link BoundMethod} with a valid implementation and receiver
-     * @throws IllegalStateException if the method is static
+     * @throws IllegalStateException    if the method is static
      * @throws IllegalArgumentException if the receiver's class is incompatible
-     * @throws RuntimeException if no implementation was found
+     * @throws RuntimeException         if no implementation was found
      */
     public BoundMethod build(Object receiver) {
       return build().bind(receiver);
@@ -482,12 +488,11 @@ public class DynMethods {
      *
      * @return a {@link StaticMethod} with a valid implementation
      * @throws IllegalStateException if the method is not static
-     * @throws RuntimeException if no implementation was found
+     * @throws RuntimeException      if no implementation was found
      */
     public StaticMethod buildStatic() {
       return build().asStatic();
     }
-
   }
 
   private static class MakeAccessible implements PrivilegedAction<Void> {

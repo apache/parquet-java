@@ -18,11 +18,10 @@
  */
 package org.apache.parquet.cli.commands;
 
-import org.apache.hadoop.conf.Configuration;
-
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
+import org.apache.hadoop.conf.Configuration;
 
 public class AvroFileTest extends ParquetFileTest {
 
@@ -39,7 +38,8 @@ public class AvroFileTest extends ParquetFileTest {
     return toAvro(inputFile, outputFile, overwrite, "GZIP");
   }
 
-  protected File toAvro(File inputFile, File outputFile, boolean overwrite, String compressionCodecName) throws IOException {
+  protected File toAvro(File inputFile, File outputFile, boolean overwrite, String compressionCodecName)
+      throws IOException {
     ToAvroCommand command = new ToAvroCommand(createLogger());
     command.targets = Arrays.asList(inputFile.getAbsolutePath());
     command.outputPath = outputFile.getAbsolutePath();
@@ -47,7 +47,7 @@ public class AvroFileTest extends ParquetFileTest {
     command.overwrite = overwrite;
     command.setConf(new Configuration());
     int exitCode = command.run();
-    assert(exitCode == 0);
+    assert (exitCode == 0);
     return outputFile;
   }
 }

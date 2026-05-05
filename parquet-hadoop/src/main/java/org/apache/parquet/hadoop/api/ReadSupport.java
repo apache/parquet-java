@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -19,10 +19,9 @@
 package org.apache.parquet.hadoop.api;
 
 import java.util.Map;
-
 import org.apache.hadoop.conf.Configuration;
-
 import org.apache.parquet.conf.ParquetConfiguration;
+import org.apache.parquet.hadoop.util.ConfigurationUtil;
 import org.apache.parquet.io.api.RecordMaterializer;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
@@ -32,12 +31,12 @@ import org.apache.parquet.schema.MessageTypeParser;
  *
  * @param <T> the type of the materialized record
  */
-abstract public class ReadSupport<T> {
+public abstract class ReadSupport<T> {
 
   /**
    * configuration key for a parquet read projection schema
    */
-	public static final String PARQUET_READ_SCHEMA = "parquet.read.schema";
+  public static final String PARQUET_READ_SCHEMA = "parquet.read.schema";
 
   /**
    * attempts to validate and construct a {@link MessageType} from a read projection schema
@@ -47,8 +46,7 @@ abstract public class ReadSupport<T> {
    * @return the typed schema that should be used to read
    */
   public static MessageType getSchemaForRead(MessageType fileMessageType, String partialReadSchemaString) {
-    if (partialReadSchemaString == null)
-      return fileMessageType;
+    if (partialReadSchemaString == null) return fileMessageType;
     MessageType requestedMessageType = MessageTypeParser.parseMessageType(partialReadSchemaString);
     return getSchemaForRead(fileMessageType, requestedMessageType);
   }
@@ -65,14 +63,10 @@ abstract public class ReadSupport<T> {
    * @param keyValueMetaData the app specific metadata from the file
    * @param fileSchema       the schema of the file
    * @return the readContext that defines how to read the file
-   *
    * @deprecated override {@link ReadSupport#init(InitContext)} instead
    */
   @Deprecated
-  public ReadContext init(
-      Configuration configuration,
-      Map<String, String> keyValueMetaData,
-      MessageType fileSchema) {
+  public ReadContext init(Configuration configuration, Map<String, String> keyValueMetaData, MessageType fileSchema) {
     throw new UnsupportedOperationException("Override ReadSupport.init(InitContext)");
   }
 
@@ -83,15 +77,12 @@ abstract public class ReadSupport<T> {
    * @param keyValueMetaData the app specific metadata from the file
    * @param fileSchema       the schema of the file
    * @return the readContext that defines how to read the file
-   *
-   * @deprecated override {@link ReadSupport#init(InitContext)} instead
+   * @deprecated override {@link #init(InitContext)} instead
    */
   @Deprecated
   public ReadContext init(
-      ParquetConfiguration configuration,
-      Map<String, String> keyValueMetaData,
-      MessageType fileSchema) {
-    throw new UnsupportedOperationException("Override ReadSupport.init(InitContext)");
+      ParquetConfiguration configuration, Map<String, String> keyValueMetaData, MessageType fileSchema) {
+    return init(ConfigurationUtil.createHadoopConfiguration(configuration), keyValueMetaData, fileSchema);
   }
 
   /**
@@ -113,12 +104,14 @@ abstract public class ReadSupport<T> {
    * @param fileSchema       the schema of the file
    * @param readContext      returned by the init method
    * @return the recordMaterializer that will materialize the records
+   * @deprecated override {@link #prepareForRead(ParquetConfiguration,Map,MessageType,ReadContext)} instead
    */
-  abstract public RecordMaterializer<T> prepareForRead(
-          Configuration configuration,
-          Map<String, String> keyValueMetaData,
-          MessageType fileSchema,
-          ReadContext readContext);
+  @Deprecated
+  public abstract RecordMaterializer<T> prepareForRead(
+      Configuration configuration,
+      Map<String, String> keyValueMetaData,
+      MessageType fileSchema,
+      ReadContext readContext);
 
   /**
    * called in {@link org.apache.hadoop.mapreduce.RecordReader#initialize(org.apache.hadoop.mapreduce.InputSplit, org.apache.hadoop.mapreduce.TaskAttemptContext)} in the back end
@@ -135,7 +128,8 @@ abstract public class ReadSupport<T> {
       Map<String, String> keyValueMetaData,
       MessageType fileSchema,
       ReadContext readContext) {
-    throw new UnsupportedOperationException("Override ReadSupport.prepareForRead(ParquetConfiguration, Map<String, String>, MessageType, ReadContext)");
+    return prepareForRead(
+        ConfigurationUtil.createHadoopConfiguration(configuration), keyValueMetaData, fileSchema, readContext);
   }
 
   /**
@@ -153,7 +147,7 @@ abstract public class ReadSupport<T> {
     }
 
     /**
-     * @param requestedSchema the schema requested by the user. Can not be null.
+     * @param requestedSchema     the schema requested by the user. Can not be null.
      * @param readSupportMetadata metadata specific to the ReadSupport implementation. Will be available in the prepareForRead phase.
      */
     public ReadContext(MessageType requestedSchema, Map<String, String> readSupportMetadata) {

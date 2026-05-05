@@ -18,18 +18,26 @@
  */
 package org.apache.parquet.hadoop.codec;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.compress.Compressor;
 import org.apache.parquet.Preconditions;
-
-import java.io.IOException;
-import java.nio.ByteBuffer;
 
 /**
  * This class is a wrapper around the underlying compressor. It always consumes
  * the entire input in setInput and compresses it as one compressed block.
  */
-abstract public class NonBlockedCompressor implements Compressor {
+public abstract class NonBlockedCompressor implements Compressor {
+
+  private static final int INITIAL_INPUT_BUFFER_SIZE = 4096;
+
+  /**
+   * Input buffer starts at {@link #INITIAL_INPUT_BUFFER_SIZE} and then grows by this factor every time it needs
+   * additional space. This factor is chosen to balance the time to reach the target size against the excess peak
+   * memory usage due to overshooting the target.
+   */
+  private static final double INPUT_BUFFER_GROWTH_FACTOR = 1.2;
 
   // Buffer for compressed output. This buffer grows as necessary.
   private ByteBuffer outputBuffer = ByteBuffer.allocateDirect(0);
@@ -97,11 +105,19 @@ abstract public class NonBlockedCompressor implements Compressor {
     // dependency by some external downstream projects.
     SnappyUtil.validateBuffer(buffer, off, len);
 
-    Preconditions.checkArgument(!outputBuffer.hasRemaining(),
-      "Output buffer should be empty. Caller must call compress()");
+    Preconditions.checkArgument(
+        !outputBuffer.hasRemaining(), "Output buffer should be empty. Caller must call compress()");
 
     if (inputBuffer.capacity() - inputBuffer.position() < len) {
-      ByteBuffer tmp = ByteBuffer.allocateDirect(inputBuffer.position() + len);
+      final int newBufferSize;
+      if (inputBuffer.capacity() == 0) {
+        newBufferSize = Math.max(INITIAL_INPUT_BUFFER_SIZE, len);
+      } else {
+        newBufferSize = Math.max(
+            inputBuffer.position() + len, (int) (inputBuffer.capacity() * INPUT_BUFFER_GROWTH_FACTOR));
+      }
+      ByteBuffer tmp = ByteBuffer.allocateDirect(newBufferSize);
+      tmp.limit(inputBuffer.position() + len);
       inputBuffer.rewind();
       tmp.put(inputBuffer);
       ByteBuffer oldBuffer = inputBuffer;
@@ -166,7 +182,7 @@ abstract public class NonBlockedCompressor implements Compressor {
 
   @Override
   public void setDictionary(byte[] dictionary, int off, int len) {
-    // No-op		
+    // No-op
   }
 
   /**
@@ -176,7 +192,7 @@ abstract public class NonBlockedCompressor implements Compressor {
    * @param byteSize byte size of the data to compress
    * @return maximum byte size of the compressed data
    */
-  abstract protected int maxCompressedLength(int byteSize);
+  protected abstract int maxCompressedLength(int byteSize);
 
   /**
    * Compress the content in the given input buffer. After the compression,
@@ -187,6 +203,5 @@ abstract public class NonBlockedCompressor implements Compressor {
    * @param compressed   output of the compressed data. Uses range [pos()..].
    * @return byte size of the compressed data.
    */
-  abstract protected int compress(ByteBuffer uncompressed, ByteBuffer compressed) throws IOException;
-
+  protected abstract int compress(ByteBuffer uncompressed, ByteBuffer compressed) throws IOException;
 }

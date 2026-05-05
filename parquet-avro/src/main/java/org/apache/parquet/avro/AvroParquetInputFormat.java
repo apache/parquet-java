@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -19,7 +19,6 @@
 package org.apache.parquet.avro;
 
 import org.apache.avro.Schema;
-import org.apache.avro.generic.IndexedRecord;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.parquet.hadoop.ParquetInputFormat;
 import org.apache.parquet.hadoop.util.ContextUtil;
@@ -47,14 +46,14 @@ public class AvroParquetInputFormat<T> extends ParquetInputFormat<T> {
    * in the projection then it must either not be included or be optional in the read
    * schema. Use {@link #setAvroReadSchema(org.apache.hadoop.mapreduce.Job,
    * org.apache.avro.Schema)} to set a read schema, if needed.
-   * @param job a job
+   *
+   * @param job                 a job
    * @param requestedProjection the requested projection schema
    * @see #setAvroReadSchema(org.apache.hadoop.mapreduce.Job, org.apache.avro.Schema)
    * @see org.apache.parquet.avro.AvroParquetOutputFormat#setSchema(org.apache.hadoop.mapreduce.Job, org.apache.avro.Schema)
    */
   public static void setRequestedProjection(Job job, Schema requestedProjection) {
-    AvroReadSupport.setRequestedProjection(ContextUtil.getConfiguration(job),
-        requestedProjection);
+    AvroReadSupport.setRequestedProjection(ContextUtil.getConfiguration(job), requestedProjection);
   }
 
   /**
@@ -63,7 +62,8 @@ public class AvroParquetInputFormat<T> extends ParquetInputFormat<T> {
    * <p>
    * Differences between the read and write schemas are resolved using
    * <a href="http://avro.apache.org/docs/current/spec.html#Schema+Resolution">Avro's schema resolution rules</a>.
-   * @param job a job
+   *
+   * @param job            a job
    * @param avroReadSchema the requested schema
    * @see #setRequestedProjection(org.apache.hadoop.mapreduce.Job, org.apache.avro.Schema)
    * @see org.apache.parquet.avro.AvroParquetOutputFormat#setSchema(org.apache.hadoop.mapreduce.Job, org.apache.avro.Schema)
@@ -76,11 +76,11 @@ public class AvroParquetInputFormat<T> extends ParquetInputFormat<T> {
    * Uses an instance of the specified {@link AvroDataSupplier} class to control how the
    * {@link org.apache.avro.specific.SpecificData} instance that is used to find
    * Avro specific records is created.
-   * @param job a job
+   *
+   * @param job           a job
    * @param supplierClass an avro data supplier class
    */
-  public static void setAvroDataSupplier(Job job,
-      Class<? extends AvroDataSupplier> supplierClass) {
+  public static void setAvroDataSupplier(Job job, Class<? extends AvroDataSupplier> supplierClass) {
     AvroReadSupport.setAvroDataSupplier(ContextUtil.getConfiguration(job), supplierClass);
   }
 }

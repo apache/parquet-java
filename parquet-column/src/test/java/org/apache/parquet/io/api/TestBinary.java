@@ -18,6 +18,12 @@
  */
 package org.apache.parquet.io.api;
 
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -25,14 +31,8 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
-
 import org.apache.parquet.io.api.TestBinary.BinaryFactory.BinaryAndOriginal;
 import org.junit.Test;
-
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertTrue;
 
 public class TestBinary {
 
@@ -74,7 +74,7 @@ public class TestBinary {
   private static final BinaryFactory BYTE_ARRAY_SLICE_BACKED_BF = new BinaryFactory() {
     @Override
     public BinaryAndOriginal get(byte[] bytes, boolean reused) throws Exception {
-      byte [] orig = padded(bytes);
+      byte[] orig = padded(bytes);
       Binary b;
       if (reused) {
         b = Binary.fromReusedByteArray(orig, 5, bytes.length);
@@ -89,7 +89,7 @@ public class TestBinary {
   private static final BinaryFactory BUFFER_BF = new BinaryFactory() {
     @Override
     public BinaryAndOriginal get(byte[] bytes, boolean reused) throws Exception {
-      byte [] orig = padded(bytes);
+      byte[] orig = padded(bytes);
       ByteBuffer buff = ByteBuffer.wrap(orig, 5, bytes.length);
       Binary b;
 
@@ -157,7 +157,7 @@ public class TestBinary {
 
   @Test
   public void testWriteAllTo() throws Exception {
-    byte[] orig = {10, 9 ,8, 7, 6, 5, 4, 3, 2, 1};
+    byte[] orig = {10, 9, 8, 7, 6, 5, 4, 3, 2, 1};
     testWriteAllToHelper(Binary.fromConstantByteBuffer(ByteBuffer.wrap(orig)), orig);
     ByteBuffer buf = ByteBuffer.allocateDirect(orig.length);
     buf.put(orig);
@@ -179,7 +179,9 @@ public class TestBinary {
   private void testSlice(BinaryFactory bf, boolean reused) throws Exception {
     BinaryAndOriginal bao = bf.get(testString.getBytes(UTF8), reused);
 
-    assertArrayEquals(testString.getBytes(UTF8), bao.binary.slice(0, testString.length()).getBytesUnsafe());
+    assertArrayEquals(
+        testString.getBytes(UTF8),
+        bao.binary.slice(0, testString.length()).getBytesUnsafe());
     assertArrayEquals("123".getBytes(UTF8), bao.binary.slice(5, 3).getBytesUnsafe());
   }
 
@@ -230,8 +232,7 @@ public class TestBinary {
     out.close();
     baos.close();
 
-    ObjectInputStream in = new ObjectInputStream(new ByteArrayInputStream(
-        baos.toByteArray()));
+    ObjectInputStream in = new ObjectInputStream(new ByteArrayInputStream(baos.toByteArray()));
     Object object = in.readObject();
     assertTrue(object instanceof Binary);
     assertEquals(bao.binary, object);
@@ -267,5 +268,50 @@ public class TestBinary {
 
     assertTrue(b1.compareTo(b3) == 0);
     assertTrue(b3.compareTo(b1) == 0);
+  }
+
+  @Test
+  public void testGet2BytesLittleEndian() {
+    // ByteBufferBackedBinary: get2BytesLittleEndian
+    Binary b1 = Binary.fromConstantByteBuffer(ByteBuffer.wrap(new byte[] {0x01, 0x02}));
+    assertEquals((short) 0x0201, b1.get2BytesLittleEndian());
+
+    // ByteArrayBackedBinary: get2BytesLittleEndian
+    Binary b2 = Binary.fromConstantByteArray(new byte[] {0x01, 0x02});
+    assertEquals((short) 0x0201, b2.get2BytesLittleEndian());
+
+    // ByteArraySliceBackedBinary: get2BytesLittleEndian
+    Binary b3 = Binary.fromConstantByteArray(new byte[] {0x00, 0x01, 0x02, 0x03}, 1, 2);
+    assertEquals((short) 0x0201, b3.get2BytesLittleEndian());
+  }
+
+  @Test
+  public void testGet2BytesLittleEndianWrongLength() {
+    // ByteBufferBackedBinary: get2BytesLittleEndian
+    Binary b1 = Binary.fromConstantByteBuffer(ByteBuffer.wrap(new byte[] {0x01, 0x02, 0x03}));
+    try {
+      b1.get2BytesLittleEndian();
+      fail("Should have thrown an exception");
+    } catch (IllegalArgumentException e) {
+      // expected
+    }
+
+    // ByteArrayBackedBinary: get2BytesLittleEndian
+    Binary b2 = Binary.fromConstantByteArray(new byte[] {0x01, 0x02, 0x03});
+    try {
+      b2.get2BytesLittleEndian();
+      fail("Should have thrown an exception");
+    } catch (IllegalArgumentException e) {
+      // expected
+    }
+
+    // ByteArraySliceBackedBinary: get2BytesLittleEndian
+    Binary b3 = Binary.fromConstantByteArray(new byte[] {0x00, 0x01, 0x02, 0x03}, 1, 3);
+    try {
+      b3.get2BytesLittleEndian();
+      fail("Should have thrown an exception");
+    } catch (IllegalArgumentException e) {
+      // expected
+    }
   }
 }

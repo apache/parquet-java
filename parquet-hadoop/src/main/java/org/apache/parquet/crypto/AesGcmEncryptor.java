@@ -19,15 +19,13 @@
 
 package org.apache.parquet.crypto;
 
+import java.security.GeneralSecurityException;
 import javax.crypto.Cipher;
 import javax.crypto.spec.GCMParameterSpec;
-
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.format.BlockCipher;
 
-import java.security.GeneralSecurityException;
-
-public class AesGcmEncryptor extends AesCipher implements BlockCipher.Encryptor{
+public class AesGcmEncryptor extends AesCipher implements BlockCipher.Encryptor {
 
   private long operationCounter;
 
@@ -43,7 +41,7 @@ public class AesGcmEncryptor extends AesCipher implements BlockCipher.Encryptor{
   }
 
   @Override
-  public byte[] encrypt(byte[] plainText, byte[] AAD)  {
+  public byte[] encrypt(byte[] plainText, byte[] AAD) {
     return encrypt(true, plainText, AAD);
   }
 
@@ -54,7 +52,8 @@ public class AesGcmEncryptor extends AesCipher implements BlockCipher.Encryptor{
 
   public byte[] encrypt(boolean writeLength, byte[] plainText, byte[] nonce, byte[] AAD) {
     if (operationCounter > GCM_RANDOM_IV_SAME_KEY_MAX_OPS) {
-      throw new ParquetCryptoRuntimeException("Exceeded limit of AES GCM encryption operations with same key and random IV");
+      throw new ParquetCryptoRuntimeException(
+          "Exceeded limit of AES GCM encryption operations with same key and random IV");
     }
     operationCounter++;
 
@@ -63,7 +62,7 @@ public class AesGcmEncryptor extends AesCipher implements BlockCipher.Encryptor{
     }
     int plainTextLength = plainText.length;
     int cipherTextLength = NONCE_LENGTH + plainTextLength + GCM_TAG_LENGTH;
-    int lengthBufferLength = writeLength? SIZE_LENGTH : 0;
+    int lengthBufferLength = writeLength ? SIZE_LENGTH : 0;
     byte[] cipherText = new byte[lengthBufferLength + cipherTextLength];
     int inputLength = plainTextLength;
     int inputOffset = 0;

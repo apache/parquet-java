@@ -18,6 +18,10 @@
  */
 package org.apache.parquet.hadoop;
 
+import static java.lang.String.format;
+import static org.apache.parquet.hadoop.ParquetInputFormat.RECORD_FILTERING_ENABLED;
+import static org.apache.parquet.hadoop.ParquetInputFormat.STRICT_TYPE_CHECKING;
+
 import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
@@ -27,9 +31,7 @@ import java.util.Optional;
 import java.util.PrimitiveIterator;
 import java.util.Set;
 import java.util.stream.LongStream;
-
 import org.apache.hadoop.conf.Configuration;
-
 import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.column.page.PageReadStore;
 import org.apache.parquet.conf.ParquetConfiguration;
@@ -48,10 +50,6 @@ import org.apache.parquet.io.api.RecordMaterializer.RecordMaterializationExcepti
 import org.apache.parquet.schema.MessageType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import static java.lang.String.format;
-import static org.apache.parquet.hadoop.ParquetInputFormat.RECORD_FILTERING_ENABLED;
-import static org.apache.parquet.hadoop.ParquetInputFormat.STRICT_TYPE_CHECKING;
 
 class InternalParquetRecordReader<T> {
   private static final Logger LOG = LoggerFactory.getLogger(InternalParquetRecordReader.class);
@@ -84,10 +82,11 @@ class InternalParquetRecordReader<T> {
   private long totalCountLoadedSoFar = 0;
 
   private UnmaterializableRecordCounter unmaterializableRecordCounter;
+  private PageReadStore currentRowGroup;
 
   /**
    * @param readSupport Object which helps reads files of the given type, e.g. Thrift, Avro.
-   * @param filter for filtering individual records
+   * @param filter      for filtering individual records
    */
   public InternalParquetRecordReader(ReadSupport<T> readSupport, Filter filter) {
     this.readSupport = readSupport;
@@ -103,7 +102,7 @@ class InternalParquetRecordReader<T> {
 
   /**
    * @param readSupport Object which helps reads files of the given type, e.g. Thrift, Avro.
-   * @param filter Optional filter for only returning matching records.
+   * @param filter      Optional filter for only returning matching records.
    * @deprecated use {@link #InternalParquetRecordReader(ReadSupport, Filter)}
    */
   @Deprecated
@@ -116,38 +115,56 @@ class InternalParquetRecordReader<T> {
       if (current != 0) {
         totalTimeSpentProcessingRecords += (System.currentTimeMillis() - startedAssemblingCurrentBlockAt);
         if (LOG.isInfoEnabled()) {
-            LOG.info("Assembled and processed " + totalCountLoadedSoFar + " records from " + columnCount + " columns in " + totalTimeSpentProcessingRecords + " ms: "+((float)totalCountLoadedSoFar / totalTimeSpentProcessingRecords) + " rec/ms, " + ((float)totalCountLoadedSoFar * columnCount / totalTimeSpentProcessingRecords) + " cell/ms");
-            final long totalTime = totalTimeSpentProcessingRecords + totalTimeSpentReadingBytes;
-            if (totalTime != 0) {
-                final long percentReading = 100 * totalTimeSpentReadingBytes / totalTime;
-                final long percentProcessing = 100 * totalTimeSpentProcessingRecords / totalTime;
-                LOG.info("time spent so far " + percentReading + "% reading ("+totalTimeSpentReadingBytes+" ms) and " + percentProcessing + "% processing ("+totalTimeSpentProcessingRecords+" ms)");
-            }
+          LOG.info("Assembled and processed " + totalCountLoadedSoFar + " records from " + columnCount
+              + " columns in " + totalTimeSpentProcessingRecords + " ms: "
+              + ((float) totalCountLoadedSoFar / totalTimeSpentProcessingRecords) + " rec/ms, "
+              + ((float) totalCountLoadedSoFar * columnCount / totalTimeSpentProcessingRecords)
+              + " cell/ms");
+          final long totalTime = totalTimeSpentProcessingRecords + totalTimeSpentReadingBytes;
+          if (totalTime != 0) {
+            final long percentReading = 100 * totalTimeSpentReadingBytes / totalTime;
+            final long percentProcessing = 100 * totalTimeSpentProcessingRecords / totalTime;
+            LOG.info("time spent so far " + percentReading + "% reading (" + totalTimeSpentReadingBytes
+                + " ms) and " + percentProcessing + "% processing (" + totalTimeSpentProcessingRecords
+                + " ms)");
+          }
         }
+      }
+
+      if (currentRowGroup != null) {
+        currentRowGroup.close();
       }
 
       LOG.info("at row " + current + ". reading next block");
       long t0 = System.currentTimeMillis();
-      PageReadStore pages = reader.readNextFilteredRowGroup();
-      if (pages == null) {
-        throw new IOException("expecting more rows but reached last block. Read " + current + " out of " + total);
+      currentRowGroup = reader.readNextFilteredRowGroup();
+      if (currentRowGroup == null) {
+        throw new IOException(
+            "expecting more rows but reached last block. Read " + current + " out of " + total);
       }
-      resetRowIndexIterator(pages);
+      resetRowIndexIterator(currentRowGroup);
       long timeSpentReading = System.currentTimeMillis() - t0;
       totalTimeSpentReadingBytes += timeSpentReading;
       BenchmarkCounter.incrementTime(timeSpentReading);
-      if (LOG.isInfoEnabled()) LOG.info("block read in memory in {} ms. row count = {}", timeSpentReading, pages.getRowCount());
+      if (LOG.isInfoEnabled())
+        LOG.info(
+            "block read in memory in {} ms. row count = {}",
+            timeSpentReading,
+            currentRowGroup.getRowCount());
       LOG.debug("initializing Record assembly with requested schema {}", requestedSchema);
       MessageColumnIO columnIO = columnIOFactory.getColumnIO(requestedSchema, fileSchema, strictTypeChecking);
-      recordReader = columnIO.getRecordReader(pages, recordConverter,
-          filterRecords ? filter : FilterCompat.NOOP);
+      recordReader = columnIO.getRecordReader(
+          currentRowGroup, recordConverter, filterRecords ? filter : FilterCompat.NOOP);
       startedAssemblingCurrentBlockAt = System.currentTimeMillis();
-      totalCountLoadedSoFar += pages.getRowCount();
-      ++ currentBlock;
+      totalCountLoadedSoFar += currentRowGroup.getRowCount();
+      ++currentBlock;
     }
   }
 
   public void close() throws IOException {
+    if (currentRowGroup != null) {
+      currentRowGroup.close();
+    }
     if (reader != null) {
       reader.close();
     }
@@ -157,8 +174,7 @@ class InternalParquetRecordReader<T> {
     return null;
   }
 
-  public T getCurrentValue() throws IOException,
-  InterruptedException {
+  public T getCurrentValue() throws IOException, InterruptedException {
     return currentValue;
   }
 
@@ -178,7 +194,8 @@ class InternalParquetRecordReader<T> {
     FileMetaData parquetFileMetadata = reader.getFooter().getFileMetaData();
     this.fileSchema = parquetFileMetadata.getSchema();
     Map<String, String> fileMetadata = parquetFileMetadata.getKeyValueMetaData();
-    ReadSupport.ReadContext readContext = readSupport.init(new InitContext(conf, toSetMultiMap(fileMetadata), fileSchema));
+    ReadSupport.ReadContext readContext =
+        readSupport.init(new InitContext(conf, toSetMultiMap(fileMetadata), fileSchema));
     this.columnIOFactory = new ColumnIOFactory(parquetFileMetadata.getCreatedBy());
     this.requestedSchema = readContext.getRequestedSchema();
     this.columnCount = requestedSchema.getPaths().size();
@@ -193,23 +210,21 @@ class InternalParquetRecordReader<T> {
     LOG.info("RecordReader initialized will read a total of {} records.", total);
   }
 
-  public void initialize(ParquetFileReader reader, Configuration configuration)
-      throws IOException {
+  public void initialize(ParquetFileReader reader, Configuration configuration) throws IOException {
     // initialize a ReadContext for this file
     this.reader = reader;
     FileMetaData parquetFileMetadata = reader.getFooter().getFileMetaData();
     this.fileSchema = parquetFileMetadata.getSchema();
     Map<String, String> fileMetadata = parquetFileMetadata.getKeyValueMetaData();
-    ReadSupport.ReadContext readContext = readSupport.init(new InitContext(
-        configuration, toSetMultiMap(fileMetadata), fileSchema));
+    ReadSupport.ReadContext readContext =
+        readSupport.init(new InitContext(configuration, toSetMultiMap(fileMetadata), fileSchema));
     this.columnIOFactory = new ColumnIOFactory(parquetFileMetadata.getCreatedBy());
     this.requestedSchema = readContext.getRequestedSchema();
     this.columnCount = requestedSchema.getPaths().size();
     // Setting the projection schema before running any filtering (e.g. getting filtered record count)
     // because projection impacts filtering
     reader.setRequestedSchema(requestedSchema);
-    this.recordConverter = readSupport.prepareForRead(
-        configuration, fileMetadata, fileSchema, readContext);
+    this.recordConverter = readSupport.prepareForRead(configuration, fileMetadata, fileSchema, readContext);
     this.strictTypeChecking = configuration.getBoolean(STRICT_TYPE_CHECKING, true);
     this.total = reader.getFilteredRecordCount();
     this.unmaterializableRecordCounter = new UnmaterializableRecordCounter(configuration, total);
@@ -222,11 +237,13 @@ class InternalParquetRecordReader<T> {
 
     while (!recordFound) {
       // no more records left
-      if (current >= total) { return false; }
+      if (current >= total) {
+        return false;
+      }
 
       try {
         checkRead();
-        current ++;
+        current++;
 
         try {
           currentValue = recordReader.read();
@@ -259,7 +276,11 @@ class InternalParquetRecordReader<T> {
 
         LOG.debug("read value: {}", currentValue);
       } catch (RuntimeException e) {
-        throw new ParquetDecodingException(format("Can not read value at %d in block %d in file %s", current, currentBlock, reader.getFile()), e);
+        throw new ParquetDecodingException(
+            format(
+                "Can not read value at %d in block %d in file %s",
+                current, currentBlock, reader.getFile()),
+            e);
       }
     }
     return true;
@@ -271,6 +292,14 @@ class InternalParquetRecordReader<T> {
       setMultiMap.put(entry.getKey(), Collections.singleton(entry.getValue()));
     }
     return Collections.unmodifiableMap(setMultiMap);
+  }
+
+  /**
+   * Returns the 0-based index of the row group currently being read. Returns -1 if no row group
+   * has been read yet.
+   */
+  public int getCurrentRowGroupIndex() {
+    return currentBlock;
   }
 
   /**

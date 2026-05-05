@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -36,13 +36,13 @@ import org.apache.parquet.io.api.Binary;
  *  <li> If the value is defined we can read it with the correct get*() method.</li>
  *  <li> Looking ahead to the next repetition determines what is the next column to read for in the FSA.</li>
  * </ul>
-  */
+ */
 public interface ColumnReader {
 
   /**
    * @return the totalCount of values to be consumed
    * @deprecated will be removed in 2.0.0; Total values might not be able to be counted before reading the values (e.g.
-   *             in case of column index based filtering)
+   * in case of column index based filtering)
    */
   @Deprecated
   long getTotalValueCount();
@@ -54,6 +54,7 @@ public interface ColumnReader {
 
   /**
    * must return 0 when isFullyConsumed() == true
+   *
    * @return the repetition level for the current value
    */
   int getCurrentRepetitionLevel();
@@ -75,6 +76,7 @@ public interface ColumnReader {
 
   /**
    * available when the underlying encoding is dictionary based
+   *
    * @return the dictionary id for the current value
    */
   int getCurrentValueDictionaryID();
@@ -113,5 +115,4 @@ public interface ColumnReader {
    * @return Descriptor of the column.
    */
   ColumnDescriptor getDescriptor();
-
 }

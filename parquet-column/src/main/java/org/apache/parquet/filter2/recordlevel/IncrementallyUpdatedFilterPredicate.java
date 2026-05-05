@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -18,18 +18,18 @@
  */
 package org.apache.parquet.filter2.recordlevel;
 
-import org.apache.parquet.io.api.Binary;
-
+import java.util.List;
 import java.util.Objects;
+import org.apache.parquet.io.api.Binary;
 
 /**
  * A rewritten version of a {@link org.apache.parquet.filter2.predicate.FilterPredicate} which receives
  * the values for a record's columns one by one and internally tracks whether the predicate is
  * satisfied, unsatisfied, or unknown.
- *
+ * <p>
  * This is used to apply a predicate during record assembly, without assembling a second copy of
  * a record, and without building a stack of update events.
- *
+ * <p>
  * IncrementallyUpdatedFilterPredicate is implemented via the visitor pattern, as is
  * {@link org.apache.parquet.filter2.predicate.FilterPredicate}
  */
@@ -40,7 +40,9 @@ public interface IncrementallyUpdatedFilterPredicate {
    */
   public static interface Visitor {
     boolean visit(ValueInspector p);
+
     boolean visit(And and);
+
     boolean visit(Or or);
   }
 
@@ -55,29 +57,49 @@ public interface IncrementallyUpdatedFilterPredicate {
   /**
    * This is the leaf node of a filter predicate. It receives the value for the primitive column it represents,
    * and decides whether or not the predicate represented by this node is satisfied.
-   *
+   * <p>
    * It is stateful, and needs to be rest after use.
    */
-  public static abstract class ValueInspector implements IncrementallyUpdatedFilterPredicate {
+  public abstract static class ValueInspector implements IncrementallyUpdatedFilterPredicate {
     // package private constructor
-    ValueInspector() { }
+    ValueInspector() {}
 
     private boolean result = false;
     private boolean isKnown = false;
 
     // these methods signal what the value is
-    public void updateNull() { throw new UnsupportedOperationException(); }
-    public void update(int value) { throw new UnsupportedOperationException(); }
-    public void update(long value) { throw new UnsupportedOperationException(); }
-    public void update(double value) { throw new UnsupportedOperationException(); }
-    public void update(float value) { throw new UnsupportedOperationException(); }
-    public void update(boolean value) { throw new UnsupportedOperationException(); }
-    public void update(Binary value) { throw new UnsupportedOperationException(); }
+    public void updateNull() {
+      throw new UnsupportedOperationException();
+    }
+
+    public void update(int value) {
+      throw new UnsupportedOperationException();
+    }
+
+    public void update(long value) {
+      throw new UnsupportedOperationException();
+    }
+
+    public void update(double value) {
+      throw new UnsupportedOperationException();
+    }
+
+    public void update(float value) {
+      throw new UnsupportedOperationException();
+    }
+
+    public void update(boolean value) {
+      throw new UnsupportedOperationException();
+    }
+
+    public void update(Binary value) {
+      throw new UnsupportedOperationException();
+    }
 
     /**
      * Reset to clear state and begin evaluating the next record.
      */
-    public final void reset() {
+    public void reset() {
       isKnown = false;
       result = false;
     }
@@ -90,7 +112,7 @@ public interface IncrementallyUpdatedFilterPredicate {
     protected final void setResult(boolean result) {
       if (isKnown) {
         throw new IllegalStateException("setResult() called on a ValueInspector whose result is already known!"
-          + " Did you forget to call reset()?");
+            + " Did you forget to call reset()?");
       }
       this.result = result;
       this.isKnown = true;
@@ -103,7 +125,8 @@ public interface IncrementallyUpdatedFilterPredicate {
      */
     public final boolean getResult() {
       if (!isKnown) {
-        throw new IllegalStateException("getResult() called on a ValueInspector whose result is not yet known!");
+        throw new IllegalStateException(
+            "getResult() called on a ValueInspector whose result is not yet known!");
       }
       return result;
     }
@@ -123,8 +146,85 @@ public interface IncrementallyUpdatedFilterPredicate {
     }
   }
 
+  /**
+   * A ValueInspector implementation that keeps state for one or more delegate inspectors.
+   */
+  abstract static class DelegatingValueInspector extends ValueInspector {
+    private final Iterable<ValueInspector> delegates;
+
+    DelegatingValueInspector(ValueInspector... delegates) {
+      this.delegates = List.of(delegates);
+    }
+
+    /**
+     * Hook called after every value update. Can update state and set result on this ValueInspector.
+     */
+    abstract void onUpdate();
+
+    /**
+     * Hook called after updateNull(), if no values have been recorded for the delegate inspectors.
+     */
+    abstract void onNull();
+
+    Iterable<ValueInspector> getDelegates() {
+      return delegates;
+    }
+
+    @Override
+    public void updateNull() {
+      for (ValueInspector delegate : delegates) {
+        if (!delegate.isKnown()) {
+          delegate.updateNull();
+        }
+      }
+      onNull();
+    }
+
+    @Override
+    public void update(int value) {
+      delegates.forEach(d -> d.update(value));
+      onUpdate();
+    }
+
+    @Override
+    public void update(long value) {
+      delegates.forEach(d -> d.update(value));
+      onUpdate();
+    }
+
+    @Override
+    public void update(boolean value) {
+      delegates.forEach(d -> d.update(value));
+      onUpdate();
+    }
+
+    @Override
+    public void update(float value) {
+      delegates.forEach(d -> d.update(value));
+      onUpdate();
+    }
+
+    @Override
+    public void update(double value) {
+      delegates.forEach(d -> d.update(value));
+      onUpdate();
+    }
+
+    @Override
+    public void update(Binary value) {
+      delegates.forEach(d -> d.update(value));
+      onUpdate();
+    }
+
+    @Override
+    public void reset() {
+      delegates.forEach(ValueInspector::reset);
+      super.reset();
+    }
+  }
+
   // base class for and / or
-  static abstract class BinaryLogical implements IncrementallyUpdatedFilterPredicate {
+  abstract static class BinaryLogical implements IncrementallyUpdatedFilterPredicate {
     private final IncrementallyUpdatedFilterPredicate left;
     private final IncrementallyUpdatedFilterPredicate right;
 

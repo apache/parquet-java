@@ -19,12 +19,13 @@
 
 package org.apache.parquet.crypto.keytools;
 
+import static org.apache.parquet.crypto.keytools.KeyToolkit.stringIsEmpty;
+
 import java.io.IOException;
 import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.crypto.ColumnEncryptionProperties;
@@ -39,8 +40,6 @@ import org.apache.parquet.hadoop.api.WriteSupport.WriteContext;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import static org.apache.parquet.crypto.keytools.KeyToolkit.stringIsEmpty;
 
 public class PropertiesDrivenCryptoFactory implements EncryptionPropertiesFactory, DecryptionPropertiesFactory {
   private static final Logger LOG = LoggerFactory.getLogger(PropertiesDrivenCryptoFactory.class);
@@ -83,15 +82,15 @@ public class PropertiesDrivenCryptoFactory implements EncryptionPropertiesFactor
   private static final SecureRandom RANDOM = new SecureRandom();
 
   @Override
-  public FileEncryptionProperties getFileEncryptionProperties(Configuration fileHadoopConfig, Path tempFilePath,
-      WriteContext fileWriteContext) throws ParquetCryptoRuntimeException {
+  public FileEncryptionProperties getFileEncryptionProperties(
+      Configuration fileHadoopConfig, Path tempFilePath, WriteContext fileWriteContext)
+      throws ParquetCryptoRuntimeException {
 
     String footerKeyId = fileHadoopConfig.getTrimmed(FOOTER_KEY_PROPERTY_NAME);
     String columnKeysStr = fileHadoopConfig.getTrimmed(COLUMN_KEYS_PROPERTY_NAME);
     String uniformKeyId = fileHadoopConfig.getTrimmed(UNIFORM_KEY_PROPERTY_NAME);
-    boolean completeColumnEncryption = fileHadoopConfig.getBoolean(COMPLETE_COLUMN_ENCRYPTION_PROPERTY_NAME,
-      COMPLETE_COLUMN_ENCRYPTION_DEFAULT);
-
+    boolean completeColumnEncryption = fileHadoopConfig.getBoolean(
+        COMPLETE_COLUMN_ENCRYPTION_PROPERTY_NAME, COMPLETE_COLUMN_ENCRYPTION_DEFAULT);
 
     boolean emptyFooterKeyId = stringIsEmpty(footerKeyId);
     boolean emptyColumnKeyIds = stringIsEmpty(columnKeysStr);
@@ -114,15 +113,16 @@ public class PropertiesDrivenCryptoFactory implements EncryptionPropertiesFactor
     } else {
       // Uniform encryption. Can't have configuration of footer and column key ids
       if (!emptyFooterKeyId) {
-        throw new ParquetCryptoRuntimeException("Uniform encryption. Cant have footer key configured in " +
-          FOOTER_KEY_PROPERTY_NAME);
+        throw new ParquetCryptoRuntimeException(
+            "Uniform encryption. Cant have footer key configured in " + FOOTER_KEY_PROPERTY_NAME);
       }
       if (!emptyColumnKeyIds) {
-        throw new ParquetCryptoRuntimeException("Uniform encryption. Cant have column keys configured in " +
-          COLUMN_KEYS_PROPERTY_NAME);
+        throw new ParquetCryptoRuntimeException(
+            "Uniform encryption. Cant have column keys configured in " + COLUMN_KEYS_PROPERTY_NAME);
       }
       if (completeColumnEncryption) {
-        throw new ParquetCryptoRuntimeException("Complete column encryption cant be applied in uniform encryption mode");
+        throw new ParquetCryptoRuntimeException(
+            "Complete column encryption cant be applied in uniform encryption mode");
       }
 
       // Now assign footer key id to uniform key id
@@ -130,8 +130,8 @@ public class PropertiesDrivenCryptoFactory implements EncryptionPropertiesFactor
     }
 
     FileKeyMaterialStore keyMaterialStore = null;
-    boolean keyMaterialInternalStorage = fileHadoopConfig.getBoolean(KeyToolkit.KEY_MATERIAL_INTERNAL_PROPERTY_NAME,
-        KeyToolkit.KEY_MATERIAL_INTERNAL_DEFAULT);
+    boolean keyMaterialInternalStorage = fileHadoopConfig.getBoolean(
+        KeyToolkit.KEY_MATERIAL_INTERNAL_PROPERTY_NAME, KeyToolkit.KEY_MATERIAL_INTERNAL_DEFAULT);
     if (!keyMaterialInternalStorage) {
       if (tempFilePath == null) {
         throw new ParquetCryptoRuntimeException("Output file path cannot be null");
@@ -154,8 +154,8 @@ public class PropertiesDrivenCryptoFactory implements EncryptionPropertiesFactor
       throw new ParquetCryptoRuntimeException("Wrong encryption algorithm: " + algo);
     }
 
-    int dekLengthBits = fileHadoopConfig.getInt(KeyToolkit.DATA_KEY_LENGTH_PROPERTY_NAME,
-        KeyToolkit.DATA_KEY_LENGTH_DEFAULT);
+    int dekLengthBits =
+        fileHadoopConfig.getInt(KeyToolkit.DATA_KEY_LENGTH_PROPERTY_NAME, KeyToolkit.DATA_KEY_LENGTH_DEFAULT);
 
     if (Arrays.binarySearch(ACCEPTABLE_DATA_KEY_LENGTHS, dekLengthBits) < 0) {
       throw new ParquetCryptoRuntimeException("Wrong data key length : " + dekLengthBits);
@@ -175,7 +175,7 @@ public class PropertiesDrivenCryptoFactory implements EncryptionPropertiesFactor
 
     if (emptyUniformKeyId) {
       Map<ColumnPath, ColumnEncryptionProperties> encryptedColumns =
-        getColumnEncryptionProperties(dekLength, columnKeysStr, keyWrapper);
+          getColumnEncryptionProperties(dekLength, columnKeysStr, keyWrapper);
       propertiesBuilder = propertiesBuilder.withEncryptedColumns(encryptedColumns);
 
       if (completeColumnEncryption) {
@@ -192,17 +192,25 @@ public class PropertiesDrivenCryptoFactory implements EncryptionPropertiesFactor
     }
 
     if (LOG.isDebugEnabled()) {
-      LOG.debug("File encryption properties for {} - algo: {}; footer key id: {}; uniform key id: {}; " + "" +
-          "plaintext footer: {}; internal key material: {}; encrypted columns: {}",
-          tempFilePath, cipher, footerKeyId, uniformKeyId, plaintextFooter, keyMaterialInternalStorage, columnKeysStr);
+      LOG.debug(
+          "File encryption properties for {} - algo: {}; footer key id: {}; uniform key id: {}; " + ""
+              + "plaintext footer: {}; internal key material: {}; encrypted columns: {}",
+          tempFilePath,
+          cipher,
+          footerKeyId,
+          uniformKeyId,
+          plaintextFooter,
+          keyMaterialInternalStorage,
+          columnKeysStr);
     }
 
     return propertiesBuilder.build();
   }
 
-  private Map<ColumnPath, ColumnEncryptionProperties> getColumnEncryptionProperties(int dekLength, String columnKeys,
-      FileKeyWrapper keyWrapper) throws ParquetCryptoRuntimeException {
-    Map<ColumnPath, ColumnEncryptionProperties> encryptedColumns = new HashMap<ColumnPath, ColumnEncryptionProperties>();
+  private Map<ColumnPath, ColumnEncryptionProperties> getColumnEncryptionProperties(
+      int dekLength, String columnKeys, FileKeyWrapper keyWrapper) throws ParquetCryptoRuntimeException {
+    Map<ColumnPath, ColumnEncryptionProperties> encryptedColumns =
+        new HashMap<ColumnPath, ColumnEncryptionProperties>();
     String keyToColumns[] = columnKeys.split(";");
     for (int i = 0; i < keyToColumns.length; ++i) {
       final String curKeyToColumns = keyToColumns[i].trim();
@@ -212,8 +220,8 @@ public class PropertiesDrivenCryptoFactory implements EncryptionPropertiesFactor
 
       String[] parts = curKeyToColumns.split(":");
       if (parts.length != 2) {
-        throw new ParquetCryptoRuntimeException("Incorrect key to columns mapping in " + COLUMN_KEYS_PROPERTY_NAME
-            + ": [" + curKeyToColumns + "]");
+        throw new ParquetCryptoRuntimeException("Incorrect key to columns mapping in "
+            + COLUMN_KEYS_PROPERTY_NAME + ": [" + curKeyToColumns + "]");
       }
 
       String columnKeyId = parts[0].trim();
@@ -230,7 +238,8 @@ public class PropertiesDrivenCryptoFactory implements EncryptionPropertiesFactor
       for (int j = 0; j < columnNames.length; ++j) {
         final String columnName = columnNames[j].trim();
         if (columnName.isEmpty()) {
-          throw new ParquetCryptoRuntimeException("Empty column name in " + COLUMN_KEYS_PROPERTY_NAME + " for key: " + columnKeyId);
+          throw new ParquetCryptoRuntimeException(
+              "Empty column name in " + COLUMN_KEYS_PROPERTY_NAME + " for key: " + columnKeyId);
         }
 
         final ColumnPath columnPath = ColumnPath.fromDotString(columnName);
@@ -240,7 +249,7 @@ public class PropertiesDrivenCryptoFactory implements EncryptionPropertiesFactor
 
         byte[] columnKeyBytes = new byte[dekLength];
         RANDOM.nextBytes(columnKeyBytes);
-        byte[] columnKeyKeyMetadata =  keyWrapper.getEncryptionKeyMetadata(columnKeyBytes, columnKeyId, false);
+        byte[] columnKeyKeyMetadata = keyWrapper.getEncryptionKeyMetadata(columnKeyBytes, columnKeyId, false);
 
         ColumnEncryptionProperties cmd = ColumnEncryptionProperties.builder(columnPath)
             .withKey(columnKeyBytes)
@@ -272,4 +281,3 @@ public class PropertiesDrivenCryptoFactory implements EncryptionPropertiesFactor
         .build();
   }
 }
-

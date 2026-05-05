@@ -20,7 +20,6 @@
 package org.apache.parquet.format;
 
 import java.io.IOException;
-
 import org.apache.thrift.TBase;
 import org.apache.thrift.TException;
 import org.apache.thrift.TSerializer;

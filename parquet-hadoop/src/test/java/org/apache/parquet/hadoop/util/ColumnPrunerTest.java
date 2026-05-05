@@ -19,6 +19,16 @@
 
 package org.apache.parquet.hadoop.util;
 
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
+import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
+import static org.apache.parquet.schema.Type.Repetition.OPTIONAL;
+import static org.apache.parquet.schema.Type.Repetition.REPEATED;
+import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
+import static org.junit.Assert.assertEquals;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.util.List;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.example.data.Group;
@@ -37,18 +47,6 @@ import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Type;
 import org.junit.Test;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.util.Arrays;
-import java.util.List;
-
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
-import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
-import static org.apache.parquet.schema.Type.Repetition.OPTIONAL;
-import static org.apache.parquet.schema.Type.Repetition.REPEATED;
-import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
-import static org.junit.Assert.assertEquals;
-
 public class ColumnPrunerTest {
 
   private final int numRecord = 1000;
@@ -62,11 +60,12 @@ public class ColumnPrunerTest {
     String outputFile = createTempFile("output");
 
     // Remove column Gender
-    List<String> cols = Arrays.asList("Gender");
+    List<String> cols = List.of("Gender");
     columnPruner.pruneColumns(conf, new Path(inputFile), new Path(outputFile), cols);
 
     // Verify the schema are not changed for the columns not pruned
-    ParquetMetadata pmd = ParquetFileReader.readFooter(conf, new Path(outputFile), ParquetMetadataConverter.NO_FILTER);
+    ParquetMetadata pmd =
+        ParquetFileReader.readFooter(conf, new Path(outputFile), ParquetMetadataConverter.NO_FILTER);
     MessageType schema = pmd.getFileMetaData().getSchema();
     List<Type> fields = schema.getFields();
     assertEquals(fields.size(), 3);
@@ -79,7 +78,7 @@ public class ColumnPrunerTest {
     assertEquals(subFields.get(1).getName(), "Forward");
 
     // Verify the data are not changed for the columns not pruned
-    List<String> prunePaths = Arrays.asList("Gender");
+    List<String> prunePaths = List.of("Gender");
     validateColumns(inputFile, prunePaths);
   }
 
@@ -91,11 +90,12 @@ public class ColumnPrunerTest {
 
     // Remove columns
     String cargs[] = {inputFile, outputFile, "Name", "Gender"};
-    List<String> cols = Arrays.asList("Name", "Gender");
+    List<String> cols = List.of("Name", "Gender");
     columnPruner.pruneColumns(conf, new Path(inputFile), new Path(outputFile), cols);
 
     // Verify the schema are not changed for the columns not pruned
-    ParquetMetadata pmd = ParquetFileReader.readFooter(conf, new Path(outputFile), ParquetMetadataConverter.NO_FILTER);
+    ParquetMetadata pmd =
+        ParquetFileReader.readFooter(conf, new Path(outputFile), ParquetMetadataConverter.NO_FILTER);
     MessageType schema = pmd.getFileMetaData().getSchema();
     List<Type> fields = schema.getFields();
     assertEquals(fields.size(), 2);
@@ -107,7 +107,7 @@ public class ColumnPrunerTest {
     assertEquals(subFields.get(1).getName(), "Forward");
 
     // Verify the data are not changed for the columns not pruned
-    List<String> prunePaths = Arrays.asList("Name", "Gender");
+    List<String> prunePaths = List.of("Name", "Gender");
     validateColumns(inputFile, prunePaths);
   }
 
@@ -116,7 +116,7 @@ public class ColumnPrunerTest {
     // Create Parquet file
     String inputFile = createParquetFile("input");
     String outputFile = createTempFile("output");
-    List<String> cols = Arrays.asList("no_exist");
+    List<String> cols = List.of("no_exist");
     columnPruner.pruneColumns(conf, new Path(inputFile), new Path(outputFile), cols);
   }
 
@@ -127,11 +127,12 @@ public class ColumnPrunerTest {
     String outputFile = createTempFile("output");
 
     // Remove nested column
-    List<String> cols = Arrays.asList("Links.Backward");
+    List<String> cols = List.of("Links.Backward");
     columnPruner.pruneColumns(conf, new Path(inputFile), new Path(outputFile), cols);
 
     // Verify the schema are not changed for the columns not pruned
-    ParquetMetadata pmd = ParquetFileReader.readFooter(conf, new Path(outputFile), ParquetMetadataConverter.NO_FILTER);
+    ParquetMetadata pmd =
+        ParquetFileReader.readFooter(conf, new Path(outputFile), ParquetMetadataConverter.NO_FILTER);
     MessageType schema = pmd.getFileMetaData().getSchema();
     List<Type> fields = schema.getFields();
     assertEquals(fields.size(), 4);
@@ -144,7 +145,7 @@ public class ColumnPrunerTest {
     assertEquals(subFields.get(0).getName(), "Forward");
 
     // Verify the data are not changed for the columns not pruned
-    List<String> prunePaths = Arrays.asList("Links.Backward");
+    List<String> prunePaths = List.of("Links.Backward");
     validateColumns(inputFile, prunePaths);
   }
 
@@ -155,11 +156,12 @@ public class ColumnPrunerTest {
     String outputFile = createTempFile("output");
 
     // Remove parent column. All of it's children will be removed.
-    List<String> cols = Arrays.asList("Links");
+    List<String> cols = List.of("Links");
     columnPruner.pruneColumns(conf, new Path(inputFile), new Path(outputFile), cols);
 
     // Verify the schema are not changed for the columns not pruned
-    ParquetMetadata pmd = ParquetFileReader.readFooter(conf, new Path(outputFile), ParquetMetadataConverter.NO_FILTER);
+    ParquetMetadata pmd =
+        ParquetFileReader.readFooter(conf, new Path(outputFile), ParquetMetadataConverter.NO_FILTER);
     MessageType schema = pmd.getFileMetaData().getSchema();
     List<Type> fields = schema.getFields();
     assertEquals(fields.size(), 3);
@@ -168,7 +170,7 @@ public class ColumnPrunerTest {
     assertEquals(fields.get(2).getName(), "Gender");
 
     // Verify the data are not changed for the columns not pruned
-    List<String> prunePaths = Arrays.asList("Links");
+    List<String> prunePaths = List.of("Links");
     validateColumns(inputFile, prunePaths);
   }
 
@@ -177,12 +179,14 @@ public class ColumnPrunerTest {
     // Create Parquet file
     String inputFile = createParquetFile("input");
     String outputFile = createTempFile("output");
-    List<String> cols = Arrays.asList("Links.Not_exists");
+    List<String> cols = List.of("Links.Not_exists");
     columnPruner.pruneColumns(conf, new Path(inputFile), new Path(outputFile), cols);
   }
 
   private void validateColumns(String inputFile, List<String> prunePaths) throws IOException {
-    ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), new Path(inputFile)).withConf(conf).build();
+    ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), new Path(inputFile))
+        .withConf(conf)
+        .build();
     for (int i = 0; i < numRecord; i++) {
       Group group = reader.read();
       if (!prunePaths.contains("DocId")) {
@@ -208,18 +212,22 @@ public class ColumnPrunerTest {
   }
 
   private String createParquetFile(String prefix) throws IOException {
-    MessageType schema = new MessageType("schema",
-      new PrimitiveType(REQUIRED, INT64, "DocId"),
-      new PrimitiveType(REQUIRED, BINARY, "Name"),
-      new PrimitiveType(REQUIRED, BINARY, "Gender"),
-      new GroupType(OPTIONAL, "Links",
-        new PrimitiveType(REPEATED, INT64, "Backward"),
-        new PrimitiveType(REPEATED, INT64, "Forward")));
+    MessageType schema = new MessageType(
+        "schema",
+        new PrimitiveType(REQUIRED, INT64, "DocId"),
+        new PrimitiveType(REQUIRED, BINARY, "Name"),
+        new PrimitiveType(REQUIRED, BINARY, "Gender"),
+        new GroupType(
+            OPTIONAL,
+            "Links",
+            new PrimitiveType(REPEATED, INT64, "Backward"),
+            new PrimitiveType(REPEATED, INT64, "Forward")));
 
     conf.set(GroupWriteSupport.PARQUET_EXAMPLE_SCHEMA, schema.toString());
 
     String file = createTempFile(prefix);
-    ExampleParquetWriter.Builder builder = ExampleParquetWriter.builder(new Path(file)).withConf(conf);
+    ExampleParquetWriter.Builder builder =
+        ExampleParquetWriter.builder(new Path(file)).withConf(conf);
     try (ParquetWriter writer = builder.build()) {
       for (int i = 0; i < numRecord; i++) {
         SimpleGroup g = new SimpleGroup(schema);

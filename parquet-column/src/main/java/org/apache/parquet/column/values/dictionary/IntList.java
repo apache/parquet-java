@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -58,6 +58,7 @@ public class IntList {
     /**
      * slabs will be iterated in order up to the provided count
      * as the last slab may not be full
+     *
      * @param slabs contain the ints
      * @param count count of ints
      */
@@ -127,11 +128,12 @@ public class IntList {
     }
 
     currentSlab[currentSlabPos] = i;
-    ++ currentSlabPos;
+    ++currentSlabPos;
   }
 
   /**
    * (not an actual Iterable)
+   *
    * @return an IntIterator on the content
    */
   public IntIterator iterator() {
@@ -149,11 +151,10 @@ public class IntList {
    */
   public int size() {
     int size = currentSlabPos;
-    for (int [] slab : slabs) {
+    for (int[] slab : slabs) {
       size += slab.length;
     }
 
     return size;
   }
-
 }

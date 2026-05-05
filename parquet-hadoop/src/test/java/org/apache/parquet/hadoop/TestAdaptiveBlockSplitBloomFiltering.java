@@ -22,16 +22,14 @@ package org.apache.parquet.hadoop;
 import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
-import org.junit.BeforeClass;
-import org.junit.Test;
-
 import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.crypto.FileDecryptionProperties;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.apache.parquet.io.InputFile;
+import org.junit.BeforeClass;
+import org.junit.Test;
 
 public class TestAdaptiveBlockSplitBloomFiltering extends TestBloomFiltering {
 
@@ -57,21 +55,25 @@ public class TestAdaptiveBlockSplitBloomFiltering extends TestBloomFiltering {
   @Test
   public void checkBloomFilterSize() throws IOException {
     FileDecryptionProperties fileDecryptionProperties = getFileDecryptionProperties();
-    final ParquetReadOptions readOptions = ParquetReadOptions.builder().withDecryption(fileDecryptionProperties).build();
+    final ParquetReadOptions readOptions = ParquetReadOptions.builder()
+        .withDecryption(fileDecryptionProperties)
+        .build();
     InputFile inputFile = HadoopInputFile.fromPath(getFile(), new Configuration());
     try (ParquetFileReader fileReader = ParquetFileReader.open(inputFile, readOptions)) {
       fileReader.getRowGroups().forEach(block -> {
         BloomFilterReader bloomFilterReader = fileReader.getBloomFilterDataReader(block);
         block.getColumns().stream()
-          .filter(column -> column.getBloomFilterOffset() > 0)
-          .forEach(column -> {
-            int bitsetSize = bloomFilterReader.readBloomFilter(column).getBitsetSize();
-            // set 10 candidates:
-            // [byteSize=2048, expectedNVD=1500], [byteSize=4096, expectedNVD=3000], [byteSize=6500, expectedNVD=8192],
-            // [byteSize=16384, expectedNVD=13500], [byteSize=32768, expectedNVD=27000] ......
-            // number of distinct values is less than 100, so the byteSize should be less than 2048.
-            assertTrue(bitsetSize <= 2048);
-          });
+            .filter(column -> column.getBloomFilterOffset() > 0)
+            .forEach(column -> {
+              int bitsetSize =
+                  bloomFilterReader.readBloomFilter(column).getBitsetSize();
+              // set 10 candidates:
+              // [byteSize=2048, expectedNVD=1500], [byteSize=4096, expectedNVD=3000], [byteSize=6500,
+              // expectedNVD=8192],
+              // [byteSize=16384, expectedNVD=13500], [byteSize=32768, expectedNVD=27000] ......
+              // number of distinct values is less than 100, so the byteSize should be less than 2048.
+              assertTrue(bitsetSize <= 2048);
+            });
       });
     }
   }

@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -18,13 +18,12 @@
  */
 package org.apache.parquet.column.values.rle;
 
-import java.nio.ByteBuffer;
-
-import org.apache.parquet.bytes.ByteBufferInputStream;
-import org.junit.Test;
-import org.apache.parquet.bytes.DirectByteBufferAllocator;
-
 import static org.junit.Assert.assertEquals;
+
+import java.nio.ByteBuffer;
+import org.apache.parquet.bytes.ByteBufferInputStream;
+import org.apache.parquet.bytes.DirectByteBufferAllocator;
+import org.junit.Test;
 
 public class RunLengthBitPackingHybridIntegrationTest {
 
@@ -38,7 +37,8 @@ public class RunLengthBitPackingHybridIntegrationTest {
   private void doIntegrationTest(int bitWidth) throws Exception {
     long modValue = 1L << bitWidth;
 
-    RunLengthBitPackingHybridEncoder encoder = new RunLengthBitPackingHybridEncoder(bitWidth, 1000, 64000, new DirectByteBufferAllocator());
+    RunLengthBitPackingHybridEncoder encoder =
+        new RunLengthBitPackingHybridEncoder(bitWidth, 1000, 64000, new DirectByteBufferAllocator());
     for (int i = 0; i < 100; i++) {
       encoder.writeInt((int) (i % modValue));
     }

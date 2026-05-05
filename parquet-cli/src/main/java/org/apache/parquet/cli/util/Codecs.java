@@ -19,11 +19,10 @@
 
 package org.apache.parquet.cli.util;
 
+import java.util.Locale;
 import org.apache.avro.AvroRuntimeException;
 import org.apache.avro.file.CodecFactory;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
-
-import java.util.Locale;
 
 public class Codecs {
   public static CompressionCodecName parquetCodec(String codec) {

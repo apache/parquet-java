@@ -20,17 +20,16 @@
 package org.apache.parquet.cli.commands;
 
 import com.beust.jcommander.JCommander;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.fs.FileAlreadyExistsException;
 import org.junit.Assert;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
-
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
 
 public class ToAvroCommandTest extends AvroFileTest {
   @Rule
@@ -48,10 +47,9 @@ public class ToAvroCommandTest extends AvroFileTest {
     final File avroOutputFile = folder.newFile("sample.avro");
 
     // Write the json to the file, so we can read it again.
-    final String inputJson = "{\"id\": 1, \"name\": \"Alice\"}\n" +
-      "{\"id\": 2, \"name\": \"Bob\"}\n" +
-      "{\"id\": 3, \"name\": \"Carol\"}\n" +
-      "{\"id\": 4, \"name\": \"Dave\"}";
+    final String inputJson = "{\"id\": 1, \"name\": \"Alice\"}\n" + "{\"id\": 2, \"name\": \"Bob\"}\n"
+        + "{\"id\": 3, \"name\": \"Carol\"}\n"
+        + "{\"id\": 4, \"name\": \"Dave\"}";
 
     try (BufferedWriter writer = new BufferedWriter(new FileWriter(jsonInputFile))) {
       writer.write(inputJson);
@@ -59,16 +57,10 @@ public class ToAvroCommandTest extends AvroFileTest {
 
     ToAvroCommand cmd = new ToAvroCommand(null);
 
-    JCommander
-      .newBuilder()
-      .addObject(cmd)
-      .build()
-      .parse(
-        "--overwrite",
-        jsonInputFile.getAbsolutePath(),
-        "--output",
-        avroOutputFile.getAbsolutePath()
-      );
+    JCommander.newBuilder()
+        .addObject(cmd)
+        .build()
+        .parse("--overwrite", jsonInputFile.getAbsolutePath(), "--output", avroOutputFile.getAbsolutePath());
 
     assert (cmd.run() == 0);
   }

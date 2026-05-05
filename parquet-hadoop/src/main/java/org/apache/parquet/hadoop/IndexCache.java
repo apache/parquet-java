@@ -18,15 +18,14 @@
  */
 package org.apache.parquet.hadoop;
 
+import java.io.IOException;
+import java.util.Set;
 import org.apache.parquet.column.values.bloomfilter.BloomFilter;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
 import org.apache.parquet.internal.column.columnindex.ColumnIndex;
 import org.apache.parquet.internal.column.columnindex.OffsetIndex;
-
-import java.io.IOException;
-import java.util.Set;
 
 /**
  * A cache for caching indexes(including: ColumnIndex, OffsetIndex and BloomFilter)
@@ -41,9 +40,9 @@ public interface IndexCache {
   /**
    * Create an index cache for the given file reader
    *
-   * @param fileReader the file reader
-   * @param columns the columns that need to do cache
-   * @param cacheStrategy the cache strategy, supports NONE and PREFETCH_BLOCK
+   * @param fileReader        the file reader
+   * @param columns           the columns that need to do cache
+   * @param cacheStrategy     the cache strategy, supports NONE and PREFETCH_BLOCK
    * @param freeCacheAfterGet whether free the given index cache after calling the given get method
    * @return the index cache
    */

@@ -26,7 +26,6 @@ import java.nio.charset.CoderResult;
 import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
-
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.PrimitiveType;
@@ -36,7 +35,9 @@ import org.apache.parquet.schema.PrimitiveType;
  */
 public abstract class BinaryTruncator {
   enum Validity {
-    VALID, MALFORMED, UNMAPPABLE;
+    VALID,
+    MALFORMED,
+    UNMAPPABLE;
   }
 
   private static class CharsetValidator {
@@ -191,27 +192,33 @@ public abstract class BinaryTruncator {
         if (logicalTypeAnnotation == null) {
           return DEFAULT_UTF8_TRUNCATOR;
         }
-        return logicalTypeAnnotation.accept(new LogicalTypeAnnotation.LogicalTypeAnnotationVisitor<BinaryTruncator>() {
-          @Override
-          public Optional<BinaryTruncator> visit(LogicalTypeAnnotation.StringLogicalTypeAnnotation stringLogicalType) {
-            return Optional.of(DEFAULT_UTF8_TRUNCATOR);
-          }
+        return logicalTypeAnnotation
+            .accept(new LogicalTypeAnnotation.LogicalTypeAnnotationVisitor<BinaryTruncator>() {
+              @Override
+              public Optional<BinaryTruncator> visit(
+                  LogicalTypeAnnotation.StringLogicalTypeAnnotation stringLogicalType) {
+                return Optional.of(DEFAULT_UTF8_TRUNCATOR);
+              }
 
-          @Override
-          public Optional<BinaryTruncator> visit(LogicalTypeAnnotation.EnumLogicalTypeAnnotation enumLogicalType) {
-            return Optional.of(DEFAULT_UTF8_TRUNCATOR);
-          }
+              @Override
+              public Optional<BinaryTruncator> visit(
+                  LogicalTypeAnnotation.EnumLogicalTypeAnnotation enumLogicalType) {
+                return Optional.of(DEFAULT_UTF8_TRUNCATOR);
+              }
 
-          @Override
-          public Optional<BinaryTruncator> visit(LogicalTypeAnnotation.JsonLogicalTypeAnnotation jsonLogicalType) {
-            return Optional.of(DEFAULT_UTF8_TRUNCATOR);
-          }
+              @Override
+              public Optional<BinaryTruncator> visit(
+                  LogicalTypeAnnotation.JsonLogicalTypeAnnotation jsonLogicalType) {
+                return Optional.of(DEFAULT_UTF8_TRUNCATOR);
+              }
 
-          @Override
-          public Optional<BinaryTruncator> visit(LogicalTypeAnnotation.BsonLogicalTypeAnnotation bsonLogicalType) {
-            return Optional.of(DEFAULT_UTF8_TRUNCATOR);
-          }
-        }).orElse(NO_OP_TRUNCATOR);
+              @Override
+              public Optional<BinaryTruncator> visit(
+                  LogicalTypeAnnotation.BsonLogicalTypeAnnotation bsonLogicalType) {
+                return Optional.of(DEFAULT_UTF8_TRUNCATOR);
+              }
+            })
+            .orElse(NO_OP_TRUNCATOR);
       default:
         throw new IllegalArgumentException("No truncator is available for the type: " + type);
     }

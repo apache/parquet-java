@@ -35,7 +35,11 @@ public abstract class DelegatingPositionOutputStream extends PositionOutputStrea
 
   @Override
   public void close() throws IOException {
-    stream.close();
+    try (OutputStream os = this.stream) {
+      os.flush();
+    } catch (Exception e) {
+      throw new IOException(e);
+    }
   }
 
   @Override

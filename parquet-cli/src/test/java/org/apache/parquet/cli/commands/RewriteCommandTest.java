@@ -18,15 +18,14 @@
  */
 package org.apache.parquet.cli.commands;
 
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.FileAlreadyExistsException;
-import org.junit.Assert;
-import org.junit.Test;
-
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.Arrays;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileAlreadyExistsException;
+import org.junit.Assert;
+import org.junit.Test;
 
 public class RewriteCommandTest extends ParquetFileTest {
   @Test
@@ -65,6 +64,34 @@ public class RewriteCommandTest extends ParquetFileTest {
     command.setConf(new Configuration());
 
     Files.createFile(output.toPath());
+    Assert.assertEquals(0, command.run());
+    Assert.assertTrue(output.exists());
+  }
+
+  @Test
+  public void testRewriteCommandWithCompression_GZIP() throws IOException {
+    File file = parquetFile();
+    RewriteCommand command = new RewriteCommand(createLogger());
+    command.inputs = Arrays.asList(file.getAbsolutePath());
+    File output = new File(getTempFolder(), "converted-1.GZIP.parquet");
+    command.output = output.getAbsolutePath();
+    command.codec = "GZIP";
+    command.setConf(new Configuration());
+
+    Assert.assertEquals(0, command.run());
+    Assert.assertTrue(output.exists());
+  }
+
+  @Test
+  public void testRewriteCommandWithCompression_gzip() throws IOException {
+    File file = parquetFile();
+    RewriteCommand command = new RewriteCommand(createLogger());
+    command.inputs = Arrays.asList(file.getAbsolutePath());
+    File output = new File(getTempFolder(), "converted-2.gzip.parquet");
+    command.output = output.getAbsolutePath();
+    command.codec = "gzip";
+    command.setConf(new Configuration());
+
     Assert.assertEquals(0, command.run());
     Assert.assertTrue(output.exists());
   }

@@ -1,14 +1,38 @@
 {
-    "type": "record",
-    "name": "LogicalTypesTest",
-    "namespace": "org.apache.parquet.avro",
-    "doc": "Record for testing logical types",
-    "fields": [
-        {
-          "name": "timestamp",
-          "type": {
-            "type": "long", "logicalType": "timestamp-millis"
+  "name": "LogicalTypesTest",
+  "namespace": "org.apache.parquet.avro",
+  "doc": "Record for testing logical types",
+  "type": "record",
+  "fields": [
+    {
+      "name": "timestamp",
+      "type": {
+        "type": "long",
+        "logicalType": "timestamp-millis"
+      }
+    },
+    {
+      "name": "local_date_time",
+      "type": {
+        "name": "LocalDateTimeTest",
+        "type": "record",
+        "fields": [
+          {
+            "name": "date",
+            "type": {
+              "type": "int",
+              "logicalType": "date"
+            }
+          },
+          {
+            "name": "time",
+            "type": {
+              "type": "int",
+              "logicalType": "time-millis"
+            }
           }
-        }
-    ]
+        ]
+      }
+    }
+  ]
 }

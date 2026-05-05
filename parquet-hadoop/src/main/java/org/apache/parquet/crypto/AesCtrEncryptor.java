@@ -19,15 +19,13 @@
 
 package org.apache.parquet.crypto;
 
+import java.security.GeneralSecurityException;
 import javax.crypto.Cipher;
 import javax.crypto.spec.IvParameterSpec;
-
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.format.BlockCipher;
 
-import java.security.GeneralSecurityException;
-
-public class AesCtrEncryptor extends AesCipher implements BlockCipher.Encryptor{
+public class AesCtrEncryptor extends AesCipher implements BlockCipher.Encryptor {
 
   private final byte[] ctrIV;
   private long operationCounter;
@@ -59,7 +57,8 @@ public class AesCtrEncryptor extends AesCipher implements BlockCipher.Encryptor{
 
   public byte[] encrypt(boolean writeLength, byte[] plainText, byte[] nonce, byte[] AAD) {
     if (operationCounter > CTR_RANDOM_IV_SAME_KEY_MAX_OPS) {
-      throw new ParquetCryptoRuntimeException("Exceeded limit of AES CTR encryption operations with same key and random IV");
+      throw new ParquetCryptoRuntimeException(
+          "Exceeded limit of AES CTR encryption operations with same key and random IV");
     }
     operationCounter++;
 
@@ -68,7 +67,7 @@ public class AesCtrEncryptor extends AesCipher implements BlockCipher.Encryptor{
     }
     int plainTextLength = plainText.length;
     int cipherTextLength = NONCE_LENGTH + plainTextLength;
-    int lengthBufferLength = writeLength? SIZE_LENGTH : 0;
+    int lengthBufferLength = writeLength ? SIZE_LENGTH : 0;
     byte[] cipherText = new byte[lengthBufferLength + cipherTextLength];
     int inputLength = plainTextLength;
     int inputOffset = 0;
@@ -87,7 +86,7 @@ public class AesCtrEncryptor extends AesCipher implements BlockCipher.Encryptor{
       }
 
       cipher.doFinal(plainText, inputOffset, inputLength, cipherText, outputOffset);
-    }  catch (GeneralSecurityException e) {
+    } catch (GeneralSecurityException e) {
       throw new ParquetCryptoRuntimeException("Failed to encrypt", e);
     }
 
@@ -101,4 +100,3 @@ public class AesCtrEncryptor extends AesCipher implements BlockCipher.Encryptor{
     return cipherText;
   }
 }
-

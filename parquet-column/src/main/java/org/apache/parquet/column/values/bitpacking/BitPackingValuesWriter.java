@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -23,7 +23,6 @@ import static org.apache.parquet.column.Encoding.BIT_PACKED;
 import static org.apache.parquet.column.values.bitpacking.BitPacking.getBitPackingWriter;
 
 import java.io.IOException;
-
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.bytes.CapacityByteArrayOutputStream;
@@ -42,10 +41,10 @@ public class BitPackingValuesWriter extends ValuesWriter {
   private int bitsPerValue;
 
   /**
-   * @param bound the maximum value stored by this column
+   * @param bound           the maximum value stored by this column
    * @param initialCapacity initial capacity for the writer
-   * @param pageSize the page size
-   * @param allocator a buffer allocator
+   * @param pageSize        the page size
+   * @param allocator       a buffer allocator
    */
   public BitPackingValuesWriter(int bound, int initialCapacity, int pageSize, ByteBufferAllocator allocator) {
     this.bitsPerValue = getWidthFromMaxInt(bound);
@@ -59,6 +58,7 @@ public class BitPackingValuesWriter extends ValuesWriter {
 
   /**
    * {@inheritDoc}
+   *
    * @see org.apache.parquet.column.values.ValuesWriter#writeInteger(int)
    */
   @Override
@@ -72,6 +72,7 @@ public class BitPackingValuesWriter extends ValuesWriter {
 
   /**
    * {@inheritDoc}
+   *
    * @see org.apache.parquet.column.values.ValuesWriter#getBufferedSize()
    */
   @Override
@@ -81,6 +82,7 @@ public class BitPackingValuesWriter extends ValuesWriter {
 
   /**
    * {@inheritDoc}
+   *
    * @see org.apache.parquet.column.values.ValuesWriter#getBytes()
    */
   @Override
@@ -95,6 +97,7 @@ public class BitPackingValuesWriter extends ValuesWriter {
 
   /**
    * {@inheritDoc}
+   *
    * @see org.apache.parquet.column.values.ValuesWriter#reset()
    */
   @Override
@@ -110,6 +113,7 @@ public class BitPackingValuesWriter extends ValuesWriter {
 
   /**
    * {@inheritDoc}
+   *
    * @see org.apache.parquet.column.values.ValuesWriter#getAllocatedSize()
    */
   @Override
@@ -126,5 +130,4 @@ public class BitPackingValuesWriter extends ValuesWriter {
   public Encoding getEncoding() {
     return BIT_PACKED;
   }
-
 }

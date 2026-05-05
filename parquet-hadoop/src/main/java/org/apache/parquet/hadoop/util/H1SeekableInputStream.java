@@ -19,13 +19,22 @@
 
 package org.apache.parquet.hadoop.util;
 
-import org.apache.hadoop.fs.FSDataInputStream;
-import org.apache.parquet.io.DelegatingSeekableInputStream;
 import java.io.IOException;
+import java.util.List;
+import org.apache.hadoop.fs.FSDataInputStream;
+import org.apache.parquet.bytes.ByteBufferAllocator;
+import org.apache.parquet.hadoop.util.wrapped.io.VectorIoBridge;
+import org.apache.parquet.io.DelegatingSeekableInputStream;
+import org.apache.parquet.io.ParquetFileRange;
 
 /**
  * SeekableInputStream implementation that implements read(ByteBuffer) for
  * Hadoop 1 FSDataInputStream.
+ * It implements {@link #readVectored(List, ByteBufferAllocator)}) by
+ * handing off to VectorIoBridge which uses reflection to offer the API if it is
+ * found.
+ * The return value of {@link #readVectoredAvailable(ByteBufferAllocator)}
+ * reflects the availability of the API.
  */
 class H1SeekableInputStream extends DelegatingSeekableInputStream {
 
@@ -56,4 +65,13 @@ class H1SeekableInputStream extends DelegatingSeekableInputStream {
     stream.readFully(bytes, start, len);
   }
 
+  @Override
+  public boolean readVectoredAvailable(final ByteBufferAllocator allocator) {
+    return VectorIoBridge.instance().readVectoredAvailable(stream, allocator);
+  }
+
+  @Override
+  public void readVectored(List<ParquetFileRange> ranges, ByteBufferAllocator allocator) throws IOException {
+    VectorIoBridge.instance().readVectoredRanges(stream, ranges, allocator);
+  }
 }

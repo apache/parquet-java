@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -18,10 +18,10 @@
  */
 package org.apache.parquet.thrift.projection.deprecated;
 
-import org.junit.Test;
-
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+
+import org.junit.Test;
 
 /**
  * Test using glob syntax to specify which attribute to retain
@@ -38,8 +38,6 @@ public class PathGlobPatternTest {
     assertTrue(g.matches("a/as"));
     assertTrue(g.matches("a/asd/b"));
     assertTrue(g.matches("a/asd/ss/b"));
-
-
   }
 
   @Test
@@ -54,6 +52,5 @@ public class PathGlobPatternTest {
     assertTrue(g.matches("a/cc/d"));
     assertFalse(g.matches("a/cc/bb/d"));
     assertFalse(g.matches("a/d"));
-
   }
 }

@@ -25,7 +25,7 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * This ByteBufferInputStream does not consume the ByteBuffer being passed in, 
+ * This ByteBufferInputStream does not consume the ByteBuffer being passed in,
  * but will create a slice of the current buffer.
  */
 class SingleBufferInputStream extends ByteBufferInputStream {
@@ -49,7 +49,7 @@ class SingleBufferInputStream extends ByteBufferInputStream {
   @Override
   public int read() throws IOException {
     if (!buffer.hasRemaining()) {
-    	throw new EOFException();
+      throw new EOFException();
     }
     return buffer.get() & 0xFF; // as unsigned
   }
@@ -70,7 +70,7 @@ class SingleBufferInputStream extends ByteBufferInputStream {
 
     return bytesToRead;
   }
-  
+
   @Override
   public long skip(long n) {
     if (n == 0) {

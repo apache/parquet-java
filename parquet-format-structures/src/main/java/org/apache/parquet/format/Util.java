@@ -38,20 +38,20 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
-
-import org.apache.thrift.TBase;
-import org.apache.thrift.TException;
-import org.apache.thrift.protocol.TCompactProtocol;
-import org.apache.thrift.protocol.TProtocol;
-import org.apache.thrift.transport.TIOStreamTransport;
-import org.apache.thrift.transport.TMemoryBuffer;
-import org.apache.thrift.transport.TTransportException;
 import org.apache.parquet.format.event.Consumers.Consumer;
 import org.apache.parquet.format.event.Consumers.DelegatingFieldConsumer;
 import org.apache.parquet.format.event.EventBasedThriftReader;
 import org.apache.parquet.format.event.TypedConsumer.I32Consumer;
 import org.apache.parquet.format.event.TypedConsumer.I64Consumer;
 import org.apache.parquet.format.event.TypedConsumer.StringConsumer;
+import org.apache.thrift.TBase;
+import org.apache.thrift.TConfiguration;
+import org.apache.thrift.TException;
+import org.apache.thrift.protocol.TCompactProtocol;
+import org.apache.thrift.protocol.TProtocol;
+import org.apache.thrift.transport.TIOStreamTransport;
+import org.apache.thrift.transport.TMemoryBuffer;
+import org.apache.thrift.transport.TTransportException;
 
 /**
  * Utility to read/write metadata
@@ -59,14 +59,15 @@ import org.apache.parquet.format.event.TypedConsumer.StringConsumer;
  */
 public class Util {
 
-  private final static int INIT_MEM_ALLOC_ENCR_BUFFER = 100;
+  private static final int INIT_MEM_ALLOC_ENCR_BUFFER = 100;
+  private static final int DEFAULT_MAX_MESSAGE_SIZE = 104857600; // 100 MB
 
   public static void writeColumnIndex(ColumnIndex columnIndex, OutputStream to) throws IOException {
     writeColumnIndex(columnIndex, to, null, null);
   }
 
-  public static void writeColumnIndex(ColumnIndex columnIndex, OutputStream to, 
-      BlockCipher.Encryptor encryptor, byte[] AAD) throws IOException {
+  public static void writeColumnIndex(
+      ColumnIndex columnIndex, OutputStream to, BlockCipher.Encryptor encryptor, byte[] AAD) throws IOException {
     write(columnIndex, to, encryptor, AAD);
   }
 
@@ -74,8 +75,8 @@ public class Util {
     return readColumnIndex(from, null, null);
   }
 
-  public static ColumnIndex readColumnIndex(InputStream from, 
-      BlockCipher.Decryptor decryptor, byte[] AAD) throws IOException {
+  public static ColumnIndex readColumnIndex(InputStream from, BlockCipher.Decryptor decryptor, byte[] AAD)
+      throws IOException {
     return read(from, new ColumnIndex(), decryptor, AAD);
   }
 
@@ -83,8 +84,8 @@ public class Util {
     writeOffsetIndex(offsetIndex, to, null, null);
   }
 
-  public static void writeOffsetIndex(OffsetIndex offsetIndex, OutputStream to, 
-      BlockCipher.Encryptor encryptor, byte[] AAD) throws IOException {
+  public static void writeOffsetIndex(
+      OffsetIndex offsetIndex, OutputStream to, BlockCipher.Encryptor encryptor, byte[] AAD) throws IOException {
     write(offsetIndex, to, encryptor, AAD);
   }
 
@@ -92,8 +93,8 @@ public class Util {
     return readOffsetIndex(from, null, null);
   }
 
-  public static OffsetIndex readOffsetIndex(InputStream from, 
-      BlockCipher.Decryptor decryptor, byte[] AAD) throws IOException {
+  public static OffsetIndex readOffsetIndex(InputStream from, BlockCipher.Decryptor decryptor, byte[] AAD)
+      throws IOException {
     return read(from, new OffsetIndex(), decryptor, AAD);
   }
 
@@ -104,14 +105,15 @@ public class Util {
   public static void writeBloomFilterHeader(BloomFilterHeader header, OutputStream out) throws IOException {
     writeBloomFilterHeader(header, out, null, null);
   }
-  
-  public static BloomFilterHeader readBloomFilterHeader(InputStream from,
-      BlockCipher.Decryptor decryptor, byte[] AAD) throws IOException {
+
+  public static BloomFilterHeader readBloomFilterHeader(InputStream from, BlockCipher.Decryptor decryptor, byte[] AAD)
+      throws IOException {
     return read(from, new BloomFilterHeader(), decryptor, AAD);
   }
 
-  public static void writeBloomFilterHeader(BloomFilterHeader header, OutputStream out,
-      BlockCipher.Encryptor encryptor, byte[] AAD) throws IOException {
+  public static void writeBloomFilterHeader(
+      BloomFilterHeader header, OutputStream out, BlockCipher.Encryptor encryptor, byte[] AAD)
+      throws IOException {
     write(header, out, encryptor, AAD);
   }
 
@@ -119,8 +121,8 @@ public class Util {
     writePageHeader(pageHeader, to, null, null);
   }
 
-  public static void writePageHeader(PageHeader pageHeader, OutputStream to, 
-      BlockCipher.Encryptor encryptor, byte[] AAD) throws IOException {
+  public static void writePageHeader(
+      PageHeader pageHeader, OutputStream to, BlockCipher.Encryptor encryptor, byte[] AAD) throws IOException {
     write(pageHeader, to, encryptor, AAD);
   }
 
@@ -128,18 +130,22 @@ public class Util {
     return readPageHeader(from, null, null);
   }
 
-  public static PageHeader readPageHeader(InputStream from, 
-      BlockCipher.Decryptor decryptor, byte[] AAD) throws IOException {
+  public static PageHeader readPageHeader(InputStream from, BlockCipher.Decryptor decryptor, byte[] AAD)
+      throws IOException {
     return MetadataValidator.validate(read(from, new PageHeader(), decryptor, AAD));
   }
 
-  public static void writeFileMetaData(org.apache.parquet.format.FileMetaData fileMetadata, 
-      OutputStream to) throws IOException {
+  public static void writeFileMetaData(org.apache.parquet.format.FileMetaData fileMetadata, OutputStream to)
+      throws IOException {
     writeFileMetaData(fileMetadata, to, null, null);
   }
 
-  public static void writeFileMetaData(org.apache.parquet.format.FileMetaData fileMetadata, 
-      OutputStream to, BlockCipher.Encryptor encryptor, byte[] AAD) throws IOException {
+  public static void writeFileMetaData(
+      org.apache.parquet.format.FileMetaData fileMetadata,
+      OutputStream to,
+      BlockCipher.Encryptor encryptor,
+      byte[] AAD)
+      throws IOException {
     write(fileMetadata, to, encryptor, AAD);
   }
 
@@ -147,24 +153,35 @@ public class Util {
     return readFileMetaData(from, null, null);
   }
 
-  public static FileMetaData readFileMetaData(InputStream from, 
-      BlockCipher.Decryptor decryptor, byte[] AAD) throws IOException {
+  public static FileMetaData readFileMetaData(InputStream from, BlockCipher.Decryptor decryptor, byte[] AAD)
+      throws IOException {
     return read(from, new FileMetaData(), decryptor, AAD);
   }
 
-  public static void writeColumnMetaData(ColumnMetaData columnMetaData, OutputStream to, 
-      BlockCipher.Encryptor encryptor, byte[] AAD) throws IOException {
+  public static FileMetaData readFileMetaData(InputStream from, int maxMessageSize) throws IOException {
+    return readFileMetaData(from, null, null, maxMessageSize);
+  }
+
+  public static FileMetaData readFileMetaData(
+      InputStream from, BlockCipher.Decryptor decryptor, byte[] AAD, int maxMessageSize) throws IOException {
+    return read(from, new FileMetaData(), decryptor, AAD, maxMessageSize);
+  }
+
+  public static void writeColumnMetaData(
+      ColumnMetaData columnMetaData, OutputStream to, BlockCipher.Encryptor encryptor, byte[] AAD)
+      throws IOException {
     write(columnMetaData, to, encryptor, AAD);
   }
 
-  public static ColumnMetaData readColumnMetaData(InputStream from, 
-      BlockCipher.Decryptor decryptor, byte[] AAD) throws IOException {
+  public static ColumnMetaData readColumnMetaData(InputStream from, BlockCipher.Decryptor decryptor, byte[] AAD)
+      throws IOException {
     return read(from, new ColumnMetaData(), decryptor, AAD);
   }
 
   /**
    * reads the meta data from the stream
-   * @param from the stream to read the metadata from
+   *
+   * @param from          the stream to read the metadata from
    * @param skipRowGroups whether row groups should be skipped
    * @return the resulting metadata
    * @throws IOException if any I/O error occurs during the reading
@@ -173,8 +190,8 @@ public class Util {
     return readFileMetaData(from, skipRowGroups, (BlockCipher.Decryptor) null, (byte[]) null);
   }
 
-  public static FileMetaData readFileMetaData(InputStream from, boolean skipRowGroups, 
-      BlockCipher.Decryptor decryptor, byte[] AAD) throws IOException {
+  public static FileMetaData readFileMetaData(
+      InputStream from, boolean skipRowGroups, BlockCipher.Decryptor decryptor, byte[] AAD) throws IOException {
     FileMetaData md = new FileMetaData();
     if (skipRowGroups) {
       readFileMetaData(from, new DefaultFileMetaDataConsumer(md), skipRowGroups, decryptor, AAD);
@@ -184,7 +201,20 @@ public class Util {
     return md;
   }
 
-  public static void writeFileCryptoMetaData(org.apache.parquet.format.FileCryptoMetaData cryptoMetadata, OutputStream to) throws IOException { 
+  public static FileMetaData readFileMetaData(
+      InputStream from, boolean skipRowGroups, BlockCipher.Decryptor decryptor, byte[] AAD, int maxMessageSize)
+      throws IOException {
+    FileMetaData md = new FileMetaData();
+    if (skipRowGroups) {
+      readFileMetaData(from, new DefaultFileMetaDataConsumer(md), skipRowGroups, decryptor, AAD, maxMessageSize);
+    } else {
+      read(from, md, decryptor, AAD, maxMessageSize);
+    }
+    return md;
+  }
+
+  public static void writeFileCryptoMetaData(
+      org.apache.parquet.format.FileCryptoMetaData cryptoMetadata, OutputStream to) throws IOException {
     write(cryptoMetadata, to, null, null);
   }
 
@@ -194,22 +224,27 @@ public class Util {
 
   /**
    * To read metadata in a streaming fashion.
-   *
    */
-  public static abstract class FileMetaDataConsumer {
-    abstract public void setVersion(int version);
-    abstract public void setSchema(List<SchemaElement> schema);
-    abstract public void setNumRows(long numRows);
-    abstract public void addRowGroup(RowGroup rowGroup);
-    abstract public void addKeyValueMetaData(KeyValue kv);
-    abstract public void setCreatedBy(String createdBy);
-    abstract public void setEncryptionAlgorithm(EncryptionAlgorithm encryptionAlgorithm);
-    abstract public void setFooterSigningKeyMetadata(byte[] footerSigningKeyMetadata);
+  public abstract static class FileMetaDataConsumer {
+    public abstract void setVersion(int version);
+
+    public abstract void setSchema(List<SchemaElement> schema);
+
+    public abstract void setNumRows(long numRows);
+
+    public abstract void addRowGroup(RowGroup rowGroup);
+
+    public abstract void addKeyValueMetaData(KeyValue kv);
+
+    public abstract void setCreatedBy(String createdBy);
+
+    public abstract void setEncryptionAlgorithm(EncryptionAlgorithm encryptionAlgorithm);
+
+    public abstract void setFooterSigningKeyMetadata(byte[] footerSigningKeyMetadata);
   }
 
   /**
    * Simple default consumer that sets the fields
-   *
    */
   public static final class DefaultFileMetaDataConsumer extends FileMetaDataConsumer {
     private final FileMetaData md;
@@ -263,17 +298,35 @@ public class Util {
     readFileMetaData(from, consumer, null, null);
   }
 
-  public static void readFileMetaData(InputStream from, FileMetaDataConsumer consumer, 
-      BlockCipher.Decryptor decryptor, byte[] AAD) throws IOException {
+  public static void readFileMetaData(
+      InputStream from, FileMetaDataConsumer consumer, BlockCipher.Decryptor decryptor, byte[] AAD)
+      throws IOException {
     readFileMetaData(from, consumer, false, decryptor, AAD);
   }
 
-  public static void readFileMetaData(InputStream from, final FileMetaDataConsumer consumer, boolean skipRowGroups) throws IOException {
+  public static void readFileMetaData(InputStream from, final FileMetaDataConsumer consumer, boolean skipRowGroups)
+      throws IOException {
     readFileMetaData(from, consumer, skipRowGroups, null, null);
   }
 
-  public static void readFileMetaData(final InputStream input, final FileMetaDataConsumer consumer, 
-      boolean skipRowGroups, BlockCipher.Decryptor decryptor, byte[] AAD) throws IOException {
+  public static void readFileMetaData(
+      final InputStream input,
+      final FileMetaDataConsumer consumer,
+      boolean skipRowGroups,
+      BlockCipher.Decryptor decryptor,
+      byte[] AAD)
+      throws IOException {
+    readFileMetaData(input, consumer, skipRowGroups, decryptor, AAD, DEFAULT_MAX_MESSAGE_SIZE);
+  }
+
+  public static void readFileMetaData(
+      final InputStream input,
+      final FileMetaDataConsumer consumer,
+      boolean skipRowGroups,
+      BlockCipher.Decryptor decryptor,
+      byte[] AAD,
+      int maxMessageSize)
+      throws IOException {
     try {
       DelegatingFieldConsumer eventConsumer = fieldConsumer()
           .onField(VERSION, new I32Consumer() {
@@ -281,32 +334,40 @@ public class Util {
             public void consume(int value) {
               consumer.setVersion(value);
             }
-          }).onField(SCHEMA, listOf(SchemaElement.class, new Consumer<List<SchemaElement>>() {
+          })
+          .onField(SCHEMA, listOf(SchemaElement.class, new Consumer<List<SchemaElement>>() {
             @Override
             public void consume(List<SchemaElement> schema) {
               consumer.setSchema(schema);
             }
-          })).onField(NUM_ROWS, new I64Consumer() {
+          }))
+          .onField(NUM_ROWS, new I64Consumer() {
             @Override
             public void consume(long value) {
               consumer.setNumRows(value);
             }
-          }).onField(KEY_VALUE_METADATA, listElementsOf(struct(KeyValue.class, new Consumer<KeyValue>() {
+          })
+          .onField(KEY_VALUE_METADATA, listElementsOf(struct(KeyValue.class, new Consumer<KeyValue>() {
             @Override
             public void consume(KeyValue kv) {
               consumer.addKeyValueMetaData(kv);
             }
-          }))).onField(CREATED_BY, new StringConsumer() {
+          })))
+          .onField(CREATED_BY, new StringConsumer() {
             @Override
             public void consume(String value) {
               consumer.setCreatedBy(value);
             }
-          }).onField(ENCRYPTION_ALGORITHM, struct(EncryptionAlgorithm.class, new Consumer<EncryptionAlgorithm>() {
-            @Override
-            public void consume(EncryptionAlgorithm encryptionAlgorithm) {
-              consumer.setEncryptionAlgorithm(encryptionAlgorithm);
-            }
-          })).onField(FOOTER_SIGNING_KEY_METADATA, new StringConsumer() {
+          })
+          .onField(
+              ENCRYPTION_ALGORITHM,
+              struct(EncryptionAlgorithm.class, new Consumer<EncryptionAlgorithm>() {
+                @Override
+                public void consume(EncryptionAlgorithm encryptionAlgorithm) {
+                  consumer.setEncryptionAlgorithm(encryptionAlgorithm);
+                }
+              }))
+          .onField(FOOTER_SIGNING_KEY_METADATA, new StringConsumer() {
             @Override
             public void consume(String value) {
               byte[] keyMetadata = value.getBytes(StandardCharsets.UTF_8);
@@ -315,42 +376,70 @@ public class Util {
           });
 
       if (!skipRowGroups) {
-        eventConsumer = eventConsumer.onField(ROW_GROUPS, listElementsOf(struct(RowGroup.class, new Consumer<RowGroup>() {
-          @Override
-          public void consume(RowGroup rowGroup) {
-            consumer.addRowGroup(rowGroup);
-          }
-        })));
+        eventConsumer = eventConsumer.onField(
+            ROW_GROUPS, listElementsOf(struct(RowGroup.class, new Consumer<RowGroup>() {
+              @Override
+              public void consume(RowGroup rowGroup) {
+                consumer.addRowGroup(rowGroup);
+              }
+            })));
       }
 
       final InputStream from;
       if (null == decryptor) {
         from = input;
-      }
-      else {
-        byte[] plainText =  decryptor.decrypt(input, AAD);
+      } else {
+        byte[] plainText = decryptor.decrypt(input, AAD);
         from = new ByteArrayInputStream(plainText);
       }
-      new EventBasedThriftReader(protocol(from)).readStruct(eventConsumer);
+      new EventBasedThriftReader(protocol(from, maxMessageSize)).readStruct(eventConsumer);
     } catch (TException e) {
       throw new IOException("can not read FileMetaData: " + e.getMessage(), e);
     }
   }
 
   private static TProtocol protocol(OutputStream to) throws TTransportException {
-    return protocol(new TIOStreamTransport(to));
+    return protocol(new TIOStreamTransport(to), DEFAULT_MAX_MESSAGE_SIZE);
   }
 
   private static TProtocol protocol(InputStream from) throws TTransportException {
-    return protocol(new TIOStreamTransport(from));
+    return protocol(new TIOStreamTransport(from), DEFAULT_MAX_MESSAGE_SIZE);
   }
 
-  private static InterningProtocol protocol(TIOStreamTransport t) {
+  private static TProtocol protocol(InputStream from, int maxMessageSize) throws TTransportException {
+    return protocol(new TIOStreamTransport(from), maxMessageSize);
+  }
+
+  private static InterningProtocol protocol(TIOStreamTransport t, int configuredMaxMessageSize)
+      throws TTransportException, NumberFormatException {
+    int maxMessageSize = configuredMaxMessageSize;
+    if (configuredMaxMessageSize == -1) {
+      // Set to default 100 MB
+      maxMessageSize = DEFAULT_MAX_MESSAGE_SIZE;
+    }
+    if (configuredMaxMessageSize <= 0) {
+      throw new NumberFormatException("Max message size must be positive: " + configuredMaxMessageSize);
+    }
+
+    TConfiguration config = t.getConfiguration();
+    config.setMaxMessageSize(maxMessageSize);
+    /*
+    Reset known message size to 0 to force checking against the max message size.
+    This is necessary when reusing the same transport for multiple reads/writes,
+    as the known message size may be larger than the max message size.
+    */
+    t.updateKnownMessageSize(0);
     return new InterningProtocol(new TCompactProtocol(t));
   }
 
+  private static <T extends TBase<?, ?>> T read(
+      final InputStream input, T tbase, BlockCipher.Decryptor decryptor, byte[] AAD) throws IOException {
+    return read(input, tbase, decryptor, AAD, DEFAULT_MAX_MESSAGE_SIZE);
+  }
 
-  private static <T extends TBase<?,?>> T read(final InputStream input, T tbase, BlockCipher.Decryptor decryptor, byte[] AAD) throws IOException {
+  private static <T extends TBase<?, ?>> T read(
+      final InputStream input, T tbase, BlockCipher.Decryptor decryptor, byte[] AAD, int maxMessageSize)
+      throws IOException {
     final InputStream from;
     if (null == decryptor) {
       from = input;
@@ -360,15 +449,16 @@ public class Util {
     }
 
     try {
-      tbase.read(protocol(from));
+      tbase.read(protocol(from, maxMessageSize));
       return tbase;
     } catch (TException e) {
       throw new IOException("can not read " + tbase.getClass() + ": " + e.getMessage(), e);
     }
   }
 
-  private static void write(TBase<?, ?> tbase, OutputStream to, BlockCipher.Encryptor encryptor, byte[] AAD) throws IOException {
-    if (null == encryptor) { 
+  private static void write(TBase<?, ?> tbase, OutputStream to, BlockCipher.Encryptor encryptor, byte[] AAD)
+      throws IOException {
+    if (null == encryptor) {
       try {
         tbase.write(protocol(to));
         return;
@@ -386,4 +476,3 @@ public class Util {
     }
   }
 }
-

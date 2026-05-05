@@ -24,7 +24,7 @@ import org.apache.parquet.column.ColumnDescriptor;
 /**
  * Contains all writers for all columns of a row group
  */
-public interface BloomFilterWriteStore {
+public interface BloomFilterWriteStore extends AutoCloseable {
   /**
    * Get bloom filter writer of a column
    *
@@ -32,4 +32,9 @@ public interface BloomFilterWriteStore {
    * @return the corresponding Bloom filter writer
    */
   BloomFilterWriter getBloomFilterWriter(ColumnDescriptor path);
+
+  @Override
+  default void close() {
+    // No-op default implementation for compatibility
+  }
 }

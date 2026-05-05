@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -18,15 +18,14 @@
  */
 package org.apache.parquet.thrift.projection.amend;
 
+import java.util.ArrayList;
+import java.util.List;
+import org.apache.parquet.thrift.ParquetProtocol;
+import org.apache.parquet.thrift.struct.ThriftField;
 import org.apache.thrift.TException;
 import org.apache.thrift.protocol.TField;
 import org.apache.thrift.protocol.TProtocol;
 import org.apache.thrift.protocol.TType;
-import org.apache.parquet.thrift.ParquetProtocol;
-import org.apache.parquet.thrift.struct.ThriftField;
-
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Generate events for Parquet Protocol for a Thrift Field. The generated events are used for default values
@@ -44,13 +43,11 @@ class DefaultProtocolEventsGenerator {
   };
   public static ParquetProtocol READ_STRUCT_END = new ParquetProtocol("readStructEnd()") {
     @Override
-    public void readStructEnd() throws TException {
-    }
+    public void readStructEnd() throws TException {}
   };
   public static ParquetProtocol READ_FIELD_END = new ParquetProtocol("readFieldEnd()") {
     @Override
-    public void readFieldEnd() throws TException {
-    }
+    public void readFieldEnd() throws TException {}
   };
   List createdEvents = new ArrayList<TProtocol>();
 
@@ -64,5 +61,4 @@ class DefaultProtocolEventsGenerator {
     createdEvents.add(READ_FIELD_END);
     return createdEvents;
   }
-
 }

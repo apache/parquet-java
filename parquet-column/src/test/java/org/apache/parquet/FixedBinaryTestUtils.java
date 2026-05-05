@@ -24,7 +24,6 @@ import static org.junit.Assert.assertEquals;
 
 import java.math.BigInteger;
 import java.util.Arrays;
-
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.PrimitiveType;
 import org.junit.Test;
@@ -48,35 +47,40 @@ public class FixedBinaryTestUtils {
       System.arraycopy(array, 0, padded, paddingLength, array.length);
       return Binary.fromConstantByteArray(padded);
     } else {
-      throw new IllegalArgumentException(
-          "Specified BigInteger (" + bigInt + ") is too long for fixed bytes (" + array.length + '>' + length + ')');
+      throw new IllegalArgumentException("Specified BigInteger (" + bigInt + ") is too long for fixed bytes ("
+          + array.length + '>' + length + ')');
     }
   }
 
   public static Binary getFixedBinary(PrimitiveType type, BigInteger bigInt) {
     switch (type.getPrimitiveTypeName()) {
-    case FIXED_LEN_BYTE_ARRAY:
-      return getFixedBinary(type.getTypeLength(), bigInt);
-    case INT96:
-      return getFixedBinary(12, bigInt);
-    case BINARY:
-      return Binary.fromConstantByteArray(bigInt.toByteArray());
-    default:
-      throw new IllegalArgumentException("Type " + type + " cannot be represented by a Binary");
+      case FIXED_LEN_BYTE_ARRAY:
+        return getFixedBinary(type.getTypeLength(), bigInt);
+      case INT96:
+        return getFixedBinary(12, bigInt);
+      case BINARY:
+        return Binary.fromConstantByteArray(bigInt.toByteArray());
+      default:
+        throw new IllegalArgumentException("Type " + type + " cannot be represented by a Binary");
     }
   }
 
   @Test
   public void testGetFixedBinary() {
-    assertArrayEquals(b(0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x80, 0x00, 0x00, 0x00),
+    assertArrayEquals(
+        b(0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x80, 0x00, 0x00, 0x00),
         getFixedBinary(10, BigInteger.valueOf(Integer.MIN_VALUE)).getBytes());
-    assertArrayEquals(b(0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF),
+    assertArrayEquals(
+        b(0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF),
         getFixedBinary(11, BigInteger.valueOf(-1)).getBytes());
-    assertArrayEquals(b(0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00),
+    assertArrayEquals(
+        b(0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00),
         getFixedBinary(12, BigInteger.valueOf(0)).getBytes());
-    assertArrayEquals(b(0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01),
+    assertArrayEquals(
+        b(0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01),
         getFixedBinary(13, BigInteger.valueOf(1)).getBytes());
-    assertArrayEquals(b(0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x7F, 0xFF, 0xFF, 0xFF),
+    assertArrayEquals(
+        b(0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x7F, 0xFF, 0xFF, 0xFF),
         getFixedBinary(14, BigInteger.valueOf(Integer.MAX_VALUE)).getBytes());
   }
 

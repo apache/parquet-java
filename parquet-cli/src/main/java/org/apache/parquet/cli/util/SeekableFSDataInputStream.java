@@ -19,13 +19,13 @@
 
 package org.apache.parquet.cli.util;
 
+import java.io.IOException;
+import java.io.InputStream;
 import org.apache.avro.file.SeekableInput;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import java.io.IOException;
-import java.io.InputStream;
 
 /**
  * A wrapper for FSDataInputStream that implements Avro's SeekableInput.

@@ -19,7 +19,6 @@
 package org.apache.parquet;
 
 import java.util.concurrent.atomic.AtomicBoolean;
-
 import org.apache.parquet.SemanticVersion.SemanticVersionParseException;
 import org.apache.parquet.VersionParser.ParsedVersion;
 import org.apache.parquet.VersionParser.VersionParseException;
@@ -28,9 +27,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * There was a bug (PARQUET-251) that caused the statistics metadata
+ * There was a bug (https://github.com/apache/parquet-java/issues/1433) that caused the statistics metadata
  * for binary columns to be corrupted in the write path.
- *
+ * <p>
  * This class is used to detect whether a file was written with this bug,
  * and thus it's statistics should be ignored / not trusted.
  */
@@ -39,18 +38,19 @@ public class CorruptStatistics {
 
   private static final Logger LOG = LoggerFactory.getLogger(CorruptStatistics.class);
 
-  // the version in which the bug described by jira: PARQUET-251 was fixed
+  // the version in which the bug described by jira: (https://github.com/apache/parquet-java/issues/1433) was fixed
   // the bug involved writing invalid binary statistics, so stats written prior to this
   // fix must be ignored / assumed invalid
   private static final SemanticVersion PARQUET_251_FIXED_VERSION = new SemanticVersion(1, 8, 0);
-  private static final SemanticVersion CDH_5_PARQUET_251_FIXED_START = new SemanticVersion(1, 5, 0, null, "cdh5.5.0", null);
+  private static final SemanticVersion CDH_5_PARQUET_251_FIXED_START =
+      new SemanticVersion(1, 5, 0, null, "cdh5.5.0", null);
   private static final SemanticVersion CDH_5_PARQUET_251_FIXED_END = new SemanticVersion(1, 5, 0);
 
   /**
    * Decides if the statistics from a file created by createdBy (the created_by field from parquet format)
    * should be ignored because they are potentially corrupt.
    *
-   * @param createdBy the created-by string from a file footer
+   * @param createdBy  the created-by string from a file footer
    * @param columnType the type of the column that this is checking
    * @return true if the statistics may be invalid and should be ignored, false otherwise
    */
@@ -77,15 +77,16 @@ public class CorruptStatistics {
       }
 
       if (Strings.isNullOrEmpty(version.version)) {
-        warnOnce("Ignoring statistics because created_by did not contain a semver (see PARQUET-251): " + createdBy);
+        warnOnce("Ignoring statistics because created_by did not contain a semver (see PARQUET-251): "
+            + createdBy);
         return true;
       }
 
       SemanticVersion semver = SemanticVersion.parse(version.version);
 
-      if (semver.compareTo(PARQUET_251_FIXED_VERSION) < 0 &&
-          !(semver.compareTo(CDH_5_PARQUET_251_FIXED_START) >= 0 &&
-              semver.compareTo(CDH_5_PARQUET_251_FIXED_END) < 0)) {
+      if (semver.compareTo(PARQUET_251_FIXED_VERSION) < 0
+          && !(semver.compareTo(CDH_5_PARQUET_251_FIXED_START) >= 0
+              && semver.compareTo(CDH_5_PARQUET_251_FIXED_END) < 0)) {
         warnOnce("Ignoring statistics because this file was created prior to "
             + PARQUET_251_FIXED_VERSION
             + ", see PARQUET-251");
@@ -103,13 +104,13 @@ public class CorruptStatistics {
   }
 
   private static void warnParseErrorOnce(String createdBy, Throwable e) {
-    if(!alreadyLogged.getAndSet(true)) {
+    if (!alreadyLogged.getAndSet(true)) {
       LOG.warn("Ignoring statistics because created_by could not be parsed (see PARQUET-251): " + createdBy, e);
     }
   }
 
   private static void warnOnce(String message) {
-    if(!alreadyLogged.getAndSet(true)) {
+    if (!alreadyLogged.getAndSet(true)) {
       LOG.warn(message);
     }
   }

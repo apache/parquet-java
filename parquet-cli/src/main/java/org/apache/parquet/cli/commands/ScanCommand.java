@@ -23,16 +23,15 @@ import com.beust.jcommander.Parameters;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.io.Closeables;
-import org.apache.avro.Schema;
-import org.apache.parquet.cli.BaseCommand;
-import org.apache.parquet.cli.util.Expressions;
-import org.slf4j.Logger;
-
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.avro.Schema;
+import org.apache.parquet.cli.BaseCommand;
+import org.apache.parquet.cli.util.Expressions;
+import org.slf4j.Logger;
 
 @Parameters(commandDescription = "Scan all records from a file")
 public class ScanCommand extends BaseCommand {
@@ -41,8 +40,8 @@ public class ScanCommand extends BaseCommand {
   List<String> sourceFiles;
 
   @Parameter(
-    names = {"-c", "--column", "--columns"},
-    description = "List of columns")
+      names = {"-c", "--column", "--columns"},
+      description = "List of columns")
   List<String> columns;
 
   public ScanCommand(Logger console) {
@@ -51,9 +50,7 @@ public class ScanCommand extends BaseCommand {
 
   @Override
   public int run() throws IOException {
-    Preconditions.checkArgument(
-      sourceFiles != null && !sourceFiles.isEmpty(),
-      "Missing file name");
+    Preconditions.checkArgument(sourceFiles != null && !sourceFiles.isEmpty(), "Missing file name");
 
     // Ensure all source files have the columns specified first
     Map<String, Schema> schemas = new HashMap<>();
@@ -84,7 +81,8 @@ public class ScanCommand extends BaseCommand {
       totalCount += count;
       if (1 < sourceFiles.size()) {
         long endTime = System.currentTimeMillis();
-        console.info("Scanned " + count + " records from " + sourceFile + " in " + (endTime - startTime) / 1000.0 + " s");
+        console.info("Scanned " + count + " records from " + sourceFile + " in "
+            + (endTime - startTime) / 1000.0 + " s");
       }
     }
     long totalEndTime = System.currentTimeMillis();
@@ -96,10 +94,9 @@ public class ScanCommand extends BaseCommand {
   @Override
   public List<String> getExamples() {
     return Lists.newArrayList(
-      "# Scan all the records from file \"data.avro\":",
-      "data.avro",
-      "# Scan all the records from file \"data.parquet\":",
-      "data.parquet"
-    );
+        "# Scan all the records from file \"data.avro\":",
+        "data.avro",
+        "# Scan all the records from file \"data.parquet\":",
+        "data.parquet");
   }
 }

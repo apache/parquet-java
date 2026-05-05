@@ -32,7 +32,8 @@ Apache Avro integration
 | `parquet.avro.read.schema`              | `String`  | The Avro schema to be used for reading. It shall be compatible with the file schema. The file schema will be used directly if not set. |
 | `parquet.avro.projection`               | `String`  | The Avro schema to be used for projection.                           |
 | `parquet.avro.compatible`               | `boolean` | Flag for compatibility mode. `true` for materializing Avro `IndexedRecord` objects, `false` for materializing the related objects for either generic, specific, or reflect records.<br/>The default value is `true`. |
-| `parquet.avro.readInt96AsFixed`        | `boolean` | Flag for handling the `INT96` Parquet types. `true` for converting it to the `fixed` Avro type, `false` for not handling `INT96` types (throwing exception).<br/>The default value is `false`.<br/>**NOTE: The `INT96` Parquet type is deprecated. This option is only to support old data.** |
+| `parquet.avro.readInt96AsFixed`         | `boolean` | Flag for handling the `INT96` Parquet types. `true` for converting it to the `fixed` Avro type, `false` for not handling `INT96` types (throwing exception).<br/>The default value is `false`.<br/>**NOTE: The `INT96` Parquet type is deprecated. This option is only to support old data.** |
+| `parquet.avro.serializable.classes`     | `String`  | List of the fully qualified class names separated by ',' that may be referenced from the Avro schema by "java-class" or "java-key-class" and are allowed to be loaded. |
 
 ### Configuration for writing
 

@@ -32,7 +32,6 @@ import static org.junit.Assert.assertNull;
 
 import java.io.IOException;
 import java.util.Random;
-
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.ResourceIntensiveTestRule;
@@ -46,7 +45,9 @@ import org.apache.parquet.hadoop.example.GroupWriteSupport;
 import org.apache.parquet.hadoop.util.HadoopOutputFile;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.MessageType;
-import org.junit.*;
+import org.junit.BeforeClass;
+import org.junit.ClassRule;
+import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import org.junit.rules.TestRule;
 
@@ -55,9 +56,8 @@ import org.junit.rules.TestRule;
  * Integer.MAX_VALUE).
  */
 public class TestLargeColumnChunk {
-  private static final MessageType SCHEMA = buildMessage().addFields(
-      required(INT64).named("id"),
-      required(BINARY).named("data"))
+  private static final MessageType SCHEMA = buildMessage()
+      .addFields(required(INT64).named("id"), required(BINARY).named("data"))
       .named("schema");
   private static final int DATA_SIZE = 256;
   // Ensure that the size of the column chunk would overflow an int
@@ -85,8 +85,7 @@ public class TestLargeColumnChunk {
     Random random = new Random(RANDOM_SEED);
     Configuration conf = new Configuration();
     GroupWriteSupport.setSchema(SCHEMA, conf);
-    try (ParquetWriter<Group> writer = ExampleParquetWriter
-        .builder(HadoopOutputFile.fromPath(file, conf))
+    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(HadoopOutputFile.fromPath(file, conf))
         .withWriteMode(OVERWRITE)
         .withConf(conf)
         .withCompressionCodec(UNCOMPRESSED)
@@ -116,7 +115,8 @@ public class TestLargeColumnChunk {
   @Test
   public void validateAllData() throws IOException {
     Random random = new Random(RANDOM_SEED);
-    try (ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), file).build()) {
+    try (ParquetReader<Group> reader =
+        ParquetReader.builder(new GroupReadSupport(), file).build()) {
       for (long id = 0; id < ROW_COUNT; ++id) {
         Group group = reader.read();
         assertEquals(id, group.getLong(ID_INDEX, 0));

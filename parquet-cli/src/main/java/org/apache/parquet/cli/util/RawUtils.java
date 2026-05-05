@@ -22,20 +22,24 @@ import static org.apache.parquet.bytes.BytesUtils.readIntLittleEndian;
 import static org.apache.parquet.hadoop.ParquetFileWriter.EFMAGIC;
 import static org.apache.parquet.hadoop.ParquetFileWriter.MAGIC;
 
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonSerializer;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.SerializerProvider;
+import com.fasterxml.jackson.databind.module.SimpleModule;
+import com.fasterxml.jackson.databind.module.SimpleSerializers;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
-
 import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.format.FileMetaData;
 import org.apache.parquet.format.Util;
 import org.apache.parquet.io.SeekableInputStream;
-
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
 
 public class RawUtils {
 
@@ -53,12 +57,13 @@ public class RawUtils {
       throw new RuntimeException("Parquet files with encrypted footers are not supported.");
     } else if (!Arrays.equals(MAGIC, magic)) {
       throw new RuntimeException(
-        "Not a Parquet file (expected magic number at tail, but found " + Arrays.toString(magic) + ')');
+          "Not a Parquet file (expected magic number at tail, but found " + Arrays.toString(magic) + ')');
     }
 
     long fileMetadataIndex = fileMetadataLengthIndex - fileMetadataLength;
     if (fileMetadataIndex < magic.length || fileMetadataIndex >= fileMetadataLengthIndex) {
-      throw new RuntimeException("Corrupted file: the footer index inputStream not within the file: " + fileMetadataIndex);
+      throw new RuntimeException(
+          "Corrupted file: the footer index inputStream not within the file: " + fileMetadataIndex);
     }
     inputStream.seek(fileMetadataIndex);
 
@@ -80,6 +85,27 @@ public class RawUtils {
     mapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false);
     mapper.configure(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, true);
     mapper.registerModule(new JavaTimeModule());
+    mapper.registerModule(new ParquetModule());
     return mapper;
+  }
+
+  static class ParquetModule extends SimpleModule {
+
+    @Override
+    public void setupModule(SetupContext context) {
+      super.setupModule(context);
+      SimpleSerializers sers = new SimpleSerializers();
+      sers.addSerializer(LogicalTypeAnnotation.class, new LogicalTypeAnnotationJsonSerializer());
+      context.addSerializers(sers);
+    }
+  }
+
+  static class LogicalTypeAnnotationJsonSerializer extends JsonSerializer<LogicalTypeAnnotation> {
+
+    @Override
+    public void serialize(LogicalTypeAnnotation value, JsonGenerator gen, SerializerProvider serializers)
+        throws IOException {
+      gen.writeString(value.toString());
+    }
   }
 }

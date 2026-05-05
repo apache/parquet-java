@@ -18,17 +18,6 @@
  */
 package org.apache.parquet.crypto;
 
-import org.apache.parquet.schema.MessageType;
-import org.apache.parquet.schema.PrimitiveType;
-import org.apache.parquet.schema.Types;
-import org.apache.parquet.statistics.RandomValues;
-
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Random;
-
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BINARY;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.BOOLEAN;
 import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.DOUBLE;
@@ -38,21 +27,26 @@ import static org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName.INT32;
 import static org.apache.parquet.schema.Type.Repetition.OPTIONAL;
 import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
 
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Random;
+import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.schema.PrimitiveType;
+import org.apache.parquet.schema.Types;
+import org.apache.parquet.statistics.RandomValues;
 
 public class SingleRow {
   private static final int RANDOM_SEED = 42;
   private static final int FIXED_LENGTH = 10;
   private static final Random RANDOM = new Random(RANDOM_SEED);
-  private static final RandomValues.IntGenerator intGenerator
-    = new RandomValues.IntGenerator(RANDOM_SEED);
-  private static final RandomValues.FloatGenerator floatGenerator
-    = new RandomValues.FloatGenerator(RANDOM_SEED);
-  private static final RandomValues.DoubleGenerator doubleGenerator
-    = new RandomValues.DoubleGenerator(RANDOM_SEED);
-  private static final RandomValues.BinaryGenerator binaryGenerator
-    = new RandomValues.BinaryGenerator(RANDOM_SEED);
-  private static final RandomValues.FixedGenerator fixedBinaryGenerator
-    = new RandomValues.FixedGenerator(RANDOM_SEED, FIXED_LENGTH);
+  private static final RandomValues.IntGenerator intGenerator = new RandomValues.IntGenerator(RANDOM_SEED);
+  private static final RandomValues.FloatGenerator floatGenerator = new RandomValues.FloatGenerator(RANDOM_SEED);
+  private static final RandomValues.DoubleGenerator doubleGenerator = new RandomValues.DoubleGenerator(RANDOM_SEED);
+  private static final RandomValues.BinaryGenerator binaryGenerator = new RandomValues.BinaryGenerator(RANDOM_SEED);
+  private static final RandomValues.FixedGenerator fixedBinaryGenerator =
+      new RandomValues.FixedGenerator(RANDOM_SEED, FIXED_LENGTH);
 
   public static final String BOOLEAN_FIELD_NAME = "boolean_field";
   public static final String INT32_FIELD_NAME = "int32_field";
@@ -62,8 +56,8 @@ public class SingleRow {
   public static final String FIXED_LENGTH_BINARY_FIELD_NAME = "flba_field";
   public static final String PLAINTEXT_INT32_FIELD_NAME = "plain_int32_field";
 
-  private static final MessageType SCHEMA =
-    new MessageType("schema",
+  private static final MessageType SCHEMA = new MessageType(
+      "schema",
       new PrimitiveType(REQUIRED, BOOLEAN, BOOLEAN_FIELD_NAME),
       new PrimitiveType(REQUIRED, INT32, INT32_FIELD_NAME),
       new PrimitiveType(REQUIRED, FLOAT, FLOAT_FIELD_NAME),
@@ -80,13 +74,14 @@ public class SingleRow {
   public final byte[] flba_field;
   public final Integer plaintext_int32_field; // Can be null, since it doesn't exist in C++-created files yet.
 
-  public SingleRow(boolean boolean_field,
-                   int int32_field,
-                   float float_field,
-                   double double_field,
-                   byte[] ba_field,
-                   byte[] flba_field,
-                   Integer plaintext_int32_field) {
+  public SingleRow(
+      boolean boolean_field,
+      int int32_field,
+      float float_field,
+      double double_field,
+      byte[] ba_field,
+      byte[] flba_field,
+      Integer plaintext_int32_field) {
     this.boolean_field = boolean_field;
     this.int32_field = int32_field;
     this.float_field = float_field;
@@ -96,15 +91,21 @@ public class SingleRow {
     this.plaintext_int32_field = plaintext_int32_field;
   }
 
-  public static MessageType getSchema() { return SCHEMA; }
+  public static MessageType getSchema() {
+    return SCHEMA;
+  }
 
   public static List<SingleRow> generateRandomData(int rowCount) {
     List<SingleRow> dataList = new ArrayList<>(rowCount);
     for (int row = 0; row < rowCount; ++row) {
-      SingleRow newRow = new SingleRow(RANDOM.nextBoolean(),
-        intGenerator.nextValue(),  floatGenerator.nextValue(),
-        doubleGenerator.nextValue(), binaryGenerator.nextValue().getBytes(),
-        fixedBinaryGenerator.nextValue().getBytes(), intGenerator.nextValue());
+      SingleRow newRow = new SingleRow(
+          RANDOM.nextBoolean(),
+          intGenerator.nextValue(),
+          floatGenerator.nextValue(),
+          doubleGenerator.nextValue(),
+          binaryGenerator.nextValue().getBytes(),
+          fixedBinaryGenerator.nextValue().getBytes(),
+          intGenerator.nextValue());
       dataList.add(newRow);
     }
     return dataList;
@@ -129,9 +130,14 @@ public class SingleRow {
       char[] aChar = Character.toChars(row);
       Arrays.fill(fixed, aChar[0]);
 
-      SingleRow newRow = new SingleRow(boolean_val,
-        row, float_val, double_val,
-        binary_val, new String(fixed).getBytes(StandardCharsets.UTF_8), null/*plaintext_int32_field*/);
+      SingleRow newRow = new SingleRow(
+          boolean_val,
+          row,
+          float_val,
+          double_val,
+          binary_val,
+          new String(fixed).getBytes(StandardCharsets.UTF_8),
+          null /*plaintext_int32_field*/);
       dataList.add(newRow);
     }
     return dataList;

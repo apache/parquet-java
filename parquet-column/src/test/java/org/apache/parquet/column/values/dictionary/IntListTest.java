@@ -18,9 +18,8 @@
  */
 package org.apache.parquet.column.values.dictionary;
 
-import org.junit.Test;
-
 import junit.framework.Assert;
+import org.junit.Test;
 
 public class IntListTest {
 
@@ -63,7 +62,7 @@ public class IntListTest {
   }
 
   private void populateList(IntList testList, int size) {
-    for(int i = 0; i < size; i++) {
+    for (int i = 0; i < size; i++) {
       testList.add(i);
     }
   }

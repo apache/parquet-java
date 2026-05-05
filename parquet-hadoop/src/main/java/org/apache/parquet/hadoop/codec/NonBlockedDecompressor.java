@@ -18,13 +18,21 @@
  */
 package org.apache.parquet.hadoop.codec;
 
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import org.apache.hadoop.io.compress.Decompressor;
 import org.apache.parquet.Preconditions;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
+public abstract class NonBlockedDecompressor implements Decompressor {
 
-abstract public class NonBlockedDecompressor implements Decompressor {
+  private static final int INITIAL_INPUT_BUFFER_SIZE = 4096;
+
+  /**
+   * Input buffer starts at {@link #INITIAL_INPUT_BUFFER_SIZE} and then grows by this factor every time it needs
+   * additional space. This factor is chosen to balance the time to reach the target size against the excess peak
+   * memory usage due to overshooting the target.
+   */
+  private static final double INPUT_BUFFER_GROWTH_FACTOR = 1.2;
 
   // Buffer for uncompressed output. This buffer grows as necessary.
   private ByteBuffer outputBuffer = ByteBuffer.allocateDirect(0);
@@ -106,7 +114,15 @@ abstract public class NonBlockedDecompressor implements Decompressor {
     SnappyUtil.validateBuffer(buffer, off, len);
 
     if (inputBuffer.capacity() - inputBuffer.position() < len) {
-      final ByteBuffer newBuffer = ByteBuffer.allocateDirect(inputBuffer.position() + len);
+      final int newBufferSize;
+      if (inputBuffer.capacity() == 0) {
+        newBufferSize = Math.max(INITIAL_INPUT_BUFFER_SIZE, len);
+      } else {
+        newBufferSize = Math.max(
+            inputBuffer.position() + len, (int) (inputBuffer.capacity() * INPUT_BUFFER_GROWTH_FACTOR));
+      }
+      final ByteBuffer newBuffer = ByteBuffer.allocateDirect(newBufferSize);
+      newBuffer.limit(inputBuffer.position() + len);
       inputBuffer.rewind();
       newBuffer.put(inputBuffer);
       final ByteBuffer oldBuffer = inputBuffer;
@@ -155,7 +171,7 @@ abstract public class NonBlockedDecompressor implements Decompressor {
 
   @Override
   public void setDictionary(byte[] b, int off, int len) {
-    // No-op		
+    // No-op
   }
 
   /**
@@ -165,7 +181,7 @@ abstract public class NonBlockedDecompressor implements Decompressor {
    * @param maxUncompressedLength maximum length of the uncompressed data
    * @return uncompressed byte length of the given input
    */
-  abstract protected int maxUncompressedLength(ByteBuffer compressed, int maxUncompressedLength) throws IOException;
+  protected abstract int maxUncompressedLength(ByteBuffer compressed, int maxUncompressedLength) throws IOException;
 
   /**
    * Uncompress the content in the input buffer. The result is dumped to the
@@ -175,6 +191,5 @@ abstract public class NonBlockedDecompressor implements Decompressor {
    * @param uncompressed output of the the uncompressed data. It uses buffer[pos()..]
    * @return uncompressed data size
    */
-  abstract protected int uncompress(ByteBuffer compressed, ByteBuffer uncompressed) throws IOException;
-
+  protected abstract int uncompress(ByteBuffer compressed, ByteBuffer uncompressed) throws IOException;
 }

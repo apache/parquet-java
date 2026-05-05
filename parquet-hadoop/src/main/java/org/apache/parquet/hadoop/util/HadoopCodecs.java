@@ -38,7 +38,8 @@ public class HadoopCodecs {
     return new CodecFactory(conf, sizeHint);
   }
 
-  public static CompressionCodecFactory newDirectFactory(Configuration conf, ByteBufferAllocator allocator, int sizeHint) {
+  public static CompressionCodecFactory newDirectFactory(
+      Configuration conf, ByteBufferAllocator allocator, int sizeHint) {
     return CodecFactory.createDirectCodecFactory(conf, allocator, sizeHint);
   }
 }

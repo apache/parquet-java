@@ -20,7 +20,6 @@
 package org.apache.parquet.cli.csv;
 
 import javax.annotation.concurrent.Immutable;
-
 import org.apache.commons.text.StringEscapeUtils;
 
 @Immutable
@@ -42,9 +41,14 @@ public class CSVProperties {
   public final boolean useHeader;
   public final int linesToSkip;
 
-  private CSVProperties(String charset, String delimiter, String quote,
-                        String escape, String header, boolean useHeader,
-                        int linesToSkip) {
+  private CSVProperties(
+      String charset,
+      String delimiter,
+      String quote,
+      String escape,
+      String header,
+      boolean useHeader,
+      int linesToSkip) {
     this.charset = charset;
     this.delimiter = delimiter;
     this.quote = quote;
@@ -59,7 +63,7 @@ public class CSVProperties {
     private String delimiter = DEFAULT_DELIMITER;
     private String quote = DEFAULT_QUOTE;
     private String escape = DEFAULT_ESCAPE;
-    private boolean useHeader = Boolean.valueOf(DEFAULT_HAS_HEADER);
+    private boolean useHeader = Boolean.parseBoolean(DEFAULT_HAS_HEADER);
     private int linesToSkip = DEFAULT_LINES_TO_SKIP;
     private String header = null;
 
@@ -112,9 +116,7 @@ public class CSVProperties {
     }
 
     public CSVProperties build() {
-      return new CSVProperties(
-          charset, delimiter, quote, escape,
-          header, useHeader, linesToSkip);
+      return new CSVProperties(charset, delimiter, quote, escape, header, useHeader, linesToSkip);
     }
   }
 }

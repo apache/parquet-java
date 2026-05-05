@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -19,7 +19,6 @@
 package org.apache.parquet.column.page;
 
 import java.util.Optional;
-
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.statistics.Statistics;
@@ -27,78 +26,104 @@ import org.apache.parquet.column.statistics.Statistics;
 public class DataPageV2 extends DataPage {
 
   /**
-   * @param rowCount count of rows
-   * @param nullCount count of nulls
-   * @param valueCount count of values
+   * @param rowCount         count of rows
+   * @param nullCount        count of nulls
+   * @param valueCount       count of values
    * @param repetitionLevels RLE encoded repetition levels
    * @param definitionLevels RLE encoded definition levels
-   * @param dataEncoding encoding for the data
-   * @param data data encoded with dataEncoding
-   * @param statistics optional statistics for this page
+   * @param dataEncoding     encoding for the data
+   * @param data             data encoded with dataEncoding
+   * @param statistics       optional statistics for this page
    * @return an uncompressed page
    */
   public static DataPageV2 uncompressed(
-      int rowCount, int nullCount, int valueCount,
-      BytesInput repetitionLevels, BytesInput definitionLevels,
-      Encoding dataEncoding, BytesInput data,
+      int rowCount,
+      int nullCount,
+      int valueCount,
+      BytesInput repetitionLevels,
+      BytesInput definitionLevels,
+      Encoding dataEncoding,
+      BytesInput data,
       Statistics<?> statistics) {
     return new DataPageV2(
-        rowCount, nullCount, valueCount,
-        repetitionLevels, definitionLevels,
-        dataEncoding, data,
+        rowCount,
+        nullCount,
+        valueCount,
+        repetitionLevels,
+        definitionLevels,
+        dataEncoding,
+        data,
         Math.toIntExact(repetitionLevels.size() + definitionLevels.size() + data.size()),
         statistics,
         false);
   }
 
   /**
-   * @param rowCount count of rows
-   * @param nullCount count of nulls
-   * @param valueCount count of values
-   * @param firstRowIndex the index of the first row in this page
+   * @param rowCount         count of rows
+   * @param nullCount        count of nulls
+   * @param valueCount       count of values
+   * @param firstRowIndex    the index of the first row in this page
    * @param repetitionLevels RLE encoded repetition levels
    * @param definitionLevels RLE encoded definition levels
-   * @param dataEncoding encoding for the data
-   * @param data data encoded with dataEncoding
-   * @param statistics optional statistics for this page
+   * @param dataEncoding     encoding for the data
+   * @param data             data encoded with dataEncoding
+   * @param statistics       optional statistics for this page
    * @return an uncompressed page
    */
   public static DataPageV2 uncompressed(
-      int rowCount, int nullCount, int valueCount, long firstRowIndex,
-      BytesInput repetitionLevels, BytesInput definitionLevels,
-      Encoding dataEncoding, BytesInput data,
+      int rowCount,
+      int nullCount,
+      int valueCount,
+      long firstRowIndex,
+      BytesInput repetitionLevels,
+      BytesInput definitionLevels,
+      Encoding dataEncoding,
+      BytesInput data,
       Statistics<?> statistics) {
     return new DataPageV2(
-        rowCount, nullCount, valueCount, firstRowIndex,
-        repetitionLevels, definitionLevels,
-        dataEncoding, data,
+        rowCount,
+        nullCount,
+        valueCount,
+        firstRowIndex,
+        repetitionLevels,
+        definitionLevels,
+        dataEncoding,
+        data,
         Math.toIntExact(repetitionLevels.size() + definitionLevels.size() + data.size()),
         statistics,
         false);
   }
 
   /**
-   * @param rowCount count of rows
-   * @param nullCount count of nulls
-   * @param valueCount count of values
+   * @param rowCount         count of rows
+   * @param nullCount        count of nulls
+   * @param valueCount       count of values
    * @param repetitionLevels RLE encoded repetition levels
    * @param definitionLevels RLE encoded definition levels
-   * @param dataEncoding encoding for the data
-   * @param data data encoded with dataEncoding and compressed
+   * @param dataEncoding     encoding for the data
+   * @param data             data encoded with dataEncoding and compressed
    * @param uncompressedSize total size uncompressed (rl + dl + data)
-   * @param statistics optional statistics for this page
+   * @param statistics       optional statistics for this page
    * @return a compressed page
    */
   public static DataPageV2 compressed(
-      int rowCount, int nullCount, int valueCount,
-      BytesInput repetitionLevels, BytesInput definitionLevels,
-      Encoding dataEncoding, BytesInput data,
+      int rowCount,
+      int nullCount,
+      int valueCount,
+      BytesInput repetitionLevels,
+      BytesInput definitionLevels,
+      Encoding dataEncoding,
+      BytesInput data,
       int uncompressedSize,
       Statistics<?> statistics) {
     return new DataPageV2(
-        rowCount, nullCount, valueCount,
-        repetitionLevels, definitionLevels,
-        dataEncoding, data,
+        rowCount,
+        nullCount,
+        valueCount,
+        repetitionLevels,
+        definitionLevels,
+        dataEncoding,
+        data,
         uncompressedSize,
         statistics,
         true);
@@ -114,13 +139,20 @@ public class DataPageV2 extends DataPage {
   private final boolean isCompressed;
 
   public DataPageV2(
-      int rowCount, int nullCount, int valueCount,
-      BytesInput repetitionLevels, BytesInput definitionLevels,
-      Encoding dataEncoding, BytesInput data,
+      int rowCount,
+      int nullCount,
+      int valueCount,
+      BytesInput repetitionLevels,
+      BytesInput definitionLevels,
+      Encoding dataEncoding,
+      BytesInput data,
       int uncompressedSize,
       Statistics<?> statistics,
       boolean isCompressed) {
-    super(Math.toIntExact(repetitionLevels.size() + definitionLevels.size() + data.size()), uncompressedSize, valueCount);
+    super(
+        Math.toIntExact(repetitionLevels.size() + definitionLevels.size() + data.size()),
+        uncompressedSize,
+        valueCount);
     this.rowCount = rowCount;
     this.nullCount = nullCount;
     this.repetitionLevels = repetitionLevels;
@@ -132,14 +164,22 @@ public class DataPageV2 extends DataPage {
   }
 
   private DataPageV2(
-      int rowCount, int nullCount, int valueCount, long firstRowIndex,
-      BytesInput repetitionLevels, BytesInput definitionLevels,
-      Encoding dataEncoding, BytesInput data,
+      int rowCount,
+      int nullCount,
+      int valueCount,
+      long firstRowIndex,
+      BytesInput repetitionLevels,
+      BytesInput definitionLevels,
+      Encoding dataEncoding,
+      BytesInput data,
       int uncompressedSize,
       Statistics<?> statistics,
       boolean isCompressed) {
-    super(Math.toIntExact(repetitionLevels.size() + definitionLevels.size() + data.size()), uncompressedSize,
-        valueCount, firstRowIndex);
+    super(
+        Math.toIntExact(repetitionLevels.size() + definitionLevels.size() + data.size()),
+        uncompressedSize,
+        valueCount,
+        firstRowIndex);
     this.rowCount = rowCount;
     this.nullCount = nullCount;
     this.repetitionLevels = repetitionLevels;

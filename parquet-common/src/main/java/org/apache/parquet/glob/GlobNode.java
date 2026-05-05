@@ -22,9 +22,9 @@ import java.util.List;
 
 /**
  * A GlobNode represents a tree structure for describing a parsed glob pattern.
- *
+ * <p>
  * GlobNode uses the visitor pattern for tree traversal.
- *
+ * <p>
  * See {@link org.apache.parquet.Strings#expandGlob(String)}
  */
 interface GlobNode {
@@ -32,7 +32,9 @@ interface GlobNode {
 
   static interface Visitor<T> {
     T visit(Atom atom);
+
     T visit(OneOf oneOf);
+
     T visit(GlobNodeSequence seq);
   }
 
@@ -41,7 +43,7 @@ interface GlobNode {
    * of the top-level pattern, or one of the choices in a OneOf clause, or an
    * element in a GlobNodeSequence. In this sense it's the base case or leaf node
    * of a GlobNode tree.
-   *
+   * <p>
    * For example, in pre{x,y{a,b}}post pre, x, y, z, b, and post are all Atoms.
    */
   static class Atom implements GlobNode {

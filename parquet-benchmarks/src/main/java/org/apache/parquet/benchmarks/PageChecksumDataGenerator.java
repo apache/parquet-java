@@ -18,9 +18,29 @@
  */
 package org.apache.parquet.benchmarks;
 
+import static java.util.UUID.randomUUID;
+import static org.apache.parquet.benchmarks.BenchmarkConstants.ONE_K;
+import static org.apache.parquet.benchmarks.BenchmarkConstants.ONE_MILLION;
+import static org.apache.parquet.benchmarks.BenchmarkFiles.configuration;
+import static org.apache.parquet.benchmarks.BenchmarkFiles.file_100K_CHECKSUMS_GZIP;
+import static org.apache.parquet.benchmarks.BenchmarkFiles.file_100K_CHECKSUMS_SNAPPY;
+import static org.apache.parquet.benchmarks.BenchmarkFiles.file_100K_CHECKSUMS_UNCOMPRESSED;
+import static org.apache.parquet.benchmarks.BenchmarkFiles.file_10M_CHECKSUMS_GZIP;
+import static org.apache.parquet.benchmarks.BenchmarkFiles.file_10M_CHECKSUMS_SNAPPY;
+import static org.apache.parquet.benchmarks.BenchmarkFiles.file_10M_CHECKSUMS_UNCOMPRESSED;
+import static org.apache.parquet.benchmarks.BenchmarkFiles.file_1M_CHECKSUMS_GZIP;
+import static org.apache.parquet.benchmarks.BenchmarkFiles.file_1M_CHECKSUMS_SNAPPY;
+import static org.apache.parquet.benchmarks.BenchmarkFiles.file_1M_CHECKSUMS_UNCOMPRESSED;
+import static org.apache.parquet.benchmarks.BenchmarkUtils.exists;
+import static org.apache.parquet.hadoop.metadata.CompressionCodecName.GZIP;
+import static org.apache.parquet.hadoop.metadata.CompressionCodecName.SNAPPY;
+import static org.apache.parquet.hadoop.metadata.CompressionCodecName.UNCOMPRESSED;
+
+import java.io.IOException;
+import java.util.Random;
 import org.apache.hadoop.fs.Path;
-import org.apache.parquet.example.data.GroupFactory;
 import org.apache.parquet.example.data.Group;
+import org.apache.parquet.example.data.GroupFactory;
 import org.apache.parquet.example.data.simple.SimpleGroupFactory;
 import org.apache.parquet.hadoop.ParquetFileWriter;
 import org.apache.parquet.hadoop.ParquetWriter;
@@ -29,57 +49,43 @@ import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
 
-import static java.util.UUID.randomUUID;
-import static org.apache.parquet.benchmarks.BenchmarkConstants.*;
-import static org.apache.parquet.benchmarks.BenchmarkFiles.*;
-
-import java.io.IOException;
-import java.util.Random;
-
-import static org.apache.parquet.benchmarks.BenchmarkUtils.deleteIfExists;
-import static org.apache.parquet.benchmarks.BenchmarkUtils.exists;
-import static org.apache.parquet.hadoop.metadata.CompressionCodecName.*;
-
 public class PageChecksumDataGenerator extends DataGenerator {
 
-  private final MessageType SCHEMA = MessageTypeParser.parseMessageType(
-    "message m {" +
-      "  required int64 long_field;" +
-      "  required binary binary_field;" +
-      "  required group group {" +
-      "    repeated int32 int_field;" +
-      "  }" +
-      "}");
+  private final MessageType SCHEMA = MessageTypeParser.parseMessageType("message m {" + "  required int64 long_field;"
+      + "  required binary binary_field;"
+      + "  required group group {"
+      + "    repeated int32 int_field;"
+      + "  }"
+      + "}");
 
-  public void generateData(Path outFile, int nRows, boolean writeChecksums,
-                           CompressionCodecName compression) throws IOException {
+  public void generateData(Path outFile, int nRows, boolean writeChecksums, CompressionCodecName compression)
+      throws IOException {
     if (exists(configuration, outFile)) {
       System.out.println("File already exists " + outFile);
       return;
     }
 
     ParquetWriter<Group> writer = ExampleParquetWriter.builder(outFile)
-      .withConf(configuration)
-      .withWriteMode(ParquetFileWriter.Mode.OVERWRITE)
-      .withCompressionCodec(compression)
-      .withDictionaryEncoding(true)
-      .withType(SCHEMA)
-      .withPageWriteChecksumEnabled(writeChecksums)
-      .build();
+        .withConf(configuration)
+        .withWriteMode(ParquetFileWriter.Mode.OVERWRITE)
+        .withCompressionCodec(compression)
+        .withDictionaryEncoding(true)
+        .withType(SCHEMA)
+        .withPageWriteChecksumEnabled(writeChecksums)
+        .build();
 
     GroupFactory groupFactory = new SimpleGroupFactory(SCHEMA);
     Random rand = new Random(42);
     for (int i = 0; i < nRows; i++) {
       Group group = groupFactory.newGroup();
-      group
-        .append("long_field", (long) i)
-        .append("binary_field", randomUUID().toString())
-        .addGroup("group")
-        // Force dictionary encoding by performing modulo
-        .append("int_field", rand.nextInt() % 100)
-        .append("int_field", rand.nextInt() % 100)
-        .append("int_field", rand.nextInt() % 100)
-        .append("int_field", rand.nextInt() % 100);
+      group.append("long_field", (long) i)
+          .append("binary_field", randomUUID().toString())
+          .addGroup("group")
+          // Force dictionary encoding by performing modulo
+          .append("int_field", rand.nextInt() % 100)
+          .append("int_field", rand.nextInt() % 100)
+          .append("int_field", rand.nextInt() % 100)
+          .append("int_field", rand.nextInt() % 100);
       writer.write(group);
     }
 

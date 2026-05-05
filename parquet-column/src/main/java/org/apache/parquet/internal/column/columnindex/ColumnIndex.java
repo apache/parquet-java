@@ -21,7 +21,6 @@ package org.apache.parquet.internal.column.columnindex;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.PrimitiveIterator;
-
 import org.apache.parquet.filter2.predicate.FilterPredicate.Visitor;
 import org.apache.parquet.internal.filter2.columnindex.ColumnIndexFilter;
 
@@ -57,4 +56,19 @@ public interface ColumnIndex extends Visitor<PrimitiveIterator.OfInt> {
    */
   public List<ByteBuffer> getMaxValues();
 
+  /**
+   * @return the unmodifiable list of the repetition level histograms for each page concatenated together; used for
+   * converting to the related thrift object
+   */
+  default List<Long> getRepetitionLevelHistogram() {
+    throw new UnsupportedOperationException("Repetition level histogram is not implemented");
+  }
+
+  /**
+   * @return the unmodifiable list of the definition level histograms for each page concatenated together; used for
+   * converting to the related thrift object
+   */
+  default List<Long> getDefinitionLevelHistogram() {
+    throw new UnsupportedOperationException("Definition level histogram is not implemented");
+  }
 }

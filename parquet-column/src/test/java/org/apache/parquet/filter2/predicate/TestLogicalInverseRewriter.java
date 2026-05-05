@@ -1,4 +1,4 @@
-/* 
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * 
+ *
  *   http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -18,14 +18,6 @@
  */
 package org.apache.parquet.filter2.predicate;
 
-import org.junit.Test;
-
-import org.apache.parquet.filter2.predicate.Operators.DoubleColumn;
-import org.apache.parquet.filter2.predicate.Operators.IntColumn;
-import org.apache.parquet.filter2.predicate.Operators.LogicalNotUserDefined;
-import org.apache.parquet.filter2.predicate.Operators.UserDefined;
-
-import static org.junit.Assert.assertEquals;
 import static org.apache.parquet.filter2.predicate.FilterApi.and;
 import static org.apache.parquet.filter2.predicate.FilterApi.doubleColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.eq;
@@ -39,27 +31,31 @@ import static org.apache.parquet.filter2.predicate.FilterApi.notEq;
 import static org.apache.parquet.filter2.predicate.FilterApi.or;
 import static org.apache.parquet.filter2.predicate.FilterApi.userDefined;
 import static org.apache.parquet.filter2.predicate.LogicalInverseRewriter.rewrite;
+import static org.junit.Assert.assertEquals;
+
+import org.apache.parquet.filter2.predicate.Operators.DoubleColumn;
+import org.apache.parquet.filter2.predicate.Operators.IntColumn;
+import org.apache.parquet.filter2.predicate.Operators.LogicalNotUserDefined;
+import org.apache.parquet.filter2.predicate.Operators.UserDefined;
+import org.junit.Test;
 
 public class TestLogicalInverseRewriter {
   private static final IntColumn intColumn = intColumn("a.b.c");
   private static final DoubleColumn doubleColumn = doubleColumn("a.b.c");
 
-  private static final FilterPredicate complex =
-      and(
-          not(
-              or(ltEq(doubleColumn, 12.0),
-                  and(
-                      not(or(eq(intColumn, 7), notEq(intColumn, 17))),
-                      userDefined(intColumn, DummyUdp.class)))),
-          or(gt(doubleColumn, 100.0), not(gtEq(intColumn, 77))));
+  private static final FilterPredicate complex = and(
+      not(or(
+          ltEq(doubleColumn, 12.0),
+          and(not(or(eq(intColumn, 7), notEq(intColumn, 17))), userDefined(intColumn, DummyUdp.class)))),
+      or(gt(doubleColumn, 100.0), not(gtEq(intColumn, 77))));
 
-  private static final FilterPredicate complexCollapsed =
+  private static final FilterPredicate complexCollapsed = and(
       and(
-          and(gt(doubleColumn, 12.0),
-              or(
-                  or(eq(intColumn, 7), notEq(intColumn, 17)),
-                  new LogicalNotUserDefined<>(userDefined(intColumn, DummyUdp.class)))),
-          or(gt(doubleColumn, 100.0), lt(intColumn, 77)));
+          gt(doubleColumn, 12.0),
+          or(
+              or(eq(intColumn, 7), notEq(intColumn, 17)),
+              new LogicalNotUserDefined<>(userDefined(intColumn, DummyUdp.class)))),
+      or(gt(doubleColumn, 100.0), lt(intColumn, 77)));
 
   private static void assertNoOp(FilterPredicate p) {
     assertEquals(p, rewrite(p));

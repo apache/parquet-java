@@ -77,7 +77,8 @@ public class PlainParquetConfiguration implements ParquetConfiguration {
     if (xface.isAssignableFrom(value)) {
       set(name, value.getName());
     } else {
-      throw new RuntimeException(xface.getCanonicalName() + " is not assignable from " + value.getCanonicalName());
+      throw new RuntimeException(
+          xface.getCanonicalName() + " is not assignable from " + value.getCanonicalName());
     }
   }
 

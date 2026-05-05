@@ -18,13 +18,12 @@
  */
 package org.apache.parquet.cli.commands;
 
-import org.apache.hadoop.conf.Configuration;
-import org.junit.Assert;
-import org.junit.Test;
-
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
+import org.apache.hadoop.conf.Configuration;
+import org.junit.Assert;
+import org.junit.Test;
 
 public class ConvertCSVCommandTest extends CSVFileTest {
   @Test
@@ -61,5 +60,20 @@ public class ConvertCSVCommandTest extends CSVFileTest {
     command.outputPath = output.getAbsolutePath();
     command.setConf(new Configuration());
     command.run();
+  }
+
+  @Test
+  public void testConvertCSVCommandWithGenericConf() throws IOException {
+    File file = csvFile();
+    ConvertCSVCommand command = new ConvertCSVCommand(createLogger());
+    command.targets = Arrays.asList(file.getAbsolutePath());
+    File output = new File(getTempFolder(), getClass().getSimpleName() + "_with_generic_conf.parquet");
+    command.outputPath = output.getAbsolutePath();
+    Configuration conf = new Configuration();
+    conf.set("parquet.avro.write-parquet-uuid", "true");
+    conf.set("parquet.avro.write-old-list-structure", "false");
+    command.setConf(conf);
+    Assert.assertEquals(0, command.run());
+    Assert.assertTrue(output.exists());
   }
 }

@@ -18,17 +18,19 @@
  */
 package org.apache.parquet.hadoop;
 
+import static org.apache.parquet.hadoop.ParquetFileReaderMetrics.PagesIncluded;
+import static org.apache.parquet.hadoop.ParquetFileReaderMetrics.PagesSkipped;
+
+import it.unimi.dsi.fastutil.ints.IntArrayList;
+import it.unimi.dsi.fastutil.ints.IntList;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Formatter;
 import java.util.List;
-
+import java.util.Optional;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.internal.column.columnindex.OffsetIndex;
 import org.apache.parquet.internal.filter2.columnindex.RowRanges;
-
-import it.unimi.dsi.fastutil.ints.IntArrayList;
-import it.unimi.dsi.fastutil.ints.IntList;
 
 /**
  * Internal utility class to help at column index based filtering.
@@ -69,7 +71,7 @@ class ColumnIndexFilterUtils {
       this.offsetIndex = offsetIndex;
       this.indexMap = indexMap;
     }
-    
+
     @Override
     public int getPageOrdinal(int pageIndex) {
       return indexMap[pageIndex];
@@ -98,7 +100,13 @@ class ColumnIndexFilterUtils {
     @Override
     public long getLastRowIndex(int pageIndex, long totalRowCount) {
       int nextIndex = indexMap[pageIndex] + 1;
-      return (nextIndex >= offsetIndex.getPageCount() ? totalRowCount : offsetIndex.getFirstRowIndex(nextIndex)) - 1;
+      return (nextIndex >= offsetIndex.getPageCount() ? totalRowCount : offsetIndex.getFirstRowIndex(nextIndex))
+          - 1;
+    }
+
+    @Override
+    public Optional<Long> getUnencodedByteArrayDataBytes(int pageIndex) {
+      return offsetIndex.getUnencodedByteArrayDataBytes(indexMap[pageIndex]);
     }
 
     @Override
@@ -108,7 +116,8 @@ class ColumnIndexFilterUtils {
         for (int i = 0, n = offsetIndex.getPageCount(); i < n; ++i) {
           int index = Arrays.binarySearch(indexMap, i);
           boolean isHidden = index < 0;
-          formatter.format("%spage-%-5d  %20d  %16d  %20d\n",
+          formatter.format(
+              "%spage-%-5d  %20d  %16d  %20d\n",
               isHidden ? "- " : "  ",
               isHidden ? i : index,
               offsetIndex.getOffset(i),
@@ -123,19 +132,35 @@ class ColumnIndexFilterUtils {
   /*
    * Returns the filtered offset index containing only the pages which are overlapping with rowRanges.
    */
-  static OffsetIndex filterOffsetIndex(OffsetIndex offsetIndex, RowRanges rowRanges, long totalRowCount) {
+  static OffsetIndex filterOffsetIndex(
+      OffsetIndex offsetIndex,
+      RowRanges rowRanges,
+      long totalRowCount,
+      org.apache.parquet.ParquetReadOptions options) {
     IntList indexMap = new IntArrayList();
+    int pagesIncluded = 0;
+    int pagesSkipped = 0;
     for (int i = 0, n = offsetIndex.getPageCount(); i < n; ++i) {
       long from = offsetIndex.getFirstRowIndex(i);
       if (rowRanges.isOverlapping(from, offsetIndex.getLastRowIndex(i, totalRowCount))) {
         indexMap.add(i);
+        pagesIncluded++;
+      } else {
+        pagesSkipped++;
       }
     }
+
+    if (options != null && options.getMetricsCallback() != null) {
+      final ParquetMetricsCallback metricsCallback = options.getMetricsCallback();
+      metricsCallback.setValueInt(PagesIncluded.name(), pagesIncluded);
+      metricsCallback.setValueInt(PagesSkipped.name(), pagesSkipped);
+    }
+
     return new FilteredOffsetIndex(offsetIndex, indexMap.toIntArray());
   }
 
-  static List<OffsetRange> calculateOffsetRanges(OffsetIndex offsetIndex, ColumnChunkMetaData cm,
-      long firstPageOffset) {
+  static List<OffsetRange> calculateOffsetRanges(
+      OffsetIndex offsetIndex, ColumnChunkMetaData cm, long firstPageOffset) {
     List<OffsetRange> ranges = new ArrayList<>();
     int n = offsetIndex.getPageCount();
     if (n > 0) {

@@ -25,16 +25,16 @@ import java.util.regex.Pattern;
  * Holds a String with wildcards ('*'), and can answer whether a given string matches this WildcardPath.
  * For example:
  * "foo.*.baz" or "foo*baz.bar*"
- *
+ * <p>
  * The '*' in "foo*bar" is treated the same way that java regex treats "(.*)",
  * and all WildcardPath's are considered to match child paths.
  * For example, "foo.bar" will match "foo.bar.baz". It will not match "foo.barbaz" however.
  * To match "foo.barbaz" the pattern "foo.bar*" could be used, which would also match "foo.barbaz.x"
- *
+ * <p>
  * Only '*' is  considered a special character.
  * All other characters are not treated as special characters, including '{', '}', '.', and '/'
  * with one exception -- the delimiter character is used for matching against child paths as explained above.
- *
+ * <p>
  * It is assumed that {} globs have already been expanded before constructing
  * this object.
  */
@@ -102,8 +102,7 @@ public class WildcardPath {
 
   @Override
   public String toString() {
-    return String.format("WildcardPath(parentGlobPath: '%s', pattern: '%s')",
-        parentGlobPath, originalPattern);
+    return String.format("WildcardPath(parentGlobPath: '%s', pattern: '%s')", parentGlobPath, originalPattern);
   }
 
   @Override

@@ -19,13 +19,14 @@
 package org.apache.parquet.column.impl;
 
 import java.io.IOException;
-
 import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.page.PageWriter;
+import org.apache.parquet.column.statistics.SizeStatistics;
 import org.apache.parquet.column.statistics.Statistics;
+import org.apache.parquet.column.statistics.geospatial.GeospatialStatistics;
 import org.apache.parquet.column.values.ValuesWriter;
 import org.apache.parquet.column.values.bitpacking.DevNullValuesWriter;
 import org.apache.parquet.column.values.bloomfilter.BloomFilterWriter;
@@ -60,25 +61,41 @@ final class ColumnWriterV2 extends ColumnWriterBase {
     super(path, pageWriter, props);
   }
 
-  ColumnWriterV2(ColumnDescriptor path, PageWriter pageWriter, BloomFilterWriter bloomFilterWriter,
-                 ParquetProperties props) {
+  ColumnWriterV2(
+      ColumnDescriptor path,
+      PageWriter pageWriter,
+      BloomFilterWriter bloomFilterWriter,
+      ParquetProperties props) {
     super(path, pageWriter, bloomFilterWriter, props);
   }
 
   @Override
   ValuesWriter createRLWriter(ParquetProperties props, ColumnDescriptor path) {
-    return path.getMaxRepetitionLevel() == 0 ? NULL_WRITER : new RLEWriterForV2(props.newRepetitionLevelEncoder(path));
+    return path.getMaxRepetitionLevel() == 0
+        ? NULL_WRITER
+        : new RLEWriterForV2(props.newRepetitionLevelEncoder(path));
   }
 
   @Override
   ValuesWriter createDLWriter(ParquetProperties props, ColumnDescriptor path) {
-    return path.getMaxDefinitionLevel() == 0 ? NULL_WRITER : new RLEWriterForV2(props.newDefinitionLevelEncoder(path));
+    return path.getMaxDefinitionLevel() == 0
+        ? NULL_WRITER
+        : new RLEWriterForV2(props.newDefinitionLevelEncoder(path));
   }
 
   @Override
-  void writePage(int rowCount, int valueCount, Statistics<?> statistics, ValuesWriter repetitionLevels,
-      ValuesWriter definitionLevels, ValuesWriter values) throws IOException {
-    // TODO: rework this API. The bytes shall be retrieved before the encoding (encoding might be different otherwise)
+  void writePage(
+      int rowCount,
+      int valueCount,
+      Statistics<?> statistics,
+      SizeStatistics sizeStatistics,
+      GeospatialStatistics geospatialStatistics,
+      ValuesWriter repetitionLevels,
+      ValuesWriter definitionLevels,
+      ValuesWriter values)
+      throws IOException {
+    // TODO: rework this API. The bytes shall be retrieved before the encoding (encoding might be different
+    // otherwise)
     BytesInput bytes = values.getBytes();
     Encoding encoding = values.getEncoding();
     pageWriter.writePageV2(
@@ -89,6 +106,8 @@ final class ColumnWriterV2 extends ColumnWriterBase {
         definitionLevels.getBytes(),
         encoding,
         bytes,
-        statistics);
+        statistics,
+        sizeStatistics,
+        geospatialStatistics);
   }
 }
