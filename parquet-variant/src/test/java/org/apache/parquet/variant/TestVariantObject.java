@@ -341,4 +341,39 @@ public class TestVariantObject {
       Assert.assertEquals("Cannot read ARRAY value as OBJECT", e.getMessage());
     }
   }
+
+  @Test
+  public void testMetadataWithNonZeroPositionReadOnly() {
+    // Build a variant with object fields to populate the metadata dictionary
+    VariantBuilder vb = new VariantBuilder();
+    VariantObjectBuilder obj = vb.startObject();
+    obj.appendKey("name");
+    obj.appendString("Alice");
+    obj.appendKey("age");
+    obj.appendInt(30);
+    vb.endObject();
+    Variant variant = vb.build();
+
+    // Get the raw metadata bytes
+    ByteBuffer metaBuf = variant.getMetadataBuffer();
+    byte[] metaBytes = new byte[metaBuf.remaining()];
+    metaBuf.duplicate().get(metaBytes);
+
+    // Embed in a larger buffer with a non-zero position, then make read-only
+    // to force the else-branch in getMetadataMap.
+    byte[] padded = new byte[10 + metaBytes.length];
+    System.arraycopy(metaBytes, 0, padded, 10, metaBytes.length);
+    ByteBuffer offsetMetadata = ByteBuffer.wrap(padded);
+    offsetMetadata.position(10);
+    offsetMetadata.limit(10 + metaBytes.length);
+    offsetMetadata = offsetMetadata.asReadOnlyBuffer();
+
+    // ImmutableMetadata calls getMetadataMap, which had the bug.
+    // getMetadataMap builds a key->id dictionary from the metadata buffer.
+    // With a non-zero position and read-only buffer, the else-branch is taken,
+    // which previously used the wrong offset.
+    ImmutableMetadata immutableMetadata = new ImmutableMetadata(offsetMetadata);
+    Assert.assertEquals(0, immutableMetadata.getOrInsert("name"));
+    Assert.assertEquals(1, immutableMetadata.getOrInsert("age"));
+  }
 }
