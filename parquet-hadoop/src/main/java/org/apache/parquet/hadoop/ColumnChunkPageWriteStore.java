@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.zip.CRC32;
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.ByteBufferReleaser;
@@ -44,6 +45,7 @@ import org.apache.parquet.column.statistics.geospatial.GeospatialStatistics;
 import org.apache.parquet.column.values.bloomfilter.BloomFilter;
 import org.apache.parquet.column.values.bloomfilter.BloomFilterWriteStore;
 import org.apache.parquet.column.values.bloomfilter.BloomFilterWriter;
+import org.apache.parquet.compression.CompressionCodecFactory;
 import org.apache.parquet.compression.CompressionCodecFactory.BytesInputCompressor;
 import org.apache.parquet.crypto.AesCipher;
 import org.apache.parquet.crypto.InternalColumnEncryptionSetup;
@@ -576,22 +578,7 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
       ByteBufferAllocator allocator,
       int columnIndexTruncateLength,
       boolean pageWriteChecksumEnabled) {
-    this.schema = schema;
-    for (ColumnDescriptor path : schema.getColumns()) {
-      writers.put(
-          path,
-          new ColumnChunkPageWriter(
-              path,
-              compressor,
-              allocator,
-              columnIndexTruncateLength,
-              pageWriteChecksumEnabled,
-              null,
-              null,
-              null,
-              -1,
-              -1));
-    }
+    this(compressor, schema, allocator, columnIndexTruncateLength, pageWriteChecksumEnabled, null, 0);
   }
 
   @Deprecated
@@ -621,6 +608,24 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
       boolean pageWriteChecksumEnabled,
       InternalFileEncryptor fileEncryptor,
       int rowGroupOrdinal) {
+    this(
+        path -> compressor,
+        schema,
+        allocator,
+        columnIndexTruncateLength,
+        pageWriteChecksumEnabled,
+        fileEncryptor,
+        rowGroupOrdinal);
+  }
+
+  private ColumnChunkPageWriteStore(
+      Function<ColumnDescriptor, BytesInputCompressor> compressorProvider,
+      MessageType schema,
+      ByteBufferAllocator allocator,
+      int columnIndexTruncateLength,
+      boolean pageWriteChecksumEnabled,
+      InternalFileEncryptor fileEncryptor,
+      int rowGroupOrdinal) {
     this.schema = schema;
     if (null == fileEncryptor) {
       for (ColumnDescriptor path : schema.getColumns()) {
@@ -628,7 +633,7 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
             path,
             new ColumnChunkPageWriter(
                 path,
-                compressor,
+                compressorProvider.apply(path),
                 allocator,
                 columnIndexTruncateLength,
                 pageWriteChecksumEnabled,
@@ -660,7 +665,7 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
           path,
           new ColumnChunkPageWriter(
               path,
-              compressor,
+              compressorProvider.apply(path),
               allocator,
               columnIndexTruncateLength,
               pageWriteChecksumEnabled,
@@ -669,6 +674,88 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
               fileAAD,
               rowGroupOrdinal,
               columnOrdinal));
+    }
+  }
+
+  public static Builder builder() {
+    return new Builder();
+  }
+
+  /**
+   * Builder for {@link ColumnChunkPageWriteStore}. Prefer this over the constructors when new
+   * parameters are needed so that callers do not have to be updated every time a parameter is
+   * added.
+   */
+  public static class Builder {
+    private Function<ColumnDescriptor, BytesInputCompressor> compressorProvider;
+    private MessageType schema;
+    private ByteBufferAllocator allocator;
+    private int columnIndexTruncateLength = ParquetProperties.DEFAULT_COLUMN_INDEX_TRUNCATE_LENGTH;
+    private boolean pageWriteChecksumEnabled = ParquetProperties.DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED;
+    private InternalFileEncryptor fileEncryptor = null;
+    private int rowGroupOrdinal = 0;
+
+    private Builder() {}
+
+    /**
+     * Use a single compressor for every column.
+     */
+    public Builder withCompressor(BytesInputCompressor compressor) {
+      this.compressorProvider = path -> compressor;
+      return this;
+    }
+
+    /**
+     * Resolve the compressor per column from the given codec factory and properties, allowing
+     * per-column compression codecs.
+     */
+    public Builder withCodecFactory(CompressionCodecFactory codecFactory, ParquetProperties props) {
+      this.compressorProvider = path -> codecFactory.getCompressor(props.getCompressionCodec(path));
+      return this;
+    }
+
+    public Builder withSchema(MessageType schema) {
+      this.schema = schema;
+      return this;
+    }
+
+    public Builder withAllocator(ByteBufferAllocator allocator) {
+      this.allocator = allocator;
+      return this;
+    }
+
+    public Builder withColumnIndexTruncateLength(int columnIndexTruncateLength) {
+      this.columnIndexTruncateLength = columnIndexTruncateLength;
+      return this;
+    }
+
+    public Builder withPageWriteChecksumEnabled(boolean pageWriteChecksumEnabled) {
+      this.pageWriteChecksumEnabled = pageWriteChecksumEnabled;
+      return this;
+    }
+
+    public Builder withFileEncryptor(InternalFileEncryptor fileEncryptor) {
+      this.fileEncryptor = fileEncryptor;
+      return this;
+    }
+
+    public Builder withRowGroupOrdinal(int rowGroupOrdinal) {
+      this.rowGroupOrdinal = rowGroupOrdinal;
+      return this;
+    }
+
+    public ColumnChunkPageWriteStore build() {
+      if (compressorProvider == null) {
+        throw new IllegalStateException("A compressor or codec factory must be set");
+      }
+      return new ColumnChunkPageWriteStore(
+          compressorProvider,
+          schema,
+          allocator,
+          columnIndexTruncateLength,
+          pageWriteChecksumEnabled,
+          fileEncryptor,
+          rowGroupOrdinal);
     }
   }
 

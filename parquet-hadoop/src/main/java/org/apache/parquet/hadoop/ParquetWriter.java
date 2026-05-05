@@ -395,7 +395,6 @@ public class ParquetWriter<T> implements Closeable {
     fileWriter.start();
 
     this.codecFactory = codecFactory;
-    CompressionCodecFactory.BytesInputCompressor compressor = codecFactory.getCompressor(compressionCodecName);
 
     final Map<String, String> extraMetadata;
     if (encodingProps.getExtraMetaData() == null
@@ -418,7 +417,7 @@ public class ParquetWriter<T> implements Closeable {
     }
 
     this.writer = new InternalParquetRecordWriter<T>(
-        fileWriter, writeSupport, schema, extraMetadata, rowGroupSize, compressor, validating, encodingProps);
+        fileWriter, writeSupport, schema, extraMetadata, rowGroupSize, codecFactory, validating, encodingProps);
   }
 
   public void write(T object) throws IOException {
@@ -559,13 +558,29 @@ public class ParquetWriter<T> implements Closeable {
 
     /**
      * Set the {@link CompressionCodecName compression codec} used by the
-     * constructed writer.
+     * constructed writer. This sets the default compression codec for all columns.
+     * Per-column overrides can be set with {@link #withCompressionCodec(String, CompressionCodecName)}.
      *
      * @param codecName a {@code CompressionCodecName}
      * @return this builder for method chaining.
      */
     public SELF withCompressionCodec(CompressionCodecName codecName) {
       this.codecName = codecName;
+      encodingPropsBuilder.withCompressionCodec(codecName);
+      return self();
+    }
+
+    /**
+     * Set the {@link CompressionCodecName compression codec} for a specific column.
+     * Columns not explicitly configured will use the default codec set by
+     * {@link #withCompressionCodec(CompressionCodecName)}.
+     *
+     * @param columnPath the path of the column (dot-string)
+     * @param codecName  the compression codec to use for the column
+     * @return this builder for method chaining.
+     */
+    public SELF withCompressionCodec(String columnPath, CompressionCodecName codecName) {
+      encodingPropsBuilder.withCompressionCodec(columnPath, codecName);
       return self();
     }
 

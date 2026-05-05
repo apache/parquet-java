@@ -28,6 +28,7 @@ import java.util.Objects;
 import org.apache.parquet.column.ColumnWriteStore;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.values.bloomfilter.BloomFilterWriteStore;
+import org.apache.parquet.compression.CompressionCodecFactory;
 import org.apache.parquet.compression.CompressionCodecFactory.BytesInputCompressor;
 import org.apache.parquet.crypto.InternalFileEncryptor;
 import org.apache.parquet.hadoop.api.WriteSupport;
@@ -52,6 +53,7 @@ class InternalParquetRecordWriter<T> {
   private final int rowGroupRecordCountThreshold;
   private long nextRowGroupSize;
   private final BytesInputCompressor compressor;
+  private final CompressionCodecFactory codecFactory;
   private final boolean validating;
   private final ParquetProperties props;
 
@@ -77,7 +79,9 @@ class InternalParquetRecordWriter<T> {
    * @param extraMetaData     extra meta data to write in the footer of the file
    * @param rowGroupSize      the size of a block in the file (this will be approximate)
    * @param compressor        the codec used to compress
+   * @deprecated Use {@link #InternalParquetRecordWriter(ParquetFileWriter, WriteSupport, MessageType, Map, long, CompressionCodecFactory, boolean, ParquetProperties)} for per-column compression support
    */
+  @Deprecated
   public InternalParquetRecordWriter(
       ParquetFileWriter parquetFileWriter,
       WriteSupport<T> writeSupport,
@@ -95,6 +99,41 @@ class InternalParquetRecordWriter<T> {
     this.rowGroupRecordCountThreshold = props.getRowGroupRowCountLimit();
     this.nextRowGroupSize = rowGroupSizeThreshold;
     this.compressor = compressor;
+    this.codecFactory = null;
+    this.validating = validating;
+    this.props = props;
+    this.fileEncryptor = parquetFileWriter.getEncryptor();
+    this.rowGroupOrdinal = 0;
+    initStore();
+    recordCountForNextMemCheck = props.getMinRowCountForPageSizeCheck();
+  }
+
+  /**
+   * @param parquetFileWriter the file to write to
+   * @param writeSupport      the class to convert incoming records
+   * @param schema            the schema of the records
+   * @param extraMetaData     extra meta data to write in the footer of the file
+   * @param rowGroupSize      the size of a block in the file (this will be approximate)
+   * @param codecFactory      the codec factory for per-column compression
+   */
+  public InternalParquetRecordWriter(
+      ParquetFileWriter parquetFileWriter,
+      WriteSupport<T> writeSupport,
+      MessageType schema,
+      Map<String, String> extraMetaData,
+      long rowGroupSize,
+      CompressionCodecFactory codecFactory,
+      boolean validating,
+      ParquetProperties props) {
+    this.parquetFileWriter = parquetFileWriter;
+    this.writeSupport = Objects.requireNonNull(writeSupport, "writeSupport cannot be null");
+    this.schema = schema;
+    this.extraMetaData = extraMetaData;
+    this.rowGroupSizeThreshold = rowGroupSize;
+    this.rowGroupRecordCountThreshold = props.getRowGroupRowCountLimit();
+    this.nextRowGroupSize = rowGroupSizeThreshold;
+    this.compressor = null;
+    this.codecFactory = codecFactory;
     this.validating = validating;
     this.props = props;
     this.fileEncryptor = parquetFileWriter.getEncryptor();
@@ -108,14 +147,19 @@ class InternalParquetRecordWriter<T> {
   }
 
   private void initStore() {
-    ColumnChunkPageWriteStore columnChunkPageWriteStore = new ColumnChunkPageWriteStore(
-        compressor,
-        schema,
-        props.getAllocator(),
-        props.getColumnIndexTruncateLength(),
-        props.getPageWriteChecksumEnabled(),
-        fileEncryptor,
-        rowGroupOrdinal);
+    ColumnChunkPageWriteStore.Builder storeBuilder = ColumnChunkPageWriteStore.builder()
+        .withSchema(schema)
+        .withAllocator(props.getAllocator())
+        .withColumnIndexTruncateLength(props.getColumnIndexTruncateLength())
+        .withPageWriteChecksumEnabled(props.getPageWriteChecksumEnabled())
+        .withFileEncryptor(fileEncryptor)
+        .withRowGroupOrdinal(rowGroupOrdinal);
+    if (codecFactory != null) {
+      storeBuilder.withCodecFactory(codecFactory, props);
+    } else {
+      storeBuilder.withCompressor(compressor);
+    }
+    ColumnChunkPageWriteStore columnChunkPageWriteStore = storeBuilder.build();
     pageStore = columnChunkPageWriteStore;
     bloomFilterWriteStore = columnChunkPageWriteStore;
 
