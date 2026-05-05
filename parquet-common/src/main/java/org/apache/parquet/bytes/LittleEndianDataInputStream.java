@@ -21,10 +21,24 @@ package org.apache.parquet.bytes;
 import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 
 /**
- * Based on DataInputStream but little endian and without the String/char methods
+ * Based on DataInputStream but little endian and without the String/char methods.
+ *
+ * @deprecated This class has no remaining production usages and is
+ *     significantly slower than reading directly from a {@link ByteBuffer} configured with
+ *     {@link ByteOrder#LITTLE_ENDIAN}. Each {@link #readInt()} performs four virtual
+ *     {@code in.read()} calls and reassembles the value with bit shifts, while
+ *     {@link ByteBuffer#getInt()} on a little-endian buffer is a HotSpot intrinsic that
+ *     compiles to a single unaligned load on x86/ARM. For new code, prefer
+ *     {@link ByteBufferInputStream#slice(int)} followed by
+ *     {@code buffer.order(ByteOrder.LITTLE_ENDIAN)} and {@link ByteBuffer#getInt()} /
+ *     {@link ByteBuffer#getLong()} / {@link ByteBuffer#getFloat()} /
+ *     {@link ByteBuffer#getDouble()}. This class will be removed in a future release.
  */
+@Deprecated
 public final class LittleEndianDataInputStream extends InputStream {
 
   private final InputStream in;
