@@ -217,7 +217,7 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
       }
       if (pageWriteChecksumEnabled) {
         crc.reset();
-        crc.update(compressedBytes.toByteArray());
+        crc.update(compressedBytes.toByteBuffer(releaser));
         parquetMetadataConverter.writeDataPageV1Header(
             (int) uncompressedSize,
             (int) compressedSize,
@@ -322,13 +322,13 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
       if (pageWriteChecksumEnabled) {
         crc.reset();
         if (repetitionLevels.size() > 0) {
-          crc.update(repetitionLevels.toByteArray());
+          crc.update(repetitionLevels.toByteBuffer(releaser));
         }
         if (definitionLevels.size() > 0) {
-          crc.update(definitionLevels.toByteArray());
+          crc.update(definitionLevels.toByteBuffer(releaser));
         }
         if (compressedData.size() > 0) {
-          crc.update(compressedData.toByteArray());
+          crc.update(compressedData.toByteBuffer(releaser));
         }
         parquetMetadataConverter.writeDataPageV2Header(
             uncompressedSize,
