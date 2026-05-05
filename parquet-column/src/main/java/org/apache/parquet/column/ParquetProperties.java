@@ -66,6 +66,7 @@ public class ParquetProperties {
   public static final int DEFAULT_BLOOM_FILTER_CANDIDATES_NUMBER = 5;
   public static final boolean DEFAULT_STATISTICS_ENABLED = true;
   public static final boolean DEFAULT_SIZE_STATISTICS_ENABLED = true;
+  public static final boolean DEFAULT_WRITE_PATH_IN_SCHEMA_ENABLED = true;
 
   public static final boolean DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED = true;
 
@@ -120,6 +121,7 @@ public class ParquetProperties {
   private final int statisticsTruncateLength;
   private final boolean statisticsEnabled;
   private final boolean sizeStatisticsEnabled;
+  private final boolean writePathInSchemaEnabled;
 
   // The expected NDV (number of distinct values) for each columns
   private final ColumnProperty<Long> bloomFilterNDVs;
@@ -154,6 +156,7 @@ public class ParquetProperties {
     this.statisticsTruncateLength = builder.statisticsTruncateLength;
     this.statisticsEnabled = builder.statisticsEnabled;
     this.sizeStatisticsEnabled = builder.sizeStatisticsEnabled;
+    this.writePathInSchemaEnabled = builder.writePathInSchemaEnabled;
     this.bloomFilterNDVs = builder.bloomFilterNDVs.build();
     this.bloomFilterFPPs = builder.bloomFilterFPPs.build();
     this.bloomFilterEnabled = builder.bloomFilterEnabled.build();
@@ -322,6 +325,10 @@ public class ParquetProperties {
     return pageWriteChecksumEnabled;
   }
 
+  public boolean getWritePathInSchemaEnabled() {
+    return writePathInSchemaEnabled;
+  }
+
   public OptionalLong getBloomFilterNDV(ColumnDescriptor column) {
     Long ndv = bloomFilterNDVs.getValue(column);
     return ndv == null ? OptionalLong.empty() : OptionalLong.of(ndv);
@@ -406,6 +413,7 @@ public class ParquetProperties {
     private int statisticsTruncateLength = DEFAULT_STATISTICS_TRUNCATE_LENGTH;
     private boolean statisticsEnabled = DEFAULT_STATISTICS_ENABLED;
     private boolean sizeStatisticsEnabled = DEFAULT_SIZE_STATISTICS_ENABLED;
+    private boolean writePathInSchemaEnabled = DEFAULT_WRITE_PATH_IN_SCHEMA_ENABLED;
     private final ColumnProperty.Builder<Long> bloomFilterNDVs;
     private final ColumnProperty.Builder<Double> bloomFilterFPPs;
     private int maxBloomFilterBytes = DEFAULT_MAX_BLOOM_FILTER_BYTES;
@@ -753,6 +761,24 @@ public class ParquetProperties {
      */
     public Builder withSizeStatisticsEnabled(String columnPath, boolean enabled) {
       this.sizeStatistics.withValue(columnPath, enabled);
+      return this;
+    }
+
+    /**
+     * Sets whether to write the path_in_schema field in ColumnMetaData.
+     *
+     * The path_in_schema field in the Thrift metadata is redundant and wastes a great
+     * deal of space. Parquet file footers can be made much smaller by omitting this field.
+     * Because the field was originally a mandatory field, this property defaults to true
+     * to maintain compatibility with older readers that expect this field to be present.
+     * If one knows that all readers one plans to use are tolerant of the absence of this field,
+     * this may be safely set to false.
+     *
+     * @param enabled whether to write path_in_schema
+     * @return this builder for method chaining
+     */
+    public Builder withWritePathInSchemaEnabled(boolean enabled) {
+      this.writePathInSchemaEnabled = enabled;
       return this;
     }
 

@@ -977,6 +977,24 @@ public class ParquetWriter<T> implements Closeable {
     }
 
     /**
+     * Sets whether to write the path_in_schema field in ColumnMetaData.
+     *
+     * The path_in_schema field in the Thrift metadata is redundant and wastes a great
+     * deal of space. Parquet file footers can be made much smaller by omitting this field.
+     * Because the field was originally a mandatory field, this property defaults to true
+     * to maintain compatibility with older readers that expect this field to be present.
+     * If one knows that all readers one plans to use are tolerant of the absence of this field,
+     * this may be safely set to false.
+     *
+     * @param enabled whether to write path_in_schema
+     * @returnthis builder for method chaining
+     */
+    public SELF withWritePathInSchemaEnabled(boolean enabled) {
+      encodingPropsBuilder.withWritePathInSchemaEnabled(enabled);
+      return self();
+    }
+
+    /**
      * Build a {@link ParquetWriter} with the accumulated configuration.
      *
      * @return a configured {@code ParquetWriter} instance.

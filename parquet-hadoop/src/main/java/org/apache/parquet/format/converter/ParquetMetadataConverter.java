@@ -163,6 +163,7 @@ public class ParquetMetadataConverter {
       new ConvertedTypeConverterVisitor();
   private final int statisticsTruncateLength;
   private final boolean useSignedStringMinMax;
+  private final boolean writePathInSchema;
   private final ParquetReadOptions options;
 
   public ParquetMetadataConverter() {
@@ -170,7 +171,11 @@ public class ParquetMetadataConverter {
   }
 
   public ParquetMetadataConverter(int statisticsTruncateLength) {
-    this(false, statisticsTruncateLength);
+    this(false, statisticsTruncateLength, ParquetProperties.DEFAULT_WRITE_PATH_IN_SCHEMA_ENABLED);
+  }
+
+  public ParquetMetadataConverter(int statisticsTruncateLength, boolean writePathInSchema) {
+    this(false, statisticsTruncateLength, writePathInSchema);
   }
 
   /**
@@ -183,24 +188,36 @@ public class ParquetMetadataConverter {
   }
 
   public ParquetMetadataConverter(ParquetReadOptions options) {
-    this(options.useSignedStringMinMax(), ParquetProperties.DEFAULT_STATISTICS_TRUNCATE_LENGTH, options);
+    this(
+        options.useSignedStringMinMax(),
+        ParquetProperties.DEFAULT_STATISTICS_TRUNCATE_LENGTH,
+        ParquetProperties.DEFAULT_WRITE_PATH_IN_SCHEMA_ENABLED,
+        options);
   }
 
   private ParquetMetadataConverter(boolean useSignedStringMinMax) {
-    this(useSignedStringMinMax, ParquetProperties.DEFAULT_STATISTICS_TRUNCATE_LENGTH);
-  }
-
-  private ParquetMetadataConverter(boolean useSignedStringMinMax, int statisticsTruncateLength) {
-    this(useSignedStringMinMax, statisticsTruncateLength, null);
+    this(
+        useSignedStringMinMax,
+        ParquetProperties.DEFAULT_STATISTICS_TRUNCATE_LENGTH,
+        ParquetProperties.DEFAULT_WRITE_PATH_IN_SCHEMA_ENABLED);
   }
 
   private ParquetMetadataConverter(
-      boolean useSignedStringMinMax, int statisticsTruncateLength, ParquetReadOptions options) {
+      boolean useSignedStringMinMax, int statisticsTruncateLength, boolean writePathInSchema) {
+    this(useSignedStringMinMax, statisticsTruncateLength, writePathInSchema, null);
+  }
+
+  private ParquetMetadataConverter(
+      boolean useSignedStringMinMax,
+      int statisticsTruncateLength,
+      boolean writePathInSchema,
+      ParquetReadOptions options) {
     if (statisticsTruncateLength <= 0) {
       throw new IllegalArgumentException("Truncate length should be greater than 0");
     }
     this.useSignedStringMinMax = useSignedStringMinMax;
     this.statisticsTruncateLength = statisticsTruncateLength;
+    this.writePathInSchema = writePathInSchema;
     this.options = options;
   }
 
@@ -608,7 +625,6 @@ public class ParquetMetadataConverter {
       ColumnMetaData metaData = new ColumnMetaData(
           getType(columnMetaData.getType()),
           toFormatEncodings(columnMetaData.getEncodings()),
-          columnMetaData.getPath().toList(),
           toFormatCodec(columnMetaData.getCodec()),
           columnMetaData.getValueCount(),
           columnMetaData.getTotalUncompressedSize(),
@@ -618,6 +634,9 @@ public class ParquetMetadataConverter {
               && columnMetaData.getEncodingStats().hasDictionaryPages())
           || columnMetaData.hasDictionaryPage()) {
         metaData.setDictionary_page_offset(columnMetaData.getDictionaryPageOffset());
+      }
+      if (path != null && this.writePathInSchema) {
+        metaData.setPath_in_schema(path.toList());
       }
       long bloomFilterOffset = columnMetaData.getBloomFilterOffset();
       if (bloomFilterOffset >= 0) {
@@ -1830,6 +1849,9 @@ public class ParquetMetadataConverter {
     List<BlockMetaData> blocks = new ArrayList<BlockMetaData>();
     List<RowGroup> row_groups = parquetMetadata.getRow_groups();
 
+    // needed to create path_in_schema for leaf columns
+    List<String[]> col_paths = messageType.getPaths();
+
     if (row_groups != null) {
       for (RowGroup rowGroup : row_groups) {
         BlockMetaData blockMetaData = new BlockMetaData();
@@ -1859,7 +1881,7 @@ public class ParquetMetadataConverter {
           boolean lazyMetadataDecryption = false;
 
           if (null == cryptoMetaData) { // Plaintext column
-            columnPath = getPath(metaData);
+            columnPath = ColumnPath.get(col_paths.get(columnOrdinal));
             if (null != fileDecryptor && !fileDecryptor.plaintextFile()) {
               // mark this column as plaintext in encrypted file decryptor
               fileDecryptor.setColumnCryptoMetadata(
@@ -1876,7 +1898,7 @@ public class ParquetMetadataConverter {
                 throw new ParquetCryptoRuntimeException(
                     "ColumnMetaData not set in Encryption with Footer key");
               }
-              columnPath = getPath(metaData);
+              columnPath = ColumnPath.get(col_paths.get(columnOrdinal));
               if (!encryptedFooter) { // Unencrypted footer. Decrypt full column metadata, using footer
                 // key
                 ByteArrayInputStream tempInputStream =
@@ -1981,11 +2003,6 @@ public class ParquetMetadataConverter {
       return new IndexReference(columnChunk.getOffset_index_offset(), columnChunk.getOffset_index_length());
     }
     return null;
-  }
-
-  private static ColumnPath getPath(ColumnMetaData metaData) {
-    String[] path = metaData.path_in_schema.toArray(new String[0]);
-    return ColumnPath.get(path);
   }
 
   // Visible for testing
