@@ -1,6 +1,7 @@
 *.class
 .project
 .classpath
+.factorypath
 .settings
 target
 # Package Files #
@@ -20,4 +21,3 @@ target/
 mvn_install.log
 .vscode/*
 .DS_Store
-
