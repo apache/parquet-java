@@ -193,18 +193,6 @@ public abstract class LogicalTypeAnnotation {
   }
 
   /**
-   * Convert this logical type to old logical type representation in parquet-mr (if there's any).
-   * Those logical type implementations, which don't have a corresponding mapping should return null.
-   * <p>
-   * API should be considered private
-   *
-   * @return the OriginalType representation of the new logical type, or null if there's none
-   * @deprecated Please use the LogicalTypeAnnotation itself
-   */
-  @Deprecated
-  public abstract OriginalType toOriginalType();
-
-  /**
    * Visits this logical type with the given visitor
    *
    * @param logicalTypeAnnotationVisitor the visitor to visit this type
@@ -382,18 +370,6 @@ public abstract class LogicalTypeAnnotation {
 
     private StringLogicalTypeAnnotation() {}
 
-    /**
-     * API Should be considered private
-     *
-     * @return the original type
-     * @deprecated Please use the LogicalTypeAnnotation itself
-     */
-    @Override
-    @Deprecated
-    public OriginalType toOriginalType() {
-      return OriginalType.UTF8;
-    }
-
     @Override
     public <T> Optional<T> accept(LogicalTypeAnnotationVisitor<T> logicalTypeAnnotationVisitor) {
       return logicalTypeAnnotationVisitor.visit(this);
@@ -426,18 +402,6 @@ public abstract class LogicalTypeAnnotation {
 
     private MapLogicalTypeAnnotation() {}
 
-    /**
-     * API Should be considered private
-     *
-     * @return the original type
-     * @deprecated Please use the LogicalTypeAnnotation itself
-     */
-    @Override
-    @Deprecated
-    public OriginalType toOriginalType() {
-      return OriginalType.MAP;
-    }
-
     @Override
     public <T> Optional<T> accept(LogicalTypeAnnotationVisitor<T> logicalTypeAnnotationVisitor) {
       return logicalTypeAnnotationVisitor.visit(this);
@@ -465,18 +429,6 @@ public abstract class LogicalTypeAnnotation {
 
     private ListLogicalTypeAnnotation() {}
 
-    /**
-     * API Should be considered private
-     *
-     * @return the original type
-     * @deprecated Please use the LogicalTypeAnnotation itself
-     */
-    @Override
-    @Deprecated
-    public OriginalType toOriginalType() {
-      return OriginalType.LIST;
-    }
-
     @Override
     public <T> Optional<T> accept(LogicalTypeAnnotationVisitor<T> logicalTypeAnnotationVisitor) {
       return logicalTypeAnnotationVisitor.visit(this);
@@ -503,18 +455,6 @@ public abstract class LogicalTypeAnnotation {
     private static final EnumLogicalTypeAnnotation INSTANCE = new EnumLogicalTypeAnnotation();
 
     private EnumLogicalTypeAnnotation() {}
-
-    /**
-     * API Should be considered private
-     *
-     * @return the original type
-     * @deprecated Please use the LogicalTypeAnnotation itself
-     */
-    @Override
-    @Deprecated
-    public OriginalType toOriginalType() {
-      return OriginalType.ENUM;
-    }
 
     @Override
     public <T> Optional<T> accept(LogicalTypeAnnotationVisitor<T> logicalTypeAnnotationVisitor) {
@@ -562,18 +502,6 @@ public abstract class LogicalTypeAnnotation {
       return scale;
     }
 
-    /**
-     * API Should be considered private
-     *
-     * @return the original type
-     * @deprecated Please use the LogicalTypeAnnotation itself
-     */
-    @Override
-    @Deprecated
-    public OriginalType toOriginalType() {
-      return OriginalType.DECIMAL;
-    }
-
     @Override
     public <T> Optional<T> accept(LogicalTypeAnnotationVisitor<T> logicalTypeAnnotationVisitor) {
       return logicalTypeAnnotationVisitor.visit(this);
@@ -613,18 +541,6 @@ public abstract class LogicalTypeAnnotation {
     private static final DateLogicalTypeAnnotation INSTANCE = new DateLogicalTypeAnnotation();
 
     private DateLogicalTypeAnnotation() {}
-
-    /**
-     * API Should be considered private
-     *
-     * @return the original type
-     * @deprecated Please use the LogicalTypeAnnotation itself
-     */
-    @Override
-    @Deprecated
-    public OriginalType toOriginalType() {
-      return OriginalType.DATE;
-    }
 
     @Override
     public <T> Optional<T> accept(LogicalTypeAnnotationVisitor<T> logicalTypeAnnotationVisitor) {
@@ -666,25 +582,6 @@ public abstract class LogicalTypeAnnotation {
     private TimeLogicalTypeAnnotation(boolean isAdjustedToUTC, TimeUnit unit) {
       this.isAdjustedToUTC = isAdjustedToUTC;
       this.unit = unit;
-    }
-
-    /**
-     * API Should be considered private
-     *
-     * @return the original type
-     * @deprecated Please use the LogicalTypeAnnotation itself
-     */
-    @Override
-    @Deprecated
-    public OriginalType toOriginalType() {
-      switch (unit) {
-        case MILLIS:
-          return OriginalType.TIME_MILLIS;
-        case MICROS:
-          return OriginalType.TIME_MICROS;
-        default:
-          return null;
-      }
     }
 
     @Override
@@ -745,25 +642,6 @@ public abstract class LogicalTypeAnnotation {
     private TimestampLogicalTypeAnnotation(boolean isAdjustedToUTC, TimeUnit unit) {
       this.isAdjustedToUTC = isAdjustedToUTC;
       this.unit = unit;
-    }
-
-    /**
-     * API Should be considered private
-     *
-     * @return the original type
-     * @deprecated Please use the LogicalTypeAnnotation itself
-     */
-    @Override
-    @Deprecated
-    public OriginalType toOriginalType() {
-      switch (unit) {
-        case MILLIS:
-          return OriginalType.TIMESTAMP_MILLIS;
-        case MICROS:
-          return OriginalType.TIMESTAMP_MICROS;
-        default:
-          return null;
-      }
     }
 
     @Override
@@ -832,29 +710,6 @@ public abstract class LogicalTypeAnnotation {
       this.isSigned = isSigned;
     }
 
-    /**
-     * API Should be considered private
-     *
-     * @return the original type
-     * @deprecated Please use the LogicalTypeAnnotation itself
-     */
-    @Override
-    @Deprecated
-    public OriginalType toOriginalType() {
-      switch (bitWidth) {
-        case 8:
-          return isSigned ? OriginalType.INT_8 : OriginalType.UINT_8;
-        case 16:
-          return isSigned ? OriginalType.INT_16 : OriginalType.UINT_16;
-        case 32:
-          return isSigned ? OriginalType.INT_32 : OriginalType.UINT_32;
-        case 64:
-          return isSigned ? OriginalType.INT_64 : OriginalType.UINT_64;
-        default:
-          return null;
-      }
-    }
-
     @Override
     public <T> Optional<T> accept(LogicalTypeAnnotationVisitor<T> logicalTypeAnnotationVisitor) {
       return logicalTypeAnnotationVisitor.visit(this);
@@ -903,18 +758,6 @@ public abstract class LogicalTypeAnnotation {
 
     private JsonLogicalTypeAnnotation() {}
 
-    /**
-     * API Should be considered private
-     *
-     * @return the original type
-     * @deprecated Please use the LogicalTypeAnnotation itself
-     */
-    @Override
-    @Deprecated
-    public OriginalType toOriginalType() {
-      return OriginalType.JSON;
-    }
-
     @Override
     public <T> Optional<T> accept(LogicalTypeAnnotationVisitor<T> logicalTypeAnnotationVisitor) {
       return logicalTypeAnnotationVisitor.visit(this);
@@ -946,18 +789,6 @@ public abstract class LogicalTypeAnnotation {
     private static final BsonLogicalTypeAnnotation INSTANCE = new BsonLogicalTypeAnnotation();
 
     private BsonLogicalTypeAnnotation() {}
-
-    /**
-     * API Should be considered private
-     *
-     * @return the original type
-     * @deprecated Please use the LogicalTypeAnnotation itself
-     */
-    @Override
-    @Deprecated
-    public OriginalType toOriginalType() {
-      return OriginalType.BSON;
-    }
 
     @Override
     public <T> Optional<T> accept(LogicalTypeAnnotationVisitor<T> logicalTypeAnnotationVisitor) {
@@ -991,19 +822,6 @@ public abstract class LogicalTypeAnnotation {
     public static final int BYTES = 16;
 
     private UUIDLogicalTypeAnnotation() {}
-
-    /**
-     * API Should be considered private
-     *
-     * @return the original type
-     * @deprecated Please use the LogicalTypeAnnotation itself
-     */
-    @Override
-    @Deprecated
-    public OriginalType toOriginalType() {
-      // No OriginalType for UUID
-      return null;
-    }
 
     @Override
     public <T> Optional<T> accept(LogicalTypeAnnotationVisitor<T> logicalTypeAnnotationVisitor) {
@@ -1088,18 +906,6 @@ public abstract class LogicalTypeAnnotation {
 
     private IntervalLogicalTypeAnnotation() {}
 
-    /**
-     * API Should be considered private
-     *
-     * @return the original type
-     * @deprecated Please use the LogicalTypeAnnotation itself
-     */
-    @Override
-    @Deprecated
-    public OriginalType toOriginalType() {
-      return OriginalType.INTERVAL;
-    }
-
     @Override
     public <T> Optional<T> accept(LogicalTypeAnnotationVisitor<T> logicalTypeAnnotationVisitor) {
       return logicalTypeAnnotationVisitor.visit(this);
@@ -1143,18 +949,6 @@ public abstract class LogicalTypeAnnotation {
     }
 
     private MapKeyValueTypeAnnotation() {}
-
-    /**
-     * API Should be considered private
-     *
-     * @return the original type
-     * @deprecated Please use the LogicalTypeAnnotation itself
-     */
-    @Override
-    @Deprecated
-    public OriginalType toOriginalType() {
-      return OriginalType.MAP_KEY_VALUE;
-    }
 
     @Override
     public <T> Optional<T> accept(LogicalTypeAnnotationVisitor<T> logicalTypeAnnotationVisitor) {

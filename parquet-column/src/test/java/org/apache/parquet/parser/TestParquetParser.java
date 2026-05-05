@@ -52,6 +52,9 @@ import static org.apache.parquet.schema.Type.Repetition.OPTIONAL;
 import static org.apache.parquet.schema.Type.Repetition.REPEATED;
 import static org.apache.parquet.schema.Type.Repetition.REQUIRED;
 import static org.apache.parquet.schema.Types.buildMessage;
+
+import org.apache.parquet.schema.LogicalTypeAnnotation;
+import org.junit.Test;
 import static org.junit.Assert.assertEquals;
 
 import org.apache.parquet.schema.GroupType;
@@ -255,7 +258,7 @@ public class TestParquetParser {
   }
 
   @Test
-  public void testDecimalFixedAnnotation() {
+  public void testDecimalFixedAnnotationOriginalType() {
     String message =
         "message DecimalMessage {\n" + "  required FIXED_LEN_BYTE_ARRAY(4) aDecimal (DECIMAL(9,2));\n" + "}\n";
 
@@ -275,8 +278,30 @@ public class TestParquetParser {
   }
 
   @Test
-  public void testDecimalBinaryAnnotation() {
-    String message = "message DecimalMessage {\n" + "  required binary aDecimal (DECIMAL(9,2));\n" + "}\n";
+  public void testDecimalFixedAnnotation() {
+    String message =
+        "message DecimalMessage {\n" +
+        "  required FIXED_LEN_BYTE_ARRAY(4) aDecimal (DECIMAL(9,2));\n" +
+        "}\n";
+
+    MessageType parsed = parseMessageType(message);
+    MessageType expected = buildMessage()
+      .required(FIXED_LEN_BYTE_ARRAY).length(4)
+      .as(LogicalTypeAnnotation.decimalType(2, 9))
+      .named("aDecimal")
+      .named("DecimalMessage");
+
+    assertEquals(expected, parsed);
+    MessageType reparsed = parseMessageType(parsed.toString());
+    assertEquals(expected, reparsed);
+  }
+
+  @Test
+  public void testDecimalBinaryAnnotationOriginalType() {
+    String message =
+        "message DecimalMessage {\n" +
+        "  required binary aDecimal (DECIMAL(9,2));\n" +
+        "}\n";
 
     MessageType parsed = parseMessageType(message);
     MessageType expected = buildMessage()
@@ -286,6 +311,24 @@ public class TestParquetParser {
         .scale(2)
         .named("aDecimal")
         .named("DecimalMessage");
+
+    assertEquals(expected, parsed);
+    MessageType reparsed = parseMessageType(parsed.toString());
+    assertEquals(expected, reparsed);
+  }
+
+  @Test
+  public void testDecimalBinaryAnnotation() {
+    String message =
+      "message DecimalMessage {\n" +
+        "  required binary aDecimal (DECIMAL(9,2));\n" +
+        "}\n";
+
+    MessageType parsed = parseMessageType(message);
+    MessageType expected = buildMessage()
+      .required(BINARY).as(LogicalTypeAnnotation.decimalType(2, 9))
+      .named("aDecimal")
+      .named("DecimalMessage");
 
     assertEquals(expected, parsed);
     MessageType reparsed = parseMessageType(parsed.toString());

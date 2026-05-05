@@ -227,13 +227,6 @@ public abstract class Type {
   }
 
   /**
-   * @return the original type (LIST, MAP, ...)
-   */
-  public OriginalType getOriginalType() {
-    return logicalTypeAnnotation == null ? null : logicalTypeAnnotation.toOriginalType();
-  }
-
-  /**
    * @return if this is a primitive type
    */
   public abstract boolean isPrimitive();
