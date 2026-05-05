@@ -33,13 +33,21 @@ import org.apache.hadoop.io.compress.CompressionCodec;
 import org.apache.hadoop.io.compress.CompressionOutputStream;
 import org.apache.hadoop.io.compress.Compressor;
 import org.apache.hadoop.io.compress.Decompressor;
+import org.apache.parquet.bytes.ByteBufferReleaser;
 import org.apache.parquet.bytes.BytesInput;
+import org.apache.parquet.bytes.DirectByteBufferAllocator;
+import org.apache.parquet.bytes.TrackingByteBufferAllocator;
+import org.apache.parquet.compression.CompressionCodecFactory.BytesInputCompressor;
+import org.apache.parquet.compression.CompressionCodecFactory.BytesInputDecompressor;
+import org.apache.parquet.hadoop.CodecFactory;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
 
 public class TestCompressionCodec {
+
+  private final int pageSize = 64 * 1024;
 
   @Test
   public void testLz4RawBlock() throws IOException {
@@ -174,6 +182,35 @@ public class TestCompressionCodec {
       default:
         // Not implemented yet
         return null;
+    }
+  }
+
+  /**
+   * Regression test for #3478: LZ4_RAW heap decompression fails when the decompressed page
+   * exceeds the ~8KB chunk size used by stream materialization in BytesInput.copy().
+   */
+  @Test
+  public void testLz4RawHeapDecompressorCanCopyLargePage() throws IOException {
+    final int size = 16 * 1024;
+    final byte[] raw = new byte[size];
+    new Random(42).nextBytes(raw);
+
+    try (TrackingByteBufferAllocator allocator =
+            TrackingByteBufferAllocator.wrap(new DirectByteBufferAllocator());
+        ByteBufferReleaser releaser = new ByteBufferReleaser(allocator)) {
+      CodecFactory heapCodecFactory = new CodecFactory(new Configuration(), pageSize);
+      BytesInputCompressor compressor = heapCodecFactory.getCompressor(CompressionCodecName.LZ4_RAW);
+      BytesInputDecompressor decompressor = heapCodecFactory.getDecompressor(CompressionCodecName.LZ4_RAW);
+
+      BytesInput compressed = compressor.compress(BytesInput.from(raw));
+      BytesInput decompressed = decompressor.decompress(compressed, size);
+
+      BytesInput copied = decompressed.copy(releaser);
+      Assert.assertArrayEquals(raw, copied.toByteArray());
+
+      compressor.release();
+      decompressor.release();
+      heapCodecFactory.release();
     }
   }
 
