@@ -24,12 +24,23 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Based on DataOutputStream but in little endian and without the String/char methods
+ * Based on DataOutputStream but in little endian and without the String/char methods.
+ *
+ * @deprecated As of release following the {@link CapacityByteArrayOutputStream#writeInt(int)}
+ *     and {@link CapacityByteArrayOutputStream#writeLong(long)} additions, this class is no
+ *     longer used by Parquet's own writers. Producers of PLAIN-encoded data should write
+ *     little-endian values directly into a {@link java.nio.ByteBuffer} configured with
+ *     {@link java.nio.ByteOrder#LITTLE_ENDIAN}, which compiles to a single intrinsic store on
+ *     little-endian architectures and avoids the per-call byte decomposition and virtual
+ *     dispatch performed here. This class is retained for binary compatibility and will be
+ *     removed in a future release.
  */
+@Deprecated
 public class LittleEndianDataOutputStream extends OutputStream {
 
   private static final Logger LOG = LoggerFactory.getLogger(LittleEndianDataOutputStream.class);
   private final OutputStream out;
+  private byte writeBuffer[] = new byte[8];
 
   /**
    * Creates a new data output stream to write data to the specified
@@ -130,8 +141,9 @@ public class LittleEndianDataOutputStream extends OutputStream {
    * @see java.io.FilterOutputStream#out
    */
   public final void writeShort(int v) throws IOException {
-    out.write((v >>> 0) & 0xFF);
-    out.write((v >>> 8) & 0xFF);
+    writeBuffer[0] = (byte) (v >>> 0);
+    writeBuffer[1] = (byte) (v >>> 8);
+    out.write(writeBuffer, 0, 2);
   }
 
   /**
@@ -144,16 +156,12 @@ public class LittleEndianDataOutputStream extends OutputStream {
    * @see java.io.FilterOutputStream#out
    */
   public final void writeInt(int v) throws IOException {
-    // TODO: see note in LittleEndianDataInputStream: maybe faster
-    // to use Integer.reverseBytes() and then writeInt, or a ByteBuffer
-    // approach
-    out.write((v >>> 0) & 0xFF);
-    out.write((v >>> 8) & 0xFF);
-    out.write((v >>> 16) & 0xFF);
-    out.write((v >>> 24) & 0xFF);
+    writeBuffer[0] = (byte) (v >>> 0);
+    writeBuffer[1] = (byte) (v >>> 8);
+    writeBuffer[2] = (byte) (v >>> 16);
+    writeBuffer[3] = (byte) (v >>> 24);
+    out.write(writeBuffer, 0, 4);
   }
-
-  private byte writeBuffer[] = new byte[8];
 
   /**
    * Writes a <code>long</code> to the underlying output stream as eight
