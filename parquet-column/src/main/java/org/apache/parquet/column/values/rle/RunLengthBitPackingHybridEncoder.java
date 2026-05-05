@@ -75,6 +75,11 @@ public class RunLengthBitPackingHybridEncoder implements AutoCloseable {
   private final byte[] packBuffer;
 
   /**
+   * Buffer four 8-value groups so we can use the packer's 32-value fast path.
+   */
+  private final int[] bitPackedValuesBuffer;
+
+  /**
    * Previous value written, used to detect repeated values
    */
   private int previousValue;
@@ -97,6 +102,8 @@ public class RunLengthBitPackingHybridEncoder implements AutoCloseable {
    * to the current bit-packed-run
    */
   private int bitPackedGroupCount;
+
+  private int numBitPackedValues;
 
   /**
    * A "pointer" to a single byte in baos,
@@ -125,7 +132,8 @@ public class RunLengthBitPackingHybridEncoder implements AutoCloseable {
 
     this.bitWidth = bitWidth;
     this.baos = new CapacityByteArrayOutputStream(initialCapacity, pageSize, allocator);
-    this.packBuffer = new byte[bitWidth];
+    this.packBuffer = new byte[bitWidth * 4];
+    this.bitPackedValuesBuffer = new int[32];
     this.bufferedValues = new int[8];
     this.packer = Packer.LITTLE_ENDIAN.newBytePacker(bitWidth);
     reset(false);
@@ -139,6 +147,7 @@ public class RunLengthBitPackingHybridEncoder implements AutoCloseable {
     this.numBufferedValues = 0;
     this.repeatCount = 0;
     this.bitPackedGroupCount = 0;
+    this.numBitPackedValues = 0;
     this.bitPackedRunHeaderPointer = -1;
     this.toBytesCalled = false;
   }
@@ -196,8 +205,9 @@ public class RunLengthBitPackingHybridEncoder implements AutoCloseable {
       bitPackedRunHeaderPointer = baos.getCurrentIndex();
     }
 
-    packer.pack8Values(bufferedValues, 0, packBuffer, 0);
-    baos.write(packBuffer);
+    System.arraycopy(bufferedValues, 0, bitPackedValuesBuffer, numBitPackedValues, 8);
+    numBitPackedValues += 8;
+    flushBitPackedValuesIfFull();
 
     // empty the buffer, they've all been written
     numBufferedValues = 0;
@@ -207,6 +217,34 @@ public class RunLengthBitPackingHybridEncoder implements AutoCloseable {
     repeatCount = 0;
 
     ++bitPackedGroupCount;
+  }
+
+  private void flushBitPackedValuesIfFull() {
+    if (numBitPackedValues == bitPackedValuesBuffer.length) {
+      packer.pack32Values(bitPackedValuesBuffer, 0, packBuffer, 0);
+      baos.write(packBuffer, 0, bitWidth * 4);
+      numBitPackedValues = 0;
+    }
+  }
+
+  private void flushBitPackedValues() {
+    if (numBitPackedValues == 0) {
+      return;
+    }
+
+    if (numBitPackedValues == bitPackedValuesBuffer.length) {
+      packer.pack32Values(bitPackedValuesBuffer, 0, packBuffer, 0);
+      baos.write(packBuffer, 0, bitWidth * 4);
+    } else {
+      int outPos = 0;
+      for (int inPos = 0; inPos < numBitPackedValues; inPos += 8) {
+        packer.pack8Values(bitPackedValuesBuffer, inPos, packBuffer, outPos);
+        outPos += bitWidth;
+      }
+      baos.write(packBuffer, 0, outPos);
+    }
+
+    numBitPackedValues = 0;
   }
 
   /**
@@ -220,6 +258,8 @@ public class RunLengthBitPackingHybridEncoder implements AutoCloseable {
       // we're not currently in a bit-packed-run
       return;
     }
+
+    flushBitPackedValues();
 
     // create bit-packed-header, which needs to fit in 1 byte
     byte bitPackHeader = (byte) ((bitPackedGroupCount << 1) | 1);

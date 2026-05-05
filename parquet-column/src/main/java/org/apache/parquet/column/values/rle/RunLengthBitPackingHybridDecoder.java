@@ -18,9 +18,8 @@
  */
 package org.apache.parquet.column.values.rle;
 
-import java.io.DataInputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.column.values.bitpacking.BytePacker;
@@ -42,23 +41,34 @@ public class RunLengthBitPackingHybridDecoder {
 
   private final int bitWidth;
   private final BytePacker packer;
-  private final InputStream in;
+  private final ByteBuffer buffer;
 
   private MODE mode;
   private int currentCount;
   private int currentValue;
   private int[] currentBuffer;
+  private int currentBufferLength;
 
-  public RunLengthBitPackingHybridDecoder(int bitWidth, InputStream in) {
+  // Reusable buffers to avoid per-run allocation in PACKED mode
+  private int[] packedValuesBuffer = new int[0];
+  private byte[] packedBytesBuffer = new byte[0];
+
+  public RunLengthBitPackingHybridDecoder(int bitWidth, ByteBuffer buffer) {
     LOG.debug("decoding bitWidth {}", bitWidth);
 
     Preconditions.checkArgument(bitWidth >= 0 && bitWidth <= 32, "bitWidth must be >= 0 and <= 32");
     this.bitWidth = bitWidth;
     this.packer = Packer.LITTLE_ENDIAN.newBytePacker(bitWidth);
-    this.in = in;
+    this.buffer = buffer.order(ByteOrder.LITTLE_ENDIAN);
   }
 
-  public int readInt() throws IOException {
+  /**
+   * Reads the next int value from the RLE/Bit-Packing hybrid stream.
+   *
+   * @return the next decoded integer value
+   * @throws ParquetDecodingException if a decoding error occurs
+   */
+  public int readInt() {
     if (currentCount == 0) {
       readNext();
     }
@@ -69,7 +79,7 @@ public class RunLengthBitPackingHybridDecoder {
         result = currentValue;
         break;
       case PACKED:
-        result = currentBuffer[currentBuffer.length - 1 - currentCount];
+        result = currentBuffer[currentBufferLength - 1 - currentCount];
         break;
       default:
         throw new ParquetDecodingException("not a valid mode " + mode);
@@ -77,30 +87,45 @@ public class RunLengthBitPackingHybridDecoder {
     return result;
   }
 
-  private void readNext() throws IOException {
-    Preconditions.checkArgument(in.available() > 0, "Reading past RLE/BitPacking stream.");
-    final int header = BytesUtils.readUnsignedVarInt(in);
+  private void readNext() {
+    Preconditions.checkArgument(buffer.hasRemaining(), "Reading past RLE/BitPacking stream.");
+    final int header = BytesUtils.readUnsignedVarInt(buffer);
     mode = (header & 1) == 0 ? MODE.RLE : MODE.PACKED;
     switch (mode) {
       case RLE:
         currentCount = header >>> 1;
         LOG.debug("reading {} values RLE", currentCount);
-        currentValue = BytesUtils.readIntLittleEndianPaddedOnBitWidth(in, bitWidth);
+        currentValue = BytesUtils.readIntLittleEndianPaddedOnBitWidth(buffer, bitWidth);
         break;
       case PACKED:
         int numGroups = header >>> 1;
         currentCount = numGroups * 8;
+        currentBufferLength = currentCount;
         LOG.debug("reading {} values BIT PACKED", currentCount);
-        currentBuffer = new int[currentCount]; // TODO: reuse a buffer
-        byte[] bytes = new byte[numGroups * bitWidth];
+        if (packedValuesBuffer.length < currentCount) {
+          packedValuesBuffer = new int[currentCount];
+        }
+        currentBuffer = packedValuesBuffer;
+        int bytesRequired = numGroups * bitWidth;
+        if (packedBytesBuffer.length < bytesRequired) {
+          packedBytesBuffer = new byte[bytesRequired];
+        }
         // At the end of the file RLE data though, there might not be that many bytes left.
         int bytesToRead = (int) Math.ceil(currentCount * bitWidth / 8.0);
-        bytesToRead = Math.min(bytesToRead, in.available());
-        new DataInputStream(in).readFully(bytes, 0, bytesToRead);
-        for (int valueIndex = 0, byteIndex = 0;
-            valueIndex < currentCount;
-            valueIndex += 8, byteIndex += bitWidth) {
-          packer.unpack8Values(bytes, byteIndex, currentBuffer, valueIndex);
+        bytesToRead = Math.min(bytesToRead, buffer.remaining());
+        buffer.get(packedBytesBuffer, 0, bytesToRead);
+        // Unpack 32 values (4 groups) at a time when possible — symmetric to the encoder's
+        // pack32Values fast path. Falls back to unpack8Values for any residual groups.
+        int groupIdx = 0;
+        int byteIndex = 0;
+        final int step32 = bitWidth * 4;
+        while (groupIdx + 4 <= numGroups) {
+          packer.unpack32Values(packedBytesBuffer, byteIndex, currentBuffer, groupIdx * 8);
+          groupIdx += 4;
+          byteIndex += step32;
+        }
+        for (; groupIdx < numGroups; groupIdx++, byteIndex += bitWidth) {
+          packer.unpack8Values(packedBytesBuffer, byteIndex, currentBuffer, groupIdx * 8);
         }
         break;
       default:
