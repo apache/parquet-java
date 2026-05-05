@@ -33,15 +33,12 @@ public class DefaultValuesWriterFactory implements ValuesWriterFactory {
 
   private ValuesWriterFactory delegateFactory;
 
-  private static final ValuesWriterFactory DEFAULT_V1_WRITER_FACTORY = new DefaultV1ValuesWriterFactory();
-  private static final ValuesWriterFactory DEFAULT_V2_WRITER_FACTORY = new DefaultV2ValuesWriterFactory();
-
   @Override
   public void initialize(ParquetProperties properties) {
     if (properties.getWriterVersion() == WriterVersion.PARQUET_1_0) {
-      delegateFactory = DEFAULT_V1_WRITER_FACTORY;
+      delegateFactory = new DefaultV1ValuesWriterFactory();
     } else {
-      delegateFactory = DEFAULT_V2_WRITER_FACTORY;
+      delegateFactory = new DefaultV2ValuesWriterFactory();
     }
 
     delegateFactory.initialize(properties);
