@@ -501,6 +501,7 @@
           <excludes>
             <exclude>.github/PULL_REQUEST_TEMPLATE.md</exclude>
             <exclude>**/*.parquet</exclude>
+            <exclude>**/*.csv</exclude>
             <exclude>**/*.avro</exclude>
             <exclude>**/*.json</exclude>
             <exclude>**/*.avsc</exclude>
