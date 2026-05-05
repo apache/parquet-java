@@ -112,6 +112,22 @@ public class DeltaBinaryPackingValuesReader extends ValuesReader {
     return valuesBuffer[valuesRead++];
   }
 
+  @Override
+  public void readIntegers(int[] dest, int offset, int count) {
+    checkRead();
+    for (int i = 0; i < count; i++) {
+      dest[offset + i] = (int) valuesBuffer[valuesRead + i];
+    }
+    valuesRead += count;
+  }
+
+  @Override
+  public void readLongs(long[] dest, int offset, int count) {
+    checkRead();
+    System.arraycopy(valuesBuffer, valuesRead, dest, offset, count);
+    valuesRead += count;
+  }
+
   private void checkRead() {
     if (valuesRead >= totalValueCount) {
       throw new ParquetDecodingException("no more value to read, total value count is " + totalValueCount);

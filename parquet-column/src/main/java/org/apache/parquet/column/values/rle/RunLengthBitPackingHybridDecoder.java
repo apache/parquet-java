@@ -77,6 +77,40 @@ public class RunLengthBitPackingHybridDecoder {
     return result;
   }
 
+  /**
+   * Reads {@code count} int values into {@code dest} starting at {@code offset}.
+   * This avoids per-value virtual dispatch overhead by batching across RLE runs
+   * and packed groups.
+   *
+   * @param dest   destination array
+   * @param offset start index in dest
+   * @param count  number of values to read
+   */
+  public void readInts(int[] dest, int offset, int count) throws IOException {
+    int remaining = count;
+    int pos = offset;
+    while (remaining > 0) {
+      if (currentCount == 0) {
+        readNext();
+      }
+      int batchSize = Math.min(remaining, currentCount);
+      switch (mode) {
+        case RLE:
+          java.util.Arrays.fill(dest, pos, pos + batchSize, currentValue);
+          break;
+        case PACKED:
+          int startIdx = currentBuffer.length - currentCount;
+          System.arraycopy(currentBuffer, startIdx, dest, pos, batchSize);
+          break;
+        default:
+          throw new ParquetDecodingException("not a valid mode " + mode);
+      }
+      currentCount -= batchSize;
+      remaining -= batchSize;
+      pos += batchSize;
+    }
+  }
+
   private void readNext() throws IOException {
     Preconditions.checkArgument(in.available() > 0, "Reading past RLE/BitPacking stream.");
     final int header = BytesUtils.readUnsignedVarInt(in);
