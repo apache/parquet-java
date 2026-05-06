@@ -32,14 +32,14 @@ function check_github_checks_passed() {
 
   print_info "Checking GitHub CI status for commit ${commit_sha}..."
 
-  if [[ -z "${GITHUB_TOKEN:-}" ]]; then
-    print_warning "GITHUB_TOKEN not set, skipping CI check verification"
-    return 0
-  fi
-
   if [[ ${DRY_RUN:-1} -eq 1 ]]; then
     print_info "DRY_RUN is enabled, skipping GitHub check verification"
     return 0
+  fi
+
+  if [[ -z "${GITHUB_TOKEN:-}" ]]; then
+    print_error "GITHUB_TOKEN is required to verify CI checks"
+    return 1
   fi
 
   local repo_info="${GITHUB_REPO}"

@@ -25,11 +25,20 @@ setup() {
 
 # ---- check_github_checks_passed ----
 
-@test "check_github_checks_passed: skips when GITHUB_TOKEN not set" {
+@test "check_github_checks_passed: fails when GITHUB_TOKEN not set" {
   unset GITHUB_TOKEN
+  DRY_RUN=0
+  run check_github_checks_passed "abc123"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"GITHUB_TOKEN is required"* ]]
+}
+
+@test "check_github_checks_passed: skips in dry-run even without GITHUB_TOKEN" {
+  unset GITHUB_TOKEN
+  DRY_RUN=1
   run check_github_checks_passed "abc123"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"GITHUB_TOKEN not set"* ]]
+  [[ "$output" == *"DRY_RUN"* ]]
 }
 
 @test "check_github_checks_passed: skips in dry-run mode" {
