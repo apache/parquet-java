@@ -20,6 +20,8 @@
 package org.apache.parquet.hadoop;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.net.Proxy;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -34,7 +36,37 @@ public class InterOpTester {
   private static final String PARQUET_TESTING_REPO = "https://github.com/apache/parquet-testing/raw/";
   private static final String PARQUET_TESTING_PATH = "target/parquet-testing/";
   private static final Logger LOG = LoggerFactory.getLogger(InterOpTester.class);
-  private OkHttpClient httpClient = new OkHttpClient();
+  // since PARQUET_TESTING_REPO might be beyond a web proxy ...
+  public static OkHttpClient createOkHttpClientOptProxy() {
+    /* We use a different JVM property set,
+     * because CI may define JVM properties
+     * "https.proxyHost" and "https.proxyPort"
+     * and that proxy won't support some compressions
+     * (e.g. gzip/snappy on github.com CI).
+     */
+    String proxyHost = System.getProperty("parquet.https.proxyHost");
+    String proxyPort = System.getProperty("parquet.https.proxyPort");
+    OkHttpClient client = null;
+    if (proxyHost != null && proxyPort != null) {
+      try {
+        int port = Integer.valueOf(proxyPort);
+        Proxy proxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress(proxyHost, port));
+        client = new OkHttpClient.Builder().proxy(proxy).build();
+      } catch (NumberFormatException e) {
+        LOG.warn(
+            "Ignoring proxy configuration because proxy port could not be parsed: "
+                + "parquet.https.proxyHost='{}', parquet.https.proxyPort='{}'. "
+                + "Falling back to a direct connection.",
+            proxyHost,
+            proxyPort,
+            e);
+      }
+    }
+    if (client == null) client = new OkHttpClient();
+    return client;
+  }
+
+  private OkHttpClient httpClient = createOkHttpClientOptProxy();
 
   public Path GetInterOpFile(String fileName, String changeset) throws IOException {
     return GetInterOpFile(fileName, changeset, "data");
