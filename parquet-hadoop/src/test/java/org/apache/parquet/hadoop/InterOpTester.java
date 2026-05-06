@@ -47,7 +47,7 @@ public class InterOpTester {
     String proxyHost = System.getProperty("parquet.https.proxyHost");
     String proxyPort = System.getProperty("parquet.https.proxyPort");
     OkHttpClient client = null;
-    if (proxyHost != null || proxyPort != null) {
+    if (proxyHost != null && proxyPort != null) {
       try {
         int port = Integer.valueOf(proxyPort);
         Proxy proxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress(proxyHost, port));
