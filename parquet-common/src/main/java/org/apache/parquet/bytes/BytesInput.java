@@ -19,7 +19,6 @@
 package org.apache.parquet.bytes;
 
 import java.io.ByteArrayOutputStream;
-import java.io.DataInputStream;
 import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -367,8 +366,18 @@ public abstract class BytesInput {
     @Override
     public void writeAllTo(OutputStream out) throws IOException {
       LOG.debug("write All {} bytes", byteCount);
-      // TODO: more efficient
-      out.write(this.toByteArray());
+      // Transfer in chunks to avoid allocating a byteCount-sized intermediate buffer
+      byte[] buffer = new byte[Math.min(byteCount, 8192)];
+      int remaining = byteCount;
+      while (remaining > 0) {
+        int toRead = Math.min(remaining, buffer.length);
+        int n = in.readNBytes(buffer, 0, toRead);
+        if (n < toRead) {
+          throw new EOFException("Reached the end of stream with " + (remaining - n) + " bytes left to read");
+        }
+        out.write(buffer, 0, n);
+        remaining -= n;
+      }
     }
 
     @Override
@@ -395,8 +404,11 @@ public abstract class BytesInput {
 
     public byte[] toByteArray() throws IOException {
       LOG.debug("read all {} bytes", byteCount);
-      byte[] buf = new byte[byteCount];
-      new DataInputStream(in).readFully(buf);
+      byte[] buf = in.readNBytes(byteCount);
+      if (buf.length != byteCount) {
+        throw new EOFException(
+            "Reached the end of stream with " + (byteCount - buf.length) + " bytes left to read");
+      }
       return buf;
     }
 

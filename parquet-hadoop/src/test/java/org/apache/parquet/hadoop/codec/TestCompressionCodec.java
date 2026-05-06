@@ -195,8 +195,7 @@ public class TestCompressionCodec {
     final byte[] raw = new byte[size];
     new Random(42).nextBytes(raw);
 
-    try (TrackingByteBufferAllocator allocator =
-            TrackingByteBufferAllocator.wrap(new DirectByteBufferAllocator());
+    try (TrackingByteBufferAllocator allocator = TrackingByteBufferAllocator.wrap(new DirectByteBufferAllocator());
         ByteBufferReleaser releaser = new ByteBufferReleaser(allocator)) {
       CodecFactory heapCodecFactory = new CodecFactory(new Configuration(), pageSize);
       BytesInputCompressor compressor = heapCodecFactory.getCompressor(CompressionCodecName.LZ4_RAW);
