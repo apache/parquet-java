@@ -20,8 +20,8 @@ package org.apache.parquet.statistics;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -141,12 +141,12 @@ public class TestSizeStatisticsRoundTrip {
 
       SizeStatistics sizeStatistics = column.getSizeStatistics();
       Assert.assertEquals(Optional.of(3L), sizeStatistics.getUnencodedByteArrayDataBytes());
-      Assert.assertEquals(Arrays.asList(2L, 1L), sizeStatistics.getRepetitionLevelHistogram());
-      Assert.assertEquals(Arrays.asList(0L, 0L, 0L, 3L), sizeStatistics.getDefinitionLevelHistogram());
+      Assert.assertEquals(List.of(2L, 1L), sizeStatistics.getRepetitionLevelHistogram());
+      Assert.assertEquals(List.of(0L, 0L, 0L, 3L), sizeStatistics.getDefinitionLevelHistogram());
 
       ColumnIndex columnIndex = reader.readColumnIndex(column);
-      Assert.assertEquals(Arrays.asList(2L, 1L), sizeStatistics.getRepetitionLevelHistogram());
-      Assert.assertEquals(Arrays.asList(0L, 0L, 0L, 3L), sizeStatistics.getDefinitionLevelHistogram());
+      Assert.assertEquals(List.of(2L, 1L), sizeStatistics.getRepetitionLevelHistogram());
+      Assert.assertEquals(List.of(0L, 0L, 0L, 3L), sizeStatistics.getDefinitionLevelHistogram());
 
       OffsetIndex offsetIndex = reader.readOffsetIndex(column);
       Assert.assertEquals(1, offsetIndex.getPageCount());

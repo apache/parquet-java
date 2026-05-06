@@ -27,7 +27,9 @@ public enum ParquetFileReaderMetrics {
   ReadThroughput("read throughput when reading Parquet file from storage (MB/sec)"),
   DecompressTime("time spent in block decompression"),
   DecompressSize("decompressed data size (MB)"),
-  DecompressThroughput("block decompression throughput (MB/sec)");
+  DecompressThroughput("block decompression throughput (MB/sec)"),
+  PagesIncluded("pages included due to column index filtering"),
+  PagesSkipped("pages skipped due to column index filtering");
 
   private final String desc;
 

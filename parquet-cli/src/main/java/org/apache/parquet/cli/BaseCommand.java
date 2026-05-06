@@ -35,6 +35,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.AccessController;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import org.apache.avro.Schema;
 import org.apache.avro.file.DataFileReader;
@@ -48,6 +49,7 @@ import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.LocalFileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.parquet.HadoopReadOptions;
 import org.apache.parquet.avro.AvroParquetReader;
 import org.apache.parquet.avro.AvroReadSupport;
 import org.apache.parquet.cli.json.AvroJsonReader;
@@ -55,13 +57,60 @@ import org.apache.parquet.cli.util.Formats;
 import org.apache.parquet.cli.util.GetClassLoader;
 import org.apache.parquet.cli.util.Schemas;
 import org.apache.parquet.cli.util.SeekableFSDataInputStream;
+import org.apache.parquet.crypto.DecryptionKeyRetriever;
+import org.apache.parquet.crypto.FileDecryptionProperties;
+import org.apache.parquet.example.data.Group;
+import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.ParquetReader;
+import org.apache.parquet.hadoop.example.GroupReadSupport;
+import org.apache.parquet.hadoop.util.HadoopInputFile;
+import org.apache.parquet.io.InputFile;
 import org.slf4j.Logger;
 
 public abstract class BaseCommand implements Command, Configurable {
 
   private static final String RESOURCE_URI_SCHEME = "resource";
   private static final String STDIN_AS_SOURCE = "stdin";
+  public static final String PARQUET_CLI_ENABLE_GROUP_READER = "parquet.enable.simple-reader";
+
+  /**
+   * Note for dev: Due to legancy reasons, parquet-cli used the avro schema reader which
+   * breaks for files generated through proto. This logic is in place to auto-detect such cases
+   * and route the request to simple reader instead of avro.
+   */
+  private boolean isProtobufStyleSchema(String source) throws IOException {
+    try (ParquetFileReader reader = ParquetFileReader.open(getConf(), qualifiedPath(source))) {
+      Map<String, String> metadata = reader.getFooter().getFileMetaData().getKeyValueMetaData();
+      return metadata != null && metadata.containsKey("parquet.proto.class");
+    }
+  }
+
+  // Util to convert ParquetReader to Iterable
+  private static <T> Iterable<T> asIterable(final ParquetReader<T> reader) {
+    return () -> new Iterator<T>() {
+      private T next = advance();
+
+      private T advance() {
+        try {
+          return reader.read();
+        } catch (IOException e) {
+          throw new RuntimeException(e);
+        }
+      }
+
+      @Override
+      public boolean hasNext() {
+        return next != null;
+      }
+
+      @Override
+      public T next() {
+        T current = next;
+        next = advance();
+        return current;
+      }
+    };
+  }
 
   protected final Logger console;
 
@@ -316,10 +365,110 @@ public abstract class BaseCommand implements Command, Configurable {
     return urls;
   }
 
+  protected ParquetFileReader createParquetFileReader(String source) throws IOException {
+    InputFile in = HadoopInputFile.fromPath(qualifiedPath(source), getConf());
+
+    HadoopReadOptions.Builder optionsBuilder = HadoopReadOptions.builder(getConf());
+    FileDecryptionProperties decryptionProperties = createFileDecryptionProperties();
+    if (decryptionProperties != null) {
+      optionsBuilder.withDecryption(decryptionProperties);
+    }
+
+    return ParquetFileReader.open(in, optionsBuilder.build());
+  }
+
+  protected FileDecryptionProperties createFileDecryptionProperties() {
+    Configuration conf = getConf();
+    String footerKeyHex = conf.get("parquet.encryption.footer.key");
+    String columnKeysHex = conf.get("parquet.encryption.column.keys");
+
+    if (footerKeyHex == null && columnKeysHex == null) {
+      return null;
+    }
+
+    ConfigurableKeyRetriever keyRetriever = new ConfigurableKeyRetriever();
+    FileDecryptionProperties.Builder builder =
+        FileDecryptionProperties.builder().withPlaintextFilesAllowed();
+
+    byte[] footerKey = hexToBytes(footerKeyHex);
+    builder.withFooterKey(footerKey);
+
+    parseAndSetColumnKeys(columnKeysHex, keyRetriever);
+    builder.withKeyRetriever(keyRetriever);
+
+    return builder.build();
+  }
+
+  private void parseAndSetColumnKeys(String columnKeysStr, ConfigurableKeyRetriever keyRetriever) {
+    String[] keyToColumns = columnKeysStr.split(";");
+    for (int i = 0; i < keyToColumns.length; ++i) {
+      final String curKeyToColumns = keyToColumns[i].trim();
+      if (curKeyToColumns.isEmpty()) {
+        continue;
+      }
+
+      String[] parts = curKeyToColumns.split(":");
+      if (parts.length != 2) {
+        console.warn(
+            "Incorrect key to columns mapping in parquet.encryption.column.keys: [{}]", curKeyToColumns);
+        continue;
+      }
+
+      String columnKeyId = parts[0].trim();
+      String columnNamesStr = parts[1].trim();
+      String[] columnNames = columnNamesStr.split(",");
+
+      byte[] columnKeyBytes = hexToBytes(columnKeyId);
+
+      for (int j = 0; j < columnNames.length; ++j) {
+        final String columnName = columnNames[j].trim();
+        keyRetriever.putKey(columnName, columnKeyBytes);
+        console.debug("Added decryption key for column: {}", columnName);
+      }
+    }
+  }
+
+  private byte[] hexToBytes(String hex) {
+
+    if (hex.startsWith("0x") || hex.startsWith("0X")) {
+      hex = hex.substring(2);
+    }
+
+    int len = hex.length();
+    byte[] data = new byte[len / 2];
+    for (int i = 0; i < len; i += 2) {
+      data[i / 2] = (byte) ((Character.digit(hex.charAt(i), 16) << 4) + Character.digit(hex.charAt(i + 1), 16));
+    }
+    return data;
+  }
+
+  private static class ConfigurableKeyRetriever implements DecryptionKeyRetriever {
+    private final Map<String, byte[]> keyMap = new java.util.HashMap<>();
+
+    public void putKey(String keyId, byte[] keyBytes) {
+      keyMap.put(keyId, keyBytes);
+    }
+
+    @Override
+    public byte[] getKey(byte[] keyMetaData) {
+      String keyId = new String(keyMetaData, StandardCharsets.UTF_8);
+      return keyMap.get(keyId);
+    }
+  }
+
   protected <D> Iterable<D> openDataFile(final String source, Schema projection) throws IOException {
     Formats.Format format = Formats.detectFormat(open(source));
     switch (format) {
       case PARQUET:
+        boolean isProtobufStyle = isProtobufStyleSchema(source);
+        boolean useGroupReader = getConf().getBoolean(PARQUET_CLI_ENABLE_GROUP_READER, false);
+        if (isProtobufStyle || useGroupReader) {
+          final ParquetReader<Group> grp = ParquetReader.<Group>builder(
+                  new GroupReadSupport(), qualifiedPath(source))
+              .withConf(getConf())
+              .build();
+          return (Iterable<D>) asIterable(grp);
+        }
         Configuration conf = new Configuration(getConf());
         // TODO: add these to the reader builder
         AvroReadSupport.setRequestedProjection(conf, projection);

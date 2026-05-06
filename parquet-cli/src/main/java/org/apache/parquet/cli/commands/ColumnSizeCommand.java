@@ -24,8 +24,11 @@ import com.beust.jcommander.Parameters;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -56,6 +59,18 @@ public class ColumnSizeCommand extends BaseCommand {
       required = false)
   List<String> columns;
 
+  @Parameter(
+      names = {"-s", "--sort"},
+      description = "Sort columns by size in descending order",
+      required = false)
+  boolean sortBySize = false;
+
+  @Parameter(
+      names = {"-p", "--percentage"},
+      description = "Print ratio as percentage instead of decimal",
+      required = false)
+  boolean printAsPercentage = false;
+
   @Override
   @SuppressWarnings("unchecked")
   public int run() throws IOException {
@@ -67,6 +82,10 @@ public class ColumnSizeCommand extends BaseCommand {
 
     // If user defined columns, only print out size for those columns
     if (columns != null && !columns.isEmpty()) {
+      // Collect aggregated column data
+      Map<String, Long> aggregatedSizes = new LinkedHashMap<>();
+      Map<String, Float> aggregatedRatios = new LinkedHashMap<>();
+
       for (String inputColumn : columns) {
         long size = 0;
         float ratio = 0;
@@ -76,16 +95,50 @@ public class ColumnSizeCommand extends BaseCommand {
             ratio += columnRatio.get(column);
           }
         }
-        console.info(inputColumn + "->" + " Size In Bytes: " + size + " Size In Ratio: " + ratio);
+        aggregatedSizes.put(inputColumn, size);
+        aggregatedRatios.put(inputColumn, ratio);
+      }
+
+      // Sort if requested
+      List<Map.Entry<String, Long>> entries = new ArrayList<>(aggregatedSizes.entrySet());
+      if (sortBySize) {
+        entries.sort(Map.Entry.<String, Long>comparingByValue().reversed());
+      }
+
+      // Print results
+      for (Map.Entry<String, Long> entry : entries) {
+        String column = entry.getKey();
+        long size = entry.getValue();
+        float ratio = aggregatedRatios.get(column);
+        String ratioStr = formatRatio(ratio);
+        console.info(column + "->" + " Size In Bytes: " + size + " Size In Ratio: " + ratioStr);
       }
     } else {
-      for (String column : columnSizes.keySet()) {
-        console.info(column + "->" + " Size In Bytes: " + columnSizes.get(column) + " Size In Ratio: "
-            + columnRatio.get(column));
+      // Sort if requested
+      List<Map.Entry<String, Long>> entries = new ArrayList<>(columnSizes.entrySet());
+      if (sortBySize) {
+        entries.sort(Map.Entry.<String, Long>comparingByValue().reversed());
+      }
+
+      // Print results
+      for (Map.Entry<String, Long> entry : entries) {
+        String column = entry.getKey();
+        long size = entry.getValue();
+        float ratio = columnRatio.get(column);
+        String ratioStr = formatRatio(ratio);
+        console.info(column + "->" + " Size In Bytes: " + size + " Size In Ratio: " + ratioStr);
       }
     }
 
     return 0;
+  }
+
+  private String formatRatio(float ratio) {
+    if (printAsPercentage) {
+      return String.format(Locale.US, "%.4f%%", ratio * 100);
+    } else {
+      return String.valueOf(ratio);
+    }
   }
 
   @Override
@@ -96,7 +149,16 @@ public class ColumnSizeCommand extends BaseCommand {
         "sample.parquet -c col_1",
         "sample.parquet --column col_2",
         "sample.parquet --columns col_1 col_2",
-        "sample.parquet --columns col_1 col_2.sub_col_a");
+        "sample.parquet --columns col_1 col_2.sub_col_a",
+        "# Sort columns by size in descending order",
+        "sample.parquet --sort",
+        "sample.parquet -s",
+        "# Print ratio as percentage",
+        "sample.parquet --percentage",
+        "sample.parquet -p",
+        "# Combine sorting and percentage formatting",
+        "sample.parquet --sort --percentage",
+        "sample.parquet -s -p -c col_1 col_2");
   }
 
   // Make it public to allow some automation tools to call it

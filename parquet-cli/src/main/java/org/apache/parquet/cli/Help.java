@@ -25,6 +25,8 @@ import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParameterDescription;
 import com.beust.jcommander.Parameters;
 import com.google.common.collect.Lists;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import org.slf4j.Logger;
 
@@ -116,7 +118,7 @@ public class Help implements Command {
     }
 
     jc.getCommands().keySet().stream()
-        .filter(s -> !s.equals("help"))
+        .filter(s -> !Arrays.asList("version", "help").contains(s))
         .findFirst()
         .ifPresent(command -> {
           console.info("\n  Examples:");
@@ -148,6 +150,6 @@ public class Help implements Command {
 
   @Override
   public List<String> getExamples() {
-    return null;
+    return Collections.emptyList();
   }
 }

@@ -35,6 +35,9 @@ import java.time.format.DateTimeFormatter;
 import java.util.concurrent.TimeUnit;
 import javax.naming.OperationNotSupportedException;
 import org.apache.parquet.io.api.Binary;
+import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.io.ParseException;
+import org.locationtech.jts.io.WKBReader;
 
 /**
  * Class that provides string representations for the primitive values. These string values are to be used for
@@ -438,6 +441,21 @@ public abstract class PrimitiveStringifier {
       for (int i = offset, n = offset + length; i < n; ++i) {
         int value = array[i] & 0xff;
         builder.append(digit[value >>> 4]).append(digit[value & 0x0f]);
+      }
+    }
+  };
+
+  static final PrimitiveStringifier WKB_STRINGIFIER = new BinaryStringifierBase("WKB_STRINGIFIER") {
+
+    @Override
+    String stringifyNotNull(Binary value) {
+
+      try {
+        WKBReader reader = new WKBReader();
+        Geometry geometry = reader.read(value.getBytesUnsafe());
+        return geometry.toText();
+      } catch (ParseException e) {
+        return BINARY_INVALID;
       }
     }
   };
