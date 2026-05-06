@@ -44,13 +44,15 @@ teardown() {
   [[ "$(cat "${settings_file}")" == *"apache.releases.https"* ]]
 }
 
-@test "generate_maven_settings: includes credentials" {
+@test "generate_maven_settings: uses env var references instead of real credentials" {
   local settings_file="${TEST_TMPDIR}/settings.xml"
   generate_maven_settings "${settings_file}"
   local content
   content=$(cat "${settings_file}")
-  [[ "$content" == *"testuser"* ]]
-  [[ "$content" == *"testpass"* ]]
+  [[ "$content" == *'${env.NEXUS_USERNAME}'* ]]
+  [[ "$content" == *'${env.NEXUS_PASSWORD}'* ]]
+  [[ "$content" != *"testuser"* ]]
+  [[ "$content" != *"testpass"* ]]
 }
 
 @test "generate_maven_settings: enables GPG agent" {

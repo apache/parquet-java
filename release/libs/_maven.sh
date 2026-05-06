@@ -26,16 +26,6 @@ LIBS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${LIBS_DIR}/_constants.sh"
 source "${LIBS_DIR}/_exec.sh"
 
-function _xml_escape {
-  local str="$1"
-  str="${str//&/&amp;}"
-  str="${str//</&lt;}"
-  str="${str//>/&gt;}"
-  str="${str//\"/&quot;}"
-  str="${str//\'/&apos;}"
-  echo "${str}"
-}
-
 function generate_maven_settings {
   local settings_file="${1:-.release-settings.xml}"
 
@@ -43,13 +33,7 @@ function generate_maven_settings {
     print_warning "NEXUS_USERNAME or NEXUS_PASSWORD not set; Maven deploy may fail"
   fi
 
-  local esc_username esc_password
-  esc_username=$(_xml_escape "${NEXUS_USERNAME:-}")
-  esc_password=$(_xml_escape "${NEXUS_PASSWORD:-}")
-
-  (
-    umask 077
-    cat > "${settings_file}" <<EOF
+  cat > "${settings_file}" <<'SETTINGS_EOF'
 <?xml version="1.0" encoding="UTF-8"?>
 <settings xmlns="http://maven.apache.org/SETTINGS/1.2.0"
           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -57,8 +41,8 @@ function generate_maven_settings {
   <servers>
     <server>
       <id>apache.releases.https</id>
-      <username>${esc_username}</username>
-      <password>${esc_password}</password>
+      <username>${env.NEXUS_USERNAME}</username>
+      <password>${env.NEXUS_PASSWORD}</password>
     </server>
   </servers>
   <profiles>
@@ -73,10 +57,9 @@ function generate_maven_settings {
     <activeProfile>gpg-release</activeProfile>
   </activeProfiles>
 </settings>
-EOF
-  )
+SETTINGS_EOF
 
-  print_info "Generated Maven settings at ${settings_file} (mode 600)"
+  print_info "Generated Maven settings at ${settings_file} (credentials resolved from env vars at build time)"
 }
 
 function maven_deploy {
