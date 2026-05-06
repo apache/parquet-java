@@ -45,6 +45,11 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y bats
 
+      - name: Configure Git identity for tests
+        run: |
+          git config --global user.name "CI"
+          git config --global user.email "ci@test"
+
       - name: Run bats tests
         run: bats release/tests/*.bats
 
