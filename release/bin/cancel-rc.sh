@@ -1,0 +1,172 @@
+#!/bin/bash
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LIBS_DIR="${SCRIPT_DIR}/../libs"
+
+source "${LIBS_DIR}/_constants.sh"
+source "${LIBS_DIR}/_log.sh"
+source "${LIBS_DIR}/_exec.sh"
+source "${LIBS_DIR}/_version.sh"
+source "${LIBS_DIR}/_nexus.sh"
+
+# ---------------------------------------------------------------------------
+# Usage
+# ---------------------------------------------------------------------------
+function usage {
+  cat <<EOF
+Usage: $0 <version> <rc-num> <staging-repo-id>
+
+Cancel a release candidate after a failed vote.
+
+Arguments:
+  version               Release version (e.g., 1.18.0)
+  rc-num                RC number to cancel (e.g., 0)
+  staging-repo-id       Nexus staging repository ID (e.g., orgapacheparquet-1234)
+
+Environment variables:
+  DRY_RUN               Set to 0 for real execution (default: 1)
+  NEXUS_USERNAME        Apache Nexus username
+  NEXUS_PASSWORD        Apache Nexus password
+  SVN_USERNAME          SVN username for dist.apache.org
+  SVN_PASSWORD          SVN password
+
+Example:
+  DRY_RUN=1 $0 1.18.0 0 orgapacheparquet-1234
+EOF
+  exit "${1:-0}"
+}
+
+# ---------------------------------------------------------------------------
+# Parse arguments
+# ---------------------------------------------------------------------------
+if [[ $# -lt 3 ]]; then
+  print_error "Expected 3 arguments, got $#"
+  usage 1
+fi
+
+version="$1"
+rc_num="$2"
+staging_repo_id="$3"
+
+# ---------------------------------------------------------------------------
+# Validate inputs
+# ---------------------------------------------------------------------------
+step_summary "## Release Candidate Cancellation"
+step_summary ""
+
+if [[ ${DRY_RUN:-1} -eq 1 ]]; then
+  step_summary "> **DRY RUN** -- no changes will be made"
+  step_summary ""
+fi
+
+if ! validate_and_extract_version "${version}"; then
+  print_error "Invalid version format: '${version}'"
+  exit 1
+fi
+
+if ! [[ "${rc_num}" =~ ^[0-9]+$ ]]; then
+  print_error "Invalid RC number: '${rc_num}'. Expected a non-negative integer."
+  exit 1
+fi
+
+if ! [[ "${staging_repo_id}" =~ ^[a-zA-Z][a-zA-Z0-9._-]*$ ]]; then
+  print_error "Invalid staging repository ID: '${staging_repo_id}'. Expected alphanumeric with dots/hyphens (e.g., orgapacheparquet-1234)."
+  exit 1
+fi
+
+rc_tag="${TAG_PREFIX}${version}-rc${rc_num}"
+
+step_summary "| Parameter | Value |"
+step_summary "| --- | --- |"
+step_summary "| Version | \`${version}\` |"
+step_summary "| RC tag | \`${rc_tag}\` |"
+step_summary "| Staging repo | \`${staging_repo_id}\` |"
+
+# ---------------------------------------------------------------------------
+# Step 1: Drop Nexus staging repo
+# ---------------------------------------------------------------------------
+step_summary ""
+step_summary "### Nexus Cleanup"
+
+nexus_drop_staging_repo "${staging_repo_id}" "Cancel Apache Parquet ${version} RC${rc_num}"
+
+step_summary "Dropped staging repository \`${staging_repo_id}\`"
+
+# ---------------------------------------------------------------------------
+# Step 2: Delete SVN artifacts from dist/dev
+# ---------------------------------------------------------------------------
+step_summary ""
+step_summary "### SVN Cleanup"
+
+dev_url="${APACHE_DIST_URL}${APACHE_DIST_DEV_PATH}/${rc_tag}"
+
+if [[ ${DRY_RUN:-1} -ne 1 ]]; then
+  if svn ls --username "${SVN_USERNAME}" --password "${SVN_PASSWORD}" --non-interactive "${dev_url}" >/dev/null 2>&1; then
+    exec_process svn rm \
+      --username "${SVN_USERNAME}" --password "${SVN_PASSWORD}" --non-interactive \
+      "${dev_url}" \
+      -m "Cancel Apache Parquet ${version} RC${rc_num}"
+    step_summary "Deleted \`${dev_url}\`"
+  else
+    print_warning "SVN directory not found: ${dev_url}"
+    step_summary "Directory not found at \`${dev_url}\` (may already be deleted)"
+  fi
+else
+  print_command "Dry-run, WOULD delete ${dev_url}"
+  step_summary "Would delete \`${dev_url}\` (dry-run)"
+fi
+
+# ---------------------------------------------------------------------------
+# Step 3: Generate vote failure email
+# ---------------------------------------------------------------------------
+step_summary ""
+step_summary "### Vote Failure Email"
+step_summary ""
+step_summary '```'
+step_summary "Subject: [RESULT][VOTE] Release Apache Parquet ${version} RC${rc_num}"
+step_summary ""
+step_summary "Hello everyone,"
+step_summary ""
+step_summary "Thanks to all who participated in the vote for Release Apache Parquet ${version} (rc${rc_num})."
+step_summary ""
+step_summary "The vote failed due to [REASON - TO BE FILLED BY RELEASE MANAGER]."
+step_summary ""
+step_summary "A new release candidate will be proposed soon once the issues are addressed."
+step_summary ""
+step_summary "Thanks,"
+step_summary '```'
+
+# ---------------------------------------------------------------------------
+# Summary
+# ---------------------------------------------------------------------------
+step_summary ""
+step_summary "---"
+step_summary "### Summary"
+step_summary ""
+step_summary "| Step | Status |"
+step_summary "| --- | --- |"
+step_summary "| Nexus staging repo | dropped |"
+step_summary "| SVN dist/dev | deleted |"
+step_summary "| Failure email | generated |"
+
+print_success "Release candidate ${rc_tag} cancelled successfully."
