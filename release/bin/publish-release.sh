@@ -35,18 +35,20 @@ source "${LIBS_DIR}/_maven.sh"
 # ---------------------------------------------------------------------------
 function usage {
   cat <<EOF
-Usage: $0 <version> <staging-repo-id> <next-dev-version> [--rc <num>]
+Usage: $0 <version> <staging-repo-id> [--rc <num>]
 
 Publish a release after the vote passes.
 
 Arguments:
   version               Release version (e.g., 1.18.0)
   staging-repo-id       Nexus staging repository ID (e.g., orgapacheparquet-1234)
-  next-dev-version      Next development version without -SNAPSHOT (e.g., 1.18.1 or 1.19.0)
 
 Options:
   --rc <num>            RC number that passed the vote (default: auto-detect latest)
   --help                Show this help
+
+The next development version is auto-computed by incrementing the patch
+version (e.g., 1.18.0 -> 1.18.1-SNAPSHOT).
 
 Environment variables:
   DRY_RUN               Set to 0 for real execution (default: 1)
@@ -57,8 +59,8 @@ Environment variables:
   GITHUB_TOKEN          GitHub token for release creation
 
 Example:
-  DRY_RUN=1 $0 1.18.0 orgapacheparquet-1234 1.18.1
-  DRY_RUN=1 $0 1.18.0 orgapacheparquet-1234 1.18.1 --rc 2
+  DRY_RUN=1 $0 1.18.0 orgapacheparquet-1234
+  DRY_RUN=1 $0 1.18.0 orgapacheparquet-1234 --rc 2
 EOF
   exit "${1:-0}"
 }
@@ -68,7 +70,6 @@ EOF
 # ---------------------------------------------------------------------------
 version=""
 staging_repo_id=""
-next_dev_version=""
 rc_num=""
 positional=()
 
@@ -96,14 +97,13 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [[ ${#positional[@]} -lt 3 ]]; then
-  print_error "Expected 3 positional arguments (version, staging-repo-id, next-dev-version), got ${#positional[@]}"
+if [[ ${#positional[@]} -lt 2 ]]; then
+  print_error "Expected 2 positional arguments (version, staging-repo-id), got ${#positional[@]}"
   usage 1
 fi
 
 version="${positional[0]}"
 staging_repo_id="${positional[1]}"
-next_dev_version="${positional[2]}"
 
 # ---------------------------------------------------------------------------
 # Validate inputs
@@ -121,10 +121,7 @@ if ! validate_and_extract_version "${version}"; then
   exit 1
 fi
 
-if ! [[ "${next_dev_version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-  print_error "Invalid next development version format: '${next_dev_version}'. Expected: X.Y.Z"
-  exit 1
-fi
+next_dev_version="${major}.${minor}.$(( patch + 1 ))"
 
 if ! [[ "${staging_repo_id}" =~ ^[a-zA-Z][a-zA-Z0-9._-]*$ ]]; then
   print_error "Invalid staging repository ID: '${staging_repo_id}'. Expected alphanumeric with dots/hyphens (e.g., orgapacheparquet-1234)."
