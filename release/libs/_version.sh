@@ -61,11 +61,16 @@ function validate_and_extract_branch_version {
   return 0
 }
 
+function _filter_rc_tags {
+  local version_without_rc="$1"
+  local exact_pattern="^${TAG_PREFIX}${version_without_rc}-rc[0-9]+$"
+  git tag -l "${TAG_PREFIX}${version_without_rc}-rc*" | grep -E "${exact_pattern}"
+}
+
 function find_next_rc_number {
   local version_without_rc="$1"
-  local tag_pattern="${TAG_PREFIX}${version_without_rc}-rc*"
   local existing_tags
-  existing_tags=$(git tag -l "${tag_pattern}" | sort -V)
+  existing_tags=$(_filter_rc_tags "${version_without_rc}" || true)
 
   if [[ -z "${existing_tags}" ]]; then
     rc_number=0
@@ -79,9 +84,8 @@ function find_next_rc_number {
 
 function find_latest_rc_number {
   local version_without_rc="$1"
-  local tag_pattern="${TAG_PREFIX}${version_without_rc}-rc*"
   local existing_tags
-  existing_tags=$(git tag -l "${tag_pattern}" | sort -V)
+  existing_tags=$(_filter_rc_tags "${version_without_rc}" || true)
 
   if [[ -z "${existing_tags}" ]]; then
     print_error "No RC tags found for version ${version_without_rc}"
