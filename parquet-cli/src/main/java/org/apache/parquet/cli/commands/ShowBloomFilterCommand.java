@@ -34,8 +34,6 @@ import org.apache.parquet.hadoop.BloomFilterReader;
 import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
-import org.apache.parquet.hadoop.util.HadoopInputFile;
-import org.apache.parquet.io.InputFile;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
@@ -68,9 +66,7 @@ public class ShowBloomFilterCommand extends BaseCommand {
   public int run() throws IOException {
     Preconditions.checkArgument(file != null, "A Parquet file is required.");
 
-    InputFile in = HadoopInputFile.fromPath(qualifiedPath(file), getConf());
-
-    try (ParquetFileReader reader = ParquetFileReader.open(in)) {
+    try (ParquetFileReader reader = createParquetFileReader(file)) {
       MessageType schema = reader.getFileMetaData().getSchema();
       PrimitiveType type = Util.primitive(columnPath, schema);
 

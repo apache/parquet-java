@@ -18,7 +18,6 @@
  */
 package org.apache.parquet.hadoop;
 
-import static java.util.Arrays.asList;
 import static org.apache.parquet.column.Encoding.DELTA_BYTE_ARRAY;
 import static org.apache.parquet.column.Encoding.PLAIN;
 import static org.apache.parquet.column.Encoding.PLAIN_DICTIONARY;
@@ -44,14 +43,17 @@ import static org.junit.Assert.assertTrue;
 import com.google.common.collect.ImmutableMap;
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import net.openhft.hashing.LongHashFunction;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.bytes.HeapByteBufferAllocator;
@@ -164,7 +166,7 @@ public class TestParquetWriter {
     expected.put("1000-" + PARQUET_1_0, PLAIN);
     expected.put("10-" + PARQUET_2_0, RLE_DICTIONARY);
     expected.put("1000-" + PARQUET_2_0, DELTA_BYTE_ARRAY);
-    for (int modulo : asList(10, 1000)) {
+    for (int modulo : List.of(10, 1000)) {
       for (WriterVersion version : WriterVersion.values()) {
         Path file = new Path(root, version.name() + "_" + modulo);
         ParquetWriter<Group> writer = ExampleParquetWriter.builder(new TestOutputFile(file, conf))
@@ -443,8 +445,17 @@ public class TestParquetWriter {
     testParquetFileNumberOfBlocks(
         ParquetProperties.DEFAULT_MINIMUM_RECORD_COUNT_FOR_CHECK,
         ParquetProperties.DEFAULT_MAXIMUM_RECORD_COUNT_FOR_CHECK,
+        new Configuration(),
         1);
-    testParquetFileNumberOfBlocks(1, 1, 3);
+    testParquetFileNumberOfBlocks(1, 1, new Configuration(), 3);
+
+    Configuration conf = new Configuration();
+    ParquetOutputFormat.setBlockRowCountLimit(conf, 1);
+    testParquetFileNumberOfBlocks(
+        ParquetProperties.DEFAULT_MINIMUM_RECORD_COUNT_FOR_CHECK,
+        ParquetProperties.DEFAULT_MAXIMUM_RECORD_COUNT_FOR_CHECK,
+        conf,
+        3);
   }
 
   @Test
@@ -506,7 +517,10 @@ public class TestParquetWriter {
   }
 
   private void testParquetFileNumberOfBlocks(
-      int minRowCountForPageSizeCheck, int maxRowCountForPageSizeCheck, int expectedNumberOfBlocks)
+      int minRowCountForPageSizeCheck,
+      int maxRowCountForPageSizeCheck,
+      Configuration conf,
+      int expectedNumberOfBlocks)
       throws IOException {
     MessageType schema = Types.buildMessage()
         .required(BINARY)
@@ -514,7 +528,6 @@ public class TestParquetWriter {
         .named("str")
         .named("msg");
 
-    Configuration conf = new Configuration();
     GroupWriteSupport.setSchema(schema, conf);
 
     File file = temp.newFile();
@@ -523,7 +536,8 @@ public class TestParquetWriter {
     try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(path)
         .withAllocator(allocator)
         .withConf(conf)
-        // Set row group size to 1, to make sure we flush every time
+        .withRowGroupRowCountLimit(ParquetOutputFormat.getBlockRowCountLimit(conf))
+        // Set row group size to 1, to make sure we flush every time when
         // minRowCountForPageSizeCheck or maxRowCountForPageSizeCheck is exceeded
         .withRowGroupSize(1)
         .withMinRowCountForPageSizeCheck(minRowCountForPageSizeCheck)
@@ -609,6 +623,44 @@ public class TestParquetWriter {
           }
         }
       }
+    }
+  }
+
+  @Test
+  public void testByteStreamSplitEncodingControl() throws Exception {
+    MessageType schema = Types.buildMessage()
+        .required(FLOAT)
+        .named("float_field")
+        .required(INT32)
+        .named("int32_field")
+        .named("test_schema");
+
+    File file = temp.newFile();
+    temp.delete();
+
+    Path path = new Path(file.getAbsolutePath());
+    SimpleGroupFactory factory = new SimpleGroupFactory(schema);
+    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(path)
+        .withType(schema)
+        .withByteStreamSplitEncoding(true)
+        .withByteStreamSplitEncoding("int32_field", true)
+        .build()) {
+      writer.write(factory.newGroup().append("float_field", 0.3f).append("int32_field", 42));
+    }
+
+    try (ParquetFileReader reader = ParquetFileReader.open(HadoopInputFile.fromPath(path, new Configuration()))) {
+      for (BlockMetaData block : reader.getFooter().getBlocks()) {
+        for (ColumnChunkMetaData column : block.getColumns()) {
+          assertTrue(column.getEncodings().contains(Encoding.BYTE_STREAM_SPLIT));
+        }
+      }
+    }
+
+    try (ParquetReader<Group> reader =
+        ParquetReader.builder(new GroupReadSupport(), path).build()) {
+      Group group = reader.read();
+      assertEquals(0.3f, group.getFloat("float_field", 0), 0.0);
+      assertEquals(42, group.getInteger("int32_field", 0));
     }
   }
 
@@ -709,5 +761,101 @@ public class TestParquetWriter {
         assertFalse(pageHeader.getData_page_header_v2().isIs_compressed());
       }
     }
+  }
+
+  @Test
+  public void testParquetWriterConfiguringOutputFile() throws IOException {
+    MessageType schema = Types.buildMessage()
+        .required(BINARY)
+        .as(stringType())
+        .named("name")
+        .named("msg");
+
+    Configuration conf = new Configuration();
+    GroupWriteSupport.setSchema(schema, conf);
+
+    GroupFactory factory = new SimpleGroupFactory(schema);
+    File file = temp.newFile();
+    file.delete();
+    Path path = new Path(file.getAbsolutePath());
+    OutputFile outputFile = new TestOutputFile(path, conf);
+
+    String[] testNames = {"new", "writer", "builder", "without", "file"};
+    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder()
+        .withFile(outputFile)
+        .withConf(conf)
+        .build()) {
+      for (String testName : testNames) {
+        writer.write(factory.newGroup().append("name", testName));
+      }
+    }
+    ParquetReader<Group> reader =
+        ParquetReader.builder(new GroupReadSupport(), path).build();
+    assertEquals("new", reader.read().getBinary("name", 0).toStringUsingUTF8());
+    assertEquals("writer", reader.read().getBinary("name", 0).toStringUsingUTF8());
+    assertEquals("builder", reader.read().getBinary("name", 0).toStringUsingUTF8());
+    assertEquals("without", reader.read().getBinary("name", 0).toStringUsingUTF8());
+    assertEquals("file", reader.read().getBinary("name", 0).toStringUsingUTF8());
+  }
+
+  @Test
+  public void testParquetWriterBuilderOutputFileCanNotBeNull() throws IOException {
+    TestUtils.assertThrows("file cannot be null", NullPointerException.class, (Callable<ParquetWriter<Group>>)
+        () -> ExampleParquetWriter.builder().withFile(null).build());
+  }
+
+  @Test
+  public void testParquetWriterBuilderValidatesThatOutputFileIsSet() throws IOException {
+    TestUtils.assertThrows("File or Path must be set", IllegalStateException.class, (Callable<ParquetWriter<Group>>)
+        () -> ExampleParquetWriter.builder().build());
+  }
+
+  @Test
+  public void testParquetWriterBuilderCanNotConfigurePathAndFile() throws IOException {
+    File file = temp.newFile();
+    Path path = new Path(file.getAbsolutePath());
+    Configuration conf = new Configuration();
+    OutputFile outputFile = new TestOutputFile(path, conf);
+    TestUtils.assertThrows(
+        "Cannot set both path and file", IllegalStateException.class, (Callable<ParquetWriter<Group>>) () ->
+            ExampleParquetWriter.builder(path).withFile(outputFile).build());
+  }
+
+  @Test
+  public void testNoFlushAfterException() throws Exception {
+    final File testDir = temp.newFile();
+    testDir.delete();
+
+    final Path file = new Path(testDir.getAbsolutePath(), "test.parquet");
+
+    MessageType schema = Types.buildMessage()
+        .required(BINARY)
+        .named("binary_field")
+        .required(INT32)
+        .named("int32_field")
+        .named("test_schema_abort");
+    Configuration conf = new Configuration();
+
+    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(new Path(file.toString()))
+        .withAllocator(allocator)
+        .withType(schema)
+        .build()) {
+
+      SimpleGroupFactory f = new SimpleGroupFactory(schema);
+      writer.write(f.newGroup().append("binary_field", "hello").append("int32_field", 123));
+
+      Field internalWriterField = ParquetWriter.class.getDeclaredField("writer");
+      internalWriterField.setAccessible(true);
+      Object internalWriter = internalWriterField.get(writer);
+
+      Field abortedField = internalWriter.getClass().getDeclaredField("aborted");
+      abortedField.setAccessible(true);
+      abortedField.setBoolean(internalWriter, true);
+      writer.close();
+    }
+
+    // After closing, check whether file exists or is empty
+    FileSystem fs = file.getFileSystem(conf);
+    assertTrue(!fs.exists(file) || fs.getFileStatus(file).getLen() == 0);
   }
 }

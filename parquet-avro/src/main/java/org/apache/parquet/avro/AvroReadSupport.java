@@ -20,6 +20,8 @@ package org.apache.parquet.avro;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.apache.hadoop.conf.Configuration;
@@ -62,6 +64,12 @@ public class AvroReadSupport<T> extends ReadSupport<T> {
   public static final boolean READ_INT96_AS_FIXED_DEFAULT = false;
 
   /**
+   * List of the fully qualified class names separated by ',' that may be referenced from the Avro schema by
+   * "java-class" or "java-key-class" and are allowed to be loaded.
+   */
+  public static final String SERIALIZABLE_CLASSES = "parquet.avro.serializable.classes";
+
+  /**
    * @param configuration       a configuration
    * @param requestedProjection the requested projection schema
    * @see org.apache.parquet.avro.AvroParquetInputFormat#setRequestedProjection(org.apache.hadoop.mapreduce.Job, org.apache.avro.Schema)
@@ -81,6 +89,24 @@ public class AvroReadSupport<T> extends ReadSupport<T> {
 
   public static void setAvroDataSupplier(Configuration configuration, Class<? extends AvroDataSupplier> clazz) {
     configuration.set(AVRO_DATA_SUPPLIER, clazz.getName());
+  }
+
+  public static void setSerializableClasses(Configuration configuration, String... classNames) {
+    if (classNames.length == 0) {
+      configuration.set(AvroReadSupport.SERIALIZABLE_CLASSES, null);
+    } else {
+      configuration.set(AvroReadSupport.SERIALIZABLE_CLASSES, String.join(",", classNames));
+    }
+  }
+
+  public static void setSerializableClasses(Configuration configuration, Class<?>... classes) {
+    if (classes.length == 0) {
+      configuration.set(AvroReadSupport.SERIALIZABLE_CLASSES, null);
+    } else {
+      configuration.set(
+          AvroReadSupport.SERIALIZABLE_CLASSES,
+          Stream.of(classes).map(Class::getName).collect(Collectors.joining(",")));
+    }
   }
 
   private GenericData model = null;
@@ -158,7 +184,15 @@ public class AvroReadSupport<T> extends ReadSupport<T> {
     if (Boolean.parseBoolean(compatEnabled)) {
       return newCompatMaterializer(parquetSchema, avroSchema, model);
     }
-    return new AvroRecordMaterializer<T>(parquetSchema, avroSchema, model);
+    String[] serializableClasses = configuration.getStrings(SERIALIZABLE_CLASSES, null);
+
+    return new AvroRecordMaterializer<T>(
+        parquetSchema,
+        avroSchema,
+        model,
+        serializableClasses == null
+            ? new ReflectClassValidator.PackageValidator()
+            : new ReflectClassValidator.ClassValidator(serializableClasses));
   }
 
   @SuppressWarnings("unchecked")

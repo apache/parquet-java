@@ -21,7 +21,10 @@ package org.apache.parquet.column.page;
 import java.io.IOException;
 import java.util.Objects;
 import org.apache.parquet.bytes.BytesInput;
+import org.apache.parquet.column.ColumnDescriptor;
+import org.apache.parquet.column.Dictionary;
 import org.apache.parquet.column.Encoding;
+import org.apache.parquet.io.ParquetDecodingException;
 
 /**
  * Data for a dictionary page
@@ -72,6 +75,17 @@ public class DictionaryPage extends Page {
 
   public DictionaryPage copy() throws IOException {
     return new DictionaryPage(BytesInput.copy(bytes), getUncompressedSize(), dictionarySize, encoding);
+  }
+
+  /**
+   * @return the decoded dictionary
+   */
+  public Dictionary decode(ColumnDescriptor path) {
+    try {
+      return getEncoding().initDictionary(path, this);
+    } catch (IOException e) {
+      throw new ParquetDecodingException("could not decode the dictionary for " + path, e);
+    }
   }
 
   @Override

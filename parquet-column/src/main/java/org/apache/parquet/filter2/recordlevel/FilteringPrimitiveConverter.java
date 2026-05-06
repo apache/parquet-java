@@ -42,7 +42,7 @@ public class FilteringPrimitiveConverter extends PrimitiveConverter {
   // TODO: this works, but
   // TODO: essentially turns off the benefits of dictionary support
   // TODO: even if the underlying delegate supports it.
-  // TODO: we should support it here. (https://issues.apache.org/jira/browse/PARQUET-36)
+  // TODO: we should support it here. (https://github.com/apache/parquet-java/issues/1392)
   @Override
   public boolean hasDictionarySupport() {
     return false;

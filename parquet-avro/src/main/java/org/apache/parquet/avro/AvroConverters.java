@@ -26,18 +26,25 @@ import org.apache.parquet.column.Dictionary;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.GroupConverter;
 import org.apache.parquet.io.api.PrimitiveConverter;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.PrimitiveStringifier;
 import org.apache.parquet.schema.PrimitiveType;
 
 public class AvroConverters {
 
+  /**
+   * Contains the packages which classes are allowed to be loaded that may be referenced from the Avro schema by
+   * "java-class" or "java-key-class". It contains the packages parsed from system variable
+   * "org.apache.parquet.avro.SERIALIZABLE_PACKAGES".
+   *
+   * @deprecated will be removed in 2.0.0
+   */
+  @Deprecated
   public static final String[] SERIALIZABLE_PACKAGES;
 
   static {
-    SERIALIZABLE_PACKAGES = System.getProperty(
-            "org.apache.parquet.avro.SERIALIZABLE_PACKAGES",
-            "java.lang,java.math,java.io,java.net,org.apache.parquet.avro")
-        .split(",");
+    String prop = System.getProperty("org.apache.parquet.avro.SERIALIZABLE_PACKAGES");
+    SERIALIZABLE_PACKAGES = prop == null ? new String[0] : prop.split(",");
   }
 
   public abstract static class AvroGroupConverter extends GroupConverter {
@@ -304,6 +311,38 @@ public class AvroConverters {
     @Override
     public String convert(Binary binary) {
       return stringifier.stringify(binary);
+    }
+  }
+
+  static final class FieldDecimalIntConverter extends AvroPrimitiveConverter {
+    private final int scale;
+
+    public FieldDecimalIntConverter(ParentValueContainer parent, PrimitiveType type) {
+      super(parent);
+      LogicalTypeAnnotation.DecimalLogicalTypeAnnotation decimalType =
+          (LogicalTypeAnnotation.DecimalLogicalTypeAnnotation) type.getLogicalTypeAnnotation();
+      this.scale = decimalType.getScale();
+    }
+
+    @Override
+    public void addInt(int value) {
+      parent.add(new BigDecimal(BigInteger.valueOf(value), scale));
+    }
+  }
+
+  static final class FieldDecimalLongConverter extends AvroPrimitiveConverter {
+    private final int scale;
+
+    public FieldDecimalLongConverter(ParentValueContainer parent, PrimitiveType type) {
+      super(parent);
+      LogicalTypeAnnotation.DecimalLogicalTypeAnnotation decimalType =
+          (LogicalTypeAnnotation.DecimalLogicalTypeAnnotation) type.getLogicalTypeAnnotation();
+      this.scale = decimalType.getScale();
+    }
+
+    @Override
+    public void addLong(long value) {
+      parent.add(new BigDecimal(BigInteger.valueOf(value), scale));
     }
   }
 }

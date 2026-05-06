@@ -18,7 +18,6 @@
  */
 package org.apache.parquet.internal.column.columnindex;
 
-import static java.util.Arrays.asList;
 import static org.apache.parquet.filter2.predicate.FilterApi.and;
 import static org.apache.parquet.filter2.predicate.FilterApi.binaryColumn;
 import static org.apache.parquet.filter2.predicate.FilterApi.booleanColumn;
@@ -688,8 +687,8 @@ public class TestColumnIndexBuilder {
     ColumnIndex columnIndex = ColumnIndexBuilder.build(
         Types.required(BINARY).as(UTF8).named("test_binary_utf8"),
         BoundaryOrder.ASCENDING,
-        asList(true, true, false, false, true, false, true, false),
-        asList(1l, 2l, 3l, 4l, 5l, 6l, 7l, 8l),
+        List.of(true, true, false, false, true, false, true, false),
+        List.of(1l, 2l, 3l, 4l, 5l, 6l, 7l, 8l),
         toBBList(
             null,
             null,
@@ -738,7 +737,7 @@ public class TestColumnIndexBuilder {
     ColumnIndex columnIndex = ColumnIndexBuilder.build(
         Types.required(BINARY).as(UTF8).named("test_binary_utf8"),
         BoundaryOrder.ASCENDING,
-        asList(true, true, false, false, true, false, true, false),
+        List.of(true, true, false, false, true, false, true, false),
         null,
         toBBList(
             null,
@@ -904,12 +903,12 @@ public class TestColumnIndexBuilder {
     ColumnIndex columnIndex = ColumnIndexBuilder.build(
         Types.required(BOOLEAN).named("test_boolean"),
         BoundaryOrder.DESCENDING,
-        asList(false, true, false, true, false, true),
-        asList(9l, 8l, 7l, 6l, 5l, 0l),
+        List.of(false, true, false, true, false, true),
+        List.of(9l, 8l, 7l, 6l, 5l, 4l),
         toBBList(false, null, false, null, true, null),
         toBBList(true, null, false, null, true, null));
     assertEquals(BoundaryOrder.DESCENDING, columnIndex.getBoundaryOrder());
-    assertCorrectNullCounts(columnIndex, 9, 8, 7, 6, 5, 0);
+    assertCorrectNullCounts(columnIndex, 9, 8, 7, 6, 5, 4);
     assertCorrectNullPages(columnIndex, false, true, false, true, false, true);
     assertCorrectValues(columnIndex.getMaxValues(), true, null, false, null, true, null);
     assertCorrectValues(columnIndex.getMinValues(), false, null, false, null, true, null);
@@ -1058,8 +1057,8 @@ public class TestColumnIndexBuilder {
     ColumnIndex columnIndex = ColumnIndexBuilder.build(
         Types.required(DOUBLE).named("test_double"),
         BoundaryOrder.UNORDERED,
-        asList(false, false, false, false, false, false),
-        asList(0l, 1l, 2l, 3l, 4l, 5l),
+        List.of(false, false, false, false, false, false),
+        List.of(0l, 1l, 2l, 3l, 4l, 5l),
         toBBList(-1.0, -2.0, -3.0, -4.0, -5.0, -6.0),
         toBBList(1.0, 2.0, 3.0, 4.0, 5.0, 6.0));
     assertEquals(BoundaryOrder.UNORDERED, columnIndex.getBoundaryOrder());
@@ -1211,8 +1210,8 @@ public class TestColumnIndexBuilder {
     ColumnIndex columnIndex = ColumnIndexBuilder.build(
         Types.required(FLOAT).named("test_float"),
         BoundaryOrder.ASCENDING,
-        asList(true, true, true, false, false, false),
-        asList(9l, 8l, 7l, 6l, 0l, 0l),
+        List.of(true, true, true, false, false, false),
+        List.of(9l, 8l, 7l, 6l, 0l, 0l),
         toBBList(null, null, null, -3.0f, -2.0f, 0.1f),
         toBBList(null, null, null, -2.0f, 0.0f, 6.0f));
     assertEquals(BoundaryOrder.ASCENDING, columnIndex.getBoundaryOrder());
@@ -1345,8 +1344,8 @@ public class TestColumnIndexBuilder {
     ColumnIndex columnIndex = ColumnIndexBuilder.build(
         Types.required(INT32).named("test_int32"),
         BoundaryOrder.DESCENDING,
-        asList(false, false, false, true, true, true),
-        asList(0l, 10l, 0l, 3l, 5l, 7l),
+        List.of(false, false, false, true, true, true),
+        List.of(0l, 10l, 0l, 3l, 5l, 7l),
         toBBList(10, 8, 6, null, null, null),
         toBBList(9, 7, 5, null, null, null));
     assertEquals(BoundaryOrder.DESCENDING, columnIndex.getBoundaryOrder());
@@ -1597,8 +1596,8 @@ public class TestColumnIndexBuilder {
     ColumnIndex columnIndex = ColumnIndexBuilder.build(
         Types.required(INT64).named("test_int64"),
         BoundaryOrder.UNORDERED,
-        asList(true, false, true, false, true, false),
-        asList(1l, 2l, 3l, 4l, 5l, 6l),
+        List.of(true, false, true, false, true, false),
+        List.of(1l, 2l, 3l, 4l, 5l, 6l),
         toBBList(null, 2l, null, 4l, null, 9l),
         toBBList(null, 3l, null, 15l, null, 10l));
     assertEquals(BoundaryOrder.UNORDERED, columnIndex.getBoundaryOrder());
@@ -1865,5 +1864,153 @@ public class TestColumnIndexBuilder {
 
   private static void assertCorrectFiltering(ColumnIndex ci, FilterPredicate predicate, int... expectedIndexes) {
     TestIndexIterator.assertEquals(predicate.accept(ci), expectedIndexes);
+  }
+
+  @Test
+  public void testBuildReturnsNullForNullPageCountContradiction() {
+    // null_pages[i]=true indicates the page is entirely null, but null_counts[i]=0
+    // says there are zero null values. This contradiction indicates invalid metadata.
+    // build() should return null to prevent incorrect page skipping.
+    PrimitiveType type = Types.required(INT32).named("test_col");
+
+    // Pages 1-3 have null_pages=true with null_counts=0 — contradictory
+    assertNull(
+        "Column index with null_pages=true and null_counts=0 should be rejected",
+        ColumnIndexBuilder.build(
+            type,
+            BoundaryOrder.ASCENDING,
+            List.of(false, true, true, true),
+            List.of(0L, 0L, 0L, 0L),
+            toBBList(Integer.valueOf(-99), null, null, null),
+            toBBList(Integer.valueOf(5), null, null, null)));
+
+    // Contradiction on a single page (last page) should also be rejected
+    assertNull(
+        "Single contradictory page should cause rejection",
+        ColumnIndexBuilder.build(
+            type,
+            BoundaryOrder.UNORDERED,
+            List.of(false, false, true),
+            List.of(0L, 5L, 0L),
+            toBBList(Integer.valueOf(1), Integer.valueOf(50), null),
+            toBBList(Integer.valueOf(49), Integer.valueOf(99), null)));
+
+    // Contradiction on the first page
+    assertNull(
+        "Contradictory first page should cause rejection",
+        ColumnIndexBuilder.build(
+            type,
+            BoundaryOrder.UNORDERED,
+            List.of(true, false, false),
+            List.of(0L, 0L, 5L),
+            toBBList(null, Integer.valueOf(1), Integer.valueOf(50)),
+            toBBList(null, Integer.valueOf(49), Integer.valueOf(99))));
+
+    // Single page with contradiction
+    assertNull(
+        "Single-page column index with contradiction should be rejected",
+        ColumnIndexBuilder.build(
+            type,
+            BoundaryOrder.UNORDERED,
+            List.of(true),
+            List.of(0L),
+            toBBList((Integer) null),
+            toBBList((Integer) null)));
+
+    // All pages are contradictory null pages
+    assertNull(
+        "All-contradictory column index should be rejected",
+        ColumnIndexBuilder.build(
+            type,
+            BoundaryOrder.UNORDERED,
+            List.of(true, true, true),
+            List.of(0L, 0L, 0L),
+            toBBList((Integer) null, null, null),
+            toBBList((Integer) null, null, null)));
+  }
+
+  @Test
+  public void testBuildPreservesValidColumnIndex() {
+    PrimitiveType type = Types.required(INT32).named("test_col");
+
+    // Legitimate null page: null_pages=true with null_counts > 0 — valid
+    ColumnIndex ci = ColumnIndexBuilder.build(
+        type,
+        BoundaryOrder.ASCENDING,
+        List.of(false, true, false),
+        List.of(0L, 100L, 0L),
+        toBBList(Integer.valueOf(1), null, Integer.valueOf(50)),
+        toBBList(Integer.valueOf(49), null, Integer.valueOf(99)));
+    assertCorrectNullPages(ci, false, true, false);
+    assertCorrectNullCounts(ci, 0, 100, 0);
+    assertCorrectValues(ci.getMinValues(), 1, null, 50);
+    assertCorrectValues(ci.getMaxValues(), 49, null, 99);
+
+    // All non-null pages — valid
+    ColumnIndex ci2 = ColumnIndexBuilder.build(
+        type,
+        BoundaryOrder.ASCENDING,
+        List.of(false, false, false),
+        List.of(0L, 5L, 10L),
+        toBBList(Integer.valueOf(1), Integer.valueOf(50), Integer.valueOf(100)),
+        toBBList(Integer.valueOf(49), Integer.valueOf(99), Integer.valueOf(150)));
+    assertCorrectNullPages(ci2, false, false, false);
+    assertCorrectNullCounts(ci2, 0, 5, 10);
+
+    // Single non-null page
+    ColumnIndex ci3 = ColumnIndexBuilder.build(
+        type,
+        BoundaryOrder.UNORDERED,
+        List.of(false),
+        List.of(0L),
+        toBBList(Integer.valueOf(42)),
+        toBBList(Integer.valueOf(42)));
+    assertCorrectNullPages(ci3, false);
+    assertCorrectNullCounts(ci3, 0);
+
+    // Single legitimate all-null page (null_pages=true, null_counts > 0)
+    ColumnIndex ci4 = ColumnIndexBuilder.build(
+        type, BoundaryOrder.UNORDERED, List.of(true), List.of(50L), toBBList((Integer) null), toBBList((Integer)
+            null));
+    assertCorrectNullPages(ci4, true);
+    assertCorrectNullCounts(ci4, 50);
+
+    // All pages legitimately null
+    ColumnIndex ci5 = ColumnIndexBuilder.build(
+        type,
+        BoundaryOrder.UNORDERED,
+        List.of(true, true, true),
+        List.of(10L, 20L, 30L),
+        toBBList((Integer) null, null, null),
+        toBBList((Integer) null, null, null));
+    assertCorrectNullPages(ci5, true, true, true);
+    assertCorrectNullCounts(ci5, 10, 20, 30);
+
+    // Boundary: null_counts=1 on a null page (minimum valid value) — should NOT be rejected
+    ColumnIndex ci6 = ColumnIndexBuilder.build(
+        type,
+        BoundaryOrder.UNORDERED,
+        List.of(false, true),
+        List.of(0L, 1L),
+        toBBList(Integer.valueOf(1), null),
+        toBBList(Integer.valueOf(99), null));
+    assertCorrectNullPages(ci6, false, true);
+    assertCorrectNullCounts(ci6, 0, 1);
+  }
+
+  @Test
+  public void testBuildWithoutNullCountsIsNotRejected() {
+    PrimitiveType type = Types.required(INT32).named("test_col");
+
+    // null_counts absent (optional field) — cannot detect contradiction, should build normally
+    ColumnIndex ci = ColumnIndexBuilder.build(
+        type,
+        BoundaryOrder.UNORDERED,
+        List.of(false, true, true),
+        null,
+        toBBList(Integer.valueOf(1), null, null),
+        toBBList(Integer.valueOf(99), null, null));
+    assertCorrectNullPages(ci, false, true, true);
+    assertNull("null_counts should be null when not provided", ci.getNullCounts());
   }
 }

@@ -63,7 +63,7 @@ import org.apache.parquet.hadoop.metadata.ColumnPath;
  * false otherwise (including when it is not known, which is often the case).
  */
 // TODO: this belongs in the parquet-column project, but some of the classes here need to be moved too
-// TODO: (https://issues.apache.org/jira/browse/PARQUET-38)
+// TODO: (https://github.com/apache/parquet-java/issues/1458)
 public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
 
   private static final boolean BLOCK_MIGHT_MATCH = false;

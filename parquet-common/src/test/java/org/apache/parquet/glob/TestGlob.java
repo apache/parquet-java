@@ -21,7 +21,7 @@ package org.apache.parquet.glob;
 import static junit.framework.Assert.fail;
 import static org.junit.Assert.assertEquals;
 
-import java.util.Arrays;
+import java.util.List;
 import junit.framework.Assert;
 import org.apache.parquet.Strings;
 import org.apache.parquet.glob.GlobParser.GlobParseException;
@@ -31,28 +31,28 @@ public class TestGlob {
 
   @Test
   public void testNoGlobs() {
-    assertEquals(Arrays.asList("foo"), Strings.expandGlob("foo"));
+    assertEquals(List.of("foo"), Strings.expandGlob("foo"));
   }
 
   @Test
   public void testEmptyGroup() {
-    assertEquals(Arrays.asList(""), Strings.expandGlob(""));
-    assertEquals(Arrays.asList(""), Strings.expandGlob("{}"));
-    assertEquals(Arrays.asList("a"), Strings.expandGlob("a{}"));
-    assertEquals(Arrays.asList("ab"), Strings.expandGlob("a{}b"));
-    assertEquals(Arrays.asList("a"), Strings.expandGlob("{}a"));
-    assertEquals(Arrays.asList("a"), Strings.expandGlob("a{}"));
-    assertEquals(Arrays.asList("", ""), Strings.expandGlob("{,}"));
-    assertEquals(Arrays.asList("ab", "a", "ac"), Strings.expandGlob("a{b,{},c}"));
+    assertEquals(List.of(""), Strings.expandGlob(""));
+    assertEquals(List.of(""), Strings.expandGlob("{}"));
+    assertEquals(List.of("a"), Strings.expandGlob("a{}"));
+    assertEquals(List.of("ab"), Strings.expandGlob("a{}b"));
+    assertEquals(List.of("a"), Strings.expandGlob("{}a"));
+    assertEquals(List.of("a"), Strings.expandGlob("a{}"));
+    assertEquals(List.of("", ""), Strings.expandGlob("{,}"));
+    assertEquals(List.of("ab", "a", "ac"), Strings.expandGlob("a{b,{},c}"));
   }
 
   @Test
   public void testSingleLevel() {
-    assertEquals(Arrays.asList("foobar", "foobaz"), Strings.expandGlob("foo{bar,baz}"));
-    assertEquals(Arrays.asList("startfooend", "startbarend"), Strings.expandGlob("start{foo,bar}end"));
-    assertEquals(Arrays.asList("fooend", "barend"), Strings.expandGlob("{foo,bar}end"));
+    assertEquals(List.of("foobar", "foobaz"), Strings.expandGlob("foo{bar,baz}"));
+    assertEquals(List.of("startfooend", "startbarend"), Strings.expandGlob("start{foo,bar}end"));
+    assertEquals(List.of("fooend", "barend"), Strings.expandGlob("{foo,bar}end"));
     assertEquals(
-        Arrays.asList(
+        List.of(
             "startfooenda",
             "startfooendb",
             "startfooendc",
@@ -62,14 +62,14 @@ public class TestGlob {
             "startbarendc",
             "startbarendd"),
         Strings.expandGlob("start{foo,bar}end{a,b,c,d}"));
-    assertEquals(Arrays.asList("xa", "xb", "xc", "ya", "yb", "yc"), Strings.expandGlob("{x,y}{a,b,c}"));
-    assertEquals(Arrays.asList("x", "y", "z"), Strings.expandGlob("{x,y,z}"));
+    assertEquals(List.of("xa", "xb", "xc", "ya", "yb", "yc"), Strings.expandGlob("{x,y}{a,b,c}"));
+    assertEquals(List.of("x", "y", "z"), Strings.expandGlob("{x,y,z}"));
   }
 
   @Test
   public void testNested() {
     assertEquals(
-        Arrays.asList(
+        List.of(
             "startoneend",
             "startpretwopostend",
             "startprethreepostend",
@@ -84,9 +84,9 @@ public class TestGlob {
 
   @Test
   public void testExtraBraces() {
-    assertEquals(Arrays.asList("x", "y", "z"), Strings.expandGlob("{{x,y,z}}"));
-    assertEquals(Arrays.asList("x", "y", "z"), Strings.expandGlob("{{{x,y,z}}}"));
-    assertEquals(Arrays.asList("startx", "starta", "startb", "starty"), Strings.expandGlob("start{x,{a,b},y}"));
+    assertEquals(List.of("x", "y", "z"), Strings.expandGlob("{{x,y,z}}"));
+    assertEquals(List.of("x", "y", "z"), Strings.expandGlob("{{{x,y,z}}}"));
+    assertEquals(List.of("startx", "starta", "startb", "starty"), Strings.expandGlob("start{x,{a,b},y}"));
   }
 
   @Test
@@ -102,17 +102,17 @@ public class TestGlob {
   @Test
   public void testCommaCornerCases() {
     // single empty string in each location
-    assertEquals(Arrays.asList("foobar", "foo", "foobaz"), Strings.expandGlob("foo{bar,,baz}"));
-    assertEquals(Arrays.asList("foo", "foobar", "foobaz"), Strings.expandGlob("foo{,bar,baz}"));
-    assertEquals(Arrays.asList("foobar", "foobaz", "foo"), Strings.expandGlob("foo{bar,baz,}"));
+    assertEquals(List.of("foobar", "foo", "foobaz"), Strings.expandGlob("foo{bar,,baz}"));
+    assertEquals(List.of("foo", "foobar", "foobaz"), Strings.expandGlob("foo{,bar,baz}"));
+    assertEquals(List.of("foobar", "foobaz", "foo"), Strings.expandGlob("foo{bar,baz,}"));
 
     // multiple empty strings
-    assertEquals(Arrays.asList("foobar", "foo", "foo", "foobaz"), Strings.expandGlob("foo{bar,,,baz}"));
-    assertEquals(Arrays.asList("foo", "foo", "foobar", "foobaz"), Strings.expandGlob("foo{,,bar,baz}"));
-    assertEquals(Arrays.asList("foobar", "foobaz", "foo", "foo"), Strings.expandGlob("foo{bar,baz,,}"));
+    assertEquals(List.of("foobar", "foo", "foo", "foobaz"), Strings.expandGlob("foo{bar,,,baz}"));
+    assertEquals(List.of("foo", "foo", "foobar", "foobaz"), Strings.expandGlob("foo{,,bar,baz}"));
+    assertEquals(List.of("foobar", "foobaz", "foo", "foo"), Strings.expandGlob("foo{bar,baz,,}"));
 
     // between groups
-    assertEquals(Arrays.asList("x", "y", "", "a", "b"), Strings.expandGlob("{{x,y},,{a,b}}"));
+    assertEquals(List.of("x", "y", "", "a", "b"), Strings.expandGlob("{{x,y},,{a,b}}"));
   }
 
   private void assertNotEnoughCloseBraces(String s) {

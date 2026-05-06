@@ -23,7 +23,6 @@ import static junit.framework.Assert.assertEquals;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
@@ -105,7 +104,7 @@ public class FileEncodingsIT {
 
   @Parameterized.Parameters
   public static Collection<Object[]> getParameters() {
-    List<PrimitiveTypeName> types = Arrays.asList(
+    List<PrimitiveTypeName> types = List.of(
         PrimitiveTypeName.BOOLEAN,
         PrimitiveTypeName.INT32,
         PrimitiveTypeName.INT64,
@@ -124,7 +123,7 @@ public class FileEncodingsIT {
       }
     } else {
       // otherwise test just UNCOMPRESSED
-      codecs = Arrays.asList(CompressionCodecName.UNCOMPRESSED);
+      codecs = List.of(CompressionCodecName.UNCOMPRESSED);
     }
 
     System.err.println("Testing codecs: " + codecs);

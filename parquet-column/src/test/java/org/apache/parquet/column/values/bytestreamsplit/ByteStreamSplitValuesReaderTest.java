@@ -37,7 +37,7 @@ public class ByteStreamSplitValuesReaderTest {
       throws Exception {
     ByteBuffer buffer = ByteBuffer.wrap(input);
     ByteBufferInputStream stream = ByteBufferInputStream.wrap(buffer);
-    Reader reader = cls.newInstance();
+    Reader reader = cls.getDeclaredConstructor().newInstance();
     reader.initFromPage(length, stream);
     return reader;
   }

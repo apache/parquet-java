@@ -24,7 +24,6 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import java.util.Arrays;
 import java.util.List;
 import org.apache.parquet.filter2.recordlevel.IncrementallyUpdatedFilterPredicate.ValueInspector;
 import org.junit.Test;
@@ -83,7 +82,7 @@ public class TestValueInspector {
 
   @Test
   public void testReusable() {
-    List<Integer> values = Arrays.asList(2, 4, 7, 3, 8, 8, 11, 200);
+    List<Integer> values = List.of(2, 4, 7, 3, 8, 8, 11, 200);
     ValueInspector v = intIsEven();
 
     for (Integer x : values) {

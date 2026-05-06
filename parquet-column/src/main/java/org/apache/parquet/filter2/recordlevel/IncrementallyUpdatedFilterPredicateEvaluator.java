@@ -30,7 +30,7 @@ import org.apache.parquet.filter2.recordlevel.IncrementallyUpdatedFilterPredicat
  * represent columns with a null value, and updates them accordingly.
  * <p>
  * TODO: We could also build an evaluator that detects if enough values are known to determine the outcome
- * TODO: of the predicate and quit the record assembly early. (https://issues.apache.org/jira/browse/PARQUET-37)
+ * TODO: of the predicate and quit the record assembly early. (https://github.com/apache/parquet-java/issues/1455)
  */
 public class IncrementallyUpdatedFilterPredicateEvaluator implements Visitor {
   private static final IncrementallyUpdatedFilterPredicateEvaluator INSTANCE =

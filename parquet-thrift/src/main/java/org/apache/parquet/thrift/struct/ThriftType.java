@@ -142,6 +142,7 @@ public abstract class ThriftType {
   /**
    * @deprecated will be removed in 2.0.0; use StateVisitor instead.
    */
+  @Deprecated
   public interface TypeVisitor {
 
     void visit(MapType mapType);

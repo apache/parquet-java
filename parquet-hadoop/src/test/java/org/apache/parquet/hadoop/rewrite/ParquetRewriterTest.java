@@ -314,7 +314,7 @@ public class ParquetRewriterTest {
     String[] encryptColumns = {"DocId"};
     FileEncryptionProperties fileEncryptionProperties =
         EncDecProperties.getFileEncryptionProperties(encryptColumns, ParquetCipher.AES_GCM_CTR_V1, false);
-    builder.encrypt(Arrays.asList(encryptColumns)).encryptionProperties(fileEncryptionProperties);
+    builder.encrypt(List.of(encryptColumns)).encryptionProperties(fileEncryptionProperties);
 
     builder.indexCacheStrategy(indexCacheStrategy);
 
@@ -345,7 +345,7 @@ public class ParquetRewriterTest {
     ParquetMetadata metaData = getFileMetaData(outputFile, fileDecryptionProperties);
     assertFalse(metaData.getBlocks().isEmpty());
     List<ColumnChunkMetaData> columns = metaData.getBlocks().get(0).getColumns();
-    Set<String> set = new HashSet<>(Arrays.asList(encryptColumns));
+    Set<String> set = new HashSet<>(List.of(encryptColumns));
     for (ColumnChunkMetaData column : columns) {
       if (set.contains(column.getPath().toDotString())) {
         assertTrue(column.isEncrypted());
@@ -477,7 +477,7 @@ public class ParquetRewriterTest {
 
     RewriteOptions options = builder.mask(maskColumns)
         .transform(CompressionCodecName.ZSTD)
-        .encrypt(Arrays.asList(encryptColumns))
+        .encrypt(List.of(encryptColumns))
         .encryptionProperties(fileEncryptionProperties)
         .indexCacheStrategy(indexCacheStrategy)
         .build();
@@ -508,7 +508,7 @@ public class ParquetRewriterTest {
     // Verify the column is encrypted
     ParquetMetadata metaData = getFileMetaData(outputFile, fileDecryptionProperties);
     assertFalse(metaData.getBlocks().isEmpty());
-    Set<String> encryptedColumns = new HashSet<>(Arrays.asList(encryptColumns));
+    Set<String> encryptedColumns = new HashSet<>(List.of(encryptColumns));
     for (BlockMetaData blockMetaData : metaData.getBlocks()) {
       List<ColumnChunkMetaData> columns = blockMetaData.getColumns();
       for (ColumnChunkMetaData column : columns) {
@@ -610,7 +610,7 @@ public class ParquetRewriterTest {
         .renameColumns(ImmutableMap.of("Name", "NameRenamed"))
         .prune(pruneColumns)
         .transform(CompressionCodecName.SNAPPY)
-        .encrypt(Arrays.asList(encryptColumns))
+        .encrypt(List.of(encryptColumns))
         .encryptionProperties(fileEncryptionProperties)
         .build();
 
@@ -637,7 +637,7 @@ public class ParquetRewriterTest {
 
     ParquetMetadata metaData = getFileMetaData(outputFile, fileDecryptionProperties);
     assertFalse(metaData.getBlocks().isEmpty());
-    Set<String> encryptedColumns = new HashSet<>(Arrays.asList(encryptColumns));
+    Set<String> encryptedColumns = new HashSet<>(List.of(encryptColumns));
     for (BlockMetaData blockMetaData : metaData.getBlocks()) {
       List<ColumnChunkMetaData> columns = blockMetaData.getColumns();
       for (ColumnChunkMetaData column : columns) {

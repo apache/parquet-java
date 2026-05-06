@@ -144,7 +144,7 @@ public class TestColumnIO {
   @Parameterized.Parameters
   public static Collection<Object[]> data() throws IOException {
     Object[][] data = {{true}, {false}};
-    return Arrays.asList(data);
+    return List.of(data);
   }
 
   private boolean useDictionary;
@@ -386,7 +386,7 @@ public class TestColumnIO {
         .append("g", new NanoTime(1234, System.currentTimeMillis() * 1000))
         .append("h", Binary.fromString("abc"));
 
-    testSchema(oneOfEachSchema, Arrays.asList(g1));
+    testSchema(oneOfEachSchema, List.of(g1));
   }
 
   @Test
@@ -398,7 +398,7 @@ public class TestColumnIO {
     Group g1 = gf.newGroup();
     g1.addGroup("foo").append("bar", 2l);
 
-    testSchema(reqreqSchema, Arrays.asList(g1));
+    testSchema(reqreqSchema, List.of(g1));
   }
 
   @Test

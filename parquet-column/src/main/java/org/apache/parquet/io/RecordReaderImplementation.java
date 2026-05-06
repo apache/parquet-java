@@ -488,6 +488,6 @@ class RecordReaderImplementation<T> extends RecordReader<T> {
 
   protected Iterable<ColumnReader> getColumnReaders() {
     // Converting the array to an iterable ensures that the array cannot be altered
-    return Arrays.asList(columnReaders);
+    return List.of(columnReaders);
   }
 }

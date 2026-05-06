@@ -101,6 +101,29 @@ public class TestPrimitiveComparator {
   }
 
   @Test
+  public void testUnknownLogicalTypeComparator() {
+    PrimitiveType.PrimitiveTypeName[] types = new PrimitiveType.PrimitiveTypeName[] {
+      PrimitiveType.PrimitiveTypeName.BOOLEAN,
+      PrimitiveType.PrimitiveTypeName.BINARY,
+      PrimitiveType.PrimitiveTypeName.INT32,
+      PrimitiveType.PrimitiveTypeName.INT64,
+      PrimitiveType.PrimitiveTypeName.FLOAT,
+      PrimitiveType.PrimitiveTypeName.DOUBLE,
+      PrimitiveType.PrimitiveTypeName.INT96,
+      PrimitiveType.PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY
+    };
+
+    for (PrimitiveType.PrimitiveTypeName type : types) {
+      assertEquals(
+          new PrimitiveType(Type.Repetition.REQUIRED, type, "vo")
+              .withLogicalTypeAnnotation(LogicalTypeAnnotation.unknownType())
+              .comparator()
+              .compare(null, null),
+          0);
+    }
+  }
+
+  @Test
   public void testSignedInt64Comparator() {
     testInt64Comparator(
         SIGNED_INT64_COMPARATOR,

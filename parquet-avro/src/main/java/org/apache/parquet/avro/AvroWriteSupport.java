@@ -42,9 +42,12 @@ import org.apache.parquet.hadoop.util.ConfigurationUtil;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.RecordConsumer;
 import org.apache.parquet.schema.GroupType;
+import org.apache.parquet.schema.LogicalTypeAnnotation;
 import org.apache.parquet.schema.LogicalTypeAnnotation.UUIDLogicalTypeAnnotation;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Type;
+import org.apache.parquet.variant.Variant;
+import org.apache.parquet.variant.VariantValueWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -181,9 +184,79 @@ public class AvroWriteSupport<T> extends WriteSupport<T> {
   }
 
   private void writeRecord(GroupType schema, Schema avroSchema, Object record) {
-    recordConsumer.startGroup();
-    writeRecordFields(schema, avroSchema, record);
-    recordConsumer.endGroup();
+    if (schema.getLogicalTypeAnnotation() instanceof LogicalTypeAnnotation.VariantLogicalTypeAnnotation) {
+      writeVariantFields(schema, avroSchema, record);
+    } else {
+      recordConsumer.startGroup();
+      writeRecordFields(schema, avroSchema, record);
+      recordConsumer.endGroup();
+    }
+  }
+
+  // Return true if schema and avroSchema have the same field names, in the same order.
+  private static boolean schemaMatches(GroupType schema, Schema avroSchema) {
+    List<Schema.Field> avroFields = avroSchema.getFields();
+    if (schema.getFieldCount() != avroFields.size()) {
+      return false;
+    }
+
+    for (int i = 0; i < avroFields.size(); i += 1) {
+      if (!avroFields.get(i).name().equals(schema.getFieldName(i))) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  private void writeVariantFields(GroupType schema, Schema avroSchema, Object record) {
+    List<Type> fields = schema.getFields();
+    List<Schema.Field> avroFields = avroSchema.getFields();
+
+    if (schemaMatches(schema, avroSchema)) {
+      // If the Avro schema matches the Parquet schema, the shredding matches and writeRecordFields can be used.
+      // writeRecordFields will validate that the field types match.
+      recordConsumer.startGroup();
+      writeRecordFields(schema, avroSchema, record);
+      recordConsumer.endGroup();
+      return;
+    }
+
+    boolean binarySchema = true;
+    ByteBuffer metadata = null;
+    ByteBuffer value = null;
+    // Extract the value and metadata binary.
+    for (int index = 0; index < avroFields.size(); index++) {
+      Schema.Field avroField = avroFields.get(index);
+      Schema fieldSchema = AvroSchemaConverter.getNonNull(avroField.schema());
+      if (!fieldSchema.getType().equals(Schema.Type.BYTES)) {
+        binarySchema = false;
+        break;
+      }
+      Type fieldType = fields.get(index);
+      if (fieldType.getName().equals("value")) {
+        Object valueObj = model.getField(record, avroField.name(), index);
+        Preconditions.checkArgument(
+            valueObj instanceof ByteBuffer,
+            "Expected ByteBuffer for value, but got " + valueObj.getClass());
+        value = (ByteBuffer) valueObj;
+      } else if (fieldType.getName().equals("metadata")) {
+        Object metadataObj = model.getField(record, avroField.name(), index);
+        Preconditions.checkArgument(
+            metadataObj instanceof ByteBuffer,
+            "Expected metadata to be a ByteBuffer, but got " + metadataObj.getClass());
+        metadata = (ByteBuffer) metadataObj;
+      } else {
+        binarySchema = false;
+        break;
+      }
+    }
+
+    if (binarySchema) {
+      VariantValueWriter.write(recordConsumer, schema, new Variant(value, metadata));
+    } else {
+      throw new RuntimeException("Invalid Avro schema for Variant logical type: " + schema.getName());
+    }
   }
 
   private void writeRecordFields(GroupType schema, Schema avroSchema, Object record) {

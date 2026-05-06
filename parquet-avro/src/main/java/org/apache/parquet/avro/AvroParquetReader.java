@@ -19,6 +19,8 @@
 package org.apache.parquet.avro;
 
 import java.io.IOException;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.specific.SpecificData;
@@ -176,6 +178,26 @@ public class AvroParquetReader<T> extends ParquetReader<T> {
         isReflect = true;
       }
 
+      return this;
+    }
+
+    public Builder<T> withSerializableClasses(String... classNames) {
+      if (classNames.length == 0) {
+        configuration.set(AvroReadSupport.SERIALIZABLE_CLASSES, null);
+      } else {
+        configuration.set(AvroReadSupport.SERIALIZABLE_CLASSES, String.join(",", classNames));
+      }
+      return this;
+    }
+
+    public Builder<T> withSerializableClasses(Class<?>... classes) {
+      if (classes.length == 0) {
+        configuration.set(AvroReadSupport.SERIALIZABLE_CLASSES, null);
+      } else {
+        configuration.set(
+            AvroReadSupport.SERIALIZABLE_CLASSES,
+            Stream.of(classes).map(Class::getName).collect(Collectors.joining(",")));
+      }
       return this;
     }
 

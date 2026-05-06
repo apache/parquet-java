@@ -50,6 +50,7 @@ import org.apache.parquet.Preconditions;
 import org.apache.parquet.column.EncodingStats;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.statistics.BinaryStatistics;
+import org.apache.parquet.column.statistics.geospatial.GeospatialTypes;
 import org.apache.parquet.column.values.bloomfilter.BloomFilter;
 import org.apache.parquet.crypto.AesCipher;
 import org.apache.parquet.crypto.AesGcmEncryptor;
@@ -65,6 +66,7 @@ import org.apache.parquet.format.BloomFilterCompression;
 import org.apache.parquet.format.BloomFilterHash;
 import org.apache.parquet.format.BloomFilterHeader;
 import org.apache.parquet.format.BoundaryOrder;
+import org.apache.parquet.format.BoundingBox;
 import org.apache.parquet.format.ColumnChunk;
 import org.apache.parquet.format.ColumnCryptoMetaData;
 import org.apache.parquet.format.ColumnIndex;
@@ -76,10 +78,14 @@ import org.apache.parquet.format.DataPageHeader;
 import org.apache.parquet.format.DataPageHeaderV2;
 import org.apache.parquet.format.DecimalType;
 import org.apache.parquet.format.DictionaryPageHeader;
+import org.apache.parquet.format.EdgeInterpolationAlgorithm;
 import org.apache.parquet.format.Encoding;
 import org.apache.parquet.format.EncryptionWithColumnKey;
 import org.apache.parquet.format.FieldRepetitionType;
 import org.apache.parquet.format.FileMetaData;
+import org.apache.parquet.format.GeographyType;
+import org.apache.parquet.format.GeometryType;
+import org.apache.parquet.format.GeospatialStatistics;
 import org.apache.parquet.format.IntType;
 import org.apache.parquet.format.KeyValue;
 import org.apache.parquet.format.LogicalType;
@@ -103,6 +109,7 @@ import org.apache.parquet.format.TimestampType;
 import org.apache.parquet.format.Type;
 import org.apache.parquet.format.TypeDefinedOrder;
 import org.apache.parquet.format.Uncompressed;
+import org.apache.parquet.format.VariantType;
 import org.apache.parquet.format.XxHash;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
@@ -132,13 +139,22 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 // TODO: This file has become too long!
-// TODO: Lets split it up: https://issues.apache.org/jira/browse/PARQUET-310
+// TODO: Lets split it up: https://github.com/apache/parquet-java/issues/1835
 public class ParquetMetadataConverter {
 
   private static final TypeDefinedOrder TYPE_DEFINED_ORDER = new TypeDefinedOrder();
   public static final MetadataFilter NO_FILTER = new NoFilter();
   public static final MetadataFilter SKIP_ROW_GROUPS = new SkipMetadataFilter();
   public static final long MAX_STATS_SIZE = 4096; // limit stats to 4k
+
+  /**
+   * Configuration property to control the Thrift max message size when reading Parquet metadata.
+   * This is useful for files with very large metadata
+   * Default value is 100 MB.
+   */
+  public static final String PARQUET_THRIFT_STRING_SIZE_LIMIT = "parquet.thrift.string.size.limit";
+
+  private static final int DEFAULT_MAX_MESSAGE_SIZE = 104857600; // 100 MB
 
   private static final Logger LOG = LoggerFactory.getLogger(ParquetMetadataConverter.class);
   private static final LogicalTypeConverterVisitor LOGICAL_TYPE_ANNOTATION_VISITOR =
@@ -147,6 +163,7 @@ public class ParquetMetadataConverter {
       new ConvertedTypeConverterVisitor();
   private final int statisticsTruncateLength;
   private final boolean useSignedStringMinMax;
+  private final ParquetReadOptions options;
 
   public ParquetMetadataConverter() {
     this(false);
@@ -166,7 +183,7 @@ public class ParquetMetadataConverter {
   }
 
   public ParquetMetadataConverter(ParquetReadOptions options) {
-    this(options.useSignedStringMinMax());
+    this(options.useSignedStringMinMax(), ParquetProperties.DEFAULT_STATISTICS_TRUNCATE_LENGTH, options);
   }
 
   private ParquetMetadataConverter(boolean useSignedStringMinMax) {
@@ -174,11 +191,30 @@ public class ParquetMetadataConverter {
   }
 
   private ParquetMetadataConverter(boolean useSignedStringMinMax, int statisticsTruncateLength) {
+    this(useSignedStringMinMax, statisticsTruncateLength, null);
+  }
+
+  private ParquetMetadataConverter(
+      boolean useSignedStringMinMax, int statisticsTruncateLength, ParquetReadOptions options) {
     if (statisticsTruncateLength <= 0) {
       throw new IllegalArgumentException("Truncate length should be greater than 0");
     }
     this.useSignedStringMinMax = useSignedStringMinMax;
     this.statisticsTruncateLength = statisticsTruncateLength;
+    this.options = options;
+  }
+
+  /**
+   * Gets the configured max message size for Thrift deserialization.
+   * Reads from ParquetReadOptions configuration, or returns -1 if not available.
+   *
+   * @return the max message size in bytes, or -1 to use the default
+   */
+  private int getMaxMessageSize() {
+    if (options != null && options.getConfiguration() != null) {
+      return options.getConfiguration().getInt(PARQUET_THRIFT_STRING_SIZE_LIMIT, DEFAULT_MAX_MESSAGE_SIZE);
+    }
+    return -1;
   }
 
   // NOTE: this cache is for memory savings, not cpu savings, and is used to de-duplicate
@@ -514,6 +550,32 @@ public class ParquetMetadataConverter {
     public Optional<LogicalType> visit(LogicalTypeAnnotation.IntervalLogicalTypeAnnotation intervalLogicalType) {
       return of(LogicalTypes.UNKNOWN);
     }
+
+    @Override
+    public Optional<LogicalType> visit(LogicalTypeAnnotation.VariantLogicalTypeAnnotation variantLogicalType) {
+      return of(LogicalTypes.VARIANT(variantLogicalType.getSpecVersion()));
+    }
+
+    @Override
+    public Optional<LogicalType> visit(LogicalTypeAnnotation.GeometryLogicalTypeAnnotation geometryLogicalType) {
+      GeometryType geometryType = new GeometryType();
+      if (geometryLogicalType.getCrs() != null
+          && !geometryLogicalType.getCrs().isEmpty()) {
+        geometryType.setCrs(geometryLogicalType.getCrs());
+      }
+      return of(LogicalType.GEOMETRY(geometryType));
+    }
+
+    @Override
+    public Optional<LogicalType> visit(LogicalTypeAnnotation.GeographyLogicalTypeAnnotation geographyLogicalType) {
+      GeographyType geographyType = new GeographyType();
+      if (geographyLogicalType.getCrs() != null
+          && !geographyLogicalType.getCrs().isEmpty()) {
+        geographyType.setCrs(geographyLogicalType.getCrs());
+      }
+      geographyType.setAlgorithm(fromParquetEdgeInterpolationAlgorithm(geographyLogicalType.getAlgorithm()));
+      return of(LogicalType.GEOGRAPHY(geographyType));
+    }
   }
 
   private void addRowGroup(
@@ -578,6 +640,12 @@ public class ParquetMetadataConverter {
         metaData.setSize_statistics(toParquetSizeStatistics(columnMetaData.getSizeStatistics()));
       }
 
+      if (columnMetaData.getGeospatialStatistics() != null
+          && columnMetaData.getGeospatialStatistics().isValid()) {
+        metaData.setGeospatial_statistics(
+            toParquetGeospatialStatistics(columnMetaData.getGeospatialStatistics()));
+      }
+
       if (!encryptMetaData) {
         columnChunk.setMeta_data(metaData);
       } else {
@@ -635,11 +703,13 @@ public class ParquetMetadataConverter {
     rowGroups.add(rowGroup);
   }
 
-  private List<Encoding> toFormatEncodings(Set<org.apache.parquet.column.Encoding> encodings) {
+  // Visible for testing
+  List<Encoding> toFormatEncodings(Set<org.apache.parquet.column.Encoding> encodings) {
     List<Encoding> converted = new ArrayList<Encoding>(encodings.size());
     for (org.apache.parquet.column.Encoding encoding : encodings) {
       converted.add(getEncoding(encoding));
     }
+    Collections.sort(converted);
     return converted;
   }
 
@@ -765,6 +835,36 @@ public class ParquetMetadataConverter {
     return formatStats;
   }
 
+  private static BoundingBox toParquetBoundingBox(org.apache.parquet.column.statistics.geospatial.BoundingBox bbox) {
+    // Check if any of the required bounding box is valid.
+    if (!bbox.isXYValid() || bbox.isXYEmpty()) {
+      // According to the Thrift-generated class, these fields are marked as required and must be set explicitly.
+      // If any of them is NaN, it indicates the bounding box is invalid or uninitialized,
+      // so we return null to avoid creating a malformed BoundingBox object that would later fail serialization
+      // or validation.
+      return null;
+    }
+
+    // Now we can safely create the BoundingBox object
+    BoundingBox formatBbox = new BoundingBox();
+    formatBbox.setXmin(bbox.getXMin());
+    formatBbox.setXmax(bbox.getXMax());
+    formatBbox.setYmin(bbox.getYMin());
+    formatBbox.setYmax(bbox.getYMax());
+
+    if (bbox.isZValid() && !bbox.isZEmpty()) {
+      formatBbox.setZmin(bbox.getZMin());
+      formatBbox.setZmax(bbox.getZMax());
+    }
+
+    if (bbox.isMValid() && !bbox.isMEmpty()) {
+      formatBbox.setMmin(bbox.getMMin());
+      formatBbox.setMmax(bbox.getMMax());
+    }
+
+    return formatBbox;
+  }
+
   private static boolean withinLimit(org.apache.parquet.column.statistics.Statistics stats, int truncateLength) {
     if (stats.isSmallerThan(MAX_STATS_SIZE)) {
       return true;
@@ -870,6 +970,75 @@ public class ParquetMetadataConverter {
     return fromParquetStatisticsInternal(createdBy, statistics, type, expectedOrder);
   }
 
+  GeospatialStatistics toParquetGeospatialStatistics(
+      org.apache.parquet.column.statistics.geospatial.GeospatialStatistics geospatialStatistics) {
+    if (geospatialStatistics == null) {
+      return null;
+    }
+
+    GeospatialStatistics formatStats = new GeospatialStatistics();
+    boolean hasStats = false;
+
+    if (geospatialStatistics.getBoundingBox() != null
+        && geospatialStatistics.getBoundingBox().isValid()
+        && !geospatialStatistics.getBoundingBox().isXYEmpty()) {
+      formatStats.setBbox(toParquetBoundingBox(geospatialStatistics.getBoundingBox()));
+      hasStats = true;
+    }
+
+    if (geospatialStatistics.getGeospatialTypes() != null
+        && geospatialStatistics.getGeospatialTypes().isValid()) {
+      List<Integer> geometryTypes =
+          new ArrayList<>(geospatialStatistics.getGeospatialTypes().getTypes());
+      if (!geometryTypes.isEmpty()) {
+        Collections.sort(geometryTypes);
+        formatStats.setGeospatial_types(geometryTypes);
+        hasStats = true;
+      }
+    }
+
+    if (!hasStats) {
+      return null;
+    }
+
+    return formatStats;
+  }
+
+  static org.apache.parquet.column.statistics.geospatial.GeospatialStatistics fromParquetStatistics(
+      GeospatialStatistics formatGeomStats, PrimitiveType type) {
+    org.apache.parquet.column.statistics.geospatial.BoundingBox bbox = null;
+    if (formatGeomStats == null) {
+      return null;
+    }
+    if (formatGeomStats.isSetBbox()) {
+      BoundingBox formatBbox = formatGeomStats.getBbox();
+      bbox = new org.apache.parquet.column.statistics.geospatial.BoundingBox(
+          formatBbox.isSetXmin() ? formatBbox.getXmin() : Double.NaN,
+          formatBbox.isSetXmax() ? formatBbox.getXmax() : Double.NaN,
+          formatBbox.isSetYmin() ? formatBbox.getYmin() : Double.NaN,
+          formatBbox.isSetYmax() ? formatBbox.getYmax() : Double.NaN,
+          formatBbox.isSetZmin() ? formatBbox.getZmin() : Double.NaN,
+          formatBbox.isSetZmax() ? formatBbox.getZmax() : Double.NaN,
+          formatBbox.isSetMmin() ? formatBbox.getMmin() : Double.NaN,
+          formatBbox.isSetMmax() ? formatBbox.getMmax() : Double.NaN);
+    }
+    GeospatialTypes geospatialTypes = null;
+    if (formatGeomStats.isSetGeospatial_types()) {
+      geospatialTypes = new GeospatialTypes(new HashSet<>(formatGeomStats.getGeospatial_types()));
+    }
+
+    // get the logical type annotation data from the type
+    LogicalTypeAnnotation logicalType = type.getLogicalTypeAnnotation();
+    if (logicalType instanceof LogicalTypeAnnotation.GeometryLogicalTypeAnnotation) {
+      LogicalTypeAnnotation.GeometryLogicalTypeAnnotation geometryLogicalType =
+          (LogicalTypeAnnotation.GeometryLogicalTypeAnnotation) logicalType;
+      return new org.apache.parquet.column.statistics.geospatial.GeospatialStatistics(bbox, geospatialTypes);
+    }
+    return new org.apache.parquet.column.statistics.geospatial.GeospatialStatistics(
+        // this case should not happen in normal cases
+        bbox, geospatialTypes);
+  }
+
   /**
    * Sort order for page and column statistics. Types are associated with sort
    * orders (e.g., UTF8 columns should use UNSIGNED) and column stats are
@@ -885,12 +1054,12 @@ public class ParquetMetadataConverter {
     UNKNOWN
   }
 
-  private static final Set<Class> STRING_TYPES = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
+  private static final Set<Class> STRING_TYPES = Set.of(
       LogicalTypeAnnotation.StringLogicalTypeAnnotation.class,
       LogicalTypeAnnotation.EnumLogicalTypeAnnotation.class,
       LogicalTypeAnnotation.JsonLogicalTypeAnnotation.class,
       LogicalTypeAnnotation.Float16LogicalTypeAnnotation.class,
-      LogicalTypeAnnotation.UnknownLogicalTypeAnnotation.class)));
+      LogicalTypeAnnotation.UnknownLogicalTypeAnnotation.class);
 
   /**
    * Returns whether to use signed order min and max with a type. It is safe to
@@ -1033,6 +1202,12 @@ public class ParquetMetadataConverter {
             public Optional<SortOrder> visit(
                 LogicalTypeAnnotation.TimestampLogicalTypeAnnotation timestampLogicalType) {
               return of(SortOrder.SIGNED);
+            }
+
+            @Override
+            public Optional<SortOrder> visit(
+                LogicalTypeAnnotation.GeometryLogicalTypeAnnotation geometryLogicalType) {
+              return of(SortOrder.UNKNOWN);
             }
           })
           .orElse(defaultSortOrder(primitive.getPrimitiveTypeName()));
@@ -1177,6 +1352,16 @@ public class ParquetMetadataConverter {
         return LogicalTypeAnnotation.uuidType();
       case FLOAT16:
         return LogicalTypeAnnotation.float16Type();
+      case GEOMETRY:
+        GeometryType geometry = type.getGEOMETRY();
+        return LogicalTypeAnnotation.geometryType(geometry.getCrs());
+      case GEOGRAPHY:
+        GeographyType geography = type.getGEOGRAPHY();
+        return LogicalTypeAnnotation.geographyType(
+            geography.getCrs(), toParquetEdgeInterpolationAlgorithm(geography.getAlgorithm()));
+      case VARIANT:
+        VariantType variant = type.getVARIANT();
+        return LogicalTypeAnnotation.variantType(variant.getSpecification_version());
       default:
         throw new RuntimeException("Unknown logical type " + type);
     }
@@ -1540,21 +1725,27 @@ public class ParquetMetadataConverter {
         filter.accept(new MetadataFilterVisitor<FileMetaDataAndRowGroupOffsetInfo, IOException>() {
           @Override
           public FileMetaDataAndRowGroupOffsetInfo visit(NoFilter filter) throws IOException {
-            FileMetaData fileMetadata = readFileMetaData(from, footerDecryptor, encryptedFooterAAD);
+            int maxMessageSize = getMaxMessageSize();
+            FileMetaData fileMetadata =
+                readFileMetaData(from, footerDecryptor, encryptedFooterAAD, maxMessageSize);
             return new FileMetaDataAndRowGroupOffsetInfo(
                 fileMetadata, generateRowGroupOffsets(fileMetadata));
           }
 
           @Override
           public FileMetaDataAndRowGroupOffsetInfo visit(SkipMetadataFilter filter) throws IOException {
-            FileMetaData fileMetadata = readFileMetaData(from, true, footerDecryptor, encryptedFooterAAD);
+            int maxMessageSize = getMaxMessageSize();
+            FileMetaData fileMetadata =
+                readFileMetaData(from, true, footerDecryptor, encryptedFooterAAD, maxMessageSize);
             return new FileMetaDataAndRowGroupOffsetInfo(
                 fileMetadata, generateRowGroupOffsets(fileMetadata));
           }
 
           @Override
           public FileMetaDataAndRowGroupOffsetInfo visit(OffsetMetadataFilter filter) throws IOException {
-            FileMetaData fileMetadata = readFileMetaData(from, footerDecryptor, encryptedFooterAAD);
+            int maxMessageSize = getMaxMessageSize();
+            FileMetaData fileMetadata =
+                readFileMetaData(from, footerDecryptor, encryptedFooterAAD, maxMessageSize);
             // We must generate the map *before* filtering because it modifies `fileMetadata`.
             Map<RowGroup, Long> rowGroupToRowIndexOffsetMap = generateRowGroupOffsets(fileMetadata);
             FileMetaData filteredFileMetadata = filterFileMetaDataByStart(fileMetadata, filter);
@@ -1563,7 +1754,9 @@ public class ParquetMetadataConverter {
 
           @Override
           public FileMetaDataAndRowGroupOffsetInfo visit(RangeMetadataFilter filter) throws IOException {
-            FileMetaData fileMetadata = readFileMetaData(from, footerDecryptor, encryptedFooterAAD);
+            int maxMessageSize = getMaxMessageSize();
+            FileMetaData fileMetadata =
+                readFileMetaData(from, footerDecryptor, encryptedFooterAAD, maxMessageSize);
             // We must generate the map *before* filtering because it modifies `fileMetadata`.
             Map<RowGroup, Long> rowGroupToRowIndexOffsetMap = generateRowGroupOffsets(fileMetadata);
             FileMetaData filteredFileMetadata = filterFileMetaDataByMidpoint(fileMetadata, filter);
@@ -1613,7 +1806,8 @@ public class ParquetMetadataConverter {
         metaData.num_values,
         metaData.total_compressed_size,
         metaData.total_uncompressed_size,
-        fromParquetSizeStatistics(metaData.size_statistics, type));
+        fromParquetSizeStatistics(metaData.size_statistics, type),
+        fromParquetStatistics(metaData.geospatial_statistics, type));
   }
 
   public ParquetMetadata fromParquetMetadata(FileMetaData parquetMetadata) throws IOException {
@@ -2480,5 +2674,27 @@ public class ParquetMetadataConverter {
       formatStats.setDefinition_level_histogram(defLevelHistogram);
     }
     return formatStats;
+  }
+
+  /** Convert Parquet Algorithm enum to Thrift Algorithm enum */
+  public static EdgeInterpolationAlgorithm fromParquetEdgeInterpolationAlgorithm(
+      org.apache.parquet.column.schema.EdgeInterpolationAlgorithm parquetAlgo) {
+    if (parquetAlgo == null) {
+      return null;
+    }
+    EdgeInterpolationAlgorithm thriftAlgo = EdgeInterpolationAlgorithm.findByValue(parquetAlgo.getValue());
+    if (thriftAlgo == null) {
+      throw new IllegalArgumentException("Unrecognized Parquet EdgeInterpolationAlgorithm: " + parquetAlgo);
+    }
+    return thriftAlgo;
+  }
+
+  /** Convert Thrift Algorithm enum to Parquet Algorithm enum */
+  public static org.apache.parquet.column.schema.EdgeInterpolationAlgorithm toParquetEdgeInterpolationAlgorithm(
+      EdgeInterpolationAlgorithm thriftAlgo) {
+    if (thriftAlgo == null) {
+      return null;
+    }
+    return org.apache.parquet.column.schema.EdgeInterpolationAlgorithm.findByValue(thriftAlgo.getValue());
   }
 }

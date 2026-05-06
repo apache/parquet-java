@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
  * distributed with this work for additional information
@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * <p>
- * http://www.apache.org/licenses/LICENSE-2.0
- * <p>
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
  * Unless required by applicable law or agreed to in writing,
  * software distributed under the License is distributed on an
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -16,17 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.parquet;
+package org.apache.parquet.cli.commands;
 
-public class UntrustedStringableClass {
-  private final String value;
+import java.io.File;
+import java.io.IOException;
+import java.util.Arrays;
+import org.apache.hadoop.conf.Configuration;
+import org.junit.Assert;
+import org.junit.Test;
 
-  public UntrustedStringableClass(String value) {
-    this.value = value;
-  }
-
-  @Override
-  public String toString() {
-    return this.value;
+public class ShowGeospatialStatisticsCommandTest extends ParquetFileTest {
+  @Test
+  public void testShowGeospatialStatisticsCommand() throws IOException {
+    File file = parquetFile();
+    ShowGeospatialStatisticsCommand command = new ShowGeospatialStatisticsCommand(createLogger());
+    command.targets = Arrays.asList(file.getAbsolutePath());
+    command.setConf(new Configuration());
+    Assert.assertEquals(0, command.run());
   }
 }
