@@ -53,6 +53,13 @@ public class InterOpTester {
         Proxy proxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress(proxyHost, port));
         client = new OkHttpClient.Builder().proxy(proxy).build();
       } catch (NumberFormatException e) {
+        LOG.warn(
+            "Ignoring proxy configuration because proxy port could not be parsed: "
+                + "parquet.https.proxyHost='{}', parquet.https.proxyPort='{}'. "
+                + "Falling back to a direct connection.",
+            proxyHost,
+            proxyPort,
+            e);
       }
     }
     if (client == null) client = new OkHttpClient();
