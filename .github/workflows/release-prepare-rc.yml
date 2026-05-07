@@ -57,12 +57,14 @@ jobs:
           distribution: temurin
           java-version: '11'
 
-      - name: Import GPG key and configure Git signing
+      - name: Import GPG key and configure Git
         env:
           GPG_PRIVATE_KEY: ${{ secrets.PARQUET_GPG_PRIVATE_KEY }}
         run: |
           echo "${GPG_PRIVATE_KEY}" | gpg --batch --import
           KEY_ID=$(gpg --list-keys --with-colons | grep '^fpr' | head -1 | cut -d: -f10)
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git config --global user.signingkey "${KEY_ID}"
           git config --global commit.gpgsign true
 
