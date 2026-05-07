@@ -39,6 +39,7 @@ on:
 
 jobs:
   prepare-rc:
+    if: github.repository_owner == 'apache'
     name: Prepare Release Candidate
     runs-on: ubuntu-latest
     permissions:

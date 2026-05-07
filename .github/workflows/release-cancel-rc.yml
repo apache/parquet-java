@@ -42,6 +42,7 @@ on:
 
 jobs:
   cancel-rc:
+    if: github.repository_owner == 'apache'
     name: Cancel Release Candidate
     runs-on: ubuntu-latest
     permissions:

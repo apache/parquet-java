@@ -43,6 +43,7 @@ on:
 
 jobs:
   publish-release:
+    if: github.repository_owner == 'apache'
     name: Publish Release
     runs-on: ubuntu-latest
     permissions:
