@@ -35,7 +35,7 @@ source "${LIBS_DIR}/_maven.sh"
 # ---------------------------------------------------------------------------
 function usage {
   cat <<EOF
-Usage: $0 <version> <staging-repo-id> [--rc <num>]
+Usage: $0 <version> <staging-repo-id> [--rc <num>] [--allow-description-mismatch]
 
 Publish a release after the vote passes.
 
@@ -45,7 +45,14 @@ Arguments:
 
 Options:
   --rc <num>            RC number that passed the vote (default: auto-detect latest)
+  --allow-description-mismatch
+                        Bypass the staging-repo description check (for recovery scenarios)
   --help                Show this help
+
+Before any destructive action, this script verifies that the staging repo
+belongs to org.apache.parquet, is in 'closed' state, contains
+${NEXUS_VERIFY_ARTIFACT_ID:-parquet-common}-<version>.pom, and has a
+description matching "Apache Parquet <version> RC<num>".
 
 The next development version is auto-computed by incrementing the patch
 version (e.g., 1.18.0 -> 1.18.1-SNAPSHOT).
@@ -71,6 +78,7 @@ EOF
 version=""
 staging_repo_id=""
 rc_num=""
+allow_description_mismatch=0
 positional=()
 
 while [[ $# -gt 0 ]]; do
@@ -82,6 +90,10 @@ while [[ $# -gt 0 ]]; do
       fi
       rc_num="$2"
       shift 2
+      ;;
+    --allow-description-mismatch)
+      allow_description_mismatch=1
+      shift
       ;;
     --help|-h)
       usage 0
@@ -180,6 +192,18 @@ step_summary "| Final tag | \`${final_tag}\` |"
 step_summary "| Staging repo | \`${staging_repo_id}\` |"
 step_summary "| Next dev version | \`${next_dev_version}-SNAPSHOT\` |"
 step_summary "| Commit | \`${rc_commit}\` |"
+
+# ---------------------------------------------------------------------------
+# Step 0: Verify staging repository before any destructive action
+# ---------------------------------------------------------------------------
+step_summary ""
+step_summary "### Staging Repository Verification"
+
+if ! nexus_verify_staging_repo "${staging_repo_id}" "${version}" "${rc_num}" "${allow_description_mismatch}"; then
+  step_summary "Staging repository verification: **FAILED**"
+  exit 1
+fi
+step_summary "Staging repository \`${staging_repo_id}\` verified"
 
 # ---------------------------------------------------------------------------
 # Step 1: Move SVN artifacts from dist/dev to dist/release

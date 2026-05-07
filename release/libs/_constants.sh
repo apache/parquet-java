@@ -29,7 +29,12 @@ APACHE_DIST_DEV_PATH="/dev/parquet"
 APACHE_DIST_RELEASE_PATH="/release/parquet"
 
 NEXUS_BASE_URL=${NEXUS_BASE_URL:-"https://repository.apache.org/service/local"}
+NEXUS_CONTENT_BASE_URL=${NEXUS_CONTENT_BASE_URL:-"https://repository.apache.org/content/repositories"}
 NEXUS_STAGING_GROUP_URL="https://repository.apache.org/content/groups/staging/org/apache/parquet/"
+
+NEXUS_PROFILE_NAME="org.apache.parquet"
+NEXUS_VERIFY_GROUP_PATH="org/apache/parquet"
+NEXUS_VERIFY_ARTIFACT_ID="parquet-common"
 
 DRY_RUN=${DRY_RUN:-1}
 

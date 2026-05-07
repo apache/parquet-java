@@ -35,6 +35,11 @@ on:
         description: 'Nexus staging repository ID (e.g., orgapacheparquet-1234)'
         required: true
         type: string
+      allow_description_mismatch:
+        description: 'Bypass the staging-repo description check (recovery only)'
+        required: false
+        type: boolean
+        default: false
       dry_run:
         description: 'Dry run mode (no actual changes)'
         required: false
@@ -81,9 +86,13 @@ jobs:
           INPUT_VERSION: ${{ inputs.version }}
           INPUT_RC_NUMBER: ${{ inputs.rc_number }}
           INPUT_STAGING_REPO_ID: ${{ inputs.staging_repo_id }}
+          INPUT_ALLOW_DESCRIPTION_MISMATCH: ${{ inputs.allow_description_mismatch && '1' || '0' }}
         run: |
           args=("${INPUT_VERSION}" "${INPUT_STAGING_REPO_ID}")
           if [[ -n "${INPUT_RC_NUMBER}" ]]; then
             args+=(--rc "${INPUT_RC_NUMBER}")
+          fi
+          if [[ "${INPUT_ALLOW_DESCRIPTION_MISMATCH}" == "1" ]]; then
+            args+=(--allow-description-mismatch)
           fi
           ./release/bin/publish-release.sh "${args[@]}"

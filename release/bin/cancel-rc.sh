@@ -34,7 +34,7 @@ source "${LIBS_DIR}/_nexus.sh"
 # ---------------------------------------------------------------------------
 function usage {
   cat <<EOF
-Usage: $0 <version> <rc-num> <staging-repo-id>
+Usage: $0 <version> <rc-num> <staging-repo-id> [--allow-description-mismatch]
 
 Cancel a release candidate after a failed vote.
 
@@ -42,6 +42,15 @@ Arguments:
   version               Release version (e.g., 1.18.0)
   rc-num                RC number to cancel (e.g., 0)
   staging-repo-id       Nexus staging repository ID (e.g., orgapacheparquet-1234)
+
+Options:
+  --allow-description-mismatch
+                        Bypass the staging-repo description check (for recovery scenarios)
+
+Before dropping the staging repo, this script verifies that it belongs
+to org.apache.parquet, is in 'closed' state, contains
+${NEXUS_VERIFY_ARTIFACT_ID:-parquet-common}-<version>.pom, and has a
+description matching "Apache Parquet <version> RC<num>".
 
 Environment variables:
   DRY_RUN               Set to 0 for real execution (default: 1)
@@ -59,14 +68,40 @@ EOF
 # ---------------------------------------------------------------------------
 # Parse arguments
 # ---------------------------------------------------------------------------
-if [[ $# -lt 3 ]]; then
-  print_error "Expected 3 arguments, got $#"
+version=""
+rc_num=""
+staging_repo_id=""
+allow_description_mismatch=0
+positional=()
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --allow-description-mismatch)
+      allow_description_mismatch=1
+      shift
+      ;;
+    --help|-h)
+      usage 0
+      ;;
+    -*)
+      print_error "Unknown option: $1"
+      usage 1
+      ;;
+    *)
+      positional+=("$1")
+      shift
+      ;;
+  esac
+done
+
+if [[ ${#positional[@]} -lt 3 ]]; then
+  print_error "Expected 3 positional arguments (version, rc-num, staging-repo-id), got ${#positional[@]}"
   usage 1
 fi
 
-version="$1"
-rc_num="$2"
-staging_repo_id="$3"
+version="${positional[0]}"
+rc_num="${positional[1]}"
+staging_repo_id="${positional[2]}"
 
 # ---------------------------------------------------------------------------
 # Validate inputs
@@ -101,6 +136,18 @@ step_summary "| --- | --- |"
 step_summary "| Version | \`${version}\` |"
 step_summary "| RC tag | \`${rc_tag}\` |"
 step_summary "| Staging repo | \`${staging_repo_id}\` |"
+
+# ---------------------------------------------------------------------------
+# Step 0: Verify staging repository before any destructive action
+# ---------------------------------------------------------------------------
+step_summary ""
+step_summary "### Staging Repository Verification"
+
+if ! nexus_verify_staging_repo "${staging_repo_id}" "${version}" "${rc_num}" "${allow_description_mismatch}"; then
+  step_summary "Staging repository verification: **FAILED**"
+  exit 1
+fi
+step_summary "Staging repository \`${staging_repo_id}\` verified"
 
 # ---------------------------------------------------------------------------
 # Step 1: Drop Nexus staging repo

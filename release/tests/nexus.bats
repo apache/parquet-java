@@ -106,3 +106,186 @@ setup() {
   [ "$status" -eq 0 ]
   [[ "$output" == *"staging/bulk/drop"* ]]
 }
+
+# ---- nexus_get_staging_repo_metadata ----
+
+@test "nexus_get_staging_repo_metadata: dry-run sets placeholder values" {
+  DRY_RUN=1
+  nexus_get_staging_repo_metadata "orgapacheparquet-1234"
+  [ "${nexus_repo_profile}" = "org.apache.parquet" ]
+  [ "${nexus_repo_state}" = "closed" ]
+  [ -n "${nexus_repo_description}" ]
+}
+
+@test "nexus_get_staging_repo_metadata: parses real-mode JSON response" {
+  DRY_RUN=0
+  curl() {
+    cat <<'JSON'
+{
+  "profileName": "org.apache.parquet",
+  "type": "closed",
+  "description": "Apache Parquet 1.18.0 RC0"
+}
+JSON
+    return 0
+  }
+  export -f curl
+  nexus_get_staging_repo_metadata "orgapacheparquet-1234"
+  [ "${nexus_repo_profile}" = "org.apache.parquet" ]
+  [ "${nexus_repo_state}" = "closed" ]
+  [ "${nexus_repo_description}" = "Apache Parquet 1.18.0 RC0" ]
+}
+
+@test "nexus_get_staging_repo_metadata: fails when curl fails" {
+  DRY_RUN=0
+  curl() { return 22; }
+  export -f curl
+  run nexus_get_staging_repo_metadata "orgapacheparquet-1234"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"Failed to fetch"* ]]
+}
+
+# ---- nexus_check_staging_artifact ----
+
+@test "nexus_check_staging_artifact: dry-run skips check" {
+  DRY_RUN=1
+  run nexus_check_staging_artifact "orgapacheparquet-1234" "1.18.0"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Dry-run"* ]]
+  [[ "$output" == *"parquet-common-1.18.0.pom"* ]]
+}
+
+@test "nexus_check_staging_artifact: succeeds when artifact present" {
+  DRY_RUN=0
+  curl() { return 0; }
+  export -f curl
+  run nexus_check_staging_artifact "orgapacheparquet-1234" "1.18.0"
+  [ "$status" -eq 0 ]
+}
+
+@test "nexus_check_staging_artifact: fails when artifact missing" {
+  DRY_RUN=0
+  curl() { return 22; }
+  export -f curl
+  run nexus_check_staging_artifact "orgapacheparquet-1234" "1.18.0"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"not found"* ]]
+}
+
+# ---- nexus_verify_staging_repo ----
+
+@test "nexus_verify_staging_repo: dry-run passes without making real calls" {
+  DRY_RUN=1
+  run nexus_verify_staging_repo "orgapacheparquet-1234" "1.18.0" "0"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"verified"* ]]
+}
+
+@test "nexus_verify_staging_repo: rejects wrong profile" {
+  DRY_RUN=0
+  curl() {
+    cat <<'JSON'
+{"profileName": "org.apache.iceberg", "type": "closed", "description": "Apache Parquet 1.18.0 RC0"}
+JSON
+    return 0
+  }
+  export -f curl
+  run nexus_verify_staging_repo "orgapacheparquet-1234" "1.18.0" "0"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"Profile mismatch"* ]]
+}
+
+@test "nexus_verify_staging_repo: rejects non-closed state" {
+  DRY_RUN=0
+  curl() {
+    cat <<'JSON'
+{"profileName": "org.apache.parquet", "type": "open", "description": "Apache Parquet 1.18.0 RC0"}
+JSON
+    return 0
+  }
+  export -f curl
+  run nexus_verify_staging_repo "orgapacheparquet-1234" "1.18.0" "0"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"Unexpected state"* ]]
+}
+
+@test "nexus_verify_staging_repo: rejects released state" {
+  DRY_RUN=0
+  curl() {
+    cat <<'JSON'
+{"profileName": "org.apache.parquet", "type": "released", "description": "Apache Parquet 1.18.0 RC0"}
+JSON
+    return 0
+  }
+  export -f curl
+  run nexus_verify_staging_repo "orgapacheparquet-1234" "1.18.0" "0"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"Unexpected state"* ]]
+}
+
+@test "nexus_verify_staging_repo: rejects when artifact missing" {
+  DRY_RUN=0
+  curl() {
+    if [[ "$*" == *"staging/repository"* ]]; then
+      cat <<'JSON'
+{"profileName": "org.apache.parquet", "type": "closed", "description": "Apache Parquet 1.18.0 RC0"}
+JSON
+      return 0
+    fi
+    return 22
+  }
+  export -f curl
+  run nexus_verify_staging_repo "orgapacheparquet-1234" "1.18.0" "0"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"not found"* ]]
+}
+
+@test "nexus_verify_staging_repo: rejects description mismatch by default" {
+  DRY_RUN=0
+  curl() {
+    if [[ "$*" == *"staging/repository"* ]]; then
+      cat <<'JSON'
+{"profileName": "org.apache.parquet", "type": "closed", "description": "Apache Parquet 1.18.0 RC1"}
+JSON
+    fi
+    return 0
+  }
+  export -f curl
+  run nexus_verify_staging_repo "orgapacheparquet-1234" "1.18.0" "0"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"Description mismatch"* ]]
+  [[ "$output" == *"--allow-description-mismatch"* ]]
+}
+
+@test "nexus_verify_staging_repo: allows description mismatch with flag" {
+  DRY_RUN=0
+  curl() {
+    if [[ "$*" == *"staging/repository"* ]]; then
+      cat <<'JSON'
+{"profileName": "org.apache.parquet", "type": "closed", "description": "Apache Parquet 1.18.0 RC1"}
+JSON
+    fi
+    return 0
+  }
+  export -f curl
+  run nexus_verify_staging_repo "orgapacheparquet-1234" "1.18.0" "0" "1"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Description mismatch"* ]]
+  [[ "$output" == *"Continuing despite"* ]]
+}
+
+@test "nexus_verify_staging_repo: passes when everything matches" {
+  DRY_RUN=0
+  curl() {
+    if [[ "$*" == *"staging/repository"* ]]; then
+      cat <<'JSON'
+{"profileName": "org.apache.parquet", "type": "closed", "description": "Apache Parquet 1.18.0 RC0"}
+JSON
+    fi
+    return 0
+  }
+  export -f curl
+  run nexus_verify_staging_repo "orgapacheparquet-1234" "1.18.0" "0"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"verified"* ]]
+}

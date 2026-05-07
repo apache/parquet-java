@@ -68,8 +68,111 @@ function nexus_drop_staging_repo {
   _nexus_bulk_action "drop" "${repo_id}" "${description}"
 }
 
+function nexus_get_staging_repo_metadata {
+  local repo_id="$1"
+  local url="${NEXUS_BASE_URL}/staging/repository/${repo_id}"
+
+  nexus_repo_profile=""
+  nexus_repo_state=""
+  nexus_repo_description=""
+
+  if [[ ${DRY_RUN:-1} -eq 1 ]]; then
+    print_command "Dry-run, WOULD GET ${url} (skipping metadata fetch)"
+    nexus_repo_profile="${NEXUS_PROFILE_NAME}"
+    nexus_repo_state="closed"
+    nexus_repo_description="DRY_RUN_DESCRIPTION"
+    return 0
+  fi
+
+  local response
+  if ! response=$(curl --fail --silent --show-error \
+    -K <(printf 'user = "%s:%s"\n' "${NEXUS_USERNAME}" "${NEXUS_PASSWORD}") \
+    -H "Accept: application/json" \
+    "${url}"); then
+    print_error "Failed to fetch staging repository metadata for ${repo_id}"
+    return 1
+  fi
+
+  nexus_repo_profile=$(echo "${response}" | jq -r '.profileName // ""')
+  nexus_repo_state=$(echo "${response}" | jq -r '.type // ""')
+  nexus_repo_description=$(echo "${response}" | jq -r '.description // ""')
+
+  if [[ -z "${nexus_repo_profile}" || -z "${nexus_repo_state}" ]]; then
+    print_error "Unable to parse staging repository metadata for ${repo_id}"
+    return 1
+  fi
+
+  return 0
+}
+
+function nexus_check_staging_artifact {
+  local repo_id="$1"
+  local version="$2"
+  local artifact_url="${NEXUS_CONTENT_BASE_URL}/${repo_id}/${NEXUS_VERIFY_GROUP_PATH}/${NEXUS_VERIFY_ARTIFACT_ID}/${version}/${NEXUS_VERIFY_ARTIFACT_ID}-${version}.pom"
+
+  if [[ ${DRY_RUN:-1} -eq 1 ]]; then
+    print_command "Dry-run, WOULD HEAD ${artifact_url}"
+    return 0
+  fi
+
+  if ! curl --fail --silent --show-error --head \
+    -K <(printf 'user = "%s:%s"\n' "${NEXUS_USERNAME}" "${NEXUS_PASSWORD}") \
+    "${artifact_url}" >/dev/null; then
+    print_error "Expected artifact not found in staging repo: ${artifact_url}"
+    return 1
+  fi
+
+  return 0
+}
+
+function nexus_verify_staging_repo {
+  local repo_id="$1"
+  local version="$2"
+  local rc_num="$3"
+  local allow_description_mismatch="${4:-0}"
+
+  local expected_description="Apache Parquet ${version} RC${rc_num}"
+
+  print_info "Verifying staging repository ${repo_id}..."
+
+  if ! nexus_get_staging_repo_metadata "${repo_id}"; then
+    return 1
+  fi
+
+  if [[ "${nexus_repo_profile}" != "${NEXUS_PROFILE_NAME}" ]]; then
+    print_error "Profile mismatch: expected '${NEXUS_PROFILE_NAME}', got '${nexus_repo_profile}'"
+    print_error "This staging repo does not belong to Apache Parquet."
+    return 1
+  fi
+
+  if [[ "${nexus_repo_state}" != "closed" ]]; then
+    print_error "Unexpected state: expected 'closed', got '${nexus_repo_state}'"
+    print_error "Staging repo must be closed (not open/released/dropped) before this action."
+    return 1
+  fi
+
+  if ! nexus_check_staging_artifact "${repo_id}" "${version}"; then
+    print_error "Verification failed: ${NEXUS_VERIFY_ARTIFACT_ID}-${version}.pom not found in staging repo."
+    print_error "This staging repo does not appear to contain ${version} artifacts."
+    return 1
+  fi
+
+  if [[ ${DRY_RUN:-1} -ne 1 && "${nexus_repo_description}" != *"${expected_description}"* ]]; then
+    print_warning "Description mismatch: expected to contain '${expected_description}'"
+    print_warning "Actual description: '${nexus_repo_description}'"
+    if [[ "${allow_description_mismatch}" != "1" ]]; then
+      print_error "Refusing to proceed. Re-run with --allow-description-mismatch to bypass."
+      return 1
+    fi
+    print_warning "Continuing despite description mismatch (--allow-description-mismatch)."
+  fi
+
+  print_info "Staging repository ${repo_id} verified."
+  return 0
+}
+
 function nexus_find_open_staging_repo {
-  local profile_name="${1:-org.apache.parquet}"
+  local profile_name="${1:-${NEXUS_PROFILE_NAME}}"
 
   print_info "Searching for open staging repository for ${profile_name}..."
 
