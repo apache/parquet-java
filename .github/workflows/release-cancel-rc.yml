@@ -45,6 +45,10 @@ on:
         type: boolean
         default: true
 
+concurrency:
+  group: release-${{ inputs.version }}
+  cancel-in-progress: false
+
 jobs:
   cancel-rc:
     if: github.repository_owner == 'apache'
