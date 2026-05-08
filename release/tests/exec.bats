@@ -23,6 +23,59 @@ setup() {
   source "${LIBS_DIR}/_exec.sh"
 }
 
+# ---- _redact_secrets ----
+
+@test "_redact_secrets: replaces NEXUS_PASSWORD with ***" {
+  NEXUS_PASSWORD="hunter2"
+  run _redact_secrets curl -u user:hunter2 https://example.com
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"hunter2"* ]]
+  [[ "$output" == *"***"* ]]
+}
+
+@test "_redact_secrets: skips empty secrets" {
+  unset NEXUS_PASSWORD NEXUS_USERNAME SVN_PASSWORD SVN_USERNAME GITHUB_TOKEN
+  run _redact_secrets echo "no secrets here"
+  [ "$status" -eq 0 ]
+  [ "$output" = "echo no secrets here" ]
+}
+
+@test "_redact_secrets: handles secrets with glob metacharacters" {
+  NEXUS_PASSWORD='ab*cd?ef[g]'
+  run _redact_secrets 'user:ab*cd?ef[g] more'
+  [ "$status" -eq 0 ]
+  [[ "$output" != *'ab*cd'* ]]
+  [[ "$output" == *'***'* ]]
+}
+
+@test "_redact_secrets: secret with backslash is matched literally" {
+  NEXUS_PASSWORD='abc\def'
+  run _redact_secrets 'pw=abc\def end'
+  [ "$status" -eq 0 ]
+  [[ "$output" != *'abc\def'* ]]
+  [[ "$output" == *'***'* ]]
+}
+
+@test "_redact_secrets: replaces every occurrence" {
+  GITHUB_TOKEN="tok123"
+  run _redact_secrets "Authorization: tok123 Bearer tok123 etc"
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"tok123"* ]]
+  # Two occurrences should both be redacted
+  local count
+  count=$(echo "$output" | grep -o "\*\*\*" | wc -l)
+  [ "$count" -eq 2 ]
+}
+
+@test "_redact_secrets: redacts multiple different secrets" {
+  NEXUS_USERNAME="alice"
+  NEXUS_PASSWORD="hunter2"
+  run _redact_secrets "user=alice pass=hunter2"
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"alice"* ]]
+  [[ "$output" != *"hunter2"* ]]
+}
+
 # ---- exec_process ----
 
 @test "exec_process: dry-run prints but does not execute" {

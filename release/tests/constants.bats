@@ -58,16 +58,6 @@ setup() {
   [ "${BASH_REMATCH[3]}" = "0" ]
 }
 
-@test "VERSION_REGEX_GIT_TAG matches RC tag" {
-  [[ "apache-parquet-1.18.0-rc3" =~ ${VERSION_REGEX_GIT_TAG} ]]
-  [ "${BASH_REMATCH[1]}" = "1" ]
-  [ "${BASH_REMATCH[4]}" = "3" ]
-}
-
-@test "VERSION_REGEX_GIT_TAG rejects final tag" {
-  [[ ! "apache-parquet-1.18.0" =~ ${VERSION_REGEX_GIT_TAG} ]]
-}
-
 @test "BRANCH_VERSION_REGEX matches parquet-1.18.x" {
   [[ "parquet-1.18.x" =~ ${BRANCH_VERSION_REGEX} ]]
   [ "${BASH_REMATCH[1]}" = "1" ]

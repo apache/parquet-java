@@ -31,9 +31,20 @@ function _redact_secrets {
   local secret_var
   for secret_var in NEXUS_PASSWORD NEXUS_USERNAME SVN_PASSWORD SVN_USERNAME GITHUB_TOKEN; do
     local secret_val="${!secret_var:-}"
-    if [[ -n "${secret_val}" ]]; then
-      cmd_str="${cmd_str//${secret_val}/***}"
-    fi
+    [[ -z "${secret_val}" ]] && continue
+    # Literal-string replace via split-and-rejoin: quoting "$secret_val"
+    # inside ${var%%pattern} forces the inner expansion to match
+    # literally (bash documents this for parameter-expansion patterns),
+    # which avoids treating glob metacharacters (* ? [ \) in the secret
+    # as pattern syntax. The plain ${var//pattern/string} form does not
+    # offer any escape mechanism.
+    local rest="${cmd_str}"
+    local result=""
+    while [[ "${rest}" == *"${secret_val}"* ]]; do
+      result+="${rest%%"${secret_val}"*}***"
+      rest="${rest#*"${secret_val}"}"
+    done
+    cmd_str="${result}${rest}"
   done
   echo "${cmd_str}"
 }

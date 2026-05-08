@@ -66,40 +66,6 @@ setup() {
   [ "$status" -eq 1 ]
 }
 
-# ---- validate_and_extract_git_tag_version ----
-
-@test "validate_and_extract_git_tag_version: parses apache-parquet-1.18.0-rc0" {
-  validate_and_extract_git_tag_version "apache-parquet-1.18.0-rc0"
-  [ "$major" = "1" ]
-  [ "$minor" = "18" ]
-  [ "$patch" = "0" ]
-  [ "$rc_number" = "0" ]
-  [ "$version_without_rc" = "1.18.0" ]
-}
-
-@test "validate_and_extract_git_tag_version: parses apache-parquet-2.1.3-rc12" {
-  validate_and_extract_git_tag_version "apache-parquet-2.1.3-rc12"
-  [ "$major" = "2" ]
-  [ "$minor" = "1" ]
-  [ "$patch" = "3" ]
-  [ "$rc_number" = "12" ]
-}
-
-@test "validate_and_extract_git_tag_version: rejects tag without rc suffix" {
-  run validate_and_extract_git_tag_version "apache-parquet-1.18.0"
-  [ "$status" -eq 1 ]
-}
-
-@test "validate_and_extract_git_tag_version: rejects wrong prefix" {
-  run validate_and_extract_git_tag_version "apache-polaris-1.18.0-rc0"
-  [ "$status" -eq 1 ]
-}
-
-@test "validate_and_extract_git_tag_version: rejects bare version" {
-  run validate_and_extract_git_tag_version "1.18.0-rc0"
-  [ "$status" -eq 1 ]
-}
-
 # ---- validate_and_extract_branch_version ----
 
 @test "validate_and_extract_branch_version: parses parquet-1.18.x" {
@@ -180,70 +146,6 @@ setup() {
   export -f git
   find_next_rc_number "1.19.0"
   [ "$rc_number" = "0" ]
-}
-
-# ---- find_next_patch_number ----
-
-@test "find_next_patch_number: returns 0 when no tags exist" {
-  git() {
-    case "$1" in
-      tag) echo "" ;;
-      rev-parse) return 1 ;;
-    esac
-  }
-  export -f git
-  find_next_patch_number "1" "18"
-  [ "$patch" = "0" ]
-}
-
-@test "find_next_patch_number: returns 0 when only rc tags exist for patch 0" {
-  git() {
-    case "$1" in
-      tag) printf "apache-parquet-1.18.0-rc0\napache-parquet-1.18.0-rc1\n" ;;
-      rev-parse) return 1 ;;
-    esac
-  }
-  export -f git
-  find_next_patch_number "1" "18"
-  [ "$patch" = "0" ]
-}
-
-@test "find_next_patch_number: returns 1 when patch 0 has final release" {
-  git() {
-    case "$1" in
-      tag) printf "apache-parquet-1.18.0-rc0\n" ;;
-      rev-parse)
-        if [[ "$2" == "apache-parquet-1.18.0" ]]; then
-          echo "abc123"
-          return 0
-        fi
-        return 1
-        ;;
-    esac
-  }
-  export -f git
-  find_next_patch_number "1" "18"
-  [ "$patch" = "1" ]
-}
-
-@test "find_next_patch_number: returns 2 when patches 0 and 1 have final releases" {
-  git() {
-    case "$1" in
-      tag) printf "apache-parquet-1.16.0-rc0\napache-parquet-1.16.1-rc0\n" ;;
-      rev-parse)
-        case "$2" in
-          "apache-parquet-1.16.0"|"apache-parquet-1.16.1")
-            echo "abc123"
-            return 0
-            ;;
-        esac
-        return 1
-        ;;
-    esac
-  }
-  export -f git
-  find_next_patch_number "1" "16"
-  [ "$patch" = "2" ]
 }
 
 # ---- set_pom_version ----

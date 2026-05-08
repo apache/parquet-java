@@ -28,7 +28,6 @@ source "${LIBS_DIR}/_log.sh"
 source "${LIBS_DIR}/_exec.sh"
 source "${LIBS_DIR}/_version.sh"
 source "${LIBS_DIR}/_nexus.sh"
-source "${LIBS_DIR}/_maven.sh"
 
 # ---------------------------------------------------------------------------
 # Usage

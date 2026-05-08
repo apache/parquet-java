@@ -38,19 +38,6 @@ function validate_and_extract_version {
   return 0
 }
 
-function validate_and_extract_git_tag_version {
-  local tag="$1"
-  if [[ ! ${tag} =~ ${VERSION_REGEX_GIT_TAG} ]]; then
-    return 1
-  fi
-  major="${BASH_REMATCH[1]}"
-  minor="${BASH_REMATCH[2]}"
-  patch="${BASH_REMATCH[3]}"
-  rc_number="${BASH_REMATCH[4]}"
-  version_without_rc="${major}.${minor}.${patch}"
-  return 0
-}
-
 function validate_and_extract_branch_version {
   local branch="$1"
   if [[ ! ${branch} =~ ${BRANCH_VERSION_REGEX} ]]; then
@@ -93,36 +80,6 @@ function find_latest_rc_number {
   fi
 
   latest_rc_number=$(echo "${existing_tags}" | sed "s/${TAG_PREFIX}${version_without_rc}-rc//" | sort -n | tail -1)
-  return 0
-}
-
-function find_next_patch_number {
-  local major="$1"
-  local minor="$2"
-  local rc_tag_pattern="${TAG_PREFIX}${major}.${minor}.*-rc*"
-  local existing_rc_tags
-  existing_rc_tags=$(git tag -l "${rc_tag_pattern}" | sort -V)
-
-  if [[ -z "${existing_rc_tags}" ]]; then
-    patch=0
-  else
-    local highest_patch=-1
-    while IFS= read -r tag; do
-      if [[ ${tag} =~ ${TAG_PREFIX}${major}\.${minor}\.([0-9]+)-rc[0-9]+ ]]; then
-        local current_patch="${BASH_REMATCH[1]}"
-        if [[ ${current_patch} -gt ${highest_patch} ]]; then
-          highest_patch=${current_patch}
-        fi
-      fi
-    done <<< "${existing_rc_tags}"
-
-    local final_tag="${TAG_PREFIX}${major}.${minor}.${highest_patch}"
-    if git rev-parse "${final_tag}" >/dev/null 2>&1; then
-      patch=$((highest_patch + 1))
-    else
-      patch=${highest_patch}
-    fi
-  fi
   return 0
 }
 
