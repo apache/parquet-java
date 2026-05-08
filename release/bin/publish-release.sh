@@ -28,6 +28,7 @@ source "${LIBS_DIR}/_log.sh"
 source "${LIBS_DIR}/_exec.sh"
 source "${LIBS_DIR}/_version.sh"
 source "${LIBS_DIR}/_nexus.sh"
+source "${LIBS_DIR}/_svn.sh"
 
 # ---------------------------------------------------------------------------
 # Usage
@@ -210,15 +211,9 @@ step_summary "Staging repository \`${staging_repo_id}\` verified"
 step_summary ""
 step_summary "### SVN Promotion"
 
-dev_url="${APACHE_DIST_URL}${APACHE_DIST_DEV_PATH}/${rc_tag}"
-release_url="${APACHE_DIST_URL}${APACHE_DIST_RELEASE_PATH}/${TAG_PREFIX}${version}"
+svn_promote_rc_to_release "${version}" "${rc_num}"
 
-exec_process svn mv \
-  --username "${SVN_USERNAME}" --password "${SVN_PASSWORD}" --non-interactive \
-  "${dev_url}" "${release_url}" \
-  -m "Release Apache Parquet ${version}"
-
-step_summary "Moved \`${dev_url}\` -> \`${release_url}\`"
+step_summary "Promoted \`${rc_tag}\` -> \`${final_tag}\` on dist.apache.org"
 
 # ---------------------------------------------------------------------------
 # Step 2: Clean up old releases from dist/release
@@ -227,24 +222,15 @@ step_summary ""
 step_summary "### Old Release Cleanup"
 
 if [[ ${DRY_RUN:-1} -ne 1 ]]; then
-  release_base_url="${APACHE_DIST_URL}${APACHE_DIST_RELEASE_PATH}"
-  svn_listing=""
-  if ! svn_listing=$(svn list --username "${SVN_USERNAME}" --password "${SVN_PASSWORD}" --non-interactive \
-    "${release_base_url}" 2>&1); then
-    print_error "Failed to list SVN releases at ${release_base_url}: ${svn_listing}"
+  if ! old_versions=$(svn_list_old_releases "${version}"); then
     exit 1
   fi
-
-  old_versions=$(echo "${svn_listing}" | grep -E "^${TAG_PREFIX}[0-9]" | sed 's|/$||' | grep -v "${TAG_PREFIX}${version}$" || true)
 
   if [[ -n "${old_versions}" ]]; then
     step_summary "Removing old releases:"
     while IFS= read -r old_dir; do
       [[ -z "${old_dir}" ]] && continue
-      exec_process svn rm \
-        --username "${SVN_USERNAME}" --password "${SVN_PASSWORD}" --non-interactive \
-        "${release_base_url}/${old_dir}" \
-        -m "Remove old release ${old_dir} (superseded by ${version})"
+      svn_remove_release "${old_dir}" "${version}"
       step_summary "- Removed \`${old_dir}\`"
     done <<< "${old_versions}"
   else

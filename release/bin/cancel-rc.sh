@@ -28,6 +28,7 @@ source "${LIBS_DIR}/_log.sh"
 source "${LIBS_DIR}/_exec.sh"
 source "${LIBS_DIR}/_version.sh"
 source "${LIBS_DIR}/_nexus.sh"
+source "${LIBS_DIR}/_svn.sh"
 
 # ---------------------------------------------------------------------------
 # Usage
@@ -167,21 +168,8 @@ step_summary "### SVN Cleanup"
 
 dev_url="${APACHE_DIST_URL}${APACHE_DIST_DEV_PATH}/${rc_tag}"
 
-if [[ ${DRY_RUN:-1} -ne 1 ]]; then
-  if svn ls --username "${SVN_USERNAME}" --password "${SVN_PASSWORD}" --non-interactive "${dev_url}" >/dev/null 2>&1; then
-    exec_process svn rm \
-      --username "${SVN_USERNAME}" --password "${SVN_PASSWORD}" --non-interactive \
-      "${dev_url}" \
-      -m "Cancel Apache Parquet ${version} RC${rc_num}"
-    step_summary "Deleted \`${dev_url}\`"
-  else
-    print_warning "SVN directory not found: ${dev_url}"
-    step_summary "Directory not found at \`${dev_url}\` (may already be deleted)"
-  fi
-else
-  print_command "Dry-run, WOULD delete ${dev_url}"
-  step_summary "Would delete \`${dev_url}\` (dry-run)"
-fi
+svn_remove_rc "${version}" "${rc_num}"
+step_summary "Removed \`${dev_url}\`"
 
 # ---------------------------------------------------------------------------
 # Step 3: Generate vote failure email

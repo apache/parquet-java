@@ -22,7 +22,7 @@ LIBS_DIR="${BATS_TEST_DIRNAME}/../libs"
 
 # Reset include guards so libraries can be re-sourced in each test
 unset _CONSTANTS_LOADED _LOG_LOADED _EXEC_LOADED _VERSION_LOADED
-unset _GITHUB_LOADED _NEXUS_LOADED _MAVEN_LOADED
+unset _GITHUB_LOADED _NEXUS_LOADED _MAVEN_LOADED _SVN_LOADED
 
 # Reset global variables that library functions set
 _reset_version_vars() {

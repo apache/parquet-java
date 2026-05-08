@@ -30,6 +30,7 @@ source "${LIBS_DIR}/_version.sh"
 source "${LIBS_DIR}/_github.sh"
 source "${LIBS_DIR}/_nexus.sh"
 source "${LIBS_DIR}/_maven.sh"
+source "${LIBS_DIR}/_svn.sh"
 
 trap 'rm -f .release-settings.xml' EXIT
 
@@ -309,32 +310,10 @@ step_summary "Built \`${tarball_name}\` from \`${release_hash}\`"
 step_summary ""
 step_summary "### SVN Staging"
 
-svn_dir="${APACHE_DIST_URL}${APACHE_DIST_DEV_PATH}"
-rc_svn_dir="${rc_tag}"
+svn_stage_rc "${version}" "${rc_number}" \
+  "${tarball_name}" "${tarball_name}.asc" "${tarball_name}.sha512"
 
-if [[ ${DRY_RUN:-1} -ne 1 ]]; then
-  if [[ -d tmp/ ]]; then
-    rm -rf tmp/
-  fi
-
-  exec_process_with_retries 5 60 "tmp" \
-    svn co --depth=empty --username "${SVN_USERNAME}" --password "${SVN_PASSWORD}" --non-interactive \
-    "${svn_dir}" tmp
-
-  mkdir -p "tmp/${rc_svn_dir}"
-  cp "${tarball_name}" "${tarball_name}.asc" "${tarball_name}.sha512" "tmp/${rc_svn_dir}/"
-
-  (cd tmp && exec_process svn add "${rc_svn_dir}")
-  (cd tmp && exec_process svn ci \
-    --username "${SVN_USERNAME}" --password "${SVN_PASSWORD}" --non-interactive \
-    -m "Apache Parquet ${version} RC${rc_number}")
-
-  rm -rf tmp
-else
-  print_command "Dry-run, WOULD stage to ${svn_dir}/${rc_svn_dir}"
-fi
-
-step_summary "Staged source tarball to \`${svn_dir}/${rc_svn_dir}\`"
+step_summary "Staged source tarball to \`${APACHE_DIST_URL}${APACHE_DIST_DEV_PATH}/${rc_tag}\`"
 
 # ---------------------------------------------------------------------------
 # Step 9: Create GitHub pre-release
