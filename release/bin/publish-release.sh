@@ -216,10 +216,14 @@ svn_promote_rc_to_release "${version}" "${rc_num}"
 step_summary "Promoted \`${rc_tag}\` -> \`${final_tag}\` on dist.apache.org"
 
 # ---------------------------------------------------------------------------
-# Step 2: Clean up old releases from dist/release
+# Step 2: Clean up superseded patch releases on the same minor branch
 # ---------------------------------------------------------------------------
+# Policy: only patch releases of the *same* minor (parquet-${major}.${minor}.x)
+# that are older than ${version} are removed from dist/release/parquet/.
+# Releases on other minor branches are left in place and must be retired
+# manually. See svn_list_old_releases for the full rationale.
 step_summary ""
-step_summary "### Old Release Cleanup"
+step_summary "### Patch Release Cleanup (parquet-${major}.${minor}.x)"
 
 if [[ ${DRY_RUN:-1} -ne 1 ]]; then
   if ! old_versions=$(svn_list_old_releases "${version}"); then
@@ -227,18 +231,18 @@ if [[ ${DRY_RUN:-1} -ne 1 ]]; then
   fi
 
   if [[ -n "${old_versions}" ]]; then
-    step_summary "Removing old releases:"
+    step_summary "Removing superseded patches on parquet-${major}.${minor}.x:"
     while IFS= read -r old_dir; do
       [[ -z "${old_dir}" ]] && continue
       svn_remove_release "${old_dir}" "${version}"
       step_summary "- Removed \`${old_dir}\`"
     done <<< "${old_versions}"
   else
-    step_summary "No old releases to clean up"
+    step_summary "No superseded ${major}.${minor}.x patches to clean up"
   fi
 else
-  print_command "Dry-run, WOULD clean up old releases from dist/release"
-  step_summary "Would clean up old releases (dry-run)"
+  print_command "Dry-run, WOULD remove superseded ${major}.${minor}.x patches from dist/release"
+  step_summary "Would remove superseded ${major}.${minor}.x patches (dry-run)"
 fi
 
 # ---------------------------------------------------------------------------

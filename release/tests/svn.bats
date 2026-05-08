@@ -112,6 +112,11 @@ setup() {
 }
 
 # ---- svn_list_old_releases ----
+#
+# Policy under test: cleanup is scoped to *older patch releases on the same
+# minor branch*. Releasing 1.9.2 cleans up 1.9.0 and 1.9.1; it must never
+# touch other minors (1.8.x, 1.10.x), the kept version itself, or any
+# higher patch on the same minor.
 
 @test "svn_list_old_releases: dry-run returns empty without calling svn" {
   DRY_RUN=1
@@ -121,23 +126,122 @@ setup() {
   [ -z "$(echo "$output" | grep -v Dry-run | grep -v WOULD)" ]
 }
 
-@test "svn_list_old_releases: filters to apache-parquet-* dirs and excludes the kept version" {
+@test "svn_list_old_releases: returns older patches on the same minor only" {
   DRY_RUN=0
   svn() {
     if [[ "$1" == "list" ]]; then
-      printf 'apache-parquet-1.16.0/\napache-parquet-1.17.0/\napache-parquet-1.18.0/\nKEYS\nREADME\n'
+      printf '%s\n' \
+        'apache-parquet-1.8.3/' \
+        'apache-parquet-1.9.0/' \
+        'apache-parquet-1.9.1/' \
+        'apache-parquet-1.9.2/' \
+        'apache-parquet-1.10.0/' \
+        'KEYS' 'README'
       return 0
     fi
     return 99
   }
   export -f svn
-  run svn_list_old_releases "1.18.0"
+  run svn_list_old_releases "1.9.2"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"apache-parquet-1.16.0"* ]]
-  [[ "$output" == *"apache-parquet-1.17.0"* ]]
-  [[ "$output" != *"apache-parquet-1.18.0"* ]]
+  [[ "$output" == *"apache-parquet-1.9.0"* ]]
+  [[ "$output" == *"apache-parquet-1.9.1"* ]]
+  # Same-minor current and other-minor entries must not be returned.
+  [[ "$output" != *"apache-parquet-1.9.2"* ]]
+  [[ "$output" != *"apache-parquet-1.8.3"* ]]
+  [[ "$output" != *"apache-parquet-1.10.0"* ]]
   [[ "$output" != *"KEYS"* ]]
   [[ "$output" != *"README"* ]]
+}
+
+@test "svn_list_old_releases: never touches a higher patch on the same minor" {
+  DRY_RUN=0
+  svn() {
+    if [[ "$1" == "list" ]]; then
+      printf '%s\n' \
+        'apache-parquet-1.9.1/' \
+        'apache-parquet-1.9.2/' \
+        'apache-parquet-1.9.3/'
+      return 0
+    fi
+    return 99
+  }
+  export -f svn
+  run svn_list_old_releases "1.9.2"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"apache-parquet-1.9.1"* ]]
+  [[ "$output" != *"apache-parquet-1.9.2"* ]]
+  [[ "$output" != *"apache-parquet-1.9.3"* ]]
+}
+
+@test "svn_list_old_releases: returns empty when releasing the .0 of a minor" {
+  DRY_RUN=0
+  svn() {
+    if [[ "$1" == "list" ]]; then
+      printf '%s\n' \
+        'apache-parquet-1.8.5/' \
+        'apache-parquet-1.9.0/' \
+        'apache-parquet-1.10.0/'
+      return 0
+    fi
+    return 99
+  }
+  export -f svn
+  run svn_list_old_releases "1.9.0"
+  [ "$status" -eq 0 ]
+  [ -z "$(echo "$output" | grep -v '^$')" ]
+}
+
+@test "svn_list_old_releases: ignores rc and otherwise-malformed siblings" {
+  DRY_RUN=0
+  svn() {
+    if [[ "$1" == "list" ]]; then
+      printf '%s\n' \
+        'apache-parquet-1.9.0/' \
+        'apache-parquet-1.9.1-rc0/' \
+        'apache-parquet-1.9.x/' \
+        'apache-parquet-format-2.10.0/' \
+        'apache-parquet-cpp-1.5.0/'
+      return 0
+    fi
+    return 99
+  }
+  export -f svn
+  run svn_list_old_releases "1.9.2"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"apache-parquet-1.9.0"* ]]
+  # Only the bare X.Y.Z/ sibling on the same minor counts.
+  [[ "$output" != *"rc0"* ]]
+  [[ "$output" != *"1.9.x"* ]]
+  [[ "$output" != *"format"* ]]
+  [[ "$output" != *"cpp"* ]]
+}
+
+@test "svn_list_old_releases: handles double-digit patch numbers numerically" {
+  DRY_RUN=0
+  svn() {
+    if [[ "$1" == "list" ]]; then
+      printf '%s\n' \
+        'apache-parquet-1.9.2/' \
+        'apache-parquet-1.9.9/' \
+        'apache-parquet-1.9.10/'
+      return 0
+    fi
+    return 99
+  }
+  export -f svn
+  run svn_list_old_releases "1.9.10"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"apache-parquet-1.9.2"* ]]
+  [[ "$output" == *"apache-parquet-1.9.9"* ]]
+  [[ "$output" != *"apache-parquet-1.9.10"* ]]
+}
+
+@test "svn_list_old_releases: rejects an invalid version-to-keep" {
+  DRY_RUN=0
+  run svn_list_old_releases "1.9"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"invalid version"* ]]
 }
 
 @test "svn_list_old_releases: returns empty when only the kept version exists" {

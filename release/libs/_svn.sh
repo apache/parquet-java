@@ -124,8 +124,17 @@ function svn_remove_rc {
 # svn_list_old_releases <version_to_keep>
 #   Echoes (one per line, on stdout) the names of release directories
 #   under dist/release/parquet/ that should be removed when promoting
-#   <version_to_keep> as the new latest release. Returns non-zero only
-#   on real svn-listing failure.
+#   <version_to_keep> as the new latest release.
+#
+#   Policy: only older patch releases of the *same* minor branch are
+#   considered eligible for cleanup. Releasing 1.9.2 cleans up 1.9.0 and
+#   1.9.1; it never touches releases on a different X.Y branch (e.g.
+#   1.8.x, 1.10.x) and never touches a higher patch on the same branch
+#   (e.g. 1.9.3 if it somehow exists). This matches "only one patch per
+#   supported minor on dist.apache.org/release"; older minor branches are
+#   left in place and must be retired manually.
+#
+#   Returns non-zero only on real svn-listing failure or invalid input.
 function svn_list_old_releases {
   local version_to_keep="$1"
   local release_base_url="${APACHE_DIST_URL}${APACHE_DIST_RELEASE_PATH}"
@@ -135,6 +144,14 @@ function svn_list_old_releases {
     return 0
   fi
 
+  if [[ ! "${version_to_keep}" =~ ^${VERSION_REGEX}$ ]]; then
+    print_error "svn_list_old_releases: invalid version '${version_to_keep}'"
+    return 1
+  fi
+  local keep_major="${BASH_REMATCH[1]}"
+  local keep_minor="${BASH_REMATCH[2]}"
+  local keep_patch="${BASH_REMATCH[3]}"
+
   local listing
   if ! listing=$(svn list \
       --username "${SVN_USERNAME}" --password "${SVN_PASSWORD}" --non-interactive \
@@ -143,8 +160,18 @@ function svn_list_old_releases {
     return 1
   fi
 
-  echo "${listing}" | grep -E "^${TAG_PREFIX}[0-9]" | sed 's|/$||' \
-    | grep -v "^${TAG_PREFIX}${version_to_keep}\$" || true
+  # Match only `apache-parquet-${keep_major}.${keep_minor}.<patch>/` entries
+  # with a numeric patch strictly less than ${keep_patch}. The literal-prefix
+  # check via awk's `index` avoids any chance of `.` being interpreted as a
+  # regex metacharacter and matching a sibling tree.
+  local minor_prefix="${TAG_PREFIX}${keep_major}.${keep_minor}."
+  echo "${listing}" \
+    | sed 's|/$||' \
+    | awk -v prefix="${minor_prefix}" -v keep_patch="${keep_patch}" '
+        index($0, prefix) == 1 {
+          tail = substr($0, length(prefix) + 1)
+          if (tail ~ /^[0-9]+$/ && (tail + 0) < (keep_patch + 0)) print $0
+        }'
 }
 
 # svn_remove_release <release_dir> <new_version>
