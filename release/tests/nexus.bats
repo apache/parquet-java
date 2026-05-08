@@ -80,6 +80,106 @@ setup() {
   [ "$staging_repo_id" = "DRY-RUN-REPO-ID" ]
 }
 
+@test "nexus_find_open_staging_repo: real mode picks the open repo for the profile" {
+  DRY_RUN=0
+  curl() {
+    cat <<'XML'
+<stagingRepositories>
+  <data>
+    <stagingProfileRepository>
+      <profileName>org.apache.iceberg</profileName>
+      <type>open</type>
+      <repositoryId>orgapacheiceberg-7777</repositoryId>
+    </stagingProfileRepository>
+    <stagingProfileRepository>
+      <profileName>org.apache.parquet</profileName>
+      <type>closed</type>
+      <repositoryId>orgapacheparquet-1111</repositoryId>
+    </stagingProfileRepository>
+    <stagingProfileRepository>
+      <profileName>org.apache.parquet</profileName>
+      <type>open</type>
+      <repositoryId>orgapacheparquet-2222</repositoryId>
+    </stagingProfileRepository>
+  </data>
+</stagingRepositories>
+XML
+    return 0
+  }
+  export -f curl
+  nexus_find_open_staging_repo "org.apache.parquet"
+  [ "${staging_repo_id}" = "orgapacheparquet-2222" ]
+}
+
+@test "nexus_find_open_staging_repo: rejects when no open repo for profile" {
+  DRY_RUN=0
+  curl() {
+    cat <<'XML'
+<stagingRepositories>
+  <data>
+    <stagingProfileRepository>
+      <profileName>org.apache.parquet</profileName>
+      <type>closed</type>
+      <repositoryId>orgapacheparquet-1111</repositoryId>
+    </stagingProfileRepository>
+  </data>
+</stagingRepositories>
+XML
+    return 0
+  }
+  export -f curl
+  run nexus_find_open_staging_repo "org.apache.parquet"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"No open staging repository"* ]]
+}
+
+@test "nexus_find_open_staging_repo: rejects when profile has multiple open repos" {
+  DRY_RUN=0
+  curl() {
+    cat <<'XML'
+<stagingRepositories>
+  <data>
+    <stagingProfileRepository>
+      <profileName>org.apache.parquet</profileName>
+      <type>open</type>
+      <repositoryId>orgapacheparquet-1111</repositoryId>
+    </stagingProfileRepository>
+    <stagingProfileRepository>
+      <profileName>org.apache.parquet</profileName>
+      <type>open</type>
+      <repositoryId>orgapacheparquet-2222</repositoryId>
+    </stagingProfileRepository>
+  </data>
+</stagingRepositories>
+XML
+    return 0
+  }
+  export -f curl
+  run nexus_find_open_staging_repo "org.apache.parquet"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"Multiple open staging repositories"* ]]
+  [[ "$output" == *"orgapacheparquet-1111"* ]]
+  [[ "$output" == *"orgapacheparquet-2222"* ]]
+}
+
+@test "nexus_find_open_staging_repo: rejects when curl fails" {
+  DRY_RUN=0
+  curl() { return 22; }
+  export -f curl
+  run nexus_find_open_staging_repo "org.apache.parquet"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"Failed to query"* ]]
+}
+
+@test "nexus_find_open_staging_repo: rejects malformed XML" {
+  DRY_RUN=0
+  curl() { echo "<not valid xml"; return 0; }
+  export -f curl
+  run nexus_find_open_staging_repo "org.apache.parquet"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"Failed to parse"* ]]
+}
+
 # ---- real-mode tests with mocked curl ----
 
 @test "nexus_close_staging_repo: real mode calls curl with correct args" {

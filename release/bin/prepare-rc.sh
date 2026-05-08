@@ -198,14 +198,20 @@ step_summary ""
 step_summary "### CI Verification"
 
 current_commit=$(git rev-parse HEAD)
-step_summary "| Commit | \`${current_commit}\` |"
+step_summary "| Verified commit | \`${current_commit}\` |"
 
 if ! check_github_checks_passed "${current_commit}"; then
   print_error "CI checks are not passing. Fix CI before creating an RC."
   step_summary "CI checks: **FAILED**"
   exit 1
 fi
-step_summary "CI checks: **PASSED**"
+step_summary "CI checks on \`${current_commit}\`: **PASSED**"
+step_summary ""
+step_summary "> **Note:** the RC tag is placed on a child commit (\"Set"
+step_summary "> version to ${version} for release\") that is created in"
+step_summary "> the next step. That commit is not directly CI-verified;"
+step_summary "> it is a mechanical version bump on top of the verified"
+step_summary "> commit above."
 
 # ---------------------------------------------------------------------------
 # Step 4: Set POM versions (only on rc0 or if version doesn't match)
@@ -255,8 +261,20 @@ maven_deploy "${settings_file}"
 
 step_summary "Deployed artifacts to Apache Nexus staging"
 
-# Find and close the staging repo
-nexus_find_open_staging_repo "org.apache.parquet"
+# Find and close the staging repo. Verify it actually contains the
+# artifacts we just deployed before closing -- another concurrent run
+# could have created the only open repo we see, and closing the wrong
+# one would corrupt that release.
+nexus_find_open_staging_repo "${NEXUS_PROFILE_NAME}"
+
+if [[ ${DRY_RUN:-1} -ne 1 ]]; then
+  if ! nexus_check_staging_artifact "${staging_repo_id}" "${version}"; then
+    print_error "Open staging repo ${staging_repo_id} does not contain ${version} artifacts."
+    print_error "Refusing to close it -- another release may be in flight. Investigate Nexus before retrying."
+    exit 1
+  fi
+fi
+
 nexus_close_staging_repo "${staging_repo_id}" "Apache Parquet ${version} RC${rc_number}"
 
 step_summary "Closed staging repository: \`${staging_repo_id}\`"

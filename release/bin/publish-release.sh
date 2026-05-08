@@ -318,9 +318,28 @@ exec_process ./mvnw -pl . versions:set-property \
 
 exec_process git add -A
 exec_process git commit -m "Prepare for next development iteration (${next_snapshot})"
+
+# Refuse to push the version bump to anything that doesn't look like a
+# release branch. Otherwise a workflow run dispatched against master
+# (e.g. after `prepare-rc.sh --skip-branch-creation`) would push the
+# next-dev-version commit straight to master.
+current_branch=$(git rev-parse --abbrev-ref HEAD)
+expected_branch="${BRANCH_PREFIX}${major}.${minor}.x"
+if [[ "${current_branch}" != "${expected_branch}" ]]; then
+  print_error "Refusing to push version bump: current branch is '${current_branch}'"
+  print_error "Expected to be on release branch '${expected_branch}' for version ${version}."
+  print_error "Run the publish workflow with that branch selected, or check out '${expected_branch}' locally."
+  exit 1
+fi
+# Also confirm the format independently in case someone has named a
+# non-release branch to look like one.
+if ! validate_and_extract_branch_version "${current_branch}"; then
+  print_error "Branch '${current_branch}' is not a valid release branch name."
+  exit 1
+fi
 exec_process git push origin HEAD
 
-step_summary "Bumped version to \`${next_snapshot}\`, set \`previous.version=${version}\`"
+step_summary "Bumped version to \`${next_snapshot}\` on branch \`${current_branch}\`, set \`previous.version=${version}\`"
 
 # ---------------------------------------------------------------------------
 # Step 7: Generate announce email
