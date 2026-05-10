@@ -26,6 +26,9 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.util.zip.CRC32;
+import java.util.zip.Deflater;
+import java.util.zip.Inflater;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -290,6 +293,10 @@ public class CodecFactory implements CompressionCodecFactory {
             pageSize);
       case LZ4_RAW:
         return new Lz4RawBytesCompressor();
+      case GZIP:
+        int gzipLevel = conf.getInt(
+            "zlib.compress.level", Deflater.DEFAULT_COMPRESSION);
+        return new GzipBytesCompressor(gzipLevel, pageSize);
       default:
         CompressionCodec codec = getCodec(codecName);
         return codec == null ? NO_OP_COMPRESSOR : new HeapBytesCompressor(codecName, codec);
@@ -306,6 +313,8 @@ public class CodecFactory implements CompressionCodecFactory {
         return new ZstdBytesDecompressor();
       case LZ4_RAW:
         return new Lz4RawBytesDecompressor();
+      case GZIP:
+        return new GzipBytesDecompressor();
       default:
         CompressionCodec codec = getCodec(codecName);
         return codec == null ? NO_OP_DECOMPRESSOR : new HeapBytesDecompressor(codec);
@@ -626,5 +635,206 @@ public class CodecFactory implements CompressionCodecFactory {
 
     @Override
     public void release() {}
+  }
+
+  // ---- Optimized GZIP compressor/decompressor using Deflater/Inflater directly ----
+
+  /** GZIP magic number: 0x1f 0x8b. */
+  private static final int GZIP_MAGIC = 0x8b1f;
+
+  /** Minimal 10-byte GZIP header: magic, method=8 (deflate), flags=0, mtime=0, xfl=0, os=0. */
+  private static final byte[] GZIP_HEADER = {
+    0x1f, (byte) 0x8b, // magic
+    0x08, // method: deflate
+    0x00, // flags: none
+    0x00, 0x00, 0x00, 0x00, // mtime: not set
+    0x00, // extra flags
+    0x00 // OS: FAT (matches Java's GZIPOutputStream default)
+  };
+
+  /**
+   * Compresses using {@link Deflater} directly with a reusable instance,
+   * bypassing Hadoop's GzipCodec and the stream overhead of
+   * {@link java.util.zip.GZIPOutputStream}. The Deflater is kept across
+   * calls and reset via {@link Deflater#reset()}, avoiding native zlib
+   * state allocation per page. Writes a minimal GZIP header and trailer
+   * (CRC32 + original size) manually.
+   */
+  static class GzipBytesCompressor extends BytesCompressor {
+    private final Deflater deflater;
+    private final CRC32 crc = new CRC32();
+    private final ByteArrayOutputStream baos;
+
+    GzipBytesCompressor(int level, int pageSize) {
+      this.deflater = new Deflater(level, true);
+      this.baos = new ByteArrayOutputStream(pageSize);
+    }
+
+    @Override
+    public BytesInput compress(BytesInput bytes) throws IOException {
+      byte[] input = bytes.toByteArray();
+
+      deflater.reset();
+      crc.reset();
+      crc.update(input);
+
+      baos.reset();
+      // GZIP header
+      baos.write(GZIP_HEADER);
+
+      // Deflate
+      deflater.setInput(input);
+      deflater.finish();
+      byte[] buf = new byte[4096];
+      while (!deflater.finished()) {
+        int n = deflater.deflate(buf);
+        baos.write(buf, 0, n);
+      }
+
+      // GZIP trailer: CRC32 + original size (little-endian)
+      writeInt(baos, (int) crc.getValue());
+      writeInt(baos, input.length);
+
+      return BytesInput.from(baos);
+    }
+
+    @Override
+    public CompressionCodecName getCodecName() {
+      return CompressionCodecName.GZIP;
+    }
+
+    @Override
+    public void release() {
+      deflater.end();
+    }
+  }
+
+  /**
+   * Decompresses using {@link Inflater} directly with a reusable instance,
+   * bypassing Hadoop's GzipCodec and the stream overhead of
+   * {@link java.util.zip.GZIPInputStream}. Skips the GZIP header, inflates
+   * into the output buffer, and verifies the CRC32 + size trailer.
+   */
+  static class GzipBytesDecompressor extends BytesDecompressor {
+    private final Inflater inflater = new Inflater(true);
+    private final CRC32 crc = new CRC32();
+
+    @Override
+    public BytesInput decompress(BytesInput bytes, int decompressedSize)
+        throws IOException {
+      byte[] compressed = bytes.toByteArray();
+      int headerLen = readGzipHeaderLength(compressed);
+
+      inflater.reset();
+      inflater.setInput(
+          compressed, headerLen, compressed.length - headerLen - 8);
+
+      byte[] output = new byte[decompressedSize];
+      try {
+        int inflated = 0;
+        while (inflated < decompressedSize) {
+          int n = inflater.inflate(
+              output, inflated, decompressedSize - inflated);
+          if (n == 0 && inflater.finished()) {
+            break;
+          }
+          if (n == 0 && inflater.needsInput()) {
+            throw new IOException(
+                "Unexpected end of GZIP stream at offset "
+                    + inflated + " of " + decompressedSize);
+          }
+          inflated += n;
+        }
+      } catch (java.util.zip.DataFormatException e) {
+        throw new IOException("Invalid GZIP data", e);
+      }
+
+      // Verify CRC32 and original size from trailer
+      int trailerOffset = compressed.length - 8;
+      int expectedCrc = readInt(compressed, trailerOffset);
+      int expectedSize = readInt(compressed, trailerOffset + 4);
+
+      crc.reset();
+      crc.update(output);
+      if ((int) crc.getValue() != expectedCrc) {
+        throw new IOException("GZIP CRC32 mismatch");
+      }
+      if (decompressedSize != (expectedSize & 0xFFFFFFFFL)) {
+        throw new IOException("GZIP size mismatch");
+      }
+
+      return BytesInput.from(output);
+    }
+
+    @Override
+    public void decompress(
+        ByteBuffer input, int compressedSize,
+        ByteBuffer output, int decompressedSize) throws IOException {
+      byte[] inputBytes = new byte[compressedSize];
+      input.get(inputBytes);
+      BytesInput result = decompress(
+          BytesInput.from(inputBytes), decompressedSize);
+      output.put(result.toByteArray());
+    }
+
+    @Override
+    public void release() {
+      inflater.end();
+    }
+  }
+
+  /**
+   * Reads the length of a GZIP header, handling optional extra, name,
+   * comment, and header CRC fields per RFC 1952.
+   */
+  private static int readGzipHeaderLength(byte[] data) throws IOException {
+    if (data.length < 10
+        || (data[0] & 0xFF) != 0x1f
+        || (data[1] & 0xFF) != 0x8b) {
+      throw new IOException("Not a GZIP stream");
+    }
+    int flags = data[3] & 0xFF;
+    int offset = 10;
+
+    if ((flags & 0x04) != 0) { // FEXTRA
+      if (offset + 2 > data.length) {
+        throw new IOException("Truncated GZIP FEXTRA");
+      }
+      int extraLen = (data[offset] & 0xFF)
+          | ((data[offset + 1] & 0xFF) << 8);
+      offset += 2 + extraLen;
+    }
+    if ((flags & 0x08) != 0) { // FNAME
+      while (offset < data.length && data[offset] != 0) {
+        offset++;
+      }
+      offset++; // skip null terminator
+    }
+    if ((flags & 0x10) != 0) { // FCOMMENT
+      while (offset < data.length && data[offset] != 0) {
+        offset++;
+      }
+      offset++; // skip null terminator
+    }
+    if ((flags & 0x02) != 0) { // FHCRC
+      offset += 2;
+    }
+    return offset;
+  }
+
+  /** Writes a 32-bit integer in little-endian byte order. */
+  private static void writeInt(ByteArrayOutputStream out, int value) {
+    out.write(value & 0xFF);
+    out.write((value >> 8) & 0xFF);
+    out.write((value >> 16) & 0xFF);
+    out.write((value >> 24) & 0xFF);
+  }
+
+  /** Reads a 32-bit little-endian integer from a byte array. */
+  private static int readInt(byte[] data, int offset) {
+    return (data[offset] & 0xFF)
+        | ((data[offset + 1] & 0xFF) << 8)
+        | ((data[offset + 2] & 0xFF) << 16)
+        | ((data[offset + 3] & 0xFF) << 24);
   }
 }
