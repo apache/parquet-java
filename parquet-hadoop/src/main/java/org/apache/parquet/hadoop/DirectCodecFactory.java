@@ -103,6 +103,8 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
         return new SnappyCompressor();
       case ZSTD:
         return new ZstdCompressor();
+      case LZ4_RAW:
+        return new Lz4RawCompressor();
         // todo: create class similar to the SnappyCompressor for zlib and exclude it as
         // snappy is above since it also generates allocateDirect calls.
       default:
@@ -117,6 +119,8 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
         return new SnappyDecompressor();
       case ZSTD:
         return new ZstdDecompressor();
+      case LZ4_RAW:
+        return new Lz4RawDecompressor();
       default:
         CompressionCodec codec = getCodec(codecName);
         if (codec == null) {
@@ -405,6 +409,26 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
     }
   }
 
+  /**
+   * Direct-memory LZ4_RAW decompressor using airlift's LZ4 decompressor with
+   * direct ByteBuffers, avoiding reflection-based {@link FullDirectDecompressor}.
+   */
+  private class Lz4RawDecompressor extends BaseDecompressor {
+    private final io.airlift.compress.lz4.Lz4Decompressor decompressor =
+        new io.airlift.compress.lz4.Lz4Decompressor();
+
+    @Override
+    int decompress(ByteBuffer input, ByteBuffer output) {
+      decompressor.decompress(input, output);
+      return output.position();
+    }
+
+    @Override
+    void closeDecompressor() {
+      // no-op
+    }
+  }
+
   private class ZstdCompressor extends BaseCompressor {
     private final ZstdCompressCtx context;
 
@@ -434,6 +458,36 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
     @Override
     void closeCompressor() {
       context.close();
+    }
+  }
+
+  /**
+   * Direct-memory LZ4_RAW compressor using airlift's LZ4 compressor with
+   * direct ByteBuffers, avoiding the stream-based heap path.
+   */
+  private class Lz4RawCompressor extends BaseCompressor {
+    private final io.airlift.compress.lz4.Lz4Compressor compressor =
+        new io.airlift.compress.lz4.Lz4Compressor();
+
+    @Override
+    public CompressionCodecName getCodecName() {
+      return CompressionCodecName.LZ4_RAW;
+    }
+
+    @Override
+    int maxCompressedSize(int size) {
+      return compressor.maxCompressedLength(size);
+    }
+
+    @Override
+    int compress(ByteBuffer input, ByteBuffer output) {
+      compressor.compress(input, output);
+      return output.position();
+    }
+
+    @Override
+    void closeCompressor() {
+      // no-op
     }
   }
 

@@ -18,6 +18,10 @@
  */
 package org.apache.parquet.hadoop;
 
+import com.github.luben.zstd.RecyclingBufferPool;
+import com.github.luben.zstd.ZstdInputStreamNoFinalizer;
+import com.github.luben.zstd.ZstdOutputStreamNoFinalizer;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -43,6 +47,7 @@ import org.apache.parquet.hadoop.codec.Lz4RawCodec;
 import org.apache.parquet.hadoop.codec.ZstandardCodec;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.util.ConfigurationUtil;
+import org.xerial.snappy.Snappy;
 
 public class CodecFactory implements CompressionCodecFactory {
 
@@ -271,13 +276,40 @@ public class CodecFactory implements CompressionCodecFactory {
   }
 
   protected BytesCompressor createCompressor(CompressionCodecName codecName) {
-    CompressionCodec codec = getCodec(codecName);
-    return codec == null ? NO_OP_COMPRESSOR : new HeapBytesCompressor(codecName, codec);
+    switch (codecName) {
+      case UNCOMPRESSED:
+        return NO_OP_COMPRESSOR;
+      case SNAPPY:
+        return new SnappyBytesCompressor();
+      case ZSTD:
+        return new ZstdBytesCompressor(
+            conf.getInt(
+                ZstandardCodec.PARQUET_COMPRESS_ZSTD_LEVEL, ZstandardCodec.DEFAULT_PARQUET_COMPRESS_ZSTD_LEVEL),
+            conf.getInt(
+                ZstandardCodec.PARQUET_COMPRESS_ZSTD_WORKERS, ZstandardCodec.DEFAULTPARQUET_COMPRESS_ZSTD_WORKERS),
+            pageSize);
+      case LZ4_RAW:
+        return new Lz4RawBytesCompressor();
+      default:
+        CompressionCodec codec = getCodec(codecName);
+        return codec == null ? NO_OP_COMPRESSOR : new HeapBytesCompressor(codecName, codec);
+    }
   }
 
   protected BytesDecompressor createDecompressor(CompressionCodecName codecName) {
-    CompressionCodec codec = getCodec(codecName);
-    return codec == null ? NO_OP_DECOMPRESSOR : new HeapBytesDecompressor(codec);
+    switch (codecName) {
+      case UNCOMPRESSED:
+        return NO_OP_DECOMPRESSOR;
+      case SNAPPY:
+        return new SnappyBytesDecompressor();
+      case ZSTD:
+        return new ZstdBytesDecompressor();
+      case LZ4_RAW:
+        return new Lz4RawBytesDecompressor();
+      default:
+        CompressionCodec codec = getCodec(codecName);
+        return codec == null ? NO_OP_DECOMPRESSOR : new HeapBytesDecompressor(codec);
+    }
   }
 
   /**
@@ -366,5 +398,233 @@ public class CodecFactory implements CompressionCodecFactory {
         throws IOException;
 
     public abstract void release();
+  }
+
+  // ---- Optimized Snappy compressor/decompressor using direct JNI calls ----
+
+  /**
+   * Compresses using Snappy's byte-array JNI API directly, bypassing the Hadoop
+   * stream abstraction. This avoids intermediate direct ByteBuffer copies and
+   * reduces the compression to a single native call per page.
+   */
+  static class SnappyBytesCompressor extends BytesCompressor {
+    private byte[] outputBuffer;
+
+    @Override
+    public BytesInput compress(BytesInput bytes) throws IOException {
+      byte[] input = bytes.toByteArray();
+      int maxLen = Snappy.maxCompressedLength(input.length);
+      if (outputBuffer == null || outputBuffer.length < maxLen) {
+        outputBuffer = new byte[maxLen];
+      }
+      int compressed = Snappy.compress(input, 0, input.length, outputBuffer, 0);
+      return BytesInput.from(outputBuffer, 0, compressed);
+    }
+
+    @Override
+    public CompressionCodecName getCodecName() {
+      return CompressionCodecName.SNAPPY;
+    }
+
+    @Override
+    public void release() {
+      outputBuffer = null;
+    }
+  }
+
+  /**
+   * Decompresses using Snappy's byte-array JNI API directly.
+   */
+  static class SnappyBytesDecompressor extends BytesDecompressor {
+    @Override
+    public BytesInput decompress(BytesInput bytes, int decompressedSize) throws IOException {
+      byte[] input = bytes.toByteArray();
+      byte[] output = new byte[decompressedSize];
+      Snappy.uncompress(input, 0, input.length, output, 0);
+      return BytesInput.from(output);
+    }
+
+    @Override
+    public void decompress(ByteBuffer input, int compressedSize, ByteBuffer output, int decompressedSize)
+        throws IOException {
+      byte[] inputBytes = new byte[compressedSize];
+      input.get(inputBytes);
+      byte[] outputBytes = new byte[decompressedSize];
+      Snappy.uncompress(inputBytes, 0, compressedSize, outputBytes, 0);
+      output.put(outputBytes);
+    }
+
+    @Override
+    public void release() {}
+  }
+
+  // ---- Optimized ZSTD compressor/decompressor using zstd-jni streaming API directly ----
+
+  /**
+   * Compresses using zstd-jni's {@link ZstdOutputStreamNoFinalizer} directly,
+   * bypassing the Hadoop codec framework ({@code ZstandardCodec}, {@code CodecPool},
+   * {@code CompressionOutputStream} wrapper). Uses {@link RecyclingBufferPool} for the
+   * internal 128KB output buffer, matching the streaming API's natural buffer size.
+   * This avoids the overhead of Hadoop codec instantiation and compressor pool management
+   * while using the same underlying ZSTD streaming path, which is well-optimized for all
+   * input sizes including large pages (256KB+).
+   */
+  static class ZstdBytesCompressor extends BytesCompressor {
+    private final int level;
+    private final int workers;
+    private final ByteArrayOutputStream compressedOutBuffer;
+
+    ZstdBytesCompressor(int level, int workers, int pageSize) {
+      this.level = level;
+      this.workers = workers;
+      this.compressedOutBuffer = new ByteArrayOutputStream(pageSize);
+    }
+
+    @Override
+    public BytesInput compress(BytesInput bytes) throws IOException {
+      compressedOutBuffer.reset();
+      try (ZstdOutputStreamNoFinalizer zos =
+          new ZstdOutputStreamNoFinalizer(compressedOutBuffer, RecyclingBufferPool.INSTANCE, level)) {
+        if (workers > 0) {
+          zos.setWorkers(workers);
+        }
+        bytes.writeAllTo(zos);
+      }
+      return BytesInput.from(compressedOutBuffer);
+    }
+
+    @Override
+    public CompressionCodecName getCodecName() {
+      return CompressionCodecName.ZSTD;
+    }
+
+    @Override
+    public void release() {
+      // ByteArrayOutputStream does not hold native resources
+    }
+  }
+
+  /**
+   * Decompresses using zstd-jni's {@link ZstdInputStreamNoFinalizer} directly,
+   * bypassing the Hadoop codec framework. Uses {@link RecyclingBufferPool} for internal
+   * buffers, matching the streaming decompression path. Reads the full decompressed output
+   * in a single pass via {@link InputStream#readNBytes(int)}.
+   */
+  static class ZstdBytesDecompressor extends BytesDecompressor {
+
+    @Override
+    public BytesInput decompress(BytesInput bytes, int decompressedSize) throws IOException {
+      try (ZstdInputStreamNoFinalizer zis =
+          new ZstdInputStreamNoFinalizer(bytes.toInputStream(), RecyclingBufferPool.INSTANCE)) {
+        byte[] output = new byte[decompressedSize];
+        int offset = 0;
+        while (offset < decompressedSize) {
+          int read = zis.read(output, offset, decompressedSize - offset);
+          if (read < 0) {
+            throw new IOException(
+                "Unexpected end of ZSTD stream at offset " + offset + " of " + decompressedSize);
+          }
+          offset += read;
+        }
+        return BytesInput.from(output);
+      }
+    }
+
+    @Override
+    public void decompress(ByteBuffer input, int compressedSize, ByteBuffer output, int decompressedSize)
+        throws IOException {
+      byte[] inputBytes = new byte[compressedSize];
+      input.get(inputBytes);
+      ByteArrayInputStream bais = new ByteArrayInputStream(inputBytes);
+      try (ZstdInputStreamNoFinalizer zis =
+          new ZstdInputStreamNoFinalizer(bais, RecyclingBufferPool.INSTANCE)) {
+        byte[] outputBytes = new byte[decompressedSize];
+        int offset = 0;
+        while (offset < decompressedSize) {
+          int read = zis.read(outputBytes, offset, decompressedSize - offset);
+          if (read < 0) {
+            throw new IOException(
+                "Unexpected end of ZSTD stream at offset " + offset + " of " + decompressedSize);
+          }
+          offset += read;
+        }
+        output.put(outputBytes);
+      }
+    }
+
+    @Override
+    public void release() {
+      // No persistent resources - streams are closed per call
+    }
+  }
+
+  // ---- Optimized LZ4_RAW compressor/decompressor using airlift LZ4 directly ----
+
+  /**
+   * Compresses using airlift's LZ4 compressor directly with heap ByteBuffers,
+   * bypassing the Hadoop stream abstraction and NonBlockedCompressor's direct
+   * buffer copies.
+   */
+  static class Lz4RawBytesCompressor extends BytesCompressor {
+    private final io.airlift.compress.lz4.Lz4Compressor compressor =
+        new io.airlift.compress.lz4.Lz4Compressor();
+    private byte[] outputBuffer;
+
+    @Override
+    public BytesInput compress(BytesInput bytes) throws IOException {
+      byte[] input = bytes.toByteArray();
+      int maxLen = compressor.maxCompressedLength(input.length);
+      if (outputBuffer == null || outputBuffer.length < maxLen) {
+        outputBuffer = new byte[maxLen];
+      }
+      ByteBuffer inputBuf = ByteBuffer.wrap(input);
+      ByteBuffer outputBuf = ByteBuffer.wrap(outputBuffer);
+      compressor.compress(inputBuf, outputBuf);
+      int compressedSize = outputBuf.position();
+      return BytesInput.from(outputBuffer, 0, compressedSize);
+    }
+
+    @Override
+    public CompressionCodecName getCodecName() {
+      return CompressionCodecName.LZ4_RAW;
+    }
+
+    @Override
+    public void release() {
+      outputBuffer = null;
+    }
+  }
+
+  /**
+   * Decompresses using airlift's LZ4 decompressor directly with heap ByteBuffers.
+   */
+  static class Lz4RawBytesDecompressor extends BytesDecompressor {
+    private final io.airlift.compress.lz4.Lz4Decompressor decompressor =
+        new io.airlift.compress.lz4.Lz4Decompressor();
+
+    @Override
+    public BytesInput decompress(BytesInput bytes, int decompressedSize) throws IOException {
+      byte[] input = bytes.toByteArray();
+      byte[] output = new byte[decompressedSize];
+      ByteBuffer inputBuf = ByteBuffer.wrap(input);
+      ByteBuffer outputBuf = ByteBuffer.wrap(output);
+      decompressor.decompress(inputBuf, outputBuf);
+      return BytesInput.from(output);
+    }
+
+    @Override
+    public void decompress(ByteBuffer input, int compressedSize, ByteBuffer output, int decompressedSize)
+        throws IOException {
+      byte[] inputBytes = new byte[compressedSize];
+      input.get(inputBytes);
+      byte[] outputBytes = new byte[decompressedSize];
+      ByteBuffer inputBuf = ByteBuffer.wrap(inputBytes);
+      ByteBuffer outputBuf = ByteBuffer.wrap(outputBytes);
+      decompressor.decompress(inputBuf, outputBuf);
+      output.put(outputBytes);
+    }
+
+    @Override
+    public void release() {}
   }
 }
