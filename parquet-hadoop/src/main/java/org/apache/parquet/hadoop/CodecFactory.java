@@ -18,6 +18,8 @@
  */
 package org.apache.parquet.hadoop;
 
+import com.github.luben.zstd.BufferPool;
+import com.github.luben.zstd.NoPool;
 import com.github.luben.zstd.RecyclingBufferPool;
 import com.github.luben.zstd.ZstdInputStreamNoFinalizer;
 import com.github.luben.zstd.ZstdOutputStreamNoFinalizer;
@@ -285,12 +287,17 @@ public class CodecFactory implements CompressionCodecFactory {
       case SNAPPY:
         return new SnappyBytesCompressor();
       case ZSTD:
+        BufferPool zstdCompressPool = conf.getBoolean(
+            ZstandardCodec.PARQUET_COMPRESS_ZSTD_BUFFERPOOL_ENABLED,
+            ZstandardCodec.DEFAULT_PARQUET_COMPRESS_ZSTD_BUFFERPOOL_ENABLED)
+            ? RecyclingBufferPool.INSTANCE : NoPool.INSTANCE;
         return new ZstdBytesCompressor(
             conf.getInt(
                 ZstandardCodec.PARQUET_COMPRESS_ZSTD_LEVEL, ZstandardCodec.DEFAULT_PARQUET_COMPRESS_ZSTD_LEVEL),
             conf.getInt(
                 ZstandardCodec.PARQUET_COMPRESS_ZSTD_WORKERS, ZstandardCodec.DEFAULTPARQUET_COMPRESS_ZSTD_WORKERS),
-            pageSize);
+            pageSize,
+            zstdCompressPool);
       case LZ4_RAW:
         return new Lz4RawBytesCompressor();
       case GZIP:
@@ -310,7 +317,11 @@ public class CodecFactory implements CompressionCodecFactory {
       case SNAPPY:
         return new SnappyBytesDecompressor();
       case ZSTD:
-        return new ZstdBytesDecompressor();
+        BufferPool zstdDecompressPool = conf.getBoolean(
+            ZstandardCodec.PARQUET_COMPRESS_ZSTD_BUFFERPOOL_ENABLED,
+            ZstandardCodec.DEFAULT_PARQUET_COMPRESS_ZSTD_BUFFERPOOL_ENABLED)
+            ? RecyclingBufferPool.INSTANCE : NoPool.INSTANCE;
+        return new ZstdBytesDecompressor(zstdDecompressPool);
       case LZ4_RAW:
         return new Lz4RawBytesDecompressor();
       case GZIP:
@@ -356,14 +367,8 @@ public class CodecFactory implements CompressionCodecFactory {
   private String cacheKey(CompressionCodecName codecName) {
     String level = null;
     switch (codecName) {
-      case GZIP:
-        level = conf.get("zlib.compress.level");
-        break;
       case BROTLI:
         level = conf.get("compression.brotli.quality");
-        break;
-      case ZSTD:
-        level = conf.get("parquet.compression.codec.zstd.level");
         break;
       default:
         // compression level is not supported; ignore it
@@ -472,8 +477,10 @@ public class CodecFactory implements CompressionCodecFactory {
   /**
    * Compresses using zstd-jni's {@link ZstdOutputStreamNoFinalizer} directly,
    * bypassing the Hadoop codec framework ({@code ZstandardCodec}, {@code CodecPool},
-   * {@code CompressionOutputStream} wrapper). Uses {@link RecyclingBufferPool} for the
-   * internal 128KB output buffer, matching the streaming API's natural buffer size.
+   * {@code CompressionOutputStream} wrapper). Uses a configurable {@link BufferPool}
+   * (defaulting to {@link RecyclingBufferPool}) for the internal 128KB output buffer,
+   * matching the streaming API's natural buffer size. The buffer pool strategy is
+   * controlled by the {@code parquet.compression.codec.zstd.bufferPool.enabled} config.
    * This avoids the overhead of Hadoop codec instantiation and compressor pool management
    * while using the same underlying ZSTD streaming path, which is well-optimized for all
    * input sizes including large pages (256KB+).
@@ -481,11 +488,13 @@ public class CodecFactory implements CompressionCodecFactory {
   static class ZstdBytesCompressor extends BytesCompressor {
     private final int level;
     private final int workers;
+    private final BufferPool bufferPool;
     private final ByteArrayOutputStream compressedOutBuffer;
 
-    ZstdBytesCompressor(int level, int workers, int pageSize) {
+    ZstdBytesCompressor(int level, int workers, int pageSize, BufferPool bufferPool) {
       this.level = level;
       this.workers = workers;
+      this.bufferPool = bufferPool;
       this.compressedOutBuffer = new ByteArrayOutputStream(pageSize);
     }
 
@@ -493,7 +502,7 @@ public class CodecFactory implements CompressionCodecFactory {
     public BytesInput compress(BytesInput bytes) throws IOException {
       compressedOutBuffer.reset();
       try (ZstdOutputStreamNoFinalizer zos =
-          new ZstdOutputStreamNoFinalizer(compressedOutBuffer, RecyclingBufferPool.INSTANCE, level)) {
+          new ZstdOutputStreamNoFinalizer(compressedOutBuffer, bufferPool, level)) {
         if (workers > 0) {
           zos.setWorkers(workers);
         }
@@ -515,16 +524,23 @@ public class CodecFactory implements CompressionCodecFactory {
 
   /**
    * Decompresses using zstd-jni's {@link ZstdInputStreamNoFinalizer} directly,
-   * bypassing the Hadoop codec framework. Uses {@link RecyclingBufferPool} for internal
-   * buffers, matching the streaming decompression path. Reads the full decompressed output
-   * in a single pass via {@link InputStream#readNBytes(int)}.
+   * bypassing the Hadoop codec framework. Uses a configurable {@link BufferPool}
+   * for internal buffers, matching the streaming decompression path. The buffer pool
+   * strategy is controlled by the {@code parquet.compression.codec.zstd.bufferPool.enabled}
+   * config. Reads the full decompressed output in a single pass via
+   * {@link InputStream#readNBytes(int)}.
    */
   static class ZstdBytesDecompressor extends BytesDecompressor {
+    private final BufferPool bufferPool;
+
+    ZstdBytesDecompressor(BufferPool bufferPool) {
+      this.bufferPool = bufferPool;
+    }
 
     @Override
     public BytesInput decompress(BytesInput bytes, int decompressedSize) throws IOException {
       try (ZstdInputStreamNoFinalizer zis =
-          new ZstdInputStreamNoFinalizer(bytes.toInputStream(), RecyclingBufferPool.INSTANCE)) {
+          new ZstdInputStreamNoFinalizer(bytes.toInputStream(), bufferPool)) {
         byte[] output = new byte[decompressedSize];
         int offset = 0;
         while (offset < decompressedSize) {
@@ -546,7 +562,7 @@ public class CodecFactory implements CompressionCodecFactory {
       input.get(inputBytes);
       ByteArrayInputStream bais = new ByteArrayInputStream(inputBytes);
       try (ZstdInputStreamNoFinalizer zis =
-          new ZstdInputStreamNoFinalizer(bais, RecyclingBufferPool.INSTANCE)) {
+          new ZstdInputStreamNoFinalizer(bais, bufferPool)) {
         byte[] outputBytes = new byte[decompressedSize];
         int offset = 0;
         while (offset < decompressedSize) {
@@ -659,6 +675,13 @@ public class CodecFactory implements CompressionCodecFactory {
    * calls and reset via {@link Deflater#reset()}, avoiding native zlib
    * state allocation per page. Writes a minimal GZIP header and trailer
    * (CRC32 + original size) manually.
+   *
+   * <p>Note: this implementation always uses Java's built-in {@link Deflater}
+   * (java.util.zip / JDK zlib). It does <em>not</em> use Hadoop native libraries,
+   * so hardware-accelerated compression via Intel ISA-L will not be used even if
+   * the native libraries are installed. The overhead reduction from bypassing the
+   * Hadoop codec framework typically outweighs the ISA-L advantage for the page
+   * sizes used by Parquet.
    */
   static class GzipBytesCompressor extends BytesCompressor {
     private final Deflater deflater;
@@ -714,6 +737,11 @@ public class CodecFactory implements CompressionCodecFactory {
    * bypassing Hadoop's GzipCodec and the stream overhead of
    * {@link java.util.zip.GZIPInputStream}. Skips the GZIP header, inflates
    * into the output buffer, and verifies the CRC32 + size trailer.
+   *
+   * <p>Note: this implementation always uses Java's built-in {@link Inflater}
+   * (java.util.zip / JDK zlib). It does <em>not</em> use Hadoop native libraries,
+   * so hardware-accelerated decompression via Intel ISA-L will not be used even if
+   * the native libraries are installed.
    */
   static class GzipBytesDecompressor extends BytesDecompressor {
     private final Inflater inflater = new Inflater(true);

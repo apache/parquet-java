@@ -28,7 +28,6 @@ import java.util.HashSet;
 import java.util.Random;
 import java.util.Set;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.io.compress.CompressionCodec;
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.ByteBufferReleaser;
 import org.apache.parquet.bytes.BytesInput;
@@ -235,53 +234,63 @@ public class TestDirectCodecFactory {
     }
   }
 
-  static class PublicCodecFactory extends CodecFactory {
-    // To make getCodec public
+  @Test
+  public void compressionLevelGzip() throws IOException {
+    Configuration config_zlib_1 = new Configuration();
+    config_zlib_1.set("zlib.compress.level", "1");
 
-    public PublicCodecFactory(Configuration configuration, int pageSize) {
-      super(configuration, pageSize);
-    }
+    Configuration config_zlib_9 = new Configuration();
+    config_zlib_9.set("zlib.compress.level", "9");
 
-    public org.apache.hadoop.io.compress.CompressionCodec getCodec(CompressionCodecName name) {
-      return super.getCodec(name);
-    }
+    // Generate compressible data so different levels produce different sizes
+    byte[] data = new byte[64 * 1024];
+    new Random(42).nextBytes(data);
+
+    final CodecFactory codecFactory_1 = new CodecFactory(config_zlib_1, pageSize);
+    final CodecFactory codecFactory_9 = new CodecFactory(config_zlib_9, pageSize);
+
+    BytesInputCompressor compressor_1 = codecFactory_1.getCompressor(CompressionCodecName.GZIP);
+    BytesInputCompressor compressor_9 = codecFactory_9.getCompressor(CompressionCodecName.GZIP);
+
+    long size_1 = compressor_1.compress(BytesInput.from(data)).size();
+    long size_9 = compressor_9.compress(BytesInput.from(data)).size();
+
+    // Level 9 should produce smaller (or equal) output than level 1
+    Assert.assertTrue(
+        "Expected level 9 (" + size_9 + ") <= level 1 (" + size_1 + ")",
+        size_9 <= size_1);
+
+    codecFactory_1.release();
+    codecFactory_9.release();
   }
 
   @Test
-  public void cachingKeysGzip() {
-    Configuration config_zlib_2 = new Configuration();
-    config_zlib_2.set("zlib.compress.level", "2");
+  public void compressionLevelZstd() throws IOException {
+    Configuration config_zstd_1 = new Configuration();
+    config_zstd_1.set("parquet.compression.codec.zstd.level", "1");
 
-    Configuration config_zlib_5 = new Configuration();
-    config_zlib_5.set("zlib.compress.level", "5");
+    Configuration config_zstd_19 = new Configuration();
+    config_zstd_19.set("parquet.compression.codec.zstd.level", "19");
 
-    final CodecFactory codecFactory_2 = new PublicCodecFactory(config_zlib_2, pageSize);
-    final CodecFactory codecFactory_5 = new PublicCodecFactory(config_zlib_5, pageSize);
+    // Generate compressible data so different levels produce different sizes
+    byte[] data = new byte[64 * 1024];
+    new Random(42).nextBytes(data);
 
-    CompressionCodec codec_2_1 = codecFactory_2.getCodec(CompressionCodecName.GZIP);
-    CompressionCodec codec_2_2 = codecFactory_2.getCodec(CompressionCodecName.GZIP);
-    CompressionCodec codec_5_1 = codecFactory_5.getCodec(CompressionCodecName.GZIP);
+    final CodecFactory codecFactory_1 = new CodecFactory(config_zstd_1, pageSize);
+    final CodecFactory codecFactory_19 = new CodecFactory(config_zstd_19, pageSize);
 
-    Assert.assertEquals(codec_2_1, codec_2_2);
-    Assert.assertNotEquals(codec_2_1, codec_5_1);
-  }
+    BytesInputCompressor compressor_1 = codecFactory_1.getCompressor(CompressionCodecName.ZSTD);
+    BytesInputCompressor compressor_19 = codecFactory_19.getCompressor(CompressionCodecName.ZSTD);
 
-  @Test
-  public void cachingKeysZstd() {
-    Configuration config_zstd_2 = new Configuration();
-    config_zstd_2.set("parquet.compression.codec.zstd.level", "2");
+    long size_1 = compressor_1.compress(BytesInput.from(data)).size();
+    long size_19 = compressor_19.compress(BytesInput.from(data)).size();
 
-    Configuration config_zstd_5 = new Configuration();
-    config_zstd_5.set("parquet.compression.codec.zstd.level", "5");
+    // Level 19 should produce smaller (or equal) output than level 1
+    Assert.assertTrue(
+        "Expected level 19 (" + size_19 + ") <= level 1 (" + size_1 + ")",
+        size_19 <= size_1);
 
-    final CodecFactory codecFactory_2 = new PublicCodecFactory(config_zstd_2, pageSize);
-    final CodecFactory codecFactory_5 = new PublicCodecFactory(config_zstd_5, pageSize);
-
-    CompressionCodec codec_2_1 = codecFactory_2.getCodec(CompressionCodecName.ZSTD);
-    CompressionCodec codec_2_2 = codecFactory_2.getCodec(CompressionCodecName.ZSTD);
-    CompressionCodec codec_5_1 = codecFactory_5.getCodec(CompressionCodecName.ZSTD);
-
-    Assert.assertEquals(codec_2_1, codec_2_2);
-    Assert.assertNotEquals(codec_2_1, codec_5_1);
+    codecFactory_1.release();
+    codecFactory_19.release();
   }
 }

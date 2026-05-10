@@ -105,8 +105,6 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
         return new ZstdCompressor();
       case LZ4_RAW:
         return new Lz4RawCompressor();
-        // todo: create class similar to the SnappyCompressor for zlib and exclude it as
-        // snappy is above since it also generates allocateDirect calls.
       default:
         return super.createCompressor(codecName);
     }
@@ -121,6 +119,9 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
         return new ZstdDecompressor();
       case LZ4_RAW:
         return new Lz4RawDecompressor();
+      case GZIP:
+      case UNCOMPRESSED:
+        return super.createDecompressor(codecName);
       default:
         CompressionCodec codec = getCodec(codecName);
         if (codec == null) {
