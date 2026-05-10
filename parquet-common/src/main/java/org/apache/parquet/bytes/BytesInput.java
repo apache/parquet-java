@@ -366,18 +366,9 @@ public abstract class BytesInput {
     @Override
     public void writeAllTo(OutputStream out) throws IOException {
       LOG.debug("write All {} bytes", byteCount);
-      // Transfer in chunks to avoid allocating a byteCount-sized intermediate buffer
-      byte[] buffer = new byte[Math.min(byteCount, 8192)];
-      int remaining = byteCount;
-      while (remaining > 0) {
-        int toRead = Math.min(remaining, buffer.length);
-        int n = in.readNBytes(buffer, 0, toRead);
-        if (n < toRead) {
-          throw new EOFException("Reached the end of stream with " + (remaining - n) + " bytes left to read");
-        }
-        out.write(buffer, 0, n);
-        remaining -= n;
-      }
+      // Cannot transfer in chunks because some InputStreams (e.g., NonBlockedDecompressorStream)
+      // require a full-size buffer to decompress all data in a single read() call.
+      out.write(this.toByteArray());
     }
 
     @Override
@@ -404,10 +395,15 @@ public abstract class BytesInput {
 
     public byte[] toByteArray() throws IOException {
       LOG.debug("read all {} bytes", byteCount);
-      byte[] buf = in.readNBytes(byteCount);
-      if (buf.length != byteCount) {
+      // Use the 3-arg readNBytes to read directly into a byteCount-sized buffer.
+      // The 1-arg readNBytes(int) internally uses small (8KB) buffers which breaks
+      // block decompressors that require a full-size output buffer (e.g., NonBlockedDecompressorStream
+      // resets the decompressor after finished(), losing remaining data on partial reads).
+      byte[] buf = new byte[byteCount];
+      int n = in.readNBytes(buf, 0, byteCount);
+      if (n != byteCount) {
         throw new EOFException(
-            "Reached the end of stream with " + (byteCount - buf.length) + " bytes left to read");
+            "Reached the end of stream with " + (byteCount - n) + " bytes left to read");
       }
       return buf;
     }
