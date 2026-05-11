@@ -23,18 +23,20 @@ import com.github.luben.zstd.NoPool;
 import com.github.luben.zstd.RecyclingBufferPool;
 import com.github.luben.zstd.ZstdInputStreamNoFinalizer;
 import com.github.luben.zstd.ZstdOutputStreamNoFinalizer;
+import io.airlift.compress.lz4.Lz4Compressor;
+import io.airlift.compress.lz4.Lz4Decompressor;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
-import java.util.zip.CRC32;
-import java.util.zip.Deflater;
-import java.util.zip.Inflater;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.zip.CRC32;
+import java.util.zip.Deflater;
+import java.util.zip.Inflater;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.compress.CodecPool;
 import org.apache.hadoop.io.compress.CompressionCodec;
@@ -288,21 +290,23 @@ public class CodecFactory implements CompressionCodecFactory {
         return new SnappyBytesCompressor();
       case ZSTD:
         BufferPool zstdCompressPool = conf.getBoolean(
-            ZstandardCodec.PARQUET_COMPRESS_ZSTD_BUFFERPOOL_ENABLED,
-            ZstandardCodec.DEFAULT_PARQUET_COMPRESS_ZSTD_BUFFERPOOL_ENABLED)
-            ? RecyclingBufferPool.INSTANCE : NoPool.INSTANCE;
+                ZstandardCodec.PARQUET_COMPRESS_ZSTD_BUFFERPOOL_ENABLED,
+                ZstandardCodec.DEFAULT_PARQUET_COMPRESS_ZSTD_BUFFERPOOL_ENABLED)
+            ? RecyclingBufferPool.INSTANCE
+            : NoPool.INSTANCE;
         return new ZstdBytesCompressor(
             conf.getInt(
-                ZstandardCodec.PARQUET_COMPRESS_ZSTD_LEVEL, ZstandardCodec.DEFAULT_PARQUET_COMPRESS_ZSTD_LEVEL),
+                ZstandardCodec.PARQUET_COMPRESS_ZSTD_LEVEL,
+                ZstandardCodec.DEFAULT_PARQUET_COMPRESS_ZSTD_LEVEL),
             conf.getInt(
-                ZstandardCodec.PARQUET_COMPRESS_ZSTD_WORKERS, ZstandardCodec.DEFAULTPARQUET_COMPRESS_ZSTD_WORKERS),
+                ZstandardCodec.PARQUET_COMPRESS_ZSTD_WORKERS,
+                ZstandardCodec.DEFAULTPARQUET_COMPRESS_ZSTD_WORKERS),
             pageSize,
             zstdCompressPool);
       case LZ4_RAW:
         return new Lz4RawBytesCompressor();
       case GZIP:
-        int gzipLevel = conf.getInt(
-            "zlib.compress.level", Deflater.DEFAULT_COMPRESSION);
+        int gzipLevel = conf.getInt("zlib.compress.level", Deflater.DEFAULT_COMPRESSION);
         return new GzipBytesCompressor(gzipLevel, pageSize);
       default:
         CompressionCodec codec = getCodec(codecName);
@@ -318,9 +322,10 @@ public class CodecFactory implements CompressionCodecFactory {
         return new SnappyBytesDecompressor();
       case ZSTD:
         BufferPool zstdDecompressPool = conf.getBoolean(
-            ZstandardCodec.PARQUET_COMPRESS_ZSTD_BUFFERPOOL_ENABLED,
-            ZstandardCodec.DEFAULT_PARQUET_COMPRESS_ZSTD_BUFFERPOOL_ENABLED)
-            ? RecyclingBufferPool.INSTANCE : NoPool.INSTANCE;
+                ZstandardCodec.PARQUET_COMPRESS_ZSTD_BUFFERPOOL_ENABLED,
+                ZstandardCodec.DEFAULT_PARQUET_COMPRESS_ZSTD_BUFFERPOOL_ENABLED)
+            ? RecyclingBufferPool.INSTANCE
+            : NoPool.INSTANCE;
         return new ZstdBytesDecompressor(zstdDecompressPool);
       case LZ4_RAW:
         return new Lz4RawBytesDecompressor();
@@ -539,8 +544,7 @@ public class CodecFactory implements CompressionCodecFactory {
 
     @Override
     public BytesInput decompress(BytesInput bytes, int decompressedSize) throws IOException {
-      try (ZstdInputStreamNoFinalizer zis =
-          new ZstdInputStreamNoFinalizer(bytes.toInputStream(), bufferPool)) {
+      try (ZstdInputStreamNoFinalizer zis = new ZstdInputStreamNoFinalizer(bytes.toInputStream(), bufferPool)) {
         byte[] output = new byte[decompressedSize];
         int offset = 0;
         while (offset < decompressedSize) {
@@ -561,8 +565,7 @@ public class CodecFactory implements CompressionCodecFactory {
       byte[] inputBytes = new byte[compressedSize];
       input.get(inputBytes);
       ByteArrayInputStream bais = new ByteArrayInputStream(inputBytes);
-      try (ZstdInputStreamNoFinalizer zis =
-          new ZstdInputStreamNoFinalizer(bais, bufferPool)) {
+      try (ZstdInputStreamNoFinalizer zis = new ZstdInputStreamNoFinalizer(bais, bufferPool)) {
         byte[] outputBytes = new byte[decompressedSize];
         int offset = 0;
         while (offset < decompressedSize) {
@@ -591,8 +594,7 @@ public class CodecFactory implements CompressionCodecFactory {
    * buffer copies.
    */
   static class Lz4RawBytesCompressor extends BytesCompressor {
-    private final io.airlift.compress.lz4.Lz4Compressor compressor =
-        new io.airlift.compress.lz4.Lz4Compressor();
+    private final Lz4Compressor compressor = new Lz4Compressor();
     private byte[] outputBuffer;
 
     @Override
@@ -624,8 +626,7 @@ public class CodecFactory implements CompressionCodecFactory {
    * Decompresses using airlift's LZ4 decompressor directly with heap ByteBuffers.
    */
   static class Lz4RawBytesDecompressor extends BytesDecompressor {
-    private final io.airlift.compress.lz4.Lz4Decompressor decompressor =
-        new io.airlift.compress.lz4.Lz4Decompressor();
+    private final Lz4Decompressor decompressor = new Lz4Decompressor();
 
     @Override
     public BytesInput decompress(BytesInput bytes, int decompressedSize) throws IOException {
@@ -660,10 +661,14 @@ public class CodecFactory implements CompressionCodecFactory {
 
   /** Minimal 10-byte GZIP header: magic, method=8 (deflate), flags=0, mtime=0, xfl=0, os=0. */
   private static final byte[] GZIP_HEADER = {
-    0x1f, (byte) 0x8b, // magic
+    0x1f,
+    (byte) 0x8b, // magic
     0x08, // method: deflate
     0x00, // flags: none
-    0x00, 0x00, 0x00, 0x00, // mtime: not set
+    0x00,
+    0x00,
+    0x00,
+    0x00, // mtime: not set
     0x00, // extra flags
     0x00 // OS: FAT (matches Java's GZIPOutputStream default)
   };
@@ -748,28 +753,24 @@ public class CodecFactory implements CompressionCodecFactory {
     private final CRC32 crc = new CRC32();
 
     @Override
-    public BytesInput decompress(BytesInput bytes, int decompressedSize)
-        throws IOException {
+    public BytesInput decompress(BytesInput bytes, int decompressedSize) throws IOException {
       byte[] compressed = bytes.toByteArray();
       int headerLen = readGzipHeaderLength(compressed);
 
       inflater.reset();
-      inflater.setInput(
-          compressed, headerLen, compressed.length - headerLen - 8);
+      inflater.setInput(compressed, headerLen, compressed.length - headerLen - 8);
 
       byte[] output = new byte[decompressedSize];
       try {
         int inflated = 0;
         while (inflated < decompressedSize) {
-          int n = inflater.inflate(
-              output, inflated, decompressedSize - inflated);
+          int n = inflater.inflate(output, inflated, decompressedSize - inflated);
           if (n == 0 && inflater.finished()) {
             break;
           }
           if (n == 0 && inflater.needsInput()) {
             throw new IOException(
-                "Unexpected end of GZIP stream at offset "
-                    + inflated + " of " + decompressedSize);
+                "Unexpected end of GZIP stream at offset " + inflated + " of " + decompressedSize);
           }
           inflated += n;
         }
@@ -795,13 +796,11 @@ public class CodecFactory implements CompressionCodecFactory {
     }
 
     @Override
-    public void decompress(
-        ByteBuffer input, int compressedSize,
-        ByteBuffer output, int decompressedSize) throws IOException {
+    public void decompress(ByteBuffer input, int compressedSize, ByteBuffer output, int decompressedSize)
+        throws IOException {
       byte[] inputBytes = new byte[compressedSize];
       input.get(inputBytes);
-      BytesInput result = decompress(
-          BytesInput.from(inputBytes), decompressedSize);
+      BytesInput result = decompress(BytesInput.from(inputBytes), decompressedSize);
       output.put(result.toByteArray());
     }
 
@@ -816,9 +815,7 @@ public class CodecFactory implements CompressionCodecFactory {
    * comment, and header CRC fields per RFC 1952.
    */
   private static int readGzipHeaderLength(byte[] data) throws IOException {
-    if (data.length < 10
-        || (data[0] & 0xFF) != 0x1f
-        || (data[1] & 0xFF) != 0x8b) {
+    if (data.length < 10 || (data[0] & 0xFF) != 0x1f || (data[1] & 0xFF) != 0x8b) {
       throw new IOException("Not a GZIP stream");
     }
     int flags = data[3] & 0xFF;
@@ -828,8 +825,7 @@ public class CodecFactory implements CompressionCodecFactory {
       if (offset + 2 > data.length) {
         throw new IOException("Truncated GZIP FEXTRA");
       }
-      int extraLen = (data[offset] & 0xFF)
-          | ((data[offset + 1] & 0xFF) << 8);
+      int extraLen = (data[offset] & 0xFF) | ((data[offset + 1] & 0xFF) << 8);
       offset += 2 + extraLen;
     }
     if ((flags & 0x08) != 0) { // FNAME

@@ -467,8 +467,7 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
    * direct ByteBuffers, avoiding the stream-based heap path.
    */
   private class Lz4RawCompressor extends BaseCompressor {
-    private final io.airlift.compress.lz4.Lz4Compressor compressor =
-        new io.airlift.compress.lz4.Lz4Compressor();
+    private final io.airlift.compress.lz4.Lz4Compressor compressor = new io.airlift.compress.lz4.Lz4Compressor();
 
     @Override
     public CompressionCodecName getCodecName() {

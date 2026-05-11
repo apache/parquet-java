@@ -256,9 +256,7 @@ public class TestDirectCodecFactory {
     long size_9 = compressor_9.compress(BytesInput.from(data)).size();
 
     // Level 9 should produce smaller (or equal) output than level 1
-    Assert.assertTrue(
-        "Expected level 9 (" + size_9 + ") <= level 1 (" + size_1 + ")",
-        size_9 <= size_1);
+    Assert.assertTrue("Expected level 9 (" + size_9 + ") <= level 1 (" + size_1 + ")", size_9 <= size_1);
 
     codecFactory_1.release();
     codecFactory_9.release();
@@ -286,9 +284,7 @@ public class TestDirectCodecFactory {
     long size_19 = compressor_19.compress(BytesInput.from(data)).size();
 
     // Level 19 should produce smaller (or equal) output than level 1
-    Assert.assertTrue(
-        "Expected level 19 (" + size_19 + ") <= level 1 (" + size_1 + ")",
-        size_19 <= size_1);
+    Assert.assertTrue("Expected level 19 (" + size_19 + ") <= level 1 (" + size_1 + ")", size_19 <= size_1);
 
     codecFactory_1.release();
     codecFactory_19.release();

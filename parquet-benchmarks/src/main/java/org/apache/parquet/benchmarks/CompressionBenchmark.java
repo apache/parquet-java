@@ -107,7 +107,9 @@ public class CompressionBenchmark {
     // the stream-based HeapBytesDecompressor (e.g. GZIP) would return a lazy
     // StreamBytesInput, deferring the actual work. toByteArray() is essentially
     // free for our optimized implementations (returns the existing byte[]).
-    return decompressor.decompress(BytesInput.from(compressedData), decompressedSize).toByteArray();
+    return decompressor
+        .decompress(BytesInput.from(compressedData), decompressedSize)
+        .toByteArray();
   }
 
   /**
