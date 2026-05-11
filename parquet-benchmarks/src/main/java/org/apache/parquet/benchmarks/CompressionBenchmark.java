@@ -54,15 +54,15 @@ import org.openjdk.jmh.annotations.Warmup;
 @BenchmarkMode(Mode.Throughput)
 @OutputTimeUnit(TimeUnit.SECONDS)
 @Fork(1)
-@Warmup(iterations = 3, time = 2)
-@Measurement(iterations = 5, time = 3)
+@Warmup(iterations = 2, time = 1)
+@Measurement(iterations = 3, time = 2)
 @State(Scope.Thread)
 public class CompressionBenchmark {
 
   @Param({"SNAPPY", "ZSTD", "LZ4_RAW", "GZIP"})
   public String codec;
 
-  @Param({"8192", "65536", "262144"})
+  @Param({"65536", "131072", "262144", "1048576"})
   public int pageSize;
 
   private byte[] uncompressedData;
