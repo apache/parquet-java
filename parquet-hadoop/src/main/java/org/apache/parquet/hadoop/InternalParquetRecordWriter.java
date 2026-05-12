@@ -152,6 +152,9 @@ class InternalParquetRecordWriter<T> {
   }
 
   public void write(T value) throws IOException, InterruptedException {
+    if (aborted) {
+      throw new IOException("Writer has been aborted due to a previous error and cannot accept further writes");
+    }
     try {
       writeSupport.write(value);
       ++recordCount;
@@ -171,7 +174,9 @@ class InternalParquetRecordWriter<T> {
 
   private void checkBlockSizeReached() throws IOException {
     if (recordCount >= rowGroupRecordCountThreshold) {
-      LOG.debug("record count reaches threshold: flushing {} records to disk.", recordCount);
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("record count reaches threshold: flushing {} records to disk.", recordCount);
+      }
       flushRowGroupToStore();
       initStore();
       recordCountForNextMemCheck = min(
@@ -185,7 +190,9 @@ class InternalParquetRecordWriter<T> {
       // flush the row group if it is within ~2 records of the limit
       // it is much better to be slightly under size than to be over at all
       if (memSize > (nextRowGroupSize - 2 * recordSize)) {
-        LOG.debug("mem size {} > {}: flushing {} records to disk.", memSize, nextRowGroupSize, recordCount);
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("mem size {} > {}: flushing {} records to disk.", memSize, nextRowGroupSize, recordCount);
+        }
         flushRowGroupToStore();
         initStore();
         recordCountForNextMemCheck = min(
@@ -201,7 +208,9 @@ class InternalParquetRecordWriter<T> {
             recordCount
                 + props.getMaxRowCountForPageSizeCheck() // will not look more than max records ahead
             );
-        LOG.debug("Checked mem at {} will check again at: {}", recordCount, recordCountForNextMemCheck);
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("Checked mem at {} will check again at: {}", recordCount, recordCountForNextMemCheck);
+        }
       }
     }
   }
