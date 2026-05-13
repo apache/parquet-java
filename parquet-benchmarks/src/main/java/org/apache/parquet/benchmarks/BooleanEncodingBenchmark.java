@@ -157,6 +157,27 @@ public class BooleanEncodingBenchmark {
     return encodeV2(data);
   }
 
+  @Benchmark
+  @OperationsPerInvocation(VALUE_COUNT)
+  public byte[] encodePlainV1Batch() throws IOException {
+    ValuesWriter w = new BooleanPlainValuesWriter();
+    w.writeBooleans(data, 0, data.length);
+    byte[] bytes = w.getBytes().toByteArray();
+    w.close();
+    return bytes;
+  }
+
+  @Benchmark
+  @OperationsPerInvocation(VALUE_COUNT)
+  public byte[] encodeRleV2Batch() throws IOException {
+    ValuesWriter w = new RunLengthBitPackingHybridValuesWriter(
+        1, INIT_SLAB_SIZE, PAGE_SIZE, new HeapByteBufferAllocator());
+    w.writeBooleans(data, 0, data.length);
+    byte[] bytes = w.getBytes().toByteArray();
+    w.close();
+    return bytes;
+  }
+
   // ---- Decode benchmarks ----
 
   @Benchmark
