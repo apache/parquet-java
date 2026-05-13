@@ -181,6 +181,16 @@ public class IntEncodingBenchmark {
 
   @Benchmark
   @OperationsPerInvocation(VALUE_COUNT)
+  public byte[] encodePlainBatch() throws IOException {
+    PlainValuesWriter writer = newPlainWriter();
+    writer.writeIntegers(data, 0, data.length);
+    byte[] bytes = writer.getBytes().toByteArray();
+    writer.close();
+    return bytes;
+  }
+
+  @Benchmark
+  @OperationsPerInvocation(VALUE_COUNT)
   public byte[] encodeDelta() throws IOException {
     return encodeWith(newDeltaWriter());
   }
