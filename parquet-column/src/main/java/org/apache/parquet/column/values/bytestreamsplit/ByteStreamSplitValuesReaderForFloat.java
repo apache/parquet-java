@@ -31,8 +31,7 @@ public class ByteStreamSplitValuesReaderForFloat extends ByteStreamSplitValuesRe
   @Override
   public void readFloats(float[] dest, int offset, int count) {
     int byteOffset = advanceByteOffset(count);
-    for (int i = 0; i < count; i++) {
-      dest[offset + i] = decodedDataBuffer.getFloat(byteOffset + i * 4);
-    }
+    decodedDataBuffer.position(byteOffset);
+    decodedDataBuffer.asFloatBuffer().get(dest, offset, count);
   }
 }

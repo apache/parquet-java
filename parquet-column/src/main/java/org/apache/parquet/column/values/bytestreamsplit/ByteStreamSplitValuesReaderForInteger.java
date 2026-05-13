@@ -31,8 +31,7 @@ public class ByteStreamSplitValuesReaderForInteger extends ByteStreamSplitValues
   @Override
   public void readIntegers(int[] dest, int offset, int count) {
     int byteOffset = advanceByteOffset(count);
-    for (int i = 0; i < count; i++) {
-      dest[offset + i] = decodedDataBuffer.getInt(byteOffset + i * 4);
-    }
+    decodedDataBuffer.position(byteOffset);
+    decodedDataBuffer.asIntBuffer().get(dest, offset, count);
   }
 }
