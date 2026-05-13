@@ -255,6 +255,19 @@ public abstract class ValuesReader {
   }
 
   /**
+   * Reads {@code count} Binary values into {@code dest} starting at {@code offset}.
+   *
+   * @param dest   destination array
+   * @param offset start index in dest
+   * @param count  number of values to read
+   */
+  public void readBinaries(Binary[] dest, int offset, int count) {
+    for (int i = 0; i < count; i++) {
+      dest[offset + i] = readBytes();
+    }
+  }
+
+  /**
    * Skips the next value in the page
    */
   public abstract void skip();

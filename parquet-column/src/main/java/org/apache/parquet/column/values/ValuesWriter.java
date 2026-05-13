@@ -119,6 +119,19 @@ public abstract class ValuesWriter implements AutoCloseable {
   }
 
   /**
+   * Writes a batch of Binary values. Subclasses may override for optimized bulk encoding.
+   *
+   * @param values the Binary array to read from
+   * @param offset the start position in the array
+   * @param length the number of values to write
+   */
+  public void writeBinaries(Binary[] values, int offset, int length) {
+    for (int i = offset; i < offset + length; i++) {
+      writeBytes(values[i]);
+    }
+  }
+
+  /**
    * @param v the value to encode
    */
   public void writeInteger(int v) {

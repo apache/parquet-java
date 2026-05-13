@@ -30,4 +30,17 @@ public class ByteStreamSplitValuesReaderForFLBA extends ByteStreamSplitValuesRea
   public Binary readBytes() {
     return Binary.fromConstantByteBuffer(decodedDataBuffer, nextElementByteOffset(), elementSizeInBytes);
   }
+
+  /**
+   * Batch read: advances the stream by {@code count} elements in a single bounds check,
+   * then creates Binary views at sequential offsets — eliminating per-value bounds checking.
+   */
+  @Override
+  public void readBinaries(Binary[] dest, int offset, int count) {
+    int byteOffset = advanceByteOffset(count);
+    for (int i = 0; i < count; i++) {
+      dest[offset + i] = Binary.fromConstantByteBuffer(decodedDataBuffer, byteOffset, elementSizeInBytes);
+      byteOffset += elementSizeInBytes;
+    }
+  }
 }
