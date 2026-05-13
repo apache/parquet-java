@@ -62,7 +62,7 @@ import org.openjdk.jmh.annotations.Warmup;
 @State(Scope.Benchmark)
 public class FileWriteBenchmark {
 
-  @Param({"UNCOMPRESSED", "SNAPPY", "ZSTD", "GZIP"})
+  @Param({"UNCOMPRESSED", "SNAPPY", "ZSTD", "GZIP", "LZ4_RAW"})
   public String codec;
 
   @Param({"PARQUET_1_0", "PARQUET_2_0"})
