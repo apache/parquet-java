@@ -83,11 +83,15 @@ public class BooleanEncodingBenchmark {
   private byte[] v1Page;
   private byte[] v2Page;
 
+  // Pre-allocated batch destination array
+  private boolean[] boolDest;
+
   @Setup(Level.Trial)
   public void setup() throws IOException {
     data = generateData(dataPattern);
     v1Page = encodeV1(data);
     v2Page = encodeV2(data);
+    boolDest = new boolean[VALUE_COUNT];
   }
 
   private static boolean[] generateData(String pattern) {
@@ -173,5 +177,25 @@ public class BooleanEncodingBenchmark {
     for (int i = 0; i < VALUE_COUNT; i++) {
       bh.consume(r.readBoolean());
     }
+  }
+
+  // ---- Batch decode benchmarks ----
+
+  @Benchmark
+  @OperationsPerInvocation(VALUE_COUNT)
+  public void decodePlainV1Batch(Blackhole bh) throws IOException {
+    ValuesReader r = new BooleanPlainValuesReader();
+    r.initFromPage(VALUE_COUNT, ByteBufferInputStream.wrap(ByteBuffer.wrap(v1Page)));
+    r.readBooleans(boolDest, 0, VALUE_COUNT);
+    bh.consume(boolDest);
+  }
+
+  @Benchmark
+  @OperationsPerInvocation(VALUE_COUNT)
+  public void decodeRleV2Batch(Blackhole bh) throws IOException {
+    ValuesReader r = new RunLengthBitPackingHybridValuesReader(1);
+    r.initFromPage(VALUE_COUNT, ByteBufferInputStream.wrap(ByteBuffer.wrap(v2Page)));
+    r.readBooleans(boolDest, 0, VALUE_COUNT);
+    bh.consume(boolDest);
   }
 }
