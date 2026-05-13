@@ -273,6 +273,71 @@ public class RunLengthBitPackingHybridEncoder implements AutoCloseable {
   }
 
   /**
+   * Batch-encodes boolean values (bitWidth must be 1). Pre-scans for runs to emit
+   * RLE runs directly and packs remaining groups into bit-packed runs, bypassing
+   * the per-value state machine.
+   *
+   * <p>This method may only be called when the encoder is in its initial state
+   * (no values have been written via {@link #writeInt}). If called after scalar
+   * writes, behavior is undefined.
+   *
+   * @param values the boolean array
+   * @param offset start position in the array
+   * @param length number of values to encode
+   */
+  public void writeBooleans(boolean[] values, int offset, int length) throws IOException {
+    Preconditions.checkArgument(bitWidth == 1, "writeBooleans requires bitWidth == 1");
+
+    int pos = offset;
+    int end = offset + length;
+
+    while (pos < end) {
+      // Scan for run of consecutive identical values
+      boolean val = values[pos];
+      int runStart = pos;
+      pos++;
+      while (pos < end && values[pos] == val) {
+        pos++;
+      }
+      int runLen = pos - runStart;
+      int intVal = val ? 1 : 0;
+
+      // If we have a pending partial buffer, fill it first from this run
+      if (numBufferedValues > 0 && runLen >= 8) {
+        int fill = 8 - numBufferedValues;
+        for (int i = 0; i < fill; i++) {
+          bufferedValues[numBufferedValues] = intVal;
+          numBufferedValues++;
+        }
+        writeOrAppendBitPackedRun();
+        runLen -= fill;
+      }
+
+      if (runLen >= 8) {
+        // Buffer is empty now, emit RLE run for the remaining
+        endPreviousBitPackedRun();
+        BytesUtils.writeUnsignedVarInt(runLen << 1, baos);
+        BytesUtils.writeIntLittleEndianPaddedOnBitWidth(baos, intVal, bitWidth);
+      } else {
+        // Buffer values for bit-packing
+        for (int i = 0; i < runLen; i++) {
+          bufferedValues[numBufferedValues] = intVal;
+          numBufferedValues++;
+          if (numBufferedValues == 8) {
+            writeOrAppendBitPackedRun();
+          }
+        }
+      }
+    }
+
+    // Update state so toBytes() handles the tail correctly
+    repeatCount = 0;
+    if (numBufferedValues > 0) {
+      previousValue = bufferedValues[numBufferedValues - 1];
+    }
+  }
+
+  /**
    * Reset this encoder for re-use
    */
   public void reset() {

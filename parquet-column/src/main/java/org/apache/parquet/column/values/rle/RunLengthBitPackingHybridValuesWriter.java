@@ -53,6 +53,15 @@ public class RunLengthBitPackingHybridValuesWriter extends ValuesWriter {
   }
 
   @Override
+  public void writeBooleans(boolean[] values, int offset, int length) {
+    try {
+      encoder.writeBooleans(values, offset, length);
+    } catch (IOException e) {
+      throw new ParquetEncodingException(e);
+    }
+  }
+
+  @Override
   public long getBufferedSize() {
     return encoder.getBufferedSize();
   }
