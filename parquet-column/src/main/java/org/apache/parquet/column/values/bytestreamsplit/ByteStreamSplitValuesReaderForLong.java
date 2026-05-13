@@ -27,4 +27,12 @@ public class ByteStreamSplitValuesReaderForLong extends ByteStreamSplitValuesRea
   public long readLong() {
     return decodedDataBuffer.getLong(nextElementByteOffset());
   }
+
+  @Override
+  public void readLongs(long[] dest, int offset, int count) {
+    int byteOffset = advanceByteOffset(count);
+    for (int i = 0; i < count; i++) {
+      dest[offset + i] = decodedDataBuffer.getLong(byteOffset + i * 8);
+    }
+  }
 }
