@@ -21,6 +21,7 @@ import com.github.luben.zstd.Zstd;
 import com.github.luben.zstd.ZstdCompressCtx;
 import com.github.luben.zstd.ZstdDecompressCtx;
 import java.io.IOException;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
@@ -61,6 +62,14 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
   private static final Method DECOMPRESS_METHOD;
   private static final Method CREATE_DIRECT_DECOMPRESSOR_METHOD;
 
+  // Brotli JNI bypass via reflection (brotli-codec is a runtime-only dependency)
+  private static final boolean BROTLI_NATIVE_AVAILABLE;
+  private static final Method BROTLI_DECOMPRESS_METHOD; // BrotliDeCompressor.deCompress(ByteBuffer, ByteBuffer)
+  private static final Method BROTLI_COMPRESS_METHOD; // BrotliCompressor.compress(Parameter, ByteBuffer, ByteBuffer)
+  private static final Constructor<?> BROTLI_DECOMPRESSOR_CTOR; // BrotliDeCompressor()
+  private static final Constructor<?> BROTLI_COMPRESSOR_CTOR; // BrotliCompressor()
+  private static final Object BROTLI_COMPRESS_PARAMETER; // Brotli.Parameter instance (quality=1)
+
   static {
     Class<?> tempClass = null;
     Method tempCreateMethod = null;
@@ -76,6 +85,46 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
     DIRECT_DECOMPRESSION_CODEC_CLASS = tempClass;
     CREATE_DIRECT_DECOMPRESSOR_METHOD = tempCreateMethod;
     DECOMPRESS_METHOD = tempDecompressMethod;
+
+    // Initialize Brotli JNI bypass via reflection
+    boolean brotliLoaded = false;
+    Method brotliDecompress = null;
+    Method brotliCompress = null;
+    Constructor<?> brotliDecompressorCtor = null;
+    Constructor<?> brotliCompressorCtor = null;
+    Object brotliParam = null;
+    try {
+      // Load native library
+      Class<?> loaderClass = Class.forName("org.meteogroup.jbrotli.libloader.BrotliLibraryLoader");
+      loaderClass.getMethod("loadBrotli").invoke(null);
+
+      // BrotliDeCompressor: no-arg ctor + deCompress(ByteBuffer, ByteBuffer) -> int
+      Class<?> decompClass = Class.forName("org.meteogroup.jbrotli.BrotliDeCompressor");
+      brotliDecompressorCtor = decompClass.getConstructor();
+      brotliDecompress = decompClass.getMethod("deCompress", ByteBuffer.class, ByteBuffer.class);
+
+      // BrotliCompressor: no-arg ctor + compress(Parameter, ByteBuffer, ByteBuffer) -> int
+      Class<?> compClass = Class.forName("org.meteogroup.jbrotli.BrotliCompressor");
+      Class<?> paramClass = Class.forName("org.meteogroup.jbrotli.Brotli$Parameter");
+      Class<?> modeClass = Class.forName("org.meteogroup.jbrotli.Brotli$Mode");
+      brotliCompressorCtor = compClass.getConstructor();
+      brotliCompress = compClass.getMethod("compress", paramClass, ByteBuffer.class, ByteBuffer.class);
+
+      // Create Parameter(Mode.GENERIC, quality=1, lgwin=22, lgblock=0)
+      Object genericMode = modeClass.getField("GENERIC").get(null);
+      Constructor<?> paramCtor = paramClass.getConstructor(modeClass, int.class, int.class, int.class);
+      brotliParam = paramCtor.newInstance(genericMode, 1, 22, 0);
+
+      brotliLoaded = true;
+    } catch (Throwable t) {
+      LOG.debug("Brotli native library not available, falling back to Hadoop codec", t);
+    }
+    BROTLI_NATIVE_AVAILABLE = brotliLoaded;
+    BROTLI_DECOMPRESS_METHOD = brotliDecompress;
+    BROTLI_COMPRESS_METHOD = brotliCompress;
+    BROTLI_DECOMPRESSOR_CTOR = brotliDecompressorCtor;
+    BROTLI_COMPRESSOR_CTOR = brotliCompressorCtor;
+    BROTLI_COMPRESS_PARAMETER = brotliParam;
   }
 
   /**
@@ -105,6 +154,11 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
         return new ZstdCompressor();
       case LZ4_RAW:
         return new Lz4RawCompressor();
+      case BROTLI:
+        if (BROTLI_NATIVE_AVAILABLE) {
+          return new BrotliDirectCompressor();
+        }
+        return super.createCompressor(codecName);
       default:
         return super.createCompressor(codecName);
     }
@@ -119,6 +173,11 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
         return new ZstdDecompressor();
       case LZ4_RAW:
         return new Lz4RawDecompressor();
+      case BROTLI:
+        if (BROTLI_NATIVE_AVAILABLE) {
+          return new BrotliDirectDecompressor();
+        }
+        // fall through to default Hadoop codec path
       case GZIP:
       case UNCOMPRESSED:
         return super.createDecompressor(codecName);
@@ -488,6 +547,83 @@ class DirectCodecFactory extends CodecFactory implements AutoCloseable {
     @Override
     void closeCompressor() {
       // no-op
+    }
+  }
+
+  /**
+   * Direct-memory Brotli decompressor using jbrotli's native JNI bindings via reflection,
+   * bypassing the Hadoop BrotliCodec/stream wrapper overhead.
+   */
+  private class BrotliDirectDecompressor extends BaseDecompressor {
+    private final Object decompressor;
+
+    BrotliDirectDecompressor() {
+      try {
+        this.decompressor = BROTLI_DECOMPRESSOR_CTOR.newInstance();
+      } catch (ReflectiveOperationException e) {
+        throw new DirectCodecPool.ParquetCompressionCodecException("Failed to create Brotli decompressor", e);
+      }
+    }
+
+    @Override
+    int decompress(ByteBuffer input, ByteBuffer output) throws IOException {
+      try {
+        return (int) BROTLI_DECOMPRESS_METHOD.invoke(decompressor, input, output);
+      } catch (InvocationTargetException e) {
+        throw new IOException("Brotli decompression failed", e.getCause());
+      } catch (IllegalAccessException e) {
+        throw new IOException("Brotli decompression failed", e);
+      }
+    }
+
+    @Override
+    void closeDecompressor() {
+      // no-op: BrotliDeCompressor has no resources to release
+    }
+  }
+
+  /**
+   * Direct-memory Brotli compressor using jbrotli's native JNI bindings via reflection,
+   * bypassing the Hadoop BrotliCodec/stream wrapper overhead.
+   * Uses quality=1 by default (fast compression, matching Hadoop's BrotliCompressor default).
+   */
+  private class BrotliDirectCompressor extends BaseCompressor {
+    private final Object compressor;
+
+    BrotliDirectCompressor() {
+      try {
+        this.compressor = BROTLI_COMPRESSOR_CTOR.newInstance();
+      } catch (ReflectiveOperationException e) {
+        throw new DirectCodecPool.ParquetCompressionCodecException("Failed to create Brotli compressor", e);
+      }
+    }
+
+    @Override
+    public CompressionCodecName getCodecName() {
+      return CompressionCodecName.BROTLI;
+    }
+
+    @Override
+    int maxCompressedSize(int size) {
+      // Brotli worst case: input size + (input size >> 2) + 1K overhead for small inputs
+      // This is a conservative upper bound matching the Brotli spec
+      return size + (size >> 2) + 1024;
+    }
+
+    @Override
+    int compress(ByteBuffer input, ByteBuffer output) throws IOException {
+      try {
+        return (int) BROTLI_COMPRESS_METHOD.invoke(compressor, BROTLI_COMPRESS_PARAMETER, input, output);
+      } catch (InvocationTargetException e) {
+        throw new IOException("Brotli compression failed", e.getCause());
+      } catch (IllegalAccessException e) {
+        throw new IOException("Brotli compression failed", e);
+      }
+    }
+
+    @Override
+    void closeCompressor() {
+      // no-op: BrotliCompressor has no resources to release
     }
   }
 
