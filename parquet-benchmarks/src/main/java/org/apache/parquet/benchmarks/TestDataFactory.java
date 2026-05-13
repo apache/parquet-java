@@ -175,6 +175,157 @@ public final class TestDataFactory {
     return data;
   }
 
+  // ---- Long data generation for encoding benchmarks ----
+
+  /**
+   * Generates sequential longs: 0, 1, 2, ...
+   */
+  public static long[] generateSequentialLongs(int count) {
+    long[] data = new long[count];
+    for (int i = 0; i < count; i++) {
+      data[i] = i;
+    }
+    return data;
+  }
+
+  /**
+   * Generates uniformly random longs using the given seed.
+   */
+  public static long[] generateRandomLongs(int count, long seed) {
+    Random random = new Random(seed);
+    long[] data = new long[count];
+    for (int i = 0; i < count; i++) {
+      data[i] = random.nextLong();
+    }
+    return data;
+  }
+
+  /**
+   * Generates low-cardinality longs (values drawn from a small set).
+   */
+  public static long[] generateLowCardinalityLongs(int count, int distinctValues, long seed) {
+    Random random = new Random(seed);
+    long[] palette = new long[distinctValues];
+    for (int i = 0; i < distinctValues; i++) {
+      palette[i] = random.nextLong();
+    }
+    long[] data = new long[count];
+    for (int i = 0; i < count; i++) {
+      data[i] = palette[random.nextInt(distinctValues)];
+    }
+    return data;
+  }
+
+  /**
+   * Generates high-cardinality longs (all unique, shuffled).
+   */
+  public static long[] generateHighCardinalityLongs(int count, long seed) {
+    Random random = new Random(seed);
+    long[] data = generateSequentialLongs(count);
+    for (int i = count - 1; i > 0; i--) {
+      int swapIndex = random.nextInt(i + 1);
+      long tmp = data[i];
+      data[i] = data[swapIndex];
+      data[swapIndex] = tmp;
+    }
+    return data;
+  }
+
+  // ---- Float data generation for encoding benchmarks ----
+
+  /**
+   * Generates uniformly random floats using the given seed.
+   */
+  public static float[] generateRandomFloats(int count, long seed) {
+    Random random = new Random(seed);
+    float[] data = new float[count];
+    for (int i = 0; i < count; i++) {
+      data[i] = random.nextFloat() * 1000.0f;
+    }
+    return data;
+  }
+
+  /**
+   * Generates low-cardinality floats (values drawn from a small set).
+   */
+  public static float[] generateLowCardinalityFloats(int count, int distinctValues, long seed) {
+    Random random = new Random(seed);
+    float[] palette = new float[distinctValues];
+    for (int i = 0; i < distinctValues; i++) {
+      palette[i] = random.nextFloat() * 1000.0f;
+    }
+    float[] data = new float[count];
+    for (int i = 0; i < count; i++) {
+      data[i] = palette[random.nextInt(distinctValues)];
+    }
+    return data;
+  }
+
+  // ---- Double data generation for encoding benchmarks ----
+
+  /**
+   * Generates uniformly random doubles using the given seed.
+   */
+  public static double[] generateRandomDoubles(int count, long seed) {
+    Random random = new Random(seed);
+    double[] data = new double[count];
+    for (int i = 0; i < count; i++) {
+      data[i] = random.nextDouble() * 1000.0;
+    }
+    return data;
+  }
+
+  /**
+   * Generates low-cardinality doubles (values drawn from a small set).
+   */
+  public static double[] generateLowCardinalityDoubles(int count, int distinctValues, long seed) {
+    Random random = new Random(seed);
+    double[] palette = new double[distinctValues];
+    for (int i = 0; i < distinctValues; i++) {
+      palette[i] = random.nextDouble() * 1000.0;
+    }
+    double[] data = new double[count];
+    for (int i = 0; i < count; i++) {
+      data[i] = palette[random.nextInt(distinctValues)];
+    }
+    return data;
+  }
+
+  // ---- Fixed-length byte array data generation for encoding benchmarks ----
+
+  /**
+   * Generates fixed-length byte arrays with the specified cardinality.
+   *
+   * @param count      number of values
+   * @param length     byte length of each value
+   * @param distinct   number of distinct values (0 means all unique)
+   * @param seed       RNG seed
+   */
+  public static Binary[] generateFixedLenByteArrays(int count, int length, int distinct, long seed) {
+    Random random = new Random(seed);
+    if (distinct > 0) {
+      Binary[] palette = new Binary[distinct];
+      for (int i = 0; i < distinct; i++) {
+        byte[] bytes = new byte[length];
+        random.nextBytes(bytes);
+        palette[i] = Binary.fromConstantByteArray(bytes);
+      }
+      Binary[] data = new Binary[count];
+      for (int i = 0; i < count; i++) {
+        data[i] = palette[random.nextInt(distinct)];
+      }
+      return data;
+    } else {
+      Binary[] data = new Binary[count];
+      for (int i = 0; i < count; i++) {
+        byte[] bytes = new byte[length];
+        random.nextBytes(bytes);
+        data[i] = Binary.fromConstantByteArray(bytes);
+      }
+      return data;
+    }
+  }
+
   // ---- Binary data generation for encoding benchmarks ----
 
   /**
