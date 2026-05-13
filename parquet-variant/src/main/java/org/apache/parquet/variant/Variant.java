@@ -61,6 +61,8 @@ public final class Variant {
    * Lazy cache for the parsed array header.
    */
   private VariantUtil.ArrayInfo cachedArrayInfo;
+  /** Nesting depth of this Variant relative to the top-level value (0 = top-level). */
+  private final int depth;
 
   /**
    * The threshold to switch from linear search to binary search when looking up a field by key in
@@ -84,7 +86,7 @@ public final class Variant {
   public Variant(ByteBuffer value, ByteBuffer metadata) {
     this.value = value.asReadOnlyBuffer().order(ByteOrder.LITTLE_ENDIAN);
     this.metadata = metadata.asReadOnlyBuffer().order(ByteOrder.LITTLE_ENDIAN);
-
+    this.depth = 0;
     // There is currently only one allowed version.
     if ((metadata.get(metadata.position()) & VariantUtil.VERSION_MASK) != VariantUtil.VERSION) {
       throw new UnsupportedOperationException(String.format(
@@ -108,16 +110,23 @@ public final class Variant {
       this.dictSize = 0;
     }
     this.metadataCache = null;
+    VariantUtil.validateValueShallow(this.value, dictSize);
   }
 
   /**
    * Package-private constructor that shares pre-parsed metadata state from a parent Variant.
    */
-  Variant(ByteBuffer value, ByteBuffer metadata, String[] metadataCache, int dictSize) {
+  Variant(ByteBuffer value, ByteBuffer metadata, String[] metadataCache, int dictSize, int depth) {
+    Preconditions.checkArgument(
+        depth <= VariantUtil.MAX_VARIANT_DEPTH,
+        "variant nesting depth exceeds maximum %s",
+        VariantUtil.MAX_VARIANT_DEPTH);
     this.value = value.asReadOnlyBuffer().order(ByteOrder.LITTLE_ENDIAN);
     this.metadata = metadata.asReadOnlyBuffer().order(ByteOrder.LITTLE_ENDIAN);
     this.metadataCache = metadataCache;
     this.dictSize = dictSize;
+    this.depth = depth;
+    VariantUtil.validateValueShallow(this.value, dictSize);
   }
 
   public ByteBuffer getValueBuffer() {
@@ -361,7 +370,7 @@ public final class Variant {
    * Creates a child Variant that shares this instance's metadata cache.
    */
   private Variant childVariant(ByteBuffer childValue) {
-    return new Variant(childValue, metadata, metadataCache, dictSize);
+    return new Variant(childValue, metadata, metadataCache, dictSize, depth + 1);
   }
 
   /**
