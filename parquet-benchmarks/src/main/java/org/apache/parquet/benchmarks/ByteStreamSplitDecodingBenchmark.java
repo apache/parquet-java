@@ -72,6 +72,12 @@ public class ByteStreamSplitDecodingBenchmark {
   private byte[] intPage;
   private byte[] longPage;
 
+  // Pre-allocated batch destination arrays (avoid per-invocation allocation artifact)
+  private float[] floatDest;
+  private double[] doubleDest;
+  private int[] intDest;
+  private long[] longDest;
+
   @Setup(Level.Trial)
   public void setup() throws IOException {
     Random random = new Random(42);
@@ -122,6 +128,11 @@ public class ByteStreamSplitDecodingBenchmark {
       longPage = w.getBytes().toByteArray();
       w.close();
     }
+
+    floatDest = new float[VALUE_COUNT];
+    doubleDest = new double[VALUE_COUNT];
+    intDest = new int[VALUE_COUNT];
+    longDest = new long[VALUE_COUNT];
   }
 
   private static void init(ByteStreamSplitValuesReader r, byte[] page) throws IOException {
@@ -166,5 +177,41 @@ public class ByteStreamSplitDecodingBenchmark {
     for (int i = 0; i < VALUE_COUNT; i++) {
       bh.consume(r.readLong());
     }
+  }
+
+  @Benchmark
+  @OperationsPerInvocation(VALUE_COUNT)
+  public void decodeFloatBatch(Blackhole bh) throws IOException {
+    ByteStreamSplitValuesReaderForFloat r = new ByteStreamSplitValuesReaderForFloat();
+    init(r, floatPage);
+    r.readFloats(floatDest, 0, VALUE_COUNT);
+    bh.consume(floatDest);
+  }
+
+  @Benchmark
+  @OperationsPerInvocation(VALUE_COUNT)
+  public void decodeDoubleBatch(Blackhole bh) throws IOException {
+    ByteStreamSplitValuesReaderForDouble r = new ByteStreamSplitValuesReaderForDouble();
+    init(r, doublePage);
+    r.readDoubles(doubleDest, 0, VALUE_COUNT);
+    bh.consume(doubleDest);
+  }
+
+  @Benchmark
+  @OperationsPerInvocation(VALUE_COUNT)
+  public void decodeIntBatch(Blackhole bh) throws IOException {
+    ByteStreamSplitValuesReaderForInteger r = new ByteStreamSplitValuesReaderForInteger();
+    init(r, intPage);
+    r.readIntegers(intDest, 0, VALUE_COUNT);
+    bh.consume(intDest);
+  }
+
+  @Benchmark
+  @OperationsPerInvocation(VALUE_COUNT)
+  public void decodeLongBatch(Blackhole bh) throws IOException {
+    ByteStreamSplitValuesReaderForLong r = new ByteStreamSplitValuesReaderForLong();
+    init(r, longPage);
+    r.readLongs(longDest, 0, VALUE_COUNT);
+    bh.consume(longDest);
   }
 }
