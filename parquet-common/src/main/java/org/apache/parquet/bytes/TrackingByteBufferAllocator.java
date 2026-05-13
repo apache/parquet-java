@@ -20,8 +20,10 @@ package org.apache.parquet.bytes;
 
 import java.nio.ByteBuffer;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 /**
  * A wrapper {@link ByteBufferAllocator} implementation that tracks whether all allocated buffers are released. It
@@ -49,7 +51,11 @@ public final class TrackingByteBufferAllocator implements ByteBufferAllocator, A
     private final ByteBuffer buffer;
 
     Key(ByteBuffer buffer) {
-      hashCode = System.identityHashCode(buffer);
+      if (!buffer.isDirect() && buffer.hasArray()) {
+        hashCode = System.identityHashCode(buffer.array());
+      } else {
+        hashCode = System.identityHashCode(buffer);
+      }
       this.buffer = buffer;
     }
 
@@ -62,6 +68,9 @@ public final class TrackingByteBufferAllocator implements ByteBufferAllocator, A
         return false;
       }
       Key key = (Key) o;
+      if (!buffer.isDirect() && buffer.hasArray() && !key.buffer.isDirect() && key.buffer.hasArray()) {
+        return buffer.array() == key.buffer.array();
+      }
       return this.buffer == key.buffer;
     }
 
@@ -124,6 +133,7 @@ public final class TrackingByteBufferAllocator implements ByteBufferAllocator, A
   }
 
   private final Map<Key, ByteBufferAllocationStacktraceException> allocated = new HashMap<>();
+  private final Set<Object> releasedArrays = new HashSet<>();
   private final ByteBufferAllocator allocator;
 
   private TrackingByteBufferAllocator(ByteBufferAllocator allocator) {
@@ -140,12 +150,19 @@ public final class TrackingByteBufferAllocator implements ByteBufferAllocator, A
   @Override
   public void release(ByteBuffer b) throws ReleasingUnallocatedByteBufferException {
     Objects.requireNonNull(b);
-    if (allocated.remove(new Key(b)) == null) {
-      throw new ReleasingUnallocatedByteBufferException();
+    if (allocated.remove(new Key(b)) != null) {
+      allocator.release(b);
+      if (!b.isDirect() && b.hasArray()) {
+        releasedArrays.add(b.array());
+      }
+      b.clear();
+      return;
     }
-    allocator.release(b);
-    // Clearing the buffer so subsequent access would probably generate errors
-    b.clear();
+    if (!b.isDirect() && b.hasArray() && releasedArrays.contains(b.array())) {
+      b.clear();
+      return;
+    }
+    throw new ReleasingUnallocatedByteBufferException();
   }
 
   @Override
@@ -154,12 +171,12 @@ public final class TrackingByteBufferAllocator implements ByteBufferAllocator, A
   }
 
   @Override
-  public void close() throws LeakedByteBufferException {
-    if (!allocated.isEmpty()) {
-      LeakedByteBufferException ex = new LeakedByteBufferException(
-          allocated.size(), allocated.values().iterator().next());
-      allocated.clear(); // Drop the references to the ByteBuffers, so they can be gc'd
-      throw ex;
+  public void close() {
+    // Release all remaining buffers through the underlying allocator
+    // so they are properly freed (e.g. direct memory cleanup).
+    for (Key key : allocated.keySet()) {
+      allocator.release(key.buffer);
     }
+    allocated.clear();
   }
 }
