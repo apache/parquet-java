@@ -247,6 +247,16 @@ public class FixedLenByteArrayEncodingBenchmark {
 
   @Benchmark
   @OperationsPerInvocation(VALUE_COUNT)
+  public void decodeBssBatch(Blackhole bh) throws IOException {
+    ByteStreamSplitValuesReaderForFLBA reader = new ByteStreamSplitValuesReaderForFLBA(fixedLength);
+    reader.initFromPage(VALUE_COUNT, ByteBufferInputStream.wrap(ByteBuffer.wrap(bssEncoded)));
+    Binary[] batch = new Binary[VALUE_COUNT];
+    reader.readBinaries(batch, 0, VALUE_COUNT);
+    bh.consume(batch);
+  }
+
+  @Benchmark
+  @OperationsPerInvocation(VALUE_COUNT)
   public void decodeDictionary(Blackhole bh) throws IOException {
     if (!dictAvailable) return;
     DictionaryValuesReader reader = new DictionaryValuesReader(flbaDictionary);

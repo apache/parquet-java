@@ -62,17 +62,118 @@ public abstract class ByteStreamSplitValuesReader extends ValuesReader {
     return offset;
   }
 
-  // Decode an entire data page
+  // Decode an entire data page by transposing from stream-split layout to interleaved layout.
   private byte[] decodeData(ByteBuffer encoded, int valuesCount) {
-    assert encoded.limit() == valuesCount * elementSizeInBytes;
-    byte[] decoded = new byte[encoded.limit()];
-    int destByteIndex = 0;
-    for (int srcValueIndex = 0; srcValueIndex < valuesCount; ++srcValueIndex) {
-      for (int stream = 0; stream < elementSizeInBytes; ++stream, ++destByteIndex) {
-        decoded[destByteIndex] = encoded.get(srcValueIndex + stream * valuesCount);
+    int totalBytes = valuesCount * elementSizeInBytes;
+    assert encoded.remaining() >= totalBytes;
+
+    // Bulk access: use the backing array directly if available, otherwise copy once.
+    byte[] src;
+    int srcBase;
+    if (encoded.hasArray()) {
+      src = encoded.array();
+      srcBase = encoded.arrayOffset() + encoded.position();
+    } else {
+      src = new byte[totalBytes];
+      encoded.get(src);
+      srcBase = 0;
+    }
+
+    byte[] decoded = new byte[totalBytes];
+
+    // Specialized single-pass loops for common element sizes.
+    if (elementSizeInBytes == 2) {
+      int s0 = srcBase, s1 = srcBase + valuesCount;
+      for (int i = 0; i < valuesCount; ++i) {
+        int di = i * 2;
+        decoded[di] = src[s0 + i];
+        decoded[di + 1] = src[s1 + i];
+      }
+    } else if (elementSizeInBytes == 4) {
+      int s0 = srcBase, s1 = srcBase + valuesCount, s2 = srcBase + 2 * valuesCount,
+          s3 = srcBase + 3 * valuesCount;
+      for (int i = 0; i < valuesCount; ++i) {
+        int di = i * 4;
+        decoded[di] = src[s0 + i];
+        decoded[di + 1] = src[s1 + i];
+        decoded[di + 2] = src[s2 + i];
+        decoded[di + 3] = src[s3 + i];
+      }
+    } else if (elementSizeInBytes == 8) {
+      int s0 = srcBase, s1 = srcBase + valuesCount, s2 = srcBase + 2 * valuesCount,
+          s3 = srcBase + 3 * valuesCount, s4 = srcBase + 4 * valuesCount,
+          s5 = srcBase + 5 * valuesCount, s6 = srcBase + 6 * valuesCount,
+          s7 = srcBase + 7 * valuesCount;
+      for (int i = 0; i < valuesCount; ++i) {
+        int di = i * 8;
+        decoded[di] = src[s0 + i];
+        decoded[di + 1] = src[s1 + i];
+        decoded[di + 2] = src[s2 + i];
+        decoded[di + 3] = src[s3 + i];
+        decoded[di + 4] = src[s4 + i];
+        decoded[di + 5] = src[s5 + i];
+        decoded[di + 6] = src[s6 + i];
+        decoded[di + 7] = src[s7 + i];
+      }
+    } else if (elementSizeInBytes == 12) {
+      int s0 = srcBase, s1 = srcBase + valuesCount, s2 = srcBase + 2 * valuesCount,
+          s3 = srcBase + 3 * valuesCount, s4 = srcBase + 4 * valuesCount,
+          s5 = srcBase + 5 * valuesCount, s6 = srcBase + 6 * valuesCount,
+          s7 = srcBase + 7 * valuesCount, s8 = srcBase + 8 * valuesCount,
+          s9 = srcBase + 9 * valuesCount, s10 = srcBase + 10 * valuesCount,
+          s11 = srcBase + 11 * valuesCount;
+      for (int i = 0; i < valuesCount; ++i) {
+        int di = i * 12;
+        decoded[di] = src[s0 + i];
+        decoded[di + 1] = src[s1 + i];
+        decoded[di + 2] = src[s2 + i];
+        decoded[di + 3] = src[s3 + i];
+        decoded[di + 4] = src[s4 + i];
+        decoded[di + 5] = src[s5 + i];
+        decoded[di + 6] = src[s6 + i];
+        decoded[di + 7] = src[s7 + i];
+        decoded[di + 8] = src[s8 + i];
+        decoded[di + 9] = src[s9 + i];
+        decoded[di + 10] = src[s10 + i];
+        decoded[di + 11] = src[s11 + i];
+      }
+    } else if (elementSizeInBytes == 16) {
+      int s0 = srcBase, s1 = srcBase + valuesCount, s2 = srcBase + 2 * valuesCount,
+          s3 = srcBase + 3 * valuesCount, s4 = srcBase + 4 * valuesCount,
+          s5 = srcBase + 5 * valuesCount, s6 = srcBase + 6 * valuesCount,
+          s7 = srcBase + 7 * valuesCount, s8 = srcBase + 8 * valuesCount,
+          s9 = srcBase + 9 * valuesCount, s10 = srcBase + 10 * valuesCount,
+          s11 = srcBase + 11 * valuesCount, s12 = srcBase + 12 * valuesCount,
+          s13 = srcBase + 13 * valuesCount, s14 = srcBase + 14 * valuesCount,
+          s15 = srcBase + 15 * valuesCount;
+      for (int i = 0; i < valuesCount; ++i) {
+        int di = i * 16;
+        decoded[di] = src[s0 + i];
+        decoded[di + 1] = src[s1 + i];
+        decoded[di + 2] = src[s2 + i];
+        decoded[di + 3] = src[s3 + i];
+        decoded[di + 4] = src[s4 + i];
+        decoded[di + 5] = src[s5 + i];
+        decoded[di + 6] = src[s6 + i];
+        decoded[di + 7] = src[s7 + i];
+        decoded[di + 8] = src[s8 + i];
+        decoded[di + 9] = src[s9 + i];
+        decoded[di + 10] = src[s10 + i];
+        decoded[di + 11] = src[s11 + i];
+        decoded[di + 12] = src[s12 + i];
+        decoded[di + 13] = src[s13 + i];
+        decoded[di + 14] = src[s14 + i];
+        decoded[di + 15] = src[s15 + i];
+      }
+    } else {
+      // Generic fallback for arbitrary element sizes
+      for (int stream = 0; stream < elementSizeInBytes; ++stream) {
+        int srcOffset = srcBase + stream * valuesCount;
+        for (int i = 0; i < valuesCount; ++i) {
+          decoded[i * elementSizeInBytes + stream] = src[srcOffset + i];
+        }
       }
     }
-    assert destByteIndex == decoded.length;
     return decoded;
   }
 

@@ -62,6 +62,42 @@ public class FixedLenByteArrayPlainValuesWriter extends ValuesWriter {
     }
   }
 
+  /**
+   * Batch write: copies Binary values into a temporary buffer and writes them in a single
+   * bulk {@code write()} call to the output stream, amortizing stream overhead across
+   * the entire batch.
+   */
+  @Override
+  public void writeBinaries(Binary[] values, int offset, int length) {
+    final int fixedLen = this.length;
+    // Process in chunks to avoid excessive temp allocation
+    final int CHUNK = 1024;
+    byte[] buf = new byte[Math.min(length, CHUNK) * fixedLen];
+    try {
+      int remaining = length;
+      int srcIdx = offset;
+      while (remaining > 0) {
+        int batch = Math.min(remaining, CHUNK);
+        int bufPos = 0;
+        for (int i = 0; i < batch; i++) {
+          Binary v = values[srcIdx++];
+          if (v.length() != fixedLen) {
+            throw new IllegalArgumentException(
+                "Fixed Binary size " + v.length() + " does not match field type length " + fixedLen);
+          }
+          // Copy bytes from the Binary's backing store into the batch buffer
+          byte[] bytes = v.getBytesUnsafe();
+          System.arraycopy(bytes, 0, buf, bufPos, fixedLen);
+          bufPos += fixedLen;
+        }
+        arrayOut.write(buf, 0, bufPos);
+        remaining -= batch;
+      }
+    } catch (RuntimeException e) {
+      throw new ParquetEncodingException("could not write fixed bytes", e);
+    }
+  }
+
   @Override
   public long getBufferedSize() {
     return arrayOut.size();

@@ -19,6 +19,7 @@
 package org.apache.parquet.column.values.plain;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.column.values.ValuesReader;
 import org.apache.parquet.io.ParquetDecodingException;
@@ -59,6 +60,25 @@ public class FixedLenByteArrayPlainValuesReader extends ValuesReader {
       in.skipFully(n * length);
     } catch (IOException | RuntimeException e) {
       throw new ParquetDecodingException("could not skip bytes at offset " + in.position(), e);
+    }
+  }
+
+  /**
+   * Batch read: slices the entire block of {@code count * length} bytes in one call,
+   * then creates Binary views at fixed offsets within the single ByteBuffer — eliminating
+   * per-value slice overhead.
+   */
+  @Override
+  public void readBinaries(Binary[] dest, int offset, int count) {
+    try {
+      int totalBytes = count * length;
+      ByteBuffer block = in.slice(totalBytes);
+      int baseOffset = block.position();
+      for (int i = 0; i < count; i++) {
+        dest[offset + i] = Binary.fromConstantByteBuffer(block, baseOffset + i * length, length);
+      }
+    } catch (IOException | RuntimeException e) {
+      throw new ParquetDecodingException("could not read bytes at offset " + in.position(), e);
     }
   }
 
