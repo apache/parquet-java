@@ -18,6 +18,9 @@
  */
 package org.apache.parquet.variant;
 
+import static org.apache.parquet.variant.VariantTestUtil.assertOperationIsIllegal;
+import static org.junit.Assert.assertThrows;
+
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.time.Instant;
@@ -25,6 +28,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
 import java.util.UUID;
+import java.util.function.Consumer;
 import org.junit.Assert;
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -643,148 +647,82 @@ public class TestVariantScalar {
 
   @Test
   public void testInvalidType() {
-    try {
-      Variant value = new Variant(ByteBuffer.wrap(new byte[] {(byte) 0xFC}), VariantTestUtil.EMPTY_METADATA);
-      value.getBoolean();
-      Assert.fail("Expected exception not thrown");
-    } catch (Exception e) {
-      Assert.assertEquals(
-          "Cannot read unknownType(basicType: 0, valueHeader: 63) value as BOOLEAN", e.getMessage());
-    }
+    assertThrows(
+        "Unknown primitive type in variant: 63",
+        IllegalArgumentException.class,
+        () -> new Variant(ByteBuffer.wrap(new byte[] {(byte) 0xFC}), VariantTestUtil.EMPTY_METADATA));
   }
 
   @Test
   public void testInvalidBoolean() {
-    try {
-      Variant value = new Variant(
-          ByteBuffer.wrap(new byte[] {VariantTestUtil.primitiveHeader(6)}), VariantTestUtil.EMPTY_METADATA);
-      value.getBoolean();
-      Assert.fail("Expected exception not thrown");
-    } catch (Exception e) {
-      Assert.assertEquals("Cannot read LONG value as BOOLEAN", e.getMessage());
-    }
+    assertVariantLongReadInvalid("Cannot read LONG value as BOOLEAN", Variant::getBoolean);
   }
 
   @Test
   public void testInvalidLong() {
-    try {
-      Variant value = new Variant(
-          ByteBuffer.wrap(new byte[] {VariantTestUtil.primitiveHeader(16)}), VariantTestUtil.EMPTY_METADATA);
-      value.getLong();
-      Assert.fail("Expected exception not thrown");
-    } catch (Exception e) {
-      Assert.assertEquals(
-          "Cannot read STRING value as one of [BYTE, SHORT, INT, DATE, LONG, TIMESTAMP_TZ, TIMESTAMP_NTZ, TIME, TIMESTAMP_NANOS_TZ, TIMESTAMP_NANOS_NTZ]",
-          e.getMessage());
-    }
+    assertOperationIsIllegal(
+        new Variant(
+            ByteBuffer.wrap(new byte[] {VariantTestUtil.primitiveHeader(16), 0, 0, 0, 0}),
+            VariantTestUtil.EMPTY_METADATA),
+        "Cannot read STRING value as one of [BYTE, SHORT, INT, DATE, LONG, TIMESTAMP_TZ, TIMESTAMP_NTZ, TIME, TIMESTAMP_NANOS_TZ, TIMESTAMP_NANOS_NTZ]",
+        Variant::getLong);
   }
 
   @Test
   public void testInvalidInt() {
-    try {
-      Variant value = new Variant(
-          ByteBuffer.wrap(new byte[] {VariantTestUtil.primitiveHeader(6)}), VariantTestUtil.EMPTY_METADATA);
-      value.getInt();
-      Assert.fail("Expected exception not thrown");
-    } catch (Exception e) {
-      Assert.assertEquals("Cannot read LONG value as one of [BYTE, SHORT, INT, DATE]", e.getMessage());
-    }
+    assertVariantLongReadInvalid("Cannot read LONG value as one of [BYTE, SHORT, INT, DATE]", Variant::getInt);
   }
 
   @Test
   public void testInvalidShort() {
-    try {
-      Variant value = new Variant(
-          ByteBuffer.wrap(new byte[] {VariantTestUtil.primitiveHeader(6)}), VariantTestUtil.EMPTY_METADATA);
-      value.getShort();
-      Assert.fail("Expected exception not thrown");
-    } catch (Exception e) {
-      Assert.assertEquals("Cannot read LONG value as one of [BYTE, SHORT]", e.getMessage());
-    }
+    assertVariantLongReadInvalid("Cannot read LONG value as one of [BYTE, SHORT]", Variant::getShort);
   }
 
   @Test
   public void testInvalidByte() {
-    try {
-      Variant value = new Variant(
-          ByteBuffer.wrap(new byte[] {VariantTestUtil.primitiveHeader(6)}), VariantTestUtil.EMPTY_METADATA);
-      value.getByte();
-      Assert.fail("Expected exception not thrown");
-    } catch (Exception e) {
-      Assert.assertEquals("Cannot read LONG value as BYTE", e.getMessage());
-    }
+    assertVariantLongReadInvalid("Cannot read LONG value as BYTE", Variant::getByte);
   }
 
   @Test
   public void testInvalidFloat() {
-    try {
-      Variant value = new Variant(
-          ByteBuffer.wrap(new byte[] {VariantTestUtil.primitiveHeader(6)}), VariantTestUtil.EMPTY_METADATA);
-      value.getFloat();
-      Assert.fail("Expected exception not thrown");
-    } catch (Exception e) {
-      Assert.assertEquals("Cannot read LONG value as FLOAT", e.getMessage());
-    }
+    assertVariantLongReadInvalid("Cannot read LONG value as FLOAT", Variant::getFloat);
   }
 
   @Test
   public void testInvalidDouble() {
-    try {
-      Variant value = new Variant(
-          ByteBuffer.wrap(new byte[] {VariantTestUtil.primitiveHeader(6)}), VariantTestUtil.EMPTY_METADATA);
-      value.getDouble();
-      Assert.fail("Expected exception not thrown");
-    } catch (Exception e) {
-      Assert.assertEquals("Cannot read LONG value as DOUBLE", e.getMessage());
-    }
+    assertVariantLongReadInvalid("Cannot read LONG value as DOUBLE", Variant::getDouble);
   }
 
   @Test
   public void testInvalidDecimal() {
-    try {
-      Variant value = new Variant(
-          ByteBuffer.wrap(new byte[] {VariantTestUtil.primitiveHeader(6), 0}),
-          VariantTestUtil.EMPTY_METADATA);
-      value.getDecimal();
-      Assert.fail("Expected exception not thrown");
-    } catch (Exception e) {
-      Assert.assertEquals("Cannot read LONG value as one of [DECIMAL4, DECIMAL8, DECIMAL16]", e.getMessage());
-    }
+    assertVariantLongReadInvalid(
+        "Cannot read LONG value as one of [DECIMAL4, DECIMAL8, DECIMAL16]", Variant::getDecimal);
   }
 
   @Test
   public void testInvalidUUID() {
-    try {
-      Variant value = new Variant(
-          ByteBuffer.wrap(new byte[] {VariantTestUtil.primitiveHeader(6)}), VariantTestUtil.EMPTY_METADATA);
-      value.getUUID();
-      Assert.fail("Expected exception not thrown");
-    } catch (Exception e) {
-      Assert.assertEquals("Cannot read LONG value as UUID", e.getMessage());
-    }
+    assertVariantLongReadInvalid("Cannot read LONG value as UUID", Variant::getUUID);
   }
 
   @Test
   public void testInvalidString() {
-    try {
-      Variant value = new Variant(
-          ByteBuffer.wrap(new byte[] {VariantTestUtil.primitiveHeader(6)}), VariantTestUtil.EMPTY_METADATA);
-      value.getString();
-      Assert.fail("Expected exception not thrown");
-    } catch (Exception e) {
-      Assert.assertEquals("Cannot read LONG value as STRING", e.getMessage());
-    }
+    assertVariantLongReadInvalid("Cannot read LONG value as STRING", Variant::getString);
   }
 
   @Test
   public void testInvalidBinary() {
-    try {
-      Variant value = new Variant(
-          ByteBuffer.wrap(new byte[] {VariantTestUtil.primitiveHeader(6)}), VariantTestUtil.EMPTY_METADATA);
-      value.getBinary();
-      Assert.fail("Expected exception not thrown");
-    } catch (Exception e) {
-      Assert.assertEquals("Cannot read LONG value as BINARY", e.getMessage());
-    }
+    assertVariantLongReadInvalid("Cannot read LONG value as BINARY", Variant::getBinary);
+  }
+
+  /**
+   * Assert that reading a long value variant raises an IllegalArgumentException.
+   * @param expectedErrorText expected text.
+   * @param consumer variant consumer.
+   */
+  private static void assertVariantLongReadInvalid(String expectedErrorText, Consumer<Variant> consumer) {
+    Variant value = new Variant(
+        ByteBuffer.wrap(new byte[] {VariantTestUtil.primitiveHeader(6), 0, 0, 0, 0, 0, 0, 0, 0}),
+        VariantTestUtil.EMPTY_METADATA);
+    assertOperationIsIllegal(value, expectedErrorText, consumer);
   }
 }

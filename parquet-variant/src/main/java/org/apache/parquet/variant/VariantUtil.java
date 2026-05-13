@@ -189,6 +189,12 @@ class VariantUtil {
   // The size (in bytes) of a UUID.
   static final int UUID_SIZE = 16;
 
+  /**
+   * Maximum permitted nesting depth of a Variant value.
+   * same limit as in VariantJsonParser.
+   */
+  static final int MAX_VARIANT_DEPTH = 500;
+
   // header bytes
   static final byte HEADER_NULL = primitiveHeader(NULL);
   static final byte HEADER_LONG_STRING = primitiveHeader(LONG_STR);
@@ -872,6 +878,160 @@ class VariantUtil {
       offset = nextOffset;
     }
     return result;
+  }
+
+  /**
+   * Bounds-checks the metadata buffer: header version, dictionary offset table and string data
+   * region all fit within the buffer extent. It does not perform any deep checks into
+   * the metadata itself.
+   *
+   * @param metadata the variant metadata buffer
+   * @return the dictionary size
+   * @throws IllegalArgumentException if the metadata buffer is not well-formed
+   */
+  static int validateMetadata(ByteBuffer metadata) {
+    int pos = metadata.position();
+    Preconditions.checkArgument(pos >= 0 && pos < metadata.limit(), "variant metadata is empty");
+    int header = metadata.get(pos) & 0xFF;
+    Preconditions.checkArgument(
+        (header & VERSION_MASK) == VERSION, "Unsupported variant metadata version: %s", header & VERSION_MASK);
+    int offsetSize = ((header >> 6) & 0x3) + 1;
+    long remaining = (long) metadata.limit() - pos;
+    long offsetListStart = 1L + offsetSize;
+    Preconditions.checkArgument(offsetListStart <= remaining, "variant metadata truncated");
+    int dictSize = readUnsigned(metadata, pos + 1, offsetSize);
+    long offsetBytes = (long) (dictSize + 1) * offsetSize;
+    long dataStart = offsetListStart + offsetBytes;
+    Preconditions.checkArgument(
+        dataStart <= remaining, "variant metadata dictionary table extends past buffer: dictSize=%s", dictSize);
+    return dictSize;
+  }
+
+  /**
+   * Bounds-checks a single Variant value node against its buffer slot. Performs no recursion
+   * into nested children: child nodes are checked on demand when callers descend into them.
+   *
+   * <p>Cost: O(1) for primitives and short strings, O(numElements) for objects and arrays.
+   * Validation of nested structures is deferred so that opening a large well-formed Variant
+   * is not penalised by sub-trees the caller never inspects.
+   *
+   * @param value the variant value buffer (position/limit define the extent of this node's slot)
+   * @param dictSize the metadata dictionary size, used to bound object field ids
+   * @throws IllegalArgumentException if the value header or container table does not fit within
+   *     the buffer slot, or if any object field id is out of range
+   */
+  static void validateValueShallow(ByteBuffer value, int dictSize) {
+    int s = value.position();
+    Preconditions.checkArgument(s >= 0 && s < value.limit(), "variant value is empty");
+    long slot = (long) value.limit() - s;
+    int header = value.get(s) & 0xFF;
+    int basicType = header & BASIC_TYPE_MASK;
+    int typeInfo = (header >> BASIC_TYPE_BITS) & PRIMITIVE_TYPE_MASK;
+    switch (basicType) {
+      case SHORT_STR:
+        Preconditions.checkArgument(1L + typeInfo <= slot, "variant short string extends past buffer");
+        return;
+      case OBJECT:
+        validateContainerShallow(value, s, slot, dictSize, true, typeInfo);
+        return;
+      case ARRAY:
+        validateContainerShallow(value, s, slot, dictSize, false, typeInfo);
+        return;
+      default:
+        validatePrimitiveShallow(value, s, slot, typeInfo);
+    }
+  }
+
+  private static void validateContainerShallow(
+      ByteBuffer value, int s, long slot, int dictSize, boolean isObject, int typeInfo) {
+    boolean largeSize;
+    int idSize;
+    if (isObject) {
+      largeSize = ((typeInfo >> 4) & 0x1) != 0;
+      idSize = ((typeInfo >> 2) & 0x3) + 1;
+    } else {
+      largeSize = ((typeInfo >> 2) & 0x1) != 0;
+      idSize = 0;
+    }
+    int offsetSize = (typeInfo & 0x3) + 1;
+    int sizeBytes = largeSize ? U32_SIZE : 1;
+    Preconditions.checkArgument(1L + sizeBytes <= slot, "variant container header truncated");
+    int numElements = readUnsigned(value, s + 1, sizeBytes);
+    long idStart = 1L + sizeBytes;
+    long idBytes = isObject ? (long) numElements * idSize : 0L;
+    long offsetStart = idStart + idBytes;
+    long offsetBytes = (long) (numElements + 1) * offsetSize;
+    long dataStart = offsetStart + offsetBytes;
+    Preconditions.checkArgument(
+        dataStart <= slot, "variant container offset table extends past buffer: numElements=%s", numElements);
+    long dataLen = slot - dataStart;
+    if (isObject) {
+      for (int i = 0; i < numElements; i++) {
+        int id = readUnsigned(value, s + (int) idStart + i * idSize, idSize);
+        Preconditions.checkArgument(
+            id < dictSize, "variant object key id %s out of range (dictSize=%s)", id, dictSize);
+      }
+    }
+    // Each child offset must lie within the data region. Children may overlap or leave gaps;
+    // the trailing terminator offset is range-checked for the same reason.
+    for (int i = 0; i <= numElements; i++) {
+      // O(elements)
+      int off = readUnsigned(value, s + (int) offsetStart + i * offsetSize, offsetSize);
+      Preconditions.checkArgument(
+          off <= dataLen, "variant child offset out of range: %s (data length %s)", off, dataLen);
+    }
+  }
+
+  private static void validatePrimitiveShallow(ByteBuffer value, int s, long slot, int typeInfo) {
+    long size;
+    switch (typeInfo) {
+      case NULL:
+      case TRUE:
+      case FALSE:
+        size = 1;
+        break;
+      case INT8:
+        size = 2;
+        break;
+      case INT16:
+        size = 3;
+        break;
+      case INT32:
+      case DATE:
+      case FLOAT:
+        size = 5;
+        break;
+      case INT64:
+      case DOUBLE:
+      case TIMESTAMP_TZ:
+      case TIMESTAMP_NTZ:
+      case TIME:
+      case TIMESTAMP_NANOS_TZ:
+      case TIMESTAMP_NANOS_NTZ:
+        size = 9;
+        break;
+      case DECIMAL4:
+        size = 6;
+        break;
+      case DECIMAL8:
+        size = 10;
+        break;
+      case DECIMAL16:
+        size = 18;
+        break;
+      case BINARY:
+      case LONG_STR: {
+        Preconditions.checkArgument(1L + U32_SIZE <= slot, "variant string/binary length field truncated");
+        size = 1L + U32_SIZE + readUnsigned(value, s + 1, U32_SIZE);
+        break;
+      }
+      case UUID:
+        size = 1L + UUID_SIZE;
+        break;
+      default:
+        throw new IllegalArgumentException(String.format("Unknown primitive type in variant: %d", typeInfo));
+    }
+    Preconditions.checkArgument(size <= slot, "variant value extends past buffer");
   }
 
   /**

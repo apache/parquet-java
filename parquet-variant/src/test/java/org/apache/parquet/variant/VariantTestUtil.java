@@ -18,13 +18,15 @@
  */
 package org.apache.parquet.variant;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
+
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.function.Consumer;
-import org.junit.Assert;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,11 +37,12 @@ public class VariantTestUtil {
   /** Random number generator for generating random strings */
   private static SecureRandom random = new SecureRandom(new byte[] {1, 2, 3, 4, 5});
 
-  static final ByteBuffer EMPTY_METADATA = ByteBuffer.wrap(new byte[] {0b1});
+  // version=1, offsetSize=1, dictSize=0, single end-offset=0 — minimum well-formed empty metadata
+  static final ByteBuffer EMPTY_METADATA = ByteBuffer.wrap(new byte[] {0b1, 0x00, 0x00});
 
   static void checkType(Variant v, int expectedBasicType, Variant.Type expectedType) {
-    Assert.assertEquals(expectedBasicType, v.value.get(v.value.position()) & VariantUtil.BASIC_TYPE_MASK);
-    Assert.assertEquals(expectedType, v.getType());
+    assertEquals(expectedBasicType, v.value.get(v.value.position()) & VariantUtil.BASIC_TYPE_MASK);
+    assertEquals(expectedType, v.getType());
   }
 
   static String randomString(int len) {
@@ -101,5 +104,20 @@ public class VariantTestUtil {
     } else {
       buffer.putInt(value);
     }
+  }
+
+  /**
+   * Assert that an operation on a variant raises an IllegalArgumentException.
+   * @param value variant
+   * @param expectedErrorText expected text.
+   * @param consumer variant consumer.
+   */
+  static void assertOperationIsIllegal(
+      final Variant value, final String expectedErrorText, final Consumer<Variant> consumer) {
+    final IllegalArgumentException ex = assertThrows(
+        "Operation succeeded rather than raise an IllegalArgumentException with text " + expectedErrorText,
+        IllegalArgumentException.class,
+        () -> consumer.accept(value));
+    assertEquals(expectedErrorText, ex.getMessage());
   }
 }
