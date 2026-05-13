@@ -67,6 +67,15 @@ public abstract class PlainValuesReader extends ValuesReader {
     public double readDouble() {
       return buffer.getDouble();
     }
+
+    /**
+     * Reads {@code count} doubles into {@code dest} starting at {@code offset}.
+     * Uses a bulk {@link java.nio.DoubleBuffer} view read for reduced per-value overhead.
+     */
+    public void readDoubles(double[] dest, int offset, int count) {
+      buffer.asDoubleBuffer().get(dest, offset, count);
+      buffer.position(buffer.position() + count * Double.BYTES);
+    }
   }
 
   public static class FloatPlainValuesReader extends PlainValuesReader {
@@ -79,6 +88,15 @@ public abstract class PlainValuesReader extends ValuesReader {
     @Override
     public float readFloat() {
       return buffer.getFloat();
+    }
+
+    /**
+     * Reads {@code count} floats into {@code dest} starting at {@code offset}.
+     * Uses a bulk {@link java.nio.FloatBuffer} view read for reduced per-value overhead.
+     */
+    public void readFloats(float[] dest, int offset, int count) {
+      buffer.asFloatBuffer().get(dest, offset, count);
+      buffer.position(buffer.position() + count * Float.BYTES);
     }
   }
 
@@ -93,6 +111,15 @@ public abstract class PlainValuesReader extends ValuesReader {
     public int readInteger() {
       return buffer.getInt();
     }
+
+    /**
+     * Reads {@code count} integers into {@code dest} starting at {@code offset}.
+     * Uses a bulk {@link java.nio.IntBuffer} view read for reduced per-value overhead.
+     */
+    public void readIntegers(int[] dest, int offset, int count) {
+      buffer.asIntBuffer().get(dest, offset, count);
+      buffer.position(buffer.position() + count * Integer.BYTES);
+    }
   }
 
   public static class LongPlainValuesReader extends PlainValuesReader {
@@ -105,6 +132,15 @@ public abstract class PlainValuesReader extends ValuesReader {
     @Override
     public long readLong() {
       return buffer.getLong();
+    }
+
+    /**
+     * Reads {@code count} longs into {@code dest} starting at {@code offset}.
+     * Uses a bulk {@link java.nio.LongBuffer} view read for reduced per-value overhead.
+     */
+    public void readLongs(long[] dest, int offset, int count) {
+      buffer.asLongBuffer().get(dest, offset, count);
+      buffer.position(buffer.position() + count * Long.BYTES);
     }
   }
 }
