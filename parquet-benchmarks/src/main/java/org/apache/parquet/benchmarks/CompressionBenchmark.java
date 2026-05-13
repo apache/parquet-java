@@ -23,6 +23,7 @@ import java.util.Random;
 import java.util.concurrent.TimeUnit;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.bytes.BytesInput;
+import org.apache.parquet.bytes.DirectByteBufferAllocator;
 import org.apache.parquet.compression.CompressionCodecFactory;
 import org.apache.parquet.hadoop.CodecFactory;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
@@ -45,8 +46,9 @@ import org.openjdk.jmh.annotations.Warmup;
  *
  * <p>Measures the performance of {@link CompressionCodecFactory.BytesInputCompressor}
  * and {@link CompressionCodecFactory.BytesInputDecompressor} for each supported codec,
- * using the heap-based {@link CodecFactory} path. Input data is generated to approximate
- * realistic Parquet page content (a mix of sequential, repeated, and random byte patterns).
+ * using the direct-memory {@link CodecFactory} path (same as actual Parquet file I/O).
+ * Input data is generated to approximate realistic Parquet page content (a mix of
+ * sequential, repeated, and random byte patterns).
  *
  * <p>This benchmark isolates the codec hot path from file I/O, encoding, and other
  * Parquet overhead, making it ideal for measuring compression-specific optimizations.
@@ -79,7 +81,7 @@ public class CompressionBenchmark {
     decompressedSize = uncompressedData.length;
 
     Configuration conf = new Configuration();
-    factory = new CodecFactory(conf, pageSize);
+    factory = CodecFactory.createDirectCodecFactory(conf, DirectByteBufferAllocator.getInstance(), pageSize);
     CompressionCodecName codecName = CompressionCodecName.valueOf(codec);
 
     compressor = factory.getCompressor(codecName);
