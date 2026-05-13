@@ -70,8 +70,8 @@ import org.openjdk.jmh.annotations.Warmup;
 @Fork(
     value = 1,
     jvmArgs = {"-Xms512m", "-Xmx1g"})
-@Warmup(iterations = 2)
-@Measurement(iterations = 3)
+@Warmup(iterations = 3)
+@Measurement(iterations = 5)
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
 @State(Scope.Thread)
 public class RowGroupFlushBenchmark {

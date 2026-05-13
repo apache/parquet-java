@@ -51,12 +51,13 @@ import org.openjdk.jmh.annotations.Warmup;
  *
  * <p>{@link Mode#SingleShotTime} is used because each invocation does enough work
  * (a full write of {@value TestDataFactory#DEFAULT_ROW_COUNT} rows) that JIT
- * amortization across invocations is unnecessary.
+ * amortization across invocations is unnecessary. Ten measurement iterations
+ * provide stable statistics for SS mode.
  */
 @BenchmarkMode(Mode.SingleShotTime)
 @Fork(1)
-@Warmup(iterations = 3, batchSize = 1)
-@Measurement(iterations = 5, batchSize = 1)
+@Warmup(iterations = 5, batchSize = 1)
+@Measurement(iterations = 10, batchSize = 1)
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
 @State(Scope.Benchmark)
 public class FileWriteBenchmark {
