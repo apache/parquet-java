@@ -18,57 +18,111 @@
  */
 package org.apache.parquet.column.values.plain;
 
-import static org.apache.parquet.column.values.bitpacking.Packer.LITTLE_ENDIAN;
-
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import org.apache.parquet.bytes.ByteBufferInputStream;
+import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.column.values.ValuesReader;
-import org.apache.parquet.column.values.bitpacking.ByteBitPackingValuesReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * encodes boolean for the plain encoding: one bit at a time (0 = false)
+ * Decodes PLAIN-encoded booleans: one bit per value, packed 8 per byte, little-endian
+ * bit order (bit 0 of each byte is the first value).
+ *
+ * <p>Direct bit extraction from the page ByteBuffer avoids the overhead of the generic
+ * bit-packing machinery ({@code ByteBitPackingValuesReader}) and intermediate
+ * {@code int[8]} buffers.
  */
 public class BooleanPlainValuesReader extends ValuesReader {
   private static final Logger LOG = LoggerFactory.getLogger(BooleanPlainValuesReader.class);
 
-  private ByteBitPackingValuesReader in = new ByteBitPackingValuesReader(1, LITTLE_ENDIAN);
+  private byte[] pageData;
+  private int pageOffset;
+  private int bitIndex;
 
-  /**
-   * {@inheritDoc}
-   *
-   * @see org.apache.parquet.column.values.ValuesReader#readBoolean()
-   */
-  @Override
-  public boolean readBoolean() {
-    return in.readInteger() == 0 ? false : true;
-  }
-
-  /**
-   * {@inheritDoc}
-   *
-   * @see org.apache.parquet.column.values.ValuesReader#skip()
-   */
-  @Override
-  public void skip() {
-    in.readInteger();
-  }
-
-  /**
-   * {@inheritDoc}
-   *
-   * @see org.apache.parquet.column.values.ValuesReader#initFromPage(int, ByteBufferInputStream)
-   */
   @Override
   public void initFromPage(int valueCount, ByteBufferInputStream stream) throws IOException {
     LOG.debug("init from page at offset {} for length {}", stream.position(), stream.available());
-    this.in.initFromPage(valueCount, stream);
+    int effectiveBitLength = valueCount; // bitWidth = 1
+    int length = BytesUtils.paddedByteCountFromBits(effectiveBitLength);
+    length = Math.min(length, stream.available());
+    ByteBuffer buf = stream.slice(length);
+
+    // Bulk access: use backing array directly if available, otherwise copy once.
+    if (buf.hasArray()) {
+      pageData = buf.array();
+      pageOffset = buf.arrayOffset() + buf.position();
+    } else {
+      pageData = new byte[length];
+      buf.get(pageData);
+      pageOffset = 0;
+    }
+    bitIndex = 0;
+    updateNextOffset(length);
   }
 
-  @Deprecated
   @Override
-  public int getNextOffset() {
-    return in.getNextOffset();
+  public boolean readBoolean() {
+    int byteIdx = pageOffset + (bitIndex >>> 3);
+    int bitPos = bitIndex & 7;
+    bitIndex++;
+    return ((pageData[byteIdx] >>> bitPos) & 1) != 0;
+  }
+
+  @Override
+  public void readBooleans(boolean[] dest, int offset, int count) {
+    int i = 0;
+
+    // Handle partial byte at current position
+    int bitPos = bitIndex & 7;
+    if (bitPos != 0) {
+      int byteIdx = pageOffset + (bitIndex >>> 3);
+      byte b = pageData[byteIdx];
+      while (bitPos < 8 && i < count) {
+        dest[offset + i] = ((b >>> bitPos) & 1) != 0;
+        bitPos++;
+        i++;
+      }
+    }
+
+    // Process full bytes: 8 booleans per byte
+    int byteIdx = pageOffset + ((bitIndex + i) >>> 3);
+    while (i + 8 <= count) {
+      byte b = pageData[byteIdx];
+      dest[offset + i] = (b & 1) != 0;
+      dest[offset + i + 1] = (b & 2) != 0;
+      dest[offset + i + 2] = (b & 4) != 0;
+      dest[offset + i + 3] = (b & 8) != 0;
+      dest[offset + i + 4] = (b & 16) != 0;
+      dest[offset + i + 5] = (b & 32) != 0;
+      dest[offset + i + 6] = (b & 64) != 0;
+      dest[offset + i + 7] = (b & 128) != 0;
+      byteIdx++;
+      i += 8;
+    }
+
+    // Handle remaining bits in the last partial byte
+    if (i < count) {
+      byte b = pageData[byteIdx];
+      int bp = 0;
+      while (i < count) {
+        dest[offset + i] = ((b >>> bp) & 1) != 0;
+        bp++;
+        i++;
+      }
+    }
+
+    bitIndex += count;
+  }
+
+  @Override
+  public void skip() {
+    bitIndex++;
+  }
+
+  @Override
+  public void skip(int n) {
+    bitIndex += n;
   }
 }

@@ -64,6 +64,15 @@ public class RunLengthBitPackingHybridValuesReader extends ValuesReader {
   }
 
   @Override
+  public void readBooleans(boolean[] dest, int offset, int count) {
+    try {
+      decoder.readBooleans(dest, offset, count);
+    } catch (IOException e) {
+      throw new ParquetDecodingException(e);
+    }
+  }
+
+  @Override
   public boolean readBoolean() {
     return readInteger() == 0 ? false : true;
   }

@@ -111,6 +111,42 @@ public class RunLengthBitPackingHybridDecoder {
     }
   }
 
+  /**
+   * Reads {@code count} boolean values into {@code dest} starting at {@code offset}.
+   * For RLE runs, uses {@code Arrays.fill} with a single boolean value.
+   * For packed groups, converts each int to boolean.
+   *
+   * @param dest   destination array
+   * @param offset start index in dest
+   * @param count  number of values to read
+   */
+  public void readBooleans(boolean[] dest, int offset, int count) throws IOException {
+    int remaining = count;
+    int pos = offset;
+    while (remaining > 0) {
+      if (currentCount == 0) {
+        readNext();
+      }
+      int batchSize = Math.min(remaining, currentCount);
+      switch (mode) {
+        case RLE:
+          java.util.Arrays.fill(dest, pos, pos + batchSize, currentValue != 0);
+          break;
+        case PACKED:
+          int startIdx = currentBuffer.length - currentCount;
+          for (int i = 0; i < batchSize; i++) {
+            dest[pos + i] = currentBuffer[startIdx + i] != 0;
+          }
+          break;
+        default:
+          throw new ParquetDecodingException("not a valid mode " + mode);
+      }
+      currentCount -= batchSize;
+      remaining -= batchSize;
+      pos += batchSize;
+    }
+  }
+
   private void readNext() throws IOException {
     Preconditions.checkArgument(in.available() > 0, "Reading past RLE/BitPacking stream.");
     final int header = BytesUtils.readUnsignedVarInt(in);
