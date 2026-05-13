@@ -215,36 +215,39 @@ public class TestColumnChunkPageWriteStore {
 
     {
       ParquetMetadata footer = ParquetFileReader.readFooter(conf, file, NO_FILTER);
-      ParquetFileReader reader = new ParquetFileReader(
-          config, footer.getFileMetaData(), file, footer.getBlocks(), schema.getColumns());
-      PageReadStore rowGroup = reader.readNextRowGroup();
-      PageReader pageReader = rowGroup.getPageReader(col);
-      DataPageV2 page = (DataPageV2) pageReader.readPage();
-      assertEquals(rowCount, page.getRowCount());
-      assertEquals(nullCount, page.getNullCount());
-      assertEquals(valueCount, page.getValueCount());
-      assertEquals(d, intValue(page.getDefinitionLevels()));
-      assertEquals(r, intValue(page.getRepetitionLevels()));
-      assertEquals(dataEncoding, page.getDataEncoding());
-      assertEquals(v, intValue(page.getData()));
+      try (ParquetFileReader reader = new ParquetFileReader(
+          config, footer.getFileMetaData(), file, footer.getBlocks(), schema.getColumns())) {
+        PageReadStore rowGroup = reader.readNextRowGroup();
+        PageReader pageReader = rowGroup.getPageReader(col);
+        DataPageV2 page = (DataPageV2) pageReader.readPage();
+        assertEquals(rowCount, page.getRowCount());
+        assertEquals(nullCount, page.getNullCount());
+        assertEquals(valueCount, page.getValueCount());
+        assertEquals(d, intValue(page.getDefinitionLevels()));
+        assertEquals(r, intValue(page.getRepetitionLevels()));
+        assertEquals(dataEncoding, page.getDataEncoding());
+        assertEquals(v, intValue(page.getData()));
 
-      // Checking column/offset indexes for the one page
-      ColumnChunkMetaData column = footer.getBlocks().get(0).getColumns().get(0);
-      ColumnIndex columnIndex = reader.readColumnIndex(column);
-      assertArrayEquals(
-          statistics.getMinBytes(), columnIndex.getMinValues().get(0).array());
-      assertArrayEquals(
-          statistics.getMaxBytes(), columnIndex.getMaxValues().get(0).array());
-      assertEquals(
-          statistics.getNumNulls(), columnIndex.getNullCounts().get(0).longValue());
-      assertFalse(columnIndex.getNullPages().get(0));
-      OffsetIndex offsetIndex = reader.readOffsetIndex(column);
-      assertEquals(1, offsetIndex.getPageCount());
-      assertEquals(pageSize, offsetIndex.getCompressedPageSize(0));
-      assertEquals(0, offsetIndex.getFirstRowIndex(0));
-      assertEquals(pageOffset, offsetIndex.getOffset(0));
-
-      reader.close();
+        // Checking column/offset indexes for the one page
+        ColumnChunkMetaData column =
+            footer.getBlocks().get(0).getColumns().get(0);
+        ColumnIndex columnIndex = reader.readColumnIndex(column);
+        assertArrayEquals(
+            statistics.getMinBytes(),
+            columnIndex.getMinValues().get(0).array());
+        assertArrayEquals(
+            statistics.getMaxBytes(),
+            columnIndex.getMaxValues().get(0).array());
+        assertEquals(
+            statistics.getNumNulls(),
+            columnIndex.getNullCounts().get(0).longValue());
+        assertFalse(columnIndex.getNullPages().get(0));
+        OffsetIndex offsetIndex = reader.readOffsetIndex(column);
+        assertEquals(1, offsetIndex.getPageCount());
+        assertEquals(pageSize, offsetIndex.getCompressedPageSize(0));
+        assertEquals(0, offsetIndex.getFirstRowIndex(0));
+        assertEquals(pageOffset, offsetIndex.getOffset(0));
+      }
     }
   }
 

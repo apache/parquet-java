@@ -205,26 +205,26 @@ public class ColumnEncryptorTest {
   }
 
   private void verifyResultDecryptionWithValidKey() throws IOException {
-    ParquetReader<Group> reader = createReader(outputFile);
-    for (int i = 0; i < numRecord; i++) {
-      Group group = reader.read();
-      assertTrue(group.getLong("DocId", 0) == inputFile.getFileContent()[i].getLong("DocId", 0));
-      assertArrayEquals(
-          group.getBinary("Name", 0).getBytes(),
-          inputFile.getFileContent()[i].getString("Name", 0).getBytes(StandardCharsets.UTF_8));
-      assertArrayEquals(
-          group.getBinary("Gender", 0).getBytes(),
-          inputFile.getFileContent()[i].getString("Gender", 0).getBytes(StandardCharsets.UTF_8));
-      Group subGroupInRead = group.getGroup("Links", 0);
-      Group expectedSubGroup = inputFile.getFileContent()[i].getGroup("Links", 0);
-      assertArrayEquals(
-          subGroupInRead.getBinary("Forward", 0).getBytes(),
-          expectedSubGroup.getBinary("Forward", 0).getBytes());
-      assertArrayEquals(
-          subGroupInRead.getBinary("Backward", 0).getBytes(),
-          expectedSubGroup.getBinary("Backward", 0).getBytes());
+    try (ParquetReader<Group> reader = createReader(outputFile)) {
+      for (int i = 0; i < numRecord; i++) {
+        Group group = reader.read();
+        assertTrue(group.getLong("DocId", 0) == inputFile.getFileContent()[i].getLong("DocId", 0));
+        assertArrayEquals(
+            group.getBinary("Name", 0).getBytes(),
+            inputFile.getFileContent()[i].getString("Name", 0).getBytes(StandardCharsets.UTF_8));
+        assertArrayEquals(
+            group.getBinary("Gender", 0).getBytes(),
+            inputFile.getFileContent()[i].getString("Gender", 0).getBytes(StandardCharsets.UTF_8));
+        Group subGroupInRead = group.getGroup("Links", 0);
+        Group expectedSubGroup = inputFile.getFileContent()[i].getGroup("Links", 0);
+        assertArrayEquals(
+            subGroupInRead.getBinary("Forward", 0).getBytes(),
+            expectedSubGroup.getBinary("Forward", 0).getBytes());
+        assertArrayEquals(
+            subGroupInRead.getBinary("Backward", 0).getBytes(),
+            expectedSubGroup.getBinary("Backward", 0).getBytes());
+      }
     }
-    reader.close();
   }
 
   private void verifyOffsetIndexes() throws IOException {
