@@ -99,6 +99,19 @@ public abstract class ValuesWriter implements AutoCloseable {
   }
 
   /**
+   * Writes a batch of boolean values. Subclasses may override for optimized bulk encoding.
+   *
+   * @param values the boolean array to read from
+   * @param offset the start position in the array
+   * @param length the number of values to write
+   */
+  public void writeBooleans(boolean[] values, int offset, int length) {
+    for (int i = offset; i < offset + length; i++) {
+      writeBoolean(values[i]);
+    }
+  }
+
+  /**
    * @param v the value to encode
    */
   public void writeBytes(Binary v) {
