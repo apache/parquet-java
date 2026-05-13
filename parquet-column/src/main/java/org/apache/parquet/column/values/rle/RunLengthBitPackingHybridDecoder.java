@@ -48,6 +48,8 @@ public class RunLengthBitPackingHybridDecoder {
   private int currentCount;
   private int currentValue;
   private int[] currentBuffer;
+  // Saved packed bytes for bitWidth=1 boolean optimization (lookup table decode)
+  private byte[] packedBytesBuffer;
 
   public RunLengthBitPackingHybridDecoder(int bitWidth, InputStream in) {
     LOG.debug("decoding bitWidth {}", bitWidth);
@@ -112,9 +114,24 @@ public class RunLengthBitPackingHybridDecoder {
   }
 
   /**
+   * Lookup table for bitWidth=1: maps each byte to its 8 boolean values.
+   * Used by {@link #readBooleans} PACKED path to bypass the int[] intermediate.
+   */
+  private static final boolean[][] BYTE_TO_BOOLS = new boolean[256][8];
+
+  static {
+    for (int b = 0; b < 256; b++) {
+      for (int bit = 0; bit < 8; bit++) {
+        BYTE_TO_BOOLS[b][bit] = ((b >>> bit) & 1) != 0;
+      }
+    }
+  }
+
+  /**
    * Reads {@code count} boolean values into {@code dest} starting at {@code offset}.
    * For RLE runs, uses {@code Arrays.fill} with a single boolean value.
-   * For packed groups, converts each int to boolean.
+   * For packed groups, uses a lookup table to decode 8 booleans per byte directly
+   * from the raw packed bytes, bypassing the int[] intermediate buffer.
    *
    * @param dest   destination array
    * @param offset start index in dest
@@ -133,9 +150,39 @@ public class RunLengthBitPackingHybridDecoder {
           java.util.Arrays.fill(dest, pos, pos + batchSize, currentValue != 0);
           break;
         case PACKED:
-          int startIdx = currentBuffer.length - currentCount;
-          for (int i = 0; i < batchSize; i++) {
-            dest[pos + i] = currentBuffer[startIdx + i] != 0;
+          // For bitWidth=1, read directly from packedBytesBuffer via lookup table
+          int bitOff = currentBuffer.length - currentCount;
+          int written = 0;
+
+          // Handle partial byte alignment
+          int bitPos = bitOff & 7;
+          if (bitPos != 0) {
+            int byteIdx = bitOff >>> 3;
+            byte b = packedBytesBuffer[byteIdx];
+            while (bitPos < 8 && written < batchSize) {
+              dest[pos + written] = ((b >>> bitPos) & 1) != 0;
+              bitPos++;
+              written++;
+            }
+          }
+
+          // Process full bytes via lookup table
+          int byteIdx = (bitOff + written) >>> 3;
+          while (written + 8 <= batchSize) {
+            System.arraycopy(BYTE_TO_BOOLS[packedBytesBuffer[byteIdx] & 0xFF], 0, dest, pos + written, 8);
+            byteIdx++;
+            written += 8;
+          }
+
+          // Handle remaining bits
+          if (written < batchSize) {
+            byte b = packedBytesBuffer[byteIdx];
+            int bp = 0;
+            while (written < batchSize) {
+              dest[pos + written] = ((b >>> bp) & 1) != 0;
+              bp++;
+              written++;
+            }
           }
           break;
         default:
@@ -167,6 +214,7 @@ public class RunLengthBitPackingHybridDecoder {
         int bytesToRead = (int) Math.ceil(currentCount * bitWidth / 8.0);
         bytesToRead = Math.min(bytesToRead, in.available());
         new DataInputStream(in).readFully(bytes, 0, bytesToRead);
+        packedBytesBuffer = bytes;
         for (int valueIndex = 0, byteIndex = 0;
             valueIndex < currentCount;
             valueIndex += 8, byteIndex += bitWidth) {
