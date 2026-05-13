@@ -20,11 +20,13 @@ package org.apache.parquet.benchmarks;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.util.concurrent.TimeUnit;
 import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.bytes.HeapByteBufferAllocator;
 import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridDecoder;
 import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridEncoder;
+import org.apache.parquet.column.values.rle.RunLengthBitPackingHybridValuesReader;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
@@ -83,6 +85,9 @@ public class RleDictionaryIndexDecodingBenchmark {
 
   private int[] ids;
 
+  // encoded with 4-byte LE length prefix, as expected by ValuesReader.initFromPage()
+  private byte[] encodedWithLengthPrefix;
+
   @Setup(Level.Trial)
   public void setup() throws IOException {
     ids = generateDictionaryIds();
@@ -93,6 +98,11 @@ public class RleDictionaryIndexDecodingBenchmark {
       }
       encoded = encoder.toBytes().toByteArray();
     }
+
+    // Prepend 4-byte LE length for ValuesReader.initFromPage() format
+    encodedWithLengthPrefix = new byte[4 + encoded.length];
+    ByteBuffer.wrap(encodedWithLengthPrefix).order(ByteOrder.LITTLE_ENDIAN).putInt(encoded.length);
+    System.arraycopy(encoded, 0, encodedWithLengthPrefix, 4, encoded.length);
   }
 
   private int[] generateDictionaryIds() {
@@ -133,5 +143,39 @@ public class RleDictionaryIndexDecodingBenchmark {
     for (int i = 0; i < VALUE_COUNT; i++) {
       bh.consume(decoder.readInt());
     }
+  }
+
+  @Benchmark
+  @OperationsPerInvocation(VALUE_COUNT)
+  public int[] decodeDictionaryIdsBatch() throws IOException {
+    RunLengthBitPackingHybridDecoder decoder =
+        new RunLengthBitPackingHybridDecoder(BIT_WIDTH, ByteBufferInputStream.wrap(ByteBuffer.wrap(encoded)));
+    int[] result = new int[VALUE_COUNT];
+    decoder.readInts(result, 0, VALUE_COUNT);
+    return result;
+  }
+
+  // ---- ValuesReader-level benchmarks ----
+  // These go through the RunLengthBitPackingHybridValuesReader wrapper,
+  // which is the path used by ColumnReader in production.
+
+  @Benchmark
+  @OperationsPerInvocation(VALUE_COUNT)
+  public void decodeValuesReader(Blackhole bh) throws IOException {
+    RunLengthBitPackingHybridValuesReader reader = new RunLengthBitPackingHybridValuesReader(BIT_WIDTH);
+    reader.initFromPage(VALUE_COUNT, ByteBufferInputStream.wrap(ByteBuffer.wrap(encodedWithLengthPrefix)));
+    for (int i = 0; i < VALUE_COUNT; i++) {
+      bh.consume(reader.readInteger());
+    }
+  }
+
+  @Benchmark
+  @OperationsPerInvocation(VALUE_COUNT)
+  public int[] decodeValuesReaderBatch() throws IOException {
+    RunLengthBitPackingHybridValuesReader reader = new RunLengthBitPackingHybridValuesReader(BIT_WIDTH);
+    reader.initFromPage(VALUE_COUNT, ByteBufferInputStream.wrap(ByteBuffer.wrap(encodedWithLengthPrefix)));
+    int[] result = new int[VALUE_COUNT];
+    reader.readIntegers(result, 0, VALUE_COUNT);
+    return result;
   }
 }
