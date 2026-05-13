@@ -59,7 +59,7 @@ import org.openjdk.jmh.annotations.Warmup;
 @State(Scope.Thread)
 public class CompressionBenchmark {
 
-  @Param({"SNAPPY", "ZSTD", "LZ4_RAW", "GZIP"})
+  @Param({"SNAPPY", "ZSTD", "LZ4_RAW", "GZIP", "BROTLI"})
   public String codec;
 
   @Param({"65536", "131072", "262144", "1048576"})
