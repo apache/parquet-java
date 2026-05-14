@@ -39,6 +39,7 @@ import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.compression.CompressionCodecFactory;
 import org.apache.parquet.conf.HadoopParquetConfiguration;
 import org.apache.parquet.conf.ParquetConfiguration;
+import org.apache.parquet.hadoop.codec.Lz4RawCodec;
 import org.apache.parquet.hadoop.codec.ZstandardCodec;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.hadoop.util.ConfigurationUtil;
@@ -170,11 +171,12 @@ public class CodecFactory implements CompressionCodecFactory {
       }
       InputStream is = codec.createInputStream(bytes.toInputStream(), decompressor);
 
-      // We need to explicitly close the ZstdDecompressorStream here to release the resources it holds to
-      // avoid off-heap memory fragmentation issue, see https://github.com/apache/parquet-format/issues/398.
-      // This change will load the decompressor stream into heap a little earlier, since the problem it solves
-      // only happens in the ZSTD codec, so this modification is only made for ZSTD streams.
-      if (codec instanceof ZstandardCodec) {
+      // Eagerly materialize the decompressed stream for codecs that require all input in a single buffer.
+      // ZSTD: releases off-heap resources early to avoid fragmentation (see parquet-format#398).
+      // LZ4_RAW: requires one-shot decompression; the lazy StreamBytesInput.writeInto() path reads via
+      // Channels.newChannel() in ~8KB chunks, causing the decompressor to be called with an undersized
+      // output buffer (see #3478).
+      if (codec instanceof ZstandardCodec || codec instanceof Lz4RawCodec) {
         decompressed = BytesInput.copy(BytesInput.from(is, decompressedSize));
         is.close();
       } else {
