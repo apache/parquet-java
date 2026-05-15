@@ -19,21 +19,26 @@
 package org.apache.parquet.column.values.plain;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.column.values.ValuesReader;
-import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.io.api.Binary;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * ValuesReader for FIXED_LEN_BYTE_ARRAY.
+ *
+ * <p>Reads directly from a {@link ByteBuffer}, bypassing the {@link ByteBufferInputStream}
+ * wrapper to avoid per-value stream overhead (remaining checks, IOException wrapping,
+ * virtual dispatch). The underlying page data is obtained as a single contiguous
+ * {@link ByteBuffer} via {@link ByteBufferInputStream#slice(int)}.
  */
 public class FixedLenByteArrayPlainValuesReader extends ValuesReader {
   private static final Logger LOG = LoggerFactory.getLogger(FixedLenByteArrayPlainValuesReader.class);
 
   private final int length;
-  private ByteBufferInputStream in;
+  private ByteBuffer buffer;
 
   public FixedLenByteArrayPlainValuesReader(int length) {
     this.length = length;
@@ -41,30 +46,29 @@ public class FixedLenByteArrayPlainValuesReader extends ValuesReader {
 
   @Override
   public Binary readBytes() {
-    try {
-      return Binary.fromConstantByteBuffer(in.slice(length));
-    } catch (IOException | RuntimeException e) {
-      throw new ParquetDecodingException("could not read bytes at offset " + in.position(), e);
-    }
+    Binary result = Binary.fromConstantByteBuffer(buffer, buffer.position(), length);
+    buffer.position(buffer.position() + length);
+    return result;
   }
 
   @Override
   public void skip() {
-    skip(1);
+    buffer.position(buffer.position() + length);
   }
 
   @Override
   public void skip(int n) {
-    try {
-      in.skipFully(n * length);
-    } catch (IOException | RuntimeException e) {
-      throw new ParquetDecodingException("could not skip bytes at offset " + in.position(), e);
-    }
+    buffer.position(buffer.position() + n * length);
   }
 
   @Override
   public void initFromPage(int valueCount, ByteBufferInputStream stream) throws IOException {
     LOG.debug("init from page at offset {} for length {}", stream.position(), stream.available());
-    this.in = stream.remainingStream();
+    int available = stream.available();
+    if (available > 0) {
+      this.buffer = stream.slice(available);
+    } else {
+      this.buffer = ByteBuffer.allocate(0);
+    }
   }
 }
