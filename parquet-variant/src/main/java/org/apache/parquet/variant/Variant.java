@@ -22,6 +22,7 @@ import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.UUID;
+import org.apache.parquet.Preconditions;
 
 /**
  * This Variant class holds the Variant-encoded value and metadata binary values.
@@ -95,7 +96,14 @@ public final class Variant {
     int pos = this.metadata.position();
     int metaOffsetSize = ((this.metadata.get(pos) >> 6) & 0x3) + 1;
     if (this.metadata.remaining() > 1) {
+      Preconditions.checkArgument(
+          this.metadata.remaining() >= 1 + metaOffsetSize,
+          "variant metadata truncated: offsetSize=" + metaOffsetSize);
       this.dictSize = VariantUtil.readUnsignedLittleEndian(this.metadata, pos + 1, metaOffsetSize);
+      long dictTableEnd = 1L + metaOffsetSize + ((long) this.dictSize + 1) * metaOffsetSize;
+      Preconditions.checkArgument(
+          dictTableEnd <= this.metadata.remaining(),
+          "variant metadata dictionary extends past buffer: dictSize=" + this.dictSize);
     } else {
       this.dictSize = 0;
     }
@@ -358,8 +366,6 @@ public final class Variant {
 
   /**
    * Returns the metadata dictionary string for the given ID, caching the result.
-   * All state is captured in locals so the calling thread retains needed values
-   * for the duration of the call regardless of concurrent access.
    */
   String getMetadataKeyCached(int id) {
     if (id < 0 || id >= dictSize) {

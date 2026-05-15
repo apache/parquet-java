@@ -22,6 +22,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.Arrays;
 import java.util.HashMap;
+import org.apache.parquet.Preconditions;
 
 /**
  * This class defines constants related to the Variant format and provides functions for
@@ -314,10 +315,7 @@ class VariantUtil {
         return (buffer.getShort(pos) & U16_MAX) | ((buffer.get(pos + 2) & U8_MAX) << 16);
       case 4:
         int v = buffer.getInt(pos);
-        if (v < 0) {
-          throw new IllegalArgumentException(
-              String.format("Failed to read unsigned int. numBytes: %d", numBytes));
-        }
+        Preconditions.checkArgument(v >= 0, "Failed to read unsigned int. numBytes: " + numBytes);
         return v;
       default:
         throw new IllegalArgumentException(String.format("Invalid numBytes: %d", numBytes));
