@@ -2327,6 +2327,10 @@ public class ParquetFileReader implements Closeable {
         LOG.error(error, e);
         throw new IOException(error, e);
       }
+      // Release the vectored-read buffer back to the allocator when the row group is closed.
+      // Requires fs.file.checksum.verify=false so the returned buffer is the allocator buffer
+      // rather than a sliced subset (see Hadoop's fs.file.checksum.verify docs).
+      builder.addBuffersToRelease(Collections.singletonList(buffer));
       ByteBufferInputStream stream = ByteBufferInputStream.wrap(buffer);
       for (ChunkDescriptor descriptor : chunks) {
         builder.add(descriptor, stream.sliceBuffers(descriptor.size), f);
