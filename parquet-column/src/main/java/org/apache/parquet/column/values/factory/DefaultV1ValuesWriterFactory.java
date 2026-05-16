@@ -152,7 +152,8 @@ public class DefaultV1ValuesWriterFactory implements ValuesWriterFactory {
       fallbackWriter = new AlpValuesWriter.DoubleAlpValuesWriter(
           parquetProperties.getInitialSlabSize(),
           parquetProperties.getPageSizeThreshold(),
-          parquetProperties.getAllocator());
+          parquetProperties.getAllocator(),
+          parquetProperties.getAlpVectorSize(path));
     } else if (this.parquetProperties.isByteStreamSplitEnabled(path)) {
       fallbackWriter = new ByteStreamSplitValuesWriter.DoubleByteStreamSplitValuesWriter(
           parquetProperties.getInitialSlabSize(),
@@ -174,7 +175,8 @@ public class DefaultV1ValuesWriterFactory implements ValuesWriterFactory {
       fallbackWriter = new AlpValuesWriter.FloatAlpValuesWriter(
           parquetProperties.getInitialSlabSize(),
           parquetProperties.getPageSizeThreshold(),
-          parquetProperties.getAllocator());
+          parquetProperties.getAllocator(),
+          parquetProperties.getAlpVectorSize(path));
     } else if (this.parquetProperties.isByteStreamSplitEnabled(path)) {
       fallbackWriter = new ByteStreamSplitValuesWriter.FloatByteStreamSplitValuesWriter(
           parquetProperties.getInitialSlabSize(),

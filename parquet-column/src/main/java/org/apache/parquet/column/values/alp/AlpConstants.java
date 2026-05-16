@@ -93,7 +93,7 @@ public final class AlpConstants {
   static final long DOUBLE_NEGATIVE_ZERO_BITS = 0x8000000000000000L;
 
   /** Validates vector size: must be a power of 2 in [2^MIN_LOG .. 2^MAX_LOG]. */
-  static int validateVectorSize(int vectorSize) {
+  public static int validateVectorSize(int vectorSize) {
     Preconditions.checkArgument(
         vectorSize > 0 && (vectorSize & (vectorSize - 1)) == 0,
         "Vector size must be a power of 2, got: %s",
