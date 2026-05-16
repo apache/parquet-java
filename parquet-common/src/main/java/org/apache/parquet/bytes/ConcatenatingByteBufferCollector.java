@@ -26,6 +26,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.WritableByteChannel;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 /**
@@ -64,10 +65,14 @@ public class ConcatenatingByteBufferCollector extends BytesInput implements Auto
 
   @Override
   public void close() {
+    if (slabs.isEmpty()) {
+      return;
+    }
     for (ByteBuffer slab : slabs) {
       allocator.release(slab);
     }
     slabs.clear();
+    size = 0;
   }
 
   @Override
@@ -76,6 +81,30 @@ public class ConcatenatingByteBufferCollector extends BytesInput implements Auto
     for (ByteBuffer buffer : slabs) {
       channel.write(buffer.duplicate());
     }
+  }
+
+  /**
+   * Writes all collected slabs to the given output stream, releasing each slab's
+   * {@link ByteBuffer} back to the allocator immediately after it has been written.
+   * This progressively frees memory during the write rather than holding all slabs
+   * until {@link #close()} is called.
+   *
+   * <p>After this method returns, the collector is empty and {@link #size()} returns 0.
+   * Calling {@link #close()} afterwards is safe but has no additional effect.
+   *
+   * @param out the output stream to write to
+   * @throws IOException if an I/O error occurs
+   */
+  public void writeAllToAndRelease(OutputStream out) throws IOException {
+    WritableByteChannel channel = Channels.newChannel(out);
+    Iterator<ByteBuffer> it = slabs.iterator();
+    while (it.hasNext()) {
+      ByteBuffer slab = it.next();
+      channel.write(slab.duplicate());
+      allocator.release(slab);
+      it.remove();
+    }
+    size = 0;
   }
 
   @Override

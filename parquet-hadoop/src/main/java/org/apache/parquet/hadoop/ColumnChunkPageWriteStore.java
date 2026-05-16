@@ -692,6 +692,11 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
     for (ColumnDescriptor path : schema.getColumns()) {
       ColumnChunkPageWriter pageWriter = writers.get(path);
       pageWriter.writeToFileWriter(writer);
+      // Eagerly release this column's page buffers now that they've been
+      // written to the file writer. This reduces peak memory during flush
+      // from the entire compressed row group down to roughly one column's
+      // worth of compressed pages at a time.
+      pageWriter.close();
     }
   }
 }
