@@ -302,6 +302,55 @@ public class TestInterOpReadAlp {
   }
 
   /**
+   * Writes >4096 rows with vectorSize=4096 so multiple full vectors are flushed, then verifies
+   * the file round-trips exactly. The reader pulls log_vector_size from the on-disk header to
+   * size its unpacking window, so a wrong header byte would surface as decode garbage —
+   * round-trip equality is sufficient proof that the configured vector size took effect.
+   */
+  @Test
+  public void testJavaWriteAlpCustomVectorSize() throws IOException {
+    MessageType schema = MessageTypeParser.parseMessageType(ALP_SCHEMA);
+    int rowCount = 4500; // crosses one full vector + partial tail at vectorSize=4096
+    double[] doubles = new double[rowCount];
+    float[] floats = new float[rowCount];
+    // 2-decimal sensor-like data — the ALP sweet spot, so few/no exceptions
+    for (int i = 0; i < rowCount; i++) {
+      doubles[i] = (i * 13L % 100000) / 100.0;
+      floats[i] = (float) ((i * 7L % 10000) / 100.0);
+    }
+
+    java.nio.file.Path outPath =
+        temp.newFolder().toPath().resolve("alp_java_vs4096.parquet");
+
+    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(new LocalOutputFile(outPath))
+        .withType(schema)
+        .withCompressionCodec(CompressionCodecName.UNCOMPRESSED)
+        .withWriterVersion(WriterVersion.PARQUET_2_0)
+        .withAlpEncoding(true)
+        .withAlpVectorSize(4096)
+        .withDictionaryEncoding(false)
+        .withConf(new Configuration())
+        .build()) {
+      for (int i = 0; i < rowCount; i++) {
+        SimpleGroup row = new SimpleGroup(schema);
+        row.add("double_col", doubles[i]);
+        row.add("float_col", floats[i]);
+        writer.write(row);
+      }
+    }
+
+    List<Group> rows = readAllRows(outPath);
+    assertEquals("Row count mismatch at vectorSize=4096", rowCount, rows.size());
+    for (int i = 0; i < rowCount; i++) {
+      assertEquals(
+          "double_col mismatch at row " + i, doubles[i], rows.get(i).getDouble("double_col", 0), 0.0);
+      assertEquals(
+          "float_col mismatch at row " + i, floats[i], rows.get(i).getFloat("float_col", 0), 0.0f);
+    }
+    LOG.info("testJavaWriteAlpCustomVectorSize: {} rows round-tripped at vectorSize=4096", rowCount);
+  }
+
+  /**
    * Java writes ALP-encoded floats/doubles using V2 (PARQUET_2_0) data pages and reads them back.
    * V2 page headers include the encoding value directly; ALP = 10 is supported via the build-time
    * patch to the generated Encoding enum in parquet-format-structures.
