@@ -141,6 +141,33 @@ public class BytesUtils {
     }
   }
 
+  /**
+   * Reads a little-endian int padded to the byte count for the given bit width from a ByteBuffer.
+   * The buffer must be in {@link java.nio.ByteOrder#LITTLE_ENDIAN} order for 2-byte and 4-byte reads.
+   *
+   * @param in       a ByteBuffer in LITTLE_ENDIAN order
+   * @param bitWidth the bit width determining how many bytes to read
+   * @return the value read
+   */
+  public static int readIntLittleEndianPaddedOnBitWidth(ByteBuffer in, int bitWidth) {
+    int bytesWidth = paddedByteCountFromBits(bitWidth);
+    switch (bytesWidth) {
+      case 0:
+        return 0;
+      case 1:
+        return in.get() & 0xFF;
+      case 2:
+        return in.getShort() & 0xFFFF;
+      case 3:
+        return (in.get() & 0xFF) | ((in.get() & 0xFF) << 8) | ((in.get() & 0xFF) << 16);
+      case 4:
+        return in.getInt();
+      default:
+        throw new IllegalArgumentException(
+            String.format("Encountered bitWidth (%d) that requires more than 4 bytes", bitWidth));
+    }
+  }
+
   public static void writeIntLittleEndianOnOneByte(OutputStream out, int v) throws IOException {
     out.write((v >>> 0) & 0xFF);
   }
@@ -204,6 +231,23 @@ public class BytesUtils {
     int i = 0;
     int b;
     while (((b = in.read()) & 0x80) != 0) {
+      value |= (b & 0x7F) << i;
+      i += 7;
+    }
+    return value | (b << i);
+  }
+
+  /**
+   * Reads an unsigned variable-length integer (varint) from a ByteBuffer.
+   *
+   * @param in a ByteBuffer
+   * @return the unsigned varint value
+   */
+  public static int readUnsignedVarInt(ByteBuffer in) {
+    int value = 0;
+    int i = 0;
+    int b;
+    while (((b = in.get() & 0xFF) & 0x80) != 0) {
       value |= (b & 0x7F) << i;
       i += 7;
     }
