@@ -97,24 +97,24 @@ public class TestParquetWriterNewPage {
         }
         writer.close();
 
-        ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), file)
+        try (ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), file)
             .withConf(conf)
-            .build();
-        for (int i = 0; i < 1000; i++) {
-          Group group = reader.read();
-          assertEquals(
-              "test" + (i % modulo),
-              group.getBinary("binary_field", 0).toStringUsingUTF8());
-          assertEquals(32, group.getInteger("int32_field", 0));
-          assertEquals(64l, group.getLong("int64_field", 0));
-          assertEquals(true, group.getBoolean("boolean_field", 0));
-          assertEquals(1.0f, group.getFloat("float_field", 0), 0.001);
-          assertEquals(2.0d, group.getDouble("double_field", 0), 0.001);
-          assertEquals("foo", group.getBinary("flba_field", 0).toStringUsingUTF8());
-          assertEquals(Binary.fromConstantByteArray(new byte[12]), group.getInt96("int96_field", 0));
-          assertEquals(0, group.getFieldRepetitionCount("null_field"));
+            .build()) {
+          for (int i = 0; i < 1000; i++) {
+            Group group = reader.read();
+            assertEquals(
+                "test" + (i % modulo),
+                group.getBinary("binary_field", 0).toStringUsingUTF8());
+            assertEquals(32, group.getInteger("int32_field", 0));
+            assertEquals(64l, group.getLong("int64_field", 0));
+            assertEquals(true, group.getBoolean("boolean_field", 0));
+            assertEquals(1.0f, group.getFloat("float_field", 0), 0.001);
+            assertEquals(2.0d, group.getDouble("double_field", 0), 0.001);
+            assertEquals("foo", group.getBinary("flba_field", 0).toStringUsingUTF8());
+            assertEquals(Binary.fromConstantByteArray(new byte[12]), group.getInt96("int96_field", 0));
+            assertEquals(0, group.getFieldRepetitionCount("null_field"));
+          }
         }
-        reader.close();
         ParquetMetadata footer = readFooter(conf, file, NO_FILTER);
         for (BlockMetaData blockMetaData : footer.getBlocks()) {
           for (ColumnChunkMetaData column : blockMetaData.getColumns()) {

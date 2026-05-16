@@ -271,14 +271,14 @@ public class TestParquetWriterAppendBlocks {
           rowGroup.getColumns().size());
     }
 
-    ParquetReader<Group> reader =
-        ParquetReader.builder(new GroupReadSupport(), droppedColumnFile).build();
-
-    Group next;
-    while ((next = reader.read()) != null) {
-      Group expectedNext = expected.removeFirst();
-      Assert.assertEquals(
-          "Each string should match", expectedNext.getString("string", 0), next.getString("string", 0));
+    try (ParquetReader<Group> reader =
+        ParquetReader.builder(new GroupReadSupport(), droppedColumnFile).build()) {
+      Group next;
+      while ((next = reader.read()) != null) {
+        Group expectedNext = expected.removeFirst();
+        Assert.assertEquals(
+            "Each string should match", expectedNext.getString("string", 0), next.getString("string", 0));
+      }
     }
 
     Assert.assertEquals("All records should be present", 0, expected.size());
@@ -290,17 +290,18 @@ public class TestParquetWriterAppendBlocks {
         Types.buildMessage().required(BINARY).as(UTF8).named("string").named("AppendTest");
 
     final ParquetMetadata footer = ParquetFileReader.readFooter(CONF, file1, NO_FILTER);
-    final FSDataInputStream incoming = file1.getFileSystem(CONF).open(file1);
+    try (final FSDataInputStream incoming = file1.getFileSystem(CONF).open(file1)) {
+      Path droppedColumnFile = newTemp();
+      final ParquetFileWriter writer = new ParquetFileWriter(CONF, droppedColumnSchema, droppedColumnFile);
+      writer.start();
 
-    Path droppedColumnFile = newTemp();
-    final ParquetFileWriter writer = new ParquetFileWriter(CONF, droppedColumnSchema, droppedColumnFile);
-    writer.start();
-
-    TestUtils.assertThrows(
-        "Should complain that id column is dropped", IllegalArgumentException.class, (Callable<Void>) () -> {
-          writer.appendRowGroups(incoming, footer.getBlocks(), false);
-          return null;
-        });
+      TestUtils.assertThrows(
+          "Should complain that id column is dropped", IllegalArgumentException.class, (Callable<Void>)
+              () -> {
+                writer.appendRowGroups(incoming, footer.getBlocks(), false);
+                return null;
+              });
+    }
   }
 
   @Test

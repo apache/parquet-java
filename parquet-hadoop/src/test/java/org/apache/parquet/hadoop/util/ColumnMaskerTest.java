@@ -85,37 +85,37 @@ public class ColumnMaskerTest {
 
   @Test(expected = RuntimeException.class)
   public void testNullColumns() throws IOException {
-    ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), new Path(outputFile))
+    try (ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), new Path(outputFile))
         .withConf(conf)
-        .build();
-    Group group = reader.read();
-    group.getLong("DocId", 0);
-    reader.close();
+        .build()) {
+      Group group = reader.read();
+      group.getLong("DocId", 0);
+    }
   }
 
   @Test(expected = RuntimeException.class)
   public void testNullNestedColumns() throws IOException {
-    ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), new Path(outputFile))
+    try (ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), new Path(outputFile))
         .withConf(conf)
-        .build();
-    Group group = reader.read();
-    Group subGroup = group.getGroup("Links", 0);
-    subGroup.getBinary("Backward", 0).getBytes();
-    reader.close();
+        .build()) {
+      Group group = reader.read();
+      Group subGroup = group.getGroup("Links", 0);
+      subGroup.getBinary("Backward", 0).getBytes();
+    }
   }
 
   @Test
   public void validateNonNuLLColumns() throws IOException {
-    ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), new Path(outputFile))
+    try (ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), new Path(outputFile))
         .withConf(conf)
-        .build();
-    for (int i = 0; i < numRecord; i++) {
-      Group group = reader.read();
-      assertArrayEquals(group.getBinary("Name", 0).getBytes(), testDocs.name[i].getBytes());
-      Group subGroup = group.getGroup("Links", 0);
-      assertArrayEquals(subGroup.getBinary("Forward", 0).getBytes(), testDocs.linkForward[i].getBytes());
+        .build()) {
+      for (int i = 0; i < numRecord; i++) {
+        Group group = reader.read();
+        assertArrayEquals(group.getBinary("Name", 0).getBytes(), testDocs.name[i].getBytes());
+        Group subGroup = group.getGroup("Links", 0);
+        assertArrayEquals(subGroup.getBinary("Forward", 0).getBytes(), testDocs.linkForward[i].getBytes());
+      }
     }
-    reader.close();
   }
 
   private void nullifyColumns(Configuration conf, String inputFile, String outputFile) throws IOException {

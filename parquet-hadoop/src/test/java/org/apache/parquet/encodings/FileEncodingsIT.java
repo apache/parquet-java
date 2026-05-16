@@ -254,7 +254,7 @@ public class FileEncodingsIT {
     SimpleGroupFactory message = new SimpleGroupFactory(schema);
     GroupWriteSupport.setSchema(schema, configuration);
 
-    ParquetWriter<Group> writer = ExampleParquetWriter.builder(file)
+    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(file)
         .withAllocator(allocator)
         .withCompressionCodec(compression)
         .withRowGroupSize(rowGroupSize)
@@ -263,36 +263,35 @@ public class FileEncodingsIT {
         .withDictionaryEncoding(enableDictionary)
         .withWriterVersion(version)
         .withConf(configuration)
-        .build();
+        .build()) {
 
-    for (Object o : values) {
-      switch (type) {
-        case BOOLEAN:
-          writer.write(message.newGroup().append("field", (Boolean) o));
-          break;
-        case INT32:
-          writer.write(message.newGroup().append("field", (Integer) o));
-          break;
-        case INT64:
-          writer.write(message.newGroup().append("field", (Long) o));
-          break;
-        case FLOAT:
-          writer.write(message.newGroup().append("field", (Float) o));
-          break;
-        case DOUBLE:
-          writer.write(message.newGroup().append("field", (Double) o));
-          break;
-        case INT96:
-        case BINARY:
-        case FIXED_LEN_BYTE_ARRAY:
-          writer.write(message.newGroup().append("field", (Binary) o));
-          break;
-        default:
-          throw new IllegalArgumentException("Unknown type name: " + type);
+      for (Object o : values) {
+        switch (type) {
+          case BOOLEAN:
+            writer.write(message.newGroup().append("field", (Boolean) o));
+            break;
+          case INT32:
+            writer.write(message.newGroup().append("field", (Integer) o));
+            break;
+          case INT64:
+            writer.write(message.newGroup().append("field", (Long) o));
+            break;
+          case FLOAT:
+            writer.write(message.newGroup().append("field", (Float) o));
+            break;
+          case DOUBLE:
+            writer.write(message.newGroup().append("field", (Double) o));
+            break;
+          case INT96:
+          case BINARY:
+          case FIXED_LEN_BYTE_ARRAY:
+            writer.write(message.newGroup().append("field", (Binary) o));
+            break;
+          default:
+            throw new IllegalArgumentException("Unknown type name: " + type);
+        }
       }
     }
-
-    writer.close();
   }
 
   private List<?> generateRandomValues(PrimitiveTypeName type, int count) {
@@ -522,6 +521,8 @@ public class FileEncodingsIT {
 
       ParquetMetadata metadata =
           ParquetFileReader.readFooter(configuration, file, ParquetMetadataConverter.NO_FILTER);
+      // Not using try-with-resources here because closing the reader releases the codec factory,
+      // but the returned PageReadStore objects still hold compressed pages that need decompression later.
       ParquetFileReader fileReader = new ParquetFileReader(
           configuration,
           metadata.getFileMetaData(),

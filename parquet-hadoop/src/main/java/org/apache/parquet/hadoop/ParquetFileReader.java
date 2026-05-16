@@ -65,6 +65,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.parquet.HadoopReadOptions;
 import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.Preconditions;
+import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.bytes.ByteBufferReleaser;
 import org.apache.parquet.bytes.BytesInput;
@@ -1361,8 +1362,30 @@ public class ParquetFileReader implements Closeable {
       totalSize += len;
     }
     LOG.debug("Reading {} bytes of data with vectored IO in {} ranges", totalSize, ranges.size());
-    // Request a vectored read;
-    f.readVectored(ranges, options.getAllocator());
+    // Request a vectored read; track all buffers allocated during the call so that
+    // internal buffers (e.g. from ChecksumFileSystem) are also released.
+    List<ByteBuffer> allocatedBuffers = new ArrayList<>();
+    ByteBufferAllocator allocator = options.getAllocator();
+    ByteBufferAllocator trackingAllocator = new ByteBufferAllocator() {
+      @Override
+      public ByteBuffer allocate(int size) {
+        ByteBuffer buf = allocator.allocate(size);
+        allocatedBuffers.add(buf);
+        return buf;
+      }
+
+      @Override
+      public void release(ByteBuffer b) {
+        allocator.release(b);
+      }
+
+      @Override
+      public boolean isDirect() {
+        return allocator.isDirect();
+      }
+    };
+    f.readVectored(ranges, trackingAllocator);
+    builder.addBuffersToRelease(allocatedBuffers);
     int k = 0;
     for (ConsecutivePartList consecutivePart : allParts) {
       ParquetFileRange currRange = ranges.get(k++);

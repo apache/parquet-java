@@ -192,23 +192,23 @@ public class TestParquetWriter {
               .append("int96_field", Binary.fromConstantByteArray(new byte[12])));
         }
         writer.close();
-        ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), file)
+        try (ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), file)
             .withConf(conf)
-            .build();
-        for (int i = 0; i < 1000; i++) {
-          Group group = reader.read();
-          assertEquals(
-              "test" + (i % modulo),
-              group.getBinary("binary_field", 0).toStringUsingUTF8());
-          assertEquals(32, group.getInteger("int32_field", 0));
-          assertEquals(64l, group.getLong("int64_field", 0));
-          assertEquals(true, group.getBoolean("boolean_field", 0));
-          assertEquals(1.0f, group.getFloat("float_field", 0), 0.001);
-          assertEquals(2.0d, group.getDouble("double_field", 0), 0.001);
-          assertEquals("foo", group.getBinary("flba_field", 0).toStringUsingUTF8());
-          assertEquals(Binary.fromConstantByteArray(new byte[12]), group.getInt96("int96_field", 0));
+            .build()) {
+          for (int i = 0; i < 1000; i++) {
+            Group group = reader.read();
+            assertEquals(
+                "test" + (i % modulo),
+                group.getBinary("binary_field", 0).toStringUsingUTF8());
+            assertEquals(32, group.getInteger("int32_field", 0));
+            assertEquals(64l, group.getLong("int64_field", 0));
+            assertEquals(true, group.getBoolean("boolean_field", 0));
+            assertEquals(1.0f, group.getFloat("float_field", 0), 0.001);
+            assertEquals(2.0d, group.getDouble("double_field", 0), 0.001);
+            assertEquals("foo", group.getBinary("flba_field", 0).toStringUsingUTF8());
+            assertEquals(Binary.fromConstantByteArray(new byte[12]), group.getInt96("int96_field", 0));
+          }
         }
-        reader.close();
         ParquetMetadata footer = readFooter(conf, file, NO_FILTER);
         for (BlockMetaData blockMetaData : footer.getBlocks()) {
           for (ColumnChunkMetaData column : blockMetaData.getColumns()) {
@@ -789,13 +789,14 @@ public class TestParquetWriter {
         writer.write(factory.newGroup().append("name", testName));
       }
     }
-    ParquetReader<Group> reader =
-        ParquetReader.builder(new GroupReadSupport(), path).build();
-    assertEquals("new", reader.read().getBinary("name", 0).toStringUsingUTF8());
-    assertEquals("writer", reader.read().getBinary("name", 0).toStringUsingUTF8());
-    assertEquals("builder", reader.read().getBinary("name", 0).toStringUsingUTF8());
-    assertEquals("without", reader.read().getBinary("name", 0).toStringUsingUTF8());
-    assertEquals("file", reader.read().getBinary("name", 0).toStringUsingUTF8());
+    try (ParquetReader<Group> reader =
+        ParquetReader.builder(new GroupReadSupport(), path).build()) {
+      assertEquals("new", reader.read().getBinary("name", 0).toStringUsingUTF8());
+      assertEquals("writer", reader.read().getBinary("name", 0).toStringUsingUTF8());
+      assertEquals("builder", reader.read().getBinary("name", 0).toStringUsingUTF8());
+      assertEquals("without", reader.read().getBinary("name", 0).toStringUsingUTF8());
+      assertEquals("file", reader.read().getBinary("name", 0).toStringUsingUTF8());
+    }
   }
 
   @Test
