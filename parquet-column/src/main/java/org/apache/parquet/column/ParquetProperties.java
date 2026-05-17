@@ -424,7 +424,8 @@ public class ParquetProperties {
         + "Writing page checksums is: " + (getPageWriteChecksumEnabled() ? "on" : "off") + '\n'
         + "Statistics enabled: " + statisticsEnabled + '\n'
         + "Size statistics enabled: " + sizeStatisticsEnabled + '\n'
-        + "ALP enabled: " + alpEnabled;
+        + "ALP enabled: " + alpEnabled + '\n'
+        + "ALP vector size: " + alpVectorSize;
   }
 
   public static class Builder {
