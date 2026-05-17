@@ -43,6 +43,7 @@ import org.apache.parquet.column.values.ValuesReader;
 import org.apache.parquet.column.values.ValuesWriter;
 import org.apache.parquet.column.values.dictionary.DictionaryValuesWriter.PlainBinaryDictionaryValuesWriter;
 import org.apache.parquet.column.values.dictionary.DictionaryValuesWriter.PlainDoubleDictionaryValuesWriter;
+import org.apache.parquet.column.values.dictionary.DictionaryValuesWriter.PlainFixedLenArrayDictionaryValuesWriter;
 import org.apache.parquet.column.values.dictionary.DictionaryValuesWriter.PlainFloatDictionaryValuesWriter;
 import org.apache.parquet.column.values.dictionary.DictionaryValuesWriter.PlainIntegerDictionaryValuesWriter;
 import org.apache.parquet.column.values.dictionary.DictionaryValuesWriter.PlainLongDictionaryValuesWriter;
@@ -659,6 +660,73 @@ public class TestDictionary {
     }
   }
 
+  private FallbackValuesWriter<PlainFixedLenArrayDictionaryValuesWriter, PlainValuesWriter>
+      newPlainFixedLenArrayDictionaryValuesWriter(int maxDictionaryByteSize, int fixedLength, int initialSize) {
+    return plainFallBack(
+        new PlainFixedLenArrayDictionaryValuesWriter(
+            maxDictionaryByteSize, fixedLength, PLAIN_DICTIONARY, PLAIN_DICTIONARY, allocator),
+        initialSize);
+  }
+
+  @Test
+  public void testFixedLenByteArrayDictionary() throws IOException {
+    int COUNT = 100;
+    int FIXED_LENGTH = 4;
+    try (final FallbackValuesWriter<PlainFixedLenArrayDictionaryValuesWriter, PlainValuesWriter> cw =
+        newPlainFixedLenArrayDictionaryValuesWriter(10000, FIXED_LENGTH, 10000)) {
+      // Write repeated fixed-length values
+      for (int i = 0; i < COUNT; i++) {
+        byte[] bytes = new byte[FIXED_LENGTH];
+        bytes[0] = (byte) (i % 10);
+        cw.writeBytes(Binary.fromConstantByteArray(bytes));
+      }
+      BytesInput bytes1 = getBytesAndCheckEncoding(cw, PLAIN_DICTIONARY);
+      assertEquals(10, cw.initialWriter.getDictionarySize());
+
+      // Read back via dictionary
+      DictionaryValuesReader cr = initDicReader(cw, PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY, FIXED_LENGTH);
+      cr.initFromPage(COUNT, bytes1.toInputStream());
+      for (int i = 0; i < COUNT; i++) {
+        Binary back = cr.readBytes();
+        assertEquals(FIXED_LENGTH, back.length());
+        assertEquals((byte) (i % 10), back.getBytesUnsafe()[0]);
+      }
+    }
+  }
+
+  @Test
+  public void testFixedLenByteArrayDictionaryFallBack() throws IOException {
+    int FIXED_LENGTH = 4;
+    int maxDictionaryByteSize = 20; // fits at most 5 distinct 4-byte values
+    try (final FallbackValuesWriter<PlainFixedLenArrayDictionaryValuesWriter, PlainValuesWriter> cw =
+        newPlainFixedLenArrayDictionaryValuesWriter(maxDictionaryByteSize, FIXED_LENGTH, 100)) {
+      int fallBackThreshold = maxDictionaryByteSize / FIXED_LENGTH;
+      for (int i = 0; i < 100; i++) {
+        byte[] bytes = new byte[FIXED_LENGTH];
+        bytes[0] = (byte) i; // all distinct
+        cw.writeBytes(Binary.fromConstantByteArray(bytes));
+        if (i < fallBackThreshold) {
+          assertEquals(PLAIN_DICTIONARY, cw.getEncoding());
+        } else {
+          assertEquals(PLAIN, cw.getEncoding());
+        }
+      }
+
+      // Fell back to plain, read with BinaryPlainValuesReader
+      ValuesReader reader = new BinaryPlainValuesReader();
+      reader.initFromPage(100, cw.getBytes().toInputStream());
+      for (int i = 0; i < 100; i++) {
+        Binary back = reader.readBytes();
+        assertEquals(FIXED_LENGTH, back.length());
+        assertEquals((byte) i, back.getBytesUnsafe()[0]);
+      }
+
+      // simulate cutting the page
+      cw.reset();
+      assertEquals(0, cw.getBufferedSize());
+    }
+  }
+
   @Test
   public void testZeroValues() throws IOException {
     try (FallbackValuesWriter<PlainIntegerDictionaryValuesWriter, PlainValuesWriter> cw =
@@ -748,8 +816,13 @@ public class TestDictionary {
   }
 
   private DictionaryValuesReader initDicReader(ValuesWriter cw, PrimitiveTypeName type) throws IOException {
+    return initDicReader(cw, type, 0);
+  }
+
+  private DictionaryValuesReader initDicReader(ValuesWriter cw, PrimitiveTypeName type, int typeLength)
+      throws IOException {
     final DictionaryPage dictionaryPage = cw.toDictPageAndClose().copy();
-    final ColumnDescriptor descriptor = new ColumnDescriptor(new String[] {"foo"}, type, 0, 0);
+    final ColumnDescriptor descriptor = new ColumnDescriptor(new String[] {"foo"}, type, typeLength, 0, 0);
     final Dictionary dictionary = PLAIN.initDictionary(descriptor, dictionaryPage);
     final DictionaryValuesReader cr = new DictionaryValuesReader(dictionary);
     return cr;

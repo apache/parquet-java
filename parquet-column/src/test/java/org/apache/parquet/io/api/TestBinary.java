@@ -155,6 +155,51 @@ public class TestBinary {
     assertEquals(bin1, bin2);
   }
 
+  /**
+   * Verifies that {@link Binary#hashCode()} is cached for non-reused (constant) instances:
+   * the value returned must be stable, equal across the three concrete Binary
+   * implementations for the same bytes, and consistent with {@link Object#equals(Object)}.
+   */
+  @Test
+  public void testHashCodeCachedForConstantBinary() {
+    byte[] bytes = "hash-cache-test".getBytes();
+
+    Binary[] constants = {
+      Binary.fromConstantByteArray(bytes),
+      Binary.fromConstantByteArray(bytes, 0, bytes.length),
+      Binary.fromConstantByteBuffer(ByteBuffer.wrap(bytes)),
+    };
+    int reference = constants[0].hashCode();
+    for (Binary b : constants) {
+      int first = b.hashCode();
+      int second = b.hashCode();
+      assertEquals("repeated hashCode for " + b.getClass().getSimpleName(), first, second);
+      assertEquals(
+          "cross-impl hashCode for " + b.getClass().getSimpleName() + " must equal reference",
+          reference,
+          first);
+    }
+  }
+
+  /**
+   * Verifies that reused (mutable backing) Binary instances do not return a stale cached
+   * hash code when their backing bytes change between calls.
+   */
+  @Test
+  public void testHashCodeNotCachedForReusedBinary() {
+    byte[] bytes = "first".getBytes();
+    Binary reused = Binary.fromReusedByteArray(bytes);
+    int firstHash = reused.hashCode();
+    int constHashFirst = Binary.fromConstantByteArray(bytes).hashCode();
+    assertEquals(constHashFirst, firstHash);
+
+    byte[] mutated = "second-value".getBytes();
+    reused = Binary.fromReusedByteArray(mutated);
+    int secondHash = reused.hashCode();
+    int constHashSecond = Binary.fromConstantByteArray(mutated).hashCode();
+    assertEquals(constHashSecond, secondHash);
+  }
+
   @Test
   public void testWriteAllTo() throws Exception {
     byte[] orig = {10, 9, 8, 7, 6, 5, 4, 3, 2, 1};

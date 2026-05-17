@@ -37,6 +37,18 @@ public abstract class Binary implements Comparable<Binary>, Serializable {
 
   protected boolean isBackingBytesReused;
 
+  /**
+   * Cached hash code for non-reused (immutable) Binary instances.
+   * <p>The sentinel value {@code 0} means "not yet computed". This follows the
+   * {@link String#hashCode()} idiom: races between concurrent first calls are benign
+   * because the computation is deterministic, and a hash that genuinely equals {@code 0}
+   * will simply be recomputed on every call (acceptably rare). Reused instances never
+   * cache (their backing bytes can mutate after construction).
+   * <p>Package-private (rather than private) so subclasses can read it directly without
+   * an extra method call on the {@link #hashCode()} hot path.
+   */
+  transient int cachedHashCode;
+
   // this isn't really something others should extend
   private Binary() {}
 
@@ -99,6 +111,18 @@ public abstract class Binary implements Comparable<Binary>, Serializable {
       return equals((Binary) obj);
     }
     return false;
+  }
+
+  /**
+   * Caches {@code hashCode} for non-reused instances and returns it. The cache uses
+   * a single int field with sentinel {@code 0} to remain race-safe without volatile.
+   * If the computed hash is {@code 0}, no caching occurs and the next call recomputes.
+   */
+  final int cacheHashCode(int hashCode) {
+    if (!isBackingBytesReused) {
+      cachedHashCode = hashCode;
+    }
+    return hashCode;
   }
 
   @Override
@@ -180,7 +204,11 @@ public abstract class Binary implements Comparable<Binary>, Serializable {
 
     @Override
     public int hashCode() {
-      return Binary.hashCode(value, offset, length);
+      int h = cachedHashCode;
+      if (h != 0) {
+        return h;
+      }
+      return cacheHashCode(Binary.hashCode(value, offset, length));
     }
 
     @Override
@@ -340,7 +368,11 @@ public abstract class Binary implements Comparable<Binary>, Serializable {
 
     @Override
     public int hashCode() {
-      return Binary.hashCode(value, 0, value.length);
+      int h = cachedHashCode;
+      if (h != 0) {
+        return h;
+      }
+      return cacheHashCode(Binary.hashCode(value, 0, value.length));
     }
 
     @Override
@@ -499,11 +531,18 @@ public abstract class Binary implements Comparable<Binary>, Serializable {
 
     @Override
     public int hashCode() {
-      if (value.hasArray()) {
-        return Binary.hashCode(value.array(), value.arrayOffset() + offset, length);
-      } else {
-        return Binary.hashCode(value, offset, length);
+      int h = cachedHashCode;
+      if (h != 0) {
+        return h;
       }
+
+      int computedHashCode;
+      if (value.hasArray()) {
+        computedHashCode = Binary.hashCode(value.array(), value.arrayOffset() + offset, length);
+      } else {
+        computedHashCode = Binary.hashCode(value, offset, length);
+      }
+      return cacheHashCode(computedHashCode);
     }
 
     @Override
