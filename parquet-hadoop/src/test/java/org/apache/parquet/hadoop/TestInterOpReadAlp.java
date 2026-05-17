@@ -434,4 +434,145 @@ public class TestInterOpReadAlp {
     // InterOpTester will auto-download from parquet-testing
   }
   */
+
+  // ---------------------------------------------------------------------------
+  // Fixture generator: reads the C++-written ALP files from parquet-testing
+  // PR #100 and re-encodes each as Java ALP at two vector sizes (1024 and 4096).
+  // Outputs land in ALP_OUTPUT_DIR (default: ${user.dir}/alp-java-generated/)
+  // and are intended for submission back to parquet-testing PR #100 so the
+  // C++/Rust/Go readers can verify cross-language compatibility against Java
+  // writes at both vector sizes.
+  // ---------------------------------------------------------------------------
+
+  private static final String[] SOURCE_FILES = {
+    "alp_spotify1.parquet", "alp_arade.parquet", "alp_float_spotify1.parquet", "alp_float_arade.parquet"
+  };
+  private static final int[] GENERATOR_VECTOR_SIZES = {1024, 4096};
+
+  private java.nio.file.Path getOutputDir() throws IOException {
+    String dir = System.getProperty("ALP_OUTPUT_DIR");
+    if (dir == null) dir = System.getenv("ALP_OUTPUT_DIR");
+    java.nio.file.Path target = (dir != null)
+        ? Paths.get(dir)
+        : Paths.get(System.getProperty("user.dir")).resolve("alp-java-generated");
+    java.nio.file.Files.createDirectories(target);
+    return target;
+  }
+
+  /**
+   * Read all rows of the given source file and return them as a list of value-only Group rows
+   * keyed by the source's schema. Used for both the copy and the verification round-trip.
+   */
+  private List<Group> readGroupsWithSchema(java.nio.file.Path source, MessageType[] outSchema) throws IOException {
+    List<Group> rows = new ArrayList<>();
+    try (ParquetFileReader reader = ParquetFileReader.open(new LocalInputFile(source))) {
+      MessageType schema = reader.getFooter().getFileMetaData().getSchema();
+      outSchema[0] = schema;
+      MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
+      PageReadStore pages;
+      while ((pages = reader.readNextRowGroup()) != null) {
+        long rowCount = pages.getRowCount();
+        RecordReader<Group> recordReader =
+            columnIO.getRecordReader(pages, new GroupRecordConverter(schema));
+        for (long i = 0; i < rowCount; i++) {
+          rows.add(recordReader.read());
+        }
+      }
+    }
+    return rows;
+  }
+
+  /**
+   * Generates Java-written ALP fixtures at vectorSize=1024 and 4096 from the four PR #100
+   * source datasets, then verifies each output round-trips bit-exact against its source.
+   *
+   * <p>To run: clone https://github.com/prtkgaur/parquet-testing/tree/alpFloatingPointDataset
+   * and point ALP_SOURCE_DIR at its {@code data/} directory. Outputs go to ALP_OUTPUT_DIR
+   * (default: {@code ${project.root}/alp-java-generated/}), 8 files total:
+   * {@code alp_java_{spotify1,arade,float_spotify1,float_arade}_vs{1024,4096}.parquet}.
+   */
+  @Test
+  public void generateAlpFixturesAtMultipleVectorSizes() throws IOException {
+    java.nio.file.Path sourceDir = getTestDataDir();
+    assumeTrue("ALP source dir not found, skipping fixture generator", sourceDir != null);
+
+    java.nio.file.Path outDir = getOutputDir();
+    LOG.info("Generating ALP fixtures to {}", outDir);
+
+    int generated = 0;
+    for (String sourceFile : SOURCE_FILES) {
+      java.nio.file.Path source = sourceDir.resolve(sourceFile);
+      assumeTrue("Source missing: " + source, source.toFile().exists());
+
+      MessageType[] schemaHolder = new MessageType[1];
+      List<Group> sourceRows = readGroupsWithSchema(source, schemaHolder);
+      MessageType schema = schemaHolder[0];
+
+      String stem = sourceFile.replace("alp_", "").replace(".parquet", "");
+
+      for (int vectorSize : GENERATOR_VECTOR_SIZES) {
+        java.nio.file.Path outPath =
+            outDir.resolve("alp_java_" + stem + "_vs" + vectorSize + ".parquet");
+        java.nio.file.Files.deleteIfExists(outPath);
+
+        try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(new LocalOutputFile(outPath))
+            .withType(schema)
+            .withCompressionCodec(CompressionCodecName.UNCOMPRESSED)
+            .withWriterVersion(WriterVersion.PARQUET_2_0)
+            .withAlpEncoding(true)
+            .withAlpVectorSize(vectorSize)
+            .withDictionaryEncoding(false)
+            .withConf(new Configuration())
+            .build()) {
+          for (Group row : sourceRows) {
+            writer.write(row);
+          }
+        }
+
+        // Verify: read back and compare against the source row-by-row
+        List<Group> roundTrip = readGroupsWithSchema(outPath, new MessageType[1]);
+        assertEquals(
+            "Row count mismatch for " + outPath.getFileName(),
+            sourceRows.size(),
+            roundTrip.size());
+        int fieldCount = schema.getFieldCount();
+        for (int i = 0; i < sourceRows.size(); i++) {
+          for (int f = 0; f < fieldCount; f++) {
+            PrimitiveType.PrimitiveTypeName type =
+                schema.getType(f).asPrimitiveType().getPrimitiveTypeName();
+            String fieldName = schema.getType(f).getName();
+            if (type == PrimitiveType.PrimitiveTypeName.DOUBLE) {
+              double expected = sourceRows.get(i).getDouble(f, 0);
+              double actual = roundTrip.get(i).getDouble(f, 0);
+              long eb = Double.doubleToRawLongBits(expected);
+              long ab = Double.doubleToRawLongBits(actual);
+              assertEquals(
+                  "double bit mismatch in " + outPath.getFileName() + " row " + i + " field " + fieldName,
+                  eb,
+                  ab);
+            } else if (type == PrimitiveType.PrimitiveTypeName.FLOAT) {
+              float expected = sourceRows.get(i).getFloat(f, 0);
+              float actual = roundTrip.get(i).getFloat(f, 0);
+              int eb = Float.floatToRawIntBits(expected);
+              int ab = Float.floatToRawIntBits(actual);
+              assertEquals(
+                  "float bit mismatch in " + outPath.getFileName() + " row " + i + " field " + fieldName,
+                  eb,
+                  ab);
+            }
+          }
+        }
+        long bytes = outPath.toFile().length();
+        LOG.info(
+            "  wrote {} ({} rows, {} bytes, vectorSize={})",
+            outPath.getFileName(),
+            sourceRows.size(),
+            bytes,
+            vectorSize);
+        generated++;
+      }
+    }
+    assertEquals("Expected to generate 8 fixture files", 8, generated);
+    LOG.info("Generated {} ALP fixture files to {}", generated, outDir);
+  }
 }
