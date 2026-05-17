@@ -19,6 +19,7 @@
 package org.apache.parquet.column.values.deltalengthbytearray;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import org.apache.parquet.bytes.DirectByteBufferAllocator;
 import org.apache.parquet.column.values.Utils;
 import org.apache.parquet.column.values.ValuesReader;
@@ -97,5 +98,57 @@ public class TestDeltaLengthByteArray {
     for (int i = 0; i < bin.length; i++) {
       Assert.assertEquals(values[i].length(), bin[i]);
     }
+  }
+
+  @Test
+  public void testWriteBytesRawArray() throws IOException {
+    DeltaLengthByteArrayValuesWriter writer = getDeltaLengthByteArrayValuesWriter();
+    DeltaLengthByteArrayValuesReader reader = new DeltaLengthByteArrayValuesReader();
+
+    // Write using the raw byte[] overload with various offsets
+    byte[] buf = "XXparquetXXhadoopXXmapreduceXX".getBytes(StandardCharsets.UTF_8);
+    writer.writeBytes(buf, 2, 7); // "parquet"
+    writer.writeBytes(buf, 11, 6); // "hadoop"
+    writer.writeBytes(buf, 19, 9); // "mapreduce"
+
+    Binary[] bin = Utils.readData(reader, writer.getBytes().toInputStream(), values.length);
+
+    for (int i = 0; i < bin.length; i++) {
+      Assert.assertEquals(Binary.fromString(values[i]), bin[i]);
+    }
+  }
+
+  @Test
+  public void testWriteBytesRawArrayEmpty() throws IOException {
+    DeltaLengthByteArrayValuesWriter writer = getDeltaLengthByteArrayValuesWriter();
+    DeltaLengthByteArrayValuesReader reader = new DeltaLengthByteArrayValuesReader();
+
+    // Write empty byte arrays
+    writer.writeBytes(new byte[0], 0, 0);
+    writer.writeBytes("hello".getBytes(StandardCharsets.UTF_8), 0, 5);
+    writer.writeBytes(new byte[10], 5, 0); // zero-length from middle of array
+
+    reader.initFromPage(3, writer.getBytes().toInputStream());
+    Assert.assertEquals(Binary.fromString(""), reader.readBytes());
+    Assert.assertEquals(Binary.fromString("hello"), reader.readBytes());
+    Assert.assertEquals(Binary.fromString(""), reader.readBytes());
+  }
+
+  @Test
+  public void testWriteBytesRawArrayMatchesBinaryWrite() throws IOException {
+    // Verify that writeBytes(byte[], offset, length) produces identical
+    // encoded output to writeBytes(Binary)
+    DeltaLengthByteArrayValuesWriter writerBinary = getDeltaLengthByteArrayValuesWriter();
+    DeltaLengthByteArrayValuesWriter writerRaw = getDeltaLengthByteArrayValuesWriter();
+
+    String[] testValues = Utils.getRandomStringSamples(500, 64);
+    for (String s : testValues) {
+      byte[] bytes = s.getBytes(StandardCharsets.UTF_8);
+      writerBinary.writeBytes(Binary.fromConstantByteArray(bytes));
+      writerRaw.writeBytes(bytes, 0, bytes.length);
+    }
+
+    Assert.assertArrayEquals(
+        writerBinary.getBytes().toByteArray(), writerRaw.getBytes().toByteArray());
   }
 }
