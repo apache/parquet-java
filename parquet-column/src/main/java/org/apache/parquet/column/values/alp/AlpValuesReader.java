@@ -81,9 +81,12 @@ abstract class AlpValuesReader extends ValuesReader {
     if (numElements < 0) {
       throw new ParquetDecodingException("Invalid ALP element count: " + numElements);
     }
-    if (numElements != valuesCount) {
+    // ALP's num_elements is the count of non-null values that went through encoding;
+    // valuesCount is the page row count, which is larger when the column has nulls.
+    // The two are equal only for required (non-null) columns.
+    if (numElements > valuesCount) {
       throw new ParquetDecodingException(
-          "ALP header element count " + numElements + " does not match page valuesCount " + valuesCount);
+          "ALP header element count " + numElements + " exceeds page valuesCount " + valuesCount);
     }
 
     this.vectorSize = 1 << logVectorSize;
