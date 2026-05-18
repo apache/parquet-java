@@ -29,6 +29,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.parquet.column.Encoding;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
 import org.apache.parquet.column.page.PageReadStore;
 import org.apache.parquet.example.data.Group;
@@ -591,5 +592,340 @@ public class TestInterOpReadAlp {
     assertEquals(
         "Expected to generate " + expectedFiles + " fixture files", expectedFiles, generated);
     LOG.info("Generated {} ALP fixture files to {}", generated, outDir);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Reader-only validation: opens each Java-written fixture and asserts the
+  // reader path works end-to-end (metadata declares ALP, every row decodes
+  // without error). Separate from the generator's own round-trip check so it
+  // surfaces as a distinct signal — useful when the fixtures already exist on
+  // disk and you want to validate just the read path.
+  // ---------------------------------------------------------------------------
+
+  @Test
+  public void readAllFixtureFilesIndependently() throws IOException {
+    java.nio.file.Path outDir = getOutputDir();
+    File[] files =
+        outDir.toFile().listFiles((f, n) -> n.startsWith("alp_java_") && n.endsWith(".parquet"));
+    assumeTrue("No fixture files in " + outDir, files != null && files.length > 0);
+    java.util.Arrays.sort(files, (a, b) -> a.getName().compareTo(b.getName()));
+
+    int filesRead = 0;
+    int totalChunks = 0;
+    int alpChunks = 0;
+    long totalRows = 0;
+    for (File pf : files) {
+      try (ParquetFileReader reader = ParquetFileReader.open(new LocalInputFile(pf.toPath()))) {
+        ParquetMetadata footer = reader.getFooter();
+        // Layer 1: every column chunk declares ALP
+        for (org.apache.parquet.hadoop.metadata.BlockMetaData block : footer.getBlocks()) {
+          for (org.apache.parquet.hadoop.metadata.ColumnChunkMetaData col : block.getColumns()) {
+            totalChunks++;
+            if (col.getEncodings().contains(Encoding.ALP)) alpChunks++;
+          }
+        }
+        // Layer 2: every row actually decodes (no exceptions thrown, count matches footer)
+        MessageType schema = footer.getFileMetaData().getSchema();
+        MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
+        long rowsDecoded = 0;
+        PageReadStore pages;
+        while ((pages = reader.readNextRowGroup()) != null) {
+          long rowCount = pages.getRowCount();
+          RecordReader<Group> recordReader =
+              columnIO.getRecordReader(pages, new GroupRecordConverter(schema));
+          for (long i = 0; i < rowCount; i++) {
+            Group row = recordReader.read();
+            // Touch every present field so any decode-time exception surfaces.
+            // Optional/null fields have repetitionCount=0 — skip those rather than throw.
+            for (int f = 0; f < schema.getFieldCount(); f++) {
+              if (row.getFieldRepetitionCount(f) == 0) continue;
+              PrimitiveType.PrimitiveTypeName type =
+                  schema.getType(f).asPrimitiveType().getPrimitiveTypeName();
+              if (type == PrimitiveType.PrimitiveTypeName.DOUBLE) {
+                row.getDouble(f, 0);
+              } else if (type == PrimitiveType.PrimitiveTypeName.FLOAT) {
+                row.getFloat(f, 0);
+              }
+            }
+            rowsDecoded++;
+          }
+        }
+        totalRows += rowsDecoded;
+        filesRead++;
+      }
+    }
+    assertEquals("Every column chunk should declare ALP", totalChunks, alpChunks);
+    LOG.info(
+        "readAllFixtureFilesIndependently: {} files, {} chunks ({} ALP), {} rows decoded",
+        filesRead, totalChunks, alpChunks, totalRows);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Corner-case fixture per parquet-testing issue #105. Writes a single small
+  // file with one ALP-encoded column per corner case (no exceptions, 1 exception,
+  // all exceptions, NaN/Inf/-0.0, nulls, constant/bit_width=0, multi-vector with
+  // differing exponents) for both f32 and f64, then reads back and verifies
+  // every value bit-exactly against the expected pattern.
+  //
+  // The output file (alp_java_cornercases.parquet) is intended as a candidate
+  // fixture for parquet-testing PR #100 once Prateek confirms naming and design.
+  // ---------------------------------------------------------------------------
+
+  private static final int CORNER_ROWS_PER_VECTOR = 1024;
+  private static final int CORNER_VECTORS = 2;
+  private static final int CORNER_TOTAL_ROWS = CORNER_ROWS_PER_VECTOR * CORNER_VECTORS;
+
+  /** Expected values per corner-case column. Doubles use NaN to mark a null cell for sentinel use. */
+  private static class CornerCaseData {
+    double[] doubleVals;
+    float[] floatVals;
+    boolean[] isNull; // only meaningful for optional columns
+    boolean isFloat;
+    boolean isOptional;
+    String name;
+
+    static CornerCaseData doubles(String name, double[] vals) {
+      CornerCaseData d = new CornerCaseData();
+      d.name = name;
+      d.doubleVals = vals;
+      d.isFloat = false;
+      d.isOptional = false;
+      return d;
+    }
+
+    static CornerCaseData floats(String name, float[] vals) {
+      CornerCaseData d = new CornerCaseData();
+      d.name = name;
+      d.floatVals = vals;
+      d.isFloat = true;
+      d.isOptional = false;
+      return d;
+    }
+
+    static CornerCaseData optionalDoubles(String name, double[] vals, boolean[] nulls) {
+      CornerCaseData d = doubles(name, vals);
+      d.isOptional = true;
+      d.isNull = nulls;
+      return d;
+    }
+
+    static CornerCaseData optionalFloats(String name, float[] vals, boolean[] nulls) {
+      CornerCaseData d = floats(name, vals);
+      d.isOptional = true;
+      d.isNull = nulls;
+      return d;
+    }
+  }
+
+  private List<CornerCaseData> buildCornerCaseColumns() {
+    List<CornerCaseData> cols = new ArrayList<>();
+    int N = CORNER_TOTAL_ROWS;
+
+    // 1. f64_no_exceptions: clean 2-decimal values, both vectors low bit-width
+    double[] noExc = new double[N];
+    for (int i = 0; i < N; i++) noExc[i] = (i % 1000) / 100.0;
+    cols.add(CornerCaseData.doubles("f64_no_exceptions", noExc));
+
+    // 2. f64_one_exception_per_vector: clean values with 1 NaN per 1024-row vector
+    double[] oneExc = new double[N];
+    for (int i = 0; i < N; i++) oneExc[i] = (i % 1000) / 100.0;
+    oneExc[100] = Double.NaN;
+    oneExc[1100] = Double.NaN;
+    cols.add(CornerCaseData.doubles("f64_one_exception_per_vector", oneExc));
+
+    // 3. f64_all_nan: every value NaN — all-exception vector
+    double[] allNan = new double[N];
+    java.util.Arrays.fill(allNan, Double.NaN);
+    cols.add(CornerCaseData.doubles("f64_all_nan", allNan));
+
+    // 4. f64_nan_inf_negzero: mix of special values across two vectors
+    double[] mixed = new double[N];
+    for (int i = 0; i < N; i++) mixed[i] = (i % 100) / 10.0;
+    mixed[0] = Double.NaN;
+    mixed[1] = Double.POSITIVE_INFINITY;
+    mixed[2] = Double.NEGATIVE_INFINITY;
+    mixed[3] = -0.0;
+    mixed[1024] = Double.NaN;
+    mixed[1025] = -0.0;
+    cols.add(CornerCaseData.doubles("f64_nan_inf_negzero", mixed));
+
+    // 5. f64_constant: every value = 42.0 → max_delta=0 → bit_width=0
+    double[] constant = new double[N];
+    java.util.Arrays.fill(constant, 42.0);
+    cols.add(CornerCaseData.doubles("f64_constant", constant));
+
+    // 6. f64_different_e_f_per_vector: vector 0 uses e=2,f=0 (cents); vector 1 uses e=3,f=0 (mils)
+    double[] diff = new double[N];
+    for (int i = 0; i < CORNER_ROWS_PER_VECTOR; i++) diff[i] = (i % 100) / 100.0;
+    for (int i = CORNER_ROWS_PER_VECTOR; i < N; i++) diff[i] = ((i - CORNER_ROWS_PER_VECTOR) % 1000) / 1000.0;
+    cols.add(CornerCaseData.doubles("f64_different_ef_per_vector", diff));
+
+    // 7. f64_with_nulls: optional column, ~30% nulls scattered
+    double[] withNulls = new double[N];
+    boolean[] nullMask = new boolean[N];
+    for (int i = 0; i < N; i++) {
+      if (i % 3 == 0) {
+        nullMask[i] = true;
+      } else {
+        withNulls[i] = (i % 100) / 100.0;
+      }
+    }
+    cols.add(CornerCaseData.optionalDoubles("f64_with_nulls", withNulls, nullMask));
+
+    // 8–14: f32 analogues
+    float[] noExcF = new float[N];
+    for (int i = 0; i < N; i++) noExcF[i] = (i % 1000) / 100.0f;
+    cols.add(CornerCaseData.floats("f32_no_exceptions", noExcF));
+
+    float[] oneExcF = new float[N];
+    for (int i = 0; i < N; i++) oneExcF[i] = (i % 1000) / 100.0f;
+    oneExcF[100] = Float.NaN;
+    oneExcF[1100] = Float.NaN;
+    cols.add(CornerCaseData.floats("f32_one_exception_per_vector", oneExcF));
+
+    float[] allNanF = new float[N];
+    java.util.Arrays.fill(allNanF, Float.NaN);
+    cols.add(CornerCaseData.floats("f32_all_nan", allNanF));
+
+    float[] mixedF = new float[N];
+    for (int i = 0; i < N; i++) mixedF[i] = (i % 100) / 10.0f;
+    mixedF[0] = Float.NaN;
+    mixedF[1] = Float.POSITIVE_INFINITY;
+    mixedF[2] = Float.NEGATIVE_INFINITY;
+    mixedF[3] = -0.0f;
+    mixedF[1024] = Float.NaN;
+    mixedF[1025] = -0.0f;
+    cols.add(CornerCaseData.floats("f32_nan_inf_negzero", mixedF));
+
+    float[] constantF = new float[N];
+    java.util.Arrays.fill(constantF, 42.0f);
+    cols.add(CornerCaseData.floats("f32_constant", constantF));
+
+    float[] diffF = new float[N];
+    for (int i = 0; i < CORNER_ROWS_PER_VECTOR; i++) diffF[i] = (i % 100) / 100.0f;
+    for (int i = CORNER_ROWS_PER_VECTOR; i < N; i++) diffF[i] = ((i - CORNER_ROWS_PER_VECTOR) % 1000) / 1000.0f;
+    cols.add(CornerCaseData.floats("f32_different_ef_per_vector", diffF));
+
+    float[] withNullsF = new float[N];
+    boolean[] nullMaskF = new boolean[N];
+    for (int i = 0; i < N; i++) {
+      if (i % 3 == 0) {
+        nullMaskF[i] = true;
+      } else {
+        withNullsF[i] = (i % 100) / 100.0f;
+      }
+    }
+    cols.add(CornerCaseData.optionalFloats("f32_with_nulls", withNullsF, nullMaskF));
+
+    return cols;
+  }
+
+  @Test
+  public void generateAndVerifyCornerCaseFixture() throws IOException {
+    java.nio.file.Path outDir = getOutputDir();
+    java.nio.file.Path outPath = outDir.resolve("alp_java_cornercases.parquet");
+    java.nio.file.Files.deleteIfExists(outPath);
+
+    List<CornerCaseData> cols = buildCornerCaseColumns();
+
+    // Build the schema
+    StringBuilder schemaText = new StringBuilder("message alp_corner_cases {\n");
+    for (CornerCaseData c : cols) {
+      schemaText.append("  ")
+          .append(c.isOptional ? "optional " : "required ")
+          .append(c.isFloat ? "float " : "double ")
+          .append(c.name)
+          .append(";\n");
+    }
+    schemaText.append("}\n");
+    MessageType schema = MessageTypeParser.parseMessageType(schemaText.toString());
+
+    // Write
+    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(new LocalOutputFile(outPath))
+        .withType(schema)
+        .withCompressionCodec(CompressionCodecName.UNCOMPRESSED)
+        .withWriterVersion(WriterVersion.PARQUET_2_0)
+        .withAlpEncoding(true)
+        .withAlpVectorSize(CORNER_ROWS_PER_VECTOR)
+        .withDictionaryEncoding(false)
+        .withConf(new Configuration())
+        .build()) {
+      for (int r = 0; r < CORNER_TOTAL_ROWS; r++) {
+        SimpleGroup row = new SimpleGroup(schema);
+        for (CornerCaseData c : cols) {
+          if (c.isOptional && c.isNull[r]) continue; // leave field unset
+          if (c.isFloat) {
+            row.add(c.name, c.floatVals[r]);
+          } else {
+            row.add(c.name, c.doubleVals[r]);
+          }
+        }
+        writer.write(row);
+      }
+    }
+
+    // Read back and verify every value bit-exact
+    int mismatches = 0;
+    int values = 0;
+    try (ParquetFileReader reader = ParquetFileReader.open(new LocalInputFile(outPath))) {
+      MessageType readSchema = reader.getFooter().getFileMetaData().getSchema();
+      MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(readSchema);
+      PageReadStore pages;
+      int rowIdx = 0;
+      while ((pages = reader.readNextRowGroup()) != null) {
+        long rc = pages.getRowCount();
+        RecordReader<Group> rr =
+            columnIO.getRecordReader(pages, new GroupRecordConverter(readSchema));
+        for (long i = 0; i < rc; i++) {
+          Group row = rr.read();
+          for (int fi = 0; fi < cols.size(); fi++) {
+            CornerCaseData c = cols.get(fi);
+            boolean shouldBePresent = !(c.isOptional && c.isNull[rowIdx]);
+            int fieldRepetition = row.getFieldRepetitionCount(fi);
+            if (!shouldBePresent) {
+              if (fieldRepetition != 0) {
+                mismatches++;
+                LOG.warn("col={} row={} expected null but got value", c.name, rowIdx);
+              }
+              continue;
+            }
+            if (fieldRepetition == 0) {
+              mismatches++;
+              LOG.warn("col={} row={} expected value but got null", c.name, rowIdx);
+              continue;
+            }
+            values++;
+            if (c.isFloat) {
+              float expected = c.floatVals[rowIdx];
+              float actual = row.getFloat(fi, 0);
+              if (Float.floatToRawIntBits(expected) != Float.floatToRawIntBits(actual)) {
+                if (mismatches < 5) {
+                  LOG.warn("col={} row={} expected={} actual={}", c.name, rowIdx, expected, actual);
+                }
+                mismatches++;
+              }
+            } else {
+              double expected = c.doubleVals[rowIdx];
+              double actual = row.getDouble(fi, 0);
+              if (Double.doubleToRawLongBits(expected) != Double.doubleToRawLongBits(actual)) {
+                if (mismatches < 5) {
+                  LOG.warn("col={} row={} expected={} actual={}", c.name, rowIdx, expected, actual);
+                }
+                mismatches++;
+              }
+            }
+          }
+          rowIdx++;
+        }
+      }
+    }
+    assertEquals("Corner-case fixture had decode mismatches", 0, mismatches);
+    LOG.info(
+        "generateAndVerifyCornerCaseFixture: wrote {} ({} bytes, {} cols, {} rows, {} values verified)",
+        outPath.getFileName(),
+        outPath.toFile().length(),
+        cols.size(),
+        CORNER_TOTAL_ROWS,
+        values);
   }
 }
