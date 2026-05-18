@@ -448,6 +448,9 @@ public class TestInterOpReadAlp {
     "alp_spotify1.parquet", "alp_arade.parquet", "alp_float_spotify1.parquet", "alp_float_arade.parquet"
   };
   private static final int[] GENERATOR_VECTOR_SIZES = {1024, 4096};
+  private static final WriterVersion[] GENERATOR_PAGE_VERSIONS = {
+    WriterVersion.PARQUET_1_0, WriterVersion.PARQUET_2_0
+  };
 
   private java.nio.file.Path getOutputDir() throws IOException {
     String dir = System.getProperty("ALP_OUTPUT_DIR");
@@ -483,13 +486,19 @@ public class TestInterOpReadAlp {
   }
 
   /**
-   * Generates Java-written ALP fixtures at vectorSize=1024 and 4096 from the four PR #100
-   * source datasets, then verifies each output round-trips bit-exact against its source.
+   * Generates Java-written ALP fixtures from the four PR #100 source datasets across two axes:
+   * page version (V1, V2) and vectorSize (1024, 4096). Each output is verified bit-exact against
+   * its source. Produces 16 files total:
+   * {@code alp_java_{spotify1,arade,float_spotify1,float_arade}_v{1,2}_vs{1024,4096}.parquet}.
+   *
+   * <p>Page version is orthogonal to ALP encoding (the page version difference lives in the
+   * parquet protocol layer, not in the ALP payload), but covering both axes makes the fixture
+   * set fully symmetric for cross-language compatibility — every reader can verify it handles
+   * Java-written ALP regardless of how the surrounding pages are framed.
    *
    * <p>To run: clone https://github.com/prtkgaur/parquet-testing/tree/alpFloatingPointDataset
-   * and point ALP_SOURCE_DIR at its {@code data/} directory. Outputs go to ALP_OUTPUT_DIR
-   * (default: {@code ${project.root}/alp-java-generated/}), 8 files total:
-   * {@code alp_java_{spotify1,arade,float_spotify1,float_arade}_vs{1024,4096}.parquet}.
+   * and point ALP_TEST_DATA_DIR at its {@code data/} directory. Outputs go to ALP_OUTPUT_DIR
+   * (default: {@code ${project.root}/alp-java-generated/}).
    */
   @Test
   public void generateAlpFixturesAtMultipleVectorSizes() throws IOException {
@@ -499,6 +508,8 @@ public class TestInterOpReadAlp {
     java.nio.file.Path outDir = getOutputDir();
     LOG.info("Generating ALP fixtures to {}", outDir);
 
+    int expectedFiles =
+        SOURCE_FILES.length * GENERATOR_PAGE_VERSIONS.length * GENERATOR_VECTOR_SIZES.length;
     int generated = 0;
     for (String sourceFile : SOURCE_FILES) {
       java.nio.file.Path source = sourceDir.resolve(sourceFile);
@@ -510,69 +521,75 @@ public class TestInterOpReadAlp {
 
       String stem = sourceFile.replace("alp_", "").replace(".parquet", "");
 
-      for (int vectorSize : GENERATOR_VECTOR_SIZES) {
-        java.nio.file.Path outPath =
-            outDir.resolve("alp_java_" + stem + "_vs" + vectorSize + ".parquet");
-        java.nio.file.Files.deleteIfExists(outPath);
+      for (WriterVersion pageVersion : GENERATOR_PAGE_VERSIONS) {
+        String pageTag = (pageVersion == WriterVersion.PARQUET_1_0) ? "v1" : "v2";
+        for (int vectorSize : GENERATOR_VECTOR_SIZES) {
+          java.nio.file.Path outPath =
+              outDir.resolve(
+                  "alp_java_" + stem + "_" + pageTag + "_vs" + vectorSize + ".parquet");
+          java.nio.file.Files.deleteIfExists(outPath);
 
-        try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(new LocalOutputFile(outPath))
-            .withType(schema)
-            .withCompressionCodec(CompressionCodecName.UNCOMPRESSED)
-            .withWriterVersion(WriterVersion.PARQUET_2_0)
-            .withAlpEncoding(true)
-            .withAlpVectorSize(vectorSize)
-            .withDictionaryEncoding(false)
-            .withConf(new Configuration())
-            .build()) {
-          for (Group row : sourceRows) {
-            writer.write(row);
-          }
-        }
-
-        // Verify: read back and compare against the source row-by-row
-        List<Group> roundTrip = readGroupsWithSchema(outPath, new MessageType[1]);
-        assertEquals(
-            "Row count mismatch for " + outPath.getFileName(),
-            sourceRows.size(),
-            roundTrip.size());
-        int fieldCount = schema.getFieldCount();
-        for (int i = 0; i < sourceRows.size(); i++) {
-          for (int f = 0; f < fieldCount; f++) {
-            PrimitiveType.PrimitiveTypeName type =
-                schema.getType(f).asPrimitiveType().getPrimitiveTypeName();
-            String fieldName = schema.getType(f).getName();
-            if (type == PrimitiveType.PrimitiveTypeName.DOUBLE) {
-              double expected = sourceRows.get(i).getDouble(f, 0);
-              double actual = roundTrip.get(i).getDouble(f, 0);
-              long eb = Double.doubleToRawLongBits(expected);
-              long ab = Double.doubleToRawLongBits(actual);
-              assertEquals(
-                  "double bit mismatch in " + outPath.getFileName() + " row " + i + " field " + fieldName,
-                  eb,
-                  ab);
-            } else if (type == PrimitiveType.PrimitiveTypeName.FLOAT) {
-              float expected = sourceRows.get(i).getFloat(f, 0);
-              float actual = roundTrip.get(i).getFloat(f, 0);
-              int eb = Float.floatToRawIntBits(expected);
-              int ab = Float.floatToRawIntBits(actual);
-              assertEquals(
-                  "float bit mismatch in " + outPath.getFileName() + " row " + i + " field " + fieldName,
-                  eb,
-                  ab);
+          try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(new LocalOutputFile(outPath))
+              .withType(schema)
+              .withCompressionCodec(CompressionCodecName.UNCOMPRESSED)
+              .withWriterVersion(pageVersion)
+              .withAlpEncoding(true)
+              .withAlpVectorSize(vectorSize)
+              .withDictionaryEncoding(false)
+              .withConf(new Configuration())
+              .build()) {
+            for (Group row : sourceRows) {
+              writer.write(row);
             }
           }
+
+          // Verify: read back and compare against the source row-by-row
+          List<Group> roundTrip = readGroupsWithSchema(outPath, new MessageType[1]);
+          assertEquals(
+              "Row count mismatch for " + outPath.getFileName(),
+              sourceRows.size(),
+              roundTrip.size());
+          int fieldCount = schema.getFieldCount();
+          for (int i = 0; i < sourceRows.size(); i++) {
+            for (int f = 0; f < fieldCount; f++) {
+              PrimitiveType.PrimitiveTypeName type =
+                  schema.getType(f).asPrimitiveType().getPrimitiveTypeName();
+              String fieldName = schema.getType(f).getName();
+              if (type == PrimitiveType.PrimitiveTypeName.DOUBLE) {
+                double expected = sourceRows.get(i).getDouble(f, 0);
+                double actual = roundTrip.get(i).getDouble(f, 0);
+                long eb = Double.doubleToRawLongBits(expected);
+                long ab = Double.doubleToRawLongBits(actual);
+                assertEquals(
+                    "double bit mismatch in " + outPath.getFileName() + " row " + i + " field " + fieldName,
+                    eb,
+                    ab);
+              } else if (type == PrimitiveType.PrimitiveTypeName.FLOAT) {
+                float expected = sourceRows.get(i).getFloat(f, 0);
+                float actual = roundTrip.get(i).getFloat(f, 0);
+                int eb = Float.floatToRawIntBits(expected);
+                int ab = Float.floatToRawIntBits(actual);
+                assertEquals(
+                    "float bit mismatch in " + outPath.getFileName() + " row " + i + " field " + fieldName,
+                    eb,
+                    ab);
+              }
+            }
+          }
+          long bytes = outPath.toFile().length();
+          LOG.info(
+              "  wrote {} ({} rows, {} bytes, pageVersion={}, vectorSize={})",
+              outPath.getFileName(),
+              sourceRows.size(),
+              bytes,
+              pageTag,
+              vectorSize);
+          generated++;
         }
-        long bytes = outPath.toFile().length();
-        LOG.info(
-            "  wrote {} ({} rows, {} bytes, vectorSize={})",
-            outPath.getFileName(),
-            sourceRows.size(),
-            bytes,
-            vectorSize);
-        generated++;
       }
     }
-    assertEquals("Expected to generate 8 fixture files", 8, generated);
+    assertEquals(
+        "Expected to generate " + expectedFiles + " fixture files", expectedFiles, generated);
     LOG.info("Generated {} ALP fixture files to {}", generated, outDir);
   }
 }
