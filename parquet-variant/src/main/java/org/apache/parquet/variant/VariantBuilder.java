@@ -24,6 +24,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Set;
+import org.apache.parquet.io.api.Binary;
 
 /**
  * Builder for creating Variant value and metadata.
@@ -109,7 +110,14 @@ public class VariantBuilder {
    */
   public void appendString(String str) {
     onAppend();
-    byte[] data = str.getBytes(StandardCharsets.UTF_8);
+    writeUTF8bytes(str.getBytes(StandardCharsets.UTF_8));
+  }
+
+  /**
+   * Write bytes as a UTF8 string.
+   * @param data data to write; this is not modified.
+   */
+  private void writeUTF8bytes(final byte[] data) {
     boolean longStr = data.length > VariantUtil.MAX_SHORT_STR_SIZE;
     checkCapacity((longStr ? 1 + VariantUtil.U32_SIZE : 1) + data.length);
     if (longStr) {
@@ -123,6 +131,16 @@ public class VariantBuilder {
     }
     System.arraycopy(data, 0, writeBuffer, writePos, data.length);
     writePos += data.length;
+  }
+
+  /**
+   * Given a Binary, append it to the variant as a string.
+   * Avoids intermediate String creation when unmarshalling from shredded string columns.
+   * @param binary source data.
+   */
+  void appendAsString(Binary binary) {
+    onAppend();
+    writeUTF8bytes(binary.getBytesUnsafe());
   }
 
   /**
