@@ -887,50 +887,23 @@ class VariantUtil {
   }
 
   /**
-   * Bounds-checks the metadata buffer: header version, dictionary offset table and string data
-   * region all fit within the buffer extent. It does not perform any deep checks into
-   * the metadata itself.
-   *
-   * @param metadata the variant metadata buffer
-   * @return the dictionary size
-   * @throws IllegalArgumentException if the metadata buffer is not well-formed
-   */
-  static int validateMetadata(ByteBuffer metadata) {
-    int pos = metadata.position();
-    Preconditions.checkArgument(pos >= 0 && pos < metadata.limit(), "variant metadata is empty");
-    int header = metadata.get(pos) & 0xFF;
-    Preconditions.checkArgument(
-        (header & VERSION_MASK) == VERSION, "Unsupported variant metadata version: %s", header & VERSION_MASK);
-    int offsetSize = ((header >> 6) & 0x3) + 1;
-    long remaining = (long) metadata.limit() - pos;
-    long offsetListStart = 1L + offsetSize;
-    Preconditions.checkArgument(offsetListStart <= remaining, "variant metadata truncated");
-    int dictSize = readUnsigned(metadata, pos + 1, offsetSize);
-    long offsetBytes = (long) (dictSize + 1) * offsetSize;
-    long dataStart = offsetListStart + offsetBytes;
-    Preconditions.checkArgument(
-        dataStart <= remaining, "variant metadata dictionary table extends past buffer: dictSize=%s", dictSize);
-    return dictSize;
-  }
-
-  /**
    * Bounds-checks a single Variant value node against its buffer slot. Performs no recursion
    * into nested children: child nodes are checked on demand when callers descend into them.
    *
    * <p>Cost: O(1) for primitives and short strings, O(numElements) for objects and arrays.
    * Validation of nested structures is deferred so that opening a large well-formed Variant
-   * is not penalised by sub-trees the caller never inspects.
+   * is not penalized by sub-trees the caller never inspects.
    *
-   * @param value the variant value buffer (position/limit define the extent of this node's slot)
+   * @param valueBuffer the variant value buffer (position/limit define the extent of this node's slot)
    * @param dictSize the metadata dictionary size, used to bound object field ids
    * @throws IllegalArgumentException if the value header or container table does not fit within
    *     the buffer slot, or if any object field id is out of range
    */
-  static void validateValueShallow(ByteBuffer value, int dictSize) {
-    int s = value.position();
-    Preconditions.checkArgument(s >= 0 && s < value.limit(), "variant value is empty");
-    long slot = (long) value.limit() - s;
-    int header = value.get(s) & 0xFF;
+  static void validateValueShallow(final ByteBuffer valueBuffer, final int dictSize) {
+    int pos = valueBuffer.position();
+    Preconditions.checkArgument(pos >= 0 && pos < valueBuffer.limit(), "variant value is empty");
+    long slot = (long) valueBuffer.limit() - pos;
+    int header = valueBuffer.get(pos) & 0xFF;
     int basicType = header & BASIC_TYPE_MASK;
     int typeInfo = (header >> BASIC_TYPE_BITS) & PRIMITIVE_TYPE_MASK;
     switch (basicType) {
@@ -938,18 +911,33 @@ class VariantUtil {
         Preconditions.checkArgument(1L + typeInfo <= slot, "variant short string extends past buffer");
         return;
       case OBJECT:
-        validateContainerShallow(value, s, slot, dictSize, true, typeInfo);
+        validateContainerShallow(valueBuffer, typeInfo, pos, slot, dictSize, true);
         return;
       case ARRAY:
-        validateContainerShallow(value, s, slot, dictSize, false, typeInfo);
+        validateContainerShallow(valueBuffer, typeInfo, pos, slot, dictSize, false);
         return;
       default:
-        validatePrimitiveShallow(value, s, slot, typeInfo);
+        validatePrimitiveShallow(valueBuffer, typeInfo, pos, slot);
     }
   }
 
+  /**
+   * Shallow validation of a container.
+   *
+   * @param valueBuffer buffer with the variant data
+   * @param typeInfo type information from the metadata
+   * @param pos buffer read position
+   * @param length length of slot for this primitive.
+   * @param dictSize dictionary size
+   * @param isObject is this an object?
+   */
   private static void validateContainerShallow(
-      ByteBuffer value, int s, long slot, int dictSize, boolean isObject, int typeInfo) {
+      final ByteBuffer valueBuffer,
+      final int typeInfo,
+      final int pos,
+      final long length,
+      final int dictSize,
+      final boolean isObject) {
     boolean largeSize;
     int idSize;
     if (isObject) {
@@ -961,19 +949,19 @@ class VariantUtil {
     }
     int offsetSize = (typeInfo & 0x3) + 1;
     int sizeBytes = largeSize ? U32_SIZE : 1;
-    Preconditions.checkArgument(1L + sizeBytes <= slot, "variant container header truncated");
-    int numElements = readUnsigned(value, s + 1, sizeBytes);
+    Preconditions.checkArgument(1L + sizeBytes <= length, "variant container header truncated");
+    int numElements = readUnsigned(valueBuffer, pos + 1, sizeBytes);
     long idStart = 1L + sizeBytes;
     long idBytes = isObject ? (long) numElements * idSize : 0L;
     long offsetStart = idStart + idBytes;
     long offsetBytes = (long) (numElements + 1) * offsetSize;
     long dataStart = offsetStart + offsetBytes;
     Preconditions.checkArgument(
-        dataStart <= slot, "variant container offset table extends past buffer: numElements=%s", numElements);
-    long dataLen = slot - dataStart;
+        dataStart <= length, "variant container offset table extends past buffer: numElements=%s", numElements);
+    long dataLen = length - dataStart;
     if (isObject) {
       for (int i = 0; i < numElements; i++) {
-        int id = readUnsigned(value, s + (int) idStart + i * idSize, idSize);
+        int id = readUnsigned(valueBuffer, pos + (int) idStart + i * idSize, idSize);
         Preconditions.checkArgument(
             id < dictSize, "variant object key id %s out of range (dictSize=%s)", id, dictSize);
       }
@@ -982,13 +970,23 @@ class VariantUtil {
     // the trailing terminator offset is range-checked for the same reason.
     for (int i = 0; i <= numElements; i++) {
       // O(elements)
-      int off = readUnsigned(value, s + (int) offsetStart + i * offsetSize, offsetSize);
+      int off = readUnsigned(valueBuffer, pos + (int) offsetStart + i * offsetSize, offsetSize);
       Preconditions.checkArgument(
           off <= dataLen, "variant child offset out of range: %s (data length %s)", off, dataLen);
     }
   }
 
-  private static void validatePrimitiveShallow(ByteBuffer value, int s, long slot, int typeInfo) {
+  /**
+   * Validate the primitive type. The buffer must have enough capacity
+   * for the given type (and of course, the type must be recognized).
+   *
+   * @param valueBuffer buffer with the variant data
+   * @param typeInfo type information from the metadata
+   * @param pos buffer read position
+   * @param length length of slot for this primitive.
+   */
+  private static void validatePrimitiveShallow(
+      final ByteBuffer valueBuffer, final int typeInfo, final int pos, final long length) {
     long size;
     switch (typeInfo) {
       case NULL:
@@ -1027,8 +1025,8 @@ class VariantUtil {
         break;
       case BINARY:
       case LONG_STR: {
-        Preconditions.checkArgument(1L + U32_SIZE <= slot, "variant string/binary length field truncated");
-        size = 1L + U32_SIZE + readUnsigned(value, s + 1, U32_SIZE);
+        Preconditions.checkArgument(1L + U32_SIZE <= length, "variant string/binary length field truncated");
+        size = 1L + U32_SIZE + readUnsigned(valueBuffer, pos + 1, U32_SIZE);
         break;
       }
       case UUID:
@@ -1037,7 +1035,7 @@ class VariantUtil {
       default:
         throw new IllegalArgumentException(String.format("Unknown primitive type in variant: %d", typeInfo));
     }
-    Preconditions.checkArgument(size <= slot, "variant value extends past buffer");
+    Preconditions.checkArgument(size <= length, "variant value extends past buffer");
   }
 
   /**

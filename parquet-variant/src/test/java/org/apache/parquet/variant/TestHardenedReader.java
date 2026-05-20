@@ -58,7 +58,7 @@ import org.junit.rules.TestName;
 public class TestHardenedReader {
 
   private static final String SCHEMA_STRING =
-      "message variant_record {\n" + "  required binary metadata;\n" + "  required binary value;\n" + "}";
+      "message variant_record { required binary metadata; required binary value; }";
 
   private static final MessageType SCHEMA = MessageTypeParser.parseMessageType(SCHEMA_STRING);
 
@@ -101,7 +101,7 @@ public class TestHardenedReader {
     // Layout of arrayOneNull(): [header, numElements=1, offset[0]=0, offset[1]=1, NULL_header]
     // Set offset[0] to 0xFF — far outside the 1-byte data region.
     value[2] = (byte) 0xFF;
-    expectIllegalArgument(EMPTY_METADATA, value, "child offset");
+    expectRoundTripRaisesIllegalArgument(EMPTY_METADATA, value, "child offset");
   }
 
   /**
@@ -121,7 +121,7 @@ public class TestHardenedReader {
     value[2] = (byte) ((huge >> 8) & 0xFF);
     value[3] = (byte) ((huge >> 16) & 0xFF);
     value[4] = (byte) ((huge >> 24) & 0xFF);
-    expectIllegalArgument(EMPTY_METADATA, value, "offset table");
+    expectRoundTripRaisesIllegalArgument(EMPTY_METADATA, value, "offset table");
   }
 
   /**
@@ -135,7 +135,7 @@ public class TestHardenedReader {
     //          numElements (4 bytes, little-endian) = 0x33333333,
     //          three filler bytes]
     byte[] value = new byte[] {0x4E, 0x33, 0x33, 0x33, 0x33, (byte) 0xFF, (byte) 0xFF, 0x3F};
-    expectIllegalArgument(EMPTY_METADATA, value, "");
+    expectRoundTripRaisesIllegalArgument(EMPTY_METADATA, value, "");
   }
 
   /**
@@ -307,7 +307,7 @@ public class TestHardenedReader {
     // With offsetSize=1 the offset table would then occupy 256 bytes — past the 3-byte buffer.
     byte[] metadata = EMPTY_METADATA.clone();
     metadata[1] = (byte) 0xFF;
-    expectIllegalArgument(metadata, arrayOneNull(), "dictionary");
+    expectRoundTripRaisesIllegalArgument(metadata, arrayOneNull(), "dictionary");
   }
 
   // ------------------------------------------------------------------
@@ -327,7 +327,8 @@ public class TestHardenedReader {
    * @param value payload
    * @param messageSubstring substring of expected error message. Pass "" to skip check.
    * */
-  private void expectIllegalArgument(byte[] metadata, byte[] value, String messageSubstring) throws IOException {
+  private void expectRoundTripRaisesIllegalArgument(byte[] metadata, byte[] value, String messageSubstring)
+      throws IOException {
     byte[][] roundTripped = roundTrip(metadata, value);
     Assert.assertArrayEquals("metadata changed during round-trip", metadata, roundTripped[0]);
     Assert.assertArrayEquals("value changed during round-trip", value, roundTripped[1]);
