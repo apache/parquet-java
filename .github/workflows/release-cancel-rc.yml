@@ -65,7 +65,7 @@ jobs:
           persist-credentials: false
 
       - name: Install Subversion
-        run: sudo apt-get update && sudo apt-get install -y subversion
+        run: sudo apt-get update -q && sudo apt-get install -q -y subversion
 
       - name: Cancel Release Candidate
         env:
