@@ -41,9 +41,7 @@ jobs:
           fetch-depth: 0
 
       - name: Install bats-core
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y bats
+        run: sudo apt-get update -q && sudo apt-get install -q -y bats
 
       - name: Configure Git identity for tests
         run: |
