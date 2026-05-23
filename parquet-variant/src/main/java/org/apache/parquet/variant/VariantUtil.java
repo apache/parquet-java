@@ -827,7 +827,10 @@ class VariantUtil {
     checkIndex(dataPos + nextOffset - 1, metadata.limit());
     if (metadata.hasArray() && !metadata.isReadOnly()) {
       return new String(
-          metadata.array(), metadata.arrayOffset() + dataPos + offset, nextOffset - offset, StandardCharsets.UTF_8);
+          metadata.array(),
+          metadata.arrayOffset() + dataPos + offset,
+          nextOffset - offset,
+          StandardCharsets.UTF_8);
     } else {
       // ByteBuffer does not have an array, so we need to use the `get` method to read the bytes.
       byte[] metadataArray = new byte[nextOffset - offset];
