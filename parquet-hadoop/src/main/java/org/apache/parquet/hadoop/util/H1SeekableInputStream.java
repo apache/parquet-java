@@ -35,7 +35,9 @@ import org.apache.parquet.io.ParquetFileRange;
  * found.
  * The return value of {@link #readVectoredAvailable(ByteBufferAllocator)}
  * reflects the availability of the API.
+ * @deprecated will be removed in 2.0.0
  */
+@Deprecated
 class H1SeekableInputStream extends DelegatingSeekableInputStream {
 
   private final FSDataInputStream stream;
