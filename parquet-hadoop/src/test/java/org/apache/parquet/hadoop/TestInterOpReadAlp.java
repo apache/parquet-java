@@ -820,13 +820,57 @@ public class TestInterOpReadAlp {
     return cols;
   }
 
+  /**
+   * Dumps the corner-case construction recipe to a CSV truth file alongside the parquet.
+   * The CSV is built directly from the expected values (not by reading the parquet back),
+   * which makes it suitable as independent ground truth for cross-language verifiers.
+   *
+   * <p>Conventions:
+   * <ul>
+   *   <li>Header row matches column names.
+   *   <li>Empty field marks a null cell in an optional column.
+   *   <li>Special values use Java's standard toString output: {@code NaN}, {@code Infinity},
+   *       {@code -Infinity}. These parse correctly via C++ {@code std::stod} / {@code std::stof}
+   *       (per the standard, both are case-insensitive and accept the full word "Infinity").
+   *   <li>{@code -0.0} round-trips through both Java and C++ string conversion bit-exact.
+   * </ul>
+   */
+  private void writeCornerCaseCsvTruth(java.nio.file.Path csvPath, List<CornerCaseData> cols) throws IOException {
+    try (java.io.BufferedWriter w = java.nio.file.Files.newBufferedWriter(csvPath)) {
+      // Header
+      for (int i = 0; i < cols.size(); i++) {
+        if (i > 0) w.write(",");
+        w.write(cols.get(i).name);
+      }
+      w.write("\n");
+      // Data
+      for (int r = 0; r < CORNER_TOTAL_ROWS; r++) {
+        for (int i = 0; i < cols.size(); i++) {
+          if (i > 0) w.write(",");
+          CornerCaseData c = cols.get(i);
+          if (c.isOptional && c.isNull[r]) {
+            // empty field = null
+          } else if (c.isFloat) {
+            w.write(Float.toString(c.floatVals[r]));
+          } else {
+            w.write(Double.toString(c.doubleVals[r]));
+          }
+        }
+        w.write("\n");
+      }
+    }
+  }
+
   @Test
   public void generateAndVerifyCornerCaseFixture() throws IOException {
     java.nio.file.Path outDir = getOutputDir();
     java.nio.file.Path outPath = outDir.resolve("alp_java_cornercases.parquet");
+    java.nio.file.Path csvPath = outDir.resolve("alp_java_cornercases_expect.csv");
     java.nio.file.Files.deleteIfExists(outPath);
+    java.nio.file.Files.deleteIfExists(csvPath);
 
     List<CornerCaseData> cols = buildCornerCaseColumns();
+    writeCornerCaseCsvTruth(csvPath, cols);
 
     // Build the schema
     StringBuilder schemaText = new StringBuilder("message alp_corner_cases {\n");
@@ -921,9 +965,11 @@ public class TestInterOpReadAlp {
     }
     assertEquals("Corner-case fixture had decode mismatches", 0, mismatches);
     LOG.info(
-        "generateAndVerifyCornerCaseFixture: wrote {} ({} bytes, {} cols, {} rows, {} values verified)",
+        "generateAndVerifyCornerCaseFixture: wrote {} ({} bytes) and {} ({} bytes); {} cols, {} rows, {} values verified",
         outPath.getFileName(),
         outPath.toFile().length(),
+        csvPath.getFileName(),
+        csvPath.toFile().length(),
         cols.size(),
         CORNER_TOTAL_ROWS,
         values);
