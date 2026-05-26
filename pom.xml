@@ -89,7 +89,7 @@
     <thrift.executable>thrift</thrift.executable>
     <format.thrift.executable>${thrift.executable}</format.thrift.executable>
     <thrift-maven-plugin.version>0.10.0</thrift-maven-plugin.version>
-    <thrift.version>0.22.0</thrift.version>
+    <thrift.version>0.23.0</thrift.version>
     <format.thrift.version>${thrift.version}</format.thrift.version>
     <fastutil.version>8.5.18</fastutil.version>
     <semver.api.version>0.9.33</semver.api.version>
