@@ -974,4 +974,84 @@ public class TestInterOpReadAlp {
         CORNER_TOTAL_ROWS,
         values);
   }
+
+  // ---------------------------------------------------------------------------
+  // Statistics correctness for ALP-encoded columns.
+  //
+  // Statistics are populated by the column writer wrapper (not the encoder),
+  // so they should "just work" regardless of which encoding is in use — but
+  // the assumption is worth pinning. Wrong/missing statistics break parquet
+  // predicate pushdown: readers either skip row groups they shouldn't or scan
+  // ones they could have skipped.
+  // ---------------------------------------------------------------------------
+
+  @Test
+  public void testAlpColumnStatisticsAreCorrect() throws IOException {
+    MessageType schema = MessageTypeParser.parseMessageType(ALP_SCHEMA);
+    // Mix positive / negative / zero so min/max aren't trivially the endpoints
+    double[] doubleVals = {1.23, -4.56, 7.89, 0.0, 1000.0, -3.14, 9.99, 0.001};
+    float[] floatVals = {1.23f, -4.56f, 7.89f, 0.0f, 1000.0f, -3.14f, 9.99f, 0.001f};
+    double expectedDoubleMin = -4.56, expectedDoubleMax = 1000.0;
+    float expectedFloatMin = -4.56f, expectedFloatMax = 1000.0f;
+
+    java.nio.file.Path outPath = temp.newFolder().toPath().resolve("alp_stats.parquet");
+    try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(new LocalOutputFile(outPath))
+        .withType(schema)
+        .withCompressionCodec(CompressionCodecName.UNCOMPRESSED)
+        .withWriterVersion(WriterVersion.PARQUET_2_0)
+        .withAlpEncoding(true)
+        .withDictionaryEncoding(false)
+        .withConf(new Configuration())
+        .build()) {
+      for (int i = 0; i < doubleVals.length; i++) {
+        SimpleGroup row = new SimpleGroup(schema);
+        row.add("double_col", doubleVals[i]);
+        row.add("float_col", floatVals[i]);
+        writer.write(row);
+      }
+    }
+
+    try (ParquetFileReader reader = ParquetFileReader.open(new LocalInputFile(outPath))) {
+      ParquetMetadata footer = reader.getFooter();
+      assertEquals("expected one row group", 1, footer.getBlocks().size());
+      org.apache.parquet.hadoop.metadata.BlockMetaData block = footer.getBlocks().get(0);
+
+      org.apache.parquet.hadoop.metadata.ColumnChunkMetaData doubleChunk = null;
+      org.apache.parquet.hadoop.metadata.ColumnChunkMetaData floatChunk = null;
+      for (org.apache.parquet.hadoop.metadata.ColumnChunkMetaData c : block.getColumns()) {
+        String path = c.getPath().toDotString();
+        if (path.equals("double_col")) doubleChunk = c;
+        if (path.equals("float_col")) floatChunk = c;
+      }
+      assertTrue("double_col must be ALP-encoded", doubleChunk.getEncodings().contains(Encoding.ALP));
+      assertTrue("float_col must be ALP-encoded", floatChunk.getEncodings().contains(Encoding.ALP));
+
+      org.apache.parquet.column.statistics.Statistics<?> dStats = doubleChunk.getStatistics();
+      org.apache.parquet.column.statistics.Statistics<?> fStats = floatChunk.getStatistics();
+
+      assertTrue("double stats must have min/max set", dStats.hasNonNullValue());
+      assertTrue("float stats must have min/max set", fStats.hasNonNullValue());
+
+      // Bit-exact: same encoder path produces same IEEE 754 representation;
+      // statistics min/max should reflect the input data exactly.
+      assertEquals(
+          "double min mismatch",
+          Double.doubleToRawLongBits(expectedDoubleMin),
+          Double.doubleToRawLongBits((Double) dStats.genericGetMin()));
+      assertEquals(
+          "double max mismatch",
+          Double.doubleToRawLongBits(expectedDoubleMax),
+          Double.doubleToRawLongBits((Double) dStats.genericGetMax()));
+      assertEquals(
+          "float min mismatch",
+          Float.floatToRawIntBits(expectedFloatMin),
+          Float.floatToRawIntBits((Float) fStats.genericGetMin()));
+      assertEquals(
+          "float max mismatch",
+          Float.floatToRawIntBits(expectedFloatMax),
+          Float.floatToRawIntBits((Float) fStats.genericGetMax()));
+      assertEquals("double null count must be 0", 0L, dStats.getNumNulls());
+      assertEquals("float null count must be 0", 0L, fStats.getNumNulls());
+    }
+  }
 }
