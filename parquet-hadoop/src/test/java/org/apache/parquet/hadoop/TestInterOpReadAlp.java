@@ -453,12 +453,18 @@ public class TestInterOpReadAlp {
     WriterVersion.PARQUET_1_0, WriterVersion.PARQUET_2_0
   };
 
+  /**
+   * Resolves the explicit output directory from {@code ALP_OUTPUT_DIR} (system property or env var)
+   * and creates it if missing. Returns {@code null} when the variable is unset — callers should
+   * {@code assumeTrue} on the result so the test skips cleanly rather than writing stray files
+   * into the module tree (which would fail the RAT license check on subsequent {@code mvn test}
+   * runs in the same module).
+   */
   private java.nio.file.Path getOutputDir() throws IOException {
     String dir = System.getProperty("ALP_OUTPUT_DIR");
     if (dir == null) dir = System.getenv("ALP_OUTPUT_DIR");
-    java.nio.file.Path target = (dir != null)
-        ? Paths.get(dir)
-        : Paths.get(System.getProperty("user.dir")).resolve("alp-java-generated");
+    if (dir == null) return null;
+    java.nio.file.Path target = Paths.get(dir);
     java.nio.file.Files.createDirectories(target);
     return target;
   }
@@ -498,8 +504,8 @@ public class TestInterOpReadAlp {
    * Java-written ALP regardless of how the surrounding pages are framed.
    *
    * <p>To run: clone https://github.com/prtkgaur/parquet-testing/tree/alpFloatingPointDataset
-   * and point ALP_TEST_DATA_DIR at its {@code data/} directory. Outputs go to ALP_OUTPUT_DIR
-   * (default: {@code ${project.root}/alp-java-generated/}).
+   * and point ALP_TEST_DATA_DIR at its {@code data/} directory. Set ALP_OUTPUT_DIR to choose
+   * where to write the generated fixtures; if unset, this test skips.
    */
   @Test
   public void generateAlpFixturesAtMultipleVectorSizes() throws IOException {
@@ -507,6 +513,7 @@ public class TestInterOpReadAlp {
     assumeTrue("ALP source dir not found, skipping fixture generator", sourceDir != null);
 
     java.nio.file.Path outDir = getOutputDir();
+    assumeTrue("ALP_OUTPUT_DIR not set, skipping fixture generator", outDir != null);
     LOG.info("Generating ALP fixtures to {}", outDir);
 
     int expectedFiles =
@@ -605,6 +612,7 @@ public class TestInterOpReadAlp {
   @Test
   public void readAllFixtureFilesIndependently() throws IOException {
     java.nio.file.Path outDir = getOutputDir();
+    assumeTrue("ALP_OUTPUT_DIR not set, skipping reader-only test", outDir != null);
     File[] files =
         outDir.toFile().listFiles((f, n) -> n.startsWith("alp_java_") && n.endsWith(".parquet"));
     assumeTrue("No fixture files in " + outDir, files != null && files.length > 0);
@@ -864,6 +872,7 @@ public class TestInterOpReadAlp {
   @Test
   public void generateAndVerifyCornerCaseFixture() throws IOException {
     java.nio.file.Path outDir = getOutputDir();
+    assumeTrue("ALP_OUTPUT_DIR not set, skipping corner-case generator", outDir != null);
     java.nio.file.Path outPath = outDir.resolve("alp_java_cornercases.parquet");
     java.nio.file.Path csvPath = outDir.resolve("alp_java_cornercases_expect.csv");
     java.nio.file.Files.deleteIfExists(outPath);
