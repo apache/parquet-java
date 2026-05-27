@@ -34,16 +34,12 @@ public final class StubTTransport extends TTransport {
    * There's no limits on recursion depth.
    */
   private final TConfiguration conf = new TConfiguration(
-      TConfiguration.DEFAULT_MAX_FRAME_SIZE,
-      TConfiguration.DEFAULT_MAX_MESSAGE_SIZE,
-      Integer.MAX_VALUE);
+      TConfiguration.DEFAULT_MAX_FRAME_SIZE, TConfiguration.DEFAULT_MAX_MESSAGE_SIZE, Integer.MAX_VALUE);
 
-  private StubTTransport() {
-  }
+  private StubTTransport() {}
 
   @Override
-  public void checkReadBytesAvailable(long l) {
-  }
+  public void checkReadBytesAvailable(long l) {}
 
   @Override
   public boolean isOpen() {
@@ -56,8 +52,7 @@ public final class StubTTransport extends TTransport {
   }
 
   @Override
-  public void close() {
-  }
+  public void close() {}
 
   @Override
   public int read(byte[] bytes, int i, int i1) throws TTransportException {
@@ -75,6 +70,5 @@ public final class StubTTransport extends TTransport {
   }
 
   @Override
-  public void updateKnownMessageSize(long l) {
-  }
+  public void updateKnownMessageSize(long l) {}
 }
