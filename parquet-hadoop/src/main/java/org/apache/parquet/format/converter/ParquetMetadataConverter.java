@@ -803,6 +803,28 @@ public class ParquetMetadataConverter {
     return formatStats;
   }
 
+  /**
+   * @param stats the statistics
+   * @return the parquet format statistics
+   * @deprecated will be removed in 2.0.0; use {@link #toParquetStatistics(String, org.apache.parquet.column.statistics.Statistics)} instead.
+   */
+  @Deprecated
+  public static Statistics toParquetStatistics(org.apache.parquet.column.statistics.Statistics stats) {
+    return toParquetStatistics(stats, ParquetProperties.DEFAULT_STATISTICS_TRUNCATE_LENGTH);
+  }
+
+  /**
+   * @param stats          the statistics
+   * @param truncateLength max truncation length for binary statistics
+   * @return the parquet format statistics
+   * @deprecated will be removed in 2.0.0; use {@link #toParquetStatistics(String, org.apache.parquet.column.statistics.Statistics, int)} instead.
+   */
+  @Deprecated
+  public static Statistics toParquetStatistics(
+      org.apache.parquet.column.statistics.Statistics stats, int truncateLength) {
+    return new ParquetMetadataConverter().toParquetStatistics(null, stats, truncateLength);
+  }
+
   public Statistics toParquetStatistics(String createdBy, org.apache.parquet.column.statistics.Statistics stats) {
     return toParquetStatistics(createdBy, stats, ParquetProperties.DEFAULT_STATISTICS_TRUNCATE_LENGTH);
   }
@@ -918,7 +940,7 @@ public class ParquetMetadataConverter {
    * @deprecated will be removed in 2.0.0.
    */
   @Deprecated
-  public org.apache.parquet.column.statistics.Statistics fromParquetStatistics(
+  public static org.apache.parquet.column.statistics.Statistics fromParquetStatistics(
       Statistics statistics, PrimitiveTypeName type) {
     return fromParquetStatistics(null, statistics, type);
   }
@@ -931,13 +953,14 @@ public class ParquetMetadataConverter {
    * @deprecated will be removed in 2.0.0.
    */
   @Deprecated
-  public org.apache.parquet.column.statistics.Statistics fromParquetStatistics(
+  public static org.apache.parquet.column.statistics.Statistics fromParquetStatistics(
       String createdBy, Statistics statistics, PrimitiveTypeName type) {
-    return fromParquetStatisticsInternal(
-        createdBy,
-        statistics,
-        new PrimitiveType(Repetition.OPTIONAL, type, "fake_type"),
-        defaultSortOrder(type));
+    return new ParquetMetadataConverter()
+        .fromParquetStatisticsInternal(
+            createdBy,
+            statistics,
+            new PrimitiveType(Repetition.OPTIONAL, type, "fake_type"),
+            defaultSortOrder(type));
   }
 
   // Visible for testing
