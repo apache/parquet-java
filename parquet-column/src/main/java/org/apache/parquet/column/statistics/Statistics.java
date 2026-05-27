@@ -142,10 +142,6 @@ public abstract class Statistics<T extends Comparable<T>> {
 
   // Builder for FLOAT16 type to handle special cases of min/max values like NaN, -0.0, and 0.0
   private static class Float16Builder extends Builder {
-    private static final Binary POSITIVE_ZERO_LITTLE_ENDIAN = Binary.fromConstantByteArray(new byte[] {0x00, 0x00});
-    private static final Binary NEGATIVE_ZERO_LITTLE_ENDIAN =
-        Binary.fromConstantByteArray(new byte[] {0x00, (byte) 0x80});
-
     public Float16Builder(PrimitiveType type) {
       super(type);
       assert type.getPrimitiveTypeName() == PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY;
@@ -162,15 +158,17 @@ public abstract class Statistics<T extends Comparable<T>> {
         short max = bMax.get2BytesLittleEndian();
         // Drop min/max values in case of NaN as the sorting order of values is undefined for this case
         if (Float16.isNaN(min) || Float16.isNaN(max)) {
-          stats.setMinMax(POSITIVE_ZERO_LITTLE_ENDIAN, NEGATIVE_ZERO_LITTLE_ENDIAN);
+          stats.setMinMax(Float16.POSITIVE_ZERO_LITTLE_ENDIAN, Float16.POSITIVE_ZERO_LITTLE_ENDIAN);
           ((Statistics<?>) stats).hasNonNullValue = false;
         } else {
           // Updating min to -0.0 and max to +0.0 to ensure that no 0.0 values would be skipped
           if (min == (short) 0x0000) {
-            stats.setMinMax(NEGATIVE_ZERO_LITTLE_ENDIAN, bMax);
+            bMin = Float16.NEGATIVE_ZERO_LITTLE_ENDIAN;
+            stats.setMinMax(bMin, bMax);
           }
           if (max == (short) 0x8000) {
-            stats.setMinMax(bMin, POSITIVE_ZERO_LITTLE_ENDIAN);
+            bMax = Float16.POSITIVE_ZERO_LITTLE_ENDIAN;
+            stats.setMinMax(bMin, bMax);
           }
         }
       }

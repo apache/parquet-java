@@ -18,7 +18,6 @@
  */
 package org.apache.parquet.schema;
 
-import static java.util.Arrays.asList;
 import static java.util.Optional.empty;
 import static org.apache.parquet.schema.ColumnOrder.ColumnOrderName.TYPE_DEFINED_ORDER;
 import static org.apache.parquet.schema.ColumnOrder.ColumnOrderName.UNDEFINED;
@@ -33,8 +32,6 @@ import static org.apache.parquet.schema.PrimitiveStringifier.TIME_NANOS_UTC_STRI
 import static org.apache.parquet.schema.PrimitiveStringifier.TIME_STRINGIFIER;
 import static org.apache.parquet.schema.PrimitiveStringifier.TIME_UTC_STRINGIFIER;
 
-import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -822,8 +819,7 @@ public abstract class LogicalTypeAnnotation {
   }
 
   public static class IntLogicalTypeAnnotation extends LogicalTypeAnnotation {
-    private static final Set<Integer> VALID_BIT_WIDTH =
-        Collections.unmodifiableSet(new HashSet<>(asList(8, 16, 32, 64)));
+    private static final Set<Integer> VALID_BIT_WIDTH = Set.of(8, 16, 32, 64);
 
     private final int bitWidth;
     private final boolean isSigned;

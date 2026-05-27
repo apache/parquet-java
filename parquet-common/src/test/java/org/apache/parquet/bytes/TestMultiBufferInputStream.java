@@ -21,13 +21,12 @@ package org.apache.parquet.bytes;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import org.junit.Assert;
 import org.junit.Test;
 
 public class TestMultiBufferInputStream extends TestByteBufferInputStreams {
-  private static final List<ByteBuffer> DATA = Arrays.asList(
+  private static final List<ByteBuffer> DATA = List.of(
       ByteBuffer.wrap(new byte[] {0, 1, 2, 3, 4, 5, 6, 7, 8}),
       ByteBuffer.wrap(new byte[] {9, 10, 11, 12}),
       ByteBuffer.wrap(new byte[] {}),

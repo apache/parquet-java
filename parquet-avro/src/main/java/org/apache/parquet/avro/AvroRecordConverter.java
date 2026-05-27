@@ -337,6 +337,14 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
     return newConverter(schema, type, model, null, setter, validator);
   }
 
+  private static boolean isDecimalType(Type type) {
+    if (!type.isPrimitive()) {
+      return false;
+    }
+    LogicalTypeAnnotation annotation = type.getLogicalTypeAnnotation();
+    return annotation instanceof LogicalTypeAnnotation.DecimalLogicalTypeAnnotation;
+  }
+
   private static Converter newConverter(
       Schema schema,
       Type type,
@@ -359,6 +367,9 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
       case BOOLEAN:
         return new AvroConverters.FieldBooleanConverter(parent);
       case INT:
+        if (isDecimalType(type)) {
+          return new AvroConverters.FieldDecimalIntConverter(parent, type.asPrimitiveType());
+        }
         Class<?> intDatumClass = getDatumClass(conversion, knownClass, schema, model);
         if (intDatumClass == null) {
           return new AvroConverters.FieldIntegerConverter(parent);
@@ -374,6 +385,9 @@ class AvroRecordConverter<T> extends AvroConverters.AvroGroupConverter {
         }
         return new AvroConverters.FieldIntegerConverter(parent);
       case LONG:
+        if (isDecimalType(type)) {
+          return new AvroConverters.FieldDecimalLongConverter(parent, type.asPrimitiveType());
+        }
         return new AvroConverters.FieldLongConverter(parent);
       case FLOAT:
         return new AvroConverters.FieldFloatConverter(parent);

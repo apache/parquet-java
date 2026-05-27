@@ -142,13 +142,22 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 // TODO: This file has become too long!
-// TODO: Lets split it up: https://issues.apache.org/jira/browse/PARQUET-310
+// TODO: Lets split it up: https://github.com/apache/parquet-java/issues/1835
 public class ParquetMetadataConverter {
 
   private static final TypeDefinedOrder TYPE_DEFINED_ORDER = new TypeDefinedOrder();
   public static final MetadataFilter NO_FILTER = new NoFilter();
   public static final MetadataFilter SKIP_ROW_GROUPS = new SkipMetadataFilter();
   public static final long MAX_STATS_SIZE = 4096; // limit stats to 4k
+
+  /**
+   * Configuration property to control the Thrift max message size when reading Parquet metadata.
+   * This is useful for files with very large metadata
+   * Default value is 100 MB.
+   */
+  public static final String PARQUET_THRIFT_STRING_SIZE_LIMIT = "parquet.thrift.string.size.limit";
+
+  private static final int DEFAULT_MAX_MESSAGE_SIZE = 104857600; // 100 MB
 
   private static final Logger LOG = LoggerFactory.getLogger(ParquetMetadataConverter.class);
   private static final LogicalTypeConverterVisitor LOGICAL_TYPE_ANNOTATION_VISITOR =
@@ -158,13 +167,14 @@ public class ParquetMetadataConverter {
   private final int statisticsTruncateLength;
   private final boolean useSignedStringMinMax;
   private final boolean readInt96Stats;
+  private final ParquetReadOptions options;
 
   public ParquetMetadataConverter() {
-    this(false, DEFAULT_READ_INT96_STATS_ENABLED);
+    this(false, ParquetProperties.DEFAULT_STATISTICS_TRUNCATE_LENGTH, DEFAULT_READ_INT96_STATS_ENABLED, null);
   }
 
   public ParquetMetadataConverter(int statisticsTruncateLength) {
-    this(false, statisticsTruncateLength, DEFAULT_READ_INT96_STATS_ENABLED);
+    this(false, statisticsTruncateLength, DEFAULT_READ_INT96_STATS_ENABLED, null);
   }
 
   /**
@@ -175,25 +185,44 @@ public class ParquetMetadataConverter {
   public ParquetMetadataConverter(Configuration conf) {
     this(
         conf.getBoolean("parquet.strings.signed-min-max.enabled", false),
-        conf.getBoolean(READ_INT96_STATS_ENABLED, DEFAULT_READ_INT96_STATS_ENABLED));
+        ParquetProperties.DEFAULT_STATISTICS_TRUNCATE_LENGTH,
+        conf.getBoolean(READ_INT96_STATS_ENABLED, DEFAULT_READ_INT96_STATS_ENABLED),
+        null);
   }
 
   public ParquetMetadataConverter(ParquetReadOptions options) {
-    this(options.useSignedStringMinMax(), options.readInt96Stats());
-  }
-
-  private ParquetMetadataConverter(boolean useSignedStringMinMax, boolean readInt96Stats) {
-    this(useSignedStringMinMax, ParquetProperties.DEFAULT_STATISTICS_TRUNCATE_LENGTH, readInt96Stats);
+    this(
+        options.useSignedStringMinMax(),
+        ParquetProperties.DEFAULT_STATISTICS_TRUNCATE_LENGTH,
+        options.readInt96Stats(),
+        options);
   }
 
   private ParquetMetadataConverter(
-      boolean useSignedStringMinMax, int statisticsTruncateLength, boolean readInt96Stats) {
+      boolean useSignedStringMinMax,
+      int statisticsTruncateLength,
+      boolean readInt96Stats,
+      ParquetReadOptions options) {
     if (statisticsTruncateLength <= 0) {
       throw new IllegalArgumentException("Truncate length should be greater than 0");
     }
     this.useSignedStringMinMax = useSignedStringMinMax;
     this.statisticsTruncateLength = statisticsTruncateLength;
     this.readInt96Stats = readInt96Stats;
+    this.options = options;
+  }
+
+  /**
+   * Gets the configured max message size for Thrift deserialization.
+   * Reads from ParquetReadOptions configuration, or returns -1 if not available.
+   *
+   * @return the max message size in bytes, or -1 to use the default
+   */
+  private int getMaxMessageSize() {
+    if (options != null && options.getConfiguration() != null) {
+      return options.getConfiguration().getInt(PARQUET_THRIFT_STRING_SIZE_LIMIT, DEFAULT_MAX_MESSAGE_SIZE);
+    }
+    return -1;
   }
 
   // NOTE: this cache is for memory savings, not cpu savings, and is used to de-duplicate
@@ -684,11 +713,13 @@ public class ParquetMetadataConverter {
     rowGroups.add(rowGroup);
   }
 
-  private List<Encoding> toFormatEncodings(Set<org.apache.parquet.column.Encoding> encodings) {
+  // Visible for testing
+  List<Encoding> toFormatEncodings(Set<org.apache.parquet.column.Encoding> encodings) {
     List<Encoding> converted = new ArrayList<Encoding>(encodings.size());
     for (org.apache.parquet.column.Encoding encoding : encodings) {
       converted.add(getEncoding(encoding));
     }
+    Collections.sort(converted);
     return converted;
   }
 
@@ -1040,12 +1071,12 @@ public class ParquetMetadataConverter {
     UNKNOWN
   }
 
-  private static final Set<Class> STRING_TYPES = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
+  private static final Set<Class> STRING_TYPES = Set.of(
       LogicalTypeAnnotation.StringLogicalTypeAnnotation.class,
       LogicalTypeAnnotation.EnumLogicalTypeAnnotation.class,
       LogicalTypeAnnotation.JsonLogicalTypeAnnotation.class,
       LogicalTypeAnnotation.Float16LogicalTypeAnnotation.class,
-      LogicalTypeAnnotation.UnknownLogicalTypeAnnotation.class)));
+      LogicalTypeAnnotation.UnknownLogicalTypeAnnotation.class);
 
   /**
    * Returns whether to use signed order min and max with a type. It is safe to
@@ -1711,21 +1742,27 @@ public class ParquetMetadataConverter {
         filter.accept(new MetadataFilterVisitor<FileMetaDataAndRowGroupOffsetInfo, IOException>() {
           @Override
           public FileMetaDataAndRowGroupOffsetInfo visit(NoFilter filter) throws IOException {
-            FileMetaData fileMetadata = readFileMetaData(from, footerDecryptor, encryptedFooterAAD);
+            int maxMessageSize = getMaxMessageSize();
+            FileMetaData fileMetadata =
+                readFileMetaData(from, footerDecryptor, encryptedFooterAAD, maxMessageSize);
             return new FileMetaDataAndRowGroupOffsetInfo(
                 fileMetadata, generateRowGroupOffsets(fileMetadata));
           }
 
           @Override
           public FileMetaDataAndRowGroupOffsetInfo visit(SkipMetadataFilter filter) throws IOException {
-            FileMetaData fileMetadata = readFileMetaData(from, true, footerDecryptor, encryptedFooterAAD);
+            int maxMessageSize = getMaxMessageSize();
+            FileMetaData fileMetadata =
+                readFileMetaData(from, true, footerDecryptor, encryptedFooterAAD, maxMessageSize);
             return new FileMetaDataAndRowGroupOffsetInfo(
                 fileMetadata, generateRowGroupOffsets(fileMetadata));
           }
 
           @Override
           public FileMetaDataAndRowGroupOffsetInfo visit(OffsetMetadataFilter filter) throws IOException {
-            FileMetaData fileMetadata = readFileMetaData(from, footerDecryptor, encryptedFooterAAD);
+            int maxMessageSize = getMaxMessageSize();
+            FileMetaData fileMetadata =
+                readFileMetaData(from, footerDecryptor, encryptedFooterAAD, maxMessageSize);
             // We must generate the map *before* filtering because it modifies `fileMetadata`.
             Map<RowGroup, Long> rowGroupToRowIndexOffsetMap = generateRowGroupOffsets(fileMetadata);
             FileMetaData filteredFileMetadata = filterFileMetaDataByStart(fileMetadata, filter);
@@ -1734,7 +1771,9 @@ public class ParquetMetadataConverter {
 
           @Override
           public FileMetaDataAndRowGroupOffsetInfo visit(RangeMetadataFilter filter) throws IOException {
-            FileMetaData fileMetadata = readFileMetaData(from, footerDecryptor, encryptedFooterAAD);
+            int maxMessageSize = getMaxMessageSize();
+            FileMetaData fileMetadata =
+                readFileMetaData(from, footerDecryptor, encryptedFooterAAD, maxMessageSize);
             // We must generate the map *before* filtering because it modifies `fileMetadata`.
             Map<RowGroup, Long> rowGroupToRowIndexOffsetMap = generateRowGroupOffsets(fileMetadata);
             FileMetaData filteredFileMetadata = filterFileMetaDataByMidpoint(fileMetadata, filter);

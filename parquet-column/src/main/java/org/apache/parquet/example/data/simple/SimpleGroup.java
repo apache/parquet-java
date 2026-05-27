@@ -230,7 +230,7 @@ public class SimpleGroup extends Group {
         break;
       default:
         throw new UnsupportedOperationException(
-            getType().asPrimitiveType().getName() + " not supported for Binary");
+            getType().getType(fieldIndex).asPrimitiveType().getName() + " not supported for Binary");
     }
   }
 

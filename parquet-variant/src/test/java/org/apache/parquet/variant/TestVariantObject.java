@@ -341,4 +341,69 @@ public class TestVariantObject {
       Assert.assertEquals("Cannot read ARRAY value as OBJECT", e.getMessage());
     }
   }
+
+  @Test
+  public void testMalformedMetadataDictSize() {
+    // Metadata header: version=1, offsetSize=1. Declares dictSize=200, but the
+    // buffer is only 3 bytes, so the offset table cannot fit.
+    byte[] metadata = new byte[] {0x01, (byte) 200, 0x00};
+    byte[] value = new byte[] {0x00};
+    Assert.assertThrows(
+        IllegalArgumentException.class, () -> new Variant(ByteBuffer.wrap(value), ByteBuffer.wrap(metadata)));
+  }
+
+  @Test
+  public void testMalformedMetadataLargeDictSize() {
+    // Header byte 0xC1: offsetSize=4, version=1. Declares dictSize=Integer.MAX_VALUE
+    // to guard against int overflow in the bound check arithmetic.
+    byte[] metadata = new byte[] {(byte) 0xC1, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0x7F};
+    byte[] value = new byte[] {0x00};
+    Assert.assertThrows(
+        IllegalArgumentException.class, () -> new Variant(ByteBuffer.wrap(value), ByteBuffer.wrap(metadata)));
+  }
+
+  @Test
+  public void testMalformedMetadataTruncated() {
+    // Header byte 0xC1 declares offsetSize=4, but only 3 bytes total so the
+    // dictSize field itself can't be read.
+    byte[] metadata = new byte[] {(byte) 0xC1, 0x00, 0x00};
+    byte[] value = new byte[] {0x00};
+    Assert.assertThrows(
+        IllegalArgumentException.class, () -> new Variant(ByteBuffer.wrap(value), ByteBuffer.wrap(metadata)));
+  }
+
+  @Test
+  public void testMetadataWithNonZeroPositionReadOnly() {
+    // Build a variant with object fields to populate the metadata dictionary
+    VariantBuilder vb = new VariantBuilder();
+    VariantObjectBuilder obj = vb.startObject();
+    obj.appendKey("name");
+    obj.appendString("Alice");
+    obj.appendKey("age");
+    obj.appendInt(30);
+    vb.endObject();
+    Variant variant = vb.build();
+
+    // Get the raw metadata bytes
+    ByteBuffer metaBuf = variant.getMetadataBuffer();
+    byte[] metaBytes = new byte[metaBuf.remaining()];
+    metaBuf.duplicate().get(metaBytes);
+
+    // Embed in a larger buffer with a non-zero position, then make read-only
+    // to force the else-branch in getMetadataMap.
+    byte[] padded = new byte[10 + metaBytes.length];
+    System.arraycopy(metaBytes, 0, padded, 10, metaBytes.length);
+    ByteBuffer offsetMetadata = ByteBuffer.wrap(padded);
+    offsetMetadata.position(10);
+    offsetMetadata.limit(10 + metaBytes.length);
+    offsetMetadata = offsetMetadata.asReadOnlyBuffer();
+
+    // ImmutableMetadata calls getMetadataMap, which had the bug.
+    // getMetadataMap builds a key->id dictionary from the metadata buffer.
+    // With a non-zero position and read-only buffer, the else-branch is taken,
+    // which previously used the wrong offset.
+    ImmutableMetadata immutableMetadata = new ImmutableMetadata(offsetMetadata);
+    Assert.assertEquals(0, immutableMetadata.getOrInsert("name"));
+    Assert.assertEquals(1, immutableMetadata.getOrInsert("age"));
+  }
 }

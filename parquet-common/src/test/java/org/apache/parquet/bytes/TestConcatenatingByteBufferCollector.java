@@ -24,7 +24,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
+import java.util.List;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -54,7 +54,7 @@ public class TestConcatenatingByteBufferCollector {
         ConcatenatingByteBufferCollector inner = new ConcatenatingByteBufferCollector(allocator)) {
       outer.collect(BytesInput.concat(
           BytesInput.from(byteBuffer("This"), byteBuffer(" "), byteBuffer("is")),
-          BytesInput.from(Arrays.asList(byteBuffer(" a"), byteBuffer(" "), byteBuffer("test"))),
+          BytesInput.from(List.of(byteBuffer(" a"), byteBuffer(" "), byteBuffer("test"))),
           BytesInput.from(inputStream(" text to blabla"), 8),
           BytesInput.from(bytes(" ")),
           BytesInput.from(bytes("blabla validate blabla"), 7, 9),

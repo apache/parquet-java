@@ -24,17 +24,21 @@ import static org.apache.parquet.column.ParquetProperties.WriterVersion.PARQUET_
 import java.util.List;
 import org.apache.parquet.Version;
 import org.apache.parquet.VersionParser;
+import org.apache.parquet.bytes.BytesInput;
 import org.apache.parquet.column.ColumnDescriptor;
 import org.apache.parquet.column.ColumnReader;
+import org.apache.parquet.column.Dictionary;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.page.DataPage;
 import org.apache.parquet.column.page.DataPageV2;
+import org.apache.parquet.column.page.DictionaryPage;
 import org.apache.parquet.column.page.mem.MemPageReader;
 import org.apache.parquet.column.page.mem.MemPageWriter;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.PrimitiveConverter;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
+import org.junit.Assert;
 import org.junit.Test;
 
 public class TestColumnReaderImpl {
@@ -53,8 +57,28 @@ public class TestColumnReaderImpl {
 
   @Test
   public void test() throws Exception {
+    ColumnDescriptor col = requiredBinaryColumn();
+    MemPageWriter pageWriter = writeBinaryDictColumn(col);
+    List<DataPage> pages = pageWriter.getPages();
+    int valueCount = 0;
+    int rowCount = 0;
+    for (DataPage dataPage : pages) {
+      valueCount += dataPage.getValueCount();
+      rowCount += ((DataPageV2) dataPage).getRowCount();
+    }
+    assertEquals(rows, rowCount);
+    assertEquals(rows, valueCount);
+    MemPageReader pageReader = toReader(pageWriter);
+    validateExpectedValuesAndCount(col, pageReader);
+  }
+
+  private static ColumnDescriptor requiredBinaryColumn() {
     MessageType schema = MessageTypeParser.parseMessageType("message test { required binary foo; }");
     ColumnDescriptor col = schema.getColumns().get(0);
+    return col;
+  }
+
+  private MemPageWriter writeBinaryDictColumn(ColumnDescriptor col) {
     MemPageWriter pageWriter = new MemPageWriter();
     ColumnWriterV2 columnWriterV2 = new ColumnWriterV2(
         col,
@@ -72,16 +96,15 @@ public class TestColumnReaderImpl {
     }
     columnWriterV2.writePage();
     columnWriterV2.finalizeColumnChunk();
-    List<DataPage> pages = pageWriter.getPages();
-    int valueCount = 0;
-    int rowCount = 0;
-    for (DataPage dataPage : pages) {
-      valueCount += dataPage.getValueCount();
-      rowCount += ((DataPageV2) dataPage).getRowCount();
-    }
-    assertEquals(rows, rowCount);
-    assertEquals(rows, valueCount);
-    MemPageReader pageReader = new MemPageReader(rows, pages.iterator(), pageWriter.getDictionaryPage());
+    return pageWriter;
+  }
+
+  private MemPageReader toReader(MemPageWriter pageWriter) {
+    return new MemPageReader(rows, pageWriter.getPages().iterator(), pageWriter.getDictionaryPage());
+  }
+
+  private void validateExpectedValuesAndCount(ColumnDescriptor col, MemPageReader pageReader)
+      throws VersionParser.VersionParseException {
     ValidatingConverter converter = new ValidatingConverter();
     ColumnReader columnReader =
         new ColumnReaderImpl(col, pageReader, converter, VersionParser.parse(Version.FULL_VERSION));
@@ -124,7 +147,7 @@ public class TestColumnReaderImpl {
     }
     assertEquals(rows, rowCount);
     assertEquals(rows, valueCount);
-    MemPageReader pageReader = new MemPageReader(rows, pages.iterator(), pageWriter.getDictionaryPage());
+    MemPageReader pageReader = toReader(pageWriter);
     ValidatingConverter converter = new ValidatingConverter();
     ColumnReader columnReader =
         new ColumnReaderImpl(col, pageReader, converter, VersionParser.parse(Version.FULL_VERSION));
@@ -134,5 +157,30 @@ public class TestColumnReaderImpl {
       columnReader.consume();
     }
     assertEquals(0, converter.count);
+  }
+
+  @Test
+  public void testDeduplicatedDecodedDictionary() throws Exception {
+    ColumnDescriptor col = requiredBinaryColumn();
+    MemPageWriter pageWriter = writeBinaryDictColumn(col);
+
+    DictionaryPage dictionaryPage = pageWriter.getDictionaryPage();
+    Assert.assertNotNull("Expected a dictionary", dictionaryPage);
+
+    Dictionary dict = dictionaryPage.decode(col);
+
+    // construct a page reader from a dictionary page that lacks bytes but stores the decoded data.
+    MemPageReader pageReader = new MemPageReader(
+        rows,
+        pageWriter.getPages().iterator(),
+        new DictionaryPage(
+            BytesInput.empty(), dictionaryPage.getDictionarySize(), dictionaryPage.getEncoding()) {
+          @Override
+          public Dictionary decode(ColumnDescriptor path) {
+            return dict;
+          }
+        });
+
+    validateExpectedValuesAndCount(col, pageReader);
   }
 }

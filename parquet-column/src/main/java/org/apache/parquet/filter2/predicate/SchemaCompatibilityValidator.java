@@ -54,7 +54,7 @@ import org.apache.parquet.schema.MessageType;
  * <p>
  * TODO: detect if a column is optional or required and validate that eq(null)
  * TODO: is not called on required fields (is that too strict?)
- * TODO: (https://issues.apache.org/jira/browse/PARQUET-44)
+ * TODO: (https://github.com/apache/parquet-java/issues/1472)
  */
 public class SchemaCompatibilityValidator implements FilterPredicate.Visitor<Void> {
 

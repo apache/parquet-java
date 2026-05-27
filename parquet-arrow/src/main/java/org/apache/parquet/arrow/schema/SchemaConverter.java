@@ -179,6 +179,11 @@ public class SchemaConverter {
         return createListTypeMapping();
       }
 
+      @Override
+      public TypeMapping visit(ArrowType.LargeListView type) {
+        return createListTypeMapping();
+      }
+
       private ListTypeMapping createListTypeMapping() {
         if (children.size() != 1) {
           throw new IllegalArgumentException("list fields must have exactly one child: " + field);
@@ -347,6 +352,11 @@ public class SchemaConverter {
       @Override
       public TypeMapping visit(ArrowType.Duration duration) {
         return primitiveFLBA(12, LogicalTypeAnnotation.IntervalLogicalTypeAnnotation.getInstance());
+      }
+
+      @Override
+      public TypeMapping visit(ArrowType.RunEndEncoded runEndEncoded) {
+        throw new UnsupportedOperationException("Unsupported type " + runEndEncoded);
       }
 
       @Override
@@ -769,6 +779,11 @@ public class SchemaConverter {
         return createListTypeMapping(type);
       }
 
+      @Override
+      public TypeMapping visit(ArrowType.LargeListView type) {
+        return createListTypeMapping(type);
+      }
+
       private TypeMapping createListTypeMapping(ArrowType.ComplexType type) {
         if (arrowField.getChildren().size() != 1) {
           throw new IllegalArgumentException("Invalid list type: " + type);
@@ -891,6 +906,11 @@ public class SchemaConverter {
       @Override
       public TypeMapping visit(ArrowType.Duration duration) {
         return primitive();
+      }
+
+      @Override
+      public TypeMapping visit(ArrowType.RunEndEncoded runEndEncoded) {
+        throw new UnsupportedOperationException("Unsupported type " + runEndEncoded);
       }
 
       @Override

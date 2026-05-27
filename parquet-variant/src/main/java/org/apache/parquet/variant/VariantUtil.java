@@ -22,6 +22,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.Arrays;
 import java.util.HashMap;
+import org.apache.parquet.Preconditions;
 
 /**
  * This class defines constants related to the Variant format and provides functions for
@@ -297,6 +298,28 @@ class VariantUtil {
       throw new IllegalArgumentException(String.format("Failed to read unsigned int. numBytes: %d", numBytes));
     }
     return result;
+  }
+
+  /**
+   * Fast little-endian unsigned read using bulk ByteBuffer operations.
+   * Requires the buffer to have {@link java.nio.ByteOrder#LITTLE_ENDIAN} byte order.
+   * Adapted from Apache Iceberg's VariantUtil.readLittleEndianUnsigned.
+   */
+  static int readUnsignedLittleEndian(ByteBuffer buffer, int pos, int numBytes) {
+    switch (numBytes) {
+      case 1:
+        return buffer.get(pos) & U8_MAX;
+      case 2:
+        return buffer.getShort(pos) & U16_MAX;
+      case 3:
+        return (buffer.getShort(pos) & U16_MAX) | ((buffer.get(pos + 2) & U8_MAX) << 16);
+      case 4:
+        int v = buffer.getInt(pos);
+        Preconditions.checkArgument(v >= 0, "Failed to read unsigned int. numBytes: " + numBytes);
+        return v;
+      default:
+        throw new IllegalArgumentException(String.format("Invalid numBytes: %d", numBytes));
+    }
   }
 
   /**
@@ -612,7 +635,9 @@ class VariantUtil {
     int start = value.position() + 1 + U32_SIZE;
     int length = readUnsigned(value, value.position() + 1, U32_SIZE);
     checkIndex(start + length - 1, value.limit());
-    return slice(value, start);
+    ByteBuffer result = slice(value, start);
+    result.limit(start + length);
+    return result;
   }
 
   static String getString(ByteBuffer value) {
@@ -841,7 +866,7 @@ class VariantUtil {
       } else {
         // ByteBuffer does not have an array, so we need to use the `get` method to read the bytes.
         byte[] metadataArray = new byte[nextOffset - offset];
-        slice(metadata, stringStart + offset).get(metadataArray);
+        slice(metadata, pos + stringStart + offset).get(metadataArray);
         result.put(new String(metadataArray), id);
       }
       offset = nextOffset;

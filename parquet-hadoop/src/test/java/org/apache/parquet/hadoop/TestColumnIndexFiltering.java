@@ -49,7 +49,6 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.nio.file.Files;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -137,7 +136,7 @@ public class TestColumnIndexFiltering {
 
   @Parameters(name = "Run {index}: isEncrypted={1}")
   public static Collection<Object[]> params() {
-    return Arrays.asList(
+    return List.of(
         new Object[] {FILE_V1, false /*isEncrypted*/},
         new Object[] {FILE_V2, false /*isEncrypted*/},
         new Object[] {FILE_V1_E, true /*isEncrypted*/},

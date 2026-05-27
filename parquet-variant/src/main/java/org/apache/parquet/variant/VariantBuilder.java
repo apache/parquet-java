@@ -24,6 +24,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Set;
+import org.apache.parquet.io.api.Binary;
 
 /**
  * Builder for creating Variant value and metadata.
@@ -109,7 +110,14 @@ public class VariantBuilder {
    */
   public void appendString(String str) {
     onAppend();
-    byte[] data = str.getBytes(StandardCharsets.UTF_8);
+    writeUTF8bytes(str.getBytes(StandardCharsets.UTF_8));
+  }
+
+  /**
+   * Write bytes as a UTF8 string.
+   * @param data data to write; this is not modified.
+   */
+  private void writeUTF8bytes(final byte[] data) {
     boolean longStr = data.length > VariantUtil.MAX_SHORT_STR_SIZE;
     checkCapacity((longStr ? 1 + VariantUtil.U32_SIZE : 1) + data.length);
     if (longStr) {
@@ -123,6 +131,16 @@ public class VariantBuilder {
     }
     System.arraycopy(data, 0, writeBuffer, writePos, data.length);
     writePos += data.length;
+  }
+
+  /**
+   * Given a Binary, append it to the variant as a string.
+   * Avoids intermediate String creation when unmarshalling from shredded string columns.
+   * @param binary source data.
+   */
+  void appendAsString(Binary binary) {
+    onAppend();
+    writeUTF8bytes(binary.getBytesUnsafe());
   }
 
   /**
@@ -227,14 +245,13 @@ public class VariantBuilder {
   public void appendDecimal(BigDecimal d) {
     onAppend();
     BigInteger unscaled = d.unscaledValue();
-    if (d.scale() <= VariantUtil.MAX_DECIMAL4_PRECISION && d.precision() <= VariantUtil.MAX_DECIMAL4_PRECISION) {
+    if (d.precision() <= VariantUtil.MAX_DECIMAL4_PRECISION) {
       checkCapacity(2 /* header and scale size */ + 4);
       writeBuffer[writePos] = VariantUtil.HEADER_DECIMAL4;
       writeBuffer[writePos + 1] = (byte) d.scale();
       VariantUtil.writeLong(writeBuffer, writePos + 2, unscaled.intValueExact(), 4);
       writePos += 6;
-    } else if (d.scale() <= VariantUtil.MAX_DECIMAL8_PRECISION
-        && d.precision() <= VariantUtil.MAX_DECIMAL8_PRECISION) {
+    } else if (d.precision() <= VariantUtil.MAX_DECIMAL8_PRECISION) {
       checkCapacity(2 /* header and scale size */ + 8);
       writeBuffer[writePos] = VariantUtil.HEADER_DECIMAL8;
       writeBuffer[writePos + 1] = (byte) d.scale();
@@ -358,7 +375,7 @@ public class VariantBuilder {
     onAppend();
     checkCapacity(1 /* header size */ + 4);
     writeBuffer[writePos] = VariantUtil.HEADER_FLOAT;
-    VariantUtil.writeLong(writeBuffer, writePos + 1, Float.floatToIntBits(f), 8);
+    VariantUtil.writeLong(writeBuffer, writePos + 1, Float.floatToIntBits(f), 4);
     writePos += 5;
   }
 
@@ -375,7 +392,7 @@ public class VariantBuilder {
     writePos += 1;
     VariantUtil.writeLong(writeBuffer, writePos, binarySize, VariantUtil.U32_SIZE);
     writePos += VariantUtil.U32_SIZE;
-    ByteBuffer.wrap(writeBuffer, writePos, binarySize).put(binary);
+    ByteBuffer.wrap(writeBuffer, writePos, binarySize).put(binary.duplicate());
     writePos += binarySize;
   }
 

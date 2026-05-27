@@ -118,6 +118,12 @@ public final class PrimitiveType extends Type {
                   LogicalTypeAnnotation.TimestampLogicalTypeAnnotation timestampLogicalType) {
                 return of(PrimitiveComparator.SIGNED_INT64_COMPARATOR);
               }
+
+              @Override
+              public Optional<PrimitiveComparator> visit(
+                  LogicalTypeAnnotation.UnknownLogicalTypeAnnotation unknownLogicalTypeAnnotation) {
+                return of(PrimitiveComparator.SIGNED_INT64_COMPARATOR);
+              }
             })
             .orElseThrow(() -> new ShouldNeverHappenException(
                 "No comparator logic implemented for INT64 logical type: " + logicalType));
@@ -181,6 +187,12 @@ public final class PrimitiveType extends Type {
                   return of(PrimitiveComparator.SIGNED_INT32_COMPARATOR);
                 }
                 return empty();
+              }
+
+              @Override
+              public Optional<PrimitiveComparator> visit(
+                  LogicalTypeAnnotation.UnknownLogicalTypeAnnotation unknownLogicalTypeAnnotation) {
+                return of(PrimitiveComparator.SIGNED_INT32_COMPARATOR);
               }
             })
             .orElseThrow(() -> new ShouldNeverHappenException(
@@ -280,6 +292,12 @@ public final class PrimitiveType extends Type {
               @Override
               public Optional<PrimitiveComparator> visit(
                   LogicalTypeAnnotation.GeographyLogicalTypeAnnotation geographyLogicalType) {
+                return of(PrimitiveComparator.UNSIGNED_LEXICOGRAPHICAL_BINARY_COMPARATOR);
+              }
+
+              @Override
+              public Optional<PrimitiveComparator> visit(
+                  LogicalTypeAnnotation.UnknownLogicalTypeAnnotation unknownLogicalTypeAnnotation) {
                 return of(PrimitiveComparator.UNSIGNED_LEXICOGRAPHICAL_BINARY_COMPARATOR);
               }
             })
@@ -415,6 +433,12 @@ public final class PrimitiveType extends Type {
               public Optional<PrimitiveComparator> visit(
                   LogicalTypeAnnotation.Float16LogicalTypeAnnotation float16LogicalType) {
                 return of(PrimitiveComparator.BINARY_AS_FLOAT16_COMPARATOR);
+              }
+
+              @Override
+              public Optional<PrimitiveComparator> visit(
+                  LogicalTypeAnnotation.UnknownLogicalTypeAnnotation unknownLogicalTypeAnnotation) {
+                return of(PrimitiveComparator.UNSIGNED_LEXICOGRAPHICAL_BINARY_COMPARATOR);
               }
             })
             .orElseThrow(() -> new ShouldNeverHappenException(

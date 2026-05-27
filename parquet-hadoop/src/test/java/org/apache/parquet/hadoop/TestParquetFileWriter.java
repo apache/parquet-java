@@ -46,7 +46,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -131,7 +130,7 @@ public class TestParquetFileWriter {
 
   private static final Logger LOG = LoggerFactory.getLogger(TestParquetFileWriter.class);
 
-  private static final MessageType SCHEMA = MessageTypeParser.parseMessageType("" + "message m {"
+  private static final MessageType SCHEMA = MessageTypeParser.parseMessageType("message m {"
       + "  required group a {"
       + "    required binary b;"
       + "  }"
@@ -155,14 +154,12 @@ public class TestParquetFileWriter {
               Types.required(PrimitiveTypeName.BINARY).named("test_binary"))
           .build();
 
-  private String writeSchema;
-
   @Rule
   public final TemporaryFolder temp = new TemporaryFolder();
 
   @Parameterized.Parameters(name = "vectored : {0}")
   public static List<Boolean> params() {
-    return Arrays.asList(true, false);
+    return List.of(true, false);
   }
 
   /**
@@ -313,8 +310,8 @@ public class TestParquetFileWriter {
           configuration,
           readFooter.getFileMetaData(),
           path,
-          Arrays.asList(rowGroup),
-          Arrays.asList(SCHEMA.getColumnDescription(PATH1)))) {
+          List.of(rowGroup),
+          List.of(SCHEMA.getColumnDescription(PATH1)))) {
         PageReadStore pages = r.readNextRowGroup();
         assertEquals(3, pages.getRowCount());
         validateContains(SCHEMA, pages, PATH1, 2, BytesInput.from(BYTES1));
@@ -329,7 +326,7 @@ public class TestParquetFileWriter {
           readFooter.getFileMetaData(),
           path,
           readFooter.getBlocks(),
-          Arrays.asList(SCHEMA.getColumnDescription(PATH1), SCHEMA.getColumnDescription(PATH2)))) {
+          List.of(SCHEMA.getColumnDescription(PATH1), SCHEMA.getColumnDescription(PATH2)))) {
 
         PageReadStore pages = r.readNextRowGroup();
         assertEquals(3, pages.getRowCount());
@@ -479,8 +476,8 @@ public class TestParquetFileWriter {
         configuration,
         readFooter.getFileMetaData(),
         path,
-        Arrays.asList(readFooter.getBlocks().get(0)),
-        Arrays.asList(schema.getColumnDescription(colPath)))) {
+        List.of(readFooter.getBlocks().get(0)),
+        List.of(schema.getColumnDescription(colPath)))) {
       BloomFilterReader bloomFilterReader =
           r.getBloomFilterDataReader(readFooter.getBlocks().get(0));
       BloomFilter bloomFilter = bloomFilterReader.readBloomFilter(
@@ -553,7 +550,7 @@ public class TestParquetFileWriter {
         readFooter.getFileMetaData(),
         path,
         readFooter.getBlocks(),
-        Arrays.asList(SCHEMA.getColumnDescription(PATH1), SCHEMA.getColumnDescription(PATH2)))) {
+        List.of(SCHEMA.getColumnDescription(PATH1), SCHEMA.getColumnDescription(PATH2)))) {
       PageReadStore pages = reader.readNextRowGroup();
       assertEquals(14, pages.getRowCount());
       validateV2Page(
@@ -692,8 +689,8 @@ public class TestParquetFileWriter {
           conf,
           readFooter.getFileMetaData(),
           path,
-          Arrays.asList(readFooter.getBlocks().get(0)),
-          Arrays.asList(SCHEMA.getColumnDescription(PATH1)))) {
+          List.of(readFooter.getBlocks().get(0)),
+          List.of(SCHEMA.getColumnDescription(PATH1)))) {
         PageReadStore pages = r.readNextRowGroup();
         assertEquals(3, pages.getRowCount());
         validateContains(SCHEMA, pages, PATH1, 2, BytesInput.from(BYTES1));
@@ -708,7 +705,7 @@ public class TestParquetFileWriter {
           readFooter.getFileMetaData(),
           path,
           readFooter.getBlocks(),
-          Arrays.asList(SCHEMA.getColumnDescription(PATH1), SCHEMA.getColumnDescription(PATH2)))) {
+          List.of(SCHEMA.getColumnDescription(PATH1), SCHEMA.getColumnDescription(PATH2)))) {
 
         PageReadStore pages = r.readNextRowGroup();
         assertEquals(3, pages.getRowCount());
@@ -820,8 +817,8 @@ public class TestParquetFileWriter {
           conf,
           readFooter.getFileMetaData(),
           path,
-          Arrays.asList(readFooter.getBlocks().get(0)),
-          Arrays.asList(SCHEMA.getColumnDescription(PATH1)))) {
+          List.of(readFooter.getBlocks().get(0)),
+          List.of(SCHEMA.getColumnDescription(PATH1)))) {
         PageReadStore pages = r.readNextRowGroup();
         assertEquals(3, pages.getRowCount());
         validateContains(SCHEMA, pages, PATH1, 2, BytesInput.from(BYTES1));
@@ -836,7 +833,7 @@ public class TestParquetFileWriter {
           readFooter.getFileMetaData(),
           path,
           readFooter.getBlocks(),
-          Arrays.asList(SCHEMA.getColumnDescription(PATH1), SCHEMA.getColumnDescription(PATH2)))) {
+          List.of(SCHEMA.getColumnDescription(PATH1), SCHEMA.getColumnDescription(PATH2)))) {
         PageReadStore pages = r.readNextRowGroup();
         assertEquals(3, pages.getRowCount());
         validateContains(SCHEMA, pages, PATH1, 2, BytesInput.from(BYTES1));
@@ -1012,14 +1009,14 @@ public class TestParquetFileWriter {
     validateFooters(metadata);
 
     footers = ParquetFileReader.readAllFootersInParallelUsingSummaryFiles(
-        configuration, Arrays.asList(fs.listStatus(testDirPath, HiddenFileFilter.INSTANCE)), false);
+        configuration, List.of(fs.listStatus(testDirPath, HiddenFileFilter.INSTANCE)), false);
     validateFooters(footers);
 
     fs.delete(metadataFile.getPath(), false);
     fs.delete(metadataFileLight.getPath(), false);
 
     footers = ParquetFileReader.readAllFootersInParallelUsingSummaryFiles(
-        configuration, Arrays.asList(fs.listStatus(testDirPath)), false);
+        configuration, List.of(fs.listStatus(testDirPath)), false);
     validateFooters(footers);
   }
 
@@ -1031,7 +1028,7 @@ public class TestParquetFileWriter {
     File testFile = temp.newFile();
     testFile.delete();
 
-    writeSchema = "message example {\n" + "required binary content (UTF8);\n" + "}";
+    String writeSchema = "message example {\n" + "required binary content (UTF8);\n" + "}";
 
     Path path = new Path(testFile.toURI());
 
@@ -1040,7 +1037,7 @@ public class TestParquetFileWriter {
     configuration.setBoolean("parquet.strings.signed-min-max.enabled", true);
     GroupWriteSupport.setSchema(schema, configuration);
 
-    // close any filesystems to ensure that the the FS used by the writer picks up the configuration
+    // close any filesystems to ensure that the FS used by the writer picks up the configuration
     FileSystem.closeAll();
     ParquetWriter<Group> writer = new ParquetWriter<Group>(path, configuration, new GroupWriteSupport());
 
@@ -1352,8 +1349,8 @@ public class TestParquetFileWriter {
       ColumnIndex columnIndex =
           reader.readColumnIndex(blockMeta.getColumns().get(0));
       assertEquals(BoundaryOrder.ASCENDING, columnIndex.getBoundaryOrder());
-      assertTrue(Arrays.asList(1l, 0l).equals(columnIndex.getNullCounts()));
-      assertTrue(Arrays.asList(false, false).equals(columnIndex.getNullPages()));
+      assertTrue(List.of(1l, 0l).equals(columnIndex.getNullCounts()));
+      assertTrue(List.of(false, false).equals(columnIndex.getNullPages()));
       List<ByteBuffer> minValues = columnIndex.getMinValues();
       assertEquals(2, minValues.size());
       List<ByteBuffer> maxValues = columnIndex.getMaxValues();
@@ -1365,8 +1362,8 @@ public class TestParquetFileWriter {
 
       columnIndex = reader.readColumnIndex(blockMeta.getColumns().get(1));
       assertEquals(BoundaryOrder.DESCENDING, columnIndex.getBoundaryOrder());
-      assertTrue(Arrays.asList(0l, 3l, 0l).equals(columnIndex.getNullCounts()));
-      assertTrue(Arrays.asList(false, true, false).equals(columnIndex.getNullPages()));
+      assertTrue(List.of(0l, 3l, 0l).equals(columnIndex.getNullCounts()));
+      assertTrue(List.of(false, true, false).equals(columnIndex.getNullPages()));
       minValues = columnIndex.getMinValues();
       assertEquals(3, minValues.size());
       maxValues = columnIndex.getMaxValues();
@@ -1408,8 +1405,8 @@ public class TestParquetFileWriter {
         assertNotNull(reader.readColumnIndex(blockMeta.getColumns().get(0)));
         columnIndex = reader.readColumnIndex(blockMeta.getColumns().get(0));
         assertEquals(BoundaryOrder.ASCENDING, columnIndex.getBoundaryOrder());
-        assertTrue(Arrays.asList(0l).equals(columnIndex.getNullCounts()));
-        assertTrue(Arrays.asList(false).equals(columnIndex.getNullPages()));
+        assertTrue(List.of(0l).equals(columnIndex.getNullCounts()));
+        assertTrue(List.of(false).equals(columnIndex.getNullPages()));
         minValues = columnIndex.getMinValues();
         assertEquals(1, minValues.size());
         maxValues = columnIndex.getMaxValues();

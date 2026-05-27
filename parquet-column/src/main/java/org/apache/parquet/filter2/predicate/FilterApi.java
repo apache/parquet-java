@@ -59,13 +59,13 @@ import org.apache.parquet.hadoop.metadata.ColumnPath;
  *   FilterPredicate pred = or(eq(foo, 10), ltEq(bar, 17.0));
  * </pre>
  */
-// TODO: Support repeated columns (https://issues.apache.org/jira/browse/PARQUET-34)
+// TODO: Support repeated columns (https://github.com/apache/parquet-java/issues/1452)
 //
 // TODO: Support filtering on groups (eg, filter where this group is / isn't null)
-// TODO: (https://issues.apache.org/jira/browse/PARQUET-43)
+// TODO: (https://github.com/apache/parquet-format/issues/261)
 
 // TODO: Consider adding support for more column types that aren't coupled with parquet types, eg Column<String>
-// TODO: (https://issues.apache.org/jira/browse/PARQUET-35)
+// TODO: (https://github.com/apache/parquet-java/issues/1453)
 public final class FilterApi {
   private FilterApi() {}
 
