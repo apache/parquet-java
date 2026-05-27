@@ -43,7 +43,6 @@ public class ValidInt96StatsTest {
 
   @Test
   public void testParquetMrInvalid() {
-    // Versions < 1.16.0 should be invalid (including pre-releases of 1.16.0)
     assertFalse(ValidInt96Stats.hasValidInt96Stats("parquet-mr version 1.15.0"));
     assertFalse(ValidInt96Stats.hasValidInt96Stats("parquet-mr version 1.15.1"));
     assertFalse(ValidInt96Stats.hasValidInt96Stats("parquet-mr version 1.15.1-SNAPSHOT"));
