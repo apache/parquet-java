@@ -406,4 +406,29 @@ public class TestVariantObject {
     Assert.assertEquals(0, immutableMetadata.getOrInsert("name"));
     Assert.assertEquals(1, immutableMetadata.getOrInsert("age"));
   }
+
+  @Test
+  public void testMetadataMapWithUnicodeKeys() {
+    // Build a variant whose metadata dictionary contains non-ASCII keys.
+    VariantBuilder vb = new VariantBuilder();
+    VariantObjectBuilder obj = vb.startObject();
+    obj.appendKey("élève");
+    obj.appendInt(1);
+    obj.appendKey("中文");
+    obj.appendInt(2);
+    vb.endObject();
+    Variant variant = vb.build();
+
+    ByteBuffer metaBuf = variant.getMetadataBuffer();
+
+    // hasArray branch
+    ImmutableMetadata writable = new ImmutableMetadata(metaBuf);
+    Assert.assertEquals(0, writable.getOrInsert("élève"));
+    Assert.assertEquals(1, writable.getOrInsert("中文"));
+
+    // read-only branch (else path in getMetadataMap): asReadOnlyBuffer() makes isReadOnly() true
+    ImmutableMetadata readOnly = new ImmutableMetadata(metaBuf.asReadOnlyBuffer());
+    Assert.assertEquals(0, readOnly.getOrInsert("élève"));
+    Assert.assertEquals(1, readOnly.getOrInsert("中文"));
+  }
 }
