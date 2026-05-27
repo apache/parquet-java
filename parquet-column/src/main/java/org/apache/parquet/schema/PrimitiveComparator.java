@@ -215,6 +215,10 @@ public abstract class PrimitiveComparator<T> implements Comparator<T>, Serializa
   static final PrimitiveComparator<Binary> BINARY_AS_INT96_TIMESTAMP_COMPARATOR = new BinaryComparator() {
     @Override
     int compareBinary(Binary b1, Binary b2) {
+      if (b1.length() != 12 || b2.length() != 12) {
+        throw new IllegalArgumentException(
+            "INT96 binary length must be 12, got " + b1.length() + " and " + b2.length());
+      }
       ByteBuffer bb1 = b1.toByteBuffer().slice();
       ByteBuffer bb2 = b2.toByteBuffer().slice();
       bb1.order(java.nio.ByteOrder.LITTLE_ENDIAN);

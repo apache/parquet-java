@@ -356,6 +356,27 @@ public class TestPrimitiveComparator {
   }
 
   @Test
+  public void testInt96ComparatorRejectsInvalidLengths() {
+    Binary valid = timestampToInt96("2020-01-01T00:00:00.000");
+    int[] invalidLengths = {0, 4, 8, 11, 13, 16};
+    for (int len : invalidLengths) {
+      Binary wrongLength = Binary.fromConstantByteArray(new byte[len]);
+      try {
+        BINARY_AS_INT96_TIMESTAMP_COMPARATOR.compare(wrongLength, valid);
+        fail("Expected IllegalArgumentException when left operand has length " + len);
+      } catch (IllegalArgumentException expected) {
+        // ok
+      }
+      try {
+        BINARY_AS_INT96_TIMESTAMP_COMPARATOR.compare(valid, wrongLength);
+        fail("Expected IllegalArgumentException when right operand has length " + len);
+      } catch (IllegalArgumentException expected) {
+        // ok
+      }
+    }
+  }
+
+  @Test
   public void testFloat16Comparator() {
     Binary[] valuesInAscendingOrder = {
       Binary.fromConstantByteArray(new byte[] {0x00, (byte) 0xfc}), // -Infinity
