@@ -34,8 +34,6 @@ public class ValidInt96Stats {
 
   private static final Logger LOG = LoggerFactory.getLogger(ValidInt96Stats.class);
 
-  // parquet-mr started emitting correct INT96 min/max statistics in 1.16.0,
-  // so only that release and later are trusted.
   private static final SemanticVersion MINIMUM_PARQUET_MR_VERSION = new SemanticVersion(1, 16, 0);
 
   /**
