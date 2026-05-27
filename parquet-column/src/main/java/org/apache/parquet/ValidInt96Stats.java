@@ -34,6 +34,10 @@ public class ValidInt96Stats {
 
   private static final Logger LOG = LoggerFactory.getLogger(ValidInt96Stats.class);
 
+  // parquet-mr started emitting correct INT96 min/max statistics after 1.15.0,
+  // so only releases strictly greater than 1.15.0 are trusted.
+  private static final SemanticVersion MINIMUM_PARQUET_MR_VERSION = new SemanticVersion(1, 15, 0);
+
   /**
    * Decides if the statistics from a file created by createdBy (the created_by field from parquet format)
    * should be trusted for INT96 columns.
@@ -50,7 +54,8 @@ public class ValidInt96Stats {
     try {
       ParsedVersion version = VersionParser.parse(createdBy);
       if ("parquet-mr".equals(version.application)) {
-        return version.version != null && version.version.compareTo("1.16.0") > 0;
+        return version.hasSemanticVersion()
+            && version.getSemanticVersion().compareTo(MINIMUM_PARQUET_MR_VERSION) > 0;
       }
       if ("parquet-mr compatible Photon".equals(version.application)) {
         return true;
