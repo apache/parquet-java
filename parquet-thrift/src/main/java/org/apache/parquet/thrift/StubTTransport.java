@@ -26,14 +26,14 @@ import org.apache.thrift.transport.TTransportException;
  * A stub transport which implements the minimum amount needed for range/depth
  * validation within the thrift library to succeed.
  */
-public final class StubTTransport extends TTransport {
+final class StubTTransport extends TTransport {
 
-  public static final StubTTransport INSTANCE = new StubTTransport();
+  static final StubTTransport INSTANCE = new StubTTransport();
 
   /**
    * There's no limits on recursion depth.
    */
-  private final TConfiguration conf = new TConfiguration(
+  private static final TConfiguration CONFIGURATION = new TConfiguration(
       TConfiguration.DEFAULT_MAX_FRAME_SIZE, TConfiguration.DEFAULT_MAX_MESSAGE_SIZE, Integer.MAX_VALUE);
 
   private StubTTransport() {}
@@ -66,7 +66,7 @@ public final class StubTTransport extends TTransport {
 
   @Override
   public TConfiguration getConfiguration() {
-    return conf;
+    return CONFIGURATION;
   }
 
   @Override
