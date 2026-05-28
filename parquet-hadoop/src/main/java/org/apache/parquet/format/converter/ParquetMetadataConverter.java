@@ -2575,6 +2575,18 @@ public class ParquetMetadataConverter {
     return parquetColumnIndex;
   }
 
+  /**
+   * @param type              the primitive type
+   * @param parquetColumnIndex parquet format column index
+   * @return the column index
+   * @deprecated will be removed in 2.0.0; use {@link #fromParquetColumnIndex(String, PrimitiveType, ColumnIndex)} instead.
+   */
+  @Deprecated
+  public static org.apache.parquet.internal.column.columnindex.ColumnIndex fromParquetColumnIndex(
+      PrimitiveType type, ColumnIndex parquetColumnIndex) {
+    return new ParquetMetadataConverter().fromParquetColumnIndex(null, type, parquetColumnIndex);
+  }
+
   public org.apache.parquet.internal.column.columnindex.ColumnIndex fromParquetColumnIndex(
       String createdBy, PrimitiveType type, ColumnIndex parquetColumnIndex) {
     if (!isMinMaxStatsReadingSupported(createdBy, type)) {
