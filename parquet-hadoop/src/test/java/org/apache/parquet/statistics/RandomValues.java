@@ -23,6 +23,7 @@ import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
@@ -236,7 +237,7 @@ public class RandomValues {
           .putLong(timeOfDay)
           .putInt(julianDay);
 
-      return Binary.fromReusedByteArray(buffer, 0, INT_96_LENGTH);
+      return Binary.fromConstantByteArray(Arrays.copyOf(buffer, INT_96_LENGTH));
     }
 
     @Override
