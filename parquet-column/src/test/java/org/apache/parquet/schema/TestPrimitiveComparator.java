@@ -348,7 +348,9 @@ public class TestPrimitiveComparator {
           for (java.util.function.Function<Binary, Binary> fj : perturb) {
             Binary perturbedBi = fi.apply(bi);
             Binary perturbedBj = fj.apply(bj);
-            assertEquals(Integer.compare(i, j), BINARY_AS_INT96_TIMESTAMP_COMPARATOR.compare(perturbedBi, perturbedBj));
+            assertEquals(
+                Integer.compare(i, j),
+                BINARY_AS_INT96_TIMESTAMP_COMPARATOR.compare(perturbedBi, perturbedBj));
           }
         }
       }
