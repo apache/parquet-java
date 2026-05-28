@@ -637,10 +637,8 @@ public class ParquetMetadataConverter {
       }
       if (columnMetaData.getStatistics() != null
           && !columnMetaData.getStatistics().isEmpty()) {
-        metaData.setStatistics(toParquetStatistics(
-            parquetMetadata.getFileMetaData().getCreatedBy(),
-            columnMetaData.getStatistics(),
-            this.statisticsTruncateLength));
+        metaData.setStatistics(
+            toParquetStatistics(columnMetaData.getStatistics(), this.statisticsTruncateLength));
       }
       if (columnMetaData.getEncodingStats() != null) {
         metaData.setEncoding_stats(convertEncodingStats(columnMetaData.getEncodingStats()));
@@ -803,34 +801,12 @@ public class ParquetMetadataConverter {
     return formatStats;
   }
 
-  /**
-   * @param stats the statistics
-   * @return the parquet format statistics
-   * @deprecated will be removed in 2.0.0; use {@link #toParquetStatistics(String, org.apache.parquet.column.statistics.Statistics)} instead.
-   */
-  @Deprecated
   public static Statistics toParquetStatistics(org.apache.parquet.column.statistics.Statistics stats) {
     return toParquetStatistics(stats, ParquetProperties.DEFAULT_STATISTICS_TRUNCATE_LENGTH);
   }
 
-  /**
-   * @param stats          the statistics
-   * @param truncateLength max truncation length for binary statistics
-   * @return the parquet format statistics
-   * @deprecated will be removed in 2.0.0; use {@link #toParquetStatistics(String, org.apache.parquet.column.statistics.Statistics, int)} instead.
-   */
-  @Deprecated
   public static Statistics toParquetStatistics(
       org.apache.parquet.column.statistics.Statistics stats, int truncateLength) {
-    return new ParquetMetadataConverter().toParquetStatistics(null, stats, truncateLength);
-  }
-
-  public Statistics toParquetStatistics(String createdBy, org.apache.parquet.column.statistics.Statistics stats) {
-    return toParquetStatistics(createdBy, stats, ParquetProperties.DEFAULT_STATISTICS_TRUNCATE_LENGTH);
-  }
-
-  public Statistics toParquetStatistics(
-      String createdBy, org.apache.parquet.column.statistics.Statistics stats, int truncateLength) {
     Statistics formatStats = new Statistics();
     // Don't write stats larger than the max size rather than truncating. The
     // rationale is that some engines may use the minimum value in the page as
@@ -858,7 +834,7 @@ public class ParquetMetadataConverter {
           formatStats.setMax(max);
         }
 
-        if (isMinMaxStatsReadingSupported(createdBy, stats.type()) || Arrays.equals(min, max)) {
+        if (isMinMaxStatsWritingSupported(stats.type()) || Arrays.equals(min, max)) {
           formatStats.setMin_value(min);
           formatStats.setMax_value(max);
         }

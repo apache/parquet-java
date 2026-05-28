@@ -867,7 +867,7 @@ public class TestParquetFileWriter {
     final String createdBy = "parquet-mr version 1.8.0 (build d4d5a07ec9bd262ca1e93c309f1d7d4a74ebda4c)";
     org.apache.parquet.format.converter.ParquetMetadataConverter converter =
         new org.apache.parquet.format.converter.ParquetMetadataConverter();
-    org.apache.parquet.format.Statistics thriftStats = converter.toParquetStatistics(createdBy, parquetMRstats);
+    org.apache.parquet.format.Statistics thriftStats = converter.toParquetStatistics(parquetMRstats);
     LongStatistics convertedBackStats =
         (LongStatistics) converter.fromParquetStatistics(createdBy, thriftStats, PrimitiveTypeName.INT64);
 
