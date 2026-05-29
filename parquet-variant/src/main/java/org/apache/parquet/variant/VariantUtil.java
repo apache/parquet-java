@@ -20,8 +20,10 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.HashMap;
+import org.apache.parquet.Preconditions;
 
 /**
  * This class defines constants related to the Variant format and provides functions for
@@ -297,6 +299,28 @@ class VariantUtil {
       throw new IllegalArgumentException(String.format("Failed to read unsigned int. numBytes: %d", numBytes));
     }
     return result;
+  }
+
+  /**
+   * Fast little-endian unsigned read using bulk ByteBuffer operations.
+   * Requires the buffer to have {@link java.nio.ByteOrder#LITTLE_ENDIAN} byte order.
+   * Adapted from Apache Iceberg's VariantUtil.readLittleEndianUnsigned.
+   */
+  static int readUnsignedLittleEndian(ByteBuffer buffer, int pos, int numBytes) {
+    switch (numBytes) {
+      case 1:
+        return buffer.get(pos) & U8_MAX;
+      case 2:
+        return buffer.getShort(pos) & U16_MAX;
+      case 3:
+        return (buffer.getShort(pos) & U16_MAX) | ((buffer.get(pos + 2) & U8_MAX) << 16);
+      case 4:
+        int v = buffer.getInt(pos);
+        Preconditions.checkArgument(v >= 0, "Failed to read unsigned int. numBytes: " + numBytes);
+        return v;
+      default:
+        throw new IllegalArgumentException(String.format("Invalid numBytes: %d", numBytes));
+    }
   }
 
   /**
@@ -634,12 +658,12 @@ class VariantUtil {
       checkIndex(start + length - 1, value.limit());
       if (value.hasArray()) {
         // If the buffer is backed by an array, we can use the array directly.
-        return new String(value.array(), value.arrayOffset() + start, length);
+        return new String(value.array(), value.arrayOffset() + start, length, StandardCharsets.UTF_8);
       } else {
         // If the buffer is not backed by an array, we need to copy the bytes into a new array.
         byte[] valueArray = new byte[length];
         slice(value, start).get(valueArray);
-        return new String(valueArray);
+        return new String(valueArray, StandardCharsets.UTF_8);
       }
     }
     throw unexpectedType(Variant.Type.STRING, value);
@@ -802,12 +826,16 @@ class VariantUtil {
     }
     checkIndex(dataPos + nextOffset - 1, metadata.limit());
     if (metadata.hasArray() && !metadata.isReadOnly()) {
-      return new String(metadata.array(), metadata.arrayOffset() + dataPos + offset, nextOffset - offset);
+      return new String(
+          metadata.array(),
+          metadata.arrayOffset() + dataPos + offset,
+          nextOffset - offset,
+          StandardCharsets.UTF_8);
     } else {
       // ByteBuffer does not have an array, so we need to use the `get` method to read the bytes.
       byte[] metadataArray = new byte[nextOffset - offset];
       slice(metadata, dataPos + offset).get(metadataArray);
-      return new String(metadataArray);
+      return new String(metadataArray, StandardCharsets.UTF_8);
     }
   }
 
@@ -838,13 +866,14 @@ class VariantUtil {
             new String(
                 metadata.array(),
                 metadata.arrayOffset() + pos + stringStart + offset,
-                nextOffset - offset),
+                nextOffset - offset,
+                StandardCharsets.UTF_8),
             id);
       } else {
         // ByteBuffer does not have an array, so we need to use the `get` method to read the bytes.
         byte[] metadataArray = new byte[nextOffset - offset];
-        slice(metadata, stringStart + offset).get(metadataArray);
-        result.put(new String(metadataArray), id);
+        slice(metadata, pos + stringStart + offset).get(metadataArray);
+        result.put(new String(metadataArray, StandardCharsets.UTF_8), id);
       }
       offset = nextOffset;
     }

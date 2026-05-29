@@ -57,7 +57,7 @@ public class TestInteropBloomFilter {
   private static String DATA_INDEX_BLOOM_WITH_LENGTH_FILE = "data_index_bloom_encoding_with_length.parquet";
 
   private static final Logger LOG = LoggerFactory.getLogger(TestInteropBloomFilter.class);
-  private OkHttpClient httpClient = new OkHttpClient();
+  private OkHttpClient httpClient = InterOpTester.createOkHttpClientOptProxy();
 
   @Test
   public void testReadDataIndexBloomParquetFiles() throws IOException {

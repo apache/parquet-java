@@ -19,6 +19,7 @@
 package org.apache.parquet.column.values.deltastrings;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.bytes.DirectByteBufferAllocator;
 import org.apache.parquet.column.values.Utils;
@@ -127,5 +128,25 @@ public class TestDeltaByteArray {
     writer.reset();
 
     assertReadWrite(writer, new DeltaByteArrayReader(), values);
+  }
+
+  @Test
+  public void testReusedBackingArrayRegression() throws Exception {
+    DeltaByteArrayWriter writer = new DeltaByteArrayWriter(64 * 1024, 64 * 1024, new DirectByteBufferAllocator());
+    DeltaByteArrayReader reader = new DeltaByteArrayReader();
+
+    byte[] buffer = "parquet-000".getBytes(StandardCharsets.UTF_8);
+    writer.writeBytes(Binary.fromReusedByteArray(buffer));
+
+    System.arraycopy("parquet-111".getBytes(StandardCharsets.UTF_8), 0, buffer, 0, buffer.length);
+    writer.writeBytes(Binary.fromReusedByteArray(buffer));
+
+    System.arraycopy("parquet-222".getBytes(StandardCharsets.UTF_8), 0, buffer, 0, buffer.length);
+    writer.writeBytes(Binary.fromReusedByteArray(buffer));
+
+    Binary[] decoded = Utils.readData(reader, writer.getBytes().toInputStream(), 3);
+    Assert.assertEquals(Binary.fromString("parquet-000"), decoded[0]);
+    Assert.assertEquals(Binary.fromString("parquet-111"), decoded[1]);
+    Assert.assertEquals(Binary.fromString("parquet-222"), decoded[2]);
   }
 }

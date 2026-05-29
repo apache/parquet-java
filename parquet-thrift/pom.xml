@@ -170,7 +170,6 @@
       <plugin>
         <groupId>org.apache.thrift</groupId>
         <artifactId>thrift-maven-plugin</artifactId>
-        <version>${thrift-maven-plugin.version}</version>
         <configuration>
           <thriftExecutable>${thrift.executable}</thriftExecutable>
         </configuration>
@@ -191,7 +190,6 @@
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>build-helper-maven-plugin</artifactId>
-        <version>3.6.0</version>
         <executions>
           <execution>
             <id>add-test-sources</id>
@@ -223,7 +221,6 @@
           <plugin>
             <groupId>org.codehaus.mojo</groupId>
             <artifactId>exec-maven-plugin</artifactId>
-            <version>${exec-maven-plugin.version}</version>
             <executions>
               <execution>
                 <id>check-thrift-version</id>

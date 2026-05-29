@@ -94,6 +94,7 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
     private Statistics totalStatistics;
     private final SizeStatistics totalSizeStatistics;
     private final GeospatialStatistics totalGeospatialStatistics;
+    private final ByteBufferAllocator allocator;
     private final ByteBufferReleaser releaser;
 
     private final CRC32 crc;
@@ -121,6 +122,7 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
         int columnOrdinal) {
       this.path = path;
       this.compressor = compressor;
+      this.allocator = allocator;
       this.releaser = new ByteBufferReleaser(allocator);
       this.buf = new ConcatenatingByteBufferCollector(allocator);
       this.columnIndexBuilder = ColumnIndexBuilder.getBuilder(path.getPrimitiveType(), columnIndexTruncateLength);
@@ -217,7 +219,9 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
       }
       if (pageWriteChecksumEnabled) {
         crc.reset();
-        crc.update(compressedBytes.toByteArray());
+        try (ByteBufferReleaser pageReleaser = new ByteBufferReleaser(allocator)) {
+          crc.update(compressedBytes.toByteBuffer(pageReleaser));
+        }
         parquetMetadataConverter.writeDataPageV1Header(
             (int) uncompressedSize,
             (int) compressedSize,
@@ -321,14 +325,16 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
       }
       if (pageWriteChecksumEnabled) {
         crc.reset();
-        if (repetitionLevels.size() > 0) {
-          crc.update(repetitionLevels.toByteArray());
-        }
-        if (definitionLevels.size() > 0) {
-          crc.update(definitionLevels.toByteArray());
-        }
-        if (compressedData.size() > 0) {
-          crc.update(compressedData.toByteArray());
+        try (ByteBufferReleaser pageReleaser = new ByteBufferReleaser(allocator)) {
+          if (repetitionLevels.size() > 0) {
+            crc.update(repetitionLevels.toByteBuffer(pageReleaser));
+          }
+          if (definitionLevels.size() > 0) {
+            crc.update(definitionLevels.toByteBuffer(pageReleaser));
+          }
+          if (compressedData.size() > 0) {
+            crc.update(compressedData.toByteBuffer(pageReleaser));
+          }
         }
         parquetMetadataConverter.writeDataPageV2Header(
             uncompressedSize,
