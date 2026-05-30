@@ -143,4 +143,52 @@ public class TestParquetFileReaderMaxMessageSize {
               || e.getCause().getMessage().contains("MaxMessageSize reached"));
     }
   }
+
+  /**
+   * The -1 sentinel must be honored as "use the default max message size",
+   * not rejected as a non-positive value.
+   */
+  @Test
+  public void testReadAcceptsMinusOneAsDefaultMaxMessageSize() throws IOException {
+    Configuration readConf = new Configuration();
+    readConf.setInt("parquet.thrift.string.size.limit", -1);
+    ParquetReadOptions options = HadoopReadOptions.builder(readConf).build();
+
+    try (ParquetFileReader reader =
+        ParquetFileReader.open(HadoopInputFile.fromPath(TEST_FILE, readConf), options)) {
+      ParquetMetadata metadata = reader.getFooter();
+      assertNotNull(metadata);
+      assertEquals(schema, metadata.getFileMetaData().getSchema());
+    }
+  }
+
+  @Test
+  public void testReadRejectsZeroMaxMessageSize() throws IOException {
+    assertRejectsNonPositiveMaxMessageSize(0);
+  }
+
+  @Test
+  public void testReadRejectsInvalidNegativeMaxMessageSize() throws IOException {
+    assertRejectsNonPositiveMaxMessageSize(-5);
+  }
+
+  private void assertRejectsNonPositiveMaxMessageSize(int maxMessageSize) throws IOException {
+    Configuration readConf = new Configuration();
+    readConf.setInt("parquet.thrift.string.size.limit", maxMessageSize);
+    ParquetReadOptions options = HadoopReadOptions.builder(readConf).build();
+
+    try (ParquetFileReader reader =
+        ParquetFileReader.open(HadoopInputFile.fromPath(TEST_FILE, readConf), options)) {
+      fail("Expected failure for non-positive max message size: " + maxMessageSize);
+    } catch (RuntimeException | IOException e) {
+      String message = e.getMessage() == null ? "" : e.getMessage();
+      String causeMessage = e.getCause() == null || e.getCause().getMessage() == null
+          ? ""
+          : e.getCause().getMessage();
+      assertTrue(
+          "Expected 'Max message size must be positive' in " + message + " / " + causeMessage,
+          message.contains("Max message size must be positive")
+              || causeMessage.contains("Max message size must be positive"));
+    }
+  }
 }
