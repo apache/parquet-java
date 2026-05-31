@@ -20,6 +20,7 @@ package org.apache.parquet.io.api;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -106,6 +107,27 @@ public class TestBinary {
     }
   };
 
+  private static final BinaryFactory DIRECT_BUFFER_BF = new BinaryFactory() {
+    @Override
+    public BinaryAndOriginal get(byte[] bytes, boolean reused) throws Exception {
+      ByteBuffer direct = ByteBuffer.allocateDirect(bytes.length);
+      direct.put(bytes);
+      direct.flip();
+      Binary b;
+
+      if (reused) {
+        b = Binary.fromReusedByteBuffer(direct);
+      } else {
+        b = Binary.fromConstantByteBuffer(direct);
+      }
+
+      assertArrayEquals(bytes, b.getBytes());
+      // Return the backing byte[] so tests can mutate it, though for direct buffers
+      // there is no accessible backing array. We return a copy of the original bytes.
+      return new BinaryAndOriginal(b, bytes);
+    }
+  };
+
   private static final BinaryFactory STRING_BF = new BinaryFactory() {
     @Override
     public BinaryAndOriginal get(byte[] bytes, boolean reused) throws Exception {
@@ -146,6 +168,71 @@ public class TestBinary {
   public void testByteBufferBackedBinary() throws Exception {
     testBinary(BUFFER_BF, true);
     testBinary(BUFFER_BF, false);
+  }
+
+  @Test
+  public void testDirectByteBufferBackedBinary() throws Exception {
+    // Direct buffers have different copy() semantics (always materializes to heap),
+    // so we test them separately instead of using the generic testBinary flow.
+    testSlice(DIRECT_BUFFER_BF, true);
+    testSlice(DIRECT_BUFFER_BF, false);
+    testDirectConstantCopy(DIRECT_BUFFER_BF);
+    testDirectReusedCopy(DIRECT_BUFFER_BF);
+    testSerializable(DIRECT_BUFFER_BF, true);
+    testSerializable(DIRECT_BUFFER_BF, false);
+  }
+
+  @Test
+  public void testDirectByteBufferCopyAlwaysMaterializesToHeap() throws Exception {
+    // For constant (non-reused) direct ByteBuffers, copy() must return a new Binary
+    // rather than 'this', because the direct memory can be freed independently.
+    byte[] data = testString.getBytes(UTF8);
+    ByteBuffer direct = ByteBuffer.allocateDirect(data.length);
+    direct.put(data);
+    direct.flip();
+
+    Binary binary = Binary.fromConstantByteBuffer(direct);
+    Binary copy = binary.copy();
+
+    // The copy must NOT be the same object, even though the binary is constant
+    assertNotSame("copy() of a direct ByteBuffer-backed constant Binary must not return 'this'", binary, copy);
+    assertArrayEquals(data, copy.getBytes());
+    assertArrayEquals(data, copy.getBytesUnsafe());
+  }
+
+  @Test
+  public void testDirectByteBufferCopyIsIndependentOfOriginalBuffer() throws Exception {
+    // Verify the copied Binary is independent of the original direct ByteBuffer.
+    // Simulates the scenario where direct memory is overwritten after copy.
+    byte[] data = testString.getBytes(UTF8);
+    ByteBuffer direct = ByteBuffer.allocateDirect(data.length);
+    direct.put(data);
+    direct.flip();
+
+    Binary binary = Binary.fromReusedByteBuffer(direct);
+    Binary copy = binary.copy();
+
+    // Overwrite the direct buffer content to simulate memory reuse / free
+    direct.clear();
+    for (int i = 0; i < data.length; i++) {
+      direct.put((byte) 0);
+    }
+
+    // The copy should still hold the original data
+    assertArrayEquals(data, copy.getBytes());
+    assertArrayEquals(data, copy.getBytesUnsafe());
+  }
+
+  @Test
+  public void testHeapByteBufferConstantCopyReturnsSame() throws Exception {
+    // For heap-backed constant ByteBuffers, copy() should return 'this' (existing behavior)
+    byte[] data = testString.getBytes(UTF8);
+    ByteBuffer heap = ByteBuffer.wrap(data);
+
+    Binary binary = Binary.fromConstantByteBuffer(heap);
+    Binary copy = binary.copy();
+
+    assertSame("copy() of a heap ByteBuffer-backed constant Binary should return 'this'", binary, copy);
   }
 
   @Test
@@ -216,6 +303,56 @@ public class TestBinary {
 
     Binary copy = bao.binary.copy();
     mutate(bao.original);
+
+    assertArrayEquals(testString.getBytes(UTF8), copy.getBytes());
+    assertArrayEquals(testString.getBytes(UTF8), copy.getBytesUnsafe());
+    assertArrayEquals(testString.getBytes(UTF8), copy.copy().getBytesUnsafe());
+    assertArrayEquals(testString.getBytes(UTF8), copy.copy().getBytes());
+  }
+
+  /**
+   * Tests copy() on a constant (non-reused) direct ByteBuffer-backed Binary.
+   * Unlike heap-backed binaries, copy() must return a new object because the direct
+   * memory can be freed independently.
+   */
+  private void testDirectConstantCopy(BinaryFactory bf) throws Exception {
+    BinaryAndOriginal bao = bf.get(testString.getBytes(UTF8), false);
+    assertEquals(false, bao.binary.isBackingBytesReused());
+
+    assertArrayEquals(testString.getBytes(UTF8), bao.binary.getBytes());
+    assertArrayEquals(testString.getBytes(UTF8), bao.binary.getBytesUnsafe());
+    assertArrayEquals(testString.getBytes(UTF8), bao.binary.copy().getBytesUnsafe());
+    assertArrayEquals(testString.getBytes(UTF8), bao.binary.copy().getBytes());
+
+    bao = bf.get(testString.getBytes(UTF8), false);
+    assertEquals(false, bao.binary.isBackingBytesReused());
+
+    Binary copy = bao.binary.copy();
+
+    // Direct ByteBuffer-backed constant Binary.copy() must NOT return 'this'
+    assertNotSame(copy, bao.binary);
+    // But the data must be equal
+    assertEquals(bao.binary, copy);
+  }
+
+  /**
+   * Tests copy() on a reused direct ByteBuffer-backed Binary.
+   * The copy must be fully independent and survive mutation of the original buffer.
+   */
+  private void testDirectReusedCopy(BinaryFactory bf) throws Exception {
+    BinaryAndOriginal bao = bf.get(testString.getBytes(UTF8), true);
+    assertEquals(true, bao.binary.isBackingBytesReused());
+
+    assertArrayEquals(testString.getBytes(UTF8), bao.binary.getBytes());
+    assertArrayEquals(testString.getBytes(UTF8), bao.binary.getBytesUnsafe());
+    assertArrayEquals(testString.getBytes(UTF8), bao.binary.copy().getBytesUnsafe());
+    assertArrayEquals(testString.getBytes(UTF8), bao.binary.copy().getBytes());
+
+    bao = bf.get(testString.getBytes(UTF8), true);
+    assertEquals(true, bao.binary.isBackingBytesReused());
+
+    Binary copy = bao.binary.copy();
+    assertNotSame(copy, bao.binary);
 
     assertArrayEquals(testString.getBytes(UTF8), copy.getBytes());
     assertArrayEquals(testString.getBytes(UTF8), copy.getBytesUnsafe());
