@@ -71,10 +71,33 @@ public final class Variant {
    */
   static final int BINARY_SEARCH_THRESHOLD = 32;
 
+  /**
+   * Create a Variant from a tuple of (value, metadata) byte arrays..
+   * Includes validation of version and a validation of the toplevel
+   * structure.
+   * @param value value buffer
+   * @param metadata metadata buffer
+   * @throws UnsupportedOperationException if there is a version mismatch
+   * @throws IllegalArgumentException for any validation failure.
+   */
   public Variant(byte[] value, byte[] metadata) {
     this(value, 0, value.length, metadata, 0, metadata.length);
   }
 
+  /**
+   * Create a Variant from a subset of the (value, metadata) buffers
+   * supplied.
+   * Includes validation of version and a validation of the toplevel
+   * structure.
+   * @param value value buffer
+   * @param valuePos offset where the value data begins
+   * @param valueLength length of value data
+   * @param metadata metadata buffer
+   * @param metadataPos offset where the metadata begins.
+   * @param metadataLength length of the metadata.
+   * @throws UnsupportedOperationException if there is a version mismatch
+   * @throws IllegalArgumentException for any validation failure.
+   */
   public Variant(byte[] value, int valuePos, int valueLength, byte[] metadata, int metadataPos, int metadataLength) {
     this(ByteBuffer.wrap(value, valuePos, valueLength), ByteBuffer.wrap(metadata, metadataPos, metadataLength));
   }
@@ -83,6 +106,15 @@ public final class Variant {
     this(value, metadata.getEncodedBuffer());
   }
 
+  /**
+   * Create a Variant from a tuple of (value, metadata) buffers.
+   * Includes validation of version and a validation of the toplevel
+   * structure.
+   * @param value value buffer
+   * @param metadata metadata buffer
+   * @throws UnsupportedOperationException if there is a version mismatch
+   * @throws IllegalArgumentException for any validation failure.
+   */
   public Variant(ByteBuffer value, ByteBuffer metadata) {
     this.value = value.asReadOnlyBuffer().order(ByteOrder.LITTLE_ENDIAN);
     this.metadata = metadata.asReadOnlyBuffer().order(ByteOrder.LITTLE_ENDIAN);
@@ -114,7 +146,14 @@ public final class Variant {
   }
 
   /**
-   * Package-private constructor that shares pre-parsed metadata state from a parent Variant.
+   * Package-private constructor that shares pre-parsed metadata state from a parent Variant, performing shallow validation of the structure.
+   * @param value value buffer
+   * @param metadata metadata buffer
+   * @param metadataCache shared metadata cache.
+   * @param dictSize shared dictionary size.
+   * @param depth depth of this variant in a recursive structure.
+   * @throws IllegalArgumentException if the depth of variants is too high or the structure
+   * invalid in some other form.
    */
   Variant(ByteBuffer value, ByteBuffer metadata, String[] metadataCache, int dictSize, int depth) {
     Preconditions.checkArgument(
