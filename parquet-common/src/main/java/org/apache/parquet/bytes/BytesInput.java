@@ -334,7 +334,12 @@ public abstract class BytesInput {
    * @return a new InputStream materializing the contents of this input
    * @throws IOException if there is an exception reading
    */
+  @SuppressWarnings("deprecation")
   public ByteBufferInputStream toInputStream() throws IOException {
+    ByteBuffer buf = getInternalByteBuffer();
+    if (buf != null) {
+      return ByteBufferInputStream.wrap(buf);
+    }
     return ByteBufferInputStream.wrap(toByteBuffer());
   }
 
@@ -669,6 +674,18 @@ public abstract class BytesInput {
       buffer.put(in, offset, length);
     }
 
+    @Override
+    ByteBuffer getInternalByteBuffer() {
+      return java.nio.ByteBuffer.wrap(in, offset, length).slice();
+    }
+
+    @Override
+    public ByteBufferInputStream toInputStream() {
+      return ByteBufferInputStream.wrap(java.nio.ByteBuffer.wrap(in, offset, length));
+    }
+
+    @SuppressWarnings("deprecation")
+    @Override
     public ByteBuffer toByteBuffer() throws IOException {
       return java.nio.ByteBuffer.wrap(in, offset, length);
     }
@@ -679,6 +696,7 @@ public abstract class BytesInput {
      * Returning the mutable array is safe — the base class already exposes a
      * mutable {@code BAOS.getBuf()}.
      */
+    @SuppressWarnings("deprecation")
     @Override
     public byte[] toByteArray() {
       if (offset == 0 && length == in.length) {
