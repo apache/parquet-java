@@ -75,14 +75,6 @@ public class ConcatenatingByteBufferCollector extends BytesInput implements Auto
     size = 0;
   }
 
-  @Override
-  public void writeAllTo(OutputStream out) throws IOException {
-    WritableByteChannel channel = Channels.newChannel(out);
-    for (ByteBuffer buffer : slabs) {
-      channel.write(buffer.duplicate());
-    }
-  }
-
   /**
    * Writes all collected slabs to the given output stream, releasing each slab's
    * {@link ByteBuffer} back to the allocator immediately after it has been written.
@@ -95,7 +87,11 @@ public class ConcatenatingByteBufferCollector extends BytesInput implements Auto
    * @param out the output stream to write to
    * @throws IOException if an I/O error occurs
    */
-  public void writeAllToAndRelease(OutputStream out) throws IOException {
+  @Override
+  public void writeAllTo(OutputStream out) throws IOException {
+    // The channel is intentionally not closed: closing it would close the underlying
+    // OutputStream which is owned by the caller. The channel is a stateless wrapper
+    // that holds no independent resources.
     WritableByteChannel channel = Channels.newChannel(out);
     Iterator<ByteBuffer> it = slabs.iterator();
     while (it.hasNext()) {

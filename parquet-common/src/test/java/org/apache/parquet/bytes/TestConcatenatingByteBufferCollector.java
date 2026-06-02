@@ -111,7 +111,7 @@ public class TestConcatenatingByteBufferCollector {
   }
 
   @Test
-  public void testWriteAllToAndRelease() throws IOException {
+  public void testWriteAllToReleasesProgressively() throws IOException {
     byte[] result;
     ConcatenatingByteBufferCollector collector = new ConcatenatingByteBufferCollector(allocator);
     collector.collect(BytesInput.from(bytes("Hello")));
@@ -121,16 +121,16 @@ public class TestConcatenatingByteBufferCollector {
     Assert.assertEquals(11, collector.size());
 
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
-    collector.writeAllToAndRelease(baos);
+    collector.writeAllTo(baos);
     result = baos.toByteArray();
 
-    // After writeAllToAndRelease, the collector should be empty
+    // After writeAllTo, the collector should be empty (buffers released progressively)
     Assert.assertEquals(0, collector.size());
 
     // Verify the data was written correctly
     Assert.assertEquals("Hello World", new String(result, StandardCharsets.UTF_8));
 
-    // close() after writeAllToAndRelease() should be a safe no-op
+    // close() after writeAllTo is a safe no-op
     collector.close();
   }
 
@@ -158,35 +158,23 @@ public class TestConcatenatingByteBufferCollector {
   }
 
   @Test
-  public void testWriteAllToAndReleaseProducesIdenticalOutput() throws IOException {
-    // Verify that writeAllToAndRelease produces identical output to writeAllTo
-    byte[] regularResult;
-    byte[] progressiveResult;
+  public void testWriteAllToProducesCorrectOutputWithMultipleTypes() throws IOException {
+    // Verify that writeAllTo produces correct output with mixed BytesInput types
+    byte[] result;
 
-    // Use writeAllTo (non-destructive)
-    try (ConcatenatingByteBufferCollector collector = new ConcatenatingByteBufferCollector(allocator)) {
-      collector.collect(BytesInput.fromInt(42));
-      collector.collect(BytesInput.from(bytes("parquet")));
-      collector.collect(BytesInput.fromInt(99));
-
-      ByteArrayOutputStream baos = new ByteArrayOutputStream();
-      collector.writeAllTo(baos);
-      regularResult = baos.toByteArray();
-    }
-
-    // Use writeAllToAndRelease (progressive)
     ConcatenatingByteBufferCollector collector = new ConcatenatingByteBufferCollector(allocator);
     collector.collect(BytesInput.fromInt(42));
     collector.collect(BytesInput.from(bytes("parquet")));
     collector.collect(BytesInput.fromInt(99));
 
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
-    collector.writeAllToAndRelease(baos);
-    progressiveResult = baos.toByteArray();
+    collector.writeAllTo(baos);
+    result = baos.toByteArray();
 
-    Assert.assertArrayEquals(regularResult, progressiveResult);
+    // Verify size: 4 (int) + 7 (string) + 4 (int) = 15 bytes
+    Assert.assertEquals(15, result.length);
 
-    // Already released by writeAllToAndRelease, close is a no-op
+    // Already released by writeAllTo, close is a no-op
     collector.close();
   }
 }

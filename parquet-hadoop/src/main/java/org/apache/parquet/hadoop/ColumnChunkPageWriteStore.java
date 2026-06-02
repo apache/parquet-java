@@ -421,6 +421,7 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
     }
 
     public void writeToFileWriter(ParquetFileWriter writer) throws IOException {
+      long bytesWritten = buf.size();
       if (null == headerBlockEncryptor) {
         writer.writeColumnChunk(
             path,
@@ -465,7 +466,7 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
       if (LOG.isDebugEnabled()) {
         LOG.debug(String.format(
                 "written %,dB for %s: %,d values, %,dB raw, %,dB comp, %d pages, encodings: %s",
-                buf.size(),
+                bytesWritten,
                 path,
                 totalValueCount,
                 uncompressedLength,
@@ -690,13 +691,13 @@ public class ColumnChunkPageWriteStore implements PageWriteStore, BloomFilterWri
 
   public void flushToFileWriter(ParquetFileWriter writer) throws IOException {
     for (ColumnDescriptor path : schema.getColumns()) {
-      ColumnChunkPageWriter pageWriter = writers.get(path);
-      pageWriter.writeToFileWriter(writer);
       // Eagerly release this column's page buffers now that they've been
       // written to the file writer. This reduces peak memory during flush
       // from the entire compressed row group down to roughly one column's
       // worth of compressed pages at a time.
-      pageWriter.close();
+      try (ColumnChunkPageWriter pageWriter = writers.get(path)) {
+        pageWriter.writeToFileWriter(writer);
+      }
     }
   }
 }
