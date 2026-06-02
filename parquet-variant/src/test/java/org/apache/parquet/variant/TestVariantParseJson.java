@@ -242,6 +242,15 @@ public class TestVariantParseJson {
   }
 
   @Test
+  public void testParseUnicodeKey() throws IOException {
+    Variant v = VariantJsonParser.parseJson("{\"\\u00e9l\\u00e8ve\": 42}");
+    Assert.assertEquals(Variant.Type.OBJECT, v.getType());
+    Variant value = v.getFieldByKey("élève");
+    Assert.assertNotNull(value);
+    Assert.assertEquals(42, value.getInt());
+  }
+
+  @Test
   public void testParseEscapedString() throws IOException {
     Variant v = VariantJsonParser.parseJson("\"hello\\nworld\"");
     Assert.assertEquals(Variant.Type.STRING, v.getType());

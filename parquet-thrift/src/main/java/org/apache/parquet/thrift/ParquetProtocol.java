@@ -38,7 +38,7 @@ public abstract class ParquetProtocol extends TProtocol {
   private String name;
 
   ParquetProtocol() {
-    super(null);
+    super(StubTTransport.INSTANCE);
   }
 
   private String getClassInfo() {
@@ -54,7 +54,7 @@ public abstract class ParquetProtocol extends TProtocol {
    * @param name a meaningful debugging name for anonymous inner classes
    */
   public ParquetProtocol(String name) {
-    super(null);
+    super(StubTTransport.INSTANCE);
     this.name = name;
   }
 
