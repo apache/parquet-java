@@ -23,6 +23,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.column.values.ValuesReader;
+import org.apache.parquet.io.ParquetDecodingException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,6 +38,9 @@ import org.slf4j.LoggerFactory;
 public abstract class PlainValuesReader extends ValuesReader {
   private static final Logger LOG = LoggerFactory.getLogger(PlainValuesReader.class);
 
+  private static final ByteBuffer EMPTY_LE_BUFFER =
+      ByteBuffer.allocate(0).order(ByteOrder.LITTLE_ENDIAN).asReadOnlyBuffer();
+
   protected ByteBuffer buffer;
 
   @Override
@@ -46,7 +50,7 @@ public abstract class PlainValuesReader extends ValuesReader {
     if (available > 0) {
       this.buffer = stream.slice(available).order(ByteOrder.LITTLE_ENDIAN);
     } else {
-      this.buffer = ByteBuffer.allocate(0).order(ByteOrder.LITTLE_ENDIAN);
+      this.buffer = EMPTY_LE_BUFFER.duplicate();
     }
   }
 
@@ -59,12 +63,20 @@ public abstract class PlainValuesReader extends ValuesReader {
 
     @Override
     public void skip(int n) {
-      buffer.position(buffer.position() + n * 8);
+      try {
+        buffer.position(buffer.position() + Math.multiplyExact(n, 8));
+      } catch (RuntimeException e) {
+        throw new ParquetDecodingException("could not skip " + n + " double values", e);
+      }
     }
 
     @Override
     public double readDouble() {
-      return buffer.getDouble();
+      try {
+        return buffer.getDouble();
+      } catch (RuntimeException e) {
+        throw new ParquetDecodingException("could not read double", e);
+      }
     }
   }
 
@@ -72,12 +84,20 @@ public abstract class PlainValuesReader extends ValuesReader {
 
     @Override
     public void skip(int n) {
-      buffer.position(buffer.position() + n * 4);
+      try {
+        buffer.position(buffer.position() + Math.multiplyExact(n, 4));
+      } catch (RuntimeException e) {
+        throw new ParquetDecodingException("could not skip " + n + " float values", e);
+      }
     }
 
     @Override
     public float readFloat() {
-      return buffer.getFloat();
+      try {
+        return buffer.getFloat();
+      } catch (RuntimeException e) {
+        throw new ParquetDecodingException("could not read float", e);
+      }
     }
   }
 
@@ -85,12 +105,20 @@ public abstract class PlainValuesReader extends ValuesReader {
 
     @Override
     public void skip(int n) {
-      buffer.position(buffer.position() + n * 4);
+      try {
+        buffer.position(buffer.position() + Math.multiplyExact(n, 4));
+      } catch (RuntimeException e) {
+        throw new ParquetDecodingException("could not skip " + n + " int values", e);
+      }
     }
 
     @Override
     public int readInteger() {
-      return buffer.getInt();
+      try {
+        return buffer.getInt();
+      } catch (RuntimeException e) {
+        throw new ParquetDecodingException("could not read int", e);
+      }
     }
   }
 
@@ -98,12 +126,20 @@ public abstract class PlainValuesReader extends ValuesReader {
 
     @Override
     public void skip(int n) {
-      buffer.position(buffer.position() + n * 8);
+      try {
+        buffer.position(buffer.position() + Math.multiplyExact(n, 8));
+      } catch (RuntimeException e) {
+        throw new ParquetDecodingException("could not skip " + n + " long values", e);
+      }
     }
 
     @Override
     public long readLong() {
-      return buffer.getLong();
+      try {
+        return buffer.getLong();
+      } catch (RuntimeException e) {
+        throw new ParquetDecodingException("could not read long", e);
+      }
     }
   }
 }

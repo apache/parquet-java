@@ -23,6 +23,7 @@ import java.nio.ByteBuffer;
 import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.bytes.BytesUtils;
 import org.apache.parquet.column.values.ValuesReader;
+import org.apache.parquet.io.ParquetDecodingException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,6 +41,7 @@ public class BooleanPlainValuesReader extends ValuesReader {
   private byte[] pageData;
   private int pageOffset;
   private int bitIndex;
+  private int bitCount;
 
   @Override
   public void initFromPage(int valueCount, ByteBufferInputStream stream) throws IOException {
@@ -59,11 +61,16 @@ public class BooleanPlainValuesReader extends ValuesReader {
       pageOffset = 0;
     }
     bitIndex = 0;
+    bitCount = length * 8;
     updateNextOffset(length);
   }
 
   @Override
   public boolean readBoolean() {
+    if (bitIndex >= bitCount) {
+      throw new ParquetDecodingException(
+          "attempt to read beyond end of boolean page: bitIndex=" + bitIndex + " bitCount=" + bitCount);
+    }
     int byteIdx = pageOffset + (bitIndex >>> 3);
     int bitPos = bitIndex & 7;
     bitIndex++;

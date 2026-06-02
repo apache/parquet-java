@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.column.values.ValuesReader;
+import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.io.api.Binary;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,19 +47,31 @@ public class FixedLenByteArrayPlainValuesReader extends ValuesReader {
 
   @Override
   public Binary readBytes() {
-    Binary result = Binary.fromConstantByteBuffer(buffer, buffer.position(), length);
-    buffer.position(buffer.position() + length);
-    return result;
+    try {
+      Binary result = Binary.fromConstantByteBuffer(buffer, buffer.position(), length);
+      buffer.position(buffer.position() + length);
+      return result;
+    } catch (RuntimeException e) {
+      throw new ParquetDecodingException("could not read bytes at offset " + buffer.position(), e);
+    }
   }
 
   @Override
   public void skip() {
-    buffer.position(buffer.position() + length);
+    try {
+      buffer.position(buffer.position() + length);
+    } catch (RuntimeException e) {
+      throw new ParquetDecodingException("could not skip bytes at offset " + buffer.position(), e);
+    }
   }
 
   @Override
   public void skip(int n) {
-    buffer.position(buffer.position() + n * length);
+    try {
+      buffer.position(buffer.position() + Math.multiplyExact(n, length));
+    } catch (RuntimeException e) {
+      throw new ParquetDecodingException("could not skip bytes at offset " + buffer.position(), e);
+    }
   }
 
   @Override

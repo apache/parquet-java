@@ -23,6 +23,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.column.values.ValuesReader;
+import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.io.api.Binary;
 
 /**
@@ -33,21 +34,32 @@ import org.apache.parquet.io.api.Binary;
  * {@code InputStream.read()} calls through {@link org.apache.parquet.bytes.BytesUtils#readIntLittleEndian}.
  */
 public class BinaryPlainValuesReader extends ValuesReader {
+  private static final ByteBuffer EMPTY_LE_BUFFER =
+      ByteBuffer.allocate(0).order(ByteOrder.LITTLE_ENDIAN).asReadOnlyBuffer();
+
   private ByteBuffer buffer;
 
   @Override
   public Binary readBytes() {
-    int length = buffer.getInt();
-    ByteBuffer valueSlice = buffer.slice();
-    valueSlice.limit(length);
-    buffer.position(buffer.position() + length);
-    return Binary.fromConstantByteBuffer(valueSlice);
+    try {
+      int length = buffer.getInt();
+      ByteBuffer valueSlice = buffer.slice();
+      valueSlice.limit(length);
+      buffer.position(buffer.position() + length);
+      return Binary.fromConstantByteBuffer(valueSlice);
+    } catch (RuntimeException e) {
+      throw new ParquetDecodingException("could not read bytes at offset " + buffer.position(), e);
+    }
   }
 
   @Override
   public void skip() {
-    int length = buffer.getInt();
-    buffer.position(buffer.position() + length);
+    try {
+      int length = buffer.getInt();
+      buffer.position(buffer.position() + length);
+    } catch (RuntimeException e) {
+      throw new ParquetDecodingException("could not skip bytes at offset " + buffer.position(), e);
+    }
   }
 
   @Override
@@ -56,7 +68,7 @@ public class BinaryPlainValuesReader extends ValuesReader {
     if (available > 0) {
       this.buffer = stream.slice(available).order(ByteOrder.LITTLE_ENDIAN);
     } else {
-      this.buffer = ByteBuffer.allocate(0).order(ByteOrder.LITTLE_ENDIAN);
+      this.buffer = EMPTY_LE_BUFFER.duplicate();
     }
   }
 }
