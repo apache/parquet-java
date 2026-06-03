@@ -86,6 +86,14 @@ public abstract class PforValuesWriter extends ValuesWriter {
     private CapacityByteArrayOutputStream encodedVectors;
     private final List<Integer> vectorByteSizes;
 
+    // Reusable per-vector buffers to avoid allocations on every encodeAndFlushVector call
+    private final int[] deltasBuffer;
+    private final short[] excPosBuffer;
+    private final int[] excValBuffer;
+    private final byte[] metadataBuf;
+    private final byte[] packBuf;
+    private final int[] packPadBuf;
+
     public IntPforValuesWriter(int initialCapacity, int pageSize, ByteBufferAllocator allocator) {
       this(initialCapacity, pageSize, allocator, DEFAULT_VECTOR_SIZE);
     }
@@ -97,6 +105,12 @@ public abstract class PforValuesWriter extends ValuesWriter {
       this.totalCount = 0;
       this.encodedVectors = new CapacityByteArrayOutputStream(initialCapacity, pageSize, allocator);
       this.vectorByteSizes = new ArrayList<>();
+      this.deltasBuffer = new int[vectorSize];
+      this.excPosBuffer = new short[vectorSize];
+      this.excValBuffer = new int[vectorSize];
+      this.metadataBuf = new byte[INT32_VECTOR_INFO_SIZE];
+      this.packBuf = new byte[Integer.SIZE]; // max bit width for int = 32 bytes
+      this.packPadBuf = new int[8];
     }
 
     @Override
@@ -118,30 +132,26 @@ public abstract class PforValuesWriter extends ValuesWriter {
         }
       }
 
-      // Compute unsigned deltas
-      int[] deltas = new int[vectorLen];
+      // Compute unsigned deltas into reusable buffer
       for (int i = 0; i < vectorLen; i++) {
-        deltas[i] = vectorBuffer[i] - minValue;
+        deltasBuffer[i] = vectorBuffer[i] - minValue;
       }
 
       // Find optimal bit width via cost model
-      PforEncoderDecoder.BitWidthResult result = PforEncoderDecoder.findOptimalBitWidthForInt(deltas, vectorLen);
+      PforEncoderDecoder.BitWidthResult result = PforEncoderDecoder.findOptimalBitWidthForInt(deltasBuffer, vectorLen);
       int bitWidth = result.bitWidth;
       int numExceptions = result.numExceptions;
 
       // Collect exceptions: values whose delta doesn't fit in bitWidth bits
-      short[] excPositions = new short[numExceptions];
-      int[] excValues = new int[numExceptions];
       int excIdx = 0;
-
       if (numExceptions > 0) {
         int mask = (bitWidth == 32) ? -1 : (1 << bitWidth) - 1;
         for (int i = 0; i < vectorLen; i++) {
-          if (Integer.compareUnsigned(deltas[i], mask) > 0) {
-            excPositions[excIdx] = (short) i;
-            excValues[excIdx] = vectorBuffer[i]; // original value, not delta
+          if (Integer.compareUnsigned(deltasBuffer[i], mask) > 0) {
+            excPosBuffer[excIdx] = (short) i;
+            excValBuffer[excIdx] = vectorBuffer[i];
             excIdx++;
-            deltas[i] = 0; // placeholder in packed data
+            deltasBuffer[i] = 0;
           }
         }
       }
@@ -149,32 +159,37 @@ public abstract class PforValuesWriter extends ValuesWriter {
       long startSize = encodedVectors.size();
 
       // PforVectorInfo: frame_of_reference(4) + bit_width(1) + num_exceptions(2) = 7B
-      ByteBuffer vectorInfo = ByteBuffer.allocate(INT32_VECTOR_INFO_SIZE).order(ByteOrder.LITTLE_ENDIAN);
-      vectorInfo.putInt(minValue);
-      vectorInfo.put((byte) bitWidth);
-      vectorInfo.putShort((short) numExceptions);
-      encodedVectors.write(vectorInfo.array(), 0, INT32_VECTOR_INFO_SIZE);
+      metadataBuf[0] = (byte) (minValue & 0xFF);
+      metadataBuf[1] = (byte) ((minValue >>> 8) & 0xFF);
+      metadataBuf[2] = (byte) ((minValue >>> 16) & 0xFF);
+      metadataBuf[3] = (byte) ((minValue >>> 24) & 0xFF);
+      metadataBuf[4] = (byte) bitWidth;
+      metadataBuf[5] = (byte) (numExceptions & 0xFF);
+      metadataBuf[6] = (byte) ((numExceptions >>> 8) & 0xFF);
+      encodedVectors.write(metadataBuf, 0, INT32_VECTOR_INFO_SIZE);
 
       // Pack deltas
       if (bitWidth > 0) {
-        packIntsWithBytePacker(deltas, vectorLen, bitWidth);
+        packIntsWithBytePacker(deltasBuffer, vectorLen, bitWidth);
       }
 
       // Exception positions then values
       if (numExceptions > 0) {
-        ByteBuffer excPosBuf =
-            ByteBuffer.allocate(numExceptions * Short.BYTES).order(ByteOrder.LITTLE_ENDIAN);
         for (int i = 0; i < numExceptions; i++) {
-          excPosBuf.putShort(excPositions[i]);
+          int pos = excPosBuffer[i] & 0xFFFF;
+          metadataBuf[0] = (byte) (pos & 0xFF);
+          metadataBuf[1] = (byte) ((pos >>> 8) & 0xFF);
+          encodedVectors.write(metadataBuf, 0, Short.BYTES);
         }
-        encodedVectors.write(excPosBuf.array(), 0, numExceptions * Short.BYTES);
 
-        ByteBuffer excValBuf =
-            ByteBuffer.allocate(numExceptions * Integer.BYTES).order(ByteOrder.LITTLE_ENDIAN);
         for (int i = 0; i < numExceptions; i++) {
-          excValBuf.putInt(excValues[i]);
+          int val = excValBuffer[i];
+          metadataBuf[0] = (byte) (val & 0xFF);
+          metadataBuf[1] = (byte) ((val >>> 8) & 0xFF);
+          metadataBuf[2] = (byte) ((val >>> 16) & 0xFF);
+          metadataBuf[3] = (byte) ((val >>> 24) & 0xFF);
+          encodedVectors.write(metadataBuf, 0, Integer.BYTES);
         }
-        encodedVectors.write(excValBuf.array(), 0, numExceptions * Integer.BYTES);
       }
 
       vectorByteSizes.add((int) (encodedVectors.size() - startSize));
@@ -184,22 +199,21 @@ public abstract class PforValuesWriter extends ValuesWriter {
       BytePacker packer = Packer.LITTLE_ENDIAN.newBytePacker(bitWidth);
       int numFullGroups = count / 8;
       int remaining = count % 8;
-      byte[] packed = new byte[bitWidth];
 
       for (int g = 0; g < numFullGroups; g++) {
-        packer.pack8Values(values, g * 8, packed, 0);
-        encodedVectors.write(packed, 0, bitWidth);
+        packer.pack8Values(values, g * 8, packBuf, 0);
+        encodedVectors.write(packBuf, 0, bitWidth);
       }
 
-      // Partial last group: pack 8 values (zero-padded), but only write
-      // ceil(count * bitWidth / 8) - alreadyWritten bytes per spec.
       if (remaining > 0) {
-        int[] padded = new int[8];
-        System.arraycopy(values, numFullGroups * 8, padded, 0, remaining);
-        packer.pack8Values(padded, 0, packed, 0);
+        System.arraycopy(values, numFullGroups * 8, packPadBuf, 0, remaining);
+        for (int i = remaining; i < 8; i++) {
+          packPadBuf[i] = 0;
+        }
+        packer.pack8Values(packPadBuf, 0, packBuf, 0);
         int totalPackedBytes = (count * bitWidth + 7) / 8;
         int alreadyWritten = numFullGroups * bitWidth;
-        encodedVectors.write(packed, 0, totalPackedBytes - alreadyWritten);
+        encodedVectors.write(packBuf, 0, totalPackedBytes - alreadyWritten);
       }
     }
 
@@ -210,10 +224,6 @@ public abstract class PforValuesWriter extends ValuesWriter {
 
     @Override
     public BytesInput getBytes() {
-      if (totalCount == 0) {
-        return BytesInput.empty();
-      }
-
       if (bufferCount > 0) {
         encodeAndFlushVector(bufferCount);
         bufferCount = 0;
@@ -227,6 +237,10 @@ public abstract class PforValuesWriter extends ValuesWriter {
       header.put((byte) logVectorSize);
       header.put((byte) INT32_VALUE_BYTE_WIDTH);
       header.putInt(totalCount);
+
+      if (totalCount == 0) {
+        return BytesInput.from(header.array());
+      }
 
       int offsetArraySize = numVectors * Integer.BYTES;
       ByteBuffer offsets = ByteBuffer.allocate(offsetArraySize).order(ByteOrder.LITTLE_ENDIAN);
@@ -273,6 +287,14 @@ public abstract class PforValuesWriter extends ValuesWriter {
     private CapacityByteArrayOutputStream encodedVectors;
     private final List<Integer> vectorByteSizes;
 
+    // Reusable per-vector buffers
+    private final long[] deltasBuffer;
+    private final short[] excPosBuffer;
+    private final long[] excValBuffer;
+    private final byte[] metadataBuf;
+    private final byte[] packBuf;
+    private final long[] packPadBuf;
+
     public LongPforValuesWriter(int initialCapacity, int pageSize, ByteBufferAllocator allocator) {
       this(initialCapacity, pageSize, allocator, DEFAULT_VECTOR_SIZE);
     }
@@ -284,6 +306,12 @@ public abstract class PforValuesWriter extends ValuesWriter {
       this.totalCount = 0;
       this.encodedVectors = new CapacityByteArrayOutputStream(initialCapacity, pageSize, allocator);
       this.vectorByteSizes = new ArrayList<>();
+      this.deltasBuffer = new long[vectorSize];
+      this.excPosBuffer = new short[vectorSize];
+      this.excValBuffer = new long[vectorSize];
+      this.metadataBuf = new byte[INT64_VECTOR_INFO_SIZE];
+      this.packBuf = new byte[Long.SIZE]; // max bit width for long = 64 bytes
+      this.packPadBuf = new long[8];
     }
 
     @Override
@@ -304,27 +332,23 @@ public abstract class PforValuesWriter extends ValuesWriter {
         }
       }
 
-      long[] deltas = new long[vectorLen];
       for (int i = 0; i < vectorLen; i++) {
-        deltas[i] = vectorBuffer[i] - minValue;
+        deltasBuffer[i] = vectorBuffer[i] - minValue;
       }
 
-      PforEncoderDecoder.BitWidthResult result = PforEncoderDecoder.findOptimalBitWidthForLong(deltas, vectorLen);
+      PforEncoderDecoder.BitWidthResult result = PforEncoderDecoder.findOptimalBitWidthForLong(deltasBuffer, vectorLen);
       int bitWidth = result.bitWidth;
       int numExceptions = result.numExceptions;
 
-      short[] excPositions = new short[numExceptions];
-      long[] excValues = new long[numExceptions];
       int excIdx = 0;
-
       if (numExceptions > 0) {
         long mask = (bitWidth == 64) ? -1L : (1L << bitWidth) - 1L;
         for (int i = 0; i < vectorLen; i++) {
-          if (Long.compareUnsigned(deltas[i], mask) > 0) {
-            excPositions[excIdx] = (short) i;
-            excValues[excIdx] = vectorBuffer[i]; // original value
+          if (Long.compareUnsigned(deltasBuffer[i], mask) > 0) {
+            excPosBuffer[excIdx] = (short) i;
+            excValBuffer[excIdx] = vectorBuffer[i];
             excIdx++;
-            deltas[i] = 0; // placeholder
+            deltasBuffer[i] = 0;
           }
         }
       }
@@ -332,30 +356,43 @@ public abstract class PforValuesWriter extends ValuesWriter {
       long startSize = encodedVectors.size();
 
       // PforVectorInfo: frame_of_reference(8) + bit_width(1) + num_exceptions(2) = 11B
-      ByteBuffer vectorInfo = ByteBuffer.allocate(INT64_VECTOR_INFO_SIZE).order(ByteOrder.LITTLE_ENDIAN);
-      vectorInfo.putLong(minValue);
-      vectorInfo.put((byte) bitWidth);
-      vectorInfo.putShort((short) numExceptions);
-      encodedVectors.write(vectorInfo.array(), 0, INT64_VECTOR_INFO_SIZE);
+      metadataBuf[0] = (byte) (minValue & 0xFF);
+      metadataBuf[1] = (byte) ((minValue >>> 8) & 0xFF);
+      metadataBuf[2] = (byte) ((minValue >>> 16) & 0xFF);
+      metadataBuf[3] = (byte) ((minValue >>> 24) & 0xFF);
+      metadataBuf[4] = (byte) ((minValue >>> 32) & 0xFF);
+      metadataBuf[5] = (byte) ((minValue >>> 40) & 0xFF);
+      metadataBuf[6] = (byte) ((minValue >>> 48) & 0xFF);
+      metadataBuf[7] = (byte) ((minValue >>> 56) & 0xFF);
+      metadataBuf[8] = (byte) bitWidth;
+      metadataBuf[9] = (byte) (numExceptions & 0xFF);
+      metadataBuf[10] = (byte) ((numExceptions >>> 8) & 0xFF);
+      encodedVectors.write(metadataBuf, 0, INT64_VECTOR_INFO_SIZE);
 
       if (bitWidth > 0) {
-        packLongsWithBytePacker(deltas, vectorLen, bitWidth);
+        packLongsWithBytePacker(deltasBuffer, vectorLen, bitWidth);
       }
 
       if (numExceptions > 0) {
-        ByteBuffer excPosBuf =
-            ByteBuffer.allocate(numExceptions * Short.BYTES).order(ByteOrder.LITTLE_ENDIAN);
         for (int i = 0; i < numExceptions; i++) {
-          excPosBuf.putShort(excPositions[i]);
+          int pos = excPosBuffer[i] & 0xFFFF;
+          metadataBuf[0] = (byte) (pos & 0xFF);
+          metadataBuf[1] = (byte) ((pos >>> 8) & 0xFF);
+          encodedVectors.write(metadataBuf, 0, Short.BYTES);
         }
-        encodedVectors.write(excPosBuf.array(), 0, numExceptions * Short.BYTES);
 
-        ByteBuffer excValBuf =
-            ByteBuffer.allocate(numExceptions * Long.BYTES).order(ByteOrder.LITTLE_ENDIAN);
         for (int i = 0; i < numExceptions; i++) {
-          excValBuf.putLong(excValues[i]);
+          long val = excValBuffer[i];
+          metadataBuf[0] = (byte) (val & 0xFF);
+          metadataBuf[1] = (byte) ((val >>> 8) & 0xFF);
+          metadataBuf[2] = (byte) ((val >>> 16) & 0xFF);
+          metadataBuf[3] = (byte) ((val >>> 24) & 0xFF);
+          metadataBuf[4] = (byte) ((val >>> 32) & 0xFF);
+          metadataBuf[5] = (byte) ((val >>> 40) & 0xFF);
+          metadataBuf[6] = (byte) ((val >>> 48) & 0xFF);
+          metadataBuf[7] = (byte) ((val >>> 56) & 0xFF);
+          encodedVectors.write(metadataBuf, 0, Long.BYTES);
         }
-        encodedVectors.write(excValBuf.array(), 0, numExceptions * Long.BYTES);
       }
 
       vectorByteSizes.add((int) (encodedVectors.size() - startSize));
@@ -365,20 +402,21 @@ public abstract class PforValuesWriter extends ValuesWriter {
       BytePackerForLong packer = Packer.LITTLE_ENDIAN.newBytePackerForLong(bitWidth);
       int numFullGroups = count / 8;
       int remaining = count % 8;
-      byte[] packed = new byte[bitWidth];
 
       for (int g = 0; g < numFullGroups; g++) {
-        packer.pack8Values(values, g * 8, packed, 0);
-        encodedVectors.write(packed, 0, bitWidth);
+        packer.pack8Values(values, g * 8, packBuf, 0);
+        encodedVectors.write(packBuf, 0, bitWidth);
       }
 
       if (remaining > 0) {
-        long[] padded = new long[8];
-        System.arraycopy(values, numFullGroups * 8, padded, 0, remaining);
-        packer.pack8Values(padded, 0, packed, 0);
+        System.arraycopy(values, numFullGroups * 8, packPadBuf, 0, remaining);
+        for (int i = remaining; i < 8; i++) {
+          packPadBuf[i] = 0;
+        }
+        packer.pack8Values(packPadBuf, 0, packBuf, 0);
         int totalPackedBytes = (count * bitWidth + 7) / 8;
         int alreadyWritten = numFullGroups * bitWidth;
-        encodedVectors.write(packed, 0, totalPackedBytes - alreadyWritten);
+        encodedVectors.write(packBuf, 0, totalPackedBytes - alreadyWritten);
       }
     }
 
@@ -389,10 +427,6 @@ public abstract class PforValuesWriter extends ValuesWriter {
 
     @Override
     public BytesInput getBytes() {
-      if (totalCount == 0) {
-        return BytesInput.empty();
-      }
-
       if (bufferCount > 0) {
         encodeAndFlushVector(bufferCount);
         bufferCount = 0;
@@ -405,6 +439,10 @@ public abstract class PforValuesWriter extends ValuesWriter {
       header.put((byte) logVectorSize);
       header.put((byte) INT64_VALUE_BYTE_WIDTH);
       header.putInt(totalCount);
+
+      if (totalCount == 0) {
+        return BytesInput.from(header.array());
+      }
 
       int offsetArraySize = numVectors * Integer.BYTES;
       ByteBuffer offsets = ByteBuffer.allocate(offsetArraySize).order(ByteOrder.LITTLE_ENDIAN);

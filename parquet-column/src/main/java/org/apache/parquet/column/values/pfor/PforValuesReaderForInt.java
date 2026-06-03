@@ -129,14 +129,4 @@ public class PforValuesReaderForInt extends PforValuesReader {
     return pos;
   }
 
-  private static int getShortLE(ByteBuffer buf, int pos) {
-    return (buf.get(pos) & 0xFF) | ((buf.get(pos + 1) & 0xFF) << 8);
-  }
-
-  private static int getIntLE(ByteBuffer buf, int pos) {
-    return (buf.get(pos) & 0xFF)
-        | ((buf.get(pos + 1) & 0xFF) << 8)
-        | ((buf.get(pos + 2) & 0xFF) << 16)
-        | ((buf.get(pos + 3) & 0xFF) << 24);
-  }
 }
