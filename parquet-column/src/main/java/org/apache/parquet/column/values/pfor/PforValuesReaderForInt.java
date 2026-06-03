@@ -43,6 +43,12 @@ public class PforValuesReaderForInt extends PforValuesReader {
 
   private int[] decodedValues;
 
+  // Reusable per-vector decode buffers
+  private int[] deltasBuffer;
+  private int[] excPositionsBuffer;
+  private byte[] unpackPadBuf;
+  private int[] unpackTempBuf;
+
   public PforValuesReaderForInt() {
     super();
   }
@@ -50,6 +56,10 @@ public class PforValuesReaderForInt extends PforValuesReader {
   @Override
   protected void allocateDecodedBuffer(int capacity) {
     this.decodedValues = new int[capacity];
+    this.deltasBuffer = new int[capacity];
+    this.excPositionsBuffer = new int[capacity];
+    this.unpackPadBuf = new byte[Integer.SIZE]; // max bit width = 32 bytes
+    this.unpackTempBuf = new int[8];
   }
 
   @Override
@@ -74,32 +84,33 @@ public class PforValuesReaderForInt extends PforValuesReader {
     int numExceptions = getShortLE(vectorsData, pos + 5) & 0xFFFF;
     pos += INT32_VECTOR_INFO_SIZE;
 
-    // Unpack bit-packed deltas
-    int[] deltas = new int[vectorLen];
+    // Unpack bit-packed deltas into reusable buffer
     if (bitWidth > 0) {
-      pos = unpackIntsWithBytePacker(vectorsData, pos, deltas, vectorLen, bitWidth);
+      pos = unpackIntsWithBytePacker(vectorsData, pos, deltasBuffer, vectorLen, bitWidth);
+    } else {
+      for (int i = 0; i < vectorLen; i++) {
+        deltasBuffer[i] = 0;
+      }
     }
 
     // Add frame of reference to reconstruct values
     for (int i = 0; i < vectorLen; i++) {
-      decodedValues[i] = deltas[i] + frameOfReference;
+      decodedValues[i] = deltasBuffer[i] + frameOfReference;
     }
 
     // Overwrite exception slots with their original values
     if (numExceptions > 0) {
-      int[] excPositions = new int[numExceptions];
       for (int e = 0; e < numExceptions; e++) {
-        excPositions[e] = getShortLE(vectorsData, pos) & 0xFFFF;
+        excPositionsBuffer[e] = getShortLE(vectorsData, pos) & 0xFFFF;
         pos += Short.BYTES;
       }
       for (int e = 0; e < numExceptions; e++) {
-        decodedValues[excPositions[e]] = getIntLE(vectorsData, pos);
+        decodedValues[excPositionsBuffer[e]] = getIntLE(vectorsData, pos);
         pos += Integer.BYTES;
       }
     }
   }
 
-  /** Unpack bit-packed ints in groups of 8, returns position after packed data. */
   private int unpackIntsWithBytePacker(ByteBuffer buf, int pos, int[] output, int count, int bitWidth) {
     BytePacker packer = Packer.LITTLE_ENDIAN.newBytePacker(bitWidth);
     int numFullGroups = count / 8;
@@ -115,14 +126,15 @@ public class PforValuesReaderForInt extends PforValuesReader {
       int alreadyRead = numFullGroups * bitWidth;
       int partialBytes = totalPackedBytes - alreadyRead;
 
-      byte[] padded = new byte[bitWidth];
       for (int i = 0; i < partialBytes; i++) {
-        padded[i] = buf.get(pos + i);
+        unpackPadBuf[i] = buf.get(pos + i);
+      }
+      for (int i = partialBytes; i < bitWidth; i++) {
+        unpackPadBuf[i] = 0;
       }
 
-      int[] temp = new int[8];
-      packer.unpack8Values(padded, 0, temp, 0);
-      System.arraycopy(temp, 0, output, numFullGroups * 8, remaining);
+      packer.unpack8Values(unpackPadBuf, 0, unpackTempBuf, 0);
+      System.arraycopy(unpackTempBuf, 0, output, numFullGroups * 8, remaining);
       pos += partialBytes;
     }
 
