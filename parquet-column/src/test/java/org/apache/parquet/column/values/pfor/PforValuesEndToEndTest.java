@@ -431,7 +431,8 @@ public class PforValuesEndToEndTest {
     PforValuesWriter.IntPforValuesWriter writer = new PforValuesWriter.IntPforValuesWriter(
         256, 256, new DirectByteBufferAllocator());
     BytesInput bytes = writer.getBytes();
-    assertEquals(0, bytes.size());
+    // Empty page still emits a valid 7-byte header (numElements=0)
+    assertEquals(PforConstants.PFOR_HEADER_SIZE, bytes.size());
     writer.close();
   }
 
@@ -440,7 +441,7 @@ public class PforValuesEndToEndTest {
     PforValuesWriter.LongPforValuesWriter writer = new PforValuesWriter.LongPforValuesWriter(
         256, 256, new DirectByteBufferAllocator());
     BytesInput bytes = writer.getBytes();
-    assertEquals(0, bytes.size());
+    assertEquals(PforConstants.PFOR_HEADER_SIZE, bytes.size());
     writer.close();
   }
 }
