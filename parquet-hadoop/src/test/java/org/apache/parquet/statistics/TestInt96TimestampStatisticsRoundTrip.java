@@ -145,4 +145,16 @@ public class TestInt96TimestampStatisticsRoundTrip {
     String[] timestamps = {"2020-01-01T12:00:00.000", "2020-02-01T11:00:00.000", "2020-03-01T10:00:00.000"};
     runTimestampTest(timestamps);
   }
+
+  @Test
+  public void testSameDayNanosecondPrecision() throws IOException {
+    String[] timestamps = {
+      "2020-01-01T00:00:00.000000001",
+      "2020-01-01T00:00:00.000001000",
+      "2020-01-01T00:00:00.001000000",
+      "2020-01-01T12:34:56.123456789",
+      "2020-01-01T23:59:59.999999999"
+    };
+    runTimestampTest(timestamps);
+  }
 }
