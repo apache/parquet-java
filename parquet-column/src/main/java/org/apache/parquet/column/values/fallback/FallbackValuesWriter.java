@@ -30,7 +30,12 @@ public class FallbackValuesWriter<I extends ValuesWriter & RequiresFallback, F e
 
   public static <I extends ValuesWriter & RequiresFallback, F extends ValuesWriter> FallbackValuesWriter<I, F> of(
       I initialWriter, F fallBackWriter) {
-    return new FallbackValuesWriter<>(initialWriter, fallBackWriter);
+    return new FallbackValuesWriter<>(initialWriter, fallBackWriter, /*checkAfterBytes=*/ 0);
+  }
+
+  public static <I extends ValuesWriter & RequiresFallback, F extends ValuesWriter> FallbackValuesWriter<I, F> of(
+      I initialWriter, F fallBackWriter, long checkAfterBytes) {
+    return new FallbackValuesWriter<>(initialWriter, fallBackWriter, checkAfterBytes);
   }
 
   /**
@@ -43,6 +48,11 @@ public class FallbackValuesWriter<I extends ValuesWriter & RequiresFallback, F e
   public final F fallBackWriter;
 
   private boolean fellBackAlready = false;
+  private boolean compressionChecked = false;
+  private final long checkAfterBytes;
+  /** Accumulates raw bytes across pages (only reset in resetDictionary) so the
+   * threshold check works even when individual pages are smaller than checkAfterBytes. */
+  private long cumulativeRawBytes = 0;
 
   /**
    * writer currently written to
@@ -57,16 +67,16 @@ public class FallbackValuesWriter<I extends ValuesWriter & RequiresFallback, F e
    */
   private long rawDataByteSize = 0;
 
-  /**
-   * indicates if this is the first page being processed
-   */
-  private boolean firstPage = true;
-
   public FallbackValuesWriter(I initialWriter, F fallBackWriter) {
+    this(initialWriter, fallBackWriter, /*checkAfterBytes=*/ 0);
+  }
+
+  public FallbackValuesWriter(I initialWriter, F fallBackWriter, long checkAfterBytes) {
     super();
     this.initialWriter = initialWriter;
     this.fallBackWriter = fallBackWriter;
     this.currentWriter = initialWriter;
+    this.checkAfterBytes = checkAfterBytes;
   }
 
   @Override
@@ -79,8 +89,9 @@ public class FallbackValuesWriter<I extends ValuesWriter & RequiresFallback, F e
 
   @Override
   public BytesInput getBytes() {
-    if (!fellBackAlready && firstPage) {
-      // we use the first page to decide if we're going to use this encoding
+    cumulativeRawBytes += rawDataByteSize;
+    if (!fellBackAlready && !compressionChecked && cumulativeRawBytes >= checkAfterBytes) {
+      compressionChecked = true;
       BytesInput bytes = initialWriter.getBytes();
       if (!initialWriter.isCompressionSatisfying(rawDataByteSize, bytes.size())) {
         fallBack();
@@ -103,7 +114,6 @@ public class FallbackValuesWriter<I extends ValuesWriter & RequiresFallback, F e
   @Override
   public void reset() {
     rawDataByteSize = 0;
-    firstPage = false;
     currentWriter.reset();
   }
 
@@ -131,8 +141,9 @@ public class FallbackValuesWriter<I extends ValuesWriter & RequiresFallback, F e
     }
     currentWriter = initialWriter;
     fellBackAlready = false;
+    compressionChecked = false;
+    cumulativeRawBytes = 0;
     initialUsedAndHadDictionary = false;
-    firstPage = true;
   }
 
   @Override

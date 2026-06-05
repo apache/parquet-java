@@ -67,6 +67,7 @@ public class ParquetProperties {
   public static final boolean DEFAULT_STATISTICS_ENABLED = true;
   public static final boolean DEFAULT_SIZE_STATISTICS_ENABLED = true;
 
+  public static final long DEFAULT_DICTIONARY_CHECK_THRESHOLD_RAW_SIZE_BYTES = 0;
   public static final boolean DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED = true;
 
   /**
@@ -131,6 +132,7 @@ public class ParquetProperties {
   private final int rowGroupRowCountLimit;
   private final int pageRowCountLimit;
   private final boolean pageWriteChecksumEnabled;
+  private final long dictionaryCheckThresholdRawSizeBytes;
   private final ColumnProperty<ByteStreamSplitMode> byteStreamSplitEnabled;
   private final Map<String, String> extraMetaData;
   private final ColumnProperty<Boolean> statistics;
@@ -163,6 +165,7 @@ public class ParquetProperties {
     this.rowGroupRowCountLimit = builder.rowGroupRowCountLimit;
     this.pageRowCountLimit = builder.pageRowCountLimit;
     this.pageWriteChecksumEnabled = builder.pageWriteChecksumEnabled;
+    this.dictionaryCheckThresholdRawSizeBytes = builder.dictionaryCheckThresholdRawSizeBytes;
     this.byteStreamSplitEnabled = builder.byteStreamSplitEnabled.build();
     this.extraMetaData = builder.extraMetaData;
     this.statistics = builder.statistics.build();
@@ -322,6 +325,17 @@ public class ParquetProperties {
     return pageWriteChecksumEnabled;
   }
 
+  /**
+   * Returns the byte threshold after which the dictionary compression check is performed.
+   * A value of 0 means check on the first page (backward compatible default). Higher values
+   * delay the check until that many raw bytes have been accumulated across pages.
+   *
+   * @return the byte threshold for the dictionary compression check
+   */
+  public long getDictionaryCheckThresholdRawSizeBytes() {
+    return dictionaryCheckThresholdRawSizeBytes;
+  }
+
   public OptionalLong getBloomFilterNDV(ColumnDescriptor column) {
     Long ndv = bloomFilterNDVs.getValue(column);
     return ndv == null ? OptionalLong.empty() : OptionalLong.of(ndv);
@@ -415,6 +429,7 @@ public class ParquetProperties {
     private int rowGroupRowCountLimit = DEFAULT_ROW_GROUP_ROW_COUNT_LIMIT;
     private int pageRowCountLimit = DEFAULT_PAGE_ROW_COUNT_LIMIT;
     private boolean pageWriteChecksumEnabled = DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED;
+    private long dictionaryCheckThresholdRawSizeBytes = DEFAULT_DICTIONARY_CHECK_THRESHOLD_RAW_SIZE_BYTES;
     private final ColumnProperty.Builder<ByteStreamSplitMode> byteStreamSplitEnabled;
     private Map<String, String> extraMetaData = new HashMap<>();
     private final ColumnProperty.Builder<Boolean> statistics;
@@ -450,6 +465,7 @@ public class ParquetProperties {
       this.allocator = toCopy.allocator;
       this.pageRowCountLimit = toCopy.pageRowCountLimit;
       this.pageWriteChecksumEnabled = toCopy.pageWriteChecksumEnabled;
+      this.dictionaryCheckThresholdRawSizeBytes = toCopy.dictionaryCheckThresholdRawSizeBytes;
       this.bloomFilterNDVs = ColumnProperty.builder(toCopy.bloomFilterNDVs);
       this.bloomFilterFPPs = ColumnProperty.builder(toCopy.bloomFilterFPPs);
       this.bloomFilterEnabled = ColumnProperty.builder(toCopy.bloomFilterEnabled);
@@ -706,6 +722,20 @@ public class ParquetProperties {
 
     public Builder withPageWriteChecksumEnabled(boolean val) {
       this.pageWriteChecksumEnabled = val;
+      return this;
+    }
+
+    /**
+     * Set the raw data byte threshold after which the dictionary compression check is performed.
+     * A value of 0 means check on the first page (backward compatible default). Higher values
+     * delay the check until that many raw bytes have been accumulated across pages.
+     *
+     * @param val byte threshold (default: 0)
+     * @return this builder for method chaining
+     */
+    public Builder withDictionaryCheckThresholdRawSizeBytes(long val) {
+      Preconditions.checkArgument(val >= 0, "dictionaryCheckThresholdRawSizeBytes must be >= 0");
+      this.dictionaryCheckThresholdRawSizeBytes = val;
       return this;
     }
 
