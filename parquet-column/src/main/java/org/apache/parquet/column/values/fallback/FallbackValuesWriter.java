@@ -30,12 +30,12 @@ public class FallbackValuesWriter<I extends ValuesWriter & RequiresFallback, F e
 
   public static <I extends ValuesWriter & RequiresFallback, F extends ValuesWriter> FallbackValuesWriter<I, F> of(
       I initialWriter, F fallBackWriter) {
-    return new FallbackValuesWriter<>(initialWriter, fallBackWriter, /*checkAfterBytes=*/ 0);
+    return new FallbackValuesWriter<>(initialWriter, fallBackWriter, /*dictionaryCheckThresholdRawSizeBytes=*/ 0);
   }
 
   public static <I extends ValuesWriter & RequiresFallback, F extends ValuesWriter> FallbackValuesWriter<I, F> of(
-      I initialWriter, F fallBackWriter, long checkAfterBytes) {
-    return new FallbackValuesWriter<>(initialWriter, fallBackWriter, checkAfterBytes);
+      I initialWriter, F fallBackWriter, long dictionaryCheckThresholdRawSizeBytes) {
+    return new FallbackValuesWriter<>(initialWriter, fallBackWriter, dictionaryCheckThresholdRawSizeBytes);
   }
 
   /**
@@ -49,9 +49,11 @@ public class FallbackValuesWriter<I extends ValuesWriter & RequiresFallback, F e
 
   private boolean fellBackAlready = false;
   private boolean compressionChecked = false;
-  private final long checkAfterBytes;
+  private final long dictionaryCheckThresholdRawSizeBytes;
   /** Accumulates raw bytes across pages (only reset in resetDictionary) so the
-   * threshold check works even when individual pages are smaller than checkAfterBytes. */
+   * threshold check works even when individual pages are smaller than the threshold.
+   * Overflow is not a concern: a long would require writing over 9.2 exabytes to a single
+   * column chunk, which is physically impossible. */
   private long cumulativeRawBytes = 0;
 
   /**
@@ -68,15 +70,15 @@ public class FallbackValuesWriter<I extends ValuesWriter & RequiresFallback, F e
   private long rawDataByteSize = 0;
 
   public FallbackValuesWriter(I initialWriter, F fallBackWriter) {
-    this(initialWriter, fallBackWriter, /*checkAfterBytes=*/ 0);
+    this(initialWriter, fallBackWriter, /*dictionaryCheckThresholdRawSizeBytes=*/ 0);
   }
 
-  public FallbackValuesWriter(I initialWriter, F fallBackWriter, long checkAfterBytes) {
+  public FallbackValuesWriter(I initialWriter, F fallBackWriter, long dictionaryCheckThresholdRawSizeBytes) {
     super();
     this.initialWriter = initialWriter;
     this.fallBackWriter = fallBackWriter;
     this.currentWriter = initialWriter;
-    this.checkAfterBytes = checkAfterBytes;
+    this.dictionaryCheckThresholdRawSizeBytes = dictionaryCheckThresholdRawSizeBytes;
   }
 
   @Override
@@ -89,8 +91,12 @@ public class FallbackValuesWriter<I extends ValuesWriter & RequiresFallback, F e
 
   @Override
   public BytesInput getBytes() {
-    cumulativeRawBytes += rawDataByteSize;
-    if (!fellBackAlready && !compressionChecked && cumulativeRawBytes >= checkAfterBytes) {
+    try {
+      cumulativeRawBytes = Math.addExact(cumulativeRawBytes, rawDataByteSize);
+    } catch (ArithmeticException e) {
+      // overflow, keep the previous value
+    }
+    if (!fellBackAlready && !compressionChecked && cumulativeRawBytes >= dictionaryCheckThresholdRawSizeBytes) {
       compressionChecked = true;
       BytesInput bytes = initialWriter.getBytes();
       if (!initialWriter.isCompressionSatisfying(rawDataByteSize, bytes.size())) {

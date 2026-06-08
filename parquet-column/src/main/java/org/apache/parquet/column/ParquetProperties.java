@@ -327,8 +327,8 @@ public class ParquetProperties {
 
   /**
    * Returns the byte threshold after which the dictionary compression check is performed.
-   * A value of 0 means check on the first page (backward compatible default). Higher values
-   * delay the check until that many raw bytes have been accumulated across pages.
+   * A value of 0 means check on the first page. Higher values delay the check until that
+   * many raw bytes have been accumulated across pages.
    *
    * @return the byte threshold for the dictionary compression check
    */
@@ -727,8 +727,8 @@ public class ParquetProperties {
 
     /**
      * Set the raw data byte threshold after which the dictionary compression check is performed.
-     * A value of 0 means check on the first page (backward compatible default). Higher values
-     * delay the check until that many raw bytes have been accumulated across pages.
+     * A value of 0 means check on the first page. Higher values delay the check until that
+     * many raw bytes have been accumulated across pages.
      *
      * @param val byte threshold (default: 0)
      * @return this builder for method chaining

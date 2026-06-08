@@ -774,7 +774,7 @@ public class ParquetWriter<T> implements Closeable {
     /**
      * Set the raw data byte threshold after which the dictionary compression check is performed.
      *
-     * @param val byte threshold (0 means check on the first page / preserve previous behavior)
+     * @param val byte threshold (0 means checking on the first page for every column chunk)
      * @return this builder for method chaining.
      */
     public SELF withDictionaryCheckThresholdRawSizeBytes(long val) {

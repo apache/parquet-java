@@ -165,7 +165,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
    * Raw data byte threshold after which the dictionary compression check is performed.
    * Once cumulative raw bytes (excluding nulls) written to a column chunk reach this value,
    * the writer evaluates whether dictionary encoding is effective. If not, it falls back to
-   * plain encoding. A value of 0 means check on the first page (backward compatible default).
+   * plain encoding. A value of 0 means check on the first page.
    */
   public static final String DICTIONARY_CHECK_THRESHOLD_RAW_SIZE_BYTES =
       "parquet.dictionary.check.threshold.raw.size.bytes";
