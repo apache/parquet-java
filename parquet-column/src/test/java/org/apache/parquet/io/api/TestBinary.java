@@ -30,7 +30,10 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.nio.ByteBuffer;
+import java.nio.charset.CharacterCodingException;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import org.apache.parquet.io.ParquetEncodingException;
 import org.apache.parquet.io.api.TestBinary.BinaryFactory.BinaryAndOriginal;
 import org.junit.Test;
 
@@ -312,6 +315,38 @@ public class TestBinary {
       fail("Should have thrown an exception");
     } catch (IllegalArgumentException e) {
       // expected
+    }
+  }
+
+  @Test
+  public void testFromCharSequenceEncodesValidUtf8() {
+    // Cover ASCII, multi-byte BMP, a supplementary code point (valid surrogate pair) and empty.
+    assertFromCharSequenceEncodesUtf8("test-123-é中"); // ASCII + U+00E9 (2-byte) + U+4E2D (3-byte)
+    assertFromCharSequenceEncodesUtf8("😀"); // U+1F600, valid surrogate pair (4-byte)
+    assertFromCharSequenceEncodesUtf8(""); // empty
+  }
+
+  private static void assertFromCharSequenceEncodesUtf8(String value) {
+    // fromCharSequence routes any CharSequence (here a StringBuilder) through FromCharSequenceBinary.
+    // For valid input the strict encoder must match String#getBytes(UTF_8), so this is a genuine
+    // cross-check, not a circular assertion.
+    Binary binary = Binary.fromCharSequence(new StringBuilder(value));
+    assertArrayEquals(value.getBytes(StandardCharsets.UTF_8), binary.getBytes());
+  }
+
+  @Test
+  public void testFromCharSequenceRejectsMalformedUtf16() {
+    // An unpaired high surrogate is invalid UTF-16. FromCharSequenceBinary must fail fast
+    // rather than silently substituting a replacement byte (as String#getBytes(UTF_8) would).
+    CharSequence value = new StringBuilder().append('a').append('\uD800').append('b');
+    try {
+      Binary.fromCharSequence(value);
+      fail("Should have thrown an exception for malformed UTF-16 input");
+    } catch (ParquetEncodingException e) {
+      // Lock in that the cause is a UTF-8 coding error, not an unrelated failure of the same type.
+      assertTrue(
+          "expected a CharacterCodingException cause but was " + e.getCause(),
+          e.getCause() instanceof CharacterCodingException);
     }
   }
 }
