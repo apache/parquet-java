@@ -24,8 +24,6 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.PrimitiveIterator;
-import java.util.stream.IntStream;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.HadoopReadOptions;
@@ -34,9 +32,7 @@ import org.apache.parquet.example.data.Group;
 import org.apache.parquet.example.data.simple.SimpleGroupFactory;
 import org.apache.parquet.hadoop.example.ExampleParquetWriter;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
-import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
-import org.apache.parquet.internal.column.columnindex.OffsetIndex;
 import org.apache.parquet.internal.filter2.columnindex.RowRanges;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
@@ -46,8 +42,7 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
 /**
- * Tests {@link ParquetFileReader#getRowRanges(int)} and
- * {@link ParquetFileReader#getCompressedBytesForRowRanges(int, RowRanges)}.
+ * Tests {@link ParquetFileReader#getRowRanges(int)}.
  */
 public class TestParquetFileReaderRowRanges {
 
@@ -66,14 +61,12 @@ public class TestParquetFileReaderRowRanges {
     f.delete();
     file = new Path(f.toURI());
 
-    // Small page size produces many pages per column chunk; low-cardinality `grp`
-    // ensures dictionary encoding kicks in so we can verify dictionary-page exclusion.
+    // Small page size produces many pages per column chunk.
     try (ParquetWriter<Group> writer = ExampleParquetWriter.builder(file)
         .withType(SCHEMA)
         .withWriteMode(OVERWRITE)
         .withRowGroupSize(64L * 1024 * 1024)
         .withPageSize(4 * 1024)
-        .withDictionaryEncoding(true)
         .build()) {
       SimpleGroupFactory factory = new SimpleGroupFactory(SCHEMA);
       for (int i = 0; i < ROW_COUNT; i++) {
@@ -98,62 +91,6 @@ public class TestParquetFileReaderRowRanges {
 
       assertEquals(block.getRowCount(), ranges.rowCount());
       assertTrue(ranges.isOverlapping(0L, block.getRowCount() - 1));
-    }
-  }
-
-  @Test
-  public void getCompressedBytesForEmptyRangesIsZero() throws IOException {
-    try (ParquetFileReader reader = openReader()) {
-      assertEquals(0L, reader.getCompressedBytesForRowRanges(0, RowRanges.EMPTY));
-    }
-  }
-
-  @Test
-  public void getCompressedBytesForFullRangesEqualsOffsetIndexSum() throws IOException {
-    try (ParquetFileReader reader = openReader()) {
-      BlockMetaData block = reader.getRowGroups().get(0);
-      RowRanges full = reader.getRowRanges(0);
-
-      long expected = 0L;
-      long columnChunkTotal = 0L;
-      for (ColumnChunkMetaData col : block.getColumns()) {
-        OffsetIndex oi = reader.readOffsetIndex(col);
-        for (int p = 0; p < oi.getPageCount(); p++) {
-          expected += oi.getCompressedPageSize(p);
-        }
-        columnChunkTotal += col.getTotalSize();
-      }
-
-      assertEquals(expected, reader.getCompressedBytesForRowRanges(0, full));
-
-      // Dictionary pages aren't represented in OffsetIndex, so the per-page sum
-      // must be strictly smaller than the column-chunk totals (which include them).
-      assertTrue(
-          "expected dictionary-page exclusion: " + expected + " < " + columnChunkTotal,
-          expected < columnChunkTotal);
-    }
-  }
-
-  @Test
-  public void getCompressedBytesForPartialRangesIsBetweenZeroAndFull() throws IOException {
-    try (ParquetFileReader reader = openReader()) {
-      BlockMetaData block = reader.getRowGroups().get(0);
-      RowRanges full = reader.getRowRanges(0);
-      long fullBytes = reader.getCompressedBytesForRowRanges(0, full);
-
-      // Build a partial RowRanges from the first half of the pages of an arbitrary column;
-      // since all columns share row counts, the resulting range applies to every column.
-      OffsetIndex anyOi = reader.readOffsetIndex(block.getColumns().get(0));
-      int halfPageCount = Math.max(1, anyOi.getPageCount() / 2);
-      PrimitiveIterator.OfInt pages = IntStream.range(0, halfPageCount).iterator();
-      RowRanges partial = RowRanges.create(block.getRowCount(), pages, anyOi);
-
-      long partialBytes = reader.getCompressedBytesForRowRanges(0, partial);
-
-      assertTrue("partial bytes should be > 0: " + partialBytes, partialBytes > 0);
-      assertTrue(
-          "partial bytes should be < full bytes: " + partialBytes + " < " + fullBytes,
-          partialBytes < fullBytes);
     }
   }
 }

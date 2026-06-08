@@ -1518,46 +1518,6 @@ public class ParquetFileReader implements Closeable {
     return rowRanges;
   }
 
-  /**
-   * Returns the total compressed byte count of this reader's requested columns' pages whose
-   * row ranges intersect {@code rowRanges} within the given row group. The set of columns is
-   * taken from the reader's currently configured requested schema (see
-   * {@link #setRequestedSchema}). Metadata-only: consults each column's {@link OffsetIndex}
-   * from the file footer; no column data is read.
-   *
-   * <p>Page size here is {@link OffsetIndex#getCompressedPageSize} (includes page header).
-   * Dictionary pages are not represented in {@link OffsetIndex} and are therefore excluded
-   * from the sum.
-   *
-   * @param blockIndex row group index
-   * @param rowRanges  row ranges to intersect against pages
-   * @return sum of compressed page sizes across requested columns for pages overlapping
-   *         {@code rowRanges}
-   * @throws ColumnIndexStore.MissingOffsetIndexException if any requested column lacks an
-   *         offset index
-   */
-  public long getCompressedBytesForRowRanges(int blockIndex, RowRanges rowRanges) {
-    if (rowRanges.rowCount() == 0 || paths.isEmpty()) {
-      return 0L;
-    }
-    BlockMetaData block = blocks.get(blockIndex);
-    long blockRowCount = block.getRowCount();
-    ColumnIndexStore ciStore = getColumnIndexStore(blockIndex);
-    long total = 0L;
-    for (ColumnPath path : paths.keySet()) {
-      OffsetIndex offsetIndex = ciStore.getOffsetIndex(path);
-      int pageCount = offsetIndex.getPageCount();
-      for (int i = 0; i < pageCount; i++) {
-        long from = offsetIndex.getFirstRowIndex(i);
-        long to = offsetIndex.getLastRowIndex(i, blockRowCount);
-        if (rowRanges.isOverlapping(from, to)) {
-          total += offsetIndex.getCompressedPageSize(i);
-        }
-      }
-    }
-    return total;
-  }
-
   public boolean skipNextRowGroup() {
     return advanceToNextBlock();
   }
