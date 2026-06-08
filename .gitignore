@@ -22,3 +22,5 @@ mvn_install.log
 .DS_Store
 .memsearch/
 
+.sdkmanrc
+

@@ -65,6 +65,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.parquet.HadoopReadOptions;
 import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.Preconditions;
+import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.bytes.ByteBufferReleaser;
 import org.apache.parquet.bytes.BytesInput;
@@ -1361,12 +1362,42 @@ public class ParquetFileReader implements Closeable {
       totalSize += len;
     }
     LOG.debug("Reading {} bytes of data with vectored IO in {} ranges", totalSize, ranges.size());
-    // Request a vectored read;
-    f.readVectored(ranges, options.getAllocator());
-    int k = 0;
-    for (ConsecutivePartList consecutivePart : allParts) {
-      ParquetFileRange currRange = ranges.get(k++);
-      consecutivePart.readFromVectoredRange(currRange, builder);
+    // Use a capturing allocator to track all buffers allocated by Hadoop during vectored reads.
+    // The buffer returned from the read future may differ from the one originally allocated
+    // (e.g., ChecksumFileSystem wraps/copies buffers), so we must track the actual allocations.
+    List<ByteBuffer> allocatedBuffers = new ArrayList<>();
+    ByteBufferAllocator capturingAllocator = new ByteBufferAllocator() {
+      @Override
+      public ByteBuffer allocate(int size) {
+        ByteBuffer buf = options.getAllocator().allocate(size);
+        allocatedBuffers.add(buf);
+        return buf;
+      }
+
+      @Override
+      public void release(ByteBuffer b) {
+        // Use identity comparison; ByteBuffer.equals() is content-based and could match wrong buffer
+        allocatedBuffers.removeIf(buf -> buf == b);
+        options.getAllocator().release(b);
+      }
+
+      @Override
+      public boolean isDirect() {
+        return options.getAllocator().isDirect();
+      }
+    };
+    try {
+      // Request a vectored read;
+      f.readVectored(ranges, capturingAllocator);
+      int k = 0;
+      for (ConsecutivePartList consecutivePart : allParts) {
+        ParquetFileRange currRange = ranges.get(k++);
+        consecutivePart.readFromVectoredRange(currRange, builder);
+      }
+    } finally {
+      // Register all buffers allocated during vectored reads for release.
+      // In a finally block so buffers are not leaked on read failures.
+      builder.addBuffersToRelease(allocatedBuffers);
     }
   }
 
