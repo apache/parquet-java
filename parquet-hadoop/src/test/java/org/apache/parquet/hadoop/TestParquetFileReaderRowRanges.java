@@ -20,6 +20,7 @@ package org.apache.parquet.hadoop;
 
 import static org.apache.parquet.hadoop.ParquetFileWriter.Mode.OVERWRITE;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import java.io.File;
@@ -91,6 +92,15 @@ public class TestParquetFileReaderRowRanges {
 
       assertEquals(block.getRowCount(), ranges.rowCount());
       assertTrue(ranges.isOverlapping(0L, block.getRowCount() - 1));
+    }
+  }
+
+  @Test
+  public void getRowRangesRejectsOutOfRangeBlockIndex() throws IOException {
+    try (ParquetFileReader reader = openReader()) {
+      int blockCount = reader.getRowGroups().size();
+      assertThrows(IllegalArgumentException.class, () -> reader.getRowRanges(-1));
+      assertThrows(IllegalArgumentException.class, () -> reader.getRowRanges(blockCount));
     }
   }
 }
