@@ -188,6 +188,12 @@ public abstract class LogicalTypeAnnotation {
       protected LogicalTypeAnnotation fromString(List<String> params) {
         return unknownType();
       }
+    },
+    FILE {
+      @Override
+      protected LogicalTypeAnnotation fromString(List<String> params) {
+        return fileType();
+      }
     };
 
     protected abstract LogicalTypeAnnotation fromString(List<String> params);
@@ -376,6 +382,10 @@ public abstract class LogicalTypeAnnotation {
 
   public static UnknownLogicalTypeAnnotation unknownType() {
     return UnknownLogicalTypeAnnotation.INSTANCE;
+  }
+
+  public static FileLogicalTypeAnnotation fileType() {
+    return FileLogicalTypeAnnotation.INSTANCE;
   }
 
   public static class StringLogicalTypeAnnotation extends LogicalTypeAnnotation {
@@ -1229,6 +1239,55 @@ public abstract class LogicalTypeAnnotation {
     }
   }
 
+  /**
+   * File logical type annotation. Annotates a group (struct) that represents a reference to
+   * an external file. The group must contain the following fields by name:
+   * <ul>
+   *   <li>{@code path} (required): STRING - the path/URI of the file</li>
+   *   <li>{@code size} (optional): INT64 - size of the file content in bytes</li>
+   *   <li>{@code offset} (optional): INT64 - byte offset within the file; if present, size must be present</li>
+   *   <li>{@code etag} (optional): STRING - opaque identifier for the file version</li>
+   * </ul>
+   * No optional fields with names other than the above are permitted.
+   */
+  public static class FileLogicalTypeAnnotation extends LogicalTypeAnnotation {
+    private static final FileLogicalTypeAnnotation INSTANCE = new FileLogicalTypeAnnotation();
+
+    /** The only required field name in a FILE-annotated group. */
+    public static final String PATH_FIELD = "path";
+
+    /** Valid optional field names in a FILE-annotated group. */
+    public static final Set<String> OPTIONAL_FIELD_NAMES =
+        Set.of("size", "offset", "etag");
+
+    private FileLogicalTypeAnnotation() {}
+
+    @Override
+    public OriginalType toOriginalType() {
+      return null;
+    }
+
+    @Override
+    public <T> Optional<T> accept(LogicalTypeAnnotationVisitor<T> logicalTypeAnnotationVisitor) {
+      return logicalTypeAnnotationVisitor.visit(this);
+    }
+
+    @Override
+    LogicalTypeToken getType() {
+      return LogicalTypeToken.FILE;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      return obj instanceof FileLogicalTypeAnnotation;
+    }
+
+    @Override
+    public int hashCode() {
+      return getClass().hashCode();
+    }
+  }
+
   public static class GeometryLogicalTypeAnnotation extends LogicalTypeAnnotation {
     private final String crs;
 
@@ -1432,6 +1491,10 @@ public abstract class LogicalTypeAnnotation {
     }
 
     default Optional<T> visit(UnknownLogicalTypeAnnotation unknownLogicalTypeAnnotation) {
+      return empty();
+    }
+
+    default Optional<T> visit(FileLogicalTypeAnnotation fileLogicalType) {
       return empty();
     }
   }
