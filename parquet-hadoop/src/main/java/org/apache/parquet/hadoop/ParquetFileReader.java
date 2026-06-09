@@ -65,6 +65,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.parquet.HadoopReadOptions;
 import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.Preconditions;
+import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.ByteBufferInputStream;
 import org.apache.parquet.bytes.ByteBufferReleaser;
 import org.apache.parquet.bytes.BytesInput;
@@ -2327,6 +2328,10 @@ public class ParquetFileReader implements Closeable {
         LOG.error(error, e);
         throw new IOException(error, e);
       }
+      // Release the vectored-read buffer back to the allocator when the row group is closed.
+      // Requires fs.file.checksum.verify=false so the returned buffer is the allocator buffer
+      // rather than a sliced subset (see Hadoop's fs.file.checksum.verify docs).
+      builder.addBuffersToRelease(Collections.singletonList(buffer));
       ByteBufferInputStream stream = ByteBufferInputStream.wrap(buffer);
       for (ChunkDescriptor descriptor : chunks) {
         builder.add(descriptor, stream.sliceBuffers(descriptor.size), f);

@@ -182,24 +182,25 @@ public class TestParquetReader {
 
   @Test
   public void testCurrentRowIndex() throws Exception {
-    ParquetReader<Group> reader = PhoneBookWriter.createReader(file, FilterCompat.NOOP, allocator);
-    // Fetch row index without processing any row.
-    assertEquals(reader.getCurrentRowIndex(), -1);
-    reader.read();
-    assertEquals(reader.getCurrentRowIndex(), 0);
-    // calling the same API again and again should return same result.
-    assertEquals(reader.getCurrentRowIndex(), 0);
+    try (ParquetReader<Group> reader = PhoneBookWriter.createReader(file, FilterCompat.NOOP, allocator)) {
+      // Fetch row index without processing any row.
+      assertEquals(reader.getCurrentRowIndex(), -1);
+      reader.read();
+      assertEquals(reader.getCurrentRowIndex(), 0);
+      // calling the same API again and again should return same result.
+      assertEquals(reader.getCurrentRowIndex(), 0);
 
-    reader.read();
-    assertEquals(reader.getCurrentRowIndex(), 1);
-    assertEquals(reader.getCurrentRowIndex(), 1);
-    long expectedCurrentRowIndex = 2L;
-    while (reader.read() != null) {
-      assertEquals(reader.getCurrentRowIndex(), expectedCurrentRowIndex);
-      expectedCurrentRowIndex++;
+      reader.read();
+      assertEquals(reader.getCurrentRowIndex(), 1);
+      assertEquals(reader.getCurrentRowIndex(), 1);
+      long expectedCurrentRowIndex = 2L;
+      while (reader.read() != null) {
+        assertEquals(reader.getCurrentRowIndex(), expectedCurrentRowIndex);
+        expectedCurrentRowIndex++;
+      }
+      // reader.read() returned null and so reader doesn't have any more rows.
+      assertEquals(reader.getCurrentRowIndex(), -1);
     }
-    // reader.read() returned null and so reader doesn't have any more rows.
-    assertEquals(reader.getCurrentRowIndex(), -1);
   }
 
   @Test
