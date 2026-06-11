@@ -622,8 +622,14 @@ public final class PrimitiveType extends Type {
   private ColumnOrder requireValidColumnOrder(ColumnOrder columnOrder) {
     if (primitive == PrimitiveTypeName.INT96) {
       Preconditions.checkArgument(
-          columnOrder.getColumnOrderName() == ColumnOrderName.UNDEFINED,
+          columnOrder.getColumnOrderName() == ColumnOrderName.UNDEFINED
+              || columnOrder.getColumnOrderName() == ColumnOrderName.INT96_TIMESTAMP_ORDER,
           "The column order %s is not supported by INT96",
+          columnOrder);
+    } else {
+      Preconditions.checkArgument(
+          columnOrder.getColumnOrderName() != ColumnOrderName.INT96_TIMESTAMP_ORDER,
+          "The column order %s is only supported by INT96",
           columnOrder);
     }
     if (getLogicalTypeAnnotation() != null) {
@@ -653,6 +659,15 @@ public final class PrimitiveType extends Type {
    */
   public PrimitiveType withLogicalTypeAnnotation(LogicalTypeAnnotation logicalType) {
     return new PrimitiveType(getRepetition(), primitive, length, getName(), logicalType, getId());
+  }
+
+  /**
+   * @param columnOrder the column order
+   * @return a new PrimitiveType with the same fields and the given column order
+   */
+  public PrimitiveType withColumnOrder(ColumnOrder columnOrder) {
+    return new PrimitiveType(
+        getRepetition(), primitive, length, getName(), getLogicalTypeAnnotation(), getId(), columnOrder);
   }
 
   /**
@@ -869,6 +884,9 @@ public final class PrimitiveType extends Type {
    */
   @SuppressWarnings("unchecked")
   public <T> PrimitiveComparator<T> comparator() {
+    if (columnOrder.getColumnOrderName() == ColumnOrderName.INT96_TIMESTAMP_ORDER) {
+      return (PrimitiveComparator<T>) PrimitiveComparator.BINARY_AS_INT96_TIMESTAMP_COMPARATOR;
+    }
     return (PrimitiveComparator<T>) getPrimitiveTypeName().comparator(getLogicalTypeAnnotation());
   }
 

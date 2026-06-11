@@ -36,11 +36,18 @@ public class ColumnOrder {
     /**
      * Type defined order meaning that the comparison order of the elements are based on its type.
      */
-    TYPE_DEFINED_ORDER
+    TYPE_DEFINED_ORDER,
+    /**
+     * Chronological order for INT96 timestamps: values are compared by the Julian day (the last 4
+     * bytes, as a little-endian signed int32), then by the nanoseconds within the day (the first 8
+     * bytes, as a little-endian signed int64). Only supported for the INT96 physical type.
+     */
+    INT96_TIMESTAMP_ORDER
   }
 
   private static final ColumnOrder UNDEFINED_COLUMN_ORDER = new ColumnOrder(ColumnOrderName.UNDEFINED);
   private static final ColumnOrder TYPE_DEFINED_COLUMN_ORDER = new ColumnOrder(ColumnOrderName.TYPE_DEFINED_ORDER);
+  private static final ColumnOrder INT96_TIMESTAMP_COLUMN_ORDER = new ColumnOrder(ColumnOrderName.INT96_TIMESTAMP_ORDER);
 
   /**
    * @return a {@link ColumnOrder} instance representing an undefined order
@@ -56,6 +63,14 @@ public class ColumnOrder {
    */
   public static ColumnOrder typeDefined() {
     return TYPE_DEFINED_COLUMN_ORDER;
+  }
+
+  /**
+   * @return a {@link ColumnOrder} instance representing the chronological order of INT96 timestamps
+   * @see ColumnOrderName#INT96_TIMESTAMP_ORDER
+   */
+  public static ColumnOrder int96TimestampOrder() {
+    return INT96_TIMESTAMP_COLUMN_ORDER;
   }
 
   private final ColumnOrderName columnOrderName;
