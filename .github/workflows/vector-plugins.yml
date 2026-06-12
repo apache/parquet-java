@@ -46,7 +46,14 @@ jobs:
         run: |
           EXTRA_JAVA_TEST_ARGS=$(./mvnw help:evaluate -Dexpression=extraJavaTestArgs -q -DforceStdout)
           export MAVEN_OPTS="$MAVEN_OPTS $EXTRA_JAVA_TEST_ARGS"
-          ./mvnw install --batch-mode -Pvector-plugins -DskipTests=true -Dmaven.javadoc.skip=true -Dsource.skip=true -Dmaven.buildNumber.skip=true -Dspotless.check.skip=true -Djava.version=${{ matrix.java }} -pl parquet-plugins/parquet-encoding-vector,parquet-plugins/parquet-plugins-benchmarks -am
+          # Spotless check uses palantir-java-format which relies on internal javac APIs
+          # that are not available on all JDK versions (e.g. JDK 25+). Since the formatting
+          # result is JDK-independent, running the check on JDK 17 alone is sufficient.
+          SPOTLESS_ARGS=""
+          if [ "${{ matrix.java }}" != "17" ]; then
+            SPOTLESS_ARGS="-Dspotless.check.skip=true"
+          fi
+          ./mvnw install --batch-mode -Pvector-plugins -DskipTests=true -Dmaven.javadoc.skip=true -Dsource.skip=true -Dmaven.buildNumber.skip=true $SPOTLESS_ARGS -Djava.version=${{ matrix.java }} -pl parquet-plugins/parquet-encoding-vector,parquet-plugins/parquet-plugins-benchmarks -am
       - name: verify
         env:
           TEST_CODECS: ${{ matrix.codes }}

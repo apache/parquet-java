@@ -41,6 +41,22 @@ public class TestByteBitPacking512VectorLE {
     }
   }
 
+  @Test
+  public void unpackValuesUsingVectorDirectByteBuffer() {
+    Assume.assumeTrue(ParquetReadRouter.getSupportVectorFromCPUFlags() == VectorSupport.VECTOR_512);
+    for (int i = 1; i <= 32; i++) {
+      unpackValuesUsingVectorBitWidthDirect(i);
+    }
+  }
+
+  @Test
+  public void unpackValuesUsingVectorReadOnlyByteBuffer() {
+    Assume.assumeTrue(ParquetReadRouter.getSupportVectorFromCPUFlags() == VectorSupport.VECTOR_512);
+    for (int i = 1; i <= 32; i++) {
+      unpackValuesUsingVectorBitWidthReadOnly(i);
+    }
+  }
+
   private void unpackValuesUsingVectorBitWidth(int bitWidth) {
     try (Stream<int[]> intInputs = getRangeData(bitWidth)) {
       intInputs.forEach(intInput -> {
@@ -65,6 +81,58 @@ public class TestByteBitPacking512VectorLE {
         ByteBuffer byteBuffer = ByteBuffer.wrap(byteOutput);
         unpackValuesUsingVectorByteBuffer(bitWidth, byteBuffer, output);
         assertArrayEquals(intInput, output);
+        Arrays.fill(output, 0);
+      });
+    }
+  }
+
+  private void unpackValuesUsingVectorBitWidthDirect(int bitWidth) {
+    try (Stream<int[]> intInputs = getRangeData(bitWidth)) {
+      intInputs.forEach(intInput -> {
+        int pack8Count = intInput.length / 8;
+        int byteOutputSize = pack8Count * bitWidth;
+        byte[] byteOutput = new byte[byteOutputSize];
+        int[] output = new int[intInput.length];
+        int[] expected = new int[intInput.length];
+
+        BytePacker bytePacker = Packer.LITTLE_ENDIAN.newBytePacker(bitWidth);
+        for (int i = 0; i < pack8Count; i++) {
+          bytePacker.pack8Values(intInput, 8 * i, byteOutput, bitWidth * i);
+        }
+
+        unpack8Values(bitWidth, byteOutput, expected);
+
+        // Direct (off-heap) ByteBuffer
+        ByteBuffer directBuffer = ByteBuffer.allocateDirect(byteOutputSize);
+        directBuffer.put(byteOutput);
+        directBuffer.flip();
+        unpackValuesUsingVectorByteBuffer(bitWidth, directBuffer, output);
+        assertArrayEquals(expected, output);
+        Arrays.fill(output, 0);
+      });
+    }
+  }
+
+  private void unpackValuesUsingVectorBitWidthReadOnly(int bitWidth) {
+    try (Stream<int[]> intInputs = getRangeData(bitWidth)) {
+      intInputs.forEach(intInput -> {
+        int pack8Count = intInput.length / 8;
+        int byteOutputSize = pack8Count * bitWidth;
+        byte[] byteOutput = new byte[byteOutputSize];
+        int[] output = new int[intInput.length];
+        int[] expected = new int[intInput.length];
+
+        BytePacker bytePacker = Packer.LITTLE_ENDIAN.newBytePacker(bitWidth);
+        for (int i = 0; i < pack8Count; i++) {
+          bytePacker.pack8Values(intInput, 8 * i, byteOutput, bitWidth * i);
+        }
+
+        unpack8Values(bitWidth, byteOutput, expected);
+
+        // Read-only heap ByteBuffer (hasArray() returns false)
+        ByteBuffer readOnlyBuffer = ByteBuffer.wrap(byteOutput).asReadOnlyBuffer();
+        unpackValuesUsingVectorByteBuffer(bitWidth, readOnlyBuffer, output);
+        assertArrayEquals(expected, output);
         Arrays.fill(output, 0);
       });
     }

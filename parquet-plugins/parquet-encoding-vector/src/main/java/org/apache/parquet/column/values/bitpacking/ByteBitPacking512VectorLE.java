@@ -3202,15 +3202,20 @@ public abstract class ByteBitPacking512VectorLE {
 
   private static ByteVector fromByteBuffer(
       VectorSpecies<Byte> species, ByteBuffer input, int inPos, VectorMask<Byte> mask) {
-    // Mirror the fast path of OpenJDK 17's ByteVector.fromByteBuffer(species, bb, offset, bo, m):
-    // when the full vector window fits in the buffer, read the entire window unconditionally and
-    // let fromArray(species, array, 0, mask) apply the mask. This matches the JDK semantics for
-    // arbitrary mask shapes (not just contiguous-prefix masks) and keeps array.length equal to
-    // species.length(), which satisfies the bounds-check precondition of fromArray.
+    // Per JDK 17 ByteVector.fromByteBuffer(..., m) semantics, only masked-on lanes must be in
+    // bounds. For heap buffers, fromArray handles this directly. For direct buffers, we allocate
+    // a species.length()-sized array (satisfying fromArray's bounds-check precondition) but only
+    // copy mask.trueCount() bytes — the minimum needed for the masked-on lanes. The remaining
+    // positions stay zero and are ignored by the mask.
     if (input.hasArray()) {
       return ByteVector.fromArray(species, input.array(), input.arrayOffset() + inPos, mask);
     }
-    return ByteVector.fromArray(species, readInputBytes(input, inPos, species.length()), 0, mask);
+    byte[] bytes = new byte[species.length()];
+    int count = mask.trueCount();
+    for (int i = 0; i < count; i++) {
+      bytes[i] = input.get(inPos + i);
+    }
+    return ByteVector.fromArray(species, bytes, 0, mask);
   }
 
   private static byte[] readInputBytes(ByteBuffer input, int inPos, int byteCount) {
