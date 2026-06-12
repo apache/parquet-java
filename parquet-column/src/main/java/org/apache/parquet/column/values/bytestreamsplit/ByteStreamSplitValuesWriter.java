@@ -141,6 +141,9 @@ public abstract class ByteStreamSplitValuesWriter extends ValuesWriter {
       flushIntBatch();
     } else if (longBatch != null) {
       flushLongBatch();
+    } else {
+      throw new ParquetEncodingException(
+          "Batch count is " + batchCount + " but no batch buffer has been initialized");
     }
   }
 
@@ -152,7 +155,7 @@ public abstract class ByteStreamSplitValuesWriter extends ValuesWriter {
       for (int i = 0; i < count; i++) {
         scatterBuf[i] = (byte) (intBatch[i] >>> shift);
       }
-      byteStreams[stream].write(scatterBuf, 0, count);
+      writeToStream(stream, scatterBuf, 0, count);
     }
     batchCount = 0;
   }
@@ -165,9 +168,13 @@ public abstract class ByteStreamSplitValuesWriter extends ValuesWriter {
       for (int i = 0; i < count; i++) {
         scatterBuf[i] = (byte) (longBatch[i] >>> shift);
       }
-      byteStreams[stream].write(scatterBuf, 0, count);
+      writeToStream(stream, scatterBuf, 0, count);
     }
     batchCount = 0;
+  }
+
+  void writeToStream(int stream, byte[] buf, int off, int len) {
+    byteStreams[stream].write(buf, off, len);
   }
 
   @Override
@@ -277,7 +284,7 @@ public abstract class ByteStreamSplitValuesWriter extends ValuesWriter {
       if (flbaBatchCount == 0) return;
       final int count = flbaBatchCount;
       for (int stream = 0; stream < length; stream++) {
-        byteStreams[stream].write(batchBufs[stream], 0, count);
+        writeToStream(stream, batchBufs[stream], 0, count);
       }
       flbaBatchCount = 0;
     }
