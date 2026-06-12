@@ -52,7 +52,7 @@ public abstract class ByteStreamSplitValuesReader extends ValuesReader {
   // Decode an entire data page by transposing from stream-split layout to interleaved layout.
   private byte[] decodeData(ByteBuffer encoded, int valuesCount) {
     int totalBytes = valuesCount * elementSizeInBytes;
-    assert encoded.remaining() >= totalBytes;
+    assert encoded.remaining() == totalBytes;
 
     // Bulk access: use the backing array directly if available, otherwise copy once.
     byte[] src;
