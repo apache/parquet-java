@@ -25,7 +25,6 @@ import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 
-import java.util.Arrays;
 import java.util.List;
 import org.junit.Test;
 
@@ -34,7 +33,7 @@ public class TestStrictFieldProjectionFilter {
   @Test
   public void testFromSemicolonDelimitedString() {
     List<String> globs = StrictFieldProjectionFilter.parseSemicolonDelimitedString(";x.y.z;*.a.b.c*;;foo;;;;bar;");
-    assertEquals(Arrays.asList("x.y.z", "*.a.b.c*", "foo", "bar"), globs);
+    assertEquals(List.of("x.y.z", "*.a.b.c*", "foo", "bar"), globs);
 
     try {
       StrictFieldProjectionFilter.parseSemicolonDelimitedString(";;");
@@ -114,7 +113,7 @@ public class TestStrictFieldProjectionFilter {
   @Test
   public void testWarnWhenMultiplePatternsMatch() {
     StrictFieldProjectionFilter filter =
-        spy(new StrictFieldProjectionFilter(Arrays.asList("a.b.c.{x_average,z_average}", "a.*_average")));
+        spy(new StrictFieldProjectionFilter(List.of("a.b.c.{x_average,z_average}", "a.*_average")));
     doNothing().when(filter).warn(anyString());
 
     assertMatches(filter, "a.b.c.x_average", "a.b.c.z_average", "a.other.w_average");

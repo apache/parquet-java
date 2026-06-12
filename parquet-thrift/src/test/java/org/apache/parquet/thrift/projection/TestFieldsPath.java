@@ -23,7 +23,6 @@ import static org.junit.Assert.assertEquals;
 import com.twitter.data.proto.tutorial.thrift.Person;
 import com.twitter.elephantbird.thrift.test.TestStructInMap;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import org.apache.parquet.thrift.ThriftSchemaConverter;
 import org.apache.parquet.thrift.struct.ThriftField;
@@ -49,19 +48,17 @@ public class TestFieldsPath {
 
     List<String> paths = PrimitivePathVisitor.visit(person, ".");
     assertEquals(
-        Arrays.asList("name.first_name", "name.last_name", "id", "email", "phones.number", "phones.type"),
-        paths);
+        List.of("name.first_name", "name.last_name", "id", "email", "phones.number", "phones.type"), paths);
 
     paths = PrimitivePathVisitor.visit(person, "/");
     assertEquals(
-        Arrays.asList("name/first_name", "name/last_name", "id", "email", "phones/number", "phones/type"),
-        paths);
+        List.of("name/first_name", "name/last_name", "id", "email", "phones/number", "phones/type"), paths);
 
     StructType structInMap = ThriftSchemaConverter.toStructType(TestStructInMap.class);
 
     paths = PrimitivePathVisitor.visit(structInMap, ".");
     assertEquals(
-        Arrays.asList(
+        List.of(
             "name",
             "names.key",
             "names.value.name.first_name",
@@ -74,7 +71,7 @@ public class TestFieldsPath {
 
     paths = PrimitivePathVisitor.visit(structInMap, "/");
     assertEquals(
-        Arrays.asList(
+        List.of(
             "name",
             "names/key",
             "names/value/name/first_name",
@@ -133,7 +130,7 @@ public class TestFieldsPath {
     }
 
     private List<String> visitPrimitive(FieldsPath path) {
-      return Arrays.asList(path.toDelimitedString(delim));
+      return List.of(path.toDelimitedString(delim));
     }
 
     @Override
