@@ -55,6 +55,10 @@ public class FallbackValuesWriter<I extends ValuesWriter & RequiresFallback, F e
    * Overflow is not a concern: a long would require writing over 9.2 exabytes to a single
    * column chunk, which is physically impossible. */
   private long cumulativeRawBytes = 0;
+  /** Accumulates dictionary-encoded size across pages (only reset in resetDictionary) so the
+   * compression decision compares like-scoped cumulative quantities — the column-chunk
+   * dictionary cost is amortized over all pages it covers, not charged against a single page. */
+  private long cumulativeEncodedBytes = 0;
 
   /**
    * writer currently written to
@@ -99,13 +103,30 @@ public class FallbackValuesWriter<I extends ValuesWriter & RequiresFallback, F e
     if (!fellBackAlready && !compressionChecked && cumulativeRawBytes >= dictionaryCheckThresholdRawSizeBytes) {
       compressionChecked = true;
       BytesInput bytes = initialWriter.getBytes();
-      if (!initialWriter.isCompressionSatisfying(rawDataByteSize, bytes.size())) {
+      try {
+        cumulativeEncodedBytes = Math.addExact(cumulativeEncodedBytes, bytes.size());
+      } catch (ArithmeticException e) {
+        // overflow, keep the previous value
+      }
+      // Compare cumulative raw vs cumulative encoded so the column-chunk dictionary
+      // (which is itself cumulative) is amortized over all pages it covers, not charged
+      // against a single page.
+      if (!initialWriter.isCompressionSatisfying(cumulativeRawBytes, cumulativeEncodedBytes)) {
         fallBack();
       } else {
         return bytes;
       }
     }
-    return currentWriter.getBytes();
+    BytesInput result = currentWriter.getBytes();
+    if (!fellBackAlready && !compressionChecked) {
+      // Accumulate dictionary-encoded size for pages flushed before the check fires.
+      try {
+        cumulativeEncodedBytes = Math.addExact(cumulativeEncodedBytes, result.size());
+      } catch (ArithmeticException e) {
+        // overflow, keep the previous value
+      }
+    }
+    return result;
   }
 
   @Override
@@ -149,6 +170,7 @@ public class FallbackValuesWriter<I extends ValuesWriter & RequiresFallback, F e
     fellBackAlready = false;
     compressionChecked = false;
     cumulativeRawBytes = 0;
+    cumulativeEncodedBytes = 0;
     initialUsedAndHadDictionary = false;
   }
 
