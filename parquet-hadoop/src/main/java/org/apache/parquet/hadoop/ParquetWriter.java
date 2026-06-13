@@ -705,6 +705,16 @@ public class ParquetWriter<T> implements Closeable {
       return self();
     }
 
+    public SELF withAlpEncoding(boolean enableAlp) {
+      encodingPropsBuilder.withAlpEncoding(enableAlp);
+      return self();
+    }
+
+    public SELF withAlpEncoding(String columnPath, boolean enableAlp) {
+      encodingPropsBuilder.withAlpEncoding(columnPath, enableAlp);
+      return self();
+    }
+
     /**
      * Enable or disable dictionary encoding of the specified column for the constructed writer.
      *
