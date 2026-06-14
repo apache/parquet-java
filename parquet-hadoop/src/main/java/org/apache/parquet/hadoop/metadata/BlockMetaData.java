@@ -107,10 +107,32 @@ public class BlockMetaData {
   }
 
   /**
-   * @return the starting pos of first column
+   * @return the starting pos of first column, or {@link ColumnChunkMetaData#SENTINEL_OFFSET}
+   *         if this block is part of an Approach 2 (micro-row-group) physical group and
+   *         its columns are physically shared with other blocks.
    */
   public long getStartingPos() {
     return getColumns().get(0).getStartingPos();
+  }
+
+  /**
+   * @return {@code true} if every column in this block is physically shared with other
+   *         blocks via the Approach 2 (micro-row-group) format extension. When this
+   *         returns {@code true}, the block's pages must be located via per-column
+   *         {@code OffsetIndex} sidecars and a single physical IO covers multiple blocks
+   *         of the same physical group. Returns {@code false} for legacy (contiguous)
+   *         column chunks. Empty blocks return {@code false}.
+   */
+  public boolean isApproach2() {
+    if (columns.isEmpty()) {
+      return false;
+    }
+    for (ColumnChunkMetaData col : columns) {
+      if (!col.isPhysicallyShared()) {
+        return false;
+      }
+    }
+    return true;
   }
 
   @Override

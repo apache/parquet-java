@@ -111,6 +111,10 @@ public class OffsetIndexBuilder {
   private final IntList compressedPageSizes = new IntArrayList();
   private final LongList firstRowIndexes = new LongArrayList();
   private final LongList unencodedDataBytes = new LongArrayList();
+  // Per-page row counts captured by the two-arg add(compressedPageSize, rowCount) call.
+  // Kept alongside firstRowIndexes so the micro-row-group writer path can slice pages
+  // by absolute row range without recomputing row deltas from the builder's running state.
+  private final LongList rowCounts = new LongArrayList();
   private long previousOffset;
   private int previousPageSize;
   private long previousRowIndex;
@@ -161,6 +165,7 @@ public class OffsetIndexBuilder {
         previousRowIndex + previousRowCount,
         unencodedDataBytes);
     previousRowCount = rowCount;
+    rowCounts.add(rowCount);
   }
 
   /**
@@ -256,5 +261,30 @@ public class OffsetIndexBuilder {
     }
 
     return offsetIndex;
+  }
+
+  /**
+   * @return the number of pages added via the two-arg {@link #add(int, long)} variant
+   *         (used by the micro-row-group writer path). Returns 0 if pages were added via
+   *         the explicit-offset variant only.
+   */
+  public int getPageCount() {
+    return rowCounts.size();
+  }
+
+  /**
+   * @param pageIndex page ordinal in [0, {@link #getPageCount()})
+   * @return the compressed page size recorded for page {@code pageIndex}
+   */
+  public int getCompressedPageSize(int pageIndex) {
+    return compressedPageSizes.getInt(pageIndex);
+  }
+
+  /**
+   * @param pageIndex page ordinal in [0, {@link #getPageCount()})
+   * @return the row count recorded for page {@code pageIndex} via {@link #add(int, long)}
+   */
+  public long getRowCount(int pageIndex) {
+    return rowCounts.getLong(pageIndex);
   }
 }

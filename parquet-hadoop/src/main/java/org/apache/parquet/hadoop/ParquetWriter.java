@@ -650,6 +650,24 @@ public class ParquetWriter<T> implements Closeable {
     }
 
     /**
+     * Opt in to the Approach 2 (micro-row-group) writer path: each record-batch flush
+     * produces one physical column chunk whose pages are split into multiple logical
+     * {@code BlockMetaData} entries of approximately this row count, all marked with
+     * {@code data_page_offset == ColumnChunkMetaData.SENTINEL_OFFSET}. Set to {@code 0}
+     * (the default) to use the legacy single-block-per-flush behavior.
+     *
+     * <p>Prototype limitations: encryption is unsupported, and per-block statistics /
+     * ColumnIndex / bloom filters are not emitted.
+     *
+     * @param rowCount target row count per logical micro-row-group, or {@code 0} to disable
+     * @return this builder for method chaining
+     */
+    public SELF withMicroRowGroupRowCount(long rowCount) {
+      encodingPropsBuilder.withMicroRowGroupRowCount(rowCount);
+      return self();
+    }
+
+    /**
      * Set the Parquet format dictionary page size used by the constructed
      * writer.
      *
