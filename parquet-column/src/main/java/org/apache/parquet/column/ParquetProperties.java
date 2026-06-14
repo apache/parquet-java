@@ -66,6 +66,7 @@ public class ParquetProperties {
   public static final int DEFAULT_BLOOM_FILTER_CANDIDATES_NUMBER = 5;
   public static final boolean DEFAULT_STATISTICS_ENABLED = true;
   public static final boolean DEFAULT_SIZE_STATISTICS_ENABLED = true;
+  public static final boolean DEFAULT_INT96_TIMESTAMP_STATISTICS_ENABLED = false;
 
   public static final boolean DEFAULT_PAGE_WRITE_CHECKSUM_ENABLED = true;
 
@@ -120,6 +121,7 @@ public class ParquetProperties {
   private final int statisticsTruncateLength;
   private final boolean statisticsEnabled;
   private final boolean sizeStatisticsEnabled;
+  private final boolean int96TimestampStatisticsEnabled;
 
   // The expected NDV (number of distinct values) for each columns
   private final ColumnProperty<Long> bloomFilterNDVs;
@@ -154,6 +156,7 @@ public class ParquetProperties {
     this.statisticsTruncateLength = builder.statisticsTruncateLength;
     this.statisticsEnabled = builder.statisticsEnabled;
     this.sizeStatisticsEnabled = builder.sizeStatisticsEnabled;
+    this.int96TimestampStatisticsEnabled = builder.int96TimestampStatisticsEnabled;
     this.bloomFilterNDVs = builder.bloomFilterNDVs.build();
     this.bloomFilterFPPs = builder.bloomFilterFPPs.build();
     this.bloomFilterEnabled = builder.bloomFilterEnabled.build();
@@ -370,6 +373,10 @@ public class ParquetProperties {
     return sizeStatisticsEnabled;
   }
 
+  public boolean getInt96TimestampStatisticsEnabled() {
+    return int96TimestampStatisticsEnabled;
+  }
+
   @Override
   public String toString() {
     return "Parquet page size to " + getPageSizeThreshold() + '\n'
@@ -406,6 +413,7 @@ public class ParquetProperties {
     private int statisticsTruncateLength = DEFAULT_STATISTICS_TRUNCATE_LENGTH;
     private boolean statisticsEnabled = DEFAULT_STATISTICS_ENABLED;
     private boolean sizeStatisticsEnabled = DEFAULT_SIZE_STATISTICS_ENABLED;
+    private boolean int96TimestampStatisticsEnabled = DEFAULT_INT96_TIMESTAMP_STATISTICS_ENABLED;
     private final ColumnProperty.Builder<Long> bloomFilterNDVs;
     private final ColumnProperty.Builder<Double> bloomFilterFPPs;
     private int maxBloomFilterBytes = DEFAULT_MAX_BLOOM_FILTER_BYTES;
@@ -753,6 +761,19 @@ public class ParquetProperties {
      */
     public Builder withSizeStatisticsEnabled(String columnPath, boolean enabled) {
       this.sizeStatistics.withValue(columnPath, enabled);
+      return this;
+    }
+
+    /**
+     * Sets whether min/max statistics are collected and written for INT96 columns using the
+     * chronological INT96_TIMESTAMP_ORDER column order (disabled by default). When enabled, INT96
+     * columns are tagged with INT96_TIMESTAMP_ORDER in the file footer.
+     *
+     * @param enabled whether to collect and write INT96 timestamp statistics
+     * @return this builder for method chaining
+     */
+    public Builder withInt96TimestampStatisticsEnabled(boolean enabled) {
+      this.int96TimestampStatisticsEnabled = enabled;
       return this;
     }
 

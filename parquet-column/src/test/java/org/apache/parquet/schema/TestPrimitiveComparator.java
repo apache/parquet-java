@@ -19,6 +19,7 @@
 package org.apache.parquet.schema;
 
 import static org.apache.parquet.schema.PrimitiveComparator.BINARY_AS_FLOAT16_COMPARATOR;
+import static org.apache.parquet.schema.PrimitiveComparator.BINARY_AS_INT96_TIMESTAMP_COMPARATOR;
 import static org.apache.parquet.schema.PrimitiveComparator.BINARY_AS_SIGNED_INTEGER_COMPARATOR;
 import static org.apache.parquet.schema.PrimitiveComparator.BOOLEAN_COMPARATOR;
 import static org.apache.parquet.schema.PrimitiveComparator.DOUBLE_COMPARATOR;
@@ -33,8 +34,12 @@ import static org.junit.Assert.fail;
 
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.function.Function;
+import org.apache.parquet.example.data.simple.NanoTime;
 import org.apache.parquet.io.api.Binary;
 import org.junit.Test;
 
@@ -293,6 +298,60 @@ public class TestPrimitiveComparator {
             String.format("Wrong result of comparison %s and %s", v1, v2),
             0,
             BINARY_AS_SIGNED_INTEGER_COMPARATOR.compare(v1, v2));
+      }
+    }
+  }
+
+  private static Binary int96(int julianDay, long nanosOfDay) {
+    return new NanoTime(julianDay, nanosOfDay).toBinary();
+  }
+
+  private static Binary timestampToInt96(String timestamp) {
+    LocalDateTime dt = LocalDateTime.parse(timestamp);
+    int julianDay = (int) (dt.toLocalDate().toEpochDay() + 2440588);
+    return new NanoTime(julianDay, dt.toLocalTime().toNanoOfDay()).toBinary();
+  }
+
+  @Test
+  public void testInt96TimestampComparator() {
+    Binary[] valuesInAscendingOrder = {
+      int96(Integer.MIN_VALUE, 0), // most negative julian day
+      int96(-1, 86_399_999_999_999L), // negative julian days sort before day 0
+      int96(0, 0), // start of the julian period
+      int96(0, 86_399_999_999_999L), // same day, later time of day
+      timestampToInt96("1968-05-23T00:00:00.000000123"), // pre-epoch but positive julian day
+      timestampToInt96("2020-01-01T12:00:00"),
+      timestampToInt96("2020-02-01T11:00:00"), // later day even though earlier time of day
+      timestampToInt96("2020-02-01T11:00:00.000000001"), // nanos tie-break
+      int96(Integer.MAX_VALUE, 86_399_999_999_999L)
+    };
+
+    // The same value in different Binary representations must compare identically; the offset
+    // variant guards against absolute reads not being relative to the value's start
+    List<Function<Binary, Binary>> representations = List.of(
+        b -> b,
+        b -> Binary.fromReusedByteArray(b.getBytes()),
+        b -> Binary.fromConstantByteArray(b.getBytes()),
+        b -> {
+          byte[] bytes = b.getBytes();
+          byte[] padded = new byte[bytes.length + 20];
+          Arrays.fill(padded, (byte) 0xAA);
+          System.arraycopy(bytes, 0, padded, 10, bytes.length);
+          return Binary.fromReusedByteArray(padded, 10, bytes.length);
+        });
+
+    for (int i = 0; i < valuesInAscendingOrder.length; ++i) {
+      for (int j = 0; j < valuesInAscendingOrder.length; ++j) {
+        for (Function<Binary, Binary> fi : representations) {
+          for (Function<Binary, Binary> fj : representations) {
+            Binary bi = fi.apply(valuesInAscendingOrder[i]);
+            Binary bj = fj.apply(valuesInAscendingOrder[j]);
+            assertEquals(
+                "comparing value " + i + " to value " + j,
+                Integer.signum(Integer.compare(i, j)),
+                Integer.signum(BINARY_AS_INT96_TIMESTAMP_COMPARATOR.compare(bi, bj)));
+          }
+        }
       }
     }
   }
