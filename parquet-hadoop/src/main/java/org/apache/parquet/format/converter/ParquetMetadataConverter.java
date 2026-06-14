@@ -970,6 +970,46 @@ public class ParquetMetadataConverter {
     return fromParquetStatisticsInternal(createdBy, statistics, type, expectedOrder);
   }
 
+  // Overload that uses a pre-computed shouldIgnoreCorruptStats flag to avoid redundant parsing
+  private org.apache.parquet.column.statistics.Statistics fromParquetStatisticsInternal(
+      String createdBy, Statistics formatStats, PrimitiveType type, boolean shouldIgnoreCorruptStats) {
+    SortOrder typeSortOrder = overrideSortOrderToSigned(type) ? SortOrder.SIGNED : sortOrder(type);
+    org.apache.parquet.column.statistics.Statistics.Builder statsBuilder =
+        org.apache.parquet.column.statistics.Statistics.getBuilderForReading(type);
+
+    if (formatStats != null) {
+      if (formatStats.isSetMin_value() && formatStats.isSetMax_value()) {
+        byte[] min = formatStats.min_value.array();
+        byte[] max = formatStats.max_value.array();
+        if (isMinMaxStatsSupported(type) || Arrays.equals(min, max)) {
+          statsBuilder.withMin(min);
+          statsBuilder.withMax(max);
+        }
+      } else {
+        boolean isSet = formatStats.isSetMax() && formatStats.isSetMin();
+        boolean maxEqualsMin = isSet ? Arrays.equals(formatStats.getMin(), formatStats.getMax()) : false;
+        boolean sortOrdersMatch = SortOrder.SIGNED == typeSortOrder;
+        // The shouldIgnoreCorruptStats flag applies only to BINARY and FIXED_LEN_BYTE_ARRAY.
+        // For other types, shouldIgnoreStatistics always returns false, so we only guard those.
+        PrimitiveTypeName primitiveTypeName = type.getPrimitiveTypeName();
+        boolean ignoreForThisColumn = shouldIgnoreCorruptStats
+            && (primitiveTypeName == PrimitiveTypeName.BINARY
+                || primitiveTypeName == PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY);
+        if (!ignoreForThisColumn && (sortOrdersMatch || maxEqualsMin)) {
+          if (isSet) {
+            statsBuilder.withMin(formatStats.min.array());
+            statsBuilder.withMax(formatStats.max.array());
+          }
+        }
+      }
+
+      if (formatStats.isSetNull_count()) {
+        statsBuilder.withNumNulls(formatStats.null_count);
+      }
+    }
+    return statsBuilder.build();
+  }
+
   GeospatialStatistics toParquetGeospatialStatistics(
       org.apache.parquet.column.statistics.geospatial.GeospatialStatistics geospatialStatistics) {
     if (geospatialStatistics == null) {
@@ -1794,13 +1834,24 @@ public class ParquetMetadataConverter {
 
   public ColumnChunkMetaData buildColumnChunkMetaData(
       ColumnMetaData metaData, ColumnPath columnPath, PrimitiveType type, String createdBy) {
+    boolean shouldIgnoreCorruptStats =
+        CorruptStatistics.shouldIgnoreStatistics(createdBy, PrimitiveTypeName.BINARY);
+    return buildColumnChunkMetaData(metaData, columnPath, type, createdBy, shouldIgnoreCorruptStats);
+  }
+
+  ColumnChunkMetaData buildColumnChunkMetaData(
+      ColumnMetaData metaData,
+      ColumnPath columnPath,
+      PrimitiveType type,
+      String createdBy,
+      boolean shouldIgnoreCorruptStats) {
     return ColumnChunkMetaData.get(
         columnPath,
         type,
         fromFormatCodec(metaData.codec),
         convertEncodingStats(metaData.getEncoding_stats()),
         fromFormatEncodings(metaData.encodings),
-        fromParquetStatistics(createdBy, metaData.statistics, type),
+        fromParquetStatisticsInternal(createdBy, metaData.statistics, type, shouldIgnoreCorruptStats),
         metaData.data_page_offset,
         metaData.dictionary_page_offset,
         metaData.num_values,
@@ -1829,6 +1880,10 @@ public class ParquetMetadataConverter {
     MessageType messageType = fromParquetSchema(parquetMetadata.getSchema(), parquetMetadata.getColumn_orders());
     List<BlockMetaData> blocks = new ArrayList<BlockMetaData>();
     List<RowGroup> row_groups = parquetMetadata.getRow_groups();
+    // Compute once per file: the result is the same for BINARY and FIXED_LEN_BYTE_ARRAY
+    // (the only types affected by PARQUET-251), and always false for other types.
+    boolean shouldIgnoreCorruptStats =
+        CorruptStatistics.shouldIgnoreStatistics(parquetMetadata.getCreated_by(), PrimitiveTypeName.BINARY);
 
     if (row_groups != null) {
       for (RowGroup rowGroup : row_groups) {
@@ -1909,7 +1964,8 @@ public class ParquetMetadataConverter {
                 metaData,
                 columnPath,
                 messageType.getType(columnPath.toArray()).asPrimitiveType(),
-                createdBy);
+                createdBy,
+                shouldIgnoreCorruptStats);
             column.setRowGroupOrdinal(rowGroup.getOrdinal());
             if (metaData.isSetBloom_filter_offset()) {
               column.setBloomFilterOffset(metaData.getBloom_filter_offset());
