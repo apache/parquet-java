@@ -123,6 +123,16 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
   public static final String STATS_FILTERING_ENABLED = "parquet.filter.stats.enabled";
 
   /**
+   * key to configure whether int96 stats are read and exposed
+   */
+  public static final String READ_INT96_STATS_ENABLED = "parquet.read.int96stats.enabled";
+
+  /**
+   * default value for READ_INT96_STATS_ENABLED
+   */
+  public static final boolean DEFAULT_READ_INT96_STATS_ENABLED = true;
+
+  /**
    * key to configure whether row group dictionary filtering is enabled
    */
   public static final String DICTIONARY_FILTERING_ENABLED = "parquet.filter.dictionary.enabled";

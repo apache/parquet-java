@@ -24,6 +24,8 @@ import static org.apache.parquet.format.Util.readColumnMetaData;
 import static org.apache.parquet.format.Util.readFileMetaData;
 import static org.apache.parquet.format.Util.writeColumnMetaData;
 import static org.apache.parquet.format.Util.writePageHeader;
+import static org.apache.parquet.hadoop.ParquetInputFormat.DEFAULT_READ_INT96_STATS_ENABLED;
+import static org.apache.parquet.hadoop.ParquetInputFormat.READ_INT96_STATS_ENABLED;
 
 import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
@@ -47,6 +49,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.CorruptStatistics;
 import org.apache.parquet.ParquetReadOptions;
 import org.apache.parquet.Preconditions;
+import org.apache.parquet.ValidInt96Stats;
 import org.apache.parquet.column.EncodingStats;
 import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.statistics.BinaryStatistics;
@@ -163,14 +166,15 @@ public class ParquetMetadataConverter {
       new ConvertedTypeConverterVisitor();
   private final int statisticsTruncateLength;
   private final boolean useSignedStringMinMax;
+  private final boolean readInt96Stats;
   private final ParquetReadOptions options;
 
   public ParquetMetadataConverter() {
-    this(false);
+    this(false, ParquetProperties.DEFAULT_STATISTICS_TRUNCATE_LENGTH, DEFAULT_READ_INT96_STATS_ENABLED, null);
   }
 
   public ParquetMetadataConverter(int statisticsTruncateLength) {
-    this(false, statisticsTruncateLength);
+    this(false, statisticsTruncateLength, DEFAULT_READ_INT96_STATS_ENABLED, null);
   }
 
   /**
@@ -179,28 +183,32 @@ public class ParquetMetadataConverter {
    */
   @Deprecated
   public ParquetMetadataConverter(Configuration conf) {
-    this(conf.getBoolean("parquet.strings.signed-min-max.enabled", false));
+    this(
+        conf.getBoolean("parquet.strings.signed-min-max.enabled", false),
+        ParquetProperties.DEFAULT_STATISTICS_TRUNCATE_LENGTH,
+        conf.getBoolean(READ_INT96_STATS_ENABLED, DEFAULT_READ_INT96_STATS_ENABLED),
+        null);
   }
 
   public ParquetMetadataConverter(ParquetReadOptions options) {
-    this(options.useSignedStringMinMax(), ParquetProperties.DEFAULT_STATISTICS_TRUNCATE_LENGTH, options);
-  }
-
-  private ParquetMetadataConverter(boolean useSignedStringMinMax) {
-    this(useSignedStringMinMax, ParquetProperties.DEFAULT_STATISTICS_TRUNCATE_LENGTH);
-  }
-
-  private ParquetMetadataConverter(boolean useSignedStringMinMax, int statisticsTruncateLength) {
-    this(useSignedStringMinMax, statisticsTruncateLength, null);
+    this(
+        options.useSignedStringMinMax(),
+        ParquetProperties.DEFAULT_STATISTICS_TRUNCATE_LENGTH,
+        options.readInt96Stats(),
+        options);
   }
 
   private ParquetMetadataConverter(
-      boolean useSignedStringMinMax, int statisticsTruncateLength, ParquetReadOptions options) {
+      boolean useSignedStringMinMax,
+      int statisticsTruncateLength,
+      boolean readInt96Stats,
+      ParquetReadOptions options) {
     if (statisticsTruncateLength <= 0) {
       throw new IllegalArgumentException("Truncate length should be greater than 0");
     }
     this.useSignedStringMinMax = useSignedStringMinMax;
     this.statisticsTruncateLength = statisticsTruncateLength;
+    this.readInt96Stats = readInt96Stats;
     this.options = options;
   }
 
@@ -826,7 +834,7 @@ public class ParquetMetadataConverter {
           formatStats.setMax(max);
         }
 
-        if (isMinMaxStatsSupported(stats.type()) || Arrays.equals(min, max)) {
+        if (isMinMaxStatsWritingSupported(stats.type()) || Arrays.equals(min, max)) {
           formatStats.setMin_value(min);
           formatStats.setMax_value(max);
         }
@@ -890,8 +898,15 @@ public class ParquetMetadataConverter {
         .getBytes();
   }
 
-  private static boolean isMinMaxStatsSupported(PrimitiveType type) {
+  private static boolean isMinMaxStatsWritingSupported(PrimitiveType type) {
     return type.columnOrder().getColumnOrderName() == ColumnOrderName.TYPE_DEFINED_ORDER;
+  }
+
+  private boolean isMinMaxStatsReadingSupported(String createdBy, PrimitiveType type) {
+    if (type.getPrimitiveTypeName() == PrimitiveTypeName.INT96) {
+      return readInt96Stats && ValidInt96Stats.hasValidInt96Stats(createdBy);
+    }
+    return isMinMaxStatsWritingSupported(type);
   }
 
   /**
@@ -916,15 +931,16 @@ public class ParquetMetadataConverter {
   @Deprecated
   public static org.apache.parquet.column.statistics.Statistics fromParquetStatistics(
       String createdBy, Statistics statistics, PrimitiveTypeName type) {
-    return fromParquetStatisticsInternal(
-        createdBy,
-        statistics,
-        new PrimitiveType(Repetition.OPTIONAL, type, "fake_type"),
-        defaultSortOrder(type));
+    return new ParquetMetadataConverter()
+        .fromParquetStatisticsInternal(
+            createdBy,
+            statistics,
+            new PrimitiveType(Repetition.OPTIONAL, type, "fake_type"),
+            defaultSortOrder(type));
   }
 
   // Visible for testing
-  static org.apache.parquet.column.statistics.Statistics fromParquetStatisticsInternal(
+  org.apache.parquet.column.statistics.Statistics fromParquetStatisticsInternal(
       String createdBy, Statistics formatStats, PrimitiveType type, SortOrder typeSortOrder) {
     // create stats object based on the column type
     org.apache.parquet.column.statistics.Statistics.Builder statsBuilder =
@@ -935,7 +951,7 @@ public class ParquetMetadataConverter {
       if (formatStats.isSetMin_value() && formatStats.isSetMax_value()) {
         byte[] min = formatStats.min_value.array();
         byte[] max = formatStats.max_value.array();
-        if (isMinMaxStatsSupported(type) || Arrays.equals(min, max)) {
+        if (isMinMaxStatsReadingSupported(createdBy, type) || Arrays.equals(min, max)) {
           statsBuilder.withMin(min);
           statsBuilder.withMax(max);
         }
@@ -2030,8 +2046,7 @@ public class ParquetMetadataConverter {
           // the types
           // where ordering is not supported.
           if (columnOrder.getColumnOrderName() == ColumnOrderName.TYPE_DEFINED_ORDER
-              && (schemaElement.type == Type.INT96
-                  || schemaElement.converted_type == ConvertedType.INTERVAL)) {
+              && schemaElement.converted_type == ConvertedType.INTERVAL) {
             columnOrder = org.apache.parquet.schema.ColumnOrder.undefined();
           }
           primitiveBuilder.columnOrder(columnOrder);
@@ -2540,7 +2555,7 @@ public class ParquetMetadataConverter {
 
   public static ColumnIndex toParquetColumnIndex(
       PrimitiveType type, org.apache.parquet.internal.column.columnindex.ColumnIndex columnIndex) {
-    if (!isMinMaxStatsSupported(type) || columnIndex == null) {
+    if (!isMinMaxStatsWritingSupported(type) || columnIndex == null) {
       return null;
     }
     ColumnIndex parquetColumnIndex = new ColumnIndex(
@@ -2560,9 +2575,21 @@ public class ParquetMetadataConverter {
     return parquetColumnIndex;
   }
 
+  /**
+   * @param type              the primitive type
+   * @param parquetColumnIndex parquet format column index
+   * @return the column index
+   * @deprecated will be removed in 2.0.0; use {@link #fromParquetColumnIndex(String, PrimitiveType, ColumnIndex)} instead.
+   */
+  @Deprecated
   public static org.apache.parquet.internal.column.columnindex.ColumnIndex fromParquetColumnIndex(
       PrimitiveType type, ColumnIndex parquetColumnIndex) {
-    if (!isMinMaxStatsSupported(type)) {
+    return new ParquetMetadataConverter().fromParquetColumnIndex(null, type, parquetColumnIndex);
+  }
+
+  public org.apache.parquet.internal.column.columnindex.ColumnIndex fromParquetColumnIndex(
+      String createdBy, PrimitiveType type, ColumnIndex parquetColumnIndex) {
+    if (!isMinMaxStatsReadingSupported(createdBy, type)) {
       return null;
     }
     return ColumnIndexBuilder.build(
