@@ -27,6 +27,7 @@ import org.apache.parquet.column.ParquetProperties;
 import org.apache.parquet.column.values.ValuesWriter;
 import org.apache.parquet.column.values.bytestreamsplit.ByteStreamSplitValuesWriter;
 import org.apache.parquet.column.values.delta.DeltaBinaryPackingValuesWriterForInteger;
+import org.apache.parquet.column.values.pfor.PforValuesWriter;
 import org.apache.parquet.column.values.delta.DeltaBinaryPackingValuesWriterForLong;
 import org.apache.parquet.column.values.deltastrings.DeltaByteArrayWriter;
 import org.apache.parquet.column.values.plain.FixedLenByteArrayPlainValuesWriter;
@@ -115,7 +116,12 @@ public class DefaultV2ValuesWriterFactory implements ValuesWriterFactory {
 
   private ValuesWriter getInt32ValuesWriter(ColumnDescriptor path) {
     final ValuesWriter fallbackWriter;
-    if (parquetProperties.isByteStreamSplitEnabled(path)) {
+    if (this.parquetProperties.isPforEnabled(path)) {
+      fallbackWriter = new PforValuesWriter.IntPforValuesWriter(
+          parquetProperties.getInitialSlabSize(),
+          parquetProperties.getPageSizeThreshold(),
+          parquetProperties.getAllocator());
+    } else if (parquetProperties.isByteStreamSplitEnabled(path)) {
       fallbackWriter = new ByteStreamSplitValuesWriter.IntegerByteStreamSplitValuesWriter(
           parquetProperties.getInitialSlabSize(),
           parquetProperties.getPageSizeThreshold(),
@@ -132,7 +138,12 @@ public class DefaultV2ValuesWriterFactory implements ValuesWriterFactory {
 
   private ValuesWriter getInt64ValuesWriter(ColumnDescriptor path) {
     final ValuesWriter fallbackWriter;
-    if (parquetProperties.isByteStreamSplitEnabled(path)) {
+    if (this.parquetProperties.isPforEnabled(path)) {
+      fallbackWriter = new PforValuesWriter.LongPforValuesWriter(
+          parquetProperties.getInitialSlabSize(),
+          parquetProperties.getPageSizeThreshold(),
+          parquetProperties.getAllocator());
+    } else if (parquetProperties.isByteStreamSplitEnabled(path)) {
       fallbackWriter = new ByteStreamSplitValuesWriter.LongByteStreamSplitValuesWriter(
           parquetProperties.getInitialSlabSize(),
           parquetProperties.getPageSizeThreshold(),
