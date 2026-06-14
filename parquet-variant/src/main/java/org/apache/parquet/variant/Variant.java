@@ -61,6 +61,8 @@ public final class Variant {
    * Lazy cache for the parsed array header.
    */
   private VariantUtil.ArrayInfo cachedArrayInfo;
+  /** Nesting depth of this Variant relative to the top-level value (0 = top-level). */
+  private final int depth;
 
   /**
    * The threshold to switch from linear search to binary search when looking up a field by key in
@@ -69,10 +71,33 @@ public final class Variant {
    */
   static final int BINARY_SEARCH_THRESHOLD = 32;
 
+  /**
+   * Create a Variant from a tuple of (value, metadata) byte arrays..
+   * Includes validation of version and a validation of the toplevel
+   * structure.
+   * @param value value buffer
+   * @param metadata metadata buffer
+   * @throws UnsupportedOperationException if there is a version mismatch
+   * @throws IllegalArgumentException for any validation failure.
+   */
   public Variant(byte[] value, byte[] metadata) {
     this(value, 0, value.length, metadata, 0, metadata.length);
   }
 
+  /**
+   * Create a Variant from a subset of the (value, metadata) buffers
+   * supplied.
+   * Includes validation of version and a validation of the toplevel
+   * structure.
+   * @param value value buffer
+   * @param valuePos offset where the value data begins
+   * @param valueLength length of value data
+   * @param metadata metadata buffer
+   * @param metadataPos offset where the metadata begins.
+   * @param metadataLength length of the metadata.
+   * @throws UnsupportedOperationException if there is a version mismatch
+   * @throws IllegalArgumentException for any validation failure.
+   */
   public Variant(byte[] value, int valuePos, int valueLength, byte[] metadata, int metadataPos, int metadataLength) {
     this(ByteBuffer.wrap(value, valuePos, valueLength), ByteBuffer.wrap(metadata, metadataPos, metadataLength));
   }
@@ -81,10 +106,19 @@ public final class Variant {
     this(value, metadata.getEncodedBuffer());
   }
 
+  /**
+   * Create a Variant from a tuple of (value, metadata) buffers.
+   * Includes validation of version and a validation of the toplevel
+   * structure.
+   * @param value value buffer
+   * @param metadata metadata buffer
+   * @throws UnsupportedOperationException if there is a version mismatch
+   * @throws IllegalArgumentException for any validation failure.
+   */
   public Variant(ByteBuffer value, ByteBuffer metadata) {
     this.value = value.asReadOnlyBuffer().order(ByteOrder.LITTLE_ENDIAN);
     this.metadata = metadata.asReadOnlyBuffer().order(ByteOrder.LITTLE_ENDIAN);
-
+    this.depth = 0;
     // There is currently only one allowed version.
     if ((metadata.get(metadata.position()) & VariantUtil.VERSION_MASK) != VariantUtil.VERSION) {
       throw new UnsupportedOperationException(String.format(
@@ -108,16 +142,30 @@ public final class Variant {
       this.dictSize = 0;
     }
     this.metadataCache = null;
+    VariantUtil.validateValueShallow(this.value, dictSize);
   }
 
   /**
-   * Package-private constructor that shares pre-parsed metadata state from a parent Variant.
+   * Package-private constructor that shares pre-parsed metadata state from a parent Variant, performing shallow validation of the structure.
+   * @param value value buffer
+   * @param metadata metadata buffer
+   * @param metadataCache shared metadata cache.
+   * @param dictSize shared dictionary size.
+   * @param depth depth of this variant in a recursive structure.
+   * @throws IllegalArgumentException if the depth of variants is too high or the structure
+   * invalid in some other form.
    */
-  Variant(ByteBuffer value, ByteBuffer metadata, String[] metadataCache, int dictSize) {
+  Variant(ByteBuffer value, ByteBuffer metadata, String[] metadataCache, int dictSize, int depth) {
+    Preconditions.checkArgument(
+        depth <= VariantUtil.MAX_VARIANT_DEPTH,
+        "variant nesting depth exceeds maximum %s",
+        VariantUtil.MAX_VARIANT_DEPTH);
     this.value = value.asReadOnlyBuffer().order(ByteOrder.LITTLE_ENDIAN);
     this.metadata = metadata.asReadOnlyBuffer().order(ByteOrder.LITTLE_ENDIAN);
     this.metadataCache = metadataCache;
     this.dictSize = dictSize;
+    this.depth = depth;
+    VariantUtil.validateValueShallow(this.value, dictSize);
   }
 
   public ByteBuffer getValueBuffer() {
@@ -361,7 +409,7 @@ public final class Variant {
    * Creates a child Variant that shares this instance's metadata cache.
    */
   private Variant childVariant(ByteBuffer childValue) {
-    return new Variant(childValue, metadata, metadataCache, dictSize);
+    return new Variant(childValue, metadata, metadataCache, dictSize, depth + 1);
   }
 
   /**
