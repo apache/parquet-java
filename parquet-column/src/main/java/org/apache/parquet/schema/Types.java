@@ -821,10 +821,32 @@ public class Types {
     @Override
     protected GroupType build(String name) {
       if (newLogicalTypeSet) {
+        if (logicalTypeAnnotation instanceof LogicalTypeAnnotation.FileLogicalTypeAnnotation) {
+          validateFileTypeFields(name, fields);
+        }
         return new GroupType(repetition, name, logicalTypeAnnotation, fields, id);
       } else {
         return new GroupType(repetition, name, getOriginalType(), fields, id);
       }
+    }
+
+    private static void validateFileTypeFields(String name, List<Type> fields) {
+      boolean hasPath = false;
+      for (Type field : fields) {
+        String fieldName = field.getName();
+        if (LogicalTypeAnnotation.FileLogicalTypeAnnotation.PATH_FIELD.equals(fieldName)) {
+          Preconditions.checkArgument(
+              field.getRepetition() == Type.Repetition.REQUIRED,
+              "FILE type field 'path' must be REQUIRED in group '%s'",
+              name);
+          hasPath = true;
+        } else if (!LogicalTypeAnnotation.FileLogicalTypeAnnotation.OPTIONAL_FIELD_NAMES.contains(fieldName)) {
+          throw new IllegalArgumentException(
+              "FILE type group '" + name + "' contains unrecognized field '" + fieldName
+                  + "'. Valid fields are: path, size, offset, etag");
+        }
+      }
+      Preconditions.checkArgument(hasPath, "FILE type group '%s' must contain required field 'path'", name);
     }
 
     public MapBuilder<THIS> map(Type.Repetition repetition) {
