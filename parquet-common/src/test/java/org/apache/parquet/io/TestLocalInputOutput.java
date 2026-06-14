@@ -18,11 +18,14 @@
  */
 package org.apache.parquet.io;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 
+import java.io.EOFException;
 import java.io.File;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -88,5 +91,145 @@ public class TestLocalInputOutput {
     tmp.deleteOnExit();
     tmp.delete();
     return tmp;
+  }
+
+  @Test
+  public void readFullyIntoHeapByteBuffer() throws IOException {
+    Path path = writeBytes(new byte[] {1, 2, 3, 4, 5});
+    try (SeekableInputStream stream = new LocalInputFile(path).newStream()) {
+      ByteBuffer buf = ByteBuffer.allocate(5);
+      stream.readFully(buf);
+      assertEquals(5, buf.position());
+      buf.flip();
+      byte[] out = new byte[5];
+      buf.get(out);
+      assertArrayEquals(new byte[] {1, 2, 3, 4, 5}, out);
+    }
+  }
+
+  @Test
+  public void readFullyIntoHeapByteBufferWithNonZeroPosition() throws IOException {
+    Path path = writeBytes(new byte[] {10, 20, 30, 40});
+    try (SeekableInputStream stream = new LocalInputFile(path).newStream()) {
+      ByteBuffer buf = ByteBuffer.allocate(6);
+      buf.put(new byte[] {99, 99}); // advance position to 2
+      stream.readFully(buf);
+      assertEquals(6, buf.position());
+      buf.flip();
+      byte[] out = new byte[6];
+      buf.get(out);
+      assertArrayEquals(new byte[] {99, 99, 10, 20, 30, 40}, out);
+    }
+  }
+
+  @Test
+  public void readFullyIntoDirectByteBuffer() throws IOException {
+    Path path = writeBytes(new byte[] {7, 8, 9});
+    try (SeekableInputStream stream = new LocalInputFile(path).newStream()) {
+      ByteBuffer buf = ByteBuffer.allocateDirect(3);
+      stream.readFully(buf);
+      assertEquals(3, buf.position());
+      buf.flip();
+      byte[] out = new byte[3];
+      buf.get(out);
+      assertArrayEquals(new byte[] {7, 8, 9}, out);
+    }
+  }
+
+  @Test
+  public void readFullyIntoReadOnlyByteBuffer() throws IOException {
+    Path path = writeBytes(new byte[] {7, 8, 9});
+    try (SeekableInputStream stream = new LocalInputFile(path).newStream()) {
+      ByteBuffer backing = ByteBuffer.allocate(3);
+      ByteBuffer buf = backing.asReadOnlyBuffer();
+      assertThrows(java.nio.ReadOnlyBufferException.class, () -> stream.readFully(buf));
+    }
+  }
+
+  @Test
+  public void readIntoHeapByteBuffer() throws IOException {
+    Path path = writeBytes(new byte[] {1, 2, 3, 4});
+    try (SeekableInputStream stream = new LocalInputFile(path).newStream()) {
+      ByteBuffer buf = ByteBuffer.allocate(4);
+      int read = stream.read(buf);
+      assertEquals(4, read);
+      assertEquals(4, buf.position());
+      buf.flip();
+      byte[] out = new byte[4];
+      buf.get(out);
+      assertArrayEquals(new byte[] {1, 2, 3, 4}, out);
+    }
+  }
+
+  @Test
+  public void readIntoByteBufferAdvancesPositionByBytesRead() throws IOException {
+    Path path = writeBytes(new byte[] {1, 2, 3});
+    try (SeekableInputStream stream = new LocalInputFile(path).newStream()) {
+      ByteBuffer buf = ByteBuffer.allocate(10);
+      int read = stream.read(buf);
+      assertEquals(3, read);
+      assertEquals(3, buf.position());
+    }
+  }
+
+  @Test
+  public void readIntoByteBufferReturnsMinusOneAtEof() throws IOException {
+    Path path = writeBytes(new byte[] {1});
+    try (SeekableInputStream stream = new LocalInputFile(path).newStream()) {
+      assertEquals(1, stream.read());
+      ByteBuffer buf = ByteBuffer.allocate(4);
+      int read = stream.read(buf);
+      assertEquals(-1, read);
+      assertEquals(0, buf.position());
+    }
+  }
+
+  @Test
+  public void readIntoDirectByteBuffer() throws IOException {
+    Path path = writeBytes(new byte[] {7, 8, 9});
+    try (SeekableInputStream stream = new LocalInputFile(path).newStream()) {
+      ByteBuffer buf = ByteBuffer.allocateDirect(3);
+      int read = stream.read(buf);
+      assertEquals(3, read);
+      assertEquals(3, buf.position());
+      buf.flip();
+      byte[] out = new byte[3];
+      buf.get(out);
+      assertArrayEquals(new byte[] {7, 8, 9}, out);
+    }
+  }
+
+  @Test
+  public void readIntoByteBufferWithNonZeroPosition() throws IOException {
+    Path path = writeBytes(new byte[] {10, 20, 30});
+    try (SeekableInputStream stream = new LocalInputFile(path).newStream()) {
+      ByteBuffer buf = ByteBuffer.allocate(5);
+      buf.put(new byte[] {99, 99}); // advance position to 2
+      int read = stream.read(buf);
+      assertEquals(3, read);
+      assertEquals(5, buf.position());
+      buf.flip();
+      byte[] out = new byte[5];
+      buf.get(out);
+      assertArrayEquals(new byte[] {99, 99, 10, 20, 30}, out);
+    }
+  }
+
+  @Test
+  public void readFullyThrowsEofWhenStreamTooShort() throws IOException {
+    Path path = writeBytes(new byte[] {1, 2});
+    try (SeekableInputStream stream = new LocalInputFile(path).newStream()) {
+      ByteBuffer buf = ByteBuffer.allocate(10);
+      assertThrows(EOFException.class, () -> stream.readFully(buf));
+    }
+  }
+
+  private Path writeBytes(byte[] data) throws IOException {
+    Path path = Paths.get(createTempFile().getPath());
+    OutputFile write = new LocalOutputFile(path);
+    try (PositionOutputStream stream = write.createOrOverwrite(512)) {
+      stream.write(data);
+    }
+    return path;
   }
 }
