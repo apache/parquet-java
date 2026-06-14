@@ -50,6 +50,11 @@
     </dependency>
     <dependency>
       <groupId>org.apache.parquet</groupId>
+      <artifactId>parquet-format-structures</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.parquet</groupId>
       <artifactId>parquet-encoding</artifactId>
       <version>${project.version}</version>
     </dependency>
