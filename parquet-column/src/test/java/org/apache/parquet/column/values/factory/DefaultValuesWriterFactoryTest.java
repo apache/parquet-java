@@ -36,6 +36,7 @@ import org.apache.parquet.column.values.ValuesWriter;
 import org.apache.parquet.column.values.bytestreamsplit.ByteStreamSplitValuesWriter;
 import org.apache.parquet.column.values.delta.DeltaBinaryPackingValuesWriter;
 import org.apache.parquet.column.values.delta.DeltaBinaryPackingValuesWriterForLong;
+import org.apache.parquet.column.values.deltalengthbytearray.DeltaLengthByteArrayValuesWriter;
 import org.apache.parquet.column.values.deltastrings.DeltaByteArrayWriter;
 import org.apache.parquet.column.values.dictionary.DictionaryValuesWriter;
 import org.apache.parquet.column.values.dictionary.DictionaryValuesWriter.PlainBinaryDictionaryValuesWriter;
@@ -152,13 +153,42 @@ public class DefaultValuesWriterFactoryTest {
         false,
         false,
         PlainBinaryDictionaryValuesWriter.class,
-        PlainValuesWriter.class);
+        DeltaLengthByteArrayValuesWriter.class);
   }
 
   @Test
   public void testBinary_NoDict() {
     doTestValueWriter(
-        PrimitiveTypeName.BINARY, WriterVersion.PARQUET_1_0, false, false, false, PlainValuesWriter.class);
+        PrimitiveTypeName.BINARY,
+        WriterVersion.PARQUET_1_0,
+        false,
+        false,
+        false,
+        DeltaLengthByteArrayValuesWriter.class);
+  }
+
+  @Test
+  public void testBinary_NoDeltaLengthByteArray() {
+    doTestValueWriter(
+        createColumnDescriptor(PrimitiveTypeName.BINARY),
+        ParquetProperties.builder()
+            .withWriterVersion(WriterVersion.PARQUET_1_0)
+            .withDeltaLengthByteArrayForBinary(false)
+            .build(),
+        PlainBinaryDictionaryValuesWriter.class,
+        PlainValuesWriter.class);
+  }
+
+  @Test
+  public void testBinary_NoDict_NoDeltaLengthByteArray() {
+    doTestValueWriter(
+        createColumnDescriptor(PrimitiveTypeName.BINARY),
+        ParquetProperties.builder()
+            .withWriterVersion(WriterVersion.PARQUET_1_0)
+            .withDictionaryEncoding(false)
+            .withDeltaLengthByteArrayForBinary(false)
+            .build(),
+        PlainValuesWriter.class);
   }
 
   @Test
