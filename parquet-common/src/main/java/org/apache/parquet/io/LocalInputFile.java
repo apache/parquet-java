@@ -99,4 +99,9 @@ public class LocalInputFile implements InputFile {
       }
     };
   }
+
+  @Override
+  public String toString() {
+    return path.toString();
+  }
 }

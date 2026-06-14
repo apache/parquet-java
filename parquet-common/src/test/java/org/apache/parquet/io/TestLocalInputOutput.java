@@ -48,6 +48,17 @@ public class TestLocalInputOutput {
   }
 
   @Test
+  public void inputFileToStringReturnsPath() throws IOException {
+    Path path = Paths.get(createTempFile().getPath());
+    InputFile read = new LocalInputFile(path);
+    // toString() is used by ParquetFileReader when constructing error messages
+    // such as "<path> is not a Parquet file (length is too low: ...)". A
+    // path-bearing toString() keeps those error messages actionable for
+    // implementations that don't expose a more specific accessor.
+    assertEquals(path.toString(), read.toString());
+  }
+
+  @Test
   public void outputFileCreateFailsAsFileAlreadyExists() throws IOException {
     Path path = Paths.get(createTempFile().getPath());
     OutputFile write = new LocalOutputFile(path);
