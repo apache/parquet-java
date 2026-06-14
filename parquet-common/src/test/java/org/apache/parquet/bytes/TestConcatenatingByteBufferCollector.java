@@ -109,4 +109,72 @@ public class TestConcatenatingByteBufferCollector {
     }
     return cbaos;
   }
+
+  @Test
+  public void testWriteAllToReleasesProgressively() throws IOException {
+    byte[] result;
+    ConcatenatingByteBufferCollector collector = new ConcatenatingByteBufferCollector(allocator);
+    collector.collect(BytesInput.from(bytes("Hello")));
+    collector.collect(BytesInput.from(bytes(" ")));
+    collector.collect(BytesInput.from(bytes("World")));
+
+    Assert.assertEquals(11, collector.size());
+
+    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    collector.writeAllTo(baos);
+    result = baos.toByteArray();
+
+    // After writeAllTo, the collector should be empty (buffers released progressively)
+    Assert.assertEquals(0, collector.size());
+
+    // Verify the data was written correctly
+    Assert.assertEquals("Hello World", new String(result, StandardCharsets.UTF_8));
+
+    // close() after writeAllTo is a safe no-op
+    collector.close();
+  }
+
+  @Test
+  public void testDoubleCloseIsSafe() throws IOException {
+    ConcatenatingByteBufferCollector collector = new ConcatenatingByteBufferCollector(allocator);
+    collector.collect(BytesInput.from(bytes("test data")));
+
+    Assert.assertEquals(9, collector.size());
+
+    // First close releases the buffers
+    collector.close();
+    Assert.assertEquals(0, collector.size());
+
+    // Second close should be a no-op and not throw
+    collector.close();
+  }
+
+  @Test
+  public void testCloseOnEmpty() {
+    // Close on an empty collector should not throw
+    ConcatenatingByteBufferCollector collector = new ConcatenatingByteBufferCollector(allocator);
+    collector.close();
+    collector.close(); // double close on empty
+  }
+
+  @Test
+  public void testWriteAllToProducesCorrectOutputWithMultipleTypes() throws IOException {
+    // Verify that writeAllTo produces correct output with mixed BytesInput types
+    byte[] result;
+
+    ConcatenatingByteBufferCollector collector = new ConcatenatingByteBufferCollector(allocator);
+    collector.collect(BytesInput.fromInt(42));
+    collector.collect(BytesInput.from(bytes("parquet")));
+    collector.collect(BytesInput.fromInt(99));
+
+    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    collector.writeAllTo(baos);
+    result = baos.toByteArray();
+
+    // Verify size: 4 (int) + 7 (string) + 4 (int) = 15 bytes
+    Assert.assertEquals(15, result.length);
+
+    // Already released by writeAllTo, close is a no-op
+    collector.close();
+  }
 }
