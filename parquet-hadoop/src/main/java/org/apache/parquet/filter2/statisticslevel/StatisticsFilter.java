@@ -371,7 +371,10 @@ public class StatisticsFilter implements FilterPredicate.Visitor<Boolean> {
     }
 
     if (isNaNLiteral(meta, value)) {
-      return (stats.isNanCountSet() && stats.getNanCount() == 0) ? BLOCK_CANNOT_MATCH : BLOCK_MIGHT_MATCH;
+      // We are looking for records where v != NaN. Every non-NaN value (and every null) satisfies
+      // this predicate, and the chunk-level statistics cannot prove that all values are NaN in a
+      // way that lets us drop the block safely, so we conservatively keep it.
+      return BLOCK_MIGHT_MATCH;
     }
 
     if (isAllNaNs(meta)) {

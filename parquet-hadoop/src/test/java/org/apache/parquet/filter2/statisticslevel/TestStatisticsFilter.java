@@ -708,7 +708,7 @@ public class TestStatisticsFilter {
     assertFalse(canDrop(in(doubleColumn, new HashSet<>(List.of(50.0))), metas));
 
     assertTrue(canDrop(eq(doubleColumn, Double.NaN), metas));
-    assertTrue(canDrop(notEq(doubleColumn, Double.NaN), metas));
+    assertFalse(canDrop(notEq(doubleColumn, Double.NaN), metas));
     assertFalse(canDrop(lt(doubleColumn, Double.NaN), metas));
     assertFalse(canDrop(ltEq(doubleColumn, Double.NaN), metas));
     assertFalse(canDrop(gt(doubleColumn, Double.NaN), metas));
@@ -825,7 +825,7 @@ public class TestStatisticsFilter {
     assertFalse(canDrop(in(floatCol, new HashSet<>(List.of(50.0f))), metas));
 
     assertTrue(canDrop(eq(floatCol, Float.NaN), metas));
-    assertTrue(canDrop(notEq(floatCol, Float.NaN), metas));
+    assertFalse(canDrop(notEq(floatCol, Float.NaN), metas));
     assertFalse(canDrop(lt(floatCol, Float.NaN), metas));
     assertFalse(canDrop(ltEq(floatCol, Float.NaN), metas));
     assertFalse(canDrop(gt(floatCol, Float.NaN), metas));
@@ -947,7 +947,7 @@ public class TestStatisticsFilter {
     assertFalse(canDrop(in(float16Column, new HashSet<>(List.of(FLOAT16_FIFTY))), metas));
 
     assertTrue(canDrop(eq(float16Column, FLOAT16_NAN), metas));
-    assertTrue(canDrop(notEq(float16Column, FLOAT16_NAN), metas));
+    assertFalse(canDrop(notEq(float16Column, FLOAT16_NAN), metas));
     assertFalse(canDrop(lt(float16Column, FLOAT16_NAN), metas));
     assertFalse(canDrop(ltEq(float16Column, FLOAT16_NAN), metas));
     assertFalse(canDrop(gt(float16Column, FLOAT16_NAN), metas));

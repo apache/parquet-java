@@ -50,6 +50,15 @@ import org.junit.rules.TemporaryFolder;
 
 public class TestInterOpReadFloatingPointNanCount {
 
+  // Canonical parquet-testing fixture exercising the same scenarios as the local generator, as a
+  // single file with five row groups. parquet-java's writer produces the same statistics and
+  // column index layout, so the reference file is verified with the exact same expectations as the
+  // locally generated merged file.
+  private static final String REFERENCE_FILE = "floating_orders_nan_count.parquet";
+  private static final String REFERENCE_CHANGESET = "ffdcbb5e22828186c7461e56dbd26a0fe3caee56";
+
+  private final InterOpTester interop = new InterOpTester();
+
   @Rule
   public TemporaryFolder temp = new TemporaryFolder();
 
@@ -66,6 +75,25 @@ public class TestInterOpReadFloatingPointNanCount {
     verifyFile(generated.getZeroMaxFile(), conf, Scenario.ZERO_MAX);
     verifyFile(
         generated.getMergedFile(),
+        conf,
+        Scenario.NO_NAN,
+        Scenario.MIXED_NAN,
+        Scenario.ALL_NAN,
+        Scenario.ZERO_MIN,
+        Scenario.ZERO_MAX);
+  }
+
+  /**
+   * Reads the canonical {@code floating_orders_nan_count.parquet} from the parquet-testing repo and
+   * verifies it against the same expectations as the locally generated files, confirming that
+   * parquet-java reads the reference file (produced by another writer) consistently.
+   */
+  @Test
+  public void testReadReferenceFile() throws IOException {
+    Configuration conf = new Configuration();
+    Path file = interop.GetInterOpFile(REFERENCE_FILE, REFERENCE_CHANGESET);
+    verifyFile(
+        file,
         conf,
         Scenario.NO_NAN,
         Scenario.MIXED_NAN,

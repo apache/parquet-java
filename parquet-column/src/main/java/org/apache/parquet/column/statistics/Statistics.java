@@ -387,6 +387,7 @@ public abstract class Statistics<T extends Comparable<T>> {
     return 31 * type.hashCode()
         + 31 * Arrays.hashCode(getMaxBytes())
         + 17 * Arrays.hashCode(getMinBytes())
+        + 13 * Long.valueOf(this.getNanCount()).hashCode()
         + Long.valueOf(this.getNumNulls()).hashCode();
   }
 

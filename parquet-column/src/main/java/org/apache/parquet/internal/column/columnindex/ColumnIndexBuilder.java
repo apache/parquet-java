@@ -32,7 +32,6 @@ import it.unimi.dsi.fastutil.longs.LongList;
 import it.unimi.dsi.fastutil.longs.LongLists;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Formatter;
 import java.util.List;
 import java.util.PrimitiveIterator;
@@ -255,10 +254,6 @@ public abstract class ColumnIndexBuilder {
       return nullPages[pageIndex];
     }
 
-    private int getArrayIndex(int pageIndex) {
-      return Arrays.binarySearch(pageIndexes, pageIndex);
-    }
-
     // Returns true if this ColumnIndex may have NaN-polluted min/max values that cannot be trusted.
     // If true, we need to conservatively include pages with NaN in min/max for some predicates.
     boolean mayHaveNaNPollutedMinMax() {
@@ -283,12 +278,6 @@ public abstract class ColumnIndexBuilder {
     // Returns true if the min or max value at arrayIndex is NaN.
     boolean hasNaNMinMax(int arrayIndex) {
       return isMinNaN(arrayIndex) || isMaxNaN(arrayIndex);
-    }
-
-    // Returns true if this page is a confirmed all-NaN page:
-    // min==max==NaN and nanCounts confirms at least one NaN value.
-    private boolean isAllNaNs(int arrayIndex, int pageIndex) {
-      return nanCounts != null && nanCounts[pageIndex] > 0 && isMinNaN(arrayIndex) && isMaxNaN(arrayIndex);
     }
 
     /*
@@ -428,9 +417,12 @@ public abstract class ColumnIndexBuilder {
       }
 
       if (isNaNLiteral(value)) {
-        return nanCounts == null
-            ? IndexIterator.all(getPageCount())
-            : IndexIterator.filter(getPageCount(), pageIndex -> nanCounts[pageIndex] == 0);
+        // v != NaN is satisfied by every null value, every non-NaN value, and (under IEEE754 total
+        // order) every NaN whose bit pattern differs from the literal. The page-level min/max and
+        // nan_count are not sufficient to prove that *all* values of a page equal the NaN literal
+        // (e.g. a page may mix NaNs with nulls, or hold NaNs with different payloads), so we
+        // conservatively keep every page.
+        return IndexIterator.all(getPageCount());
       }
 
       if (nullCounts == null) {

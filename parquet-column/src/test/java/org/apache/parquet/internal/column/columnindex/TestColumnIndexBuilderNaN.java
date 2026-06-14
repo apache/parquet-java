@@ -276,7 +276,7 @@ public class TestColumnIndexBuilderNaN {
     assertEquals(List.of(0), toList(ci.visit(FilterApi.in(FLOAT_COL, new HashSet<>(List.of(1.5f))))));
 
     assertEquals(List.of(1), toList(ci.visit(FilterApi.eq(FLOAT_COL, Float.NaN))));
-    assertEquals(List.of(0, 2), toList(ci.visit(FilterApi.notEq(FLOAT_COL, Float.NaN))));
+    assertEquals(List.of(0, 1, 2), toList(ci.visit(FilterApi.notEq(FLOAT_COL, Float.NaN))));
     assertEquals(List.of(0, 1, 2), toList(ci.visit(FilterApi.lt(FLOAT_COL, Float.NaN))));
     assertEquals(List.of(0, 1, 2), toList(ci.visit(FilterApi.ltEq(FLOAT_COL, Float.NaN))));
     assertEquals(List.of(0, 1, 2), toList(ci.visit(FilterApi.gt(FLOAT_COL, Float.NaN))));
@@ -331,7 +331,7 @@ public class TestColumnIndexBuilderNaN {
     assertEquals(List.of(0), toList(ci.visit(FilterApi.in(DOUBLE_COL, new HashSet<>(List.of(1.5))))));
 
     assertEquals(List.of(1), toList(ci.visit(FilterApi.eq(DOUBLE_COL, Double.NaN))));
-    assertEquals(List.of(0, 2), toList(ci.visit(FilterApi.notEq(DOUBLE_COL, Double.NaN))));
+    assertEquals(List.of(0, 1, 2), toList(ci.visit(FilterApi.notEq(DOUBLE_COL, Double.NaN))));
     assertEquals(List.of(0, 1, 2), toList(ci.visit(FilterApi.lt(DOUBLE_COL, Double.NaN))));
     assertEquals(List.of(0, 1, 2), toList(ci.visit(FilterApi.ltEq(DOUBLE_COL, Double.NaN))));
     assertEquals(List.of(0, 1, 2), toList(ci.visit(FilterApi.gt(DOUBLE_COL, Double.NaN))));
@@ -386,7 +386,7 @@ public class TestColumnIndexBuilderNaN {
     assertEquals(List.of(0), toList(ci.visit(FilterApi.in(FLOAT16_COL, new HashSet<>(List.of(FLOAT16_ONE))))));
 
     assertEquals(List.of(1), toList(ci.visit(FilterApi.eq(FLOAT16_COL, FLOAT16_NAN))));
-    assertEquals(List.of(0, 2), toList(ci.visit(FilterApi.notEq(FLOAT16_COL, FLOAT16_NAN))));
+    assertEquals(List.of(0, 1, 2), toList(ci.visit(FilterApi.notEq(FLOAT16_COL, FLOAT16_NAN))));
     assertEquals(List.of(0, 1, 2), toList(ci.visit(FilterApi.lt(FLOAT16_COL, FLOAT16_NAN))));
     assertEquals(List.of(0, 1, 2), toList(ci.visit(FilterApi.ltEq(FLOAT16_COL, FLOAT16_NAN))));
     assertEquals(List.of(0, 1, 2), toList(ci.visit(FilterApi.gt(FLOAT16_COL, FLOAT16_NAN))));
