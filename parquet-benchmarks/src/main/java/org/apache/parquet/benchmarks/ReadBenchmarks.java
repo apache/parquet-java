@@ -26,6 +26,7 @@ import static org.apache.parquet.benchmarks.BenchmarkFiles.file_1M_BS256M_PS8M;
 import static org.apache.parquet.benchmarks.BenchmarkFiles.file_1M_BS512M_PS4M;
 import static org.apache.parquet.benchmarks.BenchmarkFiles.file_1M_BS512M_PS8M;
 import static org.apache.parquet.benchmarks.BenchmarkFiles.file_1M_GZIP;
+import static org.apache.parquet.benchmarks.BenchmarkFiles.file_1M_LZO;
 import static org.apache.parquet.benchmarks.BenchmarkFiles.file_1M_SNAPPY;
 
 import java.io.IOException;
@@ -102,13 +103,11 @@ public class ReadBenchmarks {
     read(file_1M_BS512M_PS8M, ONE_MILLION, blackhole);
   }
 
-  // TODO how to handle lzo jar?
-  //  @Benchmark
-  //  public void read1MRowsDefaultBlockAndPageSizeLZO(Blackhole blackhole)
-  //          throws IOException
-  //  {
-  //    read(parquetFile_1M_LZO, ONE_MILLION, blackhole);
-  //  }
+  @Benchmark
+  @BenchmarkMode(Mode.SingleShotTime)
+  public void read1MRowsDefaultBlockAndPageSizeLZO(Blackhole blackhole) throws IOException {
+    read(file_1M_LZO, ONE_MILLION, blackhole);
+  }
 
   @Benchmark
   @BenchmarkMode(Mode.SingleShotTime)

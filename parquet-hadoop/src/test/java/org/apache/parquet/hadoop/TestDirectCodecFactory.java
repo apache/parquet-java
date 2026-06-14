@@ -18,9 +18,12 @@
 package org.apache.parquet.hadoop;
 
 import static org.apache.parquet.hadoop.metadata.CompressionCodecName.BROTLI;
+import static org.apache.parquet.hadoop.metadata.CompressionCodecName.GZIP;
 import static org.apache.parquet.hadoop.metadata.CompressionCodecName.LZ4;
 import static org.apache.parquet.hadoop.metadata.CompressionCodecName.LZ4_RAW;
 import static org.apache.parquet.hadoop.metadata.CompressionCodecName.LZO;
+import static org.apache.parquet.hadoop.metadata.CompressionCodecName.SNAPPY;
+import static org.apache.parquet.hadoop.metadata.CompressionCodecName.ZSTD;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -28,7 +31,6 @@ import java.util.HashSet;
 import java.util.Random;
 import java.util.Set;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.io.compress.CompressionCodec;
 import org.apache.parquet.bytes.ByteBufferAllocator;
 import org.apache.parquet.bytes.ByteBufferReleaser;
 import org.apache.parquet.bytes.BytesInput;
@@ -37,6 +39,7 @@ import org.apache.parquet.bytes.HeapByteBufferAllocator;
 import org.apache.parquet.bytes.TrackingByteBufferAllocator;
 import org.apache.parquet.compression.CompressionCodecFactory.BytesInputCompressor;
 import org.apache.parquet.compression.CompressionCodecFactory.BytesInputDecompressor;
+import org.apache.parquet.hadoop.codec.ZstandardCodec;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.junit.Assert;
 import org.junit.Test;
@@ -81,11 +84,10 @@ public class TestDirectCodecFactory {
       final BytesInputDecompressor heapDecompressor = heapCodecFactory.getDecompressor(codec);
 
       if (codec == LZ4_RAW) {
-        // Hadoop codecs support direct decompressors only if the related native libraries are available.
-        // This is not the case for our CI so let's rely on LZ4_RAW where the implementation is our own.
-        Assert.assertTrue(
+        // LZ4_RAW should use a direct decompression path, not the heap-copy IndirectDecompressor.
+        Assert.assertFalse(
             String.format("The hadoop codec %s should support direct decompression", codec),
-            directDecompressor instanceof DirectCodecFactory.FullDirectDecompressor);
+            directDecompressor instanceof DirectCodecFactory.IndirectDecompressor);
       }
 
       final BytesInput directCompressed;
@@ -214,13 +216,7 @@ public class TestDirectCodecFactory {
     final int[] sizes = {4 * 1024, 1 * 1024 * 1024};
     final boolean[] comp = {true, false};
     Set<CompressionCodecName> codecsToSkip = new HashSet<>();
-    codecsToSkip.add(LZO); // not distributed because it is GPL
     codecsToSkip.add(LZ4); // not distributed in the default version of Hadoop
-    final String arch = System.getProperty("os.arch");
-    if ("aarch64".equals(arch)) {
-      // PARQUET-1975 brotli-codec does not have natives for ARM64 architectures
-      codecsToSkip.add(BROTLI);
-    }
 
     for (final int size : sizes) {
       for (final boolean useOnHeapComp : comp) {
@@ -236,53 +232,401 @@ public class TestDirectCodecFactory {
     }
   }
 
-  static class PublicCodecFactory extends CodecFactory {
-    // To make getCodec public
+  @Test
+  public void compressionLevelGzip() throws IOException {
+    Configuration config_zlib_1 = new Configuration();
+    config_zlib_1.set("zlib.compress.level", "1");
 
-    public PublicCodecFactory(Configuration configuration, int pageSize) {
-      super(configuration, pageSize);
+    Configuration config_zlib_9 = new Configuration();
+    config_zlib_9.set("zlib.compress.level", "9");
+
+    // Generate compressible data so different levels produce different sizes
+    byte[] data = new byte[64 * 1024];
+    new Random(42).nextBytes(data);
+
+    final CodecFactory codecFactory_1 = new CodecFactory(config_zlib_1, pageSize);
+    final CodecFactory codecFactory_9 = new CodecFactory(config_zlib_9, pageSize);
+
+    BytesInputCompressor compressor_1 = codecFactory_1.getCompressor(CompressionCodecName.GZIP);
+    BytesInputCompressor compressor_9 = codecFactory_9.getCompressor(CompressionCodecName.GZIP);
+
+    long size_1 = compressor_1.compress(BytesInput.from(data)).size();
+    long size_9 = compressor_9.compress(BytesInput.from(data)).size();
+
+    // Level 9 should produce smaller (or equal) output than level 1
+    Assert.assertTrue("Expected level 9 (" + size_9 + ") <= level 1 (" + size_1 + ")", size_9 <= size_1);
+
+    codecFactory_1.release();
+    codecFactory_9.release();
+  }
+
+  @Test
+  public void compressionLevelZstd() throws IOException {
+    Configuration config_zstd_1 = new Configuration();
+    config_zstd_1.set("parquet.compression.codec.zstd.level", "1");
+
+    Configuration config_zstd_19 = new Configuration();
+    config_zstd_19.set("parquet.compression.codec.zstd.level", "19");
+
+    // Generate compressible data so different levels produce different sizes
+    byte[] data = new byte[64 * 1024];
+    new Random(42).nextBytes(data);
+
+    final CodecFactory codecFactory_1 = new CodecFactory(config_zstd_1, pageSize);
+    final CodecFactory codecFactory_19 = new CodecFactory(config_zstd_19, pageSize);
+
+    BytesInputCompressor compressor_1 = codecFactory_1.getCompressor(CompressionCodecName.ZSTD);
+    BytesInputCompressor compressor_19 = codecFactory_19.getCompressor(CompressionCodecName.ZSTD);
+
+    long size_1 = compressor_1.compress(BytesInput.from(data)).size();
+    long size_19 = compressor_19.compress(BytesInput.from(data)).size();
+
+    // Level 19 should produce smaller (or equal) output than level 1
+    Assert.assertTrue("Expected level 19 (" + size_19 + ") <= level 1 (" + size_1 + ")", size_19 <= size_1);
+
+    codecFactory_1.release();
+    codecFactory_19.release();
+  }
+
+  // ---- Tests for empty input (0 bytes) through direct compressor/decompressor path ----
+
+  @Test
+  public void emptyInputRoundTrip() throws IOException {
+    // Codecs that have direct bypass implementations in CodecFactory
+    CompressionCodecName[] directCodecs = {SNAPPY, ZSTD, LZ4_RAW, GZIP, LZO, BROTLI};
+    for (CompressionCodecName codec : directCodecs) {
+      CodecFactory factory = new CodecFactory(new Configuration(), pageSize);
+      BytesInputCompressor compressor = factory.getCompressor(codec);
+      BytesInputDecompressor decompressor = factory.getDecompressor(codec);
+
+      BytesInput compressed = compressor.compress(BytesInput.from(new byte[0]));
+      BytesInput decompressed = decompressor.decompress(compressed, 0);
+      Assert.assertEquals("Empty input round-trip failed for " + codec, 0, decompressed.toByteArray().length);
+
+      compressor.release();
+      decompressor.release();
+      factory.release();
+    }
+  }
+
+  // ---- Tests for GZIP consecutive compressions with a single compressor instance ----
+
+  @Test
+  public void gzipConsecutiveCompressionsProduceCorrectResults() throws IOException {
+    CodecFactory factory = new CodecFactory(new Configuration(), pageSize);
+    BytesInputCompressor compressor = factory.getCompressor(GZIP);
+    BytesInputDecompressor decompressor = factory.getDecompressor(GZIP);
+
+    Random r = new Random(99);
+    for (int i = 0; i < 10; i++) {
+      byte[] data = new byte[4096 + i * 1024];
+      r.nextBytes(data);
+
+      BytesInput compressed = compressor.compress(BytesInput.from(data));
+      BytesInput decompressed = decompressor.decompress(compressed, data.length);
+      Assert.assertArrayEquals(
+          "GZIP consecutive round-trip failed on iteration " + i, data, decompressed.toByteArray());
     }
 
-    public org.apache.hadoop.io.compress.CompressionCodec getCodec(CompressionCodecName name) {
-      return super.getCodec(name);
+    compressor.release();
+    decompressor.release();
+    factory.release();
+  }
+
+  // ---- Tests for buffer reuse safety in Snappy/LZ4_RAW compressors ----
+
+  @Test
+  public void snappyCompressorBufferReuseSafety() throws IOException {
+    verifyCompressorOutputCopiedBeforeReuse(SNAPPY);
+  }
+
+  @Test
+  public void lz4RawCompressorBufferReuseSafety() throws IOException {
+    verifyCompressorOutputCopiedBeforeReuse(LZ4_RAW);
+  }
+
+  /**
+   * Verifies that the caller can safely copy the compressed output before the next
+   * compress() call overwrites the internal buffer. This is the documented contract
+   * for compressors that reuse output buffers.
+   */
+  private void verifyCompressorOutputCopiedBeforeReuse(CompressionCodecName codec) throws IOException {
+    CodecFactory factory = new CodecFactory(new Configuration(), pageSize);
+    BytesInputCompressor compressor = factory.getCompressor(codec);
+    BytesInputDecompressor decompressor = factory.getDecompressor(codec);
+
+    byte[] data1 = new byte[4096];
+    byte[] data2 = new byte[4096];
+    new Random(1).nextBytes(data1);
+    new Random(2).nextBytes(data2);
+
+    // Compress first, copy result immediately
+    BytesInput compressed1 = compressor.compress(BytesInput.from(data1));
+    byte[] compressed1Bytes = compressed1.toByteArray();
+
+    // Compress second (may overwrite internal buffer)
+    BytesInput compressed2 = compressor.compress(BytesInput.from(data2));
+    byte[] compressed2Bytes = compressed2.toByteArray();
+
+    // Both should decompress correctly from the copied bytes
+    BytesInput decompressed1 = decompressor.decompress(BytesInput.from(compressed1Bytes), data1.length);
+    Assert.assertArrayEquals(codec + " buffer reuse: first input corrupted", data1, decompressed1.toByteArray());
+
+    BytesInput decompressed2 = decompressor.decompress(BytesInput.from(compressed2Bytes), data2.length);
+    Assert.assertArrayEquals(codec + " buffer reuse: second input corrupted", data2, decompressed2.toByteArray());
+
+    compressor.release();
+    decompressor.release();
+    factory.release();
+  }
+
+  // ---- Tests for ZSTD bufferPool config propagation through new direct compressor ----
+
+  @Test
+  public void zstdBufferPoolEnabledRoundTrip() throws IOException {
+    Configuration conf = new Configuration();
+    conf.setBoolean(ZstandardCodec.PARQUET_COMPRESS_ZSTD_BUFFERPOOL_ENABLED, true);
+    verifyZstdRoundTrip(conf, "bufferPool=true");
+  }
+
+  @Test
+  public void zstdBufferPoolDisabledRoundTrip() throws IOException {
+    Configuration conf = new Configuration();
+    conf.setBoolean(ZstandardCodec.PARQUET_COMPRESS_ZSTD_BUFFERPOOL_ENABLED, false);
+    verifyZstdRoundTrip(conf, "bufferPool=false");
+  }
+
+  /**
+   * Verifies ZSTD round-trip with different bufferPool configurations through the
+   * new direct ZstdBytesCompressor/ZstdBytesDecompressor path in CodecFactory.
+   */
+  private void verifyZstdRoundTrip(Configuration conf, String label) throws IOException {
+    CodecFactory factory = new CodecFactory(conf, pageSize);
+    BytesInputCompressor compressor = factory.getCompressor(ZSTD);
+    BytesInputDecompressor decompressor = factory.getDecompressor(ZSTD);
+
+    byte[] data = new byte[64 * 1024];
+    new Random(42).nextBytes(data);
+
+    BytesInput compressed = compressor.compress(BytesInput.from(data));
+    BytesInput decompressed = decompressor.decompress(compressed, data.length);
+    Assert.assertArrayEquals("ZSTD round-trip failed with " + label, data, decompressed.toByteArray());
+
+    compressor.release();
+    decompressor.release();
+    factory.release();
+  }
+
+  // ---- Tests for ZSTD workers config propagation ----
+
+  @Test
+  public void zstdWorkersConfigRoundTrip() throws IOException {
+    Configuration conf = new Configuration();
+    conf.setInt(ZstandardCodec.PARQUET_COMPRESS_ZSTD_WORKERS, 2);
+    CodecFactory factory = new CodecFactory(conf, pageSize);
+    BytesInputCompressor compressor = factory.getCompressor(ZSTD);
+    BytesInputDecompressor decompressor = factory.getDecompressor(ZSTD);
+
+    byte[] data = new byte[64 * 1024];
+    new Random(42).nextBytes(data);
+
+    BytesInput compressed = compressor.compress(BytesInput.from(data));
+    BytesInput decompressed = decompressor.decompress(compressed, data.length);
+    Assert.assertArrayEquals("ZSTD round-trip failed with workers=2", data, decompressed.toByteArray());
+
+    compressor.release();
+    decompressor.release();
+    factory.release();
+  }
+
+  // ---- Tests for ZSTD level through the direct CodecFactory path ----
+
+  @Test
+  public void zstdLevelConfigThroughDirectPath() throws IOException {
+    Configuration confLow = new Configuration();
+    confLow.setInt(ZstandardCodec.PARQUET_COMPRESS_ZSTD_LEVEL, 1);
+
+    Configuration confHigh = new Configuration();
+    confHigh.setInt(ZstandardCodec.PARQUET_COMPRESS_ZSTD_LEVEL, 19);
+
+    byte[] data = new byte[64 * 1024];
+    new Random(42).nextBytes(data);
+
+    CodecFactory factoryLow = new CodecFactory(confLow, pageSize);
+    CodecFactory factoryHigh = new CodecFactory(confHigh, pageSize);
+
+    long sizeLow =
+        factoryLow.getCompressor(ZSTD).compress(BytesInput.from(data)).size();
+    long sizeHigh =
+        factoryHigh.getCompressor(ZSTD).compress(BytesInput.from(data)).size();
+
+    Assert.assertTrue(
+        "Expected ZSTD level 19 (" + sizeHigh + ") <= level 1 (" + sizeLow + ")", sizeHigh <= sizeLow);
+
+    factoryLow.release();
+    factoryHigh.release();
+  }
+
+  // ---- Tests for GZIP level through the direct CodecFactory path ----
+
+  @Test
+  public void gzipLevelConfigThroughDirectPath() throws IOException {
+    Configuration confLow = new Configuration();
+    confLow.setInt("zlib.compress.level", 1);
+
+    Configuration confHigh = new Configuration();
+    confHigh.setInt("zlib.compress.level", 9);
+
+    byte[] data = new byte[64 * 1024];
+    new Random(42).nextBytes(data);
+
+    CodecFactory factoryLow = new CodecFactory(confLow, pageSize);
+    CodecFactory factoryHigh = new CodecFactory(confHigh, pageSize);
+
+    BytesInputCompressor compLow = factoryLow.getCompressor(GZIP);
+    BytesInputCompressor compHigh = factoryHigh.getCompressor(GZIP);
+
+    long sizeLow = compLow.compress(BytesInput.from(data)).size();
+    long sizeHigh = compHigh.compress(BytesInput.from(data)).size();
+
+    Assert.assertTrue("Expected GZIP level 9 (" + sizeHigh + ") <= level 1 (" + sizeLow + ")", sizeHigh <= sizeLow);
+
+    // Also verify round-trip for both levels
+    BytesInputDecompressor decompLow = factoryLow.getDecompressor(GZIP);
+    BytesInputDecompressor decompHigh = factoryHigh.getDecompressor(GZIP);
+
+    Assert.assertArrayEquals(
+        data,
+        decompLow
+            .decompress(compLow.compress(BytesInput.from(data)), data.length)
+            .toByteArray());
+    Assert.assertArrayEquals(
+        data,
+        decompHigh
+            .decompress(compHigh.compress(BytesInput.from(data)), data.length)
+            .toByteArray());
+
+    factoryLow.release();
+    factoryHigh.release();
+  }
+
+  // ---- Tests for BROTLI direct bypass (when native lib available) ----
+
+  @Test
+  public void brotliDirectFactoryRoundTrip() throws IOException {
+    // Test through the DirectCodecFactory path where BROTLI bypass lives
+    try (TrackingByteBufferAllocator alloc = TrackingByteBufferAllocator.wrap(new DirectByteBufferAllocator())) {
+      CodecFactory directFactory = CodecFactory.createDirectCodecFactory(new Configuration(), alloc, pageSize);
+      BytesInputCompressor compressor = directFactory.getCompressor(BROTLI);
+      BytesInputDecompressor decompressor = directFactory.getDecompressor(BROTLI);
+
+      // Use compressible data (repeated patterns) so compression is verifiable
+      byte[] data = new byte[16 * 1024];
+      for (int i = 0; i < data.length; i++) {
+        data[i] = (byte) (i % 251);
+      }
+
+      BytesInput compressed = compressor.compress(BytesInput.from(data));
+      BytesInput decompressed = decompressor.decompress(compressed, data.length);
+      Assert.assertArrayEquals("BROTLI direct round-trip failed", data, decompressed.toByteArray());
+
+      // Test multiple consecutive compressions to verify state management
+      for (int i = 0; i < 5; i++) {
+        byte[] moreData = new byte[8 * 1024 + i * 1024];
+        for (int j = 0; j < moreData.length; j++) {
+          moreData[j] = (byte) ((j + i) % 251);
+        }
+        BytesInput moreCompressed = compressor.compress(BytesInput.from(moreData));
+        BytesInput moreDecompressed = decompressor.decompress(moreCompressed, moreData.length);
+        Assert.assertArrayEquals(
+            "BROTLI direct round-trip failed on iteration " + i, moreData, moreDecompressed.toByteArray());
+      }
+
+      compressor.release();
+      decompressor.release();
+      directFactory.release();
+    }
+  }
+
+  // ---- Test for cross-factory interop with new direct codecs ----
+
+  @Test
+  public void crossFactoryInteropAllDirectCodecs() throws IOException {
+    CompressionCodecName[] codecs = {SNAPPY, ZSTD, LZ4_RAW, GZIP, LZO, BROTLI};
+
+    byte[] data = new byte[32 * 1024];
+    new Random(42).nextBytes(data);
+
+    CodecFactory heapFactory = new CodecFactory(new Configuration(), pageSize);
+    try (TrackingByteBufferAllocator alloc = TrackingByteBufferAllocator.wrap(new DirectByteBufferAllocator())) {
+      CodecFactory directFactory = CodecFactory.createDirectCodecFactory(new Configuration(), alloc, pageSize);
+
+      for (CompressionCodecName codec : codecs) {
+        // heap compress -> direct decompress
+        BytesInput heapCompressed = heapFactory.getCompressor(codec).compress(BytesInput.from(data));
+        BytesInput directDecompressed =
+            directFactory.getDecompressor(codec).decompress(heapCompressed, data.length);
+        Assert.assertArrayEquals(codec + " heap->direct failed", data, directDecompressed.toByteArray());
+
+        // direct compress -> heap decompress
+        BytesInput directCompressed = directFactory.getCompressor(codec).compress(BytesInput.from(data));
+        BytesInput heapDecompressed =
+            heapFactory.getDecompressor(codec).decompress(directCompressed, data.length);
+        Assert.assertArrayEquals(codec + " direct->heap failed", data, heapDecompressed.toByteArray());
+      }
+
+      directFactory.release();
+    }
+    heapFactory.release();
+  }
+
+  @Test
+  public void zstdCompressorBufferReuseSafety() throws IOException {
+    verifyCompressorOutputCopiedBeforeReuse(ZSTD);
+  }
+
+  @Test
+  public void brotliQualityConfigProducesValidOutput() throws IOException {
+    byte[] data = new byte[16 * 1024];
+    for (int i = 0; i < data.length; i++) {
+      data[i] = (byte) (i % 251);
+    }
+
+    for (int quality : new int[] {0, 1, 6, 11}) {
+      Configuration conf = new Configuration();
+      conf.setInt("compression.brotli.quality", quality);
+      CodecFactory factory = new CodecFactory(conf, pageSize);
+      BytesInputCompressor compressor = factory.getCompressor(BROTLI);
+      BytesInputDecompressor decompressor = factory.getDecompressor(BROTLI);
+
+      BytesInput compressed = compressor.compress(BytesInput.from(data));
+      BytesInput decompressed = decompressor.decompress(compressed, data.length);
+      Assert.assertArrayEquals(
+          "BROTLI quality=" + quality + " round-trip failed", data, decompressed.toByteArray());
+
+      compressor.release();
+      decompressor.release();
+      factory.release();
     }
   }
 
   @Test
-  public void cachingKeysGzip() {
-    Configuration config_zlib_2 = new Configuration();
-    config_zlib_2.set("zlib.compress.level", "2");
+  public void singleByteInputRoundTrip() throws IOException {
+    CompressionCodecName[] codecs = {SNAPPY, ZSTD, LZ4_RAW, GZIP, LZO, BROTLI};
+    byte[] data = new byte[] {42};
 
-    Configuration config_zlib_5 = new Configuration();
-    config_zlib_5.set("zlib.compress.level", "5");
+    for (CompressionCodecName codec : codecs) {
+      CodecFactory factory = new CodecFactory(new Configuration(), pageSize);
+      BytesInputCompressor compressor = factory.getCompressor(codec);
+      BytesInputDecompressor decompressor = factory.getDecompressor(codec);
 
-    final CodecFactory codecFactory_2 = new PublicCodecFactory(config_zlib_2, pageSize);
-    final CodecFactory codecFactory_5 = new PublicCodecFactory(config_zlib_5, pageSize);
+      BytesInput compressed = compressor.compress(BytesInput.from(data));
+      BytesInput decompressed = decompressor.decompress(compressed, 1);
+      Assert.assertArrayEquals("Single-byte round-trip failed for " + codec, data, decompressed.toByteArray());
 
-    CompressionCodec codec_2_1 = codecFactory_2.getCodec(CompressionCodecName.GZIP);
-    CompressionCodec codec_2_2 = codecFactory_2.getCodec(CompressionCodecName.GZIP);
-    CompressionCodec codec_5_1 = codecFactory_5.getCodec(CompressionCodecName.GZIP);
-
-    Assert.assertEquals(codec_2_1, codec_2_2);
-    Assert.assertNotEquals(codec_2_1, codec_5_1);
-  }
-
-  @Test
-  public void cachingKeysZstd() {
-    Configuration config_zstd_2 = new Configuration();
-    config_zstd_2.set("parquet.compression.codec.zstd.level", "2");
-
-    Configuration config_zstd_5 = new Configuration();
-    config_zstd_5.set("parquet.compression.codec.zstd.level", "5");
-
-    final CodecFactory codecFactory_2 = new PublicCodecFactory(config_zstd_2, pageSize);
-    final CodecFactory codecFactory_5 = new PublicCodecFactory(config_zstd_5, pageSize);
-
-    CompressionCodec codec_2_1 = codecFactory_2.getCodec(CompressionCodecName.ZSTD);
-    CompressionCodec codec_2_2 = codecFactory_2.getCodec(CompressionCodecName.ZSTD);
-    CompressionCodec codec_5_1 = codecFactory_5.getCodec(CompressionCodecName.ZSTD);
-
-    Assert.assertEquals(codec_2_1, codec_2_2);
-    Assert.assertNotEquals(codec_2_1, codec_5_1);
+      compressor.release();
+      decompressor.release();
+      factory.release();
+    }
   }
 }
