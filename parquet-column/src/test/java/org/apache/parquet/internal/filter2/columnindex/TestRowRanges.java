@@ -152,4 +152,106 @@ public class TestRowRanges {
     assertAllRowsEqual(intersection(empty, ranges2).iterator());
     assertAllRowsEqual(intersection(empty, empty).iterator());
   }
+
+  @Test
+  public void testBuilderBasic() {
+    // Select rows 2, 3, 4, 5 (one contiguous run)
+    RowRanges ranges = RowRanges.builder()
+        .addSelected(2)
+        .addSelected(3)
+        .addSelected(4)
+        .addSelected(5)
+        .build();
+    assertAllRowsEqual(ranges.iterator(), 2, 3, 4, 5);
+    assertEquals(4, ranges.rowCount());
+  }
+
+  @Test
+  public void testBuilderMultipleRanges() {
+    // Two runs: 1-2 and 5-7
+    RowRanges ranges = RowRanges.builder()
+        .addSelected(1)
+        .addSelected(2)
+        .addSelected(5)
+        .addSelected(6)
+        .addSelected(7)
+        .build();
+    assertAllRowsEqual(ranges.iterator(), 1, 2, 5, 6, 7);
+    assertEquals(5, ranges.rowCount());
+    assertTrue(ranges.isOverlapping(1, 2));
+    assertTrue(ranges.isOverlapping(5, 7));
+    assertFalse(ranges.isOverlapping(3, 4));
+  }
+
+  @Test
+  public void testBuilderEmpty() {
+    // No rows selected
+    RowRanges ranges = RowRanges.builder().build();
+    assertEquals(RowRanges.EMPTY, ranges);
+    assertEquals(0, ranges.rowCount());
+    assertAllRowsEqual(ranges.iterator());
+  }
+
+  @Test
+  public void testBuilderAllSelected() {
+    // Five contiguous rows starting at 0
+    RowRanges.Builder builder = RowRanges.builder();
+    for (long i = 0; i < 5; i++) {
+      builder.addSelected(i);
+    }
+    RowRanges ranges = builder.build();
+    assertAllRowsEqual(ranges.iterator(), 0, 1, 2, 3, 4);
+    assertEquals(5, ranges.rowCount());
+  }
+
+  @Test
+  public void testBuilderSingleRow() {
+    RowRanges ranges = RowRanges.builder().addSelected(3).build();
+    assertAllRowsEqual(ranges.iterator(), 3);
+    assertEquals(1, ranges.rowCount());
+    assertTrue(ranges.isOverlapping(3, 3));
+    assertFalse(ranges.isOverlapping(0, 2));
+    assertFalse(ranges.isOverlapping(4, 10));
+  }
+
+  @Test
+  public void testBuilderAlternating() {
+    // Every other row selected: 0, 2, 4, 6, 8 — five singleton runs.
+    RowRanges.Builder builder = RowRanges.builder();
+    for (long i = 0; i < 10; i += 2) {
+      builder.addSelected(i);
+    }
+    RowRanges ranges = builder.build();
+    assertAllRowsEqual(ranges.iterator(), 0, 2, 4, 6, 8);
+    assertEquals(5, ranges.rowCount());
+  }
+
+  @Test
+  public void testBuilderFirstAndLast() {
+    RowRanges ranges = RowRanges.builder().addSelected(0).addSelected(99).build();
+    assertAllRowsEqual(ranges.iterator(), 0, 99);
+    assertEquals(2, ranges.rowCount());
+  }
+
+  @Test
+  public void testBuilderRejectsOutOfOrder() {
+    RowRanges.Builder builder = RowRanges.builder().addSelected(5).addSelected(7);
+    try {
+      builder.addSelected(6);
+      org.junit.Assert.fail("expected IllegalArgumentException for out-of-order index");
+    } catch (IllegalArgumentException expected) {
+      // expected
+    }
+  }
+
+  @Test
+  public void testBuilderRejectsDuplicate() {
+    RowRanges.Builder builder = RowRanges.builder().addSelected(3);
+    try {
+      builder.addSelected(3);
+      org.junit.Assert.fail("expected IllegalArgumentException for duplicate index");
+    } catch (IllegalArgumentException expected) {
+      // expected
+    }
+  }
 }
