@@ -25,6 +25,7 @@ import it.unimi.dsi.fastutil.floats.FloatList;
 import java.nio.ByteBuffer;
 import org.apache.parquet.filter2.predicate.Statistics;
 import org.apache.parquet.io.api.Binary;
+import org.apache.parquet.schema.ColumnOrder;
 import org.apache.parquet.schema.PrimitiveComparator;
 import org.apache.parquet.schema.PrimitiveType;
 
@@ -32,9 +33,31 @@ class FloatColumnIndexBuilder extends ColumnIndexBuilder {
   private static class FloatColumnIndex extends ColumnIndexBase<Float> {
     private float[] minValues;
     private float[] maxValues;
+    private final boolean isIeee754TotalOrder;
 
     private FloatColumnIndex(PrimitiveType type) {
       super(type);
+      isIeee754TotalOrder = type.columnOrder().equals(ColumnOrder.ieee754TotalOrder());
+    }
+
+    @Override
+    boolean mayHaveNaNPollutedMinMax() {
+      return !isIeee754TotalOrder;
+    }
+
+    @Override
+    boolean isNaNLiteral(Object value) {
+      return Float.isNaN((float) value);
+    }
+
+    @Override
+    boolean isMinNaN(int arrayIndex) {
+      return Float.isNaN(minValues[arrayIndex]);
+    }
+
+    @Override
+    boolean isMaxNaN(int arrayIndex) {
+      return Float.isNaN(maxValues[arrayIndex]);
     }
 
     @Override
@@ -83,6 +106,11 @@ class FloatColumnIndexBuilder extends ColumnIndexBuilder {
   private final FloatList minValues = new FloatArrayList();
   private final FloatList maxValues = new FloatArrayList();
   private boolean invalid;
+  private final boolean isIeee754TotalOrder;
+
+  FloatColumnIndexBuilder(PrimitiveType type) {
+    this.isIeee754TotalOrder = type.columnOrder().equals(ColumnOrder.ieee754TotalOrder());
+  }
 
   private static float convert(ByteBuffer buffer) {
     return buffer.order(LITTLE_ENDIAN).getFloat(0);
@@ -103,20 +131,31 @@ class FloatColumnIndexBuilder extends ColumnIndexBuilder {
     float fMin = (float) min;
     float fMax = (float) max;
     if (Float.isNaN(fMin) || Float.isNaN(fMax)) {
-      // Invalidate this column index in case of NaN as the sorting order of values is undefined for this case
-      invalid = true;
+      if (!isIeee754TotalOrder) {
+        invalid = true;
+      }
     }
 
-    // Sorting order is undefined for -0.0 so let min = -0.0 and max = +0.0 to ensure that no 0.0 values are skipped
-    if (Float.compare(fMin, +0.0f) == 0) {
-      fMin = -0.0f;
-    }
-    if (Float.compare(fMax, -0.0f) == 0) {
-      fMax = +0.0f;
+    // For TYPE_DEFINED_ORDER, sorting order is undefined for -0.0 so let min = -0.0 and max = +0.0
+    // to ensure that no 0.0 values are skipped. For IEEE_754_TOTAL_ORDER, -0 < +0 is well-defined.
+    if (!isIeee754TotalOrder) {
+      if (Float.compare(fMin, +0.0f) == 0) {
+        fMin = -0.0f;
+      }
+      if (Float.compare(fMax, -0.0f) == 0) {
+        fMax = +0.0f;
+      }
     }
 
     minValues.add(fMin);
     maxValues.add(fMax);
+  }
+
+  @Override
+  void onNanEncountered() {
+    if (!isIeee754TotalOrder) {
+      invalid = true;
+    }
   }
 
   @Override
