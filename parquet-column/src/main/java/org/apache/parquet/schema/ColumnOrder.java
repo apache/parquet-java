@@ -38,9 +38,7 @@ public class ColumnOrder {
      */
     TYPE_DEFINED_ORDER,
     /**
-     * Chronological order for INT96 timestamps: values are compared by the Julian day (the last 4
-     * bytes, as a little-endian signed int32), then by the nanoseconds within the day (the first 8
-     * bytes, as a little-endian signed int64). Only supported for the INT96 physical type.
+     * Chronological order for INT96 timestamps. Only valid for the INT96 physical type.
      */
     INT96_TIMESTAMP_ORDER
   }

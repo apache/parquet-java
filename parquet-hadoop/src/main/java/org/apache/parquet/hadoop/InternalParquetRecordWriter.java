@@ -89,7 +89,7 @@ class InternalParquetRecordWriter<T> {
       ParquetProperties props) {
     this.parquetFileWriter = parquetFileWriter;
     this.writeSupport = Objects.requireNonNull(writeSupport, "writeSupport cannot be null");
-    this.schema = ParquetFileWriter.applyInt96TimestampOrder(schema);
+    this.schema = schema;
     this.extraMetaData = extraMetaData;
     this.rowGroupSizeThreshold = rowGroupSize;
     this.rowGroupRecordCountThreshold = props.getRowGroupRowCountLimit();

@@ -93,7 +93,16 @@ public class TestBinaryTruncator {
     testTruncator(
         Types.required(FIXED_LEN_BYTE_ARRAY).length(12).as(INTERVAL).named("test_fixed_interval"), false);
     testTruncator(Types.required(BINARY).as(DECIMAL).precision(10).scale(2).named("test_binary_decimal"), false);
-    testTruncator(Types.required(INT96).named("test_int96"), false);
+
+    // INT96 has a fixed 12-byte width and a chronological comparator (so it is excluded from the
+    // variable-length checks above, like FLOAT16). Its truncator is a no-op: verify it returns the
+    // value unchanged regardless of the requested length.
+    BinaryTruncator int96Truncator = BinaryTruncator.getTruncator(
+      Types.required(INT96).named("test_int96"));
+    Binary int96Value = Binary.fromConstantByteArray(
+      new byte[] {0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4});
+    assertSame(int96Value, int96Truncator.truncateMin(int96Value, 4));
+    assertSame(int96Value, int96Truncator.truncateMax(int96Value, 4));
   }
 
   @Test

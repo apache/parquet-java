@@ -566,9 +566,15 @@ public final class PrimitiveType extends Type {
     this.decimalMeta = decimalMeta;
 
     if (columnOrder == null) {
-      columnOrder = primitive == PrimitiveTypeName.INT96 || originalType == OriginalType.INTERVAL
-          ? ColumnOrder.undefined()
-          : ColumnOrder.typeDefined();
+      if (primitive == PrimitiveTypeName.INT96) {
+        // A plain INT96 is the legacy timestamp encoding; default it to the chronological order.
+        // An annotated INT96 carries other semantics, so leave its order undefined.
+        columnOrder = originalType == null ? ColumnOrder.int96TimestampOrder() : ColumnOrder.undefined();
+      } else if (originalType == OriginalType.INTERVAL) {
+        columnOrder = ColumnOrder.undefined();
+      } else {
+        columnOrder = ColumnOrder.typeDefined();
+      }
     }
     this.columnOrder = requireValidColumnOrder(columnOrder);
   }
@@ -611,10 +617,18 @@ public final class PrimitiveType extends Type {
     }
 
     if (columnOrder == null) {
-      columnOrder = primitive == PrimitiveTypeName.INT96
-              || logicalTypeAnnotation instanceof LogicalTypeAnnotation.IntervalLogicalTypeAnnotation
-          ? ColumnOrder.undefined()
-          : ColumnOrder.typeDefined();
+      if (primitive == PrimitiveTypeName.INT96) {
+        // A plain INT96 is the legacy timestamp encoding; default it to the chronological order.
+        // An annotated INT96 carries other semantics, so leave its order undefined.
+        columnOrder = logicalTypeAnnotation == null ?
+          ColumnOrder.int96TimestampOrder() :
+          ColumnOrder.undefined();
+      } else if (
+        logicalTypeAnnotation instanceof LogicalTypeAnnotation.IntervalLogicalTypeAnnotation) {
+        columnOrder = ColumnOrder.undefined();
+      } else {
+        columnOrder = ColumnOrder.typeDefined();
+      }
     }
     this.columnOrder = requireValidColumnOrder(columnOrder);
   }
@@ -659,15 +673,6 @@ public final class PrimitiveType extends Type {
    */
   public PrimitiveType withLogicalTypeAnnotation(LogicalTypeAnnotation logicalType) {
     return new PrimitiveType(getRepetition(), primitive, length, getName(), logicalType, getId());
-  }
-
-  /**
-   * @param columnOrder the column order
-   * @return a new PrimitiveType with the same fields and the given column order
-   */
-  public PrimitiveType withColumnOrder(ColumnOrder columnOrder) {
-    return new PrimitiveType(
-        getRepetition(), primitive, length, getName(), getLogicalTypeAnnotation(), getId(), columnOrder);
   }
 
   /**

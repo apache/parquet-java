@@ -189,6 +189,8 @@ public class TestInt96TimestampStatistics {
 
   @Test
   public void testWriterEmitsInt96StatsAndColumnOrder() throws IOException {
+    // Values are written in non-chronological order; the writer must still produce the
+    // chronological min/max, not first/last or byte-wise extremes.
     File file = writeFile();
     FileMetaData rawFooter = readRawFooter(file);
     // schema[0] is the message root; column_orders are indexed by leaf order: ts=0, id=1
@@ -225,19 +227,6 @@ public class TestInt96TimestampStatistics {
   }
 
   @Test
-  public void testStatsAccumulationUsesChronologicalOrder() throws IOException {
-    // Values are written in non-chronological order; the writer must still produce the
-    // chronological min/max, not first/last or byte-wise extremes.
-    File file = writeFile();
-    ParquetMetadata footer = readFooter(file, new Configuration());
-    byte[] minBytes = getColumn(footer, "ts").getStatistics().getMinBytes();
-    assertFalse(Binary.fromConstantByteArray(minBytes).equals(NEXT_DAY));
-    assertArrayEquals(EXPECTED_MIN.getBytes(), minBytes);
-    assertArrayEquals(EXPECTED_MAX.getBytes(),
-      getColumn(footer, "ts").getStatistics().getMaxBytes());
-  }
-
-  @Test
   public void testReaderReadsStatsWrittenWithInt96TimestampOrder() throws IOException {
     File file = writeFile();
     ParquetMetadata footer = readFooter(file, new Configuration());
@@ -255,7 +244,7 @@ public class TestInt96TimestampStatistics {
     File file = writeFile();
     FileMetaData rawFooter = readRawFooter(file);
     downgradeInt96ToTypeOrder(rawFooter);
-    File legacy = rewriteFooter(file, rawFooter, "legacy.parquet");
+    File legacy = rewriteFooter(file, rawFooter, "type-defined-orders.parquet");
 
     // Validate the data is still intact after rewriting the footer.
     try (
@@ -276,6 +265,22 @@ public class TestInt96TimestampStatistics {
     assertStatsIgnored(getColumn(footer, "ts"));
     // The non-INT96 sibling column is unaffected.
     assertTrue(getColumn(footer, "id").getStatistics().hasNonNullValue());
+  }
+
+  @Test
+  public void testReaderIgnoresInt96StatsWhenColumnOrdersAbsent() throws IOException {
+    // Legacy layout: INT96 stats present but the footer omits column_orders entirely (predating the
+    // order). The reader must not infer INT96_TIMESTAMP_ORDER from the construction-time default
+    // and must therefore ignore the stats.
+    File file = writeFile();
+    FileMetaData rawFooter = readRawFooter(file);
+    rawFooter.unsetColumn_orders();
+    File legacy = rewriteFooter(file, rawFooter, "no-column-orders.parquet");
+
+    ParquetMetadata footer = readFooter(legacy, new Configuration());
+    assertEquals(ColumnOrder.undefined(),
+        footer.getFileMetaData().getSchema().getType("ts").asPrimitiveType().columnOrder());
+    assertStatsIgnored(getColumn(footer, "ts"));
   }
 
   private static byte[] toArray(ByteBuffer buffer) {

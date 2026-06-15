@@ -1170,6 +1170,7 @@ public class TestParquetMetadataConverter {
 
   @Test
   public void testSkippedV2Stats() {
+    // INTERVAL has an undefined column order, so its stats are skipped.
     testSkippedV2Stats(
         Types.optional(PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY)
             .length(12)
@@ -1177,10 +1178,6 @@ public class TestParquetMetadataConverter {
             .named(""),
         new BigInteger("12345678"),
         new BigInteger("12345679"));
-    testSkippedV2Stats(
-        Types.optional(PrimitiveTypeName.INT96).named(""),
-        new BigInteger("-75687987"),
-        new BigInteger("45367657"));
   }
 
   private void testSkippedV2Stats(PrimitiveType type, Object min, Object max) {
@@ -1382,8 +1379,7 @@ public class TestParquetMetadataConverter {
         + "        required binary key (UTF8);" // Key to be hacked to have unknown column order -> undefined
         + "        optional group list_col (LIST) {"
         + "          repeated group list {"
-        + "            optional int96 array_element;" // INT96 element with type defined column order ->
-        // undefined
+        + "            optional int96 array_element;" // plain INT96 element -> INT96_TIMESTAMP_ORDER
         + "          }"
         + "        }"
         + "    }"
@@ -1397,9 +1393,10 @@ public class TestParquetMetadataConverter {
 
     List<org.apache.parquet.format.ColumnOrder> columnOrders = formatMetadata.getColumn_orders();
     assertEquals(3, columnOrders.size());
-    for (org.apache.parquet.format.ColumnOrder columnOrder : columnOrders) {
-      assertTrue(columnOrder.isSetTYPE_ORDER());
-    }
+    // binary_col and key get TYPE_ORDER, the INT96 array_element gets INT96_TIMESTAMP_ORDER.
+    assertTrue(columnOrders.get(0).isSetTYPE_ORDER());
+    assertTrue(columnOrders.get(1).isSetTYPE_ORDER());
+    assertTrue(columnOrders.get(2).isSetINT96_TIMESTAMP_ORDER());
 
     // Simulate that thrift got a union type that is not in the generated code
     // (when the file contains a not-yet-supported column order)
@@ -1412,7 +1409,7 @@ public class TestParquetMetadataConverter {
     assertEquals(
         ColumnOrder.typeDefined(), columns.get(0).getPrimitiveType().columnOrder());
     assertEquals(ColumnOrder.undefined(), columns.get(1).getPrimitiveType().columnOrder());
-    assertEquals(ColumnOrder.undefined(), columns.get(2).getPrimitiveType().columnOrder());
+    assertEquals(ColumnOrder.int96TimestampOrder(), columns.get(2).getPrimitiveType().columnOrder());
   }
 
   @Test
@@ -1487,7 +1484,11 @@ public class TestParquetMetadataConverter {
       assertNull(
           "Should ignore unsupported types",
           ParquetMetadataConverter.toParquetColumnIndex(
-              Types.required(PrimitiveTypeName.INT96).named("test_int96"), columnIndex));
+              Types.required(PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY)
+                  .length(12)
+                  .as(OriginalType.INTERVAL)
+                  .named("test_interval"),
+              columnIndex));
       assertNull(
           "Should ignore unsupported types",
           ParquetMetadataConverter.fromParquetColumnIndex(

@@ -2043,12 +2043,17 @@ public class ParquetMetadataConverter {
                   || schemaElement.converted_type == ConvertedType.INTERVAL)) {
             columnOrder = org.apache.parquet.schema.ColumnOrder.undefined();
           }
-          // INT96_TIMESTAMP_ORDER is only valid for INT96 columns; ignore it anywhere else
+          // INT96_TIMESTAMP_ORDER is only valid for INT96 columns, ignore it anywhere else.
           if (columnOrder.getColumnOrderName() == ColumnOrderName.INT96_TIMESTAMP_ORDER
               && schemaElement.type != Type.INT96) {
             columnOrder = org.apache.parquet.schema.ColumnOrder.undefined();
           }
           primitiveBuilder.columnOrder(columnOrder);
+        } else if (schemaElement.type == Type.INT96) {
+          // A footer without column orders predates INT96_TIMESTAMP_ORDER, so an INT96 column here
+          // must not inherit the (chronological) construction-time default: its stats, if any, were
+          // written under the legacy order and must be ignored.
+          primitiveBuilder.columnOrder(org.apache.parquet.schema.ColumnOrder.undefined());
         }
         childBuilder = primitiveBuilder;
       } else {

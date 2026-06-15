@@ -92,12 +92,8 @@ import org.apache.parquet.io.OutputFile;
 import org.apache.parquet.io.ParquetEncodingException;
 import org.apache.parquet.io.PositionOutputStream;
 import org.apache.parquet.io.SeekableInputStream;
-import org.apache.parquet.schema.ColumnOrder;
-import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.PrimitiveType;
-import org.apache.parquet.schema.PrimitiveType.PrimitiveTypeName;
-import org.apache.parquet.schema.Type;
 import org.apache.parquet.schema.TypeUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -439,7 +435,7 @@ public class ParquetFileWriter implements AutoCloseable {
       throws IOException {
     this(
         file,
-        applyInt96TimestampOrder(schema),
+        schema,
         mode,
         rowGroupSize,
         maxPaddingSize,
@@ -449,32 +445,6 @@ public class ParquetFileWriter implements AutoCloseable {
         encryptionProperties,
         null,
         props.getAllocator());
-  }
-
-  /**
-   * Returns the schema with INT96 columns tagged with the INT96_TIMESTAMP_ORDER column order, so
-   * that statistics are accumulated with the chronological comparator and the proper column order
-   * is written to the footer.
-   */
-  static MessageType applyInt96TimestampOrder(MessageType schema) {
-    return new MessageType(schema.getName(), applyInt96TimestampOrder(schema.getFields()));
-  }
-
-  private static List<Type> applyInt96TimestampOrder(List<Type> fields) {
-    List<Type> result = new ArrayList<>(fields.size());
-    for (Type field : fields) {
-      if (field.isPrimitive()) {
-        PrimitiveType primitive = field.asPrimitiveType();
-        if (primitive.getPrimitiveTypeName() == PrimitiveTypeName.INT96) {
-          field = primitive.withColumnOrder(ColumnOrder.int96TimestampOrder());
-        }
-        result.add(field);
-      } else {
-        GroupType group = field.asGroupType();
-        result.add(group.withNewFields(applyInt96TimestampOrder(group.getFields())));
-      }
-    }
-    return result;
   }
 
   @Deprecated
