@@ -23,7 +23,6 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.io.ByteArrayInputStream;
@@ -45,10 +44,10 @@ import org.apache.parquet.format.FileMetaData;
 import org.apache.parquet.format.RowGroup;
 import org.apache.parquet.format.Statistics;
 import org.apache.parquet.format.Type;
+import org.apache.parquet.format.TypeDefinedOrder;
 import org.apache.parquet.format.Util;
 import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.ParquetFileWriter;
-import org.apache.parquet.hadoop.ParquetInputFormat;
 import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.example.ExampleParquetWriter;
@@ -98,14 +97,13 @@ public class TestInt96TimestampStatistics {
         .array());
   }
 
-  private File writeFile(boolean int96StatsEnabled) throws IOException {
-    File file = new File(tmp.getRoot(), "int96_" + int96StatsEnabled + ".parquet");
+  private File writeFile() throws IOException {
+    File file = new File(tmp.getRoot(), "int96.parquet");
     Configuration conf = new Configuration();
     GroupWriteSupport.setSchema(SCHEMA, conf);
     SimpleGroupFactory factory = new SimpleGroupFactory(SCHEMA);
     ParquetWriter<Group> writer = ExampleParquetWriter.builder(new Path(file.getAbsolutePath()))
         .withConf(conf)
-        .withInt96TimestampStatisticsEnabled(int96StatsEnabled)
         .build();
     try {
       for (int i = 0; i < VALUES.size(); i++) {
@@ -159,24 +157,15 @@ public class TestInt96TimestampStatistics {
   }
 
   /**
-   * Injects min/max statistics for the INT96 column into the raw footer while keeping TYPE_ORDER
-   * as the column order. This simulates a legacy writer that emitted INT96 stats before
-   * INT96_TIMESTAMP_ORDER existed.
+   * Retags the INT96 column orders in the footer as TYPE_ORDER while leaving the (already written)
+   * min/max statistics in place. This simulates a legacy writer that emitted INT96 stats under
+   * TYPE_ORDER before INT96_TIMESTAMP_ORDER existed; such stats must be ignored by the reader.
    */
-  private static void injectInt96Stats(FileMetaData footer) {
-    // No need to touch column_orders: the writer already stamps TYPE_ORDER for every column when
-    // INT96 timestamp statistics are disabled
-    for (RowGroup rowGroup : footer.getRow_groups()) {
-      rowGroup.getColumns().stream()
-          .map(c -> c.getMeta_data())
-          .filter(md -> md.getType() == Type.INT96)
-          .forEach(md -> {
-            Statistics stats = new Statistics();
-            stats.setMin_value(EXPECTED_MIN.getBytes());
-            stats.setMax_value(EXPECTED_MAX.getBytes());
-            stats.setNull_count(0);
-            md.setStatistics(stats);
-          });
+  private static void downgradeInt96ToTypeOrder(FileMetaData footer) {
+    for (org.apache.parquet.format.ColumnOrder columnOrder : footer.getColumn_orders()) {
+      if (columnOrder.isSetINT96_TIMESTAMP_ORDER()) {
+        columnOrder.setTYPE_ORDER(new TypeDefinedOrder());
+      }
     }
   }
 
@@ -199,38 +188,8 @@ public class TestInt96TimestampStatistics {
   }
 
   @Test
-  public void testWriterOmitsInt96StatsByDefault() throws IOException {
-    File file = writeFile(false);
-    FileMetaData rawFooter = readRawFooter(file);
-    for (RowGroup rowGroup : rawFooter.getRow_groups()) {
-      for (ColumnChunk chunk : rowGroup.getColumns()) {
-        if (chunk.getMeta_data().getType() == Type.INT96) {
-          Statistics stats = chunk.getMeta_data().getStatistics();
-          assertTrue(stats == null || (!stats.isSetMin_value() && !stats.isSetMax_value()));
-        }
-      }
-    }
-
-    // Without the new order, the column order written for INT96 stays TYPE_ORDER
-    assertTrue(rawFooter.getColumn_orders().get(0).isSetTYPE_ORDER());
-    assertStatsIgnored(getColumn(readFooter(file, new Configuration()), "ts"));
-
-    // Without the new order, column index must not be written for the INT96 column.
-    Configuration conf = new Configuration();
-    Path path = new Path(file.getAbsolutePath());
-    try (
-      ParquetFileReader reader = ParquetFileReader.open(
-        HadoopInputFile.fromPath(path, conf), HadoopReadOptions.builder(conf, path).build()
-      )
-    ) {
-      assertNotNull(reader.readColumnIndex(getColumn(reader.getFooter(), "id")));
-      assertNull(reader.readColumnIndex(getColumn(reader.getFooter(), "ts")));
-    }
-  }
-
-  @Test
-  public void testWriterEmitsInt96StatsAndColumnOrderWhenEnabled() throws IOException {
-    File file = writeFile(true);
+  public void testWriterEmitsInt96StatsAndColumnOrder() throws IOException {
+    File file = writeFile();
     FileMetaData rawFooter = readRawFooter(file);
     // schema[0] is the message root; column_orders are indexed by leaf order: ts=0, id=1
     assertTrue(rawFooter.getColumn_orders().get(0).isSetINT96_TIMESTAMP_ORDER());
@@ -269,7 +228,7 @@ public class TestInt96TimestampStatistics {
   public void testStatsAccumulationUsesChronologicalOrder() throws IOException {
     // Values are written in non-chronological order; the writer must still produce the
     // chronological min/max, not first/last or byte-wise extremes.
-    File file = writeFile(true);
+    File file = writeFile();
     ParquetMetadata footer = readFooter(file, new Configuration());
     byte[] minBytes = getColumn(footer, "ts").getStatistics().getMinBytes();
     assertFalse(Binary.fromConstantByteArray(minBytes).equals(NEXT_DAY));
@@ -280,7 +239,7 @@ public class TestInt96TimestampStatistics {
 
   @Test
   public void testReaderReadsStatsWrittenWithInt96TimestampOrder() throws IOException {
-    File file = writeFile(true);
+    File file = writeFile();
     ParquetMetadata footer = readFooter(file, new Configuration());
 
     PrimitiveType ts = footer.getFileMetaData().getSchema().getType("ts").asPrimitiveType();
@@ -291,24 +250,11 @@ public class TestInt96TimestampStatistics {
   }
 
   @Test
-  public void testReaderReadsStatsWrittenWithInt96TimestampOrderWhenDisabled() throws IOException {
-    File file = writeFile(true);
-
-    Configuration conf = new Configuration();
-    conf.setBoolean(ParquetInputFormat.INT96_TIMESTAMP_STATISTICS_READING_ENABLED, false);
-    ParquetMetadata footer = readFooter(file, conf);
-
-    assertEquals(ColumnOrder.undefined(),
-        footer.getFileMetaData().getSchema().getType("ts").asPrimitiveType().columnOrder());
-    assertStatsIgnored(getColumn(footer, "ts"));
-  }
-
-  @Test
   public void testReaderIgnoresInt96StatsWithTypeDefinedOrder() throws IOException {
     // Legacy layout: stats present, but column order is TYPE_ORDER so they are ignored.
-    File file = writeFile(false);
+    File file = writeFile();
     FileMetaData rawFooter = readRawFooter(file);
-    injectInt96Stats(rawFooter);
+    downgradeInt96ToTypeOrder(rawFooter);
     File legacy = rewriteFooter(file, rawFooter, "legacy.parquet");
 
     // Validate the data is still intact after rewriting the footer.

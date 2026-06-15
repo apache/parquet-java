@@ -953,18 +953,6 @@ public class ParquetWriter<T> implements Closeable {
     }
 
     /**
-     * Sets whether min/max statistics are collected and written for INT96 columns using the
-     * chronological INT96_TIMESTAMP_ORDER column order (disabled by default).
-     *
-     * @param enabled whether to collect and write INT96 timestamp statistics
-     * @return this builder for method chaining
-     */
-    public SELF withInt96TimestampStatisticsEnabled(boolean enabled) {
-      encodingPropsBuilder.withInt96TimestampStatisticsEnabled(enabled);
-      return self();
-    }
-
-    /**
      * Sets the size statistics enabled/disabled for the specified column. All column size statistics are enabled by default.
      *
      * @param columnPath the path of the column (dot-string)

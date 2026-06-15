@@ -112,7 +112,6 @@ import org.apache.parquet.format.TypeDefinedOrder;
 import org.apache.parquet.format.Uncompressed;
 import org.apache.parquet.format.VariantType;
 import org.apache.parquet.format.XxHash;
-import org.apache.parquet.hadoop.ParquetInputFormat;
 import org.apache.parquet.hadoop.metadata.BlockMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnChunkMetaData;
 import org.apache.parquet.hadoop.metadata.ColumnPath;
@@ -2101,20 +2100,15 @@ public class ParquetMetadataConverter {
     return Repetition.valueOf(repetition.name());
   }
 
-  private org.apache.parquet.schema.ColumnOrder fromParquetColumnOrder(ColumnOrder columnOrder) {
+  private static org.apache.parquet.schema.ColumnOrder fromParquetColumnOrder(ColumnOrder columnOrder) {
     if (columnOrder.isSetTYPE_ORDER()) {
       return org.apache.parquet.schema.ColumnOrder.typeDefined();
     }
-    if (columnOrder.isSetINT96_TIMESTAMP_ORDER() && readInt96TimestampStatisticsEnabled()) {
+    if (columnOrder.isSetINT96_TIMESTAMP_ORDER()) {
       return org.apache.parquet.schema.ColumnOrder.int96TimestampOrder();
     }
     // The column order is not yet supported by this API
     return org.apache.parquet.schema.ColumnOrder.undefined();
-  }
-
-  private boolean readInt96TimestampStatisticsEnabled() {
-    return options == null
-        || options.isEnabled(ParquetInputFormat.INT96_TIMESTAMP_STATISTICS_READING_ENABLED, true);
   }
 
   @Deprecated

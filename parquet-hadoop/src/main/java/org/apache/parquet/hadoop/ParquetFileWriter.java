@@ -439,7 +439,7 @@ public class ParquetFileWriter implements AutoCloseable {
       throws IOException {
     this(
         file,
-        applyInt96TimestampOrder(schema, props),
+        applyInt96TimestampOrder(schema),
         mode,
         rowGroupSize,
         maxPaddingSize,
@@ -452,14 +452,11 @@ public class ParquetFileWriter implements AutoCloseable {
   }
 
   /**
-   * Returns the schema with INT96 columns tagged with the INT96_TIMESTAMP_ORDER column order if
-   * INT96 timestamp statistics are enabled, so that statistics are accumulated with the
-   * chronological comparator and the proper column order is written to the footer.
+   * Returns the schema with INT96 columns tagged with the INT96_TIMESTAMP_ORDER column order, so
+   * that statistics are accumulated with the chronological comparator and the proper column order
+   * is written to the footer.
    */
-  static MessageType applyInt96TimestampOrder(MessageType schema, ParquetProperties props) {
-    if (!props.getInt96TimestampStatisticsEnabled()) {
-      return schema;
-    }
+  static MessageType applyInt96TimestampOrder(MessageType schema) {
     return new MessageType(schema.getName(), applyInt96TimestampOrder(schema.getFields()));
   }
 

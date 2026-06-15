@@ -163,7 +163,6 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
   public static final String PAGE_WRITE_CHECKSUM_ENABLED = "parquet.page.write-checksum.enabled";
   public static final String STATISTICS_ENABLED = "parquet.column.statistics.enabled";
   public static final String SIZE_STATISTICS_ENABLED = "parquet.size.statistics.enabled";
-  public static final String INT96_TIMESTAMP_STATISTICS_ENABLED = "parquet.int96.timestamp.statistics.enabled";
 
   public static JobSummaryLevel getJobSummaryLevel(Configuration conf) {
     String level = conf.get(JOB_SUMMARY_LEVEL);
@@ -433,14 +432,6 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
     return conf.getBoolean(STATISTICS_ENABLED, ParquetProperties.DEFAULT_STATISTICS_ENABLED);
   }
 
-  public static void setInt96TimestampStatisticsEnabled(JobContext jobContext, boolean enabled) {
-    getConfiguration(jobContext).setBoolean(INT96_TIMESTAMP_STATISTICS_ENABLED, enabled);
-  }
-
-  public static boolean getInt96TimestampStatisticsEnabled(Configuration conf) {
-    return conf.getBoolean(INT96_TIMESTAMP_STATISTICS_ENABLED, ParquetProperties.DEFAULT_INT96_TIMESTAMP_STATISTICS_ENABLED);
-  }
-
   public static void setSizeStatisticsEnabled(Configuration conf, boolean enabled) {
     conf.setBoolean(SIZE_STATISTICS_ENABLED, enabled);
   }
@@ -535,8 +526,7 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
         .withRowGroupRowCountLimit(getBlockRowCountLimit(conf))
         .withPageRowCountLimit(getPageRowCountLimit(conf))
         .withPageWriteChecksumEnabled(getPageWriteChecksumEnabled(conf))
-        .withStatisticsEnabled(getStatisticsEnabled(conf))
-        .withInt96TimestampStatisticsEnabled(getInt96TimestampStatisticsEnabled(conf));
+        .withStatisticsEnabled(getStatisticsEnabled(conf));
     new ColumnConfigParser()
         .withColumnConfig(
             ENABLE_DICTIONARY, key -> conf.getBoolean(key, false), propsBuilder::withDictionaryEncoding)

@@ -25,7 +25,6 @@ import static org.apache.parquet.hadoop.ParquetInputFormat.COLUMN_INDEX_FILTERIN
 import static org.apache.parquet.hadoop.ParquetInputFormat.DICTIONARY_FILTERING_ENABLED;
 import static org.apache.parquet.hadoop.ParquetInputFormat.HADOOP_VECTORED_IO_DEFAULT;
 import static org.apache.parquet.hadoop.ParquetInputFormat.HADOOP_VECTORED_IO_ENABLED;
-import static org.apache.parquet.hadoop.ParquetInputFormat.INT96_TIMESTAMP_STATISTICS_READING_ENABLED;
 import static org.apache.parquet.hadoop.ParquetInputFormat.OFF_HEAP_DECRYPT_BUFFER_ENABLED;
 import static org.apache.parquet.hadoop.ParquetInputFormat.PAGE_VERIFY_CHECKSUM_ENABLED;
 import static org.apache.parquet.hadoop.ParquetInputFormat.RECORD_FILTERING_ENABLED;
@@ -291,10 +290,6 @@ public class ParquetReadOptions {
       String badRecordThresh = conf.get(BAD_RECORD_THRESHOLD_CONF_KEY);
       if (badRecordThresh != null) {
         set(BAD_RECORD_THRESHOLD_CONF_KEY, badRecordThresh);
-      }
-      String readInt96TimestampStats = conf.get(INT96_TIMESTAMP_STATISTICS_READING_ENABLED);
-      if (readInt96TimestampStats != null) {
-        set(INT96_TIMESTAMP_STATISTICS_READING_ENABLED, readInt96TimestampStats);
       }
     }
 

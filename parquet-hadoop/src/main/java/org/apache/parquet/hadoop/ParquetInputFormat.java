@@ -123,12 +123,6 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
   public static final String STATS_FILTERING_ENABLED = "parquet.filter.stats.enabled";
 
   /**
-   * key to configure whether INT96 min/max statistics written with the INT96_TIMESTAMP_ORDER
-   * column order are read (enabled by default)
-   */
-  public static final String INT96_TIMESTAMP_STATISTICS_READING_ENABLED = "parquet.int96.timestamp.statistics.read.enabled";
-
-  /**
    * key to configure whether row group dictionary filtering is enabled
    */
   public static final String DICTIONARY_FILTERING_ENABLED = "parquet.filter.dictionary.enabled";
