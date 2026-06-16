@@ -807,7 +807,7 @@ public class TestParquetMetadataConverter {
     }
     Assert.assertEquals("Num nulls should match", 3004, formatStats.getNull_count());
 
-    // convert to empty stats because the values are too large
+    // min/max are not written because the values are too large, but null count is always written
     stats.setMinMaxFromBytes(max, max);
 
     formatStats = helper.toParquetStatistics(stats);
@@ -816,7 +816,7 @@ public class TestParquetMetadataConverter {
     Assert.assertFalse("Max should not be set", formatStats.isSetMax());
     Assert.assertFalse("Min_value should not be set", formatStats.isSetMin_value());
     Assert.assertFalse("Max_value should not be set", formatStats.isSetMax_value());
-    Assert.assertFalse("Num nulls should not be set", formatStats.isSetNull_count());
+    Assert.assertEquals("Num nulls should match", 3004, formatStats.getNull_count());
 
     Statistics roundTripStats = ParquetMetadataConverter.fromParquetStatisticsInternal(
         Version.FULL_VERSION,
@@ -824,7 +824,8 @@ public class TestParquetMetadataConverter {
         new PrimitiveType(Repetition.OPTIONAL, PrimitiveTypeName.BINARY, ""),
         ParquetMetadataConverter.SortOrder.SIGNED);
 
-    Assert.assertTrue(roundTripStats.isEmpty());
+    Assert.assertFalse("Round-trip stats should not be empty (null count is set)", roundTripStats.isEmpty());
+    Assert.assertEquals("Round-trip null count should match", 3004, roundTripStats.getNumNulls());
   }
 
   @Test
