@@ -1147,10 +1147,10 @@ public class ParquetFileReader implements Closeable {
       return readNextRowGroup();
     }
 
+    closeCurrentRowGroup();
     if (rowGroup == null) {
       return null;
     }
-    closeCurrentRowGroup();
     this.currentRowGroup = rowGroup;
     // avoid re-reading bytes the dictionary reader is used after this call
     if (nextDictionaryReader != null) {
