@@ -135,7 +135,7 @@ public abstract class DictionaryValuesWriter extends ValuesWriter implements Req
    *
    * @param newDictionarySize the current dictionary size after adding the new entry
    */
-  protected void checkDictionarySizeLimit(int newDictionarySize) {
+  void checkDictionarySizeLimit(int newDictionarySize) {
     if (dictionaryByteSize > maxDictionaryByteSize || newDictionarySize > MAX_DICTIONARY_ENTRIES) {
       dictionarySizeExceeded = true;
     }
