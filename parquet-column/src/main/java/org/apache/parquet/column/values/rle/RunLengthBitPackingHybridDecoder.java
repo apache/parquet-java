@@ -96,10 +96,14 @@ public class RunLengthBitPackingHybridDecoder {
         LOG.debug("reading {} values BIT PACKED", currentCount);
         if (currentBuffer == null || currentBuffer.length < currentCount) {
           currentBuffer = new int[currentCount];
+        } else {
+          Arrays.fill(currentBuffer, currentCount, currentBuffer.length, 0);
         }
         int bytesNeeded = numGroups * bitWidth;
         if (packedBytes == null || packedBytes.length < bytesNeeded) {
           packedBytes = new byte[bytesNeeded];
+        } else {
+          Arrays.fill(packedBytes, bytesNeeded, packedBytes.length, (byte) 0);
         }
         int bytesRead = in.readNBytes(packedBytes, 0, bytesNeeded);
         if (bytesRead < bytesNeeded) {
